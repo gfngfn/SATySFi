@@ -30,6 +30,11 @@ let resolve_lib_file_scheme (relpath : lib_path) : string option * string list =
   (MyUtil.first_some resolve pathcands, pathcands)
 
 
+let resolve_lib_file_opt (relpath : lib_path) : abs_path option =
+  let (opt, _) = resolve_lib_file_scheme relpath in
+  opt |> BatOption.map make_abs_path
+
+
 let resolve_lib_file_exn (relpath : lib_path) : abs_path =
   let (opt, pathcands) = resolve_lib_file_scheme relpath in
   match opt with

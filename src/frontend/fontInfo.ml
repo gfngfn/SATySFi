@@ -32,8 +32,8 @@ module FontAbbrevHashTable
 = struct
 
     type font_store =
-      | UnusedSingle of lib_path
-      | UnusedTTC    of lib_path * int
+      | UnusedSingle
+      | UnusedTTC    of int
       | Loaded       of font_definition
 
     module Ht = Hashtbl.Make
@@ -44,7 +44,7 @@ module FontAbbrevHashTable
       end)
 
 
-    let abbrev_to_definition_hash_table : (font_store ref) Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (lib_path * font_store ref) Ht.t = Ht.create 32
 
     let current_tag_number = ref 0
 
@@ -59,22 +59,30 @@ module FontAbbrevHashTable
       "/F" ^ (string_of_int !current_tag_number)
 
 
-    let add_single abbrev srcpath =
-      let storeref = ref (UnusedSingle(srcpath)) in
-      Ht.add abbrev_to_definition_hash_table abbrev storeref
+    let add_single abbrev relpath =
+      match abbrev |> Ht.find_opt abbrev_to_definition_hash_table with
+      | Some((relpath, _)) ->
+          Logging.warn_duplicate_font_hash abbrev relpath
+
+      | None ->
+          let storeref = ref UnusedSingle in
+          Ht.add abbrev_to_definition_hash_table abbrev (relpath, storeref)
 
 
-    let add_ttc abbrev srcpath i =
-      let storeref = ref (UnusedTTC(srcpath, i)) in
-      Ht.add abbrev_to_definition_hash_table abbrev storeref
+    let add_ttc abbrev relpath i =
+      if abbrev |> Ht.mem abbrev_to_definition_hash_table then
+        Logging.warn_duplicate_font_hash abbrev relpath
+      else
+        let storeref = ref (UnusedTTC(i)) in
+        Ht.add abbrev_to_definition_hash_table abbrev (relpath, storeref)
 
 
     let fold (f : font_abbrev -> font_definition -> 'a -> 'a) init =
-      Ht.fold (fun abbrev storeref acc ->
+      Ht.fold (fun abbrev (_, storeref) acc ->
         match !storeref with
-        | UnusedSingle(_) -> acc  (* -- ignores unused fonts -- *)
-        | UnusedTTC(_, _) -> acc
-        | Loaded(dfn)     -> f abbrev dfn acc
+        | UnusedSingle -> acc  (* -- ignores unused fonts -- *)
+        | UnusedTTC(_) -> acc
+        | Loaded(dfn)  -> f abbrev dfn acc
       ) abbrev_to_definition_hash_table init
 
 
@@ -83,13 +91,13 @@ module FontAbbrevHashTable
       | None ->
           raise (InvalidFontAbbrev(abbrev))
 
-      | Some(storeref) ->
+      | Some((relpath, storeref)) ->
           begin
             match !storeref with
             | Loaded(dfn) ->
                 dfn
 
-            | UnusedSingle(relpath) ->
+            | UnusedSingle ->
               (* -- if this is the first access to the single font -- *)
                 let abspath = Config.resolve_lib_file_exn relpath in
                 begin
@@ -105,7 +113,7 @@ module FontAbbrevHashTable
                       dfn
                 end
 
-            | UnusedTTC(relpath, i) ->
+            | UnusedTTC(i) ->
               (* -- if this is the first access to the TrueTypeCollection -- *)
                 let srcpath = Config.resolve_lib_file_exn relpath in
                 begin
@@ -217,7 +225,7 @@ module MathFontAbbrevHashTable
 = struct
 
     type math_font_store =
-      | UnusedMath of lib_path
+      | UnusedMath
       | LoadedMath of math_font_definition
 
     module Ht = Hashtbl.Make
@@ -227,7 +235,7 @@ module MathFontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_definition_hash_table : (math_font_store ref) Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (lib_path * math_font_store ref) Ht.t = Ht.create 32
 
     let current_tag_number = ref 0
 
@@ -242,14 +250,20 @@ module MathFontAbbrevHashTable
       "/M" ^ (string_of_int !current_tag_number)
 
 
-    let add mfabbrev srcpath =
-      Ht.add abbrev_to_definition_hash_table mfabbrev (ref (UnusedMath(srcpath)))
+    let add mfabbrev relpath =
+      match mfabbrev |> Ht.find_opt abbrev_to_definition_hash_table with
+      | Some((relpath, _)) ->
+          Logging.warn_duplicate_math_font_hash mfabbrev relpath
+
+      | None ->
+          let storeref = ref UnusedMath in
+          Ht.add abbrev_to_definition_hash_table mfabbrev (relpath, storeref)
 
 
     let fold f init =
-      Ht.fold (fun mfabbrev storeref acc ->
+      Ht.fold (fun mfabbrev (_, storeref) acc ->
         match !storeref with
-        | UnusedMath(_)     -> acc  (* -- ignores unused math fonts -- *)
+        | UnusedMath        -> acc  (* -- ignores unused math fonts -- *)
         | LoadedMath(mfdfn) -> f mfabbrev mfdfn acc
       ) abbrev_to_definition_hash_table init
 
@@ -259,10 +273,10 @@ module MathFontAbbrevHashTable
       | None ->
           raise (InvalidMathFontAbbrev(mfabbrev))
 
-      | Some(storeref) ->
+      | Some((relpath, storeref)) ->
           begin
             match !storeref with
-            | UnusedMath(relpath) ->
+            | UnusedMath ->
               (* -- if this is the first access to the math font -- *)
                 let srcpath = Config.resolve_lib_file_exn relpath in
                 begin
@@ -432,13 +446,25 @@ let initialize () =
   let abspath_EAW = Config.resolve_lib_file_exn (make_lib_path "dist/unidata/EastAsianWidth.txt") in
   ScriptDataMap.set_from_file abspath_S abspath_EAW;
   LineBreakDataMap.set_from_file (Config.resolve_lib_file_exn (make_lib_path "dist/unidata/LineBreak.txt"));
-  let font_hash = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/fonts.satysfi-hash")) in
+  let font_hash_local =
+    match Config.resolve_lib_file_opt (make_lib_path "local/hash/fonts.satysfi-hash") with
+    | None          -> []
+    | Some(abspath) -> LoadFont.main abspath
+  in
+  let font_hash_dist = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/fonts.satysfi-hash")) in
+  let font_hash = List.append font_hash_local font_hash_dist in
   font_hash |> List.iter (fun (abbrev, data) ->
     match data with
     | LoadFont.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
     | LoadFont.Collection(relpath, i) -> FontAbbrevHashTable.add_ttc abbrev relpath i
   );
-  let math_font_hash = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/mathfonts.satysfi-hash")) in
+  let math_font_hash_local =
+    match Config.resolve_lib_file_opt (make_lib_path "dist/local/mathfonts.satysfi-hash") with
+    | None          -> []
+    | Some(abspath) -> LoadFont.main abspath
+  in
+  let math_font_hash_dist = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/mathfonts.satysfi-hash")) in
+  let math_font_hash = List.append math_font_hash_local math_font_hash_dist in
   math_font_hash |> List.iter (fun (mfabbrev, data) ->
     match data with
     | LoadFont.Single(srcpath)        -> MathFontAbbrevHashTable.add mfabbrev srcpath

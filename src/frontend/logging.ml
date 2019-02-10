@@ -129,3 +129,11 @@ let warn_no_glyph abbrev uch =
 
 let warn_no_math_glyph mfabbrev uch =
   Format.printf "  [Warning] No glyph is provided for U+%04X by math font `%s`.\n" (Uchar.to_int uch) mfabbrev
+
+
+let warn_duplicate_font_hash abbrev relpath =
+  Format.printf "  [Warning] more than one font is named `%s`; '%s' will be associated with the font name.\n" abbrev (get_lib_path_string relpath)
+
+
+let warn_duplicate_math_font_hash mfabbrev relpath =
+  Format.printf "  [Warning] more than one font is named `%s`; '%s' will be associated with the font name.\n" mfabbrev (get_lib_path_string relpath)
