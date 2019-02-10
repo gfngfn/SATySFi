@@ -3,6 +3,7 @@
 LIBDIR=/usr/local/share/satysfi
 
 install -d ${LIBDIR}
+install -d ${LIBDIR}/local
 install -d ${LIBDIR}/dist
 install -d ${LIBDIR}/dist/unidata
 install -m 644 lib-satysfi/dist/unidata/*.txt ${LIBDIR}/dist/unidata
