@@ -438,7 +438,7 @@ let initialize () =
     | LoadFont.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
     | LoadFont.Collection(relpath, i) -> FontAbbrevHashTable.add_ttc abbrev relpath i
   );
-  let math_font_hash = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "mathfonts.satysfi-hash")) in
+  let math_font_hash = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/mathfonts.satysfi-hash")) in
   math_font_hash |> List.iter (fun (mfabbrev, data) ->
     match data with
     | LoadFont.Single(srcpath)        -> MathFontAbbrevHashTable.add mfabbrev srcpath

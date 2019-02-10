@@ -21,7 +21,7 @@ let read_path_from_dict ((pos, _) as assoc) : lib_path =
 
   | (None, Some(srcdist)) ->
       let rng = MYU.make_range pos in
-      Logging.warn_deprecated ("at " ^ (Range.message rng) ^ ": the key 'src-dist' in font hash files is deprecated; consider using 'src'.");
+      Logging.warn_deprecated ("at " ^ (Range.to_string rng) ^ ": the key 'src-dist' in font hash files is deprecated; consider using 'src'.");
       let s = srcdist |> YS.Util.to_string in
       Filename.concat "dist/fonts" s
 
@@ -30,7 +30,7 @@ let read_path_from_dict ((pos, _) as assoc) : lib_path =
 
   | (Some(src), Some(_)) ->
       let rng = MYU.make_range pos in
-      Logging.warn_deprecated ("at " ^ (Range.message rng) ^ ": the key 'src-dist' in font hash files is deprecated; the entry of 'src' is used.");
+      Logging.warn_deprecated ("at " ^ (Range.to_string rng) ^ ": the key 'src-dist' in font hash files is deprecated; the entry of 'src' is used.");
       src |> YS.Util.to_string
   in
   make_lib_path relpathstr
