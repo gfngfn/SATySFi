@@ -1,5 +1,5 @@
 
-type file_path = string
+open MyUtil
 
 type glyph_id
 
@@ -21,10 +21,9 @@ val hex_of_glyph_id : glyph_id -> string
 
 type decoder
 
-exception FailToLoadFontOwingToSize   of file_path
-exception FailToLoadFontOwingToSystem of file_path * string
-exception BrokenFont                  of file_path * string
-exception CannotFindUnicodeCmap       of file_path
+exception FailToLoadFontOwingToSystem of abs_path * string
+exception BrokenFont                  of abs_path * string
+exception CannotFindUnicodeCmap       of abs_path
 
 type 'a resource =
   | Data           of 'a
@@ -40,9 +39,9 @@ type font
 
 val make_dictionary : Pdf.t -> font -> decoder -> Pdf.pdfobject
 
-val get_decoder_single : string -> file_path -> (decoder * font) option
+val get_decoder_single : string -> abs_path -> (decoder * font) option
 
-val get_decoder_ttc : string -> file_path -> int -> (decoder * font) option
+val get_decoder_ttc : string -> abs_path -> int -> (decoder * font) option
 
 val get_glyph_metrics : decoder -> glyph_id -> metrics
 
@@ -64,11 +63,11 @@ type math_kern_info =
 
 type math_decoder
 
-val get_math_decoder : string -> file_path -> (math_decoder * font) option
+val get_math_decoder : string -> abs_path -> (math_decoder * font) option
 
 val math_base_font : math_decoder -> decoder
 
-val get_math_glyph_id : math_decoder -> Uchar.t -> glyph_id
+val get_math_glyph_id : math_decoder -> Uchar.t -> glyph_id option
 
 val get_math_script_variant : math_decoder -> glyph_id -> glyph_id
 

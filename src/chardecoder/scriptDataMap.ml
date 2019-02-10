@@ -1,4 +1,5 @@
 
+open MyUtil
 open CharBasis
 open LineBreakBox
 open HorzBox
@@ -45,15 +46,15 @@ let read_script eaw_map cp data =
 let script_map_ref : (script BatIMap.t) ref = ref (BatIMap.empty ~eq:(=))
 
 
-let set_from_file filename_S filename_EAW =
+let set_from_file (abspath_S : abs_path) (abspath_EAW : abs_path) =
   let eaw_map =
-    let channel_EAW = open_in filename_EAW in
+    let channel_EAW = open_in_abs abspath_EAW in
     let eaw_list = DataParser.main DataLexer.expr (Lexing.from_channel channel_EAW) in
     close_in channel_EAW;
     eaw_list |> CharBasis.map_of_list read_east_asian_width
   in
   let script_map =
-    let channel_S = open_in filename_S in
+    let channel_S = open_in_abs abspath_S in
     let script_list = DataParser.main DataLexer.expr (Lexing.from_channel channel_S) in
     close_in channel_S;
     script_list |> CharBasis.map_of_list (read_script eaw_map)

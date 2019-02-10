@@ -1,16 +1,19 @@
 
-
-let show_path s =
-  if OptionState.show_full_path () then s else Filename.basename s
+open MyUtil
 
 
-let begin_to_read_file file_name_in =
+let show_path abspath =
+  let pathstr = get_abs_path_string abspath in
+  if OptionState.show_full_path () then pathstr else Filename.basename pathstr
+
+
+let begin_to_read_file abspath_in =
   print_endline (" ---- ---- ---- ----");
-  print_endline ("  reading '" ^ (show_path file_name_in) ^ "' ...")
+  print_endline ("  reading '" ^ (show_path abspath_in) ^ "' ...")
 
 
-let begin_to_parse_file file_name_in =
-  print_endline ("  parsing '" ^ (show_path file_name_in) ^ "' ...")
+let begin_to_parse_file abspath_in =
+  print_endline ("  parsing '" ^ (show_path abspath_in) ^ "' ...")
 
 
 let pass_type_check opt =
@@ -99,6 +102,10 @@ let begin_to_write_page () =
   print_endline ("  writing pages ...")
 
 
+let warn_deprecated msg =
+  print_endline ("  [Warning] " ^ msg ^ "\n")
+
+
 let warn_cmyk_image file_name =
   print_endline ("  [Warning] (" ^ (show_path file_name) ^ ") Jpeg images with CMYK color mode are not fully supported.");
   print_endline ("  Please convert the image to a jpeg image with YCbCr (RGB) color model.")
@@ -109,12 +116,24 @@ let warn_noninjective_cmap uchpre uch gidorg =
 
 
 let warn_noninjective_ligature gidorglig =
-  Format.printf "[Warning] GID %d is used as more than one kind of ligatures.\n" gidorglig
+  Format.printf "  [Warning] GID %d is used as more than one kind of ligatures.\n" gidorglig
 
 
 let warn_nonattachable_mark gomark gobase =
-  Format.printf "[Warning] The combining diacritical mark of GID %d cannot be attached to the base glyph of GID %d.\n" gomark gobase
+  Format.printf "  [Warning] The combining diacritical mark of GID %d cannot be attached to the base glyph of GID %d.\n" gomark gobase
 
 
-let warn_no_glyph uch =
-  Format.printf "[Warning] No glyph for U+%04X.\n" (Uchar.to_int uch)
+let warn_no_glyph abbrev uch =
+  Format.printf "  [Warning] No glyph is provided for U+%04X by font `%s`.\n" (Uchar.to_int uch) abbrev
+
+
+let warn_no_math_glyph mfabbrev uch =
+  Format.printf "  [Warning] No glyph is provided for U+%04X by math font `%s`.\n" (Uchar.to_int uch) mfabbrev
+
+
+let warn_duplicate_font_hash abbrev relpath =
+  Format.printf "  [Warning] more than one font is named `%s`; '%s' will be associated with the font name.\n" abbrev (get_lib_path_string relpath)
+
+
+let warn_duplicate_math_font_hash mfabbrev relpath =
+  Format.printf "  [Warning] more than one font is named `%s`; '%s' will be associated with the font name.\n" mfabbrev (get_lib_path_string relpath)

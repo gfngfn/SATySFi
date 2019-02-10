@@ -1,10 +1,10 @@
 
-type file_path = string
-type dir_path = string
+open MyUtil
+
 type font_abbrev = string
 
 type data =
-  | Single     of file_path
-  | Collection of file_path * int
+  | Single     of lib_path
+  | Collection of lib_path * int
 
-val main : file_path -> (font_abbrev * data) list
+val main : abs_path -> (font_abbrev * data) list

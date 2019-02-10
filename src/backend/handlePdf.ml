@@ -6,7 +6,7 @@ open HorzBox
 
 
 type t =
-  | PDF of Pdf.t * Pdfpage.t Alist.t * file_path
+  | PDF of Pdf.t * Pdfpage.t Alist.t * abs_path
 
 
 type 'o op_funcs = {
@@ -348,12 +348,12 @@ let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf 
     PDF(pdf, Alist.extend pageacc pagenew, flnm)
 
 
-let create_empty_pdf (flnm : file_path) : t =
+let create_empty_pdf (abspath : abs_path) : t =
   let pdf = Pdf.empty () in
-    PDF(pdf, Alist.empty, flnm)
+   PDF(pdf, Alist.empty, abspath)
 
 
-let write_to_file ((PDF(pdf, pageacc, flnm)) : t) : unit =
+let write_to_file ((PDF(pdf, pageacc, abspath)) : t) : unit =
   Logging.begin_to_embed_fonts ();
   let pdfdict_font = FontInfo.get_font_dictionary pdf in
   let pdfarr_procset =
@@ -379,4 +379,4 @@ let write_to_file ((PDF(pdf, pageacc, flnm)) : t) : unit =
                       |> Outline.add_to_pdf
                       |> NamedDest.add_to_pdf
   in
-    Pdfwrite.pdf_to_file pdfout flnm
+  Pdfwrite.pdf_to_file pdfout (get_abs_path_string abspath)

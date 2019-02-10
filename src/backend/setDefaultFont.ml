@@ -33,12 +33,12 @@ let read_assoc (assoc : MYU.assoc) =
   ]
 
 
-let main () : (font_abbrev * float * float) ScriptSchemeMap.t =
-  let srcpath = Config.resolve_dist_file "dist/hash/default-font.satysfi-hash" in
-    try
-      let json = YS.from_file ~fname:srcpath srcpath in
-          (* -- may raise 'Sys_error' -- *)
-      let assoc = json |> MYU.make_assoc in
-      read_assoc assoc
-    with
-    | Yojson.Json_error(msg) -> MYU.syntax_error srcpath msg
+let main (abspath : abs_path) : (font_abbrev * float * float) ScriptSchemeMap.t =
+  let pathstr = get_abs_path_string abspath in
+  try
+    let json = YS.from_file ~fname:pathstr pathstr in
+        (* -- may raise 'Sys_error' -- *)
+    let assoc = json |> MYU.make_assoc in
+    read_assoc assoc
+  with
+  | Yojson.Json_error(msg) -> MYU.syntax_error pathstr msg

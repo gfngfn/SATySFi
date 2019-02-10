@@ -1,12 +1,14 @@
 
+open MyUtil
+
 type input_kind =
   | SATySFi
   | Markdown of string
 
 type state = {
   mutable input_kind      : input_kind;
-  mutable input_file      : string option;
-  mutable output_file     : string option;
+  mutable input_file      : abs_path option;
+  mutable output_file     : abs_path option;
   mutable type_check_only : bool;
   mutable bytecomp_mode   : bool;
   mutable show_full_path  : bool;
@@ -31,10 +33,15 @@ let state = {
 let set_input_kind ikd = state.input_kind <- ikd
 let get_input_kind ()  = state.input_kind
 
-let set_input_file srcpath = state.input_file <- Some(srcpath)
+let set_input_file abspath = state.input_file <- Some(abspath)
 let input_file ()          = state.input_file
 
-let set_output_file srcpath = state.output_file <- Some(srcpath)
+let job_directory () =
+  match state.input_file with
+  | None          -> assert false
+  | Some(abspath) -> Filename.dirname (get_abs_path_string abspath)
+
+let set_output_file abspath = state.output_file <- Some(abspath)
 let output_file ()          = state.output_file
 
 let set_type_check_only () = state.type_check_only <- true

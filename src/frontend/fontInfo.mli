@@ -1,4 +1,5 @@
 
+open MyUtil
 open LengthInterface
 open HorzBox
 open CharBasis
@@ -6,8 +7,8 @@ open Types
 
 exception InvalidFontAbbrev     of font_abbrev
 exception InvalidMathFontAbbrev of math_font_abbrev
-exception NotASingleFont        of font_abbrev * file_path
-exception NotASingleMathFont    of font_abbrev * file_path
+exception NotASingleFont        of font_abbrev * abs_path
+exception NotASingleMathFont    of font_abbrev * abs_path
 
 type tag = string
 

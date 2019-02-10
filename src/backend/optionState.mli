@@ -1,4 +1,6 @@
 
+open MyUtil
+
 type input_kind =
   | SATySFi
   | Markdown of string
@@ -6,11 +8,13 @@ type input_kind =
 val set_input_kind : input_kind -> unit
 val get_input_kind : unit -> input_kind
 
-val set_input_file : string -> unit
-val input_file : unit -> string option
+val set_input_file : abs_path -> unit
+val input_file : unit -> abs_path option
 
-val set_output_file : string -> unit
-val output_file : unit -> string option
+val job_directory : unit -> string
+
+val set_output_file : abs_path -> unit
+val output_file : unit -> abs_path option
 
 val set_type_check_only : unit -> unit
 val type_check_only : unit -> bool

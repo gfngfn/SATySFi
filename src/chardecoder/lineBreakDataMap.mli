@@ -1,7 +1,8 @@
 
+open MyUtil
 open CharBasis
 
-val set_from_file : string -> unit
+val set_from_file : abs_path -> unit
 
 val find : Uchar.t -> line_break_class
 
