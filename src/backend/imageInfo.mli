@@ -1,8 +1,6 @@
 
+open MyUtil
 open LengthInterface
-
-
-type file_path = string
 
 type bbox = float * float * float * float
 
@@ -10,9 +8,9 @@ type key
 
 val initialize : unit -> unit
 
-val add_pdf : file_path -> int -> key
+val add_pdf : abs_path -> int -> key
 
-val add_image : file_path -> key
+val add_image : abs_path -> key
 
 val get_height_from_width : key -> length -> length
 

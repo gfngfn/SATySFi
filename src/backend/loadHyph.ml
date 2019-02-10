@@ -5,12 +5,7 @@ open CharBasis
 module YS = Yojson.SafePos
 module MYU = MyYojsonUtil
 
-
-type dir_path = string
-type file_path = string
-
 exception InvalidPatternElement of Range.t
-
 
 module ExceptionMap = Map.Make(String)
 
@@ -136,15 +131,15 @@ let read_assoc (assoc : MYU.assoc) : t =
   (excpmap, hyphpatlst)
 
 
-let main (filename : file_path) : t =
-  let srcpath = Config.resolve_dist_file (Filename.concat "dist/hyph" filename) in
-    try
-      let json = YS.from_file ~fname:srcpath srcpath in
-        (* -- may raise 'Sys_error'  -- *)
-      let assoc = json |> MYU.make_assoc in
-      read_assoc assoc
-    with
-    | Yojson.Json_error(msg) -> MYU.syntax_error srcpath msg
+let main (abspath : abs_path) : t =
+  let pathstr = get_abs_path_string abspath in
+  try
+    let json = YS.from_file ~fname:pathstr pathstr in
+      (* -- may raise 'Sys_error'  -- *)
+    let assoc = json |> MYU.make_assoc in
+    read_assoc assoc
+  with
+  | Yojson.Json_error(msg) -> MYU.syntax_error pathstr msg
 
 
 let empty = (ExceptionMap.empty, [])

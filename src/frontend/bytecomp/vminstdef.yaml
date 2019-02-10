@@ -1105,10 +1105,11 @@ type: |
   ~% (tS @-> tI @-> tIMG)
 
 params:
-- srcpath : string
+- relpathstr : string
 - pageno : int
 code: |
-  let imgkey = ImageInfo.add_pdf srcpath pageno in
+  let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpathstr) in
+  let imgkey = ImageInfo.add_pdf abspath pageno in
     ImageKey(imgkey)
 
 ---
@@ -1119,9 +1120,10 @@ type: |
   ~% (tS @-> tIMG)
 
 params:
-- srcpath : string
+- relpath : string
 code: |
-  let imgkey = ImageInfo.add_image srcpath in
+  let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpath) in
+  let imgkey = ImageInfo.add_image abspath in
     ImageKey(imgkey)
 
 ---

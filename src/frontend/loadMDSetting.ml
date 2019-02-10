@@ -75,7 +75,7 @@ let make_code_name_map pair ((pos, _) as json : json) : DecodeMD.command DecodeM
   ) CodeNameMap.empty
 
 
-let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
+let read_assoc (assoc : MYU.assoc) =
   let open DecodeMD in
   let block = get_command pair_block in
   let inline = get_command pair_inline in
@@ -156,12 +156,12 @@ let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
   (cmdrcd, depends)
 
 
-let main (key : string) : DecodeMD.command_record * string list =
-  let srcpath = Config.resolve_dist_file (Filename.concat "dist/md" (key ^ ".satysfi-md")) in
+let main (abspath : abs_path) : DecodeMD.command_record * string list =
+  let pathstr = get_abs_path_string abspath in
   try
-    let json = YS.from_file ~fname:srcpath srcpath in
+    let json = YS.from_file ~fname:pathstr pathstr in
       (* -- may raise 'Sys_error' -- *)
     let assoc = MYU.make_assoc json in
-    read_assoc srcpath assoc
+    read_assoc assoc
   with
-  | Yojson.Json_error(msg) -> MYU.syntax_error srcpath msg
+  | Yojson.Json_error(msg) -> MYU.syntax_error pathstr msg

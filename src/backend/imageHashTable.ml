@@ -1,5 +1,5 @@
 
-type file_path = string
+open MyUtil
 
 type tag = string
 
@@ -9,14 +9,14 @@ type key = int
 
 type value_main =
   | PDFImage   of Pdf.t * Pdfpage.t
-  | OtherImage of Images.format * Pdf.pdfobject * int * int * file_path
+  | OtherImage of Images.format * Pdf.pdfobject * int * int * abs_path
 
 type value = tag * bbox * value_main
 
-exception CannotLoadPdf          of string * file_path * int
-exception CannotLoadImage        of string * file_path
-exception ImageOfWrongFileType   of file_path
-exception UnsupportedColorModel  of Images.colormodel * file_path
+exception CannotLoadPdf          of string * abs_path * int
+exception CannotLoadImage        of string * abs_path
+exception ImageOfWrongFileType   of abs_path
+exception UnsupportedColorModel  of Images.colormodel * abs_path
 
 
 let main_hash_table : (key, value) Hashtbl.t = Hashtbl.create 32
@@ -47,16 +47,16 @@ let generate_tag () : key * tag =
   end
 
 
-let add_pdf (srcpath : file_path) (pageno : int) =
+let add_pdf (abspath : abs_path) (pageno : int) =
   let pdfext =
-    try Pdfread.pdf_of_file None None srcpath with
-    | Pdf.PDFError(msg) -> raise (CannotLoadPdf(msg, srcpath, pageno))
+    try Pdfread.pdf_of_file None None (get_abs_path_string abspath) with
+    | Pdf.PDFError(msg) -> raise (CannotLoadPdf(msg, abspath, pageno))
   in
     if pageno < 1 then
-      raise (CannotLoadPdf("Page number should be greater than 0", srcpath, pageno))
+      raise (CannotLoadPdf("Page number should be greater than 0", abspath, pageno))
     else
       match LoadPdf.get_page pdfext (pageno - 1) with
-      | None               -> raise (CannotLoadPdf("Invalid page number", srcpath, pageno))
+      | None               -> raise (CannotLoadPdf("Invalid page number", abspath, pageno))
       | Some((bbox, page)) ->
           let (key, tag) = generate_tag () in
           begin
@@ -65,11 +65,11 @@ let add_pdf (srcpath : file_path) (pageno : int) =
           end
 
 
-let add_image (srcpath : file_path) =
+let add_image (abspath : abs_path) =
   let (imgfmt, imgheader) =
-    try Images.file_format srcpath with
-    | Images.Wrong_file_type -> raise (ImageOfWrongFileType(srcpath))
-    | Sys_error(msg)         -> raise (CannotLoadImage(msg, srcpath))
+    try Images.file_format (get_abs_path_string abspath) with
+    | Images.Wrong_file_type -> raise (ImageOfWrongFileType(abspath))
+    | Sys_error(msg)         -> raise (CannotLoadImage(msg, abspath))
   in
   let infolst = imgheader.Images.header_infos in
   let widdots = imgheader.Images.header_width in
@@ -101,8 +101,8 @@ let add_image (srcpath : file_path) =
     | Images.Gray  -> Pdf.Name("/DeviceGray")
     | Images.RGB   -> Pdf.Name("/DeviceRGB")
     | Images.YCbCr -> Pdf.Name("/DeviceRGB")
-    | Images.CMYK  -> Logging.warn_cmyk_image srcpath; Pdf.Name("/DeviceCMYK")
-    | _            -> raise (UnsupportedColorModel(colormodel, srcpath))
+    | Images.CMYK  -> Logging.warn_cmyk_image abspath; Pdf.Name("/DeviceCMYK")
+    | _            -> raise (UnsupportedColorModel(colormodel, abspath))
   in
   let pdf_points_of_inches inch = 72. *. inch in
   let wid = pdf_points_of_inches ((float_of_int widdots) /. dpi) in
@@ -110,7 +110,7 @@ let add_image (srcpath : file_path) =
   let bbox = (0., 0., wid, hgt) in
   let (key, tag) = generate_tag () in
   begin
-    Hashtbl.add main_hash_table key (tag, bbox, OtherImage(imgfmt, colorspace, widdots, hgtdots, srcpath));
+    Hashtbl.add main_hash_table key (tag, bbox, OtherImage(imgfmt, colorspace, widdots, hgtdots, abspath));
     key
   end
 

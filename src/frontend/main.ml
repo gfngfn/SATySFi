@@ -4,15 +4,13 @@ open Types
 open Display
 
 
-type file_path = string
-
-
 exception NoLibraryRootDesignation
 exception NoInputFileDesignation
-exception CyclicFileDependency of file_path list
-exception NotALibraryFile  of file_path * Typeenv.t * mono_type
-exception NotADocumentFile of file_path * Typeenv.t * mono_type
-exception NotAStringFile   of file_path * Typeenv.t * mono_type
+exception CyclicFileDependency of abs_path list
+exception CannotReadFileOwingToSystem of string
+exception NotALibraryFile  of abs_path * Typeenv.t * mono_type
+exception NotADocumentFile of abs_path * Typeenv.t * mono_type
+exception NotAStringFile   of abs_path * Typeenv.t * mono_type
 exception ShouldSpecifyOutputFile
 
 
@@ -85,9 +83,9 @@ let make_candidates_message (candidates : string list) =
 
 module FileDependencyGraph = DirectedGraph.Make
   (struct
-    type t = file_path
-    let compare = String.compare
-    let show s = Filename.basename s
+    type t = abs_path
+    let compare ap1 ap2 = String.compare (get_abs_path_string ap1) (get_abs_path_string ap2)
+    let show ap = Filename.basename (get_abs_path_string ap)
   end)
 
 
@@ -102,35 +100,35 @@ let make_absolute_path_required package =
     | None      -> [".satyh"; ".satyg"]
     | Some(lst) -> List.append (lst |> List.map (fun s -> ".satyh-" ^ s)) [".satyg"]
   in
-  Config.resolve_dist_package (Filename.concat "dist/packages" package) extcands
+  Config.resolve_package_exn package extcands
 
 
 let make_absolute_path curdir headerelem =
   match headerelem with
   | HeaderRequire(s) -> make_absolute_path_required s
-  | HeaderImport(s)  -> Filename.concat curdir (s ^ ".satyh")
+  | HeaderImport(s)  -> make_abs_path (Filename.concat curdir (s ^ ".satyh"))
 
 
-let rec register_library_file (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
+let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath_in : abs_path) : unit =
   begin
-    Logging.begin_to_parse_file file_path_in;
-    let curdir = Filename.dirname file_path_in in
-    let file_in = open_in file_path_in in
-    let (header, utast) = ParserInterface.process (Filename.basename file_path_in) (Lexing.from_channel file_in) in
-    FileDependencyGraph.add_vertex dg file_path_in (LibraryFile(utast));
+    Logging.begin_to_parse_file abspath_in;
+    let curdir = Filename.dirname (get_abs_path_string abspath_in) in
+    let inc = open_in_abs abspath_in in
+    let (header, utast) = ParserInterface.process (basename_abs abspath_in) (Lexing.from_channel inc) in
+    FileDependencyGraph.add_vertex dg abspath_in (LibraryFile(utast));
     header |> List.iter (fun headerelem ->
-      let file_path_sub = make_absolute_path curdir headerelem in
+      let abspath_sub = make_absolute_path curdir headerelem in
       begin
-        if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-          register_library_file dg file_path_sub
+        if FileDependencyGraph.mem_vertex abspath_sub dg then () else
+          register_library_file dg abspath_sub
       end;
-      FileDependencyGraph.add_edge dg file_path_in file_path_sub
+      FileDependencyGraph.add_edge dg abspath_in abspath_sub
     )
   end
 
 
-let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (utast : untyped_abstract_tree) : Typeenv.t * environment =
-  Logging.begin_to_read_file file_name_in;
+let eval_library_file (tyenv : Typeenv.t) (env : environment) (abspath_in : abs_path) (utast : untyped_abstract_tree) : Typeenv.t * environment =
+  Logging.begin_to_read_file abspath_in;
   let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
   Logging.pass_type_check None;
   if OptionState.type_check_only () then (tyenvnew, env)
@@ -149,7 +147,7 @@ let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : fi
         | _                            -> failwith "not an 'EvaluatedEnvironment(...)'"
       end
 
-  | _ -> raise (NotALibraryFile(file_name_in, tyenvnew, ty))
+  | _ -> raise (NotALibraryFile(abspath_in, tyenvnew, ty))
 
 
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
@@ -164,13 +162,13 @@ let reset () =
 
 
 (* -- initialization that should be performed before typechecking -- *)
-let initialize (dump_file : file_path) =
+let initialize (abspath_dump : abs_path) =
   FreeID.initialize ();
   BoundID.initialize ();
   Typeenv.initialize_id ();
   EvalVarID.initialize ();
   StoreID.initialize ();
-  let dump_file_exists = CrossRef.initialize dump_file in
+  let dump_file_exists = CrossRef.initialize abspath_dump in
   let (tyenv, env) =
     if OptionState.is_text_mode () then
       Primitives.make_text_mode_environments ()
@@ -214,39 +212,44 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
   (valenv, ref stenv)
 
 
-let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
-  Logging.begin_to_parse_file file_path_in;
-  let file_in = open_in file_path_in in
-  let curdir = Filename.dirname file_path_in in
-  let (header, utast) = ParserInterface.process (Filename.basename file_path_in) (Lexing.from_channel file_in) in
-  FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
+let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : abs_path) : unit =
+  Logging.begin_to_parse_file abspath_in;
+  let file_in = open_in_abs abspath_in in
+  let curdir = Filename.dirname (get_abs_path_string abspath_in) in
+  let (header, utast) = ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in) in
+  FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
   header |> List.iter (fun headerelem ->
     let file_path_sub = make_absolute_path curdir headerelem in
     begin
       if FileDependencyGraph.mem_vertex file_path_sub dg then () else
         register_library_file dg file_path_sub
     end;
-    FileDependencyGraph.add_edge dg file_path_in file_path_sub
+    FileDependencyGraph.add_edge dg abspath_in file_path_sub
   )
 
 
-let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (file_path_in : file_path) : unit =
-  Logging.begin_to_parse_file file_path_in;
-  let (cmdrcd, depends) = LoadMDSetting.main setting in
-  let data = MyUtil.string_of_file file_path_in in
-  let utast = DecodeMD.decode cmdrcd data in
-(*
-    let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
-*)
-  FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
-  depends |> List.iter (fun package ->
-    let file_path_sub = make_absolute_path_required package in
-    begin
-    if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-      register_library_file dg file_path_sub
-    end;
-    FileDependencyGraph.add_edge dg file_path_in file_path_sub
-  )
+let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : unit =
+  Logging.begin_to_parse_file abspath_in;
+  let abspath = Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md"))) in
+  let (cmdrcd, depends) = LoadMDSetting.main abspath in
+  match MyUtil.string_of_file abspath_in with
+  | Ok(data) ->
+      let utast = DecodeMD.decode cmdrcd data in
+    (*
+        let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
+    *)
+      FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
+      depends |> List.iter (fun package ->
+        let file_path_sub = make_absolute_path_required package in
+        begin
+        if FileDependencyGraph.mem_vertex file_path_sub dg then () else
+          register_library_file dg file_path_sub
+        end;
+        FileDependencyGraph.add_edge dg abspath_in file_path_sub
+      )
+
+  | Error(msg) ->
+      raise (CannotReadFileOwingToSystem(msg))
 
 
 let eval_main i env_freezed ast =
@@ -263,14 +266,14 @@ let eval_main i env_freezed ast =
   valuedoc
 
 
-let output_text file_path_out s =
-  let outc = open_out file_path_out in
+let output_text abspath_out s =
+  let outc = open_out_abs abspath_out in
   output_string outc s;
   close_out outc
 
 
-let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) =
-  Logging.begin_to_read_file file_path_in;
+let eval_document_file (tyenv : Typeenv.t) (env : environment) (abspath_in : abs_path) (utast : untyped_abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+  Logging.begin_to_read_file abspath_in;
   let (ty, _, ast) = Typechecker.main tyenv utast in
   Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
   if OptionState.type_check_only () then
@@ -283,26 +286,26 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
           let rec aux i =
             let valuestr = eval_main i env_freezed ast in
             let s = EvalUtil.get_string valuestr in
-            match CrossRef.needs_another_trial file_path_dump with
+            match CrossRef.needs_another_trial abspath_dump with
             | CrossRef.NeedsAnotherTrial ->
                 Logging.needs_another_trial ();
                 aux (i + 1);
 
             | CrossRef.CountMax ->
                 Logging.achieve_count_max ();
-                output_text file_path_out s;
-                Logging.end_output file_path_out;
+                output_text abspath_out s;
+                Logging.end_output abspath_out;
 
             | CrossRef.CanTerminate unresolved_crossrefs ->
                 Logging.achieve_fixpoint unresolved_crossrefs;
-                output_text file_path_out s;
-                Logging.end_output file_path_out;
+                output_text abspath_out s;
+                Logging.end_output abspath_out;
 
           in
           aux 1
 
       | _ ->
-          raise (NotAStringFile(file_path_in, tyenv, ty))
+          raise (NotAStringFile(abspath_in, tyenv, ty))
     else
       match ty with
       | (_, BaseType(DocumentType)) ->
@@ -313,9 +316,9 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
               | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
                   Logging.start_page_break ();
                   State.start_page_break ();
-                  let pdf = PageBreak.main file_path_out pagesize pagecontf pagepartsf imvblst in
+                  let pdf = PageBreak.main abspath_out pagesize pagecontf pagepartsf imvblst in
                   begin
-                    match CrossRef.needs_another_trial file_path_dump with
+                    match CrossRef.needs_another_trial abspath_dump with
                     | CrossRef.NeedsAnotherTrial ->
                         Logging.needs_another_trial ();
                         aux (i + 1);
@@ -323,12 +326,12 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
                     | CrossRef.CountMax ->
                         Logging.achieve_count_max ();
                         output_pdf pdf;
-                        Logging.end_output file_path_out;
+                        Logging.end_output abspath_out;
 
                     | CrossRef.CanTerminate unresolved_crossrefs ->
                         Logging.achieve_fixpoint unresolved_crossrefs;
                         output_pdf pdf;
-                        Logging.end_output file_path_out;
+                        Logging.end_output abspath_out;
                   end
 
               | _ ->
@@ -338,7 +341,15 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
           aux 1
 
       | _ ->
-          raise (NotADocumentFile(file_path_in, tyenv, ty))
+          raise (NotADocumentFile(abspath_in, tyenv, ty))
+
+
+let convert_abs_path_to_show abspath =
+  let abspathstr = get_abs_path_string abspath in
+  if OptionState.show_full_path () then
+    abspathstr
+  else
+    Filename.basename abspathstr
 
 
 let error_log_environment suspended =
@@ -365,31 +376,34 @@ let error_log_environment suspended =
   | CyclicFileDependency(cycle) ->
       report_error Interface (
         (NormalLine("cyclic dependency detected:")) ::
-        (cycle |> List.map (fun s -> DisplayLine(s)))
+        (cycle |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath)))
       )
 
-  | Config.DistFileNotFound(file_name, pathcands) ->
+  | Config.PackageNotFound(file_name, pathcands) ->
       report_error Interface (List.append [
         NormalLine("package file not found:");
         DisplayLine(file_name);
         NormalLine("candidate paths:");
-      ] (pathcands |> List.map (fun pathcand -> DisplayLine(pathcand))))
+      ] (pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath))))
 
-  | NotALibraryFile(file_name_in, tyenv, ty) ->
+  | NotALibraryFile(abspath_in, tyenv, ty) ->
+      let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
-        NormalLine("file '" ^ file_name_in ^ "' is not a header file; it is of type");
+        NormalLine("file '" ^ fname ^ "' is not a header file; it is of type");
         DisplayLine(string_of_mono_type tyenv ty);
       ]
 
-  | NotADocumentFile(file_name_in, tyenv, ty) ->
+  | NotADocumentFile(abspath_in, tyenv, ty) ->
+      let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
-        NormalLine("file '" ^ file_name_in ^ "' is not a document file; it is of type");
+        NormalLine("file '" ^ fname ^ "' is not a document file; it is of type");
         DisplayLine(string_of_mono_type tyenv ty);
       ]
 
-  | NotAStringFile(file_name_in, tyenv, ty) ->
+  | NotAStringFile(abspath_in, tyenv, ty) ->
+      let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
-        NormalLine("file '" ^ file_name_in ^ "' is not a file for generating text; it is of type");
+        NormalLine("file '" ^ fname ^ "' is not a file for generating text; it is of type");
         DisplayLine(string_of_mono_type tyenv ty);
       ]
 
@@ -398,21 +412,24 @@ let error_log_environment suspended =
         NormalLine("should specify output file for text mode.");
       ]
 
-  | CrossRef.InvalidYOJSON(dumpfile, msg) ->
+  | CrossRef.InvalidYOJSON(abspath, msg) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("dump file '" ^ dumpfile ^ "' is NOT a valid YOJSON file:");
+        NormalLine("dump file '" ^ fname ^ "' is NOT a valid YOJSON file:");
         DisplayLine(msg);
       ]
 
-  | CrossRef.DumpFileOtherThanAssoc(dumpfile) ->
+  | CrossRef.DumpFileOtherThanAssoc(abspath) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("in the dump file '" ^ dumpfile ^ "':");
+        NormalLine("in the dump file '" ^ fname ^ "':");
         NormalLine("the content is NOT a dictionary.");
       ]
 
-  | CrossRef.DumpFileValueOtherThanString(dumpfile, key, jsonstr) ->
+  | CrossRef.DumpFileValueOtherThanString(abspath, key, jsonstr) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("in the dump file '" ^ dumpfile ^ "':");
+        NormalLine("in the dump file '" ^ fname ^ "':");
         NormalLine("the value associated with the key '" ^ key ^ "' is NOT a string;");
         DisplayLine(jsonstr);
       ]
@@ -423,26 +440,24 @@ let error_log_environment suspended =
         NormalLine("invalid string for hyphenation pattern.");
       ]
 
-  | FontFormat.FailToLoadFontOwingToSize(srcpath) ->
+  | FontFormat.FailToLoadFontOwingToSystem(abspath, msg) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("font file '" ^ srcpath ^ "' is too large to be loaded.");
-      ]
-
-  | FontFormat.FailToLoadFontOwingToSystem(srcpath, msg) ->
-      report_error Interface [
-        NormalLine("cannot load font file '" ^ srcpath ^ "';");
+        NormalLine("cannot load font file '" ^ fname ^ "';");
         DisplayLine(msg);
       ]
 
-  | FontFormat.BrokenFont(srcpath, msg) ->
+  | FontFormat.BrokenFont(abspath, msg) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("font file '" ^ srcpath ^ "' is broken;");
+        NormalLine("font file '" ^ fname ^ "' is broken;");
         DisplayLine(msg);
       ]
 
-  | FontFormat.CannotFindUnicodeCmap(srcpath) ->
+  | FontFormat.CannotFindUnicodeCmap(abspath) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("font file '" ^ srcpath ^ "' does not have 'cmap' subtable for Unicode code points.");
+        NormalLine("font file '" ^ fname ^ "' does not have 'cmap' subtable for Unicode code points.");
       ]
 
   | FontInfo.InvalidFontAbbrev(abbrev) ->
@@ -455,41 +470,47 @@ let error_log_environment suspended =
         NormalLine("cannot find a math font named '" ^ mfabbrev ^ "'.");
       ]
 
-  | FontInfo.NotASingleFont(abbrev, srcpath) ->
+  | FontInfo.NotASingleFont(abbrev, abspath) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("the font file '" ^ srcpath ^ "',");
+        NormalLine("the font file '" ^ fname ^ "',");
         NormalLine("which is associated with the font name '" ^ abbrev ^ "',");
         NormalLine("is not a single font file; it is a TrueType collection.");
       ]
 
-  | FontInfo.NotASingleMathFont(mfabbrev, srcpath) ->
+  | FontInfo.NotASingleMathFont(mfabbrev, abspath) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("the font file '" ^ srcpath ^ "',");
+        NormalLine("the font file '" ^ fname ^ "',");
         NormalLine("which is associated with the math font name '" ^ mfabbrev ^ "',");
         NormalLine("is not a single font file; it is a TrueType collection.");
       ]
 
-  | ImageHashTable.CannotLoadPdf(msg, srcpath, pageno) ->
+  | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("cannot load PDF file '" ^ srcpath ^ "' page #" ^ (string_of_int pageno) ^ ";");
+        NormalLine("cannot load PDF file '" ^ fname ^ "' page #" ^ (string_of_int pageno) ^ ";");
         DisplayLine(msg);
       ]
 
-  | ImageHashTable.CannotLoadImage(msg, srcpath) ->
+  | ImageHashTable.CannotLoadImage(msg, abspath) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("cannot load image file '" ^ srcpath ^ "';");
+        NormalLine("cannot load image file '" ^ fname ^ "';");
         DisplayLine(msg);
       ]
 
-  | ImageHashTable.ImageOfWrongFileType(srcpath) ->
+  | ImageHashTable.ImageOfWrongFileType(abspath) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("cannot load image file '" ^ srcpath ^ "';");
+        NormalLine("cannot load image file '" ^ fname ^ "';");
         DisplayLine("This file format is not supported.");
       ]
 
-  | ImageHashTable.UnsupportedColorModel(_, srcpath) ->
+  | ImageHashTable.UnsupportedColorModel(_, abspath) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("cannot load image file '" ^ srcpath ^ "';");
+        NormalLine("cannot load image file '" ^ fname ^ "';");
         DisplayLine("This color model is not supported.");
       ]
 
@@ -787,17 +808,17 @@ let arg_version () =
 
 
 let arg_output curdir s =
-  let file_path =
+  let abspathstr =
     if Filename.is_relative s then Filename.concat curdir s else s
   in
-  OptionState.set_output_file file_path
+  OptionState.set_output_file (make_abs_path abspathstr)
 
 
-let handle_anonimous_arg (curdir : file_path) (s : file_path) =
-  let file_path =
+let handle_anonimous_arg (curdir : string) (s : string) =
+  let abspathstr =
     if Filename.is_relative s then Filename.concat curdir s else s
   in
-  OptionState.set_input_file file_path
+  OptionState.set_input_file (make_abs_path abspathstr)
 
 
 let text_mode s =
@@ -857,12 +878,18 @@ let () =
     setup_root_dirs ();
     let curdir = Sys.getcwd () in
     Arg.parse (arg_spec_list curdir) (handle_anonimous_arg curdir) "";
-    let input_file =
+    let abspath_in =
       match OptionState.input_file () with
       | None    -> raise NoInputFileDesignation
       | Some(v) -> v
     in
-    let output_file =
+    let abspathstr_in = get_abs_path_string abspath_in in
+    let basename_without_extension =
+      try Filename.chop_extension abspathstr_in with
+      | Invalid_argument(_) -> abspathstr_in
+    in
+    let abspath_dump = make_abs_path (basename_without_extension ^ ".satysfi-aux") in
+    let abspath_out =
       match OptionState.output_file () with
       | Some(v) ->
           v
@@ -871,37 +898,33 @@ let () =
           if OptionState.is_text_mode () then
             raise ShouldSpecifyOutputFile
           else
-            begin
-              try (Filename.chop_extension input_file) ^ ".pdf" with
-              | Invalid_argument(_) -> input_file ^ ".pdf"
-            end
+            make_abs_path (basename_without_extension ^ ".pdf")
     in
-    Logging.target_file output_file;
-    let dump_file = (Filename.remove_extension output_file) ^ ".satysfi-aux" in
-    let (tyenv, env, dump_file_exists) = initialize dump_file in
-    Logging.dump_file dump_file_exists dump_file;
+    Logging.target_file abspath_out;
+    let (tyenv, env, dump_file_exists) = initialize abspath_dump in
+    Logging.dump_file dump_file_exists abspath_dump;
 
     let dg = FileDependencyGraph.create 32 in
     begin
       match OptionState.get_input_kind () with
       | OptionState.SATySFi ->
-          register_document_file dg input_file
+          register_document_file dg abspath_in
 
       | OptionState.Markdown(setting) ->
-          register_markdown_file dg setting input_file
+          register_markdown_file dg setting abspath_in
     end;
     match FileDependencyGraph.find_cycle dg with
     | Some(cycle) ->
         raise (CyclicFileDependency(cycle))
 
     | None ->
-        FileDependencyGraph.backward_bfs_fold (fun (tyenv, env) file_path_in file_info ->
+        FileDependencyGraph.backward_bfs_fold (fun (tyenv, env) abspath_in file_info ->
           match file_info with
           | DocumentFile(utast) ->
-              eval_document_file tyenv env file_path_in utast output_file dump_file;
+              eval_document_file tyenv env abspath_in utast abspath_out abspath_dump;
               (tyenv, env)
 
           | LibraryFile(utast) ->
-              eval_library_file tyenv env file_path_in utast
+              eval_library_file tyenv env abspath_in utast
         ) (tyenv, env) dg |> ignore
   )

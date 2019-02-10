@@ -1,5 +1,6 @@
 (* -*- coding: utf-8 -*- *)
 
+open MyUtil
 open LengthInterface
 open HorzBox
 
@@ -295,9 +296,9 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
     aux pbvblst
 
 
-let main (file_name_out : string) (pagesize : page_size) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
+let main (absname_out : abs_path) (pagesize : page_size) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
 
-  let pdfinit = HandlePdf.create_empty_pdf file_name_out in
+  let pdfinit = HandlePdf.create_empty_pdf absname_out in
 
   let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
     let pbinfo = { current_page_number = pageno; } in

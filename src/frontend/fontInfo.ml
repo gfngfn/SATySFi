@@ -8,9 +8,9 @@ open Types
 
 exception InvalidFontAbbrev     of font_abbrev
 exception InvalidMathFontAbbrev of math_font_abbrev
-exception NotASingleFont        of font_abbrev * file_path
-exception NotATTCElement        of font_abbrev * file_path * int
-exception NotASingleMathFont    of font_abbrev * file_path
+exception NotASingleFont        of font_abbrev * abs_path
+exception NotATTCElement        of font_abbrev * abs_path * int
+exception NotASingleMathFont    of font_abbrev * abs_path
 
 type tag = string
 
@@ -24,16 +24,16 @@ type font_definition = {
 module FontAbbrevHashTable
 : sig
     val initialize : unit -> unit
-    val add_single : font_abbrev -> file_path -> unit
-    val add_ttc : font_abbrev -> file_path -> int -> unit
+    val add_single : font_abbrev -> lib_path -> unit
+    val add_ttc : font_abbrev -> lib_path -> int -> unit
     val fold : (font_abbrev -> font_definition -> 'a -> 'a) -> 'a -> 'a
     val find : font_abbrev -> font_definition
   end
 = struct
 
     type font_store =
-      | UnusedSingle of file_path
-      | UnusedTTC    of file_path * int
+      | UnusedSingle of lib_path
+      | UnusedTTC    of lib_path * int
       | Loaded       of font_definition
 
     module Ht = Hashtbl.Make
@@ -89,14 +89,14 @@ module FontAbbrevHashTable
             | Loaded(dfn) ->
                 dfn
 
-            | UnusedSingle(srcpath) ->
+            | UnusedSingle(relpath) ->
               (* -- if this is the first access to the single font -- *)
-                let srcpath = Config.resolve_dist_file (Filename.concat "dist/fonts" srcpath) in
+                let abspath = Config.resolve_lib_file_exn relpath in
                 begin
-                  match FontFormat.get_decoder_single (abbrev ^ "-Composite") (* temporary *) srcpath with
+                  match FontFormat.get_decoder_single (abbrev ^ "-Composite") (* temporary *) abspath with
                   | None ->
                     (* -- if the font file is a TrueTypeCollection -- *)
-                      raise (NotASingleFont(abbrev, srcpath))
+                      raise (NotASingleFont(abbrev, abspath))
 
                   | Some((dcdr, font)) ->
                       let tag = generate_tag () in
@@ -105,9 +105,9 @@ module FontAbbrevHashTable
                       dfn
                 end
 
-            | UnusedTTC(srcpath, i) ->
+            | UnusedTTC(relpath, i) ->
               (* -- if this is the first access to the TrueTypeCollection -- *)
-                let srcpath = Config.resolve_dist_file (Filename.concat "dist/fonts" srcpath) in
+                let srcpath = Config.resolve_lib_file_exn relpath in
                 begin
                   match FontFormat.get_decoder_ttc (abbrev ^ "-Composite") (* temporary *) srcpath i with
                   | None ->
@@ -210,14 +210,14 @@ type math_font_definition = {
 module MathFontAbbrevHashTable
 : sig
     val initialize : unit -> unit
-    val add : math_font_abbrev -> FontFormat.file_path -> unit
+    val add : math_font_abbrev -> lib_path -> unit
     val fold : (math_font_abbrev -> math_font_definition -> 'a -> 'a) -> 'a -> 'a
     val find : math_font_abbrev -> math_font_definition
   end
 = struct
 
     type math_font_store =
-      | UnusedMath of file_path
+      | UnusedMath of lib_path
       | LoadedMath of math_font_definition
 
     module Ht = Hashtbl.Make
@@ -262,9 +262,9 @@ module MathFontAbbrevHashTable
       | Some(storeref) ->
           begin
             match !storeref with
-            | UnusedMath(srcpath) ->
+            | UnusedMath(relpath) ->
               (* -- if this is the first access to the math font -- *)
-                let srcpath = Config.resolve_dist_file (Filename.concat "dist/fonts" srcpath) in
+                let srcpath = Config.resolve_lib_file_exn relpath in
                 begin
                   match FontFormat.get_math_decoder (mfabbrev ^ "-Composite-Math") (* temporary *) srcpath with
                   | None ->
@@ -428,17 +428,17 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
 let initialize () =
   FontAbbrevHashTable.initialize ();
   MathFontAbbrevHashTable.initialize ();
-  let filename_S   = Config.resolve_dist_file "dist/unidata/Scripts.txt" in
-  let filename_EAW = Config.resolve_dist_file "dist/unidata/EastAsianWidth.txt" in
-  ScriptDataMap.set_from_file filename_S filename_EAW;
-  LineBreakDataMap.set_from_file (Config.resolve_dist_file "dist/unidata/LineBreak.txt");
-  let font_hash = LoadFont.main "fonts.satysfi-hash" in
+  let abspath_S   = Config.resolve_lib_file_exn (make_lib_path "dist/unidata/Scripts.txt") in
+  let abspath_EAW = Config.resolve_lib_file_exn (make_lib_path "dist/unidata/EastAsianWidth.txt") in
+  ScriptDataMap.set_from_file abspath_S abspath_EAW;
+  LineBreakDataMap.set_from_file (Config.resolve_lib_file_exn (make_lib_path "dist/unidata/LineBreak.txt"));
+  let font_hash = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/fonts.satysfi-hash")) in
   font_hash |> List.iter (fun (abbrev, data) ->
     match data with
-    | LoadFont.Single(srcpath)        -> FontAbbrevHashTable.add_single abbrev srcpath
-    | LoadFont.Collection(srcpath, i) -> FontAbbrevHashTable.add_ttc abbrev srcpath i
+    | LoadFont.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
+    | LoadFont.Collection(relpath, i) -> FontAbbrevHashTable.add_ttc abbrev relpath i
   );
-  let math_font_hash = LoadFont.main "mathfonts.satysfi-hash" in
+  let math_font_hash = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "mathfonts.satysfi-hash")) in
   math_font_hash |> List.iter (fun (mfabbrev, data) ->
     match data with
     | LoadFont.Single(srcpath)        -> MathFontAbbrevHashTable.add mfabbrev srcpath

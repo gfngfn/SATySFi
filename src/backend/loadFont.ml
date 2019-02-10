@@ -4,31 +4,52 @@ open MyUtil
 module YS = Yojson.SafePos
 module MYU = MyYojsonUtil
 
-
-type file_path = string
-type dir_path = string
 type font_abbrev = string
 
-
 type data =
-  | Single     of string
-  | Collection of string * int
+  | Single     of lib_path
+  | Collection of lib_path * int
 
 
-let read_assoc_single (json : YS.json) =
+let read_path_from_dict ((pos, _) as assoc) : lib_path =
+  let srcopt = assoc |> MYU.find_opt "src" in
+  let srcdistopt = assoc |> MYU.find_opt "src-dist" in
+  let relpathstr =
+  match (srcopt, srcdistopt) with
+  | (None, None) ->
+      raise (MYU.MissingRequiredKey(MYU.make_range pos, "src"))
+
+  | (None, Some(srcdist)) ->
+      let rng = MYU.make_range pos in
+      Logging.warn_deprecated ("at " ^ (Range.message rng) ^ ": the key 'src-dist' in font hash files is deprecated; consider using 'src'.");
+      let s = srcdist |> YS.Util.to_string in
+      Filename.concat "dist/fonts" s
+
+  | (Some(src), None) ->
+      src |> YS.Util.to_string
+
+  | (Some(src), Some(_)) ->
+      let rng = MYU.make_range pos in
+      Logging.warn_deprecated ("at " ^ (Range.message rng) ^ ": the key 'src-dist' in font hash files is deprecated; the entry of 'src' is used.");
+      src |> YS.Util.to_string
+  in
+  make_lib_path relpathstr
+
+
+let read_assoc_single (json : YS.json) : data =
   let assoc = json |> MYU.make_assoc in
-  let path = assoc |> MYU.find "src-dist" |> YS.Util.to_string in
-  Single(path)
+  let relpath = assoc |> read_path_from_dict in
+  Single(relpath)
 
 
 let read_assoc_ttc (json : YS.json) =
   let assoc = json |> MYU.make_assoc in
-  let path = assoc |> MYU.find "src-dist" |> YS.Util.to_string in
+  let relpath = assoc |> read_path_from_dict in
   let index = assoc |> MYU.find "index" |> YS.Util.to_int in
-  Collection(path, index)
+  Collection(relpath, index)
 
 
-let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
+let read_assoc (assoc : MYU.assoc) =
   assoc |> MYU.fold (fun abbrev json acc ->
     let data =
       json |> MYU.decode_variant [
@@ -40,12 +61,12 @@ let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
   ) Alist.empty |> Alist.to_list
 
 
-let main (filename : file_path) =
-  let srcpath = Config.resolve_dist_file (Filename.concat "dist/hash" filename) in
-    try
-      let json = YS.from_file ~fname:srcpath srcpath in
-          (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
-      let assoc = MYU.make_assoc json in
-      read_assoc srcpath assoc
-    with
-    | Yojson.Json_error(msg) -> MYU.syntax_error srcpath msg
+let main (abspath : abs_path) : (font_abbrev * data) list =
+  let pathstr = get_abs_path_string abspath in
+  try
+    let json = YS.from_file ~fname:pathstr pathstr in
+        (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
+    let assoc = MYU.make_assoc json in
+    read_assoc assoc
+  with
+  | Yojson.Json_error(msg) -> MYU.syntax_error pathstr msg

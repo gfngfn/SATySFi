@@ -1,8 +1,6 @@
 
+open MyUtil
 open LengthInterface
-
-
-type file_path = string
 
 type key = ImageHashTable.key
 
@@ -13,12 +11,12 @@ let initialize () =
   ImageHashTable.initialize ()
 
 
-let add_pdf srcpath pageno =
-  ImageHashTable.add_pdf srcpath pageno
+let add_pdf abspath pageno =
+  ImageHashTable.add_pdf abspath pageno
 
 
-let add_image srcpath =
-  ImageHashTable.add_image srcpath
+let add_image abspath =
+  ImageHashTable.add_image abspath
 
 
 let get_xobject_dictionary pdfmain : Pdf.pdfobject =
@@ -29,11 +27,11 @@ let get_xobject_dictionary pdfmain : Pdf.pdfobject =
           let irxobj = LoadPdf.make_xobject pdfmain pdfext page in
             (tag, irxobj) :: acc
 
-      | ImageHashTable.OtherImage(imgfmt, colorspace, widdots, hgtdots, srcpath) ->
+      | ImageHashTable.OtherImage(imgfmt, colorspace, widdots, hgtdots, abspath) ->
           begin
             match imgfmt with
             | Images.Jpeg ->
-                let irxobj = LoadJpeg.make_xobject pdfmain colorspace widdots hgtdots srcpath in
+                let irxobj = LoadJpeg.make_xobject pdfmain colorspace widdots hgtdots (get_abs_path_string abspath) in
                 (tag, irxobj) :: acc
 
             | _ -> acc  (* temporary *)

@@ -1198,12 +1198,13 @@ in
         ~fields:[
         ]
         ~params:[
-          param "srcpath" ~type_:"string";
+          param "relpathstr" ~type_:"string";
           param "pageno" ~type_:"int";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let imgkey = ImageInfo.add_pdf srcpath pageno in
+let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpathstr) in
+let imgkey = ImageInfo.add_pdf abspath pageno in
   ImageKey(imgkey)
 |}
     ; inst "BackendRegisterOtherImage"
@@ -1214,11 +1215,12 @@ let imgkey = ImageInfo.add_pdf srcpath pageno in
         ~fields:[
         ]
         ~params:[
-          param "srcpath" ~type_:"string";
+          param "relpath" ~type_:"string";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let imgkey = ImageInfo.add_image srcpath in
+let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpath) in
+let imgkey = ImageInfo.add_image abspath in
   ImageKey(imgkey)
 |}
     ; inst "BackendUseImageByWidth"

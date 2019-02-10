@@ -1,9 +1,9 @@
 
-type file_path = string
+open MyUtil
 
-exception InvalidYOJSON                of file_path * string
-exception DumpFileOtherThanAssoc       of file_path
-exception DumpFileValueOtherThanString of file_path * string * string
+exception InvalidYOJSON                of abs_path * string
+exception DumpFileOtherThanAssoc       of abs_path
+exception DumpFileValueOtherThanString of abs_path * string * string
 
 
 module CrossRefHashTable = Hashtbl.Make
@@ -26,25 +26,26 @@ let main_hash_table = CrossRefHashTable.create 32
   (* temporary; initial size *)
 
 
-let read_assoc (srcpath : file_path) (assoc : (string * Yojson.Safe.json) list) : unit =
+let read_assoc (abspath : abs_path) (assoc : (string * Yojson.Safe.json) list) : unit =
   assoc |> List.iter (fun (key, vjson) ->
     match vjson with
     | `String(value) -> CrossRefHashTable.add main_hash_table key value
-    | json_other     -> raise (DumpFileValueOtherThanString(srcpath, key, Yojson.Safe.to_string json_other))
+    | json_other     -> raise (DumpFileValueOtherThanString(abspath, key, Yojson.Safe.to_string json_other))
   )
 
 
-let read_dump_file (srcpath : file_path) : unit =
+let read_dump_file (abspath : abs_path) : unit =
   try
-    let json = Yojson.Safe.from_file srcpath in  (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
-      match json with
-      | `Assoc(assoc) -> read_assoc srcpath assoc
-      | json_other    -> raise (DumpFileOtherThanAssoc(srcpath))
+    let json = Yojson.Safe.from_file (get_abs_path_string abspath) in
+      (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
+    match json with
+    | `Assoc(assoc) -> read_assoc abspath assoc
+    | json_other    -> raise (DumpFileOtherThanAssoc(abspath))
   with
-  | Yojson.Json_error(msg) -> raise (InvalidYOJSON(srcpath, msg))
+  | Yojson.Json_error(msg) -> raise (InvalidYOJSON(abspath, msg))
 
 
-let write_dump_file (outpath : file_path) : unit =
+let write_dump_file (abspath : abs_path) : unit =
   let open MyUtil in
   let assoc =
     Alist.empty @|> main_hash_table @|> CrossRefHashTable.fold (fun key value acc ->
@@ -52,17 +53,17 @@ let write_dump_file (outpath : file_path) : unit =
     ) |> Alist.to_list
   in
   let json = `Assoc(assoc) in
-  Yojson.Safe.to_file outpath json
+  Yojson.Safe.to_file (get_abs_path_string abspath) json
 
 
-let initialize (srcpath : file_path) : bool =
+let initialize (abspath_dump : abs_path) : bool =
   begin
     count := 1;
     CrossRefHashTable.clear main_hash_table;
-    let dump_file_exists = Sys.file_exists srcpath in
+    let dump_file_exists = Sys.file_exists (get_abs_path_string abspath_dump) in
     begin
       if dump_file_exists then
-        read_dump_file srcpath
+        read_dump_file abspath_dump
       else
         ()
     end;
@@ -76,11 +77,11 @@ type answer =
   | CountMax
 
 
-let needs_another_trial (outpath : file_path) : answer =
+let needs_another_trial (abspath : abs_path) : answer =
   if !changed then
     if !count >= !count_max then
       begin
-        write_dump_file outpath;
+        write_dump_file abspath;
         CountMax
       end
     else
@@ -92,7 +93,7 @@ let needs_another_trial (outpath : file_path) : answer =
       end
   else
     begin
-      write_dump_file outpath;
+      write_dump_file abspath;
       CanTerminate (List.sort_uniq String.compare !unresolved_crossrefs)
     end
 

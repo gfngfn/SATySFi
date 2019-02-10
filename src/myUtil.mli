@@ -3,6 +3,10 @@ exception RemainsToBeImplemented of string
 
 type file_path = string
 
+type abs_path
+
+type lib_path
+
 val remains_to_be_implemented : string -> 'a
 
 val uchar_of_char : char -> Uchar.t
@@ -45,4 +49,22 @@ val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
 val first_some : ('a -> 'b option) -> 'a list -> 'b option
 
-val string_of_file : file_path -> string
+val open_in_abs : abs_path -> in_channel
+
+val open_in_bin_abs : abs_path -> in_channel
+
+val open_out_abs : abs_path -> out_channel
+
+val dirname_abs : abs_path -> string
+
+val basename_abs : abs_path -> string
+
+val string_of_file : abs_path -> (string, string) result
+
+val make_abs_path : string -> abs_path
+
+val make_lib_path : string -> lib_path
+
+val get_abs_path_string : abs_path -> string
+
+val get_lib_path_string : lib_path -> string

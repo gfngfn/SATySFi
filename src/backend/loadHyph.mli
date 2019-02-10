@@ -1,8 +1,6 @@
 
+open MyUtil
 open CharBasis
-
-type dir_path = string
-type file_path = string
 
 exception InvalidPatternElement of Range.t
 
@@ -14,6 +12,6 @@ type answer =
 
 val empty : t
 
-val main : file_path -> t
+val main : abs_path -> t
 
 val lookup : int -> int -> t -> uchar_segment list -> answer

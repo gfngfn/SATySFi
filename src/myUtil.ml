@@ -3,6 +3,10 @@ exception RemainsToBeImplemented of string
 
 type file_path = string
 
+type abs_path = AbsPath of string
+
+type lib_path = LibPath of string
+
 
 let remains_to_be_implemented msg =
   raise (RemainsToBeImplemented(msg))
@@ -134,22 +138,86 @@ let first_some f lst =
     aux lst
 
 
-let string_of_file (srcpath : file_path) : string =
-  let ic = open_in_bin srcpath in
-  let bufsize = 65536 in
-  let stepsize = 65536 in
-  let buf = Buffer.create bufsize in
-  let bytes = Bytes.create stepsize in
-  let flag = ref true in
+let open_in_abs (AbsPath(pathstr)) =
+  open_in pathstr
+
+
+let open_in_bin_abs (AbsPath(pathstr)) =
+  open_in_bin pathstr
+
+
+let open_out_abs (AbsPath(pathstr)) =
+  open_out pathstr
+
+
+let dirname_abs (AbsPath(pathstr)) =
+  Filename.dirname pathstr
+
+
+let basename_abs (AbsPath(pathstr)) =
+  Filename.basename pathstr
+
+
+let string_of_file (abspath : abs_path) : (string, string) result =
   try
-    while !flag do
-      let c = input ic bytes 0 bufsize in
-      if c = 0 then
-        flag := false
-      else
-        Buffer.add_subbytes buf bytes 0 c
-    done;
-    close_in ic;
-    Buffer.contents buf
+    let ic = open_in_bin_abs abspath in
+    let bufsize = 65536 in
+    let stepsize = 65536 in
+    let buf = Buffer.create bufsize in
+    let bytes = Bytes.create stepsize in
+    let flag = ref true in
+    try
+      while !flag do
+        let c = input ic bytes 0 bufsize in
+        if c = 0 then
+          flag := false
+        else
+          Buffer.add_subbytes buf bytes 0 c
+      done;
+      close_in ic;
+      let s = Buffer.contents buf in
+      Ok(s)
+    with
+    | Failure(_) -> close_in ic; assert false
   with
-  | Failure(_) -> close_in ic; assert false
+  | Sys_error(msg) -> Error(msg)
+
+(*
+let string_of_file (srcpath : file_path) : string =
+  let bufsize = 65536 in  (* arbitrary constant; the initial size of the buffer for loading font format file *)
+  let buf : Buffer.t = Buffer.create bufsize in
+  let byt : bytes = Bytes.create bufsize in
+  let ic =
+    try
+      open_in_bin srcpath
+    with
+    | Sys_error(msg) -> raise (FailToLoadFontOwingToSystem(srcpath, msg))
+  in
+
+  let rec aux () =
+    let c = input ic byt 0 bufsize in
+      if c = 0 then
+        begin
+          close_in ic;
+          Buffer.contents buf
+        end
+      else
+        begin
+          Buffer.add_subbytes buf byt 0 c;
+          aux ()
+        end
+  in
+  try
+    aux ()
+  with
+  | Failure(_)     -> begin close_in ic; raise (FailToLoadFontOwingToSize(srcpath)) end
+  | Sys_error(msg) -> begin close_in ic; raise (FailToLoadFontOwingToSystem(srcpath, msg)) end
+*)
+
+let make_abs_path pathstr = AbsPath(pathstr)
+
+let make_lib_path pathstr = LibPath(pathstr)
+
+let get_abs_path_string (AbsPath(pathstr)) = pathstr
+
+let get_lib_path_string (LibPath(pathstr)) = pathstr

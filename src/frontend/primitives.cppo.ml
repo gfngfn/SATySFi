@@ -593,8 +593,8 @@ let make_environments table =
 
 
 let make_pdf_mode_environments () =
-  default_font_scheme_ref := SetDefaultFont.main ();
-  default_hyphen_dictionary := LoadHyph.main "english.satysfi-hyph";
+  default_font_scheme_ref := SetDefaultFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/default-font.satysfi-hash"));
+  default_hyphen_dictionary := LoadHyph.main (Config.resolve_lib_file_exn (make_lib_path "dist/hyph/english.satysfi-hyph"));
     (* temporary; should depend on the current language -- *)
   make_environments pdf_mode_table
 

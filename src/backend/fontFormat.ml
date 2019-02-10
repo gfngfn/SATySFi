@@ -2,8 +2,6 @@
 open MyUtil
 
 
-type file_path = string
-
 type original_glyph_id = Otfm.glyph_id
 
 type 'a ok = ('a, Otfm.error) result
@@ -17,46 +15,14 @@ type metrics = per_mille * per_mille * per_mille
 
 type indirect = int
 
-exception FailToLoadFontOwingToSize   of file_path
-exception FailToLoadFontOwingToSystem of file_path * string
-exception BrokenFont                  of file_path * string
-exception CannotFindUnicodeCmap       of file_path
+exception FailToLoadFontOwingToSystem of abs_path * string
+exception BrokenFont                  of abs_path * string
+exception CannotFindUnicodeCmap       of abs_path
 
 
 let broken srcpath oerr s =
   let msg = Format.asprintf "%a" Otfm.pp_error oerr in
   raise (BrokenFont(srcpath, msg ^ "; " ^ s))
-
-
-let string_of_file (srcpath : file_path) : string =
-  let bufsize = 65536 in  (* arbitrary constant; the initial size of the buffer for loading font format file *)
-  let buf : Buffer.t = Buffer.create bufsize in
-  let byt : bytes = Bytes.create bufsize in
-  let ic =
-    try
-      open_in_bin srcpath
-    with
-    | Sys_error(msg) -> raise (FailToLoadFontOwingToSystem(srcpath, msg))
-  in
-
-  let rec aux () =
-    let c = input ic byt 0 bufsize in
-      if c = 0 then
-        begin
-          close_in ic;
-          Buffer.contents buf
-        end
-      else
-        begin
-          Buffer.add_subbytes buf byt 0 c;
-          aux ()
-        end
-  in
-  try
-    aux ()
-  with
-  | Failure(_)     -> begin close_in ic; raise (FailToLoadFontOwingToSize(srcpath)) end
-  | Sys_error(msg) -> begin close_in ic; raise (FailToLoadFontOwingToSystem(srcpath, msg)) end
 
 
 type cid_system_info = {
@@ -105,32 +71,44 @@ let extract_registration d =
         return (d, CIDFontType2TTRegistration(adobe_identity, true))
 
 
-let get_main_decoder_single (src : file_path) : ((Otfm.decoder * font_registration) option) ok =
-  let s = string_of_file src in
-  let open ResultMonad in
-    Otfm.decoder (`String(s)) >>= function
-    | Otfm.TrueTypeCollection(_) -> return None
-    | Otfm.SingleDecoder(d)      -> extract_registration d >>= fun pair -> return (Some(pair))
+let get_main_decoder_single (abspath : abs_path) : ((Otfm.decoder * font_registration) option) ok =
+  match string_of_file abspath with
+  | Ok(s) ->
+      let open ResultMonad in
+      begin
+        Otfm.decoder (`String(s)) >>= function
+        | Otfm.TrueTypeCollection(_) -> return None
+        | Otfm.SingleDecoder(d)      -> extract_registration d >>= fun pair -> return (Some(pair))
+      end
+
+  | Error(msg) ->
+      raise (FailToLoadFontOwingToSystem(abspath, msg))
 
 
-let get_main_decoder_ttc (src : file_path) (i : int) : ((Otfm.decoder * font_registration) option) ok =
-  let s = string_of_file src in
-  let open ResultMonad in
-    Otfm.decoder (`String(s)) >>= function
-    | Otfm.SingleDecoder(_) ->
-        return None
+let get_main_decoder_ttc (abspath : abs_path) (i : int) : ((Otfm.decoder * font_registration) option) ok =
+  match string_of_file abspath with
+  | Ok(s) ->
+      let open ResultMonad in
+      begin
+        Otfm.decoder (`String(s)) >>= function
+        | Otfm.SingleDecoder(_) ->
+            return None
 
-    | Otfm.TrueTypeCollection(ttc) ->
-        begin
-          match List.nth_opt ttc i with
-          | None ->
-              return None
+        | Otfm.TrueTypeCollection(ttc) ->
+            begin
+              match List.nth_opt ttc i with
+              | None ->
+                  return None
 
-          | Some(ttcelem) ->
-              Otfm.decoder_of_ttc_element ttcelem >>= fun d ->
-              extract_registration d >>= fun pair ->
-              return (Some(pair))
-        end
+              | Some(ttcelem) ->
+                  Otfm.decoder_of_ttc_element ttcelem >>= fun d ->
+                  extract_registration d >>= fun pair ->
+                  return (Some(pair))
+            end
+      end
+
+  | Error(msg) ->
+      raise (FailToLoadFontOwingToSystem(abspath, msg))
 
 
 module UHt = Hashtbl.Make
@@ -973,7 +951,7 @@ let get_kerning_table srcpath (d : Otfm.decoder) =
 
 
 type decoder = {
-  file_path           : file_path;
+  file_path           : abs_path;
   main                : Otfm.decoder;
   cmap_subtable       : Otfm.cmap_subtable;
   head_record         : Otfm.head;
@@ -1857,11 +1835,11 @@ let make_dictionary (pdf : Pdf.t) (font : font) (dcdr : decoder) : Pdf.pdfobject
   | Type0(ty0font) -> Type0.to_pdfdict pdf ty0font dcdr
 
 
-let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
-  let cmapsubtbl = get_cmap_subtable srcpath d in
+let make_decoder (abspath : abs_path) (d : Otfm.decoder) : decoder =
+  let cmapsubtbl = get_cmap_subtable abspath d in
   let submap =
     match Otfm.flavour d with
-    | Error(e)                        -> broken srcpath e "make_decoder"
+    | Error(e)                        -> broken abspath e "make_decoder"
     | Ok(Otfm.TTF_true | Otfm.TTF_OT) -> SubsetMap.create 32  (* temporary; initial size of hash tables *)
     | Ok(Otfm.CFF)                    -> SubsetMap.create_dummy ()
   in
@@ -1870,23 +1848,23 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
   let (rcdhhea, ascent, descent) =
     match Otfm.hhea d with
     | Ok(rcdhhea) -> (rcdhhea, rcdhhea.Otfm.hhea_ascender, rcdhhea.Otfm.hhea_descender)
-    | Error(e)    -> broken srcpath e "make_decoder (hhea)"
+    | Error(e)    -> broken abspath e "make_decoder (hhea)"
   in
   let (rcdhead, units_per_em) =
     match Otfm.head d with
     | Ok(rcdhead) -> (rcdhead, rcdhead.Otfm.head_units_per_em)
-    | Error(e)    -> broken srcpath e "make_decoder (head)"
+    | Error(e)    -> broken abspath e "make_decoder (head)"
   in
-  let kerntbl = get_kerning_table srcpath d in
-  let ligtbl = get_ligature_table srcpath submap d in
-  let mktbl = get_mark_table srcpath units_per_em d in
+  let kerntbl = get_kerning_table abspath d in
+  let ligtbl = get_ligature_table abspath submap d in
+  let mktbl = get_mark_table abspath units_per_em d in
   let csinfo =
     match Otfm.cff d with
     | Error(_)    -> None
     | Ok(cffinfo) -> Some(cffinfo.Otfm.charstring_info)
   in
     {
-      file_path           = srcpath;
+      file_path           = abspath;
       main                = d;
       cmap_subtable       = cmapsubtbl;
       head_record         = rcdhead;
@@ -1928,18 +1906,18 @@ let get_font (dcdr : decoder) (fontreg : font_registration) (fontname : string) 
       (cid_font_type_2 cidty2font fontname cmap)
 
 
-let get_decoder_single (fontname : string) (srcpath : file_path) : (decoder * font) option =
-  match get_main_decoder_single srcpath with
-  | Error(oerr)            -> broken srcpath oerr "get_decoder_single"
+let get_decoder_single (fontname : string) (abspath : abs_path) : (decoder * font) option =
+  match get_main_decoder_single abspath with
+  | Error(oerr)            -> broken abspath oerr "get_decoder_single"
   | Ok(None)               -> None
-  | Ok(Some((d, fontreg))) -> let dcdr = make_decoder srcpath d in Some((dcdr, get_font dcdr fontreg fontname))
+  | Ok(Some((d, fontreg))) -> let dcdr = make_decoder abspath d in Some((dcdr, get_font dcdr fontreg fontname))
 
 
-let get_decoder_ttc (fontname : string) (srcpath :file_path) (i : int) : (decoder * font) option =
-  match get_main_decoder_ttc srcpath i with
-  | Error(oerr)            -> broken srcpath oerr "get_decoder_ttc"
+let get_decoder_ttc (fontname : string) (abspath :abs_path) (i : int) : (decoder * font) option =
+  match get_main_decoder_ttc abspath i with
+  | Error(oerr)            -> broken abspath oerr "get_decoder_ttc"
   | Ok(None)               -> None
-  | Ok(Some((d, fontreg))) -> let dcdr = make_decoder srcpath d in Some((dcdr, get_font dcdr fontreg fontname))
+  | Ok(Some((d, fontreg))) -> let dcdr = make_decoder abspath d in Some((dcdr, get_font dcdr fontreg fontname))
 
 
 let convert_to_ligatures (dcdr : decoder) (seglst : glyph_segment list) : glyph_synthesis list =
@@ -2061,13 +2039,13 @@ let assoc_to_map f gidassoc =
   ) MathInfoMap.empty
 
 
-let get_math_decoder (fontname : string) (srcpath : file_path) : (math_decoder * font) option =
+let get_math_decoder (fontname : string) (abspath : abs_path) : (math_decoder * font) option =
   let open OptionMonad in
-  get_decoder_single fontname srcpath >>= fun (dcdr, font) ->
+  get_decoder_single fontname abspath >>= fun (dcdr, font) ->
   let d = dcdr.main in
     match Otfm.math d with
     | Error(oerr) ->
-        broken srcpath oerr "get_math_decoder"
+        broken abspath oerr "get_math_decoder"
 
     | Ok(mathraw) ->
         let micmap =

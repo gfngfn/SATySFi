@@ -36,6 +36,10 @@ let make_assoc ((pos, _) as json : json) : assoc =
   (pos, assoc)
 
 
+let find_opt (key : string) ((pos, assoc) : assoc) : json option =
+  assoc |> YojsonMap.find_opt key
+
+
 let find (key : string) ((pos, assoc) : assoc) : json =
   match assoc |> YojsonMap.find_opt key with
   | None ->

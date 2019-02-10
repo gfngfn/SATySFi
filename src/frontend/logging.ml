@@ -1,16 +1,19 @@
 
-
-let show_path s =
-  if OptionState.show_full_path () then s else Filename.basename s
+open MyUtil
 
 
-let begin_to_read_file file_name_in =
+let show_path abspath =
+  let pathstr = get_abs_path_string abspath in
+  if OptionState.show_full_path () then pathstr else Filename.basename pathstr
+
+
+let begin_to_read_file abspath_in =
   print_endline (" ---- ---- ---- ----");
-  print_endline ("  reading '" ^ (show_path file_name_in) ^ "' ...")
+  print_endline ("  reading '" ^ (show_path abspath_in) ^ "' ...")
 
 
-let begin_to_parse_file file_name_in =
-  print_endline ("  parsing '" ^ (show_path file_name_in) ^ "' ...")
+let begin_to_parse_file abspath_in =
+  print_endline ("  parsing '" ^ (show_path abspath_in) ^ "' ...")
 
 
 let pass_type_check opt =
@@ -97,6 +100,10 @@ let begin_to_embed_fonts () =
 let begin_to_write_page () =
   print_endline (" ---- ---- ---- ----");
   print_endline ("  writing pages ...")
+
+
+let warn_deprecated msg =
+  print_endline ("  [Warning] " ^ msg ^ "\n")
 
 
 let warn_cmyk_image file_name =

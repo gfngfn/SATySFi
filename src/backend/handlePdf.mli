@@ -1,10 +1,11 @@
 
+open MyUtil
 open LengthInterface
 open HorzBox
 
 type t
 
-val create_empty_pdf : string -> t
+val create_empty_pdf : abs_path -> t
 
 type page
 
