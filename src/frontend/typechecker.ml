@@ -19,7 +19,7 @@ exception MultipleFieldInRecord          of Range.t * field_name
 exception ApplicationOfNonFunction       of Range.t * Typeenv.t * mono_type
 
 exception InternalInclusionError
-exception InternalContradictionError
+exception InternalContradictionError of bool
 
 
 let abstraction evid ast =
@@ -310,7 +310,8 @@ let set_kind_with_occurs_check (tvid : FreeID.t) (kd : mono_kind) : unit =
   FreeID.set_kind kd tvid
 
 
-let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+  let unify = unify_sub ~reversed:reversed in
 (*
   (* begin: for debug *)
   let () =
@@ -321,20 +322,20 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
   in
   (* end: for debug *)
 *)
-  let unify_list = List.iter (fun (t1, t2) -> unify_sub t1 t2) in
+  let unify_list = List.iter (fun (t1, t2) -> unify t1 t2) in
 
     match (tymain1, tymain2) with
 
-    | (SynonymType(_, _, tyreal1), _) -> unify_sub tyreal1 ty2
-    | (_, SynonymType(_, _, tyreal2)) -> unify_sub ty1 tyreal2
+    | (SynonymType(_, _, tyreal1), _) -> unify tyreal1 ty2
+    | (_, SynonymType(_, _, tyreal2)) -> unify ty1 tyreal2
 
     | (BaseType(bsty1), BaseType(bsty2))  when bsty1 = bsty2 -> ()
 
     | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2)) ->
         begin
-          unify_option_row optrow1 optrow2;
-          unify_sub tydom1 tydom2;
-          unify_sub tycod1 tycod2;
+          unify_option_row ~reversed optrow1 optrow2;
+          unify tydom1 tydom2;
+          unify tycod1 tycod2;
         end
 
     | (HorzCommandType(cmdargtylist1), HorzCommandType(cmdargtylist2))
@@ -344,13 +345,13 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           try
             List.iter2 (fun cmdargty1 cmdargty2 ->
               match (cmdargty1, cmdargty2) with
-              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2)) -> unify_sub ty1 ty2
-              | (OptionalArgumentType(ty1) , OptionalArgumentType(ty2) ) -> unify_sub ty1 ty2
-              | _ -> raise InternalContradictionError
+              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2)) -> unify ty1 ty2
+              | (OptionalArgumentType(ty1) , OptionalArgumentType(ty2) ) -> unify ty1 ty2
+              | _ -> raise (InternalContradictionError(reversed))
             ) cmdargtylist1 cmdargtylist2
           with
           | Invalid_argument(_) ->
-              raise InternalContradictionError
+              raise (InternalContradictionError(reversed))
         end
 
     | (ProductType(tylist1), ProductType(tylist2)) ->
@@ -359,12 +360,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             unify_list (List.combine tylist1 tylist2)
           with
           | Invalid_argument(_) ->  (* -- not of the same length -- *)
-              raise InternalContradictionError
+              raise (InternalContradictionError(reversed))
         end
 
     | (RecordType(tyasc1), RecordType(tyasc2)) ->
         if not (Assoc.domain_same tyasc1 tyasc2) then
-          raise InternalContradictionError
+          raise (InternalContradictionError(reversed))
         else
           unify_list (Assoc.combine_value tyasc1 tyasc2)
 
@@ -375,14 +376,14 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             unify_list (List.combine tyarglist1 tyarglist2)
           with
           | Invalid_argument(_) ->
-              raise InternalContradictionError
+              raise (InternalContradictionError(reversed))
         end
 
-    | (ListType(tysub1), ListType(tysub2)) -> unify_sub tysub1 tysub2
-    | (RefType(tysub1), RefType(tysub2))   -> unify_sub tysub1 tysub2
+    | (ListType(tysub1), ListType(tysub2)) -> unify tysub1 tysub2
+    | (RefType(tysub1), RefType(tysub2))   -> unify tysub1 tysub2
 
-    | (TypeVariable({contents= MonoLink(tylinked1)}), _) -> unify_sub tylinked1 ty2
-    | (_, TypeVariable({contents= MonoLink(tylinked2)})) -> unify_sub ty1 tylinked2
+    | (TypeVariable({contents= MonoLink(tylinked1)}), _) -> unify tylinked1 ty2
+    | (_, TypeVariable({contents= MonoLink(tylinked2)})) -> unify ty1 tylinked2
 
     | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), TypeVariable({contents= MonoFree(tvid2)} as tvref2)) ->
         if FreeID.equal tvid1 tvid2 then
@@ -439,7 +440,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           if chk then
             raise InternalInclusionError
           else if not binc then
-            raise InternalContradictionError
+            raise (InternalContradictionError(reversed))
           else
             let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
             let eqnlst =
@@ -455,7 +456,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           let () =
             match kd1 with
             | UniversalKind -> ()
-            | RecordKind(_) -> raise InternalContradictionError
+            | RecordKind(_) -> raise (InternalContradictionError(reversed))
                 (* -- `ty2` is not a record type, a type variable, or a link,
                       and thereby cannot have a record kind -- *)
           in
@@ -467,23 +468,23 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             tvref1 := MonoLink(newty2)
 
       | (_, TypeVariable(_)) ->
-          unify_sub ty2 ty1
+          unify_sub ~reversed:(not reversed) ty2 ty1
 
       | _ ->
-          raise InternalContradictionError
+          raise (InternalContradictionError(reversed))
 
 
-and unify_option_row optrow1 optrow2 =
+and unify_option_row ~reversed:reversed optrow1 optrow2 =
   match (optrow1, optrow2) with
   | (OptionRowCons(ty1, tail1), OptionRowCons(ty2, tail2)) ->
-      unify_sub ty1 ty2;
-      unify_option_row tail1 tail2
+      unify_sub ~reversed ty1 ty2;
+      unify_option_row ~reversed tail1 tail2
 
   | (OptionRowEmpty, OptionRowEmpty) ->
       ()
 
-  | (OptionRowVariable({contents = MonoORLink(optrow1)}), _) -> unify_option_row optrow1 optrow2
-  | (_, OptionRowVariable({contents = MonoORLink(optrow2)})) -> unify_option_row optrow1 optrow2
+  | (OptionRowVariable({contents = MonoORLink(optrow1)}), _) -> unify_option_row ~reversed optrow1 optrow2
+  | (_, OptionRowVariable({contents = MonoORLink(optrow2)})) -> unify_option_row ~reversed optrow1 optrow2
 
   | (OptionRowVariable({contents = MonoORFree(orv1)} as orviref1), OptionRowVariable({contents = MonoORFree(orv2)})) ->
       if OptionRowVarID.equal orv1 orv2 then () else
@@ -503,15 +504,21 @@ and unify_option_row optrow1 optrow2 =
 
   | (OptionRowEmpty, OptionRowCons(_, _))
   | (OptionRowCons(_, _), OptionRowEmpty) ->
-      raise InternalContradictionError
+      raise (InternalContradictionError(reversed))
 
 
 let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   try
-    unify_sub ty1 ty2
+    unify_sub ~reversed:false ty1 ty2
   with
-  | InternalInclusionError     -> raise (InclusionError(tyenv, ty1, ty2))
-  | InternalContradictionError -> raise (ContradictionError(tyenv, ty1, ty2))
+  | InternalInclusionError ->
+      raise (InclusionError(tyenv, ty1, ty2))
+
+  | InternalContradictionError(reversed) ->
+      if reversed then
+        raise (ContradictionError(tyenv, ty2, ty1))
+      else
+        raise (ContradictionError(tyenv, ty1, ty2))
 
 
 let final_tyenv : Typeenv.t ref = ref (Typeenv.empty)
