@@ -524,6 +524,11 @@ let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
 let final_tyenv : Typeenv.t ref = ref (Typeenv.empty)
 
 
+let fresh_type_variable rng qtfbl lev kd =
+  let tvid = FreeID.fresh kd qtfbl lev () in
+  (rng, TypeVariable(ref (MonoFree(tvid))))
+
+
 let rec typecheck
     (qtfbl : quantifiability) (lev : level)
     (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
@@ -668,8 +673,7 @@ let rec typecheck
             (eret, tycodnew)
 
         | (_, TypeVariable(_)) as ty1 ->
-            let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+            let beta = fresh_type_variable rng qtfbl lev UniversalKind in
             let orv = OptionRowVarID.fresh lev in
             let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
             unify ty1 (get_range utast1, FuncType(optrow, ty2, beta));
@@ -692,10 +696,8 @@ let rec typecheck
               (eret, tynew)
 
         | _ ->
-            let tvid1 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta1 = (Range.dummy "UTApplyOptional:dom", TypeVariable(ref (MonoFree(tvid1)))) in
-            let tvid2 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta2 = (Range.dummy "UTApplyOptional:cod", TypeVariable(ref (MonoFree(tvid2)))) in
+            let beta1 = fresh_type_variable (Range.dummy "UTApplyOptional:dom") qtfbl lev UniversalKind in
+            let beta2 = fresh_type_variable (Range.dummy "UTApplyOptional:cod") qtfbl lev UniversalKind in
             let orv = OptionRowVarID.fresh lev in
             let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
             unify ty1 (get_range utast1, FuncType(OptionRowCons(ty2, optrow), beta1, beta2));
@@ -711,12 +713,9 @@ let rec typecheck
             (eret, (rng, FuncType(optrow, tydom, tycod)))
 
         | _ ->
-            let tvid0 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta0 = (rng, TypeVariable(ref (MonoFree(tvid0)))) in
-            let tvid1 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta1 = (rng, TypeVariable(ref (MonoFree(tvid1)))) in
-            let tvid2 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta2 = (rng, TypeVariable(ref (MonoFree(tvid2)))) in
+            let beta0 = fresh_type_variable rng qtfbl lev UniversalKind in
+            let beta1 = fresh_type_variable rng qtfbl lev UniversalKind in
+            let beta2 = fresh_type_variable rng qtfbl lev UniversalKind in
             let orv = OptionRowVarID.fresh lev in
             let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
             unify ty1 (get_range utast1, FuncType(OptionRowCons(beta0, optrow), beta1, beta2));
@@ -731,8 +730,7 @@ let rec typecheck
 
   | UTPatternMatch(utastO, utpatbrs) ->
       let (eO, tyO) = typecheck_iter tyenv utastO in
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (Range.dummy "ut-pattern-match", TypeVariable(ref (MonoFree(tvid)))) in
+      let beta = fresh_type_variable (Range.dummy "ut-pattern-match") qtfbl lev UniversalKind in
       let patbrs = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs tyO beta in
       Exhchecker.main rng patbrs tyO qtfbl lev tyenv;
       (PatternMatch(rng, eO, patbrs), beta)
@@ -818,9 +816,8 @@ let rec typecheck
       (PrimitiveListCons(eH, eT), tyres)
 
   | UTEndOfList ->
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
-        (Value(EndOfList), (rng, ListType(beta)))
+      let beta = fresh_type_variable rng qtfbl lev UniversalKind in
+      (Value(EndOfList), (rng, ListType(beta)))
 
 (* ---- tuple ---- *)
 
@@ -843,18 +840,15 @@ let rec typecheck
 
   | UTAccessField(utast1, fldnm) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let tvidF = FreeID.fresh UniversalKind qtfbl lev () in
-      let betaF = (rng, TypeVariable(ref (MonoFree(tvidF)))) in
-      let tvid1 = FreeID.fresh (RecordKind(Assoc.of_list [(fldnm, betaF)])) qtfbl lev () in
-      let beta1 = (get_range utast1, TypeVariable(ref (MonoFree(tvid1)))) in
+      let betaF = fresh_type_variable rng qtfbl lev UniversalKind in
+      let beta1 = fresh_type_variable (get_range utast1) qtfbl lev (RecordKind(Assoc.of_list [(fldnm, betaF)])) in
       unify beta1 ty1;
       (AccessField(e1, fldnm), betaF)
 
   | UTUpdateField(utast1, fldnm, utastF) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (eF, tyF) = typecheck_iter tyenv utastF in
-      let tvid1 = FreeID.fresh (RecordKind(Assoc.of_list [(fldnm, tyF)])) qtfbl lev () in
-      let beta1 = (get_range utast1, TypeVariable(ref (MonoFree(tvid1)))) in
+      let beta1 = fresh_type_variable (get_range utast1) qtfbl lev (RecordKind(Assoc.of_list [(fldnm, tyF)])) in
       unify beta1 ty1;
       (UpdateField(e1, fldnm, eF), ty1)
 
@@ -1212,8 +1206,7 @@ and typecheck_pattern
         (PListCons(epat1, epat2), typat2, patvarmap)
 
     | UTPEndOfList ->
-        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+        let beta = fresh_type_variable rng qtfbl lev UniversalKind in
         (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
 
     | UTPTupleCons(utpat1, utpat2) ->
@@ -1231,13 +1224,11 @@ and typecheck_pattern
         (PEndOfTuple, (rng, ProductType([])), PatternVarMap.empty)
 
     | UTPWildCard ->
-        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+        let beta = fresh_type_variable rng qtfbl lev UniversalKind in
         (PWildCard, beta, PatternVarMap.empty)
 
     | UTPVariable(varnm) ->
-        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+        let beta = fresh_type_variable rng qtfbl lev UniversalKind in
         let evid = EvalVarID.fresh (rng, varnm) in
 (*
         let () = print_endline ("\n#PAdd " ^ varnm ^ " : " ^ (string_of_mono_type_basic beta)) in  (* for debug *)
@@ -1245,8 +1236,7 @@ and typecheck_pattern
         (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
 
     | UTPAsVariable(varnm, utpat1) ->
-        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+        let beta = fresh_type_variable rng qtfbl lev UniversalKind in
         let (epat1, typat1, patvarmap1) = iter utpat1 in
         begin
           match PatternVarMap.find_opt varnm patvarmap1 with
