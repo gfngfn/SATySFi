@@ -48,21 +48,27 @@ let extract_registration d =
   let open ResultMonad in
     Otfm.flavour d >>= function
     | Otfm.CFF ->
-        Otfm.cff d >>= fun cffinfo ->
-        let cidsysinfo =
-          match cffinfo.Otfm.cid_info with
+        begin
+          Otfm.cff d >>= function
           | None ->
-            (* -- if not a CID-keyed font -- *)
-              adobe_identity
+              assert false
 
-          | Some(cidinfo) ->
-              {
-                registry   = cidinfo.Otfm.registry;
-                ordering   = cidinfo.Otfm.ordering;
-                supplement = cidinfo.Otfm.supplement;
-              }
-        in
-        return (d, CIDFontType0Registration(cidsysinfo, true))
+          | Some(cffinfo) ->
+              let cidsysinfo =
+                match cffinfo.Otfm.cid_info with
+                | None ->
+                  (* -- if not a CID-keyed font -- *)
+                    adobe_identity
+
+                | Some(cidinfo) ->
+                    {
+                      registry   = cidinfo.Otfm.registry;
+                      ordering   = cidinfo.Otfm.ordering;
+                      supplement = cidinfo.Otfm.supplement;
+                    }
+              in
+              return (d, CIDFontType0Registration(cidsysinfo, true))
+        end
 
     | Otfm.TTF_OT ->
         return (d, CIDFontType2OTRegistration(adobe_identity, true))
@@ -485,39 +491,46 @@ let get_mark_table srcpath units_per_em d =
   let mktbl = MarkTable.create () in
   let res =
     let open ResultMonad in
-    Otfm.gpos_script d >>= fun scriptlst ->
-    match scriptlst |> List.find_opt (fun gs -> Otfm.gpos_script_tag gs = script_tag) with
+    Otfm.gpos_script d >>= function
     | None ->
+      (* -- if the font does NOT have GPOS table -- *)
         return ()
 
-    | Some(script) ->
-        Otfm.gpos_langsys script >>= fun (langsys, _) ->
-          (* temporary; should depend on the current language system *)
-        Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
+    | Some(scriptlst) ->
         begin
-          match featurelst |> List.find_opt (fun gf -> Otfm.gpos_feature_tag gf = "mark") with
+          match scriptlst |> List.find_opt (fun gs -> Otfm.gpos_script_tag gs = script_tag) with
           | None ->
               return ()
 
-          | Some(feature_mark) ->
-              () |> Otfm.gpos feature_mark
-                  ~markbase1:(fun clscnt () markassoc baseassoc ->
-                    MarkTable.add_base units_per_em clscnt markassoc baseassoc mktbl
-                  )
-                  ~marklig1:(fun clscnt () markassoc ligassoc ->
-                    MarkTable.add_ligature units_per_em clscnt markassoc ligassoc mktbl
-                  )
-        end >>= fun () ->
-        begin
-          match featurelst |> List.find_opt (fun gf -> Otfm.gpos_feature_tag gf = "mkmk") with
-          | None ->
-              return ()
+          | Some(script) ->
+              Otfm.gpos_langsys script >>= fun (langsys, _) ->
+                (* temporary; should depend on the current language system *)
+              Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
+              begin
+                match featurelst |> List.find_opt (fun gf -> Otfm.gpos_feature_tag gf = "mark") with
+                | None ->
+                    return ()
 
-          | Some(feature_mkmk) ->
-              () |> Otfm.gpos feature_mkmk
-                  ~markmark1:(fun clscnt () mark1assoc mark2assoc ->
-                    MarkTable.add_mark_to_mark units_per_em clscnt mark1assoc mark2assoc mktbl
-                  )
+                | Some(feature_mark) ->
+                    () |> Otfm.gpos feature_mark
+                        ~markbase1:(fun clscnt () markassoc baseassoc ->
+                          MarkTable.add_base units_per_em clscnt markassoc baseassoc mktbl
+                        )
+                        ~marklig1:(fun clscnt () markassoc ligassoc ->
+                          MarkTable.add_ligature units_per_em clscnt markassoc ligassoc mktbl
+                        )
+              end >>= fun () ->
+              begin
+                match featurelst |> List.find_opt (fun gf -> Otfm.gpos_feature_tag gf = "mkmk") with
+                | None ->
+                    return ()
+
+                | Some(feature_mkmk) ->
+                    () |> Otfm.gpos feature_mkmk
+                        ~markmark1:(fun clscnt () mark1assoc mark2assoc ->
+                          MarkTable.add_mark_to_mark units_per_em clscnt mark1assoc mark2assoc mktbl
+                        )
+              end
         end
   in
   match res with
@@ -788,18 +801,23 @@ let get_ligature_table srcpath (submap : subset_map) (d : Otfm.decoder) : Ligatu
   let ligtbl = LigatureTable.create submap 32 (* arbitrary constant; the initial size of the hash table *) in
   let res =
     let (>>=) = result_bind in
-    Otfm.gsub_script d >>= fun scriptlst ->
-    pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = script_tag) `Missing_script >>= fun script ->
-    Otfm.gsub_langsys script >>= fun (langsys, _) ->
-      (* temporary; should depend on the current language system *)
-    Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
-    pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "liga") `Missing_feature >>= fun feature ->
-    () |> Otfm.gsub feature ~lig:(fun () (gid, liginfolst) ->
-      let liginfolst =
-        liginfolst |> List.map (fun (tail, ligature) -> LigatureTable.{ tail; ligature; })
-      in
-      ligtbl |> LigatureTable.add gid liginfolst) >>= fun () ->
-    Ok()
+    Otfm.gsub_script d >>= function
+    | None ->
+      (* -- if the font does NOT have GSUB table -- *)
+        Ok()
+
+    | Some(scriptlst) ->
+        pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = script_tag) `Missing_script >>= fun script ->
+        Otfm.gsub_langsys script >>= fun (langsys, _) ->
+          (* temporary; should depend on the current language system *)
+        Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
+        pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "liga") `Missing_feature >>= fun feature ->
+        () |> Otfm.gsub feature ~lig:(fun () (gid, liginfolst) ->
+          let liginfolst =
+            liginfolst |> List.map (fun (tail, ligature) -> LigatureTable.{ tail; ligature; })
+          in
+          ligtbl |> LigatureTable.add gid liginfolst) >>= fun () ->
+        Ok()
   in
   match res with
   | Ok(()) ->
@@ -808,8 +826,6 @@ let get_ligature_table srcpath (submap : subset_map) (d : Otfm.decoder) : Ligatu
   | Error(e) ->
       begin
         match e with
-        | `Missing_required_table(tag)
-            when tag = Otfm.Tag.gsub -> ligtbl
         | `Missing_script            -> ligtbl
         | `Missing_feature           -> ligtbl
         | #Otfm.error as oerr        -> broken srcpath oerr "get_ligature_table"
@@ -917,23 +933,27 @@ let get_kerning_table srcpath (d : Otfm.decoder) =
   in
   let res =
     let (>>=) = result_bind in
-    Otfm.gpos_script d >>= fun scriptlst ->
-    pickup scriptlst (fun gs -> Otfm.gpos_script_tag gs = script_tag) `Missing_script >>= fun script ->
-    Otfm.gpos_langsys script >>= fun (langsys, _) ->
-      (* temporary; should depend on the current language system *)
-    Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
-    pickup featurelst (fun gf -> Otfm.gpos_feature_tag gf = "kern") `Missing_feature >>= fun feature ->
-    () |> Otfm.gpos feature
-      ~pair1:(fun () (gid1, pairposlst) ->
-        pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
-          match valrcd1.Otfm.x_advance with
-          | None      -> ()
-          | Some(xa1) -> kerntbl |> KerningTable.add gid1 gid2 xa1
-        )
-      )
-      ~pair2:(fun clsdeflst1 clsdeflst2 () sublst ->
-        kerntbl |> KerningTable.add_by_class clsdeflst1 clsdeflst2 sublst;
-      ) >>= fun () -> Ok()
+    Otfm.gpos_script d >>= function
+    | None ->
+        Ok()
+
+    | Some(scriptlst) ->
+        pickup scriptlst (fun gs -> Otfm.gpos_script_tag gs = script_tag) `Missing_script >>= fun script ->
+        Otfm.gpos_langsys script >>= fun (langsys, _) ->
+          (* temporary; should depend on the current language system *)
+        Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
+        pickup featurelst (fun gf -> Otfm.gpos_feature_tag gf = "kern") `Missing_feature >>= fun feature ->
+        () |> Otfm.gpos feature
+          ~pair1:(fun () (gid1, pairposlst) ->
+            pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
+              match valrcd1.Otfm.x_advance with
+              | None      -> ()
+              | Some(xa1) -> kerntbl |> KerningTable.add gid1 gid2 xa1
+            )
+          )
+          ~pair2:(fun clsdeflst1 clsdeflst2 () sublst ->
+            kerntbl |> KerningTable.add_by_class clsdeflst1 clsdeflst2 sublst;
+          ) >>= fun () -> Ok()
   in
   match res with
   | Ok(()) ->
@@ -978,7 +998,7 @@ let get_original_gid (dcdr : decoder) (gid : glyph_id) : original_glyph_id =
   gidorg
 
 
-let get_glyph_raw_bbox (dcdr : decoder) (gidorg : original_glyph_id)
+let get_ttf_raw_bbox (dcdr : decoder) (gidorg : original_glyph_id)
     : ((design_units * design_units * design_units * design_units) option) ok =
   let d = dcdr.main in
   let open ResultMonad in
@@ -987,8 +1007,15 @@ let get_glyph_raw_bbox (dcdr : decoder) (gidorg : original_glyph_id)
       return None
 
   | Some(gloc) ->
-      Otfm.glyf d gloc >>= fun (_, rawbbox) ->
-      return (Some(rawbbox))
+      begin
+        Otfm.glyf d gloc >>= function
+        | None ->
+          (* -- if the font does NOT have 'glyf' table -- *)
+            return None
+
+        | Some((_, rawbbox)) ->
+            return (Some(rawbbox))
+      end
 
 
 let bbox_zero =
@@ -997,7 +1024,7 @@ let bbox_zero =
 
 let get_ttf_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
   let f = per_mille dcdr in
-  match get_glyph_raw_bbox dcdr gidorg with
+  match get_ttf_raw_bbox dcdr gidorg with
   | Error(e) ->
       broken dcdr.file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gidorg)
 
@@ -1184,8 +1211,9 @@ let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string opt
       | Some(gidorglst) ->
           begin
             match OtfSubset.make d gidorglst with
-            | Error(e) -> broken dcdr.file_path e "pdfstream_of_decoder"
-            | Ok(s)    -> s
+            | Error(e)    -> broken dcdr.file_path e "pdfstream_of_decoder"
+            | Ok(None)    -> assert false
+            | Ok(Some(s)) -> s
           end
   in
   let (filter, bt) = to_flate_pdf_bytes data in
@@ -1267,18 +1295,22 @@ let add_element_of_composite_glyph (dcdr : decoder) (gidorg : original_glyph_id)
           return ()
 
       | Some(loc) ->
-          Otfm.glyf d loc >>= fun (descrmain, _) ->
-          begin
-            match descrmain with
-            | `Simple(_) ->
-                return ()
+          Otfm.glyf d loc >>= function
+          | None ->
+              assert false
 
-            | `Composite(lst) ->
-                lst |> List.fold_left (fun res (gidorg, _, _) ->
-                  res >>= fun () ->
-                  aux gidorg
-                ) (return ())
-          end
+          | Some((descrmain, _)) ->
+              begin
+                match descrmain with
+                | `Simple(_) ->
+                    return ()
+
+                | `Composite(lst) ->
+                    lst |> List.fold_left (fun res (gidorg, _, _) ->
+                      res >>= fun () ->
+                      aux gidorg
+                    ) (return ())
+              end
     in
     let res =
       Otfm.flavour d >>= function
@@ -1839,7 +1871,7 @@ let make_decoder (abspath : abs_path) (d : Otfm.decoder) : decoder =
   let cmapsubtbl = get_cmap_subtable abspath d in
   let submap =
     match Otfm.flavour d with
-    | Error(e)                        -> broken abspath e "make_decoder"
+    | Error(e)                        -> broken abspath e "make_decoder (flavour)"
     | Ok(Otfm.TTF_true | Otfm.TTF_OT) -> SubsetMap.create 32  (* temporary; initial size of hash tables *)
     | Ok(Otfm.CFF)                    -> SubsetMap.create_dummy ()
   in
@@ -1860,8 +1892,9 @@ let make_decoder (abspath : abs_path) (d : Otfm.decoder) : decoder =
   let mktbl = get_mark_table abspath units_per_em d in
   let csinfo =
     match Otfm.cff d with
-    | Error(_)    -> None
-    | Ok(cffinfo) -> Some(cffinfo.Otfm.charstring_info)
+    | Error(e)          -> broken abspath e "make_decoder (cff)"
+    | Ok(None)          -> None
+    | Ok(Some(cffinfo)) -> Some(cffinfo.Otfm.charstring_info)
   in
     {
       file_path           = abspath;
@@ -2047,7 +2080,10 @@ let get_math_decoder (fontname : string) (abspath : abs_path) : (math_decoder * 
     | Error(oerr) ->
         broken abspath oerr "get_math_decoder"
 
-    | Ok(mathraw) ->
+    | Ok(None) ->
+        None
+
+    | Ok(Some(mathraw)) ->
         let micmap =
           mathraw.Otfm.math_glyph_info.Otfm.math_italics_correction
             |> assoc_to_map (fun v -> per_mille dcdr (get_main_math_value v))
@@ -2067,15 +2103,21 @@ let get_math_decoder (fontname : string) (abspath : abs_path) : (math_decoder * 
         let sstyopt =
           let ( >>= ) = result_bind in
           let res =
-            Otfm.gsub_script d >>= fun scriptlst ->
-            pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = "math") `Missing_script >>= fun script_math ->
-            Otfm.gsub_langsys script_math >>= fun (langsys, _) ->
-            Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
-            pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "ssty") `Missing_feature
+            Otfm.gsub_script d >>= function
+            | None ->
+                Error(`Missing_script)
+
+            | Some(scriptlst) ->
+                pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = "math") `Missing_script >>= fun script_math ->
+                Otfm.gsub_langsys script_math >>= fun (langsys, _) ->
+                Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
+                pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "ssty") `Missing_feature
           in
           match res with
-          | Ok(feature_ssty) -> Some(feature_ssty)
-          | Error(oerr)      -> None
+          | Ok(feature_ssty)        -> Some(feature_ssty)
+          | Error(`Missing_script)
+          | Error(`Missing_feature) -> None
+          | Error(#Otfm.error as e) -> broken abspath e "get_math_decoder"
         in
         let md =
           {
