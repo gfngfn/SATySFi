@@ -1,8 +1,8 @@
 
 open MyUtil
 
-exception PackageNotFound     of string * abs_path list
-exception LibraryFileNotFound of lib_path * abs_path list
+exception PackageNotFound      of string * abs_path list
+exception LibraryFileNotFound  of lib_path * abs_path list
 exception LibraryFilesNotFound of lib_path list * abs_path list
 
 
