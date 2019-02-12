@@ -6,17 +6,17 @@ open Display
 
 exception NoLibraryRootDesignation
 exception NoInputFileDesignation
-exception CyclicFileDependency of abs_path list
+exception CyclicFileDependency        of abs_path list
 exception CannotReadFileOwingToSystem of string
-exception NotALibraryFile  of abs_path * Typeenv.t * mono_type
-exception NotADocumentFile of abs_path * Typeenv.t * mono_type
-exception NotAStringFile   of abs_path * Typeenv.t * mono_type
+exception NotALibraryFile             of abs_path * Typeenv.t * mono_type
+exception NotADocumentFile            of abs_path * Typeenv.t * mono_type
+exception NotAStringFile              of abs_path * Typeenv.t * mono_type
 exception ShouldSpecifyOutputFile
 
 
 type line =
-  | NormalLine  of string
-  | DisplayLine of string
+  | NormalLine        of string
+  | DisplayLine       of string
   | NormalLineOption  of string option
   | DisplayLineOption of string option
 
@@ -74,7 +74,7 @@ let make_candidates_message (candidates : string list) =
     match List.rev lst with
     | []        -> ""
     | s :: []   -> add_quote s
-    | s :: rest  -> (String.concat ", " (List.map add_quote (List.rev rest))) ^ " or " ^ (add_quote s)
+    | s :: rest -> (String.concat ", " (List.map add_quote (List.rev rest))) ^ " or " ^ (add_quote s)
   in
   match candidates with
   | [] -> None
@@ -94,7 +94,7 @@ type file_info =
   | LibraryFile  of untyped_abstract_tree
 
 
-let make_absolute_path_required package =
+let make_abs_path_of_required package =
   let extcands =
     match OptionState.get_mode () with
     | None      -> [".satyh"; ".satyg"]
@@ -103,9 +103,9 @@ let make_absolute_path_required package =
   Config.resolve_package_exn package extcands
 
 
-let make_absolute_path curdir headerelem =
+let make_abs_path_of_package curdir headerelem =
   match headerelem with
-  | HeaderRequire(s) -> make_absolute_path_required s
+  | HeaderRequire(s) -> make_abs_path_of_required s
   | HeaderImport(s)  -> make_abs_path (Filename.concat curdir (s ^ ".satyh"))
 
 
@@ -117,7 +117,7 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath_in
     let (header, utast) = ParserInterface.process (basename_abs abspath_in) (Lexing.from_channel inc) in
     FileDependencyGraph.add_vertex dg abspath_in (LibraryFile(utast));
     header |> List.iter (fun headerelem ->
-      let abspath_sub = make_absolute_path curdir headerelem in
+      let abspath_sub = make_abs_path_of_package curdir headerelem in
       begin
         if FileDependencyGraph.mem_vertex abspath_sub dg then () else
           register_library_file dg abspath_sub
@@ -219,7 +219,7 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : 
   let (header, utast) = ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in) in
   FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
   header |> List.iter (fun headerelem ->
-    let file_path_sub = make_absolute_path curdir headerelem in
+    let file_path_sub = make_abs_path_of_package curdir headerelem in
     begin
       if FileDependencyGraph.mem_vertex file_path_sub dg then () else
         register_library_file dg file_path_sub
@@ -240,7 +240,7 @@ let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : str
     *)
       FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
       depends |> List.iter (fun package ->
-        let file_path_sub = make_absolute_path_required package in
+        let file_path_sub = make_abs_path_of_required package in
         begin
         if FileDependencyGraph.mem_vertex file_path_sub dg then () else
           register_library_file dg file_path_sub
@@ -427,28 +427,6 @@ let error_log_environment suspended =
         NormalLine("should specify output file for text mode.");
       ]
 
-  | CrossRef.InvalidYOJSON(abspath, msg) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine("dump file '" ^ fname ^ "' is NOT a valid YOJSON file:");
-        DisplayLine(msg);
-      ]
-
-  | CrossRef.DumpFileOtherThanAssoc(abspath) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine("in the dump file '" ^ fname ^ "':");
-        NormalLine("the content is NOT a dictionary.");
-      ]
-
-  | CrossRef.DumpFileValueOtherThanString(abspath, key, jsonstr) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine("in the dump file '" ^ fname ^ "':");
-        NormalLine("the value associated with the key '" ^ key ^ "' is NOT a string;");
-        DisplayLine(jsonstr);
-      ]
-
   | LoadHyph.InvalidPatternElement(rng) ->
       report_error System [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -535,8 +513,8 @@ let error_log_environment suspended =
         NormalLine(s);
       ]
 
-  | Parsing.Parse_error             -> report_error Parser [ NormalLine("something is wrong."); ]
-  | ParseErrorDetail(s)             -> report_error Parser [ NormalLine(s); ]
+  | Parsing.Parse_error -> report_error Parser [ NormalLine("something is wrong."); ]
+  | ParseErrorDetail(s) -> report_error Parser [ NormalLine(s); ]
 
   | IllegalArgumentLength(rng, len, lenexp) ->
       report_error Parser [
@@ -568,9 +546,9 @@ let error_log_environment suspended =
         NormalLine("'" ^ s ^ "' is not a block command name.");
       ]
 
-  | MyYojsonUtil.SyntaxError(srcpath, msg) ->
+  | MyYojsonUtil.SyntaxError(fname, msg) ->
       report_error System [
-        NormalLine("in '" ^ srcpath ^ "':");
+        NormalLine("in '" ^ fname ^ "':");
         NormalLine(msg);
       ]
 

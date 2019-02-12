@@ -19,7 +19,7 @@ exception MultipleFieldInRecord          of Range.t * field_name
 exception ApplicationOfNonFunction       of Range.t * Typeenv.t * mono_type
 
 exception InternalInclusionError
-exception InternalContradictionError
+exception InternalContradictionError of bool
 
 
 let abstraction evid ast =
@@ -310,7 +310,8 @@ let set_kind_with_occurs_check (tvid : FreeID.t) (kd : mono_kind) : unit =
   FreeID.set_kind kd tvid
 
 
-let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+  let unify = unify_sub ~reversed:reversed in
 (*
   (* begin: for debug *)
   let () =
@@ -321,20 +322,20 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
   in
   (* end: for debug *)
 *)
-  let unify_list = List.iter (fun (t1, t2) -> unify_sub t1 t2) in
+  let unify_list = List.iter (fun (t1, t2) -> unify t1 t2) in
 
     match (tymain1, tymain2) with
 
-    | (SynonymType(_, _, tyreal1), _) -> unify_sub tyreal1 ty2
-    | (_, SynonymType(_, _, tyreal2)) -> unify_sub ty1 tyreal2
+    | (SynonymType(_, _, tyreal1), _) -> unify tyreal1 ty2
+    | (_, SynonymType(_, _, tyreal2)) -> unify ty1 tyreal2
 
     | (BaseType(bsty1), BaseType(bsty2))  when bsty1 = bsty2 -> ()
 
     | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2)) ->
         begin
-          unify_option_row optrow1 optrow2;
-          unify_sub tydom1 tydom2;
-          unify_sub tycod1 tycod2;
+          unify_option_row ~reversed optrow1 optrow2;
+          unify tydom1 tydom2;
+          unify tycod1 tycod2;
         end
 
     | (HorzCommandType(cmdargtylist1), HorzCommandType(cmdargtylist2))
@@ -344,13 +345,13 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           try
             List.iter2 (fun cmdargty1 cmdargty2 ->
               match (cmdargty1, cmdargty2) with
-              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2)) -> unify_sub ty1 ty2
-              | (OptionalArgumentType(ty1) , OptionalArgumentType(ty2) ) -> unify_sub ty1 ty2
-              | _ -> raise InternalContradictionError
+              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2)) -> unify ty1 ty2
+              | (OptionalArgumentType(ty1) , OptionalArgumentType(ty2) ) -> unify ty1 ty2
+              | _ -> raise (InternalContradictionError(reversed))
             ) cmdargtylist1 cmdargtylist2
           with
           | Invalid_argument(_) ->
-              raise InternalContradictionError
+              raise (InternalContradictionError(reversed))
         end
 
     | (ProductType(tylist1), ProductType(tylist2)) ->
@@ -359,12 +360,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             unify_list (List.combine tylist1 tylist2)
           with
           | Invalid_argument(_) ->  (* -- not of the same length -- *)
-              raise InternalContradictionError
+              raise (InternalContradictionError(reversed))
         end
 
     | (RecordType(tyasc1), RecordType(tyasc2)) ->
         if not (Assoc.domain_same tyasc1 tyasc2) then
-          raise InternalContradictionError
+          raise (InternalContradictionError(reversed))
         else
           unify_list (Assoc.combine_value tyasc1 tyasc2)
 
@@ -375,14 +376,14 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             unify_list (List.combine tyarglist1 tyarglist2)
           with
           | Invalid_argument(_) ->
-              raise InternalContradictionError
+              raise (InternalContradictionError(reversed))
         end
 
-    | (ListType(tysub1), ListType(tysub2)) -> unify_sub tysub1 tysub2
-    | (RefType(tysub1), RefType(tysub2))   -> unify_sub tysub1 tysub2
+    | (ListType(tysub1), ListType(tysub2)) -> unify tysub1 tysub2
+    | (RefType(tysub1), RefType(tysub2))   -> unify tysub1 tysub2
 
-    | (TypeVariable({contents= MonoLink(tyl1)}), _) -> unify_sub tyl1 (rng2, tymain2)
-    | (_, TypeVariable({contents= MonoLink(tyl2)})) -> unify_sub (rng1, tymain1) tyl2
+    | (TypeVariable({contents= MonoLink(tylinked1)}), _) -> unify tylinked1 ty2
+    | (_, TypeVariable({contents= MonoLink(tylinked2)})) -> unify ty1 tylinked2
 
     | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), TypeVariable({contents= MonoFree(tvid2)} as tvref2)) ->
         if FreeID.equal tvid1 tvid2 then
@@ -439,7 +440,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           if chk then
             raise InternalInclusionError
           else if not binc then
-            raise InternalContradictionError
+            raise (InternalContradictionError(reversed))
           else
             let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
             let eqnlst =
@@ -451,6 +452,14 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             tvref1 := MonoLink(newty2)
 
       | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), _) ->
+          let kd1 = FreeID.get_kind tvid1 in
+          let () =
+            match kd1 with
+            | UniversalKind -> ()
+            | RecordKind(_) -> raise (InternalContradictionError(reversed))
+                (* -- `ty2` is not a record type, a type variable, or a link,
+                      and thereby cannot have a record kind -- *)
+          in
           let chk = occurs tvid1 ty2 in
           if chk then
             raise InternalInclusionError
@@ -459,23 +468,23 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             tvref1 := MonoLink(newty2)
 
       | (_, TypeVariable(_)) ->
-          unify_sub ty2 ty1
+          unify_sub ~reversed:(not reversed) ty2 ty1
 
       | _ ->
-          raise InternalContradictionError
+          raise (InternalContradictionError(reversed))
 
 
-and unify_option_row optrow1 optrow2 =
+and unify_option_row ~reversed:reversed optrow1 optrow2 =
   match (optrow1, optrow2) with
   | (OptionRowCons(ty1, tail1), OptionRowCons(ty2, tail2)) ->
-      unify_sub ty1 ty2;
-      unify_option_row tail1 tail2
+      unify_sub ~reversed ty1 ty2;
+      unify_option_row ~reversed tail1 tail2
 
   | (OptionRowEmpty, OptionRowEmpty) ->
       ()
 
-  | (OptionRowVariable({contents = MonoORLink(optrow1)}), _) -> unify_option_row optrow1 optrow2
-  | (_, OptionRowVariable({contents = MonoORLink(optrow2)})) -> unify_option_row optrow1 optrow2
+  | (OptionRowVariable({contents = MonoORLink(optrow1)}), _) -> unify_option_row ~reversed optrow1 optrow2
+  | (_, OptionRowVariable({contents = MonoORLink(optrow2)})) -> unify_option_row ~reversed optrow1 optrow2
 
   | (OptionRowVariable({contents = MonoORFree(orv1)} as orviref1), OptionRowVariable({contents = MonoORFree(orv2)})) ->
       if OptionRowVarID.equal orv1 orv2 then () else
@@ -495,18 +504,29 @@ and unify_option_row optrow1 optrow2 =
 
   | (OptionRowEmpty, OptionRowCons(_, _))
   | (OptionRowCons(_, _), OptionRowEmpty) ->
-      raise InternalContradictionError
+      raise (InternalContradictionError(reversed))
 
 
 let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   try
-    unify_sub ty1 ty2
+    unify_sub ~reversed:false ty1 ty2
   with
-  | InternalInclusionError     -> raise (InclusionError(tyenv, ty1, ty2))
-  | InternalContradictionError -> raise (ContradictionError(tyenv, ty1, ty2))
+  | InternalInclusionError ->
+      raise (InclusionError(tyenv, ty1, ty2))
+
+  | InternalContradictionError(reversed) ->
+      if reversed then
+        raise (ContradictionError(tyenv, ty2, ty1))
+      else
+        raise (ContradictionError(tyenv, ty1, ty2))
 
 
 let final_tyenv : Typeenv.t ref = ref (Typeenv.empty)
+
+
+let fresh_type_variable rng qtfbl lev kd =
+  let tvid = FreeID.fresh kd qtfbl lev () in
+  (rng, TypeVariable(ref (MonoFree(tvid))))
 
 
 let rec typecheck
@@ -653,8 +673,7 @@ let rec typecheck
             (eret, tycodnew)
 
         | (_, TypeVariable(_)) as ty1 ->
-            let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+            let beta = fresh_type_variable rng qtfbl lev UniversalKind in
             let orv = OptionRowVarID.fresh lev in
             let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
             unify ty1 (get_range utast1, FuncType(optrow, ty2, beta));
@@ -677,10 +696,8 @@ let rec typecheck
               (eret, tynew)
 
         | _ ->
-            let tvid1 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta1 = (Range.dummy "UTApplyOptional:dom", TypeVariable(ref (MonoFree(tvid1)))) in
-            let tvid2 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta2 = (Range.dummy "UTApplyOptional:cod", TypeVariable(ref (MonoFree(tvid2)))) in
+            let beta1 = fresh_type_variable (Range.dummy "UTApplyOptional:dom") qtfbl lev UniversalKind in
+            let beta2 = fresh_type_variable (Range.dummy "UTApplyOptional:cod") qtfbl lev UniversalKind in
             let orv = OptionRowVarID.fresh lev in
             let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
             unify ty1 (get_range utast1, FuncType(OptionRowCons(ty2, optrow), beta1, beta2));
@@ -696,12 +713,9 @@ let rec typecheck
             (eret, (rng, FuncType(optrow, tydom, tycod)))
 
         | _ ->
-            let tvid0 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta0 = (rng, TypeVariable(ref (MonoFree(tvid0)))) in
-            let tvid1 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta1 = (rng, TypeVariable(ref (MonoFree(tvid1)))) in
-            let tvid2 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta2 = (rng, TypeVariable(ref (MonoFree(tvid2)))) in
+            let beta0 = fresh_type_variable rng qtfbl lev UniversalKind in
+            let beta1 = fresh_type_variable rng qtfbl lev UniversalKind in
+            let beta2 = fresh_type_variable rng qtfbl lev UniversalKind in
             let orv = OptionRowVarID.fresh lev in
             let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
             unify ty1 (get_range utast1, FuncType(OptionRowCons(beta0, optrow), beta1, beta2));
@@ -716,8 +730,7 @@ let rec typecheck
 
   | UTPatternMatch(utastO, utpatbrs) ->
       let (eO, tyO) = typecheck_iter tyenv utastO in
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (Range.dummy "ut-pattern-match", TypeVariable(ref (MonoFree(tvid)))) in
+      let beta = fresh_type_variable (Range.dummy "ut-pattern-match") qtfbl lev UniversalKind in
       let patbrs = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs tyO beta in
       Exhchecker.main rng patbrs tyO qtfbl lev tyenv;
       (PatternMatch(rng, eO, patbrs), beta)
@@ -803,9 +816,8 @@ let rec typecheck
       (PrimitiveListCons(eH, eT), tyres)
 
   | UTEndOfList ->
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
-        (Value(EndOfList), (rng, ListType(beta)))
+      let beta = fresh_type_variable rng qtfbl lev UniversalKind in
+      (Value(EndOfList), (rng, ListType(beta)))
 
 (* ---- tuple ---- *)
 
@@ -828,12 +840,17 @@ let rec typecheck
 
   | UTAccessField(utast1, fldnm) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let tvidF = FreeID.fresh UniversalKind qtfbl lev () in
-      let betaF = (rng, TypeVariable(ref (MonoFree(tvidF)))) in
-      let tvid1 = FreeID.fresh (RecordKind(Assoc.of_list [(fldnm, betaF)])) qtfbl lev () in
-      let beta1 = (get_range utast1, TypeVariable(ref (MonoFree(tvid1)))) in
+      let betaF = fresh_type_variable rng qtfbl lev UniversalKind in
+      let beta1 = fresh_type_variable (get_range utast1) qtfbl lev (RecordKind(Assoc.of_list [(fldnm, betaF)])) in
       unify beta1 ty1;
       (AccessField(e1, fldnm), betaF)
+
+  | UTUpdateField(utast1, fldnm, utastF) ->
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let (eF, tyF) = typecheck_iter tyenv utastF in
+      let beta1 = fresh_type_variable (get_range utast1) qtfbl lev (RecordKind(Assoc.of_list [(fldnm, tyF)])) in
+      unify beta1 ty1;
+      (UpdateField(e1, fldnm, eF), ty1)
 
 (* -- math -- *)
 
@@ -1189,8 +1206,7 @@ and typecheck_pattern
         (PListCons(epat1, epat2), typat2, patvarmap)
 
     | UTPEndOfList ->
-        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+        let beta = fresh_type_variable rng qtfbl lev UniversalKind in
         (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
 
     | UTPTupleCons(utpat1, utpat2) ->
@@ -1208,13 +1224,11 @@ and typecheck_pattern
         (PEndOfTuple, (rng, ProductType([])), PatternVarMap.empty)
 
     | UTPWildCard ->
-        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+        let beta = fresh_type_variable rng qtfbl lev UniversalKind in
         (PWildCard, beta, PatternVarMap.empty)
 
     | UTPVariable(varnm) ->
-        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+        let beta = fresh_type_variable rng qtfbl lev UniversalKind in
         let evid = EvalVarID.fresh (rng, varnm) in
 (*
         let () = print_endline ("\n#PAdd " ^ varnm ^ " : " ^ (string_of_mono_type_basic beta)) in  (* for debug *)
@@ -1222,8 +1236,7 @@ and typecheck_pattern
         (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
 
     | UTPAsVariable(varnm, utpat1) ->
-        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+        let beta = fresh_type_variable rng qtfbl lev UniversalKind in
         let (epat1, typat1, patvarmap1) = iter utpat1 in
         begin
           match PatternVarMap.find_opt varnm patvarmap1 with

@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Fix how to generate ToUnicodeCMap as to ligatures ([PR\#140](https://github.com/gfngfn/SATySFi/pull/140) by `matsud224`).
 - Fix bug of `\ref` in `stdjareport` ([PR\#135](https://github.com/gfngfn/SATySFi/pull/135) by `matsud224`).
 - Fix bug of signature matching in the type checker ([PR\#143](https://github.com/gfngfn/SATySFi/pull/143) and [PR\#144](https://github.com/gfngfn/SATySFi/pull/144) by `elpinal`).
+- Fix bug of type inference about records ([PR\#148](https://github.com/gfngfn/SATySFi/pull/148) by `elpinal`).
 
 ## Added
 - Begins to support Markdown input.
@@ -22,6 +23,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Provides new primitives `get-leftmost-script : inline-boxes -> script option`, `get-rightmost-script : inline-boxes -> script option`, and `script-guard-both : script -> script -> inline-boxes -> inline-boxes`.
 - Regards `<LIBROOT>/local/packages/` as a place for user-defined packages.
 - Uses `<LIBROOT>/local/hash/fonts.satysfi-hash` (as well as `<LIBROOT>/dist/fonts.satysfi-hash`) for a font fash file (the same holds for `<LIBROOT>/local/hash/mathfonts.satysfi-hash`).
+- Supports (non-extensible) record updates, i.e., `(| <record> with <label> = <new-value> |)`.
 
 ## Deprecated
 
