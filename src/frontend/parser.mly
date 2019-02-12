@@ -834,6 +834,14 @@ nxbot:
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
   | opn=BRECORD; cls=ERECORD                     { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
   | opn=BRECORD; rcd=nxrecord; cls=ERECORD       { make_standard (Tok opn) (Tok cls) (UTRecord(rcd)) }
+  | opn=BRECORD; utast=nxbot; WITH; rcd=nxrecord; cls=ERECORD {
+      let (_, utastmain) =
+        rcd |> List.fold_left (fun utast1 (fldnm, utastF) ->
+          (Range.dummy "update-field", UTUpdateField(utast1, fldnm, utastF))
+        ) utast
+      in
+      make_standard (Tok opn) (Tok cls) utastmain
+    }
   | opn=BPATH; path=path; cls=EPATH              { make_standard (Tok opn) (Tok cls) path }
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP  { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=OPENMODULE; utast=nxlet; cls=RPAREN {
