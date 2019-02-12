@@ -850,6 +850,14 @@ let rec typecheck
       unify beta1 ty1;
       (AccessField(e1, fldnm), betaF)
 
+  | UTUpdateField(utast1, fldnm, utastF) ->
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let (eF, tyF) = typecheck_iter tyenv utastF in
+      let tvid1 = FreeID.fresh (RecordKind(Assoc.of_list [(fldnm, tyF)])) qtfbl lev () in
+      let beta1 = (get_range utast1, TypeVariable(ref (MonoFree(tvid1)))) in
+      unify beta1 ty1;
+      (UpdateField(e1, fldnm, eF), ty1)
+
 (* -- math -- *)
 
   | UTMath(utmath) ->

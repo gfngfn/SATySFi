@@ -423,6 +423,11 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let (ir1, env) = transform env ast1 in
           (IRAccessField(ir1, fldnm), env)
 
+    | UpdateField(ast1, fldnm, ast2) ->
+        let (ir1, env) = transform env ast1 in
+        let (ir2, env) = transform env ast2 in
+        (IRUpdateField(ir1, fldnm, ir2), env)
+
     (* ---- imperatives ---- *)
 
     | LetMutableIn(evid, astini, astaft) ->
