@@ -160,7 +160,7 @@ let main (abspath : abs_path) : DecodeMD.command_record * string list =
   let pathstr = get_abs_path_string abspath in
   try
     let json = YS.from_file ~fname:pathstr pathstr in
-      (* -- may raise 'Sys_error' -- *)
+      (* -- may raise 'Sys_error' or 'Yojson.Json_error' -- *)
     let assoc = MYU.make_assoc json in
     read_assoc assoc
   with

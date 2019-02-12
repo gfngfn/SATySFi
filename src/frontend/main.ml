@@ -427,28 +427,6 @@ let error_log_environment suspended =
         NormalLine("should specify output file for text mode.");
       ]
 
-  | CrossRef.InvalidYOJSON(abspath, msg) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine("dump file '" ^ fname ^ "' is NOT a valid YOJSON file:");
-        DisplayLine(msg);
-      ]
-
-  | CrossRef.DumpFileOtherThanAssoc(abspath) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine("in the dump file '" ^ fname ^ "':");
-        NormalLine("the content is NOT a dictionary.");
-      ]
-
-  | CrossRef.DumpFileValueOtherThanString(abspath, key, jsonstr) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine("in the dump file '" ^ fname ^ "':");
-        NormalLine("the value associated with the key '" ^ key ^ "' is NOT a string;");
-        DisplayLine(jsonstr);
-      ]
-
   | LoadHyph.InvalidPatternElement(rng) ->
       report_error System [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -535,8 +513,8 @@ let error_log_environment suspended =
         NormalLine(s);
       ]
 
-  | Parsing.Parse_error             -> report_error Parser [ NormalLine("something is wrong."); ]
-  | ParseErrorDetail(s)             -> report_error Parser [ NormalLine(s); ]
+  | Parsing.Parse_error -> report_error Parser [ NormalLine("something is wrong."); ]
+  | ParseErrorDetail(s) -> report_error Parser [ NormalLine(s); ]
 
   | IllegalArgumentLength(rng, len, lenexp) ->
       report_error Parser [
@@ -568,9 +546,9 @@ let error_log_environment suspended =
         NormalLine("'" ^ s ^ "' is not a block command name.");
       ]
 
-  | MyYojsonUtil.SyntaxError(srcpath, msg) ->
+  | MyYojsonUtil.SyntaxError(fname, msg) ->
       report_error System [
-        NormalLine("in '" ^ srcpath ^ "':");
+        NormalLine("in '" ^ fname ^ "':");
         NormalLine(msg);
       ]
 

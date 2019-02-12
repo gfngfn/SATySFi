@@ -1,10 +1,6 @@
 
 open MyUtil
 
-exception InvalidYOJSON                of abs_path * string
-exception DumpFileOtherThanAssoc       of abs_path
-exception DumpFileValueOtherThanString of abs_path * string * string
-
 val initialize : abs_path -> bool
 
 type answer =
