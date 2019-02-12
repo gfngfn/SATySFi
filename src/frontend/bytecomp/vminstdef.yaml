@@ -107,14 +107,12 @@ code: |
         ) body
       in
       if arity = n then
-        begin
-         if pargs = [] then
-            exec stack (newframe env1 framesize) body ((env, code) :: dump)
-          else
-            let (args, stack) = popn stack n in
-            let allargs = List.rev (pargs @ args) in
-            exec (allargs @ stack) (newframe env1 framesize) body ((env, code) :: dump)
-        end
+        if pargs = [] then
+          exec stack (newframe env1 framesize) body ((env, code) :: dump)
+        else
+          let (args, stack) = popn stack n in
+          let allargs = List.rev (pargs @ args) in
+          exec (allargs @ stack) (newframe env1 framesize) body ((env, code) :: dump)
 
       else if arity > n then
         let (args, stack) = popn stack n in
@@ -159,7 +157,7 @@ code: |
             | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
             | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
           in
-            OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
+          OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
         ) body
       in
       if arity = n then
