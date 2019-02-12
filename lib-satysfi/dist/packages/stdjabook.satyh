@@ -8,17 +8,29 @@
 @require: annot
 @require: footnote-scheme
 
+
+type config = (|
+  paper-size    : page;
+  show-pages    : bool;
+  text-width    : length;
+  text-height   : length;
+  text-origin   : point;
+  header-origin : point;
+  footer-origin : point;
+  header-width  : length;
+  footer-width  : length;
+|)
+
 module StdJaBook : sig
 
-  val document : 'a -> 'b ?-> block-text -> document
+  val default-config : config
+
+  val document : 'a -> config ?-> block-text -> document
     constraint 'a :: (|
       title : inline-text;
       author : inline-text;
       show-toc : bool;
       show-title : bool;
-    |)
-    constraint 'b :: (|
-      show-pages : bool;
     |)
 
   val font-latin-roman  : string * float * float
@@ -318,24 +330,39 @@ let title-deco =
       inline-fil ++ (repeat-inline n ib)
 
 
-  let document record ?:recordopt inner =
-    % -- constants --
+  let default-config =
+    (|
+      show-pages    = true;
+      paper-size    = A4Paper;
+      text-width    = 440pt;
+      text-height   = 630pt;
+      text-origin   = (80pt, 100pt);
+      header-origin = (40pt, 30pt);
+      footer-origin = (40pt, 780pt);
+      header-width  = 520pt;
+      footer-width  = 520pt;
+    |)
+
+
+  let document record ?:configopt inner =
+    % -- mandatory designation --
     let title = record#title in
     let author = record#author in
-    let page = A4Paper in
-    let txtorg = (80pt, 100pt) in
-    let txtwid = 440pt in
-    let txthgt = 630pt in
-    let hdrorg = (40pt, 30pt) in
-    let ftrorg = (40pt, 780pt) in
-    let hdrwid = 520pt in
-    let ftrwid = 520pt in
+
+    % -- optional designation --
+    let config = Option.from default-config configopt in
+    let page = config#paper-size in
+    let txtorg = config#text-origin in
+    let txtwid = config#text-width in
+    let txthgt = config#text-height in
+    let hdrorg = config#header-origin in
+    let ftrorg = config#footer-origin in
+    let hdrwid = config#header-width in
+    let ftrwid = config#footer-width in
+    let show-pages = config#show-pages in
+
+    % -- constants --
     let thickness = header-line-thickness in
-    let show-pages =
-      match recordopt with
-      | None -> true
-      | Some(flags) -> flags#show-pages
-    in
 
     let () =
       register-cross-reference `changed` `F`
