@@ -37,6 +37,25 @@ match value1 with
 
 | _ -> report_bug_vm "not a Record"
 |}
+    ; inst "UpdateField"
+        ~fields:[
+          field "field_nm" ~type_:"field_name";
+        ]
+        ~params:[
+          param "value1";
+          param "value2";
+        ]
+        ~code:{|
+match value1 with
+| RecordValue(asc1) ->
+    let asc1new =
+      match Assoc.find_opt asc1 field_nm with
+      | Some(_) -> Assoc.add asc1 field_nm value2
+      | None    -> report_bug_vm ("UpdateField field '" ^ field_nm ^ "' not found")
+    in
+    let v = RecordValue(asc1new) in
+    exec (v :: stack) env code dump
+|}
     ; inst "Forward"
         ~fields:[
           field "n" ~type_:"int";

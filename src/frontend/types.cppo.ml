@@ -444,6 +444,7 @@ and untyped_abstract_tree_main =
 (* -- record value -- *)
   | UTRecord               of (field_name * untyped_abstract_tree) list
   | UTAccessField          of untyped_abstract_tree * field_name
+  | UTUpdateField          of untyped_abstract_tree * field_name * untyped_abstract_tree
 (* -- fundamental -- *)
   | UTContentOf            of (module_name list) * var_name
       [@printer (fun fmt (_, vn) -> Format.fprintf fmt "%s" vn)]
@@ -611,6 +612,7 @@ and ir =
   | IRRecord                of Assoc.key list * ir list
       [@printer (fun fmt _ -> Format.fprintf fmt "IRRecord(...)")]
   | IRAccessField           of ir * field_name
+  | IRUpdateField           of ir * field_name * ir
   | IRLetRecIn              of (varloc * ir) list * ir
   | IRLetNonRecIn           of ir * ir_pattern_tree * ir
   | IRContentOf             of varloc
@@ -743,6 +745,7 @@ and abstract_tree =
   | Record                of abstract_tree Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
   | AccessField           of abstract_tree * field_name
+  | UpdateField           of abstract_tree * field_name * abstract_tree
 (* -- fundamental -- *)
   | LetRecIn              of letrec_binding list * abstract_tree
   | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree

@@ -228,6 +228,23 @@ and interpret env ast =
             report_bug_reduction "AccessField: not a Record" ast1 value1
       end
 
+  | UpdateField(ast1, fldnm, ast2) ->
+      let value1 = interpret env ast1 in
+      let value2 = interpret env ast2 in
+      begin
+        match value1 with
+        | RecordValue(asc1) ->
+            let asc1new =
+              match Assoc.find_opt asc1 fldnm with
+              | None    -> report_bug_reduction ("UpdateField: field '" ^ fldnm ^ "' not found") ast1 value1
+              | Some(_) -> Assoc.add asc1 fldnm value2
+            in
+            RecordValue(asc1new)
+
+        | _ ->
+            report_bug_reduction "UpdateField: not a Record" ast1 value1
+      end
+
 (* ---- imperatives ---- *)
 
   | LetMutableIn(evid, astini, astaft) ->

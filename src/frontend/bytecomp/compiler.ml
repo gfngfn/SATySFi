@@ -168,6 +168,9 @@ and compile (ir : ir) (cont : instruction list) =
   | IRAccessField(ir1, fldnm) ->
       compile ir1 (OpAccessField(fldnm) :: cont)
 
+  | IRUpdateField(ir1, fldnm, ir2) ->
+      compile ir1 (compile ir2 @@ OpUpdateField(fldnm) :: cont)
+
   (* ---- imperatives ---- *)
 
   | IRLetMutableIn(var, irini, iraft) ->
