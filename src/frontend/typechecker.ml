@@ -381,8 +381,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
     | (ListType(tysub1), ListType(tysub2)) -> unify_sub tysub1 tysub2
     | (RefType(tysub1), RefType(tysub2))   -> unify_sub tysub1 tysub2
 
-    | (TypeVariable({contents= MonoLink(tyl1)}), _) -> unify_sub tyl1 (rng2, tymain2)
-    | (_, TypeVariable({contents= MonoLink(tyl2)})) -> unify_sub (rng1, tymain1) tyl2
+    | (TypeVariable({contents= MonoLink(tylinked1)}), _) -> unify_sub tylinked1 ty2
+    | (_, TypeVariable({contents= MonoLink(tylinked2)})) -> unify_sub ty1 tylinked2
 
     | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), TypeVariable({contents= MonoFree(tvid2)} as tvref2)) ->
         if FreeID.equal tvid1 tvid2 then
@@ -456,6 +456,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             match kd1 with
             | UniversalKind -> ()
             | RecordKind(_) -> raise InternalContradictionError
+                (* -- `ty2` is not a record type, a type variable, or a link,
+                      and thereby cannot have a record kind -- *)
           in
           let chk = occurs tvid1 ty2 in
           if chk then
