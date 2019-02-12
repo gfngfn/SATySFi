@@ -32,10 +32,11 @@ match value1 with
     begin
       match Assoc.find_opt asc1 field_nm with
       | Some(v) -> exec (v :: stack) env code dump
-      | None    -> report_bug_vm ("AccessField field " ^ field_nm ^ " not found")
+      | None    -> report_bug_vm ("OpAccessField: field '" ^ field_nm ^ "' not found")
     end
 
-| _ -> report_bug_vm "not a Record"
+| _ ->
+    report_bug_vm "OpAccessField: not a Record"
 |}
     ; inst "UpdateField"
         ~fields:[
@@ -51,10 +52,13 @@ match value1 with
     let asc1new =
       match Assoc.find_opt asc1 field_nm with
       | Some(_) -> Assoc.add asc1 field_nm value2
-      | None    -> report_bug_vm ("UpdateField field '" ^ field_nm ^ "' not found")
+      | None    -> report_bug_vm ("OpUpdateField: field '" ^ field_nm ^ "' not found")
     in
     let v = RecordValue(asc1new) in
     exec (v :: stack) env code dump
+
+| _ ->
+  report_bug_vm "OpUpdateField: not a Record"
 |}
     ; inst "Forward"
         ~fields:[
@@ -65,10 +69,8 @@ match value1 with
         ~code:{|
 let (vs, stack) = popn stack n in
 match stack with
-| v0 :: stack ->
-    exec (v0 :: List.rev_append vs stack) env code dump
-| _ ->
-    report_bug_vm "Forward: stack underflow"
+| v0 :: stack -> exec (v0 :: List.rev_append vs stack) env code dump
+| _           -> report_bug_vm "Forward: stack underflow"
 |}
     ; inst "Apply"
         ~fields:[
@@ -87,7 +89,7 @@ match f with
           | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
           | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
         in
-          OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
+        OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
       ) body
     in
     if arity = n then
@@ -97,19 +99,19 @@ match f with
         else
           let (args, stack) = popn stack n in
           let allargs = List.rev (pargs @ args) in
-            exec (allargs @ stack) (newframe env1 framesize) body ((env, code) :: dump)
+          exec (allargs @ stack) (newframe env1 framesize) body ((env, code) :: dump)
       end
 
     else if arity > n then
       let (args, stack) = popn stack n in
       let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
-        exec (applied :: stack) env code dump
+      exec (applied :: stack) env code dump
 
     else
       let (surplus, stack) = popn stack (n - arity) in
       let (args, stack) = popn stack arity in
       let allargs = List.rev (pargs @ args) in
-        exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
+      exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
 
 | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
     if arity = n then
@@ -117,12 +119,12 @@ match f with
 
     else if arity > n then
       let (args, stack) = popn stack n in
-       let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
-         exec (applied :: stack) env code dump
+      let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
+      exec (applied :: stack) env code dump
 
     else
       let (surplus, stack) = popn stack (n - arity) in
-        exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
+      exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
 
  | _ ->
      report_bug_vm_value "Apply: not a function" f
@@ -148,25 +150,23 @@ match f with
       ) body
     in
     if arity = n then
-      begin
-       if pargs = [] then
-          exec stack (newframe env1 framesize) body dump
-        else
-          let (args, stack) = popn stack n in
-          let allargs = List.rev (pargs @ args) in
-            exec (allargs @ stack) (newframe env1 framesize) body dump
-      end
+      if pargs = [] then
+        exec stack (newframe env1 framesize) body dump
+      else
+        let (args, stack) = popn stack n in
+        let allargs = List.rev (pargs @ args) in
+        exec (allargs @ stack) (newframe env1 framesize) body dump
 
     else if arity > n then
       let (args, stack) = popn stack n in
       let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
-        exec (applied :: stack) env code dump
+      exec (applied :: stack) env code dump
 
     else
       let (surplus, stack) = popn stack (n - arity) in
       let (args, stack) = popn stack arity in
       let allargs = List.rev (pargs @ args) in
-        exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
+      exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
 
  | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
      if arity = n then
@@ -174,12 +174,12 @@ match f with
 
      else if arity > n then
        let (args, stack) = popn stack n in
-        let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
-          exec (applied :: stack) env code dump
+       let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
+       exec (applied :: stack) env code dump
 
      else
        let (surplus, stack) = popn stack (n-arity) in
-         exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
+       exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
 
  | _ ->
      report_bug_vm_value "ApplyT: not a function" f
@@ -201,7 +201,7 @@ match f with
     in
     let body = OpPush(Constructor("Some", v)) :: bindop :: body in
     let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
-      exec (fnew :: stack) env code dump
+    exec (fnew :: stack) env code dump
 
 | _ ->
     report_bug_vm_value "ApplyOptional: not a function with optional arguments" f
@@ -222,7 +222,7 @@ match f with
     in
     let body = OpPush(Constructor("None", UnitConstant)) :: bindop :: body in
     let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
-      exec (fnew :: stack) env code dump
+    exec (fnew :: stack) env code dump
 
 | _ ->
     report_bug_vm_value "ApplyOmission: not a function with optional arguments" f
@@ -322,7 +322,7 @@ else
         ~pp:(Custom "(fun fmt (r, evid, refs) -> Format.fprintf fmt \"OpLoadGlobal(%s)\" (EvalVarID.show_direct evid))")
         ~code:{|
 let v = !loc in
-  exec (v :: stack) env code dump
+exec (v :: stack) env code dump
 |}
     ; inst "LoadLocal"
         ~fields:[
@@ -335,7 +335,7 @@ let v = !loc in
         ]
         ~code:{|
 let v = local_get_value env lv offset in
-  exec (v :: stack) env code dump
+exec (v :: stack) env code dump
 |}
     ; inst "Dereference"
         ~fields:[
@@ -409,7 +409,7 @@ let rec collect keys asc st =
       end
   in
   let (asc, stack) = collect (List.rev keylst) Assoc.empty stack in
-    exec (RecordValue(asc) :: stack) env code dump
+  exec (RecordValue(asc) :: stack) env code dump
 |}
     ; inst "MakeTuple"
         ~fields:[
@@ -427,7 +427,7 @@ let rec iter n last st =
     | []             -> report_bug_vm "MakeTuple: stack underflow"
 in
 let (tuple, stack) = iter len EndOfTuple stack in
-  exec (tuple :: stack) env code dump
+exec (tuple :: stack) env code dump
 |}
     ; inst "Pop"
         ~fields:[
@@ -439,7 +439,7 @@ let stack =
   try List.tl stack with
   | Invalid_argument(_) -> report_bug_vm "Pop: stack underflow"
 in
-  exec stack env code dump
+exec stack env code dump
 |}
     ; inst "Push"
         ~fields:[
@@ -573,7 +573,7 @@ exec (CompiledFuncWithEnvironment(optvars, arity, [], framesize, body, env) :: s
         ]
         ~code:{|
 let imihclos = exec_input_horz_content env imihlst in
-  exec (imihclos :: stack) env code dump
+exec (imihclos :: stack) env code dump
 |}
     ; inst "ClosureInputVert"
         ~fields:[
@@ -583,7 +583,7 @@ let imihclos = exec_input_horz_content env imihlst in
         ]
         ~code:{|
 let imivclos = exec_input_vert_content env imivlst in
-  exec (imivclos :: stack) env code dump
+exec (imivclos :: stack) env code dump
 |}
     ; inst "BindLocationGlobal"
         ~fields:[
@@ -596,7 +596,7 @@ let imivclos = exec_input_vert_content env imivlst in
         ~code:{|
 let stid = register_location (vmenv_global env) valueini in
 loc := Location(stid);
-  exec stack env code dump
+exec stack env code dump
 |}
     ; inst "BindLocationLocal"
         ~fields:[
@@ -610,7 +610,7 @@ loc := Location(stid);
         ~code:{|
 let stid = register_location (vmenv_global env) valueini in
 local_set_value env lv offset (Location(stid));
-  exec stack env code dump
+exec stack env code dump
 |}
     ; inst "UpdateGlobal"
         ~fields:[
@@ -629,7 +629,8 @@ match !loc with
       exec (UnitConstant :: stack) env code dump
     end
 
-| _ -> report_bug_vm "UpdateGlobal"
+| _ ->
+    report_bug_vm "UpdateGlobal"
 |}
     ; inst "UpdateLocal"
         ~fields:[
@@ -649,7 +650,8 @@ match local_get_value env lv offset with
        exec (UnitConstant :: stack) env code dump
      end
 
-| _ -> report_bug_vm "UpdateLocal"
+| _ ->
+    report_bug_vm "UpdateLocal"
 |}
     ; inst "Sel"
         ~fields:[
@@ -705,9 +707,9 @@ match (value1, value2) with
 let uchfrom = Uchar.of_int cpfrom in
 let uchto = Uchar.of_int cpto in
 let mcclsmap = ctx.HorzBox.math_variant_char_map in
-  Context(HorzBox.({ ctx with
-    math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) uchto;
-  }), valuecmd)
+Context(HorzBox.({ ctx with
+  math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) uchto;
+}), valuecmd)
 |}
     ; inst "PrimitiveConvertStringForMath"
         ~name:"convert-string-for-math"
@@ -756,7 +758,7 @@ Context(ctx, valuecmd)
         ~code:{|
 let is_big = false in  (* temporary *)
 let mvsty = get_math_variant_style valuercd in
-  MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
+MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
 |}
     ; inst "BackendGetLeftMathClass"
         ~name:"get-left-math-class"
@@ -778,7 +780,7 @@ match mathlst with
 
 | math :: _ ->
     let mathcls = Math.get_left_math_kind ictx math in
-      make_math_class_option_value mathcls
+    make_math_class_option_value mathcls
 |}
     ; inst "BackendGetRightMathClass"
         ~name:"get-right-math-class"
@@ -800,7 +802,7 @@ match List.rev mathlst with
 
 | math :: _ ->
     let mathcls = Math.get_right_math_kind ictx math in
-      make_math_class_option_value mathcls
+    make_math_class_option_value mathcls
 |}
     ; inst "BackendSpaceBetweenMaths"
         ~name:"space-between-maths"
@@ -818,9 +820,9 @@ match List.rev mathlst with
         ~code:{|
 let mathctx = MathContext.make ictx in
 let hbspaceopt = Math.space_between_maths mathctx mathlst1 mathlst2 in
-  match hbspaceopt with
-  | None          -> Constructor("None", UnitConstant)
-  | Some(hbspace) -> Constructor("Some", Horz([hbspace]))
+match hbspaceopt with
+| None          -> Constructor("None", UnitConstant)
+| Some(hbspace) -> Constructor("Some", Horz([hbspace]))
 |}
     ; inst "BackendMathConcat"
         ~name:"math-concat"
@@ -919,9 +921,9 @@ MathValue([MathFraction(mlst1, mlst2)])
         ~code:{|
 let mlst1opt = get_option get_math value1mopt in
 let radical = Primitives.default_radical in  (* temporary; should be variable *)
-  match mlst1opt with
-  | None        -> MathValue([MathRadical(radical, mlst2)])
-  | Some(mlst1) -> MathValue([MathRadicalWithDegree(mlst1, mlst2)])
+match mlst1opt with
+| None        -> MathValue([MathRadical(radical, mlst2)])
+| Some(mlst1) -> MathValue([MathRadicalWithDegree(mlst1, mlst2)])
 |}
     ; inst "BackendMathParen"
         ~name:"math-paren"
@@ -941,7 +943,7 @@ let radical = Primitives.default_radical in  (* temporary; should be variable *)
         ~code:{|
 let parenL = make_paren reducef valueparenL in
 let parenR = make_paren reducef valueparenR in
-  MathValue([MathParen(parenL, parenR, mlst1)])
+MathValue([MathParen(parenL, parenR, mlst1)])
 |}
     ; inst "BackendMathParenWithMiddle"
         ~name:"math-paren-with-middle"
@@ -963,7 +965,7 @@ let parenR = make_paren reducef valueparenR in
 let parenL = make_paren reducef valueparenL in
 let parenR = make_paren reducef valueparenR in
 let middle = make_paren reducef valuemiddle in
-  MathValue([MathParenWithMiddle(parenL, parenR, middle, mlstlst)])
+MathValue([MathParenWithMiddle(parenL, parenR, middle, mlstlst)])
 |}
     ; inst "BackendMathUpperLimit"
         ~name:"math-upper"
@@ -1015,7 +1017,7 @@ MathValue([MathLowerLimit(mlst1, mlst2)])
         ~code:{|
 let mlstf = make_pull_in_scripts reducef valuef in
 let mlst = [HorzBox.(MathPullInScripts(mathcls1, mathcls2, mlstf))] in
-  MathValue(mlst)
+MathValue(mlst)
 |}
     ; inst "BackendMathChar"
         ~name:"math-char"
@@ -1032,7 +1034,7 @@ let mlst = [HorzBox.(MathPullInScripts(mathcls1, mathcls2, mlstf))] in
         ~is_text_mode_primitive:true
         ~code:{|
 let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(false, uchlst))))] in
-  MathValue(mlst)
+MathValue(mlst)
 |}
     ; inst "BackendMathBigChar"
         ~name:"math-big-char"
@@ -1049,7 +1051,7 @@ let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(false, uchlst))))] i
         ~is_text_mode_primitive:true
         ~code:{|
 let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(true, uchlst))))] in
-  MathValue(mlst)
+MathValue(mlst)
 |}
     ; inst "BackendMathCharWithKern"
         ~name:"math-char-with-kern"
@@ -1072,7 +1074,7 @@ let mckf = tLN @-> tLN @-> tLN in
 let kernfL = make_math_char_kern_func reducef valuekernfL in
 let kernfR = make_math_char_kern_func reducef valuekernfR in
 let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(false, uchlst, kernfL, kernfR))))] in
-  MathValue(mlst)
+MathValue(mlst)
 |}
     ; inst "BackendMathBigCharWithKern"
         ~name:"math-big-char-with-kern"
@@ -1095,7 +1097,7 @@ let mckf = tLN @-> tLN @-> tLN in
 let kernfL = make_math_char_kern_func reducef valuekernfL in
 let kernfR = make_math_char_kern_func reducef valuekernfR in
 let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(true, uchlst, kernfL, kernfR))))] in
-  MathValue(mlst)
+MathValue(mlst)
 |}
     ; inst "BackendMathText"
         ~name:"text-in-math"
@@ -1113,9 +1115,9 @@ let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(true, uchlst
         ~code:{|
 let hblstf ictx =
   let valueh = reducef valuef [Context(ictx)] in
-    get_horz valueh
+  get_horz valueh
 in
-  MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
+MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
 |}
     ; inst "BackendMathColor"
         ~name:"math-color"
@@ -1166,7 +1168,7 @@ let rec iter n st acc =
     | _                     -> report_bug_vm "BackendMathList"
 in
 let (mlst, stack) = iter n stack [] in
-  exec (MathValue(List.concat mlst) :: stack) env code dump
+exec (MathValue(List.concat mlst) :: stack) env code dump
 |}
     ; inst "BackendEmbeddedMath"
         ~name:"embed-math"
@@ -1183,7 +1185,7 @@ let (mlst, stack) = iter n stack [] in
         ~code:{|
 let mathctx = MathContext.make ictx in
 let hblst = Math.main mathctx mlst in
-  Horz(hblst)
+Horz(hblst)
 |}
     ; inst "BackendTabular"
         ~name:"tabular"
@@ -1205,9 +1207,9 @@ let rulesf xs ys =
   let valuexs = make_length_list xs in
   let valueys = make_length_list ys in
   let valueret = reducef valuerulesf [valuexs; valueys] in
-    graphics_of_list valueret
+  graphics_of_list valueret
 in
-  Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
+Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
 |}
     ; inst "BackendRegisterPdfImage"
         ~name:"load-pdf-image"
@@ -1224,7 +1226,7 @@ in
         ~code:{|
 let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpathstr) in
 let imgkey = ImageInfo.add_pdf abspath pageno in
-  ImageKey(imgkey)
+ImageKey(imgkey)
 |}
     ; inst "BackendRegisterOtherImage"
         ~name:"load-image"
@@ -1240,7 +1242,7 @@ let imgkey = ImageInfo.add_pdf abspath pageno in
         ~code:{|
 let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpath) in
 let imgkey = ImageInfo.add_image abspath in
-  ImageKey(imgkey)
+ImageKey(imgkey)
 |}
     ; inst "BackendUseImageByWidth"
         ~name:"use-image-by-width"
@@ -1258,9 +1260,10 @@ let imgkey = ImageInfo.add_image abspath in
 match valueimg with
 | ImageKey(imgkey) ->
     let hgt = ImageInfo.get_height_from_width imgkey wid in
-      Horz(HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
+    Horz(HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
 
-| _ -> report_bug_vm "BackendUseImage"
+| _ ->
+    report_bug_vm "BackendUseImage"
 |}
     ; inst "BackendHookPageBreak"
         ~name:"hook-page-break"
@@ -1276,7 +1279,7 @@ match valueimg with
         ~needs_reducef:true
         ~code:{|
 let hookf = make_hook reducef hookf in
-  Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
+Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 |}
     ; inst "Path"
         ~fields:[
@@ -1292,7 +1295,7 @@ let hookf = make_hook reducef hookf in
         ~no_interp:true
         ~code:{|
 let (pathelemlst, closingopt) = get_path env c_pathcomplst c_cycleopt in
-  PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
+PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
 |}
     ; inst "PathUnite"
         ~name:"unite-path"
@@ -1337,9 +1340,9 @@ PathValue(List.map (shift_path ptshift) pathlst)
         ~is_pdf_mode_primitive:true
         ~code:{|
 let (ptmin, ptmax) = get_path_list_bbox pathlst in
-  TupleCons(make_point_value ptmin,
-    TupleCons(make_point_value ptmax,
-      EndOfTuple))
+TupleCons(make_point_value ptmin,
+  TupleCons(make_point_value ptmax,
+    EndOfTuple))
 |}
     ; inst "PrePathBeginning"
         ~name:"start-path"
@@ -1563,7 +1566,7 @@ match value1 with
         ~is_text_mode_primitive:true
         ~code:{|
 let tctx = tctx |> TextBackend.deepen_indent i in
-  TextModeContext(tctx)
+TextModeContext(tctx)
 |}
     ; inst "TextBreak"
         ~name:"break"
@@ -1579,7 +1582,7 @@ let tctx = tctx |> TextBackend.deepen_indent i in
         ~code:{|
 let i = TextBackend.get_indent tctx in
 let s = "\n" ^ (String.make i ' ') in
-  StringConstant(s)
+StringConstant(s)
 |}
     ; inst "TextGetInitialTextModeContext"
         ~name:"get-initial-text-info"
@@ -1596,7 +1599,7 @@ let s = "\n" ^ (String.make i ' ') in
 match value1 with
 | UnitConstant ->
     let tctx = TextBackend.get_initial_text_mode_context () in
-      TextModeContext(tctx)
+    TextModeContext(tctx)
 
 | _ ->
     report_bug_value "TextGetInitialTextModeContext" value1
@@ -1645,7 +1648,7 @@ make_font_value (abbrev, size_ratio, rising_ratio)
         ~is_pdf_mode_primitive:true
         ~code:{|
 let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
-  Vert(imvblst)
+Vert(imvblst)
 |}
     ; inst "BackendPageBreaking"
         ~name:"page-break"
@@ -1665,7 +1668,7 @@ let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.p
         ~code:{|
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-  DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
+DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
 |}
     ; inst "BackendVertFrame"
         ~name:"block-frame-breakable"
@@ -1690,17 +1693,17 @@ let valuectxsub =
 in
 let vblst =
   let valuev = reducef valuek [valuectxsub] in
-    get_vert valuev
+  get_vert valuev
 in
-  Vert(HorzBox.([
-    VertTopMargin(true, ctx.paragraph_top);
-    VertFrame(pads,
-                make_frame_deco reducef valuedecoS,
-                make_frame_deco reducef valuedecoH,
-                make_frame_deco reducef valuedecoM,
-                make_frame_deco reducef valuedecoT,
-                ctx.paragraph_width, vblst);
-    VertBottomMargin(true, ctx.paragraph_bottom);
+Vert(HorzBox.([
+  VertTopMargin(true, ctx.paragraph_top);
+  VertFrame(pads,
+              make_frame_deco reducef valuedecoS,
+              make_frame_deco reducef valuedecoH,
+              make_frame_deco reducef valuedecoM,
+              make_frame_deco reducef valuedecoT,
+              ctx.paragraph_width, vblst);
+  VertBottomMargin(true, ctx.paragraph_bottom);
 ]))
 |}
     ; inst "BackendAddFootnote"
@@ -1716,7 +1719,7 @@ in
         ~is_pdf_mode_primitive:true
         ~code:{|
 let imvblst = PageBreak.solidify vblst in
-  Horz(HorzBox.([HorzPure(PHGFootnote(imvblst))]))
+Horz(HorzBox.([HorzPure(PHGFootnote(imvblst))]))
 |}
     ; inst "BackendEmbeddedVertTop"
         ~name:"embed-block-top"
@@ -1738,11 +1741,11 @@ let valuectxsub =
 in
 let vblst =
   let valuev = reducef valuek [valuectxsub] in
-    get_vert valuev
+  get_vert valuev
 in
 let imvblst = PageBreak.solidify vblst in
 let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 |}
     ; inst "BackendVertSkip"
         ~name:"block-skip"
@@ -1782,7 +1785,7 @@ let vblst =
 in
 let imvblst = PageBreak.solidify vblst in
 let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 |}
     ; inst "BackendLineStackTop"
         ~name:"line-stack-top"
@@ -1800,7 +1803,7 @@ let hblstlst = get_list get_horz valuehblstlst in
 let (wid, vblst) = make_line_stack hblstlst in
 let imvblst = PageBreak.solidify vblst in
 let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 |}
     ; inst "BackendLineStackBottom"
         ~name:"line-stack-bottom"
@@ -1818,7 +1821,7 @@ let hblstlst = get_list get_horz valuehblstlst in
 let (wid, vblst) = make_line_stack hblstlst in
 let imvblst = PageBreak.solidify vblst in
 let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 |}
     ; inst "PrimitiveGetInitialContext"
         ~name:"get-initial-context"
@@ -1834,7 +1837,7 @@ let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
         ~is_pdf_mode_primitive:true
         ~code:{|
 let ctx = Primitives.get_pdf_mode_initial_context txtwid in
-  Context(ctx, valuecmd)
+Context(ctx, valuecmd)
 |}
     ; inst "PrimitiveSetHyphenMin"
         ~name:"set-hyphen-min"
@@ -2022,7 +2025,7 @@ LengthConstant(ctx.HorzBox.font_size)
         ~is_pdf_mode_primitive:true
         ~code:{|
 let font_scheme_new = HorzBox.(ctx.font_scheme |> CharBasis.ScriptSchemeMap.add script font_info) in
-  Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), valuecmd)
+Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), valuecmd)
 |}
     ; inst "PrimitiveGetFont"
         ~name:"get-font"
@@ -2038,7 +2041,7 @@ let font_scheme_new = HorzBox.(ctx.font_scheme |> CharBasis.ScriptSchemeMap.add 
         ~is_pdf_mode_primitive:true
         ~code:{|
 let fontwr = HorzBox.get_font_with_ratio ctx script in
-  make_font_value fontwr
+make_font_value fontwr
 |}
     ; inst "PrimitiveSetMathFont"
         ~name:"set-math-font"
@@ -2145,7 +2148,7 @@ Context(HorzBox.({ ctx with
         ~is_pdf_mode_primitive:true
         ~code:{|
 let langsys = HorzBox.get_language_system ctx script in
-  make_language_system_value langsys
+make_language_system_value langsys
 |}
     ; inst "PrimitiveSetTextColor"
         ~name:"set-text-color"
@@ -2175,7 +2178,7 @@ Context(HorzBox.({ ctx with text_color = color; }), valuecmd)
         ~is_pdf_mode_primitive:true
         ~code:{|
 let color = ctx.HorzBox.text_color in
-  make_color_value color
+make_color_value color
 |}
     ; inst "PrimitiveSetLeading"
         ~name:"set-leading"
@@ -2433,7 +2436,7 @@ Horz([HorzBox.HorzFrameBreakable(
         ~needs_reducef:true
         ~code:{|
 let graphics = make_inline_graphics reducef valueg in
-  Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
+Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 |}
     ; inst "BackendInlineGraphicsOuter"
         ~name:"inline-graphics-outer"
@@ -2451,7 +2454,7 @@ let graphics = make_inline_graphics reducef valueg in
         ~needs_reducef:true
         ~code:{|
 let graphics = make_inline_graphics_outer reducef valueg in
-  Horz(HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
+Horz(HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
 |}
     ; inst "BackendScriptGuard"
         ~name:"script-guard"
@@ -2578,9 +2581,9 @@ match CrossRef.get k with
         ~is_pdf_mode_primitive:true
         ~code:{|
 let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
-  TupleCons(LengthConstant(wid),
-    TupleCons(LengthConstant(hgt),
-      TupleCons(LengthConstant(Length.negate dpt), EndOfTuple)))
+TupleCons(LengthConstant(wid),
+  TupleCons(LengthConstant(hgt),
+    TupleCons(LengthConstant(Length.negate dpt), EndOfTuple)))
 |}
     ; inst "PrimitiveGetNaturalLength"
         ~name:"get-natural-length"
@@ -2596,7 +2599,7 @@ let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
         ~code:{|
 let imvblst = PageBreak.solidify vblst in
 let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-  LengthConstant(hgt +% (Length.negate dpt))
+LengthConstant(hgt +% (Length.negate dpt))
 |}
     ; inst "PrimitiveDisplayMessage"
         ~name:"display-message"
@@ -2658,10 +2661,10 @@ BooleanConstant(String.equal str1 str2)
         ~is_text_mode_primitive:true
         ~code:{|
 let resstr =
-try BatUTF8.sub str pos wid with
-| Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub"
+  try BatUTF8.sub str pos wid with
+  | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub"
 in
-  StringConstant(resstr)
+StringConstant(resstr)
 |}
     ; inst "PrimitiveStringSubBytes"
         ~name:"string-sub-bytes"
@@ -2679,10 +2682,10 @@ in
         ~is_text_mode_primitive:true
         ~code:{|
 let resstr =
-try String.sub str pos wid with
-| Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub-bytes"
+  try String.sub str pos wid with
+  | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub-bytes"
 in
-  StringConstant(resstr)
+StringConstant(resstr)
 |}
     ; inst "PrimitiveStringLength"
         ~name:"string-length"
@@ -2749,7 +2752,7 @@ else
         ~code:{|
 let ilst = get_list get_int valueilst in
 let s = (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8 in
-  StringConstant(s)
+StringConstant(s)
 |}
     ; inst "PrimitiveRegExpOfString"
         ~name:"regexp-of-string"
@@ -2768,7 +2771,7 @@ let regexp =
   try Str.regexp str with
   | Failure(msg) -> report_dynamic_error ("regexp-of-string: " ^ msg)
 in
-  RegExpConstant(regexp)
+RegExpConstant(regexp)
 |}
     ; inst "PrimitiveStringMatch"
         ~name:"string-match"
@@ -2801,8 +2804,8 @@ BooleanConstant(Str.string_match pat s 0)
         ~code:{|
 let slst = String.split_on_char '\n' s in
 let pairlst = slst |> List.map chop_space_indent in
-  (pairlst |> make_list (fun (i, s) ->
-    TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple))))
+(pairlst |> make_list (fun (i, s) ->
+  TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple))))
 |}
     ; inst "PrimitiveSplitOnRegExp"
         ~name:"split-on-regexp"
@@ -2820,8 +2823,8 @@ let pairlst = slst |> List.map chop_space_indent in
         ~code:{|
 let slst = Str.split sep str in
 let pairlst = slst |> List.map chop_space_indent in
-  (pairlst |> make_list (fun (i, s) ->
-    TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple))))
+(pairlst |> make_list (fun (i, s) ->
+  TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple))))
 |}
     ; inst "PrimitiveArabic"
         ~name:"arabic"
@@ -2898,7 +2901,7 @@ IntegerConstant(int_of_float fc1)
         ~code:{|
 let (imhblst, _, _) = LineBreak.natural hblst in
 let grelem = GraphicD.make_text pt imhblst in
-  GraphicsValue(grelem)
+GraphicsValue(grelem)
 |}
     ; inst "PrimitiveDrawStroke"
         ~name:"stroke"
@@ -2915,7 +2918,7 @@ let grelem = GraphicD.make_text pt imhblst in
         ~is_pdf_mode_primitive:true
         ~code:{|
 let grelem = GraphicD.make_stroke wid color pathlst in
-  GraphicsValue(grelem)
+GraphicsValue(grelem)
 |}
     ; inst "PrimitiveDrawFill"
         ~name:"fill"
@@ -2931,7 +2934,7 @@ let grelem = GraphicD.make_stroke wid color pathlst in
         ~is_pdf_mode_primitive:true
         ~code:{|
 let grelem = GraphicD.make_fill color pathlst in
-  GraphicsValue(grelem)
+GraphicsValue(grelem)
 |}
     ; inst "PrimitiveDrawDashedStroke"
         ~name:"dashed-stroke"
@@ -2950,7 +2953,7 @@ let grelem = GraphicD.make_fill color pathlst in
         ~code:{|
 let (len1, len2, len3) = get_tuple3 get_length valuetup3 in
 let grelem = GraphicD.make_dashed_stroke wid (len1, len2, len3) color pathlst in
-  GraphicsValue(grelem)
+GraphicsValue(grelem)
 |}
     ; inst "PrimitiveShiftGraphics"
         ~name:"shift-graphics"
@@ -2985,9 +2988,9 @@ let (ptmin, ptmax) =
       ((x, y +% dpt), (x +% wid, y +% hgt))
   ) grelem
 in
-  TupleCons(make_point_value ptmin,
-    TupleCons(make_point_value ptmax,
-      EndOfTuple))
+TupleCons(make_point_value ptmin,
+  TupleCons(make_point_value ptmax,
+    EndOfTuple))
 |}
     ; inst "Times"
         ~name:"*"
@@ -3492,7 +3495,7 @@ Context(HorzBox.({ ctx with
         ~code:{|
 let hblst1 = ctx.HorzBox.before_word_break in
 let hblst2 = ctx.HorzBox.after_word_break in
-  TupleCons(Horz(hblst1), TupleCons(Horz(hblst2), EndOfTuple))
+TupleCons(Horz(hblst1), TupleCons(Horz(hblst2), EndOfTuple))
 |}
     ; inst "BackendProbeCrossReference"
         ~name:"probe-cross-reference"
