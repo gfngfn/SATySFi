@@ -1159,14 +1159,18 @@ let collect_dangerous_variables : mono_type -> FreeIDSet.t =
    occurring in the mono type `ty` and having a level greater than `lev`.
    -- *)
 let generalize (lev : level) (ty : mono_type) : poly_type =
+  let dangerous_tvids = collect_dangerous_variables ty in
   let ptv tvid =
-    let bkd =
-      let kd = FreeID.get_kind tvid in
-      match kd with
-      | UniversalKind   -> true
-      | RecordKind(asc) -> Assoc.for_all_value (check_level lev) asc
-    in
-    FreeID.is_quantifiable tvid && Level.less_than lev (FreeID.get_level tvid) && bkd
+    if FreeIDSet.mem tvid dangerous_tvids then
+      false
+    else
+      let bkd =
+        let kd = FreeID.get_kind tvid in
+        match kd with
+        | UniversalKind   -> true
+        | RecordKind(asc) -> Assoc.for_all_value (check_level lev) asc
+      in
+      (* FreeID.is_quantifiable tvid && *) Level.less_than lev (FreeID.get_level tvid) && bkd
   in
   let porv orv =
     not (Level.less_than lev (OptionRowVarID.get_level orv))
