@@ -1154,15 +1154,19 @@ let collect_dangerous_variables : mono_type -> FreeIDSet.t =
     ) hashset FreeIDSet.empty
 
 
-(* --
-   `generalize lev ty` quantifies the ( type | option row ) variables
-   occurring in the mono type `ty` and having a level greater than `lev`.
-   -- *)
-let generalize (lev : level) (ty : mono_type) : poly_type =
+let generalize_scheme (nondangerous_only : bool) (lev : level) (ty : mono_type) : poly_type =
   let dangerous_tvids = collect_dangerous_variables ty in
+
+  let () = Format.printf "NONDANGEROUS ONLY: %B\n" nondangerous_only in  (* for debug *)
+  let () = Format.printf "GENERALIZED TYPE: [%a]\n" pp_mono_type ty in  (* for debug *)
+  let () = Format.printf "DANGEROUS VARIABLES:[" in  (* for debug *)
+  let () = FreeIDSet.iter (fun tvid -> Format.printf "%s" (FreeID.show_direct show_mono_kind tvid)) dangerous_tvids in  (* for debug *)
+  let () = Format.printf "]\n" in  (* for debug *)
+
   let ptv tvid =
-    if FreeIDSet.mem tvid dangerous_tvids then
+    if nondangerous_only && FreeIDSet.mem tvid dangerous_tvids then
       false
+        (* -- does not quantify dangerous variables -- *)
     else
       let bkd =
         let kd = FreeID.get_kind tvid in
@@ -1176,6 +1180,19 @@ let generalize (lev : level) (ty : mono_type) : poly_type =
     not (Level.less_than lev (OptionRowVarID.get_level orv))
   in
   Poly(lift_poly_general ptv porv ty)
+
+
+let generalize =
+  generalize_scheme false
+
+
+(* --
+   `generalize_nondangerous lev ty` quantifies the ( type | option row ) variables
+   occurring only in non-dangerous places of the mono type `ty`
+   and having a level greater than `lev`.
+   -- *)
+let generalize_nondangerous =
+  generalize_scheme true
 
 
 let lift_poly_body =

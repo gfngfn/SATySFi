@@ -78,16 +78,16 @@ let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_v
   ) patvarmap1 patvarmap2
 
 
-let add_pattern_var_mono (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
+let add_pattern_var_mono lev (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
-    let pty = lift_poly (erase_range_of_type ty) in
+    let pty = generalize_nondangerous lev (erase_range_of_type ty) in
     Typeenv.add tyenvacc varnm (pty, evid)
   ) patvarmap tyenv
 
 
 let add_pattern_var_poly lev (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
-    let pty = (generalize lev (erase_range_of_type ty)) in
+    let pty = generalize lev (erase_range_of_type ty) in
     Typeenv.add tyenvacc varnm (pty, evid)
   ) patvarmap tyenv
 
@@ -745,7 +745,7 @@ let rec typecheck
           add_pattern_var_poly lev tyenv patvarmap
         else
         (* -- 'e1' should be typed monomorphically -- *)
-          add_pattern_var_mono tyenv patvarmap
+          add_pattern_var_mono lev tyenv patvarmap
       in
       let (e2, ty2) = typecheck_iter tyenvnew utast2 in
       (LetNonRecIn(pat, e1, e2), ty2)
@@ -1148,13 +1148,13 @@ and typecheck_pattern_branch (qtfbl : quantifiability) (lev : level) (tyenv : Ty
   match utpatbr with
     | UTPatternBranch(utpat, utast1) ->
         let (epat, typat, patvarmap) = typecheck_pattern qtfbl lev tyenv utpat in
-        let tyenvpat = add_pattern_var_mono tyenv patvarmap in
+        let tyenvpat = add_pattern_var_mono lev tyenv patvarmap in
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
         (PatternBranch(epat, e1), typat, ty1)
 
     | UTPatternBranchWhen(utpat, utastB, utast1) ->
         let (epat, typat, patvarmap) = typecheck_pattern qtfbl lev tyenv utpat in
-        let tyenvpat = add_pattern_var_mono tyenv patvarmap in
+        let tyenvpat = add_pattern_var_mono lev tyenv patvarmap in
         let (eB, tyB) = typecheck qtfbl lev tyenvpat utastB in
         unify_ tyenvpat tyB (Range.dummy "pattern-match-cons-when", BaseType(BoolType));
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
