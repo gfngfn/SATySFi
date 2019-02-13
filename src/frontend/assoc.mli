@@ -21,6 +21,8 @@ val iter : (key -> 'v -> unit) -> 'v t -> unit
 
 val fold_value : ('a -> 'v -> 'a) -> 'a -> 'v t -> 'a
 
+val for_all_value : ('v -> bool) -> 'v t -> bool
+
 val to_value_list : 'v t -> 'v list
 
 val fold : ('a -> key -> 'v -> 'a) -> 'a -> 'v t -> 'a
@@ -40,4 +42,3 @@ val intersection : 'v t -> 'v t -> ('v * 'v) list
 val union : 'v t -> 'v t -> 'v t
 
 val cardinal : 'v t -> int
-

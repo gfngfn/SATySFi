@@ -41,6 +41,10 @@ let fold_value f init amap =
   AssocMap.fold (fun _ v acc -> f acc v) amap init
 
 
+let for_all_value p amap =
+  fold_value (fun b v -> b && p v) true amap
+
+
 let to_value_list amap =
   AssocMap.fold (fun _ v acc ->
     v :: acc
@@ -84,4 +88,3 @@ let union amap1 amap2 =
 
 let cardinal amap =
   AssocMap.cardinal amap
-

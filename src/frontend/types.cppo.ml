@@ -1049,13 +1049,18 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
   iter ty
 
 
-let check_level lev (ty : mono_type) =
+(* --
+   `check_level lev ty` checks whether
+   every ( type | option row ) variable occurring in `ty`
+   has a level greater than `lev`.
+   -- *)
+let check_level (lev : level) (ty : mono_type) : bool =
   let rec iter (_, tymain) =
     match tymain with
     | TypeVariable(tvref) ->
         begin
           match !tvref with
-          | MonoLink(ty) -> iter ty
+          | MonoLink(ty)   -> iter ty
           | MonoFree(tvid) -> Level.less_than lev (FreeID.get_level tvid)
         end
 
@@ -1070,8 +1075,7 @@ let check_level lev (ty : mono_type) =
 
     | HorzCommandType(cmdargtylst)
     | VertCommandType(cmdargtylst)
-    | MathCommandType(cmdargtylst)
-      ->
+    | MathCommandType(cmdargtylst) ->
         List.for_all iter_cmd cmdargtylst
 
   and iter_cmd = function
@@ -1094,13 +1098,17 @@ let check_level lev (ty : mono_type) =
   iter ty
 
 
-let generalize (lev : level) (ty : mono_type) =
+(* --
+   `generalize lev ty` quantifies the ( type | option row ) variables
+   occurring in the mono type `ty` and having a level greater than `lev`.
+   -- *)
+let generalize (lev : level) (ty : mono_type) : poly_type =
   let ptv tvid =
     let bkd =
       let kd = FreeID.get_kind tvid in
       match kd with
       | UniversalKind   -> true
-      | RecordKind(asc) -> Assoc.fold_value (fun b ty -> b && (check_level lev ty)) true asc
+      | RecordKind(asc) -> Assoc.for_all_value (check_level lev) asc
     in
     FreeID.is_quantifiable tvid && Level.less_than lev (FreeID.get_level tvid) && bkd
   in
@@ -1114,6 +1122,11 @@ let lift_poly_body =
   lift_poly_general (fun _ -> false) (fun _ -> false)
 
 
+(* --
+   `lift_poly ty` simply lifts the mono type `ty`
+   into its corresponding poly type
+   without quantifying any ( type | option row ) variable.
+   -- *)
 let lift_poly (ty : mono_type) : poly_type =
   Poly(lift_poly_body ty)
 
@@ -1157,6 +1170,10 @@ and unlift_aux_or = function
   | OptionRowVariable(PolyORFree(orviref)) -> OptionRowVariable(orviref)
 
 
+(* --
+   `unlift_poly pty` converts the poly type `pty` into its corresponding mono type
+   if it contains no bound type variable, or returns `None` otherwise.
+    -- *)
 let unlift_poly (pty : poly_type_body) : mono_type option =
   try Some(unlift_aux pty) with
   | Exit -> None
