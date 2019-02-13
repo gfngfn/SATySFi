@@ -119,6 +119,7 @@ module FreeID_
     val initialize : unit -> unit
     val fresh : 'a -> quantifiability -> level -> unit -> 'a t_
     val equal : 'a t_ -> 'a t_ -> bool
+    val compare : 'a t_ -> 'a t_ -> int
     val is_quantifiable : 'a t_ -> bool
     val set_quantifiability : quantifiability -> 'a t_ -> unit
     val get_kind : 'a t_ -> 'a
@@ -156,6 +157,9 @@ module FreeID_
 
     let equal tvid1 tvid2 =
       tvid1.id = tvid2.id
+
+    let compare tvid1 tvid2 =
+      tvid2.id - tvid1.id
 
     let is_quantifiable tvid =
       match tvid.quantifiability with
@@ -1065,7 +1069,7 @@ let check_level (lev : level) (ty : mono_type) : bool =
         end
 
     | ProductType(tylst)             -> List.for_all iter tylst
-    | RecordType(tyasc)              -> Assoc.fold_value (fun b ty -> b && iter ty) true tyasc
+    | RecordType(tyasc)              -> Assoc.for_all_value iter tyasc
     | FuncType(optrow, tydom, tycod) -> iter_or optrow && iter tydom && iter tycod
     | RefType(tycont)                -> iter tycont
     | BaseType(_)                    -> true
@@ -1096,6 +1100,58 @@ let check_level (lev : level) (ty : mono_type) : bool =
 
   in
   iter ty
+
+
+module FreeIDSet = Set.Make(FreeID)
+
+
+let collect_dangerous_variables : mono_type -> FreeIDSet.t =
+  let hashset = FreeIDHashTable.create 32 in
+  let rec iter dangerous (_, tymain) =
+    match tymain with
+    | TypeVariable(tvref) ->
+        begin
+          match !tvref with
+          | MonoLink(ty)   -> iter dangerous ty
+          | MonoFree(tvid) -> if dangerous then FreeIDHashTable.add hashset tvid ()
+        end
+
+    | BaseType(_)                -> ()
+    | ProductType(tylst)         -> List.iter (iter dangerous) tylst
+    | RecordType(tyasc)          -> Assoc.iter_value (iter dangerous) tyasc
+    | FuncType(optrow, ty1, ty2) -> iter_opt optrow; iter true ty1; iter dangerous ty2
+    | RefType(tycont)            -> iter true tycont
+    | ListType(tycont)           -> iter dangerous tycont
+    | VariantType(tylst, _)      -> let b = dangerous || false in List.iter (iter b) tylst
+                                     (* TEMPORARY; `b` should depend on the definition of the variant type *)
+    | SynonymType(_, _, tyreal)  -> iter dangerous tyreal
+
+    | HorzCommandType(argtylst)
+    | VertCommandType(argtylst)
+    | MathCommandType(argtylst)  -> List.iter iter_arg argtylst
+
+  and iter_arg = function
+    | MandatoryArgumentType(ty) -> iter true ty
+    | OptionalArgumentType(ty)  -> iter true ty
+
+  and iter_opt = function
+    | OptionRowEmpty            -> ()
+    | OptionRowCons(ty, optrow) -> iter true ty; iter_opt optrow
+
+    | OptionRowVariable(ovref) ->
+        begin
+          match !ovref with
+          | MonoORFree(ovid)   -> ()  (* DOUBTFUL *)
+          | MonoORLink(optrow) -> iter_opt optrow
+        end
+
+  in
+  fun ty ->
+    FreeIDHashTable.clear hashset;
+    iter false ty;
+    FreeIDHashTable.fold (fun tvid () set ->
+      set |>FreeIDSet.add tvid
+    ) hashset FreeIDSet.empty
 
 
 (* --
