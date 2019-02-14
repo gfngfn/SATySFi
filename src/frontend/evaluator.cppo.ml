@@ -378,7 +378,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       let code1 = interpret_1 env ast1 in
       CodeValue(code1)
 
-#include "__evaluator.gen.ml"
+#include "__evaluator_0.gen.ml"
 
 
 and interpret_1 (env : environment) (ast : abstract_tree) =

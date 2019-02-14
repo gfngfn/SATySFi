@@ -16,7 +16,7 @@ INSTTYPE_GEN=$(FRONTEND)/__insttype.gen.ml
 ATTYPE_GEN=$(FRONTEND)/__attype.gen.ml
 VM_GEN=$(BYTECOMP)/__vm.gen.ml
 IR_GEN=$(BYTECOMP)/__ir.gen.ml
-EVAL_GEN=$(FRONTEND)/__evaluator.gen.ml
+EVAL_GEN_0=$(FRONTEND)/__evaluator_0.gen.ml
 PRIM_PDF_GEN=$(FRONTEND)/__primitives_pdf_mode.gen.ml
 PRIM_TEXT_GEN=$(FRONTEND)/__primitives_text_mode.gen.ml
 GENS= \
@@ -24,7 +24,7 @@ GENS= \
   $(ATTYPE_GEN) \
   $(VM_GEN) \
   $(IR_GEN) \
-  $(EVAL_GEN) \
+  $(EVAL_GEN_0) \
   $(PRIM_PDF_GEN) \
   $(PRIM_TEXT_GEN)
 GENCODE_DIR=tools/gencode
@@ -56,8 +56,8 @@ $(VM_GEN): $(INSTDEF)
 $(IR_GEN): $(INSTDEF)
 	$(GENCODE) --gen-ir > $@
 
-$(EVAL_GEN): $(INSTDEF)
-	$(GENCODE) --gen-interps > $@
+$(EVAL_GEN_0): $(INSTDEF)
+	$(GENCODE) --gen-interps-0 > $@
 
 $(PRIM_PDF_GEN): $(INSTDEF)
 	$(GENCODE) --gen-pdf-mode-prims > $@

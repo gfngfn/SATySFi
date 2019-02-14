@@ -76,7 +76,7 @@ let gen_text_mode_prims () =
   gen_prims is_text_mode_primitive
 
 
-let gen_interps () =
+let gen_interps_0 () =
   let open Instruction in
   Vminst.def |> List.iter (function
   | {
@@ -300,7 +300,7 @@ let () =
       ("--gen-ir"             , gen_ircases        );
       ("--gen-insttype"       , gen_insttype       );
       ("--gen-attype"         , gen_attype         );
-      ("--gen-interps"        , gen_interps        );
+      ("--gen-interps-0"      , gen_interps_0      );
       ("--gen-pdf-mode-prims" , gen_pdf_mode_prims );
       ("--gen-text-mode-prims", gen_text_mode_prims);
     ]

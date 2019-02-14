@@ -60,7 +60,7 @@ def gen_text_mode_prims
   gen_prims("is-text-mode-primitive")
 end
 
-def gen_interps
+def gen_interps_0
   YAML.load_stream(ARGF.read) do |inst|
     if (inst["is-pdf-mode-primitive"] || inst["is-text-mode-primitive"]) && !default_false(inst["no-interp"]) then
       tmpn = 0
@@ -300,7 +300,7 @@ opt.on('--gen-vm') {|v| func = method(:gen_vminstrs) }
 opt.on('--gen-ir') {|v| func = method(:gen_ircases) }
 opt.on('--gen-insttype') {|v| func = method(:gen_insttype) }
 opt.on('--gen-attype') {|v| func = method(:gen_attype) }
-opt.on('--gen-interps') {|v| func = method(:gen_interps) }
+opt.on('--gen-interps-0') {|v| func = method(:gen_interps_0) }
 opt.on('--gen-pdf-mode-prims') {|v| func = method(:gen_pdf_mode_prims) }
 opt.on('--gen-text-mode-prims') {|v| func = method(:gen_text_mode_prims) }
 opt.on('--ml') {|v| func = method(:gen_ml) }
