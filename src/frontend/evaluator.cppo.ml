@@ -507,70 +507,67 @@ and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_val
       report_dynamic_error ("no matches (" ^ (Range.to_string rng) ^ ")")
 
   | PatternBranch(pat, astto) :: tail ->
-      let (b, envnew) = check_pattern_matching env pat valueobj in
-      if b then
-        interpret_0 envnew astto
-      else
-        iter tail
+      begin
+        match check_pattern_matching env pat valueobj with
+        | Some(envnew) -> interpret_0 envnew astto
+        | None         -> iter tail
+      end
 
   | PatternBranchWhen(pat, astcond, astto) :: tail ->
-      let (b, envnew) = check_pattern_matching env pat valueobj in
-      let cond = get_bool (interpret_0 envnew astcond) in
-      if b && cond then
-        interpret_0 envnew astto
-      else
-        iter tail
+      begin
+        match check_pattern_matching env pat valueobj with
+        | Some(envnew) ->
+            let cond = get_bool (interpret_0 envnew astcond) in
+            if cond then interpret_0 envnew astto else iter tail
+
+        | None ->
+            iter tail
+      end
 
 
-and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : syntactic_value) =
-  let return b = (b, env) in
+and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : syntactic_value) : environment option =
   match (pat, valueobj) with
-  | (PIntegerConstant(pnc), IntegerConstant(nc)) -> return (pnc = nc)
-  | (PBooleanConstant(pbc), BooleanConstant(bc)) -> return (pbc = bc)
+  | (PIntegerConstant(pnc), IntegerConstant(nc)) -> if pnc = nc then Some(env) else None
+  | (PBooleanConstant(pbc), BooleanConstant(bc)) -> if pbc = bc then Some(env) else None
 
   | (PStringConstant(ast1), value2) ->
       let str1 = get_string (interpret_0 env ast1) in
       let str2 = get_string value2 in
-      return (String.equal str1 str2)
+      if String.equal str1 str2 then Some(env) else None
 
-  | (PUnitConstant, UnitConstant) -> return true
-  | (PWildCard, _)                -> return true
+  | (PUnitConstant, UnitConstant) -> Some(env)
+  | (PWildCard, _)                -> Some(env)
 
   | (PVariable(evid), _) ->
       let envnew = add_to_environment env evid (ref valueobj) in
-      (true, envnew)
+      Some(envnew)
 
   | (PAsVariable(evid, psub), sub) ->
       let envnew = add_to_environment env evid (ref sub) in
       check_pattern_matching envnew psub sub
 
-  | (PEndOfList, EndOfList) -> return true
+  | (PEndOfList, EndOfList) ->
+      Some(env)
 
   | (PListCons(phd, ptl), ListCons(hd, tl)) ->
-      let (bhd, envhd) = check_pattern_matching env phd hd in
-      let (btl, envtl) = check_pattern_matching envhd ptl tl in
-      if bhd && btl then
-        (true, envtl)
-      else
-        return false
+      let open OptionMonad in
+      check_pattern_matching env phd hd >>= fun envhd ->
+      check_pattern_matching envhd ptl tl
 
   | (PEndOfTuple, EndOfTuple) ->
-      return true
+      Some(env)
 
   | (PTupleCons(phd, ptl), TupleCons(hd, tl)) ->
-      let (bhd, envhd) = check_pattern_matching env phd hd in
-      let (btl, envtl) = check_pattern_matching envhd ptl tl in
-      if bhd && btl then
-        (true, envtl)
-      else
-        return false
+      let open OptionMonad in
+      check_pattern_matching env phd hd >>= fun envhd ->
+      check_pattern_matching envhd ptl tl
 
   | (PConstructor(cnm1, psub), Constructor(cnm2, sub))
     when cnm1 = cnm2 ->
       check_pattern_matching env psub sub
 
   | _ ->
-      return false
+      None
 
 
 and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_binding list) : environment =
