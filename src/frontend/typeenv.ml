@@ -470,6 +470,7 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
+    | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
 
   and aux_or optrow =
     match optrow with

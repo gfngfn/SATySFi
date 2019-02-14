@@ -473,4 +473,13 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let (iraft, env) = transform env astaft in
           (IRModule(irmdl, iraft), env)
 
+  (* -- staging construct -- *)
+
+    | Prev(_) ->
+        failwith "Prev(_); remains to be supported."
+
+    | Next(_) ->
+        failwith "Next(_); remains to be supported."
+
+
 #include "__ir.gen.ml"

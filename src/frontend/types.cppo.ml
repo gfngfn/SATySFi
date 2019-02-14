@@ -312,6 +312,7 @@ and ('a, 'b) type_main =
   | HorzCommandType of (('a, 'b) command_argument_type) list
   | VertCommandType of (('a, 'b) command_argument_type) list
   | MathCommandType of (('a, 'b) command_argument_type) list
+  | CodeType        of ('a, 'b) typ
 
 and ('a, 'b) command_argument_type =
   | MandatoryArgumentType of ('a, 'b) typ
@@ -377,6 +378,10 @@ module BoundID =
 let pp_sep fmt () =
   Format.fprintf fmt ";@ "
 
+
+type stage =
+  | Stage0
+  | Stage1
 
 type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
@@ -478,6 +483,9 @@ and untyped_abstract_tree_main =
 (* -- for lightweight command definition -- *)
   | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
   | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
+(* -- multi-stage constructs -- *)
+  | UTNext                 of untyped_abstract_tree
+  | UTPrev                 of untyped_abstract_tree
 
 and constraints = (var_name * manual_kind) list
 
@@ -767,6 +775,9 @@ and abstract_tree =
   | Module                of abstract_tree * abstract_tree
   | BackendMathList             of abstract_tree list
   | PrimitiveTupleCons    of abstract_tree * abstract_tree
+(* -- staging constructs -- *)
+  | Next                  of abstract_tree
+  | Prev                  of abstract_tree
 #include "__attype.gen.ml"
 
 and pattern_branch =
@@ -883,6 +894,7 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
+    | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
 
 and erase_range_of_kind (kd : mono_kind) =
@@ -952,6 +964,7 @@ let rec instantiate_aux bid_ht lev qtfbl (rng, ptymain) =
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
+    | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
 
 
 and instantiate_kind_aux bid_ht lev qtfbl (kd : poly_kind) : mono_kind =
@@ -1022,6 +1035,7 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
+    | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
   and generalize_kind kd =
     match kd with
@@ -1073,6 +1087,8 @@ let check_level lev (ty : mono_type) =
     | MathCommandType(cmdargtylst)
       ->
         List.for_all iter_cmd cmdargtylst
+
+    | CodeType(tysub)                -> iter tysub
 
   and iter_cmd = function
     | MandatoryArgumentType(ty) -> iter ty
@@ -1142,6 +1158,7 @@ let rec unlift_aux pty =
     | HorzCommandType(catyl)          -> HorzCommandType(List.map unlift_aux_cmd catyl)
     | VertCommandType(catyl)          -> VertCommandType(List.map unlift_aux_cmd catyl)
     | MathCommandType(catyl)          -> MathCommandType(List.map unlift_aux_cmd catyl)
+    | CodeType(ptysub)                -> CodeType(aux ptysub)
   in
   (rng, ptymainnew)
 
@@ -1413,6 +1430,17 @@ let rec string_of_type_basic tvf orvf tystr : string =
 
           | _ -> strcont
           end ^ " ref" ^ qstn
+
+    | CodeType(tysub) ->
+        let strsub = iter tysub in
+        let (_, tysubmain) = tysub in
+        "&" ^ begin
+          match tysubmain with
+          | BaseType(_)
+          | VariantType([], _) -> strsub
+
+          | _ -> "(" ^ strsub ^ ")"
+        end
 
     | ProductType(tylist) ->
         string_of_type_list_basic tvf orvf tylist

@@ -336,6 +336,14 @@ and interpret env ast =
       let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
         PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
 
+(* -- staging constructs -- *)
+
+  | Prev(_) ->
+      failwith "Prev (_); remains to be supported."
+
+  | Next(_) ->
+      failwith "Next (_); remains to be supported."
+
 #include "__evaluator.gen.ml"
 
 
