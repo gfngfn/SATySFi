@@ -19,6 +19,42 @@ type nom_input_horz_element =
   | NomInputHorzContent  of nom_input_horz_element list * environment
 
 
+let make_length_from_description flt unitnm =
+  match unitnm with  (* temporary; ad-hoc handling of unit names *)
+  | "pt"   -> Length.of_pdf_point flt
+  | "cm"   -> Length.of_centimeter flt
+  | "mm"   -> Length.of_millimeter flt
+  | "inch" -> Length.of_inch flt
+  | _      -> report_bug_vm "LengthDescription; unknown unit name"
+
+
+let map_input_horz f ihlst =
+  ihlst |> List.map (function
+  | InputHorzText(s)           -> InputHorzText(s)
+  | InputHorzEmbedded(ast)     -> InputHorzEmbedded(f ast)
+  | InputHorzContent(ast)      -> InputHorzContent(f ast)
+  | InputHorzEmbeddedMath(ast) -> InputHorzEmbeddedMath(f ast)
+  )
+
+
+let map_input_vert f ivlst =
+  ivlst |> List.map (function
+  | InputVertContent(ast)  -> InputVertContent(f ast)
+  | InputVertEmbedded(ast) -> InputVertEmbedded(f ast)
+  )
+
+
+let map_path_component f g = function
+  | PathLineTo(ast) ->
+      PathLineTo(g ast)
+
+  | PathCubicBezierTo(ast1, ast2, ast3) ->
+      let v1 = f ast1 in
+      let v2 = f ast2 in
+      let v3 = g ast3 in
+      PathCubicBezierTo(v1, v2, v3)
+
+
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
   HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
@@ -144,14 +180,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
   | LengthDescription(flt, unitnm) ->
-      let len =
-        match unitnm with  (* temporary; ad-hoc handling of unit names *)
-        | "pt"   -> Length.of_pdf_point flt
-        | "cm"   -> Length.of_centimeter flt
-        | "mm"   -> Length.of_millimeter flt
-        | "inch" -> Length.of_inch flt
-        | _      -> report_bug_ast "LengthDescription; unknown unit name" ast
-      in
+      let len = make_length_from_description flt unitnm in
       LengthConstant(len)
 
 (* -- fundamentals -- *)
@@ -343,12 +372,162 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
 (* -- staging constructs -- *)
 
   | Prev(_) ->
-      failwith "Prev (_); remains to be supported."
+      report_bug_ast "Prev(_) at stage 0" ast
 
-  | Next(_) ->
-      failwith "Next (_); remains to be supported."
+  | Next(ast1) ->
+      let code1 = interpret_1 env ast1 in
+      CodeValue(code1)
 
 #include "__evaluator.gen.ml"
+
+
+and interpret_1 (env : environment) (ast : abstract_tree) =
+  match ast with
+
+  | Value(v) ->
+      CdValue(v)
+
+  | FinishHeaderFile
+  | FinishStruct ->
+      failwith "FinishHeaderFile at stage 1; remains to be supported."
+
+  | InputHorz(ihlst) ->
+      let cdihlst = ihlst |> map_input_horz (interpret_1 env) in
+      CdInputHorz(cdihlst)
+
+  | InputVert(ivlst) ->
+      let cdivlst = ivlst |> map_input_vert (interpret_1 env) in
+      CdInputVert(cdivlst)
+
+  | LengthDescription(flt, unitnm) ->
+      let len = make_length_from_description flt unitnm in
+      CdValue(LengthConstant(len))
+
+  | ContentOf(rng, evid) ->
+      CdContentOf(rng, evid)
+
+  | LetRecIn(recbinds, ast2) ->
+      let cdrecbinds =
+        recbinds |> List.map (function LetRecBinding(evid, patbr) ->
+          let cdpatbr = interpret_1_pattern_branch env patbr in
+          CdLetRecBinding(evid, cdpatbr)
+        )
+      in
+      let code2 = interpret_1 env ast2 in
+      CdLetRecIn(cdrecbinds, code2)
+
+  | LetNonRecIn(pat, ast1, ast2) ->
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdLetNonRecIn(pat, code1, code2)
+
+  | Function(evids, patbr) ->
+      let cdpatbr =  interpret_1_pattern_branch env patbr in
+      CdFunction(evids, cdpatbr)
+
+  | Apply(ast1, ast2) ->
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdApply(code1, code2)
+
+  | ApplyOptional(ast1, ast2) ->
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdApplyOptional(code1, code2)
+
+  | ApplyOmission(ast1) ->
+      let code1 = interpret_1 env ast1 in
+      CdApplyOmission(code1)
+
+  | IfThenElse(ast0, ast1, ast2) ->
+      let code0 = interpret_1 env ast0 in
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdIfThenElse(code0, code1, code2)
+
+  | Record(asc) ->
+      let cdasc = Assoc.map_value (interpret_1 env) asc in
+      CdRecord(cdasc)
+
+  | AccessField(ast1, fldnm) ->
+      let code1 = interpret_1 env ast1 in
+      CdAccessField(code1, fldnm)
+
+  | UpdateField(ast1, fldnm, ast2) ->
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdUpdateField(code1, fldnm, code2)
+
+  | LetMutableIn(evid, ast1, ast2) ->
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdLetMutableIn(evid, code1, code2)
+
+  | Sequential(ast1, ast2) ->
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdSequential(code1, code2)
+
+  | Overwrite(evid, ast1) ->
+      let code1 = interpret_1 env ast1 in
+      CdOverwrite(evid, code1)
+
+  | WhileDo(ast1, ast2) ->
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdWhileDo(code1, code2)
+
+  | Dereference(ast1) ->
+      let code1 = interpret_1 env ast1 in
+      CdDereference(code1)
+
+  | PatternMatch(rng, ast1, patbrs) ->
+      let code1 = interpret_1 env ast1 in
+      let cdpatbrs = patbrs |> List.map (interpret_1_pattern_branch env) in
+      CdPatternMatch(rng, code1, cdpatbrs)
+
+  | NonValueConstructor(constrnm, ast1) ->
+      let code1 = interpret_1 env ast1 in
+      CdConstructor(constrnm, code1)
+
+  | Module(ast1, ast2) ->
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdModule(code1, code2)
+
+  | BackendMathList(astlst) ->
+      let codelst = astlst |> List.map (interpret_1 env) in
+      CdMathList(codelst)
+
+  | PrimitiveTupleCons(ast1, ast2) ->
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdTupleCons(code1, code2)
+
+  | Path(astpt0, pathcomplst, cycleopt) ->
+      let codept0 = interpret_1 env astpt0 in
+      let cdpathcomplst = pathcomplst |> List.map (map_path_component (interpret_1 env) (interpret_1 env)) in
+      let cdcycleopt =
+        cycleopt |> BatOption.map (map_path_component (interpret_1 env) (fun () -> ())
+        )
+      in
+      CdPath(codept0, cdpathcomplst, cdcycleopt)
+
+  | Prev(ast1) ->
+      let value1 = interpret_0 env ast1 in
+      begin
+        match value1 with
+        | CodeValue(code) -> code
+        | _               -> report_bug_reduction "Prev; not a code value" ast value1
+      end
+
+  | Next(_) ->
+      report_bug_ast "Next(_) at stage 1" ast
+
+
+and interpret_1_pattern_branch env = function
+  | PatternBranch(pattr, ast)           -> CdPatternBranch(pattr, interpret_1 env ast)
+  | PatternBranchWhen(pattr, ast, ast1) -> CdPatternBranchWhen(pattr, interpret_1 env ast, interpret_1 env ast1)
 
 
 and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
