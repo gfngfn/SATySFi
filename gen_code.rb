@@ -85,11 +85,11 @@ def gen_interps
       puts "  | #{inst["inst"]}(#{astargs.join ', '}) ->"
       valueidents.each do |pair|
         ident, astident = pair
-        puts "      let #{ident} = interpret env #{astident} in"
+        puts "      let #{ident} = interpret_0 env #{astident} in"
       end
       otheridents.each do |tri|
         ident, type, astident = tri
-        puts "      let #{ident} = #{FUNCPREFIX}#{type} (interpret env #{astident}) in"
+        puts "      let #{ident} = #{FUNCPREFIX}#{type} (interpret_0 env #{astident}) in"
       end
       puts "      let reducef = reduce_beta_list in" if inst["needs-reducef"]
       puts "        begin"

@@ -92,7 +92,7 @@ let gen_interps () =
       puts "  | %s(%s) ->" inst (String.concat ", " astargs);
       List.combine params astargs |> List.iter (function
       | ({ Param.name; type_ = None }, astident) ->
-          puts "      let %s = interpret env %s in"
+          puts "      let %s = interpret_0 env %s in"
             name astident
 
       | _ ->
@@ -100,7 +100,7 @@ let gen_interps () =
       );
       List.combine params astargs |> List.iter (function
       | ({ Param.name; type_ = Some t }, astident) ->
-          puts "      let %s = %s%s (interpret env %s) in"
+          puts "      let %s = %s%s (interpret_0 env %s) in"
             name Const.func_prefix t astident
 
       | _ ->

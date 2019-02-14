@@ -47,11 +47,11 @@ and reduce_beta_list value1 valueargs =
 
 
 and interpret_point env ast =
-  let value = interpret env ast in
+  let value = interpret_0 env ast in
   get_point value
 
 
-and interpret_path env pathcomplst cycleopt =
+and interpret_0_path (env : environment) pathcomplst cycleopt =
   let pathelemlst =
     pathcomplst |> List.map (function
       | PathLineTo(astpt) ->
@@ -79,7 +79,7 @@ and interpret_path env pathcomplst cycleopt =
     (pathelemlst, closingopt)
 
 
-and interpret_input_horz_content env (ihlst : input_horz_element list) =
+and interpret_0_input_horz_content (env : environment) (ihlst : input_horz_element list) =
   ihlst |> List.map (function
     | InputHorzText(s) ->
         ImInputHorzText(s)
@@ -91,34 +91,36 @@ and interpret_input_horz_content env (ihlst : input_horz_element list) =
         ImInputHorzEmbeddedMath(astmath)
 
     | InputHorzContent(ast) ->
-        let value = interpret env ast in
+        let value = interpret_0 env ast in
         begin
           match value with
           | InputHorzWithEnvironment(imihlst, envsub) ->
               ImInputHorzContent(imihlst, envsub)
 
-          | _ -> report_bug_reduction "interpret_input_horz_content" ast value
+          | _ ->
+              report_bug_reduction "interpret_input_horz_content" ast value
         end
   )
 
-and interpret_input_vert_content env (ivlst : input_vert_element list) =
+and interpret_0_input_vert_content (env : environment) (ivlst : input_vert_element list) =
   ivlst |> List.map (function
     | InputVertEmbedded(astabs) ->
         ImInputVertEmbedded(astabs)
 
     | InputVertContent(ast) ->
-        let value = interpret env ast in
+        let value = interpret_0 env ast in
         begin
           match value with
           | InputVertWithEnvironment(imivlst, envsub) ->
               ImInputVertContent(imivlst, envsub)
 
-          | _ -> report_bug_reduction "interpret_input_vert_content" ast value
+          | _ ->
+              report_bug_reduction "interpret_input_vert_content" ast value
         end
   )
 
 
-and interpret (env : environment) (ast : abstract_tree) =
+and interpret_0 (env : environment) (ast : abstract_tree) =
   match ast with
 
 (* ---- basic value ---- *)
@@ -132,12 +134,12 @@ and interpret (env : environment) (ast : abstract_tree) =
       EvaluatedEnvironment(env)
 
   | InputHorz(ihlst) ->
-      let imihlst = interpret_input_horz_content env ihlst in
+      let imihlst = interpret_0_input_horz_content env ihlst in
       InputHorzWithEnvironment(imihlst, env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
   | InputVert(ivlst) ->
-      let imivlst = interpret_input_vert_content env ivlst in
+      let imivlst = interpret_0_input_vert_content env ivlst in
       InputVertWithEnvironment(imivlst, env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
@@ -167,26 +169,26 @@ and interpret (env : environment) (ast : abstract_tree) =
 
   | LetRecIn(recbinds, ast2) ->
       let envnew = add_letrec_bindings_to_environment env recbinds in
-      interpret envnew ast2
+      interpret_0 envnew ast2
 
   | LetNonRecIn(pat, ast1, ast2) ->
-      let value1 = interpret env ast1 in
+      let value1 = interpret_0 env ast1 in
       select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)]
 
   | Function(evids, patbrs) ->
       FuncWithEnvironment(evids, patbrs, env)
 
   | Apply(ast1, ast2) ->
-      let value1 = interpret env ast1 in
-      let value2 = interpret env ast2 in
+      let value1 = interpret_0 env ast1 in
+      let value2 = interpret_0 env ast2 in
       reduce_beta value1 value2
 
   | ApplyOptional(ast1, ast2) ->
-      let value1 = interpret env ast1 in
+      let value1 = interpret_0 env ast1 in
       begin
         match value1 with
         | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
-            let value2 = interpret env ast2 in
+            let value2 = interpret_0 env ast2 in
             let loc = ref (Constructor("Some", value2)) in
             let env1 = add_to_environment env1 evid loc in
             FuncWithEnvironment(evids, patbrs, env1)
@@ -195,7 +197,7 @@ and interpret (env : environment) (ast : abstract_tree) =
       end
 
   | ApplyOmission(ast1) ->
-      let value1 = interpret env ast1 in
+      let value1 = interpret_0 env ast1 in
       begin
         match value1 with
         | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
@@ -207,16 +209,16 @@ and interpret (env : environment) (ast : abstract_tree) =
       end
 
   | IfThenElse(astb, ast1, ast2) ->
-      let b = get_bool (interpret env astb) in
-      if b then interpret env ast1 else interpret env ast2
+      let b = get_bool (interpret_0 env astb) in
+      if b then interpret_0 env ast1 else interpret_0 env ast2
 
 (* ---- record ---- *)
 
   | Record(asc) ->
-      RecordValue(Assoc.map_value (interpret env) asc)
+      RecordValue(Assoc.map_value (interpret_0 env) asc)
 
   | AccessField(ast1, fldnm) ->
-      let value1 = interpret env ast1 in
+      let value1 = interpret_0 env ast1 in
       begin
         match value1 with
         | RecordValue(asc1) ->
@@ -231,8 +233,8 @@ and interpret (env : environment) (ast : abstract_tree) =
       end
 
   | UpdateField(ast1, fldnm, ast2) ->
-      let value1 = interpret env ast1 in
-      let value2 = interpret env ast2 in
+      let value1 = interpret_0 env ast1 in
+      let value2 = interpret_0 env ast2 in
       begin
         match value1 with
         | RecordValue(asc1) ->
@@ -250,14 +252,14 @@ and interpret (env : environment) (ast : abstract_tree) =
 (* ---- imperatives ---- *)
 
   | LetMutableIn(evid, astini, astaft) ->
-      let valueini = interpret env astini in
+      let valueini = interpret_0 env astini in
       let stid = register_location env valueini in
       let envnew = add_to_environment env evid (ref (Location(stid))) in
-      interpret envnew astaft
+      interpret_0 envnew astaft
 
   | Sequential(ast1, ast2) ->
-      let value1 = interpret env ast1 in
-      let value2 = interpret env ast2 in
+      let value1 = interpret_0 env ast1 in
+      let value2 = interpret_0 env ast2 in
       begin
         match value1 with
         | UnitConstant -> value2
@@ -272,7 +274,7 @@ and interpret (env : environment) (ast : abstract_tree) =
             begin
               match value with
               | Location(stid) ->
-                  let valuenew = interpret env astnew in
+                  let valuenew = interpret_0 env astnew in
                   update_location env stid valuenew;
                   UnitConstant
 
@@ -285,14 +287,14 @@ and interpret (env : environment) (ast : abstract_tree) =
       end
 
   | WhileDo(astb, astc) ->
-      let b = get_bool (interpret env astb) in
+      let b = get_bool (interpret_0 env astb) in
       if b then
-        let _ = interpret env astc in interpret env (WhileDo(astb, astc))
+        let _ = interpret_0 env astc in interpret_0 env (WhileDo(astb, astc))
       else
         UnitConstant
 
   | Dereference(astcont) ->
-      let valuecont = interpret env astcont in
+      let valuecont = interpret_0 env astcont in
       begin
         match valuecont with
         | Location(stid) ->
@@ -307,35 +309,35 @@ and interpret (env : environment) (ast : abstract_tree) =
       end
 
   | PatternMatch(rng, astobj, patbrs) ->
-      let valueobj = interpret env astobj in
+      let valueobj = interpret_0 env astobj in
       select_pattern rng env valueobj patbrs
 
   | NonValueConstructor(constrnm, astcont) ->
-      let valuecont = interpret env astcont in
+      let valuecont = interpret_0 env astcont in
       Constructor(constrnm, valuecont)
 
   | Module(astmdl, astaft) ->
-      let value = interpret env astmdl in
+      let value = interpret_0 env astmdl in
       begin
         match value with
-        | EvaluatedEnvironment(envfinal) -> interpret envfinal astaft
+        | EvaluatedEnvironment(envfinal) -> interpret_0 envfinal astaft
         | _                              -> report_bug_reduction "Module" astmdl value
       end
 
   | BackendMathList(astmlst) ->
       let mlstlst =
-        List.map (fun astm -> get_math (interpret env astm)) astmlst
+        List.map (fun astm -> get_math (interpret_0 env astm)) astmlst
       in  (* slightly doubtful in terms of evaluation strategy *)
       MathValue(List.concat mlstlst)
 
   | PrimitiveTupleCons(asthd, asttl) ->
-      let valuehd = interpret env asthd in
-      let valuetl = interpret env asttl in
+      let valuehd = interpret_0 env asthd in
+      let valuetl = interpret_0 env asttl in
       TupleCons(valuehd, valuetl)
 
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
-      let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
+      let (pathelemlst, closingopt) = interpret_0_path env pathcomplst cycleopt in
       PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
 
 (* -- staging constructs -- *)
@@ -354,7 +356,7 @@ and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value
     imivlst |> List.map (fun imiv ->
       match imiv with
       | ImInputVertEmbedded(astabs) ->
-          let valuevert = interpret env (Apply(astabs, Value(valuetctx))) in
+          let valuevert = interpret_0 env (Apply(astabs, Value(valuetctx))) in
           get_string valuevert
 
       | ImInputVertContent(imivlstsub, envsub) ->
@@ -363,7 +365,7 @@ and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value
     ) |> String.concat ""
   in
   let s = interpret_commands env imivlst in
-    StringConstant(s)
+  StringConstant(s)
 
 
 and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
@@ -403,11 +405,11 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx :
     nmihlst |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzEmbedded(astabs) ->
-          let valueret = interpret env (Apply(astabs, Value(valuetctx))) in
+          let valueret = interpret_0 env (Apply(astabs, Value(valuetctx))) in
           get_string valueret
 
       | NomInputHorzThunk(ast) ->
-          let valueret = interpret env ast in
+          let valueret = interpret_0 env ast in
           get_string valueret
 
       | NomInputHorzText(s) ->
@@ -431,7 +433,7 @@ and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) 
     imivlst |> List.map (fun imiv ->
       match imiv with
       | ImInputVertEmbedded(astabs) ->
-          let valuevert = interpret env (Apply(astabs, Value(valuectx))) in
+          let valuevert = interpret_0 env (Apply(astabs, Value(valuectx))) in
           get_vert valuevert
 
       | ImInputVertContent(imivlstsub, envsub) ->
@@ -477,11 +479,11 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
     nmihlst |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzEmbedded(astabs) ->
-          let valuehorz = interpret env (Apply(astabs, Value(valuectx))) in
+          let valuehorz = interpret_0 env (Apply(astabs, Value(valuectx))) in
           get_horz valuehorz
 
       | NomInputHorzThunk(ast) ->
-          let valuehorz = interpret env ast in
+          let valuehorz = interpret_0 env ast in
           get_horz valuehorz
 
       | NomInputHorzText(s) ->
@@ -507,15 +509,15 @@ and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_val
   | PatternBranch(pat, astto) :: tail ->
       let (b, envnew) = check_pattern_matching env pat valueobj in
       if b then
-        interpret envnew astto
+        interpret_0 envnew astto
       else
         iter tail
 
   | PatternBranchWhen(pat, astcond, astto) :: tail ->
       let (b, envnew) = check_pattern_matching env pat valueobj in
-      let cond = get_bool (interpret envnew astcond) in
+      let cond = get_bool (interpret_0 envnew astcond) in
       if b && cond then
-        interpret envnew astto
+        interpret_0 envnew astto
       else
         iter tail
 
@@ -527,7 +529,7 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
   | (PBooleanConstant(pbc), BooleanConstant(bc)) -> return (pbc = bc)
 
   | (PStringConstant(ast1), value2) ->
-      let str1 = get_string (interpret env ast1) in
+      let str1 = get_string (interpret_0 env ast1) in
       let str2 = get_string value2 in
       return (String.equal str1 str2)
 

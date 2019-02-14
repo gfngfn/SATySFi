@@ -139,7 +139,7 @@ let eval_library_file (tyenv : Typeenv.t) (env : environment) (abspath_in : abs_
         if OptionState.bytecomp_mode () then
           Bytecomp.compile_and_exec env ast
         else
-          Evaluator.interpret env ast
+          Evaluator.interpret_0 env ast
       in
       begin
         match value with
@@ -260,7 +260,7 @@ let eval_main i env_freezed ast =
     if OptionState.bytecomp_mode () then
       Bytecomp.compile_and_exec env ast
     else
-      Evaluator.interpret env ast
+      Evaluator.interpret_0 env ast
   in
   Logging.end_evaluation ();
   valuedoc
