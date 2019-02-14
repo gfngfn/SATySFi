@@ -14,6 +14,7 @@ INSTDEF_YAML=$(BYTECOMP)/vminstdef.yaml
 DUNE=dune
 INSTTYPE_GEN=$(FRONTEND)/__insttype.gen.ml
 ATTYPE_GEN=$(FRONTEND)/__attype.gen.ml
+CODETYPE_GEN=$(FRONTEND)/__codetype.gen.ml
 VM_GEN=$(BYTECOMP)/__vm.gen.ml
 IR_GEN=$(BYTECOMP)/__ir.gen.ml
 EVAL_GEN_0=$(FRONTEND)/__evaluator_0.gen.ml
@@ -23,6 +24,7 @@ PRIM_TEXT_GEN=$(FRONTEND)/__primitives_text_mode.gen.ml
 GENS= \
   $(INSTTYPE_GEN) \
   $(ATTYPE_GEN) \
+  $(CODETYPE_GEN) \
   $(VM_GEN) \
   $(IR_GEN) \
   $(EVAL_GEN_0) \
@@ -48,6 +50,9 @@ gen: $(GENS)
 
 $(ATTYPE_GEN): $(INSTDEF)
 	$(GENCODE) --gen-attype > $@
+
+$(CODETYPE_GEN): $(INSTDEF)
+	$(GENCODE) --gen-codetype > $@
 
 $(INSTTYPE_GEN): $(INSTDEF)
 	$(GENCODE) --gen-insttype > $@

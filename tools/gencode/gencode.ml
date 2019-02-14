@@ -266,6 +266,30 @@ let gen_insttype () =
   puts "  [@@deriving show { with_path = false; }]"
 
 
+let gen_codetype () =
+  let open Instruction in
+  Vminst.def |> List.iter (function
+  | {
+      no_ircode = false;
+      inst;
+      params;
+      _
+    } as def  when is_primitive def ->
+      begin
+        match params with
+        | [] ->
+            puts "  | Cd%s" inst
+
+        | ps ->
+            puts "  | Cd%s of %s" inst
+              (String.concat " * " (List.map (const "code_value") ps))
+      end
+
+  | _ ->
+      ()
+  )
+
+
 let gen_attype () =
   let open Instruction in
   Vminst.def |> List.iter (function
@@ -323,6 +347,7 @@ let () =
       ("--gen-ir"             , gen_ircases        );
       ("--gen-insttype"       , gen_insttype       );
       ("--gen-attype"         , gen_attype         );
+      ("--gen-codetype"       , gen_codetype       );
       ("--gen-interps-0"      , gen_interps_0      );
       ("--gen-interps-1"      , gen_interps_1      );
       ("--gen-pdf-mode-prims" , gen_pdf_mode_prims );

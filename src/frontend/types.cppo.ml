@@ -877,13 +877,16 @@ and code_value =
   | CdSequential    of code_value * code_value
   | CdOverwrite     of EvalVarID.t * code_value
   | CdWhileDo       of code_value * code_value
+(*
   | CdDereference   of code_value
+*)
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
   | CdTupleCons     of code_value * code_value
   | CdPath          of code_value * (code_value code_path_component) list * (unit code_path_component) option
   | CdMathList      of code_value list
   | CdModule        of code_value * code_value
+#include "__codetype.gen.ml"
 
 and code_input_horz_element = code_value input_horz_element_scheme
 
