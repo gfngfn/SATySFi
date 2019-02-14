@@ -102,6 +102,32 @@ let begin_to_write_page () =
   print_endline ("  writing pages ...")
 
 
+let show_single_font abbrev relpath =
+  print_endline ("    * `" ^ abbrev ^ "`: '" ^ (get_lib_path_string relpath) ^ "'")
+
+
+let show_collection_font abbrev relpath i =
+  print_endline ("    * `" ^ abbrev ^ "`: '" ^ (get_lib_path_string relpath) ^ "' [" ^ (string_of_int i) ^ "]")
+
+
+let show_fonts_main font_hash =
+  font_hash |> List.iter (fun (abbrev, data) ->
+    match data with
+    | FontAccess.Single(relpath)        -> show_single_font abbrev relpath
+    | FontAccess.Collection(relpath, i) -> show_collection_font abbrev relpath i
+  )
+
+
+let show_fonts font_hash =
+  print_endline "  all the available fonts:\n";
+  show_fonts_main font_hash
+
+
+let show_math_fonts font_hash =
+  print_endline "  all the available math fonts:\n";
+  show_fonts_main font_hash
+
+
 let warn_deprecated msg =
   print_endline ("  [Warning] " ^ msg ^ "\n")
 

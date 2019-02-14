@@ -838,6 +838,7 @@ let arg_spec_list curdir =
     ("--bytecomp"        , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
     ("--text-mode"       , Arg.String(text_mode)                     , " Set text mode"                    );
     ("--markdown"        , Arg.String(input_markdown)                , " Pass Markdown source as input"    );
+    ("--show-fonts"      , Arg.Unit(OptionState.set_show_fonts)      , " Displays all the available fonts" );
   ]
 
 

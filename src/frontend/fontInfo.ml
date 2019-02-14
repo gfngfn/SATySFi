@@ -453,22 +453,24 @@ let initialize () =
   in
   let font_hash_dist = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/fonts.satysfi-hash")) in
   let font_hash = List.append font_hash_local font_hash_dist in
+  if OptionState.show_fonts () then Logging.show_fonts font_hash;
   font_hash |> List.iter (fun (abbrev, data) ->
     match data with
-    | LoadFont.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
-    | LoadFont.Collection(relpath, i) -> FontAbbrevHashTable.add_ttc abbrev relpath i
+    | FontAccess.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
+    | FontAccess.Collection(relpath, i) -> FontAbbrevHashTable.add_ttc abbrev relpath i
   );
   let math_font_hash_local =
-    match Config.resolve_lib_file_opt (make_lib_path "dist/local/mathfonts.satysfi-hash") with
+    match Config.resolve_lib_file_opt (make_lib_path "local/hash/mathfonts.satysfi-hash") with
     | None          -> []
     | Some(abspath) -> LoadFont.main abspath
   in
   let math_font_hash_dist = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/mathfonts.satysfi-hash")) in
   let math_font_hash = List.append math_font_hash_local math_font_hash_dist in
+  if OptionState.show_fonts () then Logging.show_math_fonts math_font_hash;
   math_font_hash |> List.iter (fun (mfabbrev, data) ->
     match data with
-    | LoadFont.Single(srcpath)        -> MathFontAbbrevHashTable.add mfabbrev srcpath
-    | LoadFont.Collection(srcpath, i) -> remains_to_be_implemented "cannot use a TrueType Collection for a math font"
+    | FontAccess.Single(srcpath)        -> MathFontAbbrevHashTable.add mfabbrev srcpath
+    | FontAccess.Collection(srcpath, i) -> remains_to_be_implemented "cannot use a TrueType Collection for a math font"
   );
 
 

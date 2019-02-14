@@ -6,9 +6,7 @@ module MYU = MyYojsonUtil
 
 type font_abbrev = string
 
-type data =
-  | Single     of lib_path
-  | Collection of lib_path * int
+type data = FontAccess.t
 
 
 let read_path_from_dict ((pos, _) as assoc) : lib_path =
@@ -39,14 +37,14 @@ let read_path_from_dict ((pos, _) as assoc) : lib_path =
 let read_assoc_single (json : YS.json) : data =
   let assoc = json |> MYU.make_assoc in
   let relpath = assoc |> read_path_from_dict in
-  Single(relpath)
+  FontAccess.Single(relpath)
 
 
 let read_assoc_ttc (json : YS.json) =
   let assoc = json |> MYU.make_assoc in
   let relpath = assoc |> read_path_from_dict in
   let index = assoc |> MYU.find "index" |> YS.Util.to_int in
-  Collection(relpath, index)
+  FontAccess.Collection(relpath, index)
 
 
 let read_assoc (assoc : MYU.assoc) =

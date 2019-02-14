@@ -25,6 +25,9 @@ val bytecomp_mode : unit -> bool
 val set_show_full_path : unit -> unit
 val show_full_path : unit -> bool
 
+val set_show_fonts : unit -> unit
+val show_fonts : unit -> bool
+
 val set_debug_show_bbox : unit -> unit
 val debug_show_bbox : unit -> bool
 

@@ -11,6 +11,7 @@ type state = {
   mutable output_file     : abs_path option;
   mutable type_check_only : bool;
   mutable bytecomp_mode   : bool;
+  mutable show_fonts      : bool;
   mutable show_full_path  : bool;
   mutable debug_show_bbox : bool;
   mutable debug_show_space : bool;
@@ -25,6 +26,7 @@ let state = {
   type_check_only = false;
   bytecomp_mode   = false;
   show_full_path  = false;
+  show_fonts      = false;
   debug_show_bbox = false;
   debug_show_space = false;
   mode             = None;
@@ -40,6 +42,9 @@ let job_directory () =
   match state.input_file with
   | None          -> assert false
   | Some(abspath) -> Filename.dirname (get_abs_path_string abspath)
+
+let set_show_fonts () = state.show_fonts <- true
+let show_fonts ()     = state.show_fonts
 
 let set_output_file abspath = state.output_file <- Some(abspath)
 let output_file ()          = state.output_file
