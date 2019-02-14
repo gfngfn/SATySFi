@@ -119,17 +119,17 @@ let show_fonts_main font_hash =
 
 
 let show_fonts font_hash =
-  print_endline "  all the available fonts:\n";
+  print_endline "  all the available fonts:";
   show_fonts_main font_hash
 
 
 let show_math_fonts font_hash =
-  print_endline "  all the available math fonts:\n";
+  print_endline "  all the available math fonts:";
   show_fonts_main font_hash
 
 
 let warn_deprecated msg =
-  print_endline ("  [Warning] " ^ msg ^ "\n")
+  print_endline ("  [Warning] " ^ msg)
 
 
 let warn_cmyk_image file_name =
