@@ -524,6 +524,8 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
   | Next(_) ->
       report_bug_ast "Next(_) at stage 1" ast
 
+#include "__evaluator_1.gen.ml"
+
 
 and interpret_1_pattern_branch env = function
   | PatternBranch(pattr, ast)           -> CdPatternBranch(pattr, interpret_1 env ast)

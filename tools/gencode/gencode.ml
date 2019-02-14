@@ -76,6 +76,29 @@ let gen_text_mode_prims () =
   gen_prims is_text_mode_primitive
 
 
+let gen_interps_1 () =
+  let open Instruction in
+  Vminst.def |> List.iter (function
+  | {
+      no_interp = false;
+      inst;
+      params;
+      _
+    } as def  when is_primitive def ->
+      let astargs = params |> List.mapi (fun i _ -> "_ast%d" @% i) in
+      let codeargs = params |> List.mapi (fun i _ -> "_code%d" @% i) in
+      puts "  | %s(%s) ->" inst (String.concat ", " astargs);
+      List.iter2 (fun codearg astarg ->
+        puts "      let %s = interpret_1 env %s in" codearg astarg;
+      ) codeargs astargs;
+      puts "      Cd%s(%s)" inst (String.concat ", " codeargs);
+      puts ""
+
+  | _ ->
+      ()
+  )
+
+
 let gen_interps_0 () =
   let open Instruction in
   Vminst.def |> List.iter (function
@@ -301,6 +324,7 @@ let () =
       ("--gen-insttype"       , gen_insttype       );
       ("--gen-attype"         , gen_attype         );
       ("--gen-interps-0"      , gen_interps_0      );
+      ("--gen-interps-1"      , gen_interps_1      );
       ("--gen-pdf-mode-prims" , gen_pdf_mode_prims );
       ("--gen-text-mode-prims", gen_text_mode_prims);
     ]
