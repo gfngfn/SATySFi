@@ -338,13 +338,13 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
 
 
 let eval_abstract_tree_list (env : environment) (libs : (abs_path * abstract_tree) list) (astdoc : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
-  let rec aux env asts =
+  let rec aux env libs =
     match libs with
     | [] ->
         eval_document_file env astdoc abspath_out abspath_dump
 
-    | (abspath_in, ast) :: tail ->
-        let envnew = eval_library_file env abspath_in ast in
+    | (abspath_in, astlib) :: tail ->
+        let envnew = eval_library_file env abspath_in astlib in
         aux envnew tail
   in
   aux env libs
