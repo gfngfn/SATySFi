@@ -18,7 +18,7 @@ exception TooManyArgument                of Range.t * Typeenv.t * mono_type
 exception MultipleFieldInRecord          of Range.t * field_name
 exception ApplicationOfNonFunction       of Range.t * Typeenv.t * mono_type
 exception InvalidExpressionAsToStaging   of Range.t * stage
-exception InvalidOccurenceAsToStaging    of Range.t * var_name * stage
+exception InvalidOccurrenceAsToStaging   of Range.t * var_name * stage
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -608,7 +608,7 @@ let rec typecheck
 *)
               (ContentOf(rng, evid), tyres)
             else
-              raise (InvalidOccurenceAsToStaging(rng, varnm, stage))
+              raise (InvalidOccurrenceAsToStaging(rng, varnm, stage))
       end
 
   | UTConstructor(constrnm, utast1) ->

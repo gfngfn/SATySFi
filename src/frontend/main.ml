@@ -659,6 +659,20 @@ let error_log_environment suspended =
         NormalLine("this record expression has more than one field for '" ^ fldnm ^ "'.");
       ]
 
+  | Typechecker.InvalidExpressionAsToStaging(rng, stage) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("invalid expression as to stage;");
+        NormalLine("should be used at " ^ (string_of_stage stage) ^ ".");
+      ]
+
+  | Typechecker.InvalidOccurrenceAsToStaging(rng, varnm, stage) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("invalid occurrence of variable '" ^ varnm ^ "' as to stage;");
+        NormalLine("should be used at " ^ (string_of_stage stage) ^ ".");
+      ]
+
   | Typechecker.ApplicationOfNonFunction(rng, tyenv, ty) ->
       let strty = string_of_mono_type tyenv ty in
       report_error Typechecker [

@@ -383,6 +383,12 @@ type stage =
   | Stage0
   | Stage1
 
+
+let string_of_stage = function
+  | Stage0 -> "stage 0"
+  | Stage1 -> "stage 1"
+
+
 type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
 
