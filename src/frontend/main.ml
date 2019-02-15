@@ -229,20 +229,6 @@ let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : str
       raise (CannotReadFileOwingToSystem(msg))
 
 
-let eval_main i env_freezed ast =
-  Logging.start_evaluation i;
-  reset ();
-  let env = unfreeze_environment env_freezed in
-  let valuedoc =
-    if OptionState.bytecomp_mode () then
-      Bytecomp.compile_and_exec env ast
-    else
-      Evaluator.interpret_0 env ast
-  in
-  Logging.end_evaluation ();
-  valuedoc
-
-
 let output_text abspath_out s =
   let outc = open_out_abs abspath_out in
   output_string outc s;
@@ -250,7 +236,7 @@ let output_text abspath_out s =
 
 
 let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : Typeenv.t * abstract_tree =
-  Logging.begin_to_read_file abspath_in;
+  Logging.begin_to_typecheck_file abspath_in;
   let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
   Logging.pass_type_check None;
   match ty with
@@ -259,7 +245,7 @@ let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : 
 
 
 let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : abstract_tree =
-  Logging.begin_to_read_file abspath_in;
+  Logging.begin_to_typecheck_file abspath_in;
   let (ty, _, ast) = Typechecker.main tyenv utast in
   Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
   if OptionState.is_text_mode () then
@@ -273,6 +259,7 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
 
 
 let eval_library_file (env : environment) (abspath_in : abs_path) (ast : abstract_tree) : environment =
+  Logging.begin_to_eval_file abspath_in;
   let value =
     if OptionState.bytecomp_mode () then
       Bytecomp.compile_and_exec env ast
@@ -282,6 +269,20 @@ let eval_library_file (env : environment) (abspath_in : abs_path) (ast : abstrac
   match value with
   | EvaluatedEnvironment(envnew) -> envnew
   | _                            -> failwith "not an 'EvaluatedEnvironment(...)'"
+
+
+let eval_main i env_freezed ast =
+  Logging.start_evaluation i;
+  reset ();
+  let env = unfreeze_environment env_freezed in
+  let valuedoc =
+    if OptionState.bytecomp_mode () then
+      Bytecomp.compile_and_exec env ast
+    else
+      Evaluator.interpret_0 env ast
+  in
+  Logging.end_evaluation ();
+  valuedoc
 
 
 let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
@@ -931,7 +932,7 @@ let () =
             match file_info with
             | DocumentFile(utast) ->
                 let ast = typecheck_document_file tyenv abspath_in utast in
-                (tyenv, Alist.extend libacc (abspath_in, ast), Some(ast))
+                (tyenv, libacc, Some(ast))
 
             | LibraryFile(utast) ->
                 let (tyenvnew, ast) = typecheck_library_file tyenv abspath_in utast in
