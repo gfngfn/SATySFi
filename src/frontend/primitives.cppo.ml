@@ -583,7 +583,7 @@ let make_environments table =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
       let evid = EvalVarID.fresh (dr, varnm) in
       let loc = ref temporary_ast in
-      let tyenvnew = Typeenv.add tyenv varnm (pty, evid) in
+      let tyenvnew = Typeenv.add tyenv varnm (pty, evid, Stage1) in  (* temporary *)
       let envnew = add_to_environment env evid loc in
         (tyenvnew, envnew, Alist.extend acc (loc, deff))
     ) (tyenvinit, envinit, Alist.empty)

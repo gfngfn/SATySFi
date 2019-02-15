@@ -70,7 +70,7 @@ type name_to_id_map = ModuleID.t ModuleNameMap.t
 
 type var_to_type_map = poly_type VarMap.t
 
-type var_to_vardef_map = (poly_type * EvalVarID.t) VarMap.t
+type var_to_vardef_map = (poly_type * EvalVarID.t * stage) VarMap.t
 
 type type_scheme = BoundID.t list * poly_type
 
@@ -193,16 +193,16 @@ let get_candidates foldf map nm =
 
 
 (* PUBLIC *)
-let add (tyenv : t) (varnm : var_name) ((pty, evid) : poly_type * EvalVarID.t) : t =
+let add (tyenv : t) (varnm : var_name) ((pty, evid, stage) : poly_type * EvalVarID.t * stage) : t =
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
-  match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid))) with
+  match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid, stage))) with
   | None         -> assert false
   | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
 (* PUBLIC *)
-let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : (poly_type * EvalVarID.t) option =
+let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : (poly_type * EvalVarID.t * stage) option =
   let open OptionMonad in
   let nmtoid = tyenv.name_to_id_map in
   let mtr = tyenv.main_tree in
@@ -224,8 +224,8 @@ let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Ran
       | Some((_, vtmapsig)) ->
           print_for_debug_variantenv ("FVD " ^ addrstr ^ varnm ^ " -> signature found"); (* for debug *)
           VarMap.find_opt varnm vtmapsig >>= fun ptysig ->
-          VarMap.find_opt varnm vdmap >>= fun (_, evid) ->
-          return (ptysig, evid)
+          VarMap.find_opt varnm vdmap >>= fun (_, evid, stage) ->
+          return (ptysig, evid, stage)
     )
 
 
@@ -266,8 +266,8 @@ let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
                   assert false
                     (* -- signature must be less general than its corresponding implementation -- *)
 
-              | Some((_, evid)) ->
-                  vdmapU |> VarMap.add varnm (pty, evid)
+              | Some((_, evid, stage)) ->
+                  vdmapU |> VarMap.add varnm (pty, evid, stage)
             ) vtmapsig
           )
 
@@ -283,7 +283,7 @@ let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
-let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t) option =
+let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t * stage) option =
   let open OptionMonad in
   let mtr = tyenv.main_tree in
   let addrlst = Alist.to_list tyenv.current_address in
@@ -1237,13 +1237,16 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t)
             | None ->
                 raise (NotProvidingValueImplementation(rng, varnm))
 
-            | Some((ptyimp, _)) ->
+            | Some((ptyimp, _, Stage1)) ->
                 let b = reflects ptysigI ptyimp in
                 if b then
                   let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
                     iter tyenvacc tyenvforsigI tyenvforsigO tail sigoptaccnew
                 else
                   raise (NotMatchingInterface(rng, varnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
+
+            | Some((_, _, Stage0)) ->
+                remains_to_be_implemented "variables at stage 0 in signatures"
           end
 
       | SigDirect(csnm, mty, constrntcons) :: tail ->
@@ -1263,14 +1266,14 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t)
             | None ->
                 raise (NotProvidingValueImplementation(rng, csnm))
 
-            | Some((ptyimp, evidimp)) ->
+            | Some((ptyimp, evidimp, stage)) ->
                 let b = reflects ptysigI ptyimp in
                   (* -- 'reflects pty1 pty2' may change 'pty2' -- *)
                 if b then
                   let sigoptaccnew = add_val_to_signature sigoptacc csnm ptysigO in
                   let tyenvaccnew =
                     let mtr = tyenvacc.main_tree in
-                    match ModuleTree.update mtr [] (update_vt (VarMap.add csnm (ptysigO, evidimp))) with
+                    match ModuleTree.update mtr [] (update_vt (VarMap.add csnm (ptysigO, evidimp, stage))) with
                     | None         -> assert false
                     | Some(mtrnew) -> { tyenvacc with main_tree = mtrnew; }
                   in
