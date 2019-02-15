@@ -1311,8 +1311,7 @@ and typecheck_pattern
         end
 
 
-and make_type_environment_by_letrec
-    (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) =
+and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) =
 
   let rec add_mutual_variables (acctyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : (Typeenv.t * (var_name * mono_type * EvalVarID.t) list) =
     let iter = add_mutual_variables in
@@ -1337,13 +1336,13 @@ and make_type_environment_by_letrec
   let rec typecheck_mutual_contents
       (pre : pre)
       (tyenvforrec : Typeenv.t) (utrecbinds : untyped_letrec_binding list) (tvtylst : (var_name * mono_type * EvalVarID.t) list)
-      (acctvtylstout : (var_name * mono_type * EvalVarID.t) list)
+      (acctvtylstout : (var_name * mono_type * EvalVarID.t) Alist.t)
   =
     let iter = typecheck_mutual_contents pre in
     let unify = unify_ tyenv in
     match (utrecbinds, tvtylst) with
     | ([], []) ->
-        (tyenvforrec, [], List.rev acctvtylstout)
+        (tyenvforrec, [], Alist.to_list acctvtylstout)
 
     | (UTLetRecBinding(mntyopt, _, varnm, utast1) :: tailcons, (_, beta, evid) :: tvtytail) ->
         let (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenvforrec utast1 in
@@ -1352,7 +1351,7 @@ and make_type_environment_by_letrec
           | None ->
               unify ty1 beta;
               let (tyenvfinal, recbindtail, tvtylstoutfinal) =
-                iter tyenvforrec tailcons tvtytail ((varnm, beta, evid) :: acctvtylstout)
+                iter tyenvforrec tailcons tvtytail (Alist.extend acctvtylstout (varnm, beta, evid))
               in
               begin
                 match e1 with
@@ -1365,7 +1364,7 @@ and make_type_environment_by_letrec
               unify ty1 beta;
               unify tyin beta;
               let (tyenvfinal, recbindtail, tvtylstoutfinal) =
-                iter tyenvforrec tailcons tvtytail ((varnm, beta, evid) :: acctvtylstout)
+                iter tyenvforrec tailcons tvtytail (Alist.extend acctvtylstout (varnm, beta, evid))
               in
               begin
                 match e1 with
@@ -1374,31 +1373,33 @@ and make_type_environment_by_letrec
               end
         end
 
-    | _ -> assert false
+    | _ ->
+        assert false
   in
 
   let rec make_forall_type_mutual (tyenv : Typeenv.t) (tyenv_before_let : Typeenv.t) tvtylst tvtylst_forall =
     match tvtylst with
-    | []                              -> (tyenv, tvtylst_forall)
+    | [] ->
+        (tyenv, tvtylst_forall)
+
     | (varnm, tvty, evid) :: tvtytail ->
-        let prety = tvty in
 (*
-          let () = print_endline ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety)) in  (* for debug *)
+        let () = print_endline ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic tvty)) in  (* for debug *)
 *)
-          let pty = (generalize pre.level (erase_range_of_type prety)) in
+        let pty = (generalize pre.level (erase_range_of_type tvty)) in
 (*
-          let () = print_endline ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)) in (* for debug *)
+        let () = print_endline ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)) in (* for debug *)
 *)
-          let tvtylst_forall_new = (varnm, pty, evid) :: tvtylst_forall in
-            make_forall_type_mutual (Typeenv.add tyenv varnm (pty, evid, pre.stage)) tyenv_before_let tvtytail tvtylst_forall_new
+        let tvtylst_forall_new = (varnm, pty, evid) :: tvtylst_forall in
+        make_forall_type_mutual (Typeenv.add tyenv varnm (pty, evid, pre.stage)) tyenv_before_let tvtytail tvtylst_forall_new
   in
 
   let (tyenvforrec, tvtylstforrec) = add_mutual_variables tyenv utrecbinds in
   let (tyenv_new, mutletcons, tvtylstout) =
-    typecheck_mutual_contents pre tyenvforrec utrecbinds tvtylstforrec []
+    typecheck_mutual_contents pre tyenvforrec utrecbinds tvtylstforrec Alist.empty
   in
   let (tyenv_forall, tvtylst_forall) = make_forall_type_mutual tyenv_new tyenv tvtylstout [] in
-    (tyenv_forall, tvtylst_forall, mutletcons)
+  (tyenv_forall, tvtylst_forall, mutletcons)
 
 
 and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng varnm utastI =
@@ -1408,13 +1409,12 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
 *)
   let evid = EvalVarID.fresh (varrng, varnm) in
   let tyenvI = Typeenv.add tyenv varnm (lift_poly (varrng, RefType(tyI)), evid, pre.stage) in
-    (tyenvI, evid, eI, tyI)
+  (tyenvI, evid, eI, tyI)
 
 
 let main (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
   begin
     final_tyenv := tyenv;
-    (* Format.printf "%a" pp_untyped_abstract_tree utast; *)
     let (e, ty) = typecheck { stage = Stage1; quantifiability = Quantifiable; level = Level.bottom; } tyenv utast in
-      (ty, !final_tyenv, e)
+    (ty, !final_tyenv, e)
   end
