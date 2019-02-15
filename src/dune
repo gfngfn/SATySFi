@@ -39,7 +39,7 @@
 
 (rule
  (targets types.ml)
- (deps    (:src types.cppo.ml) __insttype.gen.ml __attype.gen.ml)
+ (deps    (:src types.cppo.ml) __insttype.gen.ml __attype.gen.ml __codetype.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule
@@ -54,7 +54,7 @@
 
 (rule
  (targets evaluator.ml)
- (deps    (:src evaluator.cppo.ml) __evaluator.gen.ml)
+ (deps    (:src evaluator.cppo.ml) __evaluator_0.gen.ml __evaluator_1.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule

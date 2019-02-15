@@ -76,7 +76,30 @@ let gen_text_mode_prims () =
   gen_prims is_text_mode_primitive
 
 
-let gen_interps () =
+let gen_interps_1 () =
+  let open Instruction in
+  Vminst.def |> List.iter (function
+  | {
+      no_interp = false;
+      inst;
+      params;
+      _
+    } as def  when is_primitive def ->
+      let astargs = params |> List.mapi (fun i _ -> "_ast%d" @% i) in
+      let codeargs = params |> List.mapi (fun i _ -> "_code%d" @% i) in
+      puts "  | %s(%s) ->" inst (String.concat ", " astargs);
+      List.iter2 (fun codearg astarg ->
+        puts "      let %s = interpret_1 env %s in" codearg astarg;
+      ) codeargs astargs;
+      puts "      Cd%s(%s)" inst (String.concat ", " codeargs);
+      puts ""
+
+  | _ ->
+      ()
+  )
+
+
+let gen_interps_0 () =
   let open Instruction in
   Vminst.def |> List.iter (function
   | {
@@ -92,7 +115,7 @@ let gen_interps () =
       puts "  | %s(%s) ->" inst (String.concat ", " astargs);
       List.combine params astargs |> List.iter (function
       | ({ Param.name; type_ = None }, astident) ->
-          puts "      let %s = interpret env %s in"
+          puts "      let %s = interpret_0 env %s in"
             name astident
 
       | _ ->
@@ -100,7 +123,7 @@ let gen_interps () =
       );
       List.combine params astargs |> List.iter (function
       | ({ Param.name; type_ = Some t }, astident) ->
-          puts "      let %s = %s%s (interpret env %s) in"
+          puts "      let %s = %s%s (interpret_0 env %s) in"
             name Const.func_prefix t astident
 
       | _ ->
@@ -243,6 +266,30 @@ let gen_insttype () =
   puts "  [@@deriving show { with_path = false; }]"
 
 
+let gen_codetype () =
+  let open Instruction in
+  Vminst.def |> List.iter (function
+  | {
+      no_ircode = false;
+      inst;
+      params;
+      _
+    } as def  when is_primitive def ->
+      begin
+        match params with
+        | [] ->
+            puts "  | Cd%s" inst
+
+        | ps ->
+            puts "  | Cd%s of %s" inst
+              (String.concat " * " (List.map (const "code_value") ps))
+      end
+
+  | _ ->
+      ()
+  )
+
+
 let gen_attype () =
   let open Instruction in
   Vminst.def |> List.iter (function
@@ -300,7 +347,9 @@ let () =
       ("--gen-ir"             , gen_ircases        );
       ("--gen-insttype"       , gen_insttype       );
       ("--gen-attype"         , gen_attype         );
-      ("--gen-interps"        , gen_interps        );
+      ("--gen-codetype"       , gen_codetype       );
+      ("--gen-interps-0"      , gen_interps_0      );
+      ("--gen-interps-1"      , gen_interps_1      );
       ("--gen-pdf-mode-prims" , gen_pdf_mode_prims );
       ("--gen-text-mode-prims", gen_text_mode_prims);
     ]

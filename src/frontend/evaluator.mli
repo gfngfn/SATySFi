@@ -2,7 +2,7 @@ open Types
 
 exception EvalError of string
 
-val interpret : environment -> abstract_tree -> syntactic_value
+val interpret_0 : environment -> abstract_tree -> syntactic_value
 
 val select_pattern : Range.t -> environment -> syntactic_value -> pattern_branch list -> syntactic_value
 

@@ -14,17 +14,21 @@ INSTDEF_YAML=$(BYTECOMP)/vminstdef.yaml
 DUNE=dune
 INSTTYPE_GEN=$(FRONTEND)/__insttype.gen.ml
 ATTYPE_GEN=$(FRONTEND)/__attype.gen.ml
+CODETYPE_GEN=$(FRONTEND)/__codetype.gen.ml
 VM_GEN=$(BYTECOMP)/__vm.gen.ml
 IR_GEN=$(BYTECOMP)/__ir.gen.ml
-EVAL_GEN=$(FRONTEND)/__evaluator.gen.ml
+EVAL_GEN_0=$(FRONTEND)/__evaluator_0.gen.ml
+EVAL_GEN_1=$(FRONTEND)/__evaluator_1.gen.ml
 PRIM_PDF_GEN=$(FRONTEND)/__primitives_pdf_mode.gen.ml
 PRIM_TEXT_GEN=$(FRONTEND)/__primitives_text_mode.gen.ml
 GENS= \
   $(INSTTYPE_GEN) \
   $(ATTYPE_GEN) \
+  $(CODETYPE_GEN) \
   $(VM_GEN) \
   $(IR_GEN) \
-  $(EVAL_GEN) \
+  $(EVAL_GEN_0) \
+  $(EVAL_GEN_1) \
   $(PRIM_PDF_GEN) \
   $(PRIM_TEXT_GEN)
 GENCODE_DIR=tools/gencode
@@ -47,6 +51,9 @@ gen: $(GENS)
 $(ATTYPE_GEN): $(INSTDEF)
 	$(GENCODE) --gen-attype > $@
 
+$(CODETYPE_GEN): $(INSTDEF)
+	$(GENCODE) --gen-codetype > $@
+
 $(INSTTYPE_GEN): $(INSTDEF)
 	$(GENCODE) --gen-insttype > $@
 
@@ -56,8 +63,11 @@ $(VM_GEN): $(INSTDEF)
 $(IR_GEN): $(INSTDEF)
 	$(GENCODE) --gen-ir > $@
 
-$(EVAL_GEN): $(INSTDEF)
-	$(GENCODE) --gen-interps > $@
+$(EVAL_GEN_0): $(INSTDEF)
+	$(GENCODE) --gen-interps-0 > $@
+
+$(EVAL_GEN_1): $(INSTDEF)
+	$(GENCODE) --gen-interps-1 > $@
 
 $(PRIM_PDF_GEN): $(INSTDEF)
 	$(GENCODE) --gen-pdf-mode-prims > $@

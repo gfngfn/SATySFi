@@ -127,29 +127,6 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath_in
   end
 
 
-let eval_library_file (tyenv : Typeenv.t) (env : environment) (abspath_in : abs_path) (utast : untyped_abstract_tree) : Typeenv.t * environment =
-  Logging.begin_to_read_file abspath_in;
-  let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
-  Logging.pass_type_check None;
-  if OptionState.type_check_only () then (tyenvnew, env)
-  else
-  match ty with
-  | (_, BaseType(EnvType)) ->
-      let value =
-        if OptionState.bytecomp_mode () then
-          Bytecomp.compile_and_exec env ast
-        else
-          Evaluator.interpret env ast
-      in
-      begin
-        match value with
-        | EvaluatedEnvironment(envnew) -> (tyenvnew, envnew)
-        | _                            -> failwith "not an 'EvaluatedEnvironment(...)'"
-      end
-
-  | _ -> raise (NotALibraryFile(abspath_in, tyenvnew, ty))
-
-
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
 let reset () =
   if OptionState.is_text_mode () then
@@ -260,7 +237,7 @@ let eval_main i env_freezed ast =
     if OptionState.bytecomp_mode () then
       Bytecomp.compile_and_exec env ast
     else
-      Evaluator.interpret env ast
+      Evaluator.interpret_0 env ast
   in
   Logging.end_evaluation ();
   valuedoc
@@ -272,20 +249,72 @@ let output_text abspath_out s =
   close_out outc
 
 
-let eval_document_file (tyenv : Typeenv.t) (env : environment) (abspath_in : abs_path) (utast : untyped_abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : Typeenv.t * abstract_tree =
+  Logging.begin_to_read_file abspath_in;
+  let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
+  Logging.pass_type_check None;
+  match ty with
+  | (_, BaseType(EnvType)) -> (tyenvnew, ast)
+  | _                      -> raise (NotALibraryFile(abspath_in, tyenvnew, ty))
+
+
+let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : abstract_tree =
   Logging.begin_to_read_file abspath_in;
   let (ty, _, ast) = Typechecker.main tyenv utast in
   Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
-  if OptionState.type_check_only () then
-    ()
+  if OptionState.is_text_mode () then
+    match ty with
+    | (_, BaseType(StringType)) -> ast
+    | _                         -> raise (NotAStringFile(abspath_in, tyenv, ty))
   else
-    let env_freezed = freeze_environment env in
-    if OptionState.is_text_mode () then
-      match ty with
-      | (_, BaseType(StringType)) ->
-          let rec aux i =
-            let valuestr = eval_main i env_freezed ast in
-            let s = EvalUtil.get_string valuestr in
+    match ty with
+    | (_, BaseType(DocumentType)) -> ast
+    | _                           -> raise (NotADocumentFile(abspath_in, tyenv, ty))
+
+
+let eval_library_file (env : environment) (abspath_in : abs_path) (ast : abstract_tree) : environment =
+  let value =
+    if OptionState.bytecomp_mode () then
+      Bytecomp.compile_and_exec env ast
+    else
+      Evaluator.interpret_0 env ast
+  in
+  match value with
+  | EvaluatedEnvironment(envnew) -> envnew
+  | _                            -> failwith "not an 'EvaluatedEnvironment(...)'"
+
+
+let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+  let env_freezed = freeze_environment env in
+  if OptionState.is_text_mode () then
+    let rec aux i =
+      let valuestr = eval_main i env_freezed ast in
+      let s = EvalUtil.get_string valuestr in
+      match CrossRef.needs_another_trial abspath_dump with
+      | CrossRef.NeedsAnotherTrial ->
+          Logging.needs_another_trial ();
+          aux (i + 1);
+
+      | CrossRef.CountMax ->
+          Logging.achieve_count_max ();
+          output_text abspath_out s;
+          Logging.end_output abspath_out;
+
+      | CrossRef.CanTerminate unresolved_crossrefs ->
+          Logging.achieve_fixpoint unresolved_crossrefs;
+          output_text abspath_out s;
+          Logging.end_output abspath_out;
+    in
+    aux 1
+  else
+    let rec aux i =
+      let valuedoc = eval_main i env_freezed ast in
+      match valuedoc with
+      | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
+          Logging.start_page_break ();
+          State.start_page_break ();
+          let pdf = PageBreak.main abspath_out pagesize pagecontf pagepartsf imvblst in
+          begin
             match CrossRef.needs_another_trial abspath_dump with
             | CrossRef.NeedsAnotherTrial ->
                 Logging.needs_another_trial ();
@@ -293,55 +322,33 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (abspath_in : abs
 
             | CrossRef.CountMax ->
                 Logging.achieve_count_max ();
-                output_text abspath_out s;
+                output_pdf pdf;
                 Logging.end_output abspath_out;
 
             | CrossRef.CanTerminate unresolved_crossrefs ->
                 Logging.achieve_fixpoint unresolved_crossrefs;
-                output_text abspath_out s;
+                output_pdf pdf;
                 Logging.end_output abspath_out;
-
-          in
-          aux 1
+          end
 
       | _ ->
-          raise (NotAStringFile(abspath_in, tyenv, ty))
-    else
-      match ty with
-      | (_, BaseType(DocumentType)) ->
-          let rec aux i =
-            let valuedoc = eval_main i env_freezed ast in
-            begin
-              match valuedoc with
-              | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
-                  Logging.start_page_break ();
-                  State.start_page_break ();
-                  let pdf = PageBreak.main abspath_out pagesize pagecontf pagepartsf imvblst in
-                  begin
-                    match CrossRef.needs_another_trial abspath_dump with
-                    | CrossRef.NeedsAnotherTrial ->
-                        Logging.needs_another_trial ();
-                        aux (i + 1);
+          Format.printf "valuedoc: %a\n" pp_syntactic_value valuedoc; failwith "main; not a DocumentValue(...)"
+    in
+    aux 1
 
-                    | CrossRef.CountMax ->
-                        Logging.achieve_count_max ();
-                        output_pdf pdf;
-                        Logging.end_output abspath_out;
 
-                    | CrossRef.CanTerminate unresolved_crossrefs ->
-                        Logging.achieve_fixpoint unresolved_crossrefs;
-                        output_pdf pdf;
-                        Logging.end_output abspath_out;
-                  end
+let eval_abstract_tree_list (env : environment) (libs : (abs_path * abstract_tree) list) (astdoc : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+  let rec aux env asts =
+    match libs with
+    | [] ->
+        eval_document_file env astdoc abspath_out abspath_dump
 
-              | _ ->
-                  Format.printf "valuedoc: %a\n" pp_syntactic_value valuedoc; failwith "main; not a DocumentValue(...)"
-            end
-          in
-          aux 1
+    | (abspath_in, ast) :: tail ->
+        let envnew = eval_library_file env abspath_in ast in
+        aux envnew tail
+  in
+  aux env libs
 
-      | _ ->
-          raise (NotADocumentFile(abspath_in, tyenv, ty))
 
 
 let convert_abs_path_to_show abspath =
@@ -912,13 +919,29 @@ let () =
         raise (CyclicFileDependency(cycle))
 
     | None ->
-        FileDependencyGraph.backward_bfs_fold (fun (tyenv, env) abspath_in file_info ->
-          match file_info with
-          | DocumentFile(utast) ->
-              eval_document_file tyenv env abspath_in utast abspath_out abspath_dump;
-              (tyenv, env)
+        let input_list =
+          FileDependencyGraph.backward_bfs_fold (fun inputacc abspath_in file_info ->
+            Alist.extend inputacc (abspath_in, file_info)
+          ) Alist.empty dg |> Alist.to_list
+        in
 
-          | LibraryFile(utast) ->
-              eval_library_file tyenv env abspath_in utast
-        ) (tyenv, env) dg |> ignore
+      (* -- type checking -- *)
+        let (_, astacc, docopt) =
+          input_list |> List.fold_left (fun (tyenv, libacc, docopt) (abspath_in, file_info) ->
+            match file_info with
+            | DocumentFile(utast) ->
+                let ast = typecheck_document_file tyenv abspath_in utast in
+                (tyenv, Alist.extend libacc (abspath_in, ast), Some(ast))
+
+            | LibraryFile(utast) ->
+                let (tyenvnew, ast) = typecheck_library_file tyenv abspath_in utast in
+                (tyenvnew, Alist.extend libacc (abspath_in, ast), docopt)
+          ) (tyenv, Alist.empty, None)
+        in
+        if OptionState.type_check_only () then
+          ()
+        else
+          match docopt with
+          | None         -> assert false
+          | Some(astdoc) -> eval_abstract_tree_list env (Alist.to_list astacc) astdoc abspath_out abspath_dump
   )
