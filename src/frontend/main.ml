@@ -268,7 +268,7 @@ let eval_library_file (env : environment) (abspath_in : abs_path) (ast : abstrac
   in
   match value with
   | EvaluatedEnvironment(envnew) -> envnew
-  | _                            -> failwith "not an 'EvaluatedEnvironment(...)'"
+  | _                            -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
 
 
 let eval_main i env_freezed ast =
@@ -333,7 +333,7 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
           end
 
       | _ ->
-          Format.printf "valuedoc: %a\n" pp_syntactic_value valuedoc; failwith "main; not a DocumentValue(...)"
+          EvalUtil.report_bug_value "main; not a DocumentValue(...)" valuedoc
     in
     aux 1
 
