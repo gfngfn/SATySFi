@@ -12,6 +12,10 @@ let begin_to_typecheck_file abspath_in =
   print_endline ("  type checking '" ^ (show_path abspath_in) ^ "' ...")
 
 
+let begin_to_preprocess_file abspath_in =
+  print_endline ("  preprocessing '" ^ (show_path abspath_in) ^ "' ...")
+
+
 let begin_to_eval_file abspath_in =
   print_endline ("  evaluating '" ^ (show_path abspath_in) ^ "' ...")
 

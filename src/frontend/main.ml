@@ -12,6 +12,8 @@ exception NotALibraryFile             of abs_path * Typeenv.t * mono_type
 exception NotADocumentFile            of abs_path * Typeenv.t * mono_type
 exception NotAStringFile              of abs_path * Typeenv.t * mono_type
 exception ShouldSpecifyOutputFile
+exception DocumentShouldBeAtStage1
+exception InvalidDependencyAsToStaging of abs_path * stage * abs_path * stage
 
 
 type line =
@@ -91,7 +93,7 @@ module FileDependencyGraph = DirectedGraph.Make
 
 type file_info =
   | DocumentFile of untyped_abstract_tree
-  | LibraryFile  of untyped_abstract_tree
+  | LibraryFile  of stage * untyped_abstract_tree
 
 
 let make_abs_path_of_required package =
@@ -109,20 +111,32 @@ let make_abs_path_of_package curdir headerelem =
   | HeaderImport(s)  -> make_abs_path (Filename.concat curdir (s ^ ".satyh"))
 
 
-let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath_in : abs_path) : unit =
+let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : abs_path) : unit =
   begin
-    Logging.begin_to_parse_file abspath_in;
-    let curdir = Filename.dirname (get_abs_path_string abspath_in) in
-    let inc = open_in_abs abspath_in in
-    let (header, utast) = ParserInterface.process (basename_abs abspath_in) (Lexing.from_channel inc) in
-    FileDependencyGraph.add_vertex dg abspath_in (LibraryFile(utast));
+    Logging.begin_to_parse_file abspath;
+    let curdir = Filename.dirname (get_abs_path_string abspath) in
+    let inc = open_in_abs abspath in
+    let (stage, header, utast) = ParserInterface.process (basename_abs abspath) (Lexing.from_channel inc) in
+    FileDependencyGraph.add_vertex dg abspath (LibraryFile(stage, utast));
     header |> List.iter (fun headerelem ->
       let abspath_sub = make_abs_path_of_package curdir headerelem in
       begin
         if FileDependencyGraph.mem_vertex abspath_sub dg then () else
           register_library_file dg abspath_sub
       end;
-      FileDependencyGraph.add_edge dg abspath_in abspath_sub
+      begin
+        match FileDependencyGraph.get_vertex dg abspath_sub with
+        | LibraryFile(stage_sub, _) ->
+            begin
+              match (stage_sub, stage) with
+              | (Stage1, Stage0) -> raise (InvalidDependencyAsToStaging(abspath, stage, abspath_sub, stage_sub))
+              | _                -> ()
+            end
+
+        | DocumentFile(_) ->
+            assert false
+      end;
+      FileDependencyGraph.add_edge dg abspath abspath_sub
     )
   end
 
@@ -193,7 +207,12 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : 
   Logging.begin_to_parse_file abspath_in;
   let file_in = open_in_abs abspath_in in
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
-  let (header, utast) = ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in) in
+  let (stage, header, utast) = ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in) in
+  begin
+    match stage with
+    | Stage1 -> ()
+    | Stage0 -> raise DocumentShouldBeAtStage1
+  end;
   FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
   header |> List.iter (fun headerelem ->
     let file_path_sub = make_abs_path_of_package curdir headerelem in
@@ -235,9 +254,9 @@ let output_text abspath_out s =
   close_out outc
 
 
-let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : Typeenv.t * abstract_tree =
+let typecheck_library_file (stage : stage) (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : Typeenv.t * abstract_tree =
   Logging.begin_to_typecheck_file abspath_in;
-  let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
+  let (ty, tyenvnew, ast) = Typechecker.main stage tyenv utast in
   Logging.pass_type_check None;
   match ty with
   | (_, BaseType(EnvType)) -> (tyenvnew, ast)
@@ -246,7 +265,7 @@ let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : 
 
 let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : abstract_tree =
   Logging.begin_to_typecheck_file abspath_in;
-  let (ty, _, ast) = Typechecker.main tyenv utast in
+  let (ty, _, ast) = Typechecker.main Stage1 tyenv utast in
   Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
   if OptionState.is_text_mode () then
     match ty with
@@ -271,6 +290,11 @@ let eval_library_file (env : environment) (abspath_in : abs_path) (ast : abstrac
   | _                            -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
 
 
+let preprocess_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value =
+  Logging.begin_to_preprocess_file abspath;
+  Evaluator.interpret_1 env ast
+
+
 let eval_main i env_freezed ast =
   Logging.start_evaluation i;
   reset ();
@@ -285,7 +309,8 @@ let eval_main i env_freezed ast =
   valuedoc
 
 
-let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let eval_document_file (env : environment) (code : code_value) (abspath_out : abs_path) (abspath_dump : abs_path) =
+  let ast = unlift_code code in
   let env_freezed = freeze_environment env in
   if OptionState.is_text_mode () then
     let rec aux i =
@@ -338,18 +363,36 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
     aux 1
 
 
-let eval_abstract_tree_list (env : environment) (libs : (abs_path * abstract_tree) list) (astdoc : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
-  let rec aux env libs =
+let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abstract_tree) list) (astdoc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+
+  let rec preprocess (codeacc : (abs_path * code_value) Alist.t) (env : environment) libs =
     match libs with
     | [] ->
-        eval_document_file env astdoc abspath_out abspath_dump
+        let codedoc = preprocess_file env abspath_in astdoc in
+        (env, Alist.to_list codeacc, codedoc)
 
-    | (abspath_in, astlib) :: tail ->
-        let envnew = eval_library_file env abspath_in astlib in
-        aux envnew tail
+    | (Stage0, abspath, astlib0) :: tail ->
+        let envnew = eval_library_file env abspath astlib0 in
+        preprocess codeacc envnew tail
+
+    | (Stage1, abspath, astlib1) :: tail ->
+        let code = preprocess_file env abspath astlib1 in
+        preprocess (Alist.extend codeacc (abspath, code)) env tail
   in
-  aux env libs
 
+  let rec eval (env : environment) (codes : (abs_path * code_value) list) : environment =
+    match codes with
+    | [] ->
+        env
+
+    | (abspath, code) :: tail ->
+        let ast = unlift_code code in
+        let envnew = eval_library_file env abspath ast in
+        eval envnew tail
+  in
+  let (env, codes, codedoc) = preprocess Alist.empty env libs in
+  let env = eval env codes in
+  eval_document_file env codedoc abspath_out abspath_dump
 
 
 let convert_abs_path_to_show abspath =
@@ -409,8 +452,8 @@ let error_log_environment suspended =
         pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath));
       ])
 
-  | NotALibraryFile(abspath_in, tyenv, ty) ->
-      let fname = convert_abs_path_to_show abspath_in in
+  | NotALibraryFile(abspath, tyenv, ty) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Typechecker [
         NormalLine("file '" ^ fname ^ "' is not a header file; it is of type");
         DisplayLine(string_of_mono_type tyenv ty);
@@ -433,6 +476,11 @@ let error_log_environment suspended =
   | ShouldSpecifyOutputFile ->
       report_error Interface [
         NormalLine("should specify output file for text mode.");
+      ]
+
+  | DocumentShouldBeAtStage1 ->
+      report_error Interface [
+        NormalLine("cannot specify '@stage: 0' for a document file; should be at stage 1.");
       ]
 
   | LoadHyph.InvalidPatternElement(rng) ->
@@ -935,22 +983,22 @@ let () =
 
     | None ->
         let input_list =
-          FileDependencyGraph.backward_bfs_fold (fun inputacc abspath_in file_info ->
-            Alist.extend inputacc (abspath_in, file_info)
+          FileDependencyGraph.backward_bfs_fold (fun inputacc abspath file_info ->
+            Alist.extend inputacc (abspath, file_info)
           ) Alist.empty dg |> Alist.to_list
         in
 
       (* -- type checking -- *)
         let (_, astacc, docopt) =
-          input_list |> List.fold_left (fun (tyenv, libacc, docopt) (abspath_in, file_info) ->
+          input_list |> List.fold_left (fun (tyenv, libacc, docopt) (abspath, file_info) ->
             match file_info with
             | DocumentFile(utast) ->
-                let ast = typecheck_document_file tyenv abspath_in utast in
+                let ast = typecheck_document_file tyenv abspath utast in
                 (tyenv, libacc, Some(ast))
 
-            | LibraryFile(utast) ->
-                let (tyenvnew, ast) = typecheck_library_file tyenv abspath_in utast in
-                (tyenvnew, Alist.extend libacc (abspath_in, ast), docopt)
+            | LibraryFile(stage, utast) ->
+                let (tyenvnew, ast) = typecheck_library_file stage tyenv abspath utast in
+                (tyenvnew, Alist.extend libacc (stage, abspath, ast), docopt)
           ) (tyenv, Alist.empty, None)
         in
         if OptionState.type_check_only () then
@@ -958,5 +1006,5 @@ let () =
         else
           match docopt with
           | None         -> assert false
-          | Some(astdoc) -> eval_abstract_tree_list env (Alist.to_list astacc) astdoc abspath_out abspath_dump
+          | Some(astdoc) -> eval_abstract_tree_list env (Alist.to_list astacc) astdoc abspath_in abspath_out abspath_dump
   )

@@ -1275,6 +1275,80 @@ let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value
   StoreIDHashTable.find_opt (!stenvref) stid
 
 
+let map_input_horz f ihlst =
+  ihlst |> List.map (function
+  | InputHorzText(s)           -> InputHorzText(s)
+  | InputHorzEmbedded(ast)     -> InputHorzEmbedded(f ast)
+  | InputHorzContent(ast)      -> InputHorzContent(f ast)
+  | InputHorzEmbeddedMath(ast) -> InputHorzEmbeddedMath(f ast)
+  )
+
+
+let map_input_vert f ivlst =
+  ivlst |> List.map (function
+  | InputVertContent(ast)  -> InputVertContent(f ast)
+  | InputVertEmbedded(ast) -> InputVertEmbedded(f ast)
+  )
+
+
+let map_path_component f g = function
+  | PathLineTo(ast) ->
+      PathLineTo(g ast)
+
+  | PathCubicBezierTo(ast1, ast2, ast3) ->
+      let v1 = f ast1 in
+      let v2 = f ast2 in
+      let v3 = g ast3 in
+      PathCubicBezierTo(v1, v2, v3)
+
+
+let rec unlift_code (code : code_value) : abstract_tree =
+  let rec aux code =
+    match code with
+    | CdValue(v)                           -> Value(v)
+    | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
+    | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
+    | CdContentOf(rng, evid)               -> ContentOf(rng, evid)
+    | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map aux_letrec_binding cdrecbinds, aux code1)
+    | CdLetNonRecIn(pat, code1, code2)     -> LetNonRecIn(pat, aux code1, aux code2)
+    | CdFunction(evids, cdpatbr)           -> Function(evids, aux_pattern_branch cdpatbr)
+    | CdApply(code1, code2)                -> Apply(aux code1, aux code2)
+    | CdApplyOptional(code1, code2)        -> ApplyOptional(aux code1, aux code2)
+    | CdApplyOmission(code1)               -> ApplyOmission(aux code1)
+    | CdIfThenElse(code1, code2, code3)    -> IfThenElse(aux code1, aux code2, aux code3)
+    | CdRecord(cdasc)                      -> Record(Assoc.map_value aux cdasc)
+    | CdAccessField(code1, fldnm)          -> AccessField(aux code1, fldnm)
+    | CdUpdateField(code1, fldnm, code2)   -> UpdateField(aux code1, fldnm, aux code2)
+    | CdLetMutableIn(evid, code1, code2)   -> LetMutableIn(evid, aux code1, aux code2)
+    | CdSequential(code1, code2)           -> Sequential(aux code1, aux code2)
+    | CdOverwrite(evid, code1)             -> Overwrite(evid, aux code1)
+    | CdWhileDo(code1, code2)              -> WhileDo(aux code1, aux code2)
+    | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
+    | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
+    | CdTupleCons(code1, code2)            -> PrimitiveTupleCons(aux code1, aux code2)
+    | CdPath(code1, cdpath, cdcycleopt)    -> Path(aux code1, aux_path cdpath, aux_cycle cdcycleopt)
+    | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
+    | CdModule(code1, code2)               -> Module(aux code1, aux code2)
+    | _ ->
+        failwith "unlift_code"
+
+  and aux_letrec_binding (CdLetRecBinding(evid, cdpatbr)) =
+    LetRecBinding(evid, aux_pattern_branch cdpatbr)
+
+  and aux_pattern_branch = function
+    | CdPatternBranch(pat, code)            -> PatternBranch(pat, aux code)
+    | CdPatternBranchWhen(pat, code, codeB) -> PatternBranchWhen(pat, aux code, aux codeB)
+
+  and aux_path cdpath =
+    List.map (map_path_component aux aux) cdpath
+
+  and aux_cycle cdcycleopt =
+    cdcycleopt |> BatOption.map (map_path_component aux (fun () -> ()))
+
+  in
+  aux code
+
+
 module MathContext
 : sig
     type t

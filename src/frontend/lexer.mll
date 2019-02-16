@@ -138,7 +138,17 @@ rule progexpr stack = parse
       match headertype with
       | "require" -> HEADER_REQUIRE(pos, content)
       | "import"  -> HEADER_IMPORT(pos, content)
-      | _         -> raise (LexError(pos, "undefined header type '" ^ headertype ^ "'"))
+
+      | "stage" ->
+          begin
+            match content with
+            | "0" -> HEADER_STAGE0(pos)
+            | "1" -> HEADER_STAGE1(pos)
+            | _   -> raise (LexError(pos, "undefined stage type '" ^ content ^ "'"))
+          end
+
+      | _ ->
+          raise (LexError(pos, "undefined header type '" ^ headertype ^ "'"))
     }
   | space { progexpr stack lexbuf }
   | break {

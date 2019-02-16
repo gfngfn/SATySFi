@@ -1398,9 +1398,9 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
   (tyenvI, evid, eI, tyI)
 
 
-let main (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
+let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
   begin
     final_tyenv := tyenv;
-    let (e, ty) = typecheck { stage = Stage1; quantifiability = Quantifiable; level = Level.bottom; } tyenv utast in
+    let (e, ty) = typecheck { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utast in
     (ty, !final_tyenv, e)
   end

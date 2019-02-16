@@ -439,6 +439,7 @@
 *)
 %token <Range.t * int> ITEM
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
+%token <Range.t> HEADER_STAGE0 HEADER_STAGE1
 %token EOI
 
 (*
@@ -472,7 +473,7 @@
 *)
 
 %start main
-%type <Types.header_element list * Types.untyped_abstract_tree> main
+%type <Types.stage * Types.header_element list * Types.untyped_abstract_tree> main
 %type <Types.untyped_abstract_tree> nxlet
 %type <Types.untyped_abstract_tree> nxletsub
 %type <Types.untyped_letrec_binding list> nxrecdec
@@ -520,9 +521,13 @@
 
 
 main:
-  | header=list(headerelem); utast=nxtoplevel    { (header, utast) }
-  | header=list(headerelem); utast=vxblock; EOI  { (header, utast) }
-  | header=list(headerelem); utast=nxwhl; EOI    { (header, utast) }
+  | stage=stage; header=list(headerelem); utast=nxtoplevel    { (stage, header, utast) }
+  | stage=stage; header=list(headerelem); utast=nxwhl; EOI    { (stage, header, utast) }
+;
+stage:
+  |               { Stage1 }
+  | HEADER_STAGE0 { Stage0 }
+  | HEADER_STAGE1 { Stage1 }
 ;
 headerelem:
   | content=HEADER_REQUIRE { let (_, s) = content in HeaderRequire(s) }

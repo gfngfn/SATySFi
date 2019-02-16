@@ -19,4 +19,4 @@ exception ApplicationOfNonFunction       of Range.t * Typeenv.t * mono_type
 exception InvalidExpressionAsToStaging   of Range.t * stage
 exception InvalidOccurrenceAsToStaging   of Range.t * var_name * stage
 
-val main : Typeenv.t -> untyped_abstract_tree -> (mono_type * Typeenv.t * abstract_tree)
+val main : stage -> Typeenv.t -> untyped_abstract_tree -> (mono_type * Typeenv.t * abstract_tree)

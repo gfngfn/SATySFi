@@ -28,33 +28,6 @@ let make_length_from_description flt unitnm =
   | _      -> report_bug_vm "LengthDescription; unknown unit name"
 
 
-let map_input_horz f ihlst =
-  ihlst |> List.map (function
-  | InputHorzText(s)           -> InputHorzText(s)
-  | InputHorzEmbedded(ast)     -> InputHorzEmbedded(f ast)
-  | InputHorzContent(ast)      -> InputHorzContent(f ast)
-  | InputHorzEmbeddedMath(ast) -> InputHorzEmbeddedMath(f ast)
-  )
-
-
-let map_input_vert f ivlst =
-  ivlst |> List.map (function
-  | InputVertContent(ast)  -> InputVertContent(f ast)
-  | InputVertEmbedded(ast) -> InputVertEmbedded(f ast)
-  )
-
-
-let map_path_component f g = function
-  | PathLineTo(ast) ->
-      PathLineTo(g ast)
-
-  | PathCubicBezierTo(ast1, ast2, ast3) ->
-      let v1 = f ast1 in
-      let v2 = f ast2 in
-      let v3 = g ast3 in
-      PathCubicBezierTo(v1, v2, v3)
-
-
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
   HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
