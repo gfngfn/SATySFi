@@ -360,9 +360,11 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
   | Value(v) ->
       CdValue(v)
 
-  | FinishHeaderFile
+  | FinishHeaderFile ->
+      CdFinishHeaderFile
+
   | FinishStruct ->
-      failwith "FinishHeaderFile at stage 1; remains to be supported."
+      CdFinishStruct
 
   | InputHorz(ihlst) ->
       let cdihlst = ihlst |> map_input_horz (interpret_1 env) in

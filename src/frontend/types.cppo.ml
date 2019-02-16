@@ -865,6 +865,8 @@ and math =
 
 and code_value =
   | CdValue         of syntactic_value
+  | CdFinishHeaderFile
+  | CdFinishStruct
   | CdInputHorz     of code_input_horz_element list
   | CdInputVert     of code_input_vert_element list
   | CdContentOf     of Range.t * EvalVarID.t
@@ -1306,6 +1308,8 @@ let rec unlift_code (code : code_value) : abstract_tree =
   let rec aux code =
     match code with
     | CdValue(v)                           -> Value(v)
+    | CdFinishHeaderFile                   -> FinishHeaderFile
+    | CdFinishStruct                       -> FinishStruct
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
     | CdContentOf(rng, evid)               -> ContentOf(rng, evid)
