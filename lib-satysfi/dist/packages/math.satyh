@@ -137,6 +137,7 @@ module Math : sig
   direct \propto : [] math-cmd
   direct \coloneq : [] math-cmd
   direct \eqcolon : [] math-cmd
+  direct \Coloneq : [] math-cmd
 
   direct \in : [] math-cmd
   direct \nin : [] math-cmd
@@ -739,6 +740,7 @@ end = struct
   let-math \propto = rel `∝`
   let-math \coloneq = rel `≔`
   let-math \eqcolon = rel `≕`
+  let-math \Coloneq = rel `⩴`
 
   let-math \in = rel `∈`
   let-math \nin = rel `∉`
