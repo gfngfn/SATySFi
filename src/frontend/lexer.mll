@@ -220,6 +220,8 @@ rule progexpr stack = parse
   | "-"   { EXACT_MINUS(get_pos lexbuf) }
   | "="   { DEFEQ(get_pos lexbuf) }
   | "*"   { EXACT_TIMES(get_pos lexbuf) }
+  | "&"   { EXACT_AMP(get_pos lexbuf) }
+  | "~"   { EXACT_TILDE(get_pos lexbuf) }
 
 (* -- binary operators; should be extended -- *)
   | ("+" opsymbol*) { BINOP_PLUS(get_pos lexbuf, Lexing.lexeme lexbuf) }

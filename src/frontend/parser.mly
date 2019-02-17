@@ -422,7 +422,7 @@
 %token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
 %token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
 %token <Range.t * Types.var_name> UNOP_EXCLAM
-%token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT
+%token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT EXACT_AMP EXACT_TILDE
 %token <Range.t> LPAREN RPAREN
 %token <Range.t> BVERTGRP EVERTGRP
 %token <Range.t> BHORZGRP EHORZGRP
@@ -817,8 +817,11 @@ nxapp:
   | utast=nxunsub { utast }
 ;
 nxunsub:
-  | unop=UNOP_EXCLAM; utast2=nxbot   { let (rng, varnm) = unop in make_standard (Tok rng) (Ranged utast2) (UTApply((rng, UTContentOf([], varnm)), utast2)) }
-  | utast=nxbot { utast }
+  | unop=UNOP_EXCLAM; utast2=nxbot { let (rng, varnm) = unop in make_standard (Tok rng) (Ranged utast2) (UTApply((rng, UTContentOf([], varnm)), utast2)) }
+  | tok=EXACT_AMP; utast2=nxbot    { make_standard (Tok tok) (Ranged utast2) (UTNext(utast2)) }
+  | tok=EXACT_TILDE; utast2=nxbot  { make_standard (Tok tok) (Ranged utast2) (UTPrev(utast2)) }
+  | utast=nxbot                    { utast }
+;
 nxbot:
   | utast=nxbot; ACCESS; var=VAR { make_standard (Ranged utast) (Ranged var) (UTAccessField(utast, extract_name var)) }
   | var=VAR                      { let (rng, varnm) = var in (rng, UTContentOf([], varnm)) }
