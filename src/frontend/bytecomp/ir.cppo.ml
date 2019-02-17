@@ -476,10 +476,9 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
   (* -- staging construct -- *)
 
     | Prev(_) ->
-        failwith "Prev(_); remains to be supported."
+        report_bug_ir "Prev(...) cannot occur at transform_ir"
 
     | Next(_) ->
-        failwith "Next(_); remains to be supported."
-
+        report_bug_ir "Next(...) cannot occur at transform_ir"
 
 #include "__ir.gen.ml"
