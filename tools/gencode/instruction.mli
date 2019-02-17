@@ -6,7 +6,9 @@ module Field : sig
 
   val name : t -> string
 
-  val type_ : t -> string
+  val normal_type : t -> string
+
+  val compiled_type : t -> string
 end
 
 module Param : sig

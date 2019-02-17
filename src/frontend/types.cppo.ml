@@ -593,12 +593,20 @@ type ('a, 'b) path_component_scheme =
 type letrec_binding =
   | LetRecBinding of EvalVarID.t * pattern_branch
 
-and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
+and 'a environment = ('a location) EvalVarIDMap.t * ('a syntactic_value StoreIDHashTable.t) ref
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
-and location = syntactic_value ref
+and 'a location = ('a syntactic_value) ref
 
-and vmenv = environment * (syntactic_value array) list
+and normal_location = normal_func location
+
+and compiled_location = compiled_func location
+
+and normal_environment = normal_func location
+
+and compiled_environment = compiled_func environment
+
+and vmenv = compiled_environment * (compiled_value array) list
 
 and compiled_input_horz_element =
   | CompiledInputHorzText         of string
@@ -626,7 +634,6 @@ and ir_input_horz_element =
   | IRInputHorzContent      of ir
   | IRInputHorzEmbeddedMath of ir
 
-
 and ir_input_vert_element =
   | IRInputVertEmbedded of ir
   | IRInputVertContent  of ir
@@ -640,11 +647,11 @@ and 'a compiled_path_component =
   | CompiledPathCubicBezierTo of instruction list * instruction list * 'a
 
 and varloc =
-  | GlobalVar of location * EvalVarID.t * int ref
+  | GlobalVar of compiled_location * EvalVarID.t * int ref
   | LocalVar  of int * int * EvalVarID.t * int ref
 
 and ir =
-  | IRConstant              of syntactic_value
+  | IRConstant              of compiled_value
   | IRTerminal
   | IRInputHorz             of ir_input_horz_element list
   | IRInputVert             of ir_input_vert_element list
@@ -701,9 +708,25 @@ and intermediate_input_vert_element =
   | ImInputVertEmbedded of abstract_tree
   | ImInputVertContent  of intermediate_input_vert_element list * environment
 
-and syntactic_value =
+and 'a syntactic_value =
+  | NonFunc of 'a nonfunc_value
+  | Func    of 'a
+
+and normal_func =
+  | FuncWithEnvironment      of EvalVarID.t list * pattern_branch * environment
+  | PrimitiveWithEnvironment of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
+
+and compiled_func =
+  | CompiledFuncWithEnvironment      of varloc list * int * compiled_value list * int * instruction list * vmenv
+  | CompiledPrimitiveWithEnvironment of int * compiled_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
+
+and normal_value = normal_func syntactic_value
+
+and compiled_value = compiled_func syntactic_value
+
+and 'a nonfunc_value =
   | Nil
-  | SimpleRef             of syntactic_value ref
+  | SimpleRef             of ('a syntactic_value) ref
   | UnitConstant
   | BooleanConstant       of bool
   | IntegerConstant       of int
@@ -714,22 +737,17 @@ and syntactic_value =
   | RegExpConstant        of Str.regexp
       [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]
 
-  | Constructor           of constructor_name * syntactic_value
+  | Constructor           of constructor_name * 'a syntactic_value
 
-  | FuncWithEnvironment   of EvalVarID.t list * pattern_branch * environment
-  | PrimitiveWithEnvironment   of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | CompiledFuncWithEnvironment of varloc list * int * syntactic_value list * int * instruction list * vmenv
-  | CompiledPrimitiveWithEnvironment of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
+  | EvaluatedEnvironment  of 'a environment
 
-  | EvaluatedEnvironment  of environment
-
-  | ListCons              of syntactic_value * syntactic_value
+  | ListCons              of 'a syntactic_value * 'a syntactic_value
   | EndOfList
 
-  | TupleCons             of syntactic_value * syntactic_value
+  | TupleCons             of 'a syntactic_value * 'a syntactic_value
   | EndOfTuple
 
-  | RecordValue           of syntactic_value Assoc.t
+  | RecordValue           of ('a syntactic_value) Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
 
   | Location              of StoreID.t
@@ -917,6 +935,9 @@ and code_pattern_branch =
   | CdPatternBranch     of pattern_tree * code_value
   | CdPatternBranchWhen of pattern_tree * code_value * code_value
 [@@deriving show { with_path = false; }]
+
+
+let nonfunc x = NonFunc(x)
 
 
 let get_range (rng, _) = rng

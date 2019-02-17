@@ -9,7 +9,18 @@ module Field = struct
 
   let name t = t.name
 
-  let type_ t = t.type_
+  let normal_type t =
+    let s = t.type_ in
+    match s with
+    | "syntactic_value" -> "normal_value"
+    | _                 -> s
+
+  let compiled_type t =
+    let s = t.type_ in
+    match s with
+    | "syntactic_value" -> "compiled_value"
+    | _                 -> s
+
 end
 
 

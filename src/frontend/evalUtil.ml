@@ -51,9 +51,9 @@ let chop_space_indent s =
 
 let get_string (value : syntactic_value) : string =
   match value with
-  | StringEmpty       -> ""
-  | StringConstant(s) -> s
-  | _                 -> report_bug_value "get_string" value
+  | NonFunc(StringEmpty)       -> ""
+  | NonFunc(StringConstant(s)) -> s
+  | _                          -> report_bug_value "get_string" value
 
 
 let get_list getf value =

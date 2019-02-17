@@ -553,10 +553,10 @@ let general_table : (var_name * poly_type * (environment -> syntactic_value)) li
 let pdf_mode_table =
   List.append general_table
     [
-      ("inline-fil", ~% tIB, (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
-      ("inline-nil", ~% tIB, (fun _ -> Horz([]))                               );
-      ("block-nil" , ~% tBB, (fun _ -> Vert([]))                               );
-      ("clear-page", ~% tBB, (fun _ -> Vert(HorzBox.([VertClearPage])))        );
+      ("inline-fil", ~% tIB, (fun _ -> nonfunc @@ Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
+      ("inline-nil", ~% tIB, (fun _ -> nonfunc @@ Horz([]))                               );
+      ("block-nil" , ~% tBB, (fun _ -> nonfunc @@ Vert([]))                               );
+      ("clear-page", ~% tBB, (fun _ -> nonfunc @@ Vert(HorzBox.([VertClearPage])))        );
 
 #include "__primitives_pdf_mode.gen.ml"
     ]

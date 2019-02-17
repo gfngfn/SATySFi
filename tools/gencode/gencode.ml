@@ -248,7 +248,7 @@ let gen_insttype () =
 
         | fs ->
             puts "  | Op%s of %s"
-              inst (String.concat " * " @@ List.map Field.type_ fs)
+              inst (String.concat " * " @@ List.map Field.compiled_type fs)
       end;
       begin
         match pp with
