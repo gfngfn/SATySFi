@@ -1245,8 +1245,8 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t)
                 else
                   raise (NotMatchingInterface(rng, varnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
 
-            | Some((_, _, Stage0)) ->
-                remains_to_be_implemented "variables at stage 0 in signatures"
+            | Some((_, _, stage)) ->
+                remains_to_be_implemented ("variables at " ^ (string_of_stage stage) ^ " in signatures")
           end
 
       | SigDirect(csnm, mty, constrntcons) :: tail ->

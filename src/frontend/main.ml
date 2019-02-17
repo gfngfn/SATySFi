@@ -129,8 +129,12 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : 
         | LibraryFile(stage_sub, _) ->
             begin
               match (stage_sub, stage) with
-              | (Stage1, Stage0) -> raise (InvalidDependencyAsToStaging(abspath, stage, abspath_sub, stage_sub))
-              | _                -> ()
+              | (Stage1, Stage0)
+              | (Stage1, Persistent0)
+              | (Stage0, Persistent0) ->
+                  raise (InvalidDependencyAsToStaging(abspath, stage, abspath_sub, stage_sub))
+              | _ ->
+                  ()
             end
 
         | DocumentFile(_) ->
@@ -210,8 +214,8 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : 
   let (stage, header, utast) = ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in) in
   begin
     match stage with
-    | Stage1 -> ()
-    | Stage0 -> raise DocumentShouldBeAtStage1
+    | Stage1               -> ()
+    | Stage0 | Persistent0 -> raise DocumentShouldBeAtStage1
   end;
   FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
   header |> List.iter (fun headerelem ->
@@ -371,7 +375,7 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abst
         let codedoc = preprocess_file env abspath_in astdoc in
         (env, Alist.to_list codeacc, codedoc)
 
-    | (Stage0, abspath, astlib0) :: tail ->
+    | ((Stage0 | Persistent0), abspath, astlib0) :: tail ->
         let envnew = eval_library_file ~is_preprocess:true env abspath astlib0 in
         preprocess codeacc envnew tail
 

@@ -380,13 +380,15 @@ let pp_sep fmt () =
 
 
 type stage =
+  | Persistent0
   | Stage0
   | Stage1
 
 
 let string_of_stage = function
-  | Stage0 -> "stage 0"
-  | Stage1 -> "stage 1"
+  | Persistent0 -> "persistent stage"
+  | Stage0      -> "stage 0"
+  | Stage1      -> "stage 1"
 
 
 type untyped_letrec_binding =

@@ -600,15 +600,23 @@ let rec typecheck
             raise (UndefinedVariable(rng, mdlnmlst, varnm, Typeenv.find_candidates tyenv mdlnmlst varnm rng))
 
         | Some((pty, evid, stage)) ->
-            if stage = pre.stage then
-              let tyfree = instantiate pre.level pre.quantifiability pty in
-              let tyres = overwrite_range_of_type tyfree rng in
+            begin
+              match (pre.stage, stage) with
+              | (Persistent0, Persistent0)
+              | (Stage0, Persistent0)
+              | (Stage0, Stage0)
+              | (Stage1, Persistent0)
+              | (Stage1, Stage1) ->
+                  let tyfree = instantiate pre.level pre.quantifiability pty in
+                  let tyres = overwrite_range_of_type tyfree rng in
 (*
-              let () = print_endline ("\n#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ "\n  (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
+                  let () = print_endline ("\n#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ "\n  (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
 *)
-              (ContentOf(rng, evid), tyres)
-            else
-              raise (InvalidOccurrenceAsToStaging(rng, varnm, stage))
+                  (ContentOf(rng, evid), tyres)
+
+              | _ ->
+                  raise (InvalidOccurrenceAsToStaging(rng, varnm, stage))
+            end
       end
 
   | UTConstructor(constrnm, utast1) ->
@@ -932,14 +940,14 @@ let rec typecheck
             let (e1, ty1) = typecheck_iter ~s:Stage1 tyenv utast1 in
             (Next(e1), (rng, CodeType(ty1)))
 
-        | Stage1 ->
+        | Stage1 | Persistent0 ->
             raise (InvalidExpressionAsToStaging(rng, Stage0))
       end
 
   | UTPrev(utast1) ->
       begin
         match pre.stage with
-        | Stage0 ->
+        | Stage0 | Persistent0 ->
             raise (InvalidExpressionAsToStaging(rng, Stage1))
 
         | Stage1 ->
