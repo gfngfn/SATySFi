@@ -15,6 +15,7 @@ DUNE=dune
 INSTTYPE_GEN=$(FRONTEND)/__insttype.gen.ml
 ATTYPE_GEN=$(FRONTEND)/__attype.gen.ml
 CODETYPE_GEN=$(FRONTEND)/__codetype.gen.ml
+UNLIFTCODE_GEN=$(FRONTEND)/__unliftcode.gen.ml
 VM_GEN=$(BYTECOMP)/__vm.gen.ml
 IR_GEN=$(BYTECOMP)/__ir.gen.ml
 EVAL_GEN_0=$(FRONTEND)/__evaluator_0.gen.ml
@@ -25,6 +26,7 @@ GENS= \
   $(INSTTYPE_GEN) \
   $(ATTYPE_GEN) \
   $(CODETYPE_GEN) \
+  $(UNLIFTCODE_GEN) \
   $(VM_GEN) \
   $(IR_GEN) \
   $(EVAL_GEN_0) \
@@ -53,6 +55,9 @@ $(ATTYPE_GEN): $(INSTDEF)
 
 $(CODETYPE_GEN): $(INSTDEF)
 	$(GENCODE) --gen-codetype > $@
+
+$(UNLIFTCODE_GEN):
+	$(GENCODE) --gen-unliftcode > $@
 
 $(INSTTYPE_GEN): $(INSTDEF)
 	$(GENCODE) --gen-insttype > $@

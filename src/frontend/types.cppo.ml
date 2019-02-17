@@ -1333,8 +1333,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPath(code1, cdpath, cdcycleopt)    -> Path(aux code1, aux_path cdpath, aux_cycle cdcycleopt)
     | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
     | CdModule(code1, code2)               -> Module(aux code1, aux code2)
-    | _ ->
-        failwith "unlift_code"
+#include "__unliftcode.gen.ml"
 
   and aux_letrec_binding (CdLetRecBinding(evid, cdpatbr)) =
     LetRecBinding(evid, aux_pattern_branch cdpatbr)
