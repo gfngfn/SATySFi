@@ -1,0 +1,58 @@
+@require: list
+
+module Itemize : sig
+
+  direct +listing : [itemize] block-cmd
+  direct \listing : [itemize] inline-cmd
+  direct +enumerate : [itemize] block-cmd
+  direct \enumerate : [itemize] inline-cmd
+
+end = struct
+
+let (^^>) = List.fold-left (^)
+
+
+let kara-list stlst =
+  let list-length = List.length stlst in
+  if list-length > 0 then true else false
+
+
+let-rec listing-item : string -> text-info -> int -> itemize -> string
+  | tag tinfo depth (Item(parent, children)) =
+    let tinfo-inner = tinfo |> deepen-indent 2 in
+    let tag-open = if kara-list children then
+        `<` ^ tag ^ `>` else ` `
+    in
+    let tag-close = if kara-list children then
+        `</` ^ tag ^ `>` else ` `
+    in
+    let break-tinfo = if kara-list children then
+        (break tinfo) else ` `
+    in
+    let st-parent = (break tinfo) ^ `<li>` ^ (stringify-inline tinfo parent) in
+    let stlst-children = tag-open :: (List.append
+      (List.map (listing-item tag tinfo-inner (depth + 1)) children)) [break-tinfo; tag-close; `</li>`] in
+    st-parent ^^> stlst-children
+
+
+let listing tinfo (Item(_, itmzlst)) =
+  let stlst = List.map (listing-item `ul` tinfo 0) itmzlst in
+    `<ul>` ^ (` ` ^^> stlst) ^ (break tinfo) ^ `</ul>`
+
+
+let-block tinfo +listing item = (listing tinfo item) ^ (break tinfo)
+
+let-inline tinfo \listing item = (listing tinfo item) ^ (break tinfo)
+
+
+let enumerate tinfo (Item(_, itmzlst)) =
+  let stlst = List.map (listing-item `ol` tinfo 0) itmzlst in
+    `<ol>` ^ (` ` ^^> stlst) ^ (break tinfo) ^ `</ol>`
+
+
+let-block tinfo +enumerate item = (enumerate tinfo item) ^ (break tinfo)
+
+let-inline tinfo \enumerate item = (enumerate tinfo item) ^ (break tinfo)
+
+end
+
