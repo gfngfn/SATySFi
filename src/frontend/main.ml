@@ -484,7 +484,7 @@ let error_log_environment suspended =
 
   | DocumentShouldBeAtStage1 ->
       report_error Interface [
-        NormalLine("cannot specify '@stage: 0' for a document file; should be at stage 1.");
+        NormalLine("invalid stage designation for a document file; should be at stage 1.");
       ]
 
   | LoadHyph.InvalidPatternElement(rng) ->

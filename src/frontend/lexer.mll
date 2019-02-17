@@ -142,9 +142,10 @@ rule progexpr stack = parse
       | "stage" ->
           begin
             match content with
-            | "0" -> HEADER_STAGE0(pos)
-            | "1" -> HEADER_STAGE1(pos)
-            | _   -> raise (LexError(pos, "undefined stage type '" ^ content ^ "'"))
+            | "persistent" -> HEADER_PERSISTENT0(pos)
+            | "0"          -> HEADER_STAGE0(pos)
+            | "1"          -> HEADER_STAGE1(pos)
+            | _            -> raise (LexError(pos, "undefined stage type '" ^ content ^ "'; should be 'persistent', '0', or '1'."))
           end
 
       | _ ->
