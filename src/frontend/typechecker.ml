@@ -24,12 +24,6 @@ exception InternalInclusionError
 exception InternalContradictionError of bool
 
 
-type pre = {
-  level           : level;
-  quantifiability : quantifiability;  (* may omitted in the future *)
-  stage           : stage;
-}
-
 let abstraction evid ast =
   Function([], PatternBranch(PVariable(evid), ast))
 
@@ -899,7 +893,7 @@ let rec typecheck
   | UTModule(mdlrng, mdlnm, sigopt, utastM, utastA) ->
       let tyenvinner = Typeenv.enter_new_module tyenv mdlnm in
       let (eM, _) = typecheck_iter tyenvinner utastM in
-      let tyenvmid = Typeenv.sigcheck mdlrng pre.quantifiability pre.level (!final_tyenv) tyenv sigopt in
+      let tyenvmid = Typeenv.sigcheck mdlrng pre (!final_tyenv) tyenv sigopt in
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
       (Module(eM, eA), tyA)

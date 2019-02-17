@@ -384,6 +384,12 @@ type stage =
   | Stage0
   | Stage1
 
+type pre = {
+  level           : level;
+  quantifiability : quantifiability;  (* may omitted in the future *)
+  stage           : stage;
+}
+
 
 let string_of_stage = function
   | Persistent0 -> "persistent stage"
