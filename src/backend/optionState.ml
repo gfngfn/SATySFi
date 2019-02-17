@@ -15,6 +15,7 @@ type state = {
   mutable debug_show_bbox : bool;
   mutable debug_show_space : bool;
   mutable mode             : (string list) option;
+  mutable extra_config_paths : string list option;
 }
 
 
@@ -28,6 +29,7 @@ let state = {
   debug_show_bbox = false;
   debug_show_space = false;
   mode             = None;
+  extra_config_paths = None;
 }
 
 let set_input_kind ikd = state.input_kind <- ikd
@@ -65,3 +67,6 @@ let is_text_mode () =
   match state.mode with
   | Some(_) -> true
   | None -> false
+
+let set_extra_config_paths lst = state.extra_config_paths <- Some(lst)
+let get_extra_config_paths () = state.extra_config_paths

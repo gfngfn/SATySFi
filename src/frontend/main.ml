@@ -823,21 +823,28 @@ let input_markdown setting =
   OptionState.set_input_kind (OptionState.Markdown(setting))
 
 
+let arg_config s =
+  let paths = String.split_on_char ':' s in
+  OptionState.set_extra_config_paths paths
+
+
 let arg_spec_list curdir =
   [
-    ("-o"                , Arg.String(arg_output curdir)             , " Specify output file"              );
-    ("--output"          , Arg.String(arg_output curdir)             , " Specify output file"              );
-    ("-v"                , Arg.Unit(arg_version)                     , " Prints version"                   );
-    ("--version"         , Arg.Unit(arg_version)                     , " Prints version"                   );
-    ("--full-path"       , Arg.Unit(OptionState.set_show_full_path)  , " Displays paths in full-path style");
-    ("--debug-show-bbox" , Arg.Unit(OptionState.set_debug_show_bbox) , " Outputs bounding boxes for glyphs");
-    ("--debug-show-space", Arg.Unit(OptionState.set_debug_show_space), " Outputs boxes for spaces"         );
-    ("-t"                , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"        );
-    ("--type-check-only" , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"        );
-    ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
-    ("--bytecomp"        , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
-    ("--text-mode"       , Arg.String(text_mode)                     , " Set text mode"                    );
-    ("--markdown"        , Arg.String(input_markdown)                , " Pass Markdown source as input"    );
+    ("-o"                , Arg.String(arg_output curdir)             , " Specify output file"                                   );
+    ("--output"          , Arg.String(arg_output curdir)             , " Specify output file"                                   );
+    ("-v"                , Arg.Unit(arg_version)                     , " Prints version"                                        );
+    ("--version"         , Arg.Unit(arg_version)                     , " Prints version"                                        );
+    ("--full-path"       , Arg.Unit(OptionState.set_show_full_path)  , " Displays paths in full-path style"                     );
+    ("--debug-show-bbox" , Arg.Unit(OptionState.set_debug_show_bbox) , " Outputs bounding boxes for glyphs"                     );
+    ("--debug-show-space", Arg.Unit(OptionState.set_debug_show_space), " Outputs boxes for spaces"                              );
+    ("-t"                , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
+    ("--type-check-only" , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
+    ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"                                 );
+    ("--bytecomp"        , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"                                 );
+    ("--text-mode"       , Arg.String(text_mode)                     , " Set text mode"                                         );
+    ("--markdown"        , Arg.String(input_markdown)                , " Pass Markdown source as input"                         );
+    ("-C"                , Arg.String(arg_config)                    , " Add colon-separated paths to configuration search path");
+    ("--config"          , Arg.String(arg_config)                    , " Add colon-separated paths to configuration search path");
   ]
 
 
@@ -850,7 +857,7 @@ let setup_root_dirs () =
     else
       ["/usr/local/share/satysfi"; "/usr/share/satysfi"]
   in
-  let user_dirs =
+  let home_dirs =
     if Sys.os_type = "Win32" then
       match Sys.getenv_opt "userprofile" with
       | None    -> []
@@ -860,7 +867,12 @@ let setup_root_dirs () =
       | None    -> []
       | Some(s) -> [Filename.concat s ".satysfi"]
   in
-  let ds = List.append user_dirs runtime_dirs in
+  let extra_dirs =
+    match OptionState.get_extra_config_paths () with
+    | None -> [Filename.concat (Sys.getcwd ()) ".satysfi"]
+    | Some(lst) -> lst
+  in
+  let ds = List.concat [extra_dirs; home_dirs; runtime_dirs] in
   match ds with
   | []     -> raise NoLibraryRootDesignation
   | _ :: _ -> Config.initialize ds
@@ -868,9 +880,9 @@ let setup_root_dirs () =
 
 let () =
   error_log_environment (fun () ->
-    setup_root_dirs ();
     let curdir = Sys.getcwd () in
     Arg.parse (arg_spec_list curdir) (handle_anonimous_arg curdir) "";
+    setup_root_dirs ();
     let abspath_in =
       match OptionState.input_file () with
       | None    -> raise NoInputFileDesignation
