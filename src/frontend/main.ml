@@ -281,7 +281,7 @@ let eval_library_file (env : environment) (abspath_in : abs_path) (ast : abstrac
   Logging.begin_to_eval_file abspath_in;
   let value =
     if OptionState.bytecomp_mode () then
-      Bytecomp.compile_and_exec env ast
+      Bytecomp.compile_and_exec_0 env ast
     else
       Evaluator.interpret_0 env ast
   in
@@ -301,7 +301,7 @@ let eval_main i env_freezed ast =
   let env = unfreeze_environment env_freezed in
   let valuedoc =
     if OptionState.bytecomp_mode () then
-      Bytecomp.compile_and_exec env ast
+      Bytecomp.compile_and_exec_0 env ast
     else
       Evaluator.interpret_0 env ast
   in
