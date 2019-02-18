@@ -191,6 +191,9 @@ and compile (ir : ir) (cont : instruction list) =
         | LocalVar(lv, off, evid, _) -> compile irnew (OpUpdateLocal(lv, off, evid) :: cont)
       end
 
+  | IRDereference(ir1) ->
+      compile ir1 @@ OpDereference :: cont
+
   | IRWhileDo(irb, irc) ->
       let cond = compile irb [OpBranchIfNot(OpPush(UnitConstant) :: cont)] in
       let body = compile irc cond in

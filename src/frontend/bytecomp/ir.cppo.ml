@@ -452,6 +452,10 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
               report_bug_ir_ast ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast
         end
 
+    | Dereference(ast1) ->
+        let (ir1, env) = transform env ast1 in
+        (IRDereference(ir1), env)
+
     | WhileDo(astb, astc) ->
         let (irb, env) = transform env astb in
         let (irc, env) = transform env astc in
