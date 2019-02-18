@@ -697,7 +697,6 @@ and intermediate_input_vert_element =
 
 and syntactic_value =
   | Nil
-  | SimpleRef             of syntactic_value ref
   | UnitConstant
   | BooleanConstant       of bool
   | IntegerConstant       of int
