@@ -47,14 +47,10 @@ type: |
   ~% (tS @-> tS @-> tS)
 
 params:
-- value1
-- value2
+- s1 : string
+- s2 : string
 code: |
-  match (value1, value2) with
-  | (StringEmpty, _)                         -> value2
-  | (_, StringEmpty)                         -> value1
-  | (StringConstant(s1), StringConstant(s2)) -> StringConstant(s1 ^ s2)
-  | _                                        -> report_bug_vm "Concat"
+  StringConstant(s1 ^ s2)
 
 ---
 inst: PrimitiveSetMathVariantToChar

@@ -27,17 +27,13 @@ let def =
         ~fields:[
         ]
         ~params:[
-          param "value1";
-          param "value2";
+          param "s1" ~type_:"string";
+          param "s2" ~type_:"string";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-match (value1, value2) with
-| (StringEmpty, _)                         -> value2
-| (_, StringEmpty)                         -> value1
-| (StringConstant(s1), StringConstant(s2)) -> StringConstant(s1 ^ s2)
-| _                                        -> report_bug_vm "Concat"
+StringConstant(s1 ^ s2)
 |}
     ; inst "PrimitiveSetMathVariantToChar"
         ~name:"set-math-variant-char"

@@ -159,7 +159,6 @@ and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * fra
       let str1 =
         begin
           match ast1 with
-          | Value(StringEmpty)       -> ""
           | Value(StringConstant(s)) -> s
           | _                        -> report_bug_ir "get_string"
         end

@@ -729,7 +729,7 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
 and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_binding list) : environment =
   let trilst =
     recbinds |> List.map (function LetRecBinding(evid, patbr) ->
-      let loc = ref StringEmpty in
+      let loc = ref Nil in
       (evid, loc, patbr)
     )
   in

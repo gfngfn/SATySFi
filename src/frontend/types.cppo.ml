@@ -769,7 +769,6 @@ and syntactic_value =
   | IntegerConstant       of int
   | FloatConstant         of float
   | LengthConstant        of length
-  | StringEmpty
   | StringConstant        of string
   | RegExpConstant        of Str.regexp
       [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]

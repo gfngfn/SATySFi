@@ -549,7 +549,7 @@ let rec typecheck
   in
   let unify = unify_ tyenv in
   match utastmain with
-  | UTStringEmpty         -> (Value(StringEmpty)        , (rng, BaseType(StringType)))
+  | UTStringEmpty         -> (Value(StringConstant("")) , (rng, BaseType(StringType)))
   | UTIntegerConstant(nc) -> (Value(IntegerConstant(nc)), (rng, BaseType(IntType))   )
   | UTFloatConstant(nc)   -> (Value(FloatConstant(nc))  , (rng, BaseType(FloatType)) )
   | UTStringConstant(sc)  -> (Value(StringConstant(sc)) , (rng, BaseType(StringType)))

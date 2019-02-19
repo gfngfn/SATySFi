@@ -51,7 +51,6 @@ let chop_space_indent s =
 
 let get_string (value : syntactic_value) : string =
   match value with
-  | StringEmpty       -> ""
   | StringConstant(s) -> s
   | _                 -> report_bug_value "get_string" value
 
@@ -225,7 +224,6 @@ let make_script_value script =
 
 let get_uchar_list (value : syntactic_value) =
   match value with
-  | StringEmpty       -> []
   | StringConstant(s) -> InternalText.to_uchar_list (InternalText.of_utf8 s)
   | _                 -> report_bug_value "get_uchar_list" value
 
