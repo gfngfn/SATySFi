@@ -1247,10 +1247,8 @@ and typecheck_pattern
     | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BaseType(BoolType)), PatternVarMap.empty)
     | UTPUnitConstant        -> (PUnitConstant, (rng, BaseType(UnitType)), PatternVarMap.empty)
 
-    | UTPStringConstant(ut1) ->
-        let (e1, ty1) = typecheck pre tyenv ut1 in
-        unify (Range.dummy "pattern-string-constant", BaseType(StringType)) ty1;
-        (PStringConstant(e1), (rng, BaseType(StringType)), PatternVarMap.empty)
+    | UTPStringConstant(sc) ->
+        (PStringConstant(sc), (rng, BaseType(StringType)), PatternVarMap.empty)
 
     | UTPListCons(utpat1, utpat2) ->
         let (epat1, typat1, patvarmap1) = iter utpat1 in

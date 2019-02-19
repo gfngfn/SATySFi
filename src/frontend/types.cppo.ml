@@ -521,7 +521,7 @@ and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
   | UTPIntegerConstant     of int
   | UTPBooleanConstant     of bool
-  | UTPStringConstant      of untyped_abstract_tree
+  | UTPStringConstant      of string
   | UTPUnitConstant
   | UTPListCons            of untyped_pattern_tree * untyped_pattern_tree
   | UTPEndOfList
@@ -872,7 +872,7 @@ and pattern_tree =
   | PUnitConstant
   | PBooleanConstant      of bool
   | PIntegerConstant      of int
-  | PStringConstant       of abstract_tree
+  | PStringConstant       of string
   | PListCons             of pattern_tree * pattern_tree
   | PEndOfList
   | PTupleCons            of pattern_tree * pattern_tree

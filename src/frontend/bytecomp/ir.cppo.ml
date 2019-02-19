@@ -154,19 +154,9 @@ and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * fra
     match pat with
     | PIntegerConstant(pnc) -> return (IRPIntegerConstant(pnc))
     | PBooleanConstant(pbc) -> return (IRPBooleanConstant(pbc))
-
-    | PStringConstant(ast1) ->
-      let str1 =
-        begin
-          match ast1 with
-          | Value(StringConstant(s)) -> s
-          | _                        -> report_bug_ir "get_string"
-        end
-      in
-        return (IRPStringConstant(str1))
-
-    | PUnitConstant -> return IRPUnitConstant
-    | PWildCard     -> return IRPWildCard
+    | PStringConstant(psc)  -> return (IRPStringConstant(psc))
+    | PUnitConstant         -> return IRPUnitConstant
+    | PWildCard             -> return IRPWildCard
 
     | PVariable(evid) ->
         let (var, env) = add_to_environment env evid  in

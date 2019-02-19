@@ -221,7 +221,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
               | (EIntegerConstant(i1), PIntegerConstant(i2))  when i1 = i2
                 -> true
 
-              | (EStringConstant(s1), PStringConstant(Value(StringConstant(s2))))  when String.equal s1 s2
+              | (EStringConstant(s1), PStringConstant(s2))  when String.equal s1 s2
                 -> true
 
               | (EConstructor(nm1, _), PConstructor(nm2, _))  when String.equal nm1 nm2
@@ -286,8 +286,8 @@ let make_int_sig col =
 let make_string_sig col =
   ElementSet.of_list (List.fold_left (fun acc p ->
     match p with
-    | PStringConstant(Value(StringConstant(s))) -> EStringConstant(s) :: acc
-    | _                                         -> acc
+    | PStringConstant(s) -> EStringConstant(s) :: acc
+    | _                  -> acc
   ) [EWildCard] col)
 
 
