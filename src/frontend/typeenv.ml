@@ -642,7 +642,9 @@ let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : level) (tyargc
 
 
 (* PUBLIC *)
-let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : level) (mnty : manual_type) (constrnts : constraints) : mono_type =
+let fix_manual_type_free (pre : pre) (tyenv : t) (mnty : manual_type) (constrnts : constraints) : mono_type =
+  let qtfbl = pre.quantifiability in
+  let lev = pre.level in
 
   let tyargmaplist : (string, mono_type_variable_info ref) MapList.t = MapList.create () in
 
@@ -706,7 +708,10 @@ let register_type_from_vertex (dg : vertex_label DependencyGraph.t) (tyenv : t) 
     | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
 
 
-let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : level) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
+let rec find_constructor (pre : pre) (tyenv : t) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
+  let qtfbl = pre.quantifiability in
+  let lev = pre.level in
+
   let freef rng tvref =
     (rng, TypeVariable(tvref))
   in
@@ -731,8 +736,7 @@ let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : level) (co
       return (tyarglst, tyid, ty)
 
 
-let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : level) (typeid : TypeID.t)
-    : (constructor_name * (mono_type list -> mono_type)) list =
+let rec enumerate_constructors (pre : pre) (tyenv : t) (typeid : TypeID.t) : (constructor_name * (mono_type list -> mono_type)) list =
   let freef rng tvref =
     (rng, TypeVariable(tvref))
   in
@@ -761,7 +765,7 @@ let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : leve
   | None      -> []
 
 
-let rec find_constructor_candidates (qtfbl : quantifiability) (tyenv : t) (lev : level) (constrnm : constructor_name) : constructor_name list =
+let rec find_constructor_candidates (pre : pre) (tyenv : t) (constrnm : constructor_name) : constructor_name list =
   let open OptionMonad in
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
@@ -1195,7 +1199,9 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
   b
 
 
-let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
+let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
+
+  let lev = pre.level in
 
   let rec read_manual_signature (tyenvacc : t) (tyenvforsigI : t) (tyenvforsigO : t) (msig : manual_signature) (sigoptacc : signature option) =
     let iter = read_manual_signature in
@@ -1227,9 +1233,9 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t)
 
       | SigValue(varnm, mty, constrntcons) :: tail ->
           let () = print_for_debug_variantenv ("SIGV " ^ varnm) in (* for debug *)
-          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Level.succ lev) mty constrntcons in
+          let tysigI = fix_manual_type_free { pre with level = Level.succ lev; } tyenvforsigI mty constrntcons in
           let ptysigI = generalize lev tysigI in
-          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Level.succ lev) mty constrntcons in
+          let tysigO = fix_manual_type_free { pre with level = Level.succ lev; } tyenvforsigO mty constrntcons in
           let ptysigO = generalize lev tysigO in
           let () = print_for_debug_variantenv ("LEVEL " ^ (Level.show lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
           begin
@@ -1254,10 +1260,10 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t)
 (*
           let () = print_for_debug_variantenv ("D-OK0 " ^ (string_of_manual_type mty)) in (* for debug *)
 *)
-          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Level.succ lev) mty constrntcons in
+          let tysigI = fix_manual_type_free { pre with level = Level.succ lev; } tyenvforsigI mty constrntcons in
           let () = print_for_debug_variantenv "D-OK1" in (* for debug *)
           let ptysigI = generalize lev tysigI in
-          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Level.succ lev) mty constrntcons in
+          let tysigO = fix_manual_type_free { pre with level = Level.succ lev; } tyenvforsigO mty constrntcons in
           let () = print_for_debug_variantenv "D-OK2" in (* for debug *)
           let ptysigO = generalize lev tysigO in
           let () = print_for_debug_variantenv ("LEVEL " ^ (Level.show lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)

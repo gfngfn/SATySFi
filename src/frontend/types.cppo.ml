@@ -391,6 +391,12 @@ let string_of_stage = function
   | Stage1      -> "stage 1"
 
 
+type pre = {
+  level           : level;
+  quantifiability : quantifiability;  (* may omitted in the future *)
+  stage           : stage;
+}
+
 type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
 

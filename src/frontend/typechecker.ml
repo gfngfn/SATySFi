@@ -24,12 +24,6 @@ exception InternalInclusionError
 exception InternalContradictionError of bool
 
 
-type pre = {
-  level           : level;
-  quantifiability : quantifiability;  (* may omitted in the future *)
-  stage           : stage;
-}
-
 let abstraction evid ast =
   Function([], PatternBranch(PVariable(evid), ast))
 
@@ -597,7 +591,8 @@ let rec typecheck
       begin
         match Typeenv.find tyenv mdlnmlst varnm rng with
         | None ->
-            raise (UndefinedVariable(rng, mdlnmlst, varnm, Typeenv.find_candidates tyenv mdlnmlst varnm rng))
+            let cands = Typeenv.find_candidates tyenv mdlnmlst varnm rng in
+            raise (UndefinedVariable(rng, mdlnmlst, varnm, cands))
 
         | Some((pty, evid, stage)) ->
             begin
@@ -620,11 +615,12 @@ let rec typecheck
       end
 
   | UTConstructor(constrnm, utast1) ->
-      let qtfbl = pre.quantifiability in
-      let lev = pre.level in
       begin
-        match Typeenv.find_constructor qtfbl tyenv lev constrnm with
-        | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
+        match Typeenv.find_constructor pre tyenv constrnm with
+        | None ->
+            let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
+            raise (UndefinedConstructor(rng, constrnm, cands))
+
         | Some((tyarglist, tyid, tyc)) ->
 (*
             let () = print_endline ("\n#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
@@ -761,7 +757,7 @@ let rec typecheck
       let (eO, tyO) = typecheck_iter tyenv utastO in
       let beta = fresh_type_variable (Range.dummy "ut-pattern-match") pre UniversalKind in
       let patbrs = typecheck_pattern_branch_list pre tyenv utpatbrs tyO beta in
-      Exhchecker.main rng patbrs tyO pre.quantifiability pre.level tyenv;
+      Exhchecker.main rng patbrs tyO pre tyenv;
       (PatternMatch(rng, eO, patbrs), beta)
 
   | UTLetNonRecIn(mntyopt, utpat, utast1, utast2) ->
@@ -899,7 +895,7 @@ let rec typecheck
   | UTModule(mdlrng, mdlnm, sigopt, utastM, utastA) ->
       let tyenvinner = Typeenv.enter_new_module tyenv mdlnm in
       let (eM, _) = typecheck_iter tyenvinner utastM in
-      let tyenvmid = Typeenv.sigcheck mdlrng pre.quantifiability pre.level (!final_tyenv) tyenv sigopt in
+      let tyenvmid = Typeenv.sigcheck mdlrng pre (!final_tyenv) tyenv sigopt in
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
       (Module(eM, eA), tyA)
@@ -1302,11 +1298,12 @@ and typecheck_pattern
         end
 
     | UTPConstructor(constrnm, utpat1) ->
-        let qtfbl = pre.quantifiability in
-        let lev = pre.level in
         begin
-          match Typeenv.find_constructor qtfbl tyenv lev constrnm with
-          | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
+          match Typeenv.find_constructor pre tyenv constrnm with
+          | None ->
+              let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
+              raise (UndefinedConstructor(rng, constrnm, cands))
+
           | Some((tyarglist, tyid, tyc)) ->
 (*
               let () = print_endline ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
@@ -1357,7 +1354,7 @@ and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds 
                     iter utrectail (Alist.extend recbindacc (LetRecBinding(evid, patbr1))) (Alist.extend acctvtylstout (varnm, beta, evid))
 
                 | Some(mnty) ->
-                    let tyin = Typeenv.fix_manual_type_free pre.quantifiability tyenv pre.level mnty [] in
+                    let tyin = Typeenv.fix_manual_type_free pre tyenv mnty [] in
                     unify ty1 beta;
                     unify tyin beta;
                     iter utrectail (Alist.extend recbindacc (LetRecBinding(evid, patbr1))) (Alist.extend acctvtylstout (varnm, beta, evid))
