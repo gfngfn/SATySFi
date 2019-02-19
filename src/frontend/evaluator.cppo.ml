@@ -686,10 +686,9 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
   | (PIntegerConstant(pnc), IntegerConstant(nc)) -> if pnc = nc then Some(env) else None
   | (PBooleanConstant(pbc), BooleanConstant(bc)) -> if pbc = bc then Some(env) else None
 
-  | (PStringConstant(ast1), value2) ->
-      let str1 = get_string (interpret_0 env ast1) in
+  | (PStringConstant(psc), value2) ->
       let str2 = get_string value2 in
-      if String.equal str1 str2 then Some(env) else None
+      if String.equal psc str2 then Some(env) else None
 
   | (PUnitConstant, UnitConstant) -> Some(env)
   | (PWildCard, _)                -> Some(env)
@@ -729,7 +728,7 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
 and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_binding list) : environment =
   let trilst =
     recbinds |> List.map (function LetRecBinding(evid, patbr) ->
-      let loc = ref StringEmpty in
+      let loc = ref Nil in
       (evid, loc, patbr)
     )
   in

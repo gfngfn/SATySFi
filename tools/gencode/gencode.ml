@@ -1,5 +1,8 @@
 open U
 
+(*
+let failwith _ = ()  (* TEMPORARY *)
+*)
 
 module Const = struct
   let stack = "stack"
@@ -95,7 +98,7 @@ let gen_interps_1 () =
       puts ""
 
   | _ ->
-      ()
+      failwith "[gen_interps_1] not a primitive."
   )
 
 
@@ -139,7 +142,7 @@ let gen_interps_0 () =
       puts ""
 
   | _ ->
-      ()
+      failwith "[gen_interps_0] not a primitive."
   )
 
 
@@ -180,9 +183,13 @@ let gen_vminstrs () =
         | [] ->
             puts "  | Op%s ->" inst
 
+        | _ :: _ ->
+            failwith "[gen_vminstrs] fields should be empty."
+(*
         | fs ->
             puts "  | Op%s(%s) ->" inst @@
               String.concat ", " @@ List.map Field.name fs
+*)
       end;
       puts "      begin";
       if not @@ nullp params then begin
@@ -233,22 +240,20 @@ let gen_vminstrs () =
 
 let gen_insttype () =
   let open Instruction in
-  puts "and instruction =";
   Vminst.def |> List.iter (function
   | {
       inst;
       fields;
       pp;
       _
-    } ->
+    } as def  when is_primitive def ->
       begin
         match fields with
         | [] ->
             puts "  | Op%s" inst
 
-        | fs ->
-            puts "  | Op%s of %s"
-              inst (String.concat " * " @@ List.map Field.type_ fs)
+        | _ :: _ ->
+            failwith "[gen_insttype] fields should be empty."
       end;
       begin
         match pp with
@@ -262,6 +267,9 @@ let gen_insttype () =
         | Custom pp ->
             puts "      [@printer (%s)]" pp
       end
+
+  | def ->
+      failwith ("[gen_insttype] not a primitive: " ^ def.inst)
   );
   puts "  [@@deriving show { with_path = false; }]"
 
@@ -291,7 +299,7 @@ let gen_unliftcode () =
       end
 
   | _ ->
-      ()
+      failwith "[unlift_code] not a primitive."
   )
 
 let gen_codetype () =
@@ -314,7 +322,7 @@ let gen_codetype () =
       end
 
   | _ ->
-      ()
+      failwith "[gen_codetype] not a primitive."
   )
 
 

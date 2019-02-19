@@ -578,7 +578,7 @@ let make_environments table =
   let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
 
-  let temporary_ast = StringEmpty in
+  let temporary_ast = Nil in
   let (tyenvfinal, envfinal, locacc) =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
       let evid = EvalVarID.fresh (dr, varnm) in

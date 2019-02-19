@@ -87,7 +87,7 @@
         | _    -> str
 
 
-  let rec omit_spaces (omit_pre : bool) (omit_post : bool) (str_literal_raw : string) =
+  let rec omit_spaces (omit_pre : bool) (omit_post : bool) (str_literal_raw : string) : string =
     let str_literal =
       let s1 = if omit_pre then omit_pre_spaces str_literal_raw else str_literal_raw in
       let s2 = if omit_post then omit_post_spaces s1 else s1 in
@@ -98,9 +98,9 @@
         let len_shaved = String.length str_shaved in
           if len_shaved >= 1 && str_shaved.[len_shaved - 1] = '\n' then
             let str_no_last_break = String.sub str_shaved 0 (len_shaved - 1) in
-              UTStringConstant(str_no_last_break)
+              str_no_last_break
           else
-            UTStringConstant(str_shaved)
+            str_shaved
 
 
   and min_indent_space (str_ltrl : string) =
@@ -836,7 +836,7 @@ nxbot:
   | opn=LPAREN; utast=nxlet; COMMA; tup=tuple; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTTupleCons(utast, tup)) }
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP      { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | tok=LITERAL                                  { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (omit_spaces pre post str) }
+  | tok=LITERAL                                  { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTStringConstant(omit_spaces pre post str)) }
   | opn=BLIST; cls=ELIST                         { make_standard (Tok opn) (Tok cls) UTEndOfList }
   | opn=BLIST; utast=nxlist; cls=ELIST           { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
@@ -1023,7 +1023,7 @@ patbot: /* -> Types.untyped_pattern_tree */
   | LPAREN patas COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
   | BLIST patlist ELIST                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | tok=LITERAL                        { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTPStringConstant(rng, omit_spaces pre post str)) }
+  | tok=LITERAL                        { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTPStringConstant(omit_spaces pre post str)) }
 ;
 pattuple: /* -> untyped_pattern_tree */
   | patas                { make_standard (Ranged $1) (Ranged $1) (UTPTupleCons($1, (Range.dummy "end-of-tuple-pattern", UTPEndOfTuple))) }
