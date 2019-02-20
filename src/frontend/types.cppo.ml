@@ -588,15 +588,23 @@ type ('a, 'b) path_component_scheme =
   | PathCubicBezierTo of 'b * 'b * 'a
 [@@deriving show { with_path = false; }]
 
-type letrec_binding =
-  | LetRecBinding of EvalVarID.t * pattern_branch
+type ('c, 'p) letrec_binding =
+  | LetRecBinding of EvalVarID.t * ('c, 'p) pattern_branch
 
-and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
+and ('c, 'p) environment = (('c, 'p) location) EvalVarIDMap.t * ((('c, 'p) value) StoreIDHashTable.t) ref
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
-and location = syntactic_value ref
+and compiled_environment = CE of (compiled_closure, compiled_primitive) environment
 
-and vmenv = environment * (syntactic_value array) list
+and normal_environment = NE of (normal_closure, normal_primitive) environment
+
+and ('c, 'p) location = (('c, 'p) value) ref
+
+and compiled_location = (compiled_closure, compiled_primitive) location
+
+and normal_location = (normal_closure, normal_primitive) location
+
+and vmenv = compiled_environment * (compiled_value array) list
 
 and compiled_input_horz_element =
   | CompiledInputHorzText         of string
@@ -638,11 +646,11 @@ and 'a compiled_path_component =
   | CompiledPathCubicBezierTo of instruction list * instruction list * 'a
 
 and varloc =
-  | GlobalVar of location * EvalVarID.t * int ref
+  | GlobalVar of compiled_location * EvalVarID.t * int ref
   | LocalVar  of int * int * EvalVarID.t * int ref
 
 and ir =
-  | IRConstant              of syntactic_value
+  | IRConstant              of compiled_value
   | IRTerminal
   | IRInputHorz             of ir_input_horz_element list
   | IRInputVert             of ir_input_vert_element list
@@ -697,7 +705,7 @@ and instruction =
   | OpApplyT of int
   | OpApplyOptional
   | OpApplyOmission
-  | OpBindGlobal of syntactic_value ref * EvalVarID.t * int
+  | OpBindGlobal of compiled_value ref * EvalVarID.t * int
   | OpBindLocal of int * int * EvalVarID.t * int
   | OpBindClosuresRec of (varloc * instruction list) list
   | OpBranch of instruction list
@@ -706,7 +714,7 @@ and instruction =
       [@printer (fun fmt _ -> Format.fprintf fmt "OpBranchIf(...)")]
   | OpBranchIfNot of instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpBranchIfNot(...)")]
-  | OpLoadGlobal of syntactic_value ref * EvalVarID.t * int
+  | OpLoadGlobal of compiled_value ref * EvalVarID.t * int
       [@printer ((fun fmt (r, evid, refs) -> Format.fprintf fmt "OpLoadGlobal(%s)" (EvalVarID.show_direct evid)))]
   | OpLoadLocal of int * int * EvalVarID.t * int
   | OpDereference
@@ -718,7 +726,7 @@ and instruction =
       [@printer (fun fmt _ -> Format.fprintf fmt "OpMakeRecord(...)")]
   | OpMakeTuple of int
   | OpPop
-  | OpPush of syntactic_value
+  | OpPush of compiled_value
   | OpPushEnv
   | OpCheckStackTopBool of bool * instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopBool(...)")]
@@ -737,9 +745,9 @@ and instruction =
   | OpClosure of varloc list * int * int * instruction list
   | OpClosureInputHorz of compiled_input_horz_element list
   | OpClosureInputVert of compiled_input_vert_element list
-  | OpBindLocationGlobal of syntactic_value ref * EvalVarID.t
+  | OpBindLocationGlobal of compiled_value ref * EvalVarID.t
   | OpBindLocationLocal of int * int * EvalVarID.t
-  | OpUpdateGlobal of syntactic_value ref * EvalVarID.t
+  | OpUpdateGlobal of compiled_value ref * EvalVarID.t
       [@printer (fun fmt _ -> Format.fprintf fmt "OpUpdateGlobal(...)")]
   | OpUpdateLocal of int * int * EvalVarID.t
       [@printer (fun fmt _ -> Format.fprintf fmt "OpUpdateLocal(...)")]
@@ -753,20 +761,32 @@ and instruction =
       [@printer (fun fmt _ -> Format.fprintf fmt "OpPath(...)")]
       (* !! no-interp, no-ircode *)
 
-  | OpInsertArgs of syntactic_value list
+  | OpInsertArgs of compiled_value list
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =
   | ImInputHorzText         of string
-  | ImInputHorzEmbedded     of abstract_tree
-  | ImInputHorzContent      of intermediate_input_horz_element list * environment
-  | ImInputHorzEmbeddedMath of abstract_tree
+  | ImInputHorzEmbedded     of normal_ast
+  | ImInputHorzContent      of intermediate_input_horz_element list * normal_environment
+  | ImInputHorzEmbeddedMath of normal_ast
 
 and intermediate_input_vert_element =
-  | ImInputVertEmbedded of abstract_tree
-  | ImInputVertContent  of intermediate_input_vert_element list * environment
+  | ImInputVertEmbedded of normal_ast
+  | ImInputVertContent  of intermediate_input_vert_element list * normal_environment
 
-and syntactic_value =
+and normal_closure = NC of EvalVarID.t list * normal_pattern_branch * normal_environment
+
+and compiled_closure = CC of varloc list * int * compiled_value list * int * instruction list * vmenv
+
+and normal_primitive = NP of normal_pattern_branch * normal_environment * int * (normal_ast list -> normal_ast)
+
+and compiled_primitive = CP of int * compiled_value list * int * instruction list * vmenv * (compiled_ast list -> compiled_ast)
+
+and normal_value = (normal_closure, normal_primitive) value
+
+and compiled_value = (compiled_closure, compiled_primitive) value
+
+and ('c, 'p) value =
   | Nil
   | UnitConstant
   | BooleanConstant       of bool
@@ -777,29 +797,27 @@ and syntactic_value =
   | RegExpConstant        of Str.regexp
       [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]
 
-  | Constructor           of constructor_name * syntactic_value
+  | Constructor           of constructor_name * ('c, 'p) value
 
-  | FuncWithEnvironment   of EvalVarID.t list * pattern_branch * environment
-  | PrimitiveWithEnvironment   of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | CompiledFuncWithEnvironment of varloc list * int * syntactic_value list * int * instruction list * vmenv
-  | CompiledPrimitiveWithEnvironment of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
+  | FuncWithEnvironment   of 'c
+  | PrimitiveWithEnvironment   of 'p
 
-  | EvaluatedEnvironment  of environment
+  | EvaluatedEnvironment  of ('c, 'p) environment  (* TEMPORARY *)
 
-  | ListCons              of syntactic_value * syntactic_value
+  | ListCons              of ('c, 'p) value * ('c, 'p) value
   | EndOfList
 
-  | Tuple                 of syntactic_value list
+  | Tuple                 of (('c, 'p) value) list
 
-  | RecordValue           of syntactic_value Assoc.t
+  | RecordValue           of (('c, 'p) value) Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
 
   | Location              of StoreID.t
 
-  | InputHorzWithEnvironment of intermediate_input_horz_element list * environment
+  | InputHorzWithEnvironment of intermediate_input_horz_element list * normal_environment  (* TEMPORARY *)
   | CompiledInputHorzWithEnvironment    of compiled_intermediate_input_horz_element list * vmenv
 
-  | InputVertWithEnvironment of intermediate_input_vert_element list * environment
+  | InputVertWithEnvironment of intermediate_input_vert_element list * normal_environment  (* TEMPORARY *)
   | CompiledInputVertWithEnvironment    of compiled_intermediate_input_vert_element list * vmenv
 
   | Horz                  of HorzBox.horz_box list
@@ -811,16 +829,20 @@ and syntactic_value =
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | PrePathValue                of PrePath.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
-  | MathValue                   of math list
+  | MathValue                   of (('c, 'p) math) list
   | ImageKey                    of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
-  | Context                     of input_context
+  | Context                     of ('c, 'p) input_context
   | TextModeContext             of TextBackend.text_mode_context
   | DocumentValue               of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
   | CodeValue             of code_value
 
-and abstract_tree =
-  | Value                 of syntactic_value
+and normal_ast = (normal_closure, normal_primitive) ast
+
+and compiled_ast = (compiled_closure, compiled_primitive) ast
+
+and ('c, 'p) ast =
+  | Value                 of ('c, 'p) value
   | FinishHeaderFile
   | FinishStruct
   | LengthDescription     of float * length_unit_name
@@ -828,48 +850,54 @@ and abstract_tree =
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
 (* -- graphics -- *)
-  | Path                  of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
+  | Path                  of ('c, 'p) ast * ((('c, 'p) ast) path_component) list * (unit path_component) option
 (* -- record value -- *)
-  | Record                of abstract_tree Assoc.t
+  | Record                of (('c, 'p) ast) Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
-  | AccessField           of abstract_tree * field_name
-  | UpdateField           of abstract_tree * field_name * abstract_tree
+  | AccessField           of ('c, 'p) ast * field_name
+  | UpdateField           of ('c, 'p) ast * field_name * ('c, 'p) ast
 (* -- fundamental -- *)
-  | LetRecIn              of letrec_binding list * abstract_tree
-  | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
+  | LetRecIn              of ('c, 'p) letrec_binding list * ('c, 'p) ast
+  | LetNonRecIn           of pattern_tree * ('c, 'p) ast * ('c, 'p) ast
   | ContentOf             of Range.t * EvalVarID.t
-  | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
-  | Function              of EvalVarID.t list * pattern_branch
-  | Apply                 of abstract_tree * abstract_tree
-  | ApplyOptional         of abstract_tree * abstract_tree
-  | ApplyOmission         of abstract_tree
+  | IfThenElse            of ('c, 'p) ast * ('c, 'p) ast * ('c, 'p) ast
+  | Function              of EvalVarID.t list * ('c, 'p) pattern_branch
+  | Apply                 of ('c, 'p) ast * ('c, 'p) ast
+  | ApplyOptional         of ('c, 'p) ast * ('c, 'p) ast
+  | ApplyOmission         of ('c, 'p) ast
 (* -- pattern match -- *)
-  | PatternMatch          of Range.t * abstract_tree * pattern_branch list
-  | NonValueConstructor   of constructor_name * abstract_tree
+  | PatternMatch          of Range.t * ('c, 'p) ast * (('c, 'p) pattern_branch) list
+  | NonValueConstructor   of constructor_name * ('c, 'p) ast
 (* -- imperative -- *)
-  | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
-  | Dereference           of abstract_tree
-  | Sequential            of abstract_tree * abstract_tree
-  | WhileDo               of abstract_tree * abstract_tree
-  | Overwrite             of EvalVarID.t * abstract_tree
+  | LetMutableIn          of EvalVarID.t * ('c, 'p) ast * ('c, 'p) ast
+  | Dereference           of ('c, 'p) ast
+  | Sequential            of ('c, 'p) ast * ('c, 'p) ast
+  | WhileDo               of ('c, 'p) ast * ('c, 'p) ast
+  | Overwrite             of EvalVarID.t * ('c, 'p) ast
 (* -- module system -- *)
-  | Module                of abstract_tree * abstract_tree
-  | BackendMathList             of abstract_tree list
-  | PrimitiveTuple        of abstract_tree list
+  | Module                of ('c, 'p) ast * ('c, 'p) ast
+  | BackendMathList       of ('c, 'p) ast list
+  | PrimitiveTuple        of (('c, 'p) ast) list
 (* -- staging constructs -- *)
-  | Next                  of abstract_tree
-  | Prev                  of abstract_tree
+  | Next                  of ('c, 'p) ast
+  | Prev                  of ('c, 'p) ast
+(*
 #include "__attype.gen.ml"
+*)  (* TEMPORARY *)
 
-and input_horz_element = abstract_tree input_horz_element_scheme
+and input_horz_element = normal_ast input_horz_element_scheme
 
-and input_vert_element = abstract_tree input_vert_element_scheme
+and input_vert_element = normal_ast input_vert_element_scheme
 
-and 'a path_component = ('a, abstract_tree) path_component_scheme
+and 'a path_component = ('a, normal_ast) path_component_scheme  (* TEMPORARY *)
 
-and pattern_branch =
-  | PatternBranch      of pattern_tree * abstract_tree
-  | PatternBranchWhen  of pattern_tree * abstract_tree * abstract_tree
+and normal_pattern_branch = (normal_closure, normal_primitive) pattern_branch
+
+and compiled_pattern_branch = (compiled_closure, compiled_primitive) pattern_branch
+
+and ('c, 'p) pattern_branch =
+  | PatternBranch      of pattern_tree * ('c, 'p) ast
+  | PatternBranchWhen  of pattern_tree * ('c, 'p) ast * ('c, 'p) ast
 
 and pattern_tree =
   | PUnitConstant
@@ -884,9 +912,9 @@ and pattern_tree =
   | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
 
-and input_context = HorzBox.context_main * syntactic_value
+and ('c, 'p) input_context = HorzBox.context_main * ('c, 'p) value
 
-and math_element_main =
+and ('c, 'p) math_element_main =
   | MathChar         of bool * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
       (* --
@@ -901,10 +929,10 @@ and math_element_main =
          (3) left-hand-side kerning function
          (4) right-hand-side kerning function
          --*)
-  | MathEmbeddedText of (input_context -> HorzBox.horz_box list)
+  | MathEmbeddedText of (('c, 'p) input_context -> HorzBox.horz_box list)
 
-and math_element =
-  | MathElement           of HorzBox.math_kind * math_element_main
+and ('c, 'p) math_element =
+  | MathElement           of HorzBox.math_kind * ('c, 'p) math_element_main
   | MathVariantChar       of string
   | MathVariantCharDirect of HorzBox.math_kind * bool * HorzBox.math_variant_style
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
@@ -918,23 +946,23 @@ and math_context_change =
   | MathChangeColor         of color
   | MathChangeMathCharClass of HorzBox.math_char_class
 
-and math =
-  | MathPure              of math_element
-  | MathPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math list) option -> (math list) option -> math list)
-  | MathChangeContext     of math_context_change * math list
-  | MathGroup             of HorzBox.math_kind * HorzBox.math_kind * math list
-  | MathSubscript         of math list * math list
-  | MathSuperscript       of math list * math list
-  | MathFraction          of math list * math list
-  | MathRadicalWithDegree of math list * math list
-  | MathRadical           of HorzBox.radical * math list
-  | MathParen             of HorzBox.paren * HorzBox.paren * math list
-  | MathParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math list) list
-  | MathUpperLimit        of math list * math list
-  | MathLowerLimit        of math list * math list
+and ('c, 'p) math =
+  | MathPure              of ('c, 'p) math_element
+  | MathPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * (((('c, 'p) math) list) option -> ((('c, 'p) math) list) option -> (('c, 'p) math) list)
+  | MathChangeContext     of math_context_change * (('c, 'p) math) list
+  | MathGroup             of HorzBox.math_kind * HorzBox.math_kind * ('c, 'p) math list
+  | MathSubscript         of ('c, 'p) math list * (('c, 'p) math) list
+  | MathSuperscript       of (('c, 'p) math) list * (('c, 'p) math) list
+  | MathFraction          of (('c, 'p) math) list * (('c, 'p) math) list
+  | MathRadicalWithDegree of (('c, 'p) math) list * (('c, 'p) math) list
+  | MathRadical           of HorzBox.radical * (('c, 'p) math) list
+  | MathParen             of HorzBox.paren * HorzBox.paren * (('c, 'p) math) list
+  | MathParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * ((('c, 'p) math) list) list
+  | MathUpperLimit        of (('c, 'p) math) list * (('c, 'p) math) list
+  | MathLowerLimit        of (('c, 'p) math) list * (('c, 'p) math) list
 
 and code_value =
-  | CdValue         of syntactic_value
+  | CdValue         of normal_value  (* TEMPORARY *)
   | CdFinishHeaderFile
   | CdFinishStruct
   | CdInputHorz     of code_input_horz_element list
@@ -1314,24 +1342,24 @@ let unlift_option_row poptrow =
   | Exit -> None
 
 
-let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : location) : environment =
+let add_to_environment (env : ('c, 'p) environment) (evid : EvalVarID.t) (rfast : ('c, 'p) location) : ('c, 'p) environment =
   let (valenv, stenvref) = env in
     (valenv |> EvalVarIDMap.add evid rfast, stenvref)
 
 
-let find_in_environment (env : environment) (evid : EvalVarID.t) : location option =
+let find_in_environment (env : ('c, 'p) environment) (evid : EvalVarID.t) : (('c, 'p) location) option =
   let (valenv, _) = env in
-    valenv |> EvalVarIDMap.find_opt evid
+  valenv |> EvalVarIDMap.find_opt evid
 
 
-let register_location (env : environment) (value : syntactic_value) : StoreID.t =
+let register_location (env : ('c, 'p) environment) (value : ('c, 'p) value) : StoreID.t =
   let (_, stenvref) = env in
   let stid = StoreID.fresh () in
   StoreIDHashTable.add (!stenvref) stid value;
   stid
 
 
-let update_location (env : environment) (stid : StoreID.t) (value : syntactic_value) : unit =
+let update_location (env : ('c, 'p) environment) (stid : StoreID.t) (value : ('c, 'p) value) : unit =
   let (_, stenvref) = env in
   let stenv = !stenvref in
   if StoreIDHashTable.mem stenv stid then
@@ -1340,7 +1368,7 @@ let update_location (env : environment) (stid : StoreID.t) (value : syntactic_va
     assert false
 
 
-let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value option =
+let find_location_value (env : ('c, 'p) environment) (stid : StoreID.t) : (('c, 'p) value) option =
   let (_, stenvref) = env in
   StoreIDHashTable.find_opt (!stenvref) stid
 
@@ -1372,7 +1400,7 @@ let map_path_component f g = function
       PathCubicBezierTo(v1, v2, v3)
 
 
-let rec unlift_code (code : code_value) : abstract_tree =
+let rec unlift_code (code : code_value) : ('c, 'p) ast =
   let rec aux code =
     match code with
     | CdValue(v)                           -> Value(v)
@@ -1402,7 +1430,9 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPath(code1, cdpath, cdcycleopt)    -> Path(aux code1, aux_path cdpath, aux_cycle cdcycleopt)
     | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
     | CdModule(code1, code2)               -> Module(aux code1, aux code2)
+(*
 #include "__unliftcode.gen.ml"
+*)
 
   and aux_letrec_binding (CdLetRecBinding(evid, cdpatbr)) =
     LetRecBinding(evid, aux_pattern_branch cdpatbr)
@@ -1423,20 +1453,20 @@ let rec unlift_code (code : code_value) : abstract_tree =
 
 module MathContext
 : sig
-    type t
-    val make : input_context -> t
-    val context_for_text : t -> input_context
-    val context_main : t -> HorzBox.context_main
-    val convert_math_variant_char : input_context -> string -> HorzBox.math_kind * Uchar.t list
-    val color : t -> color
-    val set_color : color -> t -> t
-    val enter_script : t -> t
-    val math_char_class : t -> HorzBox.math_char_class
-    val set_math_char_class : HorzBox.math_char_class -> t -> t
-    val is_in_base_level : t -> bool
-    val actual_font_size : t -> (HorzBox.math_font_abbrev -> FontFormat.math_decoder) -> length
-    val base_font_size : t -> length
-    val math_font_abbrev : t -> HorzBox.math_font_abbrev
+    type ('c, 'p) t
+    val make : ('c, 'p) input_context -> ('c, 'p) t
+    val context_for_text : ('c, 'p) t -> ('c, 'p) input_context
+    val context_main : ('c, 'p) t -> HorzBox.context_main
+    val convert_math_variant_char : ('c, 'p) input_context -> string -> HorzBox.math_kind * Uchar.t list
+    val color : ('c, 'p) t -> color
+    val set_color : color -> ('c, 'p) t -> ('c, 'p) t
+    val enter_script : ('c, 'p) t -> ('c, 'p) t
+    val math_char_class : ('c, 'p) t -> HorzBox.math_char_class
+    val set_math_char_class : HorzBox.math_char_class -> ('c, 'p) t -> ('c, 'p) t
+    val is_in_base_level : ('c, 'p) t -> bool
+    val actual_font_size : ('c, 'p) t -> (HorzBox.math_font_abbrev -> FontFormat.math_decoder) -> length
+    val base_font_size : ('c, 'p) t -> length
+    val math_font_abbrev : ('c, 'p) t -> HorzBox.math_font_abbrev
   end
 = struct
     type level =
@@ -1444,16 +1474,16 @@ module MathContext
       | ScriptLevel
       | ScriptScriptLevel
 
-    type t =
+    type ('c, 'p) t =
       {
         mc_font_abbrev    : HorzBox.math_font_abbrev;
         mc_base_font_size : length;
         mc_level_int      : int;
         mc_level          : level;
-        context_for_text  : input_context;
+        context_for_text  : ('c, 'p) input_context;
       }
 
-    let make (ictx : input_context) : t =
+    let make (ictx : ('c, 'p) input_context) : ('c, 'p) t =
       let (ctx, _) = ictx in
         {
           mc_font_abbrev    = ctx.HorzBox.math_font;
@@ -1463,7 +1493,7 @@ module MathContext
           context_for_text  = ictx;
         }
 
-    let convert_math_variant_char ((ctx, _) : input_context) (s : string) =
+    let convert_math_variant_char ((ctx, _) : ('c, 'p) input_context) (s : string) =
       let open HorzBox in
       let mcclsmap = ctx.math_variant_char_map in
       let mccls = ctx.math_char_class in
@@ -1483,28 +1513,28 @@ module MathContext
             in
               (MathOrdinary, uchlstaft)
 
-    let context_for_text (mctx : t) =
+    let context_for_text (mctx : ('c, 'p) t) =
       mctx.context_for_text
         (* temporary; maybe should update font size *)
 
-    let context_main (mctx : t) =
+    let context_main (mctx : ('c, 'p) t) =
       let (ctx, _) = mctx.context_for_text in
         ctx
 
-    let color (mctx : t) =
+    let color (mctx : ('c, 'p) t) =
       let (ctx, _) = mctx.context_for_text in
         ctx.HorzBox.text_color
 
-    let set_color (color : color) (mctx : t) =
+    let set_color (color : color) (mctx : ('c, 'p) t) =
       let (ctx, v) = mctx.context_for_text in
       let ctxnew = { ctx with HorzBox.text_color = color; } in
         { mctx with context_for_text = (ctxnew, v); }
 
-    let math_char_class (mctx : t) =
+    let math_char_class (mctx : ('c, 'p) t) =
       let (ctx, _) = mctx.context_for_text in
         ctx.HorzBox.math_char_class
 
-    let set_math_char_class mccls (mctx : t) =
+    let set_math_char_class mccls (mctx : ('c, 'p) t) =
       let (ctx, v) = mctx.context_for_text in
       let ctxnew = { ctx with HorzBox.math_char_class = mccls } in
         { mctx with context_for_text = (ctxnew, v) }
@@ -1539,7 +1569,7 @@ module MathContext
   end
 
 
-type math_context = MathContext.t
+type ('c, 'p) math_context = ('c, 'p) MathContext.t
 
 
 (* -- following are all for debugging -- *)
