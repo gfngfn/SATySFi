@@ -388,7 +388,7 @@ let non_empty = function
   | _  -> true
 
 
-let main (rng : Range.t) (patbrs : pattern_branch list) (ty : mono_type)
+let main (rng : Range.t) (patbrs : normal_pattern_branch list) (ty : mono_type)
     (pre : pre) (tyenv : Typeenv.t) : unit =
   let patbrs =
     patbrs |> List.map (function

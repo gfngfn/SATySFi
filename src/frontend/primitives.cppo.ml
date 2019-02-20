@@ -532,7 +532,7 @@ let get_pdf_mode_initial_context wid =
 let (~%) ty = Poly(ty)
 
 
-let general_table : (var_name * poly_type * (environment -> syntactic_value)) list =
+let general_table : (var_name * poly_type * (normal_environment -> normal_value)) list =
   let (~@) n = (~! "tv", TypeVariable(n)) in
   let (-%) n ptysub = ptysub in
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in PolyBound(bid1)) in
