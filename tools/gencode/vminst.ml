@@ -652,9 +652,9 @@ PathValue(List.map (shift_path ptshift) pathlst)
         ~is_pdf_mode_primitive:true
         ~code:{|
 let (ptmin, ptmax) = get_path_list_bbox pathlst in
-TupleCons(make_point_value ptmin,
-  TupleCons(make_point_value ptmax,
-    EndOfTuple))
+let value1 = make_point_value ptmin in
+let value2 = make_point_value ptmax in
+Tuple([value1; value2])
 |}
     ; inst "PrePathBeginning"
         ~name:"start-path"
@@ -1251,9 +1251,11 @@ match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script
     Constructor("None", UnitConstant)
 
 | Some((r0, r1, r2)) ->
-    Constructor("Some", TupleCons(FloatConstant(r0),
-                          TupleCons(FloatConstant(r1),
-                            TupleCons(FloatConstant(r2), EndOfTuple))))
+    Constructor("Some", Tuple([
+      FloatConstant(r0);
+      FloatConstant(r1);
+      FloatConstant(r2);
+    ]))
 |}
     ; inst "PrimitiveSetParagraphMargin"
         ~name:"set-paragraph-margin"
@@ -1893,9 +1895,11 @@ match CrossRef.get k with
         ~is_pdf_mode_primitive:true
         ~code:{|
 let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
-TupleCons(LengthConstant(wid),
-  TupleCons(LengthConstant(hgt),
-    TupleCons(LengthConstant(Length.negate dpt), EndOfTuple)))
+Tuple([
+  LengthConstant(wid);
+  LengthConstant(hgt);
+  LengthConstant(Length.negate dpt);
+])
 |}
     ; inst "PrimitiveGetNaturalLength"
         ~name:"get-natural-length"
@@ -2047,7 +2051,7 @@ if Str.string_match pat str 0 then
   let matched = Str.matched_string str in
   let start   = String.length matched in
   let rest    = String.sub str start (String.length str - start) in
-  Constructor("Some", TupleCons(StringConstant(matched), TupleCons(StringConstant(rest), EndOfTuple)))
+  Constructor("Some", Tuple([StringConstant(matched); StringConstant(rest)]))
 else
   Constructor("None", UnitConstant)
 |}
@@ -2118,8 +2122,7 @@ BooleanConstant(Str.string_match pat s 0)
         ~code:{|
 let slst = String.split_on_char '\n' s in
 let pairlst = slst |> List.map chop_space_indent in
-(pairlst |> make_list (fun (i, s) ->
-  TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple))))
+pairlst |> make_list (fun (i, s) -> Tuple([IntegerConstant(i); StringConstant(s)]))
 |}
     ; inst "PrimitiveSplitOnRegExp"
         ~name:"split-on-regexp"
@@ -2137,8 +2140,7 @@ let pairlst = slst |> List.map chop_space_indent in
         ~code:{|
 let slst = Str.split sep str in
 let pairlst = slst |> List.map chop_space_indent in
-(pairlst |> make_list (fun (i, s) ->
-  TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple))))
+pairlst |> make_list (fun (i, s) -> Tuple([IntegerConstant(i); StringConstant(s)]))
 |}
     ; inst "PrimitiveArabic"
         ~name:"arabic"
@@ -2302,9 +2304,9 @@ let (ptmin, ptmax) =
       ((x, y +% dpt), (x +% wid, y +% hgt))
   ) grelem
 in
-TupleCons(make_point_value ptmin,
-  TupleCons(make_point_value ptmax,
-    EndOfTuple))
+let value1 = make_point_value ptmin in
+let value2 = make_point_value ptmax in
+Tuple([value1; value2])
 |}
     ; inst "Times"
         ~name:"*"
@@ -2799,7 +2801,7 @@ Context(HorzBox.({ ctx with
         ~code:{|
 let hblst1 = ctx.HorzBox.before_word_break in
 let hblst2 = ctx.HorzBox.after_word_break in
-TupleCons(Horz(hblst1), TupleCons(Horz(hblst2), EndOfTuple))
+Tuple([Horz(hblst1); Horz(hblst2)])
 |}
     ; inst "BackendProbeCrossReference"
         ~name:"probe-cross-reference"

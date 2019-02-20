@@ -458,8 +458,7 @@ and untyped_abstract_tree_main =
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
 (* -- tuple value -- *)
-  | UTTupleCons            of untyped_abstract_tree * untyped_abstract_tree
-  | UTEndOfTuple
+  | UTTuple               of untyped_abstract_tree list
 (* -- record value -- *)
   | UTRecord               of (field_name * untyped_abstract_tree) list
   | UTAccessField          of untyped_abstract_tree * field_name
@@ -531,8 +530,7 @@ and untyped_pattern_tree_main =
   | UTPUnitConstant
   | UTPListCons            of untyped_pattern_tree * untyped_pattern_tree
   | UTPEndOfList
-  | UTPTupleCons           of untyped_pattern_tree * untyped_pattern_tree
-  | UTPEndOfTuple
+  | UTPTuple               of untyped_pattern_tree list
   | UTPWildCard
   | UTPVariable            of var_name
   | UTPAsVariable          of var_name * untyped_pattern_tree
@@ -791,8 +789,7 @@ and syntactic_value =
   | ListCons              of syntactic_value * syntactic_value
   | EndOfList
 
-  | TupleCons             of syntactic_value * syntactic_value
-  | EndOfTuple
+  | Tuple                 of syntactic_value list
 
   | RecordValue           of syntactic_value Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
@@ -858,7 +855,7 @@ and abstract_tree =
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
   | BackendMathList             of abstract_tree list
-  | PrimitiveTupleCons    of abstract_tree * abstract_tree
+  | PrimitiveTuple        of abstract_tree list
 (* -- staging constructs -- *)
   | Next                  of abstract_tree
   | Prev                  of abstract_tree
@@ -881,8 +878,7 @@ and pattern_tree =
   | PStringConstant       of string
   | PListCons             of pattern_tree * pattern_tree
   | PEndOfList
-  | PTupleCons            of pattern_tree * pattern_tree
-  | PEndOfTuple
+  | PTuple                of pattern_tree list
   | PWildCard
   | PVariable             of EvalVarID.t
   | PAsVariable           of EvalVarID.t * pattern_tree
@@ -962,7 +958,7 @@ and code_value =
   | CdDereference   of code_value
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
-  | CdTupleCons     of code_value * code_value
+  | CdTuple         of code_value list
   | CdPath          of code_value * (code_value code_path_component) list * (unit code_path_component) option
   | CdMathList      of code_value list
   | CdModule        of code_value * code_value
@@ -1402,7 +1398,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdWhileDo(code1, code2)              -> WhileDo(aux code1, aux code2)
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
-    | CdTupleCons(code1, code2)            -> PrimitiveTupleCons(aux code1, aux code2)
+    | CdTuple(codelst)                     -> PrimitiveTuple(List.map aux codelst)
     | CdPath(code1, cdpath, cdcycleopt)    -> Path(aux code1, aux_path cdpath, aux_cycle cdcycleopt)
     | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
     | CdModule(code1, code2)               -> Module(aux code1, aux code2)

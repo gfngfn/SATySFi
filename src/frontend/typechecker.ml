@@ -59,7 +59,7 @@ let rec is_nonexpansive_expression e =
 
   | NonValueConstructor(constrnm, e1) -> iter e1
   | PrimitiveListCons(e1, e2)         -> iter e1 && iter e2
-  | PrimitiveTupleCons(e1, e2)        -> iter e1 && iter e2
+  | PrimitiveTuple(elst)              -> List.for_all iter elst
   | Record(asc)                       -> Assoc.fold_value (fun b e -> b && iter e) true asc
   | LetRecIn(_, e2)                   -> iter e2
   | LetNonRecIn(_, e1, e2)            -> iter e1 && iter e2
@@ -847,18 +847,12 @@ let rec typecheck
 
 (* ---- tuple ---- *)
 
-  | UTTupleCons(utastH, utastT) ->
-      let (eH, tyH) = typecheck_iter tyenv utastH in
-      let (eT, tyT) = typecheck_iter tyenv utastT in
-      let tyres =
-        match tyT with
-        | (_, ProductType(tylist)) -> (rng, ProductType(tyH :: tylist))
-        | _                        -> assert false
-      in
-      (PrimitiveTupleCons(eH, eT), tyres)
-
-  | UTEndOfTuple ->
-      (Value(EndOfTuple), (rng, ProductType([])))
+  | UTTuple(utastlst) ->
+      let etylst = List.map (typecheck_iter tyenv) utastlst in
+      let elst = List.map fst etylst in
+      let tylst = List.map snd etylst in
+      let tyres = (rng, ProductType(tylst)) in
+      (PrimitiveTuple(elst), tyres)
 
 (* ---- records ---- *)
 
@@ -1180,8 +1174,8 @@ and typecheck_record
 and typecheck_itemize (pre : pre) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
   let (e1, ty1) = typecheck pre tyenv utast1 in
   unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", BaseType(TextRowType));
-  let elst = typecheck_itemize_list pre tyenv utitmzlst in
-  (NonValueConstructor("Item", PrimitiveTupleCons(e1, PrimitiveTupleCons(elst, Value(EndOfTuple)))))
+  let e2 = typecheck_itemize_list pre tyenv utitmzlst in
+  (NonValueConstructor("Item", PrimitiveTuple([e1; e2])))
 
 
 and typecheck_itemize_list
@@ -1257,19 +1251,14 @@ and typecheck_pattern
         let beta = fresh_type_variable rng pre UniversalKind in
         (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
 
-    | UTPTupleCons(utpat1, utpat2) ->
-        let (epat1, typat1, patvarmap1) = iter utpat1 in
-        let (epat2, typat2, patvarmap2) = iter utpat2 in
-        let tyres =
-          match typat2 with
-          | (rng, ProductType(tylist)) -> (rng, ProductType(typat1 :: tylist))
-          | _                          -> assert false
-        in
-        let patvarmap = unite_pattern_var_map patvarmap1 patvarmap2 in
-        (PTupleCons(epat1, epat2), tyres, patvarmap)
-
-    | UTPEndOfTuple ->
-        (PEndOfTuple, (rng, ProductType([])), PatternVarMap.empty)
+    | UTPTuple(utpatlst) ->
+        let trilst = List.map iter utpatlst in
+        let epatlst = trilst |> List.map (fun (epat, _, _) -> epat) in
+        let typatlst = trilst |> List.map (fun (_, typat, _) -> typat) in
+        let patvarmaplst = trilst |> List.map (fun (_, _, patvarmap) -> patvarmap) in
+        let tyres = (rng, ProductType(typatlst)) in
+        let patvarmap = List.fold_left unite_pattern_var_map PatternVarMap.empty patvarmaplst in
+        (PTuple(epatlst), tyres, patvarmap)
 
     | UTPWildCard ->
         let beta = fresh_type_variable rng pre UniversalKind in

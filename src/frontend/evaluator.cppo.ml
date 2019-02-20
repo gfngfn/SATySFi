@@ -332,10 +332,10 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       in  (* slightly doubtful in terms of evaluation strategy *)
       MathValue(List.concat mlstlst)
 
-  | PrimitiveTupleCons(asthd, asttl) ->
-      let valuehd = interpret_0 env asthd in
-      let valuetl = interpret_0 env asttl in
-      TupleCons(valuehd, valuetl)
+  | PrimitiveTuple(astlst) ->
+      let valuelst = astlst |> List.map (interpret_0 env) in
+        (* -- should be left-to-right -- *)
+      Tuple(valuelst)
 
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
@@ -474,10 +474,10 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
       let codelst = astlst |> List.map (interpret_1 env) in
       CdMathList(codelst)
 
-  | PrimitiveTupleCons(ast1, ast2) ->
-      let code1 = interpret_1 env ast1 in
-      let code2 = interpret_1 env ast2 in
-      CdTupleCons(code1, code2)
+  | PrimitiveTuple(astlst) ->
+      let codelst = List.map (interpret_1 env) astlst in
+        (* -- should be left-to-right -- *)
+      CdTuple(codelst)
 
   | Path(astpt0, pathcomplst, cycleopt) ->
       let codept0 = interpret_1 env astpt0 in
@@ -709,13 +709,17 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
       check_pattern_matching env phd hd >>= fun envhd ->
       check_pattern_matching envhd ptl tl
 
-  | (PEndOfTuple, EndOfTuple) ->
-      Some(env)
-
-  | (PTupleCons(phd, ptl), TupleCons(hd, tl)) ->
+  | (PTuple(plst), Tuple(vlst)) ->
       let open OptionMonad in
-      check_pattern_matching env phd hd >>= fun envhd ->
-      check_pattern_matching envhd ptl tl
+      begin
+        try
+          List.fold_left2 (fun envopt p v ->
+            envopt >>= fun env ->
+            check_pattern_matching env p v
+          ) (Some(env)) plst vlst
+        with
+        | Invalid_argument(_) -> None
+      end
 
   | (PConstructor(cnm1, psub), Constructor(cnm2, sub))
     when cnm1 = cnm2 ->

@@ -83,53 +83,67 @@ let graphics_of_list value : (HorzBox.intermediate_horz_box list) GraphicD.t =
 
 let get_paddings (value : syntactic_value) =
   match value with
-  | TupleCons(LengthConstant(lenL),
-              TupleCons(LengthConstant(lenR),
-                        TupleCons(LengthConstant(lenT),
-                                  TupleCons(LengthConstant(lenB), EndOfTuple)))) ->
-    {
-      HorzBox.paddingL = lenL;
-      HorzBox.paddingR = lenR;
-      HorzBox.paddingT = lenT;
-      HorzBox.paddingB = lenB;
-    }
+  | Tuple([
+      LengthConstant(lenL);
+      LengthConstant(lenR);
+      LengthConstant(lenT);
+      LengthConstant(lenB);
+    ]) ->
+      HorzBox.{
+        paddingL = lenL;
+        paddingR = lenR;
+        paddingT = lenT;
+        paddingB = lenB;
+      }
 
-  | _ -> report_bug_value "interpret_paddings" value
+  | _ ->
+      report_bug_value "interpret_paddings" value
 
 
 let get_cell value : HorzBox.cell =
     match value with
-    | Constructor("NormalCell", TupleCons(valuepads,
-                                  TupleCons(Horz(hblst), EndOfTuple))) ->
+    | Constructor("NormalCell", Tuple([valuepads; Horz(hblst)])) ->
         let pads = get_paddings valuepads in
-          HorzBox.NormalCell(pads, hblst)
+        HorzBox.NormalCell(pads, hblst)
 
-    | Constructor("EmptyCell", UnitConstant) -> HorzBox.EmptyCell
+    | Constructor("EmptyCell", UnitConstant) ->
+        HorzBox.EmptyCell
 
-    | Constructor("MultiCell", TupleCons(IntegerConstant(nr),
-                                 TupleCons(IntegerConstant(nc),
-                                   TupleCons(valuepads,
-                                     TupleCons(Horz(hblst), EndOfTuple))))) ->
+    | Constructor("MultiCell", Tuple([
+        IntegerConstant(nr);
+        IntegerConstant(nc);
+        valuepads;
+        Horz(hblst);
+      ])) ->
         let pads = get_paddings valuepads in
-          HorzBox.MultiCell(nr, nc, pads, hblst)
+        HorzBox.MultiCell(nr, nc, pads, hblst)
 
-    | _ -> report_bug_value "get_cell" value
+    | _ ->
+        report_bug_value "get_cell" value
 
 
 let get_color (value : syntactic_value) : color =
   match value with
-  | Constructor("Gray", FloatConstant(gray)) -> DeviceGray(gray)
+  | Constructor("Gray", FloatConstant(gray)) ->
+      DeviceGray(gray)
 
-  | Constructor("RGB", TupleCons(FloatConstant(fltR),
-                                 TupleCons(FloatConstant(fltG),
-                                           TupleCons(FloatConstant(fltB), EndOfTuple)))) -> DeviceRGB(fltR, fltG, fltB)
+  | Constructor("RGB", Tuple([
+      FloatConstant(fltR);
+      FloatConstant(fltG);
+      FloatConstant(fltB);
+    ])) ->
+      DeviceRGB(fltR, fltG, fltB)
 
-  | Constructor("CMYK", TupleCons(FloatConstant(fltC),
-                                  TupleCons(FloatConstant(fltM),
-                                            TupleCons(FloatConstant(fltY),
-                                                      TupleCons(FloatConstant(fltK), EndOfTuple))))) -> DeviceCMYK(fltC, fltM, fltY, fltK)
+  | Constructor("CMYK", Tuple([
+      FloatConstant(fltC);
+      FloatConstant(fltM);
+      FloatConstant(fltY);
+      FloatConstant(fltK);
+    ])) ->
+      DeviceCMYK(fltC, fltM, fltY, fltK)
 
-  | _ -> report_bug_value "interpret_color" value
+  | _ ->
+      report_bug_value "interpret_color" value
 
 
 let make_color_value color =
@@ -138,43 +152,54 @@ let make_color_value color =
       Constructor("Gray", FloatConstant(gray))
 
   | DeviceRGB(r, g, b) ->
-      Constructor("RGB", TupleCons(FloatConstant(r),
-                           TupleCons(FloatConstant(g),
-                             TupleCons(FloatConstant(b), EndOfTuple))))
+      Constructor("RGB", Tuple([
+        FloatConstant(r);
+        FloatConstant(g);
+        FloatConstant(b);
+      ]))
 
   | DeviceCMYK(c, m, y, k) ->
-      Constructor("CMYK", TupleCons(FloatConstant(c),
-                            TupleCons(FloatConstant(m),
-                              TupleCons(FloatConstant(y),
-                                TupleCons(FloatConstant(k), EndOfTuple)))))
+      Constructor("CMYK", Tuple([
+        FloatConstant(c);
+        FloatConstant(m);
+        FloatConstant(y);
+        FloatConstant(k);
+      ]))
 
 
 let get_decoset (value : syntactic_value) =
   match value with
-  | TupleCons(valuedecoS,
-      TupleCons(valuedecoH,
-        TupleCons(valuedecoM,
-          TupleCons(valuedecoT, EndOfTuple)))) ->
-    (valuedecoS, valuedecoH, valuedecoM, valuedecoT)
+  | Tuple([
+      valuedecoS;
+      valuedecoH;
+      valuedecoM;
+      valuedecoT;
+    ]) ->
+      (valuedecoS, valuedecoH, valuedecoM, valuedecoT)
 
-  | _ -> report_bug_value "interpret_decoset" value
+  | _ ->
+      report_bug_value "interpret_decoset" value
 
 
 let get_font (value : syntactic_value) : HorzBox.font_with_ratio =
   match value with
-  | TupleCons(valueabbrev,
-      TupleCons(FloatConstant(sizer),
-        TupleCons(FloatConstant(risingr), EndOfTuple))) ->
-      let abbrev = get_string valueabbrev in
-        (abbrev, sizer, risingr)
+  | Tuple([
+      StringConstant(abbrev);
+      FloatConstant(sizer);
+      FloatConstant(risingr);
+    ]) ->
+      (abbrev, sizer, risingr)
 
-  | _ -> report_bug_value "interpret_font" value
+  | _ ->
+      report_bug_value "interpret_font" value
 
 
 let make_font_value (abbrev, sizer, risingr) =
-  TupleCons(StringConstant(abbrev),
-    TupleCons(FloatConstant(sizer),
-      TupleCons(FloatConstant(risingr), EndOfTuple)))
+  Tuple([
+    StringConstant(abbrev);
+    FloatConstant(sizer);
+    FloatConstant(risingr);
+  ])
 
 
 let get_vert value : HorzBox.vert_box list =
@@ -191,14 +216,18 @@ let get_horz value : HorzBox.horz_box list =
 
 let get_point value =
   match value with
-  | TupleCons(LengthConstant(lenx),
-      TupleCons(LengthConstant(leny), EndOfTuple)) -> (lenx, leny)
+  | Tuple([
+      LengthConstant(lenx);
+      LengthConstant(leny);
+    ]) ->
+      (lenx, leny)
 
-  | _ -> report_bug_value "get_point" value
+  | _ ->
+      report_bug_value "get_point" value
 
 
 let make_point_value (x, y) =
-  TupleCons(LengthConstant(x), TupleCons(LengthConstant(y), EndOfTuple))
+  Tuple([LengthConstant(x); LengthConstant(y)])
 
 
 let get_script (value : syntactic_value) =
@@ -314,8 +343,8 @@ let get_option (getf : syntactic_value -> 'a) (value : syntactic_value) : 'a opt
 
 let get_pair (getf1 : syntactic_value -> 'a) (getf2 : syntactic_value -> 'b) (value : syntactic_value) : 'a * 'b =
   match value with
-  | TupleCons(v1, TupleCons(v2, EndOfTuple)) -> (getf1 v1, getf2 v2)
-  | _                                        -> report_bug_vm "get_pair"
+  | Tuple([v1; v2]) -> (getf1 v1, getf2 v2)
+  | _               -> report_bug_vm "get_pair"
 
 
 let get_page_size (value : syntactic_value) : HorzBox.page_size =
@@ -329,22 +358,26 @@ let get_page_size (value : syntactic_value) : HorzBox.page_size =
   | Constructor("USLetter", UnitConstant) -> HorzBox.USLetter
   | Constructor("USLegal" , UnitConstant) -> HorzBox.USLegal
 
-  | Constructor("UserDefinedPaper",
-                TupleCons(LengthConstant(pgwid), TupleCons(LengthConstant(pghgt), EndOfTuple))) ->
-    HorzBox.UserDefinedPaper(pgwid, pghgt)
+  | Constructor("UserDefinedPaper", Tuple([
+      LengthConstant(pgwid);
+      LengthConstant(pghgt);
+    ])) ->
+      HorzBox.UserDefinedPaper(pgwid, pghgt)
 
-  | _ -> report_bug_vm "interpret_page"
+  | _ ->
+      report_bug_vm "get_page_size"
 
 
 let get_tuple3 getf value =
   match value with
-  | TupleCons(v1, TupleCons(v2, TupleCons(v3, EndOfTuple))) ->
+  | Tuple([v1; v2; v3]) ->
       let c1 = getf v1 in
       let c2 = getf v2 in
       let c3 = getf v3 in
-        (c1, c2, c3)
+      (c1, c2, c3)
 
-  | _ -> report_bug_value "get_tuple3" value
+  | _ ->
+      report_bug_value "get_tuple3" value
 
 
 let get_context (value : syntactic_value) : input_context =
@@ -392,24 +425,6 @@ let get_float value : float =
   | _                 -> report_bug_value "get_float" value
 
 
-let get_page_size value =
-  match value with
-  | Constructor("A0Paper" , UnitConstant) -> HorzBox.A0Paper
-  | Constructor("A1Paper" , UnitConstant) -> HorzBox.A1Paper
-  | Constructor("A2Paper" , UnitConstant) -> HorzBox.A2Paper
-  | Constructor("A3Paper" , UnitConstant) -> HorzBox.A3Paper
-  | Constructor("A4Paper" , UnitConstant) -> HorzBox.A4Paper
-  | Constructor("A5Paper" , UnitConstant) -> HorzBox.A5Paper
-  | Constructor("USLetter", UnitConstant) -> HorzBox.USLetter
-  | Constructor("USLegal" , UnitConstant) -> HorzBox.USLegal
-
-  | Constructor("UserDefinedPaper",
-      TupleCons(LengthConstant(pgwid), TupleCons(LengthConstant(pghgt), EndOfTuple))) ->
-        HorzBox.UserDefinedPaper(pgwid, pghgt)
-
-  | _ -> report_bug_value "get_page_size" value
-
-
 let get_regexp (value : syntactic_value) : Str.regexp =
   match value with
   | RegExpConstant(regexp) -> regexp
@@ -423,9 +438,9 @@ let get_path_value (value : syntactic_value) : path list =
 
 
 let get_prepath (value : syntactic_value) : PrePath.t =
-    match value with
-    | PrePathValue(prepath) -> prepath
-    | _                     -> report_bug_value "get_prepath" value
+  match value with
+  | PrePathValue(prepath) -> prepath
+  | _                     -> report_bug_value "get_prepath" value
 
 
 let get_math_variant_style value =
@@ -480,12 +495,16 @@ let get_math_variant_style value =
 
 let get_outline (value : syntactic_value) =
   match value with
-  | TupleCons(IntegerConstant(level),
-      TupleCons(StringConstant(text),
-        TupleCons(StringConstant(key),
-          TupleCons(BooleanConstant(isopen), EndOfTuple)))) ->
-    (level, text, key, isopen)
-  | _ -> report_bug_value "get_outline" value
+  | Tuple([
+      IntegerConstant(level);
+      StringConstant(text);
+      StringConstant(key);
+      BooleanConstant(isopen);
+    ]) ->
+      (level, text, key, isopen)
+
+  | _ ->
+      report_bug_value "get_outline" value
 
 
 let make_page_break_info pbinfo =
@@ -494,7 +513,7 @@ let make_page_break_info pbinfo =
       ("page-number", IntegerConstant(pbinfo.HorzBox.current_page_number));
     ]
   in
-    RecordValue(asc)
+  RecordValue(asc)
 
 
 let make_page_content_info pcinfo =
@@ -511,7 +530,7 @@ let make_page_content_info pcinfo =
 
 let make_hook (reducef : syntactic_value -> syntactic_value list -> syntactic_value) (valuehook : syntactic_value) : (HorzBox.page_break_info -> point -> unit) =
   (fun pbinfo (xpos, yposbaseline) ->
-     let valuept = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(yposbaseline), EndOfTuple)) in
+     let valuept = Tuple([LengthConstant(xpos); LengthConstant(yposbaseline)]) in
      let valuepbinfo = make_page_break_info pbinfo in
      let valueret = reducef valuehook [valuepbinfo; valuept] in
        match valueret with
@@ -524,23 +543,25 @@ let make_page_content_scheme_func reducef valuef : HorzBox.page_content_scheme_f
   (fun pbinfo ->
      let valuepbinfo = make_page_break_info pbinfo in
      let valueret = reducef valuef [valuepbinfo] in
-       match valueret with
-       | RecordValue(asc) ->
-           begin
-             match
-               (Assoc.find_opt asc "text-origin",
-                Assoc.find_opt asc "text-height")
-             with
-             | (Some(vTO), Some(LengthConstant(vTHlen))) ->
+     match valueret with
+     | RecordValue(asc) ->
+         begin
+           match
+             (Assoc.find_opt asc "text-origin",
+              Assoc.find_opt asc "text-height")
+           with
+           | (Some(vTO), Some(LengthConstant(vTHlen))) ->
                HorzBox.({
-                   page_content_origin = get_point(vTO);
-                   page_content_height = vTHlen;
-                 })
+                 page_content_origin = get_point(vTO);
+                 page_content_height = vTHlen;
+               })
 
-             | _ -> report_bug_value "make_page_scheme_func:1" valueret
-           end
+           | _ ->
+               report_bug_value "make_page_scheme_func:1" valueret
+         end
 
-       | _ -> report_bug_value "make_page_scheme_func:2" valueret
+     | _ ->
+         report_bug_value "make_page_scheme_func:2" valueret
   )
 
 
@@ -574,13 +595,13 @@ and make_page_parts_scheme_func reducef valuef : HorzBox.page_parts_scheme_func 
 
 let make_frame_deco reducef valuedeco =
   (fun (xpos, ypos) wid hgt dpt ->
-     let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
+     let valuepos = Tuple([LengthConstant(xpos); LengthConstant(ypos)]) in
      let valuewid = LengthConstant(wid) in
      let valuehgt = LengthConstant(hgt) in
      let valuedpt = LengthConstant(Length.negate dpt) in
-     (* -- depth values for users are nonnegative -- *)
+       (* -- depth values for users are nonnegative -- *)
      let valueret = reducef valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
-       graphics_of_list valueret
+     graphics_of_list valueret
   )
 
 
@@ -588,7 +609,7 @@ let make_math_kern_func reducef valuekernf : HorzBox.math_kern_func =
   (fun corrhgt ->
     let astcorrhgt = LengthConstant(corrhgt) in
     let valueret = reducef valuekernf [astcorrhgt] in
-      get_length valueret
+    get_length valueret
   )
 
 
@@ -601,13 +622,13 @@ let make_paren reducef valueparenf : HorzBox.paren =
      let valuefontsize = LengthConstant(fontsize) in
      let valuecolor    = make_color_value color in
      let valueret = reducef valueparenf [valuehgt; valuedpt; valuehgtaxis; valuefontsize; valuecolor] in
-       match valueret with
-       | TupleCons(Horz(hblst), TupleCons(valuekernf, EndOfTuple)) ->
-           let kernf = make_math_kern_func reducef valuekernf in
-             (hblst, kernf)
+     match valueret with
+     | Tuple([Horz(hblst); valuekernf]) ->
+         let kernf = make_math_kern_func reducef valuekernf in
+         (hblst, kernf)
 
-       | _ ->
-           report_bug_vm "make_paren"
+     | _ ->
+         report_bug_vm "make_paren"
   )
 
 
@@ -635,24 +656,24 @@ let make_math_char_kern_func reducef valuekernf : HorzBox.math_char_kern_func =
      let valuefontsize = LengthConstant(fontsize) in
      let valueypos     = LengthConstant(ypos) in
      let valueret = reducef valuekernf [valuefontsize; valueypos] in
-       get_length valueret
+     get_length valueret
   )
 
 
 let make_inline_graphics reducef valueg : HorzBox.fixed_graphics =
   (fun (xpos, ypos) ->
-     let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
+     let valuepos = Tuple([LengthConstant(xpos); LengthConstant(ypos)]) in
      let valueret = reducef valueg [valuepos] in
-       graphics_of_list valueret
+     graphics_of_list valueret
   )
 
 
 let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
   (fun wid (xpos, ypos) ->
-     let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
+     let valuepos = Tuple([LengthConstant(xpos); LengthConstant(ypos)]) in
      let valuewid = LengthConstant(wid) in
      let valueret = reducef valueg [valuewid; valuepos] in
-       graphics_of_list valueret
+     graphics_of_list valueret
   )
 
 
@@ -680,4 +701,4 @@ let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
       Alist.extend imvbacc (VertLine(hgt, dpt, imhblst))
     ) Alist.empty |> Alist.to_list
   in
-    (wid, imvblst)
+  (wid, imvblst)

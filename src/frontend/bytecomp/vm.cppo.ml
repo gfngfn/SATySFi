@@ -706,16 +706,16 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpMakeTuple(len) ->
       begin
             begin
-              let rec iter n last st =
+              let rec iter n acc st =
                 if n <= 0 then
-                  (last, st)
+                  (acc, st)
                 else
                   match st with
-                  | value :: stnew -> iter (n - 1) (TupleCons(value, last)) stnew
+                  | value :: stnew -> iter (n - 1) (value :: acc) stnew
                   | []             -> report_bug_vm "MakeTuple: stack underflow"
               in
-              let (tuple, stack) = iter len EndOfTuple stack in
-              exec (tuple :: stack) env code dump
+              let (vlst, stack) = iter len [] stack in
+              exec (Tuple(vlst) :: stack) env code dump
             end
 
       end
@@ -832,8 +832,8 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | v :: stack ->
             begin
               match v with
-              | TupleCons(car, cdr) -> exec (car :: cdr :: stack) env code dump
-              | _                   -> exec stack env next dump
+              | Tuple(car :: cdr) -> exec (car :: Tuple(cdr) :: stack) env code dump
+              | _                 -> exec stack env next dump
             end
 
         | _ -> report_bug_vm "invalid argument for OpCheckStackTopTupleCons"

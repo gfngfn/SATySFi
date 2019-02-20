@@ -90,7 +90,7 @@ let is_all_wildcard mat =
     | _         -> false
   ) (List.hd mat)
 
-
+(*
 let flatten_tuple tup =
   let rec iter pat acc =
     match pat with
@@ -99,7 +99,7 @@ let flatten_tuple tup =
     | _                           -> failwith "malformed tuple(flatten_tuple)"
   in
     iter tup Alist.empty
-
+*)
 
 let instance_of_element ele =
   match ele with
@@ -151,7 +151,7 @@ let rec string_of_instance ins =
 let rec normalize_pat pat =
   match pat with
   | PListCons(car, cdr)  -> PListCons(normalize_pat car, normalize_pat cdr)
-  | PTupleCons(car, cdr) -> PTupleCons(normalize_pat car, normalize_pat cdr)
+  | PTuple(patlst)       -> PTuple(List.map normalize_pat patlst)
   | PConstructor(nm, p)  -> PConstructor(nm, normalize_pat p)
   | PVariable(_)         -> PWildCard
   | PAsVariable(_, p)    -> normalize_pat p
@@ -180,9 +180,8 @@ let expand_mat mat i epat ty =
     | (ExpandConstructor(_, _), PWildCard) ->
         [[PWildCard]]
 
-    | (ExpandTuple(_), PTupleCons(h, t)) ->
-        let ftup = flatten_tuple (PTupleCons(h, t)) in
-          List.map (fun pat -> [pat]) ftup
+    | (ExpandTuple(_), PTuple(ftup)) ->
+        List.map (fun pat -> [pat]) ftup
 
     | (ExpandTuple(arity), PWildCard) ->
         repeat arity [PWildCard]
@@ -211,7 +210,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
               | (EListCons, PListCons(_, _))
               | (EEndOfList, PEndOfList)
               | (EUnitConstant, PUnitConstant)
-              | (ETuple, PTupleCons(_, _))
+              | (ETuple, PTuple(_ :: _))
               | (_, PWildCard)
                 -> true
 
