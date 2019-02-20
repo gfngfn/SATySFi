@@ -790,37 +790,30 @@ and intermediate_input_vert_element =
   | ImInputVertContent  of intermediate_input_vert_element list * environment
 
 and syntactic_value =
-  | Nil
+  | Nil  (* -- just for brief use -- *)
   | BaseConstant of base_constant
-
-  | Constructor           of constructor_name * syntactic_value
-
-  | FuncWithEnvironment   of EvalVarID.t list * pattern_branch * environment
-  | PrimitiveWithEnvironment   of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | CompiledFuncWithEnvironment of varloc list * int * syntactic_value list * int * instruction list * vmenv
-  | CompiledPrimitiveWithEnvironment of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
-
-  | EvaluatedEnvironment  of environment
-
-  | ListCons              of syntactic_value * syntactic_value
+  | Constructor  of constructor_name * syntactic_value
+  | ListCons     of syntactic_value * syntactic_value
   | EndOfList
-
-  | Tuple                 of syntactic_value list
-
-  | RecordValue           of syntactic_value Assoc.t
+  | Tuple        of syntactic_value list
+  | RecordValue  of syntactic_value Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
+  | Location     of StoreID.t
+  | MathValue    of math list
+  | Context      of input_context
+  | CodeValue    of code_value
 
-  | Location              of StoreID.t
+  | EvaluatedEnvironment of environment
 
+  | FuncWithEnvironment      of EvalVarID.t list * pattern_branch * environment
+  | PrimitiveWithEnvironment of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
   | InputHorzWithEnvironment of intermediate_input_horz_element list * environment
-  | CompiledInputHorzWithEnvironment    of compiled_intermediate_input_horz_element list * vmenv
-
   | InputVertWithEnvironment of intermediate_input_vert_element list * environment
-  | CompiledInputVertWithEnvironment    of compiled_intermediate_input_vert_element list * vmenv
 
-  | MathValue                   of math list
-  | Context                     of input_context
-  | CodeValue             of code_value
+  | CompiledFuncWithEnvironment      of varloc list * int * syntactic_value list * int * instruction list * vmenv
+  | CompiledPrimitiveWithEnvironment of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
+  | CompiledInputHorzWithEnvironment of compiled_intermediate_input_horz_element list * vmenv
+  | CompiledInputVertWithEnvironment of compiled_intermediate_input_vert_element list * vmenv
 
 and abstract_tree =
   | Value                 of syntactic_value
