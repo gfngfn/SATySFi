@@ -23,17 +23,17 @@ module Const = struct
 
   let destructuring_rules =
     let open Printf in
-    [ "int", sprintf "IntegerConstant(%s)"
-    ; "bool", sprintf "BooleanConstant(%s)"
+    [ "int", sprintf "BaseConstant(BCInt(%s))"
+    ; "bool", sprintf "BaseConstant(BCBool(%s))"
     ; "context", sprintf "Context(%s)"
-    ; "float", sprintf "FloatConstant(%s)"
-    ; "horz", sprintf "Horz(%s)"
-    ; "vert", sprintf "Vert(%s)"
-    ; "length", sprintf "LengthConstant(%s)"
+    ; "float", sprintf "BaseConstant(BCFloat(%s))"
+    ; "horz", sprintf "BaseConstant(BCHorz(%s))"
+    ; "vert", sprintf "BaseConstant(BCVert(%s))"
+    ; "length", sprintf "BaseConstant(BCLength(%s))"
     ; "math", sprintf "MathValue(%s)"
-    ; "path_value", sprintf "PathValue(%s)"
-    ; "prepath", sprintf "PrePathValue(%s)"
-    ; "regexp", sprintf "RegExpConstant(%s)"
+    ; "path_value", sprintf "BaseConstant(BCPath(%s))"
+    ; "prepath", sprintf "BaseConstant(BCPrePath(%s))"
+    ; "regexp", sprintf "BaseConstant(BCRegExp(%s))"
     ]
 end
 

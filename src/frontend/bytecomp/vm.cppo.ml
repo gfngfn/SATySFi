@@ -60,7 +60,7 @@ let newframe_recycle (env : vmenv) (preenv : vmenv) (size : int) : vmenv =
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
-    HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
+  HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
 let popn stack n =
@@ -161,7 +161,7 @@ and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_
       ) |> String.concat ""
   in
   let s = interpret_commands env imivlst in
-    StringConstant(s)
+  make_string s
 
 
 and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
@@ -220,7 +220,7 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
 
       let nmihlst = normalize imihlst in
       let s = interpret_commands env nmihlst in
-        StringConstant(s)
+      make_string s
     end
 
 
@@ -238,7 +238,7 @@ and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_va
       ) |> List.concat
   in
   let imvblst = interpret_commands env imivlst in
-    Vert(imvblst)
+  make_vert imvblst
 
 
 and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
@@ -292,7 +292,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
 
       let nmihlst = normalize imihlst in
       let hblst = interpret_commands env nmihlst in
-        Horz(hblst)
+      make_horz hblst
     end
 
 
@@ -413,7 +413,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                         | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
                         | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
                       in
-                      OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
+                      OpPush(Constructor("None", const_unit)) :: bindop :: acc
                     ) body
                   in
                   if arity = n then
@@ -469,7 +469,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                         | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
                         | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
                       in
-                      OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
+                      OpPush(Constructor("None", const_unit)) :: bindop :: acc
                     ) body
                   in
                   if arity = n then
@@ -546,7 +546,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                     | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
                     | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
                   in
-                  let body = OpPush(Constructor("None", UnitConstant)) :: bindop :: body in
+                  let body = OpPush(Constructor("None", const_unit)) :: bindop :: body in
                   let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
                   exec (fnew :: stack) env code dump
 
@@ -608,13 +608,12 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpBranchIf(body) ->
       begin
         match stack with
-        | BooleanConstant(b) :: stack ->
-            begin
-              if b then
-                exec stack env body dump
-              else
-                exec stack env code dump
-            end
+        | v :: stack ->
+            let b = get_bool v in
+            if b then
+              exec stack env body dump
+            else
+              exec stack env code dump
 
         | _ -> report_bug_vm "invalid argument for OpBranchIf"
       end
@@ -622,13 +621,12 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpBranchIfNot(body) ->
       begin
         match stack with
-        | BooleanConstant(b) :: stack ->
-            begin
-              if b then
-                exec stack env code dump
-              else
-                exec stack env body dump
-            end
+        | v :: stack ->
+            let b = get_bool v in
+            if b then
+              exec stack env code dump
+            else
+              exec stack env body dump
 
         | _ -> report_bug_vm "invalid argument for OpBranchIfNot"
       end
@@ -752,13 +750,14 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       begin
         match stack with
         | v :: stack ->
-            begin
-              match v with
-              | BooleanConstant(b0) when b = b0 -> exec stack env code dump
-              | _                               -> exec stack env next dump
-            end
+            let b0 = get_bool v in
+            if b = b0 then
+              exec stack env code dump
+            else
+              exec stack env next dump
 
-        | _ -> report_bug_vm "invalid argument for OpCheckStackTopBool"
+        | _ ->
+            report_bug_vm "invalid argument for OpCheckStackTopBool"
       end
 
   | OpCheckStackTopCtor(ctor_nm, next) ->
@@ -791,13 +790,14 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       begin
         match stack with
         | v :: stack ->
-            begin
-              match v with
-              | IntegerConstant(i0) when i=i0 -> exec stack env code dump
-              | _                             -> exec stack env next dump
-            end
+            let i0 = get_int v in
+            if i = i0 then
+              exec stack env code dump
+            else
+              exec stack env next dump
 
-        | _ -> report_bug_vm "invalid argument for OpCheckStackTopInt"
+        | _ ->
+            report_bug_vm "invalid argument for OpCheckStackTopInt"
       end
 
   | OpCheckStackTopListCons(next) ->
@@ -817,11 +817,11 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       begin
         match stack with
         | v :: stack ->
-            begin
-              match v with
-              | StringConstant(s0) when s0 = str -> exec stack env code dump
-              | _                                -> exec stack env next dump
-            end
+            let s0 = get_string v in
+            if s0 = str then
+              exec stack env code dump
+            else
+              exec stack env next dump
 
         | _ -> report_bug_vm "invalid argument for OpCheckStackTopStr"
       end
@@ -900,7 +900,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
               | Location(stid) ->
                   begin
                     update_location (vmenv_global env) stid valuenew;
-                    exec (UnitConstant :: stack) env code dump
+                    exec (const_unit :: stack) env code dump
                   end
 
               | _ ->
@@ -919,7 +919,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
               | Location(stid) ->
                    begin
                      update_location (vmenv_global env) stid valuenew;
-                     exec (UnitConstant :: stack) env code dump
+                     exec (const_unit :: stack) env code dump
                    end
 
               | _ ->
@@ -932,13 +932,12 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpSel(tpart, fpart) ->
       begin
         match stack with
-        | BooleanConstant(b) :: stack ->
-            begin
-              if b then
-                exec stack env tpart dump
-              else
-                exec stack env fpart dump
-            end
+        | v :: stack ->
+            let b = get_bool v in
+            if b then
+              exec stack env tpart dump
+            else
+              exec stack env fpart dump
 
         | _ -> report_bug_vm "invalid argument for OpSel"
       end
@@ -967,7 +966,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
             let pt0 = get_point _tmp0 in
             let ret =
               let (pathelemlst, closingopt) = get_path env c_pathcomplst c_cycleopt in
-              PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
+              make_path [GeneralPath(pt0, pathelemlst, closingopt)]
             in exec (ret :: stack) env code dump
 
         | _ -> report_bug_vm "invalid argument for OpPath"

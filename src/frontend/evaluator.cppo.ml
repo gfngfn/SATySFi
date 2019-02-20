@@ -18,7 +18,7 @@ type nom_input_horz_element =
   | NomInputHorzThunk    of abstract_tree
   | NomInputHorzContent  of nom_input_horz_element list * environment
 
-
+(*
 let make_length_from_description flt unitnm =
   match unitnm with  (* temporary; ad-hoc handling of unit names *)
   | "pt"   -> Length.of_pdf_point flt
@@ -26,7 +26,7 @@ let make_length_from_description flt unitnm =
   | "mm"   -> Length.of_millimeter flt
   | "inch" -> Length.of_inch flt
   | _      -> report_bug_vm "LengthDescription; unknown unit name"
-
+*)
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
@@ -38,7 +38,7 @@ let rec reduce_beta value1 value2 =
   | FuncWithEnvironment(evids, patbr, env1) ->
       let env1 =
         evids |> List.fold_left (fun env evid ->
-          let loc = ref (Constructor("None", UnitConstant)) in
+          let loc = ref (Constructor("None", const_unit)) in
           add_to_environment env evid loc
         ) env1
       in
@@ -152,10 +152,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       InputVertWithEnvironment(imivlst, env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | LengthDescription(flt, unitnm) ->
-      let len = make_length_from_description flt unitnm in
-      LengthConstant(len)
-
 (* -- fundamentals -- *)
 
   | ContentOf(rng, evid) ->
@@ -203,7 +199,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       begin
         match value1 with
         | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
-            let env1 = add_to_environment env1 evid (ref (Constructor("None", UnitConstant))) in
+            let env1 = add_to_environment env1 evid (ref (Constructor("None", const_unit))) in
             FuncWithEnvironment(evids, patbrs, env1)
 
         | _ ->
@@ -264,8 +260,8 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       let value2 = interpret_0 env ast2 in
       begin
         match value1 with
-        | UnitConstant -> value2
-        | _            -> report_bug_reduction "Sequential: first operand value is not a UnitConstant" ast1 value1
+        | BaseConstant(BCUnit) -> value2
+        | _                    -> report_bug_reduction "Sequential: first operand value is not a unit" ast1 value1
       end
 
   | Overwrite(evid, astnew) ->
@@ -278,7 +274,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
               | Location(stid) ->
                   let valuenew = interpret_0 env astnew in
                   update_location env stid valuenew;
-                  UnitConstant
+                  const_unit
 
               | _ ->
                   report_bug_value "Overwrite: value is not a Location" value
@@ -293,7 +289,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       if b then
         let _ = interpret_0 env astc in interpret_0 env (WhileDo(astb, astc))
       else
-        UnitConstant
+        const_unit
 
   | Dereference(astcont) ->
       let valuecont = interpret_0 env astcont in
@@ -340,7 +336,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
       let (pathelemlst, closingopt) = interpret_0_path env pathcomplst cycleopt in
-      PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
+      make_path [GeneralPath(pt0, pathelemlst, closingopt)]
 
 (* -- staging constructs -- *)
 
@@ -373,10 +369,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
   | InputVert(ivlst) ->
       let cdivlst = ivlst |> map_input_vert (interpret_1 env) in
       CdInputVert(cdivlst)
-
-  | LengthDescription(flt, unitnm) ->
-      let len = make_length_from_description flt unitnm in
-      CdValue(LengthConstant(len))
 
   | ContentOf(rng, evid) ->
       CdContentOf(rng, evid)
@@ -521,7 +513,7 @@ and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value
     ) |> String.concat ""
   in
   let s = interpret_commands env imivlst in
-  StringConstant(s)
+  make_string s
 
 
 and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
@@ -581,7 +573,7 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx :
 
   let nmihlst = normalize imihlst in
   let s = interpret_commands env nmihlst in
-  StringConstant(s)
+  make_string s
 
 
 and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
@@ -598,7 +590,7 @@ and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) 
     ) |> List.concat
   in
   let imvblst = interpret_commands env imivlst in
-  Vert(imvblst)
+  make_vert imvblst
 
 
 and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
@@ -653,7 +645,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
 
   let nmihlst = normalize imihlst in
   let hblst = interpret_commands env nmihlst in
-  Horz(hblst)
+  make_horz hblst
 
 
 and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) =
@@ -683,15 +675,17 @@ and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_val
 
 and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : syntactic_value) : environment option =
   match (pat, valueobj) with
-  | (PIntegerConstant(pnc), IntegerConstant(nc)) -> if pnc = nc then Some(env) else None
-  | (PBooleanConstant(pbc), BooleanConstant(bc)) -> if pbc = bc then Some(env) else None
+  | (PIntegerConstant(pnc), BaseConstant(BCInt(nc))) ->
+      if pnc = nc then Some(env) else None
 
-  | (PStringConstant(psc), value2) ->
-      let str2 = get_string value2 in
+  | (PBooleanConstant(pbc), BaseConstant(BCBool(bc))) ->
+      if pbc = bc then Some(env) else None
+
+  | (PStringConstant(psc), BaseConstant(BCString(str2))) ->
       if String.equal psc str2 then Some(env) else None
 
-  | (PUnitConstant, UnitConstant) -> Some(env)
-  | (PWildCard, _)                -> Some(env)
+  | (PUnitConstant, BaseConstant(BCUnit)) -> Some(env)
+  | (PWildCard, _)                        -> Some(env)
 
   | (PVariable(evid), _) ->
       let envnew = add_to_environment env evid (ref valueobj) in

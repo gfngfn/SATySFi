@@ -2,6 +2,7 @@
 open MyUtil
 open LengthInterface
 open Types
+open EvalUtil
 
 
 let report_bug_compiler msg =
@@ -202,7 +203,7 @@ and compile (ir : ir) (cont : instruction list) =
       compile ir1 @@ OpDereference :: cont
 
   | IRWhileDo(irb, irc) ->
-      let cond = compile irb [OpBranchIfNot(OpPush(UnitConstant) :: cont)] in
+      let cond = compile irb [OpBranchIfNot(OpPush(const_unit) :: cont)] in
       let body = compile irc cond in
       cond @ body
 

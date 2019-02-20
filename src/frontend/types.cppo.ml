@@ -588,6 +588,29 @@ type ('a, 'b) path_component_scheme =
   | PathCubicBezierTo of 'b * 'b * 'a
 [@@deriving show { with_path = false; }]
 
+type base_constant =
+  | BCUnit
+  | BCBool     of bool
+  | BCInt      of int
+  | BCFloat    of float
+  | BCLength   of length
+  | BCString   of string
+  | BCRegExp   of Str.regexp
+      [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]
+  | BCPath     of path list
+      [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
+  | BCPrePath  of PrePath.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
+  | BCImageKey of ImageInfo.key
+      [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
+  | BCHorz     of HorzBox.horz_box list
+  | BCVert     of HorzBox.vert_box list
+  | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.element
+      [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
+  | BCTextModeContext of TextBackend.text_mode_context
+  | BCDocument        of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+[@@deriving show { with_path = false; }]
+
 type letrec_binding =
   | LetRecBinding of EvalVarID.t * pattern_branch
 
@@ -768,14 +791,7 @@ and intermediate_input_vert_element =
 
 and syntactic_value =
   | Nil
-  | UnitConstant
-  | BooleanConstant       of bool
-  | IntegerConstant       of int
-  | FloatConstant         of float
-  | LengthConstant        of length
-  | StringConstant        of string
-  | RegExpConstant        of Str.regexp
-      [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]
+  | BaseConstant of base_constant
 
   | Constructor           of constructor_name * syntactic_value
 
@@ -802,28 +818,14 @@ and syntactic_value =
   | InputVertWithEnvironment of intermediate_input_vert_element list * environment
   | CompiledInputVertWithEnvironment    of compiled_intermediate_input_vert_element list * vmenv
 
-  | Horz                  of HorzBox.horz_box list
-  | Vert                  of HorzBox.vert_box list
-
-  | PathValue             of path list
-      [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
-  | GraphicsValue               of (HorzBox.intermediate_horz_box list) GraphicD.element
-      [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
-  | PrePathValue                of PrePath.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
   | MathValue                   of math list
-  | ImageKey                    of ImageInfo.key
-      [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
   | Context                     of input_context
-  | TextModeContext             of TextBackend.text_mode_context
-  | DocumentValue               of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
   | CodeValue             of code_value
 
 and abstract_tree =
   | Value                 of syntactic_value
   | FinishHeaderFile
   | FinishStruct
-  | LengthDescription     of float * length_unit_name
 (* -- input texts -- *)
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list

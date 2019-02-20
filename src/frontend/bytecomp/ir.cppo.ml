@@ -304,17 +304,6 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
           (IRInputVert(imivlst), env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-    | LengthDescription(flt, unitnm) ->
-        let len =
-          match unitnm with  (* temporary; ad-hoc handling of unit names *)
-          | "pt"   -> Length.of_pdf_point flt
-          | "cm"   -> Length.of_centimeter flt
-          | "mm"   -> Length.of_millimeter flt
-          | "inch" -> Length.of_inch flt
-          | _      -> report_bug_ir_ast "LengthDescription; unknown unit name" ast
-        in
-          return (IRConstant(LengthConstant(len)))
-
     | BackendMathList(astmlst) ->
         transform_primitive env astmlst (OpBackendMathList(List.length astmlst))
 

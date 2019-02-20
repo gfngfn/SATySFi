@@ -50,7 +50,7 @@ params:
 - s1 : string
 - s2 : string
 code: |
-  StringConstant(s1 ^ s2)
+  make_string (s1 ^ s2)
 
 ---
 inst: PrimitiveSetMathVariantToChar
@@ -87,7 +87,7 @@ params:
 code:
   let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in
   let (_, uchlst) = MathContext.convert_math_variant_char (ctx, valuecmd) s in
-  StringConstant(InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
+  make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
 
 ---
 inst: PrimitiveSetMathCommand
@@ -132,7 +132,7 @@ params:
 code: |
   match mathlst with
   | [] ->
-      Constructor("None", UnitConstant)
+      Constructor("None", const_unit)
 
   | math :: _ ->
       let mathcls = Math.get_left_math_kind ictx math in
@@ -152,7 +152,7 @@ params:
 code: |
   match List.rev mathlst with
   | [] ->
-      Constructor("None", UnitConstant)
+      Constructor("None", const_unit)
 
   | math :: _ ->
       let mathcls = Math.get_right_math_kind ictx math in
@@ -173,8 +173,8 @@ code: |
   let mathctx = MathContext.make ictx in
   let hbspaceopt = Math.space_between_maths mathctx mathlst1 mathlst2 in
   match hbspaceopt with
-  | None          -> Constructor("None", UnitConstant)
-  | Some(hbspace) -> Constructor("Some", Horz([hbspace]))
+  | None          -> Constructor("None", const_unit)
+  | Some(hbspace) -> Constructor("Some", make_horz [hbspace])
 
 ---
 inst: BackendMathConcat
@@ -480,7 +480,7 @@ params:
 code: |
   let mathctx = MathContext.make ictx in
   let hblst = Math.main mathctx mlst in
-  Horz(hblst)
+  make_horz hblst
 
 ---
 inst: BackendTabular
@@ -502,7 +502,7 @@ code: |
     let valueret = reducef valuerulesf [valuexs; valueys] in
     graphics_of_list valueret
   in
-  Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
+  make_horz (HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
 
 ---
 inst: BackendRegisterPdfImage
@@ -517,7 +517,7 @@ params:
 code: |
   let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpathstr) in
   let imgkey = ImageInfo.add_pdf abspath pageno in
-  ImageKey(imgkey)
+  make_image_key imgkey
 
 ---
 inst: BackendRegisterOtherImage
@@ -531,7 +531,7 @@ params:
 code: |
   let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpath) in
   let imgkey = ImageInfo.add_image abspath in
-  ImageKey(imgkey)
+  make_image_key imgkey
 
 ---
 inst: BackendUseImageByWidth
@@ -545,9 +545,9 @@ params:
 - wid : length
 code: |
   match valueimg with
-  | ImageKey(imgkey) ->
+  | BaseConstant(BCImageKey(imgkey)) ->
       let hgt = ImageInfo.get_height_from_width imgkey wid in
-      Horz(HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
+      make_horz (HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
 
   | _ ->
       report_bug_vm "BackendUseImage"
@@ -564,7 +564,7 @@ params:
 - hookf
 code: |
   let hookf = make_hook reducef hookf in
-  Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
+  make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 
 ---
 inst: PathUnite
@@ -577,7 +577,7 @@ params:
 - pathlst1 : path_value
 - pathlst2 : path_value
 code: |
-  PathValue(List.append pathlst1 pathlst2)
+  make_path (List.append pathlst1 pathlst2)
 
 ---
 inst: PathShift
@@ -590,7 +590,7 @@ params:
 - ptshift : point
 - pathlst : path_value
 code: |
-  PathValue(List.map (shift_path ptshift) pathlst)
+  make_path (List.map (shift_path ptshift) pathlst)
 
 ---
 inst: PathGetBoundingBox
@@ -617,7 +617,7 @@ type: |
 params:
 - pt0 : point
 code: |
-  PrePathValue(PrePath.start pt0)
+  make_prepath (PrePath.start pt0)
 
 ---
 inst: PrePathLineTo
@@ -630,7 +630,7 @@ params:
 - pt1 : point
 - prepath : prepath
 code: |
-  PrePathValue(prepath |> PrePath.line_to pt1)
+  make_prepath (prepath |> PrePath.line_to pt1)
 
 ---
 inst: PrePathCubicBezierTo
@@ -645,7 +645,7 @@ params:
 - pt1 : point
 - prepath: prepath
 code: |
-  PrePathValue(prepath |> PrePath.bezier_to ptS ptT pt1)
+  make_prepath (prepath |> PrePath.bezier_to ptS ptT pt1)
 
 ---
 inst: PrePathTerminate
@@ -657,7 +657,7 @@ type: |
 params:
 - prepath : prepath
 code: |
-  PathValue([prepath |> PrePath.terminate])
+  make_path ([prepath |> PrePath.terminate])
 
 ---
 inst: PrePathCloseWithLine
@@ -669,7 +669,7 @@ type: |
 params:
 - prepath : prepath
 code: |
-  PathValue([prepath |> PrePath.close_with_line])
+  make_path ([prepath |> PrePath.close_with_line])
 
 ---
 inst: PrePathCloseWithCubicBezier
@@ -683,7 +683,7 @@ params:
 - ptT : point
 - prepath : prepath
 code: |
-  PathValue([prepath |> PrePath.close_with_bezier ptS ptT])
+  make_path ([prepath |> PrePath.close_with_bezier ptS ptT])
 
 ---
 inst: HorzConcat
@@ -696,7 +696,7 @@ params:
 - hblst1 : horz
 - hblst2 : horz
 code: |
-  Horz(List.append hblst1 hblst2)
+  make_horz (List.append hblst1 hblst2)
 
 ---
 inst: VertConcat
@@ -709,7 +709,7 @@ params:
 - vblst1 : vert
 - vblst2 : vert
 code: |
-  Vert(List.append vblst1 vblst2)
+  make_vert (List.append vblst1 vblst2)
 
 ---
 inst: HorzLex
@@ -807,7 +807,7 @@ params:
 - tctx : text_mode_context
 code: |
   let tctx = tctx |> TextBackend.deepen_indent i in
-  TextModeContext(tctx)
+  BaseConstant(BCTextModeContext(tctx))
 
 ---
 inst: TextBreak
@@ -821,7 +821,7 @@ type: |
 code: |
   let i = TextBackend.get_indent tctx in
   let s = "\n" ^ (String.make i ' ') in
-  StringConstant(s)
+  make_string s
 
 ---
 inst: TextGetInitialTextModeContext
@@ -834,9 +834,9 @@ type: |
 
 code: |
   match value1 with
-  | UnitConstant ->
+  | BaseConstant(BCUnit) ->
       let tctx = TextBackend.get_initial_text_mode_context () in
-      TextModeContext(tctx)
+      BaseConstant(BCTextModeContext(tctx))
 
   | _ ->
       report_bug_value "TextGetInitialTextModeContext" value1
@@ -853,7 +853,7 @@ params:
 - vblst : vert
 code: |
   let wid = ctx.HorzBox.paragraph_width in
-    Horz([HorzEmbeddedVertBreakable(wid, vblst)])
+  make_horz [HorzEmbeddedVertBreakable(wid, vblst)]
 
 ---
 inst: BackendFont
@@ -879,7 +879,7 @@ params:
 - hblst : horz
 code: |
   let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
-  Vert(imvblst)
+  make_vert imvblst
 
 ---
 inst: BackendPageBreaking
@@ -897,7 +897,7 @@ params:
 code: |
   let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
   let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-  DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
+  BaseConstant(BCDocument(pagesize, pagecontf, pagepartsf, vblst))
 
 ---
 inst: BackendVertFrame
@@ -922,7 +922,7 @@ code: |
     let valuev = reducef valuek [valuectxsub] in
     get_vert valuev
   in
-  Vert(HorzBox.([
+  make_vert (HorzBox.([
     VertTopMargin(true, ctx.paragraph_top);
     VertFrame(pads,
                 make_frame_deco reducef valuedecoS,
@@ -944,7 +944,7 @@ params:
 - vblst : vert
 code: |
   let imvblst = PageBreak.solidify vblst in
-  Horz(HorzBox.([HorzPure(PHGFootnote(imvblst))]))
+  make_horz (HorzBox.([HorzPure(PHGFootnote(imvblst))]))
 
 ---
 inst: BackendEmbeddedVertTop
@@ -968,7 +968,7 @@ code: |
   in
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
 inst: BackendVertSkip
@@ -980,7 +980,7 @@ type: |
 params:
 - len : length
 code: |
-  Vert(HorzBox.([VertFixedBreakable(len)]))
+  make_vert (HorzBox.([VertFixedBreakable(len)]))
 
 ---
 inst: BackendEmbeddedVertBottom
@@ -1004,7 +1004,7 @@ code: |
   in
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
 inst: BackendLineStackTop
@@ -1020,7 +1020,7 @@ code: |
   let (wid, vblst) = make_line_stack hblstlst in
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
 inst: BackendLineStackBottom
@@ -1036,7 +1036,7 @@ code: |
   let (wid, vblst) = make_line_stack hblstlst in
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
 inst: PrimitiveGetInitialContext
@@ -1139,13 +1139,13 @@ params:
 code: |
   match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script2) with
   | None ->
-      Constructor("None", UnitConstant)
+      Constructor("None", const_unit)
 
   | Some((r0, r1, r2)) ->
       Constructor("Some", Tuple([
-        FloatConstant(r0);
-        FloatConstant(r1);
-        FloatConstant(r2);
+        make_float r0;
+        make_float r1;
+        make_float r2;
       ]))
 
 ---
@@ -1205,7 +1205,7 @@ type: |
 params:
 - (ctx, _) : context
 code: |
-  LengthConstant(ctx.HorzBox.font_size)
+  make_length (ctx.HorzBox.font_size)
 
 ---
 inst: PrimitiveSetFont
@@ -1378,7 +1378,7 @@ type: |
 params:
 - (ctx, _) : context
 code: |
-  LengthConstant(ctx.HorzBox.paragraph_width)
+  make_length (ctx.HorzBox.paragraph_width)
 
 ---
 inst: PrimitiveSetManualRising
@@ -1404,7 +1404,7 @@ params:
 - rising : length
 - hblst : horz
 code: |
-  Horz(HorzBox.([HorzPure(PHGRising(rising, hblst))]))
+  make_horz (HorzBox.([HorzPure(PHGRising(rising, hblst))]))
 
 ---
 inst: PrimitiveSetHyphenPenalty
@@ -1446,7 +1446,7 @@ type: |
 params:
   - hblst : horz
 code: |
-  StringConstant(HorzBox.extract_string hblst)
+  make_string (HorzBox.extract_string hblst)
 
 ---
 inst: PrimitiveGetAxisHeight
@@ -1461,7 +1461,7 @@ code: |
   let fontsize = ctx.HorzBox.font_size in
   let mfabbrev = ctx.HorzBox.math_font in
   let hgt = FontInfo.get_axis_height mfabbrev fontsize in
-    LengthConstant(hgt)
+    make_length (hgt)
 
 ---
 inst: BackendFixedEmpty
@@ -1473,7 +1473,7 @@ type: |
 params:
 - wid : length
 code: |
-  Horz([HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))])
+  make_horz [HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))]
 
 ---
 inst: BackendOuterEmpty
@@ -1487,7 +1487,7 @@ params:
 - widshrink : length
 - widstretch : length
 code: |
-  Horz([HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))])
+  make_horz [HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))]
 
 ---
 inst: BackendOuterFrame
@@ -1502,7 +1502,7 @@ params:
 - valuedeco
 - hblst : horz
 code: |
-  Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
+  make_horz ([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
     pads,
     make_frame_deco reducef valuedeco,
     hblst))])
@@ -1520,7 +1520,7 @@ params:
 - valuedeco
 - hblst : horz
 code: |
-  Horz([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
+  make_horz ([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
     pads,
     make_frame_deco reducef valuedeco,
     hblst))])
@@ -1539,7 +1539,7 @@ params:
 - valuedeco
 - hblst : horz
 code: |
-  Horz([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
+  make_horz ([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
     pads, wid,
     make_frame_deco reducef valuedeco,
     hblst))])
@@ -1557,7 +1557,7 @@ params:
 - (valuedecoS, valuedecoH, valuedecoM, valuedecoT) : decoset
 - hblst : horz
 code: |
-  Horz([HorzBox.HorzFrameBreakable(
+  make_horz ([HorzBox.HorzFrameBreakable(
     pads, Length.zero, Length.zero,
     make_frame_deco reducef valuedecoS,
     make_frame_deco reducef valuedecoH,
@@ -1581,7 +1581,7 @@ params:
 - valueg
 code: |
   let graphics = make_inline_graphics reducef valueg in
-  Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
+  make_horz (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 
 ---
 inst: BackendInlineGraphicsOuter
@@ -1597,7 +1597,7 @@ params:
 - valueg
 code: |
   let graphics = make_inline_graphics_outer reducef valueg in
-  Horz(HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
+  make_horz (HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
 
 ---
 inst: BackendScriptGuard
@@ -1610,7 +1610,7 @@ params:
 - script : script
 - hblst : horz
 code: |
-  Horz(HorzBox.([HorzScriptGuard(script, script, hblst)]))
+  make_horz (HorzBox.([HorzScriptGuard(script, script, hblst)]))
 
 ---
 inst: BackendScriptGuardBoth
@@ -1624,7 +1624,7 @@ params:
 - scriptR : script
 - hblst : horz
 code: |
-  Horz(HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
+  make_horz (HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
 
 ---
 inst: BackendGetLeftmostScript
@@ -1665,7 +1665,7 @@ params:
 - hblst1 : horz
 - hblst2 : horz
 code: |
-  Horz(HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
+  make_horz (HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
 
 ---
 inst: BackendRegisterCrossReference
@@ -1680,7 +1680,7 @@ params:
 - v : string
 code: |
   CrossRef.register k v;
-  UnitConstant
+  const_unit
 
 ---
 inst: BackendGetCrossReference
@@ -1694,8 +1694,8 @@ params:
 - k : string
 code: |
   match CrossRef.get k with
-  | None    -> Constructor("None", UnitConstant)
-  | Some(v) -> Constructor("Some", StringConstant(v))
+  | None    -> Constructor("None", const_unit)
+  | Some(v) -> Constructor("Some", make_string v)
 
 ---
 inst: PrimitiveGetNaturalMetrics
@@ -1709,9 +1709,9 @@ params:
 code: |
   let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
   Tuple([
-    LengthConstant(wid);
-    LengthConstant(hgt);
-    LengthConstant(Length.negate dpt);
+    make_length (wid);
+    make_length (hgt);
+    make_length (Length.negate dpt);
   ])
 
 ---
@@ -1726,7 +1726,7 @@ params:
 code: |
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-  LengthConstant(hgt +% (Length.negate dpt))
+  make_length (hgt +% (Length.negate dpt))
 
 ---
 inst: PrimitiveDisplayMessage
@@ -1740,7 +1740,7 @@ params:
 - str : string
 code: |
   print_endline str;
-  UnitConstant
+  const_unit
 
 ---
 inst: PrimitiveListCons
@@ -1764,7 +1764,7 @@ params:
 - str1 : string
 - str2 : string
 code: |
-  BooleanConstant(String.equal str1 str2)
+  make_bool (String.equal str1 str2)
 
 ---
 inst: PrimitiveStringSub
@@ -1783,7 +1783,7 @@ code: |
     try BatUTF8.sub str pos wid with
     | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub"
   in
-  StringConstant(resstr)
+  make_string resstr
 
 ---
 inst: PrimitiveStringSubBytes
@@ -1802,7 +1802,7 @@ code: |
     try String.sub str pos wid with
     | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub-bytes"
   in
-  StringConstant(resstr)
+  make_string resstr
 
 ---
 inst: PrimitiveStringLength
@@ -1815,7 +1815,7 @@ type: |
 params:
 - str : string
 code: |
-  IntegerConstant(BatUTF8.length str)
+  make_int (BatUTF8.length str)
 
 ---
 inst: PrimitiveStringByteLength
@@ -1828,7 +1828,7 @@ type: |
 params:
 - str : string
 code: |
-  IntegerConstant(String.length str)
+  make_int (String.length str)
 
 ---
 inst: PrimitiveStringScan
@@ -1846,9 +1846,9 @@ code: |
     let matched = Str.matched_string str in
     let start   = String.length matched in
     let rest    = String.sub str start (String.length str - start) in
-    Constructor("Some", Tuple([StringConstant(matched); StringConstant(rest)]))
+    Constructor("Some", Tuple([make_string matched; make_string rest]))
   else
-    Constructor("None", UnitConstant)
+    Constructor("None", const_unit)
 
 ---
 inst: PrimitiveStringUnexplode
@@ -1863,7 +1863,7 @@ params:
 code: |
   let ilst = get_list get_int valueilst in
   let s = (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8 in
-  StringConstant(s)
+  make_string s
 
 ---
 inst: PrimitiveRegExpOfString
@@ -1880,7 +1880,7 @@ code: |
     try Str.regexp str with
     | Failure(msg) -> report_dynamic_error ("regexp-of-string: " ^ msg)
   in
-  RegExpConstant(regexp)
+  make_regexp regexp
 
 ---
 inst: PrimitiveStringMatch
@@ -1894,7 +1894,7 @@ params:
 - pat : regexp
 - s : string
 code: |
-  BooleanConstant(Str.string_match pat s 0)
+  make_bool (Str.string_match pat s 0)
 
 ---
 inst: PrimitiveSplitIntoLines
@@ -1909,7 +1909,7 @@ params:
 code: |
   let slst = String.split_on_char '\n' s in
   let pairlst = slst |> List.map chop_space_indent in
-  pairlst |> make_list (fun (i, s) -> Tuple([IntegerConstant(i); StringConstant(s)]))
+  pairlst |> make_list (fun (i, s) -> Tuple([make_int i; make_string s]))
 
 ---
 inst: PrimitiveSplitOnRegExp
@@ -1925,7 +1925,7 @@ params:
 code: |
   let slst = Str.split sep str in
   let pairlst = slst |> List.map chop_space_indent in
-  pairlst |> make_list (fun (i, s) -> Tuple([IntegerConstant(i); StringConstant(s)]))
+  pairlst |> make_list (fun (i, s) -> Tuple([make_int i; make_string s]))
 
 ---
 inst: PrimitiveArabic
@@ -1938,7 +1938,7 @@ type: |
 params:
 - num : int
 code: |
-  StringConstant(string_of_int num)
+  make_string (string_of_int num)
 
 ---
 inst: PrimitiveShowFloat
@@ -1951,7 +1951,7 @@ type: |
 params:
 - fl : float
 code: |
-  StringConstant(string_of_float fl)
+  make_string (string_of_float fl)
 
 
 ---
@@ -1965,7 +1965,7 @@ type: |
 params:
 - ic1 : int
 code: |
-  FloatConstant(float_of_int ic1)
+  make_float (float_of_int ic1)
 
 ---
 inst: PrimitiveRound
@@ -1978,7 +1978,7 @@ type: |
 params:
 - fc1 : float
 code: |
-  IntegerConstant(int_of_float fc1)
+  make_int (int_of_float fc1)
 
 ---
 inst: PrimitiveDrawText
@@ -1993,7 +1993,7 @@ params:
 code: |
   let (imhblst, _, _) = LineBreak.natural hblst in
   let grelem = GraphicD.make_text pt imhblst in
-  GraphicsValue(grelem)
+  make_graphics grelem
 
 ---
 inst: PrimitiveDrawStroke
@@ -2008,7 +2008,7 @@ params:
 - pathlst : path_value
 code: |
   let grelem = GraphicD.make_stroke wid color pathlst in
-  GraphicsValue(grelem)
+  make_graphics grelem
 
 ---
 inst: PrimitiveDrawFill
@@ -2022,7 +2022,7 @@ params:
 - pathlst : path_value
 code: |
   let grelem = GraphicD.make_fill color pathlst in
-  GraphicsValue(grelem)
+  make_graphics grelem
 
 ---
 inst: PrimitiveDrawDashedStroke
@@ -2039,7 +2039,7 @@ params:
 code: |
   let (len1, len2, len3) = get_tuple3 get_length valuetup3 in
   let grelem = GraphicD.make_dashed_stroke wid (len1, len2, len3) color pathlst in
-  GraphicsValue(grelem)
+  make_graphics grelem
 
 ---
 inst: PrimitiveShiftGraphics
@@ -2052,7 +2052,7 @@ params:
 - vec : point
 - grelem : graphics_element
 code: |
-  GraphicsValue(GraphicD.shift_element vec grelem)
+  make_graphics (GraphicD.shift_element vec grelem)
 
 ---
 inst: PrimtiveGetGraphicsBBox
@@ -2086,7 +2086,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  IntegerConstant(numl * numr)
+  make_int (numl * numr)
 
 ---
 inst: Divides
@@ -2100,7 +2100,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  try IntegerConstant(numl / numr) with
+  try make_int (numl / numr) with
   | Division_by_zero -> report_dynamic_error "division by zero"
 
 ---
@@ -2115,7 +2115,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  try IntegerConstant(numl mod numr) with
+  try make_int (numl mod numr) with
   | Division_by_zero -> report_dynamic_error "division by zero"
 
 ---
@@ -2130,7 +2130,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  IntegerConstant(numl + numr)
+  make_int (numl + numr)
 
 ---
 inst: Minus
@@ -2144,7 +2144,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  IntegerConstant(numl - numr)
+  make_int (numl - numr)
 
 ---
 inst: EqualTo
@@ -2158,7 +2158,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  BooleanConstant(numl = numr)
+  make_bool (numl = numr)
 
 ---
 inst: GreaterThan
@@ -2172,7 +2172,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  BooleanConstant(numl > numr)
+  make_bool (numl > numr)
 
 ---
 inst: LessThan
@@ -2186,7 +2186,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  BooleanConstant(numl < numr)
+  make_bool (numl < numr)
 
 ---
 inst: LogicalAnd
@@ -2200,7 +2200,7 @@ params:
 - binl : bool
 - binr : bool
 code: |
-  BooleanConstant(binl && binr)
+  make_bool (binl && binr)
 
 ---
 inst: LogicalOr
@@ -2214,7 +2214,7 @@ params:
 - binl : bool
 - binr : bool
 code: |
-  BooleanConstant(binl || binr)
+  make_bool (binl || binr)
 
 ---
 inst: LogicalNot
@@ -2227,7 +2227,7 @@ type: |
 params:
 - binl : bool
 code: |
-  BooleanConstant(not binl)
+  make_bool (not binl)
 
 ---
 inst: FloatPlus
@@ -2241,7 +2241,7 @@ params:
 - flt1 : float
 - flt2 : float
 code: |
-  FloatConstant(flt1 +. flt2)
+  make_float (flt1 +. flt2)
 
 ---
 inst: FloatMinus
@@ -2255,7 +2255,7 @@ params:
 - flt1 : float
 - flt2 : float
 code: |
-  FloatConstant(flt1 -. flt2)
+  make_float (flt1 -. flt2)
 
 ---
 inst: FloatTimes
@@ -2269,7 +2269,7 @@ params:
 - flt1 : float
 - flt2 : float
 code: |
-  FloatConstant(flt1 *. flt2)
+  make_float (flt1 *. flt2)
 
 ---
 inst: FloatDivides
@@ -2283,7 +2283,7 @@ params:
 - flt1 : float
 - flt2 : float
 code: |
-  FloatConstant(flt1 /. flt2)
+  make_float (flt1 /. flt2)
 
 ---
 inst: FloatSine
@@ -2296,7 +2296,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(sin flt1)
+  make_float (sin flt1)
 
 ---
 inst: FloatArcSine
@@ -2309,7 +2309,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(asin flt1)
+  make_float (asin flt1)
 
 ---
 inst: FloatCosine
@@ -2322,7 +2322,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(cos flt1)
+  make_float (cos flt1)
 
 ---
 inst: FloatArcCosine
@@ -2335,7 +2335,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(acos flt1)
+  make_float (acos flt1)
 
 ---
 inst: FloatTangent
@@ -2348,7 +2348,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(tan flt1)
+  make_float (tan flt1)
 
 ---
 inst: FloatArcTangent
@@ -2361,7 +2361,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(atan flt1)
+  make_float (atan flt1)
 
 ---
 inst: FloatArcTangent2
@@ -2375,7 +2375,7 @@ params:
 - flt1 : float
 - flt2 : float
 code: |
-  FloatConstant(atan2 flt1 flt2)
+  make_float (atan2 flt1 flt2)
 
 ---
 inst: LengthPlus
@@ -2389,7 +2389,7 @@ params:
 - len1 : length
 - len2 : length
 code: |
-  LengthConstant(HorzBox.(len1 +% len2))
+  make_length (HorzBox.(len1 +% len2))
 
 ---
 inst: LengthMinus
@@ -2403,7 +2403,7 @@ params:
 - len1 : length
 - len2 : length
 code: |
-  LengthConstant(HorzBox.(len1 -% len2))
+  make_length (HorzBox.(len1 -% len2))
 
 ---
 inst: LengthTimes
@@ -2417,7 +2417,7 @@ params:
 - len1 : length
 - flt2 : float
 code: |
-  LengthConstant(HorzBox.(len1 *% flt2))
+  make_length (HorzBox.(len1 *% flt2))
 
 ---
 inst: LengthDivides
@@ -2431,7 +2431,7 @@ params:
 - len1 : length
 - len2 : length
 code: |
-  FloatConstant(HorzBox.(len1 /% len2))
+  make_float (HorzBox.(len1 /% len2))
 
 ---
 inst: LengthLessThan
@@ -2445,7 +2445,7 @@ params:
 - len1 : length
 - len2 : length
 code: |
-  BooleanConstant(HorzBox.(len1 <% len2))
+  make_bool (HorzBox.(len1 <% len2))
 
 ---
 inst: LengthGreaterThan
@@ -2459,7 +2459,7 @@ params:
 - len1 : length
 - len2 : length
 code: |
-  BooleanConstant(HorzBox.(len2 <% len1))
+  make_bool (HorzBox.(len2 <% len1))
 
 ---
 inst: PrimitiveSetWordBreakPenalty
@@ -2505,7 +2505,7 @@ params:
 code: |
   let hblst1 = ctx.HorzBox.before_word_break in
   let hblst2 = ctx.HorzBox.after_word_break in
-  Tuple([Horz(hblst1); Horz(hblst2)])
+  Tuple([make_horz hblst1; make_horz hblst2])
 
 ---
 inst: BackendProbeCrossReference
@@ -2518,8 +2518,8 @@ params:
 - k : string
 code: |
   match CrossRef.probe k with
-  | None    -> Constructor("None", UnitConstant)
-  | Some(v) -> Constructor("Some", StringConstant(v))
+  | None    -> Constructor("None", const_unit)
+  | Some(v) -> Constructor("Some", make_string v)
 
 ---
 inst: BackendRegisterDestination
@@ -2534,7 +2534,7 @@ params:
 
 code: |
   NamedDest.register name p;
-  UnitConstant
+  const_unit
 
 ---
 inst: BackendRegisterLinkToUri
@@ -2554,7 +2554,7 @@ params:
 code: |
   let borderopt = get_option (get_pair get_length get_color) vborderopt in
   Annotation.register (Annotation.Link(Pdfaction.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
-  UnitConstant
+  const_unit
 
 ---
 inst: BackendRegisterLinkToLocation
@@ -2575,7 +2575,7 @@ code: |
   let borderopt = get_option (get_pair get_length get_color) vborderopt in
   let destname = NamedDest.get name in
   Annotation.register (Annotation.Link(Pdfaction.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
-  UnitConstant
+  const_unit
 
 ---
 inst: BackendRegisterOutline
@@ -2587,4 +2587,4 @@ params:
   - ol
 code: |
   Outline.register (get_list get_outline ol);
-  UnitConstant
+  const_unit

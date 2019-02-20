@@ -536,6 +536,10 @@ let fresh_type_variable rng pre kd =
   (rng, TypeVariable(ref (MonoFree(tvid))))
 
 
+let base bc =
+  Value(BaseConstant(bc))
+
+
 let rec typecheck
     (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
   let typecheck_iter ?s:(s = pre.stage) ?l:(l = pre.level) ?q:(q = pre.quantifiability) t u =
@@ -543,23 +547,25 @@ let rec typecheck
   in
   let unify = unify_ tyenv in
   match utastmain with
-  | UTStringEmpty         -> (Value(StringConstant("")) , (rng, BaseType(StringType)))
-  | UTIntegerConstant(nc) -> (Value(IntegerConstant(nc)), (rng, BaseType(IntType))   )
-  | UTFloatConstant(nc)   -> (Value(FloatConstant(nc))  , (rng, BaseType(FloatType)) )
-  | UTStringConstant(sc)  -> (Value(StringConstant(sc)) , (rng, BaseType(StringType)))
-  | UTBooleanConstant(bc) -> (Value(BooleanConstant(bc)), (rng, BaseType(BoolType))  )
-  | UTUnitConstant        -> (Value(UnitConstant)       , (rng, BaseType(UnitType))  )
-  | UTHorz(hblst)         -> (Value(Horz(hblst))        , (rng, BaseType(BoxRowType)))
-  | UTVert(imvblst)       -> (Value(Vert(imvblst))      , (rng, BaseType(BoxColType)))
+  | UTStringEmpty         -> (base (BCString(""))   , (rng, BaseType(StringType)))
+  | UTIntegerConstant(nc) -> (base (BCInt(nc))      , (rng, BaseType(IntType))   )
+  | UTFloatConstant(nc)   -> (base (BCFloat(nc))    , (rng, BaseType(FloatType)) )
+  | UTStringConstant(sc)  -> (base (BCString(sc))   , (rng, BaseType(StringType)))
+  | UTBooleanConstant(bc) -> (base (BCBool(bc))     , (rng, BaseType(BoolType))  )
+  | UTUnitConstant        -> (base BCUnit           , (rng, BaseType(UnitType))  )
+  | UTHorz(hblst)         -> (base (BCHorz(hblst))  , (rng, BaseType(BoxRowType)))
+  | UTVert(imvblst)       -> (base (BCVert(imvblst)), (rng, BaseType(BoxColType)))
 
   | UTLengthDescription(flt, unitnm) ->
-      begin
-        match unitnm with  (* temporary; ad-hoc validation *)
-        | ( "pt" | "cm" | "mm" | "inch" ) ->
-            (LengthDescription(flt, unitnm), (rng, BaseType(LengthType)))
-
-        | _ -> raise (UnknownUnitOfLength(rng, unitnm))
-      end
+        let len =
+          match unitnm with  (* temporary; ad-hoc handling of unit names *)
+          | "pt"   -> Length.of_pdf_point flt
+          | "cm"   -> Length.of_centimeter flt
+          | "mm"   -> Length.of_millimeter flt
+          | "inch" -> Length.of_inch flt
+          | _      -> raise (UnknownUnitOfLength(rng, unitnm))
+        in
+        (base (BCLength(len)), (rng, BaseType(LengthType)))
 
   | UTInputHorz(utihlst) ->
       let ihlst = typecheck_input_horz rng pre tyenv utihlst in

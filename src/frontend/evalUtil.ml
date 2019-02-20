@@ -51,8 +51,8 @@ let chop_space_indent s =
 
 let get_string (value : syntactic_value) : string =
   match value with
-  | StringConstant(s) -> s
-  | _                 -> report_bug_value "get_string" value
+  | BaseConstant(BCString(s)) -> s
+  | _                         -> report_bug_value "get_string" value
 
 
 let get_list getf value =
@@ -67,16 +67,16 @@ let get_list getf value =
 
 let get_graphics_element value =
   match value with
-  | GraphicsValue(grelem) -> grelem
-  | _                     -> report_bug_value "get_graphics_element" value
+  | BaseConstant(BCGraphics(grelem)) -> grelem
+  | _                                -> report_bug_value "get_graphics_element" value
 
 
 let graphics_of_list value : (HorzBox.intermediate_horz_box list) GraphicD.t =
   let rec aux gracc value =
     match value with
-    | EndOfList                             -> gracc
-    | ListCons(GraphicsValue(grelem), tail) -> aux (GraphicD.extend gracc grelem) tail
-    | _                                     -> report_bug_value "make_frame_deco" value
+    | EndOfList                                        -> gracc
+    | ListCons(BaseConstant(BCGraphics(grelem)), tail) -> aux (GraphicD.extend gracc grelem) tail
+    | _                                                -> report_bug_value "make_frame_deco" value
   in
     aux GraphicD.empty value
 
@@ -84,10 +84,10 @@ let graphics_of_list value : (HorzBox.intermediate_horz_box list) GraphicD.t =
 let get_paddings (value : syntactic_value) =
   match value with
   | Tuple([
-      LengthConstant(lenL);
-      LengthConstant(lenR);
-      LengthConstant(lenT);
-      LengthConstant(lenB);
+      BaseConstant(BCLength(lenL));
+      BaseConstant(BCLength(lenR));
+      BaseConstant(BCLength(lenT));
+      BaseConstant(BCLength(lenB));
     ]) ->
       HorzBox.{
         paddingL = lenL;
@@ -102,18 +102,18 @@ let get_paddings (value : syntactic_value) =
 
 let get_cell value : HorzBox.cell =
     match value with
-    | Constructor("NormalCell", Tuple([valuepads; Horz(hblst)])) ->
+    | Constructor("NormalCell", Tuple([valuepads; BaseConstant(BCHorz(hblst))])) ->
         let pads = get_paddings valuepads in
         HorzBox.NormalCell(pads, hblst)
 
-    | Constructor("EmptyCell", UnitConstant) ->
+    | Constructor("EmptyCell", BaseConstant(BCUnit)) ->
         HorzBox.EmptyCell
 
     | Constructor("MultiCell", Tuple([
-        IntegerConstant(nr);
-        IntegerConstant(nc);
+        BaseConstant(BCInt(nr));
+        BaseConstant(BCInt(nc));
         valuepads;
-        Horz(hblst);
+        BaseConstant(BCHorz(hblst));
       ])) ->
         let pads = get_paddings valuepads in
         HorzBox.MultiCell(nr, nc, pads, hblst)
@@ -124,21 +124,21 @@ let get_cell value : HorzBox.cell =
 
 let get_color (value : syntactic_value) : color =
   match value with
-  | Constructor("Gray", FloatConstant(gray)) ->
+  | Constructor("Gray", BaseConstant(BCFloat(gray))) ->
       DeviceGray(gray)
 
   | Constructor("RGB", Tuple([
-      FloatConstant(fltR);
-      FloatConstant(fltG);
-      FloatConstant(fltB);
+      BaseConstant(BCFloat(fltR));
+      BaseConstant(BCFloat(fltG));
+      BaseConstant(BCFloat(fltB));
     ])) ->
       DeviceRGB(fltR, fltG, fltB)
 
   | Constructor("CMYK", Tuple([
-      FloatConstant(fltC);
-      FloatConstant(fltM);
-      FloatConstant(fltY);
-      FloatConstant(fltK);
+      BaseConstant(BCFloat(fltC));
+      BaseConstant(BCFloat(fltM));
+      BaseConstant(BCFloat(fltY));
+      BaseConstant(BCFloat(fltK));
     ])) ->
       DeviceCMYK(fltC, fltM, fltY, fltK)
 
@@ -149,21 +149,21 @@ let get_color (value : syntactic_value) : color =
 let make_color_value color =
   match color with
   | DeviceGray(gray) ->
-      Constructor("Gray", FloatConstant(gray))
+      Constructor("Gray", BaseConstant(BCFloat(gray)))
 
   | DeviceRGB(r, g, b) ->
       Constructor("RGB", Tuple([
-        FloatConstant(r);
-        FloatConstant(g);
-        FloatConstant(b);
+        BaseConstant(BCFloat(r));
+        BaseConstant(BCFloat(g));
+        BaseConstant(BCFloat(b));
       ]))
 
   | DeviceCMYK(c, m, y, k) ->
       Constructor("CMYK", Tuple([
-        FloatConstant(c);
-        FloatConstant(m);
-        FloatConstant(y);
-        FloatConstant(k);
+        BaseConstant(BCFloat(c));
+        BaseConstant(BCFloat(m));
+        BaseConstant(BCFloat(y));
+        BaseConstant(BCFloat(k));
       ]))
 
 
@@ -184,9 +184,9 @@ let get_decoset (value : syntactic_value) =
 let get_font (value : syntactic_value) : HorzBox.font_with_ratio =
   match value with
   | Tuple([
-      StringConstant(abbrev);
-      FloatConstant(sizer);
-      FloatConstant(risingr);
+      BaseConstant(BCString(abbrev));
+      BaseConstant(BCFloat(sizer));
+      BaseConstant(BCFloat(risingr));
     ]) ->
       (abbrev, sizer, risingr)
 
@@ -196,29 +196,29 @@ let get_font (value : syntactic_value) : HorzBox.font_with_ratio =
 
 let make_font_value (abbrev, sizer, risingr) =
   Tuple([
-    StringConstant(abbrev);
-    FloatConstant(sizer);
-    FloatConstant(risingr);
+    BaseConstant(BCString(abbrev));
+    BaseConstant(BCFloat(sizer));
+    BaseConstant(BCFloat(risingr));
   ])
 
 
 let get_vert value : HorzBox.vert_box list =
   match value with
-  | Vert(vblst) -> vblst
-  | _           -> report_bug_value "get_vert" value
+  | BaseConstant(BCVert(vblst)) -> vblst
+  | _                           -> report_bug_value "get_vert" value
 
 
 let get_horz value : HorzBox.horz_box list =
   match value with
-  | Horz(hblst) -> hblst
-  | _           -> report_bug_value "get_horz" value
+  | BaseConstant(BCHorz(hblst)) -> hblst
+  | _                           -> report_bug_value "get_horz" value
 
 
 let get_point value =
   match value with
   | Tuple([
-      LengthConstant(lenx);
-      LengthConstant(leny);
+      BaseConstant(BCLength(lenx));
+      BaseConstant(BCLength(leny));
     ]) ->
       (lenx, leny)
 
@@ -227,15 +227,18 @@ let get_point value =
 
 
 let make_point_value (x, y) =
-  Tuple([LengthConstant(x); LengthConstant(y)])
+  Tuple([
+    BaseConstant(BCLength(x));
+    BaseConstant(BCLength(y));
+  ])
 
 
 let get_script (value : syntactic_value) =
   match value with
-  | Constructor("HanIdeographic", UnitConstant) -> CharBasis.HanIdeographic
-  | Constructor("Kana"          , UnitConstant) -> CharBasis.HiraganaOrKatakana
-  | Constructor("Latin"         , UnitConstant) -> CharBasis.Latin
-  | Constructor("OtherScript"   , UnitConstant) -> CharBasis.OtherScript
+  | Constructor("HanIdeographic", BaseConstant(BCUnit)) -> CharBasis.HanIdeographic
+  | Constructor("Kana"          , BaseConstant(BCUnit)) -> CharBasis.HiraganaOrKatakana
+  | Constructor("Latin"         , BaseConstant(BCUnit)) -> CharBasis.Latin
+  | Constructor("OtherScript"   , BaseConstant(BCUnit)) -> CharBasis.OtherScript
   | _                                           -> report_bug_value "get_script" value
 
 
@@ -246,23 +249,23 @@ let make_script_value script =
     | CharBasis.HiraganaOrKatakana -> "Kana"
     | CharBasis.Latin              -> "Latin"
     | CharBasis.OtherScript        -> "OtherScript"
-    | _                            -> report_bug_value "make_script_value" UnitConstant
+    | _                            -> report_bug_vm "make_script_value"
   in
-    Constructor(label, UnitConstant)
+  Constructor(label, BaseConstant(BCUnit))
 
 
 let get_uchar_list (value : syntactic_value) =
   match value with
-  | StringConstant(s) -> InternalText.to_uchar_list (InternalText.of_utf8 s)
-  | _                 -> report_bug_value "get_uchar_list" value
+  | BaseConstant(BCString(s)) -> InternalText.to_uchar_list (InternalText.of_utf8 s)
+  | _                         -> report_bug_value "get_uchar_list" value
 
 
 let get_language_system (value : syntactic_value) =
   match value with
-  | Constructor("Japanese"        , UnitConstant) -> CharBasis.Japanese
-  | Constructor("English"         , UnitConstant) -> CharBasis.English
-  | Constructor("NoLanguageSystem", UnitConstant) -> CharBasis.NoLanguageSystem
-  | _                                             -> report_bug_value "get_language_system" value
+  | Constructor("Japanese"        , BaseConstant(BCUnit)) -> CharBasis.Japanese
+  | Constructor("English"         , BaseConstant(BCUnit)) -> CharBasis.English
+  | Constructor("NoLanguageSystem", BaseConstant(BCUnit)) -> CharBasis.NoLanguageSystem
+  | _                                                     -> report_bug_value "get_language_system" value
 
 
 let make_language_system_value langsys =
@@ -272,7 +275,7 @@ let make_language_system_value langsys =
     | CharBasis.English          -> "English"
     | CharBasis.NoLanguageSystem -> "NoLanguageSystem"
   in
-    Constructor(label, UnitConstant)
+  Constructor(label, BaseConstant(BCUnit))
 
 
 let get_list getf (value : syntactic_value) =
@@ -282,36 +285,36 @@ let get_list getf (value : syntactic_value) =
     | EndOfList              -> Alist.to_list acc
     | _                      -> report_bug_vm "get_list"
   in
-    aux Alist.empty value
+  aux Alist.empty value
 
 
 let get_math_char_class (value : syntactic_value) =
   match value with
-  | Constructor("MathItalic"      , UnitConstant) -> HorzBox.MathItalic
-  | Constructor("MathBoldItalic"  , UnitConstant) -> HorzBox.MathBoldItalic
-  | Constructor("MathRoman"       , UnitConstant) -> HorzBox.MathRoman
-  | Constructor("MathBoldRoman"   , UnitConstant) -> HorzBox.MathBoldRoman
-  | Constructor("MathScript"      , UnitConstant) -> HorzBox.MathScript
-  | Constructor("MathBoldScript"  , UnitConstant) -> HorzBox.MathBoldScript
-  | Constructor("MathFraktur"     , UnitConstant) -> HorzBox.MathFraktur
-  | Constructor("MathBoldFraktur" , UnitConstant) -> HorzBox.MathBoldFraktur
-  | Constructor("MathDoubleStruck", UnitConstant) -> HorzBox.MathDoubleStruck
-  | _                                             -> report_bug_value "get_math_char_class" value
+  | Constructor("MathItalic"      , BaseConstant(BCUnit)) -> HorzBox.MathItalic
+  | Constructor("MathBoldItalic"  , BaseConstant(BCUnit)) -> HorzBox.MathBoldItalic
+  | Constructor("MathRoman"       , BaseConstant(BCUnit)) -> HorzBox.MathRoman
+  | Constructor("MathBoldRoman"   , BaseConstant(BCUnit)) -> HorzBox.MathBoldRoman
+  | Constructor("MathScript"      , BaseConstant(BCUnit)) -> HorzBox.MathScript
+  | Constructor("MathBoldScript"  , BaseConstant(BCUnit)) -> HorzBox.MathBoldScript
+  | Constructor("MathFraktur"     , BaseConstant(BCUnit)) -> HorzBox.MathFraktur
+  | Constructor("MathBoldFraktur" , BaseConstant(BCUnit)) -> HorzBox.MathBoldFraktur
+  | Constructor("MathDoubleStruck", BaseConstant(BCUnit)) -> HorzBox.MathDoubleStruck
+  | _                                                     -> report_bug_value "get_math_char_class" value
 
 
 let get_math_class (value : syntactic_value) =
   let open HorzBox in
     match value with
-    | Constructor("MathOrd"   , UnitConstant) -> MathOrdinary
-    | Constructor("MathBin"   , UnitConstant) -> MathBinary
-    | Constructor("MathRel"   , UnitConstant) -> MathRelation
-    | Constructor("MathOp"    , UnitConstant) -> MathOperator
-    | Constructor("MathPunct" , UnitConstant) -> MathPunct
-    | Constructor("MathOpen"  , UnitConstant) -> MathOpen
-    | Constructor("MathClose" , UnitConstant) -> MathClose
-    | Constructor("MathPrefix", UnitConstant) -> MathPrefix
-    | Constructor("MathInner" , UnitConstant) -> MathInner
-    | _                                       -> report_bug_value "get_math_class" value
+    | Constructor("MathOrd"   , BaseConstant(BCUnit)) -> MathOrdinary
+    | Constructor("MathBin"   , BaseConstant(BCUnit)) -> MathBinary
+    | Constructor("MathRel"   , BaseConstant(BCUnit)) -> MathRelation
+    | Constructor("MathOp"    , BaseConstant(BCUnit)) -> MathOperator
+    | Constructor("MathPunct" , BaseConstant(BCUnit)) -> MathPunct
+    | Constructor("MathOpen"  , BaseConstant(BCUnit)) -> MathOpen
+    | Constructor("MathClose" , BaseConstant(BCUnit)) -> MathClose
+    | Constructor("MathPrefix", BaseConstant(BCUnit)) -> MathPrefix
+    | Constructor("MathInner" , BaseConstant(BCUnit)) -> MathInner
+    | _                                               -> report_bug_value "get_math_class" value
 
 
 let make_math_class_option_value (mathcls : HorzBox.math_kind) =
@@ -330,15 +333,15 @@ let make_math_class_option_value (mathcls : HorzBox.math_kind) =
       | MathEnd      -> None
     in
     match labelopt with
-    | None ->        Constructor("None", UnitConstant)
-    | Some(label) -> Constructor("Some", Constructor(label, UnitConstant))
+    | None ->        Constructor("None", BaseConstant(BCUnit))
+    | Some(label) -> Constructor("Some", Constructor(label, BaseConstant(BCUnit)))
 
 
 let get_option (getf : syntactic_value -> 'a) (value : syntactic_value) : 'a option =
   match value with
-  | Constructor("None", UnitConstant) -> None
-  | Constructor("Some", valuesub)     -> Some(getf valuesub)
-  | _                                 -> report_bug_vm "get_option"
+  | Constructor("None", BaseConstant(BCUnit)) -> None
+  | Constructor("Some", valuesub)             -> Some(getf valuesub)
+  | _                                         -> report_bug_vm "get_option"
 
 
 let get_pair (getf1 : syntactic_value -> 'a) (getf2 : syntactic_value -> 'b) (value : syntactic_value) : 'a * 'b =
@@ -349,18 +352,18 @@ let get_pair (getf1 : syntactic_value -> 'a) (getf2 : syntactic_value -> 'b) (va
 
 let get_page_size (value : syntactic_value) : HorzBox.page_size =
   match value with
-  | Constructor("A0Paper" , UnitConstant) -> HorzBox.A0Paper
-  | Constructor("A1Paper" , UnitConstant) -> HorzBox.A1Paper
-  | Constructor("A2Paper" , UnitConstant) -> HorzBox.A2Paper
-  | Constructor("A3Paper" , UnitConstant) -> HorzBox.A3Paper
-  | Constructor("A4Paper" , UnitConstant) -> HorzBox.A4Paper
-  | Constructor("A5Paper" , UnitConstant) -> HorzBox.A5Paper
-  | Constructor("USLetter", UnitConstant) -> HorzBox.USLetter
-  | Constructor("USLegal" , UnitConstant) -> HorzBox.USLegal
+  | Constructor("A0Paper" , BaseConstant(BCUnit)) -> HorzBox.A0Paper
+  | Constructor("A1Paper" , BaseConstant(BCUnit)) -> HorzBox.A1Paper
+  | Constructor("A2Paper" , BaseConstant(BCUnit)) -> HorzBox.A2Paper
+  | Constructor("A3Paper" , BaseConstant(BCUnit)) -> HorzBox.A3Paper
+  | Constructor("A4Paper" , BaseConstant(BCUnit)) -> HorzBox.A4Paper
+  | Constructor("A5Paper" , BaseConstant(BCUnit)) -> HorzBox.A5Paper
+  | Constructor("USLetter", BaseConstant(BCUnit)) -> HorzBox.USLetter
+  | Constructor("USLegal" , BaseConstant(BCUnit)) -> HorzBox.USLegal
 
   | Constructor("UserDefinedPaper", Tuple([
-      LengthConstant(pgwid);
-      LengthConstant(pghgt);
+      BaseConstant(BCLength(pgwid));
+      BaseConstant(BCLength(pghgt));
     ])) ->
       HorzBox.UserDefinedPaper(pgwid, pghgt)
 
@@ -388,14 +391,14 @@ let get_context (value : syntactic_value) : input_context =
 
 let get_text_mode_context (value : syntactic_value) : TextBackend.text_mode_context =
   match value with
-  | TextModeContext(tctx) -> tctx
-  | _                     -> report_bug_value "get_text_mode_context" value
+  | BaseConstant(BCTextModeContext(tctx)) -> tctx
+  | _                                     -> report_bug_value "get_text_mode_context" value
 
 
 let get_length (value : syntactic_value) : length =
   match value with
-  | LengthConstant(len) -> len
-  | _                   -> report_bug_value "get_length" value
+  | BaseConstant(BCLength(len)) -> len
+  | _                           -> report_bug_value "get_length" value
 
 
 let get_math value : math list =
@@ -409,38 +412,38 @@ let get_math_list = get_list get_math
 
 let get_bool value : bool =
   match value with
-  | BooleanConstant(bc) -> bc
-  | other               -> report_bug_value "get_bool" value
+  | BaseConstant(BCBool(bc)) -> bc
+  | other                    -> report_bug_value "get_bool" value
 
 
 let get_int (value : syntactic_value) : int =
   match value with
-  | IntegerConstant(nc) -> nc
-  | _                   -> report_bug_value "get_int" value
+  | BaseConstant(BCInt(nc)) -> nc
+  | _                       -> report_bug_value "get_int" value
 
 
 let get_float value : float =
   match value with
-  | FloatConstant(nc) -> nc
-  | _                 -> report_bug_value "get_float" value
+  | BaseConstant(BCFloat(nc)) -> nc
+  | _                         -> report_bug_value "get_float" value
 
 
 let get_regexp (value : syntactic_value) : Str.regexp =
   match value with
-  | RegExpConstant(regexp) -> regexp
-  | _                      -> report_bug_value "get_regexp" value
+  | BaseConstant(BCRegExp(regexp)) -> regexp
+  | _                              -> report_bug_value "get_regexp" value
 
 
 let get_path_value (value : syntactic_value) : path list =
   match value with
-  | PathValue(pathlst) -> pathlst
-  | _                  -> report_bug_value "get_path_value" value
+  | BaseConstant(BCPath(pathlst)) -> pathlst
+  | _                             -> report_bug_value "get_path_value" value
 
 
 let get_prepath (value : syntactic_value) : PrePath.t =
   match value with
-  | PrePathValue(prepath) -> prepath
-  | _                     -> report_bug_value "get_prepath" value
+  | BaseConstant(BCPrePath(prepath)) -> prepath
+  | _                                -> report_bug_value "get_prepath" value
 
 
 let get_math_variant_style value =
@@ -496,10 +499,10 @@ let get_math_variant_style value =
 let get_outline (value : syntactic_value) =
   match value with
   | Tuple([
-      IntegerConstant(level);
-      StringConstant(text);
-      StringConstant(key);
-      BooleanConstant(isopen);
+      BaseConstant(BCInt(level));
+      BaseConstant(BCString(text));
+      BaseConstant(BCString(key));
+      BaseConstant(BCBool(isopen));
     ]) ->
       (level, text, key, isopen)
 
@@ -510,7 +513,7 @@ let get_outline (value : syntactic_value) =
 let make_page_break_info pbinfo =
   let asc =
     Assoc.of_list [
-      ("page-number", IntegerConstant(pbinfo.HorzBox.current_page_number));
+      ("page-number", BaseConstant(BCInt(pbinfo.HorzBox.current_page_number)));
     ]
   in
   RecordValue(asc)
@@ -530,12 +533,12 @@ let make_page_content_info pcinfo =
 
 let make_hook (reducef : syntactic_value -> syntactic_value list -> syntactic_value) (valuehook : syntactic_value) : (HorzBox.page_break_info -> point -> unit) =
   (fun pbinfo (xpos, yposbaseline) ->
-     let valuept = Tuple([LengthConstant(xpos); LengthConstant(yposbaseline)]) in
+     let valuept = Tuple([BaseConstant(BCLength(xpos)); BaseConstant(BCLength(yposbaseline))]) in
      let valuepbinfo = make_page_break_info pbinfo in
      let valueret = reducef valuehook [valuepbinfo; valuept] in
        match valueret with
-       | UnitConstant -> ()
-       | _            -> report_bug_vm "make_hook"
+       | BaseConstant(BCUnit) -> ()
+       | _                    -> report_bug_vm "make_hook"
   )
 
 
@@ -550,7 +553,7 @@ let make_page_content_scheme_func reducef valuef : HorzBox.page_content_scheme_f
              (Assoc.find_opt asc "text-origin",
               Assoc.find_opt asc "text-height")
            with
-           | (Some(vTO), Some(LengthConstant(vTHlen))) ->
+           | (Some(vTO), Some(BaseConstant(BCLength(vTHlen)))) ->
                HorzBox.({
                  page_content_origin = get_point(vTO);
                  page_content_height = vTHlen;
@@ -578,7 +581,7 @@ and make_page_parts_scheme_func reducef valuef : HorzBox.page_parts_scheme_func 
               Assoc.find_opt asc "footer-origin",
               Assoc.find_opt asc "footer-content")
            with
-           | (Some(vHO), Some(Vert(vHCvert)), Some(vFO), Some(Vert(vFCvert))) ->
+           | (Some(vHO), Some(BaseConstant(BCVert(vHCvert))), Some(vFO), Some(BaseConstant(BCVert(vFCvert)))) ->
                HorzBox.({
                  header_origin  = get_point vHO;
                  header_content = PageBreak.solidify vHCvert;
@@ -595,10 +598,10 @@ and make_page_parts_scheme_func reducef valuef : HorzBox.page_parts_scheme_func 
 
 let make_frame_deco reducef valuedeco =
   (fun (xpos, ypos) wid hgt dpt ->
-     let valuepos = Tuple([LengthConstant(xpos); LengthConstant(ypos)]) in
-     let valuewid = LengthConstant(wid) in
-     let valuehgt = LengthConstant(hgt) in
-     let valuedpt = LengthConstant(Length.negate dpt) in
+     let valuepos = Tuple([BaseConstant(BCLength(xpos)); BaseConstant(BCLength(ypos))]) in
+     let valuewid = BaseConstant(BCLength(wid)) in
+     let valuehgt = BaseConstant(BCLength(hgt)) in
+     let valuedpt = BaseConstant(BCLength(Length.negate dpt)) in
        (* -- depth values for users are nonnegative -- *)
      let valueret = reducef valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
      graphics_of_list valueret
@@ -607,7 +610,7 @@ let make_frame_deco reducef valuedeco =
 
 let make_math_kern_func reducef valuekernf : HorzBox.math_kern_func =
   (fun corrhgt ->
-    let astcorrhgt = LengthConstant(corrhgt) in
+    let astcorrhgt = BaseConstant(BCLength(corrhgt)) in
     let valueret = reducef valuekernf [astcorrhgt] in
     get_length valueret
   )
@@ -615,15 +618,15 @@ let make_math_kern_func reducef valuekernf : HorzBox.math_kern_func =
 
 let make_paren reducef valueparenf : HorzBox.paren =
   (fun hgt dpt hgtaxis fontsize color ->
-     let valuehgt      = LengthConstant(hgt) in
-     let valuedpt      = LengthConstant(Length.negate dpt) in
+     let valuehgt      = BaseConstant(BCLength(hgt)) in
+     let valuedpt      = BaseConstant(BCLength(Length.negate dpt)) in
      (* -- depth values for users are nonnegative -- *)
-     let valuehgtaxis  = LengthConstant(hgtaxis) in
-     let valuefontsize = LengthConstant(fontsize) in
+     let valuehgtaxis  = BaseConstant(BCLength(hgtaxis)) in
+     let valuefontsize = BaseConstant(BCLength(fontsize)) in
      let valuecolor    = make_color_value color in
      let valueret = reducef valueparenf [valuehgt; valuedpt; valuehgtaxis; valuefontsize; valuecolor] in
      match valueret with
-     | Tuple([Horz(hblst); valuekernf]) ->
+     | Tuple([BaseConstant(BCHorz(hblst)); valuekernf]) ->
          let kernf = make_math_kern_func reducef valuekernf in
          (hblst, kernf)
 
@@ -638,7 +641,7 @@ let make_math (mlst : math list) : syntactic_value =
 
 let make_option (type a) (makef : a -> syntactic_value) (opt : a option) : syntactic_value =
   match opt with
-  | None    -> Constructor("None", UnitConstant)
+  | None    -> Constructor("None", BaseConstant(BCUnit))
   | Some(x) -> let value = makef x in Constructor("Some", value)
 
 
@@ -653,8 +656,8 @@ let make_pull_in_scripts reducef valuef =
 
 let make_math_char_kern_func reducef valuekernf : HorzBox.math_char_kern_func =
   (fun fontsize ypos ->
-     let valuefontsize = LengthConstant(fontsize) in
-     let valueypos     = LengthConstant(ypos) in
+     let valuefontsize = BaseConstant(BCLength(fontsize)) in
+     let valueypos     = BaseConstant(BCLength(ypos)) in
      let valueret = reducef valuekernf [valuefontsize; valueypos] in
      get_length valueret
   )
@@ -662,7 +665,7 @@ let make_math_char_kern_func reducef valuekernf : HorzBox.math_char_kern_func =
 
 let make_inline_graphics reducef valueg : HorzBox.fixed_graphics =
   (fun (xpos, ypos) ->
-     let valuepos = Tuple([LengthConstant(xpos); LengthConstant(ypos)]) in
+     let valuepos = Tuple([BaseConstant(BCLength(xpos)); BaseConstant(BCLength(ypos))]) in
      let valueret = reducef valueg [valuepos] in
      graphics_of_list valueret
   )
@@ -670,8 +673,8 @@ let make_inline_graphics reducef valueg : HorzBox.fixed_graphics =
 
 let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
   (fun wid (xpos, ypos) ->
-     let valuepos = Tuple([LengthConstant(xpos); LengthConstant(ypos)]) in
-     let valuewid = LengthConstant(wid) in
+     let valuepos = Tuple([BaseConstant(BCLength(xpos)); BaseConstant(BCLength(ypos))]) in
+     let valuewid = BaseConstant(BCLength(wid)) in
      let valueret = reducef valueg [valuewid; valuepos] in
      graphics_of_list valueret
   )
@@ -679,7 +682,7 @@ let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
 
 let make_length_list lenlst =
   List.fold_right (fun l acc ->
-    ListCons(LengthConstant(l), acc)
+    ListCons(BaseConstant(BCLength(l)), acc)
   ) lenlst EndOfList
 
 
@@ -702,3 +705,18 @@ let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
     ) Alist.empty |> Alist.to_list
   in
   (wid, imvblst)
+
+
+let const_unit = BaseConstant(BCUnit)
+let make_bool b = BaseConstant(BCBool(b))
+let make_int n = BaseConstant(BCInt(n))
+let make_float x = BaseConstant(BCFloat(x))
+let make_length l = BaseConstant(BCLength(l))
+let make_string s = BaseConstant(BCString(s))
+let make_regexp re = BaseConstant(BCRegExp(re))
+let make_horz h = BaseConstant(BCHorz(h))
+let make_vert v = BaseConstant(BCVert(v))
+let make_path p = BaseConstant(BCPath(p))
+let make_prepath pp = BaseConstant(BCPrePath(pp))
+let make_graphics g = BaseConstant(BCGraphics(g))
+let make_image_key i = BaseConstant(BCImageKey(i))
