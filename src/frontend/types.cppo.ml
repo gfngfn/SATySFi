@@ -397,6 +397,12 @@ let string_of_stage = function
   | Stage1      -> "stage 1"
 
 
+type pre = {
+  level           : level;
+  quantifiability : quantifiability;  (* may omitted in the future *)
+  stage           : stage;
+}
+
 type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
 
@@ -458,8 +464,7 @@ and untyped_abstract_tree_main =
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
 (* -- tuple value -- *)
-  | UTTupleCons            of untyped_abstract_tree * untyped_abstract_tree
-  | UTEndOfTuple
+  | UTTuple               of untyped_abstract_tree list
 (* -- record value -- *)
   | UTRecord               of (field_name * untyped_abstract_tree) list
   | UTAccessField          of untyped_abstract_tree * field_name
@@ -527,12 +532,11 @@ and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
   | UTPIntegerConstant     of int
   | UTPBooleanConstant     of bool
-  | UTPStringConstant      of untyped_abstract_tree
+  | UTPStringConstant      of string
   | UTPUnitConstant
   | UTPListCons            of untyped_pattern_tree * untyped_pattern_tree
   | UTPEndOfList
-  | UTPTupleCons           of untyped_pattern_tree * untyped_pattern_tree
-  | UTPEndOfTuple
+  | UTPTuple               of untyped_pattern_tree list
   | UTPWildCard
   | UTPVariable            of var_name
   | UTPAsVariable          of var_name * untyped_pattern_tree
@@ -668,6 +672,7 @@ and ir =
   | IRSequential            of ir * ir
   | IRWhileDo               of ir * ir
   | IROverwrite             of varloc * ir
+  | IRDereference           of ir
   | IRModule                of ir * ir
   | IRPath                  of ir * ir ir_path_component list * (unit ir_path_component) option
 
@@ -689,6 +694,72 @@ and ir_pattern_tree =
   | IRPVariable             of varloc
   | IRPAsVariable           of varloc * ir_pattern_tree
   | IRPConstructor          of constructor_name * ir_pattern_tree
+
+and instruction =
+  | OpAccessField of field_name
+  | OpUpdateField of field_name
+  | OpForward of int
+  | OpApply of int
+  | OpApplyT of int
+  | OpApplyOptional
+  | OpApplyOmission
+  | OpBindGlobal of syntactic_value ref * EvalVarID.t * int
+  | OpBindLocal of int * int * EvalVarID.t * int
+  | OpBindClosuresRec of (varloc * instruction list) list
+  | OpBranch of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpBranch(...)")]
+  | OpBranchIf of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpBranchIf(...)")]
+  | OpBranchIfNot of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpBranchIfNot(...)")]
+  | OpLoadGlobal of syntactic_value ref * EvalVarID.t * int
+      [@printer ((fun fmt (r, evid, refs) -> Format.fprintf fmt "OpLoadGlobal(%s)" (EvalVarID.show_direct evid)))]
+  | OpLoadLocal of int * int * EvalVarID.t * int
+  | OpDereference
+      (* !! pdf, no-interp *)
+  | OpDup
+  | OpError of string
+  | OpMakeConstructor of constructor_name
+  | OpMakeRecord of Assoc.key list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpMakeRecord(...)")]
+  | OpMakeTuple of int
+  | OpPop
+  | OpPush of syntactic_value
+  | OpPushEnv
+  | OpCheckStackTopBool of bool * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopBool(...)")]
+  | OpCheckStackTopCtor of constructor_name * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopCtor(...)")]
+  | OpCheckStackTopEndOfList of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopEndOfList(...)")]
+  | OpCheckStackTopInt of int * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopInt(...)")]
+  | OpCheckStackTopListCons of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopListCons(...)")]
+  | OpCheckStackTopStr of string * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopStr(...)")]
+  | OpCheckStackTopTupleCons of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopTupleCons(...)")]
+  | OpClosure of varloc list * int * int * instruction list
+  | OpClosureInputHorz of compiled_input_horz_element list
+  | OpClosureInputVert of compiled_input_vert_element list
+  | OpBindLocationGlobal of syntactic_value ref * EvalVarID.t
+  | OpBindLocationLocal of int * int * EvalVarID.t
+  | OpUpdateGlobal of syntactic_value ref * EvalVarID.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpUpdateGlobal(...)")]
+  | OpUpdateLocal of int * int * EvalVarID.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpUpdateLocal(...)")]
+  | OpSel of instruction list * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpSel(...)")]
+
+  | OpBackendMathList of int
+      (* !! no-ircode *)
+
+  | OpPath of ((instruction list) compiled_path_component) list * (unit compiled_path_component) option
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpPath(...)")]
+      (* !! no-interp, no-ircode *)
+
+  | OpInsertArgs of syntactic_value list
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =
@@ -703,13 +774,11 @@ and intermediate_input_vert_element =
 
 and syntactic_value =
   | Nil
-  | SimpleRef             of syntactic_value ref
   | UnitConstant
   | BooleanConstant       of bool
   | IntegerConstant       of int
   | FloatConstant         of float
   | LengthConstant        of length
-  | StringEmpty
   | StringConstant        of string
   | RegExpConstant        of Str.regexp
       [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]
@@ -726,8 +795,7 @@ and syntactic_value =
   | ListCons              of syntactic_value * syntactic_value
   | EndOfList
 
-  | TupleCons             of syntactic_value * syntactic_value
-  | EndOfTuple
+  | Tuple                 of syntactic_value list
 
   | RecordValue           of syntactic_value Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
@@ -786,13 +854,14 @@ and abstract_tree =
   | NonValueConstructor   of constructor_name * abstract_tree
 (* -- imperative -- *)
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
+  | Dereference           of abstract_tree
   | Sequential            of abstract_tree * abstract_tree
   | WhileDo               of abstract_tree * abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
   | BackendMathList             of abstract_tree list
-  | PrimitiveTupleCons    of abstract_tree * abstract_tree
+  | PrimitiveTuple        of abstract_tree list
 (* -- staging constructs -- *)
   | Next                  of abstract_tree
   | Prev                  of abstract_tree
@@ -812,11 +881,10 @@ and pattern_tree =
   | PUnitConstant
   | PBooleanConstant      of bool
   | PIntegerConstant      of int
-  | PStringConstant       of abstract_tree
+  | PStringConstant       of string
   | PListCons             of pattern_tree * pattern_tree
   | PEndOfList
-  | PTupleCons            of pattern_tree * pattern_tree
-  | PEndOfTuple
+  | PTuple                of pattern_tree list
   | PWildCard
   | PVariable             of EvalVarID.t
   | PAsVariable           of EvalVarID.t * pattern_tree
@@ -893,12 +961,10 @@ and code_value =
   | CdSequential    of code_value * code_value
   | CdOverwrite     of EvalVarID.t * code_value
   | CdWhileDo       of code_value * code_value
-(*
   | CdDereference   of code_value
-*)
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
-  | CdTupleCons     of code_value * code_value
+  | CdTuple         of code_value list
   | CdPath          of code_value * (code_value code_path_component) list * (unit code_path_component) option
   | CdMathList      of code_value list
   | CdModule        of code_value * code_value
@@ -1334,10 +1400,11 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdLetMutableIn(evid, code1, code2)   -> LetMutableIn(evid, aux code1, aux code2)
     | CdSequential(code1, code2)           -> Sequential(aux code1, aux code2)
     | CdOverwrite(evid, code1)             -> Overwrite(evid, aux code1)
+    | CdDereference(code1)                 -> Dereference(aux code1)
     | CdWhileDo(code1, code2)              -> WhileDo(aux code1, aux code2)
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
-    | CdTupleCons(code1, code2)            -> PrimitiveTupleCons(aux code1, aux code2)
+    | CdTuple(codelst)                     -> PrimitiveTuple(List.map aux codelst)
     | CdPath(code1, cdpath, cdcycleopt)    -> Path(aux code1, aux_path cdpath, aux_cycle cdcycleopt)
     | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
     | CdModule(code1, code2)               -> Module(aux code1, aux code2)

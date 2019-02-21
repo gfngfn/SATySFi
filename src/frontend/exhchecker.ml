@@ -90,7 +90,7 @@ let is_all_wildcard mat =
     | _         -> false
   ) (List.hd mat)
 
-
+(*
 let flatten_tuple tup =
   let rec iter pat acc =
     match pat with
@@ -99,7 +99,7 @@ let flatten_tuple tup =
     | _                           -> failwith "malformed tuple(flatten_tuple)"
   in
     iter tup Alist.empty
-
+*)
 
 let instance_of_element ele =
   match ele with
@@ -151,7 +151,7 @@ let rec string_of_instance ins =
 let rec normalize_pat pat =
   match pat with
   | PListCons(car, cdr)  -> PListCons(normalize_pat car, normalize_pat cdr)
-  | PTupleCons(car, cdr) -> PTupleCons(normalize_pat car, normalize_pat cdr)
+  | PTuple(patlst)       -> PTuple(List.map normalize_pat patlst)
   | PConstructor(nm, p)  -> PConstructor(nm, normalize_pat p)
   | PVariable(_)         -> PWildCard
   | PAsVariable(_, p)    -> normalize_pat p
@@ -180,9 +180,8 @@ let expand_mat mat i epat ty =
     | (ExpandConstructor(_, _), PWildCard) ->
         [[PWildCard]]
 
-    | (ExpandTuple(_), PTupleCons(h, t)) ->
-        let ftup = flatten_tuple (PTupleCons(h, t)) in
-          List.map (fun pat -> [pat]) ftup
+    | (ExpandTuple(_), PTuple(ftup)) ->
+        List.map (fun pat -> [pat]) ftup
 
     | (ExpandTuple(arity), PWildCard) ->
         repeat arity [PWildCard]
@@ -211,7 +210,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
               | (EListCons, PListCons(_, _))
               | (EEndOfList, PEndOfList)
               | (EUnitConstant, PUnitConstant)
-              | (ETuple, PTupleCons(_, _))
+              | (ETuple, PTuple(_ :: _))
               | (_, PWildCard)
                 -> true
 
@@ -221,10 +220,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
               | (EIntegerConstant(i1), PIntegerConstant(i2))  when i1 = i2
                 -> true
 
-              | (EStringConstant(s1), PStringConstant(Value(StringEmpty)))  when String.equal s1 ""
-                -> true
-
-              | (EStringConstant(s1), PStringConstant(Value(StringConstant(s2))))  when String.equal s1 s2
+              | (EStringConstant(s1), PStringConstant(s2))  when String.equal s1 s2
                 -> true
 
               | (EConstructor(nm1, _), PConstructor(nm2, _))  when String.equal nm1 nm2
@@ -289,29 +285,28 @@ let make_int_sig col =
 let make_string_sig col =
   ElementSet.of_list (List.fold_left (fun acc p ->
     match p with
-    | PStringConstant(Value(StringEmpty))       -> EStringConstant("") :: acc
-    | PStringConstant(Value(StringConstant(s))) -> EStringConstant(s) :: acc
-    | _                                         -> acc
+    | PStringConstant(s) -> EStringConstant(s) :: acc
+    | _                  -> acc
   ) [EWildCard] col)
 
 
-let make_variant_sig qtfbl lev tyenv (tyarglst : mono_type list) tyid =
-  let constrs = Typeenv.enumerate_constructors qtfbl tyenv lev tyid in
+let make_variant_sig (pre : pre) (tyenv : Typeenv.t) (tyarglst : mono_type list) tyid =
+  let constrs = Typeenv.enumerate_constructors pre tyenv tyid in
   ElementSet.of_list (constrs |> List.map (fun (nm, tyf) ->
     EConstructor(nm, tyf tyarglst)))
 
 
-let rec complete_sig col qtfbl lev tyenv ((_, tymain) : mono_type) =
+let rec complete_sig col (pre : pre) (tyenv : Typeenv.t) ((_, tymain) : mono_type) =
   match tymain with
-  | TypeVariable({contents= MonoLink(tylink)}) -> complete_sig col qtfbl lev tyenv tylink
+  | TypeVariable({contents= MonoLink(tylink)}) -> complete_sig col pre tyenv tylink
   | BaseType(UnitType)          -> unit_sig
   | BaseType(BoolType)          -> bool_sig
   | BaseType(IntType)           -> make_int_sig col
   | BaseType(StringType)        -> make_string_sig col
   | ListType(_)                 -> list_sig
   | ProductType(_)              -> product_sig
-  | SynonymType(_, _, aty)      -> complete_sig col qtfbl lev tyenv aty
-  | VariantType(tyarglst, tyid) -> make_variant_sig qtfbl lev tyenv tyarglst tyid
+  | SynonymType(_, _, aty)      -> complete_sig col pre tyenv aty
+  | VariantType(tyarglst, tyid) -> make_variant_sig pre tyenv tyarglst tyid
   | _                           -> generic_sig
 
 
@@ -332,7 +327,7 @@ let reduce_list_instance ilst =
   | _                  -> failwith "reduce_list_instance failed"
 
 
-let rec exhcheck_mat tylst mat patinfo qtfbl lev tyenv =
+let rec exhcheck_mat tylst mat patinfo (pre : pre) tyenv =
   let fold_instance expnd ele ins =
     match expnd with
     | ExpandListCons            -> reduce_list_instance ins
@@ -368,7 +363,7 @@ let rec exhcheck_mat tylst mat patinfo qtfbl lev tyenv =
               (a_nonexh, a_nonexh_guard, IntSet.union (IntSet.of_list (patinfo_until_match spatinfo)) a_used)
 
           | (false, _ :: _) ->
-              let (nonexh, nonexh_guard, used) = exhcheck_mat stylst smat spatinfo qtfbl lev tyenv in
+              let (nonexh, nonexh_guard, used) = exhcheck_mat stylst smat spatinfo pre tyenv in
               (
                 List.append (List.map (fold_instance expnd ele) nonexh) a_nonexh,
                 List.append (List.map (fold_instance expnd ele) nonexh_guard) a_nonexh_guard,
@@ -385,7 +380,7 @@ let rec exhcheck_mat tylst mat patinfo qtfbl lev tyenv =
       if is_all_wildcard mat then
         apply_each generic_sig
       else
-        apply_each (complete_sig (List.hd mat) qtfbl lev tyenv (List.hd tylst))
+        apply_each (complete_sig (List.hd mat) pre tyenv (List.hd tylst))
 
 
 let non_empty = function
@@ -394,7 +389,7 @@ let non_empty = function
 
 
 let main (rng : Range.t) (patbrs : pattern_branch list) (ty : mono_type)
-    (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t) : unit =
+    (pre : pre) (tyenv : Typeenv.t) : unit =
   let patbrs =
     patbrs |> List.map (function
       | PatternBranch(p, a)          -> PatternBranch(normalize_pat p, a)
@@ -411,7 +406,7 @@ let main (rng : Range.t) (patbrs : pattern_branch list) (ty : mono_type)
   in
   let patid = one_to_n (List.length patbrs) in
   let patinfo = List.combine patid patbrs in
-    let (nonexh, nonexh_guard, used) = exhcheck_mat [ty] mat patinfo qtfbl lev tyenv in
+    let (nonexh, nonexh_guard, used) = exhcheck_mat [ty] mat patinfo pre tyenv in
     let unused = IntSet.diff (IntSet.of_list patid) used in
     if (non_empty nonexh) || (non_empty nonexh_guard) || not (IntSet.is_empty unused) then
       begin

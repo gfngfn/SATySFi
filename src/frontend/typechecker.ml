@@ -59,7 +59,7 @@ let rec is_nonexpansive_expression e =
 
   | NonValueConstructor(constrnm, e1) -> iter e1
   | PrimitiveListCons(e1, e2)         -> iter e1 && iter e2
-  | PrimitiveTupleCons(e1, e2)        -> iter e1 && iter e2
+  | PrimitiveTuple(elst)              -> List.for_all iter elst
   | Record(asc)                       -> Assoc.fold_value (fun b e -> b && iter e) true asc
   | LetRecIn(_, e2)                   -> iter e2
   | LetNonRecIn(_, e1, e2)            -> iter e1 && iter e2
@@ -543,7 +543,7 @@ let rec typecheck
   in
   let unify = unify_ tyenv in
   match utastmain with
-  | UTStringEmpty         -> (Value(StringEmpty)        , (rng, BaseType(StringType)))
+  | UTStringEmpty         -> (Value(StringConstant("")) , (rng, BaseType(StringType)))
   | UTIntegerConstant(nc) -> (Value(IntegerConstant(nc)), (rng, BaseType(IntType))   )
   | UTFloatConstant(nc)   -> (Value(FloatConstant(nc))  , (rng, BaseType(FloatType)) )
   | UTStringConstant(sc)  -> (Value(StringConstant(sc)) , (rng, BaseType(StringType)))
@@ -591,7 +591,8 @@ let rec typecheck
       begin
         match Typeenv.find tyenv mdlnmlst varnm rng with
         | None ->
-            raise (UndefinedVariable(rng, mdlnmlst, varnm, Typeenv.find_candidates tyenv mdlnmlst varnm rng))
+            let cands = Typeenv.find_candidates tyenv mdlnmlst varnm rng in
+            raise (UndefinedVariable(rng, mdlnmlst, varnm, cands))
 
         | Some((pty, evid, stage)) ->
             begin
@@ -614,11 +615,12 @@ let rec typecheck
       end
 
   | UTConstructor(constrnm, utast1) ->
-      let qtfbl = pre.quantifiability in
-      let lev = pre.level in
       begin
-        match Typeenv.find_constructor qtfbl tyenv lev constrnm with
-        | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
+        match Typeenv.find_constructor pre tyenv constrnm with
+        | None ->
+            let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
+            raise (UndefinedConstructor(rng, constrnm, cands))
+
         | Some((tyarglist, tyid, tyc)) ->
 (*
             let () = print_endline ("\n#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
@@ -755,7 +757,7 @@ let rec typecheck
       let (eO, tyO) = typecheck_iter tyenv utastO in
       let beta = fresh_type_variable (Range.dummy "ut-pattern-match") pre UniversalKind in
       let patbrs = typecheck_pattern_branch_list pre tyenv utpatbrs tyO beta in
-      Exhchecker.main rng patbrs tyO pre.quantifiability pre.level tyenv;
+      Exhchecker.main rng patbrs tyO pre tyenv;
       (PatternMatch(rng, eO, patbrs), beta)
 
   | UTLetNonRecIn(mntyopt, utpat, utast1, utast2) ->
@@ -845,18 +847,12 @@ let rec typecheck
 
 (* ---- tuple ---- *)
 
-  | UTTupleCons(utastH, utastT) ->
-      let (eH, tyH) = typecheck_iter tyenv utastH in
-      let (eT, tyT) = typecheck_iter tyenv utastT in
-      let tyres =
-        match tyT with
-        | (_, ProductType(tylist)) -> (rng, ProductType(tyH :: tylist))
-        | _                        -> assert false
-      in
-      (PrimitiveTupleCons(eH, eT), tyres)
-
-  | UTEndOfTuple ->
-      (Value(EndOfTuple), (rng, ProductType([])))
+  | UTTuple(utastlst) ->
+      let etylst = List.map (typecheck_iter tyenv) utastlst in
+      let elst = List.map fst etylst in
+      let tylst = List.map snd etylst in
+      let tyres = (rng, ProductType(tylst)) in
+      (PrimitiveTuple(elst), tyres)
 
 (* ---- records ---- *)
 
@@ -1178,8 +1174,8 @@ and typecheck_record
 and typecheck_itemize (pre : pre) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
   let (e1, ty1) = typecheck pre tyenv utast1 in
   unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", BaseType(TextRowType));
-  let elst = typecheck_itemize_list pre tyenv utitmzlst in
-  (NonValueConstructor("Item", PrimitiveTupleCons(e1, PrimitiveTupleCons(elst, Value(EndOfTuple)))))
+  let e2 = typecheck_itemize_list pre tyenv utitmzlst in
+  (NonValueConstructor("Item", PrimitiveTuple([e1; e2])))
 
 
 and typecheck_itemize_list
@@ -1241,10 +1237,8 @@ and typecheck_pattern
     | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BaseType(BoolType)), PatternVarMap.empty)
     | UTPUnitConstant        -> (PUnitConstant, (rng, BaseType(UnitType)), PatternVarMap.empty)
 
-    | UTPStringConstant(ut1) ->
-        let (e1, ty1) = typecheck pre tyenv ut1 in
-        unify (Range.dummy "pattern-string-constant", BaseType(StringType)) ty1;
-        (PStringConstant(e1), (rng, BaseType(StringType)), PatternVarMap.empty)
+    | UTPStringConstant(sc) ->
+        (PStringConstant(sc), (rng, BaseType(StringType)), PatternVarMap.empty)
 
     | UTPListCons(utpat1, utpat2) ->
         let (epat1, typat1, patvarmap1) = iter utpat1 in
@@ -1257,19 +1251,14 @@ and typecheck_pattern
         let beta = fresh_type_variable rng pre UniversalKind in
         (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
 
-    | UTPTupleCons(utpat1, utpat2) ->
-        let (epat1, typat1, patvarmap1) = iter utpat1 in
-        let (epat2, typat2, patvarmap2) = iter utpat2 in
-        let tyres =
-          match typat2 with
-          | (rng, ProductType(tylist)) -> (rng, ProductType(typat1 :: tylist))
-          | _                          -> assert false
-        in
-        let patvarmap = unite_pattern_var_map patvarmap1 patvarmap2 in
-        (PTupleCons(epat1, epat2), tyres, patvarmap)
-
-    | UTPEndOfTuple ->
-        (PEndOfTuple, (rng, ProductType([])), PatternVarMap.empty)
+    | UTPTuple(utpatlst) ->
+        let trilst = List.map iter utpatlst in
+        let epatlst = trilst |> List.map (fun (epat, _, _) -> epat) in
+        let typatlst = trilst |> List.map (fun (_, typat, _) -> typat) in
+        let patvarmaplst = trilst |> List.map (fun (_, _, patvarmap) -> patvarmap) in
+        let tyres = (rng, ProductType(typatlst)) in
+        let patvarmap = List.fold_left unite_pattern_var_map PatternVarMap.empty patvarmaplst in
+        (PTuple(epatlst), tyres, patvarmap)
 
     | UTPWildCard ->
         let beta = fresh_type_variable rng pre UniversalKind in
@@ -1298,11 +1287,12 @@ and typecheck_pattern
         end
 
     | UTPConstructor(constrnm, utpat1) ->
-        let qtfbl = pre.quantifiability in
-        let lev = pre.level in
         begin
-          match Typeenv.find_constructor qtfbl tyenv lev constrnm with
-          | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
+          match Typeenv.find_constructor pre tyenv constrnm with
+          | None ->
+              let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
+              raise (UndefinedConstructor(rng, constrnm, cands))
+
           | Some((tyarglist, tyid, tyc)) ->
 (*
               let () = print_endline ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
@@ -1353,7 +1343,7 @@ and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds 
                     iter utrectail (Alist.extend recbindacc (LetRecBinding(evid, patbr1))) (Alist.extend acctvtylstout (varnm, beta, evid))
 
                 | Some(mnty) ->
-                    let tyin = Typeenv.fix_manual_type_free pre.quantifiability tyenv pre.level mnty [] in
+                    let tyin = Typeenv.fix_manual_type_free pre tyenv mnty [] in
                     unify ty1 beta;
                     unify tyin beta;
                     iter utrectail (Alist.extend recbindacc (LetRecBinding(evid, patbr1))) (Alist.extend acctvtylstout (varnm, beta, evid))

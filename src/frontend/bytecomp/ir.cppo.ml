@@ -154,43 +154,37 @@ and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * fra
     match pat with
     | PIntegerConstant(pnc) -> return (IRPIntegerConstant(pnc))
     | PBooleanConstant(pbc) -> return (IRPBooleanConstant(pbc))
-
-    | PStringConstant(ast1) ->
-      let str1 =
-        begin
-          match ast1 with
-          | Value(StringEmpty)       -> ""
-          | Value(StringConstant(s)) -> s
-          | _                        -> report_bug_ir "get_string"
-        end
-      in
-        return (IRPStringConstant(str1))
-
-    | PUnitConstant -> return IRPUnitConstant
-    | PWildCard     -> return IRPWildCard
+    | PStringConstant(psc)  -> return (IRPStringConstant(psc))
+    | PUnitConstant         -> return IRPUnitConstant
+    | PWildCard             -> return IRPWildCard
 
     | PVariable(evid) ->
         let (var, env) = add_to_environment env evid  in
-          (IRPVariable(var), env)
+        (IRPVariable(var), env)
 
     | PAsVariable(evid, psub) ->
         let (var, env) = add_to_environment env evid  in
         let (bsub, env) = transform_pattern env psub in
-          (IRPAsVariable(var, bsub), env)
+        (IRPAsVariable(var, bsub), env)
 
     | PEndOfList -> return IRPEndOfList
 
     | PListCons(phd, ptl) ->
         let (bhd, envhd) = transform_pattern env phd in
         let (btl, envtl) = transform_pattern envhd ptl in
-          (IRPListCons(bhd, btl), envtl)
+        (IRPListCons(bhd, btl), envtl)
 
-    | PEndOfTuple -> return IRPEndOfTuple
-
-    | PTupleCons(phd, ptl) ->
-        let (bhd, envhd) = transform_pattern env phd in
-        let (btl, envtl) = transform_pattern envhd ptl in
-          (IRPTupleCons(bhd, btl), envtl)
+    | PTuple(pats) ->
+        let (bacc, env) =
+          List.fold_left (fun (bacc, env) pat ->
+            let (b, env) = transform_pattern env pat in
+            (Alist.extend bacc b, env)
+          ) (Alist.empty, env) pats
+        in
+        let irp =
+          List.fold_right (fun b irp -> IRPTupleCons(b, irp)) (Alist.to_list bacc) IRPEndOfTuple
+        in
+        (irp, env)
 
     | PConstructor(cnm1, psub) ->
         let (bsub, env) = transform_pattern env psub in
@@ -250,8 +244,11 @@ and flatten_application apast =
   in
     iter apast []
 
-
+(*
 and flatten_tuple asttup =
+  match asttup with
+  | PrimitiveTuple(astlst) -> astlst
+  | _                      ->
   let rec iter ast acc =
     match ast with
     | PrimitiveTupleCons(hd, Value(EndOfTuple)) -> Alist.to_list (Alist.extend acc hd)
@@ -259,12 +256,11 @@ and flatten_tuple asttup =
     | _                                         -> report_bug_ir_ast "malformed tuple!" asttup
   in
     iter asttup Alist.empty
+*)
 
-
-and transform_tuple env ast =
-  let items = flatten_tuple ast in
-  let (iritems, envnew) = map_with_env transform env items in
-  let len = List.length items in
+and transform_tuple env astlst =
+  let (iritems, envnew) = map_with_env transform env astlst in
+  let len = List.length astlst in
     (IRTuple(len, iritems), envnew)
 
 
@@ -327,8 +323,8 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let (pathelemlst, closingopt, env) = transform_path env pathcomplst cycleopt in
           (IRPath(irpt0, pathelemlst, closingopt), env)
 
-    | PrimitiveTupleCons(asthd, asttl) ->
-        transform_tuple env ast
+    | PrimitiveTuple(astlst) ->
+        transform_tuple env astlst
 
     (* -- fundamentals -- *)
 
@@ -451,6 +447,10 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
           | None ->
               report_bug_ir_ast ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast
         end
+
+    | Dereference(ast1) ->
+        let (ir1, env) = transform env ast1 in
+        (IRDereference(ir1), env)
 
     | WhileDo(astb, astc) ->
         let (irb, env) = transform env astb in

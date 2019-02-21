@@ -39,13 +39,13 @@ val leave_module : t -> t
 
 val add_mutual_cons : t -> level -> untyped_mutual_variant_cons -> t
 
-val find_constructor : quantifiability -> t -> level -> constructor_name -> (mono_type list * TypeID.t * mono_type) option
+val find_constructor : pre -> t -> constructor_name -> (mono_type list * TypeID.t * mono_type) option
 
-val find_constructor_candidates : quantifiability -> t -> level -> constructor_name -> constructor_name list
+val find_constructor_candidates : pre -> t -> constructor_name -> constructor_name list
 
-val enumerate_constructors : quantifiability -> t -> level -> TypeID.t -> (constructor_name * (mono_type list -> mono_type)) list
+val enumerate_constructors : pre -> t -> TypeID.t -> (constructor_name * (mono_type list -> mono_type)) list
 
-val fix_manual_type_free : quantifiability -> t -> level -> manual_type -> constraints -> mono_type
+val fix_manual_type_free : pre -> t -> manual_type -> constraints -> mono_type
 
 val find_type_id : t -> module_name list -> type_name -> Range.t -> TypeID.t option
 
