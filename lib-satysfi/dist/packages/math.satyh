@@ -984,6 +984,7 @@ end = struct
   let-math \angle = ord `∠`
   let-math \measuredangle = ord `∡`
   let-math \sphericalangle = rel `∢`
+  let-math \QED = ord `∎`
 
   let-math \ordd = prefix `d`
   let-math \partial = prefix `∂`
