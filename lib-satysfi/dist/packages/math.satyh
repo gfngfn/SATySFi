@@ -35,6 +35,9 @@ module Math : sig
   direct \mathfrak : [math] math-cmd
   direct \mathbb : [math] math-cmd
   direct \bm : [math] math-cmd
+  direct \mathit : [math] math-cmd
+  direct \mathsf : [math] math-cmd
+  direct \mathtt : [math] math-cmd
 
   direct \math-style-token : [math-char-class; string] math-cmd
   direct \mathit-token : [string] math-cmd
@@ -474,6 +477,9 @@ end = struct
   let-math \mathfrak m = ${\math-style!(MathFraktur){#m}}
   let-math \mathbb m = ${\math-style!(MathDoubleStruck){#m}}
   let-math \bm m = ${\math-style!(MathBoldItalic){#m}}
+  let-math \mathit m = ${\math-style!(MathItalic){#m}}
+  let-math \mathsf m = ${\math-style!(MathSansSerif){#m}}
+  let-math \mathtt m = ${\math-style!(MathTypewriter){#m}}
 
 
   let-math \math-style-token sty s =
@@ -580,88 +586,86 @@ end = struct
   let single cp = string-unexplode [cp]
 
 
-  let greek-lowercase cp cpb =
+  let greek cp cpi cpb cpbi cpbss cpbiss =
     let s = single cp in
+    let si = single cpi in
     let sb = single cpb in
+    let sbi = single cpbi in
+    let sbss = single cpbss in
+    let sbiss = single cpbiss in
+    % typefaces marked with (*) are not defined in Unicode
       math-variant-char MathOrd (|
-        italic        = s;
-        bold-italic   = sb;
-        roman         = s;
-        bold-roman    = sb;
-        script        = s;
-        bold-script   = sb;
-        fraktur       = s;
-        bold-fraktur  = sb;
-        double-struck = s;
+        italic                 = si;
+        bold-italic            = sbi;
+        roman                  = s;
+        bold-roman             = sb;
+        script                 = si;    % (*)
+        bold-script            = sbi;   % (*)
+        fraktur                = si;    % (*)
+        bold-fraktur           = sbi;   % (*)
+        double-struck          = si;    % (*)
+        sans-serif             = si;    % (*)
+        bold-sans-serif        = sbss;
+        italic-sans-serif      = si;    % (*)
+        bold-italic-sans-serif = sbiss;
+        typewriter             = s;     % (*)
       |)
 
+  let greek-lowercase i =
+    greek (0x003B1 + i) (0x1D6FC + i) (0x1D6C2 + i) (0x1D736 + i) (0x1D770 + i) (0x1D7AA + i)
 
-  let greek-uppercase cp cpb cpr cprb =
-    let s = single cp in
-    let sb = single cpb in
-    let sr = single cpr in
-    let srb = single cprb in
-      math-variant-char MathOrd (|
-        italic        = s;
-        bold-italic   = sb;
-        roman         = sr;
-        bold-roman    = srb;
-        script        = s;
-        bold-script   = sb;
-        fraktur       = s;
-        bold-fraktur  = sb;
-        double-struck = s;
-      |)
+  let-math \alpha    = greek-lowercase 0
+  let-math \beta     = greek-lowercase 1
+  let-math \gamma    = greek-lowercase 2
+  let-math \delta    = greek-lowercase 3
+  let-math \epsilon  = greek-lowercase 4
+  let-math \zeta     = greek-lowercase 5
+  let-math \eta      = greek-lowercase 6
+  let-math \theta    = greek-lowercase 7
+  let-math \iota     = greek-lowercase 8
+  let-math \kappa    = greek-lowercase 9
+  let-math \lambda   = greek-lowercase 10
+  let-math \mu       = greek-lowercase 11
+  let-math \nu       = greek-lowercase 12
+  let-math \xi       = greek-lowercase 13
+  let-math \omicron  = greek-lowercase 14
+  let-math \pi       = greek-lowercase 15
+  let-math \rho      = greek-lowercase 16
+  let-math \sigma    = greek-lowercase 18
+  let-math \tau      = greek-lowercase 19
+  let-math \upsilon  = greek-lowercase 20
+  let-math \phi      = greek-lowercase 21
+  let-math \chi      = greek-lowercase 22
+  let-math \psi      = greek-lowercase 23
+  let-math \omega    = greek-lowercase 24
 
-  let-math \alpha    = greek-lowercase 0x1D6FC 0x1D736
-  let-math \beta     = greek-lowercase 0x1D6FD 0x1D737
-  let-math \gamma    = greek-lowercase 0x1D6FE 0x1D738
-  let-math \delta    = greek-lowercase 0x1D6FF 0x1D739
-  let-math \epsilon  = greek-lowercase 0x1D700 0x1D73A
-  let-math \zeta     = greek-lowercase 0x1D701 0x1D73B
-  let-math \eta      = greek-lowercase 0x1D702 0x1D73C
-  let-math \theta    = greek-lowercase 0x1D703 0x1D73D
-  let-math \iota     = greek-lowercase 0x1D704 0x1D73E
-  let-math \kappa    = greek-lowercase 0x1D705 0x1D73F
-  let-math \lambda   = greek-lowercase 0x1D706 0x1D740
-  let-math \mu       = greek-lowercase 0x1D707 0x1D741
-  let-math \nu       = greek-lowercase 0x1D708 0x1D742
-  let-math \xi       = greek-lowercase 0x1D709 0x1D743
-  let-math \omicron  = greek-lowercase 0x1D70A 0x1D744
-  let-math \pi       = greek-lowercase 0x1D70B 0x1D745
-  let-math \rho      = greek-lowercase 0x1D70C 0x1D746
-  let-math \sigma    = greek-lowercase 0x1D70E 0x1D748
-  let-math \tau      = greek-lowercase 0x1D70F 0x1D749
-  let-math \upsilon  = greek-lowercase 0x1D710 0x1D74A
-  let-math \phi      = greek-lowercase 0x1D711 0x1D74B
-  let-math \chi      = greek-lowercase 0x1D712 0x1D74C
-  let-math \psi      = greek-lowercase 0x1D713 0x1D74D
-  let-math \omega    = greek-lowercase 0x1D714 0x1D74E
+  let greek-uppercase i =
+    greek (0x00391 + i) (0x1D6E2 + i) (0x1D6A8 + i) (0x1D71C + i) (0x1D756 + i) (0x1D790 + i)
 
-  let-math \Alpha    = greek-uppercase 0x1D6E2 0x1D71C 0x0391 0x1D6A8
-  let-math \Beta     = greek-uppercase 0x1D6E3 0x1D71D 0x0392 0x1D6A9
-  let-math \Gamma    = greek-uppercase 0x1D6E4 0x1D71E 0x0393 0x1D6AA
-  let-math \Delta    = greek-uppercase 0x1D6E5 0x1D71F 0x0394 0x1D6AB
-  let-math \Epsilon  = greek-uppercase 0x1D6E6 0x1D720 0x0395 0x1D6AC
-  let-math \Zeta     = greek-uppercase 0x1D6E7 0x1D721 0x0396 0x1D6AD
-  let-math \Eta      = greek-uppercase 0x1D6E8 0x1D722 0x0397 0x1D6AE
-  let-math \Theta    = greek-uppercase 0x1D6E9 0x1D723 0x0398 0x1D6AF
-  let-math \Iota     = greek-uppercase 0x1D6EA 0x1D724 0x0399 0x1D6B0
-  let-math \Kappa    = greek-uppercase 0x1D6EB 0x1D725 0x039A 0x1D6B1
-  let-math \Lambda   = greek-uppercase 0x1D6EC 0x1D726 0x039B 0x1D6B2
-  let-math \Mu       = greek-uppercase 0x1D6ED 0x1D727 0x039C 0x1D6B3
-  let-math \Nu       = greek-uppercase 0x1D6EE 0x1D728 0x039D 0x1D6B4
-  let-math \Xi       = greek-uppercase 0x1D6EF 0x1D729 0x039E 0x1D6B5
-  let-math \Omicron  = greek-uppercase 0x1D6F0 0x1D72A 0x039F 0x1D6B6
-  let-math \Pi       = greek-uppercase 0x1D6F1 0x1D72B 0x03A0 0x1D6B7
-  let-math \Rho      = greek-uppercase 0x1D6F2 0x1D72C 0x03A1 0x1D6B8
-  let-math \Sigma    = greek-uppercase 0x1D6F4 0x1D72E 0x03A3 0x1D6BA
-  let-math \Tau      = greek-uppercase 0x1D6F5 0x1D72F 0x03A4 0x1D6BB
-  let-math \Upsilon  = greek-uppercase 0x1D6F6 0x1D730 0x03A5 0x1D6BC
-  let-math \Phi      = greek-uppercase 0x1D6F7 0x1D731 0x03A6 0x1D6BD
-  let-math \Chi      = greek-uppercase 0x1D6F8 0x1D732 0x03A7 0x1D6BE
-  let-math \Psi      = greek-uppercase 0x1D6F9 0x1D733 0x03A8 0x1D6BF
-  let-math \Omega    = greek-uppercase 0x1D6FA 0x1D734 0x03A9 0x1D6C0
+  let-math \Alpha    = greek-uppercase 0
+  let-math \Beta     = greek-uppercase 1
+  let-math \Gamma    = greek-uppercase 2
+  let-math \Delta    = greek-uppercase 3
+  let-math \Epsilon  = greek-uppercase 4
+  let-math \Zeta     = greek-uppercase 5
+  let-math \Eta      = greek-uppercase 6
+  let-math \Theta    = greek-uppercase 7
+  let-math \Iota     = greek-uppercase 8
+  let-math \Kappa    = greek-uppercase 9
+  let-math \Lambda   = greek-uppercase 10
+  let-math \Mu       = greek-uppercase 11
+  let-math \Nu       = greek-uppercase 12
+  let-math \Xi       = greek-uppercase 13
+  let-math \Omicron  = greek-uppercase 14
+  let-math \Pi       = greek-uppercase 15
+  let-math \Rho      = greek-uppercase 16
+  let-math \Sigma    = greek-uppercase 18
+  let-math \Tau      = greek-uppercase 19
+  let-math \Upsilon  = greek-uppercase 20
+  let-math \Phi      = greek-uppercase 21
+  let-math \Chi      = greek-uppercase 22
+  let-math \Psi      = greek-uppercase 23
+  let-math \Omega    = greek-uppercase 24
 
   let ord = math-char MathOrd
   let bin = math-char MathBin

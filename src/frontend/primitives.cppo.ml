@@ -95,6 +95,11 @@ let tMCSTY =
       "fraktur";
       "bold-fraktur";
       "double-struck";
+      "sans-serif";
+      "bold-sans-serif";
+      "italic-sans-serif";
+      "bold-italic-sans-serif";
+      "typewriter";
     ])  (* temporary *)
   in
     (~! "math-char-style", RecordType(asc))
@@ -167,16 +172,20 @@ let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathInner"  ([], Poly(tU)) tyid_mathcls
 
   |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "MathItalic"       ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldItalic"   ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathRoman"        ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldRoman"    ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathScript"       ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldScript"   ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathFraktur"      ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldFraktur"  ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathDoubleStruck" ([], Poly(tU)) tyid_mccls
-
+  |> Typeenv.Raw.add_constructor "MathItalic"              ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldItalic"          ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathRoman"               ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldRoman"           ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathScript"              ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldScript"          ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathFraktur"             ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldFraktur"         ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathDoubleStruck"        ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathSansSerif"           ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldSansSerif"       ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathItalicSansSerif"     ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldItalicSansSerif" ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathTypewriter"          ([], Poly(tU)) tyid_mccls
 
 let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
 
@@ -455,7 +464,42 @@ let default_math_variant_char_map : Uchar.t HorzBox.MathVariantCharMap.t =
       (range 0 25) |> List.map (fun i ->
         (ascii_small_of_index i, MathDoubleStruck, code_point (0x1D552 + i)));
 
-    ])
+    (* -- Latin capital letter to its sans serif -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathSansSerif, code_point (0x1D5A0 + i)));
+    (* -- Latin small letter to its sans serif -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathSansSerif, code_point (0x1D5BA + i)));
+
+    (* -- Latin capital letter to its bold sans serif -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathBoldSansSerif, code_point (0x1D5D4 + i)));
+    (* -- Latin small letter to its bold sans serif -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathBoldSansSerif, code_point (0x1D5EE + i)));
+
+    (* -- Latin capital letter to its italic sans serif -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathItalicSansSerif, code_point (0x1D608 + i)));
+    (* -- Latin small letter to its italic sans serif -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathItalicSansSerif, code_point (0x1D622 + i)));
+
+    (* -- Latin capital letter to its bold italic sans serif -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathBoldItalicSansSerif, code_point (0x1D63C + i)));
+    (* -- Latin small letter to its bold italic sans serif -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathBoldItalicSansSerif, code_point (0x1D656 + i)));
+
+    (* -- Latin capital letter to its typewriter -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathTypewriter, code_point (0x1D670 + i)));
+    (* -- Latin small letter to its typewriter -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathTypewriter, code_point (0x1D68A + i)));
+
+])
 
 
 let default_math_class_map =
