@@ -1750,7 +1750,9 @@ params:
 - valuehd
 - valuetl
 code: |
-  ListCons(valuehd, valuetl)
+  match valuetl with
+  | List(vlst) -> List(valuehd :: vlst)
+  | _          -> report_bug_value "PrimitiveListCons" valuetl
 
 ---
 inst: PrimitiveSame

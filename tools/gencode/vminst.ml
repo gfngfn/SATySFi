@@ -1943,7 +1943,9 @@ const_unit
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-ListCons(valuehd, valuetl)
+match valuetl with
+| List(vlst) -> List(valuehd :: vlst)
+| _          -> report_bug_value "PrimitiveListCons" valuetl
 |}
     ; inst "PrimitiveSame"
         ~name:"string-same"

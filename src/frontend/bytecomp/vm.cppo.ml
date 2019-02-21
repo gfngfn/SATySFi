@@ -779,8 +779,8 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | v :: stack ->
             begin
               match v with
-              | EndOfList -> exec stack env code dump
-              | _         -> exec stack env next dump
+              | List([]) -> exec stack env code dump
+              | _        -> exec stack env next dump
             end
 
         | _ -> report_bug_vm "invalid argument for OpCheckStackTopEndOfList"
@@ -806,8 +806,8 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | v :: stack ->
             begin
               match v with
-              | ListCons(car, cdr) -> exec (car :: cdr :: stack) env code dump
-              | _                  -> exec stack env next dump
+              | List(car :: cdr) -> exec (car :: List(cdr) :: stack) env code dump
+              | _                -> exec stack env next dump
             end
 
         | _ -> report_bug_vm "invalid argument for OpCheckStackTopListCons"

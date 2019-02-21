@@ -793,8 +793,7 @@ and syntactic_value =
   | Nil  (* -- just for brief use -- *)
   | BaseConstant of base_constant
   | Constructor  of constructor_name * syntactic_value
-  | ListCons     of syntactic_value * syntactic_value
-  | EndOfList
+  | List         of syntactic_value list
   | Tuple        of syntactic_value list
   | RecordValue  of syntactic_value Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]

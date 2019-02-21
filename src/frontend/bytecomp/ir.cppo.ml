@@ -292,7 +292,7 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         return (IRConstant(MathValue(mlst)))
 
     | ASTEndOfList ->
-        return (IRConstant(EndOfList))
+        return (IRConstant(List([])))
 
     | FinishHeaderFile ->
         return IRTerminal

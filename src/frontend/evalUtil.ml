@@ -56,13 +56,9 @@ let get_string (value : syntactic_value) : string =
 
 
 let get_list getf value =
-  let rec aux acc value =
-    match value with
-    | ListCons(vhead, vtail) -> aux (Alist.extend acc (getf vhead)) vtail
-    | EndOfList              -> Alist.to_list acc
-    | _                      -> report_bug_value "get_list" value
-  in
-    aux Alist.empty value
+  match value with
+  | List(vlst) -> List.map getf vlst
+  | _          -> report_bug_value "get_list" value
 
 
 let get_graphics_element value =
@@ -72,13 +68,16 @@ let get_graphics_element value =
 
 
 let graphics_of_list value : (HorzBox.intermediate_horz_box list) GraphicD.t =
-  let rec aux gracc value =
     match value with
-    | EndOfList                                        -> gracc
-    | ListCons(BaseConstant(BCGraphics(grelem)), tail) -> aux (GraphicD.extend gracc grelem) tail
-    | _                                                -> report_bug_value "make_frame_deco" value
-  in
-    aux GraphicD.empty value
+    | List(vlst) ->
+        vlst |> List.fold_left (fun gracc v ->
+          match v with
+          | BaseConstant(BCGraphics(grelem)) -> GraphicD.extend gracc grelem
+          | _                                -> report_bug_value "graphics_of_list:1" v
+        ) GraphicD.empty
+
+    | _ ->
+        report_bug_value "graphics_of_list:2" value
 
 
 let get_paddings (value : syntactic_value) =
@@ -276,16 +275,6 @@ let make_language_system_value langsys =
     | CharBasis.NoLanguageSystem -> "NoLanguageSystem"
   in
   Constructor(label, BaseConstant(BCUnit))
-
-
-let get_list getf (value : syntactic_value) =
-  let rec aux acc value =
-    match value with
-    | ListCons(vhead, vtail) -> aux (Alist.extend acc (getf vhead)) vtail
-    | EndOfList              -> Alist.to_list acc
-    | _                      -> report_bug_vm "get_list"
-  in
-  aux Alist.empty value
 
 
 let get_math_char_class (value : syntactic_value) =
@@ -680,14 +669,12 @@ let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
   )
 
 
-let make_length_list lenlst =
-  List.fold_right (fun l acc ->
-    ListCons(BaseConstant(BCLength(l)), acc)
-  ) lenlst EndOfList
-
-
 let make_list (type a) (makef : a -> syntactic_value) (lst : a list) : syntactic_value =
-  List.fold_right (fun x ast -> ListCons(makef x, ast)) lst EndOfList
+  List(lst |> List.map makef)
+
+
+let make_length_list lenlst =
+  List(lenlst |> List.map (fun l -> BaseConstant(BCLength(l))))
 
 
 let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =

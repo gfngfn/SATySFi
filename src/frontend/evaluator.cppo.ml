@@ -138,7 +138,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       BaseConstant(bc)
 
   | ASTEndOfList ->
-      EndOfList
+      List([])
 
   | ASTMath(mlst) ->
       MathValue(mlst)
@@ -715,13 +715,13 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
       let envnew = add_to_environment env evid (ref sub) in
       check_pattern_matching envnew psub sub
 
-  | (PEndOfList, EndOfList) ->
+  | (PEndOfList, List([])) ->
       Some(env)
 
-  | (PListCons(phd, ptl), ListCons(hd, tl)) ->
+  | (PListCons(phd, ptl), List(vhd :: vtail)) ->
       let open OptionMonad in
-      check_pattern_matching env phd hd >>= fun envhd ->
-      check_pattern_matching envhd ptl tl
+      check_pattern_matching env phd vhd >>= fun envhd ->
+      check_pattern_matching envhd ptl (List(vtail))
 
   | (PTuple(plst), Tuple(vlst)) ->
       let open OptionMonad in
