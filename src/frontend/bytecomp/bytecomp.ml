@@ -14,7 +14,7 @@ let compile_and_exec_0 (env : environment) (ast : abstract_tree) : syntactic_val
   Vm.exec [] (env, []) code []
 
 
-let compile_environment env =
+let compile_environment (env : environment) : unit =
   let (binds, _) = env in
   binds |> EvalVarIDMap.iter (fun evid loc ->
     match !loc with
