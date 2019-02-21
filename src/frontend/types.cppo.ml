@@ -816,7 +816,9 @@ and syntactic_value =
   | CompiledInputVertWithEnvironment of compiled_intermediate_input_vert_element list * vmenv
 
 and abstract_tree =
-  | Value                 of syntactic_value
+  | ASTBaseConstant       of base_constant
+  | ASTEndOfList
+  | ASTMath               of math list
   | FinishHeaderFile
   | FinishStruct
 (* -- input texts -- *)
@@ -929,7 +931,9 @@ and math =
   | MathLowerLimit        of math list * math list
 
 and code_value =
-  | CdValue         of syntactic_value
+  | CdBaseConstant  of base_constant
+  | CdEndOfList
+  | CdMath          of math list
   | CdFinishHeaderFile
   | CdFinishStruct
   | CdInputHorz     of code_input_horz_element list
@@ -1370,7 +1374,9 @@ let map_path_component f g = function
 let rec unlift_code (code : code_value) : abstract_tree =
   let rec aux code =
     match code with
-    | CdValue(v)                           -> Value(v)
+    | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
+    | CdEndOfList                          -> ASTEndOfList
+    | CdMath(mlst)                         -> ASTMath(mlst)
     | CdFinishHeaderFile                   -> FinishHeaderFile
     | CdFinishStruct                       -> FinishStruct
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)

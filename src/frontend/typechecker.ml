@@ -52,7 +52,9 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
 let rec is_nonexpansive_expression e =
   let iter = is_nonexpansive_expression in
   match e with
-  | Value(_)
+  | ASTBaseConstant(_)
+  | ASTEndOfList
+  | ASTMath(_)
   | Function(_)
   | ContentOf(_) ->
       true
@@ -537,7 +539,7 @@ let fresh_type_variable rng pre kd =
 
 
 let base bc =
-  Value(BaseConstant(bc))
+  ASTBaseConstant(bc)
 
 
 let rec typecheck
@@ -849,7 +851,7 @@ let rec typecheck
 
   | UTEndOfList ->
       let beta = fresh_type_variable rng pre UniversalKind in
-      (Value(EndOfList), (rng, ListType(beta)))
+      (ASTEndOfList, (rng, ListType(beta)))
 
 (* ---- tuple ---- *)
 
@@ -997,7 +999,7 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
   let open HorzBox in
     match utmathmain with
     | UTMChar(s) ->
-        Value(MathValue[MathPure(MathVariantChar(s))])
+        ASTMath([MathPure(MathVariantChar(s))])
 
     | UTMList(utmathlst) ->
         let astlst = utmathlst |> List.map iter in
@@ -1188,7 +1190,7 @@ and typecheck_itemize_list
     (pre : pre) (tyenv : Typeenv.t) (utitmzlst : untyped_itemize list) =
   match utitmzlst with
   | [] ->
-      Value(EndOfList)
+      ASTEndOfList
 
   | hditmz :: tlitmzlst ->
       let ehd = typecheck_itemize pre tyenv hditmz in

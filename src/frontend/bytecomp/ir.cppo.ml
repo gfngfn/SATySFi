@@ -285,8 +285,14 @@ and check_primitive (env : frame) (ast : abstract_tree) : (int * (abstract_tree 
 and transform (env : frame) (ast : abstract_tree) : ir * frame =
   let return ir = (ir, env) in
     match ast with
-    | Value(v) ->
-        return (IRConstant(v))
+    | ASTBaseConstant(bc) ->
+        return (IRConstant(BaseConstant(bc)))
+
+    | ASTMath(mlst) ->
+        return (IRConstant(MathValue(mlst)))
+
+    | ASTEndOfList ->
+        return (IRConstant(EndOfList))
 
     | FinishHeaderFile ->
         return IRTerminal

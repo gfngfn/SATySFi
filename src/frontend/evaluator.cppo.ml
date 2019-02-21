@@ -15,7 +15,7 @@ let report_dynamic_error msg =
 type nom_input_horz_element =
   | NomInputHorzText     of string
   | NomInputHorzEmbedded of abstract_tree
-  | NomInputHorzThunk    of abstract_tree
+  | NomInputHorzThunk    of syntactic_value * abstract_tree
   | NomInputHorzContent  of nom_input_horz_element list * environment
 
 (*
@@ -134,7 +134,14 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
 
 (* ---- basic value ---- *)
 
-  | Value(v) -> v
+  | ASTBaseConstant(bc) ->
+      BaseConstant(bc)
+
+  | ASTEndOfList ->
+      EndOfList
+
+  | ASTMath(mlst) ->
+      MathValue(mlst)
 
   | FinishHeaderFile ->
       EvaluatedEnvironment(env)
@@ -353,8 +360,14 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
 and interpret_1 (env : environment) (ast : abstract_tree) =
   match ast with
 
-  | Value(v) ->
-      CdValue(v)
+  | ASTBaseConstant(bc) ->
+      CdBaseConstant(bc)
+
+  | ASTMath(mlst) ->
+      CdMath(mlst)
+
+  | ASTEndOfList ->
+      CdEndOfList
 
   | FinishHeaderFile ->
       CdFinishHeaderFile
@@ -504,7 +517,8 @@ and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value
     imivlst |> List.map (fun imiv ->
       match imiv with
       | ImInputVertEmbedded(astabs) ->
-          let valuevert = interpret_0 env (Apply(astabs, Value(valuetctx))) in
+          let valueabs = interpret_0 env astabs in
+          let valuevert = reduce_beta valueabs valuetctx in
           get_string valuevert
 
       | ImInputVertContent(imivlstsub, envsub) ->
@@ -553,11 +567,13 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx :
     nmihlst |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzEmbedded(astabs) ->
-          let valueret = interpret_0 env (Apply(astabs, Value(valuetctx))) in
+          let valueabs = interpret_0 env astabs in
+          let valueret = reduce_beta valueabs valuetctx in
           get_string valueret
 
-      | NomInputHorzThunk(ast) ->
-          let valueret = interpret_0 env ast in
+      | NomInputHorzThunk(valuecmd, astarg) ->
+          let valuearg = interpret_0 env astarg in
+          let valueret = reduce_beta valuecmd valuearg in
           get_string valueret
 
       | NomInputHorzText(s) ->
@@ -581,7 +597,8 @@ and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) 
     imivlst |> List.map (fun imiv ->
       match imiv with
       | ImInputVertEmbedded(astabs) ->
-          let valuevert = interpret_0 env (Apply(astabs, Value(valuectx))) in
+          let valueabs = interpret_0 env astabs in
+          let valuevert = reduce_beta valueabs valuectx in
           get_vert valuevert
 
       | ImInputVertContent(imivlstsub, envsub) ->
@@ -612,7 +629,8 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
           end
 
       | ImInputHorzEmbeddedMath(astmath) ->
-          let nmih = NomInputHorzThunk(Apply(Apply(Value(valuemcmd), Value(valuectx)), astmath)) in
+          let valuemcmdctx = reduce_beta valuemcmd valuectx in
+          let nmih = NomInputHorzThunk(valuemcmdctx, astmath) in
           Alist.extend acc nmih
 
       | ImInputHorzContent(imihlstsub, envsub) ->
@@ -627,11 +645,13 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
     nmihlst |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzEmbedded(astabs) ->
-          let valuehorz = interpret_0 env (Apply(astabs, Value(valuectx))) in
+          let valueabs = interpret_0 env astabs in
+          let valuehorz = reduce_beta valueabs valuectx in
           get_horz valuehorz
 
-      | NomInputHorzThunk(ast) ->
-          let valuehorz = interpret_0 env ast in
+      | NomInputHorzThunk(valuemcmdctx, astmath) ->
+          let valuemath = interpret_0 env astmath in
+          let valuehorz = reduce_beta valuemcmdctx valuemath in
           get_horz valuehorz
 
       | NomInputHorzText(s) ->
