@@ -46,7 +46,7 @@ make_string (s1 ^ s2)
           param "mccls" ~type_:"math_char_class";
           param "cpfrom" ~type_:"int";
           param "cpto" ~type_:"int";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
@@ -56,7 +56,7 @@ let uchto = Uchar.of_int cpto in
 let mcclsmap = ctx.HorzBox.math_variant_char_map in
 Context(HorzBox.({ ctx with
   math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) uchto;
-}), valuecmd)
+}), ctxsub)
 |}
     ; inst "PrimitiveConvertStringForMath"
         ~name:"convert-string-for-math"
@@ -66,13 +66,13 @@ Context(HorzBox.({ ctx with
         ~fields:[
         ]
         ~params:[
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
           param "mccls" ~type_:"math_char_class";
           param "s" ~type_:"string";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = MathContext.convert_math_variant_char (ctx, valuecmd) s in make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
+let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = MathContext.convert_math_variant_char (ctx, ctxsub) s in make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
 |}
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"
@@ -83,11 +83,11 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = M
         ]
         ~params:[
           param "valuecmd";
-          param "(ctx, _)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(ctx, valuecmd)
+Context(ctx, { ctxsub with math_command = MathCommand(valuecmd); })
 |}
     ; inst "BackendMathVariantCharDirect"
         ~name:"math-variant-char"
@@ -990,7 +990,7 @@ BaseConstant(BCDocument(pagesize, pagecontf, pagepartsf, vblst))
         ~fields:[
         ]
         ~params:[
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
           param "pads" ~type_:"paddings";
           param "(valuedecoS, valuedecoH, valuedecoM, valuedecoT)" ~type_:"decoset";
           param "valuek";
@@ -1001,7 +1001,7 @@ BaseConstant(BCDocument(pagesize, pagecontf, pagepartsf, vblst))
 let valuectxsub =
   Context(HorzBox.({ ctx with
     paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR);
-  }), valuecmd)
+  }), ctxsub)
 in
 let vblst =
   let valuev = reducef valuek [valuectxsub] in
@@ -1041,7 +1041,7 @@ make_horz (HorzBox.([HorzPure(PHGFootnote(imvblst))]))
         ~fields:[
         ]
         ~params:[
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
           param "wid" ~type_:"length";
           param "valuek";
         ]
@@ -1049,7 +1049,7 @@ make_horz (HorzBox.([HorzPure(PHGFootnote(imvblst))]))
         ~needs_reducef:true
         ~code:{|
 let valuectxsub =
-  Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
+  Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
 in
 let vblst =
   let valuev = reducef valuek [valuectxsub] in
@@ -1081,7 +1081,7 @@ make_vert (HorzBox.([VertFixedBreakable(len)]))
         ~fields:[
         ]
         ~params:[
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
           param "wid" ~type_:"length";
           param "valuek";
         ]
@@ -1089,7 +1089,7 @@ make_vert (HorzBox.([VertFixedBreakable(len)]))
         ~needs_reducef:true
         ~code:{|
 let valuectxsub =
-  Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
+  Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
 in
 let vblst =
   let valuev = reducef valuek [valuectxsub] in
@@ -1149,7 +1149,13 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
         ~is_pdf_mode_primitive:true
         ~code:{|
 let ctx = Primitives.get_pdf_mode_initial_context txtwid in
-Context(ctx, valuecmd)
+let ctxsub =
+  {
+    math_command = MathCommand(valuecmd);
+    dummy = ();
+  }
+in
+Context(ctx, ctxsub)
 |}
     ; inst "PrimitiveSetHyphenMin"
         ~name:"set-hyphen-min"
@@ -1161,14 +1167,14 @@ Context(ctx, valuecmd)
         ~params:[
           param "lmin" ~type_:"int";
           param "rmin" ~type_:"int";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 Context(HorzBox.({ ctx with
   left_hyphen_min = max 0 lmin;
   right_hyphen_min = max 0 rmin;
-}), valuecmd)
+}), ctxsub)
 |}
     ; inst "PrimitiveSetMinGapOfLines"
         ~name:"set-min-gap-of-lines"
@@ -1179,13 +1185,13 @@ Context(HorzBox.({ ctx with
         ]
         ~params:[
           param "lengap" ~type_:"length";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 Context(HorzBox.({ ctx with
   min_gap_of_lines = Length.max Length.zero lengap;
-}), valuecmd)
+}), ctxsub)
 |}
     ; inst "PrimitiveSetSpaceRatio"
         ~name:"set-space-ratio"
@@ -1198,7 +1204,7 @@ Context(HorzBox.({ ctx with
           param "ratio_natural" ~type_:"float";
           param "ratio_shrink" ~type_:"float";
           param "ratio_stretch" ~type_:"float";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -1206,7 +1212,7 @@ Context(HorzBox.({ ctx with
   space_natural = max 0. ratio_natural;
   space_shrink  = max 0. ratio_shrink;
   space_stretch = max 0. ratio_stretch;
-}), valuecmd)
+}), ctxsub)
 |}
     ; inst "PrimitiveSetSpaceRatioBetweenScripts"
         ~name:"set-space-ratio-between-scripts"
@@ -1221,7 +1227,7 @@ Context(HorzBox.({ ctx with
           param "ratio_stretch" ~type_:"float";
           param "script1" ~type_:"script";
           param "script2" ~type_:"script";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -1230,7 +1236,7 @@ Context(HorzBox.({ ctx with
     ctx.script_space_map |> CharBasis.ScriptSpaceMap.add
       (script1, script2)
       (max 0. ratio_natural, max 0. ratio_shrink, max 0. ratio_stretch)
-}), valuecmd)
+}), ctxsub)
 |}
     ; inst "PrimitiveGetSpaceRatioBetweenScripts"
         ~name:"get-space-ratio-between-scripts"
@@ -1267,14 +1273,14 @@ match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script
         ~params:[
           param "lentop" ~type_:"length";
           param "lenbottom" ~type_:"length";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 Context(HorzBox.({ ctx with
   paragraph_top    = lentop;
   paragraph_bottom = lenbottom;
-}), valuecmd)
+}), ctxsub)
 |}
     ; inst "PrimitiveSetParagraphMinAscenderAndDescender"
         ~name:"set-min-paragraph-ascender-and-descender"
@@ -1286,14 +1292,14 @@ Context(HorzBox.({ ctx with
         ~params:[
           param "lenminasc" ~type_:"length";
           param "lenmindesc" ~type_:"length";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 Context(HorzBox.({ ctx with
   min_first_line_ascender = lenminasc;
   min_last_line_descender = lenmindesc;
-}), valuecmd)
+}), ctxsub)
 |}
     ; inst "PrimitiveSetFontSize"
         ~name:"set-font-size"
@@ -1304,11 +1310,11 @@ Context(HorzBox.({ ctx with
         ]
         ~params:[
           param "size" ~type_:"length";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with font_size = size; }), valuecmd)
+Context(HorzBox.({ ctx with font_size = size; }), ctxsub)
 |}
     ; inst "PrimitiveGetFontSize"
         ~name:"get-font-size"
@@ -1334,12 +1340,12 @@ make_length (ctx.HorzBox.font_size)
         ~params:[
           param "script" ~type_:"script";
           param "font_info" ~type_:"font";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 let font_scheme_new = HorzBox.(ctx.font_scheme |> CharBasis.ScriptSchemeMap.add script font_info) in
-Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), valuecmd)
+Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
 |}
     ; inst "PrimitiveGetFont"
         ~name:"get-font"
@@ -1366,11 +1372,11 @@ make_font_value fontwr
         ]
         ~params:[
           param "mfabbrev" ~type_:"string";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with math_font = mfabbrev; }), valuecmd)
+Context(HorzBox.({ ctx with math_font = mfabbrev; }), ctxsub)
 |}
     ; inst "PrimitiveSetDominantWideScript"
         ~name:"set-dominant-wide-script"
@@ -1381,11 +1387,11 @@ Context(HorzBox.({ ctx with math_font = mfabbrev; }), valuecmd)
         ]
         ~params:[
           param "script" ~type_:"script";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with dominant_wide_script = script; }), valuecmd)
+Context(HorzBox.({ ctx with dominant_wide_script = script; }), ctxsub)
 |}
     ; inst "PrimitiveGetDominantWideScript"
         ~name:"get-dominant-wide-script"
@@ -1410,11 +1416,11 @@ make_script_value ctx.HorzBox.dominant_wide_script
         ]
         ~params:[
           param "script" ~type_:"script";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with dominant_narrow_script = script; }), valuecmd)
+Context(HorzBox.({ ctx with dominant_narrow_script = script; }), ctxsub)
 |}
     ; inst "PrimitiveGetDominantNarrowScript"
         ~name:"get-dominant-narrow-script"
@@ -1440,13 +1446,13 @@ make_script_value ctx.HorzBox.dominant_narrow_script
         ~params:[
           param "script" ~type_:"script";
           param "langsys" ~type_:"language_system";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 Context(HorzBox.({ ctx with
   langsys_scheme = ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.add script langsys;
-}), valuecmd)
+}), ctxsub)
 |}
     ; inst "PrimitiveGetLangSys"
         ~name:"get-language"
@@ -1473,11 +1479,11 @@ make_language_system_value langsys
         ]
         ~params:[
           param "color" ~type_:"color";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with text_color = color; }), valuecmd)
+Context(HorzBox.({ ctx with text_color = color; }), ctxsub)
 |}
     ; inst "PrimitiveGetTextColor"
         ~name:"get-text-color"
@@ -1503,11 +1509,11 @@ make_color_value color
         ]
         ~params:[
           param "len" ~type_:"length";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with leading = len; }), valuecmd)
+Context(HorzBox.({ ctx with leading = len; }), ctxsub)
 |}
     ; inst "PrimitiveGetTextWidth"
         ~name:"get-text-width"
@@ -1532,11 +1538,11 @@ make_length (ctx.HorzBox.paragraph_width)
         ]
         ~params:[
           param "rising" ~type_:"length";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with manual_rising = rising; }), valuecmd)
+Context(HorzBox.({ ctx with manual_rising = rising; }), ctxsub)
 |}
     ; inst "PrimitiveRaise"
         ~name:"raise-inline"
@@ -1562,11 +1568,11 @@ make_horz (HorzBox.([HorzPure(PHGRising(rising, hblst))]))
         ]
         ~params:[
           param "pnlty" ~type_:"int";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), valuecmd)
+Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
 |}
     ; inst "PrimitiveEmbed"
         ~name:"embed-string"
@@ -2762,13 +2768,13 @@ make_bool (HorzBox.(len2 <% len1))
         ]
         ~params:[
           param "pnlty" ~type_:"int";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 Context(HorzBox.{ ctx with
   space_badness = pnlty;
-}, valuecmd)
+}, ctxsub)
 |}
     ; inst "PrimitiveSetEveryWordBreak"
         ~name:"set-every-word-break"
@@ -2780,14 +2786,14 @@ Context(HorzBox.{ ctx with
         ~params:[
           param "hblst1" ~type_:"horz";
           param "hblst2" ~type_:"horz";
-          param "(ctx, valuecmd)" ~type_:"context";
+          param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 Context(HorzBox.({ ctx with
   before_word_break = hblst1;
   after_word_break = hblst2;
-}), valuecmd)
+}), ctxsub)
 |}
     ; inst "PrimitiveGetEveryWordBreak"
         ~name:"get-every-word-break"

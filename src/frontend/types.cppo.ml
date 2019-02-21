@@ -880,7 +880,16 @@ and pattern_tree =
   | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
 
-and input_context = HorzBox.context_main * syntactic_value
+and input_context = HorzBox.context_main * context_sub
+
+and context_sub = {
+  math_command : math_command_func;
+  dummy : unit;
+}
+
+and math_command_func =
+  | MathCommand of syntactic_value
+      (* (input_context -> math list -> HorzBox.horz_box list) *)
 
 and math_element_main =
   | MathChar         of bool * Uchar.t list

@@ -242,7 +242,7 @@ and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_va
 
 
 and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
-  let (ctx, valuemcmd) = get_context valuectx in
+  let (ctx, ctxsub) = get_context valuectx in
     begin
       let rec normalize imihlst =
         imihlst |> List.fold_left (fun acc imih ->
@@ -259,6 +259,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
                 end
 
             | CompiledImInputHorzEmbeddedMath(mathcode) ->
+                let MathCommand(valuemcmd) = ctxsub.math_command in
                 let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuectx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
                   Alist.extend acc nmih
 

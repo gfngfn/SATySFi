@@ -64,14 +64,14 @@ params:
 - mccls : math_char_class
 - cpfrom : int
 - cpto : int
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   let uchfrom = Uchar.of_int cpfrom in
   let uchto = Uchar.of_int cpto in
   let mcclsmap = ctx.HorzBox.math_variant_char_map in
   Context(HorzBox.({ ctx with
     math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) uchto;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveConvertStringForMath
@@ -81,12 +81,12 @@ type: |
   ~% (tCTX @-> tMCCLS @-> tS @-> tS)
 
 params:
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 - mccls : math_char_class
 - s : string
 code:
   let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in
-  let (_, uchlst) = MathContext.convert_math_variant_char (ctx, valuecmd) s in
+  let (_, uchlst) = MathContext.convert_math_variant_char (ctx, ctxsub) s in
   make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
 
 ---
@@ -98,9 +98,9 @@ type: |
 
 params:
 - valuecmd
-- (ctx, _) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(ctx, valuecmd)
+  Context(ctx, { ctxsub with math_command = MathCommand(valuecmd); })
 
 ---
 inst: BackendMathVariantCharDirect
@@ -908,7 +908,7 @@ type: |
 
 needs-reducef : yes
 params:
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 - pads : paddings
 - (valuedecoS, valuedecoH, valuedecoM, valuedecoT) : decoset
 - valuek
@@ -916,7 +916,7 @@ code: |
   let valuectxsub =
     Context(HorzBox.({ ctx with
       paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR);
-    }), valuecmd)
+    }), ctxsub)
   in
   let vblst =
     let valuev = reducef valuek [valuectxsub] in
@@ -955,12 +955,12 @@ type: |
 
 needs-reducef : yes
 params:
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 - wid : length
 - valuek
 code: |
   let valuectxsub =
-    Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
+    Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
   in
   let vblst =
     let valuev = reducef valuek [valuectxsub] in
@@ -991,12 +991,12 @@ type: |
 
 needs-reducef : yes
 params:
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 - wid : length
 - valuek
 code: |
   let valuectxsub =
-    Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
+    Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
   in
   let vblst =
     let valuev = reducef valuek [valuectxsub] in
@@ -1050,7 +1050,13 @@ params:
 - valuecmd
 code: |
   let ctx = Primitives.get_pdf_mode_initial_context txtwid in
-  Context(ctx, valuecmd)
+  let ctxsub =
+    {
+      math_command = MathCommand(valuecmd);
+      dummy = ();
+    }
+  in
+  Context(ctx, ctxsub)
 
 ---
 inst: PrimitiveSetHyphenMin
@@ -1062,12 +1068,12 @@ type: |
 params:
 - lmin : int
 - rmin : int
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     left_hyphen_min = max 0 lmin;
     right_hyphen_min = max 0 rmin;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveSetMinGapOfLines
@@ -1078,11 +1084,11 @@ type: |
 
 params:
 - lengap : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     min_gap_of_lines = Length.max Length.zero lengap;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveSetSpaceRatio
@@ -1095,13 +1101,13 @@ params:
 - ratio_natural : float
 - ratio_shrink : float
 - ratio_stretch : float
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     space_natural = max 0. ratio_natural;
     space_shrink  = max 0. ratio_shrink;
     space_stretch = max 0. ratio_stretch;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveSetSpaceRatioBetweenScripts
@@ -1116,14 +1122,14 @@ params:
 - ratio_stretch : float
 - script1 : script
 - script2 : script
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     script_space_map =
       ctx.script_space_map |> CharBasis.ScriptSpaceMap.add
         (script1, script2)
         (max 0. ratio_natural, max 0. ratio_shrink, max 0. ratio_stretch)
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveGetSpaceRatioBetweenScripts
@@ -1158,12 +1164,12 @@ type: |
 params:
 - lentop : length
 - lenbottom : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     paragraph_top    = lentop;
     paragraph_bottom = lenbottom;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveSetParagraphMinAscenderAndDescender
@@ -1175,12 +1181,12 @@ type: |
 params:
 - lenminasc : length
 - lenmindesc : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     min_first_line_ascender = lenminasc;
     min_last_line_descender = lenmindesc;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveSetFontSize
@@ -1191,9 +1197,9 @@ type: |
 
 params:
 - size : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with font_size = size; }), valuecmd)
+  Context(HorzBox.({ ctx with font_size = size; }), ctxsub)
 
 ---
 inst: PrimitiveGetFontSize
@@ -1217,10 +1223,10 @@ type: |
 params:
 - script : script
 - font_info : font
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   let font_scheme_new = HorzBox.(ctx.font_scheme |> CharBasis.ScriptSchemeMap.add script font_info) in
-  Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), valuecmd)
+  Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
 
 ---
 inst: PrimitiveGetFont
@@ -1245,9 +1251,9 @@ type: |
 
 params:
 - mfabbrev : string
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with math_font = mfabbrev; }), valuecmd)
+  Context(HorzBox.({ ctx with math_font = mfabbrev; }), ctxsub)
 
 ---
 inst: PrimitiveSetDominantWideScript
@@ -1258,9 +1264,9 @@ type: |
 
 params:
 - script: script
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with dominant_wide_script = script; }), valuecmd)
+  Context(HorzBox.({ ctx with dominant_wide_script = script; }), ctxsub)
 
 ---
 inst: PrimitiveGetDominantWideScript
@@ -1283,9 +1289,9 @@ type: |
 
 params:
 - script : script
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with dominant_narrow_script = script; }), valuecmd)
+  Context(HorzBox.({ ctx with dominant_narrow_script = script; }), ctxsub)
 
 ---
 inst: PrimitiveGetDominantNarrowScript
@@ -1309,11 +1315,11 @@ type: |
 params:
 - script : script
 - langsys : language_system
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     langsys_scheme = ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.add script langsys;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveGetLangSys
@@ -1338,9 +1344,9 @@ type: |
 
 params:
 - color : color
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with text_color = color; }), valuecmd)
+  Context(HorzBox.({ ctx with text_color = color; }), ctxsub)
 
 ---
 inst: PrimitiveGetTextColor
@@ -1364,9 +1370,9 @@ type: |
 
 params:
 - len : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with leading = len; }), valuecmd)
+  Context(HorzBox.({ ctx with leading = len; }), ctxsub)
 
 ---
 inst: PrimitiveGetTextWidth
@@ -1389,9 +1395,9 @@ type: |
 
 params:
 - rising : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with manual_rising = rising; }), valuecmd)
+  Context(HorzBox.({ ctx with manual_rising = rising; }), ctxsub)
 
 ---
 inst: PrimitiveRaise
@@ -1415,9 +1421,9 @@ type: |
 
 params:
 - pnlty : int
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), valuecmd)
+  Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
 
 ---
 inst: PrimitiveEmbed
@@ -2472,11 +2478,11 @@ type: |
 
 params:
 - pnlty : int
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.{ ctx with
     space_badness = pnlty;
-  }, valuecmd)
+  }, ctxsub)
 
 ---
 inst: PrimitiveSetEveryWordBreak
@@ -2488,12 +2494,12 @@ type: |
 params:
 - hblst1 : horz
 - hblst2 : horz
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     before_word_break = hblst1;
     after_word_break = hblst2;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveGetEveryWordBreak
