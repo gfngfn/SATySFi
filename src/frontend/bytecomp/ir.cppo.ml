@@ -272,8 +272,8 @@ and check_primitive (env : frame) (ast : abstract_tree) : (int * (abstract_tree 
         | Some(rfvalue) ->
             begin
               match !rfvalue with
-              | CompiledPrimitiveWithEnvironment(arity, _, _, _, _, astf) -> Some((arity, astf))
-              | _                                                         -> None
+              | CompiledPrimitiveClosure(arity, _, _, _, _, astf) -> Some((arity, astf))
+              | _                                                 -> None
             end
 
         | None -> None

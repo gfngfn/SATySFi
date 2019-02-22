@@ -18,11 +18,11 @@ let compile_environment env =
   let (binds, _) = env in
   binds |> EvalVarIDMap.iter (fun evid loc ->
     match !loc with
-    | PrimitiveWithEnvironment(parbr, env1, arity, astf) ->
+    | PrimitiveClosure(parbr, env1, arity, astf) ->
         begin
           match compile_and_exec_0 env (Function([], parbr)) with
-          | CompiledFuncWithEnvironment([], _, _, framesize, body, env1) ->
-              loc := CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf)
+          | CompiledClosure([], _, _, framesize, body, env1) ->
+              loc := CompiledPrimitiveClosure(arity, [], framesize, body, env1, astf)
           | _ ->
               ()
         end

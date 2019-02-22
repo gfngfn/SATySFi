@@ -35,7 +35,7 @@ let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_
 
 let rec reduce_beta value1 value2 =
   match value1 with
-  | FuncWithEnvironment(evids, patbr, env1) ->
+  | Closure(evids, patbr, env1) ->
       let env1 =
         evids |> List.fold_left (fun env evid ->
           let loc = ref (Constructor("None", const_unit)) in
@@ -44,7 +44,7 @@ let rec reduce_beta value1 value2 =
       in
       select_pattern (Range.dummy "Apply") env1 value2 [patbr]
 
-  | PrimitiveWithEnvironment(patbr, env1, _, _) ->
+  | PrimitiveClosure(patbr, env1, _, _) ->
       select_pattern (Range.dummy "Apply") env1 value2 [patbr]
 
   | _ ->
@@ -103,7 +103,7 @@ and interpret_0_input_horz_content (env : environment) (ihlst : input_horz_eleme
         let value = interpret_0 env ast in
         begin
           match value with
-          | InputHorzWithEnvironment(imihlst, envsub) ->
+          | InputHorzClosure(imihlst, envsub) ->
               ImInputHorzContent(imihlst, envsub)
 
           | _ ->
@@ -120,7 +120,7 @@ and interpret_0_input_vert_content (env : environment) (ivlst : input_vert_eleme
         let value = interpret_0 env ast in
         begin
           match value with
-          | InputVertWithEnvironment(imivlst, envsub) ->
+          | InputVertClosure(imivlst, envsub) ->
               ImInputVertContent(imivlst, envsub)
 
           | _ ->
@@ -151,12 +151,12 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
 
   | InputHorz(ihlst) ->
       let imihlst = interpret_0_input_horz_content env ihlst in
-      InputHorzWithEnvironment(imihlst, env)
+      InputHorzClosure(imihlst, env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
   | InputVert(ivlst) ->
       let imivlst = interpret_0_input_vert_content env ivlst in
-      InputVertWithEnvironment(imivlst, env)
+      InputVertClosure(imivlst, env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
 (* -- fundamentals -- *)
@@ -181,7 +181,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)]
 
   | Function(evids, patbrs) ->
-      FuncWithEnvironment(evids, patbrs, env)
+      Closure(evids, patbrs, env)
 
   | Apply(ast1, ast2) ->
       let value1 = interpret_0 env ast1 in
@@ -192,11 +192,11 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       let value1 = interpret_0 env ast1 in
       begin
         match value1 with
-        | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
+        | Closure(evid :: evids, patbrs, env1) ->
             let value2 = interpret_0 env ast2 in
             let loc = ref (Constructor("Some", value2)) in
             let env1 = add_to_environment env1 evid loc in
-            FuncWithEnvironment(evids, patbrs, env1)
+            Closure(evids, patbrs, env1)
 
         | _ -> report_bug_reduction "ApplyOptional: not a function with optional parameter" ast1 value1
       end
@@ -205,9 +205,9 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       let value1 = interpret_0 env ast1 in
       begin
         match value1 with
-        | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
+        | Closure(evid :: evids, patbrs, env1) ->
             let env1 = add_to_environment env1 evid (ref (Constructor("None", const_unit))) in
-            FuncWithEnvironment(evids, patbrs, env1)
+            Closure(evids, patbrs, env1)
 
         | _ ->
             report_bug_reduction "ApplyOmission: not a function with optional parameter" ast1 value1
@@ -757,6 +757,6 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
     )
   in
   trilst |> List.iter (fun (evid, loc, patbr) ->
-    loc := FuncWithEnvironment([], patbr, envnew)
+    loc := Closure([], patbr, envnew)
   );
   envnew

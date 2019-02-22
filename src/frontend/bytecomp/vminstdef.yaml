@@ -726,13 +726,13 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi valuectx imihlst
-  | _                                               -> report_bug_vm "HorzLex"
+  | CompiledInputHorzClosure(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi valuectx imihlst
+  | _                                       -> report_bug_vm "HorzLex"
 
 code-interp: |
   match value1 with
-  | InputHorzWithEnvironment(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi valuectx imihlst
-  | _                                       -> report_bug_value "HorzLex" value1
+  | InputHorzClosure(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi valuectx imihlst
+  | _                               -> report_bug_value "HorzLex" value1
 
 ---
 inst: VertLex
@@ -747,13 +747,13 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputVertWithEnvironment(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
-  | _                                               -> report_bug_vm "VertLex"
+  | CompiledInputVertClosure(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
+  | _                                       -> report_bug_vm "VertLex"
 
 code-interp: |
   match value1 with
-  | InputVertWithEnvironment(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
-  | _                                       -> report_bug_value "VertLex" value1
+  | InputVertClosure(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
+  | _                               -> report_bug_value "VertLex" value1
 
 ---
 inst: TextHorzLex
@@ -768,13 +768,13 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
-  | _                                               -> report_bug_vm "TextHorzLex"
+  | CompiledInputHorzClosure(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
+  | _                                       -> report_bug_vm "TextHorzLex"
 
 code-interp: |
   match value1 with
-  | InputHorzWithEnvironment(imihlst, envi) -> interpret_text_mode_intermediate_input_horz envi valuetctx imihlst
-  | _                                       -> report_bug_value "TextHorzLex" value1
+  | InputHorzClosure(imihlst, envi) -> interpret_text_mode_intermediate_input_horz envi valuetctx imihlst
+  | _                               -> report_bug_value "TextHorzLex" value1
 
 ---
 inst: TextVertLex
@@ -789,13 +789,13 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputVertWithEnvironment(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
-  | _                                               -> report_bug_vm "TextVertLex"
+  | CompiledInputVertClosure(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
+  | _                                       -> report_bug_vm "TextVertLex"
 
 code-interp: |
   match value1 with
-  | InputVertWithEnvironment(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
-  | _                                       -> report_bug_value "TextVertLex" value1
+  | InputVertClosure(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
+  | _                               -> report_bug_value "TextVertLex" value1
 
 ---
 inst: TextDeepenIndent
@@ -1441,10 +1441,10 @@ separated: yes
 params:
 - str : string
 code: |
-  CompiledInputHorzWithEnvironment([CompiledImInputHorzText(str)], env)
+  CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)
 
 code-interp: |
-  InputHorzWithEnvironment([ImInputHorzText(str)], env)
+  InputHorzClosure([ImInputHorzText(str)], env)
 
 ---
 inst: PrimitiveExtract

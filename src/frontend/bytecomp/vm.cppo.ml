@@ -118,14 +118,14 @@ and exec_input_horz_content env ihlst =
         let value = exec [] env code [] in
         begin
           match value with
-          | CompiledInputHorzWithEnvironment(imihlst, envsub) ->
+          | CompiledInputHorzClosure(imihlst, envsub) ->
               CompiledImInputHorzContent(imihlst, envsub)
 
           | _ -> report_bug_vm "exec_input_horz_content"
         end
 
   ) in
-    CompiledInputHorzWithEnvironment(imihlist, env)
+    CompiledInputHorzClosure(imihlist, env)
 
 
 and exec_input_vert_content env ivlst =
@@ -137,14 +137,14 @@ and exec_input_vert_content env ivlst =
         let value = exec [] env code [] in
         begin
           match value with
-          | CompiledInputVertWithEnvironment(imivlst, envsub) ->
+          | CompiledInputVertClosure(imivlst, envsub) ->
               CompiledImInputVertContent(imivlst, envsub)
 
           | _ -> report_bug_vm "exec_input_vert_content"
         end
 
   ) in
-    CompiledInputVertWithEnvironment(imivlst, env)
+    CompiledInputVertClosure(imivlst, env)
 
 
 and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
@@ -406,7 +406,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | f :: stack ->
             begin
               match f with
-              | CompiledFuncWithEnvironment(optvars, arity, pargs, framesize, body, env1) ->
+              | CompiledClosure(optvars, arity, pargs, framesize, body, env1) ->
                   let body =
                     optvars |> List.fold_left (fun acc optvar ->
                       let bindop =
@@ -427,7 +427,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
 
                   else if arity > n then
                     let (args, stack) = popn stack n in
-                    let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
+                    let applied = CompiledClosure([], arity - n, pargs @ args, framesize, body, env1) in
                     exec (applied :: stack) env code dump
 
                   else
@@ -436,13 +436,13 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                     let allargs = List.rev (pargs @ args) in
                     exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
 
-              | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
+              | CompiledPrimitiveClosure(arity, [], framesize, body, env1, astf) ->
                   if arity = n then
                     exec stack (newframe env1 framesize) body ((env, code) :: dump)
 
                   else if arity > n then
                     let (args, stack) = popn stack n in
-                    let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
+                    let applied = CompiledClosure([], arity - n, args, framesize, body, env1) in
                     exec (applied :: stack) env code dump
 
                   else
@@ -462,7 +462,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | f :: stack ->
             begin
               match f with
-              | CompiledFuncWithEnvironment(optvars, arity, pargs, framesize, body, env1) ->
+              | CompiledClosure(optvars, arity, pargs, framesize, body, env1) ->
                   let body =
                     optvars |> List.fold_left (fun acc optvar ->
                       let bindop =
@@ -483,7 +483,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
 
                   else if arity > n then
                     let (args, stack) = popn stack n in
-                    let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
+                    let applied = CompiledClosure([], arity - n, pargs @ args, framesize, body, env1) in
                     exec (applied :: stack) env code dump
 
                   else
@@ -492,13 +492,13 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                     let allargs = List.rev (pargs @ args) in
                     exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
 
-               | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
+               | CompiledPrimitiveClosure(arity, [], framesize, body, env1, astf) ->
                    if arity = n then
                      exec stack (newframe env1 framesize) body dump
 
                    else if arity > n then
                      let (args, stack) = popn stack n in
-                     let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
+                     let applied = CompiledClosure([], arity - n, args, framesize, body, env1) in
                      exec (applied :: stack) env code dump
 
                    else
@@ -518,14 +518,14 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | v :: f :: stack ->
             begin
               match f with
-              | CompiledFuncWithEnvironment(var :: vars, arity, pargs, framesize, body, env1) ->
+              | CompiledClosure(var :: vars, arity, pargs, framesize, body, env1) ->
                   let bindop =
                     match var with
                     | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
                     | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
                   in
                   let body = OpPush(Constructor("Some", v)) :: bindop :: body in
-                  let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
+                  let fnew = CompiledClosure(vars, arity, pargs, framesize, body, env1) in
                   exec (fnew :: stack) env code dump
 
               | _ ->
@@ -541,14 +541,14 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | f :: stack ->
             begin
               match f with
-              | CompiledFuncWithEnvironment(var :: vars, arity, pargs, framesize, body, env1) ->
+              | CompiledClosure(var :: vars, arity, pargs, framesize, body, env1) ->
                   let bindop =
                     match var with
                     | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
                     | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
                   in
                   let body = OpPush(Constructor("None", const_unit)) :: bindop :: body in
-                  let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
+                  let fnew = CompiledClosure(vars, arity, pargs, framesize, body, env1) in
                   exec (fnew :: stack) env code dump
 
               | _ ->
@@ -843,7 +843,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpClosure(optvars, arity, framesize, body) ->
       begin
             begin
-              exec (CompiledFuncWithEnvironment(optvars, arity, [], framesize, body, env) :: stack) env code dump
+              exec (CompiledClosure(optvars, arity, [], framesize, body, env) :: stack) env code dump
             end
 
       end

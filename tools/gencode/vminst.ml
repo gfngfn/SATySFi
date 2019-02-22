@@ -792,13 +792,13 @@ make_vert (List.append vblst1 vblst2)
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
 match value1 with
-| InputHorzWithEnvironment(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi valuectx imihlst
-| _                                       -> report_bug_value "HorzLex" value1
+| InputHorzClosure(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi valuectx imihlst
+| _                               -> report_bug_value "HorzLex" value1
 |}
         ~code:{|
 match value1 with
-| CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi valuectx imihlst
-| _                                               -> report_bug_vm "HorzLex"
+| CompiledInputHorzClosure(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi valuectx imihlst
+| _                                       -> report_bug_vm "HorzLex"
 |}
     ; inst "VertLex"
         ~name:"read-block"
@@ -814,13 +814,13 @@ match value1 with
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
 match value1 with
-| InputVertWithEnvironment(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
-| _                                       -> report_bug_value "VertLex" value1
+| InputVertClosure(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
+| _                               -> report_bug_value "VertLex" value1
 |}
         ~code:{|
 match value1 with
-| CompiledInputVertWithEnvironment(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
-| _                                               -> report_bug_vm "VertLex"
+| CompiledInputVertClosure(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
+| _                                       -> report_bug_vm "VertLex"
 |}
     ; inst "TextHorzLex"
         ~name:"stringify-inline"
@@ -836,13 +836,13 @@ match value1 with
         ~is_text_mode_primitive:true
         ~code_interp:{|
 match value1 with
-| InputHorzWithEnvironment(imihlst, envi) -> interpret_text_mode_intermediate_input_horz envi valuetctx imihlst
-| _                                       -> report_bug_value "TextHorzLex" value1
+| InputHorzClosure(imihlst, envi) -> interpret_text_mode_intermediate_input_horz envi valuetctx imihlst
+| _                               -> report_bug_value "TextHorzLex" value1
 |}
         ~code:{|
 match value1 with
-| CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
-| _                                               -> report_bug_vm "TextHorzLex"
+| CompiledInputHorzClosure(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
+| _                                       -> report_bug_vm "TextHorzLex"
 |}
     ; inst "TextVertLex"
         ~name:"stringify-block"
@@ -858,13 +858,13 @@ match value1 with
         ~is_text_mode_primitive:true
         ~code_interp:{|
 match value1 with
-| InputVertWithEnvironment(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
-| _                                       -> report_bug_value "TextVertLex" value1
+| InputVertClosure(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
+| _                               -> report_bug_value "TextVertLex" value1
 |}
         ~code:{|
 match value1 with
-| CompiledInputVertWithEnvironment(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
-| _                                               -> report_bug_vm "TextVertLex"
+| CompiledInputVertClosure(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
+| _                                       -> report_bug_vm "TextVertLex"
 |}
     ; inst "TextDeepenIndent"
         ~name:"deepen-indent"
@@ -1591,10 +1591,10 @@ Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code_interp:{|
-InputHorzWithEnvironment([ImInputHorzText(str)], env)
+InputHorzClosure([ImInputHorzText(str)], env)
 |}
         ~code:{|
-CompiledInputHorzWithEnvironment([CompiledImInputHorzText(str)], env)
+CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)
 |}
     ; inst "PrimitiveExtract"
         ~name:"extract-string"
