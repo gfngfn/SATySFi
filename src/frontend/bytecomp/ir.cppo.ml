@@ -371,7 +371,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | Record(asc) ->
       let iter acc key ast =
         let (keyacc, iracc, env) = acc in
-        let (ir, env) = transform env ast in
+        let (ir, env) = transform_1 env ast in
         (Alist.extend keyacc key, Alist.extend iracc ir, env)
       in
       let (keyacc, iracc, env) = Assoc.fold iter (Alist.empty, Alist.empty, env) asc in
@@ -393,8 +393,11 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | IfThenElse(ast0, ast1, ast2) ->
       code3 env (fun cv0 cv1 cv2 -> CdIfThenElse(cv0, cv1, cv2)) ast0 ast1 ast2
 
-  | Function(evidlst, patbr) ->
-      remains_to_be_implemented "transform_1: Function"
+  | Function(evidlst, PatternBranch(pat, ast1)) ->
+      code1 env (fun cv1 -> CdFunction(evidlst, CdPatternBranch(pat, cv1))) ast1
+
+  | Function(_, PatternBranchWhen(_, _, _)) ->
+      assert false
 
   | Apply(ast1, ast2) ->
       code2 env (fun cv1 cv2 -> CdApply(cv1, cv2)) ast1 ast2
