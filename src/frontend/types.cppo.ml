@@ -804,11 +804,13 @@ and syntactic_value =
 
   | EvaluatedEnvironment of environment
 
+(* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | FuncWithEnvironment      of EvalVarID.t list * pattern_branch * environment
   | PrimitiveWithEnvironment of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
   | InputHorzWithEnvironment of intermediate_input_horz_element list * environment
   | InputVertWithEnvironment of intermediate_input_vert_element list * environment
 
+(* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
   | CompiledFuncWithEnvironment      of varloc list * int * syntactic_value list * int * instruction list * vmenv
   | CompiledPrimitiveWithEnvironment of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
   | CompiledInputHorzWithEnvironment of compiled_intermediate_input_horz_element list * vmenv

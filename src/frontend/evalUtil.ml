@@ -669,6 +669,21 @@ let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
   )
 
 
+(*
+let get_math_command_func reducef valuemcmd : math_command_func =
+  MathCommand(fun ctx mlst ->
+    let valuectx = Context(ctx) in
+    let valuemath = MathValue(mlst) in
+    let valueret = reducef valuemcmd [valuectx; valuemath] in
+    get_horz valueret
+  )
+*)
+let get_math_command_func _ valuemcmd =
+  MathCommand(valuemcmd)
+
+let make_math_command_func (MathCommand(valuemcmd)) = valuemcmd
+
+
 let make_list (type a) (makef : a -> syntactic_value) (lst : a list) : syntactic_value =
   List(lst |> List.map makef)
 

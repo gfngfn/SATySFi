@@ -613,7 +613,7 @@ and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) 
 and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
 
   let (ctx, ctxsub) = get_context valuectx in
-  let MathCommand(valuemcmd) = ctxsub.math_command in
+  let valuemcmd = make_math_command_func ctxsub.math_command in
 
   let rec normalize (imihlst : intermediate_input_horz_element list) =
     imihlst |> List.fold_left (fun acc imih ->

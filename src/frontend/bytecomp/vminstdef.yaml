@@ -92,6 +92,7 @@ code:
 ---
 inst: PrimitiveSetMathCommand
 is-pdf-mode-primitive: yes
+needs-reducef: yes
 name: "set-math-command"
 type: |
   ~% (tCMD @-> tCTX @-> tCTX)
@@ -100,7 +101,8 @@ params:
 - valuecmd
 - (ctx, ctxsub) : context
 code: |
-  Context(ctx, { ctxsub with math_command = MathCommand(valuecmd); })
+  let mcmd = get_math_command_func reducef valuecmd in
+  Context(ctx, { ctxsub with math_command = mcmd; })
 
 ---
 inst: BackendMathVariantCharDirect
@@ -1041,6 +1043,7 @@ code: |
 ---
 inst: PrimitiveGetInitialContext
 is-pdf-mode-primitive: yes
+needs-reducef: yes
 name: "get-initial-context"
 type: |
   ~% (tLN @-> tCMD @-> tCTX)
@@ -1050,9 +1053,10 @@ params:
 - valuecmd
 code: |
   let ctx = Primitives.get_pdf_mode_initial_context txtwid in
+  let mcmd = get_math_command_func reducef valuecmd in
   let ctxsub =
     {
-      math_command = MathCommand(valuecmd);
+      math_command = mcmd;
       dummy = ();
     }
   in

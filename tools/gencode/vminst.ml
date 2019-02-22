@@ -86,8 +86,10 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = M
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
         ~code:{|
-Context(ctx, { ctxsub with math_command = MathCommand(valuecmd); })
+let mcmd = get_math_command_func reducef valuecmd in
+Context(ctx, { ctxsub with math_command = mcmd; })
 |}
     ; inst "BackendMathVariantCharDirect"
         ~name:"math-variant-char"
@@ -1147,11 +1149,13 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
           param "valuecmd";
         ]
         ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
         ~code:{|
 let ctx = Primitives.get_pdf_mode_initial_context txtwid in
+let mcmd = get_math_command_func reducef valuecmd in
 let ctxsub =
   {
-    math_command = MathCommand(valuecmd);
+    math_command = mcmd;
     dummy = ();
   }
 in
