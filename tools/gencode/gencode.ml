@@ -19,7 +19,7 @@ module Const = struct
 
   let ret = "ret"
 
-  let trans_prim = "transform_primitive"
+  let trans_prim = "transform_0_primitive"
 
   let destructuring_rules =
     let open Printf in
