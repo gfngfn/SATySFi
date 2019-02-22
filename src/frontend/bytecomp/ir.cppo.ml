@@ -416,7 +416,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
 
   | Next(_) ->
       report_bug_ir "transform_1: Next at stage 1"
-
+(*
+#include "__ir_1.gen.ml"
+*)
 
 and transform (env : frame) (ast : abstract_tree) : ir * frame =
   let return ir = (ir, env) in
@@ -612,4 +614,4 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
   | Next(ast1) ->
       transform_1 env ast1
 
-#include "__ir.gen.ml"
+#include "__ir_0.gen.ml"

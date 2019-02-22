@@ -352,7 +352,7 @@ let gen_attype () =
   )
 
 
-let gen_ircases () =
+let gen_ircases_0 () =
   let open Instruction in
   Vminst.def |> List.iter (function
   | {
@@ -380,7 +380,7 @@ let () =
   let opts =
     [
       ("--gen-vm"             , gen_vminstrs       );
-      ("--gen-ir"             , gen_ircases        );
+      ("--gen-ir-0"           , gen_ircases_0      );
       ("--gen-insttype"       , gen_insttype       );
       ("--gen-attype"         , gen_attype         );
       ("--gen-codetype"       , gen_codetype       );
