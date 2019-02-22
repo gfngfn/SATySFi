@@ -99,7 +99,7 @@ and transform_path env pathcomplst cycleopt =
   (irpathcomplst, ircycleopt, env)
 
 
-and transform_ast (env : environment) (ast : abstract_tree) : ir * environment =
+and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment =
   let (genv, _) = env in
   let initvars =
     EvalVarIDMap.fold (fun k v acc ->
@@ -108,6 +108,18 @@ and transform_ast (env : environment) (ast : abstract_tree) : ir * environment =
   in
   let initframe = { global = env; vars = initvars; level = 0; size = 0; } in
   let (ir, frame) = transform initframe ast in
+  (ir, frame.global)
+
+
+and transform_ast_1 (env : environment) (ast : abstract_tree) : ir * environment =
+  let (genv, _) = env in
+  let initvars =
+    EvalVarIDMap.fold (fun k v acc ->
+      EvalVarIDMap.add k (GlobalVar(v, k, ref 0)) acc
+    ) genv EvalVarIDMap.empty
+  in
+  let initframe = { global = env; vars = initvars; level = 0; size = 0; } in
+  let (ir, frame) = transform_1 initframe ast in
   (ir, frame.global)
 
 

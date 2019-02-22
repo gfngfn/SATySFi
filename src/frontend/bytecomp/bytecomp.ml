@@ -6,7 +6,7 @@ open EvalUtil
 
 
 let compile_and_exec_0 (env : environment) (ast : abstract_tree) : syntactic_value =
-  let (ir, env) = Ir.transform_ast env ast in
+  let (ir, env) = Ir.transform_ast_0 env ast in
   let instrs = Compiler.compile ir [] in
 (*
   Format.printf "IR:\n%s\n" (show_ir ir);  (* for debug *)
@@ -34,7 +34,9 @@ let compile_environment (env : environment) : unit =
 
 
 let compile_and_exec_1 (env : environment) (ast : abstract_tree) : code_value =
-  let value = compile_and_exec_0 env ast in
+  let (ir, env) = Ir.transform_ast_1 env ast in
+  let instrs = Compiler.compile ir [] in
+  let value = Vm.exec [] (env, []) instrs [] in
   match value with
   | CodeValue(cv) -> cv
-  | _             -> report_bug_vm "compile_and_exec_1: not a CodeValue(...)"
+  | _             -> report_bug_value "compile_and_exec_1: not a CodeValue(...)" value
