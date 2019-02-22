@@ -222,6 +222,11 @@ and compile (ir : ir) (cont : instruction list) =
       let (pathelemlst, closingopt) = compile_path pathcomplst cycleopt in
       compile irpt0 (OpPath(pathelemlst, closingopt) :: cont)
 
+(* -- multi-stage -- *)
+
+  | IRCodeCombinator(codef, arity, irargs) ->
+      compile_list irargs (OpApplyCodeCombinator(codef, arity) :: cont)
+
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =
   let consif cond a b =

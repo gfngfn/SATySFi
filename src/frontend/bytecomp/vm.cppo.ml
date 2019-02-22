@@ -984,4 +984,10 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | _ -> report_bug_vm "invalid argument for OpInsertArgs"
       end
 
+  | OpApplyCodeCombinator(codef, arity) ->
+      let (valuelst, stack) = popn stack arity in
+      let codelst = valuelst |> List.map get_code in
+      let coderet = codef codelst in
+      exec (CodeValue(coderet) :: stack) env code dump
+
 #include "__vm.gen.ml"

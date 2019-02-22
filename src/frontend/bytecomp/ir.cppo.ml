@@ -120,6 +120,11 @@ and transform_primitive (env : frame) (astlst : abstract_tree list) (op : instru
   (IRApplyPrimitive(op, List.length astlst, irargs), env)
 
 
+and transform_code1 (env : frame) (astlst : abstract_tree list) (codef : code_value list -> code_value) : ir * frame =
+  let (irargs, env) = transform_list env astlst in
+  (IRCodeCombinator(codef, List.length astlst, irargs), env)
+
+
 and transform_patsel (env : frame) (patbrs : pattern_branch list) : ir_pattern_branch list * frame =
   let before_size = env.size in
   let max_size = ref before_size in

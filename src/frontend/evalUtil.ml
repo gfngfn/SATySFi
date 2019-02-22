@@ -423,6 +423,12 @@ let get_regexp (value : syntactic_value) : Str.regexp =
   | _                              -> report_bug_value "get_regexp" value
 
 
+let get_code (value : syntactic_value) : code_value =
+  match value with
+  | CodeValue(cv) -> cv
+  | _             -> report_bug_value "get_code" value
+
+
 let get_path_value (value : syntactic_value) : path list =
   match value with
   | BaseConstant(BCPath(pathlst)) -> pathlst
