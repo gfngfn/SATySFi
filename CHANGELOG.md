@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Regards `<LIBROOT>/local/packages/` as a place for user-defined packages.
 - Uses `<LIBROOT>/local/hash/fonts.satysfi-hash` (as well as `<LIBROOT>/dist/fonts.satysfi-hash`) for a font fash file (the same holds for `<LIBROOT>/local/hash/mathfonts.satysfi-hash`).
 - Supports (non-extensible) record updates, i.e., `(| <record> with <label> = <new-value> |)`.
+- Supports a MetaML-like two-stage computation performed by *bracket* `& <expr> ` and *escape* `~ <expr>` and equipped with (a somewhat restrictive variant of) cross-stage persistence.
 
 ## Deprecated
 
