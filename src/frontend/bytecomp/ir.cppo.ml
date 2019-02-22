@@ -30,57 +30,90 @@ let map_with_env f env lst =
 
     | x :: xs ->
         let (r, envnew) = f env x in
-          iter envnew xs (Alist.extend acc r)
+        iter envnew xs (Alist.extend acc r)
   in
-    iter env lst Alist.empty
+  iter env lst Alist.empty
 
 
-let rec transform_input_horz_content (env : frame) (ihlst : input_horz_element list) : ir_input_horz_element list * frame =
+let rec transform_0_input_horz_content (env : frame) (ihlst : input_horz_element list) : ir_input_horz_element list * frame =
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputHorzText(s) ->
         (IRInputHorzText(s), env)
 
     | InputHorzEmbedded(astabs) ->
-        let (irabs, env) = transform env astabs in
-          (IRInputHorzEmbedded(irabs), env)
+        let (irabs, env) = transform_0 env astabs in
+        (IRInputHorzEmbedded(irabs), env)
 
     | InputHorzEmbeddedMath(astmath) ->
-        let (irmath, env) = transform env astmath in
-          (IRInputHorzEmbeddedMath(irmath), env)
+        let (irmath, env) = transform_0 env astmath in
+        (IRInputHorzEmbeddedMath(irmath), env)
 
     | InputHorzContent(ast) ->
-        let (ir, env) = transform env ast in
-          (IRInputHorzContent(ir), env)
+        let (ir, env) = transform_0 env ast in
+        (IRInputHorzContent(ir), env)
   )
 
 
-and transform_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
+and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element list) : (ir input_horz_element_scheme) list * frame =
+  ihlst @|> env @|> map_with_env (fun env elem ->
+    match elem with
+    | InputHorzText(s) ->
+        (InputHorzText(s), env)
+
+    | InputHorzEmbedded(astabs) ->
+        let (irabs, env) = transform_1 env astabs in
+        (InputHorzEmbedded(irabs), env)
+
+    | InputHorzEmbeddedMath(astmath) ->
+        let (irmath, env) = transform_1 env astmath in
+        (InputHorzEmbeddedMath(irmath), env)
+
+    | InputHorzContent(ast) ->
+        let (ir, env) = transform_1 env ast in
+        (InputHorzContent(ir), env)
+  )
+
+
+and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputVertEmbedded(astabs) ->
-        let (irabs, env) = transform env astabs in
-          (IRInputVertEmbedded(irabs), env)
+        let (irabs, env) = transform_0 env astabs in
+        (IRInputVertEmbedded(irabs), env)
 
     | InputVertContent(ast) ->
-        let (ir, env) = transform env ast in
-          (IRInputVertContent(ir), env)
+        let (ir, env) = transform_0 env ast in
+        (IRInputVertContent(ir), env)
     )
 
 
-and transform_path env pathcomplst cycleopt =
+and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element list) : (ir input_vert_element_scheme) list * frame =
+  ivlst @|> env @|> map_with_env (fun env elem ->
+    match elem with
+    | InputVertEmbedded(astabs) ->
+        let (irabs, env) = transform_1 env astabs in
+        (InputVertEmbedded(irabs), env)
+
+    | InputVertContent(ast) ->
+        let (ir, env) = transform_1 env ast in
+        (InputVertContent(ir), env)
+  )
+
+
+and transform_0_path env pathcomplst cycleopt =
   let (irpathcomplst, env) =
     pathcomplst @|> env @|> map_with_env (fun env path ->
       match path with
       | PathLineTo(astpt) ->
-          let (pt, env) = transform env astpt in
-            (IRPathLineTo(pt), env)
+          let (pt, env) = transform_0 env astpt in
+          (IRPathLineTo(pt), env)
 
       | PathCubicBezierTo(astpt1, astpt2, astpt) ->
-          let (pt1, env) = transform env astpt1 in
-          let (pt2, env) = transform env astpt2 in
-          let (pt, env) = transform env astpt in
-            (IRPathCubicBezierTo(pt1, pt2, pt), env)
+          let (pt1, env) = transform_0 env astpt1 in
+          let (pt2, env) = transform_0 env astpt2 in
+          let (pt, env) = transform_0 env astpt in
+          (IRPathCubicBezierTo(pt1, pt2, pt), env)
     )
   in
   let (ircycleopt, env) =
@@ -92,14 +125,14 @@ and transform_path env pathcomplst cycleopt =
         (Some(IRPathLineTo(())), env)
 
     | Some(PathCubicBezierTo(astpt1, astpt2, ())) ->
-        let (pt1, env) = transform env astpt1 in
-        let (pt2, env) = transform env astpt2 in
-          (Some(IRPathCubicBezierTo(pt1, pt2, ())), env)
+        let (pt1, env) = transform_0 env astpt1 in
+        let (pt2, env) = transform_0 env astpt2 in
+        (Some(IRPathCubicBezierTo(pt1, pt2, ())), env)
   in
-    (irpathcomplst, ircycleopt, env)
+  (irpathcomplst, ircycleopt, env)
 
 
-and transform_ast (env : environment) (ast : abstract_tree) : ir * environment =
+and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment =
   let (genv, _) = env in
   let initvars =
     EvalVarIDMap.fold (fun k v acc ->
@@ -107,20 +140,46 @@ and transform_ast (env : environment) (ast : abstract_tree) : ir * environment =
     ) genv EvalVarIDMap.empty
   in
   let initframe = { global = env; vars = initvars; level = 0; size = 0; } in
-  let (ir, frame) = transform initframe ast in
-    (ir, frame.global)
+  let (ir, frame) = transform_0 initframe ast in
+  (ir, frame.global)
 
 
-and transform_list (env : frame) (astlst : abstract_tree list) : ir list * frame =
-  map_with_env transform env astlst
+and transform_ast_1 (env : environment) (ast : abstract_tree) : ir * environment =
+  let (genv, _) = env in
+  let initvars =
+    EvalVarIDMap.fold (fun k v acc ->
+      EvalVarIDMap.add k (GlobalVar(v, k, ref 0)) acc
+    ) genv EvalVarIDMap.empty
+  in
+  let initframe = { global = env; vars = initvars; level = 0; size = 0; } in
+  let (ir, frame) = transform_1 initframe ast in
+  (ir, frame.global)
 
 
-and transform_primitive (env : frame) (astlst : abstract_tree list) (op : instruction) : ir * frame =
+and transform_0_list (env : frame) (astlst : abstract_tree list) : ir list * frame =
+  map_with_env transform_0 env astlst
+
+
+and transform_0_primitive (env : frame) (astlst : abstract_tree list) (op : instruction) : ir * frame =
+  let (irargs, env) = transform_0_list env astlst in
+  (IRApplyPrimitive(op, List.length astlst, irargs), env)
+
+
+and transform_1_list (env : frame) (astlst : abstract_tree list) : ir list * frame =
+  map_with_env transform_1 env astlst
+
+
+and transform_1_primitive (env : frame) (astlst : abstract_tree list) (op : instruction) : ir * frame =
+  let (irargs, env) = transform_1_list env astlst in
+  (IRApplyPrimitive(op, List.length astlst, irargs), env)
+
+(*
+and transform_code1 (env : frame) (astlst : abstract_tree list) (codef : code_value list -> code_value) : ir * frame =
   let (irargs, env) = transform_list env astlst in
-    (IRApplyPrimitive(op, List.length astlst, irargs), env)
+  (IRCodeCombinator(codef, List.length astlst, irargs), env)
+*)
 
-
-and transform_patsel (env : frame) (patbrs : pattern_branch list) : ir_pattern_branch list * frame =
+and transform_0_patsel (env : frame) (patbrs : pattern_branch list) : ir_pattern_branch list * frame =
   let before_size = env.size in
   let max_size = ref before_size in
   let (irpatsel, envnew) =
@@ -129,20 +188,20 @@ and transform_patsel (env : frame) (patbrs : pattern_branch list) : ir_pattern_b
       | PatternBranch(pat, astto) ->
           let env = { env with size = before_size; } in
           let (irpat, env) = transform_pattern env pat in
-          let (irto, env) = transform env astto in
+          let (irto, env) = transform_0 env astto in
           max_size := max !max_size env.size;
-            (IRPatternBranch(irpat, irto), env)
+          (IRPatternBranch(irpat, irto), env)
 
       | PatternBranchWhen(pat, astcond, astto) ->
           let env = { env with size = before_size; } in
           let (irpat, env) = transform_pattern env pat in
-          let (ircond, env) = transform env astcond in
-          let (irto, env) = transform env astto in
+          let (ircond, env) = transform_0 env astcond in
+          let (irto, env) = transform_0 env astto in
           max_size := max !max_size env.size;
-            (IRPatternBranchWhen(irpat, ircond, irto), env)
+          (IRPatternBranchWhen(irpat, ircond, irto), env)
     )
   in
-    (irpatsel, { envnew with size = !max_size; })
+  (irpatsel, { envnew with size = !max_size; })
 
 
 and transform_pattern_list (env : frame) (patlst : pattern_tree list) : ir_pattern_tree list * frame =
@@ -151,44 +210,44 @@ and transform_pattern_list (env : frame) (patlst : pattern_tree list) : ir_patte
 
 and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * frame =
   let return b = (b, env) in
-    match pat with
-    | PIntegerConstant(pnc) -> return (IRPIntegerConstant(pnc))
-    | PBooleanConstant(pbc) -> return (IRPBooleanConstant(pbc))
-    | PStringConstant(psc)  -> return (IRPStringConstant(psc))
-    | PUnitConstant         -> return IRPUnitConstant
-    | PWildCard             -> return IRPWildCard
+  match pat with
+  | PIntegerConstant(pnc) -> return (IRPIntegerConstant(pnc))
+  | PBooleanConstant(pbc) -> return (IRPBooleanConstant(pbc))
+  | PStringConstant(psc)  -> return (IRPStringConstant(psc))
+  | PUnitConstant         -> return IRPUnitConstant
+  | PWildCard             -> return IRPWildCard
 
-    | PVariable(evid) ->
-        let (var, env) = add_to_environment env evid  in
-        (IRPVariable(var), env)
+  | PVariable(evid) ->
+      let (var, env) = add_to_environment env evid  in
+      (IRPVariable(var), env)
 
-    | PAsVariable(evid, psub) ->
-        let (var, env) = add_to_environment env evid  in
-        let (bsub, env) = transform_pattern env psub in
-        (IRPAsVariable(var, bsub), env)
+  | PAsVariable(evid, psub) ->
+      let (var, env) = add_to_environment env evid  in
+      let (bsub, env) = transform_pattern env psub in
+      (IRPAsVariable(var, bsub), env)
 
-    | PEndOfList -> return IRPEndOfList
+  | PEndOfList -> return IRPEndOfList
 
-    | PListCons(phd, ptl) ->
-        let (bhd, envhd) = transform_pattern env phd in
-        let (btl, envtl) = transform_pattern envhd ptl in
-        (IRPListCons(bhd, btl), envtl)
+  | PListCons(phd, ptl) ->
+      let (bhd, envhd) = transform_pattern env phd in
+      let (btl, envtl) = transform_pattern envhd ptl in
+      (IRPListCons(bhd, btl), envtl)
 
-    | PTuple(pats) ->
-        let (bacc, env) =
-          List.fold_left (fun (bacc, env) pat ->
-            let (b, env) = transform_pattern env pat in
-            (Alist.extend bacc b, env)
-          ) (Alist.empty, env) pats
-        in
-        let irp =
-          List.fold_right (fun b irp -> IRPTupleCons(b, irp)) (Alist.to_list bacc) IRPEndOfTuple
-        in
-        (irp, env)
+  | PTuple(pats) ->
+      let (bacc, env) =
+        List.fold_left (fun (bacc, env) pat ->
+          let (b, env) = transform_pattern env pat in
+          (Alist.extend bacc b, env)
+        ) (Alist.empty, env) pats
+      in
+      let irp =
+        List.fold_right (fun b irp -> IRPTupleCons(b, irp)) (Alist.to_list bacc) IRPEndOfTuple
+      in
+      (irp, env)
 
-    | PConstructor(cnm1, psub) ->
-        let (bsub, env) = transform_pattern env psub in
-          (IRPConstructor(cnm1, bsub), env)
+  | PConstructor(cnm1, psub) ->
+      let (bsub, env) = transform_pattern env psub in
+      (IRPConstructor(cnm1, bsub), env)
 
 
 and new_level (env : frame) =
@@ -199,7 +258,7 @@ and add_to_environment (env : frame) (evid : EvalVarID.t) : varloc * frame =
   let (var, newglobal) =
     if env.level = 0 then
       let loc = ref Nil in
-        (GlobalVar(loc, evid, ref 0), Types.add_to_environment env.global evid loc)
+      (GlobalVar(loc, evid, ref 0), Types.add_to_environment env.global evid loc)
     else
       (LocalVar(env.level, env.size, evid, ref 0), env.global)
   in
@@ -209,7 +268,7 @@ and add_to_environment (env : frame) (evid : EvalVarID.t) : varloc * frame =
     | GlobalVar(_, _, _)          -> var
   in
   let newvars = env.vars |> EvalVarIDMap.add evid var in
-    (locvar, { env with global = newglobal; vars = newvars; size = env.size + 1; })
+  (locvar, { env with global = newglobal; vars = newvars; size = env.size + 1; })
 
 
 and find_in_environment (env : frame) (evid : EvalVarID.t) : varloc option =
@@ -223,7 +282,7 @@ and add_letrec_bindings_to_environment (env : frame) (recbinds : letrec_binding 
   recbinds @|> env @|> map_with_env (fun env recbind ->
     let LetRecBinding(evid, patbr) = recbind in
     let (var, env) = add_to_environment env evid in
-      ((var, patbr), env)
+    ((var, patbr), env)
   )
 
 
@@ -233,7 +292,7 @@ and flatten_function (astfun : abstract_tree) : abstract_tree * pattern_tree lis
     | Function([], PatternBranch(pat, body)) -> iter body (Alist.extend acc pat)
     | _                                      -> (ast, Alist.to_list acc)
   in
-    iter astfun Alist.empty
+  iter astfun Alist.empty
 
 
 and flatten_application apast =
@@ -242,26 +301,13 @@ and flatten_application apast =
     | Apply(ast1, ast2) -> iter ast1 (ast2 :: acc)
     | _                 -> (ast, acc)
   in
-    iter apast []
+  iter apast []
 
-(*
-and flatten_tuple asttup =
-  match asttup with
-  | PrimitiveTuple(astlst) -> astlst
-  | _                      ->
-  let rec iter ast acc =
-    match ast with
-    | PrimitiveTupleCons(hd, Value(EndOfTuple)) -> Alist.to_list (Alist.extend acc hd)
-    | PrimitiveTupleCons(hd, tl)                -> iter tl (Alist.extend acc hd)
-    | _                                         -> report_bug_ir_ast "malformed tuple!" asttup
-  in
-    iter asttup Alist.empty
-*)
 
-and transform_tuple env astlst =
-  let (iritems, envnew) = map_with_env transform env astlst in
+and transform_0_tuple env astlst =
+  let (iritems, envnew) = map_with_env transform_0 env astlst in
   let len = List.length astlst in
-    (IRTuple(len, iritems), envnew)
+  (IRTuple(len, iritems), envnew)
 
 
 and check_primitive (env : frame) (ast : abstract_tree) : (int * (abstract_tree list -> abstract_tree)) option =
@@ -272,213 +318,408 @@ and check_primitive (env : frame) (ast : abstract_tree) : (int * (abstract_tree 
         | Some(rfvalue) ->
             begin
               match !rfvalue with
-              | CompiledPrimitiveWithEnvironment(arity, _, _, _, _, astf) -> Some((arity, astf))
-              | _                                                         -> None
+              | CompiledPrimitiveClosure(arity, _, _, _, _, astf) -> Some((arity, astf))
+              | _                                                 -> None
             end
 
-        | None -> None
+        | None ->
+            None
       end
 
-  | _ -> None
+  | _ ->
+      None
+
+(*
+and transform_1_horz_input ih : frame =
+  let (acc, env) =
+    ih |> List.fold_left (fun (acc, env) ihelem ->
+      let (ir, env) =
+        match ihelem with
+        | InputHorzText(s)       -> (InputHorzText(s), env)
+        | InputHorzEmbedded(ast) -> let (code, env) = transform_1 env ast in (InputHorzEmbedded(code))
+      in
+      (Alist.extend acc code, env)
+    ) (Alist.empty, env)
+  in
+  (Alist.to_list acc, env)
+*)
+
+and code0 env cv =
+  (IRCodeCombinator((fun _ -> cv), 0, []), env)
+
+and code1 env cvf ast1 =
+  let (ir1, env) = transform_1 env ast1 in
+  let codef = function [cv1] -> cvf cv1 | _ -> report_bug_ir "code1" in
+  (IRCodeCombinator(codef, 1, [ir1]), env)
+
+and code2 env cvf ast1 ast2 =
+  let (ir1, env) = transform_1 env ast1 in
+  let (ir2, env) = transform_1 env ast2 in
+  let codef = function [cv1; cv2] -> cvf cv1 cv2 | _ -> report_bug_ir "code2" in
+  (IRCodeCombinator(codef, 2, [ir1; ir2]), env)
+
+and code3 env cvf ast1 ast2 ast3 =
+  let (ir1, env) = transform_1 env ast1 in
+  let (ir2, env) = transform_1 env ast2 in
+  let (ir3, env) = transform_1 env ast3 in
+  let codef = function [cv1; cv2; cv3] -> cvf cv1 cv2 cv3 | _ -> report_bug_ir "code3" in
+  (IRCodeCombinator(codef, 3, [ir1; ir2; ir3]), env)
+
+and code4 env cvf ast1 ast2 ast3 ast4 =
+  let (ir1, env) = transform_1 env ast1 in
+  let (ir2, env) = transform_1 env ast2 in
+  let (ir3, env) = transform_1 env ast3 in
+  let (ir4, env) = transform_1 env ast4 in
+  let codef = function [cv1; cv2; cv3; cv4] -> cvf cv1 cv2 cv3 cv4 | _ -> report_bug_ir "code4" in
+  (IRCodeCombinator(codef, 4, [ir1; ir2; ir3; ir4]), env)
+
+and code5 env cvf ast1 ast2 ast3 ast4 ast5 =
+  let (ir1, env) = transform_1 env ast1 in
+  let (ir2, env) = transform_1 env ast2 in
+  let (ir3, env) = transform_1 env ast3 in
+  let (ir4, env) = transform_1 env ast4 in
+  let (ir5, env) = transform_1 env ast5 in
+  let codef = function [cv1; cv2; cv3; cv4; cv5] -> cvf cv1 cv2 cv3 cv4 cv5 | _ -> report_bug_ir "code5" in
+  (IRCodeCombinator(codef, 5, [ir1; ir2; ir3; ir4; ir5]), env)
+
+and code6 env cvf ast1 ast2 ast3 ast4 ast5 ast6 =
+  let (ir1, env) = transform_1 env ast1 in
+  let (ir2, env) = transform_1 env ast2 in
+  let (ir3, env) = transform_1 env ast3 in
+  let (ir4, env) = transform_1 env ast4 in
+  let (ir5, env) = transform_1 env ast5 in
+  let (ir6, env) = transform_1 env ast6 in
+  let codef = function [cv1; cv2; cv3; cv4; cv5; cv6] -> cvf cv1 cv2 cv3 cv4 cv5 cv6 | _ -> report_bug_ir "code6" in
+  (IRCodeCombinator(codef, 6, [ir1; ir2; ir3; ir4; ir5; ir6]), env)
 
 
-and transform (env : frame) (ast : abstract_tree) : ir * frame =
+and code7 env cvf ast1 ast2 ast3 ast4 ast5 ast6 ast7 =
+  let (ir1, env) = transform_1 env ast1 in
+  let (ir2, env) = transform_1 env ast2 in
+  let (ir3, env) = transform_1 env ast3 in
+  let (ir4, env) = transform_1 env ast4 in
+  let (ir5, env) = transform_1 env ast5 in
+  let (ir6, env) = transform_1 env ast6 in
+  let (ir7, env) = transform_1 env ast7 in
+  let codef = function [cv1; cv2; cv3; cv4; cv5; cv6; cv7] -> cvf cv1 cv2 cv3 cv4 cv5 cv6 cv7 | _ -> report_bug_ir "code7" in
+  (IRCodeCombinator(codef, 7, [ir1; ir2; ir3; ir4; ir5; ir6; ir7]), env)
+
+
+and transform_1_pattern_branch (env : frame) (patbr : pattern_branch) : ir pattern_branch_scheme * frame =
+  match patbr with
+  | PatternBranch(pat, ast1) ->
+      let (ir1, env) = transform_1 env ast1 in
+      (PatternBranch(pat, ir1), env)
+
+  | PatternBranchWhen(pat, ast, ast1) ->
+      let (ir, env) = transform_1 env ast in
+      let (ir1, env) = transform_1 env ast1 in
+      (PatternBranchWhen(pat, ir, ir1), env)
+
+
+and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
+  match ast with
+  | ASTBaseConstant(bc) -> code0 env (CdBaseConstant(bc))
+  | ASTEndOfList        -> code0 env CdEndOfList
+  | ASTMath(mlst)       -> code0 env (CdMath(mlst))
+  | FinishHeaderFile    -> code0 env CdFinishHeaderFile
+  | FinishStruct        -> code0 env CdFinishStruct
+
+  | InputHorz(ihlst) ->
+      let (imihlst, env) = transform_1_input_horz_content env ihlst in
+      (IRCodeInputHorz(imihlst), env)
+
+  | InputVert(ivlst) ->
+      let (imivlst, env) = transform_1_input_vert_content env ivlst in
+      (IRCodeInputVert(imivlst), env)
+
+  | Path(_) ->
+      remains_to_be_implemented "transform_1: Path(_)"
+
+  | Record(asc) ->
+      let iter acc key ast =
+        let (keyacc, iracc, env) = acc in
+        let (ir, env) = transform_1 env ast in
+        (Alist.extend keyacc key, Alist.extend iracc ir, env)
+      in
+      let (keyacc, iracc, env) = Assoc.fold iter (Alist.empty, Alist.empty, env) asc in
+      (IRCodeRecord(Alist.to_list keyacc, Alist.to_list iracc), env)
+
+  | AccessField(ast1, fldnm) ->
+      code1 env (fun cv -> CdAccessField(cv, fldnm)) ast1
+
+  | UpdateField(ast1, fldnm, ast2) ->
+      code2 env (fun cv1 cv2 -> CdUpdateField(cv1, fldnm, cv2)) ast1 ast2
+
+  | LetRecIn(recbinds, ast2) ->
+      let (irrecbinds, env) =
+        map_with_env (fun env recbind ->
+          match recbind with
+          | LetRecBinding(evid, patbr) ->
+              let (irpatbrs, env) = transform_1_pattern_branch env patbr in
+              (LetRecBinding(evid, irpatbrs), env)
+        ) env recbinds
+      in
+      let (ir2, env) = transform_1 env ast2 in
+      (IRCodeLetRecIn(irrecbinds, ir2), env)
+
+  | LetNonRecIn(pat, ast1, ast2) ->
+      code2 env (fun cv1 cv2 -> CdLetNonRecIn(pat, cv1, cv2)) ast1 ast2
+
+  | ContentOf(rng, evid) ->
+      code0 env (CdContentOf(rng, evid))
+
+  | IfThenElse(ast0, ast1, ast2) ->
+      code3 env (fun cv0 cv1 cv2 -> CdIfThenElse(cv0, cv1, cv2)) ast0 ast1 ast2
+
+  | Function(evidlst, PatternBranch(pat, ast1)) ->
+      code1 env (fun cv1 -> CdFunction(evidlst, CdPatternBranch(pat, cv1))) ast1
+
+  | Function(_, PatternBranchWhen(_, _, _)) ->
+      assert false
+
+  | Apply(ast1, ast2) ->
+      code2 env (fun cv1 cv2 -> CdApply(cv1, cv2)) ast1 ast2
+
+  | ApplyOptional(ast1, ast2) ->
+      code2 env (fun cv1 cv2 -> CdApplyOptional(cv1, cv2)) ast1 ast2
+
+  | ApplyOmission(ast1) ->
+      code1 env (fun cv -> CdApplyOmission(cv)) ast1
+
+  | PatternMatch(rng, ast1, patbrs) ->
+      let (ir1, env) = transform_1 env ast1 in
+      let (irpatbrs, env) = map_with_env transform_1_pattern_branch env patbrs in
+      (IRCodePatternMatch(rng, ir1, irpatbrs), env)
+
+  | NonValueConstructor(constrnm, ast1) ->
+      code1 env (fun cv -> CdConstructor(constrnm, cv)) ast1
+
+  | LetMutableIn(evid, ast1, ast2) ->
+      code2 env (fun cv1 cv2 -> CdLetMutableIn(evid, cv1, cv2)) ast1 ast2
+
+  | Dereference(ast1) ->
+      code1 env (fun cv -> CdDereference(cv)) ast1
+
+  | Sequential(ast1, ast2) ->
+      code2 env (fun cv1 cv2 -> CdSequential(cv1, cv2)) ast1 ast2
+
+  | WhileDo(ast1, ast2) ->
+      code2 env (fun cv1 cv2 -> CdWhileDo(cv1, cv2)) ast1 ast2
+
+  | Overwrite(evid, ast1) ->
+      code1 env (fun cv -> CdOverwrite(evid, cv)) ast1
+
+  | Module(ast1, ast2) ->
+      code2 env (fun cv1 cv2 -> CdModule(cv1, cv2)) ast1 ast2
+
+  | BackendMathList(astmlst) ->
+      transform_1_primitive env astmlst (OpCodeMathList(List.length astmlst))
+
+  | PrimitiveTuple(astlst) ->
+      transform_1_primitive env astlst (OpCodeMakeTuple(List.length astlst))
+
+  | Prev(ast1) ->
+      transform_0 env ast1
+
+  | Next(_) ->
+      report_bug_ir "transform_1: Next at stage 1"
+
+#include "__ir_1.gen.ml"
+
+
+and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   let return ir = (ir, env) in
-    match ast with
-    | Value(v) ->
-        return (IRConstant(v))
+  match ast with
+  | ASTBaseConstant(bc) ->
+      return (IRConstant(BaseConstant(bc)))
 
-    | FinishHeaderFile ->
-        return IRTerminal
+  | ASTMath(mlst) ->
+      return (IRConstant(MathValue(mlst)))
 
-    | FinishStruct ->
-        return IRTerminal
+  | ASTEndOfList ->
+      return (IRConstant(List([])))
 
-    | InputHorz(ihlst) ->
-        let (imihlst, env) = transform_input_horz_content env ihlst in
-          (IRInputHorz(imihlst), env)
+  | FinishHeaderFile ->
+      return IRTerminal
+
+  | FinishStruct ->
+      return IRTerminal
+
+  | InputHorz(ihlst) ->
+      let (imihlst, env) = transform_0_input_horz_content env ihlst in
+      (IRInputHorz(imihlst), env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-    | InputVert(ivlst) ->
-        let (imivlst, env) = transform_input_vert_content env ivlst in
-          (IRInputVert(imivlst), env)
+  | InputVert(ivlst) ->
+      let (imivlst, env) = transform_0_input_vert_content env ivlst in
+      (IRInputVert(imivlst), env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-    | LengthDescription(flt, unitnm) ->
-        let len =
-          match unitnm with  (* temporary; ad-hoc handling of unit names *)
-          | "pt"   -> Length.of_pdf_point flt
-          | "cm"   -> Length.of_centimeter flt
-          | "mm"   -> Length.of_millimeter flt
-          | "inch" -> Length.of_inch flt
-          | _      -> report_bug_ir_ast "LengthDescription; unknown unit name" ast
-        in
-          return (IRConstant(LengthConstant(len)))
+  | BackendMathList(astmlst) ->
+      transform_0_primitive env astmlst (OpBackendMathList(List.length astmlst))
 
-    | BackendMathList(astmlst) ->
-        transform_primitive env astmlst (OpBackendMathList(List.length astmlst))
+  | Path(astpt0, pathcomplst, cycleopt) ->
+      let (irpt0, env) = transform_0 env astpt0 in
+      let (pathelemlst, closingopt, env) = transform_0_path env pathcomplst cycleopt in
+        (IRPath(irpt0, pathelemlst, closingopt), env)
 
-    | Path(astpt0, pathcomplst, cycleopt) ->
-        let (irpt0, env) = transform env astpt0 in
-        let (pathelemlst, closingopt, env) = transform_path env pathcomplst cycleopt in
-          (IRPath(irpt0, pathelemlst, closingopt), env)
+  | PrimitiveTuple(astlst) ->
+      transform_0_tuple env astlst
 
-    | PrimitiveTuple(astlst) ->
-        transform_tuple env astlst
+(* -- fundamentals -- *)
 
-    (* -- fundamentals -- *)
+  | ContentOf(rng, evid) ->
+      begin
+        match find_in_environment env evid with
+        | Some(var) ->
+            return (IRContentOf(var))
 
-    | ContentOf(rng, evid) ->
+        | None ->
+            report_bug_ir_ast ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' (at " ^ (Range.to_string rng) ^ ") not found") ast
+      end
+
+  | LetRecIn(recbinds, ast2) ->
+      let (pairs, env) = add_letrec_bindings_to_environment env recbinds in
+      let varir_lst =
+        pairs |> List.map (fun pair ->
+          let (var, patbr) = pair in
+          let (ir, _) = transform_0 env (Function([], patbr)) in
+          (var, ir)
+        )
+      in
+      let (ir2, env) = transform_0 env ast2 in
+      (IRLetRecIn(varir_lst, ir2), env)
+
+  | LetNonRecIn(pat, ast1, ast2) ->
+      let (ir1, env) = transform_0 env ast1 in
+      let (irpat, env) = transform_pattern env pat in
+      let (ir2, env) = transform_0 env ast2 in
+      (IRLetNonRecIn(ir1, irpat, ir2), env)
+
+  | Function([], _) ->
+      let (body, args) = flatten_function ast in
+      let funenv = new_level env in
+      let (irargs, funenv) = transform_pattern_list funenv args in
+      let (irbody, funenv) = transform_0 funenv body in
+      (IRFunction(funenv.size, [], irargs, irbody), env)
+
+  | Function((_ :: _) as evids, PatternBranch(arg, body)) ->
+      let funenv = new_level env in
+      let (optvars, funenv) = map_with_env add_to_environment funenv evids in
+      let (irarg, funenv) = transform_pattern funenv arg in
+      let (irbody, funenv) = transform_0 funenv body in
+      (IRFunction(funenv.size, optvars, [irarg], irbody), env)
+
+  | Function(_, PatternBranchWhen(_, _, _)) ->
+      assert false
+
+  | Apply(_, _) ->
+      let (astcallee, astargs) = flatten_application ast in
         begin
-          match find_in_environment env evid with
-          | Some(var) ->
-              return (IRContentOf(var))
+          match check_primitive env astcallee with
+          | Some((arity, astf))  when arity = List.length astargs ->
+              transform_0 env (astf astargs)
 
-          | None ->
-              report_bug_ir_ast ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' (at " ^ (Range.to_string rng) ^ ") not found") ast
+          | _ ->
+              let (ircallee, env) = transform_0 env astcallee in
+              let (irargs, env) = transform_0_list env astargs in
+              (IRApply(List.length irargs, ircallee, irargs), env)
         end
 
-    | LetRecIn(recbinds, ast2) ->
-        let (pairs, env) = add_letrec_bindings_to_environment env recbinds in
-        let varir_lst =
-          pairs |> List.map (fun pair ->
-            let (var, patbr) = pair in
-            let (ir, _) = transform env (Function([], patbr)) in
-              (var, ir)
-          )
-        in
-        let (ir2, env) = transform env ast2 in
-          (IRLetRecIn(varir_lst, ir2), env)
+  | ApplyOptional(ast1, ast2) ->
+      let (ir1, env) = transform_0 env ast1 in
+      let (ir2, env) = transform_0 env ast2 in
+      (IRApplyOptional(ir1, ir2), env)
 
-    | LetNonRecIn(pat, ast1, ast2) ->
-        let (ir1, env) = transform env ast1 in
-        let (irpat, env) = transform_pattern env pat in
-        let (ir2, env) = transform env ast2 in
-          (IRLetNonRecIn(ir1, irpat, ir2), env)
+  | ApplyOmission(ast1) ->
+      let (ir1, env) = transform_0 env ast1 in
+      (IRApplyOmission(ir1), env)
 
-    | Function([], _) ->
-        let (body, args) = flatten_function ast in
-        let funenv = new_level env in
-        let (irargs, funenv) = transform_pattern_list funenv args in
-        let (irbody, funenv) = transform funenv body in
-          (IRFunction(funenv.size, [], irargs, irbody), env)
+  | IfThenElse(astb, ast1, ast2) ->
+      let (irb, env) = transform_0 env astb in
+      let before_size = env.size in
+      let (ir1, env) = transform_0 env ast1 in
+      let ast1_size = env.size in
+      let (ir2, env) = transform_0 { env with size = before_size; } ast2 in
+      let ast2_size = env.size in
+      (IRIfThenElse(irb, ir1, ir2), { env with size = max ast1_size ast2_size; })
 
-    | Function((_ :: _) as evids, PatternBranch(arg, body)) ->
-        let funenv = new_level env in
-        let (optvars, funenv) = map_with_env add_to_environment funenv evids in
-        let (irarg, funenv) = transform_pattern funenv arg in
-        let (irbody, funenv) = transform funenv body in
-          (IRFunction(funenv.size, optvars, [irarg], irbody), env)
+(* ---- record ---- *)
 
-    | Function(_, PatternBranchWhen(_, _, _)) ->
-        assert false
+  | Record(asc) ->
+      let iter acc key ast =
+        let (keyacc, iracc, env) = acc in
+        let (ir, env) = transform_0 env ast in
+        (Alist.extend keyacc key, Alist.extend iracc ir, env)
+      in
+      let (keyacc, iracc, env) = Assoc.fold iter (Alist.empty, Alist.empty, env) asc in
+      (IRRecord(Alist.to_list keyacc, Alist.to_list iracc), env)
 
-    | Apply(_, _) ->
-        let (astcallee, astargs) = flatten_application ast in
-          begin
-            match check_primitive env astcallee with
-            | Some((arity, astf))  when arity = List.length astargs ->
-                transform env (astf astargs)
+  | AccessField(ast1, fldnm) ->
+      let (ir1, env) = transform_0 env ast1 in
+      (IRAccessField(ir1, fldnm), env)
 
-            | _ ->
-                let (ircallee, env) = transform env astcallee in
-                let (irargs, env) = transform_list env astargs in
-                  (IRApply(List.length irargs, ircallee, irargs), env)
-            end
+  | UpdateField(ast1, fldnm, ast2) ->
+      let (ir1, env) = transform_0 env ast1 in
+      let (ir2, env) = transform_0 env ast2 in
+      (IRUpdateField(ir1, fldnm, ir2), env)
 
-    | ApplyOptional(ast1, ast2) ->
-        let (ir1, env) = transform env ast1 in
-        let (ir2, env) = transform env ast2 in
-          (IRApplyOptional(ir1, ir2), env)
+(* ---- imperatives ---- *)
 
-    | ApplyOmission(ast1) ->
-        let (ir1, env) = transform env ast1 in
-          (IRApplyOmission(ir1), env)
+  | LetMutableIn(evid, astini, astaft) ->
+      let (irini, env) = transform_0 env astini in
+      let (var, env) = add_to_environment env evid in
+      let (iraft, env) = transform_0 env astaft in
+      (IRLetMutableIn(var, irini, iraft), env)
 
-    | IfThenElse(astb, ast1, ast2) ->
-        let (irb, env) = transform env astb in
-        let before_size = env.size in
-        let (ir1, env) = transform env ast1 in
-        let ast1_size = env.size in
-        let (ir2, env) = transform { env with size = before_size; } ast2 in
-        let ast2_size = env.size in
-          (IRIfThenElse(irb, ir1, ir2), { env with size = max ast1_size ast2_size; })
+  | Sequential(ast1, ast2) ->
+      let (ir1, env) = transform_0 env ast1 in
+      let (ir2, env) = transform_0 env ast2 in
+      (IRSequential(ir1, ir2), env)
 
-    (* ---- record ---- *)
+  | Overwrite(evid, astnew) ->
+      begin
+        match find_in_environment env evid with
+        | Some(var) ->
+            let (irnew, env) = transform_0 env astnew in
+            (IROverwrite(var, irnew), env)
 
-    | Record(asc) ->
-        let iter acc key ast =
-          let (keylst, irlst, env) = acc in
-          let (ir, env) = transform env ast in
-            (key :: keylst, ir :: irlst, env)
-        in
-        let (keylst, irlst, env) = Assoc.fold iter ([], [], env) asc in
-          (IRRecord(List.rev keylst, List.rev irlst), env)
+        | None ->
+            report_bug_ir_ast ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast
+      end
 
-    | AccessField(ast1, fldnm) ->
-        let (ir1, env) = transform env ast1 in
-          (IRAccessField(ir1, fldnm), env)
+  | Dereference(ast1) ->
+      let (ir1, env) = transform_0 env ast1 in
+      (IRDereference(ir1), env)
 
-    | UpdateField(ast1, fldnm, ast2) ->
-        let (ir1, env) = transform env ast1 in
-        let (ir2, env) = transform env ast2 in
-        (IRUpdateField(ir1, fldnm, ir2), env)
+  | WhileDo(astb, astc) ->
+      let (irb, env) = transform_0 env astb in
+      let (irc, env) = transform_0 env astc in
+      (IRWhileDo(irb, irc), env)
 
-    (* ---- imperatives ---- *)
+(* ---- others ---- *)
 
-    | LetMutableIn(evid, astini, astaft) ->
-        let (irini, env) = transform env astini in
-        let (var, env) = add_to_environment env evid in
-        let (iraft, env) = transform env astaft in
-          (IRLetMutableIn(var, irini, iraft), env)
+  | PatternMatch(rng, astobj, patbrs) ->
+      let (irobj, env) = transform_0 env astobj in
+      let (irpatsel, env) = transform_0_patsel env patbrs in
+      (IRPatternMatch(rng, irobj, irpatsel), env)
 
-    | Sequential(ast1, ast2) ->
-        let (ir1, env) = transform env ast1 in
-        let (ir2, env) = transform env ast2 in
-          (IRSequential(ir1, ir2), env)
+  | NonValueConstructor(constrnm, astcont) ->
+      let (ircont, env) = transform_0 env astcont in
+      (IRNonValueConstructor(constrnm, ircont), env)
 
-    | Overwrite(evid, astnew) ->
-        begin
-          match find_in_environment env evid with
-          | Some(var) ->
-              let (irnew, env) = transform env astnew in
-                (IROverwrite(var, irnew), env)
+  | Module(astmdl, astaft) ->
+      let (irmdl, env) = transform_0 env astmdl in
+      let (iraft, env) = transform_0 env astaft in
+      (IRModule(irmdl, iraft), env)
 
-          | None ->
-              report_bug_ir_ast ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast
-        end
+(* -- staging construct -- *)
 
-    | Dereference(ast1) ->
-        let (ir1, env) = transform env ast1 in
-        (IRDereference(ir1), env)
+  | Prev(_) ->
+      report_bug_ir "Prev(...) cannot occur at transform_ir"
 
-    | WhileDo(astb, astc) ->
-        let (irb, env) = transform env astb in
-        let (irc, env) = transform env astc in
-          (IRWhileDo(irb, irc), env)
+  | Next(ast1) ->
+      transform_1 env ast1
 
-    (* ---- others ---- *)
-
-    | PatternMatch(rng, astobj, patbrs) ->
-        let (irobj, env) = transform env astobj in
-        let (irpatsel, env) = transform_patsel env patbrs in
-          (IRPatternMatch(rng, irobj, irpatsel), env)
-
-    | NonValueConstructor(constrnm, astcont) ->
-        let (ircont, env) = transform env astcont in
-          (IRNonValueConstructor(constrnm, ircont), env)
-
-    | Module(astmdl, astaft) ->
-        let (irmdl, env) = transform env astmdl in
-        let (iraft, env) = transform env astaft in
-          (IRModule(irmdl, iraft), env)
-
-  (* -- staging construct -- *)
-
-    | Prev(_) ->
-        report_bug_ir "Prev(...) cannot occur at transform_ir"
-
-    | Next(_) ->
-        report_bug_ir "Next(...) cannot occur at transform_ir"
-
-#include "__ir.gen.ml"
+#include "__ir_0.gen.ml"

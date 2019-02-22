@@ -281,10 +281,10 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
     | _                           -> raise (NotADocumentFile(abspath_in, tyenv, ty))
 
 
-let eval_library_file ~(is_preprocess : bool) (env : environment) (abspath : abs_path) (ast : abstract_tree) : environment =
+let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : environment =
   Logging.begin_to_eval_file abspath;
   let value =
-    if (not is_preprocess) && OptionState.bytecomp_mode () then
+    if OptionState.bytecomp_mode () then
       Bytecomp.compile_and_exec_0 env ast
     else
       Evaluator.interpret_0 env ast
@@ -296,7 +296,10 @@ let eval_library_file ~(is_preprocess : bool) (env : environment) (abspath : abs
 
 let preprocess_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value =
   Logging.begin_to_preprocess_file abspath;
-  Evaluator.interpret_1 env ast
+  if OptionState.bytecomp_mode () then
+    Bytecomp.compile_and_exec_1 env ast
+  else
+    Evaluator.interpret_1 env ast
 
 
 let eval_main i env_freezed ast =
@@ -340,7 +343,7 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
     let rec aux i =
       let valuedoc = eval_main i env_freezed ast in
       match valuedoc with
-      | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
+      | BaseConstant(BCDocument(pagesize, pagecontf, pagepartsf, imvblst)) ->
           Logging.start_page_break ();
           State.start_page_break ();
           let pdf = PageBreak.main abspath_out pagesize pagecontf pagepartsf imvblst in
@@ -376,7 +379,7 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abst
         (env, Alist.to_list codeacc, codedoc)
 
     | ((Stage0 | Persistent0), abspath, astlib0) :: tail ->
-        let envnew = eval_library_file ~is_preprocess:true env abspath astlib0 in
+        let envnew = eval_library_file env abspath astlib0 in
         preprocess codeacc envnew tail
 
     | (Stage1, abspath, astlib1) :: tail ->
@@ -395,7 +398,7 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abst
 
     | (abspath, code) :: tail ->
         let ast = unlift_code code in
-        let envnew = eval_library_file ~is_preprocess:false env abspath ast in
+        let envnew = eval_library_file env abspath ast in
         eval envnew tail
   in
   let (env, codes, codedoc) = preprocess Alist.empty env libs in

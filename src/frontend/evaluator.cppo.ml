@@ -15,10 +15,10 @@ let report_dynamic_error msg =
 type nom_input_horz_element =
   | NomInputHorzText     of string
   | NomInputHorzEmbedded of abstract_tree
-  | NomInputHorzThunk    of abstract_tree
+  | NomInputHorzThunk    of syntactic_value * abstract_tree
   | NomInputHorzContent  of nom_input_horz_element list * environment
 
-
+(*
 let make_length_from_description flt unitnm =
   match unitnm with  (* temporary; ad-hoc handling of unit names *)
   | "pt"   -> Length.of_pdf_point flt
@@ -26,7 +26,7 @@ let make_length_from_description flt unitnm =
   | "mm"   -> Length.of_millimeter flt
   | "inch" -> Length.of_inch flt
   | _      -> report_bug_vm "LengthDescription; unknown unit name"
-
+*)
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
@@ -35,16 +35,16 @@ let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_
 
 let rec reduce_beta value1 value2 =
   match value1 with
-  | FuncWithEnvironment(evids, patbr, env1) ->
+  | Closure(evids, patbr, env1) ->
       let env1 =
         evids |> List.fold_left (fun env evid ->
-          let loc = ref (Constructor("None", UnitConstant)) in
+          let loc = ref (Constructor("None", const_unit)) in
           add_to_environment env evid loc
         ) env1
       in
       select_pattern (Range.dummy "Apply") env1 value2 [patbr]
 
-  | PrimitiveWithEnvironment(patbr, env1, _, _) ->
+  | PrimitiveClosure(patbr, env1, _, _) ->
       select_pattern (Range.dummy "Apply") env1 value2 [patbr]
 
   | _ ->
@@ -103,7 +103,7 @@ and interpret_0_input_horz_content (env : environment) (ihlst : input_horz_eleme
         let value = interpret_0 env ast in
         begin
           match value with
-          | InputHorzWithEnvironment(imihlst, envsub) ->
+          | InputHorzClosure(imihlst, envsub) ->
               ImInputHorzContent(imihlst, envsub)
 
           | _ ->
@@ -120,7 +120,7 @@ and interpret_0_input_vert_content (env : environment) (ivlst : input_vert_eleme
         let value = interpret_0 env ast in
         begin
           match value with
-          | InputVertWithEnvironment(imivlst, envsub) ->
+          | InputVertClosure(imivlst, envsub) ->
               ImInputVertContent(imivlst, envsub)
 
           | _ ->
@@ -134,7 +134,14 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
 
 (* ---- basic value ---- *)
 
-  | Value(v) -> v
+  | ASTBaseConstant(bc) ->
+      BaseConstant(bc)
+
+  | ASTEndOfList ->
+      List([])
+
+  | ASTMath(mlst) ->
+      MathValue(mlst)
 
   | FinishHeaderFile ->
       EvaluatedEnvironment(env)
@@ -144,17 +151,13 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
 
   | InputHorz(ihlst) ->
       let imihlst = interpret_0_input_horz_content env ihlst in
-      InputHorzWithEnvironment(imihlst, env)
+      InputHorzClosure(imihlst, env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
   | InputVert(ivlst) ->
       let imivlst = interpret_0_input_vert_content env ivlst in
-      InputVertWithEnvironment(imivlst, env)
+      InputVertClosure(imivlst, env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
-
-  | LengthDescription(flt, unitnm) ->
-      let len = make_length_from_description flt unitnm in
-      LengthConstant(len)
 
 (* -- fundamentals -- *)
 
@@ -178,7 +181,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)]
 
   | Function(evids, patbrs) ->
-      FuncWithEnvironment(evids, patbrs, env)
+      Closure(evids, patbrs, env)
 
   | Apply(ast1, ast2) ->
       let value1 = interpret_0 env ast1 in
@@ -189,11 +192,11 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       let value1 = interpret_0 env ast1 in
       begin
         match value1 with
-        | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
+        | Closure(evid :: evids, patbrs, env1) ->
             let value2 = interpret_0 env ast2 in
             let loc = ref (Constructor("Some", value2)) in
             let env1 = add_to_environment env1 evid loc in
-            FuncWithEnvironment(evids, patbrs, env1)
+            Closure(evids, patbrs, env1)
 
         | _ -> report_bug_reduction "ApplyOptional: not a function with optional parameter" ast1 value1
       end
@@ -202,9 +205,9 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       let value1 = interpret_0 env ast1 in
       begin
         match value1 with
-        | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
-            let env1 = add_to_environment env1 evid (ref (Constructor("None", UnitConstant))) in
-            FuncWithEnvironment(evids, patbrs, env1)
+        | Closure(evid :: evids, patbrs, env1) ->
+            let env1 = add_to_environment env1 evid (ref (Constructor("None", const_unit))) in
+            Closure(evids, patbrs, env1)
 
         | _ ->
             report_bug_reduction "ApplyOmission: not a function with optional parameter" ast1 value1
@@ -264,8 +267,8 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       let value2 = interpret_0 env ast2 in
       begin
         match value1 with
-        | UnitConstant -> value2
-        | _            -> report_bug_reduction "Sequential: first operand value is not a UnitConstant" ast1 value1
+        | BaseConstant(BCUnit) -> value2
+        | _                    -> report_bug_reduction "Sequential: first operand value is not a unit" ast1 value1
       end
 
   | Overwrite(evid, astnew) ->
@@ -278,7 +281,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
               | Location(stid) ->
                   let valuenew = interpret_0 env astnew in
                   update_location env stid valuenew;
-                  UnitConstant
+                  const_unit
 
               | _ ->
                   report_bug_value "Overwrite: value is not a Location" value
@@ -293,7 +296,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
       if b then
         let _ = interpret_0 env astc in interpret_0 env (WhileDo(astb, astc))
       else
-        UnitConstant
+        const_unit
 
   | Dereference(astcont) ->
       let valuecont = interpret_0 env astcont in
@@ -340,7 +343,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
       let (pathelemlst, closingopt) = interpret_0_path env pathcomplst cycleopt in
-      PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
+      make_path [GeneralPath(pt0, pathelemlst, closingopt)]
 
 (* -- staging constructs -- *)
 
@@ -357,8 +360,14 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
 and interpret_1 (env : environment) (ast : abstract_tree) =
   match ast with
 
-  | Value(v) ->
-      CdValue(v)
+  | ASTBaseConstant(bc) ->
+      CdBaseConstant(bc)
+
+  | ASTMath(mlst) ->
+      CdMath(mlst)
+
+  | ASTEndOfList ->
+      CdEndOfList
 
   | FinishHeaderFile ->
       CdFinishHeaderFile
@@ -373,10 +382,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
   | InputVert(ivlst) ->
       let cdivlst = ivlst |> map_input_vert (interpret_1 env) in
       CdInputVert(cdivlst)
-
-  | LengthDescription(flt, unitnm) ->
-      let len = make_length_from_description flt unitnm in
-      CdValue(LengthConstant(len))
 
   | ContentOf(rng, evid) ->
       CdContentOf(rng, evid)
@@ -512,7 +517,8 @@ and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value
     imivlst |> List.map (fun imiv ->
       match imiv with
       | ImInputVertEmbedded(astabs) ->
-          let valuevert = interpret_0 env (Apply(astabs, Value(valuetctx))) in
+          let valueabs = interpret_0 env astabs in
+          let valuevert = reduce_beta valueabs valuetctx in
           get_string valuevert
 
       | ImInputVertContent(imivlstsub, envsub) ->
@@ -521,7 +527,7 @@ and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value
     ) |> String.concat ""
   in
   let s = interpret_commands env imivlst in
-  StringConstant(s)
+  make_string s
 
 
 and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
@@ -561,11 +567,13 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx :
     nmihlst |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzEmbedded(astabs) ->
-          let valueret = interpret_0 env (Apply(astabs, Value(valuetctx))) in
+          let valueabs = interpret_0 env astabs in
+          let valueret = reduce_beta valueabs valuetctx in
           get_string valueret
 
-      | NomInputHorzThunk(ast) ->
-          let valueret = interpret_0 env ast in
+      | NomInputHorzThunk(valuecmd, astarg) ->
+          let valuearg = interpret_0 env astarg in
+          let valueret = reduce_beta valuecmd valuearg in
           get_string valueret
 
       | NomInputHorzText(s) ->
@@ -581,7 +589,7 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx :
 
   let nmihlst = normalize imihlst in
   let s = interpret_commands env nmihlst in
-  StringConstant(s)
+  make_string s
 
 
 and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
@@ -589,7 +597,8 @@ and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) 
     imivlst |> List.map (fun imiv ->
       match imiv with
       | ImInputVertEmbedded(astabs) ->
-          let valuevert = interpret_0 env (Apply(astabs, Value(valuectx))) in
+          let valueabs = interpret_0 env astabs in
+          let valuevert = reduce_beta valueabs valuectx in
           get_vert valuevert
 
       | ImInputVertContent(imivlstsub, envsub) ->
@@ -598,12 +607,13 @@ and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) 
     ) |> List.concat
   in
   let imvblst = interpret_commands env imivlst in
-  Vert(imvblst)
+  make_vert imvblst
 
 
 and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
 
-  let (ctx, valuemcmd) = get_context valuectx in
+  let (ctx, ctxsub) = get_context valuectx in
+  let valuemcmd = make_math_command_func ctxsub.math_command in
 
   let rec normalize (imihlst : intermediate_input_horz_element list) =
     imihlst |> List.fold_left (fun acc imih ->
@@ -620,7 +630,8 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
           end
 
       | ImInputHorzEmbeddedMath(astmath) ->
-          let nmih = NomInputHorzThunk(Apply(Apply(Value(valuemcmd), Value(valuectx)), astmath)) in
+          let valuemcmdctx = reduce_beta valuemcmd valuectx in
+          let nmih = NomInputHorzThunk(valuemcmdctx, astmath) in
           Alist.extend acc nmih
 
       | ImInputHorzContent(imihlstsub, envsub) ->
@@ -635,11 +646,13 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
     nmihlst |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzEmbedded(astabs) ->
-          let valuehorz = interpret_0 env (Apply(astabs, Value(valuectx))) in
+          let valueabs = interpret_0 env astabs in
+          let valuehorz = reduce_beta valueabs valuectx in
           get_horz valuehorz
 
-      | NomInputHorzThunk(ast) ->
-          let valuehorz = interpret_0 env ast in
+      | NomInputHorzThunk(valuemcmdctx, astmath) ->
+          let valuemath = interpret_0 env astmath in
+          let valuehorz = reduce_beta valuemcmdctx valuemath in
           get_horz valuehorz
 
       | NomInputHorzText(s) ->
@@ -653,7 +666,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
 
   let nmihlst = normalize imihlst in
   let hblst = interpret_commands env nmihlst in
-  Horz(hblst)
+  make_horz hblst
 
 
 and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) =
@@ -683,15 +696,17 @@ and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_val
 
 and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : syntactic_value) : environment option =
   match (pat, valueobj) with
-  | (PIntegerConstant(pnc), IntegerConstant(nc)) -> if pnc = nc then Some(env) else None
-  | (PBooleanConstant(pbc), BooleanConstant(bc)) -> if pbc = bc then Some(env) else None
+  | (PIntegerConstant(pnc), BaseConstant(BCInt(nc))) ->
+      if pnc = nc then Some(env) else None
 
-  | (PStringConstant(psc), value2) ->
-      let str2 = get_string value2 in
+  | (PBooleanConstant(pbc), BaseConstant(BCBool(bc))) ->
+      if pbc = bc then Some(env) else None
+
+  | (PStringConstant(psc), BaseConstant(BCString(str2))) ->
       if String.equal psc str2 then Some(env) else None
 
-  | (PUnitConstant, UnitConstant) -> Some(env)
-  | (PWildCard, _)                -> Some(env)
+  | (PUnitConstant, BaseConstant(BCUnit)) -> Some(env)
+  | (PWildCard, _)                        -> Some(env)
 
   | (PVariable(evid), _) ->
       let envnew = add_to_environment env evid (ref valueobj) in
@@ -701,13 +716,13 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
       let envnew = add_to_environment env evid (ref sub) in
       check_pattern_matching envnew psub sub
 
-  | (PEndOfList, EndOfList) ->
+  | (PEndOfList, List([])) ->
       Some(env)
 
-  | (PListCons(phd, ptl), ListCons(hd, tl)) ->
+  | (PListCons(phd, ptl), List(vhd :: vtail)) ->
       let open OptionMonad in
-      check_pattern_matching env phd hd >>= fun envhd ->
-      check_pattern_matching envhd ptl tl
+      check_pattern_matching env phd vhd >>= fun envhd ->
+      check_pattern_matching envhd ptl (List(vtail))
 
   | (PTuple(plst), Tuple(vlst)) ->
       let open OptionMonad in
@@ -742,6 +757,6 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
     )
   in
   trilst |> List.iter (fun (evid, loc, patbr) ->
-    loc := FuncWithEnvironment([], patbr, envnew)
+    loc := Closure([], patbr, envnew)
   );
   envnew

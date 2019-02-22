@@ -19,21 +19,21 @@ module Const = struct
 
   let ret = "ret"
 
-  let trans_prim = "transform_primitive"
+  let trans_prim = "transform_0_primitive"
 
   let destructuring_rules =
     let open Printf in
-    [ "int", sprintf "IntegerConstant(%s)"
-    ; "bool", sprintf "BooleanConstant(%s)"
+    [ "int", sprintf "BaseConstant(BCInt(%s))"
+    ; "bool", sprintf "BaseConstant(BCBool(%s))"
     ; "context", sprintf "Context(%s)"
-    ; "float", sprintf "FloatConstant(%s)"
-    ; "horz", sprintf "Horz(%s)"
-    ; "vert", sprintf "Vert(%s)"
-    ; "length", sprintf "LengthConstant(%s)"
+    ; "float", sprintf "BaseConstant(BCFloat(%s))"
+    ; "horz", sprintf "BaseConstant(BCHorz(%s))"
+    ; "vert", sprintf "BaseConstant(BCVert(%s))"
+    ; "length", sprintf "BaseConstant(BCLength(%s))"
     ; "math", sprintf "MathValue(%s)"
-    ; "path_value", sprintf "PathValue(%s)"
-    ; "prepath", sprintf "PrePathValue(%s)"
-    ; "regexp", sprintf "RegExpConstant(%s)"
+    ; "path_value", sprintf "BaseConstant(BCPath(%s))"
+    ; "prepath", sprintf "BaseConstant(BCPrePath(%s))"
+    ; "regexp", sprintf "BaseConstant(BCRegExp(%s))"
     ]
 end
 
@@ -352,7 +352,7 @@ let gen_attype () =
   )
 
 
-let gen_ircases () =
+let gen_ircases_0 () =
   let open Instruction in
   Vminst.def |> List.iter (function
   | {
@@ -376,11 +376,40 @@ let gen_ircases () =
   )
 
 
+let gen_ircases_1 () =
+  let open Instruction in
+  Vminst.def |> List.iter (function
+  | {
+      no_ircode = false;
+      inst;
+      params;
+      _
+    } as def  when is_primitive def ->
+      let len = List.length params in
+      let ps = params |> List.mapi (fun i _ -> "p%d" @% i + 1) in
+      let cvs = params |> List.mapi (fun i _ -> "cv%d" @% i + 1) in
+      puts "    | %s(%s) ->"
+        inst
+        (String.concat ", " ps);
+      puts "        code%d env (fun %s -> Cd%s(%s)) %s"
+        len
+        (String.concat " " cvs)
+        inst
+        (String.concat ", " cvs)
+        (String.concat " " ps);
+      puts ""
+
+  | _ ->
+      ()
+  )
+
+
 let () =
   let opts =
     [
       ("--gen-vm"             , gen_vminstrs       );
-      ("--gen-ir"             , gen_ircases        );
+      ("--gen-ir-0"           , gen_ircases_0      );
+      ("--gen-ir-1"           , gen_ircases_1      );
       ("--gen-insttype"       , gen_insttype       );
       ("--gen-attype"         , gen_attype         );
       ("--gen-codetype"       , gen_codetype       );

@@ -60,7 +60,7 @@ let newframe_recycle (env : vmenv) (preenv : vmenv) (size : int) : vmenv =
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
-    HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
+  HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
 let popn stack n =
@@ -118,14 +118,14 @@ and exec_input_horz_content env ihlst =
         let value = exec [] env code [] in
         begin
           match value with
-          | CompiledInputHorzWithEnvironment(imihlst, envsub) ->
+          | CompiledInputHorzClosure(imihlst, envsub) ->
               CompiledImInputHorzContent(imihlst, envsub)
 
           | _ -> report_bug_vm "exec_input_horz_content"
         end
 
   ) in
-    CompiledInputHorzWithEnvironment(imihlist, env)
+    CompiledInputHorzClosure(imihlist, env)
 
 
 and exec_input_vert_content env ivlst =
@@ -137,14 +137,50 @@ and exec_input_vert_content env ivlst =
         let value = exec [] env code [] in
         begin
           match value with
-          | CompiledInputVertWithEnvironment(imivlst, envsub) ->
+          | CompiledInputVertClosure(imivlst, envsub) ->
               CompiledImInputVertContent(imivlst, envsub)
 
           | _ -> report_bug_vm "exec_input_vert_content"
         end
 
   ) in
-    CompiledInputVertWithEnvironment(imivlst, env)
+    CompiledInputVertClosure(imivlst, env)
+
+
+and exec_code_input_horz env irihlst =
+  irihlst |> List.map (function
+  | InputHorzText(s) ->
+      InputHorzText(s)
+
+  | InputHorzEmbedded(instrs) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      InputHorzEmbedded(cv)
+
+  | InputHorzEmbeddedMath(instrs) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      InputHorzEmbeddedMath(cv)
+
+  | InputHorzContent(instrs) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      InputHorzContent(cv)
+  )
+
+
+and exec_code_input_vert env irivlst =
+  irivlst |> List.map (function
+  | InputVertEmbedded(instrs) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      InputVertEmbedded(cv)
+
+  | InputVertContent(instrs) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      InputVertContent(cv)
+  )
 
 
 and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
@@ -161,7 +197,7 @@ and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_
       ) |> String.concat ""
   in
   let s = interpret_commands env imivlst in
-    StringConstant(s)
+  make_string s
 
 
 and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
@@ -220,7 +256,7 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
 
       let nmihlst = normalize imihlst in
       let s = interpret_commands env nmihlst in
-        StringConstant(s)
+      make_string s
     end
 
 
@@ -238,11 +274,11 @@ and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_va
       ) |> List.concat
   in
   let imvblst = interpret_commands env imivlst in
-    Vert(imvblst)
+  make_vert imvblst
 
 
 and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
-  let (ctx, valuemcmd) = get_context valuectx in
+  let (ctx, ctxsub) = get_context valuectx in
     begin
       let rec normalize imihlst =
         imihlst |> List.fold_left (fun acc imih ->
@@ -259,6 +295,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
                 end
 
             | CompiledImInputHorzEmbeddedMath(mathcode) ->
+                let MathCommand(valuemcmd) = ctxsub.math_command in
                 let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuectx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
                   Alist.extend acc nmih
 
@@ -292,7 +329,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
 
       let nmihlst = normalize imihlst in
       let hblst = interpret_commands env nmihlst in
-        Horz(hblst)
+      make_horz hblst
     end
 
 
@@ -302,6 +339,21 @@ and exec_application (env : vmenv) (vf : syntactic_value) (vargs : syntactic_val
       vf
     else
       exec (vf :: (List.rev vargs)) env [OpApplyT(len)] []
+
+
+and exec_code_pattern_branch (env : vmenv) (comppatbr : (instruction list) pattern_branch_scheme) =
+  match comppatbr with
+  | PatternBranch(pat, instrs1) ->
+      let value1 = exec [] env instrs1 [] in
+      let cv1 = get_code value1 in
+      CdPatternBranch(pat, cv1)
+
+  | PatternBranchWhen(pat, instrs, instrs1) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      let value1 = exec [] env instrs1 [] in
+      let cv1 = get_code value1 in
+      CdPatternBranchWhen(pat, cv, cv1)
 
 
 and exec (stack : syntactic_value list) (env : vmenv) (code : instruction list) dump =
@@ -405,7 +457,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | f :: stack ->
             begin
               match f with
-              | CompiledFuncWithEnvironment(optvars, arity, pargs, framesize, body, env1) ->
+              | CompiledClosure(optvars, arity, pargs, framesize, body, env1) ->
                   let body =
                     optvars |> List.fold_left (fun acc optvar ->
                       let bindop =
@@ -413,7 +465,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                         | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
                         | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
                       in
-                      OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
+                      OpPush(Constructor("None", const_unit)) :: bindop :: acc
                     ) body
                   in
                   if arity = n then
@@ -426,7 +478,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
 
                   else if arity > n then
                     let (args, stack) = popn stack n in
-                    let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
+                    let applied = CompiledClosure([], arity - n, pargs @ args, framesize, body, env1) in
                     exec (applied :: stack) env code dump
 
                   else
@@ -435,13 +487,13 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                     let allargs = List.rev (pargs @ args) in
                     exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
 
-              | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
+              | CompiledPrimitiveClosure(arity, [], framesize, body, env1, astf) ->
                   if arity = n then
                     exec stack (newframe env1 framesize) body ((env, code) :: dump)
 
                   else if arity > n then
                     let (args, stack) = popn stack n in
-                    let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
+                    let applied = CompiledClosure([], arity - n, args, framesize, body, env1) in
                     exec (applied :: stack) env code dump
 
                   else
@@ -461,7 +513,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | f :: stack ->
             begin
               match f with
-              | CompiledFuncWithEnvironment(optvars, arity, pargs, framesize, body, env1) ->
+              | CompiledClosure(optvars, arity, pargs, framesize, body, env1) ->
                   let body =
                     optvars |> List.fold_left (fun acc optvar ->
                       let bindop =
@@ -469,7 +521,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                         | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
                         | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
                       in
-                      OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
+                      OpPush(Constructor("None", const_unit)) :: bindop :: acc
                     ) body
                   in
                   if arity = n then
@@ -482,7 +534,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
 
                   else if arity > n then
                     let (args, stack) = popn stack n in
-                    let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
+                    let applied = CompiledClosure([], arity - n, pargs @ args, framesize, body, env1) in
                     exec (applied :: stack) env code dump
 
                   else
@@ -491,13 +543,13 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                     let allargs = List.rev (pargs @ args) in
                     exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
 
-               | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
+               | CompiledPrimitiveClosure(arity, [], framesize, body, env1, astf) ->
                    if arity = n then
                      exec stack (newframe env1 framesize) body dump
 
                    else if arity > n then
                      let (args, stack) = popn stack n in
-                     let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
+                     let applied = CompiledClosure([], arity - n, args, framesize, body, env1) in
                      exec (applied :: stack) env code dump
 
                    else
@@ -517,14 +569,14 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | v :: f :: stack ->
             begin
               match f with
-              | CompiledFuncWithEnvironment(var :: vars, arity, pargs, framesize, body, env1) ->
+              | CompiledClosure(var :: vars, arity, pargs, framesize, body, env1) ->
                   let bindop =
                     match var with
                     | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
                     | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
                   in
                   let body = OpPush(Constructor("Some", v)) :: bindop :: body in
-                  let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
+                  let fnew = CompiledClosure(vars, arity, pargs, framesize, body, env1) in
                   exec (fnew :: stack) env code dump
 
               | _ ->
@@ -540,14 +592,14 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | f :: stack ->
             begin
               match f with
-              | CompiledFuncWithEnvironment(var :: vars, arity, pargs, framesize, body, env1) ->
+              | CompiledClosure(var :: vars, arity, pargs, framesize, body, env1) ->
                   let bindop =
                     match var with
                     | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
                     | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
                   in
-                  let body = OpPush(Constructor("None", UnitConstant)) :: bindop :: body in
-                  let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
+                  let body = OpPush(Constructor("None", const_unit)) :: bindop :: body in
+                  let fnew = CompiledClosure(vars, arity, pargs, framesize, body, env1) in
                   exec (fnew :: stack) env code dump
 
               | _ ->
@@ -608,13 +660,12 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpBranchIf(body) ->
       begin
         match stack with
-        | BooleanConstant(b) :: stack ->
-            begin
-              if b then
-                exec stack env body dump
-              else
-                exec stack env code dump
-            end
+        | v :: stack ->
+            let b = get_bool v in
+            if b then
+              exec stack env body dump
+            else
+              exec stack env code dump
 
         | _ -> report_bug_vm "invalid argument for OpBranchIf"
       end
@@ -622,13 +673,12 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpBranchIfNot(body) ->
       begin
         match stack with
-        | BooleanConstant(b) :: stack ->
-            begin
-              if b then
-                exec stack env code dump
-              else
-                exec stack env body dump
-            end
+        | v :: stack ->
+            let b = get_bool v in
+            if b then
+              exec stack env code dump
+            else
+              exec stack env body dump
 
         | _ -> report_bug_vm "invalid argument for OpBranchIfNot"
       end
@@ -752,13 +802,14 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       begin
         match stack with
         | v :: stack ->
-            begin
-              match v with
-              | BooleanConstant(b0) when b = b0 -> exec stack env code dump
-              | _                               -> exec stack env next dump
-            end
+            let b0 = get_bool v in
+            if b = b0 then
+              exec stack env code dump
+            else
+              exec stack env next dump
 
-        | _ -> report_bug_vm "invalid argument for OpCheckStackTopBool"
+        | _ ->
+            report_bug_vm "invalid argument for OpCheckStackTopBool"
       end
 
   | OpCheckStackTopCtor(ctor_nm, next) ->
@@ -780,8 +831,8 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | v :: stack ->
             begin
               match v with
-              | EndOfList -> exec stack env code dump
-              | _         -> exec stack env next dump
+              | List([]) -> exec stack env code dump
+              | _        -> exec stack env next dump
             end
 
         | _ -> report_bug_vm "invalid argument for OpCheckStackTopEndOfList"
@@ -791,13 +842,14 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       begin
         match stack with
         | v :: stack ->
-            begin
-              match v with
-              | IntegerConstant(i0) when i=i0 -> exec stack env code dump
-              | _                             -> exec stack env next dump
-            end
+            let i0 = get_int v in
+            if i = i0 then
+              exec stack env code dump
+            else
+              exec stack env next dump
 
-        | _ -> report_bug_vm "invalid argument for OpCheckStackTopInt"
+        | _ ->
+            report_bug_vm "invalid argument for OpCheckStackTopInt"
       end
 
   | OpCheckStackTopListCons(next) ->
@@ -806,8 +858,8 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | v :: stack ->
             begin
               match v with
-              | ListCons(car, cdr) -> exec (car :: cdr :: stack) env code dump
-              | _                  -> exec stack env next dump
+              | List(car :: cdr) -> exec (car :: List(cdr) :: stack) env code dump
+              | _                -> exec stack env next dump
             end
 
         | _ -> report_bug_vm "invalid argument for OpCheckStackTopListCons"
@@ -817,11 +869,11 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       begin
         match stack with
         | v :: stack ->
-            begin
-              match v with
-              | StringConstant(s0) when s0 = str -> exec stack env code dump
-              | _                                -> exec stack env next dump
-            end
+            let s0 = get_string v in
+            if s0 = str then
+              exec stack env code dump
+            else
+              exec stack env next dump
 
         | _ -> report_bug_vm "invalid argument for OpCheckStackTopStr"
       end
@@ -842,7 +894,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpClosure(optvars, arity, framesize, body) ->
       begin
             begin
-              exec (CompiledFuncWithEnvironment(optvars, arity, [], framesize, body, env) :: stack) env code dump
+              exec (CompiledClosure(optvars, arity, [], framesize, body, env) :: stack) env code dump
             end
 
       end
@@ -900,7 +952,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
               | Location(stid) ->
                   begin
                     update_location (vmenv_global env) stid valuenew;
-                    exec (UnitConstant :: stack) env code dump
+                    exec (const_unit :: stack) env code dump
                   end
 
               | _ ->
@@ -919,7 +971,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
               | Location(stid) ->
                    begin
                      update_location (vmenv_global env) stid valuenew;
-                     exec (UnitConstant :: stack) env code dump
+                     exec (const_unit :: stack) env code dump
                    end
 
               | _ ->
@@ -932,13 +984,12 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpSel(tpart, fpart) ->
       begin
         match stack with
-        | BooleanConstant(b) :: stack ->
-            begin
-              if b then
-                exec stack env tpart dump
-              else
-                exec stack env fpart dump
-            end
+        | v :: stack ->
+            let b = get_bool v in
+            if b then
+              exec stack env tpart dump
+            else
+              exec stack env fpart dump
 
         | _ -> report_bug_vm "invalid argument for OpSel"
       end
@@ -967,7 +1018,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
             let pt0 = get_point _tmp0 in
             let ret =
               let (pathelemlst, closingopt) = get_path env c_pathcomplst c_cycleopt in
-              PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
+              make_path [GeneralPath(pt0, pathelemlst, closingopt)]
             in exec (ret :: stack) env code dump
 
         | _ -> report_bug_vm "invalid argument for OpPath"
@@ -983,5 +1034,81 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
 
         | _ -> report_bug_vm "invalid argument for OpInsertArgs"
       end
+
+  | OpApplyCodeCombinator(codef, arity) ->
+      let (valuelst, stack) = popn stack arity in
+      let codelst = valuelst |> List.map get_code in
+      let coderet = codef codelst in
+      exec (CodeValue(coderet) :: stack) env code dump
+
+  | OpCodeMakeRecord(keylst) ->
+      let rec collect keys asc st =
+        match keys with
+        | [] ->
+            (asc, st)
+
+        | k :: rest ->
+            begin
+              match st with
+              | CodeValue(cv) :: stnew -> collect rest (Assoc.add asc k cv) stnew
+              | _                      -> report_bug_vm "CodeMakeRecord"
+            end
+      in
+      let (cdasc, stack) = collect (List.rev keylst) Assoc.empty stack in
+      exec (CodeValue(CdRecord(cdasc)) :: stack) env code dump
+
+  | OpCodeMathList(n) ->
+      let rec iter n st acc =
+        if n <= 0 then
+          (acc, st)
+        else
+          match st with
+          | CodeValue(cv) :: stnew -> iter (n - 1) stnew (cv :: acc)
+          | _                      -> report_bug_vm "CodeMathList"
+      in
+      let (cvlst, stack) = iter n stack [] in
+      exec (CodeValue(CdMathList(cvlst)) :: stack) env code dump
+
+  | OpCodeMakeTuple(n) ->
+      let rec iter n acc st =
+        if n <= 0 then
+          (acc, st)
+        else
+          match st with
+          | CodeValue(cv) :: stnew -> iter (n - 1) (cv :: acc) stnew
+          | _                      -> report_bug_vm "CodeMakeTuple"
+      in
+      let (cvlst, stack) = iter n [] stack in
+      exec (CodeValue(CdTuple(cvlst)) :: stack) env code dump
+
+  | OpCodeMakeInputHorz(compihlst) ->
+      let cdihlst = exec_code_input_horz env compihlst in
+      exec (CodeValue(CdInputHorz(cdihlst)) :: stack) env code dump
+
+  | OpCodeMakeInputVert(compivlst) ->
+      let cdivlst = exec_code_input_vert env compivlst in
+      exec (CodeValue(CdInputVert(cdivlst)) :: stack) env code dump
+
+  | OpCodePatternMatch(rng, comppatbrs) ->
+      begin
+        match stack with
+        | CodeValue(cv0) :: stack ->
+            let cdpatbrs = List.map (exec_code_pattern_branch env) comppatbrs in
+            exec (CodeValue(CdPatternMatch(rng, cv0, cdpatbrs)) :: stack) env code dump
+
+        | _ ->
+            report_bug_vm "CodePatternMatch: stack underflow"
+      end
+
+  | OpCodeLetRec(comprecbinds, instrs2) ->
+      let cdrecbinds =
+        comprecbinds |> List.map (function LetRecBinding(evid, comppatbr) ->
+          let cdpatbr = exec_code_pattern_branch env comppatbr in
+          CdLetRecBinding(evid, cdpatbr)
+        )
+      in
+      let value2 = exec [] env instrs2 [] in
+      let cv2 = get_code value2 in
+      exec (CodeValue(CdLetRecIn(cdrecbinds, cv2)) :: stack) env code dump
 
 #include "__vm.gen.ml"

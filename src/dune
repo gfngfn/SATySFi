@@ -49,7 +49,7 @@
 
 (rule
  (targets ir.ml)
- (deps    (:src ir.cppo.ml) __ir.gen.ml)
+ (deps    (:src ir.cppo.ml) __ir_0.gen.ml __ir_1.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule

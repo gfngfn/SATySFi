@@ -17,7 +17,8 @@ ATTYPE_GEN=$(FRONTEND)/__attype.gen.ml
 CODETYPE_GEN=$(FRONTEND)/__codetype.gen.ml
 UNLIFTCODE_GEN=$(FRONTEND)/__unliftcode.gen.ml
 VM_GEN=$(BYTECOMP)/__vm.gen.ml
-IR_GEN=$(BYTECOMP)/__ir.gen.ml
+IR_GEN_0=$(BYTECOMP)/__ir_0.gen.ml
+IR_GEN_1=$(BYTECOMP)/__ir_1.gen.ml
 EVAL_GEN_0=$(FRONTEND)/__evaluator_0.gen.ml
 EVAL_GEN_1=$(FRONTEND)/__evaluator_1.gen.ml
 PRIM_PDF_GEN=$(FRONTEND)/__primitives_pdf_mode.gen.ml
@@ -28,7 +29,8 @@ GENS= \
   $(CODETYPE_GEN) \
   $(UNLIFTCODE_GEN) \
   $(VM_GEN) \
-  $(IR_GEN) \
+  $(IR_GEN_0) \
+  $(IR_GEN_1) \
   $(EVAL_GEN_0) \
   $(EVAL_GEN_1) \
   $(PRIM_PDF_GEN) \
@@ -65,8 +67,11 @@ $(INSTTYPE_GEN): $(INSTDEF)
 $(VM_GEN): $(INSTDEF)
 	$(GENCODE) --gen-vm > $@
 
-$(IR_GEN): $(INSTDEF)
-	$(GENCODE) --gen-ir > $@
+$(IR_GEN_0): $(INSTDEF)
+	$(GENCODE) --gen-ir-0 > $@
+
+$(IR_GEN_1): $(INSTDEF)
+	$(GENCODE) --gen-ir-1 > $@
 
 $(EVAL_GEN_0): $(INSTDEF)
 	$(GENCODE) --gen-interps-0 > $@

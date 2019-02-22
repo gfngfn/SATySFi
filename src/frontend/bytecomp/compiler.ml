@@ -2,6 +2,7 @@
 open MyUtil
 open LengthInterface
 open Types
+open EvalUtil
 
 
 let report_bug_compiler msg =
@@ -54,6 +55,25 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
   compiled_ihlist
 
 
+and compile_code_input_horz (irihlst : (ir input_horz_element_scheme) list) =
+  irihlst |> List.map (function
+  | InputHorzText(s) ->
+      InputHorzText(s)
+
+  | InputHorzEmbedded(irabs) ->
+      let compiled = compile irabs [] in
+      InputHorzEmbedded(compiled)
+
+  | InputHorzEmbeddedMath(irmath) ->
+      let compiled = compile irmath [] in
+      InputHorzEmbeddedMath(compiled)
+
+  | InputHorzContent(ir) ->
+      let compiled = compile ir [] in
+      InputHorzContent(compiled)
+  )
+
+
 and compile_input_vert_content (ivlst : ir_input_vert_element list) =
   let compiled_ivlist =
     ivlst |> List.map (function
@@ -66,6 +86,35 @@ and compile_input_vert_content (ivlst : ir_input_vert_element list) =
     )
   in
   compiled_ivlist
+
+
+and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
+  irivlst |> List.map (function
+  | InputVertEmbedded(irabs) ->
+      let compiled = compile irabs [] in
+      InputVertEmbedded(compiled)
+
+  | InputVertContent(ir) ->
+      let compiled = compile ir [] in
+      InputVertContent(compiled)
+  )
+
+
+and compile_code_pattern_branch (irpatbr : ir pattern_branch_scheme) =
+  match irpatbr with
+  | PatternBranch(pat, ir1) ->
+      let compiled1 = compile ir1 [] in
+      PatternBranch(pat, compiled1)
+
+  | PatternBranchWhen(pat, ir, ir1) ->
+      let compiled = compile ir [] in
+      let compiled1 = compile ir1 [] in
+      PatternBranchWhen(pat, compiled, compiled1)
+
+
+and compile_code_letrec_binding (LetRecBinding(evid, irpatbr) : ir letrec_binding_scheme) =
+  let comppatbr = compile_code_pattern_branch irpatbr in
+  LetRecBinding(evid, comppatbr)
 
 
 and compile_path pathcomplst (cycleopt : unit ir_path_component option) =
@@ -202,7 +251,7 @@ and compile (ir : ir) (cont : instruction list) =
       compile ir1 @@ OpDereference :: cont
 
   | IRWhileDo(irb, irc) ->
-      let cond = compile irb [OpBranchIfNot(OpPush(UnitConstant) :: cont)] in
+      let cond = compile irb [OpBranchIfNot(OpPush(const_unit) :: cont)] in
       let body = compile irc cond in
       cond @ body
 
@@ -220,6 +269,27 @@ and compile (ir : ir) (cont : instruction list) =
   | IRPath(irpt0, pathcomplst, cycleopt) ->
       let (pathelemlst, closingopt) = compile_path pathcomplst cycleopt in
       compile irpt0 (OpPath(pathelemlst, closingopt) :: cont)
+
+(* -- multi-stage -- *)
+
+  | IRCodeCombinator(codef, arity, irargs) ->
+      compile_list irargs (OpApplyCodeCombinator(codef, arity) :: cont)
+
+  | IRCodeRecord(keylst, irargs) ->
+      compile_list irargs (OpCodeMakeRecord(keylst) :: cont)
+
+  | IRCodeInputHorz(ihlst) ->
+      OpCodeMakeInputHorz(compile_code_input_horz ihlst) :: cont
+
+  | IRCodeInputVert(ivlst) ->
+      OpCodeMakeInputVert(compile_code_input_vert ivlst) :: cont
+
+  | IRCodePatternMatch(rng, ir, irpatbrs) ->
+      compile ir @@ OpCodePatternMatch(rng, List.map compile_code_pattern_branch irpatbrs) :: cont
+
+  | IRCodeLetRecIn(irrecbinds, ir2) ->
+      let instrs2 = compile ir2 [] in
+      OpCodeLetRec(List.map compile_code_letrec_binding irrecbinds, instrs2) :: cont
 
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =
