@@ -138,7 +138,18 @@ rule progexpr stack = parse
       match headertype with
       | "require" -> HEADER_REQUIRE(pos, content)
       | "import"  -> HEADER_IMPORT(pos, content)
-      | _         -> raise (LexError(pos, "undefined header type '" ^ headertype ^ "'"))
+
+      | "stage" ->
+          begin
+            match content with
+            | "persistent" -> HEADER_PERSISTENT0(pos)
+            | "0"          -> HEADER_STAGE0(pos)
+            | "1"          -> HEADER_STAGE1(pos)
+            | _            -> raise (LexError(pos, "undefined stage type '" ^ content ^ "'; should be 'persistent', '0', or '1'."))
+          end
+
+      | _ ->
+          raise (LexError(pos, "undefined header type '" ^ headertype ^ "'"))
     }
   | space { progexpr stack lexbuf }
   | break {
@@ -210,6 +221,8 @@ rule progexpr stack = parse
   | "-"   { EXACT_MINUS(get_pos lexbuf) }
   | "="   { DEFEQ(get_pos lexbuf) }
   | "*"   { EXACT_TIMES(get_pos lexbuf) }
+  | "&"   { EXACT_AMP(get_pos lexbuf) }
+  | "~"   { EXACT_TILDE(get_pos lexbuf) }
 
 (* -- binary operators; should be extended -- *)
   | ("+" opsymbol*) { BINOP_PLUS(get_pos lexbuf, Lexing.lexeme lexbuf) }

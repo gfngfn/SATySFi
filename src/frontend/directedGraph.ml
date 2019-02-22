@@ -55,7 +55,15 @@ module Make (Vertex : VertexType) =
 
     type degree_out = int
 
-    type 'a t = ('a * degree_out ref * state ref * VertexSet.t ref * VertexSet.t ref) VertexHashTable.t
+    type 'a entry = {
+      label        : 'a;
+      degree_out   : int ref;
+      state        : state ref;
+      sources      : VertexSet.t ref;
+      destinations : VertexSet.t ref;
+    }
+
+    type 'a t = ('a entry) VertexHashTable.t
 
     exception Cyclic
     exception Loop of vertex
@@ -69,21 +77,27 @@ module Make (Vertex : VertexType) =
     let add_vertex (dg : 'a t) (vtx : vertex) (label : 'a) =
       print_for_debug_digraph ("addV (" ^ (Vertex.show vtx) ^ ")");
       if VertexHashTable.mem dg vtx then () else
-        VertexHashTable.add dg vtx (label, ref 0, ref Remained, ref VertexSet.empty, ref VertexSet.empty)
+        VertexHashTable.add dg vtx {
+          label        = label;
+          degree_out   = ref 0;
+          state        = ref Remained;
+          sources      = ref VertexSet.empty;
+          destinations = ref VertexSet.empty;
+        }
 
 
     let find_vertex (dg : 'a t) (vtx : vertex) =
       match VertexHashTable.find_opt dg vtx with
-      | Some((label, _, _, _, _)) -> label
-      | None                      -> raise UndefinedSourceVertex
+      | Some(entry) -> entry.label
+      | None        -> raise UndefinedSourceVertex
 
 
     let iter_vertex (f : vertex -> 'a -> unit) (dg : 'a t) =
-      dg |> VertexHashTable.iter (fun vtx (label, _, _, _, _) -> f vtx label)
+      dg |> VertexHashTable.iter (fun vtx entry -> f vtx entry.label)
 
 
     let fold_vertex (f : vertex -> 'a -> 'b -> 'b) (dg : 'a t) (init : 'b) =
-      VertexHashTable.fold (fun vtx (label, _, _, _, _) acc -> f vtx label acc) dg init
+      VertexHashTable.fold (fun vtx entry acc -> f vtx entry.label acc) dg init
 
 
     let mem_vertex (vtx : vertex) (dg : 'a t) =
@@ -92,63 +106,67 @@ module Make (Vertex : VertexType) =
 
     let add_edge (dg : 'a t) (vtx1 : vertex) (vtx2 : vertex) =
       print_for_debug_digraph ("addE (" ^ (Vertex.show vtx1) ^ " ---> " ^ (Vertex.show vtx2) ^ ")");
-      let (_, _, _, srcsetref2, _) =
+      let sources2 =
         match VertexHashTable.find_opt dg vtx2 with
-        | Some(info) -> info
-        | None       -> raise UndefinedDestinationVertex
+        | Some(entry2) -> entry2.sources
+        | None         -> raise UndefinedDestinationVertex
       in
-      let (_, degref1, _, _, destsetref1) =
+      let (deg1, dests1) =
         match VertexHashTable.find_opt dg vtx1 with
-        | Some(info) -> info
-        | None       -> raise UndefinedSourceVertex
+        | Some(entry1) -> (entry1.degree_out, entry1.destinations)
+        | None         -> raise UndefinedSourceVertex
       in
-        if VertexSet.mem vtx2 (!destsetref1) then () else
-          begin
-            incr degref1;
-            destsetref1 := VertexSet.add vtx2 (!destsetref1);
-            srcsetref2 := VertexSet.add vtx1 (!srcsetref2);
-          end
+        if VertexSet.mem vtx2 !dests1 then () else begin
+          incr deg1;
+          dests1 := !dests1 |> VertexSet.add vtx2;
+          sources2 := !sources2 |> VertexSet.add vtx1;
+        end
 
 
-    let initialize_state (dg : 'a t) =
-      dg |> VertexHashTable.iter (fun vtx (_, _, sttref, _, _) -> sttref := Remained)
+    let initialize_state (dg : 'a t) : unit =
+      dg |> VertexHashTable.iter (fun vtx entry -> entry.state := Remained)
 
 
-    let get_vertex_data (dg : 'a t) (vtx : vertex) =
+    let get_vertex_data (dg : 'a t) (vtx : vertex) : 'a entry =
       match VertexHashTable.find_opt dg vtx with
-      | Some(info) -> info
-      | None       -> assert false
+      | Some(entry) -> entry
+      | None        -> assert false
 
 
-    let get_vertex (dg : 'a t) (vtx : vertex) =
-      let (res, _, _, _, _) = get_vertex_data dg vtx in res
+    let get_vertex (dg : 'a t) (vtx : vertex) : 'a =
+      let entry = get_vertex_data dg vtx in entry.label
 
 
     let find_cycle (dg : 'a t) =
       let rec aux vtx1 =
-          let (_, _, sttref, _, destsetref) = get_vertex_data dg vtx1 in
-            match !sttref with
-            | Done     -> ()
-            | Touched  -> raise Cyclic
-            | Remained ->
-                begin
-                  sttref := Touched;
-                  VertexSet.iter aux (!destsetref);
-                  sttref := Done;
-                end
+        let entry = get_vertex_data dg vtx1 in
+        let state = entry.state in
+        match !state with
+        | Done ->
+            ()
+
+        | Touched ->
+            raise Cyclic
+
+        | Remained ->
+            state := Touched;
+            !(entry.destinations) |> VertexSet.iter aux;
+            state := Done
       in
         try
           begin
             initialize_state dg;
-            dg |> VertexHashTable.iter (fun vtx1 (_, _, sttref, _, destsetref) ->
+            dg |> VertexHashTable.iter (fun vtx1 entry ->
+              let state = entry.state in
+              let dests = entry.destinations in
               begin
                 begin
-                  if VertexSet.mem vtx1 (!destsetref) then
+                  if VertexSet.mem vtx1 (!dests) then
                     raise (Loop(vtx1))
                   else
                     ()
                 end;
-                match !sttref with
+                match !state with
                 | Remained -> aux vtx1
                 | _        -> ()
               end
@@ -156,11 +174,13 @@ module Make (Vertex : VertexType) =
             None
           end
         with
-        | Loop(vtx) -> Some([vtx])
+        | Loop(vtx) ->
+            Some([vtx])
+
         | Cyclic ->
             let cycle =
-              VertexHashTable.fold (fun vtx1 (_, _, sttref, _, _) lst ->
-                match !sttref with
+              VertexHashTable.fold (fun vtx1 entry lst ->
+                match !(entry.state) with
                 | Touched -> vtx1 :: lst
                 | _       -> lst
               ) dg []
@@ -169,53 +189,55 @@ module Make (Vertex : VertexType) =
 
 
     let backward_bfs_fold (f : 'b -> vertex -> 'a -> 'b) (init : 'b) (dg : 'a t) : 'b =
-        let vq = Queue.create () in
-        let rec step init =
-          try
-            let vtx = Queue.pop vq in
-              let () = print_for_debug_digraph ("pop " ^ (Vertex.show vtx)) in (* for debug *)
-            let (label, _, sttref, srcsetref, _) = get_vertex_data dg vtx in
-            let initnew = f init vtx label in
-            sttref := Done;
-            (!srcsetref) |> VertexSet.iter (fun vtx1 ->
-              let () = print_for_debug_digraph ("see " ^ (Vertex.show vtx1)) in (* for debug *)
-              let (_, degref1, sttref1, _, _) = get_vertex_data dg vtx1 in
-              decr degref1;
-                match !sttref1 with
-                | Done     ->
-                    print_for_debug_digraph "(done)";  (* for debug *)
-                    ()
+      let vq = Queue.create () in
+      let rec step init =
+        try
+          let vtx = Queue.pop vq in
+          let () = print_for_debug_digraph ("pop " ^ (Vertex.show vtx)) in (* for debug *)
+          let entry = get_vertex_data dg vtx in
+          let label = entry.label in
+          let state = entry.state in
+          let sources = entry.sources in
+          let initnew = f init vtx label in
+          state := Done;
+          !sources |> VertexSet.iter (fun vtx1 ->
+            let () = print_for_debug_digraph ("see " ^ (Vertex.show vtx1)) in (* for debug *)
+            let entry1 = get_vertex_data dg vtx1 in
+            let deg1 = entry1.degree_out in
+            let state1 = entry1.state in
+            decr deg1;
+            match !state1 with
+            | Done ->
+                print_for_debug_digraph "(done)";  (* for debug *)
+                ()
 
-                | Touched  ->
-                    print_for_debug_digraph "(touched)";  (* for debug *)
-                    ()
+            | Touched ->
+                print_for_debug_digraph "(touched)";  (* for debug *)
+                ()
 
-                | Remained ->
-                    if !degref1 = 0 then
-                      begin
-                        print_for_debug_digraph ("push " ^ (Vertex.show vtx1));  (* for debug *)
-                        sttref1 := Touched;
-                        Queue.push vtx1 vq;
-                      end
-                    else ()
-            );
-            step initnew;
-          with
-          | Queue.Empty -> init
-        in
-        begin
-          initialize_state dg;
-          dg |> VertexHashTable.iter (fun vtx (_, degref, sttref, _, _) ->
-            if !degref = 0 then
-              begin
-                print_for_debug_digraph ("push0 " ^ (Vertex.show vtx));  (* for debug *)
-                sttref := Touched;
-                Queue.push vtx vq;
-              end
-            else ()
+            | Remained ->
+                if !deg1 = 0 then begin
+                  print_for_debug_digraph ("push " ^ (Vertex.show vtx1));  (* for debug *)
+                  state1 := Touched;
+                  Queue.push vtx1 vq;
+                end else
+                  ()
           );
-          step init;
-        end
+          step initnew;
+        with
+        | Queue.Empty -> init
+      in
+      initialize_state dg;
+      dg |> VertexHashTable.iter (fun vtx entry ->
+        let degref = entry.degree_out in
+        let sttref = entry.state in
+        if !degref = 0 then begin
+          print_for_debug_digraph ("push0 " ^ (Vertex.show vtx));  (* for debug *)
+          sttref := Touched;
+          Queue.push vtx vq;
+        end else ()
+      );
+      step init
 
 
     let backward_bfs (f : vertex -> 'a -> unit) (dg : 'a t) : unit =

@@ -312,6 +312,7 @@ and ('a, 'b) type_main =
   | HorzCommandType of (('a, 'b) command_argument_type) list
   | VertCommandType of (('a, 'b) command_argument_type) list
   | MathCommandType of (('a, 'b) command_argument_type) list
+  | CodeType        of ('a, 'b) typ
 
 and ('a, 'b) command_argument_type =
   | MandatoryArgumentType of ('a, 'b) typ
@@ -378,6 +379,24 @@ let pp_sep fmt () =
   Format.fprintf fmt ";@ "
 
 
+type stage =
+  | Persistent0
+  | Stage0
+  | Stage1
+
+type pre = {
+  level           : level;
+  quantifiability : quantifiability;  (* may omitted in the future *)
+  stage           : stage;
+}
+
+
+let string_of_stage = function
+  | Persistent0 -> "persistent stage"
+  | Stage0      -> "stage 0"
+  | Stage1      -> "stage 1"
+
+
 type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
 
@@ -439,8 +458,7 @@ and untyped_abstract_tree_main =
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
 (* -- tuple value -- *)
-  | UTTupleCons            of untyped_abstract_tree * untyped_abstract_tree
-  | UTEndOfTuple
+  | UTTuple               of untyped_abstract_tree list
 (* -- record value -- *)
   | UTRecord               of (field_name * untyped_abstract_tree) list
   | UTAccessField          of untyped_abstract_tree * field_name
@@ -478,6 +496,9 @@ and untyped_abstract_tree_main =
 (* -- for lightweight command definition -- *)
   | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
   | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
+(* -- multi-stage constructs -- *)
+  | UTNext                 of untyped_abstract_tree
+  | UTPrev                 of untyped_abstract_tree
 
 and constraints = (var_name * manual_kind) list
 
@@ -505,12 +526,11 @@ and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
   | UTPIntegerConstant     of int
   | UTPBooleanConstant     of bool
-  | UTPStringConstant      of untyped_abstract_tree
+  | UTPStringConstant      of string
   | UTPUnitConstant
   | UTPListCons            of untyped_pattern_tree * untyped_pattern_tree
   | UTPEndOfList
-  | UTPTupleCons           of untyped_pattern_tree * untyped_pattern_tree
-  | UTPEndOfTuple
+  | UTPTuple               of untyped_pattern_tree list
   | UTPWildCard
   | UTPVariable            of var_name
   | UTPAsVariable          of var_name * untyped_pattern_tree
@@ -551,8 +571,50 @@ type untyped_let_binding = manual_type option * untyped_pattern_tree * untyped_a
 
 (* ---- typed ---- *)
 
-type letrec_binding =
-  | LetRecBinding of EvalVarID.t * pattern_branch
+type 'a input_horz_element_scheme =
+  | InputHorzText         of string
+  | InputHorzEmbedded     of 'a
+  | InputHorzContent      of 'a
+  | InputHorzEmbeddedMath of 'a
+[@@deriving show { with_path = false; }]
+
+type 'a input_vert_element_scheme =
+  | InputVertEmbedded of 'a
+  | InputVertContent  of 'a
+[@@deriving show { with_path = false; }]
+
+type ('a, 'b) path_component_scheme =
+  | PathLineTo        of 'a
+  | PathCubicBezierTo of 'b * 'b * 'a
+[@@deriving show { with_path = false; }]
+
+type base_constant =
+  | BCUnit
+  | BCBool     of bool
+  | BCInt      of int
+  | BCFloat    of float
+  | BCLength   of length
+  | BCString   of string
+  | BCRegExp   of Str.regexp
+      [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]
+  | BCPath     of path list
+      [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
+  | BCPrePath  of PrePath.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
+  | BCImageKey of ImageInfo.key
+      [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
+  | BCHorz     of HorzBox.horz_box list
+  | BCVert     of HorzBox.vert_box list
+  | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.element
+      [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
+  | BCTextModeContext of TextBackend.text_mode_context
+  | BCDocument        of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+[@@deriving show { with_path = false; }]
+
+type 'a letrec_binding_scheme =
+  | LetRecBinding of EvalVarID.t * 'a pattern_branch_scheme
+
+and letrec_binding = abstract_tree letrec_binding_scheme
 
 and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
@@ -629,8 +691,17 @@ and ir =
   | IRSequential            of ir * ir
   | IRWhileDo               of ir * ir
   | IROverwrite             of varloc * ir
+  | IRDereference           of ir
   | IRModule                of ir * ir
   | IRPath                  of ir * ir ir_path_component list * (unit ir_path_component) option
+
+  | IRCodeCombinator        of (code_value list -> code_value) * int * ir list
+  | IRCodeRecord            of Assoc.key list * ir list
+      [@printer (fun fmt _ -> Format.fprintf fmt "IRCodeRecord(...)")]
+  | IRCodeInputHorz         of (ir input_horz_element_scheme) list
+  | IRCodeInputVert         of (ir input_vert_element_scheme) list
+  | IRCodePatternMatch      of Range.t * ir * (ir pattern_branch_scheme) list
+  | IRCodeLetRecIn          of (ir letrec_binding_scheme) list * ir
 
 and ir_pattern_branch =
   | IRPatternBranch      of ir_pattern_tree * ir
@@ -650,13 +721,82 @@ and ir_pattern_tree =
   | IRPVariable             of varloc
   | IRPAsVariable           of varloc * ir_pattern_tree
   | IRPConstructor          of constructor_name * ir_pattern_tree
-#include "__insttype.gen.ml"
 
-and input_horz_element =
-  | InputHorzText         of string
-  | InputHorzEmbedded     of abstract_tree
-  | InputHorzContent      of abstract_tree
-  | InputHorzEmbeddedMath of abstract_tree
+and instruction =
+  | OpAccessField of field_name
+  | OpUpdateField of field_name
+  | OpForward of int
+  | OpApply of int
+  | OpApplyT of int
+  | OpApplyOptional
+  | OpApplyOmission
+  | OpBindGlobal of syntactic_value ref * EvalVarID.t * int
+  | OpBindLocal of int * int * EvalVarID.t * int
+  | OpBindClosuresRec of (varloc * instruction list) list
+  | OpBranch of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpBranch(...)")]
+  | OpBranchIf of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpBranchIf(...)")]
+  | OpBranchIfNot of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpBranchIfNot(...)")]
+  | OpLoadGlobal of syntactic_value ref * EvalVarID.t * int
+      [@printer ((fun fmt (r, evid, refs) -> Format.fprintf fmt "OpLoadGlobal(%s)" (EvalVarID.show_direct evid)))]
+  | OpLoadLocal of int * int * EvalVarID.t * int
+  | OpDereference
+      (* !! pdf, no-interp *)
+  | OpDup
+  | OpError of string
+  | OpMakeConstructor of constructor_name
+  | OpMakeRecord of Assoc.key list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpMakeRecord(...)")]
+  | OpMakeTuple of int
+  | OpPop
+  | OpPush of syntactic_value
+  | OpPushEnv
+  | OpCheckStackTopBool of bool * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopBool(...)")]
+  | OpCheckStackTopCtor of constructor_name * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopCtor(...)")]
+  | OpCheckStackTopEndOfList of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopEndOfList(...)")]
+  | OpCheckStackTopInt of int * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopInt(...)")]
+  | OpCheckStackTopListCons of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopListCons(...)")]
+  | OpCheckStackTopStr of string * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopStr(...)")]
+  | OpCheckStackTopTupleCons of instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopTupleCons(...)")]
+  | OpClosure of varloc list * int * int * instruction list
+  | OpClosureInputHorz of compiled_input_horz_element list
+  | OpClosureInputVert of compiled_input_vert_element list
+  | OpBindLocationGlobal of syntactic_value ref * EvalVarID.t
+  | OpBindLocationLocal of int * int * EvalVarID.t
+  | OpUpdateGlobal of syntactic_value ref * EvalVarID.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpUpdateGlobal(...)")]
+  | OpUpdateLocal of int * int * EvalVarID.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpUpdateLocal(...)")]
+  | OpSel of instruction list * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpSel(...)")]
+
+  | OpBackendMathList of int
+      (* !! no-ircode *)
+
+  | OpPath of ((instruction list) compiled_path_component) list * (unit compiled_path_component) option
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpPath(...)")]
+      (* !! no-interp, no-ircode *)
+
+  | OpInsertArgs of syntactic_value list
+  | OpApplyCodeCombinator of (code_value list -> code_value) * int
+  | OpCodeMakeRecord of Assoc.key list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCodeMakeRecord(...)")]
+  | OpCodeMathList of int
+  | OpCodeMakeTuple of int
+  | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
+  | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
+  | OpCodePatternMatch  of Range.t * ((instruction list) pattern_branch_scheme) list
+  | OpCodeLetRec        of ((instruction list) letrec_binding_scheme) list * instruction list
+#include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =
   | ImInputHorzText         of string
@@ -668,79 +808,44 @@ and intermediate_input_vert_element =
   | ImInputVertEmbedded of abstract_tree
   | ImInputVertContent  of intermediate_input_vert_element list * environment
 
-and input_vert_element =
-  | InputVertEmbedded of abstract_tree
-  | InputVertContent  of abstract_tree
-
-and 'a path_component =
-  | PathLineTo        of 'a
-  | PathCubicBezierTo of abstract_tree * abstract_tree * 'a
-
 and syntactic_value =
-  | Nil
-  | SimpleRef             of syntactic_value ref
-  | UnitConstant
-  | BooleanConstant       of bool
-  | IntegerConstant       of int
-  | FloatConstant         of float
-  | LengthConstant        of length
-  | StringEmpty
-  | StringConstant        of string
-  | RegExpConstant        of Str.regexp
-      [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]
-
-  | Constructor           of constructor_name * syntactic_value
-
-  | FuncWithEnvironment   of EvalVarID.t list * pattern_branch * environment
-  | PrimitiveWithEnvironment   of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | CompiledFuncWithEnvironment of varloc list * int * syntactic_value list * int * instruction list * vmenv
-  | CompiledPrimitiveWithEnvironment of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
-
-  | EvaluatedEnvironment  of environment
-
-  | ListCons              of syntactic_value * syntactic_value
-  | EndOfList
-
-  | TupleCons             of syntactic_value * syntactic_value
-  | EndOfTuple
-
-  | RecordValue           of syntactic_value Assoc.t
+  | Nil  (* -- just for brief use -- *)
+  | BaseConstant of base_constant
+  | Constructor  of constructor_name * syntactic_value
+  | List         of syntactic_value list
+  | Tuple        of syntactic_value list
+  | RecordValue  of syntactic_value Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
+  | Location     of StoreID.t
+  | MathValue    of math list
+  | Context      of input_context
+  | CodeValue    of code_value
 
-  | Location              of StoreID.t
+  | EvaluatedEnvironment of environment
 
-  | InputHorzWithEnvironment of intermediate_input_horz_element list * environment
-  | CompiledInputHorzWithEnvironment    of compiled_intermediate_input_horz_element list * vmenv
+(* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
+  | Closure          of EvalVarID.t list * pattern_branch * environment
+  | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
+  | InputHorzClosure of intermediate_input_horz_element list * environment
+  | InputVertClosure of intermediate_input_vert_element list * environment
 
-  | InputVertWithEnvironment of intermediate_input_vert_element list * environment
-  | CompiledInputVertWithEnvironment    of compiled_intermediate_input_vert_element list * vmenv
-
-  | Horz                  of HorzBox.horz_box list
-  | Vert                  of HorzBox.vert_box list
-
-  | PathValue             of path list
-      [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
-  | GraphicsValue               of (HorzBox.intermediate_horz_box list) GraphicD.element
-      [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
-  | PrePathValue                of PrePath.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
-  | MathValue                   of math list
-  | ImageKey                    of ImageInfo.key
-      [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
-  | Context                     of input_context
-  | TextModeContext             of TextBackend.text_mode_context
-  | DocumentValue               of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+(* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
+  | CompiledClosure          of varloc list * int * syntactic_value list * int * instruction list * vmenv
+  | CompiledPrimitiveClosure of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
+  | CompiledInputHorzClosure of compiled_intermediate_input_horz_element list * vmenv
+  | CompiledInputVertClosure of compiled_intermediate_input_vert_element list * vmenv
 
 and abstract_tree =
-  | Value                 of syntactic_value
+  | ASTBaseConstant       of base_constant
+  | ASTEndOfList
+  | ASTMath               of math list
   | FinishHeaderFile
   | FinishStruct
-  | LengthDescription     of float * length_unit_name
 (* -- input texts -- *)
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
 (* -- graphics -- *)
-  | Path                        of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
+  | Path                  of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
 (* -- record value -- *)
   | Record                of abstract_tree Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
@@ -760,34 +865,54 @@ and abstract_tree =
   | NonValueConstructor   of constructor_name * abstract_tree
 (* -- imperative -- *)
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
+  | Dereference           of abstract_tree
   | Sequential            of abstract_tree * abstract_tree
   | WhileDo               of abstract_tree * abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
   | BackendMathList             of abstract_tree list
-  | PrimitiveTupleCons    of abstract_tree * abstract_tree
+  | PrimitiveTuple        of abstract_tree list
+(* -- staging constructs -- *)
+  | Next                  of abstract_tree
+  | Prev                  of abstract_tree
 #include "__attype.gen.ml"
 
-and pattern_branch =
-  | PatternBranch      of pattern_tree * abstract_tree
-  | PatternBranchWhen  of pattern_tree * abstract_tree * abstract_tree
+and input_horz_element = abstract_tree input_horz_element_scheme
+
+and input_vert_element = abstract_tree input_vert_element_scheme
+
+and 'a path_component = ('a, abstract_tree) path_component_scheme
+
+and 'a pattern_branch_scheme =
+  | PatternBranch      of pattern_tree * 'a
+  | PatternBranchWhen  of pattern_tree * 'a * 'a
+
+and pattern_branch = abstract_tree pattern_branch_scheme
 
 and pattern_tree =
   | PUnitConstant
   | PBooleanConstant      of bool
   | PIntegerConstant      of int
-  | PStringConstant       of abstract_tree
+  | PStringConstant       of string
   | PListCons             of pattern_tree * pattern_tree
   | PEndOfList
-  | PTupleCons            of pattern_tree * pattern_tree
-  | PEndOfTuple
+  | PTuple                of pattern_tree list
   | PWildCard
   | PVariable             of EvalVarID.t
   | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
 
-and input_context = HorzBox.context_main * syntactic_value
+and input_context = HorzBox.context_main * context_sub
+
+and context_sub = {
+  math_command : math_command_func;
+  dummy : unit;
+}
+
+and math_command_func =
+  | MathCommand of syntactic_value
+      (* (input_context -> math list -> HorzBox.horz_box list) *)
 
 and math_element_main =
   | MathChar         of bool * Uchar.t list
@@ -835,6 +960,52 @@ and math =
   | MathParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math list) list
   | MathUpperLimit        of math list * math list
   | MathLowerLimit        of math list * math list
+
+and code_value =
+  | CdBaseConstant  of base_constant
+  | CdEndOfList
+  | CdMath          of math list
+  | CdFinishHeaderFile
+  | CdFinishStruct
+  | CdInputHorz     of code_input_horz_element list
+  | CdInputVert     of code_input_vert_element list
+  | CdContentOf     of Range.t * EvalVarID.t
+  | CdLetRecIn      of code_letrec_binding list * code_value
+  | CdLetNonRecIn   of pattern_tree * code_value * code_value
+  | CdFunction      of EvalVarID.t list * code_pattern_branch
+  | CdApply         of code_value * code_value
+  | CdApplyOptional of code_value * code_value
+  | CdApplyOmission of code_value
+  | CdIfThenElse    of code_value * code_value * code_value
+  | CdRecord        of code_value Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "CdRecord(...)")]
+  | CdAccessField   of code_value * field_name
+  | CdUpdateField   of code_value * field_name * code_value
+  | CdLetMutableIn  of EvalVarID.t * code_value * code_value
+  | CdSequential    of code_value * code_value
+  | CdOverwrite     of EvalVarID.t * code_value
+  | CdWhileDo       of code_value * code_value
+  | CdDereference   of code_value
+  | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
+  | CdConstructor   of constructor_name * code_value
+  | CdTuple         of code_value list
+  | CdPath          of code_value * (code_value code_path_component) list * (unit code_path_component) option
+  | CdMathList      of code_value list
+  | CdModule        of code_value * code_value
+#include "__codetype.gen.ml"
+
+and code_input_horz_element = code_value input_horz_element_scheme
+
+and code_input_vert_element = code_value input_vert_element_scheme
+
+and 'a code_path_component = ('a, code_value) path_component_scheme
+
+and code_letrec_binding =
+  | CdLetRecBinding of EvalVarID.t * code_pattern_branch
+
+and code_pattern_branch =
+  | CdPatternBranch     of pattern_tree * code_value
+  | CdPatternBranchWhen of pattern_tree * code_value * code_value
 [@@deriving show { with_path = false; }]
 
 
@@ -883,6 +1054,7 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
+    | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
 
 and erase_range_of_kind (kd : mono_kind) =
@@ -952,6 +1124,7 @@ let rec instantiate_aux bid_ht lev qtfbl (rng, ptymain) =
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
+    | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
 
 
 and instantiate_kind_aux bid_ht lev qtfbl (kd : poly_kind) : mono_kind =
@@ -1022,6 +1195,7 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
+    | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
   and generalize_kind kd =
     match kd with
@@ -1073,6 +1247,8 @@ let check_level lev (ty : mono_type) =
     | MathCommandType(cmdargtylst)
       ->
         List.for_all iter_cmd cmdargtylst
+
+    | CodeType(tysub)                -> iter tysub
 
   and iter_cmd = function
     | MandatoryArgumentType(ty) -> iter ty
@@ -1142,6 +1318,7 @@ let rec unlift_aux pty =
     | HorzCommandType(catyl)          -> HorzCommandType(List.map unlift_aux_cmd catyl)
     | VertCommandType(catyl)          -> VertCommandType(List.map unlift_aux_cmd catyl)
     | MathCommandType(catyl)          -> MathCommandType(List.map unlift_aux_cmd catyl)
+    | CodeType(ptysub)                -> CodeType(aux ptysub)
   in
   (rng, ptymainnew)
 
@@ -1196,6 +1373,84 @@ let update_location (env : environment) (stid : StoreID.t) (value : syntactic_va
 let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value option =
   let (_, stenvref) = env in
   StoreIDHashTable.find_opt (!stenvref) stid
+
+
+let map_input_horz f ihlst =
+  ihlst |> List.map (function
+  | InputHorzText(s)           -> InputHorzText(s)
+  | InputHorzEmbedded(ast)     -> InputHorzEmbedded(f ast)
+  | InputHorzContent(ast)      -> InputHorzContent(f ast)
+  | InputHorzEmbeddedMath(ast) -> InputHorzEmbeddedMath(f ast)
+  )
+
+
+let map_input_vert f ivlst =
+  ivlst |> List.map (function
+  | InputVertContent(ast)  -> InputVertContent(f ast)
+  | InputVertEmbedded(ast) -> InputVertEmbedded(f ast)
+  )
+
+
+let map_path_component f g = function
+  | PathLineTo(ast) ->
+      PathLineTo(g ast)
+
+  | PathCubicBezierTo(ast1, ast2, ast3) ->
+      let v1 = f ast1 in
+      let v2 = f ast2 in
+      let v3 = g ast3 in
+      PathCubicBezierTo(v1, v2, v3)
+
+
+let rec unlift_code (code : code_value) : abstract_tree =
+  let rec aux code =
+    match code with
+    | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
+    | CdEndOfList                          -> ASTEndOfList
+    | CdMath(mlst)                         -> ASTMath(mlst)
+    | CdFinishHeaderFile                   -> FinishHeaderFile
+    | CdFinishStruct                       -> FinishStruct
+    | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
+    | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
+    | CdContentOf(rng, evid)               -> ContentOf(rng, evid)
+    | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map aux_letrec_binding cdrecbinds, aux code1)
+    | CdLetNonRecIn(pat, code1, code2)     -> LetNonRecIn(pat, aux code1, aux code2)
+    | CdFunction(evids, cdpatbr)           -> Function(evids, aux_pattern_branch cdpatbr)
+    | CdApply(code1, code2)                -> Apply(aux code1, aux code2)
+    | CdApplyOptional(code1, code2)        -> ApplyOptional(aux code1, aux code2)
+    | CdApplyOmission(code1)               -> ApplyOmission(aux code1)
+    | CdIfThenElse(code1, code2, code3)    -> IfThenElse(aux code1, aux code2, aux code3)
+    | CdRecord(cdasc)                      -> Record(Assoc.map_value aux cdasc)
+    | CdAccessField(code1, fldnm)          -> AccessField(aux code1, fldnm)
+    | CdUpdateField(code1, fldnm, code2)   -> UpdateField(aux code1, fldnm, aux code2)
+    | CdLetMutableIn(evid, code1, code2)   -> LetMutableIn(evid, aux code1, aux code2)
+    | CdSequential(code1, code2)           -> Sequential(aux code1, aux code2)
+    | CdOverwrite(evid, code1)             -> Overwrite(evid, aux code1)
+    | CdDereference(code1)                 -> Dereference(aux code1)
+    | CdWhileDo(code1, code2)              -> WhileDo(aux code1, aux code2)
+    | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
+    | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
+    | CdTuple(codelst)                     -> PrimitiveTuple(List.map aux codelst)
+    | CdPath(code1, cdpath, cdcycleopt)    -> Path(aux code1, aux_path cdpath, aux_cycle cdcycleopt)
+    | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
+    | CdModule(code1, code2)               -> Module(aux code1, aux code2)
+#include "__unliftcode.gen.ml"
+
+  and aux_letrec_binding (CdLetRecBinding(evid, cdpatbr)) =
+    LetRecBinding(evid, aux_pattern_branch cdpatbr)
+
+  and aux_pattern_branch = function
+    | CdPatternBranch(pat, code)            -> PatternBranch(pat, aux code)
+    | CdPatternBranchWhen(pat, code, codeB) -> PatternBranchWhen(pat, aux code, aux codeB)
+
+  and aux_path cdpath =
+    List.map (map_path_component aux aux) cdpath
+
+  and aux_cycle cdcycleopt =
+    cdcycleopt |> BatOption.map (map_path_component aux (fun () -> ()))
+
+  in
+  aux code
 
 
 module MathContext
@@ -1413,6 +1668,17 @@ let rec string_of_type_basic tvf orvf tystr : string =
 
           | _ -> strcont
           end ^ " ref" ^ qstn
+
+    | CodeType(tysub) ->
+        let strsub = iter tysub in
+        let (_, tysubmain) = tysub in
+        "&" ^ begin
+          match tysubmain with
+          | BaseType(_)
+          | VariantType([], _) -> strsub
+
+          | _ -> "(" ^ strsub ^ ")"
+        end
 
     | ProductType(tylist) ->
         string_of_type_list_basic tvf orvf tylist

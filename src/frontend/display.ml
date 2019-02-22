@@ -181,6 +181,10 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv
             | _      -> s
           end
 
+    | CodeType(tysub) ->
+        let strsub = iter Single tysub in
+        "&" ^ strsub
+
     | ProductType(tylist) ->
         let s = iter_prod tylist in
         begin

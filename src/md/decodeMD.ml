@@ -338,11 +338,7 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
         | Some((title, url)) ->
             let u1 = (dummy_range, UTStringConstant(title)) in
             let u2 = (dummy_range, UTStringConstant(url)) in
-            let upair =
-              (dummy_range, UTTupleCons(u1,
-                 (dummy_range, UTTupleCons(u2,
-                   (dummy_range, UTEndOfTuple)))))
-            in
+            let upair = (dummy_range, UTTuple([u1; u2])) in
             (dummy_range, UTConstructor("Some", upair))
 
       in
@@ -471,7 +467,7 @@ let decode (cmdrcd : command_record) (s : string) =
         (cmdrcd.header_default, md)
   in
   let lexbuf = Lexing.from_string strheader in
-  let (_, utasthead) = ParserInterface.process "(markdown)" lexbuf in
+  let (_, _, utasthead) = ParserInterface.process "(markdown)" lexbuf in
   let blk = normalize_h1 md in
 (*
   Format.printf "BLOCK: %a\n" pp_block blk;  (* for debug *)

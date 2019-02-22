@@ -39,596 +39,6 @@
 #          (see `gen_code.rb`))
 #
 ---
-inst: AccessField
-fields:
-- field_nm : field_name
-params:
-- value1
-code: |
-  match value1 with
-  | RecordValue(asc1) ->
-      begin
-        match Assoc.find_opt asc1 field_nm with
-        | Some(v) -> exec (v :: stack) env code dump
-        | None    -> report_bug_vm ("OpAccessField: field '" ^ field_nm ^ "' not found")
-      end
-
-  | _ ->
-      report_bug_vm "OpAccessField: not a Record"
-
----
-inst: UpdateField
-fields:
-- field_nm : field_name
-params:
-- value1
-- value2
-code: |
-  match value1 with
-  | RecordValue(asc1) ->
-      let asc1new =
-        match Assoc.find_opt asc1 field_nm with
-        | Some(_) -> Assoc.add asc1 field_nm value2
-        | None    -> report_bug_vm ("OpUpdateField: field '" ^ field_nm ^ "' not found")
-      in
-      let v = RecordValue(asc1new) in
-      exec (v :: stack) env code dump
-
-  | _ ->
-    report_bug_vm "OpUpdateField: not a Record"
-
----
-inst: Forward
-fields:
-- n : int
-code: |
-  let (vs, stack) = popn stack n in
-  match stack with
-  | v0 :: stack -> exec (v0 :: List.rev_append vs stack) env code dump
-  | _           -> report_bug_vm "Forward: stack underflow"
-
----
-inst: Apply
-fields:
-- n : int
-params:
-- f
-code: |
-  match f with
-  | CompiledFuncWithEnvironment(optvars, arity, pargs, framesize, body, env1) ->
-      let body =
-        optvars |> List.fold_left (fun acc optvar ->
-          let bindop =
-            match optvar with
-            | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
-            | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
-          in
-          OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
-        ) body
-      in
-      if arity = n then
-        if pargs = [] then
-          exec stack (newframe env1 framesize) body ((env, code) :: dump)
-        else
-          let (args, stack) = popn stack n in
-          let allargs = List.rev (pargs @ args) in
-          exec (allargs @ stack) (newframe env1 framesize) body ((env, code) :: dump)
-
-      else if arity > n then
-        let (args, stack) = popn stack n in
-        let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
-        exec (applied :: stack) env code dump
-
-      else
-        let (surplus, stack) = popn stack (n - arity) in
-        let (args, stack) = popn stack arity in
-        let allargs = List.rev (pargs @ args) in
-        exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
-
-  | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
-      if arity = n then
-        exec stack (newframe env1 framesize) body ((env, code) :: dump)
-
-      else if arity > n then
-        let (args, stack) = popn stack n in
-        let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
-        exec (applied :: stack) env code dump
-
-      else
-        let (surplus, stack) = popn stack (n - arity) in
-        exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
-
-   | _ ->
-       report_bug_vm_value "Apply: not a function" f
-
----
-inst: ApplyT
-fields:
-- n : int
-params:
-- f
-code: |
-  match f with
-  | CompiledFuncWithEnvironment(optvars, arity, pargs, framesize, body, env1) ->
-      let body =
-        optvars |> List.fold_left (fun acc optvar ->
-          let bindop =
-            match optvar with
-            | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
-            | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
-          in
-          OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
-        ) body
-      in
-      if arity = n then
-        if pargs = [] then
-          exec stack (newframe env1 framesize) body dump
-        else
-          let (args, stack) = popn stack n in
-          let allargs = List.rev (pargs @ args) in
-          exec (allargs @ stack) (newframe env1 framesize) body dump
-
-      else if arity > n then
-        let (args, stack) = popn stack n in
-        let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
-        exec (applied :: stack) env code dump
-
-      else
-        let (surplus, stack) = popn stack (n - arity) in
-        let (args, stack) = popn stack arity in
-        let allargs = List.rev (pargs @ args) in
-        exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
-
-   | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
-       if arity = n then
-         exec stack (newframe env1 framesize) body dump
-
-       else if arity > n then
-         let (args, stack) = popn stack n in
-         let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
-         exec (applied :: stack) env code dump
-
-       else
-         let (surplus, stack) = popn stack (n-arity) in
-         exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
-
-   | _ ->
-       report_bug_vm_value "ApplyT: not a function" f
-
----
-inst: ApplyOptional
-fields:
-params:
-- f
-- v
-code: |
-  match f with
-  | CompiledFuncWithEnvironment(var :: vars, arity, pargs, framesize, body, env1) ->
-      let bindop =
-        match var with
-        | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
-        | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
-      in
-      let body = OpPush(Constructor("Some", v)) :: bindop :: body in
-      let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
-      exec (fnew :: stack) env code dump
-
-  | _ ->
-      report_bug_vm_value "ApplyOptional: not a function with optional arguments" f
-
----
-inst: ApplyOmission
-fields:
-params:
-- f
-code: |
-  match f with
-  | CompiledFuncWithEnvironment(var :: vars, arity, pargs, framesize, body, env1) ->
-      let bindop =
-        match var with
-        | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
-        | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
-      in
-      let body = OpPush(Constructor("None", UnitConstant)) :: bindop :: body in
-      let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
-      exec (fnew :: stack) env code dump
-
-  | _ ->
-      report_bug_vm_value "ApplyOmission: not a function with optional arguments" f
-
----
-inst: BindGlobal
-fields:
-- loc : syntactic_value ref
-- evid : EvalVarID.t
-- refs : int
-params:
-- v
-code: |
-  loc := v;
-  exec stack env code dump
-
----
-inst: BindLocal
-fields:
-- lv : int
-- offset : int
-- evid : EvalVarID.t
-- refs : int
-params:
-code: |
-  match stack with
-  | v :: stack ->
-      local_set_value env lv offset v;
-      exec stack env code dump
-
-  | _ ->
-      report_bug_vm ("BindLocal(" ^ (EvalVarID.show_direct evid) ^ ")")
-
----
-inst: BindClosuresRec
-fields:
-- binds : (varloc * instruction list) list
-code: |
-  binds |> List.iter (fun (var, code) ->
-    let recfunc = exec [] env code [] in
-      match var with
-      | GlobalVar(loc, evid, refs) -> loc := recfunc
-      | LocalVar(lv, offset, evid, refs) -> local_set_value env lv offset recfunc
-  );
-  exec stack env code dump
-
----
-inst: Branch
-suppress-pp : yes
-fields:
-- body : instruction list
-code: |
-  exec stack env body dump
-
----
-inst: BranchIf
-suppress-pp : yes
-fields:
-- body : instruction list
-params:
-- b : bool
-code: |
-  if b then
-    exec stack env body dump
-  else
-    exec stack env code dump
-
----
-inst: BranchIfNot
-suppress-pp : yes
-fields:
-- body : instruction list
-params:
-- b : bool
-code: |
-  if b then
-    exec stack env code dump
-  else
-    exec stack env body dump
-
----
-inst: LoadGlobal
-custom-pp:
-  (fun fmt (r, evid, refs) -> Format.fprintf fmt "OpLoadGlobal(%s)" (EvalVarID.show_direct evid))
-fields:
-- loc : syntactic_value ref
-- evid : EvalVarID.t
-- refs : int
-code: |
-  let v = !loc in
-  exec (v :: stack) env code dump
-
----
-inst: LoadLocal
-fields:
-- lv : int
-- offset : int
-- evid : EvalVarID.t
-- refs : int
-code: |
-  let v = local_get_value env lv offset in
-  exec (v :: stack) env code dump
-
----
-inst: Dereference
-is-pdf-mode-primitive: yes
-no-interp: yes
-params:
-- valuecont
-code: |
-  match valuecont with
-  | Location(stid) ->
-      begin
-        match find_location_value (vmenv_global env) stid with
-        | Some(value) -> value
-        | None        -> report_bug_vm "Dereference"
-      end
-
-  | _ ->
-      report_bug_vm "Dereference"
-
----
-inst: Dup
-code: |
-  let v =
-    try List.hd stack with
-    | Invalid_argument(_) -> report_bug_vm "Dup: stack underflow"
-  in
-    exec (v :: stack) env code dump
-
----
-inst: Error
-fields:
-- msg : string
-code: |
-  raise (ExecError(msg))
-
----
-inst: MakeConstructor
-fields:
-- ctor_nm : constructor_name
-params:
-- valuecont
-code: |
-  exec (Constructor(ctor_nm, valuecont) :: stack) env code dump
-
----
-inst: MakeRecord
-suppress-pp : yes
-fields:
-- keylst : Assoc.key list
-code: |
-  let rec collect keys asc st =
-    match keys with
-    | [] ->
-        (asc, st)
-
-    | k :: rest ->
-        begin
-          match st with
-          | v :: stnew -> collect rest (Assoc.add asc k v) stnew
-          | _          -> report_bug_vm "MakeRecord: stack underflow"
-        end
-    in
-    let (asc, stack) = collect (List.rev keylst) Assoc.empty stack in
-    exec (RecordValue(asc) :: stack) env code dump
-
----
-inst: MakeTuple
-fields:
-- len : int
-code: |
-  let rec iter n last st =
-    if n <= 0 then
-      (last, st)
-    else
-      match st with
-      | value :: stnew -> iter (n - 1) (TupleCons(value, last)) stnew
-      | []             -> report_bug_vm "MakeTuple: stack underflow"
-  in
-  let (tuple, stack) = iter len EndOfTuple stack in
-  exec (tuple :: stack) env code dump
-
----
-inst: Pop
-code: |
-  let stack =
-    try List.tl stack with
-    | Invalid_argument(_) -> report_bug_vm "Pop: stack underflow"
-  in
-  exec stack env code dump
-
----
-inst: Push
-fields:
-- v : syntactic_value
-code: |
-  exec (v :: stack) env code dump
-
----
-inst: PushEnv
-code: |
-  exec (EvaluatedEnvironment(vmenv_global env) :: stack) env code dump
-
----
-inst: CheckStackTopBool
-suppress-pp : yes
-fields:
-- b : bool
-- next : instruction list
-params:
-- v
-code: |
-  match v with
-  | BooleanConstant(b0) when b = b0 -> exec stack env code dump
-  | _                               -> exec stack env next dump
-
----
-inst: CheckStackTopCtor
-suppress-pp : yes
-fields:
-- ctor_nm : constructor_name
-- next : instruction list
-params:
-- v
-code: |
-  match v with
-  | Constructor(nm, sub) when nm = ctor_nm -> exec (sub :: stack) env code dump
-  | _                                      -> exec stack env next dump
-
----
-inst: CheckStackTopEndOfList
-suppress-pp : yes
-fields:
-- next : instruction list
-params:
-- v
-code: |
-  match v with
-  | EndOfList -> exec stack env code dump
-  | _         -> exec stack env next dump
-
----
-inst: CheckStackTopInt
-suppress-pp : yes
-fields:
-- i : int
-- next : instruction list
-params:
-- v
-code: |
-  match v with
-  | IntegerConstant(i0) when i=i0 -> exec stack env code dump
-  | _                             -> exec stack env next dump
-
----
-inst: CheckStackTopListCons
-suppress-pp : yes
-fields:
-- next : instruction list
-params:
-- v
-code: |
-  match v with
-  | ListCons(car, cdr) -> exec (car :: cdr :: stack) env code dump
-  | _                  -> exec stack env next dump
-
----
-inst: CheckStackTopStr
-suppress-pp : yes
-fields:
-- str : string
-- next : instruction list
-params:
-- v
-code: |
-  match v with
-  | StringConstant(s0) when s0 = str -> exec stack env code dump
-  | _                                -> exec stack env next dump
-
----
-inst: CheckStackTopTupleCons
-suppress-pp : yes
-fields:
-- next : instruction list
-params:
-- v
-code: |
-  match v with
-  | TupleCons(car, cdr) -> exec (car :: cdr :: stack) env code dump
-  | _                   -> exec stack env next dump
-
----
-inst: Closure
-fields:
-- optvars : varloc list
-- arity : int
-- framesize : int
-- body : instruction list
-code: |
-  exec (CompiledFuncWithEnvironment(optvars, arity, [], framesize, body, env) :: stack) env code dump
-
----
-inst: ClosureInputHorz
-fields:
-- imihlst : compiled_input_horz_element list
-code: |
-  let imihclos = exec_input_horz_content env imihlst in
-  exec (imihclos :: stack) env code dump
-
----
-inst: ClosureInputVert
-fields:
-- imivlst : compiled_input_vert_element list
-code: |
-  let imivclos = exec_input_vert_content env imivlst in
-  exec (imivclos :: stack) env code dump
-
----
-inst: BindLocationGlobal
-fields:
-- loc : syntactic_value ref
-- evid : EvalVarID.t
-params:
-- valueini
-code: |
-  let stid = register_location (vmenv_global env) valueini in
-  loc := Location(stid);
-  exec stack env code dump
-
----
-inst: BindLocationLocal
-fields:
-- lv : int
-- offset : int
-- evid : EvalVarID.t
-params:
-- valueini
-code: |
-  let stid = register_location (vmenv_global env) valueini in
-  local_set_value env lv offset (Location(stid));
-  exec stack env code dump
-
----
-inst: UpdateGlobal
-suppress-pp : yes
-fields:
-- loc : syntactic_value ref
-- evid : EvalVarID.t
-params:
-- valuenew
-code: |
-   match !loc with
-   | Location(stid) ->
-       begin
-         update_location (vmenv_global env) stid valuenew;
-         exec (UnitConstant :: stack) env code dump
-       end
-
-   | _ ->
-       report_bug_vm "UpdateGlobal"
-
----
-inst: UpdateLocal
-suppress-pp : yes
-fields:
-- lv : int
-- offset : int
-- evid : EvalVarID.t
-params:
-- valuenew
-code: |
-  match local_get_value env lv offset with
-  | Location(stid) ->
-       begin
-         update_location (vmenv_global env) stid valuenew;
-         exec (UnitConstant :: stack) env code dump
-       end
-
-  | _ ->
-      report_bug_vm "UpdateLocal"
-
----
-inst: Sel
-fields:
-- tpart : instruction list
-- fpart : instruction list
-suppress-pp: yes
-params:
-- b : bool
-code: |
-  if b then
-    exec stack env tpart dump
-  else
-    exec stack env fpart dump
-
----
 inst: Concat
 is-pdf-mode-primitive: yes
 is-text-mode-primitive: yes
@@ -637,14 +47,10 @@ type: |
   ~% (tS @-> tS @-> tS)
 
 params:
-- value1
-- value2
+- s1 : string
+- s2 : string
 code: |
-  match (value1, value2) with
-  | (StringEmpty, _)                         -> value2
-  | (_, StringEmpty)                         -> value1
-  | (StringConstant(s1), StringConstant(s2)) -> StringConstant(s1 ^ s2)
-  | _                                        -> report_bug_vm "Concat"
+  make_string (s1 ^ s2)
 
 ---
 inst: PrimitiveSetMathVariantToChar
@@ -658,14 +64,14 @@ params:
 - mccls : math_char_class
 - cpfrom : int
 - cpto : int
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   let uchfrom = Uchar.of_int cpfrom in
   let uchto = Uchar.of_int cpto in
   let mcclsmap = ctx.HorzBox.math_variant_char_map in
   Context(HorzBox.({ ctx with
     math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) uchto;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveConvertStringForMath
@@ -675,26 +81,28 @@ type: |
   ~% (tCTX @-> tMCCLS @-> tS @-> tS)
 
 params:
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 - mccls : math_char_class
 - s : string
 code:
   let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in
-  let (_, uchlst) = MathContext.convert_math_variant_char (ctx, valuecmd) s in
-  StringConstant(InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
+  let (_, uchlst) = MathContext.convert_math_variant_char (ctx, ctxsub) s in
+  make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
 
 ---
 inst: PrimitiveSetMathCommand
 is-pdf-mode-primitive: yes
+needs-reducef: yes
 name: "set-math-command"
 type: |
   ~% (tCMD @-> tCTX @-> tCTX)
 
 params:
 - valuecmd
-- (ctx, _) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(ctx, valuecmd)
+  let mcmd = get_math_command_func reducef valuecmd in
+  Context(ctx, { ctxsub with math_command = mcmd; })
 
 ---
 inst: BackendMathVariantCharDirect
@@ -726,7 +134,7 @@ params:
 code: |
   match mathlst with
   | [] ->
-      Constructor("None", UnitConstant)
+      Constructor("None", const_unit)
 
   | math :: _ ->
       let mathcls = Math.get_left_math_kind ictx math in
@@ -746,7 +154,7 @@ params:
 code: |
   match List.rev mathlst with
   | [] ->
-      Constructor("None", UnitConstant)
+      Constructor("None", const_unit)
 
   | math :: _ ->
       let mathcls = Math.get_right_math_kind ictx math in
@@ -767,8 +175,8 @@ code: |
   let mathctx = MathContext.make ictx in
   let hbspaceopt = Math.space_between_maths mathctx mathlst1 mathlst2 in
   match hbspaceopt with
-  | None          -> Constructor("None", UnitConstant)
-  | Some(hbspace) -> Constructor("Some", Horz([hbspace]))
+  | None          -> Constructor("None", const_unit)
+  | Some(hbspace) -> Constructor("Some", make_horz [hbspace])
 
 ---
 inst: BackendMathConcat
@@ -1062,23 +470,6 @@ code: |
   MathValue(HorzBox.([MathChangeContext(MathChangeMathCharClass(mccls), mlst)]))
 
 ---
-inst: BackendMathList
-no-ircode: yes
-fields:
-- n : int
-code: |
-  let rec iter n st acc =
-    if n <= 0 then
-      (acc, st)
-    else
-      match st with
-      | MathValue(m) :: stnew -> iter (n - 1) stnew (m :: acc)
-      | _                     -> report_bug_vm "BackendMathList"
-  in
-  let (mlst, stack) = iter n stack [] in
-  exec (MathValue(List.concat mlst) :: stack) env code dump
-
----
 inst: BackendEmbeddedMath
 is-pdf-mode-primitive: yes
 name: "embed-math"
@@ -1091,7 +482,7 @@ params:
 code: |
   let mathctx = MathContext.make ictx in
   let hblst = Math.main mathctx mlst in
-  Horz(hblst)
+  make_horz hblst
 
 ---
 inst: BackendTabular
@@ -1113,7 +504,7 @@ code: |
     let valueret = reducef valuerulesf [valuexs; valueys] in
     graphics_of_list valueret
   in
-  Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
+  make_horz (HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
 
 ---
 inst: BackendRegisterPdfImage
@@ -1128,7 +519,7 @@ params:
 code: |
   let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpathstr) in
   let imgkey = ImageInfo.add_pdf abspath pageno in
-  ImageKey(imgkey)
+  make_image_key imgkey
 
 ---
 inst: BackendRegisterOtherImage
@@ -1142,7 +533,7 @@ params:
 code: |
   let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpath) in
   let imgkey = ImageInfo.add_image abspath in
-  ImageKey(imgkey)
+  make_image_key imgkey
 
 ---
 inst: BackendUseImageByWidth
@@ -1156,9 +547,9 @@ params:
 - wid : length
 code: |
   match valueimg with
-  | ImageKey(imgkey) ->
+  | BaseConstant(BCImageKey(imgkey)) ->
       let hgt = ImageInfo.get_height_from_width imgkey wid in
-      Horz(HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
+      make_horz (HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
 
   | _ ->
       report_bug_vm "BackendUseImage"
@@ -1175,23 +566,7 @@ params:
 - hookf
 code: |
   let hookf = make_hook reducef hookf in
-  Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
-
----
-inst: Path
-suppress-pp : yes
-is-pdf-mode-primitive : yes
-separated: yes
-no-ircode: yes
-no-interp: yes
-fields:
-- c_pathcomplst : ((instruction list) compiled_path_component) list
-- c_cycleopt : (unit compiled_path_component) option
-params:
-- pt0 : point
-code: |
-  let (pathelemlst, closingopt) = get_path env c_pathcomplst c_cycleopt in
-  PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
+  make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 
 ---
 inst: PathUnite
@@ -1204,7 +579,7 @@ params:
 - pathlst1 : path_value
 - pathlst2 : path_value
 code: |
-  PathValue(List.append pathlst1 pathlst2)
+  make_path (List.append pathlst1 pathlst2)
 
 ---
 inst: PathShift
@@ -1217,7 +592,7 @@ params:
 - ptshift : point
 - pathlst : path_value
 code: |
-  PathValue(List.map (shift_path ptshift) pathlst)
+  make_path (List.map (shift_path ptshift) pathlst)
 
 ---
 inst: PathGetBoundingBox
@@ -1230,9 +605,9 @@ params:
 - pathlst : path_value
 code: |
   let (ptmin, ptmax) = get_path_list_bbox pathlst in
-  TupleCons(make_point_value ptmin,
-    TupleCons(make_point_value ptmax,
-      EndOfTuple))
+  let value1 = make_point_value ptmin in
+  let value2 = make_point_value ptmax in
+  Tuple([value1; value2])
 
 ---
 inst: PrePathBeginning
@@ -1244,7 +619,7 @@ type: |
 params:
 - pt0 : point
 code: |
-  PrePathValue(PrePath.start pt0)
+  make_prepath (PrePath.start pt0)
 
 ---
 inst: PrePathLineTo
@@ -1257,7 +632,7 @@ params:
 - pt1 : point
 - prepath : prepath
 code: |
-  PrePathValue(prepath |> PrePath.line_to pt1)
+  make_prepath (prepath |> PrePath.line_to pt1)
 
 ---
 inst: PrePathCubicBezierTo
@@ -1272,7 +647,7 @@ params:
 - pt1 : point
 - prepath: prepath
 code: |
-  PrePathValue(prepath |> PrePath.bezier_to ptS ptT pt1)
+  make_prepath (prepath |> PrePath.bezier_to ptS ptT pt1)
 
 ---
 inst: PrePathTerminate
@@ -1284,7 +659,7 @@ type: |
 params:
 - prepath : prepath
 code: |
-  PathValue([prepath |> PrePath.terminate])
+  make_path ([prepath |> PrePath.terminate])
 
 ---
 inst: PrePathCloseWithLine
@@ -1296,7 +671,7 @@ type: |
 params:
 - prepath : prepath
 code: |
-  PathValue([prepath |> PrePath.close_with_line])
+  make_path ([prepath |> PrePath.close_with_line])
 
 ---
 inst: PrePathCloseWithCubicBezier
@@ -1310,7 +685,7 @@ params:
 - ptT : point
 - prepath : prepath
 code: |
-  PathValue([prepath |> PrePath.close_with_bezier ptS ptT])
+  make_path ([prepath |> PrePath.close_with_bezier ptS ptT])
 
 ---
 inst: HorzConcat
@@ -1323,7 +698,7 @@ params:
 - hblst1 : horz
 - hblst2 : horz
 code: |
-  Horz(List.append hblst1 hblst2)
+  make_horz (List.append hblst1 hblst2)
 
 ---
 inst: VertConcat
@@ -1336,7 +711,7 @@ params:
 - vblst1 : vert
 - vblst2 : vert
 code: |
-  Vert(List.append vblst1 vblst2)
+  make_vert (List.append vblst1 vblst2)
 
 ---
 inst: HorzLex
@@ -1351,13 +726,13 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi valuectx imihlst
-  | _                                               -> report_bug_vm "HorzLex"
+  | CompiledInputHorzClosure(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi valuectx imihlst
+  | _                                       -> report_bug_vm "HorzLex"
 
 code-interp: |
   match value1 with
-  | InputHorzWithEnvironment(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi valuectx imihlst
-  | _                                       -> report_bug_value "HorzLex" value1
+  | InputHorzClosure(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi valuectx imihlst
+  | _                               -> report_bug_value "HorzLex" value1
 
 ---
 inst: VertLex
@@ -1372,13 +747,13 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputVertWithEnvironment(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
-  | _                                               -> report_bug_vm "VertLex"
+  | CompiledInputVertClosure(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
+  | _                                       -> report_bug_vm "VertLex"
 
 code-interp: |
   match value1 with
-  | InputVertWithEnvironment(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
-  | _                                       -> report_bug_value "VertLex" value1
+  | InputVertClosure(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
+  | _                               -> report_bug_value "VertLex" value1
 
 ---
 inst: TextHorzLex
@@ -1393,13 +768,13 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
-  | _                                               -> report_bug_vm "TextHorzLex"
+  | CompiledInputHorzClosure(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
+  | _                                       -> report_bug_vm "TextHorzLex"
 
 code-interp: |
   match value1 with
-  | InputHorzWithEnvironment(imihlst, envi) -> interpret_text_mode_intermediate_input_horz envi valuetctx imihlst
-  | _                                       -> report_bug_value "TextHorzLex" value1
+  | InputHorzClosure(imihlst, envi) -> interpret_text_mode_intermediate_input_horz envi valuetctx imihlst
+  | _                               -> report_bug_value "TextHorzLex" value1
 
 ---
 inst: TextVertLex
@@ -1414,13 +789,13 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputVertWithEnvironment(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
-  | _                                               -> report_bug_vm "TextVertLex"
+  | CompiledInputVertClosure(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
+  | _                                       -> report_bug_vm "TextVertLex"
 
 code-interp: |
   match value1 with
-  | InputVertWithEnvironment(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
-  | _                                       -> report_bug_value "TextVertLex" value1
+  | InputVertClosure(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
+  | _                               -> report_bug_value "TextVertLex" value1
 
 ---
 inst: TextDeepenIndent
@@ -1434,7 +809,7 @@ params:
 - tctx : text_mode_context
 code: |
   let tctx = tctx |> TextBackend.deepen_indent i in
-  TextModeContext(tctx)
+  BaseConstant(BCTextModeContext(tctx))
 
 ---
 inst: TextBreak
@@ -1448,7 +823,7 @@ type: |
 code: |
   let i = TextBackend.get_indent tctx in
   let s = "\n" ^ (String.make i ' ') in
-  StringConstant(s)
+  make_string s
 
 ---
 inst: TextGetInitialTextModeContext
@@ -1461,9 +836,9 @@ type: |
 
 code: |
   match value1 with
-  | UnitConstant ->
+  | BaseConstant(BCUnit) ->
       let tctx = TextBackend.get_initial_text_mode_context () in
-      TextModeContext(tctx)
+      BaseConstant(BCTextModeContext(tctx))
 
   | _ ->
       report_bug_value "TextGetInitialTextModeContext" value1
@@ -1480,7 +855,7 @@ params:
 - vblst : vert
 code: |
   let wid = ctx.HorzBox.paragraph_width in
-    Horz([HorzEmbeddedVertBreakable(wid, vblst)])
+  make_horz [HorzEmbeddedVertBreakable(wid, vblst)]
 
 ---
 inst: BackendFont
@@ -1506,7 +881,7 @@ params:
 - hblst : horz
 code: |
   let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
-  Vert(imvblst)
+  make_vert imvblst
 
 ---
 inst: BackendPageBreaking
@@ -1524,7 +899,7 @@ params:
 code: |
   let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
   let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-  DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
+  BaseConstant(BCDocument(pagesize, pagecontf, pagepartsf, vblst))
 
 ---
 inst: BackendVertFrame
@@ -1535,7 +910,7 @@ type: |
 
 needs-reducef : yes
 params:
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 - pads : paddings
 - (valuedecoS, valuedecoH, valuedecoM, valuedecoT) : decoset
 - valuek
@@ -1543,13 +918,13 @@ code: |
   let valuectxsub =
     Context(HorzBox.({ ctx with
       paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR);
-    }), valuecmd)
+    }), ctxsub)
   in
   let vblst =
     let valuev = reducef valuek [valuectxsub] in
     get_vert valuev
   in
-  Vert(HorzBox.([
+  make_vert (HorzBox.([
     VertTopMargin(true, ctx.paragraph_top);
     VertFrame(pads,
                 make_frame_deco reducef valuedecoS,
@@ -1571,7 +946,7 @@ params:
 - vblst : vert
 code: |
   let imvblst = PageBreak.solidify vblst in
-  Horz(HorzBox.([HorzPure(PHGFootnote(imvblst))]))
+  make_horz (HorzBox.([HorzPure(PHGFootnote(imvblst))]))
 
 ---
 inst: BackendEmbeddedVertTop
@@ -1582,12 +957,12 @@ type: |
 
 needs-reducef : yes
 params:
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 - wid : length
 - valuek
 code: |
   let valuectxsub =
-    Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
+    Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
   in
   let vblst =
     let valuev = reducef valuek [valuectxsub] in
@@ -1595,7 +970,7 @@ code: |
   in
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
 inst: BackendVertSkip
@@ -1607,7 +982,7 @@ type: |
 params:
 - len : length
 code: |
-  Vert(HorzBox.([VertFixedBreakable(len)]))
+  make_vert (HorzBox.([VertFixedBreakable(len)]))
 
 ---
 inst: BackendEmbeddedVertBottom
@@ -1618,12 +993,12 @@ type: |
 
 needs-reducef : yes
 params:
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 - wid : length
 - valuek
 code: |
   let valuectxsub =
-    Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
+    Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
   in
   let vblst =
     let valuev = reducef valuek [valuectxsub] in
@@ -1631,7 +1006,7 @@ code: |
   in
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
 inst: BackendLineStackTop
@@ -1647,7 +1022,7 @@ code: |
   let (wid, vblst) = make_line_stack hblstlst in
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
 inst: BackendLineStackBottom
@@ -1663,11 +1038,12 @@ code: |
   let (wid, vblst) = make_line_stack hblstlst in
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
-  Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
 inst: PrimitiveGetInitialContext
 is-pdf-mode-primitive: yes
+needs-reducef: yes
 name: "get-initial-context"
 type: |
   ~% (tLN @-> tCMD @-> tCTX)
@@ -1677,7 +1053,14 @@ params:
 - valuecmd
 code: |
   let ctx = Primitives.get_pdf_mode_initial_context txtwid in
-  Context(ctx, valuecmd)
+  let mcmd = get_math_command_func reducef valuecmd in
+  let ctxsub =
+    {
+      math_command = mcmd;
+      dummy = ();
+    }
+  in
+  Context(ctx, ctxsub)
 
 ---
 inst: PrimitiveSetHyphenMin
@@ -1689,12 +1072,12 @@ type: |
 params:
 - lmin : int
 - rmin : int
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     left_hyphen_min = max 0 lmin;
     right_hyphen_min = max 0 rmin;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveSetMinGapOfLines
@@ -1705,11 +1088,11 @@ type: |
 
 params:
 - lengap : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     min_gap_of_lines = Length.max Length.zero lengap;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveSetSpaceRatio
@@ -1722,13 +1105,13 @@ params:
 - ratio_natural : float
 - ratio_shrink : float
 - ratio_stretch : float
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     space_natural = max 0. ratio_natural;
     space_shrink  = max 0. ratio_shrink;
     space_stretch = max 0. ratio_stretch;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveSetSpaceRatioBetweenScripts
@@ -1743,14 +1126,14 @@ params:
 - ratio_stretch : float
 - script1 : script
 - script2 : script
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     script_space_map =
       ctx.script_space_map |> CharBasis.ScriptSpaceMap.add
         (script1, script2)
         (max 0. ratio_natural, max 0. ratio_shrink, max 0. ratio_stretch)
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveGetSpaceRatioBetweenScripts
@@ -1766,12 +1149,14 @@ params:
 code: |
   match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script2) with
   | None ->
-      Constructor("None", UnitConstant)
+      Constructor("None", const_unit)
 
   | Some((r0, r1, r2)) ->
-      Constructor("Some", TupleCons(FloatConstant(r0),
-                            TupleCons(FloatConstant(r1),
-                              TupleCons(FloatConstant(r2), EndOfTuple))))
+      Constructor("Some", Tuple([
+        make_float r0;
+        make_float r1;
+        make_float r2;
+      ]))
 
 ---
 inst: PrimitiveSetParagraphMargin
@@ -1783,12 +1168,12 @@ type: |
 params:
 - lentop : length
 - lenbottom : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     paragraph_top    = lentop;
     paragraph_bottom = lenbottom;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveSetParagraphMinAscenderAndDescender
@@ -1800,12 +1185,12 @@ type: |
 params:
 - lenminasc : length
 - lenmindesc : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     min_first_line_ascender = lenminasc;
     min_last_line_descender = lenmindesc;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveSetFontSize
@@ -1816,9 +1201,9 @@ type: |
 
 params:
 - size : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with font_size = size; }), valuecmd)
+  Context(HorzBox.({ ctx with font_size = size; }), ctxsub)
 
 ---
 inst: PrimitiveGetFontSize
@@ -1830,7 +1215,7 @@ type: |
 params:
 - (ctx, _) : context
 code: |
-  LengthConstant(ctx.HorzBox.font_size)
+  make_length (ctx.HorzBox.font_size)
 
 ---
 inst: PrimitiveSetFont
@@ -1842,10 +1227,10 @@ type: |
 params:
 - script : script
 - font_info : font
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   let font_scheme_new = HorzBox.(ctx.font_scheme |> CharBasis.ScriptSchemeMap.add script font_info) in
-  Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), valuecmd)
+  Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
 
 ---
 inst: PrimitiveGetFont
@@ -1870,9 +1255,9 @@ type: |
 
 params:
 - mfabbrev : string
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with math_font = mfabbrev; }), valuecmd)
+  Context(HorzBox.({ ctx with math_font = mfabbrev; }), ctxsub)
 
 ---
 inst: PrimitiveSetDominantWideScript
@@ -1883,9 +1268,9 @@ type: |
 
 params:
 - script: script
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with dominant_wide_script = script; }), valuecmd)
+  Context(HorzBox.({ ctx with dominant_wide_script = script; }), ctxsub)
 
 ---
 inst: PrimitiveGetDominantWideScript
@@ -1908,9 +1293,9 @@ type: |
 
 params:
 - script : script
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with dominant_narrow_script = script; }), valuecmd)
+  Context(HorzBox.({ ctx with dominant_narrow_script = script; }), ctxsub)
 
 ---
 inst: PrimitiveGetDominantNarrowScript
@@ -1934,11 +1319,11 @@ type: |
 params:
 - script : script
 - langsys : language_system
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     langsys_scheme = ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.add script langsys;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveGetLangSys
@@ -1963,9 +1348,9 @@ type: |
 
 params:
 - color : color
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with text_color = color; }), valuecmd)
+  Context(HorzBox.({ ctx with text_color = color; }), ctxsub)
 
 ---
 inst: PrimitiveGetTextColor
@@ -1989,9 +1374,9 @@ type: |
 
 params:
 - len : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with leading = len; }), valuecmd)
+  Context(HorzBox.({ ctx with leading = len; }), ctxsub)
 
 ---
 inst: PrimitiveGetTextWidth
@@ -2003,7 +1388,7 @@ type: |
 params:
 - (ctx, _) : context
 code: |
-  LengthConstant(ctx.HorzBox.paragraph_width)
+  make_length (ctx.HorzBox.paragraph_width)
 
 ---
 inst: PrimitiveSetManualRising
@@ -2014,9 +1399,9 @@ type: |
 
 params:
 - rising : length
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with manual_rising = rising; }), valuecmd)
+  Context(HorzBox.({ ctx with manual_rising = rising; }), ctxsub)
 
 ---
 inst: PrimitiveRaise
@@ -2029,7 +1414,7 @@ params:
 - rising : length
 - hblst : horz
 code: |
-  Horz(HorzBox.([HorzPure(PHGRising(rising, hblst))]))
+  make_horz (HorzBox.([HorzPure(PHGRising(rising, hblst))]))
 
 ---
 inst: PrimitiveSetHyphenPenalty
@@ -2040,9 +1425,9 @@ type: |
 
 params:
 - pnlty : int
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
-  Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), valuecmd)
+  Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
 
 ---
 inst: PrimitiveEmbed
@@ -2056,10 +1441,10 @@ separated: yes
 params:
 - str : string
 code: |
-  CompiledInputHorzWithEnvironment([CompiledImInputHorzText(str)], env)
+  CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)
 
 code-interp: |
-  InputHorzWithEnvironment([ImInputHorzText(str)], env)
+  InputHorzClosure([ImInputHorzText(str)], env)
 
 ---
 inst: PrimitiveExtract
@@ -2071,7 +1456,7 @@ type: |
 params:
   - hblst : horz
 code: |
-  StringConstant(HorzBox.extract_string hblst)
+  make_string (HorzBox.extract_string hblst)
 
 ---
 inst: PrimitiveGetAxisHeight
@@ -2086,7 +1471,7 @@ code: |
   let fontsize = ctx.HorzBox.font_size in
   let mfabbrev = ctx.HorzBox.math_font in
   let hgt = FontInfo.get_axis_height mfabbrev fontsize in
-    LengthConstant(hgt)
+    make_length (hgt)
 
 ---
 inst: BackendFixedEmpty
@@ -2098,7 +1483,7 @@ type: |
 params:
 - wid : length
 code: |
-  Horz([HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))])
+  make_horz [HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))]
 
 ---
 inst: BackendOuterEmpty
@@ -2112,7 +1497,7 @@ params:
 - widshrink : length
 - widstretch : length
 code: |
-  Horz([HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))])
+  make_horz [HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))]
 
 ---
 inst: BackendOuterFrame
@@ -2127,7 +1512,7 @@ params:
 - valuedeco
 - hblst : horz
 code: |
-  Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
+  make_horz ([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
     pads,
     make_frame_deco reducef valuedeco,
     hblst))])
@@ -2145,7 +1530,7 @@ params:
 - valuedeco
 - hblst : horz
 code: |
-  Horz([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
+  make_horz ([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
     pads,
     make_frame_deco reducef valuedeco,
     hblst))])
@@ -2164,7 +1549,7 @@ params:
 - valuedeco
 - hblst : horz
 code: |
-  Horz([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
+  make_horz ([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
     pads, wid,
     make_frame_deco reducef valuedeco,
     hblst))])
@@ -2182,7 +1567,7 @@ params:
 - (valuedecoS, valuedecoH, valuedecoM, valuedecoT) : decoset
 - hblst : horz
 code: |
-  Horz([HorzBox.HorzFrameBreakable(
+  make_horz ([HorzBox.HorzFrameBreakable(
     pads, Length.zero, Length.zero,
     make_frame_deco reducef valuedecoS,
     make_frame_deco reducef valuedecoH,
@@ -2206,7 +1591,7 @@ params:
 - valueg
 code: |
   let graphics = make_inline_graphics reducef valueg in
-  Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
+  make_horz (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 
 ---
 inst: BackendInlineGraphicsOuter
@@ -2222,7 +1607,7 @@ params:
 - valueg
 code: |
   let graphics = make_inline_graphics_outer reducef valueg in
-  Horz(HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
+  make_horz (HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
 
 ---
 inst: BackendScriptGuard
@@ -2235,7 +1620,7 @@ params:
 - script : script
 - hblst : horz
 code: |
-  Horz(HorzBox.([HorzScriptGuard(script, script, hblst)]))
+  make_horz (HorzBox.([HorzScriptGuard(script, script, hblst)]))
 
 ---
 inst: BackendScriptGuardBoth
@@ -2249,7 +1634,7 @@ params:
 - scriptR : script
 - hblst : horz
 code: |
-  Horz(HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
+  make_horz (HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
 
 ---
 inst: BackendGetLeftmostScript
@@ -2290,7 +1675,7 @@ params:
 - hblst1 : horz
 - hblst2 : horz
 code: |
-  Horz(HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
+  make_horz (HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
 
 ---
 inst: BackendRegisterCrossReference
@@ -2305,7 +1690,7 @@ params:
 - v : string
 code: |
   CrossRef.register k v;
-  UnitConstant
+  const_unit
 
 ---
 inst: BackendGetCrossReference
@@ -2319,8 +1704,8 @@ params:
 - k : string
 code: |
   match CrossRef.get k with
-  | None    -> Constructor("None", UnitConstant)
-  | Some(v) -> Constructor("Some", StringConstant(v))
+  | None    -> Constructor("None", const_unit)
+  | Some(v) -> Constructor("Some", make_string v)
 
 ---
 inst: PrimitiveGetNaturalMetrics
@@ -2333,9 +1718,11 @@ params:
 - hblst : horz
 code: |
   let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
-  TupleCons(LengthConstant(wid),
-    TupleCons(LengthConstant(hgt),
-      TupleCons(LengthConstant(Length.negate dpt), EndOfTuple)))
+  Tuple([
+    make_length (wid);
+    make_length (hgt);
+    make_length (Length.negate dpt);
+  ])
 
 ---
 inst: PrimitiveGetNaturalLength
@@ -2349,7 +1736,7 @@ params:
 code: |
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-  LengthConstant(hgt +% (Length.negate dpt))
+  make_length (hgt +% (Length.negate dpt))
 
 ---
 inst: PrimitiveDisplayMessage
@@ -2363,7 +1750,7 @@ params:
 - str : string
 code: |
   print_endline str;
-  UnitConstant
+  const_unit
 
 ---
 inst: PrimitiveListCons
@@ -2373,7 +1760,9 @@ params:
 - valuehd
 - valuetl
 code: |
-  ListCons(valuehd, valuetl)
+  match valuetl with
+  | List(vlst) -> List(valuehd :: vlst)
+  | _          -> report_bug_value "PrimitiveListCons" valuetl
 
 ---
 inst: PrimitiveSame
@@ -2387,7 +1776,7 @@ params:
 - str1 : string
 - str2 : string
 code: |
-  BooleanConstant(String.equal str1 str2)
+  make_bool (String.equal str1 str2)
 
 ---
 inst: PrimitiveStringSub
@@ -2406,7 +1795,7 @@ code: |
     try BatUTF8.sub str pos wid with
     | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub"
   in
-  StringConstant(resstr)
+  make_string resstr
 
 ---
 inst: PrimitiveStringSubBytes
@@ -2425,7 +1814,7 @@ code: |
     try String.sub str pos wid with
     | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub-bytes"
   in
-  StringConstant(resstr)
+  make_string resstr
 
 ---
 inst: PrimitiveStringLength
@@ -2438,7 +1827,7 @@ type: |
 params:
 - str : string
 code: |
-  IntegerConstant(BatUTF8.length str)
+  make_int (BatUTF8.length str)
 
 ---
 inst: PrimitiveStringByteLength
@@ -2451,11 +1840,12 @@ type: |
 params:
 - str : string
 code: |
-  IntegerConstant(String.length str)
+  make_int (String.length str)
 
 ---
 inst: PrimitiveStringScan
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "string-scan"
 type: |
   ~% (tRE @-> tS @-> tOPT (tPROD [tS; tS]))
@@ -2468,9 +1858,9 @@ code: |
     let matched = Str.matched_string str in
     let start   = String.length matched in
     let rest    = String.sub str start (String.length str - start) in
-    Constructor("Some", TupleCons(StringConstant(matched), TupleCons(StringConstant(rest), EndOfTuple)))
+    Constructor("Some", Tuple([make_string matched; make_string rest]))
   else
-    Constructor("None", UnitConstant)
+    Constructor("None", const_unit)
 
 ---
 inst: PrimitiveStringUnexplode
@@ -2485,7 +1875,7 @@ params:
 code: |
   let ilst = get_list get_int valueilst in
   let s = (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8 in
-  StringConstant(s)
+  make_string s
 
 ---
 inst: PrimitiveRegExpOfString
@@ -2502,7 +1892,7 @@ code: |
     try Str.regexp str with
     | Failure(msg) -> report_dynamic_error ("regexp-of-string: " ^ msg)
   in
-  RegExpConstant(regexp)
+  make_regexp regexp
 
 ---
 inst: PrimitiveStringMatch
@@ -2516,7 +1906,7 @@ params:
 - pat : regexp
 - s : string
 code: |
-  BooleanConstant(Str.string_match pat s 0)
+  make_bool (Str.string_match pat s 0)
 
 ---
 inst: PrimitiveSplitIntoLines
@@ -2531,8 +1921,7 @@ params:
 code: |
   let slst = String.split_on_char '\n' s in
   let pairlst = slst |> List.map chop_space_indent in
-  (pairlst |> make_list (fun (i, s) ->
-    TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple))))
+  pairlst |> make_list (fun (i, s) -> Tuple([make_int i; make_string s]))
 
 ---
 inst: PrimitiveSplitOnRegExp
@@ -2548,8 +1937,7 @@ params:
 code: |
   let slst = Str.split sep str in
   let pairlst = slst |> List.map chop_space_indent in
-  (pairlst |> make_list (fun (i, s) ->
-    TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple))))
+  pairlst |> make_list (fun (i, s) -> Tuple([make_int i; make_string s]))
 
 ---
 inst: PrimitiveArabic
@@ -2562,7 +1950,7 @@ type: |
 params:
 - num : int
 code: |
-  StringConstant(string_of_int num)
+  make_string (string_of_int num)
 
 ---
 inst: PrimitiveShowFloat
@@ -2575,7 +1963,7 @@ type: |
 params:
 - fl : float
 code: |
-  StringConstant(string_of_float fl)
+  make_string (string_of_float fl)
 
 
 ---
@@ -2589,7 +1977,7 @@ type: |
 params:
 - ic1 : int
 code: |
-  FloatConstant(float_of_int ic1)
+  make_float (float_of_int ic1)
 
 ---
 inst: PrimitiveRound
@@ -2602,7 +1990,7 @@ type: |
 params:
 - fc1 : float
 code: |
-  IntegerConstant(int_of_float fc1)
+  make_int (int_of_float fc1)
 
 ---
 inst: PrimitiveDrawText
@@ -2617,7 +2005,7 @@ params:
 code: |
   let (imhblst, _, _) = LineBreak.natural hblst in
   let grelem = GraphicD.make_text pt imhblst in
-  GraphicsValue(grelem)
+  make_graphics grelem
 
 ---
 inst: PrimitiveDrawStroke
@@ -2632,7 +2020,7 @@ params:
 - pathlst : path_value
 code: |
   let grelem = GraphicD.make_stroke wid color pathlst in
-  GraphicsValue(grelem)
+  make_graphics grelem
 
 ---
 inst: PrimitiveDrawFill
@@ -2646,7 +2034,7 @@ params:
 - pathlst : path_value
 code: |
   let grelem = GraphicD.make_fill color pathlst in
-  GraphicsValue(grelem)
+  make_graphics grelem
 
 ---
 inst: PrimitiveDrawDashedStroke
@@ -2663,7 +2051,7 @@ params:
 code: |
   let (len1, len2, len3) = get_tuple3 get_length valuetup3 in
   let grelem = GraphicD.make_dashed_stroke wid (len1, len2, len3) color pathlst in
-  GraphicsValue(grelem)
+  make_graphics grelem
 
 ---
 inst: PrimitiveShiftGraphics
@@ -2676,7 +2064,7 @@ params:
 - vec : point
 - grelem : graphics_element
 code: |
-  GraphicsValue(GraphicD.shift_element vec grelem)
+  make_graphics (GraphicD.shift_element vec grelem)
 
 ---
 inst: PrimtiveGetGraphicsBBox
@@ -2694,9 +2082,9 @@ code: |
         ((x, y +% dpt), (x +% wid, y +% hgt))
     ) grelem
   in
-  TupleCons(make_point_value ptmin,
-    TupleCons(make_point_value ptmax,
-      EndOfTuple))
+  let value1 = make_point_value ptmin in
+  let value2 = make_point_value ptmax in
+  Tuple([value1; value2])
 
 ---
 inst: Times
@@ -2710,7 +2098,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  IntegerConstant(numl * numr)
+  make_int (numl * numr)
 
 ---
 inst: Divides
@@ -2724,7 +2112,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  try IntegerConstant(numl / numr) with
+  try make_int (numl / numr) with
   | Division_by_zero -> report_dynamic_error "division by zero"
 
 ---
@@ -2739,7 +2127,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  try IntegerConstant(numl mod numr) with
+  try make_int (numl mod numr) with
   | Division_by_zero -> report_dynamic_error "division by zero"
 
 ---
@@ -2754,7 +2142,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  IntegerConstant(numl + numr)
+  make_int (numl + numr)
 
 ---
 inst: Minus
@@ -2768,7 +2156,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  IntegerConstant(numl - numr)
+  make_int (numl - numr)
 
 ---
 inst: EqualTo
@@ -2782,7 +2170,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  BooleanConstant(numl = numr)
+  make_bool (numl = numr)
 
 ---
 inst: GreaterThan
@@ -2796,7 +2184,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  BooleanConstant(numl > numr)
+  make_bool (numl > numr)
 
 ---
 inst: LessThan
@@ -2810,7 +2198,7 @@ params:
 - numl : int
 - numr : int
 code: |
-  BooleanConstant(numl < numr)
+  make_bool (numl < numr)
 
 ---
 inst: LogicalAnd
@@ -2824,7 +2212,7 @@ params:
 - binl : bool
 - binr : bool
 code: |
-  BooleanConstant(binl && binr)
+  make_bool (binl && binr)
 
 ---
 inst: LogicalOr
@@ -2838,7 +2226,7 @@ params:
 - binl : bool
 - binr : bool
 code: |
-  BooleanConstant(binl || binr)
+  make_bool (binl || binr)
 
 ---
 inst: LogicalNot
@@ -2851,7 +2239,7 @@ type: |
 params:
 - binl : bool
 code: |
-  BooleanConstant(not binl)
+  make_bool (not binl)
 
 ---
 inst: FloatPlus
@@ -2865,7 +2253,7 @@ params:
 - flt1 : float
 - flt2 : float
 code: |
-  FloatConstant(flt1 +. flt2)
+  make_float (flt1 +. flt2)
 
 ---
 inst: FloatMinus
@@ -2879,7 +2267,7 @@ params:
 - flt1 : float
 - flt2 : float
 code: |
-  FloatConstant(flt1 -. flt2)
+  make_float (flt1 -. flt2)
 
 ---
 inst: FloatTimes
@@ -2893,7 +2281,7 @@ params:
 - flt1 : float
 - flt2 : float
 code: |
-  FloatConstant(flt1 *. flt2)
+  make_float (flt1 *. flt2)
 
 ---
 inst: FloatDivides
@@ -2907,7 +2295,7 @@ params:
 - flt1 : float
 - flt2 : float
 code: |
-  FloatConstant(flt1 /. flt2)
+  make_float (flt1 /. flt2)
 
 ---
 inst: FloatSine
@@ -2920,7 +2308,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(sin flt1)
+  make_float (sin flt1)
 
 ---
 inst: FloatArcSine
@@ -2933,7 +2321,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(asin flt1)
+  make_float (asin flt1)
 
 ---
 inst: FloatCosine
@@ -2946,7 +2334,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(cos flt1)
+  make_float (cos flt1)
 
 ---
 inst: FloatArcCosine
@@ -2959,7 +2347,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(acos flt1)
+  make_float (acos flt1)
 
 ---
 inst: FloatTangent
@@ -2972,7 +2360,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(tan flt1)
+  make_float (tan flt1)
 
 ---
 inst: FloatArcTangent
@@ -2985,7 +2373,7 @@ type: |
 params:
 - flt1 : float
 code: |
-  FloatConstant(atan flt1)
+  make_float (atan flt1)
 
 ---
 inst: FloatArcTangent2
@@ -2999,7 +2387,7 @@ params:
 - flt1 : float
 - flt2 : float
 code: |
-  FloatConstant(atan2 flt1 flt2)
+  make_float (atan2 flt1 flt2)
 
 ---
 inst: LengthPlus
@@ -3013,7 +2401,7 @@ params:
 - len1 : length
 - len2 : length
 code: |
-  LengthConstant(HorzBox.(len1 +% len2))
+  make_length (HorzBox.(len1 +% len2))
 
 ---
 inst: LengthMinus
@@ -3027,7 +2415,7 @@ params:
 - len1 : length
 - len2 : length
 code: |
-  LengthConstant(HorzBox.(len1 -% len2))
+  make_length (HorzBox.(len1 -% len2))
 
 ---
 inst: LengthTimes
@@ -3041,7 +2429,7 @@ params:
 - len1 : length
 - flt2 : float
 code: |
-  LengthConstant(HorzBox.(len1 *% flt2))
+  make_length (HorzBox.(len1 *% flt2))
 
 ---
 inst: LengthDivides
@@ -3055,7 +2443,7 @@ params:
 - len1 : length
 - len2 : length
 code: |
-  FloatConstant(HorzBox.(len1 /% len2))
+  make_float (HorzBox.(len1 /% len2))
 
 ---
 inst: LengthLessThan
@@ -3069,7 +2457,7 @@ params:
 - len1 : length
 - len2 : length
 code: |
-  BooleanConstant(HorzBox.(len1 <% len2))
+  make_bool (HorzBox.(len1 <% len2))
 
 ---
 inst: LengthGreaterThan
@@ -3083,16 +2471,7 @@ params:
 - len1 : length
 - len2 : length
 code: |
-  BooleanConstant(HorzBox.(len2 <% len1))
-
----
-inst: InsertArgs
-fields:
-- lst : syntactic_value list
-params:
-- func
-code : |
-  exec (func :: (List.rev_append lst stack)) env code dump
+  make_bool (HorzBox.(len2 <% len1))
 
 ---
 inst: PrimitiveSetWordBreakPenalty
@@ -3103,11 +2482,11 @@ type: |
 
 params:
 - pnlty : int
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.{ ctx with
     space_badness = pnlty;
-  }, valuecmd)
+  }, ctxsub)
 
 ---
 inst: PrimitiveSetEveryWordBreak
@@ -3119,12 +2498,12 @@ type: |
 params:
 - hblst1 : horz
 - hblst2 : horz
-- (ctx, valuecmd) : context
+- (ctx, ctxsub) : context
 code: |
   Context(HorzBox.({ ctx with
     before_word_break = hblst1;
     after_word_break = hblst2;
-  }), valuecmd)
+  }), ctxsub)
 
 ---
 inst: PrimitiveGetEveryWordBreak
@@ -3138,7 +2517,7 @@ params:
 code: |
   let hblst1 = ctx.HorzBox.before_word_break in
   let hblst2 = ctx.HorzBox.after_word_break in
-  TupleCons(Horz(hblst1), TupleCons(Horz(hblst2), EndOfTuple))
+  Tuple([make_horz hblst1; make_horz hblst2])
 
 ---
 inst: BackendProbeCrossReference
@@ -3151,8 +2530,8 @@ params:
 - k : string
 code: |
   match CrossRef.probe k with
-  | None    -> Constructor("None", UnitConstant)
-  | Some(v) -> Constructor("Some", StringConstant(v))
+  | None    -> Constructor("None", const_unit)
+  | Some(v) -> Constructor("Some", make_string v)
 
 ---
 inst: BackendRegisterDestination
@@ -3167,7 +2546,7 @@ params:
 
 code: |
   NamedDest.register name p;
-  UnitConstant
+  const_unit
 
 ---
 inst: BackendRegisterLinkToUri
@@ -3187,7 +2566,7 @@ params:
 code: |
   let borderopt = get_option (get_pair get_length get_color) vborderopt in
   Annotation.register (Annotation.Link(Pdfaction.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
-  UnitConstant
+  const_unit
 
 ---
 inst: BackendRegisterLinkToLocation
@@ -3208,7 +2587,7 @@ code: |
   let borderopt = get_option (get_pair get_length get_color) vborderopt in
   let destname = NamedDest.get name in
   Annotation.register (Annotation.Link(Pdfaction.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
-  UnitConstant
+  const_unit
 
 ---
 inst: BackendRegisterOutline
@@ -3220,4 +2599,4 @@ params:
   - ol
 code: |
   Outline.register (get_list get_outline ol);
-  UnitConstant
+  const_unit

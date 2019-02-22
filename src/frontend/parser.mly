@@ -87,7 +87,7 @@
         | _    -> str
 
 
-  let rec omit_spaces (omit_pre : bool) (omit_post : bool) (str_literal_raw : string) =
+  let rec omit_spaces (omit_pre : bool) (omit_post : bool) (str_literal_raw : string) : string =
     let str_literal =
       let s1 = if omit_pre then omit_pre_spaces str_literal_raw else str_literal_raw in
       let s2 = if omit_post then omit_post_spaces s1 else s1 in
@@ -98,9 +98,9 @@
         let len_shaved = String.length str_shaved in
           if len_shaved >= 1 && str_shaved.[len_shaved - 1] = '\n' then
             let str_no_last_break = String.sub str_shaved 0 (len_shaved - 1) in
-              UTStringConstant(str_no_last_break)
+              str_no_last_break
           else
-            UTStringConstant(str_shaved)
+            str_shaved
 
 
   and min_indent_space (str_ltrl : string) =
@@ -238,14 +238,8 @@
       make_range (Tok rngfirst) (Tok rnglast)
 
 
-  let make_product_pattern (rngfull : Range.t) (patlst : untyped_pattern_tree list) : untyped_pattern_tree =
-    let rec aux patlst =
-      match patlst with
-      | []             -> (Range.dummy "make_product_pattern:1", UTPEndOfTuple)
-      | pat :: pattail -> (Range.dummy "make_product_pattern:2", UTPTupleCons(pat, aux pattail))
-    in
-    let (_, patprodmain) = aux patlst in
-      (rngfull, patprodmain)
+  let make_product_pattern (rng : Range.t) (patlst : untyped_pattern_tree list) : untyped_pattern_tree =
+    (rng, UTPTuple(patlst))
 
 
   let unite_into_pattern_branch_list (recpatbrs : untyped_letrec_pattern_branch list) : untyped_pattern_branch list * int =
@@ -269,14 +263,8 @@
       | Some(numofargs) -> (Alist.to_list acc, numofargs)
 
 
-  let make_product_expression (utastlst : untyped_abstract_tree list) : untyped_abstract_tree =
-    let rngdummy = Range.dummy "make_product_expression" in
-    let rec aux utastprod utastlstrev =
-      match utastlstrev with
-      | []            -> utastprod
-      | utast :: rest -> aux (rngdummy, UTTupleCons(utast, utastprod)) rest
-    in
-      aux (rngdummy, UTEndOfTuple) (List.rev utastlst)
+  let make_product_expression (rng : Range.t) (utastlst : untyped_abstract_tree list) : untyped_abstract_tree =
+    (rng, UTTuple(utastlst))
 
 
   let make_function_for_parallel (rngfull : Range.t) (numofargs : int) (patbrs : untyped_pattern_branch list) =
@@ -285,7 +273,7 @@
 
     let rec aux acc i =
       if i = numofargs then
-        let utastprod = make_product_expression (Alist.to_list acc) in
+        let utastprod = make_product_expression (Range.dummy "make_product_expression") (Alist.to_list acc) in
           (rngfull, UTPatternMatch(utastprod, patbrs))
       else
         let varnm = numbered_var_name i in
@@ -422,7 +410,7 @@
 %token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
 %token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
 %token <Range.t * Types.var_name> UNOP_EXCLAM
-%token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT
+%token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT EXACT_AMP EXACT_TILDE
 %token <Range.t> LPAREN RPAREN
 %token <Range.t> BVERTGRP EVERTGRP
 %token <Range.t> BHORZGRP EHORZGRP
@@ -439,6 +427,7 @@
 *)
 %token <Range.t * int> ITEM
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
+%token <Range.t> HEADER_STAGE0 HEADER_STAGE1 HEADER_PERSISTENT0
 %token EOI
 
 (*
@@ -472,7 +461,7 @@
 *)
 
 %start main
-%type <Types.header_element list * Types.untyped_abstract_tree> main
+%type <Types.stage * Types.header_element list * Types.untyped_abstract_tree> main
 %type <Types.untyped_abstract_tree> nxlet
 %type <Types.untyped_abstract_tree> nxletsub
 %type <Types.untyped_letrec_binding list> nxrecdec
@@ -491,7 +480,7 @@
 %type <Types.untyped_abstract_tree> nxun
 %type <Types.untyped_abstract_tree> nxapp
 %type <Types.untyped_abstract_tree> nxbot
-%type <Types.untyped_abstract_tree> tuple
+%type <Types.untyped_abstract_tree list> tuple
 %type <Range.t * Types.untyped_pattern_branch list> pats
 %type <Types.untyped_pattern_tree> patas
 %type <Types.untyped_pattern_tree> patbot
@@ -520,9 +509,14 @@
 
 
 main:
-  | header=list(headerelem); utast=nxtoplevel    { (header, utast) }
-  | header=list(headerelem); utast=vxblock; EOI  { (header, utast) }
-  | header=list(headerelem); utast=nxwhl; EOI    { (header, utast) }
+  | stage=stage; header=list(headerelem); utast=nxtoplevel    { (stage, header, utast) }
+  | stage=stage; header=list(headerelem); utast=nxwhl; EOI    { (stage, header, utast) }
+;
+stage:
+  |                    { Stage1 }
+  | HEADER_STAGE0      { Stage0 }
+  | HEADER_STAGE1      { Stage1 }
+  | HEADER_PERSISTENT0 { Persistent0 }
 ;
 headerelem:
   | content=HEADER_REQUIRE { let (_, s) = content in HeaderRequire(s) }
@@ -812,8 +806,11 @@ nxapp:
   | utast=nxunsub { utast }
 ;
 nxunsub:
-  | unop=UNOP_EXCLAM; utast2=nxbot   { let (rng, varnm) = unop in make_standard (Tok rng) (Ranged utast2) (UTApply((rng, UTContentOf([], varnm)), utast2)) }
-  | utast=nxbot { utast }
+  | unop=UNOP_EXCLAM; utast2=nxbot { let (rng, varnm) = unop in make_standard (Tok rng) (Ranged utast2) (UTApply((rng, UTContentOf([], varnm)), utast2)) }
+  | tok=EXACT_AMP; utast2=nxbot    { make_standard (Tok tok) (Ranged utast2) (UTNext(utast2)) }
+  | tok=EXACT_TILDE; utast2=nxbot  { make_standard (Tok tok) (Ranged utast2) (UTPrev(utast2)) }
+  | utast=nxbot                    { utast }
+;
 nxbot:
   | utast=nxbot; ACCESS; var=VAR { make_standard (Ranged utast) (Ranged var) (UTAccessField(utast, extract_name var)) }
   | var=VAR                      { let (rng, varnm) = var in (rng, UTContentOf([], varnm)) }
@@ -825,10 +822,10 @@ nxbot:
   | tok=FALSE                                             { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(false)) }
   | opn=LPAREN; cls=RPAREN                                { make_standard (Tok opn) (Tok cls) UTUnitConstant }
   | opn=LPAREN; utast=nxlet; cls=RPAREN                   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=LPAREN; utast=nxlet; COMMA; tup=tuple; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTTupleCons(utast, tup)) }
+  | opn=LPAREN; utast=nxlet; COMMA; tup=tuple; cls=RPAREN { let rng = make_range (Tok opn) (Tok cls) in make_product_expression rng (utast :: tup) }
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP      { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | tok=LITERAL                                  { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (omit_spaces pre post str) }
+  | tok=LITERAL                                  { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTStringConstant(omit_spaces pre post str)) }
   | opn=BLIST; cls=ELIST                         { make_standard (Tok opn) (Tok cls) UTEndOfList }
   | opn=BLIST; utast=nxlist; cls=ELIST           { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
@@ -974,9 +971,9 @@ txrecord: /* -> (field_name * manual_type) list */
   | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT                { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
   | fldtok=VAR; COLON; mnty=txfunc                           { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
 ;
-tuple: /* -> untyped_tuple_cons */
-  | nxlet             { make_standard (Ranged $1) (Ranged $1) (UTTupleCons($1, (Range.dummy "end-of-tuple'", UTEndOfTuple))) }
-  | nxlet COMMA tuple { make_standard (Ranged $1) (Ranged $3) (UTTupleCons($1, $3)) }
+tuple:
+  | utast=nxlet                   { utast :: [] }
+  | utast=nxlet; COMMA; tup=tuple { utast :: tup }
 ;
 pats: /* -> code_range * untyped_pattern_branch list */
   | pat=patas; ARROW; utast=nxletsub {
@@ -1012,14 +1009,14 @@ patbot: /* -> Types.untyped_pattern_tree */
   | WILDCARD           { make_standard (Tok $1) (Tok $1) UTPWildCard }
   | vartok=defedvar    { make_standard (Ranged vartok) (Ranged vartok) (UTPVariable(extract_name vartok)) }
   | LPAREN patas RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | LPAREN patas COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
+  | l=LPAREN; pat=patas; COMMA; pattup=pattuple; r=RPAREN { let rng = make_range (Tok l) (Tok r) in make_product_pattern rng (pat :: pattup) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
   | BLIST patlist ELIST                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | tok=LITERAL                        { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTPStringConstant(rng, omit_spaces pre post str)) }
+  | tok=LITERAL                        { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTPStringConstant(omit_spaces pre post str)) }
 ;
-pattuple: /* -> untyped_pattern_tree */
-  | patas                { make_standard (Ranged $1) (Ranged $1) (UTPTupleCons($1, (Range.dummy "end-of-tuple-pattern", UTPEndOfTuple))) }
-  | patas COMMA pattuple { make_standard (Ranged $1) (Ranged $3) (UTPTupleCons($1, $3)) }
+pattuple:
+  | pat=patas                         { pat :: [] }
+  | pat=patas; COMMA; pattup=pattuple { pat :: pattup }
 ;
 patlist: /* -> untyped_pattern_tree */
   | patas                   { make_standard (Ranged $1) (Ranged $1) (UTPListCons($1, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }

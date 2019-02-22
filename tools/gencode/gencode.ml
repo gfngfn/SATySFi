@@ -1,5 +1,8 @@
 open U
 
+(*
+let failwith _ = ()  (* TEMPORARY *)
+*)
 
 module Const = struct
   let stack = "stack"
@@ -16,21 +19,21 @@ module Const = struct
 
   let ret = "ret"
 
-  let trans_prim = "transform_primitive"
+  let trans_prim = "transform_0_primitive"
 
   let destructuring_rules =
     let open Printf in
-    [ "int", sprintf "IntegerConstant(%s)"
-    ; "bool", sprintf "BooleanConstant(%s)"
+    [ "int", sprintf "BaseConstant(BCInt(%s))"
+    ; "bool", sprintf "BaseConstant(BCBool(%s))"
     ; "context", sprintf "Context(%s)"
-    ; "float", sprintf "FloatConstant(%s)"
-    ; "horz", sprintf "Horz(%s)"
-    ; "vert", sprintf "Vert(%s)"
-    ; "length", sprintf "LengthConstant(%s)"
+    ; "float", sprintf "BaseConstant(BCFloat(%s))"
+    ; "horz", sprintf "BaseConstant(BCHorz(%s))"
+    ; "vert", sprintf "BaseConstant(BCVert(%s))"
+    ; "length", sprintf "BaseConstant(BCLength(%s))"
     ; "math", sprintf "MathValue(%s)"
-    ; "path_value", sprintf "PathValue(%s)"
-    ; "prepath", sprintf "PrePathValue(%s)"
-    ; "regexp", sprintf "RegExpConstant(%s)"
+    ; "path_value", sprintf "BaseConstant(BCPath(%s))"
+    ; "prepath", sprintf "BaseConstant(BCPrePath(%s))"
+    ; "regexp", sprintf "BaseConstant(BCRegExp(%s))"
     ]
 end
 
@@ -76,7 +79,30 @@ let gen_text_mode_prims () =
   gen_prims is_text_mode_primitive
 
 
-let gen_interps () =
+let gen_interps_1 () =
+  let open Instruction in
+  Vminst.def |> List.iter (function
+  | {
+      no_interp = false;
+      inst;
+      params;
+      _
+    } as def  when is_primitive def ->
+      let astargs = params |> List.mapi (fun i _ -> "_ast%d" @% i) in
+      let codeargs = params |> List.mapi (fun i _ -> "_code%d" @% i) in
+      puts "  | %s(%s) ->" inst (String.concat ", " astargs);
+      List.iter2 (fun codearg astarg ->
+        puts "      let %s = interpret_1 env %s in" codearg astarg;
+      ) codeargs astargs;
+      puts "      Cd%s(%s)" inst (String.concat ", " codeargs);
+      puts ""
+
+  | _ ->
+      failwith "[gen_interps_1] not a primitive."
+  )
+
+
+let gen_interps_0 () =
   let open Instruction in
   Vminst.def |> List.iter (function
   | {
@@ -92,7 +118,7 @@ let gen_interps () =
       puts "  | %s(%s) ->" inst (String.concat ", " astargs);
       List.combine params astargs |> List.iter (function
       | ({ Param.name; type_ = None }, astident) ->
-          puts "      let %s = interpret env %s in"
+          puts "      let %s = interpret_0 env %s in"
             name astident
 
       | _ ->
@@ -100,7 +126,7 @@ let gen_interps () =
       );
       List.combine params astargs |> List.iter (function
       | ({ Param.name; type_ = Some t }, astident) ->
-          puts "      let %s = %s%s (interpret env %s) in"
+          puts "      let %s = %s%s (interpret_0 env %s) in"
             name Const.func_prefix t astident
 
       | _ ->
@@ -116,7 +142,7 @@ let gen_interps () =
       puts ""
 
   | _ ->
-      ()
+      failwith "[gen_interps_0] not a primitive."
   )
 
 
@@ -157,9 +183,13 @@ let gen_vminstrs () =
         | [] ->
             puts "  | Op%s ->" inst
 
+        | _ :: _ ->
+            failwith "[gen_vminstrs] fields should be empty."
+(*
         | fs ->
             puts "  | Op%s(%s) ->" inst @@
               String.concat ", " @@ List.map Field.name fs
+*)
       end;
       puts "      begin";
       if not @@ nullp params then begin
@@ -210,22 +240,20 @@ let gen_vminstrs () =
 
 let gen_insttype () =
   let open Instruction in
-  puts "and instruction =";
   Vminst.def |> List.iter (function
   | {
       inst;
       fields;
       pp;
       _
-    } ->
+    } as def  when is_primitive def ->
       begin
         match fields with
         | [] ->
             puts "  | Op%s" inst
 
-        | fs ->
-            puts "  | Op%s of %s"
-              inst (String.concat " * " @@ List.map Field.type_ fs)
+        | _ :: _ ->
+            failwith "[gen_insttype] fields should be empty."
       end;
       begin
         match pp with
@@ -239,8 +267,63 @@ let gen_insttype () =
         | Custom pp ->
             puts "      [@printer (%s)]" pp
       end
+
+  | def ->
+      failwith ("[gen_insttype] not a primitive: " ^ def.inst)
   );
   puts "  [@@deriving show { with_path = false; }]"
+
+
+let gen_unliftcode () =
+  let open Instruction in
+  Vminst.def |> List.iter (function
+  | {
+      no_ircode = false;
+      inst;
+      params;
+      _
+    } as def  when is_primitive def ->
+      begin
+        match params with
+        | [] ->
+            puts "  | Cd%s -> %s" inst inst
+
+        | ps ->
+            let cdargs = List.mapi (fun i _ -> "code" ^ string_of_int i) ps in
+            let args = List.map (fun s -> "aux " ^ s) cdargs in
+            puts "  | Cd%s(%s) -> %s(%s)"
+              inst
+              (String.concat ", " cdargs)
+              inst
+              (String.concat ", " args)
+      end
+
+  | _ ->
+      failwith "[unlift_code] not a primitive."
+  )
+
+let gen_codetype () =
+  let open Instruction in
+  Vminst.def |> List.iter (function
+  | {
+      no_ircode = false;
+      inst;
+      params;
+      _
+    } as def  when is_primitive def ->
+      begin
+        match params with
+        | [] ->
+            puts "  | Cd%s" inst
+
+        | ps ->
+            puts "  | Cd%s of %s" inst
+              (String.concat " * " (List.map (const "code_value") ps))
+      end
+
+  | _ ->
+      failwith "[gen_codetype] not a primitive."
+  )
 
 
 let gen_attype () =
@@ -269,7 +352,7 @@ let gen_attype () =
   )
 
 
-let gen_ircases () =
+let gen_ircases_0 () =
   let open Instruction in
   Vminst.def |> List.iter (function
   | {
@@ -293,14 +376,46 @@ let gen_ircases () =
   )
 
 
+let gen_ircases_1 () =
+  let open Instruction in
+  Vminst.def |> List.iter (function
+  | {
+      no_ircode = false;
+      inst;
+      params;
+      _
+    } as def  when is_primitive def ->
+      let len = List.length params in
+      let ps = params |> List.mapi (fun i _ -> "p%d" @% i + 1) in
+      let cvs = params |> List.mapi (fun i _ -> "cv%d" @% i + 1) in
+      puts "    | %s(%s) ->"
+        inst
+        (String.concat ", " ps);
+      puts "        code%d env (fun %s -> Cd%s(%s)) %s"
+        len
+        (String.concat " " cvs)
+        inst
+        (String.concat ", " cvs)
+        (String.concat " " ps);
+      puts ""
+
+  | _ ->
+      ()
+  )
+
+
 let () =
   let opts =
     [
       ("--gen-vm"             , gen_vminstrs       );
-      ("--gen-ir"             , gen_ircases        );
+      ("--gen-ir-0"           , gen_ircases_0      );
+      ("--gen-ir-1"           , gen_ircases_1      );
       ("--gen-insttype"       , gen_insttype       );
       ("--gen-attype"         , gen_attype         );
-      ("--gen-interps"        , gen_interps        );
+      ("--gen-codetype"       , gen_codetype       );
+      ("--gen-unliftcode"     , gen_unliftcode     );
+      ("--gen-interps-0"      , gen_interps_0      );
+      ("--gen-interps-1"      , gen_interps_1      );
       ("--gen-pdf-mode-prims" , gen_pdf_mode_prims );
       ("--gen-text-mode-prims", gen_text_mode_prims);
     ]

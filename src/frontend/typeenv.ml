@@ -70,7 +70,7 @@ type name_to_id_map = ModuleID.t ModuleNameMap.t
 
 type var_to_type_map = poly_type VarMap.t
 
-type var_to_vardef_map = (poly_type * EvalVarID.t) VarMap.t
+type var_to_vardef_map = (poly_type * EvalVarID.t * stage) VarMap.t
 
 type type_scheme = BoundID.t list * poly_type
 
@@ -106,6 +106,7 @@ exception MultipleTypeDefinition          of Range.t * Range.t * type_name
 exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
+exception NotMatchingStage                of Range.t * var_name * stage * stage
 exception UndefinedModuleName             of Range.t * module_name * module_name list
 
 
@@ -193,16 +194,16 @@ let get_candidates foldf map nm =
 
 
 (* PUBLIC *)
-let add (tyenv : t) (varnm : var_name) ((pty, evid) : poly_type * EvalVarID.t) : t =
+let add (tyenv : t) (varnm : var_name) ((pty, evid, stage) : poly_type * EvalVarID.t * stage) : t =
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
-  match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid))) with
+  match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid, stage))) with
   | None         -> assert false
   | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
 (* PUBLIC *)
-let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : (poly_type * EvalVarID.t) option =
+let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : (poly_type * EvalVarID.t * stage) option =
   let open OptionMonad in
   let nmtoid = tyenv.name_to_id_map in
   let mtr = tyenv.main_tree in
@@ -224,8 +225,8 @@ let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Ran
       | Some((_, vtmapsig)) ->
           print_for_debug_variantenv ("FVD " ^ addrstr ^ varnm ^ " -> signature found"); (* for debug *)
           VarMap.find_opt varnm vtmapsig >>= fun ptysig ->
-          VarMap.find_opt varnm vdmap >>= fun (_, evid) ->
-          return (ptysig, evid)
+          VarMap.find_opt varnm vdmap >>= fun (_, evid, stage) ->
+          return (ptysig, evid, stage)
     )
 
 
@@ -266,8 +267,8 @@ let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
                   assert false
                     (* -- signature must be less general than its corresponding implementation -- *)
 
-              | Some((_, evid)) ->
-                  vdmapU |> VarMap.add varnm (pty, evid)
+              | Some((_, evid, stage)) ->
+                  vdmapU |> VarMap.add varnm (pty, evid, stage)
             ) vtmapsig
           )
 
@@ -283,7 +284,7 @@ let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
-let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t) option =
+let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t * stage) option =
   let open OptionMonad in
   let mtr = tyenv.main_tree in
   let addrlst = Alist.to_list tyenv.current_address in
@@ -470,6 +471,7 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
+    | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
 
   and aux_or optrow =
     match optrow with
@@ -641,7 +643,9 @@ let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : level) (tyargc
 
 
 (* PUBLIC *)
-let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : level) (mnty : manual_type) (constrnts : constraints) : mono_type =
+let fix_manual_type_free (pre : pre) (tyenv : t) (mnty : manual_type) (constrnts : constraints) : mono_type =
+  let qtfbl = pre.quantifiability in
+  let lev = pre.level in
 
   let tyargmaplist : (string, mono_type_variable_info ref) MapList.t = MapList.create () in
 
@@ -705,7 +709,10 @@ let register_type_from_vertex (dg : vertex_label DependencyGraph.t) (tyenv : t) 
     | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
 
 
-let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : level) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
+let rec find_constructor (pre : pre) (tyenv : t) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
+  let qtfbl = pre.quantifiability in
+  let lev = pre.level in
+
   let freef rng tvref =
     (rng, TypeVariable(tvref))
   in
@@ -730,8 +737,7 @@ let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : level) (co
       return (tyarglst, tyid, ty)
 
 
-let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : level) (typeid : TypeID.t)
-    : (constructor_name * (mono_type list -> mono_type)) list =
+let rec enumerate_constructors (pre : pre) (tyenv : t) (typeid : TypeID.t) : (constructor_name * (mono_type list -> mono_type)) list =
   let freef rng tvref =
     (rng, TypeVariable(tvref))
   in
@@ -760,7 +766,7 @@ let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : leve
   | None      -> []
 
 
-let rec find_constructor_candidates (qtfbl : quantifiability) (tyenv : t) (lev : level) (constrnm : constructor_name) : constructor_name list =
+let rec find_constructor_candidates (pre : pre) (tyenv : t) (constrnm : constructor_name) : constructor_name list =
   let open OptionMonad in
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
@@ -1194,7 +1200,9 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
   b
 
 
-let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
+let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
+
+  let lev = pre.level in
 
   let rec read_manual_signature (tyenvacc : t) (tyenvforsigI : t) (tyenvforsigO : t) (msig : manual_signature) (sigoptacc : signature option) =
     let iter = read_manual_signature in
@@ -1226,9 +1234,9 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t)
 
       | SigValue(varnm, mty, constrntcons) :: tail ->
           let () = print_for_debug_variantenv ("SIGV " ^ varnm) in (* for debug *)
-          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Level.succ lev) mty constrntcons in
+          let tysigI = fix_manual_type_free { pre with level = Level.succ lev; } tyenvforsigI mty constrntcons in
           let ptysigI = generalize lev tysigI in
-          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Level.succ lev) mty constrntcons in
+          let tysigO = fix_manual_type_free { pre with level = Level.succ lev; } tyenvforsigO mty constrntcons in
           let ptysigO = generalize lev tysigO in
           let () = print_for_debug_variantenv ("LEVEL " ^ (Level.show lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
           begin
@@ -1236,13 +1244,17 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t)
             | None ->
                 raise (NotProvidingValueImplementation(rng, varnm))
 
-            | Some((ptyimp, _)) ->
-                let b = reflects ptysigI ptyimp in
-                if b then
-                  let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
-                    iter tyenvacc tyenvforsigI tyenvforsigO tail sigoptaccnew
+            | Some((ptyimp, _, stageimp)) ->
+                let stagereq = pre.stage in
+                if stageimp = stagereq then
+                  let b = reflects ptysigI ptyimp in
+                  if b then
+                    let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
+                      iter tyenvacc tyenvforsigI tyenvforsigO tail sigoptaccnew
+                  else
+                    raise (NotMatchingInterface(rng, varnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
                 else
-                  raise (NotMatchingInterface(rng, varnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
+                  raise (NotMatchingStage(rng, varnm, stageimp, stagereq))
           end
 
       | SigDirect(csnm, mty, constrntcons) :: tail ->
@@ -1250,10 +1262,10 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t)
 (*
           let () = print_for_debug_variantenv ("D-OK0 " ^ (string_of_manual_type mty)) in (* for debug *)
 *)
-          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Level.succ lev) mty constrntcons in
+          let tysigI = fix_manual_type_free { pre with level = Level.succ lev; } tyenvforsigI mty constrntcons in
           let () = print_for_debug_variantenv "D-OK1" in (* for debug *)
           let ptysigI = generalize lev tysigI in
-          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Level.succ lev) mty constrntcons in
+          let tysigO = fix_manual_type_free { pre with level = Level.succ lev; } tyenvforsigO mty constrntcons in
           let () = print_for_debug_variantenv "D-OK2" in (* for debug *)
           let ptysigO = generalize lev tysigO in
           let () = print_for_debug_variantenv ("LEVEL " ^ (Level.show lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
@@ -1262,14 +1274,14 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t)
             | None ->
                 raise (NotProvidingValueImplementation(rng, csnm))
 
-            | Some((ptyimp, evidimp)) ->
+            | Some((ptyimp, evidimp, stage)) ->
                 let b = reflects ptysigI ptyimp in
                   (* -- 'reflects pty1 pty2' may change 'pty2' -- *)
                 if b then
                   let sigoptaccnew = add_val_to_signature sigoptacc csnm ptysigO in
                   let tyenvaccnew =
                     let mtr = tyenvacc.main_tree in
-                    match ModuleTree.update mtr [] (update_vt (VarMap.add csnm (ptysigO, evidimp))) with
+                    match ModuleTree.update mtr [] (update_vt (VarMap.add csnm (ptysigO, evidimp, stage))) with
                     | None         -> assert false
                     | Some(mtrnew) -> { tyenvacc with main_tree = mtrnew; }
                   in

@@ -486,6 +486,23 @@ let result_bind x f =
   | Error(e) -> Error(e :> error)
 
 
+let select_langsys gxxx_langsys script =
+  let open ResultMonad in
+    gxxx_langsys script >>= fun langsys_res ->
+    let langsys =
+      match langsys_res with
+      | (Some(langsys), _)   -> langsys
+      | (None, langsys :: _) -> langsys
+      | (None, [])           -> remains_to_be_implemented "no langsys"
+        (* temporary; should depend on the current language system *)
+    in
+    return langsys
+
+
+let select_gpos_langsys = select_langsys Otfm.gpos_langsys
+let select_gsub_langsys = select_langsys Otfm.gsub_langsys
+
+
 let get_mark_table srcpath units_per_em d =
   let script_tag = "latn" in  (* temporary; should depend on the script *)
   let mktbl = MarkTable.create () in
@@ -503,8 +520,7 @@ let get_mark_table srcpath units_per_em d =
               return ()
 
           | Some(script) ->
-              Otfm.gpos_langsys script >>= fun (langsys, _) ->
-                (* temporary; should depend on the current language system *)
+              select_gpos_langsys script >>= fun langsys ->
               Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
               begin
                 match featurelst |> List.find_opt (fun gf -> Otfm.gpos_feature_tag gf = "mark") with
@@ -808,8 +824,7 @@ let get_ligature_table srcpath (submap : subset_map) (d : Otfm.decoder) : Ligatu
 
     | Some(scriptlst) ->
         pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = script_tag) `Missing_script >>= fun script ->
-        Otfm.gsub_langsys script >>= fun (langsys, _) ->
-          (* temporary; should depend on the current language system *)
+        select_gsub_langsys script >>= fun langsys ->
         Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
         pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "liga") `Missing_feature >>= fun feature ->
         () |> Otfm.gsub feature ~lig:(fun () (gid, liginfolst) ->
@@ -939,7 +954,7 @@ let get_kerning_table srcpath (d : Otfm.decoder) =
 
     | Some(scriptlst) ->
         pickup scriptlst (fun gs -> Otfm.gpos_script_tag gs = script_tag) `Missing_script >>= fun script ->
-        Otfm.gpos_langsys script >>= fun (langsys, _) ->
+        select_gpos_langsys script >>= fun langsys ->
           (* temporary; should depend on the current language system *)
         Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
         pickup featurelst (fun gf -> Otfm.gpos_feature_tag gf = "kern") `Missing_feature >>= fun feature ->
@@ -2109,7 +2124,7 @@ let get_math_decoder (fontname : string) (abspath : abs_path) : (math_decoder * 
 
             | Some(scriptlst) ->
                 pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = "math") `Missing_script >>= fun script_math ->
-                Otfm.gsub_langsys script_math >>= fun (langsys, _) ->
+                select_gsub_langsys script_math >>= fun langsys ->
                 Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
                 pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "ssty") `Missing_feature
           in

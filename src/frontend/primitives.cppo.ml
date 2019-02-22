@@ -220,8 +220,12 @@ let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (Typeenv.Alias(([], Poly(tIGR_raw))))
 
 
-let lam evid ast = Function([], PatternBranch(PVariable(evid), ast))
-let lamenv env evid arity ast astf = PrimitiveWithEnvironment(PatternBranch(PVariable(evid), ast), env, arity, astf)
+let lam evid ast =
+  Function([], PatternBranch(PVariable(evid), ast))
+
+let lamenv env evid arity ast astf =
+  PrimitiveClosure(PatternBranch(PVariable(evid), ast), env, arity, astf)
+
 let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 
 let dr = Range.dummy "dummy:lambda"
@@ -550,13 +554,16 @@ let general_table : (var_name * poly_type * (environment -> syntactic_value)) li
     ]
 
 
+let base bc = BaseConstant(bc)
+
+
 let pdf_mode_table =
   List.append general_table
     [
-      ("inline-fil", ~% tIB, (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
-      ("inline-nil", ~% tIB, (fun _ -> Horz([]))                               );
-      ("block-nil" , ~% tBB, (fun _ -> Vert([]))                               );
-      ("clear-page", ~% tBB, (fun _ -> Vert(HorzBox.([VertClearPage])))        );
+      ("inline-fil", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzPure(PHSOuterFil)])))));
+      ("inline-nil", ~% tIB, (fun _ -> base (BCHorz([])))                               );
+      ("block-nil" , ~% tBB, (fun _ -> base (BCVert([])))                               );
+      ("clear-page", ~% tBB, (fun _ -> base (BCVert(HorzBox.([VertClearPage]))))        );
 
 #include "__primitives_pdf_mode.gen.ml"
     ]
@@ -578,12 +585,12 @@ let make_environments table =
   let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
 
-  let temporary_ast = StringEmpty in
+  let temporary_ast = Nil in
   let (tyenvfinal, envfinal, locacc) =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
       let evid = EvalVarID.fresh (dr, varnm) in
       let loc = ref temporary_ast in
-      let tyenvnew = Typeenv.add tyenv varnm (pty, evid) in
+      let tyenvnew = Typeenv.add tyenv varnm (pty, evid, Persistent0) in  (* temporary *)
       let envnew = add_to_environment env evid loc in
         (tyenvnew, envnew, Alist.extend acc (loc, deff))
     ) (tyenvinit, envinit, Alist.empty)

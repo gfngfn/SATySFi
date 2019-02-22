@@ -7,9 +7,17 @@ let show_path abspath =
   if OptionState.show_full_path () then pathstr else Filename.basename pathstr
 
 
-let begin_to_read_file abspath_in =
+let begin_to_typecheck_file abspath_in =
   print_endline (" ---- ---- ---- ----");
-  print_endline ("  reading '" ^ (show_path abspath_in) ^ "' ...")
+  print_endline ("  type checking '" ^ (show_path abspath_in) ^ "' ...")
+
+
+let begin_to_preprocess_file abspath_in =
+  print_endline ("  preprocessing '" ^ (show_path abspath_in) ^ "' ...")
+
+
+let begin_to_eval_file abspath_in =
+  print_endline ("  evaluating '" ^ (show_path abspath_in) ^ "' ...")
 
 
 let begin_to_parse_file abspath_in =
