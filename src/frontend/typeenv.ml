@@ -106,6 +106,7 @@ exception MultipleTypeDefinition          of Range.t * Range.t * type_name
 exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
+exception NotMatchingStage                of Range.t * var_name * stage * stage
 exception UndefinedModuleName             of Range.t * module_name * module_name list
 
 
@@ -1243,16 +1244,17 @@ let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : 
             | None ->
                 raise (NotProvidingValueImplementation(rng, varnm))
 
-            | Some((ptyimp, _, Stage1)) ->
-                let b = reflects ptysigI ptyimp in
-                if b then
-                  let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
-                    iter tyenvacc tyenvforsigI tyenvforsigO tail sigoptaccnew
+            | Some((ptyimp, _, stageimp)) ->
+                let stagereq = pre.stage in
+                if stageimp = stagereq then
+                  let b = reflects ptysigI ptyimp in
+                  if b then
+                    let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
+                      iter tyenvacc tyenvforsigI tyenvforsigO tail sigoptaccnew
+                  else
+                    raise (NotMatchingInterface(rng, varnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
                 else
-                  raise (NotMatchingInterface(rng, varnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
-
-            | Some((_, _, stage)) ->
-                remains_to_be_implemented ("variables at " ^ (string_of_stage stage) ^ " in signatures")
+                  raise (NotMatchingStage(rng, varnm, stageimp, stagereq))
           end
 
       | SigDirect(csnm, mty, constrntcons) :: tail ->

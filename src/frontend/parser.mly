@@ -427,7 +427,7 @@
 *)
 %token <Range.t * int> ITEM
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
-%token <Range.t> HEADER_STAGE0 HEADER_STAGE1
+%token <Range.t> HEADER_STAGE0 HEADER_STAGE1 HEADER_PERSISTENT0
 %token EOI
 
 (*
@@ -513,9 +513,10 @@ main:
   | stage=stage; header=list(headerelem); utast=nxwhl; EOI    { (stage, header, utast) }
 ;
 stage:
-  |               { Stage1 }
-  | HEADER_STAGE0 { Stage0 }
-  | HEADER_STAGE1 { Stage1 }
+  |                    { Stage1 }
+  | HEADER_STAGE0      { Stage0 }
+  | HEADER_STAGE1      { Stage1 }
+  | HEADER_PERSISTENT0 { Persistent0 }
 ;
 headerelem:
   | content=HEADER_REQUIRE { let (_, s) = content in HeaderRequire(s) }

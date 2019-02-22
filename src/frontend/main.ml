@@ -383,6 +383,10 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abst
         let code = preprocess_file env abspath astlib1 in
         preprocess (Alist.extend codeacc (abspath, code)) env tail
   in
+    (* --
+       each evaluation called in `preprocess` is run by the naive interpreter
+       regardless of whether `--bytecomp` was specified.
+       -- *)
 
   let rec eval (env : environment) (codes : (abs_path * code_value) list) : environment =
     match codes with
@@ -484,7 +488,7 @@ let error_log_environment suspended =
 
   | DocumentShouldBeAtStage1 ->
       report_error Interface [
-        NormalLine("cannot specify '@stage: 0' for a document file; should be at stage 1.");
+        NormalLine("invalid stage designation for a document file; should be at stage 1.");
       ]
 
   | LoadHyph.InvalidPatternElement(rng) ->
