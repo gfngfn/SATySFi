@@ -35,6 +35,22 @@ let map_with_env f env lst =
   iter env lst Alist.empty
 
 
+let code0 cv =
+  IRCodeCombinator((fun _ -> cv), 0, [])
+
+let code1 cvf ir =
+  let codef = function [cv1] -> cvf cv1 | _ -> report_bug_ir "code1" in
+  IRCodeCombinator(codef, 1, [ir])
+
+let code2 cvf ir1 ir2 =
+  let codef = function [cv1; cv2] -> cvf cv1 cv2 | _ -> report_bug_ir "code2" in
+  IRCodeCombinator(codef, 2, [ir1; ir2])
+
+let code3 cvf ir1 ir2 ir3 =
+  let codef = function [cv1; cv2; cv3] -> cvf cv1 cv2 cv3 | _ -> report_bug_ir "code3" in
+  IRCodeCombinator(codef, 3, [ir1; ir2; ir3])
+
+
 let rec transform_input_horz_content (env : frame) (ihlst : input_horz_element list) : ir_input_horz_element list * frame =
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
@@ -119,11 +135,11 @@ and transform_primitive (env : frame) (astlst : abstract_tree list) (op : instru
   let (irargs, env) = transform_list env astlst in
   (IRApplyPrimitive(op, List.length astlst, irargs), env)
 
-
+(*
 and transform_code1 (env : frame) (astlst : abstract_tree list) (codef : code_value list -> code_value) : ir * frame =
   let (irargs, env) = transform_list env astlst in
   (IRCodeCombinator(codef, List.length astlst, irargs), env)
-
+*)
 
 and transform_patsel (env : frame) (patbrs : pattern_branch list) : ir_pattern_branch list * frame =
   let before_size = env.size in
@@ -274,6 +290,132 @@ and check_primitive (env : frame) (ast : abstract_tree) : (int * (abstract_tree 
 
   | _ ->
       None
+
+(*
+and transform_1_horz_input ih : frame =
+  let (acc, env) =
+    ih |> List.fold_left (fun (acc, env) ihelem ->
+      let (ir, env) =
+        match ihelem with
+        | InputHorzText(s)       -> (InputHorzText(s), env)
+        | InputHorzEmbedded(ast) -> let (code, env) = transform_1 env ast in (InputHorzEmbedded(code))
+      in
+      (Alist.extend acc code, env)
+    ) (Alist.empty, env)
+  in
+  (Alist.to_list acc, env)
+*)
+
+and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
+  let return ir = (ir, env) in
+  match ast with
+  | ASTBaseConstant(bc) -> return (code0 (CdBaseConstant(bc)))
+  | ASTEndOfList        -> return (code0 CdEndOfList)
+  | ASTMath(mlst)       -> return (code0 (CdMath(mlst)))
+  | FinishHeaderFile    -> return (code0 CdFinishHeaderFile)
+  | FinishStruct        -> return (code0 CdFinishStruct)
+
+  | InputHorz(_) ->
+      remains_to_be_implemented "transform_1: InputHorz(_)"
+
+  | InputVert(_) ->
+      remains_to_be_implemented "transform_1: InputVert(_)"
+
+  | Path(_) ->
+      remains_to_be_implemented "transform_1: Path(_)"
+
+  | Record(asc) ->
+      let iter acc key ast =
+        let (keyacc, iracc, env) = acc in
+        let (ir, env) = transform env ast in
+        (Alist.extend keyacc key, Alist.extend iracc ir, env)
+      in
+      let (keyacc, iracc, env) = Assoc.fold iter (Alist.empty, Alist.empty, env) asc in
+      (IRCodeRecord(Alist.to_list keyacc, Alist.to_list iracc), env)
+
+  | AccessField(ast1, fldnm) ->
+      let (ir1, env) = transform_1 env ast1 in
+      (code1 (fun cv -> CdAccessField(cv, fldnm)) ir1, env)
+
+  | UpdateField(ast1, fldnm, ast2) ->
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (code2 (fun cv1 cv2 -> CdUpdateField(cv1, fldnm, cv2)) ir1 ir2, env)
+
+  | LetRecIn(_)
+  | LetNonRecIn(_) ->
+      remains_to_be_implemented "transform_1: let-rec/let"
+
+  | ContentOf(rng, evid) ->
+      return (code0 (CdContentOf(rng, evid)))
+
+  | IfThenElse(ast0, ast1, ast2) ->
+      let (ir0, env) = transform_1 env ast0 in
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (code3 (fun cv0 cv1 cv2 -> CdIfThenElse(cv0, cv1, cv2)) ir0 ir1 ir2, env)
+
+  | Function(evidlst, patbr) ->
+      remains_to_be_implemented "transform_1: Function"
+
+  | Apply(ast1, ast2) ->
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (code2 (fun cv1 cv2 -> CdApply(cv1, cv2)) ir1 ir2, env)
+
+  | ApplyOptional(ast1, ast2) ->
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (code2 (fun cv1 cv2 -> CdApplyOptional(cv1, cv2)) ir1 ir2, env)
+
+  | ApplyOmission(ast1) ->
+      let (ir1, env) = transform_1 env ast1 in
+      (code1 (fun cv -> CdApplyOmission(cv)) ir1, env)
+
+  | PatternMatch(rng, ast1, patbrs) ->
+      remains_to_be_implemented "transform_1: PatternMatch"
+
+  | NonValueConstructor(constrnm, ast1) ->
+      let (ir1, env) = transform_1 env ast1 in
+      (code1 (fun cv -> CdConstructor(constrnm, cv)) ir1, env)
+
+  | LetMutableIn(_) ->
+      remains_to_be_implemented "transform_1: let-mutable"
+
+  | Dereference(ast1) ->
+      let (ir1, env) = transform_1 env ast1 in
+      (code1 (fun cv -> CdDereference(cv)) ir1, env)
+
+  | Sequential(ast1, ast2) ->
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (code2 (fun cv1 cv2 -> CdSequential(cv1, cv2)) ir1 ir2, env)
+
+  | WhileDo(ast1, ast2) ->
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (code2 (fun cv1 cv2 -> CdWhileDo(cv1, cv2)) ir1 ir2, env)
+
+  | Overwrite(evid, ast1) ->
+      let (ir1, env) = transform_1 env ast1 in
+      (code1 (fun cv -> CdOverwrite(evid, cv)) ir1, env)
+
+  | Module(ast1, ast2) ->
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (code2 (fun cv1 cv2 -> CdModule(cv1, cv2)) ir1 ir2, env)
+
+  | BackendMathList(astmlst) ->
+      transform_primitive env astmlst (OpCodeMathList(List.length astmlst))
+
+  | PrimitiveTuple(astlst) ->
+      transform_primitive env astlst (OpCodeMakeTuple(List.length astlst))
+
+  | Prev(ast1) ->
+      transform env ast1
+
+  | Next(_) ->
+      report_bug_ir "transform_1: Next at stage 1"
 
 
 and transform (env : frame) (ast : abstract_tree) : ir * frame =
@@ -467,7 +609,7 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
   | Prev(_) ->
       report_bug_ir "Prev(...) cannot occur at transform_ir"
 
-  | Next(_) ->
-      report_bug_ir "Next(...) cannot occur at transform_ir"
+  | Next(ast1) ->
+      transform_1 env ast1
 
 #include "__ir.gen.ml"

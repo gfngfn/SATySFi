@@ -694,6 +694,8 @@ and ir =
   | IRPath                  of ir * ir ir_path_component list * (unit ir_path_component) option
 
   | IRCodeCombinator        of (code_value list -> code_value) * int * ir list
+  | IRCodeRecord            of Assoc.key list * ir list
+      [@printer (fun fmt _ -> Format.fprintf fmt "IRCodeRecord(...)")]
 
 and ir_pattern_branch =
   | IRPatternBranch      of ir_pattern_tree * ir
@@ -780,6 +782,10 @@ and instruction =
 
   | OpInsertArgs of syntactic_value list
   | OpApplyCodeCombinator of (code_value list -> code_value) * int
+  | OpCodeMakeRecord of Assoc.key list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCodeMakeRecord(...)")]
+  | OpCodeMathList of int
+  | OpCodeMakeTuple of int
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =

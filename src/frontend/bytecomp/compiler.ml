@@ -227,6 +227,9 @@ and compile (ir : ir) (cont : instruction list) =
   | IRCodeCombinator(codef, arity, irargs) ->
       compile_list irargs (OpApplyCodeCombinator(codef, arity) :: cont)
 
+  | IRCodeRecord(keylst, irargs) ->
+      compile_list irargs (OpCodeMakeRecord(keylst) :: cont)
+
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =
   let consif cond a b =

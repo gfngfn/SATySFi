@@ -990,4 +990,44 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       let coderet = codef codelst in
       exec (CodeValue(coderet) :: stack) env code dump
 
+  | OpCodeMakeRecord(keylst) ->
+      let rec collect keys asc st =
+        match keys with
+        | [] ->
+            (asc, st)
+
+        | k :: rest ->
+            begin
+              match st with
+              | CodeValue(cv) :: stnew -> collect rest (Assoc.add asc k cv) stnew
+              | _                      -> report_bug_vm "CodeMakeRecord"
+            end
+      in
+      let (cdasc, stack) = collect (List.rev keylst) Assoc.empty stack in
+      exec (CodeValue(CdRecord(cdasc)) :: stack) env code dump
+
+  | OpCodeMathList(n) ->
+      let rec iter n st acc =
+        if n <= 0 then
+          (acc, st)
+        else
+          match st with
+          | CodeValue(CdMath(m)) :: stnew -> iter (n - 1) stnew (m :: acc)
+          | _                             -> report_bug_vm "CodeMathList"
+      in
+      let (mlst, stack) = iter n stack [] in
+      exec (CodeValue(CdMath(List.concat mlst)) :: stack) env code dump
+
+  | OpCodeMakeTuple(n) ->
+      let rec iter n acc st =
+        if n <= 0 then
+          (acc, st)
+        else
+          match st with
+          | CodeValue(cv) :: stnew -> iter (n - 1) (cv :: acc) stnew
+          | _                      -> report_bug_vm "CodeMakeTuple"
+      in
+      let (cvlst, stack) = iter n [] stack in
+      exec (CodeValue(CdTuple(cvlst)) :: stack) env code dump
+
 #include "__vm.gen.ml"
