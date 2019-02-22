@@ -1063,11 +1063,11 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
           (acc, st)
         else
           match st with
-          | CodeValue(CdMath(m)) :: stnew -> iter (n - 1) stnew (m :: acc)
-          | _                             -> report_bug_vm "CodeMathList"
+          | CodeValue(cv) :: stnew -> iter (n - 1) stnew (cv :: acc)
+          | _                      -> report_bug_vm "CodeMathList"
       in
-      let (mlst, stack) = iter n stack [] in
-      exec (CodeValue(CdMath(List.concat mlst)) :: stack) env code dump
+      let (cvlst, stack) = iter n stack [] in
+      exec (CodeValue(CdMathList(cvlst)) :: stack) env code dump
 
   | OpCodeMakeTuple(n) ->
       let rec iter n acc st =
