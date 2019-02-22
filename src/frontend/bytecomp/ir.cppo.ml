@@ -88,6 +88,19 @@ and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element lis
     )
 
 
+and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element list) : (ir input_vert_element_scheme) list * frame =
+  ivlst @|> env @|> map_with_env (fun env elem ->
+    match elem with
+    | InputVertEmbedded(astabs) ->
+        let (irabs, env) = transform_1 env astabs in
+        (InputVertEmbedded(irabs), env)
+
+    | InputVertContent(ast) ->
+        let (ir, env) = transform_1 env ast in
+        (InputVertContent(ir), env)
+  )
+
+
 and transform_0_path env pathcomplst cycleopt =
   let (irpathcomplst, env) =
     pathcomplst @|> env @|> map_with_env (fun env path ->
@@ -404,8 +417,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       let (imihlst, env) = transform_1_input_horz_content env ihlst in
       (IRCodeInputHorz(imihlst), env)
 
-  | InputVert(_) ->
-      remains_to_be_implemented "transform_1: InputVert(_)"
+  | InputVert(ivlst) ->
+      let (imivlst, env) = transform_1_input_vert_content env ivlst in
+      (IRCodeInputVert(imivlst), env)
 
   | Path(_) ->
       remains_to_be_implemented "transform_1: Path(_)"

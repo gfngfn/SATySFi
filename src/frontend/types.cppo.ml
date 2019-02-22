@@ -697,6 +697,7 @@ and ir =
   | IRCodeRecord            of Assoc.key list * ir list
       [@printer (fun fmt _ -> Format.fprintf fmt "IRCodeRecord(...)")]
   | IRCodeInputHorz         of (ir input_horz_element_scheme) list
+  | IRCodeInputVert         of (ir input_vert_element_scheme) list
 
 and ir_pattern_branch =
   | IRPatternBranch      of ir_pattern_tree * ir
@@ -788,6 +789,7 @@ and instruction =
   | OpCodeMathList of int
   | OpCodeMakeTuple of int
   | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
+  | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =

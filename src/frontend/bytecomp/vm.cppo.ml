@@ -128,6 +128,25 @@ and exec_input_horz_content env ihlst =
     CompiledInputHorzClosure(imihlist, env)
 
 
+and exec_input_vert_content env ivlst =
+  let imivlst = ivlst |> List.map (function
+    | CompiledInputVertEmbedded(code) ->
+        CompiledImInputVertEmbedded(code)
+
+    | CompiledInputVertContent(code) ->
+        let value = exec [] env code [] in
+        begin
+          match value with
+          | CompiledInputVertClosure(imivlst, envsub) ->
+              CompiledImInputVertContent(imivlst, envsub)
+
+          | _ -> report_bug_vm "exec_input_vert_content"
+        end
+
+  ) in
+    CompiledInputVertClosure(imivlst, env)
+
+
 and exec_code_input_horz env irihlst =
   irihlst |> List.map (function
   | InputHorzText(s) ->
@@ -150,23 +169,18 @@ and exec_code_input_horz env irihlst =
   )
 
 
-and exec_input_vert_content env ivlst =
-  let imivlst = ivlst |> List.map (function
-    | CompiledInputVertEmbedded(code) ->
-        CompiledImInputVertEmbedded(code)
+and exec_code_input_vert env irivlst =
+  irivlst |> List.map (function
+  | InputVertEmbedded(instrs) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      InputVertEmbedded(cv)
 
-    | CompiledInputVertContent(code) ->
-        let value = exec [] env code [] in
-        begin
-          match value with
-          | CompiledInputVertClosure(imivlst, envsub) ->
-              CompiledImInputVertContent(imivlst, envsub)
-
-          | _ -> report_bug_vm "exec_input_vert_content"
-        end
-
-  ) in
-    CompiledInputVertClosure(imivlst, env)
+  | InputVertContent(instrs) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      InputVertContent(cv)
+  )
 
 
 and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
@@ -1055,5 +1069,9 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpCodeMakeInputHorz(irihlst) ->
       let cdihlst = exec_code_input_horz env irihlst in
       exec (CodeValue(CdInputHorz(cdihlst)) :: stack) env code dump
+
+  | OpCodeMakeInputVert(irivlst) ->
+      let cdivlst = exec_code_input_vert env irivlst in
+      exec (CodeValue(CdInputVert(cdivlst)) :: stack) env code dump
 
 #include "__vm.gen.ml"
