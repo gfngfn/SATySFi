@@ -55,6 +55,25 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
   compiled_ihlist
 
 
+and compile_code_input_horz (irihlst : (ir input_horz_element_scheme) list) =
+  irihlst |> List.map (function
+  | InputHorzText(s) ->
+      InputHorzText(s)
+
+  | InputHorzEmbedded(irabs) ->
+      let compiled = compile irabs [] in
+      InputHorzEmbedded(compiled)
+
+  | InputHorzEmbeddedMath(irmath) ->
+      let compiled = compile irmath [] in
+      InputHorzEmbeddedMath(compiled)
+
+  | InputHorzContent(ir) ->
+      let compiled = compile ir [] in
+      InputHorzContent(compiled)
+  )
+
+
 and compile_input_vert_content (ivlst : ir_input_vert_element list) =
   let compiled_ivlist =
     ivlst |> List.map (function
@@ -229,6 +248,9 @@ and compile (ir : ir) (cont : instruction list) =
 
   | IRCodeRecord(keylst, irargs) ->
       compile_list irargs (OpCodeMakeRecord(keylst) :: cont)
+
+  | IRCodeInputHorz(ihlst) ->
+      OpCodeMakeInputHorz(compile_code_input_horz ihlst) :: cont
 
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =

@@ -128,6 +128,28 @@ and exec_input_horz_content env ihlst =
     CompiledInputHorzClosure(imihlist, env)
 
 
+and exec_code_input_horz env irihlst =
+  irihlst |> List.map (function
+  | InputHorzText(s) ->
+      InputHorzText(s)
+
+  | InputHorzEmbedded(instrs) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      InputHorzEmbedded(cv)
+
+  | InputHorzEmbeddedMath(instrs) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      InputHorzEmbeddedMath(cv)
+
+  | InputHorzContent(instrs) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      InputHorzContent(cv)
+  )
+
+
 and exec_input_vert_content env ivlst =
   let imivlst = ivlst |> List.map (function
     | CompiledInputVertEmbedded(code) ->
@@ -1029,5 +1051,9 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       in
       let (cvlst, stack) = iter n [] stack in
       exec (CodeValue(CdTuple(cvlst)) :: stack) env code dump
+
+  | OpCodeMakeInputHorz(irihlst) ->
+      let cdihlst = exec_code_input_horz env irihlst in
+      exec (CodeValue(CdInputHorz(cdihlst)) :: stack) env code dump
 
 #include "__vm.gen.ml"

@@ -55,6 +55,26 @@ let rec transform_0_input_horz_content (env : frame) (ihlst : input_horz_element
   )
 
 
+and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element list) : (ir input_horz_element_scheme) list * frame =
+  ihlst @|> env @|> map_with_env (fun env elem ->
+    match elem with
+    | InputHorzText(s) ->
+        (InputHorzText(s), env)
+
+    | InputHorzEmbedded(astabs) ->
+        let (irabs, env) = transform_1 env astabs in
+        (InputHorzEmbedded(irabs), env)
+
+    | InputHorzEmbeddedMath(astmath) ->
+        let (irmath, env) = transform_1 env astmath in
+        (InputHorzEmbeddedMath(irmath), env)
+
+    | InputHorzContent(ast) ->
+        let (ir, env) = transform_1 env ast in
+        (InputHorzContent(ir), env)
+  )
+
+
 and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
@@ -380,8 +400,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | FinishHeaderFile    -> code0 env CdFinishHeaderFile
   | FinishStruct        -> code0 env CdFinishStruct
 
-  | InputHorz(_) ->
-      remains_to_be_implemented "transform_1: InputHorz(_)"
+  | InputHorz(ihlst) ->
+      let (imihlst, env) = transform_1_input_horz_content env ihlst in
+      (IRCodeInputHorz(imihlst), env)
 
   | InputVert(_) ->
       remains_to_be_implemented "transform_1: InputVert(_)"
