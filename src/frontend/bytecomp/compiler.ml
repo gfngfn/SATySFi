@@ -112,6 +112,11 @@ and compile_code_pattern_branch (irpatbr : ir pattern_branch_scheme) =
       PatternBranchWhen(pat, compiled, compiled1)
 
 
+and compile_code_letrec_binding (LetRecBinding(evid, irpatbr) : ir letrec_binding_scheme) =
+  let comppatbr = compile_code_pattern_branch irpatbr in
+  LetRecBinding(evid, comppatbr)
+
+
 and compile_path pathcomplst (cycleopt : unit ir_path_component option) =
   let c_pathcomplst =
     pathcomplst |> List.map (function
@@ -281,6 +286,10 @@ and compile (ir : ir) (cont : instruction list) =
 
   | IRCodePatternMatch(rng, ir, irpatbrs) ->
       compile ir @@ OpCodePatternMatch(rng, List.map compile_code_pattern_branch irpatbrs) :: cont
+
+  | IRCodeLetRecIn(irrecbinds, ir2) ->
+      let instrs2 = compile ir2 [] in
+      OpCodeLetRec(List.map compile_code_letrec_binding irrecbinds, instrs2) :: cont
 
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =

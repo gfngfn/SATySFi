@@ -451,8 +451,17 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | UpdateField(ast1, fldnm, ast2) ->
       code2 env (fun cv1 cv2 -> CdUpdateField(cv1, fldnm, cv2)) ast1 ast2
 
-  | LetRecIn(_) ->
-      remains_to_be_implemented "transform_1: let-rec"
+  | LetRecIn(recbinds, ast2) ->
+      let (irrecbinds, env) =
+        map_with_env (fun env recbind ->
+          match recbind with
+          | LetRecBinding(evid, patbr) ->
+              let (irpatbrs, env) = transform_1_pattern_branch env patbr in
+              (LetRecBinding(evid, irpatbrs), env)
+        ) env recbinds
+      in
+      let (ir2, env) = transform_1 env ast2 in
+      (IRCodeLetRecIn(irrecbinds, ir2), env)
 
   | LetNonRecIn(pat, ast1, ast2) ->
       code2 env (fun cv1 cv2 -> CdLetNonRecIn(pat, cv1, cv2)) ast1 ast2

@@ -611,8 +611,10 @@ type base_constant =
   | BCDocument        of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 [@@deriving show { with_path = false; }]
 
-type letrec_binding =
-  | LetRecBinding of EvalVarID.t * pattern_branch
+type 'a letrec_binding_scheme =
+  | LetRecBinding of EvalVarID.t * 'a pattern_branch_scheme
+
+and letrec_binding = abstract_tree letrec_binding_scheme
 
 and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
@@ -699,6 +701,7 @@ and ir =
   | IRCodeInputHorz         of (ir input_horz_element_scheme) list
   | IRCodeInputVert         of (ir input_vert_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * (ir pattern_branch_scheme) list
+  | IRCodeLetRecIn          of (ir letrec_binding_scheme) list * ir
 
 and ir_pattern_branch =
   | IRPatternBranch      of ir_pattern_tree * ir
@@ -792,6 +795,7 @@ and instruction =
   | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
   | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
   | OpCodePatternMatch  of Range.t * ((instruction list) pattern_branch_scheme) list
+  | OpCodeLetRec        of ((instruction list) letrec_binding_scheme) list * instruction list
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =

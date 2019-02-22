@@ -1081,12 +1081,12 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       let (cvlst, stack) = iter n [] stack in
       exec (CodeValue(CdTuple(cvlst)) :: stack) env code dump
 
-  | OpCodeMakeInputHorz(irihlst) ->
-      let cdihlst = exec_code_input_horz env irihlst in
+  | OpCodeMakeInputHorz(compihlst) ->
+      let cdihlst = exec_code_input_horz env compihlst in
       exec (CodeValue(CdInputHorz(cdihlst)) :: stack) env code dump
 
-  | OpCodeMakeInputVert(irivlst) ->
-      let cdivlst = exec_code_input_vert env irivlst in
+  | OpCodeMakeInputVert(compivlst) ->
+      let cdivlst = exec_code_input_vert env compivlst in
       exec (CodeValue(CdInputVert(cdivlst)) :: stack) env code dump
 
   | OpCodePatternMatch(rng, comppatbrs) ->
@@ -1099,5 +1099,16 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | _ ->
             report_bug_vm "CodePatternMatch: stack underflow"
       end
+
+  | OpCodeLetRec(comprecbinds, instrs2) ->
+      let cdrecbinds =
+        comprecbinds |> List.map (function LetRecBinding(evid, comppatbr) ->
+          let cdpatbr = exec_code_pattern_branch env comppatbr in
+          CdLetRecBinding(evid, cdpatbr)
+        )
+      in
+      let value2 = exec [] env instrs2 [] in
+      let cv2 = get_code value2 in
+      exec (CodeValue(CdLetRecIn(cdrecbinds, cv2)) :: stack) env code dump
 
 #include "__vm.gen.ml"
