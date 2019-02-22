@@ -376,11 +376,40 @@ let gen_ircases_0 () =
   )
 
 
+let gen_ircases_1 () =
+  let open Instruction in
+  Vminst.def |> List.iter (function
+  | {
+      no_ircode = false;
+      inst;
+      params;
+      _
+    } as def  when is_primitive def ->
+      let len = List.length params in
+      let ps = params |> List.mapi (fun i _ -> "p%d" @% i + 1) in
+      let cvs = params |> List.mapi (fun i _ -> "cv%d" @% i + 1) in
+      puts "    | %s(%s) ->"
+        inst
+        (String.concat ", " ps);
+      puts "        code%d env (fun %s -> Cd%s(%s)) %s"
+        len
+        (String.concat " " cvs)
+        inst
+        (String.concat ", " cvs)
+        (String.concat " " ps);
+      puts ""
+
+  | _ ->
+      ()
+  )
+
+
 let () =
   let opts =
     [
       ("--gen-vm"             , gen_vminstrs       );
       ("--gen-ir-0"           , gen_ircases_0      );
+      ("--gen-ir-1"           , gen_ircases_1      );
       ("--gen-insttype"       , gen_insttype       );
       ("--gen-attype"         , gen_attype         );
       ("--gen-codetype"       , gen_codetype       );
