@@ -88,6 +88,18 @@ and compile_input_vert_content (ivlst : ir_input_vert_element list) =
   compiled_ivlist
 
 
+and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
+  irivlst |> List.map (function
+  | InputVertEmbedded(irabs) ->
+      let compiled = compile irabs [] in
+      InputVertEmbedded(compiled)
+
+  | InputVertContent(ir) ->
+      let compiled = compile ir [] in
+      InputVertContent(compiled)
+  )
+
+
 and compile_path pathcomplst (cycleopt : unit ir_path_component option) =
   let c_pathcomplst =
     pathcomplst |> List.map (function
@@ -251,6 +263,9 @@ and compile (ir : ir) (cont : instruction list) =
 
   | IRCodeInputHorz(ihlst) ->
       OpCodeMakeInputHorz(compile_code_input_horz ihlst) :: cont
+
+  | IRCodeInputVert(ivlst) ->
+      OpCodeMakeInputVert(compile_code_input_vert ivlst) :: cont
 
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =

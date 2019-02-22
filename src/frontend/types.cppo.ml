@@ -878,9 +878,11 @@ and input_vert_element = abstract_tree input_vert_element_scheme
 
 and 'a path_component = ('a, abstract_tree) path_component_scheme
 
-and pattern_branch =
-  | PatternBranch      of pattern_tree * abstract_tree
-  | PatternBranchWhen  of pattern_tree * abstract_tree * abstract_tree
+and 'a pattern_branch_scheme =
+  | PatternBranch      of pattern_tree * 'a
+  | PatternBranchWhen  of pattern_tree * 'a * 'a
+
+and pattern_branch = abstract_tree pattern_branch_scheme
 
 and pattern_tree =
   | PUnitConstant
