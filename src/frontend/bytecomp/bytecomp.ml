@@ -2,16 +2,17 @@
 open MyUtil
 open LengthInterface
 open Types
+open EvalUtil
 
 
 let compile_and_exec_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   let (ir, env) = Ir.transform_ast env ast in
-  let code = Compiler.compile ir [] in
+  let instrs = Compiler.compile ir [] in
 (*
   Format.printf "IR:\n%s\n" (show_ir ir);  (* for debug *)
   List.iter (fun inst -> Format.printf "%s\n" (show_instruction inst)) code;  (* for debug *)
 *)
-  Vm.exec [] (env, []) code []
+  Vm.exec [] (env, []) instrs []
 
 
 let compile_environment (env : environment) : unit =
@@ -30,3 +31,10 @@ let compile_environment (env : environment) : unit =
     | _ ->
         ()
   )
+
+
+let compile_and_exec_1 (env : environment) (ast : abstract_tree) : code_value =
+  let value = compile_and_exec_0 env ast in
+  match value with
+  | CodeValue(cv) -> cv
+  | _             -> report_bug_vm "compile_and_exec_1: not a CodeValue(...)"

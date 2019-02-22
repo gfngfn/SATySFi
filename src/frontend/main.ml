@@ -296,7 +296,10 @@ let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_t
 
 let preprocess_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value =
   Logging.begin_to_preprocess_file abspath;
-  Evaluator.interpret_1 env ast
+  if OptionState.bytecomp_mode () then
+    Bytecomp.compile_and_exec_1 env ast
+  else
+    Evaluator.interpret_1 env ast
 
 
 let eval_main i env_freezed ast =
