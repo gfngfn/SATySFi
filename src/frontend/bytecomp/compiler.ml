@@ -100,6 +100,18 @@ and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
   )
 
 
+and compile_code_pattern_branch (irpatbr : ir pattern_branch_scheme) =
+  match irpatbr with
+  | PatternBranch(pat, ir1) ->
+      let compiled1 = compile ir1 [] in
+      PatternBranch(pat, compiled1)
+
+  | PatternBranchWhen(pat, ir, ir1) ->
+      let compiled = compile ir [] in
+      let compiled1 = compile ir1 [] in
+      PatternBranchWhen(pat, compiled, compiled1)
+
+
 and compile_path pathcomplst (cycleopt : unit ir_path_component option) =
   let c_pathcomplst =
     pathcomplst |> List.map (function
@@ -266,6 +278,9 @@ and compile (ir : ir) (cont : instruction list) =
 
   | IRCodeInputVert(ivlst) ->
       OpCodeMakeInputVert(compile_code_input_vert ivlst) :: cont
+
+  | IRCodePatternMatch(rng, ir, irpatbrs) ->
+      compile ir @@ OpCodePatternMatch(rng, List.map compile_code_pattern_branch irpatbrs) :: cont
 
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =

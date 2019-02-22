@@ -405,6 +405,18 @@ and code7 env cvf ast1 ast2 ast3 ast4 ast5 ast6 ast7 =
   (IRCodeCombinator(codef, 7, [ir1; ir2; ir3; ir4; ir5; ir6; ir7]), env)
 
 
+and transform_1_pattern_branch (env : frame) (patbr : pattern_branch) : ir pattern_branch_scheme * frame =
+  match patbr with
+  | PatternBranch(pat, ast1) ->
+      let (ir1, env) = transform_1 env ast1 in
+      (PatternBranch(pat, ir1), env)
+
+  | PatternBranchWhen(pat, ast, ast1) ->
+      let (ir, env) = transform_1 env ast in
+      let (ir1, env) = transform_1 env ast1 in
+      (PatternBranchWhen(pat, ir, ir1), env)
+
+
 and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   match ast with
   | ASTBaseConstant(bc) -> code0 env (CdBaseConstant(bc))
@@ -467,7 +479,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       code1 env (fun cv -> CdApplyOmission(cv)) ast1
 
   | PatternMatch(rng, ast1, patbrs) ->
-      remains_to_be_implemented "transform_1: PatternMatch"
+      let (ir1, env) = transform_1 env ast1 in
+      let (irpatbrs, env) = map_with_env transform_1_pattern_branch env patbrs in
+      (IRCodePatternMatch(rng, ir1, irpatbrs), env)
 
   | NonValueConstructor(constrnm, ast1) ->
       code1 env (fun cv -> CdConstructor(constrnm, cv)) ast1

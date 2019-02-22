@@ -341,6 +341,21 @@ and exec_application (env : vmenv) (vf : syntactic_value) (vargs : syntactic_val
       exec (vf :: (List.rev vargs)) env [OpApplyT(len)] []
 
 
+and exec_code_pattern_branch (env : vmenv) (comppatbr : (instruction list) pattern_branch_scheme) =
+  match comppatbr with
+  | PatternBranch(pat, instrs1) ->
+      let value1 = exec [] env instrs1 [] in
+      let cv1 = get_code value1 in
+      CdPatternBranch(pat, cv1)
+
+  | PatternBranchWhen(pat, instrs, instrs1) ->
+      let value = exec [] env instrs [] in
+      let cv = get_code value in
+      let value1 = exec [] env instrs1 [] in
+      let cv1 = get_code value1 in
+      CdPatternBranchWhen(pat, cv, cv1)
+
+
 and exec (stack : syntactic_value list) (env : vmenv) (code : instruction list) dump =
   match code with
   | [] ->
@@ -1073,5 +1088,16 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpCodeMakeInputVert(irivlst) ->
       let cdivlst = exec_code_input_vert env irivlst in
       exec (CodeValue(CdInputVert(cdivlst)) :: stack) env code dump
+
+  | OpCodePatternMatch(rng, comppatbrs) ->
+      begin
+        match stack with
+        | CodeValue(cv0) :: stack ->
+            let cdpatbrs = List.map (exec_code_pattern_branch env) comppatbrs in
+            exec (CodeValue(CdPatternMatch(rng, cv0, cdpatbrs)) :: stack) env code dump
+
+        | _ ->
+            report_bug_vm "CodePatternMatch: stack underflow"
+      end
 
 #include "__vm.gen.ml"

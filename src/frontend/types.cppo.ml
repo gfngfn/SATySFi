@@ -698,6 +698,7 @@ and ir =
       [@printer (fun fmt _ -> Format.fprintf fmt "IRCodeRecord(...)")]
   | IRCodeInputHorz         of (ir input_horz_element_scheme) list
   | IRCodeInputVert         of (ir input_vert_element_scheme) list
+  | IRCodePatternMatch      of Range.t * ir * (ir pattern_branch_scheme) list
 
 and ir_pattern_branch =
   | IRPatternBranch      of ir_pattern_tree * ir
@@ -790,6 +791,7 @@ and instruction =
   | OpCodeMakeTuple of int
   | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
   | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
+  | OpCodePatternMatch  of Range.t * ((instruction list) pattern_branch_scheme) list
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =
