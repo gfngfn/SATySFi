@@ -360,7 +360,7 @@ module MarkTable
     val create : unit -> t
     val add_base : int -> int -> mark_assoc -> (Otfm.glyph_id * Otfm.base_record) list -> t -> unit
     val add_ligature : int -> int -> mark_assoc -> (Otfm.glyph_id * Otfm.ligature_attach) list -> t -> unit
-    val add_mark_to_mark : int -> int -> mark_assoc -> (Otfm.glyph_id * Otfm.base_record) list -> t -> unit
+    val add_mark_to_mark : int -> int -> mark_assoc -> (Otfm.glyph_id * Otfm.mark2_record) list -> t -> unit
     val find_base_opt : original_glyph_id * original_glyph_id -> t -> (anchor_point * anchor_point) option
     val find_ligature_opt : int -> original_glyph_id * original_glyph_id -> t -> (anchor_point * anchor_point) option
     val find_mark_to_mark_opt : original_glyph_id * original_glyph_id -> t -> (anchor_point * anchor_point) option
@@ -370,7 +370,7 @@ module MarkTable
     type mark_to_base_entry = {
       class_count : int;
       mark_map    : (mark_class * anchor_point) GMap.t;
-      base_map    : (anchor_point array) GMap.t;
+      base_map    : ((anchor_point option) array) GMap.t;
     }
 
     type mark_to_ligature_entry = {
@@ -379,14 +379,21 @@ module MarkTable
       lig_base_map    : (((anchor_point option) array) array) GMap.t;
     }
 
+    type mark_to_mark_entry = {
+      class_count : int;
+      mark_map    : (mark_class * anchor_point) GMap.t;
+      mark2_map   : (anchor_point array) GMap.t;
+    }
+
     type t = {
       mutable mark_to_base_table     : mark_to_base_entry list;
       mutable mark_to_ligature_table : mark_to_ligature_entry list;
+      mutable mark_to_mark_table     : mark_to_mark_entry list;
     }
 
 
     let create () =
-      { mark_to_base_table = []; mark_to_ligature_table = []; }
+      { mark_to_base_table = []; mark_to_ligature_table = []; mark_to_mark_table = []; }
 
 
     let make_mark_map pmf markassoc =
@@ -404,7 +411,7 @@ module MarkTable
       let mark_map = make_mark_map pmf markassoc in
       let base_map =
         baseassoc |> List.fold_left (fun map (gidbase, arr) ->
-          map |> GMap.add gidbase (arr |> Array.map (base_record pmf))
+          map |> GMap.add gidbase (arr |> Array.map (option_map (base_record pmf)))
         ) GMap.empty
       in
       let entry = { class_count; mark_map; base_map; } in
@@ -428,7 +435,16 @@ module MarkTable
       mktbl.mark_to_ligature_table <- entry :: mktbl.mark_to_ligature_table
 
 
-    let add_mark_to_mark = add_base
+    let add_mark_to_mark units_per_em class_count markassoc mark2assoc mktbl =
+      let pmf = per_mille_raw units_per_em in
+      let mark_map = make_mark_map pmf markassoc in
+      let mark2_map =
+        mark2assoc |> List.fold_left (fun map (gidmark2, arr) ->
+          map |> GMap.add gidmark2 (arr |> Array.map (base_record pmf))
+        ) GMap.empty
+      in
+      let entry = { class_count; mark_map; mark2_map; } in
+      mktbl.mark_to_mark_table <- entry :: mktbl.mark_to_mark_table
 
 
     let find_base_opt (gidbase, gidmark) mktbl =
@@ -443,7 +459,12 @@ module MarkTable
             begin
               match (baseopt, markopt) with
               | (None, _) | (_, None)        -> aux tail
-              | (Some(arr), Some(c, ptmark)) -> Some((arr.(c), ptmark))
+              | (Some(arr), Some(c, ptmark)) ->
+                begin
+                  match arr.(c) with
+                  | Some(a) -> Some((a, ptmark))
+                  | None    -> aux tail
+                end
             end
       in
       aux mktbl.mark_to_base_table
@@ -472,7 +493,22 @@ module MarkTable
       aux mktbl.mark_to_ligature_table
 
 
-    let find_mark_to_mark_opt = find_base_opt
+    let find_mark_to_mark_opt (gidmark2, gidmark) mktbl =
+      let rec aux lst =
+        match lst with
+        | [] ->
+            None
+
+        | entry :: tail ->
+            let mark2opt = entry.mark2_map |> GMap.find_opt gidmark2 in
+            let markopt = entry.mark_map |> GMap.find_opt gidmark in
+            begin
+              match (mark2opt, markopt) with
+              | (None, _) | (_, None)        -> aux tail
+              | (Some(arr), Some(c, ptmark)) -> Some((arr.(c), ptmark))
+            end
+      in
+      aux mktbl.mark_to_mark_table
 
   end
 
