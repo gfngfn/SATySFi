@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Fix bug of signature matching in the type checker ([PR\#143](https://github.com/gfngfn/SATySFi/pull/143) and [PR\#144](https://github.com/gfngfn/SATySFi/pull/144) by `elpinal`).
 - Fix bug of type inference about records ([PR\#148](https://github.com/gfngfn/SATySFi/pull/148) by `elpinal`).
 - Fix bug about decoding fonts that has NULL as the DefaultLangSys entry in a Script table.
+- Fix (a kind of) bug about decoding fonts that has NULL in a BaseRecord table ([PR\#164](https://github.com/gfngfn/SATySFi/pull/164) by `matsud224`).
 
 ## Added
 - Begins to support Markdown input.
