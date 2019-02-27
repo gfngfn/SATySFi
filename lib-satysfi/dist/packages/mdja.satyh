@@ -370,3 +370,5 @@ end = struct
     let ctx = ctx |> set-text-color Color.red in
     let it = embed-string s in
     read-inline ctx {ERROR (I): \"#it;\"}
+
+end
