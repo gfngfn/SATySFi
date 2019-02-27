@@ -30,6 +30,7 @@ and inline_element =
   | Br
   | Url of string * inline * string
   | Ref of string * string * (string * string) option
+  | Img of string * string * string
   | InlineRaw of string
   | EmbeddedBlock of block
 
@@ -95,7 +96,7 @@ let rec make_inline_of_element (mde : Omd.element) =
 *)
 
   | Omd.Img(alt, src, title) ->
-      failwith (Printf.sprintf "Img; remiains to be supported: alt='%s', src'%s', title='%s'" alt src title)
+      single @@ Img(alt, src, title)
 
   | Omd.Img_ref(_, name, alt, _) ->
       failwith (Printf.sprintf "Img_ref; remains to be supported: name='%s', alt='%s'" name alt)
@@ -260,6 +261,7 @@ type command_record = {
   code_default       : command;
   url                : command;
   reference          : command;
+  img                : command;
   embed_block        : command;
   err_inline         : command;
 }
@@ -343,6 +345,12 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
 
       in
       make_inline_application cmdrcd.reference [utastarg1; utastarg2; utastarg3]
+
+  | Img(alt, src, title) ->
+      let utastarg1 = (dummy_range, UTStringConstant(alt)) in
+      let utastarg2 = (dummy_range, UTStringConstant(src)) in
+      let utastarg3 = (dummy_range, UTStringConstant(title)) in
+      make_inline_application cmdrcd.img [utastarg1; utastarg2; utastarg3]
 
   | EmbeddedBlock(blk) ->
       let utastarg = convert_block cmdrcd blk in
