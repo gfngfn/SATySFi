@@ -494,6 +494,20 @@ let error_log_environment suspended =
         NormalLine("invalid stage designation for a document file; should be at stage 1.");
       ]
 
+  | InvalidDependencyAsToStaging(abspath1, stage1, abspath2, stage2) ->
+      let fname1 = convert_abs_path_to_show abspath1 in
+      let fname2 = convert_abs_path_to_show abspath2 in
+      report_error Interface [
+        NormalLine("invalid dependency as to stage:");
+        NormalLine("'" ^ fname1 ^ "' (at " ^ (string_of_stage stage1) ^ ") depends on '" ^ fname2 ^ "' (at " ^ (string_of_stage stage2) ^ ")");
+      ]
+
+  | CannotReadFileOwingToSystem(msg) ->
+      report_error Interface [
+        NormalLine("cannot read file:");
+        DisplayLine(msg);
+      ]
+
   | LoadHyph.InvalidPatternElement(rng) ->
       report_error System [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
