@@ -37,3 +37,6 @@ val debug_show_space : unit -> bool
 val set_text_mode : string list -> unit
 val get_mode : unit -> (string list) option
 val is_text_mode : unit -> bool
+
+val set_extra_config_paths : string list -> unit
+val get_extra_config_paths : unit -> string list option
