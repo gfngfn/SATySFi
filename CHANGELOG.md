@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Supports (non-extensible) record updates, i.e., `(| <record> with <label> = <new-value> |)`.
 - Supports a MetaML-like two-stage computation performed by *bracket* `& <expr> ` and *escape* `~ <expr>` and equipped with (a somewhat restrictive variant of) cross-stage persistence.
 - Uses `"$(pwd)/.satysfi/"` as one of the library roots, and provides option `--config <colon-separated paths>` (or `-C …`) for adding arbitrary paths to the library roots ([PR\#161](https://github.com/gfngfn/SATySFi/pull/161) by `nyuichi`).
+- Supports the insertion of images by `![…](…)` in Markdown sources ([PR\#139](https://github.com/gfngfn/SATySFi/pull/139) by `hikalium`).
 
 ## Deprecated
 
