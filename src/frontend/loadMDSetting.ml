@@ -143,6 +143,7 @@ let read_assoc (assoc : MYU.assoc) =
       code_default       = assoc |> inline "code-default";
       url                = assoc |> inline "url";
       reference          = assoc |> inline "reference";
+      img                = assoc |> inline "img";
       embed_block        = assoc |> inline "embed-block";
       err_inline         = assoc |> inline "err-inline";
     }
