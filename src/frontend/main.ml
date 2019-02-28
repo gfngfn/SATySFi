@@ -96,19 +96,25 @@ type file_info =
   | LibraryFile  of stage * untyped_abstract_tree
 
 
-let make_abs_path_of_required package =
-  let extcands =
-    match OptionState.get_mode () with
-    | None      -> [".satyh"; ".satyg"]
-    | Some(lst) -> List.append (lst |> List.map (fun s -> ".satyh-" ^ s)) [".satyg"]
-  in
+let get_candidate_file_extensions () =
+  match OptionState.get_mode () with
+  | None      -> [".satyh"; ".satyg"]
+  | Some(lst) -> List.append (lst |> List.map (fun s -> ".satyh-" ^ s)) [".satyg"]
+
+
+let get_package_abs_path package =
+  let extcands = get_candidate_file_extensions () in
   Config.resolve_package_exn package extcands
 
 
-let make_abs_path_of_package curdir headerelem =
+let get_abs_path_of_header curdir headerelem =
   match headerelem with
-  | HeaderRequire(s) -> make_abs_path_of_required s
-  | HeaderImport(s)  -> make_abs_path (Filename.concat curdir (s ^ ".satyh"))
+  | HeaderRequire(package) ->
+      get_package_abs_path package
+
+  | HeaderImport(s) ->
+      let extcands = get_candidate_file_extensions () in
+      Config.resolve_local_exn curdir s extcands
 
 
 let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : abs_path) : unit =
@@ -119,7 +125,7 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : 
     let (stage, header, utast) = ParserInterface.process (basename_abs abspath) (Lexing.from_channel inc) in
     FileDependencyGraph.add_vertex dg abspath (LibraryFile(stage, utast));
     header |> List.iter (fun headerelem ->
-      let abspath_sub = make_abs_path_of_package curdir headerelem in
+      let abspath_sub = get_abs_path_of_header curdir headerelem in
       begin
         if FileDependencyGraph.mem_vertex abspath_sub dg then () else
           register_library_file dg abspath_sub
@@ -219,7 +225,7 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : 
   end;
   FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
   header |> List.iter (fun headerelem ->
-    let file_path_sub = make_abs_path_of_package curdir headerelem in
+    let file_path_sub = get_abs_path_of_header curdir headerelem in
     begin
       if FileDependencyGraph.mem_vertex file_path_sub dg then () else
         register_library_file dg file_path_sub
@@ -240,7 +246,7 @@ let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : str
     *)
       FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
       depends |> List.iter (fun package ->
-        let file_path_sub = make_abs_path_of_required package in
+        let file_path_sub = get_package_abs_path package in
         begin
         if FileDependencyGraph.mem_vertex file_path_sub dg then () else
           register_library_file dg file_path_sub
@@ -462,6 +468,13 @@ let error_log_environment suspended =
         [ NormalLine("candidate paths:"); ];
         pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath));
       ])
+
+  | Config.ImportedFileNotFound(s, pathcands) ->
+      report_error Interface (List.append [
+        NormalLine("imported file not found:");
+        DisplayLine(s);
+        NormalLine("candidate paths:");
+      ] (pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath))))
 
   | NotALibraryFile(abspath, tyenv, ty) ->
       let fname = convert_abs_path_to_show abspath in

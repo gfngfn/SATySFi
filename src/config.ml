@@ -4,6 +4,7 @@ open MyUtil
 exception PackageNotFound      of string * abs_path list
 exception LibraryFileNotFound  of lib_path * abs_path list
 exception LibraryFilesNotFound of lib_path list * abs_path list
+exception ImportedFileNotFound of string * abs_path list
 
 
 let satysfi_root_dirs : (string list) ref = ref []
@@ -27,7 +28,7 @@ let resolve_lib_file_scheme (relpath : lib_path) : string option * string list =
   let pathcands =
     dirs |> List.map (fun dir -> Filename.concat dir relpathstr)
   in
-  (MyUtil.first_some resolve pathcands, pathcands)
+  (first_some resolve pathcands, pathcands)
 
 
 let resolve_lib_file_opt (relpath : lib_path) : abs_path option =
@@ -98,3 +99,11 @@ let resolve_package_exn package extcands =
 
   | Ok(fn_local) ->
       fn_local
+
+
+let resolve_local_exn dir s extcands =
+  let pathwithoutext = Filename.concat dir s in
+  let pathcands = extcands |> List.map (fun ext -> pathwithoutext ^ "." ^ ext) in
+  match first_some resolve pathcands with
+  | None          -> raise (ImportedFileNotFound(s, pathcands |> List.map make_abs_path))
+  | Some(pathstr) -> make_abs_path pathstr
