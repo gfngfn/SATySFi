@@ -103,7 +103,7 @@ let resolve_package_exn package extcands =
 
 let resolve_local_exn dir s extcands =
   let pathwithoutext = Filename.concat dir s in
-  let pathcands = extcands |> List.map (fun ext -> pathwithoutext ^ "." ^ ext) in
+  let pathcands = extcands |> List.map (fun ext -> pathwithoutext ^ ext) in
   match first_some resolve pathcands with
   | None          -> raise (ImportedFileNotFound(s, pathcands |> List.map make_abs_path))
   | Some(pathstr) -> make_abs_path pathstr
