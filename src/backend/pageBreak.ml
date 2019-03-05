@@ -115,7 +115,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let hgttotal = prev.total_height in
         let hgttotal_new = hgttotal +% vskip in
         let badns = calculate_badness_of_page_break hgttotal_new in
-        if (badns > prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
+        if prev.allow_break && (badns > prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
           prev.last_breakable
         else
           let discardable_new = Alist.extend prev.discardable (EvVertFixedEmpty(vskip)) in
