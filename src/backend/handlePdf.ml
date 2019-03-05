@@ -21,18 +21,18 @@ type 'o op_funcs = {
 
 let pdfops_of_text hsinfo pt otxt =
   let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
-    GraphicD.pdfops_of_text pt tag hsinfo.text_font_size hsinfo.text_color otxt
+  GraphicD.pdfops_of_text pt tag hsinfo.text_font_size hsinfo.text_color otxt
 
 
 let pdfops_of_math msinfo pt otxt =
   let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
-    GraphicD.pdfops_of_text pt tag msinfo.math_font_size msinfo.math_color otxt
+  GraphicD.pdfops_of_text pt tag msinfo.math_font_size msinfo.math_color otxt
 
 
 let pdfops_of_image imgkey pt wid hgt =
   let tag = ImageInfo.get_tag imgkey in
   let (xratio, yratio) = ImageInfo.get_ratio imgkey wid hgt in
-    GraphicD.pdfops_of_image pt xratio yratio tag
+  GraphicD.pdfops_of_image pt xratio yratio tag
 
 
 let fs_pdf = {
@@ -57,11 +57,11 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let opaccnew =
           if OptionState.debug_show_space () then
             let opsgr = fs.test_box color_show_space (xpos, yposbaseline) wid (Length.of_pdf_point 2.) in
-              Alist.append opacc opsgr
+            Alist.append opacc opsgr
           else
             opacc
         in
-          (xpos +% wid, opaccnew)
+        (xpos +% wid, opaccnew)
 
     | EvHorzFrame(hgt_frame, dpt_frame, deco, imhblst) ->
         let gr_background =
@@ -75,21 +75,21 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         in
         let ops_foreground = [] in  (* temporary *)
         let opaccnew = Alist.append opaccsub ops_foreground in
-          (xposnew, opaccnew)
+        (xposnew, opaccnew)
 
     | EvHorzString(hsinfo, hgt, dpt, otxt) ->
         let ops =
           let opsmain =
-              fs.text hsinfo (xpos, yposbaseline +% hsinfo.rising) otxt
+            fs.text hsinfo (xpos, yposbaseline +% hsinfo.rising) otxt
           in
           if OptionState.debug_show_bbox () then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
-              List.append opsgr opsmain
+            List.append opsgr opsmain
           else
             opsmain
         in
         let opaccnew = Alist.append opacc ops in
-          (xpos +% wid, opaccnew)
+        (xpos +% wid, opaccnew)
 
     | EvHorzMathGlyph(msinfo, hgt, dpt, otxt) ->
         let ops =
@@ -98,7 +98,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
           in
           if OptionState.debug_show_bbox () then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
-              List.append opsgr opsmain
+            List.append opsgr opsmain
           else
             opsmain
         in
@@ -117,11 +117,11 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
 *)
             opaccsub
         in
-          (xpos +% wid, opaccnew)
+        (xpos +% wid, opaccnew)
 
     | EvHorzEmbeddedVert(hgt, dpt, evvblst) ->
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list fs pbinfo (xpos, yposbaseline +% hgt) opacc evvblst in
-          (xpos +% wid, opaccnew)
+        (xpos +% wid, opaccnew)
 
     | EvHorzInlineGraphics(hgt, dpt, graphics) ->
         let gr =
@@ -134,11 +134,11 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let opaccnew =
           if OptionState.debug_show_bbox () then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
-              Alist.append opaccsub opsgr
+            Alist.append opaccsub opsgr
           else
             opaccsub
         in
-          (xpos +% wid, opaccnew)
+        (xpos +% wid, opaccnew)
 
     | EvHorzInlineTabular(hgt, dpt, evtabular, widlst, lenlst, rulesf) ->
         let ops_tabular =
@@ -147,27 +147,27 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let (xacc, _) =
           widlst |> List.fold_left (fun (xacc, x) w ->
             let xnew = x +% w in
-              (Alist.extend xacc xnew, xnew)
+            (Alist.extend xacc xnew, xnew)
           ) (Alist.extend Alist.empty xpos, xpos)
         in
         let (yacc, _) =
           let yinit = yposbaseline +% hgt in
           lenlst |> List.fold_left (fun (yacc, y) l ->
             let ynew = y -% l in
-              (Alist.extend yacc ynew, ynew)
+            (Alist.extend yacc ynew, ynew)
           ) (Alist.extend Alist.empty yinit, yinit)
         in
         let gr = rulesf (Alist.to_list xacc) (Alist.to_list yacc) in
         let ops_rules = pdfops_of_graphics fs pbinfo gr in
         let opaccnew = Alist.append (Alist.append opacc ops_tabular) ops_rules in
-          (xpos +% wid, opaccnew)
+        (xpos +% wid, opaccnew)
 
     | EvHorzInlineImage(hgt, imgkey) ->
         let ops_image =
           fs.image imgkey (xpos, yposbaseline) wid hgt
         in
         let opaccnew = Alist.append opacc ops_image in
-          (xpos +% wid, opaccnew)
+        (xpos +% wid, opaccnew)
 
     | EvHorzHookPageBreak(pbinfo, hookf) ->
         hookf pbinfo (xpos, yposbaseline);  (* -- invokes the hook function -- *)
@@ -186,7 +186,7 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
           | EvNormalCell((wid, hgt, dpt), evhblst) ->
               let yposbaseline = ypos -% hgt in
               let (_, opaccsub) =
-                  evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, opacc)
+                evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, opacc)
               in
               let opaccnew =
 (*
@@ -194,7 +194,7 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
 *)
                   opaccsub
               in
-                (opaccnew, (xpos +% wid, ypos))
+              (opaccnew, (xpos +% wid, ypos))
 
           | EvMultiCell((_, _, widsingle, widcell, hgt, dpt), evhblst) ->
               let yposbaseline = ypos -% hgt in
@@ -207,7 +207,7 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
 *)
                   opaccsub
               in
-                (opaccnew, (xpos +% widsingle, ypos))
+              (opaccnew, (xpos +% widsingle, ypos))
 
         ) (opacc, (xpos, ypos))
       in
@@ -244,7 +244,7 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
           else
             opaccend
         in
-          ((xpos, yposbaseline +% dpt), opaccend)
+        ((xpos, yposbaseline +% dpt), opaccend)
 
     | EvVertFrame(pads, _, deco, wid, evvblstsub) ->
         let xpossubinit = xpos +% pads.paddingL in
@@ -255,16 +255,16 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
         let opsgr = pdfops_of_graphics fs pbinfo gr in
         let opaccframe = Alist.append opacc opsgr in
         let opaccnew = Alist.append opaccframe (Alist.to_list opaccsub) in
-          ((xpos, yposend), opaccnew)
+        ((xpos, yposend), opaccnew)
   )
 
 
 and pdfops_of_intermediate_horz_box_list (fs : 'o op_funcs) (pbinfo : page_break_info) ((xpos, yposbaseline) : point) (imhblst : intermediate_horz_box list) : 'o list =
   let (evhblst, _) = PageInfo.embed_page_info pbinfo imhblst in
   let (_, opacc) =
-      evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, Alist.empty)
+    evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, Alist.empty)
   in
-    Alist.to_list opacc
+  Alist.to_list opacc
 
 
 and pdfops_of_graphics (fs : 'o op_funcs) (pbinfo : page_break_info) gr =
@@ -284,7 +284,7 @@ let invert_coordinate paper_height (xraw, yraw) =
 let get_paper_height (paper : Pdfpaper.t) : length =
   let dpi = 300. in  (* temporary; should be variable *)
   let pdfpt = Pdfunits.convert dpi (Pdfpaper.unit paper) Pdfunits.PdfPoint (Pdfpaper.height paper) in
-    Length.of_pdf_point pdfpt
+  Length.of_pdf_point pdfpt
 
 
 let make_page (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : page_content_scheme) (evvblstbody : evaled_vert_box list) (evvblstfootnote : evaled_vert_box list) : page =
@@ -314,7 +314,7 @@ let make_page (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : p
     ops_of_evaled_vert_box_list fs_pdf pbinfo pt_init Alist.empty evvblstfootnote
   in
   let opaccpage = Alist.cat opaccbody opaccfootnote in
-    Page(paper, pagecontsch, opaccpage, pbinfo)
+  Page(paper, pagecontsch, opaccpage, pbinfo)
 
 
 let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc, flnm)) : t) : t =
@@ -344,12 +344,12 @@ let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf 
   in
   let pagenew = Annotation.add_to_pdf pdf pagenew in
   let () = NamedDest.notify_pagebreak pbinfo.current_page_number in
-    PDF(pdf, Alist.extend pageacc pagenew, flnm)
+  PDF(pdf, Alist.extend pageacc pagenew, flnm)
 
 
 let create_empty_pdf (abspath : abs_path) : t =
   let pdf = Pdf.empty () in
-   PDF(pdf, Alist.empty, abspath)
+  PDF(pdf, Alist.empty, abspath)
 
 
 let write_to_file ((PDF(pdf, pageacc, abspath)) : t) : unit =
@@ -357,7 +357,7 @@ let write_to_file ((PDF(pdf, pageacc, abspath)) : t) : unit =
   let pdfdict_font = FontInfo.get_font_dictionary pdf in
   let pdfarr_procset =
     Pdf.Array(List.map (fun s -> Pdf.Name(s))
-                ["/PDF"; "/Text"; "/ImageC"; "ImageB"; "ImageI";])
+      ["/PDF"; "/Text"; "/ImageC"; "ImageB"; "ImageI";])
   in
   let pdfdict_xobject = ImageInfo.get_xobject_dictionary pdf in
   let ir_resources =
