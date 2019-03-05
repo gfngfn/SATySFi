@@ -159,10 +159,11 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
     | PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
         let hgttotal = prev.total_height in
         let hgttotal_before = hgttotal +% pads.paddingT in
+        let badns_before = calculate_badness_of_page_break hgttotal_before in
         let ans =
           aux {
             last_breakable = {
-              badness  = initial_badness;
+              badness  = badns_before;
               body     = Alist.empty;
               footnote = Alist.empty;
               height   = hgttotal_before;
