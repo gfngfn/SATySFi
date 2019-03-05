@@ -169,11 +169,10 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
     | PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
         let hgttotal = prev.total_height in
         let hgttotal_before = hgttotal +% pads.paddingT in
-        let badns_before = calculate_badness_of_page_break hgttotal_before in
         let ans =
           aux {
             last_breakable = {
-              badness  = badns_before;
+              badness  = prev.last_breakable.badness;
               body     = Alist.empty;
               footnote = Alist.empty;
               height   = hgttotal_before;
@@ -188,7 +187,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
             (* -- propagates total height and footnotes, but does NOT propagate body -- *)
         in
         let hgttotal_after = ans.height +% pads.paddingB in
-        let badns_new = calculate_badness_of_page_break hgttotal_after in
+        let badns_after = calculate_badness_of_page_break hgttotal_after in
         begin
           match ans.rest with
           | None ->
@@ -209,12 +208,12 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
               in
               let footnote_new = ans.footnote in
               if prev.allow_break then
-                if (badns_new > prev.last_breakable.badness) && (hgttotal <% hgttotal_after) then
+                if (badns_after > prev.last_breakable.badness) && (hgttotal <% hgttotal_after) then
                   prev.last_breakable
                 else
                   aux {
                     last_breakable = {
-                      badness  = badns_new;
+                      badness  = badns_after;
                       body     = body_new;
                       footnote = footnote_new;
                       height   = hgttotal_after;
@@ -237,7 +236,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                 } pbvbtail
 
           | Some(pbvbrestsub) ->
-              if ans.badness > badns_before then
+              if ans.badness > prev.last_breakable.badness then
                 prev.last_breakable
               else
                 let body_ret =
