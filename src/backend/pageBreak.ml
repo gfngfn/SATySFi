@@ -237,28 +237,31 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                 } pbvbtail
 
           | Some(pbvbrestsub) ->
-              let body_ret =
-                let (decosub, pads) =
-                  match midway with
-                  | Midway    -> (decoM, pads)
-                  | Beginning -> (decoH, pads)
-                (* --
-                   design consideration:
-                   `{ pads with paddingT = Length.zero; paddingB = Length.zero; }` may be better than `pads`
-                   when `midway` is `Midway`.
-                   -- *)
+              if ans.badness > badns_before then
+                prev.last_breakable
+              else
+                let body_ret =
+                  let (decosub, pads) =
+                    match midway with
+                    | Midway    -> (decoM, pads)
+                    | Beginning -> (decoH, pads)
+                  (* --
+                     design consideration:
+                     `{ pads with paddingT = Length.zero; paddingB = Length.zero; }` may be better than `pads`
+                     when `midway` is `Midway`.
+                     -- *)
+                  in
+                  Alist.extend (Alist.cat prev.solid_body prev.discardable)
+                    (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list ans.body))
                 in
-                Alist.extend (Alist.cat prev.solid_body prev.discardable)
-                  (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list ans.body))
-              in
-              let pbvbrest = PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail in
-              {
-                body     = body_ret;
-                footnote = ans.footnote;
-                rest     = Some(pbvbrest);
-                height   = hgttotal_after;
-                badness  = ans.badness;
-              }
+                let pbvbrest = PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail in
+                {
+                  body     = body_ret;
+                  footnote = ans.footnote;
+                  rest     = Some(pbvbrest);
+                  height   = hgttotal_after;
+                  badness  = ans.badness;
+                }
         end
 
     | [] ->
