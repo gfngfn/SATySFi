@@ -83,7 +83,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let body_new = Alist.extend (Alist.cat prev.solid_body prev.discardable) (EvVertLine(hgt, dpt, evhblst)) in
         let footnote_new = Alist.append prev.solid_footnote evvblstfootnote in
         if prev.allow_break then
-          if (badns >= prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
+          if (badns > prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
           (* -- if getting worse, outputs a page at the last breakable point. -- *)
             prev.last_breakable
           else
@@ -115,7 +115,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let hgttotal = prev.total_height in
         let hgttotal_new = hgttotal +% vskip in
         let badns = calculate_badness_of_page_break hgttotal_new in
-        if (badns >= prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
+        if (badns > prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
           prev.last_breakable
         else
           let discardable_new = Alist.extend prev.discardable (EvVertFixedEmpty(vskip)) in
@@ -199,7 +199,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
               let footnote_new = ans.footnote in
               let badns_new = ans.badness in
               if prev.allow_break then
-                if (ans.badness >= prev.last_breakable.badness) && (hgttotal <% hgttotal_after) then
+                if (ans.badness > prev.last_breakable.badness) && (hgttotal <% hgttotal_after) then
                   prev.last_breakable
                 else
                   aux {
