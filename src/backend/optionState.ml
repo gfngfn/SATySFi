@@ -15,6 +15,7 @@ type state = {
   mutable show_full_path  : bool;
   mutable debug_show_bbox : bool;
   mutable debug_show_space : bool;
+  mutable debug_show_block_bbox : bool;
   mutable mode             : (string list) option;
   mutable extra_config_paths : string list option;
 }
@@ -30,6 +31,7 @@ let state = {
   show_fonts      = false;
   debug_show_bbox = false;
   debug_show_space = false;
+  debug_show_block_bbox = false;
   mode             = None;
   extra_config_paths = None;
 }
@@ -65,6 +67,9 @@ let debug_show_bbox ()     = state.debug_show_bbox
 
 let set_debug_show_space () = state.debug_show_space <- true
 let debug_show_space ()     = state.debug_show_space
+
+let set_debug_show_block_bbox () = state.debug_show_block_bbox <- true
+let debug_show_block_bbox ()     = state.debug_show_block_bbox
 
 let set_text_mode lst = state.mode <- Some(lst)
 let get_mode () = state.mode

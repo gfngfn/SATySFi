@@ -47,6 +47,7 @@ let fs_pdf = {
 
 let color_show_space = DeviceRGB(0.0, 0.0, 1.0)
 let color_show_bbox  = DeviceRGB(1.0, 0.5, 0.5)
+let color_show_block_bbox = DeviceRGB(0.5, 1.0, 0.5)
 
 
 let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) yposbaseline (xpos, opacc) (evhb : evaled_horz_box) =
@@ -233,18 +234,16 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
 
     | EvVertLine(hgt, dpt, evhblst) ->
         let yposbaseline = ypos -% hgt in
-        let (_, opaccend) =
+        let (xposlast, opaccend) =
           evhblst @|> (xpos, opacc) @|> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline)
         in
-(*
-        (* begin: for debug *)
         let opaccend =
-          List.rev_append (List.append
-            (ops_test_box (1.0, 0.5, 0.5) (xpos, ypos) (Length.of_pdf_point 100.) hgt)
-            (ops_test_box (1.0, 0.5, 0.5) (xpos, ypos -% hgt) (Length.of_pdf_point 100.) (Length.negate dpt)))
-            opaccend in
-        (* end: for debug *)
-*)
+          if OptionState.debug_show_block_bbox () then
+            let wid = xposlast -% xpos in
+            Alist.append opaccend (fs.test_frame color_show_block_bbox (xpos, yposbaseline) wid hgt dpt)
+          else
+            opaccend
+        in
           ((xpos, yposbaseline +% dpt), opaccend)
 
     | EvVertFrame(pads, _, deco, wid, evvblstsub) ->
