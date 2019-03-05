@@ -115,23 +115,33 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let hgttotal = prev.total_height in
         let hgttotal_new = hgttotal +% vskip in
         let badns = calculate_badness_of_page_break hgttotal_new in
-        if prev.allow_break && (badns > prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
-          prev.last_breakable
+        let discardable_new = Alist.extend prev.discardable (EvVertFixedEmpty(vskip)) in
+        if prev.allow_break then
+          if (badns > prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
+            prev.last_breakable
+          else
+            aux {
+              last_breakable = {
+                badness  = badns;
+                body     = prev.solid_body;
+                footnote = prev.solid_footnote;
+                rest     = normalize_after_break pbvbtail;
+                height   = hgttotal;
+              };
+              allow_break    = true;
+              solid_body     = prev.solid_body;
+              solid_footnote = prev.solid_footnote;
+              discardable    = discardable_new;
+              total_height   = hgttotal_new;
+            } pbvbtail
         else
-          let discardable_new = Alist.extend prev.discardable (EvVertFixedEmpty(vskip)) in
           aux {
-            last_breakable = {
-              badness  = badns;
-              body     = prev.solid_body;
-              footnote = prev.solid_footnote;
-              rest     = normalize_after_break pbvbtail;
-              height   = hgttotal;
-            };
-            allow_break    = true;
-            solid_body     = prev.solid_body;
-            solid_footnote = prev.solid_footnote;
-            discardable    = discardable_new;
-            total_height   = hgttotal_new;
+              last_breakable = prev.last_breakable;
+              allow_break    = true;
+              solid_body     = prev.solid_body;
+              solid_footnote = prev.solid_footnote;
+              discardable    = discardable_new;
+              total_height   = hgttotal_new;
           } pbvbtail
 
     | PBVertFixedUnbreakable(vskip) :: pbvbtail ->
