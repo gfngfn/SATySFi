@@ -34,6 +34,8 @@ type pb_accumulator = {
 }
 
 
+let initial_badness = 100000
+
 
 (* --
    `chop_single_page` receives:
@@ -82,10 +84,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let footnote_new = Alist.append prev.solid_footnote evvblstfootnote in
         if prev.allow_break then
           if (badns >= prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
-          (* --
-             if getting worse, outputs the accumulated non-discardable lines 'evvbacc' as a page.
-             note that the line checked last will be left in the processing list.
-             -- *)
+          (* -- if getting worse, outputs a page at the last breakable point. -- *)
             prev.last_breakable
           else
             aux {
@@ -118,15 +117,6 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let badns = calculate_badness_of_page_break hgttotal_new in
         if (badns >= prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
           prev.last_breakable
-(*
-          {
-            body = Alist.to_list evvbacc;
-            footnote = footnote;
-            rest = Some(omit_clear_page_element pbvbtail);
-            last_height = hgttotalnew;
-            last_badness = badns;
-          }
-*)
         else
           let discardable_new = Alist.extend prev.discardable (EvVertFixedEmpty(vskip)) in
           aux {
@@ -171,7 +161,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let ans =
           aux {
             last_breakable = {
-              badness  = 100000;
+              badness  = initial_badness;
               body     = Alist.empty;
               footnote = Alist.empty;
               height   = hgttotal_before;
@@ -192,14 +182,14 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
             (* -- if the contents `pbvblstsub` can be displayed in a single page -- *)
               let body_new =
                 let (decosub, pads) =
-(*
-                  match midway with
-                  | Midway    -> (decoT, { pads with paddingT = Length.zero; })
-                  | Beginning -> (decoS, pads)
-*)
                   match midway with
                   | Midway    -> (decoT, pads)
                   | Beginning -> (decoS, pads)
+                (* --
+                   design consideration:
+                   `{ pads with paddingT = Length.zero; }` may be better than `pads`
+                   when `midway` is `Midway`.
+                   -- *)
                 in
                 Alist.extend (Alist.cat prev.solid_body prev.discardable)
                   (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list ans.body))
@@ -222,14 +212,14 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           | Some(pbvbrestsub) ->
               let body_ret =
                 let (decosub, pads) =
-(*
-                  match midway with
-                  | Midway    -> (decoM, { pads with paddingT = Length.zero; paddingB = Length.zero; })
-                  | Beginning -> (decoH, { pads with paddingB = Length.zero; })
-*)
                   match midway with
                   | Midway    -> (decoM, pads)
                   | Beginning -> (decoH, pads)
+                (* --
+                   design consideration:
+                   `{ pads with paddingT = Length.zero; paddingB = Length.zero; }` may be better than `pads`
+                   when `midway` is `Midway`.
+                   -- *)
                 in
                 Alist.extend (Alist.cat prev.solid_body prev.discardable)
                   (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list ans.body))
@@ -253,11 +243,10 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           badness  = prev.last_breakable.badness;
         }
   in
-  let badnsinit = 100000 in
   let ans =
     aux {
       last_breakable = {
-        badness  = badnsinit;
+        badness  = initial_badness;
         body     = Alist.empty;
         footnote = Alist.empty;
         height   = Length.zero;
