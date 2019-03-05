@@ -178,6 +178,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
             (* -- propagates total height and footnotes, but does NOT propagate body -- *)
         in
         let hgttotal_after = ans.height +% pads.paddingB in
+        let badns_new = calculate_badness_of_page_break hgttotal_after in
         begin
           match ans.rest with
           | None ->
@@ -197,9 +198,8 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                   (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list ans.body))
               in
               let footnote_new = ans.footnote in
-              let badns_new = ans.badness in
               if prev.allow_break then
-                if (ans.badness > prev.last_breakable.badness) && (hgttotal <% hgttotal_after) then
+                if (badns_new > prev.last_breakable.badness) && (hgttotal <% hgttotal_after) then
                   prev.last_breakable
                 else
                   aux {
