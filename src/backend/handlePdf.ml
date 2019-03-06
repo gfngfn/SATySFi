@@ -16,6 +16,7 @@ type 'o op_funcs = {
   image      : ImageInfo.key -> point -> length -> length -> 'o list;
   test_box   : color -> point -> length -> length -> 'o list;
   test_frame : color -> point -> length -> length -> length -> 'o list;
+  test_scale : color -> point -> length -> 'o list;
 }
 
 
@@ -42,6 +43,7 @@ let fs_pdf = {
   image      = pdfops_of_image;
   test_box   = GraphicD.pdfops_test_box;
   test_frame = GraphicD.pdfops_test_frame;
+  test_scale = GraphicD.pdfops_test_scale;
 }
 
 
@@ -308,8 +310,7 @@ let make_page (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : p
     let (_, opaccbody) = ops_of_evaled_vert_box_list fs_pdf pbinfo pt_init Alist.empty evvblstbody in
     if OptionState.debug_show_block_bbox () then
       let txtlen = pagecontsch.page_content_height in
-      let txtwid = Length.of_pdf_point (-1.) in
-      Alist.append opaccbody (fs_pdf.test_box color_show_frame pt_init txtwid txtlen)
+      Alist.append opaccbody (fs_pdf.test_scale color_show_frame pt_init txtlen)
     else
       opaccbody
   in

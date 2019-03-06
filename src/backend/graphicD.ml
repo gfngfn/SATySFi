@@ -1,6 +1,7 @@
 
 open LengthInterface
 open GraphicBase
+open MyUtil
 
 
 let (~%) = Length.to_pdf_point
@@ -267,4 +268,41 @@ let pdfops_test_frame color (xpos, yposbaseline) wid hgt dpt =
     op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
     op_S;
     op_Q;
+  ]
+
+
+let pdfops_test_scale color (xpos, ypos) len =
+  let len_unit = Length.of_pdf_point 10. in
+  let divs =
+    let n = truncate (len /% len_unit) in
+    (range 0 n) |> List.map (fun i ->
+       let lendiv =
+         if i mod 10 = 0 then
+           Length.of_pdf_point 6.
+         else if i mod 5 = 0 then
+           Length.of_pdf_point 4.
+         else
+           Length.of_pdf_point 2.
+       in
+       let ydiv = ypos -% len_unit *% (float i) in
+       [
+         op_m (xpos, ydiv);
+         op_l (xpos -% lendiv, ydiv);
+       ]
+
+    ) |> List.concat
+  in
+  List.concat [
+    [
+      op_q;
+      pdfop_of_stroke_color color;
+      op_w (Length.of_pdf_point 0.5);
+      op_m (xpos, ypos);
+      op_l (xpos, ypos -% len);
+    ];
+    divs;
+    [
+      op_S;
+      op_Q;
+    ];
   ]
