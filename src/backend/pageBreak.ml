@@ -182,6 +182,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
             badness  = 0;
           }
         in
+        let () = Format.printf "PageBreak> page %d (%d): CLEAR-PAGE\n" pbinfo.current_page_number prev.depth in  (* for debug *)
         (ans, Remains)
 
     | PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
@@ -214,11 +215,10 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                 match ans_sub.division with
                 | Outside ->
                   (* -- if the page-breaking should occur before entering the frame -- *)
-                    let () = Format.printf "PageBreak> page %d (%d): FRAME 2\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+                    let () = Format.printf "PageBreak> page %d (%d): FRAME remains/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                     (prev.last_breakable, Remains)
 
                 | Inside(body_sub, remains_sub) ->
-                    let () = Format.printf "PageBreak> page %d (%d): FRAME 3\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                     let body_ret =
                       let (decosub, pads) =
                         match midway with
@@ -242,6 +242,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                         badness  = ans_sub.badness;
                       }
                     in
+                    let () = Format.printf "PageBreak> page %d (%d): FRAME remains/inside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                     (ans, Remains)
               end
 
@@ -254,6 +255,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                         i.e., the frame can be treated as if it were a single line -- *)
                     if prev.allow_break then
                       if (badns_after > prev.last_breakable.badness) && (hgttotal <% hgttotal_after) then
+                        let () = Format.printf "PageBreak> page %d (%d): FRAME finished/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                         (prev.last_breakable, Remains)
                       else
                       let body_new =
@@ -266,6 +268,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                          (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list body_sub_all))
                       in
                       let footnote_new = footnote_sub_all in
+                      let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/outside (non-optimal)\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                       aux {
                         depth = prev.depth;  (* -- mainly for debugging -- *)
                         last_breakable = {
@@ -291,6 +294,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                          (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list body_sub_all))
                       in
                       let footnote_new = footnote_sub_all in
+                      let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/outside (non-breakable)\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                       aux {
                         depth = prev.depth;  (* -- mainly for debugging -- *)
                         last_breakable = prev.last_breakable;
@@ -305,7 +309,6 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                     let badns_sub = ans_sub.badness in
                     if (badns_after > badns_sub) && (hgttotal <% hgttotal_after) then
                     (* -- if appropriate to break page at `ans_sub`, i.e., at the last candidate point in the frame -- *)
-                      let () = Format.printf "PageBreak> page %d (%d): FRAME 1\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                       let body_ret =
                         let (deco_ret, pads) =
                           match midway with
@@ -326,6 +329,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                           badness  = badns_sub;
                         }
                       in
+                      let () = Format.printf "PageBreak> page %d (%d): FRAME finished/inside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                       (ans, Remains)
                     else
                     (* -- if the contents in the given frame is displayed in a single page -- *)
@@ -344,6 +348,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                           (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list body_sub_all))
                       in
                       let footnote_new = footnote_sub_all in
+                      let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/inside (non-optimal)\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                       aux {
                         depth = prev.depth;  (* -- mainly for debugging -- *)
                         last_breakable = {
@@ -374,7 +379,6 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         end
 
     | [] ->
-        let () = Format.printf "PageBreak> page %d (%d): FINAL\n" pbinfo.current_page_number prev.depth in  (* for debug *)
         let ans =
           if prev.depth = 0 then
             {
@@ -386,6 +390,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           else
             prev.last_breakable
         in
+        let () = Format.printf "PageBreak> page %d (%d): FINAL\n" pbinfo.current_page_number prev.depth in  (* for debug *)
         (ans, Finished(prev.solid_body, prev.solid_footnote))
           (* -- discards `prev.discardable` -- *)
   in
