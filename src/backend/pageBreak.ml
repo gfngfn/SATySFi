@@ -86,18 +86,37 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
      one `clear-page` or one breakable skip
      -- *)
   let normalize_after_break pbvblst =
+    let rec omit_redundant_clear pbvblst =
+      match pbvblst with
+      | PBClearPage :: pbvbtail               -> Some(pbvbtail)
+      | PBVertFixedBreakable(_) :: pbvbtail
+      | PBVertFixedUnbreakable(_) :: pbvbtail -> omit_redundant_clear pbvbtail
+      | PBVertLine(_) :: _
+      | PBVertFrame(_) :: _                   -> None
+      | []                                    -> Some([])  (* -- the original `pbvblst` consists only of spaces -- *)
+    in
+    let pbvblst =
+      match omit_redundant_clear pbvblst with
+      | Some(pbvbomitted) -> pbvbomitted
+      | None              -> pbvblst
+    in
     match pbvblst with
+    | PBClearPage :: _ ->
+        assert false
+
     | []
-    | PBVertFixedBreakable(_) :: []
-    | PBClearPage :: [] ->
+    | PBVertFixedBreakable(_) :: [] ->
         NormalizedEmpty
 
-    | PBClearPage :: pbvbtail
     | PBVertFixedBreakable(_) :: pbvbtail ->
         Normalized(pbvbtail)
 
     | _ ->
         Normalized(pbvblst)
+  in
+
+  let getting_worse badns hgttotal badns_prev hgttotal_prev =
+    badns > badns_prev && hgttotal_prev <% hgttotal
   in
 
   let rec aux (prev : pb_accumulator) (pbvblst : pb_vert_box list) : pb_answer * pb_rest =
@@ -117,7 +136,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         begin
           match prev.allow_break with
           | Breakable ->
-              if (badns > prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
+              if getting_worse badns hgttotal_new prev.last_breakable.badness hgttotal then
               (* -- if getting worse, outputs a page at the last breakable point. -- *)
                 let () = Format.printf "PageBreak> page %d (%d): LINE\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                 (prev.last_breakable, Remains)
@@ -160,7 +179,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         begin
           match prev.allow_break with
           | Breakable ->
-              if (badns > prev.last_breakable.badness) && (hgttotal <% hgttotal_new) then
+              if getting_worse badns hgttotal_new prev.last_breakable.badness hgttotal then
                 let () = Format.printf "PageBreak> page %d (%d): BREAKABLE\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                 (prev.last_breakable, Remains)
               else
@@ -209,9 +228,14 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         } pbvbtail
 
     | PBClearPage :: pbvbtail ->
+        let remains =
+          match pbvbtail with
+          | []     -> NormalizedEmpty
+          | _ :: _ -> Normalized(pbvbtail)
+        in
         let ans =
           {
-            division = Inside(prev.solid_body, normalize_after_break pbvbtail);
+            division = Inside(prev.solid_body, remains);
             footnote = prev.solid_footnote;
             height   = prev.total_height +% prev.skip_after_break;
             badness  = 0;
@@ -292,7 +316,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                     begin
                       match prev.allow_break with
                       | Breakable ->
-                          if (badns_after > prev.last_breakable.badness) && (hgttotal <% hgttotal_after) then
+                          if getting_worse badns_after hgttotal_after prev.last_breakable.badness hgttotal then
                             let () = Format.printf "PageBreak> page %d (%d): FRAME finished/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                             (prev.last_breakable, Remains)
                           else
@@ -349,7 +373,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
 
                 | Inside(body_sub, remains_sub) ->
                     let badns_sub = ans_sub.badness in
-                    if (badns_after > badns_sub) && (hgttotal <% hgttotal_after) then
+                    if getting_worse badns_after hgttotal_after badns_sub hgttotal then
                     (* -- if appropriate to break page at `ans_sub`, i.e., at the last candidate point in the frame -- *)
                       let body_ret =
                         let (deco_ret, pads) =
