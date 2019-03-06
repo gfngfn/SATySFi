@@ -48,6 +48,7 @@ let fs_pdf = {
 let color_show_space = DeviceRGB(0.0, 0.0, 1.0)
 let color_show_bbox  = DeviceRGB(1.0, 0.5, 0.5)
 let color_show_block_bbox = DeviceRGB(0.25, 0.75, 0.25)
+let color_show_frame = DeviceRGB(1.0, 0.0, 1.0)
 
 
 let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) yposbaseline (xpos, opacc) (evhb : evaled_horz_box) =
@@ -302,16 +303,28 @@ let make_page (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : p
   in
   let paper_height = get_paper_height paper in
 
-  let (_, opaccbody) =
+  let opaccbody =
     let pt_init = invert_coordinate paper_height pagecontsch.page_content_origin in
-    ops_of_evaled_vert_box_list fs_pdf pbinfo pt_init Alist.empty evvblstbody
+    let (_, opaccbody) = ops_of_evaled_vert_box_list fs_pdf pbinfo pt_init Alist.empty evvblstbody in
+    if OptionState.debug_show_block_bbox () then
+      let txtlen = pagecontsch.page_content_height in
+      let txtwid = Length.of_pdf_point (-1.) in
+      Alist.append opaccbody (fs_pdf.test_box color_show_frame pt_init txtwid txtlen)
+    else
+      opaccbody
   in
-  let (_, opaccfootnote) =
+  let opaccfootnote =
     let hgtfootnote = get_height_of_evaled_vert_box_list evvblstfootnote in
     let (xorg, yorg) = pagecontsch.page_content_origin in
     let hgtreq = pagecontsch.page_content_height in
     let pt_init = invert_coordinate paper_height (xorg, yorg +% hgtreq -% hgtfootnote) in
-    ops_of_evaled_vert_box_list fs_pdf pbinfo pt_init Alist.empty evvblstfootnote
+    let (_, opaccfootnote) = ops_of_evaled_vert_box_list fs_pdf pbinfo pt_init Alist.empty evvblstfootnote in
+    if OptionState.debug_show_block_bbox () then
+      let wid = Length.of_pdf_point 5. in
+      let len = Length.of_pdf_point 1. in
+      Alist.append opaccfootnote (fs_pdf.test_box color_show_frame pt_init wid len)
+    else
+      opaccfootnote
   in
   let opaccpage = Alist.cat opaccbody opaccfootnote in
   Page(paper, pagecontsch, opaccpage, pbinfo)
