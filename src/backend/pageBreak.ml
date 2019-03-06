@@ -25,7 +25,7 @@ type pb_division =
   | Inside of evaled_vert_box Alist.t * pb_vert_box list
 
 type pb_rest =
-  | Finished of evaled_vert_box Alist.t
+  | Finished of evaled_vert_box Alist.t * evaled_vert_box Alist.t
   | Remains
 
 type pb_answer = {
@@ -245,7 +245,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                     (ans, Remains)
               end
 
-          | Finished(all_sub) ->
+          | Finished(body_sub_all, footnote_sub_all) ->
             (* -- if the contents `pbvblstsub` was totally traversed before the page-breaking point is determined -- *)
               begin
                 match ans_sub.division with
@@ -263,9 +263,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                           | Beginning -> (decoS, pads)
                         in
                         Alist.extend (Alist.cat prev.solid_body prev.discardable)
-                         (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list all_sub))
+                         (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list body_sub_all))
                       in
-                      let footnote_new = ans_sub.footnote in
+                      let footnote_new = footnote_sub_all in
                       aux {
                         depth = prev.depth;  (* -- mainly for debugging -- *)
                         last_breakable = {
@@ -288,9 +288,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                           | Beginning -> (decoS, pads)
                         in
                         Alist.extend (Alist.cat prev.solid_body prev.discardable)
-                         (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list all_sub))
+                         (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list body_sub_all))
                       in
-                      let footnote_new = ans_sub.footnote in
+                      let footnote_new = footnote_sub_all in
                       aux {
                         depth = prev.depth;  (* -- mainly for debugging -- *)
                         last_breakable = prev.last_breakable;
@@ -341,9 +341,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                            -- *)
                         in
                         Alist.extend (Alist.cat prev.solid_body prev.discardable)
-                          (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list all_sub))
+                          (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list body_sub_all))
                       in
-                      let footnote_new = ans_sub.footnote in
+                      let footnote_new = footnote_sub_all in
                       aux {
                         depth = prev.depth;  (* -- mainly for debugging -- *)
                         last_breakable = {
@@ -386,7 +386,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           else
             prev.last_breakable
         in
-        (ans, Finished(prev.solid_body))
+        (ans, Finished(prev.solid_body, prev.solid_footnote))
           (* -- discards `prev.discardable` -- *)
   in
   let (ans, rest) =
@@ -414,8 +414,8 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
       in
       (Alist.to_list body, Alist.to_list ans.footnote, Some(remains))
 
-  | Finished(all) ->
-      (Alist.to_list all, Alist.to_list ans.footnote, None)
+  | Finished(body_all, footnote_all) ->
+      (Alist.to_list body_all, Alist.to_list footnote_all, None)
 
 
 let get_breakability vblst =
