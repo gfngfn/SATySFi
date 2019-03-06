@@ -8,10 +8,12 @@ open HorzBox
 type frame_breaking =
   | Beginning
   | Midway
+[@@deriving show { with_path = false; }]
 
 type breakability =
   | Breakable
   | Unbreakable
+[@@deriving show { with_path = false; }]
 
 type pb_vert_box =
   | PBVertLine             of breakability * length * length * intermediate_horz_box list
@@ -19,10 +21,15 @@ type pb_vert_box =
   | PBVertFixedUnbreakable of length
   | PBVertFrame            of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
   | PBClearPage
+[@@deriving show { with_path = false; }]
+
+type pb_normalized =
+  | Normalized of pb_vert_box list
+  | NormalizedEmpty
 
 type pb_division =
   | Outside
-  | Inside of evaled_vert_box Alist.t * pb_vert_box list
+  | Inside of evaled_vert_box Alist.t * pb_normalized
 
 type pb_rest =
   | Finished of evaled_vert_box Alist.t * evaled_vert_box Alist.t
@@ -73,11 +80,23 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
       int_of_float (hgtdiff /% (Length.of_pdf_point 0.1))
   in
 
+  (* --
+     `normalize_after_break` just removes
+     one `clear-page` or one breakable skip
+     -- *)
   let normalize_after_break pbvblst =
     match pbvblst with
-    | PBClearPage :: []       -> []
-    | PBClearPage :: pbvbtail -> pbvbtail
-    | _                       -> pbvblst
+    | []
+    | PBVertFixedBreakable(_) :: []
+    | PBClearPage :: [] ->
+        NormalizedEmpty
+
+    | PBClearPage :: pbvbtail
+    | PBVertFixedBreakable(_) :: pbvbtail ->
+        Normalized(pbvbtail)
+
+    | _ ->
+        Normalized(pbvblst)
   in
 
   let rec aux (prev : pb_accumulator) (pbvblst : pb_vert_box list) : pb_answer * pb_rest =
@@ -241,7 +260,11 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                       Alist.extend (Alist.cat prev.solid_body prev.discardable)
                         (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list body_sub))
                     in
-                    let remains_ret = PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub) :: pbvbtail in
+                    let remains_ret =
+                      match remains_sub with
+                      | NormalizedEmpty         -> normalize_after_break pbvbtail
+                      | Normalized(remains_sub) -> Normalized(PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub) :: pbvbtail)
+                    in
                     let ans =
                       {
                         division = Inside(body_ret, remains_ret);
@@ -251,6 +274,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                       }
                     in
                     let () = Format.printf "PageBreak> page %d (%d): FRAME remains/inside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+                    let () = let x = match remains_sub with NormalizedEmpty -> [] | Normalized(x) -> x in Format.printf "PageBreak> remains (%d): %a\n" (List.length x) (Format.pp_print_list pp_pb_vert_box) x in  (* for debug *)
                     (ans, Remains)
               end
 
@@ -282,7 +306,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                           aux {
                             depth = prev.depth;  (* -- mainly for debugging -- *)
                             last_breakable = {
-                              division = Inside(body_new, pbvbtail);
+                              division = Inside(body_new, normalize_after_break pbvbtail);
                               footnote = footnote_new;
                               height   = hgttotal_after;
                               badness  = badns_after;
@@ -331,7 +355,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                           (EvVertFrame(pads, pbinfo, deco_ret, wid, Alist.to_list body_sub))
                       in
                       let after_ret =
-                        PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub) :: pbvbtail
+                        match remains_sub with
+                        | NormalizedEmpty         -> normalize_after_break pbvbtail
+                        | Normalized(remains_sub) -> Normalized(PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub) :: pbvbtail)
                       in
                       let ans =
                         {
@@ -382,7 +408,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let ans =
           if prev.depth = 0 then
             {
-              division = Inside(prev.solid_body, []);
+              division = Inside(prev.solid_body, NormalizedEmpty);
               footnote = prev.solid_footnote;
               height   = prev.total_height;
               badness  = prev.last_breakable.badness;
@@ -414,8 +440,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
   | Remains ->
       let (body, remains) =
         match ans.division with
-        | Inside(body, remains) -> (body, remains)
-        | Outside               -> (Alist.empty, [])
+        | Inside(body, Normalized(remains)) -> (body, remains)
+        | Inside(body, NormalizedEmpty)     -> (body, [])
+        | Outside                           -> (Alist.empty, [])
       in
       (Alist.to_list body, Alist.to_list ans.footnote, Some(remains))
 
