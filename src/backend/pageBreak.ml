@@ -32,7 +32,7 @@ type pb_division =
   | Inside of evaled_vert_box Alist.t * pb_normalized
 
 type pb_rest =
-  | Finished of evaled_vert_box Alist.t * evaled_vert_box Alist.t
+  | Finished of evaled_vert_box Alist.t * evaled_vert_box Alist.t * length
   | Remains
 
 type pb_answer = {
@@ -241,8 +241,6 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           } pbvblstsub
             (* -- propagates total height and footnotes, but does NOT propagate body -- *)
         in
-        let hgttotal_after = ans_sub.height +% pads.paddingB in
-        let badns_after = calculate_badness_of_page_break (hgttotal_after +% prev.skip_after_break) in
         begin
           match rest_sub with
           | Remains ->
@@ -282,8 +280,10 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                     (ans, Remains)
               end
 
-          | Finished(body_sub_all, footnote_sub_all) ->
+          | Finished(body_sub_all, footnote_sub_all, hgttotal_all) ->
             (* -- if the contents `pbvblstsub` was totally traversed before the page-breaking point is determined -- *)
+              let hgttotal_after = hgttotal_all +% pads.paddingB in
+              let badns_after = calculate_badness_of_page_break (hgttotal_after +% prev.skip_after_break) in
               begin
                 match ans_sub.division with
                 | Outside ->
@@ -419,7 +419,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
             prev.last_breakable
         in
         let () = Format.printf "PageBreak> page %d (%d): FINAL\n" pbinfo.current_page_number prev.depth in  (* for debug *)
-        (ans, Finished(prev.solid_body, prev.solid_footnote))
+        (ans, Finished(prev.solid_body, prev.solid_footnote, prev.total_height))
           (* -- discards `prev.discardable` -- *)
   in
   let (ans, rest) =
@@ -449,7 +449,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
       in
       (Alist.to_list body, Alist.to_list ans.footnote, Some(remains))
 
-  | Finished(body_all, footnote_all) ->
+  | Finished(body_all, footnote_all, _) ->
       (Alist.to_list body_all, Alist.to_list footnote_all, None)
 
 
