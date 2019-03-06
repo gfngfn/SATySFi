@@ -47,7 +47,7 @@ let fs_pdf = {
 
 let color_show_space = DeviceRGB(0.0, 0.0, 1.0)
 let color_show_bbox  = DeviceRGB(1.0, 0.5, 0.5)
-let color_show_block_bbox = DeviceRGB(0.5, 1.0, 0.5)
+let color_show_block_bbox = DeviceRGB(0.25, 0.75, 0.25)
 
 
 let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) yposbaseline (xpos, opacc) (evhb : evaled_horz_box) =
