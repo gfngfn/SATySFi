@@ -35,13 +35,13 @@ type pb_normalized =
   | Normalized of pb_vert_box list
   | NormalizedEmpty
 
-type pb_division =
-  | Outside
-  | Inside of evaled_vert_box Alist.t * pb_normalized
-
 type pb_rest =
   | Finished of evaled_vert_box Alist.t * evaled_vert_box Alist.t * length
   | Remains
+
+type pb_division =
+  | Outside
+  | Inside of evaled_vert_box Alist.t * pb_normalized
 
 type pb_answer = {
   division : pb_division;
@@ -281,226 +281,216 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
     | (PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub), br) :: pbvbtail ->
         let hgttotal = prev.total_height in
         let hgttotal_before = hgttotal +% pads.paddingT in
-        let (ans_sub, rest_sub) =
-          aux {
-            depth = prev.depth + 1;  (* -- mainly for debugging -- *)
-            skip_after_break = pads.paddingB +% prev.skip_after_break;
-            last_breakable = { prev.last_breakable with division = Outside; };
-            allow_break    = Unbreakable;
-            solid_body     = Alist.empty;
-            solid_footnote = prev.solid_footnote;
-            discardable    = Alist.empty;
-            total_height   = hgttotal_before;
-          } pbvblstsub
-            (* -- propagates total height and footnotes, but does NOT propagate body -- *)
-        in
-        begin
-          match rest_sub with
-          | Remains ->
-            (* -- if the page-breaking point is found when traversing the contents in the frame -- *)
-              begin
-                match ans_sub.division with
-                | Outside ->
-                  (* -- if the page-breaking should occur BEFORE entering the frame -- *)
-(*
-                    let () = Format.printf "PageBreak> page %d (%d): FRAME remains/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
-*)
-                    begin
-                      match prev.allow_break with
-                      | Unbreakable ->
-                          (prev.last_breakable, Remains)
+        let hgtB = hgttotal +% prev.skip_after_break in
+        let badnsB = calculate_badness_of_page_break hgtB in
+        let last_breakable = prev.last_breakable in
+        let open EscapeMonad in
+        let esc =
+          begin
+            match prev.allow_break with
+            | Breakable ->
+                let ans =
+                  {
+                    division = Inside(prev.solid_body, Normalized(pbvblst));
+                    footnote = prev.solid_footnote;
+                    height   = hgtB;
+                    badness  = badnsB;
+                  }
+                in
+                if getting_worse badnsB hgtB last_breakable.badness last_breakable.height then
+                  escape (ans, Remains)
+                else
+                  continue ans
 
-                      | Breakable ->
-                        (* --
-                           if the point immediately BEFORE the frame is a page-breaking opportunity,
-                           compare this point and `prev.last_breakable` and chooses the better one.
-                           -- *)
-                          let hgt_ret = hgttotal +% prev.skip_after_break in
-                          let badns = calculate_badness_of_page_break hgt_ret in
-                          if getting_worse badns hgt_ret prev.last_breakable.badness prev.last_breakable.height then
-                            (prev.last_breakable, Remains)
-                          else
-                            let body_ret = prev.solid_body in
-                            let ans =
-                              {
-                                division = Inside(body_ret, normalize_after_break pbvbtail);
-                                footnote = prev.solid_footnote;
-                                height   = hgt_ret;
-                                badness  = badns;
-                              }
-                            in
-                            (ans, Remains)
-                    end
+            | Unbreakable ->
+                continue last_breakable
+          end >>= fun last_breakable ->
+          let (ans_sub, rest_sub) =
+            aux {
+              depth = prev.depth + 1;  (* -- mainly for debugging -- *)
+              skip_after_break = pads.paddingB +% prev.skip_after_break;
+              last_breakable = { last_breakable with division = Outside; };
+              allow_break    = Unbreakable;
+              solid_body     = Alist.empty;
+              solid_footnote = prev.solid_footnote;
+              discardable    = Alist.empty;
+              total_height   = hgttotal_before;
+            } pbvblstsub
+              (* -- propagates total height and footnotes, but does NOT propagate body -- *)
+          in
+          begin
+            match rest_sub with
+            | Remains ->
+              (* -- if the page-breaking point is determined when traversing the contents in the frame -- *)
+                begin
+                  match ans_sub.division with
+                  | Outside ->
+                    (* -- if the page-breaking should occur BEFORE entering the frame -- *)
+  (*
+                      let () = Format.printf "PageBreak> page %d (%d): FRAME remains/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+  *)
+                      escape (last_breakable, Remains)
 
-                | Inside(body_sub, remains_sub) ->
-                    let body_ret =
-                      let (decosub, pads) =
-                        match midway with
-                        | Midway    -> (decoM, pads)
-                        | Beginning -> (decoH, pads)
-                      (* --
-                         design consideration:
-                         `{ pads with paddingT = Length.zero; paddingB = Length.zero; }` may be better than `pads`
-                         when `midway` is `Midway`.
-                         -- *)
-                      in
-                      Alist.extend (Alist.cat prev.solid_body prev.discardable)
-                        (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list body_sub))
-                    in
-                    let remains_ret =
-                      match remains_sub with
-                      | NormalizedEmpty         -> normalize_after_break pbvbtail
-                      | Normalized(remains_sub) -> Normalized((PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub), br) :: pbvbtail)
-                    in
-                    let ans =
-                      { ans_sub with division = Inside(body_ret, remains_ret); }
-                    in
-(*
-                    let () = Format.printf "PageBreak> page %d (%d): FRAME remains/inside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
-                    let () = let x = match remains_sub with NormalizedEmpty -> [] | Normalized(x) -> x in Format.printf "PageBreak> remains (%d): %a\n" (List.length x) (Format.pp_print_list pp_pb_vert_box) x in  (* for debug *)
-*)
-                    (ans, Remains)
-              end
-
-          | Finished(body_sub_all, footnote_sub_all, hgttotal_all) ->
-            (* -- if the contents `pbvblstsub` was totally traversed before the page-breaking point is determined -- *)
-              let hgttotal_after = hgttotal_all +% pads.paddingB in
-              let badns_after = calculate_badness_of_page_break (hgttotal_after +% prev.skip_after_break) in
-              begin
-                match ans_sub.division with
-                | Outside ->
-                  (* -- if no point in the frame was found suitable for page breaking,
-                        i.e., the frame can be treated as if it were a single line -- *)
-                    begin
-                      match br with
-                      | Breakable ->
-                        (* -- if breakable immediately AFTER the frame -- *)
-                          if getting_worse badns_after hgttotal_after prev.last_breakable.badness hgttotal then
-(*
-                            let () = Format.printf "PageBreak> page %d (%d): FRAME finished/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
-*)
-                            (prev.last_breakable, Remains)
-                          else
-                          let body_new =
-                            let (deco_sub, pads) =
-                              match midway with
-                              | Midway    -> (decoT, pads)
-                              | Beginning -> (decoS, pads)
-                            in
-                            Alist.extend (Alist.cat prev.solid_body prev.discardable)
-                             (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list body_sub_all))
-                          in
-                          let footnote_new = footnote_sub_all in
-(*
-                          let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/outside (non-optimal %a)\n" pbinfo.current_page_number prev.depth pp_length hgttotal_after in  (* for debug *)
-*)
-                          let last_breakable_updated =
-                            {
-                              division = Inside(body_new, normalize_after_break pbvbtail);
-                              footnote = footnote_new;
-                              height   = hgttotal_after +% prev.skip_after_break;
-                              badness  = badns_after;
-                            }
-                          in
-                          aux {
-                            depth = prev.depth;  (* -- mainly for debugging -- *)
-                            skip_after_break = prev.skip_after_break;
-                            last_breakable = last_breakable_updated;
-                            allow_break    = br;
-                            solid_body     = body_new;
-                            solid_footnote = footnote_new;
-                            discardable    = Alist.empty;
-                            total_height   = hgttotal_after;
-                          } pbvbtail
-
-                      | Unbreakable ->
-                          let body_new =
-                            let (deco_sub, pads) =
-                              match midway with
-                              | Midway    -> (decoT, pads)
-                              | Beginning -> (decoS, pads)
-                            in
-                            Alist.extend (Alist.cat prev.solid_body prev.discardable)
-                             (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list body_sub_all))
-                          in
-                          let footnote_new = footnote_sub_all in
-(*
-                          let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/outside (non-breakable)\n" pbinfo.current_page_number prev.depth in  (* for debug *)
-*)
-                          aux {
-                            depth = prev.depth;  (* -- mainly for debugging -- *)
-                            skip_after_break = prev.skip_after_break;
-                            last_breakable = prev.last_breakable;
-                            allow_break    = br;
-                            solid_body     = body_new;
-                            solid_footnote = footnote_new;
-                            discardable    = Alist.empty;
-                            total_height   = hgttotal_after;
-                          } pbvbtail
-                    end
-
-                | Inside(body_sub, remains_sub) ->
-                    let badns_sub = ans_sub.badness in
-                    if getting_worse badns_after hgttotal_after badns_sub hgttotal then
-                    (* -- if appropriate to break page at `ans_sub`, i.e., at the last candidate point in the frame -- *)
-                      let body_ret =
-                        let (deco_ret, pads) =
+                  | Inside(body_sub, remains_sub) ->
+                    (* -- if the page-breaking point was found in the frame -- *)
+                      let bodyM =
+                        let (decosub, pads) =
                           match midway with
                           | Midway    -> (decoM, pads)
                           | Beginning -> (decoH, pads)
-                        in
-                        Alist.extend (Alist.cat prev.solid_body prev.discardable)
-                          (EvVertFrame(pads, pbinfo, deco_ret, wid, Alist.to_list body_sub))
-                      in
-                      let after_ret =
-                        match remains_sub with
-                        | NormalizedEmpty         -> normalize_after_break pbvbtail
-                        | Normalized(remains_sub) -> Normalized((PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub), br) :: pbvbtail)
-                      in
-                      let ans =
-                        { ans_sub with division = Inside(body_ret, after_ret); }
-                      in
-(*
-                      let () = Format.printf "PageBreak> page %d (%d): FRAME finished/inside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
-*)
-                      (ans, Remains)
-                    else
-                    (* -- if the contents in the given frame is displayed in a single page -- *)
-                      let body_new =
-                        let (decosub, pads) =
-                          match midway with
-                          | Midway    -> (decoT, pads)
-                          | Beginning -> (decoS, pads)
                         (* --
                            design consideration:
-                           `{ pads with paddingT = Length.zero; }` may be better than `pads`
+                           `{ pads with paddingT = Length.zero; paddingB = Length.zero; }` may be better than `pads`
                            when `midway` is `Midway`.
                            -- *)
                         in
                         Alist.extend (Alist.cat prev.solid_body prev.discardable)
-                          (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list body_sub_all))
+                          (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list body_sub))
                       in
-                      let footnote_new = footnote_sub_all in
-(*
-                      let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/inside (non-optimal %a)\n" pbinfo.current_page_number prev.depth pp_length hgttotal_after in  (* for debug *)
-*)
-                      aux {
-                        depth = prev.depth;  (* -- mainly for debugging -- *)
-                        skip_after_break = prev.skip_after_break;
-                        last_breakable = {
-                          badness  = badns_after;
-                          division = Inside(body_new, normalize_after_break pbvbtail);
-                          footnote = footnote_new;
-                          height   = hgttotal_after +% prev.skip_after_break;
-                        };
-                        allow_break    = br;
-                        solid_body     = body_new;
-                        solid_footnote = footnote_new;
-                        discardable    = Alist.empty;
-                        total_height   = hgttotal_after;
-                      } pbvbtail
-              end
-        end
+                      let remainsM =
+                        match remains_sub with
+                        | NormalizedEmpty         -> normalize_after_break pbvbtail
+                        | Normalized(remains_sub) -> Normalized((PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub), br) :: pbvbtail)
+                      in
+  (*
+                      let () = Format.printf "PageBreak> page %d (%d): FRAME remains/inside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+                      let () = let x = match remains_sub with NormalizedEmpty -> [] | Normalized(x) -> x in Format.printf "PageBreak> remains (%d): %a\n" (List.length x) (Format.pp_print_list pp_pb_vert_box) x in  (* for debug *)
+  *)
+                      let ans = { ans_sub with division = Inside(bodyM, remainsM); } in
+                      escape (ans, Remains)
+                end
+
+            | Finished(body_sub_all, footnote_sub_all, hgttotal_all) ->
+              (* -- if the contents `pbvblstsub` was totally traversed before the page-breaking point is determined -- *)
+                let hgttotal_after = hgttotal_all +% pads.paddingB in
+                let hgtA = hgttotal_after +% prev.skip_after_break in
+                let badnsA = calculate_badness_of_page_break hgtA in
+                begin
+                  match ans_sub.division with
+                  | Outside ->
+                    (* -- if no point in the frame was found suitable for page breaking,
+                          i.e., the frame can be treated as if it were a single line -- *)
+                      let bodyA =
+                        let (deco_sub, pads) =
+                          match midway with
+                          | Midway    -> (decoT, pads)
+                          | Beginning -> (decoS, pads)
+                        in
+                        Alist.extend (Alist.cat prev.solid_body prev.discardable)
+                         (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list body_sub_all))
+                      in
+                      let footnoteA = footnote_sub_all in
+                      begin
+                        match br with
+                        | Unbreakable ->
+  (*
+                            let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/outside (non-breakable)\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+  *)
+                            continue last_breakable
+
+                        | Breakable ->
+                          (* -- if breakable immediately AFTER the frame -- *)
+                            if getting_worse badnsA hgtA last_breakable.badness last_breakable.height then
+  (*
+                              let () = Format.printf "PageBreak> page %d (%d): FRAME finished/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+  *)
+                              escape (last_breakable, Remains)
+                            else
+                            (* -- if the point immediately AFTER the frame should be a new last breakable opportunity -- *)
+  (*
+                              let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/outside (non-optimal %a)\n" pbinfo.current_page_number prev.depth pp_length hgttotal_after in  (* for debug *)
+  *)
+                              continue {
+                                division = Inside(bodyA, normalize_after_break pbvbtail);
+                                footnote = footnoteA;
+                                height   = hgtA;
+                                badness  = badnsA;
+                              }
+
+                      end >>= fun last_breakable ->
+                        escape @@ aux {
+                          depth = prev.depth;  (* -- mainly for debugging -- *)
+                          skip_after_break = prev.skip_after_break;
+                          last_breakable = last_breakable;
+                          allow_break    = br;
+                          solid_body     = bodyA;
+                          solid_footnote = footnoteA;
+                          discardable    = Alist.empty;
+                          total_height   = hgttotal_after;
+                        } pbvbtail
+
+                  | Inside(body_sub, remains_sub) ->
+                      let last_breakable =
+                        let bodyM =
+                          let (deco, pads) =
+                            match midway with
+                            | Midway    -> (decoM, pads)
+                            | Beginning -> (decoH, pads)
+                          in
+                          Alist.extend (Alist.cat prev.solid_body prev.discardable)
+                            (EvVertFrame(pads, pbinfo, deco, wid, Alist.to_list body_sub))
+                        in
+                        let remainsM =
+                          match remains_sub with
+                          | NormalizedEmpty         -> normalize_after_break pbvbtail
+                          | Normalized(remains_sub) -> Normalized((PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub), br) :: pbvbtail)
+                        in
+                        { ans_sub with division = Inside(bodyM, remainsM); }
+                      in
+                      let bodyA =
+                        let (deco, pads) =
+                          match midway with
+                          | Midway    -> (decoT, pads)
+                          | Beginning -> (decoS, pads)
+                            (* --
+                               design consideration:
+                               `{ pads with paddingT = Length.zero; }` may be better than `pads`
+                               when `midway` is `Midway`.
+                               -- *)
+                        in
+                        Alist.extend (Alist.cat prev.solid_body prev.discardable)
+                          (EvVertFrame(pads, pbinfo, deco, wid, Alist.to_list body_sub_all))
+                      in
+                      let footnoteA = footnote_sub_all in
+                      begin
+                        match br with
+                        | Unbreakable ->
+                            continue last_breakable
+
+                        | Breakable ->
+                            if getting_worse badnsA hgtA ans_sub.badness ans_sub.height then
+                            (* -- if appropriate to break page at `ans_sub`, i.e., at the last opportunity in the frame -- *)
+                              escape (last_breakable, Remains)
+  (*
+                              let () = Format.printf "PageBreak> page %d (%d): FRAME finished/inside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+  *)
+                            else
+                              continue {
+                                division = Inside(bodyA, normalize_after_break pbvbtail);
+                                footnote = footnote_sub_all;
+                                height   = hgtA;
+                                badness  = badnsA;
+                              }
+
+                      end >>= fun last_breakable ->
+                      (* -- if the contents in the given frame is displayed in a single page -- *)
+  (*
+                        let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/inside (non-optimal %a)\n" pbinfo.current_page_number prev.depth pp_length hgttotal_after in  (* for debug *)
+  *)
+                        escape @@ aux {
+                          depth = prev.depth;  (* -- mainly for debugging -- *)
+                          skip_after_break = prev.skip_after_break;
+                          last_breakable = last_breakable;
+                          allow_break    = br;
+                          solid_body     = bodyA;
+                          solid_footnote = footnoteA;
+                          discardable    = Alist.empty;
+                          total_height   = hgttotal_after;
+                        } pbvbtail
+                end
+          end
+        in
+        force esc
 
     | [] ->
         let ans =
