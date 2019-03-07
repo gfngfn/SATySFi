@@ -707,12 +707,18 @@ let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
     ) Length.zero
   in
   let trilst = hblstlst |> List.map (fun hblst -> LineBreak.fit hblst wid) in
-  let imvblst =
-    trilst |> List.fold_left (fun imvbacc (imhblst, hgt, dpt) ->
-      Alist.extend imvbacc (VertLine(hgt, dpt, imhblst))
+  let vblst =
+    trilst |> List.fold_left (fun vbacc (imhblst, hgt, dpt) ->
+      let vb =
+        VertParagraph({
+          margin_top    = None;
+          margin_bottom = None;
+        }, [VertParagLine(hgt, dpt, imhblst)])
+      in
+      Alist.extend vbacc vb
     ) Alist.empty |> Alist.to_list
   in
-  (wid, imvblst)
+  (wid, vblst)
 
 
 let const_unit = BaseConstant(BCUnit)

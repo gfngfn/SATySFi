@@ -586,10 +586,10 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 
 
 type line_break_info = {
-  is_breakable_top    : bool;
-  is_breakable_bottom : bool;
-  margin_top          : length;
-  margin_bottom       : length;
+  breakability_top    : breakability;
+  breakability_bottom : breakability;
+  paragraph_margin_top    : length;
+  paragraph_margin_bottom : length;
   paragraph_width     : length;
   leading_required    : length;
   vskip_min           : length;
@@ -601,20 +601,26 @@ type line_either =
   | PureLine    of lb_pure_box list
   | AlreadyVert of length * vert_box list
 
+type paragraph_accumulator = {
+  previous_depth        : length;
+  saved_margin_top      : (breakability * length) option;
+  accumulated_paragraph : paragraph_element Alist.t;
+}
+
+type arrangement_state =
+  | BuildingVertList
+  | BuildingParagraph of paragraph_accumulator
+
+type arrangement_accumulator = {
+  state       : arrangement_state;
+  accumulated : vert_box Alist.t;
+}
 
 let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) (lhblst : lb_box list) : vert_box list =
 
-  let calculate_vertical_skip (dptoptprev : length option) (hgt : length) : vert_box list =
-    match dptoptprev with
-    | Some(dptprev) ->
-        let vskipraw = lbinfo.leading_required -% (Length.negate dptprev) -% hgt in
-        let vskip =
-          if vskipraw <% lbinfo.vskip_min then lbinfo.vskip_min else vskipraw
-        in
-          [VertFixedBreakable(vskip)]
-
-    | None ->
-        []
+  let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
+    let vskipraw = lbinfo.leading_required -% (Length.negate dptprev) -% hgt in
+    if vskipraw <% lbinfo.vskip_min then lbinfo.vskip_min else vskipraw
   in
 
   let append_framed_lines
@@ -756,56 +762,123 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
   (*  --
       arrange: inserts vertical spaces between lines and top/bottom margins
       -- *)
-  let rec arrange (prevopt : (length option * length) option) (accvlines : vert_box Alist.t) (lines : line_either list) =
+  let rec arrange (acc : arrangement_accumulator) (lines : line_either list) : vert_box list =
     match lines with
     | PureLine(line) :: tail ->
         let (evhblst, hgt, dpt) = determine_widths (Some(lbinfo.paragraph_width)) line in
         begin
-          match prevopt with
-          | None ->
-            (* -- first line -- *)
-              let margin_top =
-                lbinfo.margin_top +% (Length.max Length.zero (lbinfo.min_first_ascender -% hgt))
-              in
-              arrange (Some(Some(dpt), margin_top)) (Alist.extend Alist.empty (VertLine(hgt, dpt, evhblst))) tail
+          match acc.state with
+          | BuildingVertList ->
+              begin
+                match Alist.to_list_rev acc.accumulated with
+                | [] ->
+                  (* -- if `line` is the first line in the given paragraph -- *)
+                    let margin_top =
+                      lbinfo.paragraph_margin_top +% (Length.max Length.zero (lbinfo.min_first_ascender -% hgt))
+                    in
+                    let acc =
+                      {
+                        state = BuildingParagraph{
+                          saved_margin_top      = Some(lbinfo.breakability_top, margin_top);
+                          previous_depth        = dpt;
+                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(hgt, dpt, evhblst));
+                        };
+                        accumulated = Alist.empty;
+                      }
+                    in
+                    arrange acc tail
 
-          | Some(dptoptprev, margin_top) ->
-              let vblstskip = calculate_vertical_skip dptoptprev hgt in
-                arrange (Some(Some(dpt), margin_top)) (Alist.append accvlines (List.append vblstskip [VertLine(hgt, dpt, evhblst)])) tail
+                | _ :: _ ->
+                  (* -- if `line` is the first line after the embedded vertical boxes -- *)
+                    let accnew =
+                      {
+                        state = BuildingParagraph{
+                          saved_margin_top      = None;
+                          previous_depth        = dpt;
+                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(hgt, dpt, evhblst));
+                        };
+                        accumulated = acc.accumulated;
+                      }
+                    in
+                    arrange accnew tail
+              end
+
+          | BuildingParagraph(peacc) ->
+              let len = calculate_vertical_skip peacc.previous_depth hgt in
+              let parnew =
+                Alist.append peacc.accumulated_paragraph [
+                  VertParagSkip(len);
+                  VertParagLine(hgt, dpt, evhblst)
+                ];
+              in
+              let accnew =
+                {
+                  state = BuildingParagraph{
+                    saved_margin_top      = peacc.saved_margin_top;
+                    previous_depth        = dpt;
+                    accumulated_paragraph = parnew;
+                  };
+                  accumulated = acc.accumulated;
+                }
+              in
+              arrange accnew tail
         end
 
     | AlreadyVert(_, vblst) :: tail ->
         begin
-          match prevopt with
-          | None ->
-            (* -- first line -- *)
-              let opt = Some(None, lbinfo.margin_top) in
-                arrange opt (Alist.append accvlines vblst) tail
+          match acc.state with
+          | BuildingVertList ->
+              let accnew =
+                {
+                  state = BuildingVertList;
+                  accumulated = Alist.append acc.accumulated vblst;
+                }
+              in
+              arrange accnew tail
 
-          | Some(_, margin_top) ->
-              let opt = Some(None, margin_top) in
-                arrange opt (Alist.append accvlines vblst) tail
+          | BuildingParagraph(peacc) ->
+              let vbpar =
+                let parelems = Alist.to_list peacc.accumulated_paragraph in
+                let margins =
+                  {
+                    margin_top    = peacc.saved_margin_top;
+                    margin_bottom = None;
+                  }
+                in
+                VertParagraph(margins, parelems)
+              in
+              let accnew =
+                {
+                  state = BuildingVertList;
+                  accumulated = Alist.append (Alist.extend acc.accumulated vbpar) vblst;
+                }
+              in
+              arrange accnew tail
         end
 
     | [] ->
-        let vbtop =
-          match prevopt with
-          | Some(_, margin_top) -> VertTopMargin(lbinfo.is_breakable_top, margin_top)
-          | None                -> VertTopMargin(lbinfo.is_breakable_top, lbinfo.margin_top)
-        in
-        let vbbottom =
-          let margin_bottom =
-            match prevopt with
-            | Some(Some(dpt), _)   -> lbinfo.margin_bottom +% (Length.max Length.zero (lbinfo.min_last_descender -% (Length.negate dpt)))
-            | Some(None, _) | None -> lbinfo.margin_bottom
-          in
-            VertBottomMargin(lbinfo.is_breakable_bottom, margin_bottom)
-        in
-          vbtop :: (Alist.to_list (Alist.extend accvlines vbbottom))
+        begin
+          match acc.state with
+          | BuildingVertList ->
+              Alist.to_list acc.accumulated
+
+          | BuildingParagraph(peacc) ->
+              let vbpar =
+                let parelems = Alist.to_list peacc.accumulated_paragraph in
+                let margins =
+                  {
+                    margin_top = peacc.saved_margin_top;
+                    margin_bottom = Some((lbinfo.breakability_bottom, lbinfo.paragraph_margin_bottom));
+                  }
+                in
+                VertParagraph(margins, parelems)
+              in
+              Alist.to_list (Alist.extend acc.accumulated vbpar)
+        end
   in
 
   let acclines = cut Alist.empty Alist.empty lhblst in
-    arrange None Alist.empty (Alist.to_list acclines)
+  arrange { state = BuildingVertList; accumulated = Alist.empty; } (Alist.to_list acclines)
 
 
 let natural (hblst : horz_box list) : intermediate_horz_box list * length * length =
@@ -818,7 +891,7 @@ let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list *
     determine_widths (Some(widreq)) lphblst
 
 
-let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : context_main) (hblst : horz_box list) : vert_box list =
+let main ((breakability_top, paragraph_margin_top) : breakability * length) ((breakability_bottom, paragraph_margin_bottom) : breakability * length) (ctx : context_main) (hblst : horz_box list) : vert_box list =
 
   let paragraph_width = ctx.paragraph_width in
   let leading_required = ctx.leading in
@@ -949,18 +1022,20 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
         (* -- when no set of discretionary points is suitable for line breaking -- *)
           Format.printf "LineBreak> UNREACHABLE\n";  (* for debug *)
           let (imhblst, hgt, dpt) = natural hblst in
-            [
-              VertTopMargin(is_breakable_top, margin_top);
-              VertLine(hgt, dpt, imhblst);
-              VertBottomMargin(is_breakable_bottom, margin_bottom);
-            ]
+          let margins =
+            {
+              margin_top    = Some((breakability_top, paragraph_margin_top));
+              margin_bottom = Some((breakability_bottom, paragraph_margin_bottom));
+            }
+          in
+          [ VertParagraph(margins, [ VertParagLine(hgt, dpt, imhblst) ]); ]
 
       | Some(path) ->
           break_into_lines {
-            is_breakable_top;
-            is_breakable_bottom;
-            margin_top;
-            margin_bottom;
+            breakability_top;
+            breakability_bottom;
+            paragraph_margin_top;
+            paragraph_margin_bottom;
             paragraph_width;
             leading_required;
             vskip_min;

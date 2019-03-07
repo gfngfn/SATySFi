@@ -10,11 +10,6 @@ type frame_breaking =
   | Midway
 [@@deriving show { with_path = false; }]
 
-type breakability =
-  | Breakable
-  | Unbreakable
-[@@deriving show { with_path = false; }]
-
 type pb_vert_box = pb_vert_box_main * breakability
   (* --
      (1) main contents
@@ -543,22 +538,41 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
       (Alist.to_list body_all, Alist.to_list footnote_all, None)
 
 
-let get_breakability vblst =
-  match vblst with
-  | [] ->
-      Unbreakable
+let squash_margins prev_bottom vblst =
+  let (br2, next) =
+    match vblst with
+    | []
+    | VertClearPage :: _ ->
+        (Unbreakable, None)
 
-  | VertBottomMargin(br1, _) :: VertTopMargin(br2, _) :: _ ->
-      if br1 && br2 then Breakable else Unbreakable
+    | VertParagraph(margins, _) :: _
+    | VertFrame(margins, _, _, _, _, _, _, _) :: _ ->
+        begin
+          match margins.margin_top with
+          | None            -> (Breakable, None)
+          | Some((br, len)) -> (br, Some(len))
+        end
 
-  | VertBottomMargin(br1, _) :: _ ->
-      if br1 then Breakable else Unbreakable
+    | VertFixedBreakable(_) :: _ ->
+        (Breakable, None)
+  in
+  match (prev_bottom, next) with
+  | (None, None)                    -> ([], br2)
+  | (None, Some(len2))              -> ([ (PBVertSkip(len2), br2) ], br2)
+  | (Some((br1, len1)), None)       -> let br = br1 &-& br2 in ([ (PBVertSkip(len1), br) ], br)
+  | (Some((br1, len1)), Some(len2)) -> let br = br1 &-& br2 in ([ (PBVertSkip(Length.max len1 len2), br) ], br)
 
-  | VertTopMargin(br2, _) :: _ ->
-      if br2 then Breakable else Unbreakable
 
-  | _ ->
-      Breakable
+let normalize_paragraph (parelems : paragraph_element list) (br : breakability) : pb_vert_box list =
+  let pbmains =
+    parelems |> List.map (function
+    | VertParagLine(hgt, dpt, imhblst) -> PBVertLine(hgt, dpt, imhblst)
+    | VertParagSkip(len)               -> PBVertSkip(len)
+    )
+  in
+  match List.rev pbmains with
+  | last :: others -> List.rev ((last, br) :: (others |> List.map (fun pbmain -> (pbmain, Breakable))))
+  | []             -> []
 
 
 (* --
@@ -569,43 +583,22 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
 
   let rec aux pbvbacc vblst =
     match vblst with
-    | []
-    | VertTopMargin(_, _) :: []
-    | VertBottomMargin(_, _) :: [] ->
+    | [] ->
         Alist.to_list pbvbacc
 
-    | VertLine(hgt, dpt, imhblst) :: vbtail ->
-        let br = get_breakability vbtail in
-        aux (Alist.extend pbvbacc (PBVertLine(hgt, dpt, imhblst), br)) vbtail
+    | VertParagraph(margins, parelems) :: vbtail ->
+        let (pbvbskip, br) = squash_margins margins.margin_bottom vbtail in
+        let pbvbpar = normalize_paragraph parelems br in
+        aux (Alist.append (Alist.append pbvbacc pbvbpar) pbvbskip) vbtail
 
     | VertFixedBreakable(vskip) :: vbtail ->
         aux (Alist.extend pbvbacc (PBVertSkip(vskip), Breakable)) vbtail
 
-    | VertBottomMargin(breakable1, len1) :: VertTopMargin(breakable2, len2) :: vbtail ->
-        let br = if breakable1 && breakable2 then Breakable else Unbreakable in
-        aux (Alist.extend pbvbacc (PBVertSkip(Length.max len1 len2), br)) vbtail
-
-    | VertBottomMargin(breakable1, len1) :: vbtail ->
-        let br = if breakable1 then Breakable else Unbreakable in
-        aux (Alist.extend pbvbacc (PBVertSkip(len1), br)) vbtail
-
-    | VertTopMargin(breakable2, len2) :: vbtail ->
-        begin
-          match Alist.to_list_rev pbvbacc with
-          | [] ->
-            (* -- ignores the first top margin -- *)
-              aux Alist.empty vbtail
-
-          | _ :: _ ->
-              let br = if breakable2 then Breakable else Unbreakable in
-              aux (Alist.extend pbvbacc (PBVertSkip(len2), br)) vbtail
-        end
-
-    | VertFrame(pads, decoS, decoH, decoM, decoT, wid, vblstsub) :: vbtail ->
-        let br = get_breakability vbtail in
+    | VertFrame(margins, pads, decoS, decoH, decoM, decoT, wid, vblstsub) :: vbtail ->
+        let (pbvbskip, br) = squash_margins margins.margin_bottom vbtail in
         let pbvblstsub = aux Alist.empty vblstsub in
         let pbvb = (PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub), br) in
-        aux (Alist.extend pbvbacc pbvb) vbtail
+        aux (Alist.append (Alist.extend pbvbacc pbvb) pbvbskip) vbtail
 
     | VertClearPage :: vbtail ->
         aux (Alist.extend pbvbacc (PBClearPage, Breakable)) vbtail
