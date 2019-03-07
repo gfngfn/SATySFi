@@ -75,10 +75,12 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
 
   let calculate_badness_of_page_break hgttotal =
     let hgtdiff = area_height -% hgttotal in
+    let gap = int_of_float (hgtdiff /% (Length.of_pdf_point 0.1)) in
     if hgtdiff <% Length.zero then
-      10000
+      10000 - gap
+        (* -- `gap` is negative -- *)
     else
-      int_of_float (hgtdiff /% (Length.of_pdf_point 0.1))
+      gap
   in
 
   (* --
