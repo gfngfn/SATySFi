@@ -15,11 +15,19 @@ type breakability =
   | Unbreakable
 [@@deriving show { with_path = false; }]
 
-type pb_vert_box =
-  | PBVertLine             of breakability * length * length * intermediate_horz_box list
-  | PBVertFixedBreakable   of length
-  | PBVertFixedUnbreakable of length
-  | PBVertFrame            of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
+type pb_vert_box = pb_vert_box_main * breakability
+
+and pb_vert_box_main =
+  | PBVertLine  of length * length * intermediate_horz_box list
+      [@printer (fun fmt (h, d, _) -> Format.fprintf fmt "PBVertLine@[<hov>(%a,@ %a,@ <imhb-list>)@]" pp_length h pp_length d)]
+  | PBVertSkip  of length
+  | PBVertFrame of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
+      [@printer (fun fmt (fbr, pads, _, _, _, _, w, pbvblst) ->
+                  Format.fprintf fmt "PBVertFrame@[<hov>(%a,@ %a,@ ...,@ %a,@ %a)@]"
+                    pp_frame_breaking fbr
+                    pp_paddings pads
+                    pp_length w
+                    (Format.pp_print_list pp_pb_vert_box) pbvblst)]
   | PBClearPage
 [@@deriving show { with_path = false; }]
 
@@ -90,12 +98,11 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
   let normalize_after_break pbvblst =
     let rec omit_redundant_clear pbvblst =
       match pbvblst with
-      | PBClearPage :: pbvbtail               -> Some(pbvbtail)
-      | PBVertFixedBreakable(_) :: pbvbtail
-      | PBVertFixedUnbreakable(_) :: pbvbtail -> omit_redundant_clear pbvbtail
-      | PBVertLine(_) :: _
-      | PBVertFrame(_) :: _                   -> None
-      | []                                    -> Some([])  (* -- the original `pbvblst` consists only of spaces -- *)
+      | (PBClearPage, _) :: pbvbtail   -> Some(pbvbtail)
+      | (PBVertSkip(_), _) :: pbvbtail -> omit_redundant_clear pbvbtail
+      | (PBVertLine(_), _) :: _
+      | (PBVertFrame(_), _) :: _       -> None
+      | []                             -> Some([])  (* -- the original `pbvblst` consists only of spaces -- *)
     in
     let pbvblst =
       match omit_redundant_clear pbvblst with
@@ -103,14 +110,14 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
       | None              -> pbvblst
     in
     match pbvblst with
-    | PBClearPage :: _ ->
+    | (PBClearPage, _) :: _ ->
         assert false
 
     | []
-    | PBVertFixedBreakable(_) :: [] ->
+    | (PBVertSkip(_), Breakable) :: [] ->
         NormalizedEmpty
 
-    | PBVertFixedBreakable(_) :: pbvbtail ->
+    | (PBVertSkip(_), Breakable) :: pbvbtail ->
         Normalized(pbvbtail)
 
     | _ ->
@@ -123,7 +130,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
 
   let rec aux (prev : pb_accumulator) (pbvblst : pb_vert_box list) : pb_answer * pb_rest =
     match pbvblst with
-    | PBVertLine(br, hgt, dpt, imhblst) :: pbvbtail ->
+    | (PBVertLine(hgt, dpt, imhblst), br) :: pbvbtail ->
         let hgtline = hgt +% (Length.negate dpt) in
         let (evhblst, imvblstlstfootnote) = PageInfo.embed_page_info pbinfo imhblst in
         let (evvblstfootnote, _) = PageInfo.embed_page_info_vert pbinfo (List.concat imvblstlstfootnote) in
@@ -145,15 +152,18 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
 *)
                 (prev.last_breakable, Remains)
               else
-                aux {
-                  depth = prev.depth;  (* -- mainly for debugging -- *)
-                  skip_after_break = prev.skip_after_break;
-                  last_breakable = {
+                let last_breakable_updated =
+                  {
                     badness  = badns;
                     height   = hgt_ret;
                     division = Inside(body_new, normalize_after_break pbvbtail);
                     footnote = footnote_new;
-                  };
+                  }
+                in
+                aux {
+                  depth = prev.depth;  (* -- mainly for debugging -- *)
+                  skip_after_break = prev.skip_after_break;
+                  last_breakable = last_breakable_updated;
                   allow_break    = br;
                   solid_body     = body_new;
                   solid_footnote = footnote_new;
@@ -174,7 +184,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
               } pbvbtail
         end
 
-    | PBVertFixedBreakable(vskip) :: pbvbtail ->
+    | (PBVertSkip(vskip), Breakable) :: pbvbtail ->
         let hgttotal = prev.total_height in
         let hgttotal_new = hgttotal +% vskip in
         let hgt_ret = hgttotal_new +% prev.skip_after_break in
@@ -187,24 +197,35 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                 let () = Format.printf "PageBreak> page %d (%d): BREAKABLE\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                 begin  (* begin: for debug *)
                   match prev.last_breakable.division with
-                  | Inside(_, Normalized(p1 :: p2 :: p3 :: _)) ->
-                      Format.printf "PageBreak> last breakable:@ %a\n" (Format.pp_print_list pp_pb_vert_box) [p1; p2; p3]
+                  | Inside(evvbacc, remains) ->
+                      begin
+                        match (Alist.to_list_rev evvbacc, remains) with
+                        | (e1 :: e2 :: e3 :: _, Normalized(p1 :: p2 :: p3 :: _)) ->
+                            Format.printf "PageBreak> last breakable:@ @[<hov>body:@ ...@ %a@],@ @[<hov>rest:@ %a@ ...@]\n"
+                              (Format.pp_print_list pp_evaled_vert_box) [e3; e2; e1]
+                              (Format.pp_print_list pp_pb_vert_box) [p1; p2; p3]
+
+                        | _ ->
+                            Format.printf "PageBreak> last breakable: less than 3\n"
+                      end
+
                   | Outside ->
                       Format.printf "PageBreak> last breakable: outside\n"
-                  | Inside(_, _) ->
-                      Format.printf "PageBreak> last breakable: less than 3\n"
                 end;  (* end: for debug *)
                 (prev.last_breakable, Remains)
               else
-                aux {
-                  depth = prev.depth;  (* -- mainly for debugging -- *)
-                  skip_after_break = prev.skip_after_break;
-                  last_breakable = {
+                let last_breakable_updated =
+                  {
                     badness  = badns;
                     division = Inside(prev.solid_body, normalize_after_break pbvbtail);
                     footnote = prev.solid_footnote;
                     height   = hgt_ret;
-                  };
+                  }
+                in
+                aux {
+                  depth = prev.depth;  (* -- mainly for debugging -- *)
+                  skip_after_break = prev.skip_after_break;
+                  last_breakable = last_breakable_updated;
                   allow_break    = Breakable;
                   solid_body     = prev.solid_body;
                   solid_footnote = prev.solid_footnote;
@@ -225,7 +246,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
               } pbvbtail
         end
 
-    | PBVertFixedUnbreakable(vskip) :: pbvbtail ->
+    | (PBVertSkip(vskip), Unbreakable) :: pbvbtail ->
         let hgttotal = prev.total_height in
         let hgttotal_new = hgttotal +% vskip in
         let body_new = Alist.extend (Alist.cat prev.solid_body prev.discardable) (EvVertFixedEmpty(vskip)) in
@@ -240,7 +261,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           total_height   = hgttotal_new;
         } pbvbtail
 
-    | PBClearPage :: pbvbtail ->
+    | (PBClearPage, _) :: pbvbtail ->
         let remains =
           match pbvbtail with
           | []     -> NormalizedEmpty
@@ -257,19 +278,14 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let () = Format.printf "PageBreak> page %d (%d): CLEAR-PAGE\n" pbinfo.current_page_number prev.depth in  (* for debug *)
         (ans, Remains)
 
-    | PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
+    | (PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub), br) :: pbvbtail ->
         let hgttotal = prev.total_height in
         let hgttotal_before = hgttotal +% pads.paddingT in
         let (ans_sub, rest_sub) =
           aux {
             depth = prev.depth + 1;  (* -- mainly for debugging -- *)
             skip_after_break = pads.paddingB +% prev.skip_after_break;
-            last_breakable = {
-              badness  = prev.last_breakable.badness;
-              division = Outside;
-              footnote = prev.last_breakable.footnote;
-              height   = prev.last_breakable.height;
-            };
+            last_breakable = { prev.last_breakable with division = Outside; };
             allow_break    = Unbreakable;
             solid_body     = Alist.empty;
             solid_footnote = prev.solid_footnote;
@@ -285,11 +301,36 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
               begin
                 match ans_sub.division with
                 | Outside ->
-                  (* -- if the page-breaking should occur before entering the frame -- *)
+                  (* -- if the page-breaking should occur BEFORE entering the frame -- *)
 (*
                     let () = Format.printf "PageBreak> page %d (%d): FRAME remains/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
 *)
-                    (prev.last_breakable, Remains)
+                    begin
+                      match prev.allow_break with
+                      | Unbreakable ->
+                          (prev.last_breakable, Remains)
+
+                      | Breakable ->
+                        (* --
+                           if the point immediately BEFORE the frame is a page-breaking opportunity,
+                           compare this point and `prev.last_breakable` and chooses the better one.
+                           -- *)
+                          let hgt_ret = hgttotal +% prev.skip_after_break in
+                          let badns = calculate_badness_of_page_break hgt_ret in
+                          if getting_worse badns hgt_ret prev.last_breakable.badness prev.last_breakable.height then
+                            (prev.last_breakable, Remains)
+                          else
+                            let body_ret = prev.solid_body in
+                            let ans =
+                              {
+                                division = Inside(body_ret, normalize_after_break pbvbtail);
+                                footnote = prev.solid_footnote;
+                                height   = hgt_ret;
+                                badness  = badns;
+                              }
+                            in
+                            (ans, Remains)
+                    end
 
                 | Inside(body_sub, remains_sub) ->
                     let body_ret =
@@ -309,7 +350,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                     let remains_ret =
                       match remains_sub with
                       | NormalizedEmpty         -> normalize_after_break pbvbtail
-                      | Normalized(remains_sub) -> Normalized(PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub) :: pbvbtail)
+                      | Normalized(remains_sub) -> Normalized((PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub), br) :: pbvbtail)
                     in
                     let ans =
                       { ans_sub with division = Inside(body_ret, remains_ret); }
@@ -331,8 +372,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                   (* -- if no point in the frame was found suitable for page breaking,
                         i.e., the frame can be treated as if it were a single line -- *)
                     begin
-                      match prev.allow_break with
+                      match br with
                       | Breakable ->
+                        (* -- if breakable immediately AFTER the frame -- *)
                           if getting_worse badns_after hgttotal_after prev.last_breakable.badness hgttotal then
 (*
                             let () = Format.printf "PageBreak> page %d (%d): FRAME finished/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
@@ -352,16 +394,19 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
 (*
                           let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/outside (non-optimal %a)\n" pbinfo.current_page_number prev.depth pp_length hgttotal_after in  (* for debug *)
 *)
-                          aux {
-                            depth = prev.depth;  (* -- mainly for debugging -- *)
-                            skip_after_break = prev.skip_after_break;
-                            last_breakable = {
+                          let last_breakable_updated =
+                            {
                               division = Inside(body_new, normalize_after_break pbvbtail);
                               footnote = footnote_new;
                               height   = hgttotal_after +% prev.skip_after_break;
                               badness  = badns_after;
-                            };
-                            allow_break    = Breakable;
+                            }
+                          in
+                          aux {
+                            depth = prev.depth;  (* -- mainly for debugging -- *)
+                            skip_after_break = prev.skip_after_break;
+                            last_breakable = last_breakable_updated;
+                            allow_break    = br;
                             solid_body     = body_new;
                             solid_footnote = footnote_new;
                             discardable    = Alist.empty;
@@ -386,7 +431,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                             depth = prev.depth;  (* -- mainly for debugging -- *)
                             skip_after_break = prev.skip_after_break;
                             last_breakable = prev.last_breakable;
-                            allow_break    = Breakable;
+                            allow_break    = br;
                             solid_body     = body_new;
                             solid_footnote = footnote_new;
                             discardable    = Alist.empty;
@@ -410,7 +455,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                       let after_ret =
                         match remains_sub with
                         | NormalizedEmpty         -> normalize_after_break pbvbtail
-                        | Normalized(remains_sub) -> Normalized(PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub) :: pbvbtail)
+                        | Normalized(remains_sub) -> Normalized((PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, remains_sub), br) :: pbvbtail)
                       in
                       let ans =
                         { ans_sub with division = Inside(body_ret, after_ret); }
@@ -448,7 +493,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                           footnote = footnote_new;
                           height   = hgttotal_after +% prev.skip_after_break;
                         };
-                        allow_break    = Breakable;
+                        allow_break    = br;
                         solid_body     = body_new;
                         solid_footnote = footnote_new;
                         discardable    = Alist.empty;
@@ -537,22 +582,20 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
 
     | VertLine(hgt, dpt, imhblst) :: vbtail ->
         let br = get_breakability vbtail in
-        aux (Alist.extend pbvbacc (PBVertLine(br, hgt, dpt, imhblst))) vbtail
+        aux (Alist.extend pbvbacc (PBVertLine(hgt, dpt, imhblst), br)) vbtail
 
     | VertFixedBreakable(vskip) :: vbtail ->
-        aux (Alist.extend pbvbacc (PBVertFixedBreakable(vskip))) vbtail
+        aux (Alist.extend pbvbacc (PBVertSkip(vskip), Breakable)) vbtail
 
-    | VertBottomMargin(breakable1, mgn1) :: VertTopMargin(breakable2, mgn2) :: vbtail ->
-        if breakable1 && breakable2 then
-          aux (Alist.extend pbvbacc (PBVertFixedBreakable(Length.max mgn1 mgn2))) vbtail
-        else
-          aux (Alist.extend pbvbacc (PBVertFixedUnbreakable(Length.max mgn1 mgn2))) vbtail
+    | VertBottomMargin(breakable1, len1) :: VertTopMargin(breakable2, len2) :: vbtail ->
+        let br = if breakable1 && breakable2 then Breakable else Unbreakable in
+        aux (Alist.extend pbvbacc (PBVertSkip(Length.max len1 len2), br)) vbtail
 
-    | VertBottomMargin(breakable1, mgn1) :: vbtail ->
-        let pbvb = if breakable1 then PBVertFixedBreakable(mgn1) else PBVertFixedUnbreakable(mgn1) in
-        aux (Alist.extend pbvbacc pbvb) vbtail
+    | VertBottomMargin(breakable1, len1) :: vbtail ->
+        let br = if breakable1 then Breakable else Unbreakable in
+        aux (Alist.extend pbvbacc (PBVertSkip(len1), br)) vbtail
 
-    | VertTopMargin(breakable2, mgn2) :: vbtail ->
+    | VertTopMargin(breakable2, len2) :: vbtail ->
         begin
           match Alist.to_list_rev pbvbacc with
           | [] ->
@@ -560,22 +603,18 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
               aux Alist.empty vbtail
 
           | _ :: _ ->
-              let pbvb =
-                if breakable2 then
-                  PBVertFixedBreakable(mgn2)
-                else
-                  PBVertFixedUnbreakable(mgn2)
-              in
-              aux (Alist.extend pbvbacc pbvb) vbtail
+              let br = if breakable2 then Breakable else Unbreakable in
+              aux (Alist.extend pbvbacc (PBVertSkip(len2), br)) vbtail
         end
 
     | VertFrame(pads, decoS, decoH, decoM, decoT, wid, vblstsub) :: vbtail ->
+        let br = get_breakability vbtail in
         let pbvblstsub = aux Alist.empty vblstsub in
-        let pbvb = PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) in
+        let pbvb = (PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub), br) in
         aux (Alist.extend pbvbacc pbvb) vbtail
 
     | VertClearPage :: vbtail ->
-        aux (Alist.extend pbvbacc PBClearPage) vbtail
+        aux (Alist.extend pbvbacc (PBClearPage, Breakable)) vbtail
 
   in
   aux Alist.empty vblst
@@ -583,17 +622,15 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
 
 let solidify (vblst : vert_box list) : intermediate_vert_box list =
   let rec aux pbvblst =
-    pbvblst |> List.map (fun pbvb ->
-      match pbvb with
-      | PBVertLine(_, hgt, dpt, imhblst) -> ImVertLine(hgt, dpt, imhblst)
-      | PBVertFixedBreakable(vskip)   -> ImVertFixedEmpty(vskip)
-      | PBVertFixedUnbreakable(vskip) -> ImVertFixedEmpty(vskip)
+    pbvblst |> List.map (fun (pbvbmain, _) ->
+      match pbvbmain with
+      | PBVertLine(hgt, dpt, imhblst) -> ImVertLine(hgt, dpt, imhblst)
+      | PBVertSkip(len)               -> ImVertFixedEmpty(len)
+      | PBClearPage                   -> ImVertFixedEmpty(Length.zero)
 
       | PBVertFrame(_, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) ->
           let imvblstsub = aux pbvblstsub in
           ImVertFrame(pads, decoS, wid, imvblstsub)
-
-      | PBClearPage -> ImVertFixedEmpty(Length.zero)
     )
   in
   let pbvblst = normalize vblst in
