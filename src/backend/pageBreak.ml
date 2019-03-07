@@ -539,28 +539,34 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
 
 
 let squash_margins prev_bottom vblst =
-  let (br2, next) =
-    match vblst with
-    | []
-    | VertClearPage :: _ ->
-        (Unbreakable, None)
+  let open EscapeMonad in
+  let esc =
+    begin
+      match vblst with
+      | []
+      | VertClearPage :: _ ->
+          escape ([], Unbreakable)
 
-    | VertParagraph(margins, _) :: _
-    | VertFrame(margins, _, _, _, _, _, _, _) :: _ ->
-        begin
-          match margins.margin_top with
-          | None            -> (Breakable, None)
-          | Some((br, len)) -> (br, Some(len))
-        end
+      | VertParagraph(margins, _) :: _
+      | VertFrame(margins, _, _, _, _, _, _, _) :: _ ->
+          begin
+            match margins.margin_top with
+            | None            -> continue (Breakable, None)
+            | Some((br, len)) -> continue (br, Some(len))
+          end
 
-    | VertFixedBreakable(_) :: _ ->
-        (Breakable, None)
+      | VertFixedBreakable(_) :: _ ->
+          continue (Breakable, None)
+    end >>= fun (br2, next) ->
+    escape @@ begin
+      match (prev_bottom, next) with
+      | (None, None)                    -> ([], br2)
+      | (None, Some(len2))              -> ([ (PBVertSkip(len2), br2) ], br2)
+      | (Some((br1, len1)), None)       -> let br = br1 &-& br2 in ([ (PBVertSkip(len1), br) ], br)
+      | (Some((br1, len1)), Some(len2)) -> let br = br1 &-& br2 in ([ (PBVertSkip(Length.max len1 len2), br) ], br)
+    end
   in
-  match (prev_bottom, next) with
-  | (None, None)                    -> ([], br2)
-  | (None, Some(len2))              -> ([ (PBVertSkip(len2), br2) ], br2)
-  | (Some((br1, len1)), None)       -> let br = br1 &-& br2 in ([ (PBVertSkip(len1), br) ], br)
-  | (Some((br1, len1)), Some(len2)) -> let br = br1 &-& br2 in ([ (PBVertSkip(Length.max len1 len2), br) ], br)
+  force esc
 
 
 let normalize_paragraph (parelems : paragraph_element list) (br : breakability) : pb_vert_box list =
