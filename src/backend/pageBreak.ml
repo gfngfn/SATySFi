@@ -140,7 +140,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           | Breakable ->
               if getting_worse badns hgttotal_new prev.last_breakable.badness hgttotal then
               (* -- if getting worse, outputs a page at the last breakable point. -- *)
+(*
                 let () = Format.printf "PageBreak> page %d (%d): LINE\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+*)
                 (prev.last_breakable, Remains)
               else
                 aux {
@@ -183,6 +185,15 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           | Breakable ->
               if getting_worse badns hgttotal_new prev.last_breakable.badness hgttotal then
                 let () = Format.printf "PageBreak> page %d (%d): BREAKABLE\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+                begin  (* begin: for debug *)
+                  match prev.last_breakable.division with
+                  | Inside(_, Normalized(p1 :: p2 :: p3 :: _)) ->
+                      Format.printf "PageBreak> last breakable:@ %a\n" (Format.pp_print_list pp_pb_vert_box) [p1; p2; p3]
+                  | Outside ->
+                      Format.printf "PageBreak> last breakable: outside\n"
+                  | Inside(_, _) ->
+                      Format.printf "PageBreak> last breakable: less than 3\n"
+                end;  (* end: for debug *)
                 (prev.last_breakable, Remains)
               else
                 aux {
@@ -275,7 +286,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                 match ans_sub.division with
                 | Outside ->
                   (* -- if the page-breaking should occur before entering the frame -- *)
+(*
                     let () = Format.printf "PageBreak> page %d (%d): FRAME remains/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+*)
                     (prev.last_breakable, Remains)
 
                 | Inside(body_sub, remains_sub) ->
@@ -301,8 +314,10 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                     let ans =
                       { ans_sub with division = Inside(body_ret, remains_ret); }
                     in
+(*
                     let () = Format.printf "PageBreak> page %d (%d): FRAME remains/inside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
                     let () = let x = match remains_sub with NormalizedEmpty -> [] | Normalized(x) -> x in Format.printf "PageBreak> remains (%d): %a\n" (List.length x) (Format.pp_print_list pp_pb_vert_box) x in  (* for debug *)
+*)
                     (ans, Remains)
               end
 
@@ -319,7 +334,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                       match prev.allow_break with
                       | Breakable ->
                           if getting_worse badns_after hgttotal_after prev.last_breakable.badness hgttotal then
+(*
                             let () = Format.printf "PageBreak> page %d (%d): FRAME finished/outside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+*)
                             (prev.last_breakable, Remains)
                           else
                           let body_new =
@@ -332,7 +349,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                              (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list body_sub_all))
                           in
                           let footnote_new = footnote_sub_all in
+(*
                           let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/outside (non-optimal %a)\n" pbinfo.current_page_number prev.depth pp_length hgttotal_after in  (* for debug *)
+*)
                           aux {
                             depth = prev.depth;  (* -- mainly for debugging -- *)
                             skip_after_break = prev.skip_after_break;
@@ -360,7 +379,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                              (EvVertFrame(pads, pbinfo, deco_sub, wid, Alist.to_list body_sub_all))
                           in
                           let footnote_new = footnote_sub_all in
+(*
                           let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/outside (non-breakable)\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+*)
                           aux {
                             depth = prev.depth;  (* -- mainly for debugging -- *)
                             skip_after_break = prev.skip_after_break;
@@ -394,7 +415,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                       let ans =
                         { ans_sub with division = Inside(body_ret, after_ret); }
                       in
+(*
                       let () = Format.printf "PageBreak> page %d (%d): FRAME finished/inside\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+*)
                       (ans, Remains)
                     else
                     (* -- if the contents in the given frame is displayed in a single page -- *)
@@ -413,7 +436,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
                           (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list body_sub_all))
                       in
                       let footnote_new = footnote_sub_all in
+(*
                       let () = Format.printf "PageBreak> page %d (%d) --> continue by FRAME finished/inside (non-optimal %a)\n" pbinfo.current_page_number prev.depth pp_length hgttotal_after in  (* for debug *)
+*)
                       aux {
                         depth = prev.depth;  (* -- mainly for debugging -- *)
                         skip_after_break = prev.skip_after_break;
