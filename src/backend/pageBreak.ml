@@ -16,6 +16,10 @@ type breakability =
 [@@deriving show { with_path = false; }]
 
 type pb_vert_box = pb_vert_box_main * breakability
+  (* --
+     (1) main contents
+     (2) whether page-breaking is allowed immediately after the contents
+     -- *)
 
 and pb_vert_box_main =
   | PBVertLine  of length * length * intermediate_horz_box list
@@ -23,11 +27,11 @@ and pb_vert_box_main =
   | PBVertSkip  of length
   | PBVertFrame of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
       [@printer (fun fmt (fbr, pads, _, _, _, _, w, pbvblst) ->
-                  Format.fprintf fmt "PBVertFrame@[<hov>(%a,@ %a,@ ...,@ %a,@ %a)@]"
-                    pp_frame_breaking fbr
-                    pp_paddings pads
-                    pp_length w
-                    (Format.pp_print_list pp_pb_vert_box) pbvblst)]
+        Format.fprintf fmt "PBVertFrame@[<hov>(%a,@ %a,@ ...,@ %a,@ %a)@]"
+          pp_frame_breaking fbr
+          pp_paddings pads
+          pp_length w
+          (Format.pp_print_list pp_pb_vert_box) pbvblst)]
   | PBClearPage
 [@@deriving show { with_path = false; }]
 
