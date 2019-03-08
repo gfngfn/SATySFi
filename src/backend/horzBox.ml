@@ -284,6 +284,7 @@ and horz_box =
   | HorzEmbeddedVertBreakable of length * vert_box list
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
   | HorzScriptGuard    of CharBasis.script * CharBasis.script * horz_box list
+  | HorzOmitSkipAfter
 
 and intermediate_graphics =
   | ImGraphicsFixed    of fixed_graphics
