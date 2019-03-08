@@ -50,14 +50,14 @@ type pb_answer = {
 }
 
 type pb_accumulator = {
-  depth          : int;  (* -- mainly for debugging -- *)
+  depth            : int;  (* -- mainly for debugging -- *)
   skip_after_break : length;
-  allow_break    : breakability;
-  last_breakable : pb_answer;
-  solid_body     : evaled_vert_box Alist.t;
-  solid_footnote : evaled_vert_box Alist.t;
-  discardable    : evaled_vert_box Alist.t;
-  total_height   : length;  (* -- the length of the contents traversed so far -- *)
+  allow_break      : breakability;
+  last_breakable   : pb_answer;
+  solid_body       : evaled_vert_box Alist.t;
+  solid_footnote   : evaled_vert_box Alist.t;
+  discardable      : evaled_vert_box Alist.t;
+  total_height     : length;  (* -- the length of the contents traversed so far -- *)
 }
 
 
@@ -109,18 +109,10 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
       | None              -> pbvblst
     in
     match pbvblst with
-    | (PBClearPage, _) :: _ ->
-        assert false
-
-    | []
-    | (PBVertSkip(_), Breakable) :: [] ->
-        NormalizedEmpty
-
-    | (PBVertSkip(_), Breakable) :: pbvbtail ->
-        Normalized(pbvbtail)
-
-    | _ ->
-        Normalized(pbvblst)
+    | (PBClearPage, _) :: _                  -> assert false
+    | [] | (PBVertSkip(_), Breakable) :: []  -> NormalizedEmpty
+    | (PBVertSkip(_), Breakable) :: pbvbtail -> Normalized(pbvbtail)
+    | _                                      -> Normalized(pbvblst)
   in
 
   let getting_worse badns hgttotal badns_prev hgttotal_prev =
@@ -642,8 +634,8 @@ let main (absname_out : abs_path) (pagesize : page_size) (pagecontf : page_conte
     let page = HandlePdf.make_page pagesize pbinfo pagecontsch evvblstpage footnote in
     let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
     match restopt with
-    | None              -> pdfaccnew
-    | Some(imvblstrest) -> aux (pageno + 1) pdfaccnew imvblstrest
+    | None       -> pdfaccnew
+    | Some(rest) -> aux (pageno + 1) pdfaccnew rest
   in
   let pbvblst = normalize vblst in
   aux 1 pdfinit pbvblst
