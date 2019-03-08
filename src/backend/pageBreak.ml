@@ -172,79 +172,74 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
 
     | (PBVertSkip(debug_margins, vskip), Breakable) :: pbvbtail ->
         let hgttotal = prev.total_height in
-        let hgttotal_new = hgttotal +% vskip in
-        let hgt_ret = hgttotal_new +% prev.skip_after_break in
-        let badns = calculate_badness_of_page_break hgt_ret in
-        let discardable_new = Alist.extend prev.discardable (EvVertFixedEmpty(debug_margins, vskip)) in
-        begin
-          match prev.allow_break with
-          | Breakable ->
-              if getting_worse badns hgttotal_new prev.last_breakable.badness hgttotal then
-                let () = Format.printf "PageBreak> page %d (%d): BREAKABLE\n" pbinfo.current_page_number prev.depth in  (* for debug *)
-                begin  (* begin: for debug *)
-                  match prev.last_breakable.division with
-                  | Inside(evvbacc, remains) ->
-                      begin
-                        match (Alist.to_list_rev evvbacc, remains) with
-                        | (e1 :: e2 :: e3 :: _, Normalized(p1 :: p2 :: p3 :: _)) ->
-                            Format.printf "PageBreak> last breakable:@ @[<hov>body:@ ...@ %a@],@ @[<hov>rest:@ %a@ ...@]\n"
-                              (Format.pp_print_list pp_evaled_vert_box) [e3; e2; e1]
-                              (Format.pp_print_list pp_pb_vert_box) [p1; p2; p3]
+        let hgttotalA = hgttotal +% vskip in
+        let hgtA = hgttotalA +% prev.skip_after_break in
+        let badnsA = calculate_badness_of_page_break hgtA in
+        let discardableA = Alist.extend prev.discardable (EvVertFixedEmpty(debug_margins, vskip)) in
+        let last_breakable = prev.last_breakable in
+        let open EscapeMonad in
+        let esc =
+          begin
+            match prev.allow_break with
+            | Unbreakable ->
+                continue last_breakable
 
-                        | _ ->
-                            Format.printf "PageBreak> last breakable: less than 3\n"
-                      end
+            | Breakable ->
+                if getting_worse badnsA hgtA last_breakable.badness last_breakable.height then
+                  let () = Format.printf "PageBreak> page %d (%d): BREAKABLE\n" pbinfo.current_page_number prev.depth in  (* for debug *)
+                  begin  (* begin: for debug *)
+                    match prev.last_breakable.division with
+                    | Inside(evvbacc, remains) ->
+                        begin
+                          match (Alist.to_list_rev evvbacc, remains) with
+                          | (e1 :: e2 :: e3 :: _, Normalized(p1 :: p2 :: p3 :: _)) ->
+                              Format.printf "PageBreak> last breakable:@ @[<hov>body:@ ...@ %a@],@ @[<hov>rest:@ %a@ ...@]\n"
+                                (Format.pp_print_list pp_evaled_vert_box) [e3; e2; e1]
+                                (Format.pp_print_list pp_pb_vert_box) [p1; p2; p3]
 
-                  | Outside ->
-                      Format.printf "PageBreak> last breakable: outside\n"
-                end;  (* end: for debug *)
-                (prev.last_breakable, Remains)
-              else
-                let last_breakable_updated =
-                  {
-                    badness  = badns;
+                          | _ ->
+                              Format.printf "PageBreak> last breakable: less than 3\n"
+                        end
+
+                    | Outside ->
+                        Format.printf "PageBreak> last breakable: outside\n"
+                  end;  (* end: for debug *)
+                  escape (last_breakable, Remains)
+                else
+                  continue {
+                    badness  = badnsA;
                     division = Inside(prev.solid_body, normalize_after_break pbvbtail);
                     footnote = prev.solid_footnote;
-                    height   = hgt_ret;
+                    height   = hgtA;
                   }
-                in
-                aux {
-                  depth = prev.depth;  (* -- mainly for debugging -- *)
-                  skip_after_break = prev.skip_after_break;
-                  last_breakable = last_breakable_updated;
-                  allow_break    = Breakable;
-                  solid_body     = prev.solid_body;
-                  solid_footnote = prev.solid_footnote;
-                  discardable    = discardable_new;
-                  total_height   = hgttotal_new;
-                } pbvbtail
 
-          | Unbreakable ->
-              aux {
-                  depth = prev.depth;  (* -- mainly for debugging -- *)
-                  skip_after_break = prev.skip_after_break;
-                  last_breakable = prev.last_breakable;
-                  allow_break    = Breakable;
-                  solid_body     = prev.solid_body;
-                  solid_footnote = prev.solid_footnote;
-                  discardable    = discardable_new;
-                  total_height   = hgttotal_new;
-              } pbvbtail
-        end
+          end >>= fun last_breakable ->
+          escape @@ aux {
+            depth = prev.depth;  (* -- mainly for debugging -- *)
+            skip_after_break = prev.skip_after_break;
+            last_breakable = last_breakable;
+            allow_break    = Breakable;
+            solid_body     = prev.solid_body;
+            solid_footnote = prev.solid_footnote;
+            discardable    = discardableA;
+            total_height   = hgttotalA;
+          } pbvbtail
+        in
+        force esc
 
     | (PBVertSkip(debug_margins, vskip), Unbreakable) :: pbvbtail ->
         let hgttotal = prev.total_height in
-        let hgttotal_new = hgttotal +% vskip in
-        let body_new = Alist.extend (Alist.cat prev.solid_body prev.discardable) (EvVertFixedEmpty(debug_margins, vskip)) in
+        let hgttotalA = hgttotal +% vskip in
+        let bodyA = Alist.extend (Alist.cat prev.solid_body prev.discardable) (EvVertFixedEmpty(debug_margins, vskip)) in
         aux {
           depth = prev.depth;  (* -- mainly for debugging -- *)
           skip_after_break = prev.skip_after_break;
           last_breakable = prev.last_breakable;
           allow_break    = Unbreakable;
-          solid_body     = body_new;
+          solid_body     = bodyA;
           solid_footnote = prev.solid_footnote;
           discardable    = Alist.empty;
-          total_height   = hgttotal_new;
+          total_height   = hgttotalA;
         } pbvbtail
 
     | (PBClearPage, _) :: pbvbtail ->
