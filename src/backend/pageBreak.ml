@@ -10,6 +10,14 @@ type frame_breaking =
   | Midway
 [@@deriving show { with_path = false; }]
 
+type pb_debug_margin_info =
+  | Fixed
+  | BetweenLines
+  | LowerOnly
+  | UpperOnly
+  | Both of length * length
+[@@deriving show { with_path = false; }]
+
 type pb_vert_box = pb_vert_box_main * breakability
   (* --
      (1) main contents
@@ -19,7 +27,7 @@ type pb_vert_box = pb_vert_box_main * breakability
 and pb_vert_box_main =
   | PBVertLine  of length * length * intermediate_horz_box list
       [@printer (fun fmt (h, d, _) -> Format.fprintf fmt "PBVertLine@[<hov>(%a,@ %a,@ <imhb-list>)@]" pp_length h pp_length d)]
-  | PBVertSkip  of length
+  | PBVertSkip  of pb_debug_margin_info * length
   | PBVertFrame of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
       [@printer (fun fmt (fbr, pads, _, _, _, _, w, pbvblst) ->
         Format.fprintf fmt "PBVertFrame@[<hov>(%a,@ %a,@ ...,@ %a,@ %a)@]"
@@ -175,7 +183,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
               } pbvbtail
         end
 
-    | (PBVertSkip(vskip), Breakable) :: pbvbtail ->
+    | (PBVertSkip(debug_margins, vskip), Breakable) :: pbvbtail ->
         let hgttotal = prev.total_height in
         let hgttotal_new = hgttotal +% vskip in
         let hgt_ret = hgttotal_new +% prev.skip_after_break in
@@ -237,7 +245,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
               } pbvbtail
         end
 
-    | (PBVertSkip(vskip), Unbreakable) :: pbvbtail ->
+    | (PBVertSkip(debug_margins, vskip), Unbreakable) :: pbvbtail ->
         let hgttotal = prev.total_height in
         let hgttotal_new = hgttotal +% vskip in
         let body_new = Alist.extend (Alist.cat prev.solid_body prev.discardable) (EvVertFixedEmpty(vskip)) in
@@ -553,9 +561,9 @@ let squash_margins prev_bottom vblst =
     escape @@ begin
       match (prev_bottom, next) with
       | (None, None)                    -> ([], br2)
-      | (None, Some(len2))              -> ([ (PBVertSkip(len2), br2) ], br2)
-      | (Some((br1, len1)), None)       -> let br = br1 &-& br2 in ([ (PBVertSkip(len1), br) ], br)
-      | (Some((br1, len1)), Some(len2)) -> let br = br1 &-& br2 in ([ (PBVertSkip(Length.max len1 len2), br) ], br)
+      | (None, Some(len2))              -> ([ (PBVertSkip(LowerOnly, len2), br2) ], br2)
+      | (Some((br1, len1)), None)       -> let br = br1 &-& br2 in ([ (PBVertSkip(UpperOnly, len1), br) ], br)
+      | (Some((br1, len1)), Some(len2)) -> let br = br1 &-& br2 in ([ (PBVertSkip(Both(len1, len2), Length.max len1 len2), br) ], br)
     end
   in
   force esc
@@ -565,7 +573,7 @@ let normalize_paragraph (parelems : paragraph_element list) (br : breakability) 
   let pbmains =
     parelems |> List.map (function
     | VertParagLine(hgt, dpt, imhblst) -> PBVertLine(hgt, dpt, imhblst)
-    | VertParagSkip(len)               -> PBVertSkip(len)
+    | VertParagSkip(len)               -> PBVertSkip(BetweenLines, len)
     )
   in
   match List.rev pbmains with
@@ -590,7 +598,7 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
         aux (Alist.append (Alist.append pbvbacc pbvbpar) pbvbskip) vbtail
 
     | VertFixedBreakable(vskip) :: vbtail ->
-        aux (Alist.extend pbvbacc (PBVertSkip(vskip), Breakable)) vbtail
+        aux (Alist.extend pbvbacc (PBVertSkip(Fixed, vskip), Breakable)) vbtail
 
     | VertFrame(margins, pads, decoS, decoH, decoM, decoT, wid, vblstsub) :: vbtail ->
         let (pbvbskip, br) = squash_margins margins.margin_bottom vbtail in
@@ -610,7 +618,7 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
     pbvblst |> List.map (fun (pbvbmain, _) ->
       match pbvbmain with
       | PBVertLine(hgt, dpt, imhblst) -> ImVertLine(hgt, dpt, imhblst)
-      | PBVertSkip(len)               -> ImVertFixedEmpty(len)
+      | PBVertSkip(_, len)            -> ImVertFixedEmpty(len)
       | PBClearPage                   -> ImVertFixedEmpty(Length.zero)
 
       | PBVertFrame(_, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) ->
