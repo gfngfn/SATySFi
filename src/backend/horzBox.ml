@@ -194,9 +194,9 @@ let ( &-& ) br1 br2 =
 type debug_margin_info =
   | Fixed
   | BetweenLines
-  | LowerOnly
-  | UpperOnly
-  | Both of length * length
+  | LowerOnly of breakability
+  | UpperOnly of breakability
+  | Both      of (breakability * length) * (breakability * length)
 [@@deriving show { with_path = false; }]
 
 

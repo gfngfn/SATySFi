@@ -19,7 +19,7 @@ type 'o op_funcs = {
   test_scale : color -> point -> length -> 'o list;
   test_skip_fixed         : color -> point -> length -> 'o list;
   test_skip_between_lines : color -> point -> length -> 'o list;
-  test_skip_margins       : color -> point -> length -> length option -> length option -> 'o list
+  test_skip_margins       : color -> point -> length -> (bool * length) option -> (bool * length) option -> 'o list
 }
 
 
@@ -58,6 +58,12 @@ let color_show_bbox  = DeviceRGB(1.0, 0.5, 0.5)
 let color_show_block_bbox = DeviceRGB(0.25, 0.75, 0.25)
 let color_show_frame = DeviceRGB(1.0, 0.0, 1.0)
 let color_show_skip = DeviceRGB(0., 0.5, 0.)
+
+
+let boolize (br, len) =
+  match br with
+  | Breakable   -> (true, len)
+  | Unbreakable -> (false, len)
 
 
 let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) yposbaseline (xpos, opacc) (evhb : evaled_horz_box) =
@@ -235,11 +241,11 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
           if OptionState.debug_show_block_space () then
             let ops =
               match debug_margins with
-              | Fixed            -> fs.test_skip_fixed color_show_skip pos vskip
-              | BetweenLines     -> fs.test_skip_between_lines color_show_skip pos vskip
-              | LowerOnly        -> fs.test_skip_margins color_show_skip pos vskip None (Some(vskip))
-              | UpperOnly        -> fs.test_skip_margins color_show_skip pos vskip (Some(vskip)) None
-              | Both(len1, len2) -> fs.test_skip_margins color_show_skip pos vskip (Some(len1)) (Some(len2))
+              | Fixed              -> fs.test_skip_fixed color_show_skip pos vskip
+              | BetweenLines       -> fs.test_skip_between_lines color_show_skip pos vskip
+              | LowerOnly(br2)     -> fs.test_skip_margins color_show_skip pos vskip None (Some(boolize (br2, vskip)))
+              | UpperOnly(br1)     -> fs.test_skip_margins color_show_skip pos vskip (Some(boolize (br1, vskip))) None
+              | Both(pair1, pair2) -> fs.test_skip_margins color_show_skip pos vskip (Some(boolize pair1)) (Some(boolize pair2))
             in
             Alist.append opacc ops
           else

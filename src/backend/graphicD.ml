@@ -307,6 +307,7 @@ let pdfops_test_skip_between_lines color (xpos, ypos) len =
 
 let pdfops_test_skip_margins color (xpos, ypos) len upperopt loweropt =
   let thk = Length.of_pdf_point 1. in
+  let thk_nonbreakable = Length.of_pdf_point 0.2 in
   let indentC = Length.of_pdf_point 5. in
   let gap = Length.of_pdf_point 2. in
   let widhalf = Length.of_pdf_point 1. in
@@ -319,13 +320,14 @@ let pdfops_test_skip_margins color (xpos, ypos) len upperopt loweropt =
     | None ->
         []
 
-    | Some(lenU) ->
+    | Some((breakableU, lenU)) ->
         let yBU = ypos -% lenU in
+        let op_draw = if breakableU then op_f' else op_S in
         [
           op_m (xU -% widhalf, ypos);
           op_l (xU, yBU);
           op_l (xU +% widhalf, ypos);
-          op_h; op_f';
+          op_h; op_draw;
         ]
   in
   let pdfopsL =
@@ -333,23 +335,25 @@ let pdfops_test_skip_margins color (xpos, ypos) len upperopt loweropt =
     | None ->
         []
 
-    | Some(lenL) ->
+    | Some((breakableL, lenL)) ->
         let yTL = ypos -% len +% lenL in
+        let op_draw = if breakableL then op_f' else op_S in
         [
           op_m (xL, yTL);
           op_l (xL -% widhalf, yB);
           op_l (xL +% widhalf, yB);
-          op_h; op_f';
+          op_h; op_draw;
         ]
   in
   List.concat [
     [
       op_q;
       pdfop_of_stroke_color color;
+      pdfop_of_fill_color color;
       op_w thk;
       op_m (xC, ypos); op_l (xC, yB);
       op_S;
-      pdfop_of_fill_color color;
+      op_w thk_nonbreakable;
     ];
     pdfopsU;
     pdfopsL;
