@@ -191,6 +191,15 @@ let ( &-& ) br1 br2 =
   | _                      -> Unbreakable
 
 
+type debug_margin_info =
+  | Fixed
+  | BetweenLines
+  | LowerOnly
+  | UpperOnly
+  | Both of length * length
+[@@deriving show { with_path = false; }]
+
+
 type context_main = {
   hyphen_dictionary      : LoadHyph.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<hyph>")]
@@ -342,7 +351,7 @@ and paragraph_element =
 
 and intermediate_vert_box =
   | ImVertLine       of length * length * intermediate_horz_box list
-  | ImVertFixedEmpty of length
+  | ImVertFixedEmpty of debug_margin_info * length
   | ImVertFrame      of paddings * decoration * length * intermediate_vert_box list
 
 and evaled_vert_box =
@@ -353,7 +362,7 @@ and evaled_vert_box =
          (2) depth of the contents (nonpositive)
          (3) contents
          -- *)
-  | EvVertFixedEmpty of length
+  | EvVertFixedEmpty of debug_margin_info * length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
 
@@ -510,7 +519,7 @@ let rec get_height_of_evaled_vert_box_list evvblst =
   evvblst |> List.fold_left (fun l evvb ->
     match evvb with
     | EvVertLine(hgt, dpt, _)             -> l +% hgt +% (Length.negate dpt)
-    | EvVertFixedEmpty(len)               -> l +% len
+    | EvVertFixedEmpty(_, len)            -> l +% len
     | EvVertFrame(pads, _, _, _, evvblst) -> l +% pads.paddingB +% pads.paddingL +% get_height_of_evaled_vert_box_list evvblst
   ) Length.zero
 

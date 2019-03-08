@@ -35,6 +35,12 @@ val pdfops_test_box : color -> point -> length -> length -> Pdfops.t list
 
 val pdfops_test_frame : color -> point -> length -> length -> length -> Pdfops.t list
 
+val pdfops_test_skip_fixed : color -> point -> length -> Pdfops.t list
+
+val pdfops_test_skip_between_lines : color -> point -> length -> Pdfops.t list
+
+val pdfops_test_skip_margins : color -> point -> length -> length option -> length option -> Pdfops.t list
+
 val pdfops_test_scale : color -> point -> length -> Pdfops.t list
 
 val to_pdfops : 'a t -> (point -> 'a -> Pdfops.t list) -> Pdfops.t list

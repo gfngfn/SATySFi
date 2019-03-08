@@ -17,6 +17,9 @@ type 'o op_funcs = {
   test_box   : color -> point -> length -> length -> 'o list;
   test_frame : color -> point -> length -> length -> length -> 'o list;
   test_scale : color -> point -> length -> 'o list;
+  test_skip_fixed         : color -> point -> length -> 'o list;
+  test_skip_between_lines : color -> point -> length -> 'o list;
+  test_skip_margins       : color -> point -> length -> length option -> length option -> 'o list
 }
 
 
@@ -44,6 +47,9 @@ let fs_pdf = {
   test_box   = GraphicD.pdfops_test_box;
   test_frame = GraphicD.pdfops_test_frame;
   test_scale = GraphicD.pdfops_test_scale;
+  test_skip_fixed         = GraphicD.pdfops_test_skip_fixed;
+  test_skip_between_lines = GraphicD.pdfops_test_skip_between_lines;
+  test_skip_margins       = GraphicD.pdfops_test_skip_margins;
 }
 
 
@@ -51,6 +57,7 @@ let color_show_space = DeviceRGB(0.0, 0.0, 1.0)
 let color_show_bbox  = DeviceRGB(1.0, 0.5, 0.5)
 let color_show_block_bbox = DeviceRGB(0.25, 0.75, 0.25)
 let color_show_frame = DeviceRGB(1.0, 0.0, 1.0)
+let color_show_skip = DeviceRGB(0., 0.5, 0.)
 
 
 let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) yposbaseline (xpos, opacc) (evhb : evaled_horz_box) =
@@ -221,18 +228,23 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
 
 
 and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccinit evvblst =
-  evvblst @|> ((xinit, yinit), opaccinit) @|> List.fold_left (fun ((xpos, ypos), opacc) evvb ->
+  evvblst @|> ((xinit, yinit), opaccinit) @|> List.fold_left (fun (((xpos, ypos) as pos), opacc) evvb ->
     match evvb with
-    | EvVertFixedEmpty(vskip) ->
-(*
-        (* begin: for debug *)
+    | EvVertFixedEmpty(debug_margins, vskip) ->
         let opacc =
-          List.rev_append
-            (ops_test_box (0.5, 1.0, 0.5) (xpos +% (Length.of_pdf_point 50.), ypos) (Length.of_pdf_point 200.) vskip)
+          if OptionState.debug_show_block_space () then
+            let ops =
+              match debug_margins with
+              | Fixed            -> fs.test_skip_fixed color_show_skip pos vskip
+              | BetweenLines     -> fs.test_skip_between_lines color_show_skip pos vskip
+              | LowerOnly        -> fs.test_skip_margins color_show_skip pos vskip None (Some(vskip))
+              | UpperOnly        -> fs.test_skip_margins color_show_skip pos vskip (Some(vskip)) None
+              | Both(len1, len2) -> fs.test_skip_margins color_show_skip pos vskip (Some(len1)) (Some(len2))
+            in
+            Alist.append opacc ops
+          else
             opacc
         in
-        (* end: for debug *)
-*)
         ((xpos, ypos -% vskip), opacc)
 
     | EvVertLine(hgt, dpt, evhblst) ->

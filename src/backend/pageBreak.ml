@@ -10,14 +10,6 @@ type frame_breaking =
   | Midway
 [@@deriving show { with_path = false; }]
 
-type pb_debug_margin_info =
-  | Fixed
-  | BetweenLines
-  | LowerOnly
-  | UpperOnly
-  | Both of length * length
-[@@deriving show { with_path = false; }]
-
 type pb_vert_box = pb_vert_box_main * breakability
   (* --
      (1) main contents
@@ -27,7 +19,7 @@ type pb_vert_box = pb_vert_box_main * breakability
 and pb_vert_box_main =
   | PBVertLine  of length * length * intermediate_horz_box list
       [@printer (fun fmt (h, d, _) -> Format.fprintf fmt "PBVertLine@[<hov>(%a,@ %a,@ <imhb-list>)@]" pp_length h pp_length d)]
-  | PBVertSkip  of pb_debug_margin_info * length
+  | PBVertSkip  of debug_margin_info * length
   | PBVertFrame of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
       [@printer (fun fmt (fbr, pads, _, _, _, _, w, pbvblst) ->
         Format.fprintf fmt "PBVertFrame@[<hov>(%a,@ %a,@ ...,@ %a,@ %a)@]"
@@ -188,7 +180,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let hgttotal_new = hgttotal +% vskip in
         let hgt_ret = hgttotal_new +% prev.skip_after_break in
         let badns = calculate_badness_of_page_break hgt_ret in
-        let discardable_new = Alist.extend prev.discardable (EvVertFixedEmpty(vskip)) in
+        let discardable_new = Alist.extend prev.discardable (EvVertFixedEmpty(debug_margins, vskip)) in
         begin
           match prev.allow_break with
           | Breakable ->
@@ -248,7 +240,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
     | (PBVertSkip(debug_margins, vskip), Unbreakable) :: pbvbtail ->
         let hgttotal = prev.total_height in
         let hgttotal_new = hgttotal +% vskip in
-        let body_new = Alist.extend (Alist.cat prev.solid_body prev.discardable) (EvVertFixedEmpty(vskip)) in
+        let body_new = Alist.extend (Alist.cat prev.solid_body prev.discardable) (EvVertFixedEmpty(debug_margins, vskip)) in
         aux {
           depth = prev.depth;  (* -- mainly for debugging -- *)
           skip_after_break = prev.skip_after_break;
@@ -617,9 +609,9 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
   let rec aux pbvblst =
     pbvblst |> List.map (fun (pbvbmain, _) ->
       match pbvbmain with
-      | PBVertLine(hgt, dpt, imhblst) -> ImVertLine(hgt, dpt, imhblst)
-      | PBVertSkip(_, len)            -> ImVertFixedEmpty(len)
-      | PBClearPage                   -> ImVertFixedEmpty(Length.zero)
+      | PBVertLine(hgt, dpt, imhblst)  -> ImVertLine(hgt, dpt, imhblst)
+      | PBVertSkip(debug_margins, len) -> ImVertFixedEmpty(debug_margins, len)
+      | PBClearPage                    -> ImVertFixedEmpty(Fixed, Length.zero)
 
       | PBVertFrame(_, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) ->
           let imvblstsub = aux pbvblstsub in
@@ -655,7 +647,7 @@ let adjust_to_first_line (imvblst : intermediate_vert_box list) =
       match (imvb, opt) with
       | (ImVertLine(hgt, dpt, _), None)  -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
       | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
+      | (ImVertFixedEmpty(_, vskip), _)  -> (opt, totalhgt +% vskip)
 
       | (ImVertFrame(pads, _, _, imvblstsub), _) ->
           let totalhgtbefore = totalhgt +% pads.paddingT in
@@ -677,7 +669,7 @@ let adjust_to_last_line (imvblst : intermediate_vert_box list) =
         match (imvblast, opt) with
         | (ImVertLine(hgt, dpt, _), None)  -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
         | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
-        | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
+        | (ImVertFixedEmpty(_, vskip), _)  -> (opt, totalhgt +% vskip)
 
         | (ImVertFrame(pads, _, _, evvblstsub), _) ->
             let totalhgtbefore = totalhgt +% pads.paddingB in

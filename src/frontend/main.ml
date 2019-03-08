@@ -946,6 +946,7 @@ let arg_spec_list curdir =
     ("--debug-show-bbox" , Arg.Unit(OptionState.set_debug_show_bbox) , " Outputs bounding boxes for glyphs"                     );
     ("--debug-show-space", Arg.Unit(OptionState.set_debug_show_space), " Outputs boxes for spaces"                              );
     ("--debug-show-block-bbox", Arg.Unit(OptionState.set_debug_show_block_bbox), " Outputs bounding boxes for blocks"           );
+    ("--debug-show-block-space", Arg.Unit(OptionState.set_debug_show_block_space), " Outputs visualized block spaces"           );
     ("-t"                , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
     ("--type-check-only" , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
     ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"                                 );

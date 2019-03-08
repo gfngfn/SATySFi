@@ -37,6 +37,9 @@ val debug_show_space : unit -> bool
 val set_debug_show_block_bbox : unit -> unit
 val debug_show_block_bbox : unit -> bool
 
+val set_debug_show_block_space : unit -> unit
+val debug_show_block_space : unit -> bool
+
 val set_text_mode : string list -> unit
 val get_mode : unit -> (string list) option
 val is_text_mode : unit -> bool
