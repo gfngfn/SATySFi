@@ -227,6 +227,23 @@ let can_break_before tail =
       end
 
 
+let is_whitespace_character (uch : Uchar.t) : bool =
+  match LineBreakDataMap.find uch with
+  | SP | INBR -> true
+  | _         -> false
+     (* --
+        needs re-consideration:
+        it may be better to use the criterion of whether
+        the general category of the given character is `Zs` or not.
+        -- *)
+
+
+let rec omit_space_uchars (uchlst : Uchar.t list) : Uchar.t list =
+  match uchlst with
+  | []             -> []
+  | uch :: uchtail -> if is_whitespace_character uch then omit_space_uchars uchtail else uchlst
+
+
 let rec omit_skips (hblst : horz_box list) : horz_box list =
   match hblst with
   | HorzPure(phb) :: tail ->
@@ -236,6 +253,13 @@ let rec omit_skips (hblst : horz_box list) : horz_box list =
         | PHSOuterFil
         | PHSFixedEmpty(_) ->
             omit_skips tail
+
+        | PHCInnerString(ctxmain, uchlst) ->
+            begin
+              match omit_space_uchars uchlst with
+              | []     -> omit_skips tail
+              | uchlst -> HorzPure(PHCInnerString(ctxmain, uchlst)) :: tail
+            end
 
         | _ ->
             hblst
@@ -731,6 +755,8 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
 
   (* --
      cut: cuts inline box list into lines based on the break point list `path`
+     * `acclines`: accumulated lines for building a paragraph
+     * `accline`: accumulated inline contents for building a single line
      -- *)
   let rec cut (acclines : line_either Alist.t) (accline : lb_pure_box Alist.t) (lhblst : lb_box list) : line_either Alist.t =
     match lhblst with
@@ -766,8 +792,11 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
         if not (List.mem dscrid path) then
           assert false
         else
+          let le = AlreadyVert(wid, vblst) in
           let acclinesnew =
-            Alist.extend (Alist.extend acclines (PureLine(Alist.to_list accline))) (AlreadyVert(wid, vblst))
+            match Alist.to_list accline with
+            | []     -> Alist.extend acclines le
+            | _ :: _ -> Alist.extend (Alist.extend acclines (PureLine(Alist.to_list accline))) le
           in
             cut acclinesnew Alist.empty tail
 
@@ -918,6 +947,11 @@ let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list *
     determine_widths (Some(widreq)) lphblst
 
 
+type lb_state =
+  | NormalState
+  | ImmediateAfterEmbeddedVert of DiscretionaryID.t
+
+
 let main ((breakability_top, paragraph_margin_top) : breakability * length) ((breakability_bottom, paragraph_margin_bottom) : breakability * length) (ctx : context_main) (hblst : horz_box list) : vert_box list =
 
   let paragraph_width = ctx.paragraph_width in
@@ -977,7 +1011,12 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
     end
   in
 
-  let rec aux (iterdepth : int) (wmap : WidthMap.t) (lhblst : lb_box list) =
+  let unify_discretionary_points dscrid1 dscrid2 =
+    LineBreakGraph.add_vertex grph dscrid2;
+    LineBreakGraph.add_edge grph dscrid1 dscrid2 0
+  in
+
+  let rec aux (state : lb_state) (iterdepth : int) (wmap : WidthMap.t) (lhblst : lb_box list) : WidthMap.t =
     match lhblst with
     | LBDiscretionary(pnlty, dscrid, lphblst0, lphblst1, lphblst2) :: tail ->
         let widinfo0 = get_width_info_list lphblst0 in
@@ -990,7 +1029,7 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
           else
             wmapsub |> WidthMap.add_width_all widinfo0
         in
-          aux iterdepth wmapnew tail
+        aux NormalState iterdepth wmapnew tail
 
     | LBDiscretionaryList(pnlty, lphblst0, dscrlst) :: tail ->
         let widinfo0 = get_width_info_list lphblst0 in
@@ -1011,27 +1050,41 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
             wmap |> WidthMap.add dscrid widinfo2
           ) wmapall
         in
-          aux iterdepth wmapnew tail
+        aux NormalState iterdepth wmapnew tail
 
     | LBEmbeddedVertBreakable(dscrid, _, _) :: tail ->
-        let (_, _) = update_graph wmap dscrid widinfo_zero 0 () in
+        begin
+          match state with
+          | ImmediateAfterEmbeddedVert(dscrid_last) ->
+              unify_discretionary_points dscrid_last dscrid
+
+          | NormalState ->
+              let (_, _) = update_graph wmap dscrid widinfo_zero 0 () in
+              ()
+        end;
         let wmapnew = WidthMap.empty |> WidthMap.add dscrid widinfo_zero in
-          aux iterdepth wmapnew tail
+        aux (ImmediateAfterEmbeddedVert(dscrid)) iterdepth wmapnew tail
 
     | LBPure(lphb) :: tail ->
         let widinfo = get_width_info lphb in
         let wmapnew = wmap |> WidthMap.add_width_all widinfo in
-          aux iterdepth wmapnew tail
+        aux NormalState iterdepth wmapnew tail
 
     | LBFrameBreakable(pads, wid1, wid2, _, _, _, _, lhblstsub) :: tail ->
-        let wmapsub = aux (iterdepth + 1) wmap lhblstsub in
-          aux iterdepth wmapsub tail
+        let wmapsub = aux NormalState (iterdepth + 1) wmap lhblstsub in
+        aux NormalState iterdepth wmapsub tail
 
     | [] ->
         if iterdepth = 0 then
-          let dscrid = DiscretionaryID.final in
-          let (_, wmapfinal) = update_graph wmap dscrid widinfo_zero 0 () in
-            wmapfinal
+          match state with
+          | ImmediateAfterEmbeddedVert(dscrid_last) ->
+              unify_discretionary_points dscrid_last DiscretionaryID.final;
+              wmap
+
+          | NormalState ->
+              let dscrid = DiscretionaryID.final in
+              let (_, wmapfinal) = update_graph wmap dscrid widinfo_zero 0 () in
+              wmapfinal
         else
           wmap
   in
@@ -1042,7 +1095,7 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
     LineBreakGraph.add_vertex grph DiscretionaryID.beginning;
     let lbelst = convert_list_for_line_breaking hblst in
     let lhblst = normalize_chunks lbelst in
-    let _ (* wmapfinal *) = aux 0 wmapinit lhblst in
+    let _ = aux NormalState 0 wmapinit lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
       | None ->
