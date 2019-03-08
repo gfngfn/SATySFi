@@ -573,36 +573,53 @@ let normalize_paragraph (parelems : paragraph_element list) (br : breakability) 
   | []             -> []
 
 
+type top_margin_needed =
+  | TopMarginNeeded
+  | TopMarginProhibited
+
+
 (* --
    normalize:
      squashes bottom/top margins into spaces.
    -- *)
 let normalize (vblst : vert_box list) : pb_vert_box list =
 
-  let rec aux pbvbacc vblst =
+  let append_top_margin_if_needed needed margins pbvbacc =
+    match (needed, margins.margin_top) with
+    | (TopMarginNeeded, Some((br2, len2))) ->
+        Alist.extend pbvbacc (PBVertSkip(LowerOnly, len2), br2)
+
+    | _ ->
+        pbvbacc
+  in
+
+  let rec aux needed pbvbacc vblst =
     match vblst with
     | [] ->
         Alist.to_list pbvbacc
 
     | VertParagraph(margins, parelems) :: vbtail ->
+        let pbvbacc = append_top_margin_if_needed needed margins pbvbacc in
         let (pbvbskip, br) = squash_margins margins.margin_bottom vbtail in
         let pbvbpar = normalize_paragraph parelems br in
-        aux (Alist.append (Alist.append pbvbacc pbvbpar) pbvbskip) vbtail
+        aux TopMarginProhibited (Alist.append (Alist.append pbvbacc pbvbpar) pbvbskip) vbtail
 
     | VertFixedBreakable(vskip) :: vbtail ->
-        aux (Alist.extend pbvbacc (PBVertSkip(Fixed, vskip), Breakable)) vbtail
+        aux TopMarginNeeded (Alist.extend pbvbacc (PBVertSkip(Fixed, vskip), Breakable)) vbtail
+          (* -- appending a skip that stems from a top margin is needed only after fixed skips -- *)
 
     | VertFrame(margins, pads, decoS, decoH, decoM, decoT, wid, vblstsub) :: vbtail ->
+        let pbvbacc = append_top_margin_if_needed needed margins pbvbacc in
         let (pbvbskip, br) = squash_margins margins.margin_bottom vbtail in
-        let pbvblstsub = aux Alist.empty vblstsub in
+        let pbvblstsub = aux TopMarginProhibited Alist.empty vblstsub in
         let pbvb = (PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub), br) in
-        aux (Alist.append (Alist.extend pbvbacc pbvb) pbvbskip) vbtail
+        aux TopMarginProhibited (Alist.append (Alist.extend pbvbacc pbvb) pbvbskip) vbtail
 
     | VertClearPage :: vbtail ->
-        aux (Alist.extend pbvbacc (PBClearPage, Breakable)) vbtail
+        aux TopMarginProhibited (Alist.extend pbvbacc (PBClearPage, Breakable)) vbtail
 
   in
-  aux Alist.empty vblst
+  aux TopMarginProhibited Alist.empty vblst
 
 
 let solidify (vblst : vert_box list) : intermediate_vert_box list =
