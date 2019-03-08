@@ -562,6 +562,7 @@ let pdf_mode_table =
     [
       ("inline-fil", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzPure(PHSOuterFil)])))));
       ("inline-nil", ~% tIB, (fun _ -> base (BCHorz([])))                               );
+      ("omit-skip-after", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzOmitSkipAfter])))));
       ("block-nil" , ~% tBB, (fun _ -> base (BCVert([])))                               );
       ("clear-page", ~% tBB, (fun _ -> base (BCVert(HorzBox.([VertClearPage]))))        );
 
