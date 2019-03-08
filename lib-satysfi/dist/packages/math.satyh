@@ -501,6 +501,7 @@ end = struct
   let-inline ctx \eqn ?:tagopt math =
     inline-fil ++
       embed-block-breakable ctx (math-scheme ctx tagopt math)
+        ++ omit-skip-after
 
 
   let-block ctx +math-list mlst =
@@ -529,6 +530,7 @@ end = struct
   let-inline ctx \math-list mlst =
     inline-fil ++
       embed-block-breakable ctx (read-block ctx '<+math-list(mlst);>)
+        ++ omit-skip-after
 
 
   let-block ctx +align mlstlst =
@@ -571,6 +573,7 @@ end = struct
   let-inline ctx \align mlstlst =
     inline-fil ++
       embed-block-breakable ctx (read-block ctx '<+align(mlstlst);>)
+        ++ omit-skip-after
 
 
   let math-list lst =

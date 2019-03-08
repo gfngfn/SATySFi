@@ -363,7 +363,7 @@ end = struct
 
 
   let-inline ctx \embed-block bt =
-    inline-fil ++ embed-block-breakable ctx (read-block ctx bt)
+    inline-fil ++ embed-block-breakable ctx (read-block ctx bt) ++ omit-skip-after
 
 
   let-inline ctx \error s =
