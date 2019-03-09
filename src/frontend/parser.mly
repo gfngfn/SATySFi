@@ -1124,31 +1124,13 @@ mathbot:
   | tok=VARINMATH { let (rng, mdlnmlst, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf(mdlnmlst, varnm)))) }
 ;
 matharg:
-  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP {
-      let (_, utastmain) = utast in
-      UTMandatoryArgument(make_standard (Tok opn) (Tok cls) utastmain)
-    }
-  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP {
-      let (_, utastmain) = utast in
-      UTMandatoryArgument(make_standard (Tok opn) (Tok cls) utastmain)
-    }
-  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP {
-      let (_, utastmain) = utast in
-      UTMandatoryArgument(make_standard (Tok opn) (Tok cls) utastmain)
-    }
-  | opt=OPTIONAL; BMATHGRP; utast=mathblock; cls=EMATHGRP {
-      let (_, utastmain) = utast in
-      UTOptionalArgument(make_standard (Tok opt) (Tok cls) utastmain)
-    }
-  | opt=OPTIONAL; BHORZGRP; utast=sxsep; cls=EHORZGRP {
-      let (_, utastmain) = utast in
-      UTOptionalArgument(make_standard (Tok opt) (Tok cls) utastmain)
-    }
-  | opt=OPTIONAL; BVERTGRP; utast=vxblock; cls=EVERTGRP {
-      let (_, utastmain) = utast in
-      UTOptionalArgument(make_standard (Tok opt) (Tok cls) utastmain)
-    }
-  | utcmdarg=narg { utcmdarg }
+  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP           { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
+  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP               { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
+  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP             { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
+  | opt=OPTIONAL; BMATHGRP; utast=mathblock; cls=EMATHGRP { UTOptionalArgument(make_standard (Tok opt) (Tok cls) (extract_main utast)) }
+  | opt=OPTIONAL; BHORZGRP; utast=sxsep; cls=EHORZGRP     { UTOptionalArgument(make_standard (Tok opt) (Tok cls) (extract_main utast)) }
+  | opt=OPTIONAL; BVERTGRP; utast=vxblock; cls=EVERTGRP   { UTOptionalArgument(make_standard (Tok opt) (Tok cls) (extract_main utast)) }
+  | utcmdarg=narg                                         { utcmdarg }
 ;
 sxblock:
   | ih=ih { let rng = make_range_from_list ih in (rng, UTInputHorz(ih)) }
@@ -1189,31 +1171,15 @@ ihchar:
   | rng=BREAK { (rng, "\n") }
 ;
 narg:
-  | opn=LPAREN; utast=nxlet; cls=RPAREN {
-      UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
-    }
-  | opn=LPAREN; cls=RPAREN {
-      UTMandatoryArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant)
-    }
-  | utast=nxrecordsynt {
-      UTMandatoryArgument(utast)
-    }
-  | utast=nxlistsynt {
-      UTMandatoryArgument(utast)
-    }
-  | opn=OPTIONAL; LPAREN; utast=nxlet; cls=RPAREN {
-      UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
-    }
-  | opn=OPTIONAL; LPAREN; cls=RPAREN {
-      UTOptionalArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant)
-    }
-  | opn=OPTIONAL; utast=nxrecordsynt {
-      UTOptionalArgument(make_standard (Tok opn) (Ranged utast) (extract_main utast))
-    }
-  | opn=OPTIONAL; utast=nxlistsynt {
-      UTOptionalArgument(make_standard (Tok opn) (Ranged utast) (extract_main utast))
-    }
-  | rng=OMISSION { UTOmission(rng) }
+  | opn=LPAREN; utast=nxlet; cls=RPAREN           { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
+  | opn=LPAREN; cls=RPAREN                        { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant) }
+  | utast=nxrecordsynt                            { UTMandatoryArgument(utast) }
+  | utast=nxlistsynt                              { UTMandatoryArgument(utast) }
+  | opn=OPTIONAL; LPAREN; utast=nxlet; cls=RPAREN { UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
+  | opn=OPTIONAL; LPAREN; cls=RPAREN              { UTOptionalArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant) }
+  | opn=OPTIONAL; utast=nxrecordsynt              { UTOptionalArgument(make_standard (Tok opn) (Ranged utast) (extract_main utast)) }
+  | opn=OPTIONAL; utast=nxlistsynt                { UTOptionalArgument(make_standard (Tok opn) (Ranged utast) (extract_main utast)) }
+  | rng=OMISSION                                  { UTOmission(rng) }
 ;
 sargs:
   | rng=ENDACTIVE             { (rng, []) }
