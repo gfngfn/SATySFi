@@ -827,8 +827,7 @@ nxbot:
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP      { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | tok=LITERAL                                  { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTStringConstant(omit_spaces pre post str)) }
-  | opn=BLIST; cls=ELIST                         { make_standard (Tok opn) (Tok cls) UTEndOfList }
-  | opn=BLIST; utast=nxlist; cls=ELIST           { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | utast=nxlistsynt                             { utast }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
   | opn=BRECORD; cls=ERECORD                     { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
   | opn=BRECORD; rcd=nxrecord; cls=ERECORD       { make_standard (Tok opn) (Tok cls) (UTRecord(rcd)) }
@@ -846,6 +845,10 @@ nxbot:
       let (rng, mdlnm) = opn in
         make_standard (Tok rng) (Tok cls) (UTOpenIn(rng, mdlnm, utast))
     }
+;
+nxlistsynt:
+  | opn=BLIST; cls=ELIST               { make_standard (Tok opn) (Tok cls) UTEndOfList }
+  | opn=BLIST; utast=nxlist; cls=ELIST { make_standard (Tok opn) (Tok cls) (extract_main utast) }
 ;
 path: (* untyped_abstract_tree_main *)
   | ast=nxbot; sub=pathsub { let (pathcomplst, utcycleopt) = sub in UTPath(ast, pathcomplst, utcycleopt) }
@@ -1216,8 +1219,8 @@ narg:
   | opn=BRECORD; rcd=nxrecord; cls=ERECORD {
         UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (UTRecord(rcd)))
       }
-  | opn=BLIST; utast=nxlist; cls=ELIST {
-        UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
+  | utast=nxlistsynt {
+        UTMandatoryArgument(utast)
       }
   | opn=OPTIONAL; LPAREN; utast=nxlet; cls=RPAREN {
         UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
@@ -1228,8 +1231,8 @@ narg:
   | opn=OPTIONAL; BRECORD; rcd=nxrecord; cls=ERECORD {
         UTOptionalArgument(make_standard (Tok opn) (Tok cls) (UTRecord(rcd)))
       }
-  | opn=OPTIONAL; BLIST; utast=nxlist; cls=ELIST {
-        UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
+  | opn=OPTIONAL; utast=nxlistsynt {
+        UTOptionalArgument(make_standard (Tok opn) (Ranged utast) (extract_main utast))
       }
   | rng=OMISSION { UTOmission(rng) }
 ;
