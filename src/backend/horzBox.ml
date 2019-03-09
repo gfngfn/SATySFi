@@ -179,6 +179,27 @@ module MathVariantCharMap = Map.Make
 module MathClassMap = Map.Make(String)
 
 
+type breakability =
+  | Breakable
+  | Unbreakable
+[@@deriving show { with_path = false; }]
+
+
+let ( &-& ) br1 br2 =
+  match (br1, br2) with
+  | (Breakable, Breakable) -> Breakable
+  | _                      -> Unbreakable
+
+
+type debug_margin_info =
+  | Fixed
+  | BetweenLines
+  | LowerOnly of breakability
+  | UpperOnly of breakability
+  | Both      of (breakability * length) * (breakability * length)
+[@@deriving show { with_path = false; }]
+
+
 type context_main = {
   hyphen_dictionary      : LoadHyph.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<hyph>")]
@@ -263,6 +284,7 @@ and horz_box =
   | HorzEmbeddedVertBreakable of length * vert_box list
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
   | HorzScriptGuard    of CharBasis.script * CharBasis.script * horz_box list
+  | HorzOmitSkipAfter
 
 and intermediate_graphics =
   | ImGraphicsFixed    of fixed_graphics
@@ -311,21 +333,26 @@ and evaled_horz_box_main =
          -- *)
 
 and vert_box =
-  | VertLine              of length * length * intermediate_horz_box list
-      [@printer (fun fmt _ -> Format.fprintf fmt "Line")]
-  | VertFixedBreakable    of length
+  | VertParagraph      of margins * paragraph_element list
+  | VertFixedBreakable of length
       [@printer (fun fmt _ -> Format.fprintf fmt "Breakable")]
-  | VertTopMargin         of bool * length
-      [@printer (fun fmt (b, _) -> Format.fprintf fmt "Top%s" (if b then "" else "*"))]
-  | VertBottomMargin      of bool * length
-      [@printer (fun fmt (b, _) -> Format.fprintf fmt "Bottom%s" (if b then "" else "*"))]
-  | VertFrame             of paddings * decoration * decoration * decoration * decoration * length * vert_box list
+  | VertFrame          of margins * paddings * decoration * decoration * decoration * decoration * length * vert_box list
 (*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
   | VertClearPage
 
+and margins = {
+  margin_top    : (breakability * length) option;
+  margin_bottom : (breakability * length) option;
+}
+
+and paragraph_element =
+  | VertParagLine of length * length * intermediate_horz_box list
+      [@printer (fun fmt _ -> Format.fprintf fmt "Line")]
+  | VertParagSkip of length
+
 and intermediate_vert_box =
   | ImVertLine       of length * length * intermediate_horz_box list
-  | ImVertFixedEmpty of length
+  | ImVertFixedEmpty of debug_margin_info * length
   | ImVertFrame      of paddings * decoration * length * intermediate_vert_box list
 
 and evaled_vert_box =
@@ -336,7 +363,7 @@ and evaled_vert_box =
          (2) depth of the contents (nonpositive)
          (3) contents
          -- *)
-  | EvVertFixedEmpty of length
+  | EvVertFixedEmpty of debug_margin_info * length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
 
@@ -493,7 +520,7 @@ let rec get_height_of_evaled_vert_box_list evvblst =
   evvblst |> List.fold_left (fun l evvb ->
     match evvb with
     | EvVertLine(hgt, dpt, _)             -> l +% hgt +% (Length.negate dpt)
-    | EvVertFixedEmpty(len)               -> l +% len
+    | EvVertFixedEmpty(_, len)            -> l +% len
     | EvVertFrame(pads, _, _, _, evvblst) -> l +% pads.paddingB +% pads.paddingL +% get_height_of_evaled_vert_box_list evvblst
   ) Length.zero
 

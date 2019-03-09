@@ -1,6 +1,7 @@
 
 open LengthInterface
 open GraphicBase
+open MyUtil
 
 
 let (~%) = Length.to_pdf_point
@@ -161,6 +162,13 @@ let pdfop_of_stroke_color stroke_color =
   | DeviceGray(gray)       -> op_G gray
 
 
+let pdfop_of_fill_color fill_color =
+  match fill_color with
+  | DeviceRGB(r, g, b)     -> op_rg (r, g, b)
+  | DeviceCMYK(c, m, y, k) -> op_k (c, m, y, k)
+  | DeviceGray(gray)       -> op_g gray
+
+
 let pdfops_of_stroke (line_width : length) (stroke_color : color) (pathlst : path list) : Pdfops.t list =
   let ops_path = pdfops_of_path_list pathlst in
   let op_stroke_color = pdfop_of_stroke_color stroke_color in
@@ -185,12 +193,7 @@ let pdfops_of_dashed_stroke (line_width : length) (d1, d2, d0) (stroke_color : c
 
 let pdfops_of_fill (fill_color : color) (pathlst : path list) : Pdfops.t list =
   let ops_path = pdfops_of_path_list pathlst in
-  let op_fill_color =
-    match fill_color with
-    | DeviceRGB(r, g, b)     -> op_rg (r, g, b)
-    | DeviceCMYK(c, m, y, k) -> op_k (c, m, y, k)
-    | DeviceGray(gray)       -> op_g gray
-  in
+  let op_fill_color = pdfop_of_fill_color fill_color in
   let op_draw = op_f' in  (* -- draws fills by the even-odd rule -- *)
     List.concat [[op_q; op_fill_color]; ops_path; [op_draw; op_Q]]
 
@@ -267,4 +270,131 @@ let pdfops_test_frame color (xpos, yposbaseline) wid hgt dpt =
     op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
     op_S;
     op_Q;
+  ]
+
+
+let pdfops_test_skip_fixed color (xpos, ypos) len =
+  let thk = Length.of_pdf_point 1. in
+  let indent1 = Length.of_pdf_point 2. in
+  let indent2 = Length.of_pdf_point 4. in
+  let x1 = xpos +% indent1 in
+  let x2 = xpos +% indent2 in
+  let yB = ypos -% len in
+  [
+    op_q;
+    pdfop_of_stroke_color color;
+    op_w thk;
+    op_m (x1, ypos); op_l (x1, yB);
+    op_m (x2, ypos); op_l (x2, yB);
+    op_S;
+    op_Q;
+  ]
+
+
+let pdfops_test_skip_between_lines color (xpos, ypos) len =
+  let thk = Length.of_pdf_point 1. in
+  let indent = Length.of_pdf_point 3. in
+  let x = xpos +% indent in
+  [
+    op_q;
+    pdfop_of_stroke_color color;
+    op_w thk;
+    op_m (x, ypos); op_l (x, ypos -% len);
+    op_S;
+    op_Q;
+  ]
+
+
+let pdfops_test_skip_margins color (xpos, ypos) len upperopt loweropt =
+  let thk = Length.of_pdf_point 1. in
+  let thk_nonbreakable = Length.of_pdf_point 0.2 in
+  let indentC = Length.of_pdf_point 5. in
+  let gap = Length.of_pdf_point 2. in
+  let widhalf = Length.of_pdf_point 1. in
+  let xC = xpos +% indentC in
+  let xU = xC -% gap in
+  let xL = xC +% gap in
+  let yB = ypos -% len in
+  let pdfopsU =
+    match upperopt with
+    | None ->
+        []
+
+    | Some((breakableU, lenU)) ->
+        let yBU = ypos -% lenU in
+        let op_draw = if breakableU then op_f' else op_S in
+        [
+          op_m (xU -% widhalf, ypos);
+          op_l (xU, yBU);
+          op_l (xU +% widhalf, ypos);
+          op_h; op_draw;
+        ]
+  in
+  let pdfopsL =
+    match loweropt with
+    | None ->
+        []
+
+    | Some((breakableL, lenL)) ->
+        let yTL = ypos -% len +% lenL in
+        let op_draw = if breakableL then op_f' else op_S in
+        [
+          op_m (xL, yTL);
+          op_l (xL -% widhalf, yB);
+          op_l (xL +% widhalf, yB);
+          op_h; op_draw;
+        ]
+  in
+  List.concat [
+    [
+      op_q;
+      pdfop_of_stroke_color color;
+      pdfop_of_fill_color color;
+      op_w thk;
+      op_m (xC, ypos); op_l (xC, yB);
+      op_S;
+      op_w thk_nonbreakable;
+    ];
+    pdfopsU;
+    pdfopsL;
+    [
+      op_Q;
+    ]
+  ]
+
+
+let pdfops_test_scale color (xpos, ypos) len =
+  let len_unit = Length.of_pdf_point 10. in
+  let divs =
+    let n = truncate (len /% len_unit) in
+    (range 0 n) |> List.map (fun i ->
+       let lendiv =
+         if i mod 10 = 0 then
+           Length.of_pdf_point 6.
+         else if i mod 5 = 0 then
+           Length.of_pdf_point 4.
+         else
+           Length.of_pdf_point 2.
+       in
+       let ydiv = ypos -% len_unit *% (float i) in
+       [
+         op_m (xpos, ydiv);
+         op_l (xpos -% lendiv, ydiv);
+       ]
+
+    ) |> List.concat
+  in
+  List.concat [
+    [
+      op_q;
+      pdfop_of_stroke_color color;
+      op_w (Length.of_pdf_point 0.5);
+      op_m (xpos, ypos);
+      op_l (xpos, ypos -% len);
+    ];
+    divs;
+    [
+      op_S;
+      op_Q;
+    ];
   ]

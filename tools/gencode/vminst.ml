@@ -961,7 +961,10 @@ make_font_value (abbrev, size_ratio, rising_ratio)
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
+let open HorzBox in
+let br_top    = if is_breakable_top then Breakable else Unbreakable in
+let br_bottom = if is_breakable_bottom then Breakable else Unbreakable in
+let imvblst = LineBreak.main (br_top, ctx.paragraph_top) (br_bottom, ctx.paragraph_bottom) ctx hblst in
 make_vert imvblst
 |}
     ; inst "BackendPageBreaking"
@@ -1009,15 +1012,19 @@ let vblst =
   let valuev = reducef valuek [valuectxsub] in
   get_vert valuev
 in
+let margins =
+  HorzBox.{
+    margin_top    = Some((Breakable, ctx.paragraph_top));
+    margin_bottom = Some((Breakable, ctx.paragraph_bottom));
+  }
+in
 make_vert (HorzBox.([
-  VertTopMargin(true, ctx.paragraph_top);
-  VertFrame(pads,
-              make_frame_deco reducef valuedecoS,
-              make_frame_deco reducef valuedecoH,
-              make_frame_deco reducef valuedecoM,
-              make_frame_deco reducef valuedecoT,
-              ctx.paragraph_width, vblst);
-  VertBottomMargin(true, ctx.paragraph_bottom);
+  VertFrame(margins, pads,
+    make_frame_deco reducef valuedecoS,
+    make_frame_deco reducef valuedecoH,
+    make_frame_deco reducef valuedecoM,
+    make_frame_deco reducef valuedecoT,
+    ctx.paragraph_width, vblst);
 ]))
 |}
     ; inst "BackendAddFootnote"
