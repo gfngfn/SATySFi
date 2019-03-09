@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Fix bug of type inference about records ([PR\#148](https://github.com/gfngfn/SATySFi/pull/148) by `elpinal`).
 - Fix bug about decoding fonts that has NULL as the DefaultLangSys entry in a Script table.
 - Fix (a kind of) bug about decoding fonts that has NULL in a BaseRecord table ([PR\#164](https://github.com/gfngfn/SATySFi/pull/164) by `matsud224`).
+- Fix the page breaking algorithm.
 
 ## Added
 - Begins to support Markdown input.
@@ -30,6 +31,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Uses `"$(pwd)/.satysfi/"` as one of the library roots, and provides option `--config <colon-separated paths>` (or `-C …`) for adding arbitrary paths to the library roots ([PR\#161](https://github.com/gfngfn/SATySFi/pull/161) by `nyuichi`).
 - Supports the insertion of images by `![…](…)` in Markdown sources ([PR\#139](https://github.com/gfngfn/SATySFi/pull/139) by `hikalium`).
 - Supports the local import `@import: …` for the text-generating mode (i.e. supports importing `.satyh-*` or `.satyg` files).
+- Provides a new primitive `omit-skip-after`.
 
 ## Deprecated
 
