@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Supports the insertion of images by `![…](…)` in Markdown sources ([PR\#139](https://github.com/gfngfn/SATySFi/pull/139) by `hikalium`).
 - Supports the local import `@import: …` for the text-generating mode (i.e. supports importing `.satyh-*` or `.satyg` files).
 - Provides a new primitive `omit-skip-after`.
+- Provides new options `--debug-show-block-bbox` and `--debug-show-block-space`.
 - Allows `[]` (i.e. the empty list) or `(| |)` (i.e. the empty record) as an expression argument of commands.
 
 ## Deprecated
