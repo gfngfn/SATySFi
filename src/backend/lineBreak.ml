@@ -811,7 +811,11 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
           cut acclinesnew acclinenew tail
 
     | [] ->
-        Alist.extend acclines (PureLine(Alist.to_list accline))
+        begin
+          match Alist.to_list accline with
+          | []   -> acclines
+          | line -> Alist.extend acclines (PureLine(line))
+        end
   in
 
 
