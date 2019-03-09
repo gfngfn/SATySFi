@@ -803,16 +803,7 @@ nxbot:
   | tok=LITERAL                                  { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTStringConstant(omit_spaces pre post str)) }
   | utast=nxlistsynt                             { utast }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
-  | opn=BRECORD; cls=ERECORD                     { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
-  | opn=BRECORD; rcd=nxrecord; cls=ERECORD       { make_standard (Tok opn) (Tok cls) (UTRecord(rcd)) }
-  | opn=BRECORD; utast=nxbot; WITH; rcd=nxrecord; cls=ERECORD {
-      let (_, utastmain) =
-        rcd |> List.fold_left (fun utast1 (fldnm, utastF) ->
-          (Range.dummy "update-field", UTUpdateField(utast1, fldnm, utastF))
-        ) utast
-      in
-      make_standard (Tok opn) (Tok cls) utastmain
-    }
+  | utast=nxrecordsynt                           { utast }
   | opn=BPATH; path=path; cls=EPATH              { make_standard (Tok opn) (Tok cls) path }
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP  { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=OPENMODULE; utast=nxlet; cls=RPAREN {
@@ -823,6 +814,18 @@ nxbot:
 nxlistsynt:
   | opn=BLIST; cls=ELIST               { make_standard (Tok opn) (Tok cls) UTEndOfList }
   | opn=BLIST; utast=nxlist; cls=ELIST { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+;
+nxrecordsynt:
+  | opn=BRECORD; cls=ERECORD               { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
+  | opn=BRECORD; rcd=nxrecord; cls=ERECORD { make_standard (Tok opn) (Tok cls) (UTRecord(rcd)) }
+  | opn=BRECORD; utast=nxbot; WITH; rcd=nxrecord; cls=ERECORD {
+      let (_, utastmain) =
+        rcd |> List.fold_left (fun utast1 (fldnm, utastF) ->
+          (Range.dummy "update-field", UTUpdateField(utast1, fldnm, utastF))
+        ) utast
+      in
+      make_standard (Tok opn) (Tok cls) utastmain
+    }
 ;
 path: (* untyped_abstract_tree_main *)
   | ast=nxbot; sub=pathsub { let (pathcomplst, utcycleopt) = sub in UTPath(ast, pathcomplst, utcycleopt) }
@@ -1192,8 +1195,8 @@ narg:
   | opn=LPAREN; cls=RPAREN {
       UTMandatoryArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant)
     }
-  | opn=BRECORD; rcd=nxrecord; cls=ERECORD {
-      UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (UTRecord(rcd)))
+  | utast=nxrecordsynt {
+      UTMandatoryArgument(utast)
     }
   | utast=nxlistsynt {
       UTMandatoryArgument(utast)
@@ -1204,8 +1207,8 @@ narg:
   | opn=OPTIONAL; LPAREN; cls=RPAREN {
       UTOptionalArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant)
     }
-  | opn=OPTIONAL; BRECORD; rcd=nxrecord; cls=ERECORD {
-      UTOptionalArgument(make_standard (Tok opn) (Tok cls) (UTRecord(rcd)))
+  | opn=OPTIONAL; utast=nxrecordsynt {
+      UTOptionalArgument(make_standard (Tok opn) (Ranged utast) (extract_main utast))
     }
   | opn=OPTIONAL; utast=nxlistsynt {
       UTOptionalArgument(make_standard (Tok opn) (Ranged utast) (extract_main utast))
