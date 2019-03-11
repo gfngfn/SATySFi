@@ -989,7 +989,7 @@ let setup_root_dirs () =
   | _ :: _ -> Config.initialize ds
 
 
-let () =
+let main () =
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
     Arg.parse (arg_spec_list curdir) (handle_anonimous_arg curdir) "";

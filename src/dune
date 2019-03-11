@@ -1,6 +1,5 @@
-(executable
+(library
  (name main)
- (public_name satysfi)
  (flags (-w -3 -bin-annot -thread -unsafe-string))
  (libraries str
             batteries
