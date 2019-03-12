@@ -1,0 +1,332 @@
+;;; generated automatically. DO NOT EDIT
+;;; To update this file, you should run `dune runtest; dune promote`.
+
+;; nx.saty
+(UTLetNonRecIn (None,
+   ((Range.Normal ("nx.saty", 1, 4, 1, 6)), (UTPVariable "xs")),
+   (UTListCons ((UTIntegerConstant 1),
+      (UTListCons ((UTIntegerConstant 2),
+         (UTListCons ((UTIntegerConstant 3), UTEndOfList))))
+      )),
+   (UTLetNonRecIn (None,
+      ((Range.Normal ("nx.saty", 2, 4, 2, 6)), (UTPVariable "ys")),
+      (UTListCons ((UTIntegerConstant 1),
+         (UTListCons ((UTIntegerConstant 2),
+            (UTListCons ((UTIntegerConstant 3), UTEndOfList))))
+         )),
+      (UTLetNonRecIn (None,
+         ((Range.Normal ("nx.saty", 4, 4, 4, 6)), (UTPVariable "r0")),
+         (UTRecord []),
+         (UTLetNonRecIn (None,
+            ((Range.Normal ("nx.saty", 5, 4, 5, 6)), (UTPVariable "r1")),
+            (UTRecord [("x", (UTIntegerConstant 1))]),
+            (UTLetNonRecIn (None,
+               ((Range.Normal ("nx.saty", 6, 4, 6, 6)), (UTPVariable "r2")),
+               (UTRecord
+                  [("x", (UTIntegerConstant 1)); ("y", (UTIntegerConstant 2))
+                    ]),
+               (UTLetNonRecIn (None,
+                  ((Range.Normal ("nx.saty", 7, 4, 7, 10)),
+                   (UTPVariable "r2semi")),
+                  (UTRecord
+                     [("x", (UTIntegerConstant 1));
+                       ("y", (UTIntegerConstant 2))]),
+                  (UTLetNonRecIn (None,
+                     ((Range.Normal ("nx.saty", 9, 4, 9, 7)),
+                      (UTPVariable "tp2")),
+                     (UTTuple [(UTIntegerConstant 1); (UTIntegerConstant 2)]),
+                     (UTLetNonRecIn (None,
+                        ((Range.Normal ("nx.saty", 10, 4, 10, 7)),
+                         (UTPVariable "tp3")),
+                        (UTTuple
+                           [(UTIntegerConstant 1); (UTIntegerConstant 2);
+                             (UTIntegerConstant 3)]),
+                        (UTLetNonRecIn (None,
+                           ((Range.Normal ("nx.saty", 12, 4, 12, 11)),
+                            (UTPVariable "op-test")),
+                           (UTTuple
+                              [((|| ((|| a) b)) c); ((&& ((&& a) b)) c);
+                                ((== a) ((> b) ((< c) d)));
+                                ((^ a) ((:: b) c)); ((+ a) ((+ b) c));
+                                ((-' ((- a) b)) c);
+                                ((+ a) ((+ ((- b) c)) d));
+                                ((* a) ((*' b) ((/ c) ((mod d) e))));
+                                ((* ((- (UTIntegerConstant 0)) a)) b);
+                                ((|| a) ((&& a) ((== ((^ b) c)) ((> d) ((< e) ((^ f) ((:: g) ((+ h) ((-' ((- i) j)) ((* k) ((*' l) ((/ m) ((mod n) o)))))))))))));
+                                ((* ((- (UTIntegerConstant 0)) a)) b);
+                                ((* (not a)) b); ((* F(a)) b);
+                                ((* A(U:())) b); ((+ a) (f b)); ((- f) b);
+                                ((&& (not a)) b); ((|| a) (not b))]),
+                           UTFinishHeaderFile))
+                        ))
+                     ))
+                  ))
+               ))
+            ))
+         ))
+      ))
+   ))
+
+;; variants.saty
+(UTDeclareVariantIn (
+   (UTMutualVariantCons ([], (Range.Normal ("variants.saty", 1, 5, 1, 6)),
+      "t",
+      [((Range.Normal ("variants.saty", 1, 9, 1, 10)), "X",
+        ((Range.Dummy "dec-constructor-unit1"),
+         (Types.MTypeName ([], [], "unit"))));
+        ((Range.Normal ("variants.saty", 1, 13, 1, 14)), "Y",
+         ((Range.Dummy "dec-constructor-unit2"),
+          (Types.MTypeName ([], [], "unit"))))
+        ],
+      (UTMutualVariantCons ([], (Range.Normal ("variants.saty", 2, 4, 2, 5)),
+         "s",
+         [((Range.Normal ("variants.saty", 2, 8, 2, 9)), "Z",
+           ((Range.Normal ("variants.saty", 2, 13, 2, 14)),
+            (Types.MTypeName ([], [], "t"))));
+           ((Range.Normal ("variants.saty", 2, 17, 2, 18)), "W",
+            ((Range.Normal ("variants.saty", 2, 22, 2, 23)),
+             (Types.MTypeName ([], [], "u"))))
+           ],
+         UTEndOfMutualVariant))
+      )),
+   UTFinishHeaderFile))
+
+;; txprod.saty
+(UTDeclareVariantIn (
+   (UTMutualSynonymCons ([], (Range.Normal ("txprod.saty", 1, 5, 1, 6)), "t",
+      ((Range.Normal ("txprod.saty", 1, 9, 1, 14)),
+       (Types.MProductType
+          [((Range.Normal ("txprod.saty", 1, 9, 1, 10)),
+            (Types.MTypeName ([], [], "a")));
+            ((Range.Normal ("txprod.saty", 1, 13, 1, 14)),
+             (Types.MTypeName ([], [], "b")))
+            ])),
+      (UTMutualSynonymCons ([], (Range.Normal ("txprod.saty", 2, 4, 2, 5)),
+         "s",
+         ((Range.Normal ("txprod.saty", 2, 8, 2, 17)),
+          (Types.MProductType
+             [((Range.Normal ("txprod.saty", 2, 8, 2, 9)),
+               (Types.MTypeName ([], [], "a")));
+               ((Range.Normal ("txprod.saty", 2, 12, 2, 13)),
+                (Types.MTypeName ([], [], "b")));
+               ((Range.Normal ("txprod.saty", 2, 16, 2, 17)),
+                (Types.MTypeName ([], [], "c")))
+               ])),
+         UTEndOfMutualVariant))
+      )),
+   UTFinishHeaderFile))
+
+;; txlist.saty
+(UTDeclareVariantIn (
+   (UTMutualSynonymCons ([], (Range.Normal ("txlist.saty", 1, 5, 1, 6)), "t",
+      ((Range.Normal ("txlist.saty", 1, 9, 1, 27)),
+       (Types.MHorzCommandType
+          [(Types.MMandatoryArgumentType
+              ((Range.Normal ("txlist.saty", 1, 10, 1, 11)),
+               (Types.MTypeName ([], [], "s"))));
+            (Types.MOptionalArgumentType
+               ((Range.Normal ("txlist.saty", 1, 13, 1, 14)),
+                (Types.MTypeName ([], [], "u"))))
+            ])),
+      (UTMutualSynonymCons ([], (Range.Normal ("txlist.saty", 2, 4, 2, 5)),
+         "t",
+         ((Range.Normal ("txlist.saty", 2, 8, 2, 26)),
+          (Types.MHorzCommandType
+             [(Types.MOptionalArgumentType
+                 ((Range.Normal ("txlist.saty", 2, 9, 2, 10)),
+                  (Types.MTypeName ([], [], "s"))));
+               (Types.MMandatoryArgumentType
+                  ((Range.Normal ("txlist.saty", 2, 13, 2, 14)),
+                   (Types.MTypeName ([], [], "u"))))
+               ])),
+         (UTMutualSynonymCons ([],
+            (Range.Normal ("txlist.saty", 3, 4, 3, 5)), "t",
+            ((Range.Normal ("txlist.saty", 3, 8, 3, 21)),
+             (Types.MHorzCommandType [])),
+            (UTMutualSynonymCons ([],
+               (Range.Normal ("txlist.saty", 4, 4, 4, 5)), "t",
+               ((Range.Normal ("txlist.saty", 4, 8, 4, 22)),
+                (Types.MHorzCommandType
+                   [(Types.MMandatoryArgumentType
+                       ((Range.Normal ("txlist.saty", 4, 9, 4, 10)),
+                        (Types.MTypeName ([], [], "s"))))
+                     ])),
+               (UTMutualSynonymCons ([],
+                  (Range.Normal ("txlist.saty", 5, 4, 5, 5)), "t",
+                  ((Range.Normal ("txlist.saty", 5, 8, 5, 23)),
+                   (Types.MHorzCommandType
+                      [(Types.MMandatoryArgumentType
+                          ((Range.Normal ("txlist.saty", 5, 9, 5, 10)),
+                           (Types.MTypeName ([], [], "s"))))
+                        ])),
+                  UTEndOfMutualVariant))
+               ))
+            ))
+         ))
+      )),
+   UTFinishHeaderFile))
+
+;; txrecord.saty
+(UTDeclareVariantIn (
+   (UTMutualSynonymCons ([], (Range.Normal ("txrecord.saty", 1, 5, 1, 6)),
+      "t", ((Range.Normal ("txrecord.saty", 1, 9, 1, 25)), MRecordType(...)),
+      (UTMutualSynonymCons ([], (Range.Normal ("txrecord.saty", 2, 4, 2, 5)),
+         "t",
+         ((Range.Normal ("txrecord.saty", 2, 8, 2, 25)), MRecordType(...)),
+         (UTMutualSynonymCons ([],
+            (Range.Normal ("txrecord.saty", 3, 4, 3, 5)), "t",
+            ((Range.Normal ("txrecord.saty", 3, 8, 3, 18)), MRecordType(...)),
+            UTEndOfMutualVariant))
+         ))
+      )),
+   UTFinishHeaderFile))
+
+;; pats.saty
+(UTLetNonRecIn (None,
+   ((Range.Normal ("pats.saty", 1, 4, 1, 14)), (UTPVariable "pats-test1")),
+   (UTPatternMatch (a,
+      [(UTPatternBranchWhen (
+          ((Range.Normal ("pats.saty", 3, 4, 3, 5)), (UTPVariable "b")), c, d
+          ));
+        (UTPatternBranch (
+           ((Range.Normal ("pats.saty", 4, 4, 4, 5)), (UTPVariable "b")), d))
+        ]
+      )),
+   (UTLetNonRecIn (None,
+      ((Range.Normal ("pats.saty", 6, 4, 6, 14)), (UTPVariable "pats-test2")),
+      (UTPatternMatch (a,
+         [(UTPatternBranch (
+             ((Range.Normal ("pats.saty", 8, 4, 8, 5)), (UTPVariable "b")), d
+             ));
+           (UTPatternBranchWhen (
+              ((Range.Normal ("pats.saty", 9, 4, 9, 5)), (UTPVariable "b")),
+              c, d))
+           ]
+         )),
+      UTFinishHeaderFile))
+   ))
+
+;; pattuple.saty
+(UTLetNonRecIn (None,
+   ((Range.Normal ("pattuple.saty", 1, 4, 1, 17)),
+    (UTPVariable "pattuple-test")),
+   (UTPatternMatch (a,
+      [(UTPatternBranch (
+          ((Range.Normal ("pattuple.saty", 3, 4, 3, 10)),
+           (UTPTuple
+              [((Range.Normal ("pattuple.saty", 3, 5, 3, 6)),
+                (UTPVariable "b"));
+                ((Range.Normal ("pattuple.saty", 3, 8, 3, 9)),
+                 (UTPVariable "c"))
+                ])),
+          d))
+        ]
+      )),
+   UTFinishHeaderFile))
+
+;; patlist.saty
+(UTLetNonRecIn (None,
+   ((Range.Normal ("patlist.saty", 1, 4, 1, 12)), (UTPVariable "pat-test")),
+   (UTPatternMatch (a,
+      [(UTPatternBranch (
+          ((Range.Normal ("patlist.saty", 3, 4, 3, 7)),
+           (UTPListCons (
+              ((Range.Normal ("patlist.saty", 3, 5, 3, 6)), (UTPVariable "b")),
+              ((Range.Dummy "end-of-list-pattern"), UTPEndOfList)))),
+          c));
+        (UTPatternBranch (
+           ((Range.Normal ("patlist.saty", 4, 4, 4, 10)),
+            (UTPListCons (
+               ((Range.Normal ("patlist.saty", 4, 5, 4, 6)),
+                (UTPVariable "b")),
+               ((Range.Normal ("patlist.saty", 4, 8, 4, 9)),
+                (UTPListCons (
+                   ((Range.Normal ("patlist.saty", 4, 8, 4, 9)),
+                    (UTPVariable "c")),
+                   ((Range.Dummy "end-of-list-pattern"), UTPEndOfList))))
+               ))),
+           d));
+        (UTPatternBranch (
+           ((Range.Normal ("patlist.saty", 5, 4, 5, 11)),
+            (UTPListCons (
+               ((Range.Normal ("patlist.saty", 5, 5, 5, 6)),
+                (UTPVariable "b")),
+               ((Range.Normal ("patlist.saty", 5, 8, 5, 10)),
+                (UTPListCons (
+                   ((Range.Normal ("patlist.saty", 5, 8, 5, 9)),
+                    (UTPVariable "c")),
+                   ((Range.Dummy "end-of-list-pattern"), UTPEndOfList))))
+               ))),
+           d))
+        ]
+      )),
+   UTFinishHeaderFile))
+
+;; sxlist.saty
+(UTLetNonRecIn (None,
+   ((Range.Normal ("sxlist.saty", 1, 4, 1, 5)), UTPWildCard), UTEndOfList,
+   (UTLetNonRecIn (None,
+      ((Range.Normal ("sxlist.saty", 2, 4, 2, 5)), UTPWildCard),
+      (UTListCons ((UTInputHorz [IT:aa]),
+         (UTListCons ((UTInputHorz [IT:bb]), UTEndOfList)))),
+      UTFinishHeaderFile))
+   ))
+
+;; mathlist.saty
+(UTLetNonRecIn (None,
+   ((Range.Normal ("mathlist.saty", 1, 4, 1, 5)), UTPWildCard), UTEndOfList,
+   (UTLetNonRecIn (None,
+      ((Range.Normal ("mathlist.saty", 2, 4, 2, 5)), UTPWildCard),
+      (UTListCons (
+         (UTMath
+            ((Range.Normal ("mathlist.saty", 2, 11, 2, 12)),
+             (UTMList
+                [((Range.Normal ("mathlist.saty", 2, 11, 2, 12)),
+                  (UTMChar "a"))]))),
+         (UTListCons (
+            (UTMath
+               ((Range.Normal ("mathlist.saty", 2, 13, 2, 15)),
+                (UTMList
+                   [((Range.Normal ("mathlist.saty", 2, 13, 2, 14)),
+                     (UTMChar "a"));
+                     ((Range.Normal ("mathlist.saty", 2, 14, 2, 15)),
+                      (UTMChar "b"))
+                     ]))),
+            UTEndOfList))
+         )),
+      UTFinishHeaderFile))
+   ))
+
+;; toplevel.saty
+(UTDeclareVariantIn (
+   (UTMutualSynonymCons ([], (Range.Normal ("toplevel.saty", 1, 5, 1, 6)),
+      "t",
+      ((Range.Normal ("toplevel.saty", 1, 9, 1, 15)),
+       (Types.MFuncType ([],
+          ((Range.Normal ("toplevel.saty", 1, 9, 1, 10)),
+           (Types.MTypeName ([], [], "a"))),
+          ((Range.Normal ("toplevel.saty", 1, 14, 1, 15)),
+           (Types.MTypeName ([], [], "b")))
+          ))),
+      (UTMutualVariantCons ([], (Range.Normal ("toplevel.saty", 2, 4, 2, 5)),
+         "s",
+         [((Range.Normal ("toplevel.saty", 2, 8, 2, 9)), "A",
+           ((Range.Dummy "dec-constructor-unit1"),
+            (Types.MTypeName ([], [], "unit"))));
+           ((Range.Normal ("toplevel.saty", 2, 12, 2, 13)), "B",
+            ((Range.Dummy "dec-constructor-unit2"),
+             (Types.MTypeName ([], [], "unit"))))
+           ],
+         (UTMutualVariantCons ([],
+            (Range.Normal ("toplevel.saty", 3, 4, 3, 5)), "u",
+            [((Range.Normal ("toplevel.saty", 4, 4, 4, 5)), "A",
+              ((Range.Dummy "dec-constructor-unit1"),
+               (Types.MTypeName ([], [], "unit"))));
+              ((Range.Normal ("toplevel.saty", 5, 4, 5, 5)), "B",
+               ((Range.Dummy "dec-constructor-unit2"),
+                (Types.MTypeName ([], [], "unit"))))
+              ],
+            UTEndOfMutualVariant))
+         ))
+      )),
+   UTFinishHeaderFile))

@@ -1,0 +1,4 @@
+type t = (| x: a; y: b |)
+and t = (| x: a; y: b; |)
+and t = (| x: a |)
+% and t = (| |) % cannot write this
