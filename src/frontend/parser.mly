@@ -430,8 +430,13 @@
 %token <Range.t> HEADER_STAGE0 HEADER_STAGE1 HEADER_PERSISTENT0
 %token EOI
 
-%left BINOP_PLUS
-%left BINOP_MINUS EXACT_MINUS
+%left  BINOP_BAR
+%left  BINOP_AMP
+%right BINOP_EQ BINOP_GT BINOP_LT
+%right BINOP_HAT CONS
+%right BINOP_PLUS
+%left  BINOP_MINUS EXACT_MINUS
+%right BINOP_TIMES EXACT_TIMES BINOP_DIVIDES MOD
 
 %start main
 %type <Types.stage * Types.header_element list * Types.untyped_abstract_tree> main
@@ -442,14 +447,7 @@
 %type <Types.untyped_abstract_tree> nxbfr
 %type <Types.untyped_abstract_tree> nxwhl
 %type <Types.untyped_abstract_tree> nxif
-%type <Types.untyped_abstract_tree> nxlor
-%type <Types.untyped_abstract_tree> nxland
-%type <Types.untyped_abstract_tree> nxcomp
-%type <Types.untyped_abstract_tree> nxconcat
-%type <Types.untyped_abstract_tree> nxlplus
-%type <Types.untyped_abstract_tree> nxltimes
-%type <Types.untyped_abstract_tree> nxrplus
-%type <Types.untyped_abstract_tree> nxrtimes
+%type <Types.untyped_abstract_tree> nxbinop
 %type <Types.untyped_abstract_tree> nxun
 %type <Types.untyped_abstract_tree> nxapp
 %type <Types.untyped_abstract_tree> nxbot
@@ -700,69 +698,40 @@ nxbfr:
   | utast=nxlambda                        { utast }
 ;
 nxlambda:
-  | vartok=VAR; OVERWRITEEQ; utast=nxlor {
+  | vartok=VAR; OVERWRITEEQ; utast=nxbinop {
       let (rngvar, varnm) = vartok in
       make_standard (Tok rngvar) (Ranged utast) (UTOverwrite(rngvar, varnm, utast))
     }
-  | top=LAMBDA; argpatlst=argpats; ARROW; utast=nxlor {
+  | top=LAMBDA; argpatlst=argpats; ARROW; utast=nxbinop {
       let rng = make_range (Tok top) (Ranged utast) in
       curry_lambda_abstract_pattern rng argpatlst utast
     }
-  | utast=nxlor { utast }
+  | utast=nxbinop { utast }
 ;
 argpats:
   | argpatlst=list(patbot) { argpatlst }
 ;
-nxlor:
-  | utastL=nxlor; op=BINOP_BAR; utastR=nxland { binary_operator utastL op utastR }
-  | utast=nxland                              { utast }
-;
-nxland:
-  | utastL=nxland; op=BINOP_AMP; utastR=nxcomp { binary_operator utastL op utastR }
-  | utast=nxcomp                               { utast }
-;
-nxcomp:
-  | utastL=nxconcat; op=BINOP_EQ; utastR=nxcomp { binary_operator utastL op utastR }
-  | utastL=nxconcat; op=BINOP_GT; utastR=nxcomp { binary_operator utastL op utastR }
-  | utastL=nxconcat; op=BINOP_LT; utastR=nxcomp { binary_operator utastL op utastR }
-  | utast=nxconcat                              { utast }
-;
-nxconcat:
-  | utastL=nxlplus; op=BINOP_HAT; utastR=nxconcat { binary_operator utastL op utastR }
-  | utastL=nxlplus; rng=CONS; utastR=nxconcat     { binary_operator utastL (rng, "::") utastR }
-  | utast=nxlplus                                 { utast }
-;
-nxlplus:
-  | utastL=nxlminus; op=BINOP_PLUS; utastR=nxrplus { binary_operator utastL op utastR }
-  | utast=nxlminus                                 { utast }
-;
-nxlminus:
-  | utastL=nxlplus; op=BINOP_MINUS;  utastR=nxrtimes { binary_operator utastL op utastR }
-  | utastL=nxlplus; rng=EXACT_MINUS; utastR=nxrtimes { binary_operator utastL (rng, "-") utastR }
-  | utast=nxltimes                                   { utast }
-;
-nxrplus:
-  | utastL=nxrminus; op=BINOP_PLUS; utastR=nxrplus { binary_operator utastL op utastR }
-  | utast=nxrminus                                 { utast }
-;
-nxrminus:
-  | utastL=nxrplus; op=BINOP_MINUS; utastR=nxrtimes  { binary_operator utastL op utastR }
-  | utastL=nxrplus; rng=EXACT_MINUS; utastR=nxrtimes { binary_operator utastL (rng, "-") utastR }
-  | utast=nxrtimes                                   { utast }
-;
-nxltimes:
-  | utastL=nxun; op=BINOP_TIMES;   utastR=nxrtimes { binary_operator utastL op utastR }
-  | utastL=nxun; rng=EXACT_TIMES;  utastR=nxrtimes { binary_operator utastL (rng, "*") utastR }
-  | utastL=nxun; op=BINOP_DIVIDES; utastR=nxrtimes { binary_operator utastL op utastR }
-  | utastL=nxun; rng=MOD;          utastR=nxrtimes { binary_operator utastL (rng, "mod") utastR }
-  | utast=nxun                                     { utast }
-;
-nxrtimes:
-  | utastL=nxapp; op=BINOP_TIMES;   utastR=nxrtimes { binary_operator utastL op utastR }
-  | utastL=nxapp; rng=EXACT_TIMES;  utastR=nxrtimes { binary_operator utastL (rng, "*") utastR }
-  | utastL=nxapp; op=BINOP_DIVIDES; utastR=nxrtimes { binary_operator utastL op utastR }
-  | utastL=nxapp; rng=MOD;          utastR=nxrtimes { binary_operator utastL (rng, "mod") utastR }
-  | utast=nxapp                                     { utast }
+nxbinop:
+  | utastL=nxbinop; op=BINOP_BAR;     utastR=nxbinop
+  | utastL=nxbinop; op=BINOP_AMP;     utastR=nxbinop
+  | utastL=nxbinop; op=BINOP_EQ;      utastR=nxbinop
+  | utastL=nxbinop; op=BINOP_GT;      utastR=nxbinop
+  | utastL=nxbinop; op=BINOP_LT;      utastR=nxbinop
+  | utastL=nxbinop; op=BINOP_HAT;     utastR=nxbinop
+  | utastL=nxbinop; op=BINOP_PLUS;    utastR=nxbinop
+  | utastL=nxbinop; op=BINOP_MINUS;   utastR=nxbinop
+  | utastL=nxbinop; op=BINOP_TIMES;   utastR=nxbinop
+  | utastL=nxbinop; op=BINOP_DIVIDES; utastR=nxbinop
+    { binary_operator utastL op utastR }
+  | utastL=nxbinop; rng=CONS;         utastR=nxbinop
+    { binary_operator utastL (rng, "::") utastR }
+  | utastL=nxbinop; rng=EXACT_MINUS;  utastR=nxbinop
+    { binary_operator utastL (rng, "-") utastR }
+  | utastL=nxbinop; rng=EXACT_TIMES;  utastR=nxbinop
+    { binary_operator utastL (rng, "*") utastR }
+  | utastL=nxbinop; rng=MOD;          utastR=nxbinop
+    { binary_operator utastL (rng, "mod") utastR }
+  | utast=nxun { utast }
 ;
 nxun:
   | tok=EXACT_MINUS; utast2=nxapp    { binary_operator (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0)) (tok, "-") utast2 }

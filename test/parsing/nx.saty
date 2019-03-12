@@ -27,8 +27,11 @@ let op-test =
     a + f b,
     f -b,
     not a && b,
-    a || not b
-    % a * not b,
-    % a * F b,
-    % a * B
+    a || not b,
+    a * not b,
+    a * F b,
+    a * B,
+    not a * b,
+    F a * b,
+    A * b
   )

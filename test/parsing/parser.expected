@@ -56,7 +56,10 @@
                                 ((* ((- (UTIntegerConstant 0)) a)) b);
                                 ((* (not a)) b); ((* F(a)) b);
                                 ((* A(U:())) b); ((+ a) (f b)); ((- f) b);
-                                ((&& (not a)) b); ((|| a) (not b))]),
+                                ((&& (not a)) b); ((|| a) (not b));
+                                ((* a) (not b)); ((* a) F(b));
+                                ((* a) B(U:())); ((* (not a)) b);
+                                ((* F(a)) b); ((* A(U:())) b)]),
                            UTFinishHeaderFile))
                         ))
                      ))
