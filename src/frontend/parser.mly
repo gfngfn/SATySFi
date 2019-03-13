@@ -476,6 +476,13 @@
 
 %%
 
+optterm_list(sep, X):
+  | { [] }
+  | x=X; sep?
+    { [x] }
+  | x=X; sep; xs=optterm_nonempty_list(sep, X)
+    { x :: xs }
+
 optterm_nonempty_list(sep, X):
   | x=X; sep?
     { [x] }
@@ -932,12 +939,11 @@ txbot:
   | tytok=VARWITHMOD { tytok }
 ;
 txlist:
-  | mnty=txfunc; LISTPUNCT; tail=txlist                 { MMandatoryArgumentType(mnty) :: tail }
-  | mnty=txfunc                                         { MMandatoryArgumentType(mnty) :: [] }
-  | mnty=txapppre; OPTIONALTYPE; LISTPUNCT; tail=txlist { MOptionalArgumentType(mnty) :: tail }
-  | mnty=txapppre; OPTIONALTYPE                         { MOptionalArgumentType(mnty) :: [] }
-  |                                                     { [] }
+  | ts=optterm_list(LISTPUNCT, txlist_elem) { ts }
 ;
+txlist_elem:
+  | mnty=txfunc                 { MMandatoryArgumentType(mnty) }
+  | mnty=txapppre; OPTIONALTYPE { MOptionalArgumentType(mnty) }
 txrecord: /* -> (field_name * manual_type) list */
   | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT; tail=txrecord { let (_, fldnm) = fldtok in (fldnm, mnty) :: tail }
   | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT                { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
