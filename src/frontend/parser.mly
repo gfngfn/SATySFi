@@ -945,10 +945,10 @@ txlist_elem:
   | mnty=txfunc                 { MMandatoryArgumentType(mnty) }
   | mnty=txapppre; OPTIONALTYPE { MOptionalArgumentType(mnty) }
 txrecord: /* -> (field_name * manual_type) list */
-  | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT; tail=txrecord { let (_, fldnm) = fldtok in (fldnm, mnty) :: tail }
-  | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT                { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
-  | fldtok=VAR; COLON; mnty=txfunc                           { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
+  | fs=optterm_nonempty_list(LISTPUNCT, txrecord_elem) { fs }
 ;
+txrecord_elem:
+  | fldtok=VAR; COLON; mnty=txfunc { let (_, fldnm) = fldtok in (fldnm, mnty) }
 tuple:
   | x=separated_nonempty_list(COMMA, nxlet) { x }
 ;
