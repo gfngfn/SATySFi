@@ -996,9 +996,11 @@ pattuple:
   | ps=separated_nonempty_list(COMMA, patas) { ps }
 ;
 patlist: /* -> untyped_pattern_tree */
-  | pat=patas                           { make_standard (Ranged pat) (Ranged pat) (UTPListCons(pat, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
-  | pat=patas; rng=LISTPUNCT            { make_standard (Ranged pat) (Tok rng) (UTPListCons(pat, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
-  | pat1=patas; LISTPUNCT; pat2=patlist { make_standard (Ranged pat1) (Ranged pat2) (UTPListCons(pat1, pat2)) }
+  | ps=optterm_nonempty_list(LISTPUNCT, patas) {
+      List.fold_right (fun pat1 pat2 ->
+        make_standard (Ranged pat1) (Ranged pat2) (UTPListCons(pat1, pat2)))
+        ps (Range.dummy "end-of-list-pattern", UTPEndOfList)
+    }
 ;
 binop:
   | tok=UNOP_EXCLAM
