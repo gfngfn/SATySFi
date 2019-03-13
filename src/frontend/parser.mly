@@ -447,8 +447,7 @@
 %type <Types.untyped_abstract_tree> nxbfr
 %type <Types.untyped_abstract_tree> nxwhl
 %type <Types.untyped_abstract_tree> nxif
-%type <Types.untyped_abstract_tree> nxbinop
-%type <Types.untyped_abstract_tree> nxun
+%type <Types.untyped_abstract_tree> nxop
 %type <Types.untyped_abstract_tree> nxapp
 %type <Types.untyped_abstract_tree> nxbot
 %type <Types.untyped_abstract_tree list> tuple
@@ -698,47 +697,67 @@ nxbfr:
   | utast=nxlambda                        { utast }
 ;
 nxlambda:
-  | vartok=VAR; OVERWRITEEQ; utast=nxbinop {
+  | vartok=VAR; OVERWRITEEQ; utast=nxop {
       let (rngvar, varnm) = vartok in
       make_standard (Tok rngvar) (Ranged utast) (UTOverwrite(rngvar, varnm, utast))
     }
-  | top=LAMBDA; argpatlst=argpats; ARROW; utast=nxbinop {
+  | top=LAMBDA; argpatlst=argpats; ARROW; utast=nxop {
       let rng = make_range (Tok top) (Ranged utast) in
       curry_lambda_abstract_pattern rng argpatlst utast
     }
-  | utast=nxbinop { utast }
+  | utast=nxop { utast }
 ;
 argpats:
   | argpatlst=list(patbot) { argpatlst }
 ;
-nxbinop:
-  | utastL=nxbinop; op=BINOP_BAR;     utastR=nxbinop
-  | utastL=nxbinop; op=BINOP_AMP;     utastR=nxbinop
-  | utastL=nxbinop; op=BINOP_EQ;      utastR=nxbinop
-  | utastL=nxbinop; op=BINOP_GT;      utastR=nxbinop
-  | utastL=nxbinop; op=BINOP_LT;      utastR=nxbinop
-  | utastL=nxbinop; op=BINOP_HAT;     utastR=nxbinop
-  | utastL=nxbinop; op=BINOP_PLUS;    utastR=nxbinop
-  | utastL=nxbinop; op=BINOP_MINUS;   utastR=nxbinop
-  | utastL=nxbinop; op=BINOP_TIMES;   utastR=nxbinop
-  | utastL=nxbinop; op=BINOP_DIVIDES; utastR=nxbinop
+nxop:
+  | utastL=nxop; op=BINOP_BAR;     utastR=nxop
+  | utastL=nxop; op=BINOP_AMP;     utastR=nxop
+  | utastL=nxop; op=BINOP_EQ;      utastR=nxop
+  | utastL=nxop; op=BINOP_GT;      utastR=nxop
+  | utastL=nxop; op=BINOP_LT;      utastR=nxop
+  | utastL=nxop; op=BINOP_HAT;     utastR=nxop
+  | utastL=nxop; op=BINOP_PLUS;    utastR=nxop
+  | utastL=nxop; op=BINOP_MINUS;   utastR=nxop
+  | utastL=nxop; op=BINOP_TIMES;   utastR=nxop
+  | utastL=nxop; op=BINOP_DIVIDES; utastR=nxop
     { binary_operator utastL op utastR }
-  | utastL=nxbinop; rng=CONS;         utastR=nxbinop
+  | utastL=nxop; rng=CONS;         utastR=nxop
     { binary_operator utastL (rng, "::") utastR }
-  | utastL=nxbinop; rng=EXACT_MINUS;  utastR=nxbinop
+  | utastL=nxop; rng=EXACT_MINUS;  utastR=nxop
     { binary_operator utastL (rng, "-") utastR }
-  | utastL=nxbinop; rng=EXACT_TIMES;  utastR=nxbinop
+  | utastL=nxop; rng=EXACT_TIMES;  utastR=nxop
     { binary_operator utastL (rng, "*") utastR }
-  | utastL=nxbinop; rng=MOD;          utastR=nxbinop
+  | utastL=nxop; rng=MOD;          utastR=nxop
     { binary_operator utastL (rng, "mod") utastR }
-  | utast=nxun { utast }
-;
-nxun:
-  | tok=EXACT_MINUS; utast2=nxapp    { binary_operator (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0)) (tok, "-") utast2 }
-  | tok=LNOT; utast2=nxapp           { make_standard (Tok tok) (Ranged utast2) (UTApply((tok, UTContentOf([], "not")), utast2)) }
-  | constr=CONSTRUCTOR; utast2=nxbot { make_standard (Ranged constr) (Ranged utast2) (UTConstructor(extract_name constr, utast2)) }
-  | constr=CONSTRUCTOR               { let (rng, constrnm) = constr in (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
-  | utast=nxapp                      { utast }
+  | tok=EXACT_MINUS; utast2=nxapp
+    {
+      binary_operator
+       (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0))
+       (tok, "-")
+       utast2
+    }
+  | tok=LNOT; utast2=nxapp
+    {
+      make_standard
+       (Tok tok)
+       (Ranged utast2)
+       (UTApply((tok, UTContentOf([], "not")), utast2))
+    }
+  | constr=CONSTRUCTOR; utast2=nxbot
+    {
+      make_standard
+       (Ranged constr)
+       (Ranged utast2)
+       (UTConstructor(extract_name constr, utast2))
+    }
+  | constr=CONSTRUCTOR
+    {
+      let (rng, constrnm) = constr in
+      (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant)))
+    }
+  | utast=nxapp
+    { utast }
 ;
 nxapp:
   | utast1=nxapp; utast2=nxunsub { make_standard (Ranged utast1) (Ranged utast2) (UTApply(utast1, utast2)) }
