@@ -851,10 +851,13 @@ nxlist:
   }
 ;
 variants: /* -> untyped_variant_cons */
-  | ctor=CONSTRUCTOR; OF; ty=txfunc; BAR; tail=variants { let (rng, constrnm) = ctor in (rng, constrnm, ty) :: tail }
-  | ctor=CONSTRUCTOR; OF; ty=txfunc                     { let (rng, constrnm) = ctor in (rng, constrnm, ty) :: [] }
-  | ctor=CONSTRUCTOR; BAR; tail=variants                { let (rng, constrnm) = ctor in (rng, constrnm, (Range.dummy "dec-constructor-unit1", MTypeName([], [], "unit"))) :: tail }
-  | ctor=CONSTRUCTOR                                    { let (rng, constrnm) = ctor in (rng, constrnm, (Range.dummy "dec-constructor-unit2", MTypeName([], [], "unit"))) :: [] }
+  | vs=separated_nonempty_list(BAR, variant) { vs }
+;
+variant:
+  | ctor=CONSTRUCTOR; OF; ty=txfunc;
+    { let (rng, constrnm) = ctor in (rng, constrnm, ty) }
+  | ctor=CONSTRUCTOR
+    { let (rng, constrnm) = ctor in (rng, constrnm, (Range.dummy "dec-constructor-unit1", MTypeName([], [], "unit"))) }
 ;
 txfunc: /* -> manual_type */
   | mntydominfo=txfuncopts; ARROW; mntycod=txfunc {

@@ -78,7 +78,7 @@
         ((Range.Dummy "dec-constructor-unit1"),
          (Types.MTypeName ([], [], "unit"))));
         ((Range.Normal ("variants.saty", 1, 13, 1, 14)), "Y",
-         ((Range.Dummy "dec-constructor-unit2"),
+         ((Range.Dummy "dec-constructor-unit1"),
           (Types.MTypeName ([], [], "unit"))))
         ],
       (UTMutualVariantCons ([], (Range.Normal ("variants.saty", 2, 4, 2, 5)),
