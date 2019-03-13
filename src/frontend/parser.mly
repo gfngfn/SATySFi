@@ -871,23 +871,13 @@ txfuncopts:
   | mntydom=txprod                                  { ([], mntydom) }
 ;
 txprod:
-  | mnty=txapppre; EXACT_TIMES; mntyprod=txprodsub {
-      let (rng1, _) = mnty in
-      let (rng2, mntylst) = mntyprod in
-      make_standard (Tok rng1) (Tok rng2) (MProductType(mnty :: mntylst))
-    }
-
-  | mnty=txapppre { mnty }
-;
-txprodsub: /* -> Range.t * manual_type list */
-  | mnty=txapppre; EXACT_TIMES; mntyprod=txprodsub {
-      let (rng2, mntylst) = mntyprod in
-      (rng2, mnty :: mntylst)
-    }
-  | mnty=txapppre {
-      let (rng2, _) = mnty in
-      (rng2, mnty :: [])
-    }
+  | ts=separated_nonempty_list(EXACT_TIMES, txapppre) {
+    match ts, List.rev ts with
+    | [t], [_] -> t
+    | t1::_, tn::_ ->
+        make_standard (Ranged t1) (Ranged tn) (MProductType ts)
+    | _, _ -> assert false
+  }
 ;
 txapppre: /* -> manual_type */
   | tyapp=txapp {
