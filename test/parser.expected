@@ -1,3 +1,7 @@
+;;; generated automatically. DO NOT EDIT
+;;; To update this file, you should run `dune runtest; dune promote`.
+
+;; parser_test.saty
 (UTLetNonRecIn (None,
    ((Range.Normal ("parser_test.saty", 3, 4, 3, 6)), (UTPVariable "xs")),
    (UTListCons ((UTIntegerConstant 1),
