@@ -953,21 +953,20 @@ tuple:
   | x=separated_nonempty_list(COMMA, nxlet) { x }
 ;
 pats: /* -> code_range * untyped_pattern_branch list */
-  | pat=patas; ARROW; utast=nxletsub {
-      let (rnglast, _) = utast in
-      (rnglast, UTPatternBranch(pat, utast) :: [])
+  | brs=separated_nonempty_list(BAR, pat) {
+      match brs with
+      | (rnglast, _)::_ -> (rnglast, List.map snd brs)
+      | _ -> assert false
     }
-  | pat=patas; ARROW; utast=nxletsub; BAR; tail=pats {
-      let (rnglast, patbrs) = tail in
-      (rnglast, UTPatternBranch(pat, utast) :: patbrs)
+;
+pat:
+  | pat=patas; ARROW; utast=nxletsub; {
+      let (rnglast, _) = utast in
+      (rnglast, UTPatternBranch(pat, utast))
     }
   | pat=patas; WHEN; utastcond=nxletsub; ARROW; utast=nxletsub {
       let (rnglast, _) = utast in
-      (rnglast, UTPatternBranchWhen(pat, utastcond, utast) :: [])
-    }
-  | pat=patas; WHEN; utastcond=nxletsub; ARROW; utast=nxletsub; BAR; tail=pats {
-      let (rnglast, patbrs) = tail in
-      (rnglast, UTPatternBranchWhen(pat, utastcond, utast) :: patbrs)
+      (rnglast, UTPatternBranchWhen(pat, utastcond, utast))
     }
 ;
 patas:
