@@ -993,8 +993,7 @@ patbot:
   | opn=LPAREN; pat=patas; COMMA; pats=pattuple; cls=RPAREN { let rng = make_range (Tok opn) (Tok cls) in make_product_pattern rng (pat :: pats) }
 ;
 pattuple:
-  | pat=patas                         { pat :: [] }
-  | pat=patas; COMMA; pattup=pattuple { pat :: pattup }
+  | ps=separated_nonempty_list(COMMA, patas) { ps }
 ;
 patlist: /* -> untyped_pattern_tree */
   | pat=patas                           { make_standard (Ranged pat) (Ranged pat) (UTPListCons(pat, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
