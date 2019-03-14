@@ -1044,8 +1044,7 @@ mathblock:
   | utm=mathmain         { let (rng, _) = utm in (rng, UTMath(utm)) }
 ;
 mathlist:
-  | utm=mathmain; SEP; utmtail=mathlist { utm :: utmtail }
-  |                                     { [] }
+  | elems=list(terminated(mathmain, SEP)) { elems }
 ;
 mathmain:
   | utmlst=list(mathtop) {
