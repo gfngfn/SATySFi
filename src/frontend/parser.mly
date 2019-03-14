@@ -1026,8 +1026,7 @@ sxsep:
   | itmzlst=nonempty_list(sxitem) { make_list_to_itemize itmzlst }
 ;
 sxlist:
-  | utast=sxblock; SEP; utasttail=sxlist { utast :: utasttail }
-  |                                      { [] }
+  | elems=list(terminated(sxblock, SEP)) { elems }
 ;
 sxitem:
   | item=ITEM; utast=sxblock { let (rng, depth) = item in (rng, depth, utast) }
