@@ -654,19 +654,16 @@ nxnonrecdec:
     }
 ;
 nxvariantdec:
-  | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; variants=variants; constrnts=constrnts; LETAND; tail=nxvariantdec
-  | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; BAR; variants=variants; constrnts=constrnts; LETAND; tail=nxvariantdec {
-      make_mutual_variant_cons tyvars tynmtok variants constrnts tail
+  | decls=separated_nonempty_list(LETAND, nxtypeeq) {
+      List.fold_right (fun f decls -> f decls) decls UTEndOfMutualVariant
     }
-  | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; variants=variants; constrnts=constrnts
-  | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; BAR; variants=variants; constrnts=constrnts {
-      make_mutual_variant_cons tyvars tynmtok variants constrnts UTEndOfMutualVariant
-    }
-  | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; ty=txfunc; constrnts=constrnts; LETAND; tail=nxvariantdec {
-      make_mutual_synonym_cons tyvars tynmtok ty constrnts tail
+;
+nxtypeeq:
+  | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; BAR?; variants=variants; constrnts=constrnts {
+      make_mutual_variant_cons tyvars tynmtok variants constrnts
     }
   | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; ty=txfunc; constrnts=constrnts {
-      make_mutual_synonym_cons tyvars tynmtok ty constrnts UTEndOfMutualVariant
+      make_mutual_synonym_cons tyvars tynmtok ty constrnts
     }
 ;
 kxtop:
