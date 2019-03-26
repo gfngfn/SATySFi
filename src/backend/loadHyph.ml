@@ -238,18 +238,18 @@ let specialmarker = Uchar.of_char '.'
 
 let convert_pattern (rng : Range.t) (strpat : string) : pattern =
   let uchlstraw = InternalText.to_uchar_list (InternalText.of_utf8 strpat) in
-  let (beginning, uchlstsub) =
+  let (beginningopt, uchlstsub) =
     match uchlstraw with
     | [] ->
         raise (InvalidPatternElement(rng))
 
     | uch0 :: uchtail ->
         if uch0 = specialmarker then
-          (0, uchlstraw)
+          (None, uchlstraw)
         else
           match numeric uch0 with
-          | None      -> (0, uchlstraw)
-          | Some(num) -> (num, uchtail)
+          | None      -> (Some(0), uchlstraw)
+          | Some(num) -> (Some(num), uchtail)
   in
   let (numlst, uchlst) =
     uchlstsub |> list_fold_adjacent (fun (nacc, uacc) uch _ optnext ->
@@ -274,7 +274,12 @@ let convert_pattern (rng : Range.t) (strpat : string) : pattern =
     ) (Alist.empty, Alist.empty)
     |> (function (nlst, ulst) -> (Alist.to_list nlst, Alist.to_list ulst))
   in
-  (uchlst, Normal(beginning :: numlst))
+  let numlst =
+    match beginningopt with
+    | None      -> numlst
+    | Some(num) -> num :: numlst
+  in
+  (uchlst, Normal(numlst))
 
 
 let read_pattern_list (json : YS.json) : pattern list =
@@ -320,7 +325,12 @@ let lookup_patterns (lmin : int) (rmin : int) (pattrie : Trie.t) (uchseglst : uc
         let len = List.length uchseglst in
         let clst = uchseglst |> List.map (fun uchseg -> (uchseg, ref 0)) in
         let () = rulelst |> List.iter (fun (pos, nlst) ->
-          let pos = pos - 1 in (* for beginning '.' *)
+          let (pos, nlst) =
+            match (pos - 2) with
+            | -2 -> (0, nlst)
+            | -1 -> (0, List.tl nlst)
+            | n  -> (n, nlst)
+          in
           let rec aux i clst nlst =
             if i < pos then
               aux (i + 1) (List.tl clst) nlst
