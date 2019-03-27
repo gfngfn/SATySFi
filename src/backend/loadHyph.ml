@@ -137,10 +137,10 @@ module Trie
             IntSet.add (base + (Uchar.to_int uc) - mincode) acc
           ) checkset
           in
-          let (checkmap, rulemap) = List.fold_left2 (fun (cmap, smap) uc scopt ->
+          let (checkmap, rulemap) = List.fold_left2 (fun (cmap, rmap) uc scopt ->
             let cmap = cmap |> IntMap.add (base + (Uchar.to_int uc) - mincode) node in
-            let smap = smap |> IntMap.add (base + (Uchar.to_int uc) - mincode) scopt in
-            (cmap, smap)
+            let rmap = rmap |> IntMap.add (base + (Uchar.to_int uc) - mincode) scopt in
+            (cmap, rmap)
           ) (checkmap, rulemap) indexlst rulelst
           in
           let cldpats = List.map2 (fun uc child ->
@@ -156,7 +156,7 @@ module Trie
   let match_prefix trie uchlst stpos res =
     let (darray, mincode) = trie in
     let alen = Array.length darray in
-    let rec iter ulst pos node res =
+    let rec iter ulst node res =
       match ulst with
       | [] ->
           res
@@ -174,12 +174,16 @@ module Trie
               if nextnode >= alen || darray.(nextnode).check <> node then
                 res
               else
+                let print_intlist lst =
+                  lst |> List.iter (Format.printf "%d, ");
+                  Format.printf "\n%!";
+                in
                 match (darray.(nextnode).rule, res) with
-                | (Some(Exception(r)), _)             -> (MatchException(r))
-                | (Some(Normal(r)), MatchNormal(acc)) -> iter ulst (pos + 1) nextnode (MatchNormal((stpos, r) :: acc))
-                | _                                   -> iter ulst (pos + 1) nextnode res
+                | (Some(Exception(r)), _)             -> Format.printf "exception\n%!"; (MatchException(r))
+                | (Some(Normal(r)), MatchNormal(acc)) -> Format.printf "pos: %d  %!" stpos; print_intlist r; iter rest nextnode (MatchNormal((stpos, r) :: acc))
+                | _                                   -> iter rest nextnode res
     in
-      iter uchlst stpos 0 res
+    iter uchlst 0 res
 
 
   let match_every trie uchlst =
@@ -191,6 +195,7 @@ module Trie
       | uch :: rest ->
           match res with
           | MatchNormal(_) ->
+              Format.printf "--> %c\n%!" (Uchar.to_char uch);
               iter rest (pos + 1) (match_prefix trie ulst pos res)
           | MatchException(_) ->
               res
@@ -206,6 +211,13 @@ type t = Trie.t
 let empty = Trie.empty
 
 
+let specialmarker = Uchar.of_char '.'
+
+
+let add_specialmarker uchlst =
+  (specialmarker :: uchlst) @ [specialmarker]
+
+
 let read_exception_list (json : YS.json) : pattern list =
   let jsonlst = json |> YS.Util.to_list in
   jsonlst |> List.fold_left (fun mapacc json ->
@@ -213,9 +225,10 @@ let read_exception_list (json : YS.json) : pattern list =
     | (_, `Tuple[json1; json2]) ->
         let wordfrom = json1 |> YS.Util.to_string in
         let wfuchlst = InternalText.to_uchar_list (InternalText.of_utf8 wordfrom) in
+        let wfuchlstwithsm = add_specialmarker wfuchlst in
         let jsonlstto = json2 |> YS.Util.to_list in
         let fraclstto = jsonlstto |> List.map YS.Util.to_string in
-        Alist.extend mapacc (wfuchlst, Exception(fraclstto))
+        Alist.extend mapacc (wfuchlstwithsm, Exception(fraclstto))
 
     | _ ->
         raise (YS.Util.Type_error("Expects pair", json))
@@ -231,9 +244,6 @@ let numeric (uch : Uchar.t) : number option =
       Some(cp - cp0)
     else
       None
-
-
-let specialmarker = Uchar.of_char '.'
 
 
 let convert_pattern (rng : Range.t) (strpat : string) : pattern =
@@ -279,6 +289,12 @@ let convert_pattern (rng : Range.t) (strpat : string) : pattern =
     | None      -> numlst
     | Some(num) -> num :: numlst
   in
+  (*
+  List.iter (fun uch -> Format.printf "%c " (Uchar.to_char uch)) uchlst;
+  Format.printf " --> ";
+  List.iter (fun num -> Format.printf "%d " num) numlst;
+  Format.printf "\n%!";
+  *)
   (uchlst, Normal(numlst))
 
 
@@ -318,7 +334,7 @@ let make_fraction fracacc =
      this implemenmtation is currently very inefficient. -- *)
 let lookup_patterns (lmin : int) (rmin : int) (pattrie : Trie.t) (uchseglst : uchar_segment list) : (uchar_segment list) list =
   let uchlst = uchseglst |> List.map (fun (u, _) -> u) in
-  let uchlstwithsm = (specialmarker :: uchlst) @ [specialmarker] in
+  let uchlstwithsm = add_specialmarker uchlst in
   match Trie.match_every pattrie uchlstwithsm with
   | MatchNormal(rulelst) ->
       begin
@@ -327,7 +343,7 @@ let lookup_patterns (lmin : int) (rmin : int) (pattrie : Trie.t) (uchseglst : uc
         let () = rulelst |> List.iter (fun (pos, nlst) ->
           let (pos, nlst) =
             match (pos - 2) with
-            | -2 -> (0, nlst)
+            | -2 -> (0, List.tl nlst)
             | -1 -> (0, List.tl nlst)
             | n  -> (n, nlst)
           in
@@ -346,6 +362,8 @@ let lookup_patterns (lmin : int) (rmin : int) (pattrie : Trie.t) (uchseglst : uc
           aux 0 clst nlst
         )
         in
+        clst |> List.iter (fun (_, nref) -> Format.printf "%d, " !nref);
+        Format.printf "\n";
         let (_, acc, fracaccopt) =
           clst |> List.fold_left (fun (i, acc, fracaccopt) (uchseg, numref) ->
             if (!numref) mod 2 = 1 && i + 1 >= lmin && len - (i + 1) >= rmin then
