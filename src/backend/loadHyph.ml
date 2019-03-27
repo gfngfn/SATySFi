@@ -44,6 +44,7 @@ module IntMap = Map.Make
   end)
 
 
+(* -- Trie that holds hyphenation patterns (contains exceptions) -- *)
 module PatternTrie
 : sig
 
@@ -58,7 +59,7 @@ module PatternTrie
   end
 = struct
 
-  (* implemented with double-array *)
+  (* -- implemented with double-array -- *)
   type node =
     {
       base  : int;
@@ -66,7 +67,7 @@ module PatternTrie
       rule  : hyph_rule option;
     }
 
-  type t = node array * int (* minimum char code of pattern *)
+  type t = node array * int (* -- minimum char code of patterns -- *)
 
 
   let empty = (Array.of_list [], 0)
@@ -92,6 +93,7 @@ module PatternTrie
               | (Some(ull, _), []) -> Some(ull,  Some(rule))
               | (Some(ull, r), _)  -> Some((rest, rule) :: ull, r)
             ) acc
+
       ) (UcharMap.empty) patlst
       in
       UcharMap.fold (fun k v acc -> (k, v) :: acc) map []
@@ -206,7 +208,8 @@ type t = PatternTrie.t
 let empty = PatternTrie.empty
 
 
-let specialmarker = Uchar.of_char '.'
+(* -- Special marker matches the beginning or ending of a word. -- *)
+let specialmarker = Uchar.rep
 
 
 let add_specialmarker uchlst =
@@ -249,12 +252,23 @@ let convert_pattern (rng : Range.t) (strpat : string) : pattern =
         raise (InvalidPatternElement(rng))
 
     | uch0 :: uchtail ->
-        if uch0 = specialmarker then
-          (None, uchlstraw)
+        if uch0 = Uchar.of_char '.' then
+          (None, specialmarker :: uchtail)
         else
           match numeric uch0 with
           | None      -> (Some(0), uchlstraw)
           | Some(num) -> (Some(num), uchtail)
+  in
+  let uchlstsub =
+    match List.rev uchlstsub with
+    | [] ->
+        raise (InvalidPatternElement(rng))
+
+    | uch0 :: uchtail ->
+        if uch0 = Uchar.of_char '.' then
+          List.rev (specialmarker :: uchtail)
+        else
+          uchlstsub
   in
   let (numlst, uchlst) =
     uchlstsub |> list_fold_adjacent (fun (nacc, uacc) uch _ optnext ->
