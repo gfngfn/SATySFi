@@ -40,11 +40,11 @@ module UcharMap = Map.Make
 module IntMap = Map.Make
   (struct
     type t = int
-    let compare = Pervasives.compare
+    let compare i j = i - j
   end)
 
 
-module Trie
+module PatternTrie
 : sig
 
   type t
@@ -174,13 +174,9 @@ module Trie
               if nextnode >= alen || darray.(nextnode).check <> node then
                 res
               else
-                let print_intlist lst =
-                  lst |> List.iter (Format.printf "%d, ");
-                  Format.printf "\n%!";
-                in
                 match (darray.(nextnode).rule, res) with
-                | (Some(Exception(r)), _)             -> Format.printf "exception\n%!"; (MatchException(r))
-                | (Some(Normal(r)), MatchNormal(acc)) -> Format.printf "pos: %d  %!" stpos; print_intlist r; iter rest nextnode (MatchNormal((stpos, r) :: acc))
+                | (Some(Exception(r)), _)             -> (MatchException(r))
+                | (Some(Normal(r)), MatchNormal(acc)) -> iter rest nextnode (MatchNormal((stpos, r) :: acc))
                 | _                                   -> iter rest nextnode res
     in
     iter uchlst 0 res
@@ -195,7 +191,6 @@ module Trie
       | uch :: rest ->
           match res with
           | MatchNormal(_) ->
-              Format.printf "--> %c\n%!" (Uchar.to_char uch);
               iter rest (pos + 1) (match_prefix trie ulst pos res)
           | MatchException(_) ->
               res
@@ -205,10 +200,10 @@ module Trie
 end
 
 
-type t = Trie.t
+type t = PatternTrie.t
 
 
-let empty = Trie.empty
+let empty = PatternTrie.empty
 
 
 let specialmarker = Uchar.of_char '.'
@@ -289,12 +284,6 @@ let convert_pattern (rng : Range.t) (strpat : string) : pattern =
     | None      -> numlst
     | Some(num) -> num :: numlst
   in
-  (*
-  List.iter (fun uch -> Format.printf "%c " (Uchar.to_char uch)) uchlst;
-  Format.printf " --> ";
-  List.iter (fun num -> Format.printf "%d " num) numlst;
-  Format.printf "\n%!";
-  *)
   (uchlst, Normal(numlst))
 
 
@@ -309,7 +298,7 @@ let read_pattern_list (json : YS.json) : pattern list =
 let read_assoc (assoc : MYU.assoc) : t =
   let excplst = assoc |> MYU.find "exceptions" |> read_exception_list in
   let hyphpatlst = assoc |> MYU.find "patterns" |> read_pattern_list in
-  let pattrie = Trie.make (excplst @ hyphpatlst) in
+  let pattrie = PatternTrie.make (excplst @ hyphpatlst) in
   pattrie
 
 
@@ -330,12 +319,11 @@ let make_fraction fracacc =
 
 (* --
    'lookup_patterns':
-     determines hyphen pattern of the given word.
-     this implemenmtation is currently very inefficient. -- *)
-let lookup_patterns (lmin : int) (rmin : int) (pattrie : Trie.t) (uchseglst : uchar_segment list) : (uchar_segment list) list =
+     determines hyphen pattern of the given word. -- *)
+let lookup_patterns (lmin : int) (rmin : int) (pattrie : PatternTrie.t) (uchseglst : uchar_segment list) : (uchar_segment list) list =
   let uchlst = uchseglst |> List.map (fun (u, _) -> u) in
   let uchlstwithsm = add_specialmarker uchlst in
-  match Trie.match_every pattrie uchlstwithsm with
+  match PatternTrie.match_every pattrie uchlstwithsm with
   | MatchNormal(rulelst) ->
       begin
         let len = List.length uchseglst in
@@ -362,8 +350,6 @@ let lookup_patterns (lmin : int) (rmin : int) (pattrie : Trie.t) (uchseglst : uc
           aux 0 clst nlst
         )
         in
-        clst |> List.iter (fun (_, nref) -> Format.printf "%d, " !nref);
-        Format.printf "\n";
         let (_, acc, fracaccopt) =
           clst |> List.fold_left (fun (i, acc, fracaccopt) (uchseg, numref) ->
             if (!numref) mod 2 = 1 && i + 1 >= lmin && len - (i + 1) >= rmin then
