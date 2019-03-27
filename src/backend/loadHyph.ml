@@ -90,9 +90,9 @@ module PatternTrie
           | SpecialMarker -> acc
           | UChar(i)      -> (Pervasives.min i min, Pervasives.max i max)
         ) acc
-      ) (Uchar.to_int Uchar.min, Uchar.to_int Uchar.max)
+      ) (Uchar.to_int Uchar.max, Uchar.to_int Uchar.min)
     in
-    let smcode = mincode - 1 in
+    let smcode = maxcode + 1 in
     let int_of_pe = function
       | SpecialMarker -> smcode - mincode
       | UChar(i)      -> i - mincode
