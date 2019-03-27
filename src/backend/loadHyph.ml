@@ -13,7 +13,11 @@ type hyph_rule =
   | Normal    of number list
   | Exception of string list
 
-type pattern = (Uchar.t list) * hyph_rule
+type pattern_element =
+  | SpecialMarker
+  | UChar of int
+
+type pattern = (pattern_element list) * hyph_rule
 
 type match_result =
   | MatchNormal    of (number * number list) list
@@ -33,8 +37,13 @@ module IntSet = Set.Make
 
 module UcharMap = Map.Make
   (struct
-    type t = Uchar.t
-    let compare = Pervasives.compare
+    type t = pattern_element
+    let compare i j =
+      match (i, j) with
+      | (SpecialMarker, SpecialMarker) -> 0
+      | (SpecialMarker, _) -> -1
+      | (_, SpecialMarker) -> 1
+      | (i, j) -> Pervasives.compare i j
   end)
 
 module IntMap = Map.Make
@@ -54,7 +63,7 @@ module PatternTrie
 
   val make : pattern list -> t
 
-  val match_every : t -> Uchar.t list -> match_result
+  val match_every : t -> pattern_element list -> match_result
 
   end
 = struct
@@ -67,21 +76,30 @@ module PatternTrie
       rule  : hyph_rule option;
     }
 
-  type t = node array * int (* -- minimum char code of patterns -- *)
+  type t = node array * int (* min. code *) * int (* max. code *) * int (* special marker code *)
 
 
-  let empty = (Array.of_list [], 0)
+  let empty = (Array.of_list [{ base = -1; check = 0; rule = None; }], 0, 0, 0)
 
 
   let make patlst =
-    let mincode =
-      patlst |> List.fold_left (fun acc (uchlst, _) ->
-        uchlst |> List.fold_left Pervasives.min acc
-      ) Uchar.max |> Uchar.to_int
+    let (mincode, maxcode) =
+      patlst |> List.fold_left (fun acc (pelst, _) ->
+        pelst |> List.fold_left (fun (min, max) e ->
+          match e with
+          | SpecialMarker -> acc
+          | UChar(i)      -> (Pervasives.min i min, Pervasives.max i max)
+        ) acc
+      ) (Uchar.to_int Uchar.min, Uchar.to_int Uchar.max)
+    in
+    let smcode = mincode - 1 in
+    let int_of_pe = function
+      | SpecialMarker -> smcode - mincode
+      | UChar(i)      -> i - mincode
     in
     let aux patlst =
-      let map = List.fold_left (fun acc (ulst, rule) ->
-        match ulst with
+      let map = List.fold_left (fun acc (pelst, rule) ->
+        match pelst with
         | [] ->
             acc
 
@@ -99,7 +117,7 @@ module PatternTrie
       UcharMap.fold (fun k v acc -> (k, v) :: acc) map []
     in
     let rec search_base checkset indexlst offset =
-      if List.exists (fun uc -> IntSet.mem ((Uchar.to_int uc) - mincode + offset) checkset) indexlst then
+      if List.exists (fun pe -> IntSet.mem ((int_of_pe pe) + offset) checkset) indexlst then
         search_base checkset indexlst (offset + 1)
       else
         offset
@@ -135,69 +153,80 @@ module PatternTrie
               search_base checkset indexlst (node + 1)
           in
           let basemap = IntMap.add node base basemap in
-          let checkset = indexlst |> List.fold_left (fun acc uc ->
-            IntSet.add (base + (Uchar.to_int uc) - mincode) acc
+          let checkset = indexlst |> List.fold_left (fun acc pe ->
+            IntSet.add (base + (int_of_pe pe)) acc
           ) checkset
           in
-          let (checkmap, rulemap) = List.fold_left2 (fun (cmap, rmap) uc scopt ->
-            let cmap = cmap |> IntMap.add (base + (Uchar.to_int uc) - mincode) node in
-            let rmap = rmap |> IntMap.add (base + (Uchar.to_int uc) - mincode) scopt in
+          let (checkmap, rulemap) = List.fold_left2 (fun (cmap, rmap) pe scopt ->
+            let cmap = cmap |> IntMap.add (base + (int_of_pe pe)) node in
+            let rmap = rmap |> IntMap.add (base + (int_of_pe pe)) scopt in
             (cmap, rmap)
           ) (checkmap, rulemap) indexlst rulelst
           in
-          let cldpats = List.map2 (fun uc child ->
-            (base + (Uchar.to_int uc) - mincode, child)
+          let cldpats = List.map2 (fun pe child ->
+            (base + (int_of_pe pe), child)
           ) indexlst cldpatlst
           in
           iter (cldpats @ rest) basemap checkset checkmap rulemap
     in
     let darray = iter [(0, patlst)] (IntMap.empty) (IntSet.empty) (IntMap.empty) (IntMap.empty) in
-    (darray, mincode)
+    (darray, mincode, maxcode, smcode)
 
 
-  let match_prefix trie uchlst stpos res =
-    let (darray, mincode) = trie in
+  let match_prefix trie pelst stpos res =
+    let (darray, mincode, maxcode, smcode) = trie in
+    let int_of_pe_opt = function
+      | SpecialMarker -> Some(smcode - mincode)
+      | UChar(i)      ->
+          if i < mincode || i > maxcode then
+            None
+          else
+            Some(i - mincode)
+    in
     let alen = Array.length darray in
-    let rec iter ulst node res =
-      match ulst with
+    let rec iter pelst node res =
+      match pelst with
       | [] ->
           res
 
-      | uch :: rest ->
+      | pe :: rest ->
           if darray.(node).base < 0 then
             res
           else
-            let c = Uchar.to_int uch in
-            if c < mincode then
-              res
-            else
-              let c = c - mincode in
-              let nextnode = darray.(node).base + c in
-              if nextnode >= alen || darray.(nextnode).check <> node then
+            match int_of_pe_opt pe with
+            | None ->
                 res
-              else
-                match (darray.(nextnode).rule, res) with
-                | (Some(Exception(r)), _)             -> (MatchException(r))
-                | (Some(Normal(r)), MatchNormal(acc)) -> iter rest nextnode (MatchNormal((stpos, r) :: acc))
-                | _                                   -> iter rest nextnode res
+
+            | Some(i) ->
+                let nextnode = darray.(node).base + i in
+                if nextnode >= alen || darray.(nextnode).check <> node then
+                  res
+                else
+                  match (darray.(nextnode).rule, res) with
+                  | (Some(Exception(r)), _)             -> (MatchException(r))
+                  | (Some(Normal(r)), MatchNormal(acc)) -> iter rest nextnode (MatchNormal((stpos, r) :: acc))
+                  | _                                   -> iter rest nextnode res
+
     in
-    iter uchlst 0 res
+    iter pelst 0 res
 
 
-  let match_every trie uchlst =
-    let rec iter ulst pos res =
-      match ulst with
+  let match_every trie pelst =
+    let rec iter pelst pos res =
+      match pelst with
       | [] ->
           res
 
-      | uch :: rest ->
+      | _ :: rest ->
           match res with
           | MatchNormal(_) ->
-              iter rest (pos + 1) (match_prefix trie ulst pos res)
+              iter rest (pos + 1) (match_prefix trie pelst pos res)
+
           | MatchException(_) ->
               res
+
     in
-    iter uchlst 0 (MatchNormal([]))
+    iter pelst 0 (MatchNormal([]))
 
 end
 
@@ -209,11 +238,11 @@ let empty = PatternTrie.empty
 
 
 (* -- Special marker matches the beginning or ending of a word. -- *)
-let specialmarker = Uchar.rep
+let specialmarker_uch = Uchar.of_char '.'
 
 
-let add_specialmarker uchlst =
-  (specialmarker :: uchlst) @ [specialmarker]
+let add_specialmarker pelst =
+  (SpecialMarker :: pelst) @ [SpecialMarker]
 
 
 let read_exception_list (json : YS.json) : pattern list =
@@ -223,10 +252,10 @@ let read_exception_list (json : YS.json) : pattern list =
     | (_, `Tuple[json1; json2]) ->
         let wordfrom = json1 |> YS.Util.to_string in
         let wfuchlst = InternalText.to_uchar_list (InternalText.of_utf8 wordfrom) in
-        let wfuchlstwithsm = add_specialmarker wfuchlst in
+        let wfpelst = add_specialmarker (wfuchlst |> List.map (fun uch -> UChar(Uchar.to_int uch))) in
         let jsonlstto = json2 |> YS.Util.to_list in
         let fraclstto = jsonlstto |> List.map YS.Util.to_string in
-        Alist.extend mapacc (wfuchlstwithsm, Exception(fraclstto))
+        Alist.extend mapacc (wfpelst, Exception(fraclstto))
 
     | _ ->
         raise (YS.Util.Type_error("Expects pair", json))
@@ -252,23 +281,12 @@ let convert_pattern (rng : Range.t) (strpat : string) : pattern =
         raise (InvalidPatternElement(rng))
 
     | uch0 :: uchtail ->
-        if uch0 = Uchar.of_char '.' then
-          (None, specialmarker :: uchtail)
+        if uch0 = specialmarker_uch then
+          (None, uchlstraw)
         else
           match numeric uch0 with
           | None      -> (Some(0), uchlstraw)
           | Some(num) -> (Some(num), uchtail)
-  in
-  let uchlstsub =
-    match List.rev uchlstsub with
-    | [] ->
-        raise (InvalidPatternElement(rng))
-
-    | uch0 :: uchtail ->
-        if uch0 = Uchar.of_char '.' then
-          List.rev (specialmarker :: uchtail)
-        else
-          uchlstsub
   in
   let (numlst, uchlst) =
     uchlstsub |> list_fold_adjacent (fun (nacc, uacc) uch _ optnext ->
@@ -293,12 +311,19 @@ let convert_pattern (rng : Range.t) (strpat : string) : pattern =
     ) (Alist.empty, Alist.empty)
     |> (function (nlst, ulst) -> (Alist.to_list nlst, Alist.to_list ulst))
   in
+  let pelst = uchlst |> List.map (fun uch ->
+    if uch = specialmarker_uch then
+      SpecialMarker
+    else
+      UChar(Uchar.to_int uch)
+  )
+  in
   let numlst =
     match beginningopt with
     | None      -> numlst
     | Some(num) -> num :: numlst
   in
-  (uchlst, Normal(numlst))
+  (pelst, Normal(numlst))
 
 
 let read_pattern_list (json : YS.json) : pattern list =
@@ -336,8 +361,8 @@ let make_fraction fracacc =
      determines hyphen pattern of the given word. -- *)
 let lookup_patterns (lmin : int) (rmin : int) (pattrie : PatternTrie.t) (uchseglst : uchar_segment list) : (uchar_segment list) list =
   let uchlst = uchseglst |> List.map (fun (u, _) -> u) in
-  let uchlstwithsm = add_specialmarker uchlst in
-  match PatternTrie.match_every pattrie uchlstwithsm with
+  let pelst = add_specialmarker (uchlst |> List.map (fun uch -> UChar(Uchar.to_int uch))) in
+  match PatternTrie.match_every pattrie pelst with
   | MatchNormal(rulelst) ->
       begin
         let len = List.length uchseglst in
