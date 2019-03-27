@@ -19,3 +19,5 @@ install:
   - opam install -y --deps-only satysfi
 script:
   - make all
+  - cd demo
+  - make
