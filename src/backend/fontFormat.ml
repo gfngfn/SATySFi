@@ -1746,11 +1746,6 @@ module Type0
       let (font_file_key, tagopt) = font_file_info_of_embedding embedding in
       let (objstream, subset_tag_opt) = pdfstream_of_decoder pdf dcdr tagopt in
         (* -- add to the PDF the stream in which the font file is embedded -- *)
-      let base_font =
-        match subset_tag_opt with
-        | None      -> base_font
-        | Some(pre) -> pre ^ "+" ^ base_font
-      in
       let objdescr =
         Pdf.Dictionary[
           ("/Type"       , Pdf.Name("/FontDescriptor"));
