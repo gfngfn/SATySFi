@@ -18,6 +18,18 @@ module List
     val mapi-adjacent : (int -> 'a -> 'a option -> 'a option -> 'b) -> 'a list -> 'b list
     val length : 'a list -> int
     val nth : int -> 'a list -> 'a option
+    val head : 'a list -> 'a option
+    val tail : 'a list -> ('a list) option
+    val reverse-append : 'a list -> 'a list -> 'a list
+    val reverse-map : ('a -> 'b) -> 'a list -> 'b list
+    val for-all : ('a -> bool) -> 'a list -> bool
+    val exists : ('a -> bool) -> 'a list -> bool
+    val for-all2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool option
+    val exists2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool option
+    val find : ('a -> bool) -> 'a list -> 'a option
+    val partition : ('a -> bool) -> 'a list -> 'a list * 'a list
+    val split : ('a * 'b) list -> 'a list * 'b list
+    val combine : 'a list -> 'b list -> (('a * 'b) list) option
   end
 = struct
 
@@ -131,5 +143,105 @@ module List
         | head :: tail -> if n == i then Some(head) else aux (i + 1) n tail
       in
         aux 0 lst
+
+
+    let (^&&) b-opt1 b-opt2 =
+      match (b-opt1, b-opt2) with
+      | (Some(b1), Some(b2)) -> Some(b1 && b2)
+      | (_, _)               -> None
+
+
+    let (^||) b-opt1 b-opt2 =
+      match (b-opt1, b-opt2) with
+      | (Some(b1), Some(b2)) -> Some(b1 || b2)
+      | (_, _)               -> None
+
+
+    let (^::) a-opt1 lst-opt2 =
+      match (a-opt1, lst-opt2) with
+      | (Some(x), Some(xs)) -> Some(x :: xs)
+      | (_, _)              -> None
+
+
+
+    let head lst =
+      match lst with
+      | []        -> None
+      | head :: _ -> Some(head)
+
+
+    let tail lst =
+      match lst with
+      | []        -> None
+      | _ :: tail -> Some(tail)
+
+
+    let-rec reverse-append lst1 lst2 =
+      match lst1 with
+      | []      -> lst2
+      | x :: xs -> reverse-append xs (x :: lst2)
+
+
+    let reverse-map f lst =
+      let-rec rmap-f accu lst =
+        match lst with
+        | [] -> []
+        | (x :: xs) -> rmap-f (f x :: accu) xs
+      in
+        rmap-f [] lst
+
+
+    let-rec for-all f lst =
+      match lst with
+      | []      -> true
+      | x :: xs -> f x && for-all f xs
+
+
+    let-rec exists f lst =
+      match lst with
+      | []      -> false
+      | x :: xs -> f x || exists f xs
+
+
+    let-rec for-all2 f lst1 lst2 =
+      match (lst1, lst2) with
+      |  ([], [])              -> Some(true)
+      | (x1 :: xs1, x2 :: xs2) -> Some(f x1 x2) ^&& for-all2 f xs1 xs2
+      | (_, _)                 -> None
+
+
+    let-rec exists2 f lst1 lst2 =
+      match (lst1, lst2) with
+      | ([], [])               -> Some(false)
+      | (x1 :: xs1, x2 :: xs2) -> Some(f x1 x2) ^|| (exists2 f xs1 xs2)
+      | (_, _)                 -> None
+
+
+    let-rec find f lst =
+      match lst with
+      | []      -> None
+      | x :: xs -> if f x then Some(x) else find f xs
+
+
+    let partition f lst =
+      let-rec part yes no lst =
+      match lst with
+        | []      -> (reverse yes, reverse no)
+        | x :: xs -> if f x then part (x :: yes) no xs else part yes (x :: no) xs
+      in
+        part [] [] lst
+
+
+    let-rec split lst =
+      match lst with
+      | []       -> ([], [])
+      | (x, y) :: xs -> let (rx, ry) = split xs in (x :: rx, y :: ry)
+
+
+    let-rec combine lst1 lst2 =
+      match (lst1, lst2) with
+      | ([], [])               -> Some([])
+      | (x1 :: xs1, x2 :: xs2) -> Some((x1, x2)) ^:: (combine xs1 xs2)
+      | (_, _)                 -> None
 
   end
