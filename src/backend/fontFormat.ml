@@ -1419,6 +1419,13 @@ let of_per_mille_pair_opt = function
   | Some((PerMille(a), PerMille(b))) -> Pdf.Array[Pdf.Integer(a); Pdf.Integer(b)]
 
 
+let add_entry_if_non_null key value dict =
+  if value <> Pdf.Null then
+    (key, value) :: dict
+  else
+    dict
+
+
 let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
   let d = dcdr.main in
   let rcdhead = dcdr.head_record in
@@ -1817,17 +1824,16 @@ module Type0
         cidty0font.CIDFontType0.dw2 |> option_map (fun (a, b) -> (per_mille dcdr a, per_mille dcdr b))
       in
       let objdescend =
-        Pdf.Dictionary[
+        Pdf.Dictionary([
           ("/Type"          , Pdf.Name("/Font"));
           ("/Subtype"       , Pdf.Name("/CIDFontType0"));
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", objdescr);
-          ("/DW"            , of_per_mille_opt pmoptdw);
           ("/W"             , objwarr);
-          ("/DW2"           , of_per_mille_pair_opt pmpairoptdw2);
             (* temporary; should add more; /W2 *)
-        ]
+        ] |> add_entry_if_non_null "/DW"  (of_per_mille_opt pmoptdw)
+          |> add_entry_if_non_null "/DW2" (of_per_mille_pair_opt pmpairoptdw2))
       in
       let irdescend = Pdf.addobj pdf objdescend in
       Pdf.Indirect(irdescend)
@@ -1862,18 +1868,17 @@ module Type0
       in
       let objwarr = pdfobject_of_width_array pdf dcdr in
       let objdescend =
-        Pdf.Dictionary[
+        Pdf.Dictionary([
           ("/Type"          , Pdf.Name("/Font"));
           ("/Subtype"       , Pdf.Name("/CIDFontType2"));
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", objdescr);
-          ("/DW"            , of_per_mille_opt dwpmopt);
           ("/W"             , objwarr);
-          ("/DW2"           , of_per_mille_pair_opt dw2pmpairopt);
           ("/CIDToGIDMap"   , objcidtogidmap);
             (* should add more; /W2 *)
-        ]
+        ] |> add_entry_if_non_null "/DW"  (of_per_mille_opt dwpmopt)
+          |> add_entry_if_non_null "/DW2" (of_per_mille_pair_opt dw2pmpairopt))
       in
       let irdescend = Pdf.addobj pdf objdescend in
       Pdf.Indirect(irdescend)
