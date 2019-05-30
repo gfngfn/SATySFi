@@ -185,7 +185,7 @@ module List
     let reverse-map f lst =
       let-rec rmap-f accu lst =
         match lst with
-        | [] -> []
+        | []        -> accu
         | (x :: xs) -> rmap-f (f x :: accu) xs
       in
         rmap-f [] lst
