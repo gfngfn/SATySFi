@@ -46,6 +46,11 @@ module StdJaReport : sig
   direct +chapter : [string?; string?; inline-text; block-text] block-cmd
   direct +section : [string?; string?; inline-text; block-text] block-cmd
   direct +subsection : [string?; string?; inline-text; block-text] block-cmd
+  direct +definition : [inline-text?; string?; inline-text] block-cmd
+  direct +theorem : [inline-text?; string?; inline-text] block-cmd
+  direct +example : [inline-text?; string?; inline-text] block-cmd
+  direct +lemma : [inline-text?; string?; inline-text] block-cmd
+  direct +corollary : [inline-text?; string?; inline-text] block-cmd
   direct \emph : [inline-text] inline-cmd
   direct \dfn : [inline-text] inline-cmd
   direct \footnote : [inline-text] inline-cmd
@@ -495,6 +500,70 @@ end = struct
         line-break false false ctx (read-inline ctx {#it-num; #it;} ++ inline-fil)
     in
       FootnoteScheme.main ctx ibf bbf
+
+
+  let theorem-scheme ctx ctxf category wordopt label inner =
+    let () = increment num-theorems in
+    let s-num =
+      (arabic (!num-chapter)) ^ `.` ^ (arabic (!num-section)) ^ `.` ^ (arabic (!num-theorems))
+    in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+    let it-num = embed-string s-num in
+    let ib-dfn =
+      read-inline (ctx |> set-latin-font font-latin-bold) {#category; #it-num;}
+    in
+    let ib-word =
+      match wordopt with
+      | None       -> inline-nil
+      | Some(word) -> read-inline ctx {\ (#word;).}
+    in
+    let ib-inner = read-inline (ctxf ctx) inner in
+    let () = needs-indentation-ref <- true in
+      line-break true true ctx
+        (ib-dfn ++ ib-word ++ inline-skip (get-font-size ctx) ++ ib-inner ++ inline-fil)
+
+
+  let make-label prefix labelopt =
+    match labelopt with
+    | None    -> generate-fresh-label ()
+    | Some(s) -> prefix ^ s
+
+
+  let-block ctx +definition ?:wordopt ?:labelopt inner =
+    let label = make-label `definition:` labelopt in
+      theorem-scheme ctx (fun x -> x) {Definition} wordopt label inner
+
+
+  let-block ctx +theorem ?:wordopt ?:labelopt inner =
+    let label = make-label `theorem:` labelopt in
+      theorem-scheme ctx (set-latin-font font-latin-italic) {Theorem} wordopt label inner
+
+
+  let-block ctx +lemma ?:wordopt ?:labelopt inner =
+    let label = make-label `lemma:` labelopt in
+      theorem-scheme ctx (set-latin-font font-latin-italic) {Lemma} wordopt label inner
+
+
+  let-block ctx +corollary ?:wordopt ?:labelopt inner =
+    let label = make-label `corollary:` labelopt in
+      theorem-scheme ctx (set-latin-font font-latin-italic) {Corollary} wordopt label inner
+
+
+  let-block ctx +example ?:wordopt ?:labelopt inner =
+    let label = make-label `example:` labelopt in
+      theorem-scheme ctx (fun x -> x) {Example} wordopt label inner
+
+  let-block ctx +proof ?:wordopt inner =
+    let ib-heading =
+      let ctx = ctx |> set-latin-font font-latin-italic in
+        match wordopt with
+        | None    -> read-inline ctx {Proof.}
+        | Some(w) -> read-inline ctx {Proof of #w;.}
+    in
+    let ib-box = read-inline ctx {▪} in
+      line-break true true ctx
+        (ib-heading ++ inline-skip (get-font-size ctx) ++ read-inline ctx inner ++ inline-fil ++ ib-box)
+
 
   end
 
