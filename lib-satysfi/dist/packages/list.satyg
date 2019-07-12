@@ -171,7 +171,7 @@ module List
 
     let-rec take i lst =
       match lst with
-      | [] -> []
+      | []      -> []
       | x :: xs -> (
           if i < 0 then
             []
@@ -185,7 +185,7 @@ module List
         lst
       else
         match lst with
-        | [] -> []
+        | []      -> []
         | x :: xs -> (
             if i < 1 then
               xs
@@ -208,14 +208,14 @@ module List
 
     let-rec last lst =
       match lst with
-      | [] -> None
+      | []      -> None
       | x :: [] -> Some(x)
       | _ :: xs -> last xs
 
 
     let-rec init lst =
       match lst with
-      | [] -> None
+      | []      -> None
       | x :: [] -> Some([])
       | x :: xs -> Some(x) ^:: (init xs)
 
@@ -310,11 +310,16 @@ module List
             )
           | _ -> lst
       in
-      let a = bs-sub lst in
-      let x = last a in
-      let xs = init a in
-        match xs with
-          | [] -> x :: []
-          | _  -> x :: (bubblesort f xs)
+        match lst with
+          | []      -> []
+          | x :: [] -> [x]
+          | _ -> (
+              let a = bs-sub lst in
+              let x = last a in
+              let xs = init a in
+                match xs with
+                  | [] -> x :: []
+                  | _  -> x :: (bubblesort f xs)
+          )
 
   end
