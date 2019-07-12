@@ -20,6 +20,8 @@ module List
     val nth : int -> 'a list -> 'a option
     val head : 'a list -> 'a option
     val tail : 'a list -> ('a list) option
+    val last : 'a list -> 'a option
+    val init : 'a list -> ('a list) option
     val reverse-append : 'a list -> 'a list -> 'a list
     val reverse-map : ('a -> 'b) -> 'a list -> 'b list
     val for-all : ('a -> bool) -> 'a list -> bool
@@ -175,6 +177,20 @@ module List
       match lst with
       | []        -> None
       | _ :: tail -> Some(tail)
+
+
+    let-rec last lst =
+      match lst with
+      | [] -> None
+      | x :: [] -> Some(x)
+      | _ :: xs -> last xs
+
+
+    let-rec init lst =
+      match lst with
+      | [] -> None
+      | x :: [] -> Some([])
+      | x :: xs -> Some(x) ^:: (init xs)
 
 
     let-rec reverse-append lst1 lst2 =
