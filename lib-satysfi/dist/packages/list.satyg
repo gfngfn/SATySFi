@@ -18,6 +18,8 @@ module List
     val mapi-adjacent : (int -> 'a -> 'a option -> 'a option -> 'b) -> 'a list -> 'b list
     val length : 'a list -> int
     val nth : int -> 'a list -> 'a option
+    val take : int -> 'a list -> 'a list
+    val drop : int -> 'a list -> 'a list
     val head : 'a list -> 'a option
     val tail : 'a list -> ('a list) option
     val last : 'a list -> 'a option
@@ -165,6 +167,31 @@ module List
       | (Some(x), Some(xs)) -> Some(x :: xs)
       | (_, _)              -> None
 
+
+
+    let-rec take i lst =
+      match lst with
+      | [] -> []
+      | x :: xs -> (
+          if i < 0 then
+            []
+          else
+            x :: (take (i - 1) xs)
+      )
+
+
+    let-rec drop i lst =
+      if i < 0 then
+        lst
+      else
+        match lst with
+        | [] -> []
+        | x :: xs -> (
+            if i < 1 then
+              xs
+            else
+              drop (i - 1) xs
+        )
 
 
     let head lst =
