@@ -30,6 +30,7 @@ module List
     val partition : ('a -> bool) -> 'a list -> 'a list * 'a list
     val split : ('a * 'b) list -> 'a list * 'b list
     val combine : 'a list -> 'b list -> (('a * 'b) list) option
+    val bubblesort : ('a -> 'a -> int) -> 'a list -> 'a list
   end
 = struct
 
@@ -243,5 +244,34 @@ module List
       | ([], [])               -> Some([])
       | (x1 :: xs1, x2 :: xs2) -> Some((x1, x2)) ^:: (combine xs1 xs2)
       | (_, _)                 -> None
+
+
+    let-rec bubblesort f lst =
+      let-rec last lst =
+        match lst with
+          | x :: [] -> x
+          | _ :: xs -> last xs
+      in
+      let-rec init lst =
+        match lst with
+          | _ :: [] -> []
+          | x :: xs -> x :: (init xs)
+      in
+      let-rec bs-sub lst =
+        match lst with
+          | (x :: y :: zs) -> (
+              if (f x y) < 0 then
+                y :: bs-sub (x :: zs)
+              else
+                x :: bs-sub (y :: zs)
+            )
+          | _ -> lst
+      in
+      let a = bs-sub lst in
+      let x = last a in
+      let xs = init a in
+        match xs with
+          | [] -> x :: []
+          | _  -> x :: (bubblesort f xs)
 
   end
