@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Provides a new primitive `omit-skip-after`.
 - Provides new options `--debug-show-block-bbox` and `--debug-show-block-space`.
 - Allows `[]` (i.e. the empty list) or `(| |)` (i.e. the empty record) as an expression argument of commands.
+- Add new primitive `abort-with-message` (which is equivalent to OCaml’s `failwith`).
 
 ## Deprecated
 
