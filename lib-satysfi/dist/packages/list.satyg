@@ -22,6 +22,11 @@ module List
     val null : 'a list -> bool
     val take : int -> 'a list -> 'a list
     val drop : int -> 'a list -> 'a list
+    val takewhile : ('a -> bool) -> 'a list -> 'a list
+    val dropwhile : ('a -> bool) -> 'a list -> 'a list
+    val splitat : int -> 'a list -> ('a list * 'a list)
+    val span : ('a -> bool) -> 'a list -> ('a list * 'a list)
+    val break : ('a -> bool) -> 'a list -> ('a list * 'a list)
     val head : 'a list -> 'a option
     val tail : 'a list -> ('a list) option
     val last : 'a list -> 'a option
@@ -213,6 +218,60 @@ module List
             else
               drop (i - 1) xs
         )
+
+
+    let-rec takewhile f lst =
+      match lst with
+      | []      -> []
+      | x :: xs -> (
+          if f x then
+            x :: takewhile f xs
+          else
+            takewhile f xs
+      )
+
+
+    let-rec dropwhile f lst =
+      match lst with
+      | []      -> []
+      | x :: xs -> (
+          if f x then
+            dropwhile f xs
+          else
+            x :: dropwhile f xs
+      )
+
+
+    let splitat n lst =
+      (take n lst, drop n lst)
+
+
+    let span f lst =
+      let-rec span-sub lst1 lst2 =
+        match lst2 with
+        | y :: ys -> (
+            if f y then
+              span-sub (y :: lst1) ys
+            else
+              (reverse lst1, lst2)
+          )
+        | _ -> (reverse lst1, lst2)
+      in
+        span-sub [] lst
+
+
+    let break f lst =
+      let-rec break-sub lst1 lst2 =
+        match lst2 with
+        | y :: ys -> (
+            if f y then
+              (reverse lst1, lst2)
+            else
+              break-sub (y :: lst1) ys
+          )
+        | [] -> (reverse lst1, lst2)
+      in
+        break-sub [] lst
 
 
     let head lst =
