@@ -2607,3 +2607,18 @@ params:
 code: |
   Outline.register (get_list get_outline ol);
   const_unit
+
+---
+inst: AbortWithMessage
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "abort-with-message"
+type: |
+  let tv = (let bid = BoundID.fresh UniversalKind () in PolyBound(bid)) in
+  ~% (tS @-> (~@ tv))
+
+params:
+  - msg : string
+
+code: |
+  raise (report_dynamic_error msg)

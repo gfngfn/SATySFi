@@ -2912,4 +2912,20 @@ const_unit
 Outline.register (get_list get_outline ol);
 const_unit
 |}
+    ; inst "AbortWithMessage"
+        ~name:"abort-with-message"
+        ~type_:{|
+let tv = (let bid = BoundID.fresh UniversalKind () in PolyBound(bid)) in
+~% (tS @-> (~@ tv))
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "msg" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+raise (report_dynamic_error msg)
+|}
     ])
