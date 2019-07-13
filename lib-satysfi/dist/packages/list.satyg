@@ -18,6 +18,8 @@ module List
     val mapi-adjacent : (int -> 'a -> 'a option -> 'a option -> 'b) -> 'a list -> 'b list
     val length : 'a list -> int
     val nth : int -> 'a list -> 'a option
+    val apply : 'a -> ('a -> 'b) list -> 'b list
+    val null : 'a list -> bool
     val take : int -> 'a list -> 'a list
     val drop : int -> 'a list -> 'a list
     val head : 'a list -> 'a option
@@ -26,6 +28,8 @@ module List
     val init : 'a list -> ('a list) option
     val reverse-append : 'a list -> 'a list -> 'a list
     val reverse-map : ('a -> 'b) -> 'a list -> 'b list
+    val all-and : bool list -> bool
+    val or : bool list -> bool
     val for-all : ('a -> bool) -> 'a list -> bool
     val exists : ('a -> bool) -> 'a list -> bool
     val for-all2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool option
@@ -34,6 +38,12 @@ module List
     val partition : ('a -> bool) -> 'a list -> 'a list * 'a list
     val split : ('a * 'b) list -> 'a list * 'b list
     val combine : 'a list -> 'b list -> (('a * 'b) list) option
+    val show-opt : ('a option) list -> 'a list
+    val iterate : int -> ('a -> 'a) -> 'a -> 'a list
+    val repeat : int -> 'a -> 'a list
+    val make-cycle : int -> 'a list -> 'a list
+    val max : ('a -> 'a -> int) -> 'a list -> 'a option
+    val mini : ('a -> 'a -> int) -> 'a list -> 'a option
     val bubblesort : ('a -> 'a -> int) -> 'a list -> 'a list
   end
 = struct
@@ -168,6 +178,17 @@ module List
       | (_, _)              -> None
 
 
+    let-rec apply v lst =
+      match lst with
+      | []      -> []
+      | x :: xs -> x v :: apply v xs
+
+
+    let null lst =
+      match lst with
+      | [] -> true
+      | _  -> false
+
 
     let-rec take i lst =
       match lst with
@@ -234,6 +255,17 @@ module List
       in
         rmap-f [] lst
 
+    let-rec all-and lst =
+      match lst with
+      | []      -> true
+      | x :: xs -> x && all-and xs
+
+
+    let-rec or lst =
+      match lst with
+      | []      -> false
+      | x :: xs -> x || or xs
+
 
     let-rec for-all f lst =
       match lst with
@@ -287,6 +319,60 @@ module List
       | ([], [])               -> Some([])
       | (x1 :: xs1, x2 :: xs2) -> Some((x1, x2)) ^:: (combine xs1 xs2)
       | (_, _)                 -> None
+
+
+    let-rec show-opt lst =
+      match lst with
+      | []      -> []
+      | x :: xs -> (
+        match x with
+        | Some(x) -> x :: show-opt xs
+        | None    -> show-opt xs
+      )
+
+
+    let-rec iterate n f initial =
+      if n == 0 then
+        []
+      else
+        f initial :: iterate (n - 1) f (f initial)
+
+    let-rec repeat n initial =
+      if n == 0 then
+        []
+      else
+        initial :: repeat (n - 1) initial
+
+
+    let-rec make-cycle n lst =
+      if n == 0 then
+        []
+      else
+        append lst (make-cycle (n - 1) lst)
+
+
+    let-rec max f lst =
+      match lst with
+      | []           -> None
+      | x :: []      -> Some(x)
+      | x :: y :: zs -> (
+        if (f x y) < 0 then
+          max f (y :: zs)
+        else
+          max f (x :: zs)
+      )
+
+
+    let-rec mini f lst =
+      match lst with
+      | []           -> None
+      | x :: []      -> Some(x)
+      | x :: y :: zs -> (
+        if (f x y) > 0 then
+          mini f (y :: zs)
+        else
+          mini f (x :: zs)
+      )
 
 
     let-rec bubblesort f lst =
