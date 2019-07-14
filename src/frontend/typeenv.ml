@@ -836,7 +836,7 @@ let rec add_mutual_cons (tyenv : t) (lev : level) (mutvarntcons : untyped_mutual
                 List.iter iter mtyarglist;
               end
             else
-              ()
+              List.iter iter mtyarglist
 
         | MTypeName(_, mdlnmlst, tynm) ->
             ()
