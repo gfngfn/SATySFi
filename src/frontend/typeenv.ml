@@ -1211,11 +1211,205 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
   b
 
 
+module ModuleInterpreter = struct
+  module M = struct
+    type ty = type_scheme
+    type poly = poly_type
+    type kind = int
+    type var = TypeID.t
+
+    let var_compare = TypeID.compare
+  end
+
+  module SS = Types.SemanticSig.F(M)
+  module Struct = SS.Struct
+  module VMap = SS.VMap
+
+  exception DuplicateSpec           of Range.t * SS.label
+  exception ValueSpecMismatch       of Range.t * SS.label list * t * poly_type * poly_type
+  exception ArityMismatch           of Range.t * SS.label list * int * int
+  exception TypeMismatch            of t * poly_type * poly_type
+  exception MissingImplementation   of Range.t * SS.label
+  exception NotProvidingRealization of Range.t * SS.label list * SS.label
+
+  let get_kind (ids, _) = List.length ids
+
+  let interpret_type_def (l : SS.label) tid d =
+    match d with
+    | Alias(scheme) -> SS.AtomicType(scheme, get_kind scheme) |> SS.from_body
+    | Data(k)       ->
+        let bids = List.init k (fun _ -> BoundID.fresh UniversalKind ()) in
+        let rng = Range.dummy "variant" in
+        let xs = List.map (fun bid -> (Range.dummy "variant-args", TypeVariable(PolyBound(bid)))) bids in
+        let ty = (rng, VariantType(xs, tid)) in
+        let scheme = (bids, Poly(ty))
+        in
+        SS.AtomicType(scheme, k) |> SS.Exist.quantify1 {v = tid; k; location = [l]}
+
+  let from_tyenv tyenv =
+    let addr = tyenv.current_address |> Alist.to_list in
+    let mtr = tyenv.main_tree in
+    match ModuleTree.find_stage mtr addr with
+    | None                  -> assert false
+    | Some((vd, td, cd, _)) ->
+        let quantifiers = ref [] in
+        VarMap.fold (fun l (pty, _, _) -> Struct.add (SS.V, l) (SS.AtomicTerm{is_direct = SS.Indirect; ty = pty})) vd Struct.empty |>
+        TyNameMap.fold (fun l (tid, d) ->
+          let asig = interpret_type_def (SS.T, l) tid d in
+          let () = quantifiers := SS.Exist.get_quantifier asig @ (!quantifiers) in
+          Struct.add (SS.T, l) (SS.Exist.get_body asig)
+          ) td |> fun m ->
+        SS.Structure(m) |> SS.Exist.quantify (!quantifiers)
+
+  let interpret_type pre tyenv mty c =
+    let mono = fix_manual_type_free { pre with level = Level.succ pre.level; } tyenv mty c in
+    generalize pre.level mono
+
+  let from_manual pre tyenv (Sig(rng, msig)) =
+    let tyenv_acc = ref tyenv in
+    let f : manual_signature_content -> (Struct.key * SS.t) SS.exist = function
+      | SigType(args, name) ->
+          let new_id = TypeID.fresh name in
+          let k = List.length args in
+          let var = {SS.v = new_id; k ; location = [SS.T, name]} in
+          let bids = List.map (fun _ -> BoundID.fresh UniversalKind ()) args in
+          let xs = List.map (fun bid -> (Range.dummy "type-spec", TypeVariable(PolyBound(bid)))) bids in
+          let scheme = (bids, Poly(Range.dummy "abstract-type", VariantType(xs, new_id))) in
+          let ty = SS.AtomicType(scheme, k) in
+          let tyid = TypeID.fresh name in
+          let () = tyenv_acc := add_type_definition (!tyenv_acc) name (tyid, Alias(scheme)) in
+          SS.Exist.quantify1 var ((SS.T, name), ty)
+      | SigValue(name, mty, c) ->
+          ((SS.V, name), SS.AtomicTerm{is_direct = SS.Indirect; ty = interpret_type pre (!tyenv_acc) mty c}) |> SS.from_body
+      | SigDirect(name, mty, c) ->
+          ((SS.V, name), SS.AtomicTerm{is_direct = SS.Direct; ty = interpret_type pre (!tyenv_acc) mty c}) |> SS.from_body
+    in
+    let update m (l, s) =
+      let u = function
+        | None    -> Some(s)
+        | Some(_) -> raise (DuplicateSpec(rng, l))
+      in
+      Struct.update l u m
+    in
+    let g e spec = SS.Exist.merge update e (f spec)
+    in
+      List.fold_left g (SS.from_body Struct.empty) msig |> SS.Exist.map (fun x -> SS.Structure(x))
+
+  (* Checks whether 's1' is subtype of 's2'. *)
+  let rec subtype_of rng location tyenv s1 s2 = match s1, s2 with
+  | SS.AtomicType((bids1, pty1), k1), SS.AtomicType((bids2, pty2), k2) ->
+      if k1 == k2
+      then
+        let freef rng tvref = (rng, TypeVariable(PolyFree(tvref))) in
+        let orfreef orviref = OptionRowVariable(PolyORFree(orviref)) in
+        let bids = List.init k1 (fun _ -> BoundID.fresh UniversalKind ()) in
+        let pairlist1 = List.map2 (fun x y -> ((Range.dummy "subtype", TypeVariable(PolyBound(x))), y)) bids bids1 in
+        let pairlist2 = List.map2 (fun x y -> ((Range.dummy "subtype", TypeVariable(PolyBound(x))), y)) bids bids2 in
+        let ty1 = instantiate_type_scheme freef orfreef pairlist1 pty1 in
+        let ty2 = instantiate_type_scheme freef orfreef pairlist2 pty2 in
+        if poly_type_equal ty1 ty2
+          then ()
+          else raise (TypeMismatch(tyenv, Poly(ty1), Poly(ty2)))
+      else raise (ArityMismatch(rng, [], k1, k2))
+  | SS.AtomicTerm{ty = p1}, SS.AtomicTerm{ty = p2} ->
+      if reflects p2 p1 (* 'is_direct' is irrelevant *)
+        then ()
+        else raise (ValueSpecMismatch(rng, location, tyenv, p1, p2))
+  | SS.Structure(s1), SS.Structure(s2) ->
+      let f l ss2 =
+        let ss1 =
+          try Struct.find l s1 with
+          | Not_found -> raise (MissingImplementation(rng, l))
+        in
+        subtype_of rng (location @ [l]) tyenv ss1 ss2
+      in
+      Struct.iter f s2
+  | _ -> assert false
+
+  let lookup_var rng s asig =
+      let vs = SS.Exist.get_quantifier asig in
+      let f {SS.v = v; k = k2; location} =
+        try
+          match SS.projs s location with
+          | SS.AtomicType(scheme, k1) ->
+              if k1 == k2
+              then (v, scheme)
+              else raise (ArityMismatch(rng, location, k1, k2))
+          | _ -> assert false
+        with
+        | SS.MissingLabel(l) -> raise (NotProvidingRealization(rng, location, l))
+      in
+      let g acc (v, scheme) = VMap.add v scheme acc in
+      List.map f vs |> List.fold_left g VMap.empty
+
+  let rec subst_type tys (rng, ty) =
+    let iter = subst_type tys in
+    let withrng x = (rng, x) in
+    let aux = function
+      | VariantType(args, tid) ->
+          begin
+            match VMap.find_opt tid tys with
+            | None              -> withrng (VariantType(args, tid))
+            | Some((bids, pty)) ->
+                if List.length bids == List.length args
+                then
+                  let pairlist = List.map2 (fun x y -> (x, y)) args bids in
+                  let freef rng tvref = (rng, TypeVariable(PolyFree(tvref))) in
+                  let orfreef orviref = OptionRowVariable(PolyORFree(orviref)) in
+                  instantiate_type_scheme freef orfreef pairlist pty
+                else assert false
+          end
+      | TypeVariable(pinfo) ->
+          begin
+            match pinfo with
+            | PolyFree(_)    -> withrng (TypeVariable pinfo)
+            | PolyBound(bid) ->
+                match BoundID.get_kind bid with
+                | UniversalKind -> withrng (TypeVariable(pinfo))
+                | RecordKind(r) -> withrng (TypeVariable(PolyBound(BoundID.set_kind (RecordKind(Assoc.map_value iter r)) bid)))
+          end
+      | BaseType(bty)                  -> withrng (BaseType(bty))
+      | FuncType(optrow, dom, cod)     -> withrng (FuncType(subst_option_row tys optrow, iter dom, iter cod))
+      | ListType(ty)                   -> withrng (ListType(iter ty))
+      | RefType(ty)                    -> withrng (RefType(iter ty))
+      | ProductType(xs)                -> withrng (ProductType(List.map iter xs))
+      | SynonymType(args, tid, tyreal) -> withrng (SynonymType(List.map iter args, tid, iter tyreal))
+      | RecordType(r)                  -> withrng (RecordType(Assoc.map_value iter r))
+      | HorzCommandType(args)          -> withrng (HorzCommandType(List.map (subst_command_argument_type tys) args))
+      | VertCommandType(args)          -> withrng (VertCommandType(List.map (subst_command_argument_type tys) args))
+      | MathCommandType(args)          -> withrng (MathCommandType(List.map (subst_command_argument_type tys) args))
+      | CodeType(ty)                   -> withrng (CodeType(iter ty))
+    in
+      aux ty
+
+  and subst_option_row tys x = match x with
+    | OptionRowEmpty | OptionRowVariable(_) -> x
+    | OptionRowCons(ty, opt_row)            -> OptionRowCons(subst_type tys ty, subst_option_row tys opt_row)
+
+  and subst_command_argument_type tys = function
+    | MandatoryArgumentType(ty) -> MandatoryArgumentType(subst_type tys ty)
+    | OptionalArgumentType(ty)  -> OptionalArgumentType(subst_type tys ty)
+
+  let subst_poly tys (Poly(ty)) = Poly(subst_type tys ty)
+
+  let subst_scheme tys (bids, pty) = (bids, subst_poly tys pty)
+
+  let matches rng tyenv s1 asig =
+    let tys = lookup_var rng s1 asig in
+    let s2 = SS.subst subst_scheme subst_poly tys (SS.Exist.get_body asig) in
+    let () = subtype_of rng [] tyenv s1 s2 in
+    tys
+
+  (* Checks whether an abstract signature matches another abstract signature, returning realization. *)
+  let matches_asig rng tyenv asig1 asig2 = matches rng tyenv (SS.Exist.get_body asig1) asig2
+end
+
+
 let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
 
   let lev = pre.level in
 
-  let rec read_manual_signature (tyenvacc : t) (tyenvforsigI : t) (tyenvforsigO : t) (msig : manual_signature) (sigoptacc : signature option) =
+  let rec read_manual_signature (tyenvacc : t) (tyenvforsigI : t) (tyenvforsigO : t) (msig : manual_signature_content list) (sigoptacc : signature option) =
     let iter = read_manual_signature in
       match msig with
       | [] -> (sigoptacc, tyenvacc)
@@ -1306,7 +1500,7 @@ let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : 
     | None ->
         tyenv
 
-    | Some(msig) ->
+    | Some(Sig(_, msig)) ->
         let sigoptini = Some((TyNameMap.empty, VarMap.empty)) in
         match
           let open OptionMonad in

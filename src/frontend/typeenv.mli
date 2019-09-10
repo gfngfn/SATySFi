@@ -62,3 +62,45 @@ module Raw : sig
   val add_constructor : constructor_name -> type_scheme -> TypeID.t -> t -> t
   val register_type : type_name -> TypeID.t -> type_definition -> t -> t
 end
+
+module ModuleInterpreter : sig
+  module M : sig
+    type ty = type_scheme
+    type poly = poly_type
+    type kind = int
+    type var = TypeID.t
+
+    val var_compare : var -> var -> int
+  end
+
+  include sig
+    module SS : sig
+      type t
+      type ex_t
+      type label
+
+      module Exist : sig
+        type 'a t
+        val merge : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+      end
+
+      module VMap : Map.S
+    end
+
+    val from_tyenv : t -> SS.ex_t
+    val from_manual : pre -> t -> manual_signature -> SS.ex_t
+
+    exception DuplicateSpec           of Range.t * SS.label
+    exception ValueSpecMismatch       of Range.t * SS.label list * t * poly_type * poly_type
+    exception ArityMismatch           of Range.t * SS.label list * int * int
+    exception TypeMismatch            of t * poly_type * poly_type
+    exception MissingImplementation   of Range.t * SS.label
+    exception NotProvidingRealization of Range.t * SS.label list * SS.label
+
+    module VMap = SS.VMap
+
+    val subtype_of : Range.t -> SS.label list -> t -> SS.t -> SS.t -> unit
+    val matches : Range.t -> t -> SS.t -> SS.ex_t -> type_scheme VMap.t
+    val matches_asig : Range.t -> t -> SS.ex_t -> SS.ex_t -> type_scheme VMap.t
+  end with module SS = Types.SemanticSig.F(M)
+end

@@ -31,6 +31,7 @@ module TypeID : sig
   val fresh : type_name -> t
   val extract_name : t -> type_name
   val equal : t -> t -> bool
+  val compare : t -> t -> int
   val show_direct : t -> string
 end = struct
   type t = int * type_name
@@ -40,6 +41,7 @@ end = struct
   let fresh tynm = begin incr current_id; (!current_id, tynm) end
   let extract_name (_, tynm) = tynm
   let equal (n1, _) (n2, _) = (n1 = n2)
+  let compare (n1, _) (n2, _) = compare n1 n2
   let show_direct (n, tynm) = tynm ^ "(" ^ (string_of_int n) ^ ")"
 end
 
@@ -191,6 +193,7 @@ module BoundID_
     val fresh : 'a -> unit -> 'a t_
     val eq : 'a t_ -> 'a t_ -> bool
     val get_kind : 'a t_ -> 'a
+    val set_kind : 'a -> 'a t_ -> 'a t_
     val show_direct : ('a -> string) -> 'a t_ -> string
   end
 = struct
@@ -210,6 +213,8 @@ module BoundID_
     let eq (i1, _) (i2, _) = (i1 = i2)
 
     let get_kind (_, kd) = kd
+
+    let set_kind kd (i, _) = (i, kd)
 
     let show_direct f (i, kd) = "[" ^ (string_of_int i) ^ "::" ^ (f kd) ^ "]"
 
@@ -358,6 +363,149 @@ and mono_option_row = (mono_type_variable_info ref, mono_option_row_variable_inf
 [@@deriving show]
 
 type mono_command_argument_type = (mono_type_variable_info ref, mono_option_row_variable_info ref) command_argument_type
+
+
+module SemanticSig = struct
+  module type S = sig
+    type ty
+    type poly
+    type kind
+    type var
+
+    val var_compare : var -> var -> int
+  end
+
+  module F(X : S) = struct
+    type var_class =
+      | V
+      | T
+      | M
+    [@@deriving eq, ord]
+
+    type label = var_class * string
+    [@@deriving eq, ord]
+
+    let show_label (cl, s) =
+      match cl with
+      | V -> "value '" ^ s ^ "'"
+      | T -> "type '" ^ s ^ "'"
+      | M -> "module '" ^ s ^ "'"
+
+    module Struct = Map.Make(struct
+      type t = label
+      [@@deriving eq, ord]
+    end)
+
+    type direct =
+      | Direct (* direct \x : ... *)
+      | Indirect (* val x : ... *)
+
+    type t =
+      | AtomicType of X.ty * X.kind
+      | AtomicTerm of {
+          is_direct : direct;
+          ty : X.poly;
+        }
+      | Structure of t Struct.t
+
+    type var_info = {
+      v : X.var;
+      k : X.kind;
+      location : label list;
+    }
+
+    module Exist : sig
+      type 'a t
+
+      val from_body : 'a -> 'a t
+      val quantify1 : var_info -> 'a -> 'a t
+      val quantify : var_info list -> 'a -> 'a t
+      val get_body : 'a t -> 'a
+      val get_quantifier : 'a t -> var_info list
+
+      val map : ('a -> 'b) -> 'a t -> 'b t
+
+      val map_with_location : ('a -> 'b) -> (label list -> label list) -> 'a t -> 'b t
+
+      val merge : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+    end = struct
+      type 'a t =
+        | Exist of var_info list * 'a
+
+      let from_body x = Exist([], x)
+
+      let quantify1 var x = Exist([var], x)
+
+      let quantify vars x = Exist(vars, x)
+
+      let get_body (Exist(_, x)) = x
+
+      let get_quantifier (Exist(vs, _)) = vs
+
+      let map f (Exist(vs, x)) = Exist(vs, f x)
+
+      let map_with_location f g (Exist(vs, x)) =
+        Exist(List.map (fun v -> {v with location = g v.location}) vs, f x)
+
+      let merge f (Exist(vs1, x)) (Exist(vs2, y)) = Exist(List.append vs1 vs2, f x y)
+    end
+
+    type 'a exist = 'a Exist.t
+
+    let from_body = Exist.from_body
+
+    type ex_t = t exist
+
+    module VMap = Map.Make(struct
+      type t = X.var
+      let compare = X.var_compare
+    end)
+
+    module M : sig
+      val proj : t -> Struct.key -> t
+      val projs : t -> Struct.key list -> t
+
+      val show_location : label list -> string
+
+      val subst : (X.ty VMap.t -> X.ty -> X.ty) ->
+                  (X.ty VMap.t -> X.poly -> X.poly) -> X.ty VMap.t -> t -> t
+
+      exception MissingLabel of Struct.key
+    end = struct
+      exception MissingLabel of Struct.key
+      exception NotStructure
+
+      let proj s l =
+        match s with
+        | Structure(s) ->
+            begin
+              match Struct.find_opt l s with
+              | Some(s) -> s
+              | None    -> raise (MissingLabel(l))
+            end
+        | _ -> raise NotStructure
+
+      let rec projs s = function
+        | []      -> s
+        | l :: ls -> projs (proj s l) ls
+
+      let rec show_location = function
+        | []           -> ""
+        | [(_, s)]     -> s
+        | (_, s) :: ls -> s ^ "." ^ show_location ls
+
+      let subst subst_type subst_poly tys =
+        let rec aux = function
+          | AtomicType(ty, k)             -> AtomicType(subst_type tys ty, k)
+          | AtomicTerm{is_direct; ty = p} -> AtomicTerm{is_direct; ty = subst_poly tys p}
+          | Structure(s)                  -> Structure(Struct.map aux s)
+        in
+          aux
+    end
+
+    include M
+  end
+end
 
 
 module FreeID =
@@ -534,7 +682,8 @@ and manual_signature_content =
   | SigModule of module_name * manual_signature
 *)
 
-and manual_signature = manual_signature_content list
+and manual_signature =
+  | Sig of Range.t * manual_signature_content list
 
 and untyped_itemize =
   | UTItem of untyped_abstract_tree * (untyped_itemize list)

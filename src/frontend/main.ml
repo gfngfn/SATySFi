@@ -889,6 +889,51 @@ let error_log_environment suspended =
         DisplayLine(Display.string_of_poly_type tyenv2 pty2);
       ]
 
+  | Typeenv.ModuleInterpreter.ValueSpecMismatch(rng, loc, tyenv, pty1, pty2) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("The implementation of value '" ^ Typeenv.ModuleInterpreter.SS.show_location loc ^ "' has type");
+        DisplayLine(Display.string_of_poly_type tyenv pty1);
+        NormalLine("which does not generalize the type required by the signature");
+        DisplayLine(Display.string_of_poly_type tyenv pty2);
+      ]
+
+  | Typeenv.ModuleInterpreter.ArityMismatch(rng, loc, k1, k2) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("'" ^ Typeenv.ModuleInterpreter.SS.show_location loc ^ "' is expected by signature to have " ^ string_of_int k2 ^ " type argument(s),");
+        NormalLine("but it has " ^ string_of_int k1 ^ " type argument(s) in the concrete definition.");
+      ]
+
+  | Typeenv.ModuleInterpreter.TypeMismatch(tyenv, pty1, pty2) ->
+      report_error Typechecker [
+        NormalLine("The implementation type");
+        DisplayLine(Display.string_of_poly_type tyenv pty1);
+        NormalLine("is inconsistent with the type required by the signature");
+        DisplayLine(Display.string_of_poly_type tyenv pty2);
+      ]
+
+  | Typeenv.ModuleInterpreter.MissingImplementation(rng, label) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("The implementation does not provide " ^ Typeenv.ModuleInterpreter.SS.show_label label ^ ",");
+        NormalLine("which is required by the signature.");
+      ]
+
+  | Typeenv.ModuleInterpreter.DuplicateSpec(rng, label) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("Duplicate specifications for " ^ Typeenv.ModuleInterpreter.SS.show_label label ^ " in the signature.");
+      ]
+
+  | Typeenv.ModuleInterpreter.NotProvidingRealization(rng, loc, label) ->
+      let open Typeenv.ModuleInterpreter in
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("Could not find concrete definition for abstract type '" ^ SS.show_location loc ^ "'.");
+        (* NormalLine("Missing " ^ SS.show_label label); *)
+      ]
+
   | Typechecker.ContradictionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
       let strty1 = string_of_mono_type tyenv ty1 in
       let strty2 = string_of_mono_type tyenv ty2 in

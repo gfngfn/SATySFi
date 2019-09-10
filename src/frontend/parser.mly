@@ -319,7 +319,7 @@
       UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons)
 
   let make_module
-      (firsttk : Range.t) (mdlnmtk : Range.t * module_name) (msigopt : (manual_signature_content list) option)
+      (firsttk : Range.t) (mdlnmtk : Range.t * module_name) (msigopt : manual_signature option)
       (utastdef : untyped_abstract_tree) (utastaft : untyped_abstract_tree)
   : untyped_abstract_tree
   =
@@ -525,8 +525,8 @@ nxtopsubseq:
   | IN; utast=nxlet; EOI { utast }
 ;
 nxsigopt:
-  |                                     { None }
-  | COLON; SIG; sg=list(nxsigelem); END { Some(sg) }
+  |                                                { None }
+  | COLON; top=SIG; sg=list(nxsigelem); bottom=END { Some(Sig(Range.unite top bottom, sg)) }
 ;
 nxsigelem:
   | TYPE; tyvars=list(TYPEVAR); tytok=VAR; clst=constrnts       { let (_, tynm) = tytok in (SigType(kind_type_arguments tyvars clst, tynm)) }
