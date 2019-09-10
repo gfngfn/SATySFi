@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Fix (a kind of) bug about decoding fonts that has NULL in a BaseRecord table ([PR\#164](https://github.com/gfngfn/SATySFi/pull/164) by `matsud224`).
 - Fix the page breaking algorithm.
 - Fix how to detect cyclic synonym type definition(s) ([bug reported by `nyuichi`]((https://github.com/gfngfn/SATySFi/issues/187))).
+- Fix how to embed fonts (by updating `otfm` from `v.0.3.6+satysfi` to `v.0.3.7+satysfi`, which was due to [a PR](https://github.com/gfngfn/otfm/pull/7) by `matsud224`).
 
 ## Added
 - Begins to support Markdown input.
