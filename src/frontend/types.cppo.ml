@@ -484,7 +484,7 @@ and untyped_abstract_tree_main =
 (* -- declaration of type and module -- *)
   | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
   | UTModule               of Range.t * module_name * manual_signature option * untyped_abstract_tree * untyped_abstract_tree
-(* -- implerative -- *)
+(* -- imperative -- *)
   | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
   | UTWhileDo              of untyped_abstract_tree * untyped_abstract_tree
