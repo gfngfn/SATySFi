@@ -130,7 +130,6 @@ module Math : sig
   direct \nsim : [] math-cmd
   direct \simeq : [] math-cmd
   direct \nsimeq : [] math-cmd
-  direct \approx : [] math-cmd
   direct \propto : [] math-cmd
   direct \coloneq : [] math-cmd
   direct \eqcolon : [] math-cmd
@@ -729,7 +728,6 @@ end = struct
   let-math \nsim = rel `≁`
   let-math \simeq = rel `≃`
   let-math \nsimeq = rel `≄`
-  let-math \approx = rel `≈`
   let-math \propto = rel `∝`
   let-math \coloneq = rel `≔`
   let-math \eqcolon = rel `≕`
