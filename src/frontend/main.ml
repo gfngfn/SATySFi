@@ -866,29 +866,6 @@ let error_log_environment suspended =
         DisplayLine(tynm ^ " (at " ^ (Range.to_string rng2) ^ ")");
       ]
 
-  | Typeenv.NotProvidingTypeImplementation(rng, tynm) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("The implementation does not provide type '" ^ tynm ^ "',");
-        NormalLine("which is required by the signature.");
-      ]
-
-  | Typeenv.NotProvidingValueImplementation(rng, varnm) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("The implementation does not provide value '" ^ varnm ^ "',");
-        NormalLine("which is required by the signature.");
-      ]
-
-  | Typeenv.NotMatchingInterface(rng, varnm, tyenv1, pty1, tyenv2, pty2) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("The implementation of value '" ^ varnm ^ "' has type");
-        DisplayLine(Display.string_of_poly_type tyenv1 pty1);
-        NormalLine("which is inconsistent with the type required by the signature");
-        DisplayLine(Display.string_of_poly_type tyenv2 pty2);
-      ]
-
   | Typeenv.ModuleInterpreter.ValueSpecMismatch(rng, loc, tyenv, pty1, pty2) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");

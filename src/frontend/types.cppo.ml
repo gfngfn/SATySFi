@@ -470,6 +470,8 @@ module SemanticSig = struct
       val subst : (X.ty VMap.t -> X.ty -> X.ty) ->
                   (X.ty VMap.t -> X.poly -> X.poly) -> X.ty VMap.t -> t -> t
 
+      val find_direct : t -> string list
+
       exception MissingLabel of Struct.key
     end = struct
       exception MissingLabel of Struct.key
@@ -501,6 +503,16 @@ module SemanticSig = struct
           | Structure(s)                  -> Structure(Struct.map aux s)
         in
           aux
+
+      (* This function only works if signatures are limited to flattened ones. *)
+      let rec find_direct_aux l = function
+        | AtomicTerm{is_direct = Direct} -> [l]
+        | Structure(s)                   ->
+            let f (_, l1) s1 xs = find_direct_aux l1 s1 @ xs in
+            Struct.fold f s []
+        | _ -> []
+
+      let find_direct = find_direct_aux "<dummy>"
     end
 
     include M

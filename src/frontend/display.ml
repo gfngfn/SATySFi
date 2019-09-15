@@ -142,9 +142,12 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv
         end
 
     | SynonymType(tyarglist, tyid, tyreal) ->
+        let s1 = (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid) in
+        let s2 = iter Single tyreal in
         let s =
-          (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
-          ^ " (= " ^ (iter Single tyreal) ^ ")"
+          if s1 = s2
+          then s1
+          else s1 ^ " (= " ^ s2 ^ ")"
         in
         begin
           match (tyarglist, plev) with

@@ -13,9 +13,6 @@ exception UndefinedTypeName               of Range.t * module_name list * type_n
 exception UndefinedTypeArgument           of Range.t * var_name * var_name list
 exception CyclicTypeDefinition            of (Range.t * type_name) list
 exception MultipleTypeDefinition          of Range.t * Range.t * type_name
-exception NotProvidingValueImplementation of Range.t * var_name
-exception NotProvidingTypeImplementation  of Range.t * type_name
-exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 exception UndefinedModuleName             of Range.t * module_name * module_name list
 (*
 exception UndefinedModuleNameList         of module_name list
@@ -54,8 +51,6 @@ val fix_manual_type_free : pre -> t -> manual_type -> constraints -> mono_type
 val find_type_id : t -> module_name list -> type_name -> Range.t -> TypeID.t option
 
 val find_type_name : t -> TypeID.t -> type_name
-
-val sigcheck : Range.t -> pre -> t -> t -> manual_signature option -> t
 
 module Raw : sig
   val fresh_type_id : string -> TypeID.t
@@ -102,5 +97,7 @@ module ModuleInterpreter : sig
     val subtype_of : Range.t -> SS.label list -> t -> SS.t -> SS.t -> unit
     val matches : Range.t -> t -> SS.t -> SS.ex_t -> type_scheme VMap.t
     val matches_asig : Range.t -> t -> SS.ex_t -> SS.ex_t -> type_scheme VMap.t
+
+    val set_sig : t -> SS.ex_t -> t
   end with module SS = Types.SemanticSig.F(M)
 end

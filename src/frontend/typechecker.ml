@@ -940,15 +940,15 @@ let rec typecheck
       let (eM, _) = typecheck_iter tyenvinner utastM in
         (* -- the final type environment in the module has been written to `final_tyenv` -- *)
       let asig1 = Typeenv.ModuleInterpreter.from_tyenv (!final_tyenv) in
-      let _ = match sigopt with
+      let asig = match sigopt with
         | None    -> asig1
         | Some(s) ->
             let open Typeenv.ModuleInterpreter in
-            let asig2 = from_manual pre tyenv s in
+            let asig2 = from_manual pre tyenvinner s in
             let _ = matches_asig mdlrng tyenv asig1 asig2 in
             SS.Exist.merge (fun _ x -> x) asig1 asig2
       in
-      let tyenvmid = Typeenv.sigcheck mdlrng pre (!final_tyenv) tyenv sigopt in
+      let tyenvmid = Typeenv.ModuleInterpreter.set_sig (!final_tyenv) asig in
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
       (Module(eM, eA), tyA)
