@@ -86,6 +86,7 @@ module type Signature = sig
 
   val fold_type : (type_name -> TypeID.t * type_definition -> 'a -> 'a) -> 'a -> 'a
   val fold_var : (var_name -> poly_type -> 'a -> 'a) -> 'a -> 'a
+  val fold_constr : (constructor_name -> TypeID.t * type_scheme -> 'a -> 'a) -> 'a -> 'a
 end
 
 type signature = (module Signature)
@@ -280,6 +281,7 @@ let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
         (* -- if the opened module has a signature -- *)
           let module M = (val s) in
           ModuleTree.update mtr addrlst (update_td (M.fold_type TyNameMap.add)) >>= fun mtr ->
+          ModuleTree.update mtr addrlst (update_cd (M.fold_constr ConstrMap.add)) >>= fun mtr ->
           ModuleTree.update mtr addrlst (update_vt @@
             M.fold_var (fun varnm pty vdmapU ->
               match vdmapC |> VarMap.find_opt varnm with
@@ -1254,6 +1256,7 @@ module ModuleInterpreter = struct
     | Some((vd, td, cd, _)) ->
         let quantifiers = ref [] in
         VarMap.fold (fun l (pty, _, _) -> Struct.add (SS.V, l) (SS.AtomicTerm{is_direct = SS.Indirect; ty = pty})) vd Struct.empty |>
+        ConstrMap.fold (fun l (tid, scheme) -> Struct.add (SS.C, l) (SS.AtomicConstr{var = tid; ty = scheme})) cd |>
         TyNameMap.fold (fun l (tid, d) ->
           let asig = interpret_type_def (SS.T, l) tid d in
           let () = quantifiers := SS.Exist.get_quantifier asig @ (!quantifiers) in
@@ -1438,6 +1441,16 @@ module ModuleInterpreter = struct
           match cl, s1 with
           | V, AtomicTerm{ty = pty} -> f str pty acc1
           | _                       -> acc1
+        in
+        match s with
+        | Structure(s0) -> Struct.fold g s0 acc
+        | _             -> assert false
+
+      let fold_constr f acc =
+        let g (cl, str) s1 acc1 =
+          match cl, s1 with
+          | C, AtomicConstr{var = tid; ty = scheme} -> f str (tid, scheme) acc1
+          | _                                       -> acc1
         in
         match s with
         | Structure(s0) -> Struct.fold g s0 acc

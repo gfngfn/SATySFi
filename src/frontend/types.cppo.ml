@@ -378,6 +378,7 @@ module SemanticSig = struct
   module F(X : S) = struct
     type var_class =
       | V
+      | C
       | T
       | M
     [@@deriving eq, ord]
@@ -388,6 +389,7 @@ module SemanticSig = struct
     let show_label (cl, s) =
       match cl with
       | V -> "value '" ^ s ^ "'"
+      | C -> "constructor '" ^ s ^ "'"
       | T -> "type '" ^ s ^ "'"
       | M -> "module '" ^ s ^ "'"
 
@@ -405,6 +407,10 @@ module SemanticSig = struct
       | AtomicTerm of {
           is_direct : direct;
           ty : X.poly;
+        }
+      | AtomicConstr of {
+          var : X.var; (* Represents what abstract type this constructor belongs to. *)
+          ty : X.ty; (* The type of the argument to this constructor. *)
         }
       | Structure of t Struct.t
 
@@ -500,6 +506,7 @@ module SemanticSig = struct
         let rec aux = function
           | AtomicType(ty, k)             -> AtomicType(subst_type tys ty, k)
           | AtomicTerm{is_direct; ty = p} -> AtomicTerm{is_direct; ty = subst_poly tys p}
+          | AtomicConstr{var; ty}         -> AtomicConstr{var; ty = subst_type tys ty}
           | Structure(s)                  -> Structure(Struct.map aux s)
         in
           aux
