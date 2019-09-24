@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Fix bug about decoding fonts that has NULL as the DefaultLangSys entry in a Script table.
 - Fix (a kind of) bug about decoding fonts that has NULL in a BaseRecord table ([PR\#164](https://github.com/gfngfn/SATySFi/pull/164) by `matsud224`).
 - Fix the page breaking algorithm.
+- Fix how to detect cyclic synonym type definition(s) ([bug reported by `nyuichi`]((https://github.com/gfngfn/SATySFi/issues/187))).
+- Fix how to embed fonts (by updating `otfm` from `v.0.3.6+satysfi` to `v.0.3.7+satysfi`, which was due to [a PR](https://github.com/gfngfn/otfm/pull/7) by `matsud224`).
 
 ## Added
 - Begins to support Markdown input.
@@ -34,6 +36,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Provides a new primitive `omit-skip-after`.
 - Provides new options `--debug-show-block-bbox` and `--debug-show-block-space`.
 - Allows `[]` (i.e. the empty list) or `(| |)` (i.e. the empty record) as an expression argument of commands.
+- Add new primitive `abort-with-message` (which is equivalent to OCaml’s `failwith`).
 
 ## Deprecated
 

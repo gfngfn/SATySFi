@@ -836,10 +836,10 @@ let rec add_mutual_cons (tyenv : t) (lev : level) (mutvarntcons : untyped_mutual
                 List.iter iter mtyarglist;
               end
             else
-              ()
+              List.iter iter mtyarglist
 
-        | MTypeName(_, mdlnmlst, tynm) ->
-            ()
+        | MTypeName(mtyarglist, mdlnmlst, tynm) ->
+            List.iter iter mtyarglist
     in
     let iter = add_each_dependency_as_edge in
       match mutvarntcons with

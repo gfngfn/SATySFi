@@ -534,16 +534,15 @@ let get_pdf_mode_initial_context wid =
 
 
 let (~%) ty = Poly(ty)
+let (~@) n = (~! "tv", TypeVariable(n))
 
 
 let general_table : (var_name * poly_type * (environment -> syntactic_value)) list =
-  let (~@) n = (~! "tv", TypeVariable(n)) in
-  let (-%) n ptysub = ptysub in
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in PolyBound(bid1)) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in PolyBound(bid2)) in
-  let ptyderef  = tv1 -% (~% ((tR (~@ tv1)) @-> (~@ tv1))) in
-  let ptycons   = tv2 -% (~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2)))) in
-  let ptyappinv = tv1 -% (tv2 -% (~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)))) in
+  let ptyderef  = ~% ((tR (~@ tv1)) @-> (~@ tv1)) in
+  let ptycons   = ~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2))) in
+  let ptyappinv = ~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)) in
     [
       ( "!"  , ptyderef             , lambda1 (fun v1 -> Dereference(v1))                   );
       ( "::" , ptycons              , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))      );
