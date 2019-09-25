@@ -76,13 +76,28 @@ module PatternTrie
       rule  : hyph_rule option;
     }
 
-  type t = node array * int (* min. code *) * int (* max. code *) * int (* special marker code *)
+  type code_info = {
+    min_code            : int;
+    max_code            : int;
+    special_marker_code : int;
+  }
+
+  type t = {
+    nodes     : node array;
+    code_info : code_info;
+  }
+
+  let empty = {
+    nodes = Array.of_list [{ base = -1; check = 0; rule = None; }];
+    code_info = {
+      min_code            = 0;
+      max_code            = 0;
+      special_marker_code = 0;
+    }
+  }
 
 
-  let empty = (Array.of_list [{ base = -1; check = 0; rule = None; }], 0, 0, 0)
-
-
-  let make patlst =
+  let make_code_info (patlst : pattern list) : code_info =
     let (mincode, maxcode) =
       patlst |> List.fold_left (fun acc (pelst, _) ->
         pelst |> List.fold_left (fun (min, max) e ->
@@ -93,41 +108,75 @@ module PatternTrie
       ) (Uchar.to_int Uchar.max, Uchar.to_int Uchar.min)
     in
     let smcode = maxcode + 1 in
-    let int_of_pe = function
-      | SpecialMarker -> smcode - mincode
-      | UChar(i)      -> i - mincode
-    in
-    let aux patlst =
-      let map = List.fold_left (fun acc (pelst, rule) ->
-        match pelst with
-        | [] ->
-            acc
+    {
+      min_code            = mincode;
+      max_code            = maxcode;
+      special_marker_code = smcode;
+    }
 
-        | hdch :: rest ->
-            UcharMap.update hdch (fun opt ->
-              match (opt, rest) with
-              | (None, [])         -> Some([],   Some(rule))
-              | (None, _)          -> Some([(rest, rule)], None)
-              | (Some(ull, _), []) -> Some(ull,  Some(rule))
-              | (Some(ull, r), _)  -> Some((rest, rule) :: ull, r)
-            ) acc
 
-      ) (UcharMap.empty) patlst
+  let int_of_pe_by_using_code_info (codeinfo : code_info) =
+    let smcode  = codeinfo.special_marker_code in
+    let mincode = codeinfo.min_code in
+    function
+    | SpecialMarker -> smcode - mincode
+    | UChar(i)      -> i - mincode
+
+
+  let int_of_pe_opt_by_using_code_info (codeinfo : code_info) =
+    let smcode  = codeinfo.special_marker_code in
+    let mincode = codeinfo.min_code in
+    let maxcode = codeinfo.max_code in
+    function
+    | SpecialMarker ->
+        Some(smcode - mincode)
+
+    | UChar(i) ->
+        if i < mincode || i > maxcode then
+          None
+        else
+          Some(i - mincode)
+
+
+  let make (patlst : pattern list) : t =
+    let codeinfo = make_code_info patlst in
+    let int_of_pe = int_of_pe_by_using_code_info codeinfo in
+
+    let aux (patlst : pattern list) : (pattern_element * (pattern list * hyph_rule option)) list =
+      let map =
+        patlst |> List.fold_left (fun acc (pelst, rule) ->
+          match pelst with
+          | [] ->
+              acc
+
+          | hdch :: rest ->
+              UcharMap.update hdch (fun opt ->
+                match (opt, rest) with
+                | (None, [])         -> Some([],   Some(rule))
+                | (None, _)          -> Some([(rest, rule)], None)
+                | (Some(ull, _), []) -> Some(ull,  Some(rule))
+                | (Some(ull, r), _)  -> Some((rest, rule) :: ull, r)
+              ) acc
+
+        ) (UcharMap.empty)
       in
       UcharMap.fold (fun k v acc -> (k, v) :: acc) map []
     in
-    let rec search_base checkset indexlst offset =
-      if List.exists (fun pe -> IntSet.mem ((int_of_pe pe) + offset) checkset) indexlst then
+
+    let rec search_base (checkset : IntSet.t) (indexlst : pattern_element list) (offset : int) : int =
+      if indexlst |> List.exists (fun pe -> checkset |> IntSet.mem ((int_of_pe pe) + offset)) then
         search_base checkset indexlst (offset + 1)
       else
         offset
     in
-    let rec iter stk basemap checkset checkmap rulemap =
+
+    let rec iter stk (basemap : int IntMap.t) (checkset : IntSet.t) (checkmap : int IntMap.t) rulemap =
       match stk with
       | [] ->
-          let kmax = IntMap.fold (fun k _ acc ->
-            Pervasives.max acc k
-          ) checkmap 1
+          let kmax =
+            IntMap.fold (fun k _ acc ->
+              Pervasives.max acc k
+            ) checkmap 1
           in
           let darray = Array.make (kmax + 1) { base = -1; check = -1; rule = None; } in
           basemap |> IntMap.iter (fun k v ->
@@ -152,37 +201,37 @@ module PatternTrie
             else
               search_base checkset indexlst (node + 1)
           in
-          let basemap = IntMap.add node base basemap in
-          let checkset = indexlst |> List.fold_left (fun acc pe ->
-            IntSet.add (base + (int_of_pe pe)) acc
-          ) checkset
+          let basemap = basemap |> IntMap.add node base in
+          let checkset =
+            indexlst |> List.fold_left (fun accset pe ->
+              accset |> IntSet.add (base + (int_of_pe pe))
+            ) checkset
           in
-          let (checkmap, rulemap) = List.fold_left2 (fun (cmap, rmap) pe scopt ->
-            let cmap = cmap |> IntMap.add (base + (int_of_pe pe)) node in
-            let rmap = rmap |> IntMap.add (base + (int_of_pe pe)) scopt in
-            (cmap, rmap)
-          ) (checkmap, rulemap) indexlst rulelst
+          let (checkmap, rulemap) =
+            List.fold_left2 (fun (cmap, rmap) pe scopt ->
+              let cmap = cmap |> IntMap.add (base + (int_of_pe pe)) node in
+              let rmap = rmap |> IntMap.add (base + (int_of_pe pe)) scopt in
+              (cmap, rmap)
+            ) (checkmap, rulemap) indexlst rulelst
           in
-          let cldpats = List.map2 (fun pe child ->
-            (base + (int_of_pe pe), child)
-          ) indexlst cldpatlst
+          let cldpats =
+            List.map2 (fun pe child ->
+              (base + (int_of_pe pe), child)
+            ) indexlst cldpatlst
           in
           iter (cldpats @ rest) basemap checkset checkmap rulemap
     in
+
     let darray = iter [(0, patlst)] (IntMap.empty) (IntSet.empty) (IntMap.empty) (IntMap.empty) in
-    (darray, mincode, maxcode, smcode)
+    {
+      nodes     = darray;
+      code_info = codeinfo;
+    }
 
 
-  let match_prefix trie pelst stpos res =
-    let (darray, mincode, maxcode, smcode) = trie in
-    let int_of_pe_opt = function
-      | SpecialMarker -> Some(smcode - mincode)
-      | UChar(i)      ->
-          if i < mincode || i > maxcode then
-            None
-          else
-            Some(i - mincode)
-    in
+  let match_prefix (trie : t) pelst stpos res =
+    let darray = trie.nodes in
+    let int_of_pe_opt = int_of_pe_opt_by_using_code_info trie.code_info in
     let alen = Array.length darray in
     let rec iter pelst node res =
       match pelst with
@@ -211,7 +260,7 @@ module PatternTrie
     iter pelst 0 res
 
 
-  let match_every trie pelst =
+  let match_every (trie : t) (pelst : pattern_element list) : match_result =
     let rec iter pelst pos res =
       match pelst with
       | [] ->
