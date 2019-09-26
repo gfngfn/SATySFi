@@ -144,21 +144,21 @@ module PatternTrie
 
     let aux (patlst : pattern list) : (pattern_element * (pattern list * hyph_rule option)) list =
       let map =
-        patlst |> List.fold_left (fun acc (pelst, rule) ->
+        patlst |> List.fold_left (fun accmap (pelst, rule) ->
           match pelst with
           | [] ->
-              acc
+              accmap
 
           | hdch :: rest ->
-              UcharMap.update hdch (fun opt ->
+              accmap |> UcharMap.update hdch (fun opt ->
                 match (opt, rest) with
                 | (None, [])         -> Some([],   Some(rule))
                 | (None, _)          -> Some([(rest, rule)], None)
                 | (Some(ull, _), []) -> Some(ull,  Some(rule))
                 | (Some(ull, r), _)  -> Some((rest, rule) :: ull, r)
-              ) acc
+              )
 
-        ) (UcharMap.empty)
+        ) UcharMap.empty
       in
       UcharMap.fold (fun k v acc -> (k, v) :: acc) map []
     in
@@ -170,7 +170,7 @@ module PatternTrie
         offset
     in
 
-    let rec iter stk (basemap : int IntMap.t) (checkset : IntSet.t) (checkmap : int IntMap.t) rulemap =
+    let rec iter (stk : (int * pattern list) list) (basemap : int IntMap.t) (checkset : IntSet.t) (checkmap : int IntMap.t) rulemap =
       match stk with
       | [] ->
           let kmax =
@@ -222,14 +222,14 @@ module PatternTrie
           iter (cldpats @ rest) basemap checkset checkmap rulemap
     in
 
-    let darray = iter [(0, patlst)] (IntMap.empty) (IntSet.empty) (IntMap.empty) (IntMap.empty) in
+    let darray = iter [(0, patlst)] IntMap.empty IntSet.empty IntMap.empty IntMap.empty in
     {
       nodes     = darray;
       code_info = codeinfo;
     }
 
 
-  let match_prefix (trie : t) pelst stpos res =
+  let match_prefix (trie : t) (pelst : pattern_element list) (stpos : number) (res : match_result) : match_result =
     let darray = trie.nodes in
     let int_of_pe_opt = int_of_pe_opt_by_using_code_info trie.code_info in
     let alen = Array.length darray in
