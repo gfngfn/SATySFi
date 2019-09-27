@@ -1223,7 +1223,7 @@ module ModuleInterpreter = struct
     let var_compare = TypeID.compare
   end
 
-  module SS = Types.SemanticSig.F(M)
+  module SS = SemanticSig.F(M)
   module Struct = SS.Struct
   module VMap = SS.VMap
 

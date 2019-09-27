@@ -99,5 +99,5 @@ module ModuleInterpreter : sig
     val matches_asig : Range.t -> t -> SS.ex_t -> SS.ex_t -> type_scheme VMap.t
 
     val set_sig : t -> SS.ex_t -> t
-  end with module SS = Types.SemanticSig.F(M)
+  end with module SS = SemanticSig.F(M)
 end
