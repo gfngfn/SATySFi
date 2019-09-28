@@ -19,8 +19,17 @@ type pattern_element =
 
 type pattern = (pattern_element list) * hyph_rule
 
+type match_normal_single =
+  | MatchNormalSingle of number * number list
+      (* --
+        `MatchNormalSingle(pos, ns)`
+
+         * `pos`: the position in the word where the matched region starts
+         * `ns`: the numbers given to the characters in the matched region
+      -- *)
+
 type match_result =
-  | MatchNormal    of (number * number list) list
+  | MatchNormal    of match_normal_single list
   | MatchException of string list
 
 
@@ -296,7 +305,7 @@ module PatternTrie
                 else
                   match (darray.(nextnode).rule, res) with
                   | (Some(Exception(r)), _)             -> (MatchException(r))
-                  | (Some(Normal(r)), MatchNormal(acc)) -> iter rest nextnode (MatchNormal((stpos, r) :: acc))
+                  | (Some(Normal(r)), MatchNormal(acc)) -> iter rest nextnode (MatchNormal(MatchNormalSingle(stpos, r) :: acc))
                   | _                                   -> iter rest nextnode res
 
     in
@@ -450,17 +459,26 @@ let make_fraction fracacc =
 
 
 (* --
+  `make_pattern_element_list_of_word uchseglst`:
+    converts the given word `uchseglst` into a pattern element list
+    in order to traverse the pattern trie.
+-- *)
+let make_pattern_element_list_of_word (uchseglst : uchar_segment list) : pattern_element list =
+  let uchlst = uchseglst |> List.map (fun (u, _) -> u) in
+  add_specialmarker (uchlst |> List.map (fun uch -> UChar(Uchar.to_int uch)))
+
+
+(* --
    'lookup_patterns':
      determines hyphen pattern of the given word. -- *)
 let lookup_patterns (lmin : int) (rmin : int) (pattrie : PatternTrie.t) (uchseglst : uchar_segment list) : (uchar_segment list) list =
-  let uchlst = uchseglst |> List.map (fun (u, _) -> u) in
-  let pelst = add_specialmarker (uchlst |> List.map (fun uch -> UChar(Uchar.to_int uch))) in
+  let pelst = make_pattern_element_list_of_word uchseglst in
   match PatternTrie.match_every pattrie pelst with
   | MatchNormal(rulelst) ->
       begin
         let len = List.length uchseglst in
         let clst = uchseglst |> List.map (fun uchseg -> (uchseg, ref 0)) in
-        let () = rulelst |> List.iter (fun (pos, nlst) ->
+        rulelst |> List.iter (function MatchNormalSingle(pos, nlst) ->
           let (pos, nlst) =
             match (pos - 2) with
             | -2 -> (0, List.tl nlst)
@@ -480,8 +498,7 @@ let lookup_patterns (lmin : int) (rmin : int) (pattrie : PatternTrie.t) (uchsegl
                   ()
           in
           aux 0 clst nlst
-        )
-        in
+        );
         let (_, acc, fracaccopt) =
           clst |> List.fold_left (fun (i, acc, fracaccopt) (uchseg, numref) ->
             if (!numref) mod 2 = 1 && i + 1 >= lmin && len - (i + 1) >= rmin then
