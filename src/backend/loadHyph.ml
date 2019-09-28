@@ -501,24 +501,22 @@ let lookup_patterns (lmin : int) (rmin : int) (pattrie : PatternTrie.t) (uchsegl
         );
         let (_, acc, fracaccopt) =
           clst |> List.fold_left (fun (i, acc, fracaccopt) (uchseg, numref) ->
+            let fracacc =
+              match fracaccopt with
+              | Some(fracacc) -> fracacc
+              | None          -> Alist.empty
+            in
             if (!numref) mod 2 = 1 && i + 1 >= lmin && len - (i + 1) >= rmin then
             (* -- if able to break the word with hyphen immediately after the current position -- *)
-              let fracacc =
-                match fracaccopt with
-                | Some(fracacc) -> fracacc
-                | None          -> Alist.empty
-              in
-                let sfrac = make_fraction (Alist.extend fracacc uchseg) in
-                  (i + 1, Alist.extend acc sfrac, None)
+              let sfrac = make_fraction (Alist.extend fracacc uchseg) in
+              (i + 1, Alist.extend acc sfrac, None)
             else
-              match fracaccopt with
-              | Some(fracacc) -> (i + 1, acc, Some(Alist.extend fracacc uchseg))
-              | None          -> (i + 1, acc, Some(Alist.extend Alist.empty uchseg))
+              (i + 1, acc, Some(Alist.extend fracacc uchseg))
           ) (0, Alist.empty, None)
         in
-          match fracaccopt with
-          | Some(fracacc) -> Alist.extend acc (make_fraction fracacc) |> Alist.to_list
-          | None          -> acc |> Alist.to_list
+        match fracaccopt with
+        | Some(fracacc) -> Alist.extend acc (make_fraction fracacc) |> Alist.to_list
+        | None          -> acc |> Alist.to_list
       end
 
   | MatchException(sfraclst) ->
