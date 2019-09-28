@@ -142,6 +142,16 @@ module PatternTrie
     let codeinfo = make_code_info patlst in
     let int_of_pe = int_of_pe_by_using_code_info codeinfo in
 
+    (* --
+      `aux patlst`:
+
+      classifies patterns by their first character (or `SpecialMarker`).
+      Each element `(pe, (pats, ruleopt))` of the return value stands for a class:
+
+      * `pe`: the first character
+      * `pats`: the patterns subsequent to `pe`
+      * `ruleopt`: if a pattern ends with `pe`, stores its corresponding hypenation rule.
+    -- *)
     let aux (patlst : pattern list) : (pattern_element * (pattern list * hyph_rule option)) list =
       let map =
         patlst |> List.fold_left (fun accmap (pelst, rule) ->
@@ -163,6 +173,15 @@ module PatternTrie
       UcharMap.fold (fun k v acc -> (k, v) :: acc) map []
     in
 
+    (* --
+      `search_base checkset indexlst offset`:
+
+      * `checkset`: set of indices that have been already used in CHECK array
+      * `indexlst`: indices of the children of the node that will be added to the trie
+      * `offset`: minimum candidate for the answer
+
+      finds the BASE value suitable for the newly added node.
+    -- *)
     let rec search_base (checkset : IntSet.t) (indexlst : pattern_element list) (offset : int) : int =
       if indexlst |> List.exists (fun pe -> checkset |> IntSet.mem ((int_of_pe pe) + offset)) then
         search_base checkset indexlst (offset + 1)
@@ -170,6 +189,17 @@ module PatternTrie
         offset
     in
 
+    (* --
+      `iter stk basemap checkset checkmap rulemap`:
+
+      * `stk`: the stack keeping data that remain to be dealt with;
+          each element `(i, pats)` of `stk` stands for
+          “there is a node that should be stored at the index `i` and its children are `pats`.”
+      * `basemap`: the BASE array under construction
+      * `checkset`: the set of the already used indices of CHECK array (i.e. the domain of `checkmap`)
+      * `checkmap`: the CHECK array under construction
+      * `rulemap`: maps the leaves of the trie to their corresponding hyphenation rule
+    -- *)
     let rec iter (stk : (int * pattern list) list) (basemap : int IntMap.t) (checkset : IntSet.t) (checkmap : int IntMap.t) rulemap =
       match stk with
       | [] ->
