@@ -258,11 +258,21 @@ module PatternTrie
       code_info = codeinfo;
     }
 
+  (* --
+    `match_prefix trie pelst stpos res`:
 
+    * `trie`: the trie tree
+    * `pelst`: a suffix of the original word to be matched
+    * `stpos`: the start position of `pelst` in the original word
+    * `res`: the current accumulated result of matching
+
+    traverses `trie` and updates matching results.
+  -- *)
   let match_prefix (trie : t) (pelst : pattern_element list) (stpos : number) (res : match_result) : match_result =
     let darray = trie.nodes in
     let int_of_pe_opt = int_of_pe_opt_by_using_code_info trie.code_info in
     let alen = Array.length darray in
+
     let rec iter pelst node res =
       match pelst with
       | [] ->
@@ -270,15 +280,18 @@ module PatternTrie
 
       | pe :: rest ->
           if darray.(node).base < 0 then
+          (* -- if the node corresponding to the index `node` is a leaf -- *)
             res
           else
             match int_of_pe_opt pe with
             | None ->
+              (* -- if the character `pe` is out of the range the trie supports -- *)
                 res
 
             | Some(i) ->
                 let nextnode = darray.(node).base + i in
                 if nextnode >= alen || darray.(nextnode).check <> node then
+                (* -- if there is no branch for the next character `pe` -- *)
                   res
                 else
                   match (darray.(nextnode).rule, res) with
@@ -299,7 +312,8 @@ module PatternTrie
       | _ :: rest ->
           match res with
           | MatchNormal(_) ->
-              iter rest (pos + 1) (match_prefix trie pelst pos res)
+              let res = res |> match_prefix trie pelst pos in
+              iter rest (pos + 1) res
 
           | MatchException(_) ->
               res
