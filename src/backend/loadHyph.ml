@@ -85,16 +85,24 @@ module PatternTrie
       rule  : hyph_rule option;
     }
 
+  (* -- `code_info`: the type of data for encoding characters into numbers in trie -- *)
   type code_info = {
     min_code            : int;
     max_code            : int;
     special_marker_code : int;
   }
 
+  type base_map = int IntMap.t
+
+  type check_map = int IntMap.t
+
+  type rule_map = (hyph_rule option) IntMap.t
+
   type t = {
     nodes     : node array;
     code_info : code_info;
   }
+
 
   let empty = {
     nodes = Array.of_list [{ base = -1; check = 0; rule = None; }];
@@ -198,6 +206,25 @@ module PatternTrie
         offset
     in
 
+    let make_double_array (basemap : base_map) (checkmap : check_map) (rulemap : rule_map) =
+      let kmax =
+        IntMap.fold (fun k _ acc ->
+          Pervasives.max acc k
+        ) checkmap 1
+      in
+      let darray = Array.make (kmax + 1) { base = -1; check = -1; rule = None; } in
+      basemap |> IntMap.iter (fun k v ->
+        darray.(k) <- { darray.(k) with base = v }
+      );
+      checkmap |> IntMap.iter (fun k v ->
+        darray.(k) <- { darray.(k) with check = v }
+      );
+      rulemap |> IntMap.iter (fun k v ->
+        darray.(k) <- { darray.(k) with rule = v }
+      );
+      darray
+    in
+
     (* --
       `iter stk basemap checkset checkmap rulemap`:
 
@@ -208,26 +235,13 @@ module PatternTrie
       * `checkset`: the set of the already used indices of CHECK array (i.e. the domain of `checkmap`)
       * `checkmap`: the CHECK array under construction
       * `rulemap`: maps the leaves of the trie to their corresponding hyphenation rule
+
+      iteratively constructs the BASE and CHECK array.
     -- *)
-    let rec iter (stk : (int * pattern list) list) (basemap : int IntMap.t) (checkset : IntSet.t) (checkmap : int IntMap.t) rulemap =
+    let rec iter (stk : (int * pattern list) list) (basemap : base_map) (checkset : IntSet.t) (checkmap : check_map) (rulemap : rule_map) =
       match stk with
       | [] ->
-          let kmax =
-            IntMap.fold (fun k _ acc ->
-              Pervasives.max acc k
-            ) checkmap 1
-          in
-          let darray = Array.make (kmax + 1) { base = -1; check = -1; rule = None; } in
-          basemap |> IntMap.iter (fun k v ->
-            darray.(k) <- { darray.(k) with base = v }
-          );
-          checkmap |> IntMap.iter (fun k v ->
-            darray.(k) <- { darray.(k) with check = v }
-          );
-          rulemap |> IntMap.iter (fun k v ->
-            darray.(k) <- { darray.(k) with rule = v }
-          );
-          darray
+          make_double_array basemap checkmap rulemap
 
       | (node, patlst) :: rest ->
           let lst = aux patlst in
