@@ -1185,8 +1185,8 @@ commamacroarg:
   | COMMA; macarg=macroarg { macarg }
 ;
 macroarg:
-  | expr=nxbot { LateMacroArg(expr) }
-  | EXACT_TILDE; expr=nxbot { EarlyMacroArg(expr) }
+  | expr=nxbot { UTLateMacroArg(expr) }
+  | EXACT_TILDE; expr=nxbot { UTEarlyMacroArg(expr) }
 ;
 
 narg:
