@@ -1159,6 +1159,9 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
 
     | (_, UTInputHorzText(s)) :: tail ->
         aux (Alist.extend acc (InputHorzText(s))) tail
+
+    | (_, UTInputHorzMacro(hmacro, macargs)) :: tail ->
+        failwith "UTInputHorzMacro; not implemented yet (in typechecker.ml)"
   in
   aux Alist.empty utihlst
 

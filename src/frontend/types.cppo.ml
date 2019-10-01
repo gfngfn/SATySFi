@@ -410,6 +410,11 @@ and untyped_input_horz_element_main =
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "IC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
   | UTInputHorzContent      of untyped_abstract_tree
   | UTInputHorzEmbeddedMath of untyped_abstract_tree
+  | UTInputHorzMacro        of (Range.t * ctrlseq_name) * macro_argument list
+
+and macro_argument =
+  | LateMacroArg  of untyped_abstract_tree
+  | EarlyMacroArg of untyped_abstract_tree
 
 and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
   [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_input_vert_element_main utivmain)]

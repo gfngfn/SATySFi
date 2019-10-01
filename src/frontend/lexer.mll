@@ -204,6 +204,9 @@ rule progexpr stack = parse
       let buffer = Buffer.create 256 in
       literal false quote_range quote_length buffer lexbuf
     }
+  | ("\\" (identifier | constructor) "@") {
+      let tok = Lexing.lexeme lexbuf in HORZMACRO(get_pos lexbuf, tok)
+    }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
     }

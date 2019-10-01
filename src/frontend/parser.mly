@@ -379,6 +379,7 @@
 
 %token <Range.t * Types.var_name> VAR
 %token <Range.t * Types.ctrlseq_name> HORZCMD
+%token <Range.t * Types.ctrlseq_name> HORZMACRO
 %token <Range.t * Types.ctrlseq_name> VERTCMD
 %token <Range.t * Types.ctrlseq_name> MATHCMD
 %token <Range.t * (Types.module_name list) * Types.var_name> VARWITHMOD
@@ -1142,6 +1143,11 @@ ih:
   |                                   { [] }
 ;
 ihcmd:
+  | hmacro=HORZMACRO; macargsraw=macroargs {
+      let (rngcs, _) = hmacro in
+      let (rnglast, macroargs) = macargsraw in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
+    }
   | hcmd=hcmd; nargs=list(narg); sargsraw=sargs {
       let (rngcs, mdlnmlst, csnm) = hcmd in
       let utastcmd = (rngcs, UTContentOf(mdlnmlst, csnm)) in
@@ -1170,6 +1176,19 @@ ihchar:
   | rng=SPACE { (rng, " ") }
   | rng=BREAK { (rng, "\n") }
 ;
+macroargs:
+  | LPAREN; macarg=macroarg; macargs=list(commamacroarg); cls=RPAREN; {
+      (cls, macarg :: macargs)
+    }
+;
+commamacroarg:
+  | COMMA; macarg=macroarg { macarg }
+;
+macroarg:
+  | expr=nxbot { LateMacroArg(expr) }
+  | EXACT_TILDE; expr=nxbot { EarlyMacroArg(expr) }
+;
+
 narg:
   | opn=LPAREN; utast=nxlet; cls=RPAREN           { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
   | opn=LPAREN; cls=RPAREN                        { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant) }
