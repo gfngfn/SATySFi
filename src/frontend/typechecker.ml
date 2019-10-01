@@ -1165,15 +1165,22 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
         aux (Alist.extend acc (InputHorzText(s))) tail
 
     | (rngapp, UTInputHorzMacro(hmacro, utmacargs)) :: tail ->
-        let (rngcs, csnm) = hmacro in
         begin
-          match Typeenv.find_macro tyenv csnm with
-          | None ->
-              raise (UndefinedHorzMacro(rngcs, csnm))
+          match pre.stage with
+          | Stage0 | Persistent0 ->
+              raise (InvalidExpressionAsToStaging(rngapp, Stage1))
 
-          | Some(MacroType(macparamtys)) ->
-              let eargs = typecheck_macro_arguments rngapp pre tyenv macparamtys utmacargs in
-              failwith "UTInputHorzMacro; not supported yet (in typechecker.ml)"
+          | Stage1 ->
+              let (rngcs, csnm) = hmacro in
+              begin
+                match Typeenv.find_macro tyenv csnm with
+                | None ->
+                    raise (UndefinedHorzMacro(rngcs, csnm))
+
+                | Some(MacroType(macparamtys)) ->
+                    let eargs = typecheck_macro_arguments rngapp pre tyenv macparamtys utmacargs in
+                    failwith "UTInputHorzMacro; not supported yet (in typechecker.ml)"
+              end
         end
   in
   aux Alist.empty utihlst
