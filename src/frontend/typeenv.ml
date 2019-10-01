@@ -95,6 +95,7 @@ type t =
     current_address : current_address;
     name_to_id_map  : name_to_id_map;
     main_tree       : single_stage ModuleTree.t;
+    macros          : macro_type VarMap.t;
   }
 
 
@@ -115,6 +116,7 @@ let empty : t =
     current_address = Alist.empty;
     name_to_id_map  = ModuleNameMap.empty;
     main_tree       = ModuleTree.empty (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None);
+    macros          = VarMap.empty;
   }
 
 
@@ -191,6 +193,15 @@ let get_candidates_last pair =
 
 let get_candidates foldf map nm =
   get_candidates_last @@ get_candidates_first foldf map nm
+
+
+let add_macro (tyenv : t) (csnm : ctrlseq_name) (macty : macro_type) : t =
+  let macros = tyenv.macros in
+  { tyenv with macros = macros |> VarMap.add csnm macty }
+
+
+let find_macro (tyenv : t) (csnm : ctrlseq_name) : macro_type option =
+  tyenv.macros |> VarMap.find_opt csnm
 
 
 (* PUBLIC *)

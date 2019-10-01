@@ -373,6 +373,14 @@ module BoundID =
     type t = poly_kind BoundID_.t_
   end
 
+
+type macro_parameter_type =
+  | LateMacroParameter  of mono_type
+  | EarlyMacroParameter of mono_type
+
+type macro_type =
+  | MacroType of macro_parameter_type list
+
 (* ---- untyped ---- *)
 
 let pp_sep fmt () =
