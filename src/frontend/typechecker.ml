@@ -19,6 +19,10 @@ exception MultipleFieldInRecord          of Range.t * field_name
 exception ApplicationOfNonFunction       of Range.t * Typeenv.t * mono_type
 exception InvalidExpressionAsToStaging   of Range.t * stage
 exception InvalidOccurrenceAsToStaging   of Range.t * var_name * stage
+exception UndefinedHorzMacro             of Range.t * ctrlseq_name
+exception InvalidNumberOfMacroArguments  of Range.t * macro_parameter_type list
+exception LateMacroArgumentExpected      of Range.t * mono_type
+exception EarlyMacroArgumentExpected     of Range.t * mono_type
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -1160,10 +1164,50 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
     | (_, UTInputHorzText(s)) :: tail ->
         aux (Alist.extend acc (InputHorzText(s))) tail
 
-    | (_, UTInputHorzMacro(hmacro, macargs)) :: tail ->
-        failwith "UTInputHorzMacro; not implemented yet (in typechecker.ml)"
+    | (rngapp, UTInputHorzMacro(hmacro, utmacargs)) :: tail ->
+        let (rngcs, csnm) = hmacro in
+        begin
+          match Typeenv.find_macro tyenv csnm with
+          | None ->
+              raise (UndefinedHorzMacro(rngcs, csnm))
+
+          | Some(MacroType(macparamtys)) ->
+              let eargs = typecheck_macro_arguments rngapp pre tyenv macparamtys utmacargs in
+              failwith "UTInputHorzMacro; not supported yet (in typechecker.ml)"
+        end
   in
   aux Alist.empty utihlst
+
+
+and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (macparamtys : macro_parameter_type list) (utmacargs : untyped_macro_argument list) : abstract_tree list =
+  let lenexp = List.length macparamtys in
+  let lenact = List.length utmacargs in
+  if (lenexp <> lenact) then
+    raise (InvalidNumberOfMacroArguments(rng, macparamtys))
+  else
+    let argacc =
+      List.fold_left2 (fun argacc macparamty utmacarg ->
+        match (macparamty, utmacarg) with
+        | (LateMacroParameter(tyexp), UTLateMacroArg(utast)) ->
+            let (earg, tyarg) = typecheck pre tyenv utast in
+            unify_ tyenv tyarg tyexp;
+            Alist.extend argacc (Next(earg))
+              (* -- late arguments are converted to quoted arguments -- *)
+
+        | (EarlyMacroParameter(tyexp), UTEarlyMacroArg(utast)) ->
+            let (earg, tyarg) = typecheck pre tyenv utast in
+            unify_ tyenv tyarg tyexp;
+            Alist.extend argacc earg
+
+        | (LateMacroParameter(tyexp), UTEarlyMacroArg((rngarg, _))) ->
+            raise (LateMacroArgumentExpected(rngarg, tyexp))
+
+        | (EarlyMacroParameter(tyexp), UTLateMacroArg((rngarg, _))) ->
+            raise (EarlyMacroArgumentExpected(rngarg, tyexp))
+
+      ) Alist.empty macparamtys utmacargs
+    in
+    Alist.to_list argacc
 
 
 and typecheck_record
