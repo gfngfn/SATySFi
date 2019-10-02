@@ -959,6 +959,11 @@ let rec typecheck
             (Prev(e1), beta)
       end
 
+(* -- macros -- *)
+
+  | UTLetHorzMacroIn(rngcs, csnm, macparams, utast1, utast2) ->
+      failwith "UTLetHorzMacroIn; not supported yet (in typechecker.ml)"
+
 
 and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) tyenv (utcmdarglst : untyped_command_argument list) (cmdargtylst : mono_command_argument_type list) : abstract_tree =
   let rec aux eacc utcmdarglst cmdargtylst =

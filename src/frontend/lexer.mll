@@ -295,6 +295,7 @@ rule progexpr stack = parse
           | "math-cmd"          -> MATHCMDTYPE(pos)
           | "command"           -> COMMAND(pos)
           | "open"              -> OPEN(pos)
+          | "let-inline-macro"  -> LETHORZMACRO(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }

@@ -405,6 +405,11 @@ let string_of_stage = function
   | Stage1      -> "stage 1"
 
 
+type untyped_macro_parameter =
+  | UTLateMacroParam  of (Range.t * var_name)
+  | UTEarlyMacroParam of (Range.t * var_name)
+[@@deriving show { with_path = false; } ]
+
 type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
 
@@ -512,6 +517,8 @@ and untyped_abstract_tree_main =
 (* -- multi-stage constructs -- *)
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree
+(* -- macros -- *)
+  | UTLetHorzMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
 
 and constraints = (var_name * manual_kind) list
 

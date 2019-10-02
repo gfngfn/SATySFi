@@ -406,7 +406,7 @@
 %token <Range.t> MODULE STRUCT END DIRECT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
-%token <Range.t> LETHORZ LETVERT LETMATH
+%token <Range.t> LETHORZ LETVERT LETMATH LETHORZMACRO
 %token <Range.t> IF THEN ELSE
 %token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
 %token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
@@ -509,6 +509,10 @@ nxtoplevel:
       let (rng, mdlnm) = mdlnmtok in
       make_standard (Tok top) (Ranged subseq) (UTOpenIn(rng, mdlnm, subseq))
     }
+  | top=LETHORZMACRO; dec=nxhorzmacrodec; utast2=nxtopsubseq {
+      let (rngcs, csnm, macparams, utast1) = dec in
+      make_standard (Tok top) (Ranged utast2) (UTLetHorzMacroIn(rngcs, csnm, macparams, utast1, utast2))
+    }
 ;
 nxtopsubseq:
   | utast=nxtoplevel     { utast }
@@ -596,6 +600,24 @@ nxmathdec:
       let curried = curry_lambda_abstract Alist.empty rngcs cmdarglst utast in
       (None, mcmdtok, (rng, UTLambdaMath(curried)))
     }
+;
+nxhorzmacrodec:
+  | hmacro=HORZMACRO; macparams=macroparams; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = hmacro in
+      (rngcs, csnm, macparams, utast)
+    }
+;
+macroparams:
+  | LPAREN; macparam=macroparam; macparams=list(commamacroparam); RPAREN {
+      macparam :: macparams
+    }
+;
+commamacroparam:
+  | COMMA; macparam=macroparam { macparam }
+;
+macroparam:
+  | var=VAR { UTLateMacroParam(var) }
+  | EXACT_TILDE; var=VAR { UTEarlyMacroParam(var) }
 ;
 nonrecdecargpart:
   | COLON; mty=txfunc                                   { (Some(mty), []) }
