@@ -1177,9 +1177,11 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
                 | None ->
                     raise (UndefinedHorzMacro(rngcs, csnm))
 
-                | Some(MacroType(macparamtys)) ->
+                | Some((MacroType(macparamtys), evid)) ->
                     let eargs = typecheck_macro_arguments rngapp pre tyenv macparamtys utmacargs in
-                    failwith "UTInputHorzMacro; not supported yet (in typechecker.ml)"
+                    let eapp = apply_tree_of_list (ContentOf(rngcs, evid)) eargs in
+                    let ih = InputHorzContent(Prev(eapp)) in
+                    aux (Alist.extend acc ih) tail
               end
         end
   in

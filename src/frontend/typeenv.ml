@@ -95,7 +95,7 @@ type t =
     current_address : current_address;
     name_to_id_map  : name_to_id_map;
     main_tree       : single_stage ModuleTree.t;
-    macros          : macro_type VarMap.t;
+    macros          : (macro_type * EvalVarID.t) VarMap.t;
   }
 
 
@@ -195,12 +195,12 @@ let get_candidates foldf map nm =
   get_candidates_last @@ get_candidates_first foldf map nm
 
 
-let add_macro (tyenv : t) (csnm : ctrlseq_name) (macty : macro_type) : t =
+let add_macro (tyenv : t) (csnm : ctrlseq_name) (macdef : macro_type * EvalVarID.t) : t =
   let macros = tyenv.macros in
-  { tyenv with macros = macros |> VarMap.add csnm macty }
+  { tyenv with macros = macros |> VarMap.add csnm macdef }
 
 
-let find_macro (tyenv : t) (csnm : ctrlseq_name) : macro_type option =
+let find_macro (tyenv : t) (csnm : ctrlseq_name) : (macro_type * EvalVarID.t) option =
   tyenv.macros |> VarMap.find_opt csnm
 
 

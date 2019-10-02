@@ -25,9 +25,9 @@ val initialize_id : unit -> unit
 
 val empty : t
 
-val add_macro : t -> ctrlseq_name -> macro_type -> t
+val add_macro : t -> ctrlseq_name -> (macro_type * EvalVarID.t) -> t
 
-val find_macro : t -> ctrlseq_name -> macro_type option
+val find_macro : t -> ctrlseq_name -> (macro_type * EvalVarID.t) option
 
 val add : t -> var_name -> (poly_type * EvalVarID.t * stage) -> t
 
