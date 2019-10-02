@@ -77,7 +77,7 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
         | UTLateMacroParam(_)  -> LateMacroParameter(beta)
         | UTEarlyMacroParam(_) -> EarlyMacroParameter(beta)
       in
-      (Typeenv.add tyenv varnm (pty, evid, Stage1), Alist.extend evidacc evid, Alist.extend macptyacc macpty)
+      (Typeenv.add tyenv varnm (pty, evid, stage), Alist.extend evidacc evid, Alist.extend macptyacc macpty)
     ) (tyenv, Alist.empty, Alist.empty)
   in
   (tyenv, Alist.to_list evidacc, Alist.to_list macptyacc)
