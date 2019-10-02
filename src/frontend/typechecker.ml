@@ -60,24 +60,27 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
 let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (macparams : untyped_macro_parameter list) : Typeenv.t * EvalVarID.t list * macro_parameter_type list =
   let (tyenv, evidacc, macptyacc) =
     macparams |> List.fold_left (fun (tyenv, evidacc, macptyacc) macparam ->
-      let (param, stage) =
+      let param =
         match macparam with
-        | UTLateMacroParam(param) -> (param, Stage1)
-        | UTEarlyMacroParam(param) -> (param, Stage0)
+        | UTLateMacroParam(param)  -> param
+        | UTEarlyMacroParam(param) -> param
       in
       let (rng, varnm) = param in
       let evid = EvalVarID.fresh param in
-      let (pty, beta) =
+      let (ptybody, beta) =
         let tvid = FreeID.fresh UniversalKind pre.quantifiability pre.level () in
         let tvref = ref (MonoFree(tvid)) in
-        (Poly(rng, TypeVariable(PolyFree(tvref))), (rng, TypeVariable(tvref)))
+        ((rng, TypeVariable(PolyFree(tvref))), (rng, TypeVariable(tvref)))
       in
-      let macpty =
-        match macparam with
-        | UTLateMacroParam(_)  -> LateMacroParameter(beta)
-        | UTEarlyMacroParam(_) -> EarlyMacroParameter(beta)
+      let (pty, macpty) =
+      match macparam with
+      | UTLateMacroParam(_) ->
+          (Poly(Range.dummy "late-macro-param", CodeType(ptybody)), LateMacroParameter(beta))
+
+      | UTEarlyMacroParam(_) ->
+          (Poly(ptybody), EarlyMacroParameter(beta))
       in
-      (Typeenv.add tyenv varnm (pty, evid, stage), Alist.extend evidacc evid, Alist.extend macptyacc macpty)
+      (Typeenv.add tyenv varnm (pty, evid, Stage0), Alist.extend evidacc evid, Alist.extend macptyacc macpty)
     ) (tyenv, Alist.empty, Alist.empty)
   in
   (tyenv, Alist.to_list evidacc, Alist.to_list macptyacc)
