@@ -53,9 +53,9 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
   (optrow, Alist.to_list evidacc, tyenvnew)
 
 
-let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (macparams : untyped_macro_parameter list) : Typeenv.t * EvalVarID.t list =
-  let (tyenv, evidacc) =
-    macparams |> List.fold_left (fun (tyenv, evidacc) macparam ->
+let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (macparams : untyped_macro_parameter list) : Typeenv.t * EvalVarID.t list * macro_parameter_type list =
+  let (tyenv, evidacc, macptyacc) =
+    macparams |> List.fold_left (fun (tyenv, evidacc, macptyacc) macparam ->
       let (param, stage) =
         match macparam with
         | UTLateMacroParam(param) -> (param, Stage1)
@@ -63,15 +63,20 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       in
       let (rng, varnm) = param in
       let evid = EvalVarID.fresh param in
-      let pty =
+      let (pty, beta) =
         let tvid = FreeID.fresh UniversalKind pre.quantifiability pre.level () in
         let tvref = ref (MonoFree(tvid)) in
-        Poly(rng, TypeVariable(PolyFree(tvref)))
+        (Poly(rng, TypeVariable(PolyFree(tvref))), (rng, TypeVariable(tvref)))
       in
-      (Typeenv.add tyenv varnm (pty, evid, Stage1), Alist.extend evidacc evid)
-    ) (tyenv, Alist.empty)
+      let macpty =
+        match macparam with
+        | UTLateMacroParam(_)  -> LateMacroParameter(beta)
+        | UTEarlyMacroParam(_) -> EarlyMacroParameter(beta)
+      in
+      (Typeenv.add tyenv varnm (pty, evid, Stage1), Alist.extend evidacc evid, Alist.extend macptyacc macpty)
+    ) (tyenv, Alist.empty, Alist.empty)
   in
-  (tyenv, Alist.to_list evidacc)
+  (tyenv, Alist.to_list evidacc, Alist.to_list macptyacc)
 
 
 let rec is_nonexpansive_expression e =
@@ -989,10 +994,11 @@ let rec typecheck
             raise (InvalidExpressionAsToStaging(rng, Stage1))
 
         | Stage1 ->
-            let (tyenv, vars) = add_macro_parameters_to_type_environment tyenv pre macparams in
+            let (tyenv, vars, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
             let (e1, ty1) = typecheck_iter ~s:Stage1 tyenv utast1 in
             unify ty1 (Range.dummy "let-inline-macro", BaseType(TextRowType));
-            failwith "UTLetHorzMacroIn; not supported yet (in typechecker.ml)"
+            let evidmac = EvalVarID.fresh (rngcs, csnm) in
+            typecheck_iter (Typeenv.add_macro tyenv csnm (MacroType(macparamtys), evidmac)) utast2
       end
 
 
