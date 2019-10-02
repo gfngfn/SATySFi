@@ -53,6 +53,27 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
   (optrow, Alist.to_list evidacc, tyenvnew)
 
 
+let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (macparams : untyped_macro_parameter list) : Typeenv.t * EvalVarID.t list =
+  let (tyenv, evidacc) =
+    macparams |> List.fold_left (fun (tyenv, evidacc) macparam ->
+      let (param, stage) =
+        match macparam with
+        | UTLateMacroParam(param) -> (param, Stage1)
+        | UTEarlyMacroParam(param) -> (param, Stage0)
+      in
+      let (rng, varnm) = param in
+      let evid = EvalVarID.fresh param in
+      let pty =
+        let tvid = FreeID.fresh UniversalKind pre.quantifiability pre.level () in
+        let tvref = ref (MonoFree(tvid)) in
+        Poly(rng, TypeVariable(PolyFree(tvref)))
+      in
+      (Typeenv.add tyenv varnm (pty, evid, Stage1), Alist.extend evidacc evid)
+    ) (tyenv, Alist.empty)
+  in
+  (tyenv, Alist.to_list evidacc)
+
+
 let rec is_nonexpansive_expression e =
   let iter = is_nonexpansive_expression in
   match e with
@@ -962,7 +983,17 @@ let rec typecheck
 (* -- macros -- *)
 
   | UTLetHorzMacroIn(rngcs, csnm, macparams, utast1, utast2) ->
-      failwith "UTLetHorzMacroIn; not supported yet (in typechecker.ml)"
+      begin
+        match pre.stage with
+        | Stage0 | Persistent0 ->
+            raise (InvalidExpressionAsToStaging(rng, Stage1))
+
+        | Stage1 ->
+            let (tyenv, vars) = add_macro_parameters_to_type_environment tyenv pre macparams in
+            let (e1, ty1) = typecheck_iter ~s:Stage1 tyenv utast1 in
+            unify ty1 (Range.dummy "let-inline-macro", BaseType(TextRowType));
+            failwith "UTLetHorzMacroIn; not supported yet (in typechecker.ml)"
+      end
 
 
 and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) tyenv (utcmdarglst : untyped_command_argument list) (cmdargtylst : mono_command_argument_type list) : abstract_tree =
