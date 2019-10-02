@@ -394,7 +394,7 @@ type stage =
 
 type pre = {
   level           : level;
-  quantifiability : quantifiability;  (* may omitted in the future *)
+  quantifiability : quantifiability;  (* maybe omitted in the future *)
   stage           : stage;
 }
 
