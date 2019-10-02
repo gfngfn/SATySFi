@@ -32,6 +32,10 @@ let abstraction evid ast =
   Function([], PatternBranch(PVariable(evid), ast))
 
 
+let abstraction_list evids ast =
+  List.fold_right abstraction evids ast
+
+
 let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs : (Range.t * var_name) list) : mono_option_row * EvalVarID.t list * Typeenv.t =
   let qtfbl = pre.quantifiability in
   let lev = pre.level in
@@ -994,11 +998,12 @@ let rec typecheck
             raise (InvalidExpressionAsToStaging(rng, Stage1))
 
         | Stage1 ->
-            let (tyenv, vars, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
+            let (tyenv, argevids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
             let (e1, ty1) = typecheck_iter ~s:Stage1 tyenv utast1 in
             unify ty1 (Range.dummy "let-inline-macro", BaseType(TextRowType));
-            let evidmac = EvalVarID.fresh (rngcs, csnm) in
-            typecheck_iter (Typeenv.add_macro tyenv csnm (MacroType(macparamtys), evidmac)) utast2
+            let evid = EvalVarID.fresh (rngcs, csnm) in
+            let (e2, ty2) = typecheck_iter (Typeenv.add_macro tyenv csnm (MacroType(macparamtys), evid)) utast2 in
+            (LetNonRecIn(PVariable(evid), abstraction_list argevids e1, e2), ty2)
       end
 
 
