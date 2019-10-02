@@ -1003,7 +1003,7 @@ let rec typecheck
             unify ty1 (Range.dummy "let-inline-macro", BaseType(TextRowType));
             let evid = EvalVarID.fresh (rngcs, csnm) in
             let (e2, ty2) = typecheck_iter (Typeenv.add_macro tyenv csnm (MacroType(macparamtys), evid)) utast2 in
-            let e = LetNonRecIn(PVariable(evid), abstraction_list argevids e1, e2) in
+            let e = Prev(LetNonRecIn(PVariable(evid), abstraction_list argevids (Next(e1)), Next(e2))) in
             (e, ty2)
       end
 
