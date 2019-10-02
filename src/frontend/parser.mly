@@ -1199,7 +1199,7 @@ ihchar:
   | rng=BREAK { (rng, "\n") }
 ;
 macroargs:
-  | LPAREN; macarg=macroarg; macargs=list(commamacroarg); cls=RPAREN; {
+  | LPAREN; macarg=macroarg; macargs=list(commamacroarg); cls=RPAREN; ENDACTIVE; {
       (cls, macarg :: macargs)
     }
 ;

@@ -422,6 +422,12 @@ and horzexpr stack = parse
       Stack.push ActiveState stack;
       HORZCMD(rng, tok)
     }
+  | ("\\" (identifier | constructor) "@") {
+      let tok = Lexing.lexeme lexbuf in
+      let rng = get_pos lexbuf in
+      Stack.push ActiveState stack;
+      HORZMACRO(rng, tok)
+    }
   | ("\\" (constructor ".")* (identifier | constructor)) {
       let tokstrpure = Lexing.lexeme lexbuf in
       let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
