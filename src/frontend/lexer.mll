@@ -296,6 +296,7 @@ rule progexpr stack = parse
           | "command"           -> COMMAND(pos)
           | "open"              -> OPEN(pos)
           | "let-inline-macro"  -> LETHORZMACRO(pos)
+          | "let-block-macro"   -> LETVERTMACRO(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }

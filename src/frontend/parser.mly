@@ -381,6 +381,7 @@
 %token <Range.t * Types.ctrlseq_name> HORZCMD
 %token <Range.t * Types.ctrlseq_name> HORZMACRO
 %token <Range.t * Types.ctrlseq_name> VERTCMD
+%token <Range.t * Types.ctrlseq_name> VERTMACRO
 %token <Range.t * Types.ctrlseq_name> MATHCMD
 %token <Range.t * (Types.module_name list) * Types.var_name> VARWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
@@ -406,7 +407,7 @@
 %token <Range.t> MODULE STRUCT END DIRECT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
-%token <Range.t> LETHORZ LETVERT LETMATH LETHORZMACRO
+%token <Range.t> LETHORZ LETVERT LETMATH LETHORZMACRO LETVERTMACRO
 %token <Range.t> IF THEN ELSE
 %token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
 %token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
@@ -513,6 +514,10 @@ nxtoplevel:
       let (rngcs, csnm, macparams, utast1) = dec in
       make_standard (Tok top) (Ranged utast2) (UTLetHorzMacroIn(rngcs, csnm, macparams, utast1, utast2))
     }
+  | top=LETVERTMACRO; dec=nxvertmacrodec; utast2=nxtopsubseq {
+      let (rngcs, csnm, macparams, utast1) = dec in
+      make_standard (Tok top) (Ranged utast2) (UTLetVertMacroIn(rngcs, csnm, macparams, utast1, utast2))
+    }
 ;
 nxtopsubseq:
   | utast=nxtoplevel     { utast }
@@ -604,6 +609,12 @@ nxmathdec:
 nxhorzmacrodec:
   | hmacro=HORZMACRO; macparams=macroparams; DEFEQ; utast=nxlet {
       let (rngcs, csnm) = hmacro in
+      (rngcs, csnm, macparams, utast)
+    }
+;
+nxvertmacrodec:
+  | vmacro=VERTMACRO; macparams=macroparams; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = vmacro in
       (rngcs, csnm, macparams, utast)
     }
 ;
@@ -1258,4 +1269,9 @@ vxbot:
       let (rng, mdlnmlst, varnm) = vartok in
       make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
     }
+  | vmacro=VERTMACRO; macargsraw=macroargs {
+      let (rngcs, _) = vmacro in
+      let (rnglast, macargs) = macargsraw in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputVertMacro(vmacro, macargs))
+  }
 ;

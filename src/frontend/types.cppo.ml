@@ -379,7 +379,8 @@ type macro_parameter_type =
   | EarlyMacroParameter of mono_type
 
 type macro_type =
-  | MacroType of macro_parameter_type list
+  | HorzMacroType of macro_parameter_type list
+  | VertMacroType of macro_parameter_type list
 
 (* ---- untyped ---- *)
 
@@ -436,6 +437,7 @@ and untyped_input_vert_element_main =
   | UTInputVertEmbedded of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "BC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
   | UTInputVertContent  of untyped_abstract_tree
+  | UTInputVertMacro    of (Range.t * ctrlseq_name) * untyped_macro_argument list
 
 and 'a untyped_path_component =
   | UTPathLineTo        of 'a
@@ -519,6 +521,7 @@ and untyped_abstract_tree_main =
   | UTPrev                 of untyped_abstract_tree
 (* -- macros -- *)
   | UTLetHorzMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
+  | UTLetVertMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
 
 and constraints = (var_name * manual_kind) list
 

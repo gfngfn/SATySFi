@@ -20,6 +20,7 @@ exception ApplicationOfNonFunction       of Range.t * Typeenv.t * mono_type
 exception InvalidExpressionAsToStaging   of Range.t * stage
 exception InvalidOccurrenceAsToStaging   of Range.t * var_name * stage
 exception UndefinedHorzMacro             of Range.t * ctrlseq_name
+exception UndefinedVertMacro             of Range.t * ctrlseq_name
 exception InvalidNumberOfMacroArguments  of Range.t * macro_parameter_type list
 exception LateMacroArgumentExpected      of Range.t * mono_type
 exception EarlyMacroArgumentExpected     of Range.t * mono_type
@@ -1005,7 +1006,23 @@ let rec typecheck
             let (e1, ty1) = typecheck_iter ~s:Stage1 tyenv utast1 in
             unify ty1 (Range.dummy "let-inline-macro", BaseType(TextRowType));
             let evid = EvalVarID.fresh (rngcs, csnm) in
-            let (e2, ty2) = typecheck_iter (Typeenv.add_macro tyenv csnm (MacroType(macparamtys), evid)) utast2 in
+            let (e2, ty2) = typecheck_iter (Typeenv.add_macro tyenv csnm (HorzMacroType(macparamtys), evid)) utast2 in
+            let e = Prev(LetNonRecIn(PVariable(evid), abstraction_list argevids (Next(e1)), Next(e2))) in
+            (e, ty2)
+      end
+
+  | UTLetVertMacroIn(rngcs, csnm, macparams, utast1, utast2) ->
+      begin
+        match pre.stage with
+        | Stage0 | Persistent0 ->
+            raise (InvalidExpressionAsToStaging(rng, Stage1))
+
+        | Stage1 ->
+            let (tyenv, argevids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
+            let (e1, ty1) = typecheck_iter ~s:Stage1 tyenv utast1 in
+            unify ty1 (Range.dummy "let-block-macro", BaseType(TextColType));
+            let evid = EvalVarID.fresh (rngcs, csnm) in
+            let (e2, ty2) = typecheck_iter (Typeenv.add_macro tyenv csnm (VertMacroType(macparamtys), evid)) utast2 in
             let e = Prev(LetNonRecIn(PVariable(evid), abstraction_list argevids (Next(e1)), Next(e2))) in
             (e, ty2)
       end
@@ -1163,6 +1180,30 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
         let (e0, ty0) = typecheck pre tyenv utast0 in
         unify_ tyenv ty0 (Range.dummy "UTInputVertContent", BaseType(TextColType));
         aux (Alist.extend acc (InputVertContent(e0))) tail
+
+    | (rngapp, UTInputVertMacro(vmacro, utmacargs)) :: tail ->
+        begin
+          match pre.stage with
+          | Stage0 | Persistent0 ->
+              raise (InvalidExpressionAsToStaging(rngapp, Stage1))
+
+          | Stage1 ->
+              let (rngcs, csnm) = vmacro in
+              begin
+                match Typeenv.find_macro tyenv csnm with
+                | None ->
+                    raise (UndefinedVertMacro(rngcs, csnm))
+
+                | Some((VertMacroType(macparamtys), evid)) ->
+                    let eargs = typecheck_macro_arguments rngapp pre tyenv macparamtys utmacargs in
+                    let eapp = apply_tree_of_list (ContentOf(rngcs, evid)) eargs in
+                    let iv = InputVertContent(Prev(eapp)) in
+                    aux (Alist.extend acc iv) tail
+
+                | Some(_) ->
+                    assert false
+              end
+        end
   in
   aux Alist.empty utivlst
 
@@ -1228,11 +1269,14 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
                 | None ->
                     raise (UndefinedHorzMacro(rngcs, csnm))
 
-                | Some((MacroType(macparamtys), evid)) ->
+                | Some((HorzMacroType(macparamtys), evid)) ->
                     let eargs = typecheck_macro_arguments rngapp pre tyenv macparamtys utmacargs in
                     let eapp = apply_tree_of_list (ContentOf(rngcs, evid)) eargs in
                     let ih = InputHorzContent(Prev(eapp)) in
                     aux (Alist.extend acc ih) tail
+
+                | Some(_) ->
+                    assert false
               end
         end
   in
