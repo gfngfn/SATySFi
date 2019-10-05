@@ -377,10 +377,10 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       return @@ CdEndOfList
 
   | FinishHeaderFile ->
-      return @@ CdFinishHeaderFile
+      (CdFinishHeaderFile, Some(env))
 
   | FinishStruct ->
-      return @@ CdFinishStruct
+      (CdFinishStruct, Some(env))
 
   | InputHorz(ihlst) ->
       let cdihlst = ihlst |> map_input_horz (interpret_1_value env) in
@@ -400,13 +400,13 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
           CdLetRecBinding(evid, cdpatbr)
         )
       in
-      let (code2, env2) = interpret_1 env ast2 in
-      (CdLetRecIn(cdrecbinds, code2), env2)
+      let (code2, envopt2) = interpret_1 env ast2 in
+      (CdLetRecIn(cdrecbinds, code2), envopt2)
 
   | LetNonRecIn(pat, ast1, ast2) ->
       let (code1, _) = interpret_1 env ast1 in
-      let (code2, env2) = interpret_1 env ast2 in
-      (CdLetNonRecIn(pat, code1, code2), env2)
+      let (code2, envopt2) = interpret_1 env ast2 in
+      (CdLetNonRecIn(pat, code1, code2), envopt2)
 
   | Function(evids, patbr) ->
       let cdpatbr =  interpret_1_pattern_branch env patbr in
@@ -447,8 +447,8 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
 
   | LetMutableIn(evid, ast1, ast2) ->
       let (code1, _) = interpret_1 env ast1 in
-      let (code2, env2) = interpret_1 env ast2 in
-      (CdLetMutableIn(evid, code1, code2), env2)
+      let (code2, envopt2) = interpret_1 env ast2 in
+      (CdLetMutableIn(evid, code1, code2), envopt2)
 
   | Sequential(ast1, ast2) ->
       let (code1, _) = interpret_1 env ast1 in
@@ -479,8 +479,8 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
 
   | Module(ast1, ast2) ->
       let (code1, _) = interpret_1 env ast1 in
-      let (code2, env2) = interpret_1 env ast2 in
-      (CdModule(code1, code2), env2)
+      let (code2, envopt2) = interpret_1 env ast2 in
+      (CdModule(code1, code2), envopt2)
 
   | BackendMathList(astlst) ->
       let codelst = astlst |> List.map (interpret_1_value env) in
@@ -501,10 +501,10 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       return @@ CdPath(codept0, cdpathcomplst, cdcycleopt)
 
   | Prev(ast1) ->
-      let (value1, env1) = interpret_0 env ast1 in
+      let (value1, envopt1) = interpret_0 env ast1 in
       begin
         match value1 with
-        | CodeValue(code) -> (code, env1)
+        | CodeValue(code) -> (code, envopt1)
         | _               -> report_bug_reduction "Prev; not a code value" ast value1
       end
 
