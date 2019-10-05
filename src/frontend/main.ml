@@ -303,7 +303,7 @@ let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_t
   | _                                       -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
 
 
-let preprocess_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value * environment =
+let preprocess_file ?(is_document : bool = false) (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value * environment =
   Logging.begin_to_preprocess_file abspath;
   if OptionState.bytecomp_mode () then
     failwith "preprocess_file: byte compile mode temporarily not supported."
@@ -312,9 +312,14 @@ let preprocess_file (env : environment) (abspath : abs_path) (ast : abstract_tre
 *)
   else
     let (cd, envopt) = Evaluator.interpret_1 env ast in
-    match envopt with
-    | Some(env) -> (cd, env)
-    | None      -> EvalUtil.report_bug_vm "environment not returned"
+    if is_document then
+      match envopt with
+      | None    -> (cd, env)
+      | Some(_) -> EvalUtil.report_bug_vm "environment returned for document"
+    else
+      match envopt with
+      | Some(envnew) -> (cd, envnew)
+      | None         -> EvalUtil.report_bug_vm "environment not returned"
 
 
 let eval_main i env_freezed ast =
@@ -393,7 +398,7 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abst
   let rec preprocess (codeacc : (abs_path * code_value) Alist.t) (env : environment) libs =
     match libs with
     | [] ->
-        let (codedoc, envnew) = preprocess_file env abspath_in astdoc in
+        let (codedoc, envnew) = preprocess_file ~is_document:true env abspath_in astdoc in
         (envnew, Alist.to_list codeacc, codedoc)
 
     | ((Stage0 | Persistent0), abspath, astlib0) :: tail ->
