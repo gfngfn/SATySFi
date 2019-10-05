@@ -179,8 +179,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
 
   | LetNonRecIn(pat, ast1, ast2) ->
       let (value1, _) = interpret_0 env ast1 in
-      let (value, env2) = select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)] in
-      (value, env2)
+      select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)]
 
   | Function(evids, patbrs) ->
       return @@ Closure(evids, patbrs, env)
