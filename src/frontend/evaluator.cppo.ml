@@ -42,10 +42,10 @@ let rec reduce_beta value1 value2 =
           add_to_environment env evid loc
         ) env1
       in
-      select_pattern (Range.dummy "Apply") env1 value2 [patbr]
+      fst @@ select_pattern (Range.dummy "Apply") env1 value2 [patbr]
 
   | PrimitiveClosure(patbr, env1, _, _) ->
-      select_pattern (Range.dummy "Apply") env1 value2 [patbr]
+      fst @@ select_pattern (Range.dummy "Apply") env1 value2 [patbr]
 
   | _ ->
       report_bug_value "reduce_beta: not a function" value1
@@ -178,8 +178,8 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       interpret_0 envnew ast2
 
   | LetNonRecIn(pat, ast1, ast2) ->
-      let (value1, env2) = interpret_0 env ast1 in
-      let value = select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)] in
+      let (value1, _) = interpret_0 env ast1 in
+      let (value, env2) = select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)] in
       (value, env2)
 
   | Function(evids, patbrs) ->
@@ -319,7 +319,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
 
   | PatternMatch(rng, astobj, patbrs) ->
       let (valueobj, _) = interpret_0 env astobj in
-      return @@ select_pattern rng env valueobj patbrs
+      select_pattern rng env valueobj patbrs
 
   | NonValueConstructor(constrnm, astcont) ->
       let (valuecont, _) = interpret_0 env astcont in
@@ -680,7 +680,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
   make_horz hblst
 
 
-and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) =
+and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) : syntactic_value * environment =
   let iter = select_pattern rng env valueobj in
   match patbrs with
   | [] ->
@@ -689,7 +689,7 @@ and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_val
   | PatternBranch(pat, astto) :: tail ->
       begin
         match check_pattern_matching env pat valueobj with
-        | Some(envnew) -> interpret_0_value envnew astto
+        | Some(envnew) -> interpret_0 envnew astto
         | None         -> iter tail
       end
 
@@ -698,7 +698,7 @@ and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_val
         match check_pattern_matching env pat valueobj with
         | Some(envnew) ->
             let cond = get_bool (interpret_0_value envnew astcond) in
-            if cond then interpret_0_value envnew astto else iter tail
+            if cond then interpret_0 envnew astto else iter tail
 
         | None ->
             iter tail
