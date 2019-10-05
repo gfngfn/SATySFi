@@ -129,8 +129,8 @@ and interpret_0_input_vert_content (env : environment) (ivlst : input_vert_eleme
   )
 
 
-and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * environment =
-  let return v = (v, env) in
+and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * environment option =
+  let return v = (v, None) in
   match ast with
 
 (* ---- basic value ---- *)
@@ -145,10 +145,10 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       return @@ MathValue(mlst)
 
   | FinishHeaderFile ->
-      return @@ EvaluatedEnvironment(env)
+      (EvaluatedEnvironment(env), Some(env))
 
   | FinishStruct ->
-      return @@ EvaluatedEnvironment(env)
+      (EvaluatedEnvironment(env), Some(env))
 
   | InputHorz(ihlst) ->
       let imihlst = interpret_0_input_horz_content env ihlst in
@@ -354,8 +354,8 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       report_bug_ast "Prev(_) at stage 0" ast
 
   | Next(ast1) ->
-      let (code1, env1) = interpret_1 env ast1 in
-      (CodeValue(code1), env1)
+      let (code1, envopt1) = interpret_1 env ast1 in
+      (CodeValue(code1), envopt1)
 
 #include "__evaluator_0.gen.ml"
 
@@ -363,8 +363,8 @@ and interpret_0_value env ast =
   fst @@ interpret_0 env ast
 
 
-and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environment =
-  let return cd = (cd, env) in
+and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environment option =
+  let return cd = (cd, None) in
   match ast with
 
   | ASTBaseConstant(bc) ->
@@ -679,7 +679,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
   make_horz hblst
 
 
-and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) : syntactic_value * environment =
+and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) : syntactic_value * environment option =
   let iter = select_pattern rng env valueobj in
   match patbrs with
   | [] ->

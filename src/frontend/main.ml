@@ -289,7 +289,7 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
 
 let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : environment =
   Logging.begin_to_eval_file abspath;
-  let (value, envnew) =
+  let (value, _) as ret =
     if OptionState.bytecomp_mode () then
       failwith "eval_library_file: byte compile mode temporarily not supported."
 (*
@@ -298,9 +298,9 @@ let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_t
     else
       Evaluator.interpret_0 env ast
   in
-  match value with
-  | EvaluatedEnvironment(_) -> envnew
-  | _                       -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
+  match ret with
+  | (EvaluatedEnvironment(_), Some(envnew)) -> envnew
+  | _                                       -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
 
 
 let preprocess_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value * environment =
@@ -311,7 +311,10 @@ let preprocess_file (env : environment) (abspath : abs_path) (ast : abstract_tre
     Bytecomp.compile_and_exec_1 env ast
 *)
   else
-    Evaluator.interpret_1 env ast
+    let (cd, envopt) = Evaluator.interpret_1 env ast in
+    match envopt with
+    | Some(env) -> (cd, env)
+    | None      -> EvalUtil.report_bug_vm "environment not returned"
 
 
 let eval_main i env_freezed ast =
