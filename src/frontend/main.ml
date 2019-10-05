@@ -306,7 +306,7 @@ let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_t
 let preprocess_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value * environment =
   Logging.begin_to_preprocess_file abspath;
   if OptionState.bytecomp_mode () then
-    failwith "eval_library_file: byte compile mode temporarily not supported."
+    failwith "preprocess_file: byte compile mode temporarily not supported."
 (*
     Bytecomp.compile_and_exec_1 env ast
 *)
@@ -320,7 +320,7 @@ let eval_main i env_freezed ast =
   let env = unfreeze_environment env_freezed in
   let (valuedoc, _) =
     if OptionState.bytecomp_mode () then
-      failwith "eval_library_file: byte compile mode temporarily not supported."
+      failwith "eval_main: byte compile mode temporarily not supported."
 (*
       Bytecomp.compile_and_exec_0 env ast
 *)
