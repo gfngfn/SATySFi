@@ -210,6 +210,9 @@ rule progexpr stack = parse
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
     }
+  | ("+" (identifier | constructor) "@") {
+      let tok = Lexing.lexeme lexbuf in VERTMACRO(get_pos lexbuf, tok)
+    }
   | ("+" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in VERTCMD(get_pos lexbuf, tok)
     }
@@ -333,6 +336,10 @@ and vertexpr stack = parse
       let (mdlnmlst, csnm) = split_module_list csstr in
         Stack.push ActiveState stack;
         VARINVERT(get_pos lexbuf, mdlnmlst, csnm)
+    }
+  | ("+" (identifier | constructor) "@") {
+      Stack.push ActiveState stack;
+      VERTMACRO(get_pos lexbuf, Lexing.lexeme lexbuf)
     }
   | ("+" (identifier | constructor)) {
       Stack.push ActiveState stack;
