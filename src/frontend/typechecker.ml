@@ -21,9 +21,9 @@ exception InvalidExpressionAsToStaging   of Range.t * stage
 exception InvalidOccurrenceAsToStaging   of Range.t * var_name * stage
 exception UndefinedHorzMacro             of Range.t * ctrlseq_name
 exception UndefinedVertMacro             of Range.t * ctrlseq_name
-exception InvalidNumberOfMacroArguments  of Range.t * macro_parameter_type list
-exception LateMacroArgumentExpected      of Range.t * mono_type
-exception EarlyMacroArgumentExpected     of Range.t * mono_type
+exception InvalidNumberOfMacroArguments  of Range.t * Typeenv.t * macro_parameter_type list
+exception LateMacroArgumentExpected      of Range.t * Typeenv.t * mono_type
+exception EarlyMacroArgumentExpected     of Range.t * Typeenv.t * mono_type
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -1287,7 +1287,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
   let lenexp = List.length macparamtys in
   let lenact = List.length utmacargs in
   if (lenexp <> lenact) then
-    raise (InvalidNumberOfMacroArguments(rng, macparamtys))
+    raise (InvalidNumberOfMacroArguments(rng, tyenv, macparamtys))
   else
     let argacc =
       List.fold_left2 (fun argacc macparamty utmacarg ->
@@ -1304,10 +1304,10 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
             Alist.extend argacc earg
 
         | (LateMacroParameter(tyexp), UTEarlyMacroArg((rngarg, _))) ->
-            raise (LateMacroArgumentExpected(rngarg, tyexp))
+            raise (LateMacroArgumentExpected(rngarg, tyenv, tyexp))
 
         | (EarlyMacroParameter(tyexp), UTLateMacroArg((rngarg, _))) ->
-            raise (EarlyMacroArgumentExpected(rngarg, tyexp))
+            raise (EarlyMacroArgumentExpected(rngarg, tyenv, tyexp))
 
       ) Alist.empty macparamtys utmacargs
     in
