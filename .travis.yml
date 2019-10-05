@@ -16,5 +16,6 @@ install:
   - opam install -y --deps-only satysfi
 script:
   - opam install -y satysfi
+  - which satysfi
   - make -C demo SATYSFI=$(pwd)/satysfi
   - make -C doc SATYSFI=$(pwd)/satysfi
