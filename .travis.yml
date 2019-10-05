@@ -17,6 +17,6 @@ install:
 script:
   - opam install -y satysfi
   - ./download-fonts.sh
-  - ./install-libs.sh
+  - sudo ./install-libs.sh
   - make -C demo
   - make -C doc
