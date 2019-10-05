@@ -16,6 +16,7 @@ install:
   - opam install -y --deps-only satysfi
 script:
   - opam install -y satysfi
-  - which satysfi
+  - ./download-fonts.sh
+  - ./install-libs.sh
   - make -C demo
   - make -C doc
