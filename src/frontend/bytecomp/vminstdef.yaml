@@ -2622,3 +2622,17 @@ params:
 
 code: |
   raise (report_dynamic_error msg)
+
+---
+inst: LiftString
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "lift-string"
+type: |
+  ~% (tS @-> tCODE tS)
+
+params:
+  - s : string
+
+code: |
+  lift_string_to_code_value s

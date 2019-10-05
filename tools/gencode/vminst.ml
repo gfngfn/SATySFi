@@ -2928,4 +2928,19 @@ let tv = (let bid = BoundID.fresh UniversalKind () in PolyBound(bid)) in
         ~code:{|
 raise (report_dynamic_error msg)
 |}
+    ; inst "LiftString"
+        ~name:"lift-string"
+        ~type_:{|
+~% (tS @-> tCODE tS)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "s" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_string_to_code_value s
+|}
     ])

@@ -734,3 +734,7 @@ let make_path p = BaseConstant(BCPath(p))
 let make_prepath pp = BaseConstant(BCPrePath(pp))
 let make_graphics g = BaseConstant(BCGraphics(g))
 let make_image_key i = BaseConstant(BCImageKey(i))
+
+
+let lift_string_to_code_value (s : string) =
+  CodeValue(CdBaseConstant(BCString(s)))
