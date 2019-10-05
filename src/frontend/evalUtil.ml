@@ -736,5 +736,7 @@ let make_graphics g = BaseConstant(BCGraphics(g))
 let make_image_key i = BaseConstant(BCImageKey(i))
 
 
-let lift_string_to_code_value (s : string) =
-  CodeValue(CdBaseConstant(BCString(s)))
+let lift_string_to_code_value (s : string) = CodeValue(CdBaseConstant(BCString(s)))
+let lift_integer_to_code_value (n : int) = CodeValue(CdBaseConstant(BCInt(n)))
+let lift_float_to_code_value (r : float) = CodeValue(CdBaseConstant(BCFloat(r)))
+let lift_length_to_code_value (len : length) = CodeValue(CdBaseConstant(BCLength(len)))

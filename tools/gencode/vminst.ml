@@ -2943,4 +2943,49 @@ raise (report_dynamic_error msg)
         ~code:{|
 lift_string_to_code_value s
 |}
+    ; inst "LiftInt"
+        ~name:"lift-int"
+        ~type_:{|
+~% (tI @-> tCODE tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "n" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_integer_to_code_value n
+|}
+    ; inst "LiftFloat"
+        ~name:"lift-float"
+        ~type_:{|
+~% (tFL @-> tCODE tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "r" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_float_to_code_value r
+|}
+    ; inst "LiftLength"
+        ~name:"lift-length"
+        ~type_:{|
+~% (tLN @-> tCODE tLN)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "len" ~type_:"length";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_length_to_code_value len
+|}
     ])

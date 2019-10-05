@@ -2636,3 +2636,45 @@ params:
 
 code: |
   lift_string_to_code_value s
+
+---
+inst: LiftInt
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "lift-int"
+type: |
+  ~% (tI @-> tCODE tI)
+
+params:
+  - n : int
+
+code: |
+  lift_integer_to_code_value n
+
+---
+inst: LiftFloat
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "lift-float"
+type: |
+  ~% (tFL @-> tCODE tFL)
+
+params:
+  - r : float
+
+code: |
+  lift_float_to_code_value r
+
+---
+inst: LiftLength
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "lift-length"
+type: |
+  ~% (tLN @-> tCODE tLN)
+
+params:
+  - len : length
+
+code: |
+  lift_length_to_code_value len
