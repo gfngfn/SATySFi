@@ -727,6 +727,8 @@ and ir =
   | IRCodeLetRecIn          of (ir letrec_binding_scheme) list * ir
   | IRCodeLetNonRecIn       of pattern_tree * ir * ir
   | IRCodeModule            of ir * ir
+  | IRCodeFinishHeaderFile
+  | IRCodeFinishStruct
 
 and ir_pattern_branch =
   | IRPatternBranch      of ir_pattern_tree * ir
@@ -823,6 +825,8 @@ and instruction =
   | OpCodeLetRec        of ((instruction list) letrec_binding_scheme) list * instruction list
   | OpCodeLetNonRec     of pattern_tree * instruction list * instruction list
   | OpCodeModule        of instruction list * instruction list
+  | OpCodeFinishHeaderFile
+  | OpCodeFinishStruct
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =

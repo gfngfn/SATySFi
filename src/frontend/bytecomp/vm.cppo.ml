@@ -1104,4 +1104,14 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         (* -- returns the environment -- *)
       exec (entry :: stack) env code dump
 
+  | OpCodeFinishHeaderFile ->
+      let entry = (CodeValue(CdFinishHeaderFile), Some(vmenv_global env)) in
+        (* -- returns the environment -- *)
+      exec (entry :: stack) env code dump
+
+  | OpCodeFinishStruct ->
+      let entry = (CodeValue(CdFinishStruct), Some(vmenv_global env)) in
+        (* -- returns the environment -- *)
+      exec (entry :: stack) env code dump
+
 #include "__vm.gen.ml"
