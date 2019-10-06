@@ -7,6 +7,14 @@ open EvalUtil
 
 exception ExecError of string
 
+type stack_entry = syntactic_value * environment option
+
+type stack = stack_entry list
+
+
+let make_entry (v : syntactic_value) : stack_entry =
+  (v, None)
+
 
 let report_dynamic_error msg =
   raise (ExecError(msg))
@@ -63,29 +71,29 @@ let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_
   HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
-let popn stack n =
+let popn (stack : stack) (n : int) : syntactic_value list * stack =
   let rec iter st n acc =
     if n = 0 then
       (acc, st)
     else
       match st with
-      | x :: xs -> iter xs (n - 1) (x :: acc)
-      | []      -> report_bug_vm "stack underflow!"
+      | (x, _) :: xs -> iter xs (n - 1) (x :: acc)
+      | []           -> report_bug_vm "stack underflow!"
   in
-    iter stack n []
+  iter stack n []
 
 
 let rec get_path env c_pathcomplst c_cycleopt =
   let pathelemlst =
     c_pathcomplst |> List.map (function
       | CompiledPathLineTo(ptcode) ->
-          let pt = get_point @@ exec [] env ptcode [] in
+          let pt = get_point @@ exec_value [] env ptcode [] in
             LineTo(pt)
 
       | CompiledPathCubicBezierTo(pt1code, pt2code, ptcode) ->
-          let pt1 = get_point @@ exec [] env pt1code [] in
-          let pt2 = get_point @@ exec [] env pt2code [] in
-          let pt = get_point @@ exec [] env ptcode [] in
+          let pt1 = get_point @@ exec_value [] env pt1code [] in
+          let pt2 = get_point @@ exec_value [] env pt2code [] in
+          let pt = get_point @@ exec_value [] env ptcode [] in
             CubicBezierTo(pt1, pt2, pt)
     )
   in
@@ -95,8 +103,8 @@ let rec get_path env c_pathcomplst c_cycleopt =
           LineTo(())
 
       | CompiledPathCubicBezierTo(pt1code, pt2code, ()) ->
-          let pt1 = get_point @@ exec [] env pt1code [] in
-          let pt2 = get_point @@ exec [] env pt2code [] in
+          let pt1 = get_point @@ exec_value [] env pt1code [] in
+          let pt2 = get_point @@ exec_value [] env pt2code [] in
             CubicBezierTo(pt1, pt2, ())
     )
   in
@@ -115,7 +123,7 @@ and exec_input_horz_content env ihlst =
         CompiledImInputHorzEmbeddedMath(code)
 
     | CompiledInputHorzContent(code) ->
-        let value = exec [] env code [] in
+        let value = exec_value [] env code [] in
         begin
           match value with
           | CompiledInputHorzClosure(imihlst, envsub) ->
@@ -134,7 +142,7 @@ and exec_input_vert_content env ivlst =
         CompiledImInputVertEmbedded(code)
 
     | CompiledInputVertContent(code) ->
-        let value = exec [] env code [] in
+        let value = exec_value [] env code [] in
         begin
           match value with
           | CompiledInputVertClosure(imivlst, envsub) ->
@@ -153,17 +161,17 @@ and exec_code_input_horz env irihlst =
       InputHorzText(s)
 
   | InputHorzEmbedded(instrs) ->
-      let value = exec [] env instrs [] in
+      let value = exec_value [] env instrs [] in
       let cv = get_code value in
       InputHorzEmbedded(cv)
 
   | InputHorzEmbeddedMath(instrs) ->
-      let value = exec [] env instrs [] in
+      let value = exec_value [] env instrs [] in
       let cv = get_code value in
       InputHorzEmbeddedMath(cv)
 
   | InputHorzContent(instrs) ->
-      let value = exec [] env instrs [] in
+      let value = exec_value [] env instrs [] in
       let cv = get_code value in
       InputHorzContent(cv)
   )
@@ -172,12 +180,12 @@ and exec_code_input_horz env irihlst =
 and exec_code_input_vert env irivlst =
   irivlst |> List.map (function
   | InputVertEmbedded(instrs) ->
-      let value = exec [] env instrs [] in
+      let value = exec_value [] env instrs [] in
       let cv = get_code value in
       InputVertEmbedded(cv)
 
   | InputVertContent(instrs) ->
-      let value = exec [] env instrs [] in
+      let value = exec_value [] env instrs [] in
       let cv = get_code value in
       InputVertContent(cv)
   )
@@ -188,7 +196,7 @@ and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_
     imivlst |> List.map (fun imiv ->
         match imiv with
         | CompiledImInputVertEmbedded(code) ->
-            let valueret = exec [valuetctx] env (List.append code [OpApplyT(1)]) [] in
+            let valueret = exec_value [make_entry valuetctx] env (List.append code [OpApplyT(1)]) [] in
               get_string valueret
 
         | CompiledImInputVertContent(imivlstsub, envsub) ->
@@ -236,11 +244,11 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
         nmihlst |> List.map (fun nmih ->
             match nmih with
             | CompiledNomInputHorzEmbedded(code) ->
-                let valueret = exec [valuetctx] env (List.append code [OpApplyT(1)]) [] in
+                let valueret = exec_value [make_entry valuetctx] env (List.append code [OpApplyT(1)]) [] in
                   get_string valueret
 
             | CompiledNomInputHorzThunk(code) ->
-                let valueret = exec [] env code [] in
+                let valueret = exec_value [] env code [] in
                   get_string valueret
 
             | CompiledNomInputHorzText(s) ->
@@ -265,7 +273,7 @@ and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_va
     imivlst |> List.map (fun imiv ->
         match imiv with
         | CompiledImInputVertEmbedded(code) ->
-            let valueret = exec [valuectx] env (List.append code [OpApplyT(1)]) [] in
+            let valueret = exec_value [make_entry valuectx] env (List.append code [OpApplyT(1)]) [] in
               get_vert valueret
 
         | CompiledImInputVertContent(imivlstsub, envsub) ->
@@ -311,11 +319,11 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
         nmihlst |> List.map (fun nmih ->
             match nmih with
             | CompiledNomInputHorzEmbedded(code) ->
-                let valueret = exec [valuectx] env (List.append code [OpApplyT(1)]) [] in
+                let valueret = exec_value [make_entry valuectx] env (List.append code [OpApplyT(1)]) [] in
                   get_horz valueret
 
             | CompiledNomInputHorzThunk(code) ->
-                let valueret = exec [] env code [] in
+                let valueret = exec_value [] env code [] in
                   get_horz valueret
 
             | CompiledNomInputHorzText(s) ->
@@ -333,30 +341,34 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
     end
 
 
-and exec_application (env : vmenv) (vf : syntactic_value) (vargs : syntactic_value list) =
+and exec_application (env : vmenv) (vf : syntactic_value) (vargs : syntactic_value list) : syntactic_value =
   let len = List.length vargs in
     if len = 0 then
       vf
     else
-      exec (vf :: (List.rev vargs)) env [OpApplyT(len)] []
+      exec_value (make_entry vf :: (List.rev_map make_entry vargs)) env [OpApplyT(len)] []
 
 
 and exec_code_pattern_branch (env : vmenv) (comppatbr : (instruction list) pattern_branch_scheme) =
   match comppatbr with
   | PatternBranch(pat, instrs1) ->
-      let value1 = exec [] env instrs1 [] in
+      let value1 = exec_value [] env instrs1 [] in
       let cv1 = get_code value1 in
       CdPatternBranch(pat, cv1)
 
   | PatternBranchWhen(pat, instrs, instrs1) ->
-      let value = exec [] env instrs [] in
+      let value = exec_value [] env instrs [] in
       let cv = get_code value in
-      let value1 = exec [] env instrs1 [] in
+      let value1 = exec_value [] env instrs1 [] in
       let cv1 = get_code value1 in
       CdPatternBranchWhen(pat, cv, cv1)
 
 
-and exec (stack : syntactic_value list) (env : vmenv) (code : instruction list) dump =
+and exec_value (stack : stack) (env : vmenv) (code : instruction list) dump : syntactic_value =
+  fst @@ exec stack env code dump
+
+
+and exec (stack : stack) (env : vmenv) (code : instruction list) dump : stack_entry =
   match code with
   | [] ->
       begin
@@ -376,18 +388,22 @@ and exec (stack : syntactic_value list) (env : vmenv) (code : instruction list) 
       exec_op op stack env code dump
 
 
-and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dump =
+and exec_code (genv : environment) (code : instruction list) : syntactic_value * environment option =
+  exec [] (genv, []) code []
+
+
+and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction list) dump =
   match op with
   | OpDereference ->
       begin
         match stack with
-        | valuecont :: stack ->
+        | (valuecont, _) :: stack ->
             let ret =
               match valuecont with
               | Location(stid) ->
                   begin
                     match find_location_value (vmenv_global env) stid with
-                    | Some(value) -> value
+                    | Some(value) -> make_entry value
                     | None        -> report_bug_vm "Dereference"
                   end
 
@@ -401,13 +417,13 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpAccessField(field_nm) ->
       begin
         match stack with
-        | value1 :: stack ->
+        | (value1, _) :: stack ->
             begin
               match value1 with
               | RecordValue(asc1) ->
                   begin
                     match Assoc.find_opt asc1 field_nm with
-                    | Some(v) -> exec (v :: stack) env code dump
+                    | Some(v) -> exec (make_entry v :: stack) env code dump
                     | None    -> report_bug_vm ("OpAccessField: field '" ^ field_nm ^ "' not found")
                   end
 
@@ -421,7 +437,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpUpdateField(field_nm) ->
       begin
         match stack with
-        | value2 :: value1 :: stack ->
+        | (value2, _) :: (value1, _) :: stack ->
             begin
               match value1 with
               | RecordValue(asc1) ->
@@ -431,7 +447,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                     | None    -> report_bug_vm ("OpUpdateField: field '" ^ field_nm ^ "' not found")
                   in
                   let v = RecordValue(asc1new) in
-                  exec (v :: stack) env code dump
+                  exec (make_entry v :: stack) env code dump
 
               | _ ->
                 report_bug_vm "OpUpdateField: not a Record"
@@ -445,7 +461,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
             begin
               let (vs, stack) = popn stack n in
               match stack with
-              | v0 :: stack -> exec (v0 :: List.rev_append vs stack) env code dump
+              | v0 :: stack -> exec (v0 :: List.rev_append (List.map make_entry vs) stack) env code dump
               | _           -> report_bug_vm "Forward: stack underflow"
             end
 
@@ -454,7 +470,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpApply(n) ->
       begin
         match stack with
-        | f :: stack ->
+        | (f, _) :: stack ->
             begin
               match f with
               | CompiledClosure(optvars, arity, pargs, framesize, body, env1) ->
@@ -473,18 +489,18 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                       exec stack (newframe env1 framesize) body ((env, code) :: dump)
                     else
                       let (args, stack) = popn stack n in
-                      let allargs = List.rev (pargs @ args) in
+                      let allargs = List.rev_map make_entry (pargs @ args) in
                       exec (allargs @ stack) (newframe env1 framesize) body ((env, code) :: dump)
 
                   else if arity > n then
                     let (args, stack) = popn stack n in
                     let applied = CompiledClosure([], arity - n, pargs @ args, framesize, body, env1) in
-                    exec (applied :: stack) env code dump
+                    exec (make_entry applied :: stack) env code dump
 
                   else
                     let (surplus, stack) = popn stack (n - arity) in
                     let (args, stack) = popn stack arity in
-                    let allargs = List.rev (pargs @ args) in
+                    let allargs = List.rev_map make_entry (pargs @ args) in
                     exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
 
               | CompiledPrimitiveClosure(arity, [], framesize, body, env1, astf) ->
@@ -494,7 +510,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                   else if arity > n then
                     let (args, stack) = popn stack n in
                     let applied = CompiledClosure([], arity - n, args, framesize, body, env1) in
-                    exec (applied :: stack) env code dump
+                    exec (make_entry applied :: stack) env code dump
 
                   else
                     let (surplus, stack) = popn stack (n - arity) in
@@ -510,7 +526,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpApplyT(n) ->
       begin
         match stack with
-        | f :: stack ->
+        | (f, _) :: stack ->
             begin
               match f with
               | CompiledClosure(optvars, arity, pargs, framesize, body, env1) ->
@@ -529,18 +545,18 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                       exec stack (newframe env1 framesize) body dump
                     else
                       let (args, stack) = popn stack n in
-                      let allargs = List.rev (pargs @ args) in
+                      let allargs = List.rev_map make_entry (pargs @ args) in
                       exec (allargs @ stack) (newframe env1 framesize) body dump
 
                   else if arity > n then
                     let (args, stack) = popn stack n in
                     let applied = CompiledClosure([], arity - n, pargs @ args, framesize, body, env1) in
-                    exec (applied :: stack) env code dump
+                    exec (make_entry applied :: stack) env code dump
 
                   else
                     let (surplus, stack) = popn stack (n - arity) in
                     let (args, stack) = popn stack arity in
-                    let allargs = List.rev (pargs @ args) in
+                    let allargs = List.rev_map make_entry (pargs @ args) in
                     exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
 
                | CompiledPrimitiveClosure(arity, [], framesize, body, env1, astf) ->
@@ -550,7 +566,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                    else if arity > n then
                      let (args, stack) = popn stack n in
                      let applied = CompiledClosure([], arity - n, args, framesize, body, env1) in
-                     exec (applied :: stack) env code dump
+                     exec (make_entry applied :: stack) env code dump
 
                    else
                      let (surplus, stack) = popn stack (n-arity) in
@@ -566,7 +582,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpApplyOptional ->
       begin
         match stack with
-        | v :: f :: stack ->
+        | (v, _) :: (f, _) :: stack ->
             begin
               match f with
               | CompiledClosure(var :: vars, arity, pargs, framesize, body, env1) ->
@@ -577,7 +593,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                   in
                   let body = OpPush(Constructor("Some", v)) :: bindop :: body in
                   let fnew = CompiledClosure(vars, arity, pargs, framesize, body, env1) in
-                  exec (fnew :: stack) env code dump
+                  exec (make_entry fnew :: stack) env code dump
 
               | _ ->
                   report_bug_vm_value "ApplyOptional: not a function with optional arguments" f
@@ -589,7 +605,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpApplyOmission ->
       begin
         match stack with
-        | f :: stack ->
+        | (f, _) :: stack ->
             begin
               match f with
               | CompiledClosure(var :: vars, arity, pargs, framesize, body, env1) ->
@@ -600,7 +616,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
                   in
                   let body = OpPush(Constructor("None", const_unit)) :: bindop :: body in
                   let fnew = CompiledClosure(vars, arity, pargs, framesize, body, env1) in
-                  exec (fnew :: stack) env code dump
+                  exec (make_entry fnew :: stack) env code dump
 
               | _ ->
                   report_bug_vm_value "ApplyOmission: not a function with optional arguments" f
@@ -612,7 +628,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpBindGlobal(loc, evid, refs) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             begin
               loc := v;
               exec stack env code dump
@@ -625,7 +641,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       begin
             begin
               match stack with
-              | v :: stack ->
+              | (v, _) :: stack ->
                   local_set_value env lv offset v;
                   exec stack env code dump
 
@@ -639,7 +655,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       begin
             begin
               binds |> List.iter (fun (var, code) ->
-                let recfunc = exec [] env code [] in
+                let recfunc = exec_value [] env code [] in
                   match var with
                   | GlobalVar(loc, evid, refs) -> loc := recfunc
                   | LocalVar(lv, offset, evid, refs) -> local_set_value env lv offset recfunc
@@ -660,7 +676,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpBranchIf(body) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             let b = get_bool v in
             if b then
               exec stack env body dump
@@ -673,7 +689,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpBranchIfNot(body) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             let b = get_bool v in
             if b then
               exec stack env code dump
@@ -687,7 +703,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       begin
             begin
               let v = !loc in
-              exec (v :: stack) env code dump
+              exec (make_entry v :: stack) env code dump
             end
 
       end
@@ -696,112 +712,81 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       begin
             begin
               let v = local_get_value env lv offset in
-              exec (v :: stack) env code dump
+              exec (make_entry v :: stack) env code dump
             end
 
       end
 
   | OpDup ->
-      begin
-            begin
-              let v =
-                try List.hd stack with
-                | Invalid_argument(_) -> report_bug_vm "Dup: stack underflow"
-              in
-                exec (v :: stack) env code dump
-            end
-
-      end
+      let entry =
+        try List.hd stack with
+        | Invalid_argument(_) -> report_bug_vm "Dup: stack underflow"
+      in
+      exec (entry :: stack) env code dump
 
   | OpError(msg) ->
-      begin
-            begin
-              raise (ExecError(msg))
-            end
-
-      end
+      raise (ExecError(msg))
 
   | OpMakeConstructor(ctor_nm) ->
       begin
         match stack with
-        | valuecont :: stack ->
-            begin
-              exec (Constructor(ctor_nm, valuecont) :: stack) env code dump
-            end
+        | (valuecont, _) :: stack ->
+            let entry = make_entry @@ Constructor(ctor_nm, valuecont) in
+            exec (entry :: stack) env code dump
 
-        | _ -> report_bug_vm "invalid argument for OpMakeConstructor"
+        | _ ->
+            report_bug_vm "invalid argument for OpMakeConstructor"
       end
 
   | OpMakeRecord(keylst) ->
-      begin
+      let rec collect keys asc st =
+        match keys with
+        | [] ->
+            (asc, st)
+
+        | k :: rest ->
             begin
-              let rec collect keys asc st =
-                match keys with
-                | [] ->
-                    (asc, st)
-
-                | k :: rest ->
-                    begin
-                      match st with
-                      | v :: stnew -> collect rest (Assoc.add asc k v) stnew
-                      | _          -> report_bug_vm "MakeRecord: stack underflow"
-                    end
-                in
-                let (asc, stack) = collect (List.rev keylst) Assoc.empty stack in
-                exec (RecordValue(asc) :: stack) env code dump
+              match st with
+              | (v, _) :: stnew -> collect rest (Assoc.add asc k v) stnew
+              | _               -> report_bug_vm "MakeRecord: stack underflow"
             end
-
-      end
+        in
+        let (asc, stack) = collect (List.rev keylst) Assoc.empty stack in
+        let entry = make_entry @@ RecordValue(asc) in
+        exec (entry :: stack) env code dump
 
   | OpMakeTuple(len) ->
-      begin
-            begin
-              let rec iter n acc st =
-                if n <= 0 then
-                  (acc, st)
-                else
-                  match st with
-                  | value :: stnew -> iter (n - 1) (value :: acc) stnew
-                  | []             -> report_bug_vm "MakeTuple: stack underflow"
-              in
-              let (vlst, stack) = iter len [] stack in
-              exec (Tuple(vlst) :: stack) env code dump
-            end
-
-      end
+        let rec iter n acc st =
+          if n <= 0 then
+            (acc, st)
+          else
+            match st with
+            | (v, _) :: stnew -> iter (n - 1) (v :: acc) stnew
+            | []              -> report_bug_vm "MakeTuple: stack underflow"
+        in
+        let (vlst, stack) = iter len [] stack in
+        let entry = make_entry @@ Tuple(vlst) in
+        exec (entry :: stack) env code dump
 
   | OpPop ->
-      begin
-            begin
-              let stack =
-                try List.tl stack with
-                | Invalid_argument(_) -> report_bug_vm "Pop: stack underflow"
-              in
-              exec stack env code dump
-            end
-
-      end
+      let stack =
+        try List.tl stack with
+        | Invalid_argument(_) -> report_bug_vm "Pop: stack underflow"
+      in
+      exec stack env code dump
 
   | OpPush(v) ->
-      begin
-            begin
-              exec (v :: stack) env code dump
-            end
-
-      end
+      exec (make_entry v :: stack) env code dump
 
   | OpPushEnv ->
-      begin
-            begin
-              exec (EvaluatedEnvironment(vmenv_global env) :: stack) env code dump
-            end
-
-      end
+    (* -- returns the environment -- *)
+      let entry = (EvaluatedEnvironment, Some(vmenv_global env)) in
+      exec (entry :: stack) env code dump
 
   | OpCheckStackTopBool(b, next) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             let b0 = get_bool v in
             if b = b0 then
               exec stack env code dump
@@ -815,10 +800,10 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpCheckStackTopCtor(ctor_nm, next) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             begin
               match v with
-              | Constructor(nm, sub) when nm = ctor_nm -> exec (sub :: stack) env code dump
+              | Constructor(nm, sub) when nm = ctor_nm -> exec (make_entry sub :: stack) env code dump
               | _                                      -> exec stack env next dump
             end
 
@@ -828,7 +813,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpCheckStackTopEndOfList(next) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             begin
               match v with
               | List([]) -> exec stack env code dump
@@ -841,7 +826,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpCheckStackTopInt(i, next) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             let i0 = get_int v in
             if i = i0 then
               exec stack env code dump
@@ -855,10 +840,10 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpCheckStackTopListCons(next) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             begin
               match v with
-              | List(car :: cdr) -> exec (car :: List(cdr) :: stack) env code dump
+              | List(car :: cdr) -> exec (make_entry car :: make_entry (List(cdr)) :: stack) env code dump
               | _                -> exec stack env next dump
             end
 
@@ -868,7 +853,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpCheckStackTopStr(str, next) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             let s0 = get_string v in
             if s0 = str then
               exec stack env code dump
@@ -881,10 +866,10 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpCheckStackTopTupleCons(next) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             begin
               match v with
-              | Tuple(car :: cdr) -> exec (car :: Tuple(cdr) :: stack) env code dump
+              | Tuple(car :: cdr) -> exec (make_entry car :: make_entry (Tuple(cdr)) :: stack) env code dump
               | _                 -> exec stack env next dump
             end
 
@@ -892,35 +877,21 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       end
 
   | OpClosure(optvars, arity, framesize, body) ->
-      begin
-            begin
-              exec (CompiledClosure(optvars, arity, [], framesize, body, env) :: stack) env code dump
-            end
-
-      end
+      let entry = make_entry @@ CompiledClosure(optvars, arity, [], framesize, body, env) in
+      exec (entry :: stack) env code dump
 
   | OpClosureInputHorz(imihlst) ->
-      begin
-            begin
-              let imihclos = exec_input_horz_content env imihlst in
-              exec (imihclos :: stack) env code dump
-            end
-
-      end
+      let imihclos = exec_input_horz_content env imihlst in
+      exec (make_entry imihclos :: stack) env code dump
 
   | OpClosureInputVert(imivlst) ->
-      begin
-            begin
-              let imivclos = exec_input_vert_content env imivlst in
-              exec (imivclos :: stack) env code dump
-            end
-
-      end
+      let imivclos = exec_input_vert_content env imivlst in
+      exec (make_entry imivclos :: stack) env code dump
 
   | OpBindLocationGlobal(loc, evid) ->
       begin
         match stack with
-        | valueini :: stack ->
+        | (valueini, _) :: stack ->
             begin
               let stid = register_location (vmenv_global env) valueini in
               loc := Location(stid);
@@ -933,7 +904,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpBindLocationLocal(lv, offset, evid) ->
       begin
         match stack with
-        | valueini :: stack ->
+        | (valueini, _) :: stack ->
             begin
               let stid = register_location (vmenv_global env) valueini in
               local_set_value env lv offset (Location(stid));
@@ -946,13 +917,13 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpUpdateGlobal(loc, evid) ->
       begin
         match stack with
-        | valuenew :: stack ->
+        | (valuenew, _) :: stack ->
             begin
               match !loc with
               | Location(stid) ->
                   begin
                     update_location (vmenv_global env) stid valuenew;
-                    exec (const_unit :: stack) env code dump
+                    exec (make_entry const_unit :: stack) env code dump
                   end
 
               | _ ->
@@ -965,13 +936,13 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpUpdateLocal(lv, offset, evid) ->
       begin
         match stack with
-        | valuenew :: stack ->
+        | (valuenew, _) :: stack ->
             begin
               match local_get_value env lv offset with
               | Location(stid) ->
                    begin
                      update_location (vmenv_global env) stid valuenew;
-                     exec (const_unit :: stack) env code dump
+                     exec (make_entry const_unit :: stack) env code dump
                    end
 
               | _ ->
@@ -984,7 +955,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
   | OpSel(tpart, fpart) ->
       begin
         match stack with
-        | v :: stack ->
+        | (v, _) :: stack ->
             let b = get_bool v in
             if b then
               exec stack env tpart dump
@@ -995,31 +966,27 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       end
 
   | OpBackendMathList(n) ->
-      begin
-            begin
-              let rec iter n st acc =
-                if n <= 0 then
-                  (acc, st)
-                else
-                  match st with
-                  | MathValue(m) :: stnew -> iter (n - 1) stnew (m :: acc)
-                  | _                     -> report_bug_vm "BackendMathList"
-              in
-              let (mlst, stack) = iter n stack [] in
-              exec (MathValue(List.concat mlst) :: stack) env code dump
-            end
-
-      end
+      let rec iter n st acc =
+        if n <= 0 then
+          (acc, st)
+        else
+          match st with
+          | (MathValue(m), _) :: stnew -> iter (n - 1) stnew (m :: acc)
+          | _                          -> report_bug_vm "BackendMathList"
+      in
+      let (mlst, stack) = iter n stack [] in
+      let entry = make_entry @@ MathValue(List.concat mlst) in
+      exec (entry :: stack) env code dump
 
   | OpPath(c_pathcomplst, c_cycleopt) ->
       begin
         match stack with
-        | _tmp0 :: stack ->
-            let pt0 = get_point _tmp0 in
+        | (v, _) :: stack ->
+            let pt0 = get_point v in
             let ret =
               let (pathelemlst, closingopt) = get_path env c_pathcomplst c_cycleopt in
               make_path [GeneralPath(pt0, pathelemlst, closingopt)]
-            in exec (ret :: stack) env code dump
+            in exec (make_entry ret :: stack) env code dump
 
         | _ -> report_bug_vm "invalid argument for OpPath"
       end
@@ -1029,7 +996,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         match stack with
         | func :: stack ->
             begin
-              exec (func :: (List.rev_append lst stack)) env code dump
+              exec (func :: (List.rev_append (List.map make_entry lst) stack)) env code dump
             end
 
         | _ -> report_bug_vm "invalid argument for OpInsertArgs"
@@ -1039,7 +1006,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       let (valuelst, stack) = popn stack arity in
       let codelst = valuelst |> List.map get_code in
       let coderet = codef codelst in
-      exec (CodeValue(coderet) :: stack) env code dump
+      exec (make_entry (CodeValue(coderet)) :: stack) env code dump
 
   | OpCodeMakeRecord(keylst) ->
       let rec collect keys asc st =
@@ -1050,12 +1017,13 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
         | k :: rest ->
             begin
               match st with
-              | CodeValue(cv) :: stnew -> collect rest (Assoc.add asc k cv) stnew
-              | _                      -> report_bug_vm "CodeMakeRecord"
+              | (CodeValue(cv), _) :: stnew -> collect rest (Assoc.add asc k cv) stnew
+              | _                           -> report_bug_vm "CodeMakeRecord"
             end
       in
       let (cdasc, stack) = collect (List.rev keylst) Assoc.empty stack in
-      exec (CodeValue(CdRecord(cdasc)) :: stack) env code dump
+      let entry = make_entry @@ CodeValue(CdRecord(cdasc)) in
+      exec (entry :: stack) env code dump
 
   | OpCodeMathList(n) ->
       let rec iter n st acc =
@@ -1063,11 +1031,12 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
           (acc, st)
         else
           match st with
-          | CodeValue(cv) :: stnew -> iter (n - 1) stnew (cv :: acc)
-          | _                      -> report_bug_vm "CodeMathList"
+          | (CodeValue(cv), _) :: stnew -> iter (n - 1) stnew (cv :: acc)
+          | _                           -> report_bug_vm "CodeMathList"
       in
       let (cvlst, stack) = iter n stack [] in
-      exec (CodeValue(CdMathList(cvlst)) :: stack) env code dump
+      let entry = make_entry @@ CodeValue(CdMathList(cvlst)) in
+      exec (entry :: stack) env code dump
 
   | OpCodeMakeTuple(n) ->
       let rec iter n acc st =
@@ -1075,26 +1044,30 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
           (acc, st)
         else
           match st with
-          | CodeValue(cv) :: stnew -> iter (n - 1) (cv :: acc) stnew
-          | _                      -> report_bug_vm "CodeMakeTuple"
+          | (CodeValue(cv), _) :: stnew -> iter (n - 1) (cv :: acc) stnew
+          | _                           -> report_bug_vm "CodeMakeTuple"
       in
       let (cvlst, stack) = iter n [] stack in
-      exec (CodeValue(CdTuple(cvlst)) :: stack) env code dump
+      let entry = make_entry @@ CodeValue(CdTuple(cvlst)) in
+      exec (entry :: stack) env code dump
 
   | OpCodeMakeInputHorz(compihlst) ->
       let cdihlst = exec_code_input_horz env compihlst in
-      exec (CodeValue(CdInputHorz(cdihlst)) :: stack) env code dump
+      let entry = make_entry @@ CodeValue(CdInputHorz(cdihlst)) in
+      exec (entry :: stack) env code dump
 
   | OpCodeMakeInputVert(compivlst) ->
       let cdivlst = exec_code_input_vert env compivlst in
-      exec (CodeValue(CdInputVert(cdivlst)) :: stack) env code dump
+      let entry = make_entry @@ CodeValue(CdInputVert(cdivlst)) in
+      exec (entry :: stack) env code dump
 
   | OpCodePatternMatch(rng, comppatbrs) ->
       begin
         match stack with
-        | CodeValue(cv0) :: stack ->
+        | (CodeValue(cv0), _) :: stack ->
             let cdpatbrs = List.map (exec_code_pattern_branch env) comppatbrs in
-            exec (CodeValue(CdPatternMatch(rng, cv0, cdpatbrs)) :: stack) env code dump
+            let entry = make_entry @@ CodeValue(CdPatternMatch(rng, cv0, cdpatbrs)) in
+            exec (entry :: stack) env code dump
 
         | _ ->
             report_bug_vm "CodePatternMatch: stack underflow"
@@ -1107,8 +1080,38 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
           CdLetRecBinding(evid, cdpatbr)
         )
       in
-      let value2 = exec [] env instrs2 [] in
+      let (value2, envopt) = exec [] env instrs2 [] in
       let cv2 = get_code value2 in
-      exec (CodeValue(CdLetRecIn(cdrecbinds, cv2)) :: stack) env code dump
+      let entry = (CodeValue(CdLetRecIn(cdrecbinds, cv2)), envopt) in
+        (* -- returns the environment -- *)
+      exec (entry :: stack) env code dump
+
+  | OpCodeLetNonRec(pattr, instrs1, instrs2) ->
+      let value1 = exec_value [] env instrs1 [] in
+      let cv1 = get_code value1 in
+      let (value2, envopt) = exec [] env instrs2 [] in
+      let cv2 = get_code value2 in
+      let entry = (CodeValue(CdLetNonRecIn(pattr, cv1, cv2)), envopt) in
+        (* -- returns the environment -- *)
+      exec (entry :: stack) env code dump
+
+  | OpCodeModule(instrs1, instrs2) ->
+      let value1 = exec_value [] env instrs1 [] in
+      let cv1 = get_code value1 in
+      let (value2, envopt) = exec [] env instrs2 [] in
+      let cv2 = get_code value2 in
+      let entry = (CodeValue(CdModule(cv1, cv2)), envopt) in
+        (* -- returns the environment -- *)
+      exec (entry :: stack) env code dump
+
+  | OpCodeFinishHeaderFile ->
+      let entry = (CodeValue(CdFinishHeaderFile), Some(vmenv_global env)) in
+        (* -- returns the environment -- *)
+      exec (entry :: stack) env code dump
+
+  | OpCodeFinishStruct ->
+      let entry = (CodeValue(CdFinishStruct), Some(vmenv_global env)) in
+        (* -- returns the environment -- *)
+      exec (entry :: stack) env code dump
 
 #include "__vm.gen.ml"

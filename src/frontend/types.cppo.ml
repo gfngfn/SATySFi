@@ -725,6 +725,10 @@ and ir =
   | IRCodeInputVert         of (ir input_vert_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * (ir pattern_branch_scheme) list
   | IRCodeLetRecIn          of (ir letrec_binding_scheme) list * ir
+  | IRCodeLetNonRecIn       of pattern_tree * ir * ir
+  | IRCodeModule            of ir * ir
+  | IRCodeFinishHeaderFile
+  | IRCodeFinishStruct
 
 and ir_pattern_branch =
   | IRPatternBranch      of ir_pattern_tree * ir
@@ -819,6 +823,10 @@ and instruction =
   | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
   | OpCodePatternMatch  of Range.t * ((instruction list) pattern_branch_scheme) list
   | OpCodeLetRec        of ((instruction list) letrec_binding_scheme) list * instruction list
+  | OpCodeLetNonRec     of pattern_tree * instruction list * instruction list
+  | OpCodeModule        of instruction list * instruction list
+  | OpCodeFinishHeaderFile
+  | OpCodeFinishStruct
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =
@@ -844,7 +852,7 @@ and syntactic_value =
   | Context      of input_context
   | CodeValue    of code_value
 
-  | EvaluatedEnvironment of environment
+  | EvaluatedEnvironment
 
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | Closure          of EvalVarID.t list * pattern_branch * environment

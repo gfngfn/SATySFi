@@ -3,4 +3,4 @@ open Types
 
 exception ExecError of string
 
-val exec : syntactic_value list -> vmenv -> instruction list -> (vmenv * instruction list) list -> syntactic_value
+val exec_code : environment -> instruction list -> syntactic_value * environment option

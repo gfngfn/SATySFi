@@ -289,30 +289,40 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
 
 let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : environment =
   Logging.begin_to_eval_file abspath;
-  let value =
+  let (value, _) as ret =
     if OptionState.bytecomp_mode () then
       Bytecomp.compile_and_exec_0 env ast
     else
       Evaluator.interpret_0 env ast
   in
-  match value with
-  | EvaluatedEnvironment(envnew) -> envnew
-  | _                            -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
+  match ret with
+  | (EvaluatedEnvironment, Some(envnew)) -> envnew
+  | _                                    -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
 
 
-let preprocess_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value =
+let preprocess_file ?(is_document : bool = false) (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value * environment =
   Logging.begin_to_preprocess_file abspath;
-  if OptionState.bytecomp_mode () then
-    Bytecomp.compile_and_exec_1 env ast
-  else
-    Evaluator.interpret_1 env ast
+  let (cd, envopt) =
+    if OptionState.bytecomp_mode () then
+      Bytecomp.compile_and_exec_1 env ast
+    else
+      Evaluator.interpret_1 env ast
+  in
+    if is_document then
+      match envopt with
+      | None    -> (cd, env)
+      | Some(_) -> EvalUtil.report_bug_vm "environment returned for document"
+    else
+      match envopt with
+      | Some(envnew) -> (cd, envnew)
+      | None         -> EvalUtil.report_bug_vm "environment not returned"
 
 
 let eval_main i env_freezed ast =
   Logging.start_evaluation i;
   reset ();
   let env = unfreeze_environment env_freezed in
-  let valuedoc =
+  let (valuedoc, _) =
     if OptionState.bytecomp_mode () then
       Bytecomp.compile_and_exec_0 env ast
     else
@@ -381,16 +391,16 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abst
   let rec preprocess (codeacc : (abs_path * code_value) Alist.t) (env : environment) libs =
     match libs with
     | [] ->
-        let codedoc = preprocess_file env abspath_in astdoc in
-        (env, Alist.to_list codeacc, codedoc)
+        let (codedoc, envnew) = preprocess_file ~is_document:true env abspath_in astdoc in
+        (envnew, Alist.to_list codeacc, codedoc)
 
     | ((Stage0 | Persistent0), abspath, astlib0) :: tail ->
         let envnew = eval_library_file env abspath astlib0 in
         preprocess codeacc envnew tail
 
     | (Stage1, abspath, astlib1) :: tail ->
-        let code = preprocess_file env abspath astlib1 in
-        preprocess (Alist.extend codeacc (abspath, code)) env tail
+        let (code, envnew) = preprocess_file env abspath astlib1 in
+        preprocess (Alist.extend codeacc (abspath, code)) envnew tail
   in
     (* --
        each evaluation called in `preprocess` is run by the naive interpreter
