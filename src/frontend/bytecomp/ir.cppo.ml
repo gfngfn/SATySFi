@@ -465,9 +465,10 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       let (ir2, env) = transform_1 env ast2 in
       (IRCodeLetRecIn(irrecbinds, ir2), env)
 
-  | LetNonRecIn(pat, ast1, ast2) ->
-      code2 env (fun cv1 cv2 -> CdLetNonRecIn(pat, cv1, cv2)) ast1 ast2
-        (* should be treated specially about returning environments *)
+  | LetNonRecIn(pattr, ast1, ast2) ->
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (IRCodeLetNonRecIn(pattr, ir1, ir2), env)
 
   | ContentOf(rng, evid) ->
       code0 env (CdContentOf(rng, evid))

@@ -291,6 +291,11 @@ and compile (ir : ir) (cont : instruction list) =
       let instrs2 = compile ir2 [] in
       OpCodeLetRec(List.map compile_code_letrec_binding irrecbinds, instrs2) :: cont
 
+  | IRCodeLetNonRecIn(pattr, ir1, ir2) ->
+      let instrs1 = compile ir1 [] in
+      let instrs2 = compile ir2 [] in
+      OpCodeLetNonRec(pattr, instrs1, instrs2) :: cont
+
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =
   let consif cond a b =

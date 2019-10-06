@@ -1086,4 +1086,13 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         (* -- returns the environment -- *)
       exec (entry :: stack) env code dump
 
+  | OpCodeLetNonRec(pattr, instrs1, instrs2) ->
+      let value1 = exec_value [] env instrs1 [] in
+      let cv1 = get_code value1 in
+      let (value2, envopt) = exec [] env instrs2 [] in
+      let cv2 = get_code value2 in
+      let entry = (CodeValue(CdLetNonRecIn(pattr, cv1, cv2)), envopt) in
+        (* -- returns the environment -- *)
+      exec (entry :: stack) env code dump
+
 #include "__vm.gen.ml"
