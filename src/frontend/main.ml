@@ -291,27 +291,23 @@ let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_t
   Logging.begin_to_eval_file abspath;
   let (value, _) as ret =
     if OptionState.bytecomp_mode () then
-      failwith "eval_library_file: byte compile mode temporarily not supported."
-(*
       Bytecomp.compile_and_exec_0 env ast
-*)
     else
       Evaluator.interpret_0 env ast
   in
   match ret with
-  | (EvaluatedEnvironment(_), Some(envnew)) -> envnew
-  | _                                       -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
+  | (EvaluatedEnvironment, Some(envnew)) -> envnew
+  | _                                    -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
 
 
 let preprocess_file ?(is_document : bool = false) (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value * environment =
   Logging.begin_to_preprocess_file abspath;
-  if OptionState.bytecomp_mode () then
-    failwith "preprocess_file: byte compile mode temporarily not supported."
-(*
-    Bytecomp.compile_and_exec_1 env ast
-*)
-  else
-    let (cd, envopt) = Evaluator.interpret_1 env ast in
+  let (cd, envopt) =
+    if OptionState.bytecomp_mode () then
+      Bytecomp.compile_and_exec_1 env ast
+    else
+      Evaluator.interpret_1 env ast
+  in
     if is_document then
       match envopt with
       | None    -> (cd, env)
@@ -328,10 +324,7 @@ let eval_main i env_freezed ast =
   let env = unfreeze_environment env_freezed in
   let (valuedoc, _) =
     if OptionState.bytecomp_mode () then
-      failwith "eval_main: byte compile mode temporarily not supported."
-(*
       Bytecomp.compile_and_exec_0 env ast
-*)
     else
       Evaluator.interpret_0 env ast
   in

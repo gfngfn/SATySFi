@@ -145,10 +145,10 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       return @@ MathValue(mlst)
 
   | FinishHeaderFile ->
-      (EvaluatedEnvironment(env), Some(env))
+      (EvaluatedEnvironment, Some(env))
 
   | FinishStruct ->
-      (EvaluatedEnvironment(env), Some(env))
+      (EvaluatedEnvironment, Some(env))
 
   | InputHorz(ihlst) ->
       let imihlst = interpret_0_input_horz_content env ihlst in
@@ -325,11 +325,18 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       return @@ Constructor(constrnm, valuecont)
 
   | Module(astmdl, astaft) ->
-      let (value, envmdl) = interpret_0 env astmdl in
+      let (value, envopt) = interpret_0 env astmdl in
       begin
         match value with
-        | EvaluatedEnvironment(envfinal) -> interpret_0 envfinal astaft
-        | _                              -> report_bug_reduction "Module" astmdl value
+        | EvaluatedEnvironment ->
+            begin
+              match envopt with
+              | Some(envfinal) -> interpret_0 envfinal astaft
+              | None           -> report_bug_vm "no environment returned"
+            end
+
+        | _ ->
+            report_bug_reduction "Module" astmdl value
       end
 
   | BackendMathList(astmlst) ->

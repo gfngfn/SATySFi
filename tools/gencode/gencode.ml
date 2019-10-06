@@ -19,6 +19,8 @@ module Const = struct
 
   let ret = "ret"
 
+  let make_entry = "make_entry"
+
   let trans_prim = "transform_0_primitive"
 
   let destructuring_rules =
@@ -146,6 +148,10 @@ let gen_interps_0 () =
   )
 
 
+let make_entry_pattern name =
+  "(" ^ name ^ ", _)"
+
+
 let gen_vminstrs () =
   let open Instruction in
   Vminst.def |> List.iter (function
@@ -201,7 +207,7 @@ let gen_vminstrs () =
             ()
 
         | ds ->
-            puts "        | %s :: %s ->" (String.concat " :: " ds) Const.stack
+            puts "        | %s :: %s ->" (String.concat " :: " (ds |> List.map make_entry_pattern)) Const.stack
       end;
       funcapp |> List.iter (function
       | ({ Param.name = dest; type_ = Some(func) }, src, _) ->
@@ -222,8 +228,8 @@ let gen_vminstrs () =
       if is_primitive def then begin
         puts "            let %s =" Const.ret;
         print_code ();
-        puts "            in %s (%s :: %s) %s %s %s"
-          Const.vmexec Const.ret Const.stack Const.environment Const.code Const.dump
+        puts "            in %s (%s %s :: %s) %s %s %s"
+          Const.vmexec Const.make_entry Const.ret Const.stack Const.environment Const.code Const.dump
       end else begin
         puts "            begin";
         print_code ();

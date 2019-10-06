@@ -844,7 +844,7 @@ and syntactic_value =
   | Context      of input_context
   | CodeValue    of code_value
 
-  | EvaluatedEnvironment of environment
+  | EvaluatedEnvironment
 
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | Closure          of EvalVarID.t list * pattern_branch * environment
