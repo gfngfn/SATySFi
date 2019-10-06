@@ -515,8 +515,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       code1 env (fun cv -> CdOverwrite(evid, cv)) ast1
 
   | Module(ast1, ast2) ->
-      code2 env (fun cv1 cv2 -> CdModule(cv1, cv2)) ast1 ast2
-        (* should be treated specially about returning environments *)
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (IRCodeModule(ir1, ir2), env)
 
   | BackendMathList(astmlst) ->
       transform_1_primitive env astmlst (OpCodeMathList(List.length astmlst))
