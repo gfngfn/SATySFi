@@ -1080,9 +1080,10 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
           CdLetRecBinding(evid, cdpatbr)
         )
       in
-      let value2 = exec_value [] env instrs2 [] in
+      let (value2, envopt) = exec [] env instrs2 [] in
       let cv2 = get_code value2 in
-      let entry = make_entry @@ CodeValue(CdLetRecIn(cdrecbinds, cv2)) in
+      let entry = (CodeValue(CdLetRecIn(cdrecbinds, cv2)), envopt) in
+        (* -- returns the environment -- *)
       exec (entry :: stack) env code dump
 
 #include "__vm.gen.ml"

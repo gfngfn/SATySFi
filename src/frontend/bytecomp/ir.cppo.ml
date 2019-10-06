@@ -423,7 +423,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTEndOfList        -> code0 env CdEndOfList
   | ASTMath(mlst)       -> code0 env (CdMath(mlst))
   | FinishHeaderFile    -> code0 env CdFinishHeaderFile
+      (* should be treated specially about returning environments *)
   | FinishStruct        -> code0 env CdFinishStruct
+      (* should be treated specially about returning environments *)
 
   | InputHorz(ihlst) ->
       let (imihlst, env) = transform_1_input_horz_content env ihlst in
@@ -465,6 +467,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
 
   | LetNonRecIn(pat, ast1, ast2) ->
       code2 env (fun cv1 cv2 -> CdLetNonRecIn(pat, cv1, cv2)) ast1 ast2
+        (* should be treated specially about returning environments *)
 
   | ContentOf(rng, evid) ->
       code0 env (CdContentOf(rng, evid))
@@ -512,6 +515,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
 
   | Module(ast1, ast2) ->
       code2 env (fun cv1 cv2 -> CdModule(cv1, cv2)) ast1 ast2
+        (* should be treated specially about returning environments *)
 
   | BackendMathList(astmlst) ->
       transform_1_primitive env astmlst (OpCodeMathList(List.length astmlst))
