@@ -2622,3 +2622,33 @@ params:
 
 code: |
   raise (report_dynamic_error msg)
+
+---
+inst: ReadFile
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "read-file"
+type: |
+  ~% (tS @-> tL(tS))
+
+params:
+  - relpath : string
+
+code: |
+  let path =
+    Filename.concat (OptionState.job_directory ()) relpath
+  in
+  let str_list = ref [] in
+  let read filename =
+    let f = open_in filename in
+    try
+      while true do (str_list := (input_line f) :: !str_list) done
+    with End_of_file -> ()
+  in
+  let () =
+    read path
+  in
+  let list =
+    List.rev !str_list
+  in
+    make_list make_string list
