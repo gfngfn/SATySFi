@@ -12,6 +12,7 @@ module Code : sig
   direct \code : [string] inline-cmd
   direct \console : [string] inline-cmd
   direct \d-code : [string] inline-cmd
+  direct +file-code : [string] block-cmd
 
 end = struct
 
@@ -69,7 +70,7 @@ end = struct
         |> set-hyphen-penalty 100000
 
 
-  let scheme decoset txtcolor ctx code =
+  let scheme-sub decoset txtcolor ctx code-list =
     let pads = (5pt, 5pt, 5pt, 5pt) in
     block-frame-breakable ctx pads decoset (fun ctx -> (
       let fontsize = get-font-size ctx in
@@ -80,7 +81,7 @@ end = struct
             |> set-text-color txtcolor
       in
 
-      let lstraw = split-into-lines code in
+      let lstraw = code-list in
       let lst =
         match lstraw with
         | []        -> lstraw
@@ -106,6 +107,11 @@ end = struct
     ))
 
 
+  let scheme decoset txtcolor ctx code =
+    let code-list = split-into-lines code in
+      scheme-sub decoset txtcolor ctx code-list
+
+
   let-block ctx +code code =
     scheme decoset-code Color.black ctx code
 
@@ -127,5 +133,11 @@ end = struct
   let-inline ctx \code code =
     script-guard Latin
       (read-inline (ctx |> set-code-font) (embed-string code))
+
+
+  let-block ctx +file-code file-name =
+    let str-list = ` ` :: read-file file-name in
+    let code = List.map (fun s -> (0, s)) str-list in
+      scheme-sub decoset-code Color.black ctx code
 
 end
