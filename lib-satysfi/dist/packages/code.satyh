@@ -13,6 +13,7 @@ module Code : sig
   direct \console : [string] inline-cmd
   direct \d-code : [string] inline-cmd
   direct +file-code : [string] block-cmd
+  direct \file-code : [string] inline-cmd
 
 end = struct
 
@@ -139,5 +140,10 @@ end = struct
     let str-list = ` ` :: read-file file-name in
     let code = List.map (fun s -> (0, s)) str-list in
       scheme-sub decoset-code Color.black ctx code
+
+
+  let-inline ctx \file-code file-name =
+    inline-fil ++ embed-block-breakable ctx
+      (read-block ctx '<+file-code(file-name);>)
 
 end
