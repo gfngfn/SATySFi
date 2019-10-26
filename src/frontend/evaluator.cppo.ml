@@ -33,6 +33,30 @@ let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_
   HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
+let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
+  match find_in_environment env evid with
+  | Some(rfvalue) ->
+      begin
+        match !rfvalue with
+        | CodeSymbol(symb) -> Some(symb)
+        | _                -> report_bug_vm "not a symbol"
+      end
+
+  | None ->
+      None
+
+
+let generate_symbol_for_eval_var_id (evid : EvalVarID.t) (env : environment) : environment * CodeSymbol.t =
+  let symb =
+    let varnm = EvalVarID.get_varnm evid in
+    let rng = EvalVarID.get_range evid in
+    CodeSymbol.fresh (rng, "symbol for " ^ varnm)
+  in
+  let rfvalue = ref (CodeSymbol(symb)) in
+  let envnew = add_to_environment env evid rfvalue in
+  (envnew, symb)
+
+
 let rec reduce_beta value1 value2 =
   match value1 with
   | Closure(evids, patbr, env1) ->
@@ -384,13 +408,25 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
       CdInputVert(cdivlst)
 
   | ContentOf(rng, evid) ->
-      CdContentOf(rng, evid)
+      begin
+        match find_symbol env evid with
+        | Some(symb) -> CdContentOf(rng, symb)
+        | None       -> report_bug_ast "symbol not found" ast
+      end
 
   | LetRecIn(recbinds, ast2) ->
+      let (env, zippedacc) =
+      (* -- generate the symbols for the identifiers and add them to the environment -- *)
+        recbinds |> List.fold_left (fun (env, zippedacc) recbind ->
+          let LetRecBinding(evid, _) = recbind in
+          let (env, symb) = generate_symbol_for_eval_var_id evid env in
+          (env, Alist.extend zippedacc (symb, recbind))
+        ) (env, Alist.empty)
+      in
       let cdrecbinds =
-        recbinds |> List.map (function LetRecBinding(evid, patbr) ->
+        zippedacc |> Alist.to_list |> List.map (fun (symb, LetRecBinding(evid, patbr)) ->
           let cdpatbr = interpret_1_pattern_branch env patbr in
-          CdLetRecBinding(evid, cdpatbr)
+          CdLetRecBinding(symb, cdpatbr)
         )
       in
       let code2 = interpret_1 env ast2 in
@@ -402,8 +438,14 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
       CdLetNonRecIn(pat, code1, code2)
 
   | Function(evids, patbr) ->
-      let cdpatbr =  interpret_1_pattern_branch env patbr in
-      CdFunction(evids, cdpatbr)
+      let (env, symbacc) =
+        evids |> List.fold_left (fun (env, symbacc) evid ->
+          let (env, symb) = generate_symbol_for_eval_var_id evid env in
+          (env, Alist.extend symbacc symb)
+        ) (env, Alist.empty)
+      in
+      let cdpatbr = interpret_1_pattern_branch env patbr in
+      CdFunction(Alist.to_list symbacc, cdpatbr)
 
   | Apply(ast1, ast2) ->
       let code1 = interpret_1 env ast1 in
@@ -439,9 +481,10 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
       CdUpdateField(code1, fldnm, code2)
 
   | LetMutableIn(evid, ast1, ast2) ->
+      let (env, symb) = generate_symbol_for_eval_var_id evid env in
       let code1 = interpret_1 env ast1 in
       let code2 = interpret_1 env ast2 in
-      CdLetMutableIn(evid, code1, code2)
+      CdLetMutableIn(symb, code1, code2)
 
   | Sequential(ast1, ast2) ->
       let code1 = interpret_1 env ast1 in
@@ -449,8 +492,15 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
       CdSequential(code1, code2)
 
   | Overwrite(evid, ast1) ->
-      let code1 = interpret_1 env ast1 in
-      CdOverwrite(evid, code1)
+      begin
+        match find_symbol env evid with
+        | Some(symb) ->
+            let code1 = interpret_1 env ast1 in
+            CdOverwrite(symb, code1)
+
+        | None ->
+            report_bug_ast "symbol not found" ast
+      end
 
   | WhileDo(ast1, ast2) ->
       let code1 = interpret_1 env ast1 in
@@ -508,8 +558,44 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
 
 
 and interpret_1_pattern_branch env = function
-  | PatternBranch(pattr, ast)           -> CdPatternBranch(pattr, interpret_1 env ast)
-  | PatternBranchWhen(pattr, ast, ast1) -> CdPatternBranchWhen(pattr, interpret_1 env ast, interpret_1 env ast1)
+  | PatternBranch(pattr, ast)           -> CdPatternBranch(interpret_1_pattern_tree env pattr, interpret_1 env ast)
+  | PatternBranchWhen(pattr, ast, ast1) -> CdPatternBranchWhen(interpret_1_pattern_tree env pattr, interpret_1 env ast, interpret_1 env ast1)
+
+
+and interpret_1_pattern_tree env = function
+  | PUnitConstant       -> CdPUnitConstant
+  | PBooleanConstant(b) -> CdPBooleanConstant(b)
+  | PIntegerConstant(n) -> CdPIntegerConstant(n)
+  | PStringConstant(s)  -> CdPStringConstant(s)
+
+  | PListCons(pattr1, pattr2) ->
+      CdPListCons(interpret_1_pattern_tree env pattr1, interpret_1_pattern_tree env pattr2)
+
+  | PEndOfList ->
+      CdPEndOfList
+
+  | PTuple(pattrs) ->
+      CdPTuple(List.map (interpret_1_pattern_tree env) pattrs)
+
+  | PWildCard ->
+      CdPWildCard
+
+  | PVariable(evid) ->
+      begin
+        match find_symbol env evid with
+        | Some(symb) -> CdPVariable(symb)
+        | None       -> report_bug_vm "symbol not found"
+      end
+
+  | PAsVariable(evid, pattr) ->
+      begin
+        match find_symbol env evid with
+        | Some(symb) -> CdPAsVariable(symb, interpret_1_pattern_tree env pattr)
+        | None       -> report_bug_vm "symbol not found"
+      end
+
+  | PConstructor(ctor, pattr) ->
+      CdPConstructor(ctor, interpret_1_pattern_tree env pattr)
 
 
 and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =

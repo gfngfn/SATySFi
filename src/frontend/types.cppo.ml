@@ -820,6 +820,7 @@ and syntactic_value =
   | MathValue    of math list
   | Context      of input_context
   | CodeValue    of code_value
+  | CodeSymbol   of CodeSymbol.t
 
   | EvaluatedEnvironment of environment
 
@@ -969,10 +970,10 @@ and code_value =
   | CdFinishStruct
   | CdInputHorz     of code_input_horz_element list
   | CdInputVert     of code_input_vert_element list
-  | CdContentOf     of Range.t * EvalVarID.t
+  | CdContentOf     of Range.t * CodeSymbol.t
   | CdLetRecIn      of code_letrec_binding list * code_value
   | CdLetNonRecIn   of pattern_tree * code_value * code_value
-  | CdFunction      of EvalVarID.t list * code_pattern_branch
+  | CdFunction      of CodeSymbol.t list * code_pattern_branch
   | CdApply         of code_value * code_value
   | CdApplyOptional of code_value * code_value
   | CdApplyOmission of code_value
@@ -981,9 +982,9 @@ and code_value =
       [@printer (fun fmt _ -> Format.fprintf fmt "CdRecord(...)")]
   | CdAccessField   of code_value * field_name
   | CdUpdateField   of code_value * field_name * code_value
-  | CdLetMutableIn  of EvalVarID.t * code_value * code_value
+  | CdLetMutableIn  of CodeSymbol.t * code_value * code_value
   | CdSequential    of code_value * code_value
-  | CdOverwrite     of EvalVarID.t * code_value
+  | CdOverwrite     of CodeSymbol.t * code_value
   | CdWhileDo       of code_value * code_value
   | CdDereference   of code_value
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
@@ -1001,11 +1002,24 @@ and code_input_vert_element = code_value input_vert_element_scheme
 and 'a code_path_component = ('a, code_value) path_component_scheme
 
 and code_letrec_binding =
-  | CdLetRecBinding of EvalVarID.t * code_pattern_branch
+  | CdLetRecBinding of CodeSymbol.t * code_pattern_branch
 
 and code_pattern_branch =
-  | CdPatternBranch     of pattern_tree * code_value
-  | CdPatternBranchWhen of pattern_tree * code_value * code_value
+  | CdPatternBranch     of code_pattern_tree * code_value
+  | CdPatternBranchWhen of code_pattern_tree * code_value * code_value
+
+and code_pattern_tree =
+  | CdPUnitConstant
+  | CdPBooleanConstant      of bool
+  | CdPIntegerConstant      of int
+  | CdPStringConstant       of string
+  | CdPListCons             of code_pattern_tree * code_pattern_tree
+  | CdPEndOfList
+  | CdPTuple                of code_pattern_tree list
+  | CdPWildCard
+  | CdPVariable             of CodeSymbol.t
+  | CdPAsVariable           of CodeSymbol.t * code_pattern_tree
+  | CdPConstructor          of constructor_name * code_pattern_tree
 [@@deriving show { with_path = false; }]
 
 
@@ -1412,10 +1426,10 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdFinishStruct                       -> FinishStruct
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
-    | CdContentOf(rng, evid)               -> ContentOf(rng, evid)
+    | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
     | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map aux_letrec_binding cdrecbinds, aux code1)
     | CdLetNonRecIn(pat, code1, code2)     -> LetNonRecIn(pat, aux code1, aux code2)
-    | CdFunction(evids, cdpatbr)           -> Function(evids, aux_pattern_branch cdpatbr)
+    | CdFunction(symbs, cdpatbr)           -> Function(List.map CodeSymbol.unlift symbs, aux_pattern_branch cdpatbr)
     | CdApply(code1, code2)                -> Apply(aux code1, aux code2)
     | CdApplyOptional(code1, code2)        -> ApplyOptional(aux code1, aux code2)
     | CdApplyOmission(code1)               -> ApplyOmission(aux code1)
@@ -1423,9 +1437,9 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdRecord(cdasc)                      -> Record(Assoc.map_value aux cdasc)
     | CdAccessField(code1, fldnm)          -> AccessField(aux code1, fldnm)
     | CdUpdateField(code1, fldnm, code2)   -> UpdateField(aux code1, fldnm, aux code2)
-    | CdLetMutableIn(evid, code1, code2)   -> LetMutableIn(evid, aux code1, aux code2)
+    | CdLetMutableIn(symb, code1, code2)   -> LetMutableIn(CodeSymbol.unlift symb, aux code1, aux code2)
     | CdSequential(code1, code2)           -> Sequential(aux code1, aux code2)
-    | CdOverwrite(evid, code1)             -> Overwrite(evid, aux code1)
+    | CdOverwrite(symb, code1)             -> Overwrite(CodeSymbol.unlift symb, aux code1)
     | CdDereference(code1)                 -> Dereference(aux code1)
     | CdWhileDo(code1, code2)              -> WhileDo(aux code1, aux code2)
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
@@ -1436,12 +1450,25 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdModule(code1, code2)               -> Module(aux code1, aux code2)
 #include "__unliftcode.gen.ml"
 
-  and aux_letrec_binding (CdLetRecBinding(evid, cdpatbr)) =
-    LetRecBinding(evid, aux_pattern_branch cdpatbr)
+  and aux_letrec_binding (CdLetRecBinding(symb, cdpatbr)) =
+    LetRecBinding(CodeSymbol.unlift symb, aux_pattern_branch cdpatbr)
 
   and aux_pattern_branch = function
-    | CdPatternBranch(pat, code)            -> PatternBranch(pat, aux code)
-    | CdPatternBranchWhen(pat, code, codeB) -> PatternBranchWhen(pat, aux code, aux codeB)
+    | CdPatternBranch(cdpat, code)            -> PatternBranch(aux_pattern cdpat, aux code)
+    | CdPatternBranchWhen(cdpat, code, codeB) -> PatternBranchWhen(aux_pattern cdpat, aux code, aux codeB)
+
+  and aux_pattern = function
+    | CdPUnitConstant             -> PUnitConstant
+    | CdPBooleanConstant(b)       -> PBooleanConstant(b)
+    | CdPIntegerConstant(n)       -> PIntegerConstant(n)
+    | CdPStringConstant(s)        -> PStringConstant(s)
+    | CdPListCons(cdpat1, cdpat2) -> PListCons(aux_pattern cdpat1, aux_pattern cdpat2)
+    | CdPEndOfList                -> PEndOfList
+    | CdPTuple(cdpats)            -> PTuple(List.map aux_pattern cdpats)
+    | CdPWildCard                 -> PWildCard
+    | CdPVariable(symb)           -> PVariable(CodeSymbol.unlift symb)
+    | CdPAsVariable(symb, cdpat)  -> PAsVariable(CodeSymbol.unlift symb, aux_pattern cdpat)
+    | CdPConstructor(ctor, cdpat) -> PConstructor(ctor, aux_pattern cdpat)
 
   and aux_path cdpath =
     List.map (map_path_component aux aux) cdpath
