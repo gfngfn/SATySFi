@@ -39,7 +39,7 @@ let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
       begin
         match !rfvalue with
         | CodeSymbol(symb) -> Some(symb)
-        | _                -> report_bug_vm "not a symbol"
+        | v                -> report_bug_value "not a symbol" v
       end
 
   | None ->
@@ -434,8 +434,9 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
 
   | LetNonRecIn(pat, ast1, ast2) ->
       let code1 = interpret_1 env ast1 in
+      let (env, cdpattr) = interpret_1_pattern_tree env pat in
       let code2 = interpret_1 env ast2 in
-      CdLetNonRecIn(pat, code1, code2)
+      CdLetNonRecIn(cdpattr, code1, code2)
 
   | Function(evids, patbr) ->
       let (env, symbacc) =
@@ -558,44 +559,53 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
 
 
 and interpret_1_pattern_branch env = function
-  | PatternBranch(pattr, ast)           -> CdPatternBranch(interpret_1_pattern_tree env pattr, interpret_1 env ast)
-  | PatternBranchWhen(pattr, ast, ast1) -> CdPatternBranchWhen(interpret_1_pattern_tree env pattr, interpret_1 env ast, interpret_1 env ast1)
+  | PatternBranch(pattr, ast) ->
+      let (env, cdpattr) = interpret_1_pattern_tree env pattr in
+      CdPatternBranch(cdpattr, interpret_1 env ast)
+
+  | PatternBranchWhen(pattr, ast, ast1) ->
+      let (env, cdpattr) = interpret_1_pattern_tree env pattr in
+      CdPatternBranchWhen(cdpattr, interpret_1 env ast, interpret_1 env ast1)
 
 
 and interpret_1_pattern_tree env = function
-  | PUnitConstant       -> CdPUnitConstant
-  | PBooleanConstant(b) -> CdPBooleanConstant(b)
-  | PIntegerConstant(n) -> CdPIntegerConstant(n)
-  | PStringConstant(s)  -> CdPStringConstant(s)
+  | PUnitConstant       -> (env, CdPUnitConstant)
+  | PBooleanConstant(b) -> (env, CdPBooleanConstant(b))
+  | PIntegerConstant(n) -> (env, CdPIntegerConstant(n))
+  | PStringConstant(s)  -> (env, CdPStringConstant(s))
 
   | PListCons(pattr1, pattr2) ->
-      CdPListCons(interpret_1_pattern_tree env pattr1, interpret_1_pattern_tree env pattr2)
+      let (env, cdpattr1) = interpret_1_pattern_tree env pattr1 in
+      let (env, cdpattr2) = interpret_1_pattern_tree env pattr2 in
+      (env, CdPListCons(cdpattr1, cdpattr2))
 
   | PEndOfList ->
-      CdPEndOfList
+      (env, CdPEndOfList)
 
   | PTuple(pattrs) ->
-      CdPTuple(List.map (interpret_1_pattern_tree env) pattrs)
+      let (env, cdpattracc) =
+        pattrs |> List.fold_left (fun (env, cdpattracc) pattr ->
+          let (env, cdpattr) = interpret_1_pattern_tree env pattr in
+          (env, Alist.extend cdpattracc cdpattr)
+        ) (env, Alist.empty)
+      in
+      (env, CdPTuple(Alist.to_list cdpattracc))
 
   | PWildCard ->
-      CdPWildCard
+      (env, CdPWildCard)
 
   | PVariable(evid) ->
-      begin
-        match find_symbol env evid with
-        | Some(symb) -> CdPVariable(symb)
-        | None       -> report_bug_vm "symbol not found"
-      end
+      let (env, symb) = generate_symbol_for_eval_var_id evid env in
+      (env, CdPVariable(symb))
 
   | PAsVariable(evid, pattr) ->
-      begin
-        match find_symbol env evid with
-        | Some(symb) -> CdPAsVariable(symb, interpret_1_pattern_tree env pattr)
-        | None       -> report_bug_vm "symbol not found"
-      end
+      let (env, symb) = generate_symbol_for_eval_var_id evid env in
+      let (env, cdpattr) = interpret_1_pattern_tree env pattr in
+      (env, CdPAsVariable(symb, cdpattr))
 
   | PConstructor(ctor, pattr) ->
-      CdPConstructor(ctor, interpret_1_pattern_tree env pattr)
+      let (env, cdpattr) = interpret_1_pattern_tree env pattr in
+      (env, CdPConstructor(ctor, cdpattr))
 
 
 and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =

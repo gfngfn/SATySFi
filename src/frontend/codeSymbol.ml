@@ -6,6 +6,10 @@ type t = {
 
 let fresh (info : Range.t * string) : t =
   let evid = EvalVarID.fresh info in
+  let () =
+    let (_, s) = info in
+    Format.printf "CodeSymbol> add %s: %a\n" s EvalVarID.pp evid (* for debug *)
+  in
   { id = evid; }
 
 

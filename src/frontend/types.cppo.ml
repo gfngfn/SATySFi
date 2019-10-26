@@ -972,7 +972,7 @@ and code_value =
   | CdInputVert     of code_input_vert_element list
   | CdContentOf     of Range.t * CodeSymbol.t
   | CdLetRecIn      of code_letrec_binding list * code_value
-  | CdLetNonRecIn   of pattern_tree * code_value * code_value
+  | CdLetNonRecIn   of code_pattern_tree * code_value * code_value
   | CdFunction      of CodeSymbol.t list * code_pattern_branch
   | CdApply         of code_value * code_value
   | CdApplyOptional of code_value * code_value
@@ -1428,7 +1428,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
     | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
     | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map aux_letrec_binding cdrecbinds, aux code1)
-    | CdLetNonRecIn(pat, code1, code2)     -> LetNonRecIn(pat, aux code1, aux code2)
+    | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(aux_pattern cdpat, aux code1, aux code2)
     | CdFunction(symbs, cdpatbr)           -> Function(List.map CodeSymbol.unlift symbs, aux_pattern_branch cdpatbr)
     | CdApply(code1, code2)                -> Apply(aux code1, aux code2)
     | CdApplyOptional(code1, code2)        -> ApplyOptional(aux code1, aux code2)

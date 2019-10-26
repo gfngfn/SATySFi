@@ -464,7 +464,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       (IRCodeLetRecIn(irrecbinds, ir2), env)
 
   | LetNonRecIn(pat, ast1, ast2) ->
+      failwith "LetNonRecIn; remains to be implemented. (transform_1)" (*
       code2 env (fun cv1 cv2 -> CdLetNonRecIn(pat, cv1, cv2)) ast1 ast2
+      *)
 
   | ContentOf(rng, evid) ->
       failwith "ContentOf; remains to be implemented. (transform_1)" (*
