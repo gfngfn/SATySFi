@@ -467,13 +467,17 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       code2 env (fun cv1 cv2 -> CdLetNonRecIn(pat, cv1, cv2)) ast1 ast2
 
   | ContentOf(rng, evid) ->
+      failwith "ContentOf; remains to be implemented. (transform_1)" (*
       code0 env (CdContentOf(rng, evid))
+      *)
 
   | IfThenElse(ast0, ast1, ast2) ->
       code3 env (fun cv0 cv1 cv2 -> CdIfThenElse(cv0, cv1, cv2)) ast0 ast1 ast2
 
   | Function(evidlst, PatternBranch(pat, ast1)) ->
+      failwith "Function; remains to be implemented. (transform_1)" (*
       code1 env (fun cv1 -> CdFunction(evidlst, CdPatternBranch(pat, cv1))) ast1
+      *)
 
   | Function(_, PatternBranchWhen(_, _, _)) ->
       assert false
@@ -496,7 +500,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       code1 env (fun cv -> CdConstructor(constrnm, cv)) ast1
 
   | LetMutableIn(evid, ast1, ast2) ->
+      failwith "LetMutableIn; remains to be implemented. (transform_1)" (*
       code2 env (fun cv1 cv2 -> CdLetMutableIn(evid, cv1, cv2)) ast1 ast2
+      *)
 
   | Dereference(ast1) ->
       code1 env (fun cv -> CdDereference(cv)) ast1
@@ -508,7 +514,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       code2 env (fun cv1 cv2 -> CdWhileDo(cv1, cv2)) ast1 ast2
 
   | Overwrite(evid, ast1) ->
+      failwith "Overwrite; remains to be implemented. (transform_1)" (*
       code1 env (fun cv -> CdOverwrite(evid, cv)) ast1
+      *)
 
   | Module(ast1, ast2) ->
       code2 env (fun cv1 cv2 -> CdModule(cv1, cv2)) ast1 ast2

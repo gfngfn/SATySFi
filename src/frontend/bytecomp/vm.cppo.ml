@@ -342,6 +342,7 @@ and exec_application (env : vmenv) (vf : syntactic_value) (vargs : syntactic_val
 
 
 and exec_code_pattern_branch (env : vmenv) (comppatbr : (instruction list) pattern_branch_scheme) =
+  failwith "remains to be implemented. (exec_code_pattern_branch)" (*
   match comppatbr with
   | PatternBranch(pat, instrs1) ->
       let value1 = exec [] env instrs1 [] in
@@ -354,6 +355,7 @@ and exec_code_pattern_branch (env : vmenv) (comppatbr : (instruction list) patte
       let value1 = exec [] env instrs1 [] in
       let cv1 = get_code value1 in
       CdPatternBranchWhen(pat, cv, cv1)
+  *)
 
 
 and exec (stack : syntactic_value list) (env : vmenv) (code : instruction list) dump =
@@ -1101,6 +1103,7 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       end
 
   | OpCodeLetRec(comprecbinds, instrs2) ->
+      failwith "OpCodeLetRec; remains to be implemented. (exec_op)" (*
       let cdrecbinds =
         comprecbinds |> List.map (function LetRecBinding(evid, comppatbr) ->
           let cdpatbr = exec_code_pattern_branch env comppatbr in
@@ -1110,5 +1113,6 @@ and exec_op (op : instruction) stack (env : vmenv) (code : instruction list) dum
       let value2 = exec [] env instrs2 [] in
       let cv2 = get_code value2 in
       exec (CodeValue(CdLetRecIn(cdrecbinds, cv2)) :: stack) env code dump
+      *)
 
 #include "__vm.gen.ml"
