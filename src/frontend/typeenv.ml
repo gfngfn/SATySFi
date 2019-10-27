@@ -1350,6 +1350,7 @@ module ModuleInterpreter = struct
     let withrng x = (rng, x) in
     let aux = function
       | VariantType(args, tid) ->
+          let args = List.map iter args in
           begin
             match VMap.find_opt tid tys with
             | None              -> withrng (VariantType(args, tid))
