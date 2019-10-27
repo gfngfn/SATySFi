@@ -603,15 +603,17 @@ let rec typecheck
             raise (UndefinedVariable(rng, mdlnmlst, varnm, cands))
 
         | Some((pty, evid, stage)) ->
+            let tyfree = instantiate pre.level pre.quantifiability pty in
+            let tyres = overwrite_range_of_type tyfree rng in
             begin
               match (pre.stage, stage) with
               | (Persistent0, Persistent0)
               | (Stage0, Persistent0)
+              | (Stage1, Persistent0) ->
+                  (Persistent(rng, evid), tyres)
+
               | (Stage0, Stage0)
-              | (Stage1, Persistent0)
               | (Stage1, Stage1) ->
-                  let tyfree = instantiate pre.level pre.quantifiability pty in
-                  let tyres = overwrite_range_of_type tyfree rng in
 (*
                   let () = print_endline ("\n#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ "\n  (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
 *)

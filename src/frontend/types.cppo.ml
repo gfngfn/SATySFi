@@ -856,6 +856,7 @@ and abstract_tree =
   | LetRecIn              of letrec_binding list * abstract_tree
   | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
   | ContentOf             of Range.t * EvalVarID.t
+  | Persistent            of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
   | Function              of EvalVarID.t list * pattern_branch
   | Apply                 of abstract_tree * abstract_tree
@@ -971,6 +972,7 @@ and code_value =
   | CdInputHorz     of code_input_horz_element list
   | CdInputVert     of code_input_vert_element list
   | CdContentOf     of Range.t * CodeSymbol.t
+  | CdPersistent    of Range.t * EvalVarID.t
   | CdLetRecIn      of code_letrec_binding list * code_value
   | CdLetNonRecIn   of code_pattern_tree * code_value * code_value
   | CdFunction      of CodeSymbol.t list * code_pattern_branch
@@ -1427,6 +1429,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
     | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
+    | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map aux_letrec_binding cdrecbinds, aux code1)
     | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(aux_pattern cdpat, aux code1, aux code2)
     | CdFunction(symbs, cdpatbr)           -> Function(List.map CodeSymbol.unlift symbs, aux_pattern_branch cdpatbr)

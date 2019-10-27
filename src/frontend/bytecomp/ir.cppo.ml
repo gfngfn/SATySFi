@@ -473,6 +473,11 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       code0 env (CdContentOf(rng, evid))
       *)
 
+  | Persistent(rng, evid) ->
+      failwith "Persistent; remains to be implemented. (transform_1)" (*
+      code0 env (CdContentOf(rng, evid))
+      *)
+
   | IfThenElse(ast0, ast1, ast2) ->
       code3 env (fun cv0 cv1 cv2 -> CdIfThenElse(cv0, cv1, cv2)) ast0 ast1 ast2
 
@@ -579,7 +584,8 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
 
 (* -- fundamentals -- *)
 
-  | ContentOf(rng, evid) ->
+  | ContentOf(rng, evid)
+  | Persistent(rng, evid) ->
       begin
         match find_in_environment env evid with
         | Some(var) ->

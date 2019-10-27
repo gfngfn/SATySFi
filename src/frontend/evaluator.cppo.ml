@@ -185,7 +185,8 @@ and interpret_0 (env : environment) (ast : abstract_tree) =
 
 (* -- fundamentals -- *)
 
-  | ContentOf(rng, evid) ->
+  | ContentOf(rng, evid)
+  | Persistent(rng, evid) ->
       begin
         match find_in_environment env evid with
         | Some(rfvalue) ->
@@ -413,6 +414,9 @@ and interpret_1 (env : environment) (ast : abstract_tree) =
         | Some(symb) -> CdContentOf(rng, symb)
         | None       -> report_bug_ast "symbol not found" ast
       end
+
+ | Persistent(rng, evid) ->
+     CdPersistent(rng, evid)
 
   | LetRecIn(recbinds, ast2) ->
       let (env, zippedacc) =
