@@ -71,7 +71,7 @@ end = struct
         |> set-hyphen-penalty 100000
 
 
-  let scheme-sub decoset txtcolor ctx code-list =
+  let scheme decoset txtcolor ctx code =
     let pads = (5pt, 5pt, 5pt, 5pt) in
     block-frame-breakable ctx pads decoset (fun ctx -> (
       let fontsize = get-font-size ctx in
@@ -82,7 +82,7 @@ end = struct
             |> set-text-color txtcolor
       in
 
-      let lstraw = code-list in
+      let lstraw = split-into-lines code in
       let lst =
         match lstraw with
         | []        -> lstraw
@@ -106,11 +106,6 @@ end = struct
       in
         line-break true true ctx ib-code
     ))
-
-
-  let scheme decoset txtcolor ctx code =
-    let code-list = split-into-lines code in
-      scheme-sub decoset txtcolor ctx code-list
 
 
   let-block ctx +code code =
@@ -137,9 +132,13 @@ end = struct
 
 
   let-block ctx +file-code file-name =
-    let str-list = ` ` :: read-file file-name in
-    let code = List.map (fun s -> (0, s)) str-list in
-      scheme-sub decoset-code Color.black ctx code
+    let lf = string-unexplode [10] in
+    let join s1 s2 = s1 ^ lf ^ s2 in
+    let str-list = read-file file-name in
+    let code =
+      List.fold-left join ` ` str-list
+    in
+      scheme decoset-code Color.black ctx code
 
 
   let-inline ctx \file-code file-name =
