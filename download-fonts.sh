@@ -50,7 +50,7 @@ if test "${RESULT}" = "${NAME}.zip: OK"; then
   echo "${MESSAGE_PREFIX} '${NAME}.zip' found in '${CACHE}/'."
 else
   echo "${MESSAGE_PREFIX} downloading '${NAME}.zip' ..."
-  wget -O ${CACHE}/${NAME}.zip https://oscdl.ipa.go.jp/IPAexfont/IPAexfont00301.zip
+  wget -O ${CACHE}/${NAME}.zip https://ipafont.ipa.go.jp/IPAexfont/IPAexfont00301.zip
   echo "${MESSAGE_PREFIX} finished downloading '${NAME}.zip'."
 fi
 unzip -o ${CACHE}/${NAME}.zip "*.ttf" -d ${CACHE}/
