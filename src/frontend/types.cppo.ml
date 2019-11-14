@@ -588,6 +588,11 @@ type ('a, 'b) path_component_scheme =
   | PathCubicBezierTo of 'b * 'b * 'a
 [@@deriving show { with_path = false; }]
 
+type page_break_style =
+  | SingleColumn
+  | TwoColumn of length
+[@@deriving show { with_path = false; }]
+
 type base_constant =
   | BCUnit
   | BCBool     of bool
@@ -608,7 +613,7 @@ type base_constant =
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCTextModeContext of TextBackend.text_mode_context
-  | BCDocument        of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+  | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 [@@deriving show { with_path = false; }]
 
 type 'a letrec_binding_scheme =
