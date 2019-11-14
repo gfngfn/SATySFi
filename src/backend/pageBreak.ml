@@ -567,7 +567,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
    * `pbvbskip`: the vertical contents corresponding to the space originating from margins
 
    -- *)
-let squash_margins prev_bottom vblst : breakability * pb_vert_box list =
+let squash_margins (prev_bottom : (breakability * length) option) (vblst : vert_box list) : breakability * pb_vert_box list =
   let open EscapeMonad in
   let esc =
     begin
@@ -700,7 +700,7 @@ let main (absname_out : abs_path) (pagesize : page_size) (pagecontf : page_conte
   aux 1 pdfinit pbvblst
 
 
-let adjust_to_first_line (imvblst : intermediate_vert_box list) =
+let adjust_to_first_line (imvblst : intermediate_vert_box list) : length * length =
   let rec aux optinit totalhgtinit imvblst =
     imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
       match (imvb, opt) with
@@ -721,7 +721,7 @@ let adjust_to_first_line (imvblst : intermediate_vert_box list) =
   | (None, totalhgt)      -> (Length.zero, Length.negate totalhgt)
 
 
-let adjust_to_last_line (imvblst : intermediate_vert_box list) =
+let adjust_to_last_line (imvblst : intermediate_vert_box list) : length * length =
   let rec aux optinit totalhgtinit evvblst =
     let evvblstrev = List.rev evvblst in
       evvblstrev |> List.fold_left (fun (opt, totalhgt) imvblast ->
