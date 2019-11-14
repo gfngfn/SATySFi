@@ -357,7 +357,14 @@ let get_pdf_paper  (pagesize : page_size) : Pdfpaper.t =
   | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
 
 
-let make_page (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : page_content_scheme) (evvblstbody : evaled_vert_box list) (evvblstfootnote : evaled_vert_box list) : page =
+let make_page
+      (pagesize : page_size)
+      (pbinfo : page_break_info)
+      (pagecontsch : page_content_scheme)
+      (evvblstbody : evaled_vert_box list)
+      (evvblstfootnote : evaled_vert_box list)
+    : page =
+
   let paper = get_pdf_paper pagesize in
   let opaccpage =
     let paper_height = get_paper_height paper in
@@ -379,6 +386,45 @@ let make_page (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : p
       (posbody, evvblstbody)
       (posfootnote, evvblstfootnote)
   in
+  Page(paper, pagecontsch, opaccpage, pbinfo)
+
+
+let make_page_two_column
+      (origin_shift : length)
+      (pagesize : page_size)
+      (pbinfo : page_break_info)
+      (pagecontsch : page_content_scheme)
+      ((evvblstbody1, evvblstfootnote1) : evaled_vert_box list * evaled_vert_box list)
+      ((evvblstbody2, evvblstfootnote2) : evaled_vert_box list * evaled_vert_box list)
+    : page =
+
+  let paper = get_pdf_paper pagesize in
+  let paper_height = get_paper_height paper in
+  let content_height = pagecontsch.page_content_height in
+  let opacccolumn1 =
+    let origin1 = pagecontsch.page_content_origin in
+    let posbody1 = get_body_origin_position paper_height origin1 in
+    let posfootnote1 = get_footnote_origin_position paper_height content_height origin1 evvblstfootnote1 in
+    opacc_of_body_and_footnote
+      content_height
+      pbinfo
+      (posbody1, evvblstbody1)
+      (posfootnote1, evvblstfootnote1)
+  in
+  let opacccolumn2 =
+    let origin2 =
+      let (x, y) = pagecontsch.page_content_origin in
+      (x +% origin_shift, y)
+    in
+    let posbody2 = get_body_origin_position paper_height origin2 in
+    let posfootnote2 = get_footnote_origin_position paper_height content_height origin2 evvblstfootnote2 in
+    opacc_of_body_and_footnote
+      content_height
+      pbinfo
+      (posbody2, evvblstbody2)
+      (posfootnote2, evvblstfootnote2)
+  in
+  let opaccpage = Alist.cat opacccolumn1 opacccolumn2 in
   Page(paper, pagecontsch, opaccpage, pbinfo)
 
 
