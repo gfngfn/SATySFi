@@ -700,6 +700,38 @@ let main (absname_out : abs_path) (pagesize : page_size) (pagecontf : page_conte
   aux 1 pdfinit pbvblst
 
 
+let main_two_column (absname_out : abs_path) (pagesize : page_size) (origin_shift : length) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
+
+  let pdfinit = HandlePdf.create_empty_pdf absname_out in
+
+  let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
+    let pbinfo = { current_page_number = pageno; } in
+    let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
+    let content_height = pagecontsch.page_content_height in
+    let (body1, footnote1, restopt) = chop_single_page pbinfo content_height pbvblst in
+    match restopt with
+    | None ->
+        let page = HandlePdf.make_page pagesize pbinfo pagecontsch body1 footnote1 in
+        pdfacc |> HandlePdf.write_page page pagepartsf
+
+    | Some(pbvblst) ->
+        let (body2, footnote2, restopt) = chop_single_page pbinfo content_height pbvblst in
+        let page =
+          HandlePdf.make_page_two_column
+            origin_shift pagesize pbinfo pagecontsch
+            (body1, footnote1) (body2, footnote2)
+        in
+        let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
+        begin
+          match restopt with
+          | None       -> pdfaccnew
+          | Some(rest) -> aux (pageno + 1) pdfaccnew rest
+        end
+  in
+  let pbvblst = normalize vblst in
+  aux 1 pdfinit pbvblst
+
+
 let adjust_to_first_line (imvblst : intermediate_vert_box list) : length * length =
   let rec aux optinit totalhgtinit imvblst =
     imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
