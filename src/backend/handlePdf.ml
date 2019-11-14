@@ -334,33 +334,50 @@ let opacc_of_body_and_footnote
   Alist.cat opaccbody opaccfootnote
 
 
+let get_body_origin_position (paper_height : length) (origin : length * length) =
+  invert_coordinate paper_height origin
+
+
+let get_footnote_origin_position (paper_height : length) (content_height : length) (origin : length * length) (evvblstfootnote : evaled_vert_box list) =
+  let footnote_height = get_height_of_evaled_vert_box_list evvblstfootnote in
+  let (xorg, yorg) = origin in
+  invert_coordinate paper_height (xorg, yorg +% content_height -% footnote_height)
+
+
+let get_pdf_paper  (pagesize : page_size) : Pdfpaper.t =
+  match pagesize with
+  | A0Paper                -> Pdfpaper.a0
+  | A1Paper                -> Pdfpaper.a1
+  | A2Paper                -> Pdfpaper.a2
+  | A3Paper                -> Pdfpaper.a3
+  | A4Paper                -> Pdfpaper.a4
+  | A5Paper                -> Pdfpaper.a5
+  | USLetter               -> Pdfpaper.usletter
+  | USLegal                -> Pdfpaper.uslegal
+  | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
+
+
 let make_page (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : page_content_scheme) (evvblstbody : evaled_vert_box list) (evvblstfootnote : evaled_vert_box list) : page =
-  let paper =
-    match pagesize with
-    | A0Paper                -> Pdfpaper.a0
-    | A1Paper                -> Pdfpaper.a1
-    | A2Paper                -> Pdfpaper.a2
-    | A3Paper                -> Pdfpaper.a3
-    | A4Paper                -> Pdfpaper.a4
-    | A5Paper                -> Pdfpaper.a5
-    | USLetter               -> Pdfpaper.usletter
-    | USLegal                -> Pdfpaper.uslegal
-    | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
-  in
+  let paper = get_pdf_paper pagesize in
   let opaccpage =
     let paper_height = get_paper_height paper in
-    let ptbody = invert_coordinate paper_height pagecontsch.page_content_origin in
-    let ptfootnote =
-      let hgtfootnote = get_height_of_evaled_vert_box_list evvblstfootnote in
-      let (xorg, yorg) = pagecontsch.page_content_origin in
-      let hgtreq = pagecontsch.page_content_height in
-      invert_coordinate paper_height (xorg, yorg +% hgtreq -% hgtfootnote)
+    let posbody =
+      get_body_origin_position
+        paper_height
+        pagecontsch.page_content_origin
+    in
+    let posfootnote =
+      get_footnote_origin_position
+        paper_height
+        pagecontsch.page_content_height
+        pagecontsch.page_content_origin
+        evvblstfootnote
     in
     opacc_of_body_and_footnote
       pagecontsch.page_content_height
       pbinfo
-      (ptbody, evvblstbody)
-      (ptfootnote, evvblstfootnote)
+      (posbody, evvblstbody)
+      (posfootnote, evvblstfootnote)
   in
   Page(paper, pagecontsch, opaccpage, pbinfo)
 
