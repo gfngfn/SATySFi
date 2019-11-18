@@ -4,6 +4,7 @@
 
 module FootnoteScheme : sig
 
+  val initialize : unit -> unit
   val start-page : unit -> unit
   val main : context -> (int -> inline-boxes) -> (int -> block-boxes) -> inline-boxes
   val main-no-number : context -> (unit -> inline-boxes) -> (unit -> block-boxes) -> inline-boxes
@@ -23,6 +24,10 @@ end = struct
 
   let generate-footnote-label n =
     `footnote:` ^ (arabic n)
+
+
+  let initialize () =
+    register-cross-reference `changed` `F`
 
 
   let promote-another-trial () =
@@ -81,7 +86,7 @@ end = struct
 
                 | _ ->
                     let () = promote-another-trial () in
-                      register-cross-reference label `T`
+                    register-cross-reference label `T`
               else
                 match get-cross-reference label with
                 | Some(`F`) ->
@@ -89,7 +94,7 @@ end = struct
 
                 | _ ->
                     let () = promote-another-trial () in
-                      register-cross-reference label `F`
+                    register-cross-reference label `F`
             in
             first-footnote <- false)))
 
