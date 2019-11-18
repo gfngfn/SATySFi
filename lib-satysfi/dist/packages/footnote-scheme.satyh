@@ -6,6 +6,7 @@ module FootnoteScheme : sig
 
   val start-page : unit -> unit
   val main : context -> (int -> inline-boxes) -> (int -> block-boxes) -> inline-boxes
+  val main-no-number : context -> (unit -> inline-boxes) -> (unit -> block-boxes) -> inline-boxes
 
 end = struct
 
@@ -28,14 +29,29 @@ end = struct
     register-cross-reference `changed` `T`
 
 
-  let main ctx ibf bbf =
-    let () = footnote-ref <- !footnote-ref + 1 in
-    let num = !footnote-ref in
-    let label = generate-footnote-label num in
-    let it-num = embed-string (arabic num) in
+  type info =
+    | Numbered    of (int -> inline-boxes) * (int -> block-boxes)
+    | NonNumbered of (unit -> inline-boxes) * (unit -> block-boxes)
+
+
+  let main-scheme ctx info =
     let size = get-font-size ctx in
-    let ib-num = ibf num in
-    let bb = bbf num in
+    let (label, ib-num, bb) =
+      match info with
+      | Numbered(ibf, bbf) ->
+          let () = footnote-ref <- !footnote-ref + 1 in
+          let num = !footnote-ref in
+          let label = generate-footnote-label num in
+          let it-num = embed-string (arabic num) in
+          let ib-num = ibf num in
+          let bb = bbf num in
+          (label, ib-num, bb)
+
+      | NonNumbered(ibk, bbk) ->
+          let ib-num = ibk () in
+          let bb = bbk () in
+          (`(non-numbered)`, ib-num, bb)
+    in
     let bb-before =
       match get-cross-reference label with
       | Some(`T`) ->
@@ -76,5 +92,13 @@ end = struct
                       register-cross-reference label `F`
             in
             first-footnote <- false)))
+
+
+  let main ctx ibf bbf =
+    main-scheme ctx (Numbered(ibf, bbf))
+
+
+  let main-no-number ctx ibk bbk =
+    main-scheme ctx (NonNumbered(ibk, bbk))
 
 end
