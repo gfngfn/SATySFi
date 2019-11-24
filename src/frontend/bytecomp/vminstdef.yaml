@@ -1140,6 +1140,21 @@ code: |
   }), ctxsub)
 
 ---
+inst: PrimitiveSetAdjacentStretchRatio
+is-pdf-mode-primitive: yes
+name: "set-adjacent-stretch-ratio"
+type: |
+  ~% (tFL @-> tCTX @-> tCTX)
+
+params:
+- ratio : float
+- (ctx, ctxsub) : context
+code: |
+  Context(HorzBox.({ ctx with
+    adjacent_stretch = max 0. ratio;
+  }), ctxsub)
+
+---
 inst: PrimitiveSetSpaceRatioBetweenScripts
 is-pdf-mode-primitive: yes
 name: "set-space-ratio-between-scripts"

@@ -1246,6 +1246,23 @@ Context(HorzBox.({ ctx with
   space_stretch = max 0. ratio_stretch;
 }), ctxsub)
 |}
+    ; inst "PrimitiveSetAdjacentStretchRatio"
+        ~name:"set-adjacent-stretch-ratio"
+        ~type_:{|
+~% (tFL @-> tCTX @-> tCTX)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "ratio" ~type_:"float";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+Context(HorzBox.({ ctx with
+  adjacent_stretch = max 0. ratio;
+}), ctxsub)
+|}
     ; inst "PrimitiveSetSpaceRatioBetweenScripts"
         ~name:"set-space-ratio-between-scripts"
         ~type_:{|
