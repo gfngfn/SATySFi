@@ -65,7 +65,7 @@ let initial_badness = 100000
 
 
 (* --
-   `chop_single_page` receives:
+   `chop_single_column` receives:
 
    * `pbinfo`: information available before page breaking starts,
    * `area_height`: required total height of the area, and
@@ -78,7 +78,7 @@ let initial_badness = 100000
    * `pbvblstopt`: contents that remains to be page-broken, or `None` if the new page is the last one.
 
    -- *)
-let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * evaled_vert_box list * (pb_vert_box list) option =
+let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * evaled_vert_box list * (pb_vert_box list) option =
 
   let calculate_badness_of_page_break hgttotal =
     let hgtdiff = area_height -% hgttotal in
@@ -688,7 +688,7 @@ let main (absname_out : abs_path) (pagesize : page_size) (pagecontf : page_conte
   let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
     let pbinfo = { current_page_number = pageno; } in
     let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
-    let (evvblstpage, footnote, restopt) = chop_single_page pbinfo pagecontsch.page_content_height pbvblst in
+    let (evvblstpage, footnote, restopt) = chop_single_column pbinfo pagecontsch.page_content_height pbvblst in
 
     let page = HandlePdf.make_page pagesize pbinfo pagecontsch evvblstpage footnote in
     let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
@@ -708,14 +708,14 @@ let main_two_column (absname_out : abs_path) (pagesize : page_size) (origin_shif
     let pbinfo = { current_page_number = pageno; } in
     let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
     let content_height = pagecontsch.page_content_height in
-    let (body1, footnote1, restopt) = chop_single_page pbinfo content_height pbvblst in
+    let (body1, footnote1, restopt) = chop_single_column pbinfo content_height pbvblst in
     match restopt with
     | None ->
         let page = HandlePdf.make_page pagesize pbinfo pagecontsch body1 footnote1 in
         pdfacc |> HandlePdf.write_page page pagepartsf
 
     | Some(pbvblst) ->
-        let (body2, footnote2, restopt) = chop_single_page pbinfo content_height pbvblst in
+        let (body2, footnote2, restopt) = chop_single_column pbinfo content_height pbvblst in
         let page =
           HandlePdf.make_page_two_column
             origin_shift pagesize pbinfo pagecontsch
