@@ -902,26 +902,28 @@ params:
 code: |
   let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
   let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-  BaseConstant(BCDocument(pagesize, SingleColumn, pagecontf, pagepartsf, vblst))
+  BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagepartsf, vblst))
 
 ---
 inst: BackendPageBreakingTwoColumn
 is-pdf-mode-primitive: yes
 name: "page-break-two-column"
 type: |
-  ~% (tPG @-> tLN @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+  ~% (tPG @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
 
 needs-reducef: yes
 params:
 - pagesize : page_size
 - origin_shift : length
+- valuecolumnhookf
 - valuepagecontf
 - valuepagepartsf
 - vblst : vert
 code: |
+  let columnhookf = make_column_hook_func reducef valuecolumnhookf in
   let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
   let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-  BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), pagecontf, pagepartsf, vblst))
+  BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), columnhookf, pagecontf, pagepartsf, vblst))
 
 ---
 inst: BackendVertFrame

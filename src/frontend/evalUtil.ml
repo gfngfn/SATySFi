@@ -537,6 +537,13 @@ let make_hook (reducef : syntactic_value -> syntactic_value list -> syntactic_va
   )
 
 
+let make_column_hook_func reducef valuef : HorzBox.column_hook_func =
+  (fun () ->
+    let valueret = reducef valuef [BaseConstant(BCUnit)] in
+    get_vert valueret
+  )
+
+
 let make_page_content_scheme_func reducef valuef : HorzBox.page_content_scheme_func =
   (fun pbinfo ->
      let valuepbinfo = make_page_break_info pbinfo in

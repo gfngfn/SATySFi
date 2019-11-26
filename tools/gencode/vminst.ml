@@ -985,18 +985,19 @@ make_vert imvblst
         ~code:{|
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, SingleColumn, pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagepartsf, vblst))
 |}
     ; inst "BackendPageBreakingTwoColumn"
         ~name:"page-break-two-column"
         ~type_:{|
-~% (tPG @-> tLN @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+~% (tPG @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
 |}
         ~fields:[
         ]
         ~params:[
           param "pagesize" ~type_:"page_size";
           param "origin_shift" ~type_:"length";
+          param "valuecolumnhookf";
           param "valuepagecontf";
           param "valuepagepartsf";
           param "vblst" ~type_:"vert";
@@ -1004,9 +1005,10 @@ BaseConstant(BCDocument(pagesize, SingleColumn, pagecontf, pagepartsf, vblst))
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
+let columnhookf = make_column_hook_func reducef valuecolumnhookf in
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), columnhookf, pagecontf, pagepartsf, vblst))
 |}
     ; inst "BackendVertFrame"
         ~name:"block-frame-breakable"
