@@ -357,38 +357,47 @@ let get_pdf_paper  (pagesize : page_size) : Pdfpaper.t =
   | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
 
 
-let make_page
+let make_empty_page
       (pagesize : page_size)
       (pbinfo : page_break_info)
       (pagecontsch : page_content_scheme)
+    : page =
+  let paper = get_pdf_paper pagesize in
+  Page(paper, pagecontsch, Alist.empty, pbinfo)
+
+
+let add_column_to_page
+      (Page(paper, pagecontsch, opacc, pbinfo))
+      (origin_shift : length)
       (evvblstbody : evaled_vert_box list)
       (evvblstfootnote : evaled_vert_box list)
     : page =
-
-  let paper = get_pdf_paper pagesize in
-  let opaccpage =
+  let content_height = pagecontsch.page_content_height in
+  let content_origin =
+    let (x, y) = pagecontsch.page_content_origin in
+    (x +% origin_shift, y)
+  in
+  let opacccolumn =
     let paper_height = get_paper_height paper in
     let posbody =
       get_body_origin_position
         paper_height
-        pagecontsch.page_content_origin
+        content_origin
     in
     let posfootnote =
       get_footnote_origin_position
         paper_height
-        pagecontsch.page_content_height
-        pagecontsch.page_content_origin
+        content_height
+        content_origin
         evvblstfootnote
     in
-    opacc_of_body_and_footnote
-      pagecontsch.page_content_height
-      pbinfo
+    opacc_of_body_and_footnote content_height pbinfo
       (posbody, evvblstbody)
       (posfootnote, evvblstfootnote)
   in
-  Page(paper, pagecontsch, opaccpage, pbinfo)
+  Page(paper, pagecontsch, Alist.cat opacc opacccolumn, pbinfo)
 
-
+(*
 let make_page_two_column
       (origin_shift : length)
       (pagesize : page_size)
@@ -426,7 +435,7 @@ let make_page_two_column
   in
   let opaccpage = Alist.cat opacccolumn1 opacccolumn2 in
   Page(paper, pagecontsch, opaccpage, pbinfo)
-
+*)
 
 let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc, flnm)) : t) : t =
 

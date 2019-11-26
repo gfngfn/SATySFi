@@ -697,7 +697,8 @@ let main (absname_out : abs_path) (pagesize : page_size) (columnhookf : column_h
     let (evvblstpage, footnote, restopt) =
       chop_single_column_with_insertion pbinfo pagecontsch.page_content_height columnhookf pbvblst
     in
-    let page = HandlePdf.make_page pagesize pbinfo pagecontsch evvblstpage footnote in
+    let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+    let page = HandlePdf.add_column_to_page page Length.zero evvblstpage footnote in
     let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
     match restopt with
     | None       -> pdfaccnew
@@ -716,25 +717,35 @@ let main_two_column (absname_out : abs_path) (pagesize : page_size) (origin_shif
     let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
     let content_height = pagecontsch.page_content_height in
 
-    (* -- first column -- *)
+    let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+
+    (* -- makes the first column -- *)
     let (body1, footnote1, restopt) =
       chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst
     in
+
+    (* -- adds the first column to the page and invokes hook functions -- *)
+    let page = HandlePdf.add_column_to_page page Length.zero body1 footnote1 in
+
     match restopt with
     | None ->
-        let page = HandlePdf.make_page pagesize pbinfo pagecontsch body1 footnote1 in
         pdfacc |> HandlePdf.write_page page pagepartsf
 
     | Some(pbvblst) ->
-        (* -- second column -- *)
+        (* -- makes the second column -- *)
         let (body2, footnote2, restopt) =
           chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst
         in
+
+        (* -- adds the second column to the page and invokes hook functions -- *)
+        let page = HandlePdf.add_column_to_page page origin_shift body2 footnote2 in
+(*
         let page =
           HandlePdf.make_page_two_column
             origin_shift pagesize pbinfo pagecontsch
             (body1, footnote1) (body2, footnote2)
         in
+*)
         let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
         begin
           match restopt with
