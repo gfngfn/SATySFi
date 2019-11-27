@@ -397,45 +397,6 @@ let add_column_to_page
   in
   Page(paper, pagecontsch, Alist.cat opacc opacccolumn, pbinfo)
 
-(*
-let make_page_two_column
-      (origin_shift : length)
-      (pagesize : page_size)
-      (pbinfo : page_break_info)
-      (pagecontsch : page_content_scheme)
-      ((evvblstbody1, evvblstfootnote1) : evaled_vert_box list * evaled_vert_box list)
-      ((evvblstbody2, evvblstfootnote2) : evaled_vert_box list * evaled_vert_box list)
-    : page =
-
-  let paper = get_pdf_paper pagesize in
-  let paper_height = get_paper_height paper in
-  let content_height = pagecontsch.page_content_height in
-  let opacccolumn1 =
-    let origin1 = pagecontsch.page_content_origin in
-    let posbody1 = get_body_origin_position paper_height origin1 in
-    let posfootnote1 = get_footnote_origin_position paper_height content_height origin1 evvblstfootnote1 in
-    opacc_of_body_and_footnote
-      content_height
-      pbinfo
-      (posbody1, evvblstbody1)
-      (posfootnote1, evvblstfootnote1)
-  in
-  let opacccolumn2 =
-    let origin2 =
-      let (x, y) = pagecontsch.page_content_origin in
-      (x +% origin_shift, y)
-    in
-    let posbody2 = get_body_origin_position paper_height origin2 in
-    let posfootnote2 = get_footnote_origin_position paper_height content_height origin2 evvblstfootnote2 in
-    opacc_of_body_and_footnote
-      content_height
-      pbinfo
-      (posbody2, evvblstbody2)
-      (posfootnote2, evvblstfootnote2)
-  in
-  let opaccpage = Alist.cat opacccolumn1 opacccolumn2 in
-  Page(paper, pagecontsch, opaccpage, pbinfo)
-*)
 
 let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc, flnm)) : t) : t =
 

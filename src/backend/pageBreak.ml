@@ -739,13 +739,7 @@ let main_two_column (absname_out : abs_path) (pagesize : page_size) (origin_shif
 
         (* -- adds the second column to the page and invokes hook functions -- *)
         let page = HandlePdf.add_column_to_page page origin_shift body2 footnote2 in
-(*
-        let page =
-          HandlePdf.make_page_two_column
-            origin_shift pagesize pbinfo pagecontsch
-            (body1, footnote1) (body2, footnote2)
-        in
-*)
+
         let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
         begin
           match restopt with
