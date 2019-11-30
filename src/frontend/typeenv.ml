@@ -1466,10 +1466,10 @@ module ModuleInterpreter = struct
     let mtr = tyenv.main_tree in
     let g vt =
       let names = SS.find_direct s in
-      List.fold_left (fun acc name x ->
+      List.fold_left (fun acc (name, pty) x ->
         match find_for_inner tyenv name with
-        | None       -> assert false
-        | Some(info) -> VarMap.add name info (acc x)
+        | None                 -> assert false
+        | Some(_, evid, stage) -> VarMap.add name (pty, evid, stage) (acc x)
         ) (fun x -> x) names vt
     in
     let open OptionMonad in

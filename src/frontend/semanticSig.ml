@@ -108,7 +108,7 @@ module F(X : S) = struct
     val subst : (X.ty VMap.t -> X.ty -> X.ty) ->
                 (X.ty VMap.t -> X.poly -> X.poly) -> X.ty VMap.t -> t -> t
 
-    val find_direct : t -> string list
+    val find_direct : t -> (string * X.poly) list
 
     exception MissingLabel of Struct.key
   end = struct
@@ -145,8 +145,8 @@ module F(X : S) = struct
 
     (* This function only works if signatures are limited to flattened ones. *)
     let rec find_direct_aux l = function
-      | AtomicTerm{is_direct = Direct} -> [l]
-      | Structure(s)                   ->
+      | AtomicTerm{is_direct = Direct; ty} -> [(l, ty)]
+      | Structure(s)                       ->
           let f (_, l1) s1 xs = find_direct_aux l1 s1 @ xs in
           Struct.fold f s []
       | _ -> []
