@@ -24,7 +24,7 @@ depends: [
   "batteries"
   "camlimages" {>= "5.0.1"}
   "camlpdf" {= "2.2.2+satysfi"}
-  "core_kernel" {>= "v0.10.0"}
+  "core_kernel" {>= "v0.13"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "depext"
   "dune" {build}
