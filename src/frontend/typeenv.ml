@@ -545,11 +545,8 @@ let rec fix_manual_type_general (type a) (type b) (dpmode : dependency_mode) (ty
 
           in
           begin
-            match dpmode with
-            | NoDependency ->
-                find_in_variant_environment ()
-
-            | DependentMode(dg) ->
+            match mdlnmlst, dpmode with
+            | [], DependentMode(dg) ->
                 begin
                   try
                     match DependencyGraph.find_vertex dg tynm with
@@ -577,6 +574,9 @@ let rec fix_manual_type_general (type a) (type b) (dpmode : dependency_mode) (ty
                   with
                   | DependencyGraph.UndefinedSourceVertex -> find_in_variant_environment ()
                 end
+
+            | _ ->
+                find_in_variant_environment ()
           end
 
       | MTypeParam(tyargnm) ->
