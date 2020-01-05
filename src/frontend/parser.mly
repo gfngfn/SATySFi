@@ -505,6 +505,7 @@ nxtoplevel:
   | top=MODULE; mdlnmtok=CONSTRUCTOR; sigopt=nxsigopt;
       DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq                      { make_module top mdlnmtok sigopt strct subseq }
   | top=OPEN; mdlnmtok=CONSTRUCTOR; subseq=nxtopsubseq {
+      let () = Logging.warn_deprecated ("at " ^ (Range.to_string top) ^ ": this form of 'open' is deprecated. Use 'include' instead.") in
       let (rng, mdlnm) = mdlnmtok in
       make_standard (Tok top) (Ranged subseq) (UTOpenIn(rng, mdlnm, subseq))
     }
@@ -550,6 +551,7 @@ nxstruct:
   | top=MODULE; tok=CONSTRUCTOR; sigopt=nxsigopt;
       DEFEQ; STRUCT; strct=nxstruct; tail=nxstruct                   { make_module top tok sigopt strct tail }
   | top=OPEN; mdlnmtok=CONSTRUCTOR; tail=nxstruct {
+      let () = Logging.warn_deprecated ("at " ^ (Range.to_string top) ^ ": this form of 'open' is deprecated. Use 'include' instead.") in
       let (rng, mdlnm) = mdlnmtok in
       make_standard (Tok top) (Ranged tail) (UTOpenIn(rng, mdlnm, tail))
     }
