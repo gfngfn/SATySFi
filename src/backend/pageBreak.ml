@@ -65,7 +65,7 @@ let initial_badness = 100000
 
 
 (* --
-   `chop_single_page` receives:
+   `chop_single_column` receives:
 
    * `pbinfo`: information available before page breaking starts,
    * `area_height`: required total height of the area, and
@@ -78,7 +78,7 @@ let initial_badness = 100000
    * `pbvblstopt`: contents that remains to be page-broken, or `None` if the new page is the last one.
 
    -- *)
-let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * evaled_vert_box list * (pb_vert_box list) option =
+let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * evaled_vert_box list * (pb_vert_box list) option =
 
   let calculate_badness_of_page_break hgttotal =
     let hgtdiff = area_height -% hgttotal in
@@ -567,7 +567,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
    * `pbvbskip`: the vertical contents corresponding to the space originating from margins
 
    -- *)
-let squash_margins prev_bottom vblst : breakability * pb_vert_box list =
+let squash_margins (prev_bottom : (breakability * length) option) (vblst : vert_box list) : breakability * pb_vert_box list =
   let open EscapeMonad in
   let esc =
     begin
@@ -681,16 +681,24 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
   aux pbvblst
 
 
-let main (absname_out : abs_path) (pagesize : page_size) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
+let chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst =
+  let vblst_inserted = columnhookf () in  (* -- invokes the column hook function -- *)
+  let pbvblst_inserted = normalize vblst_inserted in
+  chop_single_column pbinfo content_height (List.append pbvblst_inserted pbvblst)
+
+
+let main (absname_out : abs_path) (pagesize : page_size) (columnhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
 
   let pdfinit = HandlePdf.create_empty_pdf absname_out in
 
   let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
     let pbinfo = { current_page_number = pageno; } in
     let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
-    let (evvblstpage, footnote, restopt) = chop_single_page pbinfo pagecontsch.page_content_height pbvblst in
-
-    let page = HandlePdf.make_page pagesize pbinfo pagecontsch evvblstpage footnote in
+    let (evvblstpage, footnote, restopt) =
+      chop_single_column_with_insertion pbinfo pagecontsch.page_content_height columnhookf pbvblst
+    in
+    let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+    let page = HandlePdf.add_column_to_page page Length.zero evvblstpage footnote in
     let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
     match restopt with
     | None       -> pdfaccnew
@@ -700,7 +708,50 @@ let main (absname_out : abs_path) (pagesize : page_size) (pagecontf : page_conte
   aux 1 pdfinit pbvblst
 
 
-let adjust_to_first_line (imvblst : intermediate_vert_box list) =
+let main_two_column (absname_out : abs_path) (pagesize : page_size) (origin_shift : length) (columnhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
+
+  let pdfinit = HandlePdf.create_empty_pdf absname_out in
+
+  let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
+    let pbinfo = { current_page_number = pageno; } in
+    let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
+    let content_height = pagecontsch.page_content_height in
+
+    let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+
+    (* -- makes the first column -- *)
+    let (body1, footnote1, restopt) =
+      chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst
+    in
+
+    (* -- adds the first column to the page and invokes hook functions -- *)
+    let page = HandlePdf.add_column_to_page page Length.zero body1 footnote1 in
+
+    match restopt with
+    | None ->
+        pdfacc |> HandlePdf.write_page page pagepartsf
+
+    | Some(pbvblst) ->
+        (* -- makes the second column -- *)
+        let (body2, footnote2, restopt) =
+          chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst
+        in
+
+        (* -- adds the second column to the page and invokes hook functions -- *)
+        let page = HandlePdf.add_column_to_page page origin_shift body2 footnote2 in
+
+        let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
+        begin
+          match restopt with
+          | None       -> pdfaccnew
+          | Some(rest) -> aux (pageno + 1) pdfaccnew rest
+        end
+  in
+  let pbvblst = normalize vblst in
+  aux 1 pdfinit pbvblst
+
+
+let adjust_to_first_line (imvblst : intermediate_vert_box list) : length * length =
   let rec aux optinit totalhgtinit imvblst =
     imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
       match (imvb, opt) with
@@ -721,7 +772,7 @@ let adjust_to_first_line (imvblst : intermediate_vert_box list) =
   | (None, totalhgt)      -> (Length.zero, Length.negate totalhgt)
 
 
-let adjust_to_last_line (imvblst : intermediate_vert_box list) =
+let adjust_to_last_line (imvblst : intermediate_vert_box list) : length * length =
   let rec aux optinit totalhgtinit evvblst =
     let evvblstrev = List.rev evvblst in
       evvblstrev |> List.fold_left (fun (opt, totalhgt) imvblast ->
