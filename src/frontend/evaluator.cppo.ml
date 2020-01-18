@@ -451,8 +451,8 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       (CdLetRecIn(cdrecbinds, code2), envopt2)
 
   | LetNonRecIn(pattr, ast1, ast2) ->
-      let (env1, cdpattr) = interpret_1_pattern_tree env pattr in
-      let (code1, _) = interpret_1 env1 ast1 in
+      let (code1, _) = interpret_1 env ast1 in
+      let (env, cdpattr) = interpret_1_pattern_tree env pattr in
       let (code2, envopt2) = interpret_1 env ast2 in
       (CdLetNonRecIn(cdpattr, code1, code2), envopt2)
 
