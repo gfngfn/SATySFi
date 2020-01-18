@@ -540,9 +540,16 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       return @@ CdConstructor(constrnm, code1)
 
   | Module(ast1, ast2) ->
-      let (code1, _) = interpret_1 env ast1 in
-      let (code2, envopt2) = interpret_1 env ast2 in
-      (CdModule(code1, code2), envopt2)
+      let (code1, envopt1) = interpret_1 env ast1 in
+      begin
+        match envopt1 with
+        | Some(env) ->
+            let (code2, envopt2) = interpret_1 env ast2 in
+            (CdModule(code1, code2), envopt2)
+
+        | None ->
+            report_bug_ast "not a module contents" ast
+      end
 
   | BackendMathList(astlst) ->
       let codelst = astlst |> List.map (interpret_1_value env) in
