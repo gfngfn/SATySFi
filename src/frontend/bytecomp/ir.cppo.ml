@@ -525,16 +525,10 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       code1 env (fun cv -> CdConstructor(constrnm, cv)) ast1
 
   | LetMutableIn(evid, ast1, ast2) ->
-      begin
-        match find_in_environment env evid with
-        | Some(var) ->
-            let (ir1, env) = transform_1 env ast1 in
-            let (ir2, env) = transform_1 env ast2 in
-            (IRCodeLetMutableIn(var, ir1, ir2), env)
-
-        | None ->
-            assert false
-      end
+      let (var, env) = add_to_environment env evid in
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (IRCodeLetMutableIn(var, ir1, ir2), env)
 
   | Dereference(ast1) ->
       code1 env (fun cv -> CdDereference(cv)) ast1
