@@ -177,6 +177,15 @@ and compile (ir : ir) (cont : instruction list) =
             OpLoadLocal(lv, off, evid, !refs) :: cont
       end
 
+  | IRPersistent(var) ->
+      let evid =
+        match var with
+        | GlobalVar(_, evid, _)   -> evid
+        | LocalVar(_, _, evid, _) -> evid
+      in
+      let rng = Range.dummy "IRPersistent" in
+      OpPush(CodeValue(CdPersistent(rng, evid))) :: cont
+
   | IRLetRecIn(recbinds, ast2) ->
       let binds =
         recbinds |> List.map (fun (var, ir) -> (var, compile ir []))

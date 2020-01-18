@@ -706,6 +706,7 @@ and ir =
   | IRLetRecIn              of (varloc * ir) list * ir
   | IRLetNonRecIn           of ir * ir_pattern_tree * ir
   | IRContentOf             of varloc
+  | IRPersistent            of varloc
   | IRIfThenElse            of ir * ir * ir
   | IRFunction              of int * varloc list * ir_pattern_tree list * ir
   | IRApply                 of int * ir * ir list

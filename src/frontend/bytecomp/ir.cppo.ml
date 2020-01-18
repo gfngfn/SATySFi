@@ -477,14 +477,18 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       (IRCodeLetNonRecIn(irpat, ir1, ir2), env)
 
   | ContentOf(rng, evid) ->
-      failwith "ContentOf; remains to be implemented. (transform_1)" (*
-      code0 env (CdContentOf(rng, evid))
-      *)
+      begin
+        match find_in_environment env evid with
+        | Some(var) -> (IRContentOf(var), env)
+        | None      -> assert false
+      end
 
   | Persistent(rng, evid) ->
-      failwith "Persistent; remains to be implemented. (transform_1)" (*
-      code0 env (CdContentOf(rng, evid))
-      *)
+      begin
+        match find_in_environment env evid with
+        | Some(var) -> (IRPersistent(var), env)
+        | None      -> assert false
+      end
 
   | IfThenElse(ast0, ast1, ast2) ->
       code3 env (fun cv0 cv1 cv2 -> CdIfThenElse(cv0, cv1, cv2)) ast0 ast1 ast2
