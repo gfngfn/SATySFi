@@ -308,45 +308,94 @@ let get_paper_height (paper : Pdfpaper.t) : length =
   Length.of_pdf_point pdfpt
 
 
-let make_page (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : page_content_scheme) (evvblstbody : evaled_vert_box list) (evvblstfootnote : evaled_vert_box list) : page =
-  let paper =
-    match pagesize with
-    | A0Paper                -> Pdfpaper.a0
-    | A1Paper                -> Pdfpaper.a1
-    | A2Paper                -> Pdfpaper.a2
-    | A3Paper                -> Pdfpaper.a3
-    | A4Paper                -> Pdfpaper.a4
-    | A5Paper                -> Pdfpaper.a5
-    | USLetter               -> Pdfpaper.usletter
-    | USLegal                -> Pdfpaper.uslegal
-    | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
-  in
-  let paper_height = get_paper_height paper in
+let opacc_of_body_and_footnote
+      (txtlen : length)  (* -- for option `--debug-show-block-bbox` -- *)
+      (pbinfo : page_break_info)
+      ((ptbody, evvblstbody) : (length * length) * evaled_vert_box list)
+      ((ptfootnote, evvblstfootnote) : (length * length) * evaled_vert_box list)
+    : Pdfops.t Alist.t =
 
   let opaccbody =
-    let pt_init = invert_coordinate paper_height pagecontsch.page_content_origin in
-    let (_, opaccbody) = ops_of_evaled_vert_box_list fs_pdf pbinfo pt_init Alist.empty evvblstbody in
+    let (_, opaccbody) = ops_of_evaled_vert_box_list fs_pdf pbinfo ptbody Alist.empty evvblstbody in
     if OptionState.debug_show_block_bbox () then
-      let txtlen = pagecontsch.page_content_height in
-      Alist.append opaccbody (fs_pdf.test_scale color_show_frame pt_init txtlen)
+      Alist.append opaccbody (fs_pdf.test_scale color_show_frame ptbody txtlen)
     else
       opaccbody
   in
   let opaccfootnote =
-    let hgtfootnote = get_height_of_evaled_vert_box_list evvblstfootnote in
-    let (xorg, yorg) = pagecontsch.page_content_origin in
-    let hgtreq = pagecontsch.page_content_height in
-    let pt_init = invert_coordinate paper_height (xorg, yorg +% hgtreq -% hgtfootnote) in
-    let (_, opaccfootnote) = ops_of_evaled_vert_box_list fs_pdf pbinfo pt_init Alist.empty evvblstfootnote in
+    let (_, opaccfootnote) = ops_of_evaled_vert_box_list fs_pdf pbinfo ptfootnote Alist.empty evvblstfootnote in
     if OptionState.debug_show_block_bbox () then
       let wid = Length.of_pdf_point 5. in
       let len = Length.of_pdf_point 1. in
-      Alist.append opaccfootnote (fs_pdf.test_box color_show_frame pt_init wid len)
+      Alist.append opaccfootnote (fs_pdf.test_box color_show_frame ptfootnote wid len)
     else
       opaccfootnote
   in
-  let opaccpage = Alist.cat opaccbody opaccfootnote in
-  Page(paper, pagecontsch, opaccpage, pbinfo)
+  Alist.cat opaccbody opaccfootnote
+
+
+let get_body_origin_position (paper_height : length) (origin : length * length) =
+  invert_coordinate paper_height origin
+
+
+let get_footnote_origin_position (paper_height : length) (content_height : length) (origin : length * length) (evvblstfootnote : evaled_vert_box list) =
+  let footnote_height = get_height_of_evaled_vert_box_list evvblstfootnote in
+  let (xorg, yorg) = origin in
+  invert_coordinate paper_height (xorg, yorg +% content_height -% footnote_height)
+
+
+let get_pdf_paper  (pagesize : page_size) : Pdfpaper.t =
+  match pagesize with
+  | A0Paper                -> Pdfpaper.a0
+  | A1Paper                -> Pdfpaper.a1
+  | A2Paper                -> Pdfpaper.a2
+  | A3Paper                -> Pdfpaper.a3
+  | A4Paper                -> Pdfpaper.a4
+  | A5Paper                -> Pdfpaper.a5
+  | USLetter               -> Pdfpaper.usletter
+  | USLegal                -> Pdfpaper.uslegal
+  | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
+
+
+let make_empty_page
+      (pagesize : page_size)
+      (pbinfo : page_break_info)
+      (pagecontsch : page_content_scheme)
+    : page =
+  let paper = get_pdf_paper pagesize in
+  Page(paper, pagecontsch, Alist.empty, pbinfo)
+
+
+let add_column_to_page
+      (Page(paper, pagecontsch, opacc, pbinfo))
+      (origin_shift : length)
+      (evvblstbody : evaled_vert_box list)
+      (evvblstfootnote : evaled_vert_box list)
+    : page =
+  let content_height = pagecontsch.page_content_height in
+  let content_origin =
+    let (x, y) = pagecontsch.page_content_origin in
+    (x +% origin_shift, y)
+  in
+  let opacccolumn =
+    let paper_height = get_paper_height paper in
+    let posbody =
+      get_body_origin_position
+        paper_height
+        content_origin
+    in
+    let posfootnote =
+      get_footnote_origin_position
+        paper_height
+        content_height
+        content_origin
+        evvblstfootnote
+    in
+    opacc_of_body_and_footnote content_height pbinfo
+      (posbody, evvblstbody)
+      (posfootnote, evvblstfootnote)
+  in
+  Page(paper, pagecontsch, Alist.cat opacc opacccolumn, pbinfo)
 
 
 let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc, flnm)) : t) : t =

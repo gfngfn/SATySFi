@@ -268,7 +268,7 @@ end = struct
     let show-pages = config#show-pages in
 
     let () =
-      register-cross-reference `changed` `F`
+      FootnoteScheme.initialize ()
     in
 
     let ctx-doc = get-standard-context txtwid in

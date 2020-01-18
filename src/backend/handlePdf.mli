@@ -13,4 +13,6 @@ val write_page : page -> page_parts_scheme_func -> t -> t
 
 val write_to_file : t -> unit
 
-val make_page : page_size -> page_break_info -> page_content_scheme -> evaled_vert_box list -> evaled_vert_box list -> page
+val make_empty_page : page_size -> page_break_info -> page_content_scheme -> page
+
+val add_column_to_page : page -> length -> evaled_vert_box list -> evaled_vert_box list -> page

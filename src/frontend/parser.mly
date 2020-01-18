@@ -379,7 +379,9 @@
 
 %token <Range.t * Types.var_name> VAR
 %token <Range.t * Types.ctrlseq_name> HORZCMD
+%token <Range.t * Types.ctrlseq_name> HORZMACRO
 %token <Range.t * Types.ctrlseq_name> VERTCMD
+%token <Range.t * Types.ctrlseq_name> VERTMACRO
 %token <Range.t * Types.ctrlseq_name> MATHCMD
 %token <Range.t * (Types.module_name list) * Types.var_name> VARWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
@@ -405,7 +407,7 @@
 %token <Range.t> MODULE STRUCT END DIRECT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
-%token <Range.t> LETHORZ LETVERT LETMATH
+%token <Range.t> LETHORZ LETVERT LETMATH LETHORZMACRO LETVERTMACRO
 %token <Range.t> IF THEN ELSE
 %token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
 %token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
@@ -508,6 +510,14 @@ nxtoplevel:
       let (rng, mdlnm) = mdlnmtok in
       make_standard (Tok top) (Ranged subseq) (UTOpenIn(rng, mdlnm, subseq))
     }
+  | top=LETHORZMACRO; dec=nxhorzmacrodec; utast2=nxtopsubseq {
+      let (rngcs, csnm, macparams, utast1) = dec in
+      make_standard (Tok top) (Ranged utast2) (UTLetHorzMacroIn(rngcs, csnm, macparams, utast1, utast2))
+    }
+  | top=LETVERTMACRO; dec=nxvertmacrodec; utast2=nxtopsubseq {
+      let (rngcs, csnm, macparams, utast1) = dec in
+      make_standard (Tok top) (Ranged utast2) (UTLetVertMacroIn(rngcs, csnm, macparams, utast1, utast2))
+    }
 ;
 nxtopsubseq:
   | utast=nxtoplevel     { utast }
@@ -595,6 +605,30 @@ nxmathdec:
       let curried = curry_lambda_abstract Alist.empty rngcs cmdarglst utast in
       (None, mcmdtok, (rng, UTLambdaMath(curried)))
     }
+;
+nxhorzmacrodec:
+  | hmacro=HORZMACRO; macparams=macroparams; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = hmacro in
+      (rngcs, csnm, macparams, utast)
+    }
+;
+nxvertmacrodec:
+  | vmacro=VERTMACRO; macparams=macroparams; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = vmacro in
+      (rngcs, csnm, macparams, utast)
+    }
+;
+macroparams:
+  | LPAREN; macparam=macroparam; macparams=list(commamacroparam); RPAREN {
+      macparam :: macparams
+    }
+;
+commamacroparam:
+  | COMMA; macparam=macroparam { macparam }
+;
+macroparam:
+  | var=VAR { UTLateMacroParam(var) }
+  | EXACT_TILDE; var=VAR { UTEarlyMacroParam(var) }
 ;
 nonrecdecargpart:
   | COLON; mty=txfunc                                   { (Some(mty), []) }
@@ -1142,6 +1176,11 @@ ih:
   |                                   { [] }
 ;
 ihcmd:
+  | hmacro=HORZMACRO; macargsraw=macroargs {
+      let (rngcs, _) = hmacro in
+      let (rnglast, macroargs) = macargsraw in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
+    }
   | hcmd=hcmd; nargs=list(narg); sargsraw=sargs {
       let (rngcs, mdlnmlst, csnm) = hcmd in
       let utastcmd = (rngcs, UTContentOf(mdlnmlst, csnm)) in
@@ -1170,6 +1209,19 @@ ihchar:
   | rng=SPACE { (rng, " ") }
   | rng=BREAK { (rng, "\n") }
 ;
+macroargs:
+  | LPAREN; macarg=macroarg; macargs=list(commamacroarg); cls=RPAREN; ENDACTIVE; {
+      (cls, macarg :: macargs)
+    }
+;
+commamacroarg:
+  | COMMA; macarg=macroarg { macarg }
+;
+macroarg:
+  | expr=nxbot { UTLateMacroArg(expr) }
+  | EXACT_TILDE; expr=nxbot { UTEarlyMacroArg(expr) }
+;
+
 narg:
   | opn=LPAREN; utast=nxlet; cls=RPAREN           { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
   | opn=LPAREN; cls=RPAREN                        { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant) }
@@ -1217,4 +1269,9 @@ vxbot:
       let (rng, mdlnmlst, varnm) = vartok in
       make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
     }
+  | vmacro=VERTMACRO; macargsraw=macroargs {
+      let (rngcs, _) = vmacro in
+      let (rnglast, macargs) = macargsraw in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputVertMacro(vmacro, macargs))
+  }
 ;

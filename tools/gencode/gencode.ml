@@ -19,6 +19,8 @@ module Const = struct
 
   let ret = "ret"
 
+  let make_entry = "make_entry"
+
   let trans_prim = "transform_0_primitive"
 
   let destructuring_rules =
@@ -92,9 +94,9 @@ let gen_interps_1 () =
       let codeargs = params |> List.mapi (fun i _ -> "_code%d" @% i) in
       puts "  | %s(%s) ->" inst (String.concat ", " astargs);
       List.iter2 (fun codearg astarg ->
-        puts "      let %s = interpret_1 env %s in" codearg astarg;
+        puts "      let %s = interpret_1_value env %s in" codearg astarg;
       ) codeargs astargs;
-      puts "      Cd%s(%s)" inst (String.concat ", " codeargs);
+      puts "      return @@ Cd%s(%s)" inst (String.concat ", " codeargs);
       puts ""
 
   | _ ->
@@ -118,7 +120,7 @@ let gen_interps_0 () =
       puts "  | %s(%s) ->" inst (String.concat ", " astargs);
       List.combine params astargs |> List.iter (function
       | ({ Param.name; type_ = None }, astident) ->
-          puts "      let %s = interpret_0 env %s in"
+          puts "      let %s = interpret_0_value env %s in"
             name astident
 
       | _ ->
@@ -126,7 +128,7 @@ let gen_interps_0 () =
       );
       List.combine params astargs |> List.iter (function
       | ({ Param.name; type_ = Some t }, astident) ->
-          puts "      let %s = %s%s (interpret_0 env %s) in"
+          puts "      let %s = %s%s (interpret_0_value env %s) in"
             name Const.func_prefix t astident
 
       | _ ->
@@ -135,7 +137,7 @@ let gen_interps_0 () =
       if needs_reducef then begin
         puts "      let reducef = reduce_beta_list in"
       end;
-      puts "        begin";
+      puts "        return @@ begin";
       default code code_interp |> split_lines |> List.iter
         (puts "          %s");
       puts "        end";
@@ -144,6 +146,10 @@ let gen_interps_0 () =
   | _ ->
       failwith "[gen_interps_0] not a primitive."
   )
+
+
+let make_entry_pattern name =
+  "(" ^ name ^ ", _)"
 
 
 let gen_vminstrs () =
@@ -201,7 +207,7 @@ let gen_vminstrs () =
             ()
 
         | ds ->
-            puts "        | %s :: %s ->" (String.concat " :: " ds) Const.stack
+            puts "        | %s :: %s ->" (String.concat " :: " (ds |> List.map make_entry_pattern)) Const.stack
       end;
       funcapp |> List.iter (function
       | ({ Param.name = dest; type_ = Some(func) }, src, _) ->
@@ -222,8 +228,8 @@ let gen_vminstrs () =
       if is_primitive def then begin
         puts "            let %s =" Const.ret;
         print_code ();
-        puts "            in %s (%s :: %s) %s %s %s"
-          Const.vmexec Const.ret Const.stack Const.environment Const.code Const.dump
+        puts "            in %s (%s %s :: %s) %s %s %s"
+          Const.vmexec Const.make_entry Const.ret Const.stack Const.environment Const.code Const.dump
       end else begin
         puts "            begin";
         print_code ();

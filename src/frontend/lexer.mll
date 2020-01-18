@@ -204,8 +204,14 @@ rule progexpr stack = parse
       let buffer = Buffer.create 256 in
       literal false quote_range quote_length buffer lexbuf
     }
+  | ("\\" (identifier | constructor) "@") {
+      let tok = Lexing.lexeme lexbuf in HORZMACRO(get_pos lexbuf, tok)
+    }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
+    }
+  | ("+" (identifier | constructor) "@") {
+      let tok = Lexing.lexeme lexbuf in VERTMACRO(get_pos lexbuf, tok)
     }
   | ("+" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in VERTCMD(get_pos lexbuf, tok)
@@ -292,6 +298,8 @@ rule progexpr stack = parse
           | "math-cmd"          -> MATHCMDTYPE(pos)
           | "command"           -> COMMAND(pos)
           | "open"              -> OPEN(pos)
+          | "let-inline-macro"  -> LETHORZMACRO(pos)
+          | "let-block-macro"   -> LETVERTMACRO(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
@@ -328,6 +336,10 @@ and vertexpr stack = parse
       let (mdlnmlst, csnm) = split_module_list csstr in
         Stack.push ActiveState stack;
         VARINVERT(get_pos lexbuf, mdlnmlst, csnm)
+    }
+  | ("+" (identifier | constructor) "@") {
+      Stack.push ActiveState stack;
+      VERTMACRO(get_pos lexbuf, Lexing.lexeme lexbuf)
     }
   | ("+" (identifier | constructor)) {
       Stack.push ActiveState stack;
@@ -417,6 +429,12 @@ and horzexpr stack = parse
       let rng = get_pos lexbuf in
       Stack.push ActiveState stack;
       HORZCMD(rng, tok)
+    }
+  | ("\\" (identifier | constructor) "@") {
+      let tok = Lexing.lexeme lexbuf in
+      let rng = get_pos lexbuf in
+      Stack.push ActiveState stack;
+      HORZMACRO(rng, tok)
     }
   | ("\\" (constructor ".")* (identifier | constructor)) {
       let tokstrpure = Lexing.lexeme lexbuf in

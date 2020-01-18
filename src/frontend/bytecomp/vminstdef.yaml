@@ -902,7 +902,28 @@ params:
 code: |
   let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
   let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-  BaseConstant(BCDocument(pagesize, pagecontf, pagepartsf, vblst))
+  BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagepartsf, vblst))
+
+---
+inst: BackendPageBreakingTwoColumn
+is-pdf-mode-primitive: yes
+name: "page-break-two-column"
+type: |
+  ~% (tPG @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+
+needs-reducef: yes
+params:
+- pagesize : page_size
+- origin_shift : length
+- valuecolumnhookf
+- valuepagecontf
+- valuepagepartsf
+- vblst : vert
+code: |
+  let columnhookf = make_column_hook_func reducef valuecolumnhookf in
+  let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
+  let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+  BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), columnhookf, pagecontf, pagepartsf, vblst))
 
 ---
 inst: BackendVertFrame
@@ -1118,6 +1139,21 @@ code: |
     space_natural = max 0. ratio_natural;
     space_shrink  = max 0. ratio_shrink;
     space_stretch = max 0. ratio_stretch;
+  }), ctxsub)
+
+---
+inst: PrimitiveSetAdjacentStretchRatio
+is-pdf-mode-primitive: yes
+name: "set-adjacent-stretch-ratio"
+type: |
+  ~% (tFL @-> tCTX @-> tCTX)
+
+params:
+- ratio : float
+- (ctx, ctxsub) : context
+code: |
+  Context(HorzBox.({ ctx with
+    adjacent_stretch = max 0. ratio;
   }), ctxsub)
 
 ---
@@ -2622,3 +2658,59 @@ params:
 
 code: |
   raise (report_dynamic_error msg)
+
+---
+inst: LiftString
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "lift-string"
+type: |
+  ~% (tS @-> tCODE tS)
+
+params:
+  - s : string
+
+code: |
+  lift_string_to_code_value s
+
+---
+inst: LiftInt
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "lift-int"
+type: |
+  ~% (tI @-> tCODE tI)
+
+params:
+  - n : int
+
+code: |
+  lift_integer_to_code_value n
+
+---
+inst: LiftFloat
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "lift-float"
+type: |
+  ~% (tFL @-> tCODE tFL)
+
+params:
+  - r : float
+
+code: |
+  lift_float_to_code_value r
+
+---
+inst: LiftLength
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "lift-length"
+type: |
+  ~% (tLN @-> tCODE tLN)
+
+params:
+  - len : length
+
+code: |
+  lift_length_to_code_value len
