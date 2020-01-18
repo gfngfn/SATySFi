@@ -1180,8 +1180,18 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       let entry = (CodeValue(CdLetMutableIn(symb, cv1, cv2)), envopt) in
       exec (entry :: stack) env code dump
 
-  | OpCodeOverwrite(var, instrs1) ->
-      failwith "OpCodeOverwrite; remains to be implemented. (exec)"
+  | OpCodeOverwrite(instrs1) ->
+      begin
+        match stack with
+        | (CodeSymbol(symb), _) :: stack ->
+            let value1 = exec_value [] env instrs1 [] in
+            let cv1 = get_code value1 in
+            let entry = (CodeValue(CdOverwrite(symb, cv1)), None) in
+            exec (entry :: stack) env code dump
+
+        | _ ->
+            report_bug_vm "not a symbol (OpCodeOverwrite)"
+      end
 
   | OpCodeModule(instrs1, instrs2) ->
       let (value1, envopt) = exec [] env instrs1 [] in

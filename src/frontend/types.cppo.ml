@@ -843,7 +843,7 @@ and instruction =
   | OpCodeLetNonRec     of ir_pattern_tree * instruction list * instruction list
   | OpCodeFunction      of varloc list * ir_pattern_tree * instruction list
   | OpCodeLetMutable    of varloc * instruction list * instruction list
-  | OpCodeOverwrite     of varloc * instruction list
+  | OpCodeOverwrite     of instruction list
   | OpCodeModule        of instruction list * instruction list
   | OpCodeFinishHeaderFile
   | OpCodeFinishStruct

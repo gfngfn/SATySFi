@@ -322,8 +322,9 @@ and compile (ir : ir) (cont : instruction list) =
       OpCodeLetMutable(var, instrs1, instrs2) :: cont
 
   | IRCodeOverwrite(var, ir1) ->
+      let loadop = make_loading_op var in
       let instrs1 = compile ir1 [] in
-      OpCodeOverwrite(var, instrs1) :: cont
+      loadop :: OpCodeOverwrite(instrs1) :: cont
 
   | IRCodeModule(ir1, ir2) ->
       let instrs1 = compile ir1 [] in
