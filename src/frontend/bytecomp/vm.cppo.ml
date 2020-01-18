@@ -1207,4 +1207,16 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         (* -- returns the environment -- *)
       exec (entry :: stack) env code dump
 
+  | OpConvertSymbolToCode ->
+      begin
+        match stack with
+        | (CodeSymbol(symb), _) :: stack ->
+            let rng = Range.dummy "OpConvertSymbolToCode" in
+            let entry = (CodeValue(CdContentOf(rng, symb)), None) in
+            exec (entry :: stack) env code dump
+
+        | _ ->
+            report_bug_vm "not a code symbol"
+      end
+
 #include "__vm.gen.ml"

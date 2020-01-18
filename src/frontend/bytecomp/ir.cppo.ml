@@ -479,7 +479,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | ContentOf(rng, evid) ->
       begin
         match find_in_environment env evid with
-        | Some(var) -> (IRContentOf(var), env)
+        | Some(var) -> (IRSymbolOf(var), env)
         | None      -> assert false
       end
 

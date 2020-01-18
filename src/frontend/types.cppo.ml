@@ -707,6 +707,7 @@ and ir =
   | IRLetNonRecIn           of ir * ir_pattern_tree * ir
   | IRContentOf             of varloc
   | IRPersistent            of varloc
+  | IRSymbolOf              of varloc
   | IRIfThenElse            of ir * ir * ir
   | IRFunction              of int * varloc list * ir_pattern_tree list * ir
   | IRApply                 of int * ir * ir list
@@ -846,6 +847,7 @@ and instruction =
   | OpCodeModule        of instruction list * instruction list
   | OpCodeFinishHeaderFile
   | OpCodeFinishStruct
+  | OpConvertSymbolToCode
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =

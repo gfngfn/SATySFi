@@ -16,6 +16,18 @@ let report_bug_compiler_ast msg ast =
   failwith ("bug: " ^ msg)
 
 
+let make_loading_op (var : varloc) : instruction =
+  match var with
+  | GlobalVar(loc, evid, refs) ->
+      if !loc = Nil then
+        OpLoadGlobal(loc, evid, !refs)
+      else
+        OpPush(!loc)
+
+  | LocalVar(lv, off, evid, refs) ->
+      OpLoadLocal(lv, off, evid, !refs)
+
+
 let rec compile_list irlist cont =
   let rec iter irlist cont =
     match irlist with
@@ -165,17 +177,8 @@ and compile (ir : ir) (cont : instruction list) =
   (* -- fundamentals -- *)
 
   | IRContentOf(var) ->
-      begin
-        match var with
-        | GlobalVar(loc, evid, refs) ->
-            if !loc = Nil then
-              OpLoadGlobal(loc, evid, !refs) :: cont
-            else
-              OpPush(!loc) :: cont
-
-        | LocalVar(lv, off, evid, refs) ->
-            OpLoadLocal(lv, off, evid, !refs) :: cont
-      end
+      let loadop = make_loading_op var in
+      loadop :: cont
 
   | IRPersistent(var) ->
       let evid =
@@ -185,6 +188,10 @@ and compile (ir : ir) (cont : instruction list) =
       in
       let rng = Range.dummy "IRPersistent" in
       OpPush(CodeValue(CdPersistent(rng, evid))) :: cont
+
+  | IRSymbolOf(var) ->
+      let loadop = make_loading_op var in
+      loadop :: OpConvertSymbolToCode :: cont
 
   | IRLetRecIn(recbinds, ast2) ->
       let binds =
