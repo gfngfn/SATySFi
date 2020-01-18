@@ -405,16 +405,18 @@ and code7 env cvf ast1 ast2 ast3 ast4 ast5 ast6 ast7 =
   (IRCodeCombinator(codef, 7, [ir1; ir2; ir3; ir4; ir5; ir6; ir7]), env)
 
 
-and transform_1_pattern_branch (env : frame) (patbr : pattern_branch) : ir pattern_branch_scheme * frame =
+and transform_1_pattern_branch (env : frame) (patbr : pattern_branch) : ir_pattern_branch * frame =
   match patbr with
   | PatternBranch(pat, ast1) ->
+      let (irpat, env) = transform_pattern env pat in
       let (ir1, env) = transform_1 env ast1 in
-      (PatternBranch(pat, ir1), env)
+      (IRPatternBranch(irpat, ir1), env)
 
   | PatternBranchWhen(pat, ast, ast1) ->
+      let (irpat, env) = transform_pattern env pat in
       let (ir, env) = transform_1 env ast in
       let (ir1, env) = transform_1 env ast1 in
-      (PatternBranchWhen(pat, ir, ir1), env)
+      (IRPatternBranchWhen(irpat, ir, ir1), env)
 
 
 and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
@@ -460,20 +462,19 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
         map_with_env (fun env recbind ->
           match recbind with
           | LetRecBinding(evid, patbr) ->
+              let (var, env) = add_to_environment env evid in
               let (irpatbrs, env) = transform_1_pattern_branch env patbr in
-              (LetRecBinding(evid, irpatbrs), env)
+              (IRLetRecBinding(var, irpatbrs), env)
         ) env recbinds
       in
       let (ir2, env) = transform_1 env ast2 in
       (IRCodeLetRecIn(irrecbinds, ir2), env)
 
-  | LetNonRecIn(pattr, ast1, ast2) ->
-      failwith "LetNonRecIn; remains to be implemented. (transform_1)" (*
-      let (cdpattr, env) = transform_1_pattern_tree env pattr in
+  | LetNonRecIn(pat, ast1, ast2) ->
+      let (irpat, env) = transform_pattern env pat in
       let (ir1, env) = transform_1 env ast1 in
       let (ir2, env) = transform_1 env ast2 in
-      (IRCodeLetNonRecIn(cdpattr, ir1, ir2), env)
-      *)
+      (IRCodeLetNonRecIn(irpat, ir1, ir2), env)
 
   | ContentOf(rng, evid) ->
       failwith "ContentOf; remains to be implemented. (transform_1)" (*
@@ -488,10 +489,16 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | IfThenElse(ast0, ast1, ast2) ->
       code3 env (fun cv0 cv1 cv2 -> CdIfThenElse(cv0, cv1, cv2)) ast0 ast1 ast2
 
-  | Function(evidlst, PatternBranch(pat, ast1)) ->
-      failwith "Function; remains to be implemented. (transform_1)" (*
-      code1 env (fun cv1 -> CdFunction(evidlst, CdPatternBranch(pat, cv1))) ast1
-      *)
+  | Function(evids, PatternBranch(pat, ast1)) ->
+      let (optvaracc, env) =
+        evids |> List.fold_left (fun (optvaracc, env) evid ->
+          let (var, env) = add_to_environment env evid in
+          (Alist.extend optvaracc var, env)
+        ) (Alist.empty, env)
+      in
+      let (irpat, env) = transform_pattern env pat in
+      let (ir1, env) = transform_1 env ast1 in
+      (IRCodeFunction(Alist.to_list optvaracc, irpat, ir1), env)
 
   | Function(_, PatternBranchWhen(_, _, _)) ->
       assert false
@@ -514,9 +521,16 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       code1 env (fun cv -> CdConstructor(constrnm, cv)) ast1
 
   | LetMutableIn(evid, ast1, ast2) ->
-      failwith "LetMutableIn; remains to be implemented. (transform_1)" (*
-      code2 env (fun cv1 cv2 -> CdLetMutableIn(evid, cv1, cv2)) ast1 ast2
-      *)
+      begin
+        match find_in_environment env evid with
+        | Some(var) ->
+            let (ir1, env) = transform_1 env ast1 in
+            let (ir2, env) = transform_1 env ast2 in
+            (IRCodeLetMutableIn(var, ir1, ir2), env)
+
+        | None ->
+            assert false
+      end
 
   | Dereference(ast1) ->
       code1 env (fun cv -> CdDereference(cv)) ast1
@@ -528,9 +542,15 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       code2 env (fun cv1 cv2 -> CdWhileDo(cv1, cv2)) ast1 ast2
 
   | Overwrite(evid, ast1) ->
-      failwith "Overwrite; remains to be implemented. (transform_1)" (*
-      code1 env (fun cv -> CdOverwrite(evid, cv)) ast1
-      *)
+      begin
+        match find_in_environment env evid with
+        | Some(var) ->
+            let (ir1, env) = transform_1 env ast1 in
+            (IRCodeOverwrite(var, ir1), env)
+
+        | None ->
+            assert false
+      end
 
   | Module(ast1, ast2) ->
       let (ir1, env) = transform_1 env ast1 in

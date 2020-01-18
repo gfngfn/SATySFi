@@ -728,16 +728,26 @@ and ir =
       [@printer (fun fmt _ -> Format.fprintf fmt "IRCodeRecord(...)")]
   | IRCodeInputHorz         of (ir input_horz_element_scheme) list
   | IRCodeInputVert         of (ir input_vert_element_scheme) list
-  | IRCodePatternMatch      of Range.t * ir * (ir pattern_branch_scheme) list
-  | IRCodeLetRecIn          of (ir letrec_binding_scheme) list * ir
-  | IRCodeLetNonRecIn       of code_pattern_tree * ir * ir
+  | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
+  | IRCodeLetRecIn          of ir_letrec_binding list * ir
+  | IRCodeLetNonRecIn       of ir_pattern_tree * ir * ir
+  | IRCodeFunction          of varloc list * ir_pattern_tree * ir
+  | IRCodeLetMutableIn      of varloc * ir * ir
+  | IRCodeOverwrite         of varloc * ir
   | IRCodeModule            of ir * ir
   | IRCodeFinishHeaderFile
   | IRCodeFinishStruct
 
-and ir_pattern_branch =
-  | IRPatternBranch      of ir_pattern_tree * ir
-  | IRPatternBranchWhen  of ir_pattern_tree * ir * ir
+and 'a ir_letrec_binding_scheme =
+  | IRLetRecBinding of varloc * 'a ir_pattern_branch_scheme
+
+and ir_letrec_binding = ir ir_letrec_binding_scheme
+
+and 'a ir_pattern_branch_scheme =
+  | IRPatternBranch      of ir_pattern_tree * 'a
+  | IRPatternBranchWhen  of ir_pattern_tree * 'a * 'a
+
+and ir_pattern_branch = ir ir_pattern_branch_scheme
 
 and ir_pattern_tree =
   | IRPUnitConstant
@@ -826,9 +836,12 @@ and instruction =
   | OpCodeMakeTuple of int
   | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
   | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
-  | OpCodePatternMatch  of Range.t * ((instruction list) pattern_branch_scheme) list
-  | OpCodeLetRec        of ((instruction list) letrec_binding_scheme) list * instruction list
-  | OpCodeLetNonRec     of code_pattern_tree * instruction list * instruction list
+  | OpCodePatternMatch  of Range.t * ((instruction list) ir_pattern_branch_scheme) list
+  | OpCodeLetRec        of ((instruction list) ir_letrec_binding_scheme) list * instruction list
+  | OpCodeLetNonRec     of ir_pattern_tree * instruction list * instruction list
+  | OpCodeFunction      of varloc list * ir_pattern_tree * instruction list
+  | OpCodeLetMutable    of varloc * instruction list * instruction list
+  | OpCodeOverwrite     of varloc * instruction list
   | OpCodeModule        of instruction list * instruction list
   | OpCodeFinishHeaderFile
   | OpCodeFinishStruct

@@ -7,7 +7,7 @@ open EvalUtil
 
 exception ExecError of string
 
-type stack_entry = syntactic_value * environment option
+type stack_entry = syntactic_value * vmenv option
 
 type stack = stack_entry list
 
@@ -81,6 +81,12 @@ let popn (stack : stack) (n : int) : syntactic_value list * stack =
       | []           -> report_bug_vm "stack underflow!"
   in
   iter stack n []
+
+
+let make_binding_op (var : varloc) : instruction =
+  match var with
+  | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
+  | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
 
 
 let rec get_path env c_pathcomplst c_cycleopt =
@@ -349,21 +355,84 @@ and exec_application (env : vmenv) (vf : syntactic_value) (vargs : syntactic_val
       exec_value (make_entry vf :: (List.rev_map make_entry vargs)) env [OpApplyT(len)] []
 
 
-and exec_code_pattern_branch (env : vmenv) (comppatbr : (instruction list) pattern_branch_scheme) =
-  failwith "remains to be implemented. (exec_code_pattern_branch)" (*
-  match comppatbr with
-  | PatternBranch(pat, instrs1) ->
-      let value1 = exec_value [] env instrs1 [] in
-      let cv1 = get_code value1 in
-      CdPatternBranch(pat, cv1)
+and generate_symbol_and_add_to_environment (env : vmenv) (var : varloc) : vmenv * CodeSymbol.t =
+  let symb =
+    let evid =
+      match var with
+      | GlobalVar(_, evid, _)   -> evid
+      | LocalVar(_, _, evid, _) -> evid
+    in
+    let varnm = EvalVarID.get_varnm evid in
+    let rng = EvalVarID.get_range evid in
+    CodeSymbol.fresh (rng, "symbol for " ^ varnm)
+  in
+  let bindop = make_binding_op var in
+  let cv = CodeSymbol(symb) in
+  let (_, envopt) = exec [] env [OpPush(cv); bindop; OpPushEnv] [] in
+  match envopt with
+  | Some(env) -> (env, symb)
+  | None      -> assert false
 
-  | PatternBranchWhen(pat, instrs, instrs1) ->
-      let value = exec_value [] env instrs [] in
-      let cv = get_code value in
+
+and exec_code_pattern_tree (env : vmenv) (irpat : ir_pattern_tree) : vmenv * code_pattern_tree =
+  match irpat with
+  | IRPUnitConstant       -> (env, CdPUnitConstant)
+  | IRPBooleanConstant(b) -> (env, CdPBooleanConstant(b))
+  | IRPIntegerConstant(n) -> (env, CdPIntegerConstant(n))
+  | IRPStringConstant(s)  -> (env, CdPStringConstant(s))
+
+  | IRPListCons(irpat1, irpat2) ->
+      let (env, cdpat1) = exec_code_pattern_tree env irpat1 in
+      let (env, cdpat2) = exec_code_pattern_tree env irpat2 in
+      (env, CdPListCons(cdpat1, cdpat2))
+
+  | IRPEndOfList ->
+      (env, CdPEndOfList)
+
+  | IRPTupleCons(irpat1, irpat2) ->
+      let (env, cdpat1) = exec_code_pattern_tree env irpat1 in
+      let (env, cdpat2) = exec_code_pattern_tree env irpat2 in
+      begin
+        match cdpat2 with
+        | CdPTuple(cdpats) -> (env, CdPTuple(cdpat1 :: cdpats))
+        | _                -> assert false
+      end
+
+  | IRPEndOfTuple ->
+      (env, CdPTuple([]))
+
+  | IRPWildCard ->
+      (env, CdPWildCard)
+
+  | IRPVariable(var) ->
+      let (env, symb) = generate_symbol_and_add_to_environment env var in
+      (env, CdPVariable(symb))
+
+  | IRPAsVariable(var, irpat1) ->
+      let (env, symb) = generate_symbol_and_add_to_environment env var in
+      let (env, cdpat1) = exec_code_pattern_tree env irpat1 in
+      (env, CdPAsVariable(symb, cdpat1))
+
+  | IRPConstructor(ctornm, irpat1) ->
+      let (env, cdpat1) = exec_code_pattern_tree env irpat1 in
+      (env, CdPConstructor(ctornm, cdpat1))
+
+
+and exec_code_pattern_branch (env : vmenv) (comppatbr : (instruction list) ir_pattern_branch_scheme) =
+  match comppatbr with
+  | IRPatternBranch(irpat, instrs1) ->
+      let (env, cdpat) = exec_code_pattern_tree env irpat in
       let value1 = exec_value [] env instrs1 [] in
       let cv1 = get_code value1 in
-      CdPatternBranchWhen(pat, cv, cv1)
-  *)
+      CdPatternBranch(cdpat, cv1)
+
+  | IRPatternBranchWhen(irpat, instrs0, instrs1) ->
+      let (env, cdpat) = exec_code_pattern_tree env irpat in
+      let value0 = exec_value [] env instrs0 [] in
+      let cv0 = get_code value0 in
+      let value1 = exec_value [] env instrs1 [] in
+      let cv1 = get_code value1 in
+      CdPatternBranchWhen(cdpat, cv0, cv1)
 
 
 and exec_value (stack : stack) (env : vmenv) (code : instruction list) dump : syntactic_value =
@@ -391,7 +460,13 @@ and exec (stack : stack) (env : vmenv) (code : instruction list) dump : stack_en
 
 
 and exec_code (genv : environment) (code : instruction list) : syntactic_value * environment option =
-  exec [] (genv, []) code []
+  let (value, envopt) = exec [] (genv, []) code [] in
+  let glenvopt =
+    match envopt with
+    | None      -> None
+    | Some(env) -> Some(vmenv_global env)
+  in
+  (value, glenvopt)
 
 
 and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction list) dump =
@@ -478,11 +553,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
               | CompiledClosure(optvars, arity, pargs, framesize, body, env1) ->
                   let body =
                     optvars |> List.fold_left (fun acc optvar ->
-                      let bindop =
-                        match optvar with
-                        | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
-                        | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
-                      in
+                      let bindop = make_binding_op optvar in
                       OpPush(Constructor("None", const_unit)) :: bindop :: acc
                     ) body
                   in
@@ -534,11 +605,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
               | CompiledClosure(optvars, arity, pargs, framesize, body, env1) ->
                   let body =
                     optvars |> List.fold_left (fun acc optvar ->
-                      let bindop =
-                        match optvar with
-                        | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
-                        | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
-                      in
+                      let bindop = make_binding_op optvar in
                       OpPush(Constructor("None", const_unit)) :: bindop :: acc
                     ) body
                   in
@@ -588,11 +655,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
             begin
               match f with
               | CompiledClosure(var :: vars, arity, pargs, framesize, body, env1) ->
-                  let bindop =
-                    match var with
-                    | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
-                    | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
-                  in
+                  let bindop = make_binding_op var in
                   let body = OpPush(Constructor("Some", v)) :: bindop :: body in
                   let fnew = CompiledClosure(vars, arity, pargs, framesize, body, env1) in
                   exec (make_entry fnew :: stack) env code dump
@@ -611,11 +674,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
             begin
               match f with
               | CompiledClosure(var :: vars, arity, pargs, framesize, body, env1) ->
-                  let bindop =
-                    match var with
-                    | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
-                    | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
-                  in
+                  let bindop = make_binding_op var in
                   let body = OpPush(Constructor("None", const_unit)) :: bindop :: body in
                   let fnew = CompiledClosure(vars, arity, pargs, framesize, body, env1) in
                   exec (make_entry fnew :: stack) env code dump
@@ -782,7 +841,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 
   | OpPushEnv ->
     (* -- returns the environment -- *)
-      let entry = (EvaluatedEnvironment, Some(vmenv_global env)) in
+      let entry = (EvaluatedEnvironment, Some(env)) in
       exec (entry :: stack) env code dump
 
   | OpCheckStackTopBool(b, next) ->
@@ -1076,11 +1135,11 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       end
 
   | OpCodeLetRec(comprecbinds, instrs2) ->
-      failwith "OpCodeLetRec; remains to be implemented. (exec_op)" (*
       let cdrecbinds =
-        comprecbinds |> List.map (function LetRecBinding(evid, comppatbr) ->
+        comprecbinds |> List.map (function IRLetRecBinding(var, comppatbr) ->
+          let (env, symb) = generate_symbol_and_add_to_environment env var in
           let cdpatbr = exec_code_pattern_branch env comppatbr in
-          CdLetRecBinding(evid, cdpatbr)
+          CdLetRecBinding(symb, cdpatbr)
         )
       in
       let (value2, envopt) = exec [] env instrs2 [] in
@@ -1088,19 +1147,49 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       let entry = (CodeValue(CdLetRecIn(cdrecbinds, cv2)), envopt) in
         (* -- returns the environment -- *)
       exec (entry :: stack) env code dump
-      *)
 
-  | OpCodeLetNonRec(cdpattr, instrs1, instrs2) ->
+  | OpCodeLetNonRec(irpat, instrs1, instrs2) ->
+      let value1 = exec_value [] env instrs1 [] in
+      let cv1 = get_code value1 in
+      let (env, cdpat) = exec_code_pattern_tree env irpat in
+      let (value2, envopt) = exec [] env instrs2 [] in
+      let cv2 = get_code value2 in
+      let entry = (CodeValue(CdLetNonRecIn(cdpat, cv1, cv2)), envopt) in
+        (* -- returns the environment -- *)
+      exec (entry :: stack) env code dump
+
+  | OpCodeFunction(optvars, irpat, instrs1) ->
+      let (optsymbacc, env) =
+        optvars |> List.fold_left (fun (optsymbacc, env) optvar ->
+          let (env, symb) = generate_symbol_and_add_to_environment env optvar in
+          (Alist.extend optsymbacc symb, env)
+        ) (Alist.empty, env)
+      in
+      let (env, cdpat) = exec_code_pattern_tree env irpat in
+      let value1 = exec_value [] env instrs1 [] in
+      let cv1 = get_code value1 in
+      let entry = (CodeValue(CdFunction(Alist.to_list optsymbacc, CdPatternBranch(cdpat, cv1))), None) in
+      exec (entry :: stack) env code dump
+
+  | OpCodeLetMutable(var, instrs1, instrs2) ->
+      let (env, symb) = generate_symbol_and_add_to_environment env var in
       let value1 = exec_value [] env instrs1 [] in
       let cv1 = get_code value1 in
       let (value2, envopt) = exec [] env instrs2 [] in
       let cv2 = get_code value2 in
-      let entry = (CodeValue(CdLetNonRecIn(cdpattr, cv1, cv2)), envopt) in
-        (* -- returns the environment -- *)
+      let entry = (CodeValue(CdLetMutableIn(symb, cv1, cv2)), envopt) in
       exec (entry :: stack) env code dump
 
+  | OpCodeOverwrite(var, instrs1) ->
+      failwith "OpCodeOverwrite; remains to be implemented. (exec)"
+
   | OpCodeModule(instrs1, instrs2) ->
-      let value1 = exec_value [] env instrs1 [] in
+      let (value1, envopt) = exec [] env instrs1 [] in
+      let env =
+        match envopt with
+        | Some(env) -> env
+        | None      -> report_bug_vm "not a module contents"
+      in
       let cv1 = get_code value1 in
       let (value2, envopt) = exec [] env instrs2 [] in
       let cv2 = get_code value2 in
@@ -1109,12 +1198,12 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       exec (entry :: stack) env code dump
 
   | OpCodeFinishHeaderFile ->
-      let entry = (CodeValue(CdFinishHeaderFile), Some(vmenv_global env)) in
+      let entry = (CodeValue(CdFinishHeaderFile), Some(env)) in
         (* -- returns the environment -- *)
       exec (entry :: stack) env code dump
 
   | OpCodeFinishStruct ->
-      let entry = (CodeValue(CdFinishStruct), Some(vmenv_global env)) in
+      let entry = (CodeValue(CdFinishStruct), Some(env)) in
         (* -- returns the environment -- *)
       exec (entry :: stack) env code dump
 

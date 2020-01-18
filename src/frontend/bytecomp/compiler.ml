@@ -100,21 +100,21 @@ and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
   )
 
 
-and compile_code_pattern_branch (irpatbr : ir pattern_branch_scheme) =
+and compile_code_pattern_branch (irpatbr : ir_pattern_branch) : (instruction list) ir_pattern_branch_scheme =
   match irpatbr with
-  | PatternBranch(pat, ir1) ->
+  | IRPatternBranch(irpat, ir1) ->
       let compiled1 = compile ir1 [] in
-      PatternBranch(pat, compiled1)
+      IRPatternBranch(irpat, compiled1)
 
-  | PatternBranchWhen(pat, ir, ir1) ->
+  | IRPatternBranchWhen(irpat, ir, ir1) ->
       let compiled = compile ir [] in
       let compiled1 = compile ir1 [] in
-      PatternBranchWhen(pat, compiled, compiled1)
+      IRPatternBranchWhen(irpat, compiled, compiled1)
 
 
-and compile_code_letrec_binding (LetRecBinding(evid, irpatbr) : ir letrec_binding_scheme) =
+and compile_code_letrec_binding (IRLetRecBinding(var, irpatbr) : ir_letrec_binding) : (instruction list) ir_letrec_binding_scheme =
   let comppatbr = compile_code_pattern_branch irpatbr in
-  LetRecBinding(evid, comppatbr)
+  IRLetRecBinding(var, comppatbr)
 
 
 and compile_path pathcomplst (cycleopt : unit ir_path_component option) =
@@ -291,10 +291,23 @@ and compile (ir : ir) (cont : instruction list) =
       let instrs2 = compile ir2 [] in
       OpCodeLetRec(List.map compile_code_letrec_binding irrecbinds, instrs2) :: cont
 
-  | IRCodeLetNonRecIn(cdpattr, ir1, ir2) ->
+  | IRCodeLetNonRecIn(irpat, ir1, ir2) ->
       let instrs1 = compile ir1 [] in
       let instrs2 = compile ir2 [] in
-      OpCodeLetNonRec(cdpattr, instrs1, instrs2) :: cont
+      OpCodeLetNonRec(irpat, instrs1, instrs2) :: cont
+
+  | IRCodeFunction(optvars, irpat, ir1) ->
+      let instrs1 = compile ir1 [] in
+      OpCodeFunction(optvars, irpat, instrs1) :: cont
+
+  | IRCodeLetMutableIn(var, ir1, ir2) ->
+      let instrs1 = compile ir1 [] in
+      let instrs2 = compile ir2 [] in
+      OpCodeLetMutable(var, instrs1, instrs2) :: cont
+
+  | IRCodeOverwrite(var, ir1) ->
+      let instrs1 = compile ir1 [] in
+      OpCodeOverwrite(var, instrs1) :: cont
 
   | IRCodeModule(ir1, ir2) ->
       let instrs1 = compile ir1 [] in
