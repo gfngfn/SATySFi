@@ -1,3 +1,4 @@
+@stage: persistent
 
 module Option
 : sig

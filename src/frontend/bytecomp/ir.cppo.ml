@@ -422,8 +422,12 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTBaseConstant(bc) -> code0 env (CdBaseConstant(bc))
   | ASTEndOfList        -> code0 env CdEndOfList
   | ASTMath(mlst)       -> code0 env (CdMath(mlst))
-  | FinishHeaderFile    -> code0 env CdFinishHeaderFile
-  | FinishStruct        -> code0 env CdFinishStruct
+
+  | FinishHeaderFile ->
+      (IRCodeFinishHeaderFile, env)
+
+  | FinishStruct ->
+      (IRCodeFinishStruct, env)
 
   | InputHorz(ihlst) ->
       let (imihlst, env) = transform_1_input_horz_content env ihlst in
@@ -463,9 +467,12 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       let (ir2, env) = transform_1 env ast2 in
       (IRCodeLetRecIn(irrecbinds, ir2), env)
 
-  | LetNonRecIn(pat, ast1, ast2) ->
+  | LetNonRecIn(pattr, ast1, ast2) ->
       failwith "LetNonRecIn; remains to be implemented. (transform_1)" (*
-      code2 env (fun cv1 cv2 -> CdLetNonRecIn(pat, cv1, cv2)) ast1 ast2
+      let (cdpattr, env) = transform_1_pattern_tree env pattr in
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (IRCodeLetNonRecIn(cdpattr, ir1, ir2), env)
       *)
 
   | ContentOf(rng, evid) ->
@@ -526,7 +533,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       *)
 
   | Module(ast1, ast2) ->
-      code2 env (fun cv1 cv2 -> CdModule(cv1, cv2)) ast1 ast2
+      let (ir1, env) = transform_1 env ast1 in
+      let (ir2, env) = transform_1 env ast2 in
+      (IRCodeModule(ir1, ir2), env)
 
   | BackendMathList(astmlst) ->
       transform_1_primitive env astmlst (OpCodeMathList(List.length astmlst))

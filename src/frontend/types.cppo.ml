@@ -373,6 +373,15 @@ module BoundID =
     type t = poly_kind BoundID_.t_
   end
 
+
+type macro_parameter_type =
+  | LateMacroParameter  of mono_type
+  | EarlyMacroParameter of mono_type
+
+type macro_type =
+  | HorzMacroType of macro_parameter_type list
+  | VertMacroType of macro_parameter_type list
+
 (* ---- untyped ---- *)
 
 let pp_sep fmt () =
@@ -386,7 +395,7 @@ type stage =
 
 type pre = {
   level           : level;
-  quantifiability : quantifiability;  (* may omitted in the future *)
+  quantifiability : quantifiability;  (* maybe omitted in the future *)
   stage           : stage;
 }
 
@@ -396,6 +405,11 @@ let string_of_stage = function
   | Stage0      -> "stage 0"
   | Stage1      -> "stage 1"
 
+
+type untyped_macro_parameter =
+  | UTLateMacroParam  of (Range.t * var_name)
+  | UTEarlyMacroParam of (Range.t * var_name)
+[@@deriving show { with_path = false; } ]
 
 type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
@@ -410,6 +424,11 @@ and untyped_input_horz_element_main =
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "IC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
   | UTInputHorzContent      of untyped_abstract_tree
   | UTInputHorzEmbeddedMath of untyped_abstract_tree
+  | UTInputHorzMacro        of (Range.t * ctrlseq_name) * untyped_macro_argument list
+
+and untyped_macro_argument =
+  | UTLateMacroArg  of untyped_abstract_tree
+  | UTEarlyMacroArg of untyped_abstract_tree
 
 and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
   [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_input_vert_element_main utivmain)]
@@ -418,6 +437,7 @@ and untyped_input_vert_element_main =
   | UTInputVertEmbedded of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "BC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
   | UTInputVertContent  of untyped_abstract_tree
+  | UTInputVertMacro    of (Range.t * ctrlseq_name) * untyped_macro_argument list
 
 and 'a untyped_path_component =
   | UTPathLineTo        of 'a
@@ -499,6 +519,9 @@ and untyped_abstract_tree_main =
 (* -- multi-stage constructs -- *)
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree
+(* -- macros -- *)
+  | UTLetHorzMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
+  | UTLetVertMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
 
 and constraints = (var_name * manual_kind) list
 
@@ -588,6 +611,11 @@ type ('a, 'b) path_component_scheme =
   | PathCubicBezierTo of 'b * 'b * 'a
 [@@deriving show { with_path = false; }]
 
+type page_break_style =
+  | SingleColumn
+  | TwoColumn of length
+[@@deriving show { with_path = false; }]
+
 type base_constant =
   | BCUnit
   | BCBool     of bool
@@ -608,7 +636,7 @@ type base_constant =
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCTextModeContext of TextBackend.text_mode_context
-  | BCDocument        of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+  | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 [@@deriving show { with_path = false; }]
 
 type 'a letrec_binding_scheme =
@@ -702,6 +730,10 @@ and ir =
   | IRCodeInputVert         of (ir input_vert_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * (ir pattern_branch_scheme) list
   | IRCodeLetRecIn          of (ir letrec_binding_scheme) list * ir
+  | IRCodeLetNonRecIn       of code_pattern_tree * ir * ir
+  | IRCodeModule            of ir * ir
+  | IRCodeFinishHeaderFile
+  | IRCodeFinishStruct
 
 and ir_pattern_branch =
   | IRPatternBranch      of ir_pattern_tree * ir
@@ -796,6 +828,10 @@ and instruction =
   | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
   | OpCodePatternMatch  of Range.t * ((instruction list) pattern_branch_scheme) list
   | OpCodeLetRec        of ((instruction list) letrec_binding_scheme) list * instruction list
+  | OpCodeLetNonRec     of code_pattern_tree * instruction list * instruction list
+  | OpCodeModule        of instruction list * instruction list
+  | OpCodeFinishHeaderFile
+  | OpCodeFinishStruct
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =
@@ -822,7 +858,7 @@ and syntactic_value =
   | CodeValue    of code_value
   | CodeSymbol   of CodeSymbol.t
 
-  | EvaluatedEnvironment of environment
+  | EvaluatedEnvironment
 
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | Closure          of EvalVarID.t list * pattern_branch * environment

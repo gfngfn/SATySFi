@@ -985,7 +985,30 @@ make_vert imvblst
         ~code:{|
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagepartsf, vblst))
+|}
+    ; inst "BackendPageBreakingTwoColumn"
+        ~name:"page-break-two-column"
+        ~type_:{|
+~% (tPG @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "pagesize" ~type_:"page_size";
+          param "origin_shift" ~type_:"length";
+          param "valuecolumnhookf";
+          param "valuepagecontf";
+          param "valuepagepartsf";
+          param "vblst" ~type_:"vert";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let columnhookf = make_column_hook_func reducef valuecolumnhookf in
+let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), columnhookf, pagecontf, pagepartsf, vblst))
 |}
     ; inst "BackendVertFrame"
         ~name:"block-frame-breakable"
@@ -1223,6 +1246,23 @@ Context(HorzBox.({ ctx with
   space_natural = max 0. ratio_natural;
   space_shrink  = max 0. ratio_shrink;
   space_stretch = max 0. ratio_stretch;
+}), ctxsub)
+|}
+    ; inst "PrimitiveSetAdjacentStretchRatio"
+        ~name:"set-adjacent-stretch-ratio"
+        ~type_:{|
+~% (tFL @-> tCTX @-> tCTX)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "ratio" ~type_:"float";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+Context(HorzBox.({ ctx with
+  adjacent_stretch = max 0. ratio;
 }), ctxsub)
 |}
     ; inst "PrimitiveSetSpaceRatioBetweenScripts"
@@ -2927,5 +2967,65 @@ let tv = (let bid = BoundID.fresh UniversalKind () in PolyBound(bid)) in
         ~is_text_mode_primitive:true
         ~code:{|
 raise (report_dynamic_error msg)
+|}
+    ; inst "LiftString"
+        ~name:"lift-string"
+        ~type_:{|
+~% (tS @-> tCODE tS)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "s" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_string_to_code_value s
+|}
+    ; inst "LiftInt"
+        ~name:"lift-int"
+        ~type_:{|
+~% (tI @-> tCODE tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "n" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_integer_to_code_value n
+|}
+    ; inst "LiftFloat"
+        ~name:"lift-float"
+        ~type_:{|
+~% (tFL @-> tCODE tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "r" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_float_to_code_value r
+|}
+    ; inst "LiftLength"
+        ~name:"lift-length"
+        ~type_:{|
+~% (tLN @-> tCODE tLN)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "len" ~type_:"length";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_length_to_code_value len
 |}
     ])

@@ -387,6 +387,9 @@ and page_content_info =
 and page_parts_scheme_func = page_content_info -> page_parts_scheme
 
 
+and column_hook_func = unit -> vert_box list
+
+
 and math_char_kern_func = length -> length -> length
   (* --
      takes the actual font size and the y-position,
