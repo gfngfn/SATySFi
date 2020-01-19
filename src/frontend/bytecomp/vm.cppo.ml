@@ -1135,16 +1135,24 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       end
 
   | OpCodeLetRec(comprecbinds, instrs2) ->
-      let cdrecbinds =
-        comprecbinds |> List.map (function IRLetRecBinding(var, comppatbr) ->
+      let (pairacc, env) =
+        comprecbinds |> List.fold_left (fun (pairacc, env) comprecbind ->
+          let IRLetRecBinding(var, _) = comprecbind in
           let (env, symb) = generate_symbol_and_add_to_environment env var in
+          (Alist.extend pairacc (symb, comprecbind), env)
+        ) (Alist.empty, env)
+      in
+      let (cdrecbindacc, env) =
+        pairacc |> Alist.to_list |> List.fold_left (fun (cdrecbindacc, env) (symb, comprecbind) ->
+          let IRLetRecBinding(_, comppatbr) = comprecbind in
           let cdpatbr = exec_code_pattern_branch env comppatbr in
-          CdLetRecBinding(symb, cdpatbr)
-        )
+          let cdrecbind = CdLetRecBinding(symb, cdpatbr) in
+          (Alist.extend cdrecbindacc cdrecbind, env)
+        ) (Alist.empty, env)
       in
       let (value2, envopt) = exec [] env instrs2 [] in
       let cv2 = get_code value2 in
-      let entry = (CodeValue(CdLetRecIn(cdrecbinds, cv2)), envopt) in
+      let entry = (CodeValue(CdLetRecIn(Alist.to_list cdrecbindacc, cv2)), envopt) in
         (* -- returns the environment -- *)
       exec (entry :: stack) env code dump
 
@@ -1225,8 +1233,11 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
             let entry = (CodeValue(CdContentOf(rng, symb)), None) in
             exec (entry :: stack) env code dump
 
-        | _ ->
-            report_bug_vm "not a code symbol"
+        | (v, _) :: _ ->
+            report_bug_vm_value "not a code symbol" v
+
+        | [] ->
+            report_bug_vm "stack underflow (OpConvertSymbolToCode)"
       end
 
 #include "__vm.gen.ml"

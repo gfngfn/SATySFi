@@ -22,7 +22,7 @@ type frame = {
 }
 
 
-let map_with_env f env lst =
+let map_with_env (type a) (type b) (f : frame -> a -> b * frame) (env : frame) (lst : a list) : b list * frame =
   let rec iter env lst acc =
     match lst with
     | [] ->
@@ -458,14 +458,19 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       code2 env (fun cv1 cv2 -> CdUpdateField(cv1, fldnm, cv2)) ast1 ast2
 
   | LetRecIn(recbinds, ast2) ->
-      let (irrecbinds, env) =
-        map_with_env (fun env recbind ->
+      let (pairacc, env) =
+        recbinds |> List.fold_left (fun (pairacc, env) recbind ->
           match recbind with
-          | LetRecBinding(evid, patbr) ->
+          | LetRecBinding(evid, _) ->
               let (var, env) = add_to_environment env evid in
-              let (irpatbrs, env) = transform_1_pattern_branch env patbr in
-              (IRLetRecBinding(var, irpatbrs), env)
-        ) env recbinds
+              (Alist.extend pairacc (var, recbind), env)
+        ) (Alist.empty, env)
+      in
+      let (irrecbinds, env) =
+        pairacc |> Alist.to_list |> map_with_env (fun env (var, LetRecBinding(_, patbr)) ->
+          let (irpatbrs, env) = transform_1_pattern_branch env patbr in
+          (IRLetRecBinding(var, irpatbrs), env)
+        ) env
       in
       let (ir2, env) = transform_1 env ast2 in
       (IRCodeLetRecIn(irrecbinds, ir2), env)
@@ -480,7 +485,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       begin
         match find_in_environment env evid with
         | Some(var) -> (IRSymbolOf(var), env)
-        | None      -> assert false
+        | None      -> failwith (Format.asprintf "%a not found" EvalVarID.pp evid)
       end
 
   | Persistent(rng, evid) ->
