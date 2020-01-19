@@ -94,7 +94,8 @@ let rec is_nonexpansive_expression e =
   | ASTEndOfList
   | ASTMath(_)
   | Function(_)
-  | ContentOf(_) ->
+  | ContentOf(_)
+  | Persistent(_) ->
       true
 
   | NonValueConstructor(constrnm, e1) -> iter e1
@@ -847,7 +848,7 @@ let rec typecheck
   | UTOverwrite(varrng, varnm, utastN) ->
       begin
         match typecheck_iter tyenv (varrng, UTContentOf([], varnm)) with
-        | (ContentOf(_, evid), tyvar) ->
+        | ((ContentOf(_, evid) | Persistent(_, evid)), tyvar) ->
             let (eN, tyN) = typecheck_iter tyenv utastN in
             unify tyvar (get_range utastN, RefType(tyN));
               (* --
@@ -937,6 +938,7 @@ let rec typecheck
   | UTModule(mdlrng, mdlnm, sigopt, utastM, utastA) ->
       let tyenvinner = Typeenv.enter_new_module tyenv mdlnm in
       let (eM, _) = typecheck_iter tyenvinner utastM in
+        (* -- the final type environment in the module has been written to `final_tyenv` -- *)
       let tyenvmid = Typeenv.sigcheck mdlrng pre (!final_tyenv) tyenv sigopt in
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
