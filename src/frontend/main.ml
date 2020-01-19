@@ -1080,7 +1080,10 @@ let () =
     begin
       match OptionState.get_input_kind () with
       | OptionState.SATySFi ->
-          register_document_file dg abspath_in
+          if OptionState.type_check_only () then
+            register_library_file dg abspath_in
+          else
+            register_document_file dg abspath_in
 
       | OptionState.Markdown(setting) ->
           register_markdown_file dg setting abspath_in
