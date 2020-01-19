@@ -40,7 +40,7 @@ end = struct
   let fresh tynm = begin incr current_id; (!current_id, tynm) end
   let extract_name (_, tynm) = tynm
   let equal (n1, _) (n2, _) = (n1 = n2)
-  let show_direct (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
+  let show_direct (n, tynm) = tynm ^ "(" ^ (string_of_int n) ^ ")"
 end
 
 
