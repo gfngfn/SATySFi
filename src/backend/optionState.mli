@@ -46,3 +46,6 @@ val is_text_mode : unit -> bool
 
 val set_extra_config_paths : string list -> unit
 val get_extra_config_paths : unit -> string list option
+
+val set_no_default_config_paths : unit -> unit
+val get_no_default_config_paths : unit -> bool
