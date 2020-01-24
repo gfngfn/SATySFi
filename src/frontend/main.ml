@@ -433,7 +433,8 @@ let error_log_environment suspended =
   | NoLibraryRootDesignation ->
       report_error Interface [
         NormalLine("cannot determine where the SATySFi library root is;");
-        NormalLine("set appropriate environment variables.");
+        NormalLine("set appropriate environment variables");
+        NormalLine("or specify configuration search paths with -C option.");
       ]
 
   | NoInputFileDesignation ->
