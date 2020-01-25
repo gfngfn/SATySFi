@@ -204,8 +204,14 @@ rule progexpr stack = parse
       let buffer = Buffer.create 256 in
       literal false quote_range quote_length buffer lexbuf
     }
+  | ("\\" (identifier | constructor) "@") {
+      let tok = Lexing.lexeme lexbuf in HORZMACRO(get_pos lexbuf, tok)
+    }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
+    }
+  | ("+" (identifier | constructor) "@") {
+      let tok = Lexing.lexeme lexbuf in VERTMACRO(get_pos lexbuf, tok)
     }
   | ("+" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in VERTCMD(get_pos lexbuf, tok)
@@ -329,6 +335,10 @@ and vertexpr stack = parse
         Stack.push ActiveState stack;
         VARINVERT(get_pos lexbuf, mdlnmlst, csnm)
     }
+  | ("+" (identifier | constructor) "@") {
+      Stack.push ActiveState stack;
+      VERTMACRO(get_pos lexbuf, Lexing.lexeme lexbuf)
+    }
   | ("+" (identifier | constructor)) {
       Stack.push ActiveState stack;
       VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf)
@@ -417,6 +427,12 @@ and horzexpr stack = parse
       let rng = get_pos lexbuf in
       Stack.push ActiveState stack;
       HORZCMD(rng, tok)
+    }
+  | ("\\" (identifier | constructor) "@") {
+      let tok = Lexing.lexeme lexbuf in
+      let rng = get_pos lexbuf in
+      Stack.push ActiveState stack;
+      HORZMACRO(rng, tok)
     }
   | ("\\" (constructor ".")* (identifier | constructor)) {
       let tokstrpure = Lexing.lexeme lexbuf in
@@ -530,6 +546,7 @@ and active stack = parse
   | break { increment_line lexbuf; active stack lexbuf }
   | "?:" { OPTIONAL(get_pos lexbuf) }
   | "?*" { OMISSION(get_pos lexbuf) }
+  | "~" { EXACT_TILDE(get_pos lexbuf) }
   | "(" {
       Stack.push ProgramState stack;
       LPAREN(get_pos lexbuf)

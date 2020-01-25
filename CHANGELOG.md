@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.4] - 2020-01-25
 ### Fixed
 - Rename math command `\centerdot` to `\cdot` ([PR\#114](https://github.com/gfngfn/SATySFi/pull/114) by `nekketsuuu`).
 - Does not fail when a script value evaluates to `OtherScript` ([PR\#121](https://github.com/gfngfn/SATySFi/pull/121) by `na4zagin3`).
@@ -37,6 +37,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Provides new options `--debug-show-block-bbox` and `--debug-show-block-space`.
 - Allows `[]` (i.e. the empty list) or `(| |)` (i.e. the empty record) as an expression argument of commands.
 - Add new primitive `abort-with-message` (which is equivalent to OCaml’s `failwith`).
+- Add new primitives `lift-int`, `lift-string`, etc. for lifting basic values in two-stage computation (which may be, however, replaced with a more general single primitive operation based on *cross-stage persistence*).
+- Add the MacroML-like notion of macro based on two-stage programming.
 
 ## Deprecated
 
@@ -64,6 +66,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Initial version of SATySFi
 
 
-  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.3...HEAD
+  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.4...HEAD
+  [0.0.4]: https://github.com/gfngfn/SATySFi/compare/v0.0.3...v0.0.4
   [0.0.3]: https://github.com/gfngfn/SATySFi/compare/v0.0.2...v0.0.3
   [0.0.2]: https://github.com/gfngfn/SATySFi/compare/v0.0.1...v0.0.2

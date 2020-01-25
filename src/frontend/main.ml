@@ -289,30 +289,40 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
 
 let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : environment =
   Logging.begin_to_eval_file abspath;
-  let value =
+  let (value, _) as ret =
     if OptionState.bytecomp_mode () then
       Bytecomp.compile_and_exec_0 env ast
     else
       Evaluator.interpret_0 env ast
   in
-  match value with
-  | EvaluatedEnvironment(envnew) -> envnew
-  | _                            -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
+  match ret with
+  | (EvaluatedEnvironment, Some(envnew)) -> envnew
+  | _                                    -> EvalUtil.report_bug_value "not an EvaluatedEnvironment(...)" value
 
 
-let preprocess_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value =
+let preprocess_file ?(is_document : bool = false) (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value * environment =
   Logging.begin_to_preprocess_file abspath;
-  if OptionState.bytecomp_mode () then
-    Bytecomp.compile_and_exec_1 env ast
-  else
-    Evaluator.interpret_1 env ast
+  let (cd, envopt) =
+    if OptionState.bytecomp_mode () then
+      Bytecomp.compile_and_exec_1 env ast
+    else
+      Evaluator.interpret_1 env ast
+  in
+    if is_document then
+      match envopt with
+      | None    -> (cd, env)
+      | Some(_) -> EvalUtil.report_bug_vm "environment returned for document"
+    else
+      match envopt with
+      | Some(envnew) -> (cd, envnew)
+      | None         -> EvalUtil.report_bug_vm "environment not returned"
 
 
 let eval_main i env_freezed ast =
   Logging.start_evaluation i;
   reset ();
   let env = unfreeze_environment env_freezed in
-  let valuedoc =
+  let (valuedoc, _) =
     if OptionState.bytecomp_mode () then
       Bytecomp.compile_and_exec_0 env ast
     else
@@ -349,10 +359,19 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
     let rec aux i =
       let valuedoc = eval_main i env_freezed ast in
       match valuedoc with
-      | BaseConstant(BCDocument(pagesize, pagecontf, pagepartsf, imvblst)) ->
+      | BaseConstant(BCDocument(pagesize, pbstyle, columnhookf, pagecontf, pagepartsf, imvblst)) ->
           Logging.start_page_break ();
           State.start_page_break ();
-          let pdf = PageBreak.main abspath_out pagesize pagecontf pagepartsf imvblst in
+          let pdf =
+            match pbstyle with
+            | SingleColumn ->
+                PageBreak.main abspath_out pagesize
+                  columnhookf pagecontf pagepartsf imvblst
+
+            | TwoColumn(origin_shift) ->
+                PageBreak.main_two_column abspath_out pagesize
+                  origin_shift columnhookf pagecontf pagepartsf imvblst
+          in
           begin
             match CrossRef.needs_another_trial abspath_dump with
             | CrossRef.NeedsAnotherTrial ->
@@ -381,16 +400,16 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abst
   let rec preprocess (codeacc : (abs_path * code_value) Alist.t) (env : environment) libs =
     match libs with
     | [] ->
-        let codedoc = preprocess_file env abspath_in astdoc in
-        (env, Alist.to_list codeacc, codedoc)
+        let (codedoc, envnew) = preprocess_file ~is_document:true env abspath_in astdoc in
+        (envnew, Alist.to_list codeacc, codedoc)
 
     | ((Stage0 | Persistent0), abspath, astlib0) :: tail ->
         let envnew = eval_library_file env abspath astlib0 in
         preprocess codeacc envnew tail
 
     | (Stage1, abspath, astlib1) :: tail ->
-        let code = preprocess_file env abspath astlib1 in
-        preprocess (Alist.extend codeacc (abspath, code)) env tail
+        let (code, envnew) = preprocess_file env abspath astlib1 in
+        preprocess (Alist.extend codeacc (abspath, code)) envnew tail
   in
     (* --
        each evaluation called in `preprocess` is run by the naive interpreter
@@ -680,6 +699,43 @@ let error_log_environment suspended =
         NormalLineOption(make_candidates_message candidates);
       ]
 
+  | Typechecker.UndefinedHorzMacro(rng, csnm) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("undefined inline macro '" ^ csnm ^ "'.");
+      ]
+
+  | Typechecker.UndefinedVertMacro(rng, csnm) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("undefined block macro '" ^ csnm ^ "'.");
+      ]
+
+  | Typechecker.InvalidNumberOfMacroArguments(rng, tyenv, macparamtys) ->
+      report_error Typechecker (List.append [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("invalid number of macro arguments; types expected on arguments are:");
+      ] (macparamtys |> List.map (function
+        | LateMacroParameter(ty)  -> DisplayLine("* " ^ (Display.string_of_mono_type tyenv ty))
+        | EarlyMacroParameter(ty) -> DisplayLine("* ~" ^ (Display.string_of_mono_type tyenv ty))
+      )))
+
+  | Typechecker.LateMacroArgumentExpected(rng, tyenv, ty) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("an early macro argument is given, but a late argument of type");
+        DisplayLine(Display.string_of_mono_type tyenv ty);
+        NormalLine("is expected.");
+      ]
+
+  | Typechecker.EarlyMacroArgumentExpected(rng, tyenv, ty) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("a late macro argument is given, but an early argument of type");
+        DisplayLine(Display.string_of_mono_type tyenv ty);
+        NormalLine("is expected.");
+      ]
+
   | Typechecker.TooManyArgument(rngcmdapp, tyenv, tycmd) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rngcmdapp) ^ ":");
@@ -891,7 +947,7 @@ let error_log_environment suspended =
 
 let arg_version () =
   print_string (
-    "  SATySFi version 0.0.3\n"
+    "  SATySFi version 0.0.4\n"
 (*
       ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"
@@ -1024,7 +1080,10 @@ let () =
     begin
       match OptionState.get_input_kind () with
       | OptionState.SATySFi ->
-          register_document_file dg abspath_in
+          if OptionState.type_check_only () then
+            register_library_file dg abspath_in
+          else
+            register_document_file dg abspath_in
 
       | OptionState.Markdown(setting) ->
           register_markdown_file dg setting abspath_in

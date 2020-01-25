@@ -40,7 +40,7 @@ end = struct
   let fresh tynm = begin incr current_id; (!current_id, tynm) end
   let extract_name (_, tynm) = tynm
   let equal (n1, _) (n2, _) = (n1 = n2)
-  let show_direct (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
+  let show_direct (n, tynm) = tynm ^ "(" ^ (string_of_int n) ^ ")"
 end
 
 
@@ -373,6 +373,15 @@ module BoundID =
     type t = poly_kind BoundID_.t_
   end
 
+
+type macro_parameter_type =
+  | LateMacroParameter  of mono_type
+  | EarlyMacroParameter of mono_type
+
+type macro_type =
+  | HorzMacroType of macro_parameter_type list
+  | VertMacroType of macro_parameter_type list
+
 (* ---- untyped ---- *)
 
 let pp_sep fmt () =
@@ -386,7 +395,7 @@ type stage =
 
 type pre = {
   level           : level;
-  quantifiability : quantifiability;  (* may omitted in the future *)
+  quantifiability : quantifiability;  (* maybe omitted in the future *)
   stage           : stage;
 }
 
@@ -396,6 +405,11 @@ let string_of_stage = function
   | Stage0      -> "stage 0"
   | Stage1      -> "stage 1"
 
+
+type untyped_macro_parameter =
+  | UTLateMacroParam  of (Range.t * var_name)
+  | UTEarlyMacroParam of (Range.t * var_name)
+[@@deriving show { with_path = false; } ]
 
 type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
@@ -410,6 +424,11 @@ and untyped_input_horz_element_main =
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "IC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
   | UTInputHorzContent      of untyped_abstract_tree
   | UTInputHorzEmbeddedMath of untyped_abstract_tree
+  | UTInputHorzMacro        of (Range.t * ctrlseq_name) * untyped_macro_argument list
+
+and untyped_macro_argument =
+  | UTLateMacroArg  of untyped_abstract_tree
+  | UTEarlyMacroArg of untyped_abstract_tree
 
 and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
   [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_input_vert_element_main utivmain)]
@@ -418,6 +437,7 @@ and untyped_input_vert_element_main =
   | UTInputVertEmbedded of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "BC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
   | UTInputVertContent  of untyped_abstract_tree
+  | UTInputVertMacro    of (Range.t * ctrlseq_name) * untyped_macro_argument list
 
 and 'a untyped_path_component =
   | UTPathLineTo        of 'a
@@ -499,6 +519,9 @@ and untyped_abstract_tree_main =
 (* -- multi-stage constructs -- *)
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree
+(* -- macros -- *)
+  | UTLetHorzMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
+  | UTLetVertMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
 
 and constraints = (var_name * manual_kind) list
 
@@ -588,6 +611,11 @@ type ('a, 'b) path_component_scheme =
   | PathCubicBezierTo of 'b * 'b * 'a
 [@@deriving show { with_path = false; }]
 
+type page_break_style =
+  | SingleColumn
+  | TwoColumn of length
+[@@deriving show { with_path = false; }]
+
 type base_constant =
   | BCUnit
   | BCBool     of bool
@@ -608,7 +636,7 @@ type base_constant =
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCTextModeContext of TextBackend.text_mode_context
-  | BCDocument        of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+  | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 [@@deriving show { with_path = false; }]
 
 type 'a letrec_binding_scheme =
@@ -678,6 +706,8 @@ and ir =
   | IRLetRecIn              of (varloc * ir) list * ir
   | IRLetNonRecIn           of ir * ir_pattern_tree * ir
   | IRContentOf             of varloc
+  | IRPersistent            of varloc
+  | IRSymbolOf              of varloc
   | IRIfThenElse            of ir * ir * ir
   | IRFunction              of int * varloc list * ir_pattern_tree list * ir
   | IRApply                 of int * ir * ir list
@@ -700,12 +730,26 @@ and ir =
       [@printer (fun fmt _ -> Format.fprintf fmt "IRCodeRecord(...)")]
   | IRCodeInputHorz         of (ir input_horz_element_scheme) list
   | IRCodeInputVert         of (ir input_vert_element_scheme) list
-  | IRCodePatternMatch      of Range.t * ir * (ir pattern_branch_scheme) list
-  | IRCodeLetRecIn          of (ir letrec_binding_scheme) list * ir
+  | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
+  | IRCodeLetRecIn          of ir_letrec_binding list * ir
+  | IRCodeLetNonRecIn       of ir_pattern_tree * ir * ir
+  | IRCodeFunction          of varloc list * ir_pattern_tree * ir
+  | IRCodeLetMutableIn      of varloc * ir * ir
+  | IRCodeOverwrite         of varloc * ir
+  | IRCodeModule            of ir * ir
+  | IRCodeFinishHeaderFile
+  | IRCodeFinishStruct
 
-and ir_pattern_branch =
-  | IRPatternBranch      of ir_pattern_tree * ir
-  | IRPatternBranchWhen  of ir_pattern_tree * ir * ir
+and 'a ir_letrec_binding_scheme =
+  | IRLetRecBinding of varloc * 'a ir_pattern_branch_scheme
+
+and ir_letrec_binding = ir ir_letrec_binding_scheme
+
+and 'a ir_pattern_branch_scheme =
+  | IRPatternBranch      of ir_pattern_tree * 'a
+  | IRPatternBranchWhen  of ir_pattern_tree * 'a * 'a
+
+and ir_pattern_branch = ir ir_pattern_branch_scheme
 
 and ir_pattern_tree =
   | IRPUnitConstant
@@ -794,8 +838,16 @@ and instruction =
   | OpCodeMakeTuple of int
   | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
   | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
-  | OpCodePatternMatch  of Range.t * ((instruction list) pattern_branch_scheme) list
-  | OpCodeLetRec        of ((instruction list) letrec_binding_scheme) list * instruction list
+  | OpCodePatternMatch  of Range.t * ((instruction list) ir_pattern_branch_scheme) list
+  | OpCodeLetRec        of ((instruction list) ir_letrec_binding_scheme) list * instruction list
+  | OpCodeLetNonRec     of ir_pattern_tree * instruction list * instruction list
+  | OpCodeFunction      of varloc list * ir_pattern_tree * instruction list
+  | OpCodeLetMutable    of varloc * instruction list * instruction list
+  | OpCodeOverwrite     of instruction list
+  | OpCodeModule        of instruction list * instruction list
+  | OpCodeFinishHeaderFile
+  | OpCodeFinishStruct
+  | OpConvertSymbolToCode
 #include "__insttype.gen.ml"
 
 and intermediate_input_horz_element =
@@ -820,8 +872,9 @@ and syntactic_value =
   | MathValue    of math list
   | Context      of input_context
   | CodeValue    of code_value
+  | CodeSymbol   of CodeSymbol.t
 
-  | EvaluatedEnvironment of environment
+  | EvaluatedEnvironment
 
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | Closure          of EvalVarID.t list * pattern_branch * environment
@@ -855,6 +908,7 @@ and abstract_tree =
   | LetRecIn              of letrec_binding list * abstract_tree
   | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
   | ContentOf             of Range.t * EvalVarID.t
+  | Persistent            of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
   | Function              of EvalVarID.t list * pattern_branch
   | Apply                 of abstract_tree * abstract_tree
@@ -969,10 +1023,11 @@ and code_value =
   | CdFinishStruct
   | CdInputHorz     of code_input_horz_element list
   | CdInputVert     of code_input_vert_element list
-  | CdContentOf     of Range.t * EvalVarID.t
+  | CdContentOf     of Range.t * CodeSymbol.t
+  | CdPersistent    of Range.t * EvalVarID.t
   | CdLetRecIn      of code_letrec_binding list * code_value
-  | CdLetNonRecIn   of pattern_tree * code_value * code_value
-  | CdFunction      of EvalVarID.t list * code_pattern_branch
+  | CdLetNonRecIn   of code_pattern_tree * code_value * code_value
+  | CdFunction      of CodeSymbol.t list * code_pattern_branch
   | CdApply         of code_value * code_value
   | CdApplyOptional of code_value * code_value
   | CdApplyOmission of code_value
@@ -981,9 +1036,9 @@ and code_value =
       [@printer (fun fmt _ -> Format.fprintf fmt "CdRecord(...)")]
   | CdAccessField   of code_value * field_name
   | CdUpdateField   of code_value * field_name * code_value
-  | CdLetMutableIn  of EvalVarID.t * code_value * code_value
+  | CdLetMutableIn  of CodeSymbol.t * code_value * code_value
   | CdSequential    of code_value * code_value
-  | CdOverwrite     of EvalVarID.t * code_value
+  | CdOverwrite     of CodeSymbol.t * code_value
   | CdWhileDo       of code_value * code_value
   | CdDereference   of code_value
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
@@ -1001,11 +1056,24 @@ and code_input_vert_element = code_value input_vert_element_scheme
 and 'a code_path_component = ('a, code_value) path_component_scheme
 
 and code_letrec_binding =
-  | CdLetRecBinding of EvalVarID.t * code_pattern_branch
+  | CdLetRecBinding of CodeSymbol.t * code_pattern_branch
 
 and code_pattern_branch =
-  | CdPatternBranch     of pattern_tree * code_value
-  | CdPatternBranchWhen of pattern_tree * code_value * code_value
+  | CdPatternBranch     of code_pattern_tree * code_value
+  | CdPatternBranchWhen of code_pattern_tree * code_value * code_value
+
+and code_pattern_tree =
+  | CdPUnitConstant
+  | CdPBooleanConstant      of bool
+  | CdPIntegerConstant      of int
+  | CdPStringConstant       of string
+  | CdPListCons             of code_pattern_tree * code_pattern_tree
+  | CdPEndOfList
+  | CdPTuple                of code_pattern_tree list
+  | CdPWildCard
+  | CdPVariable             of CodeSymbol.t
+  | CdPAsVariable           of CodeSymbol.t * code_pattern_tree
+  | CdPConstructor          of constructor_name * code_pattern_tree
 [@@deriving show { with_path = false; }]
 
 
@@ -1412,10 +1480,11 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdFinishStruct                       -> FinishStruct
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
-    | CdContentOf(rng, evid)               -> ContentOf(rng, evid)
+    | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
+    | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map aux_letrec_binding cdrecbinds, aux code1)
-    | CdLetNonRecIn(pat, code1, code2)     -> LetNonRecIn(pat, aux code1, aux code2)
-    | CdFunction(evids, cdpatbr)           -> Function(evids, aux_pattern_branch cdpatbr)
+    | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(aux_pattern cdpat, aux code1, aux code2)
+    | CdFunction(symbs, cdpatbr)           -> Function(List.map CodeSymbol.unlift symbs, aux_pattern_branch cdpatbr)
     | CdApply(code1, code2)                -> Apply(aux code1, aux code2)
     | CdApplyOptional(code1, code2)        -> ApplyOptional(aux code1, aux code2)
     | CdApplyOmission(code1)               -> ApplyOmission(aux code1)
@@ -1423,9 +1492,9 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdRecord(cdasc)                      -> Record(Assoc.map_value aux cdasc)
     | CdAccessField(code1, fldnm)          -> AccessField(aux code1, fldnm)
     | CdUpdateField(code1, fldnm, code2)   -> UpdateField(aux code1, fldnm, aux code2)
-    | CdLetMutableIn(evid, code1, code2)   -> LetMutableIn(evid, aux code1, aux code2)
+    | CdLetMutableIn(symb, code1, code2)   -> LetMutableIn(CodeSymbol.unlift symb, aux code1, aux code2)
     | CdSequential(code1, code2)           -> Sequential(aux code1, aux code2)
-    | CdOverwrite(evid, code1)             -> Overwrite(evid, aux code1)
+    | CdOverwrite(symb, code1)             -> Overwrite(CodeSymbol.unlift symb, aux code1)
     | CdDereference(code1)                 -> Dereference(aux code1)
     | CdWhileDo(code1, code2)              -> WhileDo(aux code1, aux code2)
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
@@ -1436,12 +1505,25 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdModule(code1, code2)               -> Module(aux code1, aux code2)
 #include "__unliftcode.gen.ml"
 
-  and aux_letrec_binding (CdLetRecBinding(evid, cdpatbr)) =
-    LetRecBinding(evid, aux_pattern_branch cdpatbr)
+  and aux_letrec_binding (CdLetRecBinding(symb, cdpatbr)) =
+    LetRecBinding(CodeSymbol.unlift symb, aux_pattern_branch cdpatbr)
 
   and aux_pattern_branch = function
-    | CdPatternBranch(pat, code)            -> PatternBranch(pat, aux code)
-    | CdPatternBranchWhen(pat, code, codeB) -> PatternBranchWhen(pat, aux code, aux codeB)
+    | CdPatternBranch(cdpat, code)            -> PatternBranch(aux_pattern cdpat, aux code)
+    | CdPatternBranchWhen(cdpat, code, codeB) -> PatternBranchWhen(aux_pattern cdpat, aux code, aux codeB)
+
+  and aux_pattern = function
+    | CdPUnitConstant             -> PUnitConstant
+    | CdPBooleanConstant(b)       -> PBooleanConstant(b)
+    | CdPIntegerConstant(n)       -> PIntegerConstant(n)
+    | CdPStringConstant(s)        -> PStringConstant(s)
+    | CdPListCons(cdpat1, cdpat2) -> PListCons(aux_pattern cdpat1, aux_pattern cdpat2)
+    | CdPEndOfList                -> PEndOfList
+    | CdPTuple(cdpats)            -> PTuple(List.map aux_pattern cdpats)
+    | CdPWildCard                 -> PWildCard
+    | CdPVariable(symb)           -> PVariable(CodeSymbol.unlift symb)
+    | CdPAsVariable(symb, cdpat)  -> PAsVariable(CodeSymbol.unlift symb, aux_pattern cdpat)
+    | CdPConstructor(ctor, cdpat) -> PConstructor(ctor, aux_pattern cdpat)
 
   and aux_path cdpath =
     List.map (map_path_component aux aux) cdpath

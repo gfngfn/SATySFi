@@ -76,8 +76,10 @@ end = struct
 
   let font-latin-sans   = (`lmsans`, font-ratio-latin, 0.)
   let font-latin-mono   = (`lmmono`, font-ratio-latin, 0.)
-  let font-cjk-normal   = (`HiraKakuProN-W2`, font-ratio-cjk, 0.)
-  let font-cjk-bold     = (`HiraKakuProN-W5`, font-ratio-cjk, 0.)
+%  let font-cjk-normal   = (`HiraKakuProN-W2`, font-ratio-cjk, 0.)
+%  let font-cjk-bold     = (`HiraKakuProN-W5`, font-ratio-cjk, 0.)
+  let font-cjk-normal   = (`ipaexm`, font-ratio-cjk, 0.)
+  let font-cjk-bold     = (`ipaexg`, font-ratio-cjk, 0.)
 
 
   let set-latin-font font ctx =
