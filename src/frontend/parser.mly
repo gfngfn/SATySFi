@@ -407,7 +407,7 @@
 %token <Range.t> MODULE STRUCT END DIRECT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
-%token <Range.t> LETHORZ LETVERT LETMATH LETHORZMACRO LETVERTMACRO
+%token <Range.t> LETHORZ LETVERT LETMATH
 %token <Range.t> IF THEN ELSE
 %token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
 %token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
@@ -510,11 +510,11 @@ nxtoplevel:
       let (rng, mdlnm) = mdlnmtok in
       make_standard (Tok top) (Ranged subseq) (UTOpenIn(rng, mdlnm, subseq))
     }
-  | top=LETHORZMACRO; dec=nxhorzmacrodec; utast2=nxtopsubseq {
+  | top=LETHORZ; dec=nxhorzmacrodec; utast2=nxtopsubseq {
       let (rngcs, csnm, macparams, utast1) = dec in
       make_standard (Tok top) (Ranged utast2) (UTLetHorzMacroIn(rngcs, csnm, macparams, utast1, utast2))
     }
-  | top=LETVERTMACRO; dec=nxvertmacrodec; utast2=nxtopsubseq {
+  | top=LETVERT; dec=nxvertmacrodec; utast2=nxtopsubseq {
       let (rngcs, csnm, macparams, utast1) = dec in
       make_standard (Tok top) (Ranged utast2) (UTLetVertMacroIn(rngcs, csnm, macparams, utast1, utast2))
     }
@@ -607,27 +607,19 @@ nxmathdec:
     }
 ;
 nxhorzmacrodec:
-  | hmacro=HORZMACRO; macparams=macroparams; DEFEQ; utast=nxlet {
+  | hmacro=HORZMACRO; macparams=list(macroparam); DEFEQ; utast=nxlet {
       let (rngcs, csnm) = hmacro in
       (rngcs, csnm, macparams, utast)
     }
 ;
 nxvertmacrodec:
-  | vmacro=VERTMACRO; macparams=macroparams; DEFEQ; utast=nxlet {
+  | vmacro=VERTMACRO; macparams=list(macroparam); DEFEQ; utast=nxlet {
       let (rngcs, csnm) = vmacro in
       (rngcs, csnm, macparams, utast)
     }
 ;
-macroparams:
-  | LPAREN; macparam=macroparam; macparams=list(commamacroparam); RPAREN {
-      macparam :: macparams
-    }
-;
-commamacroparam:
-  | COMMA; macparam=macroparam { macparam }
-;
 macroparam:
-  | var=VAR { UTLateMacroParam(var) }
+  | var=VAR              { UTLateMacroParam(var) }
   | EXACT_TILDE; var=VAR { UTEarlyMacroParam(var) }
 ;
 nonrecdecargpart:
@@ -1210,18 +1202,12 @@ ihchar:
   | rng=BREAK { (rng, "\n") }
 ;
 macroargs:
-  | LPAREN; macarg=macroarg; macargs=list(commamacroarg); cls=RPAREN; ENDACTIVE; {
-      (cls, macarg :: macargs)
-    }
+  | macnargs=list(macronarg); cls=ENDACTIVE { (cls, macnargs) }
 ;
-commamacroarg:
-  | COMMA; macarg=macroarg { macarg }
+macronarg:
+  | LPAREN; expr=nxbot; RPAREN              { UTLateMacroArg(expr) }
+  | EXACT_TILDE; LPAREN; expr=nxbot; RPAREN { UTEarlyMacroArg(expr) }
 ;
-macroarg:
-  | expr=nxbot { UTLateMacroArg(expr) }
-  | EXACT_TILDE; expr=nxbot { UTEarlyMacroArg(expr) }
-;
-
 narg:
   | opn=LPAREN; utast=nxlet; cls=RPAREN           { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
   | opn=LPAREN; cls=RPAREN                        { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant) }

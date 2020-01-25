@@ -298,8 +298,6 @@ rule progexpr stack = parse
           | "math-cmd"          -> MATHCMDTYPE(pos)
           | "command"           -> COMMAND(pos)
           | "open"              -> OPEN(pos)
-          | "let-inline-macro"  -> LETHORZMACRO(pos)
-          | "let-block-macro"   -> LETVERTMACRO(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
@@ -548,6 +546,7 @@ and active stack = parse
   | break { increment_line lexbuf; active stack lexbuf }
   | "?:" { OPTIONAL(get_pos lexbuf) }
   | "?*" { OMISSION(get_pos lexbuf) }
+  | "~" { EXACT_TILDE(get_pos lexbuf) }
   | "(" {
       Stack.push ProgramState stack;
       LPAREN(get_pos lexbuf)
