@@ -301,6 +301,21 @@ let rec lambda7 astf env =
                   | _ -> failwith "internal error")
 
 
+let rec lambda8 astf env =
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda8-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda8-2)") in
+  let evid3 = EvalVarID.fresh (dr, "(dummy:lambda8-3)") in
+  let evid4 = EvalVarID.fresh (dr, "(dummy:lambda8-4)") in
+  let evid5 = EvalVarID.fresh (dr, "(dummy:lambda8-5)") in
+  let evid6 = EvalVarID.fresh (dr, "(dummy:lambda8-6)") in
+  let evid7 = EvalVarID.fresh (dr, "(dummy:lambda8-7)") in
+  let evid8 = EvalVarID.fresh (dr, "(dummy:lambda8-8)") in
+    lamenv env evid1 8 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (lam evid6 (lam evid7 (lam evid8 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5) (!- evid6) (!- evid7) (!- evid8)))))))))
+      (fun lst -> match lst with
+                  | [a1;a2;a3;a4;a5;a6;a7;a8] -> astf a1 a2 a3 a4 a5 a6 a7 a8
+                  | _ -> failwith "internal error")
+
+
 
 let pdfpt = Length.of_pdf_point
 

@@ -2989,6 +2989,29 @@ let tv = (let bid = BoundID.fresh UniversalKind () in PolyBound(bid)) in
         ~code:{|
 raise (report_dynamic_error msg)
 |}
+    ; inst "BackendRegisterTextAnnotation"
+        ~name:"register-text-annotation"
+        ~type_:{|
+~% (tS @-> tB @-> tS @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "contents" ~type_:"string";
+          param "is_open" ~type_:"bool";
+          param "kind" ~type_:"string";
+          param "pt" ~type_:"point";
+          param "wid" ~type_:"length";
+          param "hgt" ~type_:"length";
+          param "dpt" ~type_:"length";
+          param "vborderopt";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let borderopt = get_option (get_pair get_length get_color) vborderopt in
+Annotation.register (Annotation.(Text{ contents; is_open; kind; })) (pt, wid, hgt, dpt) borderopt;
+const_unit
+|}
     ; inst "LiftString"
         ~name:"lift-string"
         ~type_:{|

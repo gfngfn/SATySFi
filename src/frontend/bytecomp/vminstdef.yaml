@@ -2653,7 +2653,7 @@ code: |
 
 ---
 inst: BackendRegisterOutline
-is-pdf-mode-primitive : yes
+is-pdf-mode-primitive: yes
 name: "register-outline"
 type: |
   ~% ((tL(tPROD [tI; tS; tS; tB])) @-> tU)
@@ -2677,6 +2677,28 @@ params:
 
 code: |
   raise (report_dynamic_error msg)
+
+---
+inst: BackendRegisterTextAnnotation
+is-pdf-mode-primitive: yes
+name: "register-text-annotation"
+type: |
+  ~% (tS @-> tB @-> tS @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
+
+params:
+- contents : string
+- is_open : bool
+- kind : string
+- pt : point
+- wid : length
+- hgt : length
+- dpt : length
+- vborderopt
+
+code: |
+  let borderopt = get_option (get_pair get_length get_color) vborderopt in
+  Annotation.register (Annotation.(Text{ contents; is_open; kind; })) (pt, wid, hgt, dpt) borderopt;
+  const_unit
 
 ---
 inst: LiftString

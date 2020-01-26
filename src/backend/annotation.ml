@@ -4,8 +4,15 @@ open LengthInterface
 open GraphicBase
 
 
+type text = {
+  contents : string;
+  is_open  : bool;
+  kind     : string;
+}
+
 type t =
   | Link of Pdfaction.t
+  | Text of text
 
 
 let annot_acc = ref Alist.empty
@@ -18,7 +25,7 @@ let register annot rect borderopt =
     raise State.NotDuringPageBreak
 
 
-let of_annotation (Link(act), ((x, y), wid, hgt, dpt), borderopt) =
+let of_annotation (annot, ((x, y), wid, hgt, dpt), borderopt) =
   let rect = (to_pdf_point x, to_pdf_point (y -% dpt), to_pdf_point (x +% wid), to_pdf_point (y +% hgt)) in
   let (border, coloropt) =
     match borderopt with
@@ -33,20 +40,37 @@ let of_annotation (Link(act), ((x, y), wid, hgt, dpt), borderopt) =
     | _ ->
         (Length.zero, None)
   in
-  let link =
-    Pdfannot.make
-      ~border:(Pdfannot.make_border (to_pdf_point border))
-      ~rectangle:rect
-      Pdfannot.Link
-  in
-  let pdfobj_annotrest =
-    Pdf.Dictionary[("/A", Pdfaction.pdfobject_of_action act)]
-  in
-  { link with
-    Pdfannot.annotrest = pdfobj_annotrest;
-    Pdfannot.colour    = coloropt;
-  }
+  match annot with
+  | Link(act) ->
+      let link =
+        Pdfannot.make
+          ~border:(Pdfannot.make_border (to_pdf_point border))
+          ~rectangle:rect
+          Pdfannot.Link
+      in
+      let pdfobj_annotrest =
+        Pdf.Dictionary[("/A", Pdfaction.pdfobject_of_action act)]
+      in
+      { link with
+        Pdfannot.annotrest = pdfobj_annotrest;
+        Pdfannot.colour    = coloropt;
+      }
 
+  | Text(text) ->
+      let annot_text =
+        Pdfannot.make
+          ~border:(Pdfannot.make_border (to_pdf_point border))
+          ~rectangle:rect
+          ~content:text.contents
+          Pdfannot.Text
+      in
+      Pdfannot.{ annot_text with
+        colour = coloropt;
+        annotrest = Pdf.Dictionary[
+          ("/Open", Pdf.Boolean(text.is_open));
+          ("/Name", Pdf.String(text.kind));
+        ];
+      }
 
 let add_to_pdf pdf page =
   let page =

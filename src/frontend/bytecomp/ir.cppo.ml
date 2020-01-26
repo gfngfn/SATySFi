@@ -405,6 +405,19 @@ and code7 env cvf ast1 ast2 ast3 ast4 ast5 ast6 ast7 =
   (IRCodeCombinator(codef, 7, [ir1; ir2; ir3; ir4; ir5; ir6; ir7]), env)
 
 
+and code8 env cvf ast1 ast2 ast3 ast4 ast5 ast6 ast7 ast8 =
+  let (ir1, env) = transform_1 env ast1 in
+  let (ir2, env) = transform_1 env ast2 in
+  let (ir3, env) = transform_1 env ast3 in
+  let (ir4, env) = transform_1 env ast4 in
+  let (ir5, env) = transform_1 env ast5 in
+  let (ir6, env) = transform_1 env ast6 in
+  let (ir7, env) = transform_1 env ast7 in
+  let (ir8, env) = transform_1 env ast8 in
+  let codef = function [cv1; cv2; cv3; cv4; cv5; cv6; cv7; cv8] -> cvf cv1 cv2 cv3 cv4 cv5 cv6 cv7 cv8 | _ -> report_bug_ir "code8" in
+  (IRCodeCombinator(codef, 8, [ir1; ir2; ir3; ir4; ir5; ir6; ir7; ir8]), env)
+
+
 and transform_1_pattern_branch (env : frame) (patbr : pattern_branch) : ir_pattern_branch * frame =
   match patbr with
   | PatternBranch(pat, ast1) ->
