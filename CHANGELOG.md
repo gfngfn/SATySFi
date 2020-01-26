@@ -43,6 +43,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Add new primitive `abort-with-message` (which is equivalent to OCaml’s `failwith`).
 - Add new primitives `lift-int`, `lift-string`, etc. for lifting basic values in two-stage computation (which may be, however, replaced with a more general single primitive operation based on *cross-stage persistence*).
 - Add the MacroML-like notion of macro based on two-stage programming.
+- Supports two-column page break.
 
 ## Deprecated
 
