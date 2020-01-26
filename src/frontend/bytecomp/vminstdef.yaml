@@ -1919,6 +1919,26 @@ code: |
   let ilst = get_list get_int valueilst in
   let s = (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8 in
   make_string s
+---
+inst: PrimitiveStringExplode
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "string-explode"
+type: |
+  ~% (tS @-> (tL tI))
+
+params:
+- string
+code: |
+  let str = get_string string in
+  let ilst =
+    str
+    |> InternalText.of_utf8
+    |> InternalText.to_uchar_list
+    |> List.map Uchar.to_int
+  in
+  make_list make_int ilst
+
 
 ---
 inst: PrimitiveRegExpOfString
