@@ -67,8 +67,12 @@ let of_annotation (annot, ((x, y), wid, hgt, dpt), borderopt) =
       Pdfannot.{ annot_text with
         colour = coloropt;
         annotrest = Pdf.Dictionary[
+          ("/CA"  , Pdf.Real(0.5));
+            (* -- opacity in closed state [PDF 1.7, Table 8.21] -- *)
           ("/Open", Pdf.Boolean(text.is_open));
+            (* -- whether it is open by default [PDF 1.7, Table 8.23] -- *)
           ("/Name", Pdf.String(text.kind));
+            (* -- kind of text annotation (e.g. "Note") [PDF 1.7, Table 8.23] -- *)
         ];
       }
 
