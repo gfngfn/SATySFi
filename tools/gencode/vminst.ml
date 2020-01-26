@@ -2131,6 +2131,27 @@ let ilst = get_list get_int valueilst in
 let s = (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8 in
 make_string s
 |}
+    ; inst "PrimitiveStringExplode"
+        ~name:"string-explode"
+        ~type_:{|
+~% (tS @-> (tL tI))
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "str" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let ilst =
+  str
+  |> InternalText.of_utf8
+  |> InternalText.to_uchar_list
+  |> List.map Uchar.to_int
+in
+make_list make_int ilst
+|}
     ; inst "PrimitiveRegExpOfString"
         ~name:"regexp-of-string"
         ~type_:{|

@@ -1928,9 +1928,8 @@ type: |
   ~% (tS @-> (tL tI))
 
 params:
-- string
+- str : string
 code: |
-  let str = get_string string in
   let ilst =
     str
     |> InternalText.of_utf8
