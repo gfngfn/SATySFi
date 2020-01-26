@@ -2683,7 +2683,7 @@ inst: BackendRegisterTextAnnotation
 is-pdf-mode-primitive: yes
 name: "register-text-annotation"
 type: |
-  ~% (tS @-> tB @-> tS @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
+  ~% (tS @-> tB @-> tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
 
 params:
 - contents : string

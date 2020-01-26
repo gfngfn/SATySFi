@@ -2992,7 +2992,7 @@ raise (report_dynamic_error msg)
     ; inst "BackendRegisterTextAnnotation"
         ~name:"register-text-annotation"
         ~type_:{|
-~% (tS @-> tB @-> tS @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
+~% (tS @-> tB @-> tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
 |}
         ~fields:[
         ]
