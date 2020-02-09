@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 ## [Unreleased]
 ### Added
 - Add new primitive `string-explode : string -> int list` ([PR\#202](https://github.com/gfngfn/SATySFi/pull/202) by `puripuri2100`).
+- Add new primitives `log : float -> float` and `exp : float -> float`.
 
 ## [0.0.4] - 2020-01-25
 ### Fixed
