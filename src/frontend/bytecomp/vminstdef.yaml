@@ -2452,6 +2452,32 @@ code: |
   make_float (atan2 flt1 flt2)
 
 ---
+inst: FloatLogarithm
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "log"
+type: |
+  ~% (tFL @-> tFL)
+
+params:
+- flt : float
+code: |
+  make_float (log flt)
+
+---
+inst: FloatExponential
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "exp"
+type: |
+  ~% (tFL @-> tFL)
+
+params:
+- flt : float
+code: |
+  make_float (exp flt)
+
+---
 inst: LengthPlus
 is-pdf-mode-primitive: yes
 is-text-mode-primitive: yes

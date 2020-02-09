@@ -2735,6 +2735,36 @@ make_float (atan flt1)
         ~code:{|
 make_float (atan2 flt1 flt2)
 |}
+    ; inst "FloatLogarithm"
+        ~name:"log"
+        ~type_:{|
+~% (tFL @-> tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "flt" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_float (log flt)
+|}
+    ; inst "FloatExponential"
+        ~name:"exp"
+        ~type_:{|
+~% (tFL @-> tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "flt" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_float (exp flt)
+|}
     ; inst "LengthPlus"
         ~name:"+'"
         ~type_:{|
