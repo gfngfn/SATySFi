@@ -95,7 +95,7 @@ is-pdf-mode-primitive: yes
 needs-reducef: yes
 name: "set-math-command"
 type: |
-  ~% (tCMD @-> tCTX @-> tCTX)
+  ~% (tICMD tMATH @-> tCTX @-> tCTX)
 
 params:
 - valuecmd
@@ -103,6 +103,21 @@ params:
 code: |
   let mcmd = get_math_command_func reducef valuecmd in
   Context(ctx, { ctxsub with math_command = mcmd; })
+
+---
+inst: PrimitiveSetCodeTextCommand
+is-pdf-mode-primitive: yes
+needs-reducef: yes
+name: "set-code-text-command"
+type: |
+  ~% (tICMD tS @-> tCTX @-> tCTX)
+
+params:
+- valuecmd
+- (ctx, ctxsub) : context
+code: |
+  let ctcmd = get_code_text_command_func reducef valuecmd in
+  Context(ctx, { ctxsub with code_text_command = ctcmd; })
 
 ---
 inst: BackendMathVariantCharDirect
@@ -1074,7 +1089,7 @@ is-pdf-mode-primitive: yes
 needs-reducef: yes
 name: "get-initial-context"
 type: |
-  ~% (tLN @-> tCMD @-> tCTX)
+  ~% (tLN @-> tICMD tMATH @-> tCTX)
 
 params:
 - txtwid : length
@@ -1082,9 +1097,11 @@ params:
 code: |
   let ctx = Primitives.get_pdf_mode_initial_context txtwid in
   let mcmd = get_math_command_func reducef valuecmd in
+  let ctcmd = DefaultCodeTextCommand in
   let ctxsub =
     {
       math_command = mcmd;
+      code_text_command = ctcmd;
       dummy = ();
     }
   in

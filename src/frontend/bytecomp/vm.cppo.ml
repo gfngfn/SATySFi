@@ -128,6 +128,9 @@ and exec_input_horz_content env ihlst =
     | CompiledInputHorzEmbeddedMath(code) ->
         CompiledImInputHorzEmbeddedMath(code)
 
+    | CompiledInputHorzEmbeddedCodeText(s) ->
+        CompiledImInputHorzEmbeddedCodeText(s)
+
     | CompiledInputHorzContent(code) ->
         let value = exec_value [] env code [] in
         begin
@@ -175,6 +178,9 @@ and exec_code_input_horz env irihlst =
       let value = exec_value [] env instrs [] in
       let cv = get_code value in
       InputHorzEmbeddedMath(cv)
+
+  | InputHorzEmbeddedCodeText(s) ->
+      InputHorzEmbeddedCodeText(s)
 
   | InputHorzContent(instrs) ->
       let value = exec_value [] env instrs [] in
@@ -237,6 +243,8 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
                 let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuetctx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
                   Alist.extend acc nmih
 *)
+            | CompiledImInputHorzEmbeddedCodeText(s) ->
+                failwith "Vm_> code text; remains to be supported."
 
             | CompiledImInputHorzContent(imihlst, envsub) ->
                 let nmihlstsub = normalize imihlst in
@@ -310,8 +318,35 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
 
             | CompiledImInputHorzEmbeddedMath(mathcode) ->
                 let MathCommand(valuemcmd) = ctxsub.math_command in
-                let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuectx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
-                  Alist.extend acc nmih
+                let nmih =
+                  CompiledNomInputHorzThunk(
+                    List.append mathcode [
+                      OpPush(valuectx);
+                      OpForward(1);  (* -- put the context argument under the math argument -- *)
+                      OpPush(valuemcmd);
+                      OpApplyT(2)
+                    ])
+                in
+                Alist.extend acc nmih
+
+            | CompiledImInputHorzEmbeddedCodeText(s) ->
+                begin
+                  match ctxsub.code_text_command with
+                  | DefaultCodeTextCommand ->
+                      let nmih = CompiledNomInputHorzText(s) in
+                      Alist.extend acc nmih
+
+                  | CodeTextCommand(valuectcmd) ->
+                      let nmih =
+                        CompiledNomInputHorzThunk([
+                          OpPush(valuectx);
+                          OpPush(BaseConstant(BCString(s)));
+                          OpPush(valuectcmd);
+                          OpApplyT(2)
+                        ])
+                      in
+                      Alist.extend acc nmih
+                end
 
             | CompiledImInputHorzContent(imihlst, envsub) ->
                 let nmihlstsub = normalize imihlst in

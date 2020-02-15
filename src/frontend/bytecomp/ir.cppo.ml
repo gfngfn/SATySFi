@@ -49,6 +49,9 @@ let rec transform_0_input_horz_content (env : frame) (ihlst : input_horz_element
         let (irmath, env) = transform_0 env astmath in
         (IRInputHorzEmbeddedMath(irmath), env)
 
+    | InputHorzEmbeddedCodeText(s) ->
+        (IRInputHorzEmbeddedCodeText(s), env)
+
     | InputHorzContent(ast) ->
         let (ir, env) = transform_0 env ast in
         (IRInputHorzContent(ir), env)
@@ -68,6 +71,9 @@ and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element lis
     | InputHorzEmbeddedMath(astmath) ->
         let (irmath, env) = transform_1 env astmath in
         (InputHorzEmbeddedMath(irmath), env)
+
+    | InputHorzEmbeddedCodeText(s) ->
+        (InputHorzEmbeddedCodeText(s), env)
 
     | InputHorzContent(ast) ->
         let (ir, env) = transform_1 env ast in

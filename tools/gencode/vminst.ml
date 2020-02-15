@@ -77,7 +77,7 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = M
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"
         ~type_:{|
-~% (tCMD @-> tCTX @-> tCTX)
+~% (tICMD tMATH @-> tCTX @-> tCTX)
 |}
         ~fields:[
         ]
@@ -90,6 +90,23 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = M
         ~code:{|
 let mcmd = get_math_command_func reducef valuecmd in
 Context(ctx, { ctxsub with math_command = mcmd; })
+|}
+    ; inst "PrimitiveSetCodeTextCommand"
+        ~name:"set-code-text-command"
+        ~type_:{|
+~% (tICMD tS @-> tCTX @-> tCTX)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "valuecmd";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let ctcmd = get_code_text_command_func reducef valuecmd in
+Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
     ; inst "BackendMathVariantCharDirect"
         ~name:"math-variant-char"
@@ -1170,7 +1187,7 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
     ; inst "PrimitiveGetInitialContext"
         ~name:"get-initial-context"
         ~type_:{|
-~% (tLN @-> tCMD @-> tCTX)
+~% (tLN @-> tICMD tMATH @-> tCTX)
 |}
         ~fields:[
         ]
@@ -1183,9 +1200,11 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
         ~code:{|
 let ctx = Primitives.get_pdf_mode_initial_context txtwid in
 let mcmd = get_math_command_func reducef valuecmd in
+let ctcmd = DefaultCodeTextCommand in
 let ctxsub =
   {
     math_command = mcmd;
+    code_text_command = ctcmd;
     dummy = ();
   }
 in

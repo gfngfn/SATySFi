@@ -696,6 +696,8 @@ let get_math_command_func _ valuemcmd =
 
 let make_math_command_func (MathCommand(valuemcmd)) = valuemcmd
 
+let get_code_text_command_func _ valuectcmd =
+  CodeTextCommand(valuectcmd)
 
 let make_list (type a) (makef : a -> syntactic_value) (lst : a list) : syntactic_value =
   List(lst |> List.map makef)

@@ -452,6 +452,18 @@ and horzexpr stack = parse
       Stack.push MathState stack;
       BMATHGRP(get_pos lexbuf)
     }
+  | "`"+ {
+      let quote_range = get_pos lexbuf in
+      let quote_length = String.length (Lexing.lexeme lexbuf) in
+      let buffer = Buffer.create 256 in
+      literal true quote_range quote_length buffer lexbuf
+    }
+  | ("#" ("`"+ as tok)) {
+      let quote_range = get_pos lexbuf in
+      let quote_length = String.length tok in
+      let buffer = Buffer.create 256 in
+      literal false quote_range quote_length buffer lexbuf
+    }
   | eof {
       if Stack.length stack = 1 then EOI else
         report_error lexbuf "unexpected end of input while reading an inline text area"
