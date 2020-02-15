@@ -424,6 +424,7 @@ and untyped_input_horz_element_main =
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "IC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
   | UTInputHorzContent      of untyped_abstract_tree
   | UTInputHorzEmbeddedMath of untyped_abstract_tree
+  | UTInputHorzEmbeddedCodeText of string
   | UTInputHorzMacro        of (Range.t * ctrlseq_name) * untyped_macro_argument list
 
 and untyped_macro_argument =
@@ -599,6 +600,7 @@ type 'a input_horz_element_scheme =
   | InputHorzEmbedded     of 'a
   | InputHorzContent      of 'a
   | InputHorzEmbeddedMath of 'a
+  | InputHorzEmbeddedCodeText of string
 [@@deriving show { with_path = false; }]
 
 type 'a input_vert_element_scheme =
@@ -656,12 +658,14 @@ and compiled_input_horz_element =
   | CompiledInputHorzEmbedded     of instruction list
   | CompiledInputHorzContent      of instruction list
   | CompiledInputHorzEmbeddedMath of instruction list
+  | CompiledInputHorzEmbeddedCodeText of string
 
 and compiled_intermediate_input_horz_element =
   | CompiledImInputHorzText         of string
   | CompiledImInputHorzEmbedded     of instruction list
   | CompiledImInputHorzContent of compiled_intermediate_input_horz_element list * vmenv
   | CompiledImInputHorzEmbeddedMath of instruction list
+  | CompiledImInputHorzEmbeddedCodeText of string
 
 and compiled_input_vert_element =
   | CompiledInputVertEmbedded of instruction list
@@ -676,7 +680,7 @@ and ir_input_horz_element =
   | IRInputHorzEmbedded     of ir
   | IRInputHorzContent      of ir
   | IRInputHorzEmbeddedMath of ir
-
+  | IRInputHorzEmbeddedCodeText of string
 
 and ir_input_vert_element =
   | IRInputVertEmbedded of ir
@@ -855,6 +859,7 @@ and intermediate_input_horz_element =
   | ImInputHorzEmbedded     of abstract_tree
   | ImInputHorzContent      of intermediate_input_horz_element list * environment
   | ImInputHorzEmbeddedMath of abstract_tree
+  | ImInputHorzEmbeddedCodeText of string
 
 and intermediate_input_vert_element =
   | ImInputVertEmbedded of abstract_tree
@@ -961,12 +966,17 @@ and input_context = HorzBox.context_main * context_sub
 
 and context_sub = {
   math_command : math_command_func;
+  code_text_command : code_text_command_func;
   dummy : unit;
 }
 
 and math_command_func =
   | MathCommand of syntactic_value
       (* (input_context -> math list -> HorzBox.horz_box list) *)
+
+and code_text_command_func =
+  | DefaultCodeTextCommand
+  | CodeTextCommand of syntactic_value
 
 and math_element_main =
   | MathChar         of bool * Uchar.t list
@@ -1449,6 +1459,7 @@ let map_input_horz f ihlst =
   | InputHorzEmbedded(ast)     -> InputHorzEmbedded(f ast)
   | InputHorzContent(ast)      -> InputHorzContent(f ast)
   | InputHorzEmbeddedMath(ast) -> InputHorzEmbeddedMath(f ast)
+  | InputHorzEmbeddedCodeText(s) -> InputHorzEmbeddedCodeText(s)
   )
 
 

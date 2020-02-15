@@ -60,6 +60,9 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
     | IRInputHorzEmbeddedMath(irmath) ->
         CompiledInputHorzEmbeddedMath(compile irmath [])
 
+    | IRInputHorzEmbeddedCodeText(s) ->
+        CompiledInputHorzEmbeddedCodeText(s)
+
     | IRInputHorzContent(ir) ->
         CompiledInputHorzContent(compile ir [])
     )
@@ -79,6 +82,9 @@ and compile_code_input_horz (irihlst : (ir input_horz_element_scheme) list) =
   | InputHorzEmbeddedMath(irmath) ->
       let compiled = compile irmath [] in
       InputHorzEmbeddedMath(compiled)
+
+  | InputHorzEmbeddedCodeText(s) ->
+      InputHorzEmbeddedCodeText(s)
 
   | InputHorzContent(ir) ->
       let compiled = compile ir [] in

@@ -1252,6 +1252,9 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
         unify_ tyenv tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(MathType));
         aux (Alist.extend acc (InputHorzEmbeddedMath(emath))) tail
 
+    | (_, UTInputHorzEmbeddedCodeText(s)) :: tail ->
+        aux (Alist.extend acc (InputHorzEmbeddedCodeText(s))) tail
+
     | (_, UTInputHorzContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
         unify_ tyenv ty0 (Range.dummy "ut-input-horz-content", BaseType(TextRowType));

@@ -1183,9 +1183,11 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
         ~code:{|
 let ctx = Primitives.get_pdf_mode_initial_context txtwid in
 let mcmd = get_math_command_func reducef valuecmd in
+let ctcmd = DefaultCodeTextCommand in
 let ctxsub =
   {
     math_command = mcmd;
+    code_text_command = ctcmd;
     dummy = ();
   }
 in

@@ -123,6 +123,9 @@ and interpret_0_input_horz_content (env : environment) (ihlst : input_horz_eleme
     | InputHorzEmbeddedMath(astmath) ->
         ImInputHorzEmbeddedMath(astmath)
 
+    | InputHorzEmbeddedCodeText(s) ->
+        ImInputHorzEmbeddedCodeText(s)
+
     | InputHorzContent(ast) ->
         let (value, _) = interpret_0 env ast in
         begin
@@ -680,6 +683,8 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx :
           let nmih = NomInputHorzThunk(Apply(Apply(Value(valuemcmd), Value(valuectx)), astmath)) in
             Alist.extend acc nmih
 *)
+      | ImInputHorzEmbeddedCodeText(s) ->
+          failwith "Evaluator_> code text; remains to be supported."
 
       | ImInputHorzContent(imihlstsub, envsub) ->
           let nmihlstsub = normalize imihlstsub in
@@ -759,6 +764,19 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
           let valuemcmdctx = reduce_beta valuemcmd valuectx in
           let nmih = NomInputHorzThunk(valuemcmdctx, astmath) in
           Alist.extend acc nmih
+
+      | ImInputHorzEmbeddedCodeText(s) ->
+          begin
+            match ctxsub.code_text_command with
+            | DefaultCodeTextCommand ->
+                let nmih = NomInputHorzText(s) in
+                Alist.extend acc nmih
+
+            | CodeTextCommand(valuectcmd) ->
+                let valuectcmdctx = reduce_beta valuectcmd valuectx in
+                let nmih = NomInputHorzThunk(valuectcmdctx, ASTBaseConstant(BCString(s))) in
+                Alist.extend acc nmih
+          end
 
       | ImInputHorzContent(imihlstsub, envsub) ->
           let nmihlstsub = normalize imihlstsub in

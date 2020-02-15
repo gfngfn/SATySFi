@@ -1183,6 +1183,10 @@ ihcmd:
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP {
       make_standard (Tok opn) (Tok cls) (UTInputHorzEmbeddedMath(utast))
     }
+  | literal=LITERAL {
+      let (rng, str, pre, post) = literal in
+      make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeText(omit_spaces pre post str))
+    }
   | vartok=VARINHORZ; cls=ENDACTIVE {
       let (rng, mdlnmlst, varnm) = vartok in
       let utast = (rng, UTContentOf(mdlnmlst, varnm)) in
