@@ -105,6 +105,21 @@ code: |
   Context(ctx, { ctxsub with math_command = mcmd; })
 
 ---
+inst: PrimitiveSetCodeTextCommand
+is-pdf-mode-primitive: yes
+needs-reducef: yes
+name: "set-code-text-command"
+type: |
+  ~% (tICMD tS @-> tCTX @-> tCTX)
+
+params:
+- valuecmd
+- (ctx, ctxsub) : context
+code: |
+  let ctcmd = get_code_text_command_func reducef valuecmd in
+  Context(ctx, { ctxsub with code_text_command = ctcmd; })
+
+---
 inst: BackendMathVariantCharDirect
 is-pdf-mode-primitive: yes
 is-text-mode-primitive: yes

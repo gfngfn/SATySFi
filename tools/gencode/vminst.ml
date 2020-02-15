@@ -91,6 +91,23 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = M
 let mcmd = get_math_command_func reducef valuecmd in
 Context(ctx, { ctxsub with math_command = mcmd; })
 |}
+    ; inst "PrimitiveSetCodeTextCommand"
+        ~name:"set-code-text-command"
+        ~type_:{|
+~% (tICMD tS @-> tCTX @-> tCTX)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "valuecmd";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let ctcmd = get_code_text_command_func reducef valuecmd in
+Context(ctx, { ctxsub with code_text_command = ctcmd; })
+|}
     ; inst "BackendMathVariantCharDirect"
         ~name:"math-variant-char"
         ~type_:{|
