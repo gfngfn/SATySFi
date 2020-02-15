@@ -318,8 +318,16 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
 
             | CompiledImInputHorzEmbeddedMath(mathcode) ->
                 let MathCommand(valuemcmd) = ctxsub.math_command in
-                let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuectx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
-                  Alist.extend acc nmih
+                let nmih =
+                  CompiledNomInputHorzThunk(
+                    List.append mathcode [
+                      OpPush(valuectx);
+                      OpForward(1);  (* -- put the context argument under the math argument -- *)
+                      OpPush(valuemcmd);
+                      OpApplyT(2)
+                    ])
+                in
+                Alist.extend acc nmih
 
             | CompiledImInputHorzEmbeddedCodeText(s) ->
                 begin
@@ -331,8 +339,8 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
                   | CodeTextCommand(valuectcmd) ->
                       let nmih =
                         CompiledNomInputHorzThunk([
-                          OpPush(BaseConstant(BCString(s)));
                           OpPush(valuectx);
+                          OpPush(BaseConstant(BCString(s)));
                           OpPush(valuectcmd);
                           OpApplyT(2)
                         ])
