@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 ### Added
 - Add new primitive `string-explode : string -> int list` ([PR\#202](https://github.com/gfngfn/SATySFi/pull/202) by `puripuri2100`).
 - Add new primitives `log : float -> float` and `exp : float -> float`.
+- Extend the syntax and the semantics for allowing code texts directly written in inline texts ``{… `…` …}`` and add new primitive `set-code-text-command : [string] inline-cmd -> context -> context`.
 
 ## [0.0.4] - 2020-01-25
 ### Fixed
