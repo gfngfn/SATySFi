@@ -77,7 +77,7 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = M
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"
         ~type_:{|
-~% (tCMD @-> tCTX @-> tCTX)
+~% (tICMD tMATH @-> tCTX @-> tCTX)
 |}
         ~fields:[
         ]
@@ -1170,7 +1170,7 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
     ; inst "PrimitiveGetInitialContext"
         ~name:"get-initial-context"
         ~type_:{|
-~% (tLN @-> tCMD @-> tCTX)
+~% (tLN @-> tICMD tMATH @-> tCTX)
 |}
         ~fields:[
         ]

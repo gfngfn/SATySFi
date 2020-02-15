@@ -95,7 +95,7 @@ is-pdf-mode-primitive: yes
 needs-reducef: yes
 name: "set-math-command"
 type: |
-  ~% (tCMD @-> tCTX @-> tCTX)
+  ~% (tICMD tMATH @-> tCTX @-> tCTX)
 
 params:
 - valuecmd
@@ -1074,7 +1074,7 @@ is-pdf-mode-primitive: yes
 needs-reducef: yes
 name: "get-initial-context"
 type: |
-  ~% (tLN @-> tCMD @-> tCTX)
+  ~% (tLN @-> tICMD tMATH @-> tCTX)
 
 params:
 - txtwid : length

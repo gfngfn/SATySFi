@@ -82,7 +82,7 @@ let tIGRO = (~! "igrafo", SynonymType([], tyid_igrafo, tIGRO_raw))
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 
-let tCMD = (~! "cmd", HorzCommandType([MandatoryArgumentType(tMATH)]))
+let tICMD ty = (~! "cmd", HorzCommandType([MandatoryArgumentType(ty)]))
 
 let tMCSTY =
   let asc =
