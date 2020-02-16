@@ -610,6 +610,22 @@ code: |
   make_path (List.map (shift_path ptshift) pathlst)
 
 ---
+inst: PathLinearTransform
+is-pdf-mode-primitive: yes
+name: "linear-transform-path"
+type: |
+  ~% (tFL @-> tFL @-> tFL @-> tFL @-> tPATH @-> tPATH)
+
+params:
+- a : float
+- b : float
+- c : float
+- d : float
+- pathlst : path_value
+code: |
+  make_path (List.map (linear_transform_path ((a, b), (c, d))) pathlst)
+
+---
 inst: PathGetBoundingBox
 is-pdf-mode-primitive: yes
 name: "get-path-bbox"
