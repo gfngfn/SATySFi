@@ -102,19 +102,3 @@ let math-pi = 3.1415926536
 
 let increment r =
   r <- !r + 1
-
-
-let rotate-path centpt angle path =
-  let (centx, centy) = centpt in
-  let rad = angle *. math-pi /. 180. in
-  path |> shift-path (0pt -' centx, 0pt -' centy)
-       |> linear-transform-path (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
-       |> shift-path centpt
-
-
-let scale-path centpt scalex scaley path =
-  let (centx, centy) = centpt in
-  path |> shift-path (0pt -' centx, 0pt -' centy)
-       |> linear-transform-path scalex 0. 0. scaley
-       |> shift-path centpt
-
