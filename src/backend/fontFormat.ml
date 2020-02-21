@@ -1189,8 +1189,8 @@ let intern_gid (dcdr : decoder) (gidorg : original_glyph_id) : glyph_id =
 
 
 let font_stretch_of_width_class srcpath = function
-  | 0 -> UltraCondensedStretch
-  | 1 -> ExtraCondensedStretch
+  | 1 -> UltraCondensedStretch
+  | 2 -> ExtraCondensedStretch
   | 3 -> CondensedStretch
   | 4 -> SemiCondensedStetch
   | 5 -> NormalStretch
