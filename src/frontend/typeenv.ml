@@ -1213,7 +1213,7 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
   b
 
 
-module ModuleInterpreter = struct
+module ModuleClassifier = struct
   module M = struct
     type ty = type_scheme
     type poly = poly_type

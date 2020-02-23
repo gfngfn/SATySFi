@@ -58,7 +58,7 @@ module Raw : sig
   val register_type : type_name -> TypeID.t -> type_definition -> t -> t
 end
 
-module ModuleInterpreter : sig
+module ModuleClassifier : sig
   module M : sig
     type ty = type_scheme
     type poly = poly_type
