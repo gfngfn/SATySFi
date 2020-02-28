@@ -1,10 +1,22 @@
-#DEPS=pervasives.satyh gr.satyh list.satyh tabular.satyh math.satyh color.satyh deco.satyh decoset.satyh vdecoset.satyh stdja.satyh local.satyh
+#!/usr/bin/make -f
 
-all:
-	satysfi doc-primitives.saty -o primitives.pdf
+SATYSFI = satysfi
 
-lang:
-	satysfi doc-lang.saty -o lang.pdf
+all: primitives.pdf lang.pdf math1.pdf
 
-math1:
-	satysfi math1.saty -o math1.pdf
+clean:
+	$(RM) primitives.pdf lang.pdf math1.pdf $(wildcard *.satysfi-aux)
+
+primitives.pdf:
+	$(SATYSFI) doc-primitives.saty -o $@
+
+lang.pdf:
+	$(SATYSFI) doc-lang.saty -o $@
+
+math1.pdf:
+	$(SATYSFI) math1.saty -o $@
+
+# We currently don't describe dependencies here.
+# Instead we always rebuild them.
+.PHONY: all clean primitives.pdf lang.pdf math1.pdf
+

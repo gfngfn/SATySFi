@@ -7,6 +7,7 @@ env:
   - OCAML_VERSION=4.07
 sudo: required
 install:
+  - if [[ "$TRAVIS_OS_NAME" == linux ]]; then bash -xv .travis/install-dist.sh; fi
   - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
   - eval `opam config env`
@@ -16,3 +17,4 @@ install:
   - opam install -y --deps-only satysfi
 script:
   - make all
+  - if [[ "$TRAVIS_OS_NAME" == linux ]]; then make -C doc SATYSFI=../satysfi; fi
