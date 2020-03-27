@@ -23,7 +23,7 @@ depends: [
   "ocaml" {>= "4.06.0"}
   "batteries"
   "camlimages" {>= "5.0.1"}
-  "camlpdf" {= "2.2.2+satysfi"}
+  "camlpdf" {= "2.3.1+satysfi"}
   "core_kernel" {>= "v0.10.0" & < "v0.13.0"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "depext"

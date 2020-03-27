@@ -1,7 +1,7 @@
 (executable
  (name main)
  (public_name satysfi)
- (flags (-w -3 -bin-annot -thread -unsafe-string))
+ (flags (-w -3 -bin-annot -thread -safe-string))
  (libraries str
             batteries
             camlimages
