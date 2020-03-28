@@ -62,3 +62,82 @@
  (targets primitives.ml)
  (deps    (:src primitives.cppo.ml) __primitives_pdf_mode.gen.ml __primitives_text_mode.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
+
+;; Generated codes for frontend
+(rule
+ (targets __attype.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-attype))))
+
+(rule
+ (targets __codetype.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-codetype))))
+
+(rule
+ (targets __unliftcode.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-unliftcode))))
+
+(rule
+ (targets __insttype.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-insttype))))
+
+(rule
+ (targets __evaluator_0.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-interps-0))))
+
+(rule
+ (targets __evaluator_1.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-interps-1))))
+
+(rule
+ (targets __primitives_pdf_mode.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-pdf-mode-prims))))
+
+(rule
+ (targets __primitives_text_mode.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-text-mode-prims))))
+
+;; Generated codes for bytecomp
+(rule
+ (targets __vm.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-vm))))
+
+(rule
+ (targets __ir_0.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-ir-0))))
+
+(rule
+ (targets __ir_1.gen.ml)
+ (deps    %{project_root}/tools/gencode/gencode.exe)
+ (action
+  (with-stdout-to %{targets}
+   (run %{deps} --gen-ir-1))))

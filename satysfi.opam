@@ -10,13 +10,8 @@ dev-repo: "git+https://github.com/gfngfn/SATySFi.git"
 bug-reports: "https://github.com/gfngfn/SATySFi/issues"
 build: [
   ["mkdir" "-p" "temp"]
-  [make "-f" "Makefile" "PREFIX=%{prefix}%"]
-]
-install: [
-  [make "-f" "Makefile" "install" "PREFIX=%{prefix}%"]
-]
-remove: [
-  [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%"]
+  ["dune" "subst"] {pinned}
+  ["dune" "build" "-p" name "-j" jobs]
 ]
 # Packages whose version suffix is "+satysfi" are distributed on satysfi-external-repo.
 depends: [

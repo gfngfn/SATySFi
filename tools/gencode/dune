@@ -3,3 +3,10 @@
  (libraries core_kernel re)
  ;; (preprocess (pps (ppx_driver.runner)))
  )
+
+(rule
+ (targets vminst.ml)
+ (deps    (:src %{project_root}/src/frontend/bytecomp/vminstdef.yaml) (:genCode gen_code.rb))
+ (action
+  (with-stdout-to %{targets}
+   (run %{bin:ruby} %{genCode} --ml %{src}))))
