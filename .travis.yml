@@ -7,7 +7,7 @@ env:
   - OCAML_VERSION=4.07
 sudo: required
 install:
-  - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
+  - wget https://raw.githubusercontent.com/ocaml/ocaml-ci-scripts/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
   - eval `opam config env`
   - opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
