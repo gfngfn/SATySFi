@@ -5,7 +5,7 @@ let print_for_debug msg =
 *)
   ()
 
-module Heap = Core_kernel.Pairing_heap
+module Heap = Pairing_heap
 
 
 module type VertexType =
