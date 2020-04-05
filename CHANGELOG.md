@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 ## [Unreleased]
 ### Fixed
 - Fix how to handle font stretch values (a strange behavior due to this bug had first been reported by `zeptometer`, and the cause of the bug was suggested by `matsud224`).
+- Support OCaml 4.10 (encouraged by [PR\#207](https://github.com/gfngfn/SATySFi/pull/207) by `na4zagin3`, [PR\#3 for `gfngfn/camlpdf`](https://github.com/gfngfn/camlpdf/pull/3) by `y-yu`, and [PR\#223](https://github.com/gfngfn/SATySFi/pull/223) by `yasuo-ozu`).
 
 ### Added
 - Add new primitive `string-explode : string -> int list` ([PR\#202](https://github.com/gfngfn/SATySFi/pull/202) by `puripuri2100`).
