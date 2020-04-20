@@ -44,13 +44,13 @@ fi
 unzip -o ${CACHE}/${NAME}.zip "*.ttf" -d lib-satysfi/dist/fonts/
 
 # IPAexfont
-NAME=IPAexfont00301
+NAME=IPAexfont00401
 cd ${CACHE}/ || exit 1; RESULT=$(${SHA1SUM} ${NAME}.sha1); cd ../ || exit 1
 if test "${RESULT}" = "${NAME}.zip: OK"; then
   echo "${MESSAGE_PREFIX} '${NAME}.zip' found in '${CACHE}/'."
 else
   echo "${MESSAGE_PREFIX} downloading '${NAME}.zip' ..."
-  wget -O ${CACHE}/${NAME}.zip https://ipafont.ipa.go.jp/IPAexfont/IPAexfont00301.zip
+  wget -O ${CACHE}/${NAME}.zip https://ipafont.ipa.go.jp/IPAexfont/IPAexfont00401.zip
   echo "${MESSAGE_PREFIX} finished downloading '${NAME}.zip'."
 fi
 unzip -o ${CACHE}/${NAME}.zip "*.ttf" -d ${CACHE}/
