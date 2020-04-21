@@ -54,6 +54,6 @@ else
   echo "${MESSAGE_PREFIX} finished downloading '${NAME}.zip'."
 fi
 unzip -o ${CACHE}/${NAME}.zip "*.ttf" -d ${CACHE}/
-cp ${CACHE}/IPAexfont00301/ipaexg.ttf lib-satysfi/dist/fonts/
-cp ${CACHE}/IPAexfont00301/ipaexm.ttf lib-satysfi/dist/fonts/
+cp ${CACHE}/IPAexfont00401/ipaexg.ttf lib-satysfi/dist/fonts/
+cp ${CACHE}/IPAexfont00401/ipaexm.ttf lib-satysfi/dist/fonts/
 echo "${MESSAGE_PREFIX} end."
