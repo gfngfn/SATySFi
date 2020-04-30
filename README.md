@@ -40,7 +40,7 @@ Here is a list of minimally required softwares.
 * ruby
 * [opam](https://opam.ocaml.org/) 2.0 (Installation instructions are [here](https://opam.ocaml.org/doc/Install.html).)
     * Bubblewrap, a tool required for opam 2, cannot be installed easily yet on some kinds of environment such as Windows Subsystem for Linux (WSL) and Ubuntu 16.04. As a workaround for the time being, opam 2 can be installed without bubblewrap by passing `--disable-sandboxing` option when running `opam init`. **Please see [opam's FAQ](https://opam.ocaml.org/doc/FAQ.html#Why-does-opam-require-bwrap) for details.**
-* ocaml 4.06.0 (installed by OPAM)
+* ocaml 4.10.0 (installed by OPAM)
 
 Also, we must add an external OPAM repo to build. This can be done by the following command.
 
@@ -59,7 +59,7 @@ sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.
 
 # The following command will ask if you allow OPAM to modify some files (e.g. ~/.bash_profile).
 # Be sure to read its instructions. Otherwise, some environment variables won't be set.
-opam init --comp 4.06.0
+opam init --comp 4.10.0
 
 eval $(opam env)
 
@@ -78,7 +78,7 @@ brew install opam
 
 # The following command will ask if OPAM modifies some files.
 # Be sure to read their instructions. Otherwise, some environment variables won't be set.
-opam init --comp 4.06.0
+opam init --comp 4.10.0
 
 eval $(opam env)
 
