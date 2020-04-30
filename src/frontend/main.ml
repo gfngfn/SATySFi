@@ -632,7 +632,7 @@ let error_log_environment suspended =
   | IllegalArgumentLength(rng, len, lenexp) ->
       report_error Parser [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("this declaration has" ^ (string_of_int len) ^ " argument pattern(s),");
+        NormalLine("this declaration has " ^ (string_of_int len) ^ " argument pattern(s),");
         NormalLine("but is expected to have " ^ (string_of_int lenexp) ^ ".");
       ]
 
