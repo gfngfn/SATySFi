@@ -131,7 +131,7 @@ end = struct
 
   let get-standard-context wid =
     get-initial-context wid (command \math)
-      |> set-code-text-command (command \code)
+      |> set-code-text-command Code.(command \code)
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese
@@ -545,9 +545,11 @@ let title-deco =
     let outline-title = Option.from (extract-string ib-title) outline-title-opt in
     let () = outline-ref <- (0, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
     let bb-title =
-      block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
-        (section-heading ctx
-          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))))
+      let ib =
+        inline-frame-breakable no-pads (Annot.register-location-frame label)
+          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+      in
+      section-heading ctx ib
     in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner

@@ -443,9 +443,9 @@ let title-deco =
     let outline-title = Option.from (extract-string ib-title) outline-title-opt in
     let () = outline-ref <- (0, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
     let bb-title =
-      block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
-        (line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
-        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))))
+      line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
+        (inline-frame-breakable no-pads (Annot.register-location-frame label)
+          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))
     in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
