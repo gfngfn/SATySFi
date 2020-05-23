@@ -131,7 +131,7 @@ end = struct
 
   let get-standard-context wid =
     get-initial-context wid (command \math)
-      |> set-code-text-command (command \code)
+      |> set-code-text-command Code.(command \code)
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese
