@@ -12,7 +12,7 @@ This software was supported by:
 
 * IPA Mitou Project 2017 (June 2017 – February 2018; see the abstract [here](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html) written in Japanese),
 * Dwango Co., Ltd. (October 2018 – March 2019; as a part-time job), and
-* many anonimous supporters who bought [The SATySFi​book](https://booth.pm/ja/items/1127224),
+* many anonymous supporters who bought [The SATySFi​book](https://booth.pm/ja/items/1127224),
 
 and its development continues to this day (January 2020).
 
