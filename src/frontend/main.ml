@@ -971,7 +971,7 @@ let arg_output curdir s =
   OptionState.set_output_file (make_abs_path abspathstr)
 
 
-let handle_anonimous_arg (curdir : string) (s : string) =
+let handle_anonymous_arg (curdir : string) (s : string) =
   let abspathstr =
     if Filename.is_relative s then Filename.concat curdir s else s
   in
@@ -1048,7 +1048,7 @@ let setup_root_dirs () =
 let () =
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
-    Arg.parse (arg_spec_list curdir) (handle_anonimous_arg curdir) "";
+    Arg.parse (arg_spec_list curdir) (handle_anonymous_arg curdir) "";
     setup_root_dirs ();
     let abspath_in =
       match OptionState.input_file () with
