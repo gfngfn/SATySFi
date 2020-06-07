@@ -34,7 +34,7 @@ depends: [
   "ppx_deriving"
   "re" {build}
   "uutf"
-  "yojson" {= "1.4.1+satysfi"}
+  "yojson-with-position" {= "1.4.1+satysfi"}
   "omd"
 ]
 synopsis: "A statically-typed, functional typesetting system"
