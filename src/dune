@@ -12,7 +12,7 @@
             menhirLib
             otfm
             uutf
-            yojson
+            yojson-with-position
             omd
             )
  (preprocess (pps
