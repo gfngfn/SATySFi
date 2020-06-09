@@ -1,4 +1,5 @@
 @stage: persistent
+@require: option
 
 module List
 : sig
@@ -19,6 +20,8 @@ module List
     val mapi-adjacent : (int -> 'a -> 'a option -> 'a option -> 'b) -> 'a list -> 'b list
     val length : 'a list -> int
     val nth : int -> 'a list -> 'a option
+    val is-empty : 'a list -> bool
+    val map-with-ends : (bool -> bool -> 'a -> 'b) -> 'a list -> 'b list
   end
 = struct
 
@@ -132,5 +135,20 @@ module List
         | head :: tail -> if n == i then Some(head) else aux (i + 1) n tail
       in
         aux 0 lst
+
+
+    let is-empty xs =
+      match xs with
+      | []     -> true
+      | _ :: _ -> false
+
+
+    let map-with-ends f xs =
+      fold-left-adjacent (fun acc x prev next -> (
+        let is-first = Option.is-none prev in
+        let is-last = Option.is-none next in
+        let y = f is-first is-last x in
+        y :: acc
+      )) [] xs |> reverse
 
   end
