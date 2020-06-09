@@ -18,8 +18,10 @@ module MDJa : sig
   direct +h1 : [inline-text; block-text] block-cmd
   direct +h2 : [inline-text; block-text] block-cmd
   direct +h3 : [inline-text; block-text] block-cmd
+  direct +h4 : [inline-text; block-text] block-cmd
   direct +p : [inline-text] block-cmd
   direct +ul : [inline-text list] block-cmd
+  direct +ul-block : [block-text list] block-cmd
   direct +ol : [inline-text list] block-cmd
   direct +code : [string] block-cmd
   direct +console : [string] block-cmd
@@ -52,6 +54,7 @@ end = struct
   let font-size-h1 = 18pt
   let font-size-h2 = 16pt
   let font-size-h3 = 14pt
+  let font-size-h4 = 12.5pt
 
   let font-ratio-cjk = 0.88
 
@@ -134,6 +137,7 @@ end = struct
   let h1-heading = set-heading-font font-size-h1
   let h2-heading = set-heading-font font-size-h2
   let h3-heading = set-heading-font font-size-h3
+  let h4-heading = set-heading-font font-size-h4
 
 
   let document rcd bt =
@@ -240,6 +244,17 @@ end = struct
     heading-scheme ctx bb-title bt
 
 
+  let-block ctx +h4 it bt =
+    let bb-title =
+      let s-num = arabic !h1-number ^ `.` ^ arabic !h2-number ^ `.` ^ arabic !h3-number ^ `.` ^ arabic !h4-number in
+      let it-num = embed-string s-num in
+      let ctx = ctx |> h4-heading in
+      line-break true false ctx
+        (read-inline ctx {#it-num;. #it;} ++ inline-fil)
+    in
+    heading-scheme ctx bb-title bt
+
+
   let get-quad-size ctx =
     get-font-size ctx *' font-ratio-cjk
 
@@ -252,7 +267,20 @@ end = struct
 
   let-block +ul its =
     let items = its |> List.map (fun it -> Item(it, [])) in
-    '<+listing(Item({}, items));>
+    '<+listing?:(true)(Item({}, items));>
+
+
+  let-inline ctx \embed-block bt =
+    embed-block-breakable ctx (read-block ctx bt) ++ inline-fil
+
+
+  let-block ctx +ul-block bts =
+    let items =
+      bts |> List.map (fun bt -> (
+        Item({\embed-block(bt);}, [])
+      ))
+    in
+    read-block ctx '<+listing?:(true)(Item({}, items));>
 
 
   let-block +ol its =
