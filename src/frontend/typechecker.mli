@@ -25,4 +25,4 @@ exception EarlyMacroArgumentExpected     of Range.t * Typeenv.t * mono_type
 
 val typecheck_bindings : stage -> Typeenv.t -> untyped_binding list -> binding list * Typeenv.t
 
-val main : stage -> Typeenv.t -> untyped_abstract_tree -> (mono_type * Typeenv.t * abstract_tree)
+val main : stage -> Typeenv.t -> untyped_abstract_tree -> mono_type * abstract_tree

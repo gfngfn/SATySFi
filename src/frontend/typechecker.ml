@@ -569,9 +569,6 @@ let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
         raise (ContradictionError(tyenv, ty1, ty2))
 
 
-let final_tyenv : Typeenv.t ref = ref (Typeenv.empty)
-
-
 let fresh_type_variable rng pre kd =
   let tvid = FreeID.fresh kd pre.quantifiability pre.level () in
   (rng, TypeVariable(ref (MonoFree(tvid))))
@@ -1557,12 +1554,9 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
   (tyenvI, evid, eI, tyI)
 
 
-let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
-  begin
-    final_tyenv := tyenv;
-    let (e, ty) = typecheck { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utast in
-    (ty, !final_tyenv, e)
-  end
+let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : mono_type * abstract_tree =
+  let (e, ty) = typecheck { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utast in
+  (ty, e)
 
 
 let typecheck_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =

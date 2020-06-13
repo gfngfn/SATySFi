@@ -286,7 +286,7 @@ let typecheck_library_file (stage : stage) (tyenv : Typeenv.t) (abspath_in : abs
 let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utbinds : untyped_binding list) (utast : untyped_abstract_tree) : binding list * abstract_tree =
   Logging.begin_to_typecheck_file abspath_in;
   let (binds, tyenv) = Typechecker.typecheck_bindings Stage1 tyenv utbinds in
-  let (ty, _, ast) = Typechecker.main Stage1 tyenv utast in
+  let (ty, ast) = Typechecker.main Stage1 tyenv utast in
   Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
   if OptionState.is_text_mode () then
     match ty with
