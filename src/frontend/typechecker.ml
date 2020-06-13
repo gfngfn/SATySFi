@@ -1554,10 +1554,29 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
   (tyenvI, evid, eI, tyI)
 
 
+let rec typecheck_bindings (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
+  let (bindacc, tyenv) =
+    utbinds |> List.fold_left (fun (bindacc, tyenv) utbind ->
+      let (bind, tyenv) = typecheck_binding pre tyenv utbind in
+      (Alist.extend bindacc bind, tyenv)
+    ) (Alist.empty, tyenv)
+  in
+  (Alist.to_list bindacc, tyenv)
+
+
+and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding * Typeenv.t =
+  match utbind with
+  | UTBindValue(_valbind) ->
+      failwith "TODO: Typechecker.typecheck_binding, UTBindValue"
+
+  | _ ->
+      failwith "TODO: Typechecker.typecheck_binding, other"
+
+
 let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : mono_type * abstract_tree =
   let (e, ty) = typecheck { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utast in
   (ty, e)
 
 
-let typecheck_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
-  failwith "TODO: Typechecker.typecheck_bindings"
+let main_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
+  typecheck_bindings { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utbinds

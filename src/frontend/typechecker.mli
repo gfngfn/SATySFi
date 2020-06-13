@@ -23,6 +23,6 @@ exception InvalidNumberOfMacroArguments  of Range.t * Typeenv.t * macro_paramete
 exception LateMacroArgumentExpected      of Range.t * Typeenv.t * mono_type
 exception EarlyMacroArgumentExpected     of Range.t * Typeenv.t * mono_type
 
-val typecheck_bindings : stage -> Typeenv.t -> untyped_binding list -> binding list * Typeenv.t
+val main_bindings : stage -> Typeenv.t -> untyped_binding list -> binding list * Typeenv.t
 
 val main : stage -> Typeenv.t -> untyped_abstract_tree -> mono_type * abstract_tree
