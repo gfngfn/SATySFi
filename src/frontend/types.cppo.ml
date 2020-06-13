@@ -563,31 +563,14 @@ and untyped_abstract_tree_main =
       [@printer (fun fmt (u1, u2) -> Format.fprintf fmt "(%a %a)" pp_untyped_abstract_tree u1 pp_untyped_abstract_tree u2)]
   | UTApplyOmission        of untyped_abstract_tree
   | UTApplyOptional        of untyped_abstract_tree * untyped_abstract_tree
-(*
-  | UTLetRecIn             of untyped_letrec_binding list * untyped_abstract_tree
-  | UTLetNonRecIn          of untyped_let_binding * untyped_abstract_tree
-*)
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTFunction             of (Range.t * var_name) list * untyped_pattern_tree * untyped_abstract_tree
   | UTOpenIn               of Range.t * module_name * untyped_abstract_tree
-(*
-  | UTFinishHeaderFile
-  | UTFinishStruct
-*)
 (* -- pattern match -- *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
   | UTConstructor          of constructor_name * untyped_abstract_tree
       [@printer (fun fmt (cn, u) -> Format.fprintf fmt "%s(%a)" cn pp_untyped_abstract_tree u)]
-(* -- declaration of type and module -- *)
-(*
-  | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
-  | UTModule               of Range.t * module_name * manual_signature option * untyped_abstract_tree * untyped_abstract_tree
-*)
-(* -- imperative -- *)
-(*
-  | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
-*)
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
   | UTWhileDo              of untyped_abstract_tree * untyped_abstract_tree
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
@@ -601,11 +584,6 @@ and untyped_abstract_tree_main =
 (* -- multi-stage constructs -- *)
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree
-(*
-(* -- macros -- *)
-  | UTLetHorzMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
-  | UTLetVertMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
-*)
 
 and constraints = (var_name * manual_kind) list
 

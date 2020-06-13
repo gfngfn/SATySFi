@@ -41,11 +41,6 @@
         let (rngtail, _) = utasttail in
           (Range.unite rng rngtail, UTListCons(utast, utasttail))
 
-(*
-  let end_header : untyped_abstract_tree = (Range.dummy "end_header", UTFinishHeaderFile)
-
-  let end_struct (rng : Range.t) : untyped_abstract_tree = (rng, UTFinishStruct)
-*)
 
   let rec curry_lambda_abstract (optargacc : (Range.t * var_name) Alist.t) (rng : Range.t) (utarglst : untyped_argument list) (utastdef : untyped_abstract_tree) =
     match utarglst with
@@ -170,35 +165,6 @@
   let make_standard sttknd endknd main =
     let rng = make_range sttknd endknd in (rng, main)
 
-(*
-  let make_letrec_expression (lettok : Range.t) (utrecbinds : untyped_letrec_binding list) (utastaft : untyped_abstract_tree) =
-    make_standard (Tok lettok) (Ranged utastaft) (UTLetRecIn(utrecbinds, utastaft))
-
-  let make_let_expression (lettok : Range.t) ((mntyopt, vartok, utast1) : manual_type option * (Range.t * var_name) * untyped_abstract_tree) (utast2 : untyped_abstract_tree) =
-    let (varrng, varnm) = vartok in
-    let letbind : untyped_let_binding = (mntyopt, (varrng, UTPVariable(varnm)), utast1) in
-    make_standard (Tok lettok) (Ranged utast2) (UTLetNonRecIn(letbind, utast2))
-
-
-  let make_let_expression_of_pattern (lettok : Range.t) ((mntyopt, pat, utarglst, utast1) : untyped_let_pattern_binding) (utast2 : untyped_abstract_tree) =
-    let curried = curry_lambda_abstract Alist.empty (get_range pat) utarglst utast1 in
-    let letbind : untyped_let_binding = (mntyopt, pat, curried) in
-    make_standard (Tok lettok) (Ranged utast2) (UTLetNonRecIn(letbind, utast2))
-
-
-  let make_let_mutable_expression
-      (letmuttok : Range.t) (vartok : Range.t * var_name)
-      (utastdef : untyped_abstract_tree) (utastaft : untyped_abstract_tree)
-  : untyped_abstract_tree
-  =
-    let (varrng, varnm) = vartok in
-      make_standard (Tok letmuttok) (Ranged utastaft) (UTLetMutableIn(varrng, varnm, utastdef, utastaft))
-*)
-
-(*
-  let make_variant_declaration (firsttk : Range.t) (varntdecs : untyped_mutual_variant_cons) (utastaft : untyped_abstract_tree) : untyped_abstract_tree =
-    make_standard (Tok firsttk) (Ranged utastaft) (UTDeclareVariantIn(varntdecs, utastaft))
-*)
 
   let make_letrec_binding
       (mntyopt : manual_type option)
@@ -306,30 +272,6 @@
       | None      -> (rng, tyvarnm, MUniversalKind)
     )
 
-(*
-  let make_variant_binding (uktyargs : untyped_unkinded_type_argument list) (tynmtk : Range.t * type_name) (constrdecs : untyped_constructor_dec list) (constrnts : constraints) =
-    let tynm = extract_name tynmtk in
-    let tynmrng = get_range tynmtk in
-    let tyargcons = kind_type_arguments uktyargs constrnts in
-      UTBindVariant(tyargcons, tynmrng, tynm, constrdecs, tailcons)
-
-
-  let make_synonym_binding (uktyargs : untyped_unkinded_type_argument list) (tynmtk : Range.t * type_name) (mnty : manual_type) (constrnts : constraints) =
-    let tynm = extract_name tynmtk in
-    let tynmrng = get_range tynmtk in
-    let tyargcons = kind_type_arguments uktyargs constrnts in
-      UTBindSynonym(tyargcons, tynmrng, tynm, mnty, tailcons)
-
-  let make_module
-      (firsttk : Range.t) (mdlnmtk : Range.t * module_name) (msigopt : (manual_signature_content list) option)
-      (utastdef : untyped_abstract_tree) (utastaft : untyped_abstract_tree)
-  : untyped_abstract_tree
-  =
-    let mdlrng = make_range (Tok firsttk) (Ranged utastdef) in
-    let mdlnm = extract_name mdlnmtk in
-      make_standard (Tok firsttk) (Ranged utastaft) (UTModule(mdlrng, mdlnm, msigopt, utastdef, utastaft))
-*)
-
 
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
     let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInputHorz([])), [])) lst 0 in
@@ -427,9 +369,6 @@
 %token <Range.t> WHILE DO
 %token <Range.t> HORZCMDTYPE VERTCMDTYPE MATHCMDTYPE
 %token <Range.t> OPTIONAL OMISSION OPTIONALTYPE OPTIONALARROW
-(*
-%token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
-*)
 %token <Range.t * int> ITEM
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
 %token <Range.t> HEADER_STAGE0 HEADER_STAGE1 HEADER_PERSISTENT0
@@ -474,10 +413,6 @@
 %type <Types.untyped_input_vert_element> vxbot
 %type <Types.var_name * Types.manual_kind> constrnt
 %type <Types.constraints> constrnts
-(*
-%type <Types.untyped_abstract_tree> sxclsnm
-%type <Types.untyped_abstract_tree> sxidnm
-*)
 %type <Types.untyped_command_argument> narg
 %type <Types.untyped_command_argument> sarg
 %type <Types.untyped_pattern_tree list> argpats
@@ -533,7 +468,7 @@ bind:
           UTBindModule(modnmtok, (rng, ModBinds(utbinds)))
 
       | Some(_) ->
-          failwith "'module M : sig ... end = ...'; not supported yet"
+          failwith "TODO: 'module M : sig ... end = ...'"
     }
   | OPEN; modnmtok=CONSTRUCTOR {
       UTBindOpen(modnmtok)
