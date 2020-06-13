@@ -1554,7 +1554,7 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
   (tyenvI, evid, eI, tyI)
 
 
-let rec typecheck_bindings (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
+let rec typecheck_binding_list (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
   let (bindacc, tyenv) =
     utbinds |> List.fold_left (fun (bindacc, tyenv) utbind ->
       let (bind, tyenv) = typecheck_binding pre tyenv utbind in
@@ -1566,11 +1566,40 @@ let rec typecheck_bindings (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_bi
 
 and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding * Typeenv.t =
   match utbind with
-  | UTBindValue(_valbind) ->
-      failwith "TODO: Typechecker.typecheck_binding, UTBindValue"
+  | UTBindValue(valbind) ->
+      begin
+        match valbind with
+        | UTNonRec(_mtyopt, _utpat, _utast1) ->
+            failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTNonRec"
 
-  | _ ->
-      failwith "TODO: Typechecker.typecheck_binding, other"
+        | UTRec(utrecbinds) ->
+            let (_tyenv, _, _recbinds) = make_type_environment_by_letrec pre tyenv utrecbinds in
+            failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTRec"
+
+        | UTMutable((_, _varnm), _utast1) ->
+            failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTMutable"
+      end
+
+  | UTBindType(_typebinds) ->
+      failwith "TODO: Typechecker.typecheck_binding, UTBindType"
+
+  | UTBindModule((_, _modnm), _utsigopt, _utmod) ->
+      failwith "TODO: Typechecker.typecheck_binding, UTBindModule"
+
+  | UTBindSignature((_, _signm), _utsig) ->
+      failwith "TODO: Typechecker.typecheck_binding, UTBindSignature"
+
+  | UTBindOpen((_, _modnm)) ->
+      failwith "TODO: Typechecker.typecheck_binding, UTBindOpen"
+
+  | UTBindInclude(_utmod) ->
+      failwith "TODO: Typechecker.typecheck_binding, UTBindInclude"
+
+  | UTBindHorzMacro((_, _csnm), _macparams, _utast1) ->
+      failwith "TODO: Typechecker.typecheck_binding, UTBindHorzMacro"
+
+  | UTBindVertMacro((_, _csnm), _macparams, _utast2) ->
+      failwith "TODO: Typechecker.typecheck_binding, UTBindVertMacro"
 
 
 let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : mono_type * abstract_tree =
@@ -1579,4 +1608,4 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : m
 
 
 let main_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
-  typecheck_bindings { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utbinds
+  typecheck_binding_list { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utbinds
