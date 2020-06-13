@@ -265,14 +265,6 @@
       (UTLetRecBinding(mntyopt, varrng, varnm, abs)) :: tailcons
 
 
-  let kind_type_arguments (uktyargs : untyped_unkinded_type_argument list) (constrntcons : constraints) : untyped_type_argument list =
-    uktyargs |> List.map (fun (rng, tyvarnm) ->
-      match List.assoc_opt tyvarnm constrntcons with
-      | Some(mkd) -> (rng, tyvarnm, mkd)
-      | None      -> (rng, tyvarnm, MUniversalKind)
-    )
-
-
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
     let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInputHorz([])), [])) lst 0 in
     (Range.dummy "itemize1", UTItemize(contents))

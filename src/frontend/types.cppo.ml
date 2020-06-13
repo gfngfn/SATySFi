@@ -592,13 +592,6 @@ and constraints = (var_name * manual_kind) list
 and untyped_itemize =
   | UTItem of untyped_abstract_tree * (untyped_itemize list)
 
-and untyped_constructor_dec = Range.t * constructor_name * manual_type
-
-and untyped_mutual_variant_cons =
-  | UTMutualVariantCons    of untyped_type_argument list * Range.t * type_name * untyped_constructor_dec list * untyped_mutual_variant_cons
-  | UTMutualSynonymCons    of untyped_type_argument list * Range.t * type_name * manual_type * untyped_mutual_variant_cons
-  | UTEndOfMutualVariant
-
 and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
   | UTPIntegerConstant     of int
@@ -1982,3 +1975,11 @@ and string_of_manual_command_argument_type = function
   | MMandatoryArgumentType(mnty) -> string_of_manual_type mnty
   | MOptionalArgumentType(mnty)  -> "(" ^ (string_of_manual_type mnty) ^ ")?"
 *)
+
+
+let kind_type_arguments (uktyargs : untyped_unkinded_type_argument list) (constrntcons : constraints) : untyped_type_argument list =
+  uktyargs |> List.map (fun (rng, tyvarnm) ->
+    match List.assoc_opt tyvarnm constrntcons with
+    | Some(mkd) -> (rng, tyvarnm, mkd)
+    | None      -> (rng, tyvarnm, MUniversalKind)
+  )

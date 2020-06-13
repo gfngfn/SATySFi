@@ -358,7 +358,7 @@ module DependencyGraph = DirectedGraph.Make
 
 
 type vertex_label =
-  | VariantVertex of Range.t * TypeID.t * untyped_type_argument list * untyped_constructor_dec list
+  | VariantVertex of Range.t * TypeID.t * untyped_type_argument list * constructor_branch list
   | SynonymVertex of Range.t * TypeID.t * untyped_type_argument list * manual_type * (type_scheme option) ref
 
 
@@ -795,15 +795,17 @@ let get_moduled_type_name (tyenv : t) (tynm : type_name) =
 
 
 (* PUBLIC *)
-let rec add_mutual_cons (tyenv : t) (lev : level) (mutvarntcons : untyped_mutual_variant_cons) =
+let rec add_mutual_cons (tyenv : t) (lev : level) (mutvarntcons : untyped_type_binding list) =
 
   let dg = DependencyGraph.create 32 in
 
-  let rec add_each_type_as_vertex mutvarntcons =
+  let rec add_each_type_as_vertex (mutvarntcons : untyped_type_binding list) =
     let iter = add_each_type_as_vertex in
     match mutvarntcons with
-    | UTEndOfMutualVariant -> ()
-    | UTMutualVariantCons(tyargcons, tynmrng, tynm, utvarntcons, tailcons) ->
+    | [] -> ()
+    | (tynmtok, tyvars, constraints, UTBindVariant(utvarntcons)) :: tailcons ->
+        let (tynmrng, tynm) = tynmtok in
+        let kdtyvars = kind_type_arguments tyvars constraints in
         if DependencyGraph.mem_vertex tynm dg then
           let rng = extract_range_in_vertex_label (DependencyGraph.get_vertex dg tynm) in
             raise (MultipleTypeDefinition(rng, tynmrng, tynm))
@@ -811,11 +813,13 @@ let rec add_mutual_cons (tyenv : t) (lev : level) (mutvarntcons : untyped_mutual
           let () = print_for_debug_variantenv ("AddV " ^ tynm) in (* for debug *)
           let tyid = TypeID.fresh (get_moduled_var_name tyenv tynm) in
           begin
-            DependencyGraph.add_vertex dg tynm (VariantVertex(tynmrng, tyid, tyargcons, utvarntcons));
+            DependencyGraph.add_vertex dg tynm (VariantVertex(tynmrng, tyid, kdtyvars, utvarntcons));
             iter tailcons;
           end
 
-    | UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons) ->
+    | (tynmtok, tyvars, constraints, UTBindSynonym(mnty)) :: tailcons ->
+        let (tynmrng, tynm) = tynmtok in
+        let kdtyvars = kind_type_arguments tyvars constraints in
         if DependencyGraph.mem_vertex tynm dg then
           let rng = extract_range_in_vertex_label (DependencyGraph.get_vertex dg tynm) in
             raise (MultipleTypeDefinition(rng, tynmrng, tynm))
@@ -823,7 +827,7 @@ let rec add_mutual_cons (tyenv : t) (lev : level) (mutvarntcons : untyped_mutual
           let () = print_for_debug_variantenv ("AddS " ^ tynm) in (* for debug *)
           let tyid = TypeID.fresh (get_moduled_var_name tyenv tynm) in
           begin
-            DependencyGraph.add_vertex dg tynm (SynonymVertex(tynmrng, tyid, tyargcons, mnty, ref None));
+            DependencyGraph.add_vertex dg tynm (SynonymVertex(tynmrng, tyid, kdtyvars, mnty, ref None));
             iter tailcons;
           end
   in
@@ -853,14 +857,18 @@ let rec add_mutual_cons (tyenv : t) (lev : level) (mutvarntcons : untyped_mutual
             List.iter iter mtyarglist
     in
     let iter = add_each_dependency_as_edge in
-      match mutvarntcons with
-      | UTEndOfMutualVariant                                   -> ()
-      | UTMutualVariantCons(_, _, tynm, utvarntcons, tailcons) -> iter tailcons
-      | UTMutualSynonymCons(_, _, tynm, mnty, tailcons)        ->
-          begin
-            add_dependency tynm mnty;
-            iter tailcons;
-          end
+    match mutvarntcons with
+    | [] ->
+        ()
+
+    | (_, _, _, UTBindVariant(_)) :: tailcons ->
+        iter tailcons
+
+    | ((_, tynm), _, _, UTBindSynonym(mnty)) :: tailcons ->
+        begin
+          add_dependency tynm mnty;
+          iter tailcons;
+        end
 
   in
 
@@ -894,11 +902,14 @@ let rec add_mutual_cons (tyenv : t) (lev : level) (mutvarntcons : untyped_mutual
   in
 
   let add_each_variant_type_definition (tyenvold : t) =
-    let rec register_each_constructor tyargcons tynm acctyenv utvarntcons =
+
+    let rec register_each_constructor (tyargcons : untyped_type_argument list) (tynm : type_name) (acctyenv : t) (utvarntcons : constructor_branch list) =
       let iter = register_each_constructor tyargcons tynm in
         match utvarntcons with
-        | []                                -> acctyenv
-        | (rng, constrnm, mnty) :: tailcons ->
+        | [] ->
+            acctyenv
+
+        | UTConstructorBranch((rng, constrnm), mnty) :: tailcons ->
             let tysch = fix_manual_type (DependentMode(dg)) acctyenv lev tyargcons mnty in
               match find_type_definition_for_inner acctyenv tynm with
               | None            -> assert false

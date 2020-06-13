@@ -41,7 +41,7 @@ val enter_new_module : t -> module_name -> t
 
 val leave_module : t -> t
 
-val add_mutual_cons : t -> level -> untyped_mutual_variant_cons -> t
+val add_mutual_cons : t -> level -> untyped_type_binding list -> t
 
 val find_constructor : pre -> t -> constructor_name -> (mono_type list * TypeID.t * mono_type) option
 
