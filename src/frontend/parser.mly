@@ -421,6 +421,7 @@
 
 main:
   | stage=stage; header=list(headerelem); utbinds=list(bind); last=nxtoplast { (stage, header, utbinds, last) }
+  | stage=stage; header=list(headerelem); utast=nxwhl; EOI                   { (stage, header, [], Some(utast)) }
 ;
 stage:
   |                    { Stage1 }
