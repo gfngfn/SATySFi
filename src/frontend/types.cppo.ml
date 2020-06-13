@@ -6,6 +6,9 @@ exception ParseErrorDetail of string
 exception IllegalArgumentLength of Range.t * int * int
 
 
+type 'a ranged = Range.t * 'a
+[@@deriving show]
+
 type ctrlseq_name       = string  [@@deriving show]
 type var_name           = string  [@@deriving show]
 type id_name            = string  [@@deriving show]
@@ -17,6 +20,8 @@ type sig_var_name       = string  [@@deriving show]
 type field_name         = string  [@@deriving show]
 type type_argument_name = string  [@@deriving show]
 type length_unit_name   = string  [@@deriving show]
+type type_variable_name = string  [@@deriving show]
+type signature_name     = string  [@@deriving show]
 
 
 type header_element =
@@ -411,8 +416,75 @@ type untyped_macro_parameter =
   | UTEarlyMacroParam of (Range.t * var_name)
 [@@deriving show { with_path = false; } ]
 
-type untyped_letrec_binding =
+type untyped_binding =
+  untyped_binding_main
+    (* TEMPORARY; should `untyped_binding_main ranged` *)
+
+and untyped_binding_main =
+  | UTBindValue     of untyped_rec_or_nonrec
+  | UTBindType      of untyped_type_binding list
+  | UTBindModule    of module_name ranged * untyped_module
+  | UTBindSignature of signature_name ranged * untyped_signature
+  | UTBindOpen      of module_name ranged
+  | UTBindInclude   of untyped_module
+  | UTBindHorzMacro of ctrlseq_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindVertMacro of ctrlseq_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+
+and untyped_module =
+  untyped_module_main ranged
+
+and untyped_module_main =
+  | ModVar     of module_name
+  | ModBinds   of untyped_binding list
+  | ModProjMod of untyped_module * module_name ranged
+  | ModFunctor of module_name ranged * untyped_signature * untyped_module
+  | ModApply   of module_name ranged * module_name ranged
+  | ModCoerce  of module_name ranged * untyped_signature
+
+and untyped_signature =
+  untyped_signature_main ranged
+
+and untyped_signature_main =
+  | SigVar     of signature_name
+  | SigPath    of untyped_module * signature_name ranged
+  | SigDecls   of untyped_declaration list
+  | SigFunctor of module_name ranged * untyped_signature * untyped_signature
+  | SigWith    of untyped_signature * (module_name ranged) list * type_name ranged * (type_variable_name ranged) list * manual_type
+
+and untyped_declaration =
+  untyped_declaration_main ranged
+
+and untyped_declaration_main =
+  | DeclVal        of var_name ranged * (type_variable_name ranged) list * manual_type
+  | DeclTypeTrans  of type_name ranged * manual_type
+  | DeclTypeOpaque of type_name ranged * manual_kind
+  | DeclModule     of module_name ranged * untyped_signature
+  | DeclSig        of signature_name ranged * untyped_signature
+  | DeclInclude    of untyped_signature
+
+and constructor_branch =
+  | UTConstructorBranch of constructor_name ranged * manual_type
+
+and untyped_rec_or_nonrec =
+  | UTNonRec  of untyped_let_binding
+  | UTRec     of untyped_letrec_binding list
+  | UTMutable of untyped_let_mutable_binding
+
+and untyped_let_binding =
+  manual_type option * untyped_pattern_tree * untyped_abstract_tree
+
+and untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
+
+and untyped_let_mutable_binding =
+  (Range.t * var_name) * untyped_abstract_tree
+
+and untyped_type_binding =
+  type_name ranged * (type_variable_name ranged) list * constraints * untyped_synonym_or_variant
+
+and untyped_synonym_or_variant =
+  | UTBindSynonym of manual_type
+  | UTBindVariant of constructor_branch list
 
 and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
   [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_input_horz_element_main utihmain)]
@@ -491,22 +563,31 @@ and untyped_abstract_tree_main =
       [@printer (fun fmt (u1, u2) -> Format.fprintf fmt "(%a %a)" pp_untyped_abstract_tree u1 pp_untyped_abstract_tree u2)]
   | UTApplyOmission        of untyped_abstract_tree
   | UTApplyOptional        of untyped_abstract_tree * untyped_abstract_tree
+(*
   | UTLetRecIn             of untyped_letrec_binding list * untyped_abstract_tree
-  | UTLetNonRecIn          of manual_type option * untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
+  | UTLetNonRecIn          of untyped_let_binding * untyped_abstract_tree
+*)
+  | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTFunction             of (Range.t * var_name) list * untyped_pattern_tree * untyped_abstract_tree
   | UTOpenIn               of Range.t * module_name * untyped_abstract_tree
+(*
   | UTFinishHeaderFile
   | UTFinishStruct
+*)
 (* -- pattern match -- *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
   | UTConstructor          of constructor_name * untyped_abstract_tree
       [@printer (fun fmt (cn, u) -> Format.fprintf fmt "%s(%a)" cn pp_untyped_abstract_tree u)]
 (* -- declaration of type and module -- *)
+(*
   | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
   | UTModule               of Range.t * module_name * manual_signature option * untyped_abstract_tree * untyped_abstract_tree
+*)
 (* -- imperative -- *)
+(*
   | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
+*)
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
   | UTWhileDo              of untyped_abstract_tree * untyped_abstract_tree
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
@@ -520,9 +601,11 @@ and untyped_abstract_tree_main =
 (* -- multi-stage constructs -- *)
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree
+(*
 (* -- macros -- *)
   | UTLetHorzMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
   | UTLetVertMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
+*)
 
 and constraints = (var_name * manual_kind) list
 
@@ -591,7 +674,7 @@ type untyped_argument =
   | UTPatternArgument  of untyped_pattern_tree
   | UTOptionalArgument of Range.t * var_name
 
-type untyped_let_binding = manual_type option * untyped_pattern_tree * untyped_argument list * untyped_abstract_tree
+type untyped_let_pattern_binding = manual_type option * untyped_pattern_tree * untyped_argument list * untyped_abstract_tree
 
 (* ---- typed ---- *)
 
