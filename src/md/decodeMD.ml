@@ -475,7 +475,11 @@ let decode (cmdrcd : command_record) (s : string) =
         (cmdrcd.header_default, md)
   in
   let lexbuf = Lexing.from_string strheader in
-  let (_, _, utasthead) = ParserInterface.process "(markdown)" lexbuf in
+  let utasthead =
+    match ParserInterface.process "(markdown)" lexbuf with
+    | (_, [], [], Some(u)) -> u
+    | _                    -> failwith "invalid header expression"
+  in
   let blk = normalize_h1 md in
 (*
   Format.printf "BLOCK: %a\n" pp_block blk;  (* for debug *)

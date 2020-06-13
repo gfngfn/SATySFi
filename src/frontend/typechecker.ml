@@ -621,7 +621,7 @@ let rec typecheck
       unify typt0 (Range.dummy "ut-path", point_type_main);
       let (pathcomplst, cycleopt) = typecheck_path pre tyenv utpathcomplst utcycleopt in
       (Path(ept0, pathcomplst, cycleopt), (rng, BaseType(PathType)))
-
+(*
   | UTFinishStruct ->
       final_tyenv := tyenv;  (* ad hoc *)
       (FinishStruct, (Range.dummy "finish-struct", BaseType(EnvType)))
@@ -629,7 +629,7 @@ let rec typecheck
   | UTFinishHeaderFile ->
       final_tyenv := tyenv;  (* ad hoc *)
       (FinishHeaderFile, (Range.dummy "finish-header-file", BaseType(EnvType)))
-
+*)
   | UTOpenIn(rngtok, mdlnm, utast1) ->
       let tyenvnew = Typeenv.open_module tyenv rngtok mdlnm in
       typecheck_iter tyenvnew utast1
@@ -809,7 +809,7 @@ let rec typecheck
       Exhchecker.main rng patbrs tyO pre tyenv;
       (PatternMatch(rng, eO, patbrs), beta)
 
-  | UTLetNonRecIn(mntyopt, utpat, utast1, utast2) ->
+  | UTLetIn(UTNonRec(mntyopt, utpat, utast1), utast2) ->
       let presub = { pre with level = Level.succ pre.level; } in
       let (pat, tyP, patvarmap) = typecheck_pattern presub tyenv utpat in
       let (e1, ty1) = typecheck presub tyenv utast1 in
@@ -825,7 +825,7 @@ let rec typecheck
       let (e2, ty2) = typecheck_iter tyenvnew utast2 in
       (LetNonRecIn(pat, e1, e2), ty2)
 
-  | UTLetRecIn(utrecbinds, utast2) ->
+  | UTLetIn(UTRec(utrecbinds), utast2) ->
       let (tyenvnew, _, recbinds) = make_type_environment_by_letrec pre tyenv utrecbinds in
       let (e2, ty2) = typecheck_iter tyenvnew utast2 in
       (LetRecIn(recbinds, e2), ty2)
@@ -840,7 +840,7 @@ let rec typecheck
 
 (* ---- imperatives ---- *)
 
-  | UTLetMutableIn(varrng, varnm, utastI, utastA) ->
+  | UTLetIn(UTMutable((varrng, varnm), utastI), utastA) ->
       let (tyenvI, evid, eI, tyI) = make_type_environment_by_let_mutable pre tyenv varrng varnm utastI in
       let (eA, tyA) = typecheck_iter tyenvI utastA in
       (LetMutableIn(evid, eI, eA), tyA)
@@ -929,12 +929,11 @@ let rec typecheck
       let utast = typecheck_math pre tyenv utmath in
       (utast, tymath)
 
+(*
 (* ---- other fundamentals ---- *)
-
   | UTDeclareVariantIn(mutvarntcons, utastA) ->
       let tyenvnew = Typeenv.add_mutual_cons tyenv pre.level mutvarntcons in
       typecheck_iter tyenvnew utastA
-
   | UTModule(mdlrng, mdlnm, sigopt, utastM, utastA) ->
       let tyenvinner = Typeenv.enter_new_module tyenv mdlnm in
       let (eM, _) = typecheck_iter tyenvinner utastM in
@@ -943,6 +942,7 @@ let rec typecheck
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
       (Module(eM, eA), tyA)
+*)
 
 (* ---- for lightweight command definition ---- *)
   | UTLexHorz(utastctx, utasth) ->
@@ -997,6 +997,7 @@ let rec typecheck
             (Prev(e1), beta)
       end
 
+(*
 (* -- macros -- *)
 
   | UTLetHorzMacroIn(rngcs, csnm, macparams, utast1, utast2) ->
@@ -1030,7 +1031,7 @@ let rec typecheck
             let e = Prev(LetNonRecIn(PVariable(evid), abstraction_list argevids (Next(e1)), Next(e2))) in
             (e, ty2)
       end
-
+*)
 
 and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) tyenv (utcmdarglst : untyped_command_argument list) (cmdargtylst : mono_command_argument_type list) : abstract_tree =
   let rec aux eacc utcmdarglst cmdargtylst =
@@ -1562,3 +1563,7 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
     let (e, ty) = typecheck { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utast in
     (ty, !final_tyenv, e)
   end
+
+
+let typecheck_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
+  failwith "TODO: Typechecker.typecheck_bindings"

@@ -904,3 +904,11 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
     loc := Closure([], patbr, envnew)
   );
   envnew
+
+
+let interpret_bindings_0 (env : environment) (binds : binding list) : environment =
+  failwith "TODO: Evaluator.interpret_bindings_0"
+
+
+let interpret_bindings_1 (env : environment) (binds : binding list) : code_binding list * environment =
+  failwith "TODO: Evaluator.interpret_bindings_1"
