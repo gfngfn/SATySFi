@@ -588,17 +588,7 @@ and untyped_abstract_tree_main =
   | UTPrev                 of untyped_abstract_tree
 
 and constraints = (var_name * manual_kind) list
-(*
-and manual_signature_content =
-  | SigType   of untyped_type_argument list * type_name
-  | SigValue  of var_name * manual_type * constraints
-  | SigDirect of var_name * manual_type * constraints
-(*
-  | SigModule of module_name * manual_signature
-*)
 
-and manual_signature = manual_signature_content list
-*)
 and untyped_itemize =
   | UTItem of untyped_abstract_tree * (untyped_itemize list)
 
