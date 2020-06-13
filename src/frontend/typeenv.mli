@@ -54,9 +54,9 @@ val fix_manual_type_free : pre -> t -> manual_type -> constraints -> mono_type
 val find_type_id : t -> module_name list -> type_name -> Range.t -> TypeID.t option
 
 val find_type_name : t -> TypeID.t -> type_name
-
+(*
 val sigcheck : Range.t -> pre -> t -> t -> manual_signature option -> t
-
+*)
 module Raw : sig
   val fresh_type_id : string -> TypeID.t
   val add_constructor : constructor_name -> type_scheme -> TypeID.t -> t -> t

@@ -1211,16 +1211,17 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
   b
 
 
-let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
+let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : (untyped_declaration list) option) =
 
   let lev = pre.level in
 
-  let rec read_manual_signature (tyenvacc : t) (tyenvforsigI : t) (tyenvforsigO : t) (msig : manual_signature) (sigoptacc : signature option) =
+  let rec read_manual_signature (tyenvacc : t) (tyenvforsigI : t) (tyenvforsigO : t) (msig : untyped_declaration list) (sigoptacc : signature option) =
     let iter = read_manual_signature in
       match msig with
       | [] -> (sigoptacc, tyenvacc)
 
-      | SigType(tyargcons, tynm) :: tail ->
+      | UTDeclTypeOpaque(tynmtok, tyargcons) :: tail ->
+          let (_, tynm) = tynmtok in
           let () = print_for_debug_variantenv ("SIGT " ^ tynm) in (* for debug *)
           begin
             match find_type_definition_for_inner tyenv tynm with
@@ -1243,7 +1244,8 @@ let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : 
                   iter tyenvacc tyenvforsigInew tyenvforsigOnew tail sigoptaccnew
           end
 
-      | SigValue(varnm, mty, constrntcons) :: tail ->
+      | UTDeclValue(valnmtok, constrntcons, mty) :: tail ->
+          let (_, varnm) = valnmtok in
           let () = print_for_debug_variantenv ("SIGV " ^ varnm) in (* for debug *)
           let tysigI = fix_manual_type_free { pre with level = Level.succ lev; } tyenvforsigI mty constrntcons in
           let ptysigI = generalize lev tysigI in
@@ -1268,7 +1270,8 @@ let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : 
                   raise (NotMatchingStage(rng, varnm, stageimp, stagereq))
           end
 
-      | SigDirect(csnm, mty, constrntcons) :: tail ->
+      | UTDeclDirect(cmdtok, constrntcons, mty) :: tail ->
+          let (_, csnm) = cmdtok in
           let () = print_for_debug_variantenv ("SIGD " ^ csnm) in (* for debug *)
 (*
           let () = print_for_debug_variantenv ("D-OK0 " ^ (string_of_manual_type mty)) in (* for debug *)
@@ -1300,6 +1303,9 @@ let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : 
                 else
                   raise (NotMatchingInterface(rng, csnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
           end
+
+      | _ ->
+          failwith "TODO: other declarations"
   in
 
     match msigopt with

@@ -380,6 +380,8 @@
 %start main
 %type <Types.stage * Types.header_element list * Types.untyped_binding list * Types.untyped_abstract_tree option> main
 %type <Types.untyped_abstract_tree option> nxtoplast
+%type <Types.untyped_binding> bind
+%type <Types.untyped_declaration> decl
 %type <Types.untyped_abstract_tree> nxlet
 %type <Types.untyped_abstract_tree> nxletsub
 %type <Types.untyped_letrec_binding list> nxrecdec
@@ -465,7 +467,7 @@ bind:
       match sigopt with
       | None ->
           let rng = make_range (Tok tokL) (Tok tokR) in
-          UTBindModule(modnmtok, (rng, ModBinds(utbinds)))
+          UTBindModule(modnmtok, (rng, UTModBinds(utbinds)))
 
       | Some(_) ->
           failwith "TODO: 'module M : sig ... end = ...'"
@@ -487,18 +489,32 @@ nxtoplast:
   | IN; utast=nxlet; EOI { Some(utast) }
 ;
 nxsigopt:
-  |                                     { None }
-  | COLON; SIG; sg=list(nxsigelem); END { Some(sg) }
+  |                                { None }
+  | COLON; SIG; sg=list(decl); END { Some(sg) }
 ;
-nxsigelem:
-  | TYPE; tyvars=list(TYPEVAR); tytok=VAR; clst=constrnts       { let (_, tynm) = tytok in (SigType(kind_type_arguments tyvars clst, tynm)) }
-  | VAL; vartok=VAR; COLON; mnty=txfunc; clst=constrnts         { let (_, varnm) = vartok in (SigValue(varnm, mnty, clst)) }
-  | VAL; LPAREN; vartok=binop; RPAREN; COLON;
-                            mnty=txfunc; clst=constrnts         { let (_, varnm) = vartok in (SigValue(varnm, mnty, clst)) }
-  | VAL; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts    { let (_, csnm) = hcmdtok in (SigValue(csnm, mnty, clst)) }
-  | VAL; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts    { let (_, csnm) = vcmdtok in (SigValue(csnm, mnty, clst)) }
-  | DIRECT; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts { let (_, csnm) = hcmdtok in (SigDirect(csnm, mnty, clst)) }
-  | DIRECT; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts { let (_, csnm) = vcmdtok in (SigDirect(csnm, mnty, clst)) }
+decl:
+  | TYPE; tyvars=list(TYPEVAR); tynmtok=VAR; clst=constrnts {
+      let kdtyvars = kind_type_arguments tyvars clst in
+      UTDeclTypeOpaque(tynmtok, kdtyvars)
+    }
+  | VAL; valnmtok=VAR; COLON; mnty=txfunc; clst=constrnts {
+      UTDeclValue(valnmtok, clst, mnty)
+    }
+  | VAL; LPAREN; valnmtok=binop; RPAREN; COLON; mnty=txfunc; clst=constrnts {
+      UTDeclValue(valnmtok, clst, mnty)
+    }
+  | VAL; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts {
+      UTDeclValue(hcmdtok, clst, mnty)
+    }
+  | VAL; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts {
+      UTDeclValue(vcmdtok, clst, mnty)
+    }
+  | DIRECT; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts {
+      UTDeclDirect(hcmdtok, clst, mnty)
+    }
+  | DIRECT; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts {
+      UTDeclDirect(vcmdtok, clst, mnty)
+    }
 ;
 constrnts:
   | clst=list(constrnt) { clst }

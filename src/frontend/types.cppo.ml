@@ -434,33 +434,35 @@ and untyped_module =
   untyped_module_main ranged
 
 and untyped_module_main =
-  | ModVar     of module_name
-  | ModBinds   of untyped_binding list
-  | ModProjMod of untyped_module * module_name ranged
-  | ModFunctor of module_name ranged * untyped_signature * untyped_module
-  | ModApply   of module_name ranged * module_name ranged
-  | ModCoerce  of module_name ranged * untyped_signature
+  | UTModVar     of module_name
+  | UTModBinds   of untyped_binding list
+  | UTModProjMod of untyped_module * module_name ranged
+  | UTModFunctor of module_name ranged * untyped_signature * untyped_module
+  | UTModApply   of module_name ranged * module_name ranged
+  | UTModCoerce  of module_name ranged * untyped_signature
 
 and untyped_signature =
   untyped_signature_main ranged
 
 and untyped_signature_main =
-  | SigVar     of signature_name
-  | SigPath    of untyped_module * signature_name ranged
-  | SigDecls   of untyped_declaration list
-  | SigFunctor of module_name ranged * untyped_signature * untyped_signature
-  | SigWith    of untyped_signature * (module_name ranged) list * type_name ranged * (type_variable_name ranged) list * manual_type
+  | UTSigVar     of signature_name
+  | UTSigPath    of untyped_module * signature_name ranged
+  | UTSigDecls   of untyped_declaration list
+  | UTSigFunctor of module_name ranged * untyped_signature * untyped_signature
+  | UTSigWith    of untyped_signature * (module_name ranged) list * type_name ranged * (type_variable_name ranged) list * manual_type
 
 and untyped_declaration =
-  untyped_declaration_main ranged
+  untyped_declaration_main
+    (* TEMPORARY; should be `untyped_declaration_main ranged`  *)
 
 and untyped_declaration_main =
-  | DeclVal        of var_name ranged * (type_variable_name ranged) list * manual_type
-  | DeclTypeTrans  of type_name ranged * manual_type
-  | DeclTypeOpaque of type_name ranged * manual_kind
-  | DeclModule     of module_name ranged * untyped_signature
-  | DeclSig        of signature_name ranged * untyped_signature
-  | DeclInclude    of untyped_signature
+  | UTDeclValue      of var_name ranged * constraints * manual_type
+  | UTDeclDirect     of var_name ranged * constraints * manual_type
+  | UTDeclTypeTrans  of type_name ranged * manual_type
+  | UTDeclTypeOpaque of type_name ranged * untyped_type_argument list
+  | UTDeclModule     of module_name ranged * untyped_signature
+  | UTDeclSignature  of signature_name ranged * untyped_signature
+  | UTDeclInclude    of untyped_signature
 
 and constructor_branch =
   | UTConstructorBranch of constructor_name ranged * manual_type
@@ -586,7 +588,7 @@ and untyped_abstract_tree_main =
   | UTPrev                 of untyped_abstract_tree
 
 and constraints = (var_name * manual_kind) list
-
+(*
 and manual_signature_content =
   | SigType   of untyped_type_argument list * type_name
   | SigValue  of var_name * manual_type * constraints
@@ -596,7 +598,7 @@ and manual_signature_content =
 *)
 
 and manual_signature = manual_signature_content list
-
+*)
 and untyped_itemize =
   | UTItem of untyped_abstract_tree * (untyped_itemize list)
 
