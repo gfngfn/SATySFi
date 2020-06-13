@@ -423,7 +423,7 @@ type untyped_binding =
 and untyped_binding_main =
   | UTBindValue     of untyped_rec_or_nonrec
   | UTBindType      of untyped_type_binding list
-  | UTBindModule    of module_name ranged * untyped_module
+  | UTBindModule    of module_name ranged * untyped_signature option * untyped_module
   | UTBindSignature of signature_name ranged * untyped_signature
   | UTBindOpen      of module_name ranged
   | UTBindInclude   of untyped_module

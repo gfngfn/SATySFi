@@ -456,14 +456,8 @@ bind:
   | TYPE; uttypebind=nxtyperecdec {
       UTBindType(uttypebind)
     }
-  | MODULE; modnmtok=CONSTRUCTOR; sigopt=nxsigopt; DEFEQ; tokL=STRUCT; utbinds=list(bind); tokR=END {
-      match sigopt with
-      | None ->
-          let rng = make_range (Tok tokL) (Tok tokR) in
-          UTBindModule(modnmtok, (rng, UTModBinds(utbinds)))
-
-      | Some(_) ->
-          failwith "TODO: 'module M : sig ... end = ...'"
+  | MODULE; modnmtok=CONSTRUCTOR; utsigopt=nxsigannot; DEFEQ; utmod=nxmod {
+      UTBindModule(modnmtok, utsigopt, utmod)
     }
   | OPEN; modnmtok=CONSTRUCTOR {
       UTBindOpen(modnmtok)
@@ -481,9 +475,31 @@ nxtoplast:
   | EOI                  { None }
   | IN; utast=nxlet; EOI { Some(utast) }
 ;
-nxsigopt:
-  |                                { None }
-  | COLON; SIG; sg=list(decl); END { Some(sg) }
+nxsigannot:
+  |                    { None }
+  | COLON; utsig=nxsig { Some(utsig) }
+;
+nxsig:
+  | sigtok=CONSTRUCTOR {
+      let (rng, signm) = sigtok in
+      (rng, UTSigVar(signm))
+    }
+  | tokL=SIG; decls=list(decl); tokR=END {
+      let rng = make_range (Tok tokL) (Tok tokR) in
+      (rng, UTSigDecls(decls))
+    }
+(* TODO: support other signature syntax *)
+;
+nxmod:
+  | modtok=CONSTRUCTOR {
+      let (rng, modnm) = modtok in
+      (rng, UTModVar(modnm))
+    }
+  | tokL=STRUCT; utbinds=list(bind); tokR=END {
+      let rng = make_range (Tok tokL) (Tok tokR) in
+      (rng, UTModBinds(utbinds))
+    }
+(* TODO: support other module syntax *)
 ;
 decl:
   | TYPE; tyvars=list(TYPEVAR); tynmtok=VAR; clst=constrnts {
