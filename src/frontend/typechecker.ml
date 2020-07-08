@@ -618,15 +618,7 @@ let rec typecheck
       unify typt0 (Range.dummy "ut-path", point_type_main);
       let (pathcomplst, cycleopt) = typecheck_path pre tyenv utpathcomplst utcycleopt in
       (Path(ept0, pathcomplst, cycleopt), (rng, BaseType(PathType)))
-(*
-  | UTFinishStruct ->
-      final_tyenv := tyenv;  (* ad hoc *)
-      (FinishStruct, (Range.dummy "finish-struct", BaseType(EnvType)))
 
-  | UTFinishHeaderFile ->
-      final_tyenv := tyenv;  (* ad hoc *)
-      (FinishHeaderFile, (Range.dummy "finish-header-file", BaseType(EnvType)))
-*)
   | UTOpenIn(rngtok, mdlnm, utast1) ->
       let tyenvnew = Typeenv.open_module tyenv rngtok mdlnm in
       typecheck_iter tyenvnew utast1
@@ -1109,7 +1101,7 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
     | UTMEmbed(utast0) ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
         unify_ tyenv ty0 (Range.dummy "math-embedded-var", BaseType(MathType));
-          e0
+        e0
 
 
 and typecheck_path pre tyenv (utpathcomplst : (untyped_abstract_tree untyped_path_component) list) (utcycleopt : (unit untyped_path_component) option) =
@@ -1137,7 +1129,8 @@ and typecheck_path pre tyenv (utpathcomplst : (untyped_abstract_tree untyped_pat
   in
   let cycleopt =
     utcycleopt |> option_map (function
-      | UTPathLineTo(()) -> PathLineTo(())
+      | UTPathLineTo(()) ->
+          PathLineTo(())
 
       | UTPathCubicBezierTo(utastpt1, utastpt2, ()) ->
           let ept1 = typecheck_anchor_point utastpt1 in
@@ -1159,7 +1152,6 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
         let (_, tycmdmain) = tycmd in
         begin
           match tycmdmain with
-
           | VertCommandType(cmdargtylstreq) ->
               let rngcmdapp =
                 match List.rev utcmdarglst with
@@ -1319,10 +1311,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
     Alist.to_list argacc
 
 
-and typecheck_record
-    (pre : pre) (tyenv : Typeenv.t)
-    (flutlst : (field_name * untyped_abstract_tree) list) (rng : Range.t)
-=
+and typecheck_record (pre : pre) (tyenv : Typeenv.t) (flutlst : (field_name * untyped_abstract_tree) list) (rng : Range.t) =
   let (easc, tyasc) =
     flutlst |> List.fold_left (fun (easc, tyasc) (fldnmX, utastX) ->
       if Assoc.mem fldnmX easc then
@@ -1371,8 +1360,7 @@ and typecheck_pattern_branch (pre : pre) (tyenv : Typeenv.t) (utpatbr : untyped_
         (PatternBranchWhen(epat, eB, e1), typat, ty1)
 
 
-and typecheck_pattern_branch_list
-    (pre : pre) (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : pattern_branch list =
+and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : pattern_branch list =
 
   let unify = unify_ tyenv in
 
@@ -1391,9 +1379,7 @@ and typecheck_pattern_branch_list
   iter Alist.empty utpatbrs
 
 
-and typecheck_pattern
-    (pre : pre) (tyenv : Typeenv.t)
-    ((rng, utpatmain) : untyped_pattern_tree) : pattern_tree * mono_type * pattern_var_map =
+and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untyped_pattern_tree) : pattern_tree * mono_type * pattern_var_map =
   let iter = typecheck_pattern pre tyenv in
   let unify = unify_ tyenv in
     match utpatmain with
