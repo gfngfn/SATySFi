@@ -30,16 +30,16 @@ val add_value : var_name -> (poly_type * EvalVarID.t * stage) -> t -> t
 
 val find_value : var_name -> Range.t -> t -> (poly_type * EvalVarID.t * stage) option
 
-val open_module : Range.t -> module_name -> t -> t
+val find_type : type_name -> t -> TypeID.t option
+
+val find_constructor : constructor_name -> t -> (TypeID.t * type_scheme) option
+(*
+val fix_manual_type_free : pre -> t -> manual_type -> constraints -> mono_type
 
 val add_mutual_cons : t -> level -> untyped_type_binding list -> t
 
-val find_constructor : pre -> t -> constructor_name -> (mono_type list * TypeID.t * mono_type) option
-
-val fix_manual_type_free : pre -> t -> manual_type -> constraints -> mono_type
-
-val find_type : type_name -> t -> TypeID.t option
-
+val open_module : Range.t -> module_name -> t -> t
+*)
 val find_type_name : t -> TypeID.t -> type_name
 (*
 val find_candidates : t -> (module_name list) -> var_name -> Range.t -> var_name list

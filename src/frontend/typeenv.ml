@@ -9,6 +9,69 @@ let print_for_debug_variantenv msg =
   ()
 
 
+module Distance = struct
+
+  let edit_distance s1 s2 mindist =
+    let len1 = String.length s1 in
+    let len2 = String.length s2 in
+    if abs (len1 - len2) > mindist then
+      mindist + 1
+    else
+      let d = Array.make_matrix (len1 + 1) (len2 + 1) 0 in
+      begin
+        for i = 0 to len1 do
+          d.(i).(0) <- i
+        done;
+        for j = 0 to len2 do
+          d.(0).(j) <- j
+        done;
+        for i = 1 to len1 do
+          for j = 1 to len2 do
+            let replace = if Char.equal (String.get s1 (i - 1)) (String.get s2 (j - 1)) then 0 else 1 in
+              d.(i).(j) <-  min (min (d.(i - 1).(j) + 1) (d.(i).(j - 1) + 1)) (d.(i - 1).(j - 1) + replace)
+          done
+        done;
+        d.(len1).(len2)
+      end
+
+
+  let initial_candidates nm =
+    let maxdist =
+      match String.length nm with
+      | 1 | 2 -> 0
+      | 3 | 4 -> 1
+      | 5 | 6 -> 2
+      | _     -> 3
+    in
+      ([], maxdist)
+
+
+  let get_candidates_cont foldf map nm acc =
+    foldf (fun k _ (cand, mindist) ->
+      let dist = edit_distance nm k mindist in
+      if dist < mindist then
+        ([k], dist)
+      else if dist = mindist then
+        (k :: cand, mindist)
+      else
+        (cand, mindist)
+    ) map acc
+
+
+  let get_candidates_first foldf map nm =
+    get_candidates_cont foldf map nm (initial_candidates nm)
+
+
+  let get_candidates_last pair =
+    fst pair
+
+
+  let get_candidates foldf map nm =
+    get_candidates_last @@ get_candidates_first foldf map nm
+
+end
+
+
 module ModuleID
 : sig
     type t
@@ -32,23 +95,17 @@ let initialize_id () =
   ModuleID.initialize ()
 
 
-module VarMap = Map.Make(String)
+module ValueNameMap = Map.Make(String)
 
-module ModuleTree = HashTree.Make(ModuleID)
+module TypeNameMap = Map.Make(String)
 
 module ModuleNameMap = Map.Make(String)
 
-module ConstrMap = Map.Make(String)
+module SignatureNameMap = Map.Make(String)
 
-module TyNameMap = Map.Make(String)
+module ConstructorMap = Map.Make(String)
 
-module SigVarMap = Map.Make(String)
-
-type name_to_id_map = ModuleID.t ModuleNameMap.t
-
-type var_to_type_map = poly_type VarMap.t
-
-type var_to_vardef_map = (poly_type * EvalVarID.t * stage) VarMap.t
+module MacroNameMap = Map.Make(String)
 
 type type_scheme = BoundID.t list * poly_type
 
@@ -56,24 +113,53 @@ type type_definition =
   | Data  of int
   | Alias of type_scheme
 
-type typename_to_typedef_map = (TypeID.t * type_definition) TyNameMap.t
+type value_entry = {
+  val_name  : EvalVarID.t;
+  val_typ   : poly_type;
+  val_stage : stage;
 
-type constructor_to_def_map = (TypeID.t * type_scheme) ConstrMap.t
+  mutable is_used : bool;
+}
 
-type signature = typename_to_typedef_map * var_to_type_map
+type type_entry = unit  (* TODO *)
 
-type sigvar_to_sig_map = signature SigVarMap.t
+type constructor_entry = unit  (* TODO *)
 
-type current_address = ModuleID.t Alist.t
+type signature =
+  | ConcStructore of struct_signature
+  | ConcFunctor   of functor_signature
 
-type single_stage = var_to_vardef_map * typename_to_typedef_map * constructor_to_def_map * signature option (* * sigvar_to_sig_map *)
+and struct_signature =
+  struct_signature_entry Alist.t
 
-type t =
+and struct_signature_entry =
+  | SSValue    of var_name * value_entry
+  | SSRecTypes of (type_name * type_definition) list
+  | SSModule   of module_name * module_entry
+
+and functor_signature = {
+  opaques  : unit;  (* TODO *)
+  domain   : signature;
+  codomain : unit * signature;  (* TODO *)
+}
+
+and module_entry = {
+  mod_name      : ModuleID.t;
+  mod_signature : signature;
+}
+
+and signature_entry = {
+  sig_signature : unit;  (* TODO *)
+}
+
+and environment =
   {
-    current_address : current_address;
-    name_to_id_map  : name_to_id_map;
-    main_tree       : single_stage ModuleTree.t;
-    macros          : (macro_type * EvalVarID.t) VarMap.t;
+    values       : value_entry ValueNameMap.t;
+    types        : type_entry TypeNameMap.t;
+    modules      : module_entry ModuleNameMap.t;
+    signatures   : signature_entry SignatureNameMap.t;
+    constructors : constructor_entry ConstructorMap.t;
+    macros       : (macro_type * EvalVarID.t) MacroNameMap.t;
   }
 
 
@@ -84,112 +170,52 @@ exception CyclicTypeDefinition            of (Range.t * type_name) list
 exception MultipleTypeDefinition          of Range.t * Range.t * type_name
 exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
-exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
+exception NotMatchingInterface            of Range.t * var_name * environment * poly_type * environment * poly_type
 exception NotMatchingStage                of Range.t * var_name * stage * stage
 exception UndefinedModuleName             of Range.t * module_name * module_name list
 
 
+type t = environment
+
 let empty : t =
   {
-    current_address = Alist.empty;
-    name_to_id_map  = ModuleNameMap.empty;
-    main_tree       = ModuleTree.empty (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None);
-    macros          = VarMap.empty;
+    values       = ValueNameMap.empty;
+    types        = TypeNameMap.empty;
+    modules      = ModuleNameMap.empty;
+    signatures   = SignatureNameMap.empty;
+    constructors = ConstructorMap.empty;
+    macros       = MacroNameMap.empty;
   }
-
-
-let update_vt (vdf : var_to_vardef_map -> var_to_vardef_map) ((vdmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
-  (vdf vdmap, tdmap, cdmap, sigopt)
-
-
-let update_td (tdf : typename_to_typedef_map -> typename_to_typedef_map) ((vdmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
-  (vdmap, tdf tdmap, cdmap, sigopt)
-
-
-let update_cd (cdf : constructor_to_def_map -> constructor_to_def_map) ((vdmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
-  (vdmap, tdmap, cdf cdmap, sigopt)
-
-
-let update_so (sof : signature option -> signature option) ((vdmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
-  (vdmap, tdmap, cdmap, sof sigopt)
-
-
-let edit_distance s1 s2 mindist =
-  let len1 = String.length s1 in
-  let len2 = String.length s2 in
-  if abs (len1 - len2) > mindist then
-    mindist + 1
-  else
-    let d = Array.make_matrix (len1 + 1) (len2 + 1) 0 in
-    begin
-      for i = 0 to len1 do
-        d.(i).(0) <- i
-      done;
-      for j = 0 to len2 do
-        d.(0).(j) <- j
-      done;
-      for i = 1 to len1 do
-        for j = 1 to len2 do
-          let replace = if Char.equal (String.get s1 (i - 1)) (String.get s2 (j - 1)) then 0 else 1 in
-            d.(i).(j) <-  min (min (d.(i - 1).(j) + 1) (d.(i).(j - 1) + 1)) (d.(i - 1).(j - 1) + replace)
-        done
-      done;
-      d.(len1).(len2)
-    end
-
-
-let initial_candidates nm =
-  let maxdist =
-    match String.length nm with
-    | 1 | 2 -> 0
-    | 3 | 4 -> 1
-    | 5 | 6 -> 2
-    | _     -> 3
-  in
-    ([], maxdist)
-
-
-let get_candidates_cont foldf map nm acc =
-  foldf (fun k _ (cand, mindist) ->
-    let dist = edit_distance nm k mindist in
-    if dist < mindist then
-      ([k], dist)
-    else if dist = mindist then
-      (k :: cand, mindist)
-    else
-      (cand, mindist)
-  ) map acc
-
-
-let get_candidates_first foldf map nm =
-  get_candidates_cont foldf map nm (initial_candidates nm)
-
-
-let get_candidates_last pair =
-  fst pair
-
-
-let get_candidates foldf map nm =
-  get_candidates_last @@ get_candidates_first foldf map nm
 
 
 let add_macro (csnm : ctrlseq_name) (macdef : macro_type * EvalVarID.t) (tyenv : t) : t =
   let macros = tyenv.macros in
-  { tyenv with macros = macros |> VarMap.add csnm macdef }
+  { tyenv with macros = macros |> MacroNameMap.add csnm macdef }
 
 
 let find_macro (csnm : ctrlseq_name) (tyenv : t) : (macro_type * EvalVarID.t) option =
-  tyenv.macros |> VarMap.find_opt csnm
+  tyenv.macros |> MacroNameMap.find_opt csnm
 
 
 (* PUBLIC *)
 let add_value (varnm : var_name) ((pty, evid, stage) : poly_type * EvalVarID.t * stage) (tyenv : t) : t =
+  let ventry =
+    {
+      val_name  = evid;
+      val_typ   = pty;
+      val_stage = stage;
+
+      is_used = false;
+    }
+  in
+  { tyenv with values = tyenv.values |> ValueNameMap.add varnm ventry }
+(*
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
   match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid, stage))) with
   | None         -> assert false
   | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
-
+*)
 
 (* PUBLIC *)
 let find_value (varnm : var_name) (rng : Range.t) (tyenv : t) : (poly_type * EvalVarID.t * stage) option =
@@ -219,7 +245,6 @@ let find_value (varnm : var_name) (rng : Range.t) (tyenv : t) : (poly_type * Eva
           VarMap.find_opt varnm vdmap >>= fun (_, evid, stage) ->
           return (ptysig, evid, stage)
     )
-*)
 
 
 (* PUBLIC *)
@@ -283,7 +308,7 @@ let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t * s
   ModuleTree.find_stage mtr addrlst >>= fun (vdmap, _, _, _) ->
   VarMap.find_opt varnm vdmap
 
-(*
+
 let enter_new_module (tyenv : t) (mdlnm : module_name) : t =
   let mdlid = ModuleID.fresh mdlnm in
   let mtr = tyenv.main_tree in
@@ -330,6 +355,7 @@ module MapList
   end
 
 
+(*
 module DependencyGraph = DirectedGraph.Make
   (struct
     type t = type_name
@@ -352,7 +378,6 @@ let extract_range_in_vertex_label vtxlabel =
 type dependency_mode =
   | NoDependency
   | DependentMode of vertex_label DependencyGraph.t
-
 
 let add_type_definition (tyenv : t) (tynm : type_name) ((tyid, dfn) : TypeID.t * type_definition) : t =
   let addrlst = Alist.to_list tyenv.current_address in
@@ -411,7 +436,7 @@ let find_type_definition_candidates_for_outer (tyenv : t) (mdlnmlst : module_nam
       | None                -> get_candidates_cont TyNameMap.fold tdmap tynm acc
       | Some((tdmapsig, _)) -> get_candidates_cont TyNameMap.fold tdmapsig tynm acc
     ) base_type_candidates
-
+*)
 
 (* PUBLIC *)
 let find_type (tynm : type_name) (tyenv : t) : TypeID.t option =
@@ -428,57 +453,17 @@ let find_type_name (_ : t) (tyid : TypeID.t) : type_name =
 
 
 let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : TypeID.t) (tyenv : t) : t =
+  failwith "TODO: add_constructor"
+(*
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
     match ModuleTree.update mtr addrlst (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) with
     | None         -> assert false
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
+*)
 
 
-let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_variable_info ref -> (a, b) typ) (orfreef : mono_option_row_variable_info ref -> (a, b) option_row) (pairlst : ((a, b) typ * BoundID.t) list) (Poly(pty) : poly_type) : (a, b) typ =
-  let bid_to_type_ht : ((a, b) typ) BoundIDHashTable.t = BoundIDHashTable.create 32 in
-
-  let rec aux ((rng, ptymain) : poly_type_body) : (a, b) typ =
-    match ptymain with
-    | TypeVariable(ptvi) ->
-        begin
-          match ptvi with
-          | PolyFree(tvref) ->
-              freef rng tvref
-
-          | PolyBound(bid) ->
-              begin
-                match BoundIDHashTable.find_opt bid_to_type_ht bid with
-                | None        -> assert false
-                | Some(tysub) -> tysub
-              end
-        end
-
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
-    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
-    | ListType(tysub)                   -> (rng, ListType(aux tysub))
-    | RefType(tysub)                    -> (rng, RefType(aux tysub))
-    | BaseType(bt)                      -> (rng, BaseType(bt))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
-    | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
-
-  and aux_or optrow =
-    match optrow with
-    | OptionRowEmpty                         -> OptionRowEmpty
-    | OptionRowCons(ty, tail)                -> OptionRowCons(aux ty, aux_or tail)
-    | OptionRowVariable(PolyORFree(orviref)) -> orfreef orviref
-  in
-  begin
-    pairlst |> List.iter (fun (tyarg, bid) -> BoundIDHashTable.add bid_to_type_ht bid tyarg);
-    aux pty
-  end
-
-
+(*
 let rec fix_manual_type_general (type a) (type b) (dpmode : dependency_mode) (tyenv : t) (lev : level) (freef : Range.t -> mono_type_variable_info ref -> (a, b) typ) (orfreef : mono_option_row_variable_info ref -> (a, b) option_row) (typaramf : Range.t -> string -> (a, b) type_main) (mnty : manual_type) : (a, b) typ =
 
   let rec aux (mnty : manual_type) : (a, b) typ =
@@ -701,36 +686,12 @@ let register_type_from_vertex (dg : vertex_label DependencyGraph.t) (tyenv : t) 
       | SynonymVertex(_, _, _, _, {contents= None}) -> assert false
     with
     | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
+*)
 
+let rec find_constructor (constrnm : constructor_name) (tyenv : t) : (TypeID.t * type_scheme) option =
+  failwith "TODO: Typeenv.find_constructor"
 
-let rec find_constructor (pre : pre) (tyenv : t) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
-  let qtfbl = pre.quantifiability in
-  let lev = pre.level in
-
-  let freef rng tvref =
-    (rng, TypeVariable(tvref))
-  in
-  let orfreef orviref =
-    OptionRowVariable(orviref)
-  in
-  let addrlst = Alist.to_list tyenv.current_address in
-  let mtr = tyenv.main_tree in
-  let open OptionMonad in
-    ModuleTree.search_backward mtr addrlst [] (fun (_, _, cdmap, _) -> ConstrMap.find_opt constrnm cdmap) >>= fun dfn ->
-    let (tyid, (bidlist, pty)) = dfn in
-    let pairlst =
-      bidlist |> List.map (fun bid ->
-        let kd = BoundID.get_kind bid in
-        let tvid = FreeID.fresh (instantiate_kind lev qtfbl kd) qtfbl lev () in
-        let ty = (Range.dummy "tc-constructor", TypeVariable(ref (MonoFree(tvid)))) in
-        (ty, bid)
-      )
-    in
-    let ty = instantiate_type_scheme freef orfreef pairlst pty in
-    let tyarglst = pairlst |> List.map (fun (ty, _) -> ty) in
-      return (tyarglst, tyid, ty)
-
-
+(*
 let rec enumerate_constructors (pre : pre) (tyenv : t) (typeid : TypeID.t) : (constructor_name * (mono_type list -> mono_type)) list =
   let freef rng tvref =
     (rng, TypeVariable(tvref))
@@ -1327,11 +1288,11 @@ let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : 
               match ModuleTree.update mtr addrlst (update_so (fun _ -> sigopt)) with
               | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
               | Some(mtrnew) -> { tyenvdir with main_tree = mtrnew; }
-
+*)
 
 module Raw =
   struct
     let fresh_type_id = TypeID.fresh
     let add_constructor = add_constructor
-    let register_type = register_type
+    let register_type = failwith "Typeenv.Raw.register_type"
   end

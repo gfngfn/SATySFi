@@ -29,6 +29,38 @@ exception InternalInclusionError
 exception InternalContradictionError of bool
 
 
+let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm : constructor_name) (rng : Range.t) =
+  match tyenv |> Typeenv.find_constructor constrnm with
+  | None ->
+      failwith "TODO: find_constructor_and_instantiate, error handling"
+        (*
+          let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
+          raise (UndefinedConstructor(rng, constrnm, cands))
+        *)
+
+  | Some(dfn) ->
+      let qtfbl = pre.quantifiability in
+      let lev = pre.level in
+      let freef rng tvref =
+        (rng, TypeVariable(tvref))
+      in
+      let orfreef orviref =
+        OptionRowVariable(orviref)
+      in
+      let (tyid, (bidlist, pty)) = dfn in
+      let pairlst =
+        bidlist |> List.map (fun bid ->
+          let kd = BoundID.get_kind bid in
+          let tvid = FreeID.fresh (instantiate_kind lev qtfbl kd) qtfbl lev () in
+          let ty = (Range.dummy "tc-constructor", TypeVariable(ref (MonoFree(tvid)))) in
+          (ty, bid)
+        )
+      in
+      let ty = instantiate_type_scheme freef orfreef pairlst pty in
+      let tyarglst = pairlst |> List.map (fun (ty, _) -> ty) in
+      (tyarglst, tyid, ty)
+
+
 let abstraction evid ast =
   Function([], PatternBranch(PVariable(evid), ast))
 
@@ -620,8 +652,11 @@ let rec typecheck
       (Path(ept0, pathcomplst, cycleopt), (rng, BaseType(PathType)))
 
   | UTOpenIn(rngtok, mdlnm, utast1) ->
+      failwith "TODO: UTOpenIn"
+(*
       let tyenvnew = tyenv |> Typeenv.open_module rngtok mdlnm in
       typecheck_iter tyenvnew utast1
+*)
 
   | UTContentOf(_, varnm) ->
       begin
@@ -656,24 +691,11 @@ let rec typecheck
       end
 
   | UTConstructor(constrnm, utast1) ->
-      begin
-        match Typeenv.find_constructor pre tyenv constrnm with
-        | None ->
-            failwith "TODO: UTConstructor, error handling"
-(*
-            let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
-            raise (UndefinedConstructor(rng, constrnm, cands))
-*)
-
-        | Some((tyarglist, tyid, tyc)) ->
-(*
-            let () = print_endline ("\n#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
-*)
-            let (e1, ty1) = typecheck_iter tyenv utast1 in
-            unify ty1 tyc;
-            let tyres = (rng, VariantType(tyarglist, tyid)) in
-            (NonValueConstructor(constrnm, e1), tyres)
-      end
+      let (tyarglist, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      unify ty1 tyc;
+      let tyres = (rng, VariantType(tyarglist, tyid)) in
+      (NonValueConstructor(constrnm, e1), tyres)
 
   | UTHorzConcat(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
@@ -1443,23 +1465,10 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         end
 
     | UTPConstructor(constrnm, utpat1) ->
-        begin
-          match Typeenv.find_constructor pre tyenv constrnm with
-          | None ->
-              failwith "TODO: UTPConstuctor, error handling"
-(*
-              let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
-              raise (UndefinedConstructor(rng, constrnm, cands))
-*)
-
-          | Some((tyarglist, tyid, tyc)) ->
-(*
-              let () = print_endline ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
-*)
-              let (epat1, typat1, tyenv1) = iter utpat1 in
-              unify tyc typat1;
-              (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
-        end
+        let (tyarglist, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+        let (epat1, typat1, tyenv1) = iter utpat1 in
+        unify tyc typat1;
+        (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
 
 
 and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) =
@@ -1502,7 +1511,12 @@ and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds 
                     iter utrectail (Alist.extend recbindacc (LetRecBinding(evid, patbr1))) (Alist.extend acctvtylstout (varnm, beta, evid))
 
                 | Some(mnty) ->
-                    let tyin = Typeenv.fix_manual_type_free pre tyenv mnty [] in
+                    let tyin =
+                      failwith "TODO: typecheck_mutual_contents, decoding manual types"
+(*
+                      Typeenv.fix_manual_type_free pre tyenv mnty []
+*)
+                    in
                     unify ty1 beta;
                     unify tyin beta;
                     iter utrectail (Alist.extend recbindacc (LetRecBinding(evid, patbr1))) (Alist.extend acctvtylstout (varnm, beta, evid))

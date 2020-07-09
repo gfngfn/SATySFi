@@ -1281,6 +1281,50 @@ let instantiate_kind (lev : level) (qtfbl : quantifiability) (pkd : poly_kind) :
   instantiate_kind_aux bid_ht lev qtfbl pkd
 
 
+let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_variable_info ref -> (a, b) typ) (orfreef : mono_option_row_variable_info ref -> (a, b) option_row) (pairlst : ((a, b) typ * BoundID.t) list) (Poly(pty) : poly_type) : (a, b) typ =
+  let bid_to_type_ht : ((a, b) typ) BoundIDHashTable.t = BoundIDHashTable.create 32 in
+
+  let rec aux ((rng, ptymain) : poly_type_body) : (a, b) typ =
+    match ptymain with
+    | TypeVariable(ptvi) ->
+        begin
+          match ptvi with
+          | PolyFree(tvref) ->
+              freef rng tvref
+
+          | PolyBound(bid) ->
+              begin
+                match BoundIDHashTable.find_opt bid_to_type_ht bid with
+                | None        -> assert false
+                | Some(tysub) -> tysub
+              end
+        end
+
+    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
+    | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
+    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
+    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
+    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
+    | ListType(tysub)                   -> (rng, ListType(aux tysub))
+    | RefType(tysub)                    -> (rng, RefType(aux tysub))
+    | BaseType(bt)                      -> (rng, BaseType(bt))
+    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
+    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
+    | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
+
+  and aux_or optrow =
+    match optrow with
+    | OptionRowEmpty                         -> OptionRowEmpty
+    | OptionRowCons(ty, tail)                -> OptionRowCons(aux ty, aux_or tail)
+    | OptionRowVariable(PolyORFree(orviref)) -> orfreef orviref
+  in
+  begin
+    pairlst |> List.iter (fun (tyarg, bid) -> BoundIDHashTable.add bid_to_type_ht bid tyarg);
+    aux pty
+  end
+
+
 let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool) (ty : mono_type) : poly_type_body =
   let tvidht = FreeIDHashTable.create 32 in
   let rec iter (rng, tymain) =
