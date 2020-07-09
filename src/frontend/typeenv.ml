@@ -152,6 +152,11 @@ and signature_entry = {
   sig_signature : unit;  (* TODO *)
 }
 
+and macro_entry = {
+  macro_type : macro_type;
+  macro_name : EvalVarID.t;
+}
+
 and environment =
   {
     values       : value_entry ValueNameMap.t;
@@ -159,7 +164,7 @@ and environment =
     modules      : module_entry ModuleNameMap.t;
     signatures   : signature_entry SignatureNameMap.t;
     constructors : constructor_entry ConstructorMap.t;
-    macros       : (macro_type * EvalVarID.t) MacroNameMap.t;
+    macros       : macro_entry MacroNameMap.t;
   }
 
 
@@ -188,13 +193,20 @@ let empty : t =
   }
 
 
-let add_macro (csnm : ctrlseq_name) (macdef : macro_type * EvalVarID.t) (tyenv : t) : t =
-  let macros = tyenv.macros in
-  { tyenv with macros = macros |> MacroNameMap.add csnm macdef }
+let add_macro (csnm : ctrlseq_name) ((macty, evid) : macro_type * EvalVarID.t) (tyenv : t) : t =
+  let macentry =
+    {
+      macro_type = macty;
+      macro_name = evid;
+    }
+  in
+  { tyenv with macros = tyenv.macros |> MacroNameMap.add csnm macentry }
 
 
 let find_macro (csnm : ctrlseq_name) (tyenv : t) : (macro_type * EvalVarID.t) option =
-  tyenv.macros |> MacroNameMap.find_opt csnm
+  tyenv.macros |> MacroNameMap.find_opt csnm |> Option.map (fun macentry ->
+    (macentry.macro_type, macentry.macro_name)
+  )
 
 
 let add_value (varnm : var_name) ((pty, evid, stage) : poly_type * EvalVarID.t * stage) (tyenv : t) : t =
