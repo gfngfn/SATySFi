@@ -226,6 +226,7 @@ module Typeenv = struct
 
   let find_value (varnm : var_name) (tyenv : t) : (poly_type * EvalVarID.t * stage) option =
     tyenv.values |> ValueNameMap.find_opt varnm |> Option.map (fun ventry ->
+      ventry.is_used <- true;
       (ventry.val_type, ventry.val_name, ventry.val_stage)
     )
 
