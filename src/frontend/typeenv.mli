@@ -28,7 +28,7 @@ val find_macro : ctrlseq_name -> t -> (macro_type * EvalVarID.t) option
 
 val add_value : var_name -> (poly_type * EvalVarID.t * stage) -> t -> t
 
-val find_value : var_name -> Range.t -> t -> (poly_type * EvalVarID.t * stage) option
+val find_value : var_name -> t -> (poly_type * EvalVarID.t * stage) option
 
 val find_type : type_name -> t -> TypeID.t option
 

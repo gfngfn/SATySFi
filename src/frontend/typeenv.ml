@@ -115,7 +115,7 @@ type type_definition =
 
 type value_entry = {
   val_name  : EvalVarID.t;
-  val_typ   : poly_type;
+  val_type  : poly_type;
   val_stage : stage;
 
   mutable is_used : bool;
@@ -197,56 +197,26 @@ let find_macro (csnm : ctrlseq_name) (tyenv : t) : (macro_type * EvalVarID.t) op
   tyenv.macros |> MacroNameMap.find_opt csnm
 
 
-(* PUBLIC *)
 let add_value (varnm : var_name) ((pty, evid, stage) : poly_type * EvalVarID.t * stage) (tyenv : t) : t =
   let ventry =
     {
       val_name  = evid;
-      val_typ   = pty;
+      val_type  = pty;
       val_stage = stage;
 
       is_used = false;
     }
   in
   { tyenv with values = tyenv.values |> ValueNameMap.add varnm ventry }
+
+
+let find_value (varnm : var_name) (tyenv : t) : (poly_type * EvalVarID.t * stage) option =
+  tyenv.values |> ValueNameMap.find_opt varnm |> Option.map (fun ventry ->
+    (ventry.val_type, ventry.val_name, ventry.val_stage)
+  )
+
+
 (*
-  let addrlst = Alist.to_list tyenv.current_address in
-  let mtr = tyenv.main_tree in
-  match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid, stage))) with
-  | None         -> assert false
-  | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
-*)
-
-(* PUBLIC *)
-let find_value (varnm : var_name) (rng : Range.t) (tyenv : t) : (poly_type * EvalVarID.t * stage) option =
-  failwith "TODO: Typeenv.find_value"
-(*
-  let open OptionMonad in
-  let nmtoid = tyenv.name_to_id_map in
-  let mtr = tyenv.main_tree in
-  let addrlst = Alist.to_list tyenv.current_address in
-  let addrlast =
-    mdlnmlst |> List.map (fun nm ->
-      match nmtoid |> ModuleNameMap.find_opt nm with
-      | None        -> raise (UndefinedModuleName(rng, nm, get_candidates ModuleNameMap.fold nmtoid nm))
-      | Some(mdlid) -> mdlid
-    )
-  in
-  let addrstr = String.concat "" (List.map (fun m -> ModuleID.extract_name m ^ ".") addrlast) in  (* for debug *)
-    ModuleTree.search_backward mtr addrlst addrlast (fun (vdmap, _, _, sigopt) ->
-      match sigopt with
-      | None ->
-          print_for_debug_variantenv ("FVD " ^ addrstr ^ varnm ^ " -> no signature"); (* for debug *)
-          VarMap.find_opt varnm vdmap
-
-      | Some((_, vtmapsig)) ->
-          print_for_debug_variantenv ("FVD " ^ addrstr ^ varnm ^ " -> signature found"); (* for debug *)
-          VarMap.find_opt varnm vtmapsig >>= fun ptysig ->
-          VarMap.find_opt varnm vdmap >>= fun (_, evid, stage) ->
-          return (ptysig, evid, stage)
-    )
-
-
 (* PUBLIC *)
 let find_candidates (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : var_name list =
   let open OptionMonad in

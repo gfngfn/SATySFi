@@ -660,7 +660,7 @@ let rec typecheck
 
   | UTContentOf(_, varnm) ->
       begin
-        match tyenv |> Typeenv.find_value varnm rng with
+        match tyenv |> Typeenv.find_value varnm with
         | None ->
             failwith "TODO: UTContentOf, error handling"
 (*
