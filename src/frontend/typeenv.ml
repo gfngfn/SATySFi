@@ -240,7 +240,7 @@ let find_candidates (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name)
     ) (initial_candidates varnm)
 
 
-let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
+let open_module (rng : Range.t) (mdlnm : module_name) (tyenv : t) =
   let open OptionMonad in
   let mtr = tyenv.main_tree in
   let nmtoid = tyenv.name_to_id_map in

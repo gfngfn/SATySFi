@@ -30,7 +30,7 @@ val add_value : var_name -> (poly_type * EvalVarID.t * stage) -> t -> t
 
 val find_value : var_name -> Range.t -> t -> (poly_type * EvalVarID.t * stage) option
 
-val open_module : t -> Range.t -> module_name -> t
+val open_module : Range.t -> module_name -> t -> t
 
 val add_mutual_cons : t -> level -> untyped_type_binding list -> t
 

@@ -620,7 +620,7 @@ let rec typecheck
       (Path(ept0, pathcomplst, cycleopt), (rng, BaseType(PathType)))
 
   | UTOpenIn(rngtok, mdlnm, utast1) ->
-      let tyenvnew = Typeenv.open_module tyenv rngtok mdlnm in
+      let tyenvnew = tyenv |> Typeenv.open_module rngtok mdlnm in
       typecheck_iter tyenvnew utast1
 
   | UTContentOf(_, varnm) ->
