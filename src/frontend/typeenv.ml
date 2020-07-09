@@ -280,7 +280,7 @@ let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t * s
   ModuleTree.find_stage mtr addrlst >>= fun (vdmap, _, _, _) ->
   VarMap.find_opt varnm vdmap
 
-
+(*
 let enter_new_module (tyenv : t) (mdlnm : module_name) : t =
   let mdlid = ModuleID.fresh mdlnm in
   let mtr = tyenv.main_tree in
@@ -300,7 +300,7 @@ let leave_module (tyenv : t) : t =
       let mdlnm = ModuleID.extract_name mdlid in
       let nmtoidnew = ModuleNameMap.add mdlnm mdlid tyenv.name_to_id_map in
         { tyenv with current_address = addr_outer; name_to_id_map = nmtoidnew; }
-
+*)
 
 module MapList
 : sig

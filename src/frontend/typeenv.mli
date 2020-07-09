@@ -17,9 +17,6 @@ exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 exception UndefinedModuleName             of Range.t * module_name * module_name list
-(*
-exception UndefinedModuleNameList         of module_name list
-*)
 
 val initialize_id : unit -> unit
 
@@ -37,10 +34,6 @@ val find_candidates : t -> (module_name list) -> var_name -> Range.t -> var_name
 
 val open_module : t -> Range.t -> module_name -> t
 
-val enter_new_module : t -> module_name -> t
-
-val leave_module : t -> t
-
 val add_mutual_cons : t -> level -> untyped_type_binding list -> t
 
 val find_constructor : pre -> t -> constructor_name -> (mono_type list * TypeID.t * mono_type) option
@@ -54,9 +47,7 @@ val fix_manual_type_free : pre -> t -> manual_type -> constraints -> mono_type
 val find_type_id : t -> module_name list -> type_name -> Range.t -> TypeID.t option
 
 val find_type_name : t -> TypeID.t -> type_name
-(*
-val sigcheck : Range.t -> pre -> t -> t -> manual_signature option -> t
-*)
+
 module Raw : sig
   val fresh_type_id : string -> TypeID.t
   val add_constructor : constructor_name -> type_scheme -> TypeID.t -> t -> t
