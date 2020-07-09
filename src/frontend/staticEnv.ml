@@ -122,8 +122,13 @@ type type_entry = {
 }
 
 type constructor_entry = {
-  belongs_to : TypeID.Variant.t;
-  parameter  : type_scheme;
+  ctor_belongs_to : TypeID.Variant.t;
+  ctor_parameter  : type_scheme;
+}
+
+type macro_entry = {
+  macro_type : macro_type;
+  macro_name : EvalVarID.t;
 }
 
 type signature =
@@ -151,11 +156,6 @@ and module_entry = {
 
 and signature_entry = {
   sig_signature : unit;  (* TODO *)
-}
-
-and macro_entry = {
-  macro_type : macro_type;
-  macro_name : EvalVarID.t;
 }
 
 and type_environment =
@@ -247,8 +247,8 @@ module Typeenv = struct
   let add_constructor (ctornm : constructor_name) ((vid, (bids, pty)) : TypeID.Variant.t * type_scheme) (tyenv : t) : t =
     let centry =
       {
-        belongs_to = vid;
-        parameter  = (bids, pty);
+        ctor_belongs_to = vid;
+        ctor_parameter  = (bids, pty);
       }
     in
     { tyenv with constructors = tyenv.constructors |> ConstructorMap.add ctornm centry }
@@ -256,7 +256,7 @@ module Typeenv = struct
 
   let rec find_constructor (ctornm : constructor_name) (tyenv : t) : (TypeID.Variant.t * type_scheme) option =
     tyenv.constructors |> ConstructorMap.find_opt ctornm |> Option.map (fun centry ->
-      (centry.belongs_to, centry.parameter)
+      (centry.ctor_belongs_to, centry.ctor_parameter)
     )
 
 end
