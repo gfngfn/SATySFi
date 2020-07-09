@@ -291,7 +291,10 @@ let make_string_sig col =
 
 
 let make_variant_sig (pre : pre) (tyenv : Typeenv.t) (tyarglst : mono_type list) tyid =
-  let constrs = Typeenv.enumerate_constructors pre tyenv tyid in
+  let constrs =
+    failwith "TODO: make_variant_sig"
+    (* Typeenv.enumerate_constructors pre tyenv tyid *)
+  in
   ElementSet.of_list (constrs |> List.map (fun (nm, tyf) ->
     EConstructor(nm, tyf tyarglst)))
 

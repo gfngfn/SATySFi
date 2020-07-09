@@ -659,8 +659,11 @@ let rec typecheck
       begin
         match Typeenv.find_constructor pre tyenv constrnm with
         | None ->
+            failwith "TODO: UTConstructor, error handling"
+(*
             let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
             raise (UndefinedConstructor(rng, constrnm, cands))
+*)
 
         | Some((tyarglist, tyid, tyc)) ->
 (*
@@ -1443,8 +1446,11 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         begin
           match Typeenv.find_constructor pre tyenv constrnm with
           | None ->
+              failwith "TODO: UTPConstuctor, error handling"
+(*
               let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
               raise (UndefinedConstructor(rng, constrnm, cands))
+*)
 
           | Some((tyarglist, tyid, tyc)) ->
 (*
