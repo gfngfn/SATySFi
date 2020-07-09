@@ -183,7 +183,7 @@ let find_macro (tyenv : t) (csnm : ctrlseq_name) : (macro_type * EvalVarID.t) op
 
 
 (* PUBLIC *)
-let add_value (tyenv : t) (varnm : var_name) ((pty, evid, stage) : poly_type * EvalVarID.t * stage) : t =
+let add_value (varnm : var_name) ((pty, evid, stage) : poly_type * EvalVarID.t * stage) (tyenv : t) : t =
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
   match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid, stage))) with

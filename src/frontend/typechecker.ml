@@ -46,7 +46,7 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let tvref = ref (MonoFree(tvid)) in
       let beta = (rng, TypeVariable(PolyFree(tvref))) in
-      let tyenvnew = Typeenv.add_value tyenv varnm (Poly(Primitives.option_type beta), evid, pre.stage) in
+      let tyenvnew = tyenv |> Typeenv.add_value varnm (Poly(Primitives.option_type beta), evid, pre.stage) in
         (tyenvnew, Alist.extend tyacc (rng, TypeVariable(tvref)), Alist.extend evidacc evid)
     ) (tyenv, Alist.empty, Alist.empty)
   in
@@ -81,7 +81,7 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       | UTEarlyMacroParam(_) ->
           (Poly(ptybody), EarlyMacroParameter(beta))
       in
-      (Typeenv.add_value tyenv varnm (pty, evid, Stage0), Alist.extend evidacc evid, Alist.extend macptyacc macpty)
+      (tyenv |> Typeenv.add_value varnm (pty, evid, Stage0), Alist.extend evidacc evid, Alist.extend macptyacc macpty)
     ) (tyenv, Alist.empty, Alist.empty)
   in
   (tyenv, Alist.to_list evidacc, Alist.to_list macptyacc)
@@ -126,14 +126,14 @@ let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_v
 let add_pattern_var_mono (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
     let pty = lift_poly (erase_range_of_type ty) in
-    Typeenv.add_value tyenvacc varnm (pty, evid, pre.stage)
+    tyenvacc |> Typeenv.add_value varnm (pty, evid, pre.stage)
   ) patvarmap tyenv
 
 
 let add_pattern_var_poly (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
     let pty = (generalize pre.level (erase_range_of_type ty)) in
-    Typeenv.add_value tyenvacc varnm (pty, evid, pre.stage)
+    tyenvacc |> Typeenv.add_value varnm (pty, evid, pre.stage)
   ) patvarmap tyenv
 
 
@@ -701,7 +701,7 @@ let rec typecheck
           (ContextType, BoxRowType)
       in
       let evid = EvalVarID.fresh (varrng, varnmctx) in
-      let tyenvsub = Typeenv.add_value tyenv varnmctx (Poly(varrng, BaseType(bstyvar)), evid, pre.stage) in
+      let tyenvsub = tyenv |> Typeenv.add_value varnmctx (Poly(varrng, BaseType(bstyvar)), evid, pre.stage) in
       let (e1, ty1) = typecheck_iter tyenvsub utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       unify tyret (Range.dummy "lambda-horz-return", BaseType(bstyret));
@@ -715,7 +715,7 @@ let rec typecheck
           (ContextType, BoxColType)
       in
       let evid = EvalVarID.fresh (varrng, varnmctx) in
-      let tyenvsub = Typeenv.add_value tyenv varnmctx (Poly(varrng, BaseType(bstyvar)), evid, pre.stage) in
+      let tyenvsub = tyenv |> Typeenv.add_value varnmctx (Poly(varrng, BaseType(bstyvar)), evid, pre.stage) in
       let (e1, ty1) = typecheck_iter tyenvsub utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       unify tyret (Range.dummy "lambda-vert-return", BaseType(bstyret));
@@ -1474,7 +1474,7 @@ and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds 
           let () = print_endline ("#AddMutualVar " ^ varnm ^ " : '" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
 *)
           let evid = EvalVarID.fresh (varrng, varnm) in
-          iter (Typeenv.add_value acctyenv varnm (Poly(pbeta), evid, pre.stage)) (Alist.extend tvtyacc (utrecbind, beta, evid)) tailcons
+          iter (acctyenv |> Typeenv.add_value varnm (Poly(pbeta), evid, pre.stage)) (Alist.extend tvtyacc (utrecbind, beta, evid)) tailcons
   in
 
   let rec typecheck_mutual_contents (pre : pre) (tyenvforrec : Typeenv.t) (utreclst : (untyped_letrec_binding * mono_type * EvalVarID.t) list) (recbindacc : letrec_binding Alist.t) (acctvtylstout : (var_name * mono_type * EvalVarID.t) Alist.t) =
@@ -1522,7 +1522,7 @@ and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds 
         let () = print_endline ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)) in (* for debug *)
 *)
         let tvtylst_forall_new = (varnm, pty, evid) :: tvtylst_forall in
-        make_forall_type_mutual (Typeenv.add_value tyenv varnm (pty, evid, pre.stage)) tyenv_before_let tvtytail tvtylst_forall_new
+        make_forall_type_mutual (tyenv |> Typeenv.add_value varnm (pty, evid, pre.stage)) tyenv_before_let tvtytail tvtylst_forall_new
   in
 
   let (tyenvforrec, utreclst) = add_mutual_variables tyenv Alist.empty utrecbinds in
@@ -1539,7 +1539,7 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
   let () = print_endline ("#AddMutable " ^ varnm ^ " : " ^ (string_of_mono_type_basic (varrng, RefType(tyI)))) in (* for debug *)
 *)
   let evid = EvalVarID.fresh (varrng, varnm) in
-  let tyenvI = Typeenv.add_value tyenv varnm (lift_poly (varrng, RefType(tyI)), evid, pre.stage) in
+  let tyenvI = tyenv |> Typeenv.add_value varnm (lift_poly (varrng, RefType(tyI)), evid, pre.stage) in
   (tyenvI, evid, eI, tyI)
 
 
