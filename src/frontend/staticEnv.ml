@@ -76,7 +76,6 @@ module ModuleID
 : sig
     type t
     val compare : t -> t -> int
-    val initialize : unit -> unit
     val fresh : module_name -> t
     val extract_name : t -> module_name
   end
@@ -84,7 +83,6 @@ module ModuleID
     type t = int * module_name
     let compare (i1, _) (i2, _) = i1 - i2
     let current_id = ref 0
-    let initialize () = ( current_id := 0 )
     let fresh mdlnm =
       begin incr current_id; (!current_id, mdlnm) end
     let extract_name (_, mdlnm) = mdlnm
@@ -182,10 +180,6 @@ exception UndefinedModuleName             of Range.t * module_name * module_name
 *)
 
 module Typeenv = struct
-
-  let initialize_id () =
-    ModuleID.initialize ()
-
 
   type t = type_environment
 

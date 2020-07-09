@@ -22,8 +22,6 @@ module Typeenv : sig
 
   type t
 
-  val initialize_id : unit -> unit
-
   val empty : t
 
   val add_macro : ctrlseq_name -> (macro_type * EvalVarID.t) -> t -> t

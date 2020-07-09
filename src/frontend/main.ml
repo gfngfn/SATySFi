@@ -176,7 +176,6 @@ let reset () =
 let initialize (abspath_dump : abs_path) =
   FreeID.initialize ();
   BoundID.initialize ();
-  Typeenv.initialize_id ();
   EvalVarID.initialize ();
   StoreID.initialize ();
   let dump_file_exists = CrossRef.initialize abspath_dump in
