@@ -91,10 +91,6 @@ module ModuleID
   end
 
 
-let initialize_id () =
-  ModuleID.initialize ()
-
-
 module ValueNameMap = Map.Make(String)
 
 module TypeNameMap = Map.Make(String)
@@ -180,53 +176,83 @@ exception NotMatchingStage                of Range.t * var_name * stage * stage
 exception UndefinedModuleName             of Range.t * module_name * module_name list
 *)
 
-type t = type_environment
+module Typeenv = struct
 
-let empty : t =
-  {
-    values       = ValueNameMap.empty;
-    types        = TypeNameMap.empty;
-    modules      = ModuleNameMap.empty;
-    signatures   = SignatureNameMap.empty;
-    constructors = ConstructorMap.empty;
-    macros       = MacroNameMap.empty;
-  }
+  let initialize_id () =
+    ModuleID.initialize ()
 
 
-let add_macro (csnm : ctrlseq_name) ((macty, evid) : macro_type * EvalVarID.t) (tyenv : t) : t =
-  let macentry =
+  type t = type_environment
+
+
+  let empty : t =
     {
-      macro_type = macty;
-      macro_name = evid;
+      values       = ValueNameMap.empty;
+      types        = TypeNameMap.empty;
+      modules      = ModuleNameMap.empty;
+      signatures   = SignatureNameMap.empty;
+      constructors = ConstructorMap.empty;
+      macros       = MacroNameMap.empty;
     }
-  in
-  { tyenv with macros = tyenv.macros |> MacroNameMap.add csnm macentry }
 
 
-let find_macro (csnm : ctrlseq_name) (tyenv : t) : (macro_type * EvalVarID.t) option =
-  tyenv.macros |> MacroNameMap.find_opt csnm |> Option.map (fun macentry ->
-    (macentry.macro_type, macentry.macro_name)
-  )
+  let add_macro (csnm : ctrlseq_name) ((macty, evid) : macro_type * EvalVarID.t) (tyenv : t) : t =
+    let macentry =
+      {
+        macro_type = macty;
+        macro_name = evid;
+      }
+    in
+    { tyenv with macros = tyenv.macros |> MacroNameMap.add csnm macentry }
 
 
-let add_value (varnm : var_name) ((pty, evid, stage) : poly_type * EvalVarID.t * stage) (tyenv : t) : t =
-  let ventry =
-    {
-      val_name  = evid;
-      val_type  = pty;
-      val_stage = stage;
-
-      is_used = false;
-    }
-  in
-  { tyenv with values = tyenv.values |> ValueNameMap.add varnm ventry }
+  let find_macro (csnm : ctrlseq_name) (tyenv : t) : (macro_type * EvalVarID.t) option =
+    tyenv.macros |> MacroNameMap.find_opt csnm |> Option.map (fun macentry ->
+      (macentry.macro_type, macentry.macro_name)
+    )
 
 
-let find_value (varnm : var_name) (tyenv : t) : (poly_type * EvalVarID.t * stage) option =
-  tyenv.values |> ValueNameMap.find_opt varnm |> Option.map (fun ventry ->
-    (ventry.val_type, ventry.val_name, ventry.val_stage)
-  )
+  let add_value (varnm : var_name) ((pty, evid, stage) : poly_type * EvalVarID.t * stage) (tyenv : t) : t =
+    let ventry =
+      {
+        val_name  = evid;
+        val_type  = pty;
+        val_stage = stage;
 
+        is_used = false;
+      }
+    in
+    { tyenv with values = tyenv.values |> ValueNameMap.add varnm ventry }
+
+
+  let find_value (varnm : var_name) (tyenv : t) : (poly_type * EvalVarID.t * stage) option =
+    tyenv.values |> ValueNameMap.find_opt varnm |> Option.map (fun ventry ->
+      (ventry.val_type, ventry.val_name, ventry.val_stage)
+    )
+
+  let find_type (tynm : type_name) (tyenv : t) : TypeID.t option =
+    failwith "TODO: Typeenv.find_type"
+
+
+  let find_type_name (_ : t) (tyid : TypeID.t) : type_name =
+    TypeID.extract_name tyid
+
+
+  let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : TypeID.t) (tyenv : t) : t =
+    failwith "TODO: add_constructor"
+
+
+  let rec find_constructor (constrnm : constructor_name) (tyenv : t) : (TypeID.t * type_scheme) option =
+    failwith "TODO: Typeenv.find_constructor"
+
+
+  module Raw = struct
+    let fresh_type_id = TypeID.fresh
+    let add_constructor = add_constructor
+    let register_type = failwith "Typeenv.Raw.register_type"
+  end
+
+end
 
 (*
 (* PUBLIC *)
@@ -289,28 +315,8 @@ let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t * s
   let addrlst = Alist.to_list tyenv.current_address in
   ModuleTree.find_stage mtr addrlst >>= fun (vdmap, _, _, _) ->
   VarMap.find_opt varnm vdmap
-
-
-let enter_new_module (tyenv : t) (mdlnm : module_name) : t =
-  let mdlid = ModuleID.fresh mdlnm in
-  let mtr = tyenv.main_tree in
-  let addr = tyenv.current_address in
-  let addrnew = Alist.extend addr mdlid in
-    match ModuleTree.add_stage mtr (Alist.to_list addr) mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) with
-    | None         -> assert false
-    | Some(mtrnew) -> { tyenv with current_address = addrnew; main_tree = mtrnew; }
-
-
-let leave_module (tyenv : t) : t =
-  match Alist.chop_last tyenv.current_address with
-  | None ->
-      assert false
-
-  | Some((addr_outer, mdlid)) ->
-      let mdlnm = ModuleID.extract_name mdlid in
-      let nmtoidnew = ModuleNameMap.add mdlnm mdlid tyenv.name_to_id_map in
-        { tyenv with current_address = addr_outer; name_to_id_map = nmtoidnew; }
 *)
+
 
 module MapList
 : sig
@@ -418,34 +424,8 @@ let find_type_definition_candidates_for_outer (tyenv : t) (mdlnmlst : module_nam
       | None                -> get_candidates_cont TyNameMap.fold tdmap tynm acc
       | Some((tdmapsig, _)) -> get_candidates_cont TyNameMap.fold tdmapsig tynm acc
     ) base_type_candidates
-*)
-
-(* PUBLIC *)
-let find_type (tynm : type_name) (tyenv : t) : TypeID.t option =
-  failwith "TODO: Typeenv.find_type"
-(*
-  let open OptionMonad in
-  find_type_definition_for_outer tyenv mdlnmlst tynm rng >>= fun (tyid, _) ->
-  return tyid
-*)
-
-(* PUBLIC *)
-let find_type_name (_ : t) (tyid : TypeID.t) : type_name =
-  TypeID.extract_name tyid
 
 
-let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : TypeID.t) (tyenv : t) : t =
-  failwith "TODO: add_constructor"
-(*
-  let addrlst = Alist.to_list tyenv.current_address in
-  let mtr = tyenv.main_tree in
-    match ModuleTree.update mtr addrlst (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) with
-    | None         -> assert false
-    | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
-*)
-
-
-(*
 let rec fix_manual_type_general (type a) (type b) (dpmode : dependency_mode) (tyenv : t) (lev : level) (freef : Range.t -> mono_type_variable_info ref -> (a, b) typ) (orfreef : mono_option_row_variable_info ref -> (a, b) option_row) (typaramf : Range.t -> string -> (a, b) type_main) (mnty : manual_type) : (a, b) typ =
 
   let rec aux (mnty : manual_type) : (a, b) typ =
@@ -669,9 +649,6 @@ let register_type_from_vertex (dg : vertex_label DependencyGraph.t) (tyenv : t) 
     with
     | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
 *)
-
-let rec find_constructor (constrnm : constructor_name) (tyenv : t) : (TypeID.t * type_scheme) option =
-  failwith "TODO: Typeenv.find_constructor"
 
 (*
 let rec enumerate_constructors (pre : pre) (tyenv : t) (typeid : TypeID.t) : (constructor_name * (mono_type list -> mono_type)) list =
@@ -1271,10 +1248,3 @@ let sigcheck (rng : Range.t) (pre : pre) (tyenv : t) (tyenvprev : t) (msigopt : 
               | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
               | Some(mtrnew) -> { tyenvdir with main_tree = mtrnew; }
 *)
-
-module Raw =
-  struct
-    let fresh_type_id = TypeID.fresh
-    let add_constructor = add_constructor
-    let register_type = failwith "Typeenv.Raw.register_type"
-  end

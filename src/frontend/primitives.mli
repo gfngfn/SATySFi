@@ -1,6 +1,7 @@
 
 open Types
 open LengthInterface
+open StaticEnv
 
 val option_type : ('a, 'b) typ -> ('a, 'b) typ
 

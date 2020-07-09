@@ -1,5 +1,6 @@
 
 open Types
+open StaticEnv
 
 
 type type_element =

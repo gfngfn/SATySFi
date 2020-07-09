@@ -1,4 +1,5 @@
 open Types
+open StaticEnv
 
 
 let string_of_record_type (type a) (type b) (f : (a, b) typ -> string) (asc : ((a, b) typ) Assoc.t) =

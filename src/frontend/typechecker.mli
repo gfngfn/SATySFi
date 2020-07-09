@@ -1,5 +1,6 @@
 
 open Types
+open StaticEnv
 
 exception UndefinedVariable              of Range.t * module_name list * var_name * var_name list
 exception UndefinedConstructor           of Range.t * var_name * var_name list

@@ -2,6 +2,7 @@
 open MyUtil
 open Types
 open Display
+open StaticEnv
 
 
 exception NoLibraryRootDesignation

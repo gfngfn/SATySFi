@@ -3,6 +3,7 @@ open MyUtil
 open LengthInterface
 open GraphicBase
 open Types
+open StaticEnv
 
 (* -- type IDs for predefined data types -- *)
 let tyid_option   = Typeenv.Raw.fresh_type_id "option"
@@ -148,14 +149,14 @@ let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
 
   tyenvmid
-  |> Typeenv.Raw.register_type "option" tyid_option (Typeenv.Data(1))
+  |> Typeenv.Raw.register_type "option" tyid_option (StaticEnv.Data(1))
   |> Typeenv.Raw.add_constructor "None" ([bid], Poly(tU)) tyid_option
   |> Typeenv.Raw.add_constructor "Some" ([bid], Poly(typaram)) tyid_option
 
-  |> Typeenv.Raw.register_type "itemize" tyid_itemize (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "itemize" tyid_itemize (StaticEnv.Data(0))
   |> Typeenv.Raw.add_constructor "Item" ([], Poly(tPROD [tIT; tL (tITMZ ())])) tyid_itemize
 
-  |> Typeenv.Raw.register_type "math-class" tyid_mathcls (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "math-class" tyid_mathcls (StaticEnv.Data(0))
   |> Typeenv.Raw.add_constructor "MathOrd"    ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathBin"    ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathRel"    ([], Poly(tU)) tyid_mathcls
@@ -166,7 +167,7 @@ let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathInner"  ([], Poly(tU)) tyid_mathcls
 
-  |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (StaticEnv.Data(0))
   |> Typeenv.Raw.add_constructor "MathItalic"       ([], Poly(tU)) tyid_mccls
   |> Typeenv.Raw.add_constructor "MathBoldItalic"   ([], Poly(tU)) tyid_mccls
   |> Typeenv.Raw.add_constructor "MathRoman"        ([], Poly(tU)) tyid_mccls
@@ -181,23 +182,23 @@ let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
 let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
 
   tyenvmid
-  |> Typeenv.Raw.register_type "color" tyid_color (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "color" tyid_color (StaticEnv.Data(0))
   |> Typeenv.Raw.add_constructor "Gray" ([], Poly(tFL)) tyid_color
   |> Typeenv.Raw.add_constructor "RGB"  ([], Poly(tPROD [tFL; tFL; tFL])) tyid_color
   |> Typeenv.Raw.add_constructor "CMYK" ([], Poly(tPROD [tFL; tFL; tFL; tFL])) tyid_color
 
-  |> Typeenv.Raw.register_type "script" tyid_script (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "script" tyid_script (StaticEnv.Data(0))
   |> Typeenv.Raw.add_constructor "HanIdeographic" ([], Poly(tU)) tyid_script
   |> Typeenv.Raw.add_constructor "Kana"           ([], Poly(tU)) tyid_script
   |> Typeenv.Raw.add_constructor "Latin"          ([], Poly(tU)) tyid_script
   |> Typeenv.Raw.add_constructor "OtherScript"    ([], Poly(tU)) tyid_script
 
-  |> Typeenv.Raw.register_type "language" tyid_language (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "language" tyid_language (StaticEnv.Data(0))
   |> Typeenv.Raw.add_constructor "English"          ([], Poly(tU)) tyid_language
   |> Typeenv.Raw.add_constructor "Japanese"         ([], Poly(tU)) tyid_language
   |> Typeenv.Raw.add_constructor "NoLanguageSystem" ([], Poly(tU)) tyid_language
 
-  |> Typeenv.Raw.register_type "page" tyid_page (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "page" tyid_page (StaticEnv.Data(0))
   |> Typeenv.Raw.add_constructor "A0Paper"          ([], Poly(tU)) tyid_page
   |> Typeenv.Raw.add_constructor "A1Paper"          ([], Poly(tU)) tyid_page
   |> Typeenv.Raw.add_constructor "A2Paper"          ([], Poly(tU)) tyid_page
@@ -208,16 +209,16 @@ let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "USLegal"          ([], Poly(tU)) tyid_page
   |> Typeenv.Raw.add_constructor "UserDefinedPaper" ([], Poly(tPROD [tLN; tLN])) tyid_page
 
-  |> Typeenv.Raw.register_type "cell" tyid_cell (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "cell" tyid_cell (StaticEnv.Data(0))
   |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tPROD [tPADS; tIB]))         tyid_cell
   |> Typeenv.Raw.add_constructor "EmptyCell"  ([], Poly(tU))                         tyid_cell
   |> Typeenv.Raw.add_constructor "MultiCell"  ([], Poly(tPROD [tI; tI; tPADS; tIB])) tyid_cell
 
-  |> Typeenv.Raw.register_type "deco" tyid_deco (Typeenv.Alias(([], Poly(tDECO_raw))))
+  |> Typeenv.Raw.register_type "deco" tyid_deco (StaticEnv.Alias(([], Poly(tDECO_raw))))
 
-  |> Typeenv.Raw.register_type "deco-set" tyid_decoset (Typeenv.Alias(([], Poly(tDECOSET_raw))))
+  |> Typeenv.Raw.register_type "deco-set" tyid_decoset (StaticEnv.Alias(([], Poly(tDECOSET_raw))))
 
-  |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (Typeenv.Alias(([], Poly(tIGR_raw))))
+  |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (StaticEnv.Alias(([], Poly(tIGR_raw))))
 
 
 let lam evid ast =
