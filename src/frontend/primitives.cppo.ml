@@ -149,14 +149,14 @@ let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
 
   tyenvmid
-  |> Typeenv.add_type "option" (TypeID.Variant(vid_option))
+  |> Typeenv.add_type "option" (TypeID.Variant(vid_option), 1)
   |> Typeenv.add_constructor "None" (vid_option, ([bid], Poly(tU)))
   |> Typeenv.add_constructor "Some" (vid_option, ([bid], Poly(typaram)))
 
-  |> Typeenv.add_type "itemize" (TypeID.Variant(vid_itemize))
+  |> Typeenv.add_type "itemize" (TypeID.Variant(vid_itemize), 0)
   |> Typeenv.add_constructor "Item" (vid_itemize, ([], Poly(tPROD [tIT; tL (tITMZ ())])))
 
-  |> Typeenv.add_type "math-class" (TypeID.Variant(vid_mathcls))
+  |> Typeenv.add_type "math-class" (TypeID.Variant(vid_mathcls), 0)
   |> Typeenv.add_constructor "MathOrd"    (vid_mathcls, ([], Poly(tU)))
   |> Typeenv.add_constructor "MathBin"    (vid_mathcls, ([], Poly(tU)))
   |> Typeenv.add_constructor "MathRel"    (vid_mathcls, ([], Poly(tU)))
@@ -167,7 +167,7 @@ let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.add_constructor "MathPrefix" (vid_mathcls, ([], Poly(tU)))
   |> Typeenv.add_constructor "MathInner"  (vid_mathcls, ([], Poly(tU)))
 
-  |> Typeenv.add_type "math-char-class" (TypeID.Variant(vid_mccls))
+  |> Typeenv.add_type "math-char-class" (TypeID.Variant(vid_mccls), 0)
   |> Typeenv.add_constructor "MathItalic"       (vid_mccls, ([], Poly(tU)))
   |> Typeenv.add_constructor "MathBoldItalic"   (vid_mccls, ([], Poly(tU)))
   |> Typeenv.add_constructor "MathRoman"        (vid_mccls, ([], Poly(tU)))
@@ -182,23 +182,23 @@ let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
 let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
 
   tyenvmid
-  |> Typeenv.add_type "color" (TypeID.Variant(vid_color))
+  |> Typeenv.add_type "color" (TypeID.Variant(vid_color), 0)
   |> Typeenv.add_constructor "Gray" (vid_color, ([], Poly(tFL)))
   |> Typeenv.add_constructor "RGB"  (vid_color, ([], Poly(tPROD [tFL; tFL; tFL])))
   |> Typeenv.add_constructor "CMYK" (vid_color, ([], Poly(tPROD [tFL; tFL; tFL; tFL])))
 
-  |> Typeenv.add_type "script" (TypeID.Variant(vid_script))
+  |> Typeenv.add_type "script" (TypeID.Variant(vid_script), 0)
   |> Typeenv.add_constructor "HanIdeographic" (vid_script, ([], Poly(tU)))
   |> Typeenv.add_constructor "Kana"           (vid_script, ([], Poly(tU)))
   |> Typeenv.add_constructor "Latin"          (vid_script, ([], Poly(tU)))
   |> Typeenv.add_constructor "OtherScript"    (vid_script, ([], Poly(tU)))
 
-  |> Typeenv.add_type "language" (TypeID.Variant(vid_language))
+  |> Typeenv.add_type "language" (TypeID.Variant(vid_language), 0)
   |> Typeenv.add_constructor "English"          (vid_language, ([], Poly(tU)))
   |> Typeenv.add_constructor "Japanese"         (vid_language, ([], Poly(tU)))
   |> Typeenv.add_constructor "NoLanguageSystem" (vid_language, ([], Poly(tU)))
 
-  |> Typeenv.add_type "page" (TypeID.Variant(vid_page))
+  |> Typeenv.add_type "page" (TypeID.Variant(vid_page), 0)
   |> Typeenv.add_constructor "A0Paper"          (vid_page, ([], Poly(tU)))
   |> Typeenv.add_constructor "A1Paper"          (vid_page, ([], Poly(tU)))
   |> Typeenv.add_constructor "A2Paper"          (vid_page, ([], Poly(tU)))
@@ -209,16 +209,16 @@ let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.add_constructor "USLegal"          (vid_page, ([], Poly(tU)))
   |> Typeenv.add_constructor "UserDefinedPaper" (vid_page, ([], Poly(tPROD [tLN; tLN])))
 
-  |> Typeenv.add_type "cell" (TypeID.Variant(vid_cell))
+  |> Typeenv.add_type "cell" (TypeID.Variant(vid_cell), 0)
   |> Typeenv.add_constructor "NormalCell" (vid_cell, ([], Poly(tPROD [tPADS; tIB])))
   |> Typeenv.add_constructor "EmptyCell"  (vid_cell, ([], Poly(tU)))
   |> Typeenv.add_constructor "MultiCell"  (vid_cell, ([], Poly(tPROD [tI; tI; tPADS; tIB])))
 
-  |> Typeenv.add_type "deco" (TypeID.Synonym(sid_deco))
+  |> Typeenv.add_type "deco" (TypeID.Synonym(sid_deco), 0)
 
-  |> Typeenv.add_type "deco-set" (TypeID.Synonym(sid_decoset))
+  |> Typeenv.add_type "deco-set" (TypeID.Synonym(sid_decoset), 0)
 
-  |> Typeenv.add_type "inline-graphics" (TypeID.Synonym(sid_igraf))
+  |> Typeenv.add_type "inline-graphics" (TypeID.Synonym(sid_igraf), 0)
 
 
 let lam evid ast =

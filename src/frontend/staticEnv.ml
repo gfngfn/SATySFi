@@ -116,7 +116,8 @@ type value_entry = {
 }
 
 type type_entry = {
-  type_id : TypeID.t;
+  type_id    : TypeID.t;
+  type_arity : int;
 }
 
 type constructor_entry = {
@@ -231,12 +232,20 @@ module Typeenv = struct
     )
 
 
-  let add_type (tynm : type_name) (tyid : TypeID.t) (tyenv : t) : t =
-    failwith "TODO: Typeenv.add_type"
+  let add_type (tynm : type_name) ((tyid, arity) : TypeID.t * int) (tyenv : t) : t =
+    let tentry =
+      {
+        type_id    = tyid;
+        type_arity = arity;
+      }
+    in
+    { tyenv with types = tyenv.types |> TypeNameMap.add tynm tentry }
 
 
-  let find_type (tynm : type_name) (tyenv : t) : TypeID.t option =
-    failwith "TODO: Typeenv.find_type"
+  let find_type (tynm : type_name) (tyenv : t) : (TypeID.t * int) option =
+    tyenv.types |> TypeNameMap.find_opt tynm |> Option.map (fun tentry ->
+      (tentry.type_id, tentry.type_arity)
+    )
 
 
   let add_constructor (ctornm : constructor_name) ((vid, (bids, pty)) : TypeID.Variant.t * type_scheme) (tyenv : t) : t =
