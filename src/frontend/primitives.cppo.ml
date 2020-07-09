@@ -6,22 +6,22 @@ open Types
 open StaticEnv
 
 (* -- type IDs for predefined data types -- *)
-let tyid_option   = Typeenv.Raw.fresh_type_id "option"
-let tyid_itemize  = Typeenv.Raw.fresh_type_id "itemize"
-let tyid_color    = Typeenv.Raw.fresh_type_id "color"
-let tyid_script   = Typeenv.Raw.fresh_type_id "script"
-let tyid_language = Typeenv.Raw.fresh_type_id "language"
-let tyid_page     = Typeenv.Raw.fresh_type_id "page"
-let tyid_mathcls  = Typeenv.Raw.fresh_type_id "math-class"
-let tyid_mccls    = Typeenv.Raw.fresh_type_id "math-char-class"
-let tyid_cell     = Typeenv.Raw.fresh_type_id "cell"
-let tyid_image    = Typeenv.Raw.fresh_type_id "image"
+let vid_option   = TypeID.Variant.fresh "option"
+let vid_itemize  = TypeID.Variant.fresh "itemize"
+let vid_color    = TypeID.Variant.fresh "color"
+let vid_script   = TypeID.Variant.fresh "script"
+let vid_language = TypeID.Variant.fresh "language"
+let vid_page     = TypeID.Variant.fresh "page"
+let vid_mathcls  = TypeID.Variant.fresh "math-class"
+let vid_mccls    = TypeID.Variant.fresh "math-char-class"
+let vid_cell     = TypeID.Variant.fresh "cell"
+let vid_image    = TypeID.Variant.fresh "image"
 
 (* -- type IDs for alias types -- *)
-let tyid_deco     = Typeenv.Raw.fresh_type_id "deco"
-let tyid_decoset  = Typeenv.Raw.fresh_type_id "deco-set"
-let tyid_igraf    = Typeenv.Raw.fresh_type_id "inline-graphics"
-let tyid_igrafo   = Typeenv.Raw.fresh_type_id "inline-graphics-outer"
+let sid_deco     = TypeID.Synonym.fresh "deco"
+let sid_decoset  = TypeID.Synonym.fresh "deco-set"
+let sid_igraf    = TypeID.Synonym.fresh "inline-graphics"
+let sid_igrafo   = TypeID.Synonym.fresh "inline-graphics-outer"
 
 let ( ~! ) = Range.dummy
 
@@ -53,15 +53,15 @@ let (@->) dom cod = (~! "func"    , FuncType(OptionRowEmpty, dom, cod))
 let tCODE ty      = (~! "code"    , CodeType(ty)          )
 
 (* -- predefined data types -- *)
-let tOPT ty       = (~! "option"  , VariantType([ty], tyid_option))
-let tITMZ ()      = (~! "itemize" , VariantType([], tyid_itemize) )
-let tSCR          = (~! "script"  , VariantType([], tyid_script)  )
-let tLANG         = (~! "language", VariantType([], tyid_language))
-let tCLR          = (~! "color"   , VariantType([], tyid_color)   )
-let tPG           = (~! "page"    , VariantType([], tyid_page)    )
-let tMATHCLS      = (~! "mathcls" , VariantType([], tyid_mathcls) )
-let tMCCLS        = (~! "mccls"   , VariantType([], tyid_mccls)   )
-let tCELL         = (~! "cell"    , VariantType([], tyid_cell)    )
+let tOPT ty       = (~! "option"  , VariantType([ty], vid_option))
+let tITMZ ()      = (~! "itemize" , VariantType([], vid_itemize) )
+let tSCR          = (~! "script"  , VariantType([], vid_script)  )
+let tLANG         = (~! "language", VariantType([], vid_language))
+let tCLR          = (~! "color"   , VariantType([], vid_color)   )
+let tPG           = (~! "page"    , VariantType([], vid_page)    )
+let tMATHCLS      = (~! "mathcls" , VariantType([], vid_mathcls) )
+let tMCCLS        = (~! "mccls"   , VariantType([], vid_mccls)   )
+let tCELL         = (~! "cell"    , VariantType([], vid_cell)    )
 
 (* -- predefined alias types -- *)
 let tFONT         = tPROD [tS; tFL; tFL]
@@ -70,16 +70,16 @@ let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
 
 let tDECO_raw = tPT @-> tLN @-> tLN @-> tLN @-> (tL tGR)
-let tDECO = (~! "deco", SynonymType([], tyid_deco, tDECO_raw))
+let tDECO = (~! "deco", SynonymType([], sid_deco, tDECO_raw))
 
 let tDECOSET_raw = tPROD [tDECO; tDECO; tDECO; tDECO]
-let tDECOSET = (~! "deco-set", SynonymType([], tyid_decoset, tDECOSET_raw))
+let tDECOSET = (~! "deco-set", SynonymType([], sid_decoset, tDECOSET_raw))
 
 let tIGR_raw = tPT @-> (tL tGR)
-let tIGR = (~! "igraf", SynonymType([], tyid_igraf, tIGR_raw))
+let tIGR = (~! "igraf", SynonymType([], sid_igraf, tIGR_raw))
 
 let tIGRO_raw = tLN @-> tPT @-> (tL tGR)
-let tIGRO = (~! "igrafo", SynonymType([], tyid_igrafo, tIGRO_raw))
+let tIGRO = (~! "igrafo", SynonymType([], sid_igrafo, tIGRO_raw))
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 
@@ -149,76 +149,76 @@ let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
 
   tyenvmid
-  |> Typeenv.Raw.register_type "option" tyid_option (StaticEnv.Data(1))
-  |> Typeenv.Raw.add_constructor "None" ([bid], Poly(tU)) tyid_option
-  |> Typeenv.Raw.add_constructor "Some" ([bid], Poly(typaram)) tyid_option
+  |> Typeenv.add_type "option" (TypeID.Variant(vid_option))
+  |> Typeenv.add_constructor "None" (vid_option, ([bid], Poly(tU)))
+  |> Typeenv.add_constructor "Some" (vid_option, ([bid], Poly(typaram)))
 
-  |> Typeenv.Raw.register_type "itemize" tyid_itemize (StaticEnv.Data(0))
-  |> Typeenv.Raw.add_constructor "Item" ([], Poly(tPROD [tIT; tL (tITMZ ())])) tyid_itemize
+  |> Typeenv.add_type "itemize" (TypeID.Variant(vid_itemize))
+  |> Typeenv.add_constructor "Item" (vid_itemize, ([], Poly(tPROD [tIT; tL (tITMZ ())])))
 
-  |> Typeenv.Raw.register_type "math-class" tyid_mathcls (StaticEnv.Data(0))
-  |> Typeenv.Raw.add_constructor "MathOrd"    ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathBin"    ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathRel"    ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathOp"     ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathPunct"  ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathOpen"   ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathClose"  ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathInner"  ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.add_type "math-class" (TypeID.Variant(vid_mathcls))
+  |> Typeenv.add_constructor "MathOrd"    (vid_mathcls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathBin"    (vid_mathcls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathRel"    (vid_mathcls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathOp"     (vid_mathcls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathPunct"  (vid_mathcls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathOpen"   (vid_mathcls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathClose"  (vid_mathcls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathPrefix" (vid_mathcls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathInner"  (vid_mathcls, ([], Poly(tU)))
 
-  |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (StaticEnv.Data(0))
-  |> Typeenv.Raw.add_constructor "MathItalic"       ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldItalic"   ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathRoman"        ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldRoman"    ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathScript"       ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldScript"   ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathFraktur"      ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldFraktur"  ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathDoubleStruck" ([], Poly(tU)) tyid_mccls
+  |> Typeenv.add_type "math-char-class" (TypeID.Variant(vid_mccls))
+  |> Typeenv.add_constructor "MathItalic"       (vid_mccls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathBoldItalic"   (vid_mccls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathRoman"        (vid_mccls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathBoldRoman"    (vid_mccls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathScript"       (vid_mccls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathBoldScript"   (vid_mccls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathFraktur"      (vid_mccls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathBoldFraktur"  (vid_mccls, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MathDoubleStruck" (vid_mccls, ([], Poly(tU)))
 
 
 let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
 
   tyenvmid
-  |> Typeenv.Raw.register_type "color" tyid_color (StaticEnv.Data(0))
-  |> Typeenv.Raw.add_constructor "Gray" ([], Poly(tFL)) tyid_color
-  |> Typeenv.Raw.add_constructor "RGB"  ([], Poly(tPROD [tFL; tFL; tFL])) tyid_color
-  |> Typeenv.Raw.add_constructor "CMYK" ([], Poly(tPROD [tFL; tFL; tFL; tFL])) tyid_color
+  |> Typeenv.add_type "color" (TypeID.Variant(vid_color))
+  |> Typeenv.add_constructor "Gray" (vid_color, ([], Poly(tFL)))
+  |> Typeenv.add_constructor "RGB"  (vid_color, ([], Poly(tPROD [tFL; tFL; tFL])))
+  |> Typeenv.add_constructor "CMYK" (vid_color, ([], Poly(tPROD [tFL; tFL; tFL; tFL])))
 
-  |> Typeenv.Raw.register_type "script" tyid_script (StaticEnv.Data(0))
-  |> Typeenv.Raw.add_constructor "HanIdeographic" ([], Poly(tU)) tyid_script
-  |> Typeenv.Raw.add_constructor "Kana"           ([], Poly(tU)) tyid_script
-  |> Typeenv.Raw.add_constructor "Latin"          ([], Poly(tU)) tyid_script
-  |> Typeenv.Raw.add_constructor "OtherScript"    ([], Poly(tU)) tyid_script
+  |> Typeenv.add_type "script" (TypeID.Variant(vid_script))
+  |> Typeenv.add_constructor "HanIdeographic" (vid_script, ([], Poly(tU)))
+  |> Typeenv.add_constructor "Kana"           (vid_script, ([], Poly(tU)))
+  |> Typeenv.add_constructor "Latin"          (vid_script, ([], Poly(tU)))
+  |> Typeenv.add_constructor "OtherScript"    (vid_script, ([], Poly(tU)))
 
-  |> Typeenv.Raw.register_type "language" tyid_language (StaticEnv.Data(0))
-  |> Typeenv.Raw.add_constructor "English"          ([], Poly(tU)) tyid_language
-  |> Typeenv.Raw.add_constructor "Japanese"         ([], Poly(tU)) tyid_language
-  |> Typeenv.Raw.add_constructor "NoLanguageSystem" ([], Poly(tU)) tyid_language
+  |> Typeenv.add_type "language" (TypeID.Variant(vid_language))
+  |> Typeenv.add_constructor "English"          (vid_language, ([], Poly(tU)))
+  |> Typeenv.add_constructor "Japanese"         (vid_language, ([], Poly(tU)))
+  |> Typeenv.add_constructor "NoLanguageSystem" (vid_language, ([], Poly(tU)))
 
-  |> Typeenv.Raw.register_type "page" tyid_page (StaticEnv.Data(0))
-  |> Typeenv.Raw.add_constructor "A0Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "A1Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "A2Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "A3Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "A4Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "A5Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "USLetter"         ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "USLegal"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "UserDefinedPaper" ([], Poly(tPROD [tLN; tLN])) tyid_page
+  |> Typeenv.add_type "page" (TypeID.Variant(vid_page))
+  |> Typeenv.add_constructor "A0Paper"          (vid_page, ([], Poly(tU)))
+  |> Typeenv.add_constructor "A1Paper"          (vid_page, ([], Poly(tU)))
+  |> Typeenv.add_constructor "A2Paper"          (vid_page, ([], Poly(tU)))
+  |> Typeenv.add_constructor "A3Paper"          (vid_page, ([], Poly(tU)))
+  |> Typeenv.add_constructor "A4Paper"          (vid_page, ([], Poly(tU)))
+  |> Typeenv.add_constructor "A5Paper"          (vid_page, ([], Poly(tU)))
+  |> Typeenv.add_constructor "USLetter"         (vid_page, ([], Poly(tU)))
+  |> Typeenv.add_constructor "USLegal"          (vid_page, ([], Poly(tU)))
+  |> Typeenv.add_constructor "UserDefinedPaper" (vid_page, ([], Poly(tPROD [tLN; tLN])))
 
-  |> Typeenv.Raw.register_type "cell" tyid_cell (StaticEnv.Data(0))
-  |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tPROD [tPADS; tIB]))         tyid_cell
-  |> Typeenv.Raw.add_constructor "EmptyCell"  ([], Poly(tU))                         tyid_cell
-  |> Typeenv.Raw.add_constructor "MultiCell"  ([], Poly(tPROD [tI; tI; tPADS; tIB])) tyid_cell
+  |> Typeenv.add_type "cell" (TypeID.Variant(vid_cell))
+  |> Typeenv.add_constructor "NormalCell" (vid_cell, ([], Poly(tPROD [tPADS; tIB])))
+  |> Typeenv.add_constructor "EmptyCell"  (vid_cell, ([], Poly(tU)))
+  |> Typeenv.add_constructor "MultiCell"  (vid_cell, ([], Poly(tPROD [tI; tI; tPADS; tIB])))
 
-  |> Typeenv.Raw.register_type "deco" tyid_deco (StaticEnv.Alias(([], Poly(tDECO_raw))))
+  |> Typeenv.add_type "deco" (TypeID.Synonym(sid_deco))
 
-  |> Typeenv.Raw.register_type "deco-set" tyid_decoset (StaticEnv.Alias(([], Poly(tDECOSET_raw))))
+  |> Typeenv.add_type "deco-set" (TypeID.Synonym(sid_decoset))
 
-  |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (StaticEnv.Alias(([], Poly(tIGR_raw))))
+  |> Typeenv.add_type "inline-graphics" (TypeID.Synonym(sid_igraf))
 
 
 let lam evid ast =

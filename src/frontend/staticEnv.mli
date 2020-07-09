@@ -34,17 +34,13 @@ module Typeenv : sig
 
   val find_value : var_name -> t -> (poly_type * EvalVarID.t * stage) option
 
+  val add_type : type_name -> TypeID.t -> t -> t
+
   val find_type : type_name -> t -> TypeID.t option
 
-  val find_constructor : constructor_name -> t -> (TypeID.t * type_scheme) option
+  val add_constructor : constructor_name -> TypeID.Variant.t * type_scheme -> t -> t
 
-  val find_type_name : t -> TypeID.t -> type_name
-
-  module Raw : sig
-    val fresh_type_id : string -> TypeID.t
-    val add_constructor : constructor_name -> type_scheme -> TypeID.t -> t -> t
-    val register_type : type_name -> TypeID.t -> type_definition -> t -> t
-  end
+  val find_constructor : constructor_name -> t -> (TypeID.Variant.t * type_scheme) option
 
 end
 (*

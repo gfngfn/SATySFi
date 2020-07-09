@@ -29,26 +29,6 @@ type header_element =
   | HeaderImport  of string
 
 
-module TypeID : sig
-  type t
-    [@@deriving show]
-  val initialize : unit -> unit
-  val fresh : type_name -> t
-  val extract_name : t -> type_name
-  val equal : t -> t -> bool
-  val show_direct : t -> string
-end = struct
-  type t = int * type_name
-    [@@deriving show]
-  let current_id = ref 0
-  let initialize () = begin current_id := 0; end
-  let fresh tynm = begin incr current_id; (!current_id, tynm) end
-  let extract_name (_, tynm) = tynm
-  let equal (n1, _) (n2, _) = (n1 = n2)
-  let show_direct (n, tynm) = tynm ^ "(" ^ (string_of_int n) ^ ")"
-end
-
-
 type quantifiability = Quantifiable | Unquantifiable
 [@@deriving show]
 
@@ -310,8 +290,8 @@ and ('a, 'b) type_main =
   | RefType         of ('a, 'b) typ
   | ProductType     of (('a, 'b) typ) list
   | TypeVariable    of 'a
-  | SynonymType     of (('a, 'b) typ) list * TypeID.t * ('a, 'b) typ
-  | VariantType     of (('a, 'b) typ) list * TypeID.t
+  | SynonymType     of (('a, 'b) typ) list * TypeID.Synonym.t * ('a, 'b) typ
+  | VariantType     of (('a, 'b) typ) list * TypeID.Variant.t
   | RecordType      of (('a, 'b) typ) Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
   | HorzCommandType of (('a, 'b) command_argument_type) list
@@ -1815,11 +1795,11 @@ let rec string_of_type_basic tvf orvf tystr : string =
     | BaseType(RegExpType)   -> "regexp" ^ qstn
     | BaseType(TextInfoType) -> "text-info" ^ qstn
 
-    | VariantType(tyarglist, tyid) ->
-        (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
+    | VariantType(tyarglist, vid) ->
+        (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.Variant.show_direct vid) (* temporary *) ^ "@" ^ qstn
 
-    | SynonymType(tyarglist, tyid, tyreal) ->
-        (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.show_direct tyid) ^ "@ (= " ^ (iter tyreal) ^ ")"
+    | SynonymType(tyarglist, sid, tyreal) ->
+        (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.Synonym.show_direct sid) ^ "@ (= " ^ (iter tyreal) ^ ")"
 
     | FuncType(optrow, tydom, tycod) ->
         let stropts = string_of_option_row_basic tvf orvf optrow in

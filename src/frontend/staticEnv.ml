@@ -117,7 +117,9 @@ type value_entry = {
   mutable is_used : bool;
 }
 
-type type_entry = unit  (* TODO *)
+type type_entry = {
+  type_id : TypeID.t;
+}
 
 type constructor_entry = unit  (* TODO *)
 
@@ -230,27 +232,21 @@ module Typeenv = struct
       (ventry.val_type, ventry.val_name, ventry.val_stage)
     )
 
+
+  let add_type (tynm : type_name) (tyid : TypeID.t) (tyenv : t) : t =
+    failwith "TODO: Typeenv.add_type"
+
+
   let find_type (tynm : type_name) (tyenv : t) : TypeID.t option =
     failwith "TODO: Typeenv.find_type"
 
 
-  let find_type_name (_ : t) (tyid : TypeID.t) : type_name =
-    TypeID.extract_name tyid
-
-
-  let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : TypeID.t) (tyenv : t) : t =
+  let add_constructor (constrnm : constructor_name) ((vid, (bidlist, pty)) : TypeID.Variant.t * type_scheme) (tyenv : t) : t =
     failwith "TODO: add_constructor"
 
 
-  let rec find_constructor (constrnm : constructor_name) (tyenv : t) : (TypeID.t * type_scheme) option =
+  let rec find_constructor (constrnm : constructor_name) (tyenv : t) : (TypeID.Variant.t * type_scheme) option =
     failwith "TODO: Typeenv.find_constructor"
-
-
-  module Raw = struct
-    let fresh_type_id = TypeID.fresh
-    let add_constructor = add_constructor
-    let register_type = failwith "Typeenv.Raw.register_type"
-  end
 
 end
 
