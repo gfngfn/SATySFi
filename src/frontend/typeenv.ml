@@ -9,13 +9,6 @@ let print_for_debug_variantenv msg =
   ()
 
 
-module VarMap = Map.Make
-  (struct
-    type t = var_name
-    let compare = String.compare
-  end)
-
-
 module ModuleID
 : sig
     type t
@@ -39,32 +32,17 @@ let initialize_id () =
   ModuleID.initialize ()
 
 
+module VarMap = Map.Make(String)
+
 module ModuleTree = HashTree.Make(ModuleID)
 
-module ModuleNameMap = Map.Make
-  (struct
-    type t = module_name
-    let compare = String.compare
-  end)
+module ModuleNameMap = Map.Make(String)
 
-module ConstrMap = Map.Make
-  (struct
-    type t = constructor_name
-    let compare = String.compare
-  end)
+module ConstrMap = Map.Make(String)
 
-module TyNameMap = Map.Make
-  (struct
-    type t = type_name
-    let compare = String.compare
-  end)
+module TyNameMap = Map.Make(String)
 
-module SigVarMap = Map.Make
-  (struct
-    type t = sig_var_name
-    let compare = String.compare
-  end)
-
+module SigVarMap = Map.Make(String)
 
 type name_to_id_map = ModuleID.t ModuleNameMap.t
 
