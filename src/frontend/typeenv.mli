@@ -8,6 +8,7 @@ type type_definition =
   | Data  of int
   | Alias of type_scheme
 
+(*
 exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
 exception UndefinedTypeName               of Range.t * module_name list * type_name * type_name list
 exception UndefinedTypeArgument           of Range.t * var_name * var_name list
@@ -17,6 +18,7 @@ exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 exception UndefinedModuleName             of Range.t * module_name * module_name list
+*)
 
 val initialize_id : unit -> unit
 

@@ -839,7 +839,7 @@ let error_log_environment suspended =
         DisplayLine(strty);
         NormalLine("and thus it cannot be applied to arguments.");
       ]
-
+(*
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -904,7 +904,7 @@ let error_log_environment suspended =
         NormalLine("which is inconsistent with the type required by the signature");
         DisplayLine(Display.string_of_poly_type tyenv2 pty2);
       ]
-
+*)
   | Typechecker.ContradictionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
       let strty1 = string_of_mono_type tyenv ty1 in
       let strty2 = string_of_mono_type tyenv ty2 in

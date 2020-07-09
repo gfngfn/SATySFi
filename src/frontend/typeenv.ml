@@ -157,7 +157,7 @@ and macro_entry = {
   macro_name : EvalVarID.t;
 }
 
-and environment =
+and type_environment =
   {
     values       : value_entry ValueNameMap.t;
     types        : type_entry TypeNameMap.t;
@@ -167,7 +167,7 @@ and environment =
     macros       : macro_entry MacroNameMap.t;
   }
 
-
+(*
 exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
 exception UndefinedTypeName               of Range.t * module_name list * type_name * type_name list
 exception UndefinedTypeArgument           of Range.t * var_name * var_name list
@@ -178,9 +178,9 @@ exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * environment * poly_type * environment * poly_type
 exception NotMatchingStage                of Range.t * var_name * stage * stage
 exception UndefinedModuleName             of Range.t * module_name * module_name list
+*)
 
-
-type t = environment
+type t = type_environment
 
 let empty : t =
   {
