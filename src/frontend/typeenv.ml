@@ -173,12 +173,12 @@ let get_candidates foldf map nm =
   get_candidates_last @@ get_candidates_first foldf map nm
 
 
-let add_macro (tyenv : t) (csnm : ctrlseq_name) (macdef : macro_type * EvalVarID.t) : t =
+let add_macro (csnm : ctrlseq_name) (macdef : macro_type * EvalVarID.t) (tyenv : t) : t =
   let macros = tyenv.macros in
   { tyenv with macros = macros |> VarMap.add csnm macdef }
 
 
-let find_macro (tyenv : t) (csnm : ctrlseq_name) : (macro_type * EvalVarID.t) option =
+let find_macro (csnm : ctrlseq_name) (tyenv : t) : (macro_type * EvalVarID.t) option =
   tyenv.macros |> VarMap.find_opt csnm
 
 
@@ -414,11 +414,13 @@ let find_type_definition_candidates_for_outer (tyenv : t) (mdlnmlst : module_nam
 
 
 (* PUBLIC *)
-let find_type_id (tyenv : t) (mdlnmlst : module_name list) (tynm : type_name) (rng : Range.t) : TypeID.t option =
+let find_type (tynm : type_name) (tyenv : t) : TypeID.t option =
+  failwith "TODO: Typeenv.find_type"
+(*
   let open OptionMonad in
   find_type_definition_for_outer tyenv mdlnmlst tynm rng >>= fun (tyid, _) ->
   return tyid
-
+*)
 
 (* PUBLIC *)
 let find_type_name (_ : t) (tyid : TypeID.t) : type_name =

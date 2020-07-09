@@ -22,9 +22,9 @@ val initialize_id : unit -> unit
 
 val empty : t
 
-val add_macro : t -> ctrlseq_name -> (macro_type * EvalVarID.t) -> t
+val add_macro : ctrlseq_name -> (macro_type * EvalVarID.t) -> t -> t
 
-val find_macro : t -> ctrlseq_name -> (macro_type * EvalVarID.t) option
+val find_macro : ctrlseq_name -> t -> (macro_type * EvalVarID.t) option
 
 val add_value : var_name -> (poly_type * EvalVarID.t * stage) -> t -> t
 
@@ -44,7 +44,7 @@ val enumerate_constructors : pre -> t -> TypeID.t -> (constructor_name * (mono_t
 
 val fix_manual_type_free : pre -> t -> manual_type -> constraints -> mono_type
 
-val find_type_id : t -> module_name list -> type_name -> Range.t -> TypeID.t option
+val find_type : type_name -> t -> TypeID.t option
 
 val find_type_name : t -> TypeID.t -> type_name
 

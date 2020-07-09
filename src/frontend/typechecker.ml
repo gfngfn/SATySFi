@@ -1187,7 +1187,7 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
           | Stage1 ->
               let (rngcs, csnm) = vmacro in
               begin
-                match Typeenv.find_macro tyenv csnm with
+                match tyenv |> Typeenv.find_macro csnm with
                 | None ->
                     raise (UndefinedVertMacro(rngcs, csnm))
 
@@ -1265,7 +1265,7 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
           | Stage1 ->
               let (rngcs, csnm) = hmacro in
               begin
-                match Typeenv.find_macro tyenv csnm with
+                match tyenv |> Typeenv.find_macro csnm with
                 | None ->
                     raise (UndefinedHorzMacro(rngcs, csnm))
 
