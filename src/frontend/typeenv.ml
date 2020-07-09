@@ -192,7 +192,9 @@ let add_value (tyenv : t) (varnm : var_name) ((pty, evid, stage) : poly_type * E
 
 
 (* PUBLIC *)
-let find_value (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : (poly_type * EvalVarID.t * stage) option =
+let find_value (varnm : var_name) (rng : Range.t) (tyenv : t) : (poly_type * EvalVarID.t * stage) option =
+  failwith "TODO: Typeenv.find_value"
+(*
   let open OptionMonad in
   let nmtoid = tyenv.name_to_id_map in
   let mtr = tyenv.main_tree in
@@ -217,6 +219,7 @@ let find_value (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng
           VarMap.find_opt varnm vdmap >>= fun (_, evid, stage) ->
           return (ptysig, evid, stage)
     )
+*)
 
 
 (* PUBLIC *)

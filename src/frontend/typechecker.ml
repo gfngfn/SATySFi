@@ -623,12 +623,15 @@ let rec typecheck
       let tyenvnew = Typeenv.open_module tyenv rngtok mdlnm in
       typecheck_iter tyenvnew utast1
 
-  | UTContentOf(mdlnmlst, varnm) ->
+  | UTContentOf(_, varnm) ->
       begin
-        match Typeenv.find_value tyenv mdlnmlst varnm rng with
+        match tyenv |> Typeenv.find_value varnm rng with
         | None ->
+            failwith "TODO: UTContentOf, error handling"
+(*
             let cands = Typeenv.find_candidates tyenv mdlnmlst varnm rng in
             raise (UndefinedVariable(rng, mdlnmlst, varnm, cands))
+*)
 
         | Some((pty, evid, stage)) ->
             let tyfree = instantiate pre.level pre.quantifiability pty in
