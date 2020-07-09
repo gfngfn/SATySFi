@@ -121,7 +121,10 @@ type type_entry = {
   type_id : TypeID.t;
 }
 
-type constructor_entry = unit  (* TODO *)
+type constructor_entry = {
+  belongs_to : TypeID.Variant.t;
+  parameter  : type_scheme;
+}
 
 type signature =
   | ConcStructore of struct_signature
@@ -241,12 +244,20 @@ module Typeenv = struct
     failwith "TODO: Typeenv.find_type"
 
 
-  let add_constructor (constrnm : constructor_name) ((vid, (bidlist, pty)) : TypeID.Variant.t * type_scheme) (tyenv : t) : t =
-    failwith "TODO: add_constructor"
+  let add_constructor (ctornm : constructor_name) ((vid, (bids, pty)) : TypeID.Variant.t * type_scheme) (tyenv : t) : t =
+    let centry =
+      {
+        belongs_to = vid;
+        parameter  = (bids, pty);
+      }
+    in
+    { tyenv with constructors = tyenv.constructors |> ConstructorMap.add ctornm centry }
 
 
-  let rec find_constructor (constrnm : constructor_name) (tyenv : t) : (TypeID.Variant.t * type_scheme) option =
-    failwith "TODO: Typeenv.find_constructor"
+  let rec find_constructor (ctornm : constructor_name) (tyenv : t) : (TypeID.Variant.t * type_scheme) option =
+    tyenv.constructors |> ConstructorMap.find_opt ctornm |> Option.map (fun centry ->
+      (centry.belongs_to, centry.parameter)
+    )
 
 end
 
