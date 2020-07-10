@@ -111,8 +111,6 @@ type value_entry = {
   val_name  : EvalVarID.t;
   val_type  : poly_type;
   val_stage : stage;
-
-  mutable is_used : bool;
 }
 
 type type_entry = {
@@ -159,7 +157,7 @@ and signature_entry = {
 
 and type_environment =
   {
-    values       : value_entry ValueNameMap.t;
+    values       : (value_entry * bool ref) ValueNameMap.t;
     types        : type_entry TypeNameMap.t;
     modules      : module_entry ModuleNameMap.t;
     signatures   : signature_entry SignatureNameMap.t;
@@ -179,6 +177,18 @@ exception NotMatchingInterface            of Range.t * var_name * environment * 
 exception NotMatchingStage                of Range.t * var_name * stage * stage
 exception UndefinedModuleName             of Range.t * module_name * module_name list
 *)
+
+let compose_value_entry (pty, evid, stage) =
+  {
+    val_name  = evid;
+    val_type  = pty;
+    val_stage = stage;
+  }
+
+
+let decompose_value_entry ventry =
+  (ventry.val_type, ventry.val_name, ventry.val_stage)
+
 
 module Typeenv = struct
 
@@ -212,23 +222,16 @@ module Typeenv = struct
     )
 
 
-  let add_value (varnm : var_name) ((pty, evid, stage) : poly_type * EvalVarID.t * stage) (tyenv : t) : t =
-    let ventry =
-      {
-        val_name  = evid;
-        val_type  = pty;
-        val_stage = stage;
-
-        is_used = false;
-      }
-    in
-    { tyenv with values = tyenv.values |> ValueNameMap.add varnm ventry }
+  let add_value (varnm : var_name) (mapped : poly_type * EvalVarID.t * stage) (tyenv : t) : t =
+    let ventry = compose_value_entry mapped in
+    let is_used = ref false in
+    { tyenv with values = tyenv.values |> ValueNameMap.add varnm (ventry, is_used) }
 
 
   let find_value (varnm : var_name) (tyenv : t) : (poly_type * EvalVarID.t * stage) option =
-    tyenv.values |> ValueNameMap.find_opt varnm |> Option.map (fun ventry ->
-      ventry.is_used <- true;
-      (ventry.val_type, ventry.val_name, ventry.val_stage)
+    tyenv.values |> ValueNameMap.find_opt varnm |> Option.map (fun (ventry, is_used) ->
+      is_used := true;
+      decompose_value_entry ventry
     )
 
 
@@ -261,6 +264,29 @@ module Typeenv = struct
   let rec find_constructor (ctornm : constructor_name) (tyenv : t) : (TypeID.Variant.t * type_scheme) option =
     tyenv.constructors |> ConstructorMap.find_opt ctornm |> Option.map (fun centry ->
       (centry.ctor_belongs_to, centry.ctor_parameter)
+    )
+
+end
+
+
+module StructSig = struct
+
+  type t = struct_signature
+
+
+  let empty : t =
+    Alist.empty
+
+
+  let add_value (x : var_name) (tuple : poly_type * EvalVarID.t * stage) (ssig : t) : t =
+    let ventry = compose_value_entry tuple in
+    Alist.extend ssig (SSValue(x, ventry))
+
+
+  let find_value (x : var_name) (ssig : t) : (poly_type * EvalVarID.t * stage) option =
+    ssig |> Alist.to_list_rev |> List.find_map (function
+    | SSValue(x0, ventry) -> if x = x0 then Some(decompose_value_entry ventry) else None
+    | _                   -> None
     )
 
 end

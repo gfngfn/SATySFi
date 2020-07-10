@@ -41,6 +41,19 @@ module Typeenv : sig
   val find_constructor : constructor_name -> t -> (TypeID.Variant.t * type_scheme) option
 
 end
+
+module StructSig : sig
+
+  type t
+
+  val empty : t
+
+  val add_value : var_name -> (poly_type * EvalVarID.t * stage) -> t -> t
+
+  val find_value : var_name -> t -> (poly_type * EvalVarID.t * stage) option
+
+end
+
 (*
 val fix_manual_type_free : pre -> t -> manual_type -> constraints -> mono_type
 
