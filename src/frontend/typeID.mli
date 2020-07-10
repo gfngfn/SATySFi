@@ -32,3 +32,4 @@ end
 type t =
   | Variant of Variant.t
   | Synonym of Synonym.t
+[@@deriving show]

@@ -25,6 +25,12 @@ let sid_igrafo   = TypeID.Synonym.fresh "inline-graphics-outer"
 
 let ( ~! ) = Range.dummy
 
+let variant tyargs vid = DataType(tyargs, TypeID.Variant(vid))
+
+let synonym tyargs sid ty =
+  let () = failwith "TODO: register (sid |-> ty) to TypeStore" in
+  DataType(tyargs, TypeID.Synonym(sid))
+
 (* -- base types and base type constructors -- *)
 let tU            = (~! "unit"    , BaseType(UnitType)    )
 let tI            = (~! "int"     , BaseType(IntType)     )
@@ -57,15 +63,15 @@ let tPROD = function
 let ( @-> ) dom cod = (~! "func", FuncType(OptionRowEmpty, dom, cod))
 
 (* -- predefined data types -- *)
-let tOPT ty       = (~! "option"  , VariantType([ty], vid_option))
-let tITMZ ()      = (~! "itemize" , VariantType([], vid_itemize) )
-let tSCR          = (~! "script"  , VariantType([], vid_script)  )
-let tLANG         = (~! "language", VariantType([], vid_language))
-let tCLR          = (~! "color"   , VariantType([], vid_color)   )
-let tPG           = (~! "page"    , VariantType([], vid_page)    )
-let tMATHCLS      = (~! "mathcls" , VariantType([], vid_mathcls) )
-let tMCCLS        = (~! "mccls"   , VariantType([], vid_mccls)   )
-let tCELL         = (~! "cell"    , VariantType([], vid_cell)    )
+let tOPT ty       = (~! "option"  , variant [ty] vid_option)
+let tITMZ ()      = (~! "itemize" , variant [] vid_itemize )
+let tSCR          = (~! "script"  , variant [] vid_script  )
+let tLANG         = (~! "language", variant [] vid_language)
+let tCLR          = (~! "color"   , variant [] vid_color   )
+let tPG           = (~! "page"    , variant [] vid_page    )
+let tMATHCLS      = (~! "mathcls" , variant [] vid_mathcls )
+let tMCCLS        = (~! "mccls"   , variant [] vid_mccls   )
+let tCELL         = (~! "cell"    , variant [] vid_cell    )
 
 (* -- predefined alias types -- *)
 let tFONT         = tPROD [tS; tFL; tFL]
@@ -74,16 +80,16 @@ let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
 
 let tDECO_raw = tPT @-> tLN @-> tLN @-> tLN @-> (tL tGR)
-let tDECO = (~! "deco", SynonymType([], sid_deco, tDECO_raw))
+let tDECO = (~! "deco", synonym [] sid_deco tDECO_raw)
 
 let tDECOSET_raw = tPROD [tDECO; tDECO; tDECO; tDECO]
-let tDECOSET = (~! "deco-set", SynonymType([], sid_decoset, tDECOSET_raw))
+let tDECOSET = (~! "deco-set", synonym [] sid_decoset tDECOSET_raw)
 
 let tIGR_raw = tPT @-> (tL tGR)
-let tIGR = (~! "igraf", SynonymType([], sid_igraf, tIGR_raw))
+let tIGR = (~! "igraf", synonym [] sid_igraf tIGR_raw)
 
 let tIGRO_raw = tLN @-> tPT @-> (tL tGR)
-let tIGRO = (~! "igrafo", SynonymType([], sid_igrafo, tIGRO_raw))
+let tIGRO = (~! "igrafo", synonym [] sid_igrafo tIGRO_raw)
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 

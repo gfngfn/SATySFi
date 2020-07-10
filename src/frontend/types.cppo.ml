@@ -290,8 +290,7 @@ and ('a, 'b) type_main =
   | RefType         of ('a, 'b) typ
   | ProductType     of (('a, 'b) typ) TupleList.t
   | TypeVariable    of 'a
-  | SynonymType     of (('a, 'b) typ) list * TypeID.Synonym.t * ('a, 'b) typ
-  | VariantType     of (('a, 'b) typ) list * TypeID.Variant.t
+  | DataType        of (('a, 'b) typ) list * TypeID.t
   | RecordType      of (('a, 'b) typ) Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
   | HorzCommandType of (('a, 'b) command_argument_type) list
@@ -1153,8 +1152,7 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(erase_range_of_option_row optrow, iter tydom, iter tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map iter tys))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
+    | DataType(tyargs, tyid)            -> (rng, DataType(List.map iter tyargs, tyid))
     | ListType(tycont)                  -> (rng, ListType(iter tycont))
     | RefType(tycont)                   -> (rng, RefType(iter tycont))
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
@@ -1222,8 +1220,7 @@ let rec instantiate_aux bid_ht lev qtfbl (rng, ptymain) =
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map aux tys))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
+    | DataType(tyargs, tyid)            -> (rng, DataType(List.map aux tyargs, tyid))
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
     | BaseType(bty)                     -> (rng, BaseType(bty))
@@ -1281,8 +1278,7 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map aux tys))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
+    | DataType(tyargs, tyid)            -> (rng, DataType(List.map aux tyargs, tyid))
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
     | BaseType(bt)                      -> (rng, BaseType(bt))
@@ -1337,8 +1333,7 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(generalize_option_row optrow, iter tydom, iter tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map iter tys))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
+    | DataType(tyargs, tyid)            -> (rng, DataType(List.map iter tyargs, tyid))
     | ListType(tysub)                   -> (rng, ListType(iter tysub))
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
     | BaseType(bty)                     -> (rng, BaseType(bty))
@@ -1389,8 +1384,7 @@ let check_level lev (ty : mono_type) =
     | RefType(tycont)                -> iter tycont
     | BaseType(_)                    -> true
     | ListType(tycont)               -> iter tycont
-    | VariantType(tylst, _)          -> List.for_all iter tylst
-    | SynonymType(tylst, _, tyact)   -> List.for_all iter tylst && iter tyact
+    | DataType(tyargs, _)            -> List.for_all iter tyargs
 
     | HorzCommandType(cmdargtylst)
     | VertCommandType(cmdargtylst)
@@ -1463,8 +1457,7 @@ let rec unlift_aux pty =
     | RecordType(ptyasc)              -> RecordType(Assoc.map_value aux ptyasc)
     | ListType(ptysub)                -> ListType(aux ptysub)
     | RefType(ptysub)                 -> RefType(aux ptysub)
-    | VariantType(ptylst, tyid)       -> VariantType(List.map aux ptylst, tyid)
-    | SynonymType(ptylst, tyid, ptya) -> SynonymType(List.map aux ptylst, tyid, aux ptya)
+    | DataType(ptyargs, tyid)         -> DataType(List.map aux ptyargs, tyid)
     | HorzCommandType(catyl)          -> HorzCommandType(List.map unlift_aux_cmd catyl)
     | VertCommandType(catyl)          -> VertCommandType(List.map unlift_aux_cmd catyl)
     | MathCommandType(catyl)          -> MathCommandType(List.map unlift_aux_cmd catyl)
@@ -1793,11 +1786,8 @@ let rec string_of_type_basic tvf orvf tystr : string =
     | BaseType(RegExpType)   -> "regexp" ^ qstn
     | BaseType(TextInfoType) -> "text-info" ^ qstn
 
-    | VariantType(tyarglist, vid) ->
-        (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.Variant.show_direct vid) (* temporary *) ^ "@" ^ qstn
-
-    | SynonymType(tyarglist, sid, tyreal) ->
-        (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.Synonym.show_direct sid) ^ "@ (= " ^ (iter tyreal) ^ ")"
+    | DataType(tyargs, tyid) ->
+        (string_of_type_argument_list_basic tvf orvf tyargs) ^ (TypeID.show tyid) (* temporary *) ^ "@" ^ qstn
 
     | FuncType(optrow, tydom, tycod) ->
         let stropts = string_of_option_row_basic tvf orvf optrow in
@@ -1817,7 +1807,7 @@ let rec string_of_type_basic tvf orvf tystr : string =
           | ProductType(_)
           | ListType(_)
           | RefType(_)
-          | VariantType(_ :: _, _)
+          | DataType(_ :: _, _)
 (*          | TypeSynonym(_ :: _, _, _) *)
               -> "(" ^ strcont ^ ")"
           | _ -> strcont
@@ -1831,8 +1821,7 @@ let rec string_of_type_basic tvf orvf tystr : string =
           | ProductType(_)
           | ListType(_)
           | RefType(_)
-          | VariantType(_ :: _, _)
-(*          | TypeSynonym(_ :: _, _, _) *)
+          | DataType(_ :: _, _)
               -> "(" ^ strcont ^ ")"
 
           | _ -> strcont
@@ -1844,7 +1833,7 @@ let rec string_of_type_basic tvf orvf tystr : string =
         "&" ^ begin
           match tysubmain with
           | BaseType(_)
-          | VariantType([], _) -> strsub
+          | DataType([], _) -> strsub
 
           | _ -> "(" ^ strsub ^ ")"
         end
@@ -1885,7 +1874,7 @@ and string_of_option_row_basic tvf orvf = function
         | ProductType(_)
         | ListType(_)
         | RefType(_)
-        | VariantType(_ :: _, _)
+        | DataType(_ :: _, _)
           -> "(" ^ strtysub ^ ")"
 
         | _ -> strtysub
@@ -1909,10 +1898,9 @@ and string_of_type_argument_list_basic tvf orvf tyarglist =
           match headmain with
           | FuncType(_, _, _)
           | ProductType(_)
-            (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
           | ListType(_)
           | RefType(_)
-          | VariantType(_ :: _, _)
+          | DataType(_ :: _, _)
               -> "(" ^ strhd ^ ")"
           | _ -> strhd
         end ^ " " ^ strtl

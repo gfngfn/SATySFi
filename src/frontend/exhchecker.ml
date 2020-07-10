@@ -247,7 +247,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
         let (nmat, ninfo, nomatch) = iter (List.hd mat) mat in
           (expand_mat nmat 0 expnd tylst, ninfo, lty :: tylst, expnd, nomatch)
 
-    | (EConstructor(nm, ity), (_, VariantType(_, _)) :: rest) ->
+    | (EConstructor(nm, ity), (_, DataType(_, TypeID.Variant(_))) :: rest) ->
         let expnd = ExpandConstructor(nm, ity) in
         let (nmat, ninfo, nomatch) = iter (List.hd mat) mat in
           (expand_mat nmat 0 expnd tylst, ninfo, ity :: rest, expnd, nomatch)
@@ -310,9 +310,16 @@ let rec complete_sig col (pre : pre) (tyenv : Typeenv.t) ((_, tymain) : mono_typ
   | BaseType(StringType)        -> make_string_sig col
   | ListType(_)                 -> list_sig
   | ProductType(_)              -> product_sig
-  | SynonymType(_, _, aty)      -> complete_sig col pre tyenv aty
-  | VariantType(tyarglst, tyid) -> make_variant_sig pre tyenv tyarglst tyid
-  | _                           -> generic_sig
+
+  | DataType(_, TypeID.Synonym(sid)) ->
+      let aty = failwith "TODO: get real type of synonym types" in
+      complete_sig col pre tyenv aty
+
+  | DataType(tyargs, TypeID.Variant(vid)) ->
+      make_variant_sig pre tyenv tyargs vid
+
+  | _ ->
+      generic_sig
 
 
 let tuplize_instance n ilst =

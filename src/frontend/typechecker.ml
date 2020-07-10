@@ -247,8 +247,18 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
     | ProductType(tys)               -> iter_list (tys |> TupleList.to_list)
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
-    | VariantType(tylist, _)         -> iter_list tylist
-    | SynonymType(tylist, _, tyact)  -> let b = iter_list tylist in let ba = iter tyact in b || ba
+
+    | DataType(tyargs, tyid) ->
+        begin
+          match tyid with
+          | TypeID.Variant(_) ->
+              iter_list tyargs
+
+          | TypeID.Synonym(_sid) ->
+              let tyact = failwith "TODO: get real type and instantiate" in
+              iter tyact
+        end
+
     | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
     | BaseType(_)                    -> false
     | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
@@ -328,8 +338,18 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
     | ProductType(tys)              -> iter_list (tys |> TupleList.to_list)
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
-    | VariantType(tylist, _)         -> iter_list tylist
-    | SynonymType(tylist, _, tyact)  -> let b = iter_list tylist in let ba = iter tyact in b || ba
+
+    | DataType(tyargs, tyid) ->
+        begin
+          match tyid with
+          | TypeID.Variant(_) ->
+              iter_list tyargs
+
+          | TypeID.Synonym(_sid) ->
+              let tyact = failwith "TODO: get real type and instantiate it" in
+              iter tyact
+        end
+
     | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
     | BaseType(_)                    -> false
     | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
@@ -406,8 +426,13 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
 
     match (tymain1, tymain2) with
 
-    | (SynonymType(_, _, tyreal1), _) -> unify tyreal1 ty2
-    | (_, SynonymType(_, _, tyreal2)) -> unify ty1 tyreal2
+    | (DataType(_, TypeID.Synonym(sid1)), _) ->
+        let tyreal1 = failwith "TODO: get real type" in
+        unify tyreal1 ty2
+
+    | (_, DataType(_, TypeID.Synonym(sid2))) ->
+        let tyreal2 = failwith "TODO: get real type" in
+        unify ty1 tyreal2
 
     | (BaseType(bsty1), BaseType(bsty2))  when bsty1 = bsty2 -> ()
 
@@ -449,15 +474,15 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
         else
           unify_list (Assoc.combine_value tyasc1 tyasc2)
 
-    | (VariantType(tyarglist1, tyid1), VariantType(tyarglist2, tyid2))
-        when tyid1 = tyid2 ->
-        begin
+    | (DataType(tyargs1, TypeID.Variant(vid1)), DataType(tyargs2, TypeID.Variant(vid2))) ->
+        if TypeID.Variant.equal vid1 vid2 then begin
           try
-            unify_list (List.combine tyarglist1 tyarglist2)
+            unify_list (List.combine tyargs1 tyargs2)
           with
           | Invalid_argument(_) ->
               raise (InternalContradictionError(reversed))
-        end
+        end else
+          raise (InternalContradictionError(reversed))
 
     | (ListType(tysub1), ListType(tysub2)) -> unify tysub1 tysub2
     | (RefType(tysub1), RefType(tysub2))   -> unify tysub1 tysub2
@@ -692,10 +717,10 @@ let rec typecheck
       end
 
   | UTConstructor(constrnm, utast1) ->
-      let (tyarglist, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+      let (tyargs, vid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       unify ty1 tyc;
-      let tyres = (rng, VariantType(tyarglist, tyid)) in
+      let tyres = (rng, DataType(tyargs, TypeID.Variant(vid))) in
       (NonValueConstructor(constrnm, e1), tyres)
 
   | UTHorzConcat(utast1, utast2) ->
@@ -1468,10 +1493,10 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         end
 
     | UTPConstructor(constrnm, utpat1) ->
-        let (tyarglist, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+        let (tyargs, vid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
         let (epat1, typat1, tyenv1) = iter utpat1 in
         unify tyc typat1;
-        (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
+        (PConstructor(constrnm, epat1), (rng, DataType(tyargs, TypeID.Variant(vid))), tyenv1)
 
 
 and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) =
