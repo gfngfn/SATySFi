@@ -1494,78 +1494,67 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
 
 and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : Typeenv.t * letrec_binding list =
 
-  let add_mutual_variables (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : Typeenv.t * (untyped_letrec_binding * mono_type * EvalVarID.t) list =
-    let (tyenv, utrecacc) =
-      utrecbinds |> List.fold_left (fun (tyenv, utrecacc) utrecbind ->
-        let UTLetRecBinding(_, varrng, varnm, astdef) = utrecbind in
-        let tvref =
-          let tvid = FreeID.fresh UniversalKind pre.quantifiability (Level.succ pre.level) () in
-          ref (MonoFree(tvid))
-        in
-        let rng = get_range astdef in
-        let beta = (rng, TypeVariable(tvref)) in
-        let pbeta = (rng, TypeVariable(PolyFree(tvref))) in
-        let evid = EvalVarID.fresh (varrng, varnm) in
-        let tyenv = tyenv |> Typeenv.add_value varnm (Poly(pbeta), evid, pre.stage) in
-        let utrecacc = Alist.extend utrecacc (utrecbind, beta, evid) in
-        (tyenv, utrecacc)
-      ) (tyenv, Alist.empty)
-    in
-    (tyenv, Alist.to_list utrecacc)
+  (* First, adds a type variable for each bound identifier. *)
+  let (tyenv, utrecacc) =
+    utrecbinds |> List.fold_left (fun (tyenv, utrecacc) utrecbind ->
+      let UTLetRecBinding(_, varrng, varnm, astdef) = utrecbind in
+      let tvref =
+        let tvid = FreeID.fresh UniversalKind pre.quantifiability (Level.succ pre.level) () in
+        ref (MonoFree(tvid))
+      in
+      let rng = get_range astdef in
+      let beta = (rng, TypeVariable(tvref)) in
+      let pbeta = (rng, TypeVariable(PolyFree(tvref))) in
+      let evid = EvalVarID.fresh (varrng, varnm) in
+      let tyenv = tyenv |> Typeenv.add_value varnm (Poly(pbeta), evid, pre.stage) in
+      let utrecacc = Alist.extend utrecacc (utrecbind, beta, evid) in
+      (tyenv, utrecacc)
+    ) (tyenv, Alist.empty)
   in
 
-  let typecheck_mutual_contents (pre : pre) (tyenv : Typeenv.t) (utrecs : (untyped_letrec_binding * mono_type * EvalVarID.t) list) =
-    let (recbindacc, tupleacc) =
-      utrecs |> List.fold_left (fun (recbindacc, tupleacc) utrec ->
-        let (UTLetRecBinding(mntyopt, _, varnm, utast1), beta, evid) = utrec in
-        let (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenv utast1 in
-        begin
-          match e1 with
-          | Function([], patbr1) ->
-              unify ty1 beta;
-              begin
-                match mntyopt with
-                | None ->
-                    ()
+  (* Typechecks each body of the definitions. *)
+  let (recbindacc, tupleacc) =
+    utrecacc |> Alist.to_list |> List.fold_left (fun (recbindacc, tupleacc) utrec ->
+      let (UTLetRecBinding(mntyopt, _, varnm, utast1), beta, evid) = utrec in
+      let (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenv utast1 in
+      begin
+        match e1 with
+        | Function([], patbr1) ->
+            unify ty1 beta;
+            begin
+              match mntyopt with
+              | None ->
+                  ()
 
-                | Some(mnty) ->
-                    let tyin =
-                      failwith "TODO: typecheck_mutual_contents, decoding manual types"
+              | Some(mnty) ->
+                  let tyin =
+                    failwith "TODO: typecheck_mutual_contents, decoding manual types"
                       (* Typeenv.fix_manual_type_free pre tyenv mnty [] *)
-                    in
-                    unify tyin beta;
-              end;
-              let recbindacc = Alist.extend recbindacc (LetRecBinding(evid, patbr1)) in
-              let tupleacc = Alist.extend tupleacc (varnm, beta, evid) in
-              (recbindacc, tupleacc)
+                  in
+                  unify tyin beta;
+            end;
+            let recbindacc = Alist.extend recbindacc (LetRecBinding(evid, patbr1)) in
+            let tupleacc = Alist.extend tupleacc (varnm, beta, evid) in
+            (recbindacc, tupleacc)
 
-          | _ ->
-              let (rng1, _) = utast1 in
-              raise (BreaksValueRestriction(rng1))
-        end
-      ) (Alist.empty, Alist.empty)
-    in
-    (Alist.to_list recbindacc, Alist.to_list tupleacc)
+        | _ ->
+            let (rng1, _) = utast1 in
+            raise (BreaksValueRestriction(rng1))
+      end
+    ) (Alist.empty, Alist.empty)
   in
 
-  let make_forall_type_mutual (tyenv : Typeenv.t) tuples =
-    tuples |> List.fold_left (fun tyenv (varnm, ty, evid) ->
+  let tyenv =
+    tupleacc |> Alist.to_list |> List.fold_left (fun tyenv (varnm, ty, evid) ->
       let pty = generalize pre.level (erase_range_of_type ty) in
       tyenv |> Typeenv.add_value varnm (pty, evid, pre.stage)
     ) tyenv
   in
-
-  let (tyenv, utrecs) = add_mutual_variables tyenv utrecbinds in
-  let (recbinds, tuples) = typecheck_mutual_contents pre tyenv utrecs in
-  let tyenv = make_forall_type_mutual tyenv tuples in
-  (tyenv, recbinds)
+  (tyenv, recbindacc |> Alist.to_list)
 
 
 and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng varnm utastI =
   let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
-(*
-  let () = print_endline ("#AddMutable " ^ varnm ^ " : " ^ (string_of_mono_type_basic (varrng, RefType(tyI)))) in (* for debug *)
-*)
   let evid = EvalVarID.fresh (varrng, varnm) in
   let tyenvI = tyenv |> Typeenv.add_value varnm (lift_poly (varrng, RefType(tyI)), evid, pre.stage) in
   (tyenvI, evid, eI, tyI)
