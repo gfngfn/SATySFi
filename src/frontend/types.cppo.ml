@@ -666,14 +666,18 @@ type base_constant =
   | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 [@@deriving show { with_path = false; }]
 
-type binding = unit  (* TEMPORARY *)
-
 type code_binding = unit  (* TEMPORARY *)
 
 type 'a letrec_binding_scheme =
   | LetRecBinding of EvalVarID.t * 'a pattern_branch_scheme
 
 and letrec_binding = abstract_tree letrec_binding_scheme
+
+and rec_or_nonrec =
+  | Rec of letrec_binding list
+
+and binding =
+  | BindValue of rec_or_nonrec
 
 and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]

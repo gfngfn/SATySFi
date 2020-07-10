@@ -52,6 +52,12 @@ module StructSig : sig
 
   val find_value : var_name -> t -> (poly_type * EvalVarID.t * stage) option
 
+  val fold :
+    v:(var_name -> (poly_type * EvalVarID.t * stage) -> 'a -> 'a) ->
+    'a -> t -> 'a
+
+  val union : t -> t -> t
+
 end
 
 (*

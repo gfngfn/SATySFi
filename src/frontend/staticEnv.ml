@@ -289,6 +289,14 @@ module StructSig = struct
     | _                   -> None
     )
 
+
+  let fold ~v:fv acc ssig =
+    failwith "TODO: StructSig.fold"
+
+
+  let union ssig1 ssig2 =
+    failwith "TODO: StructSig.union"
+
 end
 
 (*

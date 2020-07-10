@@ -1557,17 +1557,25 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
   (tyenvI, evid, eI, tyI)
 
 
-let rec typecheck_binding_list (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
-  let (bindacc, tyenv) =
-    utbinds |> List.fold_left (fun (bindacc, tyenv) utbind ->
-      let (bind, tyenv) = typecheck_binding pre tyenv utbind in
-      (Alist.extend bindacc bind, tyenv)
-    ) (Alist.empty, tyenv)
+let rec add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
+  ssig |> StructSig.fold
+      ~v:(fun x vtup -> Typeenv.add_value x vtup)
+      tyenv
+
+
+and typecheck_binding_list (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t =
+  let (bindacc, tyenv, ssigacc) =
+    utbinds |> List.fold_left (fun (bindacc, tyenv, ssigacc) utbind ->
+      let (bind, ssig) = typecheck_binding pre tyenv utbind in
+      let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
+      let ssigacc = StructSig.union ssigacc ssig in
+      (Alist.extend bindacc bind, tyenv, ssigacc)
+    ) (Alist.empty, tyenv, StructSig.empty)
   in
-  (Alist.to_list bindacc, tyenv)
+  (Alist.to_list bindacc, tyenv, ssigacc)
 
 
-and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding * Typeenv.t =
+and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding * StructSig.t =
   match utbind with
   | UTBindValue(valbind) ->
       begin
@@ -1576,8 +1584,16 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
             failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTNonRec"
 
         | UTRec(utrecbinds) ->
-            let _quints = typecheck_letrec pre tyenv utrecbinds in
-            failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTRec"
+            let quints = typecheck_letrec pre tyenv utrecbinds in
+            let (recbindacc, ssig) =
+              quints |> List.fold_left (fun (recbindacc, ssig) quint ->
+                let (x, pty, evid, stage, recbind) = quint in
+                let ssig = ssig |> StructSig.add_value x (pty, evid, stage) in
+                let recbindacc = Alist.extend recbindacc recbind in
+                (recbindacc, ssig)
+              ) (Alist.empty, StructSig.empty)
+            in
+            (BindValue(Rec(recbindacc |> Alist.to_list)), ssig)
 
         | UTMutable((_, _varnm), _utast1) ->
             failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTMutable"
@@ -1611,4 +1627,8 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : m
 
 
 let main_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
-  typecheck_binding_list { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utbinds
+  let (binds, tyenv, _) =
+    let pre = { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } in
+    typecheck_binding_list pre tyenv utbinds
+  in
+  (binds, tyenv)
