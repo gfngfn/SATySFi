@@ -865,8 +865,8 @@ let rec typecheck
       (LetNonRecIn(pat, e1, e2), ty2)
 
   | UTLetIn(UTRec(utrecbinds), utast2) ->
-      let (tyenvnew, _, recbinds) = make_type_environment_by_letrec pre tyenv utrecbinds in
-      let (e2, ty2) = typecheck_iter tyenvnew utast2 in
+      let (tyenv, recbinds) = make_type_environment_by_letrec pre tyenv utrecbinds in
+      let (e2, ty2) = typecheck_iter tyenv utast2 in
       (LetRecIn(recbinds, e2), ty2)
 
   | UTIfThenElse(utastB, utast1, utast2) ->
@@ -1492,85 +1492,73 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         (PConstructor(constrnm, epat1), (rng, DataType(tyargs, TypeID.Variant(vid))), tyenv1)
 
 
-and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) =
+and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : Typeenv.t * letrec_binding list =
 
-  let rec add_mutual_variables (acctyenv : Typeenv.t) (tvtyacc : (untyped_letrec_binding * mono_type * EvalVarID.t) Alist.t) (utrecbinds : untyped_letrec_binding list) : (Typeenv.t * (untyped_letrec_binding * mono_type * EvalVarID.t) list) =
-    let iter = add_mutual_variables in
-      match utrecbinds with
-      | [] ->
-          (acctyenv, Alist.to_list tvtyacc)
-
-      | (UTLetRecBinding(_, varrng, varnm, astdef) as utrecbind) :: tailcons ->
+  let add_mutual_variables (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : Typeenv.t * (untyped_letrec_binding * mono_type * EvalVarID.t) list =
+    let (tyenv, utrecacc) =
+      utrecbinds |> List.fold_left (fun (tyenv, utrecacc) utrecbind ->
+        let UTLetRecBinding(_, varrng, varnm, astdef) = utrecbind in
+        let tvref =
           let tvid = FreeID.fresh UniversalKind pre.quantifiability (Level.succ pre.level) () in
-          let tvref = ref (MonoFree(tvid)) in
-          let rng = get_range astdef in
-          let beta = (rng, TypeVariable(tvref)) in
-          let pbeta = (rng, TypeVariable(PolyFree(tvref))) in
-(*
-          let () = print_endline ("#AddMutualVar " ^ varnm ^ " : '" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
-*)
-          let evid = EvalVarID.fresh (varrng, varnm) in
-          iter (acctyenv |> Typeenv.add_value varnm (Poly(pbeta), evid, pre.stage)) (Alist.extend tvtyacc (utrecbind, beta, evid)) tailcons
+          ref (MonoFree(tvid))
+        in
+        let rng = get_range astdef in
+        let beta = (rng, TypeVariable(tvref)) in
+        let pbeta = (rng, TypeVariable(PolyFree(tvref))) in
+        let evid = EvalVarID.fresh (varrng, varnm) in
+        let tyenv = tyenv |> Typeenv.add_value varnm (Poly(pbeta), evid, pre.stage) in
+        let utrecacc = Alist.extend utrecacc (utrecbind, beta, evid) in
+        (tyenv, utrecacc)
+      ) (tyenv, Alist.empty)
+    in
+    (tyenv, Alist.to_list utrecacc)
   in
 
-  let rec typecheck_mutual_contents (pre : pre) (tyenvforrec : Typeenv.t) (utreclst : (untyped_letrec_binding * mono_type * EvalVarID.t) list) (recbindacc : letrec_binding Alist.t) (acctvtylstout : (var_name * mono_type * EvalVarID.t) Alist.t) =
-    let iter = typecheck_mutual_contents pre tyenvforrec in
-    match utreclst with
-    | [] ->
-        (tyenvforrec, Alist.to_list recbindacc, Alist.to_list acctvtylstout)
-
-    | (UTLetRecBinding(mntyopt, _, varnm, utast1), beta, evid) :: utrectail ->
-        let (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenvforrec utast1 in
+  let typecheck_mutual_contents (pre : pre) (tyenv : Typeenv.t) (utrecs : (untyped_letrec_binding * mono_type * EvalVarID.t) list) =
+    let (recbindacc, tupleacc) =
+      utrecs |> List.fold_left (fun (recbindacc, tupleacc) utrec ->
+        let (UTLetRecBinding(mntyopt, _, varnm, utast1), beta, evid) = utrec in
+        let (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenv utast1 in
         begin
           match e1 with
           | Function([], patbr1) ->
+              unify ty1 beta;
               begin
                 match mntyopt with
                 | None ->
-                    unify ty1 beta;
-                    iter utrectail (Alist.extend recbindacc (LetRecBinding(evid, patbr1))) (Alist.extend acctvtylstout (varnm, beta, evid))
+                    ()
 
                 | Some(mnty) ->
                     let tyin =
                       failwith "TODO: typecheck_mutual_contents, decoding manual types"
-(*
-                      Typeenv.fix_manual_type_free pre tyenv mnty []
-*)
+                      (* Typeenv.fix_manual_type_free pre tyenv mnty [] *)
                     in
-                    unify ty1 beta;
                     unify tyin beta;
-                    iter utrectail (Alist.extend recbindacc (LetRecBinding(evid, patbr1))) (Alist.extend acctvtylstout (varnm, beta, evid))
-              end
+              end;
+              let recbindacc = Alist.extend recbindacc (LetRecBinding(evid, patbr1)) in
+              let tupleacc = Alist.extend tupleacc (varnm, beta, evid) in
+              (recbindacc, tupleacc)
 
           | _ ->
               let (rng1, _) = utast1 in
               raise (BreaksValueRestriction(rng1))
         end
+      ) (Alist.empty, Alist.empty)
+    in
+    (Alist.to_list recbindacc, Alist.to_list tupleacc)
   in
 
-  let rec make_forall_type_mutual (tyenv : Typeenv.t) (tyenv_before_let : Typeenv.t) tvtylst tvtylst_forall =
-    match tvtylst with
-    | [] ->
-        (tyenv, tvtylst_forall)
-
-    | (varnm, tvty, evid) :: tvtytail ->
-(*
-        let () = print_endline ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic tvty)) in  (* for debug *)
-*)
-        let pty = (generalize pre.level (erase_range_of_type tvty)) in
-(*
-        let () = print_endline ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)) in (* for debug *)
-*)
-        let tvtylst_forall_new = (varnm, pty, evid) :: tvtylst_forall in
-        make_forall_type_mutual (tyenv |> Typeenv.add_value varnm (pty, evid, pre.stage)) tyenv_before_let tvtytail tvtylst_forall_new
+  let make_forall_type_mutual (tyenv : Typeenv.t) tuples =
+    tuples |> List.fold_left (fun tyenv (varnm, ty, evid) ->
+      let pty = generalize pre.level (erase_range_of_type ty) in
+      tyenv |> Typeenv.add_value varnm (pty, evid, pre.stage)
+    ) tyenv
   in
 
-  let (tyenvforrec, utreclst) = add_mutual_variables tyenv Alist.empty utrecbinds in
-  let (tyenv_new, mutletcons, tvtylstout) =
-    typecheck_mutual_contents pre tyenvforrec utreclst Alist.empty Alist.empty
-  in
-  let (tyenv_forall, tvtylst_forall) = make_forall_type_mutual tyenv_new tyenv tvtylstout [] in
-  (tyenv_forall, tvtylst_forall, mutletcons)
+  let (tyenv, utrecs) = add_mutual_variables tyenv utrecbinds in
+  let (recbinds, tuples) = typecheck_mutual_contents pre tyenv utrecs in
+  let tyenv = make_forall_type_mutual tyenv tuples in
+  (tyenv, recbinds)
 
 
 and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng varnm utastI =
@@ -1602,7 +1590,7 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
             failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTNonRec"
 
         | UTRec(utrecbinds) ->
-            let (_tyenv, _, _recbinds) = make_type_environment_by_letrec pre tyenv utrecbinds in
+            let (_tyenv, _recbinds) = make_type_environment_by_letrec pre tyenv utrecbinds in
             failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTRec"
 
         | UTMutable((_, _varnm), _utast1) ->
