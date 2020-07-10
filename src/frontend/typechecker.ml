@@ -1466,9 +1466,6 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
     | UTPVariable(varnm) ->
         let beta = fresh_type_variable rng pre UniversalKind in
         let evid = EvalVarID.fresh (rng, varnm) in
-(*
-        let () = print_endline ("\n#PAdd " ^ varnm ^ " : " ^ (string_of_mono_type_basic beta)) in  (* for debug *)
-*)
         (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
 
     | UTPAsVariable(varnm, utpat1) ->
@@ -1521,18 +1518,13 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letre
         match e1 with
         | Function([], patbr1) ->
             unify ty1 beta;
-            begin
-              match mntyopt with
-              | None ->
-                  ()
-
-              | Some(mnty) ->
-                  let tyin =
-                    failwith "TODO: typecheck_mutual_contents, decoding manual types"
-                      (* Typeenv.fix_manual_type_free pre tyenv mnty [] *)
-                  in
-                  unify tyin beta;
-            end;
+            mntyopt |> Option.map (fun mnty ->
+              let tyin =
+                failwith "TODO: typecheck_mutual_contents, decoding manual types"
+                  (* Typeenv.fix_manual_type_free pre tyenv mnty [] *)
+              in
+              unify tyin beta
+            ) |> Option.value ~default:();
             let recbind = LetRecBinding(evid, patbr1) in
             let tupleacc = Alist.extend tupleacc (varnm, beta, evid, recbind) in
             tupleacc
