@@ -6,25 +6,25 @@ open StaticEnv
 
 exception UndefinedVariable              of Range.t * module_name list * var_name * var_name list
 exception UndefinedConstructor           of Range.t * var_name * var_name list
-exception InclusionError                 of Typeenv.t * mono_type * mono_type
-exception ContradictionError             of Typeenv.t * mono_type * mono_type
+exception InclusionError                 of mono_type * mono_type
+exception ContradictionError             of mono_type * mono_type
 exception UnknownUnitOfLength            of Range.t * length_unit_name
 exception HorzCommandInMath              of Range.t
 exception MathCommandInHorz              of Range.t
 exception BreaksValueRestriction         of Range.t
 exception MultiplePatternVariable        of Range.t * Range.t * var_name
-exception InvalidOptionalCommandArgument of Typeenv.t * mono_type * Range.t
-exception NeedsMoreArgument              of Range.t * Typeenv.t * mono_type * mono_type
-exception TooManyArgument                of Range.t * Typeenv.t * mono_type
+exception InvalidOptionalCommandArgument of mono_type * Range.t
+exception NeedsMoreArgument              of Range.t * mono_type * mono_type
+exception TooManyArgument                of Range.t * mono_type
 exception MultipleFieldInRecord          of Range.t * field_name
-exception ApplicationOfNonFunction       of Range.t * Typeenv.t * mono_type
+exception ApplicationOfNonFunction       of Range.t * mono_type
 exception InvalidExpressionAsToStaging   of Range.t * stage
 exception InvalidOccurrenceAsToStaging   of Range.t * var_name * stage
 exception UndefinedHorzMacro             of Range.t * ctrlseq_name
 exception UndefinedVertMacro             of Range.t * ctrlseq_name
-exception InvalidNumberOfMacroArguments  of Range.t * Typeenv.t * macro_parameter_type list
-exception LateMacroArgumentExpected      of Range.t * Typeenv.t * mono_type
-exception EarlyMacroArgumentExpected     of Range.t * Typeenv.t * mono_type
+exception InvalidNumberOfMacroArguments  of Range.t * macro_parameter_type list
+exception LateMacroArgumentExpected      of Range.t * mono_type
+exception EarlyMacroArgumentExpected     of Range.t * mono_type
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -618,13 +618,13 @@ let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
     unify_sub ~reversed:false ty1 ty2
   with
   | InternalInclusionError ->
-      raise (InclusionError(tyenv, ty1, ty2))
+      raise (InclusionError(ty1, ty2))
 
   | InternalContradictionError(reversed) ->
       if reversed then
-        raise (ContradictionError(tyenv, ty2, ty1))
+        raise (ContradictionError(ty2, ty1))
       else
-        raise (ContradictionError(tyenv, ty1, ty2))
+        raise (ContradictionError(ty1, ty2))
 
 
 let fresh_type_variable rng pre kd =
@@ -798,7 +798,7 @@ let rec typecheck
 
         | ty1 ->
             let (rng1, _) = utast1 in
-            raise (ApplicationOfNonFunction(rng1, tyenv, ty1))
+            raise (ApplicationOfNonFunction(rng1, ty1))
       end
 
   | UTApplyOptional(utast1, utast2) ->
@@ -1081,13 +1081,13 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
     match (utcmdarglst, cmdargtylst) with
     | ([], _) ->
         cmdargtylst |> List.iter (function
-        | MandatoryArgumentType(ty) -> raise (NeedsMoreArgument(rngcmdapp, tyenv, tycmd, ty))
+        | MandatoryArgumentType(ty) -> raise (NeedsMoreArgument(rngcmdapp, tycmd, ty))
         | OptionalArgumentType(_)   -> ()
         );
         eacc
 
     | (_ :: _, []) ->
-        raise (TooManyArgument(rngcmdapp, tyenv, tycmd))
+        raise (TooManyArgument(rngcmdapp, tycmd))
 
     | (UTMandatoryArgument(_) :: _, OptionalArgumentType(_) :: cmdargtytail) ->
           aux eacc utcmdarglst cmdargtytail
@@ -1103,13 +1103,13 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
         aux (ApplyOptional(eacc, eA)) utcmdargtail cmdargtytail
 
     | (UTOptionalArgument((rngA, _)) :: _, MandatoryArgumentType(_) :: _) ->
-        raise (InvalidOptionalCommandArgument(tyenv, tycmd, rngA))
+        raise (InvalidOptionalCommandArgument(tycmd, rngA))
 
     | (UTOmission(_) :: utcmdargtail, OptionalArgumentType(tyreq) :: cmdargtytail) ->
         aux (ApplyOmission(eacc)) utcmdargtail cmdargtytail
 
     | (UTOmission(rngA) :: _, MandatoryArgumentType(_) :: _) ->
-        raise (InvalidOptionalCommandArgument(tyenv, tycmd, rngA))
+        raise (InvalidOptionalCommandArgument(tycmd, rngA))
   in
   aux ecmd utcmdarglst cmdargtylst
 
@@ -1338,7 +1338,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
   let lenexp = List.length macparamtys in
   let lenact = List.length utmacargs in
   if (lenexp <> lenact) then
-    raise (InvalidNumberOfMacroArguments(rng, tyenv, macparamtys))
+    raise (InvalidNumberOfMacroArguments(rng, macparamtys))
   else
     let argacc =
       List.fold_left2 (fun argacc macparamty utmacarg ->
@@ -1355,10 +1355,10 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
             Alist.extend argacc earg
 
         | (LateMacroParameter(tyexp), UTEarlyMacroArg((rngarg, _))) ->
-            raise (LateMacroArgumentExpected(rngarg, tyenv, tyexp))
+            raise (LateMacroArgumentExpected(rngarg, tyexp))
 
         | (EarlyMacroParameter(tyexp), UTLateMacroArg((rngarg, _))) ->
-            raise (EarlyMacroArgumentExpected(rngarg, tyenv, tyexp))
+            raise (EarlyMacroArgumentExpected(rngarg, tyexp))
 
       ) Alist.empty macparamtys utmacargs
     in

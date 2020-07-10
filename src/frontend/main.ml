@@ -727,7 +727,7 @@ let error_log_environment suspended =
         NormalLine("undefined block macro '" ^ csnm ^ "'.");
       ]
 
-  | Typechecker.InvalidNumberOfMacroArguments(rng, tyenv, macparamtys) ->
+  | Typechecker.InvalidNumberOfMacroArguments(rng, macparamtys) ->
       report_error Typechecker (List.append [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("invalid number of macro arguments; types expected on arguments are:");
@@ -736,7 +736,7 @@ let error_log_environment suspended =
         | EarlyMacroParameter(ty) -> DisplayLine("* ~" ^ (Display.string_of_mono_type ty))
       )))
 
-  | Typechecker.LateMacroArgumentExpected(rng, tyenv, ty) ->
+  | Typechecker.LateMacroArgumentExpected(rng, ty) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("an early macro argument is given, but a late argument of type");
@@ -744,7 +744,7 @@ let error_log_environment suspended =
         NormalLine("is expected.");
       ]
 
-  | Typechecker.EarlyMacroArgumentExpected(rng, tyenv, ty) ->
+  | Typechecker.EarlyMacroArgumentExpected(rng, ty) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("a late macro argument is given, but an early argument of type");
@@ -752,7 +752,7 @@ let error_log_environment suspended =
         NormalLine("is expected.");
       ]
 
-  | Typechecker.TooManyArgument(rngcmdapp, tyenv, tycmd) ->
+  | Typechecker.TooManyArgument(rngcmdapp, tycmd) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rngcmdapp) ^ ":");
         NormalLine("too many argument(s);");
@@ -760,7 +760,7 @@ let error_log_environment suspended =
         DisplayLine((Display.string_of_mono_type tycmd) ^ ".")
       ]
 
-  | Typechecker.NeedsMoreArgument(rngcmdapp, tyenv, tycmd, tyreq) ->
+  | Typechecker.NeedsMoreArgument(rngcmdapp, tycmd, tyreq) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rngcmdapp) ^ ":");
         NormalLine("needs more mandatory argument(s);");
@@ -771,7 +771,7 @@ let error_log_environment suspended =
         NormalLine("is needed.");
       ]
 
-  | Typechecker.InvalidOptionalCommandArgument(tyenv, tycmd, rngarg) ->
+  | Typechecker.InvalidOptionalCommandArgument(tycmd, rngarg) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rngarg) ^ ":");
         NormalLine("invalid application of an optional argument;");
@@ -831,7 +831,7 @@ let error_log_environment suspended =
         NormalLine("should be used at " ^ (string_of_stage stage) ^ ".");
       ]
 
-  | Typechecker.ApplicationOfNonFunction(rng, tyenv, ty) ->
+  | Typechecker.ApplicationOfNonFunction(rng, ty) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("this expression has type");
@@ -904,7 +904,7 @@ let error_log_environment suspended =
         DisplayLine(Display.string_of_poly_type tyenv2 pty2);
       ]
 *)
-  | Typechecker.ContradictionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+  | Typechecker.ContradictionError(((rng1, _) as ty1), ((rng2, _) as ty2)) ->
       let strty1 = Display.string_of_mono_type ty1 in
       let strty2 = Display.string_of_mono_type ty2 in
       let strrng1 = Range.to_string rng1 in
@@ -925,7 +925,7 @@ let error_log_environment suspended =
           DisplayLine(strtyB ^ ".");
         ] additional)
 
-  | Typechecker.InclusionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+  | Typechecker.InclusionError(((rng1, _) as ty1), ((rng2, _) as ty2)) ->
       let strty1 = Display.string_of_mono_type ty1 in
       let strty2 = Display.string_of_mono_type ty2 in
       let strrng1 = Range.to_string rng1 in
