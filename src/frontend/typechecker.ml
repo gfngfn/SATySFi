@@ -422,7 +422,14 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
   in
   (* end: for debug *)
 *)
-  let unify_list = List.iter (fun (t1, t2) -> unify t1 t2) in
+  let unify_list tys1 tys2 =
+    try
+      let tyzipped = List.combine tys1 tys2 in
+      tyzipped |> List.iter (fun (t1, t2) -> unify t1 t2)
+    with
+    | Invalid_argument(_) ->
+        raise (InternalContradictionError(reversed))
+  in
 
     match (tymain1, tymain2) with
 
@@ -460,38 +467,28 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
         end
 
     | (ProductType(tys1), ProductType(tys2)) ->
-        begin
-          try
-            unify_list (List.combine (tys1 |> TupleList.to_list) (tys2 |> TupleList.to_list))
-          with
-          | Invalid_argument(_) ->  (* -- not of the same length -- *)
-              raise (InternalContradictionError(reversed))
-        end
+        unify_list (tys1 |> TupleList.to_list) (tys2 |> TupleList.to_list)
 
     | (RecordType(tyasc1), RecordType(tyasc2)) ->
         if not (Assoc.domain_same tyasc1 tyasc2) then
           raise (InternalContradictionError(reversed))
         else
-          unify_list (Assoc.combine_value tyasc1 tyasc2)
+          Assoc.combine_value tyasc1 tyasc2 |> List.iter (fun (ty1, ty2) -> unify ty1 ty2)
 
     | (DataType(tyargs1, TypeID.Variant(vid1)), DataType(tyargs2, TypeID.Variant(vid2))) ->
-        if TypeID.Variant.equal vid1 vid2 then begin
-          try
-            unify_list (List.combine tyargs1 tyargs2)
-          with
-          | Invalid_argument(_) ->
-              raise (InternalContradictionError(reversed))
-        end else
+        if TypeID.Variant.equal vid1 vid2 then
+          unify_list tyargs1 tyargs2
+        else
           raise (InternalContradictionError(reversed))
 
     | (ListType(tysub1), ListType(tysub2)) -> unify tysub1 tysub2
     | (RefType(tysub1), RefType(tysub2))   -> unify tysub1 tysub2
     | (CodeType(tysub1), CodeType(tysub2)) -> unify tysub1 tysub2
 
-    | (TypeVariable({contents= MonoLink(tylinked1)}), _) -> unify tylinked1 ty2
-    | (_, TypeVariable({contents= MonoLink(tylinked2)})) -> unify ty1 tylinked2
+    | (TypeVariable({contents = MonoLink(tylinked1)}), _) -> unify tylinked1 ty2
+    | (_, TypeVariable({contents = MonoLink(tylinked2)})) -> unify ty1 tylinked2
 
-    | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), TypeVariable({contents= MonoFree(tvid2)} as tvref2)) ->
+    | (TypeVariable({contents = MonoFree(tvid1)} as tvref1), TypeVariable({contents = MonoFree(tvid2)} as tvref2)) ->
         if FreeID.equal tvid1 tvid2 then
           ()
         else
@@ -520,7 +517,7 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
               if Range.is_dummy rng1 then (tvref1, tvref2, tvid2, ty2) else (tvref2, tvref1, tvid1, ty1)
             in
             oldtvref := MonoLink(newty);
-            let (eqnlst, kdunion) =
+            let (eqns, kdunion) =
               let kd1 = FreeID.get_kind tvid1 in
               let kd2 = FreeID.get_kind tvid2 in
               match (kd1, kd2) with
@@ -532,10 +529,10 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
                   let kdunion = RecordKind(Assoc.union asc1 asc2) in
                   (Assoc.intersection asc1 asc2, kdunion)
             in
-            unify_list eqnlst;
+            eqns |> List.iter (fun (ty1, ty2) -> unify ty1 ty2);
             set_kind_with_occurs_check newtvid kdunion
 
-      | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), RecordType(tyasc2)) ->
+      | (TypeVariable({contents = MonoFree(tvid1)} as tvref1), RecordType(tyasc2)) ->
           let kd1 = FreeID.get_kind tvid1 in
           let binc =
             match kd1 with
@@ -549,21 +546,21 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
             raise (InternalContradictionError(reversed))
           else
             let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-            let eqnlst =
+            let eqns =
               match kd1 with
               | UniversalKind      -> []
               | RecordKind(tyasc1) -> Assoc.intersection tyasc1 tyasc2
             in
-            unify_list eqnlst;
+            eqns |> List.iter (fun (ty1, ty2) -> unify ty1 ty2);
             tvref1 := MonoLink(newty2)
 
-      | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), _) ->
+      | (TypeVariable({contents = MonoFree(tvid1)} as tvref1), _) ->
           let kd1 = FreeID.get_kind tvid1 in
           let () =
             match kd1 with
             | UniversalKind -> ()
             | RecordKind(_) -> raise (InternalContradictionError(reversed))
-                (* -- `ty2` is not a record type, a type variable, or a link,
+                (* -- `ty2` is not a record type, a type variable, nor a link,
                       and thereby cannot have a record kind -- *)
           in
           let chk = occurs tvid1 ty2 in
