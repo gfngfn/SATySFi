@@ -865,9 +865,17 @@ let rec typecheck
       (LetNonRecIn(pat, e1, e2), ty2)
 
   | UTLetIn(UTRec(utrecbinds), utast2) ->
-      let (tyenv, recbinds) = make_type_environment_by_letrec pre tyenv utrecbinds in
+      let quints = typecheck_letrec pre tyenv utrecbinds in
+      let (tyenv, recbindacc) =
+        quints |> List.fold_left (fun (tyenv, recbindacc) quint ->
+          let (x, pty, evid, stage, recbind) = quint in
+          let tyenv = tyenv |> Typeenv.add_value x (pty, evid, stage) in
+          let recbindacc = Alist.extend recbindacc recbind in
+          (tyenv, recbindacc)
+        ) (tyenv, Alist.empty)
+      in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
-      (LetRecIn(recbinds, e2), ty2)
+      (LetRecIn(recbindacc |> Alist.to_list, e2), ty2)
 
   | UTIfThenElse(utastB, utast1, utast2) ->
       let (eB, tyB) = typecheck_iter tyenv utastB in
@@ -1492,7 +1500,7 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         (PConstructor(constrnm, epat1), (rng, DataType(tyargs, TypeID.Variant(vid))), tyenv1)
 
 
-and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : Typeenv.t * letrec_binding list =
+and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : (var_name * poly_type * EvalVarID.t * stage * letrec_binding) list =
 
   (* First, adds a type variable for each bound identifier. *)
   let (tyenv, utrecacc) =
@@ -1513,8 +1521,8 @@ and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds 
   in
 
   (* Typechecks each body of the definitions. *)
-  let (recbindacc, tupleacc) =
-    utrecacc |> Alist.to_list |> List.fold_left (fun (recbindacc, tupleacc) utrec ->
+  let tupleacc =
+    utrecacc |> Alist.to_list |> List.fold_left (fun tupleacc utrec ->
       let (UTLetRecBinding(mntyopt, _, varnm, utast1), beta, evid) = utrec in
       let (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenv utast1 in
       begin
@@ -1533,24 +1541,21 @@ and make_type_environment_by_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds 
                   in
                   unify tyin beta;
             end;
-            let recbindacc = Alist.extend recbindacc (LetRecBinding(evid, patbr1)) in
-            let tupleacc = Alist.extend tupleacc (varnm, beta, evid) in
-            (recbindacc, tupleacc)
+            let recbind = LetRecBinding(evid, patbr1) in
+            let tupleacc = Alist.extend tupleacc (varnm, beta, evid, recbind) in
+            tupleacc
 
         | _ ->
             let (rng1, _) = utast1 in
             raise (BreaksValueRestriction(rng1))
       end
-    ) (Alist.empty, Alist.empty)
+    ) Alist.empty
   in
 
-  let tyenv =
-    tupleacc |> Alist.to_list |> List.fold_left (fun tyenv (varnm, ty, evid) ->
-      let pty = generalize pre.level (erase_range_of_type ty) in
-      tyenv |> Typeenv.add_value varnm (pty, evid, pre.stage)
-    ) tyenv
-  in
-  (tyenv, recbindacc |> Alist.to_list)
+  tupleacc |> Alist.to_list |> List.map (fun (varnm, ty, evid, recbind) ->
+    let pty = generalize pre.level (erase_range_of_type ty) in
+    (varnm, pty, evid, pre.stage, recbind)
+  )
 
 
 and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng varnm utastI =
@@ -1579,7 +1584,7 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
             failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTNonRec"
 
         | UTRec(utrecbinds) ->
-            let (_tyenv, _recbinds) = make_type_environment_by_letrec pre tyenv utrecbinds in
+            let _quints = typecheck_letrec pre tyenv utrecbinds in
             failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTRec"
 
         | UTMutable((_, _varnm), _utast1) ->
