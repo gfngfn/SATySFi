@@ -373,10 +373,10 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       in  (* slightly doubtful in terms of evaluation strategy *)
       return @@ MathValue(List.concat mlstlst)
 
-  | PrimitiveTuple(astlst) ->
-      let valuelst = astlst |> List.map (interpret_0_value env) in
+  | PrimitiveTuple(asts) ->
+      let values = asts |> TupleList.map (interpret_0_value env) in
         (* -- should be left-to-right -- *)
-      return @@ Tuple(valuelst)
+      return @@ Tuple(values |> TupleList.to_list)
 
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
@@ -560,10 +560,10 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       let codelst = astlst |> List.map (interpret_1_value env) in
       return @@ CdMathList(codelst)
 
-  | PrimitiveTuple(astlst) ->
-      let codelst = List.map (interpret_1_value env) astlst in
+  | PrimitiveTuple(asts) ->
+      let codes = TupleList.map (interpret_1_value env) asts in
         (* -- should be left-to-right -- *)
-      return @@ CdTuple(codelst)
+      return @@ CdTuple(codes)
 
   | Path(astpt0, pathcomplst, cycleopt) ->
       let (codept0, _) = interpret_1 env astpt0 in
@@ -617,12 +617,17 @@ and interpret_1_pattern_tree env = function
 
   | PTuple(pattrs) ->
       let (env, cdpattracc) =
-        pattrs |> List.fold_left (fun (env, cdpattracc) pattr ->
+        pattrs |> TupleList.to_list |> List.fold_left (fun (env, cdpattracc) pattr ->
           let (env, cdpattr) = interpret_1_pattern_tree env pattr in
           (env, Alist.extend cdpattracc cdpattr)
         ) (env, Alist.empty)
       in
-      (env, CdPTuple(Alist.to_list cdpattracc))
+      let cdpattrs =
+        match Alist.to_list cdpattracc with
+        | c1 :: c2 :: cs -> TupleList.make c1 c2 cs
+        | _              -> assert false
+      in
+      (env, CdPTuple(cdpattrs))
 
   | PWildCard ->
       (env, CdPWildCard)
@@ -868,14 +873,14 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
       check_pattern_matching env phd vhd >>= fun envhd ->
       check_pattern_matching envhd ptl (List(vtail))
 
-  | (PTuple(plst), Tuple(vlst)) ->
+  | (PTuple(ps), Tuple(vlst)) ->
       let open OptionMonad in
       begin
         try
           List.fold_left2 (fun envopt p v ->
             envopt >>= fun env ->
             check_pattern_matching env p v
-          ) (Some(env)) plst vlst
+          ) (Some(env)) (ps |> TupleList.to_list) vlst
         with
         | Invalid_argument(_) -> None
       end

@@ -206,23 +206,26 @@
       make_range (Tok rngfirst) (Tok rnglast)
 
 
-  let make_product_pattern (rng : Range.t) (patlst : untyped_pattern_tree list) : untyped_pattern_tree =
-    (rng, UTPTuple(patlst))
+  let make_product_pattern (rng : Range.t) (pats : untyped_pattern_tree list) : untyped_pattern_tree =
+    match pats with
+    | []                      -> assert false
+    | pat :: []               -> pat
+    | pat1 :: pat2 :: patrest -> (rng, UTPTuple(TupleList.make pat1 pat2 patrest))
 
 
   let unite_into_pattern_branch_list (recpatbrs : untyped_letrec_pattern_branch list) : untyped_pattern_branch list * int =
     let (acc, numopt) =
       recpatbrs |> List.fold_left (fun (acc, numprevopt) recpatbr ->
         match recpatbr with
-        | UTLetRecPatternBranch(patlst, utastdef) ->
-            let rngargs = get_range_of_arguments patlst in
-            let num = List.length patlst in
+        | UTLetRecPatternBranch(pats, utastdef) ->
+            let rngargs = get_range_of_arguments pats in
+            let num = List.length pats in
             let numopt =
               match numprevopt with
               | None          -> Some(num)
               | Some(numprev) -> if numprev = num then numprevopt else raise (IllegalArgumentLength(rngargs, num, numprev))
             in
-            let patprod = make_product_pattern rngargs patlst in
+            let patprod = make_product_pattern rngargs pats in
               (Alist.extend acc (UTPatternBranch(patprod, utastdef)), numopt)
       ) (Alist.empty, None)
     in
@@ -231,8 +234,11 @@
       | Some(numofargs) -> (Alist.to_list acc, numofargs)
 
 
-  let make_product_expression (rng : Range.t) (utastlst : untyped_abstract_tree list) : untyped_abstract_tree =
-    (rng, UTTuple(utastlst))
+  let make_product_expression (rng : Range.t) (utasts : untyped_abstract_tree list) : untyped_abstract_tree =
+    match utasts with
+    | []                            -> assert false
+    | utast :: []                   -> utast
+    | utast1 :: utast2 :: utastrest -> (rng, UTTuple(TupleList.make utast1 utast2 utastrest))
 
 
   let make_function_for_parallel (rngfull : Range.t) (numofargs : int) (patbrs : untyped_pattern_branch list) =

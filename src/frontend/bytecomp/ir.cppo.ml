@@ -241,15 +241,17 @@ and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * fra
 
   | PTuple(pats) ->
       let (bacc, env) =
-        List.fold_left (fun (bacc, env) pat ->
+        pats |> TupleList.to_list |> List.fold_left (fun (bacc, env) pat ->
           let (b, env) = transform_pattern env pat in
           (Alist.extend bacc b, env)
-        ) (Alist.empty, env) pats
+        ) (Alist.empty, env)
       in
-      let irp =
-        List.fold_right (fun b irp -> IRPTupleCons(b, irp)) (Alist.to_list bacc) IRPEndOfTuple
+      let bs =
+        match Alist.to_list bacc with
+        | b1 :: b2 :: brest -> TupleList.make b1 b2 brest
+        | _                 -> assert false
       in
-      (irp, env)
+      (IRPTuple(bs), env)
 
   | PConstructor(cnm1, psub) ->
       let (bsub, env) = transform_pattern env psub in
@@ -310,9 +312,10 @@ and flatten_application apast =
   iter apast []
 
 
-and transform_0_tuple env astlst =
-  let (iritems, envnew) = map_with_env transform_0 env astlst in
-  let len = List.length astlst in
+and transform_0_tuple env (asts : abstract_tree TupleList.t) =
+  let asts = asts |> TupleList.to_list in
+  let (iritems, envnew) = map_with_env transform_0 env asts in
+  let len = List.length asts in
   (IRTuple(len, iritems), envnew)
 
 
@@ -569,8 +572,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | BackendMathList(astmlst) ->
       transform_1_primitive env astmlst (OpCodeMathList(List.length astmlst))
 
-  | PrimitiveTuple(astlst) ->
-      transform_1_primitive env astlst (OpCodeMakeTuple(List.length astlst))
+  | PrimitiveTuple(asts) ->
+      let asts = asts |> TupleList.to_list in
+      transform_1_primitive env asts (OpCodeMakeTuple(List.length asts))
 
   | Prev(ast1) ->
       transform_0 env ast1
@@ -617,9 +621,8 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       let (pathelemlst, closingopt, env) = transform_0_path env pathcomplst cycleopt in
         (IRPath(irpt0, pathelemlst, closingopt), env)
 
-  | PrimitiveTuple(astlst) ->
-      transform_0_tuple env astlst
-
+  | PrimitiveTuple(asts) ->
+      transform_0_tuple env asts
 (* -- fundamentals -- *)
 
   | ContentOf(rng, evid)

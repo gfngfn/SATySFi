@@ -288,7 +288,7 @@ and ('a, 'b) type_main =
   | FuncType        of ('a, 'b) option_row * ('a, 'b) typ * ('a, 'b) typ
   | ListType        of ('a, 'b) typ
   | RefType         of ('a, 'b) typ
-  | ProductType     of (('a, 'b) typ) list
+  | ProductType     of (('a, 'b) typ) TupleList.t
   | TypeVariable    of 'a
   | SynonymType     of (('a, 'b) typ) list * TypeID.Synonym.t * ('a, 'b) typ
   | VariantType     of (('a, 'b) typ) list * TypeID.Variant.t
@@ -533,7 +533,7 @@ and untyped_abstract_tree_main =
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
 (* -- tuple value -- *)
-  | UTTuple               of untyped_abstract_tree list
+  | UTTuple               of untyped_abstract_tree TupleList.t
 (* -- record value -- *)
   | UTRecord               of (field_name * untyped_abstract_tree) list
   | UTAccessField          of untyped_abstract_tree * field_name
@@ -580,7 +580,7 @@ and untyped_pattern_tree_main =
   | UTPUnitConstant
   | UTPListCons            of untyped_pattern_tree * untyped_pattern_tree
   | UTPEndOfList
-  | UTPTuple               of untyped_pattern_tree list
+  | UTPTuple               of untyped_pattern_tree TupleList.t
   | UTPWildCard
   | UTPVariable            of var_name
   | UTPAsVariable          of var_name * untyped_pattern_tree
@@ -792,9 +792,7 @@ and ir_pattern_tree =
   | IRPStringConstant       of string
   | IRPListCons             of ir_pattern_tree * ir_pattern_tree
   | IRPEndOfList
-  | IRPTupleCons             of ir_pattern_tree * ir_pattern_tree
-  (*| IRPTupleCons            of int * ir_pattern_tree list*)
-  | IRPEndOfTuple
+  | IRPTuple                of ir_pattern_tree TupleList.t
   | IRPWildCard
   | IRPVariable             of varloc
   | IRPAsVariable           of varloc * ir_pattern_tree
@@ -961,7 +959,7 @@ and abstract_tree =
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
   | BackendMathList             of abstract_tree list
-  | PrimitiveTuple        of abstract_tree list
+  | PrimitiveTuple        of abstract_tree TupleList.t
 (* -- staging constructs -- *)
   | Next                  of abstract_tree
   | Prev                  of abstract_tree
@@ -986,7 +984,7 @@ and pattern_tree =
   | PStringConstant       of string
   | PListCons             of pattern_tree * pattern_tree
   | PEndOfList
-  | PTuple                of pattern_tree list
+  | PTuple                of pattern_tree TupleList.t
   | PWildCard
   | PVariable             of EvalVarID.t
   | PAsVariable           of EvalVarID.t * pattern_tree
@@ -1083,7 +1081,7 @@ and code_value =
   | CdDereference   of code_value
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
-  | CdTuple         of code_value list
+  | CdTuple         of code_value TupleList.t
   | CdPath          of code_value * (code_value code_path_component) list * (unit code_path_component) option
   | CdMathList      of code_value list
   | CdModule        of code_value * code_value
@@ -1109,7 +1107,7 @@ and code_pattern_tree =
   | CdPStringConstant       of string
   | CdPListCons             of code_pattern_tree * code_pattern_tree
   | CdPEndOfList
-  | CdPTuple                of code_pattern_tree list
+  | CdPTuple                of code_pattern_tree TupleList.t
   | CdPWildCard
   | CdPVariable             of CodeSymbol.t
   | CdPAsVariable           of CodeSymbol.t * code_pattern_tree
@@ -1153,7 +1151,7 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
 
     | BaseType(_)                       -> (rng, tymain)
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(erase_range_of_option_row optrow, iter tydom, iter tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
+    | ProductType(tys)                  -> (rng, ProductType(TupleList.map iter tys))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
     | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
     | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
@@ -1222,7 +1220,7 @@ let rec instantiate_aux bid_ht lev qtfbl (rng, ptymain) =
               end
         end
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
+    | ProductType(tys)                  -> (rng, ProductType(TupleList.map aux tys))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
     | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
     | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
@@ -1281,7 +1279,7 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
         end
 
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
+    | ProductType(tys)                  -> (rng, ProductType(TupleList.map aux tys))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
     | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
     | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
@@ -1337,7 +1335,7 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
         end
 
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(generalize_option_row optrow, iter tydom, iter tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
+    | ProductType(tys)                  -> (rng, ProductType(TupleList.map iter tys))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
     | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
     | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
@@ -1385,7 +1383,7 @@ let check_level lev (ty : mono_type) =
           | MonoFree(tvid) -> Level.less_than lev (FreeID.get_level tvid)
         end
 
-    | ProductType(tylst)             -> List.for_all iter tylst
+    | ProductType(tys)               -> tys |> TupleList.to_list |> List.for_all iter
     | RecordType(tyasc)              -> Assoc.fold_value (fun b ty -> b && iter ty) true tyasc
     | FuncType(optrow, tydom, tycod) -> iter_or optrow && iter tydom && iter tycod
     | RefType(tycont)                -> iter tycont
@@ -1461,7 +1459,7 @@ let rec unlift_aux pty =
         end
 
     | FuncType(optrow, pty1, pty2)    -> FuncType(unlift_aux_or optrow, aux pty1, aux pty2)
-    | ProductType(ptylst)             -> ProductType(List.map aux ptylst)
+    | ProductType(ptys)               -> ProductType(TupleList.map aux ptys)
     | RecordType(ptyasc)              -> RecordType(Assoc.map_value aux ptyasc)
     | ListType(ptysub)                -> ListType(aux ptysub)
     | RefType(ptysub)                 -> RefType(aux ptysub)
@@ -1584,7 +1582,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdWhileDo(code1, code2)              -> WhileDo(aux code1, aux code2)
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
-    | CdTuple(codelst)                     -> PrimitiveTuple(List.map aux codelst)
+    | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
     | CdPath(code1, cdpath, cdcycleopt)    -> Path(aux code1, aux_path cdpath, aux_cycle cdcycleopt)
     | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
     | CdModule(code1, code2)               -> Module(aux code1, aux code2)
@@ -1604,7 +1602,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPStringConstant(s)        -> PStringConstant(s)
     | CdPListCons(cdpat1, cdpat2) -> PListCons(aux_pattern cdpat1, aux_pattern cdpat2)
     | CdPEndOfList                -> PEndOfList
-    | CdPTuple(cdpats)            -> PTuple(List.map aux_pattern cdpats)
+    | CdPTuple(cdpats)            -> PTuple(TupleList.map aux_pattern cdpats)
     | CdPWildCard                 -> PWildCard
     | CdPVariable(symb)           -> PVariable(CodeSymbol.unlift symb)
     | CdPAsVariable(symb, cdpat)  -> PAsVariable(CodeSymbol.unlift symb, aux_pattern cdpat)
@@ -1851,8 +1849,8 @@ let rec string_of_type_basic tvf orvf tystr : string =
           | _ -> "(" ^ strsub ^ ")"
         end
 
-    | ProductType(tylist) ->
-        string_of_type_list_basic tvf orvf tylist
+    | ProductType(tys) ->
+        tys |> TupleList.to_list |> string_of_type_list_basic tvf orvf
 
     | TypeVariable(tvi) ->
         tvf qstn tvi

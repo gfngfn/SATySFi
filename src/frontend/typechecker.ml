@@ -133,7 +133,7 @@ let rec is_nonexpansive_expression e =
 
   | NonValueConstructor(constrnm, e1) -> iter e1
   | PrimitiveListCons(e1, e2)         -> iter e1 && iter e2
-  | PrimitiveTuple(elst)              -> List.for_all iter elst
+  | PrimitiveTuple(es)                -> es |> TupleList.to_list |> List.for_all iter
   | Record(asc)                       -> Assoc.fold_value (fun b e -> b && iter e) true asc
   | LetRecIn(_, e2)                   -> iter e2
   | LetNonRecIn(_, e1, e2)            -> iter e1 && iter e2
@@ -171,10 +171,10 @@ let add_pattern_var_poly (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_va
 
 
 let point_type_main =
-  (ProductType([
-    (Range.dummy "point-type-1", BaseType(LengthType));
-    (Range.dummy "point-type-2", BaseType(LengthType));
-  ]))
+  (ProductType(TupleList.make
+    (Range.dummy "point-type-1", BaseType(LengthType))
+    (Range.dummy "point-type-2", BaseType(LengthType))
+    []))
 
 
 (* -- 'apply_tree_of_list': converts e0 and [e1; ...; eN] into (e0 e1 ... eN) -- *)
@@ -244,7 +244,7 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
         let b2 = iter tycod in
         b0 || b1 || b2
 
-    | ProductType(tylist)            -> iter_list tylist
+    | ProductType(tys)               -> iter_list (tys |> TupleList.to_list)
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
     | VariantType(tylist, _)         -> iter_list tylist
@@ -325,7 +325,7 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
         let b2 = iter tycod in
         b0 || b1 || b2
 
-    | ProductType(tylist)            -> iter_list tylist
+    | ProductType(tys)              -> iter_list (tys |> TupleList.to_list)
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
     | VariantType(tylist, _)         -> iter_list tylist
@@ -434,10 +434,10 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
               raise (InternalContradictionError(reversed))
         end
 
-    | (ProductType(tylist1), ProductType(tylist2)) ->
+    | (ProductType(tys1), ProductType(tys2)) ->
         begin
           try
-            unify_list (List.combine tylist1 tylist2)
+            unify_list (List.combine (tys1 |> TupleList.to_list) (tys2 |> TupleList.to_list))
           with
           | Invalid_argument(_) ->  (* -- not of the same length -- *)
               raise (InternalContradictionError(reversed))
@@ -914,12 +914,12 @@ let rec typecheck
 
 (* ---- tuple ---- *)
 
-  | UTTuple(utastlst) ->
-      let etylst = List.map (typecheck_iter tyenv) utastlst in
-      let elst = List.map fst etylst in
-      let tylst = List.map snd etylst in
-      let tyres = (rng, ProductType(tylst)) in
-      (PrimitiveTuple(elst), tyres)
+  | UTTuple(utasts) ->
+      let etys = TupleList.map (typecheck_iter tyenv) utasts in
+      let es = TupleList.map fst etys in
+      let tys = TupleList.map snd etys in
+      let tyres = (rng, ProductType(tys)) in
+      (PrimitiveTuple(es), tyres)
 
 (* ---- records ---- *)
 
@@ -1357,7 +1357,7 @@ and typecheck_itemize (pre : pre) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)
   let (e1, ty1) = typecheck pre tyenv utast1 in
   unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", BaseType(TextRowType));
   let e2 = typecheck_itemize_list pre tyenv utitmzlst in
-  (NonValueConstructor("Item", PrimitiveTuple([e1; e2])))
+  (NonValueConstructor("Item", PrimitiveTuple(TupleList.make e1 e2 [])))
 
 
 and typecheck_itemize_list
@@ -1430,14 +1430,16 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         let beta = fresh_type_variable rng pre UniversalKind in
         (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
 
-    | UTPTuple(utpatlst) ->
-        let trilst = List.map iter utpatlst in
-        let epatlst = trilst |> List.map (fun (epat, _, _) -> epat) in
-        let typatlst = trilst |> List.map (fun (_, typat, _) -> typat) in
-        let patvarmaplst = trilst |> List.map (fun (_, _, patvarmap) -> patvarmap) in
-        let tyres = (rng, ProductType(typatlst)) in
-        let patvarmap = List.fold_left unite_pattern_var_map PatternVarMap.empty patvarmaplst in
-        (PTuple(epatlst), tyres, patvarmap)
+    | UTPTuple(utpats) ->
+        let tris = TupleList.map iter utpats in
+        let epats = tris |> TupleList.map (fun (epat, _, _) -> epat) in
+        let typats = tris |> TupleList.map (fun (_, typat, _) -> typat) in
+        let tyres = (rng, ProductType(typats)) in
+        let patvarmap =
+          let patvarmaps = tris |> TupleList.to_list |> List.map (fun (_, _, patvarmap) -> patvarmap) in
+          List.fold_left unite_pattern_var_map PatternVarMap.empty patvarmaps
+        in
+        (PTuple(epats), tyres, patvarmap)
 
     | UTPWildCard ->
         let beta = fresh_type_variable rng pre UniversalKind in

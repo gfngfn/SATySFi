@@ -413,12 +413,18 @@ and compile_patcheck (pat : ir_pattern_tree) (next : instruction list) (cont : i
         let chd = compile_patcheck phd (OpPop :: next) ctl in
         OpCheckStackTopListCons(next) :: chd
 
-    | IRPEndOfTuple -> return OpPop
+    | IRPTuple(ps) ->
+        let rec aux ps next cont =
+          match ps with
+          | [] ->
+              return OpPop
 
-    | IRPTupleCons(phd, ptl) ->
-        let ctl = compile_patcheck ptl next cont in
-        let chd = compile_patcheck phd (OpPop :: next) ctl in
-        OpCheckStackTopTupleCons(next) :: chd
+          | phd :: ptl ->
+              let ctl = aux ptl next cont in
+              let chd = compile_patcheck phd (OpPop :: next) ctl in
+              OpCheckStackTopTupleCons(next) :: chd
+        in
+        aux (ps |> TupleList.to_list) next cont
 
     | IRPConstructor(cnm1, psub) ->
         let code = compile_patcheck psub next cont in

@@ -186,8 +186,8 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv
         let strsub = iter Single tysub in
         "&" ^ strsub
 
-    | ProductType(tylist) ->
-        let s = iter_prod tylist in
+    | ProductType(tys) ->
+        let s = iter_prod (TupleList.to_list tys) in
         begin
           match plev with
           | Single | ProductElement -> "(" ^ s ^ ")"
@@ -244,10 +244,10 @@ and string_of_type_argument_list tvf ortvf tyenv current_ht tyarglist =
         strhd ^ " " ^ strtl
 
 
-and string_of_product tvf ortvf tyenv current_ht tylist =
+and string_of_product tvf ortvf tyenv current_ht tys =
   let iter = string_of_mono_type_sub tvf ortvf tyenv current_ht in
   let iter_list = string_of_product tvf ortvf tyenv current_ht in
-    match tylist with
+    match tys with
     | []           -> ""
     | head :: tail ->
         let strhead = iter ProductElement head in

@@ -125,8 +125,8 @@ let rec string_of_instance ins =
 
   | IConstructor(nm, iins, (_, BaseType(UnitType))) -> nm
 
-  | IConstructor(nm, IWildCard, (_, ProductType(tylst))) ->
-      nm ^ "(" ^ (String.concat ", " (repeat (List.length tylst) "_")) ^ ")"
+  | IConstructor(nm, IWildCard, (_, ProductType(tys))) ->
+      nm ^ "(" ^ (String.concat ", " (repeat (tys |> TupleList.to_list |> List.length) "_")) ^ ")"
 
   | IConstructor(nm, iins, (_, ProductType(_))) ->
       nm ^ string_of_instance iins
@@ -152,7 +152,7 @@ let rec string_of_instance ins =
 let rec normalize_pat pat =
   match pat with
   | PListCons(car, cdr)  -> PListCons(normalize_pat car, normalize_pat cdr)
-  | PTuple(patlst)       -> PTuple(List.map normalize_pat patlst)
+  | PTuple(pats)         -> PTuple(pats |> TupleList.map normalize_pat)
   | PConstructor(nm, p)  -> PConstructor(nm, normalize_pat p)
   | PVariable(_)         -> PWildCard
   | PAsVariable(_, p)    -> normalize_pat p
@@ -182,7 +182,7 @@ let expand_mat mat i epat ty =
         [[PWildCard]]
 
     | (ExpandTuple(_), PTuple(ftup)) ->
-        List.map (fun pat -> [pat]) ftup
+        ftup |> TupleList.to_list |> List.map (fun pat -> [pat])
 
     | (ExpandTuple(arity), PWildCard) ->
         repeat arity [PWildCard]
@@ -211,7 +211,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
               | (EListCons, PListCons(_, _))
               | (EEndOfList, PEndOfList)
               | (EUnitConstant, PUnitConstant)
-              | (ETuple, PTuple(_ :: _))
+              | (ETuple, PTuple(_))
               | (_, PWildCard)
                 -> true
 
@@ -252,9 +252,10 @@ let rec get_specialized_mat mat patinfo ele tylst =
         let (nmat, ninfo, nomatch) = iter (List.hd mat) mat in
           (expand_mat nmat 0 expnd tylst, ninfo, ity :: rest, expnd, nomatch)
 
-    | (ETuple, (_, ProductType(ptylst)) :: rest) ->
-        let expnd = ExpandTuple(List.length ptylst) in
-          (expand_mat mat 0 expnd tylst, patinfo, List.append ptylst rest, expnd, false)
+    | (ETuple, (_, ProductType(ptys)) :: rest) ->
+        let ptys = ptys |> TupleList.to_list in
+        let expnd = ExpandTuple(List.length ptys) in
+          (expand_mat mat 0 expnd tylst, patinfo, List.append ptys rest, expnd, false)
 
     | _ ->
         begin

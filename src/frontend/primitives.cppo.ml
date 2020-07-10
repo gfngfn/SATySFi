@@ -48,9 +48,13 @@ let tIMG          = (~! "image"   , BaseType(ImageType)   )
 let tRE           = (~! "regexp"  , BaseType(RegExpType)  )
 let tL ty         = (~! "list"    , ListType(ty)          )
 let tR ty         = (~! "ref"     , RefType(ty)           )
-let tPROD tylst   = (~! "product" , ProductType(tylst)    )
-let (@->) dom cod = (~! "func"    , FuncType(OptionRowEmpty, dom, cod))
 let tCODE ty      = (~! "code"    , CodeType(ty)          )
+
+let tPROD = function
+  | ty1 :: ty2 :: tyrest -> (~! "product", ProductType(TupleList.make ty1 ty2 tyrest))
+  | _                    -> assert false
+
+let ( @-> ) dom cod = (~! "func", FuncType(OptionRowEmpty, dom, cod))
 
 (* -- predefined data types -- *)
 let tOPT ty       = (~! "option"  , VariantType([ty], vid_option))

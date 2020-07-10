@@ -424,17 +424,19 @@ and exec_code_pattern_tree (env : vmenv) (irpat : ir_pattern_tree) : vmenv * cod
   | IRPEndOfList ->
       (env, CdPEndOfList)
 
-  | IRPTupleCons(irpat1, irpat2) ->
-      let (env, cdpat1) = exec_code_pattern_tree env irpat1 in
-      let (env, cdpat2) = exec_code_pattern_tree env irpat2 in
-      begin
-        match cdpat2 with
-        | CdPTuple(cdpats) -> (env, CdPTuple(cdpat1 :: cdpats))
-        | _                -> assert false
-      end
-
-  | IRPEndOfTuple ->
-      (env, CdPTuple([]))
+  | IRPTuple(irpats) ->
+      let (env, cdpatacc) =
+        irpats |> TupleList.to_list |> List.fold_left (fun (env, cdpatacc) irpat ->
+          let (env, cdpat) = exec_code_pattern_tree env irpat in
+          (env, Alist.extend cdpatacc cdpat)
+        ) (env, Alist.empty)
+      in
+      let cdpats =
+        match Alist.to_list cdpatacc with
+        | cdpat1 :: cdpat2 :: cdpats -> TupleList.make cdpat1 cdpat2 cdpats
+        | _                          -> assert false
+      in
+      (env, CdPTuple(cdpats))
 
   | IRPWildCard ->
       (env, CdPWildCard)
@@ -1143,8 +1145,13 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
           | (CodeValue(cv), _) :: stnew -> iter (n - 1) (cv :: acc) stnew
           | _                           -> report_bug_vm "CodeMakeTuple"
       in
-      let (cvlst, stack) = iter n [] stack in
-      let entry = make_entry @@ CodeValue(CdTuple(cvlst)) in
+      let (cvs, stack) = iter n [] stack in
+      let cvs =
+        match cvs with
+        | cv1 :: cv2 :: cvrest -> TupleList.make cv1 cv2 cvrest
+        | _                    -> assert false
+      in
+      let entry = make_entry @@ CodeValue(CdTuple(cvs)) in
       exec (entry :: stack) env code dump
 
   | OpCodeMakeInputHorz(compihlst) ->
