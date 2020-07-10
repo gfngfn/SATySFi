@@ -287,7 +287,7 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utbinds
   Logging.begin_to_typecheck_file abspath_in;
   let (binds, tyenv) = Typechecker.main_bindings Stage1 tyenv utbinds in
   let (ty, ast) = Typechecker.main Stage1 tyenv utast in
-  Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
+  Logging.pass_type_check (Some(Display.string_of_mono_type ty));
   if OptionState.is_text_mode () then
     match ty with
     | (_, BaseType(StringType)) -> (binds, ast)
@@ -522,14 +522,14 @@ let error_log_environment suspended =
       let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
         NormalLine("file '" ^ fname ^ "' is not a document file; it is of type");
-        DisplayLine(string_of_mono_type tyenv ty);
+        DisplayLine(string_of_mono_type ty);
       ]
 
   | NotAStringFile(abspath_in, tyenv, ty) ->
       let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
         NormalLine("file '" ^ fname ^ "' is not a file for generating text; it is of type");
-        DisplayLine(string_of_mono_type tyenv ty);
+        DisplayLine(string_of_mono_type ty);
       ]
 
   | ShouldSpecifyOutputFile ->
@@ -732,15 +732,15 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("invalid number of macro arguments; types expected on arguments are:");
       ] (macparamtys |> List.map (function
-        | LateMacroParameter(ty)  -> DisplayLine("* " ^ (Display.string_of_mono_type tyenv ty))
-        | EarlyMacroParameter(ty) -> DisplayLine("* ~" ^ (Display.string_of_mono_type tyenv ty))
+        | LateMacroParameter(ty)  -> DisplayLine("* " ^ (Display.string_of_mono_type ty))
+        | EarlyMacroParameter(ty) -> DisplayLine("* ~" ^ (Display.string_of_mono_type ty))
       )))
 
   | Typechecker.LateMacroArgumentExpected(rng, tyenv, ty) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("an early macro argument is given, but a late argument of type");
-        DisplayLine(Display.string_of_mono_type tyenv ty);
+        DisplayLine(Display.string_of_mono_type ty);
         NormalLine("is expected.");
       ]
 
@@ -748,7 +748,7 @@ let error_log_environment suspended =
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("a late macro argument is given, but an early argument of type");
-        DisplayLine(Display.string_of_mono_type tyenv ty);
+        DisplayLine(Display.string_of_mono_type ty);
         NormalLine("is expected.");
       ]
 
@@ -757,7 +757,7 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rngcmdapp) ^ ":");
         NormalLine("too many argument(s);");
         NormalLine("the command has type");
-        DisplayLine((Display.string_of_mono_type tyenv tycmd) ^ ".")
+        DisplayLine((Display.string_of_mono_type tycmd) ^ ".")
       ]
 
   | Typechecker.NeedsMoreArgument(rngcmdapp, tyenv, tycmd, tyreq) ->
@@ -765,9 +765,9 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rngcmdapp) ^ ":");
         NormalLine("needs more mandatory argument(s);");
         NormalLine("the command has type");
-        DisplayLine((Display.string_of_mono_type tyenv tycmd) ^ ",");
+        DisplayLine((Display.string_of_mono_type tycmd) ^ ",");
         NormalLine("and another argument of type");
-        DisplayLine(Display.string_of_mono_type tyenv tyreq);
+        DisplayLine(Display.string_of_mono_type tyreq);
         NormalLine("is needed.");
       ]
 
@@ -776,7 +776,7 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rngarg) ^ ":");
         NormalLine("invalid application of an optional argument;");
         NormalLine("the command has type");
-        DisplayLine((Display.string_of_mono_type tyenv tycmd) ^ ".");
+        DisplayLine((Display.string_of_mono_type tycmd) ^ ".");
       ]
 
   | Typechecker.UnknownUnitOfLength(rng, unitnm) ->
@@ -832,11 +832,10 @@ let error_log_environment suspended =
       ]
 
   | Typechecker.ApplicationOfNonFunction(rng, tyenv, ty) ->
-      let strty = string_of_mono_type tyenv ty in
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("this expression has type");
-        DisplayLine(strty);
+        DisplayLine(Display.string_of_mono_type ty);
         NormalLine("and thus it cannot be applied to arguments.");
       ]
 (*
@@ -906,8 +905,8 @@ let error_log_environment suspended =
       ]
 *)
   | Typechecker.ContradictionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = string_of_mono_type tyenv ty1 in
-      let strty2 = string_of_mono_type tyenv ty2 in
+      let strty1 = Display.string_of_mono_type ty1 in
+      let strty2 = Display.string_of_mono_type ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =
@@ -927,8 +926,8 @@ let error_log_environment suspended =
         ] additional)
 
   | Typechecker.InclusionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = string_of_mono_type tyenv ty1 in
-      let strty2 = string_of_mono_type tyenv ty2 in
+      let strty1 = Display.string_of_mono_type ty1 in
+      let strty2 = Display.string_of_mono_type ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =

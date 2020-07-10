@@ -102,12 +102,12 @@ type paren_level =
   | Single
 
 
-let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv : Typeenv.t) (current_ht : int GeneralIDHashTable.t) (plev : paren_level) ((_, tymain) : ('a, 'b) typ) =
-  let iter = string_of_mono_type_sub tvf ortvf tyenv current_ht in
-  let iter_cmd  = string_of_command_argument_type tvf ortvf tyenv current_ht in
-  let iter_args = string_of_type_argument_list tvf ortvf tyenv current_ht in
-  let iter_prod = string_of_product tvf ortvf tyenv current_ht in
-  let iter_or = string_of_option_row tvf ortvf tyenv current_ht in
+let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (current_ht : int GeneralIDHashTable.t) (plev : paren_level) ((_, tymain) : ('a, 'b) typ) =
+  let iter = string_of_mono_type_sub tvf ortvf current_ht in
+  let iter_cmd  = string_of_command_argument_type tvf ortvf current_ht in
+  let iter_args = string_of_type_argument_list tvf ortvf current_ht in
+  let iter_prod = string_of_product tvf ortvf current_ht in
+  let iter_or = string_of_option_row tvf ortvf current_ht in
     match tymain with
 
     | TypeVariable(tvi) -> tvf plev tvi
@@ -209,18 +209,18 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv
         "[" ^ (String.concat "; " slist) ^ "] math-cmd"
 
 
-and string_of_option_row tvf ortvf tyenv current_ht = function
+and string_of_option_row tvf ortvf current_ht = function
   | OptionRowEmpty -> ""
 
   | OptionRowVariable(orvi) -> ortvf orvi
 
   | OptionRowCons(ty, tail) ->
-      let s = string_of_mono_type_sub tvf ortvf tyenv current_ht DomainSide ty in
-      s ^ "?-> " ^ (string_of_option_row tvf ortvf tyenv current_ht tail)
+      let s = string_of_mono_type_sub tvf ortvf current_ht DomainSide ty in
+      s ^ "?-> " ^ (string_of_option_row tvf ortvf current_ht tail)
 
 
-and string_of_command_argument_type tvf ortvf tyenv current_ht cmdargty =
-  let iter = string_of_mono_type_sub tvf ortvf tyenv current_ht in
+and string_of_command_argument_type tvf ortvf current_ht cmdargty =
+  let iter = string_of_mono_type_sub tvf ortvf current_ht in
   match cmdargty with
   | MandatoryArgumentType(ty) ->
       iter Outmost ty
@@ -230,9 +230,9 @@ and string_of_command_argument_type tvf ortvf tyenv current_ht cmdargty =
       strty ^ "?"
 
 
-and string_of_type_argument_list tvf ortvf tyenv current_ht tyarglist =
-  let iter = string_of_mono_type_sub tvf ortvf tyenv current_ht in
-  let iter_args = string_of_type_argument_list tvf ortvf tyenv current_ht in
+and string_of_type_argument_list tvf ortvf current_ht tyarglist =
+  let iter = string_of_mono_type_sub tvf ortvf current_ht in
+  let iter_args = string_of_type_argument_list tvf ortvf current_ht in
     match tyarglist with
     | [] ->
         ""
@@ -243,9 +243,9 @@ and string_of_type_argument_list tvf ortvf tyenv current_ht tyarglist =
         strhd ^ " " ^ strtl
 
 
-and string_of_product tvf ortvf tyenv current_ht tys =
-  let iter = string_of_mono_type_sub tvf ortvf tyenv current_ht in
-  let iter_list = string_of_product tvf ortvf tyenv current_ht in
+and string_of_product tvf ortvf current_ht tys =
+  let iter = string_of_mono_type_sub tvf ortvf current_ht in
+  let iter_list = string_of_product tvf ortvf current_ht in
     match tys with
     | []           -> ""
     | head :: tail ->
@@ -259,8 +259,8 @@ and string_of_product tvf ortvf tyenv current_ht tys =
         end
 
 
-let rec tvf_mono current_ht tyenv plev tvi =
-  let iter = string_of_mono_type_sub (tvf_mono current_ht tyenv) (ortvf_mono current_ht tyenv) tyenv current_ht in
+let rec tvf_mono current_ht plev tvi =
+  let iter = string_of_mono_type_sub (tvf_mono current_ht) (ortvf_mono current_ht) current_ht in
   match !tvi with
   | MonoFree(tvid) ->
       let num = GeneralIDHashTable.intern_number current_ht (FreeID(tvid)) in
@@ -271,17 +271,17 @@ let rec tvf_mono current_ht tyenv plev tvi =
       iter plev ty
 
 
-and ortvf_mono current_ht tyenv orvi =
+and ortvf_mono current_ht orvi =
   match !orvi with
   | MonoORFree(_)      -> "...?-> "
-  | MonoORLink(optrow) -> string_of_option_row (tvf_mono current_ht tyenv) (ortvf_mono current_ht tyenv) tyenv current_ht optrow
+  | MonoORLink(optrow) -> string_of_option_row (tvf_mono current_ht) (ortvf_mono current_ht) current_ht optrow
 
 
-let rec tvf_poly current_ht tyenv plev ptvi =
-  let iter_poly = string_of_mono_type_sub (tvf_poly current_ht tyenv) (ortvf_poly current_ht tyenv) tyenv current_ht in
+let rec tvf_poly current_ht plev ptvi =
+  let iter_poly = string_of_mono_type_sub (tvf_poly current_ht) (ortvf_poly current_ht) current_ht in
   match ptvi with
   | PolyFree(tvref) ->
-      tvf_mono current_ht tyenv plev tvref
+      tvf_mono current_ht plev tvref
 
   | PolyBound(bid) ->
       let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
@@ -289,36 +289,36 @@ let rec tvf_poly current_ht tyenv plev ptvi =
         show_type_variable (iter_poly Outmost) s (BoundID.get_kind bid)
 
 
-and ortvf_poly current_ht tyenv porvi =
+and ortvf_poly current_ht porvi =
   match porvi with
   | PolyORFree(orviref) ->
-      ortvf_mono current_ht tyenv orviref
+      ortvf_mono current_ht orviref
 
 
-let string_of_mono_type (tyenv : Typeenv.t) (ty : mono_type) =
+let string_of_mono_type (ty : mono_type) =
   begin
     GeneralIDHashTable.initialize ();
     let current_ht = GeneralIDHashTable.create 32 in
-      string_of_mono_type_sub (tvf_mono current_ht tyenv) (ortvf_mono current_ht tyenv) tyenv current_ht Outmost ty
+      string_of_mono_type_sub (tvf_mono current_ht) (ortvf_mono current_ht) current_ht Outmost ty
   end
 
 
-let string_of_mono_type_double (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+let string_of_mono_type_double (ty1 : mono_type) (ty2 : mono_type) =
   begin
     GeneralIDHashTable.initialize ();
     let current_ht = GeneralIDHashTable.create 32 in
-    let strf = string_of_mono_type_sub (tvf_mono current_ht tyenv) (ortvf_mono current_ht tyenv) tyenv current_ht Outmost in
+    let strf = string_of_mono_type_sub (tvf_mono current_ht) (ortvf_mono current_ht) current_ht Outmost in
     let strty1 = strf ty1 in
     let strty2 = strf ty2 in
       (strty1, strty2)
   end
 
 
-let string_of_poly_type (tyenv : Typeenv.t) (Poly(pty) : poly_type) =
+let string_of_poly_type (Poly(pty) : poly_type) =
   begin
     GeneralIDHashTable.initialize ();
     let current_ht = GeneralIDHashTable.create 32 in
-    string_of_mono_type_sub (tvf_poly current_ht tyenv) (ortvf_poly current_ht tyenv) tyenv current_ht Outmost pty
+    string_of_mono_type_sub (tvf_poly current_ht) (ortvf_poly current_ht) current_ht Outmost pty
   end
 
 
