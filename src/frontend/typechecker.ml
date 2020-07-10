@@ -1419,20 +1419,12 @@ and typecheck_pattern_branch (pre : pre) (tyenv : Typeenv.t) (utpatbr : untyped_
 
 
 and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : pattern_branch list =
-
-  let rec iter (patbracc : pattern_branch Alist.t) (utpatbrs : untyped_pattern_branch list) =
-    match utpatbrs with
-    | [] ->
-        Alist.to_list patbracc
-
-    | utpatbr :: tail ->
-        let (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
-        unify typat tyobj;
-        unify ty1 tyres;
-        iter (Alist.extend patbracc patbr) tail
-
-  in
-  iter Alist.empty utpatbrs
+  utpatbrs |> List.map (fun utpatbr ->
+    let (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
+    unify typat tyobj;
+    unify ty1 tyres;
+    patbr
+  )
 
 
 and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untyped_pattern_tree) : pattern_tree * mono_type * pattern_var_map =
