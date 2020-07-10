@@ -419,8 +419,9 @@
 %type <Range.t * Types.var_name> binop
 %type <Types.manual_type option * untyped_pattern_tree list> recdecargpart
 %type <Types.manual_type option * untyped_argument list> nonrecdecargpart
-%type <Range.t * manual_type list * (module_name list * type_name)> txapp
-%type <Range.t * module_name list * Types.type_name> txbot
+%type <Range.t * Types.manual_type list * Types.type_name> txapp
+%type <Range.t * Types.type_name> txbot
+%type <Types.manual_type> txapppre
 
 %%
 
@@ -862,8 +863,8 @@ nxlist:
 variants:
   | ctor=CONSTRUCTOR; OF; ty=txfunc; BAR; tail=variants { UTConstructorBranch(ctor, ty) :: tail }
   | ctor=CONSTRUCTOR; OF; ty=txfunc                     { UTConstructorBranch(ctor, ty) :: [] }
-  | ctor=CONSTRUCTOR; BAR; tail=variants                { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit1", MTypeName([], [], "unit"))) :: tail }
-  | ctor=CONSTRUCTOR                                    { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit2", MTypeName([], [], "unit"))) :: [] }
+  | ctor=CONSTRUCTOR; BAR; tail=variants                { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit1", MTypeName("unit", []))) :: tail }
+  | ctor=CONSTRUCTOR                                    { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit2", MTypeName("unit", []))) :: [] }
 ;
 txfunc: /* -> manual_type */
   | mntydominfo=txfuncopts; ARROW; mntycod=txfunc {
@@ -877,28 +878,33 @@ txfuncopts:
   | mntydom=txprod                                  { ([], mntydom) }
 ;
 txprod:
-  | mnty=txapppre; EXACT_TIMES; mntyprod=txprodsub {
-      let (rng1, _) = mnty in
-      let (rng2, mntylst) = mntyprod in
-      make_standard (Tok rng1) (Tok rng2) (MProductType(mnty :: mntylst))
+  | mnty1=txapppre; EXACT_TIMES; mntyprod=txprodsub {
+      let (rng1, _) = mnty1 in
+      let (rng2, mntytail) = mntyprod in
+      match mntytail with
+      | mnty2 :: mntyrest ->
+          make_standard (Tok rng1) (Tok rng2) (MProductType(TupleList.make mnty1 mnty2 mntyrest))
+
+      | _ ->
+          assert false
     }
 
   | mnty=txapppre { mnty }
 ;
-txprodsub: /* -> Range.t * manual_type list */
+txprodsub:
   | mnty=txapppre; EXACT_TIMES; mntyprod=txprodsub {
-      let (rng2, mntylst) = mntyprod in
-      (rng2, mnty :: mntylst)
+      let (rng2, mntytail) = mntyprod in
+      (rng2, mnty :: mntytail)
     }
   | mnty=txapppre {
       let (rng2, _) = mnty in
       (rng2, mnty :: [])
     }
 ;
-txapppre: /* -> manual_type */
+txapppre:
   | tyapp=txapp {
-      let (rng, lst, (mdlnmlst, tynm)) = tyapp in
-      (rng, MTypeName(lst, mdlnmlst, tynm))
+      let (rng, mntyargs, tynm) = tyapp in
+      (rng, MTypeName(tynm, mntyargs))
     }
   | opn=BLIST; mntylst=txlist; ELIST; last=HORZCMDTYPE {
       let rng = make_range (Tok opn) (Tok last) in
@@ -924,11 +930,11 @@ txapppre: /* -> manual_type */
 ;
 txapp:
   | tybot=txbot; tyapp=txapp {
-      let (rng1, mdlnmlst, tynm) = tybot in
-      let mnty = (rng1, MTypeName([], mdlnmlst, tynm)) in
-      let (rng2, lst, tyconstr) = tyapp in
+      let (rng1, tynm) = tybot in
+      let mnty = (rng1, MTypeName(tynm, [])) in
+      let (rng2, mntytail, tyconstr) = tyapp in
       let rng = make_range (Ranged mnty) (Tok rng2) in
-      (rng, mnty :: lst, tyconstr)
+      (rng, mnty :: mntytail, tyconstr)
     }
   | LPAREN; mnty=txfunc; RPAREN; tyapp=txapp {
       let (rng2, lst, tyconstr) = tyapp in
@@ -941,11 +947,13 @@ txapp:
       let rng = make_range (Tok rngtyarg) (Tok rng2) in
       (rng, (rngtyarg, MTypeParam(tyargnm)) :: lst, tyconstr)
     }
-  | tybot=txbot { let (rng, mdlnmlst, tynm) = tybot in (rng, [], (mdlnmlst, tynm)) }
+  | tybot=txbot { let (rng, tynm) = tybot in (rng, [], tynm) }
 ;
 txbot:
-  | tytok=VAR        { let (rng, tynm) = tytok in (rng, [], tynm) }
+  | tytok=VAR        { let (rng, tynm) = tytok in (rng, tynm) }
+(*
   | tytok=VARWITHMOD { tytok }
+*)
 ;
 txlist:
   | mnty=txfunc; LISTPUNCT; tail=txlist                 { MMandatoryArgumentType(mnty) :: tail }

@@ -1519,10 +1519,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letre
         | Function([], patbr1) ->
             unify ty1 beta;
             mntyopt |> Option.map (fun mnty ->
-              let tyin =
-                failwith "TODO: typecheck_mutual_contents, decoding manual types"
-                  (* Typeenv.fix_manual_type_free pre tyenv mnty [] *)
-              in
+              let tyin = decode_manual_type pre tyenv mnty in
               unify tyin beta
             ) |> Option.value ~default:();
             let recbind = LetRecBinding(evid, patbr1) in
@@ -1547,6 +1544,66 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
   let evid = EvalVarID.fresh (varrng, varnm) in
   let tyenvI = tyenv |> Typeenv.add_value varnm (lift_poly (varrng, RefType(tyI)), evid, pre.stage) in
   (tyenvI, evid, eI, tyI)
+
+
+and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type =
+  let invalid rng tynm ~expect:len_expected ~actual:len_actual =
+    failwith "TODO: error about the number of type arguments"
+  in
+  let rec aux (rng, mtymain) =
+    let tymain =
+      match mtymain with
+      | MTypeName(tynm, mtyargs) ->
+          let tyargs = mtyargs |> List.map aux in
+          let len_actual = List.length tyargs in
+          begin
+            match tyenv |> Typeenv.find_type tynm with
+            | None ->
+                failwith "TODO: predefined types"
+
+            | Some(tyid, len_expected) ->
+                if len_actual = len_expected then
+                  DataType(tyargs, tyid)
+                else
+                  invalid rng tynm ~expect:len_expected ~actual:len_actual
+          end
+
+      | MTypeParam(typaram) ->
+          failwith "TODO: decode_manual_type, MTypeParam" (*
+          begin
+            match typarams |> TypeParameterMap.find_opt typaram with
+            | None ->
+                failwith "TODO: unbound type parameter"
+
+            | Some(mbbid) ->
+                TypeVariable(MustBeBound(mbbid))
+          end *)
+
+      | MFuncType(mtyadds, mtydom, mtycod) ->
+          FuncType(aux_row mtyadds, aux mtydom, aux mtycod)
+
+      | MProductType(mntys) ->
+          ProductType(TupleList.map aux mntys)
+
+      | MRecordType(mnasc) ->
+          RecordType(Assoc.map_value aux mnasc)
+
+      | MHorzCommandType(mncmdargtys) -> HorzCommandType(List.map aux_cmd mncmdargtys)
+      | MVertCommandType(mncmdargtys) -> VertCommandType(List.map aux_cmd mncmdargtys)
+      | MMathCommandType(mncmdargtys) -> MathCommandType(List.map aux_cmd mncmdargtys)
+
+    in
+    (rng, tymain)
+
+  and aux_cmd = function
+    | MMandatoryArgumentType(mnty) -> MandatoryArgumentType(aux mnty)
+    | MOptionalArgumentType(mnty)  -> OptionalArgumentType(aux mnty)
+
+  and aux_row (mtyadds : manual_type list) =
+    List.fold_right (fun mty row -> OptionRowCons(aux mty, row)) mtyadds OptionRowEmpty
+  in
+  aux mty
+
 
 
 let rec add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =

@@ -482,12 +482,6 @@ let rec fix_manual_type_general (type a) (type b) (dpmode : dependency_mode) (ty
       match mntymain with
 
       | MFuncType(mntyopts, mntydom, mntycod) -> FuncType(aux_or mntyopts, aux mntydom, aux mntycod)
-      | MProductType(mntylist)           -> ProductType(List.map aux mntylist)
-      | MRecordType(mnasc)               -> RecordType(Assoc.map_value aux mnasc)
-
-      | MHorzCommandType(mncmdargtylist) -> HorzCommandType(List.map aux_cmd mncmdargtylist)
-      | MVertCommandType(mncmdargtylist) -> VertCommandType(List.map aux_cmd mncmdargtylist)
-      | MMathCommandType(mncmdargtylist) -> MathCommandType(List.map aux_cmd mncmdargtylist)
 
       | MTypeName([], [], tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
           begin
@@ -572,15 +566,6 @@ let rec fix_manual_type_general (type a) (type b) (dpmode : dependency_mode) (ty
       (rng, ptymainnew)
 
 
-  and aux_cmd = function
-    | MMandatoryArgumentType(mnty) -> MandatoryArgumentType(aux mnty)
-    | MOptionalArgumentType(mnty)  -> OptionalArgumentType(aux mnty)
-
-  and aux_or mntyopts =
-    List.fold_right (fun mnty acc ->
-      OptionRowCons(aux mnty, acc)
-    ) mntyopts OptionRowEmpty
-
   in
   aux mnty
 
@@ -626,46 +611,6 @@ let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : level) (tyargc
     let bidlist = MapList.to_list bidmaplist |> List.map (fun (_, bid) -> bid) in
     (bidlist, Poly(pty))
   end
-
-
-(* PUBLIC *)
-let fix_manual_type_free (pre : pre) (tyenv : t) (mnty : manual_type) (constrnts : constraints) : mono_type =
-  let qtfbl = pre.quantifiability in
-  let lev = pre.level in
-
-  let tyargmaplist : (string, mono_type_variable_info ref) MapList.t = MapList.create () in
-
-  let freef rng tvref =
-    (rng, TypeVariable(tvref))
-  in
-  let orfreef orviref =
-    OptionRowVariable(orviref)
-  in
-  let typaramf rng param =
-    match MapList.find_opt tyargmaplist param with
-    | Some(tvref) ->
-        TypeVariable(tvref)
-
-    | None ->
-        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let tvref = ref (MonoFree(tvid)) in
-        begin
-          MapList.add tyargmaplist param tvref;
-          TypeVariable(tvref)
-        end
-  in
-
-  let () =
-    constrnts |> List.iter (fun (param, mkd) ->
-      let kd = fix_manual_kind_general NoDependency tyenv lev freef orfreef typaramf mkd in
-      let tvid = FreeID.fresh kd qtfbl lev () in
-      let tvref = ref (MonoFree(tvid)) in
-        MapList.add tyargmaplist param tvref
-    )
-  in
-
-  let ty = fix_manual_type_general NoDependency tyenv lev freef orfreef typaramf mnty in
-    ty
 
 
 let register_type (tynm : type_name) (tyid : TypeID.t) (dfn : type_definition) (tyenv : t) : t =

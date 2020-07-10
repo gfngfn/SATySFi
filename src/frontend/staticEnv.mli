@@ -61,8 +61,6 @@ module StructSig : sig
 end
 
 (*
-val fix_manual_type_free : pre -> t -> manual_type -> constraints -> mono_type
-
 val add_mutual_cons : t -> level -> untyped_type_binding list -> t
 
 val open_module : Range.t -> module_name -> t -> t

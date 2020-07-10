@@ -209,10 +209,10 @@ module EvalVarIDMap = Map.Make(EvalVarID)
 
 type manual_type = Range.t * manual_type_main
 and manual_type_main =
-  | MTypeName        of (manual_type list) * module_name list * type_name
+  | MTypeName        of type_name * manual_type list
   | MTypeParam       of var_name
   | MFuncType        of manual_type list * manual_type * manual_type
-  | MProductType     of manual_type list
+  | MProductType     of manual_type TupleList.t
   | MRecordType      of manual_type Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "MRecordType(...)")]
   | MHorzCommandType of manual_command_argument_type list
