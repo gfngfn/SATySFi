@@ -7,7 +7,6 @@ type type_definition =
   | Alias of type_scheme
 
 (*
-exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
 exception UndefinedTypeName               of Range.t * module_name list * type_name * type_name list
 exception UndefinedTypeArgument           of Range.t * var_name * var_name list
 exception CyclicTypeDefinition            of (Range.t * type_name) list

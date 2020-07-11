@@ -25,6 +25,7 @@ exception UndefinedVertMacro             of Range.t * ctrlseq_name
 exception InvalidNumberOfMacroArguments  of Range.t * macro_parameter_type list
 exception LateMacroArgumentExpected      of Range.t * mono_type
 exception EarlyMacroArgumentExpected     of Range.t * mono_type
+exception IllegalNumberOfTypeArguments   of Range.t * type_name * int * int
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -1548,7 +1549,7 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
 
 and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type =
   let invalid rng tynm ~expect:len_expected ~actual:len_actual =
-    failwith "TODO: error about the number of type arguments"
+    raise (IllegalNumberOfTypeArguments(rng, tynm, len_expected, len_actual))
   in
   let rec aux (rng, mtymain) =
     let tymain =
@@ -1652,6 +1653,7 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
       assert false
 
   | UTBindType(tybinds) ->
+      (* Registers types to the type environment and the graph for detecting cyclic dependency. *)
       let (_synacc, _vntacc, _graph, _tyenv) =
         tybinds |> List.fold_left (fun (synacc, vntacc, graph, tyenv) tybind ->
           let (tyident, typarams, constraints, syn_or_vnt) = tybind in

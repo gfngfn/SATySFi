@@ -838,14 +838,14 @@ let error_log_environment suspended =
         DisplayLine(Display.string_of_mono_type ty);
         NormalLine("and thus it cannot be applied to arguments.");
       ]
-(*
-  | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
+
+  | Typechecker.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("'" ^ tynm ^ "' is expected to have " ^ (string_of_int lenexp) ^ " type argument(s),");
         NormalLine("but it has " ^ (string_of_int lenerr) ^ " type argument(s) here.");
       ]
-
+(*
   | Typeenv.UndefinedTypeName(rng, mdlnmlst, tynm, candidates) ->
       let s = String.concat "." (List.append mdlnmlst [tynm]) in
       report_error Typechecker [
