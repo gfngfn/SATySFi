@@ -10,12 +10,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Support OCaml 4.10 (encouraged by [PR\#207](https://github.com/gfngfn/SATySFi/pull/207) by `na4zagin3`, [PR\#3 for `gfngfn/camlpdf`](https://github.com/gfngfn/camlpdf/pull/3) by `y-yu`, and [PR\#223](https://github.com/gfngfn/SATySFi/pull/223) by `yasuo-ozu`).
 - Uses `yojson-with-position.1.4.2+satysfi` instead of `yojson.1.4.1+satysfi` in order to avoid version conflicts with `yojson` required by `merlin` etc.
 - Improve how listings are typeset by `itemize` package.
+- Improve `download-fonts.sh` ([PR\#231](https://github.com/gfngfn/SATySFi/pull/231) by `na4zagin3`).
 
 ### Added
 - Add new primitive `string-explode : string -> int list` ([PR\#202](https://github.com/gfngfn/SATySFi/pull/202) by `puripuri2100`).
 - Add new primitives `log : float -> float` and `exp : float -> float`.
 - Extend the syntax and the semantics for allowing code texts directly written in inline texts ``{… `…` …}`` and add new primitive `set-code-text-command : [string] inline-cmd -> context -> context`.
 - Add `List.is-empty`, `List.map-with-ends`, and `Option.is-none`.
+- Add a new primitive `transform-path` for applying linear transformations to paths, and new functions, `Gr.rotate-path` and `Gr.scale-path`, which utilize the primitive ([PR\#218](https://github.com/gfngfn/SATySFi/pull/218) by `monaqa`).
 
 ## [0.0.4] - 2020-01-25
 ### Fixed
