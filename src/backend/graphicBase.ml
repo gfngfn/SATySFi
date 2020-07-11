@@ -43,6 +43,48 @@ let shift_path v path =
         GeneralPath(pt0 +@% v, pelst |> List.map (shift_path_element v), cycleopt_s)
 
 
+let linear_transform_point mat (x, y) =
+  let ((a, b), (c, d)) = mat in
+  (x *% a +% y *% b, x *% c +% y *% d)
+
+
+let convert_rectangle_to_generalpath path =
+  match path with
+  | Rectangle((pt1x, pt1y), (pt2x, pt2y)) ->
+      let pelst = [
+        LineTo(pt1x, pt2y);
+        LineTo(pt2x, pt2y);
+        LineTo(pt2x, pt1y);
+      ]
+      in
+      GeneralPath((pt1x, pt1y), pelst, Some(LineTo(())))
+  | _  as g -> g
+
+
+let linear_transform_path_element mat pe =
+  let trans = linear_transform_point mat in
+  match pe with
+  | LineTo(pt)                  -> LineTo(trans pt)
+  | CubicBezierTo(pt1, pt2, pt) -> CubicBezierTo(trans pt1, trans pt2, trans pt)
+
+
+let linear_transform_path mat path =
+  let trans = linear_transform_point mat in
+  match path |> convert_rectangle_to_generalpath with
+  | Rectangle(pt1, pt2) ->
+      (* invalid condition *)
+      Rectangle(trans pt1, trans pt2)
+
+  | GeneralPath(pt0, pelst, cycleopt) ->
+      let cycleopt_s =
+        cycleopt |> option_map (function
+          | LineTo(()) as l             -> l
+          | CubicBezierTo(pt1, pt2, ()) -> CubicBezierTo(trans pt1, trans pt2, ())
+        )
+      in
+        GeneralPath(trans pt0, pelst |> List.map (linear_transform_path_element mat), cycleopt_s)
+
+
 let bezier_bbox (x0, y0) (x1, y1) (x2, y2) (x3, y3) =
 
   let bezier_point t r0 r1 r2 r3 =
