@@ -1648,7 +1648,30 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
             failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTMutable"
       end
 
-  | UTBindType(_typebinds) ->
+  | UTBindType([]) ->
+      assert false
+
+  | UTBindType(tybinds) ->
+      let (_synacc, _vntacc, _graph, _tyenv) =
+        tybinds |> List.fold_left (fun (synacc, vntacc, graph, tyenv) tybind ->
+          let (tyident, typarams, constraints, syn_or_vnt) = tybind in
+          let (_, tynm) = tyident in
+          let arity = List.length typarams in
+          match syn_or_vnt with
+          | UTBindSynonym(synbind) ->
+              let sid = TypeID.Synonym.fresh tynm in
+              let graph = graph |> SynonymDependencyGraph.add_vertex sid tyident in
+              let tyenv = tyenv |> Typeenv.add_type tynm (TypeID.Synonym(sid), arity) in
+              let synacc = Alist.extend synacc (tyident, typarams, synbind, sid) in
+              (synacc, vntacc, graph, tyenv)
+
+          | UTBindVariant(vntbind) ->
+              let vid = TypeID.Variant.fresh tynm in
+              let tyenv = tyenv |> Typeenv.add_type tynm (TypeID.Variant(vid), arity) in
+              let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, vid) in
+              (synacc, vntacc, graph, tyenv)
+        ) (Alist.empty, Alist.empty, SynonymDependencyGraph.empty, tyenv)
+      in
       failwith "TODO: Typechecker.typecheck_binding, UTBindType"
 
   | UTBindModule((_, _modnm), _utsigopt, _utmod) ->

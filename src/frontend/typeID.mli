@@ -11,6 +11,8 @@ module Variant : sig
 
   val equal : t -> t -> bool
 
+  val compare : t -> t -> int
+
   val show_direct : t -> string
 end
 
@@ -25,6 +27,8 @@ module Synonym : sig
   val extract_name : t -> string
 
   val equal : t -> t -> bool
+
+  val compare : t -> t -> int
 
   val show_direct : t -> string
 end
