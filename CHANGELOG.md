@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.5] - 2020-07-11
 ### Fixed
 - Fix how to handle font stretch values (a strange behavior due to this bug had first been reported by `zeptometer`, and the cause of the bug was suggested by `matsud224`).
 - Support OCaml 4.10 (encouraged by [PR\#207](https://github.com/gfngfn/SATySFi/pull/207) by `na4zagin3`, [PR\#3 for `gfngfn/camlpdf`](https://github.com/gfngfn/camlpdf/pull/3) by `y-yu`, and [PR\#223](https://github.com/gfngfn/SATySFi/pull/223) by `yasuo-ozu`).
@@ -57,7 +57,6 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Supports two-column page break.
 
 ## Deprecated
-
 - The use of `"src-dist":` entries in font hash files is deprecated; use `"src":` instead, which requires a font file’s path relative to `<LIBROOT>`. An entry of the form `"src-dist": "<path/to/font-file>"` is now treated equivalently to `"src": "dist/fonts/<path/to/font-file>"`.
 
 ## [0.0.3] - 2018-10-09
@@ -82,7 +81,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Initial version of SATySFi
 
 
-  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.4...HEAD
+  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.5...HEAD
+  [0.0.5]: https://github.com/gfngfn/SATySFi/compare/v0.0.3...v0.0.5
   [0.0.4]: https://github.com/gfngfn/SATySFi/compare/v0.0.3...v0.0.4
   [0.0.3]: https://github.com/gfngfn/SATySFi/compare/v0.0.2...v0.0.3
   [0.0.2]: https://github.com/gfngfn/SATySFi/compare/v0.0.1...v0.0.2
