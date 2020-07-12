@@ -356,21 +356,6 @@
         insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
 
 
-  let report_error rngknd (tok : string) =
-    match rngknd with
-    | Tok(rng) ->
-          raise (ParseErrorDetail(
-            rng,
-            "syntax error:\n"
-            ^ "    unexpected token after '" ^ tok ^ "'"))
-    | Ranged((rng, nm)) ->
-          raise (ParseErrorDetail(
-            rng,
-            "syntax error:\n"
-            ^ "    unexpected token after '" ^ nm ^ "'"))
-    | _ -> assert false
-
-
   let primes n =
     let uchlst = List.init n (fun _ -> Uchar.of_int 0x2032) in
       InternalText.to_utf8 (InternalText.of_uchar_list uchlst)

@@ -626,13 +626,6 @@ let error_log_environment suspended =
         NormalLine(s);
       ]
 
-  | Parsing.Parse_error -> report_error Parser [ NormalLine("something is wrong."); ]
-  | ParseErrorDetail(rng, s) ->
-      report_error Parser [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine(s)
-      ]
-
   | IllegalArgumentLength(rng, len, lenexp) ->
       report_error Parser [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -643,6 +636,12 @@ let error_log_environment suspended =
   | ParserInterface.Error(rng) ->
       report_error Parser [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
+      ]
+
+  | ParseErrorDetail(rng, s) ->
+      report_error Parser [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine(s)
       ]
 
   | LoadMDSetting.MultipleCodeNameDesignation(rng, s) ->
