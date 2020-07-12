@@ -556,8 +556,8 @@ let rec fix_manual_type_general (type a) (type b) (dpmode : dependency_mode) (ty
 
           in
           begin
-            match mdlnmlst, dpmode with
-            | [], DependentMode(dg) ->
+            match (mdlnmlst, dpmode) with
+            | ([], DependentMode(dg)) ->
                 begin
                   try
                     match DependencyGraph.find_vertex dg tynm with
