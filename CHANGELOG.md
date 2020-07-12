@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Fix how to decode types written mainly in signatures ([PR\#208](https://github.com/gfngfn/SATySFi/pull/208) by `elpinal`, which was encouraged by [Issue\#184](https://github.com/gfngfn/SATySFi/issues/184) by `nyuichi`).
 - Fix how to embed font subsets as to tags ([PR\#181](https://github.com/gfngfn/SATySFi/pull/181) by `matsud224`).
 - Improve how to emit errors when parsing invalid itemized expressions ([PR\#176](https://github.com/gfngfn/SATySFi/pull/176) by `hanazuki`).
-- Does not embed null objects in output PDFs (mainly for services that use PDFs but do not support null objects) ([PR\#180](https://github.com/gfngfn/SATySFi/pull/180)).
+- Does not embed null objects as `/DW` or `/DW2` entries in output PDFs (mainly for services that use PDFs but do not support null objects) ([PR\#180](https://github.com/gfngfn/SATySFi/pull/180)).
 
 ## [0.0.5] - 2020-07-11
 ### Fixed
