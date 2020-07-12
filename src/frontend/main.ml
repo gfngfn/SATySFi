@@ -627,7 +627,11 @@ let error_log_environment suspended =
       ]
 
   | Parsing.Parse_error -> report_error Parser [ NormalLine("something is wrong."); ]
-  | ParseErrorDetail(s) -> report_error Parser [ NormalLine(s); ]
+  | ParseErrorDetail(rng, s) ->
+      report_error Parser [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine(s)
+      ]
 
   | IllegalArgumentLength(rng, len, lenexp) ->
       report_error Parser [
