@@ -2,7 +2,7 @@
 open LengthInterface
 open GraphicBase
 
-exception ParseErrorDetail of string
+exception ParseErrorDetail of Range.t * string
 exception IllegalArgumentLength of Range.t * int * int
 
 

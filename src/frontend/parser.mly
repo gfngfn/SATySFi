@@ -283,9 +283,8 @@
           let newresitmz = insert_last [] resitmz 1 depth utast in
             make_list_to_itemize_sub newresitmz tail depth
         else
-          raise (ParseErrorDetail("syntax error: illegal item depth "
-            ^ (string_of_int depth) ^ " after " ^ (string_of_int crrntdp) ^ "\n"
-            ^ "    " ^ (Range.to_string rng)))
+          raise (ParseErrorDetail(rng, "syntax error: illegal item depth "
+            ^ (string_of_int depth) ^ " after " ^ (string_of_int crrntdp)))
 
   and insert_last (resitmzlst : untyped_itemize list) (itmz : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
     match itmz with
@@ -298,21 +297,6 @@
           UTItem(uta, resitmzlst @ [hditmz] @ [UTItem(utast, [])])
     | UTItem(uta, hditmz :: tlitmzlst) ->
         insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
-
-
-  let report_error rngknd (tok : string) =
-    match rngknd with
-    | Tok(rng) ->
-          raise (ParseErrorDetail(
-            "syntax error:\n"
-            ^ "    unexpected token after '" ^ tok ^ "'\n"
-            ^ "    " ^ (Range.to_string rng)))
-    | Ranged((rng, nm)) ->
-          raise (ParseErrorDetail(
-            "syntax error:\n"
-            ^ "    unexpected token after '" ^ nm ^ "'\n"
-            ^ "    " ^ (Range.to_string rng)))
-    | _ -> assert false
 
 
   let primes n =

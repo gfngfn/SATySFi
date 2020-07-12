@@ -642,9 +642,6 @@ let error_log_environment suspended =
         NormalLine(s);
       ]
 
-  | Parsing.Parse_error -> report_error Parser [ NormalLine("something is wrong."); ]
-  | ParseErrorDetail(s) -> report_error Parser [ NormalLine(s); ]
-
   | IllegalArgumentLength(rng, len, lenexp) ->
       report_error Parser [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -655,6 +652,12 @@ let error_log_environment suspended =
   | ParserInterface.Error(rng) ->
       report_error Parser [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
+      ]
+
+  | ParseErrorDetail(rng, s) ->
+      report_error Parser [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine(s)
       ]
 
   | LoadMDSetting.MultipleCodeNameDesignation(rng, s) ->
@@ -962,7 +965,7 @@ let error_log_environment suspended =
 
 let arg_version () =
   print_string (
-    "  SATySFi version 0.0.4\n"
+    "  SATySFi version 0.0.5\n"
 (*
       ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"

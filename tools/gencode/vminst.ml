@@ -658,6 +658,24 @@ make_path (List.append pathlst1 pathlst2)
         ~code:{|
 make_path (List.map (shift_path ptshift) pathlst)
 |}
+    ; inst "PathLinearTransform"
+        ~name:"linear-transform-path"
+        ~type_:{|
+~% (tFL @-> tFL @-> tFL @-> tFL @-> tPATH @-> tPATH)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "a" ~type_:"float";
+          param "b" ~type_:"float";
+          param "c" ~type_:"float";
+          param "d" ~type_:"float";
+          param "pathlst" ~type_:"path_value";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+make_path (List.map (linear_transform_path ((a, b), (c, d))) pathlst)
+|}
     ; inst "PathGetBoundingBox"
         ~name:"get-path-bbox"
         ~type_:{|

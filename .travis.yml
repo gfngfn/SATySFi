@@ -4,6 +4,10 @@ os:
   - osx
 env:
   - OCAML_VERSION=4.10
+cache:
+  directories:
+    - $HOME/ocaml
+    - $HOME/.opam
 sudo: required
 install:
   - wget https://raw.githubusercontent.com/ocaml/ocaml-ci-scripts/master/.travis-ocaml.sh
