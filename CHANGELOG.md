@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Fixed
+- Fix how to decode types written mainly in signatures ([PR\#208](https://github.com/gfngfn/SATySFi/pull/208) by `elpinal`, which was encouraged by [Issue\#184](https://github.com/gfngfn/SATySFi/issues/184)).
+
 ## [0.0.5] - 2020-07-11
 ### Fixed
 - Fix how to handle font stretch values (a strange behavior due to this bug had first been reported by `zeptometer`, and the cause of the bug was suggested by `matsud224`).
