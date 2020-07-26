@@ -49,6 +49,7 @@ let tL ty         = (~! "list"    , ListType(ty)          )
 let tR ty         = (~! "ref"     , RefType(ty)           )
 let tPROD tylst   = (~! "product" , ProductType(tylst)    )
 let (@->) dom cod = (~! "func"    , FuncType(OptionRowEmpty, dom, cod))
+let tCODE ty      = (~! "code"    , CodeType(ty)          )
 
 (* -- predefined data types -- *)
 let tOPT ty       = (~! "option"  , VariantType([ty], tyid_option))
@@ -81,7 +82,7 @@ let tIGRO = (~! "igrafo", SynonymType([], tyid_igrafo, tIGRO_raw))
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 
-let tCMD = (~! "cmd", HorzCommandType([MandatoryArgumentType(tMATH)]))
+let tICMD ty = (~! "cmd", HorzCommandType([MandatoryArgumentType(ty)]))
 
 let tMCSTY =
   let asc =
@@ -135,7 +136,6 @@ let tPAGEPARTS =
 let tPAGEPARTSF = tPCINFO @-> tPAGEPARTS
 
 let tRULESF = (tL tLN) @-> (tL tLN) @-> (tL tGR)
-
 
 let option_type = tOPT
 
@@ -534,16 +534,15 @@ let get_pdf_mode_initial_context wid =
 
 
 let (~%) ty = Poly(ty)
+let (~@) n = (~! "tv", TypeVariable(n))
 
 
 let general_table : (var_name * poly_type * (environment -> syntactic_value)) list =
-  let (~@) n = (~! "tv", TypeVariable(n)) in
-  let (-%) n ptysub = ptysub in
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in PolyBound(bid1)) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in PolyBound(bid2)) in
-  let ptyderef  = tv1 -% (~% ((tR (~@ tv1)) @-> (~@ tv1))) in
-  let ptycons   = tv2 -% (~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2)))) in
-  let ptyappinv = tv1 -% (tv2 -% (~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)))) in
+  let ptyderef  = ~% ((tR (~@ tv1)) @-> (~@ tv1)) in
+  let ptycons   = ~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2))) in
+  let ptyappinv = ~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)) in
     [
       ( "!"  , ptyderef             , lambda1 (fun v1 -> Dereference(v1))                   );
       ( "::" , ptycons              , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))      );
@@ -562,6 +561,7 @@ let pdf_mode_table =
     [
       ("inline-fil", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzPure(PHSOuterFil)])))));
       ("inline-nil", ~% tIB, (fun _ -> base (BCHorz([])))                               );
+      ("omit-skip-after", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzOmitSkipAfter])))));
       ("block-nil" , ~% tBB, (fun _ -> base (BCVert([])))                               );
       ("clear-page", ~% tBB, (fun _ -> base (BCVert(HorzBox.([VertClearPage]))))        );
 

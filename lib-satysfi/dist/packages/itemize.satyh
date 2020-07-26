@@ -13,6 +13,7 @@ module Itemize : sig
 end = struct
 
   let (+++>) = List.fold-left (+++)
+  let concat-blocks = (+++>) block-nil
 
 
   let item-indent = 16pt
@@ -20,17 +21,21 @@ end = struct
   let item-gap-outer = 6pt
 
 
-  let bullet color (x, y) =
+  let bullet-graphics color (x, y) =
     let cx = x +' 4pt in
     let cy = y +' 4pt in
     let r = 2pt in
       [ fill color (Gr.circle (cx, cy) r); ]
 
 
-  let-rec listing-item : context -> int -> itemize -> block-boxes
-    | ctx depth (Item(parent, children)) =
-        let color = get-text-color ctx in
-        let ib-bullet = inline-graphics 8pt 8pt 0pt (bullet color) ++ inline-skip 8pt in
+  let make-bullet ctx =
+    let color = get-text-color ctx in
+    inline-graphics 8pt 8pt 0pt (bullet-graphics color) ++ inline-skip 8pt
+
+
+  let-rec listing-item : context -> int -> bool -> bool -> itemize -> block-boxes
+    | ctx depth is-first is-last (Item(parent, children)) =
+        let ib-bullet = make-bullet ctx in
         let bullet-width = get-natural-width ib-bullet in
         let parent-indent = item-indent *' (float depth) in
         let ib-parent =
@@ -43,54 +48,53 @@ end = struct
           form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
             ((inline-skip parent-indent) ++ ib-bullet ++ ib-parent)
         in
-        let bblst-children = List.map (listing-item ctx (depth + 1)) children in
-          bb-parent +++> bblst-children
+        let bbs-children = List.map-with-ends (listing-item ctx (depth + 1)) children in
+        bb-parent +++> bbs-children
 
 
-  let-rec listing-item-breakable
-    | ctx depth (Item(parent, children)) =
-        let color = get-text-color ctx in
-        let ib-bullet = inline-graphics 8pt 8pt 0pt (bullet color) ++ inline-skip 8pt in
+  let-rec listing-item-breakable : context -> int -> bool -> bool -> itemize -> block-boxes
+    | ctx depth is-first is-last (Item(parent, children)) =
+        let ib-bullet = make-bullet ctx in
         let bullet-width = get-natural-width ib-bullet in
         let parent-indent = item-indent *' (float depth) in
         let pads = (parent-indent +' bullet-width, 0pt, 0pt, 0pt) in
         let decos =
           let deco _ _ _ _ = [] in
-            (deco, deco, deco, deco)
+          (deco, deco, deco, deco)
         in
         let bb-parent =
-          block-nil +++> [
-%            line-break true false (ctx |> set-paragraph-margin item-gap 0pt) inline-fil;
-            block-frame-breakable (ctx |> set-paragraph-margin item-gap item-gap) pads decos (fun ctx ->
-              form-paragraph ctx
-                (inline-skip (0pt -' bullet-width) ++ ib-bullet
-                  ++ read-inline ctx parent ++ inline-fil)
-            );
-%            line-break true false (ctx |> set-paragraph-margin 0pt item-gap) inline-fil;
-          ]
+          let ctx-frame =
+            let len-top = if is-first then item-gap-outer +' item-gap else item-gap in
+            let len-bottom = if is-last || List.is-empty children then item-gap-outer +' item-gap else item-gap in
+            ctx |> set-paragraph-margin len-top len-bottom
+          in
+          block-frame-breakable ctx-frame pads decos (fun ctx ->
+            form-paragraph ctx
+              (inline-skip (0pt -' bullet-width) ++ ib-bullet ++ read-inline ctx parent ++ inline-fil)
+          )
         in
-        let bblst-children = List.map (listing-item-breakable ctx (depth + 1)) children in
-          bb-parent +++> bblst-children
+        let bbs-children = List.map-with-ends (listing-item-breakable ctx (depth + 1)) children in
+        bb-parent +++> bbs-children
 
 
-  let listing break ctx (Item(_, itmzlst)) =
+  let listing break ctx (Item(_, items)) =
     if break then
-      let bblst = List.map (listing-item-breakable ctx 0) itmzlst in
-        block-skip item-gap-outer +++ (block-nil +++> bblst) +++ block-skip item-gap-outer
+      let bbs = List.map-with-ends (listing-item-breakable ctx 0) items in
+      concat-blocks bbs
     else
-      let bblst = List.map (listing-item ctx 0) itmzlst in
-        block-skip item-gap-outer +++ (block-nil +++> bblst) +++ block-skip item-gap-outer
+      let bbs = List.map-with-ends (listing-item ctx 0) items in
+      concat-blocks bbs
 
 
   let-block ctx +listing ?:breakopt item =
     let break = Option.from false breakopt in
-      listing break ctx item
+    listing break ctx item
 
 
   let-inline ctx \listing ?:breakopt item =
     let break = Option.from false breakopt in
-      inline-fil ++
-        embed-block-breakable ctx (listing break ctx item)
+      inline-fil ++ embed-block-breakable ctx (listing break ctx item)
+        ++ omit-skip-after
 
 
   let-rec enumerate-item : int -> context -> int -> itemize -> block-boxes
@@ -114,7 +118,7 @@ end = struct
 
   let enumerate ctx (Item(_, itmzlst)) =
     let bblst = List.mapi (fun i -> enumerate-item (i + 1) ctx 0) itmzlst in
-    block-nil +++> bblst
+    concat-blocks bblst
 
 
   let-block ctx +enumerate item =
@@ -126,5 +130,6 @@ end = struct
     inline-fil ++
       embed-block-breakable ctx
         (block-skip item-gap-outer +++ bb +++ block-skip item-gap-outer)
+      ++ omit-skip-after
 
 end

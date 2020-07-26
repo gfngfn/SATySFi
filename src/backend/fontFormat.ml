@@ -1033,7 +1033,7 @@ type decoder = {
   kerning_table       : KerningTable.t;
   ligature_table      : LigatureTable.t;
   mark_table          : MarkTable.t;
-  charstring_info     : Otfm.charstring_info option;
+  cff_info            : Otfm.cff_info option;
   units_per_em        : int;
   default_ascent      : per_mille;
   default_descent     : per_mille;
@@ -1103,15 +1103,15 @@ let get_glyph_advance_width (dcdr : decoder) (gidorgkey : original_glyph_id) : p
 
 
 let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
-  match dcdr.charstring_info with
+  match dcdr.cff_info with
   | None ->
     (* -- if the font is TrueType OT -- *)
       get_ttf_bbox dcdr gidorg
 
-  | Some(csinfo) ->
+  | Some(cffinfo) ->
     (* -- if the font is CFF OT -- *)
       begin
-        match Otfm.charstring_absolute csinfo gidorg with
+        match Otfm.charstring_absolute cffinfo.Otfm.charstring_info gidorg with
         | Error(oerr) ->
             broken dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gidorg)
 
@@ -1189,8 +1189,8 @@ let intern_gid (dcdr : decoder) (gidorg : original_glyph_id) : glyph_id =
 
 
 let font_stretch_of_width_class srcpath = function
-  | 0 -> UltraCondensedStretch
-  | 1 -> ExtraCondensedStretch
+  | 1 -> UltraCondensedStretch
+  | 2 -> ExtraCondensedStretch
   | 3 -> CondensedStretch
   | 4 -> SemiCondensedStetch
   | 5 -> NormalStretch
@@ -1249,22 +1249,45 @@ let to_flate_pdf_bytes (data : string) : string * Pdfio.bytes =
   ("/FlateDecode", bt)
 
 
-let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string option) : Pdf.pdfobject =
+let subset_tag_id = ref 0
+
+let get_subset_tag () =
+  let tag_len = 6 in
+  let base_str = Bytes.make tag_len 'A' in
+  let rec aux pos cnt =
+    if pos = tag_len then
+      Bytes.to_string base_str
+    else
+      let c = Char.chr ((Char.code 'A') + (cnt mod 26)) in
+      Bytes.set base_str pos c;
+      aux (pos + 1) (cnt / 26)
+  in
+  incr subset_tag_id;
+  aux 0 !subset_tag_id
+
+
+let add_subset_tag tagopt fontname =
+  match tagopt with
+  | None      -> fontname
+  | Some(tag) -> tag ^ "+" ^ fontname
+
+
+let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string option) : (Pdf.pdfobject * string option) =
   let d = dcdr.main in
-  let data =
+  let (data, subset_tag) =
       match SubsetMap.to_list dcdr.subset_map with
       | None ->
           begin
             match Otfm.decoder_src d with
-            | `String(s) -> s
+            | `String(s) -> (s, None)
           end
 
       | Some(gidorglst) ->
           begin
-            match OtfSubset.make d gidorglst with
+            match OtfSubset.make d dcdr.cff_info gidorglst with
             | Error(e)    -> broken dcdr.file_path e "pdfstream_of_decoder"
             | Ok(None)    -> assert false
-            | Ok(Some(s)) -> s
+            | Ok(Some(s)) -> (s, Some(get_subset_tag ()))
           end
   in
   let (filter, bt) = to_flate_pdf_bytes data in
@@ -1281,7 +1304,7 @@ let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string opt
   in
   let objstream = Pdf.Stream(ref (Pdf.Dictionary(dict), Pdf.Got(bt))) in
   let irstream = Pdf.addobj pdf objstream in
-  Pdf.Indirect(irstream)
+  (Pdf.Indirect(irstream), subset_tag)
 
 
 let get_glyph_id_main srcpath (cmapsubtbl : Otfm.cmap_subtable) (uch : Uchar.t) : Otfm.glyph_id option =
@@ -1417,6 +1440,13 @@ let of_per_mille_opt = function
 let of_per_mille_pair_opt = function
   | None                             -> Pdf.Null
   | Some((PerMille(a), PerMille(b))) -> Pdf.Array[Pdf.Integer(a); Pdf.Integer(b)]
+
+
+let add_entry_if_non_null key value dict =
+  if value <> Pdf.Null then
+    (key, value) :: dict
+  else
+    dict
 
 
 let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
@@ -1719,14 +1749,14 @@ module Type0
       }
 
 
-    let pdfobject_of_font_descriptor (pdf : Pdf.t) (dcdr : decoder) fontdescr base_font embedding : Pdf.pdfobject =
+    let pdfobject_of_font_descriptor (pdf : Pdf.t) (dcdr : decoder) fontdescr base_font embedding : (Pdf.pdfobject * string option) =
       let (font_file_key, tagopt) = font_file_info_of_embedding embedding in
-      let objstream = pdfstream_of_decoder pdf dcdr tagopt in
+      let (objstream, subset_tag_opt) = pdfstream_of_decoder pdf dcdr tagopt in
         (* -- add to the PDF the stream in which the font file is embedded -- *)
       let objdescr =
         Pdf.Dictionary[
           ("/Type"       , Pdf.Name("/FontDescriptor"));
-          ("/FontName"   , Pdf.Name("/" ^ base_font));
+          ("/FontName"   , Pdf.Name("/" ^ (add_subset_tag subset_tag_opt base_font)));
           ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
           ("/FontBBox"   , pdfobject_of_bbox fontdescr.font_bbox);
           ("/ItalicAngle", Pdf.Real(fontdescr.italic_angle));
@@ -1737,7 +1767,7 @@ module Type0
         ]
       in
       let irdescr = Pdf.addobj pdf objdescr in
-      Pdf.Indirect(irdescr)
+      (Pdf.Indirect(irdescr), subset_tag_opt)
 
 
     let pdfdict_of_cid_system_info cidsysinfo =
@@ -1804,11 +1834,11 @@ module Type0
        pdfobject_of_cid_type_0:
          returns a descendant font dictionary of Type 0 CIDFont as an indirect reference
        -- *)
-    let pdfobject_of_cid_type_0 pdf cidty0font dcdr : Pdf.pdfobject =
+    let pdfobject_of_cid_type_0 pdf cidty0font dcdr : (Pdf.pdfobject * string option) =
       let cidsysinfo = cidty0font.CIDFontType0.cid_system_info in
       let base_font  = cidty0font.CIDFontType0.base_font in
       let fontdescr  = cidty0font.CIDFontType0.font_descriptor in
-      let objdescr = pdfobject_of_font_descriptor pdf dcdr fontdescr base_font (FontFile3("OpenType")) in
+      let (objdescr, subset_tag_opt) = pdfobject_of_font_descriptor pdf dcdr fontdescr base_font (FontFile3("OpenType")) in
       let objwarr = pdfobject_of_width_array pdf dcdr in
       let pmoptdw =
         cidty0font.CIDFontType0.dw |> option_map (per_mille dcdr)
@@ -1817,27 +1847,26 @@ module Type0
         cidty0font.CIDFontType0.dw2 |> option_map (fun (a, b) -> (per_mille dcdr a, per_mille dcdr b))
       in
       let objdescend =
-        Pdf.Dictionary[
+        Pdf.Dictionary([
           ("/Type"          , Pdf.Name("/Font"));
           ("/Subtype"       , Pdf.Name("/CIDFontType0"));
-          ("/BaseFont"      , Pdf.Name("/" ^ base_font));
+          ("/BaseFont"      , Pdf.Name("/" ^ (add_subset_tag subset_tag_opt base_font)));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", objdescr);
-          ("/DW"            , of_per_mille_opt pmoptdw);
           ("/W"             , objwarr);
-          ("/DW2"           , of_per_mille_pair_opt pmpairoptdw2);
             (* temporary; should add more; /W2 *)
-        ]
+        ] |> add_entry_if_non_null "/DW"  (of_per_mille_opt pmoptdw)
+          |> add_entry_if_non_null "/DW2" (of_per_mille_pair_opt pmpairoptdw2))
       in
       let irdescend = Pdf.addobj pdf objdescend in
-      Pdf.Indirect(irdescend)
+      (Pdf.Indirect(irdescend), subset_tag_opt)
 
 
     (* --
        pdfobject_of_cid_type_2:
          returns a descendant font dictionary of Type 2 CIDFont as an indirect reference
        -- *)
-    let pdfobject_of_cid_type_2 pdf cidty2font dcdr : Pdf.pdfobject =
+    let pdfobject_of_cid_type_2 pdf cidty2font dcdr : (Pdf.pdfobject * string option) =
       let cidsysinfo = cidty2font.CIDFontType2.cid_system_info in
       let base_font  = cidty2font.CIDFontType2.base_font in
       let fontdescr  = cidty2font.CIDFontType2.font_descriptor in
@@ -1848,7 +1877,7 @@ module Type0
         else
           FontFile3("OpenType")
       in
-      let objdescr = pdfobject_of_font_descriptor pdf dcdr fontdescr base_font font_file in
+      let (objdescr, subset_tag_opt) = pdfobject_of_font_descriptor pdf dcdr fontdescr base_font font_file in
       let objcidtogidmap =
         match cidty2font.CIDFontType2.cid_to_gid_map with
         | CIDToGIDIdentity -> Pdf.Name("/Identity")
@@ -1862,28 +1891,27 @@ module Type0
       in
       let objwarr = pdfobject_of_width_array pdf dcdr in
       let objdescend =
-        Pdf.Dictionary[
+        Pdf.Dictionary([
           ("/Type"          , Pdf.Name("/Font"));
           ("/Subtype"       , Pdf.Name("/CIDFontType2"));
-          ("/BaseFont"      , Pdf.Name("/" ^ base_font));
+          ("/BaseFont"      , Pdf.Name("/" ^ (add_subset_tag subset_tag_opt base_font)));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", objdescr);
-          ("/DW"            , of_per_mille_opt dwpmopt);
           ("/W"             , objwarr);
-          ("/DW2"           , of_per_mille_pair_opt dw2pmpairopt);
           ("/CIDToGIDMap"   , objcidtogidmap);
             (* should add more; /W2 *)
-        ]
+        ] |> add_entry_if_non_null "/DW"  (of_per_mille_opt dwpmopt)
+          |> add_entry_if_non_null "/DW2" (of_per_mille_pair_opt dw2pmpairopt))
       in
       let irdescend = Pdf.addobj pdf objdescend in
-      Pdf.Indirect(irdescend)
+      (Pdf.Indirect(irdescend), subset_tag_opt)
 
 
     let to_pdfdict pdf ty0font dcdr =
       let cidfont       = ty0font.descendant_fonts in
       let base_font_ty0 = ty0font.base_font in
       let cmap          = ty0font.encoding in
-      let objdescend =
+      let (objdescend, subset_tag_opt) =
         match cidfont with
         | CIDFontType0(cidty0font) -> pdfobject_of_cid_type_0 pdf cidty0font dcdr
         | CIDFontType2(cidty2font) -> pdfobject_of_cid_type_2 pdf cidty2font dcdr
@@ -1893,7 +1921,7 @@ module Type0
           ("/Type"           , Pdf.Name("/Font"));
           ("/Subtype"        , Pdf.Name("/Type0"));
           ("/Encoding"       , pdfobject_of_cmap pdf cmap);
-          ("/BaseFont"       , Pdf.Name("/" ^ base_font_ty0));  (* -- can be arbitrary name -- *)
+          ("/BaseFont"       , Pdf.Name("/" ^ (add_subset_tag subset_tag_opt base_font_ty0)));  (* -- can be arbitrary name -- *)
           ("/DescendantFonts", Pdf.Array[objdescend]);
           ("/ToUnicode"      , pdfobjtouc);
         ]
@@ -1924,7 +1952,7 @@ let make_decoder (abspath : abs_path) (d : Otfm.decoder) : decoder =
     match Otfm.flavour d with
     | Error(e)                        -> broken abspath e "make_decoder (flavour)"
     | Ok(Otfm.TTF_true | Otfm.TTF_OT) -> SubsetMap.create 32  (* temporary; initial size of hash tables *)
-    | Ok(Otfm.CFF)                    -> SubsetMap.create_dummy ()
+    | Ok(Otfm.CFF)                    -> SubsetMap.create 32  (* temporary; initial size of hash tables *)
   in
   let gidtbl = GlyphIDTable.create submap 256 in  (* temporary; initial size of hash tables *)
   let bboxtbl = GlyphBBoxTable.create 256 in  (* temporary; initial size of hash tables *)
@@ -1941,11 +1969,11 @@ let make_decoder (abspath : abs_path) (d : Otfm.decoder) : decoder =
   let kerntbl = get_kerning_table abspath d in
   let ligtbl = get_ligature_table abspath submap d in
   let mktbl = get_mark_table abspath units_per_em d in
-  let csinfo =
+  let cffinfo =
     match Otfm.cff d with
     | Error(e)          -> broken abspath e "make_decoder (cff)"
     | Ok(None)          -> None
-    | Ok(Some(cffinfo)) -> Some(cffinfo.Otfm.charstring_info)
+    | Ok(Some(cffinfo)) -> Some(cffinfo)
   in
     {
       file_path           = abspath;
@@ -1959,7 +1987,7 @@ let make_decoder (abspath : abs_path) (d : Otfm.decoder) : decoder =
       subset_map          = submap;
       glyph_id_table      = gidtbl;
       glyph_bbox_table    = bboxtbl;
-      charstring_info     = csinfo;
+      cff_info            = cffinfo;
       units_per_em        = units_per_em;
       default_ascent      = per_mille_raw units_per_em ascent;
       default_descent     = per_mille_raw units_per_em descent;

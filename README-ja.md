@@ -9,7 +9,13 @@
 
 *SATySFi*（英単語の “satisfy” と同様に発音します）は，静的型つきのいわゆる函数型言語が備わった，新しい組版処理システムです。構文は主にテキスト部分とプログラム部分からなり，前者はLaTeX風の構文で文書を執筆するために，後者はOCaml風の構文でコマンドを定義するために使われます。函数型プログラミングの要領でコマンドが定義でき，かつ静的に型がつけられるため，柔軟な記述とわかりやすいエラー報告が実現されています。
 
-本ソフトウェアは2017年度IPA未踏事業の1プロジェクトとして支援のもと開発され（概要は[こちら](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html)），2019年2月現在も発展を続けています。
+本ソフトウェアは以下のような支援のもと開発されました：
+
+* 2017年度IPA未踏事業（2017年6月–2018年2月．概要は[こちら](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html)）
+* 株式会社ドワンゴ（2018年10月–2019年3月．アルバイトとして）
+* [The SATySFi​book](https://booth.pm/ja/items/1127224)を購入頂いた，多くの匿名の支援者の方々
+
+また，2020年1月現在も発展を続けています。
 
 ## Homebrew を使ったインストール方法 (Mac ユーザ向け)
 
@@ -35,7 +41,7 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 * ruby
 * [opam](https://opam.ocaml.org/) 2.0 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
     * opam 2 をインストールするのに必要なツールである bubblewrap は，いくつかの環境において未だ簡単にはインストールできません。たとえば Windows Subsystem for Linux（WSL）や Ubuntu 16.04 が該当します。さしあたりの回避法として，`opam init` をする際に `--disable-sandboxing` オプションを渡すことで opam 2 を bubblewrap 無しにインストールすることができます。**詳細を [opam の FAQ](https://opam.ocaml.org/doc/FAQ.html#Why-does-opam-require-bwrap) で必ずご確認ください。**
-* ocaml 4.06.0 （OPAM からインストールします）
+* ocaml 4.10.0 （OPAM からインストールします）
 
 また，ビルドには外部 OPAM リポジトリの追加が必要です。これは以下のコマンドでできます：
 
@@ -54,7 +60,7 @@ sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.
 
 # 以下のコマンドは OPAM がファイルに追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。
-opam init --comp 4.06.0
+opam init --comp 4.10.0
 
 eval $(opam env)
 
@@ -73,7 +79,7 @@ brew install opam
 
 # 以下のコマンドは OPAM が（~/.bash_profile などの）ファイルに環境変数に関する設定を追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。
-opam init --comp 4.06.0
+opam init --comp 4.10.0
 
 eval $(opam env)
 

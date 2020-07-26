@@ -40,6 +40,12 @@ module ResultMonad : sig
   val err : 'b -> ('a, 'b) result
 end
 
+module EscapeMonad : sig
+  val ( >>= ) : [< `Continue of 'a | `Escape of 'b ] -> ('a -> ([> `Escape of 'b ] as 'c)) -> 'c
+  val continue : 'a -> [> `Continue of 'a ]
+  val escape : 'a -> [> `Escape of 'a ]
+  val force : [< `Escape of 'a ] -> 'a
+end
 
 val ( += ) : int ref -> int -> unit
 

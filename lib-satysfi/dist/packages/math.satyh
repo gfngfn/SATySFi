@@ -130,7 +130,6 @@ module Math : sig
   direct \nsim : [] math-cmd
   direct \simeq : [] math-cmd
   direct \nsimeq : [] math-cmd
-  direct \approx : [] math-cmd
   direct \propto : [] math-cmd
   direct \coloneq : [] math-cmd
   direct \eqcolon : [] math-cmd
@@ -501,6 +500,7 @@ end = struct
   let-inline ctx \eqn ?:tagopt math =
     inline-fil ++
       embed-block-breakable ctx (math-scheme ctx tagopt math)
+        ++ omit-skip-after
 
 
   let-block ctx +math-list mlst =
@@ -529,6 +529,7 @@ end = struct
   let-inline ctx \math-list mlst =
     inline-fil ++
       embed-block-breakable ctx (read-block ctx '<+math-list(mlst);>)
+        ++ omit-skip-after
 
 
   let-block ctx +align mlstlst =
@@ -571,6 +572,7 @@ end = struct
   let-inline ctx \align mlstlst =
     inline-fil ++
       embed-block-breakable ctx (read-block ctx '<+align(mlstlst);>)
+        ++ omit-skip-after
 
 
   let math-list lst =
@@ -726,7 +728,6 @@ end = struct
   let-math \nsim = rel `≁`
   let-math \simeq = rel `≃`
   let-math \nsimeq = rel `≄`
-  let-math \approx = rel `≈`
   let-math \propto = rel `∝`
   let-math \coloneq = rel `≔`
   let-math \eqcolon = rel `≕`
@@ -837,8 +838,8 @@ end = struct
   let-math \mapsto = rel `↦`
   let-math \hookleftarrow = rel `↩`
   let-math \hookrightarrow = rel `↪`
-  let-math \rightarrowtail = rel `↢`
-  let-math \leftarrowtail = rel `↣`
+  let-math \rightarrowtail = rel `↣`
+  let-math \leftarrowtail = rel `↢`
   let-math \twoheadleftarrow = rel `↞`
   let-math \twoheadrightarrow = rel `↠`
   let-math \twoheaduparrow = rel `↟`

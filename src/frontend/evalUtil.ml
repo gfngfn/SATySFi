@@ -537,6 +537,13 @@ let make_hook (reducef : syntactic_value -> syntactic_value list -> syntactic_va
   )
 
 
+let make_column_hook_func reducef valuef : HorzBox.column_hook_func =
+  (fun () ->
+    let valueret = reducef valuef [BaseConstant(BCUnit)] in
+    get_vert valueret
+  )
+
+
 let make_page_content_scheme_func reducef valuef : HorzBox.page_content_scheme_func =
   (fun pbinfo ->
      let valuepbinfo = make_page_break_info pbinfo in
@@ -689,6 +696,8 @@ let get_math_command_func _ valuemcmd =
 
 let make_math_command_func (MathCommand(valuemcmd)) = valuemcmd
 
+let get_code_text_command_func _ valuectcmd =
+  CodeTextCommand(valuectcmd)
 
 let make_list (type a) (makef : a -> syntactic_value) (lst : a list) : syntactic_value =
   List(lst |> List.map makef)
@@ -707,12 +716,18 @@ let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
     ) Length.zero
   in
   let trilst = hblstlst |> List.map (fun hblst -> LineBreak.fit hblst wid) in
-  let imvblst =
-    trilst |> List.fold_left (fun imvbacc (imhblst, hgt, dpt) ->
-      Alist.extend imvbacc (VertLine(hgt, dpt, imhblst))
+  let vblst =
+    trilst |> List.fold_left (fun vbacc (imhblst, hgt, dpt) ->
+      let vb =
+        VertParagraph({
+          margin_top    = None;
+          margin_bottom = None;
+        }, [VertParagLine(hgt, dpt, imhblst)])
+      in
+      Alist.extend vbacc vb
     ) Alist.empty |> Alist.to_list
   in
-  (wid, imvblst)
+  (wid, vblst)
 
 
 let const_unit = BaseConstant(BCUnit)
@@ -728,3 +743,9 @@ let make_path p = BaseConstant(BCPath(p))
 let make_prepath pp = BaseConstant(BCPrePath(pp))
 let make_graphics g = BaseConstant(BCGraphics(g))
 let make_image_key i = BaseConstant(BCImageKey(i))
+
+
+let lift_string_to_code_value (s : string) = CodeValue(CdBaseConstant(BCString(s)))
+let lift_integer_to_code_value (n : int) = CodeValue(CdBaseConstant(BCInt(n)))
+let lift_float_to_code_value (r : float) = CodeValue(CdBaseConstant(BCFloat(r)))
+let lift_length_to_code_value (len : length) = CodeValue(CdBaseConstant(BCLength(len)))

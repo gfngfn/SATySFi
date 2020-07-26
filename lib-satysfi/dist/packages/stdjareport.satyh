@@ -3,6 +3,7 @@
 @require: gr
 @require: list
 @require: math
+@require: code
 @require: color
 @require: option
 @require: annot
@@ -33,6 +34,7 @@ module StdJaReport : sig
 
   val font-latin-roman  : string * float * float
   val font-latin-italic : string * float * float
+  val font-latin-bold   : string * float * float
   val font-latin-sans   : string * float * float
   val font-latin-mono   : string * float * float
   val font-cjk-mincho   : string * float * float
@@ -46,6 +48,12 @@ module StdJaReport : sig
   direct +chapter : [string?; string?; inline-text; block-text] block-cmd
   direct +section : [string?; string?; inline-text; block-text] block-cmd
   direct +subsection : [string?; string?; inline-text; block-text] block-cmd
+  direct +definition : [inline-text?; string?; inline-text] block-cmd
+  direct +theorem : [inline-text?; string?; inline-text] block-cmd
+  direct +example : [inline-text?; string?; inline-text] block-cmd
+  direct +lemma : [inline-text?; string?; inline-text] block-cmd
+  direct +corollary : [inline-text?; string?; inline-text] block-cmd
+  direct +proof : [inline-text?; inline-text] block-cmd
   direct \emph : [inline-text] inline-cmd
   direct \dfn : [inline-text] inline-cmd
   direct \footnote : [inline-text] inline-cmd
@@ -107,6 +115,7 @@ end = struct
 
   let font-latin-roman  = (`Junicode`   , font-ratio-latin, 0.)
   let font-latin-italic = (`Junicode-it`, font-ratio-latin, 0.)
+  let font-latin-bold   = (`Junicode-b` , font-ratio-latin, 0.)
   let font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
   let font-latin-mono   = (`lmmono`    , font-ratio-latin, 0.)
   let font-cjk-mincho   = (`ipaexm`    , font-ratio-cjk  , 0.)
@@ -124,6 +133,7 @@ end = struct
 
   let get-standard-context wid =
     get-initial-context wid (command \math)
+      |> set-code-text-command (command \code)
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese
@@ -260,7 +270,7 @@ end = struct
     let show-pages = config#show-pages in
 
     let () =
-      register-cross-reference `changed` `F`
+      FootnoteScheme.initialize ()
     in
 
     let ctx-doc = get-standard-context txtwid in
@@ -352,6 +362,7 @@ end = struct
   let-mutable num-chapter <- 0
   let-mutable num-section <- 0
   let-mutable num-subsection <- 0
+  let-mutable num-theorems <- 0
 
 
   let quad-indent ctx =
@@ -382,8 +393,11 @@ end = struct
     let outline-title = Option.from (extract-string ib-title) outline-title-opt in
     let () = outline-ref <- (0, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
     let bb-title =
-      block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
-        chapter-heading ctx (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))))
+      let ib =
+        inline-frame-breakable no-pads (Annot.register-location-frame label)
+          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+      in
+      chapter-heading ctx ib
     in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
@@ -406,9 +420,11 @@ end = struct
     let outline-title = Option.from (extract-string ib-title) outline-title-opt in
     let () = outline-ref <- (1, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
     let bb-title =
-      block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
-        (section-heading ctx
-          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))))
+      let ib =
+        inline-frame-breakable no-pads (Annot.register-location-frame label)
+          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+      in
+      section-heading ctx ib
     in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
@@ -463,6 +479,69 @@ end = struct
       subsection-scheme ctx label title outline-title-opt inner
 
 
+  let theorem-scheme ctx ctxf category wordopt label inner =
+    let () = increment num-theorems in
+    let s-num =
+      (arabic (!num-chapter)) ^ `.` ^ (arabic (!num-section)) ^ `.` ^ (arabic (!num-theorems))
+    in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+    let it-num = embed-string s-num in
+    let ib-dfn =
+      read-inline (ctx |> set-latin-font font-latin-bold) {#category; #it-num;}
+    in
+    let ib-word =
+      match wordopt with
+      | None       -> inline-nil
+      | Some(word) -> read-inline ctx {\ (#word;).}
+    in
+    let ib-inner = read-inline (ctxf ctx) inner in
+      line-break true true ctx
+        (ib-dfn ++ ib-word ++ inline-skip (get-font-size ctx) ++ ib-inner ++ inline-fil)
+
+
+  let make-label prefix labelopt =
+    match labelopt with
+    | None    -> generate-fresh-label ()
+    | Some(s) -> prefix ^ s
+
+
+  let-block ctx +definition ?:wordopt ?:labelopt inner =
+    let label = make-label `definition:` labelopt in
+      theorem-scheme ctx (fun x -> x) {Definition} wordopt label inner
+
+
+  let-block ctx +theorem ?:wordopt ?:labelopt inner =
+    let label = make-label `theorem:` labelopt in
+      theorem-scheme ctx (set-latin-font font-latin-italic) {Theorem} wordopt label inner
+
+
+  let-block ctx +lemma ?:wordopt ?:labelopt inner =
+    let label = make-label `lemma:` labelopt in
+      theorem-scheme ctx (set-latin-font font-latin-italic) {Lemma} wordopt label inner
+
+
+  let-block ctx +corollary ?:wordopt ?:labelopt inner =
+    let label = make-label `corollary:` labelopt in
+      theorem-scheme ctx (set-latin-font font-latin-italic) {Corollary} wordopt label inner
+
+
+  let-block ctx +example ?:wordopt ?:labelopt inner =
+    let label = make-label `example:` labelopt in
+      theorem-scheme ctx (fun x -> x) {Example} wordopt label inner
+
+
+  let-block ctx +proof ?:wordopt inner =
+    let ib-heading =
+      let ctx = ctx |> set-latin-font font-latin-italic in
+        match wordopt with
+        | None    -> read-inline ctx {Proof.}
+        | Some(w) -> read-inline ctx {Proof of #w;.}
+    in
+    let ib-box = read-inline ctx {▪} in
+      line-break true true ctx
+        (ib-heading ++ inline-skip (get-font-size ctx) ++ read-inline ctx inner ++ inline-fil ++ ib-box)
+
+
   let-inline ctx \emph inner =
     let ctx =
       ctx |> set-font Latin font-latin-sans
@@ -496,7 +575,7 @@ end = struct
     in
       FootnoteScheme.main ctx ibf bbf
 
-  end
+end
 
 
 let document = StdJaReport.document

@@ -77,7 +77,7 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = M
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"
         ~type_:{|
-~% (tCMD @-> tCTX @-> tCTX)
+~% (tICMD tMATH @-> tCTX @-> tCTX)
 |}
         ~fields:[
         ]
@@ -90,6 +90,23 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = M
         ~code:{|
 let mcmd = get_math_command_func reducef valuecmd in
 Context(ctx, { ctxsub with math_command = mcmd; })
+|}
+    ; inst "PrimitiveSetCodeTextCommand"
+        ~name:"set-code-text-command"
+        ~type_:{|
+~% (tICMD tS @-> tCTX @-> tCTX)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "valuecmd";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let ctcmd = get_code_text_command_func reducef valuecmd in
+Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
     ; inst "BackendMathVariantCharDirect"
         ~name:"math-variant-char"
@@ -641,6 +658,24 @@ make_path (List.append pathlst1 pathlst2)
         ~code:{|
 make_path (List.map (shift_path ptshift) pathlst)
 |}
+    ; inst "PathLinearTransform"
+        ~name:"linear-transform-path"
+        ~type_:{|
+~% (tFL @-> tFL @-> tFL @-> tFL @-> tPATH @-> tPATH)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "a" ~type_:"float";
+          param "b" ~type_:"float";
+          param "c" ~type_:"float";
+          param "d" ~type_:"float";
+          param "pathlst" ~type_:"path_value";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+make_path (List.map (linear_transform_path ((a, b), (c, d))) pathlst)
+|}
     ; inst "PathGetBoundingBox"
         ~name:"get-path-bbox"
         ~type_:{|
@@ -961,7 +996,10 @@ make_font_value (abbrev, size_ratio, rising_ratio)
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
+let open HorzBox in
+let br_top    = if is_breakable_top then Breakable else Unbreakable in
+let br_bottom = if is_breakable_bottom then Breakable else Unbreakable in
+let imvblst = LineBreak.main (br_top, ctx.paragraph_top) (br_bottom, ctx.paragraph_bottom) ctx hblst in
 make_vert imvblst
 |}
     ; inst "BackendPageBreaking"
@@ -982,7 +1020,30 @@ make_vert imvblst
         ~code:{|
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagepartsf, vblst))
+|}
+    ; inst "BackendPageBreakingTwoColumn"
+        ~name:"page-break-two-column"
+        ~type_:{|
+~% (tPG @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "pagesize" ~type_:"page_size";
+          param "origin_shift" ~type_:"length";
+          param "valuecolumnhookf";
+          param "valuepagecontf";
+          param "valuepagepartsf";
+          param "vblst" ~type_:"vert";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let columnhookf = make_column_hook_func reducef valuecolumnhookf in
+let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), columnhookf, pagecontf, pagepartsf, vblst))
 |}
     ; inst "BackendVertFrame"
         ~name:"block-frame-breakable"
@@ -1009,15 +1070,19 @@ let vblst =
   let valuev = reducef valuek [valuectxsub] in
   get_vert valuev
 in
+let margins =
+  HorzBox.{
+    margin_top    = Some((Breakable, ctx.paragraph_top));
+    margin_bottom = Some((Breakable, ctx.paragraph_bottom));
+  }
+in
 make_vert (HorzBox.([
-  VertTopMargin(true, ctx.paragraph_top);
-  VertFrame(pads,
-              make_frame_deco reducef valuedecoS,
-              make_frame_deco reducef valuedecoH,
-              make_frame_deco reducef valuedecoM,
-              make_frame_deco reducef valuedecoT,
-              ctx.paragraph_width, vblst);
-  VertBottomMargin(true, ctx.paragraph_bottom);
+  VertFrame(margins, pads,
+    make_frame_deco reducef valuedecoS,
+    make_frame_deco reducef valuedecoH,
+    make_frame_deco reducef valuedecoM,
+    make_frame_deco reducef valuedecoT,
+    ctx.paragraph_width, vblst);
 ]))
 |}
     ; inst "BackendAddFootnote"
@@ -1140,7 +1205,7 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
     ; inst "PrimitiveGetInitialContext"
         ~name:"get-initial-context"
         ~type_:{|
-~% (tLN @-> tCMD @-> tCTX)
+~% (tLN @-> tICMD tMATH @-> tCTX)
 |}
         ~fields:[
         ]
@@ -1153,9 +1218,11 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
         ~code:{|
 let ctx = Primitives.get_pdf_mode_initial_context txtwid in
 let mcmd = get_math_command_func reducef valuecmd in
+let ctcmd = DefaultCodeTextCommand in
 let ctxsub =
   {
     math_command = mcmd;
+    code_text_command = ctcmd;
     dummy = ();
   }
 in
@@ -1216,6 +1283,23 @@ Context(HorzBox.({ ctx with
   space_natural = max 0. ratio_natural;
   space_shrink  = max 0. ratio_shrink;
   space_stretch = max 0. ratio_stretch;
+}), ctxsub)
+|}
+    ; inst "PrimitiveSetAdjacentStretchRatio"
+        ~name:"set-adjacent-stretch-ratio"
+        ~type_:{|
+~% (tFL @-> tCTX @-> tCTX)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "ratio" ~type_:"float";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+Context(HorzBox.({ ctx with
+  adjacent_stretch = max 0. ratio;
 }), ctxsub)
 |}
     ; inst "PrimitiveSetSpaceRatioBetweenScripts"
@@ -2084,6 +2168,27 @@ let ilst = get_list get_int valueilst in
 let s = (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8 in
 make_string s
 |}
+    ; inst "PrimitiveStringExplode"
+        ~name:"string-explode"
+        ~type_:{|
+~% (tS @-> (tL tI))
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "str" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let ilst =
+  str
+  |> InternalText.of_utf8
+  |> InternalText.to_uchar_list
+  |> List.map Uchar.to_int
+in
+make_list make_int ilst
+|}
     ; inst "PrimitiveRegExpOfString"
         ~name:"regexp-of-string"
         ~type_:{|
@@ -2667,6 +2772,36 @@ make_float (atan flt1)
         ~code:{|
 make_float (atan2 flt1 flt2)
 |}
+    ; inst "FloatLogarithm"
+        ~name:"log"
+        ~type_:{|
+~% (tFL @-> tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "flt" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_float (log flt)
+|}
+    ; inst "FloatExponential"
+        ~name:"exp"
+        ~type_:{|
+~% (tFL @-> tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "flt" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_float (exp flt)
+|}
     ; inst "LengthPlus"
         ~name:"+'"
         ~type_:{|
@@ -2904,5 +3039,81 @@ const_unit
         ~code:{|
 Outline.register (get_list get_outline ol);
 const_unit
+|}
+    ; inst "AbortWithMessage"
+        ~name:"abort-with-message"
+        ~type_:{|
+let tv = (let bid = BoundID.fresh UniversalKind () in PolyBound(bid)) in
+~% (tS @-> (~@ tv))
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "msg" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+raise (report_dynamic_error msg)
+|}
+    ; inst "LiftString"
+        ~name:"lift-string"
+        ~type_:{|
+~% (tS @-> tCODE tS)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "s" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_string_to_code_value s
+|}
+    ; inst "LiftInt"
+        ~name:"lift-int"
+        ~type_:{|
+~% (tI @-> tCODE tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "n" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_integer_to_code_value n
+|}
+    ; inst "LiftFloat"
+        ~name:"lift-float"
+        ~type_:{|
+~% (tFL @-> tCODE tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "r" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_float_to_code_value r
+|}
+    ; inst "LiftLength"
+        ~name:"lift-length"
+        ~type_:{|
+~% (tLN @-> tCODE tLN)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "len" ~type_:"length";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_length_to_code_value len
 |}
     ])

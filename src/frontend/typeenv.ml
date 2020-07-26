@@ -95,6 +95,7 @@ type t =
     current_address : current_address;
     name_to_id_map  : name_to_id_map;
     main_tree       : single_stage ModuleTree.t;
+    macros          : (macro_type * EvalVarID.t) VarMap.t;
   }
 
 
@@ -115,6 +116,7 @@ let empty : t =
     current_address = Alist.empty;
     name_to_id_map  = ModuleNameMap.empty;
     main_tree       = ModuleTree.empty (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None);
+    macros          = VarMap.empty;
   }
 
 
@@ -191,6 +193,15 @@ let get_candidates_last pair =
 
 let get_candidates foldf map nm =
   get_candidates_last @@ get_candidates_first foldf map nm
+
+
+let add_macro (tyenv : t) (csnm : ctrlseq_name) (macdef : macro_type * EvalVarID.t) : t =
+  let macros = tyenv.macros in
+  { tyenv with macros = macros |> VarMap.add csnm macdef }
+
+
+let find_macro (tyenv : t) (csnm : ctrlseq_name) : (macro_type * EvalVarID.t) option =
+  tyenv.macros |> VarMap.find_opt csnm
 
 
 (* PUBLIC *)
@@ -545,11 +556,8 @@ let rec fix_manual_type_general (type a) (type b) (dpmode : dependency_mode) (ty
 
           in
           begin
-            match dpmode with
-            | NoDependency ->
-                find_in_variant_environment ()
-
-            | DependentMode(dg) ->
+            match (mdlnmlst, dpmode) with
+            | ([], DependentMode(dg)) ->
                 begin
                   try
                     match DependencyGraph.find_vertex dg tynm with
@@ -577,6 +585,9 @@ let rec fix_manual_type_general (type a) (type b) (dpmode : dependency_mode) (ty
                   with
                   | DependencyGraph.UndefinedSourceVertex -> find_in_variant_environment ()
                 end
+
+            | _ ->
+                find_in_variant_environment ()
           end
 
       | MTypeParam(tyargnm) ->
@@ -836,10 +847,10 @@ let rec add_mutual_cons (tyenv : t) (lev : level) (mutvarntcons : untyped_mutual
                 List.iter iter mtyarglist;
               end
             else
-              ()
+              List.iter iter mtyarglist
 
-        | MTypeName(_, mdlnmlst, tynm) ->
-            ()
+        | MTypeName(mtyarglist, mdlnmlst, tynm) ->
+            List.iter iter mtyarglist
     in
     let iter = add_each_dependency_as_edge in
       match mutvarntcons with

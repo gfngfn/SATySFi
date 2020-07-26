@@ -16,6 +16,18 @@ let report_bug_compiler_ast msg ast =
   failwith ("bug: " ^ msg)
 
 
+let make_loading_op (var : varloc) : instruction =
+  match var with
+  | GlobalVar(loc, evid, refs) ->
+      if !loc = Nil then
+        OpLoadGlobal(loc, evid, !refs)
+      else
+        OpPush(!loc)
+
+  | LocalVar(lv, off, evid, refs) ->
+      OpLoadLocal(lv, off, evid, !refs)
+
+
 let rec compile_list irlist cont =
   let rec iter irlist cont =
     match irlist with
@@ -48,6 +60,9 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
     | IRInputHorzEmbeddedMath(irmath) ->
         CompiledInputHorzEmbeddedMath(compile irmath [])
 
+    | IRInputHorzEmbeddedCodeText(s) ->
+        CompiledInputHorzEmbeddedCodeText(s)
+
     | IRInputHorzContent(ir) ->
         CompiledInputHorzContent(compile ir [])
     )
@@ -67,6 +82,9 @@ and compile_code_input_horz (irihlst : (ir input_horz_element_scheme) list) =
   | InputHorzEmbeddedMath(irmath) ->
       let compiled = compile irmath [] in
       InputHorzEmbeddedMath(compiled)
+
+  | InputHorzEmbeddedCodeText(s) ->
+      InputHorzEmbeddedCodeText(s)
 
   | InputHorzContent(ir) ->
       let compiled = compile ir [] in
@@ -100,21 +118,21 @@ and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
   )
 
 
-and compile_code_pattern_branch (irpatbr : ir pattern_branch_scheme) =
+and compile_code_pattern_branch (irpatbr : ir_pattern_branch) : (instruction list) ir_pattern_branch_scheme =
   match irpatbr with
-  | PatternBranch(pat, ir1) ->
+  | IRPatternBranch(irpat, ir1) ->
       let compiled1 = compile ir1 [] in
-      PatternBranch(pat, compiled1)
+      IRPatternBranch(irpat, compiled1)
 
-  | PatternBranchWhen(pat, ir, ir1) ->
+  | IRPatternBranchWhen(irpat, ir, ir1) ->
       let compiled = compile ir [] in
       let compiled1 = compile ir1 [] in
-      PatternBranchWhen(pat, compiled, compiled1)
+      IRPatternBranchWhen(irpat, compiled, compiled1)
 
 
-and compile_code_letrec_binding (LetRecBinding(evid, irpatbr) : ir letrec_binding_scheme) =
+and compile_code_letrec_binding (IRLetRecBinding(var, irpatbr) : ir_letrec_binding) : (instruction list) ir_letrec_binding_scheme =
   let comppatbr = compile_code_pattern_branch irpatbr in
-  LetRecBinding(evid, comppatbr)
+  IRLetRecBinding(var, comppatbr)
 
 
 and compile_path pathcomplst (cycleopt : unit ir_path_component option) =
@@ -165,17 +183,21 @@ and compile (ir : ir) (cont : instruction list) =
   (* -- fundamentals -- *)
 
   | IRContentOf(var) ->
-      begin
-        match var with
-        | GlobalVar(loc, evid, refs) ->
-            if !loc = Nil then
-              OpLoadGlobal(loc, evid, !refs) :: cont
-            else
-              OpPush(!loc) :: cont
+      let loadop = make_loading_op var in
+      loadop :: cont
 
-        | LocalVar(lv, off, evid, refs) ->
-            OpLoadLocal(lv, off, evid, !refs) :: cont
-      end
+  | IRPersistent(var) ->
+      let evid =
+        match var with
+        | GlobalVar(_, evid, _)   -> evid
+        | LocalVar(_, _, evid, _) -> evid
+      in
+      let rng = Range.dummy "IRPersistent" in
+      OpPush(CodeValue(CdPersistent(rng, evid))) :: cont
+
+  | IRSymbolOf(var) ->
+      let loadop = make_loading_op var in
+      loadop :: OpConvertSymbolToCode :: cont
 
   | IRLetRecIn(recbinds, ast2) ->
       let binds =
@@ -290,6 +312,36 @@ and compile (ir : ir) (cont : instruction list) =
   | IRCodeLetRecIn(irrecbinds, ir2) ->
       let instrs2 = compile ir2 [] in
       OpCodeLetRec(List.map compile_code_letrec_binding irrecbinds, instrs2) :: cont
+
+  | IRCodeLetNonRecIn(irpat, ir1, ir2) ->
+      let instrs1 = compile ir1 [] in
+      let instrs2 = compile ir2 [] in
+      OpCodeLetNonRec(irpat, instrs1, instrs2) :: cont
+
+  | IRCodeFunction(optvars, irpat, ir1) ->
+      let instrs1 = compile ir1 [] in
+      OpCodeFunction(optvars, irpat, instrs1) :: cont
+
+  | IRCodeLetMutableIn(var, ir1, ir2) ->
+      let instrs1 = compile ir1 [] in
+      let instrs2 = compile ir2 [] in
+      OpCodeLetMutable(var, instrs1, instrs2) :: cont
+
+  | IRCodeOverwrite(var, ir1) ->
+      let loadop = make_loading_op var in
+      let instrs1 = compile ir1 [] in
+      loadop :: OpCodeOverwrite(instrs1) :: cont
+
+  | IRCodeModule(ir1, ir2) ->
+      let instrs1 = compile ir1 [] in
+      let instrs2 = compile ir2 [] in
+      OpCodeModule(instrs1, instrs2) :: cont
+
+  | IRCodeFinishHeaderFile ->
+      OpCodeFinishHeaderFile :: cont
+
+  | IRCodeFinishStruct ->
+      OpCodeFinishStruct :: cont
 
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =

@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "satysfi"
-version: "0.0.3"
+version: "0.0.5"
 maintainer: "gfngfn"
 authors: [
   "gfngfn"
@@ -20,21 +20,21 @@ remove: [
 ]
 # Packages whose version suffix is "+satysfi" are distributed on satysfi-external-repo.
 depends: [
-  "ocaml" {>= "4.06.0"}
+  "ocaml" {>= "4.08.0"}
   "batteries"
   "camlimages" {>= "5.0.1"}
-  "camlpdf" {= "2.2.2+satysfi"}
-  "core_kernel" {>= "v0.10.0"}
+  "camlpdf" {= "2.3.1+satysfi"}
+  "core_kernel" {>= "v0.13"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "depext"
   "dune" {build}
   "menhir"
   "ocamlfind" {build}
-  "otfm" {= "0.3.5+satysfi"}
+  "otfm" {= "0.3.7+satysfi"}
   "ppx_deriving"
   "re" {build}
   "uutf"
-  "yojson" {= "1.4.1+satysfi"}
+  "yojson-with-position" {= "1.4.2+satysfi"}
   "omd"
 ]
 synopsis: "A statically-typed, functional typesetting system"

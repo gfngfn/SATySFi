@@ -92,8 +92,8 @@ and embed_page_info_vert (pbinfo : page_break_info) (imvblst : intermediate_vert
           let evvb = EvVertLine(hgt, dpt, imvblst) in
           (extV evvb, appendF footnotelst)
 
-      | ImVertFixedEmpty(vskip) ->
-          (extV (EvVertFixedEmpty(vskip)), footnoteacc)
+      | ImVertFixedEmpty(debug_margins, vskip) ->
+          (extV (EvVertFixedEmpty(debug_margins, vskip)), footnoteacc)
 
       | ImVertFrame(pads, deco, wid, imvblst) ->
           let (evvblst, footnotelst) = embed_page_info_vert pbinfo imvblst in

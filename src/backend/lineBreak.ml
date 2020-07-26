@@ -205,6 +205,7 @@ let can_break_before tail =
 
         | HorzScriptGuard(_)
         | HorzFrameBreakable(_)
+        | HorzOmitSkipAfter
             -> true
 
         | HorzPure(phb) ->
@@ -224,6 +225,48 @@ let can_break_before tail =
             end
 
       end
+
+
+let is_whitespace_character (uch : Uchar.t) : bool =
+  match LineBreakDataMap.find uch with
+  | SP | INBR -> true
+  | _         -> false
+     (* --
+        needs re-consideration:
+        it may be better to use the criterion of whether
+        the general category of the given character is `Zs` or not.
+        -- *)
+
+
+let rec omit_space_uchars (uchlst : Uchar.t list) : Uchar.t list =
+  match uchlst with
+  | []             -> []
+  | uch :: uchtail -> if is_whitespace_character uch then omit_space_uchars uchtail else uchlst
+
+
+let rec omit_skips (hblst : horz_box list) : horz_box list =
+  match hblst with
+  | HorzPure(phb) :: tail ->
+      begin
+        match phb with
+        | PHSOuterEmpty(_)
+        | PHSOuterFil
+        | PHSFixedEmpty(_) ->
+            omit_skips tail
+
+        | PHCInnerString(ctxmain, uchlst) ->
+            begin
+              match omit_space_uchars uchlst with
+              | []     -> omit_skips tail
+              | uchlst -> HorzPure(PHCInnerString(ctxmain, uchlst)) :: tail
+            end
+
+        | _ ->
+            hblst
+      end
+
+  | _ ->
+      hblst
 
 
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list =
@@ -258,6 +301,10 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
         let lbelstG = convert_list_for_line_breaking hblstG in
         let lhblstG = normalize_chunks lbelstG in
           aux (Alist.extend lbeacc (ScriptGuard(scriptR, scriptL, lhblstG))) tail
+
+    | HorzOmitSkipAfter :: tail ->
+        let tail = omit_skips tail in
+        aux lbeacc tail
   in
     aux Alist.empty hblst
 
@@ -289,6 +336,10 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
     | HorzScriptGuard(scriptL, scriptR, hblstG) :: tail ->
         let lphblstG = convert_list_for_line_breaking_pure hblstG in
           aux (Alist.extend lbpeacc (PScriptGuard(scriptL, scriptR, lphblstG))) tail
+
+    | HorzOmitSkipAfter :: tail ->
+        let tail = omit_skips tail in
+        aux lbpeacc tail
   in
   let lbpelst = aux Alist.empty hblst in
     normalize_chunks_pure lbpelst
@@ -586,10 +637,10 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 
 
 type line_break_info = {
-  is_breakable_top    : bool;
-  is_breakable_bottom : bool;
-  margin_top          : length;
-  margin_bottom       : length;
+  breakability_top    : breakability;
+  breakability_bottom : breakability;
+  paragraph_margin_top    : length;
+  paragraph_margin_bottom : length;
   paragraph_width     : length;
   leading_required    : length;
   vskip_min           : length;
@@ -601,20 +652,26 @@ type line_either =
   | PureLine    of lb_pure_box list
   | AlreadyVert of length * vert_box list
 
+type paragraph_accumulator = {
+  previous_depth        : length;
+  saved_margin_top      : (breakability * length) option;
+  accumulated_paragraph : paragraph_element Alist.t;
+}
+
+type arrangement_state =
+  | BuildingVertList
+  | BuildingParagraph of paragraph_accumulator
+
+type arrangement_accumulator = {
+  state       : arrangement_state;
+  accumulated : vert_box Alist.t;
+}
 
 let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) (lhblst : lb_box list) : vert_box list =
 
-  let calculate_vertical_skip (dptoptprev : length option) (hgt : length) : vert_box list =
-    match dptoptprev with
-    | Some(dptprev) ->
-        let vskipraw = lbinfo.leading_required -% (Length.negate dptprev) -% hgt in
-        let vskip =
-          if vskipraw <% lbinfo.vskip_min then lbinfo.vskip_min else vskipraw
-        in
-          [VertFixedBreakable(vskip)]
-
-    | None ->
-        []
+  let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
+    let vskipraw = lbinfo.leading_required -% (Length.negate dptprev) -% hgt in
+    if vskipraw <% lbinfo.vskip_min then lbinfo.vskip_min else vskipraw
   in
 
   let append_framed_lines
@@ -698,6 +755,8 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
 
   (* --
      cut: cuts inline box list into lines based on the break point list `path`
+     * `acclines`: accumulated lines for building a paragraph
+     * `accline`: accumulated inline contents for building a single line
      -- *)
   let rec cut (acclines : line_either Alist.t) (accline : lb_pure_box Alist.t) (lhblst : lb_box list) : line_either Alist.t =
     match lhblst with
@@ -733,8 +792,11 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
         if not (List.mem dscrid path) then
           assert false
         else
+          let le = AlreadyVert(wid, vblst) in
           let acclinesnew =
-            Alist.extend (Alist.extend acclines (PureLine(Alist.to_list accline))) (AlreadyVert(wid, vblst))
+            match Alist.to_list accline with
+            | []     -> Alist.extend acclines le
+            | _ :: _ -> Alist.extend (Alist.extend acclines (PureLine(Alist.to_list accline))) le
           in
             cut acclinesnew Alist.empty tail
 
@@ -749,63 +811,134 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
           cut acclinesnew acclinenew tail
 
     | [] ->
-        Alist.extend acclines (PureLine(Alist.to_list accline))
+        begin
+          match Alist.to_list accline with
+          | []   -> acclines
+          | line -> Alist.extend acclines (PureLine(line))
+        end
   in
 
 
   (*  --
       arrange: inserts vertical spaces between lines and top/bottom margins
       -- *)
-  let rec arrange (prevopt : (length option * length) option) (accvlines : vert_box Alist.t) (lines : line_either list) =
+  let rec arrange (acc : arrangement_accumulator) (lines : line_either list) : vert_box list =
     match lines with
     | PureLine(line) :: tail ->
         let (evhblst, hgt, dpt) = determine_widths (Some(lbinfo.paragraph_width)) line in
         begin
-          match prevopt with
-          | None ->
-            (* -- first line -- *)
-              let margin_top =
-                lbinfo.margin_top +% (Length.max Length.zero (lbinfo.min_first_ascender -% hgt))
-              in
-              arrange (Some(Some(dpt), margin_top)) (Alist.extend Alist.empty (VertLine(hgt, dpt, evhblst))) tail
+          match acc.state with
+          | BuildingVertList ->
+              begin
+                match Alist.to_list_rev acc.accumulated with
+                | [] ->
+                  (* -- if `line` is the first line in the given paragraph -- *)
+                    let margin_top =
+                      lbinfo.paragraph_margin_top +% (Length.max Length.zero (lbinfo.min_first_ascender -% hgt))
+                    in
+                    let acc =
+                      {
+                        state = BuildingParagraph{
+                          saved_margin_top      = Some(lbinfo.breakability_top, margin_top);
+                          previous_depth        = dpt;
+                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(hgt, dpt, evhblst));
+                        };
+                        accumulated = Alist.empty;
+                      }
+                    in
+                    arrange acc tail
 
-          | Some(dptoptprev, margin_top) ->
-              let vblstskip = calculate_vertical_skip dptoptprev hgt in
-                arrange (Some(Some(dpt), margin_top)) (Alist.append accvlines (List.append vblstskip [VertLine(hgt, dpt, evhblst)])) tail
+                | _ :: _ ->
+                  (* -- if `line` is the first line after the embedded vertical boxes -- *)
+                    let accnew =
+                      {
+                        state = BuildingParagraph{
+                          saved_margin_top      = None;
+                          previous_depth        = dpt;
+                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(hgt, dpt, evhblst));
+                        };
+                        accumulated = acc.accumulated;
+                      }
+                    in
+                    arrange accnew tail
+              end
+
+          | BuildingParagraph(peacc) ->
+              let len = calculate_vertical_skip peacc.previous_depth hgt in
+              let parnew =
+                Alist.append peacc.accumulated_paragraph [
+                  VertParagSkip(len);
+                  VertParagLine(hgt, dpt, evhblst)
+                ];
+              in
+              let accnew =
+                {
+                  state = BuildingParagraph{
+                    saved_margin_top      = peacc.saved_margin_top;
+                    previous_depth        = dpt;
+                    accumulated_paragraph = parnew;
+                  };
+                  accumulated = acc.accumulated;
+                }
+              in
+              arrange accnew tail
         end
 
     | AlreadyVert(_, vblst) :: tail ->
         begin
-          match prevopt with
-          | None ->
-            (* -- first line -- *)
-              let opt = Some(None, lbinfo.margin_top) in
-                arrange opt (Alist.append accvlines vblst) tail
+          match acc.state with
+          | BuildingVertList ->
+              let accnew =
+                {
+                  state = BuildingVertList;
+                  accumulated = Alist.append acc.accumulated vblst;
+                }
+              in
+              arrange accnew tail
 
-          | Some(_, margin_top) ->
-              let opt = Some(None, margin_top) in
-                arrange opt (Alist.append accvlines vblst) tail
+          | BuildingParagraph(peacc) ->
+              let vbpar =
+                let parelems = Alist.to_list peacc.accumulated_paragraph in
+                let margins =
+                  {
+                    margin_top    = peacc.saved_margin_top;
+                    margin_bottom = None;
+                  }
+                in
+                VertParagraph(margins, parelems)
+              in
+              let accnew =
+                {
+                  state = BuildingVertList;
+                  accumulated = Alist.append (Alist.extend acc.accumulated vbpar) vblst;
+                }
+              in
+              arrange accnew tail
         end
 
     | [] ->
-        let vbtop =
-          match prevopt with
-          | Some(_, margin_top) -> VertTopMargin(lbinfo.is_breakable_top, margin_top)
-          | None                -> VertTopMargin(lbinfo.is_breakable_top, lbinfo.margin_top)
-        in
-        let vbbottom =
-          let margin_bottom =
-            match prevopt with
-            | Some(Some(dpt), _)   -> lbinfo.margin_bottom +% (Length.max Length.zero (lbinfo.min_last_descender -% (Length.negate dpt)))
-            | Some(None, _) | None -> lbinfo.margin_bottom
-          in
-            VertBottomMargin(lbinfo.is_breakable_bottom, margin_bottom)
-        in
-          vbtop :: (Alist.to_list (Alist.extend accvlines vbbottom))
+        begin
+          match acc.state with
+          | BuildingVertList ->
+              Alist.to_list acc.accumulated
+
+          | BuildingParagraph(peacc) ->
+              let vbpar =
+                let parelems = Alist.to_list peacc.accumulated_paragraph in
+                let margins =
+                  {
+                    margin_top = peacc.saved_margin_top;
+                    margin_bottom = Some((lbinfo.breakability_bottom, lbinfo.paragraph_margin_bottom));
+                  }
+                in
+                VertParagraph(margins, parelems)
+              in
+              Alist.to_list (Alist.extend acc.accumulated vbpar)
+        end
   in
 
   let acclines = cut Alist.empty Alist.empty lhblst in
-    arrange None Alist.empty (Alist.to_list acclines)
+  arrange { state = BuildingVertList; accumulated = Alist.empty; } (Alist.to_list acclines)
 
 
 let natural (hblst : horz_box list) : intermediate_horz_box list * length * length =
@@ -818,7 +951,12 @@ let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list *
     determine_widths (Some(widreq)) lphblst
 
 
-let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : context_main) (hblst : horz_box list) : vert_box list =
+type lb_state =
+  | NormalState
+  | ImmediateAfterEmbeddedVert of DiscretionaryID.t
+
+
+let main ((breakability_top, paragraph_margin_top) : breakability * length) ((breakability_bottom, paragraph_margin_bottom) : breakability * length) (ctx : context_main) (hblst : horz_box list) : vert_box list =
 
   let paragraph_width = ctx.paragraph_width in
   let leading_required = ctx.leading in
@@ -877,7 +1015,12 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
     end
   in
 
-  let rec aux (iterdepth : int) (wmap : WidthMap.t) (lhblst : lb_box list) =
+  let unify_discretionary_points dscrid1 dscrid2 =
+    LineBreakGraph.add_vertex grph dscrid2;
+    LineBreakGraph.add_edge grph dscrid1 dscrid2 0
+  in
+
+  let rec aux (state : lb_state) (iterdepth : int) (wmap : WidthMap.t) (lhblst : lb_box list) : WidthMap.t =
     match lhblst with
     | LBDiscretionary(pnlty, dscrid, lphblst0, lphblst1, lphblst2) :: tail ->
         let widinfo0 = get_width_info_list lphblst0 in
@@ -890,7 +1033,7 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
           else
             wmapsub |> WidthMap.add_width_all widinfo0
         in
-          aux iterdepth wmapnew tail
+        aux NormalState iterdepth wmapnew tail
 
     | LBDiscretionaryList(pnlty, lphblst0, dscrlst) :: tail ->
         let widinfo0 = get_width_info_list lphblst0 in
@@ -911,27 +1054,41 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
             wmap |> WidthMap.add dscrid widinfo2
           ) wmapall
         in
-          aux iterdepth wmapnew tail
+        aux NormalState iterdepth wmapnew tail
 
     | LBEmbeddedVertBreakable(dscrid, _, _) :: tail ->
-        let (_, _) = update_graph wmap dscrid widinfo_zero 0 () in
+        begin
+          match state with
+          | ImmediateAfterEmbeddedVert(dscrid_last) ->
+              unify_discretionary_points dscrid_last dscrid
+
+          | NormalState ->
+              let (_, _) = update_graph wmap dscrid widinfo_zero 0 () in
+              ()
+        end;
         let wmapnew = WidthMap.empty |> WidthMap.add dscrid widinfo_zero in
-          aux iterdepth wmapnew tail
+        aux (ImmediateAfterEmbeddedVert(dscrid)) iterdepth wmapnew tail
 
     | LBPure(lphb) :: tail ->
         let widinfo = get_width_info lphb in
         let wmapnew = wmap |> WidthMap.add_width_all widinfo in
-          aux iterdepth wmapnew tail
+        aux NormalState iterdepth wmapnew tail
 
     | LBFrameBreakable(pads, wid1, wid2, _, _, _, _, lhblstsub) :: tail ->
-        let wmapsub = aux (iterdepth + 1) wmap lhblstsub in
-          aux iterdepth wmapsub tail
+        let wmapsub = aux NormalState (iterdepth + 1) wmap lhblstsub in
+        aux NormalState iterdepth wmapsub tail
 
     | [] ->
         if iterdepth = 0 then
-          let dscrid = DiscretionaryID.final in
-          let (_, wmapfinal) = update_graph wmap dscrid widinfo_zero 0 () in
-            wmapfinal
+          match state with
+          | ImmediateAfterEmbeddedVert(dscrid_last) ->
+              unify_discretionary_points dscrid_last DiscretionaryID.final;
+              wmap
+
+          | NormalState ->
+              let dscrid = DiscretionaryID.final in
+              let (_, wmapfinal) = update_graph wmap dscrid widinfo_zero 0 () in
+              wmapfinal
         else
           wmap
   in
@@ -942,25 +1099,27 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
     LineBreakGraph.add_vertex grph DiscretionaryID.beginning;
     let lbelst = convert_list_for_line_breaking hblst in
     let lhblst = normalize_chunks lbelst in
-    let _ (* wmapfinal *) = aux 0 wmapinit lhblst in
+    let _ = aux NormalState 0 wmapinit lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
       | None ->
         (* -- when no set of discretionary points is suitable for line breaking -- *)
           Format.printf "LineBreak> UNREACHABLE\n";  (* for debug *)
           let (imhblst, hgt, dpt) = natural hblst in
-            [
-              VertTopMargin(is_breakable_top, margin_top);
-              VertLine(hgt, dpt, imhblst);
-              VertBottomMargin(is_breakable_bottom, margin_bottom);
-            ]
+          let margins =
+            {
+              margin_top    = Some((breakability_top, paragraph_margin_top));
+              margin_bottom = Some((breakability_bottom, paragraph_margin_bottom));
+            }
+          in
+          [ VertParagraph(margins, [ VertParagLine(hgt, dpt, imhblst) ]); ]
 
       | Some(path) ->
           break_into_lines {
-            is_breakable_top;
-            is_breakable_bottom;
-            margin_top;
-            margin_bottom;
+            breakability_top;
+            breakability_bottom;
+            paragraph_margin_top;
+            paragraph_margin_bottom;
             paragraph_width;
             leading_required;
             vskip_min;

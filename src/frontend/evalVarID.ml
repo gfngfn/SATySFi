@@ -37,3 +37,6 @@ let pp fmt evid =
 
 
 let get_varnm (evid : t) = evid.name
+
+
+let get_range (evid : t) = evid.range
