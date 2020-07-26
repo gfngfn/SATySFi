@@ -1,9 +1,11 @@
+@stage: persistent
 
 module Option
 : sig
     val map : ('a -> 'b) -> 'a option -> 'b option
     val from : 'a -> 'a option -> 'a
     val bind : 'a option -> ('a -> 'b option) -> 'b option
+    val is-none : 'a option -> bool
   end
 = struct
 
@@ -18,5 +20,10 @@ module Option
     let-rec bind
       | (None)    f = None
       | (Some(v)) f = f v
+
+    let is-none opt =
+      match opt with
+      | None    -> true
+      | Some(_) -> false
 
   end

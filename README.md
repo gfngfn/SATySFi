@@ -8,7 +8,13 @@
 
 *SATySFi* (pronounced in the same way as the verb “satisfy” in English) is a new typesetting system equipped with a statically-typed, functional programming language. It consists mainly of two “layers” ― the text layer and the program layer. The former is for writing documents in LaTeX-like syntax. The latter, which has OCaml-like syntax, is for defining functions and commands. SATySFi enables you to write documents markuped with flexible commands of your own making. In addition, its informative type error reporting will be a good help to your writing.
 
-This software was supported by IPA Mitou Project 2017 (see the abstract [here](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html) written in Japanese), and its development continues to this day (February 2019).
+This software was supported by:
+
+* IPA Mitou Project 2017 (June 2017 – February 2018; see the abstract [here](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html) written in Japanese),
+* Dwango Co., Ltd. (October 2018 – March 2019; as a part-time job), and
+* many anonymous supporters who bought [The SATySFi​book](https://booth.pm/ja/items/1127224),
+
+and its development continues to this day (January 2020).
 
 ## Install using Homebrew (for OS X users)
 
@@ -34,7 +40,7 @@ Here is a list of minimally required softwares.
 * ruby
 * [opam](https://opam.ocaml.org/) 2.0 (Installation instructions are [here](https://opam.ocaml.org/doc/Install.html).)
     * Bubblewrap, a tool required for opam 2, cannot be installed easily yet on some kinds of environment such as Windows Subsystem for Linux (WSL) and Ubuntu 16.04. As a workaround for the time being, opam 2 can be installed without bubblewrap by passing `--disable-sandboxing` option when running `opam init`. **Please see [opam's FAQ](https://opam.ocaml.org/doc/FAQ.html#Why-does-opam-require-bwrap) for details.**
-* ocaml 4.06.0 (installed by OPAM)
+* ocaml 4.10.0 (installed by OPAM)
 
 Also, we must add an external OPAM repo to build. This can be done by the following command.
 
@@ -53,7 +59,7 @@ sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.
 
 # The following command will ask if you allow OPAM to modify some files (e.g. ~/.bash_profile).
 # Be sure to read its instructions. Otherwise, some environment variables won't be set.
-opam init --comp 4.06.0
+opam init --comp 4.10.0
 
 eval $(opam env)
 
@@ -72,7 +78,7 @@ brew install opam
 
 # The following command will ask if OPAM modifies some files.
 # Be sure to read their instructions. Otherwise, some environment variables won't be set.
-opam init --comp 4.06.0
+opam init --comp 4.10.0
 
 eval $(opam env)
 

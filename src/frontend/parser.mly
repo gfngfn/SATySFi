@@ -340,9 +340,8 @@
           let newresitmz = insert_last [] resitmz 1 depth utast in
             make_list_to_itemize_sub newresitmz tail depth
         else
-          raise (ParseErrorDetail("syntax error: illegal item depth "
-            ^ (string_of_int depth) ^ " after " ^ (string_of_int crrntdp) ^ "\n"
-            ^ "    " ^ (Range.to_string rng)))
+          raise (ParseErrorDetail(rng, "syntax error: illegal item depth "
+            ^ (string_of_int depth) ^ " after " ^ (string_of_int crrntdp)))
 
   and insert_last (resitmzlst : untyped_itemize list) (itmz : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
     match itmz with
@@ -357,21 +356,6 @@
         insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
 
 
-  let report_error rngknd (tok : string) =
-    match rngknd with
-    | Tok(rng) ->
-          raise (ParseErrorDetail(
-            "syntax error:\n"
-            ^ "    unexpected token after '" ^ tok ^ "'\n"
-            ^ "    " ^ (Range.to_string rng)))
-    | Ranged((rng, nm)) ->
-          raise (ParseErrorDetail(
-            "syntax error:\n"
-            ^ "    unexpected token after '" ^ nm ^ "'\n"
-            ^ "    " ^ (Range.to_string rng)))
-    | _ -> assert false
-
-
   let primes n =
     let uchlst = List.init n (fun _ -> Uchar.of_int 0x2032) in
       InternalText.to_utf8 (InternalText.of_uchar_list uchlst)
@@ -379,7 +363,9 @@
 
 %token <Range.t * Types.var_name> VAR
 %token <Range.t * Types.ctrlseq_name> HORZCMD
+%token <Range.t * Types.ctrlseq_name> HORZMACRO
 %token <Range.t * Types.ctrlseq_name> VERTCMD
+%token <Range.t * Types.ctrlseq_name> VERTMACRO
 %token <Range.t * Types.ctrlseq_name> MATHCMD
 %token <Range.t * (Types.module_name list) * Types.var_name> VARWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
@@ -508,6 +494,14 @@ nxtoplevel:
       let (rng, mdlnm) = mdlnmtok in
       make_standard (Tok top) (Ranged subseq) (UTOpenIn(rng, mdlnm, subseq))
     }
+  | top=LETHORZ; dec=nxhorzmacrodec; utast2=nxtopsubseq {
+      let (rngcs, csnm, macparams, utast1) = dec in
+      make_standard (Tok top) (Ranged utast2) (UTLetHorzMacroIn(rngcs, csnm, macparams, utast1, utast2))
+    }
+  | top=LETVERT; dec=nxvertmacrodec; utast2=nxtopsubseq {
+      let (rngcs, csnm, macparams, utast1) = dec in
+      make_standard (Tok top) (Ranged utast2) (UTLetVertMacroIn(rngcs, csnm, macparams, utast1, utast2))
+    }
 ;
 nxtopsubseq:
   | utast=nxtoplevel     { utast }
@@ -595,6 +589,22 @@ nxmathdec:
       let curried = curry_lambda_abstract Alist.empty rngcs cmdarglst utast in
       (None, mcmdtok, (rng, UTLambdaMath(curried)))
     }
+;
+nxhorzmacrodec:
+  | hmacro=HORZMACRO; macparams=list(macroparam); DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = hmacro in
+      (rngcs, csnm, macparams, utast)
+    }
+;
+nxvertmacrodec:
+  | vmacro=VERTMACRO; macparams=list(macroparam); DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = vmacro in
+      (rngcs, csnm, macparams, utast)
+    }
+;
+macroparam:
+  | var=VAR              { UTLateMacroParam(var) }
+  | EXACT_TILDE; var=VAR { UTEarlyMacroParam(var) }
 ;
 nonrecdecargpart:
   | COLON; mty=txfunc                                   { (Some(mty), []) }
@@ -1142,6 +1152,11 @@ ih:
   |                                   { [] }
 ;
 ihcmd:
+  | hmacro=HORZMACRO; macargsraw=macroargs {
+      let (rngcs, _) = hmacro in
+      let (rnglast, macroargs) = macargsraw in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
+    }
   | hcmd=hcmd; nargs=list(narg); sargsraw=sargs {
       let (rngcs, mdlnmlst, csnm) = hcmd in
       let utastcmd = (rngcs, UTContentOf(mdlnmlst, csnm)) in
@@ -1151,6 +1166,10 @@ ihcmd:
     }
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP {
       make_standard (Tok opn) (Tok cls) (UTInputHorzEmbeddedMath(utast))
+    }
+  | literal=LITERAL {
+      let (rng, str, pre, post) = literal in
+      make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeText(omit_spaces pre post str))
     }
   | vartok=VARINHORZ; cls=ENDACTIVE {
       let (rng, mdlnmlst, varnm) = vartok in
@@ -1169,6 +1188,13 @@ ihchar:
   | tok=CHAR  { let (rng, ch) = tok in (rng, ch) }
   | rng=SPACE { (rng, " ") }
   | rng=BREAK { (rng, "\n") }
+;
+macroargs:
+  | macnargs=list(macronarg); cls=ENDACTIVE { (cls, macnargs) }
+;
+macronarg:
+  | LPAREN; expr=nxbot; RPAREN              { UTLateMacroArg(expr) }
+  | EXACT_TILDE; LPAREN; expr=nxbot; RPAREN { UTEarlyMacroArg(expr) }
 ;
 narg:
   | opn=LPAREN; utast=nxlet; cls=RPAREN           { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
@@ -1217,4 +1243,9 @@ vxbot:
       let (rng, mdlnmlst, varnm) = vartok in
       make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
     }
+  | vmacro=VERTMACRO; macargsraw=macroargs {
+      let (rngcs, _) = vmacro in
+      let (rnglast, macargs) = macargsraw in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputVertMacro(vmacro, macargs))
+  }
 ;
