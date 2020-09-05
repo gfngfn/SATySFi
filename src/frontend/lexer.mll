@@ -125,7 +125,8 @@ let constructor = (capital (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
 let opsymbol = ( '+' | '-' | '*' | '/' | '^' | '&' | '|' | '!' | ':' | '=' | '<' | '>' | '~' | '\'' | '.' | '?' )
 let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '<' '>' '%' '|' '*' '$' '#' ';']
-let mathsymbol = ( '+' | '-' | '*' | '/' | ':' | '=' | '<' | '>' | '~' | '.' | ',' | '?' | '`' )
+let mathsymboltop = ('+' | '-' | '*' | '/' | ':' | '=' | '<' | '>' | '~' | '.' | ',' | '`')
+let mathsymbol = (mathsymboltop | '?')
 
 rule progexpr stack = parse
   | "%" {
@@ -522,7 +523,7 @@ and mathexpr stack = parse
   | "^" { SUPERSCRIPT(get_pos lexbuf) }
   | "_" { SUBSCRIPT(get_pos lexbuf) }
   | "'"+ { let n = String.length (Lexing.lexeme lexbuf) in PRIMES(get_pos lexbuf, n) }
-  | mathsymbol+     { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | (mathsymboltop (mathsymbol*)) { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (latin | digit) { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("#" (identifier as varnm)) {
       VARINMATH(get_pos lexbuf, [], varnm)
