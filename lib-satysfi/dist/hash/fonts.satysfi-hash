@@ -8,5 +8,6 @@
   "lmsans"    : <Single: {"src": "dist/fonts/lmsans10-regular.otf"}>,
   "Junicode"  : <Single: {"src": "dist/fonts/Junicode.ttf"}>,
   "Junicode-b": <Single: {"src": "dist/fonts/Junicode-Bold.ttf"}>,
+  "Junicode-b-it": <Single: {"src": "dist/fonts/Junicode-BoldItalic.ttf"}>,
   "Junicode-it": <Single: {"src": "dist/fonts/Junicode-Italic.ttf"}>
 }
