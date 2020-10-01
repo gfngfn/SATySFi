@@ -53,7 +53,7 @@ unzip -o "$CACHE/$NAME.zip" "*.ttf" -d lib-satysfi/dist/fonts/
 
 # IPAexfont
 NAME=IPAexfont00401
-download_file "$NAME.zip" "https://ipafont.ipa.go.jp/IPAexfont/IPAexfont00401.zip"
+download_file "$NAME.zip" "https://moji.or.jp/wp-content/ipafont/IPAexfont/IPAexfont00401.zip"
 unzip -o "$CACHE/$NAME.zip" "*.ttf" -d "$CACHE/"
 cp "$CACHE"/IPAexfont00401/ipaexg.ttf lib-satysfi/dist/fonts/
 cp "$CACHE"/IPAexfont00401/ipaexm.ttf lib-satysfi/dist/fonts/

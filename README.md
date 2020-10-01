@@ -135,7 +135,7 @@ The former downloads the fonts required by the default settings into `lib-satysf
 During this setup, the following fonts are downloaded. Consult their license before using them.
 
 * [Junicode](http://junicode.sourceforge.net)
-* [IPA Font](https://ipafont.ipa.go.jp/old/ipafont/download.html)
+* [IPA Font](https://moji.or.jp/ipafont/)
 * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern/)
 * [Latin Modern Math](http://www.gust.org.pl/projects/e-foundry/lm-math)
 
