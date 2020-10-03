@@ -24,6 +24,12 @@ let rec embed_page_info (pbinfo : page_break_info) (imhblst : intermediate_horz_
           let evhb = (wid, EvHorzRising(hgt, dpt, lenrising, evhblst)) in
           (extH evhb, appendF footnotelst)
 
+      | ImHorzLinearTrans(wid, hgt, dpt, mat, imhblst) ->
+          let (evhblst, footnotelst) = iter imhblst in
+          let evhb = (wid, EvHorzLinearTrans(hgt, dpt, mat, evhblst)) in
+          (extH evhb, appendF footnotelst)
+          (* ext (wid, EvHorzLinearTrans(hgt, dpt, mat, evhblst)) *)
+
       | ImHorzFrame(wid, hgt, dpt, deco, imhblst) ->
           let (evhblst, footnotelst) = iter imhblst in
           let evhb = (wid, EvHorzFrame(hgt, dpt, deco, evhblst)) in

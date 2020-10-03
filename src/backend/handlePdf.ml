@@ -23,6 +23,33 @@ type 'o op_funcs = {
 }
 
 
+let (~%) = Length.to_pdf_point
+let op_cm_linear_trans (a, b, c, d) (xoff, yoff) =
+  let matr1 =
+    let open Pdftransform in
+    { a = 1.; b = 0.;
+      c = 0.; d = 1.;
+      e = ~-.(~% xoff);  f = ~-.(~% yoff); }
+  in
+  let matr2 =
+    let open Pdftransform in
+    { a = a; b = c;  (* transpose *)
+      c = b; d = d;  (* transpose *)
+      e = 0.;  f = 0.; }
+  in
+  let matr3 =
+    let open Pdftransform in
+    { a = 1.; b = 0.;
+      c = 0.; d = 1.;
+      e = ~% xoff;  f = ~% yoff; }
+  in
+  let matr =
+    matr1 |> Pdftransform.matrix_compose matr2
+          |> Pdftransform.matrix_compose matr3
+  in
+    Pdfops.Op_cm(matr)
+
+
 let pdfops_of_text hsinfo pt otxt =
   let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
   GraphicD.pdfops_of_text pt tag hsinfo.text_font_size hsinfo.text_color otxt
@@ -134,6 +161,28 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
             opaccsub
         in
         (xpos +% wid, opaccnew)
+
+    | EvHorzLinearTrans(hgt, dpt, mat, evhblst) ->
+        let opslt =
+          (* fs.lintrans mat (xpos, yposbaseline) (pdfops_of_intermediate_horz_box_list fs pbinfo) evhblst *)
+          let (_, opaccsub) =
+            evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, Alist.of_list [])
+          in
+          let pt = (xpos, yposbaseline) in
+          let open Pdfops in
+          List.concat [
+            [
+              Pdfops.Op_q;
+              op_cm_linear_trans mat pt;
+            ];
+            Alist.to_list opaccsub;
+            [
+              Pdfops.Op_Q;
+            ];
+          ]
+        in
+        let opaccinit = Alist.append opacc opslt in
+        (xpos +% wid, opaccinit)
 
     | EvHorzEmbeddedVert(hgt, dpt, evvblst) ->
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list fs pbinfo (xpos, yposbaseline +% hgt) opacc evvblst in

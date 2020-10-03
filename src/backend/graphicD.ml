@@ -214,8 +214,8 @@ let pdfops_of_text (pt : point) (tag : string) (fontsize : length) (color : colo
   in
   List.concat [
     [
-      op_cm_translate (Length.zero, Length.zero);
       op_q;
+      op_cm_translate (Length.zero, Length.zero);
       pdfop_of_text_color color;
       op_BT;
       op_Tm_translate pt;
