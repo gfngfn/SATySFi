@@ -163,25 +163,32 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         (xpos +% wid, opaccnew)
 
     | EvHorzLinearTrans(hgt, dpt, mat, evhblst) ->
-        let opslt =
+        let ops =
           (* fs.lintrans mat (xpos, yposbaseline) (pdfops_of_intermediate_horz_box_list fs pbinfo) evhblst *)
-          let (_, opaccsub) =
-            evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, Alist.of_list [])
+          let opsmain =
+            let (_, opaccsub) =
+              evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, Alist.of_list [])
+            in
+            let pt = (xpos, yposbaseline) in
+            let open Pdfops in
+            List.concat [
+              [
+                Pdfops.Op_q;
+                op_cm_linear_trans mat pt;
+              ];
+              Alist.to_list opaccsub;
+              [
+                Pdfops.Op_Q;
+              ];
+            ]
           in
-          let pt = (xpos, yposbaseline) in
-          let open Pdfops in
-          List.concat [
-            [
-              Pdfops.Op_q;
-              op_cm_linear_trans mat pt;
-            ];
-            Alist.to_list opaccsub;
-            [
-              Pdfops.Op_Q;
-            ];
-          ]
+          if OptionState.debug_show_bbox () then
+            let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
+            List.append opsgr opsmain
+          else
+            opsmain
         in
-        let opaccinit = Alist.append opacc opslt in
+        let opaccinit = Alist.append opacc ops in
         (xpos +% wid, opaccinit)
 
     | EvHorzEmbeddedVert(hgt, dpt, evvblst) ->
