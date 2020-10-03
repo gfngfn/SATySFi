@@ -265,7 +265,6 @@ and pure_horz_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
 (* -- groups -- *)
   | PHGRising         of length * horz_box list
-  | PHGLinearTrans    of (float * float * float * float) * horz_box list
   | PHGFixedFrame     of paddings * length * decoration * horz_box list
   | PHGInnerFrame     of paddings * decoration * horz_box list
   | PHGOuterFrame     of paddings * decoration * horz_box list
@@ -294,7 +293,6 @@ and intermediate_graphics =
 and intermediate_horz_box =
   | ImHorz               of evaled_horz_box
   | ImHorzRising         of length * length * length * length * intermediate_horz_box list
-  | ImHorzLinearTrans    of length * length * length * (float * float * float * float) * intermediate_horz_box list
   | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
   | ImHorzInlineTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
   | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
@@ -321,7 +319,6 @@ and evaled_horz_box_main =
   | EvHorzMathGlyph      of math_string_info * length * length * OutputText.t
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzRising         of length * length * length * evaled_horz_box list
-  | EvHorzLinearTrans    of length * length * (float * float * float * float) * evaled_horz_box list
   | EvHorzEmpty
   | EvHorzFrame          of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
@@ -512,7 +509,6 @@ let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length 
 
     | EvHorzString(_, h, d, _)
     | EvHorzRising(h, d, _, _)
-    | EvHorzLinearTrans(h, d, _, _)
     | EvHorzMathGlyph(_, h, d, _)
     | EvHorzEmbeddedVert(h, d, _)
     | EvHorzInlineGraphics(h, d, _)
@@ -544,7 +540,6 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
           -> (Length.zero, Length.zero, Length.zero)
 
       | ImHorzRising(w, h, d, _, _)
-      | ImHorzLinearTrans(w, h, d, _, _)
       | ImHorzFrame(w, h, d, _, _)
       | ImHorzInlineTabular(w, h, d, _, _, _, _)
       | ImHorzInlineGraphics(w, h, d, _)

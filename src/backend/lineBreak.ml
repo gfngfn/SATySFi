@@ -25,7 +25,6 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   match lphb with
   | LBAtom(metr, _)                           -> metr
   | LBRising(metr, _, _)                      -> metr
-  | LBLinearTrans(metr, _, _)                 -> metr
   | LBOuterFrame(metr, _, _)                  -> metr
   | LBFixedFrame(wid, hgt, dpt, _, _)         -> (natural wid, hgt, dpt)
   | LBEmbeddedVert(wid, hgt, dpt, _)          -> (natural wid, hgt, dpt)
@@ -130,13 +129,6 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       let hgtsub = Length.max Length.zero (hgt +% lenrising) in
       let dptsub = Length.min Length.zero (dpt +% lenrising) in
         puref (LBRising((widinfo, hgtsub, dptsub), lenrising, lphblst))
-
-  | PHGLinearTrans(mat, hblst) ->
-      let lphblst = listf hblst in
-      let (widinfo, hgt, dpt) = get_total_metrics lphblst in
-      let hgtsub = Length.max Length.zero hgt in
-      let dptsub = Length.min Length.zero dpt in
-        puref (LBLinearTrans((widinfo, hgtsub, dptsub), mat, lphblst))
 
   | PHSFixedEmpty(wid) ->
       puref (LBAtom(empty_vert (natural wid), EvHorzEmpty))
@@ -556,7 +548,6 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
       match imhb with
       | ImHorz(w, _)                             -> wacc +% w
       | ImHorzRising(w, _, _, _, _)              -> wacc +% w
-      | ImHorzLinearTrans(w, _, _, _, _)         -> wacc +% w
       | ImHorzFrame(w, _, _, _, _)               -> wacc +% w
       | ImHorzInlineTabular(w, _, _, _, _, _, _) -> wacc +% w
       | ImHorzInlineGraphics(w, _, _, _)         -> wacc +% w
@@ -588,11 +579,6 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         let imhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
         let wid_total = get_intermediate_total_width imhblst in
           ImHorzRising(wid_total, hgtsub, dptsub, lenrising, imhblst)
-
-    | LBLinearTrans((_, hgtsub, dptsub), mat, lphblstsub) ->
-        let imhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
-        let wid_total = get_intermediate_total_width imhblst in
-          ImHorzLinearTrans(wid_total, hgtsub, dptsub, mat, imhblst)
 
     | LBOuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
         let imhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
@@ -1193,13 +1179,6 @@ let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
                 | _  -> aux hblst0
               end
 
-          | PHGLinearTrans(_, hblst0) ->
-              begin
-                match hblst0 with
-                | [] -> aux tail
-                | _  -> aux hblst0
-              end
-
           | PHGHookPageBreak(_)
           | PHGFootnote(_) ->
               aux tail
@@ -1248,13 +1227,6 @@ let get_rightmost_script (hblst : horz_box list) : CharBasis.script option =
               Some(CharBasis.Latin)
 
           | PHGRising(_, hblst0) ->
-              begin
-                match hblst0 with
-                | [] -> aux revtail
-                | _  -> aux (List.rev hblst0)
-              end
-
-          | PHGLinearTrans(_, hblst0) ->
               begin
                 match hblst0 with
                 | [] -> aux revtail

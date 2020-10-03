@@ -1647,24 +1647,6 @@ Context(HorzBox.({ ctx with manual_rising = rising; }), ctxsub)
         ~code:{|
 make_horz (HorzBox.([HorzPure(PHGRising(rising, hblst))]))
 |}
-    ; inst "PrimitiveLinearTrans"
-        ~name:"linear-transform-inline"
-        ~type_:{|
-~% (tFL @-> tFL @-> tFL @-> tFL @-> tIB @-> tIB)
-|}
-        ~fields:[
-        ]
-        ~params:[
-          param "a" ~type_:"float";
-          param "b" ~type_:"float";
-          param "c" ~type_:"float";
-          param "d" ~type_:"float";
-          param "hblst" ~type_:"horz";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~code:{|
-make_horz (HorzBox.([HorzPure(PHGLinearTrans((a, b, c, d), hblst))]))
-|}
     ; inst "PrimitiveSetHyphenPenalty"
         ~name:"set-hyphen-penalty"
         ~type_:{|

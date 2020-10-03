@@ -1493,22 +1493,6 @@ code: |
   make_horz (HorzBox.([HorzPure(PHGRising(rising, hblst))]))
 
 ---
-inst: PrimitiveLinearTrans
-is-pdf-mode-primitive: yes
-name: "linear-transform-inline"
-type: |
-  ~% (tFL @-> tFL @-> tFL @-> tFL @-> tIB @-> tIB)
-
-params:
-- a : float
-- b : float
-- c : float
-- d : float
-- hblst : horz
-code: |
-  make_horz (HorzBox.([HorzPure(PHGLinearTrans((a, b, c, d), hblst))]))
-
----
 inst: PrimitiveSetHyphenPenalty
 is-pdf-mode-primitive: yes
 name: "set-hyphen-penalty"
