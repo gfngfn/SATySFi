@@ -42,6 +42,11 @@ let op_cm_linear_trans (a, b, c, d) (xoff, yoff) =
   in
     Pdfops.Op_cm(matr)
 
+let linear_trans_point (a, b, c, d) (x, y) =
+  let xx = ~% x in
+  let yy = ~% y in
+  (Length.of_pdf_point (a *. xx +. b *. yy), Length.of_pdf_point (c *. xx +. d *. yy))
+
 let op_Tm_translate (xpos, ypos) =
   Pdfops.Op_Tm(Pdftransform.matrix_of_transform
                  [Pdftransform.Translate(~% xpos, ~% ypos)])
@@ -135,9 +140,18 @@ let rec get_element_bbox textbboxf grelem =
   | DashedStroke(_, _, _, pathlst)
       -> get_path_list_bbox pathlst
            (* -- currently ignores the thickness of the stroke -- *)
-
   | HorzText(pt, textvalue) -> textbboxf pt textvalue
-  | LinearTrans(pt, mat, subelem) -> get_element_bbox textbboxf subelem
+  | LinearTrans(pt, mat, subelem) ->
+      let ((xmin, ymin), (xmax, ymax)) = get_element_bbox textbboxf subelem in
+      let (x1, y1) = linear_trans_point mat (xmin, ymin) in
+      let (x2, y2) = linear_trans_point mat (xmin, ymax) in
+      let (x3, y3) = linear_trans_point mat (xmax, ymin) in
+      let (x4, y4) = linear_trans_point mat (xmax, ymax) in
+      let xmin = x1 |> Length.min x2 |> Length.min x3 |> Length.min x4 in
+      let xmax = x1 |> Length.max x2 |> Length.max x3 |> Length.max x4 in
+      let ymin = y1 |> Length.min y2 |> Length.min y3 |> Length.min y4 in
+      let ymax = y1 |> Length.max y2 |> Length.max y3 |> Length.max y4 in
+      ((xmin, ymin), (xmax, ymax))
 
 let make_fill (color : color) (pathlst : path list) : 'a element =
   Fill(color, pathlst)
