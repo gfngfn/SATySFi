@@ -1675,7 +1675,7 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
 
   | UTBindType(tybinds) ->
       (* Registers types to the type environment and the graph for detecting cyclic dependency. *)
-      let (_synacc, _vntacc, _graph, _tyenv) =
+      let (synacc, vntacc, graph, _tyenv) =
         tybinds |> List.fold_left (fun (synacc, vntacc, graph, tyenv) tybind ->
           let (tyident, typarams, constraints, syn_or_vnt) = tybind in
           let (_, tynm) = tyident in
@@ -1695,7 +1695,29 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
               (synacc, vntacc, graph, tyenv)
         ) (Alist.empty, Alist.empty, SynonymDependencyGraph.empty, tyenv)
       in
-      failwith "TODO: Typechecker.typecheck_binding, UTBindType"
+
+      (* Traverse each definition of the synonym types and extract dependencies between them. *)
+      let (graph, tydefacc) =
+        synacc |> Alist.to_list |> List.fold_left (fun (graph, _tydefacc) syn ->
+          let (_tyident, _typarams, _synbind, _sid) = syn in
+          failwith "Typechecker.typecheck_binding, UTBindType, extract dependencies"
+        ) (graph, Alist.empty)
+      in
+
+      (* Traverse each definition of the variant types. *)
+      let (_tydefacc, _ctordefacc) =
+        vntacc |> Alist.to_list |> List.fold_left (fun (tydefacc, ctordefacc) vnt ->
+          let (_tyident, _typarams, _vntbind, _vid) = vnt in
+          failwith "Typechecker.typecheck_binding, UTBindType, variants"
+        ) (tydefacc, Alist.empty)
+      in
+
+      (* Check that no cyclic dependency exists among synonym types. *)
+      begin
+        match SynonymDependencyGraph.find_cycle graph with
+        | Some(_cycle) -> failwith "TODO: Typechecker.typecheck_binding, UTBindType, cycle"
+        | None         -> failwith "TODO: Typechecker.typecheck_binding, UTBindType, success"
+      end
 
   | UTBindModule((_, _modnm), _utsigopt, _utmod) ->
       failwith "TODO: Typechecker.typecheck_binding, UTBindModule"

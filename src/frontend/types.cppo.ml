@@ -1119,6 +1119,9 @@ and code_pattern_tree =
   | CdPConstructor          of constructor_name * code_pattern_tree
 [@@deriving show { with_path = false; }]
 
+type 'a cycle =
+  | Loop  of 'a
+  | Cycle of 'a TupleList.t
 
 let get_range (rng, _) = rng
 
