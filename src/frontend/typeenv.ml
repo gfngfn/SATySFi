@@ -1095,7 +1095,7 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
               true
 
           | RecordKind(tyasc2) ->
-              Assoc.domain_included tyasc1 tyasc2 &&
+              Assoc.domain_included tyasc2 tyasc1 &&
                 List.for_all (fun (ty1, ty2) -> aux ty1 ty2) (Assoc.intersection tyasc1 (Assoc.map_value lift_poly_body tyasc2))
         in
         if binc then
