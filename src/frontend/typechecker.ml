@@ -1662,8 +1662,12 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
             in
             (BindValue(Rec(recbindacc |> Alist.to_list)), ssig)
 
-        | UTMutable((_, _varnm), _utast1) ->
-            failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTMutable"
+        | UTMutable((rng, varnm) as var, utastI) ->
+            let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
+            let evid = EvalVarID.fresh var in
+            let pty = lift_poly (rng, RefType(tyI)) in
+            let ssig = StructSig.empty |> StructSig.add_value varnm (pty, evid, pre.stage) in
+            (BindValue(Mutable(evid, eI)), ssig)
       end
 
   | UTBindType([]) ->

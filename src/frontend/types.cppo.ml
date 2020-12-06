@@ -674,8 +674,9 @@ type 'a letrec_binding_scheme =
 and letrec_binding = abstract_tree letrec_binding_scheme
 
 and rec_or_nonrec =
-  | Rec    of letrec_binding list
-  | NonRec of pattern_tree * abstract_tree
+  | Rec     of letrec_binding list
+  | NonRec  of pattern_tree * abstract_tree
+  | Mutable of EvalVarID.t * abstract_tree
 
 and binding =
   | BindValue of rec_or_nonrec
