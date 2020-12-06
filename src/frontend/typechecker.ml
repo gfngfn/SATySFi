@@ -1630,8 +1630,25 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
   | UTBindValue(valbind) ->
       begin
         match valbind with
-        | UTNonRec(_mtyopt, _utpat, _utast1) ->
-            failwith "TODO: Typechecker.typecheck_binding, UTBindValue, UTNonRec"
+        | UTNonRec(_mtyopt, utpat, utast1) ->
+            let presub = { pre with level = Level.succ pre.level; } in
+            let (pat, tyP, patvarmap) = typecheck_pattern presub tyenv utpat in
+            let (e1, ty1) = typecheck presub tyenv utast1 in
+            unify ty1 tyP;
+            (* TODO: unify `mtyopt` (which corresponds to type annotations) *)
+            let should_be_polymorphic = is_nonexpansive_expression e1 in
+            let ssig =
+              PatternVarMap.fold (fun varnm (_, evid, ty) ssig ->
+                let pty =
+                  if should_be_polymorphic then
+                    generalize pre.level (erase_range_of_type ty)
+                  else
+                    lift_poly (erase_range_of_type ty)
+                in
+                ssig |> StructSig.add_value varnm (pty, evid, pre.stage)
+              ) patvarmap StructSig.empty
+            in
+            (BindValue(NonRec(pat, e1)), ssig)
 
         | UTRec(utrecbinds) ->
             let quints = typecheck_letrec pre tyenv utrecbinds in
