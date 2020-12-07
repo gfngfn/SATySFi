@@ -259,9 +259,9 @@ and string_of_product tvf ortvf current_ht tys =
         end
 
 
-let rec tvf_mono current_ht plev tvi =
+let rec tvf_mono current_ht plev (Updatable(tvref)) =
   let iter = string_of_mono_type_sub (tvf_mono current_ht) (ortvf_mono current_ht) current_ht in
-  match !tvi with
+  match !tvref with
   | MonoFree(tvid) ->
       let num = GeneralIDHashTable.intern_number current_ht (FreeID(tvid)) in
       let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
@@ -271,8 +271,8 @@ let rec tvf_mono current_ht plev tvi =
       iter plev ty
 
 
-and ortvf_mono current_ht orvi =
-  match !orvi with
+and ortvf_mono current_ht (UpdatableRow(orvref)) =
+  match !orvref with
   | MonoORFree(_)      -> "...?-> "
   | MonoORLink(optrow) -> string_of_option_row (tvf_mono current_ht) (ortvf_mono current_ht) current_ht optrow
 

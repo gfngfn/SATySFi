@@ -312,36 +312,48 @@ and ('a, 'b) option_row =
   | OptionRowEmpty
   | OptionRowVariable of 'b
 
-and mono_option_row_variable_info =
+and mono_option_row_variable_updatable =
   | MonoORFree of OptionRowVarID.t
   | MonoORLink of mono_option_row
 
-and poly_option_row_variable_info =
-  | PolyORFree of mono_option_row_variable_info ref
+and mono_option_row_variable =
+  | UpdatableRow   of mono_option_row_variable_updatable ref
+(*
+  | MustBeBoundRow of MustBeBoundRowID.t
+*)
 
-and mono_type_variable_info =
+and poly_option_row_variable =
+  | PolyORFree of mono_option_row_variable
+
+and mono_type_variable_updatable =
   | MonoFree of mono_kind FreeID_.t_
   | MonoLink of mono_type
 
-and poly_type_variable_info =
-  | PolyFree  of mono_type_variable_info ref
-  | PolyBound of ((poly_type_variable_info, poly_option_row_variable_info) kind) BoundID_.t_
+and mono_type_variable =
+  | Updatable   of mono_type_variable_updatable ref
+(*
+  | MustBeBound of MustBeBoundID.t
+*)
 
-and mono_type = (mono_type_variable_info ref, mono_option_row_variable_info ref) typ
+and poly_type_variable =
+  | PolyFree  of mono_type_variable
+  | PolyBound of ((poly_type_variable, poly_option_row_variable) kind) BoundID_.t_
 
-and poly_type_body = (poly_type_variable_info, poly_option_row_variable_info) typ
+and mono_type = (mono_type_variable, mono_option_row_variable) typ
+
+and poly_type_body = (poly_type_variable, poly_option_row_variable) typ
 
 and poly_type =
   | Poly of poly_type_body
 
-and mono_kind = (mono_type_variable_info ref, mono_option_row_variable_info ref) kind
+and mono_kind = (mono_type_variable, mono_option_row_variable) kind
 
-and poly_kind = (poly_type_variable_info, poly_option_row_variable_info) kind
+and poly_kind = (poly_type_variable, poly_option_row_variable) kind
 
-and mono_option_row = (mono_type_variable_info ref, mono_option_row_variable_info ref) option_row
+and mono_option_row = (mono_type_variable, mono_option_row_variable) option_row
 [@@deriving show]
 
-type mono_command_argument_type = (mono_type_variable_info ref, mono_option_row_variable_info ref) command_argument_type
+type mono_command_argument_type = (mono_type_variable, mono_option_row_variable) command_argument_type
 
 
 module FreeID =
@@ -1167,8 +1179,8 @@ let lift_manual_common f = function
 
 let rec unlink ((_, tymain) as ty) =
   match tymain with
-  | TypeVariable({contents = MonoLink(ty)}) -> unlink ty
-  | _                                       -> ty
+  | TypeVariable(Updatable{contents = MonoLink(ty)}) -> unlink ty
+  | _                                                -> ty
 
 
 let rec erase_range_of_type (ty : mono_type) : mono_type =
@@ -1176,7 +1188,7 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
   let rng = Range.dummy "erased" in
   let (_, tymain) = ty in
     match tymain with
-    | TypeVariable(tvref) ->
+    | TypeVariable(Updatable(tvref)) ->
         begin
           match !tvref with
           | MonoFree(tvid) -> FreeID.update_kind erase_range_of_kind tvid; (rng, tymain)
@@ -1204,10 +1216,17 @@ and erase_range_of_kind (kd : mono_kind) =
 
 and erase_range_of_option_row (optrow : mono_option_row) =
   match optrow with
-  | OptionRowEmpty          -> optrow
-  | OptionRowCons(ty, tail) -> OptionRowCons(erase_range_of_type ty, erase_range_of_option_row tail)
-  | OptionRowVariable({contents = MonoORLink(optrow)}) -> erase_range_of_option_row optrow
-  | OptionRowVariable({contents = MonoORFree(_)})      -> optrow
+  | OptionRowEmpty ->
+      optrow
+
+  | OptionRowCons(ty, tail) ->
+      OptionRowCons(erase_range_of_type ty, erase_range_of_option_row tail)
+
+  | OptionRowVariable(UpdatableRow{contents = MonoORLink(optrow)}) ->
+      erase_range_of_option_row optrow
+
+  | OptionRowVariable(UpdatableRow{contents = MonoORFree(_)}) ->
+      optrow
 
 
 module BoundIDHashTable = Hashtbl.Make(
@@ -1225,15 +1244,15 @@ module FreeIDHashTable = Hashtbl.Make(
   end)
 
 
-let rec instantiate_aux bid_ht lev qtfbl (rng, ptymain) =
+let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) lev qtfbl ((rng, ptymain) : poly_type_body) =
   let aux = instantiate_aux bid_ht lev qtfbl in
   let aux_or = instantiate_option_row_aux bid_ht lev qtfbl in
     match ptymain with
     | TypeVariable(ptvi) ->
         begin
           match ptvi with
-          | PolyFree(tvref) ->
-              (rng, TypeVariable(tvref))
+          | PolyFree(tv) ->
+              (rng, TypeVariable(tv))
 
           | PolyBound(bid) ->
               begin
@@ -1246,9 +1265,10 @@ let rec instantiate_aux bid_ht lev qtfbl (rng, ptymain) =
                     let kdfree = instantiate_kind_aux bid_ht lev qtfbl kd in
                     let tvid = FreeID.fresh kdfree qtfbl lev () in
                     let tvref = ref (MonoFree(tvid)) in
+                    let tv = Updatable(tvref) in
                     begin
-                      BoundIDHashTable.add bid_ht bid tvref;
-                      (rng, TypeVariable(tvref))
+                      BoundIDHashTable.add bid_ht bid tv;
+                      (rng, TypeVariable(tv))
                     end
               end
         end
@@ -1282,16 +1302,16 @@ and instantiate_option_row_aux bid_ht lev qtfbl optrow : mono_option_row =
 
 
 let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type) : mono_type =
-  let bid_ht : (mono_type_variable_info ref) BoundIDHashTable.t = BoundIDHashTable.create 32 in
+  let bid_ht : mono_type_variable BoundIDHashTable.t = BoundIDHashTable.create 32 in
   instantiate_aux bid_ht lev qtfbl pty
 
 
 let instantiate_kind (lev : level) (qtfbl : quantifiability) (pkd : poly_kind) : mono_kind =
-  let bid_ht : (mono_type_variable_info ref) BoundIDHashTable.t = BoundIDHashTable.create 32 in
+  let bid_ht : mono_type_variable BoundIDHashTable.t = BoundIDHashTable.create 32 in
   instantiate_kind_aux bid_ht lev qtfbl pkd
 
 
-let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_variable_info ref -> (a, b) typ) (orfreef : mono_option_row_variable_info ref -> (a, b) option_row) (pairlst : ((a, b) typ * BoundID.t) list) (Poly(pty) : poly_type) : (a, b) typ =
+let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_variable -> (a, b) typ) (orfreef : mono_option_row_variable -> (a, b) option_row) (pairlst : ((a, b) typ * BoundID.t) list) (Poly(pty) : poly_type) : (a, b) typ =
   let bid_to_type_ht : ((a, b) typ) BoundIDHashTable.t = BoundIDHashTable.create 32 in
 
   let rec aux ((rng, ptymain) : poly_type_body) : (a, b) typ =
@@ -1336,9 +1356,9 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
 
 let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool) (ty : mono_type) : poly_type_body =
   let tvidht = FreeIDHashTable.create 32 in
-  let rec iter (rng, tymain) =
+  let rec iter ((rng, tymain) : mono_type) =
     match tymain with
-    | TypeVariable(tvref) ->
+    | TypeVariable(Updatable(tvref) as tv) ->
         begin
           match !tvref with
           | MonoLink(tyl) ->
@@ -1347,7 +1367,7 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
           | MonoFree(tvid) ->
               let ptvi =
                 if not (ptv tvid) then
-                  PolyFree(tvref)
+                  PolyFree(tv)
                 else
                   begin
                     match FreeIDHashTable.find_opt tvidht tvid with
@@ -1387,14 +1407,14 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
     | OptionRowEmpty             -> OptionRowEmpty
     | OptionRowCons(ty, tail)    -> OptionRowCons(iter ty, generalize_option_row tail)
 
-    | OptionRowVariable(orviref) ->
+    | OptionRowVariable(UpdatableRow(orviref) as orv0) ->
         begin
           match !orviref with
           | MonoORFree(orv) ->
               if porv orv then
                 OptionRowEmpty
               else
-                OptionRowVariable(PolyORFree(orviref))
+                OptionRowVariable(PolyORFree(orv0))
 
           | MonoORLink(optraw) ->
               generalize_option_row optrow
@@ -1406,10 +1426,10 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
 let check_level lev (ty : mono_type) =
   let rec iter (_, tymain) =
     match tymain with
-    | TypeVariable(tvref) ->
+    | TypeVariable(Updatable(tvref)) ->
         begin
           match !tvref with
-          | MonoLink(ty) -> iter ty
+          | MonoLink(ty)   -> iter ty
           | MonoFree(tvid) -> Level.less_than lev (FreeID.get_level tvid)
         end
 
@@ -1438,7 +1458,7 @@ let check_level lev (ty : mono_type) =
 
     | OptionRowCons(ty, tail) -> iter ty && iter_or tail
 
-    | OptionRowVariable(orviref) ->
+    | OptionRowVariable(UpdatableRow(orviref)) ->
         begin
           match !orviref with
           | MonoORFree(orv)    -> Level.less_than lev (OptionRowVarID.get_level orv)
@@ -1967,13 +1987,13 @@ and string_of_type_list_basic tvf orvf tylist =
         end ^ " * " ^ strtl
 
 
-let rec tvf_mono qstn tvref =
+let rec tvf_mono qstn (Updatable(tvref)) =
   match !tvref with
   | MonoLink(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
   | MonoFree(tvid) -> "'" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
 
 
-and orvf_mono orvref =
+and orvf_mono (UpdatableRow(orvref)) =
   match !orvref with
   | MonoORFree(orv)    -> (OptionRowVarID.show_direct orv) ^ "?-> "
   | MonoORLink(optrow) -> string_of_option_row_basic tvf_mono orvf_mono optrow

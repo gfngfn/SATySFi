@@ -43,18 +43,19 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
   | Some(dfn) ->
       let qtfbl = pre.quantifiability in
       let lev = pre.level in
-      let freef rng tvref =
-        (rng, TypeVariable(tvref))
+      let freef rng tv =
+        (rng, TypeVariable(tv))
       in
-      let orfreef orviref =
-        OptionRowVariable(orviref)
+      let orfreef orv =
+        OptionRowVariable(orv)
       in
       let (tyid, (bidlist, pty)) = dfn in
       let pairlst =
         bidlist |> List.map (fun bid ->
           let kd = BoundID.get_kind bid in
           let tvid = FreeID.fresh (instantiate_kind lev qtfbl kd) qtfbl lev () in
-          let ty = (Range.dummy "tc-constructor", TypeVariable(ref (MonoFree(tvid)))) in
+          let tv = Updatable(ref (MonoFree(tvid))) in
+          let ty = (Range.dummy "tc-constructor", TypeVariable(tv)) in
           (ty, bid)
         )
       in
@@ -78,10 +79,10 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
     optargs |> List.fold_left (fun (tyenv, tyacc, evidacc) (rng, varnm) ->
       let evid = EvalVarID.fresh (rng, varnm) in
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let tvref = ref (MonoFree(tvid)) in
-      let beta = (rng, TypeVariable(PolyFree(tvref))) in
+      let tv = Updatable(ref (MonoFree(tvid))) in
+      let beta = (rng, TypeVariable(PolyFree(tv))) in
       let tyenvnew = tyenv |> Typeenv.add_value varnm (Poly(Primitives.option_type beta), evid, pre.stage) in
-        (tyenvnew, Alist.extend tyacc (rng, TypeVariable(tvref)), Alist.extend evidacc evid)
+        (tyenvnew, Alist.extend tyacc (rng, TypeVariable(tv)), Alist.extend evidacc evid)
     ) (tyenv, Alist.empty, Alist.empty)
   in
   let optrow =
@@ -104,8 +105,8 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       let evid = EvalVarID.fresh param in
       let (ptybody, beta) =
         let tvid = FreeID.fresh UniversalKind pre.quantifiability pre.level () in
-        let tvref = ref (MonoFree(tvid)) in
-        ((rng, TypeVariable(PolyFree(tvref))), (rng, TypeVariable(tvref)))
+        let tv = Updatable(ref (MonoFree(tvid))) in
+        ((rng, TypeVariable(PolyFree(tv))), (rng, TypeVariable(tv)))
       in
       let (pty, macpty) =
       match macparam with
@@ -187,16 +188,16 @@ let apply_tree_of_list astfunc astlst =
 let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type =
 
   let rec aux_or = function
-    | OptionRowEmpty                                     -> []
-    | OptionRowVariable({contents = MonoORFree(_)})      -> []
-    | OptionRowVariable({contents = MonoORLink(optrow)}) -> aux_or optrow
-    | OptionRowCons(ty, tail)                            -> OptionalArgumentType(ty) :: aux_or tail
+    | OptionRowEmpty                                                 -> []
+    | OptionRowVariable(UpdatableRow{contents = MonoORFree(_)})      -> []
+    | OptionRowVariable(UpdatableRow{contents = MonoORLink(optrow)}) -> aux_or optrow
+    | OptionRowCons(ty, tail)                                        -> OptionalArgumentType(ty) :: aux_or tail
   in
 
   let rec aux acc ty =
     let (rng, tymain) = ty in
       match tymain with
-      | TypeVariable({contents= MonoLink(tylink)}) ->
+      | TypeVariable(Updatable{contents= MonoLink(tylink)}) ->
           aux acc tylink
 
       | FuncType(optrow, tydom, tycod) ->
@@ -217,7 +218,7 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
   let rec iter (_, tymain) =
 
     match tymain with
-    | TypeVariable(tvref) ->
+    | TypeVariable(Updatable(tvref)) ->
         begin
           match !tvref with
           | MonoLink(tyl) ->
@@ -286,16 +287,16 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
         let b2 = iter_or tail in
         b1 || b2
 
-    | OptionRowVariable(orviref) ->
+    | OptionRowVariable(UpdatableRow(orvuref)) ->
         begin
-          match !orviref with
+          match !orvuref with
           | MonoORLink(optrow) ->
               iter_or optrow
 
           | MonoORFree(orvx) ->
               let levx = OptionRowVarID.get_level orvx in
               if Level.less_than lev levx then begin
-                orviref := MonoORFree(OptionRowVarID.set_level orvx lev)
+                orvuref := MonoORFree(OptionRowVarID.set_level orvx lev)
                   (* -- update level -- *)
               end;
               false
@@ -311,7 +312,7 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
 
   let rec iter (_, tymain) =
     match tymain with
-    | TypeVariable(tvref) ->
+    | TypeVariable(Updatable(tvref)) ->
         begin
           match !tvref with
           | MonoLink(tyl) ->
@@ -376,9 +377,9 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
         let b2 = iter_or tail in
         b1 || b2
 
-    | OptionRowVariable(orviref) ->
+    | OptionRowVariable(UpdatableRow(orvuref)) ->
         begin
-          match !orviref with
+          match !orvuref with
           | MonoORLink(optrow) ->
               iter_or optrow
 
@@ -388,7 +389,7 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
               else
                 let levx = OptionRowVarID.get_level orvx in
                 if Level.less_than lev levx then begin
-                  orviref := MonoORFree(OptionRowVarID.set_level orvx lev)
+                  orvuref := MonoORFree(OptionRowVarID.set_level orvx lev)
                     (* -- update level -- *)
                 end;
                 false
@@ -486,10 +487,11 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
     | (RefType(tysub1), RefType(tysub2))   -> unify tysub1 tysub2
     | (CodeType(tysub1), CodeType(tysub2)) -> unify tysub1 tysub2
 
-    | (TypeVariable({contents = MonoLink(tylinked1)}), _) -> unify tylinked1 ty2
-    | (_, TypeVariable({contents = MonoLink(tylinked2)})) -> unify ty1 tylinked2
+    | (TypeVariable(Updatable{contents = MonoLink(tylinked1)}), _) -> unify tylinked1 ty2
+    | (_, TypeVariable(Updatable{contents = MonoLink(tylinked2)})) -> unify ty1 tylinked2
 
-    | (TypeVariable({contents = MonoFree(tvid1)} as tvref1), TypeVariable({contents = MonoFree(tvid2)} as tvref2)) ->
+    | (TypeVariable(Updatable({contents = MonoFree(tvid1)} as tvref1)),
+          TypeVariable(Updatable({contents = MonoFree(tvid2)} as tvref2))) ->
         if FreeID.equal tvid1 tvid2 then
           ()
         else
@@ -533,7 +535,7 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
             eqns |> List.iter (fun (ty1, ty2) -> unify ty1 ty2);
             set_kind_with_occurs_check newtvid kdunion
 
-      | (TypeVariable({contents = MonoFree(tvid1)} as tvref1), RecordType(tyasc2)) ->
+      | (TypeVariable(Updatable({contents = MonoFree(tvid1)} as tvref1)), RecordType(tyasc2)) ->
           let kd1 = FreeID.get_kind tvid1 in
           let binc =
             match kd1 with
@@ -555,7 +557,7 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
             eqns |> List.iter (fun (ty1, ty2) -> unify ty1 ty2);
             tvref1 := MonoLink(newty2)
 
-      | (TypeVariable({contents = MonoFree(tvid1)} as tvref1), _) ->
+      | (TypeVariable(Updatable({contents = MonoFree(tvid1)} as tvref1)), _) ->
           let kd1 = FreeID.get_kind tvid1 in
           let () =
             match kd1 with
@@ -587,20 +589,24 @@ and unify_option_row ~reversed:reversed optrow1 optrow2 =
   | (OptionRowEmpty, OptionRowEmpty) ->
       ()
 
-  | (OptionRowVariable({contents = MonoORLink(optrow1)}), _) -> unify_option_row ~reversed optrow1 optrow2
-  | (_, OptionRowVariable({contents = MonoORLink(optrow2)})) -> unify_option_row ~reversed optrow1 optrow2
+  | (OptionRowVariable(UpdatableRow{contents = MonoORLink(optrow1)}), _) ->
+      unify_option_row ~reversed optrow1 optrow2
 
-  | (OptionRowVariable({contents = MonoORFree(orv1)} as orviref1), OptionRowVariable({contents = MonoORFree(orv2)})) ->
+  | (_, OptionRowVariable(UpdatableRow{contents = MonoORLink(optrow2)})) ->
+      unify_option_row ~reversed optrow1 optrow2
+
+  | (OptionRowVariable(UpdatableRow({contents = MonoORFree(orv1)} as orviref1)),
+        OptionRowVariable(UpdatableRow{contents = MonoORFree(orv2)})) ->
       if OptionRowVarID.equal orv1 orv2 then () else
         orviref1 := MonoORLink(optrow2)
 
-  | (OptionRowVariable({contents = MonoORFree(orv1)} as orviref1), _) ->
+  | (OptionRowVariable(UpdatableRow({contents = MonoORFree(orv1)} as orviref1)), _) ->
       if occurs_optional_row orv1 optrow2 then
         raise InternalInclusionError
       else
         orviref1 := MonoORLink(optrow2)
 
-  | (_, OptionRowVariable({contents = MonoORFree(orv2)} as orviref2)) ->
+  | (_, OptionRowVariable(UpdatableRow({contents = MonoORFree(orv2)} as orviref2))) ->
       if occurs_optional_row orv2 optrow1 then
         raise InternalInclusionError
       else
@@ -627,7 +633,8 @@ let unify (ty1 : mono_type) (ty2 : mono_type) =
 
 let fresh_type_variable rng pre kd =
   let tvid = FreeID.fresh kd pre.quantifiability pre.level () in
-  (rng, TypeVariable(ref (MonoFree(tvid))))
+  let tvuref = ref (MonoFree(tvid)) in
+  (rng, TypeVariable(Updatable(tvuref)))
 
 
 let base bc =
@@ -797,7 +804,8 @@ let rec typecheck
         | (_, TypeVariable(_)) as ty1 ->
             let beta = fresh_type_variable rng pre UniversalKind in
             let orv = OptionRowVarID.fresh pre.level in
-            let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
+            let orvuref = ref (MonoORFree(orv)) in
+            let optrow = OptionRowVariable(UpdatableRow(orvuref)) in
             unify ty1 (get_range utast1, FuncType(optrow, ty2, beta));
             (eret, beta)
 
@@ -821,7 +829,8 @@ let rec typecheck
             let beta1 = fresh_type_variable (Range.dummy "UTApplyOptional:dom") pre UniversalKind in
             let beta2 = fresh_type_variable (Range.dummy "UTApplyOptional:cod") pre UniversalKind in
             let orv = OptionRowVarID.fresh pre.level in
-            let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
+            let orvuref = ref (MonoORFree(orv)) in
+            let optrow = OptionRowVariable(UpdatableRow(orvuref)) in
             unify ty1 (get_range utast1, FuncType(OptionRowCons(ty2, optrow), beta1, beta2));
             (eret, (rng, FuncType(optrow, beta1, beta2)))
       end
@@ -839,7 +848,8 @@ let rec typecheck
             let beta1 = fresh_type_variable rng pre UniversalKind in
             let beta2 = fresh_type_variable rng pre UniversalKind in
             let orv = OptionRowVarID.fresh pre.level in
-            let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
+            let orvuref = ref (MonoORFree(orv)) in
+            let optrow = OptionRowVariable(UpdatableRow(orvuref)) in
             unify ty1 (get_range utast1, FuncType(OptionRowCons(beta0, optrow), beta1, beta2));
             (eret, (rng, FuncType(optrow, beta1, beta2)))
       end
@@ -1504,13 +1514,14 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letre
   let (tyenv, utrecacc) =
     utrecbinds |> List.fold_left (fun (tyenv, utrecacc) utrecbind ->
       let UTLetRecBinding(_, varrng, varnm, astdef) = utrecbind in
-      let tvref =
+      let tvuref =
         let tvid = FreeID.fresh UniversalKind pre.quantifiability (Level.succ pre.level) () in
         ref (MonoFree(tvid))
       in
+      let tv = Updatable(tvuref) in
       let rng = get_range astdef in
-      let beta = (rng, TypeVariable(tvref)) in
-      let pbeta = (rng, TypeVariable(PolyFree(tvref))) in
+      let beta = (rng, TypeVariable(tv)) in
+      let pbeta = (rng, TypeVariable(PolyFree(tv))) in
       let evid = EvalVarID.fresh (varrng, varnm) in
       let tyenv = tyenv |> Typeenv.add_value varnm (Poly(pbeta), evid, pre.stage) in
       let utrecacc = Alist.extend utrecacc (utrecbind, beta, evid) in

@@ -303,7 +303,9 @@ let make_variant_sig (pre : pre) (tyenv : Typeenv.t) (tyarglst : mono_type list)
 
 let rec complete_sig col (pre : pre) (tyenv : Typeenv.t) ((_, tymain) : mono_type) =
   match tymain with
-  | TypeVariable({contents= MonoLink(tylink)}) -> complete_sig col pre tyenv tylink
+  | TypeVariable(Updatable{contents= MonoLink(tylink)}) ->
+      complete_sig col pre tyenv tylink
+
   | BaseType(UnitType)          -> unit_sig
   | BaseType(BoolType)          -> bool_sig
   | BaseType(IntType)           -> make_int_sig col
