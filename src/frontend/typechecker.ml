@@ -1617,7 +1617,14 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
           begin
             match tyenv |> Typeenv.find_type tynm with
             | None ->
-                failwith "TODO: predefined types"
+                begin
+                  match base_type_map |> TypeNameMap.find_opt tynm with
+                  | None ->
+                      failwith "TODO: report undefined type name"
+
+                  | Some(bt) ->
+                      BaseType(bt)
+                end
 
             | Some(tyid, len_expected) ->
                 if len_actual = len_expected then

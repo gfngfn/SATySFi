@@ -175,32 +175,34 @@ type base_type =
 [@@deriving show]
 
 
-let base_type_hash_table =
-  let ht = Hashtbl.create 32 in
-  begin
-    List.iter (fun (s, bt) -> Hashtbl.add ht s bt) [
-      ("unit"        , UnitType    );
-      ("bool"        , BoolType    );
-      ("int"         , IntType     );
-      ("float"       , FloatType   );
-      ("length"      , LengthType  );
-      ("string"      , StringType  );
-      ("inline-text" , TextRowType );
-      ("block-text"  , TextColType );
-      ("inline-boxes", BoxRowType  );
-      ("block-boxes" , BoxColType  );
-      ("context"     , ContextType );
-      ("pre-path"    , PrePathType );
-      ("path"        , PathType    );
-      ("graphics"    , GraphicsType);
-      ("image"       , ImageType   );
-      ("document"    , DocumentType);
-      ("math"        , MathType    );
-      ("regexp"      , RegExpType  );
-      ("text-info"   , TextInfoType);
-    ];
-    ht
-  end
+module TypeNameMap = Map.Make(String)
+
+
+let base_type_map : base_type TypeNameMap.t =
+  List.fold_left (fun map (tynm, bt) ->
+    map |> TypeNameMap.add tynm bt
+  ) TypeNameMap.empty
+  [
+    ("unit"        , UnitType    );
+    ("bool"        , BoolType    );
+    ("int"         , IntType     );
+    ("float"       , FloatType   );
+    ("length"      , LengthType  );
+    ("string"      , StringType  );
+    ("inline-text" , TextRowType );
+    ("block-text"  , TextColType );
+    ("inline-boxes", BoxRowType  );
+    ("block-boxes" , BoxColType  );
+    ("context"     , ContextType );
+    ("pre-path"    , PrePathType );
+    ("path"        , PathType    );
+    ("graphics"    , GraphicsType);
+    ("image"       , ImageType   );
+    ("document"    , DocumentType);
+    ("math"        , MathType    );
+    ("regexp"      , RegExpType  );
+    ("text-info"   , TextInfoType);
+  ]
 
 
 type ('a, 'b) typ = Range.t * ('a, 'b) type_main
