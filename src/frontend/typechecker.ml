@@ -636,8 +636,16 @@ let base bc =
 
 let rec typecheck
     (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
-  let typecheck_iter ?s:(s = pre.stage) ?l:(l = pre.level) ?q:(q = pre.quantifiability) t u =
-    typecheck { stage = s; quantifiability = q; level = l; } t u
+  let typecheck_iter ?s:(s = pre.stage) ?l:(l = pre.level) ?p:(p = pre.type_parameters) ?q:(q = pre.quantifiability) t u =
+    let presub =
+      {
+        stage           = s;
+        type_parameters = p;
+        quantifiability = q;
+        level           = l;
+      }
+    in
+    typecheck presub t u
   in
   match utastmain with
   | UTStringEmpty         -> (base (BCString(""))   , (rng, BaseType(StringType)))
@@ -1739,13 +1747,28 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
 
 
 let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : mono_type * abstract_tree =
-  let (e, ty) = typecheck { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utast in
+  let pre =
+    {
+      stage           = stage;
+      type_parameters = TypeParameterMap.empty;
+      quantifiability = Quantifiable;
+      level           = Level.bottom;
+    }
+  in
+  let (e, ty) = typecheck pre tyenv utast in
   (ty, e)
 
 
 let main_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
   let (binds, tyenv, _) =
-    let pre = { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } in
+    let pre =
+      {
+        stage           = stage;
+        type_parameters = TypeParameterMap.empty;
+        quantifiability = Quantifiable;
+        level           = Level.bottom;
+      }
+    in
     typecheck_binding_list pre tyenv utbinds
   in
   (binds, tyenv)

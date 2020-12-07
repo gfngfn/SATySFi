@@ -357,6 +357,27 @@ module BoundID =
     type t = poly_kind BoundID_.t_
   end
 
+module MustBeBoundID : sig
+    type t
+    val fresh : poly_kind -> unit -> t
+    val equal : t -> t -> bool
+    val to_bound_id : t -> BoundID.t
+end = struct
+  type t = {
+    main : BoundID.t;
+  }
+
+  let fresh kd () =
+    let bid = BoundID.fresh kd () in
+    { main = bid }
+
+  let equal mbbid1 mbbid2 =
+    BoundID.eq mbbid1.main mbbid2.main
+
+  let to_bound_id mbbid =
+    mbbid.main
+end
+
 
 type macro_parameter_type =
   | LateMacroParameter  of mono_type
@@ -377,8 +398,13 @@ type stage =
   | Stage0
   | Stage1
 
+module TypeParameterMap = Map.Make(String)
+
+type type_parameter_map = MustBeBoundID.t TypeParameterMap.t
+
 type pre = {
   level           : level;
+  type_parameters : type_parameter_map;
   quantifiability : quantifiability;  (* maybe omitted in the future *)
   stage           : stage;
 }
