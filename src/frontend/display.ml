@@ -259,24 +259,31 @@ and string_of_product tvf ortvf current_ht tys =
         end
 
 
-let rec tvf_mono current_ht plev (Updatable(tvref)) =
+let rec tvf_mono current_ht plev tv =
   let iter = string_of_mono_type_sub (tvf_mono current_ht) (ortvf_mono current_ht) current_ht in
-  match !tvref with
-  | MonoFree(fid) ->
-      let fentry = KindStore.get_free_id fid in
-      let num = GeneralIDHashTable.intern_number current_ht (FreeID(fid)) in
-      let s =
-        let prefix =
-          match fentry.KindStore.quantifiability with
-          | Quantifiable   -> "'"
-          | Unquantifiable -> "'_"
-        in
-        prefix ^ (variable_name_of_number num)
-      in
-      show_type_variable (iter Outmost) s (fentry.KindStore.mono_kind)
+  match tv with
+  | Updatable(tvuref) ->
+      begin
+        match !tvuref with
+        | MonoFree(fid) ->
+            let fentry = KindStore.get_free_id fid in
+            let num = GeneralIDHashTable.intern_number current_ht (FreeID(fid)) in
+            let s =
+              let prefix =
+                match fentry.KindStore.quantifiability with
+                | Quantifiable   -> "'"
+                | Unquantifiable -> "'_"
+              in
+              prefix ^ (variable_name_of_number num)
+            in
+            show_type_variable (iter Outmost) s (fentry.KindStore.mono_kind)
 
-  | MonoLink(ty) ->
-      iter plev ty
+        | MonoLink(ty) ->
+            iter plev ty
+      end
+
+  | MustBeBound(mbbid) ->
+      MustBeBoundID.show mbbid
 
 
 and ortvf_mono current_ht (UpdatableRow(orvref)) =

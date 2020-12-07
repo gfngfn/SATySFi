@@ -26,16 +26,24 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
   let rng = Range.dummy "erased" in
   let (_, tymain) = ty in
     match tymain with
-    | TypeVariable(Updatable(tvref)) ->
+    | TypeVariable(tv) ->
         begin
-          match !tvref with
-          | MonoFree(fid) ->
-              let fentry = KindStore.get_free_id fid in
-              KindStore.set_free_id fid { fentry with mono_kind = erase_range_of_kind fentry.mono_kind };
-              (rng, tymain)
+          match tv with
+          | Updatable(tvref) ->
+              begin
+                match !tvref with
+                | MonoFree(fid) ->
+                    let fentry = KindStore.get_free_id fid in
+                    KindStore.set_free_id fid { fentry with mono_kind = erase_range_of_kind fentry.mono_kind };
+                    (rng, tymain)
 
-          | MonoLink(ty)   -> erase_range_of_type ty
-        end
+                | MonoLink(ty) ->
+                    erase_range_of_type ty
+              end
+
+        | MustBeBound(_) ->
+            (rng, tymain)
+      end
 
     | BaseType(_)                       -> (rng, tymain)
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(erase_range_of_option_row optrow, iter tydom, iter tycod))
@@ -196,33 +204,41 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
   let tvidht = FreeIDHashTable.create 32 in
   let rec iter ((rng, tymain) : mono_type) =
     match tymain with
-    | TypeVariable(Updatable(tvref) as tv) ->
+    | TypeVariable(tv) ->
         begin
-          match !tvref with
-          | MonoLink(tyl) ->
-              iter tyl
+          match tv with
+          | Updatable(tvuref) ->
+              begin
+                match !tvuref with
+                | MonoLink(tyl) ->
+                    iter tyl
 
-          | MonoFree(fid) ->
-              let ptvi =
-                if not (ptv fid) then
-                  PolyFree(tv)
-                else
-                  begin
-                    match FreeIDHashTable.find_opt tvidht fid with
-                    | Some(bid) ->
-                        PolyBound(bid)
+                | MonoFree(fid) ->
+                    let ptvi =
+                      if not (ptv fid) then
+                        PolyFree(tv)
+                      else
+                        begin
+                          match FreeIDHashTable.find_opt tvidht fid with
+                          | Some(bid) ->
+                              PolyBound(bid)
 
-                    | None ->
-                        let fentry = KindStore.get_free_id fid in
-                        let kd = fentry.KindStore.mono_kind in
-                        let pkd = generalize_kind kd in
-                        let bid = BoundID.fresh () in
-                        KindStore.set_bound_id bid KindStore.{ poly_kind = pkd };
-                        FreeIDHashTable.add tvidht fid bid;
-                        PolyBound(bid)
-                  end
-              in
-                (rng, TypeVariable(ptvi))
+                          | None ->
+                              let fentry = KindStore.get_free_id fid in
+                              let kd = fentry.KindStore.mono_kind in
+                              let pkd = generalize_kind kd in
+                              let bid = BoundID.fresh () in
+                              KindStore.set_bound_id bid KindStore.{ poly_kind = pkd };
+                              FreeIDHashTable.add tvidht fid bid;
+                              PolyBound(bid)
+                        end
+                    in
+                      (rng, TypeVariable(ptvi))
+              end
+
+          | MustBeBound(mbbid) ->
+              let bid = MustBeBoundID.to_bound_id mbbid in
+              (rng, TypeVariable(PolyBound(bid)))
         end
 
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(generalize_option_row optrow, iter tydom, iter tycod))
@@ -263,18 +279,25 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
   iter ty
 
 
-let check_level (lev : Level.t) (ty : mono_type) =
+let check_level (lev : Level.t) (ty : mono_type) : bool =
   let rec iter (_, tymain) =
     match tymain with
-    | TypeVariable(Updatable(tvref)) ->
+    | TypeVariable(tv) ->
         begin
-          match !tvref with
-          | MonoLink(ty) ->
-              iter ty
+          match tv with
+          | Updatable(tvuref) ->
+              begin
+                match !tvuref with
+                | MonoLink(ty) ->
+                    iter ty
 
-          | MonoFree(fid) ->
-              let fentry = KindStore.get_free_id fid in
-              Level.less_than lev fentry.KindStore.level
+                | MonoFree(fid) ->
+                    let fentry = KindStore.get_free_id fid in
+                    Level.less_than lev fentry.KindStore.level
+              end
+
+          | MustBeBound(mbbid) ->
+              Level.less_than lev (MustBeBoundID.get_level mbbid)
         end
 
     | ProductType(tys)               -> tys |> TupleList.to_list |> List.for_all iter
@@ -298,13 +321,15 @@ let check_level (lev : Level.t) (ty : mono_type) =
     | OptionalArgumentType(ty)  -> iter ty
 
   and iter_or = function
-    | OptionRowEmpty -> true
+    | OptionRowEmpty ->
+        true
 
-    | OptionRowCons(ty, tail) -> iter ty && iter_or tail
+    | OptionRowCons(ty, tail) ->
+        iter ty && iter_or tail
 
-    | OptionRowVariable(UpdatableRow(orviref)) ->
+    | OptionRowVariable(UpdatableRow(orvuref)) ->
         begin
-          match !orviref with
+          match !orvuref with
           | MonoORFree(orv)    -> Level.less_than lev (OptionRowVarID.get_level orv)
           | MonoORLink(optrow) -> iter_or optrow
         end

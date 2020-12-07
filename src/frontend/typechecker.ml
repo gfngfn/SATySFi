@@ -237,27 +237,34 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
   let rec iter (_, tymain) =
 
     match tymain with
-    | TypeVariable(Updatable(tvref)) ->
+    | TypeVariable(tv) ->
         begin
-          match !tvref with
-          | MonoLink(tyl) ->
-              iter tyl
+          match tv with
+          | Updatable(tvuref) ->
+              begin
+                match !tvuref with
+                | MonoLink(tyl) ->
+                    iter tyl
 
-          | MonoFree(fidx) ->
-              if FreeID.equal fidx fid then
-                true
-              else
-                let fentryx = KindStore.get_free_id fidx in
-                let levx = fentryx.KindStore.level in
-                if Level.less_than lev levx then begin
-                  KindStore.set_free_id fidx { fentryx with level = lev }
-                    (* -- update level -- *)
-                end;
-                begin
-                  match fentryx.KindStore.mono_kind with
-                  | UniversalKind     -> false
-                  | RecordKind(tyasc) -> Assoc.fold_value (fun b ty -> b || iter ty) false tyasc
-                end
+                | MonoFree(fidx) ->
+                    if FreeID.equal fidx fid then
+                      true
+                    else
+                      let fentryx = KindStore.get_free_id fidx in
+                      let levx = fentryx.KindStore.level in
+                      if Level.less_than lev levx then begin
+                        KindStore.set_free_id fidx { fentryx with level = lev }
+                          (* -- update level -- *)
+                      end;
+                      begin
+                        match fentryx.KindStore.mono_kind with
+                        | UniversalKind     -> false
+                        | RecordKind(tyasc) -> Assoc.fold_value (fun b ty -> b || iter ty) false tyasc
+                      end
+              end
+
+          | MustBeBound(_) ->
+              false
         end
 
     | FuncType(optrow, tydom, tycod) ->
@@ -332,24 +339,31 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
 
   let rec iter (_, tymain) =
     match tymain with
-    | TypeVariable(Updatable(tvref)) ->
+    | TypeVariable(tv) ->
         begin
-          match !tvref with
-          | MonoLink(tyl) ->
-              iter tyl
-
-          | MonoFree(fidx) ->
-              let fentryx = KindStore.get_free_id fidx in
-              let levx = fentryx.KindStore.level in
-              if Level.less_than lev levx then begin
-                KindStore.set_free_id fidx { fentryx with level = lev }
-                  (* -- update level -- *)
-              end;
+          match tv with
+          | Updatable(tvuref) ->
               begin
-                match fentryx.KindStore.mono_kind with
-                | UniversalKind     -> false
-                | RecordKind(tyasc) -> Assoc.fold_value (fun bacc ty -> let b = iter ty in bacc || b) false tyasc
+                match !tvuref with
+                | MonoLink(tyl) ->
+                    iter tyl
+
+                | MonoFree(fidx) ->
+                    let fentryx = KindStore.get_free_id fidx in
+                    let levx = fentryx.KindStore.level in
+                    if Level.less_than lev levx then begin
+                      KindStore.set_free_id fidx { fentryx with level = lev }
+                        (* -- update level -- *)
+                    end;
+                    begin
+                      match fentryx.KindStore.mono_kind with
+                      | UniversalKind     -> false
+                      | RecordKind(tyasc) -> Assoc.fold_value (fun bacc ty -> let b = iter ty in bacc || b) false tyasc
+                    end
               end
+
+          | MustBeBound(_) ->
+              false
         end
 
     | FuncType(optrow, tydom, tycod) ->
@@ -610,6 +624,12 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
           else
             let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
             tvref1 := MonoLink(newty2)
+
+      | (TypeVariable(MustBeBound(mbbid1)), TypeVariable(MustBeBound(mbbid2))) ->
+          if MustBeBoundID.equal mbbid1 mbbid2 then
+            ()
+          else
+            raise (InternalContradictionError(reversed))
 
       | (_, TypeVariable(_)) ->
           unify_sub ~reversed:(not reversed) ty2 ty1
@@ -1634,15 +1654,14 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
           end
 
       | MTypeParam(typaram) ->
-          failwith "TODO: decode_manual_type, MTypeParam" (*
           begin
-            match typarams |> TypeParameterMap.find_opt typaram with
+            match pre.type_parameters |> TypeParameterMap.find_opt typaram with
             | None ->
                 failwith "TODO: unbound type parameter"
 
             | Some(mbbid) ->
                 TypeVariable(MustBeBound(mbbid))
-          end *)
+          end
 
       | MFuncType(mtyadds, mtydom, mtycod) ->
           FuncType(aux_row mtyadds, aux mtydom, aux mtycod)

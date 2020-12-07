@@ -120,6 +120,35 @@ module BoundID = struct
 end
 
 
+module MustBeBoundID : sig
+    type t
+    [@@deriving show]
+    val fresh : Level.t -> t
+    val equal : t -> t -> bool
+    val get_level : t -> Level.t
+    val to_bound_id : t -> BoundID.t
+end = struct
+  type t = {
+    main  : BoundID.t;
+    level : Level.t;
+  }
+  [@@deriving show]
+
+  let fresh lev =
+    let bid = BoundID.fresh () in
+    { main = bid; level = lev }
+
+  let equal mbbid1 mbbid2 =
+    BoundID.equal mbbid1.main mbbid2.main
+
+  let get_level mbbid =
+    mbbid.level
+
+  let to_bound_id mbbid =
+    mbbid.main
+end
+
+
 module StoreIDHashTable = Hashtbl.Make(StoreID)
 
 
@@ -254,9 +283,7 @@ and mono_type_variable_updatable =
 
 and mono_type_variable =
   | Updatable   of mono_type_variable_updatable ref
-(*
   | MustBeBound of MustBeBoundID.t
-*)
 
 and poly_type_variable =
   | PolyFree  of mono_type_variable
@@ -292,27 +319,6 @@ module BoundID =
     type t = poly_kind BoundID_.t_
   end
 *)
-
-module MustBeBoundID : sig
-    type t
-    val fresh : poly_kind -> unit -> t
-    val equal : t -> t -> bool
-    val to_bound_id : t -> BoundID.t
-end = struct
-  type t = {
-    main : BoundID.t;
-  }
-
-  let fresh kd () =
-    let bid = BoundID.fresh () in
-    { main = bid }
-
-  let equal mbbid1 mbbid2 =
-    BoundID.equal mbbid1.main mbbid2.main
-
-  let to_bound_id mbbid =
-    mbbid.main
-end
 
 
 type macro_parameter_type =
@@ -1543,10 +1549,17 @@ and string_of_type_list_basic tvf orvf tylist =
         end ^ " * " ^ strtl
 
 
-let rec tvf_mono qstn (Updatable(tvref)) =
-  match !tvref with
-  | MonoLink(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
-  | MonoFree(tvid) -> "'" ^ (FreeID.show tvid) ^ qstn
+let rec tvf_mono qstn tv =
+  match tv with
+  | Updatable(tvuref) ->
+      begin
+        match !tvuref with
+        | MonoLink(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
+        | MonoFree(tvid) -> "'" ^ (FreeID.show tvid) ^ qstn
+      end
+
+  | MustBeBound(mbbid) ->
+      MustBeBoundID.show mbbid
 
 
 and orvf_mono (UpdatableRow(orvref)) =
