@@ -119,111 +119,6 @@ module BoundID = struct
     Format.fprintf ppf "%s" (show bid)
 end
 
-(*
-module FreeID_
-: sig
-    type 'a t_  [@@deriving show]
-    val get_level : 'a t_ -> level
-    val set_level : 'a t_ -> level -> unit
-    val initialize : unit -> unit
-    val fresh : 'a -> quantifiability -> level -> unit -> 'a t_
-    val equal : 'a t_ -> 'a t_ -> bool
-    val is_quantifiable : 'a t_ -> bool
-    val set_quantifiability : quantifiability -> 'a t_ -> unit
-    val get_kind : 'a t_ -> 'a
-    val set_kind : 'a -> 'a t_ -> unit
-    val update_kind : ('a -> 'a) -> 'a t_ -> unit
-    val show_direct : ('a -> string) -> 'a t_ -> string
-  end
-= struct
-    type 'k t_ = {
-      id                      : int;
-      mutable kind            : 'k;
-      mutable quantifiability : quantifiability;
-      mutable level           : level;
-    }
-    [@@deriving show]
-
-    let get_level tvid = tvid.level
-
-    let set_level tvid lev =
-      tvid.level <- lev
-
-    let current_id = ref 0
-
-    let initialize () =
-      current_id := 0
-
-    let fresh kd qtfbl lev () =
-      incr current_id;
-      {
-        id              = !current_id;
-        kind            = kd;
-        quantifiability = qtfbl;
-        level           = lev;
-      }
-
-    let equal tvid1 tvid2 =
-      tvid1.id = tvid2.id
-
-    let is_quantifiable tvid =
-      match tvid.quantifiability with
-      | Quantifiable   -> true
-      | Unquantifiable -> false
-
-    let set_quantifiability qtfbl tvid =
-      tvid.quantifiability <- qtfbl
-
-    let get_kind tvid = tvid.kind
-
-    let set_kind kd tvid =
-      tvid.kind <- kd
-
-    let update_kind f tvid =
-      tvid.kind <- f tvid.kind
-
-    let show_direct f tvid =
-      let idmain = tvid.id in
-      let lev = tvid.level in
-      let kd = tvid.kind in
-      match tvid.quantifiability with
-      | Quantifiable   -> (string_of_int idmain) ^ "[Q" ^ (Level.show lev) ^ "::" ^ (f kd) ^ "]"
-      | Unquantifiable -> (string_of_int idmain) ^ "[U" ^ (Level.show lev) ^ "::" ^ (f kd) ^ "]"
-
-  end
-
-
-module BoundID_
-: sig
-    type 'a t_  [@@deriving show]
-    val initialize : unit -> unit
-    val fresh : 'a -> unit -> 'a t_
-    val eq : 'a t_ -> 'a t_ -> bool
-    val get_kind : 'a t_ -> 'a
-    val show_direct : ('a -> string) -> 'a t_ -> string
-  end
-= struct
-    type 'a t_ = int * 'a
-    [@@deriving show]
-
-    let current_id = ref 0
-
-    let initialize () = begin current_id := 0; end
-
-    let fresh kd () =
-      begin
-        incr current_id;
-        (!current_id, kd)
-      end
-
-    let eq (i1, _) (i2, _) = (i1 = i2)
-
-    let get_kind (_, kd) = kd
-
-    let show_direct f (i, kd) = "[" ^ (string_of_int i) ^ "::" ^ (f kd) ^ "]"
-
-  end
-*)
 
 module StoreIDHashTable = Hashtbl.Make(StoreID)
 
@@ -231,7 +126,9 @@ module StoreIDHashTable = Hashtbl.Make(StoreID)
 module EvalVarIDMap = Map.Make(EvalVarID)
 
 
-type manual_type = Range.t * manual_type_main
+type manual_type =
+  Range.t * manual_type_main
+
 and manual_type_main =
   | MTypeName        of type_name * manual_type list
   | MTypeParam       of var_name
