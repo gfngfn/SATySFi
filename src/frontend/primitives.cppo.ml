@@ -153,9 +153,15 @@ let option_type = tOPT
 let itemize_type () = tITMZ ()
 
 
+let fresh_bound_id () =
+  let bid = BoundID.fresh () in
+  KindStore.set_bound_id bid KindStore.{ poly_kind = UniversalKind };
+  bid
+
+
 let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
-  let bid = BoundID.fresh UniversalKind () in
+  let bid = fresh_bound_id () in
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
 
   tyenvmid
@@ -549,8 +555,8 @@ let (~@) n = (~! "tv", TypeVariable(n))
 
 
 let general_table : (var_name * poly_type * (environment -> syntactic_value)) list =
-  let tv1 = (let bid1 = BoundID.fresh UniversalKind () in PolyBound(bid1)) in
-  let tv2 = (let bid2 = BoundID.fresh UniversalKind () in PolyBound(bid2)) in
+  let tv1 = (let bid1 = fresh_bound_id () in PolyBound(bid1)) in
+  let tv2 = (let bid2 = fresh_bound_id () in PolyBound(bid2)) in
   let ptyderef  = ~% ((tR (~@ tv1)) @-> (~@ tv1)) in
   let ptycons   = ~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2))) in
   let ptyappinv = ~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)) in

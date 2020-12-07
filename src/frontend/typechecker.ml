@@ -1,6 +1,7 @@
 
 open MyUtil
 open Types
+open TypeConv
 open Display
 open StaticEnv
 
@@ -31,6 +32,19 @@ exception InternalInclusionError
 exception InternalContradictionError of bool
 
 
+let fresh_free_id (kd : mono_kind) (qtfbl : quantifiability) (lev : Level.t) =
+  let fid = FreeID.fresh () in
+  let fentry =
+    KindStore.{
+      level           = lev;
+      quantifiability = qtfbl;
+      mono_kind       = kd;
+    }
+  in
+  KindStore.set_free_id fid fentry;
+  fid
+
+
 let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm : constructor_name) (rng : Range.t) =
   match tyenv |> Typeenv.find_constructor constrnm with
   | None ->
@@ -52,9 +66,11 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
       let (tyid, (bidlist, pty)) = dfn in
       let pairlst =
         bidlist |> List.map (fun bid ->
-          let kd = BoundID.get_kind bid in
-          let tvid = FreeID.fresh (instantiate_kind lev qtfbl kd) qtfbl lev () in
-          let tv = Updatable(ref (MonoFree(tvid))) in
+          let bentry = KindStore.get_bound_id bid in
+          let pkd = bentry.KindStore.poly_kind in
+          let kd = instantiate_kind lev qtfbl pkd in
+          let fid = fresh_free_id kd qtfbl lev in
+          let tv = Updatable(ref (MonoFree(fid))) in
           let ty = (Range.dummy "tc-constructor", TypeVariable(tv)) in
           (ty, bid)
         )
@@ -78,7 +94,7 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
   let (tyenvnew, tyacc, evidacc) =
     optargs |> List.fold_left (fun (tyenv, tyacc, evidacc) (rng, varnm) ->
       let evid = EvalVarID.fresh (rng, varnm) in
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+      let tvid = fresh_free_id UniversalKind qtfbl lev in
       let tv = Updatable(ref (MonoFree(tvid))) in
       let beta = (rng, TypeVariable(PolyFree(tv))) in
       let tyenvnew = tyenv |> Typeenv.add_value varnm (Poly(Primitives.option_type beta), evid, pre.stage) in
@@ -104,7 +120,7 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       let (rng, varnm) = param in
       let evid = EvalVarID.fresh param in
       let (ptybody, beta) =
-        let tvid = FreeID.fresh UniversalKind pre.quantifiability pre.level () in
+        let tvid = fresh_free_id UniversalKind pre.quantifiability pre.level in
         let tv = Updatable(ref (MonoFree(tvid))) in
         ((rng, TypeVariable(PolyFree(tv))), (rng, TypeVariable(tv)))
       in
@@ -211,9 +227,12 @@ let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type 
   aux Alist.empty ty
 
 
-let occurs (tvid : FreeID.t) (ty : mono_type) =
+let occurs (fid : FreeID.t) (ty : mono_type) =
 
-  let lev = FreeID.get_level tvid in
+  let lev =
+    let fentry = KindStore.get_free_id fid in
+    fentry.KindStore.level
+  in
 
   let rec iter (_, tymain) =
 
@@ -224,17 +243,18 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
           | MonoLink(tyl) ->
               iter tyl
 
-          | MonoFree(tvidx) ->
-              if FreeID.equal tvidx tvid then
+          | MonoFree(fidx) ->
+              if FreeID.equal fidx fid then
                 true
               else
-                let levx = FreeID.get_level tvidx in
+                let fentryx = KindStore.get_free_id fidx in
+                let levx = fentryx.KindStore.level in
                 if Level.less_than lev levx then begin
-                  FreeID.set_level tvidx lev
+                  KindStore.set_free_id fidx { fentryx with level = lev }
                     (* -- update level -- *)
                 end;
                 begin
-                  match FreeID.get_kind tvidx with
+                  match fentryx.KindStore.mono_kind with
                   | UniversalKind     -> false
                   | RecordKind(tyasc) -> Assoc.fold_value (fun b ty -> b || iter ty) false tyasc
                 end
@@ -318,14 +338,15 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
           | MonoLink(tyl) ->
               iter tyl
 
-          | MonoFree(tvidx) ->
-              let levx = FreeID.get_level tvidx in
+          | MonoFree(fidx) ->
+              let fentryx = KindStore.get_free_id fidx in
+              let levx = fentryx.KindStore.level in
               if Level.less_than lev levx then begin
-                FreeID.set_level tvidx lev
+                KindStore.set_free_id fidx { fentryx with level = lev }
                   (* -- update level -- *)
               end;
               begin
-                match FreeID.get_kind tvidx with
+                match fentryx.KindStore.mono_kind with
                 | UniversalKind     -> false
                 | RecordKind(tyasc) -> Assoc.fold_value (fun bacc ty -> let b = iter ty in bacc || b) false tyasc
               end
@@ -399,17 +420,18 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
   iter_or optrow
 
 
-let set_kind_with_occurs_check (tvid : FreeID.t) (kd : mono_kind) : unit =
+let set_kind_with_occurs_check (fid : FreeID.t) (kd : mono_kind) : unit =
   begin
     match kd with
     | UniversalKind ->
         ()
 
     | RecordKind(tyasc) ->
-        let b = Assoc.fold_value (fun bacc ty -> let b = occurs tvid ty in bacc || b) false tyasc in
+        let b = Assoc.fold_value (fun bacc ty -> let b = occurs fid ty in bacc || b) false tyasc in
         if b then raise InternalInclusionError else ()
   end;
-  FreeID.set_kind kd tvid
+  let fentry = KindStore.get_free_id fid in
+  KindStore.set_free_id fid { fentry with mono_kind = kd }
 
 
 let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
@@ -490,39 +512,53 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
     | (TypeVariable(Updatable{contents = MonoLink(tylinked1)}), _) -> unify tylinked1 ty2
     | (_, TypeVariable(Updatable{contents = MonoLink(tylinked2)})) -> unify ty1 tylinked2
 
-    | (TypeVariable(Updatable({contents = MonoFree(tvid1)} as tvref1)),
-          TypeVariable(Updatable({contents = MonoFree(tvid2)} as tvref2))) ->
-        if FreeID.equal tvid1 tvid2 then
+    | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)),
+          TypeVariable(Updatable({contents = MonoFree(fid2)} as tvref2))) ->
+        if FreeID.equal fid1 fid2 then
           ()
         else
-          let b1 = occurs tvid1 ty2 in
-          let b2 = occurs tvid2 ty1 in
+          let b1 = occurs fid1 ty2 in
+          let b2 = occurs fid2 ty1 in
           if b1 || b2 then
             raise InternalInclusionError
           else
-            if FreeID.is_quantifiable tvid1 && FreeID.is_quantifiable tvid2 then
-              ()
-            else begin
-              FreeID.set_quantifiability Unquantifiable tvid1;
-              FreeID.set_quantifiability Unquantifiable tvid2;
-            end;
-            let lev1 = FreeID.get_level tvid1 in
-            let lev2 = FreeID.get_level tvid2 in
-            begin
+            let fentry1 = KindStore.get_free_id fid1 in
+            let fentry2 = KindStore.get_free_id fid2 in
+
+            (* Equate quantifiabilities *)
+            let (fentry1, fentry2) =
+              match (fentry1.quantifiability, fentry2.quantifiability) with
+              | (Quantifiable, Quantifiable) ->
+                  (fentry1, fentry2)
+
+              | _ ->
+                  ({ fentry1 with quantifiability = Unquantifiable },
+                   { fentry2 with quantifiability = Unquantifiable})
+            in
+
+            (* Equate levels *)
+            let lev1 = fentry1.level in
+            let lev2 = fentry2.level in
+            let (fentry1, fentry2) =
               if Level.less_than lev1 lev2 then
-                FreeID.set_level tvid2 lev1
+                (fentry1, { fentry2 with level = lev1 })
               else if Level.less_than lev2 lev1 then
-                FreeID.set_level tvid1 lev2
+                ({ fentry1 with level = lev2 }, fentry2)
               else
-                ()
-            end;
-            let (oldtvref, newtvref, newtvid, newty) =
-              if Range.is_dummy rng1 then (tvref1, tvref2, tvid2, ty2) else (tvref2, tvref1, tvid1, ty1)
+                (fentry1, fentry2)
+            in
+
+            KindStore.set_free_id fid1 fentry1;
+            KindStore.set_free_id fid2 fentry2;
+
+            (* Generate constraints by unifying kinds and solve them *)
+            let (oldtvref, newtvref, newfid, newty) =
+              if Range.is_dummy rng1 then (tvref1, tvref2, fid2, ty2) else (tvref2, tvref1, fid1, ty1)
             in
             oldtvref := MonoLink(newty);
             let (eqns, kdunion) =
-              let kd1 = FreeID.get_kind tvid1 in
-              let kd2 = FreeID.get_kind tvid2 in
+              let kd1 = fentry1.mono_kind in
+              let kd2 = fentry2.mono_kind in
               match (kd1, kd2) with
               | (UniversalKind, UniversalKind)       -> ([], UniversalKind)
               | (RecordKind(asc1), UniversalKind)    -> ([], RecordKind(asc1))
@@ -533,16 +569,17 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
                   (Assoc.intersection asc1 asc2, kdunion)
             in
             eqns |> List.iter (fun (ty1, ty2) -> unify ty1 ty2);
-            set_kind_with_occurs_check newtvid kdunion
+            set_kind_with_occurs_check newfid kdunion
 
-      | (TypeVariable(Updatable({contents = MonoFree(tvid1)} as tvref1)), RecordType(tyasc2)) ->
-          let kd1 = FreeID.get_kind tvid1 in
+      | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)), RecordType(tyasc2)) ->
+          let fentry1 = KindStore.get_free_id fid1 in
+          let kd1 = fentry1.mono_kind in
           let binc =
             match kd1 with
             | UniversalKind      -> true
             | RecordKind(tyasc1) -> Assoc.domain_included tyasc1 tyasc2
           in
-          let chk = occurs tvid1 ty2 in
+          let chk = occurs fid1 ty2 in
           if chk then
             raise InternalInclusionError
           else if not binc then
@@ -557,8 +594,9 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
             eqns |> List.iter (fun (ty1, ty2) -> unify ty1 ty2);
             tvref1 := MonoLink(newty2)
 
-      | (TypeVariable(Updatable({contents = MonoFree(tvid1)} as tvref1)), _) ->
-          let kd1 = FreeID.get_kind tvid1 in
+      | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)), _) ->
+          let fentry1 = KindStore.get_free_id fid1 in
+          let kd1 = fentry1.mono_kind in
           let () =
             match kd1 with
             | UniversalKind -> ()
@@ -566,7 +604,7 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
                 (* -- `ty2` is not a record type, a type variable, nor a link,
                       and thereby cannot have a record kind -- *)
           in
-          let chk = occurs tvid1 ty2 in
+          let chk = occurs fid1 ty2 in
           if chk then
             raise InternalInclusionError
           else
@@ -632,7 +670,7 @@ let unify (ty1 : mono_type) (ty2 : mono_type) =
 
 
 let fresh_type_variable rng pre kd =
-  let tvid = FreeID.fresh kd pre.quantifiability pre.level () in
+  let tvid = fresh_free_id kd pre.quantifiability pre.level in
   let tvuref = ref (MonoFree(tvid)) in
   (rng, TypeVariable(Updatable(tvuref)))
 
@@ -1515,7 +1553,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letre
     utrecbinds |> List.fold_left (fun (tyenv, utrecacc) utrecbind ->
       let UTLetRecBinding(_, varrng, varnm, astdef) = utrecbind in
       let tvuref =
-        let tvid = FreeID.fresh UniversalKind pre.quantifiability (Level.succ pre.level) () in
+        let tvid = fresh_free_id UniversalKind pre.quantifiability (Level.succ pre.level) in
         ref (MonoFree(tvid))
       in
       let tv = Updatable(tvuref) in

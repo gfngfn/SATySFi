@@ -39,7 +39,7 @@ let show_type_variable (type a) (type b) (f : (a, b) typ -> string) (name : stri
 
 
 type general_id =
-  | FreeID  of mono_kind FreeID_.t_
+  | FreeID  of FreeID.t
   | BoundID of BoundID.t
 
 
@@ -50,7 +50,7 @@ module GeneralIDHashTable_ = Hashtbl.Make(
     let equal gid1 gid2 =
       match (gid1, gid2) with
       | (FreeID(tvid1), FreeID(tvid2)) -> FreeID.equal tvid1 tvid2
-      | (BoundID(bid1), BoundID(bid2)) -> BoundID.eq bid1 bid2
+      | (BoundID(bid1), BoundID(bid2)) -> BoundID.equal bid1 bid2
       | (_, _)                         -> false
 
     let hash = Hashtbl.hash
@@ -262,10 +262,18 @@ and string_of_product tvf ortvf current_ht tys =
 let rec tvf_mono current_ht plev (Updatable(tvref)) =
   let iter = string_of_mono_type_sub (tvf_mono current_ht) (ortvf_mono current_ht) current_ht in
   match !tvref with
-  | MonoFree(tvid) ->
-      let num = GeneralIDHashTable.intern_number current_ht (FreeID(tvid)) in
-      let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
-        show_type_variable (iter Outmost) s (FreeID.get_kind tvid)
+  | MonoFree(fid) ->
+      let fentry = KindStore.get_free_id fid in
+      let num = GeneralIDHashTable.intern_number current_ht (FreeID(fid)) in
+      let s =
+        let prefix =
+          match fentry.KindStore.quantifiability with
+          | Quantifiable   -> "'"
+          | Unquantifiable -> "'_"
+        in
+        prefix ^ (variable_name_of_number num)
+      in
+      show_type_variable (iter Outmost) s (fentry.KindStore.mono_kind)
 
   | MonoLink(ty) ->
       iter plev ty
@@ -284,9 +292,10 @@ let rec tvf_poly current_ht plev ptvi =
       tvf_mono current_ht plev tvref
 
   | PolyBound(bid) ->
+      let bentry = KindStore.get_bound_id bid in
       let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
       let s = "'#" ^ (variable_name_of_number num) in
-        show_type_variable (iter_poly Outmost) s (BoundID.get_kind bid)
+        show_type_variable (iter_poly Outmost) s bentry.KindStore.poly_kind
 
 
 and ortvf_poly current_ht porvi =

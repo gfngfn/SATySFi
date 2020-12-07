@@ -3043,7 +3043,7 @@ const_unit
     ; inst "AbortWithMessage"
         ~name:"abort-with-message"
         ~type_:{|
-let tv = (let bid = BoundID.fresh UniversalKind () in PolyBound(bid)) in
+let tv = (let bid = BoundID.fresh () in PolyBound(bid)) in
 ~% (tS @-> (~@ tv))
 |}
         ~fields:[
