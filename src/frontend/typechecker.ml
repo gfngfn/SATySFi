@@ -1720,20 +1720,25 @@ let rec add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typee
 and typecheck_binding_list (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t abstracted =
   let (bindacc, tyenv, oidsetacc, ssigacc) =
     utbinds |> List.fold_left (fun (bindacc, tyenv, oidsetacc, ssigacc) utbind ->
-      let (bind, (oidset, ssig)) = typecheck_binding pre tyenv utbind in
+      let (bindopt, (oidset, ssig)) = typecheck_binding pre tyenv utbind in
       let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
+      let bindacc =
+        match bindopt with
+        | Some(bind) -> Alist.extend bindacc bind
+        | None       -> bindacc
+      in
       let oidsetacc = OpaqueIDSet.union oidsetacc oidset in
       let ssigacc = StructSig.union ssigacc ssig in
-      (Alist.extend bindacc bind, tyenv, oidsetacc, ssigacc)
+      (bindacc, tyenv, oidsetacc, ssigacc)
     ) (Alist.empty, tyenv, OpaqueIDSet.empty, StructSig.empty)
   in
   (Alist.to_list bindacc, tyenv, (oidsetacc, ssigacc))
 
 
-and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding * StructSig.t abstracted =
+and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding option * StructSig.t abstracted =
   match utbind with
   | UTBindValue(valbind) ->
-      begin
+      let (rec_or_nonrec, ssig) =
         match valbind with
         | UTNonRec(tyannot, utpat, utast1) ->
             let presub = { pre with level = Level.succ pre.level; } in
@@ -1756,7 +1761,7 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
                 ssig |> StructSig.add_value varnm (pty, evid, pre.stage)
               ) patvarmap StructSig.empty
             in
-            (BindValue(NonRec(pat, e1)), (OpaqueIDSet.empty, ssig))
+            (NonRec(pat, e1), ssig)
 
         | UTRec(utrecbinds) ->
             let quints = typecheck_letrec pre tyenv utrecbinds in
@@ -1768,15 +1773,16 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
                 (recbindacc, ssig)
               ) (Alist.empty, StructSig.empty)
             in
-            (BindValue(Rec(recbindacc |> Alist.to_list)), (OpaqueIDSet.empty, ssig))
+            (Rec(recbindacc |> Alist.to_list), ssig)
 
         | UTMutable((rng, varnm) as var, utastI) ->
             let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
             let evid = EvalVarID.fresh var in
             let pty = lift_poly (rng, RefType(tyI)) in
             let ssig = StructSig.empty |> StructSig.add_value varnm (pty, evid, pre.stage) in
-            (BindValue(Mutable(evid, eI)), (OpaqueIDSet.empty, ssig))
-      end
+            (Mutable(evid, eI), ssig)
+      in
+      (Some(BindValue(rec_or_nonrec)), (OpaqueIDSet.empty, ssig))
 
   | UTBindType([]) ->
       assert false
@@ -1841,10 +1847,12 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
       in
       let mid = ModuleID.fresh modnm in
       let ssig = StructSig.empty |> StructSig.add_module modnm (modsig, mid) in
-      (BindModule(mid, e1), (oidset, ssig))
+      (Some(BindModule(mid, e1)), (oidset, ssig))
 
-  | UTBindSignature((_, _signm), _utsig) ->
-      failwith "TODO: Typechecker.typecheck_binding, UTBindSignature"
+  | UTBindSignature((_, signm), utsig) ->
+      let absmodsig = typecheck_signature tyenv utsig in
+      let ssig = StructSig.empty |> StructSig.add_signature signm absmodsig in
+      (None, (OpaqueIDSet.empty, ssig))
 
   | UTBindOpen((_, _modnm)) ->
       failwith "TODO: Typechecker.typecheck_binding, UTBindOpen"

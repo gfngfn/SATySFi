@@ -65,6 +65,8 @@ module StructSig : sig
 
   val add_module : module_name -> (signature * ModuleID.t) -> t -> t
 
+  val add_signature : signature_name -> signature abstracted -> t -> t
+
   val fold :
     v:(var_name -> (poly_type * EvalVarID.t * stage) -> 'a -> 'a) ->
     'a -> t -> 'a

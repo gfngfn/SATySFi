@@ -119,9 +119,10 @@ and struct_signature =
   struct_signature_entry Alist.t
 
 and struct_signature_entry =
-  | SSValue    of var_name * value_entry
-  | SSRecTypes of (type_name * type_definition) list
-  | SSModule   of module_name * module_entry
+  | SSValue     of var_name * value_entry
+  | SSRecTypes  of (type_name * type_definition) list
+  | SSModule    of module_name * module_entry
+  | SSSignature of signature_name * signature abstracted
 
 and functor_signature = {
   opaques  : unit;  (* TODO *)
@@ -282,6 +283,10 @@ module StructSig = struct
   let add_module (m : module_name) (tuple : signature * ModuleID.t) (ssig : t) : t =
     let mentry = compose_module_entry tuple in
     Alist.extend ssig (SSModule(m, mentry))
+
+
+  let add_signature (s : signature_name) (absmodsig : signature abstracted) (ssig : t) : t =
+    Alist.extend ssig (SSSignature(s, absmodsig))
 
 
   let fold ~v:fv acc ssig =
