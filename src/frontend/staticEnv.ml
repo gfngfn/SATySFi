@@ -163,8 +163,8 @@ exception UndefinedModuleName             of Range.t * module_name * module_name
 
 let compose_value_entry (pty, evid, stage) =
   {
-    val_name  = evid;
     val_type  = pty;
+    val_name  = evid;
     val_stage = stage;
   }
 
@@ -175,9 +175,13 @@ let decompose_value_entry ventry =
 
 let compose_module_entry (modsig, mid) =
   {
-    mod_name      = mid;
     mod_signature = modsig;
+    mod_name      = mid;
   }
+
+
+let decompose_module_entry mentry =
+  (mentry.mod_signature, mentry.mod_name)
 
 
 module Typeenv = struct
@@ -275,7 +279,7 @@ module StructSig = struct
 
   let find_value (x : var_name) (ssig : t) : (poly_type * EvalVarID.t * stage) option =
     ssig |> Alist.to_list_rev |> List.find_map (function
-    | SSValue(x0, ventry) -> if x = x0 then Some(decompose_value_entry ventry) else None
+    | SSValue(x0, ventry) -> if String.equal x x0 then Some(decompose_value_entry ventry) else None
     | _                   -> None
     )
 
@@ -283,6 +287,13 @@ module StructSig = struct
   let add_module (m : module_name) (tuple : signature * ModuleID.t) (ssig : t) : t =
     let mentry = compose_module_entry tuple in
     Alist.extend ssig (SSModule(m, mentry))
+
+
+  let find_module (m : module_name) (ssig : t) : (signature * ModuleID.t) option =
+    ssig |> Alist.to_list_rev |> List.find_map (function
+    | SSModule(m0, mentry) -> if String.equal m m0 then Some(decompose_module_entry mentry) else None
+    | _                    -> None
+    )
 
 
   let add_signature (s : signature_name) (absmodsig : signature abstracted) (ssig : t) : t =
