@@ -51,7 +51,10 @@ module Variant = Scheme(struct let suffix = "!" end)
 
 module Synonym = Scheme(struct let suffix = "$" end)
 
+module Opaque = Scheme(struct let suffix = "@" end)
+
 type t =
   | Variant of Variant.t
   | Synonym of Synonym.t
+  | Opaque  of Opaque.t
 [@@deriving show]

@@ -6,6 +6,18 @@ type type_definition =
   | Data  of int
   | Alias of type_scheme
 
+type struct_signature
+
+type signature =
+  | ConcStructore of struct_signature
+  | ConcFunctor   of functor_signature
+
+and functor_signature = {
+  opaques  : unit;  (* TODO *)
+  domain   : signature;
+  codomain : unit * signature;  (* TODO *)
+}
+
 (*
 exception UndefinedTypeName               of Range.t * module_name list * type_name * type_name list
 exception UndefinedTypeArgument           of Range.t * var_name * var_name list
@@ -50,6 +62,8 @@ module StructSig : sig
   val add_value : var_name -> (poly_type * EvalVarID.t * stage) -> t -> t
 
   val find_value : var_name -> t -> (poly_type * EvalVarID.t * stage) option
+
+  val add_module : module_name -> (signature * ModuleID.t) -> t -> t
 
   val fold :
     v:(var_name -> (poly_type * EvalVarID.t * stage) -> 'a -> 'a) ->

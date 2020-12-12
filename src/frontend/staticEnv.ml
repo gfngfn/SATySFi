@@ -72,23 +72,6 @@ module Distance = struct
 end
 
 
-module ModuleID
-: sig
-    type t
-    val compare : t -> t -> int
-    val fresh : module_name -> t
-    val extract_name : t -> module_name
-  end
-= struct
-    type t = int * module_name
-    let compare (i1, _) (i2, _) = i1 - i2
-    let current_id = ref 0
-    let fresh mdlnm =
-      begin incr current_id; (!current_id, mdlnm) end
-    let extract_name (_, mdlnm) = mdlnm
-  end
-
-
 module ValueNameMap = Map.Make(String)
 
 module TypeNameMap = Map.Make(String)
@@ -189,6 +172,13 @@ let decompose_value_entry ventry =
   (ventry.val_type, ventry.val_name, ventry.val_stage)
 
 
+let compose_module_entry (modsig, mid) =
+  {
+    mod_name      = mid;
+    mod_signature = modsig;
+  }
+
+
 module Typeenv = struct
 
   type t = type_environment
@@ -287,6 +277,11 @@ module StructSig = struct
     | SSValue(x0, ventry) -> if x = x0 then Some(decompose_value_entry ventry) else None
     | _                   -> None
     )
+
+
+  let add_module (m : module_name) (tuple : signature * ModuleID.t) (ssig : t) : t =
+    let mentry = compose_module_entry tuple in
+    Alist.extend ssig (SSModule(m, mentry))
 
 
   let fold ~v:fv acc ssig =

@@ -134,22 +134,18 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (curre
     | BaseType(RegExpType)   -> "regexp"
     | BaseType(TextInfoType) -> "text-info"
 
-    | DataType(tyargs, TypeID.Variant(vid)) ->
-        let s = (iter_args tyargs) ^ (TypeID.Variant.extract_name vid) in
+    | DataType(tyargs, tyid) ->
+        let name =
+          match tyid with
+          | TypeID.Variant(vid) -> TypeID.Variant.extract_name vid
+          | TypeID.Synonym(sid) -> TypeID.Synonym.extract_name sid
+          | TypeID.Opaque(oid)  -> TypeID.Opaque.extract_name oid
+        in
+        let s = (iter_args tyargs) ^ name in
         begin
           match (tyargs, plev) with
           | (_ :: _, Single) -> "(" ^ s ^ ")"
           | _                 -> s
-        end
-
-    | DataType(tyargs, TypeID.Synonym(sid)) ->
-        let s =
-          (iter_args tyargs) ^ (TypeID.Synonym.extract_name sid)
-        in
-        begin
-          match (tyargs, plev) with
-          | (_ :: _, Single) -> "(" ^ s ^ ")"
-          | _                -> s
         end
 
     | FuncType(optrow, ((_, tydommain) as tydom), tycod) ->

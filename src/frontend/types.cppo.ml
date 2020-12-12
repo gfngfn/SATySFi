@@ -149,11 +149,25 @@ end = struct
 end
 
 
-module StoreIDHashTable = Hashtbl.Make(StoreID)
+module ModuleID = struct
+  include IdScheme.Make(struct
+    type t = string
+    let show n m = Printf.sprintf "%d(%s)" n m
+  end)
 
+  let pp ppf mid =
+    Format.fprintf ppf "%s" (show mid)
+end
+
+
+
+module StoreIDHashTable = Hashtbl.Make(StoreID)
 
 module EvalVarIDMap = Map.Make(EvalVarID)
 
+module OpaqueIDSet = Set.Make(TypeID.Opaque)
+
+type 'a abstracted = OpaqueIDSet.t * 'a
 
 type manual_type =
   Range.t * manual_type_main
@@ -647,7 +661,8 @@ and rec_or_nonrec =
   | Mutable of EvalVarID.t * abstract_tree
 
 and binding =
-  | BindValue of rec_or_nonrec
+  | BindValue  of rec_or_nonrec
+  | BindModule of ModuleID.t * abstract_tree
 
 and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]

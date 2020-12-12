@@ -280,7 +280,7 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
     | DataType(tyargs, tyid) ->
         begin
           match tyid with
-          | TypeID.Variant(_) ->
+          | TypeID.Variant(_) | TypeID.Opaque(_) ->
               iter_list tyargs
 
           | TypeID.Synonym(_sid) ->
@@ -379,7 +379,7 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
     | DataType(tyargs, tyid) ->
         begin
           match tyid with
-          | TypeID.Variant(_) ->
+          | TypeID.Variant(_) | TypeID.Opaque(_) ->
               iter_list tyargs
 
           | TypeID.Synonym(_sid) ->
@@ -515,6 +515,12 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
 
     | (DataType(tyargs1, TypeID.Variant(vid1)), DataType(tyargs2, TypeID.Variant(vid2))) ->
         if TypeID.Variant.equal vid1 vid2 then
+          unify_list tyargs1 tyargs2
+        else
+          raise (InternalContradictionError(reversed))
+
+    | (DataType(tyargs1, TypeID.Opaque(oid1)), DataType(tyargs2, TypeID.Opaque(oid2))) ->
+        if TypeID.Opaque.equal oid1 oid2 then
           unify_list tyargs1 tyargs2
         else
           raise (InternalContradictionError(reversed))
@@ -925,11 +931,15 @@ let rec typecheck
       Exhchecker.main rng patbrs tyO pre tyenv;
       (PatternMatch(rng, eO, patbrs), beta)
 
-  | UTLetIn(UTNonRec(mntyopt, utpat, utast1), utast2) ->
+  | UTLetIn(UTNonRec(tyannot, utpat, utast1), utast2) ->
       let presub = { pre with level = Level.succ pre.level; } in
       let (pat, tyP, patvarmap) = typecheck_pattern presub tyenv utpat in
       let (e1, ty1) = typecheck presub tyenv utast1 in
       unify ty1 tyP;
+      tyannot |> Option.map (fun mnty ->
+        let tyA = decode_manual_type pre tyenv mnty in
+        unify ty1 tyA
+      ) |> ignore;
       let tyenvnew =
         if is_nonexpansive_expression e1 then
         (* -- if 'e1' is polymorphically typeable -- *)
@@ -1689,6 +1699,17 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
   aux mty
 
 
+and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * abstract_tree =
+  failwith "TODO: typecheck_module"
+
+
+and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signature abstracted =
+  failwith "TODO: typecheck_signature"
+
+
+and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : signature abstracted =
+  failwith "TODO: coerce_signature"
+
 
 let rec add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
   ssig |> StructSig.fold
@@ -1696,29 +1717,33 @@ let rec add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typee
       tyenv
 
 
-and typecheck_binding_list (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t =
-  let (bindacc, tyenv, ssigacc) =
-    utbinds |> List.fold_left (fun (bindacc, tyenv, ssigacc) utbind ->
-      let (bind, ssig) = typecheck_binding pre tyenv utbind in
+and typecheck_binding_list (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t abstracted =
+  let (bindacc, tyenv, oidsetacc, ssigacc) =
+    utbinds |> List.fold_left (fun (bindacc, tyenv, oidsetacc, ssigacc) utbind ->
+      let (bind, (oidset, ssig)) = typecheck_binding pre tyenv utbind in
       let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
+      let oidsetacc = OpaqueIDSet.union oidsetacc oidset in
       let ssigacc = StructSig.union ssigacc ssig in
-      (Alist.extend bindacc bind, tyenv, ssigacc)
-    ) (Alist.empty, tyenv, StructSig.empty)
+      (Alist.extend bindacc bind, tyenv, oidsetacc, ssigacc)
+    ) (Alist.empty, tyenv, OpaqueIDSet.empty, StructSig.empty)
   in
-  (Alist.to_list bindacc, tyenv, ssigacc)
+  (Alist.to_list bindacc, tyenv, (oidsetacc, ssigacc))
 
 
-and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding * StructSig.t =
+and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding * StructSig.t abstracted =
   match utbind with
   | UTBindValue(valbind) ->
       begin
         match valbind with
-        | UTNonRec(_mtyopt, utpat, utast1) ->
+        | UTNonRec(tyannot, utpat, utast1) ->
             let presub = { pre with level = Level.succ pre.level; } in
             let (pat, tyP, patvarmap) = typecheck_pattern presub tyenv utpat in
             let (e1, ty1) = typecheck presub tyenv utast1 in
             unify ty1 tyP;
-            (* TODO: unify `mtyopt` (which corresponds to type annotations) *)
+            tyannot |> Option.map (fun mnty ->
+              let tyA = decode_manual_type pre tyenv mnty in
+              unify ty1 tyA
+            ) |> ignore;
             let should_be_polymorphic = is_nonexpansive_expression e1 in
             let ssig =
               PatternVarMap.fold (fun varnm (_, evid, ty) ssig ->
@@ -1731,7 +1756,7 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
                 ssig |> StructSig.add_value varnm (pty, evid, pre.stage)
               ) patvarmap StructSig.empty
             in
-            (BindValue(NonRec(pat, e1)), ssig)
+            (BindValue(NonRec(pat, e1)), (OpaqueIDSet.empty, ssig))
 
         | UTRec(utrecbinds) ->
             let quints = typecheck_letrec pre tyenv utrecbinds in
@@ -1743,14 +1768,14 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
                 (recbindacc, ssig)
               ) (Alist.empty, StructSig.empty)
             in
-            (BindValue(Rec(recbindacc |> Alist.to_list)), ssig)
+            (BindValue(Rec(recbindacc |> Alist.to_list)), (OpaqueIDSet.empty, ssig))
 
         | UTMutable((rng, varnm) as var, utastI) ->
             let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
             let evid = EvalVarID.fresh var in
             let pty = lift_poly (rng, RefType(tyI)) in
             let ssig = StructSig.empty |> StructSig.add_value varnm (pty, evid, pre.stage) in
-            (BindValue(Mutable(evid, eI)), ssig)
+            (BindValue(Mutable(evid, eI)), (OpaqueIDSet.empty, ssig))
       end
 
   | UTBindType([]) ->
@@ -1802,8 +1827,21 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
         | None         -> failwith "TODO: Typechecker.typecheck_binding, UTBindType, success"
       end
 
-  | UTBindModule((_, _modnm), _utsigopt, _utmod) ->
-      failwith "TODO: Typechecker.typecheck_binding, UTBindModule"
+  | UTBindModule((rngm, modnm), utsigopt2, utmod1) ->
+      let (absmodsig1, e1) = typecheck_module tyenv utmod1 in
+      let (oidset, modsig) =
+        match utsigopt2 with
+        | None ->
+            absmodsig1
+
+        | Some(utsig2) ->
+            let (_, modsig1) = absmodsig1 in
+            let absmodsig2 = typecheck_signature tyenv utsig2 in
+            coerce_signature rngm modsig1 absmodsig2
+      in
+      let mid = ModuleID.fresh modnm in
+      let ssig = StructSig.empty |> StructSig.add_module modnm (modsig, mid) in
+      (BindModule(mid, e1), (oidset, ssig))
 
   | UTBindSignature((_, _signm), _utsig) ->
       failwith "TODO: Typechecker.typecheck_binding, UTBindSignature"
