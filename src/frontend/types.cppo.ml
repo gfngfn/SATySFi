@@ -662,7 +662,7 @@ and rec_or_nonrec =
 
 and binding =
   | BindValue  of rec_or_nonrec
-  | BindModule of ModuleID.t * abstract_tree
+  | BindModule of ModuleID.t * binding list
 
 and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]

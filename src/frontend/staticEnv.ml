@@ -112,7 +112,7 @@ type macro_entry = {
 }
 
 type signature =
-  | ConcStructore of struct_signature
+  | ConcStructure of struct_signature
   | ConcFunctor   of functor_signature
 
 and struct_signature =

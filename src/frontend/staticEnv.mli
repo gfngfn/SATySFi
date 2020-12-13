@@ -9,7 +9,7 @@ type type_definition =
 type struct_signature
 
 type signature =
-  | ConcStructore of struct_signature
+  | ConcStructure of struct_signature
   | ConcFunctor   of functor_signature
 
 and functor_signature = {
@@ -83,7 +83,7 @@ end
 
 module StructSig : sig
 
-  type t
+  type t = struct_signature
 
   val empty : t
 
