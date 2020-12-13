@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Improve how to emit errors when parsing invalid itemized expressions ([PR\#176](https://github.com/gfngfn/SATySFi/pull/176) by `hanazuki`).
 - Does not embed null objects as `/DW` or `/DW2` entries in output PDFs (mainly for services that use PDFs but do not support null objects) ([PR\#180](https://github.com/gfngfn/SATySFi/pull/180)).
 - Allow `?*` to math expressions and limit the range of math symbols (encouraged by [a report by `@t_uemura669101`](https://twitter.com/t_uemura669101/status/1302221948378910721?s=20)).
+- Improve `download-fonts.sh` as to SHA checksum ([PR\#253](https://github.com/gfngfn/SATySFi/pull/253) by `na4zagin3`).
+- Update README about how to install SATySFi on Windows in response to some amendment of `brwrap`-related problems ([PR\#242](https://github.com/gfngfn/SATySFi/pull/242)).
+
+### Added
+- Add new primitive `linear-transform-graphics : float -> float -> float -> float -> graphics -> graphics` for the linear transformation of graphics, and new functions `Gr.rotate-graphics` and `Gr.scale-graphics` by using it ([PR\#241](https://github.com/gfngfn/SATySFi/pull/241) by `monaqa`).
 
 ## [0.0.5] - 2020-07-11
 ### Fixed
