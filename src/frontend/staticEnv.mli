@@ -47,9 +47,11 @@ module Typeenv : sig
 
   val find_type : type_name -> t -> (TypeID.t * int) option
 
-  val add_constructor : constructor_name -> TypeID.Variant.t * type_scheme -> t -> t
+  val add_constructor : constructor_name -> (TypeID.Variant.t * type_scheme) -> t -> t
 
   val find_constructor : constructor_name -> t -> (TypeID.Variant.t * type_scheme) option
+
+  val add_module : module_name -> (signature * ModuleID.t) -> t -> t
 
 end
 

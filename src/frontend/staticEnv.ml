@@ -260,6 +260,11 @@ module Typeenv = struct
       (centry.ctor_belongs_to, centry.ctor_parameter)
     )
 
+
+  let add_module (m : module_name) (tuple : signature * ModuleID.t) (tyenv : t) : t =
+    let mentry = compose_module_entry tuple in
+    { tyenv with modules = tyenv.modules |> ModuleNameMap.add m mentry }
+
 end
 
 
