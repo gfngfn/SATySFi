@@ -39,8 +39,9 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 * unzip
 * wget or curl
 * ruby
-* [opam](https://opam.ocaml.org/) 2.0 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
-    * opam 2 をインストールするのに必要なツールである bubblewrap は，いくつかの環境において未だ簡単にはインストールできません。たとえば Windows Subsystem for Linux（WSL）や Ubuntu 16.04 が該当します。さしあたりの回避法として，`opam init` をする際に `--disable-sandboxing` オプションを渡すことで opam 2 を bubblewrap 無しにインストールすることができます。**詳細を [opam の FAQ](https://opam.ocaml.org/doc/FAQ.html#Why-does-opam-require-bwrap) で必ずご確認ください。**
+* [opam](https://opam.ocaml.org/) 2
+    * インストール方法：<https://opam.ocaml.org/doc/Install.html>
+    * Windows の場合，bubblewrap 関係の問題を回避するため，Windows Subsystem for Linux (WSL) 2 をオススメします。
 * ocaml 4.10.0 （OPAM からインストールします）
 
 また，ビルドには外部 OPAM リポジトリの追加が必要です。これは以下のコマンドでできます：
@@ -118,7 +119,7 @@ opam install satysfi
 ここでインストールされるフォントは以下の通りです。ライセンスを確認した上で使用してください：
 
 * [Junicode](http://junicode.sourceforge.net)
-* [IPA Font](https://ipafont.ipa.go.jp/old/ipafont/download.html)
+* [IPA Font](https://moji.or.jp/ipafont/)
 * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern/)
 * [Latin Modern Math](http://www.gust.org.pl/projects/e-foundry/lm-math)
 

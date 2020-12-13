@@ -21,6 +21,8 @@ module Gr : sig
   val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics list
   val rotate-path : point -> float -> path -> path
   val scale-path : point -> float -> float -> path -> path
+  val rotate-graphics : point -> float -> graphics -> graphics
+  val scale-graphics : point -> float -> float -> graphics -> graphics
 
 end = struct
 
@@ -184,5 +186,20 @@ end = struct
     path |> shift-path (0pt -' centx, 0pt -' centy)
          |> linear-transform-path scalex 0. 0. scaley
          |> shift-path centpt
+
+
+  let rotate-graphics centpt angle gr =
+    let (centx, centy) = centpt in
+    let rad = angle *. math-pi /. 180. in
+    gr |> shift-graphics (0pt -' centx, 0pt -' centy)
+       |> linear-transform-graphics (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
+       |> shift-graphics centpt
+
+
+  let scale-graphics centpt scalex scaley gr =
+    let (centx, centy) = centpt in
+    gr |> shift-graphics (0pt -' centx, 0pt -' centy)
+       |> linear-transform-graphics scalex 0. 0. scaley
+       |> shift-graphics centpt
 
 end

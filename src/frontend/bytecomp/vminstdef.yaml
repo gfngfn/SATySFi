@@ -2149,6 +2149,22 @@ code: |
   make_graphics grelem
 
 ---
+inst: PrimitiveLinearTransformGraphics
+is-pdf-mode-primitive: yes
+name: "linear-transform-graphics"
+type: |
+  ~% (tFL @-> tFL @-> tFL @-> tFL @-> tGR @-> tGR)
+
+params:
+- a : float
+- b : float
+- c : float
+- d : float
+- grelem : graphics_element
+code: |
+  make_graphics (GraphicD.make_linear_trans (a, b, c, d) grelem)
+
+---
 inst: PrimitiveShiftGraphics
 is-pdf-mode-primitive: yes
 name: "shift-graphics"
