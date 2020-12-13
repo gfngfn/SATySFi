@@ -125,9 +125,9 @@ and struct_signature_entry =
   | SSSignature of signature_name * signature abstracted
 
 and functor_signature = {
-  opaques  : unit;  (* TODO *)
+  opaques  : OpaqueIDSet.t;
   domain   : signature;
-  codomain : unit * signature;  (* TODO *)
+  codomain : OpaqueIDSet.t * signature;
 }
 
 and module_entry = {
@@ -135,16 +135,12 @@ and module_entry = {
   mod_signature : signature;
 }
 
-and signature_entry = {
-  sig_signature : unit;  (* TODO *)
-}
-
 and type_environment =
   {
     values       : (value_entry * bool ref) ValueNameMap.t;
     types        : type_entry TypeNameMap.t;
     modules      : module_entry ModuleNameMap.t;
-    signatures   : signature_entry SignatureNameMap.t;
+    signatures   : (signature abstracted) SignatureNameMap.t;
     constructors : constructor_entry ConstructorMap.t;
     macros       : macro_entry MacroNameMap.t;
   }
@@ -216,6 +212,18 @@ module Typeenv = struct
 
   let add_module (m : module_name) (mentry : module_entry) (tyenv : t) : t =
     { tyenv with modules = tyenv.modules |> ModuleNameMap.add m mentry }
+
+
+  let find_module (m : module_name) (tyenv : t) : module_entry option =
+    tyenv.modules |> ModuleNameMap.find_opt m
+
+
+  let add_signature (s : signature_name) (absmodsig : signature abstracted) (tyenv : t) : t =
+    { tyenv with signatures = tyenv.signatures |> SignatureNameMap.add s absmodsig }
+
+
+  let find_signature (s : signature_name) (tyenv : t) : (signature abstracted) option =
+    tyenv.signatures |> SignatureNameMap.find_opt s
 
 end
 

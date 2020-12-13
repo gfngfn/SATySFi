@@ -13,9 +13,9 @@ type signature =
   | ConcFunctor   of functor_signature
 
 and functor_signature = {
-  opaques  : unit;  (* TODO *)
+  opaques  : OpaqueIDSet.t;
   domain   : signature;
-  codomain : unit * signature;  (* TODO *)
+  codomain : OpaqueIDSet.t * signature;
 }
 
 type value_entry = {
@@ -78,6 +78,12 @@ module Typeenv : sig
   val find_constructor : constructor_name -> t -> constructor_entry option
 
   val add_module : module_name -> module_entry -> t -> t
+
+  val find_module : module_name -> t -> module_entry option
+
+  val add_signature : signature_name -> signature abstracted -> t -> t
+
+  val find_signature : signature_name -> t -> (signature abstracted) option
 
 end
 

@@ -1783,28 +1783,77 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
   aux mty
 
 
-and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * binding list =
-  failwith "TODO: typecheck_module"
+and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * binding list =
+  let (rng, utmodmain) = utmod in
+  match utmodmain with
+  | UTModVar(modnm) ->
+      begin
+        match tyenv |> Typeenv.find_module modnm with
+        | None ->
+            failwith "TODO: typecheck_module, UTModVar, error"
+
+        | Some(mentry) ->
+            let modsig = mentry.mod_signature in
+            ((OpaqueIDSet.empty, modsig), [])  (* TODO: output *)
+      end
+
+  | UTModBinds(utbinds) ->
+      let (binds, _, (oidset, ssig)) = typecheck_binding_list stage tyenv utbinds in
+      ((oidset, ConcStructure(ssig)), binds)
+
+  | UTModProjMod(_utmod1, (_, _modnm2)) ->
+      failwith "TODO: typecheck_module, UTModProjMod"
+
+  | UTModFunctor((_, _modnm1), _utsig1, _utmod2) ->
+      failwith "TODO: typecheck_module, UTModFunctor"
+
+  | UTModApply((_, _modnm1), (_, _modnm2)) ->
+      failwith "TODO: typecheck_module, UTModApply"
+
+  | UTModCoerce((_, _modnm1), _utsig2) ->
+      failwith "TODO: typecheck_module, UTModCoerce"
 
 
 and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signature abstracted =
-  failwith "TODO: typecheck_signature"
+  let (rng, utsigmain) = utsig in
+  match utsigmain with
+  | UTSigVar(signm) ->
+      begin
+        match tyenv |> Typeenv.find_signature signm with
+        | None ->
+            failwith "TODO: typecheck_signature, UTSigVar, error"
+
+        | Some(absmodsig) ->
+            absmodsig
+      end
+
+  | UTSigPath(_utmod1, (_, _signm)) ->
+      failwith "TODO: typecheck_signature, UTSigPath"
+
+  | UTSigDecls(_utdecls) ->
+      failwith "TODO: typecheck_signature, UTSigDecls"
+
+  | UTSigFunctor((_, _modnm1), _utsig1, utsig2) ->
+      failwith "TODO: typecheck_signature, UTSigFunctor"
+
+  | UTSigWith(_utsig1, _modidents, _tyident, _typarams, _mnty) ->
+      failwith "TODO: typecheck_signature, UTSigWith"
 
 
 and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : signature abstracted =
   failwith "TODO: coerce_signature"
 
 
-let rec add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
+and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
   ssig |> StructSig.fold
       ~v:(fun x vtup -> Typeenv.add_value x vtup)
       tyenv
 
 
-and typecheck_binding_list (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t abstracted =
+and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t abstracted =
   let (bindacc, tyenv, oidsetacc, ssigacc) =
     utbinds |> List.fold_left (fun (bindacc, tyenv, oidsetacc, ssigacc) utbind ->
-      let (binds, (oidset, ssig)) = typecheck_binding pre tyenv utbind in
+      let (binds, (oidset, ssig)) = typecheck_binding stage tyenv utbind in
       let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
       let bindacc = Alist.append bindacc binds in
       let oidsetacc = OpaqueIDSet.union oidsetacc oidset in
@@ -1815,9 +1864,17 @@ and typecheck_binding_list (pre : pre) (tyenv : Typeenv.t) (utbinds : untyped_bi
   (Alist.to_list bindacc, tyenv, (oidsetacc, ssigacc))
 
 
-and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding list * StructSig.t abstracted =
+and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding list * StructSig.t abstracted =
   match utbind with
   | UTBindValue(valbind) ->
+      let pre =
+        {
+          stage           = stage;
+          type_parameters = TypeParameterMap.empty;
+          quantifiability = Quantifiable;
+          level           = Level.bottom;
+        }
+      in
       let (rec_or_nonrec, ssig) =
         match valbind with
         | UTNonRec(tyannot, utpat, utast1) ->
@@ -1954,7 +2011,7 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
       end
 
   | UTBindModule((rngm, modnm), utsigopt2, utmod1) ->
-      let (absmodsig1, binds1) = typecheck_module tyenv utmod1 in
+      let (absmodsig1, binds1) = typecheck_module stage tyenv utmod1 in
       let (oidset, modsig) =
         match utsigopt2 with
         | None ->
@@ -1983,7 +2040,7 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
       ([], (OpaqueIDSet.empty, ssig))
 
   | UTBindInclude(utmod) ->
-      let (absmodsig, binds) = typecheck_module tyenv utmod in
+      let (absmodsig, binds) = typecheck_module stage tyenv utmod in
       let (oidset, modsig) = absmodsig in
       begin
         match modsig with
@@ -2018,15 +2075,5 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : m
 
 
 let main_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
-  let (binds, tyenv, _) =
-    let pre =
-      {
-        stage           = stage;
-        type_parameters = TypeParameterMap.empty;
-        quantifiability = Quantifiable;
-        level           = Level.bottom;
-      }
-    in
-    typecheck_binding_list pre tyenv utbinds
-  in
+  let (binds, tyenv, _) = typecheck_binding_list stage tyenv utbinds in
   (binds, tyenv)
