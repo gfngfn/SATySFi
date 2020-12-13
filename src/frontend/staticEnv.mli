@@ -18,6 +18,32 @@ and functor_signature = {
   codomain : unit * signature;  (* TODO *)
 }
 
+type value_entry = {
+  val_name  : EvalVarID.t;
+  val_type  : poly_type;
+  val_stage : stage;
+}
+
+type type_entry = {
+  type_id    : TypeID.t;
+  type_arity : int;
+}
+
+type constructor_entry = {
+  ctor_belongs_to : TypeID.Variant.t;
+  ctor_parameter  : type_scheme;
+}
+
+type macro_entry = {
+  macro_type : macro_type;
+  macro_name : EvalVarID.t;
+}
+
+type module_entry = {
+  mod_name      : ModuleID.t;
+  mod_signature : signature;
+}
+
 (*
 exception UndefinedTypeName               of Range.t * module_name list * type_name * type_name list
 exception UndefinedTypeArgument           of Range.t * var_name * var_name list
@@ -35,23 +61,23 @@ module Typeenv : sig
 
   val empty : t
 
-  val add_macro : ctrlseq_name -> (macro_type * EvalVarID.t) -> t -> t
+  val add_macro : ctrlseq_name -> macro_entry -> t -> t
 
-  val find_macro : ctrlseq_name -> t -> (macro_type * EvalVarID.t) option
+  val find_macro : ctrlseq_name -> t -> macro_entry option
 
-  val add_value : var_name -> (poly_type * EvalVarID.t * stage) -> t -> t
+  val add_value : var_name -> value_entry -> t -> t
 
-  val find_value : var_name -> t -> (poly_type * EvalVarID.t * stage) option
+  val find_value : var_name -> t -> value_entry option
 
-  val add_type : type_name -> TypeID.t * int -> t -> t
+  val add_type : type_name -> type_entry -> t -> t
 
-  val find_type : type_name -> t -> (TypeID.t * int) option
+  val find_type : type_name -> t -> type_entry option
 
-  val add_constructor : constructor_name -> (TypeID.Variant.t * type_scheme) -> t -> t
+  val add_constructor : constructor_name -> constructor_entry -> t -> t
 
-  val find_constructor : constructor_name -> t -> (TypeID.Variant.t * type_scheme) option
+  val find_constructor : constructor_name -> t -> constructor_entry option
 
-  val add_module : module_name -> (signature * ModuleID.t) -> t -> t
+  val add_module : module_name -> module_entry -> t -> t
 
 end
 
@@ -61,16 +87,16 @@ module StructSig : sig
 
   val empty : t
 
-  val add_value : var_name -> (poly_type * EvalVarID.t * stage) -> t -> t
+  val add_value : var_name -> value_entry -> t -> t
 
-  val find_value : var_name -> t -> (poly_type * EvalVarID.t * stage) option
+  val find_value : var_name -> t -> value_entry option
 
-  val add_module : module_name -> (signature * ModuleID.t) -> t -> t
+  val add_module : module_name -> module_entry -> t -> t
 
   val add_signature : signature_name -> signature abstracted -> t -> t
 
   val fold :
-    v:(var_name -> (poly_type * EvalVarID.t * stage) -> 'a -> 'a) ->
+    v:(var_name -> value_entry -> 'a -> 'a) ->
     'a -> t -> 'a
 
   val union : t -> t -> t

@@ -161,28 +161,6 @@ exception NotMatchingStage                of Range.t * var_name * stage * stage
 exception UndefinedModuleName             of Range.t * module_name * module_name list
 *)
 
-let compose_value_entry (pty, evid, stage) =
-  {
-    val_type  = pty;
-    val_name  = evid;
-    val_stage = stage;
-  }
-
-
-let decompose_value_entry ventry =
-  (ventry.val_type, ventry.val_name, ventry.val_stage)
-
-
-let compose_module_entry (modsig, mid) =
-  {
-    mod_signature = modsig;
-    mod_name      = mid;
-  }
-
-
-let decompose_module_entry mentry =
-  (mentry.mod_signature, mentry.mod_name)
-
 
 module Typeenv = struct
 
@@ -200,69 +178,43 @@ module Typeenv = struct
     }
 
 
-  let add_macro (csnm : ctrlseq_name) ((macty, evid) : macro_type * EvalVarID.t) (tyenv : t) : t =
-    let macentry =
-      {
-        macro_type = macty;
-        macro_name = evid;
-      }
-    in
+  let add_macro (csnm : ctrlseq_name) (macentry : macro_entry) (tyenv : t) : t =
     { tyenv with macros = tyenv.macros |> MacroNameMap.add csnm macentry }
 
 
-  let find_macro (csnm : ctrlseq_name) (tyenv : t) : (macro_type * EvalVarID.t) option =
-    tyenv.macros |> MacroNameMap.find_opt csnm |> Option.map (fun macentry ->
-      (macentry.macro_type, macentry.macro_name)
-    )
+  let find_macro (csnm : ctrlseq_name) (tyenv : t) : macro_entry option =
+    tyenv.macros |> MacroNameMap.find_opt csnm
 
 
-  let add_value (varnm : var_name) (mapped : poly_type * EvalVarID.t * stage) (tyenv : t) : t =
-    let ventry = compose_value_entry mapped in
+  let add_value (varnm : var_name) (ventry : value_entry) (tyenv : t) : t =
     let is_used = ref false in
     { tyenv with values = tyenv.values |> ValueNameMap.add varnm (ventry, is_used) }
 
 
-  let find_value (varnm : var_name) (tyenv : t) : (poly_type * EvalVarID.t * stage) option =
+  let find_value (varnm : var_name) (tyenv : t) : value_entry option =
     tyenv.values |> ValueNameMap.find_opt varnm |> Option.map (fun (ventry, is_used) ->
       is_used := true;
-      decompose_value_entry ventry
+      ventry
     )
 
 
-  let add_type (tynm : type_name) ((tyid, arity) : TypeID.t * int) (tyenv : t) : t =
-    let tentry =
-      {
-        type_id    = tyid;
-        type_arity = arity;
-      }
-    in
+  let add_type (tynm : type_name) (tentry : type_entry) (tyenv : t) : t =
     { tyenv with types = tyenv.types |> TypeNameMap.add tynm tentry }
 
 
-  let find_type (tynm : type_name) (tyenv : t) : (TypeID.t * int) option =
-    tyenv.types |> TypeNameMap.find_opt tynm |> Option.map (fun tentry ->
-      (tentry.type_id, tentry.type_arity)
-    )
+  let find_type (tynm : type_name) (tyenv : t) : type_entry option =
+    tyenv.types |> TypeNameMap.find_opt tynm
 
 
-  let add_constructor (ctornm : constructor_name) ((vid, (bids, pty)) : TypeID.Variant.t * type_scheme) (tyenv : t) : t =
-    let centry =
-      {
-        ctor_belongs_to = vid;
-        ctor_parameter  = (bids, pty);
-      }
-    in
+  let add_constructor (ctornm : constructor_name) (centry : constructor_entry) (tyenv : t) : t =
     { tyenv with constructors = tyenv.constructors |> ConstructorMap.add ctornm centry }
 
 
-  let rec find_constructor (ctornm : constructor_name) (tyenv : t) : (TypeID.Variant.t * type_scheme) option =
-    tyenv.constructors |> ConstructorMap.find_opt ctornm |> Option.map (fun centry ->
-      (centry.ctor_belongs_to, centry.ctor_parameter)
-    )
+  let find_constructor (ctornm : constructor_name) (tyenv : t) : constructor_entry option =
+    tyenv.constructors |> ConstructorMap.find_opt ctornm
 
 
-  let add_module (m : module_name) (tuple : signature * ModuleID.t) (tyenv : t) : t =
-    let mentry = compose_module_entry tuple in
+  let add_module (m : module_name) (mentry : module_entry) (tyenv : t) : t =
     { tyenv with modules = tyenv.modules |> ModuleNameMap.add m mentry }
 
 end
@@ -277,26 +229,24 @@ module StructSig = struct
     Alist.empty
 
 
-  let add_value (x : var_name) (tuple : poly_type * EvalVarID.t * stage) (ssig : t) : t =
-    let ventry = compose_value_entry tuple in
+  let add_value (x : var_name) (ventry : value_entry) (ssig : t) : t =
     Alist.extend ssig (SSValue(x, ventry))
 
 
-  let find_value (x : var_name) (ssig : t) : (poly_type * EvalVarID.t * stage) option =
+  let find_value (x : var_name) (ssig : t) : value_entry option =
     ssig |> Alist.to_list_rev |> List.find_map (function
-    | SSValue(x0, ventry) -> if String.equal x x0 then Some(decompose_value_entry ventry) else None
+    | SSValue(x0, ventry) -> if String.equal x x0 then Some(ventry) else None
     | _                   -> None
     )
 
 
-  let add_module (m : module_name) (tuple : signature * ModuleID.t) (ssig : t) : t =
-    let mentry = compose_module_entry tuple in
+  let add_module (m : module_name) (mentry : module_entry) (ssig : t) : t =
     Alist.extend ssig (SSModule(m, mentry))
 
 
-  let find_module (m : module_name) (ssig : t) : (signature * ModuleID.t) option =
+  let find_module (m : module_name) (ssig : t) : module_entry option =
     ssig |> Alist.to_list_rev |> List.find_map (function
-    | SSModule(m0, mentry) -> if String.equal m m0 then Some(decompose_module_entry mentry) else None
+    | SSModule(m0, mentry) -> if String.equal m m0 then Some(mentry) else None
     | _                    -> None
     )
 

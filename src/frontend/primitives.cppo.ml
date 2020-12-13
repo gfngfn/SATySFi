@@ -159,82 +159,123 @@ let fresh_bound_id () =
   bid
 
 
+let add_variant_types vntdefs tyenv =
+  List.fold_left (fun tyenv (tynm, vid, arity, ctors) ->
+    let tentry =
+      {
+        type_id    = TypeID.Variant(vid);
+        type_arity = arity;
+      }
+    in
+    let tyenv = tyenv |> Typeenv.add_type tynm tentry in
+    ctors |> List.fold_left (fun tyenv (ctornm, tyscheme) ->
+      let centry =
+        {
+          ctor_belongs_to = vid;
+          ctor_parameter  = tyscheme;
+        }
+      in
+      tyenv |> Typeenv.add_constructor ctornm centry
+    ) tyenv
+  ) tyenv vntdefs
+
+
+let add_synonym_types syndefs tyenv =
+  List.fold_left (fun tyenv (tynm, sid, arity) ->
+    let tentry =
+      {
+        type_id    = TypeID.Synonym(sid);
+        type_arity = arity;
+      }
+    in
+    tyenv |> Typeenv.add_type tynm tentry
+  ) tyenv syndefs
+
+
+let no_parameter = ([], Poly(tU))
+
+
 let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
   let bid = fresh_bound_id () in
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
 
   tyenvmid
-  |> Typeenv.add_type "option" (TypeID.Variant(vid_option), 1)
-  |> Typeenv.add_constructor "None" (vid_option, ([bid], Poly(tU)))
-  |> Typeenv.add_constructor "Some" (vid_option, ([bid], Poly(typaram)))
-
-  |> Typeenv.add_type "itemize" (TypeID.Variant(vid_itemize), 0)
-  |> Typeenv.add_constructor "Item" (vid_itemize, ([], Poly(tPROD [tIT; tL (tITMZ ())])))
-
-  |> Typeenv.add_type "math-class" (TypeID.Variant(vid_mathcls), 0)
-  |> Typeenv.add_constructor "MathOrd"    (vid_mathcls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathBin"    (vid_mathcls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathRel"    (vid_mathcls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathOp"     (vid_mathcls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathPunct"  (vid_mathcls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathOpen"   (vid_mathcls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathClose"  (vid_mathcls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathPrefix" (vid_mathcls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathInner"  (vid_mathcls, ([], Poly(tU)))
-
-  |> Typeenv.add_type "math-char-class" (TypeID.Variant(vid_mccls), 0)
-  |> Typeenv.add_constructor "MathItalic"       (vid_mccls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathBoldItalic"   (vid_mccls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathRoman"        (vid_mccls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathBoldRoman"    (vid_mccls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathScript"       (vid_mccls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathBoldScript"   (vid_mccls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathFraktur"      (vid_mccls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathBoldFraktur"  (vid_mccls, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MathDoubleStruck" (vid_mccls, ([], Poly(tU)))
+    |> add_variant_types [
+      ("option", vid_option, 1, [
+        ("None", ([bid], Poly(tU)));
+        ("Some", ([bid], Poly(typaram)))
+      ]);
+      ("itemize", vid_itemize, 0, [
+        ("Item", ([], Poly(tPROD [tIT; tL (tITMZ ())])))
+      ]);
+      ("math-class", vid_mathcls, 0, [
+        ("MathOrd"   , no_parameter);
+        ("MathBin"   , no_parameter);
+        ("MathRel"   , no_parameter);
+        ("MathOp"    , no_parameter);
+        ("MathPunct" , no_parameter);
+        ("MathOpen"  , no_parameter);
+        ("MathClose" , no_parameter);
+        ("MathPrefix", no_parameter);
+        ("MathInner" , no_parameter);
+      ]);
+      ("math-char-class", vid_mccls, 0, [
+        ("MathItalic"      , no_parameter);
+        ("MathBoldItalic"  , no_parameter);
+        ("MathRoman"       , no_parameter);
+        ("MathBoldRoman"   , no_parameter);
+        ("MathScript"      , no_parameter);
+        ("MathBoldScript"  , no_parameter);
+        ("MathFraktur"     , no_parameter);
+        ("MathBoldFraktur" , no_parameter);
+        ("MathDoubleStruck", no_parameter);
+      ]);
+    ]
 
 
 let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
-
   tyenvmid
-  |> Typeenv.add_type "color" (TypeID.Variant(vid_color), 0)
-  |> Typeenv.add_constructor "Gray" (vid_color, ([], Poly(tFL)))
-  |> Typeenv.add_constructor "RGB"  (vid_color, ([], Poly(tPROD [tFL; tFL; tFL])))
-  |> Typeenv.add_constructor "CMYK" (vid_color, ([], Poly(tPROD [tFL; tFL; tFL; tFL])))
+    |> add_variant_types [
+      ("color", vid_color, 0, [
+        ("Gray", ([], Poly(tFL)));
+        ("RGB" , ([], Poly(tPROD [tFL; tFL; tFL])));
+        ("CMYK", ([], Poly(tPROD [tFL; tFL; tFL; tFL])));
+      ]);
+      ("script", vid_script, 0, [
+        ("HanIdeographic", no_parameter);
+        ("Kana"          , no_parameter);
+        ("Latin"         , no_parameter);
+        ("OtherScript"   , no_parameter);
+      ]);
+      ("language", vid_language, 0, [
+        ("English"         , no_parameter);
+        ("Japanese"        , no_parameter);
+        ("NoLanguageSystem", no_parameter);
+      ]);
 
-  |> Typeenv.add_type "script" (TypeID.Variant(vid_script), 0)
-  |> Typeenv.add_constructor "HanIdeographic" (vid_script, ([], Poly(tU)))
-  |> Typeenv.add_constructor "Kana"           (vid_script, ([], Poly(tU)))
-  |> Typeenv.add_constructor "Latin"          (vid_script, ([], Poly(tU)))
-  |> Typeenv.add_constructor "OtherScript"    (vid_script, ([], Poly(tU)))
-
-  |> Typeenv.add_type "language" (TypeID.Variant(vid_language), 0)
-  |> Typeenv.add_constructor "English"          (vid_language, ([], Poly(tU)))
-  |> Typeenv.add_constructor "Japanese"         (vid_language, ([], Poly(tU)))
-  |> Typeenv.add_constructor "NoLanguageSystem" (vid_language, ([], Poly(tU)))
-
-  |> Typeenv.add_type "page" (TypeID.Variant(vid_page), 0)
-  |> Typeenv.add_constructor "A0Paper"          (vid_page, ([], Poly(tU)))
-  |> Typeenv.add_constructor "A1Paper"          (vid_page, ([], Poly(tU)))
-  |> Typeenv.add_constructor "A2Paper"          (vid_page, ([], Poly(tU)))
-  |> Typeenv.add_constructor "A3Paper"          (vid_page, ([], Poly(tU)))
-  |> Typeenv.add_constructor "A4Paper"          (vid_page, ([], Poly(tU)))
-  |> Typeenv.add_constructor "A5Paper"          (vid_page, ([], Poly(tU)))
-  |> Typeenv.add_constructor "USLetter"         (vid_page, ([], Poly(tU)))
-  |> Typeenv.add_constructor "USLegal"          (vid_page, ([], Poly(tU)))
-  |> Typeenv.add_constructor "UserDefinedPaper" (vid_page, ([], Poly(tPROD [tLN; tLN])))
-
-  |> Typeenv.add_type "cell" (TypeID.Variant(vid_cell), 0)
-  |> Typeenv.add_constructor "NormalCell" (vid_cell, ([], Poly(tPROD [tPADS; tIB])))
-  |> Typeenv.add_constructor "EmptyCell"  (vid_cell, ([], Poly(tU)))
-  |> Typeenv.add_constructor "MultiCell"  (vid_cell, ([], Poly(tPROD [tI; tI; tPADS; tIB])))
-
-  |> Typeenv.add_type "deco" (TypeID.Synonym(sid_deco), 0)
-
-  |> Typeenv.add_type "deco-set" (TypeID.Synonym(sid_decoset), 0)
-
-  |> Typeenv.add_type "inline-graphics" (TypeID.Synonym(sid_igraf), 0)
+      ("page", vid_page, 0, [
+        ("A0Paper"         , no_parameter);
+        ("A1Paper"         , no_parameter);
+        ("A2Paper"         , no_parameter);
+        ("A3Paper"         , no_parameter);
+        ("A4Paper"         , no_parameter);
+        ("A5Paper"         , no_parameter);
+        ("USLetter"        , no_parameter);
+        ("USLegal"         , no_parameter);
+        ("UserDefinedPaper", ([], Poly(tPROD [tLN; tLN])));
+      ]);
+      ("cell", vid_cell, 0, [
+        ("NormalCell", ([], Poly(tPROD [tPADS; tIB])));
+        ("EmptyCell" , no_parameter);
+        ("MultiCell" , ([], Poly(tPROD [tI; tI; tPADS; tIB])));
+      ]);
+    ]
+    |> add_synonym_types [
+      ("deco", sid_deco, 0);
+      ("deco-set", sid_decoset, 0);
+      ("inline-graphics", sid_igraf, 0);
+    ]
 
 
 let lam evid ast =
@@ -596,8 +637,8 @@ let text_mode_table =
 let make_environments table =
   let tyenvinit =
     Typeenv.empty
-    |> add_general_default_types
-    |> add_pdf_mode_default_types
+      |> add_general_default_types
+      |> add_pdf_mode_default_types
   in
   let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
@@ -607,7 +648,14 @@ let make_environments table =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
       let evid = EvalVarID.fresh (dr, varnm) in
       let loc = ref temporary_ast in
-      let tyenvnew = tyenv |> Typeenv.add_value varnm (pty, evid, Persistent0) in  (* temporary *)
+      let ventry =
+        {
+          val_name  = evid;
+          val_type  = pty;
+          val_stage = Persistent0;
+        }
+      in
+      let tyenvnew = tyenv |> Typeenv.add_value varnm ventry in  (* temporary *)
       let envnew = add_to_environment env evid loc in
         (tyenvnew, envnew, Alist.extend acc (loc, deff))
     ) (tyenvinit, envinit, Alist.empty)

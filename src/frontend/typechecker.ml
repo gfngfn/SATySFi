@@ -54,7 +54,7 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
           raise (UndefinedConstructor(rng, constrnm, cands))
         *)
 
-  | Some(dfn) ->
+  | Some(centry) ->
       let qtfbl = pre.quantifiability in
       let lev = pre.level in
       let freef rng tv =
@@ -63,7 +63,8 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
       let orfreef orv =
         OptionRowVariable(orv)
       in
-      let (tyid, (bidlist, pty)) = dfn in
+      let tyid = centry.ctor_belongs_to in
+      let (bidlist, pty) = centry.ctor_parameter in
       let pairlst =
         bidlist |> List.map (fun bid ->
           let bentry = KindStore.get_bound_id bid in
@@ -97,7 +98,15 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
       let tvid = fresh_free_id UniversalKind qtfbl lev in
       let tv = Updatable(ref (MonoFree(tvid))) in
       let beta = (rng, TypeVariable(PolyFree(tv))) in
-      let tyenvnew = tyenv |> Typeenv.add_value varnm (Poly(Primitives.option_type beta), evid, pre.stage) in
+      let tyenvnew =
+        let ventry =
+          {
+            val_name  = evid;
+            val_type  = Poly(Primitives.option_type beta);
+            val_stage = pre.stage;
+          }
+        in
+        tyenv |> Typeenv.add_value varnm ventry in
         (tyenvnew, Alist.extend tyacc (rng, TypeVariable(tv)), Alist.extend evidacc evid)
     ) (tyenv, Alist.empty, Alist.empty)
   in
@@ -132,7 +141,14 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       | UTEarlyMacroParam(_) ->
           (Poly(ptybody), EarlyMacroParameter(beta))
       in
-      (tyenv |> Typeenv.add_value varnm (pty, evid, Stage0), Alist.extend evidacc evid, Alist.extend macptyacc macpty)
+      let ventry =
+        {
+          val_name  = evid;
+          val_type  = pty;
+          val_stage = Stage0;
+        }
+      in
+      (tyenv |> Typeenv.add_value varnm ventry, Alist.extend evidacc evid, Alist.extend macptyacc macpty)
     ) (tyenv, Alist.empty, Alist.empty)
   in
   (tyenv, Alist.to_list evidacc, Alist.to_list macptyacc)
@@ -177,14 +193,28 @@ let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_v
 let add_pattern_var_mono (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
     let pty = lift_poly (erase_range_of_type ty) in
-    tyenvacc |> Typeenv.add_value varnm (pty, evid, pre.stage)
+    let ventry =
+      {
+        val_name  = evid;
+        val_type  = pty;
+        val_stage = pre.stage;
+      }
+    in
+    tyenvacc |> Typeenv.add_value varnm ventry
   ) patvarmap tyenv
 
 
 let add_pattern_var_poly (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
     let pty = (generalize pre.level (erase_range_of_type ty)) in
-    tyenvacc |> Typeenv.add_value varnm (pty, evid, pre.stage)
+    let ventry =
+      {
+        val_name  = evid;
+        val_type  = pty;
+        val_stage = pre.stage;
+      }
+    in
+    tyenvacc |> Typeenv.add_value varnm ventry
   ) patvarmap tyenv
 
 
@@ -770,7 +800,10 @@ let rec typecheck
             raise (UndefinedVariable(rng, mdlnmlst, varnm, cands))
 *)
 
-        | Some((pty, evid, stage)) ->
+        | Some(ventry) ->
+            let evid = ventry.val_name in
+            let pty = ventry.val_type in
+            let stage = ventry.val_stage in
             let tyfree = instantiate pre.level pre.quantifiability pty in
             let tyres = overwrite_range_of_type tyfree rng in
             begin
@@ -828,7 +861,15 @@ let rec typecheck
           (ContextType, BoxRowType)
       in
       let evid = EvalVarID.fresh (varrng, varnmctx) in
-      let tyenvsub = tyenv |> Typeenv.add_value varnmctx (Poly(varrng, BaseType(bstyvar)), evid, pre.stage) in
+      let tyenvsub =
+        let ventry =
+          {
+            val_name  = evid;
+            val_type  = Poly(varrng, BaseType(bstyvar));
+            val_stage = pre.stage;
+          }
+        in
+        tyenv |> Typeenv.add_value varnmctx ventry in
       let (e1, ty1) = typecheck_iter tyenvsub utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       unify tyret (Range.dummy "lambda-horz-return", BaseType(bstyret));
@@ -842,7 +883,15 @@ let rec typecheck
           (ContextType, BoxColType)
       in
       let evid = EvalVarID.fresh (varrng, varnmctx) in
-      let tyenvsub = tyenv |> Typeenv.add_value varnmctx (Poly(varrng, BaseType(bstyvar)), evid, pre.stage) in
+      let tyenvsub =
+        let ventry =
+          {
+            val_name  = evid;
+            val_type  = Poly(varrng, BaseType(bstyvar));
+            val_stage = pre.stage;
+          }
+        in
+        tyenv |> Typeenv.add_value varnmctx ventry in
       let (e1, ty1) = typecheck_iter tyenvsub utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       unify tyret (Range.dummy "lambda-vert-return", BaseType(bstyret));
@@ -956,7 +1005,16 @@ let rec typecheck
       let (tyenv, recbindacc) =
         quints |> List.fold_left (fun (tyenv, recbindacc) quint ->
           let (x, pty, evid, stage, recbind) = quint in
-          let tyenv = tyenv |> Typeenv.add_value x (pty, evid, stage) in
+          let tyenv =
+            let ventry =
+              {
+                val_name  = evid;
+                val_type  = pty;
+                val_stage = stage;
+              }
+            in
+            tyenv |> Typeenv.add_value x ventry
+          in
           let recbindacc = Alist.extend recbindacc recbind in
           (tyenv, recbindacc)
         ) (tyenv, Alist.empty)
@@ -1333,14 +1391,17 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
                 | None ->
                     raise (UndefinedVertMacro(rngcs, csnm))
 
-                | Some((VertMacroType(macparamtys), evid)) ->
+                | Some(macentry) ->
+                    let macparamtys =
+                      match macentry.macro_type with
+                      | VertMacroType(macparamtys) -> macparamtys
+                      | _                          -> assert false
+                    in
+                    let evid = macentry.macro_name in
                     let eargs = typecheck_macro_arguments rngapp pre tyenv macparamtys utmacargs in
                     let eapp = apply_tree_of_list (ContentOf(rngcs, evid)) eargs in
                     let iv = InputVertContent(Prev(eapp)) in
                     aux (Alist.extend acc iv) tail
-
-                | Some(_) ->
-                    assert false
               end
         end
   in
@@ -1411,14 +1472,17 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
                 | None ->
                     raise (UndefinedHorzMacro(rngcs, csnm))
 
-                | Some((HorzMacroType(macparamtys), evid)) ->
+                | Some(macentry) ->
+                    let macparamtys =
+                      match macentry.macro_type with
+                      | HorzMacroType(macparamtys) -> macparamtys
+                      | _                          -> assert false
+                    in
+                    let evid = macentry.macro_name in
                     let eargs = typecheck_macro_arguments rngapp pre tyenv macparamtys utmacargs in
                     let eapp = apply_tree_of_list (ContentOf(rngcs, evid)) eargs in
                     let ih = InputHorzContent(Prev(eapp)) in
                     aux (Alist.extend acc ih) tail
-
-                | Some(_) ->
-                    assert false
               end
         end
   in
@@ -1591,7 +1655,16 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letre
       let beta = (rng, TypeVariable(tv)) in
       let pbeta = (rng, TypeVariable(PolyFree(tv))) in
       let evid = EvalVarID.fresh (varrng, varnm) in
-      let tyenv = tyenv |> Typeenv.add_value varnm (Poly(pbeta), evid, pre.stage) in
+      let tyenv =
+        let ventry =
+          {
+            val_type  = Poly(pbeta);
+            val_name  = evid;
+            val_stage = pre.stage;
+          }
+        in
+        tyenv |> Typeenv.add_value varnm ventry
+      in
       let utrecacc = Alist.extend utrecacc (utrecbind, beta, evid) in
       (tyenv, utrecacc)
     ) (tyenv, Alist.empty)
@@ -1630,7 +1703,16 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letre
 and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng varnm utastI =
   let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
   let evid = EvalVarID.fresh (varrng, varnm) in
-  let tyenvI = tyenv |> Typeenv.add_value varnm (lift_poly (varrng, RefType(tyI)), evid, pre.stage) in
+  let tyenvI =
+    let ventry =
+      {
+        val_type  = lift_poly (varrng, RefType(tyI));
+        val_name  = evid;
+        val_stage = pre.stage;
+      }
+    in
+    tyenv |> Typeenv.add_value varnm ventry
+  in
   (tyenvI, evid, eI, tyI)
 
 
@@ -1656,7 +1738,9 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                       BaseType(bt)
                 end
 
-            | Some(tyid, len_expected) ->
+            | Some(tentry) ->
+                let tyid = tentry.type_id in
+                let len_expected = tentry.type_arity in
                 if len_actual = len_expected then
                   DataType(tyargs, tyid)
                 else
@@ -1758,7 +1842,14 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
                   else
                     lift_poly (erase_range_of_type ty)
                 in
-                ssig |> StructSig.add_value varnm (pty, evid, pre.stage)
+                let ventry =
+                  {
+                    val_type  = pty;
+                    val_name  = evid;
+                    val_stage = pre.stage;
+                  }
+                in
+                ssig |> StructSig.add_value varnm ventry
               ) patvarmap StructSig.empty
             in
             (NonRec(pat, e1), ssig)
@@ -1768,7 +1859,16 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
             let (recbindacc, ssig) =
               quints |> List.fold_left (fun (recbindacc, ssig) quint ->
                 let (x, pty, evid, stage, recbind) = quint in
-                let ssig = ssig |> StructSig.add_value x (pty, evid, stage) in
+                let ssig =
+                  let ventry =
+                    {
+                      val_type  = pty;
+                      val_name  = evid;
+                      val_stage = stage;
+                    }
+                  in
+                  ssig |> StructSig.add_value x ventry
+                in
                 let recbindacc = Alist.extend recbindacc recbind in
                 (recbindacc, ssig)
               ) (Alist.empty, StructSig.empty)
@@ -1779,7 +1879,16 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
             let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
             let evid = EvalVarID.fresh var in
             let pty = lift_poly (rng, RefType(tyI)) in
-            let ssig = StructSig.empty |> StructSig.add_value varnm (pty, evid, pre.stage) in
+            let ssig =
+              let ventry =
+                {
+                  val_type  = pty;
+                  val_name  = evid;
+                  val_stage = pre.stage;
+                }
+              in
+              StructSig.empty |> StructSig.add_value varnm ventry
+            in
             (Mutable(evid, eI), ssig)
       in
       (Some(BindValue(rec_or_nonrec)), (OpaqueIDSet.empty, ssig))
@@ -1798,13 +1907,28 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
           | UTBindSynonym(synbind) ->
               let sid = TypeID.Synonym.fresh tynm in
               let graph = graph |> SynonymDependencyGraph.add_vertex sid tyident in
-              let tyenv = tyenv |> Typeenv.add_type tynm (TypeID.Synonym(sid), arity) in
+              let tyenv =
+                let tentry =
+                  {
+                    type_id    = TypeID.Synonym(sid);
+                    type_arity = arity;
+                  }
+                in
+                tyenv |> Typeenv.add_type tynm tentry
+              in
               let synacc = Alist.extend synacc (tyident, typarams, synbind, sid) in
               (synacc, vntacc, graph, tyenv)
 
           | UTBindVariant(vntbind) ->
               let vid = TypeID.Variant.fresh tynm in
-              let tyenv = tyenv |> Typeenv.add_type tynm (TypeID.Variant(vid), arity) in
+              let tyenv =
+                let tentry =
+                  {
+                    type_id    = TypeID.Variant(vid);
+                    type_arity = arity;
+                  }
+                in
+                tyenv |> Typeenv.add_type tynm tentry in
               let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, vid) in
               (synacc, vntacc, graph, tyenv)
         ) (Alist.empty, Alist.empty, SynonymDependencyGraph.empty, tyenv)
@@ -1846,7 +1970,15 @@ and typecheck_binding (pre : pre) (tyenv : Typeenv.t) (utbind : untyped_binding)
             coerce_signature rngm modsig1 absmodsig2
       in
       let mid = ModuleID.fresh modnm in
-      let ssig = StructSig.empty |> StructSig.add_module modnm (modsig, mid) in
+      let ssig =
+        let mentry =
+          {
+            mod_signature = modsig;
+            mod_name      = mid;
+          }
+        in
+        StructSig.empty |> StructSig.add_module modnm mentry
+      in
       (Some(BindModule(mid, e1)), (oidset, ssig))
 
   | UTBindSignature((_, signm), utsig) ->
