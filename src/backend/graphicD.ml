@@ -17,6 +17,36 @@ let op_cm_scale xratio yratio (xdiff, ydiff) =
   in
     Pdfops.Op_cm(matr)
 
+let op_cm_linear_trans (a, b, c, d) (xoff, yoff) =
+  let matr1 =
+    let open Pdftransform in
+    { a = 1.; b = 0.;
+      c = 0.; d = 1.;
+      e = ~-.(~% xoff);  f = ~-.(~% yoff); }
+  in
+  let matr2 =
+    let open Pdftransform in
+    { a = a; b = c;  (* transpose *)
+      c = b; d = d;  (* transpose *)
+      e = 0.;  f = 0.; }
+  in
+  let matr3 =
+    let open Pdftransform in
+    { a = 1.; b = 0.;
+      c = 0.; d = 1.;
+      e = ~% xoff;  f = ~% yoff; }
+  in
+  let matr =
+    matr1 |> Pdftransform.matrix_compose matr2
+          |> Pdftransform.matrix_compose matr3
+  in
+    Pdfops.Op_cm(matr)
+
+let linear_trans_point (a, b, c, d) (x, y) =
+  let xx = ~% x in
+  let yy = ~% y in
+  (Length.of_pdf_point (a *. xx +. b *. yy), Length.of_pdf_point (c *. xx +. d *. yy))
+
 let op_Tm_translate (xpos, ypos) =
   Pdfops.Op_Tm(Pdftransform.matrix_of_transform
                  [Pdftransform.Translate(~% xpos, ~% ypos)])
@@ -79,6 +109,7 @@ type 'a element =
   | Stroke       of length * color * path list
   | DashedStroke of length * dash * color * path list
   | HorzText     of point * 'a
+  | LinearTrans  of point * (float * float * float * float) * 'a element
 
 
 type 'a t = ('a element) Alist.t
@@ -93,24 +124,34 @@ let extend = Alist.extend
 let singleton elem = Alist.extend Alist.empty elem
 
 
-let shift_element v grelem =
+let rec shift_element v grelem =
   match grelem with
   | Fill(color, pathlst)                      -> Fill(color, pathlst |> List.map (shift_path v))
   | Stroke(thkns, color, pathlst)             -> Stroke(thkns, color, pathlst |> List.map (shift_path v))
   | DashedStroke(thkns, dash, color, pathlst) -> DashedStroke(thkns, dash, color, pathlst |> List.map (shift_path v))
   | HorzText(pt, textvalue)                   -> HorzText(pt +@% v, textvalue)
+  | LinearTrans(pt, mat, subelem)             -> LinearTrans(pt +@% v, mat, (shift_element v subelem))
 
 
-let get_element_bbox textbboxf grelem =
+let rec get_element_bbox textbboxf grelem =
   match grelem with
   | Fill(_, pathlst)
   | Stroke(_, _, pathlst)
   | DashedStroke(_, _, _, pathlst)
       -> get_path_list_bbox pathlst
            (* -- currently ignores the thickness of the stroke -- *)
-
   | HorzText(pt, textvalue) -> textbboxf pt textvalue
-
+  | LinearTrans(pt, mat, subelem) ->
+      let ((xmin, ymin), (xmax, ymax)) = get_element_bbox textbboxf subelem in
+      let (x1, y1) = linear_trans_point mat (xmin, ymin) in
+      let (x2, y2) = linear_trans_point mat (xmin, ymax) in
+      let (x3, y3) = linear_trans_point mat (xmax, ymin) in
+      let (x4, y4) = linear_trans_point mat (xmax, ymax) in
+      let xmin = x1 |> Length.min x2 |> Length.min x3 |> Length.min x4 in
+      let xmax = x1 |> Length.max x2 |> Length.max x3 |> Length.max x4 in
+      let ymin = y1 |> Length.min y2 |> Length.min y3 |> Length.min y4 in
+      let ymax = y1 |> Length.max y2 |> Length.max y3 |> Length.max y4 in
+      ((xmin, ymin), (xmax, ymax))
 
 let make_fill (color : color) (pathlst : path list) : 'a element =
   Fill(color, pathlst)
@@ -127,6 +168,8 @@ let make_dashed_stroke (thickness : length) (dash : dash) (color : color) (pathl
 let make_text (pt : point) textvalue =
   HorzText(pt, textvalue)
 
+let make_linear_trans mat subelem =
+  LinearTrans((Length.zero, Length.zero), mat, subelem)
 
 let pdfops_of_elements (ptorigin : point) (elemlst : (point path_element) list) (closingopt : (unit path_element) option) =
   let opacc =
@@ -214,8 +257,8 @@ let pdfops_of_text (pt : point) (tag : string) (fontsize : length) (color : colo
   in
   List.concat [
     [
-      op_cm_translate (Length.zero, Length.zero);
       op_q;
+      op_cm_translate (Length.zero, Length.zero);
       pdfop_of_text_color color;
       op_BT;
       op_Tm_translate pt;
@@ -237,15 +280,28 @@ let pdfops_of_image (pt : point) xratio yratio tag =
     op_Q;
   ]
 
-
-let to_pdfops (gr : 'a t) (f : point -> 'a -> Pdfops.t list) : Pdfops.t list =
+let rec to_pdfops (gr : 'a t) (f : point -> 'a -> Pdfops.t list) : Pdfops.t list =
   let grelemlst = Alist.to_list gr in
     grelemlst |> List.map (function
       | Fill(color, pathlst)                    -> pdfops_of_fill color pathlst
       | Stroke(thk, color, pathlst)             -> pdfops_of_stroke thk color pathlst
       | DashedStroke(thk, dash, color, pathlst) -> pdfops_of_dashed_stroke thk dash color pathlst
       | HorzText(pt, textvalue)                 -> f pt textvalue
+      | LinearTrans(pt, mat, subelem)           -> pdfops_of_lineartrans pt mat subelem f
     ) |> List.concat
+
+and pdfops_of_lineartrans pt mat subelem f =
+  List.concat [
+    [
+      op_q;
+      op_cm_linear_trans mat pt;
+    ];
+    (to_pdfops (Alist.of_list [subelem]) f);
+    [
+      op_Q;
+    ];
+  ]
+
 
 
 (* -- 'pdfops_test_box': output bounding box of vertical elements for debugging -- *)

@@ -2388,6 +2388,24 @@ let (len1, len2, len3) = get_tuple3 get_length valuetup3 in
 let grelem = GraphicD.make_dashed_stroke wid (len1, len2, len3) color pathlst in
 make_graphics grelem
 |}
+    ; inst "PrimitiveLinearTransformGraphics"
+        ~name:"linear-transform-graphics"
+        ~type_:{|
+~% (tFL @-> tFL @-> tFL @-> tFL @-> tGR @-> tGR)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "a" ~type_:"float";
+          param "b" ~type_:"float";
+          param "c" ~type_:"float";
+          param "d" ~type_:"float";
+          param "grelem" ~type_:"graphics_element";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+make_graphics (GraphicD.make_linear_trans (a, b, c, d) grelem)
+|}
     ; inst "PrimitiveShiftGraphics"
         ~name:"shift-graphics"
         ~type_:{|
