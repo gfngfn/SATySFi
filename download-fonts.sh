@@ -4,14 +4,23 @@ set -ue
 
 CACHE=temp
 MESSAGE_PREFIX="[download-fonts.sh]"
-SHA1SUM=sha1sum
-
 cd "$(dirname "$0")"
 mkdir -p "$CACHE"
 
 show_message () {
   echo "$MESSAGE_PREFIX $1."
 }
+
+if command shasum --version >/dev/null 2>&1 ; then
+  show_message "Using shasum"
+  SHA1SUM=shasum
+elif command sha1sum --version >/dev/null 2>&1 ; then
+  show_message "Using sha1sum"
+  SHA1SUM=sha1sum
+else
+  echo "No SHA checksum checkers found.  Please install shasum or sha1sum" >&2
+  exit 1
+fi
 
 validate_file () {
   (
