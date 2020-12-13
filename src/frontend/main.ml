@@ -452,7 +452,8 @@ let error_log_environment suspended =
   | NoLibraryRootDesignation ->
       report_error Interface [
         NormalLine("cannot determine where the SATySFi library root is;");
-        NormalLine("set appropriate environment variables.");
+        NormalLine("set appropriate environment variables");
+        NormalLine("or specify configuration search paths with -C option.");
       ]
 
   | NoInputFileDesignation ->
@@ -1015,6 +1016,7 @@ let arg_spec_list curdir =
     ("--show-fonts"      , Arg.Unit(OptionState.set_show_fonts)      , " Displays all the available fonts"                      );
     ("-C"                , Arg.String(arg_config)                    , " Add colon-separated paths to configuration search path");
     ("--config"          , Arg.String(arg_config)                    , " Add colon-separated paths to configuration search path");
+    ("--no-default-config", Arg.Unit(OptionState.set_no_default_config_paths), "Do not use default configuration search path"         );
   ]
 
 
@@ -1037,12 +1039,18 @@ let setup_root_dirs () =
       | None    -> []
       | Some(s) -> [Filename.concat s ".satysfi"]
   in
+  let default_dirs =
+    if OptionState.get_no_default_config_paths () then
+      []
+    else
+      List.concat [home_dirs; runtime_dirs]
+  in
   let extra_dirs =
     match OptionState.get_extra_config_paths () with
     | None -> [Filename.concat (Sys.getcwd ()) ".satysfi"]
     | Some(lst) -> lst
   in
-  let ds = List.concat [extra_dirs; home_dirs; runtime_dirs] in
+  let ds = List.append extra_dirs default_dirs in
   match ds with
   | []     -> raise NoLibraryRootDesignation
   | _ :: _ -> Config.initialize ds
