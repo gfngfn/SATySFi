@@ -597,6 +597,25 @@ let rec typecheck
   | UTHorz(hblst)         -> (base (BCHorz(hblst))  , (rng, BaseType(BoxRowType)))
   | UTVert(imvblst)       -> (base (BCVert(imvblst)), (rng, BaseType(BoxColType)))
 
+  | UTPositionedString(ipos, s) ->
+      begin
+        match pre.stage with
+        | Stage1 | Persistent0 ->
+            raise (InvalidExpressionAsToStaging(rng, pre.stage))
+
+        | Stage0 ->
+            let e =
+              let e1 = base (BCInputPos(ipos)) in
+              let e2 = base (BCString(s)) in
+              PrimitiveTuple([e1; e2]) in
+            let ty =
+              let ty1 = (Range.dummy "positioned1", BaseType(InputPosType)) in
+              let ty2 = (Range.dummy "positioned2", BaseType(StringType)) in
+              (rng, ProductType([ty1; ty2]))
+            in
+            (e, ty)
+      end
+
   | UTLengthDescription(flt, unitnm) ->
         let len =
           match unitnm with  (* temporary; ad-hoc handling of unit names *)

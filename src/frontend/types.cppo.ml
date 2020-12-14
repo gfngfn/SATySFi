@@ -19,6 +19,13 @@ type type_argument_name = string  [@@deriving show]
 type length_unit_name   = string  [@@deriving show]
 
 
+type input_position = {
+  input_file_name : string;
+  input_line      : int;
+  input_column    : int;
+}
+[@@deriving show { with_path = false }]
+
 type header_element =
   | HeaderRequire of string
   | HeaderImport  of string
@@ -266,6 +273,7 @@ type base_type =
   | MathType
   | RegExpType
   | TextInfoType
+  | InputPosType
 [@@deriving show]
 
 
@@ -292,6 +300,7 @@ let base_type_hash_table =
       ("math"        , MathType    );
       ("regexp"      , RegExpType  );
       ("text-info"   , TextInfoType);
+      ("input-position", InputPosType);
     ];
     ht
   end
@@ -460,6 +469,7 @@ and untyped_abstract_tree_main =
   | UTStringEmpty
   | UTStringConstant       of string
       [@printer (fun fmt s -> Format.fprintf fmt "S:\"%s\"" s)]
+  | UTPositionedString     of input_position * string
 (* -- inputs -- *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
@@ -639,6 +649,7 @@ type base_constant =
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCTextModeContext of TextBackend.text_mode_context
   | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+  | BCInputPos        of input_position
 [@@deriving show { with_path = false; }]
 
 type 'a letrec_binding_scheme =
@@ -1716,6 +1727,7 @@ let rec string_of_type_basic tvf orvf tystr : string =
     | BaseType(MathType)     -> "math" ^ qstn
     | BaseType(RegExpType)   -> "regexp" ^ qstn
     | BaseType(TextInfoType) -> "text-info" ^ qstn
+    | BaseType(InputPosType) -> "input-position" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
