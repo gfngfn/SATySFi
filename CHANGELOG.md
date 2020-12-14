@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 ### Added
 - Add `--no-default-config` option to suppress using default configuration search paths ([PR\#212](https://github.com/gfngfn/SATySFi/pull/212) by `na4zagin3`).
 - Add new primitive `linear-transform-graphics : float -> float -> float -> float -> graphics -> graphics` for the linear transformation of graphics, and new functions `Gr.rotate-graphics` and `Gr.scale-graphics` by using it ([PR\#241](https://github.com/gfngfn/SATySFi/pull/241) by `monaqa`).
+- Add string literals of the form `` @`…` ``, which are equipped with their positions on source files and have type `input-position * string` at stage 0.
+- Add primitive `get-input-position : input-position -> string * int * int` for extracting filenames, line numbers, column numbers from positions on source files.
 
 ## [0.0.5] - 2020-07-11
 ### Fixed

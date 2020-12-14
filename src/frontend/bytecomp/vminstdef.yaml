@@ -2808,3 +2808,20 @@ params:
 
 code: |
   lift_length_to_code_value len
+
+---
+inst: PrimitiveGetInputPosition
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "get-input-position"
+type: |
+  ~% (tIPOS @-> tPROD [tS; tI; tI])
+
+params:
+  - ipos : input_position
+
+code: |
+  let v1 = make_string ipos.input_file_name in
+  let v2 = make_int ipos.input_line in
+  let v3 = make_int ipos.input_column in
+  Tuple([v1; v2; v3])

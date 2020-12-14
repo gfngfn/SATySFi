@@ -132,6 +132,7 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv
     | BaseType(MathType)     -> "math"
     | BaseType(RegExpType)   -> "regexp"
     | BaseType(TextInfoType) -> "text-info"
+    | BaseType(InputPosType) -> "input-position"
 
     | VariantType(tyarglist, tyid) ->
         let s = (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid) in

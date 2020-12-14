@@ -194,16 +194,42 @@ rule progexpr stack = parse
   | ".." { PATHCURVE(get_pos lexbuf) }
   | "--" { PATHLINE(get_pos lexbuf) }  (* -- prior to BINOP_MINUS -- *)
   | "`"+ {
-      let quote_range = get_pos lexbuf in
+      let pos_start = get_pos lexbuf in
       let quote_length = String.length (Lexing.lexeme lexbuf) in
       let buffer = Buffer.create 256 in
-      literal true quote_range quote_length buffer lexbuf
+      let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
+      let pos = Range.unite pos_start pos_last in
+      LITERAL(pos, s, true, omit_post)
     }
   | ("#" ("`"+ as tok)) {
-      let quote_range = get_pos lexbuf in
+      let pos_start = get_pos lexbuf in
       let quote_length = String.length tok in
       let buffer = Buffer.create 256 in
-      literal false quote_range quote_length buffer lexbuf
+      let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
+      let pos = Range.unite pos_start pos_last in
+      LITERAL(pos, s, false, omit_post)
+    }
+  | ("@" ("`"+ as tok)) {
+      let pos_start = get_pos lexbuf in
+      let quote_length = String.length tok in
+      let buffer = Buffer.create 256 in
+      let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
+      let pos = Range.unite pos_start pos_last in
+      if not omit_post then Logging.warn_number_sign_end pos_last;
+      match Range.get_last pos_start with
+      | None ->
+          assert false
+
+      | Some(last) ->
+          let (fname, ln, col) = last in
+          let ipos =
+            {
+              input_file_name = fname;
+              input_line      = ln;
+              input_column    = col;
+            }
+          in
+          POSITIONED_LITERAL(pos, ipos, s)
     }
   | ("\\" (identifier | constructor) "@") {
       let tok = Lexing.lexeme lexbuf in HORZMACRO(get_pos lexbuf, tok)
@@ -454,16 +480,20 @@ and horzexpr stack = parse
       BMATHGRP(get_pos lexbuf)
     }
   | "`"+ {
-      let quote_range = get_pos lexbuf in
+      let pos_start = get_pos lexbuf in
       let quote_length = String.length (Lexing.lexeme lexbuf) in
       let buffer = Buffer.create 256 in
-      literal true quote_range quote_length buffer lexbuf
+      let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
+      let pos = Range.unite pos_start pos_last in
+      LITERAL(pos, s, true, omit_post)
     }
   | ("#" ("`"+ as tok)) {
-      let quote_range = get_pos lexbuf in
+      let pos_start = get_pos lexbuf in
       let quote_length = String.length tok in
       let buffer = Buffer.create 256 in
-      literal false quote_range quote_length buffer lexbuf
+      let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
+      let pos = Range.unite pos_start pos_last in
+      LITERAL(pos, s, false, omit_post)
     }
   | eof {
       if Stack.length stack = 1 then EOI else
@@ -602,35 +632,35 @@ and active stack = parse
     }
 
 
-and literal omit_pre quote_range quote_length buffer = parse
+and literal quote_length buffer = parse
   | "`"+ {
       let tok = Lexing.lexeme lexbuf in
       let len = String.length tok in
         if len < quote_length then begin
           Buffer.add_string buffer tok;
-          literal omit_pre quote_range quote_length buffer lexbuf
+          literal quote_length buffer lexbuf
         end else if len > quote_length then
           report_error lexbuf "literal area was closed with too many '`'s"
         else
-          let pos = Range.unite quote_range (get_pos lexbuf) in
-          LITERAL(pos, Buffer.contents buffer, omit_pre, true)
+          let pos_last = get_pos lexbuf in
+          (pos_last, Buffer.contents buffer, true)
     }
   | (("`"+ as tok) "#") {
       let len = String.length tok in
         if len < quote_length then begin
           Buffer.add_string buffer (tok ^ "#");
-          literal omit_pre quote_range quote_length buffer lexbuf
+          literal quote_length buffer lexbuf
         end else if len > quote_length then
           report_error lexbuf "literal area was closed with too many '`'s"
         else
-          let pos = Range.unite quote_range (get_pos lexbuf) in
-          LITERAL(pos, Buffer.contents buffer, omit_pre, false)
+          let pos_last = get_pos lexbuf in
+          (pos_last, Buffer.contents buffer, false)
     }
   | break {
       let tok = Lexing.lexeme lexbuf in
       increment_line lexbuf;
       Buffer.add_string buffer tok;
-      literal omit_pre quote_range quote_length buffer lexbuf
+      literal quote_length buffer lexbuf
     }
   | eof {
       report_error lexbuf "unexpected end of input while reading literal area"
@@ -638,7 +668,7 @@ and literal omit_pre quote_range quote_length buffer = parse
   | _ {
       let tok = Lexing.lexeme lexbuf in
       Buffer.add_string buffer tok;
-      literal omit_pre quote_range quote_length buffer lexbuf
+      literal quote_length buffer lexbuf
     }
 
 

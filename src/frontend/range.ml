@@ -33,6 +33,11 @@ let to_string rng =
           "\"" ^ fname ^ "\", line " ^ (s ln1) ^ ", character " ^ (s pos1) ^ " to line " ^ (s ln2) ^ ", character " ^ (s pos2)
 
 
+let get_last = function
+  | Dummy(_)                       -> None
+  | Normal(fname, _, _, ln2, pos2) -> Some((fname, ln2, pos2))
+
+
 let unite rng1 rng2 =
   match (rng1, rng2) with
   | (Normal(fname, ln1, pos1, _, _), Normal(_, _, _, ln2, pos2)) -> Normal(fname, ln1, pos1, ln2, pos2)

@@ -381,6 +381,7 @@
 %token <Range.t * float * Types.length_unit_name> LENGTHCONST
 %token <Range.t * string> CHAR
 %token <Range.t * string * bool * bool> LITERAL
+%token <Range.t * Types.input_position * string> POSITIONED_LITERAL
 %token <Range.t> SPACE BREAK
 %token <Range.t * string> MATHCHAR
 %token <Range.t * int> PRIMES
@@ -811,6 +812,7 @@ nxbot:
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP      { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | tok=LITERAL                                  { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTStringConstant(omit_spaces pre post str)) }
+  | tok=POSITIONED_LITERAL                       { let (rng, ipos, s) = tok in make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s)) }
   | utast=nxlistsynt                             { utast }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
   | utast=nxrecordsynt                           { utast }

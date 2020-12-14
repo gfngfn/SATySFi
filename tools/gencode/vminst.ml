@@ -3134,4 +3134,22 @@ lift_float_to_code_value r
         ~code:{|
 lift_length_to_code_value len
 |}
+    ; inst "PrimitiveGetInputPosition"
+        ~name:"get-input-position"
+        ~type_:{|
+~% (tIPOS @-> tPROD [tS; tI; tI])
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "ipos" ~type_:"input_position";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let v1 = make_string ipos.input_file_name in
+let v2 = make_int ipos.input_line in
+let v3 = make_int ipos.input_column in
+Tuple([v1; v2; v3])
+|}
     ])
