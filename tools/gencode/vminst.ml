@@ -3134,4 +3134,39 @@ lift_float_to_code_value r
         ~code:{|
 lift_length_to_code_value len
 |}
+    ; inst "PrimitiveGetInputPosition"
+        ~name:"get-input-position"
+        ~type_:{|
+~% (tIPOS @-> tPROD [tS; tI; tI])
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "ipos" ~type_:"input_position";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let v1 = BaseConstant(BCString(ipos.input_file_name)) in
+let v2 = BaseConstant(BCInt(ipos.input_line)) in
+let v3 = BaseConstant(BCInt(ipos.input_column)) in
+Tuple([v1; v2; v3])
+|}
+    ; inst "PrimitiveAdvanceInputPosition"
+        ~name:"advance-input-position"
+        ~type_:{|
+~% (tI @-> tIPOS @-> tIPOS)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "n" ~type_:"int";
+          param "ipos" ~type_:"input_position";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let ipos = { ipos with input_line = ipos.input_line + n } in
+make_input_position ipos
+|}
     ])

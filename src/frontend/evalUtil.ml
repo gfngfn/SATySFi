@@ -749,3 +749,13 @@ let lift_string_to_code_value (s : string) = CodeValue(CdBaseConstant(BCString(s
 let lift_integer_to_code_value (n : int) = CodeValue(CdBaseConstant(BCInt(n)))
 let lift_float_to_code_value (r : float) = CodeValue(CdBaseConstant(BCFloat(r)))
 let lift_length_to_code_value (len : length) = CodeValue(CdBaseConstant(BCLength(len)))
+
+
+let get_input_position (v : syntactic_value) : input_position =
+  match v with
+  | BaseConstant(BCInputPos(ipos)) -> ipos
+  | _                              -> report_bug_value "get_input_position" v
+
+
+let make_input_position (ipos : input_position) : syntactic_value =
+  BaseConstant(BCInputPos(ipos))

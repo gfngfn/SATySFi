@@ -215,23 +215,21 @@ rule progexpr stack = parse
       let buffer = Buffer.create 256 in
       let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
       let pos = Range.unite pos_start pos_last in
-      if omit_post then
-        failwith "not supported"
-      else
-        match Range.get_last pos_start with
-        | None ->
-            assert false
+      if not omit_post then Logging.warn_number_sign_end pos_last;
+      match Range.get_last pos_start with
+      | None ->
+          assert false
 
-        | Some(last) ->
-            let (fname, ln, col) = last in
-            let ipos =
-              {
-                input_file_name = fname;
-                input_line      = ln;
-                input_column    = col;
-              }
-            in
-            POSITIONED_LITERAL(pos, ipos, s)
+      | Some(last) ->
+          let (fname, ln, col) = last in
+          let ipos =
+            {
+              input_file_name = fname;
+              input_line      = ln;
+              input_column    = col;
+            }
+          in
+          POSITIONED_LITERAL(pos, ipos, s)
     }
   | ("\\" (identifier | constructor) "@") {
       let tok = Lexing.lexeme lexbuf in HORZMACRO(get_pos lexbuf, tok)
@@ -488,7 +486,6 @@ and horzexpr stack = parse
       let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
       let pos = Range.unite pos_start pos_last in
       LITERAL(pos, s, true, omit_post)
-
     }
   | ("#" ("`"+ as tok)) {
       let pos_start = get_pos lexbuf in

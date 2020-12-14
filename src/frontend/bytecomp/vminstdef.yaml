@@ -2808,3 +2808,36 @@ params:
 
 code: |
   lift_length_to_code_value len
+
+---
+inst: PrimitiveGetInputPosition
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "get-input-position"
+type: |
+  ~% (tIPOS @-> tPROD [tS; tI; tI])
+
+params:
+  - ipos : input_position
+
+code: |
+  let v1 = BaseConstant(BCString(ipos.input_file_name)) in
+  let v2 = BaseConstant(BCInt(ipos.input_line)) in
+  let v3 = BaseConstant(BCInt(ipos.input_column)) in
+  Tuple([v1; v2; v3])
+
+---
+inst: PrimitiveAdvanceInputPosition
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "advance-input-position"
+type: |
+  ~% (tI @-> tIPOS @-> tIPOS)
+
+params:
+  - n : int
+  - ipos : input_position
+
+code: |
+  let ipos = { ipos with input_line = ipos.input_line + n } in
+  make_input_position ipos
