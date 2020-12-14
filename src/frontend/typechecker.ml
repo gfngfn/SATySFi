@@ -601,7 +601,7 @@ let rec typecheck
       begin
         match pre.stage with
         | Stage1 | Persistent0 ->
-            raise (InvalidExpressionAsToStaging(rng, pre.stage))
+            raise (InvalidExpressionAsToStaging(rng, Stage0))
 
         | Stage0 ->
             let e =
@@ -1325,7 +1325,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
               (* -- late arguments are converted to quoted arguments -- *)
 
         | (EarlyMacroParameter(tyexp), UTEarlyMacroArg(utast)) ->
-            let (earg, tyarg) = typecheck pre tyenv utast in
+            let (earg, tyarg) = typecheck { pre with stage = Stage0 } tyenv utast in
             unify_ tyenv tyarg tyexp;
             Alist.extend argacc earg
 
