@@ -42,10 +42,16 @@ let op_cm_linear_trans (a, b, c, d) (xoff, yoff) =
   in
     Pdfops.Op_cm(matr)
 
-let linear_trans_point (a, b, c, d) (x, y) =
-  let xx = ~% x in
-  let yy = ~% y in
-  (Length.of_pdf_point (a *. xx +. b *. yy), Length.of_pdf_point (c *. xx +. d *. yy))
+(* linear transform centered at point (cx, cy) *)
+let linear_trans_point (a, b, c, d) (cx, cy) (x, y) =
+  let x = ~% x in
+  let y = ~% y in
+  let cx = ~% cx in
+  let cy = ~% cy in
+  let relx = x -. cx in
+  let rely = y -. cy in
+  (Length.of_pdf_point (a *. relx +. b *. rely +. cx),
+  Length.of_pdf_point (c *. relx +. d *. rely +. cy))
 
 let op_Tm_translate (xpos, ypos) =
   Pdfops.Op_Tm(Pdftransform.matrix_of_transform
@@ -143,10 +149,10 @@ let rec get_element_bbox textbboxf grelem =
   | HorzText(pt, textvalue) -> textbboxf pt textvalue
   | LinearTrans(pt, mat, subelem) ->
       let ((xmin, ymin), (xmax, ymax)) = get_element_bbox textbboxf subelem in
-      let (x1, y1) = linear_trans_point mat (xmin, ymin) in
-      let (x2, y2) = linear_trans_point mat (xmin, ymax) in
-      let (x3, y3) = linear_trans_point mat (xmax, ymin) in
-      let (x4, y4) = linear_trans_point mat (xmax, ymax) in
+      let (x1, y1) = linear_trans_point mat pt (xmin, ymin) in
+      let (x2, y2) = linear_trans_point mat pt (xmin, ymax) in
+      let (x3, y3) = linear_trans_point mat pt (xmax, ymin) in
+      let (x4, y4) = linear_trans_point mat pt (xmax, ymax) in
       let xmin = x1 |> Length.min x2 |> Length.min x3 |> Length.min x4 in
       let xmax = x1 |> Length.max x2 |> Length.max x3 |> Length.max x4 in
       let ymin = y1 |> Length.min y2 |> Length.min y3 |> Length.min y4 in
