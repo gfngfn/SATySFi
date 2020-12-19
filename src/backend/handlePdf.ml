@@ -59,18 +59,18 @@ let color_show_block_bbox = DeviceRGB(0.25, 0.75, 0.25)
 let color_show_frame = DeviceRGB(1.0, 0.0, 1.0)
 let color_show_skip = DeviceRGB(0., 0.5, 0.)
 let color_show_overfull = DeviceRGB(1., 0., 0.)
+let color_show_unreachable = DeviceRGB(0., 1., 0.)
 
 
 let warn_ratios (fs : 'o op_funcs) (pbinfo : page_break_info) pt wid hgt dpt (ratios : ratios) : 'o list =
   let pageno = pbinfo.current_page_number in
   match ratios with
-  | TooLong ->
+  | TooLong | TooShort ->
       Logging.warn_underfull_line pageno;
-      fs.test_frame color_show_overfull pt wid hgt dpt
-
-  | TooShort ->
-      Logging.warn_overfull_line pageno;
-      fs.test_frame color_show_overfull pt wid hgt dpt
+      if OptionState.debug_show_overfull () then
+        fs.test_frame color_show_overfull pt wid hgt dpt
+      else
+        []
 
   | Permissible(_) ->
       []
@@ -80,7 +80,10 @@ let warn_reachability (fs : 'o op_funcs) (pbinfo : page_break_info) pt wid hgt d
   match reach with
   | Unreachable ->
       Logging.warn_unreachable pbinfo.current_page_number;
-      []
+      if OptionState.debug_show_overfull () then
+        fs.test_frame color_show_overfull pt wid hgt dpt
+      else
+        []
 
   | Reachable(ratios) ->
       warn_ratios fs pbinfo pt wid hgt dpt ratios
@@ -107,7 +110,8 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
 
     | EvHorzFrame(ratios, hgt_frame, dpt_frame, deco, imhbs) ->
         let ops_warning =
-          warn_ratios fs pbinfo (xpos, yposbaseline) wid hgt_frame dpt_frame ratios
+          let pt = (xpos, yposbaseline) in
+          warn_ratios fs pbinfo pt wid hgt_frame dpt_frame ratios
         in
         let gr_background =
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
@@ -223,16 +227,16 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
   let (opaccnew, _) =
     evtabular |> List.fold_left (fun (opacc, (xpos, ypos)) (vlen, evcelllst) ->
       let (opaccnew, _) =
-        evcelllst |> List.fold_left (fun (opacc, ((xpos, ypos) as pt)) evcell ->
+        evcelllst |> List.fold_left (fun (opacc, (xpos, ypos)) evcell ->
           match evcell with
           | EvEmptyCell(wid) ->
               (opacc, (xpos +% wid, ypos))
 
           | EvNormalCell(ratios, (wid, hgt, dpt), evhblst) ->
-              let ops_warning =
-                warn_ratios fs pbinfo pt wid hgt dpt ratios
-              in
               let yposbaseline = ypos -% hgt in
+              let ops_warning =
+                warn_ratios fs pbinfo (xpos, yposbaseline) wid hgt dpt ratios
+              in
               let (_, opaccsub) =
                 evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, opacc)
               in
@@ -245,8 +249,10 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
               (opaccnew, (xpos +% wid, ypos))
 
           | EvMultiCell(ratios, (_, _, widsingle, widcell, hgt, dpt), evhblst) ->
-              let ops_warning = warn_ratios fs pbinfo pt widcell hgt dpt ratios in
               let yposbaseline = ypos -% hgt in
+              let ops_warning =
+                warn_ratios fs pbinfo (xpos, yposbaseline) widcell hgt dpt ratios
+              in
               let (_, opaccsub) =
                   evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, opacc)
               in
@@ -287,11 +293,11 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
         ((xpos, ypos -% vskip), opacc)
 
     | EvVertLine(reach, hgt, dpt, evhblst) ->
+        let yposbaseline = ypos -% hgt in
         let ops_warning =
           let wid = Length.of_pdf_point 2. in  (* temporary *)
-          warn_reachability fs pbinfo pos wid hgt dpt reach
+          warn_reachability fs pbinfo (xpos, yposbaseline) wid hgt dpt reach
         in
-        let yposbaseline = ypos -% hgt in
         let (xposlast, opaccend) =
           evhblst @|> (xpos, opacc) @|> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline)
         in
