@@ -8,9 +8,9 @@ type pure_badness = int
 [@@deriving show]
 
 type ratios =
-  | TooShort
+  | TooShort    of { required : length; actual : length }
   | Permissible of float
-  | TooLong
+  | TooLong     of { required : length; actual : length }
 [@@deriving show]
 
 type reachability =

@@ -16,6 +16,11 @@ type lb_pure_either =
   | PLB          of lb_pure_box
   | PScriptGuard of CharBasis.script * CharBasis.script * lb_pure_box list
 
+type internal_ratios =
+  | LBTooLong     of length
+  | LBPermissible of float
+  | LBTooShort    of length
+
 
 let ( ~. ) = float_of_int
 let ( ~@ ) = int_of_float
@@ -502,17 +507,17 @@ module RemovalSet = MutableSet.Make(DiscretionaryID)
 let ratio_stretch_limit = 2.
 let ratio_shrink_limit = -1.
 
-let calculate_ratios (widrequired : length) (widinfo_total : length_info) : ratios * length =
-  let widnatural = widinfo_total.natural in
+let calculate_ratios (wid_required : length) (widinfo_total : length_info) : internal_ratios * length =
+  let wid_natural = widinfo_total.natural in
   let widshrink  = widinfo_total.shrinkable in
   let stretch = widinfo_total.stretchable in
-  let widdiff = widrequired -% widnatural in
-    if widnatural <=% widrequired then
+  let widdiff = wid_required -% wid_natural in
+    if wid_natural <=% wid_required then
     (* If the natural width is shorter than or equal to the required one; `widdiff` is positive *)
       match stretch with
       | Fils(nfil) ->
           if nfil > 0 then
-            (Permissible(0.), widdiff *% (1. /. (~. nfil)))
+            (LBPermissible(0.), widdiff *% (1. /. (~. nfil)))
           else
             assert false
               (* The number of fils cannot be nonpositive *)
@@ -521,34 +526,34 @@ let calculate_ratios (widrequired : length) (widinfo_total : length_info) : rati
           if Length.is_nearly_zero widstretch then
           (* If unable to stretch *)
             if Length.is_nearly_zero widdiff then
-              (Permissible(0.), Length.zero)
+              (LBPermissible(0.), Length.zero)
             else
-              (TooShort, Length.zero)
+              (LBTooShort(wid_required), Length.zero)
           else
             let ratio_raw = widdiff /% widstretch in
             if ratio_raw >= ratio_stretch_limit then
-              (TooShort, Length.zero)
+              (LBTooShort(wid_required), Length.zero)
             else
-              (Permissible(ratio_raw), Length.zero)
+              (LBPermissible(ratio_raw), Length.zero)
     else
     (* If the natural width is longer than the required one; `widdiff` is nonpositive *)
       if Length.is_nearly_zero widshrink then
       (* If unable to shrink *)
-        (TooLong, Length.zero)
+        (LBTooLong(wid_required), Length.zero)
       else
         let ratio_raw = widdiff /% widshrink in
         if ratio_raw <= ratio_shrink_limit then
-          (TooLong, Length.zero)
+          (LBTooLong(wid_required), Length.zero)
         else
-          (Permissible(ratio_raw), Length.zero)
+          (LBPermissible(ratio_raw), Length.zero)
 
 
 let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list) : intermediate_horz_box list * ratios * length * length =
   let (widinfo_total, hgt_total, dpt_total) = get_total_metrics lphblst in
-  let (ratios, widperfil) =
+  let (lbratios, widperfil) =
     match widreqopt with
     | Some(widreq) -> calculate_ratios widreq widinfo_total
-    | None         -> (Permissible(0.), Length.zero)
+    | None         -> (LBPermissible(0.), Length.zero)
   in
 
   let get_intermediate_total_width imhblst =
@@ -565,7 +570,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     ) Length.zero
   in
 
-  let rec main_conversion ratios widperfil lphb : intermediate_horz_box =
+  let rec main_conversion lbratios widperfil lphb : intermediate_horz_box =
     match lphb with
     | LBAtom((widinfo, _, _), evhb) ->
         begin
@@ -579,11 +584,11 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 
           | FiniteStretch(widstretch) ->
               let widappend =
-                match ratios with
-                | TooLong ->
+                match lbratios with
+                | LBTooLong(_) ->
                     Length.negate widinfo.shrinkable
 
-                | Permissible(pure_ratio) ->
+                | LBPermissible(pure_ratio) ->
                     if pure_ratio <= 0. then
                     (* If `pure_ratio` is nonpositive *)
                       widinfo.shrinkable *% pure_ratio
@@ -591,25 +596,25 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
                     (* If `pure_ratio` is positive *)
                       widstretch *% pure_ratio
 
-                | TooShort ->
+                | LBTooShort(_) ->
                     widstretch
               in
               ImHorz(widinfo.natural +% widappend, evhb)
         end
 
     | LBRising((_, hgtsub, dptsub), lenrising, lphblstsub) ->
-        let imhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
+        let imhblst = lphblstsub |> List.map (main_conversion lbratios widperfil) in
         let wid_total = get_intermediate_total_width imhblst in
           ImHorzRising(wid_total, hgtsub, dptsub, lenrising, imhblst)
 
     | LBOuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
-        let imhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
+        let imhblst = lphblstsub |> List.map (main_conversion lbratios widperfil) in
         let wid_total = get_intermediate_total_width imhblst in
           ImHorzFrame(Permissible(0.), wid_total, hgt_frame, dpt_frame, deco, imhblst)
 
     | LBFixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
         let (imhblst, ratios, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
-          ImHorzFrame(ratios, wid_frame, hgt_frame, dpt_frame, deco, imhblst)
+        ImHorzFrame(ratios, wid_frame, hgt_frame, dpt_frame, deco, imhblst)
 
     | LBEmbeddedVert(wid, hgt, dpt, imvblst) ->
         ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)
@@ -632,7 +637,20 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     | LBFootnote(imvblst) ->
         ImHorzFootnote(imvblst)
   in
-  let imhblst = lphblst |> List.map (main_conversion ratios widperfil) in
+  let imhblst = lphblst |> List.map (main_conversion lbratios widperfil) in
+  let ratios =
+    match lbratios with
+    | LBTooLong(wid_required) ->
+        let wid_actual = get_intermediate_total_width imhblst in
+        TooLong{ required = wid_required; actual = wid_actual }
+
+    | LBTooShort(wid_required) ->
+        let wid_actual = get_intermediate_total_width imhblst in
+        TooShort{ required = wid_required; actual = wid_actual }
+
+    | LBPermissible(r) ->
+        Permissible(r)
+  in
   (imhblst, ratios, hgt_total, dpt_total)
 
 
@@ -825,7 +843,8 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
   let rec arrange (acc : arrangement_accumulator) (lines : line_either list) : vert_box list =
     match lines with
     | PureLine(line) :: tail ->
-        let (imhbs, ratios, hgt, dpt) = determine_widths (Some(lbinfo.paragraph_width)) line in
+        let wid_required = lbinfo.paragraph_width in
+        let (imhbs, ratios, hgt, dpt) = determine_widths (Some(wid_required)) line in
         begin
           match acc.state with
           | BuildingVertList ->
@@ -985,17 +1004,17 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
       found_candidate := false;
       RemovalSet.clear htomit;
       wmap |> WidthMap.iter (fun dscridfrom widinfofrom is_already_too_long ->
-        let (ratios, _) = calculate_ratios paragraph_width (widinfofrom +%@ widinfobreak) in
-          match ratios with
-          | Permissible(pure_ratio) ->
+        let (lbratios, _) = calculate_ratios paragraph_width (widinfofrom +%@ widinfobreak) in
+          match lbratios with
+          | LBPermissible(pure_ratio) ->
               let badness = calculate_badness pure_ratio in
               found_candidate := true;
               LineBreakGraph.add_edge grph dscridfrom dscridto (badness + pnltybreak)
 
-          | TooShort ->
+          | LBTooShort(_) ->
               ()
 
-          | TooLong ->
+          | LBTooLong(_) ->
               if !is_already_too_long then
               (* -- if this is the second time of experiencing 'TooLong' about 'dscridfrom' -- *)
                 begin

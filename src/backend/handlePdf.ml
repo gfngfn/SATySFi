@@ -62,20 +62,24 @@ let color_show_overfull = DeviceRGB(1., 0., 0.)
 let color_show_unreachable = DeviceRGB(0., 1., 0.)
 
 
-let warn_ratios (fs : 'o op_funcs) (pbinfo : page_break_info) pt wid hgt dpt (ratios : ratios) : 'o list =
+let warn_ratios (fs : 'o op_funcs) (pbinfo : page_break_info) pt hgt dpt (ratios : ratios) : 'o list =
   let pageno = pbinfo.current_page_number in
   match ratios with
-  | TooLong ->
+  | TooLong{ required = wid_required; actual = wid_actual } ->
       Logging.warn_overfull_line pageno;
       if OptionState.debug_show_overfull () then
-        fs.test_frame color_show_overfull pt wid hgt dpt
+        List.append
+          (fs.test_frame color_show_overfull pt wid_actual hgt dpt)
+          (fs.test_frame color_show_overfull pt wid_required hgt dpt)
       else
         []
 
-  | TooShort ->
+  | TooShort{ required = wid_required; actual = wid_actual } ->
       Logging.warn_underfull_line pageno;
       if OptionState.debug_show_overfull () then
-        fs.test_frame color_show_overfull pt wid hgt dpt
+        List.append
+          (fs.test_frame color_show_overfull pt wid_actual hgt dpt)
+          (fs.test_frame color_show_overfull pt wid_required hgt dpt)
       else
         []
 
@@ -83,17 +87,18 @@ let warn_ratios (fs : 'o op_funcs) (pbinfo : page_break_info) pt wid hgt dpt (ra
       []
 
 
-let warn_reachability (fs : 'o op_funcs) (pbinfo : page_break_info) pt wid hgt dpt (reach : reachability) : 'o list =
+let warn_reachability (fs : 'o op_funcs) (pbinfo : page_break_info) pt hgt dpt (reach : reachability) : 'o list =
   match reach with
   | Unreachable ->
       Logging.warn_unreachable pbinfo.current_page_number;
       if OptionState.debug_show_overfull () then
+        let wid = Length.of_pdf_point 2. in  (* temporary *)
         fs.test_frame color_show_unreachable pt wid hgt dpt
       else
         []
 
   | Reachable(ratios) ->
-      warn_ratios fs pbinfo pt wid hgt dpt ratios
+      warn_ratios fs pbinfo pt hgt dpt ratios
 
 
 let boolize (br, len) =
@@ -118,7 +123,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
     | EvHorzFrame(ratios, hgt_frame, dpt_frame, deco, imhbs) ->
         let ops_warning =
           let pt = (xpos, yposbaseline) in
-          warn_ratios fs pbinfo pt wid hgt_frame dpt_frame ratios
+          warn_ratios fs pbinfo pt hgt_frame dpt_frame ratios
         in
         let gr_background =
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
@@ -242,7 +247,7 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
           | EvNormalCell(ratios, (wid, hgt, dpt), evhblst) ->
               let yposbaseline = ypos -% hgt in
               let ops_warning =
-                warn_ratios fs pbinfo (xpos, yposbaseline) wid hgt dpt ratios
+                warn_ratios fs pbinfo (xpos, yposbaseline) hgt dpt ratios
               in
               let (_, opaccsub) =
                 evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, opacc)
@@ -258,7 +263,7 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
           | EvMultiCell(ratios, (_, _, widsingle, widcell, hgt, dpt), evhblst) ->
               let yposbaseline = ypos -% hgt in
               let ops_warning =
-                warn_ratios fs pbinfo (xpos, yposbaseline) widcell hgt dpt ratios
+                warn_ratios fs pbinfo (xpos, yposbaseline) hgt dpt ratios
               in
               let (_, opaccsub) =
                   evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, opacc)
@@ -302,8 +307,7 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
     | EvVertLine(reach, hgt, dpt, evhblst) ->
         let yposbaseline = ypos -% hgt in
         let ops_warning =
-          let wid = Length.of_pdf_point 2. in  (* temporary *)
-          warn_reachability fs pbinfo (xpos, yposbaseline) wid hgt dpt reach
+          warn_reachability fs pbinfo (xpos, yposbaseline) hgt dpt reach
         in
         let (xposlast, opaccend) =
           evhblst @|> (xpos, opacc) @|> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline)
