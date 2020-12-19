@@ -17,8 +17,8 @@ type pb_vert_box = pb_vert_box_main * breakability
      -- *)
 
 and pb_vert_box_main =
-  | PBVertLine  of length * length * intermediate_horz_box list
-      [@printer (fun fmt (h, d, _) -> Format.fprintf fmt "PBVertLine@[<hov>(%a,@ %a,@ <imhb-list>)@]" pp_length h pp_length d)]
+  | PBVertLine  of reachability * length * length * intermediate_horz_box list
+      [@printer (fun fmt (_, h, d, _) -> Format.fprintf fmt "PBVertLine@[<hov>(%a,@ %a,@ <imhb-list>)@]" pp_length h pp_length d)]
   | PBVertSkip  of debug_margin_info * length
   | PBVertFrame of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
       [@printer (fun fmt (fbr, pads, _, _, _, _, w, pbvblst) ->
@@ -121,20 +121,20 @@ let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvbls
 
   let rec aux (prev : pb_accumulator) (pbvblst : pb_vert_box list) : pb_answer * pb_rest =
     match pbvblst with
-    | (PBVertLine(hgt, dpt, imhblst), br) :: pbvbtail ->
+    | (PBVertLine(reach, hgt, dpt, imhbs), br) :: pbvbtail ->
         let hgtline = hgt +% (Length.negate dpt) in
-        let (evhblst, imvblstlstfootnote) = PageInfo.embed_page_info pbinfo imhblst in
-        let (evvblstfootnote, _) = PageInfo.embed_page_info_vert pbinfo (List.concat imvblstlstfootnote) in
-          (* -- ignores footnote designation in footnote -- *)
-        let hgtnewfootnote = get_height_of_evaled_vert_box_list evvblstfootnote in
+        let (evhbs, imvbss_footnote) = PageInfo.embed_page_info pbinfo imhbs in
+        let (evvbs_footnote, _) = PageInfo.embed_page_info_vert pbinfo (List.concat imvbss_footnote) in
+          (* Ignores footnote designation in footnote. *)
+        let hgtnewfootnote = get_height_of_evaled_vert_box_list evvbs_footnote in
         let hgttotalB = prev.total_height in
         let hgtB = hgttotalB +% prev.skip_after_break in
         let badnsB = calculate_badness_of_page_break hgtB in
         let hgttotalA = hgttotalB +% hgtline +% hgtnewfootnote in
         let hgtA = hgttotalA +% prev.skip_after_break in
         let badnsA = calculate_badness_of_page_break hgtA in
-        let bodyA = Alist.extend (Alist.cat prev.solid_body prev.discardable) (EvVertLine(hgt, dpt, evhblst)) in
-        let footnoteA = Alist.append prev.solid_footnote evvblstfootnote in
+        let bodyA = Alist.extend (Alist.cat prev.solid_body prev.discardable) (EvVertLine(reach, hgt, dpt, evhbs)) in
+        let footnoteA = Alist.append prev.solid_footnote evvbs_footnote in
         let last_breakable = prev.last_breakable in
         let open EscapeMonad in
         let esc =
@@ -606,8 +606,8 @@ let squash_margins (prev_bottom : (breakability * length) option) (vblst : vert_
 let normalize_paragraph (parelems : paragraph_element list) (br : breakability) : pb_vert_box list =
   let pbmains =
     parelems |> List.map (function
-    | VertParagLine(hgt, dpt, imhblst) -> PBVertLine(hgt, dpt, imhblst)
-    | VertParagSkip(len)               -> PBVertSkip(BetweenLines, len)
+    | VertParagLine(reach, hgt, dpt, imhbs) -> PBVertLine(reach, hgt, dpt, imhbs)
+    | VertParagSkip(len)                    -> PBVertSkip(BetweenLines, len)
     )
   in
   match List.rev pbmains with
@@ -668,9 +668,9 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
   let rec aux pbvblst =
     pbvblst |> List.map (fun (pbvbmain, _) ->
       match pbvbmain with
-      | PBVertLine(hgt, dpt, imhblst)  -> ImVertLine(hgt, dpt, imhblst)
-      | PBVertSkip(debug_margins, len) -> ImVertFixedEmpty(debug_margins, len)
-      | PBClearPage                    -> ImVertFixedEmpty(Fixed, Length.zero)
+      | PBVertLine(reach, hgt, dpt, imhbs) -> ImVertLine(reach, hgt, dpt, imhbs)
+      | PBVertSkip(debug_margins, len)     -> ImVertFixedEmpty(debug_margins, len)
+      | PBClearPage                        -> ImVertFixedEmpty(Fixed, Length.zero)
 
       | PBVertFrame(_, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) ->
           let imvblstsub = aux pbvblstsub in
@@ -755,9 +755,9 @@ let adjust_to_first_line (imvblst : intermediate_vert_box list) : length * lengt
   let rec aux optinit totalhgtinit imvblst =
     imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
       match (imvb, opt) with
-      | (ImVertLine(hgt, dpt, _), None)  -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertFixedEmpty(_, vskip), _)  -> (opt, totalhgt +% vskip)
+      | (ImVertLine(_, hgt, dpt, _), None)  -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
+      | (ImVertLine(_, hgt, dpt, _), _)     -> (opt, totalhgt +% hgt +% (Length.negate dpt))
+      | (ImVertFixedEmpty(_, vskip), _)     -> (opt, totalhgt +% vskip)
 
       | (ImVertFrame(pads, _, _, imvblstsub), _) ->
           let totalhgtbefore = totalhgt +% pads.paddingT in
@@ -777,9 +777,9 @@ let adjust_to_last_line (imvblst : intermediate_vert_box list) : length * length
     let evvblstrev = List.rev evvblst in
       evvblstrev |> List.fold_left (fun (opt, totalhgt) imvblast ->
         match (imvblast, opt) with
-        | (ImVertLine(hgt, dpt, _), None)  -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
-        | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
-        | (ImVertFixedEmpty(_, vskip), _)  -> (opt, totalhgt +% vskip)
+        | (ImVertLine(_, hgt, dpt, _), None) -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
+        | (ImVertLine(_, hgt, dpt, _), _)    -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
+        | (ImVertFixedEmpty(_, vskip), _)    -> (opt, totalhgt +% vskip)
 
         | (ImVertFrame(pads, _, _, evvblstsub), _) ->
             let totalhgtbefore = totalhgt +% pads.paddingB in

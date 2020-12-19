@@ -267,8 +267,8 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                   [HorzPure(PHSFixedEmpty(pads.paddingR))];
                 ]
               in
-              let (imhblst, hgt, dpt) = LineBreak.fit hblstwithpads wid in
-                ImNormalCell((wid, hgtnmlcell, dptnmlcell), imhblst)
+              let (imhbs, ratios, hgt, dpt) = LineBreak.fit hblstwithpads wid in
+                ImNormalCell(ratios, (wid, hgtnmlcell, dptnmlcell), imhbs)
                 (* temporary; should return information about vertical psitioning *)
 
           | MultiCell(nr, nc, pads, hblst) ->
@@ -284,7 +284,7 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                   [HorzPure(PHSFixedEmpty(pads.paddingR))];
                 ]
               in
-              let (imhblst, hgt, dpt) = LineBreak.fit hblstwithpads widmulti in
+              let (imhbs, ratios, hgt, dpt) = LineBreak.fit hblstwithpads widmulti in
               let (hgtcell, dptcell) =
                 if nr < 1 then
                   assert false
@@ -296,7 +296,7 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                   let lenspace = (vlencell -% vlencontent) *% 0.5 in
                     (hgt +% lenspace, dpt -% lenspace)
               in
-                ImMultiCell((nr, nc, widsingle, widmulti, hgtcell, dptcell), imhblst)
+                ImMultiCell(ratios, (nr, nc, widsingle, widmulti, hgtcell, dptcell), imhbs)
         in
           Alist.extend evcellacc evcell
       ) Alist.empty |> Alist.to_list

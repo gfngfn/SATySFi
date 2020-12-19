@@ -6,7 +6,7 @@ val main : breakability * length -> breakability * length -> context_main -> hor
 
 val natural : horz_box list -> intermediate_horz_box list * length * length
 
-val fit : horz_box list -> length -> intermediate_horz_box list * length * length
+val fit : horz_box list -> length -> intermediate_horz_box list * ratios * length * length
 
 val get_natural_metrics : horz_box list -> length * length * length
 
