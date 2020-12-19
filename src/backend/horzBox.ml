@@ -11,6 +11,12 @@ type ratios =
   | TooShort
   | Permissible of float
   | TooLong
+[@@deriving show]
+
+type reachability =
+  | Unreachable
+  | Reachable of ratios
+[@@deriving show]
 
 type font_abbrev = string
 [@@deriving show]
@@ -292,7 +298,7 @@ and intermediate_graphics =
 and intermediate_horz_box =
   | ImHorz               of evaled_horz_box
   | ImHorzRising         of length * length * length * length * intermediate_horz_box list
-  | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
+  | ImHorzFrame          of ratios * length * length * length * decoration * intermediate_horz_box list
   | ImHorzInlineTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
   | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
   | ImHorzInlineGraphics of length * length * length * intermediate_graphics
@@ -319,7 +325,7 @@ and evaled_horz_box_main =
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzRising         of length * length * length * evaled_horz_box list
   | EvHorzEmpty
-  | EvHorzFrame          of length * length * decoration * evaled_horz_box list
+  | EvHorzFrame          of ratios * length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
   | EvHorzInlineGraphics of length * length * intermediate_graphics
   | EvHorzInlineTabular  of length * length * evaled_row list * length list * length list * rules_func
@@ -345,17 +351,17 @@ and margins = {
 }
 
 and paragraph_element =
-  | VertParagLine of length * length * intermediate_horz_box list
+  | VertParagLine of reachability * length * length * intermediate_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "Line")]
   | VertParagSkip of length
 
 and intermediate_vert_box =
-  | ImVertLine       of length * length * intermediate_horz_box list
+  | ImVertLine       of reachability * length * length * intermediate_horz_box list
   | ImVertFixedEmpty of debug_margin_info * length
   | ImVertFrame      of paddings * decoration * length * intermediate_vert_box list
 
 and evaled_vert_box =
-  | EvVertLine       of length * length * evaled_horz_box list
+  | EvVertLine       of reachability * length * length * evaled_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
       (* --
          (1) height of the contents
@@ -443,16 +449,16 @@ and cell =
 and row = cell list
 
 and intermediate_cell =
-  | ImNormalCell of (length * length * length) * intermediate_horz_box list
+  | ImNormalCell of ratios * (length * length * length) * intermediate_horz_box list
   | ImEmptyCell  of length
-  | ImMultiCell  of (int * int * length * length * length * length) * intermediate_horz_box list
+  | ImMultiCell  of ratios * (int * int * length * length * length * length) * intermediate_horz_box list
 
 and intermediate_row = length * intermediate_cell list
 
 and evaled_cell =
-  | EvNormalCell of (length * length * length) * evaled_horz_box list
+  | EvNormalCell of ratios * (length * length * length) * evaled_horz_box list
   | EvEmptyCell  of length
-  | EvMultiCell  of (int * int * length * length * length * length) * evaled_horz_box list
+  | EvMultiCell  of ratios * (int * int * length * length * length * length) * evaled_horz_box list
 
 and evaled_row = length * evaled_cell list
 [@@deriving show { with_path = false }]
@@ -512,7 +518,7 @@ let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length 
     | EvHorzEmbeddedVert(h, d, _)
     | EvHorzInlineGraphics(h, d, _)
     | EvHorzInlineTabular(h, d, _, _, _, _)
-    | EvHorzFrame(h, d, _, _)
+    | EvHorzFrame(_, h, d, _, _)
          -> (h, d)
   in
     (wid, hgt, dpt)
@@ -521,7 +527,7 @@ let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length 
 let rec get_height_of_evaled_vert_box_list evvblst =
   evvblst |> List.fold_left (fun l evvb ->
     match evvb with
-    | EvVertLine(hgt, dpt, _)             -> l +% hgt +% (Length.negate dpt)
+    | EvVertLine(_, hgt, dpt, _)          -> l +% hgt +% (Length.negate dpt)
     | EvVertFixedEmpty(_, len)            -> l +% len
     | EvVertFrame(pads, _, _, _, evvblst) -> l +% pads.paddingB +% pads.paddingL +% get_height_of_evaled_vert_box_list evvblst
   ) Length.zero
@@ -539,7 +545,7 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
           -> (Length.zero, Length.zero, Length.zero)
 
       | ImHorzRising(w, h, d, _, _)
-      | ImHorzFrame(w, h, d, _, _)
+      | ImHorzFrame(_, w, h, d, _, _)
       | ImHorzInlineTabular(w, h, d, _, _, _, _)
       | ImHorzInlineGraphics(w, h, d, _)
       | ImHorzEmbeddedVert(w, h, d, _)

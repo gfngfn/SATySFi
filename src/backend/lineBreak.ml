@@ -535,7 +535,7 @@ let calculate_ratios (widrequired : length) (widinfo_total : length_info) : rati
           (Permissible(ratio_raw), Length.zero)
 
 
-let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list) : intermediate_horz_box list * length * length =
+let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list) : intermediate_horz_box list * ratios * length * length =
   let (widinfo_total, hgt_total, dpt_total) = get_total_metrics lphblst in
   let (ratios, widperfil) =
     match widreqopt with
@@ -548,7 +548,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
       match imhb with
       | ImHorz(w, _)                             -> wacc +% w
       | ImHorzRising(w, _, _, _, _)              -> wacc +% w
-      | ImHorzFrame(w, _, _, _, _)               -> wacc +% w
+      | ImHorzFrame(_, w, _, _, _, _)            -> wacc +% w
       | ImHorzInlineTabular(w, _, _, _, _, _, _) -> wacc +% w
       | ImHorzInlineGraphics(w, _, _, _)         -> wacc +% w
       | ImHorzEmbeddedVert(w, _, _, _)           -> wacc +% w
@@ -597,11 +597,11 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     | LBOuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
         let imhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
         let wid_total = get_intermediate_total_width imhblst in
-          ImHorzFrame(wid_total, hgt_frame, dpt_frame, deco, imhblst)
+          ImHorzFrame(Permissible(0.), wid_total, hgt_frame, dpt_frame, deco, imhblst)
 
     | LBFixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
-        let (imhblst, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
-          ImHorzFrame(wid_frame, hgt_frame, dpt_frame, deco, imhblst)
+        let (imhblst, ratios, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
+          ImHorzFrame(ratios, wid_frame, hgt_frame, dpt_frame, deco, imhblst)
 
     | LBEmbeddedVert(wid, hgt, dpt, imvblst) ->
         ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)
@@ -624,30 +624,8 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     | LBFootnote(imvblst) ->
         ImHorzFootnote(imvblst)
   in
-      let imhblst = lphblst |> List.map (main_conversion ratios widperfil) in
-(*
-      (* begin : for debug *)
-      let checksum = get_intermediate_total_width imhblst in
-      let msg_stretch =
-        match widinfo_total.stretchable with
-        | FiniteStretch(widstretch) -> Length.show widstretch
-        | Fils(i)                   -> "infinite * " ^ (string_of_int i)
-      in
-      let msg =
-        match ratios with
-        | TooShort                     -> "stretchable = " ^ msg_stretch ^ ", too_short"
-        | PermissiblyShort(pure_ratio) -> "stretchable = " ^ msg_stretch ^ ", R = " ^ (string_of_float pure_ratio)
-        | PermissiblyLong(pure_ratio)  -> "shrinkable = " ^ (Length.show widinfo_total.shrinkable) ^ ", R = " ^ (string_of_float pure_ratio)
-        | TooLong                      -> "shrinkable = " ^ (Length.show widinfo_total.shrinkable) ^ ", too_long"
-      in
-
-      let () = PrintForDebug.linebreakE
-        ("natural = " ^ (Length.show widinfo_total.natural) ^ ", " ^
-         msg ^ ", " ^
-         "checksum = " ^ (Length.show checksum)) in
-      (* end : for debug *)
-*)
-        (imhblst, hgt_total, dpt_total)
+  let imhblst = lphblst |> List.map (main_conversion ratios widperfil) in
+  (imhblst, ratios, hgt_total, dpt_total)
 
 
 type line_break_info = {
@@ -839,14 +817,14 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
   let rec arrange (acc : arrangement_accumulator) (lines : line_either list) : vert_box list =
     match lines with
     | PureLine(line) :: tail ->
-        let (evhblst, hgt, dpt) = determine_widths (Some(lbinfo.paragraph_width)) line in
+        let (imhbs, ratios, hgt, dpt) = determine_widths (Some(lbinfo.paragraph_width)) line in
         begin
           match acc.state with
           | BuildingVertList ->
               begin
                 match Alist.to_list_rev acc.accumulated with
                 | [] ->
-                  (* -- if `line` is the first line in the given paragraph -- *)
+                  (* If `line` is the first line in the given paragraph *)
                     let margin_top =
                       lbinfo.paragraph_margin_top +% (Length.max Length.zero (lbinfo.min_first_ascender -% hgt))
                     in
@@ -855,7 +833,7 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
                         state = BuildingParagraph{
                           saved_margin_top      = Some(lbinfo.breakability_top, margin_top);
                           previous_depth        = dpt;
-                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(hgt, dpt, evhblst));
+                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(Reachable(ratios), hgt, dpt, imhbs));
                         };
                         accumulated = Alist.empty;
                       }
@@ -863,13 +841,13 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
                     arrange acc tail
 
                 | _ :: _ ->
-                  (* -- if `line` is the first line after the embedded vertical boxes -- *)
+                  (* If `line` is the first line after the embedded vertical boxes *)
                     let accnew =
                       {
                         state = BuildingParagraph{
                           saved_margin_top      = None;
                           previous_depth        = dpt;
-                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(hgt, dpt, evhblst));
+                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(Reachable(ratios), hgt, dpt, imhbs));
                         };
                         accumulated = acc.accumulated;
                       }
@@ -882,7 +860,7 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
               let parnew =
                 Alist.append peacc.accumulated_paragraph [
                   VertParagSkip(len);
-                  VertParagLine(hgt, dpt, evhblst)
+                  VertParagLine(Reachable(ratios), hgt, dpt, imhbs)
                 ];
               in
               let accnew =
@@ -955,14 +933,15 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
   arrange { state = BuildingVertList; accumulated = Alist.empty; } (Alist.to_list acclines)
 
 
-let natural (hblst : horz_box list) : intermediate_horz_box list * length * length =
-  let lphblst = convert_list_for_line_breaking_pure hblst in
-    determine_widths None lphblst
+let natural (hbs : horz_box list) : intermediate_horz_box list * length * length =
+  let lphbs = convert_list_for_line_breaking_pure hbs in
+  let (imhbs, _, hgt, dpt) = determine_widths None lphbs in
+  (imhbs, hgt, dpt)
 
 
-let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list * length * length =
+let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list * ratios * length * length =
   let lphblst = convert_list_for_line_breaking_pure hblst in
-    determine_widths (Some(widreq)) lphblst
+  determine_widths (Some(widreq)) lphblst
 
 
 type lb_state =
@@ -1116,14 +1095,14 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
       | None ->
         (* -- when no set of discretionary points is suitable for line breaking -- *)
           Format.printf "LineBreak> UNREACHABLE\n";  (* for debug *)
-          let (imhblst, hgt, dpt) = natural hblst in
+          let (imhbs, hgt, dpt) = natural hblst in
           let margins =
             {
               margin_top    = Some((breakability_top, paragraph_margin_top));
               margin_bottom = Some((breakability_bottom, paragraph_margin_bottom));
             }
           in
-          [ VertParagraph(margins, [ VertParagLine(hgt, dpt, imhblst) ]); ]
+          [ VertParagraph(margins, [ VertParagLine(Unreachable, hgt, dpt, imhbs) ]); ]
 
       | Some(path) ->
           break_into_lines {

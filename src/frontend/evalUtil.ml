@@ -707,27 +707,27 @@ let make_length_list lenlst =
   List(lenlst |> List.map (fun l -> BaseConstant(BCLength(l))))
 
 
-let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
+let make_line_stack (hbss : (HorzBox.horz_box list) list) =
   let open HorzBox in
   let wid =
-    hblstlst |> List.fold_left (fun widacc hblst ->
-      let (wid, _, _) = LineBreak.get_natural_metrics hblst in
+    hbss |> List.fold_left (fun widacc hbs ->
+      let (wid, _, _) = LineBreak.get_natural_metrics hbs in
        Length.max wid widacc
     ) Length.zero
   in
-  let trilst = hblstlst |> List.map (fun hblst -> LineBreak.fit hblst wid) in
-  let vblst =
-    trilst |> List.fold_left (fun vbacc (imhblst, hgt, dpt) ->
+  let quads = hbss |> List.map (fun hblst -> LineBreak.fit hblst wid) in
+  let vbs =
+    quads |> List.fold_left (fun vbacc (imhbs, ratios, hgt, dpt) ->
       let vb =
         VertParagraph({
           margin_top    = None;
           margin_bottom = None;
-        }, [VertParagLine(hgt, dpt, imhblst)])
+        }, [VertParagLine(Reachable(ratios), hgt, dpt, imhbs)])
       in
       Alist.extend vbacc vb
     ) Alist.empty |> Alist.to_list
   in
-  (wid, vblst)
+  (wid, vbs)
 
 
 let const_unit = BaseConstant(BCUnit)

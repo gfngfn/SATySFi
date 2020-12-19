@@ -60,6 +60,28 @@ let color_show_frame = DeviceRGB(1.0, 0.0, 1.0)
 let color_show_skip = DeviceRGB(0., 0.5, 0.)
 
 
+let warn_ratios (pbinfo : page_break_info) (ratios : ratios) =
+  let pageno = pbinfo.current_page_number in
+  match ratios with
+  | TooLong ->
+      Logging.warn_underfull_line pageno
+
+  | TooShort ->
+      Logging.warn_overfull_line pageno
+
+  | Permissible(_) ->
+      ()
+
+
+let warn_reachability (pbinfo : page_break_info) (reach : reachability) =
+  match reach with
+  | Unreachable ->
+      Logging.warn_unreachable pbinfo.current_page_number
+
+  | Reachable(ratios) ->
+      warn_ratios pbinfo ratios
+
+
 let boolize (br, len) =
   match br with
   | Breakable   -> (true, len)
@@ -79,7 +101,8 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         in
         (xpos +% wid, opaccnew)
 
-    | EvHorzFrame(hgt_frame, dpt_frame, deco, imhblst) ->
+    | EvHorzFrame(ratios, hgt_frame, dpt_frame, deco, imhbs) ->
+        warn_ratios pbinfo ratios;
         let gr_background =
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
             (* -- depth values are nonpositive -- *)
@@ -87,7 +110,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let opsgr = fs.graphics gr_background (pdfops_of_intermediate_horz_box_list fs pbinfo) in
         let opaccinit = Alist.append opacc opsgr in
         let (xposnew, opaccsub) =
-          imhblst @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline)
+          imhbs @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline)
         in
         let ops_foreground = [] in  (* temporary *)
         let opaccnew = Alist.append opaccsub ops_foreground in
@@ -199,7 +222,8 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
           | EvEmptyCell(wid) ->
               (opacc, (xpos +% wid, ypos))
 
-          | EvNormalCell((wid, hgt, dpt), evhblst) ->
+          | EvNormalCell(ratios, (wid, hgt, dpt), evhblst) ->
+              warn_ratios pbinfo ratios;
               let yposbaseline = ypos -% hgt in
               let (_, opaccsub) =
                 evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, opacc)
@@ -212,7 +236,8 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
               in
               (opaccnew, (xpos +% wid, ypos))
 
-          | EvMultiCell((_, _, widsingle, widcell, hgt, dpt), evhblst) ->
+          | EvMultiCell(ratios, (_, _, widsingle, widcell, hgt, dpt), evhblst) ->
+              warn_ratios pbinfo ratios;
               let yposbaseline = ypos -% hgt in
               let (_, opaccsub) =
                   evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, opacc)
@@ -253,7 +278,8 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
         in
         ((xpos, ypos -% vskip), opacc)
 
-    | EvVertLine(hgt, dpt, evhblst) ->
+    | EvVertLine(reach, hgt, dpt, evhblst) ->
+        warn_reachability pbinfo reach;
         let yposbaseline = ypos -% hgt in
         let (xposlast, opaccend) =
           evhblst @|> (xpos, opacc) @|> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline)
