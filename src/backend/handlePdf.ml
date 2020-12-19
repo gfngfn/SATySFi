@@ -65,7 +65,14 @@ let color_show_unreachable = DeviceRGB(0., 1., 0.)
 let warn_ratios (fs : 'o op_funcs) (pbinfo : page_break_info) pt wid hgt dpt (ratios : ratios) : 'o list =
   let pageno = pbinfo.current_page_number in
   match ratios with
-  | TooLong | TooShort ->
+  | TooLong ->
+      Logging.warn_overfull_line pageno;
+      if OptionState.debug_show_overfull () then
+        fs.test_frame color_show_overfull pt wid hgt dpt
+      else
+        []
+
+  | TooShort ->
       Logging.warn_underfull_line pageno;
       if OptionState.debug_show_overfull () then
         fs.test_frame color_show_overfull pt wid hgt dpt

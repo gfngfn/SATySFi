@@ -507,15 +507,23 @@ let calculate_ratios (widrequired : length) (widinfo_total : length_info) : rati
   let widshrink  = widinfo_total.shrinkable in
   let stretch = widinfo_total.stretchable in
   let widdiff = widrequired -% widnatural in
-    if widnatural <% widrequired then
-    (* If the natural width is shorter than the required one; `widdiff` is positive *)
+    if widnatural <=% widrequired then
+    (* If the natural width is shorter than or equal to the required one; `widdiff` is positive *)
       match stretch with
-      | Fils(nfil)  when nfil > 0 -> (Permissible(0.), widdiff *% (1. /. (~. nfil)))
-      | Fils(_)                   -> assert false  (* -- number of fils cannot be nonpositive -- *)
+      | Fils(nfil) ->
+          if nfil > 0 then
+            (Permissible(0.), widdiff *% (1. /. (~. nfil)))
+          else
+            assert false
+              (* The number of fils cannot be nonpositive *)
+
       | FiniteStretch(widstretch) ->
           if Length.is_nearly_zero widstretch then
-          (* -- if unable to stretch -- *)
-            (TooShort, Length.zero)
+          (* If unable to stretch *)
+            if Length.is_nearly_zero widdiff then
+              (Permissible(0.), Length.zero)
+            else
+              (TooShort, Length.zero)
           else
             let ratio_raw = widdiff /% widstretch in
             if ratio_raw >= ratio_stretch_limit then
@@ -523,7 +531,7 @@ let calculate_ratios (widrequired : length) (widinfo_total : length_info) : rati
             else
               (Permissible(ratio_raw), Length.zero)
     else
-    (* If the natural width is longer than or equal to the required one; `widdiff` is nonpositive *)
+    (* If the natural width is longer than the required one; `widdiff` is nonpositive *)
       if Length.is_nearly_zero widshrink then
       (* If unable to shrink *)
         (TooLong, Length.zero)
@@ -567,7 +575,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
                 ImHorz(widinfo.natural +% widperfil, evhb)
               else
                 assert false
-                (* Number of fils cannot be nonpositive *)
+                  (* The number of fils cannot be nonpositive *)
 
           | FiniteStretch(widstretch) ->
               let widappend =
