@@ -81,7 +81,7 @@ let warn_reachability (fs : 'o op_funcs) (pbinfo : page_break_info) pt wid hgt d
   | Unreachable ->
       Logging.warn_unreachable pbinfo.current_page_number;
       if OptionState.debug_show_overfull () then
-        fs.test_frame color_show_overfull pt wid hgt dpt
+        fs.test_frame color_show_unreachable pt wid hgt dpt
       else
         []
 
