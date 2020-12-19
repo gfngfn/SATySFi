@@ -508,9 +508,9 @@ let calculate_ratios (widrequired : length) (widinfo_total : length_info) : rati
   let stretch = widinfo_total.stretchable in
   let widdiff = widrequired -% widnatural in
     if widnatural <% widrequired then
-    (* -- if the natural width is shorter than the required one; widdiff is positive -- *)
+    (* If the natural width is shorter than the required one; `widdiff` is positive *)
       match stretch with
-      | Fils(nfil)  when nfil > 0 -> (PermissiblyLong(0.), widdiff *% (1. /. (~. nfil)))
+      | Fils(nfil)  when nfil > 0 -> (Permissible(0.), widdiff *% (1. /. (~. nfil)))
       | Fils(_)                   -> assert false  (* -- number of fils cannot be nonpositive -- *)
       | FiniteStretch(widstretch) ->
           if Length.is_nearly_zero widstretch then
@@ -521,18 +521,18 @@ let calculate_ratios (widrequired : length) (widinfo_total : length_info) : rati
             if ratio_raw >= ratio_stretch_limit then
               (TooShort, Length.zero)
             else
-              (PermissiblyShort(ratio_raw), Length.zero)
+              (Permissible(ratio_raw), Length.zero)
     else
-    (* -- if the natural width is longer than the required one; widdiff is nonpositive -- *)
+    (* If the natural width is longer than or equal to the required one; `widdiff` is nonpositive *)
       if Length.is_nearly_zero widshrink then
-      (* -- if unable to shrink -- *)
+      (* If unable to shrink *)
         (TooLong, Length.zero)
       else
         let ratio_raw = widdiff /% widshrink in
         if ratio_raw <= ratio_shrink_limit then
           (TooLong, Length.zero)
         else
-          (PermissiblyLong(ratio_raw), Length.zero)
+          (Permissible(ratio_raw), Length.zero)
 
 
 let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list) : intermediate_horz_box list * length * length =
@@ -540,7 +540,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
   let (ratios, widperfil) =
     match widreqopt with
     | Some(widreq) -> calculate_ratios widreq widinfo_total
-    | None         -> (PermissiblyShort(0.), Length.zero)
+    | None         -> (Permissible(0.), Length.zero)
   in
 
   let get_intermediate_total_width imhblst =
@@ -562,17 +562,31 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     | LBAtom((widinfo, _, _), evhb) ->
         begin
           match widinfo.stretchable with
-          | Fils(nfil)  when nfil > 0 -> ImHorz(widinfo.natural +% widperfil, evhb)
-          | Fils(_)                   -> assert false  (* -- number of fils cannot be nonpositive -- *)
+          | Fils(nfil) ->
+              if nfil > 0 then
+                ImHorz(widinfo.natural +% widperfil, evhb)
+              else
+                assert false
+                (* Number of fils cannot be nonpositive *)
+
           | FiniteStretch(widstretch) ->
               let widappend =
                 match ratios with
-                | TooLong                      -> Length.negate widinfo.shrinkable
-                | PermissiblyLong(pure_ratio)  -> widinfo.shrinkable *% pure_ratio  (* -- pure_ratio is nonpositive -- *)
-                | PermissiblyShort(pure_ratio) -> widstretch *% pure_ratio          (* -- pure_ratio is positive -- *)
-                | TooShort                     -> widstretch
+                | TooLong ->
+                    Length.negate widinfo.shrinkable
+
+                | Permissible(pure_ratio) ->
+                    if pure_ratio <= 0. then
+                    (* If `pure_ratio` is nonpositive *)
+                      widinfo.shrinkable *% pure_ratio
+                    else
+                    (* If `pure_ratio` is positive *)
+                      widstretch *% pure_ratio
+
+                | TooShort ->
+                    widstretch
               in
-                ImHorz(widinfo.natural +% widappend, evhb)
+              ImHorz(widinfo.natural +% widappend, evhb)
         end
 
     | LBRising((_, hgtsub, dptsub), lenrising, lphblstsub) ->
@@ -986,16 +1000,13 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
       wmap |> WidthMap.iter (fun dscridfrom widinfofrom is_already_too_long ->
         let (ratios, _) = calculate_ratios paragraph_width (widinfofrom +%@ widinfobreak) in
           match ratios with
-          | PermissiblyLong(pure_ratio)
-          | PermissiblyShort(pure_ratio)
-            ->
+          | Permissible(pure_ratio) ->
               let badness = calculate_badness pure_ratio in
-              begin
-                found_candidate := true;
-                LineBreakGraph.add_edge grph dscridfrom dscridto (badness + pnltybreak);
-              end
+              found_candidate := true;
+              LineBreakGraph.add_edge grph dscridfrom dscridto (badness + pnltybreak)
 
-          | TooShort -> ()
+          | TooShort ->
+              ()
 
           | TooLong ->
               if !is_already_too_long then

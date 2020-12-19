@@ -9,8 +9,7 @@ type pure_badness = int
 
 type ratios =
   | TooShort
-  | PermissiblyShort of float
-  | PermissiblyLong  of float
+  | Permissible of float
   | TooLong
 
 type font_abbrev = string
