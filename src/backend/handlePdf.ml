@@ -58,28 +58,32 @@ let color_show_bbox  = DeviceRGB(1.0, 0.5, 0.5)
 let color_show_block_bbox = DeviceRGB(0.25, 0.75, 0.25)
 let color_show_frame = DeviceRGB(1.0, 0.0, 1.0)
 let color_show_skip = DeviceRGB(0., 0.5, 0.)
+let color_show_overfull = DeviceRGB(1., 0., 0.)
 
 
-let warn_ratios (pbinfo : page_break_info) (ratios : ratios) =
+let warn_ratios (fs : 'o op_funcs) (pbinfo : page_break_info) pt wid hgt dpt (ratios : ratios) : 'o list =
   let pageno = pbinfo.current_page_number in
   match ratios with
   | TooLong ->
-      Logging.warn_underfull_line pageno
+      Logging.warn_underfull_line pageno;
+      fs.test_frame color_show_overfull pt wid hgt dpt
 
   | TooShort ->
-      Logging.warn_overfull_line pageno
+      Logging.warn_overfull_line pageno;
+      fs.test_frame color_show_overfull pt wid hgt dpt
 
   | Permissible(_) ->
-      ()
+      []
 
 
-let warn_reachability (pbinfo : page_break_info) (reach : reachability) =
+let warn_reachability (fs : 'o op_funcs) (pbinfo : page_break_info) pt wid hgt dpt (reach : reachability) : 'o list =
   match reach with
   | Unreachable ->
-      Logging.warn_unreachable pbinfo.current_page_number
+      Logging.warn_unreachable pbinfo.current_page_number;
+      []
 
   | Reachable(ratios) ->
-      warn_ratios pbinfo ratios
+      warn_ratios fs pbinfo pt wid hgt dpt ratios
 
 
 let boolize (br, len) =
@@ -102,7 +106,9 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         (xpos +% wid, opaccnew)
 
     | EvHorzFrame(ratios, hgt_frame, dpt_frame, deco, imhbs) ->
-        warn_ratios pbinfo ratios;
+        let ops_warning =
+          warn_ratios fs pbinfo (xpos, yposbaseline) wid hgt_frame dpt_frame ratios
+        in
         let gr_background =
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
             (* -- depth values are nonpositive -- *)
@@ -112,7 +118,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let (xposnew, opaccsub) =
           imhbs @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline)
         in
-        let ops_foreground = [] in  (* temporary *)
+        let ops_foreground = ops_warning in
         let opaccnew = Alist.append opaccsub ops_foreground in
         (xposnew, opaccnew)
 
@@ -217,13 +223,15 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
   let (opaccnew, _) =
     evtabular |> List.fold_left (fun (opacc, (xpos, ypos)) (vlen, evcelllst) ->
       let (opaccnew, _) =
-        evcelllst |> List.fold_left (fun (opacc, (xpos, ypos)) evcell ->
+        evcelllst |> List.fold_left (fun (opacc, ((xpos, ypos) as pt)) evcell ->
           match evcell with
           | EvEmptyCell(wid) ->
               (opacc, (xpos +% wid, ypos))
 
           | EvNormalCell(ratios, (wid, hgt, dpt), evhblst) ->
-              warn_ratios pbinfo ratios;
+              let ops_warning =
+                warn_ratios fs pbinfo pt wid hgt dpt ratios
+              in
               let yposbaseline = ypos -% hgt in
               let (_, opaccsub) =
                 evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, opacc)
@@ -232,12 +240,12 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
 (*
                 (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) |> Alist.append
 *)
-                  opaccsub
+                  Alist.append opaccsub ops_warning
               in
               (opaccnew, (xpos +% wid, ypos))
 
           | EvMultiCell(ratios, (_, _, widsingle, widcell, hgt, dpt), evhblst) ->
-              warn_ratios pbinfo ratios;
+              let ops_warning = warn_ratios fs pbinfo pt widcell hgt dpt ratios in
               let yposbaseline = ypos -% hgt in
               let (_, opaccsub) =
                   evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline) (xpos, opacc)
@@ -246,7 +254,7 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
 (*
                 (GraphicD.pdfops_test_frame (xpos, yposbaseline) widcell hgt dpt) |> Alist.append
 *)
-                  opaccsub
+                  Alist.append opaccsub ops_warning
               in
               (opaccnew, (xpos +% widsingle, ypos))
 
@@ -279,7 +287,10 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
         ((xpos, ypos -% vskip), opacc)
 
     | EvVertLine(reach, hgt, dpt, evhblst) ->
-        warn_reachability pbinfo reach;
+        let ops_warning =
+          let wid = Length.of_pdf_point 2. in  (* temporary *)
+          warn_reachability fs pbinfo pos wid hgt dpt reach
+        in
         let yposbaseline = ypos -% hgt in
         let (xposlast, opaccend) =
           evhblst @|> (xpos, opacc) @|> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline)
@@ -291,6 +302,7 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
           else
             opaccend
         in
+        let opaccend = Alist.append opaccend ops_warning in
         ((xpos, yposbaseline +% dpt), opaccend)
 
     | EvVertFrame(pads, _, deco, wid, evvblstsub) ->

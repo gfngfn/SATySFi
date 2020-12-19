@@ -1007,6 +1007,7 @@ let arg_spec_list curdir =
     ("--debug-show-space", Arg.Unit(OptionState.set_debug_show_space), " Outputs boxes for spaces"                              );
     ("--debug-show-block-bbox", Arg.Unit(OptionState.set_debug_show_block_bbox), " Outputs bounding boxes for blocks"           );
     ("--debug-show-block-space", Arg.Unit(OptionState.set_debug_show_block_space), " Outputs visualized block spaces"           );
+    ("--debug-show-overfull", Arg.Unit(OptionState.set_debug_show_overfull), " Outputs visualized overfull or underfull lines"  );
     ("-t"                , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
     ("--type-check-only" , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
     ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"                                 );
