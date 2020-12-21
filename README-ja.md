@@ -1,7 +1,7 @@
 <!-- -*- coding: utf-8 -*- -->
 ![logo1](https://raw.githubusercontent.com/wiki/gfngfn/SATySFi/img/satysfi-logo.png)
 
-[![Build Status](https://travis-ci.org/gfngfn/SATySFi.svg?branch=master)](https://travis-ci.org/gfngfn/SATySFi)
+[![Build Status](https://github.com/gfngfn/SATySfi/workflows/CI/badge.svg)](https://github.com/gfngfn/SATySFi/actions?query=workflow%3ACI)
 
 [English README is here](https://github.com/gfngfn/SATySFi/blob/master/README.md)
 
