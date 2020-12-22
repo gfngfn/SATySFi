@@ -1,2 +1,6 @@
+SATYSFI := satysfi
+
+.PHONY: all
+
 all:
-	satysfi demo.saty
+	$(SATYSFI) demo.saty

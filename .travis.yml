@@ -18,4 +18,8 @@ install:
   - opam pin add -y --no-action satysfi .
   - opam install -y --deps-only satysfi
 script:
-  - make all
+  - opam install -y satysfi
+  - ./download-fonts.sh
+  - sudo ./install-libs.sh
+  - make -C demo
+  - make -C doc
