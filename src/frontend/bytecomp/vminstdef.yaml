@@ -957,6 +957,27 @@ code: |
   BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, pagecontf, pagepartsf, vblst))
 
 ---
+inst: BackendPageBreakingMultiColumn
+is-pdf-mode-primitive: yes
+name: "page-break-multicolumn"
+type: |
+  ~% (tPG @-> tL tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+
+needs-reducef: yes
+params:
+- pagesize : page_size
+- origin_shifts : length_list
+- valuecolumnhookf
+- valuepagecontf
+- valuepagepartsf
+- vbs : vert
+code: |
+  let columnhookf = make_column_hook_func reducef valuecolumnhookf in
+  let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
+  let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+  BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, pagecontf, pagepartsf, vbs))
+
+---
 inst: BackendVertFrame
 is-pdf-mode-primitive: yes
 name: "block-frame-breakable"
