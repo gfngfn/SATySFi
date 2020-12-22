@@ -5,6 +5,9 @@ open LengthInterface
 open HorzBox
 
 
+exception PageNumberLimitExceeded of int
+
+
 type frame_breaking =
   | Beginning
   | Midway
@@ -681,8 +684,8 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
   aux pbvblst
 
 
-let chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst =
-  let vblst_inserted = columnhookf () in  (* -- invokes the column hook function -- *)
+let chop_single_column_with_insertion (pbinfo : page_break_info) (content_height : length) (columnhookf : unit -> vert_box list) (pbvblst : pb_vert_box list) =
+  let vblst_inserted = columnhookf () in  (* Invokes the column hook function. *)
   let pbvblst_inserted = normalize vblst_inserted in
   chop_single_column pbinfo content_height (List.append pbvblst_inserted pbvblst)
 
@@ -708,47 +711,55 @@ let main (absname_out : abs_path) (pagesize : page_size) (columnhookf : column_h
   aux 1 pdfinit pbvblst
 
 
-let main_two_column (absname_out : abs_path) (pagesize : page_size) (origin_shift : length) (columnhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
+let main_multicolumn (absname_out : abs_path) (pagesize : page_size) (origin_shifts : length list) (columnhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
 
   let pdfinit = HandlePdf.create_empty_pdf absname_out in
 
-  let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
-    let pbinfo = { current_page_number = pageno; } in
-    let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
-    let content_height = pagecontsch.page_content_height in
+  let page_number_limit = OptionState.get_page_number_limit () in
 
-    let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+  let rec iter_on_column
+      (pbinfo : page_break_info) (content_height : length)
+      (page : HandlePdf.page) (pbvbs : pb_vert_box list) (origin_shifts : length list) =
+    match origin_shifts with
+    | [] ->
+        (page, Some(pbvbs))
 
-    (* -- makes the first column -- *)
-    let (body1, footnote1, restopt) =
-      chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst
-    in
-
-    (* -- adds the first column to the page and invokes hook functions -- *)
-    let page = HandlePdf.add_column_to_page page Length.zero body1 footnote1 in
-
-    match restopt with
-    | None ->
-        pdfacc |> HandlePdf.write_page page pagepartsf
-
-    | Some(pbvblst) ->
-        (* -- makes the second column -- *)
-        let (body2, footnote2, restopt) =
-          chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst
+    | origin_shift :: origin_shift_tail ->
+        (* Makes a column. *)
+        let (body, footnote, restopt) =
+          chop_single_column_with_insertion pbinfo content_height columnhookf pbvbs
         in
 
-        (* -- adds the second column to the page and invokes hook functions -- *)
-        let page = HandlePdf.add_column_to_page page origin_shift body2 footnote2 in
-
-        let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
+        (* Adds the column to the page and invokes hook functions. *)
+        let page = HandlePdf.add_column_to_page page origin_shift body footnote in
         begin
           match restopt with
-          | None       -> pdfaccnew
-          | Some(rest) -> aux (pageno + 1) pdfaccnew rest
+          | None        -> (page, None)
+          | Some(pbvbs) -> iter_on_column pbinfo content_height page pbvbs origin_shift_tail
         end
+
+  in
+
+  let origin_shifts = Length.zero :: origin_shifts in
+
+  let rec iter_on_page (pageno : int) (pdfacc : HandlePdf.t) (pbvbs : pb_vert_box list) =
+    if pageno > page_number_limit then
+      raise (PageNumberLimitExceeded(page_number_limit))
+    else
+      let pbinfo = { current_page_number = pageno; } in
+      let pagecontsch = pagecontf pbinfo in  (* Invokes the page scheme function. *)
+      let content_height = pagecontsch.page_content_height in
+
+      (* Creates an empty page and iteratively adds columns to it. *)
+      let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+      let (page, restopt) = iter_on_column pbinfo content_height page pbvbs origin_shifts in
+      let pdfacc = pdfacc |> HandlePdf.write_page page pagepartsf in
+      match restopt with
+      | None        -> pdfacc
+      | Some(pbvbs) -> iter_on_page (pageno + 1) pdfacc pbvbs
   in
   let pbvblst = normalize vblst in
-  aux 1 pdfinit pbvblst
+  iter_on_page 1 pdfinit pbvblst
 
 
 let adjust_to_first_line (imvblst : intermediate_vert_box list) : length * length =

@@ -625,7 +625,7 @@ type ('a, 'b) path_component_scheme =
 
 type page_break_style =
   | SingleColumn
-  | TwoColumn of length
+  | MultiColumn of length list
 [@@deriving show { with_path = false; }]
 
 type base_constant =

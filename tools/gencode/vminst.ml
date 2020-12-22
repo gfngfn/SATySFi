@@ -1043,7 +1043,7 @@ BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagep
 let columnhookf = make_column_hook_func reducef valuecolumnhookf in
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), columnhookf, pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, pagecontf, pagepartsf, vblst))
 |}
     ; inst "BackendVertFrame"
         ~name:"block-frame-breakable"

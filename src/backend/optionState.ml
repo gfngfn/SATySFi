@@ -21,6 +21,7 @@ type state = {
   mutable mode             : (string list) option;
   mutable extra_config_paths : string list option;
   mutable no_default_config_paths : bool;
+  mutable page_number_limit : int;
 }
 
 
@@ -40,6 +41,7 @@ let state = {
   mode             = None;
   extra_config_paths = None;
   no_default_config_paths = false;
+  page_number_limit       = 10000;
 }
 
 let set_input_kind ikd = state.input_kind <- ikd
@@ -95,3 +97,6 @@ let get_extra_config_paths () = state.extra_config_paths
 
 let set_no_default_config_paths () = state.no_default_config_paths <- true
 let get_no_default_config_paths () = state.no_default_config_paths
+
+let set_page_number_limit m = state.page_number_limit <- m
+let get_page_number_limit () = state.page_number_limit

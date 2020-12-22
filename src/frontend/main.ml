@@ -368,9 +368,9 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
                 PageBreak.main abspath_out pagesize
                   columnhookf pagecontf pagepartsf imvblst
 
-            | TwoColumn(origin_shift) ->
-                PageBreak.main_two_column abspath_out pagesize
-                  origin_shift columnhookf pagecontf pagepartsf imvblst
+            | MultiColumn(origin_shifts) ->
+                PageBreak.main_multicolumn abspath_out pagesize
+                  origin_shifts columnhookf pagecontf pagepartsf imvblst
           in
           begin
             match CrossRef.needs_another_trial abspath_dump with
@@ -943,6 +943,12 @@ let error_log_environment suspended =
   | State.NotDuringPageBreak ->
       report_error Evaluator [
         NormalLine("a primitive as to PDF annotation was called before page breaking starts.");
+      ]
+
+  | PageBreak.PageNumberLimitExceeded(m) ->
+      report_error Evaluator [
+        NormalLine(Printf.sprintf "page number limit (= %d) exceeded." m);
+        NormalLine(Printf.sprintf "If you really want to output more than %d pages, use '--page-number-limit'." m);
       ]
 
   | Sys_error(s) ->
