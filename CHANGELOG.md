@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Add string literals of the form `` @`…` ``, which are equipped with their positions on source files and have type `input-position * string` at stage 0.
 - Add primitive `get-input-position : input-position -> string * int * int` for extracting filenames, line numbers, column numbers from positions on source files.
 - Add `--debug-show-overfull` option to visualize overfull or underfull lines.
-- Add GitHub Actions for the development ([PR\#250](https://github.com/gfngfn/SATySFi/pull/250) by `y-yu`).
+- Add GitHub Actions for the development ([PR\#250](https://github.com/gfngfn/SATySFi/pull/250) and [PR\#256](https://github.com/gfngfn/SATySFi/pull/256) by `y-yu` and [PR\#255](https://github.com/gfngfn/SATySFi/pull/255) by `puripuri2100`).
 
 ## [0.0.5] - 2020-07-11
 ### Fixed
