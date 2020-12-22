@@ -711,7 +711,7 @@ let main (absname_out : abs_path) (pagesize : page_size) (columnhookf : column_h
   aux 1 pdfinit pbvblst
 
 
-let main_multicolumn (absname_out : abs_path) (pagesize : page_size) (origin_shifts : length list) (columnhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
+let main_multicolumn (absname_out : abs_path) (pagesize : page_size) (origin_shifts : length list) (columnhookf : column_hook_func) (columnendhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
 
   let pdfinit = HandlePdf.create_empty_pdf absname_out in
 
@@ -722,7 +722,9 @@ let main_multicolumn (absname_out : abs_path) (pagesize : page_size) (origin_shi
       (page : HandlePdf.page) (pbvbs : pb_vert_box list) (origin_shifts : length list) =
     match origin_shifts with
     | [] ->
-        (page, Some(pbvbs))
+        let vbs_inserted = columnendhookf () in  (* Invokes the column end hook function. *)
+        let pbvbs_inserted = normalize vbs_inserted in
+        (page, List.append pbvbs_inserted pbvbs)
 
     | origin_shift :: origin_shift_tail ->
         (* Makes a column. *)
@@ -734,8 +736,13 @@ let main_multicolumn (absname_out : abs_path) (pagesize : page_size) (origin_shi
         let page = HandlePdf.add_column_to_page page origin_shift body footnote in
         begin
           match restopt with
-          | None        -> (page, None)
-          | Some(pbvbs) -> iter_on_column pbinfo content_height page pbvbs origin_shift_tail
+          | None ->
+              let vbs_inserted = columnendhookf () in  (* Invokes the column end hook function. *)
+              let pbvbs_inserted = normalize vbs_inserted in
+              (page, pbvbs_inserted)
+
+          | Some(pbvbs) ->
+              iter_on_column pbinfo content_height page pbvbs origin_shift_tail
         end
 
   in
@@ -752,11 +759,11 @@ let main_multicolumn (absname_out : abs_path) (pagesize : page_size) (origin_shi
 
       (* Creates an empty page and iteratively adds columns to it. *)
       let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
-      let (page, restopt) = iter_on_column pbinfo content_height page pbvbs origin_shifts in
+      let (page, rest) = iter_on_column pbinfo content_height page pbvbs origin_shifts in
       let pdfacc = pdfacc |> HandlePdf.write_page page pagepartsf in
-      match restopt with
-      | None        -> pdfacc
-      | Some(pbvbs) -> iter_on_page (pageno + 1) pdfacc pbvbs
+      match rest with
+      | []     -> pdfacc
+      | _ :: _ -> iter_on_page (pageno + 1) pdfacc rest
   in
   let pbvblst = normalize vblst in
   iter_on_page 1 pdfinit pbvblst

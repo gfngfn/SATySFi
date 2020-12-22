@@ -359,7 +359,7 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
     let rec aux i =
       let valuedoc = eval_main i env_freezed ast in
       match valuedoc with
-      | BaseConstant(BCDocument(pagesize, pbstyle, columnhookf, pagecontf, pagepartsf, imvblst)) ->
+      | BaseConstant(BCDocument(pagesize, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
           Logging.start_page_break ();
           State.start_page_break ();
           let pdf =
@@ -370,7 +370,7 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
 
             | MultiColumn(origin_shifts) ->
                 PageBreak.main_multicolumn abspath_out pagesize
-                  origin_shifts columnhookf pagecontf pagepartsf imvblst
+                  origin_shifts columnhookf columnendhookf pagecontf pagepartsf imvblst
           in
           begin
             match CrossRef.needs_another_trial abspath_dump with
