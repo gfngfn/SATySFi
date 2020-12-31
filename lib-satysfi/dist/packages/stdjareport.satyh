@@ -392,8 +392,10 @@ end = struct
     in
 
     let bb-last =
-      line-break false true (ctx-doc |> set-paragraph-margin 0pt 0pt)
-        (hook-page-break (fun _ _ -> (does-page-breaking-reach-last <- true)) ++ inline-fil)
+      hook-page-break-block (fun _ _ -> (
+        let () = display-message `reach last.` in
+        does-page-breaking-reach-last <- true
+      ))
     in
     let doc =
       page-break-multicolumn page [] columnhookf columnendhookf pagecontf pagepartsf
