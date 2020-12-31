@@ -1023,7 +1023,8 @@ let arg_spec_list curdir =
     ("--show-fonts"      , Arg.Unit(OptionState.set_show_fonts)      , " Displays all the available fonts"                      );
     ("-C"                , Arg.String(arg_config)                    , " Add colon-separated paths to configuration search path");
     ("--config"          , Arg.String(arg_config)                    , " Add colon-separated paths to configuration search path");
-    ("--no-default-config", Arg.Unit(OptionState.set_no_default_config_paths), "Do not use default configuration search path"         );
+    ("--no-default-config", Arg.Unit(OptionState.set_no_default_config_paths), " Does not use default configuration search path");
+    ("--page-number-limit", Arg.Int(OptionState.set_page_number_limit), " Set the page number limit (default: 10000)"           );
   ]
 
 
