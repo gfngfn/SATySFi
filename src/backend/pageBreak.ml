@@ -31,6 +31,7 @@ and pb_vert_box_main =
           pp_length w
           (Format.pp_print_list pp_pb_vert_box) pbvblst)]
   | PBClearPage
+  | PBHookPageBreak of (page_break_info -> point -> unit)
 [@@deriving show { with_path = false; }]
 
 type pb_normalized =
@@ -104,6 +105,7 @@ let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvbls
       | (PBVertSkip(_), _) :: pbvbtail -> omit_redundant_clear pbvbtail
       | (PBVertLine(_), _) :: _
       | (PBVertFrame(_), _) :: _       -> None
+      | (PBHookPageBreak(_), _) :: _   -> assert false
       | []                             -> Some([])  (* -- the original `pbvblst` consists only of spaces -- *)
     in
     let pbvblst =
@@ -509,6 +511,11 @@ let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvbls
         in
         force esc
 
+    | (PBHookPageBreak(hookf), _) :: pbvbtail ->
+        aux { prev with
+          solid_body = Alist.extend prev.solid_body (EvVertHookPageBreak(hookf));
+        } pbvbtail
+
     | [] ->
         let ans =
           if prev.depth = 0 then
@@ -558,6 +565,23 @@ let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvbls
       (Alist.to_list body_all, Alist.to_list footnote_all, None)
 
 
+let rec get_next_margin_top (vbs : vert_box list) =
+  let open EscapeMonad in
+  match vbs with
+  | []
+  | VertClearPage :: _ ->
+      escape (Unbreakable, [])
+
+  | VertParagraph(margins, _) :: _
+  | VertFrame(margins, _, _, _, _, _, _, _) :: _ ->
+      continue margins.margin_top
+
+  | VertFixedBreakable(_) :: _ ->
+      continue None
+
+  | VertHookPageBreak(_) :: tail ->
+      get_next_margin_top tail
+
 (* --
    `squash_margins` receives:
 
@@ -573,20 +597,7 @@ let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvbls
 let squash_margins (prev_bottom : (breakability * length) option) (vblst : vert_box list) : breakability * pb_vert_box list =
   let open EscapeMonad in
   let esc =
-    begin
-      match vblst with
-      | []
-      | VertClearPage :: _ ->
-          escape (Unbreakable, [])
-
-      | VertParagraph(margins, _) :: _
-      | VertFrame(margins, _, _, _, _, _, _, _) :: _ ->
-          continue margins.margin_top
-
-      | VertFixedBreakable(_) :: _ ->
-          continue None
-
-    end >>= fun next_top ->
+    get_next_margin_top vblst >>= fun next_top ->
     escape @@ begin
       match (prev_bottom, next_top) with
       | (None, None)                                       -> (Breakable, [])
@@ -663,6 +674,9 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
     | VertClearPage :: vbtail ->
         aux TopMarginProhibited (Alist.extend pbvbacc (PBClearPage, Breakable)) vbtail
 
+    | VertHookPageBreak(hookf) :: vbtail ->
+        aux needed (Alist.extend pbvbacc (PBHookPageBreak(hookf), Breakable)) vbtail
+
   in
   aux TopMarginProhibited Alist.empty vblst
 
@@ -678,6 +692,9 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
       | PBVertFrame(_, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) ->
           let imvblstsub = aux pbvblstsub in
           ImVertFrame(pads, decoS, wid, imvblstsub)
+
+      | PBHookPageBreak(hookf) ->
+          ImVertHookPageBreak(hookf)
     )
   in
   let pbvblst = normalize vblst in
@@ -783,6 +800,9 @@ let adjust_to_first_line (imvblst : intermediate_vert_box list) : length * lengt
           let totalhgtafter = totalhgtsub +% pads.paddingB in
             (optsub, totalhgtafter)
 
+      | (ImVertHookPageBreak(_), _) ->
+          (opt, totalhgt)
+
     ) (optinit, totalhgtinit)
   in
   match aux None Length.zero imvblst with
@@ -804,6 +824,9 @@ let adjust_to_last_line (imvblst : intermediate_vert_box list) : length * length
             let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
             let totalhgtafter = totalhgtsub +% pads.paddingT in
               (optsub, totalhgtafter)
+
+        | (ImVertHookPageBreak(_), _) ->
+            (opt, totalhgt)
 
       ) (optinit, totalhgtinit)
   in

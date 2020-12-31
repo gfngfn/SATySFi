@@ -100,6 +100,10 @@ and embed_page_info_vert (pbinfo : page_break_info) (imvblst : intermediate_vert
           let evvb = EvVertFrame(pads, pbinfo, deco, wid, evvblst) in
           (extV evvb, appendF footnotelst)
 
+      | ImVertHookPageBreak(hookf) ->
+          let evvb = EvVertHookPageBreak(hookf) in
+          (extV evvb, footnoteacc)
+
     ) (Alist.empty, Alist.empty)
   in
   (Alist.to_list evvbacc, Alist.to_list footnoteacc)

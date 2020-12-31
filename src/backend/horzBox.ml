@@ -344,6 +344,7 @@ and vert_box =
   | VertFrame          of margins * paddings * decoration * decoration * decoration * decoration * length * vert_box list
 (*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
   | VertClearPage
+  | VertHookPageBreak of (page_break_info -> point -> unit)
 
 and margins = {
   margin_top    : (breakability * length) option;
@@ -359,6 +360,7 @@ and intermediate_vert_box =
   | ImVertLine       of reachability * length * length * intermediate_horz_box list
   | ImVertFixedEmpty of debug_margin_info * length
   | ImVertFrame      of paddings * decoration * length * intermediate_vert_box list
+  | ImVertHookPageBreak of (page_break_info -> point -> unit)
 
 and evaled_vert_box =
   | EvVertLine       of reachability * length * length * evaled_horz_box list
@@ -371,6 +373,7 @@ and evaled_vert_box =
   | EvVertFixedEmpty of debug_margin_info * length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
+  | EvVertHookPageBreak of (page_break_info -> point -> unit)
 
 and page_parts_scheme = {
   header_origin  : point;
@@ -530,6 +533,7 @@ let rec get_height_of_evaled_vert_box_list evvblst =
     | EvVertLine(_, hgt, dpt, _)          -> l +% hgt +% (Length.negate dpt)
     | EvVertFixedEmpty(_, len)            -> l +% len
     | EvVertFrame(pads, _, _, _, evvblst) -> l +% pads.paddingB +% pads.paddingL +% get_height_of_evaled_vert_box_list evvblst
+    | EvVertHookPageBreak(_)              -> l
   ) Length.zero
 
 
