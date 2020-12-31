@@ -584,6 +584,19 @@ code: |
   make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 
 ---
+inst: BackendHookPageBreakBlock
+is-pdf-mode-primitive: yes
+name: "hook-page-break-block"
+type: |
+  ~% ((tPBINFO @-> tPT @-> tU) @-> tBB)
+
+needs-reducef: yes
+params:
+- hookf
+code: |
+  let hookf = make_hook reducef hookf in
+  make_vert (HorzBox.([VertHookPageBreak(hookf)]))
+---
 inst: PathUnite
 is-pdf-mode-primitive: yes
 name: "unite-path"

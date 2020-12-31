@@ -628,6 +628,22 @@ match valueimg with
 let hookf = make_hook reducef hookf in
 make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 |}
+    ; inst "BackendHookPageBreakBlock"
+        ~name:"hook-page-break-block"
+        ~type_:{|
+~% ((tPBINFO @-> tPT @-> tU) @-> tBB)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "hookf";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let hookf = make_hook reducef hookf in
+make_vert (HorzBox.([VertHookPageBreak(hookf)]))
+|}
     ; inst "PathUnite"
         ~name:"unite-path"
         ~type_:{|
