@@ -584,6 +584,19 @@ code: |
   make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 
 ---
+inst: BackendHookPageBreakBlock
+is-pdf-mode-primitive: yes
+name: "hook-page-break-block"
+type: |
+  ~% ((tPBINFO @-> tPT @-> tU) @-> tBB)
+
+needs-reducef: yes
+params:
+- hookf
+code: |
+  let hookf = make_hook reducef hookf in
+  make_vert (HorzBox.([VertHookPageBreak(hookf)]))
+---
 inst: PathUnite
 is-pdf-mode-primitive: yes
 name: "unite-path"
@@ -933,7 +946,7 @@ params:
 code: |
   let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
   let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-  BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagepartsf, vblst))
+  BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), pagecontf, pagepartsf, vblst))
 
 ---
 inst: BackendPageBreakingTwoColumn
@@ -954,7 +967,30 @@ code: |
   let columnhookf = make_column_hook_func reducef valuecolumnhookf in
   let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
   let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-  BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), columnhookf, pagecontf, pagepartsf, vblst))
+  BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun () -> []), pagecontf, pagepartsf, vblst))
+
+---
+inst: BackendPageBreakingMultiColumn
+is-pdf-mode-primitive: yes
+name: "page-break-multicolumn"
+type: |
+  ~% (tPG @-> tL tLN @-> (tU @-> tBB) @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+
+needs-reducef: yes
+params:
+- pagesize : page_size
+- origin_shifts : length_list
+- valuecolumnhookf
+- valuecolumnendhookf
+- valuepagecontf
+- valuepagepartsf
+- vbs : vert
+code: |
+  let columnhookf = make_column_hook_func reducef valuecolumnhookf in
+  let columnendhookf = make_column_hook_func reducef valuecolumnendhookf in
+  let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
+  let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+  BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, columnendhookf, pagecontf, pagepartsf, vbs))
 
 ---
 inst: BackendVertFrame

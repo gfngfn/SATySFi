@@ -628,6 +628,22 @@ match valueimg with
 let hookf = make_hook reducef hookf in
 make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 |}
+    ; inst "BackendHookPageBreakBlock"
+        ~name:"hook-page-break-block"
+        ~type_:{|
+~% ((tPBINFO @-> tPT @-> tU) @-> tBB)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "hookf";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let hookf = make_hook reducef hookf in
+make_vert (HorzBox.([VertHookPageBreak(hookf)]))
+|}
     ; inst "PathUnite"
         ~name:"unite-path"
         ~type_:{|
@@ -1020,7 +1036,7 @@ make_vert imvblst
         ~code:{|
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), pagecontf, pagepartsf, vblst))
 |}
     ; inst "BackendPageBreakingTwoColumn"
         ~name:"page-break-two-column"
@@ -1043,7 +1059,32 @@ BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagep
 let columnhookf = make_column_hook_func reducef valuecolumnhookf in
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), columnhookf, pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun () -> []), pagecontf, pagepartsf, vblst))
+|}
+    ; inst "BackendPageBreakingMultiColumn"
+        ~name:"page-break-multicolumn"
+        ~type_:{|
+~% (tPG @-> tL tLN @-> (tU @-> tBB) @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "pagesize" ~type_:"page_size";
+          param "origin_shifts" ~type_:"length_list";
+          param "valuecolumnhookf";
+          param "valuecolumnendhookf";
+          param "valuepagecontf";
+          param "valuepagepartsf";
+          param "vbs" ~type_:"vert";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let columnhookf = make_column_hook_func reducef valuecolumnhookf in
+let columnendhookf = make_column_hook_func reducef valuecolumnendhookf in
+let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, columnendhookf, pagecontf, pagepartsf, vbs))
 |}
     ; inst "BackendVertFrame"
         ~name:"block-frame-breakable"

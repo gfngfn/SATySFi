@@ -5,6 +5,9 @@ open LengthInterface
 open HorzBox
 
 
+exception PageNumberLimitExceeded of int
+
+
 type frame_breaking =
   | Beginning
   | Midway
@@ -28,6 +31,7 @@ and pb_vert_box_main =
           pp_length w
           (Format.pp_print_list pp_pb_vert_box) pbvblst)]
   | PBClearPage
+  | PBHookPageBreak of (page_break_info -> point -> unit)
 [@@deriving show { with_path = false; }]
 
 type pb_normalized =
@@ -101,6 +105,7 @@ let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvbls
       | (PBVertSkip(_), _) :: pbvbtail -> omit_redundant_clear pbvbtail
       | (PBVertLine(_), _) :: _
       | (PBVertFrame(_), _) :: _       -> None
+      | (PBHookPageBreak(_), _) :: _   -> assert false
       | []                             -> Some([])  (* -- the original `pbvblst` consists only of spaces -- *)
     in
     let pbvblst =
@@ -506,6 +511,11 @@ let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvbls
         in
         force esc
 
+    | (PBHookPageBreak(hookf), _) :: pbvbtail ->
+        aux { prev with
+          solid_body = Alist.extend prev.solid_body (EvVertHookPageBreak(hookf));
+        } pbvbtail
+
     | [] ->
         let ans =
           if prev.depth = 0 then
@@ -555,8 +565,7 @@ let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvbls
       (Alist.to_list body_all, Alist.to_list footnote_all, None)
 
 
-(* --
-   `squash_margins` receives:
+(* `squash_margins` receives:
 
    * `prev_bottom`: the upper bottom margin
    * `vblst`: the rest of block contents that remains to be traversed
@@ -564,16 +573,15 @@ let chop_single_column (pbinfo : page_break_info) (area_height : length) (pbvbls
    and returns `(br, pbvbskip)` where:
 
    * `br`: whether page-breakable between `prev_bottom` and `vblst`
-   * `pbvbskip`: the vertical contents corresponding to the space originating from margins
-
-   -- *)
+   * `pbvbskip`: the vertical contents corresponding to the space originating from margins *)
 let squash_margins (prev_bottom : (breakability * length) option) (vblst : vert_box list) : breakability * pb_vert_box list =
   let open EscapeMonad in
   let esc =
     begin
       match vblst with
       | []
-      | VertClearPage :: _ ->
+      | VertClearPage :: _
+      | VertHookPageBreak(_) :: _ ->
           escape (Unbreakable, [])
 
       | VertParagraph(margins, _) :: _
@@ -635,7 +643,7 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
         pbvbacc
   in
 
-  let rec aux needed pbvbacc vblst =
+  let rec aux (prev_bottom : (breakability * length) option) (needed : top_margin_needed) pbvbacc vblst =
     match vblst with
     | [] ->
         Alist.to_list pbvbacc
@@ -644,24 +652,28 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
         let pbvbacc = append_top_margin_if_needed needed margins pbvbacc in
         let (br, pbvbskip) = squash_margins margins.margin_bottom vbtail in
         let pbvbpar = normalize_paragraph parelems br in
-        aux TopMarginProhibited (Alist.append (Alist.append pbvbacc pbvbpar) pbvbskip) vbtail
+        aux margins.margin_bottom TopMarginProhibited (Alist.append (Alist.append pbvbacc pbvbpar) pbvbskip) vbtail
 
     | VertFixedBreakable(vskip) :: vbtail ->
-        aux TopMarginNeeded (Alist.extend pbvbacc (PBVertSkip(Fixed, vskip), Breakable)) vbtail
+        aux None TopMarginNeeded (Alist.extend pbvbacc (PBVertSkip(Fixed, vskip), Breakable)) vbtail
           (* -- appending a skip that stems from a top margin is needed only after fixed skips -- *)
 
     | VertFrame(margins, pads, decoS, decoH, decoM, decoT, wid, vblstsub) :: vbtail ->
         let pbvbacc = append_top_margin_if_needed needed margins pbvbacc in
         let (br, pbvbskip) = squash_margins margins.margin_bottom vbtail in
-        let pbvblstsub = aux TopMarginProhibited Alist.empty vblstsub in
+        let pbvblstsub = aux None TopMarginProhibited Alist.empty vblstsub in
         let pbvb = (PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub), br) in
-        aux TopMarginProhibited (Alist.append (Alist.extend pbvbacc pbvb) pbvbskip) vbtail
+        aux margins.margin_bottom TopMarginProhibited (Alist.append (Alist.extend pbvbacc pbvb) pbvbskip) vbtail
 
     | VertClearPage :: vbtail ->
-        aux TopMarginProhibited (Alist.extend pbvbacc (PBClearPage, Breakable)) vbtail
+        aux None TopMarginProhibited (Alist.extend pbvbacc (PBClearPage, Breakable)) vbtail
+
+    | VertHookPageBreak(hookf) :: vbtail ->
+        let (br, _) = squash_margins prev_bottom vbtail in
+        aux prev_bottom needed (Alist.extend pbvbacc (PBHookPageBreak(hookf), br)) vbtail
 
   in
-  aux TopMarginProhibited Alist.empty vblst
+  aux None TopMarginProhibited Alist.empty vblst
 
 
 let solidify (vblst : vert_box list) : intermediate_vert_box list =
@@ -675,14 +687,17 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
       | PBVertFrame(_, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) ->
           let imvblstsub = aux pbvblstsub in
           ImVertFrame(pads, decoS, wid, imvblstsub)
+
+      | PBHookPageBreak(hookf) ->
+          ImVertHookPageBreak(hookf)
     )
   in
   let pbvblst = normalize vblst in
   aux pbvblst
 
 
-let chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst =
-  let vblst_inserted = columnhookf () in  (* -- invokes the column hook function -- *)
+let chop_single_column_with_insertion (pbinfo : page_break_info) (content_height : length) (columnhookf : unit -> vert_box list) (pbvblst : pb_vert_box list) =
+  let vblst_inserted = columnhookf () in  (* Invokes the column hook function. *)
   let pbvblst_inserted = normalize vblst_inserted in
   chop_single_column pbinfo content_height (List.append pbvblst_inserted pbvblst)
 
@@ -708,47 +723,62 @@ let main (absname_out : abs_path) (pagesize : page_size) (columnhookf : column_h
   aux 1 pdfinit pbvblst
 
 
-let main_two_column (absname_out : abs_path) (pagesize : page_size) (origin_shift : length) (columnhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
+let main_multicolumn (absname_out : abs_path) (pagesize : page_size) (origin_shifts : length list) (columnhookf : column_hook_func) (columnendhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
 
   let pdfinit = HandlePdf.create_empty_pdf absname_out in
 
-  let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
-    let pbinfo = { current_page_number = pageno; } in
-    let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
-    let content_height = pagecontsch.page_content_height in
+  let page_number_limit = OptionState.get_page_number_limit () in
 
-    let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+  let rec iter_on_column
+      (pbinfo : page_break_info) (content_height : length)
+      (page : HandlePdf.page) (pbvbs : pb_vert_box list) (origin_shifts : length list) =
+    match origin_shifts with
+    | [] ->
+        let vbs_inserted = columnendhookf () in  (* Invokes the column end hook function. *)
+        let pbvbs_inserted = normalize vbs_inserted in
+        (page, List.append pbvbs_inserted pbvbs)
 
-    (* -- makes the first column -- *)
-    let (body1, footnote1, restopt) =
-      chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst
-    in
-
-    (* -- adds the first column to the page and invokes hook functions -- *)
-    let page = HandlePdf.add_column_to_page page Length.zero body1 footnote1 in
-
-    match restopt with
-    | None ->
-        pdfacc |> HandlePdf.write_page page pagepartsf
-
-    | Some(pbvblst) ->
-        (* -- makes the second column -- *)
-        let (body2, footnote2, restopt) =
-          chop_single_column_with_insertion pbinfo content_height columnhookf pbvblst
+    | origin_shift :: origin_shift_tail ->
+        (* Makes a column. *)
+        let (body, footnote, restopt) =
+          chop_single_column_with_insertion pbinfo content_height columnhookf pbvbs
         in
 
-        (* -- adds the second column to the page and invokes hook functions -- *)
-        let page = HandlePdf.add_column_to_page page origin_shift body2 footnote2 in
-
-        let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
+        (* Adds the column to the page and invokes hook functions. *)
+        let page = HandlePdf.add_column_to_page page origin_shift body footnote in
         begin
           match restopt with
-          | None       -> pdfaccnew
-          | Some(rest) -> aux (pageno + 1) pdfaccnew rest
+          | None ->
+              let vbs_inserted = columnendhookf () in  (* Invokes the column end hook function. *)
+              let pbvbs_inserted = normalize vbs_inserted in
+              (page, pbvbs_inserted)
+
+          | Some(pbvbs) ->
+              iter_on_column pbinfo content_height page pbvbs origin_shift_tail
         end
+
+  in
+
+  let origin_shifts = Length.zero :: origin_shifts in
+
+  let rec iter_on_page (pageno : int) (pdfacc : HandlePdf.t) (pbvbs : pb_vert_box list) =
+    if pageno > page_number_limit then
+      raise (PageNumberLimitExceeded(page_number_limit))
+    else
+      let pbinfo = { current_page_number = pageno; } in
+      let pagecontsch = pagecontf pbinfo in  (* Invokes the page scheme function. *)
+      let content_height = pagecontsch.page_content_height in
+
+      (* Creates an empty page and iteratively adds columns to it. *)
+      let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+      let (page, rest) = iter_on_column pbinfo content_height page pbvbs origin_shifts in
+      let pdfacc = pdfacc |> HandlePdf.write_page page pagepartsf in
+      match rest with
+      | []     -> pdfacc
+      | _ :: _ -> iter_on_page (pageno + 1) pdfacc rest
   in
   let pbvblst = normalize vblst in
-  aux 1 pdfinit pbvblst
+  iter_on_page 1 pdfinit pbvblst
 
 
 let adjust_to_first_line (imvblst : intermediate_vert_box list) : length * length =
@@ -764,6 +794,9 @@ let adjust_to_first_line (imvblst : intermediate_vert_box list) : length * lengt
           let (optsub, totalhgtsub) = aux opt totalhgtbefore imvblstsub in
           let totalhgtafter = totalhgtsub +% pads.paddingB in
             (optsub, totalhgtafter)
+
+      | (ImVertHookPageBreak(_), _) ->
+          (opt, totalhgt)
 
     ) (optinit, totalhgtinit)
   in
@@ -786,6 +819,9 @@ let adjust_to_last_line (imvblst : intermediate_vert_box list) : length * length
             let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
             let totalhgtafter = totalhgtsub +% pads.paddingT in
               (optsub, totalhgtafter)
+
+        | (ImVertHookPageBreak(_), _) ->
+            (opt, totalhgt)
 
       ) (optinit, totalhgtinit)
   in

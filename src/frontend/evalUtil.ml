@@ -390,6 +390,9 @@ let get_length (value : syntactic_value) : length =
   | _                           -> report_bug_value "get_length" value
 
 
+let get_length_list = get_list get_length
+
+
 let get_math value : math list =
     match value with
     | MathValue(mlst) -> mlst

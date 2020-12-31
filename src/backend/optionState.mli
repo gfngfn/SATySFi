@@ -52,3 +52,6 @@ val get_extra_config_paths : unit -> string list option
 
 val set_no_default_config_paths : unit -> unit
 val get_no_default_config_paths : unit -> bool
+
+val set_page_number_limit : int -> unit
+val get_page_number_limit : unit -> int

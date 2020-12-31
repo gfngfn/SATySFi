@@ -231,7 +231,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         (xpos +% wid, opaccnew)
 
     | EvHorzHookPageBreak(pbinfo, hookf) ->
-        hookf pbinfo (xpos, yposbaseline);  (* -- invokes the hook function -- *)
+        hookf pbinfo (xpos, yposbaseline);  (* Invokes the hook function. *)
         (xpos +% wid, opacc)
 
 
@@ -332,6 +332,10 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
         let opaccframe = Alist.append opacc opsgr in
         let opaccnew = Alist.append opaccframe (Alist.to_list opaccsub) in
         ((xpos, yposend), opaccnew)
+
+    | EvVertHookPageBreak(hookf) ->
+        hookf pbinfo (xpos, ypos); (* Invokes the hook function. *)
+        ((xpos, ypos), opacc)
   )
 
 
