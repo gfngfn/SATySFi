@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Add primitive `page-break-multicolumn` for breaking contents into multiple columns on pages.
 - Add primitive `hook-page-break-block`.
 - Add primitives `ceil` and `floor` ([PR\#190](https://github.com/gfngfn/SATySFi/pull/190) by `elpinal`).
+- Add `font-latin-sans` etc. to `stdja`, `stdjareport`, and `stdjabook` ([PR\#126](https://github.com/gfngfn/SATySFi/pull/126) by `puripuri2100`).
 
 ## [0.0.5] - 2020-07-11
 ### Fixed
