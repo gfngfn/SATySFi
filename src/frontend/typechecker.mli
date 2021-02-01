@@ -24,3 +24,5 @@ exception LateMacroArgumentExpected      of Range.t * Typeenv.t * mono_type
 exception EarlyMacroArgumentExpected     of Range.t * Typeenv.t * mono_type
 
 val main : stage -> Typeenv.t -> untyped_abstract_tree -> (mono_type * Typeenv.t * abstract_tree)
+
+val are_unifiable : mono_type -> mono_type -> bool
