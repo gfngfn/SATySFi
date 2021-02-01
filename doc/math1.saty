@@ -1,7 +1,7 @@
 % -*- coding: utf-8 -*-
 @require: stdja
 @require: proof
-@import: tabular
+@require: tabular
 
 let-math \overwrite mf ma mb =
   ${#mf\sqbracket{#ma \mapsto #mb}}
