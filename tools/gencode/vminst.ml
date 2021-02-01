@@ -2861,6 +2861,36 @@ make_float (log flt)
         ~code:{|
 make_float (exp flt)
 |}
+    ; inst "PrimitiveCeil"
+        ~name:"ceil"
+        ~type_:{|
+~% (tFL @-> tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "fc1" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_float (ceil fc1)
+|}
+    ; inst "PrimitiveFloor"
+        ~name:"floor"
+        ~type_:{|
+~% (tFL @-> tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "fc1" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_float (floor fc1)
+|}
     ; inst "LengthPlus"
         ~name:"+'"
         ~type_:{|

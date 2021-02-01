@@ -2563,6 +2563,32 @@ code: |
   make_float (exp flt)
 
 ---
+inst: PrimitiveCeil
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "ceil"
+type: |
+  ~% (tFL @-> tFL)
+
+params:
+- fc1 : float
+code: |
+  make_float (ceil fc1)
+
+---
+inst: PrimitiveFloor
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "floor"
+type: |
+  ~% (tFL @-> tFL)
+
+params:
+- fc1 : float
+code: |
+  make_float (floor fc1)
+
+---
 inst: LengthPlus
 is-pdf-mode-primitive: yes
 is-text-mode-primitive: yes
