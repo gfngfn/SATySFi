@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Add GitHub Actions for the development ([PR\#250](https://github.com/gfngfn/SATySFi/pull/250) and [PR\#256](https://github.com/gfngfn/SATySFi/pull/256) by `y-yu` and [PR\#255](https://github.com/gfngfn/SATySFi/pull/255) by `puripuri2100`).
 - Add primitive `page-break-multicolumn` for breaking contents into multiple columns on pages.
 - Add primitive `hook-page-break-block`.
+- Add primitives `ceil` and `floor` ([PR\#190](https://github.com/gfngfn/SATySFi/pull/190) by `elpinal`).
 
 ## [0.0.5] - 2020-07-11
 ### Fixed
