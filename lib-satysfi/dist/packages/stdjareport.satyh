@@ -33,6 +33,7 @@ module StdJaReport : sig
     |)
 
   val font-latin-roman  : string * float * float
+  val font-latin-bold   : string * float * float
   val font-latin-italic : string * float * float
   val font-latin-bold   : string * float * float
   val font-latin-sans   : string * float * float
@@ -114,6 +115,7 @@ end = struct
   let font-ratio-cjk = 0.88
 
   let font-latin-roman  = (`Junicode`   , font-ratio-latin, 0.)
+  let font-latin-bold   = (`Junicode-b` , font-ratio-latin, 0.)
   let font-latin-italic = (`Junicode-it`, font-ratio-latin, 0.)
   let font-latin-bold   = (`Junicode-b` , font-ratio-latin, 0.)
   let font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
@@ -181,7 +183,7 @@ end = struct
       ))
     in
       hook-page-break (fun pbinfo _ -> (
-%        let () = display-message (`register` ^ (arabic pbinfo#page-number)) in
+        let () = display-message (`register `# ^ (arabic pbinfo#page-number)) in
         ref-float-boxes <- (pbinfo#page-number, bb-inner) :: !ref-float-boxes
       ))
 
@@ -206,6 +208,8 @@ end = struct
 
 %  let-mutable toc-acc-ref <- []
   let-mutable outline-ref <- []
+  let-mutable does-page-breaking-reach-last <- false
+  let-mutable ref-current-page <- 0
 
 
   let get-cross-reference-number label =
@@ -297,10 +301,14 @@ end = struct
     % -- main --
     let bb-main = read-block ctx-doc inner in
 
+    let () = display-message `modified version of stdjareport.` in
+
     % -- page settings --
     let pagecontf pbinfo =
-      let () = FootnoteScheme.start-page () in
-      let hgtfb = height-of-float-boxes pbinfo#page-number in
+      let pageno = pbinfo#page-number in
+      let () = ref-current-page <- pageno in
+      let () = display-message (`page content `# ^ arabic pageno) in
+      let hgtfb = height-of-float-boxes pageno in
       let (txtorgx, txtorgy) = txtorg in
       (|
         text-origin = (txtorgx, txtorgy +' hgtfb);
@@ -309,6 +317,7 @@ end = struct
     in
     let pagepartsf pbinfo =
       let pageno = pbinfo#page-number in
+      let () = display-message (`page parts `# ^ arabic pageno) in
       let header =
         let ctx =
           get-standard-context hdrwid
@@ -325,6 +334,7 @@ end = struct
           (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
             let (pn, bb) = elem in
               if pn < pageno then
+                let () = display-message (`use `# ^ arabic pn) in
                 let bbs =
                   line-break true true (ctx |> set-paragraph-margin 0pt 12pt)
                     (inline-fil ++ embed-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
@@ -354,7 +364,45 @@ end = struct
           footer-content = footer;
         |)
     in
-    let doc = page-break page pagecontf pagepartsf (bb-title +++ bb-main) in
+
+    % -- column settings --
+    let columnhookf () =
+      let () = FootnoteScheme.start-page () in
+      let () = display-message `column start.` in
+      block-nil
+    in
+    let columnendhookf () =
+      let pageno = !ref-current-page in
+      let last = !does-page-breaking-reach-last in
+      let remains =
+        (!ref-float-boxes) |> List.fold-left (fun b (pn, _) -> (
+          if pn < pageno then b else true
+        )) false
+      in
+      let () =
+        let s1 = if last then `T` else `F` in
+        let s2 = if remains then `T` else `F` in
+        display-message (`column end `# ^ arabic pageno ^ #` (last: `# ^ s1 ^ `, remains: `# ^ s2 ^ `)`)
+      in
+      if last then
+        if remains then
+          block-skip 0pt  % adds a new page for remaining figures
+        else
+          block-nil
+      else
+        block-nil
+    in
+
+    let bb-last =
+      hook-page-break-block (fun _ _ -> (
+        let () = display-message `reach last.` in
+        does-page-breaking-reach-last <- true
+      ))
+    in
+    let doc =
+      page-break-multicolumn page [] columnhookf columnendhookf pagecontf pagepartsf
+        (bb-title +++ bb-main +++ bb-last)
+    in
     let () = register-outline (List.reverse !outline-ref) in
       doc
 

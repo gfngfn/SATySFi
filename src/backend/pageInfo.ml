@@ -24,9 +24,9 @@ let rec embed_page_info (pbinfo : page_break_info) (imhblst : intermediate_horz_
           let evhb = (wid, EvHorzRising(hgt, dpt, lenrising, evhblst)) in
           (extH evhb, appendF footnotelst)
 
-      | ImHorzFrame(wid, hgt, dpt, deco, imhblst) ->
-          let (evhblst, footnotelst) = iter imhblst in
-          let evhb = (wid, EvHorzFrame(hgt, dpt, deco, evhblst)) in
+      | ImHorzFrame(ratios, wid, hgt, dpt, deco, imhbs) ->
+          let (evhbs, footnotelst) = iter imhbs in
+          let evhb = (wid, EvHorzFrame(ratios, hgt, dpt, deco, evhbs)) in
           (extH evhb, appendF footnotelst)
 
       | ImHorzInlineTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) ->
@@ -63,14 +63,14 @@ and embed_page_info_to_tabular (pbinfo : page_break_info) (imtabular : intermedi
           | ImEmptyCell(len) ->
               (extC (EvEmptyCell(len)), footnoteacc)
 
-          | ImNormalCell(info, imhblst) ->
+          | ImNormalCell(ratios, info, imhblst) ->
               let (evhblst, footnotelst) = embed_page_info pbinfo imhblst in
-              let evcell = EvNormalCell(info, evhblst) in
+              let evcell = EvNormalCell(ratios, info, evhblst) in
               (extC evcell, appendF footnotelst)
 
-          | ImMultiCell(info, imhblst) ->
+          | ImMultiCell(ratios, info, imhblst) ->
               let (evhblst, footnotelst) = embed_page_info pbinfo imhblst in
-              let evcell = EvMultiCell(info, evhblst) in
+              let evcell = EvMultiCell(ratios, info, evhblst) in
               (extC evcell, appendF footnotelst)
 
         ) (Alist.empty, footnoteacc)
@@ -87,9 +87,9 @@ and embed_page_info_vert (pbinfo : page_break_info) (imvblst : intermediate_vert
       let extV = Alist.extend evvbacc in
       let appendF = Alist.append footnoteacc in
       match imvb with
-      | ImVertLine(hgt, dpt, imhblst) ->
-          let (imvblst, footnotelst) = embed_page_info pbinfo imhblst in
-          let evvb = EvVertLine(hgt, dpt, imvblst) in
+      | ImVertLine(ratios, hgt, dpt, imhbs) ->
+          let (imvbs, footnotelst) = embed_page_info pbinfo imhbs in
+          let evvb = EvVertLine(ratios, hgt, dpt, imvbs) in
           (extV evvb, appendF footnotelst)
 
       | ImVertFixedEmpty(debug_margins, vskip) ->
@@ -99,6 +99,10 @@ and embed_page_info_vert (pbinfo : page_break_info) (imvblst : intermediate_vert
           let (evvblst, footnotelst) = embed_page_info_vert pbinfo imvblst in
           let evvb = EvVertFrame(pads, pbinfo, deco, wid, evvblst) in
           (extV evvb, appendF footnotelst)
+
+      | ImVertHookPageBreak(hookf) ->
+          let evvb = EvVertHookPageBreak(hookf) in
+          (extV evvb, footnoteacc)
 
     ) (Alist.empty, Alist.empty)
   in

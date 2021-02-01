@@ -13,10 +13,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Allow `?*` to math expressions and limit the range of math symbols (encouraged by [a report by `@t_uemura669101`](https://twitter.com/t_uemura669101/status/1302221948378910721?s=20)).
 - Update README about how to install SATySFi on Windows in response to some amendment of `brwrap`-related problems ([PR\#242](https://github.com/gfngfn/SATySFi/pull/242)).
 - Improve `download-fonts.sh` as to SHA checksum ([PR\#253](https://github.com/gfngfn/SATySFi/pull/253) by `na4zagin3`).
+- Fix `doc/math1.saty` ([PR\#178](https://github.com/gfngfn/SATySFi/pull/178) by `y-yu`).
 
 ### Added
 - Add `--no-default-config` option to suppress using default configuration search paths ([PR\#212](https://github.com/gfngfn/SATySFi/pull/212) by `na4zagin3`).
-- Add new primitive `linear-transform-graphics : float -> float -> float -> float -> graphics -> graphics` for the linear transformation of graphics, and new functions `Gr.rotate-graphics` and `Gr.scale-graphics` by using it ([PR\#241](https://github.com/gfngfn/SATySFi/pull/241) by `monaqa`).
+- Add new primitive `linear-transform-graphics : float -> float -> float -> float -> graphics -> graphics` for the linear transformation of graphics, and new functions `Gr.rotate-graphics` and `Gr.scale-graphics` by using it ([PR\#241](https://github.com/gfngfn/SATySFi/pull/241) and [PR\#254](https://github.com/gfngfn/SATySFi/pull/254) by `monaqa`).
+- Add string literals of the form `` @`…` ``, which are equipped with their positions on source files and have type `input-position * string` at stage 0.
+- Add primitive `get-input-position : input-position -> string * int * int` for extracting filenames, line numbers, column numbers from positions on source files.
+- Add `--debug-show-overfull` option to visualize overfull or underfull lines.
+- Add GitHub Actions for the development ([PR\#250](https://github.com/gfngfn/SATySFi/pull/250) and [PR\#256](https://github.com/gfngfn/SATySFi/pull/256) by `y-yu` and [PR\#255](https://github.com/gfngfn/SATySFi/pull/255) by `puripuri2100`).
+- Add primitive `page-break-multicolumn` for breaking contents into multiple columns on pages.
+- Add primitive `hook-page-break-block`.
+- Add primitives `ceil` and `floor` ([PR\#190](https://github.com/gfngfn/SATySFi/pull/190) by `elpinal`).
+- Add `font-latin-sans` etc. to `stdja`, `stdjareport`, and `stdjabook` ([PR\#126](https://github.com/gfngfn/SATySFi/pull/126) by `puripuri2100`).
 
 ## [0.0.5] - 2020-07-11
 ### Fixed

@@ -390,6 +390,9 @@ let get_length (value : syntactic_value) : length =
   | _                           -> report_bug_value "get_length" value
 
 
+let get_length_list = get_list get_length
+
+
 let get_math value : math list =
     match value with
     | MathValue(mlst) -> mlst
@@ -707,27 +710,27 @@ let make_length_list lenlst =
   List(lenlst |> List.map (fun l -> BaseConstant(BCLength(l))))
 
 
-let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
+let make_line_stack (hbss : (HorzBox.horz_box list) list) =
   let open HorzBox in
   let wid =
-    hblstlst |> List.fold_left (fun widacc hblst ->
-      let (wid, _, _) = LineBreak.get_natural_metrics hblst in
+    hbss |> List.fold_left (fun widacc hbs ->
+      let (wid, _, _) = LineBreak.get_natural_metrics hbs in
        Length.max wid widacc
     ) Length.zero
   in
-  let trilst = hblstlst |> List.map (fun hblst -> LineBreak.fit hblst wid) in
-  let vblst =
-    trilst |> List.fold_left (fun vbacc (imhblst, hgt, dpt) ->
+  let quads = hbss |> List.map (fun hblst -> LineBreak.fit hblst wid) in
+  let vbs =
+    quads |> List.fold_left (fun vbacc (imhbs, ratios, hgt, dpt) ->
       let vb =
         VertParagraph({
           margin_top    = None;
           margin_bottom = None;
-        }, [VertParagLine(hgt, dpt, imhblst)])
+        }, [VertParagLine(Reachable(ratios), hgt, dpt, imhbs)])
       in
       Alist.extend vbacc vb
     ) Alist.empty |> Alist.to_list
   in
-  (wid, vblst)
+  (wid, vbs)
 
 
 let const_unit = BaseConstant(BCUnit)
@@ -749,3 +752,13 @@ let lift_string_to_code_value (s : string) = CodeValue(CdBaseConstant(BCString(s
 let lift_integer_to_code_value (n : int) = CodeValue(CdBaseConstant(BCInt(n)))
 let lift_float_to_code_value (r : float) = CodeValue(CdBaseConstant(BCFloat(r)))
 let lift_length_to_code_value (len : length) = CodeValue(CdBaseConstant(BCLength(len)))
+
+
+let get_input_position (v : syntactic_value) : input_position =
+  match v with
+  | BaseConstant(BCInputPos(ipos)) -> ipos
+  | _                              -> report_bug_value "get_input_position" v
+
+
+let make_input_position (ipos : input_position) : syntactic_value =
+  BaseConstant(BCInputPos(ipos))

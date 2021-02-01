@@ -40,6 +40,9 @@ val debug_show_block_bbox : unit -> bool
 val set_debug_show_block_space : unit -> unit
 val debug_show_block_space : unit -> bool
 
+val set_debug_show_overfull : unit -> unit
+val debug_show_overfull : unit -> bool
+
 val set_text_mode : string list -> unit
 val get_mode : unit -> (string list) option
 val is_text_mode : unit -> bool
@@ -49,3 +52,6 @@ val get_extra_config_paths : unit -> string list option
 
 val set_no_default_config_paths : unit -> unit
 val get_no_default_config_paths : unit -> bool
+
+val set_page_number_limit : int -> unit
+val get_page_number_limit : unit -> int

@@ -1,6 +1,6 @@
 ![logo1](https://raw.githubusercontent.com/wiki/gfngfn/SATySFi/img/satysfi-logo.png)
 
-[![Build Status](https://travis-ci.org/gfngfn/SATySFi.svg?branch=master)](https://travis-ci.org/gfngfn/SATySFi)
+[![Build Status](https://github.com/gfngfn/SATySFi/workflows/CI/badge.svg?branch=master)](https://github.com/gfngfn/SATySFi/actions?query=workflow%3ACI)
 
 [日本語版 README はこちら](https://github.com/gfngfn/SATySFi/blob/master/README-ja.md)
 

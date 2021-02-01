@@ -758,6 +758,25 @@ let rec typecheck
   | UTHorz(hblst)         -> (base (BCHorz(hblst))  , (rng, BaseType(BoxRowType)))
   | UTVert(imvblst)       -> (base (BCVert(imvblst)), (rng, BaseType(BoxColType)))
 
+  | UTPositionedString(ipos, s) ->
+      begin
+        match pre.stage with
+        | Stage1 | Persistent0 ->
+            raise (InvalidExpressionAsToStaging(rng, Stage0))
+
+        | Stage0 ->
+            let e =
+              let e1 = base (BCInputPos(ipos)) in
+              let e2 = base (BCString(s)) in
+              PrimitiveTuple(TupleList.make e1 e2 []) in
+            let ty =
+              let ty1 = (Range.dummy "positioned1", BaseType(InputPosType)) in
+              let ty2 = (Range.dummy "positioned2", BaseType(StringType)) in
+              (rng, ProductType(TupleList.make ty1 ty2 []))
+            in
+            (e, ty)
+      end
+
   | UTLengthDescription(flt, unitnm) ->
         let len =
           match unitnm with  (* temporary; ad-hoc handling of unit names *)
@@ -1505,7 +1524,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
               (* -- late arguments are converted to quoted arguments -- *)
 
         | (EarlyMacroParameter(tyexp), UTEarlyMacroArg(utast)) ->
-            let (earg, tyarg) = typecheck pre tyenv utast in
+            let (earg, tyarg) = typecheck { pre with stage = Stage0 } tyenv utast in
             unify tyarg tyexp;
             Alist.extend argacc earg
 

@@ -133,6 +133,7 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (curre
     | BaseType(MathType)     -> "math"
     | BaseType(RegExpType)   -> "regexp"
     | BaseType(TextInfoType) -> "text-info"
+    | BaseType(InputPosType) -> "input-position"
 
     | DataType(tyargs, tyid) ->
         let name =

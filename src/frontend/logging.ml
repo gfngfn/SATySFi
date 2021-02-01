@@ -171,3 +171,23 @@ let warn_duplicate_font_hash abbrev relpath =
 
 let warn_duplicate_math_font_hash mfabbrev relpath =
   Format.printf "  [Warning] more than one font is named `%s`; '%s' will be associated with the font name.\n" mfabbrev (get_lib_path_string relpath)
+
+
+let warn_number_sign_end rng =
+  Format.printf "  [Warning] at %a: '#' has no effect here\n"
+    Range.pp rng
+
+
+let warn_overfull_line (pageno : int) =
+  Format.printf "  [Warning] an overfull line occurs on page %d\n"
+    pageno
+
+
+let warn_underfull_line (pageno : int) =
+  Format.printf "  [Warning] an underfull line occurs on page %d\n"
+    pageno
+
+
+let warn_unreachable (pageno : int) =
+  Format.printf "  [Warning] a line unable to be broken into a paragraph occurs on page %d\n"
+    pageno

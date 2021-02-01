@@ -628,6 +628,22 @@ match valueimg with
 let hookf = make_hook reducef hookf in
 make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 |}
+    ; inst "BackendHookPageBreakBlock"
+        ~name:"hook-page-break-block"
+        ~type_:{|
+~% ((tPBINFO @-> tPT @-> tU) @-> tBB)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "hookf";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let hookf = make_hook reducef hookf in
+make_vert (HorzBox.([VertHookPageBreak(hookf)]))
+|}
     ; inst "PathUnite"
         ~name:"unite-path"
         ~type_:{|
@@ -1020,7 +1036,7 @@ make_vert imvblst
         ~code:{|
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), pagecontf, pagepartsf, vblst))
 |}
     ; inst "BackendPageBreakingTwoColumn"
         ~name:"page-break-two-column"
@@ -1043,7 +1059,32 @@ BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagep
 let columnhookf = make_column_hook_func reducef valuecolumnhookf in
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), columnhookf, pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun () -> []), pagecontf, pagepartsf, vblst))
+|}
+    ; inst "BackendPageBreakingMultiColumn"
+        ~name:"page-break-multicolumn"
+        ~type_:{|
+~% (tPG @-> tL tLN @-> (tU @-> tBB) @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "pagesize" ~type_:"page_size";
+          param "origin_shifts" ~type_:"length_list";
+          param "valuecolumnhookf";
+          param "valuecolumnendhookf";
+          param "valuepagecontf";
+          param "valuepagepartsf";
+          param "vbs" ~type_:"vert";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let columnhookf = make_column_hook_func reducef valuecolumnhookf in
+let columnendhookf = make_column_hook_func reducef valuecolumnendhookf in
+let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, columnendhookf, pagecontf, pagepartsf, vbs))
 |}
     ; inst "BackendVertFrame"
         ~name:"block-frame-breakable"
@@ -2820,6 +2861,36 @@ make_float (log flt)
         ~code:{|
 make_float (exp flt)
 |}
+    ; inst "PrimitiveCeil"
+        ~name:"ceil"
+        ~type_:{|
+~% (tFL @-> tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "fc1" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_float (ceil fc1)
+|}
+    ; inst "PrimitiveFloor"
+        ~name:"floor"
+        ~type_:{|
+~% (tFL @-> tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "fc1" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_float (floor fc1)
+|}
     ; inst "LengthPlus"
         ~name:"+'"
         ~type_:{|
@@ -3133,5 +3204,23 @@ lift_float_to_code_value r
         ~is_text_mode_primitive:true
         ~code:{|
 lift_length_to_code_value len
+|}
+    ; inst "PrimitiveGetInputPosition"
+        ~name:"get-input-position"
+        ~type_:{|
+~% (tIPOS @-> tPROD [tS; tI; tI])
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "ipos" ~type_:"input_position";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let v1 = make_string ipos.input_file_name in
+let v2 = make_int ipos.input_line in
+let v3 = make_int ipos.input_column in
+Tuple([v1; v2; v3])
 |}
     ])

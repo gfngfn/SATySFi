@@ -24,6 +24,13 @@ type type_variable_name = string  [@@deriving show]
 type signature_name     = string  [@@deriving show]
 
 
+type input_position = {
+  input_file_name : string;
+  input_line      : int;
+  input_column    : int;
+}
+[@@deriving show { with_path = false }]
+
 type header_element =
   | HeaderRequire of string
   | HeaderImport  of string
@@ -215,6 +222,7 @@ type base_type =
   | MathType
   | RegExpType
   | TextInfoType
+  | InputPosType
 [@@deriving show]
 
 
@@ -495,6 +503,7 @@ and untyped_abstract_tree_main =
   | UTStringEmpty
   | UTStringConstant       of string
       [@printer (fun fmt s -> Format.fprintf fmt "S:\"%s\"" s)]
+  | UTPositionedString     of input_position * string
 (* -- inputs -- *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
@@ -622,7 +631,7 @@ type ('a, 'b) path_component_scheme =
 
 type page_break_style =
   | SingleColumn
-  | TwoColumn of length
+  | MultiColumn of length list
 [@@deriving show { with_path = false; }]
 
 type base_constant =
@@ -645,7 +654,8 @@ type base_constant =
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCTextModeContext of TextBackend.text_mode_context
-  | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+  | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+  | BCInputPos        of input_position
 [@@deriving show { with_path = false; }]
 
 type code_binding = unit  (* TEMPORARY *)
@@ -1417,6 +1427,7 @@ let rec string_of_type_basic tvf orvf tystr : string =
     | BaseType(MathType)     -> "math" ^ qstn
     | BaseType(RegExpType)   -> "regexp" ^ qstn
     | BaseType(TextInfoType) -> "text-info" ^ qstn
+    | BaseType(InputPosType) -> "input-position" ^ qstn
 
     | DataType(tyargs, tyid) ->
         (string_of_type_argument_list_basic tvf orvf tyargs) ^ (TypeID.show tyid) (* temporary *) ^ "@" ^ qstn

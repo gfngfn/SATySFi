@@ -16,6 +16,11 @@ type lb_pure_either =
   | PLB          of lb_pure_box
   | PScriptGuard of CharBasis.script * CharBasis.script * lb_pure_box list
 
+type internal_ratios =
+  | LBTooLong     of length
+  | LBPermissible of float
+  | LBTooShort    of length
+
 
 let ( ~. ) = float_of_int
 let ( ~@ ) = int_of_float
@@ -502,45 +507,53 @@ module RemovalSet = MutableSet.Make(DiscretionaryID)
 let ratio_stretch_limit = 2.
 let ratio_shrink_limit = -1.
 
-let calculate_ratios (widrequired : length) (widinfo_total : length_info) : ratios * length =
-  let widnatural = widinfo_total.natural in
+let calculate_ratios (wid_required : length) (widinfo_total : length_info) : internal_ratios * length =
+  let wid_natural = widinfo_total.natural in
   let widshrink  = widinfo_total.shrinkable in
   let stretch = widinfo_total.stretchable in
-  let widdiff = widrequired -% widnatural in
-    if widnatural <% widrequired then
-    (* -- if the natural width is shorter than the required one; widdiff is positive -- *)
+  let widdiff = wid_required -% wid_natural in
+    if wid_natural <=% wid_required then
+    (* If the natural width is shorter than or equal to the required one; `widdiff` is positive *)
       match stretch with
-      | Fils(nfil)  when nfil > 0 -> (PermissiblyLong(0.), widdiff *% (1. /. (~. nfil)))
-      | Fils(_)                   -> assert false  (* -- number of fils cannot be nonpositive -- *)
+      | Fils(nfil) ->
+          if nfil > 0 then
+            (LBPermissible(0.), widdiff *% (1. /. (~. nfil)))
+          else
+            assert false
+              (* The number of fils cannot be nonpositive *)
+
       | FiniteStretch(widstretch) ->
           if Length.is_nearly_zero widstretch then
-          (* -- if unable to stretch -- *)
-            (TooShort, Length.zero)
+          (* If unable to stretch *)
+            if Length.is_nearly_zero widdiff then
+              (LBPermissible(0.), Length.zero)
+            else
+              (LBTooShort(wid_required), Length.zero)
           else
             let ratio_raw = widdiff /% widstretch in
             if ratio_raw >= ratio_stretch_limit then
-              (TooShort, Length.zero)
+              (LBTooShort(wid_required), Length.zero)
             else
-              (PermissiblyShort(ratio_raw), Length.zero)
+              (LBPermissible(ratio_raw), Length.zero)
     else
-    (* -- if the natural width is longer than the required one; widdiff is nonpositive -- *)
+    (* If the natural width is longer than the required one; `widdiff` is nonpositive *)
       if Length.is_nearly_zero widshrink then
-      (* -- if unable to shrink -- *)
-        (TooLong, Length.zero)
+      (* If unable to shrink *)
+        (LBTooLong(wid_required), Length.zero)
       else
         let ratio_raw = widdiff /% widshrink in
         if ratio_raw <= ratio_shrink_limit then
-          (TooLong, Length.zero)
+          (LBTooLong(wid_required), Length.zero)
         else
-          (PermissiblyLong(ratio_raw), Length.zero)
+          (LBPermissible(ratio_raw), Length.zero)
 
 
-let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list) : intermediate_horz_box list * length * length =
+let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list) : intermediate_horz_box list * ratios * length * length =
   let (widinfo_total, hgt_total, dpt_total) = get_total_metrics lphblst in
-  let (ratios, widperfil) =
+  let (lbratios, widperfil) =
     match widreqopt with
     | Some(widreq) -> calculate_ratios widreq widinfo_total
-    | None         -> (PermissiblyShort(0.), Length.zero)
+    | None         -> (LBPermissible(0.), Length.zero)
   in
 
   let get_intermediate_total_width imhblst =
@@ -548,7 +561,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
       match imhb with
       | ImHorz(w, _)                             -> wacc +% w
       | ImHorzRising(w, _, _, _, _)              -> wacc +% w
-      | ImHorzFrame(w, _, _, _, _)               -> wacc +% w
+      | ImHorzFrame(_, w, _, _, _, _)            -> wacc +% w
       | ImHorzInlineTabular(w, _, _, _, _, _, _) -> wacc +% w
       | ImHorzInlineGraphics(w, _, _, _)         -> wacc +% w
       | ImHorzEmbeddedVert(w, _, _, _)           -> wacc +% w
@@ -557,37 +570,51 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     ) Length.zero
   in
 
-  let rec main_conversion ratios widperfil lphb : intermediate_horz_box =
+  let rec main_conversion lbratios widperfil lphb : intermediate_horz_box =
     match lphb with
     | LBAtom((widinfo, _, _), evhb) ->
         begin
           match widinfo.stretchable with
-          | Fils(nfil)  when nfil > 0 -> ImHorz(widinfo.natural +% widperfil, evhb)
-          | Fils(_)                   -> assert false  (* -- number of fils cannot be nonpositive -- *)
+          | Fils(nfil) ->
+              if nfil > 0 then
+                ImHorz(widinfo.natural +% widperfil, evhb)
+              else
+                assert false
+                  (* The number of fils cannot be nonpositive *)
+
           | FiniteStretch(widstretch) ->
               let widappend =
-                match ratios with
-                | TooLong                      -> Length.negate widinfo.shrinkable
-                | PermissiblyLong(pure_ratio)  -> widinfo.shrinkable *% pure_ratio  (* -- pure_ratio is nonpositive -- *)
-                | PermissiblyShort(pure_ratio) -> widstretch *% pure_ratio          (* -- pure_ratio is positive -- *)
-                | TooShort                     -> widstretch
+                match lbratios with
+                | LBTooLong(_) ->
+                    Length.negate widinfo.shrinkable
+
+                | LBPermissible(pure_ratio) ->
+                    if pure_ratio <= 0. then
+                    (* If `pure_ratio` is nonpositive *)
+                      widinfo.shrinkable *% pure_ratio
+                    else
+                    (* If `pure_ratio` is positive *)
+                      widstretch *% pure_ratio
+
+                | LBTooShort(_) ->
+                    widstretch
               in
-                ImHorz(widinfo.natural +% widappend, evhb)
+              ImHorz(widinfo.natural +% widappend, evhb)
         end
 
     | LBRising((_, hgtsub, dptsub), lenrising, lphblstsub) ->
-        let imhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
+        let imhblst = lphblstsub |> List.map (main_conversion lbratios widperfil) in
         let wid_total = get_intermediate_total_width imhblst in
           ImHorzRising(wid_total, hgtsub, dptsub, lenrising, imhblst)
 
     | LBOuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
-        let imhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
+        let imhblst = lphblstsub |> List.map (main_conversion lbratios widperfil) in
         let wid_total = get_intermediate_total_width imhblst in
-          ImHorzFrame(wid_total, hgt_frame, dpt_frame, deco, imhblst)
+          ImHorzFrame(Permissible(0.), wid_total, hgt_frame, dpt_frame, deco, imhblst)
 
     | LBFixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
-        let (imhblst, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
-          ImHorzFrame(wid_frame, hgt_frame, dpt_frame, deco, imhblst)
+        let (imhblst, ratios, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
+        ImHorzFrame(ratios, wid_frame, hgt_frame, dpt_frame, deco, imhblst)
 
     | LBEmbeddedVert(wid, hgt, dpt, imvblst) ->
         ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)
@@ -610,30 +637,21 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     | LBFootnote(imvblst) ->
         ImHorzFootnote(imvblst)
   in
-      let imhblst = lphblst |> List.map (main_conversion ratios widperfil) in
-(*
-      (* begin : for debug *)
-      let checksum = get_intermediate_total_width imhblst in
-      let msg_stretch =
-        match widinfo_total.stretchable with
-        | FiniteStretch(widstretch) -> Length.show widstretch
-        | Fils(i)                   -> "infinite * " ^ (string_of_int i)
-      in
-      let msg =
-        match ratios with
-        | TooShort                     -> "stretchable = " ^ msg_stretch ^ ", too_short"
-        | PermissiblyShort(pure_ratio) -> "stretchable = " ^ msg_stretch ^ ", R = " ^ (string_of_float pure_ratio)
-        | PermissiblyLong(pure_ratio)  -> "shrinkable = " ^ (Length.show widinfo_total.shrinkable) ^ ", R = " ^ (string_of_float pure_ratio)
-        | TooLong                      -> "shrinkable = " ^ (Length.show widinfo_total.shrinkable) ^ ", too_long"
-      in
+  let imhblst = lphblst |> List.map (main_conversion lbratios widperfil) in
+  let ratios =
+    match lbratios with
+    | LBTooLong(wid_required) ->
+        let wid_actual = get_intermediate_total_width imhblst in
+        TooLong{ required = wid_required; actual = wid_actual }
 
-      let () = PrintForDebug.linebreakE
-        ("natural = " ^ (Length.show widinfo_total.natural) ^ ", " ^
-         msg ^ ", " ^
-         "checksum = " ^ (Length.show checksum)) in
-      (* end : for debug *)
-*)
-        (imhblst, hgt_total, dpt_total)
+    | LBTooShort(wid_required) ->
+        let wid_actual = get_intermediate_total_width imhblst in
+        TooShort{ required = wid_required; actual = wid_actual }
+
+    | LBPermissible(r) ->
+        Permissible(r)
+  in
+  (imhblst, ratios, hgt_total, dpt_total)
 
 
 type line_break_info = {
@@ -825,14 +843,15 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
   let rec arrange (acc : arrangement_accumulator) (lines : line_either list) : vert_box list =
     match lines with
     | PureLine(line) :: tail ->
-        let (evhblst, hgt, dpt) = determine_widths (Some(lbinfo.paragraph_width)) line in
+        let wid_required = lbinfo.paragraph_width in
+        let (imhbs, ratios, hgt, dpt) = determine_widths (Some(wid_required)) line in
         begin
           match acc.state with
           | BuildingVertList ->
               begin
                 match Alist.to_list_rev acc.accumulated with
                 | [] ->
-                  (* -- if `line` is the first line in the given paragraph -- *)
+                  (* If `line` is the first line in the given paragraph *)
                     let margin_top =
                       lbinfo.paragraph_margin_top +% (Length.max Length.zero (lbinfo.min_first_ascender -% hgt))
                     in
@@ -841,7 +860,7 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
                         state = BuildingParagraph{
                           saved_margin_top      = Some(lbinfo.breakability_top, margin_top);
                           previous_depth        = dpt;
-                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(hgt, dpt, evhblst));
+                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(Reachable(ratios), hgt, dpt, imhbs));
                         };
                         accumulated = Alist.empty;
                       }
@@ -849,13 +868,13 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
                     arrange acc tail
 
                 | _ :: _ ->
-                  (* -- if `line` is the first line after the embedded vertical boxes -- *)
+                  (* If `line` is the first line after the embedded vertical boxes *)
                     let accnew =
                       {
                         state = BuildingParagraph{
                           saved_margin_top      = None;
                           previous_depth        = dpt;
-                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(hgt, dpt, evhblst));
+                          accumulated_paragraph = Alist.extend Alist.empty (VertParagLine(Reachable(ratios), hgt, dpt, imhbs));
                         };
                         accumulated = acc.accumulated;
                       }
@@ -868,7 +887,7 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
               let parnew =
                 Alist.append peacc.accumulated_paragraph [
                   VertParagSkip(len);
-                  VertParagLine(hgt, dpt, evhblst)
+                  VertParagLine(Reachable(ratios), hgt, dpt, imhbs)
                 ];
               in
               let accnew =
@@ -941,14 +960,15 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
   arrange { state = BuildingVertList; accumulated = Alist.empty; } (Alist.to_list acclines)
 
 
-let natural (hblst : horz_box list) : intermediate_horz_box list * length * length =
-  let lphblst = convert_list_for_line_breaking_pure hblst in
-    determine_widths None lphblst
+let natural (hbs : horz_box list) : intermediate_horz_box list * length * length =
+  let lphbs = convert_list_for_line_breaking_pure hbs in
+  let (imhbs, _, hgt, dpt) = determine_widths None lphbs in
+  (imhbs, hgt, dpt)
 
 
-let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list * length * length =
+let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list * ratios * length * length =
   let lphblst = convert_list_for_line_breaking_pure hblst in
-    determine_widths (Some(widreq)) lphblst
+  determine_widths (Some(widreq)) lphblst
 
 
 type lb_state =
@@ -984,20 +1004,17 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
       found_candidate := false;
       RemovalSet.clear htomit;
       wmap |> WidthMap.iter (fun dscridfrom widinfofrom is_already_too_long ->
-        let (ratios, _) = calculate_ratios paragraph_width (widinfofrom +%@ widinfobreak) in
-          match ratios with
-          | PermissiblyLong(pure_ratio)
-          | PermissiblyShort(pure_ratio)
-            ->
+        let (lbratios, _) = calculate_ratios paragraph_width (widinfofrom +%@ widinfobreak) in
+          match lbratios with
+          | LBPermissible(pure_ratio) ->
               let badness = calculate_badness pure_ratio in
-              begin
-                found_candidate := true;
-                LineBreakGraph.add_edge grph dscridfrom dscridto (badness + pnltybreak);
-              end
+              found_candidate := true;
+              LineBreakGraph.add_edge grph dscridfrom dscridto (badness + pnltybreak)
 
-          | TooShort -> ()
+          | LBTooShort(_) ->
+              ()
 
-          | TooLong ->
+          | LBTooLong(_) ->
               if !is_already_too_long then
               (* -- if this is the second time of experiencing 'TooLong' about 'dscridfrom' -- *)
                 begin
@@ -1105,14 +1122,14 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
       | None ->
         (* -- when no set of discretionary points is suitable for line breaking -- *)
           Format.printf "LineBreak> UNREACHABLE\n";  (* for debug *)
-          let (imhblst, hgt, dpt) = natural hblst in
+          let (imhbs, hgt, dpt) = natural hblst in
           let margins =
             {
               margin_top    = Some((breakability_top, paragraph_margin_top));
               margin_bottom = Some((breakability_bottom, paragraph_margin_bottom));
             }
           in
-          [ VertParagraph(margins, [ VertParagLine(hgt, dpt, imhblst) ]); ]
+          [ VertParagraph(margins, [ VertParagLine(Unreachable, hgt, dpt, imhbs) ]); ]
 
       | Some(path) ->
           break_into_lines {

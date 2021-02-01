@@ -52,6 +52,9 @@ let tMATH         = (~! "math"    , BaseType(MathType)    )
 let tGR           = (~! "graphics", BaseType(GraphicsType))
 let tIMG          = (~! "image"   , BaseType(ImageType)   )
 let tRE           = (~! "regexp"  , BaseType(RegExpType)  )
+
+let tIPOS         = (~! "input-position", BaseType(InputPosType))
+
 let tL ty         = (~! "list"    , ListType(ty)          )
 let tR ty         = (~! "ref"     , RefType(ty)           )
 let tCODE ty      = (~! "code"    , CodeType(ty)          )
