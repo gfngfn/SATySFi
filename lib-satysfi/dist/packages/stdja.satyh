@@ -103,6 +103,7 @@ end = struct
   let font-latin-bold   = (`Junicode-b` , font-ratio-latin, 0.)
   let font-latin-italic = (`Junicode-it`, font-ratio-latin, 0.)
   let font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
+  let font-latin-mono   = (`lmmono`    , font-ratio-latin, 0.)
   let font-cjk-mincho   = (`ipaexm`    , font-ratio-cjk  , 0.)
   let font-cjk-gothic   = (`ipaexg`    , font-ratio-cjk  , 0.)
 
