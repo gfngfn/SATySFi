@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Update README about how to install SATySFi on Windows in response to some amendment of `brwrap`-related problems ([PR\#242](https://github.com/gfngfn/SATySFi/pull/242)).
 - Improve `download-fonts.sh` as to SHA checksum ([PR\#253](https://github.com/gfngfn/SATySFi/pull/253) by `na4zagin3`).
 - Fix `doc/math1.saty` ([PR\#178](https://github.com/gfngfn/SATySFi/pull/178) by `y-yu`).
+- Fix how to confirm that given document files are of type `document` (resp. `string`) in the PDF mode (resp. in the text mode) (encouraged by the bug report in [Issue\#257](https://github.com/gfngfn/SATySFi/issues/257) by `zeptometer`).
 
 ### Added
 - Add `--no-default-config` option to suppress using default configuration search paths ([PR\#212](https://github.com/gfngfn/SATySFi/pull/212) by `na4zagin3`).
