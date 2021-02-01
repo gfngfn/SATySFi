@@ -278,13 +278,15 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
   let (ty, _, ast) = Typechecker.main Stage1 tyenv utast in
   Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
   if OptionState.is_text_mode () then
-    match ty with
-    | (_, BaseType(StringType)) -> ast
-    | _                         -> raise (NotAStringFile(abspath_in, tyenv, ty))
+    if Typechecker.are_unifiable ty (Range.dummy "text-mode", BaseType(StringType)) then
+      ast
+    else
+      raise (NotAStringFile(abspath_in, tyenv, ty))
   else
-    match ty with
-    | (_, BaseType(DocumentType)) -> ast
-    | _                           -> raise (NotADocumentFile(abspath_in, tyenv, ty))
+    if Typechecker.are_unifiable ty (Range.dummy "pdf-mode", BaseType(DocumentType)) then
+      ast
+    else
+      raise (NotADocumentFile(abspath_in, tyenv, ty))
 
 
 let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : environment =

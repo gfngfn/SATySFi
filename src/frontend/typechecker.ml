@@ -1581,3 +1581,12 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
     let (e, ty) = typecheck { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utast in
     (ty, !final_tyenv, e)
   end
+
+
+let are_unifiable (ty1 : mono_type) (ty2 : mono_type) : bool =
+  try
+    unify_sub ~reversed:false ty1 ty2;
+    true
+  with
+  | InternalContradictionError(_) -> false
+  | InternalInclusionError        -> false
