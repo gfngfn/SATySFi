@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Allow `?*` to math expressions and limit the range of math symbols (encouraged by [a report by `@t_uemura669101`](https://twitter.com/t_uemura669101/status/1302221948378910721?s=20)).
 - Update README about how to install SATySFi on Windows in response to some amendment of `brwrap`-related problems ([PR\#242](https://github.com/gfngfn/SATySFi/pull/242)).
 - Improve `download-fonts.sh` as to SHA checksum ([PR\#253](https://github.com/gfngfn/SATySFi/pull/253) by `na4zagin3`).
+- Fix `doc/math1.saty` ([PR\#178](https://github.com/gfngfn/SATySFi/pull/178) by `y-yu`).
 
 ### Added
 - Add `--no-default-config` option to suppress using default configuration search paths ([PR\#212](https://github.com/gfngfn/SATySFi/pull/212) by `na4zagin3`).
