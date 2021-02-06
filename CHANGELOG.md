@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 ### Added
 - Add primitives `(<<)`, `(>>)`, `bxor`, `band`, `bor`, and `bnot` for bitwise operations ([PR\#85](https://github.com/gfngfn/SATySFi/pull/85) by `konn`).
+- Add primitive `read-file : string -> string list` for reading external text files in subdirectories ([PR\#200](https://github.com/gfngfn/SATySFi/pull/200) by `puripuri2100`).
 
 ## [0.0.6] - 2021-02-06
 ### Fixed
