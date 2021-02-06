@@ -5,13 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.0.6] - 2021-02-06
 ### Fixed
 - Improve how to emit errors when parsing invalid itemized expressions ([PR\#176](https://github.com/gfngfn/SATySFi/pull/176) by `hanazuki`).
 - Does not embed null objects as `/DW` or `/DW2` entries in output PDFs (mainly for services that use PDFs but do not support null objects) ([PR\#180](https://github.com/gfngfn/SATySFi/pull/180)).
 - Fix how to embed font subsets as to tags ([PR\#181](https://github.com/gfngfn/SATySFi/pull/181) by `matsud224`).
 - Fix how to decode types written mainly in signatures ([PR\#208](https://github.com/gfngfn/SATySFi/pull/208) by `elpinal`, which was encouraged by [Issue\#184](https://github.com/gfngfn/SATySFi/issues/184) by `nyuichi`).
-- Allow `?*` to math expressions and limit the range of math symbols (encouraged by [a report by `@t_uemura669101`](https://twitter.com/t_uemura669101/status/1302221948378910721?s=20)).
-- Update README about how to install SATySFi on Windows in response to some amendment of `brwrap`-related problems ([PR\#242](https://github.com/gfngfn/SATySFi/pull/242)).
+- Allow `?*` used in math expressions and limit the range of math symbols (encouraged by [a report by `@t_uemura669101`](https://twitter.com/t_uemura669101/status/1302221948378910721?s=20)).
+- Update README about how to install SATySFi on Windows in response to some amendment of `brwrap`-related problems ([PR\#242](https://github.com/gfngfn/SATySFi/pull/242) by `nekketsuuu`).
 - Improve `download-fonts.sh` as to SHA checksum ([PR\#253](https://github.com/gfngfn/SATySFi/pull/253) by `na4zagin3`).
 - Fix `doc/math1.saty` ([PR\#178](https://github.com/gfngfn/SATySFi/pull/178) by `y-yu`).
 - Fix how to confirm that given document files are of type `document` (resp. `string`) in the PDF mode (resp. in the text mode) (encouraged by the bug report in [Issue\#257](https://github.com/gfngfn/SATySFi/issues/257) by `zeptometer`).
@@ -105,7 +107,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Initial version of SATySFi
 
 
-  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.5...HEAD
+  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.6...HEAD
+  [0.0.6]: https://github.com/gfngfn/SATySFi/compare/v0.0.5...v0.0.6
   [0.0.5]: https://github.com/gfngfn/SATySFi/compare/v0.0.4...v0.0.5
   [0.0.4]: https://github.com/gfngfn/SATySFi/compare/v0.0.3...v0.0.4
   [0.0.3]: https://github.com/gfngfn/SATySFi/compare/v0.0.2...v0.0.3
