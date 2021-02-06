@@ -3326,4 +3326,38 @@ let v2 = make_int ipos.input_line in
 let v3 = make_int ipos.input_column in
 Tuple([v1; v2; v3])
 |}
+    ; inst "ReadFile"
+        ~name:"read-file"
+        ~type_:{|
+~% (tS @-> tL tS)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "relpath" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let parts = Core_kernel.Filename.parts relpath in
+begin
+  if parts |> List.exists (String.equal "..") then
+    report_dynamic_error "cannot access files by using '..'"
+  else
+    ()
+end;
+let abspath =
+  let jobdir = OptionState.job_directory () in
+  Filename.concat jobdir relpath
+in
+let inc = open_in abspath in
+let rec aux lineacc =
+  match input_line inc with
+  | exception End_of_file -> lineacc |> Alist.to_list
+  | line                  -> aux (Alist.extend lineacc line)
+in
+let lines = aux Alist.empty in
+close_in inc;
+make_list make_string lines
+|}
     ])

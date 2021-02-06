@@ -2978,3 +2978,36 @@ code: |
   let v2 = make_int ipos.input_line in
   let v3 = make_int ipos.input_column in
   Tuple([v1; v2; v3])
+
+---
+inst: ReadFile
+is-pdf-mode-primitive : yes
+is-text-mode-primitive : yes
+name: "read-file"
+type: |
+  ~% (tS @-> tL tS)
+
+params:
+  - relpath : string
+
+code: |
+  let parts = Core_kernel.Filename.parts relpath in
+  begin
+    if parts |> List.exists (String.equal "..") then
+      report_dynamic_error "cannot access files by using '..'"
+    else
+      ()
+  end;
+  let abspath =
+    let jobdir = OptionState.job_directory () in
+    Filename.concat jobdir relpath
+  in
+  let inc = open_in abspath in
+  let rec aux lineacc =
+    match input_line inc with
+    | exception End_of_file -> lineacc |> Alist.to_list
+    | line                  -> aux (Alist.extend lineacc line)
+  in
+  let lines = aux Alist.empty in
+  close_in inc;
+  make_list make_string lines
