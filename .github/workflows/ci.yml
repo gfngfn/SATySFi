@@ -21,14 +21,14 @@ jobs:
         uses: avsm/setup-ocaml@v1
         with:
           ocaml-version: ${{ matrix.ocaml-version }}
-        
+
       - name: Install SATySFi dependencies
         run: |
           opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
           opam update
           opam pin add satysfi.dev . --no-action
-          opam depext satysfi --yes --with-doc --with-test
-          opam install . --deps-only --with-doc --with-test
+          opam depext satysfi --yes --with-doc
+          opam install . --deps-only --with-doc
 
       - name: Build SATySFi
         run: opam exec -- make all
