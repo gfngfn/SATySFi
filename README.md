@@ -14,7 +14,7 @@ This software was supported by:
 * Dwango Co., Ltd. (October 2018 – March 2019; as a part-time job), and
 * many anonymous supporters who bought [The SATySFi​book](https://booth.pm/ja/items/1127224),
 
-and its development continues to this day (January 2020).
+and its development continues to this day (February 2021).
 
 ## Install using Homebrew (for OS X users)
 
