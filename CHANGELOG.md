@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 ### Fixed
 - Fix invalid errors emitted by `--type-check-only` by making the option extension-sensitive.
 
+### Added
+- Add primitives `(<<)`, `(>>)`, `bxor`, `band`, `bor`, and `bnot` for bitwise operations ([PR\#85](https://github.com/gfngfn/SATySFi/pull/85) by `konn`).
+
 ## [0.0.6] - 2021-02-06
 ### Fixed
 - Improve how to emit errors when parsing invalid itemized expressions ([PR\#176](https://github.com/gfngfn/SATySFi/pull/176) by `hanazuki`).
