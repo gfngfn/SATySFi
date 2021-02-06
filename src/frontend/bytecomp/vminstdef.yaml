@@ -2389,6 +2389,97 @@ code: |
   make_bool (not binl)
 
 ---
+inst: BitShiftRight
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: ">>"
+type: |
+  ~% (tI @-> tI @-> tI)
+
+params:
+- numl : int
+- numr : int
+code: |
+  let bits =
+    try numl lsr numr with
+    | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '>>'"
+  in
+  make_int bits
+
+---
+inst: BitShiftLeft
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "<<"
+type: |
+  ~% (tI @-> tI @-> tI)
+
+params:
+- numl : int
+- numr : int
+code: |
+  let bits =
+    try numl lsl numr with
+    | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '<<'"
+  in
+  make_int bits
+
+---
+inst: BitXor
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "bxor"
+type: |
+  ~% (tI @-> tI @-> tI)
+
+params:
+- numl : int
+- numr : int
+code: |
+  make_int (numl lxor numr)
+
+---
+inst: BitAnd
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "band"
+type: |
+  ~% (tI @-> tI @-> tI)
+
+params:
+- numl : int
+- numr : int
+code: |
+  make_int (numl land numr)
+
+---
+inst: BitOr
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "bor"
+type: |
+  ~% (tI @-> tI @-> tI)
+
+params:
+- numl : int
+- numr : int
+code: |
+  make_int (numl lor numr)
+
+---
+inst: BitNot
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "bnot"
+type: |
+  ~% (tI @-> tI)
+
+params:
+- num : int
+code: |
+  make_int (lnot num)
+
+---
 inst: FloatPlus
 is-pdf-mode-primitive: yes
 is-text-mode-primitive: yes

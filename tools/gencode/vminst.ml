@@ -2661,6 +2661,109 @@ make_bool (binl || binr)
         ~code:{|
 make_bool (not binl)
 |}
+    ; inst "BitShiftRight"
+        ~name:">>"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let bits =
+  try numl lsr numr with
+  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '>>'"
+in
+make_int bits
+|}
+    ; inst "BitShiftLeft"
+        ~name:"<<"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let bits =
+  try numl lsl numr with
+  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '<<'"
+in
+make_int bits
+|}
+    ; inst "BitXor"
+        ~name:"bxor"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (numl lxor numr)
+|}
+    ; inst "BitAnd"
+        ~name:"band"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (numl land numr)
+|}
+    ; inst "BitOr"
+        ~name:"bor"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (numl lor numr)
+|}
+    ; inst "BitNot"
+        ~name:"bnot"
+        ~type_:{|
+~% (tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "num" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (lnot num)
+|}
     ; inst "FloatPlus"
         ~name:"+."
         ~type_:{|
