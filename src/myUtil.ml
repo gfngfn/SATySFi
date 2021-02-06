@@ -234,3 +234,5 @@ let make_lib_path pathstr = LibPath(pathstr)
 let get_abs_path_string (AbsPath(pathstr)) = pathstr
 
 let get_lib_path_string (LibPath(pathstr)) = pathstr
+
+let get_abs_path_extension (AbsPath(pathstr)) = Filename.extension pathstr

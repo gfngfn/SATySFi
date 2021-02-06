@@ -96,6 +96,22 @@ type file_info =
   | LibraryFile  of stage * untyped_abstract_tree
 
 
+let has_library_extension abspath =
+  let ext = get_abs_path_extension abspath in
+  match ext with
+  | ".satyh" | ".satyg" ->
+      true
+
+  | _ ->
+      begin
+        try
+          let extpre = String.sub ext 0 7 in
+          String.equal extpre ".satyh-"
+        with
+        | _ -> false
+      end
+
+
 let get_candidate_file_extensions () =
   match OptionState.get_mode () with
   | None      -> [".satyh"; ".satyg"]
@@ -123,6 +139,7 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : 
     let curdir = Filename.dirname (get_abs_path_string abspath) in
     let inc = open_in_abs abspath in
     let (stage, header, utast) = ParserInterface.process (basename_abs abspath) (Lexing.from_channel inc) in
+    close_in inc;
     FileDependencyGraph.add_vertex dg abspath (LibraryFile(stage, utast));
     header |> List.iter (fun headerelem ->
       let abspath_sub = get_abs_path_of_header curdir headerelem in
@@ -149,6 +166,52 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : 
       FileDependencyGraph.add_edge dg abspath abspath_sub
     )
   end
+
+
+let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : abs_path) : unit =
+  Logging.begin_to_parse_file abspath_in;
+  let curdir = Filename.dirname (get_abs_path_string abspath_in) in
+  let inc = open_in_abs abspath_in in
+  let (stage, header, utast) = ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel inc) in
+  close_in inc;
+  begin
+    match stage with
+    | Stage1               -> ()
+    | Stage0 | Persistent0 -> raise DocumentShouldBeAtStage1
+  end;
+  FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
+  header |> List.iter (fun headerelem ->
+    let abspath_sub = get_abs_path_of_header curdir headerelem in
+    begin
+      if FileDependencyGraph.mem_vertex abspath_sub dg then () else
+        register_library_file dg abspath_sub
+    end;
+    FileDependencyGraph.add_edge dg abspath_in abspath_sub
+  )
+
+
+let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : unit =
+  Logging.begin_to_parse_file abspath_in;
+  let abspath = Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md"))) in
+  let (cmdrcd, depends) = LoadMDSetting.main abspath in
+  match MyUtil.string_of_file abspath_in with
+  | Ok(data) ->
+      let utast = DecodeMD.decode cmdrcd data in
+    (*
+        let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
+    *)
+      FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
+      depends |> List.iter (fun package ->
+        let file_path_sub = get_package_abs_path package in
+        begin
+        if FileDependencyGraph.mem_vertex file_path_sub dg then () else
+          register_library_file dg file_path_sub
+        end;
+        FileDependencyGraph.add_edge dg abspath_in file_path_sub
+      )
+
+  | Error(msg) ->
+      raise (CannotReadFileOwingToSystem(msg))
 
 
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
@@ -211,51 +274,6 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
   stmap |> StoreIDMap.iter (fun stid value -> StoreIDHashTable.add stenv stid value);
   stenvref := stenv;
   (valenv, ref stenv)
-
-
-let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : abs_path) : unit =
-  Logging.begin_to_parse_file abspath_in;
-  let file_in = open_in_abs abspath_in in
-  let curdir = Filename.dirname (get_abs_path_string abspath_in) in
-  let (stage, header, utast) = ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in) in
-  begin
-    match stage with
-    | Stage1               -> ()
-    | Stage0 | Persistent0 -> raise DocumentShouldBeAtStage1
-  end;
-  FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
-  header |> List.iter (fun headerelem ->
-    let file_path_sub = get_abs_path_of_header curdir headerelem in
-    begin
-      if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-        register_library_file dg file_path_sub
-    end;
-    FileDependencyGraph.add_edge dg abspath_in file_path_sub
-  )
-
-
-let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : unit =
-  Logging.begin_to_parse_file abspath_in;
-  let abspath = Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md"))) in
-  let (cmdrcd, depends) = LoadMDSetting.main abspath in
-  match MyUtil.string_of_file abspath_in with
-  | Ok(data) ->
-      let utast = DecodeMD.decode cmdrcd data in
-    (*
-        let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
-    *)
-      FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
-      depends |> List.iter (fun package ->
-        let file_path_sub = get_package_abs_path package in
-        begin
-        if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-          register_library_file dg file_path_sub
-        end;
-        FileDependencyGraph.add_edge dg abspath_in file_path_sub
-      )
-
-  | Error(msg) ->
-      raise (CannotReadFileOwingToSystem(msg))
 
 
 let output_text abspath_out s =
@@ -1101,7 +1119,7 @@ let () =
     begin
       match OptionState.get_input_kind () with
       | OptionState.SATySFi ->
-          if OptionState.type_check_only () then
+          if has_library_extension abspath_in && OptionState.type_check_only () then
             register_library_file dg abspath_in
           else
             register_document_file dg abspath_in
