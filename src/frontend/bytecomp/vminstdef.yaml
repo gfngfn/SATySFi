@@ -74,6 +74,27 @@ code: |
   }), ctxsub)
 
 ---
+inst: PrimitiveSetMathChar
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "set-math-char"
+type: |
+  ~% (tI @-> tI @-> tMATHCLS @-> tCTX @-> tCTX)
+
+params:
+- cp_from : int
+- cp_to : int
+- mk : math_class
+- (ctx, ctxsub) : context
+code: |
+  let uch_from = Uchar.of_int cp_from in
+  let uch_to = Uchar.of_int cp_to in
+  let mkmap = ctx.HorzBox.math_class_map in
+  Context(HorzBox.({ ctx with
+    math_class_map = mkmap |> MathClassMap.add uch_from (uch_to, mk);
+  }), ctxsub)
+
+---
 inst: PrimitiveConvertStringForMath
 is-pdf-mode-primitive: yes
 name: "convert-string-for-math"

@@ -58,6 +58,29 @@ Context(HorzBox.({ ctx with
   math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) (uchto, MathOrdinary);
 }), ctxsub)
 |}
+    ; inst "PrimitiveSetMathChar"
+        ~name:"set-math-char"
+        ~type_:{|
+~% (tI @-> tI @-> tMATHCLS @-> tCTX @-> tCTX)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "cp_from" ~type_:"int";
+          param "cp_to" ~type_:"int";
+          param "mk" ~type_:"math_class";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let uch_from = Uchar.of_int cp_from in
+let uch_to = Uchar.of_int cp_to in
+let mkmap = ctx.HorzBox.math_class_map in
+Context(HorzBox.({ ctx with
+  math_class_map = mkmap |> MathClassMap.add uch_from (uch_to, mk);
+}), ctxsub)
+|}
     ; inst "PrimitiveConvertStringForMath"
         ~name:"convert-string-for-math"
         ~type_:{|
