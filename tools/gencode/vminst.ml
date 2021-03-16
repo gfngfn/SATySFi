@@ -55,7 +55,7 @@ let uchfrom = Uchar.of_int cpfrom in
 let uchto = Uchar.of_int cpto in
 let mcclsmap = ctx.HorzBox.math_variant_char_map in
 Context(HorzBox.({ ctx with
-  math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) uchto;
+  math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) (uchto, MathOrdinary);
 }), ctxsub)
 |}
     ; inst "PrimitiveConvertStringForMath"
@@ -72,7 +72,7 @@ Context(HorzBox.({ ctx with
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = MathContext.convert_math_variant_char (ctx, ctxsub) s in make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
+let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let uchs = let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in uchs |> List.map (fun uch_from -> let (_, uch_to) = MathContext.convert_math_variant_char (ctx, ctxsub) uch_from in uch_to ) in make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchs))
 |}
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"

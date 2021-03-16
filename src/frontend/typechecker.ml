@@ -1094,7 +1094,9 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
   let open HorzBox in
     match utmathmain with
     | UTMChar(s) ->
-        ASTMath([MathPure(MathVariantChar(s))])
+        let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+        let ms = uchs |> List.map (fun uch -> MathPure(MathVariantChar(uch))) in
+        ASTMath(ms)
 
     | UTMList(utmathlst) ->
         let astlst = utmathlst |> List.map iter in

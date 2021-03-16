@@ -474,7 +474,7 @@ let get_right_kern lmmain hgt dpt =
 
 let get_math_kind_of_math_element (ctx : input_context) = function
   | MathElement(mk, _)              -> mk
-  | MathVariantChar(s)              -> let (mk, _) = MathContext.convert_math_variant_char ctx s in mk
+  | MathVariantChar(uch)            -> let (mk, _) = MathContext.convert_math_variant_char ctx uch in mk
   | MathVariantCharDirect(mk, _, _) -> mk
 
 
@@ -718,11 +718,11 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
       let mk = normalize_math_kind mkprev mknext mkraw in
         (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
 
-  | MathVariantChar(s) ->
-      let (mkrawv, uchlst) = MathContext.convert_math_variant_char (MathContext.context_for_text mathctx) s in
+  | MathVariantChar(uch_from) ->
+      let (mkrawv, uch_to) = MathContext.convert_math_variant_char (MathContext.context_for_text mathctx) uch_from in
       let mk = normalize_math_kind mkprev mknext mkrawv in
       let is_big = false in
-        convert_math_char mathctx is_big uchlst mk
+      convert_math_char mathctx is_big [uch_to] mk
 
   | MathVariantCharDirect(mkraw, is_big, mvsty) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
