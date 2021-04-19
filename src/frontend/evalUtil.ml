@@ -547,6 +547,30 @@ let make_column_hook_func reducef valuef : HorzBox.column_hook_func =
   )
 
 
+let make_doc_info_dictionary value =
+  match value with
+  | RecordValue(asc) ->
+    begin
+      match
+        (Assoc.find_opt asc "title",
+          Assoc.find_opt asc "subject",
+          Assoc.find_opt asc "author",
+          Assoc.find_opt asc "keywords")
+      with
+      | (Some(vT), Some(vS), Some(vA), Some(vK)) ->
+          DocumentInfomationDictionary.({
+            title = get_option get_string vT;
+            subject = get_option get_string vS;
+            author = get_option get_string vA;
+            keywords = get_list get_string vK;
+          })
+      | _ -> report_bug_value "make_doc_info_dictionary:1" value
+    end
+  | _ ->
+         report_bug_value "make_doc_info_dictionary:2" value
+
+
+
 let make_page_content_scheme_func reducef valuef : HorzBox.page_content_scheme_func =
   (fun pbinfo ->
      let valuepbinfo = make_page_break_info pbinfo in

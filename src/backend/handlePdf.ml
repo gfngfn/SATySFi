@@ -517,5 +517,6 @@ let write_to_file ((PDF(pdf, pageacc, abspath)) : t) : unit =
   let pdfout = pdfsub |> (Pdfpage.add_root irpageroot [])
                       |> Outline.add_to_pdf
                       |> NamedDest.add_to_pdf
+                      |> DocumentInfomationDictionary.add_to_pdf
   in
   Pdfwrite.pdf_to_file pdfout (get_abs_path_string abspath)
