@@ -18,22 +18,24 @@ let register dictionary =
   registered_document_infomation_dictionary := dictionary
 
 
+let to_utf16be text = InternalText.to_utf16be (InternalText.of_utf8 text)
+
 let add_to_pdf pdf =
   let document_infomation_dictionary = !registered_document_infomation_dictionary in
   let title =
     match document_infomation_dictionary.title with
     | None -> []
-    | Some(title) -> [("/Title", Pdf.String title)]
+    | Some(title) -> [("/Title", Pdf.String (to_utf16be title))]
   in
   let subject =
     match document_infomation_dictionary.subject with
     | None -> []
-    | Some(subject) -> [("/Subject", Pdf.String subject)]
+    | Some(subject) -> [("/Subject", Pdf.String (to_utf16be subject))]
   in
   let author =
     match document_infomation_dictionary.author with
     | None -> []
-    | Some(author) -> [("/Author", Pdf.String author)]
+    | Some(author) -> [("/Author", Pdf.String (to_utf16be author))]
   in
   let keywords =
     let lst = document_infomation_dictionary.keywords in
@@ -43,12 +45,12 @@ let add_to_pdf pdf =
       | [s] -> str^s
       | s::xs -> sub xs (str^s^" ")
     in
-    [("/Keywords", Pdf.String (sub lst ""))]
+    [("/Keywords", Pdf.String (to_utf16be (sub lst "")))]
   in
   let creator =
     [
-      ("/Creator", Pdf.String "SATySFi");
-      ("/Producer", Pdf.String "SATySFi")
+      ("/Creator", Pdf.String (to_utf16be "SATySFi"));
+      ("/Producer", Pdf.String (to_utf16be "SATySFi"))
     ]
   in
   let infomation =
