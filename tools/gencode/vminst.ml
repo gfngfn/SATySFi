@@ -1059,7 +1059,7 @@ make_vert imvblst
         ~needs_reducef:true
         ~code:{|
 let docinfodic = make_doc_info_dictionary valuedocinfodic in
-let () = DocumentInfomationDictionary.register docinfodic in
+let () = DocumentInformationDictionary.register docinfodic in
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
 BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), pagecontf, pagepartsf, vblst))

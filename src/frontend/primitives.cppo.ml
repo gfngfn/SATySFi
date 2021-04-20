@@ -112,7 +112,7 @@ let tDOCINFODIC =
       ("keywords", tL tS);
     ]
   in
-    (~! "document-infomation-dictionary", RecordType(asc))
+    (~! "document-information-dictionary", RecordType(asc))
 
 
 let tPBINFO =

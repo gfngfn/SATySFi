@@ -558,7 +558,7 @@ let make_doc_info_dictionary value =
           Assoc.find_opt asc "keywords")
       with
       | (Some(vT), Some(vS), Some(vA), Some(vK)) ->
-          DocumentInfomationDictionary.({
+          DocumentInformationDictionary.({
             title = get_option get_string vT;
             subject = get_option get_string vS;
             author = get_option get_string vA;

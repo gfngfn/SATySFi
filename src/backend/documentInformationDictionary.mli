@@ -1,4 +1,4 @@
-type document_infomation_dictionary = {
+type document_information_dictionary = {
   title : string option;
   subject : string option;
   author : string option;
@@ -7,4 +7,4 @@ type document_infomation_dictionary = {
 
 val add_to_pdf : Pdf.t -> Pdf.t
 
-val register : document_infomation_dictionary -> unit
+val register : document_information_dictionary -> unit
