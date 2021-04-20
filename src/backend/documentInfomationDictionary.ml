@@ -45,7 +45,9 @@ let add_to_pdf pdf =
       | [s] -> str^s
       | s::xs -> sub xs (str^s^" ")
     in
-    [("/Keywords", Pdf.String (to_utf16be (sub lst "")))]
+    match lst with
+    | [] -> []
+    | lst -> [("/Keywords", Pdf.String (to_utf16be (sub lst "")))]
   in
   let creator =
     [
