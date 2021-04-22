@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Add primitive `read-file : string -> string list` for reading external text files in subdirectories ([PR\#200](https://github.com/gfngfn/SATySFi/pull/200) by `puripuri2100`).
 - Allow arbitrary Unicode code points other than few ASCII symbols to occur in the math mode (e.g. `${α + β}`).
 - Add primitive `set-math-char : int -> int -> math-class -> context -> context` for handling various Unicode code points in the math mode.
+- Add primitive `register-document-information` for furnishing document information dictionaries with PDF files ([PR\#268](https://github.com/gfngfn/SATySFi/pull/268) by `puripuri2100`).
 
 ## [0.0.6] - 2021-02-06
 ### Fixed
