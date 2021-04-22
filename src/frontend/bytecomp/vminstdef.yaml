@@ -962,18 +962,15 @@ inst: BackendPageBreaking
 is-pdf-mode-primitive: yes
 name: "page-break"
 type: |
-  ~% (tDOCINFODIC @-> tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+  ~% (tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
 
 needs-reducef: yes
 params:
-- valuedocinfodic
 - pagesize : page_size
 - valuepagecontf
 - valuepagepartsf
 - vblst : vert
 code: |
-  let docinfodic = make_doc_info_dictionary valuedocinfodic in
-  let () = DocumentInformationDictionary.register docinfodic in
   let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
   let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
   BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), pagecontf, pagepartsf, vblst))
@@ -2919,6 +2916,19 @@ params:
   - ol
 code: |
   Outline.register (get_list get_outline ol);
+  const_unit
+
+---
+inst: SetDocumentInformationDictionary
+is-pdf-mode-primitive : yes
+name: "set-document-information"
+type: |
+  ~% (tDOCINFODIC @-> tU)
+params:
+  - valuedocinfodic
+code: |
+  let docinfodic = make_doc_info_dictionary valuedocinfodic in
+  let () = DocumentInformationDictionary.register docinfodic in
   const_unit
 
 ---

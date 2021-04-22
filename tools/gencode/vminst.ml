@@ -1044,12 +1044,11 @@ make_vert imvblst
     ; inst "BackendPageBreaking"
         ~name:"page-break"
         ~type_:{|
-~% (tDOCINFODIC @-> tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+~% (tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
 |}
         ~fields:[
         ]
         ~params:[
-          param "valuedocinfodic";
           param "pagesize" ~type_:"page_size";
           param "valuepagecontf";
           param "valuepagepartsf";
@@ -1058,8 +1057,6 @@ make_vert imvblst
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let docinfodic = make_doc_info_dictionary valuedocinfodic in
-let () = DocumentInformationDictionary.register docinfodic in
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
 BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), pagecontf, pagepartsf, vblst))
@@ -3256,6 +3253,22 @@ const_unit
         ~is_pdf_mode_primitive:true
         ~code:{|
 Outline.register (get_list get_outline ol);
+const_unit
+|}
+    ; inst "SetDocumentInformationDictionary"
+        ~name:"set-document-information"
+        ~type_:{|
+~% (tDOCINFODIC @-> tU)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "valuedocinfodic";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let docinfodic = make_doc_info_dictionary valuedocinfodic in
+let () = DocumentInformationDictionary.register docinfodic in
 const_unit
 |}
     ; inst "AbortWithMessage"
