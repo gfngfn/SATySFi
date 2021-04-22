@@ -20,6 +20,10 @@ type config = (|
   footer-origin : point;
   header-width  : length;
   footer-width  : length;
+  info-title    : string option;
+  info-subject  : string option;
+  info-author   : string option;
+  info-keywords : string list;
 |)
 
 module StdJaBook : sig
@@ -345,6 +349,10 @@ let title-deco =
       footer-origin = (40pt, 780pt);
       header-width  = 520pt;
       footer-width  = 520pt;
+      info-title    = None;
+      info-subject  = None;
+      info-author   = None;
+      info-keywords = [];
     |)
 
 
@@ -495,6 +503,14 @@ let title-deco =
         |)
     in
     let doc = page-break page pagecontf pagepartsf (bb-title +++ bb-toc +++ bb-main) in
+    let () =
+      register-document-information (|
+        title    = config#info-title;
+        subject  = config#info-subject;
+        author   = config#info-author;
+        keywords = config#info-keywords;
+      |)
+    in
     let () = register-outline (List.reverse !outline-ref) in
       doc
 

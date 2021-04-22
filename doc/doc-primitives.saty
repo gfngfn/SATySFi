@@ -8,6 +8,10 @@ document (|
   author = {Takashi SUWA};
   show-title = true;
   show-toc = true
+|) ?:(| StdJaBook.default-config with
+  info-title    = Some(`SATySFiの基本型のプリミティヴ`);
+  info-author   = Some(`Takashi SUWA`);
+  info-keywords = [`SATySFi`; `型`; `プリミティヴ`];
 |) '<
   +p {
     この文書では，\SATySFi;によって提供される型とプリミティヴを掲げる．
