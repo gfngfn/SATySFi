@@ -3255,8 +3255,8 @@ const_unit
 Outline.register (get_list get_outline ol);
 const_unit
 |}
-    ; inst "SetDocumentInformationDictionary"
-        ~name:"set-document-information"
+    ; inst "RegisterDocumentInformationDictionary"
+        ~name:"register-document-information"
         ~type_:{|
 ~% (tDOCINFODIC @-> tU)
 |}

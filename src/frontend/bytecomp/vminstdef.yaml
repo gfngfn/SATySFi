@@ -2919,9 +2919,9 @@ code: |
   const_unit
 
 ---
-inst: SetDocumentInformationDictionary
+inst: RegisterDocumentInformationDictionary
 is-pdf-mode-primitive : yes
-name: "set-document-information"
+name: "register-document-information"
 type: |
   ~% (tDOCINFODIC @-> tU)
 params:
