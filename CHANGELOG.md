@@ -60,17 +60,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Does not fail when a script value evaluates to `OtherScript` ([PR\#121](https://github.com/gfngfn/SATySFi/pull/121) by `na4zagin3`).
 - Handles `CR`+`LF` correctly as one line ending ([PR\#122](https://github.com/gfngfn/SATySFi/pull/122) by `matsud224`).
 - Fix how to generate ToUnicodeCMap as to ligatures ([PR\#140](https://github.com/gfngfn/SATySFi/pull/140) by `matsud224`).
-- Fix bug of `\ref` in `stdjareport` ([PR\#135](https://github.com/gfngfn/SATySFi/pull/135) by `matsud224`).
-- Fix bug of signature matching in the type checker ([PR\#143](https://github.com/gfngfn/SATySFi/pull/143) and [PR\#144](https://github.com/gfngfn/SATySFi/pull/144) by `elpinal`).
-- Fix bug of type inference about records ([PR\#148](https://github.com/gfngfn/SATySFi/pull/148) by `elpinal`).
-- Fix bug about decoding fonts that has NULL as the DefaultLangSys entry in a Script table.
-- Fix (a kind of) bug about decoding fonts that has NULL in a BaseRecord table ([PR\#164](https://github.com/gfngfn/SATySFi/pull/164) by `matsud224`).
+- Fix a bug of `\ref` in `stdjareport` ([PR\#135](https://github.com/gfngfn/SATySFi/pull/135) by `matsud224`).
+- Fix a bug of the signature matching ([PR\#143](https://github.com/gfngfn/SATySFi/pull/143) and [PR\#144](https://github.com/gfngfn/SATySFi/pull/144) by `elpinal`).
+- Fix a bug of the type inference algorithm about records ([PR\#148](https://github.com/gfngfn/SATySFi/pull/148) by `elpinal`).
+- Fix a bug about decoding fonts that have NULL as the DefaultLangSys entry in a Script table.
+- Fix (a kind of) bug about decoding fonts that have NULL in a BaseRecord table ([PR\#164](https://github.com/gfngfn/SATySFi/pull/164) by `matsud224`).
 - Fix the page breaking algorithm.
 - Fix how to detect cyclic synonym type definition(s) ([bug reported by `nyuichi`]((https://github.com/gfngfn/SATySFi/issues/187))).
 - Fix how to embed fonts (by updating `otfm` from `v.0.3.6+satysfi` to `v.0.3.7+satysfi`, which was due to [a PR](https://github.com/gfngfn/otfm/pull/7) by `matsud224`).
 
 ## Added
-- Begins to support Markdown input.
+- Begins to support Markdown inputs.
 - Supports PDF hyperlinks ([PR\#113](https://github.com/gfngfn/SATySFi/pull/113) by `matsud224`).
 - Supports fixed-length list patterns ([PR\#123](https://github.com/gfngfn/SATySFi/pull/123) by `nekketsuuu`).
 - Supports PDF outlines ([PR\#134](https://github.com/gfngfn/SATySFi/pull/134) by `matsud224`).
@@ -104,12 +104,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 ## [0.0.2] - 2018-08-09
 ### Fixed
-- Make type inference algorithm firmer (mainly about records and optional arguments).
+- Make the type inference algorithm firmer (mainly about records and optional arguments).
 
 ### Changed
 - Conforms to a new operational semantics as to optional arguments.
-- Starts reporting error for duplicated fields in a record expression.
-- Improve type error report as to application of non-function expressions.
+- Starts reporting errors for duplicated fields in a record expression.
+- Improve type error reports about applications of non-function expressions.
 
 ## 0.0.1 - 2018-08-05
 ### Added
