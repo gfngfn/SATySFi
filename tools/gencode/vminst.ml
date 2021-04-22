@@ -3255,6 +3255,22 @@ const_unit
 Outline.register (get_list get_outline ol);
 const_unit
 |}
+    ; inst "RegisterDocumentInformationDictionary"
+        ~name:"register-document-information"
+        ~type_:{|
+~% (tDOCINFODIC @-> tU)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "valuedocinfodic";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let docinfodic = make_doc_info_dictionary valuedocinfodic in
+let () = DocumentInformationDictionary.register docinfodic in
+const_unit
+|}
     ; inst "AbortWithMessage"
         ~name:"abort-with-message"
         ~type_:{|

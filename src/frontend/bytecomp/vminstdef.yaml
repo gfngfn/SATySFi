@@ -2919,6 +2919,19 @@ code: |
   const_unit
 
 ---
+inst: RegisterDocumentInformationDictionary
+is-pdf-mode-primitive : yes
+name: "register-document-information"
+type: |
+  ~% (tDOCINFODIC @-> tU)
+params:
+  - valuedocinfodic
+code: |
+  let docinfodic = make_doc_info_dictionary valuedocinfodic in
+  let () = DocumentInformationDictionary.register docinfodic in
+  const_unit
+
+---
 inst: AbortWithMessage
 is-pdf-mode-primitive : yes
 is-text-mode-primitive : yes

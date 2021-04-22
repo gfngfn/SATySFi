@@ -103,6 +103,18 @@ let tMCSTY =
   in
     (~! "math-char-style", RecordType(asc))
 
+let tDOCINFODIC =
+  let asc =
+    Assoc.of_list [
+      ("title", tOPT tS);
+      ("subject", tOPT tS);
+      ("author", tOPT tS);
+      ("keywords", tL tS);
+    ]
+  in
+    (~! "document-information-dictionary", RecordType(asc))
+
+
 let tPBINFO =
   let asc =
     Assoc.of_list [
