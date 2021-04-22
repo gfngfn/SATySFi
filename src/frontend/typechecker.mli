@@ -28,3 +28,5 @@ exception IllegalNumberOfTypeArguments   of Range.t * type_name * int * int
 val main_bindings : stage -> Typeenv.t -> untyped_binding list -> binding list * Typeenv.t
 
 val main : stage -> Typeenv.t -> untyped_abstract_tree -> mono_type * abstract_tree
+
+val are_unifiable : mono_type -> mono_type -> bool

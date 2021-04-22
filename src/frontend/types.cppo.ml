@@ -1023,7 +1023,8 @@ and math_element_main =
 
 and math_element =
   | MathElement           of HorzBox.math_kind * math_element_main
-  | MathVariantChar       of string
+  | MathVariantChar       of Uchar.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char>")]
   | MathVariantCharDirect of HorzBox.math_kind * bool * HorzBox.math_variant_style
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
       (* --
@@ -1263,7 +1264,7 @@ module MathContext
     val make : input_context -> t
     val context_for_text : t -> input_context
     val context_main : t -> HorzBox.context_main
-    val convert_math_variant_char : input_context -> string -> HorzBox.math_kind * Uchar.t list
+    val convert_math_variant_char : input_context -> Uchar.t -> HorzBox.math_kind * Uchar.t
     val color : t -> color
     val set_color : color -> t -> t
     val enter_script : t -> t
@@ -1299,25 +1300,21 @@ module MathContext
           context_for_text  = ictx;
         }
 
-    let convert_math_variant_char ((ctx, _) : input_context) (s : string) =
+    let convert_math_variant_char ((ctx, _) : input_context) (uch : Uchar.t) =
       let open HorzBox in
       let mcclsmap = ctx.math_variant_char_map in
       let mccls = ctx.math_char_class in
       let mkmap = ctx.math_class_map in
-        match mkmap |> MathClassMap.find_opt s with
-        | Some(uchlstaft, mk) ->
-            (mk, uchlstaft)
+      match mkmap |> HorzBox.MathClassMap.find_opt uch with
+      | Some(uchaft, mk) ->
+          (mk, uchaft)
 
-        | None ->
-            let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
-            let uchlstaft =
-              uchlst |> List.map (fun uch ->
-                match mcclsmap |> HorzBox.MathVariantCharMap.find_opt (uch, mccls) with
-                | Some(uchaft) -> uchaft
-                | None         -> uch
-              )
-            in
-              (MathOrdinary, uchlstaft)
+      | None ->
+          begin
+            match mcclsmap |> HorzBox.MathVariantCharMap.find_opt (uch, mccls) with
+            | Some((uchaft, mk)) -> (mk, uchaft)
+            | None               -> (MathOrdinary, uch)
+          end
 
     let context_for_text (mctx : t) =
       mctx.context_for_text

@@ -101,6 +101,22 @@ type file_info =
   | LibraryFile  of stage * untyped_binding list
 
 
+let has_library_extension abspath =
+  let ext = get_abs_path_extension abspath in
+  match ext with
+  | ".satyh" | ".satyg" ->
+      true
+
+  | _ ->
+      begin
+        try
+          let extpre = String.sub ext 0 7 in
+          String.equal extpre ".satyh-"
+        with
+        | _ -> false
+      end
+
+
 let get_candidate_file_extensions () =
   match OptionState.get_mode () with
   | None      -> [".satyh"; ".satyg"]
@@ -133,6 +149,7 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : 
       | None    -> ()
       | Some(_) -> raise (LibraryContainsWholeReturnValue(abspath))
     end;
+    close_in inc;
     FileDependencyGraph.add_vertex dg abspath (LibraryFile(stage, utbinds));
     header |> List.iter (fun headerelem ->
       let abspath_sub = get_abs_path_of_header curdir headerelem in
@@ -289,13 +306,15 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utbinds
   let (ty, ast) = Typechecker.main Stage1 tyenv utast in
   Logging.pass_type_check (Some(Display.string_of_mono_type ty));
   if OptionState.is_text_mode () then
-    match ty with
-    | (_, BaseType(StringType)) -> (binds, ast)
-    | _                         -> raise (NotAStringFile(abspath_in, tyenv, ty))
+    if Typechecker.are_unifiable ty (Range.dummy "text-mode", BaseType(StringType)) then
+      (binds, ast)
+    else
+      raise (NotAStringFile(abspath_in, tyenv, ty))
   else
-    match ty with
-    | (_, BaseType(DocumentType)) -> (binds, ast)
-    | _                           -> raise (NotADocumentFile(abspath_in, tyenv, ty))
+    if Typechecker.are_unifiable ty (Range.dummy "pdf-mode", BaseType(DocumentType)) then
+      (binds, ast)
+    else
+      raise (NotADocumentFile(abspath_in, tyenv, ty))
 
 
 let eval_library_file (env : environment) (abspath : abs_path) (binds : binding list) : environment =
@@ -972,7 +991,7 @@ let error_log_environment suspended =
 
 let arg_version () =
   print_string (
-    "  SATySFi version 0.0.5\n"
+    "  SATySFi version 0.0.6\n"
 (*
       ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"
@@ -1114,7 +1133,7 @@ let () =
     begin
       match OptionState.get_input_kind () with
       | OptionState.SATySFi ->
-          if OptionState.type_check_only () then
+          if has_library_extension abspath_in && OptionState.type_check_only () then
             register_library_file dg abspath_in
           else
             register_document_file dg abspath_in

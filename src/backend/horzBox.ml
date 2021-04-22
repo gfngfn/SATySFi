@@ -181,7 +181,7 @@ module MathVariantCharMap = Map.Make
   end)
 
 
-module MathClassMap = Map.Make(String)
+module MathClassMap = Map.Make(Uchar)
 
 
 type breakability =
@@ -233,9 +233,9 @@ type context_main = {
   text_color             : color;
   manual_rising          : length;
   space_badness          : pure_badness;
-  math_variant_char_map  : Uchar.t MathVariantCharMap.t;
+  math_variant_char_map  : (Uchar.t * math_kind) MathVariantCharMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-map>")]
-  math_class_map         : (Uchar.t list * math_kind) MathClassMap.t;
+  math_class_map         : (Uchar.t * math_kind) MathClassMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<math-class-map>")]
   math_char_class        : math_char_class;
   before_word_break      : horz_box list;

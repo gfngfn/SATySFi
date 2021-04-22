@@ -1287,7 +1287,9 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
   let open HorzBox in
     match utmathmain with
     | UTMChar(s) ->
-        ASTMath([MathPure(MathVariantChar(s))])
+        let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+        let ms = uchs |> List.map (fun uch -> MathPure(MathVariantChar(uch))) in
+        ASTMath(ms)
 
     | UTMList(utmathlst) ->
         let astlst = utmathlst |> List.map iter in
@@ -2096,3 +2098,12 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : m
 let main_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
   let (binds, tyenv, _) = typecheck_binding_list stage tyenv utbinds in
   (binds, tyenv)
+
+
+let are_unifiable (ty1 : mono_type) (ty2 : mono_type) : bool =
+  try
+    unify_sub ~reversed:false ty1 ty2;
+    true
+  with
+  | InternalContradictionError(_) -> false
+  | InternalInclusionError        -> false

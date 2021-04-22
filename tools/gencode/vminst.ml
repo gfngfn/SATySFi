@@ -55,7 +55,30 @@ let uchfrom = Uchar.of_int cpfrom in
 let uchto = Uchar.of_int cpto in
 let mcclsmap = ctx.HorzBox.math_variant_char_map in
 Context(HorzBox.({ ctx with
-  math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) uchto;
+  math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) (uchto, MathOrdinary);
+}), ctxsub)
+|}
+    ; inst "PrimitiveSetMathChar"
+        ~name:"set-math-char"
+        ~type_:{|
+~% (tI @-> tI @-> tMATHCLS @-> tCTX @-> tCTX)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "cp_from" ~type_:"int";
+          param "cp_to" ~type_:"int";
+          param "mk" ~type_:"math_class";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let uch_from = Uchar.of_int cp_from in
+let uch_to = Uchar.of_int cp_to in
+let mkmap = ctx.HorzBox.math_class_map in
+Context(HorzBox.({ ctx with
+  math_class_map = mkmap |> MathClassMap.add uch_from (uch_to, mk);
 }), ctxsub)
 |}
     ; inst "PrimitiveConvertStringForMath"
@@ -72,7 +95,7 @@ Context(HorzBox.({ ctx with
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = MathContext.convert_math_variant_char (ctx, ctxsub) s in make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
+let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let uchs = let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in uchs |> List.map (fun uch_from -> let (_, uch_to) = MathContext.convert_math_variant_char (ctx, ctxsub) uch_from in uch_to ) in make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchs))
 |}
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"
@@ -2661,6 +2684,109 @@ make_bool (binl || binr)
         ~code:{|
 make_bool (not binl)
 |}
+    ; inst "BitShiftRight"
+        ~name:">>"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let bits =
+  try numl lsr numr with
+  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '>>'"
+in
+make_int bits
+|}
+    ; inst "BitShiftLeft"
+        ~name:"<<"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let bits =
+  try numl lsl numr with
+  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '<<'"
+in
+make_int bits
+|}
+    ; inst "BitXor"
+        ~name:"bxor"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (numl lxor numr)
+|}
+    ; inst "BitAnd"
+        ~name:"band"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (numl land numr)
+|}
+    ; inst "BitOr"
+        ~name:"bor"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (numl lor numr)
+|}
+    ; inst "BitNot"
+        ~name:"bnot"
+        ~type_:{|
+~% (tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "num" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (lnot num)
+|}
     ; inst "FloatPlus"
         ~name:"+."
         ~type_:{|
@@ -3129,6 +3255,22 @@ const_unit
 Outline.register (get_list get_outline ol);
 const_unit
 |}
+    ; inst "RegisterDocumentInformationDictionary"
+        ~name:"register-document-information"
+        ~type_:{|
+~% (tDOCINFODIC @-> tU)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "valuedocinfodic";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let docinfodic = make_doc_info_dictionary valuedocinfodic in
+let () = DocumentInformationDictionary.register docinfodic in
+const_unit
+|}
     ; inst "AbortWithMessage"
         ~name:"abort-with-message"
         ~type_:{|
@@ -3222,5 +3364,39 @@ let v1 = make_string ipos.input_file_name in
 let v2 = make_int ipos.input_line in
 let v3 = make_int ipos.input_column in
 Tuple([v1; v2; v3])
+|}
+    ; inst "ReadFile"
+        ~name:"read-file"
+        ~type_:{|
+~% (tS @-> tL tS)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "relpath" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let parts = Core_kernel.Filename.parts relpath in
+begin
+  if parts |> List.exists (String.equal "..") then
+    report_dynamic_error "cannot access files by using '..'"
+  else
+    ()
+end;
+let abspath =
+  let jobdir = OptionState.job_directory () in
+  Filename.concat jobdir relpath
+in
+let inc = open_in abspath in
+let rec aux lineacc =
+  match input_line inc with
+  | exception End_of_file -> lineacc |> Alist.to_list
+  | line                  -> aux (Alist.extend lineacc line)
+in
+let lines = aux Alist.empty in
+close_in inc;
+make_list make_string lines
 |}
     ])
