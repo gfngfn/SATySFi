@@ -27,12 +27,14 @@ exception InvalidNumberOfMacroArguments  of Range.t * macro_parameter_type list
 exception LateMacroArgumentExpected      of Range.t * mono_type
 exception EarlyMacroArgumentExpected     of Range.t * mono_type
 exception IllegalNumberOfTypeArguments   of Range.t * type_name * int * int
+exception TypeParameterBoundMoreThanOnce of Range.t * type_variable_name
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
 
 
 module SynonymIDSet = Set.Make(TypeID.Synonym)
+module SynonymIDHashTable = Hashtbl.Make(TypeID.Synonym)
 
 
 let fresh_free_id (kd : mono_kind) (qtfbl : quantifiability) (lev : Level.t) =
@@ -46,6 +48,21 @@ let fresh_free_id (kd : mono_kind) (qtfbl : quantifiability) (lev : Level.t) =
   in
   KindStore.set_free_id fid fentry;
   fid
+
+
+let make_type_parameters (pre : pre) (tyvars : (type_variable_name ranged) list) : pre * BoundID.t list =
+  let (typarams, bidacc) =
+    tyvars |> List.fold_left (fun (typarams, bidacc) (rng, tyvarnm) ->
+      if typarams |> TypeParameterMap.mem tyvarnm then
+        raise (TypeParameterBoundMoreThanOnce(rng, tyvarnm))
+      else
+        let mbbid = MustBeBoundID.fresh (Level.succ pre.level) in
+        let bid = MustBeBoundID.to_bound_id mbbid in
+        KindStore.set_bound_id bid { poly_kind = UniversalKind };
+        (typarams |> TypeParameterMap.add tyvarnm mbbid, Alist.extend bidacc bid)
+    ) (pre.type_parameters, Alist.empty)
+  in
+  ({ pre with type_parameters = typarams }, Alist.to_list bidacc)
 
 
 let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm : constructor_name) (rng : Range.t) =
@@ -1740,7 +1757,7 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
   (tyenvI, evid, eI, tyI)
 
 
-and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type =
+and decode_manual_type_scheme (k : TypeID.t -> unit) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type =
   let invalid rng tynm ~expect:len_expected ~actual:len_actual =
     raise (IllegalNumberOfTypeArguments(rng, tynm, len_expected, len_actual))
   in
@@ -1766,7 +1783,10 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                 let tyid = tentry.type_id in
                 let len_expected = tentry.type_arity in
                 if len_actual = len_expected then
-                  DataType(tyargs, tyid)
+                  begin
+                    k tyid;
+                    DataType(tyargs, tyid)
+                  end
                 else
                   invalid rng tynm ~expect:len_expected ~actual:len_actual
           end
@@ -1807,8 +1827,29 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
   aux mty
 
 
-and decode_manual_type_and_get_dependency (mty : manual_type) : mono_type * SynonymIDSet.t =
-  failwith "TODO: decode_manual_type_and_get_dependency"
+and decode_manual_type (pre : pre) : Typeenv.t -> manual_type -> mono_type =
+  decode_manual_type_scheme (fun _ -> ()) pre
+
+
+and decode_manual_type_and_get_dependency (vertices : SynonymIDSet.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type * SynonymIDSet.t =
+  let hashset = SynonymIDHashTable.create 32 in
+  let k = function
+    | TypeID.Synonym(sid) ->
+        if vertices |> SynonymIDSet.mem sid then
+          SynonymIDHashTable.replace hashset sid ()
+        else
+          ()
+
+    | _ ->
+        ()
+  in
+  let ty = decode_manual_type_scheme k pre tyenv mty in
+  let dependencies =
+    SynonymIDHashTable.fold (fun sid () set ->
+      set |> SynonymIDSet.add sid
+    ) hashset SynonymIDSet.empty
+  in
+  (ty, dependencies)
 
 
 and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * binding list =
@@ -1979,8 +2020,8 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
 
   | UTBindType(tybinds) ->
       (* Registers types to the type environment and the graph for detecting cyclic dependency. *)
-      let (synacc, vntacc, graph, _tyenv) =
-        tybinds |> List.fold_left (fun (synacc, vntacc, graph, tyenv) tybind ->
+      let (synacc, vntacc, vertices, graph, tyenv) =
+        tybinds |> List.fold_left (fun (synacc, vntacc, vertices, graph, tyenv) tybind ->
           let (tyident, typarams, constraints, syn_or_vnt) = tybind in
           let (_, tynm) = tyident in
           let arity = List.length typarams in
@@ -1998,7 +2039,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
                 tyenv |> Typeenv.add_type tynm tentry
               in
               let synacc = Alist.extend synacc (tyident, typarams, synbind, sid) in
-              (synacc, vntacc, graph, tyenv)
+              (synacc, vntacc, vertices |> SynonymIDSet.add sid, graph, tyenv)
 
           | UTBindVariant(vntbind) ->
               let vid = TypeID.Variant.fresh tynm in
@@ -2011,17 +2052,26 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
                 in
                 tyenv |> Typeenv.add_type tynm tentry in
               let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, vid) in
-              (synacc, vntacc, graph, tyenv)
-        ) (Alist.empty, Alist.empty, SynonymDependencyGraph.empty, tyenv)
+              (synacc, vntacc, vertices, graph, tyenv)
+        ) (Alist.empty, Alist.empty, SynonymIDSet.empty, SynonymDependencyGraph.empty, tyenv)
+      in
+
+      let pre =
+        {
+          stage           = stage;
+          type_parameters = TypeParameterMap.empty;
+          quantifiability = Quantifiable;
+          level           = Level.bottom;
+        }
       in
 
       (* Traverse each definition of the synonym types and extract dependencies between them. *)
       let (graph, tydefacc) =
         synacc |> Alist.to_list |> List.fold_left (fun (graph, tydefacc) syn ->
-          let (tyident, _tyvars, synbind, sid) = syn in
-          let (ty_real, dependencies) = decode_manual_type_and_get_dependency synbind in
+          let (tyident, tyvars, synbind, sid) = syn in
+          let (pre, bids) = make_type_parameters pre tyvars in
+          let (ty_real, dependencies) = decode_manual_type_and_get_dependency vertices pre tyenv synbind in
           let pty_real = generalize Level.bottom ty_real in
-          let bids = failwith "Typechecker.typecheck_binding, UTBindType, extract dependencies" in
           let graph =
             graph |> SynonymIDSet.fold (fun sid_dep graph ->
               graph |> SynonymDependencyGraph.add_edge sid sid_dep
