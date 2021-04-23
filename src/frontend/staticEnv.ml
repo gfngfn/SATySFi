@@ -2,12 +2,6 @@
 open MyUtil
 open Types
 
-let print_for_debug_variantenv msg =
-(*
-  print_endline msg;
-*)
-  ()
-
 
 module Distance = struct
 
@@ -85,11 +79,7 @@ module ConstructorMap = Map.Make(String)
 module MacroNameMap = Map.Make(String)
 
 type type_scheme = BoundID.t list * poly_type
-(*
-type type_definition =
-  | Data  of int
-  | Alias of type_scheme
-*)
+
 type value_entry = {
   val_name  : EvalVarID.t;
   val_type  : poly_type;
@@ -143,18 +133,6 @@ and type_environment = {
   constructors : constructor_entry ConstructorMap.t;
   macros       : macro_entry MacroNameMap.t;
 }
-
-(*
-exception UndefinedTypeName               of Range.t * module_name list * type_name * type_name list
-exception UndefinedTypeArgument           of Range.t * var_name * var_name list
-exception CyclicTypeDefinition            of (Range.t * type_name) list
-exception MultipleTypeDefinition          of Range.t * Range.t * type_name
-exception NotProvidingValueImplementation of Range.t * var_name
-exception NotProvidingTypeImplementation  of Range.t * type_name
-exception NotMatchingInterface            of Range.t * var_name * environment * poly_type * environment * poly_type
-exception NotMatchingStage                of Range.t * var_name * stage * stage
-exception UndefinedModuleName             of Range.t * module_name * module_name list
-*)
 
 
 module Typeenv = struct
