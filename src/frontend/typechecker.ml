@@ -32,6 +32,9 @@ exception InternalInclusionError
 exception InternalContradictionError of bool
 
 
+module SynonymIDSet = Set.Make(TypeID.Synonym)
+
+
 let fresh_free_id (kd : mono_kind) (qtfbl : quantifiability) (lev : Level.t) =
   let fid = FreeID.fresh () in
   let fentry =
@@ -1804,7 +1807,7 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
   aux mty
 
 
-and decode_manual_type_and_get_dependency (mty : manual_type) =
+and decode_manual_type_and_get_dependency (mty : manual_type) : mono_type * SynonymIDSet.t =
   failwith "TODO: decode_manual_type_and_get_dependency"
 
 
@@ -2014,13 +2017,19 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
 
       (* Traverse each definition of the synonym types and extract dependencies between them. *)
       let (graph, tydefacc) =
-        synacc |> Alist.to_list |> List.fold_left (fun (graph, _tydefacc) syn ->
-          let (_tyident, _tyvars, synbind, sid) = syn in
+        synacc |> Alist.to_list |> List.fold_left (fun (graph, tydefacc) syn ->
+          let (tyident, _tyvars, synbind, sid) = syn in
           let (ty_real, dependencies) = decode_manual_type_and_get_dependency synbind in
           let pty_real = generalize Level.bottom ty_real in
-          let bids = failwith "TODO: bids" in
+          let bids = failwith "Typechecker.typecheck_binding, UTBindType, extract dependencies" in
+          let graph =
+            graph |> SynonymIDSet.fold (fun sid_dep graph ->
+              graph |> SynonymDependencyGraph.add_edge sid sid_dep
+            ) dependencies
+          in
           TypeDefinitionStore.add_synonym_type sid bids pty_real;
-          failwith "Typechecker.typecheck_binding, UTBindType, extract dependencies"
+          let tydefacc = Alist.extend tydefacc (tyident, TypeID.Synonym(sid)) in
+          (graph, tydefacc)
         ) (graph, Alist.empty)
       in
 
