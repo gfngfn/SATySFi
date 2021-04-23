@@ -1804,6 +1804,10 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
   aux mty
 
 
+and decode_manual_type_and_get_dependency (mty : manual_type) =
+  failwith "TODO: decode_manual_type_and_get_dependency"
+
+
 and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * binding list =
   let (rng, utmodmain) = utmod in
   match utmodmain with
@@ -2011,7 +2015,11 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       (* Traverse each definition of the synonym types and extract dependencies between them. *)
       let (graph, tydefacc) =
         synacc |> Alist.to_list |> List.fold_left (fun (graph, _tydefacc) syn ->
-          let (_tyident, _typarams, _synbind, _sid) = syn in
+          let (_tyident, _tyvars, synbind, sid) = syn in
+          let (ty_real, dependencies) = decode_manual_type_and_get_dependency synbind in
+          let pty_real = generalize Level.bottom ty_real in
+          let bids = failwith "TODO: bids" in
+          TypeDefinitionStore.add_synonym_type sid bids pty_real;
           failwith "Typechecker.typecheck_binding, UTBindType, extract dependencies"
         ) (graph, Alist.empty)
       in
@@ -2019,7 +2027,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       (* Traverse each definition of the variant types. *)
       let (_tydefacc, _ctordefacc) =
         vntacc |> Alist.to_list |> List.fold_left (fun (tydefacc, ctordefacc) vnt ->
-          let (_tyident, _typarams, _vntbind, _vid) = vnt in
+          let (_tyident, _tyvars, _vntbind, _vid) = vnt in
           failwith "Typechecker.typecheck_binding, UTBindType, variants"
         ) (tydefacc, Alist.empty)
       in
@@ -2027,8 +2035,11 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       (* Check that no cyclic dependency exists among synonym types. *)
       begin
         match SynonymDependencyGraph.find_cycle graph with
-        | Some(_cycle) -> failwith "TODO: Typechecker.typecheck_binding, UTBindType, cycle"
-        | None         -> failwith "TODO: Typechecker.typecheck_binding, UTBindType, success"
+        | Some(_cycle) ->
+            failwith "TODO: Typechecker.typecheck_binding, UTBindType, cycle"
+
+        | None ->
+            failwith "TODO: Typechecker.typecheck_binding, UTBindType, success"
       end
 
   | UTBindModule((rngm, modnm), utsigopt2, utmod1) ->

@@ -13,6 +13,8 @@ module Variant : sig
 
   val compare : t -> t -> int
 
+  val hash : t -> int
+
   val show_direct : t -> string
 end
 
@@ -30,6 +32,8 @@ module Synonym : sig
 
   val compare : t -> t -> int
 
+  val hash : t -> int
+
   val show_direct : t -> string
 end
 
@@ -46,6 +50,8 @@ module Opaque : sig
   val equal : t -> t -> bool
 
   val compare : t -> t -> int
+
+  val hash : t -> int
 
   val show_direct : t -> string
 end

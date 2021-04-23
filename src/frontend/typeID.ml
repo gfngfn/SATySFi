@@ -6,6 +6,7 @@ module Scheme(M : sig val suffix : string end) : sig
   val fresh : string -> t
   val extract_name : t -> string
   val equal : t -> t -> bool
+  val hash : t -> int
   val compare : t -> t -> int
   val show_direct : t -> string
 end = struct
@@ -40,6 +41,10 @@ end = struct
 
   let equal (id1 : t) (id2 : t) =
     id1.number = id2.number
+
+
+  let hash (id : t) =
+    id.number
 
 
   let show_direct (id : t) : string =
