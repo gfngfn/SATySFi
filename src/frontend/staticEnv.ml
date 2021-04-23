@@ -85,11 +85,11 @@ module ConstructorMap = Map.Make(String)
 module MacroNameMap = Map.Make(String)
 
 type type_scheme = BoundID.t list * poly_type
-
+(*
 type type_definition =
   | Data  of int
   | Alias of type_scheme
-
+*)
 type value_entry = {
   val_name  : EvalVarID.t;
   val_type  : poly_type;
@@ -120,7 +120,7 @@ and struct_signature =
 
 and struct_signature_entry =
   | SSValue     of var_name * value_entry
-  | SSRecTypes  of (type_name * type_definition) list
+  | SSRecTypes  of (type_name * type_entry) list
   | SSModule    of module_name * module_entry
   | SSSignature of signature_name * signature abstracted
 
@@ -135,15 +135,14 @@ and module_entry = {
   mod_signature : signature;
 }
 
-and type_environment =
-  {
-    values       : (value_entry * bool ref) ValueNameMap.t;
-    types        : type_entry TypeNameMap.t;
-    modules      : module_entry ModuleNameMap.t;
-    signatures   : (signature abstracted) SignatureNameMap.t;
-    constructors : constructor_entry ConstructorMap.t;
-    macros       : macro_entry MacroNameMap.t;
-  }
+and type_environment = {
+  values       : (value_entry * bool ref) ValueNameMap.t;
+  types        : type_entry TypeNameMap.t;
+  modules      : module_entry ModuleNameMap.t;
+  signatures   : (signature abstracted) SignatureNameMap.t;
+  constructors : constructor_entry ConstructorMap.t;
+  macros       : macro_entry MacroNameMap.t;
+}
 
 (*
 exception UndefinedTypeName               of Range.t * module_name list * type_name * type_name list
@@ -248,6 +247,10 @@ module StructSig = struct
     )
 
 
+  let add_types (tydefs : (type_name * type_entry) list) (ssig : t) : t =
+    Alist.extend ssig (SSRecTypes(tydefs))
+
+
   let add_module (m : module_name) (mentry : module_entry) (ssig : t) : t =
     Alist.extend ssig (SSModule(m, mentry))
 
@@ -263,11 +266,17 @@ module StructSig = struct
     Alist.extend ssig (SSSignature(s, absmodsig))
 
 
-  let fold ~v:fv acc ssig =
-    failwith "TODO: StructSig.fold"
+  let fold ~v:fv ~t:ft ~m:fm ~s:fs acc (ssig : t) =
+    ssig |> Alist.to_list |> List.fold_left (fun acc entry ->
+      match entry with
+      | SSValue(x, ventry)        -> fv x ventry acc
+      | SSRecTypes(tydefs)        -> ft tydefs acc
+      | SSModule(m, mentry)       -> fm m mentry acc
+      | SSSignature(s, absmodsig) -> fs s absmodsig acc
+    ) acc
 
 
-  let union ssig1 ssig2 =
+  let union (ssig1 : t) (ssig2 : t) =
     failwith "TODO: StructSig.union"
 
 end

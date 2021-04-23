@@ -27,9 +27,9 @@ let ( ~! ) = Range.dummy
 
 let variant tyargs vid = DataType(tyargs, TypeID.Variant(vid))
 
-let synonym tyargs sid ty =
-  let () = failwith "TODO: register (sid |-> ty) to TypeStore" in
-  DataType(tyargs, TypeID.Synonym(sid))
+let synonym (sid : TypeID.Synonym.t) pty =
+  TypeDefinitionStore.add_synonym_type sid [] (Poly(pty));
+  DataType([], TypeID.Synonym(sid))
 
 (* -- base types and base type constructors -- *)
 let tU            = (~! "unit"    , BaseType(UnitType)    )
@@ -83,16 +83,16 @@ let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
 
 let tDECO_raw = tPT @-> tLN @-> tLN @-> tLN @-> (tL tGR)
-let tDECO = (~! "deco", synonym [] sid_deco tDECO_raw)
+let tDECO = (~! "deco", synonym sid_deco tDECO_raw)
 
 let tDECOSET_raw = tPROD [tDECO; tDECO; tDECO; tDECO]
-let tDECOSET = (~! "deco-set", synonym [] sid_decoset tDECOSET_raw)
+let tDECOSET = (~! "deco-set", synonym sid_decoset tDECOSET_raw)
 
 let tIGR_raw = tPT @-> (tL tGR)
-let tIGR = (~! "igraf", synonym [] sid_igraf tIGR_raw)
+let tIGR = (~! "igraf", synonym sid_igraf tIGR_raw)
 
 let tIGRO_raw = tLN @-> tPT @-> (tL tGR)
-let tIGRO = (~! "igrafo", synonym [] sid_igrafo tIGRO_raw)
+let tIGRO = (~! "igrafo", synonym sid_igrafo tIGRO_raw)
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 

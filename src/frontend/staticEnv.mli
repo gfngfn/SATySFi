@@ -1,11 +1,11 @@
 open Types
 
 type type_scheme = BoundID.t list * poly_type
-
+(*
 type type_definition =
   | Data  of int
   | Alias of type_scheme
-
+*)
 type struct_signature
 
 type signature =
@@ -97,12 +97,17 @@ module StructSig : sig
 
   val find_value : var_name -> t -> value_entry option
 
+  val add_types : (type_name * type_entry) list -> t -> t
+
   val add_module : module_name -> module_entry -> t -> t
 
   val add_signature : signature_name -> signature abstracted -> t -> t
 
   val fold :
     v:(var_name -> value_entry -> 'a -> 'a) ->
+    t:((type_name * type_entry) list -> 'a -> 'a) ->
+    m:(module_name -> module_entry -> 'a -> 'a) ->
+    s:(signature_name -> signature abstracted -> 'a -> 'a) ->
     'a -> t -> 'a
 
   val union : t -> t -> t

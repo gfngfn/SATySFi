@@ -1916,6 +1916,13 @@ and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signatu
 and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
   ssig |> StructSig.fold
       ~v:(fun x vtup -> Typeenv.add_value x vtup)
+      ~t:(fun tydefs tyenv ->
+        tydefs |> List.fold_left (fun tyenv (tynm, tentry) ->
+          tyenv |> Typeenv.add_type tynm tentry
+        ) tyenv
+      )
+      ~m:(fun modnm mentry -> Typeenv.add_module modnm mentry)
+      ~s:(fun signm absmodsig -> Typeenv.add_signature signm absmodsig)
       tyenv
 
 
