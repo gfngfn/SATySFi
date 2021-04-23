@@ -251,6 +251,18 @@ module StructSig = struct
     Alist.extend ssig (SSRecTypes(tydefs))
 
 
+  let find_type (tynm : type_name) (ssig : t) : type_entry option =
+    ssig |> Alist.to_list_rev |> List.find_map (function
+    | SSRecTypes(tydefs) ->
+        tydefs |> List.find_map (fun (tynm0, tentry) ->
+          if String.equal tynm tynm0 then Some(tentry) else None
+        )
+
+    | _ ->
+        None
+    )
+
+
   let add_module (m : module_name) (mentry : module_entry) (ssig : t) : t =
     Alist.extend ssig (SSModule(m, mentry))
 
@@ -266,6 +278,13 @@ module StructSig = struct
     Alist.extend ssig (SSSignature(s, absmodsig))
 
 
+  let find_signature (s : signature_name) (ssig : t) : (signature abstracted) option =
+    ssig |> Alist.to_list_rev |> List.find_map (function
+    | SSSignature(s0, absmodsig) -> if String.equal s s0 then Some(absmodsig) else None
+    | _                          -> None
+    )
+
+
   let fold ~v:fv ~t:ft ~m:fm ~s:fs acc (ssig : t) =
     ssig |> Alist.to_list |> List.fold_left (fun acc entry ->
       match entry with
@@ -276,8 +295,31 @@ module StructSig = struct
     ) acc
 
 
-  let union (ssig1 : t) (ssig2 : t) =
-    failwith "TODO: StructSig.union"
+  exception Conflict of string
+
+
+  let union (ssig1 : t) (ssig2 : t) : (t, string) result =
+    let check_none s opt =
+      match opt with
+      | None    -> ()
+      | Some(_) -> raise (Conflict(s))
+    in
+    try
+      let ssig =
+        ssig2 |> Alist.to_list |> List.fold_left (fun ssig entry ->
+          let () =
+            match entry with
+            | SSValue(x, _)         -> check_none x (find_value x ssig1)
+            | SSRecTypes(tydefs)    -> tydefs |> List.iter (fun (tynm, _) -> check_none tynm (find_type tynm ssig1))
+            | SSModule(modnm, _)    -> check_none modnm (find_module modnm ssig1)
+            | SSSignature(signm, _) -> check_none signm (find_signature signm ssig1)
+          in
+          Alist.extend ssig entry
+        ) ssig1
+      in
+      Ok(ssig)
+    with
+    | Conflict(s) -> Error(s)
 
 end
 

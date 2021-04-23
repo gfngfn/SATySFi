@@ -99,9 +99,15 @@ module StructSig : sig
 
   val add_types : (type_name * type_entry) list -> t -> t
 
+  val find_type : type_name -> t -> type_entry option
+
   val add_module : module_name -> module_entry -> t -> t
 
+  val find_module : module_name -> t -> module_entry option
+
   val add_signature : signature_name -> signature abstracted -> t -> t
+
+  val find_signature : signature_name -> t -> (signature abstracted) option
 
   val fold :
     v:(var_name -> value_entry -> 'a -> 'a) ->
@@ -110,7 +116,7 @@ module StructSig : sig
     s:(signature_name -> signature abstracted -> 'a -> 'a) ->
     'a -> t -> 'a
 
-  val union : t -> t -> t
+  val union : t -> t -> (t, string) result
 
 end
 
