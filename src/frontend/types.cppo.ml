@@ -386,8 +386,7 @@ type untyped_macro_parameter =
 [@@deriving show { with_path = false; } ]
 
 type untyped_binding =
-  untyped_binding_main
-    (* TEMPORARY; should `untyped_binding_main ranged` *)
+  untyped_binding_main ranged
 
 and untyped_binding_main =
   | UTBindValue     of untyped_rec_or_nonrec

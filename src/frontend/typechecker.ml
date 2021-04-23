@@ -28,7 +28,7 @@ exception LateMacroArgumentExpected      of Range.t * mono_type
 exception EarlyMacroArgumentExpected     of Range.t * mono_type
 exception IllegalNumberOfTypeArguments   of Range.t * type_name * int * int
 exception TypeParameterBoundMoreThanOnce of Range.t * type_variable_name
-exception ConflictInSignature            of string
+exception ConflictInSignature            of Range.t * string
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -1936,14 +1936,15 @@ and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untype
       let oidsetacc = OpaqueIDSet.union oidsetacc oidset in
       match StructSig.union ssigacc ssig with
       | Ok(ssigacc) -> (bindacc, tyenv, oidsetacc, ssigacc)
-      | Error(s)    -> raise (ConflictInSignature(s))
+      | Error(s)    -> let (rng, _) = utbind in raise (ConflictInSignature(rng, s))
     ) (Alist.empty, tyenv, OpaqueIDSet.empty, StructSig.empty)
   in
   (Alist.to_list bindacc, tyenv, (oidsetacc, ssigacc))
 
 
 and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding list * StructSig.t abstracted =
-  match utbind with
+  let (_, utbindmain) = utbind in
+  match utbindmain with
   | UTBindValue(valbind) ->
       let pre =
         {

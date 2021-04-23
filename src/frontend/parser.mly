@@ -426,41 +426,41 @@ headerelem:
   | content=HEADER_IMPORT  { let (_, s) = content in HeaderImport(s) }
 ;
 bind:
-  | LETREC; recbinds=nxrecdec {
-      UTBindValue(UTRec(recbinds))
+  | tokL=LETREC; recbinds=nxrecdec {
+      (tokL, UTBindValue(UTRec(recbinds)))
     }
-  | LETNONREC; utnonrecbind=nxnonrecdec {
-      UTBindValue(UTNonRec(utnonrecbind))
+  | tokL=LETNONREC; utnonrecbind=nxnonrecdec {
+      (tokL, UTBindValue(UTNonRec(utnonrecbind)))
     }
-  | LETMUTABLE; vartok=VAR; OVERWRITEEQ; utast1=nxlet {
+  | tokL=LETMUTABLE; vartok=VAR; OVERWRITEEQ; utast1=nxlet {
       let mutbind = (vartok, utast1) in
-      UTBindValue(UTMutable(mutbind))
+      (tokL, UTBindValue(UTMutable(mutbind)))
     }
-  | LETHORZ; utnonrecbind=nxhorzdec {
-      UTBindValue(UTNonRec(utnonrecbind))
+  | tokL=LETHORZ; utnonrecbind=nxhorzdec {
+      (tokL, UTBindValue(UTNonRec(utnonrecbind)))
     }
-  | LETVERT; utnonrecbind=nxvertdec {
-      UTBindValue(UTNonRec(utnonrecbind))
+  | tokL=LETVERT; utnonrecbind=nxvertdec {
+      (tokL, UTBindValue(UTNonRec(utnonrecbind)))
     }
-  | LETMATH; utnonrecbind=nxmathdec {
-      UTBindValue(UTNonRec(utnonrecbind))
+  | tokL=LETMATH; utnonrecbind=nxmathdec {
+      (tokL, UTBindValue(UTNonRec(utnonrecbind)))
     }
-  | TYPE; uttypebind=nxtyperecdec {
-      UTBindType(uttypebind)
+  | tokL=TYPE; uttypebind=nxtyperecdec {
+      (tokL, UTBindType(uttypebind))
     }
-  | MODULE; modnmtok=CONSTRUCTOR; utsigopt=nxsigannot; DEFEQ; utmod=nxmod {
-      UTBindModule(modnmtok, utsigopt, utmod)
+  | tokL=MODULE; modnmtok=CONSTRUCTOR; utsigopt=nxsigannot; DEFEQ; utmod=nxmod {
+      (tokL, UTBindModule(modnmtok, utsigopt, utmod))
     }
-  | OPEN; modnmtok=CONSTRUCTOR {
-      UTBindOpen(modnmtok)
+  | tokL=OPEN; modnmtok=CONSTRUCTOR {
+      (tokL, UTBindOpen(modnmtok))
     }
-  | LETHORZ; dec=nxhorzmacrodec {
+  | tokL=LETHORZ; dec=nxhorzmacrodec {
       let (rngcs, csnm, macparams, utast1) = dec in
-      UTBindHorzMacro((rngcs, csnm), macparams, utast1)
+      (tokL, UTBindHorzMacro((rngcs, csnm), macparams, utast1))
     }
-  | LETVERT; dec=nxvertmacrodec {
+  | tokL=LETVERT; dec=nxvertmacrodec {
       let (rngcs, csnm, macparams, utast1) = dec in
-      UTBindVertMacro((rngcs, csnm), macparams, utast1)
+      (tokL, UTBindVertMacro((rngcs, csnm), macparams, utast1))
     }
 ;
 nxtoplast:
