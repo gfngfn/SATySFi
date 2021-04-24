@@ -1950,8 +1950,9 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
             end
       end
 
-  | UTSigDecls(_utdecls) ->
-      failwith "TODO: typecheck_signature, UTSigDecls"
+  | UTSigDecls(utdecls) ->
+      let (oidset, ssig) = typecheck_declaration_list stage tyenv utdecls in
+      (oidset, ConcStructure(ssig))
 
   | UTSigFunctor((_, _modnm1), _utsig1, utsig2) ->
       failwith "TODO: typecheck_signature, UTSigFunctor"
@@ -1975,6 +1976,27 @@ and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t
       ~m:(fun modnm mentry -> Typeenv.add_module modnm mentry)
       ~s:(fun signm absmodsig -> Typeenv.add_signature signm absmodsig)
       tyenv
+
+
+and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : OpaqueIDSet.t * StructSig.t =
+  let (oidsetacc, ssigacc, _) =
+    utdecls |> List.fold_left (fun (oidsetacc, ssigacc, tyenv) utdecl ->
+      let (oidset, ssig) = typecheck_declaration stage tyenv utdecl in
+      let oidsetacc = OpaqueIDSet.union oidsetacc oidset in
+      let ssigacc =
+        match StructSig.union ssigacc ssig with
+        | Ok(ssigacc) -> ssigacc
+        | Error(s)    -> raise (ConflictInSignature(Range.dummy "TODO (error): add range to declarations", s))
+      in
+      let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
+      (oidsetacc, ssigacc, tyenv)
+    ) (OpaqueIDSet.empty, StructSig.empty, tyenv)
+  in
+  (oidsetacc, ssigacc)
+
+
+and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : OpaqueIDSet.t * StructSig.t =
+  failwith "TODO: typecheck_declaration"
 
 
 and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t abstracted =
