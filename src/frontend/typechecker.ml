@@ -30,6 +30,7 @@ exception IllegalNumberOfTypeArguments   of Range.t * type_name * int * int
 exception TypeParameterBoundMoreThanOnce of Range.t * type_variable_name
 exception ConflictInSignature            of Range.t * string
 exception NotOfStructureType             of Range.t * signature
+exception NotAStructureSignature         of Range.t
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -2033,14 +2034,35 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
   | UTDeclTypeOpaque(_) ->
       failwith "TODO: typecheck_declaration, UTDeclTypeOpaque"
 
-  | UTDeclModule(_) ->
-      failwith "TODO: typecheck_declaration, UTDeclModule"
+  | UTDeclModule((_, modnm), utsig) ->
+      let absmodsig = typecheck_signature stage tyenv utsig in
+      let (oidset, modsig) = absmodsig in
+      let mentry =
+        {
+          mod_name      = ModuleID.fresh modnm; (* TODO: make this `None` *)
+          mod_signature = modsig;
+        }
+      in
+      let ssig = StructSig.empty |> StructSig.add_module modnm mentry in
+      (oidset, ssig)
 
-  | UTDeclSignature(_) ->
-      failwith "TODO: typecheck_declaration, UTDeclSignature"
+  | UTDeclSignature((_, signm), utsig) ->
+      let absmodsig = typecheck_signature stage tyenv utsig in
+      let ssig = StructSig.empty |> StructSig.add_signature signm absmodsig in
+      (OpaqueIDSet.empty, ssig)
 
-  | UTDeclInclude(_) ->
-      failwith "TODO: typecheck_declaration, UTDeclInclude"
+  | UTDeclInclude(utsig) ->
+      let absmodsig = typecheck_signature stage tyenv utsig in
+      let (oidset, modsig) = absmodsig in
+      begin
+        match modsig with
+        | ConcFunctor(_) ->
+            let (rng, _) = utsig in
+            raise (NotAStructureSignature(rng))
+
+        | ConcStructure(ssig) ->
+            (oidset, ssig)
+      end
 
 
 and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t abstracted =
