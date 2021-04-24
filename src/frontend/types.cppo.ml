@@ -1127,7 +1127,13 @@ module FreeIDMap = Map.Make(FreeID)
 
 module SynonymIDSet = Set.Make(TypeID.Synonym)
 
+module SynonymIDMap = Map.Make(TypeID.Synonym)
+
 module SynonymIDHashTable = Hashtbl.Make(TypeID.Synonym)
+
+module VariantIDMap = Map.Make(TypeID.Variant)
+
+module OpaqueIDMap = Map.Make(TypeID.Opaque)
 
 module ConstructorMap = Map.Make(String)
 
