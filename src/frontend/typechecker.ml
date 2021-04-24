@@ -29,6 +29,7 @@ exception EarlyMacroArgumentExpected     of Range.t * mono_type
 exception IllegalNumberOfTypeArguments   of Range.t * type_name * int * int
 exception TypeParameterBoundMoreThanOnce of Range.t * type_variable_name
 exception ConflictInSignature            of Range.t * string
+exception NotOfStructureType             of Range.t * signature
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -1877,8 +1878,26 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       let (binds, _, (oidset, ssig)) = typecheck_binding_list stage tyenv utbinds in
       ((oidset, ConcStructure(ssig)), binds)
 
-  | UTModProjMod(_utmod1, (_, _modnm2)) ->
-      failwith "TODO: typecheck_module, UTModProjMod"
+  | UTModProjMod(utmod1, (_, modnm2)) ->
+      let (absmodsig1, binds) = typecheck_module stage tyenv utmod1 in
+      let (oidset, modsig1) = absmodsig1 in
+      begin
+        match modsig1 with
+        | ConcFunctor(_) ->
+            let (rng1, _) = utmod1 in
+            raise (NotOfStructureType(rng1, modsig1))
+
+        | ConcStructure(ssig1) ->
+            begin
+              match ssig1 |> StructSig.find_module modnm2 with
+              | None ->
+                  failwith "TODO: typecheck_module, UTModProjMod, not found"
+
+              | Some(mentry2) ->
+                  let absmodsig2 = (oidset, mentry2.mod_signature) in
+                  (absmodsig2, binds)
+            end
+      end
 
   | UTModFunctor((_, _modnm1), _utsig1, _utmod2) ->
       failwith "TODO: typecheck_module, UTModFunctor"
