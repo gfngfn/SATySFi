@@ -1055,7 +1055,7 @@ let setup_root_dirs () =
       | None    -> []
       | Some(s) -> [s]
     else
-      ["/usr/local/share/satysfi"; "/usr/share/satysfi"]
+      ["/opt/homebrew/share/satysfi"; "/usr/local/share/satysfi"; "/usr/share/satysfi"]
   in
   let home_dirs =
     if Sys.os_type = "Win32" then
