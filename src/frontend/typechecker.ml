@@ -2031,8 +2031,16 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
   | UTDeclTypeTrans(_) ->
       failwith "TODO: typecheck_declaration, UTDeclTypeTrans"
 
-  | UTDeclTypeOpaque(_) ->
-      failwith "TODO: typecheck_declaration, UTDeclTypeOpaque"
+  | UTDeclTypeOpaque((_, tynm), typarams) ->
+      let oid = TypeID.Opaque.fresh tynm in
+      let tentry =
+        {
+          type_id    = TypeID.Opaque(oid);
+          type_arity = List.length typarams;
+        }
+      in
+      let ssig = StructSig.empty |> StructSig.add_types [(tynm, tentry)] in
+      (OpaqueIDSet.singleton oid, ssig)
 
   | UTDeclModule((_, modnm), utsig) ->
       let absmodsig = typecheck_signature stage tyenv utsig in
