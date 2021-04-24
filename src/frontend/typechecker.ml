@@ -1904,8 +1904,35 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
             end
       end
 
-  | UTModFunctor((_, _modnm1), _utsig1, _utmod2) ->
-      failwith "TODO: typecheck_module, UTModFunctor"
+  | UTModFunctor((_, modnm1), utsig1, utmod2) ->
+      let absmodsig1 = typecheck_signature stage tyenv utsig1 in
+      let (oidset, modsig1) = absmodsig1 in
+      begin
+        match modsig1 with
+        | ConcFunctor(_) ->
+            failwith "TODO (error): typecheck_module, UTModFunctor"
+
+        | ConcStructure(ssig1) ->
+            let (absmodsig2, _binds) =
+              let mentry1 =
+                {
+                  mod_name      = ModuleID.fresh modnm1;
+                  mod_signature = modsig1;
+                }
+              in
+              let tyenv = tyenv |> Typeenv.add_module modnm1 mentry1 in
+              typecheck_module stage tyenv utmod2
+            in
+            let fsig =
+              {
+                opaques  = oidset;
+                domain   = modsig1;
+                codomain = absmodsig2;
+              }
+            in
+            let absmodsig = (OpaqueIDSet.empty, ConcFunctor(fsig)) in
+            (absmodsig, [])
+      end
 
   | UTModApply((_, _modnm1), (_, _modnm2)) ->
       failwith "TODO: typecheck_module, UTModApply"
