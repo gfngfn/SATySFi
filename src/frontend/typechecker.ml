@@ -275,6 +275,10 @@ let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type 
   aux Alist.empty ty
 
 
+let opaque_occurs (oidset : OpaqueIDSet.t) (modsig : signature) : bool =
+  failwith "TODO: opaque_occurs"
+
+
 let occurs (fid : FreeID.t) (ty : mono_type) =
 
   let lev =
@@ -1909,7 +1913,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       failwith "TODO: typecheck_module, UTModCoerce"
 
 
-and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signature abstracted =
+and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_signature) : signature abstracted =
   let (rng, utsigmain) = utsig in
   match utsigmain with
   | UTSigVar(signm) ->
@@ -1922,8 +1926,29 @@ and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signat
             absmodsig
       end
 
-  | UTSigPath(_utmod1, (_, _signm)) ->
-      failwith "TODO: typecheck_signature, UTSigPath"
+  | UTSigPath(utmod1, (_, signm2)) ->
+      let (absmodsig1, _binds1) = typecheck_module stage tyenv utmod1 in
+      let (oidset1, modsig1) = absmodsig1 in
+      begin
+        match modsig1 with
+        | ConcFunctor(_) ->
+            let (rng1, _) = utmod1 in
+            raise (NotOfStructureType(rng1, modsig1))
+
+        | ConcStructure(ssig1) ->
+            begin
+              match ssig1 |> StructSig.find_signature signm2 with
+              | None ->
+                  failwith "TODO (error): typecheck_signature, UTSigPath, not found"
+
+              | Some(absmodsig2) ->
+                  let (_, modsig2) = absmodsig2 in
+                  if opaque_occurs oidset1 modsig2 then
+                    failwith "TODO (error): typecheck_signature, UTSigPath, extrusion"
+                  else
+                    absmodsig2
+            end
+      end
 
   | UTSigDecls(_utdecls) ->
       failwith "TODO: typecheck_signature, UTSigDecls"
@@ -2160,7 +2185,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
 
         | Some(utsig2) ->
             let (_, modsig1) = absmodsig1 in
-            let absmodsig2 = typecheck_signature tyenv utsig2 in
+            let absmodsig2 = typecheck_signature stage tyenv utsig2 in
             coerce_signature rngm modsig1 absmodsig2
       in
       let mid = ModuleID.fresh modnm in
@@ -2176,7 +2201,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       ([ BindModule(mid, binds1) ], (oidset, ssig))
 
   | UTBindSignature((_, signm), utsig) ->
-      let absmodsig = typecheck_signature tyenv utsig in
+      let absmodsig = typecheck_signature stage tyenv utsig in
       let ssig = StructSig.empty |> StructSig.add_signature signm absmodsig in
       ([], (OpaqueIDSet.empty, ssig))
 
