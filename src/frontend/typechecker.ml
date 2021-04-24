@@ -1996,7 +1996,51 @@ and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : un
 
 
 and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : OpaqueIDSet.t * StructSig.t =
-  failwith "TODO: typecheck_declaration"
+  match utdecl with
+  | UTDeclValue((_, x) as var, _constrnts, mty) ->
+      let tyvars = [] in (* TODO: get universally quantified type variables *)
+      let pre =
+        let pre_init =
+          {
+            stage           = stage;
+            level           = Level.bottom;
+            type_parameters = TypeParameterMap.empty;
+            quantifiability = Quantifiable;
+          }
+        in
+        let (pre, _) = make_type_parameters pre_init tyvars in
+        { pre with level = Level.succ Level.bottom }
+      in
+      let ty = decode_manual_type pre tyenv mty in
+      let pty = generalize Level.bottom ty in
+      let evid = EvalVarID.fresh var in
+      let ventry =
+        {
+          val_stage = stage;
+          val_name  = evid; (* TODO: make this `None` *)
+          val_type  = pty;
+        }
+      in
+      let ssig = StructSig.empty |> StructSig.add_value x ventry in
+      (OpaqueIDSet.empty, ssig)
+
+  | UTDeclDirect(_) ->
+      failwith "TODO: typecheck_declaration, UTDeclDirect"
+
+  | UTDeclTypeTrans(_) ->
+      failwith "TODO: typecheck_declaration, UTDeclTypeTrans"
+
+  | UTDeclTypeOpaque(_) ->
+      failwith "TODO: typecheck_declaration, UTDeclTypeOpaque"
+
+  | UTDeclModule(_) ->
+      failwith "TODO: typecheck_declaration, UTDeclModule"
+
+  | UTDeclSignature(_) ->
+      failwith "TODO: typecheck_declaration, UTDeclSignature"
+
+  | UTDeclInclude(_) ->
+      failwith "TODO: typecheck_declaration, UTDeclInclude"
 
 
 and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t abstracted =
