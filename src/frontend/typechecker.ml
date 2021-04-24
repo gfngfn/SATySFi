@@ -66,7 +66,7 @@ let make_type_parameters (pre : pre) (tyvars : (type_variable_name ranged) list)
 let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm : constructor_name) (rng : Range.t) =
   match tyenv |> Typeenv.find_constructor constrnm with
   | None ->
-      failwith "TODO: find_constructor_and_instantiate, error handling"
+      failwith "TODO (error): find_constructor_and_instantiate, not found"
         (*
           let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
           raise (UndefinedConstructor(rng, constrnm, cands))
@@ -831,7 +831,7 @@ let rec typecheck
       begin
         match tyenv |> Typeenv.find_value varnm with
         | None ->
-            failwith "TODO: UTContentOf, error handling"
+            failwith "TODO (error): UTContentOf, not found"
 (*
             let cands = Typeenv.find_candidates tyenv mdlnmlst varnm rng in
             raise (UndefinedVariable(rng, mdlnmlst, varnm, cands))
@@ -1771,7 +1771,7 @@ and decode_manual_type_scheme (k : TypeID.t -> unit) (pre : pre) (tyenv : Typeen
                 begin
                   match base_type_map |> TypeNameMap.find_opt tynm with
                   | None ->
-                      failwith "TODO: report undefined type name"
+                      failwith "TODO (error): report undefined type name"
 
                   | Some(bt) ->
                       BaseType(bt)
@@ -1793,7 +1793,7 @@ and decode_manual_type_scheme (k : TypeID.t -> unit) (pre : pre) (tyenv : Typeen
           begin
             match pre.type_parameters |> TypeParameterMap.find_opt typaram with
             | None ->
-                failwith "TODO: unbound type parameter"
+                failwith "TODO (error): unbound type parameter"
 
             | Some(mbbid) ->
                 TypeVariable(MustBeBound(mbbid))
@@ -1867,7 +1867,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       begin
         match tyenv |> Typeenv.find_module modnm with
         | None ->
-            failwith "TODO: typecheck_module, UTModVar, error"
+            failwith "TODO (error): typecheck_module, UTModVar, not found"
 
         | Some(mentry) ->
             let modsig = mentry.mod_signature in
@@ -1891,7 +1891,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
             begin
               match ssig1 |> StructSig.find_module modnm2 with
               | None ->
-                  failwith "TODO: typecheck_module, UTModProjMod, not found"
+                  failwith "TODO (error): typecheck_module, UTModProjMod, not found"
 
               | Some(mentry2) ->
                   let absmodsig2 = (oidset, mentry2.mod_signature) in
@@ -1916,7 +1916,7 @@ and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signat
       begin
         match tyenv |> Typeenv.find_signature signm with
         | None ->
-            failwith "TODO: typecheck_signature, UTSigVar, error"
+            failwith "TODO (error): typecheck_signature, UTSigVar, not found"
 
         | Some(absmodsig) ->
             absmodsig
@@ -2113,32 +2113,42 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
             ) dependencies
           in
           TypeDefinitionStore.add_synonym_type sid bids pty_real;
-          let tydefacc = Alist.extend tydefacc (tyident, TypeID.Synonym(sid)) in
+          let tydefacc = Alist.extend tydefacc (tyident, TypeID.Synonym(sid), List.length bids) in
           (graph, tydefacc)
         ) (graph, Alist.empty)
       in
 
       (* Traverse each definition of the variant types. *)
-      let (_tydefacc, _ctordefacc) =
-        vntacc |> Alist.to_list |> List.fold_left (fun (tydefacc, ctordefacc) vnt ->
+      let tydefacc =
+        vntacc |> Alist.to_list |> List.fold_left (fun tydefacc vnt ->
           let (tyident, tyvars, vntbind, vid) = vnt in
           let (pre, bids) = make_type_parameters pre tyvars in
           let ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
           TypeDefinitionStore.add_variant_type vid bids ctorbrmap;
-          let tydefacc = Alist.extend tydefacc (tyident, TypeID.Variant(vid)) in
-          let ctordefacc = Alist.extend ctordefacc (vid, bids, ctorbrmap) in
-          (tydefacc, ctordefacc)
-        ) (tydefacc, Alist.empty)
+          Alist.extend tydefacc (tyident, TypeID.Variant(vid), List.length bids)
+        ) tydefacc
       in
 
       (* Check that no cyclic dependency exists among synonym types. *)
       begin
         match SynonymDependencyGraph.find_cycle graph with
         | Some(_cycle) ->
-            failwith "TODO: Typechecker.typecheck_binding, UTBindType, cycle"
+            failwith "TODO (error): Typechecker.typecheck_binding, UTBindType, cycle"
 
         | None ->
-            failwith "TODO: Typechecker.typecheck_binding, UTBindType, success"
+            let tydefs =
+              tydefacc |> Alist.to_list |> List.map (fun ((_, tynm), tyid, arity) ->
+                let tentry =
+                  {
+                    type_id    = tyid;
+                    type_arity = arity;
+                  }
+                in
+                (tynm, tentry)
+              )
+            in
+            let ssig = StructSig.empty |> StructSig.add_types tydefs in
+            ([], (OpaqueIDSet.empty, ssig))
       end
 
   | UTBindModule((rngm, modnm), utsigopt2, utmod1) ->
@@ -2179,7 +2189,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
             (binds, (oidset, ssig))
 
         | ConcFunctor(_) ->
-            failwith "TODO: Typechecker.typecheck_binding, UTBindInclude, error"
+            failwith "TODO (error): Typechecker.typecheck_binding, UTBindInclude, not a structure"
       end
 
   | UTBindOpen((_, _modnm)) ->
