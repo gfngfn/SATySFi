@@ -1125,6 +1125,14 @@ module BoundIDMap = Map.Make(BoundID)
 
 module FreeIDMap = Map.Make(FreeID)
 
+module SynonymIDSet = Set.Make(TypeID.Synonym)
+
+module SynonymIDHashTable = Hashtbl.Make(TypeID.Synonym)
+
+module ConstructorMap = Map.Make(String)
+
+type constructor_branch_map = poly_type ConstructorMap.t
+
 
 let get_range (rng, _) = rng
 

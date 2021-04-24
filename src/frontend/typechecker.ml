@@ -34,10 +34,6 @@ exception InternalInclusionError
 exception InternalContradictionError of bool
 
 
-module SynonymIDSet = Set.Make(TypeID.Synonym)
-module SynonymIDHashTable = Hashtbl.Make(TypeID.Synonym)
-
-
 let fresh_free_id (kd : mono_kind) (qtfbl : quantifiability) (lev : Level.t) =
   let fid = FreeID.fresh () in
   let fentry =
@@ -1853,6 +1849,16 @@ and decode_manual_type_and_get_dependency (vertices : SynonymIDSet.t) (pre : pre
   (ty, dependencies)
 
 
+and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
+  utctorbrs |> List.fold_left (fun ctormap utctorbr ->
+    match utctorbr with
+    | UTConstructorBranch((rng, ctornm), mtyarg) ->
+        let tyarg = decode_manual_type pre tyenv mtyarg in
+        let ptyarg = generalize pre.level tyarg in
+        ctormap |> ConstructorMap.add ctornm ptyarg
+  ) ConstructorMap.empty
+
+
 and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * binding list =
   let (rng, utmodmain) = utmod in
   match utmodmain with
@@ -2096,8 +2102,13 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       (* Traverse each definition of the variant types. *)
       let (_tydefacc, _ctordefacc) =
         vntacc |> Alist.to_list |> List.fold_left (fun (tydefacc, ctordefacc) vnt ->
-          let (_tyident, _tyvars, _vntbind, _vid) = vnt in
-          failwith "Typechecker.typecheck_binding, UTBindType, variants"
+          let (tyident, tyvars, vntbind, vid) = vnt in
+          let (pre, bids) = make_type_parameters pre tyvars in
+          let ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
+          TypeDefinitionStore.add_variant_type vid bids ctorbrmap;
+          let tydefacc = Alist.extend tydefacc (tyident, TypeID.Variant(vid)) in
+          let ctordefacc = Alist.extend ctordefacc (vid, bids, ctorbrmap) in
+          (tydefacc, ctordefacc)
         ) (tydefacc, Alist.empty)
       in
 
