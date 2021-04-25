@@ -2220,7 +2220,68 @@ and substitute_concrete (wtmap : WitnessMap.t) (modsig : signature) =
 
 
 and substitute_poly_type (wtmap : WitnessMap.t) (Poly(pty) : poly_type) : poly_type =
-  failwith "TODO: substitute_poly_type"
+  let rec aux (rng, ptymain) =
+    let ptymain =
+      match ptymain with
+      | BaseType(bt)  -> BaseType(bt)
+      | ListType(pty) -> ListType(aux pty)
+      | RefType(pty)  -> RefType(aux pty)
+      | CodeType(pty) -> CodeType(aux pty)
+
+      | HorzCommandType(pargs) -> HorzCommandType(pargs |> List.map aux_command_arg)
+      | VertCommandType(pargs) -> HorzCommandType(pargs |> List.map aux_command_arg)
+      | MathCommandType(pargs) -> HorzCommandType(pargs |> List.map aux_command_arg)
+
+      | FuncType(poptrow, ptydom, ptycod) ->
+          FuncType(aux_option_row poptrow, aux ptydom, aux ptycod)
+
+      | ProductType(ptys) ->
+          ProductType(ptys |> TupleList.map aux)
+
+      | TypeVariable(ptv) ->
+          TypeVariable(ptv)
+
+      | RecordType(labmap) ->
+          RecordType(labmap |> Assoc.map_value aux)
+
+      | DataType(ptyargs, TypeID.Opaque(oid_from)) ->
+          begin
+            match wtmap |> WitnessMap.find_opaque oid_from with
+            | None          -> DataType(ptyargs |> List.map aux, TypeID.Opaque(oid_from))
+            | Some(tyid_to) -> DataType(ptyargs |> List.map aux, tyid_to)
+          end
+
+      | DataType(ptyargs, TypeID.Synonym(sid_from)) ->
+          begin
+            match wtmap |> WitnessMap.find_synonym sid_from with
+            | None         -> DataType(ptyargs |> List.map aux, TypeID.Synonym(sid_from))
+                (* TODO: DOUBTFUL; maybe we must traverse the definition of type synonyms beforehand.
+                   → The replacement probably has been properly done by `substitute_structure`. *)
+            | Some(sid_to) -> DataType(ptyargs |> List.map aux, TypeID.Synonym(sid_to))
+          end
+
+      | DataType(ptyargs, TypeID.Variant(vid_from)) ->
+          begin
+            match wtmap |> WitnessMap.find_variant vid_from with
+            | None         -> DataType(ptyargs |> List.map aux, TypeID.Variant(vid_from))
+                (* TODO: DOUBTFUL; maybe we must traverse the definition of variant types beforehand.
+                   → The replacement probably has been properly done by `substitute_structure`. *)
+            | Some(vid_to) -> DataType(ptyargs |> List.map aux, TypeID.Variant(vid_to))
+          end
+    in
+    (rng, ptymain)
+
+  and aux_option_row = function
+    | OptionRowCons(pty, poptrow) -> OptionRowCons(aux pty, aux_option_row poptrow)
+    | OptionRowEmpty              -> OptionRowEmpty
+    | OptionRowVariable(prv)      -> OptionRowVariable(prv)
+
+  and aux_command_arg = function
+    | MandatoryArgumentType(pty) -> MandatoryArgumentType(aux pty)
+    | OptionalArgumentType(pty)  -> OptionalArgumentType(aux pty)
+
+  in
+  Poly(aux pty)
 
 
 and substitute_struct (wtmap : WitnessMap.t) (ssig : StructSig.t) : StructSig.t * WitnessMap.t =
