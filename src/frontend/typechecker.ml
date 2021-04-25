@@ -34,9 +34,12 @@ exception NotAStructureSignature         of Range.t
 exception MissingRequiredValueName       of Range.t * var_name * poly_type
 exception MissingRequiredTypeName        of Range.t * type_name * int
 exception MissingRequiredModuleName      of Range.t * module_name * signature
+exception MissingRequiredSignatureName   of Range.t * signature_name * signature abstracted
 exception NotASubtypeAboutType           of Range.t * type_name
 exception NotASubtypeVariant             of Range.t * TypeID.Variant.t * TypeID.Variant.t * constructor_name
 exception NotASubtypeSynonym             of Range.t * TypeID.Synonym.t * TypeID.Synonym.t
+exception NotASubtype                    of Range.t * signature * signature
+exception PolymorphicContradiction       of Range.t * var_name * poly_type * poly_type
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -2319,8 +2322,77 @@ and substitute_struct (wtmap : WitnessMap.t) (ssig : StructSig.t) : StructSig.t 
         wtmap
 
 
+and subtype_abstract_with_abstract (rng : Range.t) (absmodsig1 : signature abstracted) (absmodsig2 : signature abstracted) : unit =
+  let (_, modsig1) = absmodsig1 in
+  let _ = subtype_concrete_with_abstract rng modsig1 absmodsig2 in
+  ()
+
+
+(* `subtype_concrete_with_concrete rng wtmap modsig1 modsig2` asserts that
+   `modsig1 <= [wtmap]modsig2` holds (where `[-]-` is the application of a substitution). *)
 and subtype_concrete_with_concrete (rng : Range.t) (wtmap : WitnessMap.t) (modsig1 : signature) (modsig2 : signature) =
-  failwith "TODO: subtype_concrete_with_concrete"
+  match (modsig1, modsig2) with
+  | (ConcFunctor(fsig1), ConcFunctor(fsig2)) ->
+      let
+        {
+          opaques  = oidset1;
+          domain   = ssig1;
+          codomain = absmodsigcod1;
+        } = fsig1
+      in
+      let
+        {
+          opaques  = oidset2;
+          domain   = ssig2;
+          codomain = absmodsigcod2;
+        } = fsig2
+      in
+      let wtmap =
+        let modsigdom1 = ConcStructure(ssig1) in
+        let modsigdom2 = ConcStructure(ssig2) in
+        subtype_concrete_with_abstract rng modsigdom2 (oidset1, modsigdom1)
+      in
+      let (absmodsigcod1, _) = absmodsigcod1 |> substitute_abstract wtmap in
+      subtype_abstract_with_abstract rng absmodsigcod1 absmodsigcod2
+
+  | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
+      ssig2 |> StructSig.fold
+          ~v:(fun x2 { val_type = pty2; _ } () ->
+            match ssig1 |> StructSig.find_value x2 with
+            | None ->
+                raise (MissingRequiredValueName(rng, x2, pty2))
+
+            | Some({ val_type = pty1; _ }) ->
+               if subtype_poly_type wtmap pty1 pty2 then
+                 ()
+               else
+                 raise (PolymorphicContradiction(rng, x2, pty1, pty2))
+          )
+          ~t:(fun _ () ->
+            ()
+          )
+          ~m:(fun modnm2 { mod_signature = modsig2; _ } () ->
+            match ssig1 |> StructSig.find_module modnm2 with
+            | None ->
+                raise (MissingRequiredModuleName(rng, modnm2, modsig2))
+
+            | Some({ mod_signature = modsig1; _ }) ->
+                subtype_concrete_with_concrete rng wtmap modsig1 modsig2
+          )
+          ~s:(fun signm2 absmodsig2 () ->
+            match ssig1 |> StructSig.find_signature signm2 with
+            | None ->
+                raise (MissingRequiredSignatureName(rng, signm2, absmodsig2))
+
+            | Some(absmodsig1) ->
+                subtype_abstract_with_abstract rng absmodsig1 absmodsig2;
+                subtype_abstract_with_abstract rng absmodsig2 absmodsig1;
+                ()
+          )
+          ()
+
+  | _ ->
+      raise (NotASubtype(rng, modsig1, modsig2))
 
 
 and subtype_concrete_with_abstract (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) =
@@ -2713,6 +2785,24 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
 *)
 and subtype_poly_type_scheme (wtmap : WitnessMap.t) (internbid : BoundID.t -> poly_type -> bool) (pty1 : poly_type) (pty2 : poly_type) : bool =
   failwith "TODO: subtype_poly_type_scheme"
+
+
+and subtype_poly_type (wtmap : WitnessMap.t) (pty1 : poly_type) (pty2 : poly_type) : bool =
+  let bidht = BoundIDHashTable.create 32 in
+  let internbid (bid1 : BoundID.t) (pty2 : poly_type) : bool =
+    match BoundIDHashTable.find_opt bidht bid1 with
+    | None ->
+        BoundIDHashTable.add bidht bid1 pty2;
+        true
+
+    | Some(pty) ->
+        poly_type_equal pty pty2
+  in
+  subtype_poly_type_scheme wtmap internbid pty1 pty2
+
+
+and poly_type_equal (pty1 : poly_type) (pty2 : poly_type) : bool =
+  failwith "TODO: poly_type_equal"
 
 
 and subtype_type_abstraction (wtmap : WitnessMap.t) (ptyfun1 : BoundID.t list * poly_type) (ptyfun2 : BoundID.t list * poly_type) : bool =
