@@ -1686,19 +1686,19 @@ and typecheck_itemize_list
 
 and typecheck_pattern_branch (pre : pre) (tyenv : Typeenv.t) (utpatbr : untyped_pattern_branch) : pattern_branch * mono_type * mono_type =
   match utpatbr with
-    | UTPatternBranch(utpat, utast1) ->
-        let (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
-        let tyenvpat = add_pattern_var_mono pre tyenv patvarmap in
-        let (e1, ty1) = typecheck pre tyenvpat utast1 in
-        (PatternBranch(epat, e1), typat, ty1)
+  | UTPatternBranch(utpat, utast1) ->
+      let (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
+      let tyenvpat = add_pattern_var_mono pre tyenv patvarmap in
+      let (e1, ty1) = typecheck pre tyenvpat utast1 in
+      (PatternBranch(epat, e1), typat, ty1)
 
-    | UTPatternBranchWhen(utpat, utastB, utast1) ->
-        let (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
-        let tyenvpat = add_pattern_var_mono pre tyenv patvarmap in
-        let (eB, tyB) = typecheck pre tyenvpat utastB in
-        unify tyB (Range.dummy "pattern-match-cons-when", BaseType(BoolType));
-        let (e1, ty1) = typecheck pre tyenvpat utast1 in
-        (PatternBranchWhen(epat, eB, e1), typat, ty1)
+  | UTPatternBranchWhen(utpat, utastB, utast1) ->
+      let (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
+      let tyenvpat = add_pattern_var_mono pre tyenv patvarmap in
+      let (eB, tyB) = typecheck pre tyenvpat utastB in
+      unify tyB (Range.dummy "pattern-match-cons-when", BaseType(BoolType));
+      let (e1, ty1) = typecheck pre tyenvpat utast1 in
+      (PatternBranchWhen(epat, eB, e1), typat, ty1)
 
 
 and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : pattern_branch list =
@@ -2256,7 +2256,7 @@ and substitute_poly_type (wtmap : WitnessMap.t) (Poly(pty) : poly_type) : poly_t
             match wtmap |> WitnessMap.find_synonym sid_from with
             | None         -> DataType(ptyargs |> List.map aux, TypeID.Synonym(sid_from))
                 (* TODO: DOUBTFUL; maybe we must traverse the definition of type synonyms beforehand.
-                   → The replacement probably has been properly done by `substitute_structure`. *)
+                   → The replacement probably has been properly done by `substitute_struct`. *)
             | Some(sid_to) -> DataType(ptyargs |> List.map aux, TypeID.Synonym(sid_to))
           end
 
@@ -2265,7 +2265,7 @@ and substitute_poly_type (wtmap : WitnessMap.t) (Poly(pty) : poly_type) : poly_t
             match wtmap |> WitnessMap.find_variant vid_from with
             | None         -> DataType(ptyargs |> List.map aux, TypeID.Variant(vid_from))
                 (* TODO: DOUBTFUL; maybe we must traverse the definition of variant types beforehand.
-                   → The replacement probably has been properly done by `substitute_structure`. *)
+                   → The replacement probably has been properly done by `substitute_struct`. *)
             | Some(vid_to) -> DataType(ptyargs |> List.map aux, TypeID.Variant(vid_to))
           end
     in
