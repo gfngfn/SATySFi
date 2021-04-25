@@ -14,7 +14,7 @@ type signature =
 
 and functor_signature = {
   opaques  : OpaqueIDSet.t;
-  domain   : signature;
+  domain   : struct_signature;
   codomain : OpaqueIDSet.t * signature;
 }
 
@@ -115,6 +115,13 @@ module StructSig : sig
     m:(module_name -> module_entry -> 'a -> 'a) ->
     s:(signature_name -> signature abstracted -> 'a -> 'a) ->
     'a -> t -> 'a
+
+  val map_and_fold :
+    v:(var_name -> value_entry -> 'a -> value_entry * 'a) ->
+    t:((type_name * type_entry) list -> 'a -> type_entry list * 'a) ->
+    m:(module_name -> module_entry -> 'a -> module_entry * 'a) ->
+    s:(signature_name -> signature abstracted -> 'a -> signature abstracted * 'a) ->
+    'a -> t -> t * 'a
 
   val union : t -> t -> (t, string) result
 

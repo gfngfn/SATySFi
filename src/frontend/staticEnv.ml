@@ -116,7 +116,7 @@ and struct_signature_entry =
 
 and functor_signature = {
   opaques  : OpaqueIDSet.t;
-  domain   : signature;
+  domain   : struct_signature;
   codomain : OpaqueIDSet.t * signature;
 }
 
@@ -271,6 +271,29 @@ module StructSig = struct
       | SSModule(m, mentry)       -> fm m mentry acc
       | SSSignature(s, absmodsig) -> fs s absmodsig acc
     ) acc
+
+
+  let map_and_fold ~v:fv ~t:ft ~m:fm ~s:fs acc (sigr : t) =
+      sigr |> Alist.to_list |> List.fold_left (fun (sigracc, acc) entry ->
+        match entry with
+        | SSValue(x, ventry) ->
+            let (ventry, acc) = fv x ventry acc in
+            (Alist.extend sigracc (SSValue(x, ventry)), acc)
+
+        | SSRecTypes(tydefs) ->
+            let tynms = tydefs |> List.map fst in
+            let (tyopacs, acc) = ft tydefs acc in
+            (Alist.extend sigracc (SSRecTypes(List.combine tynms tyopacs)), acc)
+
+        | SSModule(modnm, mentry) ->
+            let (mentry, acc) = fm modnm mentry acc in
+            (Alist.extend sigracc (SSModule(modnm, mentry)), acc)
+
+        | SSSignature(signm, absmodsig) ->
+            let (absmodsig, acc) = fs signm absmodsig acc in
+            (Alist.extend sigracc (SSSignature(signm, absmodsig)), acc)
+
+      ) (Alist.empty, acc)
 
 
   exception Conflict of string
