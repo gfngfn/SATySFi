@@ -16,12 +16,34 @@ This software was supported by:
 
 and its development continues to this day (February 2021).
 
-## Install using Homebrew (for OS X users)
+## Install using Satyrographos (for non-devs)
 
-A Homebrew formula is provided for SATySFi (v0.0.2).
+You can install SATySFi with package manager [Satyrographos](https://github.com/na4zagin3/satyrographos/blob/master/README.md).
 
 ```sh
-$ brew install --HEAD nyuichi/satysfi/satysfi
+# For Ubuntu 20.04
+sudo apt-get update
+sudo apt-get install build-essential git m4 unzip curl pkg-config
+sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+
+# For Mac
+# Please make sure homebrew is installed. Otherwise, follow https://brew.sh/
+brew update
+brew install opam
+
+# Common: Set up OPAM
+opam init
+eval $(opam env)
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
+opam repository add satyrographos https://github.com/na4zagin3/satyrographos-repo.git
+opam update
+
+# Common: Install SATySFi
+opam depext satysfi satysfi-dist satyrographos
+opam install satysfi satysfi-dist satyrographos
+
+# Common: Set up the SATySFi standard library
+satyrographos install
 ```
 
 ## Install using OPAM
