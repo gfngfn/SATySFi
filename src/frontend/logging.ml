@@ -146,7 +146,7 @@ let warn_cmyk_image file_name =
 
 
 let warn_math_script_without_brace rng =
-  Format.printf "  [Warning] at %a: math script without brace.\n" Range.pp rng
+  Format.printf "  [Warning] at %s: math script without brace.\n" (Range.to_string rng)
 
 
 let warn_noninjective_cmap uchpre uch gidorg =
