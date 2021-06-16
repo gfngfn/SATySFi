@@ -24,6 +24,7 @@ exception UndefinedVertMacro             of Range.t * ctrlseq_name
 exception InvalidNumberOfMacroArguments  of Range.t * Typeenv.t * macro_parameter_type list
 exception LateMacroArgumentExpected      of Range.t * Typeenv.t * mono_type
 exception EarlyMacroArgumentExpected     of Range.t * Typeenv.t * mono_type
+exception MultiCharacterMathScriptWithoutBrace of Range.t
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -1091,10 +1092,23 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
 
 and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
   let iter = typecheck_math pre tyenv in
+  let check_brace (has_braceS : bool) (utmathS : untyped_math) : unit =
+    match (has_braceS, utmathS) with
+    | (true, _) ->
+        ()
+
+    | (false, (rng, UTMChars(uchs))) ->
+        if List.length uchs >= 2 then
+          raise (MultiCharacterMathScriptWithoutBrace(rng))
+        else
+          Logging.warn_math_script_without_brace rng
+
+    | (false, (rng, _)) ->
+        Logging.warn_math_script_without_brace rng
+  in
   let open HorzBox in
     match utmathmain with
-    | UTMChar(s) ->
-        let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+    | UTMChars(uchs) ->
         let ms = uchs |> List.map (fun uch -> MathPure(MathVariantChar(uch))) in
         ASTMath(ms)
 
@@ -1102,12 +1116,14 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
         let astlst = utmathlst |> List.map iter in
         BackendMathList(astlst)
 
-    | UTMSubScript(utmathB, utmathS) ->
+    | UTMSubScript(utmathB, has_braceS, utmathS) ->
+        check_brace has_braceS utmathS;
         let astB = iter utmathB in
         let astS = iter utmathS in
         BackendMathSubscript(astB, astS)
 
-    | UTMSuperScript(utmathB, utmathS) ->
+    | UTMSuperScript(utmathB, has_braceS, utmathS) ->
+        check_brace has_braceS utmathS;
         let astB = iter utmathB in
         let astS = iter utmathS in
         BackendMathSuperscript(astB, astS)

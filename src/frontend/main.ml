@@ -848,6 +848,13 @@ let error_log_environment suspended =
         NormalLine("and thus it cannot be applied to arguments.");
       ]
 
+  | Typechecker.MultiCharacterMathScriptWithoutBrace(rng) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("more than one character is used as a math sub/superscript without braces;");
+        NormalLine("use braces for making association explicit.");
+      ]
+
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");

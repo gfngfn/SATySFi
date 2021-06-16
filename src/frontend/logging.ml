@@ -145,6 +145,10 @@ let warn_cmyk_image file_name =
   print_endline ("  Please convert the image to a jpeg image with YCbCr (RGB) color model.")
 
 
+let warn_math_script_without_brace rng =
+  Format.printf "  [Warning] at %s: math script without brace.\n" (Range.to_string rng)
+
+
 let warn_noninjective_cmap uchpre uch gidorg =
   Format.printf "  [Warning] Multiple Unicode code points (U+%04X and U+%04X) are mapped to the same GID %d.\n" (Uchar.to_int uchpre) (Uchar.to_int uch) gidorg
 
