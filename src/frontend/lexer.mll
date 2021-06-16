@@ -554,8 +554,8 @@ and mathexpr stack = parse
   | "^" { SUPERSCRIPT(get_pos lexbuf) }
   | "_" { SUBSCRIPT(get_pos lexbuf) }
   | "'"+ { let n = String.length (Lexing.lexeme lexbuf) in PRIMES(get_pos lexbuf, n) }
-  | (mathsymboltop (mathsymbol*)) { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | mathstr+ { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | (mathsymboltop (mathsymbol*)) { MATHCHARS(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | mathstr+ { MATHCHARS(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("#" (identifier as varnm)) {
       VARINMATH(get_pos lexbuf, [], varnm)
     }
@@ -577,7 +577,7 @@ and mathexpr stack = parse
     }
   | ("\\" symbol) {
       let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in
-        MATHCHAR(get_pos lexbuf, tok)
+        MATHCHARS(get_pos lexbuf, tok)
     }
   | _ as c { report_error lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in a math area") }
 

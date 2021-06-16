@@ -383,7 +383,7 @@
 %token <Range.t * string * bool * bool> LITERAL
 %token <Range.t * Types.input_position * string> POSITIONED_LITERAL
 %token <Range.t> SPACE BREAK
-%token <Range.t * string> MATHCHAR
+%token <Range.t * string> MATHCHARS
 %token <Range.t * int> PRIMES
 %token <Range.t> SUBSCRIPT SUPERSCRIPT
 %token <Range.t> LAMBDA ARROW COMMAND
@@ -1120,7 +1120,9 @@ mathgroup:
   | utm=mathbot                              { utm }
 ;
 mathbot:
-  | tok=MATHCHAR                    { let (rng, char) = tok in (rng, UTMChar(char)) }
+  | tok=MATHCHARS {
+      let (rng, s) = tok in (rng, UTMChar(s))
+    }
   | mcmd=mcmd; arglst=list(matharg) {
       let (rngcmd, mdlnmlst, csnm) = mcmd in
       let rnglast =
