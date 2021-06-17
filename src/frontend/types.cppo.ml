@@ -586,9 +586,10 @@ and untyped_type_argument = Range.t * var_name * manual_kind
 and untyped_math = Range.t * untyped_math_main
 
 and untyped_math_main =
-  | UTMChar        of string
-  | UTMSuperScript of untyped_math * untyped_math
-  | UTMSubScript   of untyped_math * untyped_math
+  | UTMChars       of Uchar.t list
+      [@printer (fun ppf uchs -> Format.fprintf ppf "UTMChars(_)")]
+  | UTMSuperScript of untyped_math * bool * untyped_math
+  | UTMSubScript   of untyped_math * bool * untyped_math
   | UTMCommand     of untyped_abstract_tree * untyped_command_argument list
   | UTMList        of untyped_math list
   | UTMEmbed       of untyped_abstract_tree

@@ -17,12 +17,35 @@
 
 また，2021年2月現在も発展を続けています。
 
-## Homebrew を使ったインストール方法 (Mac ユーザ向け)
+## Satyrographos を使ったインストール方法 (初心者向け)
 
-Homebrew のフォーミュラが用意されています。
+パッケージマネージャー [Satyrographos](https://github.com/na4zagin3/satyrographos/blob/master/README-ja.md) を用いたインストール方法が用意されています。
+詳しくは [SATySFi インストール手引き](https://qiita.com/na4zagin3/items/a6e025c17ef991a4c923) をご覧下さい。
 
 ```sh
-$ brew install --HEAD nyuichi/satysfi/satysfi
+# Ubuntu 20.04 の場合
+sudo apt-get update
+sudo apt-get install build-essential git m4 unzip curl pkg-config
+sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+
+# Mac の場合
+# 要 homebrew (https://brew.sh/index_ja に従いインストールして下さい)
+brew update
+brew install opam
+
+# 共通 OPAM の設定
+opam init
+eval $(opam env)
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
+opam repository add satyrographos https://github.com/na4zagin3/satyrographos-repo.git
+opam update
+
+# 共通 SATySFi のインストール
+opam depext satysfi satysfi-dist satyrographos
+opam install satysfi satysfi-dist satyrographos
+
+# 共通 SATySFi 標準ライブラリのセットアップ
+satyrographos install
 ```
 
 ## OPAM を使ったインストール方法

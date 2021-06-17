@@ -24,6 +24,7 @@ exception InvalidNumberOfMacroArguments  of Range.t * macro_parameter_type list
 exception LateMacroArgumentExpected      of Range.t * mono_type
 exception EarlyMacroArgumentExpected     of Range.t * mono_type
 exception IllegalNumberOfTypeArguments   of Range.t * type_name * int * int
+exception MultiCharacterMathScriptWithoutBrace of Range.t
 
 val main_bindings : stage -> Typeenv.t -> untyped_binding list -> binding list * Typeenv.t
 
