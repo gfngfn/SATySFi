@@ -1985,33 +1985,29 @@ and lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substituti
   failwith "TODO: lookup_type_entry"
 
 
-and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) =
+and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : substitution =
   let take_left = (fun _tyid to1 _to2 -> Some(to1)) in
   match (modsig1, modsig2) with
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
       ssig2 |> StructSig.fold
-          ~v:(fun x2 { val_type = pty2; _ } subst ->
-            match ssig1 |> StructSig.find_value x2 with
-            | None    -> raise (MissingRequiredValueName(rng, x2, pty2))
-            | Some(_) -> subst
+          ~v:(fun _x2 _ventry2 subst ->
+            subst
           )
-          ~t:(fun tydefs2 subst ->
-            tydefs2 |> List.fold_left (fun wtmapacc (tynm2, tentry2) ->
-              match ssig1 |> StructSig.find_type tynm2 with
-              | None ->
-                  let (bids, _) = tentry2.type_scheme in
-                  raise (MissingRequiredTypeName(rng, tynm2, List.length bids))
+          ~t:(fun tynm2 tentry2 subst ->
+            match ssig1 |> StructSig.find_type tynm2 with
+            | None ->
+                let (bids, _) = tentry2.type_scheme in
+                raise (MissingRequiredTypeName(rng, tynm2, List.length bids))
 
-              | Some(tentry1) ->
-                  begin
-                    match lookup_type_entry tentry1 tentry2 with
-                    | None ->
-                        raise (NotASubtypeAboutType(rng, tynm2))
+            | Some(tentry1) ->
+                begin
+                  match lookup_type_entry tentry1 tentry2 with
+                  | None ->
+                      raise (NotASubtypeAboutType(rng, tynm2))
 
-                    | Some(subst0) ->
-                        SubstMap.union take_left subst0 subst
-                  end
-            ) subst
+                  | Some(subst0) ->
+                      SubstMap.union take_left subst0 subst
+                end
           )
           ~m:(fun modnm2 { mod_signature = modsig2; _ } subst ->
             match ssig1 |> StructSig.find_module modnm2 with
@@ -2269,8 +2265,21 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                else
                  raise (PolymorphicContradiction(rng, x2, pty1, pty2))
           )
-          ~t:(fun _ () ->
-            ()
+          ~t:(fun tynm2 tentry2 () ->
+            match ssig1 |> StructSig.find_type tynm2 with
+            | None ->
+                let arity =
+                  let (bids, _) = tentry2.type_scheme in
+                  List.length bids
+                in
+                raise (MissingRequiredTypeName(rng, tynm2, arity))
+
+            | Some(tentry1) ->
+                let tyscheme1 = tentry1.type_scheme in
+                let tyscheme2 = tentry2.type_scheme in
+                subtype_type_scheme tyscheme1 tyscheme2;
+                subtype_type_scheme tyscheme2 tyscheme1;
+                ()
           )
           ~m:(fun modnm2 { mod_signature = modsig2; _ } () ->
             match ssig1 |> StructSig.find_module modnm2 with
@@ -2308,6 +2317,10 @@ and subtype_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signat
   subtype_concrete_with_abstract rng modsig1 absmodsig2
 
 
+and subtype_type_scheme (tyscheme1 : type_scheme) (tyscheme2 : type_scheme) =
+  failwith "TODO: subtype_type_scheme"
+
+
 and copy_contents (modsig1 : signature) (modsig2 : signature) =
   failwith "TODO: copy_contents"
 
@@ -2320,12 +2333,8 @@ and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signatu
 
 and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
   ssig |> StructSig.fold
-      ~v:(fun x vtup -> Typeenv.add_value x vtup)
-      ~t:(fun tydefs tyenv ->
-        tydefs |> List.fold_left (fun tyenv (tynm, tentry) ->
-          tyenv |> Typeenv.add_type tynm tentry
-        ) tyenv
-      )
+      ~v:(fun x ventry -> Typeenv.add_value x ventry)
+      ~t:(fun tynm tentry -> Typeenv.add_type tynm tentry)
       ~m:(fun modnm mentry -> Typeenv.add_module modnm mentry)
       ~s:(fun signm absmodsig -> Typeenv.add_signature signm absmodsig)
       tyenv
@@ -2392,7 +2401,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
           type_kind   = failwith "TODO: UTDeclTypeOpaque, type_kind";
         }
       in
-      let ssig = StructSig.empty |> StructSig.add_types [(tynm, tentry)] in
+      let ssig = StructSig.empty |> StructSig.add_type tynm tentry in
       (OpaqueIDSet.singleton tyid, ssig)
 
   | UTDeclModule((_, modnm), utsig) ->
@@ -2616,18 +2625,17 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
         ) tydefacc
       in
 
-      let tydefs =
-        tydefacc |> Alist.to_list |> List.map (fun ((_, tynm), tyid, arity) ->
+      let ssig =
+        tydefacc |> Alist.to_list |> List.fold_left (fun ssig ((_, tynm), tyid, arity) ->
           let tentry =
             {
               type_scheme = failwith "TODO: make type scheme";
               type_kind   = failwith "TODO: make kind";
             }
           in
-          (tynm, tentry)
-        )
+          ssig |> StructSig.add_type tynm tentry
+        ) StructSig.empty
       in
-      let ssig = StructSig.empty |> StructSig.add_types tydefs in
       ([], (OpaqueIDSet.empty, ssig))
 
   | UTBindModule((rngm, modnm), utsigopt2, utmod1) ->

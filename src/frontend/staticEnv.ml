@@ -110,7 +110,7 @@ and struct_signature =
 
 and struct_signature_entry =
   | SSValue     of var_name * value_entry
-  | SSRecTypes  of (type_name * type_entry) list
+  | SSType      of type_name * type_entry
   | SSModule    of module_name * module_entry
   | SSSignature of signature_name * signature abstracted
 
@@ -225,19 +225,14 @@ module StructSig = struct
     )
 
 
-  let add_types (tydefs : (type_name * type_entry) list) (ssig : t) : t =
-    Alist.extend ssig (SSRecTypes(tydefs))
+  let add_type (tynm : type_name) (tentry : type_entry) (ssig : t) : t =
+    Alist.extend ssig (SSType(tynm, tentry))
 
 
   let find_type (tynm : type_name) (ssig : t) : type_entry option =
     ssig |> Alist.to_list_rev |> List.find_map (function
-    | SSRecTypes(tydefs) ->
-        tydefs |> List.find_map (fun (tynm0, tentry) ->
-          if String.equal tynm tynm0 then Some(tentry) else None
-        )
-
-    | _ ->
-        None
+    | SSType(tynm0, tentry) -> if String.equal tynm tynm0 then Some(tentry) else None
+    | _                     -> None
     )
 
 
@@ -267,7 +262,7 @@ module StructSig = struct
     ssig |> Alist.to_list |> List.fold_left (fun acc entry ->
       match entry with
       | SSValue(x, ventry)        -> fv x ventry acc
-      | SSRecTypes(tydefs)        -> ft tydefs acc
+      | SSType(tynm, tentry)      -> ft tynm tentry acc
       | SSModule(m, mentry)       -> fm m mentry acc
       | SSSignature(s, absmodsig) -> fs s absmodsig acc
     ) acc
@@ -280,10 +275,9 @@ module StructSig = struct
             let (ventry, acc) = fv x ventry acc in
             (Alist.extend sigracc (SSValue(x, ventry)), acc)
 
-        | SSRecTypes(tydefs) ->
-            let tynms = tydefs |> List.map fst in
-            let (tyopacs, acc) = ft tydefs acc in
-            (Alist.extend sigracc (SSRecTypes(List.combine tynms tyopacs)), acc)
+        | SSType(tynm, tentry) ->
+            let (tentry, acc) = ft tynm tentry acc in
+            (Alist.extend sigracc (SSType(tynm, tentry)), acc)
 
         | SSModule(modnm, mentry) ->
             let (mentry, acc) = fm modnm mentry acc in
@@ -311,7 +305,7 @@ module StructSig = struct
           let () =
             match entry with
             | SSValue(x, _)         -> check_none x (find_value x ssig1)
-            | SSRecTypes(tydefs)    -> tydefs |> List.iter (fun (tynm, _) -> check_none tynm (find_type tynm ssig1))
+            | SSType(tynm, _)       -> check_none tynm (find_type tynm ssig1)
             | SSModule(modnm, _)    -> check_none modnm (find_module modnm ssig1)
             | SSSignature(signm, _) -> check_none signm (find_signature signm ssig1)
           in

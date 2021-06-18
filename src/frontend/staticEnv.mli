@@ -97,7 +97,7 @@ module StructSig : sig
 
   val find_value : var_name -> t -> value_entry option
 
-  val add_types : (type_name * type_entry) list -> t -> t
+  val add_type : type_name -> type_entry -> t -> t
 
   val find_type : type_name -> t -> type_entry option
 
@@ -111,14 +111,14 @@ module StructSig : sig
 
   val fold :
     v:(var_name -> value_entry -> 'a -> 'a) ->
-    t:((type_name * type_entry) list -> 'a -> 'a) ->
+    t:(type_name -> type_entry -> 'a -> 'a) ->
     m:(module_name -> module_entry -> 'a -> 'a) ->
     s:(signature_name -> signature abstracted -> 'a -> 'a) ->
     'a -> t -> 'a
 
   val map_and_fold :
     v:(var_name -> value_entry -> 'a -> value_entry * 'a) ->
-    t:((type_name * type_entry) list -> 'a -> type_entry list * 'a) ->
+    t:(type_name -> type_entry -> 'a -> type_entry * 'a) ->
     m:(module_name -> module_entry -> 'a -> module_entry * 'a) ->
     s:(signature_name -> signature abstracted -> 'a -> signature abstracted * 'a) ->
     'a -> t -> t * 'a
