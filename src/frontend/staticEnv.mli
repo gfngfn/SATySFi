@@ -30,7 +30,7 @@ type type_entry = {
 }
 
 type constructor_entry = {
-  ctor_belongs_to : TypeID.Variant.t;
+  ctor_belongs_to : TypeID.t;
   ctor_parameter  : type_scheme;
 }
 

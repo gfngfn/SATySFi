@@ -1,5 +1,6 @@
 
 open Types
+open StaticEnv
 
 
 let overwrite_range_of_type ((_, tymain) : mono_type) (rng : Range.t) = (rng, tymain)
@@ -414,3 +415,7 @@ let unlift_poly (pty : poly_type_body) : mono_type option =
 let unlift_option_row poptrow =
   try Some(unlift_aux_or poptrow) with
   | Exit -> None
+
+
+let apply_type_scheme_poly (tyscheme : type_scheme) (ptys : poly_type_body list) =
+  failwith "TODO: apply_type_scheme_poly"

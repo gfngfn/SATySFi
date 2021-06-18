@@ -6,30 +6,21 @@ open Types
 open StaticEnv
 
 (* -- type IDs for predefined data types -- *)
-let vid_option   = TypeID.Variant.fresh "option"
-let vid_itemize  = TypeID.Variant.fresh "itemize"
-let vid_color    = TypeID.Variant.fresh "color"
-let vid_script   = TypeID.Variant.fresh "script"
-let vid_language = TypeID.Variant.fresh "language"
-let vid_page     = TypeID.Variant.fresh "page"
-let vid_mathcls  = TypeID.Variant.fresh "math-class"
-let vid_mccls    = TypeID.Variant.fresh "math-char-class"
-let vid_cell     = TypeID.Variant.fresh "cell"
-let vid_image    = TypeID.Variant.fresh "image"
-
-(* -- type IDs for alias types -- *)
-let sid_deco     = TypeID.Synonym.fresh "deco"
-let sid_decoset  = TypeID.Synonym.fresh "deco-set"
-let sid_igraf    = TypeID.Synonym.fresh "inline-graphics"
-let sid_igrafo   = TypeID.Synonym.fresh "inline-graphics-outer"
+let vid_option   = TypeID.fresh "option"
+let vid_itemize  = TypeID.fresh "itemize"
+let vid_color    = TypeID.fresh "color"
+let vid_script   = TypeID.fresh "script"
+let vid_language = TypeID.fresh "language"
+let vid_page     = TypeID.fresh "page"
+let vid_mathcls  = TypeID.fresh "math-class"
+let vid_mccls    = TypeID.fresh "math-char-class"
+let vid_cell     = TypeID.fresh "cell"
+let vid_image    = TypeID.fresh "image"
 
 let ( ~! ) = Range.dummy
 
-let variant tyargs vid = DataType(tyargs, TypeID.Variant(vid))
+let variant tyargs tyid = DataType(tyargs, tyid)
 
-let synonym (sid : TypeID.Synonym.t) pty =
-  TypeDefinitionStore.add_synonym_type sid [] (Poly(pty));
-  DataType([], TypeID.Synonym(sid))
 
 (* -- base types and base type constructors -- *)
 let tU            = (~! "unit"    , BaseType(UnitType)    )
@@ -83,16 +74,16 @@ let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
 
 let tDECO_raw = tPT @-> tLN @-> tLN @-> tLN @-> (tL tGR)
-let tDECO = (~! "deco", synonym sid_deco tDECO_raw)
+let tDECO = tDECO_raw
 
 let tDECOSET_raw = tPROD [tDECO; tDECO; tDECO; tDECO]
-let tDECOSET = (~! "deco-set", synonym sid_decoset tDECOSET_raw)
+let tDECOSET = tDECOSET_raw
 
 let tIGR_raw = tPT @-> (tL tGR)
-let tIGR = (~! "igraf", synonym sid_igraf tIGR_raw)
+let tIGR = tIGR_raw
 
 let tIGRO_raw = tLN @-> tPT @-> (tL tGR)
-let tIGRO = (~! "igrafo", synonym sid_igrafo tIGRO_raw)
+let tIGRO = tIGRO_raw
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 
@@ -178,7 +169,7 @@ let add_variant_types vntdefs tyenv =
   List.fold_left (fun tyenv (tynm, vid, arity, ctors) ->
     let tentry =
       {
-        type_id    = TypeID.Variant(vid);
+        type_id    = failwith "TODO: make type scheme from vid";
         type_arity = arity;
       }
     in
@@ -196,11 +187,11 @@ let add_variant_types vntdefs tyenv =
 
 
 let add_synonym_types syndefs tyenv =
-  List.fold_left (fun tyenv (tynm, sid, arity) ->
+  List.fold_left (fun tyenv (tynm, tyscheme) ->
     let tentry =
       {
-        type_id    = TypeID.Synonym(sid);
-        type_arity = arity;
+        type_id    = failwith "TODO: add_synonym_types";
+        type_arity = failwith "TODO: add_synonym_types";
       }
     in
     tyenv |> Typeenv.add_type tynm tentry
@@ -287,9 +278,9 @@ let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
       ]);
     ]
     |> add_synonym_types [
-      ("deco", sid_deco, 0);
-      ("deco-set", sid_decoset, 0);
-      ("inline-graphics", sid_igraf, 0);
+      ("deco",            ([], tDECO));
+      ("deco-set",        ([], tDECOSET));
+      ("inline-graphics", ([], tIGR));
     ]
 
 

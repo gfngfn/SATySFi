@@ -36,8 +36,6 @@ exception MissingRequiredTypeName        of Range.t * type_name * int
 exception MissingRequiredModuleName      of Range.t * module_name * signature
 exception MissingRequiredSignatureName   of Range.t * signature_name * signature abstracted
 exception NotASubtypeAboutType           of Range.t * type_name
-exception NotASubtypeVariant             of Range.t * TypeID.Variant.t * TypeID.Variant.t * constructor_name
-exception NotASubtypeSynonym             of Range.t * TypeID.Synonym.t * TypeID.Synonym.t
 exception NotASubtype                    of Range.t * signature * signature
 exception PolymorphicContradiction       of Range.t * var_name * poly_type * poly_type
 exception MultiCharacterMathScriptWithoutBrace of Range.t
@@ -46,83 +44,11 @@ exception InternalInclusionError
 exception InternalContradictionError of bool
 
 
-module WitnessMap : sig
-  type t
-  val empty : t
-  val add_variant : TypeID.Variant.t -> TypeID.Variant.t -> t -> t
-  val add_opaque : TypeID.Opaque.t -> TypeID.t -> t -> t
-  val add_synonym : TypeID.Synonym.t -> TypeID.Synonym.t -> t -> t
-  val find_synonym : TypeID.Synonym.t -> t -> TypeID.Synonym.t option
-  val find_variant : TypeID.Variant.t -> t -> TypeID.Variant.t option
-  val find_opaque : TypeID.Opaque.t -> t -> TypeID.t option
-  val union : t -> t -> t
-  val fold :
-      variant:(TypeID.Variant.t -> TypeID.Variant.t -> 'a -> 'a) ->
-      synonym:(TypeID.Synonym.t -> TypeID.Synonym.t -> 'a -> 'a) ->
-      opaque:(TypeID.Opaque.t -> TypeID.t -> 'a -> 'a) ->
-      'a -> t -> 'a
-end = struct
+module SubstMap = Map.Make(TypeID)
 
-  type t = {
-    variants : TypeID.Variant.t VariantIDMap.t;
-    synonyms : TypeID.Synonym.t SynonymIDMap.t;
-    opaques  : TypeID.t OpaqueIDMap.t;
-  }
+type substitution = type_scheme SubstMap.t
 
-
-  let empty : t =
-    {
-      variants = VariantIDMap.empty;
-      synonyms = SynonymIDMap.empty;
-      opaques  = OpaqueIDMap.empty;
-    }
-
-
-  let union (wtmap1 : t) (wtmap2 : t) : t =
-    let f _ x y = Some(y) in
-    {
-      variants = VariantIDMap.union  f wtmap1.variants wtmap2.variants;
-      synonyms = SynonymIDMap.union  f wtmap1.synonyms wtmap2.synonyms;
-      opaques  = OpaqueIDMap.union   f wtmap1.opaques  wtmap2.opaques;
-    }
-
-
-  let add_variant (vid2 : TypeID.Variant.t) (vid1 : TypeID.Variant.t) (wtmap : t) : t =
-    { wtmap with variants = wtmap.variants |> VariantIDMap.add vid2 vid1 }
-
-
-  let add_synonym (sid2 : TypeID.Synonym.t) (sid1 : TypeID.Synonym.t) (wtmap : t) : t =
-    { wtmap with synonyms = wtmap.synonyms |> SynonymIDMap.add sid2 sid1 }
-
-
-  let add_opaque (oid2 : TypeID.Opaque.t) (tyid1 : TypeID.t) (wtmap : t) : t =
-    { wtmap with opaques = wtmap.opaques |> OpaqueIDMap.add oid2 tyid1 }
-
-
-  let find_variant (vid2 : TypeID.Variant.t) (wtmap : t) : TypeID.Variant.t option =
-    wtmap.variants |> VariantIDMap.find_opt vid2
-
-
-  let find_synonym (sid2 : TypeID.Synonym.t) (wtmap : t) : TypeID.Synonym.t option =
-    wtmap.synonyms |> SynonymIDMap.find_opt sid2
-
-
-  let find_opaque (oid2 : TypeID.Opaque.t) (wtmap : t) : TypeID.t option =
-    wtmap.opaques |> OpaqueIDMap.find_opt oid2
-
-
-  let fold (type a)
-      ~variant:(fv : TypeID.Variant.t -> TypeID.Variant.t -> a -> a)
-      ~synonym:(fs : TypeID.Synonym.t -> TypeID.Synonym.t -> a -> a)
-      ~opaque:(fo : TypeID.Opaque.t -> TypeID.t -> a -> a)
-      (init : a)
-      (wtmap : t)
-      : a =
-    init
-      |> VariantIDMap.fold fv wtmap.variants
-      |> SynonymIDMap.fold fs wtmap.synonyms
-      |> OpaqueIDMap.fold fo wtmap.opaques
-end
+module SynonymNameSet = Set.Make(String)
 
 
 let fresh_free_id (kd : mono_kind) (qtfbl : quantifiability) (lev : Level.t) =
@@ -418,18 +344,7 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
     | ProductType(tys)               -> iter_list (tys |> TupleList.to_list)
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
-
-    | DataType(tyargs, tyid) ->
-        begin
-          match tyid with
-          | TypeID.Variant(_) | TypeID.Opaque(_) ->
-              iter_list tyargs
-
-          | TypeID.Synonym(_sid) ->
-              let tyact = failwith "TODO: get real type and instantiate" in
-              iter tyact
-        end
-
+    | DataType(tyargs, _tyid)        -> iter_list tyargs
     | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
     | BaseType(_)                    -> false
     | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
@@ -514,21 +429,10 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
         let b2 = iter tycod in
         b0 || b1 || b2
 
-    | ProductType(tys)              -> iter_list (tys |> TupleList.to_list)
+    | ProductType(tys)               -> iter_list (tys |> TupleList.to_list)
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
-
-    | DataType(tyargs, tyid) ->
-        begin
-          match tyid with
-          | TypeID.Variant(_) | TypeID.Opaque(_) ->
-              iter_list tyargs
-
-          | TypeID.Synonym(_sid) ->
-              let tyact = failwith "TODO: get real type and instantiate it" in
-              iter tyact
-        end
-
+    | DataType(tyargs, _tyid)        -> iter_list tyargs
     | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
     | BaseType(_)                    -> false
     | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
@@ -613,14 +517,6 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
 
     match (tymain1, tymain2) with
 
-    | (DataType(_, TypeID.Synonym(sid1)), _) ->
-        let tyreal1 = failwith "TODO: get real type" in
-        unify tyreal1 ty2
-
-    | (_, DataType(_, TypeID.Synonym(sid2))) ->
-        let tyreal2 = failwith "TODO: get real type" in
-        unify ty1 tyreal2
-
     | (BaseType(bsty1), BaseType(bsty2))  when bsty1 = bsty2 -> ()
 
     | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2)) ->
@@ -655,14 +551,8 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
         else
           Assoc.combine_value tyasc1 tyasc2 |> List.iter (fun (ty1, ty2) -> unify ty1 ty2)
 
-    | (DataType(tyargs1, TypeID.Variant(vid1)), DataType(tyargs2, TypeID.Variant(vid2))) ->
-        if TypeID.Variant.equal vid1 vid2 then
-          unify_list tyargs1 tyargs2
-        else
-          raise (InternalContradictionError(reversed))
-
-    | (DataType(tyargs1, TypeID.Opaque(oid1)), DataType(tyargs2, TypeID.Opaque(oid2))) ->
-        if TypeID.Opaque.equal oid1 oid2 then
+    | (DataType(tyargs1, tyid1), DataType(tyargs2, tyid2)) ->
+        if TypeID.equal tyid1 tyid2 then
           unify_list tyargs1 tyargs2
         else
           raise (InternalContradictionError(reversed))
@@ -957,10 +847,10 @@ let rec typecheck
       end
 
   | UTConstructor(constrnm, utast1) ->
-      let (tyargs, vid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+      let (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       unify ty1 tyc;
-      let tyres = (rng, DataType(tyargs, TypeID.Variant(vid))) in
+      let tyres = (rng, DataType(tyargs, tyid)) in
       (NonValueConstructor(constrnm, e1), tyres)
 
   | UTHorzConcat(utast1, utast2) ->
@@ -1782,10 +1672,10 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         end
 
     | UTPConstructor(constrnm, utpat1) ->
-        let (tyargs, vid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+        let (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
         let (epat1, typat1, tyenv1) = iter utpat1 in
         unify tyc typat1;
-        (PConstructor(constrnm, epat1), (rng, DataType(tyargs, TypeID.Variant(vid))), tyenv1)
+        (PConstructor(constrnm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
 
 
 and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : (var_name * poly_type * EvalVarID.t * stage * letrec_binding) list =
@@ -1937,7 +1827,7 @@ and decode_manual_type_scheme (k : TypeID.t -> unit) (pre : pre) (tyenv : Typeen
 and decode_manual_type (pre : pre) : Typeenv.t -> manual_type -> mono_type =
   decode_manual_type_scheme (fun _ -> ()) pre
 
-
+(*
 and decode_manual_type_and_get_dependency (vertices : SynonymIDSet.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type * SynonymIDSet.t =
   let hashset = SynonymIDHashTable.create 32 in
   let k = function
@@ -1957,7 +1847,7 @@ and decode_manual_type_and_get_dependency (vertices : SynonymIDSet.t) (pre : pre
     ) hashset SynonymIDSet.empty
   in
   (ty, dependencies)
-
+*)
 
 and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
   utctorbrs |> List.fold_left (fun ctormap utctorbr ->
@@ -2093,41 +1983,21 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
       failwith "TODO: typecheck_signature, UTSigWith"
 
 
-and lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) =
-  if tentry1.type_arity = tentry2.type_arity then
-    let tyid1 = tentry1.type_id in
-    let tyid2 = tentry2.type_id in
-    match (tyid1, tyid2) with
-    | (_, TypeID.Opaque(oid2)) ->
-        Some(WitnessMap.empty |> WitnessMap.add_opaque oid2 tyid1)
-
-    | (TypeID.Variant(vid1), TypeID.Variant(vid2)) ->
-        Some(WitnessMap.empty |> WitnessMap.add_variant vid2 vid1)
-
-    | (TypeID.Synonym(sid1), TypeID.Synonym(sid2)) ->
-        Some(WitnessMap.empty |> WitnessMap.add_synonym sid2 sid1)
-
-    | _ ->
-        None
-  else
-    None
+and lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substitution option =
+  failwith "TODO: lookup_type_entry"
 
 
 and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) =
+  let take_left = (fun _tyid to1 _to2 -> Some(to1)) in
   match (modsig1, modsig2) with
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
-      (* Performs signature matching by looking up signatures `ssig1` and `sigr2`,
-         and associate type IDs in them
-         so that we can check whether subtyping relation `ssig1 <= sigr2` holds.
-         Here we do not check each type IDs indeed form a subtyping relation;
-         it will be done by `check_well_formedness_of_witness_map` afterwards. *)
       ssig2 |> StructSig.fold
-          ~v:(fun x2 { val_type = pty2; _ } wtmapacc ->
+          ~v:(fun x2 { val_type = pty2; _ } subst ->
             match ssig1 |> StructSig.find_value x2 with
             | None    -> raise (MissingRequiredValueName(rng, x2, pty2))
-            | Some(_) -> wtmapacc
+            | Some(_) -> subst
           )
-          ~t:(fun tydefs2 wtmapacc ->
+          ~t:(fun tydefs2 subst ->
             tydefs2 |> List.fold_left (fun wtmapacc (tynm2, tentry2) ->
               match ssig1 |> StructSig.find_type tynm2 with
               | None ->
@@ -2139,76 +2009,37 @@ and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) =
                     | None ->
                         raise (NotASubtypeAboutType(rng, tynm2))
 
-                    | Some(wtmap) ->
-                        WitnessMap.union wtmapacc wtmap
+                    | Some(subst0) ->
+                        SubstMap.union take_left subst0 subst
                   end
-            ) wtmapacc
+            ) subst
           )
-          ~m:(fun modnm2 { mod_signature = modsig2; _ } wtmapacc ->
+          ~m:(fun modnm2 { mod_signature = modsig2; _ } subst ->
             match ssig1 |> StructSig.find_module modnm2 with
             | None ->
                 raise (MissingRequiredModuleName(rng, modnm2, modsig2))
 
             | Some({ mod_signature = modsig1; _ }) ->
-                let wtmap = lookup_struct rng modsig1 modsig2 in
-                WitnessMap.union wtmapacc wtmap
+                let subst0 = lookup_struct rng modsig1 modsig2 in
+                SubstMap.union take_left subst0 subst
           )
-          ~s:(fun _ _ wtmapacc ->
-            wtmapacc
+          ~s:(fun _ _ subst ->
+            subst
           )
-          WitnessMap.empty
+          SubstMap.empty
 
   | _ ->
-      WitnessMap.empty
+      SubstMap.empty
 
 
-and check_well_formedness_of_witness_map (rng : Range.t) (wtmap : WitnessMap.t) =
-  let mergef vid1 vid2
-      (ctor : constructor_name)
-      (opt1 : poly_type option)
-      (opt2 : poly_type option) =
-    match (opt1, opt2) with
-    | (None, _)                -> raise (NotASubtypeVariant(rng, vid1, vid2, ctor))
-    | (_, None)                -> raise (NotASubtypeVariant(rng, vid1, vid2, ctor))
-    | (Some(def1), Some(def2)) -> Some(def1, def2)
-  in
-  wtmap |> WitnessMap.fold
-      ~variant:(fun vid2 vid1 () ->
-        let (typarams1, ctorbrs1) = TypeDefinitionStore.find_variant_type vid1 in
-        let (typarams2, ctorbrs2) = TypeDefinitionStore.find_variant_type vid2 in
-        let brpairs = ConstructorMap.merge (mergef vid1 vid2) ctorbrs1 ctorbrs2 in
-        brpairs |> ConstructorMap.iter (fun ctor (ptyarg1, ptyarg2) ->
-          let ptyfun1 = (typarams1, ptyarg1) in
-          let ptyfun2 = (typarams2, ptyarg2) in
-          if subtype_type_abstraction wtmap ptyfun1 ptyfun2 then
-            ()
-          else
-            raise (NotASubtypeVariant(rng, vid1, vid2, ctor))
-        )
-      )
-      ~synonym:(fun sid2 sid1 () ->
-        let ptyfun1 = TypeDefinitionStore.find_synonym_type sid1 in
-        let ptyfun2 = TypeDefinitionStore.find_synonym_type sid2 in
-        if subtype_type_abstraction wtmap ptyfun1 ptyfun2 then
-          ()
-        else
-          raise (NotASubtypeSynonym(rng, sid1, sid2))
-      )
-      ~opaque:(fun oid2 tyid1 () ->
-        ()
-          (* The consistency of arity has already been checked by `lookup_record`. *)
-      )
-      ()
-
-
-and substitute_abstract (wtmap : WitnessMap.t) (absmodsig : signature abstracted) : signature abstracted * WitnessMap.t =
+and substitute_abstract (subst : substitution) (absmodsig : signature abstracted) : signature abstracted =
   let (oidset, modsig) = absmodsig in
-  let (modsig, wtmap) = substitute_concrete wtmap modsig in
-  ((oidset, modsig), wtmap)
+  let modsig = substitute_concrete subst modsig in
+  (oidset, modsig)
     (* Strictly speaking, we should assert that `oidset` and the domain of `wtmap` be disjoint. *)
 
 
-and substitute_concrete (wtmap : WitnessMap.t) (modsig : signature) =
+and substitute_concrete (subst : substitution) (modsig : signature) : signature =
   match modsig with
   | ConcFunctor(fsig) ->
       let
@@ -2218,8 +2049,8 @@ and substitute_concrete (wtmap : WitnessMap.t) (modsig : signature) =
           codomain = absmodsigcod
         } = fsig
       in
-      let (ssig, wtmap) = ssig |> substitute_struct wtmap in
-      let (absmodsigcod, wtmap) = absmodsigcod |> substitute_abstract wtmap in
+      let ssig = ssig |> substitute_struct subst in
+      let absmodsigcod = absmodsigcod |> substitute_abstract subst in
       let fsig =
         {
           opaques  = oidset;
@@ -2227,15 +2058,15 @@ and substitute_concrete (wtmap : WitnessMap.t) (modsig : signature) =
           codomain = absmodsigcod;
         }
       in
-      (ConcFunctor(fsig), wtmap)
+      ConcFunctor(fsig)
         (* Strictly speaking, we should assert that `oidset` and the domain of `wtmap` be disjoint. *)
 
   | ConcStructure(ssig) ->
-      let (ssig, wtmap) = ssig |> substitute_struct wtmap in
-      (ConcStructure(ssig), wtmap)
+      let ssig = ssig |> substitute_struct subst in
+      ConcStructure(ssig)
 
 
-and substitute_poly_type (wtmap : WitnessMap.t) (Poly(pty) : poly_type) : poly_type =
+and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_type =
   let rec aux (rng, ptymain) =
     let ptymain =
       match ptymain with
@@ -2260,29 +2091,22 @@ and substitute_poly_type (wtmap : WitnessMap.t) (Poly(pty) : poly_type) : poly_t
       | RecordType(labmap) ->
           RecordType(labmap |> Assoc.map_value aux)
 
-      | DataType(ptyargs, TypeID.Opaque(oid_from)) ->
+      | DataType(ptyargs, tyid_from) ->
           begin
-            match wtmap |> WitnessMap.find_opaque oid_from with
-            | None          -> DataType(ptyargs |> List.map aux, TypeID.Opaque(oid_from))
-            | Some(tyid_to) -> DataType(ptyargs |> List.map aux, tyid_to)
-          end
+            match subst |> SubstMap.find_opt tyid_from with
+            | None ->
+                DataType(ptyargs |> List.map aux, tyid_from)
 
-      | DataType(ptyargs, TypeID.Synonym(sid_from)) ->
-          begin
-            match wtmap |> WitnessMap.find_synonym sid_from with
-            | None         -> DataType(ptyargs |> List.map aux, TypeID.Synonym(sid_from))
-                (* TODO: DOUBTFUL; maybe we must traverse the definition of type synonyms beforehand.
-                   → The replacement probably has been properly done by `substitute_struct`. *)
-            | Some(sid_to) -> DataType(ptyargs |> List.map aux, TypeID.Synonym(sid_to))
-          end
+            | Some(tyscheme) ->
+                begin
+                  match TypeConv.apply_type_scheme_poly tyscheme (ptyargs |> List.map aux) with
+                  | None ->
+                      (* arity mismatch; this cannot happen *)
+                      assert false
 
-      | DataType(ptyargs, TypeID.Variant(vid_from)) ->
-          begin
-            match wtmap |> WitnessMap.find_variant vid_from with
-            | None         -> DataType(ptyargs |> List.map aux, TypeID.Variant(vid_from))
-                (* TODO: DOUBTFUL; maybe we must traverse the definition of variant types beforehand.
-                   → The replacement probably has been properly done by `substitute_struct`. *)
-            | Some(vid_to) -> DataType(ptyargs |> List.map aux, TypeID.Variant(vid_to))
+                  | Some((_, ptymain)) ->
+                      ptymain
+                end
           end
     in
     (rng, ptymain)
@@ -2300,7 +2124,9 @@ and substitute_poly_type (wtmap : WitnessMap.t) (Poly(pty) : poly_type) : poly_t
   Poly(aux pty)
 
 
-and substitute_struct (wtmap : WitnessMap.t) (ssig : StructSig.t) : StructSig.t * WitnessMap.t =
+and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t =
+  failwith "TODO: substitute_struct"
+(*
     ssig |> StructSig.map_and_fold
         ~v:(fun _ ventry wtmap ->
           let ventry = { ventry with val_type = substitute_poly_type wtmap ventry.val_type } in
@@ -2397,6 +2223,7 @@ and substitute_struct (wtmap : WitnessMap.t) (ssig : StructSig.t) : StructSig.t 
           (absmodsig, wtmap)
         )
         wtmap
+*)
 
 
 and subtype_abstract_with_abstract (rng : Range.t) (absmodsig1 : signature abstracted) (absmodsig2 : signature abstracted) : unit =
@@ -2405,9 +2232,7 @@ and subtype_abstract_with_abstract (rng : Range.t) (absmodsig1 : signature abstr
   ()
 
 
-(* `subtype_concrete_with_concrete rng wtmap modsig1 modsig2` asserts that
-   `modsig1 <= [wtmap]modsig2` holds (where `[-]-` is the application of a substitution). *)
-and subtype_concrete_with_concrete (rng : Range.t) (wtmap : WitnessMap.t) (modsig1 : signature) (modsig2 : signature) =
+and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig2 : signature) =
   match (modsig1, modsig2) with
   | (ConcFunctor(fsig1), ConcFunctor(fsig2)) ->
       let
@@ -2424,12 +2249,12 @@ and subtype_concrete_with_concrete (rng : Range.t) (wtmap : WitnessMap.t) (modsi
           codomain = absmodsigcod2;
         } = fsig2
       in
-      let wtmap =
+      let subst =
         let modsigdom1 = ConcStructure(ssig1) in
         let modsigdom2 = ConcStructure(ssig2) in
         subtype_concrete_with_abstract rng modsigdom2 (oidset1, modsigdom1)
       in
-      let (absmodsigcod1, _) = absmodsigcod1 |> substitute_abstract wtmap in
+      let absmodsigcod1 = absmodsigcod1 |> substitute_abstract subst in
       subtype_abstract_with_abstract rng absmodsigcod1 absmodsigcod2
 
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
@@ -2440,7 +2265,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (wtmap : WitnessMap.t) (modsi
                 raise (MissingRequiredValueName(rng, x2, pty2))
 
             | Some({ val_type = pty1; _ }) ->
-               if subtype_poly_type wtmap pty1 pty2 then
+               if subtype_poly_type pty1 pty2 then
                  ()
                else
                  raise (PolymorphicContradiction(rng, x2, pty1, pty2))
@@ -2454,7 +2279,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (wtmap : WitnessMap.t) (modsi
                 raise (MissingRequiredModuleName(rng, modnm2, modsig2))
 
             | Some({ mod_signature = modsig1; _ }) ->
-                subtype_concrete_with_concrete rng wtmap modsig1 modsig2
+                subtype_concrete_with_concrete rng modsig1 modsig2
           )
           ~s:(fun signm2 absmodsig2 () ->
             match ssig1 |> StructSig.find_signature signm2 with
@@ -2472,13 +2297,12 @@ and subtype_concrete_with_concrete (rng : Range.t) (wtmap : WitnessMap.t) (modsi
       raise (NotASubtype(rng, modsig1, modsig2))
 
 
-and subtype_concrete_with_abstract (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) =
+and subtype_concrete_with_abstract (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : substitution =
   let (oidset2, modsig2) = absmodsig2 in
-  let wtmap = lookup_struct rng modsig1 modsig2 in
-  check_well_formedness_of_witness_map rng wtmap;
-  let (modsig2, wtmap) = modsig2 |> substitute_concrete wtmap in
-  subtype_concrete_with_concrete rng wtmap modsig1 modsig2;
-  wtmap
+  let subst = lookup_struct rng modsig1 modsig2 in
+  let modsig2 = modsig2 |> substitute_concrete subst in
+  subtype_concrete_with_concrete rng modsig1 modsig2;
+  subst
 
 
 and subtype_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) =
@@ -2561,10 +2385,10 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
       failwith "TODO: typecheck_declaration, UTDeclTypeTrans"
 
   | UTDeclTypeOpaque((_, tynm), typarams) ->
-      let oid = TypeID.Opaque.fresh tynm in
+      let oid = TypeID.fresh tynm in
       let tentry =
         {
-          type_id    = TypeID.Opaque(oid);
+          type_id    = oid;
           type_arity = List.length typarams;
         }
       in
@@ -2615,6 +2439,10 @@ and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untype
     ) (Alist.empty, tyenv, OpaqueIDSet.empty, StructSig.empty)
   in
   (Alist.to_list bindacc, tyenv, (oidsetacc, ssigacc))
+
+
+and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : Typeenv.t) (synbind : manual_type) =
+  failwith "TODO: get_dependency_on_synonym_types"
 
 
 and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding list * StructSig.t abstracted =
@@ -2708,37 +2536,37 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       let (synacc, vntacc, vertices, graph, tyenv) =
         tybinds |> List.fold_left (fun (synacc, vntacc, vertices, graph, tyenv) tybind ->
           let (tyident, typarams, constraints, syn_or_vnt) = tybind in
-          let (_, tynm) = tyident in
+          let (rng, tynm) = tyident in
           let arity = List.length typarams in
           match syn_or_vnt with
           | UTBindSynonym(synbind) ->
-              let sid = TypeID.Synonym.fresh tynm in
-              let graph = graph |> SynonymDependencyGraph.add_vertex sid tyident in
+              let data = SynonymDependencyGraph.{ position = rng } in
+              let graph = graph |> SynonymDependencyGraph.add_vertex tynm data in
               let tyenv =
                 let tentry =
                   {
-                    type_id    = TypeID.Synonym(sid);
+                    type_id    = failwith "TODO: make type scheme";
                     type_arity = arity;
                   }
                 in
                 tyenv |> Typeenv.add_type tynm tentry
               in
-              let synacc = Alist.extend synacc (tyident, typarams, synbind, sid) in
-              (synacc, vntacc, vertices |> SynonymIDSet.add sid, graph, tyenv)
+              let synacc = Alist.extend synacc (tyident, typarams, synbind) in
+              (synacc, vntacc, vertices |> SynonymNameSet.add tynm, graph, tyenv)
 
           | UTBindVariant(vntbind) ->
-              let vid = TypeID.Variant.fresh tynm in
+              let vid = TypeID.fresh tynm in
               let tyenv =
                 let tentry =
                   {
-                    type_id    = TypeID.Variant(vid);
+                    type_id    = failwith "TODO: make type scheme from vid";
                     type_arity = arity;
                   }
                 in
                 tyenv |> Typeenv.add_type tynm tentry in
               let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, vid) in
               (synacc, vntacc, vertices, graph, tyenv)
-        ) (Alist.empty, Alist.empty, SynonymIDSet.empty, SynonymDependencyGraph.empty, tyenv)
+        ) (Alist.empty, Alist.empty, SynonymNameSet.empty, SynonymDependencyGraph.empty, tyenv)
       in
 
       let pre =
@@ -2751,55 +2579,56 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       in
 
       (* Traverse each definition of the synonym types and extract dependencies between them. *)
-      let (graph, tydefacc) =
-        synacc |> Alist.to_list |> List.fold_left (fun (graph, tydefacc) syn ->
-          let (tyident, tyvars, synbind, sid) = syn in
-          let (pre, bids) = make_type_parameters pre tyvars in
-          let (ty_real, dependencies) = decode_manual_type_and_get_dependency vertices pre tyenv synbind in
-          let pty_real = generalize Level.bottom ty_real in
+      let graph =
+        synacc |> Alist.to_list |> List.fold_left (fun graph syn ->
+          let ((_, tynm), tyvars, synbind) = syn in
+          let dependencies = get_dependency_on_synonym_types vertices pre tyenv synbind in
           let graph =
-            graph |> SynonymIDSet.fold (fun sid_dep graph ->
-              graph |> SynonymDependencyGraph.add_edge sid sid_dep
+            graph |> SynonymNameSet.fold (fun tynm_dep graph ->
+              graph |> SynonymDependencyGraph.add_edge tynm tynm_dep
             ) dependencies
           in
-          TypeDefinitionStore.add_synonym_type sid bids pty_real;
-          let tydefacc = Alist.extend tydefacc (tyident, TypeID.Synonym(sid), List.length bids) in
-          (graph, tydefacc)
-        ) (graph, Alist.empty)
+          graph
+        ) graph
+      in
+
+      (* Check that no cyclic dependency exists among synonym types. *)
+      let syns =
+        match SynonymDependencyGraph.topological_sort graph with
+        | Error(cycle) -> failwith "TODO (error): Typechecker.typecheck_binding, UTBindType, cycle"
+        | Ok(syns)     -> syns
+      in
+
+      let (tyenv, tydefacc) =
+        syns |> List.fold_left (fun (tyenv, tydefacc) syn ->
+          let (_tynm, _data) = syn in
+          failwith "TODO: add synonyms to the type environment"
+        ) (tyenv, Alist.empty)
       in
 
       (* Traverse each definition of the variant types. *)
       let tydefacc =
         vntacc |> Alist.to_list |> List.fold_left (fun tydefacc vnt ->
-          let (tyident, tyvars, vntbind, vid) = vnt in
+          let (tyident, tyvars, vntbind, tyid) = vnt in
           let (pre, bids) = make_type_parameters pre tyvars in
-          let ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
-          TypeDefinitionStore.add_variant_type vid bids ctorbrmap;
-          Alist.extend tydefacc (tyident, TypeID.Variant(vid), List.length bids)
+          let _ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
+          Alist.extend tydefacc (tyident, tyid, List.length bids)
         ) tydefacc
       in
 
-      (* Check that no cyclic dependency exists among synonym types. *)
-      begin
-        match SynonymDependencyGraph.find_cycle graph with
-        | Some(_cycle) ->
-            failwith "TODO (error): Typechecker.typecheck_binding, UTBindType, cycle"
-
-        | None ->
-            let tydefs =
-              tydefacc |> Alist.to_list |> List.map (fun ((_, tynm), tyid, arity) ->
-                let tentry =
-                  {
-                    type_id    = tyid;
-                    type_arity = arity;
-                  }
-                in
-                (tynm, tentry)
-              )
-            in
-            let ssig = StructSig.empty |> StructSig.add_types tydefs in
-            ([], (OpaqueIDSet.empty, ssig))
-      end
+      let tydefs =
+        tydefacc |> Alist.to_list |> List.map (fun ((_, tynm), tyid, arity) ->
+          let tentry =
+            {
+              type_id    = tyid;
+              type_arity = arity;
+            }
+          in
+          (tynm, tentry)
+        )
+      in
+      let ssig = StructSig.empty |> StructSig.add_types tydefs in
+      ([], (OpaqueIDSet.empty, ssig))
 
   | UTBindModule((rngm, modnm), utsigopt2, utmod1) ->
       let (absmodsig1, binds1) = typecheck_module stage tyenv utmod1 in
@@ -2852,19 +2681,11 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       failwith "TODO: Typechecker.typecheck_binding, UTBindVertMacro"
 
 
-(* `subtype_poly_type_scheme wtmap internbid pty1 pty2` checks that
-   whether `pty1` is more general than (or equal to) `[wtmap]pty2`
-   where `wtmap` is a substitution for type definitions in `pty2`.
-   Note that being more general means being smaller as polymorphic types;
-   we have `pty1 <= pty2` in that if `x : pty1` holds and `pty1` is more general than `pty2`, then `x : pty2`.
-   The parameter `internbid` is used for `internbid bid pty`, which returns
-   whether the bound ID `bid` occurring in `pty1` is mapped to a type equivalent to `pty`.
-*)
-and subtype_poly_type_scheme (wtmap : WitnessMap.t) (internbid : BoundID.t -> poly_type -> bool) (pty1 : poly_type) (pty2 : poly_type) : bool =
+and subtype_poly_type_scheme (internbid : BoundID.t -> poly_type -> bool) (pty1 : poly_type) (pty2 : poly_type) : bool =
   failwith "TODO: subtype_poly_type_scheme"
 
 
-and subtype_poly_type (wtmap : WitnessMap.t) (pty1 : poly_type) (pty2 : poly_type) : bool =
+and subtype_poly_type (pty1 : poly_type) (pty2 : poly_type) : bool =
   let bidht = BoundIDHashTable.create 32 in
   let internbid (bid1 : BoundID.t) (pty2 : poly_type) : bool =
     match BoundIDHashTable.find_opt bidht bid1 with
@@ -2875,14 +2696,14 @@ and subtype_poly_type (wtmap : WitnessMap.t) (pty1 : poly_type) (pty2 : poly_typ
     | Some(pty) ->
         poly_type_equal pty pty2
   in
-  subtype_poly_type_scheme wtmap internbid pty1 pty2
+  subtype_poly_type_scheme internbid pty1 pty2
 
 
 and poly_type_equal (pty1 : poly_type) (pty2 : poly_type) : bool =
   failwith "TODO: poly_type_equal"
 
 
-and subtype_type_abstraction (wtmap : WitnessMap.t) (ptyfun1 : BoundID.t list * poly_type) (ptyfun2 : BoundID.t list * poly_type) : bool =
+and subtype_type_abstraction (ptyfun1 : BoundID.t list * poly_type) (ptyfun2 : BoundID.t list * poly_type) : bool =
   let (typarams1, pty1) = ptyfun1 in
   let (typarams2, pty2) = ptyfun2 in
 (*
@@ -2910,7 +2731,7 @@ and subtype_type_abstraction (wtmap : WitnessMap.t) (ptyfun1 : BoundID.t list * 
         | _ ->
             false
       in
-      subtype_poly_type_scheme wtmap internbid pty1 pty2
+      subtype_poly_type_scheme internbid pty1 pty2
 
 
 let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : mono_type * abstract_tree =

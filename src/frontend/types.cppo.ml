@@ -172,7 +172,7 @@ module StoreIDHashTable = Hashtbl.Make(StoreID)
 
 module EvalVarIDMap = Map.Make(EvalVarID)
 
-module OpaqueIDSet = Set.Make(TypeID.Opaque)
+module OpaqueIDSet = Set.Make(TypeID)
 
 type 'a abstracted = OpaqueIDSet.t * 'a
 
@@ -1126,15 +1126,7 @@ module BoundIDMap = Map.Make(BoundID)
 
 module FreeIDMap = Map.Make(FreeID)
 
-module SynonymIDSet = Set.Make(TypeID.Synonym)
-
-module SynonymIDMap = Map.Make(TypeID.Synonym)
-
-module SynonymIDHashTable = Hashtbl.Make(TypeID.Synonym)
-
-module VariantIDMap = Map.Make(TypeID.Variant)
-
-module OpaqueIDMap = Map.Make(TypeID.Opaque)
+module OpaqueIDMap = Map.Make(TypeID)
 
 module ConstructorMap = Map.Make(String)
 
