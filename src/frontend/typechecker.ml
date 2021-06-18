@@ -1754,7 +1754,7 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
   (tyenvI, evid, eI, tyI)
 
 
-and decode_manual_type_scheme (k : TypeID.t -> unit) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type =
+and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type =
   let invalid rng tynm ~expect:len_expected ~actual:len_actual =
     raise (IllegalNumberOfTypeArguments(rng, tynm, len_expected, len_actual))
   in
@@ -1777,15 +1777,16 @@ and decode_manual_type_scheme (k : TypeID.t -> unit) (pre : pre) (tyenv : Typeen
                 end
 
             | Some(tentry) ->
-                let tyid = tentry.type_id in
-                let len_expected = tentry.type_arity in
-                if len_actual = len_expected then
-                  begin
-                    k tyid;
-                    DataType(tyargs, tyid)
-                  end
-                else
-                  invalid rng tynm ~expect:len_expected ~actual:len_actual
+                begin
+                  match TypeConv.apply_type_scheme_mono tentry.type_scheme tyargs with
+                  | Some((_, tymain)) ->
+                      tymain
+
+                  | None ->
+                      let (bids, _) = tentry.type_scheme in
+                      let len_expected = List.length bids in
+                      invalid rng tynm ~expect:len_expected ~actual:len_actual
+                end
           end
 
       | MTypeParam(typaram) ->
@@ -1823,9 +1824,6 @@ and decode_manual_type_scheme (k : TypeID.t -> unit) (pre : pre) (tyenv : Typeen
   in
   aux mty
 
-
-and decode_manual_type (pre : pre) : Typeenv.t -> manual_type -> mono_type =
-  decode_manual_type_scheme (fun _ -> ()) pre
 
 (*
 and decode_manual_type_and_get_dependency (vertices : SynonymIDSet.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type * SynonymIDSet.t =
@@ -2001,7 +1999,8 @@ and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) =
             tydefs2 |> List.fold_left (fun wtmapacc (tynm2, tentry2) ->
               match ssig1 |> StructSig.find_type tynm2 with
               | None ->
-                  raise (MissingRequiredTypeName(rng, tynm2, tentry2.type_arity))
+                  let (bids, _) = tentry2.type_scheme in
+                  raise (MissingRequiredTypeName(rng, tynm2, List.length bids))
 
               | Some(tentry1) ->
                   begin
@@ -2385,15 +2384,16 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
       failwith "TODO: typecheck_declaration, UTDeclTypeTrans"
 
   | UTDeclTypeOpaque((_, tynm), typarams) ->
-      let oid = TypeID.fresh tynm in
+      let tyid = TypeID.fresh tynm in
+      let arity = List.length typarams in
       let tentry =
         {
-          type_id    = oid;
-          type_arity = List.length typarams;
+          type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
+          type_kind   = failwith "TODO: UTDeclTypeOpaque, type_kind";
         }
       in
       let ssig = StructSig.empty |> StructSig.add_types [(tynm, tentry)] in
-      (OpaqueIDSet.singleton oid, ssig)
+      (OpaqueIDSet.singleton tyid, ssig)
 
   | UTDeclModule((_, modnm), utsig) ->
       let absmodsig = typecheck_signature stage tyenv utsig in
@@ -2537,7 +2537,6 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
         tybinds |> List.fold_left (fun (synacc, vntacc, vertices, graph, tyenv) tybind ->
           let (tyident, typarams, constraints, syn_or_vnt) = tybind in
           let (rng, tynm) = tyident in
-          let arity = List.length typarams in
           match syn_or_vnt with
           | UTBindSynonym(synbind) ->
               let data = SynonymDependencyGraph.{ position = rng } in
@@ -2545,8 +2544,8 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
               let tyenv =
                 let tentry =
                   {
-                    type_id    = failwith "TODO: make type scheme";
-                    type_arity = arity;
+                    type_scheme = failwith "TODO: make type scheme";
+                    type_kind   = failwith "TODO: make kind from typarams";
                   }
                 in
                 tyenv |> Typeenv.add_type tynm tentry
@@ -2555,16 +2554,17 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
               (synacc, vntacc, vertices |> SynonymNameSet.add tynm, graph, tyenv)
 
           | UTBindVariant(vntbind) ->
-              let vid = TypeID.fresh tynm in
+              let tyid = TypeID.fresh tynm in
+              let arity = List.length typarams in
               let tyenv =
                 let tentry =
                   {
-                    type_id    = failwith "TODO: make type scheme from vid";
-                    type_arity = arity;
+                    type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
+                    type_kind   = failwith "TODO: make kind from typarams";
                   }
                 in
                 tyenv |> Typeenv.add_type tynm tentry in
-              let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, vid) in
+              let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, tyid) in
               (synacc, vntacc, vertices, graph, tyenv)
         ) (Alist.empty, Alist.empty, SynonymNameSet.empty, SynonymDependencyGraph.empty, tyenv)
       in
@@ -2620,8 +2620,8 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
         tydefacc |> Alist.to_list |> List.map (fun ((_, tynm), tyid, arity) ->
           let tentry =
             {
-              type_id    = tyid;
-              type_arity = arity;
+              type_scheme = failwith "TODO: make type scheme";
+              type_kind   = failwith "TODO: make kind";
             }
           in
           (tynm, tentry)

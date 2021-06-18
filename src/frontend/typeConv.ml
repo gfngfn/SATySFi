@@ -419,3 +419,11 @@ let unlift_option_row poptrow =
 
 let apply_type_scheme_poly (tyscheme : type_scheme) (ptys : poly_type_body list) =
   failwith "TODO: apply_type_scheme_poly"
+
+
+let apply_type_scheme_mono (tyscheme : type_scheme) (ptys : mono_type list) : mono_type option =
+  failwith "TODO: apply_type_scheme_mono"
+
+
+let make_opaque_type_scheme (arity : int) (tyid : TypeID.t) =
+  failwith "TODO: make_opaque_type_scheme"

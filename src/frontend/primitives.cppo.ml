@@ -169,8 +169,8 @@ let add_variant_types vntdefs tyenv =
   List.fold_left (fun tyenv (tynm, vid, arity, ctors) ->
     let tentry =
       {
-        type_id    = failwith "TODO: make type scheme from vid";
-        type_arity = arity;
+        type_scheme = failwith "TODO: make type scheme from vid";
+        type_kind   = failwith "TODO: kind";
       }
     in
     let tyenv = tyenv |> Typeenv.add_type tynm tentry in
@@ -190,8 +190,8 @@ let add_synonym_types syndefs tyenv =
   List.fold_left (fun tyenv (tynm, tyscheme) ->
     let tentry =
       {
-        type_id    = failwith "TODO: add_synonym_types";
-        type_arity = failwith "TODO: add_synonym_types";
+        type_scheme = tyscheme;
+        type_kind   = failwith "TODO: add_synonym_types";
       }
     in
     tyenv |> Typeenv.add_type tynm tentry
@@ -278,9 +278,9 @@ let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
       ]);
     ]
     |> add_synonym_types [
-      ("deco",            ([], tDECO));
-      ("deco-set",        ([], tDECOSET));
-      ("inline-graphics", ([], tIGR));
+      ("deco",            ([], Poly(tDECO)));
+      ("deco-set",        ([], Poly(tDECOSET)));
+      ("inline-graphics", ([], Poly(tIGR)));
     ]
 
 
