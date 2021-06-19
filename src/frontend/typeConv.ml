@@ -368,6 +368,10 @@ let lift_poly (ty : mono_type) : poly_type =
   Poly(lift_poly_body ty)
 
 
+let lift_kind (kd : mono_kind) : poly_kind =
+  failwith "TODO: lift_kind"
+
+
 let rec unlift_aux pty =
   let aux = unlift_aux in
   let (rng, ptymain) = pty in

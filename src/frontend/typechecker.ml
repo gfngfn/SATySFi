@@ -1825,27 +1825,9 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
   aux mty
 
 
-(*
-and decode_manual_type_and_get_dependency (vertices : SynonymIDSet.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type * SynonymIDSet.t =
-  let hashset = SynonymIDHashTable.create 32 in
-  let k = function
-    | TypeID.Synonym(sid) ->
-        if vertices |> SynonymIDSet.mem sid then
-          SynonymIDHashTable.replace hashset sid ()
-        else
-          ()
+and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : mono_kind =
+  failwith "TODO: decode_manual_kind"
 
-    | _ ->
-        ()
-  in
-  let ty = decode_manual_type_scheme k pre tyenv mty in
-  let dependencies =
-    SynonymIDHashTable.fold (fun sid () set ->
-      set |> SynonymIDSet.add sid
-    ) hashset SynonymIDSet.empty
-  in
-  (ty, dependencies)
-*)
 
 and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
   utctorbrs |> List.fold_left (fun ctormap utctorbr ->
@@ -2119,106 +2101,29 @@ and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_t
   Poly(aux pty)
 
 
+and substitute_poly_kind (subst : substitution) (pkd : poly_kind) : poly_kind =
+  failwith "TODO: substitute_poly_kind"
+
+
 and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t =
-  failwith "TODO: substitute_struct"
-(*
-    ssig |> StructSig.map_and_fold
-        ~v:(fun _ ventry wtmap ->
-          let ventry = { ventry with val_type = substitute_poly_type wtmap ventry.val_type } in
-          (ventry, wtmap)
-        )
-        ~t:(fun tentries_from wtmap ->
-
-          (* Apply the substitution `wtmap` or else
-             generate new type IDs that will be used after substitution. *)
-          let wtmap =
-            tentries_from |> List.fold_left (fun wtmap (_, { type_id = tyid_from; type_arity = arity }) ->
-              match tyid_from with
-              | TypeID.Synonym(sid_from) ->
-                  let sid_to =
-                    match wtmap |> WitnessMap.find_synonym sid_from with
-                    | Some(sid_to) ->
-                        sid_to
-
-                    | None ->
-                        let s = TypeID.Synonym.extract_name sid_from in
-                        TypeID.Synonym.fresh s
-                  in
-                  wtmap |> WitnessMap.add_synonym sid_from sid_to
-
-              | TypeID.Variant(vid_from) ->
-                  let vid_to =
-                    match wtmap |> WitnessMap.find_variant vid_from with
-                    | Some(vid_from) ->
-                        vid_from
-
-                    | None ->
-                        let s = TypeID.Variant.extract_name vid_from in
-                        TypeID.Variant.fresh s
-                  in
-                  wtmap |> WitnessMap.add_variant vid_from vid_to
-
-              | TypeID.Opaque(_) ->
-                  wtmap
-            ) wtmap
-          in
-
-          (* Replace all occurrences of the old type IDs *)
-          let tentries_to =
-            tentries_from |> List.map (fun (_, { type_id = tyid_from; type_arity = arity }) ->
-              match tyid_from with
-              | TypeID.Synonym(sid_from) ->
-                  let (typarams, ptyreal_from) = TypeDefinitionStore.find_synonym_type sid_from in
-                  let ptyreal_to = ptyreal_from |> substitute_poly_type wtmap in
-                  begin
-                    match wtmap |> WitnessMap.find_synonym sid_from with
-                    | None ->
-                        assert false
-
-                    | Some(sid_to) ->
-                        TypeDefinitionStore.add_synonym_type sid_to typarams ptyreal_to;
-                        { type_id = TypeID.Synonym(sid_to); type_arity = arity }
-                  end
-
-              | TypeID.Variant(vid_from) ->
-                  begin
-                    match wtmap |> WitnessMap.find_variant vid_from with
-                    | None ->
-                        assert false
-
-                    | Some(vid_to) ->
-                        let (typarams, ctorbrs_from) = TypeDefinitionStore.find_variant_type vid_from in
-                        let ctorbrs_to =
-                          ConstructorMap.fold (fun ctornm ptyarg_from ctorbrs_to ->
-                            let ptyarg_to = ptyarg_from |> substitute_poly_type wtmap in
-                            ctorbrs_to |> ConstructorMap.add ctornm ptyarg_to
-                          ) ctorbrs_from ConstructorMap.empty
-                        in
-                        TypeDefinitionStore.add_variant_type vid_to typarams ctorbrs_to;
-                        { type_id = TypeID.Variant(vid_to); type_arity = arity }
-                  end
-
-              | TypeID.Opaque(oid) ->
-                  begin
-                    match wtmap |> WitnessMap.find_opaque oid with
-                    | None          -> { type_id = tyid_from; type_arity = arity }
-                    | Some(tyid_to) -> { type_id = tyid_to; type_arity = arity }
-                  end
-            )
-          in
-          (tentries_to, wtmap)
-        )
-        ~m:(fun _ mentry wtmap ->
-          let (modsig, wtmap) = substitute_concrete wtmap mentry.mod_signature in
-          let mentry = { mentry with mod_signature = modsig } in
-          (mentry, wtmap)
-        )
-        ~s:(fun _ absmodsig wtmap ->
-          let (absmodsig, wtmap) = substitute_abstract wtmap absmodsig in
-          (absmodsig, wtmap)
-        )
-        wtmap
-*)
+  ssig |> StructSig.map
+      ~v:(fun _x ventry ->
+        { ventry with val_type = ventry.val_type |> substitute_poly_type subst }
+      )
+      ~t:(fun _tynm tentry ->
+        let (bids, pty) = tentry.type_scheme in
+        {
+          type_scheme = (bids, pty |> substitute_poly_type subst);
+          type_kind   = tentry.type_kind |> substitute_poly_kind subst;
+        }
+      )
+      ~m:(fun _modnm mentry ->
+        let modsig = mentry.mod_signature |> substitute_concrete subst in
+        { mentry with mod_signature = modsig }
+      )
+      ~s:(fun _signm absmodsig ->
+        absmodsig |> substitute_abstract subst
+      )
 
 
 and subtype_abstract_with_abstract (rng : Range.t) (absmodsig1 : signature abstracted) (absmodsig2 : signature abstracted) : unit =
@@ -2541,14 +2446,46 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       assert false
 
   | UTBindType(tybinds) ->
+      let tyenv0 = tyenv in
+      let pre =
+        {
+          stage           = stage;
+          type_parameters = TypeParameterMap.empty;
+          quantifiability = Quantifiable;
+          level           = Level.bottom;
+        }
+      in
+
       (* Registers types to the type environment and the graph for detecting cyclic dependency. *)
       let (synacc, vntacc, vertices, graph, tyenv) =
         tybinds |> List.fold_left (fun (synacc, vntacc, vertices, graph, tyenv) tybind ->
           let (tyident, typarams, constraints, syn_or_vnt) = tybind in
+          let typaramkds =
+            typarams |> List.map (fun typaram ->
+              let (_rng, tyvar) = typaram in
+              let kd =
+                constraints |> List.find_map (fun (tyvar0, mnkd) ->
+                  if String.equal tyvar tyvar0 then
+                    let kd = decode_manual_kind pre tyenv0 mnkd in
+                    Some(kd)
+                  else
+                    None
+                ) |> Option.value ~default:UniversalKind
+              in
+              let pkd = TypeConv.lift_kind kd in
+              (typaram, pkd)
+            )
+          in
           let (rng, tynm) = tyident in
           match syn_or_vnt with
           | UTBindSynonym(synbind) ->
-              let data = SynonymDependencyGraph.{ position = rng } in
+              let data =
+                SynonymDependencyGraph.{
+                  position        = rng;
+                  type_variables  = typaramkds;
+                  definition_body = synbind;
+                }
+              in
               let graph = graph |> SynonymDependencyGraph.add_vertex tynm data in
               let synacc = Alist.extend synacc (tyident, typarams, synbind) in
               (synacc, vntacc, vertices |> SynonymNameSet.add tynm, graph, tyenv)
@@ -2559,22 +2496,13 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
               let tentry =
                 {
                   type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
-                  type_kind   = failwith "TODO: make kind from typarams";
+                  type_kind   = failwith "TODO: make kind from typaramkds";
                 }
               in
               let tyenv = tyenv |> Typeenv.add_type tynm tentry in
               let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, tyid, tentry) in
               (synacc, vntacc, vertices, graph, tyenv)
         ) (Alist.empty, Alist.empty, SynonymNameSet.empty, SynonymDependencyGraph.empty, tyenv)
-      in
-
-      let pre =
-        {
-          stage           = stage;
-          type_parameters = TypeParameterMap.empty;
-          quantifiability = Quantifiable;
-          level           = Level.bottom;
-        }
       in
 
       (* Traverse each definition of the synonym types and extract dependencies between them. *)
@@ -2601,10 +2529,20 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       (* Add the definition of the synonym types to the type environment. *)
       let (tyenv, tydefacc) =
         syns |> List.fold_left (fun (tyenv, tydefacc) syn ->
-          let (tynm, _syndata) = syn in
+          let (tynm, syndata) = syn in
+          let
+            SynonymDependencyGraph.{
+              type_variables  = typarams;
+              definition_body = mty_body;
+              _
+            } = syndata
+          in
+          let bids = failwith "TODO: make bound IDs from typarams" in
+          let ty_body = decode_manual_type pre tyenv mty_body in
+          let pty_body = TypeConv.generalize Level.bottom ty_body in
           let tentry =
             {
-              type_scheme = failwith "TODO: make type scheme";
+              type_scheme = (bids, pty_body);
               type_kind   = failwith "TODO: make kind from typarams";
             }
           in

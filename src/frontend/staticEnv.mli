@@ -123,6 +123,13 @@ module StructSig : sig
     s:(signature_name -> signature abstracted -> 'a -> signature abstracted * 'a) ->
     'a -> t -> t * 'a
 
+  val map :
+    v:(var_name -> value_entry -> value_entry) ->
+    t:(type_name -> type_entry -> type_entry) ->
+    m:(module_name -> module_entry -> module_entry) ->
+    s:(signature_name -> signature abstracted -> signature abstracted) ->
+    t -> t
+
   val union : t -> t -> (t, string) result
 
 end

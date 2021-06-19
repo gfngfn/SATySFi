@@ -268,8 +268,8 @@ module StructSig = struct
     ) acc
 
 
-  let map_and_fold ~v:fv ~t:ft ~m:fm ~s:fs acc (sigr : t) =
-      sigr |> Alist.to_list |> List.fold_left (fun (sigracc, acc) entry ->
+  let map_and_fold ~v:fv ~t:ft ~m:fm ~s:fs acc (ssig : t) =
+      ssig |> Alist.to_list |> List.fold_left (fun (sigracc, acc) entry ->
         match entry with
         | SSValue(x, ventry) ->
             let (ventry, acc) = fv x ventry acc in
@@ -288,6 +288,18 @@ module StructSig = struct
             (Alist.extend sigracc (SSSignature(signm, absmodsig)), acc)
 
       ) (Alist.empty, acc)
+
+
+  let map ~v:fv ~t:ft ~m:fm ~s:fs (ssig : t) : t =
+    let (ssig, ()) =
+      ssig |> map_and_fold
+        ~v:(fun x ventry () -> (fv x ventry, ()))
+        ~t:(fun tynm tentry () -> (ft tynm tentry, ()))
+        ~m:(fun modnm mentry () -> (fm modnm mentry, ()))
+        ~s:(fun signm absmodsig () -> (fs signm absmodsig, ()))
+        ()
+    in
+    ssig
 
 
   exception Conflict of string
