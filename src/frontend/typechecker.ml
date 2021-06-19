@@ -2450,7 +2450,7 @@ and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untype
   (Alist.to_list bindacc, tyenv, (oidsetacc, ssigacc))
 
 
-and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : Typeenv.t) (synbind : manual_type) =
+and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : Typeenv.t) (synbind : manual_type) : SynonymNameSet.t =
   failwith "TODO: get_dependency_on_synonym_types"
 
 
@@ -2550,30 +2550,20 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
           | UTBindSynonym(synbind) ->
               let data = SynonymDependencyGraph.{ position = rng } in
               let graph = graph |> SynonymDependencyGraph.add_vertex tynm data in
-              let tyenv =
-                let tentry =
-                  {
-                    type_scheme = failwith "TODO: make type scheme";
-                    type_kind   = failwith "TODO: make kind from typarams";
-                  }
-                in
-                tyenv |> Typeenv.add_type tynm tentry
-              in
               let synacc = Alist.extend synacc (tyident, typarams, synbind) in
               (synacc, vntacc, vertices |> SynonymNameSet.add tynm, graph, tyenv)
 
           | UTBindVariant(vntbind) ->
               let tyid = TypeID.fresh tynm in
               let arity = List.length typarams in
-              let tyenv =
-                let tentry =
-                  {
-                    type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
-                    type_kind   = failwith "TODO: make kind from typarams";
-                  }
-                in
-                tyenv |> Typeenv.add_type tynm tentry in
-              let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, tyid) in
+              let tentry =
+                {
+                  type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
+                  type_kind   = failwith "TODO: make kind from typarams";
+                }
+              in
+              let tyenv = tyenv |> Typeenv.add_type tynm tentry in
+              let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, tyid, tentry) in
               (synacc, vntacc, vertices, graph, tyenv)
         ) (Alist.empty, Alist.empty, SynonymNameSet.empty, SynonymDependencyGraph.empty, tyenv)
       in
@@ -2608,31 +2598,35 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
         | Ok(syns)     -> syns
       in
 
+      (* Add the definition of the synonym types to the type environment. *)
       let (tyenv, tydefacc) =
         syns |> List.fold_left (fun (tyenv, tydefacc) syn ->
-          let (_tynm, _data) = syn in
-          failwith "TODO: add synonyms to the type environment"
+          let (tynm, _syndata) = syn in
+          let tentry =
+            {
+              type_scheme = failwith "TODO: make type scheme";
+              type_kind   = failwith "TODO: make kind from typarams";
+            }
+          in
+          let tyenv = tyenv |> Typeenv.add_type tynm tentry in
+          let tydefacc = Alist.extend tydefacc (tynm, tentry) in
+          (tyenv, tydefacc)
         ) (tyenv, Alist.empty)
       in
 
       (* Traverse each definition of the variant types. *)
       let tydefacc =
         vntacc |> Alist.to_list |> List.fold_left (fun tydefacc vnt ->
-          let (tyident, tyvars, vntbind, tyid) = vnt in
+          let (tyident, tyvars, vntbind, tyid, tentry) = vnt in
+          let (_, tynm) = tyident in
           let (pre, bids) = make_type_parameters pre tyvars in
           let _ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
-          Alist.extend tydefacc (tyident, tyid, List.length bids)
+          Alist.extend tydefacc (tynm, tentry)
         ) tydefacc
       in
 
       let ssig =
-        tydefacc |> Alist.to_list |> List.fold_left (fun ssig ((_, tynm), tyid, arity) ->
-          let tentry =
-            {
-              type_scheme = failwith "TODO: make type scheme";
-              type_kind   = failwith "TODO: make kind";
-            }
-          in
+        tydefacc |> Alist.to_list |> List.fold_left (fun ssig (tynm, tentry) ->
           ssig |> StructSig.add_type tynm tentry
         ) StructSig.empty
       in
