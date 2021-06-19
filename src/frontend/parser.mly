@@ -452,9 +452,6 @@ bind:
   | tokL=MODULE; modnmtok=CONSTRUCTOR; utsigopt=nxsigannot; DEFEQ; utmod=nxmod {
       (tokL, UTBindModule(modnmtok, utsigopt, utmod))
     }
-  | tokL=OPEN; modnmtok=CONSTRUCTOR {
-      (tokL, UTBindOpen(modnmtok))
-    }
   | tokL=LETHORZ; dec=nxhorzmacrodec {
       let (rngcs, csnm, macparams, utast1) = dec in
       (tokL, UTBindHorzMacro((rngcs, csnm), macparams, utast1))

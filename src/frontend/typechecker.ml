@@ -2611,9 +2611,6 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
             failwith "TODO (error): Typechecker.typecheck_binding, UTBindInclude, not a structure"
       end
 
-  | UTBindOpen((_, _modnm)) ->
-      failwith "TODO: Typechecker.typecheck_binding, UTBindOpen"
-
   | UTBindHorzMacro((_, _csnm), _macparams, _utast1) ->
       failwith "TODO: Typechecker.typecheck_binding, UTBindHorzMacro"
 

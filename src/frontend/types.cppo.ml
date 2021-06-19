@@ -393,7 +393,6 @@ and untyped_binding_main =
   | UTBindType      of untyped_type_binding list
   | UTBindModule    of module_name ranged * untyped_signature option * untyped_module
   | UTBindSignature of signature_name ranged * untyped_signature
-  | UTBindOpen      of module_name ranged
   | UTBindInclude   of untyped_module
   | UTBindHorzMacro of ctrlseq_name ranged * untyped_macro_parameter list * untyped_abstract_tree
   | UTBindVertMacro of ctrlseq_name ranged * untyped_macro_parameter list * untyped_abstract_tree
