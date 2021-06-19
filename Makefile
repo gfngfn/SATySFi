@@ -44,7 +44,7 @@ INSTDEF=$(GENCODE_DIR)/vminst.ml
 .PHONY: all gen install lib uninstall clean
 
 all: gen
-	$(DUNE) build
+	$(DUNE) build --root .
 	cp _build/install/default/bin/$(TARGET) .
 
 $(INSTDEF): $(INSTDEF_YAML)
