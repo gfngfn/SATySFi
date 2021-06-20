@@ -8,7 +8,7 @@ DUNE=dune
 .PHONY: all install lib uninstall clean
 
 all:
-	$(DUNE) build
+	$(DUNE) build --root .
 	cp _build/install/default/bin/$(TARGET) .
 
 install: $(TARGET)
