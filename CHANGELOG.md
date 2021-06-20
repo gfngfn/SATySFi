@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 ## [Unreleased]
 ### Fixed
 - Fix invalid errors emitted by `--type-check-only` by making the option extension-sensitive.
+- Fix the exhaustiveness check ([PR\#171](https://github.com/gfngfn/SATySFi/pull/171) by `matsud224`).
 
 ### Added
 - Add primitives `(<<)`, `(>>)`, `bxor`, `band`, `bor`, and `bnot` for bitwise operations ([PR\#85](https://github.com/gfngfn/SATySFi/pull/85) by `konn`).
@@ -14,6 +15,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Allow arbitrary Unicode code points other than few ASCII symbols to occur in the math mode (e.g. `${α + β}`).
 - Add primitive `set-math-char : int -> int -> math-class -> context -> context` for handling various Unicode code points in the math mode.
 - Add primitive `register-document-information` for furnishing document information dictionaries with PDF files ([PR\#268](https://github.com/gfngfn/SATySFi/pull/268) by `puripuri2100`).
+
+### Changed
+- Remove the build dependency on Ruby and migrate some build scripts from `Makefile` to `dune` ([PR\#142](https://github.com/gfngfn/SATySFi/pull/142) by `leque`, and [PR\#226](https://github.com/gfngfn/SATySFi/pull/226) by `na4zagin3`).
 
 ## [0.0.6] - 2021-02-06
 ### Fixed
