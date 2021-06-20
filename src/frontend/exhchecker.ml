@@ -35,18 +35,7 @@ and expand_type =
 
 module ElementSet = Set.Make(struct
   type t = type_element
-  let compare i j =
-    match (i, j) with
-    | (EUnitConstant, EUnitConstant)
-    | (EListCons, EListCons)
-    | (EEndOfList, EEndOfList)
-    | (ETuple, ETuple)
-    | (EWildCard, EWildCard)                       -> 0
-    | (EBooleanConstant(b1), EBooleanConstant(b2)) -> compare b1 b2
-    | (EIntegerConstant(i1), EIntegerConstant(i2)) -> compare i1 i2
-    | (EStringConstant(s1), EStringConstant(s2))   -> compare s1 s2
-    | (EConstructor(s1, _), EConstructor(s2, _))   -> compare s1 s2
-    | _                                            -> 1
+  let compare = Pervasives.compare
 end)
 
 
