@@ -61,7 +61,6 @@ satyrographos install
 * make
 * unzip
 * wget or curl
-* ruby
 * [opam](https://opam.ocaml.org/) 2
     * インストール方法：<https://opam.ocaml.org/doc/Install.html>
     * Windows の場合，bubblewrap 関係の問題を回避するため，Windows Subsystem for Linux (WSL) 2 をオススメします。
