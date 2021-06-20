@@ -29,7 +29,6 @@ satysfi
 *.satysfi-aux
 external/
 *.install
-*.gen.ml
 
 # Created by https://www.toptal.com/developers/gitignore/api/ocaml
 # Edit at https://www.toptal.com/developers/gitignore?templates=ocaml
