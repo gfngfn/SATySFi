@@ -59,7 +59,6 @@ Here is a list of minimally required softwares.
 * make
 * unzip
 * wget or curl
-* ruby
 * [opam](https://opam.ocaml.org/) 2
     * See <https://opam.ocaml.org/doc/Install.html>.
     * On Windows, Windows Subsystem for Linux (WSL) 2 is recommended to avoid bubblewrap-related issues.
