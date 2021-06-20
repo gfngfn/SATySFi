@@ -2,12 +2,7 @@
 \#*
 .\#*
 *~
-*.cmi
-*.cmo
-*.cmx
-*.o
 *.exe
-*.native
 *.tex
 *.log
 *.aux
@@ -20,7 +15,6 @@ bin/
 old/
 test/
 *.png
-_build/
 satysfi
 *.ttf
 *.otf
@@ -36,4 +30,39 @@ satysfi
 external/
 *.install
 *.gen.ml
+
+# Created by https://www.toptal.com/developers/gitignore/api/ocaml
+# Edit at https://www.toptal.com/developers/gitignore?templates=ocaml
+
+### OCaml ###
+*.annot
+*.cmo
+*.cma
+*.cmi
+*.a
+*.o
+*.cmx
+*.cmxs
+*.cmxa
+
+# ocamlbuild working directory
+_build/
+
+# ocamlbuild targets
+*.byte
+*.native
+
+# oasis generated files
+setup.data
+setup.log
+
+# Merlin configuring file for Vim and Emacs
 .merlin
+
+# Dune generated files
+*.install
+
+# Local OPAM switch
+_opam
+
+# End of https://www.toptal.com/developers/gitignore/api/ocaml
