@@ -154,20 +154,30 @@ type math_char_class =
   | MathFraktur
   | MathBoldFraktur
   | MathDoubleStruck
+  | MathSansSerif
+  | MathBoldSansSerif
+  | MathItalicSansSerif
+  | MathBoldItalicSansSerif
+  | MathTypewriter
 [@@deriving show { with_path = false }]
 (* TEMPORARY; should add more *)
 
 type math_variant_style =
   {
-    math_italic        : Uchar.t list;
-    math_bold_italic   : Uchar.t list;
-    math_roman         : Uchar.t list;
-    math_bold_roman    : Uchar.t list;
-    math_script        : Uchar.t list;
-    math_bold_script   : Uchar.t list;
-    math_fraktur       : Uchar.t list;
-    math_bold_fraktur  : Uchar.t list;
-    math_double_struck : Uchar.t list;
+    math_italic                 : Uchar.t list;
+    math_bold_italic            : Uchar.t list;
+    math_roman                  : Uchar.t list;
+    math_bold_roman             : Uchar.t list;
+    math_script                 : Uchar.t list;
+    math_bold_script            : Uchar.t list;
+    math_fraktur                : Uchar.t list;
+    math_bold_fraktur           : Uchar.t list;
+    math_double_struck          : Uchar.t list;
+    math_sans_serif             : Uchar.t list;
+    math_bold_sans_serif        : Uchar.t list;
+    math_italic_sans_serif      : Uchar.t list;
+    math_bold_italic_sans_serif : Uchar.t list;
+    math_typewriter             : Uchar.t list;
   }
 
 let pp_math_variant_style =

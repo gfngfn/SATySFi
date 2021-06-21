@@ -279,16 +279,21 @@ let make_language_system_value langsys =
 
 let get_math_char_class (value : syntactic_value) =
   match value with
-  | Constructor("MathItalic"      , BaseConstant(BCUnit)) -> HorzBox.MathItalic
-  | Constructor("MathBoldItalic"  , BaseConstant(BCUnit)) -> HorzBox.MathBoldItalic
-  | Constructor("MathRoman"       , BaseConstant(BCUnit)) -> HorzBox.MathRoman
-  | Constructor("MathBoldRoman"   , BaseConstant(BCUnit)) -> HorzBox.MathBoldRoman
-  | Constructor("MathScript"      , BaseConstant(BCUnit)) -> HorzBox.MathScript
-  | Constructor("MathBoldScript"  , BaseConstant(BCUnit)) -> HorzBox.MathBoldScript
-  | Constructor("MathFraktur"     , BaseConstant(BCUnit)) -> HorzBox.MathFraktur
-  | Constructor("MathBoldFraktur" , BaseConstant(BCUnit)) -> HorzBox.MathBoldFraktur
-  | Constructor("MathDoubleStruck", BaseConstant(BCUnit)) -> HorzBox.MathDoubleStruck
-  | _                                                     -> report_bug_value "get_math_char_class" value
+  | Constructor("MathItalic"             , BaseConstant(BCUnit)) -> HorzBox.MathItalic
+  | Constructor("MathBoldItalic"         , BaseConstant(BCUnit)) -> HorzBox.MathBoldItalic
+  | Constructor("MathRoman"              , BaseConstant(BCUnit)) -> HorzBox.MathRoman
+  | Constructor("MathBoldRoman"          , BaseConstant(BCUnit)) -> HorzBox.MathBoldRoman
+  | Constructor("MathScript"             , BaseConstant(BCUnit)) -> HorzBox.MathScript
+  | Constructor("MathBoldScript"         , BaseConstant(BCUnit)) -> HorzBox.MathBoldScript
+  | Constructor("MathFraktur"            , BaseConstant(BCUnit)) -> HorzBox.MathFraktur
+  | Constructor("MathBoldFraktur"        , BaseConstant(BCUnit)) -> HorzBox.MathBoldFraktur
+  | Constructor("MathDoubleStruck"       , BaseConstant(BCUnit)) -> HorzBox.MathDoubleStruck
+  | Constructor("MathSansSerif"          , BaseConstant(BCUnit)) -> HorzBox.MathSansSerif
+  | Constructor("MathBoldSansSerif"      , BaseConstant(BCUnit)) -> HorzBox.MathBoldSansSerif
+  | Constructor("MathItalicSansSerif"    , BaseConstant(BCUnit)) -> HorzBox.MathItalicSansSerif
+  | Constructor("MathBoldItalicSansSerif", BaseConstant(BCUnit)) -> HorzBox.MathBoldItalicSansSerif
+  | Constructor("MathTypewriter"         , BaseConstant(BCUnit)) -> HorzBox.MathTypewriter
+  | _                                                    -> report_bug_value "get_math_char_class" value
 
 
 let get_math_class (value : syntactic_value) =
@@ -459,7 +464,12 @@ let get_math_variant_style value =
         Assoc.find_opt rcd "bold-script",
         Assoc.find_opt rcd "fraktur",
         Assoc.find_opt rcd "bold-fraktur",
-        Assoc.find_opt rcd "double-struck" )
+        Assoc.find_opt rcd "double-struck",
+        Assoc.find_opt rcd "sans-serif",
+        Assoc.find_opt rcd "bold-sans-serif",
+        Assoc.find_opt rcd "italic-sans-serif",
+        Assoc.find_opt rcd "bold-italic-sans-serif",
+        Assoc.find_opt rcd "typewriter" )
     with
     | ( Some(vcpI),
         Some(vcpBI),
@@ -469,7 +479,12 @@ let get_math_variant_style value =
         Some(vcpBS),
         Some(vcpF),
         Some(vcpBF),
-        Some(vcpDS) ) ->
+        Some(vcpDS),
+        Some(vcpSS),
+        Some(vcpBSS),
+        Some(vcpISS),
+        Some(vcpBISS),
+        Some(vcpTT) ) ->
           let uchlstI  = get_uchar_list vcpI  in
           let uchlstBI = get_uchar_list vcpBI in
           let uchlstR  = get_uchar_list vcpR  in
@@ -479,16 +494,26 @@ let get_math_variant_style value =
           let uchlstF  = get_uchar_list vcpF  in
           let uchlstBF = get_uchar_list vcpBF in
           let uchlstDS = get_uchar_list vcpDS in
+          let uchlstSS   = get_uchar_list vcpSS in
+          let uchlstBSS  = get_uchar_list vcpBSS in
+          let uchlstISS  = get_uchar_list vcpISS in
+          let uchlstBISS = get_uchar_list vcpBISS in
+          let uchlstTT   = get_uchar_list vcpTT in
             HorzBox.({
-              math_italic        = uchlstI ;
-              math_bold_italic   = uchlstBI;
-              math_roman         = uchlstR ;
-              math_bold_roman    = uchlstBR;
-              math_script        = uchlstS ;
-              math_bold_script   = uchlstBS;
-              math_fraktur       = uchlstF ;
-              math_bold_fraktur  = uchlstBF;
-              math_double_struck = uchlstDS;
+              math_italic                 = uchlstI ;
+              math_bold_italic            = uchlstBI;
+              math_roman                  = uchlstR ;
+              math_bold_roman             = uchlstBR;
+              math_script                 = uchlstS ;
+              math_bold_script            = uchlstBS;
+              math_fraktur                = uchlstF ;
+              math_bold_fraktur           = uchlstBF;
+              math_double_struck          = uchlstDS;
+              math_sans_serif             = uchlstSS;
+              math_bold_sans_serif        = uchlstBSS;
+              math_italic_sans_serif      = uchlstISS;
+              math_bold_italic_sans_serif = uchlstBISS;
+              math_typewriter             = uchlstTT;
             })
 
     | _ -> report_bug_value "get_math_variant_style: missing some fields" value

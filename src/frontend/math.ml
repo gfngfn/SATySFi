@@ -729,15 +729,20 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
       let mccls = MathContext.math_char_class mathctx in
       let uchlst =
         match mccls with
-        | MathItalic       -> mvsty.math_italic
-        | MathBoldItalic   -> mvsty.math_bold_italic
-        | MathRoman        -> mvsty.math_roman
-        | MathBoldRoman    -> mvsty.math_bold_roman
-        | MathScript       -> mvsty.math_script
-        | MathBoldScript   -> mvsty.math_bold_script
-        | MathFraktur      -> mvsty.math_fraktur
-        | MathBoldFraktur  -> mvsty.math_bold_fraktur
-        | MathDoubleStruck -> mvsty.math_double_struck
+        | MathItalic              -> mvsty.math_italic
+        | MathBoldItalic          -> mvsty.math_bold_italic
+        | MathRoman               -> mvsty.math_roman
+        | MathBoldRoman           -> mvsty.math_bold_roman
+        | MathScript              -> mvsty.math_script
+        | MathBoldScript          -> mvsty.math_bold_script
+        | MathFraktur             -> mvsty.math_fraktur
+        | MathBoldFraktur         -> mvsty.math_bold_fraktur
+        | MathDoubleStruck        -> mvsty.math_double_struck
+        | MathSansSerif           -> mvsty.math_sans_serif
+        | MathBoldSansSerif       -> mvsty.math_bold_sans_serif
+        | MathItalicSansSerif     -> mvsty.math_italic_sans_serif
+        | MathBoldItalicSansSerif -> mvsty.math_bold_italic_sans_serif
+        | MathTypewriter          -> mvsty.math_typewriter
       in
         convert_math_char mathctx is_big uchlst mk
 
