@@ -251,12 +251,19 @@ let gen_insttype () =
       inst;
       fields;
       pp;
+      name;
+      type_;
       _
     } as def  when is_primitive def ->
       begin
         match fields with
         | [] ->
-            puts "  | Op%s" inst
+            puts "  | Op%s" inst;
+            begin match name, type_ with
+              | Some name, Some t ->
+                puts "    (** [%s : %s] *)" name (Type.to_string t)
+              | _, _ -> ()
+            end
 
         | _ :: _ ->
             failwith "[gen_insttype] fields should be empty."
