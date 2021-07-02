@@ -62,7 +62,7 @@ let gen_prims is_prims =
       let len = List.length args in
       puts "        (\"%s\"," name;
       puts "          begin";
-      split_lines t |> List.iter (puts "            %s");
+      puts "            %s" @@ Type.to_code t;
       puts "          end,";
       puts "          lambda%d (fun %s -> %s(%s))"
         len (String.concat " " args) inst (String.concat ", " args);
