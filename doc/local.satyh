@@ -8,6 +8,7 @@
 type type-syntax =
   | TypeName        of inline-text
   | TypeConstructor of inline-text * (type-syntax list)
+  | Tuple of type-syntax list
   | FuncType        of type-syntax * type-syntax
 
 
@@ -22,6 +23,8 @@ let type-name name =
 let type-constructor name tylst =
   TypeConstructor(name, tylst)
 
+let type-tuple tylst = Tuple(tylst)
+
 
 let tU = type-name {unit}
 let tI = type-name {int}
@@ -29,6 +32,7 @@ let tB = type-name {bool}
 let tF = type-name {float}
 let tL = type-name {length}
 let tS = type-name {string}
+let tRE = type-name {regexp}
 let tIT = type-name {inline-text}
 let tIB = type-name {inline-boxes}
 let tBT = type-name {block-text}
@@ -55,6 +59,8 @@ let tMCSTY = type-name {math-char-style}
 let tPAREN = type-name {paren}
 let tMCCLS = type-name {math-char-class}
 let tLIST ty = type-constructor {list} [ty]
+let tOPT ty = type-constructor {option} [ty]
+let tANY = type-name {Any}
 %  let token = type-name {list} in
 %    ${\paren{#m}\math-skip!(4pt)#token}
 
@@ -74,6 +80,18 @@ let-rec math-of-type ty =
         ))
       in
         Math.join ${\math-skip!(4pt)} (List.append mlst [text-in-math MathOrd (fun ctx -> read-inline ctx it)])
+
+  | Tuple(tylst) ->
+      let mlst =
+        tylst |> List.map (fun ty -> (
+          let m = math-of-type ty in
+            match ty with
+            | TypeName(_) -> m
+            | _           -> ${\paren{#m}}
+        ))
+      in
+      let m = Math.join ${,\math-skip!(2pt)} mlst in
+      ${\paren{#m}}
 
   | FuncType(ty1, ty2) ->
       let m1 = math-of-type ty1 in

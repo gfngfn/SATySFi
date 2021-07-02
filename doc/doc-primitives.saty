@@ -62,6 +62,12 @@ document (|
     +type (tCTX) {
       コンテキスト型．組版処理に必要な情報のうちテキスト以外のものをすべて保持している．
     }
+    +type (tPATH) {
+      曲線や閉曲線および、それらが占める領域の情報を保持している．
+    }
+    +type (tGR) {
+      \code{path}の情報に加え、「どのような色で塗られるか」・「どのような線で描かれるのか」といった情報を保持する．
+    }
   >
   +section {プリミティヴ一覧} <
     +subsection({基本演算})(
@@ -80,6 +86,9 @@ document (|
       +commands [`==`; `<>`; `<`; `>`; `<=`; `>=`] (t-int-comp) {
         整数の比較演算．
       }
+      +commands [`<<`; `>>`; `bxor`; `band`; `bor`; `bnot`] (t-int-comp) {
+        整数のビット演算．
+      }
       +commands [`&&`; `||`] (t-bool-op) {
         真偽値の連言・選言．
       }
@@ -88,6 +97,9 @@ document (|
       }
       +commands [`+.`; `-.`] (tF --> (tF --> tF)) {
         浮動小数点数の加算・減算．IEEE754に従う．
+      }
+      +commands [`*.`; `/.`] (tF --> (tF --> tF)) {
+        浮動小数点数の乗算・除算．
       }
       +commands [`+'`; `-'`] (tL --> (tL --> tL)) {
         長さの加算・減算．内部的にはPDFポイント単位の浮動小数点数で扱われ，IEEE754に従う．
@@ -104,6 +116,21 @@ document (|
       +command (`float`) (tI --> tF) {
         整数を浮動小数点数に変換する．
       }
+      +command (`round`) (tF --> tI) {
+        浮動小数点数を整数に変換する．
+      }
+      +commands [`ceil`; `floor`] (tF --> tF) {
+        \code{ceil}で浮動小数点数の切り上げを、\code{floor}で浮動小数点数の切り捨てを行う．
+      }
+      +commands [`sin`; `asin`; `cos`; `acos`; `tan`; `atan`] (tF --> tF) {
+        三角関数の演算を行う．
+      }
+      +command (`atan2`) (tF --> (tF --> tF)) {
+        三角関数の演算を行う．
+      }
+      +commands [`log`; `exp`] (tF --> tF) {
+        指数と対数の演算を行う．
+      }
     >);
     +subsection {文字列演算} <
       +p {
@@ -118,10 +145,16 @@ document (|
       +command (`arabic`) (tI --> tS) {
         受け取った整数の十進文字列を返す．
       }
+      +command (`show-float`) (tF --> tS) {
+        受け取った浮動小数点数の十進文字列を返す．
+      }
       +command (`string-unexplode`) ((tLIST tI) --> tS) {
         受け取った整数列をUnicodeコードポイント列と看なして対応する文字列を返す．
         Unicodeコードポイントとして不適切な整数が含まれていた場合の動作は未定義．
         \subject-to-change;
+      }
+      +command (`string-explode`) (tS --> (tLIST tI)) {
+        受け取った文字列をUnicodeコードポイント列として返す．
       }
       +command (`string-same`) (tS --> (tS --> tB)) {
         文字列がUTF-8のバイト列として等価かの判定．
@@ -136,6 +169,36 @@ document (|
       }
       +command (`string-length`) (tS --> tI) {
         受け取った文字列のUnicodeコードポイントでの長さを返す．
+      }
+      +command (`split-into-lines`) (tS --> (tLIST (type-tuple [tI; tS]))) {
+        \code{split-into-lines ${s}}で、\code{${s}}が改行文字で分割され、
+        分割後の文字列の先頭部分の半角スペースが取り除かれる．
+        返り値の整数と文字列のペアの内、整数部分は取り除かれたスペースの数で、
+        文字列部分はスペースが取り除かれた後の文字列である．
+      }
+      +command (`regexp-of-string`) (tS --> tRE) {
+        \code{regexp-of-string ${s}}で文字列から正規表現型を生成する．
+        使える正規表現の構文はOCamlの\code{Str.regexp}で使えるものと等しい．
+        正規表現として不適当な文字列が与えられた場合は実行時エラーが出る．
+      }
+      +command (`string-scan`) (tRE --> (tS --> (tOPT (type-tuple [tS; tS])))) {
+        \code{string-scan ${re} ${s}}で\code{${s}}の\code{${re}}が一致する部分文字列と、残りの文字列を返す．
+        一文字も一致しなかった場合は\code{None}が返る．
+      }
+      +command (`string-match`) (tRE --> (tS --> tB)) {
+        \code{string-match ${re} ${s}}で、\code{${s}}が\code{${re}}にマッチするか
+        を判定する．
+      }
+      +command (`split-on-regexp`) (tRE --> (tS --> (tLIST (type-tuple [tI; tS])))) {
+        \code{split-on-regexp ${re} ${s}}で、\code{${re}}がマッチする部分で\code{${s}}
+        が分割され、分割後の文字列の先頭部分の半角スペースが取り除かれる．
+        返り値の整数と文字列のペアの内、整数部分は取り除かれたスペースの数で、
+        文字列部分はスペースが取り除かれた後の文字列である．
+      }
+      +command (`read-file`) (tS --> (tLIST tS)) {
+        \code{read-file ${path}}で文書ファイルから見て${path}の位置にある外部ファイルの
+        中身を改行文字で分割したリストで返す．
+        \code{..}を含む\code{${path}}は使用できない．
       }
     >
     +subsection ?:(`sec:inline`) {インライン方向に関する処理} <
@@ -415,6 +478,11 @@ document (|
         \code{fill ${color} ${path}}でパス\code{${path}}の内側を色\code{${color}}で塗ったグラフィックスを返す．
         パスのどこが内側であるかは偶奇則によって決められる．
       }
+      +command (`dashed-stroke`) (tL --> ((type-tuple [tL; tL; tL]) --> (tCLR --> (tPATH --> tGR)))) {
+        \code{dashed-stroke ${t} ${\paren{len, space, start}} ${color} ${path}}で
+        パス\code{${path}}を幅\code{${t}}，色\code{${color}}のダッシュ線として描いたグラフィックスを返す．
+        このとき、\code{${len}}でダッシュ一つ一つの長さを指定し、\code{${space}}でダッシュ同士の間の長さを指定し、\code{${start}}で最初のダッシュ線の長さを指定する．
+      }
       +command (`stroke`) (tL --> (tCLR --> (tPATH --> tGR))) {
         \code{stroke ${t} ${color} ${path}}で
         パス\code{${path}}を幅\code{${t}}，色\code{${color}}の線として描いたグラフィックスを返す．
@@ -423,6 +491,48 @@ document (|
       +command (`draw-text`) (tPT --> (tIB --> tGR)) {
         \code{draw-text ${v} ${ib}}で位置\code{${v}}をベースラインの左端として
         インラインボックス列\code{${ib}}を置いたグラフィックスを返す．
+      }
+      +command (`shift-path`) (tPT --> (tPATH --> tPATH)) {
+        \code{${path} \|\> shift-path ${pt}}で\code{${path}}を
+        \code{${pt}}座標分だけ移動させる．
+      }
+      +command (`shift-graphics`) (tPT --> (tGR --> tGR)) {
+        \code{${gr} \|\> shift-graphics ${pt}}で\code{${gr}}を
+        \code{${pt}}座標分だけ移動させる．
+      }
+      +command (`get-path-bbox`) (tPATH --> (type-tuple [tPT; tPT])) {
+        \code{get-gpath-box ${gr}}で\code{${gr}}を
+        のバウンディングボックスの座標の内、${x}座標が取る最小値と
+        ${y}座標が取る最小値の組${\paren{x_{min}, y_{min}}}と、
+        ${x}座標が取る最大値と${y}座標が取る最大値の組${\paren{x_{max}, y_{max}}}
+        を返す．
+      }
+      +command (`get-graphics-bbox`) (tGR --> (type-tuple [tPT; tPT])) {
+        \code{get-path-bbox}と同様に\code{get-graphics-bbox ${gr}}で\code{${gr}}を
+        のバウンディングボックスの右上を返す．
+        ストロークの太さは考慮されない．
+      }
+      +command (`linear-transform-path`) (tF --> (tF --> (tF --> (tF --> (tPATH --> tPATH))))) {
+        \code{${path} \|\> linear-transform-path ${a} ${b} ${c} ${d}で\code{${path}}に対してアフィン変換を行います．}
+      }
+      +command (`linear-transform-graphics`) (tF --> (tF --> (tF --> (tF --> (tGR --> tGR))))) {
+        \code{${gr} \|\> linear-transform-graphics ${a} ${b} ${c} ${d}で\code{${gr}}に対してアフィン変換を行います．}
+      }
+      +command (`inline-graphics`) (tL --> (tL --> (tL --> ((tPT --> (tLIST tGR)) --> tIB)))) {
+        \code{inline-graphics ${w} ${h} ${d} ${grf}}という形で使う．
+        最初の3つの引数は生成される\code{inline-boxes}の大きさを指定するものである．
+        4つ目の引数は「そのグラフィックスが描画されるスタート位置」の座標を受け取って
+        適切な座標に描画されるように設定されたグラフィックスのリストを
+        生成する関数である．
+      }
+    >
+    +subsection{文字列出力に関する処理} <
+      +command (`display-message`) (tS --> tU) {
+        \code{display-message ${msg}}で\code{${msg}}を標準出力に出力する．
+      }
+      +command (`abort-with-message`) (tS --> tANY) {
+        \code{abort-with-message ${msg}}で\code{${msg}}を出力し、\SATySFi;の処理を中止する．
+        型は任意の型に評価される．
       }
     >
   >
