@@ -66,7 +66,6 @@ let tMCCLS = type-name {math-char-class}
 let tPG = type-name {page}
 let tPAGECONTF = type-name {page-count-function}
 let tPAGEPARTSF = type-name {page-parts-function}
-let tDOC = type-name {document}
 let tTCTX = type-name {text-info}
 let tLIST ty = type-constructor {list} [ty]
 let tOPT ty = type-constructor {option} [ty]
@@ -130,6 +129,8 @@ let-rec math-of-type ty =
       in
       ${#m1\to#m2}
 
+
+let-math \math-of-type ty = math-of-type ty
 
 let-block ctx +centered-image wid srcpath =
   let img = load-image srcpath in
