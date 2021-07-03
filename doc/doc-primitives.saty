@@ -92,6 +92,14 @@ document (|
       ${\math-of-type!(tDECO)の}4つ組である．
       行分割・ページ分割可能な枠に使われる．
     }
+    +type (tSCR) {
+      “どの文字体系に属するか”を表す型．
+      \code{HanIdeographic}・\code{Kana}・\code{Latin}・\code{OtherScript}の4つのデータがある代数的データ型である．
+    }
+    +type (tCLR) {
+      色を表す型．
+      \code{Gray of ${\math-of-type!(tF)}}・\code{RGB of ${\math-of-type!(tPROD [tF; tF; tF])}}・\code{CMYK of ${\math-of-type!(tPROD [tF; tF; tF; tF])}}の3つのデータがある代数的データ型である．
+    }
   >
   +section {プリミティヴ一覧} <
     +subsection({基本演算})(
