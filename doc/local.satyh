@@ -63,6 +63,7 @@ let tMKERNF = type-name {math-kern-func}
 let tMCSTY = type-name {math-char-style}
 let tPAREN = type-name {paren}
 let tMCCLS = type-name {math-char-class}
+let tTCTX = type-name {text-info}
 let tLIST ty = type-constructor {list} [ty]
 let tOPT ty = type-constructor {option} [ty]
 let tICMD ty = type-constructor {inline-cmd} [ty]

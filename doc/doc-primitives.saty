@@ -63,6 +63,9 @@ document (|
     +type (tCTX) {
       コンテキスト型．組版処理に必要な情報のうちテキスト以外のものをすべて保持している．
     }
+    +type (tTCTX) {
+      テキスト出力モードで使用されるコンテキスト型．
+    }
     +type (tPATH) {
       曲線や閉曲線および，それらが占める領域の情報を保持している．
     }
@@ -632,6 +635,23 @@ document (|
       }
       +command (`register-document-information`) ((tRECORD [({title}, tOPT tS); ({subjects}, tOPT tS); ({keywords}, tOPT tS); ({author}, tLIST tS)]) --> tU) {
         \code{register-document-information ${info}}で\code{${info}}の中身をPDFの辞書情報として登録する．
+      }
+    >
+    +subsection {テキスト出力モードに関する処理} <
+      +command (`stringify-inline`) (tTCTX --> (tIT --> tS)) {
+        \code{stringify-inline ${tinfo} ${it}}で\code{${tinfo}}に基づいて\code{${it}}を処理し、テキストに変換する．
+      }
+      +command (`stringify-block`) (tTCTX --> (tBT --> tS)) {
+        \code{stringify-block ${tinfo} ${bt}}で\code{${tinfo}}に基づいて\code{${bt}}を処理し、テキストに変換する．
+      }
+      +command (`deepen-indent`) (tI --> (tTCTX --> tS)) {
+        \code{${tinfo} \|\> deepen-indent ${i}}で\code{${i}}分だけインデントの量を大きくしたテキスト文脈を返す．
+      }
+      +command (`break`) (tTCTX --> tS) {
+        改行文字を出力し，\code{deepen-indent}で設定したインデントを出力する．
+      }
+      +command (`get-initial-text-info`) (tU --> tTCTX) {
+        テキスト文脈を返す．
       }
     >
     +subsection {文字列出力に関する処理} <
