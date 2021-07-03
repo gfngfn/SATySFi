@@ -301,6 +301,9 @@ document (|
         \code{line-stack-top}は最初の行のベースラインが外のベースラインと一致するように位置が決められ，
         \code{line-stack-bottom}は最後の行に合わせて決められる．
       }
+      +command (`embed-block-breakable`) (tCTX --> (tBB --> tIB)) {
+        \code{embed-block-breakable ${ctx} ${bb}}で\code{${bb}}をインラインボックス列に“擬態”させて型検査を通し、インラインボックス列を組む時になってその“擬態”を解き、ブロックボックス列として振る舞うようにする．
+      }
     >
     +subsection {ブロック方向に関する処理} <
       +command (`read-block`) (tCTX --> (tBT --> tBB)) {
@@ -326,6 +329,9 @@ document (|
       +command (`block-nil`) (tBB) {
         高さ0のブロックボックス列．より正確には，任意のブロックボックス列\code{${bb}}に対して
         \code{${bb}}と\code{${bb} +++ block-nil}が全く等価に振舞うようになっている．
+      }
+      +command (`page-break`) (tBB) {
+        強制的な改ページを行う．
       }
       +command (`block-frame-breakable`) (tCTX --> (tPADS --> (tDECOSET --> ((tCTX --> tBB) --> tBB)))) {
         \code{block-frame-breakable ${ctx} ${pads} ${ds} ${k}}は
@@ -635,6 +641,19 @@ document (|
       }
       +command (`register-document-information`) ((tRECORD [({title}, tOPT tS); ({subjects}, tOPT tS); ({keywords}, tOPT tS); ({author}, tLIST tS)]) --> tU) {
         \code{register-document-information ${info}}で\code{${info}}の中身をPDFの辞書情報として登録する．
+      }
+    >
+    +subsection {document型に関する処理} <
+      +command (`page-break`) (tPG --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC)))) {
+        ブロックボックス列をページ分割処理を施すための情報などが含まれたデータに変換する．
+        一段組のみをサポートする．
+      }
+      +command (`page-break-two-column`) (tPG --> (tL --> ((tU --> tBB) --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC)))))) {
+        二段組をサポートする．
+        第2引数は段間のスペースである．
+      }
+      +command (`page-break-multicolumn`) (tPG --> (tLIST tL --> ((tU --> tBB) --> ((tU --> tBB) --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC))))))) {
+        多段組をサポートする．
       }
     >
     +subsection {テキスト出力モードに関する処理} <
