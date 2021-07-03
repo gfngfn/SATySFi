@@ -63,10 +63,10 @@ document (|
       コンテキスト型．組版処理に必要な情報のうちテキスト以外のものをすべて保持している．
     }
     +type (tPATH) {
-      曲線や閉曲線および、それらが占める領域の情報を保持している．
+      曲線や閉曲線および，それらが占める領域の情報を保持している．
     }
     +type (tGR) {
-      \code{path}の情報に加え、「どのような色で塗られるか」・「どのような線で描かれるのか」といった情報を保持する．
+      \code{path}の情報に加え，「どのような色で塗られるか」・「どのような線で描かれるのか」といった情報を保持する．
     }
   >
   +section {プリミティヴ一覧} <
@@ -120,7 +120,7 @@ document (|
         浮動小数点数を整数に変換する．
       }
       +commands [`ceil`; `floor`] (tF --> tF) {
-        \code{ceil}で浮動小数点数の切り上げを、\code{floor}で浮動小数点数の切り捨てを行う．
+        \code{ceil}で浮動小数点数の切り上げを，\code{floor}で浮動小数点数の切り捨てを行う．
       }
       +commands [`sin`; `asin`; `cos`; `acos`; `tan`; `atan`] (tF --> tF) {
         三角関数の演算を行う．
@@ -170,10 +170,10 @@ document (|
       +command (`string-length`) (tS --> tI) {
         受け取った文字列のUnicodeコードポイントでの長さを返す．
       }
-      +command (`split-into-lines`) (tS --> (tLIST (type-tuple [tI; tS]))) {
-        \code{split-into-lines ${s}}で、\code{${s}}が改行文字で分割され、
+      +command (`split-into-lines`) (tS --> (tLIST (tPROD [tI; tS]))) {
+        \code{split-into-lines ${s}}で，\code{${s}}が改行文字で分割され，
         分割後の文字列の先頭部分の半角スペースが取り除かれる．
-        返り値の整数と文字列のペアの内、整数部分は取り除かれたスペースの数で、
+        返り値の整数と文字列のペアの内，整数部分は取り除かれたスペースの数で，
         文字列部分はスペースが取り除かれた後の文字列である．
       }
       +command (`regexp-of-string`) (tS --> tRE) {
@@ -181,18 +181,18 @@ document (|
         使える正規表現の構文はOCamlの\code{Str.regexp}で使えるものと等しい．
         正規表現として不適当な文字列が与えられた場合は実行時エラーが出る．
       }
-      +command (`string-scan`) (tRE --> (tS --> (tOPT (type-tuple [tS; tS])))) {
-        \code{string-scan ${re} ${s}}で\code{${s}}の\code{${re}}が一致する部分文字列と、残りの文字列を返す．
+      +command (`string-scan`) (tRE --> (tS --> (tOPT (tPROD [tS; tS])))) {
+        \code{string-scan ${re} ${s}}で\code{${s}}の\code{${re}}が一致する部分文字列と，残りの文字列を返す．
         一文字も一致しなかった場合は\code{None}が返る．
       }
       +command (`string-match`) (tRE --> (tS --> tB)) {
-        \code{string-match ${re} ${s}}で、\code{${s}}が\code{${re}}にマッチするか
+        \code{string-match ${re} ${s}}で，\code{${s}}が\code{${re}}にマッチするか
         を判定する．
       }
-      +command (`split-on-regexp`) (tRE --> (tS --> (tLIST (type-tuple [tI; tS])))) {
-        \code{split-on-regexp ${re} ${s}}で、\code{${re}}がマッチする部分で\code{${s}}
-        が分割され、分割後の文字列の先頭部分の半角スペースが取り除かれる．
-        返り値の整数と文字列のペアの内、整数部分は取り除かれたスペースの数で、
+      +command (`split-on-regexp`) (tRE --> (tS --> (tLIST (tPROD [tI; tS])))) {
+        \code{split-on-regexp ${re} ${s}}で，\code{${re}}がマッチする部分で\code{${s}}
+        が分割され，分割後の文字列の先頭部分の半角スペースが取り除かれる．
+        返り値の整数と文字列のペアの内，整数部分は取り除かれたスペースの数で，
         文字列部分はスペースが取り除かれた後の文字列である．
       }
       +command (`read-file`) (tS --> (tLIST tS)) {
@@ -202,6 +202,9 @@ document (|
       }
     >
     +subsection ?:(`sec:inline`) {インライン方向に関する処理} <
+      +command (`extract-string`) (tIB --> tS) {
+        インラインボックス列を無理やり文字列に変換する．
+      }
       +command (`read-inline`) (tCTX --> (tIT --> tIB)) {
         \code{read-inline ${ctx} ${it}}で
         文脈\code{${ctx}}を用いて
@@ -328,9 +331,21 @@ document (|
       }
     >
     +subsection {テキスト文脈に関する処理} <
+      +command (`get-initial-context`) (tL --> ((tICMD tMATH) --> tCTX)) {
+        デフォルトのテキスト文脈を返す．
+        第1引数は段落の幅を指定し，第2引数はインラインテキスト中に現れた数式に適用するコマンドを与える．
+      }
       +command (`set-space-ratio`) (tF --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-space-ratio ${r}}で単語間空白の幅をフォントサイズの\code{${r}}倍に変更したテキスト文脈を返す．
         \subject-to-change;
+      }
+      +command (`set-space-ratio-between-scripts`) (tF --> (tF --> (tF --> (tSCR --> (tSCR --> (tCTX --> tCTX)))))) {
+        \code{${ctx} \|\> set-space-ratio-between-scripts ${script_1} ${script_2} ${r_0} ${r_1} ${r_2}}で
+        前方が文字体系\code{${script_1}}の文字，
+        後方が文字体系\code{${script_2}}の文字，の隣接箇所で
+        自然長・収納基準長・伸長基準長の文字サイズに対する比率がそれぞれ
+        \code{${r_0}}・\code{${r_1}}・\code{${r_2}}になるようなグルーを
+        挿入するように変更したテキスト文脈を返す．
       }
       +command (`set-font-size`) (tL --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-font-size ${s}}でフォントサイズを\code{${s}}に変更したテキスト文脈を返す．
@@ -341,6 +356,10 @@ document (|
       +command (`set-font`) (tSCR --> (tFONT --> (tCTX --> tCTX))) {
         \code{${ctx} \|\> set-font ${script} ${font}}で
         文字体系\code{${script}}の文字に対して使うフォントを\code{${font}}に変更した文脈を返す．
+      }
+      +command (`get-font`) (tSCR --> (tCTX --> tFONT)) {
+        \code{get-font ${script} ${ctx}}で
+        文字体系\code{${script}}の文字に対して使うフォントを返す．
       }
       +command (`set-language`) (tSCR --> (tLANG --> (tCTX --> tCTX))) {
         \code{${ctx} \|\> set-language ${script} ${lang}}で
@@ -373,16 +392,46 @@ document (|
       +command (`set-text-color`) (tCLR --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-text-color ${color}}で文字色を\code{${color}}に変更した文脈を返す．
       }
+      +command (`get-text-color`) (tCTX --> tCLR) {
+        テキスト文脈が保持している文字色を返す．
+      }
       +command (`set-leading`) (tL --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-leading ${l}}で行送りを\code{${l}}に変更した文脈を返す．
         これはフォントサイズに対する比での指定ではなく，直接長さを指定するプリミティヴであることに注意．
         すなわち，フォントサイズを変更しても標準の行送りの長さは変更されない．
+      }
+      +command (`set-min-gap-of-lines`) (tL --> (tCTX --> tCTX)) {
+        \code{${ctx} \|\> set-min-gap-of-lines ${l}}で行間の最小値を引数の値に変更した文脈を返す．
+      }
+      +command (`set-paragraph-margin`) (tL --> tL --> ((tCTX --> tCTX))) {
+        \code{${ctx} \|\> set-min-gap-of-lines ${l_1} ${l_2}}で段落の上のマージンを\code{${l_1}}に，
+        段落の下のマージンを\code{${l_2}}にするように変更したテキスト文脈を返す．
+        \subject-to-change;
       }
       +command (`set-manual-rising`) (tL --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-manual-rising ${l}}で文字全体を長さ\code{${l}}だけ持ち上げて組む文脈を返す．
       }
       +command (`get-text-width`) (tCTX --> tL) {
         テキスト文脈が保持している段落幅を返す．\code{line-break}はこの長さにしたがって行分割を行なう．
+      }
+      +command (`set-word-break-penalty`) (tI --> (tCTX --> tCTX)) {
+        \code{set-word-break-penalty ${p} ${ctx}}で「そこで行分割された場合に加算されるペナルティ値」を\code{${p}}に設定したテキスト文脈を返す．
+      }
+      +command (`set-every-word-break`) (tIB --> (tIB --> (tCTX --> tCTX))) {
+        \code{set-every-word-break ${ib_1} ${ib_2} ${ctx}}で行分割候補箇所の「そこで行分割された場合に直前の行末に入る内容」を\code{${ib_1}}に，
+        「そこで行分割された場合に直後の行頭に入る内容」を\code{${ib_2}}に設定したテキスト文脈を返す．
+      }
+      +command (`get-every-word-break`) (tCTX --> (tPROD [tIB; tIB])) {
+        \code{set-every-word-break}で設定されている\code{${ib_1}}と\code{${ib_2}}の内容を取得する．
+      }
+      +command (`set-hyphen-penalty`) (tI --> (tCTX --> tCTX)) {
+        ハイフネーションによるペナルティを設定する．
+        デフォルトは100である．
+      }
+      +command (`set-hyphen-min`) (tI --> (tI --> (tCTX --> tCTX))) {
+        \code{${ctx} \|\> set-hyphen-min ${p_1} ${p_2}}で
+        左のハイフネーションペナルティを\code{${p_1}}に，
+        右のハイフネーションペナルティを\code{${p_2}}に設定したテキスト文脈を返す．
       }
     >
     +subsection {数式に関する処理} <
@@ -478,10 +527,10 @@ document (|
         \code{fill ${color} ${path}}でパス\code{${path}}の内側を色\code{${color}}で塗ったグラフィックスを返す．
         パスのどこが内側であるかは偶奇則によって決められる．
       }
-      +command (`dashed-stroke`) (tL --> ((type-tuple [tL; tL; tL]) --> (tCLR --> (tPATH --> tGR)))) {
+      +command (`dashed-stroke`) (tL --> ((tPROD [tL; tL; tL]) --> (tCLR --> (tPATH --> tGR)))) {
         \code{dashed-stroke ${t} ${\paren{len, space, start}} ${color} ${path}}で
         パス\code{${path}}を幅\code{${t}}，色\code{${color}}のダッシュ線として描いたグラフィックスを返す．
-        このとき、\code{${len}}でダッシュ一つ一つの長さを指定し、\code{${space}}でダッシュ同士の間の長さを指定し、\code{${start}}で最初のダッシュ線の長さを指定する．
+        このとき，\code{${len}}でダッシュ一つ一つの長さを指定し，\code{${space}}でダッシュ同士の間の長さを指定し，\code{${start}}で最初のダッシュ線の長さを指定する．
       }
       +command (`stroke`) (tL --> (tCLR --> (tPATH --> tGR))) {
         \code{stroke ${t} ${color} ${path}}で
@@ -500,23 +549,23 @@ document (|
         \code{${gr} \|\> shift-graphics ${pt}}で\code{${gr}}を
         \code{${pt}}座標分だけ移動させる．
       }
-      +command (`get-path-bbox`) (tPATH --> (type-tuple [tPT; tPT])) {
+      +command (`get-path-bbox`) (tPATH --> (tPROD [tPT; tPT])) {
         \code{get-gpath-box ${gr}}で\code{${gr}}を
-        のバウンディングボックスの座標の内、${x}座標が取る最小値と
-        ${y}座標が取る最小値の組${\paren{x_{min}, y_{min}}}と、
+        のバウンディングボックスの座標の内，${x}座標が取る最小値と
+        ${y}座標が取る最小値の組${\paren{x_{min}, y_{min}}}と，
         ${x}座標が取る最大値と${y}座標が取る最大値の組${\paren{x_{max}, y_{max}}}
         を返す．
       }
-      +command (`get-graphics-bbox`) (tGR --> (type-tuple [tPT; tPT])) {
+      +command (`get-graphics-bbox`) (tGR --> (tPROD [tPT; tPT])) {
         \code{get-path-bbox}と同様に\code{get-graphics-bbox ${gr}}で\code{${gr}}を
         のバウンディングボックスの右上を返す．
         ストロークの太さは考慮されない．
       }
       +command (`linear-transform-path`) (tF --> (tF --> (tF --> (tF --> (tPATH --> tPATH))))) {
-        \code{${path} \|\> linear-transform-path ${a} ${b} ${c} ${d}で\code{${path}}に対してアフィン変換を行います．}
+        \code{${path} \|\> linear-transform-path ${a} ${b} ${c} ${d}で\code{${path}}に対して線形変換を行う．}
       }
       +command (`linear-transform-graphics`) (tF --> (tF --> (tF --> (tF --> (tGR --> tGR))))) {
-        \code{${gr} \|\> linear-transform-graphics ${a} ${b} ${c} ${d}で\code{${gr}}に対してアフィン変換を行います．}
+        \code{${gr} \|\> linear-transform-graphics ${a} ${b} ${c} ${d}}で\code{${gr}}に対して線形変換を行う．
       }
       +command (`inline-graphics`) (tL --> (tL --> (tL --> ((tPT --> (tLIST tGR)) --> tIB)))) {
         \code{inline-graphics ${w} ${h} ${d} ${grf}}という形で使う．
@@ -526,12 +575,43 @@ document (|
         生成する関数である．
       }
     >
-    +subsection{文字列出力に関する処理} <
+    +subsection {相互参照に関する処理} <
+      +command (`register-cross-reference`) (tS --> (tS --> tU)) {
+        \code{register-cross-reference ${key} ${value}}で相互参照のID\code{${key}}に内容\code{${value}}を紐づけて登録する．
+        既に\code{${key}}に内容が紐づけられていた場合は内容は上書きされ，内容が異なっていた場合は不動点に達していないとして再度\SATySFi;の処理が行われる．
+      }
+      +command (`get-cross-reference`) (tS --> (tOPT tS)) {
+        \code{get-cross-reference ${key}}で相互参照のID\code{${key}}に紐づけられた内容\code{${value}}を取得する．
+        何も紐づけられたいなかった場合は\code{None}を返す．
+      }
+    >
+    +subsection{PDFの機能に関する処理} <
+      +command (`register-link-to-uri`) (tS --> (tPT --> (tL --> (tL --> (tL --> ((tOPT (tPROD [tL; tCLR])) --> tU)))))) {
+        \code{register-link-to-uri ${uri} ${point} ${w} ${h} ${d} ${frame}}で\code{${uri}}へのハイパーリンクを作成する．
+        ハイパーリンクを設置する場所を座標\code{${point}}・幅\code{${w}}・高さ\code{${h}}・深さ\code{${d}}で指定し，
+        PDFビューワでの閲覧時にのみ表示される枠線の幅と色を\code{${frame}}で指定する．
+      }
+      +command (`register-link-to-location`) (tS --> (tPT --> (tL --> (tL --> (tL --> ((tOPT (tPROD [tL; tCLR])) --> tU)))))) {
+        \code{register-link-to-location ${key} ${point} ${w} ${h} ${d} ${frame}}で\code{${key}}へのハイパーリンクを作成する．
+        \code{${key}}は\code{register-destination}で登録したものに対応する．
+      }
+      +command (`register-destination`) (tS --> (tPT --> tU)) {
+        \code{register-destination ${key} ${point}}で\code{${point}}をジャンプ先に指定したリンクを\code{${key}}と紐づけて登録する．
+      }
+      +command (`register-outline`) ((tLIST (tPROD [tI; tS; tS; tB])) --> tU) {
+        \code{register-outline ${lst}}で\code{${lst}}の中身をPDFのしおりとして登録する．
+        タプルの中身は，しおりの深さ・しおりのタイトル・ジャンプ先のキー名・デフォルトの折りたたみ状態をそれぞれあらわす．
+      }
+      +command (`register-document-information`) ((tRECORD [({title}, tOPT tS); ({subjects}, tOPT tS); ({keywords}, tOPT tS); ({author}, tLIST tS)]) --> tU) {
+        \code{register-document-information ${info}}で\code{${info}}の中身をPDFの辞書情報として登録する．
+      }
+    >
+    +subsection {文字列出力に関する処理} <
       +command (`display-message`) (tS --> tU) {
         \code{display-message ${msg}}で\code{${msg}}を標準出力に出力する．
       }
       +command (`abort-with-message`) (tS --> tANY) {
-        \code{abort-with-message ${msg}}で\code{${msg}}を出力し、\SATySFi;の処理を中止する．
+        \code{abort-with-message ${msg}}で\code{${msg}}を出力し，\SATySFi;の処理を中止する．
         型は任意の型に評価される．
       }
     >

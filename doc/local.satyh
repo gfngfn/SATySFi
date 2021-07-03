@@ -4,11 +4,14 @@
 @require: vdecoset
 @require: hdecoset
 
+@import: paren
+
 
 type type-syntax =
   | TypeName        of inline-text
   | TypeConstructor of inline-text * (type-syntax list)
-  | Tuple of type-syntax list
+  | Tuple           of type-syntax list
+  | Record          of (inline-text * type-syntax) list
   | FuncType        of type-syntax * type-syntax
 
 
@@ -24,6 +27,8 @@ let type-constructor name tylst =
   TypeConstructor(name, tylst)
 
 let type-tuple tylst = Tuple(tylst)
+
+let type-record tylst = Record(tylst)
 
 
 let tU = type-name {unit}
@@ -60,6 +65,9 @@ let tPAREN = type-name {paren}
 let tMCCLS = type-name {math-char-class}
 let tLIST ty = type-constructor {list} [ty]
 let tOPT ty = type-constructor {option} [ty]
+let tICMD ty = type-constructor {inline-cmd} [ty]
+let tPROD tylst = type-tuple tylst
+let tRECORD tylst = type-record tylst
 let tANY = type-name {Any}
 %  let token = type-name {list} in
 %    ${\paren{#m}\math-skip!(4pt)#token}
@@ -76,6 +84,8 @@ let-rec math-of-type ty =
           let m = math-of-type ty in
             match ty with
             | TypeName(_) -> m
+            | Tuple(_)    -> m
+            | Record(_)   -> m
             | _           -> ${\paren{#m}}
         ))
       in
@@ -87,11 +97,23 @@ let-rec math-of-type ty =
           let m = math-of-type ty in
             match ty with
             | TypeName(_) -> m
+            | Tuple(_)    -> m
+            | Record(_)   -> m
             | _           -> ${\paren{#m}}
         ))
       in
       let m = Math.join ${,\math-skip!(2pt)} mlst in
       ${\paren{#m}}
+
+  | Record(lst) ->
+      let mlst =
+        lst |> List.map (fun (key, ty) -> (
+          let m = math-of-type ty in
+          ${\text!(key) = #m}
+        ))
+      in
+      let m = Math.join ${\;\math-skip!(4pt)} mlst in
+      ${\record-paren{#m}}
 
   | FuncType(ty1, ty2) ->
       let m1 = math-of-type ty1 in
