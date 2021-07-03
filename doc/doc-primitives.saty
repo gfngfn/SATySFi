@@ -411,6 +411,12 @@ document (|
       +command (`unite-path`) (tPATH --> (tPATH --> tPATH)) {
         2つのパスを統合して1つにする．これはドーナツ形など中空のパスをつくるのに必須である．
       }
+      +command (`shift-path`) (tPT --> (tPATH --> tPATH)) {
+          \code{shift-path pt pat}で${pt}で与えられた変分だけ${pat}をずらす。
+      }
+      +command (`shift-graphics`) (tPT --> (tGR --> tGR)) {
+          \code{shift-graphics pt gr}で${pt}で与えられた変分だけ${gr}をずらす。
+      }
       +command (`fill`) (tCLR --> (tPATH --> tGR)) {
         \code{fill ${color} ${path}}でパス\code{${path}}の内側を色\code{${color}}で塗ったグラフィックスを返す．
         パスのどこが内側であるかは偶奇則によって決められる．
@@ -423,6 +429,20 @@ document (|
       +command (`draw-text`) (tPT --> (tIB --> tGR)) {
         \code{draw-text ${v} ${ib}}で位置\code{${v}}をベースラインの左端として
         インラインボックス列\code{${ib}}を置いたグラフィックスを返す．
+      }
+      +command (`linear-transform-path`) (tF --> (tF --> (tF --> (tF --> (tPATH --> tPATH))))) {
+        \code{linear-transform-path ${a} ${b} ${c} ${d} ${pat}}でパス\code{${pat}}に対して
+        ${
+            \paren{\two-lines-in-math{x'}{y'}}
+            =
+            \paren{\two-lines-in-math{a\ \ b}{c\ \ d}}
+            \paren{\two-lines-in-math{x}{y}}
+        }
+        で示される線形変換を行い、変換されたパスを返す。
+        このコマンドと\code{shift-path}を組み合わせることで任意のアフィン変換を実行可能である。
+      }
+      +command (`linear-transform-graphics`) (tF --> (tF --> (tF --> (tF --> (tGR --> tGR))))) {
+        \code{linear-transform-graphics ${a} ${b} ${c} ${d} ${gr}}でグラフィック${gr}に対して\code{linear-transform-path}と同様の変換を行う。
       }
     >
   >

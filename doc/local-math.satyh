@@ -56,3 +56,20 @@ let-math \valB m =
 let-math \BNF nontm mlst =
   let defs = Math.join ${\|} mlst in
     ${#nontm \mathrel{: : =} #defs}
+
+let-math \two-lines-in-math m1 m2 =
+    text-in-math MathOrd (fun ctx -> (
+        let ib1 = read-inline ctx {${#m1}} in
+        let (w1, h1, d1) = get-natural-metrics ib1 in
+        let ib2 = read-inline ctx {${#m2}} in
+        let (w2, h2, d2) = get-natural-metrics ib2 in
+        let w = length-max w1 w2 in
+        let h = (h1 +' d1 +' h2 +' d2) *' 0.6 in
+        let d = h in
+        inline-graphics w h d (fun (x, y) -> (
+            [
+                draw-text (x +' (w -' w1) *' 0.5, y +' h -' h1) ib1;
+                draw-text (x +' (w -' w2) *' 0.5, y -' d +' d2) ib2;
+            ]
+        ))
+    ))
