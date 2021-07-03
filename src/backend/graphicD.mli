@@ -46,3 +46,5 @@ val pdfops_test_skip_margins : color -> point -> length -> (bool * length) optio
 val pdfops_test_scale : color -> point -> length -> Pdfops.t list
 
 val to_pdfops : 'a t -> (point -> 'a -> Pdfops.t list) -> Pdfops.t list
+
+val clip_graphics : 'a element -> path -> 'a element

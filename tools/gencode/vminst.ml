@@ -3399,4 +3399,25 @@ let lines = aux Alist.empty in
 close_in inc;
 make_list make_string lines
 |}
+    ; inst "ClipGraphicsByPath"
+        ~name:"clip-graphics-by-path"
+        ~type_:{|
+~% (tPATH @-> tGR @-> tGR)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "pathlst" ~type_:"path_value";
+          param "grelem" ~type_:"graphics_element";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let rec gen_clipel_f l = match l with
+    el :: xs -> GraphicD.clip_graphics (gen_clipel_f xs) el
+    | [] -> grelem
+in
+let grelem = gen_clipel_f pathlst in
+make_graphics grelem
+(* Does it work correctly when len(pathlst) > 1 ?? *)
+|}
     ])

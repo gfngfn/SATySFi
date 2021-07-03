@@ -182,3 +182,4 @@ let get_path_list_bbox pathlst =
     let (ptmin1, ptmax1) = get_path_bbox path in
       (update_min ptmin0 ptmin1, update_max ptmax0 ptmax1)
   ) bboxinit
+

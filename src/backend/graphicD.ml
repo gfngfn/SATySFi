@@ -116,6 +116,7 @@ type 'a element =
   | DashedStroke of length * dash * color * path list
   | HorzText     of point * 'a
   | LinearTrans  of point * (float * float * float * float) * 'a element
+  | Clip         of path * 'a element
 
 
 type 'a t = ('a element) Alist.t
@@ -137,6 +138,7 @@ let rec shift_element v grelem =
   | DashedStroke(thkns, dash, color, pathlst) -> DashedStroke(thkns, dash, color, pathlst |> List.map (shift_path v))
   | HorzText(pt, textvalue)                   -> HorzText(pt +@% v, textvalue)
   | LinearTrans(pt, mat, subelem)             -> LinearTrans(pt +@% v, mat, (shift_element v subelem))
+  | Clip(path, subelem)                    -> Clip(shift_path v path, shift_element v subelem)
 
 
 let rec get_element_bbox textbboxf grelem =
@@ -145,7 +147,9 @@ let rec get_element_bbox textbboxf grelem =
   | Stroke(_, _, pathlst)
   | DashedStroke(_, _, _, pathlst)
       -> get_path_list_bbox pathlst
-           (* -- currently ignores the thickness of the stroke -- *)
+        (* -- currently ignores the thickness of the stroke -- *)
+  | Clip(path, _)
+      -> get_path_list_bbox [path]
   | HorzText(pt, textvalue) -> textbboxf pt textvalue
   | LinearTrans(pt, mat, subelem) ->
       let ((xmin, ymin), (xmax, ymax)) = get_element_bbox textbboxf subelem in
@@ -294,6 +298,7 @@ let rec to_pdfops (gr : 'a t) (f : point -> 'a -> Pdfops.t list) : Pdfops.t list
       | DashedStroke(thk, dash, color, pathlst) -> pdfops_of_dashed_stroke thk dash color pathlst
       | HorzText(pt, textvalue)                 -> f pt textvalue
       | LinearTrans(pt, mat, subelem)           -> pdfops_of_lineartrans pt mat subelem f
+      | Clip(pathlst, subelem)                   -> pdfops_of_clip pathlst subelem f
     ) |> List.concat
 
 and pdfops_of_lineartrans pt mat subelem f =
@@ -308,6 +313,20 @@ and pdfops_of_lineartrans pt mat subelem f =
     ];
   ]
 
+and pdfops_of_clip path subelem f =
+  List.concat [
+    [
+      op_q;
+      op_cm_translate (Length.zero, Length.zero);
+    ];
+    pdfops_of_path path;
+    [
+      Pdfops.Op_W';
+      Pdfops.Op_n;
+    ];
+    (to_pdfops (Alist.of_list [subelem]) f);
+    [ op_Q ];
+  ]
 
 
 (* -- 'pdfops_test_box': output bounding box of vertical elements for debugging -- *)
@@ -460,3 +479,5 @@ let pdfops_test_scale color (xpos, ypos) len =
       op_Q;
     ];
   ]
+
+let clip_graphics (grelem : 'a element) (path : path) : 'a element = Clip(path, grelem)
