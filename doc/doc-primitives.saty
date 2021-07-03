@@ -1,5 +1,6 @@
 % -*- coding: utf-8 -*-
 @require: stdjabook
+@require: itemize
 @import: local
 @import: local-math
 
@@ -415,11 +416,11 @@ document (|
         テキスト文脈が保持している段落幅を返す．\code{line-break}はこの長さにしたがって行分割を行なう．
       }
       +command (`set-word-break-penalty`) (tI --> (tCTX --> tCTX)) {
-        \code{set-word-break-penalty ${p} ${ctx}}で「そこで行分割された場合に加算されるペナルティ値」を\code{${p}}に設定したテキスト文脈を返す．
+        \code{set-word-break-penalty ${p} ${ctx}}で“そこで行分割された場合に加算されるペナルティ値”を\code{${p}}に設定したテキスト文脈を返す．
       }
       +command (`set-every-word-break`) (tIB --> (tIB --> (tCTX --> tCTX))) {
-        \code{set-every-word-break ${ib_1} ${ib_2} ${ctx}}で行分割候補箇所の「そこで行分割された場合に直前の行末に入る内容」を\code{${ib_1}}に，
-        「そこで行分割された場合に直後の行頭に入る内容」を\code{${ib_2}}に設定したテキスト文脈を返す．
+        \code{set-every-word-break ${ib_1} ${ib_2} ${ctx}}で行分割候補箇所の“そこで行分割された場合に直前の行末に入る内容”を\code{${ib_1}}に，
+        “そこで行分割された場合に直後の行頭に入る内容”を\code{${ib_2}}に設定したテキスト文脈を返す．
       }
       +command (`get-every-word-break`) (tCTX --> (tPROD [tIB; tIB])) {
         \code{set-every-word-break}で設定されている\code{${ib_1}}と\code{${ib_2}}の内容を取得する．
@@ -454,11 +455,16 @@ document (|
       +command (`math-frac`) (tMATH --> (tMATH --> tMATH)) {
         分数．
       }
-      +command (`math-radical`) (tMATH --> tMATH) {
+      +command (`math-radical`) ((tOPT tMATH) --> (tMATH --> tMATH)) {
         根号．
+        第1引数には現在のところ\code{None}しか渡すことは出来ない．
       }
       +command (`math-paren`) (tPAREN --> (tPAREN --> (tMATH --> tMATH))) {
         中身に応じて自動で大きさが調整される括弧で囲う．
+      }
+      +command (`math-paren-with-middle`) (tPAREN --> (tPAREN --> (tPAREN --> ((tLIST tMATH) --> tMATH)))) {
+        第3引数で与えた括弧で第4引数の数式のリストを区切って出力する．
+        第1引数と第2引数の扱いは\code{math-paren}を同じである．
       }
       +command (`text-in-math`) (tMATHCLS --> ((tCTX --> tIB) --> tMATH)) {
         数式中にインラインボックス列を埋め込む．
@@ -471,6 +477,28 @@ document (|
       }
       +command (`math-char-class`) (tMCCLS --> (tMATH --> tMATH)) {
         数式文字クラスを変更する．
+      }
+      +command (`math-concat`) (tMATH --> (tMATH --> tMATH)) {
+        数式を結合する．
+      }
+      +command (`math-group`) (tMATHCLS --> (tMATHCLS --> (tMATH --> tMATH))) {
+        \code{math-group ${cls_1} ${cls_2} ${m}}で数式\code{${m}}内は通常通りのスペーシングで組むが，
+        \code{${m}}全体の左側のスペーシングについては\code{${cls_1}}を，
+        右側のスペーシングについては\code{${cls_2}}を持っているかのように扱わせる．
+      }
+      +command (`math-pull-in-scripts`) (tMATHCLS --> (tMATHCLS --> ((tOPT tMATH --> (tOPT tMATH --> tMATH)) --> tMATH))) {
+        添字と指数がつけられたときに，“それらを内側に取り込んで使える”数式を作成する．
+        \code{math-pull-in-scripts ${cls_1} ${cls_2} ${f}}で
+        \code{${m}}全体の左側のスペーシングについては\code{${cls_1}}を，
+        右側のスペーシングについては\code{${cls_2}}を持っているかのように扱わせる．
+        “中身の数式”は使われた箇所で，
+        \listing {
+          * 添字も指数も付かなかった場合：\code{${f} None None}
+          * 添字\code{${m_1}}だけついた場合：\code{${f} Some(${m_1}) None}
+          * 指数\code{${m_2}}だけついた場合：\code{${f} None Some(${m_2})}
+          * 添字\code{${m_1}}も指数\code{${m_2}}もついた場合：\code{${f} Some(${m_1}) Some(${m_2})}
+        }
+        を評価した結果の数式となる．
       }
     >
     +subsection {画像に関する処理} <
@@ -570,7 +598,7 @@ document (|
       +command (`inline-graphics`) (tL --> (tL --> (tL --> ((tPT --> (tLIST tGR)) --> tIB)))) {
         \code{inline-graphics ${w} ${h} ${d} ${grf}}という形で使う．
         最初の3つの引数は生成される\code{inline-boxes}の大きさを指定するものである．
-        4つ目の引数は「そのグラフィックスが描画されるスタート位置」の座標を受け取って
+        4つ目の引数は“そのグラフィックスが描画されるスタート位置”の座標を受け取って
         適切な座標に描画されるように設定されたグラフィックスのリストを
         生成する関数である．
       }
