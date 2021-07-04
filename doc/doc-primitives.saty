@@ -74,7 +74,7 @@ document (|
     }
     +type (tPT) {
       ${\paren{x, y}}で座標を表す．
-      左下が原点で、右に行くほど${x}の値が大きくなり，上に行くほど${y}の値が大きくなる座標系である．
+      左下が原点で，右に行くほど${x}の値が大きくなり，上に行くほど${y}の値が大きくなる座標系である．
     }
     +type (tPATH) {
       曲線や閉曲線および，それらが占める領域の情報を保持している．
@@ -330,7 +330,7 @@ document (|
         \code{line-stack-bottom}は最後の行に合わせて決められる．
       }
       +command (`embed-block-breakable`) (tCTX --> (tBB --> tIB)) {
-        \code{embed-block-breakable ${ctx} ${bb}}で\code{${bb}}をインラインボックス列に“擬態”させて型検査を通し、インラインボックス列を組む時になってその“擬態”を解き、ブロックボックス列として振る舞うようにする．
+        \code{embed-block-breakable ${ctx} ${bb}}で\code{${bb}}をインラインボックス列に“擬態”させて型検査を通し，インラインボックス列を組む時になってその“擬態”を解き，ブロックボックス列として振る舞うようにする．
       }
     >
     +subsection {ブロック方向に関する処理} <
@@ -464,9 +464,9 @@ document (|
         デフォルトは100である．
       }
       +command (`set-hyphen-min`) (tI --> (tI --> (tCTX --> tCTX))) {
-        \code{${ctx} \|\> set-hyphen-min ${p_1} ${p_2}}で
-        左のハイフネーションペナルティを\code{${p_1}}に，
-        右のハイフネーションペナルティを\code{${p_2}}に設定したテキスト文脈を返す．
+        \code{${ctx} \|\> set-hyphen-min ${n_1} ${n_2}} で
+        ハイフネーションによって単語が分割されるときの左側の最小文字数を \code{${n_1}} に，
+        右側の最小文字数を \code{${n_2}} にそれぞれ設定したテキスト文脈を返す．
       }
     >
     +subsection {数式に関する処理} <
@@ -620,11 +620,11 @@ document (|
       }
       +command (`get-graphics-bbox`) (tGR --> (tPROD [tPT; tPT])) {
         \code{get-path-bbox}と同様に\code{get-graphics-bbox ${gr}}で\code{${gr}}を
-        のバウンディングボックスの右上を返す．
+        のバウンディングボックスの大きさを返す．
         ストロークの太さは考慮されない．
       }
       +command (`linear-transform-path`) (tF --> (tF --> (tF --> (tF --> (tPATH --> tPATH))))) {
-        \code{${path} \|\> linear-transform-path ${a} ${b} ${c} ${d}で\code{${path}}に対して線形変換を行う．}
+        \code{${path} \|\> linear-transform-path ${a} ${b} ${c} ${d}}で\code{${path}}に対して線形変換を行う．
       }
       +command (`linear-transform-graphics`) (tF --> (tF --> (tF --> (tF --> (tGR --> tGR))))) {
         \code{${gr} \|\> linear-transform-graphics ${a} ${b} ${c} ${d}}で\code{${gr}}に対して線形変換を行う．
@@ -648,7 +648,7 @@ document (|
       }
     >
     +subsection {ページ分割に関する処理} <
-      +command (`page-break`) (tBB) {
+      +command (`clear-page`) (tBB) {
         強制的な改ページを行う．
       }
       +command (`add-footnote`) (tBB --> tIB) {
@@ -699,10 +699,10 @@ document (|
     >
     +subsection {テキスト出力モードに関する処理} <
       +command (`stringify-inline`) (tTCTX --> (tIT --> tS)) {
-        \code{stringify-inline ${tinfo} ${it}}で\code{${tinfo}}に基づいて\code{${it}}を処理し、テキストに変換する．
+        \code{stringify-inline ${tinfo} ${it}}で\code{${tinfo}}に基づいて\code{${it}}を処理し，テキストに変換する．
       }
       +command (`stringify-block`) (tTCTX --> (tBT --> tS)) {
-        \code{stringify-block ${tinfo} ${bt}}で\code{${tinfo}}に基づいて\code{${bt}}を処理し、テキストに変換する．
+        \code{stringify-block ${tinfo} ${bt}}で\code{${tinfo}}に基づいて\code{${bt}}を処理し，テキストに変換する．
       }
       +command (`deepen-indent`) (tI --> (tTCTX --> tS)) {
         \code{${tinfo} \|\> deepen-indent ${i}}で\code{${i}}分だけインデントの量を大きくしたテキスト文脈を返す．

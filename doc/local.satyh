@@ -106,7 +106,7 @@ let-rec math-of-type ty =
             | _           -> ${\paren{#m}}
         ))
       in
-      let m = Math.join ${,\math-skip!(2pt)} mlst in
+      let m = Math.join ${\ast} mlst in
       ${\paren{#m}}
 
   | Record(lst) ->
