@@ -78,7 +78,6 @@ module Color : sig
   val lightgreen          : color
   val lightpink           : color
   val lightsalmon         : color
-  val lightsalmon         : color
   val lightseagreen       : color
   val lightskyblue        : color
   val lightslategray      : color
@@ -94,7 +93,6 @@ module Color : sig
   val mediumorchid        : color
   val mediumpurple        : color
   val mediumseagreen      : color
-  val mediumslateblue     : color
   val mediumslateblue     : color
   val mediumspringgreen   : color
   val mediumturquoise     : color
@@ -118,8 +116,6 @@ module Color : sig
   val peachpuff           : color
   val peru                : color
   val pink                : color
-  val pink                : color
-  val plum                : color
   val plum                : color
   val powderblue          : color
   val purple              : color
@@ -140,10 +136,8 @@ module Color : sig
   val springgreen         : color
   val steelblue           : color
   val tan                 : color
-  val tan                 : color
   val teal                : color
   val thistle             : color
-  val tomato              : color
   val tomato              : color
   val turquoise           : color
   val violet              : color
@@ -233,7 +227,6 @@ end = struct
   let lightgreen           = rgb 0.56470 0.93333 0.56470
   let lightpink            = rgb 1. 0.71372 0.75686
   let lightsalmon          = rgb 1. 0.62745 0.47843
-  let lightsalmon          = rgb 1. 0.62745 0.47843
   let lightseagreen        = rgb 0.12549 0.69803 0.66666
   let lightskyblue         = rgb 0.52941 0.80784 0.98039
   let lightslategray       = rgb 0.46666 0.53333 0.59999
@@ -249,7 +242,6 @@ end = struct
   let mediumorchid         = rgb 0.72941 0.33333 0.82745
   let mediumpurple         = rgb 0.57647 0.43921 0.85882
   let mediumseagreen       = rgb 0.23529 0.70196 0.44313
-  let mediumslateblue      = rgb 0.48235 0.40784 0.93333
   let mediumslateblue      = rgb 0.48235 0.40784 0.93333
   let mediumspringgreen    = rgb 0. 0.98039 0.60392
   let mediumturquoise      = rgb 0.28235 0.81960 0.80000
@@ -273,8 +265,6 @@ end = struct
   let peachpuff            = rgb 1. 0.85490 0.72549
   let peru                 = rgb 0.80392 0.52156 0.24705
   let pink                 = rgb 1. 0.75294 0.79607
-  let pink                 = rgb 1. 0.75294 0.79607
-  let plum                 = rgb 0.86666 0.62745 0.86666
   let plum                 = rgb 0.86666 0.62745 0.86666
   let powderblue           = rgb 0.69019 0.87843 0.90196
   let purple               = rgb 0.50196 0. 0.50196
@@ -295,10 +285,8 @@ end = struct
   let springgreen          = rgb 0. 1. 0.49803
   let steelblue            = rgb 0.27450 0.50980 0.70588
   let tan                  = rgb 0.82352 0.70588 0.54901
-  let tan                  = rgb 0.82352 0.70588 0.54901
   let teal                 = rgb 0. 0.50196 0.50196
   let thistle              = rgb 0.84705 0.74901 0.84705
-  let tomato               = rgb 1. 0.38823 0.27843
   let tomato               = rgb 1. 0.38823 0.27843
   let turquoise            = rgb 0.25098 0.87843 0.81568
   let violet               = rgb 0.93333 0.50980 0.93333
