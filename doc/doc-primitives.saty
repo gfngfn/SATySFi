@@ -66,6 +66,51 @@ document (|
     +type (tMATH) {
       数式を扱う型．
     }
+    +type (tMATHCLS) {
+      数式のスペーシングのために必要な“どの種類の数学記号なのか”を表す型．
+      \code{MathOrd}（通常）・\code{MathBin}（2項演算子）・\code{MathRel}（関係子）・
+      \code{MathOp}（作用子）・\code{MathPunct}（パンクチュエーション）・
+      \code{MathOpen}（開き括弧類）・\code{MathClose}（閉じ括弧類）・\code{MathPrefix}（接頭類）・
+      \code{MathInner}（部分式）の9つのデータがある代数的データ型である．
+    }
+    +type (tMCCLS) {
+      数式中に書かれている文字をどの文字クラスに基づいてグリフに変換するときに使用する型．
+      \code{MathItalic}・\code{MathBoldItalic}・\code{MathRoman}・\code{MathBoldRoman}・
+      \code{MathScript}・\code{MathBoldScript}・\code{MathFraktur}・\code{MathBoldFraktur}・
+      \code{MathDoubleStruck}の9つのデータがある代数的データ型である．
+    }
+    +type (tMCSTY) {
+      どの文字クラスでどの文字列が対応するのかを定める際に使用される．
+      ${
+        \math-of-type!(
+          tRECORD [
+            ({italic}, tS);
+            ({bold-italic}, tS);
+            ({roman}, tS);
+            ({bold-roman}, tS);
+            ({script}, tS);
+            ({bold-script}, tS);
+            ({fraktur}, tS);
+            ({bold-fraktur}, tS);
+            ({double-struck}, tS);
+          ]
+        )
+      }が中身である．
+    }
+    +type (tMKERNF) {
+      カーニング量を調節するための関数．
+      ${\math-of-type!(tL --> (tL --> tL))}が中身である．
+    }
+    +type (tPAREN) {
+      内容の高さ・内容の深さ・軸の高さ・文字サイズ・文字色を受け取り，片側の括弧の中身と添字・指数をカーニングするための詰め幅を返す関数である．
+      数式の括弧を描画するために使われる．
+      ${
+        \math-of-type!(
+          tL --> (tL --> (tL --> (tL --> (tCLR --> (tPROD [tIB; (tL --> tL)])))))
+        )
+      }
+      が中身である．
+    }
     +type (tCTX) {
       コンテキスト型．組版処理に必要な情報のうちテキスト以外のものをすべて保持している．
     }
@@ -89,16 +134,57 @@ document (|
       ${\math-of-type!(tPT --> (tL --> (tL --> (tL --> (tLIST tGR)))))}である．枠の指定に使われる．
     }
     +type (tDECOSET) {
-      ${\math-of-type!(tDECO)の}4つ組である．
+      ${\math-of-type!(tDECO)}の4つ組である．
       行分割・ページ分割可能な枠に使われる．
     }
     +type (tSCR) {
       “どの文字体系に属するか”を表す型．
       \code{HanIdeographic}・\code{Kana}・\code{Latin}・\code{OtherScript}の4つのデータがある代数的データ型である．
     }
+    +type (tLANG) {
+      どの言語システムに基づいているのかを表す型．
+      現在のところ\code{Japanese}・\code{English}・\code{NoLanguageSystem}の3つのデータがある代数的データ型である．
+    }
     +type (tCLR) {
       色を表す型．
       \code{Gray of ${\math-of-type!(tF)}}・\code{RGB of ${\math-of-type!(tPROD [tF; tF; tF])}}・\code{CMYK of ${\math-of-type!(tPROD [tF; tF; tF; tF])}}の3つのデータがある代数的データ型である．
+    }
+    +type (tDOC) {
+      \code{page-break}などによってしか生成することができない．
+      PDFに出力するデータなどを格納する．
+    }
+    +type (tPG) {
+      ページサイズを表す．
+      \code{A0Paper}・\code{A1Paper}・\code{A2Paper}・\code{A3Paper}・
+      \code{A4Paper}・\code{A5Paper}・\code{USLetter}・\code{USLegal}・
+      \code{UserDefinedPaper of ${\math-of-type!(tPROD [tL; tL])}}の9つのデータがある代数的データ型である．
+      \subject-to-change;
+    }
+    +type (tPAGECONTF) {
+      ページ番号を基に“そのページのテキストの領域の段落方向の長さ”と“そのページの中身を配置するときの左上の座標”を返す関数である．
+      ${
+        \math-of-type!(
+          (tRECORD [({page-number}, tI)]) -->
+          (tRECORD [
+            ({text-height}, tL);
+            ({text-origin}, tPT);
+          ])
+        )
+      }が中身である．
+    }
+    +type (tPAGEPARTSF) {
+      ページ番号を基にヘッダーとフッターの中身とその左上の座標を返す関数である．
+      ${
+        \math-of-type!(
+          (tRECORD [({page-number}, tI)]) -->
+          (tRECORD [
+            ({header-content}, tBB);
+            ({header-origin}, tPT);
+            ({footer-content}, tBB);
+            ({footer-origin}, tPT);
+          ])
+        )
+      }が中身である．
     }
   >
   +section {プリミティヴ一覧} <
