@@ -382,6 +382,9 @@ document (|
       +command (`get-natural-width`) (tIB --> tL) {
         インラインボックス列を受け取り，その自然な幅を返す．
       }
+      +command (`get-natural-metrics`) (tIB --> tPROD [tL; tL; tL]) {
+        インラインボックス列を受け取り，その自然な幅・高さ・深さを返す．
+      }
       +command (`inline-graphics`) (tL --> (tL --> (tL --> ((tPT --> tLIST tGR) --> tIB)))) {
         \code{inline-graphics ${w} ${h} ${d} ${igr}}で
         幅\code{${w}}，高さ\code{${h}}，深さ\code{${d}}の
@@ -440,6 +443,10 @@ document (|
       +command (`+++`) (tBB --> (tBB --> tBB)) {
         2つのブロックボックス列を結合して返す．
       }
+      +command (`block-skip`) (tL --> tBB) {
+        \code{block-skip ${l}}で
+        長さ\code{${l}}のブロック方向の空白を返す．
+      }
       +command (`block-nil`) (tBB) {
         高さ0のブロックボックス列．より正確には，任意のブロックボックス列\code{${bb}}に対して
         \code{${bb}}と\code{${bb} +++ block-nil}が全く等価に振舞うようになっている．
@@ -449,6 +456,9 @@ document (|
         文脈\code{${ctx}}をテキスト幅に関して\code{${pads}}を用いて変更して
         継続\code{${k}}に渡し，その結果のブロックボックス列を装飾\code{${ds}}のフレームで囲んだものを返す．
         この処理でつくられるフレームは途中で改ページ可能である．
+      }
+      +command (`get-natural-length`) (tBB --> tL) {
+        ブロックボックス列を受け取り，そのブロック方向の長さを返す．
       }
     >
     +subsection {テキスト文脈に関する処理} <
