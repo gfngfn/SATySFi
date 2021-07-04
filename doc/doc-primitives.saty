@@ -71,13 +71,13 @@ document (|
       \code{MathOrd}（通常）・\code{MathBin}（2項演算子）・\code{MathRel}（関係子）・
       \code{MathOp}（作用子）・\code{MathPunct}（パンクチュエーション）・
       \code{MathOpen}（開き括弧類）・\code{MathClose}（閉じ括弧類）・\code{MathPrefix}（接頭類）・
-      \code{MathInner}（部分式）の9つのデータがある代数的データ型である．
+      \code{MathInner}（部分式）の9つの値構築子をもつ代数的データ型である．
     }
     +type (tMCCLS) {
       数式中に書かれている文字をどの文字クラスに基づいてグリフに変換するときに使用する型．
       \code{MathItalic}・\code{MathBoldItalic}・\code{MathRoman}・\code{MathBoldRoman}・
       \code{MathScript}・\code{MathBoldScript}・\code{MathFraktur}・\code{MathBoldFraktur}・
-      \code{MathDoubleStruck}の9つのデータがある代数的データ型である．
+      \code{MathDoubleStruck}の9つの値構築子をもつ代数的データ型である．
     }
     +type (tMCSTY) {
       どの文字クラスでどの文字列が対応するのかを定める際に使用される．
@@ -139,15 +139,15 @@ document (|
     }
     +type (tSCR) {
       “どの文字体系に属するか”を表す型．
-      \code{HanIdeographic}・\code{Kana}・\code{Latin}・\code{OtherScript}の4つのデータがある代数的データ型である．
+      \code{HanIdeographic}・\code{Kana}・\code{Latin}・\code{OtherScript}の4つの値構築子をもつ代数的データ型である．
     }
     +type (tLANG) {
       どの言語システムに基づいているのかを表す型．
-      現在のところ\code{Japanese}・\code{English}・\code{NoLanguageSystem}の3つのデータがある代数的データ型である．
+      現在のところ\code{Japanese}・\code{English}・\code{NoLanguageSystem}の3つの値構築子をもつ代数的データ型である．
     }
     +type (tCLR) {
       色を表す型．
-      \code{Gray of ${\math-of-type!(tF)}}・\code{RGB of ${\math-of-type!(tPROD [tF; tF; tF])}}・\code{CMYK of ${\math-of-type!(tPROD [tF; tF; tF; tF])}}の3つのデータがある代数的データ型である．
+      \code{Gray of ${\math-of-type!(tF)}}・\code{RGB of ${\math-of-type!(tPROD [tF; tF; tF])}}・\code{CMYK of ${\math-of-type!(tPROD [tF; tF; tF; tF])}}の3つの値構築子をもつ代数的データ型である．
     }
     +type (tDOC) {
       \code{page-break}などによってしか生成することができない．
@@ -157,7 +157,7 @@ document (|
       ページサイズを表す．
       \code{A0Paper}・\code{A1Paper}・\code{A2Paper}・\code{A3Paper}・
       \code{A4Paper}・\code{A5Paper}・\code{USLetter}・\code{USLegal}・
-      \code{UserDefinedPaper of ${\math-of-type!(tPROD [tL; tL])}}の9つのデータがある代数的データ型である．
+      \code{UserDefinedPaper of ${\math-of-type!(tPROD [tL; tL])}}の9つの値構築子をもつ代数的データ型である．
       \subject-to-change;
     }
     +type (tPAGECONTF) {
@@ -687,8 +687,8 @@ document (|
       }
       +command (`dashed-stroke`) (tL --> ((tPROD [tL; tL; tL]) --> (tCLR --> (tPATH --> tGR)))) {
         \code{dashed-stroke ${t} ${\paren{len, space, start}} ${color} ${path}}で
-        パス\code{${path}}を幅\code{${t}}，色\code{${color}}のダッシュ線として描いたグラフィックスを返す．
-        このとき，\code{${len}}でダッシュ一つ一つの長さを指定し，\code{${space}}でダッシュ同士の間の長さを指定し，\code{${start}}で最初のダッシュ線の長さを指定する．
+        パス\code{${path}}を幅\code{${t}}，色\code{${color}}の破線として描いたグラフィックスを返す．
+        このとき，\code{${len}}で破線一つ一つの長さを指定し，\code{${space}}で破線同士の間の長さを指定し，\code{${start}}で最初の破線の長さを指定する．
       }
       +command (`stroke`) (tL --> (tCLR --> (tPATH --> tGR))) {
         \code{stroke ${t} ${color} ${path}}で
