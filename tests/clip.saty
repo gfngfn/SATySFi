@@ -1,9 +1,18 @@
 % -*- coding: utf-8 -*-
 @import: head
+@import: ../lib-satysfi/dist/packages/color
 
+
+let-inline ctx \do-fill wid f =
+    let ib = use-image-by-width (load-image `images/lenna-rgb.jpg`) wid
+    in
+    let (w, h, d) = get-natural-metrics ib in
+    inline-graphics w h d (fun (x, y) -> [
+        fill (Color.blue) (f x y w (h +' d))
+    ])
 
 let-inline ctx \do-clip wid f =
-    let ib = use-image-by-width (load-image `images/lenna-cmyk.jpg`) wid
+    let ib = use-image-by-width (load-image `images/lenna-rgb.jpg`) wid
     in
     let (w, h, d) = get-natural-metrics ib in
     inline-graphics w h d (fun (x, y) -> [
@@ -16,7 +25,7 @@ let path-circle x y w h =
         |> bezier-to (x +' w *' 0.25, y) (x, y +' h *' 0.25) (x, y +' h *' 0.5)
         |> bezier-to (x, y +' h *' 0.75) (x +' w *' 0.25, y +' h) (x +' w *' 0.5, y +' h)
         |> bezier-to (x +' w *' 0.75, y +' h) (x +' w, y +' h *' 0.75) (x +' w, y +' h *' 0.5)
-        |> bezier-to (x +' w *' 0.25, y +' h) (x +' w *' 0.75, y) (x +' w *' 0.5, y)
+        |> bezier-to (x +' w, y +' h *' 0.25) (x +' w *' 0.75, y) (x +' w *' 0.5, y)
         |> close-with-line
 in
 
@@ -30,10 +39,14 @@ in
 
 document (|
   title  = {Clipping Examples};
-  author = {Yasuo Ozu};
+  author = {\SATySFi; Contributors};
 |) '<
     +p {
+        \do-fill (5cm) (path-circle);
         \do-clip (5cm) (path-circle);
+    }
+    +p {
+        \do-fill (5cm) (path-donut);
         \do-clip (5cm) (path-donut);
     }
 >

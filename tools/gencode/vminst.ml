@@ -3412,11 +3412,7 @@ make_list make_string lines
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let rec gen_clipel_f l = match l with
-    el :: xs -> GraphicD.clip_graphics (gen_clipel_f xs) el
-    | [] -> grelem
-in
-let grelem = gen_clipel_f pathlst in
+let grelem = GraphicD.clip_graphics grelem pathlst in
 make_graphics grelem
 (* Does it work correctly when len(pathlst) > 1 ?? *)
 |}

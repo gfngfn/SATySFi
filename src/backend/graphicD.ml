@@ -116,7 +116,7 @@ type 'a element =
   | DashedStroke of length * dash * color * path list
   | HorzText     of point * 'a
   | LinearTrans  of point * (float * float * float * float) * 'a element
-  | Clip         of path * 'a element
+  | Clip         of path list * 'a element
 
 
 type 'a t = ('a element) Alist.t
@@ -138,7 +138,7 @@ let rec shift_element v grelem =
   | DashedStroke(thkns, dash, color, pathlst) -> DashedStroke(thkns, dash, color, pathlst |> List.map (shift_path v))
   | HorzText(pt, textvalue)                   -> HorzText(pt +@% v, textvalue)
   | LinearTrans(pt, mat, subelem)             -> LinearTrans(pt +@% v, mat, (shift_element v subelem))
-  | Clip(path, subelem)                    -> Clip(shift_path v path, shift_element v subelem)
+  | Clip(pathlst, subelem)                    -> Clip(List.map (shift_path v) pathlst, shift_element v subelem)
 
 
 let rec get_element_bbox textbboxf grelem =
@@ -146,10 +146,9 @@ let rec get_element_bbox textbboxf grelem =
   | Fill(_, pathlst)
   | Stroke(_, _, pathlst)
   | DashedStroke(_, _, _, pathlst)
+  | Clip(pathlst, _)
       -> get_path_list_bbox pathlst
         (* -- currently ignores the thickness of the stroke -- *)
-  | Clip(path, _)
-      -> get_path_list_bbox [path]
   | HorzText(pt, textvalue) -> textbboxf pt textvalue
   | LinearTrans(pt, mat, subelem) ->
       let ((xmin, ymin), (xmax, ymax)) = get_element_bbox textbboxf subelem in
@@ -313,13 +312,13 @@ and pdfops_of_lineartrans pt mat subelem f =
     ];
   ]
 
-and pdfops_of_clip path subelem f =
+and pdfops_of_clip pathlst subelem f =
   List.concat [
     [
       op_q;
       op_cm_translate (Length.zero, Length.zero);
     ];
-    pdfops_of_path path;
+    pdfops_of_path_list pathlst;
     [
       Pdfops.Op_W';
       Pdfops.Op_n;
@@ -480,4 +479,4 @@ let pdfops_test_scale color (xpos, ypos) len =
     ];
   ]
 
-let clip_graphics (grelem : 'a element) (path : path) : 'a element = Clip(path, grelem)
+let clip_graphics (grelem : 'a element) (pathlst : path list) : 'a element = Clip(pathlst, grelem)

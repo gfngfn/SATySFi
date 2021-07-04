@@ -47,4 +47,4 @@ val pdfops_test_scale : color -> point -> length -> Pdfops.t list
 
 val to_pdfops : 'a t -> (point -> 'a -> Pdfops.t list) -> Pdfops.t list
 
-val clip_graphics : 'a element -> path -> 'a element
+val clip_graphics : 'a element -> path list -> 'a element
