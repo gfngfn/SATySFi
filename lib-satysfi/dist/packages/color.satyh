@@ -9,15 +9,300 @@ module Color : sig
   val orange : color
   val blue   : color
 
+  % web color names
+  val aliceblue           : color
+  val antiquewhite        : color
+  val aqua                : color
+  val aquamarine          : color
+  val azure               : color
+  val beige               : color
+  val bisque              : color
+  val blanchedalmond      : color
+  val blueviolet          : color
+  val brown               : color
+  val burlywood           : color
+  val cadetblue           : color
+  val chartreuse          : color
+  val chocolate           : color
+  val coral               : color
+  val cornflowerblue      : color
+  val cornsilk            : color
+  val crimson             : color
+  val cyan                : color
+  val darkblue            : color
+  val darkcyan            : color
+  val darkgoldenrod       : color
+  val darkgray            : color
+  val darkgreen           : color
+  val darkkhaki           : color
+  val darkmagenta         : color
+  val darkolivegreen      : color
+  val darkorange          : color
+  val darkorchid          : color
+  val darkred             : color
+  val darksalmon          : color
+  val darkseagreen        : color
+  val darkslateblue       : color
+  val darkslategray       : color
+  val darkturquoise       : color
+  val darkviolet          : color
+  val deeppink            : color
+  val deepskyblue         : color
+  val dimgray             : color
+  val dodgerblue          : color
+  val firebrick           : color
+  val floralwhite         : color
+  val forestgreen         : color
+  val fuchsia             : color
+  val gainsboro           : color
+  val ghostwhite          : color
+  val gold                : color
+  val goldenrod           : color
+  val green               : color
+  val greenyellow         : color
+  val honeydew            : color
+  val hotpink             : color
+  val indianred           : color
+  val indigo              : color
+  val ivory               : color
+  val khaki               : color
+  val lavender            : color
+  val lavenderblush       : color
+  val lawngreen           : color
+  val lemonchiffon        : color
+  val lightblue           : color
+  val lightcoral          : color
+  val lightcyan           : color
+  val lightgoldenrodyellow: color
+  val lightgray           : color
+  val lightgreen          : color
+  val lightpink           : color
+  val lightsalmon         : color
+  val lightsalmon         : color
+  val lightseagreen       : color
+  val lightskyblue        : color
+  val lightslategray      : color
+  val lightsteelblue      : color
+  val lightyellow         : color
+  val lime                : color
+  val limegreen           : color
+  val linen               : color
+  val magenta             : color
+  val maroon              : color
+  val mediumaquamarine    : color
+  val mediumblue          : color
+  val mediumorchid        : color
+  val mediumpurple        : color
+  val mediumseagreen      : color
+  val mediumslateblue     : color
+  val mediumslateblue     : color
+  val mediumspringgreen   : color
+  val mediumturquoise     : color
+  val mediumvioletred     : color
+  val midnightblue        : color
+  val mintcream           : color
+  val mistyrose           : color
+  val moccasin            : color
+  val navajowhite         : color
+  val navy                : color
+  val oldlace             : color
+  val olive               : color
+  val olivedrab           : color
+  val orangered           : color
+  val orchid              : color
+  val palegoldenrod       : color
+  val palegreen           : color
+  val paleturquoise       : color
+  val palevioletred       : color
+  val papayawhip          : color
+  val peachpuff           : color
+  val peru                : color
+  val pink                : color
+  val pink                : color
+  val plum                : color
+  val plum                : color
+  val powderblue          : color
+  val purple              : color
+  val rebeccapurple       : color
+  val rosybrown           : color
+  val royalblue           : color
+  val saddlebrown         : color
+  val salmon              : color
+  val sandybrown          : color
+  val seagreen            : color
+  val seashell            : color
+  val sienna              : color
+  val silver              : color
+  val skyblue             : color
+  val slateblue           : color
+  val slategray           : color
+  val snow                : color
+  val springgreen         : color
+  val steelblue           : color
+  val tan                 : color
+  val tan                 : color
+  val teal                : color
+  val thistle             : color
+  val tomato              : color
+  val tomato              : color
+  val turquoise           : color
+  val violet              : color
+  val wheat               : color
+  val whitesmoke          : color
+  val yellowgreen         : color
+
 end = struct
 
   let gray x = Gray(x)
   let rgb r g b = RGB(r, g, b)
 
+  % basic colors
   let black  = gray 0.
   let white  = gray 1.
   let red    = rgb 1. 0. 0.
   let yellow = rgb 1. 1. 0.
   let orange = rgb 1. 0.5 0.
   let blue   = rgb 0. 0. 1.
+
+  % web color names
+  let aliceblue            = rgb 0.94117 0.97254 1.
+  let antiquewhite         = rgb 0.98039 0.92156 0.84313
+  let aqua                 = rgb 0. 1. 1.
+  let aquamarine           = rgb 0.49803 1. 0.83137
+  let azure                = rgb 0.94117 1. 1.
+  let beige                = rgb 0.96078 0.96078 0.86274
+  let bisque               = rgb 1. 0.89411 0.76862
+  let blanchedalmond       = rgb 1. 0.92156 0.80392
+  let blueviolet           = rgb 0.54117 0.16862 0.88627
+  let brown                = rgb 0.64705 0.16470 0.16470
+  let burlywood            = rgb 0.87058 0.72156 0.52941
+  let cadetblue            = rgb 0.37254 0.61960 0.62745
+  let chartreuse           = rgb 0.49803 1. 0.
+  let chocolate            = rgb 0.82352 0.41176 0.11764
+  let coral                = rgb 1. 0.49803 0.31372
+  let cornflowerblue       = rgb 0.39215 0.58431 0.92941
+  let cornsilk             = rgb 1. 0.97254 0.86274
+  let crimson              = rgb 0.86274 0.07843 0.23529
+  let cyan                 = rgb 0. 1. 1.
+  let darkblue             = rgb 0. 0. 0.54509
+  let darkcyan             = rgb 0. 0.54509 0.54509
+  let darkgoldenrod        = rgb 0.72156 0.52549 0.04313
+  let darkgray             = rgb 0.66274 0.66274 0.66274
+  let darkgreen            = rgb 0. 0.39215 0.
+  let darkkhaki            = rgb 0.74117 0.71764 0.41960
+  let darkmagenta          = rgb 0.54509 0. 0.54509
+  let darkolivegreen       = rgb 0.33333 0.41960 0.18431
+  let darkorange           = rgb 1. 0.54901 0.
+  let darkorchid           = rgb 0.59999 0.19607 0.80000
+  let darkred              = rgb 0.54509 0. 0.
+  let darksalmon           = rgb 0.91372 0.58823 0.47843
+  let darkseagreen         = rgb 0.56078 0.73725 0.54509
+  let darkslateblue        = rgb 0.28235 0.23921 0.54509
+  let darkslategray        = rgb 0.18431 0.30980 0.30980
+  let darkturquoise        = rgb 0. 0.80784 0.81960
+  let darkviolet           = rgb 0.58039 0. 0.82745
+  let deeppink             = rgb 1. 0.07843 0.57647
+  let deepskyblue          = rgb 0. 0.74901 1.
+  let dimgray              = rgb 0.41176 0.41176 0.41176
+  let dodgerblue           = rgb 0.11764 0.56470 1.
+  let firebrick            = rgb 0.69803 0.13333 0.13333
+  let floralwhite          = rgb 1. 0.98039 0.94117
+  let forestgreen          = rgb 0.13333 0.54509 0.13333
+  let fuchsia              = rgb 1. 0. 1.
+  let gainsboro            = rgb 0.86274 0.86274 0.86274
+  let ghostwhite           = rgb 0.97254 0.97254 1.
+  let gold                 = rgb 1. 0.84313 0.
+  let goldenrod            = rgb 0.85490 0.64705 0.12549
+  let green                = rgb 0. 0.50196 0.
+  let greenyellow          = rgb 0.67843 1. 0.18431
+  let honeydew             = rgb 0.94117 1. 0.94117
+  let hotpink              = rgb 1. 0.41176 0.70588
+  let indianred            = rgb 0.80392 0.36078 0.36078
+  let indigo               = rgb 0.29411 0. 0.50980
+  let ivory                = rgb 1. 1. 0.94117
+  let khaki                = rgb 0.94117 0.90196 0.54901
+  let lavender             = rgb 0.90196 0.90196 0.98039
+  let lavenderblush        = rgb 1. 0.94117 0.96078
+  let lawngreen            = rgb 0.48627 0.98823 0.
+  let lemonchiffon         = rgb 1. 0.98039 0.80392
+  let lightblue            = rgb 0.67843 0.84705 0.90196
+  let lightcoral           = rgb 0.94117 0.50196 0.50196
+  let lightcyan            = rgb 0.87843 1. 1.
+  let lightgoldenrodyellow = rgb 0.98039 0.98039 0.82352
+  let lightgray            = rgb 0.82745 0.82745 0.82745
+  let lightgreen           = rgb 0.56470 0.93333 0.56470
+  let lightpink            = rgb 1. 0.71372 0.75686
+  let lightsalmon          = rgb 1. 0.62745 0.47843
+  let lightsalmon          = rgb 1. 0.62745 0.47843
+  let lightseagreen        = rgb 0.12549 0.69803 0.66666
+  let lightskyblue         = rgb 0.52941 0.80784 0.98039
+  let lightslategray       = rgb 0.46666 0.53333 0.59999
+  let lightsteelblue       = rgb 0.69019 0.76862 0.87058
+  let lightyellow          = rgb 1. 1. 0.87843
+  let lime                 = rgb 0. 1. 0.
+  let limegreen            = rgb 0.19607 0.80392 0.19607
+  let linen                = rgb 0.98039 0.94117 0.90196
+  let magenta              = rgb 1. 0. 1.
+  let maroon               = rgb 0.50196 0. 0.
+  let mediumaquamarine     = rgb 0.40000 0.80392 0.66666
+  let mediumblue           = rgb 0. 0. 0.80392
+  let mediumorchid         = rgb 0.72941 0.33333 0.82745
+  let mediumpurple         = rgb 0.57647 0.43921 0.85882
+  let mediumseagreen       = rgb 0.23529 0.70196 0.44313
+  let mediumslateblue      = rgb 0.48235 0.40784 0.93333
+  let mediumslateblue      = rgb 0.48235 0.40784 0.93333
+  let mediumspringgreen    = rgb 0. 0.98039 0.60392
+  let mediumturquoise      = rgb 0.28235 0.81960 0.80000
+  let mediumvioletred      = rgb 0.78039 0.08235 0.52156
+  let midnightblue         = rgb 0.09803 0.09803 0.43921
+  let mintcream            = rgb 0.96078 1. 0.98039
+  let mistyrose            = rgb 1. 0.89411 0.88235
+  let moccasin             = rgb 1. 0.89411 0.70980
+  let navajowhite          = rgb 1. 0.87058 0.67843
+  let navy                 = rgb 0. 0. 0.50196
+  let oldlace              = rgb 0.99215 0.96078 0.90196
+  let olive                = rgb 0.50196 0.50196 0.
+  let olivedrab            = rgb 0.41960 0.55686 0.13725
+  let orangered            = rgb 1. 0.27058 0.
+  let orchid               = rgb 0.85490 0.43921 0.83921
+  let palegoldenrod        = rgb 0.93333 0.90980 0.66666
+  let palegreen            = rgb 0.59607 0.98431 0.59607
+  let paleturquoise        = rgb 0.68627 0.93333 0.93333
+  let palevioletred        = rgb 0.85882 0.43921 0.57647
+  let papayawhip           = rgb 1. 0.93725 0.83529
+  let peachpuff            = rgb 1. 0.85490 0.72549
+  let peru                 = rgb 0.80392 0.52156 0.24705
+  let pink                 = rgb 1. 0.75294 0.79607
+  let pink                 = rgb 1. 0.75294 0.79607
+  let plum                 = rgb 0.86666 0.62745 0.86666
+  let plum                 = rgb 0.86666 0.62745 0.86666
+  let powderblue           = rgb 0.69019 0.87843 0.90196
+  let purple               = rgb 0.50196 0. 0.50196
+  let rebeccapurple        = rgb 0.40000 0.20000 0.59999
+  let rosybrown            = rgb 0.73725 0.56078 0.56078
+  let royalblue            = rgb 0.25490 0.41176 0.88235
+  let saddlebrown          = rgb 0.54509 0.27058 0.07450
+  let salmon               = rgb 0.98039 0.50196 0.44705
+  let sandybrown           = rgb 0.95686 0.64313 0.37647
+  let seagreen             = rgb 0.18039 0.54509 0.34117
+  let seashell             = rgb 1. 0.96078 0.93333
+  let sienna               = rgb 0.62745 0.32156 0.17647
+  let silver               = rgb 0.75294 0.75294 0.75294
+  let skyblue              = rgb 0.52941 0.80784 0.92156
+  let slateblue            = rgb 0.41568 0.35294 0.80392
+  let slategray            = rgb 0.43921 0.50196 0.56470
+  let snow                 = rgb 1. 0.98039 0.98039
+  let springgreen          = rgb 0. 1. 0.49803
+  let steelblue            = rgb 0.27450 0.50980 0.70588
+  let tan                  = rgb 0.82352 0.70588 0.54901
+  let tan                  = rgb 0.82352 0.70588 0.54901
+  let teal                 = rgb 0. 0.50196 0.50196
+  let thistle              = rgb 0.84705 0.74901 0.84705
+  let tomato               = rgb 1. 0.38823 0.27843
+  let tomato               = rgb 1. 0.38823 0.27843
+  let turquoise            = rgb 0.25098 0.87843 0.81568
+  let violet               = rgb 0.93333 0.50980 0.93333
+  let wheat                = rgb 0.96078 0.87058 0.70196
+  let whitesmoke           = rgb 0.96078 0.96078 0.96078
+  let yellowgreen          = rgb 0.60392 0.80392 0.19607
 end
