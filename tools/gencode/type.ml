@@ -1,10 +1,11 @@
 type t =
-  | TyCon0 of string * string
-  | TyCon1 of string * string * t
-  | Product of t list
-  | Fun of t * t
-  | TyVar of string
-  | Forall of string * t
+  | TyCon0 of { cname: string; sname: string }
+  (* cname = Caml name, sname = SATySFi name *)
+  | TyCon1 of { cname: string; sname: string; t: t }
+  | Product of { ts: t list }
+  | Fun of { dom: t; cod: t }
+  | TyVar of { name: string }
+  | Forall of { var: string; t: t }
 
 let none_precedence = 0
 let fun_precedence = 10
@@ -22,13 +23,13 @@ let to_s ~arrow ~prod_open ~prod_sep ~prod_close ~tycon0 ~tycon1 ~tyvar ~forall 
     end
   in
   let rec to_s outer_prec ppf = function
-    | TyCon0 (cname, sname) ->
+    | TyCon0 {cname; sname} ->
       tycon0 ~cname ~sname ppf
-    | TyCon1 (cname, sname, t) ->
+    | TyCon1 {cname; sname; t} ->
       maybe_paren ~outer_prec tapply_precedence
         (fun () ->
            tycon1 ~cname ~sname ppf (to_s @@ tapply_precedence + 1) t)
-    | Product ts ->
+    | Product {ts} ->
       maybe_paren ~outer_prec prod_precedence
         (fun () ->
            Format.fprintf ppf "%s" prod_open;
@@ -38,7 +39,7 @@ let to_s ~arrow ~prod_open ~prod_sep ~prod_close ~tycon0 ~tycon1 ~tyvar ~forall 
                  (to_s @@ prod_precedence + 1)
                  t);
            Format.fprintf ppf "%s" prod_close)
-    | Fun (dom, cod) ->
+    | Fun {dom; cod} ->
       maybe_paren ~outer_prec fun_precedence
         (fun () ->
            (Format.fprintf ppf "%a %s %a"
@@ -47,8 +48,8 @@ let to_s ~arrow ~prod_open ~prod_sep ~prod_close ~tycon0 ~tycon1 ~tyvar ~forall 
               arrow
               (to_s fun_precedence)
               cod))
-    | TyVar name -> tyvar ~name ppf
-    | Forall (var, t) -> forall ~var ppf (to_s outer_prec) t
+    | TyVar {name} -> tyvar ~name ppf
+    | Forall {var; t} -> forall ~var ppf (to_s outer_prec) t
   in
   to_s none_precedence ppf t
 
@@ -85,60 +86,63 @@ let to_code t =
        ~prod_open:"tPROD [" ~prod_sep:"; " ~prod_close:"]"
        ~tycon0 ~tycon1 ~tyvar ~forall) t
 
-let (@->) t1 t2 = Fun (t1, t2)
+let tPROD ts = Product {ts}
 
-let forall name f =
-  Forall (name, f (TyVar name))
+let (@->) dom cod = Fun {dom; cod}
 
-let tU           = TyCon0 ("tU", "unit")
-let tI           = TyCon0 ("tI", "int")
-let tFL          = TyCon0 ("tFL", "float")
-let tB           = TyCon0 ("tB", "bool")
-let tLN          = TyCon0 ("tLN", "length")
-let tS           = TyCon0 ("tS", "string")
-let tIT          = TyCon0 ("tIT", "itext")
-let tBT          = TyCon0 ("tBT", "btext")
-let tIB          = TyCon0 ("tIB", "iboxes")
-let tBB          = TyCon0 ("tBB", "bboxes")
-let tCTX         = TyCon0 ("tCTX", "context")
-let tTCTX        = TyCon0 ("tTCTX", "text-info")
-let tPATH        = TyCon0 ("tPATH", "path")
-let tPRP         = TyCon0 ("tPRP", "pre-path")
-let tDOC         = TyCon0 ("tDOC", "document")
-let tMATH        = TyCon0 ("tMATH", "math")
-let tGR          = TyCon0 ("tGR", "graphics")
-let tIMG         = TyCon0 ("tIMG", "image")
-let tRE          = TyCon0 ("tRE", "regexp")
-let tIPOS        = TyCon0 ("tIPOS", "input-position")
-let tITMZ        = TyCon0 ("tITMZ", "itemize")
-let tSCR         = TyCon0 ("tSCR", "script")
-let tLANG        = TyCon0 ("tLANG", "language")
-let tCLR         = TyCon0 ("tCLR", "color")
-let tPG          = TyCon0 ("tPG", "page")
-let tMATHCLS     = TyCon0 ("tMATHCLS", "mathcls")
-let tMCCLS       = TyCon0 ("tMCCLS", "mccls")
-let tCELL        = TyCon0 ("tCELL", "cell")
-let tMCSTY       = TyCon0 ("tMCSTY", "math-char-style")
-let tPAREN       = TyCon0 ("tPAREN", "paren")
-let tPBINFO      = TyCon0 ("tPBINFO", "page-break-info")
-let tPAGECONT    = TyCon0 ("tPAGECONT", "page-content-scheme")
-let tPAGEPARTS   = TyCon0 ("tPAGEPARTS", "page-parts")
-let tPT          = TyCon0 ("tPT", "point")
-let tPADS        = TyCon0 ("tPADS", "paddings")
-let tDECOSET     = TyCon0 ("tDECOSET", "deco-set")
-let tFONT        = TyCon0 ("tFONT", "font")
-let tDECO        = TyCon0 ("tDECO", "deco")
-let tIGR         = TyCon0 ("tIGR", "graf")
-let tIGRO        = TyCon0 ("tIGRO", "igrafo")
-let tDOCINFODIC  = TyCon0 ("tDOCINFODIC", "document-information-dictionary")
+let forall var f =
+  Forall {var; t = f (TyVar {name = var})}
 
-let tPROD ts = Product ts
+let tycon0 cname sname   = TyCon0 {cname; sname}
+let tycon1 cname sname t = TyCon1 {cname; sname; t}
 
-let tL t    = TyCon1 ("tL", "list", t)
-let tR t    = TyCon1 ("tR", "ref", t)
-let tOPT t  = TyCon1 ("tOPT", "option", t)
-let tCODE t = TyCon1 ("tCODE", "code", t)
-let tICMD t = TyCon1 ("tICMD", "cmd", t)
+let tU           = tycon0 "tU" "unit"
+let tI           = tycon0 "tI" "int"
+let tFL          = tycon0 "tFL" "float"
+let tB           = tycon0 "tB" "bool"
+let tLN          = tycon0 "tLN" "length"
+let tS           = tycon0 "tS" "string"
+let tIT          = tycon0 "tIT" "itext"
+let tBT          = tycon0 "tBT" "btext"
+let tIB          = tycon0 "tIB" "iboxes"
+let tBB          = tycon0 "tBB" "bboxes"
+let tCTX         = tycon0 "tCTX" "context"
+let tTCTX        = tycon0 "tTCTX" "text-info"
+let tPATH        = tycon0 "tPATH" "path"
+let tPRP         = tycon0 "tPRP" "pre-path"
+let tDOC         = tycon0 "tDOC" "document"
+let tMATH        = tycon0 "tMATH" "math"
+let tGR          = tycon0 "tGR" "graphics"
+let tIMG         = tycon0 "tIMG" "image"
+let tRE          = tycon0 "tRE" "regexp"
+let tIPOS        = tycon0 "tIPOS" "input-position"
+let tITMZ        = tycon0 "tITMZ" "itemize"
+let tSCR         = tycon0 "tSCR" "script"
+let tLANG        = tycon0 "tLANG" "language"
+let tCLR         = tycon0 "tCLR" "color"
+let tPG          = tycon0 "tPG" "page"
+let tMATHCLS     = tycon0 "tMATHCLS" "mathcls"
+let tMCCLS       = tycon0 "tMCCLS" "mccls"
+let tCELL        = tycon0 "tCELL" "cell"
+let tMCSTY       = tycon0 "tMCSTY" "math-char-style"
+let tPAREN       = tycon0 "tPAREN" "paren"
+let tPBINFO      = tycon0 "tPBINFO" "page-break-info"
+let tPAGECONT    = tycon0 "tPAGECONT" "page-content-scheme"
+let tPAGEPARTS   = tycon0 "tPAGEPARTS" "page-parts"
+let tPT          = tycon0 "tPT" "point"
+let tPADS        = tycon0 "tPADS" "paddings"
+let tDECOSET     = tycon0 "tDECOSET" "deco-set"
+let tFONT        = tycon0 "tFONT" "font"
+let tDECO        = tycon0 "tDECO" "deco"
+let tIGR         = tycon0 "tIGR" "graf"
+let tIGRO        = tycon0 "tIGRO" "igrafo"
+let tDOCINFODIC  = tycon0 "tDOCINFODIC" "document-information-dictionary"
+
+let tL t    = tycon1 "tL" "list" t
+let tR t    = tycon1 "tR" "ref" t
+let tOPT t  = tycon1 "tOPT" "option" t
+let tCODE t = tycon1 "tCODE" "code" t
+let tICMD t = tycon1 "tICMD" "cmd" t
 
 let tPCINFO      = tPBINFO
 let tRULESF      = tL tLN @-> tL tLN @-> tL tGR
