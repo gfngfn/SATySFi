@@ -145,6 +145,10 @@ let warn_cmyk_image file_name =
   print_endline ("  Please convert the image to a jpeg image with YCbCr (RGB) color model.")
 
 
+let warn_math_script_without_brace rng =
+  Format.printf "  [Warning] at %s: math script without brace.\n" (Range.to_string rng)
+
+
 let warn_noninjective_cmap uchpre uch gidorg =
   Format.printf "  [Warning] Multiple Unicode code points (U+%04X and U+%04X) are mapped to the same GID %d.\n" (Uchar.to_int uchpre) (Uchar.to_int uch) gidorg
 
@@ -171,3 +175,23 @@ let warn_duplicate_font_hash abbrev relpath =
 
 let warn_duplicate_math_font_hash mfabbrev relpath =
   Format.printf "  [Warning] more than one font is named `%s`; '%s' will be associated with the font name.\n" mfabbrev (get_lib_path_string relpath)
+
+
+let warn_number_sign_end rng =
+  Format.printf "  [Warning] at %a: '#' has no effect here\n"
+    Range.pp rng
+
+
+let warn_overfull_line (pageno : int) =
+  Format.printf "  [Warning] an overfull line occurs on page %d\n"
+    pageno
+
+
+let warn_underfull_line (pageno : int) =
+  Format.printf "  [Warning] an underfull line occurs on page %d\n"
+    pageno
+
+
+let warn_unreachable (pageno : int) =
+  Format.printf "  [Warning] a line unable to be broken into a paragraph occurs on page %d\n"
+    pageno

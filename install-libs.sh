@@ -1,6 +1,6 @@
 #!/bin/sh
 
-LIBDIR=/usr/local/share/satysfi
+LIBDIR=${1:-/usr/local/share/satysfi}
 
 install -d ${LIBDIR}
 install -d ${LIBDIR}/dist

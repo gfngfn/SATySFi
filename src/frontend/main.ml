@@ -96,6 +96,22 @@ type file_info =
   | LibraryFile  of stage * untyped_abstract_tree
 
 
+let has_library_extension abspath =
+  let ext = get_abs_path_extension abspath in
+  match ext with
+  | ".satyh" | ".satyg" ->
+      true
+
+  | _ ->
+      begin
+        try
+          let extpre = String.sub ext 0 7 in
+          String.equal extpre ".satyh-"
+        with
+        | _ -> false
+      end
+
+
 let get_candidate_file_extensions () =
   match OptionState.get_mode () with
   | None      -> [".satyh"; ".satyg"]
@@ -123,6 +139,7 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : 
     let curdir = Filename.dirname (get_abs_path_string abspath) in
     let inc = open_in_abs abspath in
     let (stage, header, utast) = ParserInterface.process (basename_abs abspath) (Lexing.from_channel inc) in
+    close_in inc;
     FileDependencyGraph.add_vertex dg abspath (LibraryFile(stage, utast));
     header |> List.iter (fun headerelem ->
       let abspath_sub = get_abs_path_of_header curdir headerelem in
@@ -149,6 +166,52 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : 
       FileDependencyGraph.add_edge dg abspath abspath_sub
     )
   end
+
+
+let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : abs_path) : unit =
+  Logging.begin_to_parse_file abspath_in;
+  let curdir = Filename.dirname (get_abs_path_string abspath_in) in
+  let inc = open_in_abs abspath_in in
+  let (stage, header, utast) = ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel inc) in
+  close_in inc;
+  begin
+    match stage with
+    | Stage1               -> ()
+    | Stage0 | Persistent0 -> raise DocumentShouldBeAtStage1
+  end;
+  FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
+  header |> List.iter (fun headerelem ->
+    let abspath_sub = get_abs_path_of_header curdir headerelem in
+    begin
+      if FileDependencyGraph.mem_vertex abspath_sub dg then () else
+        register_library_file dg abspath_sub
+    end;
+    FileDependencyGraph.add_edge dg abspath_in abspath_sub
+  )
+
+
+let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : unit =
+  Logging.begin_to_parse_file abspath_in;
+  let abspath = Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md"))) in
+  let (cmdrcd, depends) = LoadMDSetting.main abspath in
+  match MyUtil.string_of_file abspath_in with
+  | Ok(data) ->
+      let utast = DecodeMD.decode cmdrcd data in
+    (*
+        let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
+    *)
+      FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
+      depends |> List.iter (fun package ->
+        let file_path_sub = get_package_abs_path package in
+        begin
+        if FileDependencyGraph.mem_vertex file_path_sub dg then () else
+          register_library_file dg file_path_sub
+        end;
+        FileDependencyGraph.add_edge dg abspath_in file_path_sub
+      )
+
+  | Error(msg) ->
+      raise (CannotReadFileOwingToSystem(msg))
 
 
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
@@ -213,51 +276,6 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
   (valenv, ref stenv)
 
 
-let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : abs_path) : unit =
-  Logging.begin_to_parse_file abspath_in;
-  let file_in = open_in_abs abspath_in in
-  let curdir = Filename.dirname (get_abs_path_string abspath_in) in
-  let (stage, header, utast) = ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in) in
-  begin
-    match stage with
-    | Stage1               -> ()
-    | Stage0 | Persistent0 -> raise DocumentShouldBeAtStage1
-  end;
-  FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
-  header |> List.iter (fun headerelem ->
-    let file_path_sub = get_abs_path_of_header curdir headerelem in
-    begin
-      if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-        register_library_file dg file_path_sub
-    end;
-    FileDependencyGraph.add_edge dg abspath_in file_path_sub
-  )
-
-
-let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : unit =
-  Logging.begin_to_parse_file abspath_in;
-  let abspath = Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md"))) in
-  let (cmdrcd, depends) = LoadMDSetting.main abspath in
-  match MyUtil.string_of_file abspath_in with
-  | Ok(data) ->
-      let utast = DecodeMD.decode cmdrcd data in
-    (*
-        let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
-    *)
-      FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
-      depends |> List.iter (fun package ->
-        let file_path_sub = get_package_abs_path package in
-        begin
-        if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-          register_library_file dg file_path_sub
-        end;
-        FileDependencyGraph.add_edge dg abspath_in file_path_sub
-      )
-
-  | Error(msg) ->
-      raise (CannotReadFileOwingToSystem(msg))
-
-
 let output_text abspath_out s =
   let outc = open_out_abs abspath_out in
   output_string outc s;
@@ -278,13 +296,15 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
   let (ty, _, ast) = Typechecker.main Stage1 tyenv utast in
   Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
   if OptionState.is_text_mode () then
-    match ty with
-    | (_, BaseType(StringType)) -> ast
-    | _                         -> raise (NotAStringFile(abspath_in, tyenv, ty))
+    if Typechecker.are_unifiable ty (Range.dummy "text-mode", BaseType(StringType)) then
+      ast
+    else
+      raise (NotAStringFile(abspath_in, tyenv, ty))
   else
-    match ty with
-    | (_, BaseType(DocumentType)) -> ast
-    | _                           -> raise (NotADocumentFile(abspath_in, tyenv, ty))
+    if Typechecker.are_unifiable ty (Range.dummy "pdf-mode", BaseType(DocumentType)) then
+      ast
+    else
+      raise (NotADocumentFile(abspath_in, tyenv, ty))
 
 
 let eval_library_file (env : environment) (abspath : abs_path) (ast : abstract_tree) : environment =
@@ -359,7 +379,7 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
     let rec aux i =
       let valuedoc = eval_main i env_freezed ast in
       match valuedoc with
-      | BaseConstant(BCDocument(pagesize, pbstyle, columnhookf, pagecontf, pagepartsf, imvblst)) ->
+      | BaseConstant(BCDocument(pagesize, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
           Logging.start_page_break ();
           State.start_page_break ();
           let pdf =
@@ -368,9 +388,9 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
                 PageBreak.main abspath_out pagesize
                   columnhookf pagecontf pagepartsf imvblst
 
-            | TwoColumn(origin_shift) ->
-                PageBreak.main_two_column abspath_out pagesize
-                  origin_shift columnhookf pagecontf pagepartsf imvblst
+            | MultiColumn(origin_shifts) ->
+                PageBreak.main_multicolumn abspath_out pagesize
+                  origin_shifts columnhookf columnendhookf pagecontf pagepartsf imvblst
           in
           begin
             match CrossRef.needs_another_trial abspath_dump with
@@ -452,7 +472,8 @@ let error_log_environment suspended =
   | NoLibraryRootDesignation ->
       report_error Interface [
         NormalLine("cannot determine where the SATySFi library root is;");
-        NormalLine("set appropriate environment variables.");
+        NormalLine("set appropriate environment variables");
+        NormalLine("or specify configuration search paths with -C option.");
       ]
 
   | NoInputFileDesignation ->
@@ -827,6 +848,13 @@ let error_log_environment suspended =
         NormalLine("and thus it cannot be applied to arguments.");
       ]
 
+  | Typechecker.MultiCharacterMathScriptWithoutBrace(rng) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("more than one character is used as a math sub/superscript without braces;");
+        NormalLine("use braces for making association explicit.");
+      ]
+
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -944,13 +972,19 @@ let error_log_environment suspended =
         NormalLine("a primitive as to PDF annotation was called before page breaking starts.");
       ]
 
+  | PageBreak.PageNumberLimitExceeded(m) ->
+      report_error Evaluator [
+        NormalLine(Printf.sprintf "page number limit (= %d) exceeded." m);
+        NormalLine(Printf.sprintf "If you really want to output more than %d pages, use '--page-number-limit'." m);
+      ]
+
   | Sys_error(s) ->
       report_error System [ NormalLine(s); ]
 
 
 let arg_version () =
   print_string (
-    "  SATySFi version 0.0.5\n"
+    "  SATySFi version 0.0.6\n"
 (*
       ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"
@@ -1006,6 +1040,7 @@ let arg_spec_list curdir =
     ("--debug-show-space", Arg.Unit(OptionState.set_debug_show_space), " Outputs boxes for spaces"                              );
     ("--debug-show-block-bbox", Arg.Unit(OptionState.set_debug_show_block_bbox), " Outputs bounding boxes for blocks"           );
     ("--debug-show-block-space", Arg.Unit(OptionState.set_debug_show_block_space), " Outputs visualized block spaces"           );
+    ("--debug-show-overfull", Arg.Unit(OptionState.set_debug_show_overfull), " Outputs visualized overfull or underfull lines"  );
     ("-t"                , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
     ("--type-check-only" , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
     ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"                                 );
@@ -1015,6 +1050,8 @@ let arg_spec_list curdir =
     ("--show-fonts"      , Arg.Unit(OptionState.set_show_fonts)      , " Displays all the available fonts"                      );
     ("-C"                , Arg.String(arg_config)                    , " Add colon-separated paths to configuration search path");
     ("--config"          , Arg.String(arg_config)                    , " Add colon-separated paths to configuration search path");
+    ("--no-default-config", Arg.Unit(OptionState.set_no_default_config_paths), " Does not use default configuration search path");
+    ("--page-number-limit", Arg.Int(OptionState.set_page_number_limit), " Set the page number limit (default: 10000)"           );
   ]
 
 
@@ -1037,12 +1074,18 @@ let setup_root_dirs () =
       | None    -> []
       | Some(s) -> [Filename.concat s ".satysfi"]
   in
+  let default_dirs =
+    if OptionState.get_no_default_config_paths () then
+      []
+    else
+      List.concat [home_dirs; runtime_dirs]
+  in
   let extra_dirs =
     match OptionState.get_extra_config_paths () with
     | None -> [Filename.concat (Sys.getcwd ()) ".satysfi"]
     | Some(lst) -> lst
   in
-  let ds = List.concat [extra_dirs; home_dirs; runtime_dirs] in
+  let ds = List.append extra_dirs default_dirs in
   match ds with
   | []     -> raise NoLibraryRootDesignation
   | _ :: _ -> Config.initialize ds
@@ -1083,7 +1126,7 @@ let () =
     begin
       match OptionState.get_input_kind () with
       | OptionState.SATySFi ->
-          if OptionState.type_check_only () then
+          if has_library_extension abspath_in && OptionState.type_check_only () then
             register_library_file dg abspath_in
           else
             register_document_file dg abspath_in

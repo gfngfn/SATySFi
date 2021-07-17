@@ -55,7 +55,30 @@ let uchfrom = Uchar.of_int cpfrom in
 let uchto = Uchar.of_int cpto in
 let mcclsmap = ctx.HorzBox.math_variant_char_map in
 Context(HorzBox.({ ctx with
-  math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) uchto;
+  math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) (uchto, MathOrdinary);
+}), ctxsub)
+|}
+    ; inst "PrimitiveSetMathChar"
+        ~name:"set-math-char"
+        ~type_:{|
+~% (tI @-> tI @-> tMATHCLS @-> tCTX @-> tCTX)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "cp_from" ~type_:"int";
+          param "cp_to" ~type_:"int";
+          param "mk" ~type_:"math_class";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let uch_from = Uchar.of_int cp_from in
+let uch_to = Uchar.of_int cp_to in
+let mkmap = ctx.HorzBox.math_class_map in
+Context(HorzBox.({ ctx with
+  math_class_map = mkmap |> MathClassMap.add uch_from (uch_to, mk);
 }), ctxsub)
 |}
     ; inst "PrimitiveConvertStringForMath"
@@ -72,7 +95,7 @@ Context(HorzBox.({ ctx with
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let (_, uchlst) = MathContext.convert_math_variant_char (ctx, ctxsub) s in make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
+let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let uchs = let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in uchs |> List.map (fun uch_from -> let (_, uch_to) = MathContext.convert_math_variant_char (ctx, ctxsub) uch_from in uch_to ) in make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchs))
 |}
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"
@@ -628,6 +651,22 @@ match valueimg with
 let hookf = make_hook reducef hookf in
 make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 |}
+    ; inst "BackendHookPageBreakBlock"
+        ~name:"hook-page-break-block"
+        ~type_:{|
+~% ((tPBINFO @-> tPT @-> tU) @-> tBB)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "hookf";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let hookf = make_hook reducef hookf in
+make_vert (HorzBox.([VertHookPageBreak(hookf)]))
+|}
     ; inst "PathUnite"
         ~name:"unite-path"
         ~type_:{|
@@ -1020,7 +1059,7 @@ make_vert imvblst
         ~code:{|
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), pagecontf, pagepartsf, vblst))
 |}
     ; inst "BackendPageBreakingTwoColumn"
         ~name:"page-break-two-column"
@@ -1043,7 +1082,32 @@ BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), pagecontf, pagep
 let columnhookf = make_column_hook_func reducef valuecolumnhookf in
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
 let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, TwoColumn(origin_shift), columnhookf, pagecontf, pagepartsf, vblst))
+BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun () -> []), pagecontf, pagepartsf, vblst))
+|}
+    ; inst "BackendPageBreakingMultiColumn"
+        ~name:"page-break-multicolumn"
+        ~type_:{|
+~% (tPG @-> tL tLN @-> (tU @-> tBB) @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "pagesize" ~type_:"page_size";
+          param "origin_shifts" ~type_:"length_list";
+          param "valuecolumnhookf";
+          param "valuecolumnendhookf";
+          param "valuepagecontf";
+          param "valuepagepartsf";
+          param "vbs" ~type_:"vert";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let columnhookf = make_column_hook_func reducef valuecolumnhookf in
+let columnendhookf = make_column_hook_func reducef valuecolumnendhookf in
+let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, columnendhookf, pagecontf, pagepartsf, vbs))
 |}
     ; inst "BackendVertFrame"
         ~name:"block-frame-breakable"
@@ -2388,6 +2452,24 @@ let (len1, len2, len3) = get_tuple3 get_length valuetup3 in
 let grelem = GraphicD.make_dashed_stroke wid (len1, len2, len3) color pathlst in
 make_graphics grelem
 |}
+    ; inst "PrimitiveLinearTransformGraphics"
+        ~name:"linear-transform-graphics"
+        ~type_:{|
+~% (tFL @-> tFL @-> tFL @-> tFL @-> tGR @-> tGR)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "a" ~type_:"float";
+          param "b" ~type_:"float";
+          param "c" ~type_:"float";
+          param "d" ~type_:"float";
+          param "grelem" ~type_:"graphics_element";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+make_graphics (GraphicD.make_linear_trans (a, b, c, d) grelem)
+|}
     ; inst "PrimitiveShiftGraphics"
         ~name:"shift-graphics"
         ~type_:{|
@@ -2602,6 +2684,109 @@ make_bool (binl || binr)
         ~code:{|
 make_bool (not binl)
 |}
+    ; inst "BitShiftRight"
+        ~name:">>"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let bits =
+  try numl lsr numr with
+  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '>>'"
+in
+make_int bits
+|}
+    ; inst "BitShiftLeft"
+        ~name:"<<"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let bits =
+  try numl lsl numr with
+  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '<<'"
+in
+make_int bits
+|}
+    ; inst "BitXor"
+        ~name:"bxor"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (numl lxor numr)
+|}
+    ; inst "BitAnd"
+        ~name:"band"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (numl land numr)
+|}
+    ; inst "BitOr"
+        ~name:"bor"
+        ~type_:{|
+~% (tI @-> tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "numl" ~type_:"int";
+          param "numr" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (numl lor numr)
+|}
+    ; inst "BitNot"
+        ~name:"bnot"
+        ~type_:{|
+~% (tI @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "num" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (lnot num)
+|}
     ; inst "FloatPlus"
         ~name:"+."
         ~type_:{|
@@ -2801,6 +2986,36 @@ make_float (log flt)
         ~is_text_mode_primitive:true
         ~code:{|
 make_float (exp flt)
+|}
+    ; inst "PrimitiveCeil"
+        ~name:"ceil"
+        ~type_:{|
+~% (tFL @-> tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "fc1" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_float (ceil fc1)
+|}
+    ; inst "PrimitiveFloor"
+        ~name:"floor"
+        ~type_:{|
+~% (tFL @-> tFL)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "fc1" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_float (floor fc1)
 |}
     ; inst "LengthPlus"
         ~name:"+'"
@@ -3040,6 +3255,22 @@ const_unit
 Outline.register (get_list get_outline ol);
 const_unit
 |}
+    ; inst "RegisterDocumentInformationDictionary"
+        ~name:"register-document-information"
+        ~type_:{|
+~% (tDOCINFODIC @-> tU)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "valuedocinfodic";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let docinfodic = make_doc_info_dictionary valuedocinfodic in
+let () = DocumentInformationDictionary.register docinfodic in
+const_unit
+|}
     ; inst "AbortWithMessage"
         ~name:"abort-with-message"
         ~type_:{|
@@ -3115,5 +3346,57 @@ lift_float_to_code_value r
         ~is_text_mode_primitive:true
         ~code:{|
 lift_length_to_code_value len
+|}
+    ; inst "PrimitiveGetInputPosition"
+        ~name:"get-input-position"
+        ~type_:{|
+~% (tIPOS @-> tPROD [tS; tI; tI])
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "ipos" ~type_:"input_position";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let v1 = make_string ipos.input_file_name in
+let v2 = make_int ipos.input_line in
+let v3 = make_int ipos.input_column in
+Tuple([v1; v2; v3])
+|}
+    ; inst "ReadFile"
+        ~name:"read-file"
+        ~type_:{|
+~% (tS @-> tL tS)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "relpath" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let parts = Core_kernel.Filename.parts relpath in
+begin
+  if parts |> List.exists (String.equal "..") then
+    report_dynamic_error "cannot access files by using '..'"
+  else
+    ()
+end;
+let abspath =
+  let jobdir = OptionState.job_directory () in
+  Filename.concat jobdir relpath
+in
+let inc = open_in abspath in
+let rec aux lineacc =
+  match input_line inc with
+  | exception End_of_file -> lineacc |> Alist.to_list
+  | line                  -> aux (Alist.extend lineacc line)
+in
+let lines = aux Alist.empty in
+close_in inc;
+make_list make_string lines
 |}
     ])

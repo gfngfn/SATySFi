@@ -6,10 +6,42 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 ## [Unreleased]
 ### Fixed
-- Fix how to decode types written mainly in signatures ([PR\#208](https://github.com/gfngfn/SATySFi/pull/208) by `elpinal`, which was encouraged by [Issue\#184](https://github.com/gfngfn/SATySFi/issues/184) by `nyuichi`).
-- Fix how to embed font subsets as to tags ([PR\#181](https://github.com/gfngfn/SATySFi/pull/181) by `matsud224`).
+- Fix invalid errors emitted by `--type-check-only` by making the option extension-sensitive.
+- Fix the exhaustiveness check ([PR\#171](https://github.com/gfngfn/SATySFi/pull/171) by `matsud224`).
+
+### Added
+- Add primitives `(<<)`, `(>>)`, `bxor`, `band`, `bor`, and `bnot` for bitwise operations ([PR\#85](https://github.com/gfngfn/SATySFi/pull/85) by `konn`).
+- Add primitive `read-file : string -> string list` for reading external text files in subdirectories ([PR\#200](https://github.com/gfngfn/SATySFi/pull/200) by `puripuri2100`).
+- Allow arbitrary Unicode code points other than few ASCII symbols to occur in the math mode (e.g. `${α + β}`).
+- Add primitive `set-math-char : int -> int -> math-class -> context -> context` for handling various Unicode code points in the math mode.
+- Add primitive `register-document-information` for furnishing document information dictionaries with PDF files ([PR\#268](https://github.com/gfngfn/SATySFi/pull/268) by `puripuri2100`).
+
+### Changed
+- Remove the build dependency on Ruby and migrate some build scripts from `Makefile` to `dune` ([PR\#142](https://github.com/gfngfn/SATySFi/pull/142) by `leque`, and [PR\#226](https://github.com/gfngfn/SATySFi/pull/226) by `na4zagin3`).
+
+## [0.0.6] - 2021-02-06
+### Fixed
 - Improve how to emit errors when parsing invalid itemized expressions ([PR\#176](https://github.com/gfngfn/SATySFi/pull/176) by `hanazuki`).
 - Does not embed null objects as `/DW` or `/DW2` entries in output PDFs (mainly for services that use PDFs but do not support null objects) ([PR\#180](https://github.com/gfngfn/SATySFi/pull/180)).
+- Fix how to embed font subsets as to tags ([PR\#181](https://github.com/gfngfn/SATySFi/pull/181) by `matsud224`).
+- Fix how to decode types written mainly in signatures ([PR\#208](https://github.com/gfngfn/SATySFi/pull/208) by `elpinal`, which was encouraged by [Issue\#184](https://github.com/gfngfn/SATySFi/issues/184) by `nyuichi`).
+- Allow `?*` used in math expressions and limit the range of math symbols (encouraged by [a report by `@t_uemura669101`](https://twitter.com/t_uemura669101/status/1302221948378910721?s=20)).
+- Update README about how to install SATySFi on Windows in response to some amendment of `brwrap`-related problems ([PR\#242](https://github.com/gfngfn/SATySFi/pull/242) by `nekketsuuu`).
+- Improve `download-fonts.sh` as to SHA checksum ([PR\#253](https://github.com/gfngfn/SATySFi/pull/253) by `na4zagin3`).
+- Fix `doc/math1.saty` ([PR\#178](https://github.com/gfngfn/SATySFi/pull/178) by `y-yu`).
+- Fix how to confirm that given document files are of type `document` (resp. `string`) in the PDF mode (resp. in the text mode) (encouraged by the bug report in [Issue\#257](https://github.com/gfngfn/SATySFi/issues/257) by `zeptometer`).
+
+### Added
+- Add `--no-default-config` option to suppress using default configuration search paths ([PR\#212](https://github.com/gfngfn/SATySFi/pull/212) by `na4zagin3`).
+- Add new primitive `linear-transform-graphics : float -> float -> float -> float -> graphics -> graphics` for the linear transformation of graphics, and new functions `Gr.rotate-graphics` and `Gr.scale-graphics` by using it ([PR\#241](https://github.com/gfngfn/SATySFi/pull/241) and [PR\#254](https://github.com/gfngfn/SATySFi/pull/254) by `monaqa`).
+- Add string literals of the form `` @`…` ``, which are equipped with their positions on source files and have type `input-position * string` at stage 0.
+- Add primitive `get-input-position : input-position -> string * int * int` for extracting filenames, line numbers, column numbers from positions on source files.
+- Add `--debug-show-overfull` option to visualize overfull or underfull lines.
+- Add GitHub Actions for the development ([PR\#250](https://github.com/gfngfn/SATySFi/pull/250) and [PR\#256](https://github.com/gfngfn/SATySFi/pull/256) by `y-yu` and [PR\#255](https://github.com/gfngfn/SATySFi/pull/255) by `puripuri2100`).
+- Add primitive `page-break-multicolumn` for breaking contents into multiple columns on pages.
+- Add primitive `hook-page-break-block`.
+- Add primitives `ceil` and `floor` ([PR\#190](https://github.com/gfngfn/SATySFi/pull/190) by `elpinal`).
+- Add `font-latin-sans` etc. to `stdja`, `stdjareport`, and `stdjabook` ([PR\#126](https://github.com/gfngfn/SATySFi/pull/126) by `puripuri2100`).
 
 ## [0.0.5] - 2020-07-11
 ### Fixed
@@ -32,17 +64,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Does not fail when a script value evaluates to `OtherScript` ([PR\#121](https://github.com/gfngfn/SATySFi/pull/121) by `na4zagin3`).
 - Handles `CR`+`LF` correctly as one line ending ([PR\#122](https://github.com/gfngfn/SATySFi/pull/122) by `matsud224`).
 - Fix how to generate ToUnicodeCMap as to ligatures ([PR\#140](https://github.com/gfngfn/SATySFi/pull/140) by `matsud224`).
-- Fix bug of `\ref` in `stdjareport` ([PR\#135](https://github.com/gfngfn/SATySFi/pull/135) by `matsud224`).
-- Fix bug of signature matching in the type checker ([PR\#143](https://github.com/gfngfn/SATySFi/pull/143) and [PR\#144](https://github.com/gfngfn/SATySFi/pull/144) by `elpinal`).
-- Fix bug of type inference about records ([PR\#148](https://github.com/gfngfn/SATySFi/pull/148) by `elpinal`).
-- Fix bug about decoding fonts that has NULL as the DefaultLangSys entry in a Script table.
-- Fix (a kind of) bug about decoding fonts that has NULL in a BaseRecord table ([PR\#164](https://github.com/gfngfn/SATySFi/pull/164) by `matsud224`).
+- Fix a bug of `\ref` in `stdjareport` ([PR\#135](https://github.com/gfngfn/SATySFi/pull/135) by `matsud224`).
+- Fix a bug of the signature matching ([PR\#143](https://github.com/gfngfn/SATySFi/pull/143) and [PR\#144](https://github.com/gfngfn/SATySFi/pull/144) by `elpinal`).
+- Fix a bug of the type inference algorithm about records ([PR\#148](https://github.com/gfngfn/SATySFi/pull/148) by `elpinal`).
+- Fix a bug about decoding fonts that have NULL as the DefaultLangSys entry in a Script table.
+- Fix (a kind of) bug about decoding fonts that have NULL in a BaseRecord table ([PR\#164](https://github.com/gfngfn/SATySFi/pull/164) by `matsud224`).
 - Fix the page breaking algorithm.
 - Fix how to detect cyclic synonym type definition(s) ([bug reported by `nyuichi`]((https://github.com/gfngfn/SATySFi/issues/187))).
 - Fix how to embed fonts (by updating `otfm` from `v.0.3.6+satysfi` to `v.0.3.7+satysfi`, which was due to [a PR](https://github.com/gfngfn/otfm/pull/7) by `matsud224`).
 
 ## Added
-- Begins to support Markdown input.
+- Begins to support Markdown inputs.
 - Supports PDF hyperlinks ([PR\#113](https://github.com/gfngfn/SATySFi/pull/113) by `matsud224`).
 - Supports fixed-length list patterns ([PR\#123](https://github.com/gfngfn/SATySFi/pull/123) by `nekketsuuu`).
 - Supports PDF outlines ([PR\#134](https://github.com/gfngfn/SATySFi/pull/134) by `matsud224`).
@@ -76,19 +108,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 ## [0.0.2] - 2018-08-09
 ### Fixed
-- Make type inference algorithm firmer (mainly about records and optional arguments).
+- Make the type inference algorithm firmer (mainly about records and optional arguments).
 
 ### Changed
 - Conforms to a new operational semantics as to optional arguments.
-- Starts reporting error for duplicated fields in a record expression.
-- Improve type error report as to application of non-function expressions.
+- Starts reporting errors for duplicated fields in a record expression.
+- Improve type error reports about applications of non-function expressions.
 
 ## 0.0.1 - 2018-08-05
 ### Added
 - Initial version of SATySFi
 
 
-  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.5...HEAD
+  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.6...HEAD
+  [0.0.6]: https://github.com/gfngfn/SATySFi/compare/v0.0.5...v0.0.6
   [0.0.5]: https://github.com/gfngfn/SATySFi/compare/v0.0.4...v0.0.5
   [0.0.4]: https://github.com/gfngfn/SATySFi/compare/v0.0.3...v0.0.4
   [0.0.3]: https://github.com/gfngfn/SATySFi/compare/v0.0.2...v0.0.3

@@ -17,8 +17,11 @@ type state = {
   mutable debug_show_space : bool;
   mutable debug_show_block_bbox : bool;
   mutable debug_show_block_space : bool;
+  mutable debug_show_overfull : bool;
   mutable mode             : (string list) option;
   mutable extra_config_paths : string list option;
+  mutable no_default_config_paths : bool;
+  mutable page_number_limit : int;
 }
 
 
@@ -34,8 +37,11 @@ let state = {
   debug_show_space = false;
   debug_show_block_bbox = false;
   debug_show_block_space = false;
+  debug_show_overfull = false;
   mode             = None;
   extra_config_paths = None;
+  no_default_config_paths = false;
+  page_number_limit       = 10000;
 }
 
 let set_input_kind ikd = state.input_kind <- ikd
@@ -76,6 +82,9 @@ let debug_show_block_bbox ()     = state.debug_show_block_bbox
 let set_debug_show_block_space () = state.debug_show_block_space <- true
 let debug_show_block_space ()     = state.debug_show_block_space
 
+let set_debug_show_overfull () = state.debug_show_overfull <- true
+let debug_show_overfull ()     = state.debug_show_overfull
+
 let set_text_mode lst = state.mode <- Some(lst)
 let get_mode () = state.mode
 let is_text_mode () =
@@ -85,3 +94,9 @@ let is_text_mode () =
 
 let set_extra_config_paths lst = state.extra_config_paths <- Some(lst)
 let get_extra_config_paths () = state.extra_config_paths
+
+let set_no_default_config_paths () = state.no_default_config_paths <- true
+let get_no_default_config_paths () = state.no_default_config_paths
+
+let set_page_number_limit m = state.page_number_limit <- m
+let get_page_number_limit () = state.page_number_limit

@@ -8,10 +8,15 @@ type pure_badness = int
 [@@deriving show]
 
 type ratios =
-  | TooShort
-  | PermissiblyShort of float
-  | PermissiblyLong  of float
-  | TooLong
+  | TooShort    of { required : length; actual : length }
+  | Permissible of float
+  | TooLong     of { required : length; actual : length }
+[@@deriving show]
+
+type reachability =
+  | Unreachable
+  | Reachable of ratios
+[@@deriving show]
 
 type font_abbrev = string
 [@@deriving show]
@@ -176,7 +181,7 @@ module MathVariantCharMap = Map.Make
   end)
 
 
-module MathClassMap = Map.Make(String)
+module MathClassMap = Map.Make(Uchar)
 
 
 type breakability =
@@ -228,9 +233,9 @@ type context_main = {
   text_color             : color;
   manual_rising          : length;
   space_badness          : pure_badness;
-  math_variant_char_map  : Uchar.t MathVariantCharMap.t;
+  math_variant_char_map  : (Uchar.t * math_kind) MathVariantCharMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-map>")]
-  math_class_map         : (Uchar.t list * math_kind) MathClassMap.t;
+  math_class_map         : (Uchar.t * math_kind) MathClassMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<math-class-map>")]
   math_char_class        : math_char_class;
   before_word_break      : horz_box list;
@@ -293,7 +298,7 @@ and intermediate_graphics =
 and intermediate_horz_box =
   | ImHorz               of evaled_horz_box
   | ImHorzRising         of length * length * length * length * intermediate_horz_box list
-  | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
+  | ImHorzFrame          of ratios * length * length * length * decoration * intermediate_horz_box list
   | ImHorzInlineTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
   | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
   | ImHorzInlineGraphics of length * length * length * intermediate_graphics
@@ -320,7 +325,7 @@ and evaled_horz_box_main =
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzRising         of length * length * length * evaled_horz_box list
   | EvHorzEmpty
-  | EvHorzFrame          of length * length * decoration * evaled_horz_box list
+  | EvHorzFrame          of ratios * length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
   | EvHorzInlineGraphics of length * length * intermediate_graphics
   | EvHorzInlineTabular  of length * length * evaled_row list * length list * length list * rules_func
@@ -339,6 +344,7 @@ and vert_box =
   | VertFrame          of margins * paddings * decoration * decoration * decoration * decoration * length * vert_box list
 (*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
   | VertClearPage
+  | VertHookPageBreak of (page_break_info -> point -> unit)
 
 and margins = {
   margin_top    : (breakability * length) option;
@@ -346,17 +352,18 @@ and margins = {
 }
 
 and paragraph_element =
-  | VertParagLine of length * length * intermediate_horz_box list
+  | VertParagLine of reachability * length * length * intermediate_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "Line")]
   | VertParagSkip of length
 
 and intermediate_vert_box =
-  | ImVertLine       of length * length * intermediate_horz_box list
+  | ImVertLine       of reachability * length * length * intermediate_horz_box list
   | ImVertFixedEmpty of debug_margin_info * length
   | ImVertFrame      of paddings * decoration * length * intermediate_vert_box list
+  | ImVertHookPageBreak of (page_break_info -> point -> unit)
 
 and evaled_vert_box =
-  | EvVertLine       of length * length * evaled_horz_box list
+  | EvVertLine       of reachability * length * length * evaled_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
       (* --
          (1) height of the contents
@@ -366,6 +373,7 @@ and evaled_vert_box =
   | EvVertFixedEmpty of debug_margin_info * length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
+  | EvVertHookPageBreak of (page_break_info -> point -> unit)
 
 and page_parts_scheme = {
   header_origin  : point;
@@ -444,16 +452,16 @@ and cell =
 and row = cell list
 
 and intermediate_cell =
-  | ImNormalCell of (length * length * length) * intermediate_horz_box list
+  | ImNormalCell of ratios * (length * length * length) * intermediate_horz_box list
   | ImEmptyCell  of length
-  | ImMultiCell  of (int * int * length * length * length * length) * intermediate_horz_box list
+  | ImMultiCell  of ratios * (int * int * length * length * length * length) * intermediate_horz_box list
 
 and intermediate_row = length * intermediate_cell list
 
 and evaled_cell =
-  | EvNormalCell of (length * length * length) * evaled_horz_box list
+  | EvNormalCell of ratios * (length * length * length) * evaled_horz_box list
   | EvEmptyCell  of length
-  | EvMultiCell  of (int * int * length * length * length * length) * evaled_horz_box list
+  | EvMultiCell  of ratios * (int * int * length * length * length * length) * evaled_horz_box list
 
 and evaled_row = length * evaled_cell list
 [@@deriving show { with_path = false }]
@@ -513,7 +521,7 @@ let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length 
     | EvHorzEmbeddedVert(h, d, _)
     | EvHorzInlineGraphics(h, d, _)
     | EvHorzInlineTabular(h, d, _, _, _, _)
-    | EvHorzFrame(h, d, _, _)
+    | EvHorzFrame(_, h, d, _, _)
          -> (h, d)
   in
     (wid, hgt, dpt)
@@ -522,9 +530,10 @@ let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length 
 let rec get_height_of_evaled_vert_box_list evvblst =
   evvblst |> List.fold_left (fun l evvb ->
     match evvb with
-    | EvVertLine(hgt, dpt, _)             -> l +% hgt +% (Length.negate dpt)
+    | EvVertLine(_, hgt, dpt, _)          -> l +% hgt +% (Length.negate dpt)
     | EvVertFixedEmpty(_, len)            -> l +% len
     | EvVertFrame(pads, _, _, _, evvblst) -> l +% pads.paddingB +% pads.paddingL +% get_height_of_evaled_vert_box_list evvblst
+    | EvVertHookPageBreak(_)              -> l
   ) Length.zero
 
 
@@ -540,7 +549,7 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
           -> (Length.zero, Length.zero, Length.zero)
 
       | ImHorzRising(w, h, d, _, _)
-      | ImHorzFrame(w, h, d, _, _)
+      | ImHorzFrame(_, w, h, d, _, _)
       | ImHorzInlineTabular(w, h, d, _, _, _, _)
       | ImHorzInlineGraphics(w, h, d, _)
       | ImHorzEmbeddedVert(w, h, d, _)

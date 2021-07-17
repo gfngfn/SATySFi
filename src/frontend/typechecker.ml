@@ -24,6 +24,7 @@ exception UndefinedVertMacro             of Range.t * ctrlseq_name
 exception InvalidNumberOfMacroArguments  of Range.t * Typeenv.t * macro_parameter_type list
 exception LateMacroArgumentExpected      of Range.t * Typeenv.t * mono_type
 exception EarlyMacroArgumentExpected     of Range.t * Typeenv.t * mono_type
+exception MultiCharacterMathScriptWithoutBrace of Range.t
 
 exception InternalInclusionError
 exception InternalContradictionError of bool
@@ -597,6 +598,25 @@ let rec typecheck
   | UTHorz(hblst)         -> (base (BCHorz(hblst))  , (rng, BaseType(BoxRowType)))
   | UTVert(imvblst)       -> (base (BCVert(imvblst)), (rng, BaseType(BoxColType)))
 
+  | UTPositionedString(ipos, s) ->
+      begin
+        match pre.stage with
+        | Stage1 | Persistent0 ->
+            raise (InvalidExpressionAsToStaging(rng, Stage0))
+
+        | Stage0 ->
+            let e =
+              let e1 = base (BCInputPos(ipos)) in
+              let e2 = base (BCString(s)) in
+              PrimitiveTuple([e1; e2]) in
+            let ty =
+              let ty1 = (Range.dummy "positioned1", BaseType(InputPosType)) in
+              let ty2 = (Range.dummy "positioned2", BaseType(StringType)) in
+              (rng, ProductType([ty1; ty2]))
+            in
+            (e, ty)
+      end
+
   | UTLengthDescription(flt, unitnm) ->
         let len =
           match unitnm with  (* temporary; ad-hoc handling of unit names *)
@@ -1072,21 +1092,38 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
 
 and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
   let iter = typecheck_math pre tyenv in
+  let check_brace (has_braceS : bool) (utmathS : untyped_math) : unit =
+    match (has_braceS, utmathS) with
+    | (true, _) ->
+        ()
+
+    | (false, (rng, UTMChars(uchs))) ->
+        if List.length uchs >= 2 then
+          raise (MultiCharacterMathScriptWithoutBrace(rng))
+        else
+          Logging.warn_math_script_without_brace rng
+
+    | (false, (rng, _)) ->
+        Logging.warn_math_script_without_brace rng
+  in
   let open HorzBox in
     match utmathmain with
-    | UTMChar(s) ->
-        ASTMath([MathPure(MathVariantChar(s))])
+    | UTMChars(uchs) ->
+        let ms = uchs |> List.map (fun uch -> MathPure(MathVariantChar(uch))) in
+        ASTMath(ms)
 
     | UTMList(utmathlst) ->
         let astlst = utmathlst |> List.map iter in
         BackendMathList(astlst)
 
-    | UTMSubScript(utmathB, utmathS) ->
+    | UTMSubScript(utmathB, has_braceS, utmathS) ->
+        check_brace has_braceS utmathS;
         let astB = iter utmathB in
         let astS = iter utmathS in
         BackendMathSubscript(astB, astS)
 
-    | UTMSuperScript(utmathB, utmathS) ->
+    | UTMSuperScript(utmathB, has_braceS, utmathS) ->
+        check_brace has_braceS utmathS;
         let astB = iter utmathB in
         let astS = iter utmathS in
         BackendMathSuperscript(astB, astS)
@@ -1306,7 +1343,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
               (* -- late arguments are converted to quoted arguments -- *)
 
         | (EarlyMacroParameter(tyexp), UTEarlyMacroArg(utast)) ->
-            let (earg, tyarg) = typecheck pre tyenv utast in
+            let (earg, tyarg) = typecheck { pre with stage = Stage0 } tyenv utast in
             unify_ tyenv tyarg tyexp;
             Alist.extend argacc earg
 
@@ -1562,3 +1599,12 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
     let (e, ty) = typecheck { stage = stage; quantifiability = Quantifiable; level = Level.bottom; } tyenv utast in
     (ty, !final_tyenv, e)
   end
+
+
+let are_unifiable (ty1 : mono_type) (ty2 : mono_type) : bool =
+  try
+    unify_sub ~reversed:false ty1 ty2;
+    true
+  with
+  | InternalContradictionError(_) -> false
+  | InternalInclusionError        -> false

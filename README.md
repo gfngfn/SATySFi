@@ -1,6 +1,6 @@
 ![logo1](https://raw.githubusercontent.com/wiki/gfngfn/SATySFi/img/satysfi-logo.png)
 
-[![Build Status](https://travis-ci.org/gfngfn/SATySFi.svg?branch=master)](https://travis-ci.org/gfngfn/SATySFi)
+[![Build Status](https://github.com/gfngfn/SATySFi/workflows/CI/badge.svg?branch=master)](https://github.com/gfngfn/SATySFi/actions?query=workflow%3ACI)
 
 [日本語版 README はこちら](https://github.com/gfngfn/SATySFi/blob/master/README-ja.md)
 
@@ -14,14 +14,36 @@ This software was supported by:
 * Dwango Co., Ltd. (October 2018 – March 2019; as a part-time job), and
 * many anonymous supporters who bought [The SATySFi​book](https://booth.pm/ja/items/1127224),
 
-and its development continues to this day (January 2020).
+and its development continues to this day (February 2021).
 
-## Install using Homebrew (for OS X users)
+## Install using Satyrographos (for non-devs)
 
-A Homebrew formula is provided for SATySFi (v0.0.2).
+You can install SATySFi with package manager [Satyrographos](https://github.com/na4zagin3/satyrographos/blob/master/README.md).
 
 ```sh
-$ brew install --HEAD nyuichi/satysfi/satysfi
+# For Ubuntu 20.04
+sudo apt-get update
+sudo apt-get install build-essential git m4 unzip curl pkg-config
+sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+
+# For Mac
+# Please make sure homebrew is installed. Otherwise, follow https://brew.sh/
+brew update
+brew install opam
+
+# Common: Set up OPAM
+opam init
+eval $(opam env)
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
+opam repository add satyrographos https://github.com/na4zagin3/satyrographos-repo.git
+opam update
+
+# Common: Install SATySFi
+opam depext satysfi satysfi-dist satyrographos
+opam install satysfi satysfi-dist satyrographos
+
+# Common: Set up the SATySFi standard library
+satyrographos install
 ```
 
 ## Install using OPAM
@@ -37,9 +59,9 @@ Here is a list of minimally required softwares.
 * make
 * unzip
 * wget or curl
-* ruby
-* [opam](https://opam.ocaml.org/) 2.0 (Installation instructions are [here](https://opam.ocaml.org/doc/Install.html).)
-    * Bubblewrap, a tool required for opam 2, cannot be installed easily yet on some kinds of environment such as Windows Subsystem for Linux (WSL) and Ubuntu 16.04. As a workaround for the time being, opam 2 can be installed without bubblewrap by passing `--disable-sandboxing` option when running `opam init`. **Please see [opam's FAQ](https://opam.ocaml.org/doc/FAQ.html#Why-does-opam-require-bwrap) for details.**
+* [opam](https://opam.ocaml.org/) 2
+    * See <https://opam.ocaml.org/doc/Install.html>.
+    * On Windows, Windows Subsystem for Linux (WSL) 2 is recommended to avoid bubblewrap-related issues.
 * ocaml 4.10.0 (installed by OPAM)
 
 Also, we must add an external OPAM repo to build. This can be done by the following command.
@@ -135,7 +157,7 @@ The former downloads the fonts required by the default settings into `lib-satysf
 During this setup, the following fonts are downloaded. Consult their license before using them.
 
 * [Junicode](http://junicode.sourceforge.net)
-* [IPA Font](https://ipafont.ipa.go.jp/old/ipafont/download.html)
+* [IPA Font](https://moji.or.jp/ipafont/)
 * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern/)
 * [Latin Modern Math](http://www.gust.org.pl/projects/e-foundry/lm-math)
 

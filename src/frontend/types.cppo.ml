@@ -19,6 +19,13 @@ type type_argument_name = string  [@@deriving show]
 type length_unit_name   = string  [@@deriving show]
 
 
+type input_position = {
+  input_file_name : string;
+  input_line      : int;
+  input_column    : int;
+}
+[@@deriving show { with_path = false }]
+
 type header_element =
   | HeaderRequire of string
   | HeaderImport  of string
@@ -266,6 +273,7 @@ type base_type =
   | MathType
   | RegExpType
   | TextInfoType
+  | InputPosType
 [@@deriving show]
 
 
@@ -292,6 +300,7 @@ let base_type_hash_table =
       ("math"        , MathType    );
       ("regexp"      , RegExpType  );
       ("text-info"   , TextInfoType);
+      ("input-position", InputPosType);
     ];
     ht
   end
@@ -460,6 +469,7 @@ and untyped_abstract_tree_main =
   | UTStringEmpty
   | UTStringConstant       of string
       [@printer (fun fmt s -> Format.fprintf fmt "S:\"%s\"" s)]
+  | UTPositionedString     of input_position * string
 (* -- inputs -- *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
@@ -571,9 +581,10 @@ and untyped_type_argument = Range.t * var_name * manual_kind
 and untyped_math = Range.t * untyped_math_main
 
 and untyped_math_main =
-  | UTMChar        of string
-  | UTMSuperScript of untyped_math * untyped_math
-  | UTMSubScript   of untyped_math * untyped_math
+  | UTMChars       of Uchar.t list
+      [@printer (fun ppf uchs -> Format.fprintf ppf "UTMChars(_)")]
+  | UTMSuperScript of untyped_math * bool * untyped_math
+  | UTMSubScript   of untyped_math * bool * untyped_math
   | UTMCommand     of untyped_abstract_tree * untyped_command_argument list
   | UTMList        of untyped_math list
   | UTMEmbed       of untyped_abstract_tree
@@ -615,7 +626,7 @@ type ('a, 'b) path_component_scheme =
 
 type page_break_style =
   | SingleColumn
-  | TwoColumn of length
+  | MultiColumn of length list
 [@@deriving show { with_path = false; }]
 
 type base_constant =
@@ -638,7 +649,8 @@ type base_constant =
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCTextModeContext of TextBackend.text_mode_context
-  | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+  | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+  | BCInputPos        of input_position
 [@@deriving show { with_path = false; }]
 
 type 'a letrec_binding_scheme =
@@ -997,7 +1009,8 @@ and math_element_main =
 
 and math_element =
   | MathElement           of HorzBox.math_kind * math_element_main
-  | MathVariantChar       of string
+  | MathVariantChar       of Uchar.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char>")]
   | MathVariantCharDirect of HorzBox.math_kind * bool * HorzBox.math_variant_style
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
       (* --
@@ -1552,7 +1565,7 @@ module MathContext
     val make : input_context -> t
     val context_for_text : t -> input_context
     val context_main : t -> HorzBox.context_main
-    val convert_math_variant_char : input_context -> string -> HorzBox.math_kind * Uchar.t list
+    val convert_math_variant_char : input_context -> Uchar.t -> HorzBox.math_kind * Uchar.t
     val color : t -> color
     val set_color : color -> t -> t
     val enter_script : t -> t
@@ -1588,25 +1601,21 @@ module MathContext
           context_for_text  = ictx;
         }
 
-    let convert_math_variant_char ((ctx, _) : input_context) (s : string) =
+    let convert_math_variant_char ((ctx, _) : input_context) (uch : Uchar.t) =
       let open HorzBox in
       let mcclsmap = ctx.math_variant_char_map in
       let mccls = ctx.math_char_class in
       let mkmap = ctx.math_class_map in
-        match mkmap |> MathClassMap.find_opt s with
-        | Some(uchlstaft, mk) ->
-            (mk, uchlstaft)
+      match mkmap |> HorzBox.MathClassMap.find_opt uch with
+      | Some(uchaft, mk) ->
+          (mk, uchaft)
 
-        | None ->
-            let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
-            let uchlstaft =
-              uchlst |> List.map (fun uch ->
-                match mcclsmap |> HorzBox.MathVariantCharMap.find_opt (uch, mccls) with
-                | Some(uchaft) -> uchaft
-                | None         -> uch
-              )
-            in
-              (MathOrdinary, uchlstaft)
+      | None ->
+          begin
+            match mcclsmap |> HorzBox.MathVariantCharMap.find_opt (uch, mccls) with
+            | Some((uchaft, mk)) -> (mk, uchaft)
+            | None               -> (MathOrdinary, uch)
+          end
 
     let context_for_text (mctx : t) =
       mctx.context_for_text
@@ -1716,6 +1725,7 @@ let rec string_of_type_basic tvf orvf tystr : string =
     | BaseType(MathType)     -> "math" ^ qstn
     | BaseType(RegExpType)   -> "regexp" ^ qstn
     | BaseType(TextInfoType) -> "text-info" ^ qstn
+    | BaseType(InputPosType) -> "input-position" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn

@@ -1,7 +1,7 @@
 <!-- -*- coding: utf-8 -*- -->
 ![logo1](https://raw.githubusercontent.com/wiki/gfngfn/SATySFi/img/satysfi-logo.png)
 
-[![Build Status](https://travis-ci.org/gfngfn/SATySFi.svg?branch=master)](https://travis-ci.org/gfngfn/SATySFi)
+[![Build Status](https://github.com/gfngfn/SATySFi/workflows/CI/badge.svg?branch=master)](https://github.com/gfngfn/SATySFi/actions?query=workflow%3ACI)
 
 [English README is here](https://github.com/gfngfn/SATySFi/blob/master/README.md)
 
@@ -15,14 +15,37 @@
 * 株式会社ドワンゴ（2018年10月–2019年3月．アルバイトとして）
 * [The SATySFi​book](https://booth.pm/ja/items/1127224)を購入頂いた，多くの匿名の支援者の方々
 
-また，2020年1月現在も発展を続けています。
+また，2021年2月現在も発展を続けています。
 
-## Homebrew を使ったインストール方法 (Mac ユーザ向け)
+## Satyrographos を使ったインストール方法 (初心者向け)
 
-Homebrew のフォーミュラが用意されています。
+パッケージマネージャー [Satyrographos](https://github.com/na4zagin3/satyrographos/blob/master/README-ja.md) を用いたインストール方法が用意されています。
+詳しくは [SATySFi インストール手引き](https://qiita.com/na4zagin3/items/a6e025c17ef991a4c923) をご覧下さい。
 
 ```sh
-$ brew install --HEAD nyuichi/satysfi/satysfi
+# Ubuntu 20.04 の場合
+sudo apt-get update
+sudo apt-get install build-essential git m4 unzip curl pkg-config
+sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+
+# Mac の場合
+# 要 homebrew (https://brew.sh/index_ja に従いインストールして下さい)
+brew update
+brew install opam
+
+# 共通 OPAM の設定
+opam init
+eval $(opam env)
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
+opam repository add satyrographos https://github.com/na4zagin3/satyrographos-repo.git
+opam update
+
+# 共通 SATySFi のインストール
+opam depext satysfi satysfi-dist satyrographos
+opam install satysfi satysfi-dist satyrographos
+
+# 共通 SATySFi 標準ライブラリのセットアップ
+satyrographos install
 ```
 
 ## OPAM を使ったインストール方法
@@ -38,9 +61,9 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 * make
 * unzip
 * wget or curl
-* ruby
-* [opam](https://opam.ocaml.org/) 2.0 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
-    * opam 2 をインストールするのに必要なツールである bubblewrap は，いくつかの環境において未だ簡単にはインストールできません。たとえば Windows Subsystem for Linux（WSL）や Ubuntu 16.04 が該当します。さしあたりの回避法として，`opam init` をする際に `--disable-sandboxing` オプションを渡すことで opam 2 を bubblewrap 無しにインストールすることができます。**詳細を [opam の FAQ](https://opam.ocaml.org/doc/FAQ.html#Why-does-opam-require-bwrap) で必ずご確認ください。**
+* [opam](https://opam.ocaml.org/) 2
+    * インストール方法：<https://opam.ocaml.org/doc/Install.html>
+    * Windows の場合，bubblewrap 関係の問題を回避するため，Windows Subsystem for Linux (WSL) 2 をオススメします。
 * ocaml 4.10.0 （OPAM からインストールします）
 
 また，ビルドには外部 OPAM リポジトリの追加が必要です。これは以下のコマンドでできます：
@@ -118,7 +141,7 @@ opam install satysfi
 ここでインストールされるフォントは以下の通りです。ライセンスを確認した上で使用してください：
 
 * [Junicode](http://junicode.sourceforge.net)
-* [IPA Font](https://ipafont.ipa.go.jp/old/ipafont/download.html)
+* [IPA Font](https://moji.or.jp/ipafont/)
 * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern/)
 * [Latin Modern Math](http://www.gust.org.pl/projects/e-foundry/lm-math)
 

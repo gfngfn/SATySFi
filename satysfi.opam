@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "satysfi"
-version: "0.0.5"
+version: "0.0.6"
 maintainer: "gfngfn"
 authors: [
   "gfngfn"
@@ -20,7 +20,7 @@ remove: [
 ]
 # Packages whose version suffix is "+satysfi" are distributed on satysfi-external-repo.
 depends: [
-  "ocaml" {>= "4.08.0"}
+  "ocaml" {>= "4.10.0"}
   "batteries"
   "camlimages" {>= "5.0.1"}
   "camlpdf" {= "2.3.1+satysfi"}
@@ -35,8 +35,8 @@ depends: [
   "re" {build}
   "uutf"
   "yojson-with-position" {= "1.4.2+satysfi"}
-  "omd"
+  "omd" {< "2.0.0~"}
 ]
 synopsis: "A statically-typed, functional typesetting system"
 description: """
-SATySFi is a typesetting system with a static type system. It consists mainly of two “layers” ― the text layer and the program layer. The former is for writing documents in LaTeX-like syntax. The latter, which has ML-like syntax, is for defining functions and commands. SATySFi enables you to write documents markuped with flexible commands of your own making. In addition, its informative type error reporting will be a good help to your writing."""
+SATySFi is a typesetting system equipped with a statically-typed, functional programming language. It consists mainly of two “layers” ― the text layer and the program layer. The former is for writing documents in LaTeX-like syntax. The latter, which has OCaml-like syntax, is for defining functions and commands. SATySFi enables you to write documents markuped with flexible commands of your own making. In addition, its informative type error reporting will be a good help to your writing."""

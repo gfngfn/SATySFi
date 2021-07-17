@@ -45,6 +45,9 @@ let tMATH         = (~! "math"    , BaseType(MathType)    )
 let tGR           = (~! "graphics", BaseType(GraphicsType))
 let tIMG          = (~! "image"   , BaseType(ImageType)   )
 let tRE           = (~! "regexp"  , BaseType(RegExpType)  )
+
+let tIPOS         = (~! "input-position", BaseType(InputPosType))
+
 let tL ty         = (~! "list"    , ListType(ty)          )
 let tR ty         = (~! "ref"     , RefType(ty)           )
 let tPROD tylst   = (~! "product" , ProductType(tylst)    )
@@ -99,6 +102,18 @@ let tMCSTY =
     ])  (* temporary *)
   in
     (~! "math-char-style", RecordType(asc))
+
+let tDOCINFODIC =
+  let asc =
+    Assoc.of_list [
+      ("title", tOPT tS);
+      ("subject", tOPT tS);
+      ("author", tOPT tS);
+      ("keywords", tL tS);
+    ]
+  in
+    (~! "document-information-dictionary", RecordType(asc))
+
 
 let tPBINFO =
   let asc =
@@ -352,11 +367,10 @@ let default_radical hgt_bar t_bar dpt fontsize color =
 let code_point cp = Uchar.of_int cp
 
 
-let default_math_variant_char_map : Uchar.t HorzBox.MathVariantCharMap.t =
+let default_math_variant_char_map : (Uchar.t * HorzBox.math_kind) HorzBox.MathVariantCharMap.t =
   let open HorzBox in
-
   List.fold_left (fun map (uchfrom, mccls, uchto) ->
-    map |> MathVariantCharMap.add (uchfrom, mccls) uchto
+    map |> MathVariantCharMap.add (uchfrom, mccls) (uchto, HorzBox.MathOrdinary)
   ) MathVariantCharMap.empty
     (List.concat [
 
@@ -460,19 +474,20 @@ let default_math_variant_char_map : Uchar.t HorzBox.MathVariantCharMap.t =
 
 let default_math_class_map =
   let open HorzBox in
-    List.fold_left (fun map (s, cp, mk) ->
-      map |> MathClassMap.add s ([code_point cp], mk)
+    List.fold_left (fun map (uch_from, uch_to_opt, mk) ->
+      let uch_to = uch_to_opt |> Option.value ~default:uch_from in
+      map |> MathClassMap.add uch_from (uch_to, mk)
     ) MathClassMap.empty
       [
-        ("=", Char.code '=', MathRelation);
-        ("<", Char.code '<', MathRelation);
-        (">", Char.code '>', MathRelation);
-        (":", Char.code ':', MathRelation);
-        ("+", Char.code '+', MathBinary  );
-        ("-", 0x2212       , MathBinary  );
-        ("|", Char.code '|', MathBinary  );
-        ("/", Char.code '/', MathOrdinary);
-        (",", Char.code ',', MathPunct   );
+        (uchar_of_char '=', None,                      MathRelation);
+        (uchar_of_char '<', None,                      MathRelation);
+        (uchar_of_char '>', None,                      MathRelation);
+        (uchar_of_char ':', None,                      MathRelation);
+        (uchar_of_char '+', None,                      MathBinary);
+        (uchar_of_char '-', Some(Uchar.of_int 0x2212), MathBinary);
+        (uchar_of_char '|', None,                      MathBinary);
+        (uchar_of_char '/', None,                      MathOrdinary);
+        (uchar_of_char ',', None,                      MathPunct);
       ]
 
 

@@ -356,9 +356,8 @@
         insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
 
 
-  let primes n =
-    let uchlst = List.init n (fun _ -> Uchar.of_int 0x2032) in
-      InternalText.to_utf8 (InternalText.of_uchar_list uchlst)
+  let primes (n : int) : Uchar.t list =
+    List.init n (fun _ -> Uchar.of_int 0x2032)
 %}
 
 %token <Range.t * Types.var_name> VAR
@@ -381,8 +380,9 @@
 %token <Range.t * float * Types.length_unit_name> LENGTHCONST
 %token <Range.t * string> CHAR
 %token <Range.t * string * bool * bool> LITERAL
+%token <Range.t * Types.input_position * string> POSITIONED_LITERAL
 %token <Range.t> SPACE BREAK
-%token <Range.t * string> MATHCHAR
+%token <Range.t * string> MATHCHARS
 %token <Range.t * int> PRIMES
 %token <Range.t> SUBSCRIPT SUPERSCRIPT
 %token <Range.t> LAMBDA ARROW COMMAND
@@ -462,6 +462,8 @@
 %type <Types.manual_type option * untyped_argument list> nonrecdecargpart
 %type <Range.t * manual_type list * (module_name list * type_name)> txapp
 %type <Range.t * module_name list * Types.type_name> txbot
+%type <bool * Types.untyped_math> mathgroup
+%type <Types.untyped_math> mathbot
 
 %%
 
@@ -811,6 +813,7 @@ nxbot:
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP      { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | tok=LITERAL                                  { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTStringConstant(omit_spaces pre post str)) }
+  | tok=POSITIONED_LITERAL                       { let (rng, ipos, s) = tok in make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s)) }
   | utast=nxlistsynt                             { utast }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
   | utast=nxrecordsynt                           { utast }
@@ -1074,34 +1077,44 @@ mathmain:
     }
 ;
 mathtop:
-  | utm1=mathbot; SUPERSCRIPT; utm2=mathgroup {
-      make_standard (Ranged utm1) (Ranged utm2) (UTMSuperScript(utm1, utm2))
+  | utm1=mathbot; SUPERSCRIPT; mg2=mathgroup {
+      let (has_brace2, utm2) = mg2 in
+      make_standard (Ranged utm1) (Ranged utm2) (UTMSuperScript(utm1, has_brace2, utm2))
     }
   | utm1=mathbot; prm=PRIMES {
       let (rng, n) = prm in
-      let utm2 = (rng, UTMChar(primes n)) in
-      make_standard (Ranged utm1) (Tok rng) (UTMSuperScript(utm1, utm2))
+      let utm2 = (rng, UTMChars(primes n)) in
+      make_standard (Ranged utm1) (Tok rng) (UTMSuperScript(utm1, true, utm2))
     }
-  | utm1=mathbot; SUBSCRIPT; utm2=mathgroup; SUPERSCRIPT; utm3=mathgroup {
-      let utm12 = make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, utm2)) in
-      make_standard (Ranged utm1) (Ranged utm3) (UTMSuperScript(utm12, utm3))
+  | utm1=mathbot; SUBSCRIPT; mg2=mathgroup; SUPERSCRIPT; mg3=mathgroup {
+      let (has_brace2, utm2) = mg2 in
+      let (has_brace3, utm3) = mg3 in
+      let utm12 = make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, has_brace2, utm2)) in
+      make_standard (Ranged utm1) (Ranged utm3) (UTMSuperScript(utm12, has_brace3, utm3))
     }
-  | utm1=mathbot; prm=PRIMES; SUPERSCRIPT; utm3=mathgroup {
+  | utm1=mathbot; prm=PRIMES; SUPERSCRIPT; mg3=mathgroup {
       let (rng, n) = prm in
-      let utm2 = (rng, UTMChar(primes n)) in
-      let utm12 = make_standard (Ranged utm1) (Tok rng) (UTMSubScript(utm1, utm2)) in
-      make_standard (Ranged utm1) (Ranged utm3) (UTMSuperScript(utm12, utm3))
+      let utm2 = (rng, UTMChars(primes n)) in
+      let (has_brace3, utm3) = mg3 in
+      let utm23 = make_standard (Tok rng) (Ranged utm3) (UTMList([utm2; utm3])) in
+      make_standard (Ranged utm1) (Ranged utm3) (UTMSuperScript(utm1, has_brace3, utm23))
     }
-  | utm1=mathbot; SUPERSCRIPT; utm2=mathgroup; SUBSCRIPT; utm3=mathgroup {
-      make_standard (Ranged utm1) (Ranged utm3) (UTMSuperScript((Range.dummy "mathtop", UTMSubScript(utm1, utm3)), utm2))
+  | utm1=mathbot; SUPERSCRIPT; mg2=mathgroup; SUBSCRIPT; mg3=mathgroup {
+      let (has_brace2, utm2) = mg2 in
+      let (has_brace3, utm3) = mg3 in
+      make_standard (Ranged utm1) (Ranged utm3)
+        (UTMSuperScript((Range.dummy "mathtop", UTMSubScript(utm1, has_brace3, utm3)), has_brace2, utm2))
     }
-  | utm1=mathbot; prm=PRIMES; SUBSCRIPT; utm3=mathgroup {
+  | utm1=mathbot; prm=PRIMES; SUBSCRIPT; mg3=mathgroup {
       let (rng, n) = prm in
-      let utm2 = (rng, UTMChar(primes n)) in
-      make_standard (Ranged utm1) (Ranged utm3) (UTMSuperScript((Range.dummy "mathtop", UTMSubScript(utm1, utm3)), utm2))
+      let (has_brace3, utm3) = mg3 in
+      let utm2 = (rng, UTMChars(primes n)) in
+      make_standard (Ranged utm1) (Ranged utm3)
+        (UTMSuperScript((Range.dummy "mathtop", UTMSubScript(utm1, has_brace3, utm3)), true, utm2))
     }
-  | utm1=mathbot; SUBSCRIPT; utm2=mathgroup {
-      make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, utm2))
+  | utm1=mathbot; SUBSCRIPT; mg2=mathgroup {
+      let (has_brace2, utm2) = mg2 in
+      make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, has_brace2, utm2))
     }
   | utm=mathbot { utm }
 ;
@@ -1114,11 +1127,19 @@ mathsubopt:
 ;
 *)
 mathgroup:
-  | opn=BMATHGRP; utm=mathmain; cls=EMATHGRP { make_standard (Tok opn) (Tok cls) (extract_main utm) }
-  | utm=mathbot                              { utm }
+  | opn=BMATHGRP; utm=mathmain; cls=EMATHGRP {
+      (true, make_standard (Tok opn) (Tok cls) (extract_main utm))
+    }
+  | utm=mathbot {
+      (false, utm)
+    }
 ;
 mathbot:
-  | tok=MATHCHAR                    { let (rng, char) = tok in (rng, UTMChar(char)) }
+  | tok=MATHCHARS {
+      let (rng, s) = tok in
+      let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+      (rng, UTMChars(uchs))
+    }
   | mcmd=mcmd; arglst=list(matharg) {
       let (rngcmd, mdlnmlst, csnm) = mcmd in
       let rnglast =
