@@ -261,7 +261,9 @@ let gen_insttype () =
             puts "  | Op%s" inst;
             begin match name, type_ with
               | Some name, Some t ->
-                puts "    (** [%s : %s] *)" name (Type.to_string t)
+                (* use @ocaml.doc attribute to avoid puzzling over escaping *)
+                puts "    [@ocaml.doc %S]"
+                  (Printf.sprintf "[%s : %s]" (Name.show name) (Type.to_string t))
               | _, _ -> ()
             end
 
