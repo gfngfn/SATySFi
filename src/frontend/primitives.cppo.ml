@@ -469,6 +469,19 @@ let default_math_variant_char_map : (Uchar.t * HorzBox.math_kind) HorzBox.MathVa
       (range 0 25) |> List.map (fun i ->
         (ascii_small_of_index i, MathDoubleStruck, code_point (0x1D552 + i)));
 
+
+    (* -- Digit to its boldface -- *)
+      (range 0 9) |> List.concat_map (fun i ->
+        [
+          (ascii_digit_of_index i, MathBoldItalic, code_point (0x1D7CE + i));
+          (ascii_digit_of_index i, MathBoldRoman, code_point (0x1D7CE + i));
+          (ascii_digit_of_index i, MathBoldScript, code_point (0x1D7CE + i));
+          (ascii_digit_of_index i, MathBoldFraktur, code_point (0x1D7CE + i));
+        ]);
+
+    (* -- Digit to its double struck -- *)
+      (range 0 9) |> List.map (fun i ->
+        (ascii_digit_of_index i, MathDoubleStruck, code_point (0x1D7D8 + i)));
     ])
 
 
