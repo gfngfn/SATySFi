@@ -23,9 +23,17 @@ satysfi
 *.afm
 *.t1a
 *.svg
+!/logo/macrodown.svg
 *.dat
 *.ttx
 *.jpg
+!/demo/satysfi-logo.jpg
+!/tests/images/lenna-cmyk.jpg
+!/tests/images/lenna-gray.jpg
+!/tests/images/lenna-rgb.jpg
+!/tests/images/satysfi-logo-cmyk.jpg
+!/tests/images/satysfi-logo-gray.jpg
+!/tests/images/satysfi-logo-rgb.jpg
 *.satysfi-aux
 external/
 
