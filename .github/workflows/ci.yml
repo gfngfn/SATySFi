@@ -13,22 +13,40 @@ jobs:
           - 4.10.1
           - 4.11.1
     runs-on: ${{ matrix.os }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Setup OCaml ${{ matrix.ocaml-version }}
-        uses: avsm/setup-ocaml@v1
+      - name: Determine the default OPAM Repo
+        id: determine-default-opam-repo
+        # See https://docs.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#runner-context
+        # and https://github.com/ocaml/setup-ocaml/blob/4ac56b0fd440c3eef30fd1e34c96e0c740a807da/src/constants.ts#L45
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ] ; then
+            DEFAULT_OPAM_REPO="https://github.com/fdopen/opam-repository-mingw.git#opam2"
+          else
+            DEFAULT_OPAM_REPO="https://github.com/ocaml/opam-repository.git"
+          fi
+          echo "::set-output name=opam-repo-default::$(echo "$DEFAULT_OPAM_REPO")"
+
+      - name: Setup OCaml ${{ matrix.ocaml-version }} and pin satysfi
+        uses: ocaml/setup-ocaml@v2
         with:
           ocaml-version: ${{ matrix.ocaml-version }}
+          dune-cache: true
+
+          opam-depext: true
+          opam-pin: true
+
+          opam-repositories: |
+            satysfi-external: https://github.com/gfngfn/satysfi-external-repo.git
+
+            default: ${{ steps.determine-default-opam-repo.outputs.opam-repo-default }}
 
       - name: Install SATySFi dependencies
         run: |
-          opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
-          opam update
-          opam pin add satysfi.dev . --no-action
-          opam depext satysfi --yes --with-doc
-          opam install . --deps-only --with-doc
+          opam install . --deps-only --with-doc --verbose
 
       - name: Build SATySFi
         run: opam exec -- make all
