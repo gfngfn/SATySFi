@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 ### Fixed
 - Fix invalid errors emitted by `--type-check-only` by making the option extension-sensitive.
 - Fix the exhaustiveness check ([PR\#171](https://github.com/gfngfn/SATySFi/pull/171) by `matsud224`).
-- Fix how to handle digits under `\mathbb` ([PR\#286](https://github.com/gfngfn/SATySFi/pull/286)).
+- Fix how to handle digits under `\mathbb` ([PR\#286](https://github.com/gfngfn/SATySFi/pull/286) by `elpinal`).
 
 ### Added
 - Add primitives `(<<)`, `(>>)`, `bxor`, `band`, `bor`, and `bnot` for bitwise operations ([PR\#85](https://github.com/gfngfn/SATySFi/pull/85) by `konn`).
@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 ### Changed
 - Remove the build dependency on Ruby and migrate some build scripts from `Makefile` to `dune` ([PR\#142](https://github.com/gfngfn/SATySFi/pull/142) by `leque`, and [PR\#226](https://github.com/gfngfn/SATySFi/pull/226) by `na4zagin3`).
+- Remove the build dependency on `depext` ([PR\#289](https://github.com/gfngfn/SATySFi/pull/289) by `na4zagin3`).
 
 ## [0.0.6] - 2021-02-06
 ### Fixed
