@@ -3416,7 +3416,7 @@ let str = c |> InternalText.of_uchar |> InternalText.to_utf8 in
 make_string str
 |}
     ; inst "PrimitiveCharToUnicodePoint"
-        ~name:"char-to-point"
+        ~name:"char-to-unicode-point"
         ~type_:{|
 ~% (tC @-> tI)
 |}
