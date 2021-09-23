@@ -713,7 +713,7 @@ document (|
         \code{${pt}}座標分だけ移動させる．
       }
       +command (`get-path-bbox`) (tPATH --> (tPROD [tPT; tPT])) {
-        \code{get-path-bbox ${gr}}で\code{${gr}}を
+        \code{get-path-bbox ${path}}で\code{${path}}を
         のバウンディングボックスの座標の内，${x}座標が取る最小値と
         ${y}座標が取る最小値の組${\paren{x_{min}, y_{min}}}と，
         ${x}座標が取る最大値と${y}座標が取る最大値の組${\paren{x_{max}, y_{max}}}
