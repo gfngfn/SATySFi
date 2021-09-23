@@ -380,6 +380,7 @@
 %token <Range.t * float * Types.length_unit_name> LENGTHCONST
 %token <Range.t * string> CHAR
 %token <Range.t * string * bool * bool> LITERAL
+%token <Range.t * Uchar.t> UNICODE_CHAR
 %token <Range.t * Types.input_position * string> POSITIONED_LITERAL
 %token <Range.t> SPACE BREAK
 %token <Range.t * string> MATHCHARS
@@ -814,6 +815,7 @@ nxbot:
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | tok=LITERAL                                  { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTStringConstant(omit_spaces pre post str)) }
   | tok=POSITIONED_LITERAL                       { let (rng, ipos, s) = tok in make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s)) }
+  | tok=UNICODE_CHAR                             { let (rng, unicode_char) = tok in make_standard (Tok rng) (Tok rng) (UTCharConstant(unicode_char)) }
   | utast=nxlistsynt                             { utast }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
   | utast=nxrecordsynt                           { utast }
@@ -1005,6 +1007,7 @@ patbot:
   | rng=WILDCARD             { make_standard (Tok rng) (Tok rng) UTPWildCard }
   | vartok=defedvar          { make_standard (Ranged vartok) (Ranged vartok) (UTPVariable(extract_name vartok)) }
   | lit=LITERAL              { let (rng, str, pre, post) = lit in make_standard (Tok rng) (Tok rng) (UTPStringConstant(omit_spaces pre post str)) }
+  | uni_char=UNICODE_CHAR    { let (rng, unicode_char) = uni_char in make_standard (Tok rng) (Tok rng) (UTPCharConstant(unicode_char)) }
   | rng1=BLIST; rng2=ELIST            { make_standard (Tok rng1) (Tok rng2) UTPEndOfList }
   | opn=BLIST; pat=patlist; cls=ELIST { make_standard (Tok opn) (Tok cls) (extract_main pat) }
   | opn=LPAREN; pat=patas; cls=RPAREN                       { make_standard (Tok opn) (Tok cls) (extract_main pat) }

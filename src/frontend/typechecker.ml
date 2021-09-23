@@ -593,6 +593,7 @@ let rec typecheck
   | UTIntegerConstant(nc) -> (base (BCInt(nc))      , (rng, BaseType(IntType))   )
   | UTFloatConstant(nc)   -> (base (BCFloat(nc))    , (rng, BaseType(FloatType)) )
   | UTStringConstant(sc)  -> (base (BCString(sc))   , (rng, BaseType(StringType)))
+  | UTCharConstant(cc)    -> (base (BCChar(cc))     , (rng, BaseType(CharType))  )
   | UTBooleanConstant(bc) -> (base (BCBool(bc))     , (rng, BaseType(BoolType))  )
   | UTUnitConstant        -> (base BCUnit           , (rng, BaseType(UnitType))  )
   | UTHorz(hblst)         -> (base (BCHorz(hblst))  , (rng, BaseType(BoxRowType)))
@@ -1442,6 +1443,9 @@ and typecheck_pattern
 
     | UTPStringConstant(sc) ->
         (PStringConstant(sc), (rng, BaseType(StringType)), PatternVarMap.empty)
+
+    | UTPCharConstant(cc) ->
+        (PCharConstant(cc), (rng, BaseType(CharType)), PatternVarMap.empty)
 
     | UTPListCons(utpat1, utpat2) ->
         let (epat1, typat1, patvarmap1) = iter utpat1 in

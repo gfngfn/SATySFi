@@ -7,6 +7,8 @@ type type_element =
   | EBooleanConstant of bool
   | EIntegerConstant of int
   | EStringConstant  of string
+  | ECharConstant    of Uchar.t
+      [@printer (fun fmt c -> Format.fprintf fmt "S:'%s'" (c |> InternalText.of_uchar |> InternalText.to_utf8))]
   | EListCons
   | EEndOfList
   | EConstructor     of string * mono_type
@@ -18,6 +20,8 @@ and pattern_instance =
   | IIntegerConstant of int
   | IBooleanConstant of bool
   | IStringConstant  of string
+  | ICharConstant    of Uchar.t
+      [@printer (fun fmt c -> Format.fprintf fmt "S:'%s'" (c |> InternalText.of_uchar |> InternalText.to_utf8))]
   | IListCons        of pattern_instance * pattern_instance
   | IEndOfList
   | IConstructor     of string * pattern_instance * mono_type
@@ -96,6 +100,7 @@ let instance_of_element ele =
   | EBooleanConstant(b)     -> IBooleanConstant(b)
   | EIntegerConstant(i)     -> IIntegerConstant(i)
   | EStringConstant(s)      -> IStringConstant(s)
+  | ECharConstant(c)        -> ICharConstant(c)
   | EConstructor(nm, ty)    -> IConstructor(nm, IWildCard, ty)
   | EListCons               -> IListCons(IWildCard, IWildCard)
   | EEndOfList              -> IEndOfList
@@ -134,6 +139,7 @@ let rec string_of_instance ins =
   | IIntegerConstant(i) -> string_of_int i
   | IBooleanConstant(b) -> string_of_bool b
   | IStringConstant(s)  -> s
+  | ICharConstant(c)    -> "\"" ^ (c |> InternalText.of_uchar |> InternalText.to_utf8) ^ "\""
   | IWildCard           -> "_"
 
 
@@ -212,6 +218,9 @@ let rec get_specialized_mat mat patinfo ele tylst =
               | (EStringConstant(s1), PStringConstant(s2))  when String.equal s1 s2
                 -> true
 
+              | (ECharConstant(c1), PCharConstant(c2))  when Uchar.equal c1 c2
+                -> true
+
               | (EConstructor(nm1, _), PConstructor(nm2, _))  when String.equal nm1 nm2
                 -> true
 
@@ -279,6 +288,14 @@ let make_string_sig col =
   ) [EWildCard] col)
 
 
+let make_char_sig col =
+  ElementSet.of_list (List.fold_left (fun acc p ->
+    match p with
+    | PCharConstant(s) -> ECharConstant(s) :: acc
+    | _                -> acc
+  ) [EWildCard] col)
+
+
 let make_variant_sig (pre : pre) (tyenv : Typeenv.t) (tyarglst : mono_type list) tyid =
   let constrs = Typeenv.enumerate_constructors pre tyenv tyid in
   ElementSet.of_list (constrs |> List.map (fun (nm, tyf) ->
@@ -292,6 +309,7 @@ let rec complete_sig col (pre : pre) (tyenv : Typeenv.t) ((_, tymain) : mono_typ
   | BaseType(BoolType)          -> bool_sig
   | BaseType(IntType)           -> make_int_sig col
   | BaseType(StringType)        -> make_string_sig col
+  | BaseType(CharType)          -> make_char_sig col
   | ListType(_)                 -> list_sig
   | ProductType(_)              -> product_sig
   | SynonymType(_, _, aty)      -> complete_sig col pre tyenv aty

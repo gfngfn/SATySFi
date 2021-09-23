@@ -55,6 +55,11 @@ let get_string (value : syntactic_value) : string =
   | _                         -> report_bug_value "get_string" value
 
 
+let get_char (value : syntactic_value) : Uchar.t =
+  match value with
+  | BaseConstant(BCChar(c)) -> c
+  | _                       -> report_bug_value "get_char" value
+
 let get_list getf value =
   match value with
   | List(vlst) -> List.map getf vlst
@@ -763,6 +768,7 @@ let make_int n = BaseConstant(BCInt(n))
 let make_float x = BaseConstant(BCFloat(x))
 let make_length l = BaseConstant(BCLength(l))
 let make_string s = BaseConstant(BCString(s))
+let make_char c = BaseConstant(BCChar(c))
 let make_regexp re = BaseConstant(BCRegExp(re))
 let make_horz h = BaseConstant(BCHorz(h))
 let make_vert v = BaseConstant(BCVert(v))

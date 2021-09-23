@@ -233,6 +233,17 @@ rule progexpr stack = parse
           in
           POSITIONED_LITERAL(pos, ipos, s)
     }
+  | "\'" {
+      let pos_start = get_pos lexbuf in
+      let buffer = Buffer.create 1 in
+      let (pos_last, c) = unicode_char buffer lexbuf in
+      let pos = Range.unite pos_start pos_last in
+      UNICODE_CHAR(pos, c)
+    }
+  | "\'" (small as c) "\'" {
+      let pos = get_pos lexbuf in
+      UNICODE_CHAR(pos, Uchar.of_char c)
+    }
   | ("\\" (identifier | constructor) "@") {
       let tok = Lexing.lexeme lexbuf in HORZMACRO(get_pos lexbuf, tok)
     }
@@ -673,6 +684,68 @@ and literal quote_length buffer = parse
       Buffer.add_string buffer tok;
       literal quote_length buffer lexbuf
     }
+
+
+and unicode_char buffer = parse
+  | "\\n" {
+    Buffer.add_string buffer "\n";
+    unicode_char buffer lexbuf
+  }
+  | "\\r" {
+    Buffer.add_string buffer "\r";
+    unicode_char buffer lexbuf
+  }
+  | "\\t" {
+    Buffer.add_string buffer "\t";
+    unicode_char buffer lexbuf
+  }
+  | "\\\\" {
+    Buffer.add_string buffer "\\";
+    unicode_char buffer lexbuf
+  }
+  | "\\\'" {
+    Buffer.add_string buffer "\'";
+    unicode_char buffer lexbuf
+  }
+  | "\\u" ((digit | (nzdigit digit+)) as i) {
+    let s =
+      i
+      |> int_of_string
+      |> Uchar.of_int
+      |> InternalText.of_uchar
+      |> InternalText.to_utf8
+    in
+    Buffer.add_string buffer s;
+    unicode_char buffer lexbuf
+  }
+  | "\\u" ((("0x" | "0X") hex+) as i) {
+    let s =
+      i
+      |> int_of_string
+      |> Uchar.of_int
+      |> InternalText.of_uchar
+      |> InternalText.to_utf8
+    in
+    Buffer.add_string buffer s;
+    unicode_char buffer lexbuf
+  }
+  | "\'" {
+    let pos = get_pos lexbuf in
+    let unicode_point_list =
+      Buffer.contents buffer
+      |> InternalText.of_utf8
+      |> InternalText.to_uchar_list
+    in
+    match unicode_point_list with
+    | [x] -> (pos, x)
+    | [] -> report_error lexbuf "invalid too short string as char"
+    | _ -> report_error lexbuf "invalid too long string"
+  }
+  | _ {
+    let tok = Lexing.lexeme lexbuf in
+    Buffer.add_string buffer tok;
+    unicode_char buffer lexbuf
+  }
 
 
 and comment = parse

@@ -606,6 +606,7 @@ and interpret_1_pattern_tree env = function
   | PBooleanConstant(b) -> (env, CdPBooleanConstant(b))
   | PIntegerConstant(n) -> (env, CdPIntegerConstant(n))
   | PStringConstant(s)  -> (env, CdPStringConstant(s))
+  | PCharConstant(c)    -> (env, CdPCharConstant(c))
 
   | PListCons(pattr1, pattr2) ->
       let (env, cdpattr1) = interpret_1_pattern_tree env pattr1 in
@@ -848,6 +849,9 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
 
   | (PStringConstant(psc), BaseConstant(BCString(str2))) ->
       if String.equal psc str2 then Some(env) else None
+
+  | (PCharConstant(pcc), BaseConstant(BCChar(char2))) ->
+      if Uchar.equal pcc char2 then Some(env) else None
 
   | (PUnitConstant, BaseConstant(BCUnit)) -> Some(env)
   | (PWildCard, _)                        -> Some(env)

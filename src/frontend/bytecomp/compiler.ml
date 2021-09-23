@@ -386,6 +386,7 @@ and compile_patcheck (pat : ir_pattern_tree) (next : instruction list) (cont : i
     | IRPIntegerConstant(pnc) -> return (OpCheckStackTopInt(pnc, next))
     | IRPBooleanConstant(pbc) -> return (OpCheckStackTopBool(pbc, next))
     | IRPStringConstant(str)  -> return (OpCheckStackTopStr(str, next))
+    | IRPCharConstant(str)    -> return (OpCheckStackTopChar(str, next))
     | IRPUnitConstant         -> return OpPop
     | IRPWildCard             -> return OpPop
 

@@ -220,6 +220,7 @@ and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * fra
   | PIntegerConstant(pnc) -> return (IRPIntegerConstant(pnc))
   | PBooleanConstant(pbc) -> return (IRPBooleanConstant(pbc))
   | PStringConstant(psc)  -> return (IRPStringConstant(psc))
+  | PCharConstant(pcc)    -> return (IRPCharConstant(pcc))
   | PUnitConstant         -> return IRPUnitConstant
   | PWildCard             -> return IRPWildCard
 
