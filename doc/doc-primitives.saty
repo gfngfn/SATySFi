@@ -630,6 +630,11 @@ document (|
         }
         を評価した結果の数式となる．
       }
+      +commands [`get-left-math-class`; `get-right-math-class`] (tCTX --> (tMATH --> tOPT tMATHCLS)) {
+        第1引数のテキスト処理文脈に基づき，第2引数の数式の
+        左端と右端がそれぞれどのような属性の “アトム” になっているか返す．
+        数式が空の場合は\code{None}が返る．
+      }
     >
     +subsection {画像に関する処理} <
       +p {
