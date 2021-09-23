@@ -74,13 +74,13 @@ document (|
       \code{MathInner}（部分式）の9つの値構築子をもつ代数的データ型である．
     }
     +type (tMCCLS) {
-      数式中に書かれている文字をどの文字クラスに基づいてグリフに変換するときに使用する型．
+      数式中に書かれている文字を数式用文字書体に基づいてグリフに変換するときに使用する型．
       \code{MathItalic}・\code{MathBoldItalic}・\code{MathRoman}・\code{MathBoldRoman}・
       \code{MathScript}・\code{MathBoldScript}・\code{MathFraktur}・\code{MathBoldFraktur}・
       \code{MathDoubleStruck}の9つの値構築子をもつ代数的データ型である．
     }
     +type (tMCSTY) {
-      どの文字クラスでどの文字列が対応するのかを定める際に使用される．
+      どの数式用文字書体にどの文字列が対応するのかを定める際に使用される．
       ${
         \math-of-type!(
           tRECORD [
@@ -600,13 +600,13 @@ document (|
         数式中にインラインボックス列を埋め込む．
       }
       +command (`math-variant-char`) (tMATHCLS --> (tMCSTY --> tMATH)) {
-        数式文字クラス指定（イタリック，ボールドローマン，スクリプトなど）に応じて変化する文字を定義する．
+        数式用文字書体の指定（イタリック，ボールドローマン，スクリプトなど）に応じて変化する文字を定義する．
       }
       +command (`math-color`) (tCLR --> (tMATH --> tMATH)) {
         数式の文字色を変更する．
       }
       +command (`math-char-class`) (tMCCLS --> (tMATH --> tMATH)) {
-        数式文字クラスを変更する．
+        数式用文字書体を変更する．
       }
       +command (`math-concat`) (tMATH --> (tMATH --> tMATH)) {
         数式を結合する．
