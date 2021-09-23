@@ -272,7 +272,7 @@ document (|
         \subject-to-change;
       }
       +command (`string-explode`) (tS --> (tLIST tI)) {
-        受け取った文字列をUnicodeコードポイント列として返す．
+        受け取った文字列をUnicodeスカラー値のリストとして返す．
       }
       +command (`string-same`) (tS --> (tS --> tB)) {
         文字列がUTF-8のバイト列として等価かの判定．
