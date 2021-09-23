@@ -3302,6 +3302,21 @@ raise (report_dynamic_error msg)
         ~code:{|
 lift_string_to_code_value s
 |}
+    ; inst "LiftChar"
+        ~name:"lift-char"
+        ~type_:{|
+~% (tC @-> tCODE tC)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "c" ~type_:"char";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+lift_char_to_code_value c
+|}
     ; inst "LiftInt"
         ~name:"lift-int"
         ~type_:{|
