@@ -3399,4 +3399,66 @@ let lines = aux Alist.empty in
 close_in inc;
 make_list make_string lines
 |}
+    ; inst "PrimitiveCharToString"
+        ~name:"char-to-string"
+        ~type_:{|
+~% (tC @-> tS)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "c" ~type_:"char";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let str = c |> InternalText.of_uchar |> InternalText.to_utf8 in
+make_string str
+|}
+    ; inst "PrimitiveCharToUnicodePoint"
+        ~name:"char-to-point"
+        ~type_:{|
+~% (tC @-> tI)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "c" ~type_:"char";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_int (Uchar.to_int c)
+|}
+    ; inst "PrimitiveCharOfUnicodePoint"
+        ~name:"char-of-unicode-point"
+        ~type_:{|
+~% (tI @-> tC)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "i" ~type_:"int";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_char (Uchar.of_int i)
+|}
+    ; inst "PrimitiveCharEqual"
+        ~name:"char-same"
+        ~type_:{|
+~% (tC @-> tC @-> tB)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "c1" ~type_:"char";
+          param "c2" ~type_:"char";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_bool (Uchar.equal c1 c2)
+|}
     ])
