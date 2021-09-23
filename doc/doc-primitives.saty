@@ -725,13 +725,6 @@ document (|
       +command (`linear-transform-graphics`) (tF --> (tF --> (tF --> (tF --> (tGR --> tGR))))) {
         \code{${gr} \|\> linear-transform-graphics ${a} ${b} ${c} ${d}}で\code{${gr}}に対して線形変換を行う．
       }
-      +command (`inline-graphics`) (tL --> (tL --> (tL --> ((tPT --> (tLIST tGR)) --> tIB)))) {
-        \code{inline-graphics ${w} ${h} ${d} ${grf}}という形で使う．
-        最初の3つの引数は生成される\code{inline-boxes}の大きさを指定するものである．
-        4つ目の引数は“そのグラフィックスが描画されるスタート位置”の座標を受け取って
-        適切な座標に描画されるように設定されたグラフィックスのリストを
-        生成する関数である．
-      }
     >
     +subsection {相互参照に関する処理} <
       +command (`register-cross-reference`) (tS --> (tS --> tU)) {
