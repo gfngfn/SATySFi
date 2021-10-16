@@ -135,33 +135,6 @@ and compile_code_letrec_binding (IRLetRecBinding(var, irpatbr) : ir_letrec_bindi
   IRLetRecBinding(var, comppatbr)
 
 
-and compile_path pathcomplst (cycleopt : unit ir_path_component option) =
-  let c_pathcomplst =
-    pathcomplst |> List.map (function
-    | IRPathLineTo(irpt) ->
-        CompiledPathLineTo(compile irpt [])
-
-    | IRPathCubicBezierTo(irpt1, irpt2, irpt) ->
-        let pt1 = compile irpt1 [] in
-        let pt2 = compile irpt2 [] in
-        let pt = compile irpt [] in
-        CompiledPathCubicBezierTo(pt1, pt2, pt)
-    )
-  in
-  let c_cycleopt =
-    cycleopt |> option_map (function
-    | IRPathLineTo(()) ->
-        CompiledPathLineTo(())
-
-    | IRPathCubicBezierTo(irpt1, irpt2, ()) ->
-        let pt1 = compile irpt1 [] in
-        let pt2 = compile irpt2 [] in
-        CompiledPathCubicBezierTo(pt1, pt2, ())
-    )
-  in
-  (c_pathcomplst, c_cycleopt)
-
-
 and compile (ir : ir) (cont : instruction list) =
   match ir with
   (* ---- basic value ---- *)
@@ -287,10 +260,6 @@ and compile (ir : ir) (cont : instruction list) =
 
   | IRModule(irmdl, iraft) ->
       compile irmdl @@ compile iraft cont
-
-  | IRPath(irpt0, pathcomplst, cycleopt) ->
-      let (pathelemlst, closingopt) = compile_path pathcomplst cycleopt in
-      compile irpt0 (OpPath(pathelemlst, closingopt) :: cont)
 
 (* -- multi-stage -- *)
 

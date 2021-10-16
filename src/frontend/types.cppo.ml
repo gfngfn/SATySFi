@@ -474,8 +474,6 @@ and untyped_abstract_tree_main =
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaMath           of untyped_abstract_tree
-(* -- graphics -- *)
-  | UTPath                 of untyped_abstract_tree * (untyped_abstract_tree untyped_path_component) list * (unit untyped_path_component) option
 (* -- horizontal box list -- *)
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
@@ -687,14 +685,6 @@ and ir_input_vert_element =
   | IRInputVertEmbedded of ir
   | IRInputVertContent  of ir
 
-and 'a ir_path_component =
-  | IRPathLineTo        of 'a
-  | IRPathCubicBezierTo of ir * ir * 'a
-
-and 'a compiled_path_component =
-  | CompiledPathLineTo of 'a
-  | CompiledPathCubicBezierTo of instruction list * instruction list * 'a
-
 and varloc =
   | GlobalVar of location * EvalVarID.t * int ref
   | LocalVar  of int * int * EvalVarID.t * int ref
@@ -728,7 +718,6 @@ and ir =
   | IROverwrite             of varloc * ir
   | IRDereference           of ir
   | IRModule                of ir * ir
-  | IRPath                  of ir * ir ir_path_component list * (unit ir_path_component) option
 
   | IRCodeCombinator        of (code_value list -> code_value) * int * ir list
   | IRCodeRecord            of Assoc.key list * ir list
@@ -831,10 +820,6 @@ and instruction =
   | OpBackendMathList of int
       (* !! no-ircode *)
 
-  | OpPath of ((instruction list) compiled_path_component) list * (unit compiled_path_component) option
-      [@printer (fun fmt _ -> Format.fprintf fmt "OpPath(...)")]
-      (* !! no-interp, no-ircode *)
-
   | OpInsertArgs of syntactic_value list
   | OpApplyCodeCombinator of (code_value list -> code_value) * int
   | OpCodeMakeRecord of Assoc.key list
@@ -903,8 +888,6 @@ and abstract_tree =
 (* -- input texts -- *)
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
-(* -- graphics -- *)
-  | Path                  of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
 (* -- record value -- *)
   | Record                of abstract_tree Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
@@ -1061,7 +1044,6 @@ and code_value =
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
   | CdTuple         of code_value TupleList.t
-  | CdPath          of code_value * (code_value code_path_component) list * (unit code_path_component) option
   | CdMathList      of code_value list
   | CdModule        of code_value * code_value
 #include "__codetype.gen.ml"
@@ -1208,7 +1190,6 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
     | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
-    | CdPath(code1, cdpath, cdcycleopt)    -> Path(aux code1, aux_path cdpath, aux_cycle cdcycleopt)
     | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
     | CdModule(code1, code2)               -> Module(aux code1, aux code2)
 #include "__unliftcode.gen.ml"
@@ -1232,12 +1213,6 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPVariable(symb)           -> PVariable(CodeSymbol.unlift symb)
     | CdPAsVariable(symb, cdpat)  -> PAsVariable(CodeSymbol.unlift symb, aux_pattern cdpat)
     | CdPConstructor(ctor, cdpat) -> PConstructor(ctor, aux_pattern cdpat)
-
-  and aux_path cdpath =
-    List.map (map_path_component aux aux) cdpath
-
-  and aux_cycle cdcycleopt =
-    cdcycleopt |> BatOption.map (map_path_component aux (fun () -> ()))
 
   in
   aux code

@@ -191,10 +191,6 @@ rule progexpr stack = parse
       Stack.push MathState stack;
       BMATHGRP(get_pos lexbuf)
     }
-  | "<[" { BPATH(get_pos lexbuf) }
-  | "]>" { EPATH(get_pos lexbuf) }
-  | ".." { PATHCURVE(get_pos lexbuf) }
-  | "--" { PATHLINE(get_pos lexbuf) }  (* -- prior to BINOP_MINUS -- *)
   | "`"+ {
       let pos_start = get_pos lexbuf in
       let quote_length = String.length (Lexing.lexeme lexbuf) in
@@ -320,8 +316,6 @@ rule progexpr stack = parse
           | "let-inline"        -> LETHORZ(pos)
           | "let-block"         -> LETVERT(pos)
           | "let-math"          -> LETMATH(pos)
-          | "controls"          -> CONTROLS(pos)
-          | "cycle"             -> CYCLE(pos)
           | "inline-cmd"        -> HORZCMDTYPE(pos)
           | "block-cmd"         -> VERTCMDTYPE(pos)
           | "math-cmd"          -> MATHCMDTYPE(pos)

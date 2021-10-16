@@ -378,11 +378,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
         (* -- should be left-to-right -- *)
       return @@ Tuple(values |> TupleList.to_list)
 
-  | Path(astpt0, pathcomplst, cycleopt) ->
-      let pt0 = interpret_point env astpt0 in
-      let (pathelemlst, closingopt) = interpret_0_path env pathcomplst cycleopt in
-      return @@ make_path [GeneralPath(pt0, pathelemlst, closingopt)]
-
 (* -- staging constructs -- *)
 
   | Prev(_) ->
@@ -564,15 +559,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       let codes = TupleList.map (interpret_1_value env) asts in
         (* -- should be left-to-right -- *)
       return @@ CdTuple(codes)
-
-  | Path(astpt0, pathcomplst, cycleopt) ->
-      let (codept0, _) = interpret_1 env astpt0 in
-      let cdpathcomplst = pathcomplst |> List.map (map_path_component (interpret_1_value env) (interpret_1_value env)) in
-      let cdcycleopt =
-        cycleopt |> BatOption.map (map_path_component (interpret_1_value env) (fun () -> ())
-        )
-      in
-      return @@ CdPath(codept0, cdpathcomplst, cdcycleopt)
 
   | Prev(ast1) ->
       let (value1, envopt1) = interpret_0 env ast1 in

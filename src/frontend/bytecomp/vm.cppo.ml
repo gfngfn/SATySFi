@@ -90,35 +90,7 @@ let make_binding_op (var : varloc) : instruction =
   | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
 
 
-let rec get_path env c_pathcomplst c_cycleopt =
-  let pathelemlst =
-    c_pathcomplst |> List.map (function
-      | CompiledPathLineTo(ptcode) ->
-          let pt = get_point @@ exec_value [] env ptcode [] in
-            LineTo(pt)
-
-      | CompiledPathCubicBezierTo(pt1code, pt2code, ptcode) ->
-          let pt1 = get_point @@ exec_value [] env pt1code [] in
-          let pt2 = get_point @@ exec_value [] env pt2code [] in
-          let pt = get_point @@ exec_value [] env ptcode [] in
-            CubicBezierTo(pt1, pt2, pt)
-    )
-  in
-  let closingopt =
-    c_cycleopt |> option_map (function
-      | CompiledPathLineTo(()) ->
-          LineTo(())
-
-      | CompiledPathCubicBezierTo(pt1code, pt2code, ()) ->
-          let pt1 = get_point @@ exec_value [] env pt1code [] in
-          let pt2 = get_point @@ exec_value [] env pt2code [] in
-            CubicBezierTo(pt1, pt2, ())
-    )
-  in
-    (pathelemlst, closingopt)
-
-
-and exec_input_horz_content env ihlst =
+let rec exec_input_horz_content env ihlst =
   let imihlist = ihlst |> List.map (function
     | CompiledInputHorzText(s) ->
         CompiledImInputHorzText(s)
@@ -1076,19 +1048,6 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       let (mlst, stack) = iter n stack [] in
       let entry = make_entry @@ MathValue(List.concat mlst) in
       exec (entry :: stack) env code dump
-
-  | OpPath(c_pathcomplst, c_cycleopt) ->
-      begin
-        match stack with
-        | (v, _) :: stack ->
-            let pt0 = get_point v in
-            let ret =
-              let (pathelemlst, closingopt) = get_path env c_pathcomplst c_cycleopt in
-              make_path [GeneralPath(pt0, pathelemlst, closingopt)]
-            in exec (make_entry ret :: stack) env code dump
-
-        | _ -> report_bug_vm "invalid argument for OpPath"
-      end
 
   | OpInsertArgs(lst) ->
       begin

@@ -344,7 +344,6 @@
 %token <Range.t> BVERTGRP EVERTGRP
 %token <Range.t> BHORZGRP EHORZGRP
 %token <Range.t> BMATHGRP EMATHGRP
-%token <Range.t> BPATH EPATH PATHLINE PATHCURVE CONTROLS CYCLE
 %token <Range.t> TRUE FALSE
 %token <Range.t> SEP ENDACTIVE COMMA
 %token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS
@@ -795,7 +794,6 @@ nxbot:
   | utast=nxlistsynt                             { utast }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
   | utast=nxrecordsynt                           { utast }
-  | opn=BPATH; path=path; cls=EPATH              { make_standard (Tok opn) (Tok cls) path }
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP  { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=OPENMODULE; utast=nxlet; cls=RPAREN {
       let (rng, mdlnm) = opn in
@@ -817,21 +815,6 @@ nxrecordsynt:
       in
       make_standard (Tok opn) (Tok cls) utastmain
     }
-;
-path: (* untyped_abstract_tree_main *)
-  | ast=nxbot; sub=pathsub { let (pathcomplst, utcycleopt) = sub in UTPath(ast, pathcomplst, utcycleopt) }
-;
-pathsub: (* (untyped_abstract_tree untyped_path_component) list * (unit untyped_path_component) option *)
-  | pc=pathcomp; sub=pathsub          { let (tail, utcycleopt) = sub in (pc :: tail, utcycleopt) }
-  | utcycleopt=option(pathcompcycle); { ([], utcycleopt) }
-;
-pathcomp:
-  | PATHLINE; ast=nxbot                                                       { UTPathLineTo(ast) }
-  | PATHCURVE; CONTROLS; ast1=nxbot; LETAND; ast2=nxbot; PATHCURVE; ast=nxbot { UTPathCubicBezierTo(ast1, ast2, ast) }
-;
-pathcompcycle:
-  | PATHLINE; CYCLE                                                       { UTPathLineTo(()) }
-  | PATHCURVE; CONTROLS; ast1=nxbot; LETAND; ast2=nxbot; PATHCURVE; CYCLE { UTPathCubicBezierTo(ast1, ast2, ()) }
 ;
 nxrecord:
   | label=VAR; DEFEQ; utast=nxlet                           { (extract_name label, utast) :: [] }

@@ -752,12 +752,6 @@ let rec typecheck
       let ivlst = typecheck_input_vert rng pre tyenv utivlst in
       (InputVert(ivlst), (rng, BaseType(TextColType)))
 
-  | UTPath(utastpt0, utpathcomplst, utcycleopt) ->
-      let (ept0, typt0) = typecheck_iter tyenv utastpt0 in
-      unify typt0 (Range.dummy "ut-path", point_type_main);
-      let (pathcomplst, cycleopt) = typecheck_path pre tyenv utpathcomplst utcycleopt in
-      (Path(ept0, pathcomplst, cycleopt), (rng, BaseType(PathType)))
-
   | UTOpenIn(rngtok, mdlnm, utast1) ->
       failwith "TODO: UTOpenIn"
 (*

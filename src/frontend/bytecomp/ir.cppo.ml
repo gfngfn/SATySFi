@@ -107,37 +107,6 @@ and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element lis
   )
 
 
-and transform_0_path env pathcomplst cycleopt =
-  let (irpathcomplst, env) =
-    pathcomplst @|> env @|> map_with_env (fun env path ->
-      match path with
-      | PathLineTo(astpt) ->
-          let (pt, env) = transform_0 env astpt in
-          (IRPathLineTo(pt), env)
-
-      | PathCubicBezierTo(astpt1, astpt2, astpt) ->
-          let (pt1, env) = transform_0 env astpt1 in
-          let (pt2, env) = transform_0 env astpt2 in
-          let (pt, env) = transform_0 env astpt in
-          (IRPathCubicBezierTo(pt1, pt2, pt), env)
-    )
-  in
-  let (ircycleopt, env) =
-    match cycleopt with
-    | None ->
-        (None, env)
-
-    | Some(PathLineTo(())) ->
-        (Some(IRPathLineTo(())), env)
-
-    | Some(PathCubicBezierTo(astpt1, astpt2, ())) ->
-        let (pt1, env) = transform_0 env astpt1 in
-        let (pt2, env) = transform_0 env astpt2 in
-        (Some(IRPathCubicBezierTo(pt1, pt2, ())), env)
-  in
-  (irpathcomplst, ircycleopt, env)
-
-
 and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment =
   let (genv, _) = env in
   let initvars =
@@ -448,9 +417,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       let (imivlst, env) = transform_1_input_vert_content env ivlst in
       (IRCodeInputVert(imivlst), env)
 
-  | Path(_) ->
-      remains_to_be_implemented "transform_1: Path(_)"
-
   | Record(asc) ->
       let iter acc key ast =
         let (keyacc, iracc, env) = acc in
@@ -615,11 +581,6 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
 
   | BackendMathList(astmlst) ->
       transform_0_primitive env astmlst (OpBackendMathList(List.length astmlst))
-
-  | Path(astpt0, pathcomplst, cycleopt) ->
-      let (irpt0, env) = transform_0 env astpt0 in
-      let (pathelemlst, closingopt, env) = transform_0_path env pathcomplst cycleopt in
-        (IRPath(irpt0, pathelemlst, closingopt), env)
 
   | PrimitiveTuple(asts) ->
       transform_0_tuple env asts
