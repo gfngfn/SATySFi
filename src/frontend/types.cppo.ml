@@ -256,7 +256,9 @@ let base_type_map : base_type TypeNameMap.t =
   ]
 
 
-type ('a, 'b) typ = Range.t * ('a, 'b) type_main
+type ('a, 'b) typ =
+  Range.t * ('a, 'b) type_main
+
 and ('a, 'b) type_main =
   | BaseType        of base_type
   | FuncType        of ('a, 'b) option_row * ('a, 'b) typ * ('a, 'b) typ
@@ -327,22 +329,6 @@ and mono_option_row = (mono_type_variable, mono_option_row_variable) option_row
 
 type mono_command_argument_type = (mono_type_variable, mono_option_row_variable) command_argument_type
 
-(*
-module FreeID =
-  struct
-    include FreeID_
-    type t = mono_kind FreeID_.t_
-  end
-
-
-module BoundID =
-  struct
-    include BoundID_
-    type t = poly_kind BoundID_.t_
-  end
-*)
-
-
 type macro_parameter_type =
   | LateMacroParameter  of mono_type
   | EarlyMacroParameter of mono_type
@@ -351,7 +337,6 @@ type macro_type =
   | HorzMacroType of macro_parameter_type list
   | VertMacroType of macro_parameter_type list
 
-(* ---- untyped ---- *)
 
 let pp_sep fmt () =
   Format.fprintf fmt ";@ "
@@ -606,9 +591,8 @@ type untyped_argument =
   | UTPatternArgument  of untyped_pattern_tree
   | UTOptionalArgument of Range.t * var_name
 
-type untyped_let_pattern_binding = manual_type option * untyped_pattern_tree * untyped_argument list * untyped_abstract_tree
-
-(* ---- typed ---- *)
+type untyped_let_pattern_binding =
+  manual_type option * untyped_pattern_tree * untyped_argument list * untyped_abstract_tree
 
 type 'a input_horz_element_scheme =
   | InputHorzText         of string
