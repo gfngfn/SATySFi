@@ -372,7 +372,6 @@
 %type <Types.untyped_type_binding list> nxtyperecdec
 %type <Types.untyped_type_binding> nxtyperecdecsingle
 %type <Types.untyped_abstract_tree> nxbfr
-%type <Types.untyped_abstract_tree> nxwhl
 %type <Types.untyped_abstract_tree> nxif
 %type <Types.untyped_abstract_tree> nxlor
 %type <Types.untyped_abstract_tree> nxland
@@ -413,7 +412,7 @@
 
 main:
   | stage=stage; header=list(headerelem); utbinds=list(bind); last=nxtoplast { (stage, header, utbinds, last) }
-  | stage=stage; header=list(headerelem); utast=nxwhl; EOI                   { (stage, header, [], Some(utast)) }
+  | stage=stage; header=list(headerelem); utast=nxif; EOI                    { (stage, header, [], Some(utast)) }
 ;
 stage:
   |                    { Stage1 }
@@ -669,13 +668,8 @@ nxletsub:
       let (rng, mdlnm) = mdlnmtok in
       make_standard (Tok tok) (Ranged utast) (UTOpenIn(rng, mdlnm, utast))
     }
-  | utast=nxwhl { utast }
-;
-nxwhl:
-  | tok=WHILE utast1=nxlet; DO; utast2=nxwhl {
-      make_standard (Tok tok) (Ranged utast2) (UTWhileDo(utast1, utast2))
-    }
   | utast=nxif { utast }
+;
 nxif:
   | tok=IF; utast0=nxlet; THEN; utast1=nxlet; ELSE; utast2=nxlet { make_standard (Tok tok) (Ranged utast2) (UTIfThenElse(utast0, utast1, utast2)) }
   | utast=nxbfr                                                  { utast }

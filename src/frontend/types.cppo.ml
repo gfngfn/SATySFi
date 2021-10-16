@@ -457,15 +457,12 @@ and untyped_abstract_tree =
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
   | UTUnitConstant
-      [@printer (fun fmt () -> Format.fprintf fmt "U:()")]
   | UTBooleanConstant      of bool
   | UTIntegerConstant      of int
   | UTFloatConstant        of float
   | UTLengthDescription    of float * length_unit_name
-      [@printer (fun fmt (fl, lun) -> Format.fprintf fmt "L:%f%s" fl lun)]
   | UTStringEmpty
   | UTStringConstant       of string
-      [@printer (fun fmt s -> Format.fprintf fmt "S:\"%s\"" s)]
   | UTPositionedString     of input_position * string
 (* -- inputs -- *)
   | UTInputHorz            of untyped_input_horz_element list
@@ -491,9 +488,7 @@ and untyped_abstract_tree_main =
   | UTUpdateField          of untyped_abstract_tree * field_name * untyped_abstract_tree
 (* -- fundamental -- *)
   | UTContentOf            of (module_name list) * var_name
-      [@printer (fun fmt (_, vn) -> Format.fprintf fmt "%s" vn)]
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
-      [@printer (fun fmt (u1, u2) -> Format.fprintf fmt "(%a %a)" pp_untyped_abstract_tree u1 pp_untyped_abstract_tree u2)]
   | UTApplyOptional        of untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
@@ -502,9 +497,7 @@ and untyped_abstract_tree_main =
 (* -- pattern match -- *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
   | UTConstructor          of constructor_name * untyped_abstract_tree
-      [@printer (fun fmt (cn, u) -> Format.fprintf fmt "%s(%a)" cn pp_untyped_abstract_tree u)]
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
-  | UTWhileDo              of untyped_abstract_tree * untyped_abstract_tree
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
 (* -- lightweight itemize -- *)
   | UTItemize              of untyped_itemize
@@ -714,7 +707,6 @@ and ir =
   | IRNonValueConstructor   of constructor_name * ir
   | IRLetMutableIn          of varloc * ir * ir
   | IRSequential            of ir * ir
-  | IRWhileDo               of ir * ir
   | IROverwrite             of varloc * ir
   | IRDereference           of ir
   | IRModule                of ir * ir
@@ -910,7 +902,6 @@ and abstract_tree =
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Dereference           of abstract_tree
   | Sequential            of abstract_tree * abstract_tree
-  | WhileDo               of abstract_tree * abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
@@ -1039,7 +1030,6 @@ and code_value =
   | CdLetMutableIn  of CodeSymbol.t * code_value * code_value
   | CdSequential    of code_value * code_value
   | CdOverwrite     of CodeSymbol.t * code_value
-  | CdWhileDo       of code_value * code_value
   | CdDereference   of code_value
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
@@ -1186,7 +1176,6 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdSequential(code1, code2)           -> Sequential(aux code1, aux code2)
     | CdOverwrite(symb, code1)             -> Overwrite(CodeSymbol.unlift symb, aux code1)
     | CdDereference(code1)                 -> Dereference(aux code1)
-    | CdWhileDo(code1, code2)              -> WhileDo(aux code1, aux code2)
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
     | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)

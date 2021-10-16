@@ -245,11 +245,6 @@ and compile (ir : ir) (cont : instruction list) =
   | IRDereference(ir1) ->
       compile ir1 @@ OpDereference :: cont
 
-  | IRWhileDo(irb, irc) ->
-      let cond = compile irb [OpBranchIfNot(OpPush(const_unit) :: cont)] in
-      let body = compile irc cond in
-      cond @ body
-
   (* ---- others ---- *)
 
   | IRPatternMatch(rng, irobj, patbrs) ->

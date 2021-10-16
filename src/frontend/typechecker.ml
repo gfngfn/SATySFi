@@ -1013,13 +1013,6 @@ let rec typecheck
       let (e2, ty2) = typecheck_iter tyenv utast2 in
       (Sequential(e1, e2), ty2)
 
-  | UTWhileDo(utastB, utastC) ->
-      let (eB, tyB) = typecheck_iter tyenv utastB in
-      unify tyB (get_range utastB, BaseType(BoolType));
-      let (eC, tyC) = typecheck_iter tyenv utastC in
-      unify tyC (get_range utastC, BaseType(UnitType));
-      (WhileDo(eB, eC), (rng, BaseType(UnitType)))
-
 (* ---- lightweight itemize ---- *)
 
   | UTItemize(utitmz) ->

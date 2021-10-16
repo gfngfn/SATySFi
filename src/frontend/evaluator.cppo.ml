@@ -321,14 +321,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
             report_bug_ast ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast
       end
 
-  | WhileDo(astb, astc) ->
-      let (valueb, _) = interpret_0 env astb in
-      let b = get_bool valueb in
-      if b then
-        let _ = interpret_0 env astc in interpret_0 env (WhileDo(astb, astc))
-      else
-        return @@ const_unit
-
   | Dereference(astcont) ->
       let (valuecont, _) = interpret_0 env astcont in
       begin
@@ -520,11 +512,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
         | None ->
             report_bug_ast "symbol not found" ast
       end
-
-  | WhileDo(ast1, ast2) ->
-      let (code1, _) = interpret_1 env ast1 in
-      let (code2, _) = interpret_1 env ast2 in
-      return @@ CdWhileDo(code1, code2)
 
   | Dereference(ast1) ->
       let (code1, _) = interpret_1 env ast1 in

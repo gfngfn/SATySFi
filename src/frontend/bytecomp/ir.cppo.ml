@@ -516,9 +516,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | Sequential(ast1, ast2) ->
       code2 env (fun cv1 cv2 -> CdSequential(cv1, cv2)) ast1 ast2
 
-  | WhileDo(ast1, ast2) ->
-      code2 env (fun cv1 cv2 -> CdWhileDo(cv1, cv2)) ast1 ast2
-
   | Overwrite(evid, ast1) ->
       begin
         match find_in_environment env evid with
@@ -710,11 +707,6 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   | Dereference(ast1) ->
       let (ir1, env) = transform_0 env ast1 in
       (IRDereference(ir1), env)
-
-  | WhileDo(astb, astc) ->
-      let (irb, env) = transform_0 env astb in
-      let (irc, env) = transform_0 env astc in
-      (IRWhileDo(irb, irc), env)
 
 (* ---- others ---- *)
 
