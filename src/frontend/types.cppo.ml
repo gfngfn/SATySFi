@@ -6,7 +6,8 @@ exception ParseErrorDetail of Range.t * string
 exception IllegalArgumentLength of Range.t * int * int
 
 
-type 'a ranged = Range.t * 'a
+type 'a ranged =
+  Range.t * 'a
 [@@deriving show]
 
 type ctrlseq_name       = string  [@@deriving show]
@@ -17,11 +18,12 @@ type type_name          = string  [@@deriving show]
 type constructor_name   = string  [@@deriving show]
 type module_name        = string  [@@deriving show]
 type sig_var_name       = string  [@@deriving show]
-type field_name         = string  [@@deriving show]
 type type_argument_name = string  [@@deriving show]
 type length_unit_name   = string  [@@deriving show]
 type type_variable_name = string  [@@deriving show]
 type signature_name     = string  [@@deriving show]
+type label              = string  [@@deriving show]
+type field_name         = label   [@@deriving show]
 
 
 type input_position = {
@@ -38,26 +40,6 @@ type header_element =
 
 type quantifiability = Quantifiable | Unquantifiable
 [@@deriving show]
-
-
-module Level
-: sig
-   type t  [@@deriving show]
-   val bottom : t
-   val succ : t -> t
-   val less_than : t -> t -> bool
-  end
-= struct
-    type t = int
-    [@@deriving show]
-
-    let bottom = 0
-
-    let succ lev = lev + 1
-
-    let less_than lev1 lev2 = (lev1 < lev2)
-  end
-
 
 type level = Level.t
 [@@deriving show]
@@ -174,7 +156,8 @@ module EvalVarIDMap = Map.Make(EvalVarID)
 
 module OpaqueIDSet = Set.Make(TypeID)
 
-type 'a abstracted = OpaqueIDSet.t * 'a
+type 'a abstracted =
+  OpaqueIDSet.t * 'a
 
 type manual_type =
   Range.t * manual_type_main
@@ -256,18 +239,21 @@ let base_type_map : base_type TypeNameMap.t =
   ]
 
 
+type kind =
+  | UniversalKind
+
 type ('a, 'b) typ =
   Range.t * ('a, 'b) type_main
 
 and ('a, 'b) type_main =
   | BaseType        of base_type
-  | FuncType        of ('a, 'b) option_row * ('a, 'b) typ * ('a, 'b) typ
+  | FuncType        of ('a, 'b) row * ('a, 'b) typ * ('a, 'b) typ
   | ListType        of ('a, 'b) typ
   | RefType         of ('a, 'b) typ
   | ProductType     of (('a, 'b) typ) TupleList.t
   | TypeVariable    of 'a
   | DataType        of (('a, 'b) typ) list * TypeID.t
-  | RecordType      of (('a, 'b) typ) Assoc.t
+  | RecordType      of ('a, 'b) row
       [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
   | HorzCommandType of (('a, 'b) command_argument_type) list
   | VertCommandType of (('a, 'b) command_argument_type) list
@@ -276,30 +262,25 @@ and ('a, 'b) type_main =
 
 and ('a, 'b) command_argument_type =
   | MandatoryArgumentType of ('a, 'b) typ
-  | OptionalArgumentType  of ('a, 'b) typ
+  | OptionalArgumentType  of label ranged * ('a, 'b) typ
 
-and ('a, 'b) kind =
-  | UniversalKind
-  | RecordKind of (('a, 'b) typ) Assoc.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "RecordKind(...)")]
+and ('a, 'b) row =
+  | RowCons  of label ranged * ('a, 'b) typ * ('a, 'b) row
+  | RowVar   of 'b
+  | RowEmpty
 
-and ('a, 'b) option_row =
-  | OptionRowCons     of ('a, 'b) typ * ('a, 'b) option_row
-  | OptionRowEmpty
-  | OptionRowVariable of 'b
-
-and mono_option_row_variable_updatable =
+and mono_row_variable_updatable =
   | MonoORFree of OptionRowVarID.t
-  | MonoORLink of mono_option_row
+  | MonoORLink of mono_row
 
-and mono_option_row_variable =
-  | UpdatableRow   of mono_option_row_variable_updatable ref
+and mono_row_variable =
+  | UpdatableRow   of mono_row_variable_updatable ref
 (*
   | MustBeBoundRow of MustBeBoundRowID.t
 *)
 
-and poly_option_row_variable =
-  | PolyORFree of mono_option_row_variable
+and poly_row_variable =
+  | PolyORFree of mono_row_variable
 
 and mono_type_variable_updatable =
   | MonoFree of FreeID.t
@@ -313,21 +294,20 @@ and poly_type_variable =
   | PolyFree  of mono_type_variable
   | PolyBound of BoundID.t
 
-and mono_type = (mono_type_variable, mono_option_row_variable) typ
+and mono_type =
+  (mono_type_variable, mono_row_variable) typ
 
-and poly_type_body = (poly_type_variable, poly_option_row_variable) typ
+and poly_type_body =
+  (poly_type_variable, poly_row_variable) typ
 
 and poly_type =
   | Poly of poly_type_body
 
-and mono_kind = (mono_type_variable, mono_option_row_variable) kind
+and mono_row =
+  (mono_type_variable, mono_row_variable) row
 
-and poly_kind = (poly_type_variable, poly_option_row_variable) kind
-
-and mono_option_row = (mono_type_variable, mono_option_row_variable) option_row
-[@@deriving show]
-
-type mono_command_argument_type = (mono_type_variable, mono_option_row_variable) command_argument_type
+type mono_command_argument_type =
+  (mono_type_variable, mono_row_variable) command_argument_type
 
 type macro_parameter_type =
   | LateMacroParameter  of mono_type
@@ -516,7 +496,6 @@ and untyped_abstract_tree_main =
       [@printer (fun fmt (_, vn) -> Format.fprintf fmt "%s" vn)]
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
       [@printer (fun fmt (u1, u2) -> Format.fprintf fmt "(%a %a)" pp_untyped_abstract_tree u1 pp_untyped_abstract_tree u2)]
-  | UTApplyOmission        of untyped_abstract_tree
   | UTApplyOptional        of untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
@@ -1364,7 +1343,7 @@ module MathContext
 type math_context = MathContext.t
 
 
-(* -- following are all for debugging -- *)
+(*
 
 let string_of_record_type (type a) (type b) (f : (a, b) typ -> string) (asc : ((a, b) typ) Assoc.t) =
   let rec aux lst =
@@ -1376,16 +1355,9 @@ let string_of_record_type (type a) (type b) (f : (a, b) typ -> string) (asc : ((
     "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
 
 
-let string_of_kind (type a) (type b) (f : (a, b) typ -> string) (kdstr : (a, b) kind) =
-  let rec aux lst =
-    match lst with
-    | []                     -> " -- "
-    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
-    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
-  in
-    match kdstr with
-    | UniversalKind   -> "U"
-    | RecordKind(asc) -> "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
+let string_of_kind (kd : kind) =
+  match kd with
+  | UniversalKind   -> "U"
 
 
 let rec string_of_type_basic tvf orvf tystr : string =
@@ -1599,33 +1571,11 @@ let rec string_of_poly_type_basic (Poly(pty)) =
     string_of_type_basic tvf_poly ortvf pty
 
 
-and string_of_kind_basic kd = string_of_kind string_of_mono_type_basic kd
-
-(*
-let rec string_of_manual_type (_, mtymain) =
-  let iter = string_of_manual_type in
-  let iter_cmd = string_of_manual_command_argument_type in
-  match mtymain with
-  | MTypeName(mtylst, mdlnmlst, tynm) -> (String.concat " " (List.map iter mtylst)) ^ " " ^ (String.concat "." (List.append mdlnmlst [tynm]))
-  | MTypeParam(tpnm)          -> "'" ^ tpnm
-  | MFuncType(mtyopts, mtydom, mtycod) -> (String.concat "" (List.map iter mtyopts)) (iter mtydom) ^ " -> " ^ (iter mtycod)
-  | MOptFuncType(mtydom, mtycod) -> "(" ^ (iter mtydom) ^ ")? -> " ^ (iter mtycod)
-  | MProductType(mtylst)      -> (String.concat " * " (List.map iter mtylst))
-  | MRecordType(mtyasc)       -> "(|" ^ (String.concat "; " (List.map (fun (fldnm, mty) -> fldnm ^ " : " ^ (iter mty)) (Assoc.to_list mtyasc))) ^ "|)"
-  | MHorzCommandType(mncatylst) -> "[" ^ (String.concat "; " (List.map iter_cmd mncatylst)) ^ "] inline-cmd"
-  | MVertCommandType(mncatylst) -> "[" ^ (String.concat "; " (List.map iter_cmd mncatylst)) ^ "] block-cmd"
-  | MMathCommandType(mncatylst) -> "[" ^ (String.concat "; " (List.map iter_cmd mncatylst)) ^ "] math-cmd"
-
-
-and string_of_manual_command_argument_type = function
-  | MMandatoryArgumentType(mnty) -> string_of_manual_type mnty
-  | MOptionalArgumentType(mnty)  -> "(" ^ (string_of_manual_type mnty) ^ ")?"
-*)
-
-
 let kind_type_arguments (uktyargs : untyped_unkinded_type_argument list) (constrntcons : constraints) : untyped_type_argument list =
   uktyargs |> List.map (fun (rng, tyvarnm) ->
     match List.assoc_opt tyvarnm constrntcons with
     | Some(mkd) -> (rng, tyvarnm, mkd)
     | None      -> (rng, tyvarnm, MUniversalKind)
   )
+
+*)

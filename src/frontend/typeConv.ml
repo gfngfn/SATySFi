@@ -7,8 +7,8 @@ let overwrite_range_of_type ((_, tymain) : mono_type) (rng : Range.t) = (rng, ty
 
 
 let lift_argument_type f = function
-  | MandatoryArgumentType(ty) -> MandatoryArgumentType(f ty)
-  | OptionalArgumentType(ty)  -> OptionalArgumentType(f ty)
+  | MandatoryArgumentType(ty)        -> MandatoryArgumentType(f ty)
+  | OptionalArgumentType(rlabel, ty) -> OptionalArgumentType(rlabel, f ty)
 
 
 let lift_manual_common f = function
@@ -33,13 +33,8 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
           | Updatable(tvref) ->
               begin
                 match !tvref with
-                | MonoFree(fid) ->
-                    let fentry = KindStore.get_free_id fid in
-                    KindStore.set_free_id fid { fentry with mono_kind = erase_range_of_kind fentry.mono_kind };
-                    (rng, tymain)
-
-                | MonoLink(ty) ->
-                    erase_range_of_type ty
+                | MonoFree(fid) -> (rng, tymain)
+                | MonoLink(ty)  -> erase_range_of_type ty
               end
 
         | MustBeBound(_) ->
@@ -47,9 +42,9 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
       end
 
     | BaseType(_)                       -> (rng, tymain)
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(erase_range_of_option_row optrow, iter tydom, iter tycod))
+    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(erase_range_of_row optrow, iter tydom, iter tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map iter tys))
-    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
+    | RecordType(row)                   -> (rng, RecordType(erase_range_of_row row))
     | DataType(tyargs, tyid)            -> (rng, DataType(List.map iter tyargs, tyid))
     | ListType(tycont)                  -> (rng, ListType(iter tycont))
     | RefType(tycont)                   -> (rng, RefType(iter tycont))
@@ -59,30 +54,25 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
     | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
 
-and erase_range_of_kind (kd : mono_kind) =
-  match kd with
-  | UniversalKind   -> UniversalKind
-  | RecordKind(asc) -> RecordKind(Assoc.map_value erase_range_of_type asc)
-
-
-and erase_range_of_option_row (optrow : mono_option_row) =
+and erase_range_of_row (optrow : mono_row) =
   match optrow with
-  | OptionRowEmpty ->
-      optrow
+  | RowEmpty ->
+      RowEmpty
 
-  | OptionRowCons(ty, tail) ->
-      OptionRowCons(erase_range_of_type ty, erase_range_of_option_row tail)
+  | RowCons((_, label), ty, tail) ->
+      let rlabel = (Range.dummy "erased", label) in
+      RowCons(rlabel, erase_range_of_type ty, erase_range_of_row tail)
 
-  | OptionRowVariable(UpdatableRow{contents = MonoORLink(optrow)}) ->
-      erase_range_of_option_row optrow
+  | RowVar(UpdatableRow{contents = MonoORLink(optrow)}) ->
+      erase_range_of_row optrow
 
-  | OptionRowVariable(UpdatableRow{contents = MonoORFree(_)}) ->
+  | RowVar(UpdatableRow{contents = MonoORFree(_)}) ->
       optrow
 
 
 let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) lev qtfbl ((rng, ptymain) : poly_type_body) =
   let aux = instantiate_aux bid_ht lev qtfbl in
-  let aux_or = instantiate_option_row_aux bid_ht lev qtfbl in
+  let aux_or = instantiate_row_aux bid_ht lev qtfbl in
     match ptymain with
     | TypeVariable(ptvi) ->
         begin
@@ -99,14 +89,13 @@ let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) lev qtf
                 | None ->
                     let bentry = KindStore.get_bound_id bid in
                     let kd = bentry.KindStore.poly_kind in
-                    let kdfree = instantiate_kind_aux bid_ht lev qtfbl kd in
                     let tv =
                       let fid = FreeID.fresh () in
                       let fentry =
                         KindStore.{
                           level           = lev;
                           quantifiability = qtfbl;
-                          mono_kind       = kdfree;
+                          mono_kind       = kd;
                         }
                       in
                       KindStore.set_free_id fid fentry;
@@ -121,7 +110,7 @@ let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) lev qtf
         end
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map aux tys))
-    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
+    | RecordType(row)                   -> (rng, RecordType(aux_or row))
     | DataType(tyargs, tyid)            -> (rng, DataType(List.map aux tyargs, tyid))
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
@@ -132,20 +121,13 @@ let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) lev qtf
     | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
 
 
-and instantiate_kind_aux bid_ht lev qtfbl (kd : poly_kind) : mono_kind =
+and instantiate_row_aux bid_ht lev qtfbl optrow : mono_row =
   let aux = instantiate_aux bid_ht lev qtfbl in
-    match kd with
-    | UniversalKind     -> UniversalKind
-    | RecordKind(tyasc) -> RecordKind(Assoc.map_value aux tyasc)
-
-
-and instantiate_option_row_aux bid_ht lev qtfbl optrow : mono_option_row =
-  let aux = instantiate_aux bid_ht lev qtfbl in
-  let aux_or = instantiate_option_row_aux bid_ht lev qtfbl in
-    match optrow with
-    | OptionRowEmpty                         -> OptionRowEmpty
-    | OptionRowCons(pty, tail)               -> OptionRowCons(aux pty, aux_or tail)
-    | OptionRowVariable(PolyORFree(orviref)) -> OptionRowVariable(orviref)
+  let aux_or = instantiate_row_aux bid_ht lev qtfbl in
+  match optrow with
+  | RowEmpty                    -> RowEmpty
+  | RowCons(rlabel, pty, tail)  -> RowCons(rlabel, aux pty, aux_or tail)
+  | RowVar(PolyORFree(orviref)) -> RowVar(orviref)
 
 
 let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type) : mono_type =
@@ -153,12 +135,7 @@ let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type
   instantiate_aux bid_ht lev qtfbl pty
 
 
-let instantiate_kind (lev : level) (qtfbl : quantifiability) (pkd : poly_kind) : mono_kind =
-  let bid_ht : mono_type_variable BoundIDHashTable.t = BoundIDHashTable.create 32 in
-  instantiate_kind_aux bid_ht lev qtfbl pkd
-
-
-let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_variable -> (a, b) typ) (orfreef : mono_option_row_variable -> (a, b) option_row) (pairlst : ((a, b) typ * BoundID.t) list) (Poly(pty) : poly_type) : (a, b) typ =
+let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_variable -> (a, b) typ) (orfreef : mono_row_variable -> (a, b) row) (pairlst : ((a, b) typ * BoundID.t) list) (Poly(pty) : poly_type) : (a, b) typ =
   let bid_to_type_ht : ((a, b) typ) BoundIDHashTable.t = BoundIDHashTable.create 32 in
 
   let rec aux ((rng, ptymain) : poly_type_body) : (a, b) typ =
@@ -179,7 +156,7 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
 
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map aux tys))
-    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
+    | RecordType(row)                   -> (rng, RecordType(aux_or row))
     | DataType(tyargs, tyid)            -> (rng, DataType(List.map aux tyargs, tyid))
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
@@ -191,9 +168,9 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
 
   and aux_or optrow =
     match optrow with
-    | OptionRowEmpty                         -> OptionRowEmpty
-    | OptionRowCons(ty, tail)                -> OptionRowCons(aux ty, aux_or tail)
-    | OptionRowVariable(PolyORFree(orviref)) -> orfreef orviref
+    | RowEmpty                         -> RowEmpty
+    | RowCons(rlabel, ty, tail)        -> RowCons(rlabel, aux ty, aux_or tail)
+    | RowVar(PolyORFree(orviref))      -> orfreef orviref
   in
   begin
     pairlst |> List.iter (fun (tyarg, bid) -> BoundIDHashTable.add bid_to_type_ht bid tyarg);
@@ -227,9 +204,8 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
                           | None ->
                               let fentry = KindStore.get_free_id fid in
                               let kd = fentry.KindStore.mono_kind in
-                              let pkd = generalize_kind kd in
                               let bid = BoundID.fresh () in
-                              KindStore.set_bound_id bid KindStore.{ poly_kind = pkd };
+                              KindStore.set_bound_id bid KindStore.{ poly_kind = kd };
                               FreeIDHashTable.add tvidht fid bid;
                               PolyBound(bid)
                         end
@@ -242,9 +218,9 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
               (rng, TypeVariable(PolyBound(bid)))
         end
 
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(generalize_option_row optrow, iter tydom, iter tycod))
+    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(generalize_row optrow, iter tydom, iter tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map iter tys))
-    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
+    | RecordType(row)                   -> (rng, RecordType(generalize_row row))
     | DataType(tyargs, tyid)            -> (rng, DataType(List.map iter tyargs, tyid))
     | ListType(tysub)                   -> (rng, ListType(iter tysub))
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
@@ -254,27 +230,25 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
     | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
-  and generalize_kind kd =
-    match kd with
-    | UniversalKind     -> UniversalKind
-    | RecordKind(tyasc) -> RecordKind(Assoc.map_value iter tyasc)
-
-  and generalize_option_row optrow =
+  and generalize_row optrow =
     match optrow with
-    | OptionRowEmpty             -> OptionRowEmpty
-    | OptionRowCons(ty, tail)    -> OptionRowCons(iter ty, generalize_option_row tail)
+    | RowEmpty ->
+        RowEmpty
 
-    | OptionRowVariable(UpdatableRow(orviref) as orv0) ->
+    | RowCons(rlabel, ty, tail) ->
+        RowCons(rlabel, iter ty, generalize_row tail)
+
+    | RowVar(UpdatableRow(orviref) as orv0) ->
         begin
           match !orviref with
           | MonoORFree(orv) ->
               if porv orv then
-                OptionRowEmpty
+                RowEmpty
               else
-                OptionRowVariable(PolyORFree(orv0))
+                RowVar(PolyORFree(orv0))
 
           | MonoORLink(optraw) ->
-              generalize_option_row optrow
+              generalize_row optrow
         end
   in
   iter ty
@@ -302,7 +276,7 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
         end
 
     | ProductType(tys)               -> tys |> TupleList.to_list |> List.for_all iter
-    | RecordType(tyasc)              -> Assoc.fold_value (fun b ty -> b && iter ty) true tyasc
+    | RecordType(row)                -> iter_or row
     | FuncType(optrow, tydom, tycod) -> iter_or optrow && iter tydom && iter tycod
     | RefType(tycont)                -> iter tycont
     | BaseType(_)                    -> true
@@ -311,24 +285,24 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
 
     | HorzCommandType(cmdargtylst)
     | VertCommandType(cmdargtylst)
-    | MathCommandType(cmdargtylst)
-      ->
+    | MathCommandType(cmdargtylst) ->
         List.for_all iter_cmd cmdargtylst
 
-    | CodeType(tysub)                -> iter tysub
+    | CodeType(tysub) ->
+        iter tysub
 
   and iter_cmd = function
-    | MandatoryArgumentType(ty) -> iter ty
-    | OptionalArgumentType(ty)  -> iter ty
+    | MandatoryArgumentType(ty)    -> iter ty
+    | OptionalArgumentType(_, ty)  -> iter ty
 
   and iter_or = function
-    | OptionRowEmpty ->
+    | RowEmpty ->
         true
 
-    | OptionRowCons(ty, tail) ->
+    | RowCons(_, ty, tail) ->
         iter ty && iter_or tail
 
-    | OptionRowVariable(UpdatableRow(orvuref)) ->
+    | RowVar(UpdatableRow(orvuref)) ->
         begin
           match !orvuref with
           | MonoORFree(orv)    -> Level.less_than lev (OptionRowVarID.get_level orv)
@@ -342,17 +316,12 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
 let generalize (lev : level) (ty : mono_type) : poly_type =
   let ptv fid =
     let fentry = KindStore.get_free_id fid in
-    let bkd =
-      match fentry.KindStore.mono_kind with
-      | UniversalKind   -> true
-      | RecordKind(asc) -> Assoc.fold_value (fun b ty -> b && (check_level lev ty)) true asc
-    in
     let is_quantifiable =
       match fentry.KindStore.quantifiability with
       | Quantifiable   -> true
       | Unquantifiable -> false
     in
-    is_quantifiable && Level.less_than lev fentry.KindStore.level && bkd
+    is_quantifiable && Level.less_than lev fentry.KindStore.level
   in
   let porv orv =
     not (Level.less_than lev (OptionRowVarID.get_level orv))
@@ -366,10 +335,6 @@ let lift_poly_body =
 
 let lift_poly (ty : mono_type) : poly_type =
   Poly(lift_poly_body ty)
-
-
-let lift_kind (kd : mono_kind) : poly_kind =
-  failwith "TODO: lift_kind"
 
 
 let rec unlift_aux pty =
@@ -386,9 +351,9 @@ let rec unlift_aux pty =
           | PolyBound(_)    -> raise Exit
         end
 
-    | FuncType(optrow, pty1, pty2)    -> FuncType(unlift_aux_or optrow, aux pty1, aux pty2)
+    | FuncType(poptrow, pty1, pty2)   -> FuncType(unlift_aux_or poptrow, aux pty1, aux pty2)
     | ProductType(ptys)               -> ProductType(TupleList.map aux ptys)
-    | RecordType(ptyasc)              -> RecordType(Assoc.map_value aux ptyasc)
+    | RecordType(prow)                -> RecordType(unlift_aux_or prow)
     | ListType(ptysub)                -> ListType(aux ptysub)
     | RefType(ptysub)                 -> RefType(aux ptysub)
     | DataType(ptyargs, tyid)         -> DataType(List.map aux ptyargs, tyid)
@@ -401,14 +366,14 @@ let rec unlift_aux pty =
 
 
 and unlift_aux_cmd = function
-  | MandatoryArgumentType(pty) -> MandatoryArgumentType(unlift_aux pty)
-  | OptionalArgumentType(pty)  -> OptionalArgumentType(unlift_aux pty)
+  | MandatoryArgumentType(pty)         -> MandatoryArgumentType(unlift_aux pty)
+  | OptionalArgumentType(rlabel, pty)  -> OptionalArgumentType(rlabel, unlift_aux pty)
 
 
 and unlift_aux_or = function
-  | OptionRowEmpty                         -> OptionRowEmpty
-  | OptionRowCons(pty, tail)               -> OptionRowCons(unlift_aux pty, unlift_aux_or tail)
-  | OptionRowVariable(PolyORFree(orviref)) -> OptionRowVariable(orviref)
+  | RowEmpty                    -> RowEmpty
+  | RowCons(rlabel, pty, tail)  -> RowCons(rlabel, unlift_aux pty, unlift_aux_or tail)
+  | RowVar(PolyORFree(orviref)) -> RowVar(orviref)
 
 
 let unlift_poly (pty : poly_type_body) : mono_type option =

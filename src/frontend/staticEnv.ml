@@ -88,7 +88,7 @@ type value_entry = {
 
 type type_entry = {
   type_scheme : type_scheme;
-  type_kind   : poly_kind;
+  type_kind   : kind;
 }
 
 type constructor_entry = {

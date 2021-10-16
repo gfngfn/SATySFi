@@ -4,11 +4,11 @@ open Types
 type free_id_entry = {
   level           : Level.t;
   quantifiability : quantifiability;
-  mono_kind       : mono_kind;
+  mono_kind       : kind;
 }
 
 type bound_id_entry = {
-  poly_kind : poly_kind;
+  poly_kind : kind;
 }
 
 

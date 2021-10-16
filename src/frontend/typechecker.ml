@@ -51,7 +51,7 @@ type substitution = type_scheme SubstMap.t
 module SynonymNameSet = Set.Make(String)
 
 
-let fresh_free_id (kd : mono_kind) (qtfbl : quantifiability) (lev : Level.t) =
+let fresh_free_id (kd : kind) (qtfbl : quantifiability) (lev : Level.t) =
   let fid = FreeID.fresh () in
   let fentry =
     KindStore.{
@@ -95,15 +95,14 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
         (rng, TypeVariable(tv))
       in
       let orfreef orv =
-        OptionRowVariable(orv)
+        RowVar(orv)
       in
       let tyid = centry.ctor_belongs_to in
       let (bidlist, pty) = centry.ctor_parameter in
       let pairlst =
         bidlist |> List.map (fun bid ->
           let bentry = KindStore.get_bound_id bid in
-          let pkd = bentry.KindStore.poly_kind in
-          let kd = instantiate_kind lev qtfbl pkd in
+          let kd = bentry.KindStore.poly_kind in
           let fid = fresh_free_id kd qtfbl lev in
           let tv = Updatable(ref (MonoFree(fid))) in
           let ty = (Range.dummy "tc-constructor", TypeVariable(tv)) in
@@ -123,7 +122,7 @@ let abstraction_list evids ast =
   List.fold_right abstraction evids ast
 
 
-let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs : (Range.t * var_name) list) : mono_option_row * EvalVarID.t list * Typeenv.t =
+let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs : (Range.t * var_name) list) : mono_row * EvalVarID.t list * Typeenv.t =
   let qtfbl = pre.quantifiability in
   let lev = pre.level in
   let (tyenvnew, tyacc, evidacc) =
@@ -146,8 +145,9 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
   in
   let optrow =
     List.fold_right (fun ty acc ->
-      OptionRowCons(ty, acc)
-    ) (Alist.to_list tyacc) OptionRowEmpty
+      let rlabel = failwith "TODO: add_optionals_to_type_environment, rlabel" in
+      RowCons(rlabel, ty, acc)
+    ) (Alist.to_list tyacc) RowEmpty
   in
   (optrow, Alist.to_list evidacc, tyenvnew)
 
@@ -268,10 +268,10 @@ let apply_tree_of_list astfunc astlst =
 let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type =
 
   let rec aux_or = function
-    | OptionRowEmpty                                                 -> []
-    | OptionRowVariable(UpdatableRow{contents = MonoORFree(_)})      -> []
-    | OptionRowVariable(UpdatableRow{contents = MonoORLink(optrow)}) -> aux_or optrow
-    | OptionRowCons(ty, tail)                                        -> OptionalArgumentType(ty) :: aux_or tail
+    | RowEmpty                                            -> []
+    | RowVar(UpdatableRow{contents = MonoORFree(_)})      -> []
+    | RowVar(UpdatableRow{contents = MonoORLink(optrow)}) -> aux_or optrow
+    | RowCons(rlabel, ty, tail)                           -> OptionalArgumentType(rlabel, ty) :: aux_or tail
   in
 
   let rec aux acc ty =
@@ -324,11 +324,7 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
                         KindStore.set_free_id fidx { fentryx with level = lev }
                           (* -- update level -- *)
                       end;
-                      begin
-                        match fentryx.KindStore.mono_kind with
-                        | UniversalKind     -> false
-                        | RecordKind(tyasc) -> Assoc.fold_value (fun b ty -> b || iter ty) false tyasc
-                      end
+                      false
               end
 
           | MustBeBound(_) ->
@@ -345,7 +341,7 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
     | DataType(tyargs, _tyid)        -> iter_list tyargs
-    | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
+    | RecordType(row)                -> iter_or row
     | BaseType(_)                    -> false
     | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
     | VertCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
@@ -357,21 +353,21 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
 
   and iter_cmd_list cmdargtylist =
     List.exists (function
-      | MandatoryArgumentType(ty) -> iter ty
-      | OptionalArgumentType(ty)  -> iter ty
+      | MandatoryArgumentType(ty)   -> iter ty
+      | OptionalArgumentType(_, ty) -> iter ty
     ) cmdargtylist
 
   and iter_or optrow =
     match optrow with
-    | OptionRowEmpty ->
+    | RowEmpty ->
         false
 
-    | OptionRowCons(ty, tail) ->
+    | RowCons(_, ty, tail) ->
         let b1 = iter ty in
         let b2 = iter_or tail in
         b1 || b2
 
-    | OptionRowVariable(UpdatableRow(orvuref)) ->
+    | RowVar(UpdatableRow(orvuref)) ->
         begin
           match !orvuref with
           | MonoORLink(optrow) ->
@@ -390,7 +386,7 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
   iter ty
 
 
-let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
+let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_row) =
 
   let lev = OptionRowVarID.get_level orv in
 
@@ -412,11 +408,7 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
                       KindStore.set_free_id fidx { fentryx with level = lev }
                         (* -- update level -- *)
                     end;
-                    begin
-                      match fentryx.KindStore.mono_kind with
-                      | UniversalKind     -> false
-                      | RecordKind(tyasc) -> Assoc.fold_value (fun bacc ty -> let b = iter ty in bacc || b) false tyasc
-                    end
+                    false
               end
 
           | MustBeBound(_) ->
@@ -433,7 +425,7 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
     | DataType(tyargs, _tyid)        -> iter_list tyargs
-    | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
+    | RecordType(row)                -> iter_or row
     | BaseType(_)                    -> false
     | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
     | VertCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
@@ -445,20 +437,20 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
 
   and iter_cmd_list cmdargtylist =
     List.exists (function
-      | MandatoryArgumentType(ty) -> iter ty
-      | OptionalArgumentType(ty)  -> iter ty
+      | MandatoryArgumentType(ty)   -> iter ty
+      | OptionalArgumentType(_, ty) -> iter ty
     ) cmdargtylist
 
   and iter_or = function
-    | OptionRowEmpty ->
+    | RowEmpty ->
         false
 
-    | OptionRowCons(ty, tail) ->
+    | RowCons(_, ty, tail) ->
         let b1 = iter ty in
         let b2 = iter_or tail in
         b1 || b2
 
-    | OptionRowVariable(UpdatableRow(orvuref)) ->
+    | RowVar(UpdatableRow(orvuref)) ->
         begin
           match !orvuref with
           | MonoORLink(optrow) ->
@@ -480,16 +472,7 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
   iter_or optrow
 
 
-let set_kind_with_occurs_check (fid : FreeID.t) (kd : mono_kind) : unit =
-  begin
-    match kd with
-    | UniversalKind ->
-        ()
-
-    | RecordKind(tyasc) ->
-        let b = Assoc.fold_value (fun bacc ty -> let b = occurs fid ty in bacc || b) false tyasc in
-        if b then raise InternalInclusionError else ()
-  end;
+let set_kind (fid : FreeID.t) (kd : kind) : unit =
   let fentry = KindStore.get_free_id fid in
   KindStore.set_free_id fid { fentry with mono_kind = kd }
 
@@ -521,7 +504,7 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
 
     | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2)) ->
         begin
-          unify_option_row ~reversed optrow1 optrow2;
+          unify_row ~reversed optrow1 optrow2;
           unify tydom1 tydom2;
           unify tycod1 tycod2;
         end
@@ -533,9 +516,18 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
           try
             List.iter2 (fun cmdargty1 cmdargty2 ->
               match (cmdargty1, cmdargty2) with
-              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2)) -> unify ty1 ty2
-              | (OptionalArgumentType(ty1) , OptionalArgumentType(ty2) ) -> unify ty1 ty2
-              | _ -> raise (InternalContradictionError(reversed))
+              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2)) ->
+                  unify ty1 ty2
+
+              | (OptionalArgumentType((_, label1), ty1), OptionalArgumentType((_, label2), ty2)) ->
+                  if String.equal label1 label2 then
+                    unify ty1 ty2
+                  else
+                    raise  (InternalContradictionError(reversed))
+
+              | _ ->
+                  raise (InternalContradictionError(reversed))
+
             ) cmdargtylist1 cmdargtylist2
           with
           | Invalid_argument(_) ->
@@ -545,11 +537,8 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
     | (ProductType(tys1), ProductType(tys2)) ->
         unify_list (tys1 |> TupleList.to_list) (tys2 |> TupleList.to_list)
 
-    | (RecordType(tyasc1), RecordType(tyasc2)) ->
-        if not (Assoc.domain_same tyasc1 tyasc2) then
-          raise (InternalContradictionError(reversed))
-        else
-          Assoc.combine_value tyasc1 tyasc2 |> List.iter (fun (ty1, ty2) -> unify ty1 ty2)
+    | (RecordType(row1), RecordType(row2)) ->
+        unify_row ~reversed row1 row2
 
     | (DataType(tyargs1, tyid1), DataType(tyargs2, tyid2)) ->
         if TypeID.equal tyid1 tyid2 then
@@ -608,54 +597,17 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
               if Range.is_dummy rng1 then (tvref1, tvref2, fid2, ty2) else (tvref2, tvref1, fid1, ty1)
             in
             oldtvref := MonoLink(newty);
-            let (eqns, kdunion) =
-              let kd1 = fentry1.mono_kind in
-              let kd2 = fentry2.mono_kind in
-              match (kd1, kd2) with
-              | (UniversalKind, UniversalKind)       -> ([], UniversalKind)
-              | (RecordKind(asc1), UniversalKind)    -> ([], RecordKind(asc1))
-              | (UniversalKind, RecordKind(asc2))    -> ([], RecordKind(asc2))
-
-              | (RecordKind(asc1), RecordKind(asc2)) ->
-                  let kdunion = RecordKind(Assoc.union asc1 asc2) in
-                  (Assoc.intersection asc1 asc2, kdunion)
-            in
-            eqns |> List.iter (fun (ty1, ty2) -> unify ty1 ty2);
-            set_kind_with_occurs_check newfid kdunion
+            set_kind newfid UniversalKind
 
       | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)), RecordType(tyasc2)) ->
-          let fentry1 = KindStore.get_free_id fid1 in
-          let kd1 = fentry1.mono_kind in
-          let binc =
-            match kd1 with
-            | UniversalKind      -> true
-            | RecordKind(tyasc1) -> Assoc.domain_included tyasc1 tyasc2
-          in
           let chk = occurs fid1 ty2 in
           if chk then
             raise InternalInclusionError
-          else if not binc then
-            raise (InternalContradictionError(reversed))
           else
             let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-            let eqns =
-              match kd1 with
-              | UniversalKind      -> []
-              | RecordKind(tyasc1) -> Assoc.intersection tyasc1 tyasc2
-            in
-            eqns |> List.iter (fun (ty1, ty2) -> unify ty1 ty2);
             tvref1 := MonoLink(newty2)
 
       | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)), _) ->
-          let fentry1 = KindStore.get_free_id fid1 in
-          let kd1 = fentry1.mono_kind in
-          let () =
-            match kd1 with
-            | UniversalKind -> ()
-            | RecordKind(_) -> raise (InternalContradictionError(reversed))
-                (* -- `ty2` is not a record type, a type variable, nor a link,
-                      and thereby cannot have a record kind -- *)
-          in
           let chk = occurs fid1 ty2 in
           if chk then
             raise InternalInclusionError
@@ -676,17 +628,19 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
           raise (InternalContradictionError(reversed))
 
 
-and unify_option_row ~reversed:reversed optrow1 optrow2 =
+and unify_row ~reversed:reversed optrow1 optrow2 =
+  failwith "TODO: unify_row"
+(*
   match (optrow1, optrow2) with
-  | (OptionRowCons(ty1, tail1), OptionRowCons(ty2, tail2)) ->
+  | (RowCons(ty1, tail1), RowCons(ty2, tail2)) ->
       unify_sub ~reversed ty1 ty2;
       unify_option_row ~reversed tail1 tail2
 
-  | (OptionRowEmpty, OptionRowEmpty) ->
+  | (RowEmpty, RowEmpty) ->
       ()
 
-  | (OptionRowVariable(UpdatableRow{contents = MonoORLink(optrow1)}), _) ->
-      unify_option_row ~reversed optrow1 optrow2
+  | (RowVar(UpdatableRow{contents = MonoORLink(optrow1)}), _) ->
+      unify_row ~reversed optrow1 optrow2
 
   | (_, OptionRowVariable(UpdatableRow{contents = MonoORLink(optrow2)})) ->
       unify_option_row ~reversed optrow1 optrow2
@@ -711,7 +665,7 @@ and unify_option_row ~reversed:reversed optrow1 optrow2 =
   | (OptionRowEmpty, OptionRowCons(_, _))
   | (OptionRowCons(_, _), OptionRowEmpty) ->
       raise (InternalContradictionError(reversed))
-
+*)
 
 let unify (ty1 : mono_type) (ty2 : mono_type) =
   try
@@ -939,7 +893,7 @@ let rec typecheck
             let beta = fresh_type_variable rng pre UniversalKind in
             let orv = OptionRowVarID.fresh pre.level in
             let orvuref = ref (MonoORFree(orv)) in
-            let optrow = OptionRowVariable(UpdatableRow(orvuref)) in
+            let optrow = RowVar(UpdatableRow(orvuref)) in
             unify ty1 (get_range utast1, FuncType(optrow, ty2, beta));
             (eret, beta)
 
@@ -949,12 +903,15 @@ let rec typecheck
       end
 
   | UTApplyOptional(utast1, utast2) ->
+      failwith "TODO: UTApplyOptional"
+(*
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
       let eret = ApplyOptional(e1, e2) in
       begin
         match ty1 with
-        | (_, FuncType(OptionRowCons(tyopt, optrow), tydom, tycod)) ->
+        | (_, FuncType(RowCons(_, tyopt, optrow), tydom, tycod)) ->
+            (* TODO: fix this *)
             unify tyopt ty2;
             let tynew = (rng, FuncType(optrow, tydom, tycod)) in
               (eret, tynew)
@@ -968,25 +925,7 @@ let rec typecheck
             unify ty1 (get_range utast1, FuncType(OptionRowCons(ty2, optrow), beta1, beta2));
             (eret, (rng, FuncType(optrow, beta1, beta2)))
       end
-
-  | UTApplyOmission(utast1) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let eret = ApplyOmission(e1) in
-      begin
-        match ty1 with
-        | (_, FuncType(OptionRowCons(_, optrow), tydom, tycod)) ->
-            (eret, (rng, FuncType(optrow, tydom, tycod)))
-
-        | _ ->
-            let beta0 = fresh_type_variable rng pre UniversalKind in
-            let beta1 = fresh_type_variable rng pre UniversalKind in
-            let beta2 = fresh_type_variable rng pre UniversalKind in
-            let orv = OptionRowVarID.fresh pre.level in
-            let orvuref = ref (MonoORFree(orv)) in
-            let optrow = OptionRowVariable(UpdatableRow(orvuref)) in
-            unify ty1 (get_range utast1, FuncType(OptionRowCons(beta0, optrow), beta1, beta2));
-            (eret, (rng, FuncType(optrow, beta1, beta2)))
-      end
+*)
 
   | UTFunction(optargs, pat, utast1) ->
       let utpatbr = UTPatternBranch(pat, utast1) in
@@ -1122,18 +1061,24 @@ let rec typecheck
       typecheck_record pre tyenv flutlst rng
 
   | UTAccessField(utast1, fldnm) ->
+      failwith "TODO: UTAccessField"
+(*
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let betaF = fresh_type_variable rng pre UniversalKind in
       let beta1 = fresh_type_variable (get_range utast1) pre (RecordKind(Assoc.of_list [(fldnm, betaF)])) in
       unify beta1 ty1;
       (AccessField(e1, fldnm), betaF)
+*)
 
   | UTUpdateField(utast1, fldnm, utastF) ->
+      failwith "TODO: UTUpdateField"
+(*
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (eF, tyF) = typecheck_iter tyenv utastF in
       let beta1 = fresh_type_variable (get_range utast1) pre (RecordKind(Assoc.of_list [(fldnm, tyF)])) in
       unify beta1 ty1;
       (UpdateField(e1, fldnm, eF), ty1)
+*)
 
 (* -- math -- *)
 
@@ -1267,7 +1212,8 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
         unify tyA tyreq;
         aux (Apply(eacc, eA)) utcmdargtail cmdargtytail
 
-    | (UTOptionalArgument(utastA) :: utcmdargtail, OptionalArgumentType(tyreq) :: cmdargtytail) ->
+    | (UTOptionalArgument(utastA) :: utcmdargtail, OptionalArgumentType(rlabel, tyreq) :: cmdargtytail) ->
+        (* TODO: fix this for using `rlabel` *)
         let (eA, tyA) = typecheck pre tyenv utastA in
         unify tyA tyreq;
         aux (ApplyOptional(eacc, eA)) utcmdargtail cmdargtytail
@@ -1275,7 +1221,8 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
     | (UTOptionalArgument((rngA, _)) :: _, MandatoryArgumentType(_) :: _) ->
         raise (InvalidOptionalCommandArgument(tycmd, rngA))
 
-    | (UTOmission(_) :: utcmdargtail, OptionalArgumentType(tyreq) :: cmdargtytail) ->
+    | (UTOmission(_) :: utcmdargtail, OptionalArgumentType(rlabel, tyreq) :: cmdargtytail) ->
+        (* TODO: fix this for using `rlabel` *)
         aux (ApplyOmission(eacc)) utcmdargtail cmdargtytail
 
     | (UTOmission(rngA) :: _, MandatoryArgumentType(_) :: _) ->
@@ -1558,17 +1505,18 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
     Alist.to_list argacc
 
 
-and typecheck_record (pre : pre) (tyenv : Typeenv.t) (flutlst : (field_name * untyped_abstract_tree) list) (rng : Range.t) =
-  let (easc, tyasc) =
-    flutlst |> List.fold_left (fun (easc, tyasc) (fldnmX, utastX) ->
+and typecheck_record (pre : pre) (tyenv : Typeenv.t) (fluts : (field_name * untyped_abstract_tree) list) (rng : Range.t) =
+  let (easc, row) =
+    fluts |> List.fold_left (fun (easc, row) (fldnmX, utastX) ->
       if Assoc.mem fldnmX easc then
         raise (MultipleFieldInRecord(rng, fldnmX))
       else
+        let rngX = failwith "TODO: typecheck_record, range of field" in
         let (eX, tyX) = typecheck pre tyenv utastX in
-        (Assoc.add easc fldnmX eX, Assoc.add tyasc fldnmX tyX)
-    ) (Assoc.empty, Assoc.empty)
+        (Assoc.add easc fldnmX eX, RowCons((rngX, fldnmX), tyX, row))
+    ) (Assoc.empty, RowEmpty)
   in
-  (Record(easc), (rng, RecordType(tyasc)))
+  (Record(easc), (rng, RecordType(row)))
 
 
 and typecheck_itemize (pre : pre) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
@@ -1806,7 +1754,10 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
           ProductType(TupleList.map aux mntys)
 
       | MRecordType(mnasc) ->
+          failwith "TODO: decode_manual_type, MRecordType"
+(*
           RecordType(Assoc.map_value aux mnasc)
+*)
 
       | MHorzCommandType(mncmdargtys) -> HorzCommandType(List.map aux_cmd mncmdargtys)
       | MVertCommandType(mncmdargtys) -> VertCommandType(List.map aux_cmd mncmdargtys)
@@ -1816,16 +1767,23 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
     (rng, tymain)
 
   and aux_cmd = function
-    | MMandatoryArgumentType(mnty) -> MandatoryArgumentType(aux mnty)
-    | MOptionalArgumentType(mnty)  -> OptionalArgumentType(aux mnty)
+    | MMandatoryArgumentType(mnty) ->
+        MandatoryArgumentType(aux mnty)
+
+    | MOptionalArgumentType(mnty) ->
+        let rlabel = failwith "TODO: decode_manual_type, aux_cmd" in
+        OptionalArgumentType(rlabel, aux mnty)
 
   and aux_row (mtyadds : manual_type list) =
+    failwith "TODO: decode_manual_type, aux_row"
+(*
     List.fold_right (fun mty row -> OptionRowCons(aux mty, row)) mtyadds OptionRowEmpty
+*)
   in
   aux mty
 
 
-and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : mono_kind =
+and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : kind =
   failwith "TODO: decode_manual_kind"
 
 
@@ -2065,8 +2023,8 @@ and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_t
       | TypeVariable(ptv) ->
           TypeVariable(ptv)
 
-      | RecordType(labmap) ->
-          RecordType(labmap |> Assoc.map_value aux)
+      | RecordType(row) ->
+          RecordType(aux_option_row row)
 
       | DataType(ptyargs, tyid_from) ->
           begin
@@ -2089,20 +2047,16 @@ and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_t
     (rng, ptymain)
 
   and aux_option_row = function
-    | OptionRowCons(pty, poptrow) -> OptionRowCons(aux pty, aux_option_row poptrow)
-    | OptionRowEmpty              -> OptionRowEmpty
-    | OptionRowVariable(prv)      -> OptionRowVariable(prv)
+    | RowCons(rlabel, pty, poptrow) -> RowCons(rlabel, aux pty, aux_option_row poptrow)
+    | RowEmpty                      -> RowEmpty
+    | RowVar(prv)                   -> RowVar(prv)
 
   and aux_command_arg = function
-    | MandatoryArgumentType(pty) -> MandatoryArgumentType(aux pty)
-    | OptionalArgumentType(pty)  -> OptionalArgumentType(aux pty)
+    | MandatoryArgumentType(pty)        -> MandatoryArgumentType(aux pty)
+    | OptionalArgumentType(rlabel, pty) -> OptionalArgumentType(rlabel, aux pty)
 
   in
   Poly(aux pty)
-
-
-and substitute_poly_kind (subst : substitution) (pkd : poly_kind) : poly_kind =
-  failwith "TODO: substitute_poly_kind"
 
 
 and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t =
@@ -2114,7 +2068,7 @@ and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t 
         let (bids, pty) = tentry.type_scheme in
         {
           type_scheme = (bids, pty |> substitute_poly_type subst);
-          type_kind   = tentry.type_kind |> substitute_poly_kind subst;
+          type_kind   = tentry.type_kind;
         }
       )
       ~m:(fun _modnm mentry ->
@@ -2472,8 +2426,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
                     None
                 ) |> Option.value ~default:UniversalKind
               in
-              let pkd = TypeConv.lift_kind kd in
-              (typaram, pkd)
+              (typaram, kd)
             )
           in
           let (rng, tynm) = tyident in

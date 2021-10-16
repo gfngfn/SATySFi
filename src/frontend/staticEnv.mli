@@ -1,11 +1,8 @@
 open Types
 
-type type_scheme = BoundID.t list * poly_type
-(*
-type type_definition =
-  | Data  of int
-  | Alias of type_scheme
-*)
+type type_scheme =
+  BoundID.t list * poly_type
+
 type struct_signature
 
 type signature =
@@ -26,7 +23,7 @@ type value_entry = {
 
 type type_entry = {
   type_scheme : type_scheme;
-  type_kind   : poly_kind;
+  type_kind   : kind;
 }
 
 type constructor_entry = {
@@ -44,16 +41,6 @@ type module_entry = {
   mod_signature : signature;
 }
 
-(*
-exception UndefinedTypeName               of Range.t * module_name list * type_name * type_name list
-exception UndefinedTypeArgument           of Range.t * var_name * var_name list
-exception CyclicTypeDefinition            of (Range.t * type_name) list
-exception MultipleTypeDefinition          of Range.t * Range.t * type_name
-exception NotProvidingValueImplementation of Range.t * var_name
-exception NotProvidingTypeImplementation  of Range.t * type_name
-exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
-exception UndefinedModuleName             of Range.t * module_name * module_name list
-*)
 
 module Typeenv : sig
 
@@ -133,15 +120,3 @@ module StructSig : sig
   val union : t -> t -> (t, string) result
 
 end
-
-(*
-val add_mutual_cons : t -> level -> untyped_type_binding list -> t
-
-val open_module : Range.t -> module_name -> t -> t
-
-val find_candidates : t -> (module_name list) -> var_name -> Range.t -> var_name list
-
-val find_constructor_candidates : pre -> t -> constructor_name -> constructor_name list
-
-val enumerate_constructors : pre -> t -> TypeID.t -> (constructor_name * (mono_type list -> mono_type)) list
-*)

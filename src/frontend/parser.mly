@@ -493,8 +493,8 @@ nxmod:
 ;
 decl:
   | TYPE; tyvars=list(TYPEVAR); tynmtok=VAR; clst=constrnts {
-      let kdtyvars = kind_type_arguments tyvars clst in
-      UTDeclTypeOpaque(tynmtok, kdtyvars)
+      let kd = failwith "TODO: parse kind" in
+      UTDeclTypeOpaque(tynmtok, kd)
     }
   | VAL; valnmtok=VAR; COLON; mnty=txfunc; clst=constrnts {
       UTDeclValue(valnmtok, clst, mnty)
@@ -768,7 +768,6 @@ nxapp:
       make_standard (Tok pre) (Tok rng) (UTContentOf(mdlnmlst, csnm))
     }
   | utast1=nxapp; OPTIONAL; utast2=nxunsub { make_standard (Ranged utast1) (Ranged utast2) (UTApplyOptional(utast1, utast2)) }
-  | utast1=nxapp; tok=OMISSION             { make_standard (Ranged utast1) (Tok tok) (UTApplyOmission(utast1)) }
   | utast=nxunsub                          { utast }
 ;
 nxunsub:

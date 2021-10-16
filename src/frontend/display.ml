@@ -12,16 +12,9 @@ let string_of_record_type (type a) (type b) (f : (a, b) typ -> string) (asc : ((
     "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
 
 
-let string_of_kind (type a) (type b) (f : (a, b) typ -> string) (kdstr : (a, b) kind) =
-  let rec aux lst =
-    match lst with
-    | []                     -> " -- "
-    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
-    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
-  in
-    match kdstr with
-    | UniversalKind   -> "U"
-    | RecordKind(asc) -> "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
+let string_of_kind (kd : kind) =
+  match kd with
+  | UniversalKind   -> "U"
 
 
 let rec variable_name_of_number (n : int) =
@@ -32,10 +25,8 @@ let rec variable_name_of_number (n : int) =
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
 
-let show_type_variable (type a) (type b) (f : (a, b) typ -> string) (name : string) (kd : (a, b) kind) =
-  match kd with
-  | UniversalKind   -> name
-  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kd) ^ ")"
+let show_type_variable (type a) (type b) (f : (a, b) typ -> string) (name : string) (kd : kind) =
+  name
 
 
 type general_id =
@@ -185,7 +176,8 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (curre
           | _                       -> s
         end
 
-    | RecordType(asc) ->
+    | RecordType(row) ->
+        let asc = failwith "TODO: make Assoc.t from row" in
         string_of_record_type (iter Outmost) asc
 
     | HorzCommandType(cmdargtylist) ->
@@ -202,13 +194,15 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (curre
 
 
 and string_of_option_row tvf ortvf current_ht = function
-  | OptionRowEmpty -> ""
-
-  | OptionRowVariable(orvi) -> ortvf orvi
-
-  | OptionRowCons(ty, tail) ->
+  | RowCons((_, label), ty, tail) ->
       let s = string_of_mono_type_sub tvf ortvf current_ht DomainSide ty in
-      s ^ "?-> " ^ (string_of_option_row tvf ortvf current_ht tail)
+      Printf.sprintf "?%s %s -> %s" label s (string_of_option_row tvf ortvf current_ht tail)
+
+  | RowVar(orvi) ->
+      ortvf orvi
+
+  | RowEmpty ->
+      ""
 
 
 and string_of_command_argument_type tvf ortvf current_ht cmdargty =
@@ -217,9 +211,8 @@ and string_of_command_argument_type tvf ortvf current_ht cmdargty =
   | MandatoryArgumentType(ty) ->
       iter Outmost ty
 
-  | OptionalArgumentType(ty)  ->
-      let strty = iter Outmost ty in
-      strty ^ "?"
+  | OptionalArgumentType((_, label), ty)  ->
+      Printf.sprintf "?%s %s" label (iter Outmost ty)
 
 
 and string_of_type_argument_list tvf ortvf current_ht tyarglist =

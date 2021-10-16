@@ -30,7 +30,6 @@ and expand_type =
   | ExpandConstructor of string * mono_type
   | ExpandTuple       of int
   | NoExpand
-[@@deriving show]
 
 
 module ElementSet = Set.Make(struct

@@ -54,7 +54,7 @@ let tPROD = function
   | ty1 :: ty2 :: tyrest -> (~! "product", ProductType(TupleList.make ty1 ty2 tyrest))
   | _                    -> assert false
 
-let ( @-> ) dom cod = (~! "func", FuncType(OptionRowEmpty, dom, cod))
+let ( @-> ) dom cod = (~! "func", FuncType(RowEmpty, dom, cod))
 
 (* -- predefined data types -- *)
 let tOPT ty       = (~! "option"  , variant [ty] vid_option)
@@ -89,9 +89,16 @@ let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 
 let tICMD ty = (~! "cmd", HorzCommandType([MandatoryArgumentType(ty)]))
 
+
+let make_row kts =
+  kts |> List.fold_left (fun row (k, ty) ->
+    RowCons((Range.dummy "math-char-style", k), ty, row)
+  ) RowEmpty
+
+
 let tMCSTY =
-  let asc =
-    Assoc.of_list (List.map (fun k -> (k, tS)) [
+  let row =
+    [
       "italic";
       "bold-italic";
       "roman";
@@ -101,62 +108,74 @@ let tMCSTY =
       "fraktur";
       "bold-fraktur";
       "double-struck";
-    ])  (* temporary *)
+    ] |> List.map (fun k -> (k, tS)) |> make_row
   in
-    (~! "math-char-style", RecordType(asc))
+  (~! "math-char-style", RecordType(row))
+
 
 let tDOCINFODIC =
-  let asc =
-    Assoc.of_list [
-      ("title", tOPT tS);
-      ("subject", tOPT tS);
-      ("author", tOPT tS);
+  let row =
+    make_row [
+      ("title"   , tOPT tS);
+      ("subject" , tOPT tS);
+      ("author"  , tOPT tS);
       ("keywords", tL tS);
     ]
   in
-    (~! "document-information-dictionary", RecordType(asc))
+  (~! "document-information-dictionary", RecordType(row))
 
 
 let tPBINFO =
-  let asc =
-    Assoc.of_list [
+  let row =
+    make_row [
       ("page-number", tI);
     ]
   in
-    (~! "page-break-info", RecordType(asc))
+    (~! "page-break-info", RecordType(row))
+
 
 let tPAGECONT =
-  let asc =
-    Assoc.of_list [
+  let row =
+    make_row [
       ("text-origin", tPT);
       ("text-height", tLN);
     ]
   in
-    (~! "page-content-scheme", RecordType(asc))
+  (~! "page-content-scheme", RecordType(row))
+
 
 let tPAGECONTF = tPBINFO @-> tPAGECONT
+
 
 let tPCINFO =
   tPBINFO  (* temporary; may have more fields in the future *)
 
+
 let tPAGEPARTS =
-  let asc =
-    Assoc.of_list [
+  let row =
+    make_row [
       ("header-origin" , tPT);
       ("header-content", tBB);
       ("footer-origin" , tPT);
       ("footer-content", tBB);
     ]
   in
-    (~! "page-parts", RecordType(asc))
+  (~! "page-parts", RecordType(row))
 
-let tPAGEPARTSF = tPCINFO @-> tPAGEPARTS
 
-let tRULESF = (tL tLN) @-> (tL tLN) @-> (tL tGR)
+let tPAGEPARTSF =
+  tPCINFO @-> tPAGEPARTS
 
-let option_type = tOPT
 
-let itemize_type () = tITMZ ()
+let tRULESF =
+  (tL tLN) @-> (tL tLN) @-> (tL tGR)
+
+
+let option_type =
+  tOPT
+
+let itemize_type () =
+  tITMZ ()
 
 
 let fresh_bound_id () =
