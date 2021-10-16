@@ -497,7 +497,6 @@ and untyped_abstract_tree_main =
 (* -- pattern match -- *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
   | UTConstructor          of constructor_name * untyped_abstract_tree
-  | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
 (* -- lightweight itemize -- *)
   | UTItemize              of untyped_itemize
@@ -706,7 +705,6 @@ and ir =
   | IRPatternMatch          of Range.t * ir * ir_pattern_branch list
   | IRNonValueConstructor   of constructor_name * ir
   | IRLetMutableIn          of varloc * ir * ir
-  | IRSequential            of ir * ir
   | IROverwrite             of varloc * ir
   | IRDereference           of ir
   | IRModule                of ir * ir
@@ -901,7 +899,6 @@ and abstract_tree =
 (* -- imperative -- *)
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Dereference           of abstract_tree
-  | Sequential            of abstract_tree * abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
@@ -1028,7 +1025,6 @@ and code_value =
   | CdAccessField   of code_value * field_name
   | CdUpdateField   of code_value * field_name * code_value
   | CdLetMutableIn  of CodeSymbol.t * code_value * code_value
-  | CdSequential    of code_value * code_value
   | CdOverwrite     of CodeSymbol.t * code_value
   | CdDereference   of code_value
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
@@ -1173,7 +1169,6 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdAccessField(code1, fldnm)          -> AccessField(aux code1, fldnm)
     | CdUpdateField(code1, fldnm, code2)   -> UpdateField(aux code1, fldnm, aux code2)
     | CdLetMutableIn(symb, code1, code2)   -> LetMutableIn(CodeSymbol.unlift symb, aux code1, aux code2)
-    | CdSequential(code1, code2)           -> Sequential(aux code1, aux code2)
     | CdOverwrite(symb, code1)             -> Overwrite(CodeSymbol.unlift symb, aux code1)
     | CdDereference(code1)                 -> Dereference(aux code1)
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)

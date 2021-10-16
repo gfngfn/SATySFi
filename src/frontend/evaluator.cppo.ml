@@ -292,15 +292,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       let envnew = add_to_environment env evid (ref (Location(stid))) in
       interpret_0 envnew astaft
 
-  | Sequential(ast1, ast2) ->
-      let (value1, _) = interpret_0 env ast1 in
-      let (value2, _) = interpret_0 env ast2 in
-      begin
-        match value1 with
-        | BaseConstant(BCUnit) -> return @@ value2
-        | _                    -> report_bug_reduction "Sequential: first operand value is not a unit" ast1 value1
-      end
-
   | Overwrite(evid, astnew) ->
       begin
         match find_in_environment env evid with
@@ -496,11 +487,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       let (code1, _) = interpret_1 env ast1 in
       let (code2, envopt2) = interpret_1 env ast2 in
       (CdLetMutableIn(symb, code1, code2), envopt2)
-
-  | Sequential(ast1, ast2) ->
-      let (code1, _) = interpret_1 env ast1 in
-      let (code2, _) = interpret_1 env ast2 in
-      return @@ CdSequential(code1, code2)
 
   | Overwrite(evid, ast1) ->
       begin

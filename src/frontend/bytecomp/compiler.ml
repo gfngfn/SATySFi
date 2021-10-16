@@ -232,9 +232,6 @@ and compile (ir : ir) (cont : instruction list) =
       in
       compile irini (bindop :: (compile iraft cont))
 
-  | IRSequential(ir1, ir2) ->
-      compile ir1 (OpPop :: compile ir2 cont)
-
   | IROverwrite(var, irnew) ->
       begin
         match var with

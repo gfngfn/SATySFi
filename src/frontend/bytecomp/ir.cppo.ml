@@ -513,9 +513,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | Dereference(ast1) ->
       code1 env (fun cv -> CdDereference(cv)) ast1
 
-  | Sequential(ast1, ast2) ->
-      code2 env (fun cv1 cv2 -> CdSequential(cv1, cv2)) ast1 ast2
-
   | Overwrite(evid, ast1) ->
       begin
         match find_in_environment env evid with
@@ -687,11 +684,6 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       let (var, env) = add_to_environment env evid in
       let (iraft, env) = transform_0 env astaft in
       (IRLetMutableIn(var, irini, iraft), env)
-
-  | Sequential(ast1, ast2) ->
-      let (ir1, env) = transform_0 env ast1 in
-      let (ir2, env) = transform_0 env ast2 in
-      (IRSequential(ir1, ir2), env)
 
   | Overwrite(evid, astnew) ->
       begin

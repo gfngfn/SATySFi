@@ -675,7 +675,7 @@ nxif:
   | utast=nxbfr                                                  { utast }
 ;
 nxbfr:
-  | utast1=nxlambda; BEFORE; utast2=nxbfr { make_standard (Ranged utast1) (Ranged utast2) (UTSequential(utast1, utast2)) }
+  | utast1=nxlambda; BEFORE; utast2=nxbfr { make_standard (Ranged utast1) (Ranged utast2) (UTLetIn(UTNonRec(None, (Range.dummy "sequential", UTPUnitConstant), utast1), utast2)) }
   | utast=nxlambda                        { utast }
 ;
 nxlambda:

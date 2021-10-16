@@ -1007,12 +1007,6 @@ let rec typecheck
             assert false
       end
 
-  | UTSequential(utast1, utast2) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      unify ty1 (get_range utast1, BaseType(UnitType));
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      (Sequential(e1, e2), ty2)
-
 (* ---- lightweight itemize ---- *)
 
   | UTItemize(utitmz) ->
