@@ -519,12 +519,15 @@ and untyped_abstract_tree_main =
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree
 
-and constraints = (var_name * manual_kind) list
+and constraints =
+  (var_name * manual_kind) list
 
 and untyped_itemize =
   | UTItem of untyped_abstract_tree * (untyped_itemize list)
 
-and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
+and untyped_pattern_tree =
+  Range.t * untyped_pattern_tree_main
+
 and untyped_pattern_tree_main =
   | UTPIntegerConstant     of int
   | UTPBooleanConstant     of bool
@@ -542,11 +545,14 @@ and untyped_pattern_branch =
   | UTPatternBranch     of untyped_pattern_tree * untyped_abstract_tree
   | UTPatternBranchWhen of untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
 
-and untyped_unkinded_type_argument = Range.t * var_name
+and untyped_unkinded_type_argument =
+  Range.t * var_name
 
-and untyped_type_argument = Range.t * var_name * manual_kind
+and untyped_type_argument =
+  Range.t * var_name * manual_kind
 
-and untyped_math = Range.t * untyped_math_main
+and untyped_math =
+  Range.t * untyped_math_main
 
 and untyped_math_main =
   | UTMChars       of Uchar.t list
@@ -620,12 +626,14 @@ type base_constant =
   | BCInputPos        of input_position
 [@@deriving show { with_path = false; }]
 
-type code_binding = unit  (* TEMPORARY *)
+type code_binding =
+  unit  (* TEMPORARY *)
 
 type 'a letrec_binding_scheme =
   | LetRecBinding of EvalVarID.t * 'a pattern_branch_scheme
 
-and letrec_binding = abstract_tree letrec_binding_scheme
+and letrec_binding =
+  abstract_tree letrec_binding_scheme
 
 and rec_or_nonrec =
   | Rec     of letrec_binding list
@@ -636,12 +644,15 @@ and binding =
   | BindValue  of rec_or_nonrec
   | BindModule of ModuleID.t * binding list
 
-and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
-  [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
+and environment =
+  location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
+    [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
-and location = syntactic_value ref
+and location =
+  syntactic_value ref
 
-and vmenv = environment * (syntactic_value array) list
+and vmenv =
+  environment * (syntactic_value array) list
 
 and compiled_input_horz_element =
   | CompiledInputHorzText         of string
@@ -737,13 +748,15 @@ and ir =
 and 'a ir_letrec_binding_scheme =
   | IRLetRecBinding of varloc * 'a ir_pattern_branch_scheme
 
-and ir_letrec_binding = ir ir_letrec_binding_scheme
+and ir_letrec_binding =
+  ir ir_letrec_binding_scheme
 
 and 'a ir_pattern_branch_scheme =
   | IRPatternBranch      of ir_pattern_tree * 'a
   | IRPatternBranchWhen  of ir_pattern_tree * 'a * 'a
 
-and ir_pattern_branch = ir ir_pattern_branch_scheme
+and ir_pattern_branch =
+  ir ir_pattern_branch_scheme
 
 and ir_pattern_tree =
   | IRPUnitConstant
@@ -925,17 +938,21 @@ and abstract_tree =
   | Prev                  of abstract_tree
 #include "__attype.gen.ml"
 
-and input_horz_element = abstract_tree input_horz_element_scheme
+and input_horz_element =
+  abstract_tree input_horz_element_scheme
 
-and input_vert_element = abstract_tree input_vert_element_scheme
+and input_vert_element =
+  abstract_tree input_vert_element_scheme
 
-and 'a path_component = ('a, abstract_tree) path_component_scheme
+and 'a path_component =
+  ('a, abstract_tree) path_component_scheme
 
 and 'a pattern_branch_scheme =
   | PatternBranch      of pattern_tree * 'a
   | PatternBranchWhen  of pattern_tree * 'a * 'a
 
-and pattern_branch = abstract_tree pattern_branch_scheme
+and pattern_branch =
+  abstract_tree pattern_branch_scheme
 
 and pattern_tree =
   | PUnitConstant
@@ -950,7 +967,8 @@ and pattern_tree =
   | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
 
-and input_context = HorzBox.context_main * context_sub
+and input_context =
+  HorzBox.context_main * context_sub
 
 and context_sub = {
   math_command : math_command_func;
@@ -1048,11 +1066,14 @@ and code_value =
   | CdModule        of code_value * code_value
 #include "__codetype.gen.ml"
 
-and code_input_horz_element = code_value input_horz_element_scheme
+and code_input_horz_element =
+  code_value input_horz_element_scheme
 
-and code_input_vert_element = code_value input_vert_element_scheme
+and code_input_vert_element =
+  code_value input_vert_element_scheme
 
-and 'a code_path_component = ('a, code_value) path_component_scheme
+and 'a code_path_component =
+  ('a, code_value) path_component_scheme
 
 and code_letrec_binding =
   | CdLetRecBinding of CodeSymbol.t * code_pattern_branch
