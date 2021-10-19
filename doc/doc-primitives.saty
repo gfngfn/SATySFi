@@ -785,7 +785,7 @@ document (|
       }
       +command (`page-break-two-column`) (tPG --> (tL --> ((tU --> tBB) --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC)))))) {
         二段組をサポートする．
-        第2引数は段間のスペースである．
+        第2引数は一段目と二段目の\code{${text-origin}}の\code{${x}}座標の差である．
       }
       +command (`page-break-multicolumn`) (tPG --> (tLIST tL --> ((tU --> tBB) --> ((tU --> tBB) --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC))))))) {
         多段組をサポートする．
