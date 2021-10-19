@@ -386,7 +386,7 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
   iter ty
 
 
-let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_row) =
+let occurs_row (orv : OptionRowVarID.t) (optrow : mono_row) =
 
   let lev = OptionRowVarID.get_level orv in
 
@@ -599,14 +599,6 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
             oldtvref := MonoLink(newty);
             set_kind newfid UniversalKind
 
-      | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)), RecordType(tyasc2)) ->
-          let chk = occurs fid1 ty2 in
-          if chk then
-            raise InternalInclusionError
-          else
-            let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-            tvref1 := MonoLink(newty2)
-
       | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)), _) ->
           let chk = occurs fid1 ty2 in
           if chk then
@@ -628,44 +620,100 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
           raise (InternalContradictionError(reversed))
 
 
-and unify_row ~reversed:reversed optrow1 optrow2 =
-  failwith "TODO: unify_row"
-(*
-  match (optrow1, optrow2) with
-  | (RowCons(ty1, tail1), RowCons(ty2, tail2)) ->
-      unify_sub ~reversed ty1 ty2;
-      unify_option_row ~reversed tail1 tail2
+and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) =
+  match row with
+  | RowCons((rng, label), ty, rowsub) ->
+      if labset |> LabelSet.mem label then
+        failwith "TODO (error): should report error about label"
+      else
+        solve_row_disjointness rowsub labset
+
+  | RowVar(UpdatableRow{contents = MonoORLink(rowsub)}) ->
+      solve_row_disjointness rowsub labset
+
+  | RowVar(UpdatableRow{contents = MonoORFree(orv0)}) ->
+      let labset0 = KindStore.get_free_row_id orv0 in
+      KindStore.register_free_row_id orv0 (LabelSet.union labset0 labset);
+      ()
+
+  | RowEmpty ->
+      ()
+
+
+and solve_row_membership ~reversed (rng : Range.t) (label : label) (ty : mono_type) (row : mono_row) : mono_row =
+  match row with
+  | RowCons((rng0, label0), ty0, row0) ->
+      if String.equal label0 label then begin
+        unify_sub ~reversed ty0 ty;
+        row0
+      end else
+        let row0rest = solve_row_membership ~reversed rng label ty row0 in
+        RowCons((rng0, label0), ty0, row0rest)
+
+  | RowVar(UpdatableRow{contents = MonoORLink(row0)}) ->
+      solve_row_membership ~reversed rng label ty row0
+
+  | RowVar(UpdatableRow({contents = MonoORFree(orv0)} as orvuref0)) ->
+      let labset0 = KindStore.get_free_row_id orv0 in
+      if labset0 |> LabelSet.mem label then
+        failwith "TODO (error): reject for the disjointness"
+      else begin
+        let lev = OptionRowVarID.get_level orv0 in
+        let orv1 = OptionRowVarID.fresh lev in
+        KindStore.register_free_row_id orv1 LabelSet.empty;
+        let orvuref1 = ref (MonoORFree(orv1)) in
+        let row_rest = RowVar(UpdatableRow(orvuref1)) in
+        let row_new = RowCons((rng, label), ty, row_rest) in
+        orvuref0 := MonoORLink(row_new);
+        row_rest
+      end
+
+  | RowEmpty ->
+      failwith "TODO (error): solve_membership_aux, RowEmpty"
+
+
+and unify_row ~reversed (row1 : mono_row) (row2 : mono_row) =
+  match (row1, row2) with
+  | (RowVar(UpdatableRow{contents = MonoORLink(row1sub)}), _) ->
+      unify_row ~reversed row1sub row2
+
+  | (_, RowVar(UpdatableRow{contents = MonoORLink(row2sub)})) ->
+      unify_row ~reversed row1 row2sub
+
+  | (RowVar(UpdatableRow({contents = MonoORFree(orv1)} as orviref1)), RowVar(UpdatableRow{contents = MonoORFree(orv2)})) ->
+      if OptionRowVarID.equal orv1 orv2 then
+        ()
+      else
+        orviref1 := MonoORLink(row2)
+
+  | (RowVar(UpdatableRow({contents = MonoORFree(orv1)} as orviref1)), _) ->
+      if occurs_row orv1 row2 then
+        raise InternalInclusionError
+      else begin
+        let labset1 = KindStore.get_free_row_id orv1 in
+        solve_row_disjointness row2 labset1;
+        orviref1 := MonoORLink(row2)
+      end
+
+  | (_, RowVar(UpdatableRow({contents = MonoORFree(orv2)} as orviref2))) ->
+      if occurs_row orv2 row1 then
+        raise InternalInclusionError
+      else begin
+        let labset2 = KindStore.get_free_row_id orv2 in
+        solve_row_disjointness row1 labset2;
+        orviref2 := MonoORLink(row1)
+      end
+
+  | (RowCons((rng, label), ty1, row1sub), _) ->
+      let row2rest = solve_row_membership ~reversed rng label ty1 row2 in
+      unify_row ~reversed row1sub row2rest
 
   | (RowEmpty, RowEmpty) ->
       ()
 
-  | (RowVar(UpdatableRow{contents = MonoORLink(optrow1)}), _) ->
-      unify_row ~reversed optrow1 optrow2
-
-  | (_, OptionRowVariable(UpdatableRow{contents = MonoORLink(optrow2)})) ->
-      unify_option_row ~reversed optrow1 optrow2
-
-  | (OptionRowVariable(UpdatableRow({contents = MonoORFree(orv1)} as orviref1)),
-        OptionRowVariable(UpdatableRow{contents = MonoORFree(orv2)})) ->
-      if OptionRowVarID.equal orv1 orv2 then () else
-        orviref1 := MonoORLink(optrow2)
-
-  | (OptionRowVariable(UpdatableRow({contents = MonoORFree(orv1)} as orviref1)), _) ->
-      if occurs_optional_row orv1 optrow2 then
-        raise InternalInclusionError
-      else
-        orviref1 := MonoORLink(optrow2)
-
-  | (_, OptionRowVariable(UpdatableRow({contents = MonoORFree(orv2)} as orviref2))) ->
-      if occurs_optional_row orv2 optrow1 then
-        raise InternalInclusionError
-      else
-        orviref2 := MonoORLink(optrow1)
-
-  | (OptionRowEmpty, OptionRowCons(_, _))
-  | (OptionRowCons(_, _), OptionRowEmpty) ->
+  | (RowEmpty, RowCons(_, _, _)) ->
       raise (InternalContradictionError(reversed))
-*)
+
 
 let unify (ty1 : mono_type) (ty2 : mono_type) =
   try

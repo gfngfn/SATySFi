@@ -91,6 +91,8 @@ module EvalVarIDMap = Map.Make(EvalVarID)
 
 module OpaqueIDSet = Set.Make(TypeID)
 
+module LabelSet = Set.Make(String)
+
 type 'a abstracted =
   OpaqueIDSet.t * 'a
 

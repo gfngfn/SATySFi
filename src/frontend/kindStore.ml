@@ -45,3 +45,11 @@ let get_bound_id (bid : BoundID.t) =
   match BoundIDHashTable.find_opt bound_id_table bid with
   | None         -> assert false
   | Some(bentry) -> bentry
+
+
+let get_free_row_id (orv : OptionRowVarID.t) : LabelSet.t =
+  failwith "TODO: get_free_row_id"
+
+
+let register_free_row_id (orv : OptionRowVarID.t) (labset : LabelSet.t) : unit =
+  failwith "TODO: register_free_row_id"
