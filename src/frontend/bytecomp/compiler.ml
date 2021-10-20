@@ -181,14 +181,14 @@ and compile (ir : ir) (cont : instruction list) =
   | IRLetNonRecIn(ir1, irpat, ir2) ->
       compile ir1 @@ compile_patsel (Range.dummy "LetNonRecIn") [IRPatternBranch(irpat, ir2)] cont
 
-  | IRFunction(framesize, optvars, irpatlst, irbody) ->
+  | IRFunction(framesize, varloc_labmap, irpatlst, irbody) ->
       let body = compile irbody [] in
       let patlst = compile_patlist irpatlst body in
       let (optcode, n) = optimize_func_prologue patlst in
       if framesize - n = 0 then
-        OpClosure(optvars, List.length irpatlst, 0, optcode) :: cont
+        OpClosure(varloc_labmap, List.length irpatlst, 0, optcode) :: cont
       else
-        OpClosure(optvars, List.length irpatlst, framesize, optcode) :: cont
+        OpClosure(varloc_labmap, List.length irpatlst, framesize, optcode) :: cont
 
   | IRApply(arity, ircallee, irargs) ->
       let n = List.length irargs in
@@ -279,9 +279,9 @@ and compile (ir : ir) (cont : instruction list) =
       let instrs2 = compile ir2 [] in
       OpCodeLetNonRec(irpat, instrs1, instrs2) :: cont
 
-  | IRCodeFunction(optvars, irpat, ir1) ->
+  | IRCodeFunction(varloc_labmap, irpat, ir1) ->
       let instrs1 = compile ir1 [] in
-      OpCodeFunction(optvars, irpat, instrs1) :: cont
+      OpCodeFunction(varloc_labmap, irpat, instrs1) :: cont
 
   | IRCodeLetMutableIn(var, ir1, ir2) ->
       let instrs1 = compile ir1 [] in

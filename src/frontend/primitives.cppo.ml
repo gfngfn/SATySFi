@@ -303,8 +303,8 @@ let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
     ]
 
 
-let lam evid ast =
-  Function([], PatternBranch(PVariable(evid), ast))
+let lam (evid : EvalVarID.t) (ast : abstract_tree) : abstract_tree =
+  Function(LabelMap.empty, PatternBranch(PVariable(evid), ast))
 
 let lamenv env evid arity ast astf =
   PrimitiveClosure(PatternBranch(PVariable(evid), ast), env, arity, astf)
@@ -642,7 +642,7 @@ let general_table : (var_name * poly_type * (environment -> syntactic_value)) li
     [
       ( "!"  , ptyderef             , lambda1 (fun v1 -> Dereference(v1))                   );
       ( "::" , ptycons              , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))      );
-      ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(vf, vx))                  );
+      ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(LabelMap.empty, vf, vx))  );
       ( "<>" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(EqualTo(v1, v2)))    );
       ( ">=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(LessThan(v1, v2)))   );
       ( "<=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))));

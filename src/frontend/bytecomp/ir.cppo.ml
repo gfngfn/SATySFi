@@ -266,8 +266,14 @@ and add_letrec_bindings_to_environment (env : frame) (recbinds : letrec_binding 
 and flatten_function (astfun : abstract_tree) : abstract_tree * pattern_tree list =
   let rec iter ast acc =
     match ast with
-    | Function([], PatternBranch(pat, body)) -> iter body (Alist.extend acc pat)
-    | _                                      -> (ast, Alist.to_list acc)
+    | Function(evid_labmap, PatternBranch(pat, body)) ->
+        if LabelMap.cardinal evid_labmap = 0 then
+          iter body (Alist.extend acc pat)
+        else
+          (ast, Alist.to_list acc)
+
+    | _ ->
+        (ast, Alist.to_list acc)
   in
   iter astfun Alist.empty
 
@@ -275,8 +281,14 @@ and flatten_function (astfun : abstract_tree) : abstract_tree * pattern_tree lis
 and flatten_application apast =
   let rec iter ast acc =
     match ast with
-    | Apply(ast1, ast2) -> iter ast1 (ast2 :: acc)
-    | _                 -> (ast, acc)
+    | Apply(ast_labmap, ast1, ast2) ->
+        if LabelMap.cardinal ast_labmap = 0 then
+          iter ast1 (ast2 :: acc)
+        else
+          (ast, acc)
+
+    | _ ->
+        (ast, acc)
   in
   iter apast []
 
@@ -473,28 +485,25 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | IfThenElse(ast0, ast1, ast2) ->
       code3 env (fun cv0 cv1 cv2 -> CdIfThenElse(cv0, cv1, cv2)) ast0 ast1 ast2
 
-  | Function(evids, PatternBranch(pat, ast1)) ->
-      let (optvaracc, env) =
-        evids |> List.fold_left (fun (optvaracc, env) evid ->
+  | Function(evid_labmap, PatternBranch(pat, ast1)) ->
+      let (varloc_labmap, env) =
+        LabelMap.fold (fun label evid (varloc_labmap, env) ->
           let (var, env) = add_to_environment env evid in
-          (Alist.extend optvaracc var, env)
-        ) (Alist.empty, env)
+          (varloc_labmap |> LabelMap.add label var, env)
+        ) evid_labmap (LabelMap.empty, env)
       in
       let (irpat, env) = transform_pattern env pat in
       let (ir1, env) = transform_1 env ast1 in
-      (IRCodeFunction(Alist.to_list optvaracc, irpat, ir1), env)
+      (IRCodeFunction(varloc_labmap, irpat, ir1), env)
 
   | Function(_, PatternBranchWhen(_, _, _)) ->
       assert false
 
-  | Apply(ast1, ast2) ->
+  | Apply(ast_labmap, ast1, ast2) ->
+      failwith "TODO: Ir, Apply"
+(*
       code2 env (fun cv1 cv2 -> CdApply(cv1, cv2)) ast1 ast2
-
-  | ApplyOptional(ast1, ast2) ->
-      code2 env (fun cv1 cv2 -> CdApplyOptional(cv1, cv2)) ast1 ast2
-
-  | ApplyOmission(ast1) ->
-      code1 env (fun cv -> CdApplyOmission(cv)) ast1
+*)
 
   | PatternMatch(rng, ast1, patbrs) ->
       let (ir1, env) = transform_1 env ast1 in
@@ -596,7 +605,7 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       let varir_lst =
         pairs |> List.map (fun pair ->
           let (var, patbr) = pair in
-          let (ir, _) = transform_0 env (Function([], patbr)) in
+          let (ir, _) = transform_0 env (Function(LabelMap.empty, patbr)) in
           (var, ir)
         )
       in
@@ -609,25 +618,31 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       let (ir2, env) = transform_0 env ast2 in
       (IRLetNonRecIn(ir1, irpat, ir2), env)
 
-  | Function([], _) ->
-      let (body, args) = flatten_function ast in
-      let funenv = new_level env in
-      let (irargs, funenv) = transform_pattern_list funenv args in
-      let (irbody, funenv) = transform_0 funenv body in
-      (IRFunction(funenv.size, [], irargs, irbody), env)
-
-  | Function((_ :: _) as evids, PatternBranch(arg, body)) ->
-      let funenv = new_level env in
-      let (optvars, funenv) = map_with_env add_to_environment funenv evids in
-      let (irarg, funenv) = transform_pattern funenv arg in
-      let (irbody, funenv) = transform_0 funenv body in
-      (IRFunction(funenv.size, optvars, [irarg], irbody), env)
+  | Function(evid_labmap, PatternBranch(arg, body)) ->
+      if LabelMap.cardinal evid_labmap = 0 then
+        let (body, args) = flatten_function ast in
+        let funenv = new_level env in
+        let (irargs, funenv) = transform_pattern_list funenv args in
+        let (irbody, funenv) = transform_0 funenv body in
+        (IRFunction(funenv.size, LabelMap.empty, irargs, irbody), env)
+      else
+        let funenv = new_level env in
+        let (varloc_labmap, funenv) =
+          LabelMap.fold (fun label evid (varloc_labmap, funenv) ->
+            let (varloc, funenv) = add_to_environment funenv evid in
+            (varloc_labmap |> LabelMap.add label varloc, funenv)
+          ) evid_labmap (LabelMap.empty, funenv)
+        in
+        let (irarg, funenv) = transform_pattern funenv arg in
+        let (irbody, funenv) = transform_0 funenv body in
+        (IRFunction(funenv.size, varloc_labmap, [irarg], irbody), env)
 
   | Function(_, PatternBranchWhen(_, _, _)) ->
       assert false
 
-  | Apply(_, _) ->
-      let (astcallee, astargs) = flatten_application ast in
+  | Apply(ast_labmap, _, _) ->
+      if LabelMap.cardinal ast_labmap = 0 then
+        let (astcallee, astargs) = flatten_application ast in
         begin
           match check_primitive env astcallee with
           | Some((arity, astf))  when arity = List.length astargs ->
@@ -638,15 +653,8 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
               let (irargs, env) = transform_0_list env astargs in
               (IRApply(List.length irargs, ircallee, irargs), env)
         end
-
-  | ApplyOptional(ast1, ast2) ->
-      let (ir1, env) = transform_0 env ast1 in
-      let (ir2, env) = transform_0 env ast2 in
-      (IRApplyOptional(ir1, ir2), env)
-
-  | ApplyOmission(ast1) ->
-      let (ir1, env) = transform_0 env ast1 in
-      (IRApplyOmission(ir1), env)
+      else
+        failwith "TODO: Ir, Apply"
 
   | IfThenElse(astb, ast1, ast2) ->
       let (irb, env) = transform_0 env astb in

@@ -42,7 +42,7 @@
           (Range.unite rng rngtail, UTListCons(utast, utasttail))
 
 
-  let rec curry_lambda_abstract (optargacc : (Range.t * var_name) Alist.t) (rng : Range.t) (utarglst : untyped_argument list) (utastdef : untyped_abstract_tree) =
+  let rec curry_lambda_abstract (optargacc : (label ranged * var_name) Alist.t) (rng : Range.t) (utarglst : untyped_argument list) (utastdef : untyped_abstract_tree) =
     match utarglst with
     | [] ->
         utastdef
@@ -51,7 +51,10 @@
         (rng, UTFunction(Alist.to_list optargacc, argpat, curry_lambda_abstract Alist.empty rng utargtail utastdef))
 
     | UTOptionalArgument(rngvar, varnm) :: utargtail ->
+        failwith "TODO: curry_lambda_abstract"
+(*
         curry_lambda_abstract (Alist.extend optargacc (rngvar, varnm)) rng utargtail utastdef
+*)
 
 
   let curry_lambda_abstract_pattern (rng : Range.t) (argpatlst : untyped_pattern_tree list) =
@@ -159,7 +162,7 @@
   let binary_operator (utastL : untyped_abstract_tree) (optok : Range.t * var_name) (utastR : untyped_abstract_tree) : untyped_abstract_tree =
     let (rngop, opnm) = optok in
     let rng = make_range (Ranged utastL) (Ranged utastR) in
-      (rng, UTApply((Range.dummy "binary_operator", UTApply((rngop, UTContentOf([], opnm)), utastL)), utastR))
+      (rng, UTApply([], (Range.dummy "binary_operator", UTApply([], (rngop, UTContentOf([], opnm)), utastL)), utastR))
 
 
   let make_standard sttknd endknd main =
@@ -745,26 +748,29 @@ nxrtimes:
 ;
 nxun:
   | tok=EXACT_MINUS; utast2=nxapp    { binary_operator (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0)) (tok, "-") utast2 }
-  | tok=LNOT; utast2=nxapp           { make_standard (Tok tok) (Ranged utast2) (UTApply((tok, UTContentOf([], "not")), utast2)) }
+  | tok=LNOT; utast2=nxapp           { make_standard (Tok tok) (Ranged utast2) (UTApply([], (tok, UTContentOf([], "not")), utast2)) }
   | constr=CONSTRUCTOR; utast2=nxbot { make_standard (Ranged constr) (Ranged utast2) (UTConstructor(extract_name constr, utast2)) }
   | constr=CONSTRUCTOR               { let (rng, constrnm) = constr in (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
   | utast=nxapp                      { utast }
 ;
 nxapp:
-  | utast1=nxapp; utast2=nxunsub { make_standard (Ranged utast1) (Ranged utast2) (UTApply(utast1, utast2)) }
+  | utast1=nxapp; utast2=nxunsub {
+      let optargs = failwith "TODO: nxapp, optargs" in
+      make_standard (Ranged utast1) (Ranged utast2) (UTApply(optargs, utast1, utast2))
+    }
   | utast1=nxapp; constr=CONSTRUCTOR {
+      let optargs = failwith "TODO: nxapp, optargs" in
       let (rng, constrnm) = constr in
-      make_standard (Ranged utast1) (Tok rng) (UTApply(utast1, (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant)))))
+      make_standard (Ranged utast1) (Tok rng) (UTApply(optargs, utast1, (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant)))))
     }
   | pre=COMMAND; hcmd=hcmd {
       let (rng, mdlnmlst, csnm) = hcmd in
       make_standard (Tok pre) (Tok rng) (UTContentOf(mdlnmlst, csnm))
     }
-  | utast1=nxapp; OPTIONAL; utast2=nxunsub { make_standard (Ranged utast1) (Ranged utast2) (UTApplyOptional(utast1, utast2)) }
   | utast=nxunsub                          { utast }
 ;
 nxunsub:
-  | unop=UNOP_EXCLAM; utast2=nxbot { let (rng, varnm) = unop in make_standard (Tok rng) (Ranged utast2) (UTApply((rng, UTContentOf([], varnm)), utast2)) }
+  | unop=UNOP_EXCLAM; utast2=nxbot { let (rng, varnm) = unop in make_standard (Tok rng) (Ranged utast2) (UTApply([], (rng, UTContentOf([], varnm)), utast2)) }
   | tok=EXACT_AMP; utast2=nxbot    { make_standard (Tok tok) (Ranged utast2) (UTNext(utast2)) }
   | tok=EXACT_TILDE; utast2=nxbot  { make_standard (Tok tok) (Ranged utast2) (UTPrev(utast2)) }
   | utast=nxbot                    { utast }

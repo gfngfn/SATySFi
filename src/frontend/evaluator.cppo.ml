@@ -57,14 +57,22 @@ let generate_symbol_for_eval_var_id (evid : EvalVarID.t) (env : environment) : e
   (envnew, symb)
 
 
-let rec reduce_beta value1 value2 =
+let rec reduce_beta ?optional:(ast_labmap : abstract_tree LabelMap.t = LabelMap.empty) (value1 : syntactic_value) (value2 : syntactic_value) =
   match value1 with
-  | Closure(evids, patbr, env1) ->
+  | Closure(evid_labmap, patbr, env1) ->
       let env1 =
-        evids |> List.fold_left (fun env evid ->
-          let loc = ref (Constructor("None", const_unit)) in
+        LabelMap.fold (fun label evid env ->
+          let loc =
+            match ast_labmap |> LabelMap.find_opt label with
+            | None ->
+                ref (Constructor("None", const_unit))
+
+            | Some(ast0) ->
+                let (value0, _) = interpret_0 env ast0 in
+                ref (Constructor("Some", value0))
+          in
           add_to_environment env evid loc
-        ) env1
+        ) evid_labmap env1
       in
       fst @@ select_pattern (Range.dummy "Apply") env1 value2 [patbr]
 
@@ -212,35 +220,10 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
   | Function(evids, patbrs) ->
       return @@ Closure(evids, patbrs, env)
 
-  | Apply(ast1, ast2) ->
+  | Apply(ast_labmap, ast1, ast2) ->
       let (value1, _) = interpret_0 env ast1 in
       let (value2, _) = interpret_0 env ast2 in
-      return @@ reduce_beta value1 value2
-
-  | ApplyOptional(ast1, ast2) ->
-      let (value1, _) = interpret_0 env ast1 in
-      begin
-        match value1 with
-        | Closure(evid :: evids, patbrs, env1) ->
-            let (value2, _) = interpret_0 env ast2 in
-            let loc = ref (Constructor("Some", value2)) in
-            let env1 = add_to_environment env1 evid loc in
-            return @@ Closure(evids, patbrs, env1)
-
-        | _ -> report_bug_reduction "ApplyOptional: not a function with optional parameter" ast1 value1
-      end
-
-  | ApplyOmission(ast1) ->
-      let (value1, _) = interpret_0 env ast1 in
-      begin
-        match value1 with
-        | Closure(evid :: evids, patbrs, env1) ->
-            let env1 = add_to_environment env1 evid (ref (Constructor("None", const_unit))) in
-            return @@ Closure(evids, patbrs, env1)
-
-        | _ ->
-            report_bug_reduction "ApplyOmission: not a function with optional parameter" ast1 value1
-      end
+      return @@ reduce_beta ~optional:ast_labmap value1 value2
 
   | IfThenElse(astb, ast1, ast2) ->
       let (valueb, _) = interpret_0 env astb in
@@ -439,29 +422,26 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       let (code2, envopt2) = interpret_1 env ast2 in
       (CdLetNonRecIn(cdpattr, code1, code2), envopt2)
 
-  | Function(evids, patbr) ->
-      let (env, symbacc) =
-        evids |> List.fold_left (fun (env, symbacc) evid ->
+  | Function(evid_labmap, patbr) ->
+      let (env, symb_labmap) =
+        LabelMap.fold (fun label evid (env, symb_labmap) ->
           let (env, symb) = generate_symbol_for_eval_var_id evid env in
-          (env, Alist.extend symbacc symb)
-        ) (env, Alist.empty)
+          (env, symb_labmap |> LabelMap.add label symb)
+        ) evid_labmap (env, LabelMap.empty)
       in
       let cdpatbr = interpret_1_pattern_branch env patbr in
-      return @@ CdFunction(Alist.to_list symbacc, cdpatbr)
+      return @@ CdFunction(symb_labmap, cdpatbr)
 
-  | Apply(ast1, ast2) ->
+  | Apply(ast_labmap, ast1, ast2) ->
       let (code1, _) = interpret_1 env ast1 in
       let (code2, _) = interpret_1 env ast2 in
-      return @@ CdApply(code1, code2)
-
-  | ApplyOptional(ast1, ast2) ->
-      let (code1, _) = interpret_1 env ast1 in
-      let (code2, _) = interpret_1 env ast2 in
-      return @@ CdApplyOptional(code1, code2)
-
-  | ApplyOmission(ast1) ->
-      let (code1, _) = interpret_1 env ast1 in
-      return @@ CdApplyOmission(code1)
+      let code_labmap =
+        ast_labmap |> LabelMap.map (fun ast0 ->
+          let (code0, _) = interpret_1 env ast0 in
+          code0
+        )
+      in
+      return @@ CdApply(code_labmap, code1, code2)
 
   | IfThenElse(ast0, ast1, ast2) ->
       let (code0, _) = interpret_1 env ast0 in
@@ -853,21 +833,21 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
 
 
 and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_binding list) : environment =
-  let trilst =
+  let tris =
     recbinds |> List.map (function LetRecBinding(evid, patbr) ->
       let loc = ref Nil in
       (evid, loc, patbr)
     )
   in
-  let envnew =
-    trilst @|> env @|> List.fold_left (fun envacc (evid, loc, _) ->
-      add_to_environment envacc evid loc
-    )
+  let env =
+    tris |> List.fold_left (fun env (evid, loc, _) ->
+      add_to_environment env evid loc
+    ) env
   in
-  trilst |> List.iter (fun (evid, loc, patbr) ->
-    loc := Closure([], patbr, envnew)
+  tris |> List.iter (fun (evid, loc, patbr) ->
+    loc := Closure(LabelMap.empty, patbr, env)
   );
-  envnew
+  env
 
 
 let interpret_bindings_0 (env : environment) (binds : binding list) : environment =

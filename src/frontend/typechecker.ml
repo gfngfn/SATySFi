@@ -114,24 +114,25 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
       (tyarglst, tyid, ty)
 
 
-let abstraction evid ast =
-  Function([], PatternBranch(PVariable(evid), ast))
+let abstraction (evid : EvalVarID.t) (ast : abstract_tree) : abstract_tree =
+  Function(LabelMap.empty, PatternBranch(PVariable(evid), ast))
 
 
-let abstraction_list evids ast =
+let abstraction_list (evids : EvalVarID.t list) (ast : abstract_tree) : abstract_tree =
   List.fold_right abstraction evids ast
 
 
-let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs : (Range.t * var_name) list) : mono_row * EvalVarID.t list * Typeenv.t =
+let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs : (label ranged * var_name) list) : mono_row * EvalVarID.t LabelMap.t * Typeenv.t =
   let qtfbl = pre.quantifiability in
   let lev = pre.level in
-  let (tyenvnew, tyacc, evidacc) =
-    optargs |> List.fold_left (fun (tyenv, tyacc, evidacc) (rng, varnm) ->
+  let (tyenv, row, evid_labmap) =
+    optargs |> List.fold_left (fun (tyenv, row, evid_labmap) (rlabel, varnm) ->
+      let (rng, label) = rlabel in
       let evid = EvalVarID.fresh (rng, varnm) in
-      let tvid = fresh_free_id UniversalKind qtfbl lev in
-      let tv = Updatable(ref (MonoFree(tvid))) in
+      let fid = fresh_free_id UniversalKind qtfbl lev in
+      let tv = Updatable(ref (MonoFree(fid))) in
       let beta = (rng, TypeVariable(PolyFree(tv))) in
-      let tyenvnew =
+      let tyenv =
         let ventry =
           {
             val_name  = evid;
@@ -139,17 +140,12 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
             val_stage = pre.stage;
           }
         in
-        tyenv |> Typeenv.add_value varnm ventry in
-        (tyenvnew, Alist.extend tyacc (rng, TypeVariable(tv)), Alist.extend evidacc evid)
-    ) (tyenv, Alist.empty, Alist.empty)
+        tyenv |> Typeenv.add_value varnm ventry
+      in
+      (tyenv, RowCons(rlabel, (rng, TypeVariable(tv)), row), evid_labmap |> LabelMap.add label evid)
+    ) (tyenv, RowEmpty, LabelMap.empty)
   in
-  let optrow =
-    List.fold_right (fun ty acc ->
-      let rlabel = failwith "TODO: add_optionals_to_type_environment, rlabel" in
-      RowCons(rlabel, ty, acc)
-    ) (Alist.to_list tyacc) RowEmpty
-  in
-  (optrow, Alist.to_list evidacc, tyenvnew)
+  (row, evid_labmap, tyenv)
 
 
 let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (macparams : untyped_macro_parameter list) : Typeenv.t * EvalVarID.t list * macro_parameter_type list =
@@ -259,12 +255,12 @@ let point_type_main =
     []))
 
 
-(* -- 'apply_tree_of_list': converts e0 and [e1; ...; eN] into (e0 e1 ... eN) -- *)
-let apply_tree_of_list astfunc astlst =
-  List.fold_left (fun astf astx -> Apply(astf, astx)) astfunc astlst
+(* `apply_tree_of_list` converts `e0` and `[e1; ...; eN]` into `(e0 e1 ... eN)`. *)
+let apply_tree_of_list (astfunc : abstract_tree) (asts : abstract_tree list) =
+  List.fold_left (fun astf astx -> Apply(LabelMap.empty, astf, astx)) astfunc asts
 
 
-(* -- 'flatten_type': converts type (t1 -> ... -> tN -> t) into ([t1; ...; tN], t) -- *)
+(* `flatten_type` converts type `(t1 -> ... -> tN -> t)` into `([t1; ...; tN], t)`. *)
 let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type =
 
   let rec aux_or = function
@@ -912,23 +908,30 @@ let rec typecheck
       unify tyret (Range.dummy "lambda-math-return", BaseType(MathType));
       (eF, (rng, MathCommandType(cmdargtylist)))
 
-  | UTApply(utast1, utast2) ->
+  | UTApply(opts, utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
-      let eret = Apply(e1, e2) in
+      let (e_labmap, row0) =
+        let frid = FreeRowID.fresh pre.level in
+        let orvuref = ref (MonoORFree(frid)) in
+        opts |> List.fold_left (fun (e_labmap, row) (rlabel, utast0) ->
+          let (_, label) = rlabel in
+          let (e0, ty0) = typecheck_iter tyenv utast0 in
+          (e_labmap |> LabelMap.add label e0, RowCons(rlabel, ty0, row))
+        ) (LabelMap.empty, RowVar(UpdatableRow(orvuref)))
+      in
+      let eret = Apply(e_labmap, e1, e2) in
       begin
         match unlink ty1 with
-        | (_, FuncType(_, tydom, tycod)) ->
-            unify tydom ty2;
+        | (_, FuncType(row, tydom, tycod)) ->
+            unify_row ~reversed:false row0 row;
+            unify ty2 tydom;
             let tycodnew = overwrite_range_of_type tycod rng in
             (eret, tycodnew)
 
         | (_, TypeVariable(_)) as ty1 ->
             let beta = fresh_type_variable rng pre UniversalKind in
-            let orv = FreeRowID.fresh pre.level in
-            let orvuref = ref (MonoORFree(orv)) in
-            let optrow = RowVar(UpdatableRow(orvuref)) in
-            unify ty1 (get_range utast1, FuncType(optrow, ty2, beta));
+            unify ty1 (get_range utast1, FuncType(row0, ty2, beta));
             (eret, beta)
 
         | ty1 ->
@@ -936,36 +939,11 @@ let rec typecheck
             raise (ApplicationOfNonFunction(rng1, ty1))
       end
 
-  | UTApplyOptional(utast1, utast2) ->
-      failwith "TODO: UTApplyOptional"
-(*
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      let eret = ApplyOptional(e1, e2) in
-      begin
-        match ty1 with
-        | (_, FuncType(RowCons(_, tyopt, optrow), tydom, tycod)) ->
-            (* TODO: fix this *)
-            unify tyopt ty2;
-            let tynew = (rng, FuncType(optrow, tydom, tycod)) in
-              (eret, tynew)
-
-        | _ ->
-            let beta1 = fresh_type_variable (Range.dummy "UTApplyOptional:dom") pre UniversalKind in
-            let beta2 = fresh_type_variable (Range.dummy "UTApplyOptional:cod") pre UniversalKind in
-            let orv = FreeRowID.fresh pre.level in
-            let orvuref = ref (MonoORFree(orv)) in
-            let optrow = OptionRowVariable(UpdatableRow(orvuref)) in
-            unify ty1 (get_range utast1, FuncType(OptionRowCons(ty2, optrow), beta1, beta2));
-            (eret, (rng, FuncType(optrow, beta1, beta2)))
-      end
-*)
-
   | UTFunction(optargs, pat, utast1) ->
       let utpatbr = UTPatternBranch(pat, utast1) in
-      let (optrow, evids, tyenvnew) = add_optionals_to_type_environment tyenv pre optargs in
-      let (patbr, typat, ty1) = typecheck_pattern_branch pre tyenvnew utpatbr in
-      (Function(evids, patbr), (rng, FuncType(optrow, typat, ty1)))
+      let (optrow, evid_labmap, tyenv) = add_optionals_to_type_environment tyenv pre optargs in
+      let (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
+      (Function(evid_labmap, patbr), (rng, FuncType(optrow, typat, ty1)))
 
   | UTPatternMatch(utastO, utpatbrs) ->
       let (eO, tyO) = typecheck_iter tyenv utastO in
@@ -1231,20 +1209,23 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
     | (UTMandatoryArgument(utastA) :: utcmdargtail, MandatoryArgumentType(tyreq) :: cmdargtytail) ->
         let (eA, tyA) = typecheck pre tyenv utastA in
         unify tyA tyreq;
-        aux (Apply(eacc, eA)) utcmdargtail cmdargtytail
+        aux (Apply(LabelMap.empty, eacc, eA)) utcmdargtail cmdargtytail
 
     | (UTOptionalArgument(utastA) :: utcmdargtail, OptionalArgumentType(rlabel, tyreq) :: cmdargtytail) ->
-        (* TODO: fix this for using `rlabel` *)
+        failwith "TODO: fix this for using rlabel"
+(*
         let (eA, tyA) = typecheck pre tyenv utastA in
         unify tyA tyreq;
         aux (ApplyOptional(eacc, eA)) utcmdargtail cmdargtytail
-
+*)
     | (UTOptionalArgument((rngA, _)) :: _, MandatoryArgumentType(_) :: _) ->
         raise (InvalidOptionalCommandArgument(tycmd, rngA))
 
     | (UTOmission(_) :: utcmdargtail, OptionalArgumentType(rlabel, tyreq) :: cmdargtytail) ->
-        (* TODO: fix this for using `rlabel` *)
+        failwith "TODO: fix this for using rlabel"
+(*
         aux (ApplyOmission(eacc)) utcmdargtail cmdargtytail
+*)
 
     | (UTOmission(rngA) :: _, MandatoryArgumentType(_) :: _) ->
         raise (InvalidOptionalCommandArgument(tycmd, rngA))
@@ -1370,7 +1351,7 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
                 | UTOmission(rng) :: _               -> Range.unite rngcmd rng
               in
               let evid = EvalVarID.fresh (Range.dummy "ctx-vert", "%ctx-vert") in
-              let ecmdctx = Apply(ecmd, ContentOf(Range.dummy "ctx-vert", evid)) in
+              let ecmdctx = Apply(LabelMap.empty, ecmd, ContentOf(Range.dummy "ctx-vert", evid)) in
               let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp pre tyenv utcmdarglst cmdargtylstreq in
               let eabs = abstraction evid eapp in
               aux (Alist.extend acc (InputVertEmbedded(eabs))) tail
@@ -1436,7 +1417,7 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
 
           | HorzCommandType(cmdargtylstreq) ->
               let evid = EvalVarID.fresh (Range.dummy "ctx-horz", "%ctx-horz") in
-              let ecmdctx = Apply(ecmd, ContentOf(Range.dummy "ctx-horz", evid)) in
+              let ecmdctx = Apply(LabelMap.empty, ecmd, ContentOf(Range.dummy "ctx-horz", evid)) in
               let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp pre tyenv utcmdarglst cmdargtylstreq in
               let eabs = abstraction evid eapp in
               aux (Alist.extend acc (InputHorzEmbedded(eabs))) tail
@@ -1684,15 +1665,19 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letre
       let (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenv utast1 in
       begin
         match e1 with
-        | Function([], patbr1) ->
-            unify ty1 beta;
-            mntyopt |> Option.map (fun mnty ->
-              let tyin = decode_manual_type pre tyenv mnty in
-              unify tyin beta
-            ) |> Option.value ~default:();
-            let recbind = LetRecBinding(evid, patbr1) in
-            let tupleacc = Alist.extend tupleacc (varnm, beta, evid, recbind) in
-            tupleacc
+        | Function(evid_labmap, patbr1) ->
+            if LabelMap.cardinal evid_labmap = 0 then begin
+              unify ty1 beta;
+              mntyopt |> Option.map (fun mnty ->
+                let tyin = decode_manual_type pre tyenv mnty in
+                unify tyin beta
+              ) |> Option.value ~default:();
+              let recbind = LetRecBinding(evid, patbr1) in
+              let tupleacc = Alist.extend tupleacc (varnm, beta, evid, recbind) in
+              tupleacc
+            end else
+            let (rng1, _) = utast1 in
+            raise (BreaksValueRestriction(rng1))
 
         | _ ->
             let (rng1, _) = utast1 in

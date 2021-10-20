@@ -53,6 +53,25 @@ module OpaqueIDSet = Set.Make(TypeID)
 
 module LabelSet = Set.Make(String)
 
+module LabelMap = struct
+  include Map.Make(String)
+
+
+  let pp pp_v ppf labmap =
+    Format.fprintf ppf "@[<hv1>{";
+    fold (fun k v is_first ->
+      begin
+        if is_first then
+          Format.fprintf ppf "%s -> %a" k pp_v v
+        else
+          Format.fprintf ppf ",@ %s -> %a" k pp_v v
+      end;
+      false
+    ) labmap true |> ignore;
+    Format.fprintf ppf "@]"
+
+end
+
 type 'a abstracted =
   OpaqueIDSet.t * 'a
 
@@ -385,11 +404,10 @@ and untyped_abstract_tree_main =
   | UTUpdateField          of untyped_abstract_tree * field_name * untyped_abstract_tree
 (* -- fundamental -- *)
   | UTContentOf            of (module_name list) * var_name
-  | UTApply                of untyped_abstract_tree * untyped_abstract_tree
-  | UTApplyOptional        of untyped_abstract_tree * untyped_abstract_tree
+  | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTFunction             of (Range.t * var_name) list * untyped_pattern_tree * untyped_abstract_tree
+  | UTFunction             of (label ranged * var_name) list * untyped_pattern_tree * untyped_abstract_tree
   | UTOpenIn               of Range.t * module_name * untyped_abstract_tree
 (* -- pattern match -- *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
@@ -593,7 +611,7 @@ and ir =
   | IRPersistent            of varloc
   | IRSymbolOf              of varloc
   | IRIfThenElse            of ir * ir * ir
-  | IRFunction              of int * varloc list * ir_pattern_tree list * ir
+  | IRFunction              of int * varloc LabelMap.t * ir_pattern_tree list * ir
   | IRApply                 of int * ir * ir list
   | IRApplyPrimitive        of instruction * int * ir list
   | IRApplyOptional         of ir * ir
@@ -614,7 +632,7 @@ and ir =
   | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
   | IRCodeLetRecIn          of ir_letrec_binding list * ir
   | IRCodeLetNonRecIn       of ir_pattern_tree * ir * ir
-  | IRCodeFunction          of varloc list * ir_pattern_tree * ir
+  | IRCodeFunction          of varloc LabelMap.t * ir_pattern_tree * ir
   | IRCodeLetMutableIn      of varloc * ir * ir
   | IRCodeOverwrite         of varloc * ir
   | IRCodeModule            of ir * ir
@@ -692,7 +710,7 @@ and instruction =
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopStr(...)")]
   | OpCheckStackTopTupleCons of instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopTupleCons(...)")]
-  | OpClosure of varloc list * int * int * instruction list
+  | OpClosure of varloc LabelMap.t * int * int * instruction list
   | OpClosureInputHorz of compiled_input_horz_element list
   | OpClosureInputVert of compiled_input_vert_element list
   | OpBindLocationGlobal of syntactic_value ref * EvalVarID.t
@@ -718,7 +736,7 @@ and instruction =
   | OpCodePatternMatch  of Range.t * ((instruction list) ir_pattern_branch_scheme) list
   | OpCodeLetRec        of ((instruction list) ir_letrec_binding_scheme) list * instruction list
   | OpCodeLetNonRec     of ir_pattern_tree * instruction list * instruction list
-  | OpCodeFunction      of varloc list * ir_pattern_tree * instruction list
+  | OpCodeFunction      of varloc LabelMap.t * ir_pattern_tree * instruction list
   | OpCodeLetMutable    of varloc * instruction list * instruction list
   | OpCodeOverwrite     of instruction list
   | OpCodeModule        of instruction list * instruction list
@@ -755,13 +773,13 @@ and syntactic_value =
   | EvaluatedEnvironment
 
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
-  | Closure          of EvalVarID.t list * pattern_branch * environment
+  | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
   | InputHorzClosure of intermediate_input_horz_element list * environment
   | InputVertClosure of intermediate_input_vert_element list * environment
 
 (* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
-  | CompiledClosure          of varloc list * int * syntactic_value list * int * instruction list * vmenv
+  | CompiledClosure          of varloc LabelMap.t * int * syntactic_value list * int * instruction list * vmenv
   | CompiledPrimitiveClosure of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
   | CompiledInputHorzClosure of compiled_intermediate_input_horz_element list * vmenv
   | CompiledInputVertClosure of compiled_intermediate_input_vert_element list * vmenv
@@ -786,10 +804,8 @@ and abstract_tree =
   | ContentOf             of Range.t * EvalVarID.t
   | Persistent            of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
-  | Function              of EvalVarID.t list * pattern_branch
-  | Apply                 of abstract_tree * abstract_tree
-  | ApplyOptional         of abstract_tree * abstract_tree
-  | ApplyOmission         of abstract_tree
+  | Function              of EvalVarID.t LabelMap.t * pattern_branch
+  | Apply                 of abstract_tree LabelMap.t * abstract_tree * abstract_tree
 (* -- pattern match -- *)
   | PatternMatch          of Range.t * abstract_tree * pattern_branch list
   | NonValueConstructor   of constructor_name * abstract_tree
@@ -912,10 +928,8 @@ and code_value =
   | CdPersistent    of Range.t * EvalVarID.t
   | CdLetRecIn      of code_letrec_binding list * code_value
   | CdLetNonRecIn   of code_pattern_tree * code_value * code_value
-  | CdFunction      of CodeSymbol.t list * code_pattern_branch
-  | CdApply         of code_value * code_value
-  | CdApplyOptional of code_value * code_value
-  | CdApplyOmission of code_value
+  | CdFunction      of CodeSymbol.t LabelMap.t * code_pattern_branch
+  | CdApply         of code_value LabelMap.t * code_value * code_value
   | CdIfThenElse    of code_value * code_value * code_value
   | CdRecord        of code_value Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "CdRecord(...)")]
@@ -1057,10 +1071,8 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map aux_letrec_binding cdrecbinds, aux code1)
     | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(aux_pattern cdpat, aux code1, aux code2)
-    | CdFunction(symbs, cdpatbr)           -> Function(List.map CodeSymbol.unlift symbs, aux_pattern_branch cdpatbr)
-    | CdApply(code1, code2)                -> Apply(aux code1, aux code2)
-    | CdApplyOptional(code1, code2)        -> ApplyOptional(aux code1, aux code2)
-    | CdApplyOmission(code1)               -> ApplyOmission(aux code1)
+    | CdFunction(symb_labmap, cdpatbr)     -> Function(symb_labmap |> LabelMap.map CodeSymbol.unlift, aux_pattern_branch cdpatbr)
+    | CdApply(code_labmap, code1, code2)   -> Apply(code_labmap |> LabelMap.map aux, aux code1, aux code2)
     | CdIfThenElse(code1, code2, code3)    -> IfThenElse(aux code1, aux code2, aux code3)
     | CdRecord(cdasc)                      -> Record(Assoc.map_value aux cdasc)
     | CdAccessField(code1, fldnm)          -> AccessField(aux code1, fldnm)

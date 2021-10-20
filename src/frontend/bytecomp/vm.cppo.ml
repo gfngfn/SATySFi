@@ -555,6 +555,8 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       end
 
   | OpApply(n) ->
+      failwith "TODO: Vm, OpApply"
+(*
       begin
         match stack with
         | (f, _) :: stack ->
@@ -605,8 +607,11 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 
         | _ -> report_bug_vm "invalid argument for OpApply"
       end
+*)
 
   | OpApplyT(n) ->
+      failwith "TODO: Vm, OpApplyT"
+(*
       begin
         match stack with
         | (f, _) :: stack ->
@@ -657,8 +662,11 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 
         | _ -> report_bug_vm "invalid argument for OpApplyT"
       end
+*)
 
   | OpApplyOptional ->
+      failwith "TODO: Vm, OpApplyOptional"
+(*
       begin
         match stack with
         | (v, _) :: (f, _) :: stack ->
@@ -676,8 +684,11 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 
         | _ -> report_bug_vm "invalid argument for OpApplyOptional"
       end
+*)
 
   | OpApplyOmission ->
+      failwith "TODO: Vm, OpApplyOmission"
+(*
       begin
         match stack with
         | (f, _) :: stack ->
@@ -695,6 +706,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 
         | _ -> report_bug_vm "invalid argument for OpApplyOmission"
       end
+*)
 
   | OpBindGlobal(loc, evid, refs) ->
       begin
@@ -947,8 +959,8 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | _ -> report_bug_vm "invalid argument for OpCheckStackTopTupleCons"
       end
 
-  | OpClosure(optvars, arity, framesize, body) ->
-      let entry = make_entry @@ CompiledClosure(optvars, arity, [], framesize, body, env) in
+  | OpClosure(varloc_labmap, arity, framesize, body) ->
+      let entry = make_entry @@ CompiledClosure(varloc_labmap, arity, [], framesize, body, env) in
       exec (entry :: stack) env code dump
 
   | OpClosureInputHorz(imihlst) ->
@@ -1168,17 +1180,17 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         (* -- returns the environment -- *)
       exec (entry :: stack) env code dump
 
-  | OpCodeFunction(optvars, irpat, instrs1) ->
-      let (optsymbacc, env) =
-        optvars |> List.fold_left (fun (optsymbacc, env) optvar ->
-          let (env, symb) = generate_symbol_and_add_to_environment env optvar in
-          (Alist.extend optsymbacc symb, env)
-        ) (Alist.empty, env)
+  | OpCodeFunction(varloc_labmap, irpat, instrs1) ->
+      let (symb_labmap, env) =
+        LabelMap.fold (fun label varloc (symb_labmap, env) ->
+          let (env, symb) = generate_symbol_and_add_to_environment env varloc in
+          (symb_labmap |> LabelMap.add label symb, env)
+        ) varloc_labmap (LabelMap.empty, env)
       in
       let (env, cdpat) = exec_code_pattern_tree env irpat in
       let value1 = exec_value [] env instrs1 [] in
       let cv1 = get_code value1 in
-      let entry = (CodeValue(CdFunction(Alist.to_list optsymbacc, CdPatternBranch(cdpat, cv1))), None) in
+      let entry = (CodeValue(CdFunction(symb_labmap, CdPatternBranch(cdpat, cv1))), None) in
       exec (entry :: stack) env code dump
 
   | OpCodeLetMutable(var, instrs1, instrs2) ->

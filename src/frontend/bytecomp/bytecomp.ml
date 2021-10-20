@@ -21,9 +21,12 @@ let compile_environment (env : environment) : unit =
     match !loc with
     | PrimitiveClosure(parbr, env1, arity, astf) ->
         begin
-          match compile_and_exec_0 env (Function([], parbr)) with
-          | (CompiledClosure([], _, _, framesize, body, env1), _) ->
-              loc := CompiledPrimitiveClosure(arity, [], framesize, body, env1, astf)
+          match compile_and_exec_0 env (Function(LabelMap.empty, parbr)) with
+          | (CompiledClosure(varloc_labmap, _, _, framesize, body, env1), _) ->
+              if LabelMap.cardinal varloc_labmap = 0 then
+                loc := CompiledPrimitiveClosure(arity, [], framesize, body, env1, astf)
+              else
+                ()
 
           | _ ->
               ()

@@ -485,4 +485,4 @@ let decode (cmdrcd : command_record) (s : string) =
   Format.printf "BLOCK: %a\n" pp_block blk;  (* for debug *)
  *)
   let utastbody = convert_block cmdrcd blk in
-  (dummy_range, UTApply((dummy_range, UTApply(utastdoccmd, utasthead)), utastbody))
+  (dummy_range, UTApply([], (dummy_range, UTApply([], utastdoccmd, utasthead)), utastbody))
