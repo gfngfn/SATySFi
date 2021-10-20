@@ -835,7 +835,7 @@ variants:
   | ctor=CONSTRUCTOR; BAR; tail=variants                { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit1", MTypeName("unit", []))) :: tail }
   | ctor=CONSTRUCTOR                                    { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit2", MTypeName("unit", []))) :: [] }
 ;
-txfunc: /* -> manual_type */
+txfunc:
   | mntydominfo=txfuncopts; ARROW; mntycod=txfunc {
       let (mntyopts, mntydom) = mntydominfo in
       make_standard (Ranged mntydom) (Ranged mntycod) (MFuncType(mntyopts, mntydom, mntycod))
@@ -930,7 +930,7 @@ txlist:
   | mnty=txapppre; OPTIONALTYPE                         { MOptionalArgumentType(mnty) :: [] }
   |                                                     { [] }
 ;
-txrecord: /* -> (field_name * manual_type) list */
+txrecord:
   | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT; tail=txrecord { let (_, fldnm) = fldtok in (fldnm, mnty) :: tail }
   | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT                { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
   | fldtok=VAR; COLON; mnty=txfunc                           { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
@@ -939,7 +939,7 @@ tuple:
   | utast=nxlet                   { utast :: [] }
   | utast=nxlet; COMMA; tup=tuple { utast :: tup }
 ;
-pats: /* -> code_range * untyped_pattern_branch list */
+pats:
   | pat=patas; ARROW; utast=nxletsub {
       let (rnglast, _) = utast in
       (rnglast, UTPatternBranch(pat, utast) :: [])
@@ -984,7 +984,7 @@ pattuple:
   | pat=patas                         { pat :: [] }
   | pat=patas; COMMA; pattup=pattuple { pat :: pattup }
 ;
-patlist: /* -> untyped_pattern_tree */
+patlist:
   | pat=patas                           { make_standard (Ranged pat) (Ranged pat) (UTPListCons(pat, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
   | pat=patas; rng=LISTPUNCT            { make_standard (Ranged pat) (Tok rng) (UTPListCons(pat, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
   | pat1=patas; LISTPUNCT; pat2=patlist { make_standard (Ranged pat1) (Ranged pat2) (UTPListCons(pat1, pat2)) }

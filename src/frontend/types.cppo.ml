@@ -84,7 +84,6 @@ and manual_type_main =
   | MFuncType        of manual_type list * manual_type * manual_type
   | MProductType     of manual_type TupleList.t
   | MRecordType      of (label * manual_type) list
-      [@printer (fun fmt _ -> Format.fprintf fmt "MRecordType(...)")]
   | MHorzCommandType of manual_command_argument_type list
   | MVertCommandType of manual_command_argument_type list
   | MMathCommandType of manual_command_argument_type list
@@ -168,7 +167,6 @@ and ('a, 'b) type_main =
   | TypeVariable    of 'a
   | DataType        of (('a, 'b) typ) list * TypeID.t
   | RecordType      of ('a, 'b) row
-      [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
   | HorzCommandType of (('a, 'b) command_argument_type) list
   | VertCommandType of (('a, 'b) command_argument_type) list
   | MathCommandType of (('a, 'b) command_argument_type) list
@@ -334,8 +332,9 @@ and untyped_synonym_or_variant =
   | UTBindSynonym of manual_type
   | UTBindVariant of constructor_branch list
 
-and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
-  [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_input_horz_element_main utihmain)]
+and untyped_input_horz_element =
+  Range.t * untyped_input_horz_element_main
+    [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_input_horz_element_main utihmain)]
 
 and untyped_input_horz_element_main =
   | UTInputHorzText         of string
@@ -369,7 +368,7 @@ and untyped_abstract_tree =
     [@printer (fun fmt (_, utastmain) -> Format.fprintf fmt "%a" pp_untyped_abstract_tree_main utastmain)]
 
 and untyped_abstract_tree_main =
-(* -- basic value -- *)
+(* Literals: *)
   | UTUnitConstant
   | UTBooleanConstant      of bool
   | UTIntegerConstant      of int
@@ -378,47 +377,47 @@ and untyped_abstract_tree_main =
   | UTStringEmpty
   | UTStringConstant       of string
   | UTPositionedString     of input_position * string
-(* -- inputs -- *)
+(* Input texts: *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaMath           of untyped_abstract_tree
-(* -- horizontal box list -- *)
+(* Horizontal box lists: *)
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
-(* -- vertical box list -- *)
+(* Vertical box lists: *)
   | UTVert                 of HorzBox.vert_box list
   | UTVertConcat           of untyped_abstract_tree * untyped_abstract_tree
-(* -- list value -- *)
+(* Lists: *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
-(* -- tuple value -- *)
+(* Tuples: *)
   | UTTuple               of untyped_abstract_tree TupleList.t
-(* -- record value -- *)
+(* Records: *)
   | UTRecord               of (field_name * untyped_abstract_tree) list
   | UTAccessField          of untyped_abstract_tree * field_name
   | UTUpdateField          of untyped_abstract_tree * field_name * untyped_abstract_tree
-(* -- fundamental -- *)
+(* Fundamentals: *)
   | UTContentOf            of (module_name list) * var_name
   | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTFunction             of (label ranged * var_name) list * untyped_pattern_tree * untyped_abstract_tree
   | UTOpenIn               of Range.t * module_name * untyped_abstract_tree
-(* -- pattern match -- *)
+(* Pattern matching: *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
   | UTConstructor          of constructor_name * untyped_abstract_tree
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
-(* -- lightweight itemize -- *)
+(* Lightweight itemizes: *)
   | UTItemize              of untyped_itemize
-(* -- math -- *)
+(* Maths: *)
   | UTMath                 of untyped_math
-(* -- for lightweight command definition -- *)
+(* For lightweight command definitions: *)
   | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
   | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
-(* -- multi-stage constructs -- *)
+(* Multi-stage constructs: *)
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree
 
