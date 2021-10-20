@@ -95,7 +95,7 @@ document (|
             ({double-struck}, tS);
           ]
         )
-      }が中身である．
+      }に等しい．
     }
     +type (tMKERNF) {
       カーニング量を調節するための関数．
