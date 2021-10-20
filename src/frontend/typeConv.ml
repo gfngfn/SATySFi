@@ -7,8 +7,7 @@ let overwrite_range_of_type ((_, tymain) : mono_type) (rng : Range.t) = (rng, ty
 
 
 let lift_argument_type f = function
-  | MandatoryArgumentType(ty)        -> MandatoryArgumentType(f ty)
-  | OptionalArgumentType(rlabel, ty) -> OptionalArgumentType(rlabel, f ty)
+  | CommandArgType(tylabmap, ty) -> CommandArgType(tylabmap |> LabelMap.map f, f ty)
 
 
 let lift_manual_common f = function
@@ -290,8 +289,8 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
         iter tysub
 
   and iter_cmd = function
-    | MandatoryArgumentType(ty)   -> iter ty
-    | OptionalArgumentType(_, ty) -> iter ty
+    | CommandArgType(tylabmap, ty) ->
+        tylabmap |> LabelMap.for_all (fun _label -> iter) && iter ty
 
   and iter_row = function
     | RowEmpty ->
@@ -364,8 +363,8 @@ let rec unlift_aux pty =
 
 
 and unlift_aux_cmd = function
-  | MandatoryArgumentType(pty)         -> MandatoryArgumentType(unlift_aux pty)
-  | OptionalArgumentType(rlabel, pty)  -> OptionalArgumentType(rlabel, unlift_aux pty)
+  | CommandArgType(ptylabmap, pty) ->
+      CommandArgType(ptylabmap |> LabelMap.map unlift_aux, unlift_aux pty)
 
 
 and unlift_aux_or = function

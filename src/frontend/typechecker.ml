@@ -262,27 +262,25 @@ let apply_tree_of_list (astfunc : abstract_tree) (asts : abstract_tree list) =
 
 (* `flatten_type` converts type `(t1 -> ... -> tN -> t)` into `([t1; ...; tN], t)`. *)
 let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type =
-
-  let rec aux_or = function
-    | RowEmpty                                            -> []
-    | RowVar(UpdatableRow{contents = MonoORFree(_)})      -> []
-    | RowVar(UpdatableRow{contents = MonoORLink(optrow)}) -> aux_or optrow
-    | RowCons(rlabel, ty, tail)                           -> OptionalArgumentType(rlabel, ty) :: aux_or tail
+  let rec aux_row (tylabmap : mono_type LabelMap.t) = function
+    | RowEmpty                                         -> tylabmap
+    | RowVar(UpdatableRow{contents = MonoORFree(_)})   -> tylabmap
+    | RowVar(UpdatableRow{contents = MonoORLink(row)}) -> aux_row tylabmap row
+    | RowCons((_, label), ty, row)                     -> aux_row (tylabmap |> LabelMap.add label ty) row
   in
-
   let rec aux acc ty =
     let (rng, tymain) = ty in
       match tymain with
-      | TypeVariable(Updatable{contents= MonoLink(tylink)}) ->
-          aux acc tylink
+      | TypeVariable(Updatable{contents = MonoLink(tysub)}) ->
+          aux acc tysub
 
       | FuncType(optrow, tydom, tycod) ->
-          let accnew =
-            Alist.append acc (List.append (aux_or optrow) [MandatoryArgumentType(tydom)])
-          in
-          aux accnew tycod
+          let tylabmap = aux_row LabelMap.empty optrow in
+          let acc = Alist.extend acc (CommandArgType(tylabmap, tydom)) in
+          aux acc tycod
 
-      | _ -> (Alist.to_list acc, ty)
+      | _ ->
+          (Alist.to_list acc, ty)
   in
   aux Alist.empty ty
 
@@ -339,19 +337,18 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
     | DataType(tyargs, _tyid)        -> iter_list tyargs
     | RecordType(row)                -> iter_row row
     | BaseType(_)                    -> false
-    | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
-    | VertCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
-    | MathCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+    | HorzCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
+    | VertCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
+    | MathCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
     | CodeType(tysub)                -> iter tysub
 
   and iter_list tylst =
     List.exists iter tylst
 
-  and iter_cmd_list cmdargtylist =
+  and iter_cmd_list (cmdargtys : mono_command_argument_type list) =
     List.exists (function
-      | MandatoryArgumentType(ty)   -> iter ty
-      | OptionalArgumentType(_, ty) -> iter ty
-    ) cmdargtylist
+    | CommandArgType(tylabmap, ty) -> tylabmap |> LabelMap.for_all (fun _ -> iter) && iter ty
+    ) cmdargtys
 
   and iter_row = function
     | RowEmpty ->
@@ -365,8 +362,8 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
     | RowVar(UpdatableRow(orvuref)) ->
         begin
           match !orvuref with
-          | MonoORLink(optrow) ->
-              iter_row optrow
+          | MonoORLink(row) ->
+              iter_row row
 
           | MonoORFree(frid0) ->
               let lev0 = FreeRowID.get_level frid0 in
@@ -418,19 +415,18 @@ let occurs_row (frid : FreeRowID.t) (row : mono_row) =
     | DataType(tyargs, _tyid)        -> iter_list tyargs
     | RecordType(row)                -> iter_row row
     | BaseType(_)                    -> false
-    | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
-    | VertCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
-    | MathCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+    | HorzCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
+    | VertCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
+    | MathCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
     | CodeType(tysub)                -> iter tysub
 
   and iter_list (tys : mono_type list) =
     List.exists iter tys
 
-  and iter_cmd_list cmdargtylist =
+  and iter_cmd_list (cmdargtys : mono_command_argument_type list) =
     List.exists (function
-      | MandatoryArgumentType(ty)   -> iter ty
-      | OptionalArgumentType(_, ty) -> iter ty
-    ) cmdargtylist
+      | CommandArgType(tylabmap, ty) -> tylabmap |> LabelMap.for_all (fun _label -> iter) && iter ty
+    ) cmdargtys
 
   and iter_row = function
     | RowEmpty ->
@@ -497,26 +493,21 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
           unify tycod1 tycod2;
         end
 
-    | (HorzCommandType(cmdargtylist1), HorzCommandType(cmdargtylist2))
-    | (VertCommandType(cmdargtylist1), VertCommandType(cmdargtylist2))
-    | (MathCommandType(cmdargtylist1), MathCommandType(cmdargtylist2)) ->
+    | (HorzCommandType(cmdargtys1), HorzCommandType(cmdargtys2))
+    | (VertCommandType(cmdargtys1), VertCommandType(cmdargtys2))
+    | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) ->
         begin
           try
             List.iter2 (fun cmdargty1 cmdargty2 ->
               match (cmdargty1, cmdargty2) with
-              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2)) ->
+              | (CommandArgType(tylabmap1, ty1), CommandArgType(tylabmap2, ty2)) ->
+                  LabelMap.merge (fun label tyopt1 tyopt2 ->
+                    match (tyopt1, tyopt2) with
+                    | (Some(ty1), Some(ty2)) -> Some(unify ty1 ty2)
+                    | (_, None) | (None, _)  -> raise (InternalContradictionError(reversed))
+                  ) tylabmap1 tylabmap2 |> ignore;
                   unify ty1 ty2
-
-              | (OptionalArgumentType((_, label1), ty1), OptionalArgumentType((_, label2), ty2)) ->
-                  if String.equal label1 label2 then
-                    unify ty1 ty2
-                  else
-                    raise  (InternalContradictionError(reversed))
-
-              | _ ->
-                  raise (InternalContradictionError(reversed))
-
-            ) cmdargtylist1 cmdargtylist2
+            ) cmdargtys1 cmdargtys2
           with
           | Invalid_argument(_) ->
               raise (InternalContradictionError(reversed))
@@ -1191,6 +1182,8 @@ let rec typecheck
 *)
 
 and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) tyenv (utcmdarglst : untyped_command_argument list) (cmdargtylst : mono_command_argument_type list) : abstract_tree =
+  failwith "TODO: typecheck_command_arguments"
+(*
   let rec aux eacc utcmdarglst cmdargtylst =
     match (utcmdarglst, cmdargtylst) with
     | ([], _) ->
@@ -1231,7 +1224,7 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
         raise (InvalidOptionalCommandArgument(tycmd, rngA))
   in
   aux ecmd utcmdarglst cmdargtylst
-
+*)
 
 and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
   let iter = typecheck_math pre tyenv in
@@ -1727,20 +1720,15 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
           RecordType(Assoc.map_value aux mnasc)
 *)
 
-      | MHorzCommandType(mncmdargtys) -> HorzCommandType(List.map aux_cmd mncmdargtys)
-      | MVertCommandType(mncmdargtys) -> VertCommandType(List.map aux_cmd mncmdargtys)
-      | MMathCommandType(mncmdargtys) -> MathCommandType(List.map aux_cmd mncmdargtys)
+      | MHorzCommandType(mncmdargtys) -> HorzCommandType(aux_cmd_list mncmdargtys)
+      | MVertCommandType(mncmdargtys) -> VertCommandType(aux_cmd_list mncmdargtys)
+      | MMathCommandType(mncmdargtys) -> MathCommandType(aux_cmd_list mncmdargtys)
 
     in
     (rng, tymain)
 
-  and aux_cmd = function
-    | MMandatoryArgumentType(mnty) ->
-        MandatoryArgumentType(aux mnty)
-
-    | MOptionalArgumentType(mnty) ->
-        let rlabel = failwith "TODO: decode_manual_type, aux_cmd" in
-        OptionalArgumentType(rlabel, aux mnty)
+  and aux_cmd_list (mncmdargtys : manual_command_argument_type list) =
+    failwith "TODO: decode_manual_type, aux_cmd_list"
 
   and aux_row (mtyadds : manual_type list) =
     failwith "TODO: decode_manual_type, aux_row"
@@ -2020,9 +2008,7 @@ and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_t
     | RowVar(prv)                   -> RowVar(prv)
 
   and aux_command_arg = function
-    | MandatoryArgumentType(pty)        -> MandatoryArgumentType(aux pty)
-    | OptionalArgumentType(rlabel, pty) -> OptionalArgumentType(rlabel, aux pty)
-
+    | CommandArgType(ptylabmap, pty) -> CommandArgType(ptylabmap |> LabelMap.map aux, aux pty)
   in
   Poly(aux pty)
 

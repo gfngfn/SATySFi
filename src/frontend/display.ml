@@ -208,11 +208,13 @@ and string_of_option_row tvf ortvf current_ht = function
 and string_of_command_argument_type tvf ortvf current_ht cmdargty =
   let iter = string_of_mono_type_sub tvf ortvf current_ht in
   match cmdargty with
-  | MandatoryArgumentType(ty) ->
-      iter Outmost ty
-
-  | OptionalArgumentType((_, label), ty)  ->
-      Printf.sprintf "?%s %s" label (iter Outmost ty)
+  | CommandArgType(tylabmap, ty) ->
+      let ss =
+        tylabmap |> LabelMap.bindings |> List.map (fun (label, ty) ->
+          Printf.sprintf "?%s %s " label (iter Outmost ty)
+        )
+      in
+      Printf.sprintf "%s%s" (String.concat "" ss) (iter Outmost ty)
 
 
 and string_of_type_argument_list tvf ortvf current_ht tyarglist =

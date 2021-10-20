@@ -173,8 +173,7 @@ and ('a, 'b) type_main =
   | CodeType        of ('a, 'b) typ
 
 and ('a, 'b) command_argument_type =
-  | MandatoryArgumentType of ('a, 'b) typ
-  | OptionalArgumentType  of label ranged * ('a, 'b) typ
+  | CommandArgType of (('a, 'b) typ) LabelMap.t * ('a, 'b) typ
 
 and ('a, 'b) row =
   | RowCons  of label ranged * ('a, 'b) typ * ('a, 'b) row
