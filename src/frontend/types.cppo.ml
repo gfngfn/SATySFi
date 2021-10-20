@@ -52,13 +52,13 @@ module OptionRowVarID
     val fresh : level -> t
     val equal : t -> t -> bool
     val get_level : t -> level
-    val set_level : t -> level -> t
+    val set_level : t -> level -> unit
     val show_direct : t -> string
   end
 = struct
     type t = {
-      level : level;
       number : int;
+      mutable level : level;
     }
     [@@deriving show]
 
@@ -78,10 +78,10 @@ module OptionRowVarID
       orv.level
 
     let set_level orv lev =
-      { level = lev; number = orv.number; }
+      orv.level <- lev
 
     let show_direct orv =
-      "$" ^ (string_of_int orv.number) ^ "[" ^ (Level.show orv.level) ^ "]"
+      Printf.sprintf "$%d[%s]" orv.number (Level.show orv.level)
   end
 
 

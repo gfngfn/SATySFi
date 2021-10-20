@@ -375,10 +375,7 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
 
           | MonoORFree(orvx) ->
               let levx = OptionRowVarID.get_level orvx in
-              if Level.less_than lev levx then begin
-                orvuref := MonoORFree(OptionRowVarID.set_level orvx lev)
-                  (* -- update level -- *)
-              end;
+              if Level.less_than lev levx then OptionRowVarID.set_level orvx lev;
               false
         end
 
@@ -461,10 +458,7 @@ let occurs_row (orv : OptionRowVarID.t) (optrow : mono_row) =
                 true
               else
                 let levx = OptionRowVarID.get_level orvx in
-                if Level.less_than lev levx then begin
-                  orvuref := MonoORFree(OptionRowVarID.set_level orvx lev)
-                    (* -- update level -- *)
-                end;
+                if Level.less_than lev levx then OptionRowVarID.set_level orvx lev;
                 false
         end
 
