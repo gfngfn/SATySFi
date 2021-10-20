@@ -359,10 +359,6 @@ and untyped_input_vert_element_main =
   | UTInputVertContent  of untyped_abstract_tree
   | UTInputVertMacro    of (Range.t * ctrlseq_name) * untyped_macro_argument list
 
-and 'a untyped_path_component =
-  | UTPathLineTo        of 'a
-  | UTPathCubicBezierTo of untyped_abstract_tree * untyped_abstract_tree * 'a
-
 and untyped_abstract_tree =
   Range.t * untyped_abstract_tree_main
     [@printer (fun fmt (_, utastmain) -> Format.fprintf fmt "%a" pp_untyped_abstract_tree_main utastmain)]

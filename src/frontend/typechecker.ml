@@ -1294,43 +1294,6 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
         e0
 
 
-and typecheck_path pre tyenv (utpathcomplst : (untyped_abstract_tree untyped_path_component) list) (utcycleopt : (unit untyped_path_component) option) =
-
-  let typecheck_anchor_point utastpt =
-    let (ept, typt) = typecheck pre tyenv utastpt in
-    unify typt (Range.dummy "typecheck-path", point_type_main);
-    ept
-  in
-
-  let pathcomplst =
-    utpathcomplst |> List.fold_left (fun acc utpathcomp ->
-      match utpathcomp with
-      | UTPathLineTo(utastpt) ->
-          let (ept, typt) = typecheck pre tyenv utastpt in
-          unify typt (Range.dummy "typecheck-path-L", point_type_main);
-          Alist.extend acc (PathLineTo(ept))
-
-      | UTPathCubicBezierTo(utastpt1, utastpt2, utastpt) ->
-          let ept1 = typecheck_anchor_point utastpt1 in
-          let ept2 = typecheck_anchor_point utastpt2 in
-          let ept = typecheck_anchor_point utastpt in
-          Alist.extend acc (PathCubicBezierTo(ept1, ept2, ept))
-    ) Alist.empty |> Alist.to_list
-  in
-  let cycleopt =
-    utcycleopt |> option_map (function
-      | UTPathLineTo(()) ->
-          PathLineTo(())
-
-      | UTPathCubicBezierTo(utastpt1, utastpt2, ()) ->
-          let ept1 = typecheck_anchor_point utastpt1 in
-          let ept2 = typecheck_anchor_point utastpt2 in
-          PathCubicBezierTo(ept1, ept2, ())
-    )
-  in
-  (pathcomplst, cycleopt)
-
-
 and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =
   let rec aux acc utivlst =
     match utivlst with
@@ -1393,7 +1356,6 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
         end
   in
   aux Alist.empty utivlst
-
 
 
 and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) : input_horz_element list =
