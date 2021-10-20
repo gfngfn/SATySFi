@@ -154,9 +154,9 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
               end
         end
 
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
+    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_row optrow, aux tydom, aux tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map aux tys))
-    | RecordType(row)                   -> (rng, RecordType(aux_or row))
+    | RecordType(row)                   -> (rng, RecordType(aux_row row))
     | DataType(tyargs, tyid)            -> (rng, DataType(List.map aux tyargs, tyid))
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
@@ -166,11 +166,10 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
     | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
 
-  and aux_or optrow =
-    match optrow with
-    | RowEmpty                         -> RowEmpty
-    | RowCons(rlabel, ty, tail)        -> RowCons(rlabel, aux ty, aux_or tail)
-    | RowVar(PolyORFree(orviref))      -> orfreef orviref
+  and aux_row = function
+    | RowEmpty                    -> RowEmpty
+    | RowCons(rlabel, ty, tail)   -> RowCons(rlabel, aux ty, aux_row tail)
+    | RowVar(PolyORFree(orviref)) -> orfreef orviref
   in
   begin
     pairlst |> List.iter (fun (tyarg, bid) -> BoundIDHashTable.add bid_to_type_ht bid tyarg);
@@ -178,7 +177,7 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
   end
 
 
-let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool) (ty : mono_type) : poly_type_body =
+let lift_poly_general (ptv : FreeID.t -> bool) (prv : FreeRowID.t -> bool) (ty : mono_type) : poly_type_body =
   let tvidht = FreeIDHashTable.create 32 in
   let rec iter ((rng, tymain) : mono_type) =
     match tymain with
@@ -230,25 +229,24 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
     | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
-  and generalize_row optrow =
-    match optrow with
+  and generalize_row = function
     | RowEmpty ->
         RowEmpty
 
     | RowCons(rlabel, ty, tail) ->
         RowCons(rlabel, iter ty, generalize_row tail)
 
-    | RowVar(UpdatableRow(orviref) as orv0) ->
+    | RowVar(UpdatableRow(orviref) as rv0) ->
         begin
           match !orviref with
-          | MonoORFree(orv) ->
-              if porv orv then
+          | MonoORFree(frid) ->
+              if prv frid then
                 RowEmpty
               else
-                RowVar(PolyORFree(orv0))
+                RowVar(PolyORFree(rv0))
 
-          | MonoORLink(optraw) ->
-              generalize_row optrow
+          | MonoORLink(row) ->
+              generalize_row row
         end
   in
   iter ty
@@ -276,8 +274,8 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
         end
 
     | ProductType(tys)               -> tys |> TupleList.to_list |> List.for_all iter
-    | RecordType(row)                -> iter_or row
-    | FuncType(optrow, tydom, tycod) -> iter_or optrow && iter tydom && iter tycod
+    | RecordType(row)                -> iter_row row
+    | FuncType(optrow, tydom, tycod) -> iter_row optrow && iter tydom && iter tycod
     | RefType(tycont)                -> iter tycont
     | BaseType(_)                    -> true
     | ListType(tycont)               -> iter tycont
@@ -292,21 +290,21 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
         iter tysub
 
   and iter_cmd = function
-    | MandatoryArgumentType(ty)    -> iter ty
-    | OptionalArgumentType(_, ty)  -> iter ty
+    | MandatoryArgumentType(ty)   -> iter ty
+    | OptionalArgumentType(_, ty) -> iter ty
 
-  and iter_or = function
+  and iter_row = function
     | RowEmpty ->
         true
 
     | RowCons(_, ty, tail) ->
-        iter ty && iter_or tail
+        iter ty && iter_row tail
 
     | RowVar(UpdatableRow(orvuref)) ->
         begin
           match !orvuref with
-          | MonoORFree(orv)    -> Level.less_than lev (OptionRowVarID.get_level orv)
-          | MonoORLink(optrow) -> iter_or optrow
+          | MonoORFree(frid) -> Level.less_than lev (FreeRowID.get_level frid)
+          | MonoORLink(row)  -> iter_row row
         end
 
   in
@@ -323,10 +321,10 @@ let generalize (lev : level) (ty : mono_type) : poly_type =
     in
     is_quantifiable && Level.less_than lev fentry.KindStore.level
   in
-  let porv orv =
-    not (Level.less_than lev (OptionRowVarID.get_level orv))
+  let prv frid =
+    not (Level.less_than lev (FreeRowID.get_level frid))
   in
-  Poly(lift_poly_general ptv porv ty)
+  Poly(lift_poly_general ptv prv ty)
 
 
 let lift_poly_body =

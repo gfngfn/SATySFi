@@ -45,46 +45,6 @@ type level = Level.t
 [@@deriving show]
 
 
-module OptionRowVarID
-: sig
-    type t  [@@deriving show]
-    val initialize : unit -> unit
-    val fresh : level -> t
-    val equal : t -> t -> bool
-    val get_level : t -> level
-    val set_level : t -> level -> unit
-    val show_direct : t -> string
-  end
-= struct
-    type t = {
-      number : int;
-      mutable level : level;
-    }
-    [@@deriving show]
-
-    let current_number = ref 0
-
-    let initialize () =
-      current_number := 0
-
-    let equal orv1 orv2 =
-      (orv1.number = orv2.number)
-
-    let fresh lev =
-      incr current_number;
-      { level = lev; number = !current_number; }
-
-    let get_level orv =
-      orv.level
-
-    let set_level orv lev =
-      orv.level <- lev
-
-    let show_direct orv =
-      Printf.sprintf "$%d[%s]" orv.number (Level.show orv.level)
-  end
-
-
 module StoreIDHashTable = Hashtbl.Make(StoreID)
 
 module EvalVarIDMap = Map.Make(EvalVarID)
@@ -207,7 +167,7 @@ and ('a, 'b) row =
   | RowEmpty
 
 and mono_row_variable_updatable =
-  | MonoORFree of OptionRowVarID.t
+  | MonoORFree of FreeRowID.t
   | MonoORLink of mono_row
 
 and mono_row_variable =
@@ -1465,7 +1425,7 @@ let rec tvf_mono qstn tv =
 
 and orvf_mono (UpdatableRow(orvref)) =
   match !orvref with
-  | MonoORFree(orv)    -> (OptionRowVarID.show_direct orv) ^ "?-> "
+  | MonoORFree(orv)    -> (FreeRowID.show_direct orv) ^ "?-> "
   | MonoORLink(optrow) -> string_of_option_row_basic tvf_mono orvf_mono optrow
 
 

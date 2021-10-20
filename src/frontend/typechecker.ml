@@ -94,8 +94,8 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
       let freef rng tv =
         (rng, TypeVariable(tv))
       in
-      let orfreef orv =
-        RowVar(orv)
+      let orfreef frid =
+        RowVar(frid)
       in
       let tyid = centry.ctor_belongs_to in
       let (bidlist, pty) = centry.ctor_parameter in
@@ -332,7 +332,7 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
         end
 
     | FuncType(optrow, tydom, tycod) ->
-        let b0 = iter_or optrow in
+        let b0 = iter_row optrow in
         let b1 = iter tydom in
         let b2 = iter tycod in
         b0 || b1 || b2
@@ -341,7 +341,7 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
     | DataType(tyargs, _tyid)        -> iter_list tyargs
-    | RecordType(row)                -> iter_or row
+    | RecordType(row)                -> iter_row row
     | BaseType(_)                    -> false
     | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
     | VertCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
@@ -357,37 +357,35 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
       | OptionalArgumentType(_, ty) -> iter ty
     ) cmdargtylist
 
-  and iter_or optrow =
-    match optrow with
+  and iter_row = function
     | RowEmpty ->
         false
 
     | RowCons(_, ty, tail) ->
         let b1 = iter ty in
-        let b2 = iter_or tail in
+        let b2 = iter_row tail in
         b1 || b2
 
     | RowVar(UpdatableRow(orvuref)) ->
         begin
           match !orvuref with
           | MonoORLink(optrow) ->
-              iter_or optrow
+              iter_row optrow
 
-          | MonoORFree(orvx) ->
-              let levx = OptionRowVarID.get_level orvx in
-              if Level.less_than lev levx then OptionRowVarID.set_level orvx lev;
+          | MonoORFree(frid0) ->
+              let lev0 = FreeRowID.get_level frid0 in
+              if Level.less_than lev lev0 then FreeRowID.set_level frid0 lev;
               false
         end
-
   in
   iter ty
 
 
-let occurs_row (orv : OptionRowVarID.t) (optrow : mono_row) =
+let occurs_row (frid : FreeRowID.t) (row : mono_row) =
 
-  let lev = OptionRowVarID.get_level orv in
+  let lev = FreeRowID.get_level frid in
 
-  let rec iter (_, tymain) =
+  let rec iter ((_, tymain) : mono_type) =
     match tymain with
     | TypeVariable(tv) ->
         begin
@@ -413,7 +411,7 @@ let occurs_row (orv : OptionRowVarID.t) (optrow : mono_row) =
         end
 
     | FuncType(optrow, tydom, tycod) ->
-        let b0 = iter_or optrow in
+        let b0 = iter_row optrow in
         let b1 = iter tydom in
         let b2 = iter tycod in
         b0 || b1 || b2
@@ -422,15 +420,15 @@ let occurs_row (orv : OptionRowVarID.t) (optrow : mono_row) =
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
     | DataType(tyargs, _tyid)        -> iter_list tyargs
-    | RecordType(row)                -> iter_or row
+    | RecordType(row)                -> iter_row row
     | BaseType(_)                    -> false
     | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
     | VertCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
     | MathCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
     | CodeType(tysub)                -> iter tysub
 
-  and iter_list tylst =
-    List.exists iter tylst
+  and iter_list (tys : mono_type list) =
+    List.exists iter tys
 
   and iter_cmd_list cmdargtylist =
     List.exists (function
@@ -438,32 +436,32 @@ let occurs_row (orv : OptionRowVarID.t) (optrow : mono_row) =
       | OptionalArgumentType(_, ty) -> iter ty
     ) cmdargtylist
 
-  and iter_or = function
+  and iter_row = function
     | RowEmpty ->
         false
 
     | RowCons(_, ty, tail) ->
         let b1 = iter ty in
-        let b2 = iter_or tail in
+        let b2 = iter_row tail in
         b1 || b2
 
     | RowVar(UpdatableRow(orvuref)) ->
         begin
           match !orvuref with
-          | MonoORLink(optrow) ->
-              iter_or optrow
+          | MonoORLink(row) ->
+              iter_row row
 
-          | MonoORFree(orvx) ->
-              if OptionRowVarID.equal orv orvx then
+          | MonoORFree(frid0) ->
+              if FreeRowID.equal frid frid0 then
                 true
               else
-                let levx = OptionRowVarID.get_level orvx in
-                if Level.less_than lev levx then OptionRowVarID.set_level orvx lev;
+                let lev0 = FreeRowID.get_level frid0 in
+                if Level.less_than lev lev0 then FreeRowID.set_level frid0 lev;
                 false
         end
 
   in
-  iter_or optrow
+  iter_row row
 
 
 let set_kind (fid : FreeID.t) (kd : kind) : unit =
@@ -625,9 +623,9 @@ and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) =
   | RowVar(UpdatableRow{contents = MonoORLink(rowsub)}) ->
       solve_row_disjointness rowsub labset
 
-  | RowVar(UpdatableRow{contents = MonoORFree(orv0)}) ->
-      let labset0 = KindStore.get_free_row_id orv0 in
-      KindStore.register_free_row_id orv0 (LabelSet.union labset0 labset);
+  | RowVar(UpdatableRow{contents = MonoORFree(frid0)}) ->
+      let labset0 = KindStore.get_free_row_id frid0 in
+      KindStore.register_free_row_id frid0 (LabelSet.union labset0 labset);
       ()
 
   | RowEmpty ->
@@ -647,13 +645,13 @@ and solve_row_membership ~reversed (rng : Range.t) (label : label) (ty : mono_ty
   | RowVar(UpdatableRow{contents = MonoORLink(row0)}) ->
       solve_row_membership ~reversed rng label ty row0
 
-  | RowVar(UpdatableRow({contents = MonoORFree(orv0)} as orvuref0)) ->
-      let labset0 = KindStore.get_free_row_id orv0 in
+  | RowVar(UpdatableRow({contents = MonoORFree(frid0)} as orvuref0)) ->
+      let labset0 = KindStore.get_free_row_id frid0 in
       if labset0 |> LabelSet.mem label then
         failwith "TODO (error): reject for the disjointness"
       else begin
-        let lev = OptionRowVarID.get_level orv0 in
-        let orv1 = OptionRowVarID.fresh lev in
+        let lev0 = FreeRowID.get_level frid0 in
+        let orv1 = FreeRowID.fresh lev0 in
         KindStore.register_free_row_id orv1 LabelSet.empty;
         let orvuref1 = ref (MonoORFree(orv1)) in
         let row_rest = RowVar(UpdatableRow(orvuref1)) in
@@ -675,7 +673,7 @@ and unify_row ~reversed (row1 : mono_row) (row2 : mono_row) =
       unify_row ~reversed row1 row2sub
 
   | (RowVar(UpdatableRow({contents = MonoORFree(orv1)} as orviref1)), RowVar(UpdatableRow{contents = MonoORFree(orv2)})) ->
-      if OptionRowVarID.equal orv1 orv2 then
+      if FreeRowID.equal orv1 orv2 then
         ()
       else
         orviref1 := MonoORLink(row2)
@@ -927,7 +925,7 @@ let rec typecheck
 
         | (_, TypeVariable(_)) as ty1 ->
             let beta = fresh_type_variable rng pre UniversalKind in
-            let orv = OptionRowVarID.fresh pre.level in
+            let orv = FreeRowID.fresh pre.level in
             let orvuref = ref (MonoORFree(orv)) in
             let optrow = RowVar(UpdatableRow(orvuref)) in
             unify ty1 (get_range utast1, FuncType(optrow, ty2, beta));
@@ -955,7 +953,7 @@ let rec typecheck
         | _ ->
             let beta1 = fresh_type_variable (Range.dummy "UTApplyOptional:dom") pre UniversalKind in
             let beta2 = fresh_type_variable (Range.dummy "UTApplyOptional:cod") pre UniversalKind in
-            let orv = OptionRowVarID.fresh pre.level in
+            let orv = FreeRowID.fresh pre.level in
             let orvuref = ref (MonoORFree(orv)) in
             let optrow = OptionRowVariable(UpdatableRow(orvuref)) in
             unify ty1 (get_range utast1, FuncType(OptionRowCons(ty2, optrow), beta1, beta2));

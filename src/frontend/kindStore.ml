@@ -47,9 +47,9 @@ let get_bound_id (bid : BoundID.t) =
   | Some(bentry) -> bentry
 
 
-let get_free_row_id (orv : OptionRowVarID.t) : LabelSet.t =
+let get_free_row_id (orv : FreeRowID.t) : LabelSet.t =
   failwith "TODO: get_free_row_id"
 
 
-let register_free_row_id (orv : OptionRowVarID.t) (labset : LabelSet.t) : unit =
+let register_free_row_id (orv : FreeRowID.t) (labset : LabelSet.t) : unit =
   failwith "TODO: register_free_row_id"
