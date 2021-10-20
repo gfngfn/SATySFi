@@ -430,12 +430,13 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       (IRCodeInputVert(imivlst), env)
 
   | Record(asc) ->
-      let iter acc key ast =
-        let (keyacc, iracc, env) = acc in
-        let (ir, env) = transform_1 env ast in
-        (Alist.extend keyacc key, Alist.extend iracc ir, env)
+      let (keyacc, iracc, env) =
+        LabelMap.fold (fun key ast acc ->
+          let (keyacc, iracc, env) = acc in
+          let (ir, env) = transform_1 env ast in
+          (Alist.extend keyacc key, Alist.extend iracc ir, env)
+        ) asc (Alist.empty, Alist.empty, env)
       in
-      let (keyacc, iracc, env) = Assoc.fold iter (Alist.empty, Alist.empty, env) asc in
       (IRCodeRecord(Alist.to_list keyacc, Alist.to_list iracc), env)
 
   | AccessField(ast1, fldnm) ->
@@ -668,12 +669,13 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
 (* ---- record ---- *)
 
   | Record(asc) ->
-      let iter acc key ast =
-        let (keyacc, iracc, env) = acc in
-        let (ir, env) = transform_0 env ast in
-        (Alist.extend keyacc key, Alist.extend iracc ir, env)
+      let (keyacc, iracc, env) =
+        LabelMap.fold (fun key ast acc ->
+          let (keyacc, iracc, env) = acc in
+          let (ir, env) = transform_0 env ast in
+          (Alist.extend keyacc key, Alist.extend iracc ir, env)
+        ) asc (Alist.empty, Alist.empty, env)
       in
-      let (keyacc, iracc, env) = Assoc.fold iter (Alist.empty, Alist.empty, env) asc in
       (IRRecord(Alist.to_list keyacc, Alist.to_list iracc), env)
 
   | AccessField(ast1, fldnm) ->

@@ -2,14 +2,14 @@ open Types
 open StaticEnv
 
 
-let string_of_record_type (type a) (type b) (f : (a, b) typ -> string) (asc : ((a, b) typ) Assoc.t) =
+let string_of_record_type (type a) (type b) (f : (a, b) typ -> string) (asc : ((a, b) typ) LabelMap.t) =
   let rec aux lst =
     match lst with
     | []                     -> " -- "
     | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
     | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
   in
-    "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
+    "(|" ^ (aux (LabelMap.bindings asc)) ^ "|)"
 
 
 let string_of_kind (kd : kind) =

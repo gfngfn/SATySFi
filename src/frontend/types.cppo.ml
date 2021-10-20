@@ -83,7 +83,7 @@ and manual_type_main =
   | MTypeParam       of var_name
   | MFuncType        of manual_type list * manual_type * manual_type
   | MProductType     of manual_type TupleList.t
-  | MRecordType      of manual_type Assoc.t
+  | MRecordType      of (label * manual_type) list
       [@printer (fun fmt _ -> Format.fprintf fmt "MRecordType(...)")]
   | MHorzCommandType of manual_command_argument_type list
   | MVertCommandType of manual_command_argument_type list
@@ -96,8 +96,6 @@ and manual_command_argument_type =
 
 type manual_kind =
   | MUniversalKind
-  | MRecordKind    of manual_type Assoc.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "MRecordKind(...)")]
 [@@deriving show]
 
 type base_type =
@@ -601,8 +599,7 @@ and ir =
   | IRTerminal
   | IRInputHorz             of ir_input_horz_element list
   | IRInputVert             of ir_input_vert_element list
-  | IRRecord                of Assoc.key list * ir list
-      [@printer (fun fmt _ -> Format.fprintf fmt "IRRecord(...)")]
+  | IRRecord                of label list * ir list
   | IRAccessField           of ir * field_name
   | IRUpdateField           of ir * field_name * ir
   | IRLetRecIn              of (varloc * ir) list * ir
@@ -625,8 +622,7 @@ and ir =
   | IRModule                of ir * ir
 
   | IRCodeCombinator        of (code_value list -> code_value) * int * ir list
-  | IRCodeRecord            of Assoc.key list * ir list
-      [@printer (fun fmt _ -> Format.fprintf fmt "IRCodeRecord(...)")]
+  | IRCodeRecord            of label list * ir list
   | IRCodeInputHorz         of (ir input_horz_element_scheme) list
   | IRCodeInputVert         of (ir input_vert_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
@@ -690,8 +686,7 @@ and instruction =
   | OpDup
   | OpError of string
   | OpMakeConstructor of constructor_name
-  | OpMakeRecord of Assoc.key list
-      [@printer (fun fmt _ -> Format.fprintf fmt "OpMakeRecord(...)")]
+  | OpMakeRecord of label list
   | OpMakeTuple of int
   | OpPop
   | OpPush of syntactic_value
@@ -727,8 +722,7 @@ and instruction =
 
   | OpInsertArgs of syntactic_value list
   | OpApplyCodeCombinator of (code_value list -> code_value) * int
-  | OpCodeMakeRecord of Assoc.key list
-      [@printer (fun fmt _ -> Format.fprintf fmt "OpCodeMakeRecord(...)")]
+  | OpCodeMakeRecord of label list
   | OpCodeMathList of int
   | OpCodeMakeTuple of int
   | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
@@ -762,7 +756,7 @@ and syntactic_value =
   | Constructor  of constructor_name * syntactic_value
   | List         of syntactic_value list
   | Tuple        of syntactic_value list
-  | RecordValue  of syntactic_value Assoc.t
+  | RecordValue  of syntactic_value LabelMap.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
   | Location     of StoreID.t
   | MathValue    of math list
@@ -794,7 +788,7 @@ and abstract_tree =
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
 (* -- record value -- *)
-  | Record                of abstract_tree Assoc.t
+  | Record                of abstract_tree LabelMap.t
       [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
   | AccessField           of abstract_tree * field_name
   | UpdateField           of abstract_tree * field_name * abstract_tree
@@ -931,7 +925,7 @@ and code_value =
   | CdFunction      of CodeSymbol.t LabelMap.t * code_pattern_branch
   | CdApply         of code_value LabelMap.t * code_value * code_value
   | CdIfThenElse    of code_value * code_value * code_value
-  | CdRecord        of code_value Assoc.t
+  | CdRecord        of code_value LabelMap.t
       [@printer (fun fmt _ -> Format.fprintf fmt "CdRecord(...)")]
   | CdAccessField   of code_value * field_name
   | CdUpdateField   of code_value * field_name * code_value
@@ -1074,7 +1068,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdFunction(symb_labmap, cdpatbr)     -> Function(symb_labmap |> LabelMap.map CodeSymbol.unlift, aux_pattern_branch cdpatbr)
     | CdApply(code_labmap, code1, code2)   -> Apply(code_labmap |> LabelMap.map aux, aux code1, aux code2)
     | CdIfThenElse(code1, code2, code3)    -> IfThenElse(aux code1, aux code2, aux code3)
-    | CdRecord(cdasc)                      -> Record(Assoc.map_value aux cdasc)
+    | CdRecord(cdasc)                      -> Record(cdasc |> LabelMap.map aux)
     | CdAccessField(code1, fldnm)          -> AccessField(aux code1, fldnm)
     | CdUpdateField(code1, fldnm, code2)   -> UpdateField(aux code1, fldnm, aux code2)
     | CdLetMutableIn(symb, code1, code2)   -> LetMutableIn(CodeSymbol.unlift symb, aux code1, aux code2)

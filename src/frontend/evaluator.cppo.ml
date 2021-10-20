@@ -233,7 +233,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
 (* ---- record ---- *)
 
   | Record(asc) ->
-      return @@ RecordValue(Assoc.map_value (interpret_0_value env) asc)
+      return @@ RecordValue(asc |> LabelMap.map (interpret_0_value env))
 
   | AccessField(ast1, fldnm) ->
       let (value1, _) = interpret_0 env ast1 in
@@ -241,7 +241,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
         match value1 with
         | RecordValue(asc1) ->
             begin
-              match Assoc.find_opt asc1 fldnm with
+              match asc1 |> LabelMap.find_opt fldnm with
               | None    -> report_bug_reduction ("AccessField: field '" ^ fldnm ^ "' not found") ast1 value1
               | Some(v) -> return @@ v
             end
@@ -257,9 +257,9 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
         match value1 with
         | RecordValue(asc1) ->
             let asc1new =
-              match Assoc.find_opt asc1 fldnm with
+              match asc1 |> LabelMap.find_opt fldnm with
               | None    -> report_bug_reduction ("UpdateField: field '" ^ fldnm ^ "' not found") ast1 value1
-              | Some(_) -> Assoc.add asc1 fldnm value2
+              | Some(_) -> asc1 |> LabelMap.add fldnm value2
             in
             return @@ RecordValue(asc1new)
 
@@ -450,7 +450,7 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       return @@ CdIfThenElse(code0, code1, code2)
 
   | Record(asc) ->
-      let cdasc = Assoc.map_value (interpret_1_value env) asc in
+      let cdasc = asc |> LabelMap.map (interpret_1_value env) in
       return @@ CdRecord(cdasc)
 
   | AccessField(ast1, fldnm) ->

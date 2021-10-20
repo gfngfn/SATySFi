@@ -198,7 +198,7 @@ let rec is_nonexpansive_expression e =
   | NonValueConstructor(constrnm, e1) -> iter e1
   | PrimitiveListCons(e1, e2)         -> iter e1 && iter e2
   | PrimitiveTuple(es)                -> es |> TupleList.to_list |> List.for_all iter
-  | Record(asc)                       -> Assoc.fold_value (fun b e -> b && iter e) true asc
+  | Record(asc)                       -> asc |> LabelMap.for_all (fun _label e -> iter e)
   | LetRecIn(_, e2)                   -> iter e2
   | LetNonRecIn(_, e1, e2)            -> iter e1 && iter e2
   | _                                 -> false
@@ -1510,13 +1510,13 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
 and typecheck_record (pre : pre) (tyenv : Typeenv.t) (fluts : (field_name * untyped_abstract_tree) list) (rng : Range.t) =
   let (easc, row) =
     fluts |> List.fold_left (fun (easc, row) (fldnmX, utastX) ->
-      if Assoc.mem fldnmX easc then
+      if easc |> LabelMap.mem fldnmX then
         raise (MultipleFieldInRecord(rng, fldnmX))
       else
         let rngX = failwith "TODO: typecheck_record, range of field" in
         let (eX, tyX) = typecheck pre tyenv utastX in
-        (Assoc.add easc fldnmX eX, RowCons((rngX, fldnmX), tyX, row))
-    ) (Assoc.empty, RowEmpty)
+        (easc |> LabelMap.add fldnmX eX, RowCons((rngX, fldnmX), tyX, row))
+    ) (LabelMap.empty, RowEmpty)
   in
   (Record(easc), (rng, RecordType(row)))
 
@@ -1759,7 +1759,7 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
       | MProductType(mntys) ->
           ProductType(TupleList.map aux mntys)
 
-      | MRecordType(mnasc) ->
+      | MRecordType(mnkvs) ->
           failwith "TODO: decode_manual_type, MRecordType"
 (*
           RecordType(Assoc.map_value aux mnasc)

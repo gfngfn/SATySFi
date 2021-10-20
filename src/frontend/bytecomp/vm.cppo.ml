@@ -509,7 +509,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
               match value1 with
               | RecordValue(asc1) ->
                   begin
-                    match Assoc.find_opt asc1 field_nm with
+                    match asc1 |> LabelMap.find_opt field_nm with
                     | Some(v) -> exec (make_entry v :: stack) env code dump
                     | None    -> report_bug_vm ("OpAccessField: field '" ^ field_nm ^ "' not found")
                   end
@@ -529,8 +529,8 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
               match value1 with
               | RecordValue(asc1) ->
                   let asc1new =
-                    match Assoc.find_opt asc1 field_nm with
-                    | Some(_) -> Assoc.add asc1 field_nm value2
+                    match asc1 |> LabelMap.find_opt field_nm with
+                    | Some(_) -> asc1 |> LabelMap.add field_nm value2
                     | None    -> report_bug_vm ("OpUpdateField: field '" ^ field_nm ^ "' not found")
                   in
                   let v = RecordValue(asc1new) in
@@ -830,11 +830,11 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | k :: rest ->
             begin
               match st with
-              | (v, _) :: stnew -> collect rest (Assoc.add asc k v) stnew
+              | (v, _) :: stnew -> collect rest (asc |> LabelMap.add k v) stnew
               | _               -> report_bug_vm "MakeRecord: stack underflow"
             end
         in
-        let (asc, stack) = collect (List.rev keylst) Assoc.empty stack in
+        let (asc, stack) = collect (List.rev keylst) LabelMap.empty stack in
         let entry = make_entry @@ RecordValue(asc) in
         exec (entry :: stack) env code dump
 
@@ -1087,11 +1087,11 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | k :: rest ->
             begin
               match st with
-              | (CodeValue(cv), _) :: stnew -> collect rest (Assoc.add asc k cv) stnew
+              | (CodeValue(cv), _) :: stnew -> collect rest (asc |> LabelMap.add k cv) stnew
               | _                           -> report_bug_vm "CodeMakeRecord"
             end
       in
-      let (cdasc, stack) = collect (List.rev keylst) Assoc.empty stack in
+      let (cdasc, stack) = collect (List.rev keylst) LabelMap.empty stack in
       let entry = make_entry @@ CodeValue(CdRecord(cdasc)) in
       exec (entry :: stack) env code dump
 

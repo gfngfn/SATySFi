@@ -647,7 +647,10 @@ nxtyperecdecsingle:
     }
 ;
 kxtop:
-  | BRECORD; tyrcd=txrecord; ERECORD { MRecordKind(Assoc.of_list tyrcd) }
+  | VAR {
+      let _ = failwith "TODO: kxtop" in
+      MUniversalKind
+    }
 ;
 nxlet:
   | tok=MATCH; utast=nxlet; WITH; option(BAR { () }); pats=pats {
@@ -885,10 +888,9 @@ txapppre:
       (rng, MMathCommandType(mntylst))
     }
   | LPAREN; mnty=txfunc; RPAREN { mnty }
-  | opn=BRECORD; lst=txrecord; cls=ERECORD {
-      let asc = Assoc.of_list lst in
+  | opn=BRECORD; kvs=txrecord; cls=ERECORD {
       let rng = make_range (Tok opn) (Tok cls) in
-      (rng, MRecordType(asc))
+      (rng, MRecordType(kvs))
     }
   | tyvar=TYPEVAR {
       let (rng, tyargnm) = tyvar in (rng, MTypeParam(tyargnm))

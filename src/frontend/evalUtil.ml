@@ -451,15 +451,15 @@ let get_math_variant_style value =
     | _                -> report_bug_value "get_math_variant_style: not a record" value
   in
     match
-      ( Assoc.find_opt rcd "italic",
-        Assoc.find_opt rcd "bold-italic",
-        Assoc.find_opt rcd "roman",
-        Assoc.find_opt rcd "bold-roman",
-        Assoc.find_opt rcd "script",
-        Assoc.find_opt rcd "bold-script",
-        Assoc.find_opt rcd "fraktur",
-        Assoc.find_opt rcd "bold-fraktur",
-        Assoc.find_opt rcd "double-struck" )
+      ( rcd |> LabelMap.find_opt "italic",
+        rcd |> LabelMap.find_opt "bold-italic",
+        rcd |> LabelMap.find_opt "roman",
+        rcd |> LabelMap.find_opt "bold-roman",
+        rcd |> LabelMap.find_opt "script",
+        rcd |> LabelMap.find_opt "bold-script",
+        rcd |> LabelMap.find_opt "fraktur",
+        rcd |> LabelMap.find_opt "bold-fraktur",
+        rcd |> LabelMap.find_opt "double-struck" )
     with
     | ( Some(vcpI),
         Some(vcpBI),
@@ -510,9 +510,7 @@ let get_outline (value : syntactic_value) =
 
 let make_page_break_info pbinfo =
   let asc =
-    Assoc.of_list [
-      ("page-number", BaseConstant(BCInt(pbinfo.HorzBox.current_page_number)));
-    ]
+    LabelMap.singleton "page-number" (BaseConstant(BCInt(pbinfo.HorzBox.current_page_number)))
   in
   RecordValue(asc)
 
@@ -521,7 +519,7 @@ let make_page_content_info pcinfo =
   make_page_break_info pcinfo  (* temporary *)
 (*
   let asc =
-    Assoc.of_list [
+    LabelMap.of_list [
       ("page-number", IntegerConstant(pcinfo.HorzBox.page_number));
     ]
   in
@@ -552,10 +550,10 @@ let make_doc_info_dictionary value =
   | RecordValue(asc) ->
     begin
       match
-        (Assoc.find_opt asc "title",
-          Assoc.find_opt asc "subject",
-          Assoc.find_opt asc "author",
-          Assoc.find_opt asc "keywords")
+        ( asc |> LabelMap.find_opt "title",
+          asc |> LabelMap.find_opt "subject",
+          asc |> LabelMap.find_opt "author",
+          asc |> LabelMap.find_opt "keywords")
       with
       | (Some(vT), Some(vS), Some(vA), Some(vK)) ->
           DocumentInformationDictionary.({
@@ -579,8 +577,8 @@ let make_page_content_scheme_func reducef valuef : HorzBox.page_content_scheme_f
      | RecordValue(asc) ->
          begin
            match
-             (Assoc.find_opt asc "text-origin",
-              Assoc.find_opt asc "text-height")
+             ( asc |> LabelMap.find_opt "text-origin",
+               asc |> LabelMap.find_opt "text-height")
            with
            | (Some(vTO), Some(BaseConstant(BCLength(vTHlen)))) ->
                HorzBox.({
@@ -605,10 +603,10 @@ and make_page_parts_scheme_func reducef valuef : HorzBox.page_parts_scheme_func 
        | RecordValue(asc) ->
          begin
            match
-             (Assoc.find_opt asc "header-origin",
-              Assoc.find_opt asc "header-content",
-              Assoc.find_opt asc "footer-origin",
-              Assoc.find_opt asc "footer-content")
+             ( asc |> LabelMap.find_opt "header-origin",
+               asc |> LabelMap.find_opt "header-content",
+               asc |> LabelMap.find_opt "footer-origin",
+               asc |> LabelMap.find_opt "footer-content")
            with
            | (Some(vHO), Some(BaseConstant(BCVert(vHCvert))), Some(vFO), Some(BaseConstant(BCVert(vFCvert)))) ->
                HorzBox.({
