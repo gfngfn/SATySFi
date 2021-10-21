@@ -1198,50 +1198,45 @@ let rec typecheck
       end
 *)
 
-and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) tyenv (utcmdarglst : untyped_command_argument list) (cmdargtylst : mono_command_argument_type list) : abstract_tree =
-  failwith "TODO: typecheck_command_arguments"
-(*
-  let rec aux eacc utcmdarglst cmdargtylst =
-    match (utcmdarglst, cmdargtylst) with
-    | ([], _) ->
-        cmdargtylst |> List.iter (function
-        | MandatoryArgumentType(ty) -> raise (NeedsMoreArgument(rngcmdapp, tycmd, ty))
-        | OptionalArgumentType(_)   -> ()
-        );
-        eacc
+and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) (tyenv : Typeenv.t) (utcmdargs : untyped_command_argument list) (cmdargtys : mono_command_argument_type list) : abstract_tree =
+  try
+    List.fold_left2 (fun eacc utcmdarg cmdargty ->
+      let UTCommandArg(labeled_utasts, utast1) = utcmdarg in
+      let utast_labmap =
+        labeled_utasts |> List.fold_left (fun utast_labmap ((rng, label), utast) ->
+          if utast_labmap |> LabelMap.mem label then
+            failwith "TODO (error): duplicated label"
+          else
+            utast_labmap |> LabelMap.add label utast
+        ) LabelMap.empty
+      in
+      let CommandArgType(ty_labmap, ty2) = cmdargty in
+      let e_labmap =
+        LabelMap.merge (fun label utast_opt ty_opt ->
+          match (utast_opt, ty_opt) with
+          | (Some(utast1), Some(ty2)) ->
+              let (e1, ty1) = typecheck pre tyenv utast1 in
+              unify ty1 ty2;
+              Some(e1)
 
-    | (_ :: _, []) ->
-        raise (TooManyArgument(rngcmdapp, tycmd))
+          | (None, Some(_)) ->
+              None
 
-    | (UTMandatoryArgument(_) :: _, OptionalArgumentType(_) :: cmdargtytail) ->
-          aux eacc utcmdarglst cmdargtytail
+          | (Some(_), None) ->
+              failwith "TODO (error): typecheck_command_arguments, contradiction"
 
-    | (UTMandatoryArgument(utastA) :: utcmdargtail, MandatoryArgumentType(tyreq) :: cmdargtytail) ->
-        let (eA, tyA) = typecheck pre tyenv utastA in
-        unify tyA tyreq;
-        aux (Apply(LabelMap.empty, eacc, eA)) utcmdargtail cmdargtytail
+          | (None, None) ->
+              assert false
+        ) utast_labmap ty_labmap
+      in
+      let (e1, ty1) = typecheck pre tyenv utast1 in
+      unify ty1 ty2;
+      Apply(e_labmap, eacc, e1)
+    ) ecmd utcmdargs cmdargtys
+  with
+  | Invalid_argument(_) ->
+      failwith "TODO (error): typecheck_command_arguments, arity mismatch"
 
-    | (UTOptionalArgument(utastA) :: utcmdargtail, OptionalArgumentType(rlabel, tyreq) :: cmdargtytail) ->
-        failwith "TODO: fix this for using rlabel"
-(*
-        let (eA, tyA) = typecheck pre tyenv utastA in
-        unify tyA tyreq;
-        aux (ApplyOptional(eacc, eA)) utcmdargtail cmdargtytail
-*)
-    | (UTOptionalArgument((rngA, _)) :: _, MandatoryArgumentType(_) :: _) ->
-        raise (InvalidOptionalCommandArgument(tycmd, rngA))
-
-    | (UTOmission(_) :: utcmdargtail, OptionalArgumentType(rlabel, tyreq) :: cmdargtytail) ->
-        failwith "TODO: fix this for using rlabel"
-(*
-        aux (ApplyOmission(eacc)) utcmdargtail cmdargtytail
-*)
-
-    | (UTOmission(rngA) :: _, MandatoryArgumentType(_) :: _) ->
-        raise (InvalidOptionalCommandArgument(tycmd, rngA))
-  in
-  aux ecmd utcmdarglst cmdargtylst
-*)
 
 and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
   let iter = typecheck_math pre tyenv in
