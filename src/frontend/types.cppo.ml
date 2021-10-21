@@ -461,8 +461,7 @@ and untyped_math_main =
   | UTMEmbed       of untyped_abstract_tree
 
 and untyped_command_argument =
-  | UTMandatoryArgument of untyped_abstract_tree
-  | UTOptionalArgument  of label ranged * untyped_abstract_tree
+  | UTCommandArg of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree
 [@@deriving show { with_path = false; }]
 
 type untyped_letrec_pattern_branch =

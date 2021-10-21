@@ -278,12 +278,12 @@ let make_list_tree utastlst =
 
 let make_inline_application ((rng, (mdlnmlst, cmdnm)) : command) (utasts : untyped_abstract_tree list) =
   let utastcmd = (rng, UTContentOf(mdlnmlst, cmdnm)) in
-  [(dummy_range, UTInputHorzEmbedded(utastcmd, utasts |> List.map (fun x -> UTMandatoryArgument(x))))]
+  [(dummy_range, UTInputHorzEmbedded(utastcmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
 let make_block_application ((rng, (mdlnmlst, cmdnm)) : command) (utasts : untyped_abstract_tree list) =
   let utastcmd = (rng, UTContentOf(mdlnmlst, cmdnm)) in
-  [(dummy_range, UTInputVertEmbedded(utastcmd, utasts |> List.map (fun x -> UTMandatoryArgument(x))))]
+  [(dummy_range, UTInputVertEmbedded(utastcmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
 let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element) : untyped_input_horz_element list =

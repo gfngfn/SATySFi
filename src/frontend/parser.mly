@@ -1114,9 +1114,8 @@ mathbot:
       let (rngcmd, mdlnmlst, csnm) = mcmd in
       let rnglast =
         match List.rev arglst with
-        | []                                   -> rngcmd
-        | UTMandatoryArgument((rng, _)) :: _   -> rng
-        | UTOptionalArgument(_, (rng, _)) :: _ -> rng
+        | []                             -> rngcmd
+        | UTCommandArg(_, (rng, _)) :: _ -> rng
       in
       let utastcmd = (rngcmd, UTContentOf(mdlnmlst, csnm)) in
       make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(utastcmd, arglst))
@@ -1124,23 +1123,31 @@ mathbot:
   | tok=VARINMATH { let (rng, mdlnmlst, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf(mdlnmlst, varnm)))) }
 ;
 matharg:
-  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP           { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
-  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP               { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
-  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP             { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
-  | opt=OPTIONAL; BMATHGRP; utast=mathblock; cls=EMATHGRP {
-      let rlabel = failwith "TODO: matharg, rlabel 1" in
-      UTOptionalArgument(rlabel, make_standard (Tok opt) (Tok cls) (extract_main utast))
+  | opts=list(mathoptarg); opn=BMATHGRP; utast=mathblock; cls=EMATHGRP {
+      UTCommandArg(opts, make_standard (Tok opn) (Tok cls) (extract_main utast))
     }
-  | opt=OPTIONAL; BHORZGRP; utast=sxsep; cls=EHORZGRP {
-      let rlabel = failwith "TODO: matharg, rlabel 2" in
-      UTOptionalArgument(rlabel, make_standard (Tok opt) (Tok cls) (extract_main utast))
+  | opts=list(mathoptarg); opn=BHORZGRP; utast=sxsep; cls=EHORZGRP {
+      UTCommandArg(opts, make_standard (Tok opn) (Tok cls) (extract_main utast))
     }
-  | opt=OPTIONAL; BVERTGRP; utast=vxblock; cls=EVERTGRP {
-      let rlabel = failwith "TODO: matharg, rlabel 3" in
-      UTOptionalArgument(rlabel, make_standard (Tok opt) (Tok cls) (extract_main utast))
+  | opts=list(mathoptarg); opn=BVERTGRP; utast=vxblock; cls=EVERTGRP {
+      UTCommandArg(opts, make_standard (Tok opn) (Tok cls) (extract_main utast))
     }
   | utcmdarg=narg {
       utcmdarg
+    }
+;
+mathoptarg:
+  | tok=OPTIONAL; BMATHGRP; utast=mathblock; cls=EMATHGRP {
+      let rlabel = failwith "TODO: matharg, rlabel 1" in
+      (rlabel, make_standard (Tok tok) (Tok cls) (extract_main utast))
+    }
+  | tok=OPTIONAL; BHORZGRP; utast=sxsep; cls=EHORZGRP {
+      let rlabel = failwith "TODO: matharg, rlabel 2" in
+      (rlabel, make_standard (Tok tok) (Tok cls) (extract_main utast))
+    }
+  | tok=OPTIONAL; BVERTGRP; utast=vxblock; cls=EVERTGRP {
+      let rlabel = failwith "TODO: matharg, rlabel 3" in
+      (rlabel, make_standard (Tok tok) (Tok cls) (extract_main utast))
     }
 ;
 sxblock:
@@ -1198,25 +1205,35 @@ macronarg:
   | EXACT_TILDE; LPAREN; expr=nxbot; RPAREN { UTEarlyMacroArg(expr) }
 ;
 narg:
-  | opn=LPAREN; utast=nxlet; cls=RPAREN           { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
-  | opn=LPAREN; cls=RPAREN                        { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant) }
-  | utast=nxrecordsynt                            { UTMandatoryArgument(utast) }
-  | utast=nxlistsynt                              { UTMandatoryArgument(utast) }
+  | opts=list(noptarg); opn=LPAREN; utast=nxlet; cls=RPAREN {
+      UTCommandArg(opts, make_standard (Tok opn) (Tok cls) (extract_main utast))
+    }
+  | opts=list(noptarg); opn=LPAREN; cls=RPAREN {
+      UTCommandArg(opts, make_standard (Tok opn) (Tok cls) UTUnitConstant)
+    }
+  | opts=list(noptarg); utast=nxrecordsynt {
+      UTCommandArg(opts, utast)
+    }
+  | opts=list(noptarg); utast=nxlistsynt {
+      UTCommandArg(opts, utast)
+    }
+;
+noptarg:
   | opn=OPTIONAL; LPAREN; utast=nxlet; cls=RPAREN {
       let rlabel = failwith "TODO: narg, rlabel 1" in
-      UTOptionalArgument(rlabel, make_standard (Tok opn) (Tok cls) (extract_main utast))
+      (rlabel, make_standard (Tok opn) (Tok cls) (extract_main utast))
     }
   | opn=OPTIONAL; LPAREN; cls=RPAREN {
       let rlabel = failwith "TODO: narg, rlabel 2" in
-      UTOptionalArgument(rlabel, make_standard (Tok opn) (Tok cls) UTUnitConstant)
+      (rlabel, make_standard (Tok opn) (Tok cls) UTUnitConstant)
     }
   | opn=OPTIONAL; utast=nxrecordsynt {
       let rlabel = failwith "TODO: narg, rlabel 3" in
-      UTOptionalArgument(rlabel, make_standard (Tok opn) (Ranged utast) (extract_main utast))
+      (rlabel, make_standard (Tok opn) (Ranged utast) (extract_main utast))
     }
   | opn=OPTIONAL; utast=nxlistsynt {
       let rlabel = failwith "TODO: narg, rlabel 4" in
-      UTOptionalArgument(rlabel, make_standard (Tok opn) (Ranged utast) (extract_main utast))
+      (rlabel, make_standard (Tok opn) (Ranged utast) (extract_main utast))
     }
 ;
 sargs:
@@ -1224,17 +1241,20 @@ sargs:
   | sargs=nonempty_list(sarg) {
       let rng =
         match List.rev sargs with
-        | []                                   -> assert false
-        | UTMandatoryArgument((rng, _)) :: _   -> rng
-        | UTOptionalArgument(_, (rng, _)) :: _ -> rng
+        | []                             -> assert false
+        | UTCommandArg(_, (rng, _)) :: _ -> rng
       in
       (rng, sargs)
     }
 ;
 
 sarg:
-  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
-  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP   { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
+  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP {
+      UTCommandArg([], make_standard (Tok opn) (Tok cls) (extract_main utast))
+    }
+  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP {
+      UTCommandArg([], make_standard (Tok opn) (Tok cls) (extract_main utast))
+    }
 ;
 vcmd:
   | tok=VERTCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
