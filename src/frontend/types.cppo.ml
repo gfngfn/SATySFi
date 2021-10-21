@@ -23,7 +23,6 @@ type length_unit_name   = string  [@@deriving show]
 type type_variable_name = string  [@@deriving show]
 type signature_name     = string  [@@deriving show]
 type label              = string  [@@deriving show]
-type field_name         = label   [@@deriving show]
 
 
 type input_position = {
@@ -391,9 +390,9 @@ and untyped_abstract_tree_main =
 (* Tuples: *)
   | UTTuple               of untyped_abstract_tree TupleList.t
 (* Records: *)
-  | UTRecord               of (field_name * untyped_abstract_tree) list
-  | UTAccessField          of untyped_abstract_tree * field_name
-  | UTUpdateField          of untyped_abstract_tree * field_name * untyped_abstract_tree
+  | UTRecord               of (label ranged * untyped_abstract_tree) list
+  | UTAccessField          of untyped_abstract_tree * label ranged
+  | UTUpdateField          of untyped_abstract_tree * label ranged * untyped_abstract_tree
 (* Fundamentals: *)
   | UTContentOf            of (module_name list) * var_name
   | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
@@ -592,8 +591,8 @@ and ir =
   | IRInputHorz             of ir_input_horz_element list
   | IRInputVert             of ir_input_vert_element list
   | IRRecord                of label list * ir list
-  | IRAccessField           of ir * field_name
-  | IRUpdateField           of ir * field_name * ir
+  | IRAccessField           of ir * label
+  | IRUpdateField           of ir * label * ir
   | IRLetRecIn              of (varloc * ir) list * ir
   | IRLetNonRecIn           of ir * ir_pattern_tree * ir
   | IRContentOf             of varloc
@@ -654,8 +653,8 @@ and ir_pattern_tree =
   | IRPConstructor          of constructor_name * ir_pattern_tree
 
 and instruction =
-  | OpAccessField of field_name
-  | OpUpdateField of field_name
+  | OpAccessField of label
+  | OpUpdateField of label
   | OpForward of int
   | OpApply of int
   | OpApplyT of int
@@ -782,8 +781,8 @@ and abstract_tree =
 (* -- record value -- *)
   | Record                of abstract_tree LabelMap.t
       [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
-  | AccessField           of abstract_tree * field_name
-  | UpdateField           of abstract_tree * field_name * abstract_tree
+  | AccessField           of abstract_tree * label
+  | UpdateField           of abstract_tree * label * abstract_tree
 (* -- fundamental -- *)
   | LetRecIn              of letrec_binding list * abstract_tree
   | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
@@ -918,9 +917,8 @@ and code_value =
   | CdApply         of code_value LabelMap.t * code_value * code_value
   | CdIfThenElse    of code_value * code_value * code_value
   | CdRecord        of code_value LabelMap.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "CdRecord(...)")]
-  | CdAccessField   of code_value * field_name
-  | CdUpdateField   of code_value * field_name * code_value
+  | CdAccessField   of code_value * label
+  | CdUpdateField   of code_value * label * code_value
   | CdLetMutableIn  of CodeSymbol.t * code_value * code_value
   | CdOverwrite     of CodeSymbol.t * code_value
   | CdDereference   of code_value

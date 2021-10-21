@@ -779,7 +779,7 @@ nxunsub:
   | utast=nxbot                    { utast }
 ;
 nxbot:
-  | utast=nxbot; ACCESS; var=VAR { make_standard (Ranged utast) (Ranged var) (UTAccessField(utast, extract_name var)) }
+  | utast=nxbot; ACCESS; rlabel=VAR { make_standard (Ranged utast) (Ranged rlabel) (UTAccessField(utast, rlabel)) }
   | var=VAR                      { let (rng, varnm) = var in (rng, UTContentOf([], varnm)) }
   | vwm=VARWITHMOD               { let (rng, mdlnmlst, varnm) = vwm in (rng, UTContentOf(mdlnmlst, varnm)) }
   | ic=INTCONST                  { make_standard (Ranged ic) (Ranged ic)  (UTIntegerConstant(extract_main ic)) }
@@ -809,20 +809,20 @@ nxlistsynt:
 ;
 nxrecordsynt:
   | opn=BRECORD; cls=ERECORD               { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
-  | opn=BRECORD; rcd=nxrecord; cls=ERECORD { make_standard (Tok opn) (Tok cls) (UTRecord(rcd)) }
-  | opn=BRECORD; utast=nxbot; WITH; rcd=nxrecord; cls=ERECORD {
+  | opn=BRECORD; fields=nxrecord; cls=ERECORD { make_standard (Tok opn) (Tok cls) (UTRecord(fields)) }
+  | opn=BRECORD; utast=nxbot; WITH; fields=nxrecord; cls=ERECORD {
       let (_, utastmain) =
-        rcd |> List.fold_left (fun utast1 (fldnm, utastF) ->
-          (Range.dummy "update-field", UTUpdateField(utast1, fldnm, utastF))
+        fields |> List.fold_left (fun utast1 (rlabel, utast2) ->
+          (Range.dummy "update-field", UTUpdateField(utast1, rlabel, utast2))
         ) utast
       in
       make_standard (Tok opn) (Tok cls) utastmain
     }
 ;
 nxrecord:
-  | label=VAR; DEFEQ; utast=nxlet                           { (extract_name label, utast) :: [] }
-  | label=VAR; DEFEQ; utast=nxlet; LISTPUNCT                { (extract_name label, utast) :: [] }
-  | label=VAR; DEFEQ; utast=nxlet; LISTPUNCT; tail=nxrecord { (extract_name label, utast) :: tail }
+  | rlabel=VAR; DEFEQ; utast=nxlet                           { (rlabel, utast) :: [] }
+  | rlabel=VAR; DEFEQ; utast=nxlet; LISTPUNCT                { (rlabel, utast) :: [] }
+  | rlabel=VAR; DEFEQ; utast=nxlet; LISTPUNCT; tail=nxrecord { (rlabel, utast) :: tail }
 ;
 nxlist:
   | utast1=nxlet; LISTPUNCT; utast2=nxlist { make_standard (Ranged utast1) (Ranged utast2) (UTListCons(utast1, utast2)) }

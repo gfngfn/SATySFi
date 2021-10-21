@@ -17,7 +17,7 @@ exception MultiplePatternVariable        of Range.t * Range.t * var_name
 exception InvalidOptionalCommandArgument of mono_type * Range.t
 exception NeedsMoreArgument              of Range.t * mono_type * mono_type
 exception TooManyArgument                of Range.t * mono_type
-exception MultipleFieldInRecord          of Range.t * field_name
+exception MultipleFieldInRecord          of Range.t * label
 exception ApplicationOfNonFunction       of Range.t * mono_type
 exception InvalidExpressionAsToStaging   of Range.t * stage
 exception InvalidOccurrenceAsToStaging   of Range.t * var_name * stage
@@ -1062,10 +1062,10 @@ let rec typecheck
 
 (* ---- records ---- *)
 
-  | UTRecord(flutlst) ->
-      typecheck_record pre tyenv flutlst rng
+  | UTRecord(fields) ->
+      typecheck_record rng pre tyenv fields
 
-  | UTAccessField(utast1, label) ->
+  | UTAccessField(utast1, (_, label)) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let beta = fresh_type_variable rng pre in
       let row =
@@ -1076,13 +1076,14 @@ let rec typecheck
       unify ty1 (Range.dummy "UTAccessField", RecordType(row));
       (AccessField(e1, label), beta)
 
-  | UTUpdateField(utast1, label, utast2) ->
+  | UTUpdateField(utast1, rlabel, utast2) ->
+      let (_, label) = rlabel in
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
       let row =
         let frid = fresh_free_row_id pre.level (LabelSet.singleton label) in
         let rvuref = ref (MonoORFree(frid)) in
-        RowCons((Range.dummy "UTUpdateField", label), ty2, RowVar(UpdatableRow(rvuref)))
+        RowCons(rlabel, ty2, RowVar(UpdatableRow(rvuref)))
       in
       unify ty1 (Range.dummy "UTUpdateField", RecordType(row));
       (UpdateField(e1, label, e2), ty1)
@@ -1469,15 +1470,15 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
     Alist.to_list argacc
 
 
-and typecheck_record (pre : pre) (tyenv : Typeenv.t) (fluts : (field_name * untyped_abstract_tree) list) (rng : Range.t) =
+and typecheck_record (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (fields : (label ranged * untyped_abstract_tree) list) =
   let (easc, row) =
-    fluts |> List.fold_left (fun (easc, row) (fldnmX, utastX) ->
-      if easc |> LabelMap.mem fldnmX then
-        raise (MultipleFieldInRecord(rng, fldnmX))
+    fields |> List.fold_left (fun (easc, row) (rlabel, utast) ->
+      let (rng_label, label) = rlabel in
+      if easc |> LabelMap.mem label then
+        raise (MultipleFieldInRecord(rng_label, label))
       else
-        let rngX = failwith "TODO: typecheck_record, range of field" in
-        let (eX, tyX) = typecheck pre tyenv utastX in
-        (easc |> LabelMap.add fldnmX eX, RowCons((rngX, fldnmX), tyX, row))
+        let (e, ty) = typecheck pre tyenv utast in
+        (easc |> LabelMap.add label e, RowCons(rlabel, ty, row))
     ) (LabelMap.empty, RowEmpty)
   in
   (Record(easc), (rng, RecordType(row)))

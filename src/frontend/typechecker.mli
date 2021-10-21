@@ -14,7 +14,7 @@ exception MultiplePatternVariable        of Range.t * Range.t * var_name
 exception InvalidOptionalCommandArgument of mono_type * Range.t
 exception NeedsMoreArgument              of Range.t * mono_type * mono_type
 exception TooManyArgument                of Range.t * mono_type
-exception MultipleFieldInRecord          of Range.t * field_name
+exception MultipleFieldInRecord          of Range.t * label
 exception ApplicationOfNonFunction       of Range.t * mono_type
 exception InvalidExpressionAsToStaging   of Range.t * stage
 exception InvalidOccurrenceAsToStaging   of Range.t * var_name * stage
