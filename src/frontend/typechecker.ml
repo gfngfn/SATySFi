@@ -783,12 +783,23 @@ let rec typecheck
       let ivlst = typecheck_input_vert rng pre tyenv utivlst in
       (InputVert(ivlst), (rng, BaseType(TextColType)))
 
-  | UTOpenIn(rngtok, mdlnm, utast1) ->
-      failwith "TODO: UTOpenIn"
-(*
-      let tyenvnew = tyenv |> Typeenv.open_module rngtok mdlnm in
-      typecheck_iter tyenvnew utast1
-*)
+  | UTOpenIn(rngtok, modnm, utast1) ->
+      begin
+        match tyenv |> Typeenv.find_module modnm with
+        | None ->
+            failwith "TODO (error): UTOpenIn, not found"
+
+        | Some(mentry) ->
+            begin
+              match mentry.mod_signature with
+              | ConcFunctor(_) ->
+                  failwith "TODO (error): UTOpenIn, not a signature"
+
+              | ConcStructure(ssig) ->
+                  let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
+                  typecheck_iter tyenv utast1
+            end
+      end
 
   | UTContentOf(_, varnm) ->
       begin
