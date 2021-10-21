@@ -204,8 +204,11 @@ document (|
       +commands [`==`; `<>`; `<`; `>`; `<=`; `>=`] (t-int-comp) {
         整数の比較演算．
       }
-      +commands [`<<`; `>>`; `bxor`; `band`; `bor`; `bnot`] (t-int-comp) {
+      +commands [`<<`; `>>`; `bxor`; `band`; `bor`] (tI --> (tI --> tI)) {
         整数のビット演算．
+      }
+      +command (`bnot`) (tI --> tI) {
+        整数のビットNOT演算
       }
       +commands [`&&`; `||`] (t-bool-op) {
         真偽値の連言・選言．
