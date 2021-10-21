@@ -64,6 +64,12 @@ let fresh_free_id (qtfbl : quantifiability) (lev : Level.t) : FreeID.t =
   fid
 
 
+let fresh_free_row_id (lev : Level.t) (labset : LabelSet.t) : FreeRowID.t =
+  let frid = FreeRowID.fresh lev in
+  KindStore.register_free_row_id frid labset;
+  frid
+
+
 let make_type_parameters (pre : pre) (tyvars : (type_variable_name ranged) list) : pre * BoundID.t list =
   let (typarams, bidacc) =
     tyvars |> List.fold_left (fun (typarams, bidacc) (rng, tyvarnm) ->
@@ -1048,25 +1054,27 @@ let rec typecheck
   | UTRecord(flutlst) ->
       typecheck_record pre tyenv flutlst rng
 
-  | UTAccessField(utast1, fldnm) ->
-      failwith "TODO: UTAccessField"
-(*
+  | UTAccessField(utast1, label) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let betaF = fresh_type_variable rng pre UniversalKind in
-      let beta1 = fresh_type_variable (get_range utast1) pre (RecordKind(Assoc.of_list [(fldnm, betaF)])) in
-      unify beta1 ty1;
-      (AccessField(e1, fldnm), betaF)
-*)
+      let beta = fresh_type_variable rng pre in
+      let row =
+        let frid = fresh_free_row_id pre.level (LabelSet.singleton label) in
+        let rvuref = ref (MonoORFree(frid)) in
+        RowCons((Range.dummy "UTAccessField", label), beta, RowVar(UpdatableRow(rvuref)))
+      in
+      unify ty1 (Range.dummy "UTAccessField", RecordType(row));
+      (AccessField(e1, label), beta)
 
-  | UTUpdateField(utast1, fldnm, utastF) ->
-      failwith "TODO: UTUpdateField"
-(*
+  | UTUpdateField(utast1, label, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let (eF, tyF) = typecheck_iter tyenv utastF in
-      let beta1 = fresh_type_variable (get_range utast1) pre (RecordKind(Assoc.of_list [(fldnm, tyF)])) in
-      unify beta1 ty1;
-      (UpdateField(e1, fldnm, eF), ty1)
-*)
+      let (e2, ty2) = typecheck_iter tyenv utast2 in
+      let row =
+        let frid = fresh_free_row_id pre.level (LabelSet.singleton label) in
+        let rvuref = ref (MonoORFree(frid)) in
+        RowCons((Range.dummy "UTUpdateField", label), ty2, RowVar(UpdatableRow(rvuref)))
+      in
+      unify ty1 (Range.dummy "UTUpdateField", RecordType(row));
+      (UpdateField(e1, label, e2), ty1)
 
 (* -- math -- *)
 
