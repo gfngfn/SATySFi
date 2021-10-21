@@ -4,10 +4,14 @@
 @require: vdecoset
 @require: hdecoset
 
+@import: paren
+
 
 type type-syntax =
   | TypeName        of inline-text
   | TypeConstructor of inline-text * (type-syntax list)
+  | Tuple           of type-syntax list
+  | Record          of (inline-text * type-syntax) list
   | FuncType        of type-syntax * type-syntax
 
 
@@ -22,6 +26,10 @@ let type-name name =
 let type-constructor name tylst =
   TypeConstructor(name, tylst)
 
+let type-tuple tylst = Tuple(tylst)
+
+let type-record tylst = Record(tylst)
+
 
 let tU = type-name {unit}
 let tI = type-name {int}
@@ -29,6 +37,7 @@ let tB = type-name {bool}
 let tF = type-name {float}
 let tL = type-name {length}
 let tS = type-name {string}
+let tRE = type-name {regexp}
 let tIT = type-name {inline-text}
 let tIB = type-name {inline-boxes}
 let tBT = type-name {block-text}
@@ -54,7 +63,16 @@ let tMKERNF = type-name {math-kern-func}
 let tMCSTY = type-name {math-char-style}
 let tPAREN = type-name {paren}
 let tMCCLS = type-name {math-char-class}
+let tPG = type-name {page}
+let tPAGECONTF = type-name {page-count-func}
+let tPAGEPARTSF = type-name {page-parts-func}
+let tTCTX = type-name {text-info}
 let tLIST ty = type-constructor {list} [ty]
+let tOPT ty = type-constructor {option} [ty]
+let tICMD ty = type-constructor {inline-cmd} [ty]
+let tPROD tylst = type-tuple tylst
+let tRECORD tylst = type-record tylst
+let tANY = type-name {Any}
 %  let token = type-name {list} in
 %    ${\paren{#m}\math-skip!(4pt)#token}
 
@@ -70,10 +88,36 @@ let-rec math-of-type ty =
           let m = math-of-type ty in
             match ty with
             | TypeName(_) -> m
+            | Tuple(_)    -> m
+            | Record(_)   -> m
             | _           -> ${\paren{#m}}
         ))
       in
         Math.join ${\math-skip!(4pt)} (List.append mlst [text-in-math MathOrd (fun ctx -> read-inline ctx it)])
+
+  | Tuple(tylst) ->
+      let mlst =
+        tylst |> List.map (fun ty -> (
+          let m = math-of-type ty in
+            match ty with
+            | TypeName(_) -> m
+            | Tuple(_)    -> m
+            | Record(_)   -> m
+            | _           -> ${\paren{#m}}
+        ))
+      in
+      let m = Math.join ${\ast} mlst in
+      ${\paren{#m}}
+
+  | Record(lst) ->
+      let mlst =
+        lst |> List.map (fun (key, ty) -> (
+          let m = math-of-type ty in
+          ${\text!(key) = #m}
+        ))
+      in
+      let m = Math.join ${\;\math-skip!(4pt)} mlst in
+      ${\record-paren{#m}}
 
   | FuncType(ty1, ty2) ->
       let m1 = math-of-type ty1 in
@@ -85,6 +129,8 @@ let-rec math-of-type ty =
       in
       ${#m1\to#m2}
 
+
+let-math \math-of-type ty = math-of-type ty
 
 let-block ctx +centered-image wid srcpath =
   let img = load-image srcpath in
