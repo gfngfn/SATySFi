@@ -836,15 +836,17 @@ variants:
   | ctor=CONSTRUCTOR                                    { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit2", MTypeName("unit", []))) :: [] }
 ;
 txfunc:
-  | mntydominfo=txfuncopts; ARROW; mntycod=txfunc {
-      let (mntyopts, mntydom) = mntydominfo in
-      make_standard (Ranged mntydom) (Ranged mntycod) (MFuncType(mntyopts, mntydom, mntycod))
+  | mnopts=list(txfuncopt); ARROW; mntydom=txprod; ARROW; mntycod=txfunc {
+      (* TODO: reconsider the concrete syntax *)
+      make_standard (Ranged mntydom) (Ranged mntycod) (MFuncType(mnopts, mntydom, mntycod))
     }
   | mnty=txprod { mnty }
 ;
-txfuncopts:
-  | mntyhead=txprod; OPTIONALARROW; tail=txfuncopts { let (mntytail, mntydom) = tail in (mntyhead :: mntytail, mntydom) }
-  | mntydom=txprod                                  { ([], mntydom) }
+txfuncopt:
+  | OPTIONAL; mnty=txprod {
+      let rlabel = failwith "TODO: txfuncopt, rlabel" in
+      (rlabel, mnty)
+    }
 ;
 txprod:
   | mnty1=txapppre; EXACT_TIMES; mntyprod=txprodsub {

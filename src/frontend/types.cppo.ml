@@ -80,7 +80,7 @@ type manual_type =
 and manual_type_main =
   | MTypeName        of type_name * manual_type list
   | MTypeParam       of var_name
-  | MFuncType        of manual_type list * manual_type * manual_type
+  | MFuncType        of (label ranged * manual_type) list * manual_type * manual_type
   | MProductType     of manual_type TupleList.t
   | MRecordType      of (label ranged * manual_type) list
   | MHorzCommandType of manual_command_argument_type list

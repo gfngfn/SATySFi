@@ -1716,40 +1716,36 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                 TypeVariable(MustBeBound(mbbid))
           end
 
-      | MFuncType(mtyadds, mtydom, mtycod) ->
-          FuncType(aux_row mtyadds, aux mtydom, aux mtycod)
+      | MFuncType(mnfields, mtydom, mtycod) ->
+          FuncType(aux_row mnfields, aux mtydom, aux mtycod)
 
       | MProductType(mntys) ->
           ProductType(TupleList.map aux mntys)
 
       | MRecordType(mnfields) ->
-          let (_, row) =
-            mnfields |> List.fold_left (fun (labset, row) (rlabel, mnty) ->
-              let (_, label) = rlabel in
-              if labset |> LabelSet.mem label then
-                failwith "TODO (error): duplicated label"
-              else
-                let row = RowCons(rlabel, aux mnty, row) in
-                (labset |> LabelSet.add label, row)
-            ) (LabelSet.empty, RowEmpty)
-          in
-          RecordType(row)
+          RecordType(aux_row mnfields)
 
       | MHorzCommandType(mncmdargtys) -> HorzCommandType(aux_cmd_list mncmdargtys)
       | MVertCommandType(mncmdargtys) -> VertCommandType(aux_cmd_list mncmdargtys)
       | MMathCommandType(mncmdargtys) -> MathCommandType(aux_cmd_list mncmdargtys)
-
     in
     (rng, tymain)
 
   and aux_cmd_list (mncmdargtys : manual_command_argument_type list) =
     failwith "TODO: decode_manual_type, aux_cmd_list"
 
-  and aux_row (mtyadds : manual_type list) =
-    failwith "TODO: decode_manual_type, aux_row"
-(*
-    List.fold_right (fun mty row -> OptionRowCons(aux mty, row)) mtyadds OptionRowEmpty
-*)
+  and aux_row (mnfields : (label ranged * manual_type) list) =
+    let (_, row) =
+      mnfields |> List.fold_left (fun (labset, row) (rlabel, mnty) ->
+        let (_, label) = rlabel in
+        if labset |> LabelSet.mem label then
+          failwith "TODO (error): duplicated label"
+        else
+          let row = RowCons(rlabel, aux mnty, row) in
+          (labset |> LabelSet.add label, row)
+      ) (LabelSet.empty, RowEmpty)
+    in
+    row
   in
   aux mty
 
