@@ -51,13 +51,13 @@ type substitution = type_scheme SubstMap.t
 module SynonymNameSet = Set.Make(String)
 
 
-let fresh_free_id (kd : kind) (qtfbl : quantifiability) (lev : Level.t) =
+let fresh_free_id (qtfbl : quantifiability) (lev : Level.t) : FreeID.t =
   let fid = FreeID.fresh () in
   let fentry =
     KindStore.{
       level           = lev;
       quantifiability = qtfbl;
-      mono_kind       = kd;
+      mono_kind       = UniversalKind;
     }
   in
   KindStore.set_free_id fid fentry;
@@ -98,20 +98,18 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
         RowVar(frid)
       in
       let tyid = centry.ctor_belongs_to in
-      let (bidlist, pty) = centry.ctor_parameter in
-      let pairlst =
-        bidlist |> List.map (fun bid ->
-          let bentry = KindStore.get_bound_id bid in
-          let kd = bentry.KindStore.poly_kind in
-          let fid = fresh_free_id kd qtfbl lev in
+      let (bids, pty) = centry.ctor_parameter in
+      let pairs =
+        bids |> List.map (fun bid ->
+          let fid = fresh_free_id qtfbl lev in
           let tv = Updatable(ref (MonoFree(fid))) in
           let ty = (Range.dummy "tc-constructor", TypeVariable(tv)) in
           (ty, bid)
         )
       in
-      let ty = instantiate_type_scheme freef orfreef pairlst pty in
-      let tyarglst = pairlst |> List.map (fun (ty, _) -> ty) in
-      (tyarglst, tyid, ty)
+      let ty = instantiate_type_scheme freef orfreef pairs pty in
+      let tyargs = pairs |> List.map (fun (ty, _) -> ty) in
+      (tyargs, tyid, ty)
 
 
 let abstraction (evid : EvalVarID.t) (ast : abstract_tree) : abstract_tree =
@@ -129,7 +127,7 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
     optargs |> List.fold_left (fun (tyenv, row, evid_labmap) (rlabel, varnm) ->
       let (rng, label) = rlabel in
       let evid = EvalVarID.fresh (rng, varnm) in
-      let fid = fresh_free_id UniversalKind qtfbl lev in
+      let fid = fresh_free_id qtfbl lev in
       let tv = Updatable(ref (MonoFree(fid))) in
       let beta = (rng, TypeVariable(PolyFree(tv))) in
       let tyenv =
@@ -159,7 +157,7 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       let (rng, varnm) = param in
       let evid = EvalVarID.fresh param in
       let (ptybody, beta) =
-        let tvid = fresh_free_id UniversalKind pre.quantifiability pre.level in
+        let tvid = fresh_free_id pre.quantifiability pre.level in
         let tv = Updatable(ref (MonoFree(tvid))) in
         ((rng, TypeVariable(PolyFree(tv))), (rng, TypeVariable(tv)))
       in
@@ -708,9 +706,9 @@ let unify (ty1 : mono_type) (ty2 : mono_type) =
         raise (ContradictionError(ty1, ty2))
 
 
-let fresh_type_variable rng pre kd =
-  let tvid = fresh_free_id kd pre.quantifiability pre.level in
-  let tvuref = ref (MonoFree(tvid)) in
+let fresh_type_variable (rng : Range.t) (pre : pre) : mono_type =
+  let fid = fresh_free_id pre.quantifiability pre.level in
+  let tvuref = ref (MonoFree(fid)) in
   (rng, TypeVariable(Updatable(tvuref)))
 
 
@@ -921,7 +919,7 @@ let rec typecheck
             (eret, tycodnew)
 
         | (_, TypeVariable(_)) as ty1 ->
-            let beta = fresh_type_variable rng pre UniversalKind in
+            let beta = fresh_type_variable rng pre in
             unify ty1 (get_range utast1, FuncType(row0, ty2, beta));
             (eret, beta)
 
@@ -938,7 +936,7 @@ let rec typecheck
 
   | UTPatternMatch(utastO, utpatbrs) ->
       let (eO, tyO) = typecheck_iter tyenv utastO in
-      let beta = fresh_type_variable (Range.dummy "ut-pattern-match") pre UniversalKind in
+      let beta = fresh_type_variable (Range.dummy "ut-pattern-match") pre in
       let patbrs = typecheck_pattern_branch_list pre tyenv utpatbrs tyO beta in
       Exhchecker.main rng patbrs tyO pre tyenv;
       (PatternMatch(rng, eO, patbrs), beta)
@@ -1033,7 +1031,7 @@ let rec typecheck
       (PrimitiveListCons(eH, eT), tyres)
 
   | UTEndOfList ->
-      let beta = fresh_type_variable rng pre UniversalKind in
+      let beta = fresh_type_variable rng pre in
       (ASTEndOfList, (rng, ListType(beta)))
 
 (* ---- tuple ---- *)
@@ -1140,7 +1138,7 @@ let rec typecheck
 
         | Stage1 ->
             let (e1, ty1) = typecheck_iter ~s:Stage0 tyenv utast1 in
-            let beta = fresh_type_variable rng pre UniversalKind in
+            let beta = fresh_type_variable rng pre in
             unify ty1 (Range.dummy "prev", CodeType(beta));
             (Prev(e1), beta)
       end
@@ -1539,7 +1537,7 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         (PListCons(epat1, epat2), typat2, patvarmap)
 
     | UTPEndOfList ->
-        let beta = fresh_type_variable rng pre UniversalKind in
+        let beta = fresh_type_variable rng pre in
         (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
 
     | UTPTuple(utpats) ->
@@ -1554,16 +1552,16 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         (PTuple(epats), tyres, patvarmap)
 
     | UTPWildCard ->
-        let beta = fresh_type_variable rng pre UniversalKind in
+        let beta = fresh_type_variable rng pre in
         (PWildCard, beta, PatternVarMap.empty)
 
     | UTPVariable(varnm) ->
-        let beta = fresh_type_variable rng pre UniversalKind in
+        let beta = fresh_type_variable rng pre in
         let evid = EvalVarID.fresh (rng, varnm) in
         (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
 
     | UTPAsVariable(varnm, utpat1) ->
-        let beta = fresh_type_variable rng pre UniversalKind in
+        let beta = fresh_type_variable rng pre in
         let (epat1, typat1, patvarmap1) = iter utpat1 in
         begin
           match PatternVarMap.find_opt varnm patvarmap1 with
@@ -1590,7 +1588,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letre
     utrecbinds |> List.fold_left (fun (tyenv, utrecacc) utrecbind ->
       let UTLetRecBinding(_, varrng, varnm, astdef) = utrecbind in
       let tvuref =
-        let tvid = fresh_free_id UniversalKind pre.quantifiability (Level.succ pre.level) in
+        let tvid = fresh_free_id pre.quantifiability (Level.succ pre.level) in
         ref (MonoFree(tvid))
       in
       let tv = Updatable(tvuref) in
