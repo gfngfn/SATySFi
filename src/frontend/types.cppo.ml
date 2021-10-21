@@ -462,8 +462,7 @@ and untyped_math_main =
 
 and untyped_command_argument =
   | UTMandatoryArgument of untyped_abstract_tree
-  | UTOptionalArgument  of untyped_abstract_tree
-  | UTOmission          of Range.t
+  | UTOptionalArgument  of label ranged * untyped_abstract_tree
 [@@deriving show { with_path = false; }]
 
 type untyped_letrec_pattern_branch =

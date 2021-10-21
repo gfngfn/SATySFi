@@ -1307,10 +1307,9 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
           | VertCommandType(cmdargtylstreq) ->
               let rngcmdapp =
                 match List.rev utcmdarglst with
-                | []                                 -> rngcmd
-                | UTMandatoryArgument((rng, _)) :: _ -> Range.unite rngcmd rng
-                | UTOptionalArgument((rng, _)) :: _  -> Range.unite rngcmd rng
-                | UTOmission(rng) :: _               -> Range.unite rngcmd rng
+                | []                                   -> rngcmd
+                | UTMandatoryArgument((rng, _)) :: _   -> Range.unite rngcmd rng
+                | UTOptionalArgument(_, (rng, _)) :: _ -> Range.unite rngcmd rng
               in
               let evid = EvalVarID.fresh (Range.dummy "ctx-vert", "%ctx-vert") in
               let ecmdctx = Apply(LabelMap.empty, ecmd, ContentOf(Range.dummy "ctx-vert", evid)) in
@@ -1366,10 +1365,9 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
     | (_, UTInputHorzEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
         let rngcmdapp =
           match List.rev utcmdarglst with
-          | []                                 -> rngcmd
-          | UTMandatoryArgument((rng, _)) :: _ -> Range.unite rngcmd rng
-          | UTOptionalArgument((rng, _)) :: _  -> Range.unite rngcmd rng
-          | UTOmission(rng) :: _               -> Range.unite rngcmd rng
+          | []                                   -> rngcmd
+          | UTMandatoryArgument((rng, _)) :: _   -> Range.unite rngcmd rng
+          | UTOptionalArgument(_, (rng, _)) :: _ -> Range.unite rngcmd rng
         in
         let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
         let (_, tycmdmain) = tycmd in

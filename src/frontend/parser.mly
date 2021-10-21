@@ -1114,10 +1114,9 @@ mathbot:
       let (rngcmd, mdlnmlst, csnm) = mcmd in
       let rnglast =
         match List.rev arglst with
-        | []                                 -> rngcmd
-        | UTMandatoryArgument((rng, _)) :: _ -> rng
-        | UTOptionalArgument((rng, _)) :: _  -> rng
-        | UTOmission(rng) :: _               -> rng
+        | []                                   -> rngcmd
+        | UTMandatoryArgument((rng, _)) :: _   -> rng
+        | UTOptionalArgument(_, (rng, _)) :: _ -> rng
       in
       let utastcmd = (rngcmd, UTContentOf(mdlnmlst, csnm)) in
       make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(utastcmd, arglst))
@@ -1128,10 +1127,21 @@ matharg:
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP           { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP               { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP             { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
-  | opt=OPTIONAL; BMATHGRP; utast=mathblock; cls=EMATHGRP { UTOptionalArgument(make_standard (Tok opt) (Tok cls) (extract_main utast)) }
-  | opt=OPTIONAL; BHORZGRP; utast=sxsep; cls=EHORZGRP     { UTOptionalArgument(make_standard (Tok opt) (Tok cls) (extract_main utast)) }
-  | opt=OPTIONAL; BVERTGRP; utast=vxblock; cls=EVERTGRP   { UTOptionalArgument(make_standard (Tok opt) (Tok cls) (extract_main utast)) }
-  | utcmdarg=narg                                         { utcmdarg }
+  | opt=OPTIONAL; BMATHGRP; utast=mathblock; cls=EMATHGRP {
+      let rlabel = failwith "TODO: matharg, rlabel 1" in
+      UTOptionalArgument(rlabel, make_standard (Tok opt) (Tok cls) (extract_main utast))
+    }
+  | opt=OPTIONAL; BHORZGRP; utast=sxsep; cls=EHORZGRP {
+      let rlabel = failwith "TODO: matharg, rlabel 2" in
+      UTOptionalArgument(rlabel, make_standard (Tok opt) (Tok cls) (extract_main utast))
+    }
+  | opt=OPTIONAL; BVERTGRP; utast=vxblock; cls=EVERTGRP {
+      let rlabel = failwith "TODO: matharg, rlabel 3" in
+      UTOptionalArgument(rlabel, make_standard (Tok opt) (Tok cls) (extract_main utast))
+    }
+  | utcmdarg=narg {
+      utcmdarg
+    }
 ;
 sxblock:
   | ih=ih { let rng = make_range_from_list ih in (rng, UTInputHorz(ih)) }
@@ -1192,21 +1202,31 @@ narg:
   | opn=LPAREN; cls=RPAREN                        { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant) }
   | utast=nxrecordsynt                            { UTMandatoryArgument(utast) }
   | utast=nxlistsynt                              { UTMandatoryArgument(utast) }
-  | opn=OPTIONAL; LPAREN; utast=nxlet; cls=RPAREN { UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
-  | opn=OPTIONAL; LPAREN; cls=RPAREN              { UTOptionalArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant) }
-  | opn=OPTIONAL; utast=nxrecordsynt              { UTOptionalArgument(make_standard (Tok opn) (Ranged utast) (extract_main utast)) }
-  | opn=OPTIONAL; utast=nxlistsynt                { UTOptionalArgument(make_standard (Tok opn) (Ranged utast) (extract_main utast)) }
-  | rng=OMISSION                                  { UTOmission(rng) }
+  | opn=OPTIONAL; LPAREN; utast=nxlet; cls=RPAREN {
+      let rlabel = failwith "TODO: narg, rlabel 1" in
+      UTOptionalArgument(rlabel, make_standard (Tok opn) (Tok cls) (extract_main utast))
+    }
+  | opn=OPTIONAL; LPAREN; cls=RPAREN {
+      let rlabel = failwith "TODO: narg, rlabel 2" in
+      UTOptionalArgument(rlabel, make_standard (Tok opn) (Tok cls) UTUnitConstant)
+    }
+  | opn=OPTIONAL; utast=nxrecordsynt {
+      let rlabel = failwith "TODO: narg, rlabel 3" in
+      UTOptionalArgument(rlabel, make_standard (Tok opn) (Ranged utast) (extract_main utast))
+    }
+  | opn=OPTIONAL; utast=nxlistsynt {
+      let rlabel = failwith "TODO: narg, rlabel 4" in
+      UTOptionalArgument(rlabel, make_standard (Tok opn) (Ranged utast) (extract_main utast))
+    }
 ;
 sargs:
   | rng=ENDACTIVE             { (rng, []) }
   | sargs=nonempty_list(sarg) {
       let rng =
         match List.rev sargs with
-        | []                                 -> assert false
-        | UTMandatoryArgument((rng, _)) :: _ -> rng
-        | UTOptionalArgument((rng, _)) :: _  -> rng
-        | UTOmission(rng) :: _               -> rng
+        | []                                   -> assert false
+        | UTMandatoryArgument((rng, _)) :: _   -> rng
+        | UTOptionalArgument(_, (rng, _)) :: _ -> rng
       in
       (rng, sargs)
     }
