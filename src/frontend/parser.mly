@@ -931,9 +931,9 @@ txlist:
   |                                                     { [] }
 ;
 txrecord:
-  | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT; tail=txrecord { let (_, fldnm) = fldtok in (fldnm, mnty) :: tail }
-  | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT                { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
-  | fldtok=VAR; COLON; mnty=txfunc                           { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
+  | rlabel=VAR; COLON; mnty=txfunc; LISTPUNCT; tail=txrecord { (rlabel, mnty) :: tail }
+  | rlabel=VAR; COLON; mnty=txfunc; LISTPUNCT                { (rlabel, mnty) :: [] }
+  | rlabel=VAR; COLON; mnty=txfunc                           { (rlabel, mnty) :: [] }
 ;
 tuple:
   | utast=nxlet                   { utast :: [] }

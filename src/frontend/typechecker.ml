@@ -1722,11 +1722,18 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
       | MProductType(mntys) ->
           ProductType(TupleList.map aux mntys)
 
-      | MRecordType(mnkvs) ->
-          failwith "TODO: decode_manual_type, MRecordType"
-(*
-          RecordType(Assoc.map_value aux mnasc)
-*)
+      | MRecordType(mnfields) ->
+          let (_, row) =
+            mnfields |> List.fold_left (fun (labset, row) (rlabel, mnty) ->
+              let (_, label) = rlabel in
+              if labset |> LabelSet.mem label then
+                failwith "TODO (error): duplicated label"
+              else
+                let row = RowCons(rlabel, aux mnty, row) in
+                (labset |> LabelSet.add label, row)
+            ) (LabelSet.empty, RowEmpty)
+          in
+          RecordType(row)
 
       | MHorzCommandType(mncmdargtys) -> HorzCommandType(aux_cmd_list mncmdargtys)
       | MVertCommandType(mncmdargtys) -> VertCommandType(aux_cmd_list mncmdargtys)
