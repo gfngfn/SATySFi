@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Add primitive `set-math-char : int -> int -> math-class -> context -> context` for handling various Unicode code points in the math mode.
 - Add primitive `register-document-information` for furnishing document information dictionaries with PDF files ([PR\#268](https://github.com/gfngfn/SATySFi/pull/268) by `puripuri2100`).
 - Develop `doc/doc-primitives.saty` ([PR\#281](https://github.com/gfngfn/SATySFi/pull/281) by `puripuri2100`).
+- Add Web colors to the `color` packge ([PR\#282](https://github.com/gfngfn/SATySFi/pull/282) by `yasuo-ozu`).
 
 ### Changed
 - Remove the build dependency on Ruby and migrate some build scripts from `Makefile` to `dune` ([PR\#142](https://github.com/gfngfn/SATySFi/pull/142) by `leque`, and [PR\#226](https://github.com/gfngfn/SATySFi/pull/226) by `na4zagin3`).
