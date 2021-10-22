@@ -23,9 +23,17 @@ satysfi
 *.afm
 *.t1a
 *.svg
+!/logo/macrodown.svg
 *.dat
 *.ttx
 *.jpg
+!/demo/satysfi-logo.jpg
+!/tests/images/satysfi-logo-cmyk.jpg
+!/tests/images/satysfi-logo-gray.jpg
+!/tests/images/satysfi-logo-rgb.jpg
+!/tests/images/peppers-cmyk.jpg
+!/tests/images/peppers-gray.jpg
+!/tests/images/peppers-rgb.jpg
 *.satysfi-aux
 external/
 
