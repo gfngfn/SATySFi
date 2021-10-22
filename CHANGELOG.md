@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Fix invalid errors emitted by `--type-check-only` by making the option extension-sensitive.
 - Fix the exhaustiveness check ([PR\#171](https://github.com/gfngfn/SATySFi/pull/171) by `matsud224`).
 - Fix how to handle digits under `\mathbb` ([PR\#286](https://github.com/gfngfn/SATySFi/pull/286) by `elpinal`).
+- Use images other than Lenna for tests ([PR\#288](https://github.com/gfngfn/SATySFi/pull/288) by `nekketsuuu`).
 
 ### Added
 - Add primitives `(<<)`, `(>>)`, `bxor`, `band`, `bor`, and `bnot` for bitwise operations ([PR\#85](https://github.com/gfngfn/SATySFi/pull/85) by `konn`).
