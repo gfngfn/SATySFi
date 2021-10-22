@@ -11,9 +11,7 @@
 *.out
 *.html
 obsolete/*.txt
-bin/
 old/
-test/
 *.png
 satysfi
 *.ttf

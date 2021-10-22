@@ -1,0 +1,6 @@
+(executable
+ (name satysfi)
+ (public_name satysfi)
+ (libraries main)
+ (preprocess no_preprocessing)
+)

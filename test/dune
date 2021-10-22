@@ -1,0 +1,14 @@
+(rule
+ (targets parser.output)
+ (deps "parser_test.saty")
+ (action
+  (with-stdout-to parser.output (run ./parser_test.exe %{deps}))))
+
+(alias
+ (name runtest)
+ (action (diff parser.expected parser.output)))
+
+(executable
+ (name parser_test)
+ (libraries main core_kernel)
+ (preprocess (pps ppx_deriving.show)))

@@ -467,6 +467,11 @@
 
 %%
 
+optterm_nonempty_list(sep, X):
+  | x=X; sep?
+    { [x] }
+  | x=X; sep; xs=optterm_nonempty_list(sep, X)
+    { x :: xs }
 
 main:
   | stage=stage; header=list(headerelem); utast=nxtoplevel { (stage, header, utast) }
@@ -856,14 +861,19 @@ pathcompcycle:
   | PATHCURVE; CONTROLS; ast1=nxbot; LETAND; ast2=nxbot; PATHCURVE; CYCLE { UTPathCubicBezierTo(ast1, ast2, ()) }
 ;
 nxrecord:
-  | label=VAR; DEFEQ; utast=nxlet                           { (extract_name label, utast) :: [] }
-  | label=VAR; DEFEQ; utast=nxlet; LISTPUNCT                { (extract_name label, utast) :: [] }
-  | label=VAR; DEFEQ; utast=nxlet; LISTPUNCT; tail=nxrecord { (extract_name label, utast) :: tail }
+  | x=optterm_nonempty_list(LISTPUNCT, nxrecord_field) { x }
+;
+nxrecord_field:
+  | label=VAR; DEFEQ; utast=nxlet {
+    (extract_name label, utast)
+  }
 ;
 nxlist:
-  | utast1=nxlet; LISTPUNCT; utast2=nxlist { make_standard (Ranged utast1) (Ranged utast2) (UTListCons(utast1, utast2)) }
-  | utast1=nxlet; rng=LISTPUNCT            { make_standard (Ranged utast1) (Tok rng) (UTListCons(utast1, (Range.dummy "end-of-list", UTEndOfList))) }
-  | utast1=nxlet                           { make_standard (Ranged utast1) (Ranged utast1) (UTListCons(utast1, (Range.dummy "end-of-list", UTEndOfList))) }
+  | elems=optterm_nonempty_list(LISTPUNCT, nxlet) {
+    List.fold_right (fun elem tail ->
+      make_standard (Ranged elem) (Ranged tail) (UTListCons(elem, tail)))
+      elems (Range.dummy "end-of-list", UTEndOfList)
+  }
 ;
 variants: /* -> untyped_variant_cons */
   | ctor=CONSTRUCTOR; OF; ty=txfunc; BAR; tail=variants { let (rng, constrnm) = ctor in (rng, constrnm, ty) :: tail }
@@ -966,8 +976,7 @@ txrecord: /* -> (field_name * manual_type) list */
   | fldtok=VAR; COLON; mnty=txfunc                           { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
 ;
 tuple:
-  | utast=nxlet                   { utast :: [] }
-  | utast=nxlet; COMMA; tup=tuple { utast :: tup }
+  | x=separated_nonempty_list(COMMA, nxlet) { x }
 ;
 pats: /* -> code_range * untyped_pattern_branch list */
   | pat=patas; ARROW; utast=nxletsub {
