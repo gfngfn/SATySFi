@@ -35,6 +35,7 @@ depends: [
   "uutf"
   "yojson-with-position" {= "1.4.2+satysfi"}
   "omd" {< "2.0.0~"}
+  "ocamlgraph"
 ]
 synopsis: "A statically-typed, functional typesetting system"
 description: """
