@@ -285,15 +285,15 @@
             ((Range.Normal ("mathlist.saty", 2, 11, 2, 12)),
              (UTMList
                 [((Range.Normal ("mathlist.saty", 2, 11, 2, 12)),
-                  (UTMChar "a"))]))),
+                  (UTMChars "a"))]))),
          (UTListCons (
             (UTMath
                ((Range.Normal ("mathlist.saty", 2, 13, 2, 15)),
                 (UTMList
                    [((Range.Normal ("mathlist.saty", 2, 13, 2, 14)),
-                     (UTMChar "a"));
+                     (UTMChars "a"));
                      ((Range.Normal ("mathlist.saty", 2, 14, 2, 15)),
-                      (UTMChar "b"))
+                      (UTMChars "b"))
                      ]))),
             UTEndOfList))
          )),
@@ -317,7 +317,7 @@
            ((Range.Dummy "dec-constructor-unit1"),
             (Types.MTypeName ([], [], "unit"))));
            ((Range.Normal ("toplevel.saty", 2, 12, 2, 13)), "B",
-            ((Range.Dummy "dec-constructor-unit2"),
+            ((Range.Dummy "dec-constructor-unit1"),
              (Types.MTypeName ([], [], "unit"))))
            ],
          (UTMutualVariantCons ([],
@@ -326,7 +326,7 @@
               ((Range.Dummy "dec-constructor-unit1"),
                (Types.MTypeName ([], [], "unit"))));
               ((Range.Normal ("toplevel.saty", 5, 4, 5, 5)), "B",
-               ((Range.Dummy "dec-constructor-unit2"),
+               ((Range.Dummy "dec-constructor-unit1"),
                 (Types.MTypeName ([], [], "unit"))))
               ],
             UTEndOfMutualVariant))
