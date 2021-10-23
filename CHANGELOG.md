@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Remove the build dependency on Ruby and migrate some build scripts from `Makefile` to `dune` ([PR\#142](https://github.com/gfngfn/SATySFi/pull/142) by `leque`, and [PR\#226](https://github.com/gfngfn/SATySFi/pull/226) by `na4zagin3`).
 - Remove the build dependency on `depext` ([PR\#289](https://github.com/gfngfn/SATySFi/pull/289) by `na4zagin3`).
 - Build `src/*` as a private library ([PR\#173](https://github.com/gfngfn/SATySFi/pull/173) by `leque`).
+- Improve the parser implementation ([PR\#175](https://github.com/gfngfn/SATySFi/pull/175) by `leque`).
 
 ## [0.0.6] - 2021-02-06
 ### Fixed
