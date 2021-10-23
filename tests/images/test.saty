@@ -20,12 +20,12 @@ document (|
        \insert-image(5cm)(`satysfi-logo-cmyk.jpg`);
      }
     +p{Yet another image in gray scale.
-       \insert-image(5cm)(`lenna-gray.jpg`);
+       \insert-image(5cm)(`peppers-gray.jpg`);
     }
     +p{Yet another image in RGB.
-       \insert-image(5cm)(`lenna-rgb.jpg`);
+       \insert-image(5cm)(`peppers-rgb.jpg`);
     }
     +p{Yet another image in CMYK (broken).
-       \insert-image(5cm)(`lenna-cmyk.jpg`);
+       \insert-image(5cm)(`peppers-cmyk.jpg`);
     }
 >

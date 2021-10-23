@@ -9,15 +9,32 @@ module Color : sig
   val orange : color
   val blue   : color
 
+  % web color names
+  val brown               : color
+  val cyan                : color
+  val green               : color
+  val magenta             : color
+  val pink                : color
+  val purple              : color
+
 end = struct
 
   let gray x = Gray(x)
   let rgb r g b = RGB(r, g, b)
 
+  % basic colors
   let black  = gray 0.
   let white  = gray 1.
   let red    = rgb 1. 0. 0.
   let yellow = rgb 1. 1. 0.
   let orange = rgb 1. 0.5 0.
   let blue   = rgb 0. 0. 1.
+
+  % web color names
+  let brown                = rgb 0.64705 0.16470 0.16470
+  let cyan                 = rgb 0. 1. 1.
+  let green                = rgb 0. 0.50196 0.
+  let magenta              = rgb 1. 0. 1.
+  let pink                 = rgb 1. 0.75294 0.79607
+  let purple               = rgb 0.50196 0. 0.50196
 end

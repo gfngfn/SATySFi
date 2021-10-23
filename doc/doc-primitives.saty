@@ -1,5 +1,6 @@
 % -*- coding: utf-8 -*-
 @require: stdjabook
+@require: itemize
 @import: local
 @import: local-math
 
@@ -34,6 +35,9 @@ document (|
       一部の（古い，使用非推奨な）プリミティヴではUTF-8バイト列表現を直接扱うインターフェイスになっている．
       インラインテキスト型との混同に注意されたい．
     }
+    +type (tRE) {
+      内部で正規表現を表すデータを保持する型．
+    }
     +type (tIT) {
       インラインテキスト型．文書の文字データのうち“文字の進む方向”の部分であるインラインテキストにこの型がつく．
       インラインテキストとは，典型的には${\valit{\it}}の形をしている部分である．
@@ -44,7 +48,7 @@ document (|
     +type (tIB) {
       インラインボックス型．インラインボックス列につく型である．
       インラインボックス列とは大雑把にいえば文字列のようなものだが，
-      文字列だけでなく，どのフォントで組まれるかや「空白がどの程度伸縮できるか」「どこで改行してよいか」といった
+      文字列だけでなく，どのフォントで組まれるかや“空白がどの程度伸縮できるか”・“どこで改行してよいか”といった
       行分割に関連する情報も埋め込まれている．
     }
     +type (tBT) {
@@ -56,11 +60,131 @@ document (|
     +type (tBB) {
       ブロックボックス型．ブロックボックス列につく型である．
       ブロックボックス列とは大雑把にいえば段落の連なりであり，
-      どのフォントで組まれるかや「空白がどの程度伸縮できるか」「どこで改ページしてよいか」といった
+      どのフォントで組まれるかや“空白がどの程度伸縮できるか”・“どこで改ページしてよいか”といった
       情報も保持している．
+    }
+    +type (tMATH) {
+      数式を扱う型．
+    }
+    +type (tMATHCLS) {
+      数式のスペーシングのために必要な“どの種類の数学記号なのか”を表す型．
+      \code{MathOrd}（通常）・\code{MathBin}（2項演算子）・\code{MathRel}（関係子）・
+      \code{MathOp}（作用子）・\code{MathPunct}（パンクチュエーション）・
+      \code{MathOpen}（開き括弧類）・\code{MathClose}（閉じ括弧類）・\code{MathPrefix}（接頭類）・
+      \code{MathInner}（部分式）の9つの値構築子をもつ代数的データ型である．
+    }
+    +type (tMCCLS) {
+      数式中に書かれている文字を数式用文字書体に基づいてグリフに変換するときに使用する型．
+      \code{MathItalic}・\code{MathBoldItalic}・\code{MathRoman}・\code{MathBoldRoman}・
+      \code{MathScript}・\code{MathBoldScript}・\code{MathFraktur}・\code{MathBoldFraktur}・
+      \code{MathDoubleStruck}の9つの値構築子をもつ代数的データ型である．
+    }
+    +type (tMCSTY) {
+      どの数式用文字書体にどの文字列が対応するのかを定める際に使用される．
+      ${
+        \math-of-type!(
+          tRECORD [
+            ({italic}, tS);
+            ({bold-italic}, tS);
+            ({roman}, tS);
+            ({bold-roman}, tS);
+            ({script}, tS);
+            ({bold-script}, tS);
+            ({fraktur}, tS);
+            ({bold-fraktur}, tS);
+            ({double-struck}, tS);
+          ]
+        )
+      }に等しい．
+    }
+    +type (tMKERNF) {
+      カーニング量を調節するための関数．
+      ${\math-of-type!(tL --> (tL --> tL))}に等しい．
+    }
+    +type (tPAREN) {
+      内容の高さ・内容の深さ・軸の高さ・文字サイズ・文字色を受け取り，片側の括弧の中身と添字・指数をカーニングするための詰め幅を返す関数である．
+      数式の括弧を描画するために使われる．
+      ${
+        \math-of-type!(
+          tL --> (tL --> (tL --> (tL --> (tCLR --> (tPROD [tIB; (tL --> tL)])))))
+        )
+      }
+      に等しい．
     }
     +type (tCTX) {
       コンテキスト型．組版処理に必要な情報のうちテキスト以外のものをすべて保持している．
+    }
+    +type (tTCTX) {
+      テキスト出力モードで使用されるコンテキスト型．
+    }
+    +type (tPT) {
+      ${\paren{x, y}}で座標を表す．
+      左下が原点で，右に行くほど${x}の値が大きくなり，上に行くほど${y}の値が大きくなる座標系である．
+    }
+    +type (tPATH) {
+      曲線や閉曲線および，それらが占める領域の情報を保持している．
+    }
+    +type (tGR) {
+      \code{path}の情報に加え，“どのような色で塗られるか”・“どのような線で描かれるのか”といった情報を保持する．
+    }
+    +type (tPADS) {
+      余白の大きさを表現するために使用されるもので，その中身は単純に${\math-of-type!(tL)}を4つ組にしたものである．それぞれの値の役割は順に左・右・上・下である．
+    }
+    +type (tDECO) {
+      ${\math-of-type!(tPT --> (tL --> (tL --> (tL --> (tLIST tGR)))))}である．枠の指定に使われる．
+    }
+    +type (tDECOSET) {
+      ${\math-of-type!(tDECO)}の4つ組である．
+      行分割・ページ分割可能な枠に使われる．
+    }
+    +type (tSCR) {
+      “どの文字体系に属するか”を表す型．
+      \code{HanIdeographic}・\code{Kana}・\code{Latin}・\code{OtherScript}の4つの値構築子をもつ代数的データ型である．
+    }
+    +type (tLANG) {
+      どの言語システムに基づいているのかを表す型．
+      現在のところ\code{Japanese}・\code{English}・\code{NoLanguageSystem}の3つの値構築子をもつ代数的データ型である．
+    }
+    +type (tCLR) {
+      色を表す型．
+      \code{Gray of ${\math-of-type!(tF)}}・\code{RGB of ${\math-of-type!(tPROD [tF; tF; tF])}}・\code{CMYK of ${\math-of-type!(tPROD [tF; tF; tF; tF])}}の3つの値構築子をもつ代数的データ型である．
+    }
+    +type (tDOC) {
+      \code{page-break}などによってしか生成することができない．
+      PDFに出力するデータなどを格納する．
+    }
+    +type (tPG) {
+      ページサイズを表す．
+      \code{A0Paper}・\code{A1Paper}・\code{A2Paper}・\code{A3Paper}・
+      \code{A4Paper}・\code{A5Paper}・\code{USLetter}・\code{USLegal}・
+      \code{UserDefinedPaper of ${\math-of-type!(tPROD [tL; tL])}}の9つの値構築子をもつ代数的データ型である．
+      \subject-to-change;
+    }
+    +type (tPAGECONTF) {
+      ページ番号を基に“そのページのテキストの領域の段落方向の長さ”と“そのページの中身を配置するときの左上の座標”を返す関数である．
+      ${
+        \math-of-type!(
+          (tRECORD [({page-number}, tI)]) -->
+          (tRECORD [
+            ({text-height}, tL);
+            ({text-origin}, tPT);
+          ])
+        )
+      }に等しい．
+    }
+    +type (tPAGEPARTSF) {
+      ページ番号を基にヘッダーとフッターの中身とその左上の座標を返す関数である．
+      ${
+        \math-of-type!(
+          (tRECORD [({page-number}, tI)]) -->
+          (tRECORD [
+            ({header-content}, tBB);
+            ({header-origin}, tPT);
+            ({footer-content}, tBB);
+            ({footer-origin}, tPT);
+          ])
+        )
+      }に等しい．
     }
   >
   +section {プリミティヴ一覧} <
@@ -80,6 +204,12 @@ document (|
       +commands [`==`; `<>`; `<`; `>`; `<=`; `>=`] (t-int-comp) {
         整数の比較演算．
       }
+      +commands [`<<`; `>>`; `bxor`; `band`; `bor`] (tI --> (tI --> tI)) {
+        整数のビット演算．
+      }
+      +command (`bnot`) (tI --> tI) {
+        整数のビットNOT演算
+      }
       +commands [`&&`; `||`] (t-bool-op) {
         真偽値の連言・選言．
       }
@@ -88,6 +218,9 @@ document (|
       }
       +commands [`+.`; `-.`] (tF --> (tF --> tF)) {
         浮動小数点数の加算・減算．IEEE754に従う．
+      }
+      +commands [`*.`; `/.`] (tF --> (tF --> tF)) {
+        浮動小数点数の乗算・除算．
       }
       +commands [`+'`; `-'`] (tL --> (tL --> tL)) {
         長さの加算・減算．内部的にはPDFポイント単位の浮動小数点数で扱われ，IEEE754に従う．
@@ -104,6 +237,21 @@ document (|
       +command (`float`) (tI --> tF) {
         整数を浮動小数点数に変換する．
       }
+      +command (`round`) (tF --> tI) {
+        浮動小数点数を整数に変換する．
+      }
+      +commands [`ceil`; `floor`] (tF --> tF) {
+        \code{ceil}で浮動小数点数の切り上げを，\code{floor}で浮動小数点数の切り捨てを行う．
+      }
+      +commands [`sin`; `asin`; `cos`; `acos`; `tan`; `atan`] (tF --> tF) {
+        三角関数の演算を行う．
+      }
+      +command (`atan2`) (tF --> (tF --> tF)) {
+        三角関数の演算を行う．
+      }
+      +commands [`log`; `exp`] (tF --> tF) {
+        指数と対数の演算を行う．
+      }
     >);
     +subsection {文字列演算} <
       +p {
@@ -118,10 +266,16 @@ document (|
       +command (`arabic`) (tI --> tS) {
         受け取った整数の十進文字列を返す．
       }
+      +command (`show-float`) (tF --> tS) {
+        受け取った浮動小数点数の十進文字列を返す．
+      }
       +command (`string-unexplode`) ((tLIST tI) --> tS) {
         受け取った整数列をUnicodeコードポイント列と看なして対応する文字列を返す．
         Unicodeコードポイントとして不適切な整数が含まれていた場合の動作は未定義．
         \subject-to-change;
+      }
+      +command (`string-explode`) (tS --> (tLIST tI)) {
+        受け取った文字列をUnicodeスカラー値のリストとして返す．
       }
       +command (`string-same`) (tS --> (tS --> tB)) {
         文字列がUTF-8のバイト列として等価かの判定．
@@ -137,8 +291,41 @@ document (|
       +command (`string-length`) (tS --> tI) {
         受け取った文字列のUnicodeコードポイントでの長さを返す．
       }
+      +command (`split-into-lines`) (tS --> (tLIST (tPROD [tI; tS]))) {
+        \code{split-into-lines ${s}}で，\code{${s}}が改行文字で分割され，
+        分割後の文字列の先頭部分の半角スペースが取り除かれる．
+        返り値の整数と文字列のペアの内，整数部分は取り除かれたスペースの数で，
+        文字列部分はスペースが取り除かれた後の文字列である．
+      }
+      +command (`regexp-of-string`) (tS --> tRE) {
+        \code{regexp-of-string ${s}}で文字列から正規表現型を生成する．
+        使える正規表現の構文はOCamlの\code{Str.regexp}で使えるものと等しい．
+        正規表現として不適当な文字列が与えられた場合は実行時エラーが出る．
+      }
+      +command (`string-scan`) (tRE --> (tS --> (tOPT (tPROD [tS; tS])))) {
+        \code{string-scan ${re} ${s}}で\code{${s}}の\code{${re}}が一致する部分文字列と，残りの文字列を返す．
+        一文字も一致しなかった場合は\code{None}が返る．
+      }
+      +command (`string-match`) (tRE --> (tS --> tB)) {
+        \code{string-match ${re} ${s}}で，\code{${s}}が\code{${re}}にマッチするか
+        を判定する．
+      }
+      +command (`split-on-regexp`) (tRE --> (tS --> (tLIST (tPROD [tI; tS])))) {
+        \code{split-on-regexp ${re} ${s}}で，\code{${re}}がマッチする部分で\code{${s}}
+        が分割され，分割後の文字列の先頭部分の半角スペースが取り除かれる．
+        返り値の整数と文字列のペアの内，整数部分は取り除かれたスペースの数で，
+        文字列部分はスペースが取り除かれた後の文字列である．
+      }
+      +command (`read-file`) (tS --> (tLIST tS)) {
+        \code{read-file ${path}}で文書ファイルから見て${path}の位置にある外部ファイルの
+        中身を改行文字で分割したリストで返す．
+        \code{..}を含む\code{${path}}は使用できない．
+      }
     >
     +subsection ?:(`sec:inline`) {インライン方向に関する処理} <
+      +command (`extract-string`) (tIB --> tS) {
+        インラインボックス列を無理やり文字列に変換する．
+      }
       +command (`read-inline`) (tCTX --> (tIT --> tIB)) {
         \code{read-inline ${ctx} ${it}}で
         文脈\code{${ctx}}を用いて
@@ -198,6 +385,9 @@ document (|
       +command (`get-natural-width`) (tIB --> tL) {
         インラインボックス列を受け取り，その自然な幅を返す．
       }
+      +command (`get-natural-metrics`) (tIB --> tPROD [tL; tL; tL]) {
+        インラインボックス列を受け取り，その自然な幅・高さ・深さを返す．
+      }
       +command (`inline-graphics`) (tL --> (tL --> (tL --> ((tPT --> tLIST tGR) --> tIB)))) {
         \code{inline-graphics ${w} ${h} ${d} ${igr}}で
         幅\code{${w}}，高さ\code{${h}}，深さ\code{${d}}の
@@ -231,6 +421,9 @@ document (|
         \code{line-stack-top}は最初の行のベースラインが外のベースラインと一致するように位置が決められ，
         \code{line-stack-bottom}は最後の行に合わせて決められる．
       }
+      +command (`embed-block-breakable`) (tCTX --> (tBB --> tIB)) {
+        \code{embed-block-breakable ${ctx} ${bb}}で\code{${bb}}をインラインボックス列に“擬態”させて型検査を通し，インラインボックス列を組む時になってその“擬態”を解き，ブロックボックス列として振る舞うようにする．
+      }
     >
     +subsection {ブロック方向に関する処理} <
       +command (`read-block`) (tCTX --> (tBT --> tBB)) {
@@ -253,6 +446,10 @@ document (|
       +command (`+++`) (tBB --> (tBB --> tBB)) {
         2つのブロックボックス列を結合して返す．
       }
+      +command (`block-skip`) (tL --> tBB) {
+        \code{block-skip ${l}}で
+        長さ\code{${l}}のブロック方向の空白を返す．
+      }
       +command (`block-nil`) (tBB) {
         高さ0のブロックボックス列．より正確には，任意のブロックボックス列\code{${bb}}に対して
         \code{${bb}}と\code{${bb} +++ block-nil}が全く等価に振舞うようになっている．
@@ -263,11 +460,26 @@ document (|
         継続\code{${k}}に渡し，その結果のブロックボックス列を装飾\code{${ds}}のフレームで囲んだものを返す．
         この処理でつくられるフレームは途中で改ページ可能である．
       }
+      +command (`get-natural-length`) (tBB --> tL) {
+        ブロックボックス列を受け取り，そのブロック方向の長さを返す．
+      }
     >
     +subsection {テキスト文脈に関する処理} <
+      +command (`get-initial-context`) (tL --> ((tICMD tMATH) --> tCTX)) {
+        デフォルトのテキスト文脈を返す．
+        第1引数は段落の幅を指定し，第2引数はインラインテキスト中に現れた数式に適用するコマンドを与える．
+      }
       +command (`set-space-ratio`) (tF --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-space-ratio ${r}}で単語間空白の幅をフォントサイズの\code{${r}}倍に変更したテキスト文脈を返す．
         \subject-to-change;
+      }
+      +command (`set-space-ratio-between-scripts`) (tF --> (tF --> (tF --> (tSCR --> (tSCR --> (tCTX --> tCTX)))))) {
+        \code{${ctx} \|\> set-space-ratio-between-scripts ${script_1} ${script_2} ${r_0} ${r_1} ${r_2}}で
+        前方が文字体系\code{${script_1}}の文字，
+        後方が文字体系\code{${script_2}}の文字，の隣接箇所で
+        自然長・収納基準長・伸長基準長の文字サイズに対する比率がそれぞれ
+        \code{${r_0}}・\code{${r_1}}・\code{${r_2}}になるようなグルーを
+        挿入するように変更したテキスト文脈を返す．
       }
       +command (`set-font-size`) (tL --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-font-size ${s}}でフォントサイズを\code{${s}}に変更したテキスト文脈を返す．
@@ -278,6 +490,10 @@ document (|
       +command (`set-font`) (tSCR --> (tFONT --> (tCTX --> tCTX))) {
         \code{${ctx} \|\> set-font ${script} ${font}}で
         文字体系\code{${script}}の文字に対して使うフォントを\code{${font}}に変更した文脈を返す．
+      }
+      +command (`get-font`) (tSCR --> (tCTX --> tFONT)) {
+        \code{get-font ${script} ${ctx}}で
+        文字体系\code{${script}}の文字に対して使うフォントを返す．
       }
       +command (`set-language`) (tSCR --> (tLANG --> (tCTX --> tCTX))) {
         \code{${ctx} \|\> set-language ${script} ${lang}}で
@@ -310,16 +526,46 @@ document (|
       +command (`set-text-color`) (tCLR --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-text-color ${color}}で文字色を\code{${color}}に変更した文脈を返す．
       }
+      +command (`get-text-color`) (tCTX --> tCLR) {
+        テキスト文脈が保持している文字色を返す．
+      }
       +command (`set-leading`) (tL --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-leading ${l}}で行送りを\code{${l}}に変更した文脈を返す．
         これはフォントサイズに対する比での指定ではなく，直接長さを指定するプリミティヴであることに注意．
         すなわち，フォントサイズを変更しても標準の行送りの長さは変更されない．
+      }
+      +command (`set-min-gap-of-lines`) (tL --> (tCTX --> tCTX)) {
+        \code{${ctx} \|\> set-min-gap-of-lines ${l}}で行間の最小値を引数の値に変更した文脈を返す．
+      }
+      +command (`set-paragraph-margin`) (tL --> tL --> ((tCTX --> tCTX))) {
+        \code{${ctx} \|\> set-min-gap-of-lines ${l_1} ${l_2}}で段落の上のマージンを\code{${l_1}}に，
+        段落の下のマージンを\code{${l_2}}にするように変更したテキスト文脈を返す．
+        \subject-to-change;
       }
       +command (`set-manual-rising`) (tL --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-manual-rising ${l}}で文字全体を長さ\code{${l}}だけ持ち上げて組む文脈を返す．
       }
       +command (`get-text-width`) (tCTX --> tL) {
         テキスト文脈が保持している段落幅を返す．\code{line-break}はこの長さにしたがって行分割を行なう．
+      }
+      +command (`set-word-break-penalty`) (tI --> (tCTX --> tCTX)) {
+        \code{set-word-break-penalty ${p} ${ctx}}で“そこで行分割された場合に加算されるペナルティ値”を\code{${p}}に設定したテキスト文脈を返す．
+      }
+      +command (`set-every-word-break`) (tIB --> (tIB --> (tCTX --> tCTX))) {
+        \code{set-every-word-break ${ib_1} ${ib_2} ${ctx}}で行分割候補箇所の“そこで行分割された場合に直前の行末に入る内容”を\code{${ib_1}}に，
+        “そこで行分割された場合に直後の行頭に入る内容”を\code{${ib_2}}に設定したテキスト文脈を返す．
+      }
+      +command (`get-every-word-break`) (tCTX --> (tPROD [tIB; tIB])) {
+        \code{set-every-word-break}で設定されている\code{${ib_1}}と\code{${ib_2}}の内容を取得する．
+      }
+      +command (`set-hyphen-penalty`) (tI --> (tCTX --> tCTX)) {
+        ハイフネーションによるペナルティを設定する．
+        デフォルトは100である．
+      }
+      +command (`set-hyphen-min`) (tI --> (tI --> (tCTX --> tCTX))) {
+        \code{${ctx} \|\> set-hyphen-min ${n_1} ${n_2}} で
+        ハイフネーションによって単語が分割されるときの左側の最小文字数を \code{${n_1}} に，
+        右側の最小文字数を \code{${n_2}} にそれぞれ設定したテキスト文脈を返す．
       }
     >
     +subsection {数式に関する処理} <
@@ -342,23 +588,55 @@ document (|
       +command (`math-frac`) (tMATH --> (tMATH --> tMATH)) {
         分数．
       }
-      +command (`math-radical`) (tMATH --> tMATH) {
+      +command (`math-radical`) ((tOPT tMATH) --> (tMATH --> tMATH)) {
         根号．
+        第1引数には現在のところ\code{None}しか渡すことは出来ない．
       }
       +command (`math-paren`) (tPAREN --> (tPAREN --> (tMATH --> tMATH))) {
         中身に応じて自動で大きさが調整される括弧で囲う．
+      }
+      +command (`math-paren-with-middle`) (tPAREN --> (tPAREN --> (tPAREN --> ((tLIST tMATH) --> tMATH)))) {
+        第3引数で与えた括弧で第4引数の数式のリストを区切って出力する．
+        第1引数と第2引数の扱いは\code{math-paren}を同じである．
       }
       +command (`text-in-math`) (tMATHCLS --> ((tCTX --> tIB) --> tMATH)) {
         数式中にインラインボックス列を埋め込む．
       }
       +command (`math-variant-char`) (tMATHCLS --> (tMCSTY --> tMATH)) {
-        数式文字クラス指定（イタリック，ボールドローマン，スクリプトなど）に応じて変化する文字を定義する．
+        数式用文字書体の指定（イタリック，ボールドローマン，スクリプトなど）に応じて変化する文字を定義する．
       }
       +command (`math-color`) (tCLR --> (tMATH --> tMATH)) {
         数式の文字色を変更する．
       }
       +command (`math-char-class`) (tMCCLS --> (tMATH --> tMATH)) {
-        数式文字クラスを変更する．
+        数式用文字書体を変更する．
+      }
+      +command (`math-concat`) (tMATH --> (tMATH --> tMATH)) {
+        数式を結合する．
+      }
+      +command (`math-group`) (tMATHCLS --> (tMATHCLS --> (tMATH --> tMATH))) {
+        \code{math-group ${cls_1} ${cls_2} ${m}}で数式\code{${m}}内は通常通りのスペーシングで組むが，
+        \code{${m}}全体の左側のスペーシングについては\code{${cls_1}}を，
+        右側のスペーシングについては\code{${cls_2}}を持っているかのように扱わせる．
+      }
+      +command (`math-pull-in-scripts`) (tMATHCLS --> (tMATHCLS --> ((tOPT tMATH --> (tOPT tMATH --> tMATH)) --> tMATH))) {
+        添字と指数がつけられたときに，“それらを内側に取り込んで使える”数式を作成する．
+        \code{math-pull-in-scripts ${cls_1} ${cls_2} ${f}}で
+        \code{${m}}全体の左側のスペーシングについては\code{${cls_1}}を，
+        右側のスペーシングについては\code{${cls_2}}を持っているかのように扱わせる．
+        “中身の数式”は使われた箇所で，
+        \listing {
+          * 添字も指数も付かなかった場合：\code{${f} None None}
+          * 添字\code{${m_1}}だけついた場合：\code{${f} Some(${m_1}) None}
+          * 指数\code{${m_2}}だけついた場合：\code{${f} None Some(${m_2})}
+          * 添字\code{${m_1}}も指数\code{${m_2}}もついた場合：\code{${f} Some(${m_1}) Some(${m_2})}
+        }
+        を評価した結果の数式となる．
+      }
+      +commands [`get-left-math-class`; `get-right-math-class`] (tCTX --> (tMATH --> tOPT tMATHCLS)) {
+        第1引数のテキスト処理文脈に基づき，第2引数の数式の
+        左端と右端がそれぞれどのような属性の “アトム” になっているか返す．
+        数式が空の場合は\code{None}が返る．
       }
     >
     +subsection {画像に関する処理} <
@@ -415,6 +693,11 @@ document (|
         \code{fill ${color} ${path}}でパス\code{${path}}の内側を色\code{${color}}で塗ったグラフィックスを返す．
         パスのどこが内側であるかは偶奇則によって決められる．
       }
+      +command (`dashed-stroke`) (tL --> ((tPROD [tL; tL; tL]) --> (tCLR --> (tPATH --> tGR)))) {
+        \code{dashed-stroke ${t} ${\paren{len, space, start}} ${color} ${path}}で
+        パス\code{${path}}を幅\code{${t}}，色\code{${color}}の破線として描いたグラフィックスを返す．
+        このとき，\code{${len}}で破線一つ一つの長さを指定し，\code{${space}}で破線同士の間の長さを指定し，\code{${start}}で最初の破線の長さを指定する．
+      }
       +command (`stroke`) (tL --> (tCLR --> (tPATH --> tGR))) {
         \code{stroke ${t} ${color} ${path}}で
         パス\code{${path}}を幅\code{${t}}，色\code{${color}}の線として描いたグラフィックスを返す．
@@ -423,6 +706,118 @@ document (|
       +command (`draw-text`) (tPT --> (tIB --> tGR)) {
         \code{draw-text ${v} ${ib}}で位置\code{${v}}をベースラインの左端として
         インラインボックス列\code{${ib}}を置いたグラフィックスを返す．
+      }
+      +command (`shift-path`) (tPT --> (tPATH --> tPATH)) {
+        \code{${path} \|\> shift-path ${pt}}で\code{${path}}を
+        \code{${pt}}座標分だけ移動させる．
+      }
+      +command (`shift-graphics`) (tPT --> (tGR --> tGR)) {
+        \code{${gr} \|\> shift-graphics ${pt}}で\code{${gr}}を
+        \code{${pt}}座標分だけ移動させる．
+      }
+      +command (`get-path-bbox`) (tPATH --> (tPROD [tPT; tPT])) {
+        \code{get-path-bbox ${path}}で\code{${path}}を
+        のバウンディングボックスの座標の内，${x}座標が取る最小値と
+        ${y}座標が取る最小値の組${\paren{x_{min}, y_{min}}}と，
+        ${x}座標が取る最大値と${y}座標が取る最大値の組${\paren{x_{max}, y_{max}}}
+        を返す．
+      }
+      +command (`get-graphics-bbox`) (tGR --> (tPROD [tPT; tPT])) {
+        \code{get-path-bbox}と同様に\code{get-graphics-bbox ${gr}}で\code{${gr}}を
+        のバウンディングボックスの大きさを返す．
+        ストロークの太さは考慮されない．
+      }
+      +command (`linear-transform-path`) (tF --> (tF --> (tF --> (tF --> (tPATH --> tPATH))))) {
+        \code{${path} \|\> linear-transform-path ${a} ${b} ${c} ${d}}で\code{${path}}に対して線形変換を行う．
+      }
+      +command (`linear-transform-graphics`) (tF --> (tF --> (tF --> (tF --> (tGR --> tGR))))) {
+        \code{${gr} \|\> linear-transform-graphics ${a} ${b} ${c} ${d}}で\code{${gr}}に対して線形変換を行う．
+      }
+    >
+    +subsection {相互参照に関する処理} <
+      +command (`register-cross-reference`) (tS --> (tS --> tU)) {
+        \code{register-cross-reference ${key} ${value}}で相互参照のID\code{${key}}に内容\code{${value}}を紐づけて登録する．
+        既に\code{${key}}に内容が紐づけられていた場合は内容は上書きされ，内容が異なっていた場合は不動点に達していないとして再度\SATySFi;の処理が行われる．
+      }
+      +command (`get-cross-reference`) (tS --> (tOPT tS)) {
+        \code{get-cross-reference ${key}}で相互参照のID\code{${key}}に紐づけられた内容\code{${value}}を取得する．
+        何も紐づけられたいなかった場合は\code{None}を返す．
+      }
+    >
+    +subsection {ページ分割に関する処理} <
+      +command (`clear-page`) (tBB) {
+        強制的な改ページを行う．
+      }
+      +command (`add-footnote`) (tBB --> tIB) {
+        \code{add-footnote ${bb}}でブロックボックス列\code{${bb}}を脚注として挿入する．
+        返り値のインラインボックス列は，これが挿入されたページに脚注が挿入されるようになる以外は\code{inline-nil}と同じ挙動をする．
+      }
+      +command (`hook-page-break`) ((tRECORD [({page-number}, tI)] --> (tPT --> tU)) --> tIB) {
+        \code{hook-page-break ${f}}で\code{inline-nil}と同じ挙動をするインラインボックス列を得ることができる．
+        このインラインボックス列は，ページ分割処理の最中に与えた関数${f}に対してそのインラインボックス列が挿入されたページのページ番号とページ内の座標を与える．
+      }
+      +command (`hook-page-break-block`) ((tRECORD [({page-number}, tI)] --> (tPT --> tU)) --> tBB) {
+        \code{hook-page-break}のブロック版である．
+      }
+    >
+    +subsection{PDFの機能に関する処理} <
+      +command (`register-link-to-uri`) (tS --> (tPT --> (tL --> (tL --> (tL --> ((tOPT (tPROD [tL; tCLR])) --> tU)))))) {
+        \code{register-link-to-uri ${uri} ${point} ${w} ${h} ${d} ${frame}}で\code{${uri}}へのハイパーリンクを作成する．
+        ハイパーリンクを設置する場所を座標\code{${point}}・幅\code{${w}}・高さ\code{${h}}・深さ\code{${d}}で指定し，
+        PDFビューワでの閲覧時にのみ表示される枠線の幅と色を\code{${frame}}で指定する．
+      }
+      +command (`register-link-to-location`) (tS --> (tPT --> (tL --> (tL --> (tL --> ((tOPT (tPROD [tL; tCLR])) --> tU)))))) {
+        \code{register-link-to-location ${key} ${point} ${w} ${h} ${d} ${frame}}で\code{${key}}へのハイパーリンクを作成する．
+        \code{${key}}は\code{register-destination}で登録したものに対応する．
+      }
+      +command (`register-destination`) (tS --> (tPT --> tU)) {
+        \code{register-destination ${key} ${point}}で\code{${point}}をジャンプ先に指定したリンクを\code{${key}}と紐づけて登録する．
+      }
+      +command (`register-outline`) ((tLIST (tPROD [tI; tS; tS; tB])) --> tU) {
+        \code{register-outline ${lst}}で\code{${lst}}の中身をPDFのしおりとして登録する．
+        タプルの中身は，しおりの深さ・しおりのタイトル・ジャンプ先のキー名・デフォルトの折りたたみ状態をそれぞれあらわす．
+      }
+      +command (`register-document-information`) ((tRECORD [({title}, tOPT tS); ({subjects}, tOPT tS); ({keywords}, tOPT tS); ({author}, tLIST tS)]) --> tU) {
+        \code{register-document-information ${info}}で\code{${info}}の中身をPDFの辞書情報として登録する．
+      }
+    >
+    +subsection {document型に関する処理} <
+      +command (`page-break`) (tPG --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC)))) {
+        ブロックボックス列をページ分割処理を施すための情報などが含まれたデータに変換する．
+        一段組のみをサポートする．
+      }
+      +command (`page-break-two-column`) (tPG --> (tL --> ((tU --> tBB) --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC)))))) {
+        二段組をサポートする．
+        第2引数は一段目と二段目の\code{${text-origin}}の\code{${x}}座標の差である．
+      }
+      +command (`page-break-multicolumn`) (tPG --> (tLIST tL --> ((tU --> tBB) --> ((tU --> tBB) --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC))))))) {
+        多段組をサポートする．
+      }
+    >
+    +subsection {テキスト出力モードに関する処理} <
+      +command (`stringify-inline`) (tTCTX --> (tIT --> tS)) {
+        \code{stringify-inline ${tinfo} ${it}}で\code{${tinfo}}に基づいて\code{${it}}を処理し，テキストに変換する．
+      }
+      +command (`stringify-block`) (tTCTX --> (tBT --> tS)) {
+        \code{stringify-block ${tinfo} ${bt}}で\code{${tinfo}}に基づいて\code{${bt}}を処理し，テキストに変換する．
+      }
+      +command (`deepen-indent`) (tI --> (tTCTX --> tS)) {
+        \code{${tinfo} \|\> deepen-indent ${i}}で\code{${i}}分だけインデントの量を大きくしたテキスト文脈を返す．
+      }
+      +command (`break`) (tTCTX --> tS) {
+        改行文字を出力し，\code{deepen-indent}で設定したインデントを出力する．
+      }
+      +command (`get-initial-text-info`) (tU --> tTCTX) {
+        テキスト文脈を返す．
+      }
+    >
+    +subsection {文字列出力に関する処理} <
+      +command (`display-message`) (tS --> tU) {
+        \code{display-message ${msg}}で\code{${msg}}を標準出力に出力する．
+      }
+      +command (`abort-with-message`) (tS --> tANY) {
+        \code{abort-with-message ${msg}}で\code{${msg}}を出力し，\SATySFi;の処理を中止する．
+        型は任意の型に評価される．
       }
     >
   >

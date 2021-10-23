@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Fix invalid errors emitted by `--type-check-only` by making the option extension-sensitive.
 - Fix the exhaustiveness check ([PR\#171](https://github.com/gfngfn/SATySFi/pull/171) by `matsud224`).
 - Fix how to handle digits under `\mathbb` ([PR\#286](https://github.com/gfngfn/SATySFi/pull/286) by `elpinal`).
+- Use images other than Lenna for tests ([PR\#288](https://github.com/gfngfn/SATySFi/pull/288) by `nekketsuuu`).
 
 ### Added
 - Add primitives `(<<)`, `(>>)`, `bxor`, `band`, `bor`, and `bnot` for bitwise operations ([PR\#85](https://github.com/gfngfn/SATySFi/pull/85) by `konn`).
@@ -16,6 +17,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Allow arbitrary Unicode code points other than few ASCII symbols to occur in the math mode (e.g. `${α + β}`).
 - Add primitive `set-math-char : int -> int -> math-class -> context -> context` for handling various Unicode code points in the math mode.
 - Add primitive `register-document-information` for furnishing document information dictionaries with PDF files ([PR\#268](https://github.com/gfngfn/SATySFi/pull/268) by `puripuri2100`).
+- Develop `doc/doc-primitives.saty` ([PR\#281](https://github.com/gfngfn/SATySFi/pull/281) by `puripuri2100`).
+- Add Web colors to the `color` packge ([PR\#282](https://github.com/gfngfn/SATySFi/pull/282) by `yasuo-ozu`).
 
 ### Changed
 - Remove the build dependency on Ruby and migrate some build scripts from `Makefile` to `dune` ([PR\#142](https://github.com/gfngfn/SATySFi/pull/142) by `leque`, and [PR\#226](https://github.com/gfngfn/SATySFi/pull/226) by `na4zagin3`).
