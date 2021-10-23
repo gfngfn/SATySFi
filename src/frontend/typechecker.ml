@@ -41,7 +41,7 @@ exception PolymorphicContradiction       of Range.t * var_name * poly_type * pol
 exception MultiCharacterMathScriptWithoutBrace of Range.t
 
 exception InternalInclusionError
-exception InternalContradictionError of bool
+exception InternalContradictionError
 
 
 module SubstMap = Map.Make(TypeID)
@@ -465,8 +465,8 @@ let set_kind (fid : FreeID.t) (kd : kind) : unit =
   KindStore.set_free_id fid { fentry with mono_kind = kd }
 
 
-let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
-  let unify = unify_sub ~reversed:reversed in
+let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+  let unify = unify_sub in
 (*
   (* begin: for debug *)
   let () =
@@ -483,7 +483,7 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
       tyzipped |> List.iter (fun (t1, t2) -> unify t1 t2)
     with
     | Invalid_argument(_) ->
-        raise (InternalContradictionError(reversed))
+        raise InternalContradictionError
   in
 
     match (tymain1, tymain2) with
@@ -492,7 +492,7 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
 
     | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2)) ->
         begin
-          unify_row ~reversed optrow1 optrow2;
+          unify_row optrow1 optrow2;
           unify tydom1 tydom2;
           unify tycod1 tycod2;
         end
@@ -508,26 +508,26 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
                   LabelMap.merge (fun label tyopt1 tyopt2 ->
                     match (tyopt1, tyopt2) with
                     | (Some(ty1), Some(ty2)) -> Some(unify ty1 ty2)
-                    | (_, None) | (None, _)  -> raise (InternalContradictionError(reversed))
+                    | (_, None) | (None, _)  -> raise InternalContradictionError
                   ) tylabmap1 tylabmap2 |> ignore;
                   unify ty1 ty2
             ) cmdargtys1 cmdargtys2
           with
           | Invalid_argument(_) ->
-              raise (InternalContradictionError(reversed))
+              raise InternalContradictionError
         end
 
     | (ProductType(tys1), ProductType(tys2)) ->
         unify_list (tys1 |> TupleList.to_list) (tys2 |> TupleList.to_list)
 
     | (RecordType(row1), RecordType(row2)) ->
-        unify_row ~reversed row1 row2
+        unify_row row1 row2
 
     | (DataType(tyargs1, tyid1), DataType(tyargs2, tyid2)) ->
         if TypeID.equal tyid1 tyid2 then
           unify_list tyargs1 tyargs2
         else
-          raise (InternalContradictionError(reversed))
+          raise InternalContradictionError
 
     | (ListType(tysub1), ListType(tysub2)) -> unify tysub1 tysub2
     | (RefType(tysub1), RefType(tysub2))   -> unify tysub1 tysub2
@@ -587,20 +587,25 @@ let rec unify_sub ~reversed:reversed ((rng1, tymain1) as ty1 : mono_type) ((rng2
           if chk then
             raise InternalInclusionError
           else
-            let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-            tvref1 := MonoLink(newty2)
+            let ty2new = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+            tvref1 := MonoLink(ty2new)
+
+      | (_, TypeVariable(Updatable({contents = MonoFree(fid2)} as tvref2))) ->
+          let chk = occurs fid2 ty1 in
+          if chk then
+            raise InternalInclusionError
+          else
+            let ty1new = if Range.is_dummy rng2 then (rng1, tymain1) else (rng2, tymain1) in
+            tvref2 := MonoLink(ty1new)
 
       | (TypeVariable(MustBeBound(mbbid1)), TypeVariable(MustBeBound(mbbid2))) ->
           if MustBeBoundID.equal mbbid1 mbbid2 then
             ()
           else
-            raise (InternalContradictionError(reversed))
-
-      | (_, TypeVariable(_)) ->
-          unify_sub ~reversed:(not reversed) ty2 ty1
+            raise InternalContradictionError
 
       | _ ->
-          raise (InternalContradictionError(reversed))
+          raise InternalContradictionError
 
 
 and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) =
@@ -623,18 +628,18 @@ and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) =
       ()
 
 
-and solve_row_membership ~reversed (rng : Range.t) (label : label) (ty : mono_type) (row : mono_row) : mono_row =
+and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row : mono_row) : mono_row =
   match row with
   | RowCons((rng0, label0), ty0, row0) ->
       if String.equal label0 label then begin
-        unify_sub ~reversed ty0 ty;
+        unify_sub ty0 ty;
         row0
       end else
-        let row0rest = solve_row_membership ~reversed rng label ty row0 in
+        let row0rest = solve_row_membership rng label ty row0 in
         RowCons((rng0, label0), ty0, row0rest)
 
   | RowVar(UpdatableRow{contents = MonoORLink(row0)}) ->
-      solve_row_membership ~reversed rng label ty row0
+      solve_row_membership rng label ty row0
 
   | RowVar(UpdatableRow({contents = MonoORFree(frid0)} as orvuref0)) ->
       let labset0 = KindStore.get_free_row_id frid0 in
@@ -655,13 +660,13 @@ and solve_row_membership ~reversed (rng : Range.t) (label : label) (ty : mono_ty
       failwith "TODO (error): solve_membership_aux, RowEmpty"
 
 
-and unify_row ~reversed (row1 : mono_row) (row2 : mono_row) =
+and unify_row (row1 : mono_row) (row2 : mono_row) =
   match (row1, row2) with
   | (RowVar(UpdatableRow{contents = MonoORLink(row1sub)}), _) ->
-      unify_row ~reversed row1sub row2
+      unify_row row1sub row2
 
   | (_, RowVar(UpdatableRow{contents = MonoORLink(row2sub)})) ->
-      unify_row ~reversed row1 row2sub
+      unify_row row1 row2sub
 
   | (RowVar(UpdatableRow({contents = MonoORFree(orv1)} as orviref1)), RowVar(UpdatableRow{contents = MonoORFree(orv2)})) ->
       if FreeRowID.equal orv1 orv2 then
@@ -688,28 +693,25 @@ and unify_row ~reversed (row1 : mono_row) (row2 : mono_row) =
       end
 
   | (RowCons((rng, label), ty1, row1sub), _) ->
-      let row2rest = solve_row_membership ~reversed rng label ty1 row2 in
-      unify_row ~reversed row1sub row2rest
+      let row2rest = solve_row_membership rng label ty1 row2 in
+      unify_row row1sub row2rest
 
   | (RowEmpty, RowEmpty) ->
       ()
 
   | (RowEmpty, RowCons(_, _, _)) ->
-      raise (InternalContradictionError(reversed))
+      raise InternalContradictionError
 
 
 let unify (ty1 : mono_type) (ty2 : mono_type) =
   try
-    unify_sub ~reversed:false ty1 ty2
+    unify_sub ty1 ty2
   with
   | InternalInclusionError ->
       raise (InclusionError(ty1, ty2))
 
-  | InternalContradictionError(reversed) ->
-      if reversed then
-        raise (ContradictionError(ty2, ty1))
-      else
-        raise (ContradictionError(ty1, ty2))
+  | InternalContradictionError ->
+      raise (ContradictionError(ty1, ty2))
 
 
 let fresh_type_variable (rng : Range.t) (pre : pre) : mono_type =
@@ -930,7 +932,7 @@ let rec typecheck
       begin
         match unlink ty1 with
         | (_, FuncType(row, tydom, tycod)) ->
-            unify_row ~reversed:false row0 row;
+            unify_row row0 row;
             unify ty2 tydom;
             let tycodnew = overwrite_range_of_type tycod rng in
             (eret, tycodnew)
@@ -2609,8 +2611,8 @@ let main_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding
 
 let are_unifiable (ty1 : mono_type) (ty2 : mono_type) : bool =
   try
-    unify_sub ~reversed:false ty1 ty2;
+    unify_sub ty1 ty2;
     true
   with
-  | InternalContradictionError(_) -> false
-  | InternalInclusionError        -> false
+  | InternalContradictionError -> false
+  | InternalInclusionError     -> false
