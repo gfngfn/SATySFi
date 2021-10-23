@@ -1,0 +1,2 @@
+type t = a * b
+and s = a * b * c

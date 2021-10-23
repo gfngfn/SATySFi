@@ -1,0 +1,5 @@
+let pat-test =
+   match a with
+  | [b] -> c
+  | [b; c] -> d
+  | [b; c;] -> d

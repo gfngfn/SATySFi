@@ -1,0 +1,2 @@
+type t = X | Y
+and s = Z of t | W of u

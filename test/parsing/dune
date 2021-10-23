@@ -1,6 +1,18 @@
 (rule
  (targets parser.output)
- (deps "parser_test.saty")
+ (deps
+   "nx.saty"
+   "variants.saty"
+   "txprod.saty"
+   "txlist.saty"
+   "txrecord.saty"
+   "pats.saty"
+   "pattuple.saty"
+   "patlist.saty"
+   "sxlist.saty"
+   "mathlist.saty"
+   "toplevel.saty"
+ )
  (action
   (with-stdout-to parser.output (run ./parser_test.exe %{deps}))))
 

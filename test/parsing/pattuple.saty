@@ -1,0 +1,3 @@
+let pattuple-test =
+  match a with
+  | (b, c) -> d
