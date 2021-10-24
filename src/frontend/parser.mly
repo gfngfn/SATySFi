@@ -319,7 +319,8 @@
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VARINHORZ
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VARINVERT
 %token <Range.t * (Types.module_name list) * Types.var_name> VARINMATH
-%token <Range.t * Types.var_name> TYPEVAR
+%token <Range.t * Types.type_variable_name> TYPEVAR
+%token <Range.t * Types.row_variable_name> ROWVAR
 %token <Range.t * Types.constructor_name> CONSTRUCTOR
 %token <Range.t * int> INTCONST
 %token <Range.t * float> FLOATCONST
@@ -396,8 +397,6 @@
 %type <Types.untyped_abstract_tree> sxblock
 %type <Types.untyped_abstract_tree> vxblock
 %type <Types.untyped_input_vert_element> vxbot
-%type <Types.var_name * Types.manual_kind> constrnt
-%type <Types.constraints> constrnts
 %type <Types.untyped_command_argument> narg
 %type <Types.untyped_command_argument> sarg
 %type <Types.untyped_pattern_tree list> argpats
@@ -409,6 +408,10 @@
 %type <Types.manual_type> txapppre
 %type <bool * Types.untyped_math> mathgroup
 %type <Types.untyped_math> mathbot
+%type <Types.manual_kind> kxtop
+%type <Types.manual_row_base_kind> kxrow
+%type <Types.type_variable_name Types.ranged> tyquant
+%type <Types.row_variable_name ranged * Types.manual_row_base_kind> rowquant
 
 %%
 
@@ -493,28 +496,28 @@ nxmod:
 (* TODO: support other module syntax *)
 ;
 decl:
-  | TYPE; tyvars=list(TYPEVAR); tynmtok=VAR; clst=constrnts {
-      let kd = failwith "TODO: parse kind" in
-      UTDeclTypeOpaque(tynmtok, kd)
+  | TYPE; tyvars=list(TYPEVAR); tynmtok=VAR; CONS; mnkd=kxtop {
+      UTDeclTypeOpaque(tynmtok, mnkd)
     }
-  | VAL; valnmtok=VAR; COLON; mnty=txfunc; clst=constrnts {
-      UTDeclValue(valnmtok, clst, mnty)
+  | VAL; valnmtok=VAR; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc {
+      UTDeclValue(valnmtok, tyquants, rowquants, mnty)
     }
-  | VAL; LPAREN; valnmtok=binop; RPAREN; COLON; mnty=txfunc; clst=constrnts {
-      UTDeclValue(valnmtok, clst, mnty)
+  | VAL; LPAREN; valnmtok=binop; RPAREN; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc {
+      UTDeclValue(valnmtok, tyquants, rowquants, mnty)
     }
-  | VAL; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts {
-      UTDeclValue(hcmdtok, clst, mnty)
+  | VAL; hcmdtok=HORZCMD; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc {
+      UTDeclValue(hcmdtok, tyquants, rowquants, mnty)
     }
-  | VAL; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts {
-      UTDeclValue(vcmdtok, clst, mnty)
+  | VAL; vcmdtok=VERTCMD; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc {
+      UTDeclValue(vcmdtok, tyquants, rowquants, mnty)
     }
+(* TODO: support other declaration syntax *)
 ;
-constrnts:
-  | clst=list(constrnt) { clst }
+tyquant:
+  | tyvar=TYPEVAR { tyvar }
 ;
-constrnt:
-  | CONSTRAINT; tyvar=TYPEVAR; CONS; mnkd=kxtop { let (_, tyvarnm) = tyvar in (tyvarnm, mnkd) }
+rowquant:
+  | rowvar=ROWVAR; CONS; mnrbkd=kxrow { (rowvar, mnrbkd) }
 ;
 nxhorzdec:
   | ctxvartok=VAR; hcmdtok=HORZCMD; cmdarglst=list(arg); DEFEQ; utast=nxlet {
@@ -632,19 +635,28 @@ nxtyperecdec:
   | d=nxtyperecdecsingle; LETAND; tail=nxtyperecdec { d :: tail }
 ;
 nxtyperecdecsingle:
-  | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; ctors=variants; constrnts=constrnts
-  | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; BAR; ctors=variants; constrnts=constrnts {
-      (tynmtok, tyvars, constrnts, UTBindVariant(ctors))
+  | tynmtok=VAR; tyvars=list(TYPEVAR); DEFEQ; ctors=variants
+  | tynmtok=VAR; tyvars=list(TYPEVAR); DEFEQ; BAR; ctors=variants {
+      (tynmtok, tyvars, UTBindVariant(ctors))
     }
-  | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; mty=txfunc; constrnts=constrnts {
-      (tynmtok, tyvars, constrnts, UTBindSynonym(mty))
+  | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; mty=txfunc {
+      (tynmtok, tyvars, UTBindSynonym(mty))
     }
 ;
 kxtop:
-  | VAR {
-      let _ = failwith "TODO: kxtop" in
-      MUniversalKind
+  | bkd=kxbase; ARROW kd=kxtop {
+      let MKind(bkds_dom, bkd_cod) = kd in
+      MKind(bkd :: bkds_dom, bkd_cod)
     }
+  | bkd=kxbase {
+      MKind([], bkd)
+    }
+;
+kxbase:
+  | tok=VAR { MKindName(tok) }
+;
+kxrow:
+  | BRECORD; rlabel=VAR; rlabels=list(COMMA; rlabel=VAR { rlabel }) ERECORD { rlabel :: rlabels }
 ;
 nxlet:
   | tok=MATCH; utast=nxlet; WITH; option(BAR { () }); pats=pats {

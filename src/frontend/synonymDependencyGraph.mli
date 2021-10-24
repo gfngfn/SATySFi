@@ -3,7 +3,7 @@ open Types
 
 type data = {
   position        : Range.t;
-  type_variables  : (type_variable_name ranged * kind) list;
+  type_variables  : (type_variable_name ranged) list;
   definition_body : manual_type;
 }
 

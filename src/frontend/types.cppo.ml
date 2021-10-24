@@ -15,13 +15,13 @@ type var_name           = string  [@@deriving show]
 type id_name            = string  [@@deriving show]
 type class_name         = string  [@@deriving show]
 type type_name          = string  [@@deriving show]
+type kind_name          = string  [@@deriving show]
 type constructor_name   = string  [@@deriving show]
 type module_name        = string  [@@deriving show]
-type sig_var_name       = string  [@@deriving show]
-type type_argument_name = string  [@@deriving show]
+type signature_name     = string  [@@deriving show]
 type length_unit_name   = string  [@@deriving show]
 type type_variable_name = string  [@@deriving show]
-type signature_name     = string  [@@deriving show]
+type row_variable_name  = string  [@@deriving show]
 type label              = string  [@@deriving show]
 
 
@@ -50,7 +50,24 @@ module EvalVarIDMap = Map.Make(EvalVarID)
 
 module OpaqueIDSet = Set.Make(TypeID)
 
-module LabelSet = Set.Make(String)
+module LabelSet = struct
+  include Set.Make(String)
+
+
+  let pp ppf labset =
+    Format.fprintf ppf "@[<hv1>{";
+    fold (fun k is_first ->
+      begin
+        if is_first then
+          Format.fprintf ppf "%s" k
+        else
+          Format.fprintf ppf ",@ %s" k
+      end;
+      false
+    ) labset true |> ignore;
+    Format.fprintf ppf "@]";
+
+end
 
 module LabelMap = struct
   include Map.Make(String)
@@ -92,8 +109,16 @@ and manual_command_argument_type =
   | MMandatoryArgumentType of manual_type
   | MOptionalArgumentType  of manual_type
 
+type manual_row_base_kind =
+  (label ranged) list
+[@@deriving show]
+
+type manual_base_kind =
+  | MKindName of kind_name ranged
+[@@deriving show]
+
 type manual_kind =
-  | MUniversalKind
+  | MKind of manual_base_kind list * manual_base_kind
 [@@deriving show]
 
 type base_type =
@@ -151,8 +176,15 @@ let base_type_map : base_type TypeNameMap.t =
   ]
 
 
+type row_base_kind =
+  LabelSet.t
+[@@deriving show { with_path = false }]
+
+type base_kind =
+  | TypeKind
+
 type kind =
-  | UniversalKind
+  | Kind of base_kind list
 
 type ('a, 'b) typ =
   Range.t * ('a, 'b) type_main
@@ -298,9 +330,9 @@ and untyped_declaration =
     (* TEMPORARY; should be `untyped_declaration_main ranged`  *)
 
 and untyped_declaration_main =
-  | UTDeclValue      of var_name ranged * constraints * manual_type
+  | UTDeclValue      of var_name ranged * (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list * manual_type
   | UTDeclTypeTrans  of type_name ranged * manual_type
-  | UTDeclTypeOpaque of type_name ranged * untyped_type_argument list
+  | UTDeclTypeOpaque of type_name ranged * manual_kind
   | UTDeclModule     of module_name ranged * untyped_signature
   | UTDeclSignature  of signature_name ranged * untyped_signature
   | UTDeclInclude    of untyped_signature
@@ -323,7 +355,7 @@ and untyped_let_mutable_binding =
   (Range.t * var_name) * untyped_abstract_tree
 
 and untyped_type_binding =
-  type_name ranged * (type_variable_name ranged) list * constraints * untyped_synonym_or_variant
+  type_name ranged * (type_variable_name ranged) list * untyped_synonym_or_variant
 
 and untyped_synonym_or_variant =
   | UTBindSynonym of manual_type
@@ -413,9 +445,6 @@ and untyped_abstract_tree_main =
 (* Multi-stage constructs: *)
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree
-
-and constraints =
-  (var_name * manual_kind) list
 
 and untyped_itemize =
   | UTItem of untyped_abstract_tree * (untyped_itemize list)

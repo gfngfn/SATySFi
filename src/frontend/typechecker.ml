@@ -2142,8 +2142,8 @@ and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : un
 
 and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : OpaqueIDSet.t * StructSig.t =
   match utdecl with
-  | UTDeclValue((_, x) as var, _constrnts, mty) ->
-      let tyvars = [] in (* TODO: get universally quantified type variables *)
+  | UTDeclValue((_, x) as var, typarams, rowparams, mty) ->
+      let tyvars = failwith "TODO: get universally quantified type variables" in
       let pre =
         let pre_init =
           {
@@ -2172,13 +2172,25 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
   | UTDeclTypeTrans(_) ->
       failwith "TODO: typecheck_declaration, UTDeclTypeTrans"
 
-  | UTDeclTypeOpaque((_, tynm), typarams) ->
+  | UTDeclTypeOpaque((_, tynm), mnkd) ->
+      let pre_init =
+        {
+          stage           = stage;
+          level           = Level.bottom;
+          type_parameters = TypeParameterMap.empty;
+          quantifiability = Quantifiable;
+        }
+      in
       let tyid = TypeID.fresh tynm in
-      let arity = List.length typarams in
+      let arity =
+        let MKind(mnbkds, _) = mnkd in
+        List.length mnbkds
+      in
+      let kd = decode_manual_kind pre_init tyenv mnkd in
       let tentry =
         {
           type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
-          type_kind   = failwith "TODO: UTDeclTypeOpaque, type_kind";
+          type_kind   = kd;
         }
       in
       let ssig = StructSig.empty |> StructSig.add_type tynm tentry in
@@ -2321,7 +2333,6 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       assert false
 
   | UTBindType(tybinds) ->
-      let tyenv0 = tyenv in
       let pre =
         {
           stage           = stage;
@@ -2334,29 +2345,14 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       (* Registers types to the type environment and the graph for detecting cyclic dependency. *)
       let (synacc, vntacc, vertices, graph, tyenv) =
         tybinds |> List.fold_left (fun (synacc, vntacc, vertices, graph, tyenv) tybind ->
-          let (tyident, typarams, constraints, syn_or_vnt) = tybind in
-          let typaramkds =
-            typarams |> List.map (fun typaram ->
-              let (_rng, tyvar) = typaram in
-              let kd =
-                constraints |> List.find_map (fun (tyvar0, mnkd) ->
-                  if String.equal tyvar tyvar0 then
-                    let kd = decode_manual_kind pre tyenv0 mnkd in
-                    Some(kd)
-                  else
-                    None
-                ) |> Option.value ~default:UniversalKind
-              in
-              (typaram, kd)
-            )
-          in
+          let (tyident, typarams, syn_or_vnt) = tybind in
           let (rng, tynm) = tyident in
           match syn_or_vnt with
           | UTBindSynonym(synbind) ->
               let data =
                 SynonymDependencyGraph.{
                   position        = rng;
-                  type_variables  = typaramkds;
+                  type_variables  = typarams;
                   definition_body = synbind;
                 }
               in

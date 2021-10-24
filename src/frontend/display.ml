@@ -12,11 +12,6 @@ let string_of_record_type (type a) (type b) (f : (a, b) typ -> string) (asc : ((
     "(|" ^ (aux (LabelMap.bindings asc)) ^ "|)"
 
 
-let string_of_kind (kd : kind) =
-  match kd with
-  | UniversalKind   -> "U"
-
-
 let rec variable_name_of_number (n : int) =
   ( if n >= 26 then
       variable_name_of_number ((n - n mod 26) / 26 - 1)
