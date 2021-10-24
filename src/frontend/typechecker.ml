@@ -2169,9 +2169,6 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
       let ssig = StructSig.empty |> StructSig.add_value x ventry in
       (OpaqueIDSet.empty, ssig)
 
-  | UTDeclDirect(_) ->
-      failwith "TODO: typecheck_declaration, UTDeclDirect"
-
   | UTDeclTypeTrans(_) ->
       failwith "TODO: typecheck_declaration, UTDeclTypeTrans"
 

@@ -509,12 +509,6 @@ decl:
   | VAL; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts {
       UTDeclValue(vcmdtok, clst, mnty)
     }
-  | DIRECT; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts {
-      UTDeclDirect(hcmdtok, clst, mnty)
-    }
-  | DIRECT; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts {
-      UTDeclDirect(vcmdtok, clst, mnty)
-    }
 ;
 constrnts:
   | clst=list(constrnt) { clst }

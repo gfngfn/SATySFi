@@ -299,7 +299,6 @@ and untyped_declaration =
 
 and untyped_declaration_main =
   | UTDeclValue      of var_name ranged * constraints * manual_type
-  | UTDeclDirect     of var_name ranged * constraints * manual_type
   | UTDeclTypeTrans  of type_name ranged * manual_type
   | UTDeclTypeOpaque of type_name ranged * untyped_type_argument list
   | UTDeclModule     of module_name ranged * untyped_signature
