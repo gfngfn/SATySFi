@@ -415,6 +415,7 @@ and exec_code_pattern_tree (env : vmenv) (irpat : ir_pattern_tree) : vmenv * cod
   | IRPBooleanConstant(b) -> (env, CdPBooleanConstant(b))
   | IRPIntegerConstant(n) -> (env, CdPIntegerConstant(n))
   | IRPStringConstant(s)  -> (env, CdPStringConstant(s))
+  | IRPCharConstant(c)    -> (env, CdPCharConstant(c))
 
   | IRPListCons(irpat1, irpat2) ->
       let (env, cdpat1) = exec_code_pattern_tree env irpat1 in
@@ -957,6 +958,19 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
               exec stack env next dump
 
         | _ -> report_bug_vm "invalid argument for OpCheckStackTopStr"
+      end
+
+  | OpCheckStackTopChar(c, next) ->
+      begin
+        match stack with
+        | (v, _) :: stack ->
+            let c0 = get_char v in
+            if Uchar.equal c c0 then
+              exec stack env code dump
+            else
+              exec stack env next dump
+
+        | _ -> report_bug_vm "invalid argument for OpCheckStackTopChar"
       end
 
   | OpCheckStackTopTupleCons(next) ->

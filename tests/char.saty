@@ -1,0 +1,23 @@
+@require: stdjareport
+
+let-inline \test =
+  let c1 = '\u0x3042' in
+  let c2 = '\n' in
+  let c3 = 'a' in
+  let c4 = 'あ' in
+  if char-same c1 c4 then
+    c2 |> char-to-unicode-point |> arabic |> embed-string
+  else
+    match c3 with
+    | 'a' -> {a}
+    | _   -> {?}
+
+
+in
+
+document (|
+  title  = {};
+  author = {};
+|) '<
+  +p{\test;}
+>

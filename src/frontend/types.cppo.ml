@@ -260,6 +260,7 @@ type base_type =
   | FloatType
   | LengthType
   | StringType
+  | CharType
   | TextRowType
   | TextColType
   | BoxRowType
@@ -287,6 +288,7 @@ let base_type_hash_table =
       ("float"       , FloatType   );
       ("length"      , LengthType  );
       ("string"      , StringType  );
+      ("char"        , CharType  );
       ("inline-text" , TextRowType );
       ("block-text"  , TextColType );
       ("inline-boxes", BoxRowType  );
@@ -470,6 +472,8 @@ and untyped_abstract_tree_main =
   | UTStringConstant       of string
       [@printer (fun fmt s -> Format.fprintf fmt "S:\"%s\"" s)]
   | UTPositionedString     of input_position * string
+  | UTCharConstant         of Uchar.t
+      [@printer (fun fmt c -> Format.fprintf fmt "S:'%s'" (c |> InternalText.of_uchar |> InternalText.to_utf8))]
 (* -- inputs -- *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
@@ -561,6 +565,8 @@ and untyped_pattern_tree_main =
   | UTPIntegerConstant     of int
   | UTPBooleanConstant     of bool
   | UTPStringConstant      of string
+  | UTPCharConstant        of Uchar.t
+      [@printer (fun fmt c -> Format.fprintf fmt "S:'%s'" (c |> InternalText.of_uchar |> InternalText.to_utf8))]
   | UTPUnitConstant
   | UTPListCons            of untyped_pattern_tree * untyped_pattern_tree
   | UTPEndOfList
@@ -641,6 +647,8 @@ type base_constant =
   | BCFloat    of float
   | BCLength   of length
   | BCString   of string
+  | BCChar     of Uchar.t
+      [@printer (fun fmt c -> Format.fprintf fmt "S:'%s'" (c |> InternalText.of_uchar |> InternalText.to_utf8))]
   | BCRegExp   of Str.regexp
       [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]
   | BCPath     of path list
@@ -777,6 +785,8 @@ and ir_pattern_tree =
   | IRPBooleanConstant      of bool
   | IRPIntegerConstant      of int
   | IRPStringConstant       of string
+  | IRPCharConstant         of Uchar.t
+      [@printer (fun fmt c -> Format.fprintf fmt "S:'%s'" (c |> InternalText.of_uchar |> InternalText.to_utf8))]
   | IRPListCons             of ir_pattern_tree * ir_pattern_tree
   | IRPEndOfList
   | IRPTupleCons             of ir_pattern_tree * ir_pattern_tree
@@ -830,6 +840,8 @@ and instruction =
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopListCons(...)")]
   | OpCheckStackTopStr of string * instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopStr(...)")]
+  | OpCheckStackTopChar of Uchar.t * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopChar(...)")]
   | OpCheckStackTopTupleCons of instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopTupleCons(...)")]
   | OpClosure of varloc list * int * int * instruction list
@@ -971,6 +983,8 @@ and pattern_tree =
   | PBooleanConstant      of bool
   | PIntegerConstant      of int
   | PStringConstant       of string
+  | PCharConstant         of Uchar.t
+      [@printer (fun fmt c -> Format.fprintf fmt "S:'%s'" (c |> InternalText.of_uchar |> InternalText.to_utf8))]
   | PListCons             of pattern_tree * pattern_tree
   | PEndOfList
   | PTuple                of pattern_tree list
@@ -1095,6 +1109,8 @@ and code_pattern_tree =
   | CdPBooleanConstant      of bool
   | CdPIntegerConstant      of int
   | CdPStringConstant       of string
+  | CdPCharConstant         of Uchar.t
+      [@printer (fun fmt c -> Format.fprintf fmt "S:'%s'" (c |> InternalText.of_uchar |> InternalText.to_utf8))]
   | CdPListCons             of code_pattern_tree * code_pattern_tree
   | CdPEndOfList
   | CdPTuple                of code_pattern_tree list
@@ -1546,6 +1562,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPBooleanConstant(b)       -> PBooleanConstant(b)
     | CdPIntegerConstant(n)       -> PIntegerConstant(n)
     | CdPStringConstant(s)        -> PStringConstant(s)
+    | CdPCharConstant(c)          -> PCharConstant(c)
     | CdPListCons(cdpat1, cdpat2) -> PListCons(aux_pattern cdpat1, aux_pattern cdpat2)
     | CdPEndOfList                -> PEndOfList
     | CdPTuple(cdpats)            -> PTuple(List.map aux_pattern cdpats)
@@ -1716,6 +1733,7 @@ let rec string_of_type_basic tvf orvf tystr : string =
     | BaseType(IntType)     -> "int" ^ qstn
     | BaseType(FloatType)   -> "float" ^ qstn
     | BaseType(StringType)  -> "string" ^ qstn
+    | BaseType(CharType)    -> "char" ^ qstn
     | BaseType(TextRowType) -> "inline-text" ^ qstn
     | BaseType(TextColType) -> "block-text" ^ qstn
     | BaseType(BoxRowType)  -> "inline-boxes" ^ qstn

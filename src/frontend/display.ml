@@ -117,6 +117,7 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv
     | BaseType(IntType)     -> "int"
     | BaseType(FloatType)   -> "float"
     | BaseType(StringType)  -> "string"
+    | BaseType(CharType)    -> "char"
 
     | BaseType(TextRowType) -> "inline-text"
     | BaseType(TextColType) -> "block-text"
