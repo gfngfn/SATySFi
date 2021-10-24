@@ -2,9 +2,11 @@
 open MyUtil
 open LengthInterface
 open GraphicBase
+open SyntaxBase
 open Types
 open TypeConv
 open EvalUtil
+
 
 exception ExecError of string
 

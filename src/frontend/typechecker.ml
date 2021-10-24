@@ -1,5 +1,6 @@
 
 open MyUtil
+open SyntaxBase
 open Types
 open TypeConv
 open Display
@@ -61,18 +62,33 @@ let fresh_free_row_id (lev : Level.t) (labset : LabelSet.t) : FreeRowID.t =
   frid
 
 
-let make_type_parameters (pre : pre) (tyvars : (type_variable_name ranged) list) : pre * BoundID.t list =
-  let (typarams, bidacc) =
-    tyvars |> List.fold_left (fun (typarams, bidacc) (rng, tyvarnm) ->
-      if typarams |> TypeParameterMap.mem tyvarnm then
+let add_type_parameters (lev : Level.t) (tyvars : (type_variable_name ranged) list) (typarammap : type_parameter_map) : type_parameter_map * BoundID.t list =
+  let (typarammap, bidacc) =
+    tyvars |> List.fold_left (fun (typarammap, bidacc) (rng, tyvarnm) ->
+      if typarammap |> TypeParameterMap.mem tyvarnm then
         raise (TypeParameterBoundMoreThanOnce(rng, tyvarnm))
       else
-        let mbbid = MustBeBoundID.fresh (Level.succ pre.level) in
+        let mbbid = MustBeBoundID.fresh lev in
         let bid = MustBeBoundID.to_bound_id mbbid in
-        (typarams |> TypeParameterMap.add tyvarnm mbbid, Alist.extend bidacc bid)
-    ) (pre.type_parameters, Alist.empty)
+        (typarammap |> TypeParameterMap.add tyvarnm mbbid, Alist.extend bidacc bid)
+    ) (typarammap, Alist.empty)
   in
-  ({ pre with type_parameters = typarams }, Alist.to_list bidacc)
+  (typarammap, Alist.to_list bidacc)
+
+
+let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * manual_row_base_kind) list) (rowparammap : row_parameter_map) : row_parameter_map * BoundRowID.t list =
+  let (rowparammap, bridacc) =
+    rowvars |> List.fold_left (fun (rowparammap, bridacc) ((rng, rowvarnm), mnbrkd) ->
+      if rowparammap |> RowParameterMap.mem rowvarnm then
+        failwith "TODO (error): row parameter bound more than once"
+      else
+        let labset = failwith "TODO: add_row_parameters, labset: should be made from mnbrkd" in
+        let mbbrid = MustBeBoundRowID.fresh lev labset in
+        let brid = MustBeBoundRowID.to_bound_id mbbrid in
+        (rowparammap |> RowParameterMap.add rowvarnm mbbrid, Alist.extend bridacc brid)
+    ) (rowparammap, Alist.empty)
+  in
+  (rowparammap, Alist.to_list bridacc)
 
 
 let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm : constructor_name) (rng : Range.t) =
@@ -683,11 +699,12 @@ let base bc =
 
 let rec typecheck
     (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
-  let typecheck_iter ?s:(s = pre.stage) ?l:(l = pre.level) ?p:(p = pre.type_parameters) ?q:(q = pre.quantifiability) t u =
+  let typecheck_iter ?s:(s = pre.stage) ?l:(l = pre.level) ?p:(p = pre.type_parameters) ?r:(r = pre.row_parameters) ?q:(q = pre.quantifiability) t u =
     let presub =
       {
         stage           = s;
         type_parameters = p;
+        row_parameters  = r;
         quantifiability = q;
         level           = l;
       }
@@ -2147,18 +2164,16 @@ and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : un
 and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : OpaqueIDSet.t * StructSig.t =
   match utdecl with
   | UTDeclValue((_, x), typarams, rowparams, mty) ->
-      let tyvars = failwith "TODO: get universally quantified type variables" in
       let pre =
-        let pre_init =
-          {
-            stage           = stage;
-            level           = Level.bottom;
-            type_parameters = TypeParameterMap.empty;
-            quantifiability = Quantifiable;
-          }
-        in
-        let (pre, _) = make_type_parameters pre_init tyvars in
-        { pre with level = Level.succ Level.bottom }
+        let (typarammap, _) = TypeParameterMap.empty |> add_type_parameters (Level.succ Level.bottom) typarams in
+        let (rowparammap, _) = RowParameterMap.empty |> add_row_parameters (Level.succ Level.bottom) rowparams in
+        {
+          stage           = stage;
+          level           = Level.succ Level.bottom;
+          type_parameters = typarammap;
+          row_parameters  = rowparammap;
+          quantifiability = Quantifiable;
+        }
       in
       let ty = decode_manual_type pre tyenv mty in
       let pty = generalize Level.bottom ty in
@@ -2178,6 +2193,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
           stage           = stage;
           level           = Level.bottom;
           type_parameters = TypeParameterMap.empty;
+          row_parameters  = RowParameterMap.empty;
           quantifiability = Quantifiable;
         }
       in
@@ -2254,6 +2270,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
         {
           stage           = stage;
           type_parameters = TypeParameterMap.empty;
+          row_parameters  = RowParameterMap.empty;
           quantifiability = Quantifiable;
           level           = Level.bottom;
         }
@@ -2337,6 +2354,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
         {
           stage           = stage;
           type_parameters = TypeParameterMap.empty;
+          row_parameters  = RowParameterMap.empty;
           quantifiability = Quantifiable;
           level           = Level.bottom;
         }
@@ -2427,7 +2445,8 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
         vntacc |> Alist.to_list |> List.fold_left (fun tydefacc vnt ->
           let (tyident, tyvars, vntbind, tyid, tentry) = vnt in
           let (_, tynm) = tyident in
-          let (pre, bids) = make_type_parameters pre tyvars in
+          let (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
+          let pre = { pre with type_parameters = typarammap } in
           let _ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
           Alist.extend tydefacc (tynm, tentry)
         ) tydefacc
@@ -2546,6 +2565,7 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : m
     {
       stage           = stage;
       type_parameters = TypeParameterMap.empty;
+      row_parameters  = RowParameterMap.empty;
       quantifiability = Quantifiable;
       level           = Level.bottom;
     }

@@ -1,6 +1,7 @@
 
 open LengthInterface
 open GraphicBase
+open SyntaxBase
 open Types
 
 

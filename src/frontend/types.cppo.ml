@@ -1,6 +1,7 @@
 
 open LengthInterface
 open GraphicBase
+open SyntaxBase
 
 exception ParseErrorDetail of Range.t * string
 exception IllegalArgumentLength of Range.t * int * int
@@ -49,44 +50,6 @@ module StoreIDHashTable = Hashtbl.Make(StoreID)
 module EvalVarIDMap = Map.Make(EvalVarID)
 
 module OpaqueIDSet = Set.Make(TypeID)
-
-module LabelSet = struct
-  include Set.Make(String)
-
-
-  let pp ppf labset =
-    Format.fprintf ppf "@[<hv1>{";
-    fold (fun k is_first ->
-      begin
-        if is_first then
-          Format.fprintf ppf "%s" k
-        else
-          Format.fprintf ppf ",@ %s" k
-      end;
-      false
-    ) labset true |> ignore;
-    Format.fprintf ppf "@]";
-
-end
-
-module LabelMap = struct
-  include Map.Make(String)
-
-
-  let pp pp_v ppf labmap =
-    Format.fprintf ppf "@[<hv1>{";
-    fold (fun k v is_first ->
-      begin
-        if is_first then
-          Format.fprintf ppf "%s -> %a" k pp_v v
-        else
-          Format.fprintf ppf ",@ %s -> %a" k pp_v v
-      end;
-      false
-    ) labmap true |> ignore;
-    Format.fprintf ppf "@]"
-
-end
 
 type 'a abstracted =
   OpaqueIDSet.t * 'a
@@ -273,9 +236,14 @@ module TypeParameterMap = Map.Make(String)
 
 type type_parameter_map = MustBeBoundID.t TypeParameterMap.t
 
+module RowParameterMap = Map.Make(String)
+
+type row_parameter_map = MustBeBoundRowID.t RowParameterMap.t
+
 type pre = {
   level           : level;
   type_parameters : type_parameter_map;
+  row_parameters  : row_parameter_map;
   quantifiability : quantifiability;  (* maybe omitted in the future *)
   stage           : stage;
 }
