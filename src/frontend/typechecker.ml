@@ -2418,18 +2418,19 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
           let (tynm, syndata) = syn in
           let
             SynonymDependencyGraph.{
-              type_variables  = typarams;
+              type_variables  = tyvars;
               definition_body = mty_body;
               _
             } = syndata
           in
-          let bids = failwith "TODO: make bound IDs from typarams" in
+          let (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
+          let pre = { pre with type_parameters = typarammap } in
           let ty_body = decode_manual_type pre tyenv mty_body in
           let pty_body = TypeConv.generalize Level.bottom ty_body in
           let tentry =
             {
               type_scheme = (bids, pty_body);
-              type_kind   = failwith "TODO: make kind from typarams";
+              type_kind   = Kind(bids |> List.map (fun _ -> TypeKind));
             }
           in
           let tyenv = tyenv |> Typeenv.add_type tynm tentry in
