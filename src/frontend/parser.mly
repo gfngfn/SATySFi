@@ -517,7 +517,7 @@ tyquant:
   | tyvar=TYPEVAR { tyvar }
 ;
 rowquant:
-  | rowvar=ROWVAR; CONS; mnrbkd=kxrow { (rowvar, mnrbkd) }
+  | LPAREN; rowvar=ROWVAR; CONS; mnrbkd=kxrow; RPAREN { (rowvar, mnrbkd) }
 ;
 nxhorzdec:
   | ctxvartok=VAR; hcmdtok=HORZCMD; cmdarglst=list(arg); DEFEQ; utast=nxlet {
