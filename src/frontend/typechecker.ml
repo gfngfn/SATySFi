@@ -60,6 +60,15 @@ let fresh_free_row_id (lev : Level.t) (labset : LabelSet.t) : FreeRowID.t =
   FreeRowID.fresh lev labset
 
 
+let decode_manual_row_base_kind (mnrbkd : manual_row_base_kind) : row_base_kind =
+  mnrbkd |> List.fold_left (fun labset (rng, label) ->
+    if labset |> LabelSet.mem label then begin
+      failwith "TODO (warning): duplicate labels"
+    end;
+    labset |> LabelSet.add label
+  ) LabelSet.empty
+
+
 let add_type_parameters (lev : Level.t) (tyvars : (type_variable_name ranged) list) (typarammap : type_parameter_map) : type_parameter_map * BoundID.t list =
   let (typarammap, bidacc) =
     tyvars |> List.fold_left (fun (typarammap, bidacc) (rng, tyvarnm) ->
@@ -80,7 +89,7 @@ let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * ma
       if rowparammap |> RowParameterMap.mem rowvarnm then
         failwith "TODO (error): row parameter bound more than once"
       else
-        let labset = failwith "TODO: add_row_parameters, labset: should be made from mnbrkd" in
+        let labset = decode_manual_row_base_kind mnbrkd in
         let mbbrid = MustBeBoundRowID.fresh lev labset in
         let brid = MustBeBoundRowID.to_bound_id mbbrid in
         (rowparammap |> RowParameterMap.add rowvarnm mbbrid, Alist.extend bridacc brid)
