@@ -13,5 +13,9 @@ let fresh labset =
   generate labset
 
 
-let pp ppf bid =
-  Format.fprintf ppf "%s" (show bid)
+let get_label_set brid =
+  get_supplement brid
+
+
+let pp ppf brid =
+  Format.fprintf ppf "%s" (show brid)

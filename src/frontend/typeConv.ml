@@ -54,8 +54,8 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
     | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
 
-and erase_range_of_row (optrow : mono_row) =
-  match optrow with
+and erase_range_of_row (row : mono_row) =
+  match row with
   | RowEmpty ->
       RowEmpty
 
@@ -67,12 +67,15 @@ and erase_range_of_row (optrow : mono_row) =
       erase_range_of_row optrow
 
   | RowVar(UpdatableRow{contents = MonoORFree(_)}) ->
-      optrow
+      row
+
+  | RowVar(MustBeBoundRow(_)) ->
+      row
 
 
-let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) lev qtfbl ((rng, ptymain) : poly_type_body) =
-  let aux = instantiate_aux bid_ht lev qtfbl in
-  let aux_or = instantiate_row_aux bid_ht lev qtfbl in
+let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) (brid_ht : mono_row_variable BoundRowIDHashTable.t) lev qtfbl ((rng, ptymain) : poly_type_body) =
+  let aux = instantiate_aux bid_ht brid_ht lev qtfbl in
+  let aux_row = instantiate_row_aux bid_ht brid_ht lev qtfbl in
     match ptymain with
     | TypeVariable(ptvi) ->
         begin
@@ -83,8 +86,8 @@ let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) lev qtf
           | PolyBound(bid) ->
               begin
                 match BoundIDHashTable.find_opt bid_ht bid with
-                | Some(tvrefnew) ->
-                    (rng, TypeVariable(tvrefnew))
+                | Some(tv_new) ->
+                    (rng, TypeVariable(tv_new))
 
                 | None ->
                     let tv =
@@ -92,15 +95,13 @@ let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) lev qtf
                       let tvref = ref (MonoFree(fid)) in
                       Updatable(tvref)
                     in
-                    begin
-                      BoundIDHashTable.add bid_ht bid tv;
-                      (rng, TypeVariable(tv))
-                    end
+                    BoundIDHashTable.add bid_ht bid tv;
+                    (rng, TypeVariable(tv))
               end
         end
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
+    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_row optrow, aux tydom, aux tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map aux tys))
-    | RecordType(row)                   -> (rng, RecordType(aux_or row))
+    | RecordType(row)                   -> (rng, RecordType(aux_row row))
     | DataType(tyargs, tyid)            -> (rng, DataType(List.map aux tyargs, tyid))
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
@@ -111,18 +112,41 @@ let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) lev qtf
     | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
 
 
-and instantiate_row_aux bid_ht lev qtfbl optrow : mono_row =
-  let aux = instantiate_aux bid_ht lev qtfbl in
-  let aux_or = instantiate_row_aux bid_ht lev qtfbl in
-  match optrow with
-  | RowEmpty                    -> RowEmpty
-  | RowCons(rlabel, pty, tail)  -> RowCons(rlabel, aux pty, aux_or tail)
-  | RowVar(PolyORFree(orviref)) -> RowVar(orviref)
+and instantiate_row_aux bid_ht brid_ht lev qtfbl row : mono_row =
+  let aux = instantiate_aux bid_ht brid_ht lev qtfbl in
+  let aux_row = instantiate_row_aux bid_ht brid_ht lev qtfbl in
+  match row with
+  | RowEmpty ->
+      RowEmpty
+
+  | RowCons(rlabel, pty, tail) ->
+      RowCons(rlabel, aux pty, aux_row tail)
+
+  | RowVar(PolyORFree(rvref)) ->
+      RowVar(rvref)
+
+  | RowVar(PolyORBound(brid)) ->
+      begin
+        match BoundRowIDHashTable.find_opt brid_ht brid with
+        | Some(rv) ->
+            RowVar(rv)
+
+        | None ->
+            let rv =
+              let frid = FreeRowID.fresh lev (BoundRowID.get_label_set brid) in
+              let rvref = ref (MonoORFree(frid)) in
+              UpdatableRow(rvref)
+            in
+            BoundRowIDHashTable.add brid_ht brid rv;
+            RowVar(rv)
+      end
+
 
 
 let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type) : mono_type =
   let bid_ht : mono_type_variable BoundIDHashTable.t = BoundIDHashTable.create 32 in
-  instantiate_aux bid_ht lev qtfbl pty
+  let brid_ht : mono_row_variable BoundRowIDHashTable.t = BoundRowIDHashTable.create 32 in
+  instantiate_aux bid_ht brid_ht lev qtfbl pty
 
 
 let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_variable -> (a, b) typ) (orfreef : mono_row_variable -> (a, b) row) (pairlst : ((a, b) typ * BoundID.t) list) (Poly(pty) : poly_type) : (a, b) typ =
@@ -157,9 +181,10 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
     | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
 
   and aux_row = function
-    | RowEmpty                    -> RowEmpty
-    | RowCons(rlabel, ty, tail)   -> RowCons(rlabel, aux ty, aux_row tail)
-    | RowVar(PolyORFree(orviref)) -> orfreef orviref
+    | RowEmpty                  -> RowEmpty
+    | RowCons(rlabel, ty, tail) -> RowCons(rlabel, aux ty, aux_row tail)
+    | RowVar(PolyORFree(rvref)) -> orfreef rvref
+    | RowVar(PolyORBound(brid)) -> failwith "TODO: instantiate_type_scheme, RowVar, PolyORBound"
   in
   begin
     pairlst |> List.iter (fun (tyarg, bid) -> BoundIDHashTable.add bid_to_type_ht bid tyarg);
@@ -235,6 +260,10 @@ let lift_poly_general (ptv : FreeID.t -> bool) (prv : FreeRowID.t -> bool) (ty :
           | MonoORLink(row) ->
               generalize_row row
         end
+
+    | RowVar(MustBeBoundRow(mbbrid)) ->
+        let brid = MustBeBoundRowID.to_bound_id mbbrid in
+        RowVar(PolyORBound(brid))
   in
   iter ty
 
@@ -283,12 +312,15 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
     | RowCons(_, ty, tail) ->
         iter ty && iter_row tail
 
-    | RowVar(UpdatableRow(orvuref)) ->
+    | RowVar(UpdatableRow(rvref)) ->
         begin
-          match !orvuref with
+          match !rvref with
           | MonoORFree(frid) -> Level.less_than lev (FreeRowID.get_level frid)
           | MonoORLink(row)  -> iter_row row
         end
+
+    | RowVar(MustBeBoundRow(mbbrid)) ->
+        Level.less_than lev (MustBeBoundRowID.get_level mbbrid)
 
   in
   iter ty
@@ -346,9 +378,10 @@ and unlift_aux_cmd = function
 
 
 and unlift_aux_row = function
-  | RowEmpty                    -> RowEmpty
-  | RowCons(rlabel, pty, tail)  -> RowCons(rlabel, unlift_aux pty, unlift_aux_row tail)
-  | RowVar(PolyORFree(orviref)) -> RowVar(orviref)
+  | RowEmpty                   -> RowEmpty
+  | RowCons(rlabel, pty, tail) -> RowCons(rlabel, unlift_aux pty, unlift_aux_row tail)
+  | RowVar(PolyORFree(rvref))  -> RowVar(rvref)
+  | RowVar(PolyORBound(_))     -> raise Exit
 
 
 let unlift_poly (pty : poly_type_body) : mono_type option =

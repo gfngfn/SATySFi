@@ -13,6 +13,8 @@ val equal : t -> t -> bool
 
 val hash : t -> int
 
+val get_label_set : t -> LabelSet.t
+
 val show : t -> string
 
 val pp : Format.formatter -> t -> unit

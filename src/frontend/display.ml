@@ -265,10 +265,17 @@ let rec tvf_mono current_ht plev tv =
       MustBeBoundID.show mbbid
 
 
-and ortvf_mono current_ht (UpdatableRow(orvref)) =
-  match !orvref with
-  | MonoORFree(_)      -> "...?-> "
-  | MonoORLink(optrow) -> string_of_option_row (tvf_mono current_ht) (ortvf_mono current_ht) current_ht optrow
+and ortvf_mono current_ht rv =
+  match rv with
+  | UpdatableRow(rvref) ->
+      begin
+        match !rvref with
+        | MonoORFree(_)   -> "...?-> "
+        | MonoORLink(row) -> string_of_option_row (tvf_mono current_ht) (ortvf_mono current_ht) current_ht row
+      end
+
+  | MustBeBoundRow(mbbrid) ->
+      failwith "TODO: ortvf_mono, MustBeBoundRow"
 
 
 let rec tvf_poly current_ht plev ptvi =
@@ -283,10 +290,13 @@ let rec tvf_poly current_ht plev ptvi =
       show_type_variable (iter_poly Outmost) s
 
 
-and ortvf_poly current_ht porvi =
-  match porvi with
-  | PolyORFree(orviref) ->
-      ortvf_mono current_ht orviref
+and ortvf_poly current_ht rv =
+  match rv with
+  | PolyORFree(rvref) ->
+      ortvf_mono current_ht rvref
+
+  | PolyORBound(brid) ->
+      failwith "TODO: ortvf_poly"
 
 
 let string_of_mono_type (ty : mono_type) =

@@ -283,6 +283,7 @@ let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type 
     | RowEmpty                                         -> tylabmap
     | RowVar(UpdatableRow{contents = MonoORFree(_)})   -> tylabmap
     | RowVar(UpdatableRow{contents = MonoORLink(row)}) -> aux_row tylabmap row
+    | RowVar(MustBeBoundRow(_))                        -> failwith "TODO (error): flatten_type, MustBeBoundRow"
     | RowCons((_, label), ty, row)                     -> aux_row (tylabmap |> LabelMap.add label ty) row
   in
   let rec aux acc ty =
@@ -379,6 +380,9 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
               if Level.less_than lev lev0 then FreeRowID.set_level frid0 lev; (* Updates the level *)
               false
         end
+
+    | RowVar(MustBeBoundRow(_)) ->
+        false
   in
   iter ty
 
@@ -456,6 +460,9 @@ let occurs_row (frid : FreeRowID.t) (row : mono_row) =
                 if Level.less_than lev lev0 then FreeRowID.set_level frid0 lev;
                 false
         end
+
+    | RowVar(MustBeBoundRow(_)) ->
+        false
 
   in
   iter_row row
@@ -603,6 +610,13 @@ and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : unit =
       let labset0 = FreeRowID.get_label_set frid0 in
       FreeRowID.set_label_set frid0 (LabelSet.union labset0 labset)
 
+  | RowVar(MustBeBoundRow(mbbrid0)) ->
+      let labset0 = BoundRowID.get_label_set (MustBeBoundRowID.to_bound_id mbbrid0) in
+      if LabelSet.subset labset labset0 then
+        ()
+      else
+        failwith "TODO (error): insufficient constraint"
+
   | RowEmpty ->
       ()
 
@@ -634,8 +648,11 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
         row_rest
       end
 
+  | RowVar(MustBeBoundRow(_)) ->
+      failwith "TODO (error): solve_row_membership, MustBeBoundRow"
+
   | RowEmpty ->
-      failwith "TODO (error): solve_membership_aux, RowEmpty"
+      failwith "TODO (error): solve_row_membership, RowEmpty"
 
 
 and unify_row (row1 : mono_row) (row2 : mono_row) =
@@ -669,6 +686,15 @@ and unify_row (row1 : mono_row) (row2 : mono_row) =
         solve_row_disjointness row1 labset2;
         rvref2 := MonoORLink(row1)
       end
+
+  | (RowVar(MustBeBoundRow(mbbrid1)), RowVar(MustBeBoundRow(mbbrid2))) ->
+      if MustBeBoundRowID.equal mbbrid1 mbbrid2 then
+        ()
+      else
+        raise InternalContradictionError
+
+  | (RowVar(MustBeBoundRow(_)), _) | (_, RowVar(MustBeBoundRow(_))) ->
+      raise InternalContradictionError
 
   | (RowCons((rng, label), ty1, row1sub), _) ->
       let row2rest = solve_row_membership rng label ty1 row2 in

@@ -180,12 +180,11 @@ and mono_row_variable_updatable =
 
 and mono_row_variable =
   | UpdatableRow   of mono_row_variable_updatable ref
-(*
   | MustBeBoundRow of MustBeBoundRowID.t
-*)
 
 and poly_row_variable =
-  | PolyORFree of mono_row_variable
+  | PolyORFree  of mono_row_variable
+  | PolyORBound of BoundRowID.t
 
 and mono_type_variable_updatable =
   | MonoFree of FreeID.t
@@ -960,6 +959,8 @@ type 'a cycle =
 
 
 module BoundIDHashTable = Hashtbl.Make(BoundID)
+
+module BoundRowIDHashTable = Hashtbl.Make(BoundRowID)
 
 module FreeIDHashTable = Hashtbl.Make(FreeID)
 
