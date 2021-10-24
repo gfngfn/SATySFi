@@ -57,9 +57,7 @@ let fresh_free_id (qtfbl : quantifiability) (lev : Level.t) : FreeID.t =
 
 
 let fresh_free_row_id (lev : Level.t) (labset : LabelSet.t) : FreeRowID.t =
-  let frid = FreeRowID.fresh lev in
-  KindStore.register_free_row_id frid labset;
-  frid
+  FreeRowID.fresh lev labset
 
 
 let add_type_parameters (lev : Level.t) (tyvars : (type_variable_name ranged) list) (typarammap : type_parameter_map) : type_parameter_map * BoundID.t list =
@@ -581,7 +579,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           raise InternalContradictionError
 
 
-and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) =
+and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : unit =
   match row with
   | RowCons((rng, label), ty, rowsub) ->
       if labset |> LabelSet.mem label then
@@ -593,9 +591,8 @@ and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) =
       solve_row_disjointness rowsub labset
 
   | RowVar(UpdatableRow{contents = MonoORFree(frid0)}) ->
-      let labset0 = KindStore.get_free_row_id frid0 in
-      KindStore.register_free_row_id frid0 (LabelSet.union labset0 labset);
-      ()
+      let labset0 = FreeRowID.get_label_set frid0 in
+      FreeRowID.set_label_set frid0 (LabelSet.union labset0 labset)
 
   | RowEmpty ->
       ()
@@ -615,15 +612,14 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
       solve_row_membership rng label ty row0
 
   | RowVar(UpdatableRow({contents = MonoORFree(frid0)} as orvuref0)) ->
-      let labset0 = KindStore.get_free_row_id frid0 in
+      let labset0 = FreeRowID.get_label_set frid0 in
       if labset0 |> LabelSet.mem label then
         failwith "TODO (error): reject for the disjointness"
       else begin
         let lev0 = FreeRowID.get_level frid0 in
-        let orv1 = FreeRowID.fresh lev0 in
-        KindStore.register_free_row_id orv1 LabelSet.empty;
-        let orvuref1 = ref (MonoORFree(orv1)) in
-        let row_rest = RowVar(UpdatableRow(orvuref1)) in
+        let frid1 = FreeRowID.fresh lev0 LabelSet.empty in
+        let rvref1 = ref (MonoORFree(frid1)) in
+        let row_rest = RowVar(UpdatableRow(rvref1)) in
         let row_new = RowCons((rng, label), ty, row_rest) in
         orvuref0 := MonoORLink(row_new);
         row_rest
@@ -641,28 +637,28 @@ and unify_row (row1 : mono_row) (row2 : mono_row) =
   | (_, RowVar(UpdatableRow{contents = MonoORLink(row2sub)})) ->
       unify_row row1 row2sub
 
-  | (RowVar(UpdatableRow({contents = MonoORFree(orv1)} as orviref1)), RowVar(UpdatableRow{contents = MonoORFree(orv2)})) ->
-      if FreeRowID.equal orv1 orv2 then
+  | (RowVar(UpdatableRow({contents = MonoORFree(frid1)} as rvref1)), RowVar(UpdatableRow{contents = MonoORFree(frid2)})) ->
+      if FreeRowID.equal frid1 frid2 then
         ()
       else
-        orviref1 := MonoORLink(row2)
+        rvref1 := MonoORLink(row2)
 
-  | (RowVar(UpdatableRow({contents = MonoORFree(orv1)} as orviref1)), _) ->
-      if occurs_row orv1 row2 then
+  | (RowVar(UpdatableRow({contents = MonoORFree(frid1)} as rvref1)), _) ->
+      if occurs_row frid1 row2 then
         raise InternalInclusionError
       else begin
-        let labset1 = KindStore.get_free_row_id orv1 in
+        let labset1 = FreeRowID.get_label_set frid1 in
         solve_row_disjointness row2 labset1;
-        orviref1 := MonoORLink(row2)
+        rvref1 := MonoORLink(row2)
       end
 
-  | (_, RowVar(UpdatableRow({contents = MonoORFree(orv2)} as orviref2))) ->
-      if occurs_row orv2 row1 then
+  | (_, RowVar(UpdatableRow({contents = MonoORFree(frid2)} as rvref2))) ->
+      if occurs_row frid2 row1 then
         raise InternalInclusionError
       else begin
-        let labset2 = KindStore.get_free_row_id orv2 in
+        let labset2 = FreeRowID.get_label_set frid2 in
         solve_row_disjointness row1 labset2;
-        orviref2 := MonoORLink(row1)
+        rvref2 := MonoORLink(row1)
       end
 
   | (RowCons((rng, label), ty1, row1sub), _) ->
@@ -897,16 +893,18 @@ let rec typecheck
   | UTApply(opts, utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
-      let (e_labmap, row0) =
-        let frid = FreeRowID.fresh pre.level in
-        let orvuref = ref (MonoORFree(frid)) in
-        opts |> List.fold_left (fun (e_labmap, row) (rlabel, utast0) ->
+      let frid = FreeRowID.fresh pre.level LabelSet.empty in
+      let (e_labmap0, labset0, row0) =
+        let rvref = ref (MonoORFree(frid)) in
+        opts |> List.fold_left (fun (e_labmap, labset, row) (rlabel, utast0) ->
           let (_, label) = rlabel in
           let (e0, ty0) = typecheck_iter tyenv utast0 in
-          (e_labmap |> LabelMap.add label e0, RowCons(rlabel, ty0, row))
-        ) (LabelMap.empty, RowVar(UpdatableRow(orvuref)))
+          (e_labmap |> LabelMap.add label e0, labset |> LabelSet.add label, RowCons(rlabel, ty0, row))
+        ) (LabelMap.empty, LabelSet.empty, RowVar(UpdatableRow(rvref)))
       in
-      let eret = Apply(e_labmap, e1, e2) in
+      let labset = FreeRowID.get_label_set frid in
+      FreeRowID.set_label_set frid (LabelSet.union labset labset0);
+      let eret = Apply(e_labmap0, e1, e2) in
       begin
         match unlink ty1 with
         | (_, FuncType(row, tydom, tycod)) ->

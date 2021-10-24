@@ -1,34 +1,45 @@
 
-type t = {
-  number : int;
-  mutable level : Level.t;
-}
-[@@deriving show]
+open SyntaxBase
 
 
-let current_number = ref 0
+module Impl = struct
+  type t = {
+    mutable level     : Level.t;
+    mutable label_set : LabelSet.t;
+  }
+
+  let show n _ = string_of_int n
+end
 
 
-let initialize () =
-  current_number := 0
+include IdScheme.Make(Impl)
 
 
-let equal (frid1 : t) (frid2 : t) =
-  (frid1.number = frid2.number)
+let fresh (lev : Level.t) (labset : LabelSet.t) : t =
+  let supp = Impl.{ level = lev; label_set = labset } in
+  generate supp
 
-
-let fresh (lev : Level.t) : t =
-  incr current_number;
-  { level = lev; number = !current_number; }
 
 
 let get_level (frid : t) : Level.t =
-  frid.level
+  let supp = get_supplement frid in
+  supp.level
 
 
 let set_level (frid : t) (lev : Level.t) : unit =
-  frid.level <- lev
+  let supp = get_supplement frid in
+  supp.level <- lev
 
 
-let show_direct (frid : t) : string =
-  Printf.sprintf "$%d[%s]" frid.number (Level.show frid.level)
+let get_label_set (frid : t) : LabelSet.t =
+  let supp = get_supplement frid in
+  supp.label_set
+
+
+let set_label_set (frid : t) (labset : LabelSet.t) : unit =
+  let supp = get_supplement frid in
+  supp.label_set <- labset
+
+
+let pp ppf frid =
+  Format.fprintf ppf "%s" (show frid)
