@@ -16,7 +16,7 @@ and functor_signature = {
 }
 
 type value_entry = {
-  val_name  : EvalVarID.t;
+  val_name  : EvalVarID.t option;
   val_type  : poly_type;
   val_stage : stage;
 }
@@ -37,7 +37,7 @@ type macro_entry = {
 }
 
 type module_entry = {
-  mod_name      : ModuleID.t;
+  mod_name      : ModuleID.t option;
   mod_signature : signature;
 }
 

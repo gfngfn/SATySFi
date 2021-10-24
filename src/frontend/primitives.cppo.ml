@@ -671,33 +671,31 @@ let text_mode_table =
 
 
 let make_environments table =
-  let tyenvinit =
+  let tyenv =
     Typeenv.empty
       |> add_general_default_types
       |> add_pdf_mode_default_types
   in
-  let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
-
-
+  let env : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
   let temporary_ast = Nil in
-  let (tyenvfinal, envfinal, locacc) =
+  let (tyenv, env, locacc) =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
       let evid = EvalVarID.fresh (dr, varnm) in
       let loc = ref temporary_ast in
       let ventry =
         {
-          val_name  = evid;
+          val_name  = Some(evid);
           val_type  = pty;
           val_stage = Persistent0;
         }
       in
-      let tyenvnew = tyenv |> Typeenv.add_value varnm ventry in  (* temporary *)
-      let envnew = add_to_environment env evid loc in
-        (tyenvnew, envnew, Alist.extend acc (loc, deff))
-    ) (tyenvinit, envinit, Alist.empty)
+      let tyenv = tyenv |> Typeenv.add_value varnm ventry in  (* temporary *)
+      let env = add_to_environment env evid loc in
+        (tyenv, env, Alist.extend acc (loc, deff))
+    ) (tyenv, env, Alist.empty)
   in
-  locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
-    (tyenvfinal, envfinal)
+  locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff env);
+  (tyenv, env)
 
 
 let make_pdf_mode_environments () =

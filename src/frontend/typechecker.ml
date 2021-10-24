@@ -129,7 +129,7 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs :
       let tyenv =
         let ventry =
           {
-            val_name  = evid;
+            val_name  = Some(evid);
             val_type  = Poly(Primitives.option_type beta);
             val_stage = pre.stage;
           }
@@ -167,7 +167,7 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       in
       let ventry =
         {
-          val_name  = evid;
+          val_name  = Some(evid);
           val_type  = pty;
           val_stage = Stage0;
         }
@@ -219,7 +219,7 @@ let add_pattern_var_mono (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_va
     let pty = lift_poly (erase_range_of_type ty) in
     let ventry =
       {
-        val_name  = evid;
+        val_name  = Some(evid);
         val_type  = pty;
         val_stage = pre.stage;
       }
@@ -233,7 +233,7 @@ let add_pattern_var_poly (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_va
     let pty = (generalize pre.level (erase_range_of_type ty)) in
     let ventry =
       {
-        val_name  = evid;
+        val_name  = Some(evid);
         val_type  = pty;
         val_stage = pre.stage;
       }
@@ -771,7 +771,11 @@ let rec typecheck
 *)
 
         | Some(ventry) ->
-            let evid = ventry.val_name in
+            let evid =
+              match ventry.val_name with
+              | Some(evid) -> evid
+              | None       -> assert false
+            in
             let pty = ventry.val_type in
             let stage = ventry.val_stage in
             let tyfree = instantiate pre.level pre.quantifiability pty in
@@ -834,7 +838,7 @@ let rec typecheck
       let tyenvsub =
         let ventry =
           {
-            val_name  = evid;
+            val_name  = Some(evid);
             val_type  = Poly(varrng, BaseType(bstyvar));
             val_stage = pre.stage;
           }
@@ -856,7 +860,7 @@ let rec typecheck
       let tyenvsub =
         let ventry =
           {
-            val_name  = evid;
+            val_name  = Some(evid);
             val_type  = Poly(varrng, BaseType(bstyvar));
             val_stage = pre.stage;
           }
@@ -945,7 +949,7 @@ let rec typecheck
           let tyenv =
             let ventry =
               {
-                val_name  = evid;
+                val_name  = Some(evid);
                 val_type  = pty;
                 val_stage = stage;
               }
@@ -1569,7 +1573,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letre
         let ventry =
           {
             val_type  = Poly(pbeta);
-            val_name  = evid;
+            val_name  = Some(evid);
             val_stage = pre.stage;
           }
         in
@@ -1621,7 +1625,7 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng 
     let ventry =
       {
         val_type  = lift_poly (varrng, RefType(tyI));
-        val_name  = evid;
+        val_name  = Some(evid);
         val_stage = pre.stage;
       }
     in
@@ -1774,7 +1778,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
             let (absmodsig2, _binds) =
               let mentry1 =
                 {
-                  mod_name      = ModuleID.fresh modnm1;
+                  mod_name      = Some(ModuleID.fresh modnm1);
                   mod_signature = modsig1;
                 }
               in
@@ -2142,7 +2146,7 @@ and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : un
 
 and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : OpaqueIDSet.t * StructSig.t =
   match utdecl with
-  | UTDeclValue((_, x) as var, typarams, rowparams, mty) ->
+  | UTDeclValue((_, x), typarams, rowparams, mty) ->
       let tyvars = failwith "TODO: get universally quantified type variables" in
       let pre =
         let pre_init =
@@ -2158,11 +2162,10 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
       in
       let ty = decode_manual_type pre tyenv mty in
       let pty = generalize Level.bottom ty in
-      let evid = EvalVarID.fresh var in
       let ventry =
         {
           val_stage = stage;
-          val_name  = evid; (* TODO: make this `None` *)
+          val_name  = None;
           val_type  = pty;
         }
       in
@@ -2198,7 +2201,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
       let (oidset, modsig) = absmodsig in
       let mentry =
         {
-          mod_name      = ModuleID.fresh modnm; (* TODO: make this `None` *)
+          mod_name      = None;
           mod_signature = modsig;
         }
       in
@@ -2278,7 +2281,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
                 let ventry =
                   {
                     val_type  = pty;
-                    val_name  = evid;
+                    val_name  = Some(evid);
                     val_stage = pre.stage;
                   }
                 in
@@ -2296,7 +2299,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
                   let ventry =
                     {
                       val_type  = pty;
-                      val_name  = evid;
+                      val_name  = Some(evid);
                       val_stage = stage;
                     }
                   in
@@ -2316,7 +2319,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
               let ventry =
                 {
                   val_type  = pty;
-                  val_name  = evid;
+                  val_name  = Some(evid);
                   val_stage = pre.stage;
                 }
               in
@@ -2454,7 +2457,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
         let mentry =
           {
             mod_signature = modsig;
-            mod_name      = mid;
+            mod_name      = Some(mid);
           }
         in
         StructSig.empty |> StructSig.add_module modnm mentry

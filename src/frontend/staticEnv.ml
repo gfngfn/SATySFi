@@ -81,7 +81,7 @@ module MacroNameMap = Map.Make(String)
 type type_scheme = BoundID.t list * poly_type
 
 type value_entry = {
-  val_name  : EvalVarID.t;
+  val_name  : EvalVarID.t option;
   val_type  : poly_type;
   val_stage : stage;
 }
@@ -121,7 +121,7 @@ and functor_signature = {
 }
 
 and module_entry = {
-  mod_name      : ModuleID.t;
+  mod_name      : ModuleID.t option;
   mod_signature : signature;
 }
 
