@@ -60,7 +60,24 @@
                                 ((* a) (not b)); ((* a) F(b));
                                 ((* a) B(U:())); ((* (not a)) b);
                                 ((* F(a)) b); ((* A(U:())) b)]),
-                           UTFinishHeaderFile))
+                           (UTLetNonRecIn (None,
+                              ((Range.Normal ("nx.saty", 39, 4, 39, 10)),
+                               (UTPVariable "uminus")),
+                              (UTTuple
+                                 [((- (UTIntegerConstant 0)) (UTIntegerConstant
+                                                                1));
+                                   ((- (UTIntegerConstant 0)) (UTIntegerConstant
+                                                                 42));
+                                   ((-. (UTFloatConstant 0.)) (UTFloatConstant
+                                                                 1.));
+                                   ((-. (UTFloatConstant 0.)) (UTFloatConstant
+                                                                 3.14));
+                                   L:-1.000000mm;
+                                   ((-' L:0.000000cm) L:2.718280cm);
+                                   ((- (UTIntegerConstant 0)) x);
+                                   ((- (UTIntegerConstant 0)) x)]),
+                              UTFinishHeaderFile))
+                           ))
                         ))
                      ))
                   ))
