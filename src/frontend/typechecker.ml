@@ -2382,7 +2382,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
               let tentry =
                 {
                   type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
-                  type_kind   = failwith "TODO: make kind from typaramkds";
+                  type_kind   = Kind(List.init arity (fun _ -> TypeKind));
                 }
               in
               let tyenv = tyenv |> Typeenv.add_type tynm tentry in
