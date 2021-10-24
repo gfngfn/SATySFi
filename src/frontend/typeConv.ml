@@ -86,18 +86,8 @@ let rec instantiate_aux (bid_ht : mono_type_variable BoundIDHashTable.t) lev qtf
                     (rng, TypeVariable(tvrefnew))
 
                 | None ->
-                    let bentry = KindStore.get_bound_id bid in
-                    let kd = bentry.KindStore.poly_kind in
                     let tv =
-                      let fid = FreeID.fresh () in
-                      let fentry =
-                        KindStore.{
-                          level           = lev;
-                          quantifiability = qtfbl;
-                          mono_kind       = kd;
-                        }
-                      in
-                      KindStore.set_free_id fid fentry;
+                      let fid = FreeID.fresh lev (qtfbl = Quantifiable) in
                       let tvref = ref (MonoFree(fid)) in
                       Updatable(tvref)
                     in
@@ -200,10 +190,7 @@ let lift_poly_general (ptv : FreeID.t -> bool) (prv : FreeRowID.t -> bool) (ty :
                               PolyBound(bid)
 
                           | None ->
-                              let fentry = KindStore.get_free_id fid in
-                              let kd = fentry.KindStore.mono_kind in
                               let bid = BoundID.fresh () in
-                              KindStore.set_bound_id bid KindStore.{ poly_kind = kd };
                               FreeIDHashTable.add tvidht fid bid;
                               PolyBound(bid)
                         end
@@ -260,12 +247,8 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
           | Updatable(tvuref) ->
               begin
                 match !tvuref with
-                | MonoLink(ty) ->
-                    iter ty
-
-                | MonoFree(fid) ->
-                    let fentry = KindStore.get_free_id fid in
-                    Level.less_than lev fentry.KindStore.level
+                | MonoLink(ty)  -> iter ty
+                | MonoFree(fid) -> Level.less_than lev (FreeID.get_level fid)
               end
 
           | MustBeBound(mbbid) ->
@@ -311,16 +294,10 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
 
 
 let generalize (lev : level) (ty : mono_type) : poly_type =
-  let ptv fid =
-    let fentry = KindStore.get_free_id fid in
-    let is_quantifiable =
-      match fentry.KindStore.quantifiability with
-      | Quantifiable   -> true
-      | Unquantifiable -> false
-    in
-    is_quantifiable && Level.less_than lev fentry.KindStore.level
+  let ptv (fid : FreeID.t) : bool =
+    FreeID.get_quantifiability fid && Level.less_than lev (FreeID.get_level fid)
   in
-  let prv frid =
+  let prv (frid : FreeRowID.t) : bool =
     not (Level.less_than lev (FreeRowID.get_level frid))
   in
   Poly(lift_poly_general ptv prv ty)
@@ -348,9 +325,9 @@ let rec unlift_aux pty =
           | PolyBound(_)    -> raise Exit
         end
 
-    | FuncType(poptrow, pty1, pty2)   -> FuncType(unlift_aux_or poptrow, aux pty1, aux pty2)
+    | FuncType(poptrow, pty1, pty2)   -> FuncType(unlift_aux_row poptrow, aux pty1, aux pty2)
     | ProductType(ptys)               -> ProductType(TupleList.map aux ptys)
-    | RecordType(prow)                -> RecordType(unlift_aux_or prow)
+    | RecordType(prow)                -> RecordType(unlift_aux_row prow)
     | ListType(ptysub)                -> ListType(aux ptysub)
     | RefType(ptysub)                 -> RefType(aux ptysub)
     | DataType(ptyargs, tyid)         -> DataType(List.map aux ptyargs, tyid)
@@ -367,9 +344,9 @@ and unlift_aux_cmd = function
       CommandArgType(ptylabmap |> LabelMap.map unlift_aux, unlift_aux pty)
 
 
-and unlift_aux_or = function
+and unlift_aux_row = function
   | RowEmpty                    -> RowEmpty
-  | RowCons(rlabel, pty, tail)  -> RowCons(rlabel, unlift_aux pty, unlift_aux_or tail)
+  | RowCons(rlabel, pty, tail)  -> RowCons(rlabel, unlift_aux pty, unlift_aux_row tail)
   | RowVar(PolyORFree(orviref)) -> RowVar(orviref)
 
 
@@ -378,8 +355,8 @@ let unlift_poly (pty : poly_type_body) : mono_type option =
   | Exit -> None
 
 
-let unlift_option_row poptrow =
-  try Some(unlift_aux_or poptrow) with
+let unlift_row poptrow =
+  try Some(unlift_aux_row poptrow) with
   | Exit -> None
 
 

@@ -19,9 +19,13 @@ module Make(X : S) = struct
     current_id := 0
 
 
-  let fresh supp =
+  let generate supp =
     incr current_id;
     { number = !current_id; supplement = supp }
+
+
+  let get_supplement id =
+    id.supplement
 
 
   let compare id1 id2 =

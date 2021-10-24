@@ -52,16 +52,7 @@ module SynonymNameSet = Set.Make(String)
 
 
 let fresh_free_id (qtfbl : quantifiability) (lev : Level.t) : FreeID.t =
-  let fid = FreeID.fresh () in
-  let fentry =
-    KindStore.{
-      level           = lev;
-      quantifiability = qtfbl;
-      mono_kind       = UniversalKind;
-    }
-  in
-  KindStore.set_free_id fid fentry;
-  fid
+  FreeID.fresh lev (qtfbl = Quantifiable)
 
 
 let fresh_free_row_id (lev : Level.t) (labset : LabelSet.t) : FreeRowID.t =
@@ -78,7 +69,6 @@ let make_type_parameters (pre : pre) (tyvars : (type_variable_name ranged) list)
       else
         let mbbid = MustBeBoundID.fresh (Level.succ pre.level) in
         let bid = MustBeBoundID.to_bound_id mbbid in
-        KindStore.set_bound_id bid { poly_kind = UniversalKind };
         (typarams |> TypeParameterMap.add tyvarnm mbbid, Alist.extend bidacc bid)
     ) (pre.type_parameters, Alist.empty)
   in
@@ -295,13 +285,9 @@ let opaque_occurs (oidset : OpaqueIDSet.t) (modsig : signature) : bool =
 
 let occurs (fid : FreeID.t) (ty : mono_type) =
 
-  let lev =
-    let fentry = KindStore.get_free_id fid in
-    fentry.KindStore.level
-  in
+  let lev = FreeID.get_level fid in
 
-  let rec iter (_, tymain) =
-
+  let rec iter ((_, tymain) : mono_type) =
     match tymain with
     | TypeVariable(tv) ->
         begin
@@ -312,16 +298,12 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
                 | MonoLink(tyl) ->
                     iter tyl
 
-                | MonoFree(fidx) ->
-                    if FreeID.equal fidx fid then
+                | MonoFree(fid0) ->
+                    if FreeID.equal fid0 fid then
                       true
                     else
-                      let fentryx = KindStore.get_free_id fidx in
-                      let levx = fentryx.KindStore.level in
-                      if Level.less_than lev levx then begin
-                        KindStore.set_free_id fidx { fentryx with level = lev }
-                          (* -- update level -- *)
-                      end;
+                      let lev0 = FreeID.get_level fid0 in
+                      if Level.less_than lev lev0 then FreeID.set_level fid0 lev; (* Updates the level *)
                       false
               end
 
@@ -346,8 +328,8 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
     | MathCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
     | CodeType(tysub)                -> iter tysub
 
-  and iter_list tylst =
-    List.exists iter tylst
+  and iter_list tys =
+    List.exists iter tys
 
   and iter_cmd_list (cmdargtys : mono_command_argument_type list) =
     List.exists (function
@@ -371,7 +353,7 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
 
           | MonoORFree(frid0) ->
               let lev0 = FreeRowID.get_level frid0 in
-              if Level.less_than lev lev0 then FreeRowID.set_level frid0 lev;
+              if Level.less_than lev lev0 then FreeRowID.set_level frid0 lev; (* Updates the level *)
               false
         end
   in
@@ -393,13 +375,9 @@ let occurs_row (frid : FreeRowID.t) (row : mono_row) =
                 | MonoLink(tyl) ->
                     iter tyl
 
-                | MonoFree(fidx) ->
-                    let fentryx = KindStore.get_free_id fidx in
-                    let levx = fentryx.KindStore.level in
-                    if Level.less_than lev levx then begin
-                      KindStore.set_free_id fidx { fentryx with level = lev }
-                        (* -- update level -- *)
-                    end;
+                | MonoFree(fid0) ->
+                    let lev0 = FreeID.get_level fid0 in
+                    if Level.less_than lev lev0 then FreeID.set_level fid0 lev; (* Updates the level *)
                     false
               end
 
@@ -458,11 +436,6 @@ let occurs_row (frid : FreeRowID.t) (row : mono_row) =
 
   in
   iter_row row
-
-
-let set_kind (fid : FreeID.t) (kd : kind) : unit =
-  let fentry = KindStore.get_free_id fid in
-  KindStore.set_free_id fid { fentry with mono_kind = kd }
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
@@ -540,47 +513,31 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           TypeVariable(Updatable({contents = MonoFree(fid2)} as tvref2))) ->
         if FreeID.equal fid1 fid2 then
           ()
-        else
-          let b1 = occurs fid1 ty2 in
-          let b2 = occurs fid2 ty1 in
-          if b1 || b2 then
-            raise InternalInclusionError
-          else
-            let fentry1 = KindStore.get_free_id fid1 in
-            let fentry2 = KindStore.get_free_id fid2 in
+        else begin
+          (* Equate quantifiabilities *)
+          begin
+            match (FreeID.get_quantifiability fid1, FreeID.get_quantifiability fid2) with
+            | (true, true) ->
+                ()
 
-            (* Equate quantifiabilities *)
-            let (fentry1, fentry2) =
-              match (fentry1.quantifiability, fentry2.quantifiability) with
-              | (Quantifiable, Quantifiable) ->
-                  (fentry1, fentry2)
+            | _ ->
+                FreeID.set_quantifiability fid1 false;
+                FreeID.set_quantifiability fid2 false
+          end;
 
-              | _ ->
-                  ({ fentry1 with quantifiability = Unquantifiable },
-                   { fentry2 with quantifiability = Unquantifiable})
-            in
+          (* Equate levels *)
+          let lev1 = FreeID.get_level fid1 in
+          let lev2 = FreeID.get_level fid2 in
+          let lev_min = if Level.less_than lev1 lev2 then lev1 else lev2 in
+          FreeID.set_level fid1 lev_min;
+          FreeID.set_level fid2 lev_min;
 
-            (* Equate levels *)
-            let lev1 = fentry1.level in
-            let lev2 = fentry2.level in
-            let (fentry1, fentry2) =
-              if Level.less_than lev1 lev2 then
-                (fentry1, { fentry2 with level = lev1 })
-              else if Level.less_than lev2 lev1 then
-                ({ fentry1 with level = lev2 }, fentry2)
-              else
-                (fentry1, fentry2)
-            in
-
-            KindStore.set_free_id fid1 fentry1;
-            KindStore.set_free_id fid2 fentry2;
-
-            (* Generate constraints by unifying kinds and solve them *)
-            let (oldtvref, newtvref, newfid, newty) =
-              if Range.is_dummy rng1 then (tvref1, tvref2, fid2, ty2) else (tvref2, tvref1, fid1, ty1)
-            in
-            oldtvref := MonoLink(newty);
-            set_kind newfid UniversalKind
+          (* Generate constraints by unifying kinds and solve them *)
+          let (tvref_old, ty_new) =
+            if Range.is_dummy rng1 then (tvref1, ty2) else (tvref2, ty1)
+          in
+          tvref_old := MonoLink(ty_new)
+        end
 
       | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)), _) ->
           let chk = occurs fid1 ty2 in

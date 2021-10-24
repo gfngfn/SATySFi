@@ -5,5 +5,9 @@ include IdScheme.Make(struct
 end)
 
 
+let fresh modnm =
+  generate modnm
+
+
 let pp ppf mid =
   Format.fprintf ppf "%s" (show mid)

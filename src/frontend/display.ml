@@ -25,7 +25,7 @@ let rec variable_name_of_number (n : int) =
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
 
-let show_type_variable (type a) (type b) (f : (a, b) typ -> string) (name : string) (kd : kind) =
+let show_type_variable (type a) (type b) (f : (a, b) typ -> string) (name : string) =
   name
 
 
@@ -253,17 +253,12 @@ let rec tvf_mono current_ht plev tv =
       begin
         match !tvuref with
         | MonoFree(fid) ->
-            let fentry = KindStore.get_free_id fid in
             let num = GeneralIDHashTable.intern_number current_ht (FreeID(fid)) in
             let s =
-              let prefix =
-                match fentry.KindStore.quantifiability with
-                | Quantifiable   -> "'"
-                | Unquantifiable -> "'_"
-              in
+              let prefix = if FreeID.get_quantifiability fid then "'" else "'_" in
               prefix ^ (variable_name_of_number num)
             in
-            show_type_variable (iter Outmost) s (fentry.KindStore.mono_kind)
+            show_type_variable (iter Outmost) s
 
         | MonoLink(ty) ->
             iter plev ty
@@ -286,10 +281,9 @@ let rec tvf_poly current_ht plev ptvi =
       tvf_mono current_ht plev tvref
 
   | PolyBound(bid) ->
-      let bentry = KindStore.get_bound_id bid in
       let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
       let s = "'#" ^ (variable_name_of_number num) in
-        show_type_variable (iter_poly Outmost) s bentry.KindStore.poly_kind
+      show_type_variable (iter_poly Outmost) s
 
 
 and ortvf_poly current_ht porvi =

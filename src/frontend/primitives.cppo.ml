@@ -179,9 +179,7 @@ let itemize_type () =
 
 
 let fresh_bound_id () =
-  let bid = BoundID.fresh () in
-  KindStore.set_bound_id bid KindStore.{ poly_kind = UniversalKind };
-  bid
+  BoundID.fresh ()
 
 
 let add_variant_types vntdefs tyenv =

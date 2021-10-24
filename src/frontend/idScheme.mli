@@ -10,7 +10,9 @@ module Make : functor(X : S) -> sig
 
   val initialize : unit -> unit
 
-  val fresh : X.t -> t
+  val generate : X.t -> t
+
+  val get_supplement : t -> X.t
 
   val compare : t -> t -> int
 
