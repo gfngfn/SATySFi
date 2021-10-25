@@ -314,7 +314,193 @@
                      ]))),
             UTEndOfList))
          )),
-      UTFinishHeaderFile))
+      (UTLetNonRecIn (None,
+         ((Range.Normal ("mathlist.saty", 4, 4, 4, 5)), UTPWildCard),
+         (UTInputVert
+            [BC:+p (UTMandatoryArgument
+                      (UTInputHorz
+                         [(UTInputHorzEmbeddedMath
+                             (UTMath
+                                ((Range.Normal ("mathlist.saty", 6, 6, 6, 7)),
+                                 (UTMList
+                                    [((Range.Normal ("mathlist.saty", 6, 6,
+                                         6, 7)),
+                                      (UTMChars "a"))]))));
+                           IT:
+;
+                           (UTInputHorzEmbeddedMath
+                              (UTMath
+                                 ((Range.Normal ("mathlist.saty", 7, 6, 7, 9
+                                     )),
+                                  (UTMList
+                                     [((Range.Normal ("mathlist.saty", 7, 6,
+                                          7, 9)),
+                                       (UTMSuperScript (
+                                          ((Range.Normal ("mathlist.saty", 7,
+                                              6, 7, 7)),
+                                           (UTMChars "a")),
+                                          false,
+                                          ((Range.Normal ("mathlist.saty", 7,
+                                              8, 7, 9)),
+                                           (UTMChars "1"))
+                                          )))
+                                       ]))));
+                           IT:
+;
+                           (UTInputHorzEmbeddedMath
+                              (UTMath
+                                 ((Range.Normal ("mathlist.saty", 8, 6, 8, 9
+                                     )),
+                                  (UTMList
+                                     [((Range.Normal ("mathlist.saty", 8, 6,
+                                          8, 9)),
+                                       (UTMSubScript (
+                                          ((Range.Normal ("mathlist.saty", 8,
+                                              6, 8, 7)),
+                                           (UTMChars "a")),
+                                          false,
+                                          ((Range.Normal ("mathlist.saty", 8,
+                                              8, 8, 9)),
+                                           (UTMChars "2"))
+                                          )))
+                                       ]))));
+                           IT:
+;
+                           (UTInputHorzEmbeddedMath
+                              (UTMath
+                                 ((Range.Normal ("mathlist.saty", 9, 6, 9, 11
+                                     )),
+                                  (UTMList
+                                     [((Range.Normal ("mathlist.saty", 9, 6,
+                                          9, 11)),
+                                       (UTMSuperScript (
+                                          ((Range.Normal ("mathlist.saty", 9,
+                                              6, 9, 9)),
+                                           (UTMSubScript (
+                                              ((Range.Normal (
+                                                  "mathlist.saty", 9, 6, 9, 7
+                                                  )),
+                                               (UTMChars "a")),
+                                              false,
+                                              ((Range.Normal (
+                                                  "mathlist.saty", 9, 8, 9, 9
+                                                  )),
+                                               (UTMChars "2"))
+                                              ))),
+                                          false,
+                                          ((Range.Normal ("mathlist.saty", 9,
+                                              10, 9, 11)),
+                                           (UTMChars "1"))
+                                          )))
+                                       ]))));
+                           IT:
+;
+                           (UTInputHorzEmbeddedMath
+                              (UTMath
+                                 ((Range.Normal ("mathlist.saty", 10, 6, 10,
+                                     11)),
+                                  (UTMList
+                                     [((Range.Normal ("mathlist.saty", 10, 6,
+                                          10, 11)),
+                                       (UTMSuperScript (
+                                          ((Range.Dummy "mathtop"),
+                                           (UTMSubScript (
+                                              ((Range.Normal (
+                                                  "mathlist.saty", 10, 6, 10,
+                                                  7)),
+                                               (UTMChars "a")),
+                                              false,
+                                              ((Range.Normal (
+                                                  "mathlist.saty", 10, 10,
+                                                  10, 11)),
+                                               (UTMChars "2"))
+                                              ))),
+                                          false,
+                                          ((Range.Normal ("mathlist.saty",
+                                              10, 8, 10, 9)),
+                                           (UTMChars "1"))
+                                          )))
+                                       ]))));
+                           IT:
+;
+                           (UTInputHorzEmbeddedMath
+                              (UTMath
+                                 ((Range.Normal ("mathlist.saty", 11, 6, 11,
+                                     8)),
+                                  (UTMList
+                                     [((Range.Normal ("mathlist.saty", 11, 6,
+                                          11, 8)),
+                                       (UTMSuperScript (
+                                          ((Range.Normal ("mathlist.saty",
+                                              11, 6, 11, 7)),
+                                           (UTMChars "a")),
+                                          true,
+                                          ((Range.Normal ("mathlist.saty",
+                                              11, 7, 11, 8)),
+                                           (UTMChars "′"))
+                                          )))
+                                       ]))));
+                           IT:
+;
+                           (UTInputHorzEmbeddedMath
+                              (UTMath
+                                 ((Range.Normal ("mathlist.saty", 12, 6, 12,
+                                     10)),
+                                  (UTMList
+                                     [((Range.Normal ("mathlist.saty", 12, 6,
+                                          12, 10)),
+                                       (UTMSuperScript (
+                                          ((Range.Normal ("mathlist.saty",
+                                              12, 6, 12, 7)),
+                                           (UTMChars "a")),
+                                          false,
+                                          ((Range.Normal ("mathlist.saty",
+                                              12, 7, 12, 10)),
+                                           (UTMList
+                                              [((Range.Normal (
+                                                   "mathlist.saty", 12, 7,
+                                                   12, 8)),
+                                                (UTMChars "′"));
+                                                ((Range.Normal (
+                                                    "mathlist.saty", 12, 9,
+                                                    12, 10)),
+                                                 (UTMChars "1"))
+                                                ]))
+                                          )))
+                                       ]))));
+                           IT:
+;
+                           (UTInputHorzEmbeddedMath
+                              (UTMath
+                                 ((Range.Normal ("mathlist.saty", 13, 6, 13,
+                                     10)),
+                                  (UTMList
+                                     [((Range.Normal ("mathlist.saty", 13, 6,
+                                          13, 10)),
+                                       (UTMSuperScript (
+                                          ((Range.Dummy "mathtop"),
+                                           (UTMSubScript (
+                                              ((Range.Normal (
+                                                  "mathlist.saty", 13, 6, 13,
+                                                  7)),
+                                               (UTMChars "a")),
+                                              false,
+                                              ((Range.Normal (
+                                                  "mathlist.saty", 13, 9, 13,
+                                                  10)),
+                                               (UTMChars "2"))
+                                              ))),
+                                          true,
+                                          ((Range.Normal ("mathlist.saty",
+                                              13, 7, 13, 8)),
+                                           (UTMChars "′"))
+                                          )))
+                                       ]))));
+                           IT:
+]))
+              ]),
+         UTFinishHeaderFile))
+      ))
    ))
 
 ;; toplevel.saty
