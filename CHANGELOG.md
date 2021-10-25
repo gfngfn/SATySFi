@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Remove the build dependency on `depext` ([PR\#289](https://github.com/gfngfn/SATySFi/pull/289) by `na4zagin3`).
 - Build `src/*` as a private library ([PR\#173](https://github.com/gfngfn/SATySFi/pull/173) by `leque`).
 - Improve the parser implementation ([PR\#175](https://github.com/gfngfn/SATySFi/pull/175) by `leque`).
+- Support negation on float/length literals such as `-1.0`, `- 3.14`, `- 2.71828cm`, etc. ([PR\#295](https://github.com/gfngfn/SATySFi/pull/295) by `leque`).
 
 ## [0.0.6] - 2021-02-06
 ### Fixed
