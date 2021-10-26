@@ -1142,6 +1142,18 @@ mathtop:
     |> make_sub ~sub ~range:(Range.dummy "mathtop")
     |> make_sup ~prime ~range:(make_range (Ranged base) (Ranged (snd sub)))
   }
+  | base=mathbot; prime=PRIMES; SUBSCRIPT; sub=mathgroup; SUPERSCRIPT; sup=mathgroup {
+    (* a'_b^p *)
+    base
+    |> make_sub ~sub ~range:(Range.dummy "mathtop")
+    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+  }
+  | base=mathbot; prime=PRIMES; SUPERSCRIPT; sup=mathgroup; SUBSCRIPT; sub=mathgroup {
+    (* a'^p_b *)
+    base
+    |> make_sub ~sub ~range:(Range.dummy "mathtop")
+    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
+  }
 ;
 mathgroup:
   | opn=BMATHGRP; utm=mathmain; cls=EMATHGRP {
