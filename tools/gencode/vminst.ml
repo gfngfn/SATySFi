@@ -614,6 +614,26 @@ let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory (
 let imgkey = ImageInfo.add_image abspath in
 make_image_key imgkey
 |}
+    ; inst "BackendUseImageByNaturalSize"
+        ~name:"use-image-by-natural-size"
+        ~type_:{|
+~% (tIMG @-> tIB)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "valueimg";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+match valueimg with
+| BaseConstant(BCImageKey(imgkey)) ->
+    let (wid, hgt) = ImageInfo.get_size imgkey in
+    make_horz (HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
+
+| _ ->
+    report_bug_vm "BackendUseImage"
+|}
     ; inst "BackendUseImageByWidth"
         ~name:"use-image-by-width"
         ~type_:{|
