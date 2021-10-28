@@ -3016,9 +3016,7 @@ make_list make_string lines
 |}
     ; inst "ClipGraphicsByPath"
         ~name:"clip-graphics-by-path"
-        ~type_:{|
-~% (tPATH @-> tGR @-> tGR)
-|}
+        ~type_:Type.(tPATH @-> tGR @-> tGR)
         ~fields:[
         ]
         ~params:[
