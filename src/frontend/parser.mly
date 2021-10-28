@@ -166,6 +166,23 @@
     let rng = make_range (Ranged utastL) (Ranged utastR) in
       (rng, UTApply((Range.dummy "binary_operator", UTApply((rngop, UTContentOf([], opnm)), utastL)), utastR))
 
+  let make_uminus op = function
+    | (_, UTFloatConstant(_)) as arg ->
+        binary_operator
+          (Range.dummy "zero-of-unary-minus", UTFloatConstant(0.0))
+          (op, "-.")
+          arg
+    | (_, UTLengthDescription (_, unit)) as arg ->
+        binary_operator
+          (Range.dummy "zero-of-unary-minus", UTLengthDescription(0.0, unit))
+          (op, "-'")
+          arg
+    | arg ->
+        binary_operator
+          (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0))
+          (op, "-")
+          arg
+
 
   let make_standard sttknd endknd main =
     let rng = make_range sttknd endknd in (rng, main)
@@ -748,10 +765,7 @@ nxop:
     { binary_operator utastL (rng, "mod") utastR }
   | tok=EXACT_MINUS; utast2=nxapp
     {
-      binary_operator
-       (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0))
-       (tok, "-")
-       utast2
+      make_uminus tok utast2
     }
   | tok=LNOT; utast2=nxapp
     {

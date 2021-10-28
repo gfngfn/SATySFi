@@ -35,3 +35,5 @@ let op-test =
     F a * b,
     A * b
   )
+
+let uminus = (-1, - 42, -1.0, - 3.14, -1mm, - 2.71828cm, -x, - x)

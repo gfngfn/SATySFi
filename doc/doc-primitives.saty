@@ -689,6 +689,9 @@ document (|
       +command (`unite-path`) (tPATH --> (tPATH --> tPATH)) {
         2つのパスを統合して1つにする．これはドーナツ形など中空のパスをつくるのに必須である．
       }
+      +command (`clip-graphics-by-path`) (tPATH --> (tGR --> tGR)) {
+        \code{clip-graphics-by-path pat gr}でグラフィクス\code{gr}をパス\code{pat}で切り抜く。
+      }
       +command (`fill`) (tCLR --> (tPATH --> tGR)) {
         \code{fill ${color} ${path}}でパス\code{${path}}の内側を色\code{${color}}で塗ったグラフィックスを返す．
         パスのどこが内側であるかは偶奇則によって決められる．
