@@ -1041,6 +1041,7 @@ let arg_spec_list curdir =
     ("--debug-show-block-bbox", Arg.Unit(OptionState.set_debug_show_block_bbox), " Outputs bounding boxes for blocks"           );
     ("--debug-show-block-space", Arg.Unit(OptionState.set_debug_show_block_space), " Outputs visualized block spaces"           );
     ("--debug-show-overfull", Arg.Unit(OptionState.set_debug_show_overfull), " Outputs visualized overfull or underfull lines"  );
+    ("--depmode"         , Arg.Unit(OptionState.set_depmode)         , " Generates Makefile-like deps file"                     );
     ("-t"                , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
     ("--type-check-only" , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
     ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"                                 );
@@ -1160,6 +1161,8 @@ let main () =
         in
         if OptionState.type_check_only () then
           ()
+        else if OptionState.depmode () then
+            assert false
         else
           match docopt with
           | None         -> assert false
