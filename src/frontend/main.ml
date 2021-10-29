@@ -352,10 +352,21 @@ let eval_main i env_freezed ast =
   valuedoc
 
 
-let eval_document_file (env : environment) (code : code_value) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let eval_deps env_freezed ast =
+  Logging.start_make_deps ();
+  reset ();
+  let env = unfreeze_environment env_freezed in
+  let _ = Evaluator.interpret_0 env ast in
+  Logging.end_make_deps ()
+
+
+let eval_document_file (env : environment) (code : code_value) (abspath_out : abs_path) (abspath_dump : abs_path) (depmode: bool) =
   let ast = unlift_code code in
   let env_freezed = freeze_environment env in
-  if OptionState.is_text_mode () then
+  if depmode then
+      let _ = eval_main 1 env_freezed ast in
+      ()
+  else if OptionState.is_text_mode () then
     let rec aux i =
       let valuestr = eval_main i env_freezed ast in
       let s = EvalUtil.get_string valuestr in
@@ -415,7 +426,7 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
     aux 1
 
 
-let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abstract_tree) list) (astdoc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abstract_tree) list) (astdoc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) (depmode: bool) =
 
   let rec preprocess (codeacc : (abs_path * code_value) Alist.t) (env : environment) libs =
     match libs with
@@ -448,7 +459,7 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abst
   in
   let (env, codes, codedoc) = preprocess Alist.empty env libs in
   let env = eval env codes in
-  eval_document_file env codedoc abspath_out abspath_dump
+  eval_document_file env codedoc abspath_out abspath_dump depmode
 
 
 let convert_abs_path_to_show abspath =
@@ -1161,8 +1172,6 @@ let main () =
         in
         if OptionState.type_check_only () then
           ()
-        else if OptionState.depmode () then
-            assert false
         else
           match docopt with
           | None         -> assert false

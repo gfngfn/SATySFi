@@ -12,11 +12,17 @@ let initialize () =
 
 
 let add_pdf abspath pageno =
-  ImageHashTable.add_pdf abspath pageno
+  if OptionState.depmode () then
+    ImageHashTable.add_stub abspath
+  else
+    ImageHashTable.add_pdf abspath pageno
 
 
 let add_image abspath =
-  ImageHashTable.add_image abspath
+  if OptionState.depmode () then
+    ImageHashTable.add_stub abspath
+  else
+    ImageHashTable.add_image abspath
 
 
 let get_xobject_dictionary pdfmain : Pdf.pdfobject =
@@ -36,6 +42,9 @@ let get_xobject_dictionary pdfmain : Pdf.pdfobject =
 
             | _ -> acc  (* temporary *)
           end
+
+      | ImageHashTable.StubImage(_) ->
+            acc
     ) |> List.rev
   in
     Pdf.Dictionary(keyval)
@@ -56,7 +65,7 @@ let get_ratio key wid hgt =
         let yratio = hgt /% (Length.of_pdf_point (ymax -. ymin)) in
           (xratio, yratio)
 
-    | ImageHashTable.OtherImage(_, _, _, _, _) ->
+    | _ ->
         let xratio = Length.to_pdf_point wid in
         let yratio = Length.to_pdf_point hgt in
           (xratio, yratio)
@@ -69,5 +78,12 @@ let get_tag key =
 let get_color_space key =
   let (_, _, valuemain) = ImageHashTable.find key in
   match valuemain with
-  | ImageHashTable.PDFImage(_, _)                     -> None
   | ImageHashTable.OtherImage(_, colorspace, _, _, _) -> Some(colorspace)
+  | _                                                 -> None
+
+
+let is_stub key =
+  match ImageHashTable.find key with
+  | (_, _, ImageHashTable.StubImage(_)) -> true
+  | _ -> false
+
