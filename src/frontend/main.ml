@@ -126,14 +126,14 @@ let get_package_abs_path package =
 let get_abs_path_of_header curdir headerelem =
   match headerelem with
   | HeaderRequire(package) ->
-      get_package_abs_path package
+      (false, get_package_abs_path package)
 
   | HeaderImport(s) ->
       let extcands = get_candidate_file_extensions () in
-      Config.resolve_local_exn curdir s extcands
+      (false, Config.resolve_local_exn curdir s extcands)
 
 
-let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : abs_path) : unit =
+let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : abs_path) (add_deps : bool) : unit =
   begin
     Logging.begin_to_parse_file abspath;
     let curdir = Filename.dirname (get_abs_path_string abspath) in
@@ -141,11 +141,14 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : 
     let (stage, header, utast) = ParserInterface.process (basename_abs abspath) (Lexing.from_channel inc) in
     close_in inc;
     FileDependencyGraph.add_vertex dg abspath (LibraryFile(stage, utast));
+    if add_deps then
+        DepsMode.register_abs_path abspath
+    else ();
     header |> List.iter (fun headerelem ->
-      let abspath_sub = get_abs_path_of_header curdir headerelem in
+      let (is_import, abspath_sub) = get_abs_path_of_header curdir headerelem in
       begin
         if FileDependencyGraph.mem_vertex abspath_sub dg then () else
-          register_library_file dg abspath_sub
+          register_library_file dg abspath_sub (is_import && add_deps)
       end;
       begin
         match FileDependencyGraph.get_vertex dg abspath_sub with
@@ -180,17 +183,18 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : 
     | Stage0 | Persistent0 -> raise DocumentShouldBeAtStage1
   end;
   FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
+  DepsMode.register_abs_path abspath_in;
   header |> List.iter (fun headerelem ->
-    let abspath_sub = get_abs_path_of_header curdir headerelem in
+    let (is_import, abspath_sub) = get_abs_path_of_header curdir headerelem in
     begin
       if FileDependencyGraph.mem_vertex abspath_sub dg then () else
-        register_library_file dg abspath_sub
+        register_library_file dg abspath_sub is_import
     end;
     FileDependencyGraph.add_edge dg abspath_in abspath_sub
   )
 
 
-let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : unit =
+let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (abspath_in : abs_path)  : unit =
   Logging.begin_to_parse_file abspath_in;
   let abspath = Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md"))) in
   let (cmdrcd, depends) = LoadMDSetting.main abspath in
@@ -201,11 +205,12 @@ let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : str
         let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
     *)
       FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
+      DepsMode.register_abs_path abspath_in;
       depends |> List.iter (fun package ->
         let file_path_sub = get_package_abs_path package in
         begin
         if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-          register_library_file dg file_path_sub
+          register_library_file dg file_path_sub false
         end;
         FileDependencyGraph.add_edge dg abspath_in file_path_sub
       )
@@ -360,10 +365,10 @@ let eval_deps env_freezed ast =
   Logging.end_make_deps ()
 
 
-let eval_document_file (env : environment) (code : code_value) (abspath_out : abs_path) (abspath_dump : abs_path) (depmode: bool) =
+let eval_document_file (env : environment) (code : code_value) (abspath_out : abs_path) (abspath_dump : abs_path) =
   let ast = unlift_code code in
   let env_freezed = freeze_environment env in
-  if depmode then
+  if OptionState.depmode () then
       let _ = eval_main 1 env_freezed ast in
       ()
   else if OptionState.is_text_mode () then
@@ -426,7 +431,7 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
     aux 1
 
 
-let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abstract_tree) list) (astdoc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) (depmode: bool) =
+let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abstract_tree) list) (astdoc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
 
   let rec preprocess (codeacc : (abs_path * code_value) Alist.t) (env : environment) libs =
     match libs with
@@ -459,7 +464,7 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * abst
   in
   let (env, codes, codedoc) = preprocess Alist.empty env libs in
   let env = eval env codes in
-  eval_document_file env codedoc abspath_out abspath_dump depmode
+  eval_document_file env codedoc abspath_out abspath_dump
 
 
 let convert_abs_path_to_show abspath =
@@ -1128,7 +1133,10 @@ let main () =
           if OptionState.is_text_mode () then
             raise ShouldSpecifyOutputFile
           else
-            make_abs_path (basename_without_extension ^ ".pdf")
+              let ext =
+                  if OptionState.depmode () then ".d" else ".pdf"
+              in
+              make_abs_path (basename_without_extension ^ ext)
     in
     Logging.target_file abspath_out;
     let (tyenv, env, dump_file_exists) = initialize abspath_dump in
@@ -1139,7 +1147,7 @@ let main () =
       match OptionState.get_input_kind () with
       | OptionState.SATySFi ->
           if has_library_extension abspath_in && OptionState.type_check_only () then
-            register_library_file dg abspath_in
+            register_library_file dg abspath_in true
           else
             register_document_file dg abspath_in
 
@@ -1175,5 +1183,20 @@ let main () =
         else
           match docopt with
           | None         -> assert false
-          | Some(astdoc) -> eval_abstract_tree_list env (Alist.to_list astacc) astdoc abspath_in abspath_out abspath_dump
+          | Some(astdoc) ->
+            begin
+                eval_abstract_tree_list env
+                    (Alist.to_list astacc)
+                    astdoc abspath_in abspath_out abspath_dump;
+                if OptionState.depmode () then
+                    let target_name = basename_without_extension ^ ".pdf" in
+                    let deps_body =
+                        DepsMode.list_abspath ()
+                        |> List.fold_left (fun body abspath -> (
+                        body ^ target_name ^ ":\t" ^ (get_abs_path_string abspath) ^ "\n"
+                    )) "" in
+                    output_text abspath_out deps_body
+                else ()
+
+            end
   )

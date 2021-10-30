@@ -13,14 +13,20 @@ let initialize () =
 
 let add_pdf abspath pageno =
   if OptionState.depmode () then
-    ImageHashTable.add_stub abspath
+      begin
+          DepsMode.register_abs_path abspath;
+          ImageHashTable.add_stub abspath
+      end
   else
     ImageHashTable.add_pdf abspath pageno
 
 
 let add_image abspath =
   if OptionState.depmode () then
-    ImageHashTable.add_stub abspath
+      begin
+          DepsMode.register_abs_path abspath;
+          ImageHashTable.add_stub abspath
+      end
   else
     ImageHashTable.add_image abspath
 
