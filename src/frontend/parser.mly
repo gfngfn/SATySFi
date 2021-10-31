@@ -164,6 +164,23 @@
     let rng = make_range (Ranged utastL) (Ranged utastR) in
       (rng, UTApply([], (Range.dummy "binary_operator", UTApply([], (rngop, UTContentOf([], opnm)), utastL)), utastR))
 
+  let make_uminus op = function
+    | (_, UTFloatConstant(_)) as arg ->
+        binary_operator
+          (Range.dummy "zero-of-unary-minus", UTFloatConstant(0.0))
+          (op, "-.")
+          arg
+    | (_, UTLengthDescription (_, unit)) as arg ->
+        binary_operator
+          (Range.dummy "zero-of-unary-minus", UTLengthDescription(0.0, unit))
+          (op, "-'")
+          arg
+    | arg ->
+        binary_operator
+          (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0))
+          (op, "-")
+          arg
+
 
   let make_standard sttknd endknd main =
     let rng = make_range sttknd endknd in (rng, main)
@@ -304,6 +321,24 @@
 
   let primes (n : int) : Uchar.t list =
     List.init n (fun _ -> Uchar.of_int 0x2032)
+
+  let make_sup ~range ?prime ?sup base =
+    let make_primes r n =
+      r, UTMChars(primes n)
+    in
+    match prime, sup with
+    | None, None ->
+        range, snd base
+    | None, Some(b, p) ->
+        range, UTMSuperScript(base, b, p)
+    | Some(r, n), None ->
+        range, UTMSuperScript(base, true, make_primes r n)
+    | Some(r, n), Some(b, p) ->
+        let ps = make_standard (Tok r) (Ranged p) @@ UTMList [make_primes r n; p] in
+        range, UTMSuperScript(base, b, ps)
+
+  let make_sub ~range ~sub:(b, s) base =
+    range, UTMSubScript(base, b, s)
 %}
 
 %token <Range.t * Types.var_name> VAR
@@ -359,8 +394,13 @@
 %token <Range.t> HEADER_STAGE0 HEADER_STAGE1 HEADER_PERSISTENT0
 %token EOI
 
-%left BINOP_PLUS
-%left BINOP_MINUS EXACT_MINUS
+%left  BINOP_BAR
+%left  BINOP_AMP
+%right BINOP_EQ BINOP_GT BINOP_LT
+%right BINOP_HAT CONS
+%right BINOP_PLUS
+%left  BINOP_MINUS EXACT_MINUS
+%right BINOP_TIMES EXACT_TIMES BINOP_DIVIDES MOD
 
 %start main
 %type <Types.stage * Types.header_element list * Types.untyped_binding list * Types.untyped_abstract_tree option> main
@@ -374,18 +414,10 @@
 %type <Types.untyped_let_binding> nxhorzdec
 %type <Types.untyped_let_binding> nxvertdec
 %type <Types.untyped_type_binding list> nxtyperecdec
-%type <Types.untyped_type_binding> nxtyperecdecsingle
+%type <Types.untyped_type_binding> nxtypeeq
 %type <Types.untyped_abstract_tree> nxbfr
 %type <Types.untyped_abstract_tree> nxif
-%type <Types.untyped_abstract_tree> nxlor
-%type <Types.untyped_abstract_tree> nxland
-%type <Types.untyped_abstract_tree> nxcomp
-%type <Types.untyped_abstract_tree> nxconcat
-%type <Types.untyped_abstract_tree> nxlplus
-%type <Types.untyped_abstract_tree> nxltimes
-%type <Types.untyped_abstract_tree> nxrplus
-%type <Types.untyped_abstract_tree> nxrtimes
-%type <Types.untyped_abstract_tree> nxun
+%type <Types.untyped_abstract_tree> nxop
 %type <Types.untyped_abstract_tree> nxapp
 %type <Types.untyped_abstract_tree> nxbot
 %type <Types.untyped_abstract_tree list> tuple
@@ -415,6 +447,18 @@
 
 %%
 
+optterm_list(sep, X):
+  | { [] }
+  | x=X; sep?
+    { [x] }
+  | x=X; sep; xs=optterm_nonempty_list(sep, X)
+    { x :: xs }
+
+optterm_nonempty_list(sep, X):
+  | x=X; sep?
+    { [x] }
+  | x=X; sep; xs=optterm_nonempty_list(sep, X)
+    { x :: xs }
 
 main:
   | stage=stage; header=list(headerelem); utbinds=list(bind); last=nxtoplast { (stage, header, utbinds, last) }
@@ -631,12 +675,10 @@ nxnonrecdec:
     }
 ;
 nxtyperecdec:
-  | d=nxtyperecdecsingle                            { d :: [] }
-  | d=nxtyperecdecsingle; LETAND; tail=nxtyperecdec { d :: tail }
+  | ds=separated_nonempty_list(LETAND, nxtypeeq) { ds }
 ;
-nxtyperecdecsingle:
-  | tynmtok=VAR; tyvars=list(TYPEVAR); DEFEQ; ctors=variants
-  | tynmtok=VAR; tyvars=list(TYPEVAR); DEFEQ; BAR; ctors=variants {
+nxtypeeq:
+  | tynmtok=VAR; tyvars=list(TYPEVAR); DEFEQ; BAR?; ctors=variants {
       (tynmtok, tyvars, UTBindVariant(ctors))
     }
   | tyvars=list(TYPEVAR); tynmtok=VAR; DEFEQ; mty=txfunc {
@@ -691,76 +733,64 @@ nxbfr:
   | utast=nxlambda                        { utast }
 ;
 nxlambda:
-  | vartok=VAR; OVERWRITEEQ; utast=nxlor {
+  | vartok=VAR; OVERWRITEEQ; utast=nxop {
       let (rngvar, varnm) = vartok in
       make_standard (Tok rngvar) (Ranged utast) (UTOverwrite(rngvar, varnm, utast))
     }
-  | top=LAMBDA; argpatlst=argpats; ARROW; utast=nxlor {
+  | top=LAMBDA; argpatlst=argpats; ARROW; utast=nxop {
       let rng = make_range (Tok top) (Ranged utast) in
       curry_lambda_abstract_pattern rng argpatlst utast
     }
-  | utast=nxlor { utast }
+  | utast=nxop { utast }
 ;
 argpats:
   | argpatlst=list(patbot) { argpatlst }
 ;
-nxlor:
-  | utastL=nxlor; op=BINOP_BAR; utastR=nxland { binary_operator utastL op utastR }
-  | utast=nxland                              { utast }
-;
-nxland:
-  | utastL=nxland; op=BINOP_AMP; utastR=nxcomp { binary_operator utastL op utastR }
-  | utast=nxcomp                               { utast }
-;
-nxcomp:
-  | utastL=nxconcat; op=BINOP_EQ; utastR=nxcomp { binary_operator utastL op utastR }
-  | utastL=nxconcat; op=BINOP_GT; utastR=nxcomp { binary_operator utastL op utastR }
-  | utastL=nxconcat; op=BINOP_LT; utastR=nxcomp { binary_operator utastL op utastR }
-  | utast=nxconcat                              { utast }
-;
-nxconcat:
-  | utastL=nxlplus; op=BINOP_HAT; utastR=nxconcat { binary_operator utastL op utastR }
-  | utastL=nxlplus; rng=CONS; utastR=nxconcat     { binary_operator utastL (rng, "::") utastR }
-  | utast=nxlplus                                 { utast }
-;
-nxlplus:
-  | utastL=nxlminus; op=BINOP_PLUS; utastR=nxrplus { binary_operator utastL op utastR }
-  | utast=nxlminus                                 { utast }
-;
-nxlminus:
-  | utastL=nxlplus; op=BINOP_MINUS;  utastR=nxrtimes { binary_operator utastL op utastR }
-  | utastL=nxlplus; rng=EXACT_MINUS; utastR=nxrtimes { binary_operator utastL (rng, "-") utastR }
-  | utast=nxltimes                                   { utast }
-;
-nxrplus:
-  | utastL=nxrminus; op=BINOP_PLUS; utastR=nxrplus { binary_operator utastL op utastR }
-  | utast=nxrminus                                 { utast }
-;
-nxrminus:
-  | utastL=nxrplus; op=BINOP_MINUS; utastR=nxrtimes  { binary_operator utastL op utastR }
-  | utastL=nxrplus; rng=EXACT_MINUS; utastR=nxrtimes { binary_operator utastL (rng, "-") utastR }
-  | utast=nxrtimes                                   { utast }
-;
-nxltimes:
-  | utastL=nxun; op=BINOP_TIMES;   utastR=nxrtimes { binary_operator utastL op utastR }
-  | utastL=nxun; rng=EXACT_TIMES;  utastR=nxrtimes { binary_operator utastL (rng, "*") utastR }
-  | utastL=nxun; op=BINOP_DIVIDES; utastR=nxrtimes { binary_operator utastL op utastR }
-  | utastL=nxun; rng=MOD;          utastR=nxrtimes { binary_operator utastL (rng, "mod") utastR }
-  | utast=nxun                                     { utast }
-;
-nxrtimes:
-  | utastL=nxapp; op=BINOP_TIMES;   utastR=nxrtimes { binary_operator utastL op utastR }
-  | utastL=nxapp; rng=EXACT_TIMES;  utastR=nxrtimes { binary_operator utastL (rng, "*") utastR }
-  | utastL=nxapp; op=BINOP_DIVIDES; utastR=nxrtimes { binary_operator utastL op utastR }
-  | utastL=nxapp; rng=MOD;          utastR=nxrtimes { binary_operator utastL (rng, "mod") utastR }
-  | utast=nxapp                                     { utast }
-;
-nxun:
-  | tok=EXACT_MINUS; utast2=nxapp    { binary_operator (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0)) (tok, "-") utast2 }
-  | tok=LNOT; utast2=nxapp           { make_standard (Tok tok) (Ranged utast2) (UTApply([], (tok, UTContentOf([], "not")), utast2)) }
-  | constr=CONSTRUCTOR; utast2=nxbot { make_standard (Ranged constr) (Ranged utast2) (UTConstructor(extract_name constr, utast2)) }
-  | constr=CONSTRUCTOR               { let (rng, constrnm) = constr in (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
-  | utast=nxapp                      { utast }
+nxop:
+  | utastL=nxop; op=BINOP_BAR;     utastR=nxop
+  | utastL=nxop; op=BINOP_AMP;     utastR=nxop
+  | utastL=nxop; op=BINOP_EQ;      utastR=nxop
+  | utastL=nxop; op=BINOP_GT;      utastR=nxop
+  | utastL=nxop; op=BINOP_LT;      utastR=nxop
+  | utastL=nxop; op=BINOP_HAT;     utastR=nxop
+  | utastL=nxop; op=BINOP_PLUS;    utastR=nxop
+  | utastL=nxop; op=BINOP_MINUS;   utastR=nxop
+  | utastL=nxop; op=BINOP_TIMES;   utastR=nxop
+  | utastL=nxop; op=BINOP_DIVIDES; utastR=nxop
+    { binary_operator utastL op utastR }
+  | utastL=nxop; rng=CONS;         utastR=nxop
+    { binary_operator utastL (rng, "::") utastR }
+  | utastL=nxop; rng=EXACT_MINUS;  utastR=nxop
+    { binary_operator utastL (rng, "-") utastR }
+  | utastL=nxop; rng=EXACT_TIMES;  utastR=nxop
+    { binary_operator utastL (rng, "*") utastR }
+  | utastL=nxop; rng=MOD;          utastR=nxop
+    { binary_operator utastL (rng, "mod") utastR }
+  | tok=EXACT_MINUS; utast2=nxapp
+    {
+      make_uminus tok utast2
+    }
+  | tok=LNOT; utast2=nxapp
+    {
+      make_standard
+       (Tok tok)
+       (Ranged utast2)
+       (UTApply([], (tok, UTContentOf([], "not")), utast2))
+    }
+  | constr=CONSTRUCTOR; utast2=nxbot
+    {
+      make_standard
+       (Ranged constr)
+       (Ranged utast2)
+       (UTConstructor(extract_name constr, utast2))
+    }
+  | constr=CONSTRUCTOR
+    {
+      let (rng, constrnm) = constr in
+      (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant)))
+    }
+  | utast=nxapp
+    { utast }
 ;
 nxapp:
   | utast1=nxapp; utast2=nxunsub {
@@ -826,20 +856,24 @@ nxrecordsynt:
     }
 ;
 nxrecord:
-  | rlabel=VAR; DEFEQ; utast=nxlet                           { (rlabel, utast) :: [] }
-  | rlabel=VAR; DEFEQ; utast=nxlet; LISTPUNCT                { (rlabel, utast) :: [] }
-  | rlabel=VAR; DEFEQ; utast=nxlet; LISTPUNCT; tail=nxrecord { (rlabel, utast) :: tail }
+  | x=optterm_nonempty_list(LISTPUNCT, nxrecord_field) { x }
+;
+nxrecord_field:
+  | rlabel=VAR; DEFEQ; utast=nxlet { (rlabel, utast) }
 ;
 nxlist:
-  | utast1=nxlet; LISTPUNCT; utast2=nxlist { make_standard (Ranged utast1) (Ranged utast2) (UTListCons(utast1, utast2)) }
-  | utast1=nxlet; rng=LISTPUNCT            { make_standard (Ranged utast1) (Tok rng) (UTListCons(utast1, (Range.dummy "end-of-list", UTEndOfList))) }
-  | utast1=nxlet                           { make_standard (Ranged utast1) (Ranged utast1) (UTListCons(utast1, (Range.dummy "end-of-list", UTEndOfList))) }
+  | elems=optterm_nonempty_list(LISTPUNCT, nxlet) {
+    List.fold_right (fun elem tail ->
+      make_standard (Ranged elem) (Ranged tail) (UTListCons(elem, tail)))
+      elems (Range.dummy "end-of-list", UTEndOfList)
+  }
 ;
 variants:
-  | ctor=CONSTRUCTOR; OF; ty=txfunc; BAR; tail=variants { UTConstructorBranch(ctor, ty) :: tail }
-  | ctor=CONSTRUCTOR; OF; ty=txfunc                     { UTConstructorBranch(ctor, ty) :: [] }
-  | ctor=CONSTRUCTOR; BAR; tail=variants                { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit1", MTypeName("unit", []))) :: tail }
-  | ctor=CONSTRUCTOR                                    { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit2", MTypeName("unit", []))) :: [] }
+  | vs=separated_nonempty_list(BAR, variant) { vs }
+;
+variant:
+  | ctor=CONSTRUCTOR; OF; ty=txfunc { UTConstructorBranch(ctor, ty) }
+  | ctor=CONSTRUCTOR                { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit1", MTypeName("unit", []))) }
 ;
 txfunc:
   | mnopts=list(txfuncopt); ARROW; mntydom=txprod; ARROW; mntycod=txfunc {
@@ -855,28 +889,17 @@ txfuncopt:
     }
 ;
 txprod:
-  | mnty1=txapppre; EXACT_TIMES; mntyprod=txprodsub {
-      let (rng1, _) = mnty1 in
-      let (rng2, mntytail) = mntyprod in
-      match mntytail with
-      | mnty2 :: mntyrest ->
-          make_standard (Tok rng1) (Tok rng2) (MProductType(TupleList.make mnty1 mnty2 mntyrest))
+  | mntys=separated_nonempty_list(EXACT_TIMES, txapppre) {
+      match (mntys, List.rev mntys) with
+      | ([mnty], [_]) ->
+          mnty
 
-      | _ ->
+      | (mnty1 :: mnty2 :: mntys_rest, mnty_last :: _) ->
+          make_standard (Ranged mnty1) (Ranged mnty_last) (MProductType(TupleList.make mnty1 mnty2 mntys_rest))
+
+      | (_, _) ->
           assert false
-    }
-
-  | mnty=txapppre { mnty }
-;
-txprodsub:
-  | mnty=txapppre; EXACT_TIMES; mntyprod=txprodsub {
-      let (rng2, mntytail) = mntyprod in
-      (rng2, mnty :: mntytail)
-    }
-  | mnty=txapppre {
-      let (rng2, _) = mnty in
-      (rng2, mnty :: [])
-    }
+  }
 ;
 txapppre:
   | tyapp=txapp {
@@ -932,37 +955,35 @@ txbot:
 *)
 ;
 txlist:
-  | mnty=txfunc; LISTPUNCT; tail=txlist                 { MMandatoryArgumentType(mnty) :: tail }
-  | mnty=txfunc                                         { MMandatoryArgumentType(mnty) :: [] }
-  | mnty=txapppre; OPTIONALTYPE; LISTPUNCT; tail=txlist { MOptionalArgumentType(mnty) :: tail }
-  | mnty=txapppre; OPTIONALTYPE                         { MOptionalArgumentType(mnty) :: [] }
-  |                                                     { [] }
+  | ts=optterm_list(LISTPUNCT, txlist_elem) { ts }
+;
+txlist_elem:
+  | mnty=txfunc                 { MMandatoryArgumentType(mnty) }
+  | mnty=txapppre; OPTIONALTYPE { MOptionalArgumentType(mnty) }
 ;
 txrecord:
-  | rlabel=VAR; COLON; mnty=txfunc; LISTPUNCT; tail=txrecord { (rlabel, mnty) :: tail }
-  | rlabel=VAR; COLON; mnty=txfunc; LISTPUNCT                { (rlabel, mnty) :: [] }
-  | rlabel=VAR; COLON; mnty=txfunc                           { (rlabel, mnty) :: [] }
+  | fs=optterm_nonempty_list(LISTPUNCT, txrecord_elem) { fs }
 ;
+txrecord_elem:
+  | rlabel=VAR; COLON; mnty=txfunc { (rlabel, mnty) }
 tuple:
-  | utast=nxlet                   { utast :: [] }
-  | utast=nxlet; COMMA; tup=tuple { utast :: tup }
+  | x=separated_nonempty_list(COMMA, nxlet) { x }
 ;
 pats:
-  | pat=patas; ARROW; utast=nxletsub {
-      let (rnglast, _) = utast in
-      (rnglast, UTPatternBranch(pat, utast) :: [])
+  | brs=separated_nonempty_list(BAR, pat) {
+      match brs with
+      | (rnglast, _) :: _ -> (rnglast, List.map snd brs)
+      | _                 -> assert false
     }
-  | pat=patas; ARROW; utast=nxletsub; BAR; tail=pats {
-      let (rnglast, patbrs) = tail in
-      (rnglast, UTPatternBranch(pat, utast) :: patbrs)
+;
+pat:
+  | pat=patas; ARROW; utast=nxletsub; {
+      let (rnglast, _) = utast in
+      (rnglast, UTPatternBranch(pat, utast))
     }
   | pat=patas; WHEN; utastcond=nxletsub; ARROW; utast=nxletsub {
       let (rnglast, _) = utast in
-      (rnglast, UTPatternBranchWhen(pat, utastcond, utast) :: [])
-    }
-  | pat=patas; WHEN; utastcond=nxletsub; ARROW; utast=nxletsub; BAR; tail=pats {
-      let (rnglast, patbrs) = tail in
-      (rnglast, UTPatternBranchWhen(pat, utastcond, utast) :: patbrs)
+      (rnglast, UTPatternBranchWhen(pat, utastcond, utast))
     }
 ;
 patas:
@@ -989,13 +1010,14 @@ patbot:
   | opn=LPAREN; pat=patas; COMMA; pats=pattuple; cls=RPAREN { let rng = make_range (Tok opn) (Tok cls) in make_product_pattern rng (pat :: pats) }
 ;
 pattuple:
-  | pat=patas                         { pat :: [] }
-  | pat=patas; COMMA; pattup=pattuple { pat :: pattup }
+  | ps=separated_nonempty_list(COMMA, patas) { ps }
 ;
 patlist:
-  | pat=patas                           { make_standard (Ranged pat) (Ranged pat) (UTPListCons(pat, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
-  | pat=patas; rng=LISTPUNCT            { make_standard (Ranged pat) (Tok rng) (UTPListCons(pat, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
-  | pat1=patas; LISTPUNCT; pat2=patlist { make_standard (Ranged pat1) (Ranged pat2) (UTPListCons(pat1, pat2)) }
+  | ps=optterm_nonempty_list(LISTPUNCT, patas) {
+      List.fold_right (fun pat1 pat2 ->
+        make_standard (Ranged pat1) (Ranged pat2) (UTPListCons(pat1, pat2))
+      ) ps (Range.dummy "end-of-list-pattern", UTPEndOfList)
+    }
 ;
 binop:
   | tok=UNOP_EXCLAM
@@ -1021,8 +1043,7 @@ sxsep:
   | itmzlst=nonempty_list(sxitem) { make_list_to_itemize itmzlst }
 ;
 sxlist:
-  | utast=sxblock; SEP; utasttail=sxlist { utast :: utasttail }
-  |                                      { [] }
+  | elems=list(terminated(sxblock, SEP)) { elems }
 ;
 sxitem:
   | item=ITEM; utast=sxblock { let (rng, depth) = item in (rng, depth, utast) }
@@ -1040,8 +1061,7 @@ mathblock:
   | utm=mathmain         { let (rng, _) = utm in (rng, UTMath(utm)) }
 ;
 mathlist:
-  | utm=mathmain; SEP; utmtail=mathlist { utm :: utmtail }
-  |                                     { [] }
+  | elems=list(terminated(mathmain, SEP)) { elems }
 ;
 mathmain:
   | utmlst=list(mathtop) {
@@ -1055,55 +1075,61 @@ mathmain:
     }
 ;
 mathtop:
-  | utm1=mathbot; SUPERSCRIPT; mg2=mathgroup {
-      let (has_brace2, utm2) = mg2 in
-      make_standard (Ranged utm1) (Ranged utm2) (UTMSuperScript(utm1, has_brace2, utm2))
-    }
-  | utm1=mathbot; prm=PRIMES {
-      let (rng, n) = prm in
-      let utm2 = (rng, UTMChars(primes n)) in
-      make_standard (Ranged utm1) (Tok rng) (UTMSuperScript(utm1, true, utm2))
-    }
-  | utm1=mathbot; SUBSCRIPT; mg2=mathgroup; SUPERSCRIPT; mg3=mathgroup {
-      let (has_brace2, utm2) = mg2 in
-      let (has_brace3, utm3) = mg3 in
-      let utm12 = make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, has_brace2, utm2)) in
-      make_standard (Ranged utm1) (Ranged utm3) (UTMSuperScript(utm12, has_brace3, utm3))
-    }
-  | utm1=mathbot; prm=PRIMES; SUPERSCRIPT; mg3=mathgroup {
-      let (rng, n) = prm in
-      let utm2 = (rng, UTMChars(primes n)) in
-      let (has_brace3, utm3) = mg3 in
-      let utm23 = make_standard (Tok rng) (Ranged utm3) (UTMList([utm2; utm3])) in
-      make_standard (Ranged utm1) (Ranged utm3) (UTMSuperScript(utm1, has_brace3, utm23))
-    }
-  | utm1=mathbot; SUPERSCRIPT; mg2=mathgroup; SUBSCRIPT; mg3=mathgroup {
-      let (has_brace2, utm2) = mg2 in
-      let (has_brace3, utm3) = mg3 in
-      make_standard (Ranged utm1) (Ranged utm3)
-        (UTMSuperScript((Range.dummy "mathtop", UTMSubScript(utm1, has_brace3, utm3)), has_brace2, utm2))
-    }
-  | utm1=mathbot; prm=PRIMES; SUBSCRIPT; mg3=mathgroup {
-      let (rng, n) = prm in
-      let (has_brace3, utm3) = mg3 in
-      let utm2 = (rng, UTMChars(primes n)) in
-      make_standard (Ranged utm1) (Ranged utm3)
-        (UTMSuperScript((Range.dummy "mathtop", UTMSubScript(utm1, has_brace3, utm3)), true, utm2))
-    }
-  | utm1=mathbot; SUBSCRIPT; mg2=mathgroup {
-      let (has_brace2, utm2) = mg2 in
-      make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, has_brace2, utm2))
-    }
-  | utm=mathbot { utm }
+  | base=mathbot                                                                     {
+    (* a *)
+    base
+  }
+  | base=mathbot;                                         SUPERSCRIPT; sup=mathgroup {
+    (* a^p *)
+    base
+    |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+  }
+  | base=mathbot;               SUBSCRIPT; sub=mathgroup                             {
+    (* a_b *)
+    base
+    |> make_sub ~sub ~range:(make_range (Ranged base) (Ranged (snd sub)))
+  }
+  | base=mathbot;               SUBSCRIPT; sub=mathgroup; SUPERSCRIPT; sup=mathgroup {
+    (* a_b^p *)
+    base
+    |> make_sub ~sub ~range:(make_range (Ranged base) (Ranged (snd sub)))
+    |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+  }
+  | base=mathbot;               SUPERSCRIPT; sup=mathgroup; SUBSCRIPT; sub=mathgroup {
+    (* a^p_b *)
+    base
+    |> make_sub ~sub ~range:(Range.dummy "mathtop")
+    |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
+  }
+  | base=mathbot; prime=PRIMES                                                       {
+    (* a' *)
+    base
+    |> make_sup ~prime ~range:(make_range (Ranged base) (Tok (fst prime)))
+  }
+  | base=mathbot; prime=PRIMES;                           SUPERSCRIPT; sup=mathgroup {
+    (* a'^p *)
+    base
+    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+  }
+  | base=mathbot; prime=PRIMES; SUBSCRIPT; sub=mathgroup                             {
+    (* a'_b *)
+    base
+    |> make_sub ~sub ~range:(Range.dummy "mathtop")
+    |> make_sup ~prime ~range:(make_range (Ranged base) (Ranged (snd sub)))
+  }
+  | base=mathbot; prime=PRIMES; SUBSCRIPT; sub=mathgroup; SUPERSCRIPT; sup=mathgroup {
+    (* a'_b^p *)
+    base
+    |> make_sub ~sub ~range:(Range.dummy "mathtop")
+    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+  }
+  | base=mathbot; prime=PRIMES; SUPERSCRIPT; sup=mathgroup; SUBSCRIPT; sub=mathgroup {
+    (* a'^p_b *)
+    base
+    |> make_sub ~sub ~range:(Range.dummy "mathtop")
+    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
+  }
 ;
-(*
-mathsubopt:
-  | utm1=mathbot; SUBSCRIPT; utm2=mathgroup {
-        make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, utm2))
-      }
-  | utm=mathbot { utm }
-;
-*)
 mathgroup:
   | opn=BMATHGRP; utm=mathmain; cls=EMATHGRP {
       (true, make_standard (Tok opn) (Tok cls) (extract_main utm))

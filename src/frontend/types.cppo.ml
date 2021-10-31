@@ -446,7 +446,12 @@ and untyped_math =
 
 and untyped_math_main =
   | UTMChars       of Uchar.t list
-      [@printer (fun ppf uchs -> Format.fprintf ppf "UTMChars(_)")]
+      [@printer (fun ppf uchs ->
+        let buf = Buffer.create (4 * List.length uchs) in
+        uchs |> List.iter (Buffer.add_utf_8_uchar buf);
+        let s = Buffer.contents buf in
+        Format.fprintf ppf "(UTMChars \"%s\")" s
+      )]
   | UTMSuperScript of untyped_math * bool * untyped_math
   | UTMSubScript   of untyped_math * bool * untyped_math
   | UTMCommand     of untyped_abstract_tree * untyped_command_argument list

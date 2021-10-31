@@ -62,7 +62,7 @@ let gen_prims is_prims =
       let len = List.length args in
       puts "        (\"%s\"," name;
       puts "          begin";
-      split_lines t |> List.iter (puts "            %s");
+      puts "            %s" @@ Type.to_code t;
       puts "          end,";
       puts "          lambda%d (fun %s -> %s(%s))"
         len (String.concat " " args) inst (String.concat ", " args);
@@ -251,12 +251,21 @@ let gen_insttype () =
       inst;
       fields;
       pp;
+      name;
+      type_;
       _
     } as def  when is_primitive def ->
       begin
         match fields with
         | [] ->
-            puts "  | Op%s" inst
+            puts "  | Op%s" inst;
+            begin match name, type_ with
+              | Some name, Some t ->
+                (* use @ocaml.doc attribute to avoid puzzling over escaping *)
+                puts "    [@ocaml.doc %S]"
+                  (Printf.sprintf "[%s : %s]" (Name.show name) (Type.to_string t))
+              | _, _ -> ()
+            end
 
         | _ :: _ ->
             failwith "[gen_insttype] fields should be empty."

@@ -1,0 +1,26 @@
+(rule
+ (targets parser.output)
+ (deps
+   "nx.saty"
+   "variants.saty"
+   "txprod.saty"
+   "txlist.saty"
+   "txrecord.saty"
+   "pats.saty"
+   "pattuple.saty"
+   "patlist.saty"
+   "sxlist.saty"
+   "mathlist.saty"
+   "toplevel.saty"
+ )
+ (action
+  (with-stdout-to parser.output (run ./parser_test.exe %{deps}))))
+
+(alias
+ (name runtest)
+ (action (diff parser.expected parser.output)))
+
+(executable
+ (name parser_test)
+ (libraries main core_kernel)
+ (preprocess (pps ppx_deriving.show)))

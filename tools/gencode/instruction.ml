@@ -40,7 +40,7 @@ type t = {
   no_ircode              : bool;
   pp                     : pp;
   name                   : string option;
-  type_                  : string option;
+  type_                  : Type.t option;
   fields                 : Field.t list;
   params                 : Param.t list;
   code                   : string;
@@ -75,7 +75,7 @@ let inst
     no_ircode;
     pp;
     name;
-    type_ = opt_map trim type_;
+    type_;
     fields;
     params;
     code_interp = opt_map trim code_interp;

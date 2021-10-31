@@ -34,7 +34,7 @@ type t = {
   no_ircode : bool; (** Suppress code generation for [ir_.ml] (default: [false]) *)
   pp : pp;          (** pretty printer setting *)
   name : string option;       (** Identifier for the primitive *)
-  type_ : string option;      (** Type expression for the primitive *)
+  type_ : Type.t option;      (** Type expression for the primitive *)
   fields : Field.t list;  (** Field list (for [abstract_tree] type) *)
   params : Param.t list;  (** Paramater list *)
   code : string;          (** Instruction code *)
@@ -58,7 +58,7 @@ val inst
   -> ?no_ircode:bool
   -> ?pp:pp
   -> ?name:string
-  -> ?type_:string
+  -> ?type_:Type.t
   -> fields:Field.t list
   -> params:Param.t list
   -> ?code_interp:string
