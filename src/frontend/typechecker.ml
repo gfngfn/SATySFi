@@ -562,10 +562,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           FreeID.set_level fid1 lev_min;
           FreeID.set_level fid2 lev_min;
 
-          (* Generate constraints by unifying kinds and solve them *)
-          let (tvref_old, ty_new) =
-            if Range.is_dummy rng1 then (tvref1, ty2) else (tvref2, ty1)
-          in
+          let (tvref_old, ty_new) = if Range.is_dummy rng1 then (tvref1, ty2) else (tvref2, ty1) in
           tvref_old := MonoLink(ty_new)
         end
 
