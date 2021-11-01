@@ -958,8 +958,10 @@ txlist:
   | ts=optterm_list(LISTPUNCT, txlist_elem) { ts }
 ;
 txlist_elem:
-  | mnty=txfunc                 { MMandatoryArgumentType(mnty) }
-  | mnty=txapppre; OPTIONALTYPE { MOptionalArgumentType(mnty) }
+  | opts=list(txlist_opt); mnty=txfunc { MArgType(opts, mnty) }
+;
+txlist_opt:
+  | OPTIONAL; mnty=txapppre; LISTPUNCT { let rlabel = failwith "TODO: txlist_opt, rlabel" in (rlabel, mnty) }
 ;
 txrecord:
   | fs=optterm_nonempty_list(LISTPUNCT, txrecord_elem) { fs }

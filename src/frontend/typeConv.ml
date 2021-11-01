@@ -11,11 +11,6 @@ let lift_argument_type f = function
   | CommandArgType(tylabmap, ty) -> CommandArgType(tylabmap |> LabelMap.map f, f ty)
 
 
-let lift_manual_common f = function
-  | MMandatoryArgumentType(mnty) -> f mnty
-  | MOptionalArgumentType(mnty)  -> f mnty
-
-
 let rec unlink ((_, tymain) as ty) =
   match tymain with
   | TypeVariable(Updatable{contents = MonoLink(ty)}) -> unlink ty

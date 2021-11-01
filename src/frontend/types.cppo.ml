@@ -69,8 +69,7 @@ and manual_type_main =
 [@@deriving show]
 
 and manual_command_argument_type =
-  | MMandatoryArgumentType of manual_type
-  | MOptionalArgumentType  of manual_type
+  | MArgType of (label ranged * manual_type) list * manual_type
 
 type manual_row_base_kind =
   (label ranged) list
