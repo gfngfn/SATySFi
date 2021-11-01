@@ -1,5 +1,8 @@
 open Types
 
+type 'a abstracted =
+  OpaqueIDSet.t * 'a
+
 type type_scheme =
   BoundID.t list * poly_type
 
@@ -11,7 +14,7 @@ type signature =
 
 and functor_signature = {
   opaques  : OpaqueIDSet.t;
-  domain   : struct_signature;
+  domain   : signature;
   codomain : OpaqueIDSet.t * signature;
 }
 

@@ -1869,33 +1869,26 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
 
   | UTModFunctor((_, modnm1), utsig1, utmod2) ->
       let absmodsig1 = typecheck_signature stage tyenv utsig1 in
-      let (oidset, modsig1) = absmodsig1 in
-      begin
-        match modsig1 with
-        | ConcFunctor(_) ->
-            failwith "TODO (error): typecheck_module, UTModFunctor"
-
-        | ConcStructure(ssig1) ->
-            let (absmodsig2, _binds) =
-              let mentry1 =
-                {
-                  mod_name      = Some(ModuleID.fresh modnm1);
-                  mod_signature = modsig1;
-                }
-              in
-              let tyenv = tyenv |> Typeenv.add_module modnm1 mentry1 in
-              typecheck_module stage tyenv utmod2
-            in
-            let fsig =
-              {
-                opaques  = oidset;
-                domain   = ssig1;
-                codomain = absmodsig2;
-              }
-            in
-            let absmodsig = (OpaqueIDSet.empty, ConcFunctor(fsig)) in
-            (absmodsig, [])
-      end
+      let (quant1, modsig1) = absmodsig1 in
+      let (absmodsig2, _binds) =
+        let mentry1 =
+          {
+            mod_name      = Some(ModuleID.fresh modnm1);
+            mod_signature = modsig1;
+          }
+        in
+        let tyenv = tyenv |> Typeenv.add_module modnm1 mentry1 in
+        typecheck_module stage tyenv utmod2
+      in
+      let fsig =
+        {
+          opaques  = quant1;
+          domain   = modsig1;
+          codomain = absmodsig2;
+        }
+      in
+      let absmodsig = (OpaqueIDSet.empty, ConcFunctor(fsig)) in
+      (absmodsig, [])
 
   | UTModApply((_, _modnm1), (_, _modnm2)) ->
       failwith "TODO: typecheck_module, UTModApply"
@@ -1930,11 +1923,29 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
       end
 
   | UTSigDecls(utdecls) ->
-      let (oidset, ssig) = typecheck_declaration_list stage tyenv utdecls in
-      (oidset, ConcStructure(ssig))
+      let (quant, ssig) = typecheck_declaration_list stage tyenv utdecls in
+      (quant, ConcStructure(ssig))
 
-  | UTSigFunctor((_, _modnm1), _utsig1, utsig2) ->
-      failwith "TODO: typecheck_signature, UTSigFunctor"
+  | UTSigFunctor((_, modnm), utsig1, utsig2) ->
+      let (quant1, modsig1) = typecheck_signature stage tyenv utsig1 in
+      let absmodsig2 =
+        let mentry =
+          {
+            mod_name      = None;
+            mod_signature = modsig1;
+          }
+        in
+        let tyenv = tyenv |> Typeenv.add_module modnm mentry in
+        typecheck_signature stage tyenv utsig2
+      in
+      let fsig =
+        {
+          opaques  = quant1;
+          domain   = modsig1;
+          codomain = absmodsig2;
+        }
+      in
+      (OpaqueIDSet.empty, ConcFunctor(fsig))
 
   | UTSigWith(_utsig1, _modidents, _tyident, _typarams, _mnty) ->
       failwith "TODO: typecheck_signature, UTSigWith"
@@ -1998,18 +2009,18 @@ and substitute_concrete (subst : substitution) (modsig : signature) : signature 
   | ConcFunctor(fsig) ->
       let
         {
-          opaques = oidset;
-          domain  = ssig;
-          codomain = absmodsigcod
+          opaques = quant;
+          domain  = modsig1;
+          codomain = absmodsig2
         } = fsig
       in
-      let ssig = ssig |> substitute_struct subst in
-      let absmodsigcod = absmodsigcod |> substitute_abstract subst in
+      let modsig1 = modsig1 |> substitute_concrete subst in
+      let absmodsig2 = absmodsig2 |> substitute_abstract subst in
       let fsig =
         {
-          opaques  = oidset;
-          domain   = ssig;
-          codomain = absmodsigcod;
+          opaques  = quant;
+          domain   = modsig1;
+          codomain = absmodsig2;
         }
       in
       ConcFunctor(fsig)
@@ -2108,23 +2119,19 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
   | (ConcFunctor(fsig1), ConcFunctor(fsig2)) ->
       let
         {
-          opaques  = oidset1;
-          domain   = ssig1;
+          opaques  = quant1;
+          domain   = modsigdom1;
           codomain = absmodsigcod1;
         } = fsig1
       in
       let
         {
-          opaques  = oidset2;
-          domain   = ssig2;
+          opaques  = quant2;
+          domain   = modsigdom2;
           codomain = absmodsigcod2;
         } = fsig2
       in
-      let subst =
-        let modsigdom1 = ConcStructure(ssig1) in
-        let modsigdom2 = ConcStructure(ssig2) in
-        subtype_concrete_with_abstract rng modsigdom2 (oidset1, modsigdom1)
-      in
+      let subst = subtype_concrete_with_abstract rng modsigdom2 (quant1, modsigdom1) in
       let absmodsigcod1 = absmodsigcod1 |> substitute_abstract subst in
       subtype_abstract_with_abstract rng absmodsigcod1 absmodsigcod2
 

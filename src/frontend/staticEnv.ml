@@ -78,6 +78,9 @@ module ConstructorMap = Map.Make(String)
 
 module MacroNameMap = Map.Make(String)
 
+type 'a abstracted =
+  OpaqueIDSet.t * 'a
+
 type type_scheme = BoundID.t list * poly_type
 
 type value_entry = {
@@ -116,8 +119,8 @@ and struct_signature_entry =
 
 and functor_signature = {
   opaques  : OpaqueIDSet.t;
-  domain   : struct_signature;
-  codomain : OpaqueIDSet.t * signature;
+  domain   : signature;
+  codomain : signature abstracted;
 }
 
 and module_entry = {

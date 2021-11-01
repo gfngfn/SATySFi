@@ -51,9 +51,6 @@ module EvalVarIDMap = Map.Make(EvalVarID)
 
 module OpaqueIDSet = Set.Make(TypeID)
 
-type 'a abstracted =
-  OpaqueIDSet.t * 'a
-
 type manual_type =
   Range.t * manual_type_main
 
