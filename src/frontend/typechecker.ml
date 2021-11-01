@@ -131,6 +131,40 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
       (tyargs, tyid, ty)
 
 
+let find_structure (stage : stage) (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : StructSig.t =
+  match tyenv |> Typeenv.find_module modnm with
+  | None ->
+      failwith "TODO (error): not found"
+
+  | Some(mentry) ->
+      begin
+        match mentry.mod_signature with
+        | ConcStructure(ssig) ->
+            ssig
+
+        | ConcFunctor(_) ->
+            failwith "TODO (error): not a structure"
+      end
+
+
+let find_chain (ssig : StructSig.t) (modidents : (module_name ranged) list) : StructSig.t =
+  List.fold_left (fun ssig (rng, modnm) ->
+    match ssig |> StructSig.find_module modnm with
+    | None ->
+        failwith "TODO (error): not found"
+
+    | Some(mentry) ->
+        begin
+          match mentry.mod_signature with
+          | ConcStructure(ssig) ->
+              ssig
+
+          | ConcFunctor(_) ->
+              failwith "TODO (error): not a functor"
+        end
+  ) ssig modidents
+
+
 let abstraction (evid : EvalVarID.t) (ast : abstract_tree) : abstract_tree =
   Function(LabelMap.empty, PatternBranch(PVariable(evid), ast))
 
@@ -301,10 +335,6 @@ let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type 
           (Alist.to_list acc, ty)
   in
   aux Alist.empty ty
-
-
-let opaque_occurs (oidset : OpaqueIDSet.t) (modsig : signature) : bool =
-  failwith "TODO: opaque_occurs"
 
 
 let occurs (fid : FreeID.t) (ty : mono_type) =
@@ -1863,28 +1893,16 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
             absmodsig
       end
 
-  | UTSigPath(utmod1, (_, signm2)) ->
-      let (absmodsig1, _binds1) = typecheck_module stage tyenv utmod1 in
-      let (oidset1, modsig1) = absmodsig1 in
+  | UTSigPath(modident0, modidents1, (_, signm2)) ->
+      let ssig0 = find_structure stage tyenv modident0 in
+      let ssig1 = find_chain ssig0 modidents1 in
       begin
-        match modsig1 with
-        | ConcFunctor(_) ->
-            let (rng1, _) = utmod1 in
-            raise (NotOfStructureType(rng1, modsig1))
+        match ssig1 |> StructSig.find_signature signm2 with
+        | None ->
+            failwith "TODO (error): typecheck_signature, UTSigPath, not found"
 
-        | ConcStructure(ssig1) ->
-            begin
-              match ssig1 |> StructSig.find_signature signm2 with
-              | None ->
-                  failwith "TODO (error): typecheck_signature, UTSigPath, not found"
-
-              | Some(absmodsig2) ->
-                  let (_, modsig2) = absmodsig2 in
-                  if opaque_occurs oidset1 modsig2 then
-                    failwith "TODO (error): typecheck_signature, UTSigPath, extrusion"
-                  else
-                    absmodsig2
-            end
+        | Some(absmodsig2) ->
+            absmodsig2
       end
 
   | UTSigDecls(utdecls) ->

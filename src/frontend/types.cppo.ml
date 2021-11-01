@@ -287,7 +287,7 @@ and untyped_signature =
 
 and untyped_signature_main =
   | UTSigVar     of signature_name
-  | UTSigPath    of untyped_module * signature_name ranged
+  | UTSigPath    of module_name ranged * (module_name ranged) list * signature_name ranged
   | UTSigDecls   of untyped_declaration list
   | UTSigFunctor of module_name ranged * untyped_signature * untyped_signature
   | UTSigWith    of untyped_signature * (module_name ranged) list * type_name ranged * (type_variable_name ranged) list * manual_type
