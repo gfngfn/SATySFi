@@ -1771,8 +1771,22 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
     in
     (rng, tymain)
 
-  and aux_cmd_list (mncmdargtys : manual_command_argument_type list) =
-    failwith "TODO: decode_manual_type, aux_cmd_list"
+  and aux_cmd_list (mncmdargtys : manual_command_argument_type list) : mono_command_argument_type list =
+    List.map (fun mncmdargty ->
+      let MArgType(mnfields, mnty) = mncmdargty in
+      let tylabmap =
+        mnfields |> List.fold_left (fun tylabmap (rlabel, mnty) ->
+          let (_, label) = rlabel in
+          if tylabmap |> LabelMap.mem label then
+            failwith "TODO (error): duplicated label"
+          else
+            let ty = aux mnty in
+            tylabmap |> LabelMap.add label ty
+        ) LabelMap.empty
+      in
+      let ty = aux mnty in
+      CommandArgType(tylabmap, ty)
+    ) mncmdargtys
 
   and aux_row (mnfields : (label ranged * manual_type) list) =
     let (_, row) =
