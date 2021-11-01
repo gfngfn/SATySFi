@@ -1804,8 +1804,18 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
   aux mty
 
 
+and decode_manual_base_kind (mnbkd : manual_base_kind) : base_kind =
+  let MKindName((rng, kdnm)) = mnbkd in
+  match kdnm with
+  | "o" -> TypeKind
+  | _   -> failwith "TODO (error): unknown kind"
+
+
 and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : kind =
-  failwith "TODO: decode_manual_kind"
+  let MKind(mnbkds_dom, mnbkd_cod) = mnkd in
+  let kds_dom = mnbkds_dom |> List.map decode_manual_base_kind in
+  let TypeKind = decode_manual_base_kind mnbkd_cod in
+  Kind(kds_dom)
 
 
 and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
