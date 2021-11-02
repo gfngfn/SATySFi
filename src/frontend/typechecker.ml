@@ -135,29 +135,32 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
       (tyargs, tyid, ty)
 
 
-let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry =
-  let (rng0, modnm0) = modident0 in
-  match tyenv |> Typeenv.find_module modnm0 with
+let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module_entry =
+  match tyenv |> Typeenv.find_module modnm with
   | None ->
       failwith "TODO (error): not found"
 
-  | Some(mentry0) ->
-      modidents |> List.fold_left (fun mentry (rng, modnm) ->
-        match mentry.mod_signature with
-        | ConcFunctor(_) ->
-            failwith "TODO (error): not a structure"
+  | Some(mentry) ->
+      mentry
 
-        | ConcStructure(ssig) ->
-            begin
-              match ssig |> StructSig.find_module modnm with
-              | None ->
-                  failwith "TODO (error): not found"
 
-              | Some(mentry) ->
-                  mentry
-            end
-      ) mentry0
+let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry =
+  let mentry0 = find_module tyenv modident0 in
+  modidents |> List.fold_left (fun mentry (rng, modnm) ->
+    match mentry.mod_signature with
+    | ConcFunctor(_) ->
+        failwith "TODO (error): not a structure"
 
+    | ConcStructure(ssig) ->
+        begin
+          match ssig |> StructSig.find_module modnm with
+          | None ->
+              failwith "TODO (error): not found"
+
+          | Some(mentry) ->
+              mentry
+        end
+  ) mentry0
 
 
 let abstraction (evid : EvalVarID.t) (ast : abstract_tree) : abstract_tree =
@@ -1827,15 +1830,9 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
   let (rng, utmodmain) = utmod in
   match utmodmain with
   | UTModVar(modnm) ->
-      begin
-        match tyenv |> Typeenv.find_module modnm with
-        | None ->
-            failwith "TODO (error): typecheck_module, UTModVar, not found"
-
-        | Some(mentry) ->
-            let modsig = mentry.mod_signature in
-            ((OpaqueIDMap.empty, modsig), [])  (* TODO: output *)
-      end
+      let mentry = find_module tyenv (rng, modnm) in
+      let modsig = mentry.mod_signature in
+      ((OpaqueIDMap.empty, modsig), [])  (* TODO: output *)
 
   | UTModBinds(utbinds) ->
       let (binds, _, (quant, ssig)) = typecheck_binding_list stage tyenv utbinds in
@@ -1897,8 +1894,12 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
             failwith "TODO: typecheck_module, UTModApply"
       end
 
-  | UTModCoerce((_, _modnm1), _utsig2) ->
-      failwith "TODO: typecheck_module, UTModCoerce"
+  | UTModCoerce(modident1, utsig2) ->
+      let mentry1 = find_module tyenv modident1 in
+      let modsig1 = mentry1.mod_signature in
+      let absmodsig2 = typecheck_signature stage tyenv utsig2 in
+      let absmodsig = coerce_signature rng modsig1 absmodsig2 in
+      (absmodsig, [])
 
 
 and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_signature) : signature abstracted =
@@ -2220,8 +2221,8 @@ and copy_contents (modsig1 : signature) (modsig2 : signature) =
 
 and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : signature abstracted =
   let _ = subtype_signature rng modsig1 absmodsig2 in
-  let (oidset2, modsig2) = absmodsig2 in
-  (oidset2, copy_contents modsig1 modsig2)
+  let (quant2, modsig2) = absmodsig2 in
+  (quant2, copy_contents modsig1 modsig2)
 
 
 and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
