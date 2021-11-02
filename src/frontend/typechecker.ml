@@ -2171,9 +2171,12 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
             | Some(tentry1) ->
                 let tyscheme1 = tentry1.type_scheme in
                 let tyscheme2 = tentry2.type_scheme in
-                subtype_type_scheme tyscheme1 tyscheme2;
-                subtype_type_scheme tyscheme2 tyscheme1;
-                ()
+                let b1 = subtype_type_scheme tyscheme1 tyscheme2 in
+                let b2 = subtype_type_scheme tyscheme2 tyscheme1 in
+                if b1 && b2 then
+                  ()
+                else
+                  failwith "TODO (error): not a subtype"
           )
           ~m:(fun modnm2 { mod_signature = modsig2; _ } () ->
             match ssig1 |> StructSig.find_module modnm2 with
@@ -2211,12 +2214,13 @@ and subtype_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signat
   subtype_concrete_with_abstract rng modsig1 absmodsig2
 
 
-and subtype_poly_type_scheme (internbid : BoundID.t -> poly_type -> bool) (pty1 : poly_type) (pty2 : poly_type) : bool =
+and subtype_poly_type_impl (internbid : BoundID.t -> poly_type -> bool) (internbrid : BoundRowID.t -> poly_row -> bool) (pty1 : poly_type) (pty2 : poly_type) : bool =
   failwith "TODO: subtype_poly_type_scheme"
 
 
 and subtype_poly_type (pty1 : poly_type) (pty2 : poly_type) : bool =
   let bidht = BoundIDHashTable.create 32 in
+  let bridht = BoundRowIDHashTable.create 32 in
   let internbid (bid1 : BoundID.t) (pty2 : poly_type) : bool =
     match BoundIDHashTable.find_opt bidht bid1 with
     | None ->
@@ -2226,11 +2230,47 @@ and subtype_poly_type (pty1 : poly_type) (pty2 : poly_type) : bool =
     | Some(pty) ->
         poly_type_equal pty pty2
   in
-  subtype_poly_type_scheme internbid pty1 pty2
+  let internbrid (brid1 : BoundRowID.t) (prow2 : poly_row) : bool =
+    match BoundRowIDHashTable.find_opt bridht brid1 with
+    | None ->
+        BoundRowIDHashTable.add bridht brid1 prow2;
+        true
+
+    | Some(prow) ->
+        poly_row_equal prow prow2
+  in
+  subtype_poly_type_impl internbid internbrid pty1 pty2
 
 
-and subtype_type_scheme (tyscheme1 : type_scheme) (tyscheme2 : type_scheme) =
-  failwith "TODO: subtype_type_scheme"
+and subtype_type_scheme (tyscheme1 : type_scheme) (tyscheme2 : type_scheme) : bool =
+  let (typarams1, pty1) = tyscheme1 in
+  let (typarams2, pty2) = tyscheme2 in
+  match List.combine typarams1 typarams2 with
+  | exception Invalid_argument(_) ->
+      false
+
+  | typarampairs ->
+      let map =
+        typarampairs |> List.fold_left (fun map (bid1, bid2) ->
+          map |> BoundIDMap.add bid2 bid1
+        ) BoundIDMap.empty
+      in
+      let internbid (bid1 : BoundID.t) (Poly(pty2) : poly_type) : bool =
+        match pty2 with
+        | (_, TypeVariable(PolyBound(bid2))) ->
+            begin
+              match map |> BoundIDMap.find_opt bid1 with
+              | None      -> false
+              | Some(bid) -> BoundID.equal bid bid2
+            end
+
+        | _ ->
+            false
+      in
+      let internbrid (brid1 : BoundRowID.t) (prow2 : poly_row) : bool =
+        false
+      in
+      subtype_poly_type_impl internbid internbrid pty1 pty2
 
 
 and poly_row_equal (prow1 : poly_row) (prow2 : poly_row) : bool =
@@ -2697,37 +2737,6 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
 
   | UTBindVertMacro((_, _csnm), _macparams, _utast2) ->
       failwith "TODO: Typechecker.typecheck_binding, UTBindVertMacro"
-
-
-and subtype_type_abstraction (ptyfun1 : BoundID.t list * poly_type) (ptyfun2 : BoundID.t list * poly_type) : bool =
-  let (typarams1, pty1) = ptyfun1 in
-  let (typarams2, pty2) = ptyfun2 in
-(*
-  Format.printf "subtype_type_abstraction: %a <?= %a\n" pp_poly_type pty1 pp_poly_type pty2;  (* for debug *)
-*)
-  match List.combine typarams1 typarams2 with
-  | exception Invalid_argument(_) ->
-      false
-
-  | typarampairs ->
-      let map =
-        typarampairs |> List.fold_left (fun map (bid1, bid2) ->
-          map |> BoundIDMap.add bid2 bid1
-        ) BoundIDMap.empty
-      in
-      let internbid (bid1 : BoundID.t) (Poly(pty2) : poly_type) : bool =
-        match pty2 with
-        | (_, TypeVariable(PolyBound(bid2))) ->
-            begin
-              match map |> BoundIDMap.find_opt bid1 with
-              | None      -> false
-              | Some(bid) -> BoundID.equal bid bid2
-            end
-
-        | _ ->
-            false
-      in
-      subtype_poly_type_scheme internbid pty1 pty2
 
 
 let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : mono_type * abstract_tree =
