@@ -78,10 +78,14 @@ module ConstructorMap = Map.Make(String)
 
 module MacroNameMap = Map.Make(String)
 
-type 'a abstracted =
-  OpaqueIDSet.t * 'a
+type quantifier =
+  kind OpaqueIDMap.t
 
-type type_scheme = BoundID.t list * poly_type
+type 'a abstracted =
+  quantifier * 'a
+
+type type_scheme =
+  BoundID.t list * poly_type
 
 type value_entry = {
   val_name  : EvalVarID.t option;
@@ -118,7 +122,7 @@ and struct_signature_entry =
   | SSSignature of signature_name * signature abstracted
 
 and functor_signature = {
-  opaques  : OpaqueIDSet.t;
+  opaques  : quantifier;
   domain   : signature;
   codomain : signature abstracted;
 }

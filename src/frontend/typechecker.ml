@@ -60,6 +60,10 @@ let fresh_free_row_id (lev : Level.t) (labset : LabelSet.t) : FreeRowID.t =
   FreeRowID.fresh lev labset
 
 
+let unify_quantifier (quant1 : quantifier) (quant2 : quantifier) : quantifier =
+  OpaqueIDMap.union (fun _ _kd1 kd2 -> Some(kd2)) quant1 quant2
+
+
 let decode_manual_row_base_kind (mnrbkd : manual_row_base_kind) : row_base_kind =
   mnrbkd |> List.fold_left (fun labset (rng, label) ->
     if labset |> LabelSet.mem label then begin
@@ -1839,12 +1843,12 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
 
         | Some(mentry) ->
             let modsig = mentry.mod_signature in
-            ((OpaqueIDSet.empty, modsig), [])  (* TODO: output *)
+            ((OpaqueIDMap.empty, modsig), [])  (* TODO: output *)
       end
 
   | UTModBinds(utbinds) ->
-      let (binds, _, (oidset, ssig)) = typecheck_binding_list stage tyenv utbinds in
-      ((oidset, ConcStructure(ssig)), binds)
+      let (binds, _, (quant, ssig)) = typecheck_binding_list stage tyenv utbinds in
+      ((quant, ConcStructure(ssig)), binds)
 
   | UTModProjMod(utmod1, (_, modnm2)) ->
       let (absmodsig1, binds) = typecheck_module stage tyenv utmod1 in
@@ -1887,7 +1891,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
           codomain = absmodsig2;
         }
       in
-      let absmodsig = (OpaqueIDSet.empty, ConcFunctor(fsig)) in
+      let absmodsig = (OpaqueIDMap.empty, ConcFunctor(fsig)) in
       (absmodsig, [])
 
   | UTModApply((_, _modnm1), (_, _modnm2)) ->
@@ -1945,7 +1949,7 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
           codomain = absmodsig2;
         }
       in
-      (OpaqueIDSet.empty, ConcFunctor(fsig))
+      (OpaqueIDMap.empty, ConcFunctor(fsig))
 
   | UTSigWith(_utsig1, _modidents, _tyident, _typarams, _mnty) ->
       failwith "TODO: typecheck_signature, UTSigWith"
@@ -2223,24 +2227,24 @@ and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t
       tyenv
 
 
-and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : OpaqueIDSet.t * StructSig.t =
-  let (oidsetacc, ssigacc, _) =
-    utdecls |> List.fold_left (fun (oidsetacc, ssigacc, tyenv) utdecl ->
-      let (oidset, ssig) = typecheck_declaration stage tyenv utdecl in
-      let oidsetacc = OpaqueIDSet.union oidsetacc oidset in
+and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : StructSig.t abstracted =
+  let (quantacc, ssigacc, _) =
+    utdecls |> List.fold_left (fun (quantacc, ssigacc, tyenv) utdecl ->
+      let (quant, ssig) = typecheck_declaration stage tyenv utdecl in
+      let quantacc = unify_quantifier quantacc quant in
       let ssigacc =
         match StructSig.union ssigacc ssig with
         | Ok(ssigacc) -> ssigacc
         | Error(s)    -> raise (ConflictInSignature(Range.dummy "TODO (error): add range to declarations", s))
       in
       let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
-      (oidsetacc, ssigacc, tyenv)
-    ) (OpaqueIDSet.empty, StructSig.empty, tyenv)
+      (quantacc, ssigacc, tyenv)
+    ) (OpaqueIDMap.empty, StructSig.empty, tyenv)
   in
-  (oidsetacc, ssigacc)
+  (quantacc, ssigacc)
 
 
-and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : OpaqueIDSet.t * StructSig.t =
+and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : StructSig.t abstracted =
   match utdecl with
   | UTDeclValue((_, x), typarams, rowparams, mty) ->
       let pre =
@@ -2264,7 +2268,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
         }
       in
       let ssig = StructSig.empty |> StructSig.add_value x ventry in
-      (OpaqueIDSet.empty, ssig)
+      (OpaqueIDMap.empty, ssig)
 
   | UTDeclTypeOpaque((_, tynm), mnkd) ->
       let pre_init =
@@ -2289,7 +2293,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
         }
       in
       let ssig = StructSig.empty |> StructSig.add_type tynm tentry in
-      (OpaqueIDSet.singleton tyid, ssig)
+      (OpaqueIDMap.singleton tyid kd, ssig)
 
   | UTDeclModule((_, modnm), utsig) ->
       let absmodsig = typecheck_signature stage tyenv utsig in
@@ -2306,7 +2310,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
   | UTDeclSignature((_, signm), utsig) ->
       let absmodsig = typecheck_signature stage tyenv utsig in
       let ssig = StructSig.empty |> StructSig.add_signature signm absmodsig in
-      (OpaqueIDSet.empty, ssig)
+      (OpaqueIDMap.empty, ssig)
 
   | UTDeclInclude(utsig) ->
       let absmodsig = typecheck_signature stage tyenv utsig in
@@ -2323,18 +2327,18 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
 
 
 and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t abstracted =
-  let (bindacc, tyenv, oidsetacc, ssigacc) =
-    utbinds |> List.fold_left (fun (bindacc, tyenv, oidsetacc, ssigacc) utbind ->
-      let (binds, (oidset, ssig)) = typecheck_binding stage tyenv utbind in
+  let (bindacc, tyenv, quantacc, ssigacc) =
+    utbinds |> List.fold_left (fun (bindacc, tyenv, quantacc, ssigacc) utbind ->
+      let (binds, (quant, ssig)) = typecheck_binding stage tyenv utbind in
       let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
       let bindacc = Alist.append bindacc binds in
-      let oidsetacc = OpaqueIDSet.union oidsetacc oidset in
+      let quantacc = unify_quantifier quantacc quant in
       match StructSig.union ssigacc ssig with
-      | Ok(ssigacc) -> (bindacc, tyenv, oidsetacc, ssigacc)
+      | Ok(ssigacc) -> (bindacc, tyenv, quantacc, ssigacc)
       | Error(s)    -> let (rng, _) = utbind in raise (ConflictInSignature(rng, s))
-    ) (Alist.empty, tyenv, OpaqueIDSet.empty, StructSig.empty)
+    ) (Alist.empty, tyenv, OpaqueIDMap.empty, StructSig.empty)
   in
-  (Alist.to_list bindacc, tyenv, (oidsetacc, ssigacc))
+  (Alist.to_list bindacc, tyenv, (quantacc, ssigacc))
 
 
 and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : Typeenv.t) (synbind : manual_type) : SynonymNameSet.t =
@@ -2423,7 +2427,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
             in
             (Mutable(evid, eI), ssig)
       in
-      ([ BindValue(rec_or_nonrec) ], (OpaqueIDSet.empty, ssig))
+      ([ BindValue(rec_or_nonrec) ], (OpaqueIDMap.empty, ssig))
 
   | UTBindType([]) ->
       assert false
@@ -2537,7 +2541,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
           ssig |> StructSig.add_type tynm tentry
         ) StructSig.empty
       in
-      ([], (OpaqueIDSet.empty, ssig))
+      ([], (OpaqueIDMap.empty, ssig))
 
   | UTBindModule((rngm, modnm), utsigopt2, utmod1) ->
       let (absmodsig1, binds1) = typecheck_module stage tyenv utmod1 in
@@ -2566,15 +2570,15 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
   | UTBindSignature((_, signm), utsig) ->
       let absmodsig = typecheck_signature stage tyenv utsig in
       let ssig = StructSig.empty |> StructSig.add_signature signm absmodsig in
-      ([], (OpaqueIDSet.empty, ssig))
+      ([], (OpaqueIDMap.empty, ssig))
 
   | UTBindInclude(utmod) ->
       let (absmodsig, binds) = typecheck_module stage tyenv utmod in
-      let (oidset, modsig) = absmodsig in
+      let (quant, modsig) = absmodsig in
       begin
         match modsig with
         | ConcStructure(ssig) ->
-            (binds, (oidset, ssig))
+            (binds, (quant, ssig))
 
         | ConcFunctor(_) ->
             failwith "TODO (error): Typechecker.typecheck_binding, UTBindInclude, not a structure"

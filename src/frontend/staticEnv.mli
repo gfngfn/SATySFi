@@ -1,7 +1,10 @@
 open Types
 
+type quantifier =
+  kind OpaqueIDMap.t
+
 type 'a abstracted =
-  OpaqueIDSet.t * 'a
+  quantifier * 'a
 
 type type_scheme =
   BoundID.t list * poly_type
@@ -13,9 +16,9 @@ type signature =
   | ConcFunctor   of functor_signature
 
 and functor_signature = {
-  opaques  : OpaqueIDSet.t;
+  opaques  : quantifier;
   domain   : signature;
-  codomain : OpaqueIDSet.t * signature;
+  codomain : signature abstracted;
 }
 
 type value_entry = {
