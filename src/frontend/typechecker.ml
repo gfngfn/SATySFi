@@ -2274,7 +2274,26 @@ and subtype_type_scheme (tyscheme1 : type_scheme) (tyscheme2 : type_scheme) : bo
 
 
 and poly_row_equal (prow1 : poly_row) (prow2 : poly_row) : bool =
-  failwith "TODO: poly_row_equal"
+  normalized_poly_row_equal (TypeConv.normalize_poly_row prow1) (TypeConv.normalize_poly_row prow2)
+
+
+and normalized_poly_row_equal (nomrow1 : normalized_poly_row) (nomrow2 : normalized_poly_row) : bool =
+  let NormalizedRow(plabmap1, rowvar1_opt) = nomrow1 in
+  let NormalizedRow(plabmap2, rowvar2_opt) = nomrow2 in
+  let bmap =
+    LabelMap.merge (fun _ ptyopt1 ptyopt2 ->
+      match (ptyopt1, ptyopt2) with
+      | (None, None)             -> None
+      | (Some(pty1), Some(pty2)) -> Some(poly_type_equal (Poly(pty1)) (Poly(pty2)))
+      | _                        -> Some(false)
+    ) plabmap1 plabmap2 |> LabelMap.for_all (fun _label b -> b)
+  in
+  bmap && begin
+    match (rowvar1_opt, rowvar2_opt) with
+    | (None, None)                                         -> true
+    | (Some(PolyORBound(brid1)), Some(PolyORBound(brid2))) -> BoundRowID.equal brid1 brid2
+    | _                                                    -> false
+  end
 
 
 and poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
