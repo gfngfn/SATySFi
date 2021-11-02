@@ -135,38 +135,29 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
       (tyargs, tyid, ty)
 
 
-let find_structure (stage : stage) (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : StructSig.t =
-  match tyenv |> Typeenv.find_module modnm with
+let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry =
+  let (rng0, modnm0) = modident0 in
+  match tyenv |> Typeenv.find_module modnm0 with
   | None ->
       failwith "TODO (error): not found"
 
-  | Some(mentry) ->
-      begin
+  | Some(mentry0) ->
+      modidents |> List.fold_left (fun mentry (rng, modnm) ->
         match mentry.mod_signature with
-        | ConcStructure(ssig) ->
-            ssig
-
         | ConcFunctor(_) ->
             failwith "TODO (error): not a structure"
-      end
 
+        | ConcStructure(ssig) ->
+            begin
+              match ssig |> StructSig.find_module modnm with
+              | None ->
+                  failwith "TODO (error): not found"
 
-let find_chain (ssig : StructSig.t) (modidents : (module_name ranged) list) : StructSig.t =
-  List.fold_left (fun ssig (rng, modnm) ->
-    match ssig |> StructSig.find_module modnm with
-    | None ->
-        failwith "TODO (error): not found"
+              | Some(mentry) ->
+                  mentry
+            end
+      ) mentry0
 
-    | Some(mentry) ->
-        begin
-          match mentry.mod_signature with
-          | ConcStructure(ssig) ->
-              ssig
-
-          | ConcFunctor(_) ->
-              failwith "TODO (error): not a functor"
-        end
-  ) ssig modidents
 
 
 let abstraction (evid : EvalVarID.t) (ast : abstract_tree) : abstract_tree =
@@ -1894,8 +1885,17 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       let absmodsig = (OpaqueIDMap.empty, ConcFunctor(fsig)) in
       (absmodsig, [])
 
-  | UTModApply((_, _modnm1), (_, _modnm2)) ->
-      failwith "TODO: typecheck_module, UTModApply"
+  | UTModApply(modchain1, modchain2) ->
+      let mentry1 = find_module_chain tyenv modchain1 in
+      let _mentry2 = find_module_chain tyenv modchain1 in
+      begin
+        match mentry1.mod_signature with
+        | ConcStructure(_) ->
+            failwith "TODO (error): not a functor"
+
+        | ConcFunctor(fsig1) ->
+            failwith "TODO: typecheck_module, UTModApply"
+      end
 
   | UTModCoerce((_, _modnm1), _utsig2) ->
       failwith "TODO: typecheck_module, UTModCoerce"
@@ -1914,16 +1914,22 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
             absmodsig
       end
 
-  | UTSigPath(modident0, modidents1, (_, signm2)) ->
-      let ssig0 = find_structure stage tyenv modident0 in
-      let ssig1 = find_chain ssig0 modidents1 in
+  | UTSigPath(modchain1, (_, signm2)) ->
+      let mentry1 = find_module_chain tyenv modchain1 in
       begin
-        match ssig1 |> StructSig.find_signature signm2 with
-        | None ->
-            failwith "TODO (error): typecheck_signature, UTSigPath, not found"
+        match mentry1.mod_signature with
+        | ConcFunctor(_) ->
+            failwith "TODO (error): not a signature"
 
-        | Some(absmodsig2) ->
-            absmodsig2
+        | ConcStructure(ssig1) ->
+            begin
+              match ssig1 |> StructSig.find_signature signm2 with
+              | None ->
+                  failwith "TODO (error): typecheck_signature, UTSigPath, not found"
+
+              | Some(absmodsig2) ->
+                  absmodsig2
+            end
       end
 
   | UTSigDecls(utdecls) ->

@@ -255,6 +255,10 @@ type untyped_macro_parameter =
   | UTEarlyMacroParam of (Range.t * var_name)
 [@@deriving show { with_path = false; } ]
 
+type module_name_chain =
+  module_name ranged * (module_name ranged) list
+[@@deriving show { with_path = false; } ]
+
 type untyped_binding =
   untyped_binding_main ranged
 
@@ -275,7 +279,7 @@ and untyped_module_main =
   | UTModBinds   of untyped_binding list
   | UTModProjMod of untyped_module * module_name ranged
   | UTModFunctor of module_name ranged * untyped_signature * untyped_module
-  | UTModApply   of module_name ranged * module_name ranged
+  | UTModApply   of module_name_chain * module_name_chain
   | UTModCoerce  of module_name ranged * untyped_signature
 
 and untyped_signature =
@@ -283,7 +287,7 @@ and untyped_signature =
 
 and untyped_signature_main =
   | UTSigVar     of signature_name
-  | UTSigPath    of module_name ranged * (module_name ranged) list * signature_name ranged
+  | UTSigPath    of module_name_chain * signature_name ranged
   | UTSigDecls   of untyped_declaration list
   | UTSigFunctor of module_name ranged * untyped_signature * untyped_signature
   | UTSigWith    of untyped_signature * (module_name ranged) list * type_name ranged * (type_variable_name ranged) list * manual_type
