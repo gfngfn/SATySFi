@@ -2211,8 +2211,109 @@ and subtype_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signat
   subtype_concrete_with_abstract rng modsig1 absmodsig2
 
 
+and subtype_poly_type_scheme (internbid : BoundID.t -> poly_type -> bool) (pty1 : poly_type) (pty2 : poly_type) : bool =
+  failwith "TODO: subtype_poly_type_scheme"
+
+
+and subtype_poly_type (pty1 : poly_type) (pty2 : poly_type) : bool =
+  let bidht = BoundIDHashTable.create 32 in
+  let internbid (bid1 : BoundID.t) (pty2 : poly_type) : bool =
+    match BoundIDHashTable.find_opt bidht bid1 with
+    | None ->
+        BoundIDHashTable.add bidht bid1 pty2;
+        true
+
+    | Some(pty) ->
+        poly_type_equal pty pty2
+  in
+  subtype_poly_type_scheme internbid pty1 pty2
+
+
 and subtype_type_scheme (tyscheme1 : type_scheme) (tyscheme2 : type_scheme) =
   failwith "TODO: subtype_type_scheme"
+
+
+and poly_row_equal (prow1 : poly_row) (prow2 : poly_row) : bool =
+  failwith "TODO: poly_row_equal"
+
+
+and poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
+  let rec aux (pty1 : poly_type_body) (pty2 : poly_type_body) =
+    let (_, ptymain1) = pty1 in
+    let (_, ptymain2) = pty2 in
+    match (ptymain1, ptymain2) with
+    | (BaseType(bty1), BaseType(bty2)) ->
+        bty1 = bty2
+
+    | (FuncType(poptrow1, ptydom1, ptycod1), FuncType(poptrow2, ptydom2, ptycod2)) ->
+        poly_row_equal poptrow1 poptrow2 && aux ptydom1 ptydom2 && aux ptycod1 ptycod2
+
+    | (ListType(pty1), ListType(pty2)) ->
+        aux pty1 pty2
+
+    | (RefType(pty1), RefType(pty2)) ->
+        aux pty1 pty2
+
+    | (ProductType(ptys1), ProductType(ptys2)) ->
+        aux_list (TupleList.to_list ptys1) (TupleList.to_list ptys2)
+
+    | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
+        BoundID.equal bid1 bid2
+
+    | (TypeVariable(PolyFree(_)), _) | (_, TypeVariable(PolyFree(_))) ->
+        failwith "TODO (error): poly_type_equal, PolyFree"
+
+    | (DataType(ptys1, tyid1), DataType(ptys2, tyid2)) ->
+        TypeID.equal tyid1 tyid2 && aux_list ptys1 ptys2
+
+    | (RecordType(prow1), RecordType(prow2)) ->
+        poly_row_equal prow1 prow2
+
+    | (HorzCommandType(cmdargtys1), HorzCommandType(cmdargtys2))
+    | (VertCommandType(cmdargtys1), HorzCommandType(cmdargtys2))
+    | (MathCommandType(cmdargtys1), HorzCommandType(cmdargtys2)) ->
+        aux_cmd_list cmdargtys1 cmdargtys2
+
+    | (CodeType(pty1), CodeType(pty2)) ->
+        aux pty1 pty2
+
+    | _ ->
+        failwith "TODO (error): poly_type_equal"
+
+  and aux_list (ptys1 : poly_type_body list) (ptys2 : poly_type_body list) : bool =
+    try
+      List.fold_left2 (fun b pty1 pty2 ->
+        b && aux pty1 pty2
+      ) true ptys1 ptys2
+    with
+    | Invalid_argument(_) ->
+        false
+
+  and aux_cmd_list (cmdargtys1 : poly_command_argument_type list) (cmdargtys2 : poly_command_argument_type list) : bool =
+    try
+      List.fold_left2 (fun b cmdargty1 cmdargty2 ->
+        b && begin
+          let CommandArgType(ptylabmap1, pty1) = cmdargty1 in
+          let CommandArgType(ptylabmap2, pty2) = cmdargty2 in
+          aux_labeled_map ptylabmap1 ptylabmap2 && aux pty1 pty2
+        end
+      ) true cmdargtys1 cmdargtys2
+    with
+    | Invalid_argument(_) ->
+        false
+
+  and aux_labeled_map ptylabmap1 ptylabmap2 =
+    let labmap =
+      LabelMap.merge (fun label pty1_opt pty2_opt ->
+        match (pty1_opt, pty2_opt) with
+        | (Some(pty1), Some(pty2)) -> Some(aux pty1 pty2)
+        | _                        -> Some(false)
+      ) ptylabmap1 ptylabmap2
+    in
+    labmap |> LabelMap.for_all (fun _label b -> b)
+
+  in
+  aux pty1 pty2
 
 
 and copy_contents (modsig1 : signature) (modsig2 : signature) =
@@ -2596,28 +2697,6 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
 
   | UTBindVertMacro((_, _csnm), _macparams, _utast2) ->
       failwith "TODO: Typechecker.typecheck_binding, UTBindVertMacro"
-
-
-and subtype_poly_type_scheme (internbid : BoundID.t -> poly_type -> bool) (pty1 : poly_type) (pty2 : poly_type) : bool =
-  failwith "TODO: subtype_poly_type_scheme"
-
-
-and subtype_poly_type (pty1 : poly_type) (pty2 : poly_type) : bool =
-  let bidht = BoundIDHashTable.create 32 in
-  let internbid (bid1 : BoundID.t) (pty2 : poly_type) : bool =
-    match BoundIDHashTable.find_opt bidht bid1 with
-    | None ->
-        BoundIDHashTable.add bidht bid1 pty2;
-        true
-
-    | Some(pty) ->
-        poly_type_equal pty pty2
-  in
-  subtype_poly_type_scheme internbid pty1 pty2
-
-
-and poly_type_equal (pty1 : poly_type) (pty2 : poly_type) : bool =
-  failwith "TODO: poly_type_equal"
 
 
 and subtype_type_abstraction (ptyfun1 : BoundID.t list * poly_type) (ptyfun2 : BoundID.t list * poly_type) : bool =

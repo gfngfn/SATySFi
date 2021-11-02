@@ -206,8 +206,14 @@ and poly_type =
 and mono_row =
   (mono_type_variable, mono_row_variable) row
 
+type poly_row =
+  (poly_type_variable, poly_row_variable) row
+
 type mono_command_argument_type =
   (mono_type_variable, mono_row_variable) command_argument_type
+
+type poly_command_argument_type =
+  (poly_type_variable, poly_row_variable) command_argument_type
 
 type macro_parameter_type =
   | LateMacroParameter  of mono_type
