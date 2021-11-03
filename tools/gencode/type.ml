@@ -147,6 +147,6 @@ let tPCINFO     = tPBINFO
 let tRULESF     = tL tLN @-> tL tLN @-> tL tGR
 let tPAGECONTF  = tPBINFO @-> tPAGECONT
 let tPAGEPARTSF = tPCINFO @-> tPAGEPARTS
-let tDASH       = tPROD [tLN; tLN; tLN; tLN]
+let tDASH       = tPROD [tLN; tLN; tLN]
 
 let mckf = tLN @-> tLN @-> tLN
