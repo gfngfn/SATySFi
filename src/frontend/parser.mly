@@ -483,12 +483,12 @@ headerelem:
 bind:
   | tokL=VAL; valbind=bind_value
       { (tokL, UTBindValue(valbind)) }
-  | tokL=TYPE; uttypebind=nxtyperecdec {
-      (tokL, UTBindType(uttypebind))
-    }
-  | tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr {
-      (tokL, UTBindModule(modident, utsig_opt, utmod))
-    }
+  | tokL=TYPE; uttypebind=nxtyperecdec
+      { (tokL, UTBindType(uttypebind)) }
+  | tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr
+      { (tokL, UTBindModule(modident, utsig_opt, utmod)) }
+  | tokL=SIGNATURE; sigident=UPPER; EXACT_EQ; utsig=sigexpr
+      { (tokL, UTBindSignature(sigident, utsig)) }
 ;
 bind_value:
   | utnonrecbind=nxnonrecdec
@@ -499,35 +499,35 @@ bind_value:
       { let mutbind = (var, utast) in UTMutable(mutbind) }
   | INLINE; utnonrecbind=nxhorzdec
       { UTNonRec(utnonrecbind) }
-/*
   | BLOCK; utnonrecbind=nxvertdec
       { UTNonRec(utnonrecbind) }
   | MATH; utnonrecbind=nxmathdec
       { UTNonRec(utnonrecbind) }
-  | INLINE; dec=nxhorzmacrodec
-      {
-        let (rngcs, csnm, macparams, utast1) = dec in
-        UTBindHorzMacro((rngcs, csnm), macparams, utast1)
-      }
-  | BLOCK; dec=nxvertmacrodec
-      {
-        let (rngcs, csnm, macparams, utast1) = dec in
-        UTBindVertMacro((rngcs, csnm), macparams, utast1)
-      }
+/*
+  | INLINE; dec=nxhorzmacrodec {
+      let (rngcs, csnm, macparams, utast1) = dec in
+      UTBindHorzMacro((rngcs, csnm), macparams, utast1)
+    }
+  | BLOCK; dec=nxvertmacrodec {
+      let (rngcs, csnm, macparams, utast1) = dec in
+      UTBindVertMacro((rngcs, csnm), macparams, utast1)
+    }
 */
 ;
 sig_annot:
   | COLON; utsig=sigexpr { utsig }
 ;
 sigexpr:
-  | sigident=UPPER {
-      let (rng, signm) = sigident in
-      (rng, UTSigVar(signm))
-    }
-  | tokL=SIG; decls=list(decl); tokR=END {
-      let rng = make_range (Tok tokL) (Tok tokR) in
-      (rng, UTSigDecls(decls))
-    }
+  | sigident=UPPER
+      {
+        let (rng, signm) = sigident in
+        (rng, UTSigVar(signm))
+      }
+  | tokL=SIG; decls=list(decl); tokR=END
+      {
+        let rng = make_range (Tok tokL) (Tok tokR) in
+        (rng, UTSigDecls(decls))
+      }
 (* TODO: support other signature syntax *)
 ;
 modexpr:
@@ -587,15 +587,16 @@ nxhorzdec:
     }
 */
 ;
-/*
 nxvertdec:
-  | ctxvartok=LOWER; vcmdtok=VERTCMD; cmdarglst=list(arg); EXACT_EQ; utast=nxlet {
-      let (rngctxvar, ctxvarnm) = ctxvartok in
-      let (rngcs, vcmd) = vcmdtok in
-      let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract Alist.empty rngcs cmdarglst utast in
-      (None, (rngcs, UTPVariable(vcmd)), (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
-    }
+  | ident_ctx=LOWER; cs=VERTCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
+      {
+        let (rng_ctx, varnm_ctx) = ident_ctx in
+        let (rng_cs, vcmd) = cs in
+        let rng = make_range (Tok rng_ctx) (Ranged utast) in
+        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
+        (None, (rng_cs, UTPVariable(vcmd)), (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
+      }
+/*
   | vcmdtok=VERTCMD; argpatlst=argpats; EXACT_EQ; utast=nxlet {
       let (rngcs, vcmd) = vcmdtok in
       let rng = make_range (Tok rngcs) (Ranged utast) in
@@ -606,16 +607,17 @@ nxvertdec:
       let curried = curry_lambda_abstract_pattern rngcs argpatlst utastread in
       (None, (rngcs, UTPVariable(vcmd)), (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
     }
+*/
 ;
 nxmathdec:
-  | mcmdtok=HORZCMD; cmdarglst=list(arg); EXACT_EQ; utast=nxlet {
-      let (rngcs, mcmd) = mcmdtok in
-      let rng = make_range (Tok rngcs) (Ranged utast) in
-      let curried = curry_lambda_abstract Alist.empty rngcs cmdarglst utast in
-      (None, (rngcs, UTPVariable(mcmd)), (rng, UTLambdaMath(curried)))
-    }
+  | cs=HORZCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
+      {
+        let (rng_cs, mcmd) = cs in
+        let rng = make_range (Tok rng_cs) (Ranged utast) in
+        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
+        (None, (rng_cs, UTPVariable(mcmd)), (rng, UTLambdaMath(curried)))
+      }
 ;
-*/
 nxhorzmacrodec:
   | hmacro=HORZMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {
       let (rngcs, csnm) = hmacro in
