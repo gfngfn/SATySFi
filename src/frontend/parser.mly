@@ -604,21 +604,20 @@ sigexpr:
 (* TODO: support other signature syntax *)
 ;
 decl:
-  | TYPE; tyvars=list(TYPEVAR); tynmtok=LOWER; CONS; mnkd=kxtop {
-      UTDeclTypeOpaque(tynmtok, mnkd)
-    }
-  | VAL; valnmtok=LOWER; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc {
-      UTDeclValue(valnmtok, tyquants, rowquants, mnty)
-    }
-  | VAL; LPAREN; valnmtok=binop; RPAREN; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc {
-      UTDeclValue(valnmtok, tyquants, rowquants, mnty)
-    }
-  | VAL; hcmdtok=HORZCMD; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc {
-      UTDeclValue(hcmdtok, tyquants, rowquants, mnty)
-    }
-  | VAL; vcmdtok=VERTCMD; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc {
-      UTDeclValue(vcmdtok, tyquants, rowquants, mnty)
-    }
+  | VAL; ident=LOWER; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc
+      { UTDeclValue(ident, tyquants, rowquants, mnty) }
+  | VAL; LPAREN; ident=binop; RPAREN; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc
+      { UTDeclValue(ident, tyquants, rowquants, mnty) }
+  | VAL; cs=HORZCMD; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc
+      { UTDeclValue(cs, tyquants, rowquants, mnty) }
+  | VAL; cs=VERTCMD; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc
+      { UTDeclValue(cs, tyquants, rowquants, mnty) }
+  | TYPE; tyident=LOWER; tyvars=list(TYPEVAR); CONS; mnkd=kxtop
+      { UTDeclTypeOpaque(tyident, mnkd) }
+  | MODULE; modident=UPPER; COLON; utsig=sigexpr
+      { UTDeclModule(modident, utsig) }
+  | SIGNATURE; sigident=UPPER; EXACT_EQ; utsig=sigexpr
+      { UTDeclSignature(sigident, utsig) }
 (* TODO: support other declaration syntax *)
 ;
 tyquant:
