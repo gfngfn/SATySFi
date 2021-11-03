@@ -186,15 +186,10 @@
     let rng = make_range sttknd endknd in (rng, main)
 
 
-  let make_letrec_binding
-      (mntyopt : manual_type option)
-      (vartok : Range.t * var_name) (argpatlst : untyped_pattern_tree list) (utastdef : untyped_abstract_tree)
-      (tailcons : untyped_letrec_binding list)
-  : untyped_letrec_binding list
-  =
+  let make_letrec_binding (mntyopt : manual_type option) (vartok : Range.t * var_name) (argpatlst : untyped_pattern_tree list) (utastdef : untyped_abstract_tree) : untyped_letrec_binding =
     let (varrng, varnm) = vartok in
     let curried = curry_lambda_abstract_pattern varrng argpatlst utastdef in
-      (UTLetRecBinding(mntyopt, varrng, varnm, curried)) :: tailcons
+    UTLetRecBinding(mntyopt, varrng, varnm, curried)
 
 
   let get_range_of_arguments (patlst : untyped_pattern_tree list) : Range.t =
@@ -278,17 +273,12 @@
       aux Alist.empty 0
 
 
-  let rec make_letrec_binding_from_pattern
-      (mntyopt : manual_type option)
-      (vartok : Range.t * var_name) (recpatbrs : untyped_letrec_pattern_branch list)
-      (tailcons : untyped_letrec_binding list)
-  : untyped_letrec_binding list
-  =
+  let rec make_letrec_binding_from_pattern (mntyopt : manual_type option) (vartok : Range.t * var_name) (recpatbrs : untyped_letrec_pattern_branch list) : untyped_letrec_binding =
     let (varrng, varnm) = vartok in
     let (patbrs, numofargs) = unite_into_pattern_branch_list recpatbrs in
     let rngfull = get_range_of_pattern_branch_list recpatbrs in
     let abs = make_function_for_parallel rngfull numofargs patbrs in
-      (UTLetRecBinding(mntyopt, varrng, varnm, abs)) :: tailcons
+    UTLetRecBinding(mntyopt, varrng, varnm, abs)
 
 
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
@@ -403,15 +393,15 @@
 %start main
 %type <Types.stage * Types.header_element list * Types.untyped_source_file> main
 %type <Types.untyped_binding> bind
-%type <Types.untyped_declaration> decl
-%type <Types.untyped_abstract_tree> nxlet
-%type <Types.untyped_abstract_tree> nxletsub
-%type <Types.untyped_letrec_binding list> nxrecdec
-%type <Types.untyped_let_binding> nxnonrecdec
+%type <Types.untyped_letrec_binding list> bind_value_rec
+%type <Types.untyped_let_binding> bind_value_nonrec
 %type <Types.untyped_let_binding> bind_inline
 %type <Types.untyped_let_binding> bind_block
 %type <Types.untyped_type_binding list> bind_type
 %type <Types.untyped_type_binding> bind_type_single
+%type <Types.untyped_declaration> decl
+%type <Types.untyped_abstract_tree> nxlet
+%type <Types.untyped_abstract_tree> nxletsub
 %type <Types.untyped_abstract_tree> nxif
 %type <Types.untyped_abstract_tree> nxop
 %type <Types.untyped_abstract_tree> nxapp
@@ -500,9 +490,9 @@ bind:
       { (tokL, UTBindSignature(sigident, utsig)) }
 ;
 bind_value:
-  | utnonrecbind=nxnonrecdec
+  | utnonrecbind=bind_value_nonrec
       { UTNonRec(utnonrecbind) }
-  | utrecbinds=nxrecdec
+  | utrecbinds=bind_value_rec
       { UTRec(utrecbinds) }
   | MUTABLE; var=LOWER; REVERSED_ARROW; utast=nxlet
       { let mutbind = (var, utast) in UTMutable(mutbind) }
@@ -587,6 +577,14 @@ bind_type_single:
       (tyident, tyvars, UTBindSynonym(mty))
     }
 ;
+variants:
+  | vs=separated_nonempty_list(BAR, variant) { vs }
+;
+variant:
+  | ctor=UPPER; OF; ty=txfunc { UTConstructorBranch(ctor, ty) }
+  | ctor=UPPER                { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit1", MTypeName("unit", []))) }
+(* TODO: Fix ad-hoc insertion of the unit type *)
+;
 sig_annot:
   | COLON; utsig=sigexpr { utsig }
 ;
@@ -667,28 +665,36 @@ arg:
   | LPAREN; ident=binop; RPAREN { ident }
 ;
 nxrecdecsub:
-  | AND; dec=nxrecdec { dec }
-  |                   { [] }
+  | AND; dec=bind_value_rec { dec }
+  |                         { [] }
 ;
-nxrecdec:
-  | vartok=defedvar; argpart=recdecargpart; EXACT_EQ; utastdef=nxlet; dec=nxrecdecsub {
-      let (mntyopt, argpatlst) = argpart in
-      let is_all_var = argpatlst |> List.for_all (function (_, UTPVariable(_)) -> true | (_, UTPWildCard) -> true | _ -> false) in
+bind_value_rec:
+  | ident=defedvar; argpart=recdecargpart; EXACT_EQ; utast=nxlet; dec=nxrecdecsub {
+      let (mnty_opt, argpats) = argpart in
+      let is_all_var =
+        argpats |> List.for_all (function
+        | (_, UTPVariable(_)) -> true
+        | (_, UTPWildCard)    -> true
+        | _                   -> false
+        )
+      in
       if is_all_var then
-        make_letrec_binding mntyopt vartok argpatlst utastdef dec
+        make_letrec_binding mnty_opt ident argpats utast :: dec
       else
-        make_letrec_binding_from_pattern mntyopt vartok (UTLetRecPatternBranch(argpatlst, utastdef) :: []) dec
+        make_letrec_binding_from_pattern mnty_opt ident (UTLetRecPatternBranch(argpats, utast) :: []) :: dec
     }
+/*
   | vartok=defedvar; argpart=recdecargpart; EXACT_EQ; utastdef=nxlet; BAR; tail=nxrecdecpar; dec=nxrecdecsub {
       let (mntyopt, argpatlst) = argpart in
       make_letrec_binding_from_pattern mntyopt vartok (UTLetRecPatternBranch(argpatlst, utastdef) :: tail) dec
     }
+*/
 ;
 nxrecdecpar:
   | patlst=argpats; EXACT_EQ; utast=nxlet; BAR; tail=nxrecdecpar { UTLetRecPatternBranch(patlst, utast) :: tail }
   | patlst=argpats; EXACT_EQ; utast=nxlet                        { UTLetRecPatternBranch(patlst, utast) :: [] }
 ;
-nxnonrecdec:
+bind_value_nonrec:
   | pat=patbot; argpart=nonrecdecargpart; EXACT_EQ; utast1=nxlet {
       let (mntyopt, utarglst) = argpart in
       let curried = curry_lambda_abstract Alist.empty (get_range pat) utarglst utast1 in
@@ -860,13 +866,6 @@ nxlist:
       make_standard (Ranged elem) (Ranged tail) (UTListCons(elem, tail)))
       elems (Range.dummy "end-of-list", UTEndOfList)
   }
-;
-variants:
-  | vs=separated_nonempty_list(BAR, variant) { vs }
-;
-variant:
-  | ctor=UPPER; OF; ty=txfunc { UTConstructorBranch(ctor, ty) }
-  | ctor=UPPER                { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit1", MTypeName("unit", []))) }
 ;
 txfunc:
 /*
