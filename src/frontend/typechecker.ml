@@ -171,13 +171,14 @@ let abstraction_list (evids : EvalVarID.t list) (ast : abstract_tree) : abstract
   List.fold_right abstraction evids ast
 
 
-let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (optargs : (label ranged * var_name) list) : mono_row * EvalVarID.t LabelMap.t * Typeenv.t =
+let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (opt_params : (label ranged * var_name ranged) list) : mono_row * EvalVarID.t LabelMap.t * Typeenv.t =
   let qtfbl = pre.quantifiability in
   let lev = pre.level in
   let (tyenv, row, evid_labmap) =
-    optargs |> List.fold_left (fun (tyenv, row, evid_labmap) (rlabel, varnm) ->
-      let (rng, label) = rlabel in
-      let evid = EvalVarID.fresh (rng, varnm) in
+    opt_params |> List.fold_left (fun (tyenv, row, evid_labmap) (rlabel, ident) ->
+      let (_, label) = rlabel in
+      let (rng, varnm) = ident in
+      let evid = EvalVarID.fresh ident in
       let fid = fresh_free_id qtfbl lev in
       let tv = Updatable(ref (MonoFree(fid))) in
       let beta = (rng, TypeVariable(PolyFree(tv))) in
@@ -983,9 +984,9 @@ let rec typecheck
             raise (ApplicationOfNonFunction(rng1, ty1))
       end
 
-  | UTFunction(optargs, pat, utast1) ->
+  | UTFunction(opt_params, pat, utast1) ->
       let utpatbr = UTPatternBranch(pat, utast1) in
-      let (optrow, evid_labmap, tyenv) = add_optionals_to_type_environment tyenv pre optargs in
+      let (optrow, evid_labmap, tyenv) = add_optionals_to_type_environment tyenv pre opt_params in
       let (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
       (Function(evid_labmap, patbr), (rng, FuncType(optrow, typat, ty1)))
 
@@ -996,25 +997,37 @@ let rec typecheck
       Exhchecker.main rng patbrs tyO pre tyenv;
       (PatternMatch(rng, eO, patbrs), beta)
 
-  | UTLetIn(UTNonRec(tyannot, utpat, utast1), utast2) ->
+  | UTLetIn(UTNonRec((ident, utast1)), utast2) ->
       let presub = { pre with level = Level.succ pre.level; } in
-      let (pat, tyP, patvarmap) = typecheck_pattern presub tyenv utpat in
+      let (_, varnm) = ident in
+      let evid = EvalVarID.fresh ident in
       let (e1, ty1) = typecheck presub tyenv utast1 in
-      unify ty1 tyP;
+(*
       tyannot |> Option.map (fun mnty ->
         let tyA = decode_manual_type pre tyenv mnty in
         unify ty1 tyA
       ) |> ignore;
-      let tyenvnew =
-        if is_nonexpansive_expression e1 then
-        (* -- if 'e1' is polymorphically typeable -- *)
-          add_pattern_var_poly pre tyenv patvarmap
-        else
-        (* -- 'e1' should be typed monomorphically -- *)
-          add_pattern_var_mono pre tyenv patvarmap
+*)
+      let tyenv =
+        let pty =
+          if is_nonexpansive_expression e1 then
+          (* If `e1` is polymorphically typeable: *)
+            generalize pre.level (erase_range_of_type ty1)
+          else
+          (* If `e1` should be typed monomorphically: *)
+            lift_poly (erase_range_of_type ty1)
+        in
+        let ventry =
+          {
+            val_type  = pty;
+            val_name  = Some(evid);
+            val_stage = pre.stage;
+          }
+        in
+        tyenv |> Typeenv.add_value varnm ventry
       in
-      let (e2, ty2) = typecheck_iter tyenvnew utast2 in
-      (LetNonRecIn(pat, e1, e2), ty2)
+      let (e2, ty2) = typecheck_iter tyenv utast2 in
+      (LetNonRecIn(PVariable(evid), e1, e2), ty2)
 
   | UTLetIn(UTRec(utrecbinds), utast2) ->
       let quints = typecheck_letrec pre tyenv utrecbinds in
@@ -1542,20 +1555,11 @@ and typecheck_itemize_list
 
 
 and typecheck_pattern_branch (pre : pre) (tyenv : Typeenv.t) (utpatbr : untyped_pattern_branch) : pattern_branch * mono_type * mono_type =
-  match utpatbr with
-  | UTPatternBranch(utpat, utast1) ->
-      let (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
-      let tyenvpat = add_pattern_var_mono pre tyenv patvarmap in
-      let (e1, ty1) = typecheck pre tyenvpat utast1 in
-      (PatternBranch(epat, e1), typat, ty1)
-
-  | UTPatternBranchWhen(utpat, utastB, utast1) ->
-      let (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
-      let tyenvpat = add_pattern_var_mono pre tyenv patvarmap in
-      let (eB, tyB) = typecheck pre tyenvpat utastB in
-      unify tyB (Range.dummy "pattern-match-cons-when", BaseType(BoolType));
-      let (e1, ty1) = typecheck pre tyenvpat utast1 in
-      (PatternBranchWhen(epat, eB, e1), typat, ty1)
+  let UTPatternBranch(utpat, utast1) = utpatbr in
+  let (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
+  let tyenvpat = add_pattern_var_mono pre tyenv patvarmap in
+  let (e1, ty1) = typecheck pre tyenvpat utast1 in
+  (PatternBranch(epat, e1), typat, ty1)
 
 
 and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : pattern_branch list =
@@ -1629,12 +1633,12 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         (PConstructor(constrnm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
 
 
-and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : (var_name * poly_type * EvalVarID.t * stage * letrec_binding) list =
+and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : (var_name * poly_type * EvalVarID.t * stage * letrec_binding) list =
 
   (* First, adds a type variable for each bound identifier. *)
   let (tyenv, utrecacc) =
     utrecbinds |> List.fold_left (fun (tyenv, utrecacc) utrecbind ->
-      let UTLetRecBinding(_, varrng, varnm, astdef) = utrecbind in
+      let ((varrng, varnm), astdef) = utrecbind in
       let tvuref =
         let tvid = fresh_free_id pre.quantifiability (Level.succ pre.level) in
         ref (MonoFree(tvid))
@@ -1662,17 +1666,19 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_letre
   (* Typechecks each body of the definitions. *)
   let tupleacc =
     utrecacc |> Alist.to_list |> List.fold_left (fun tupleacc utrec ->
-      let (UTLetRecBinding(mntyopt, _, varnm, utast1), beta, evid) = utrec in
+      let (((_, varnm), utast1), beta, evid) = utrec in
       let (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenv utast1 in
       begin
         match e1 with
         | Function(evid_labmap, patbr1) ->
             if LabelMap.cardinal evid_labmap = 0 then begin
               unify ty1 beta;
+(*
               mntyopt |> Option.map (fun mnty ->
                 let tyin = decode_manual_type pre tyenv mnty in
                 unify tyin beta
               ) |> Option.value ~default:();
+*)
               let recbind = LetRecBinding(evid, patbr1) in
               let tupleacc = Alist.extend tupleacc (varnm, beta, evid, recbind) in
               tupleacc
@@ -2531,35 +2537,35 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       in
       let (rec_or_nonrec, ssig) =
         match valbind with
-        | UTNonRec(tyannot, utpat, utast1) ->
+        | UTNonRec(ident, utast1) ->
             let presub = { pre with level = Level.succ pre.level; } in
-            let (pat, tyP, patvarmap) = typecheck_pattern presub tyenv utpat in
+            let (_, varnm) = ident in
+            let evid = EvalVarID.fresh ident in
             let (e1, ty1) = typecheck presub tyenv utast1 in
-            unify ty1 tyP;
+(*
             tyannot |> Option.map (fun mnty ->
               let tyA = decode_manual_type pre tyenv mnty in
               unify ty1 tyA
             ) |> ignore;
+*)
             let should_be_polymorphic = is_nonexpansive_expression e1 in
             let ssig =
-              PatternVarMap.fold (fun varnm (_, evid, ty) ssig ->
-                let pty =
-                  if should_be_polymorphic then
-                    generalize pre.level (erase_range_of_type ty)
-                  else
-                    lift_poly (erase_range_of_type ty)
-                in
-                let ventry =
-                  {
-                    val_type  = pty;
-                    val_name  = Some(evid);
-                    val_stage = pre.stage;
-                  }
-                in
-                ssig |> StructSig.add_value varnm ventry
-              ) patvarmap StructSig.empty
+              let pty =
+                if should_be_polymorphic then
+                  generalize pre.level (erase_range_of_type ty1)
+                else
+                  lift_poly (erase_range_of_type ty1)
+              in
+              let ventry =
+                {
+                  val_type  = pty;
+                  val_name  = Some(evid);
+                  val_stage = pre.stage;
+                }
+              in
+              StructSig.empty |> StructSig.add_value varnm ventry
             in
-            (NonRec(pat, e1), ssig)
+            (NonRec(evid, e1), ssig)
 
         | UTRec(utrecbinds) ->
             let quints = typecheck_letrec pre tyenv utrecbinds in

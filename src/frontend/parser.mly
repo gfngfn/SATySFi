@@ -42,23 +42,12 @@
           (Range.unite rng rngtail, UTListCons(utast, utasttail))
 
 
-  let rec curry_lambda_abstract (optargacc : (label ranged * var_name) Alist.t) (rng : Range.t) (utarglst : untyped_argument list) (utastdef : untyped_abstract_tree) =
-    match utarglst with
-    | [] ->
-        utastdef
-
-    | UTPatternArgument(argpat) :: utargtail ->
-        (rng, UTFunction(Alist.to_list optargacc, argpat, curry_lambda_abstract Alist.empty rng utargtail utastdef))
-
-    | UTOptionalArgument(rngvar, varnm) :: utargtail ->
-        failwith "TODO: curry_lambda_abstract"
-(*
-        curry_lambda_abstract (Alist.extend optargacc (rngvar, varnm)) rng utargtail utastdef
-*)
-
-
-  let curry_lambda_abstract_pattern (rng : Range.t) (argpatlst : untyped_pattern_tree list) =
-    curry_lambda_abstract Alist.empty rng (argpatlst |> List.map (fun argpat -> UTPatternArgument(argpat)))
+  let curry_lambda_abstraction (param_units : untyped_parameter_unit list) (utast : untyped_abstract_tree) : untyped_abstract_tree =
+    let rng = Range.dummy "curry_lambda_abstraction" in
+    utast |> List.fold_right (fun param_unit utast ->
+      let UTParameterUnit(opts, utpat) = param_unit in
+      (rng, UTFunction(opts, utpat, utast))
+    ) param_units
 
 
   let rec stringify_literal ltrl =
@@ -186,12 +175,6 @@
     let rng = make_range sttknd endknd in (rng, main)
 
 
-  let make_letrec_binding (mntyopt : manual_type option) (vartok : Range.t * var_name) (argpatlst : untyped_pattern_tree list) (utastdef : untyped_abstract_tree) : untyped_letrec_binding =
-    let (varrng, varnm) = vartok in
-    let curried = curry_lambda_abstract_pattern varrng argpatlst utastdef in
-    UTLetRecBinding(mntyopt, varrng, varnm, curried)
-
-
   let get_range_of_arguments (patlst : untyped_pattern_tree list) : Range.t =
     let rngfirst =
       match patlst with
@@ -273,14 +256,6 @@
       aux Alist.empty 0
 
 
-  let rec make_letrec_binding_from_pattern (mntyopt : manual_type option) (vartok : Range.t * var_name) (recpatbrs : untyped_letrec_pattern_branch list) : untyped_letrec_binding =
-    let (varrng, varnm) = vartok in
-    let (patbrs, numofargs) = unite_into_pattern_branch_list recpatbrs in
-    let rngfull = get_range_of_pattern_branch_list recpatbrs in
-    let abs = make_function_for_parallel rngfull numofargs patbrs in
-    UTLetRecBinding(mntyopt, varrng, varnm, abs)
-
-
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
     let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInputHorz([])), [])) lst 0 in
     (Range.dummy "itemize1", UTItemize(contents))
@@ -336,7 +311,7 @@
   IF IN INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
   REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH
 
-%token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW ENDACTIVE COMMA CONS ACCESS
+%token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW ENDACTIVE COMMA CONS ACCESS QUESTION
 %token<Range.t> LPAREN RPAREN BVERTGRP EVERTGRP BHORZGRP EHORZGRP BMATHGRP EMATHGRP BLIST ELIST BRECORD ERECORD
 %token<Range.t> EXACT_MINUS EXACT_TIMES EXACT_AMP EXACT_TILDE EXACT_EQ
 
@@ -393,7 +368,7 @@
 %start main
 %type <Types.stage * Types.header_element list * Types.untyped_source_file> main
 %type <Types.untyped_binding> bind
-%type <Types.untyped_letrec_binding list> bind_value_rec
+%type <Types.untyped_let_binding list> bind_value_rec
 %type <Types.untyped_let_binding> bind_value_nonrec
 %type <Types.untyped_let_binding> bind_inline
 %type <Types.untyped_let_binding> bind_block
@@ -419,10 +394,7 @@
 %type <Types.untyped_command_argument> narg
 */
 %type <Types.untyped_command_argument> sarg
-%type <Types.untyped_pattern_tree list> argpats
 %type <Range.t * Types.var_name> binop
-%type <Types.manual_type option * untyped_pattern_tree list> recdecargpart
-%type <Types.manual_type option * untyped_argument list> nonrecdecargpart
 %type <Range.t * Types.manual_type list * Types.type_name> txapp
 %type <Range.t * Types.type_name> txbot
 %type <Types.manual_type> txapppre
@@ -514,13 +486,12 @@ bind_value:
 */
 ;
 bind_inline:
-  | ident_ctx=LOWER; cs=HORZCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
+  | ident_ctx=LOWER; cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
       {
         let (rng_ctx, varnm_ctx) = ident_ctx in
-        let (rng_cs, hcmd) = cs in
         let rng = make_range (Tok rng_ctx) (Ranged utast) in
-        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
-        (None, (rng_cs, UTPVariable(hcmd)), (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
+        let curried = curry_lambda_abstraction param_units utast in
+        (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
       }
 /*
   | hcmdtok=HORZCMD; argpatlst=argpats; EXACT_EQ; utast=nxlet {
@@ -536,13 +507,12 @@ bind_inline:
 */
 ;
 bind_block:
-  | ident_ctx=LOWER; cs=VERTCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
+  | ident_ctx=LOWER; cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
       {
         let (rng_ctx, varnm_ctx) = ident_ctx in
-        let (rng_cs, vcmd) = cs in
         let rng = make_range (Tok rng_ctx) (Ranged utast) in
-        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
-        (None, (rng_cs, UTPVariable(vcmd)), (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
+        let curried = curry_lambda_abstraction param_units utast in
+        (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
       }
 /*
   | vcmdtok=VERTCMD; argpatlst=argpats; EXACT_EQ; utast=nxlet {
@@ -558,12 +528,11 @@ bind_block:
 */
 ;
 bind_math:
-  | cs=HORZCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
+  | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
       {
-        let (rng_cs, mcmd) = cs in
-        let rng = make_range (Tok rng_cs) (Ranged utast) in
-        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
-        (None, (rng_cs, UTPVariable(mcmd)), (rng, UTLambdaMath(curried)))
+        let rng = make_range (Ranged cs) (Ranged utast) in
+        let curried = curry_lambda_abstraction param_units utast in
+        (cs, (rng, UTLambdaMath(curried)))
       }
 ;
 bind_type:
@@ -637,66 +606,35 @@ macroparam:
   | var=LOWER              { UTLateMacroParam(var) }
   | EXACT_TILDE; var=LOWER { UTEarlyMacroParam(var) }
 ;
-nonrecdecargpart:
-  | COLON; mty=txfunc                                   { (Some(mty), []) }
-/*
-  | COLON; mty=txfunc; BAR; utarglst=nonempty_list(arg) { (Some(mty), utarglst) }
-  | BAR; utarglst=nonempty_list(arg)                    { (None, utarglst) }
-  | utarglst=list(arg)                                  { (None, utarglst) }
-*/
+param_unit:
+  | opts_opt=option(opt_params); utpat=patbot { UTParameterUnit(opts_opt |> Option.value ~default:[], utpat) }
 ;
-recdecargpart:
-  | COLON; mty=txfunc                                       { (Some(mty), []) }
-  | COLON; mty=txfunc; BAR; argpatlst=nonempty_list(patbot) { (Some(mty), argpatlst) }
-  | BAR; argpatlst=nonempty_list(patbot)                    { (None, argpatlst) }
-  | argpatlst=argpats                                       { (None, argpatlst) }
+opt_params:
+  | QUESTION; LPAREN; opts=optterm_nonempty_list(COMMA, opt_param); RPAREN
+      { opts }
 ;
-arg:
-  | pattr=patbot              { UTPatternArgument(pattr) }
-/*
-  | OPTIONAL; vartok=defedvar { let (rng, varnm) = vartok in UTOptionalArgument(rng, varnm) }
-*/
+opt_param:
+  | rlabel=LOWER; EXACT_EQ; ident=LOWER
+      { (rlabel, ident) }
 ;
 %inline defedvar:
   | ident=LOWER                 { ident }
   | LPAREN; ident=binop; RPAREN { ident }
 ;
-nxrecdecsub:
-  | AND; dec=bind_value_rec { dec }
-  |                         { [] }
-;
 bind_value_rec:
-  | ident=defedvar; argpart=recdecargpart; EXACT_EQ; utast=nxlet; dec=nxrecdecsub {
-      let (mnty_opt, argpats) = argpart in
-      let is_all_var =
-        argpats |> List.for_all (function
-        | (_, UTPVariable(_)) -> true
-        | (_, UTPWildCard)    -> true
-        | _                   -> false
-        )
-      in
-      if is_all_var then
-        make_letrec_binding mnty_opt ident argpats utast :: dec
-      else
-        make_letrec_binding_from_pattern mnty_opt ident (UTLetRecPatternBranch(argpats, utast) :: []) :: dec
-    }
-/*
-  | vartok=defedvar; argpart=recdecargpart; EXACT_EQ; utastdef=nxlet; BAR; tail=nxrecdecpar; dec=nxrecdecsub {
-      let (mntyopt, argpatlst) = argpart in
-      make_letrec_binding_from_pattern mntyopt vartok (UTLetRecPatternBranch(argpatlst, utastdef) :: tail) dec
-    }
-*/
+  | REC; valbind=bind_value_nonrec; valbinds=list(bind_value_rec_sub)
+      { valbind :: valbinds }
 ;
-nxrecdecpar:
-  | patlst=argpats; EXACT_EQ; utast=nxlet; BAR; tail=nxrecdecpar { UTLetRecPatternBranch(patlst, utast) :: tail }
-  | patlst=argpats; EXACT_EQ; utast=nxlet                        { UTLetRecPatternBranch(patlst, utast) :: [] }
+bind_value_rec_sub:
+  | AND; valbind=bind_value_nonrec
+      { valbind }
 ;
 bind_value_nonrec:
-  | pat=patbot; argpart=nonrecdecargpart; EXACT_EQ; utast1=nxlet {
-      let (mntyopt, utarglst) = argpart in
-      let curried = curry_lambda_abstract Alist.empty (get_range pat) utarglst utast1 in
-      (mntyopt, pat, curried)
-    }
+  | ident=defedvar; param_units=list(param_unit); EXACT_EQ; utast=nxlet
+      {
+        let curried = curry_lambda_abstraction param_units utast in
+        (ident, curried)
+      }
 ;
 kxtop:
   | bkd=kxbase; ARROW kd=kxtop {
@@ -738,18 +676,19 @@ nxif:
       { utast }
 ;
 nxlambda:
-  | ident=LOWER; REVERSED_ARROW; utast=nxop {
-      let (rngvar, varnm) = ident in
-      make_standard (Tok rngvar) (Ranged utast) (UTOverwrite(rngvar, varnm, utast))
-    }
-  | top=FUN; argpatlst=argpats; ARROW; utast=nxop {
-      let rng = make_range (Tok top) (Ranged utast) in
-      curry_lambda_abstract_pattern rng argpatlst utast
-    }
-  | utast=nxop { utast }
-;
-argpats:
-  | argpatlst=list(patbot) { argpatlst }
+  | ident=LOWER; REVERSED_ARROW; utast=nxop
+      {
+        let (rngvar, varnm) = ident in
+        make_standard (Ranged ident) (Ranged utast) (UTOverwrite(rngvar, varnm, utast))
+      }
+  | top=FUN; param_units=list(param_unit); ARROW; utast=nxop
+      {
+        let rng = make_range (Tok top) (Ranged utast) in
+        let (_, utast_main) = curry_lambda_abstraction param_units utast in
+        (rng, utast_main)
+      }
+  | utast=nxop
+      { utast }
 ;
 nxop:
   | utastL=nxop; op=BINOP_BAR;     utastR=nxop

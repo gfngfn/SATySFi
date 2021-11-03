@@ -324,17 +324,14 @@ and constructor_branch =
 
 and untyped_rec_or_nonrec =
   | UTNonRec  of untyped_let_binding
-  | UTRec     of untyped_letrec_binding list
+  | UTRec     of untyped_let_binding list
   | UTMutable of untyped_let_mutable_binding
 
 and untyped_let_binding =
-  manual_type option * untyped_pattern_tree * untyped_abstract_tree
-
-and untyped_letrec_binding =
-  UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
+  var_name ranged * untyped_abstract_tree
 
 and untyped_let_mutable_binding =
-  (Range.t * var_name) * untyped_abstract_tree
+  var_name ranged * untyped_abstract_tree
 
 and untyped_type_binding =
   type_name ranged * (type_variable_name ranged) list * untyped_synonym_or_variant
@@ -411,7 +408,7 @@ and untyped_abstract_tree_main =
   | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTFunction             of (label ranged * var_name) list * untyped_pattern_tree * untyped_abstract_tree
+  | UTFunction             of (label ranged * var_name ranged) list * untyped_pattern_tree * untyped_abstract_tree
   | UTOpenIn               of Range.t * module_name * untyped_abstract_tree
 (* Pattern matching: *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
@@ -448,8 +445,7 @@ and untyped_pattern_tree_main =
   | UTPConstructor         of constructor_name * untyped_pattern_tree
 
 and untyped_pattern_branch =
-  | UTPatternBranch     of untyped_pattern_tree * untyped_abstract_tree
-  | UTPatternBranchWhen of untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
+  | UTPatternBranch of untyped_pattern_tree * untyped_abstract_tree
 
 and untyped_unkinded_type_argument =
   Range.t * var_name
@@ -485,12 +481,8 @@ type untyped_source_file =
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
-type untyped_argument =
-  | UTPatternArgument  of untyped_pattern_tree
-  | UTOptionalArgument of Range.t * var_name
-
-type untyped_let_pattern_binding =
-  manual_type option * untyped_pattern_tree * untyped_argument list * untyped_abstract_tree
+type untyped_parameter_unit =
+  | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree
 
 type 'a input_horz_element_scheme =
   | InputHorzText         of string
@@ -550,7 +542,7 @@ and letrec_binding =
 
 and rec_or_nonrec =
   | Rec     of letrec_binding list
-  | NonRec  of pattern_tree * abstract_tree
+  | NonRec  of EvalVarID.t * abstract_tree
   | Mutable of EvalVarID.t * abstract_tree
 
 and binding =
@@ -837,7 +829,7 @@ and 'a path_component =
 
 and 'a pattern_branch_scheme =
   | PatternBranch      of pattern_tree * 'a
-  | PatternBranchWhen  of pattern_tree * 'a * 'a
+  | PatternBranchWhen  of pattern_tree * 'a * 'a (* TODO: remove this constructor *)
 
 and pattern_branch =
   abstract_tree pattern_branch_scheme
