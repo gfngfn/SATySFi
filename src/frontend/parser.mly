@@ -497,9 +497,9 @@ bind_value:
       { UTRec(utrecbinds) }
   | MUTABLE; var=LOWER; REVERSED_ARROW; utast=nxlet
       { let mutbind = (var, utast) in UTMutable(mutbind) }
-/*
   | INLINE; utnonrecbind=nxhorzdec
       { UTNonRec(utnonrecbind) }
+/*
   | BLOCK; utnonrecbind=nxvertdec
       { UTNonRec(utnonrecbind) }
   | MATH; utnonrecbind=nxmathdec
@@ -565,15 +565,16 @@ tyquant:
 rowquant:
   | LPAREN; rowvar=ROWVAR; CONS; mnrbkd=kxrow; RPAREN { (rowvar, mnrbkd) }
 ;
-/*
 nxhorzdec:
-  | ctxvartok=LOWER; hcmdtok=HORZCMD; cmdarglst=list(arg); EXACT_EQ; utast=nxlet {
-      let (rngctxvar, ctxvarnm) = ctxvartok in
-      let (rngcs, hcmd) = hcmdtok in
-      let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract Alist.empty rngcs cmdarglst utast in
-      (None, (rngcs, UTPVariable(hcmd)), (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
-    }
+  | ident_ctx=LOWER; cs=HORZCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
+      {
+        let (rng_ctx, varnm_ctx) = ident_ctx in
+        let (rng_cs, hcmd) = cs in
+        let rng = make_range (Tok rng_ctx) (Ranged utast) in
+        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
+        (None, (rng_cs, UTPVariable(hcmd)), (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
+      }
+/*
   | hcmdtok=HORZCMD; argpatlst=argpats; EXACT_EQ; utast=nxlet {
       let (rngcs, hcmd) = hcmdtok in
       let rng = make_range (Tok rngcs) (Ranged utast) in
@@ -584,7 +585,9 @@ nxhorzdec:
       let curried = curry_lambda_abstract_pattern rngcs argpatlst utastread in
       (None, (rngcs, UTPVariable(hcmd)), (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
     }
+*/
 ;
+/*
 nxvertdec:
   | ctxvartok=LOWER; vcmdtok=VERTCMD; cmdarglst=list(arg); EXACT_EQ; utast=nxlet {
       let (rngctxvar, ctxvarnm) = ctxvartok in
@@ -643,12 +646,12 @@ recdecargpart:
   | BAR; argpatlst=nonempty_list(patbot)                    { (None, argpatlst) }
   | argpatlst=argpats                                       { (None, argpatlst) }
 ;
-/*
 arg:
   | pattr=patbot              { UTPatternArgument(pattr) }
+/*
   | OPTIONAL; vartok=defedvar { let (rng, varnm) = vartok in UTOptionalArgument(rng, varnm) }
-;
 */
+;
 %inline defedvar:
   | ident=LOWER                 { ident }
   | LPAREN; ident=binop; RPAREN { ident }
