@@ -346,7 +346,7 @@
   IF IN INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
   REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH
 
-%token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW ENDACTIVE COMMA LISTPUNCT CONS ACCESS
+%token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW ENDACTIVE COMMA CONS ACCESS
 %token<Range.t> LPAREN RPAREN BVERTGRP EVERTGRP BHORZGRP EHORZGRP BMATHGRP EMATHGRP BLIST ELIST BRECORD ERECORD
 %token<Range.t> EXACT_MINUS EXACT_TIMES EXACT_AMP EXACT_TILDE EXACT_EQ
 
@@ -847,13 +847,13 @@ nxrecordsynt:
     }
 ;
 nxrecord:
-  | x=optterm_nonempty_list(LISTPUNCT, nxrecord_field) { x }
+  | x=optterm_nonempty_list(COMMA, nxrecord_field) { x }
 ;
 nxrecord_field:
   | rlabel=LOWER; EXACT_EQ; utast=nxlet { (rlabel, utast) }
 ;
 nxlist:
-  | elems=optterm_nonempty_list(LISTPUNCT, nxlet) {
+  | elems=optterm_nonempty_list(COMMA, nxlet) {
     List.fold_right (fun elem tail ->
       make_standard (Ranged elem) (Ranged tail) (UTListCons(elem, tail)))
       elems (Range.dummy "end-of-list", UTEndOfList)
@@ -953,17 +953,17 @@ txbot:
 ;
 /*
 txlist:
-  | ts=optterm_list(LISTPUNCT, txlist_elem) { ts }
+  | ts=optterm_list(COMMA, txlist_elem) { ts }
 ;
 txlist_elem:
   | opts=list(txlist_opt); mnty=txfunc { MArgType(opts, mnty) }
 ;
 txlist_opt:
-  | OPTIONAL; mnty=txapppre; LISTPUNCT { let rlabel = failwith "TODO: txlist_opt, rlabel" in (rlabel, mnty) }
+  | OPTIONAL; mnty=txapppre; COMMA { let rlabel = failwith "TODO: txlist_opt, rlabel" in (rlabel, mnty) }
 ;
 */
 txrecord:
-  | fs=optterm_nonempty_list(LISTPUNCT, txrecord_elem) { fs }
+  | fs=optterm_nonempty_list(COMMA, txrecord_elem) { fs }
 ;
 txrecord_elem:
   | rlabel=LOWER; COLON; mnty=txfunc { (rlabel, mnty) }
@@ -1010,7 +1010,7 @@ pattuple:
   | ps=separated_nonempty_list(COMMA, patas) { ps }
 ;
 patlist:
-  | ps=optterm_nonempty_list(LISTPUNCT, patas) {
+  | ps=optterm_nonempty_list(COMMA, patas) {
       List.fold_right (fun pat1 pat2 ->
         make_standard (Ranged pat1) (Ranged pat2) (UTPListCons(pat1, pat2))
       ) ps (Range.dummy "end-of-list-pattern", UTPEndOfList)

@@ -177,7 +177,6 @@ rule progexpr stack = parse
       pop lexbuf "too many closing" stack;
       ELIST(pos)
      }
-  | ";" { LISTPUNCT(get_pos lexbuf) }
   | "{" {
       Stack.push HorizontalState stack;
       skip_spaces lexbuf;
