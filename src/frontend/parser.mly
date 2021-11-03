@@ -570,20 +570,17 @@ bind_type:
   | ds=separated_nonempty_list(AND, bind_type_single) { ds }
 ;
 bind_type_single:
-  | tyident=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; BAR?; ctors=variants {
-      (tyident, tyvars, UTBindVariant(ctors))
-    }
-  | tyident=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; mty=txfunc {
-      (tyident, tyvars, UTBindSynonym(mty))
-    }
+  | tyident=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; BAR?; ctors=variants
+     { (tyident, tyvars, UTBindVariant(ctors)) }
+  | tyident=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; mty=txfunc
+     { (tyident, tyvars, UTBindSynonym(mty)) }
 ;
 variants:
   | vs=separated_nonempty_list(BAR, variant) { vs }
 ;
 variant:
-  | ctor=UPPER; OF; ty=txfunc { UTConstructorBranch(ctor, ty) }
-  | ctor=UPPER                { UTConstructorBranch(ctor, (Range.dummy "dec-constructor-unit1", MTypeName("unit", []))) }
-(* TODO: Fix ad-hoc insertion of the unit type *)
+  | ctor=UPPER; OF; mty=txfunc { UTConstructorBranch(ctor, Some(mty)) }
+  | ctor=UPPER                 { UTConstructorBranch(ctor, None) }
 ;
 sig_annot:
   | COLON; utsig=sigexpr { utsig }

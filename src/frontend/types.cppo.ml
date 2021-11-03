@@ -320,7 +320,7 @@ and untyped_declaration_main =
   | UTDeclInclude    of untyped_signature
 
 and constructor_branch =
-  | UTConstructorBranch of constructor_name ranged * manual_type
+  | UTConstructorBranch of constructor_name ranged * manual_type option
 
 and untyped_rec_or_nonrec =
   | UTNonRec  of untyped_let_binding

@@ -1819,10 +1819,14 @@ and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : ki
 and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
   utctorbrs |> List.fold_left (fun ctormap utctorbr ->
     match utctorbr with
-    | UTConstructorBranch((rng, ctornm), mtyarg) ->
-        let tyarg = decode_manual_type pre tyenv mtyarg in
-        let ptyarg = generalize pre.level tyarg in
-        ctormap |> ConstructorMap.add ctornm ptyarg
+    | UTConstructorBranch((rng, ctornm), mty_opt) ->
+        let ty =
+          match mty_opt with
+          | Some(mty) -> decode_manual_type pre tyenv mty
+          | None      -> (Range.dummy "unit", BaseType(UnitType))
+        in
+        let pty = generalize pre.level ty in
+        ctormap |> ConstructorMap.add ctornm pty
   ) ConstructorMap.empty
 
 
