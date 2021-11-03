@@ -408,12 +408,10 @@
 %type <Types.untyped_abstract_tree> nxletsub
 %type <Types.untyped_letrec_binding list> nxrecdec
 %type <Types.untyped_let_binding> nxnonrecdec
-/*
-%type <Types.untyped_let_binding> nxhorzdec
-%type <Types.untyped_let_binding> nxvertdec
-*/
-%type <Types.untyped_type_binding list> nxtyperecdec
-%type <Types.untyped_type_binding> nxtypeeq
+%type <Types.untyped_let_binding> bind_inline
+%type <Types.untyped_let_binding> bind_block
+%type <Types.untyped_type_binding list> bind_type
+%type <Types.untyped_type_binding> bind_type_single
 %type <Types.untyped_abstract_tree> nxif
 %type <Types.untyped_abstract_tree> nxop
 %type <Types.untyped_abstract_tree> nxapp
@@ -480,10 +478,21 @@ headerelem:
   | content=HEADER_REQUIRE { let (_, s) = content in HeaderRequire(s) }
   | content=HEADER_IMPORT  { let (_, s) = content in HeaderImport(s) }
 ;
+modexpr:
+  | modtok=UPPER {
+      let (rng, modnm) = modtok in
+      (rng, UTModVar(modnm))
+    }
+  | tokL=STRUCT; utbinds=list(bind); tokR=END {
+      let rng = make_range (Tok tokL) (Tok tokR) in
+      (rng, UTModBinds(utbinds))
+    }
+(* TODO: support other module syntax *)
+;
 bind:
   | tokL=VAL; valbind=bind_value
       { (tokL, UTBindValue(valbind)) }
-  | tokL=TYPE; uttypebind=nxtyperecdec
+  | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
   | tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr
       { (tokL, UTBindModule(modident, utsig_opt, utmod)) }
@@ -497,11 +506,11 @@ bind_value:
       { UTRec(utrecbinds) }
   | MUTABLE; var=LOWER; REVERSED_ARROW; utast=nxlet
       { let mutbind = (var, utast) in UTMutable(mutbind) }
-  | INLINE; utnonrecbind=nxhorzdec
+  | INLINE; utnonrecbind=bind_inline
       { UTNonRec(utnonrecbind) }
-  | BLOCK; utnonrecbind=nxvertdec
+  | BLOCK; utnonrecbind=bind_block
       { UTNonRec(utnonrecbind) }
-  | MATH; utnonrecbind=nxmathdec
+  | MATH; utnonrecbind=bind_math
       { UTNonRec(utnonrecbind) }
 /*
   | INLINE; dec=nxhorzmacrodec {
@@ -513,6 +522,70 @@ bind_value:
       UTBindVertMacro((rngcs, csnm), macparams, utast1)
     }
 */
+;
+bind_inline:
+  | ident_ctx=LOWER; cs=HORZCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
+      {
+        let (rng_ctx, varnm_ctx) = ident_ctx in
+        let (rng_cs, hcmd) = cs in
+        let rng = make_range (Tok rng_ctx) (Ranged utast) in
+        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
+        (None, (rng_cs, UTPVariable(hcmd)), (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
+      }
+/*
+  | hcmdtok=HORZCMD; argpatlst=argpats; EXACT_EQ; utast=nxlet {
+      let (rngcs, hcmd) = hcmdtok in
+      let rng = make_range (Tok rngcs) (Ranged utast) in
+      let rngctxvar = Range.dummy "context-of-lightweight-let-inline" in
+      let ctxvarnm = "%context" in
+      let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
+      let utastread = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utctx, utast)) in
+      let curried = curry_lambda_abstract_pattern rngcs argpatlst utastread in
+      (None, (rngcs, UTPVariable(hcmd)), (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
+    }
+*/
+;
+bind_block:
+  | ident_ctx=LOWER; cs=VERTCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
+      {
+        let (rng_ctx, varnm_ctx) = ident_ctx in
+        let (rng_cs, vcmd) = cs in
+        let rng = make_range (Tok rng_ctx) (Ranged utast) in
+        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
+        (None, (rng_cs, UTPVariable(vcmd)), (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
+      }
+/*
+  | vcmdtok=VERTCMD; argpatlst=argpats; EXACT_EQ; utast=nxlet {
+      let (rngcs, vcmd) = vcmdtok in
+      let rng = make_range (Tok rngcs) (Ranged utast) in
+      let rngctxvar = Range.dummy "context-of-lightweight-let-block" in
+      let ctxvarnm = "%context" in
+      let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
+      let utastread = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utctx, utast)) in
+      let curried = curry_lambda_abstract_pattern rngcs argpatlst utastread in
+      (None, (rngcs, UTPVariable(vcmd)), (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
+    }
+*/
+;
+bind_math:
+  | cs=HORZCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
+      {
+        let (rng_cs, mcmd) = cs in
+        let rng = make_range (Tok rng_cs) (Ranged utast) in
+        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
+        (None, (rng_cs, UTPVariable(mcmd)), (rng, UTLambdaMath(curried)))
+      }
+;
+bind_type:
+  | ds=separated_nonempty_list(AND, bind_type_single) { ds }
+;
+bind_type_single:
+  | tyident=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; BAR?; ctors=variants {
+      (tyident, tyvars, UTBindVariant(ctors))
+    }
+  | tyident=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; mty=txfunc {
+      (tyident, tyvars, UTBindSynonym(mty))
+    }
 ;
 sig_annot:
   | COLON; utsig=sigexpr { utsig }
@@ -529,17 +602,6 @@ sigexpr:
         (rng, UTSigDecls(decls))
       }
 (* TODO: support other signature syntax *)
-;
-modexpr:
-  | modtok=UPPER {
-      let (rng, modnm) = modtok in
-      (rng, UTModVar(modnm))
-    }
-  | tokL=STRUCT; utbinds=list(bind); tokR=END {
-      let rng = make_range (Tok tokL) (Tok tokR) in
-      (rng, UTModBinds(utbinds))
-    }
-(* TODO: support other module syntax *)
 ;
 decl:
   | TYPE; tyvars=list(TYPEVAR); tynmtok=LOWER; CONS; mnkd=kxtop {
@@ -564,59 +626,6 @@ tyquant:
 ;
 rowquant:
   | LPAREN; rowvar=ROWVAR; CONS; mnrbkd=kxrow; RPAREN { (rowvar, mnrbkd) }
-;
-nxhorzdec:
-  | ident_ctx=LOWER; cs=HORZCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
-      {
-        let (rng_ctx, varnm_ctx) = ident_ctx in
-        let (rng_cs, hcmd) = cs in
-        let rng = make_range (Tok rng_ctx) (Ranged utast) in
-        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
-        (None, (rng_cs, UTPVariable(hcmd)), (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
-      }
-/*
-  | hcmdtok=HORZCMD; argpatlst=argpats; EXACT_EQ; utast=nxlet {
-      let (rngcs, hcmd) = hcmdtok in
-      let rng = make_range (Tok rngcs) (Ranged utast) in
-      let rngctxvar = Range.dummy "context-of-lightweight-let-inline" in
-      let ctxvarnm = "%context" in
-      let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
-      let utastread = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utctx, utast)) in
-      let curried = curry_lambda_abstract_pattern rngcs argpatlst utastread in
-      (None, (rngcs, UTPVariable(hcmd)), (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
-    }
-*/
-;
-nxvertdec:
-  | ident_ctx=LOWER; cs=VERTCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
-      {
-        let (rng_ctx, varnm_ctx) = ident_ctx in
-        let (rng_cs, vcmd) = cs in
-        let rng = make_range (Tok rng_ctx) (Ranged utast) in
-        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
-        (None, (rng_cs, UTPVariable(vcmd)), (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
-      }
-/*
-  | vcmdtok=VERTCMD; argpatlst=argpats; EXACT_EQ; utast=nxlet {
-      let (rngcs, vcmd) = vcmdtok in
-      let rng = make_range (Tok rngcs) (Ranged utast) in
-      let rngctxvar = Range.dummy "context-of-lightweight-let-block" in
-      let ctxvarnm = "%context" in
-      let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
-      let utastread = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utctx, utast)) in
-      let curried = curry_lambda_abstract_pattern rngcs argpatlst utastread in
-      (None, (rngcs, UTPVariable(vcmd)), (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
-    }
-*/
-;
-nxmathdec:
-  | cs=HORZCMD; cmdargs=list(arg); EXACT_EQ; utast=nxlet
-      {
-        let (rng_cs, mcmd) = cs in
-        let rng = make_range (Tok rng_cs) (Ranged utast) in
-        let curried = curry_lambda_abstract Alist.empty rng_cs cmdargs utast in
-        (None, (rng_cs, UTPVariable(mcmd)), (rng, UTLambdaMath(curried)))
-      }
 ;
 nxhorzmacrodec:
   | hmacro=HORZMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {
@@ -685,17 +694,6 @@ nxnonrecdec:
       let (mntyopt, utarglst) = argpart in
       let curried = curry_lambda_abstract Alist.empty (get_range pat) utarglst utast1 in
       (mntyopt, pat, curried)
-    }
-;
-nxtyperecdec:
-  | ds=separated_nonempty_list(AND, nxtypeeq) { ds }
-;
-nxtypeeq:
-  | tynmtok=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; BAR?; ctors=variants {
-      (tynmtok, tyvars, UTBindVariant(ctors))
-    }
-  | tyvars=list(TYPEVAR); tynmtok=LOWER; EXACT_EQ; mty=txfunc {
-      (tynmtok, tyvars, UTBindSynonym(mty))
     }
 ;
 kxtop:
