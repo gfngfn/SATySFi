@@ -346,8 +346,8 @@
   IF IN INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
   REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH
 
-%token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW ENDACTIVE COMMA
-%token<Range.t> LPAREN RPAREN BVERTGRP EVERTGRP BHORZGRP EHORZGRP BMATHGRP EMATHGRP
+%token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW ENDACTIVE COMMA LISTPUNCT CONS ACCESS
+%token<Range.t> LPAREN RPAREN BVERTGRP EVERTGRP BHORZGRP EHORZGRP BMATHGRP EMATHGRP BLIST ELIST BRECORD ERECORD
 %token<Range.t> EXACT_MINUS EXACT_TIMES EXACT_AMP EXACT_TILDE EXACT_EQ
 
 %token<Range.t * Types.var_name>
@@ -355,14 +355,15 @@
 
 %token<Range.t * Types.var_name> UNOP_EXCLAM
 
-%token <Range.t * Types.var_name> LOWER
-%token <Range.t * Types.constructor_name> UPPER
+%token<Range.t * Types.var_name> LOWER
+%token<Range.t * Types.constructor_name> UPPER
+%token<Range.t * (Types.module_name list) * Types.var_name> PATH_LOWER
+
 %token <Range.t * Types.ctrlseq_name> HORZCMD
 %token <Range.t * Types.ctrlseq_name> HORZMACRO
 %token <Range.t * Types.ctrlseq_name> VERTCMD
 %token <Range.t * Types.ctrlseq_name> VERTMACRO
 %token <Range.t * Types.ctrlseq_name> MATHCMD
-%token <Range.t * (Types.module_name list) * Types.var_name> PATH_LOWER
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VERTCMDWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> MATHCMDWITHMOD
@@ -371,22 +372,24 @@
 %token <Range.t * (Types.module_name list) * Types.var_name> VARINMATH
 %token <Range.t * Types.type_variable_name> TYPEVAR
 %token <Range.t * Types.row_variable_name> ROWVAR
+
 %token <Range.t * int> INTCONST
 %token <Range.t * float> FLOATCONST
 %token <Range.t * float * Types.length_unit_name> LENGTHCONST
 %token <Range.t * string> CHAR
 %token <Range.t * string * bool * bool> LITERAL
 %token <Range.t * Types.input_position * string> POSITIONED_LITERAL
+
 %token <Range.t> SPACE BREAK
 %token <Range.t * string> MATHCHARS
 %token <Range.t * int> PRIMES
 %token <Range.t> SUBSCRIPT SUPERSCRIPT
 %token <Range.t * Types.module_name> OPENMODULE
-%token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS
-%token <Range.t> HORZCMDTYPE VERTCMDTYPE MATHCMDTYPE
 %token <Range.t * int> ITEM
+
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
 %token <Range.t> HEADER_STAGE0 HEADER_STAGE1 HEADER_PERSISTENT0
+
 %token EOI
 
 %left  BINOP_BAR
@@ -458,11 +461,14 @@ optterm_nonempty_list(sep, X):
       { x :: xs }
 
 main:
-  | stage=stage; header=list(headerelem); lib=main_lib; EOI { (stage, header, UTLibraryFile(lib)) }
-  | stage=stage; header=list(headerelem); utast=nxif; EOI   { (stage, header, UTDocumentFile(utast)) }
+  | stage=stage; header=list(headerelem); lib=main_lib; EOI
+      { (stage, header, UTLibraryFile(lib)) }
+  | stage=stage; header=list(headerelem); utast=nxif; EOI
+      { (stage, header, UTDocumentFile(utast)) }
 ;
 main_lib:
-  | MODULE; modident=UPPER; EXACT_EQ; STRUCT; utbinds=list(bind); END { (modident, utbinds) }
+  | MODULE; modident=UPPER; EXACT_EQ; STRUCT; utbinds=list(bind); END
+      { (modident, utbinds) }
 ;
 stage:
   |                    { Stage1 }
