@@ -243,14 +243,14 @@ rule progexpr stack = parse
     }
   | "#"   { ACCESS(get_pos lexbuf) }
   | "->"  { ARROW(get_pos lexbuf) }
-  | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
+  | "<-"  { REVERSED_ARROW(get_pos lexbuf) }
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
   | ":"   { COLON(get_pos lexbuf) }
   | ","   { COMMA(get_pos lexbuf) }
   | "::"  { CONS(get_pos lexbuf) }
   | "-"   { EXACT_MINUS(get_pos lexbuf) }
-  | "="   { DEFEQ(get_pos lexbuf) }
+  | "="   { EXACT_EQ(get_pos lexbuf) }
   | "*"   { EXACT_TIMES(get_pos lexbuf) }
   | "&"   { EXACT_AMP(get_pos lexbuf) }
   | "~"   { EXACT_TILDE(get_pos lexbuf) }
@@ -266,64 +266,50 @@ rule progexpr stack = parse
   | ("&" opsymbol+) { BINOP_AMP(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("|" opsymbol+) { BINOP_BAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("^" opsymbol*) { BINOP_HAT(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | "?"  { OPTIONALTYPE(get_pos lexbuf) }
-  | "?->" { OPTIONALARROW(get_pos lexbuf) }
-  | "?:" { OPTIONAL(get_pos lexbuf) }
-  | "?*" { OMISSION(get_pos lexbuf) }
   | ("!" opsymbol*) { UNOP_EXCLAM(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("'" (identifier as xpltyvarnm)) { TYPEVAR(get_pos lexbuf, xpltyvarnm) }
 
   | ((constructor ".")+ identifier) {
         let tokstr = Lexing.lexeme lexbuf in
         let pos = get_pos lexbuf in
-        let (mdlnmlst, varnm) = split_module_list tokstr in
-          VARWITHMOD(pos, mdlnmlst, varnm)
+        let (modnms, varnm) = split_module_list tokstr in
+        PATH_LOWER(pos, modnms, varnm)
       }
 
   | identifier {
         let tokstr = Lexing.lexeme lexbuf in
         let pos = get_pos lexbuf in
           match tokstr with
-          | "not"               -> LNOT(pos)
-          | "mod"               -> MOD(pos)
-          | "if"                -> IF(pos)
-          | "then"              -> THEN(pos)
-          | "else"              -> ELSE(pos)
-          | "let"               -> LETNONREC(pos)
-          | "let-rec"           -> LETREC(pos)
-          | "and"               -> LETAND(pos)
-          | "in"                -> IN(pos)
-          | "fun"               -> LAMBDA(pos)
-          | "true"              -> TRUE(pos)
-          | "false"             -> FALSE(pos)
-          | "before"            -> BEFORE(pos)
-          | "while"             -> WHILE(pos)
-          | "do"                -> DO(pos)
-          | "let-mutable"       -> LETMUTABLE(pos)
-          | "match"             -> MATCH(pos)
-          | "with"              -> WITH(pos)
-          | "when"              -> WHEN(pos)
+          | "and"               -> AND(pos)
           | "as"                -> AS(pos)
-          | "type"              -> TYPE(pos)
-          | "of"                -> OF(pos)
-          | "module"            -> MODULE(pos)
-          | "struct"            -> STRUCT(pos)
-          | "sig"               -> SIG(pos)
-          | "val"               -> VAL(pos)
+          | "block"             -> BLOCK(pos)
+          | "else"              -> ELSE(pos)
           | "end"               -> END(pos)
-          | "direct"            -> DIRECT(pos)
-          | "constraint"        -> CONSTRAINT(pos)
-          | "let-inline"        -> LETHORZ(pos)
-          | "let-block"         -> LETVERT(pos)
-          | "let-math"          -> LETMATH(pos)
-          | "inline-cmd"        -> HORZCMDTYPE(pos)
-          | "block-cmd"         -> VERTCMDTYPE(pos)
-          | "math-cmd"          -> MATHCMDTYPE(pos)
-          | "command"           -> COMMAND(pos)
+          | "false"             -> FALSE(pos)
+          | "fun"               -> FUN(pos)
+          | "if"                -> IF(pos)
+          | "in"                -> IN(pos)
+          | "inline"            -> INLINE(pos)
+          | "let"               -> LET(pos)
+          | "mod"               -> MOD(pos)
+          | "match"             -> MATCH(pos)
+          | "math"              -> MATH(pos)
+          | "module"            -> MODULE(pos)
+          | "mutable"           -> MUTABLE(pos)
+          | "of"                -> OF(pos)
           | "open"              -> OPEN(pos)
-          | _                   -> VAR(pos, tokstr)
+          | "rec"               -> VAL(pos)
+          | "sig"               -> SIG(pos)
+          | "signature"         -> STRUCT(pos)
+          | "struct"            -> STRUCT(pos)
+          | "then"              -> THEN(pos)
+          | "true"              -> TRUE(pos)
+          | "type"              -> TYPE(pos)
+          | "val"               -> VAL(pos)
+          | "with"              -> WITH(pos)
+          | _                   -> LOWER(pos, tokstr)
       }
-  | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | constructor { UPPER(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ((constructor as mdlnm) ".(") { Stack.push ProgramState stack; OPENMODULE(get_pos lexbuf, mdlnm) }
   | (digit | (nzdigit digit+))                            { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | (("0x" | "0X") hex+)                                  { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
@@ -418,7 +404,7 @@ and horzexpr stack = parse
   | ((break | space)* "|") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       skip_spaces lexbuf;
-      SEP(get_pos lexbuf)
+      BAR(get_pos lexbuf)
     }
   | break {
       increment_line lexbuf;
@@ -509,12 +495,6 @@ and mathexpr stack = parse
       comment lexbuf;
       mathexpr stack lexbuf
     }
-  | "?:" {
-      OPTIONAL(get_pos lexbuf)
-    }
-  | "?*" {
-      OMISSION(get_pos lexbuf)
-    }
   | "!{" {
       Stack.push HorizontalState stack;
       skip_spaces lexbuf;
@@ -545,7 +525,7 @@ and mathexpr stack = parse
       pop lexbuf "too many closing" stack;
       EMATHGRP(pos)
     }
-  | "|" { SEP(get_pos lexbuf) }
+  | "|" { BAR(get_pos lexbuf) }
   | "^" { SUPERSCRIPT(get_pos lexbuf) }
   | "_" { SUBSCRIPT(get_pos lexbuf) }
   | "'"+ { let n = String.length (Lexing.lexeme lexbuf) in PRIMES(get_pos lexbuf, n) }
@@ -587,8 +567,6 @@ and active stack = parse
     }
   | space { active stack lexbuf }
   | break { increment_line lexbuf; active stack lexbuf }
-  | "?:" { OPTIONAL(get_pos lexbuf) }
-  | "?*" { OMISSION(get_pos lexbuf) }
   | "~" { EXACT_TILDE(get_pos lexbuf) }
   | "(" {
       Stack.push ProgramState stack;
