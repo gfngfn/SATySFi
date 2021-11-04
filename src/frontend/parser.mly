@@ -291,10 +291,10 @@
 %type<Types.untyped_pattern_branch> branch
 %type<Types.untyped_pattern_tree> pattern
 %type<Types.untyped_pattern_tree> pattern_bot
+%type<Types.untyped_abstract_tree> inline
+%type<Types.untyped_abstract_tree> inline_single
+%type<Types.untyped_abstract_tree> block
 
-%type <Types.untyped_abstract_tree> sxsep
-%type <Types.untyped_abstract_tree> sxblock
-%type <Types.untyped_abstract_tree> vxblock
 %type <Types.untyped_input_vert_element> vxbot
 /*
 %type <Types.untyped_command_argument> narg
@@ -733,6 +733,8 @@ expr_bot:
       { let (rng, varnm) = ident in (rng, UTContentOf([], varnm)) }
   | long_ident=PATH_LOWER
       { let (rng, modnms, varnm) = long_ident in (rng, UTContentOf(modnms, varnm)) }
+  | tokL=LPAREN; ident=binop; tokR=RPAREN
+      { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], extract_name ident)) }
   | ic=INTCONST
       { let (rng, n) = ic in (rng, UTIntegerConstant(n)) }
   | fc=FLOATCONST
@@ -786,11 +788,12 @@ expr_bot:
         in
         make_standard (Tok tokL) (Tok tokR) utast_main
       }
-
-  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
-  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP  { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
+      { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
+  | tokL=BVERTGRP; utast=block; tokR=EVERTGRP
+      { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
+  | tokL=BMATHGRP; utast=mathblock; tokR=EMATHGRP
+      { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
 /*
   | opn=OPENMODULE; utast=expr; cls=RPAREN {
       let (rng, mdlnm) = opn in
@@ -880,24 +883,88 @@ pattern_bot:
             make_standard (Tok tokL) (Tok tokR) (UTPTuple(TupleList.make utpat1 utpat2 utpat_rest))
       }
 ;
-sxsep:
-  | BAR; utastlst=sxlist          { make_cons utastlst }
-  | utast=sxblock                 { utast }
-  | itmzlst=nonempty_list(sxitem) { make_list_to_itemize itmzlst }
+inline:
+  | BAR; utasts=list(terminated(inline_single, BAR))
+      { make_cons utasts }
+  | utast=inline_single
+      { utast }
+  | itemizes=nonempty_list(inline_itemize_elem)
+      { make_list_to_itemize itemizes }
 ;
-sxlist:
-  | elems=list(terminated(sxblock, BAR)) { elems }
+inline_itemize_elem:
+  | item=ITEM; utast=inline_single
+      { let (rng, depth) = item in (rng, depth, utast) }
 ;
-sxitem:
-  | item=ITEM; utast=sxblock { let (rng, depth) = item in (rng, depth, utast) }
+inline_single:
+  | ih=ih { let rng = make_range_from_list ih in (rng, UTInputHorz(ih)) }
 ;
-hcmd:
-  | tok=HORZCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
-  | tok=HORZCMDWITHMOD { tok }
+ih:
+  | ihtext=ihtext                     { ihtext :: [] }
+  | ihtext=ihtext; ihcmd=ihcmd; ih=ih { ihtext :: ihcmd :: ih }
+  | ihcmd=ihcmd; ih=ih                { ihcmd :: ih }
+  |                                   { [] }
 ;
-mcmd:
-  | tok=MATHCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
-  | tok=MATHCMDWITHMOD { tok }
+ihcmd:
+  | hmacro=HORZMACRO; macargsraw=macroargs {
+      let (rngcs, _) = hmacro in
+      let (rnglast, macroargs) = macargsraw in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
+    }
+/*
+  | hcmd=hcmd; nargs=list(narg); sargsraw=sargs {
+      let (rngcs, mdlnmlst, csnm) = hcmd in
+      let utastcmd = (rngcs, UTContentOf(mdlnmlst, csnm)) in
+      let (rnglast, sargs) = sargsraw in
+      let args = List.append nargs sargs in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzEmbedded(utastcmd, args))
+    }
+*/
+  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP {
+      make_standard (Tok opn) (Tok cls) (UTInputHorzEmbeddedMath(utast))
+    }
+  | literal=LITERAL {
+      let (rng, str, pre, post) = literal in
+      make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeText(omit_spaces pre post str))
+    }
+  | vartok=VARINHORZ; cls=ENDACTIVE {
+      let (rng, mdlnmlst, varnm) = vartok in
+      let utast = (rng, UTContentOf(mdlnmlst, varnm)) in
+      make_standard (Tok rng) (Tok cls) (UTInputHorzContent(utast))
+    }
+;
+ihtext:
+  | ihcharlst=nonempty_list(ihchar) {
+      let rng = make_range_from_list ihcharlst in
+      let text = String.concat "" (ihcharlst |> List.map (fun (r, t) -> t)) in
+      (rng, UTInputHorzText(text))
+    }
+;
+ihchar:
+  | tok=CHAR  { let (rng, ch) = tok in (rng, ch) }
+  | rng=SPACE { (rng, " ") }
+  | rng=BREAK { (rng, "\n") }
+;
+block:
+  | ivs=list(vxbot) { (make_range_from_list ivs, UTInputVert(ivs)) }
+;
+vxbot:
+/*
+  | vcmd=vcmd; nargs=list(narg); sargsraw=sargs {
+      let (rngcs, mdlnmlst, csnm) = vcmd in
+      let (rnglast, sargs) = sargsraw in
+      let args = List.append nargs sargs in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputVertEmbedded((rngcs, UTContentOf(mdlnmlst, csnm)), args))
+    }
+*/
+  | vartok=VARINVERT; cls=ENDACTIVE {
+      let (rng, mdlnmlst, varnm) = vartok in
+      make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
+    }
+  | vmacro=VERTMACRO; macargsraw=macroargs {
+      let (rngcs, _) = vmacro in
+      let (rnglast, macargs) = macargsraw in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputVertMacro(vmacro, macargs))
+  }
 ;
 mathblock:
   | BAR; utmlst=mathlist { utmlst |> List.map (fun utm -> let (rng, _) = utm in (rng, UTMath(utm))) |> make_cons }
@@ -1031,55 +1098,6 @@ mathoptarg:
     }
 ;
 */
-sxblock:
-  | ih=ih { let rng = make_range_from_list ih in (rng, UTInputHorz(ih)) }
-;
-ih:
-  | ihtext=ihtext                     { ihtext :: [] }
-  | ihtext=ihtext; ihcmd=ihcmd; ih=ih { ihtext :: ihcmd :: ih }
-  | ihcmd=ihcmd; ih=ih                { ihcmd :: ih }
-  |                                   { [] }
-;
-ihcmd:
-  | hmacro=HORZMACRO; macargsraw=macroargs {
-      let (rngcs, _) = hmacro in
-      let (rnglast, macroargs) = macargsraw in
-      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
-    }
-/*
-  | hcmd=hcmd; nargs=list(narg); sargsraw=sargs {
-      let (rngcs, mdlnmlst, csnm) = hcmd in
-      let utastcmd = (rngcs, UTContentOf(mdlnmlst, csnm)) in
-      let (rnglast, sargs) = sargsraw in
-      let args = List.append nargs sargs in
-      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzEmbedded(utastcmd, args))
-    }
-*/
-  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP {
-      make_standard (Tok opn) (Tok cls) (UTInputHorzEmbeddedMath(utast))
-    }
-  | literal=LITERAL {
-      let (rng, str, pre, post) = literal in
-      make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeText(omit_spaces pre post str))
-    }
-  | vartok=VARINHORZ; cls=ENDACTIVE {
-      let (rng, mdlnmlst, varnm) = vartok in
-      let utast = (rng, UTContentOf(mdlnmlst, varnm)) in
-      make_standard (Tok rng) (Tok cls) (UTInputHorzContent(utast))
-    }
-;
-ihtext:
-  | ihcharlst=nonempty_list(ihchar) {
-      let rng = make_range_from_list ihcharlst in
-      let text = String.concat "" (ihcharlst |> List.map (fun (r, t) -> t)) in
-      (rng, UTInputHorzText(text))
-    }
-;
-ihchar:
-  | tok=CHAR  { let (rng, ch) = tok in (rng, ch) }
-  | rng=SPACE { (rng, " ") }
-  | rng=BREAK { (rng, "\n") }
-;
 macroargs:
   | macnargs=list(macronarg); cls=ENDACTIVE { (cls, macnargs) }
 ;
@@ -1122,48 +1140,33 @@ noptarg:
 ;
 */
 sargs:
-  | rng=ENDACTIVE             { (rng, []) }
-  | sargs=nonempty_list(sarg) {
-      let rng =
-        match List.rev sargs with
-        | []                             -> assert false
-        | UTCommandArg(_, (rng, _)) :: _ -> rng
-      in
-      (rng, sargs)
-    }
+  | rng=ENDACTIVE
+      { (rng, []) }
+  | sargs=nonempty_list(sarg)
+      {
+        let rng =
+          match List.rev sargs with
+          | []                             -> assert false
+          | UTCommandArg(_, (rng, _)) :: _ -> rng
+        in
+        (rng, sargs)
+      }
 ;
-
 sarg:
-  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP {
-      UTCommandArg([], make_standard (Tok opn) (Tok cls) (extract_main utast))
-    }
-  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP {
-      UTCommandArg([], make_standard (Tok opn) (Tok cls) (extract_main utast))
-    }
+  | tokL=BVERTGRP; utast=block; tokR=EVERTGRP
+      { UTCommandArg([], make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
+  | tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
+      { UTCommandArg([], make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
+;
+hcmd:
+  | tok=HORZCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
+  | tok=HORZCMDWITHMOD { tok }
+;
+mcmd:
+  | tok=MATHCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
+  | tok=MATHCMDWITHMOD { tok }
 ;
 vcmd:
   | tok=VERTCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
   | tok=VERTCMDWITHMOD { tok }
-;
-vxblock:
-  | ivlst=list(vxbot) { (make_range_from_list ivlst, UTInputVert(ivlst)) }
-;
-vxbot:
-/*
-  | vcmd=vcmd; nargs=list(narg); sargsraw=sargs {
-      let (rngcs, mdlnmlst, csnm) = vcmd in
-      let (rnglast, sargs) = sargsraw in
-      let args = List.append nargs sargs in
-      make_standard (Tok rngcs) (Tok rnglast) (UTInputVertEmbedded((rngcs, UTContentOf(mdlnmlst, csnm)), args))
-    }
-*/
-  | vartok=VARINVERT; cls=ENDACTIVE {
-      let (rng, mdlnmlst, varnm) = vartok in
-      make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
-    }
-  | vmacro=VERTMACRO; macargsraw=macroargs {
-      let (rngcs, _) = vmacro in
-      let (rnglast, macargs) = macargsraw in
-      make_standard (Tok rngcs) (Tok rnglast) (UTInputVertMacro(vmacro, macargs))
-  }
 ;
