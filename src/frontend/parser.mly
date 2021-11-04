@@ -366,15 +366,20 @@
 %right BINOP_TIMES EXACT_TIMES BINOP_DIVIDES MOD
 
 %start main
-%type <Types.stage * Types.header_element list * Types.untyped_source_file> main
-%type <Types.untyped_binding> bind
-%type <Types.untyped_let_binding list> bind_value_rec
-%type <Types.untyped_let_binding> bind_value_nonrec
-%type <Types.untyped_let_binding> bind_inline
-%type <Types.untyped_let_binding> bind_block
-%type <Types.untyped_type_binding list> bind_type
-%type <Types.untyped_type_binding> bind_type_single
-%type <Types.untyped_declaration> decl
+%type<Types.stage * Types.header_element list * Types.untyped_source_file> main
+%type<Types.untyped_binding> bind
+%type<Types.untyped_let_binding list> bind_value_rec
+%type<Types.untyped_let_binding> bind_value_nonrec
+%type<Types.untyped_let_binding> bind_inline
+%type<Types.untyped_let_binding> bind_block
+%type<Types.untyped_type_binding list> bind_type
+%type<Types.untyped_type_binding> bind_type_single
+%type<Types.untyped_declaration> decl
+%type<Types.manual_kind> kind
+%type<Types.manual_row_base_kind> kind_row
+%type<Types.type_variable_name Types.ranged> tyquant
+%type<Types.row_variable_name ranged * Types.manual_row_base_kind> rowquant
+
 %type <Types.untyped_abstract_tree> nxlet
 %type <Types.untyped_abstract_tree> nxletsub
 %type <Types.untyped_abstract_tree> nxif
@@ -400,10 +405,6 @@
 %type <Types.manual_type> txapppre
 %type <bool * Types.untyped_math> mathgroup
 %type <Types.untyped_math> mathbot
-%type <Types.manual_kind> kxtop
-%type <Types.manual_row_base_kind> kxrow
-%type <Types.type_variable_name Types.ranged> tyquant
-%type <Types.row_variable_name ranged * Types.manual_row_base_kind> rowquant
 
 %%
 
@@ -576,7 +577,7 @@ decl:
       { UTDeclValue(cs, tyquants, rowquants, mnty) }
   | VAL; cs=VERTCMD; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc
       { UTDeclValue(cs, tyquants, rowquants, mnty) }
-  | TYPE; tyident=LOWER; tyvars=list(TYPEVAR); CONS; mnkd=kxtop
+  | TYPE; tyident=LOWER; tyvars=list(TYPEVAR); CONS; mnkd=kind
       { UTDeclTypeOpaque(tyident, mnkd) }
   | MODULE; modident=UPPER; COLON; utsig=sigexpr
       { UTDeclModule(modident, utsig) }
@@ -588,7 +589,7 @@ tyquant:
   | tyvar=TYPEVAR { tyvar }
 ;
 rowquant:
-  | LPAREN; rowvar=ROWVAR; CONS; mnrbkd=kxrow; RPAREN { (rowvar, mnrbkd) }
+  | LPAREN; rowvar=ROWVAR; CONS; mnrbkd=kind_row; RPAREN { (rowvar, mnrbkd) }
 ;
 nxhorzmacrodec:
   | hmacro=HORZMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {
@@ -607,7 +608,11 @@ macroparam:
   | EXACT_TILDE; var=LOWER { UTEarlyMacroParam(var) }
 ;
 param_unit:
-  | opts_opt=option(opt_params); utpat=patbot { UTParameterUnit(opts_opt |> Option.value ~default:[], utpat) }
+  | opts_opt=option(opt_params); utpat=patbot
+      {
+        let opts = opts_opt |> Option.value ~default:[] in
+        UTParameterUnit(opts, utpat)
+      }
 ;
 opt_params:
   | QUESTION; LPAREN; opts=optterm_nonempty_list(COMMA, opt_param); RPAREN
@@ -636,20 +641,21 @@ bind_value_nonrec:
         (ident, curried)
       }
 ;
-kxtop:
-  | bkd=kxbase; ARROW kd=kxtop {
-      let MKind(bkds_dom, bkd_cod) = kd in
-      MKind(bkd :: bkds_dom, bkd_cod)
-    }
-  | bkd=kxbase {
-      MKind([], bkd)
-    }
+kind:
+  | bkd=kind_base; ARROW kd=kind
+      {
+        let MKind(bkds_dom, bkd_cod) = kd in
+        MKind(bkd :: bkds_dom, bkd_cod)
+      }
+  | bkd=kind_base
+      { MKind([], bkd) }
 ;
-kxbase:
-  | tok=LOWER { MKindName(tok) }
+kind_base:
+  | kdident=LOWER
+      { MKindName(kdident) }
 ;
-kxrow:
-  | BRECORD; rlabel=LOWER; rlabels=list(COMMA; rlabel=LOWER { rlabel }) ERECORD { rlabel :: rlabels }
+kind_row:
+  | BRECORD; rlabels=optterm_nonempty_list(COMMA, LOWER); ERECORD { rlabels }
 ;
 nxlet:
   | tokL=MATCH; utast=nxlet; WITH; BAR?; pats=pats; tokR=END {
