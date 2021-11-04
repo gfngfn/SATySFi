@@ -299,7 +299,6 @@
 
 %type <Types.untyped_pattern_tree> patas
 %type <Types.untyped_pattern_tree> patbot
-%type <Types.untyped_abstract_tree> nxlist
 %type <Types.untyped_abstract_tree> sxsep
 %type <Types.untyped_abstract_tree> sxblock
 %type <Types.untyped_abstract_tree> vxblock
@@ -555,11 +554,8 @@ macroparam:
 ;
 */
 kind:
-  | bkd=kind_base; ARROW kd=kind
-      {
-        let MKind(bkds_dom, bkd_cod) = kd in
-        MKind(bkd :: bkds_dom, bkd_cod)
-      }
+  | bkd=kind_base; ARROW; kd=kind
+      { let MKind(bkds_dom, bkd_cod) = kd in MKind(bkd :: bkds_dom, bkd_cod) }
   | bkd=kind_base
       { MKind([], bkd) }
 ;
@@ -572,9 +568,7 @@ kind_row:
 ;
 typ:
   | mnty1=typ_prod; ARROW; mnty2=typ
-      {
-        make_standard (Ranged mnty1) (Ranged mnty2) (MFuncType([], mnty1, mnty2))
-      }
+      { make_standard (Ranged mnty1) (Ranged mnty2) (MFuncType([], mnty1, mnty2)) }
   | mnopts=typ_opt_dom; mnty1=typ_prod; ARROW; mnty2=typ
       {
         let (tokL, mnopts) = mnopts in
@@ -779,12 +773,30 @@ expr_bot:
         | utast2 :: utast_rest ->
             make_standard (Tok tokL) (Tok tokR) (UTTuple(TupleList.make utast1 utast2 utast_rest))
       }
+  | tokL=BLIST; elems=optterm_list(COMMA, expr); tokR=ELIST
+      {
+        let (_, utast_main) =
+          List.fold_right (fun elem tail ->
+            make_standard (Ranged elem) (Ranged tail) (UTListCons(elem, tail))
+          ) elems (Range.dummy "end-of-list", UTEndOfList)
+        in
+        make_standard (Tok tokL) (Tok tokR) utast_main
+      }
+  | tokL=BRECORD; fields=optterm_list(COMMA, record_field); tokR=ERECORD
+      { make_standard (Tok tokL) (Tok tokR) (UTRecord(fields)) }
+  | tokL=BRECORD; utast=expr_bot; WITH; fields=optterm_nonempty_list(COMMA, record_field); tokR=ERECORD
+      {
+        let (_, utast_main) =
+          fields |> List.fold_left (fun utast1 (rlabel, utast2) ->
+            (Range.dummy "update-field", UTUpdateField(utast1, rlabel, utast2))
+          ) utast
+        in
+        make_standard (Tok tokL) (Tok tokR) utast_main
+      }
 
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | utast=nxlistsynt                             { utast }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
-  | utast=nxrecordsynt                           { utast }
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP  { make_standard (Tok opn) (Tok cls) (extract_main utast) }
 /*
   | opn=OPENMODULE; utast=expr; cls=RPAREN {
@@ -793,34 +805,9 @@ expr_bot:
     }
 */
 ;
-nxlistsynt:
-  | opn=BLIST; cls=ELIST               { make_standard (Tok opn) (Tok cls) UTEndOfList }
-  | opn=BLIST; utast=nxlist; cls=ELIST { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-;
-nxrecordsynt:
-  | opn=BRECORD; cls=ERECORD               { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
-  | opn=BRECORD; fields=nxrecord; cls=ERECORD { make_standard (Tok opn) (Tok cls) (UTRecord(fields)) }
-  | opn=BRECORD; utast=expr_bot; WITH; fields=nxrecord; cls=ERECORD {
-      let (_, utastmain) =
-        fields |> List.fold_left (fun utast1 (rlabel, utast2) ->
-          (Range.dummy "update-field", UTUpdateField(utast1, rlabel, utast2))
-        ) utast
-      in
-      make_standard (Tok opn) (Tok cls) utastmain
-    }
-;
-nxrecord:
-  | x=optterm_nonempty_list(COMMA, nxrecord_field) { x }
-;
-nxrecord_field:
-  | rlabel=LOWER; EXACT_EQ; utast=expr { (rlabel, utast) }
-;
-nxlist:
-  | elems=optterm_nonempty_list(COMMA, expr) {
-    List.fold_right (fun elem tail ->
-      make_standard (Ranged elem) (Ranged tail) (UTListCons(elem, tail)))
-      elems (Range.dummy "end-of-list", UTEndOfList)
-  }
+record_field:
+  | rlabel=LOWER; EXACT_EQ; utast=expr
+      { (rlabel, utast) }
 ;
 branch:
   | pat=patas; ARROW; utast=expr
