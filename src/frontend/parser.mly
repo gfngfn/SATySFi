@@ -494,18 +494,15 @@ bind_inline:
         let curried = curry_lambda_abstraction param_units utast in
         (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
       }
-/*
-  | hcmdtok=HORZCMD; argpatlst=argpats; EXACT_EQ; utast=nxlet {
-      let (rngcs, hcmd) = hcmdtok in
-      let rng = make_range (Tok rngcs) (Ranged utast) in
-      let rngctxvar = Range.dummy "context-of-lightweight-let-inline" in
-      let ctxvarnm = "%context" in
-      let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
-      let utastread = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utctx, utast)) in
-      let curried = curry_lambda_abstract_pattern rngcs argpatlst utastread in
-      (None, (rngcs, UTPVariable(hcmd)), (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
+  | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet {
+      let rng = make_range (Ranged cs) (Ranged utast) in
+      let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
+      let varnm_ctx = "%context" in
+      let utast_ctx = (rng_ctx, UTContentOf([], varnm_ctx)) in
+      let utast_read = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utast_ctx, utast)) in
+      let curried = curry_lambda_abstraction param_units utast_read in
+      (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
     }
-*/
 ;
 bind_block:
   | ident_ctx=LOWER; cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
@@ -515,18 +512,15 @@ bind_block:
         let curried = curry_lambda_abstraction param_units utast in
         (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
       }
-/*
-  | vcmdtok=VERTCMD; argpatlst=argpats; EXACT_EQ; utast=nxlet {
-      let (rngcs, vcmd) = vcmdtok in
-      let rng = make_range (Tok rngcs) (Ranged utast) in
-      let rngctxvar = Range.dummy "context-of-lightweight-let-block" in
-      let ctxvarnm = "%context" in
-      let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
-      let utastread = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utctx, utast)) in
-      let curried = curry_lambda_abstract_pattern rngcs argpatlst utastread in
-      (None, (rngcs, UTPVariable(vcmd)), (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
+  | cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet {
+      let rng = make_range (Ranged cs) (Ranged utast) in
+      let rng_ctx = Range.dummy "context-of-lightweight-let-block" in
+      let varnm_ctx = "%context" in
+      let utast_ctx = (rng_ctx, UTContentOf([], varnm_ctx)) in
+      let utast_read = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utast_ctx, utast)) in
+      let curried = curry_lambda_abstraction param_units utast_read in
+      (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
     }
-*/
 ;
 bind_math:
   | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
