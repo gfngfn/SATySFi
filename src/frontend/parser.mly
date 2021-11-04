@@ -232,30 +232,6 @@
       | Some(numofargs) -> (Alist.to_list acc, numofargs)
 
 
-  let make_product_expression (rng : Range.t) (utasts : untyped_abstract_tree list) : untyped_abstract_tree =
-    match utasts with
-    | []                            -> assert false
-    | utast :: []                   -> utast
-    | utast1 :: utast2 :: utastrest -> (rng, UTTuple(TupleList.make utast1 utast2 utastrest))
-
-
-  let make_function_for_parallel (rngfull : Range.t) (numofargs : int) (patbrs : untyped_pattern_branch list) =
-
-    let numbered_var_name i = "%pattup" ^ (string_of_int i) in
-
-    let rec aux acc i =
-      if i = numofargs then
-        let utastprod = make_product_expression (Range.dummy "make_product_expression") (Alist.to_list acc) in
-          (rngfull, UTPatternMatch(utastprod, patbrs))
-      else
-        let varnm = numbered_var_name i in
-        let accnew = Alist.extend acc (Range.dummy "make_function_for_parallel:2", UTContentOf([], varnm)) in
-        let patvar = (Range.dummy "make_function_for_parallel:3", UTPVariable(varnm)) in
-          (rngfull, UTFunction([], patvar, aux accnew (i + 1)))
-    in
-      aux Alist.empty 0
-
-
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
     let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInputHorz([])), [])) lst 0 in
     (Range.dummy "itemize1", UTItemize(contents))
@@ -387,7 +363,6 @@
 %type<Types.untyped_abstract_tree> expr_bot
 %type<Types.untyped_pattern_branch> branch
 
-%type <Types.untyped_abstract_tree list> tuple
 %type <Types.untyped_pattern_tree> patas
 %type <Types.untyped_pattern_tree> patbot
 %type <Types.untyped_abstract_tree> nxlist
@@ -833,20 +808,20 @@ expr_un:
 expr_bot:
   | utast=expr_bot; ACCESS; rlabel=LOWER
       { make_standard (Ranged utast) (Ranged rlabel) (UTAccessField(utast, rlabel)) }
-  | var=LOWER
-      { let (rng, varnm) = var in (rng, UTContentOf([], varnm)) }
-  | vwm=PATH_LOWER
-      { let (rng, mdlnmlst, varnm) = vwm in (rng, UTContentOf(mdlnmlst, varnm)) }
+  | ident=LOWER
+      { let (rng, varnm) = ident in (rng, UTContentOf([], varnm)) }
+  | long_ident=PATH_LOWER
+      { let (rng, modnms, varnm) = long_ident in (rng, UTContentOf(modnms, varnm)) }
   | ic=INTCONST
-      { make_standard (Ranged ic) (Ranged ic)  (UTIntegerConstant(extract_main ic)) }
+      { let (rng, n) = ic in (rng, UTIntegerConstant(n)) }
   | fc=FLOATCONST
-      { make_standard (Ranged fc) (Ranged fc) (UTFloatConstant(extract_main fc)) }
+      { let (rng, r) = fc in (rng, UTFloatConstant(r)) }
   | lc=LENGTHCONST
-      { let (rng, flt, unitnm) = lc in make_standard (Tok rng) (Tok rng) (UTLengthDescription(flt, unitnm)) }
-  | tok=TRUE
-      { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(true)) }
-  | tok=FALSE
-      { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(false)) }
+      { let (rng, r, unitnm) = lc in (rng, UTLengthDescription(r, unitnm)) }
+  | rng=TRUE
+      { (rng, UTBooleanConstant(true)) }
+  | rng=FALSE
+      { (rng, UTBooleanConstant(false)) }
   | tok=LITERAL
       {
         let (rng, str, pre, post) = tok in
@@ -857,12 +832,19 @@ expr_bot:
         let (rng, ipos, s) = tok in
         make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s))
       }
-  | opn=LPAREN; cls=RPAREN
-      { make_standard (Tok opn) (Tok cls) UTUnitConstant }
-  | opn=LPAREN; utast=expr; cls=RPAREN
-      { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=LPAREN; utast=expr; COMMA; tup=tuple; cls=RPAREN
-      { let rng = make_range (Tok opn) (Tok cls) in make_product_expression rng (utast :: tup) }
+  | tokL=LPAREN; tokR=RPAREN
+      { make_standard (Tok tokL) (Tok tokR) UTUnitConstant }
+  | LPAREN; utast=expr; RPAREN
+      { utast }
+  | tokL=LPAREN; utast1=expr; COMMA; utasts=separated_nonempty_list(COMMA, expr); tokR=RPAREN
+      {
+        match utasts with
+        | [] ->
+            assert false
+
+        | utast2 :: utast_rest ->
+            make_standard (Tok tokL) (Tok tokR) (UTTuple(TupleList.make utast1 utast2 utast_rest))
+      }
 
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
@@ -905,9 +887,6 @@ nxlist:
       make_standard (Ranged elem) (Ranged tail) (UTListCons(elem, tail)))
       elems (Range.dummy "end-of-list", UTEndOfList)
   }
-;
-tuple:
-  | x=separated_nonempty_list(COMMA, expr) { x }
 ;
 branch:
   | pat=patas; ARROW; utast=expr
