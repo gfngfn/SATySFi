@@ -816,24 +816,20 @@ nxlist:
   }
 ;
 typ:
-  | tokL=QUESTION; mnopts_opt=option(typ_opt_dom); mnty1=typ_prod; ARROW; mnty2=typ
+  | mnty1=typ_prod; ARROW; mnty2=typ
       {
-        let mnopts = mnopts_opt |> Option.value ~default:[] in
+        make_standard (Ranged mnty1) (Ranged mnty2) (MFuncType([], mnty1, mnty2))
+      }
+  | mnopts=typ_opt_dom; mnty1=typ_prod; ARROW; mnty2=typ
+      {
+        let (tokL, mnopts) = mnopts in
         make_standard (Tok tokL) (Ranged mnty2) (MFuncType(mnopts, mnty1, mnty2))
       }
   | mnty=typ_prod
       { mnty }
 ;
-typ_opt_dom:
-  | LPAREN; mnopts=optterm_nonempty_list(COMMA, typ_opt_dom_entry); RPAREN
-      { mnopts }
-;
-typ_opt_dom_entry:
-  | rlabel=LOWER; EXACT_EQ; mnty=typ
-      { (rlabel, mnty) }
-;
 typ_prod:
-  | mntys=separated_nonempty_list(EXACT_TIMES, txapppre) {
+  | mntys=separated_nonempty_list(EXACT_TIMES, typ_app) {
       match (mntys, List.rev mntys) with
       | ([mnty], [_]) ->
           mnty
@@ -844,25 +840,6 @@ typ_prod:
       | (_, _) ->
           assert false
   }
-;
-txapppre:
-  | mnty=typ_app {
-      mnty
-    }
-/*
-  | tokL=INLINE; BLIST; mntylst=txlist; tokR=ELIST {
-      let rng = make_range (Tok tokL) (Tok tokR) in
-      (rng, MHorzCommandType(mntylst))
-    }
-  | opn=BLIST; mntylst=txlist; ELIST; last=VERTCMDTYPE {
-      let rng = make_range (Tok opn) (Tok last) in
-      (rng, MVertCommandType(mntylst))
-    }
-  | opn=BLIST; mntylst=txlist; ELIST; last=MATHCMDTYPE {
-      let rng = make_range (Tok opn) (Tok last) in
-      (rng, MMathCommandType(mntylst))
-    }
-*/
 ;
 typ_app:
   | tyident=LOWER mntys=nonempty_list(typ_bot)
@@ -875,6 +852,12 @@ typ_app:
         let (_, tynm) = tyident in
         (rng, MTypeName(tynm, mntys))
       }
+  | tokL=INLINE; BLIST; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=ELIST
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MHorzCommandType(mncmdargtys)) }
+  | tokL=BLOCK; BLIST; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=ELIST
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MVertCommandType(mncmdargtys)) }
+  | tokL=MATH; BLIST; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=ELIST
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MMathCommandType(mncmdargtys)) }
   | mnty=typ_bot
       { mnty }
 ;
@@ -883,27 +866,33 @@ typ_bot:
       { let (rng, tynm) = tyident in (rng, MTypeName(tynm, [])) }
   | tyvar=TYPEVAR
       { let (rng, tyvarnm) = tyvar in (rng, MTypeParam(tyvarnm)) }
-  | tokL=BRECORD; kvs=txrecord; tokR=ERECORD
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MRecordType(kvs)) }
+  | tokL=BRECORD; fields=optterm_nonempty_list(COMMA, typ_record_elem); tokR=ERECORD
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MRecordType(fields)) }
   | LPAREN; mnty=typ; RPAREN
       { mnty }
 ;
-/*
-txlist:
-  | ts=optterm_list(COMMA, txlist_elem) { ts }
+typ_opt_dom:
+  | tokL=QUESTION; LPAREN; mnopts=optterm_nonempty_list(COMMA, typ_opt_dom_entry); RPAREN
+      { (tokL, mnopts) }
 ;
-txlist_elem:
-  | opts=list(txlist_opt); mnty=typ { MArgType(opts, mnty) }
+typ_opt_dom_entry:
+  | rlabel=LOWER; EXACT_EQ; mnty=typ
+      { (rlabel, mnty) }
 ;
-txlist_opt:
-  | OPTIONAL; mnty=txapppre; COMMA { let rlabel = failwith "TODO: txlist_opt, rlabel" in (rlabel, mnty) }
+typ_cmd_arg:
+  | mnopts_opt=option(typ_opt_dom); mnty=typ_prod
+      {
+        let mnopts =
+          match mnopts_opt with
+          | None              -> []
+          | Some((_, mnopts)) -> mnopts
+        in
+        MArgType(mnopts, mnty)
+      }
 ;
-*/
-txrecord:
-  | fs=optterm_nonempty_list(COMMA, txrecord_elem) { fs }
-;
-txrecord_elem:
+typ_record_elem:
   | rlabel=LOWER; COLON; mnty=typ { (rlabel, mnty) }
+;
 tuple:
   | x=separated_nonempty_list(COMMA, nxlet) { x }
 ;
