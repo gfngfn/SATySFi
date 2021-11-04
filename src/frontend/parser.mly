@@ -289,18 +289,19 @@
 %type<Types.untyped_abstract_tree> expr_app
 %type<Types.untyped_abstract_tree> expr_bot
 %type<Types.untyped_pattern_branch> branch
+%type<Types.var_name Types.ranged> binop
 %type<Types.untyped_pattern_tree> pattern
 %type<Types.untyped_pattern_tree> pattern_bot
 %type<Types.untyped_abstract_tree> inline
 %type<Types.untyped_abstract_tree> inline_single
 %type<Types.untyped_abstract_tree> block
+%type<Types.untyped_input_vert_element> block_elem
+%type<Range.t * Types.untyped_command_argument list> sargs
+%type<Types.untyped_command_argument> sarg
 
-%type <Types.untyped_input_vert_element> vxbot
 /*
 %type <Types.untyped_command_argument> narg
 */
-%type <Types.untyped_command_argument> sarg
-%type <Range.t * Types.var_name> binop
 %type <bool * Types.untyped_math> mathgroup
 %type <Types.untyped_math> mathbot
 
@@ -896,20 +897,19 @@ inline_itemize_elem:
       { let (rng, depth) = item in (rng, depth, utast) }
 ;
 inline_single:
-  | ih=ih { let rng = make_range_from_list ih in (rng, UTInputHorz(ih)) }
+  | ielems=inline_elems
+      { let rng = make_range_from_list ielems in (rng, UTInputHorz(ielems)) }
 ;
-ih:
-  | ihtext=ihtext                     { ihtext :: [] }
-  | ihtext=ihtext; ihcmd=ihcmd; ih=ih { ihtext :: ihcmd :: ih }
-  | ihcmd=ihcmd; ih=ih                { ihcmd :: ih }
-  |                                   { [] }
+inline_elems:
+  | itext=inline_elem_text; icmd=inline_elem_cmd; ielems=inline_elems
+      { itext :: icmd :: ielems }
+  | icmd=inline_elem_cmd; ielems=inline_elems
+      { icmd :: ielems }
+  | itext=inline_elem_text
+      { itext :: [] }
+  |   { [] }
 ;
-ihcmd:
-  | hmacro=HORZMACRO; macargsraw=macroargs {
-      let (rngcs, _) = hmacro in
-      let (rnglast, macroargs) = macargsraw in
-      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
-    }
+inline_elem_cmd:
 /*
   | hcmd=hcmd; nargs=list(narg); sargsraw=sargs {
       let (rngcs, mdlnmlst, csnm) = hcmd in
@@ -919,35 +919,43 @@ ihcmd:
       make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzEmbedded(utastcmd, args))
     }
 */
-  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP {
-      make_standard (Tok opn) (Tok cls) (UTInputHorzEmbeddedMath(utast))
+  | hmacro=HORZMACRO; macargsraw=macroargs {
+      let (rngcs, _) = hmacro in
+      let (rnglast, macroargs) = macargsraw in
+      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
     }
-  | literal=LITERAL {
-      let (rng, str, pre, post) = literal in
-      make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeText(omit_spaces pre post str))
-    }
-  | vartok=VARINHORZ; cls=ENDACTIVE {
-      let (rng, mdlnmlst, varnm) = vartok in
-      let utast = (rng, UTContentOf(mdlnmlst, varnm)) in
-      make_standard (Tok rng) (Tok cls) (UTInputHorzContent(utast))
-    }
+  | tokL=BMATHGRP; utast=mathblock; tokR=EMATHGRP
+      { make_standard (Tok tokL) (Tok tokR) (UTInputHorzEmbeddedMath(utast)) }
+  | literal=LITERAL
+      {
+        let (rng, str, pre, post) = literal in
+        make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeText(omit_spaces pre post str))
+      }
+  | long_ident=VARINHORZ; tokR=ENDACTIVE
+      {
+        let (rng, modnms, varnm) = long_ident in
+        let utast = (rng, UTContentOf(modnms, varnm)) in
+        make_standard (Tok rng) (Tok tokR) (UTInputHorzContent(utast))
+      }
 ;
-ihtext:
-  | ihcharlst=nonempty_list(ihchar) {
-      let rng = make_range_from_list ihcharlst in
-      let text = String.concat "" (ihcharlst |> List.map (fun (r, t) -> t)) in
-      (rng, UTInputHorzText(text))
-    }
+inline_elem_text:
+  | ichars=nonempty_list(inline_char)
+      {
+        let rng = make_range_from_list ichars in
+        let text = String.concat "" (ichars |> List.map (fun (r, t) -> t)) in
+        (rng, UTInputHorzText(text))
+      }
 ;
-ihchar:
-  | tok=CHAR  { let (rng, ch) = tok in (rng, ch) }
+inline_char:
+  | char=CHAR { char }
   | rng=SPACE { (rng, " ") }
   | rng=BREAK { (rng, "\n") }
 ;
 block:
-  | ivs=list(vxbot) { (make_range_from_list ivs, UTInputVert(ivs)) }
+  | belems=list(block_elem)
+      { (make_range_from_list belems, UTInputVert(belems)) }
 ;
-vxbot:
+block_elem:
 /*
   | vcmd=vcmd; nargs=list(narg); sargsraw=sargs {
       let (rngcs, mdlnmlst, csnm) = vcmd in
@@ -956,15 +964,17 @@ vxbot:
       make_standard (Tok rngcs) (Tok rnglast) (UTInputVertEmbedded((rngcs, UTContentOf(mdlnmlst, csnm)), args))
     }
 */
-  | vartok=VARINVERT; cls=ENDACTIVE {
-      let (rng, mdlnmlst, varnm) = vartok in
-      make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
-    }
   | vmacro=VERTMACRO; macargsraw=macroargs {
       let (rngcs, _) = vmacro in
       let (rnglast, macargs) = macargsraw in
       make_standard (Tok rngcs) (Tok rnglast) (UTInputVertMacro(vmacro, macargs))
-  }
+    }
+  | long_ident=VARINVERT; tokR=ENDACTIVE
+      {
+        let (rng, modnms, varnm) = long_ident in
+        let utast = (rng, UTContentOf(modnms, varnm)) in
+        make_standard (Tok rng) (Tok tokR) (UTInputVertContent(utast))
+      }
 ;
 mathblock:
   | BAR; utmlst=mathlist { utmlst |> List.map (fun utm -> let (rng, _) = utm in (rng, UTMath(utm))) |> make_cons }
