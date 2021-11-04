@@ -414,13 +414,19 @@ optterm_list(sep, X):
       { [x] }
   | x=X; sep; xs=optterm_nonempty_list(sep, X)
       { x :: xs }
-
+;
 optterm_nonempty_list(sep, X):
   | x=X; sep?
       { [x] }
   | x=X; sep; xs=optterm_nonempty_list(sep, X)
       { x :: xs }
-
+;
+%inline bound_identifier:
+  | ident=LOWER
+      { ident }
+  | LPAREN; ident=binop; RPAREN
+      { ident }
+;
 main:
   | stage=stage; header=list(headerelem); lib=main_lib; EOI
       { (stage, header, UTLibraryFile(lib)) }
@@ -486,6 +492,17 @@ bind_value:
     }
 */
 ;
+bind_value_rec:
+  | REC; valbinds=separated_nonempty_list(AND, bind_value_nonrec);
+      { valbinds }
+;
+bind_value_nonrec:
+  | ident=bound_identifier; param_units=list(param_unit); EXACT_EQ; utast=nxlet
+      {
+        let curried = curry_lambda_abstraction param_units utast in
+        (ident, curried)
+      }
+;
 bind_inline:
   | ident_ctx=LOWER; cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
       {
@@ -533,20 +550,24 @@ bind_math:
       }
 ;
 bind_type:
-  | ds=separated_nonempty_list(AND, bind_type_single) { ds }
+  | ds=separated_nonempty_list(AND, bind_type_single)
+      { ds }
 ;
 bind_type_single:
   | tyident=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; BAR?; ctors=variants
-     { (tyident, tyvars, UTBindVariant(ctors)) }
-  | tyident=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; mty=txfunc
-     { (tyident, tyvars, UTBindSynonym(mty)) }
+      { (tyident, tyvars, UTBindVariant(ctors)) }
+  | tyident=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; mnty=typ
+      { (tyident, tyvars, UTBindSynonym(mnty)) }
 ;
 variants:
-  | vs=separated_nonempty_list(BAR, variant) { vs }
+  | vs=separated_nonempty_list(BAR, variant)
+      { vs }
 ;
 variant:
-  | ctor=UPPER; OF; mty=txfunc { UTConstructorBranch(ctor, Some(mty)) }
-  | ctor=UPPER                 { UTConstructorBranch(ctor, None) }
+  | ctor=UPPER; OF; mnty=typ
+      { UTConstructorBranch(ctor, Some(mnty)) }
+  | ctor=UPPER
+      { UTConstructorBranch(ctor, None) }
 ;
 sig_annot:
   | COLON; utsig=sigexpr { utsig }
@@ -565,13 +586,11 @@ sigexpr:
 (* TODO: support other signature syntax *)
 ;
 decl:
-  | VAL; ident=LOWER; mnquant=quant; COLON; mnty=txfunc
+  | VAL; ident=bound_identifier; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(ident, mnquant, mnty) }
-  | VAL; LPAREN; ident=binop; RPAREN; mnquant=quant; COLON; mnty=txfunc
-      { UTDeclValue(ident, mnquant, mnty) }
-  | VAL; cs=HORZCMD; mnquant=quant; COLON; mnty=txfunc
+  | VAL; cs=HORZCMD; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(cs, mnquant, mnty) }
-  | VAL; cs=VERTCMD; mnquant=quant; COLON; mnty=txfunc
+  | VAL; cs=VERTCMD; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(cs, mnquant, mnty) }
   | TYPE; tyident=LOWER; tyvars=list(TYPEVAR); CONS; mnkd=kind
       { UTDeclTypeOpaque(tyident, mnkd) }
@@ -596,6 +615,22 @@ rowquant:
   | LPAREN; rowvar=ROWVAR; CONS; mnrbkd=kind_row; RPAREN
       { (rowvar, mnrbkd) }
 ;
+param_unit:
+  | opts_opt=option(opt_params); utpat=patbot
+      {
+        let opts = opts_opt |> Option.value ~default:[] in
+        UTParameterUnit(opts, utpat)
+      }
+;
+opt_params:
+  | QUESTION; LPAREN; opts=optterm_nonempty_list(COMMA, opt_param); RPAREN
+      { opts }
+;
+opt_param:
+  | rlabel=LOWER; EXACT_EQ; ident=LOWER
+      { (rlabel, ident) }
+;
+/*
 nxhorzmacrodec:
   | hmacro=HORZMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {
       let (rngcs, csnm) = hmacro in
@@ -612,40 +647,7 @@ macroparam:
   | var=LOWER              { UTLateMacroParam(var) }
   | EXACT_TILDE; var=LOWER { UTEarlyMacroParam(var) }
 ;
-param_unit:
-  | opts_opt=option(opt_params); utpat=patbot
-      {
-        let opts = opts_opt |> Option.value ~default:[] in
-        UTParameterUnit(opts, utpat)
-      }
-;
-opt_params:
-  | QUESTION; LPAREN; opts=optterm_nonempty_list(COMMA, opt_param); RPAREN
-      { opts }
-;
-opt_param:
-  | rlabel=LOWER; EXACT_EQ; ident=LOWER
-      { (rlabel, ident) }
-;
-%inline defedvar:
-  | ident=LOWER                 { ident }
-  | LPAREN; ident=binop; RPAREN { ident }
-;
-bind_value_rec:
-  | REC; valbind=bind_value_nonrec; valbinds=list(bind_value_rec_sub)
-      { valbind :: valbinds }
-;
-bind_value_rec_sub:
-  | AND; valbind=bind_value_nonrec
-      { valbind }
-;
-bind_value_nonrec:
-  | ident=defedvar; param_units=list(param_unit); EXACT_EQ; utast=nxlet
-      {
-        let curried = curry_lambda_abstraction param_units utast in
-        (ident, curried)
-      }
-;
+*/
 kind:
   | bkd=kind_base; ARROW kd=kind
       {
@@ -814,9 +816,9 @@ nxlist:
       elems (Range.dummy "end-of-list", UTEndOfList)
   }
 ;
-txfunc:
+typ:
 /*
-  | QUESTION; LPAREN; mnopts=list(txfuncopt); RPAREN; mntydom=txprod; ARROW; mntycod=txfunc {
+  | QUESTION; LPAREN; mnopts=list(txfuncopt); RPAREN; mntydom=txprod; ARROW; mntycod=typ {
       (* TODO: reconsider the concrete syntax *)
       make_standard (Ranged mntydom) (Ranged mntycod) (MFuncType(mnopts, mntydom, mntycod))
     }
@@ -863,7 +865,7 @@ txapppre:
       (rng, MMathCommandType(mntylst))
     }
 */
-  | LPAREN; mnty=txfunc; RPAREN { mnty }
+  | LPAREN; mnty=typ; RPAREN { mnty }
   | opn=BRECORD; kvs=txrecord; cls=ERECORD {
       let rng = make_range (Tok opn) (Tok cls) in
       (rng, MRecordType(kvs))
@@ -880,7 +882,7 @@ txapp:
       let rng = make_range (Ranged mnty) (Tok rng2) in
       (rng, mnty :: mntytail, tyconstr)
     }
-  | LPAREN; mnty=txfunc; RPAREN; tyapp=txapp {
+  | LPAREN; mnty=typ; RPAREN; tyapp=txapp {
       let (rng2, lst, tyconstr) = tyapp in
       let rng = make_range (Ranged mnty) (Tok rng2) in
       (rng, mnty :: lst, tyconstr)
@@ -904,7 +906,7 @@ txlist:
   | ts=optterm_list(COMMA, txlist_elem) { ts }
 ;
 txlist_elem:
-  | opts=list(txlist_opt); mnty=txfunc { MArgType(opts, mnty) }
+  | opts=list(txlist_opt); mnty=typ { MArgType(opts, mnty) }
 ;
 txlist_opt:
   | OPTIONAL; mnty=txapppre; COMMA { let rlabel = failwith "TODO: txlist_opt, rlabel" in (rlabel, mnty) }
@@ -914,7 +916,7 @@ txrecord:
   | fs=optterm_nonempty_list(COMMA, txrecord_elem) { fs }
 ;
 txrecord_elem:
-  | rlabel=LOWER; COLON; mnty=txfunc { (rlabel, mnty) }
+  | rlabel=LOWER; COLON; mnty=typ { (rlabel, mnty) }
 tuple:
   | x=separated_nonempty_list(COMMA, nxlet) { x }
 ;
@@ -947,7 +949,7 @@ patbot:
   | rng=FALSE                { make_standard (Tok rng) (Tok rng) (UTPBooleanConstant(false)) }
   | rng1=LPAREN; rng2=RPAREN { make_standard (Tok rng1) (Tok rng2) UTPUnitConstant }
   | rng=WILDCARD             { make_standard (Tok rng) (Tok rng) UTPWildCard }
-  | vartok=defedvar          { make_standard (Ranged vartok) (Ranged vartok) (UTPVariable(extract_name vartok)) }
+  | vartok=bound_identifier  { make_standard (Ranged vartok) (Ranged vartok) (UTPVariable(extract_name vartok)) }
   | lit=LITERAL              { let (rng, str, pre, post) = lit in make_standard (Tok rng) (Tok rng) (UTPStringConstant(omit_spaces pre post str)) }
   | rng1=BLIST; rng2=ELIST            { make_standard (Tok rng1) (Tok rng2) UTPEndOfList }
   | opn=BLIST; pat=patlist; cls=ELIST { make_standard (Tok opn) (Tok cls) (extract_main pat) }
