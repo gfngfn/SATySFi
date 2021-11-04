@@ -159,13 +159,6 @@
     let rng = make_range left right in (rng, main)
 
 
-  let make_product_pattern (rng : Range.t) (pats : untyped_pattern_tree list) : untyped_pattern_tree =
-    match pats with
-    | []                      -> assert false
-    | pat :: []               -> pat
-    | pat1 :: pat2 :: patrest -> (rng, UTPTuple(TupleList.make pat1 pat2 patrest))
-
-
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
     let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInputHorz([])), [])) lst 0 in
     (Range.dummy "itemize1", UTItemize(contents))
@@ -296,9 +289,9 @@
 %type<Types.untyped_abstract_tree> expr_app
 %type<Types.untyped_abstract_tree> expr_bot
 %type<Types.untyped_pattern_branch> branch
+%type<Types.untyped_pattern_tree> pattern
+%type<Types.untyped_pattern_tree> pattern_bot
 
-%type <Types.untyped_pattern_tree> patas
-%type <Types.untyped_pattern_tree> patbot
 %type <Types.untyped_abstract_tree> sxsep
 %type <Types.untyped_abstract_tree> sxblock
 %type <Types.untyped_abstract_tree> vxblock
@@ -521,7 +514,7 @@ rowquant:
       { (rowvar, mnrbkd) }
 ;
 param_unit:
-  | opts_opt=option(opt_params); utpat=patbot
+  | opts_opt=option(opt_params); utpat=pattern_bot
       {
         let opts = opts_opt |> Option.value ~default:[] in
         UTParameterUnit(opts, utpat)
@@ -762,8 +755,8 @@ expr_bot:
       }
   | tokL=LPAREN; tokR=RPAREN
       { make_standard (Tok tokL) (Tok tokR) UTUnitConstant }
-  | LPAREN; utast=expr; RPAREN
-      { utast }
+  | tokL=LPAREN; utast=expr; tokR=RPAREN
+      { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
   | tokL=LPAREN; utast1=expr; COMMA; utasts=separated_nonempty_list(COMMA, expr); tokR=RPAREN
       {
         match utasts with
@@ -810,41 +803,8 @@ record_field:
       { (rlabel, utast) }
 ;
 branch:
-  | pat=patas; ARROW; utast=expr
-      { UTPatternBranch(pat, utast) }
-;
-patas:
-  | pat=pattr; AS; var=LOWER { make_standard (Ranged pat) (Ranged var) (UTPAsVariable(extract_name var, pat)) }
-  | pat=pattr              { pat }
-;
-pattr:
-  | pat1=patbot; CONS; pat2=pattr { make_standard (Ranged pat1) (Ranged pat2) (UTPListCons(pat1, pat2)) }
-  | ctor=UPPER; pat=patbot  { make_standard (Ranged ctor) (Ranged pat) (UTPConstructor(extract_name ctor, pat)) }
-  | ctor=UPPER              { make_standard (Ranged ctor) (Ranged ctor) (UTPConstructor(extract_name ctor, (Range.dummy "constructor-unit-value", UTPUnitConstant))) }
-  | pat=patbot                    { pat }
-;
-patbot:
-  | tok=INTCONST             { make_standard (Ranged tok) (Ranged tok) (UTPIntegerConstant(extract_main tok)) }
-  | rng=TRUE                 { make_standard (Tok rng) (Tok rng) (UTPBooleanConstant(true)) }
-  | rng=FALSE                { make_standard (Tok rng) (Tok rng) (UTPBooleanConstant(false)) }
-  | rng1=LPAREN; rng2=RPAREN { make_standard (Tok rng1) (Tok rng2) UTPUnitConstant }
-  | rng=WILDCARD             { make_standard (Tok rng) (Tok rng) UTPWildCard }
-  | vartok=bound_identifier  { make_standard (Ranged vartok) (Ranged vartok) (UTPVariable(extract_name vartok)) }
-  | lit=LITERAL              { let (rng, str, pre, post) = lit in make_standard (Tok rng) (Tok rng) (UTPStringConstant(omit_spaces pre post str)) }
-  | rng1=BLIST; rng2=ELIST            { make_standard (Tok rng1) (Tok rng2) UTPEndOfList }
-  | opn=BLIST; pat=patlist; cls=ELIST { make_standard (Tok opn) (Tok cls) (extract_main pat) }
-  | opn=LPAREN; pat=patas; cls=RPAREN                       { make_standard (Tok opn) (Tok cls) (extract_main pat) }
-  | opn=LPAREN; pat=patas; COMMA; pats=pattuple; cls=RPAREN { let rng = make_range (Tok opn) (Tok cls) in make_product_pattern rng (pat :: pats) }
-;
-pattuple:
-  | ps=separated_nonempty_list(COMMA, patas) { ps }
-;
-patlist:
-  | ps=optterm_nonempty_list(COMMA, patas) {
-      List.fold_right (fun pat1 pat2 ->
-        make_standard (Ranged pat1) (Ranged pat2) (UTPListCons(pat1, pat2))
-      ) ps (Range.dummy "end-of-list-pattern", UTPEndOfList)
-    }
+  | utpat=pattern; ARROW; utast=expr
+      { UTPatternBranch(utpat, utast) }
 ;
 binop:
   | tok=UNOP_EXCLAM
@@ -861,6 +821,64 @@ binop:
   | rng=EXACT_TIMES { (rng, "*") }
   | rng=EXACT_MINUS { (rng, "-") }
   | rng=MOD         { (rng, "mod") }
+;
+pattern:
+  | utpat=pattern_cons; AS; ident=LOWER
+      { make_standard (Ranged utpat) (Ranged ident) (UTPAsVariable(extract_name ident, utpat)) }
+  | utpat=pattern_cons
+      { utpat }
+;
+pattern_cons:
+  | utpat1=pattern_bot; CONS; utpat2=pattern_cons
+      { make_standard (Ranged utpat1) (Ranged utpat2) (UTPListCons(utpat1, utpat2)) }
+  | ctor=UPPER; utpat=pattern_bot
+      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor(extract_name ctor, utpat)) }
+  | ctor=UPPER
+      {
+        let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
+        let (rng, ctornm) = ctor in (rng, UTPConstructor(ctornm, utast_unit))
+      }
+  | utpat=pattern_bot
+      { utpat }
+;
+pattern_bot:
+  | ic=INTCONST
+      { let (rng, n) = ic in (rng, UTPIntegerConstant(n)) }
+  | rng=TRUE
+      { (rng, UTPBooleanConstant(true)) }
+  | rng=FALSE
+      { (rng, UTPBooleanConstant(false)) }
+  | tokL=LPAREN; tokR=RPAREN
+      { make_standard (Tok tokL) (Tok tokR) UTPUnitConstant }
+  | rng=WILDCARD
+      { (rng, UTPWildCard) }
+  | ident=bound_identifier
+      { let (rng, varnm) = ident in (rng, UTPVariable(varnm)) }
+  | lit=LITERAL
+      {
+        let (rng, str, pre, post) = lit in
+        make_standard (Tok rng) (Tok rng) (UTPStringConstant(omit_spaces pre post str))
+      }
+  | tokL=BLIST; utpats=optterm_list(COMMA, pattern); tokR=ELIST
+      {
+        let (_, utpat_main) =
+          List.fold_right (fun utpat1 utpat2 ->
+            make_standard (Ranged utpat1) (Ranged utpat2) (UTPListCons(utpat1, utpat2))
+          ) utpats (Range.dummy "end-of-list-pattern", UTPEndOfList)
+        in
+        make_standard (Tok tokL) (Tok tokR) utpat_main
+      }
+  | tokL=LPAREN; utpat=pattern; tokR=RPAREN
+      { make_standard (Tok tokL) (Tok tokR) (extract_main utpat) }
+  | tokL=LPAREN; utpat1=pattern; COMMA; utpats=optterm_nonempty_list(COMMA, pattern); tokR=RPAREN
+      {
+        match utpats with
+        | [] ->
+            assert false
+
+        | utpat2 :: utpat_rest ->
+            make_standard (Tok tokL) (Tok tokR) (UTPTuple(TupleList.make utpat1 utpat2 utpat_rest))
+      }
 ;
 sxsep:
   | BAR; utastlst=sxlist          { make_cons utastlst }
