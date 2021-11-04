@@ -491,7 +491,7 @@ decl:
       { UTDeclValue(cs, mnquant, mnty) }
   | VAL; cs=VERTCMD; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(cs, mnquant, mnty) }
-  | TYPE; tyident=LOWER; tyvars=list(TYPEVAR); CONS; mnkd=kind
+  | TYPE; tyident=LOWER; CONS; mnkd=kind
       { UTDeclTypeOpaque(tyident, mnkd) }
   | TYPE; uttypebind=bind_type
       { failwith "TODO: decl, declaration for transparent types" }
