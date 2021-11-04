@@ -817,23 +817,23 @@ nxlist:
   }
 ;
 typ:
-/*
-  | QUESTION; LPAREN; mnopts=list(txfuncopt); RPAREN; mntydom=txprod; ARROW; mntycod=typ {
-      (* TODO: reconsider the concrete syntax *)
-      make_standard (Ranged mntydom) (Ranged mntycod) (MFuncType(mnopts, mntydom, mntycod))
-    }
-*/
-  | mnty=txprod { mnty }
+  | tokL=QUESTION; mnopts_opt=option(typ_opt_dom); mnty1=typ_prod; ARROW; mnty2=typ
+      {
+        let mnopts = mnopts_opt |> Option.value ~default:[] in
+        make_standard (Tok tokL) (Ranged mnty2) (MFuncType(mnopts, mnty1, mnty2))
+      }
+  | mnty=typ_prod
+      { mnty }
 ;
-/*
-txfuncopt:
-  | OPTIONAL; mnty=txprod {
-      let rlabel = failwith "TODO: txfuncopt, rlabel" in
-      (rlabel, mnty)
-    }
+typ_opt_dom:
+  | LPAREN; mnopts=optterm_nonempty_list(COMMA, typ_opt_dom_entry); RPAREN
+      { mnopts }
 ;
-*/
-txprod:
+typ_opt_dom_entry:
+  | rlabel=LOWER; EXACT_EQ; mnty=typ
+      { (rlabel, mnty) }
+;
+typ_prod:
   | mntys=separated_nonempty_list(EXACT_TIMES, txapppre) {
       match (mntys, List.rev mntys) with
       | ([mnty], [_]) ->
