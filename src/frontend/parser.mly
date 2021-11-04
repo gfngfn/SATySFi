@@ -1,36 +1,28 @@
 %{
-
-  exception IllegalArgumentLength of Range.t * int * int
-
-
-  let report_bug_parser msg =
-    failwith msg;
-
-
   open Types
 
+
   type literal_reading_state = Normal | ReadingSpace
+
   type 'a range_kind =
-    | Tok        of Range.t
-    | Ranged     of (Range.t * 'a)
-    | RangedList of (Range.t * 'a) list
+    | Tok    of Range.t
+    | Ranged of (Range.t * 'a)
 
 
-  let make_range_from_list (rangedlst : (Range.t * 'a) list) =
-    match (rangedlst, List.rev rangedlst) with
-    | ([], [])                                -> Range.dummy "empty-input-horz"
-    | ((rngfirst, _) :: _, (rnglast, _) :: _) -> Range.unite rngfirst rnglast
-    | _                                       -> assert false
+  let make_range_from_list (rangeds : (Range.t * 'a) list) =
+    match (rangeds, List.rev rangeds) with
+    | ([], [])                         -> Range.dummy "empty"
+    | ((rngL, _) :: _, (rngR, _) :: _) -> Range.unite rngL rngR
+    | _                                -> assert false
 
 
-  let make_range sttx endx =
+  let make_range left right =
     let extract x =
       match x with
       | Tok(rng)          -> rng
       | Ranged((rng, _))  -> rng
-      | RangedList(ihlst) -> make_range_from_list ihlst
     in
-      Range.unite (extract sttx) (extract endx)
+    Range.unite (extract left) (extract right)
 
 
   let rec make_cons utastlst =
@@ -49,14 +41,6 @@
       (rng, UTFunction(opts, utpat, utast))
     ) param_units
 
-
-  let rec stringify_literal ltrl =
-    let (_, ltrlmain) = ltrl in
-      match ltrlmain with
-      | UTConcat(utastf, utastl) -> (stringify_literal utastf) ^ (stringify_literal utastl)
-      | UTStringConstant(s)      -> s
-      | UTStringEmpty            -> ""
-      | _                        -> report_bug_parser ("stringify_literal; " ^ (Display.string_of_utast ltrl))
 
   let rec omit_pre_spaces str =
     let len = String.length str in
@@ -171,37 +155,8 @@
           arg
 
 
-  let make_standard sttknd endknd main =
-    let rng = make_range sttknd endknd in (rng, main)
-
-
-  let get_range_of_arguments (patlst : untyped_pattern_tree list) : Range.t =
-    let rngfirst =
-      match patlst with
-      | (rngpat, _) :: _ -> rngpat
-      | _                -> assert false
-    in
-    let rnglast =
-      match List.rev patlst with
-      | (rngpat, _) :: _  -> rngpat
-      | []                -> assert false
-    in
-      make_range (Tok rngfirst) (Tok rnglast)
-
-
-  let get_range_of_pattern_branch_list (recpatbrs : untyped_letrec_pattern_branch list) : Range.t =
-    let rngfirst =
-      match recpatbrs with
-      | UTLetRecPatternBranch((rngpat, _) :: _, _) :: _ -> rngpat
-      | UTLetRecPatternBranch([], _) :: _               -> Range.dummy "get_range_of_pattern_branch_list"
-      | []                                              -> assert false
-    in
-    let rnglast =
-      match List.rev recpatbrs with
-      | UTLetRecPatternBranch(_, (rngutast, _)) :: _ -> rngutast
-      | []                                           -> assert false
-    in
-      make_range (Tok rngfirst) (Tok rnglast)
+  let make_standard left right main =
+    let rng = make_range left right in (rng, main)
 
 
   let make_product_pattern (rng : Range.t) (pats : untyped_pattern_tree list) : untyped_pattern_tree =
@@ -209,27 +164,6 @@
     | []                      -> assert false
     | pat :: []               -> pat
     | pat1 :: pat2 :: patrest -> (rng, UTPTuple(TupleList.make pat1 pat2 patrest))
-
-
-  let unite_into_pattern_branch_list (recpatbrs : untyped_letrec_pattern_branch list) : untyped_pattern_branch list * int =
-    let (acc, numopt) =
-      recpatbrs |> List.fold_left (fun (acc, numprevopt) recpatbr ->
-        match recpatbr with
-        | UTLetRecPatternBranch(pats, utastdef) ->
-            let rngargs = get_range_of_arguments pats in
-            let num = List.length pats in
-            let numopt =
-              match numprevopt with
-              | None          -> Some(num)
-              | Some(numprev) -> if numprev = num then numprevopt else raise (IllegalArgumentLength(rngargs, num, numprev))
-            in
-            let patprod = make_product_pattern rngargs pats in
-              (Alist.extend acc (UTPatternBranch(patprod, utastdef)), numopt)
-      ) (Alist.empty, None)
-    in
-      match numopt with
-      | None            -> assert false  (* -- 'recpatbrs' is not '[]' -- *)
-      | Some(numofargs) -> (Alist.to_list acc, numofargs)
 
 
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
