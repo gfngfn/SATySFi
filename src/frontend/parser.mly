@@ -308,7 +308,7 @@
 
 %token<Range.t>
   AND AS BLOCK COMMAND ELSE END FALSE FUN
-  IF IN INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
+  IF IN INCLUDE INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
   REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH
 
 %token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW ENDACTIVE COMMA CONS ACCESS QUESTION
@@ -494,15 +494,16 @@ bind_inline:
         let curried = curry_lambda_abstraction param_units utast in
         (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
       }
-  | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet {
-      let rng = make_range (Ranged cs) (Ranged utast) in
-      let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
-      let varnm_ctx = "%context" in
-      let utast_ctx = (rng_ctx, UTContentOf([], varnm_ctx)) in
-      let utast_read = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utast_ctx, utast)) in
-      let curried = curry_lambda_abstraction param_units utast_read in
-      (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
-    }
+  | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
+      {
+        let rng = make_range (Ranged cs) (Ranged utast) in
+        let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
+        let varnm_ctx = "%context" in
+        let utast_ctx = (rng_ctx, UTContentOf([], varnm_ctx)) in
+        let utast_read = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utast_ctx, utast)) in
+        let curried = curry_lambda_abstraction param_units utast_read in
+        (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
+      }
 ;
 bind_block:
   | ident_ctx=LOWER; cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
@@ -512,15 +513,16 @@ bind_block:
         let curried = curry_lambda_abstraction param_units utast in
         (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
       }
-  | cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet {
-      let rng = make_range (Ranged cs) (Ranged utast) in
-      let rng_ctx = Range.dummy "context-of-lightweight-let-block" in
-      let varnm_ctx = "%context" in
-      let utast_ctx = (rng_ctx, UTContentOf([], varnm_ctx)) in
-      let utast_read = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utast_ctx, utast)) in
-      let curried = curry_lambda_abstraction param_units utast_read in
-      (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
-    }
+  | cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
+      {
+        let rng = make_range (Ranged cs) (Ranged utast) in
+        let rng_ctx = Range.dummy "context-of-lightweight-let-block" in
+        let varnm_ctx = "%context" in
+        let utast_ctx = (rng_ctx, UTContentOf([], varnm_ctx)) in
+        let utast_read = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utast_ctx, utast)) in
+        let curried = curry_lambda_abstraction param_units utast_read in
+        (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
+      }
 ;
 bind_math:
   | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
@@ -563,27 +565,36 @@ sigexpr:
 (* TODO: support other signature syntax *)
 ;
 decl:
-  | VAL; ident=LOWER; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc
-      { UTDeclValue(ident, tyquants, rowquants, mnty) }
-  | VAL; LPAREN; ident=binop; RPAREN; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc
-      { UTDeclValue(ident, tyquants, rowquants, mnty) }
-  | VAL; cs=HORZCMD; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc
-      { UTDeclValue(cs, tyquants, rowquants, mnty) }
-  | VAL; cs=VERTCMD; tyquants=list(tyquant); rowquants=list(rowquant); COLON; mnty=txfunc
-      { UTDeclValue(cs, tyquants, rowquants, mnty) }
+  | VAL; ident=LOWER; mnquant=quant; COLON; mnty=txfunc
+      { UTDeclValue(ident, mnquant, mnty) }
+  | VAL; LPAREN; ident=binop; RPAREN; mnquant=quant; COLON; mnty=txfunc
+      { UTDeclValue(ident, mnquant, mnty) }
+  | VAL; cs=HORZCMD; mnquant=quant; COLON; mnty=txfunc
+      { UTDeclValue(cs, mnquant, mnty) }
+  | VAL; cs=VERTCMD; mnquant=quant; COLON; mnty=txfunc
+      { UTDeclValue(cs, mnquant, mnty) }
   | TYPE; tyident=LOWER; tyvars=list(TYPEVAR); CONS; mnkd=kind
       { UTDeclTypeOpaque(tyident, mnkd) }
+  | TYPE; uttypebind=bind_type
+      { failwith "TODO: decl, declaration for transparent types" }
   | MODULE; modident=UPPER; COLON; utsig=sigexpr
       { UTDeclModule(modident, utsig) }
   | SIGNATURE; sigident=UPPER; EXACT_EQ; utsig=sigexpr
       { UTDeclSignature(sigident, utsig) }
-(* TODO: support other declaration syntax *)
+  | INCLUDE; utsig=sigexpr
+      { UTDeclInclude(utsig) }
+;
+quant:
+  | tyquants=list(tyquant); rowquants=list(rowquant)
+      { (tyquants, rowquants) }
 ;
 tyquant:
-  | tyvar=TYPEVAR { tyvar }
+  | tyvar=TYPEVAR
+      { tyvar }
 ;
 rowquant:
-  | LPAREN; rowvar=ROWVAR; CONS; mnrbkd=kind_row; RPAREN { (rowvar, mnrbkd) }
+  | LPAREN; rowvar=ROWVAR; CONS; mnrbkd=kind_row; RPAREN
+      { (rowvar, mnrbkd) }
 ;
 nxhorzmacrodec:
   | hmacro=HORZMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {

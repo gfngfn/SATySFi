@@ -313,11 +313,14 @@ and untyped_declaration =
     (* TEMPORARY; should be `untyped_declaration_main ranged`  *)
 
 and untyped_declaration_main =
-  | UTDeclValue      of var_name ranged * (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list * manual_type
+  | UTDeclValue      of var_name ranged * manual_quantifier * manual_type
   | UTDeclTypeOpaque of type_name ranged * manual_kind
   | UTDeclModule     of module_name ranged * untyped_signature
   | UTDeclSignature  of signature_name ranged * untyped_signature
   | UTDeclInclude    of untyped_signature
+
+and manual_quantifier =
+  (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
 
 and constructor_branch =
   | UTConstructorBranch of constructor_name ranged * manual_type option

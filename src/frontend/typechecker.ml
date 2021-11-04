@@ -2423,7 +2423,7 @@ and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : un
 
 and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : StructSig.t abstracted =
   match utdecl with
-  | UTDeclValue((_, x), typarams, rowparams, mty) ->
+  | UTDeclValue((_, x), (typarams, rowparams), mty) ->
       let pre =
         let (typarammap, _) = TypeParameterMap.empty |> add_type_parameters (Level.succ Level.bottom) typarams in
         let (rowparammap, _) = RowParameterMap.empty |> add_row_parameters (Level.succ Level.bottom) rowparams in

@@ -288,6 +288,7 @@ rule progexpr stack = parse
           | "fun"               -> FUN(pos)
           | "if"                -> IF(pos)
           | "in"                -> IN(pos)
+          | "include"           -> INCLUDE(pos)
           | "inline"            -> INLINE(pos)
           | "let"               -> LET(pos)
           | "mod"               -> MOD(pos)
