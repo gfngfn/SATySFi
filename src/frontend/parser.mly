@@ -298,12 +298,12 @@
 %type<Types.untyped_input_vert_element> block_elem
 %type<Range.t * Types.untyped_command_argument list> sargs
 %type<Types.untyped_command_argument> sarg
+%type<bool * Types.untyped_math> math_group
+%type<Types.untyped_math> math_bot
 
 /*
 %type <Types.untyped_command_argument> narg
 */
-%type <bool * Types.untyped_math> mathgroup
-%type <Types.untyped_math> mathbot
 
 %%
 
@@ -793,7 +793,7 @@ expr_bot:
       { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
   | tokL=BVERTGRP; utast=block; tokR=EVERTGRP
       { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
-  | tokL=BMATHGRP; utast=mathblock; tokR=EMATHGRP
+  | tokL=BMATHGRP; utast=math; tokR=EMATHGRP
       { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
 /*
   | opn=OPENMODULE; utast=expr; cls=RPAREN {
@@ -924,7 +924,7 @@ inline_elem_cmd:
       let (rnglast, macroargs) = macargsraw in
       make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
     }
-  | tokL=BMATHGRP; utast=mathblock; tokR=EMATHGRP
+  | tokL=BMATHGRP; utast=math; tokR=EMATHGRP
       { make_standard (Tok tokL) (Tok tokR) (UTInputHorzEmbeddedMath(utast)) }
   | literal=LITERAL
       {
@@ -976,94 +976,101 @@ block_elem:
         make_standard (Tok rng) (Tok tokR) (UTInputVertContent(utast))
       }
 ;
-mathblock:
-  | BAR; utmlst=mathlist { utmlst |> List.map (fun utm -> let (rng, _) = utm in (rng, UTMath(utm))) |> make_cons }
-  | utm=mathmain         { let (rng, _) = utm in (rng, UTMath(utm)) }
+math:
+  | BAR; utms=list(terminated(math_single, BAR))
+      { utms |> List.map (fun utm -> let (rng, _) = utm in (rng, UTMath(utm))) |> make_cons }
+  | utm=math_single
+      { let (rng, _) = utm in (rng, UTMath(utm)) }
 ;
-mathlist:
-  | elems=list(terminated(mathmain, BAR)) { elems }
+math_single:
+  | utms=list(math_elem)
+      {
+        let rng =
+          match (utms, List.rev utms) with
+          | ([], [])                         -> Range.dummy "empty-math"
+          | ((rngL, _) :: _, (rngR, _) :: _) -> Range.unite rngL rngR
+          | _                                -> assert false
+        in
+        (rng, UTMList(utms))
+      }
 ;
-mathmain:
-  | utmlst=list(mathtop) {
-      let rng =
-        match (utmlst, List.rev utmlst) with
-        | ([], [])                                -> Range.dummy "empty-math"
-        | ((rngfirst, _) :: _, (rnglast, _) :: _) -> Range.unite rngfirst rnglast
-        | _                                       -> assert false
-      in
-      (rng, UTMList(utmlst))
-    }
+math_elem:
+  (* a: *)
+  | base=math_bot
+      { base }
+  (* a^p: *)
+  | base=math_bot; SUPERSCRIPT; sup=math_group
+      {
+        base
+          |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+      }
+  (* a_b: *)
+  | base=math_bot; SUBSCRIPT; sub=math_group
+      {
+        base
+          |> make_sub ~sub ~range:(make_range (Ranged base) (Ranged (snd sub)))
+      }
+  (* a_b^p: *)
+  | base=math_bot; SUBSCRIPT; sub=math_group; SUPERSCRIPT; sup=math_group
+      {
+        base
+          |> make_sub ~sub ~range:(make_range (Ranged base) (Ranged (snd sub)))
+          |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+      }
+  (* a^p_b: *)
+  | base=math_bot; SUPERSCRIPT; sup=math_group; SUBSCRIPT; sub=math_group
+      {
+        base
+          |> make_sub ~sub ~range:(Range.dummy "mathtop")
+          |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
+      }
+  (* a': *)
+  | base=math_bot; prime=PRIMES
+      {
+        base
+          |> make_sup ~prime ~range:(make_range (Ranged base) (Tok (fst prime)))
+      }
+  (* a'^p: *)
+  | base=math_bot; prime=PRIMES; SUPERSCRIPT; sup=math_group
+      {
+        base
+          |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+      }
+  (* a'_b: *)
+  | base=math_bot; prime=PRIMES; SUBSCRIPT; sub=math_group
+      {
+        base
+          |> make_sub ~sub ~range:(Range.dummy "mathtop")
+          |> make_sup ~prime ~range:(make_range (Ranged base) (Ranged (snd sub)))
+      }
+  (* a'_b^p: *)
+  | base=math_bot; prime=PRIMES; SUBSCRIPT; sub=math_group; SUPERSCRIPT; sup=math_group
+      {
+        base
+          |> make_sub ~sub ~range:(Range.dummy "mathtop")
+          |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+      }
+  (* a'^p_b: *)
+  | base=math_bot; prime=PRIMES; SUPERSCRIPT; sup=math_group; SUBSCRIPT; sub=math_group
+      {
+        base
+          |> make_sub ~sub ~range:(Range.dummy "mathtop")
+          |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
+      }
 ;
-mathtop:
-  | base=mathbot                                                                     {
-    (* a *)
-    base
-  }
-  | base=mathbot;                                         SUPERSCRIPT; sup=mathgroup {
-    (* a^p *)
-    base
-    |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
-  }
-  | base=mathbot;               SUBSCRIPT; sub=mathgroup                             {
-    (* a_b *)
-    base
-    |> make_sub ~sub ~range:(make_range (Ranged base) (Ranged (snd sub)))
-  }
-  | base=mathbot;               SUBSCRIPT; sub=mathgroup; SUPERSCRIPT; sup=mathgroup {
-    (* a_b^p *)
-    base
-    |> make_sub ~sub ~range:(make_range (Ranged base) (Ranged (snd sub)))
-    |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
-  }
-  | base=mathbot;               SUPERSCRIPT; sup=mathgroup; SUBSCRIPT; sub=mathgroup {
-    (* a^p_b *)
-    base
-    |> make_sub ~sub ~range:(Range.dummy "mathtop")
-    |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
-  }
-  | base=mathbot; prime=PRIMES                                                       {
-    (* a' *)
-    base
-    |> make_sup ~prime ~range:(make_range (Ranged base) (Tok (fst prime)))
-  }
-  | base=mathbot; prime=PRIMES;                           SUPERSCRIPT; sup=mathgroup {
-    (* a'^p *)
-    base
-    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
-  }
-  | base=mathbot; prime=PRIMES; SUBSCRIPT; sub=mathgroup                             {
-    (* a'_b *)
-    base
-    |> make_sub ~sub ~range:(Range.dummy "mathtop")
-    |> make_sup ~prime ~range:(make_range (Ranged base) (Ranged (snd sub)))
-  }
-  | base=mathbot; prime=PRIMES; SUBSCRIPT; sub=mathgroup; SUPERSCRIPT; sup=mathgroup {
-    (* a'_b^p *)
-    base
-    |> make_sub ~sub ~range:(Range.dummy "mathtop")
-    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
-  }
-  | base=mathbot; prime=PRIMES; SUPERSCRIPT; sup=mathgroup; SUBSCRIPT; sub=mathgroup {
-    (* a'^p_b *)
-    base
-    |> make_sub ~sub ~range:(Range.dummy "mathtop")
-    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
-  }
+math_group:
+  | tokL=BMATHGRP; utm=math_single; tokR=EMATHGRP
+      { (true, make_standard (Tok tokL) (Tok tokR) (extract_main utm)) }
+  | utm=math_bot
+      { (false, utm) }
 ;
-mathgroup:
-  | opn=BMATHGRP; utm=mathmain; cls=EMATHGRP {
-      (true, make_standard (Tok opn) (Tok cls) (extract_main utm))
-    }
-  | utm=mathbot {
-      (false, utm)
-    }
-;
-mathbot:
-  | tok=MATHCHARS {
-      let (rng, s) = tok in
-      let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
-      (rng, UTMChars(uchs))
-    }
+math_bot:
+  | tok=MATHCHARS
+      {
+        let (rng, s) = tok in
+        let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+        (rng, UTMChars(uchs))
+      }
 /*
   | mcmd=mcmd; arglst=list(matharg) {
       let (rngcmd, mdlnmlst, csnm) = mcmd in
@@ -1075,8 +1082,9 @@ mathbot:
       let utastcmd = (rngcmd, UTContentOf(mdlnmlst, csnm)) in
       make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(utastcmd, arglst))
     }
-  | tok=VARINMATH { let (rng, mdlnmlst, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf(mdlnmlst, varnm)))) }
 */
+  | long_ident=VARINMATH
+      { let (rng, modnms, varnm) = long_ident in (rng, UTMEmbed((rng, UTContentOf(modnms, varnm)))) }
 ;
 /*
 matharg:
