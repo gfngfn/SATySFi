@@ -379,6 +379,8 @@
 %type<Types.manual_row_base_kind> kind_row
 %type<Types.type_variable_name Types.ranged> tyquant
 %type<Types.row_variable_name ranged * Types.manual_row_base_kind> rowquant
+%type<Types.manual_type> typ_app
+%type<Types.manual_type> typ_bot
 
 %type <Types.untyped_abstract_tree> nxlet
 %type <Types.untyped_abstract_tree> nxletsub
@@ -400,9 +402,6 @@
 */
 %type <Types.untyped_command_argument> sarg
 %type <Range.t * Types.var_name> binop
-%type <Range.t * Types.manual_type list * Types.type_name> txapp
-%type <Range.t * Types.type_name> txbot
-%type <Types.manual_type> txapppre
 %type <bool * Types.untyped_math> mathgroup
 %type <Types.untyped_math> mathbot
 
@@ -847,13 +846,12 @@ typ_prod:
   }
 ;
 txapppre:
-  | tyapp=txapp {
-      let (rng, mntyargs, tynm) = tyapp in
-      (rng, MTypeName(tynm, mntyargs))
+  | mnty=typ_app {
+      mnty
     }
 /*
-  | opn=BLIST; mntylst=txlist; ELIST; last=HORZCMDTYPE {
-      let rng = make_range (Tok opn) (Tok last) in
+  | tokL=INLINE; BLIST; mntylst=txlist; tokR=ELIST {
+      let rng = make_range (Tok tokL) (Tok tokR) in
       (rng, MHorzCommandType(mntylst))
     }
   | opn=BLIST; mntylst=txlist; ELIST; last=VERTCMDTYPE {
@@ -865,41 +863,30 @@ txapppre:
       (rng, MMathCommandType(mntylst))
     }
 */
-  | LPAREN; mnty=typ; RPAREN { mnty }
-  | opn=BRECORD; kvs=txrecord; cls=ERECORD {
-      let rng = make_range (Tok opn) (Tok cls) in
-      (rng, MRecordType(kvs))
-    }
-  | tyvar=TYPEVAR {
-      let (rng, tyargnm) = tyvar in (rng, MTypeParam(tyargnm))
-    }
 ;
-txapp:
-  | tybot=txbot; tyapp=txapp {
-      let (rng1, tynm) = tybot in
-      let mnty = (rng1, MTypeName(tynm, [])) in
-      let (rng2, mntytail, tyconstr) = tyapp in
-      let rng = make_range (Ranged mnty) (Tok rng2) in
-      (rng, mnty :: mntytail, tyconstr)
-    }
-  | LPAREN; mnty=typ; RPAREN; tyapp=txapp {
-      let (rng2, lst, tyconstr) = tyapp in
-      let rng = make_range (Ranged mnty) (Tok rng2) in
-      (rng, mnty :: lst, tyconstr)
-    }
-  | tyvar=TYPEVAR; tyapp=txapp {
-      let (rngtyarg, tyargnm) = tyvar in
-      let (rng2, lst, tyconstr) = tyapp in
-      let rng = make_range (Tok rngtyarg) (Tok rng2) in
-      (rng, (rngtyarg, MTypeParam(tyargnm)) :: lst, tyconstr)
-    }
-  | tybot=txbot { let (rng, tynm) = tybot in (rng, [], tynm) }
+typ_app:
+  | tyident=LOWER mntys=nonempty_list(typ_bot)
+      {
+        let rng =
+          match List.rev mntys with
+          | (rng_last, _) :: _ -> make_range (Ranged tyident) (Tok rng_last)
+          | _                  -> assert false
+        in
+        let (_, tynm) = tyident in
+        (rng, MTypeName(tynm, mntys))
+      }
+  | mnty=typ_bot
+      { mnty }
 ;
-txbot:
-  | tytok=LOWER        { let (rng, tynm) = tytok in (rng, tynm) }
-(*
-  | tytok=LOWERWITHMOD { tytok }
-*)
+typ_bot:
+  | tyident=LOWER
+      { let (rng, tynm) = tyident in (rng, MTypeName(tynm, [])) }
+  | tyvar=TYPEVAR
+      { let (rng, tyvarnm) = tyvar in (rng, MTypeParam(tyvarnm)) }
+  | tokL=BRECORD; kvs=txrecord; tokR=ERECORD
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MRecordType(kvs)) }
+  | LPAREN; mnty=typ; RPAREN
+      { mnty }
 ;
 /*
 txlist:
