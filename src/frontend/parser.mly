@@ -307,7 +307,7 @@
 %}
 
 %token<Range.t>
-  AND AS BLOCK COMMAND ELSE END FALSE FUN
+  AND AS BLOCK ELSE END FALSE FUN
   IF IN INCLUDE INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
   REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH
 
@@ -381,15 +381,13 @@
 %type<Types.row_variable_name ranged * Types.manual_row_base_kind> rowquant
 %type<Types.manual_type> typ_app
 %type<Types.manual_type> typ_bot
+%type<Types.untyped_abstract_tree> expr
+%type<Types.untyped_abstract_tree> expr_op
+%type<Types.untyped_abstract_tree> expr_app
+%type<Types.untyped_abstract_tree> expr_bot
+%type<Types.untyped_pattern_branch> branch
 
-%type <Types.untyped_abstract_tree> nxlet
-%type <Types.untyped_abstract_tree> nxletsub
-%type <Types.untyped_abstract_tree> nxif
-%type <Types.untyped_abstract_tree> nxop
-%type <Types.untyped_abstract_tree> nxapp
-%type <Types.untyped_abstract_tree> nxbot
 %type <Types.untyped_abstract_tree list> tuple
-%type <Range.t * Types.untyped_pattern_branch list> pats
 %type <Types.untyped_pattern_tree> patas
 %type <Types.untyped_pattern_tree> patbot
 %type <Types.untyped_abstract_tree> nxlist
@@ -429,7 +427,7 @@ optterm_nonempty_list(sep, X):
 main:
   | stage=stage; header=list(headerelem); lib=main_lib; EOI
       { (stage, header, UTLibraryFile(lib)) }
-  | stage=stage; header=list(headerelem); utast=nxif; EOI
+  | stage=stage; header=list(headerelem); utast=expr_app; EOI
       { (stage, header, UTDocumentFile(utast)) }
 ;
 main_lib:
@@ -472,7 +470,7 @@ bind_value:
       { UTNonRec(utnonrecbind) }
   | utrecbinds=bind_value_rec
       { UTRec(utrecbinds) }
-  | MUTABLE; var=LOWER; REVERSED_ARROW; utast=nxlet
+  | MUTABLE; var=LOWER; REVERSED_ARROW; utast=expr
       { let mutbind = (var, utast) in UTMutable(mutbind) }
   | INLINE; utnonrecbind=bind_inline
       { UTNonRec(utnonrecbind) }
@@ -496,21 +494,21 @@ bind_value_rec:
       { valbinds }
 ;
 bind_value_nonrec:
-  | ident=bound_identifier; param_units=list(param_unit); EXACT_EQ; utast=nxlet
+  | ident=bound_identifier; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let curried = curry_lambda_abstraction param_units utast in
         (ident, curried)
       }
 ;
 bind_inline:
-  | ident_ctx=LOWER; cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
+  | ident_ctx=LOWER; cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let (rng_ctx, varnm_ctx) = ident_ctx in
         let rng = make_range (Tok rng_ctx) (Ranged utast) in
         let curried = curry_lambda_abstraction param_units utast in
         (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
       }
-  | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
+  | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let rng = make_range (Ranged cs) (Ranged utast) in
         let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
@@ -522,14 +520,14 @@ bind_inline:
       }
 ;
 bind_block:
-  | ident_ctx=LOWER; cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
+  | ident_ctx=LOWER; cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let (rng_ctx, varnm_ctx) = ident_ctx in
         let rng = make_range (Tok rng_ctx) (Ranged utast) in
         let curried = curry_lambda_abstraction param_units utast in
         (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
       }
-  | cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
+  | cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let rng = make_range (Ranged cs) (Ranged utast) in
         let rng_ctx = Range.dummy "context-of-lightweight-let-block" in
@@ -541,7 +539,7 @@ bind_block:
       }
 ;
 bind_math:
-  | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=nxlet
+  | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let rng = make_range (Ranged cs) (Ranged utast) in
         let curried = curry_lambda_abstraction param_units utast in
@@ -741,128 +739,143 @@ typ_cmd_arg:
 typ_record_elem:
   | rlabel=LOWER; COLON; mnty=typ { (rlabel, mnty) }
 ;
-nxlet:
-  | tokL=MATCH; utast=nxlet; WITH; BAR?; pats=pats; tokR=END {
-      let (_, pmcons) = pats in
-      make_standard (Tok tokL) (Tok tokR) (UTPatternMatch(utast, pmcons))
-    }
-  | letsub=nxletsub { letsub }
-;
-nxletsub:
-  | tok=LET; valbind=bind_value; IN; utast2=nxlet
+expr:
+  | tokL=MATCH; utast=expr; WITH; BAR?; branches=separated_nonempty_list(BAR, branch); tokR=END
+      { make_standard (Tok tokL) (Tok tokR) (UTPatternMatch(utast, branches)) }
+  | tok=LET; valbind=bind_value; IN; utast2=expr
       { make_standard (Tok tok) (Ranged utast2) (UTLetIn(valbind, utast2)) }
-  | tok=LET; OPEN; modident=UPPER; IN; utast=nxlet
+  | tok=LET; OPEN; modident=UPPER; IN; utast=expr
       {
         let (rng, modnm) = modident in
         make_standard (Tok tok) (Ranged utast) (UTOpenIn(rng, modnm, utast))
       }
-  | utast=nxif
-      { utast }
-;
-nxif:
-  | tok=IF; utast0=nxlet; THEN; utast1=nxlet; ELSE; utast2=nxlet
+  | tok=IF; utast0=expr; THEN; utast1=expr; ELSE; utast2=expr
       { make_standard (Tok tok) (Ranged utast2) (UTIfThenElse(utast0, utast1, utast2)) }
-  | utast=nxlambda
-      { utast }
-;
-nxlambda:
-  | ident=LOWER; REVERSED_ARROW; utast=nxop
+  | tok=FUN; param_units=list(param_unit); ARROW; utast=expr
       {
-        let (rngvar, varnm) = ident in
-        make_standard (Ranged ident) (Ranged utast) (UTOverwrite(rngvar, varnm, utast))
-      }
-  | top=FUN; param_units=list(param_unit); ARROW; utast=nxop
-      {
-        let rng = make_range (Tok top) (Ranged utast) in
         let (_, utast_main) = curry_lambda_abstraction param_units utast in
-        (rng, utast_main)
+        make_standard (Tok tok) (Ranged utast) utast_main
       }
-  | utast=nxop
+  | utast=expr_overwrite
       { utast }
 ;
-nxop:
-  | utastL=nxop; op=BINOP_BAR;     utastR=nxop
-  | utastL=nxop; op=BINOP_AMP;     utastR=nxop
-  | utastL=nxop; op=BINOP_EQ;      utastR=nxop
-  | utastL=nxop; op=BINOP_GT;      utastR=nxop
-  | utastL=nxop; op=BINOP_LT;      utastR=nxop
-  | utastL=nxop; op=BINOP_HAT;     utastR=nxop
-  | utastL=nxop; op=BINOP_PLUS;    utastR=nxop
-  | utastL=nxop; op=BINOP_MINUS;   utastR=nxop
-  | utastL=nxop; op=BINOP_TIMES;   utastR=nxop
-  | utastL=nxop; op=BINOP_DIVIDES; utastR=nxop
+expr_overwrite:
+  | ident=LOWER; REVERSED_ARROW; utast=expr_op
+      {
+        let (rng, varnm) = ident in
+        make_standard (Ranged ident) (Ranged utast) (UTOverwrite(rng, varnm, utast))
+      }
+  | utast=expr_op
+      { utast }
+;
+expr_op:
+  | utastL=expr_op; op=BINOP_BAR;     utastR=expr_op
+  | utastL=expr_op; op=BINOP_AMP;     utastR=expr_op
+  | utastL=expr_op; op=BINOP_EQ;      utastR=expr_op
+  | utastL=expr_op; op=BINOP_GT;      utastR=expr_op
+  | utastL=expr_op; op=BINOP_LT;      utastR=expr_op
+  | utastL=expr_op; op=BINOP_HAT;     utastR=expr_op
+  | utastL=expr_op; op=BINOP_PLUS;    utastR=expr_op
+  | utastL=expr_op; op=BINOP_MINUS;   utastR=expr_op
+  | utastL=expr_op; op=BINOP_TIMES;   utastR=expr_op
+  | utastL=expr_op; op=BINOP_DIVIDES; utastR=expr_op
       { binary_operator utastL op utastR }
-  | utastL=nxop; rng=CONS;         utastR=nxop
+  | utastL=expr_op; rng=CONS;         utastR=expr_op
       { binary_operator utastL (rng, "::") utastR }
-  | utastL=nxop; rng=EXACT_MINUS;  utastR=nxop
+  | utastL=expr_op; rng=EXACT_MINUS;  utastR=expr_op
       { binary_operator utastL (rng, "-") utastR }
-  | utastL=nxop; rng=EXACT_TIMES;  utastR=nxop
+  | utastL=expr_op; rng=EXACT_TIMES;  utastR=expr_op
       { binary_operator utastL (rng, "*") utastR }
-  | utastL=nxop; rng=MOD;          utastR=nxop
+  | utastL=expr_op; rng=MOD;          utastR=expr_op
       { binary_operator utastL (rng, "mod") utastR }
-  | tok=EXACT_MINUS; utast2=nxapp
+  | tok=EXACT_MINUS; utast2=expr_app
       { make_uminus tok utast2 }
-  | constr=UPPER; utast2=nxbot
+  | ctor=UPPER; utast2=expr_un
+      { make_standard (Ranged ctor) (Ranged utast2) (UTConstructor(extract_name ctor, utast2)) }
+  | ctor=UPPER
       {
-        make_standard
-         (Ranged constr)
-         (Ranged utast2)
-         (UTConstructor(extract_name constr, utast2))
+        let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
+        let (rng, ctornm) = ctor in
+        (rng, UTConstructor(ctornm, utast_unit))
       }
-  | constr=UPPER
-      {
-        let (rng, constrnm) = constr in
-        (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant)))
-      }
-  | utast=nxapp
+  | utast=expr_app
       { utast }
 ;
-nxapp:
-  | utast1=nxapp; utast2=nxunsub {
-      let optargs = failwith "TODO: nxapp, optargs" in
-      make_standard (Ranged utast1) (Ranged utast2) (UTApply(optargs, utast1, utast2))
-    }
-  | utast1=nxapp; constr=UPPER {
-      let optargs = failwith "TODO: nxapp, optargs" in
-      let (rng, constrnm) = constr in
-      make_standard (Ranged utast1) (Tok rng) (UTApply(optargs, utast1, (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant)))))
-    }
-  | pre=COMMAND; hcmd=hcmd {
-      let (rng, mdlnmlst, csnm) = hcmd in
-      make_standard (Tok pre) (Tok rng) (UTContentOf(mdlnmlst, csnm))
-    }
-  | utast=nxunsub                          { utast }
+expr_app:
+  | utast1=expr_app; utast2=expr_un
+      {
+        let optargs = failwith "TODO: nxapp, optargs" in
+        make_standard (Ranged utast1) (Ranged utast2) (UTApply(optargs, utast1, utast2))
+      }
+  | utast1=expr_app; ctor=UPPER
+      {
+        let optargs = failwith "TODO: nxapp, optargs" in
+        let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
+        let (rng, ctornm) = ctor in
+        make_standard (Ranged utast1) (Tok rng) (UTApply(optargs, utast1, (rng, UTConstructor(ctornm, utast_unit))))
+      }
+  | utast=expr_un
+      { utast }
 ;
-nxunsub:
-  | unop=UNOP_EXCLAM; utast2=nxbot { let (rng, varnm) = unop in make_standard (Tok rng) (Ranged utast2) (UTApply([], (rng, UTContentOf([], varnm)), utast2)) }
-  | tok=EXACT_AMP; utast2=nxbot    { make_standard (Tok tok) (Ranged utast2) (UTNext(utast2)) }
-  | tok=EXACT_TILDE; utast2=nxbot  { make_standard (Tok tok) (Ranged utast2) (UTPrev(utast2)) }
-  | utast=nxbot                    { utast }
+expr_un:
+  | unop=UNOP_EXCLAM; utast2=expr_bot
+      {
+        let (rng, varnm) = unop in
+        make_standard (Tok rng) (Ranged utast2) (UTApply([], (rng, UTContentOf([], varnm)), utast2))
+      }
+  | tok=EXACT_AMP; utast2=expr_bot
+      { make_standard (Tok tok) (Ranged utast2) (UTNext(utast2)) }
+  | tok=EXACT_TILDE; utast2=expr_bot
+      { make_standard (Tok tok) (Ranged utast2) (UTPrev(utast2)) }
+  | utast=expr_bot
+      { utast }
 ;
-nxbot:
-  | utast=nxbot; ACCESS; rlabel=LOWER { make_standard (Ranged utast) (Ranged rlabel) (UTAccessField(utast, rlabel)) }
-  | var=LOWER                      { let (rng, varnm) = var in (rng, UTContentOf([], varnm)) }
-  | vwm=PATH_LOWER               { let (rng, mdlnmlst, varnm) = vwm in (rng, UTContentOf(mdlnmlst, varnm)) }
-  | ic=INTCONST                  { make_standard (Ranged ic) (Ranged ic)  (UTIntegerConstant(extract_main ic)) }
-  | fc=FLOATCONST                { make_standard (Ranged fc) (Ranged fc) (UTFloatConstant(extract_main fc)) }
-  | lc=LENGTHCONST               { let (rng, flt, unitnm) = lc in make_standard (Tok rng) (Tok rng) (UTLengthDescription(flt, unitnm)) }
-  | tok=TRUE                     { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(true)) }
-  | tok=FALSE                    { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(false)) }
-  | opn=LPAREN; cls=RPAREN       { make_standard (Tok opn) (Tok cls) UTUnitConstant }
-  | opn=LPAREN; utast=nxlet; cls=RPAREN                   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=LPAREN; utast=nxlet; COMMA; tup=tuple; cls=RPAREN { let rng = make_range (Tok opn) (Tok cls) in make_product_expression rng (utast :: tup) }
-  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP      { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+expr_bot:
+  | utast=expr_bot; ACCESS; rlabel=LOWER
+      { make_standard (Ranged utast) (Ranged rlabel) (UTAccessField(utast, rlabel)) }
+  | var=LOWER
+      { let (rng, varnm) = var in (rng, UTContentOf([], varnm)) }
+  | vwm=PATH_LOWER
+      { let (rng, mdlnmlst, varnm) = vwm in (rng, UTContentOf(mdlnmlst, varnm)) }
+  | ic=INTCONST
+      { make_standard (Ranged ic) (Ranged ic)  (UTIntegerConstant(extract_main ic)) }
+  | fc=FLOATCONST
+      { make_standard (Ranged fc) (Ranged fc) (UTFloatConstant(extract_main fc)) }
+  | lc=LENGTHCONST
+      { let (rng, flt, unitnm) = lc in make_standard (Tok rng) (Tok rng) (UTLengthDescription(flt, unitnm)) }
+  | tok=TRUE
+      { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(true)) }
+  | tok=FALSE
+      { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(false)) }
+  | tok=LITERAL
+      {
+        let (rng, str, pre, post) = tok in
+        make_standard (Tok rng) (Tok rng) (UTStringConstant(omit_spaces pre post str))
+      }
+  | tok=POSITIONED_LITERAL
+      {
+        let (rng, ipos, s) = tok in
+        make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s))
+      }
+  | opn=LPAREN; cls=RPAREN
+      { make_standard (Tok opn) (Tok cls) UTUnitConstant }
+  | opn=LPAREN; utast=expr; cls=RPAREN
+      { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=LPAREN; utast=expr; COMMA; tup=tuple; cls=RPAREN
+      { let rng = make_range (Tok opn) (Tok cls) in make_product_expression rng (utast :: tup) }
+
+  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | tok=LITERAL                                  { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTStringConstant(omit_spaces pre post str)) }
-  | tok=POSITIONED_LITERAL                       { let (rng, ipos, s) = tok in make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s)) }
   | utast=nxlistsynt                             { utast }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
   | utast=nxrecordsynt                           { utast }
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP  { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=OPENMODULE; utast=nxlet; cls=RPAREN {
+/*
+  | opn=OPENMODULE; utast=expr; cls=RPAREN {
       let (rng, mdlnm) = opn in
       make_standard (Tok rng) (Tok cls) (UTOpenIn(rng, mdlnm, utast))
     }
+*/
 ;
 nxlistsynt:
   | opn=BLIST; cls=ELIST               { make_standard (Tok opn) (Tok cls) UTEndOfList }
@@ -871,7 +884,7 @@ nxlistsynt:
 nxrecordsynt:
   | opn=BRECORD; cls=ERECORD               { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
   | opn=BRECORD; fields=nxrecord; cls=ERECORD { make_standard (Tok opn) (Tok cls) (UTRecord(fields)) }
-  | opn=BRECORD; utast=nxbot; WITH; fields=nxrecord; cls=ERECORD {
+  | opn=BRECORD; utast=expr_bot; WITH; fields=nxrecord; cls=ERECORD {
       let (_, utastmain) =
         fields |> List.fold_left (fun utast1 (rlabel, utast2) ->
           (Range.dummy "update-field", UTUpdateField(utast1, rlabel, utast2))
@@ -884,30 +897,21 @@ nxrecord:
   | x=optterm_nonempty_list(COMMA, nxrecord_field) { x }
 ;
 nxrecord_field:
-  | rlabel=LOWER; EXACT_EQ; utast=nxlet { (rlabel, utast) }
+  | rlabel=LOWER; EXACT_EQ; utast=expr { (rlabel, utast) }
 ;
 nxlist:
-  | elems=optterm_nonempty_list(COMMA, nxlet) {
+  | elems=optterm_nonempty_list(COMMA, expr) {
     List.fold_right (fun elem tail ->
       make_standard (Ranged elem) (Ranged tail) (UTListCons(elem, tail)))
       elems (Range.dummy "end-of-list", UTEndOfList)
   }
 ;
 tuple:
-  | x=separated_nonempty_list(COMMA, nxlet) { x }
+  | x=separated_nonempty_list(COMMA, expr) { x }
 ;
-pats:
-  | brs=separated_nonempty_list(BAR, pat) {
-      match brs with
-      | (rnglast, _) :: _ -> (rnglast, List.map snd brs)
-      | _                 -> assert false
-    }
-;
-pat:
-  | pat=patas; ARROW; utast=nxletsub; {
-      let (rnglast, _) = utast in
-      (rnglast, UTPatternBranch(pat, utast))
-    }
+branch:
+  | pat=patas; ARROW; utast=expr
+      { UTPatternBranch(pat, utast) }
 ;
 patas:
   | pat=pattr; AS; var=LOWER { make_standard (Ranged pat) (Ranged var) (UTPAsVariable(extract_name var, pat)) }
@@ -1162,8 +1166,8 @@ macroargs:
   | macnargs=list(macronarg); cls=ENDACTIVE { (cls, macnargs) }
 ;
 macronarg:
-  | LPAREN; expr=nxbot; RPAREN              { UTLateMacroArg(expr) }
-  | EXACT_TILDE; LPAREN; expr=nxbot; RPAREN { UTEarlyMacroArg(expr) }
+  | LPAREN; expr=expr_bot; RPAREN              { UTLateMacroArg(expr) }
+  | EXACT_TILDE; LPAREN; expr=expr_bot; RPAREN { UTEarlyMacroArg(expr) }
 ;
 /*
 narg:
