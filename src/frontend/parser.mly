@@ -480,8 +480,8 @@ bind_math:
       }
 ;
 bind_type:
-  | ds=separated_nonempty_list(AND, bind_type_single)
-      { ds }
+  | tybinds=separated_nonempty_list(AND, bind_type_single)
+      { tybinds }
 ;
 bind_type_single:
   | tyident=LOWER; tyvars=list(TYPEVAR); EXACT_EQ; BAR?; ctors=variants
@@ -503,6 +503,21 @@ sig_annot:
   | COLON; utsig=sigexpr { utsig }
 ;
 sigexpr:
+  | utsig=sigexpr_bot; WITH; TYPE; tybinds=bind_type
+      {
+        let (rng, _) = utsig in (* TODO: give appropriate ranges *)
+        (rng, UTSigWith(utsig, [], tybinds))
+      }
+  | utsig=sigexpr_bot; WITH; rmodchain=mod_chain; TYPE; tybinds=bind_type
+      {
+        let (rng, _) = utsig in (* TODO: give appropriate ranges *)
+        let (_, (modident, modidents)) = rmodchain in
+        (rng, UTSigWith(utsig, modident :: modidents, tybinds))
+      }
+  | utsig=sigexpr_bot
+      { utsig }
+;
+sigexpr_bot:
   | sigident=UPPER
       {
         let (rng, signm) = sigident in

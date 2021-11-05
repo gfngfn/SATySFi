@@ -1947,7 +1947,7 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
       in
       (OpaqueIDMap.empty, ConcFunctor(fsig))
 
-  | UTSigWith(_utsig1, _modidents, _tyident, _typarams, _mnty) ->
+  | UTSigWith(_utsig1, _modidents, _tybinds) ->
       failwith "TODO: typecheck_signature, UTSigWith"
 
 
