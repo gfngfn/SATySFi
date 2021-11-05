@@ -620,9 +620,9 @@ kind_row:
 typ:
   | mnty1=typ_prod; ARROW; mnty2=typ
       { make_standard (Ranged mnty1) (Ranged mnty2) (MFuncType([], mnty1, mnty2)) }
-  | mnopts=typ_opt_dom; mnty1=typ_prod; ARROW; mnty2=typ
+  | rmnopts=typ_opt_dom; mnty1=typ_prod; ARROW; mnty2=typ
       {
-        let (tokL, mnopts) = mnopts in
+        let (tokL, mnopts) = rmnopts in
         make_standard (Tok tokL) (Ranged mnty2) (MFuncType(mnopts, mnty1, mnty2))
       }
   | mnty=typ_prod
@@ -680,10 +680,10 @@ typ_opt_dom_entry:
       { (rlabel, mnty) }
 ;
 typ_cmd_arg:
-  | mnopts_opt=option(typ_opt_dom); mnty=typ_prod
+  | rmnopts_opt=option(typ_opt_dom); mnty=typ_prod
       {
         let mnopts =
-          match mnopts_opt with
+          match rmnopts_opt with
           | None              -> []
           | Some((_, mnopts)) -> mnopts
         in
