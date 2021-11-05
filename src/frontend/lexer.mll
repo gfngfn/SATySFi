@@ -284,7 +284,7 @@ rule progexpr stack = parse
         let pos = get_pos lexbuf in
         let s = Lexing.lexeme lexbuf in
         let (modnms, varnm) = split_module_list s in
-        PATH_LOWER(pos, modnms, varnm)
+        LONG_LOWER(pos, modnms, varnm)
       }
   | lower
       {
@@ -326,7 +326,7 @@ rule progexpr stack = parse
         let pos = get_pos lexbuf in
         let s = Lexing.lexeme lexbuf in
         let (modnms, upper) = split_module_list s in
-        PATH_UPPER(pos, modnms, upper)
+        LONG_UPPER(pos, modnms, upper)
       }
   | upper
       { UPPER(get_pos lexbuf, Lexing.lexeme lexbuf) }
@@ -368,7 +368,7 @@ and vertexpr stack = parse
       {
         let (modnms, csnm) = split_module_list s in
         Stack.push ActiveState stack;
-        VARINVERT(get_pos lexbuf, modnms, csnm)
+        VAR_IN_TEXT(get_pos lexbuf, modnms, csnm)
       }
   | ("+" (lower | upper) "@")
       {
@@ -464,7 +464,7 @@ and horzexpr stack = parse
       {
         let (modnms, csnm) = split_module_list s in
         Stack.push ActiveState stack;
-        VARINHORZ(get_pos lexbuf, modnms, csnm)
+        VAR_IN_TEXT(get_pos lexbuf, modnms, csnm)
       }
   | ("\\" (lower | upper))
       {
@@ -592,14 +592,10 @@ and mathexpr stack = parse
       { MATHCHARS(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | mathstr+
       { MATHCHARS(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | ("#" (lower as varnm))
-      {
-        VARINMATH(get_pos lexbuf, [], varnm)
-      }
   | ("#" (((upper ".")* (lower | upper)) as s))
       {
         let (modnms, csnm) = split_module_list s in
-        VARINMATH(get_pos lexbuf, modnms, csnm)
+        VAR_IN_TEXT(get_pos lexbuf, modnms, csnm)
       }
   | ("\\" (lower | upper))
       {
@@ -670,7 +666,7 @@ and active stack = parse
       {
         let pos = get_pos lexbuf in
         pop lexbuf "BUG; this cannot happen" stack;
-        ENDACTIVE(pos)
+        SEMICOLON(pos)
       }
   | eof
       { report_error lexbuf "unexpected end of input while reading an active area" }

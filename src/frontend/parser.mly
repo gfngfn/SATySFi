@@ -230,7 +230,7 @@
   IF IN INCLUDE INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
   REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH
 
-%token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW ENDACTIVE COMMA CONS ACCESS QUESTION COERCE
+%token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW SEMICOLON COMMA CONS ACCESS QUESTION COERCE
 %token<Range.t> LPAREN RPAREN BVERTGRP EVERTGRP BHORZGRP EHORZGRP BMATHGRP EMATHGRP BLIST ELIST BRECORD ERECORD
 %token<Range.t> EXACT_MINUS EXACT_TIMES EXACT_AMP EXACT_TILDE EXACT_EQ
 
@@ -241,14 +241,12 @@
 
 %token<Range.t * Types.var_name> LOWER
 %token<Range.t * Types.constructor_name> UPPER
-%token<Range.t * Types.module_name list * Types.var_name> PATH_LOWER
-%token<Range.t * Types.module_name list * Types.constructor_name> PATH_UPPER
+%token<Range.t * Types.module_name list * Types.var_name> LONG_LOWER
+%token<Range.t * Types.module_name list * Types.constructor_name> LONG_UPPER
 
-%token <Range.t * Types.ctrlseq_name> BACKSLASH_CMD PLUS_CMD
+%token<Range.t * Types.ctrlseq_name> BACKSLASH_CMD PLUS_CMD
 %token<Range.t * Types.module_name list * Types.ctrlseq_name> LONG_BACKSLASH_CMD LONG_PLUS_CMD
-%token <Range.t * Types.module_name list * Types.ctrlseq_name> VARINHORZ
-%token <Range.t * Types.module_name list * Types.ctrlseq_name> VARINVERT
-%token <Range.t * Types.module_name list * Types.var_name> VARINMATH
+%token<Range.t * Types.module_name list * Types.var_name> VAR_IN_TEXT
 
 %token<Range.t * Types.type_variable_name> TYPEVAR
 %token<Range.t * Types.row_variable_name> ROWVAR
@@ -387,7 +385,7 @@ modexpr_bot:
 mod_chain:
   | modident=UPPER
       { let (rng, modnm) = modident in (rng, ((rng, modnm), [])) }
-  | modpath=PATH_UPPER
+  | modpath=LONG_UPPER
       {
         let (rng, modnms, modnm0) = modpath in
         match modnms with
@@ -537,7 +535,7 @@ sigexpr_bot:
         let (rng, signm) = sigident in
         (rng, UTSigVar(signm))
       }
-  | sigpath=PATH_UPPER
+  | sigpath=LONG_UPPER
       {
         let (rng, modnms, signm) = sigpath in
         let sigident = (rng, signm) in (* TODO: give appropriate ranges *)
@@ -802,7 +800,7 @@ expr_bot:
       { make_standard (Ranged utast) (Ranged rlabel) (UTAccessField(utast, rlabel)) }
   | ident=LOWER
       { let (rng, varnm) = ident in (rng, UTContentOf([], varnm)) }
-  | long_ident=PATH_LOWER
+  | long_ident=LONG_LOWER
       { let (rng, modnms, varnm) = long_ident in (rng, UTContentOf(modnms, varnm)) }
   | tokL=LPAREN; ident=binop; tokR=RPAREN
       { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], extract_main ident)) }
@@ -1000,7 +998,7 @@ inline_elem_cmd:
         let (rng, str, pre, post) = literal in
         make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeText(omit_spaces pre post str))
       }
-  | long_ident=VARINHORZ; tokR=ENDACTIVE
+  | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {
         let (rng, modnms, varnm) = long_ident in
         let utast = (rng, UTContentOf(modnms, varnm)) in
@@ -1040,7 +1038,7 @@ block_elem:
       make_standard (Tok rngcs) (Tok rnglast) (UTInputVertMacro(vmacro, macargs))
     }
 */
-  | long_ident=VARINVERT; tokR=ENDACTIVE
+  | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {
         let (rng, modnms, varnm) = long_ident in
         let utast = (rng, UTContentOf(modnms, varnm)) in
@@ -1153,7 +1151,7 @@ math_bot:
         let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
         make_standard (Tok rng_cs) (Tok rng_last) (UTMCommand(utast_cmd, args))
       }
-  | long_ident=VARINMATH
+  | long_ident=VAR_IN_TEXT
       { let (rng, modnms, varnm) = long_ident in (rng, UTMEmbed((rng, UTContentOf(modnms, varnm)))) }
 ;
 math_cmd_arg:
@@ -1168,7 +1166,7 @@ math_cmd_arg:
 ;
 /*
 macroargs:
-  | macnargs=list(macronarg); cls=ENDACTIVE { (cls, macnargs) }
+  | macnargs=list(macronarg); cls=SEMICOLON { (cls, macnargs) }
 ;
 macronarg:
   | LPAREN; expr=expr_bot; RPAREN              { UTLateMacroArg(expr) }
@@ -1195,7 +1193,7 @@ expr_opt_entry:
       { (rlabel, utast) }
 ;
 cmd_args_text:
-  | rng=ENDACTIVE
+  | rng=SEMICOLON
       { (rng, []) }
   | sargs=nonempty_list(cmd_arg_text)
       {
