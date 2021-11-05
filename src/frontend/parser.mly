@@ -137,10 +137,7 @@
       str_shaved
 
 
-  let extract_main (_, utastmain) = utastmain
-
-
-  let extract_name (_, name) = name
+  let extract_main (_, x) = x
 
 
   let binary_operator (utastL : untyped_abstract_tree) (optok : Range.t * var_name) (utastR : untyped_abstract_tree) : untyped_abstract_tree =
@@ -148,17 +145,20 @@
     let rng = make_range (Ranged utastL) (Ranged utastR) in
       (rng, UTApply([], (Range.dummy "binary_operator", UTApply([], (rngop, UTContentOf([], opnm)), utastL)), utastR))
 
+
   let make_uminus op = function
     | (_, UTFloatConstant(_)) as arg ->
         binary_operator
           (Range.dummy "zero-of-unary-minus", UTFloatConstant(0.0))
           (op, "-.")
           arg
+
     | (_, UTLengthDescription (_, unit)) as arg ->
         binary_operator
           (Range.dummy "zero-of-unary-minus", UTLengthDescription(0.0, unit))
           (op, "-'")
           arg
+
     | arg ->
         binary_operator
           (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0))
@@ -170,22 +170,7 @@
     let rng = make_range left right in (rng, main)
 
 
-  let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
-    let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInputHorz([])), [])) lst 0 in
-    (Range.dummy "itemize1", UTItemize(contents))
-
-  and make_list_to_itemize_sub (resitmz : untyped_itemize) (lst : (Range.t * int * untyped_abstract_tree) list) (crrntdp : int) =
-    match lst with
-    | []                          -> resitmz
-    | (rng, depth, utast) :: tail ->
-        if depth <= crrntdp + 1 then
-          let newresitmz = insert_last [] resitmz 1 depth utast in
-            make_list_to_itemize_sub newresitmz tail depth
-        else
-          raise (ParseErrorDetail(rng, "syntax error: illegal item depth "
-            ^ (string_of_int depth) ^ " after " ^ (string_of_int crrntdp)))
-
-  and insert_last (resitmzlst : untyped_itemize list) (itmz : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
+  let rec insert_last (resitmzlst : untyped_itemize list) (itmz : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
     match itmz with
     | UTItem(uta, []) ->
         if i < depth then assert false else UTItem(uta, [UTItem(utast, [])])
@@ -198,8 +183,28 @@
         insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
 
 
+  let rec make_list_to_itemize_sub (resitmz : untyped_itemize) (lst : (Range.t * int * untyped_abstract_tree) list) (crrntdp : int) =
+    match lst with
+    | [] ->
+        resitmz
+
+    | (rng, depth, utast) :: tail ->
+        if depth <= crrntdp + 1 then
+          let newresitmz = insert_last [] resitmz 1 depth utast in
+          make_list_to_itemize_sub newresitmz tail depth
+        else
+          raise (ParseErrorDetail(rng, "syntax error: illegal item depth "
+            ^ (string_of_int depth) ^ " after " ^ (string_of_int crrntdp)))
+
+
+  let make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
+    let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInputHorz([])), [])) lst 0 in
+    (Range.dummy "itemize1", UTItemize(contents))
+
+
   let primes (n : int) : Uchar.t list =
     List.init n (fun _ -> Uchar.of_int 0x2032)
+
 
   let make_sup ~range ?prime ?sup base =
     let make_primes r n =
@@ -756,7 +761,7 @@ expr_op:
   | tok=EXACT_MINUS; utast2=expr_app
       { make_uminus tok utast2 }
   | ctor=UPPER; utast2=expr_un
-      { make_standard (Ranged ctor) (Ranged utast2) (UTConstructor(extract_name ctor, utast2)) }
+      { make_standard (Ranged ctor) (Ranged utast2) (UTConstructor(extract_main ctor, utast2)) }
   | ctor=UPPER
       {
         let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
@@ -802,7 +807,7 @@ expr_bot:
   | long_ident=PATH_LOWER
       { let (rng, modnms, varnm) = long_ident in (rng, UTContentOf(modnms, varnm)) }
   | tokL=LPAREN; ident=binop; tokR=RPAREN
-      { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], extract_name ident)) }
+      { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], extract_main ident)) }
   | ic=INTCONST
       { let (rng, n) = ic in (rng, UTIntegerConstant(n)) }
   | fc=FLOATCONST
@@ -893,7 +898,7 @@ binop:
 ;
 pattern:
   | utpat=pattern_cons; AS; ident=LOWER
-      { make_standard (Ranged utpat) (Ranged ident) (UTPAsVariable(extract_name ident, utpat)) }
+      { make_standard (Ranged utpat) (Ranged ident) (UTPAsVariable(extract_main ident, utpat)) }
   | utpat=pattern_cons
       { utpat }
 ;
@@ -901,7 +906,7 @@ pattern_cons:
   | utpat1=pattern_bot; CONS; utpat2=pattern_cons
       { make_standard (Ranged utpat1) (Ranged utpat2) (UTPListCons(utpat1, utpat2)) }
   | ctor=UPPER; utpat=pattern_bot
-      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor(extract_name ctor, utpat)) }
+      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor(extract_main ctor, utpat)) }
   | ctor=UPPER
       {
         let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
