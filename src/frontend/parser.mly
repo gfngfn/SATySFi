@@ -298,14 +298,12 @@
 %type<Types.untyped_abstract_tree> inline_single
 %type<Types.untyped_abstract_tree> block
 %type<Types.untyped_input_vert_element> block_elem
-%type<Range.t * Types.untyped_command_argument list> sargs
-%type<Types.untyped_command_argument> sarg
+%type<Range.t * Types.untyped_command_argument list> cmd_args_text
+%type<Types.untyped_command_argument> cmd_arg_text
+%type<Types.untyped_command_argument> cmd_arg_expr
 %type<bool * Types.untyped_math> math_group
 %type<Types.untyped_math> math_bot
 
-/*
-%type <Types.untyped_command_argument> narg
-*/
 
 %%
 
@@ -758,17 +756,16 @@ expr_op:
       { utast }
 ;
 expr_app:
-  | utast1=expr_app; utast2=expr_un
+  | utast1=expr_app; mnopts=expr_opts; utast2=expr_un
       {
-        let optargs = failwith "TODO: nxapp, optargs" in
-        make_standard (Ranged utast1) (Ranged utast2) (UTApply(optargs, utast1, utast2))
+        make_standard (Ranged utast1) (Ranged utast2) (UTApply(mnopts, utast1, utast2))
       }
-  | utast1=expr_app; ctor=UPPER
+  | utast1=expr_app; mnopts=expr_opts; ctor=UPPER
       {
-        let optargs = failwith "TODO: nxapp, optargs" in
         let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
         let (rng, ctornm) = ctor in
-        make_standard (Ranged utast1) (Tok rng) (UTApply(optargs, utast1, (rng, UTConstructor(ctornm, utast_unit))))
+        let utast2 = (rng, UTConstructor(ctornm, utast_unit)) in
+        make_standard (Ranged utast1) (Tok rng) (UTApply(mnopts, utast1, utast2))
       }
   | utast=expr_un
       { utast }
@@ -971,7 +968,7 @@ inline_elems:
   |   { [] }
 ;
 inline_elem_cmd:
-  | icmd=inline_cmd; nargs=list(cmd_arg_expr); rsargs=sargs
+  | icmd=inline_cmd; nargs=list(cmd_arg_expr); rsargs=cmd_args_text
       {
         let (rng_cs, modnms, csnm) = icmd in
         let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
@@ -1018,7 +1015,7 @@ block:
       { (make_range_from_list belems, UTInputVert(belems)) }
 ;
 block_elem:
-  | bcmd=block_cmd; nargs=list(cmd_arg_expr); rsargs=sargs
+  | bcmd=block_cmd; nargs=list(cmd_arg_expr); rsargs=cmd_args_text
       {
         let (rng_cs, modnms, csnm) = bcmd in
         let (rng_last, sargs) = rsargs in
@@ -1135,51 +1132,30 @@ math_bot:
         let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
         (rng, UTMChars(uchs))
       }
-/*
-  | mcmd=mcmd; arglst=list(matharg) {
-      let (rngcmd, mdlnmlst, csnm) = mcmd in
-      let rnglast =
-        match List.rev arglst with
-        | []                             -> rngcmd
-        | UTCommandArg(_, (rng, _)) :: _ -> rng
-      in
-      let utastcmd = (rngcmd, UTContentOf(mdlnmlst, csnm)) in
-      make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(utastcmd, arglst))
-    }
-*/
+  | mcmd=math_cmd; args=list(math_cmd_arg)
+      {
+        let (rng_cs, modnms, csnm) = mcmd in
+        let rng_last =
+          match List.rev args with
+          | []                             -> rng_cs
+          | UTCommandArg(_, (rng, _)) :: _ -> rng
+        in
+        let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
+        make_standard (Tok rng_cs) (Tok rng_last) (UTMCommand(utast_cmd, args))
+      }
   | long_ident=VARINMATH
       { let (rng, modnms, varnm) = long_ident in (rng, UTMEmbed((rng, UTContentOf(modnms, varnm)))) }
 ;
-/*
-matharg:
-  | opts=list(mathoptarg); opn=BMATHGRP; utast=mathblock; cls=EMATHGRP {
-      UTCommandArg(opts, make_standard (Tok opn) (Tok cls) (extract_main utast))
-    }
-  | opts=list(mathoptarg); opn=BHORZGRP; utast=sxsep; cls=EHORZGRP {
-      UTCommandArg(opts, make_standard (Tok opn) (Tok cls) (extract_main utast))
-    }
-  | opts=list(mathoptarg); opn=BVERTGRP; utast=vxblock; cls=EVERTGRP {
-      UTCommandArg(opts, make_standard (Tok opn) (Tok cls) (extract_main utast))
-    }
-  | utcmdarg=narg {
-      utcmdarg
-    }
+math_cmd_arg:
+  | mnopts=expr_opts; tokL=BMATHGRP; utast=math; tokR=EMATHGRP
+      { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
+  | mnopts=expr_opts; tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
+      { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
+  | mnopts=expr_opts; tokL=BVERTGRP; utast=block; tokR=EVERTGRP
+      { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
+  | utcmdarg=cmd_arg_expr
+      { utcmdarg }
 ;
-mathoptarg:
-  | tok=OPTIONAL; BMATHGRP; utast=mathblock; cls=EMATHGRP {
-      let rlabel = failwith "TODO: matharg, rlabel 1" in
-      (rlabel, make_standard (Tok tok) (Tok cls) (extract_main utast))
-    }
-  | tok=OPTIONAL; BHORZGRP; utast=sxsep; cls=EHORZGRP {
-      let rlabel = failwith "TODO: matharg, rlabel 2" in
-      (rlabel, make_standard (Tok tok) (Tok cls) (extract_main utast))
-    }
-  | tok=OPTIONAL; BVERTGRP; utast=vxblock; cls=EVERTGRP {
-      let rlabel = failwith "TODO: matharg, rlabel 3" in
-      (rlabel, make_standard (Tok tok) (Tok cls) (extract_main utast))
-    }
-;
-*/
 /*
 macroargs:
   | macnargs=list(macronarg); cls=ENDACTIVE { (cls, macnargs) }
@@ -1208,10 +1184,10 @@ expr_opt_entry:
   | rlabel=LOWER; EXACT_EQ; utast=expr
       { (rlabel, utast) }
 ;
-sargs:
+cmd_args_text:
   | rng=ENDACTIVE
       { (rng, []) }
-  | sargs=nonempty_list(sarg)
+  | sargs=nonempty_list(cmd_arg_text)
       {
         let rng =
           match List.rev sargs with
@@ -1221,7 +1197,7 @@ sargs:
         (rng, sargs)
       }
 ;
-sarg:
+cmd_arg_text:
   | tokL=BVERTGRP; utast=block; tokR=EVERTGRP
       { UTCommandArg([], make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
   | tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
