@@ -28,7 +28,7 @@
     | MathState       (* math mode *)
 
 
-  let get_pos lexbuf =
+  let get_pos (lexbuf : Lexing.lexbuf) : Range.t =
     let posS = Lexing.lexeme_start_p lexbuf in
     let posE = Lexing.lexeme_end_p lexbuf in
     let fname = posS.Lexing.pos_fname in
@@ -54,33 +54,31 @@
     Lexing.new_line lexbuf
 
 
-  let adjust_bol lexbuf amt =
+  let adjust_bol (lexbuf : Lexing.lexbuf) (amt : int) : unit =
     let open Lexing in
     let lcp = lexbuf.lex_curr_p in
     lexbuf.lex_curr_p <- { lcp with pos_bol = lcp.pos_cnum + amt; }
 
 
-  let rec increment_line_for_each_break lexbuf str =
+  let rec increment_line_for_each_break (lexbuf : Lexing.lexbuf) (str : string) : unit =
     let len = String.length str in
-    let has_break = ref false in
-    let rec aux num tail_spaces prev =
+    let rec aux num has_break tail_spaces prev =
       if num >= len then
-        tail_spaces
+        (has_break, tail_spaces)
       else
         match (prev, String.get str num) with
         | (Some('\r'), '\n') ->
-            aux (num + 1) (tail_spaces + 1) (Some('\n'))
+            aux (num + 1) has_break (tail_spaces + 1) (Some('\n'))
 
         | (_, (('\n' | '\r') as c)) ->
-            has_break := true;
             increment_line lexbuf;
-            aux (num + 1) 0 (Some(c))
+            aux (num + 1) true 0 (Some(c))
 
         | _ ->
-            aux (num + 1) (tail_spaces + 1) None
+            aux (num + 1) has_break (tail_spaces + 1) None
     in
-    let amt = aux 0 0 None in
-    if !has_break then
+    let (has_break, amt) = aux 0 false 0 None in
+    if has_break then
       adjust_bol lexbuf (-amt)
     else
       ()
@@ -292,35 +290,35 @@ rule progexpr stack = parse
         let tokstr = Lexing.lexeme lexbuf in
         let pos = get_pos lexbuf in
         match tokstr with
-        | "and"               -> AND(pos)
-        | "as"                -> AS(pos)
-        | "block"             -> BLOCK(pos)
-        | "else"              -> ELSE(pos)
-        | "end"               -> END(pos)
-        | "false"             -> FALSE(pos)
-        | "fun"               -> FUN(pos)
-        | "if"                -> IF(pos)
-        | "in"                -> IN(pos)
-        | "include"           -> INCLUDE(pos)
-        | "inline"            -> INLINE(pos)
-        | "let"               -> LET(pos)
-        | "mod"               -> MOD(pos)
-        | "match"             -> MATCH(pos)
-        | "math"              -> MATH(pos)
-        | "module"            -> MODULE(pos)
-        | "mutable"           -> MUTABLE(pos)
-        | "of"                -> OF(pos)
-        | "open"              -> OPEN(pos)
-        | "rec"               -> VAL(pos)
-        | "sig"               -> SIG(pos)
-        | "signature"         -> STRUCT(pos)
-        | "struct"            -> STRUCT(pos)
-        | "then"              -> THEN(pos)
-        | "true"              -> TRUE(pos)
-        | "type"              -> TYPE(pos)
-        | "val"               -> VAL(pos)
-        | "with"              -> WITH(pos)
-        | _                   -> LOWER(pos, tokstr)
+        | "and"       -> AND(pos)
+        | "as"        -> AS(pos)
+        | "block"     -> BLOCK(pos)
+        | "else"      -> ELSE(pos)
+        | "end"       -> END(pos)
+        | "false"     -> FALSE(pos)
+        | "fun"       -> FUN(pos)
+        | "if"        -> IF(pos)
+        | "in"        -> IN(pos)
+        | "include"   -> INCLUDE(pos)
+        | "inline"    -> INLINE(pos)
+        | "let"       -> LET(pos)
+        | "mod"       -> MOD(pos)
+        | "match"     -> MATCH(pos)
+        | "math"      -> MATH(pos)
+        | "module"    -> MODULE(pos)
+        | "mutable"   -> MUTABLE(pos)
+        | "of"        -> OF(pos)
+        | "open"      -> OPEN(pos)
+        | "rec"       -> VAL(pos)
+        | "sig"       -> SIG(pos)
+        | "signature" -> STRUCT(pos)
+        | "struct"    -> STRUCT(pos)
+        | "then"      -> THEN(pos)
+        | "true"      -> TRUE(pos)
+        | "type"      -> TYPE(pos)
+        | "val"       -> VAL(pos)
+        | "with"      -> WITH(pos)
+        | _           -> LOWER(pos, tokstr)
       }
   | upper
       { UPPER(get_pos lexbuf, Lexing.lexeme lexbuf) }
