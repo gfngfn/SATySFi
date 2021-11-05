@@ -828,6 +828,18 @@ expr_bot:
         | utast2 :: utast_rest ->
             make_standard (Tok tokL) (Tok tokR) (UTTuple(TupleList.make utast1 utast2 utast_rest))
       }
+  | utast=expr_bot_list
+      { utast }
+  | utast=expr_bot_record
+      { utast }
+  | tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
+      { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
+  | tokL=BVERTGRP; utast=block; tokR=EVERTGRP
+      { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
+  | tokL=BMATHGRP; utast=math; tokR=EMATHGRP
+      { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
+;
+expr_bot_list:
   | tokL=BLIST; elems=optterm_list(COMMA, expr); tokR=ELIST
       {
         let (_, utast_main) =
@@ -837,6 +849,8 @@ expr_bot:
         in
         make_standard (Tok tokL) (Tok tokR) utast_main
       }
+;
+expr_bot_record:
   | tokL=BRECORD; fields=optterm_list(COMMA, record_field); tokR=ERECORD
       { make_standard (Tok tokL) (Tok tokR) (UTRecord(fields)) }
   | tokL=BRECORD; utast=expr_bot; WITH; fields=optterm_nonempty_list(COMMA, record_field); tokR=ERECORD
@@ -848,18 +862,6 @@ expr_bot:
         in
         make_standard (Tok tokL) (Tok tokR) utast_main
       }
-  | tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
-      { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
-  | tokL=BVERTGRP; utast=block; tokR=EVERTGRP
-      { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
-  | tokL=BMATHGRP; utast=math; tokR=EMATHGRP
-      { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
-/*
-  | opn=OPENMODULE; utast=expr; cls=RPAREN {
-      let (rng, mdlnm) = opn in
-      make_standard (Tok rng) (Tok cls) (UTOpenIn(rng, mdlnm, utast))
-    }
-*/
 ;
 record_field:
   | rlabel=LOWER; EXACT_EQ; utast=expr
@@ -969,20 +971,21 @@ inline_elems:
   |   { [] }
 ;
 inline_elem_cmd:
+  | icmd=inline_cmd; nargs=list(cmd_arg_expr); rsargs=sargs
+      {
+        let (rng_cs, modnms, csnm) = icmd in
+        let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
+        let (rng_last, sargs) = rsargs in
+        let args = List.append nargs sargs in
+        make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzEmbedded(utast_cmd, args))
+      }
 /*
-  | hcmd=hcmd; nargs=list(narg); sargsraw=sargs {
-      let (rngcs, mdlnmlst, csnm) = hcmd in
-      let utastcmd = (rngcs, UTContentOf(mdlnmlst, csnm)) in
-      let (rnglast, sargs) = sargsraw in
-      let args = List.append nargs sargs in
-      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzEmbedded(utastcmd, args))
-    }
-*/
   | hmacro=HORZMACRO; macargsraw=macroargs {
       let (rngcs, _) = hmacro in
       let (rnglast, macroargs) = macargsraw in
       make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
     }
+*/
   | tokL=BMATHGRP; utast=math; tokR=EMATHGRP
       { make_standard (Tok tokL) (Tok tokR) (UTInputHorzEmbeddedMath(utast)) }
   | literal=LITERAL
@@ -1015,19 +1018,21 @@ block:
       { (make_range_from_list belems, UTInputVert(belems)) }
 ;
 block_elem:
+  | bcmd=block_cmd; nargs=list(cmd_arg_expr); rsargs=sargs
+      {
+        let (rng_cs, modnms, csnm) = bcmd in
+        let (rng_last, sargs) = rsargs in
+        let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
+        let args = List.append nargs sargs in
+        make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertEmbedded(utast_cmd, args))
+      }
 /*
-  | vcmd=vcmd; nargs=list(narg); sargsraw=sargs {
-      let (rngcs, mdlnmlst, csnm) = vcmd in
-      let (rnglast, sargs) = sargsraw in
-      let args = List.append nargs sargs in
-      make_standard (Tok rngcs) (Tok rnglast) (UTInputVertEmbedded((rngcs, UTContentOf(mdlnmlst, csnm)), args))
-    }
-*/
   | vmacro=VERTMACRO; macargsraw=macroargs {
       let (rngcs, _) = vmacro in
       let (rnglast, macargs) = macargsraw in
       make_standard (Tok rngcs) (Tok rnglast) (UTInputVertMacro(vmacro, macargs))
     }
+*/
   | long_ident=VARINVERT; tokR=ENDACTIVE
       {
         let (rng, modnms, varnm) = long_ident in
@@ -1175,6 +1180,7 @@ mathoptarg:
     }
 ;
 */
+/*
 macroargs:
   | macnargs=list(macronarg); cls=ENDACTIVE { (cls, macnargs) }
 ;
@@ -1182,40 +1188,26 @@ macronarg:
   | LPAREN; expr=expr_bot; RPAREN              { UTLateMacroArg(expr) }
   | EXACT_TILDE; LPAREN; expr=expr_bot; RPAREN { UTEarlyMacroArg(expr) }
 ;
-/*
-narg:
-  | opts=list(noptarg); opn=LPAREN; utast=nxlet; cls=RPAREN {
-      UTCommandArg(opts, make_standard (Tok opn) (Tok cls) (extract_main utast))
-    }
-  | opts=list(noptarg); opn=LPAREN; cls=RPAREN {
-      UTCommandArg(opts, make_standard (Tok opn) (Tok cls) UTUnitConstant)
-    }
-  | opts=list(noptarg); utast=nxrecordsynt {
-      UTCommandArg(opts, utast)
-    }
-  | opts=list(noptarg); utast=nxlistsynt {
-      UTCommandArg(opts, utast)
-    }
-;
-noptarg:
-  | opn=OPTIONAL; LPAREN; utast=nxlet; cls=RPAREN {
-      let rlabel = failwith "TODO: narg, rlabel 1" in
-      (rlabel, make_standard (Tok opn) (Tok cls) (extract_main utast))
-    }
-  | opn=OPTIONAL; LPAREN; cls=RPAREN {
-      let rlabel = failwith "TODO: narg, rlabel 2" in
-      (rlabel, make_standard (Tok opn) (Tok cls) UTUnitConstant)
-    }
-  | opn=OPTIONAL; utast=nxrecordsynt {
-      let rlabel = failwith "TODO: narg, rlabel 3" in
-      (rlabel, make_standard (Tok opn) (Ranged utast) (extract_main utast))
-    }
-  | opn=OPTIONAL; utast=nxlistsynt {
-      let rlabel = failwith "TODO: narg, rlabel 4" in
-      (rlabel, make_standard (Tok opn) (Ranged utast) (extract_main utast))
-    }
-;
 */
+cmd_arg_expr:
+  | mnopts=expr_opts; tokL=LPAREN; utast=expr; tokR=RPAREN
+      { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
+  | mnopts=expr_opts; tokL=LPAREN; tokR=RPAREN
+      { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) UTUnitConstant) }
+  | mnopts=expr_opts; utast=expr_bot_record
+      { UTCommandArg(mnopts, utast) }
+  | mnopts=expr_opts; utast=expr_bot_list
+      { UTCommandArg(mnopts, utast) }
+;
+expr_opts:
+  | QUESTION; LPAREN; mnopts=optterm_nonempty_list(COMMA, expr_opt_entry); RPAREN
+      { mnopts }
+  |   { [] }
+;
+expr_opt_entry:
+  | rlabel=LOWER; EXACT_EQ; utast=expr
+      { (rlabel, utast) }
+;
 sargs:
   | rng=ENDACTIVE
       { (rng, []) }
@@ -1235,15 +1227,15 @@ sarg:
   | tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
       { UTCommandArg([], make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
 ;
-hcmd:
+inline_cmd:
   | tok=HORZCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
   | tok=HORZCMDWITHMOD { tok }
 ;
-mcmd:
+math_cmd:
   | tok=MATHCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
   | tok=MATHCMDWITHMOD { tok }
 ;
-vcmd:
+block_cmd:
   | tok=VERTCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
   | tok=VERTCMDWITHMOD { tok }
 ;
