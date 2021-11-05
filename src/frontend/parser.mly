@@ -244,35 +244,33 @@
 %token<Range.t * Types.module_name list * Types.var_name> PATH_LOWER
 %token<Range.t * Types.module_name list * Types.constructor_name> PATH_UPPER
 
-%token <Range.t * Types.ctrlseq_name> HORZCMD
-%token <Range.t * Types.ctrlseq_name> HORZMACRO
-%token <Range.t * Types.ctrlseq_name> VERTCMD
-%token <Range.t * Types.ctrlseq_name> VERTMACRO
-%token <Range.t * Types.ctrlseq_name> MATHCMD
-%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
-%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VERTCMDWITHMOD
-%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> MATHCMDWITHMOD
-%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VARINHORZ
-%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VARINVERT
-%token <Range.t * (Types.module_name list) * Types.var_name> VARINMATH
-%token <Range.t * Types.type_variable_name> TYPEVAR
-%token <Range.t * Types.row_variable_name> ROWVAR
+%token <Range.t * Types.ctrlseq_name> BACKSLASH_CMD PLUS_CMD
+%token<Range.t * Types.module_name list * Types.ctrlseq_name> LONG_BACKSLASH_CMD LONG_PLUS_CMD
+%token <Range.t * Types.module_name list * Types.ctrlseq_name> VARINHORZ
+%token <Range.t * Types.module_name list * Types.ctrlseq_name> VARINVERT
+%token <Range.t * Types.module_name list * Types.var_name> VARINMATH
 
-%token <Range.t * int> INTCONST
-%token <Range.t * float> FLOATCONST
-%token <Range.t * float * Types.length_unit_name> LENGTHCONST
-%token <Range.t * string> CHAR
-%token <Range.t * string * bool * bool> LITERAL
-%token <Range.t * Types.input_position * string> POSITIONED_LITERAL
+%token<Range.t * Types.type_variable_name> TYPEVAR
+%token<Range.t * Types.row_variable_name> ROWVAR
 
-%token <Range.t> SPACE BREAK
-%token <Range.t * string> MATHCHARS
-%token <Range.t * int> PRIMES
-%token <Range.t> SUBSCRIPT SUPERSCRIPT
-%token <Range.t * int> ITEM
+%token<Range.t * int> INT
+%token<Range.t * float> FLOAT
+%token<Range.t * float * Types.length_unit_name> LENGTH
+%token<Range.t * string> CHAR
+%token<Range.t * string * bool * bool> STRING
+%token<Range.t * Types.input_position * string> POSITIONED_STRING
+
+%token<Range.t> SPACE BREAK
+%token<Range.t * string> MATHCHARS
+%token<Range.t * int> PRIMES
+%token<Range.t> SUBSCRIPT SUPERSCRIPT
+%token<Range.t * int> ITEM
 
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
 %token <Range.t> HEADER_STAGE0 HEADER_STAGE1 HEADER_PERSISTENT0
+
+%token <Range.t * Types.ctrlseq_name> HORZMACRO
+%token <Range.t * Types.ctrlseq_name> VERTMACRO
 
 %token EOI
 
@@ -448,14 +446,14 @@ bind_value_nonrec:
       }
 ;
 bind_inline:
-  | ident_ctx=LOWER; cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let (rng_ctx, varnm_ctx) = ident_ctx in
         let rng = make_range (Tok rng_ctx) (Ranged utast) in
         let curried = curry_lambda_abstraction param_units utast in
         (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
       }
-  | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let rng = make_range (Ranged cs) (Ranged utast) in
         let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
@@ -467,14 +465,14 @@ bind_inline:
       }
 ;
 bind_block:
-  | ident_ctx=LOWER; cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=PLUS_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let (rng_ctx, varnm_ctx) = ident_ctx in
         let rng = make_range (Tok rng_ctx) (Ranged utast) in
         let curried = curry_lambda_abstraction param_units utast in
         (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
       }
-  | cs=VERTCMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | cs=PLUS_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let rng = make_range (Ranged cs) (Ranged utast) in
         let rng_ctx = Range.dummy "context-of-lightweight-let-block" in
@@ -486,7 +484,7 @@ bind_block:
       }
 ;
 bind_math:
-  | cs=HORZCMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let rng = make_range (Ranged cs) (Ranged utast) in
         let curried = curry_lambda_abstraction param_units utast in
@@ -560,9 +558,9 @@ sigexpr_bot:
 decl:
   | VAL; ident=bound_identifier; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(ident, mnquant, mnty) }
-  | VAL; cs=HORZCMD; mnquant=quant; COLON; mnty=typ
+  | VAL; cs=BACKSLASH_CMD; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(cs, mnquant, mnty) }
-  | VAL; cs=VERTCMD; mnquant=quant; COLON; mnty=typ
+  | VAL; cs=PLUS_CMD; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(cs, mnquant, mnty) }
   | TYPE; tyident=LOWER; CONS; mnkd=kind
       { UTDeclTypeOpaque(tyident, mnkd) }
@@ -808,22 +806,22 @@ expr_bot:
       { let (rng, modnms, varnm) = long_ident in (rng, UTContentOf(modnms, varnm)) }
   | tokL=LPAREN; ident=binop; tokR=RPAREN
       { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], extract_main ident)) }
-  | ic=INTCONST
+  | ic=INT
       { let (rng, n) = ic in (rng, UTIntegerConstant(n)) }
-  | fc=FLOATCONST
+  | fc=FLOAT
       { let (rng, r) = fc in (rng, UTFloatConstant(r)) }
-  | lc=LENGTHCONST
+  | lc=LENGTH
       { let (rng, r, unitnm) = lc in (rng, UTLengthDescription(r, unitnm)) }
   | rng=TRUE
       { (rng, UTBooleanConstant(true)) }
   | rng=FALSE
       { (rng, UTBooleanConstant(false)) }
-  | tok=LITERAL
+  | tok=STRING
       {
         let (rng, str, pre, post) = tok in
         make_standard (Tok rng) (Tok rng) (UTStringConstant(omit_spaces pre post str))
       }
-  | tok=POSITIONED_LITERAL
+  | tok=POSITIONED_STRING
       {
         let (rng, ipos, s) = tok in
         make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s))
@@ -916,7 +914,7 @@ pattern_cons:
       { utpat }
 ;
 pattern_bot:
-  | ic=INTCONST
+  | ic=INT
       { let (rng, n) = ic in (rng, UTPIntegerConstant(n)) }
   | rng=TRUE
       { (rng, UTPBooleanConstant(true)) }
@@ -928,7 +926,7 @@ pattern_bot:
       { (rng, UTPWildCard) }
   | ident=bound_identifier
       { let (rng, varnm) = ident in (rng, UTPVariable(varnm)) }
-  | lit=LITERAL
+  | lit=STRING
       {
         let (rng, str, pre, post) = lit in
         make_standard (Tok rng) (Tok rng) (UTPStringConstant(omit_spaces pre post str))
@@ -980,7 +978,7 @@ inline_elems:
   |   { [] }
 ;
 inline_elem_cmd:
-  | icmd=inline_cmd; nargs=list(cmd_arg_expr); rsargs=cmd_args_text
+  | icmd=backslash_cmd; nargs=list(cmd_arg_expr); rsargs=cmd_args_text
       {
         let (rng_cs, modnms, csnm) = icmd in
         let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
@@ -997,7 +995,7 @@ inline_elem_cmd:
 */
   | tokL=BMATHGRP; utast=math; tokR=EMATHGRP
       { make_standard (Tok tokL) (Tok tokR) (UTInputHorzEmbeddedMath(utast)) }
-  | literal=LITERAL
+  | literal=STRING
       {
         let (rng, str, pre, post) = literal in
         make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeText(omit_spaces pre post str))
@@ -1027,7 +1025,7 @@ block:
       { (make_range_from_list belems, UTInputVert(belems)) }
 ;
 block_elem:
-  | bcmd=block_cmd; nargs=list(cmd_arg_expr); rsargs=cmd_args_text
+  | bcmd=plus_cmd; nargs=list(cmd_arg_expr); rsargs=cmd_args_text
       {
         let (rng_cs, modnms, csnm) = bcmd in
         let (rng_last, sargs) = rsargs in
@@ -1144,7 +1142,7 @@ math_bot:
         let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
         (rng, UTMChars(uchs))
       }
-  | mcmd=math_cmd; args=list(math_cmd_arg)
+  | mcmd=backslash_cmd; args=list(math_cmd_arg)
       {
         let (rng_cs, modnms, csnm) = mcmd in
         let rng_last =
@@ -1215,15 +1213,15 @@ cmd_arg_text:
   | tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
       { UTCommandArg([], make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
 ;
-inline_cmd:
-  | tok=HORZCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
-  | tok=HORZCMDWITHMOD { tok }
+backslash_cmd:
+  | cs=BACKSLASH_CMD
+      { let (rng, csnm) = cs in (rng, [], csnm) }
+  | long_cs=LONG_BACKSLASH_CMD
+      { long_cs }
 ;
-math_cmd:
-  | tok=MATHCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
-  | tok=MATHCMDWITHMOD { tok }
-;
-block_cmd:
-  | tok=VERTCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
-  | tok=VERTCMDWITHMOD { tok }
+plus_cmd:
+  | cs=PLUS_CMD
+      { let (rng, csnm) = cs in (rng, [], csnm) }
+  | long_cs=LONG_PLUS_CMD
+      { long_cs }
 ;

@@ -206,7 +206,7 @@ rule progexpr stack = parse
         let buffer = Buffer.create 256 in
         let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
         let pos = Range.unite pos_start pos_last in
-        LITERAL(pos, s, true, omit_post)
+        STRING(pos, s, true, omit_post)
       }
   | ("#" ("`"+ as backticks))
       {
@@ -215,7 +215,7 @@ rule progexpr stack = parse
         let buffer = Buffer.create 256 in
         let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
         let pos = Range.unite pos_start pos_last in
-        LITERAL(pos, s, false, omit_post)
+        STRING(pos, s, false, omit_post)
       }
   | ("@" ("`"+ as tok))
       {
@@ -238,16 +238,16 @@ rule progexpr stack = parse
                 input_column    = col;
               }
             in
-            POSITIONED_LITERAL(pos, ipos, s)
+            POSITIONED_STRING(pos, ipos, s)
       }
   | ("\\" (lower | upper) "@")
       { HORZMACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("\\" (lower | upper))
-      { HORZCMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
+      { BACKSLASH_CMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("+" (lower | upper) "@")
       { VERTMACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("+" (lower | upper))
-      { VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
+      { PLUS_CMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
 
   | "?"  { QUESTION(get_pos lexbuf) }
   | ":>" { COERCE(get_pos lexbuf) }
@@ -331,17 +331,17 @@ rule progexpr stack = parse
   | upper
       { UPPER(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (digit | (nzdigit digit+))
-      { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
+      { INT(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | (("0x" | "0X") hex+)
-      { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
+      { INT(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | ((digit+ "." digit*) | ("." digit+))
-      { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
+      { FLOAT(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
   | (((("-"? digit) | ("-"? nzdigit digit+)) as i) (lower as unitnm))
-      { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
+      { LENGTH(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
   | ((("-"? digit+ "." digit*) as flt) (lower as unitnm))
-      { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
+      { LENGTH(get_pos lexbuf, float_of_string flt, unitnm) }
   | ((("-"? "." digit+) as flt) (lower as unitnm))
-      { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
+      { LENGTH(get_pos lexbuf, float_of_string flt, unitnm) }
   | eof
       {
         if Stack.length stack = 1 then
@@ -378,13 +378,13 @@ and vertexpr stack = parse
   | ("+" (lower | upper))
       {
         Stack.push ActiveState stack;
-        VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf)
+        PLUS_CMD(get_pos lexbuf, Lexing.lexeme lexbuf)
       }
   | ("+" (((upper ".")+ (lower | upper)) as s))
       {
         let (modnms, csnm) = split_module_list s in
         Stack.push ActiveState stack;
-        VERTCMDWITHMOD(get_pos lexbuf, modnms, "+" ^ csnm)
+        LONG_PLUS_CMD(get_pos lexbuf, modnms, "+" ^ csnm)
       }
   | "<"
       { Stack.push VerticalState stack; BVERTGRP(get_pos lexbuf) }
@@ -471,7 +471,7 @@ and horzexpr stack = parse
         let tok = Lexing.lexeme lexbuf in
         let rng = get_pos lexbuf in
         Stack.push ActiveState stack;
-        HORZCMD(rng, tok)
+        BACKSLASH_CMD(rng, tok)
       }
   | ("\\" (lower | upper) "@")
       {
@@ -485,7 +485,7 @@ and horzexpr stack = parse
         let (modnms, csnm) = split_module_list s in
         let rng = get_pos lexbuf in
         Stack.push ActiveState stack;
-        HORZCMDWITHMOD(rng, modnms, "\\" ^ csnm)
+        LONG_BACKSLASH_CMD(rng, modnms, "\\" ^ csnm)
       }
   | ("\\" symbol)
       {
@@ -504,7 +504,7 @@ and horzexpr stack = parse
         let buffer = Buffer.create 256 in
         let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
         let pos = Range.unite pos_start pos_last in
-        LITERAL(pos, s, true, omit_post)
+        STRING(pos, s, true, omit_post)
       }
   | ("#" ("`"+ as backticks))
       {
@@ -513,7 +513,7 @@ and horzexpr stack = parse
         let buffer = Buffer.create 256 in
         let (pos_last, s, omit_post) = literal quote_length buffer lexbuf in
         let pos = Range.unite pos_start pos_last in
-        LITERAL(pos, s, false, omit_post)
+        STRING(pos, s, false, omit_post)
       }
   | eof
       {
@@ -604,12 +604,12 @@ and mathexpr stack = parse
   | ("\\" (lower | upper))
       {
         let csnm = Lexing.lexeme lexbuf in
-        MATHCMD(get_pos lexbuf, csnm)
+        BACKSLASH_CMD(get_pos lexbuf, csnm)
       }
   | ("\\" (((upper ".")* (lower | upper)) as s))
       {
         let (modnms, csnm) = split_module_list s in
-        MATHCMDWITHMOD(get_pos lexbuf, modnms, "\\" ^ csnm)
+        LONG_BACKSLASH_CMD(get_pos lexbuf, modnms, "\\" ^ csnm)
       }
   | ("\\" symbol)
       {
