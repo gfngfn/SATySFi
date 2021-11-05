@@ -251,19 +251,20 @@ rule progexpr stack = parse
   | ("+" (lower | upper))
       { VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
 
-  | "#"   { ACCESS(get_pos lexbuf) }
-  | "->"  { ARROW(get_pos lexbuf) }
-  | "<-"  { REVERSED_ARROW(get_pos lexbuf) }
-  | "|"   { BAR(get_pos lexbuf) }
-  | "_"   { WILDCARD(get_pos lexbuf) }
-  | ":"   { COLON(get_pos lexbuf) }
-  | ","   { COMMA(get_pos lexbuf) }
-  | "::"  { CONS(get_pos lexbuf) }
-  | "-"   { EXACT_MINUS(get_pos lexbuf) }
-  | "="   { EXACT_EQ(get_pos lexbuf) }
-  | "*"   { EXACT_TIMES(get_pos lexbuf) }
-  | "&"   { EXACT_AMP(get_pos lexbuf) }
-  | "~"   { EXACT_TILDE(get_pos lexbuf) }
+  | "?"  { QUESTION(get_pos lexbuf) }
+  | "#"  { ACCESS(get_pos lexbuf) }
+  | "->" { ARROW(get_pos lexbuf) }
+  | "<-" { REVERSED_ARROW(get_pos lexbuf) }
+  | "|"  { BAR(get_pos lexbuf) }
+  | "_"  { WILDCARD(get_pos lexbuf) }
+  | ":"  { COLON(get_pos lexbuf) }
+  | ","  { COMMA(get_pos lexbuf) }
+  | "::" { CONS(get_pos lexbuf) }
+  | "-"  { EXACT_MINUS(get_pos lexbuf) }
+  | "="  { EXACT_EQ(get_pos lexbuf) }
+  | "*"  { EXACT_TIMES(get_pos lexbuf) }
+  | "&"  { EXACT_AMP(get_pos lexbuf) }
+  | "~"  { EXACT_TILDE(get_pos lexbuf) }
 
   | ("+" opsymbol*) { BINOP_PLUS(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("-" opsymbol+) { BINOP_MINUS(get_pos lexbuf, Lexing.lexeme lexbuf) }
@@ -534,6 +535,8 @@ and mathexpr stack = parse
         comment lexbuf;
         mathexpr stack lexbuf
       }
+  | "?"
+      { QUESTION(get_pos lexbuf) }
   | "!{"
       {
         Stack.push HorizontalState stack;
@@ -603,7 +606,7 @@ and mathexpr stack = parse
       {
         let (modnms, csnm) = split_module_list s in
         MATHCMDWITHMOD(get_pos lexbuf, modnms, "\\" ^ csnm)
-    }
+      }
   | ("\\" symbol)
       {
         let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in
@@ -616,90 +619,110 @@ and mathexpr stack = parse
 
 
 and active stack = parse
-  | "%" {
-      comment lexbuf;
-      active stack lexbuf
-    }
-  | space { active stack lexbuf }
-  | break { increment_line lexbuf; active stack lexbuf }
-  | "~" { EXACT_TILDE(get_pos lexbuf) }
-  | "(" {
-      Stack.push ProgramState stack;
-      LPAREN(get_pos lexbuf)
-    }
-  | "(|" {
-      Stack.push ProgramState stack;
-      BRECORD(get_pos lexbuf)
-    }
-  | "[" {
-      Stack.push ProgramState stack;
-      BLIST(get_pos lexbuf)
-    }
-  | "{" {
-      let pos = get_pos lexbuf in
-      pop lexbuf "BUG; this cannot happen" stack;
-      Stack.push HorizontalState stack;
-      skip_spaces lexbuf;
-      BHORZGRP(pos)
-    }
-  | "<" {
-      let pos = get_pos lexbuf in
-      pop lexbuf "BUG; this cannot happen" stack;
-      Stack.push VerticalState stack;
-      BVERTGRP(pos)
-    }
-  | ";" {
-      let pos = get_pos lexbuf in
-      pop lexbuf "BUG; this cannot happen" stack;
-      ENDACTIVE(pos)
-    }
-  | eof {
-      report_error lexbuf "unexpected end of input while reading an active area"
-    }
-  | _ {
-      let tok = Lexing.lexeme lexbuf in
-      report_error lexbuf ("unexpected token '" ^ tok ^ "' in an active area")
-    }
+  | "%"
+      {
+        comment lexbuf;
+        active stack lexbuf
+      }
+  | space
+      { active stack lexbuf }
+  | break
+      { increment_line lexbuf; active stack lexbuf }
+  | "~"
+      { EXACT_TILDE(get_pos lexbuf) }
+  | "?"
+      { QUESTION(get_pos lexbuf) }
+  | "("
+      {
+        Stack.push ProgramState stack;
+        LPAREN(get_pos lexbuf)
+      }
+  | "(|"
+      {
+        Stack.push ProgramState stack;
+        BRECORD(get_pos lexbuf)
+      }
+  | "["
+      {
+        Stack.push ProgramState stack;
+        BLIST(get_pos lexbuf)
+      }
+  | "{"
+      {
+        let pos = get_pos lexbuf in
+        pop lexbuf "BUG; this cannot happen" stack;
+        Stack.push HorizontalState stack;
+        skip_spaces lexbuf;
+        BHORZGRP(pos)
+      }
+  | "<"
+      {
+        let pos = get_pos lexbuf in
+        pop lexbuf "BUG; this cannot happen" stack;
+        Stack.push VerticalState stack;
+        BVERTGRP(pos)
+      }
+  | ";"
+      {
+        let pos = get_pos lexbuf in
+        pop lexbuf "BUG; this cannot happen" stack;
+        ENDACTIVE(pos)
+      }
+  | eof
+      { report_error lexbuf "unexpected end of input while reading an active area" }
+  | _
+      {
+        let s = Lexing.lexeme lexbuf in
+        report_error lexbuf (Printf.sprintf "unexpected token '%s' in an active area" s)
+      }
 
 
 and literal quote_length buffer = parse
-  | "`"+ {
-      let tok = Lexing.lexeme lexbuf in
-      let len = String.length tok in
+  | "`"+
+      {
+        let backticks = Lexing.lexeme lexbuf in
+        let len = String.length backticks in
         if len < quote_length then begin
-          Buffer.add_string buffer tok;
+          Buffer.add_string buffer backticks;
           literal quote_length buffer lexbuf
         end else if len > quote_length then
           report_error lexbuf "literal area was closed with too many '`'s"
         else
+          let s = Buffer.contents buffer in
           let pos_last = get_pos lexbuf in
-          (pos_last, Buffer.contents buffer, true)
+          (pos_last, s, true)
     }
-  | (("`"+ as tok) "#") {
-      let len = String.length tok in
+  | (("`"+ as backticks) "#")
+      {
+        let len = String.length backticks in
         if len < quote_length then begin
-          Buffer.add_string buffer (tok ^ "#");
+          Buffer.add_string buffer backticks;
+          Buffer.add_string buffer "#";
           literal quote_length buffer lexbuf
         end else if len > quote_length then
           report_error lexbuf "literal area was closed with too many '`'s"
         else
+          let s = Buffer.contents buffer in
           let pos_last = get_pos lexbuf in
-          (pos_last, Buffer.contents buffer, false)
+          (pos_last, s, false)
     }
-  | break {
-      let tok = Lexing.lexeme lexbuf in
-      increment_line lexbuf;
-      Buffer.add_string buffer tok;
-      literal quote_length buffer lexbuf
-    }
-  | eof {
-      report_error lexbuf "unexpected end of input while reading literal area"
-    }
-  | _ {
-      let tok = Lexing.lexeme lexbuf in
-      Buffer.add_string buffer tok;
-      literal quote_length buffer lexbuf
-    }
+  | break
+      {
+        let tok = Lexing.lexeme lexbuf in
+        increment_line lexbuf;
+        Buffer.add_string buffer tok;
+        literal quote_length buffer lexbuf
+      }
+  | eof
+      {
+        report_error lexbuf "unexpected end of input while reading literal area"
+      }
+  | _
+      {
+        let s = Lexing.lexeme lexbuf in
+        Buffer.add_string buffer s;
+        literal quote_length buffer lexbuf
+      }
 
 
 and comment = parse
@@ -709,18 +732,22 @@ and comment = parse
 
 
 and skip_spaces = parse
-  | break {
-      increment_line lexbuf;
-      skip_spaces lexbuf
-    }
-  | space {
-      skip_spaces lexbuf
-    }
-  | "%" {
-      comment lexbuf;
-      skip_spaces lexbuf
-    }
-  | "" { () }
+  | break
+      {
+        increment_line lexbuf;
+        skip_spaces lexbuf
+      }
+  | space
+      {
+        skip_spaces lexbuf
+      }
+  | "%"
+      {
+        comment lexbuf;
+        skip_spaces lexbuf
+      }
+  | ""
+      { () }
 
 
 {
