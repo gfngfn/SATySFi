@@ -514,6 +514,8 @@ sigexpr:
         let (_, (modident, modidents)) = rmodchain in
         (rng, UTSigWith(utsig, modident :: modidents, tybinds))
       }
+  | tokL=LPAREN; modident=UPPER; COLON; utsig1=sigexpr; RPAREN; ARROW; utsig2=sigexpr
+      { make_standard (Tok tokL) (Ranged utsig2) (UTSigFunctor(modident, utsig1, utsig2)) }
   | utsig=sigexpr_bot
       { utsig }
 ;
@@ -523,12 +525,23 @@ sigexpr_bot:
         let (rng, signm) = sigident in
         (rng, UTSigVar(signm))
       }
+  | sigpath=PATH_UPPER
+      {
+        let (rng, modnms, signm) = sigpath in
+        let sigident = (rng, signm) in (* TODO: give appropriate ranges *)
+        let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in (* TODO: give appropriate ranges *)
+        let modchain =
+          match modidents with
+          | []                 -> assert false
+          | modident1 :: projs -> (modident1, projs)
+        in
+        (rng, UTSigPath(modchain, sigident))
+      }
   | tokL=SIG; decls=list(decl); tokR=END
       {
         let rng = make_range (Tok tokL) (Tok tokR) in
         (rng, UTSigDecls(decls))
       }
-(* TODO: support other signature syntax *)
 ;
 decl:
   | VAL; ident=bound_identifier; mnquant=quant; COLON; mnty=typ
