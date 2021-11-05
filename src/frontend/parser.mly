@@ -25,13 +25,10 @@
     Range.unite (extract left) (extract right)
 
 
-  let rec make_cons utastlst =
-    match utastlst with
-    | [] -> (Range.dummy "make_cons", UTEndOfList)
-    | ((rng, utastmain) as utast) :: tail ->
-        let utasttail = make_cons tail in
-        let (rngtail, _) = utasttail in
-          (Range.unite rng rngtail, UTListCons(utast, utasttail))
+  let make_list (utasts : untyped_abstract_tree list) : untyped_abstract_tree =
+    List.fold_right (fun utast_elem utast_tail ->
+      (Range.dummy "expr-list-cons", UTListCons(utast_elem, utast_tail))
+    ) utasts (Range.dummy "expr-list-nil", UTEndOfList)
 
 
   let curry_lambda_abstraction (param_units : untyped_parameter_unit list) (utast : untyped_abstract_tree) : untyped_abstract_tree =
@@ -837,13 +834,9 @@ expr_bot:
       { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
 ;
 expr_bot_list:
-  | tokL=BLIST; elems=optterm_list(COMMA, expr); tokR=ELIST
+  | tokL=BLIST; utasts=optterm_list(COMMA, expr); tokR=ELIST
       {
-        let (_, utast_main) =
-          List.fold_right (fun elem tail ->
-            make_standard (Ranged elem) (Ranged tail) (UTListCons(elem, tail))
-          ) elems (Range.dummy "end-of-list", UTEndOfList)
-        in
+        let (_, utast_main) = make_list utasts in
         make_standard (Tok tokL) (Tok tokR) utast_main
       }
 ;
@@ -925,8 +918,8 @@ pattern_bot:
       {
         let (_, utpat_main) =
           List.fold_right (fun utpat1 utpat2 ->
-            make_standard (Ranged utpat1) (Ranged utpat2) (UTPListCons(utpat1, utpat2))
-          ) utpats (Range.dummy "end-of-list-pattern", UTPEndOfList)
+            (Range.dummy "list-pattern-cons", UTPListCons(utpat1, utpat2))
+          ) utpats (Range.dummy "list-pattern-nil", UTPEndOfList)
         in
         make_standard (Tok tokL) (Tok tokR) utpat_main
       }
@@ -944,7 +937,7 @@ pattern_bot:
 ;
 inline:
   | BAR; utasts=list(terminated(inline_single, BAR))
-      { make_cons utasts }
+      { make_list utasts }
   | utast=inline_single
       { utast }
   | itemizes=nonempty_list(inline_itemize_elem)
@@ -1039,7 +1032,7 @@ block_elem:
 ;
 math:
   | BAR; utms=list(terminated(math_single, BAR))
-      { utms |> List.map (fun utm -> let (rng, _) = utm in (rng, UTMath(utm))) |> make_cons }
+      { utms |> List.map (fun utm -> let (rng, _) = utm in (rng, UTMath(utm))) |> make_list }
   | utm=math_single
       { let (rng, _) = utm in (rng, UTMath(utm)) }
 ;
