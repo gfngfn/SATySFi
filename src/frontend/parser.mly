@@ -39,67 +39,57 @@
     ) param_units
 
 
+  (* TODO: more efficient implementation *)
   let rec omit_pre_spaces str =
     let len = String.length str in
-      if len = 0 then "" else
-        match String.sub str 0 1 with
-        | " " -> omit_pre_spaces (String.sub str 1 (len - 1))
-        | _   -> str
+    if len = 0 then
+      ""
+    else
+      match String.sub str 0 1 with
+      | " " -> omit_pre_spaces (String.sub str 1 (len - 1))
+      | _   -> str
 
+
+  (* TODO: more efficient implementation *)
   let rec omit_post_spaces str =
     let len = String.length str in
-      if len = 0 then "" else
-        match String.sub str (len - 1) 1 with
-        | " "  -> omit_post_spaces (String.sub str 0 (len - 1))
-        | "\n" -> String.sub str 0 (len - 1)
-        | _    -> str
+    if len = 0 then
+      ""
+    else
+      match String.sub str (len - 1) 1 with
+      | " "  -> omit_post_spaces (String.sub str 0 (len - 1))
+      | "\n" -> String.sub str 0 (len - 1)
+      | _    -> str
 
 
-  let rec omit_spaces (omit_pre : bool) (omit_post : bool) (str_literal_raw : string) : string =
-    let str_literal =
-      let s1 = if omit_pre then omit_pre_spaces str_literal_raw else str_literal_raw in
-      let s2 = if omit_post then omit_post_spaces s1 else s1 in
-      s2
-    in
-      let min_indent = min_indent_space str_literal in
-        let str_shaved = shave_indent str_literal min_indent in
-        let len_shaved = String.length str_shaved in
-          if len_shaved >= 1 && str_shaved.[len_shaved - 1] = '\n' then
-            let str_no_last_break = String.sub str_shaved 0 (len_shaved - 1) in
-              str_no_last_break
-          else
-            str_shaved
-
-
-  and min_indent_space (str_ltrl : string) =
-    min_indent_space_sub str_ltrl 0 ReadingSpace 0 (String.length str_ltrl)
-
-
-  and min_indent_space_sub (str_ltrl : string) (index : int) (lrstate : literal_reading_state) (spnum : int) (minspnum : int) =
-    if index >= (String.length str_ltrl) then
-        minspnum
+  let rec min_indent_space_sub (str_ltrl : string) (index : int) (lrstate : literal_reading_state) (spnum : int) (minspnum : int) =
+    if index >= String.length str_ltrl then
+      minspnum
     else
       match lrstate with
       | Normal ->
-          ( match str_ltrl.[index] with
+          begin
+            match str_ltrl.[index] with
             | '\n' -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace 0 minspnum
             | _    -> min_indent_space_sub str_ltrl (index + 1) Normal 0 minspnum
-          )
+          end
+
       | ReadingSpace ->
-          ( match str_ltrl.[index] with
+          begin
+            match str_ltrl.[index] with
             | ' '  -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace (spnum + 1) minspnum
             | '\n' -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace 0 minspnum
-                (* -- does not take space-only line into account -- *)
             | _    -> min_indent_space_sub str_ltrl (index + 1) Normal 0 (if spnum < minspnum then spnum else minspnum)
-          )
+          end
+            (* Does not take space-only line into account. *)
 
 
-  and shave_indent str_ltrl minspnum =
-    shave_indent_sub str_ltrl minspnum 0 "" Normal 0
+  let min_indent_space (str_ltrl : string) =
+    min_indent_space_sub str_ltrl 0 ReadingSpace 0 (String.length str_ltrl)
 
 
-  and shave_indent_sub str_ltrl minspnum index str_constr lrstate spnum =
-    if index >= (String.length str_ltrl) then
+  let rec shave_indent_sub str_ltrl minspnum index str_constr lrstate spnum =
+    if index >= String.length str_ltrl then
       str_constr
     else
       match lrstate with
@@ -109,6 +99,7 @@
             | '\n' -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ "\n") ReadingSpace 0
             | ch   -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
           end
+
       | ReadingSpace ->
           begin
             match str_ltrl.[index] with
@@ -118,9 +109,32 @@
                 else
                   shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ " ") ReadingSpace (spnum + 1)
 
-            | '\n' -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ "\n") ReadingSpace 0
-            | ch   -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
+            | '\n' ->
+                shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ "\n") ReadingSpace 0
+
+            | ch ->
+                shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
           end
+
+
+  let shave_indent str_ltrl minspnum =
+    shave_indent_sub str_ltrl minspnum 0 "" Normal 0
+
+
+  let omit_spaces (omit_pre : bool) (omit_post : bool) (str_literal_raw : string) : string =
+    let str_literal =
+      let s1 = if omit_pre then omit_pre_spaces str_literal_raw else str_literal_raw in
+      let s2 = if omit_post then omit_post_spaces s1 else s1 in
+      s2
+    in
+    let min_indent = min_indent_space str_literal in
+    let str_shaved = shave_indent str_literal min_indent in
+    let len_shaved = String.length str_shaved in
+    if len_shaved >= 1 && str_shaved.[len_shaved - 1] = '\n' then
+      let str_no_last_break = String.sub str_shaved 0 (len_shaved - 1) in
+      str_no_last_break
+    else
+      str_shaved
 
 
   let extract_main (_, utastmain) = utastmain
