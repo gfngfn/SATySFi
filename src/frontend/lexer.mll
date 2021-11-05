@@ -35,12 +35,12 @@
     let lnum = posS.Lexing.pos_lnum in
     let cnumS = posS.Lexing.pos_cnum - posS.Lexing.pos_bol in
     let cnumE = posE.Lexing.pos_cnum - posE.Lexing.pos_bol in
-      Range.make fname lnum cnumS cnumE
+    Range.make fname lnum cnumS cnumE
 
 
   let report_error lexbuf errmsg =
     let rng = get_pos lexbuf in
-      raise (LexError(rng, errmsg))
+    raise (LexError(rng, errmsg))
 
 
   let pop lexbuf errmsg stack =
@@ -50,42 +50,40 @@
       report_error lexbuf errmsg
 
 
-  let increment_line lexbuf =
-    begin
-      Lexing.new_line lexbuf;
-    end
+  let increment_line (lexbuf : Lexing.lexbuf) : unit =
+    Lexing.new_line lexbuf
 
 
   let adjust_bol lexbuf amt =
     let open Lexing in
     let lcp = lexbuf.lex_curr_p in
-      lexbuf.lex_curr_p <- { lcp with pos_bol = lcp.pos_cnum + amt; }
+    lexbuf.lex_curr_p <- { lcp with pos_bol = lcp.pos_cnum + amt; }
 
 
   let rec increment_line_for_each_break lexbuf str =
     let len = String.length str in
     let has_break = ref false in
     let rec aux num tail_spaces prev =
-      if num >= len then tail_spaces else
-        begin
-          match (prev, String.get str num) with
-          | (Some('\r'), '\n') ->
-              aux (num + 1) (tail_spaces + 1) (Some('\n'))
+      if num >= len then
+        tail_spaces
+      else
+        match (prev, String.get str num) with
+        | (Some('\r'), '\n') ->
+            aux (num + 1) (tail_spaces + 1) (Some('\n'))
 
-          | (_, (('\n' | '\r') as c)) ->
-              has_break := true;
-              increment_line lexbuf;
-              aux (num + 1) 0 (Some(c))
+        | (_, (('\n' | '\r') as c)) ->
+            has_break := true;
+            increment_line lexbuf;
+            aux (num + 1) 0 (Some(c))
 
-          | _ ->
-              aux (num + 1) (tail_spaces + 1) None
-        end;
+        | _ ->
+            aux (num + 1) (tail_spaces + 1) None
     in
     let amt = aux 0 0 None in
-      if !has_break then
-        adjust_bol lexbuf (-amt)
-      else
-        ()
+    if !has_break then
+      adjust_bol lexbuf (-amt)
+    else
+      ()
 
 
   let initialize state =
@@ -102,11 +100,11 @@
     initialize VerticalState
 
 
-  let split_module_list tokstr =
-    let lst = String.split_on_char '.' tokstr in
-      match List.rev lst with
-      | ident :: mdllstrev -> (List.rev mdllstrev, ident)
-      | []                 -> assert false
+  let split_module_list (s : string) : module_name list * var_name =
+    let ss = String.split_on_char '.' s in
+    match List.rev ss with
+    | varnm :: modnms_rev -> (List.rev modnms_rev, varnm)
+    | []                  -> assert false
 
 }
 
