@@ -1839,35 +1839,14 @@ and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : con
 and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * binding list =
   let (rng, utmodmain) = utmod in
   match utmodmain with
-  | UTModVar(modnm) ->
-      let mentry = find_module tyenv (rng, modnm) in
+  | UTModVar(modchain) ->
+      let mentry = find_module_chain tyenv modchain in
       let modsig = mentry.mod_signature in
       ((OpaqueIDMap.empty, modsig), [])  (* TODO: output *)
 
   | UTModBinds(utbinds) ->
       let (binds, _, (quant, ssig)) = typecheck_binding_list stage tyenv utbinds in
       ((quant, ConcStructure(ssig)), binds)
-
-  | UTModProjMod(utmod1, (_, modnm2)) ->
-      let (absmodsig1, binds) = typecheck_module stage tyenv utmod1 in
-      let (oidset, modsig1) = absmodsig1 in
-      begin
-        match modsig1 with
-        | ConcFunctor(_) ->
-            let (rng1, _) = utmod1 in
-            raise (NotOfStructureType(rng1, modsig1))
-
-        | ConcStructure(ssig1) ->
-            begin
-              match ssig1 |> StructSig.find_module modnm2 with
-              | None ->
-                  failwith "TODO (error): typecheck_module, UTModProjMod, not found"
-
-              | Some(mentry2) ->
-                  let absmodsig2 = (oidset, mentry2.mod_signature) in
-                  (absmodsig2, binds)
-            end
-      end
 
   | UTModFunctor((_, modnm1), utsig1, utmod2) ->
       let absmodsig1 = typecheck_signature stage tyenv utsig1 in

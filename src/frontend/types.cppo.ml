@@ -291,9 +291,8 @@ and untyped_module =
   untyped_module_main ranged
 
 and untyped_module_main =
-  | UTModVar     of module_name
+  | UTModVar     of module_name_chain
   | UTModBinds   of untyped_binding list
-  | UTModProjMod of untyped_module * module_name ranged
   | UTModFunctor of module_name ranged * untyped_signature * untyped_module
   | UTModApply   of module_name_chain * module_name_chain
   | UTModCoerce  of module_name ranged * untyped_signature

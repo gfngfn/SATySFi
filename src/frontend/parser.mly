@@ -214,7 +214,7 @@
   IF IN INCLUDE INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
   REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH
 
-%token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW ENDACTIVE COMMA CONS ACCESS QUESTION
+%token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW ENDACTIVE COMMA CONS ACCESS QUESTION COERCE
 %token<Range.t> LPAREN RPAREN BVERTGRP EVERTGRP BHORZGRP EHORZGRP BMATHGRP EMATHGRP BLIST ELIST BRECORD ERECORD
 %token<Range.t> EXACT_MINUS EXACT_TIMES EXACT_AMP EXACT_TILDE EXACT_EQ
 
@@ -225,7 +225,8 @@
 
 %token<Range.t * Types.var_name> LOWER
 %token<Range.t * Types.constructor_name> UPPER
-%token<Range.t * (Types.module_name list) * Types.var_name> PATH_LOWER
+%token<Range.t * Types.module_name list * Types.var_name> PATH_LOWER
+%token<Range.t * Types.module_name list * Types.constructor_name> PATH_UPPER
 
 %token <Range.t * Types.ctrlseq_name> HORZCMD
 %token <Range.t * Types.ctrlseq_name> HORZMACRO
@@ -252,7 +253,6 @@
 %token <Range.t * string> MATHCHARS
 %token <Range.t * int> PRIMES
 %token <Range.t> SUBSCRIPT SUPERSCRIPT
-%token <Range.t * Types.module_name> OPENMODULE
 %token <Range.t * int> ITEM
 
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
@@ -270,6 +270,8 @@
 
 %start main
 %type<Types.stage * Types.header_element list * Types.untyped_source_file> main
+%type<Types.untyped_module> modexpr
+%type<Types.module_name_chain Types.ranged> mod_chain
 %type<Types.untyped_binding> bind
 %type<Types.untyped_let_binding list> bind_value_rec
 %type<Types.untyped_let_binding> bind_value_nonrec
@@ -347,15 +349,44 @@ headerelem:
   | content=HEADER_IMPORT  { let (_, s) = content in HeaderImport(s) }
 ;
 modexpr:
-  | modtok=UPPER {
-      let (rng, modnm) = modtok in
-      (rng, UTModVar(modnm))
-    }
-  | tokL=STRUCT; utbinds=list(bind); tokR=END {
-      let rng = make_range (Tok tokL) (Tok tokR) in
-      (rng, UTModBinds(utbinds))
-    }
-(* TODO: support other module syntax *)
+  | tokL=FUN; LPAREN; modident=UPPER; COLON; utsig=sigexpr; RPAREN; ARROW; utmod=modexpr
+      { make_standard (Tok tokL) (Ranged utmod) (UTModFunctor(modident, utsig, utmod)) }
+  | modident=UPPER; COERCE; utsig=sigexpr
+      { make_standard (Ranged modident) (Ranged utsig) (UTModCoerce(modident, utsig)) }
+  | utmod=modexpr_app
+      { utmod }
+;
+modexpr_app:
+  | rmodchain1=mod_chain; rmodchain2=mod_chain
+      {
+        let (rng1, modchain1) = rmodchain1 in
+        let (rng2, modchain2) = rmodchain2 in
+        make_standard (Tok rng1) (Tok rng2) (UTModApply(modchain1, modchain2))
+      }
+  | utmod=modexpr_bot
+      { utmod }
+;
+modexpr_bot:
+  | rmodchain=mod_chain
+      { let (rng, modchain) = rmodchain in (rng, UTModVar(modchain)) }
+  | tokL=STRUCT; utbinds=list(bind); tokR=END
+      { make_standard (Tok tokL) (Tok tokR) (UTModBinds(utbinds)) }
+;
+mod_chain:
+  | modident=UPPER
+      { let (rng, modnm) = modident in (rng, ((rng, modnm), [])) }
+  | modpath=PATH_UPPER
+      {
+        let (rng, modnms, modnm0) = modpath in
+        match modnms with
+        | [] ->
+            assert false
+
+        | modnm1 :: modnms_rest ->
+            let projs = (List.append modnms_rest [ modnm0 ]) |> List.map (fun modnm -> (rng, modnm)) in
+            (rng, ((rng, modnm1), projs))
+              (* TODO: give appropriate ranges *)
+      }
 ;
 bind:
   | tokL=VAL; valbind=bind_value

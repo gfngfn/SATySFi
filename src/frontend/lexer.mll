@@ -250,6 +250,7 @@ rule progexpr stack = parse
       { VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
 
   | "?"  { QUESTION(get_pos lexbuf) }
+  | ":>" { COERCE(get_pos lexbuf) }
   | "#"  { ACCESS(get_pos lexbuf) }
   | "->" { ARROW(get_pos lexbuf) }
   | "<-" { REVERSED_ARROW(get_pos lexbuf) }
@@ -280,9 +281,9 @@ rule progexpr stack = parse
       { TYPEVAR(get_pos lexbuf, tyvarnm) }
   | ((upper ".")+ lower)
       {
-        let tokstr = Lexing.lexeme lexbuf in
         let pos = get_pos lexbuf in
-        let (modnms, varnm) = split_module_list tokstr in
+        let s = Lexing.lexeme lexbuf in
+        let (modnms, varnm) = split_module_list s in
         PATH_LOWER(pos, modnms, varnm)
       }
   | lower
@@ -320,10 +321,15 @@ rule progexpr stack = parse
         | "with"      -> WITH(pos)
         | _           -> LOWER(pos, tokstr)
       }
+  | ((upper ".")+ upper)
+      {
+        let pos = get_pos lexbuf in
+        let s = Lexing.lexeme lexbuf in
+        let (modnms, upper) = split_module_list s in
+        PATH_UPPER(pos, modnms, upper)
+      }
   | upper
       { UPPER(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | ((upper as modnm) ".(")
-      { Stack.push ProgramState stack; OPENMODULE(get_pos lexbuf, modnm) }
   | (digit | (nzdigit digit+))
       { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | (("0x" | "0X") hex+)
