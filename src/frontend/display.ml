@@ -86,6 +86,30 @@ module GeneralIDHashTable
   end
 
 
+let show_base_type = function
+  | EnvType     -> "env"  (* -- unused -- *)
+  | UnitType    -> "unit"
+  | BoolType    -> "bool"
+  | IntType     -> "int"
+  | FloatType   -> "float"
+  | StringType  -> "string"
+  | TextRowType -> "inline-text"
+  | TextColType -> "block-text"
+  | BoxRowType  -> "inline-boxes"
+  | BoxColType  -> "block-boxes"
+  | ContextType -> "context"
+  | PrePathType -> "pre-path"
+  | PathType    -> "path"
+  | LengthType  -> "length"
+  | GraphicsType -> "graphics"
+  | ImageType    -> "image"
+  | DocumentType -> "document"
+  | MathType     -> "math"
+  | RegExpType   -> "regexp"
+  | TextInfoType -> "text-info"
+  | InputPosType -> "input-position"
+
+
 type paren_level =
   | Outmost
   | DomainSide
@@ -102,28 +126,7 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) (ortvf : 'b 
 
     | TypeVariable(tvi) -> tvf plev tvi
 
-    | BaseType(EnvType)     -> "env"  (* -- unused -- *)
-    | BaseType(UnitType)    -> "unit"
-    | BaseType(BoolType)    -> "bool"
-    | BaseType(IntType)     -> "int"
-    | BaseType(FloatType)   -> "float"
-    | BaseType(StringType)  -> "string"
-
-    | BaseType(TextRowType) -> "inline-text"
-    | BaseType(TextColType) -> "block-text"
-    | BaseType(BoxRowType)  -> "inline-boxes"
-    | BaseType(BoxColType)  -> "block-boxes"
-    | BaseType(ContextType) -> "context"
-    | BaseType(PrePathType) -> "pre-path"
-    | BaseType(PathType)    -> "path"
-    | BaseType(LengthType)  -> "length"
-    | BaseType(GraphicsType) -> "graphics"
-    | BaseType(ImageType)    -> "image"
-    | BaseType(DocumentType) -> "document"
-    | BaseType(MathType)     -> "math"
-    | BaseType(RegExpType)   -> "regexp"
-    | BaseType(TextInfoType) -> "text-info"
-    | BaseType(InputPosType) -> "input-position"
+    | BaseType(bty) -> show_base_type bty
 
     | DataType(tyargs, tyid) ->
         let name = TypeID.extract_name tyid in
@@ -315,25 +318,3 @@ let string_of_poly_type (Poly(pty) : poly_type) =
     let current_ht = GeneralIDHashTable.create 32 in
     string_of_mono_type_sub (tvf_poly current_ht) (ortvf_poly current_ht) current_ht Outmost pty
   end
-
-
-(* -- following are all for debug -- *)
-
-let string_of_utast utast = show_untyped_abstract_tree utast
-
-
-let escape_letters str =
-  let rec aux str index =
-    if index <= 0 then "" else
-      let head =
-        match str.[0] with
-        | '\\'  -> "\\\\"
-        | '"'   -> "\\\""
-        | other -> String.make 1 other
-      in
-        head ^ (aux (String.sub str 1 (index - 1)) (index - 1))
-  in
-    aux str (String.length str)
-
-
-let string_of_ast (ast : abstract_tree) = show_abstract_tree ast
