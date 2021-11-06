@@ -51,6 +51,14 @@ type substitution = type_scheme SubstMap.t
 
 module SynonymNameSet = Set.Make(String)
 
+module SynonymNameHashSet =
+  Hashtbl.Make(
+    struct
+      type t = type_name
+      let equal = String.equal
+      let hash = Hashtbl.hash
+    end)
+
 module PatternVarMap = Map.Make(String)
 
 type pattern_var_map = (Range.t * EvalVarID.t * mono_type) PatternVarMap.t
@@ -2619,8 +2627,52 @@ and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untype
   (Alist.to_list bindacc, tyenv, (quantacc, ssigacc))
 
 
-and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : Typeenv.t) (synbind : manual_type) : SynonymNameSet.t =
-  failwith "TODO: get_dependency_on_synonym_types"
+and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : SynonymNameSet.t =
+  let hashset = SynonymNameHashSet.create 32 in
+    (* A hash set is created on every (non-partial) call. *)
+  let register_if_needed (tynm : type_name) : unit =
+    if vertices |> SynonymNameSet.mem tynm then
+      SynonymNameHashSet.add hashset tynm ()
+    else
+      ()
+  in
+  let rec aux ((_, mtymain) : manual_type) : unit =
+    match mtymain with
+    | MTypeName(tynm, mtyargs) ->
+        List.iter aux mtyargs;
+        register_if_needed tynm
+
+    | MFuncType(mfields, mtydom, mtycod) ->
+        aux_row mfields;
+        aux mtydom;
+        aux mtycod
+
+    | MProductType(mtys) ->
+        mtys |> TupleList.to_list |> List.iter aux
+
+    | MRecordType(mfields) ->
+        aux_row mfields
+
+    | MTypeParam(typaram) ->
+        ()
+
+    | MHorzCommandType(mcmdargtys) -> mcmdargtys |> List.iter aux_cmd_arg
+    | MVertCommandType(mcmdargtys) -> mcmdargtys |> List.iter aux_cmd_arg
+    | MMathCommandType(mcmdargtys) -> mcmdargtys |> List.iter aux_cmd_arg
+
+  and aux_row (mfields : (label ranged * manual_type) list) : unit =
+    mfields |> List.iter (fun (_, mty) -> aux mty)
+
+  and aux_cmd_arg (mcmdargty : manual_command_argument_type) : unit =
+    let MArgType(mfields, mty) = mcmdargty in
+    aux_row mfields;
+    aux mty
+
+  in
+  aux mty;
+  SynonymNameHashSet.fold (fun sid () set ->
+    set |> SynonymNameSet.add sid
+  ) hashset SynonymNameSet.empty
 
 
 and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding list * StructSig.t abstracted =
