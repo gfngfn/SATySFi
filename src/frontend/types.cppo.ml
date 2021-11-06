@@ -387,8 +387,8 @@ and untyped_abstract_tree_main =
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
-  | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
-  | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
+  | UTLambdaHorz           of var_name ranged * untyped_abstract_tree
+  | UTLambdaVert           of var_name ranged * untyped_abstract_tree
   | UTLambdaMath           of untyped_abstract_tree
 (* Horizontal box lists: *)
   | UTHorz                 of HorzBox.horz_box list
@@ -411,11 +411,11 @@ and untyped_abstract_tree_main =
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTFunction             of (label ranged * var_name ranged) list * untyped_pattern_tree * untyped_abstract_tree
-  | UTOpenIn               of Range.t * module_name * untyped_abstract_tree
+  | UTOpenIn               of module_name ranged * untyped_abstract_tree
 (* Pattern matching: *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
   | UTConstructor          of constructor_name * untyped_abstract_tree
-  | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
+  | UTOverwrite            of var_name ranged * untyped_abstract_tree
 (* Lightweight itemizes: *)
   | UTItemize              of untyped_itemize
 (* Maths: *)

@@ -816,7 +816,7 @@ let rec typecheck
       let ivlst = typecheck_input_vert rng pre tyenv utivlst in
       (InputVert(ivlst), (rng, BaseType(TextColType)))
 
-  | UTOpenIn(rngtok, modnm, utast1) ->
+  | UTOpenIn((_, modnm), utast1) ->
       begin
         match tyenv |> Typeenv.find_module modnm with
         | None ->
@@ -912,45 +912,49 @@ let rec typecheck
       unify ty2 (get_range utast2, BaseType(TextRowType));
       (Concat(e1, e2), (rng, BaseType(TextRowType)))
 
-  | UTLambdaHorz(varrng, varnmctx, utast1) ->
+  | UTLambdaHorz(ident, utast1) ->
+      let (rng_var, varnm_ctx) = ident in
       let (bstyvar, bstyret) =
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
           (ContextType, BoxRowType)
       in
-      let evid = EvalVarID.fresh (varrng, varnmctx) in
+      let evid = EvalVarID.fresh ident in
       let tyenvsub =
         let ventry =
           {
             val_name  = Some(evid);
-            val_type  = Poly(varrng, BaseType(bstyvar));
+            val_type  = Poly(rng_var, BaseType(bstyvar));
             val_stage = pre.stage;
           }
         in
-        tyenv |> Typeenv.add_value varnmctx ventry in
+        tyenv |> Typeenv.add_value varnm_ctx ventry
+      in
       let (e1, ty1) = typecheck_iter tyenvsub utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       unify tyret (Range.dummy "lambda-horz-return", BaseType(bstyret));
-        (abstraction evid e1, (rng, HorzCommandType(cmdargtylist)))
+      (abstraction evid e1, (rng, HorzCommandType(cmdargtylist)))
 
-  | UTLambdaVert(varrng, varnmctx, utast1) ->
+  | UTLambdaVert(ident, utast1) ->
+      let (rng_var, varnm_ctx) = ident in
       let (bstyvar, bstyret) =
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
           (ContextType, BoxColType)
       in
-      let evid = EvalVarID.fresh (varrng, varnmctx) in
+      let evid = EvalVarID.fresh ident in
       let tyenvsub =
         let ventry =
           {
             val_name  = Some(evid);
-            val_type  = Poly(varrng, BaseType(bstyvar));
+            val_type  = Poly(rng_var, BaseType(bstyvar));
             val_stage = pre.stage;
           }
         in
-        tyenv |> Typeenv.add_value varnmctx ventry in
+        tyenv |> Typeenv.add_value varnm_ctx ventry
+      in
       let (e1, ty1) = typecheck_iter tyenvsub utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       unify tyret (Range.dummy "lambda-vert-return", BaseType(bstyret));
@@ -1077,9 +1081,10 @@ let rec typecheck
       let (eA, tyA) = typecheck_iter tyenvI utastA in
       (LetMutableIn(evid, eI, eA), tyA)
 
-  | UTOverwrite(rng_var, varnm, utastN) ->
+  | UTOverwrite(ident, utastN) ->
+      let (rng_var, _) = ident in
       begin
-        match typecheck_iter tyenv (rng_var, UTContentOf([], (rng_var, varnm))) with
+        match typecheck_iter tyenv (rng_var, UTContentOf([], ident)) with
         | ((ContentOf(_, evid) | Persistent(_, evid)), tyvar) ->
             let (eN, tyN) = typecheck_iter tyenv utastN in
             unify tyvar (get_range utastN, RefType(tyN));

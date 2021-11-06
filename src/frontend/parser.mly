@@ -451,39 +451,39 @@ bind_value_nonrec:
 bind_inline:
   | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
-        let (rng_ctx, varnm_ctx) = ident_ctx in
-        let rng = make_range (Tok rng_ctx) (Ranged utast) in
         let curried = curry_lambda_abstraction param_units utast in
-        (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
+        let rng = make_range (Ranged ident_ctx) (Ranged utast) in
+        (cs, (rng, UTLambdaHorz(ident_ctx, curried)))
       }
   | cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
-        let rng = make_range (Ranged cs) (Ranged utast) in
         let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
         let varnm_ctx = "%context" in
-        let utast_ctx = (rng_ctx, UTContentOf([], (rng_ctx, varnm_ctx))) in
+        let ident_ctx = (rng_ctx, varnm_ctx) in
+        let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
         let utast_read = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utast_ctx, utast)) in
         let curried = curry_lambda_abstraction param_units utast_read in
-        (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
+        let rng = make_range (Ranged cs) (Ranged utast) in
+        (cs, (rng, UTLambdaHorz(ident_ctx, curried)))
       }
 ;
 bind_block:
   | ident_ctx=LOWER; cs=PLUS_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
-        let (rng_ctx, varnm_ctx) = ident_ctx in
-        let rng = make_range (Tok rng_ctx) (Ranged utast) in
+        let rng = make_range (Ranged ident_ctx) (Ranged utast) in
         let curried = curry_lambda_abstraction param_units utast in
-        (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
+        (cs, (rng, UTLambdaVert(ident_ctx, curried)))
       }
   | cs=PLUS_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
-        let rng = make_range (Ranged cs) (Ranged utast) in
         let rng_ctx = Range.dummy "context-of-lightweight-let-block" in
         let varnm_ctx = "%context" in
-        let utast_ctx = (rng_ctx, UTContentOf([], (rng_ctx, varnm_ctx))) in
+        let ident_ctx = (rng_ctx, varnm_ctx) in
+        let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
         let utast_read = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utast_ctx, utast)) in
         let curried = curry_lambda_abstraction param_units utast_read in
-        (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
+        let rng = make_range (Ranged cs) (Ranged utast) in
+        (cs, (rng, UTLambdaVert(ident_ctx, curried)))
       }
 ;
 bind_math:
@@ -714,10 +714,7 @@ expr:
   | tok=LET; valbind=bind_value; IN; utast2=expr
       { make_standard (Tok tok) (Ranged utast2) (UTLetIn(valbind, utast2)) }
   | tok=LET; OPEN; modident=UPPER; IN; utast=expr
-      {
-        let (rng, modnm) = modident in
-        make_standard (Tok tok) (Ranged utast) (UTOpenIn(rng, modnm, utast))
-      }
+      { make_standard (Tok tok) (Ranged utast) (UTOpenIn(modident, utast)) }
   | tok=IF; utast0=expr; THEN; utast1=expr; ELSE; utast2=expr
       { make_standard (Tok tok) (Ranged utast2) (UTIfThenElse(utast0, utast1, utast2)) }
   | tok=FUN; param_units=list(param_unit); ARROW; utast=expr
@@ -730,10 +727,7 @@ expr:
 ;
 expr_overwrite:
   | ident=LOWER; REVERSED_ARROW; utast=expr_op
-      {
-        let (rng, varnm) = ident in
-        make_standard (Ranged ident) (Ranged utast) (UTOverwrite(rng, varnm, utast))
-      }
+      { make_standard (Ranged ident) (Ranged utast) (UTOverwrite(ident, utast)) }
   | utast=expr_op
       { utast }
 ;
@@ -981,8 +975,8 @@ inline_elems:
 inline_elem_cmd:
   | icmd=backslash_cmd; nargs=list(cmd_arg_expr); rsargs=cmd_args_text
       {
-        let (rng_cs, modnms, csnm) = icmd in
-        let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
+        let (rng_cs, modidents, cs) = icmd in
+        let utast_cmd = (rng_cs, UTContentOf(modidents, cs)) in
         let (rng_last, sargs) = rsargs in
         let args = List.append nargs sargs in
         make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzEmbedded(utast_cmd, args))
@@ -1003,8 +997,8 @@ inline_elem_cmd:
       }
   | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {
-        let (rng, modnms, varnm) = long_ident in
-        let utast = (rng, UTContentOf(modnms, varnm)) in
+        let (rng, modidents, ident) = long_ident in
+        let utast = (rng, UTContentOf(modidents, ident)) in
         make_standard (Tok rng) (Tok tokR) (UTInputHorzContent(utast))
       }
 ;
