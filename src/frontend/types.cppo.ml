@@ -479,6 +479,7 @@ and untyped_command_argument =
 type untyped_source_file =
   | UTLibraryFile  of (module_name ranged * untyped_binding list)
   | UTDocumentFile of untyped_abstract_tree
+[@@deriving show { with_path = false; }]
 
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree

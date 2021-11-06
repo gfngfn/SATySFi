@@ -708,7 +708,7 @@ typ_opt_dom:
       { (tokL, mnopts) }
 ;
 typ_opt_dom_entry:
-  | rlabel=LOWER; EXACT_EQ; mnty=typ
+  | rlabel=LOWER; COLON; mnty=typ
       { (rlabel, mnty) }
 ;
 typ_cmd_arg:

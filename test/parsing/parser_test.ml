@@ -2,7 +2,7 @@ open Core_kernel
 open Main__
 
 let () =
-  let proj (_, _, bindings, _) = bindings in
+  let proj (_, _, utsrc) = utsrc in
   Out_channel.print_endline ";;; generated automatically. DO NOT EDIT";
   Out_channel.print_endline ";;; To update this file, you should run `dune runtest; dune promote`.";
   Sys.argv
@@ -18,8 +18,8 @@ let () =
             |> ParserInterface.process fn
           )
       |> proj
-      |> List.map ~f:[%derive.show: Types.untyped_binding]
-      |> List.iter ~f:print_endline
+      |> [%derive.show: Types.untyped_source_file]
+      |> print_endline
     with
     | ParserInterface.Error(rng) ->
       Out_channel.fprintf stderr "%s: parse error: %s\n" Sys.argv.(0) @@ Range.to_string rng;
