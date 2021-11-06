@@ -114,12 +114,6 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
   | Some(centry) ->
       let qtfbl = pre.quantifiability in
       let lev = pre.level in
-      let freef rng tv =
-        (rng, TypeVariable(tv))
-      in
-      let orfreef frid =
-        RowVar(frid)
-      in
       let tyid = centry.ctor_belongs_to in
       let (bids, pty) = centry.ctor_parameter in
       let pairs =
@@ -130,7 +124,7 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
           (ty, bid)
         )
       in
-      let ty = instantiate_type_scheme freef orfreef pairs pty in
+      let ty = instantiate_type_scheme pairs pty in
       let tyargs = pairs |> List.map (fun (ty, _) -> ty) in
       (tyargs, tyid, ty)
 

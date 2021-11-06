@@ -144,16 +144,16 @@ let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type
   instantiate_aux bid_ht brid_ht lev qtfbl pty
 
 
-let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_variable -> (a, b) typ) (orfreef : mono_row_variable -> (a, b) row) (pairlst : ((a, b) typ * BoundID.t) list) (Poly(pty) : poly_type) : (a, b) typ =
-  let bid_to_type_ht : ((a, b) typ) BoundIDHashTable.t = BoundIDHashTable.create 32 in
+let instantiate_type_scheme (pairlst : (mono_type * BoundID.t) list) (Poly(pty) : poly_type) : mono_type =
+  let bid_to_type_ht : mono_type BoundIDHashTable.t = BoundIDHashTable.create 32 in
 
-  let rec aux ((rng, ptymain) : poly_type_body) : (a, b) typ =
+  let rec aux ((rng, ptymain) : poly_type_body) : mono_type =
     match ptymain with
     | TypeVariable(ptvi) ->
         begin
           match ptvi with
           | PolyFree(tvref) ->
-              freef rng tvref
+              (rng, TypeVariable(tvref))
 
           | PolyBound(bid) ->
               begin
@@ -178,8 +178,8 @@ let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_vari
   and aux_row = function
     | RowEmpty                  -> RowEmpty
     | RowCons(rlabel, ty, tail) -> RowCons(rlabel, aux ty, aux_row tail)
-    | RowVar(PolyORFree(rvref)) -> orfreef rvref
-    | RowVar(PolyORBound(brid)) -> failwith "TODO: instantiate_type_scheme, RowVar, PolyORBound"
+    | RowVar(PolyORFree(rvref)) -> RowVar(rvref)
+    | RowVar(PolyORBound(brid)) -> assert false
   in
   begin
     pairlst |> List.iter (fun (tyarg, bid) -> BoundIDHashTable.add bid_to_type_ht bid tyarg);
