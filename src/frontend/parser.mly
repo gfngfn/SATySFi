@@ -39,7 +39,7 @@
     ) param_units
 
 
-  (* TODO: more efficient implementation *)
+  (* TODO (enhance): more efficient implementation *)
   let rec omit_pre_spaces str =
     let len = String.length str in
     if len = 0 then
@@ -50,7 +50,7 @@
       | _   -> str
 
 
-  (* TODO: more efficient implementation *)
+  (* TODO (enhance): more efficient implementation *)
   let rec omit_post_spaces str =
     let len = String.length str in
     if len = 0 then
@@ -520,12 +520,12 @@ sig_annot:
 sigexpr:
   | utsig=sigexpr_bot; WITH; TYPE; tybinds=bind_type
       {
-        let (rng, _) = utsig in (* TODO: give appropriate ranges *)
+        let (rng, _) = utsig in (* TODO (enhance): give appropriate ranges *)
         (rng, UTSigWith(utsig, [], tybinds))
       }
   | utsig=sigexpr_bot; WITH; rmodchain=mod_chain; TYPE; tybinds=bind_type
       {
-        let (rng, _) = utsig in (* TODO: give appropriate ranges *)
+        let (rng, _) = utsig in (* TODO (enhance): give appropriate ranges *)
         let (_, (modident, modidents)) = rmodchain in
         (rng, UTSigWith(utsig, modident :: modidents, tybinds))
       }

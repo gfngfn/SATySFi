@@ -2757,10 +2757,10 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       end
 
   | UTBindHorzMacro((_, _csnm), _macparams, _utast1) ->
-      failwith "TODO: Typechecker.typecheck_binding, UTBindHorzMacro"
+      failwith "TODO (enhance): Typechecker.typecheck_binding, UTBindHorzMacro"
 
   | UTBindVertMacro((_, _csnm), _macparams, _utast2) ->
-      failwith "TODO: Typechecker.typecheck_binding, UTBindVertMacro"
+      failwith "TODO (enhance): Typechecker.typecheck_binding, UTBindVertMacro"
 
 
 let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : mono_type * abstract_tree =
