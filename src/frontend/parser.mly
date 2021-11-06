@@ -170,6 +170,23 @@
     let rng = make_range left right in (rng, main)
 
 
+  let base_kind_o =
+    MKindName((Range.dummy "base_kind_o", "o"))
+      (* TODO (enhance): fix such an ad-hoc insertion of kinds *)
+
+
+  let decl_type_transparent (uttybinds : untyped_type_binding list) : untyped_declaration =
+    let rng = Range.dummy "decl_type_transparent" in
+    let decls : untyped_declaration list =
+      uttybinds |> List.map (fun (tyident, tyvars, _syn_or_vnt) ->
+        let mnbkddoms = tyvars |> List.map (fun _ -> base_kind_o) in
+        let mnkd = MKind(mnbkddoms, base_kind_o) in
+        UTDeclTypeOpaque(tyident, mnkd)
+      )
+    in
+    UTDeclInclude((rng, UTSigWith((rng, UTSigDecls(decls)), [], uttybinds)))
+
+
   let rec insert_last (resitmzlst : untyped_itemize list) (itmz : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
     match itmz with
     | UTItem(uta, []) ->
@@ -566,7 +583,7 @@ decl:
   | TYPE; tyident=LOWER; CONS; mnkd=kind
       { UTDeclTypeOpaque(tyident, mnkd) }
   | TYPE; uttypebind=bind_type
-      { failwith "TODO: decl, declaration for transparent types" }
+      { decl_type_transparent uttypebind }
   | MODULE; modident=UPPER; COLON; utsig=sigexpr
       { UTDeclModule(modident, utsig) }
   | SIGNATURE; sigident=UPPER; EXACT_EQ; utsig=sigexpr
