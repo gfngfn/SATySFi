@@ -161,17 +161,17 @@ let instantiate_type_scheme (bidmap : mono_type BoundIDMap.t) (Poly(pty) : poly_
               end
         end
 
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_row optrow, aux tydom, aux tycod))
-    | ProductType(tys)                  -> (rng, ProductType(TupleList.map aux tys))
-    | RecordType(row)                   -> (rng, RecordType(aux_row row))
-    | DataType(tyargs, tyid)            -> (rng, DataType(List.map aux tyargs, tyid))
-    | ListType(tysub)                   -> (rng, ListType(aux tysub))
-    | RefType(tysub)                    -> (rng, RefType(aux tysub))
-    | BaseType(bt)                      -> (rng, BaseType(bt))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
-    | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
+    | FuncType(optrow, tydom, tycod) -> (rng, FuncType(aux_row optrow, aux tydom, aux tycod))
+    | ProductType(tys)               -> (rng, ProductType(TupleList.map aux tys))
+    | RecordType(row)                -> (rng, RecordType(aux_row row))
+    | DataType(tyargs, tyid)         -> (rng, DataType(List.map aux tyargs, tyid))
+    | ListType(tysub)                -> (rng, ListType(aux tysub))
+    | RefType(tysub)                 -> (rng, RefType(aux tysub))
+    | BaseType(bt)                   -> (rng, BaseType(bt))
+    | HorzCommandType(cmdargtys)     -> (rng, HorzCommandType(cmdargtys |> List.map (lift_argument_type aux)))
+    | VertCommandType(cmdargtys)     -> (rng, VertCommandType(cmdargtys |> List.map (lift_argument_type aux)))
+    | MathCommandType(cmdargtys)     -> (rng, MathCommandType(cmdargtys |> List.map (lift_argument_type aux)))
+    | CodeType(tysub)                -> (rng, CodeType(aux tysub))
 
   and aux_row = function
     | RowEmpty                  -> RowEmpty

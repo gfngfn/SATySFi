@@ -51,6 +51,10 @@ type substitution = type_scheme SubstMap.t
 
 module SynonymNameSet = Set.Make(String)
 
+module PatternVarMap = Map.Make(String)
+
+type pattern_var_map = (Range.t * EvalVarID.t * mono_type) PatternVarMap.t
+
 
 let fresh_free_id (qtfbl : quantifiability) (lev : Level.t) : FreeID.t =
   FreeID.fresh lev (qtfbl = Quantifiable)
@@ -102,8 +106,8 @@ let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * ma
   (rowparammap, Alist.to_list bridacc)
 
 
-let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm : constructor_name) (rng : Range.t) =
-  match tyenv |> Typeenv.find_constructor constrnm with
+let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : constructor_name) (rng : Range.t) =
+  match tyenv |> Typeenv.find_constructor ctornm with
   | None ->
       failwith "TODO (error): find_constructor_and_instantiate, not found"
         (*
@@ -239,23 +243,13 @@ let rec is_nonexpansive_expression e =
   | Persistent(_) ->
       true
 
-  | NonValueConstructor(constrnm, e1) -> iter e1
-  | PrimitiveListCons(e1, e2)         -> iter e1 && iter e2
-  | PrimitiveTuple(es)                -> es |> TupleList.to_list |> List.for_all iter
-  | Record(asc)                       -> asc |> LabelMap.for_all (fun _label e -> iter e)
-  | LetRecIn(_, e2)                   -> iter e2
-  | LetNonRecIn(_, e1, e2)            -> iter e1 && iter e2
-  | _                                 -> false
-
-
-module PatternVarMap = Map.Make
-  (struct
-    type t = var_name
-    let compare = Pervasives.compare
-  end)
-
-
-type pattern_var_map = (Range.t * EvalVarID.t * mono_type) PatternVarMap.t
+  | NonValueConstructor(_, e1) -> iter e1
+  | PrimitiveListCons(e1, e2)  -> iter e1 && iter e2
+  | PrimitiveTuple(es)         -> es |> TupleList.to_list |> List.for_all iter
+  | Record(e_labmap)           -> e_labmap |> LabelMap.for_all (fun _label e -> iter e)
+  | LetRecIn(_, e2)            -> iter e2
+  | LetNonRecIn(_, e1, e2)     -> iter e1 && iter e2
+  | _                          -> false
 
 
 let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_var_map) : pattern_var_map =
@@ -2213,8 +2207,57 @@ and subtype_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signat
   subtype_concrete_with_abstract rng modsig1 absmodsig2
 
 
-and subtype_poly_type_impl (internbid : BoundID.t -> poly_type -> bool) (internbrid : BoundRowID.t -> poly_row -> bool) (pty1 : poly_type) (pty2 : poly_type) : bool =
-  failwith "TODO: subtype_poly_type_scheme"
+and subtype_poly_type_impl (internbid : BoundID.t -> poly_type -> bool) (internbrid : BoundRowID.t -> poly_row -> bool) (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
+  let rec aux (pty1 : poly_type_body) (pty2 : poly_type_body) =
+    let (_, ptymain1) = pty1 in
+    let (_, ptymain2) = pty2 in
+    match (ptymain1, ptymain2) with
+    | (TypeVariable(PolyFree(_)), _)
+    | (_, TypeVariable(PolyFree(_))) ->
+        failwith "TODO (error): subtype_poly_type_impl, PolyFree"
+
+    | (TypeVariable(PolyBound(bid1)), _) ->
+        internbid bid1 (Poly(pty2))
+
+    | (FuncType(poptrow1, ptydom1, ptycod1), FuncType(poptrow2, ptydom2, ptycod2)) ->
+        aux_row poptrow1 poptrow2 && aux ptydom1 ptydom2 && aux ptycod1 ptycod2
+
+    | (ProductType(ptys1), ProductType(ptys2)) ->
+        aux_list (TupleList.to_list ptys1) (TupleList.to_list ptys2)
+
+    | (RecordType(prow1), RecordType(prow2)) ->
+        aux_row prow1 prow2
+
+    | (DataType(ptys1, tyid1), DataType(ptys2, tyid2)) ->
+        if TypeID.equal tyid1 tyid2 then
+          aux_list ptys1 ptys2
+        else
+          false
+
+    | (ListType(pty1), ListType(pty2)) -> aux pty1 pty2
+    | (RefType(pty1), RefType(pty2))   -> aux pty1 pty2
+    | (BaseType(bty1), BaseType(bty2)) -> bty1 = bty2
+
+    | (HorzCommandType(cmdargtys1), HorzCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
+    | (VertCommandType(cmdargtys1), VertCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
+    | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
+
+    | (CodeType(pty1), CodeType(pty2)) ->
+        aux pty1 pty2
+
+    | _ ->
+        false
+
+  and aux_list (ptys1 : poly_type_body list) (ptys2 : poly_type_body list) =
+    failwith "TODO: subtype_poly_type_impl, aux_list"
+
+  and aux_cmd_list (cmdargtys1 : poly_command_argument_type list) (cmdargtys2 : poly_command_argument_type list) =
+    failwith "TODO: subtype_poly_type_impl, aux_cmd_list"
+
+  and aux_row (prow1 : poly_row) (prow2 : poly_row) =
+    failwith "TODO: subtype_poly_type_impl, aux_row"
+  in
+  aux pty1 pty2
 
 
 and subtype_poly_type (pty1 : poly_type) (pty2 : poly_type) : bool =
