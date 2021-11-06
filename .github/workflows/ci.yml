@@ -51,3 +51,18 @@ jobs:
 
       - name: Build SATySFi
         run: opam exec -- make all
+
+      - name: Run tests
+        run: |
+          opam exec -- dune runtest
+
+      - name: Install SATySFi
+        run: |
+          opam install -y .
+          ./download-fonts.sh
+          sudo ./install-libs.sh
+
+      - name: Build demo docs
+        run: |
+          (cd demo; opam exec -- make)
+          (cd doc; opam exec -- make)
