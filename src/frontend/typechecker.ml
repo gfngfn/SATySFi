@@ -2,7 +2,6 @@
 open MyUtil
 open SyntaxBase
 open Types
-open TypeConv
 open Display
 open StaticEnv
 
@@ -140,7 +139,7 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : c
           (bidmap |> BoundIDMap.add bid ty, Alist.extend tyacc ty)
         ) (BoundIDMap.empty, Alist.empty)
       in
-      let ty = instantiate_type_scheme bidmap pty in
+      let ty = TypeConv.instantiate_type_scheme bidmap pty in
       let tys_arg = Alist.to_list tyacc in
       (tys_arg, tyid, ty)
 
@@ -272,7 +271,7 @@ let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_v
 
 let add_pattern_var_mono (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
-    let pty = lift_poly (erase_range_of_type ty) in
+    let pty = TypeConv.lift_poly (TypeConv.erase_range_of_type ty) in
     let ventry =
       {
         val_name  = Some(evid);
@@ -286,7 +285,7 @@ let add_pattern_var_mono (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_va
 
 let add_pattern_var_poly (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
-    let pty = (generalize pre.level (erase_range_of_type ty)) in
+    let pty = TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty) in
     let ventry =
       {
         val_name  = Some(evid);
@@ -866,8 +865,8 @@ let rec typecheck
             in
             let pty = ventry.val_type in
             let stage = ventry.val_stage in
-            let tyfree = instantiate pre.level pre.quantifiability pty in
-            let tyres = overwrite_range_of_type tyfree rng in
+            let tyfree = TypeConv.instantiate pre.level pre.quantifiability pty in
+            let tyres = TypeConv.overwrite_range_of_type tyfree rng in
             begin
               match (pre.stage, stage) with
               | (Persistent0, Persistent0)
@@ -982,11 +981,11 @@ let rec typecheck
       FreeRowID.set_label_set frid (LabelSet.union labset labset0);
       let eret = Apply(e_labmap0, e1, e2) in
       begin
-        match unlink ty1 with
+        match TypeConv.unlink ty1 with
         | (_, FuncType(row, tydom, tycod)) ->
             unify_row row0 row;
             unify ty2 tydom;
-            let tycodnew = overwrite_range_of_type tycod rng in
+            let tycodnew = TypeConv.overwrite_range_of_type tycod rng in
             (eret, tycodnew)
 
         | (_, TypeVariable(_)) as ty1 ->
@@ -1027,10 +1026,10 @@ let rec typecheck
         let pty =
           if is_nonexpansive_expression e1 then
           (* If `e1` is polymorphically typeable: *)
-            generalize pre.level (erase_range_of_type ty1)
+            TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
           else
           (* If `e1` should be typed monomorphically: *)
-            lift_poly (erase_range_of_type ty1)
+            TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
         in
         let ventry =
           {
@@ -1076,8 +1075,8 @@ let rec typecheck
 
 (* ---- imperatives ---- *)
 
-  | UTLetIn(UTMutable((varrng, varnm), utastI), utastA) ->
-      let (tyenvI, evid, eI, tyI) = make_type_environment_by_let_mutable pre tyenv varrng varnm utastI in
+  | UTLetIn(UTMutable(ident, utastI), utastA) ->
+      let (tyenvI, evid, eI, tyI) = make_type_environment_by_let_mutable pre tyenv ident utastI in
       let (eA, tyA) = typecheck_iter tyenvI utastA in
       (LetMutableIn(evid, eI, eA), tyA)
 
@@ -1102,7 +1101,7 @@ let rec typecheck
 
   | UTItemize(utitmz) ->
       let eitmz = typecheck_itemize pre tyenv utitmz in
-      let ty = overwrite_range_of_type (Primitives.itemize_type ()) rng in
+      let ty = TypeConv.overwrite_range_of_type (Primitives.itemize_type ()) rng in
       (eitmz, ty)
 
 (* ---- list ---- *)
@@ -1710,18 +1709,19 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
   in
 
   tupleacc |> Alist.to_list |> List.map (fun (varnm, ty, evid, recbind) ->
-    let pty = generalize pre.level (erase_range_of_type ty) in
+    let pty = TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty) in
     (varnm, pty, evid, pre.stage, recbind)
   )
 
 
-and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) varrng varnm utastI =
+and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) =
   let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
-  let evid = EvalVarID.fresh (varrng, varnm) in
+  let (rng_var, varnm) = ident in
+  let evid = EvalVarID.fresh ident in
   let tyenvI =
     let ventry =
       {
-        val_type  = lift_poly (varrng, RefType(tyI));
+        val_type  = TypeConv.lift_poly (rng_var, RefType(tyI));
         val_name  = Some(evid);
         val_stage = pre.stage;
       }
@@ -1847,7 +1847,7 @@ and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : con
           | Some(mty) -> decode_manual_type pre tyenv mty
           | None      -> (Range.dummy "unit", BaseType(UnitType))
         in
-        let pty = generalize pre.level ty in
+        let pty = TypeConv.generalize pre.level ty in
         ctormap |> ConstructorMap.add ctornm pty
   ) ConstructorMap.empty
 
@@ -2555,7 +2555,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
         }
       in
       let ty = decode_manual_type pre tyenv mty in
-      let pty = generalize Level.bottom ty in
+      let pty = TypeConv.generalize Level.bottom ty in
       let ventry =
         {
           val_stage = stage;
@@ -2715,9 +2715,9 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
             let ssig =
               let pty =
                 if should_be_polymorphic then
-                  generalize pre.level (erase_range_of_type ty1)
+                  TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
                 else
-                  lift_poly (erase_range_of_type ty1)
+                  TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
               in
               let ventry =
                 {
@@ -2754,7 +2754,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
         | UTMutable((rng, varnm) as var, utastI) ->
             let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
             let evid = EvalVarID.fresh var in
-            let pty = lift_poly (rng, RefType(tyI)) in
+            let pty = TypeConv.lift_poly (rng, RefType(tyI)) in
             let ssig =
               let ventry =
                 {
