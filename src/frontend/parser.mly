@@ -208,21 +208,21 @@
 
   let make_sup ~range ?prime ?sup base =
     let make_primes r n =
-      r, UTMChars(primes n)
+      (r, UTMChars(primes n))
     in
-    match prime, sup with
-    | None, None ->
-        range, snd base
-    | None, Some(b, p) ->
-        range, UTMSuperScript(base, b, p)
-    | Some(r, n), None ->
-        range, UTMSuperScript(base, true, make_primes r n)
-    | Some(r, n), Some(b, p) ->
-        let ps = make_standard (Tok r) (Ranged p) @@ UTMList [make_primes r n; p] in
-        range, UTMSuperScript(base, b, ps)
+    match (prime, sup) with
+    | (None, None) ->
+        (range, snd base)
+    | (None, Some((b, p))) ->
+        (range, UTMSuperScript(base, b, p))
+    | (Some((r, n)), None) ->
+        (range, UTMSuperScript(base, true, make_primes r n))
+    | (Some((r, n)), Some((b, p))) ->
+        let ps = make_standard (Tok r) (Ranged p) (UTMList [make_primes r n; p]) in
+        (range, UTMSuperScript(base, b, ps))
 
   let make_sub ~range ~sub:(b, s) base =
-    range, UTMSubScript(base, b, s)
+    (range, UTMSubScript(base, b, s))
 %}
 
 %token<Range.t>
@@ -231,7 +231,11 @@
   REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH
 
 %token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW SEMICOLON COMMA CONS ACCESS QUESTION COERCE
-%token<Range.t> LPAREN RPAREN BVERTGRP EVERTGRP BHORZGRP EHORZGRP BMATHGRP EMATHGRP BLIST ELIST BRECORD ERECORD
+
+%token<Range.t>
+  L_PAREN R_PAREN L_SQUARE R_SQUARE L_RECORD R_RECORD
+  L_BLOCK_TEXT R_BLOCK_TEXT L_INLINE_TEXT R_INLINE_TEXT L_MATH_TEXT R_MATH_TEXT
+
 %token<Range.t> EXACT_MINUS EXACT_TIMES EXACT_AMP EXACT_TILDE EXACT_EQ
 
 %token<Range.t * Types.var_name>
@@ -335,7 +339,7 @@ optterm_nonempty_list(sep, X):
 %inline bound_identifier:
   | ident=LOWER
       { ident }
-  | LPAREN; ident=binop; RPAREN
+  | L_PAREN; ident=binop; R_PAREN
       { ident }
 ;
 main:
@@ -359,7 +363,7 @@ headerelem:
   | content=HEADER_IMPORT  { let (_, s) = content in HeaderImport(s) }
 ;
 modexpr:
-  | tokL=FUN; LPAREN; modident=UPPER; COLON; utsig=sigexpr; RPAREN; ARROW; utmod=modexpr
+  | tokL=FUN; L_PAREN; modident=UPPER; COLON; utsig=sigexpr; R_PAREN; ARROW; utmod=modexpr
       { make_standard (Tok tokL) (Ranged utmod) (UTModFunctor(modident, utsig, utmod)) }
   | modident=UPPER; COERCE; utsig=sigexpr
       { make_standard (Ranged modident) (Ranged utsig) (UTModCoerce(modident, utsig)) }
@@ -524,7 +528,7 @@ sigexpr:
         let (_, (modident, modidents)) = rmodchain in
         (rng, UTSigWith(utsig, modident :: modidents, tybinds))
       }
-  | tokL=LPAREN; modident=UPPER; COLON; utsig1=sigexpr; RPAREN; ARROW; utsig2=sigexpr
+  | tokL=L_PAREN; modident=UPPER; COLON; utsig1=sigexpr; R_PAREN; ARROW; utsig2=sigexpr
       { make_standard (Tok tokL) (Ranged utsig2) (UTSigFunctor(modident, utsig1, utsig2)) }
   | utsig=sigexpr_bot
       { utsig }
@@ -580,7 +584,7 @@ tyquant:
       { tyvar }
 ;
 rowquant:
-  | LPAREN; rowvar=ROWVAR; CONS; mnrbkd=kind_row; RPAREN
+  | L_PAREN; rowvar=ROWVAR; CONS; mnrbkd=kind_row; R_PAREN
       { (rowvar, mnrbkd) }
 ;
 param_unit:
@@ -591,7 +595,7 @@ param_unit:
       }
 ;
 opt_params:
-  | QUESTION; LPAREN; opts=optterm_nonempty_list(COMMA, opt_param); RPAREN
+  | QUESTION; L_PAREN; opts=optterm_nonempty_list(COMMA, opt_param); R_PAREN
       { opts }
 ;
 opt_param:
@@ -627,7 +631,7 @@ kind_base:
       { MKindName(kdident) }
 ;
 kind_row:
-  | BRECORD; rlabels=optterm_nonempty_list(COMMA, LOWER); ERECORD { rlabels }
+  | L_RECORD; rlabels=optterm_nonempty_list(COMMA, LOWER); R_RECORD { rlabels }
 ;
 typ:
   | mnty1=typ_prod; ARROW; mnty2=typ
@@ -664,11 +668,11 @@ typ_app:
         let (_, tynm) = tyident in
         (rng, MTypeName(tynm, mntys))
       }
-  | tokL=INLINE; BLIST; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=ELIST
+  | tokL=INLINE; L_SQUARE; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=R_SQUARE
       { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MHorzCommandType(mncmdargtys)) }
-  | tokL=BLOCK; BLIST; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=ELIST
+  | tokL=BLOCK; L_SQUARE; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=R_SQUARE
       { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MVertCommandType(mncmdargtys)) }
-  | tokL=MATH; BLIST; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=ELIST
+  | tokL=MATH; L_SQUARE; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=R_SQUARE
       { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MMathCommandType(mncmdargtys)) }
   | mnty=typ_bot
       { mnty }
@@ -678,13 +682,13 @@ typ_bot:
       { let (rng, tynm) = tyident in (rng, MTypeName(tynm, [])) }
   | tyvar=TYPEVAR
       { let (rng, tyvarnm) = tyvar in (rng, MTypeParam(tyvarnm)) }
-  | tokL=BRECORD; fields=optterm_nonempty_list(COMMA, typ_record_elem); tokR=ERECORD
+  | tokL=L_RECORD; fields=optterm_nonempty_list(COMMA, typ_record_elem); tokR=R_RECORD
       { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MRecordType(fields)) }
-  | LPAREN; mnty=typ; RPAREN
+  | L_PAREN; mnty=typ; R_PAREN
       { mnty }
 ;
 typ_opt_dom:
-  | tokL=QUESTION; LPAREN; mnopts=optterm_nonempty_list(COMMA, typ_opt_dom_entry); RPAREN
+  | tokL=QUESTION; L_PAREN; mnopts=optterm_nonempty_list(COMMA, typ_opt_dom_entry); R_PAREN
       { (tokL, mnopts) }
 ;
 typ_opt_dom_entry:
@@ -802,7 +806,7 @@ expr_bot:
       { let (rng, varnm) = ident in (rng, UTContentOf([], varnm)) }
   | long_ident=LONG_LOWER
       { let (rng, modnms, varnm) = long_ident in (rng, UTContentOf(modnms, varnm)) }
-  | tokL=LPAREN; ident=binop; tokR=RPAREN
+  | tokL=L_PAREN; ident=binop; tokR=R_PAREN
       { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], extract_main ident)) }
   | ic=INT
       { let (rng, n) = ic in (rng, UTIntegerConstant(n)) }
@@ -824,11 +828,11 @@ expr_bot:
         let (rng, ipos, s) = tok in
         make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s))
       }
-  | tokL=LPAREN; tokR=RPAREN
+  | tokL=L_PAREN; tokR=R_PAREN
       { make_standard (Tok tokL) (Tok tokR) UTUnitConstant }
-  | tokL=LPAREN; utast=expr; tokR=RPAREN
+  | tokL=L_PAREN; utast=expr; tokR=R_PAREN
       { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
-  | tokL=LPAREN; utast1=expr; COMMA; utasts=separated_nonempty_list(COMMA, expr); tokR=RPAREN
+  | tokL=L_PAREN; utast1=expr; COMMA; utasts=separated_nonempty_list(COMMA, expr); tokR=R_PAREN
       {
         match utasts with
         | [] ->
@@ -841,24 +845,24 @@ expr_bot:
       { utast }
   | utast=expr_bot_record
       { utast }
-  | tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
+  | tokL=L_INLINE_TEXT; utast=inline; tokR=R_INLINE_TEXT
       { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
-  | tokL=BVERTGRP; utast=block; tokR=EVERTGRP
+  | tokL=L_BLOCK_TEXT; utast=block; tokR=R_BLOCK_TEXT
       { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
-  | tokL=BMATHGRP; utast=math; tokR=EMATHGRP
+  | tokL=L_MATH_TEXT; utast=math; tokR=R_MATH_TEXT
       { make_standard (Tok tokL) (Tok tokR) (extract_main utast) }
 ;
 expr_bot_list:
-  | tokL=BLIST; utasts=optterm_list(COMMA, expr); tokR=ELIST
+  | tokL=L_SQUARE; utasts=optterm_list(COMMA, expr); tokR=R_SQUARE
       {
         let (_, utast_main) = make_list utasts in
         make_standard (Tok tokL) (Tok tokR) utast_main
       }
 ;
 expr_bot_record:
-  | tokL=BRECORD; fields=optterm_list(COMMA, record_field); tokR=ERECORD
+  | tokL=L_RECORD; fields=optterm_list(COMMA, record_field); tokR=R_RECORD
       { make_standard (Tok tokL) (Tok tokR) (UTRecord(fields)) }
-  | tokL=BRECORD; utast=expr_bot; WITH; fields=optterm_nonempty_list(COMMA, record_field); tokR=ERECORD
+  | tokL=L_RECORD; utast=expr_bot; WITH; fields=optterm_nonempty_list(COMMA, record_field); tokR=R_RECORD
       {
         let (_, utast_main) =
           fields |> List.fold_left (fun utast1 (rlabel, utast2) ->
@@ -918,7 +922,7 @@ pattern_bot:
       { (rng, UTPBooleanConstant(true)) }
   | rng=FALSE
       { (rng, UTPBooleanConstant(false)) }
-  | tokL=LPAREN; tokR=RPAREN
+  | tokL=L_PAREN; tokR=R_PAREN
       { make_standard (Tok tokL) (Tok tokR) UTPUnitConstant }
   | rng=WILDCARD
       { (rng, UTPWildCard) }
@@ -929,7 +933,7 @@ pattern_bot:
         let (rng, str, pre, post) = lit in
         make_standard (Tok rng) (Tok rng) (UTPStringConstant(omit_spaces pre post str))
       }
-  | tokL=BLIST; utpats=optterm_list(COMMA, pattern); tokR=ELIST
+  | tokL=L_SQUARE; utpats=optterm_list(COMMA, pattern); tokR=R_SQUARE
       {
         let (_, utpat_main) =
           List.fold_right (fun utpat1 utpat2 ->
@@ -938,9 +942,9 @@ pattern_bot:
         in
         make_standard (Tok tokL) (Tok tokR) utpat_main
       }
-  | tokL=LPAREN; utpat=pattern; tokR=RPAREN
+  | tokL=L_PAREN; utpat=pattern; tokR=R_PAREN
       { make_standard (Tok tokL) (Tok tokR) (extract_main utpat) }
-  | tokL=LPAREN; utpat1=pattern; COMMA; utpats=optterm_nonempty_list(COMMA, pattern); tokR=RPAREN
+  | tokL=L_PAREN; utpat1=pattern; COMMA; utpats=optterm_nonempty_list(COMMA, pattern); tokR=R_PAREN
       {
         match utpats with
         | [] ->
@@ -991,7 +995,7 @@ inline_elem_cmd:
       make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
     }
 */
-  | tokL=BMATHGRP; utast=math; tokR=EMATHGRP
+  | tokL=L_MATH_TEXT; utast=math; tokR=R_MATH_TEXT
       { make_standard (Tok tokL) (Tok tokR) (UTInputHorzEmbeddedMath(utast)) }
   | literal=STRING
       {
@@ -1128,7 +1132,7 @@ math_elem:
       }
 ;
 math_group:
-  | tokL=BMATHGRP; utm=math_single; tokR=EMATHGRP
+  | tokL=L_MATH_TEXT; utm=math_single; tokR=R_MATH_TEXT
       { (true, make_standard (Tok tokL) (Tok tokR) (extract_main utm)) }
   | utm=math_bot
       { (false, utm) }
@@ -1155,11 +1159,11 @@ math_bot:
       { let (rng, modnms, varnm) = long_ident in (rng, UTMEmbed((rng, UTContentOf(modnms, varnm)))) }
 ;
 math_cmd_arg:
-  | mnopts=expr_opts; tokL=BMATHGRP; utast=math; tokR=EMATHGRP
+  | mnopts=expr_opts; tokL=L_MATH_TEXT; utast=math; tokR=R_MATH_TEXT
       { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
-  | mnopts=expr_opts; tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
+  | mnopts=expr_opts; tokL=L_INLINE_TEXT; utast=inline; tokR=R_INLINE_TEXT
       { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
-  | mnopts=expr_opts; tokL=BVERTGRP; utast=block; tokR=EVERTGRP
+  | mnopts=expr_opts; tokL=L_BLOCK_TEXT; utast=block; tokR=R_BLOCK_TEXT
       { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
   | utcmdarg=cmd_arg_expr
       { utcmdarg }
@@ -1169,14 +1173,14 @@ macroargs:
   | macnargs=list(macronarg); cls=SEMICOLON { (cls, macnargs) }
 ;
 macronarg:
-  | LPAREN; expr=expr_bot; RPAREN              { UTLateMacroArg(expr) }
-  | EXACT_TILDE; LPAREN; expr=expr_bot; RPAREN { UTEarlyMacroArg(expr) }
+  | L_PAREN; expr=expr_bot; R_PAREN              { UTLateMacroArg(expr) }
+  | EXACT_TILDE; L_PAREN; expr=expr_bot; R_PAREN { UTEarlyMacroArg(expr) }
 ;
 */
 cmd_arg_expr:
-  | mnopts=expr_opts; tokL=LPAREN; utast=expr; tokR=RPAREN
+  | mnopts=expr_opts; tokL=L_PAREN; utast=expr; tokR=R_PAREN
       { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
-  | mnopts=expr_opts; tokL=LPAREN; tokR=RPAREN
+  | mnopts=expr_opts; tokL=L_PAREN; tokR=R_PAREN
       { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) UTUnitConstant) }
   | mnopts=expr_opts; utast=expr_bot_record
       { UTCommandArg(mnopts, utast) }
@@ -1184,7 +1188,7 @@ cmd_arg_expr:
       { UTCommandArg(mnopts, utast) }
 ;
 expr_opts:
-  | QUESTION; LPAREN; mnopts=optterm_nonempty_list(COMMA, expr_opt_entry); RPAREN
+  | QUESTION; L_PAREN; mnopts=optterm_nonempty_list(COMMA, expr_opt_entry); R_PAREN
       { mnopts }
   |   { [] }
 ;
@@ -1206,9 +1210,9 @@ cmd_args_text:
       }
 ;
 cmd_arg_text:
-  | tokL=BVERTGRP; utast=block; tokR=EVERTGRP
+  | tokL=L_BLOCK_TEXT; utast=block; tokR=R_BLOCK_TEXT
       { UTCommandArg([], make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
-  | tokL=BHORZGRP; utast=inline; tokR=EHORZGRP
+  | tokL=L_INLINE_TEXT; utast=inline; tokR=R_INLINE_TEXT
       { UTCommandArg([], make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
 ;
 backslash_cmd:

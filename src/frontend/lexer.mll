@@ -160,44 +160,44 @@ rule progexpr stack = parse
         progexpr stack lexbuf
       }
   | "("
-      { Stack.push ProgramState stack; LPAREN(get_pos lexbuf) }
+      { Stack.push ProgramState stack; L_PAREN(get_pos lexbuf) }
   | ")"
       {
         let pos = get_pos lexbuf in
         pop lexbuf "too many closing" stack;
-        RPAREN(pos)
+        R_PAREN(pos)
       }
   | "(|"
-      { Stack.push ProgramState stack; BRECORD(get_pos lexbuf) }
+      { Stack.push ProgramState stack; L_RECORD(get_pos lexbuf) }
   | "|)"
       {
         let pos = get_pos lexbuf in
         pop lexbuf "too many closing" stack;
-        ERECORD(pos)
+        R_RECORD(pos)
       }
   | "["
-      { Stack.push ProgramState stack; BLIST(get_pos lexbuf) }
+      { Stack.push ProgramState stack; L_SQUARE(get_pos lexbuf) }
   | "]"
       {
         let pos = get_pos lexbuf in
         pop lexbuf "too many closing" stack;
-        ELIST(pos)
+        R_SQUARE(pos)
       }
   | "{"
       {
         Stack.push HorizontalState stack;
         skip_spaces lexbuf;
-        BHORZGRP(get_pos lexbuf)
+        L_INLINE_TEXT(get_pos lexbuf)
       }
   | "'<"
       {
         Stack.push VerticalState stack;
-        BVERTGRP(get_pos lexbuf)
+        L_BLOCK_TEXT(get_pos lexbuf)
       }
   | "${"
       {
         Stack.push MathState stack;
-        BMATHGRP(get_pos lexbuf)
+        L_MATH_TEXT(get_pos lexbuf)
       }
   | "`"+
       {
@@ -387,18 +387,18 @@ and vertexpr stack = parse
         LONG_PLUS_CMD(get_pos lexbuf, modnms, "+" ^ csnm)
       }
   | "<"
-      { Stack.push VerticalState stack; BVERTGRP(get_pos lexbuf) }
+      { Stack.push VerticalState stack; L_BLOCK_TEXT(get_pos lexbuf) }
   | ">"
       {
         let pos = get_pos lexbuf in
         pop lexbuf "too many closing" stack;
-        EVERTGRP(pos)
+        R_BLOCK_TEXT(pos)
       }
   | "{"
       {
         Stack.push HorizontalState stack;
         skip_spaces lexbuf;
-        BHORZGRP(get_pos lexbuf)
+        L_INLINE_TEXT(get_pos lexbuf)
       }
   | eof
       {
@@ -422,20 +422,20 @@ and horzexpr stack = parse
         increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
         Stack.push HorizontalState stack;
         skip_spaces lexbuf;
-        BHORZGRP(get_pos lexbuf)
+        L_INLINE_TEXT(get_pos lexbuf)
       }
   | ((break | space)* "}")
       {
         increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
         let pos = get_pos lexbuf in
         pop lexbuf "too many closing" stack;
-        EHORZGRP(pos)
+        R_INLINE_TEXT(pos)
       }
   | ((break | space)* "<")
       {
         increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
         Stack.push VerticalState stack;
-        BVERTGRP(get_pos lexbuf)
+        L_BLOCK_TEXT(get_pos lexbuf)
       }
   | ((break | space)* "|")
       {
@@ -495,7 +495,7 @@ and horzexpr stack = parse
   | "${"
       {
         Stack.push MathState stack;
-        BMATHGRP(get_pos lexbuf)
+        L_MATH_TEXT(get_pos lexbuf)
       }
   | "`"+
       {
@@ -545,38 +545,38 @@ and mathexpr stack = parse
       {
         Stack.push HorizontalState stack;
         skip_spaces lexbuf;
-        BHORZGRP(get_pos lexbuf);
+        L_INLINE_TEXT(get_pos lexbuf);
       }
   | "!<"
       {
         Stack.push VerticalState stack;
-        BVERTGRP(get_pos lexbuf)
+        L_BLOCK_TEXT(get_pos lexbuf)
       }
   | "!("
       {
         Stack.push ProgramState stack;
-        LPAREN(get_pos lexbuf)
+        L_PAREN(get_pos lexbuf)
       }
   | "!["
       {
         Stack.push ProgramState stack;
-        BLIST(get_pos lexbuf)
+        L_SQUARE(get_pos lexbuf)
       }
   | "!(|"
       {
         Stack.push ProgramState stack;
-        BRECORD(get_pos lexbuf)
+        L_RECORD(get_pos lexbuf)
       }
   | "{"
       {
         Stack.push MathState stack;
-        BMATHGRP(get_pos lexbuf)
+        L_MATH_TEXT(get_pos lexbuf)
       }
   | "}"
       {
         let pos = get_pos lexbuf in
         pop lexbuf "too many closing" stack;
-        EMATHGRP(pos)
+        R_MATH_TEXT(pos)
       }
   | "|"
       { BAR(get_pos lexbuf) }
@@ -635,17 +635,17 @@ and active stack = parse
   | "("
       {
         Stack.push ProgramState stack;
-        LPAREN(get_pos lexbuf)
+        L_PAREN(get_pos lexbuf)
       }
   | "(|"
       {
         Stack.push ProgramState stack;
-        BRECORD(get_pos lexbuf)
+        L_RECORD(get_pos lexbuf)
       }
   | "["
       {
         Stack.push ProgramState stack;
-        BLIST(get_pos lexbuf)
+        L_SQUARE(get_pos lexbuf)
       }
   | "{"
       {
@@ -653,14 +653,14 @@ and active stack = parse
         pop lexbuf "BUG; this cannot happen" stack;
         Stack.push HorizontalState stack;
         skip_spaces lexbuf;
-        BHORZGRP(pos)
+        L_INLINE_TEXT(pos)
       }
   | "<"
       {
         let pos = get_pos lexbuf in
         pop lexbuf "BUG; this cannot happen" stack;
         Stack.push VerticalState stack;
-        BVERTGRP(pos)
+        L_BLOCK_TEXT(pos)
       }
   | ";"
       {
