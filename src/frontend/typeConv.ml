@@ -418,8 +418,11 @@ let apply_type_scheme_mono (tyscheme : type_scheme) (ptys : mono_type list) : mo
   failwith "TODO: apply_type_scheme_mono"
 
 
-let make_opaque_type_scheme (arity : int) (tyid : TypeID.t) =
-  failwith "TODO: make_opaque_type_scheme"
+let make_opaque_type_scheme (arity : int) (tyid : TypeID.t) : type_scheme =
+  let rng = Range.dummy "add_variant_types" in
+  let bids = List.init arity (fun _ -> BoundID.fresh ()) in
+  let ptys = bids |> List.map (fun bid -> (rng, TypeVariable(PolyBound(bid)))) in
+  (bids, Poly((rng, DataType(ptys, tyid))))
 
 
 let get_opaque_type (tyscheme : type_scheme) : TypeID.t option =

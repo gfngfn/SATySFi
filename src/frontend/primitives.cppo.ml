@@ -185,12 +185,9 @@ let fresh_bound_id () =
 
 let add_variant_types vntdefs (tyenv : Typeenv.t) : Typeenv.t =
   List.fold_left (fun tyenv (tynm, tyid, arity, ctors) ->
-    let rng = Range.dummy "add_variant_types" in
-    let bids = List.init arity (fun _ -> BoundID.fresh ()) in
-    let ptys = bids |> List.map (fun bid -> (rng, TypeVariable(PolyBound(bid)))) in
     let tentry =
       {
-        type_scheme = (bids, Poly((rng, DataType(ptys, tyid))));
+        type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
         type_kind   = Kind(List.init arity (fun _ -> TypeKind));
       }
     in
