@@ -70,7 +70,7 @@ jobs:
           if [ -z "$(ls lib-satysfi/dist/fonts)" ]; then
             ./download-fonts.sh
           fi
-          sudo ./install-libs.sh
+          ./install-libs.sh ~/.satysfi
 
       - name: Build demo docs
         run: |
