@@ -55,6 +55,10 @@ module PatternVarMap = Map.Make(String)
 
 type pattern_var_map = (Range.t * EvalVarID.t * mono_type) PatternVarMap.t
 
+type type_intern = (BoundID.t -> poly_type -> bool)
+
+type row_intern = (BoundRowID.t -> normalized_poly_row -> bool)
+
 
 let fresh_free_id (qtfbl : quantifiability) (lev : Level.t) : FreeID.t =
   FreeID.fresh lev (qtfbl = Quantifiable)
@@ -2207,26 +2211,27 @@ and subtype_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signat
   subtype_concrete_with_abstract rng modsig1 absmodsig2
 
 
-and subtype_poly_type_impl (internbid : BoundID.t -> poly_type -> bool) (internbrid : BoundRowID.t -> poly_row -> bool) (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
+and subtype_poly_type_impl (internbid : type_intern) (internbrid : row_intern) (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
   let rec aux (pty1 : poly_type_body) (pty2 : poly_type_body) =
     let (_, ptymain1) = pty1 in
     let (_, ptymain2) = pty2 in
     match (ptymain1, ptymain2) with
     | (TypeVariable(PolyFree(_)), _)
     | (_, TypeVariable(PolyFree(_))) ->
-        failwith "TODO (error): subtype_poly_type_impl, PolyFree"
+        false
 
     | (TypeVariable(PolyBound(bid1)), _) ->
         internbid bid1 (Poly(pty2))
 
     | (FuncType(poptrow1, ptydom1, ptycod1), FuncType(poptrow2, ptydom2, ptycod2)) ->
-        aux_row poptrow1 poptrow2 && aux ptydom1 ptydom2 && aux ptycod1 ptycod2
+        subtype_row_with_equal_domain internbid internbrid poptrow1 poptrow2 &&
+          aux ptydom1 ptydom2 && aux ptycod1 ptycod2
 
     | (ProductType(ptys1), ProductType(ptys2)) ->
         aux_list (TupleList.to_list ptys1) (TupleList.to_list ptys2)
 
     | (RecordType(prow1), RecordType(prow2)) ->
-        aux_row prow1 prow2
+        subtype_row_with_equal_domain internbid internbrid prow1 prow2
 
     | (DataType(ptys1, tyid1), DataType(ptys2, tyid2)) ->
         if TypeID.equal tyid1 tyid2 then
@@ -2249,15 +2254,79 @@ and subtype_poly_type_impl (internbid : BoundID.t -> poly_type -> bool) (internb
         false
 
   and aux_list (ptys1 : poly_type_body list) (ptys2 : poly_type_body list) =
-    failwith "TODO: subtype_poly_type_impl, aux_list"
+    match List.combine ptys1 ptys2 with
+    | exception Invalid_argument(_) -> false
+    | zipped                        -> zipped |> List.for_all (fun (pty1, pty2) -> aux pty1 pty2)
 
   and aux_cmd_list (cmdargtys1 : poly_command_argument_type list) (cmdargtys2 : poly_command_argument_type list) =
-    failwith "TODO: subtype_poly_type_impl, aux_cmd_list"
+    match List.combine cmdargtys1 cmdargtys2 with
+    | exception Invalid_argument(_) ->
+        false
 
-  and aux_row (prow1 : poly_row) (prow2 : poly_row) =
-    failwith "TODO: subtype_poly_type_impl, aux_row"
+    | zipped ->
+        zipped |> List.for_all (fun (cmdargty1, cmdargty2) ->
+          let CommandArgType(pty_labmap1, pty1) = cmdargty1 in
+          let CommandArgType(pty_labmap2, pty2) = cmdargty2 in
+          subtype_label_map_with_equal_domain internbid internbrid pty_labmap1 pty_labmap2 && aux pty1 pty2
+        )
+
   in
   aux pty1 pty2
+
+
+and subtype_row_with_equal_domain (internbid : type_intern) (internbrid : row_intern) (prow1 : poly_row) (prow2 : poly_row) : bool =
+  let NormalizedRow(pty_labmap1, rowvar1_opt) = TypeConv.normalize_poly_row prow1 in
+  let NormalizedRow(pty_labmap2, rowvar2_opt) = TypeConv.normalize_poly_row prow2 in
+  match (rowvar1_opt, rowvar2_opt) with
+  | (None, None) ->
+      subtype_label_map_with_equal_domain internbid internbrid pty_labmap1 pty_labmap2
+
+  | (Some(PolyORFree(_)), _) | (_, Some(PolyORFree(_))) ->
+      assert false
+
+  | (None, Some(PolyORBound(_brid2))) ->
+      false
+
+  | (Some(PolyORBound(brid1)), _) ->
+      let opt = subtype_label_map_inclusive internbid internbrid pty_labmap1 pty_labmap2 in
+      begin
+        match opt with
+        | None                  -> false
+        | Some(pty_labmap_diff) -> internbrid brid1 (NormalizedRow(pty_labmap_diff, rowvar2_opt))
+      end
+
+
+and subtype_label_map_with_equal_domain (internbid : type_intern) (internbrid : row_intern) (pty_labmap1 : poly_type_body LabelMap.t) (pty_labmap2 : poly_type_body LabelMap.t) : bool =
+  LabelMap.merge (fun label pty1_opt pty2_opt ->
+    match (pty1_opt, pty2_opt) with
+    | (Some(pty1), Some(pty2)) -> Some(subtype_poly_type_impl internbid internbrid (Poly(pty1)) (Poly(pty2)))
+    | _                        -> Some(false)
+  ) pty_labmap1 pty_labmap2 |> LabelMap.for_all (fun _label b -> b)
+
+
+(* Checks that `dom pty_labmap1 ⊆ dom pty_labmap2` and
+   `∀label ∈ dom pty_labmap1. pty_labmap1(label) <: pty_labmap2(label)`
+   by referring and updating `internbid` and `internbrid`. *)
+and subtype_label_map_inclusive (internbid : type_intern) (internbrid : row_intern) (pty_labmap1 : poly_type_body LabelMap.t) (pty_labmap2 : poly_type_body LabelMap.t) : (poly_type_body LabelMap.t) option =
+  let merged =
+    LabelMap.merge (fun label pty1_opt pty2_opt ->
+      match (pty1_opt, pty2_opt) with
+      | (Some(pty1), Some(pty2)) -> Some(Ok(subtype_poly_type_impl internbid internbrid (Poly(pty1)) (Poly(pty2))))
+      | (None, Some(pty2))       -> Some(Error(pty2))
+      | _                        -> Some(Ok(false))
+    ) pty_labmap1 pty_labmap2
+  in
+  if merged |> LabelMap.for_all (fun _label res -> Result.value ~default:true res) then
+    let pty_labmap_diff =
+      merged |> LabelMap.filter_map (fun _label res ->
+        match res with
+        | Ok(_)       -> None
+        | Error(pty2) -> Some(pty2)
+      )
+    in
+    Some(pty_labmap_diff)
+  else
+    None
 
 
 and subtype_poly_type (pty1 : poly_type) (pty2 : poly_type) : bool =
@@ -2272,14 +2341,14 @@ and subtype_poly_type (pty1 : poly_type) (pty2 : poly_type) : bool =
     | Some(pty) ->
         poly_type_equal pty pty2
   in
-  let internbrid (brid1 : BoundRowID.t) (prow2 : poly_row) : bool =
+  let internbrid (brid1 : BoundRowID.t) (nomprow2 : normalized_poly_row) : bool =
     match BoundRowIDHashTable.find_opt bridht brid1 with
     | None ->
-        BoundRowIDHashTable.add bridht brid1 prow2;
+        BoundRowIDHashTable.add bridht brid1 nomprow2;
         true
 
-    | Some(prow) ->
-        poly_row_equal prow prow2
+    | Some(nomprow) ->
+        normalized_poly_row_equal nomprow nomprow2
   in
   subtype_poly_type_impl internbid internbrid pty1 pty2
 
@@ -2309,7 +2378,7 @@ and subtype_type_scheme (tyscheme1 : type_scheme) (tyscheme2 : type_scheme) : bo
         | _ ->
             false
       in
-      let internbrid (brid1 : BoundRowID.t) (prow2 : poly_row) : bool =
+      let internbrid (brid1 : BoundRowID.t) (nomprow2 : normalized_poly_row) : bool =
         false
       in
       subtype_poly_type_impl internbid internbrid pty1 pty2
