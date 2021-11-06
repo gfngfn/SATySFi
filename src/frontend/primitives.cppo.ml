@@ -183,19 +183,22 @@ let fresh_bound_id () =
   BoundID.fresh ()
 
 
-let add_variant_types vntdefs tyenv =
-  List.fold_left (fun tyenv (tynm, vid, arity, ctors) ->
+let add_variant_types vntdefs (tyenv : Typeenv.t) : Typeenv.t =
+  List.fold_left (fun tyenv (tynm, tyid, arity, ctors) ->
+    let rng = Range.dummy "add_variant_types" in
+    let bids = List.init arity (fun _ -> BoundID.fresh ()) in
+    let ptys = bids |> List.map (fun bid -> (rng, TypeVariable(PolyBound(bid)))) in
     let tentry =
       {
-        type_scheme = failwith "TODO: make type scheme from vid";
-        type_kind   = failwith "TODO: kind";
+        type_scheme = (bids, Poly((rng, DataType(ptys, tyid))));
+        type_kind   = Kind(List.init arity (fun _ -> TypeKind));
       }
     in
     let tyenv = tyenv |> Typeenv.add_type tynm tentry in
     ctors |> List.fold_left (fun tyenv (ctornm, tyscheme) ->
       let centry =
         {
-          ctor_belongs_to = vid;
+          ctor_belongs_to = tyid;
           ctor_parameter  = tyscheme;
         }
       in
@@ -204,12 +207,13 @@ let add_variant_types vntdefs tyenv =
   ) tyenv vntdefs
 
 
-let add_synonym_types syndefs tyenv =
+let add_synonym_types (syndefs : (type_name * type_scheme) list) (tyenv : Typeenv.t) : Typeenv.t =
   List.fold_left (fun tyenv (tynm, tyscheme) ->
+    let (bids, _) = tyscheme in
     let tentry =
       {
         type_scheme = tyscheme;
-        type_kind   = failwith "TODO: add_synonym_types";
+        type_kind   = Kind(bids |> List.map (fun _ -> TypeKind));
       }
     in
     tyenv |> Typeenv.add_type tynm tentry
