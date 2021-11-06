@@ -451,4 +451,26 @@ let make_opaque_type_scheme (arity : int) (tyid : TypeID.t) : type_scheme =
 
 
 let get_opaque_type (tyscheme : type_scheme) : TypeID.t option =
-  failwith "TODO: get_opaque_type"
+  let (bids, Poly(pty_body)) = tyscheme in
+  match pty_body with
+  | (_, DataType(ptys, tyid)) ->
+      begin
+        match List.combine bids ptys with
+        | exception Invalid_argument(_) ->
+            None
+
+        | zipped ->
+            if
+              zipped |> List.for_all (fun (bid, pty) ->
+                match pty with
+                | (_, TypeVariable(PolyBound(bid0))) -> BoundID.equal bid bid0
+                | _                                  -> false
+              )
+            then
+              Some(tyid)
+            else
+              None
+      end
+
+  | _ ->
+      None
