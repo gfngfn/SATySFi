@@ -196,19 +196,6 @@ let collect_ids_poly (Poly(pty) : poly_type) (dispmap : DisplayMap.t) : DisplayM
   dispmap
 
 
-let rec variable_name_of_number (n : int) : string =
-  begin
-    if n >= 26 then
-      variable_name_of_number ((n - n mod 26) / 26 - 1)
-    else
-      ""
-  end ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
-
-(*
-let show_type_variable (type a) (type b) (f : (a, b) typ -> string) (name : string) =
-  name
-*)
-
 let show_base_type = function
   | EnvType     -> "env"  (* -- unused -- *)
   | UnitType    -> "unit"
