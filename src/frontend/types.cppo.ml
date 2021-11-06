@@ -983,9 +983,15 @@ module BoundRowIDHashTable = Hashtbl.Make(BoundRowID)
 
 module FreeIDHashTable = Hashtbl.Make(FreeID)
 
+module FreeRowIDHashTable = Hashtbl.Make(FreeRowID)
+
 module BoundIDMap = Map.Make(BoundID)
 
+module BoundRowIDMap = Map.Make(BoundRowID)
+
 module FreeIDMap = Map.Make(FreeID)
+
+module FreeRowIDMap = Map.Make(FreeRowID)
 
 module OpaqueIDMap = Map.Make(TypeID)
 

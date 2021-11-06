@@ -20,7 +20,6 @@ let fresh (lev : Level.t) (labset : LabelSet.t) : t =
   generate supp
 
 
-
 let get_level (frid : t) : Level.t =
   let supp = get_supplement frid in
   supp.level

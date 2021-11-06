@@ -4,16 +4,196 @@ open Types
 open StaticEnv
 
 
-let show_row (type a) (type b) (s_left : string) (s_right : string) (tyf : (a, b) typ -> string) (rvf : b -> string) (row : (a, b) row) : string =
-  let NormalizedRow(ty_labmap, prv_opt) = TypeConv.normalize_row_general row in
-  let ss =
-    ty_labmap |> LabelMap.bindings |> List.map (fun (label, ty) ->
-      Printf.sprintf "%s : %s" label (tyf ty)
-    )
+let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t FreeRowIDHashTable.t) (bid_ht : unit BoundIDHashTable.t) (brid_ht : LabelSet.t BoundRowIDHashTable.t) =
+  let aux_free_id (fid : FreeID.t) =
+    if FreeIDHashTable.mem fid_ht fid then () else
+      FreeIDHashTable.add fid_ht fid ()
   in
-  match prv_opt with
-  | None      -> Printf.sprintf "%s %s %s" s_left s_right (String.concat ", " ss)
-  | Some(prv) -> Printf.sprintf "%s %s | %s %s" s_left s_right (String.concat ", " ss) (rvf prv)
+  let aux_free_row_id (frid : FreeRowID.t) =
+    if FreeRowIDHashTable.mem frid_ht frid then () else
+      let labset = FreeRowID.get_label_set frid in
+      FreeRowIDHashTable.add frid_ht frid labset
+  in
+  let aux_bound_id (bid : BoundID.t) =
+    if BoundIDHashTable.mem bid_ht bid then
+      ()
+    else
+      BoundIDHashTable.add bid_ht bid ()
+  in
+  let aux_bound_row_id (brid : BoundRowID.t) =
+    if BoundRowIDHashTable.mem brid_ht brid then
+      ()
+    else
+      let labset = BoundRowID.get_label_set brid in
+      BoundRowIDHashTable.add brid_ht brid labset
+  in
+  let rec aux_mono ((_, tymain) : mono_type) : unit =
+    match tymain with
+    | BaseType(_) ->
+        ()
+
+    | FuncType(optrow, tydom, tycod) ->
+        aux_mono_row optrow;
+        aux_mono tydom;
+        aux_mono tycod
+
+    | ListType(ty) -> aux_mono ty
+    | RefType(ty)  -> aux_mono ty
+
+    | ProductType(tys) ->
+        tys |> TupleList.to_list |> List.iter aux_mono
+
+    | TypeVariable(tv) ->
+        begin
+          match tv with
+          | Updatable({contents = MonoLink(ty)})  -> aux_mono ty
+          | Updatable({contents = MonoFree(fid)}) -> aux_free_id fid
+          | MustBeBound(mbbid)                    -> ()
+        end
+
+    | DataType(tys, tyid) ->
+        tys |> List.iter aux_mono
+
+    | RecordType(row) ->
+        aux_mono_row row
+
+    | HorzCommandType(cmdargtys) -> cmdargtys |> List.iter aux_mono_cmd_arg
+    | VertCommandType(cmdargtys) -> cmdargtys |> List.iter aux_mono_cmd_arg
+    | MathCommandType(cmdargtys) -> cmdargtys |> List.iter aux_mono_cmd_arg
+
+    | CodeType(ty) ->
+        aux_mono ty
+
+  and aux_poly ((_, ptymain) : poly_type_body) : unit =
+    match ptymain with
+    | BaseType(_) ->
+        ()
+
+    | TypeVariable(ptv) ->
+        begin
+          match ptv with
+          | PolyFree(Updatable{contents = MonoLink(ty)})  -> aux_mono ty
+          | PolyFree(Updatable{contents = MonoFree(fid)}) -> aux_free_id fid
+          | PolyFree(MustBeBound(_))                      -> ()
+          | PolyBound(bid)                                -> aux_bound_id bid
+        end
+
+    | FuncType(poptrow, ptydom, ptycod) ->
+        aux_poly_row poptrow;
+        aux_poly ptydom;
+        aux_poly ptycod
+
+    | ListType(pty) -> aux_poly pty
+    | RefType(pty)  -> aux_poly pty
+
+    | ProductType(ptys) ->
+        ptys |> TupleList.to_list |> List.iter aux_poly
+
+    | RecordType(prow) ->
+        aux_poly_row prow
+
+    | DataType(ptys, tyid) ->
+        ptys |> List.iter aux_poly
+
+    | HorzCommandType(pcmdargtys) -> pcmdargtys |> List.iter aux_poly_cmd_arg
+    | VertCommandType(pcmdargtys) -> pcmdargtys |> List.iter aux_poly_cmd_arg
+    | MathCommandType(pcmdargtys) -> pcmdargtys |> List.iter aux_poly_cmd_arg
+
+    | CodeType(pty) ->
+        aux_poly pty
+
+  and aux_mono_row : mono_row -> unit = function
+    | RowCons(_rlabel, ty, row)                         -> aux_mono ty; aux_mono_row row
+    | RowVar(UpdatableRow{contents = MonoORLink(row)})  -> aux_mono_row row
+    | RowVar(UpdatableRow{contents = MonoORFree(frid)}) -> aux_free_row_id frid
+    | RowVar(MustBeBoundRow(mbbrid))                    -> ()
+    | RowEmpty                                          -> ()
+
+  and aux_poly_row : poly_row -> unit = function
+    | RowCons(_rlabel, pty, prow) ->
+        aux_poly pty;
+        aux_poly_row prow
+
+    | RowVar(PolyORFree(prv)) ->
+        begin
+          match prv with
+          | UpdatableRow{contents = MonoORLink(row)}  -> aux_mono_row row
+          | UpdatableRow{contents = MonoORFree(frid)} -> aux_free_row_id frid
+          | MustBeBoundRow(_)                         -> ()
+        end
+
+    | RowVar(PolyORBound(brid)) ->
+        aux_bound_row_id brid
+
+    | RowEmpty ->
+        ()
+
+  and aux_mono_cmd_arg (CommandArgType(labmap, ty) : mono_command_argument_type) : unit =
+    aux_mono_label_map labmap;
+    aux_mono ty
+
+  and aux_poly_cmd_arg (CommandArgType(plabmap, pty) : poly_command_argument_type) : unit =
+    aux_poly_label_map plabmap;
+    aux_poly pty
+
+  and aux_mono_label_map (labmap : mono_type LabelMap.t) : unit =
+    LabelMap.iter (fun _ ty -> aux_mono ty) labmap
+
+  and aux_poly_label_map (plabmap : poly_type_body LabelMap.t) : unit =
+    LabelMap.iter (fun _ pty -> aux_poly pty) plabmap
+
+  in
+  (aux_mono, aux_poly)
+
+
+let collect_ids_mono (ty : mono_type) (dispmap : DisplayMap.t) : DisplayMap.t =
+  let fid_ht = DisplayMap.make_free_id_hash_set dispmap in
+  let frid_ht = DisplayMap.make_free_row_id_hash_set dispmap in
+  let bid_ht = DisplayMap.make_bound_id_hash_set dispmap in
+  let brid_ht = DisplayMap.make_bound_row_id_hash_set dispmap in
+  let (aux_mono, _) = collect_ids_scheme fid_ht frid_ht bid_ht brid_ht in
+  aux_mono ty;
+  let dispmap =
+    FreeIDHashTable.fold (fun fid () dispmap ->
+      dispmap |> DisplayMap.add_free_id fid
+    ) fid_ht dispmap
+  in
+  let dispmap =
+    FreeRowIDHashTable.fold (fun frid labset dispmap ->
+      dispmap |> DisplayMap.add_free_row_id frid labset
+    ) frid_ht dispmap
+  in
+  dispmap
+
+
+let collect_ids_poly (Poly(pty) : poly_type) (dispmap : DisplayMap.t) : DisplayMap.t =
+  let fid_ht = DisplayMap.make_free_id_hash_set dispmap in
+  let frid_ht = DisplayMap.make_free_row_id_hash_set dispmap in
+  let bid_ht = DisplayMap.make_bound_id_hash_set dispmap in
+  let brid_ht = DisplayMap.make_bound_row_id_hash_set dispmap in
+  let (_, aux_poly) = collect_ids_scheme fid_ht frid_ht bid_ht brid_ht in
+  aux_poly pty;
+  let dispmap =
+    FreeIDHashTable.fold (fun fid () dispmap ->
+      dispmap |> DisplayMap.add_free_id fid
+    ) fid_ht dispmap
+  in
+  let dispmap =
+    FreeRowIDHashTable.fold (fun frid labset dispmap ->
+      dispmap |> DisplayMap.add_free_row_id frid labset
+    ) frid_ht dispmap
+  in
+  let dispmap =
+    BoundIDHashTable.fold (fun bid () dispmap ->
+      dispmap |> DisplayMap.add_bound_id bid
+    ) bid_ht dispmap
+  in
+  let dispmap =
+    BoundRowIDHashTable.fold (fun brid labset dispmap ->
+      dispmap |> DisplayMap.add_bound_row_id brid labset
+    ) brid_ht dispmap
+  in
+  dispmap
 
 
 let rec variable_name_of_number (n : int) : string =
@@ -24,67 +204,10 @@ let rec variable_name_of_number (n : int) : string =
       ""
   end ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
-
+(*
 let show_type_variable (type a) (type b) (f : (a, b) typ -> string) (name : string) =
   name
-
-
-type general_id =
-  | FreeID  of FreeID.t
-  | BoundID of BoundID.t
-
-
-module GeneralIDHashTable_ = Hashtbl.Make(
-  struct
-    type t = general_id
-
-    let equal gid1 gid2 =
-      match (gid1, gid2) with
-      | (FreeID(tvid1), FreeID(tvid2)) -> FreeID.equal tvid1 tvid2
-      | (BoundID(bid1), BoundID(bid2)) -> BoundID.equal bid1 bid2
-      | (_, _)                         -> false
-
-    let hash = Hashtbl.hash
-  end)
-
-
-module GeneralIDHashTable
-: sig
-    include Hashtbl.S
-    val initialize : unit -> unit
-    val intern_number : int t -> general_id -> int
-  end
-= struct
-    include GeneralIDHashTable_
-
-    let current_number = ref 0
-
-    let initialize () = ( current_number := 0 )
-
-    (* --
-      'new_number' is required to be 0-origin by 'variable_name_of_number'
-    -- *)
-    let new_number () =
-      let res = !current_number in
-      begin
-        incr current_number;
-        res
-      end
-
-    let intern_number (current_ht : 'a t) (gid : general_id) =
-      match find_opt current_ht gid with
-      | Some(num) ->
-          num
-
-      | None ->
-          let num = new_number () in
-          begin
-            add current_ht gid num;
-            num
-          end
-
-  end
-
+*)
 
 let show_base_type = function
   | EnvType     -> "env"  (* -- unused -- *)
@@ -117,204 +240,176 @@ type paren_level =
   | Single
 
 
-let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) (ortvf : 'b -> string) (current_ht : int GeneralIDHashTable.t) (plev : paren_level) ((_, tymain) : ('a, 'b) typ) =
-  let iter = string_of_mono_type_sub tvf ortvf current_ht in
-  let iter_cmd  = string_of_command_argument_type tvf ortvf current_ht in
-  let iter_args = string_of_type_argument_list tvf ortvf current_ht in
-  let iter_prod = string_of_product tvf ortvf current_ht in
-    match tymain with
-
-    | TypeVariable(tvi) -> tvf plev tvi
-
-    | BaseType(bty) -> show_base_type bty
-
-    | DataType(tyargs, tyid) ->
-        let name = TypeID.extract_name tyid in
-        let s = (iter_args tyargs) ^ name in
-        begin
-          match (tyargs, plev) with
-          | (_ :: _, Single) -> "(" ^ s ^ ")"
-          | _                 -> s
-        end
-
-    | FuncType(optrow, tydom, tycod) ->
-        let stropts = show_row "?(" ")" (iter Outmost) ortvf optrow in
-        let strdom = iter DomainSide tydom in
-        let strcod = iter Outmost tycod in
-        let s = stropts ^ strdom ^ " -> " ^ strcod in
-        begin
-          match plev with
-          | Single | ProductElement | DomainSide -> "(" ^ s ^ ")"
-          | _                                    -> s
-        end
-
-    | ListType(tycont) ->
-        let strcont = iter Single tycont in
-        let s = strcont ^ " list" in
-        begin
-          match plev with
-          | Single -> "(" ^ s ^ ")"
-          | _      -> s
-        end
-
-    | RefType(tycont) ->
-        let strcont = iter Single tycont in
-        let s = strcont ^ " ref" in
-          begin
-            match plev with
-            | Single -> "(" ^ s ^ ")"
-            | _      -> s
-          end
-
-    | CodeType(tysub) ->
-        let strsub = iter Single tysub in
-        "&" ^ strsub
-
-    | ProductType(tys) ->
-        let s = iter_prod (TupleList.to_list tys) in
-        begin
-          match plev with
-          | Single | ProductElement -> "(" ^ s ^ ")"
-          | _                       -> s
-        end
-
-    | RecordType(row) ->
-        show_row "(|" "|)" (iter Outmost) ortvf row
-
-    | HorzCommandType(cmdargtys) ->
-        let ss = List.map iter_cmd cmdargtys in
-        Printf.sprintf "inline [%s]" (String.concat ", " ss)
-
-    | VertCommandType(cmdargtys) ->
-        let ss = List.map iter_cmd cmdargtys in
-        Printf.sprintf "block [%s]" (String.concat ", " ss)
-
-    | MathCommandType(cmdargtys) ->
-        let ss = List.map iter_cmd cmdargtys in
-        Printf.sprintf "math [%s]" (String.concat ", " ss)
+let paren_level_number = function
+  | Outmost        -> 4
+  | DomainSide     -> 3
+  | ProductElement -> 2
+  | Single         -> 1
 
 
-and string_of_command_argument_type tvf ortvf current_ht cmdargty =
-  let iter = string_of_mono_type_sub tvf ortvf current_ht in
-  match cmdargty with
-  | CommandArgType(tylabmap, ty) ->
-      let ss =
-        tylabmap |> LabelMap.bindings |> List.map (fun (label, ty) ->
-          Printf.sprintf "?%s %s " label (iter Outmost ty)
-        )
-      in
-      Printf.sprintf "%s%s" (String.concat "" ss) (iter Outmost ty)
+let ( <=@ ) plev1 plev2 =
+  paren_level_number plev1 <= paren_level_number plev2
 
 
-and string_of_type_argument_list tvf ortvf current_ht tyarglist =
-  let iter = string_of_mono_type_sub tvf ortvf current_ht in
-  let iter_args = string_of_type_argument_list tvf ortvf current_ht in
-    match tyarglist with
-    | [] ->
+let rec show_type : 'a 'b. (paren_level -> 'a -> string) -> ('b -> string) -> paren_level -> ('a, 'b) typ -> string =
+fun tvf rvf plev ty ->
+  let rec aux plev (_, tymain) =
+    let (plev_required, s) =
+      match tymain with
+      | FuncType(optrow, tydom, tycod) ->
+          let s_opts =
+            match show_row tvf rvf optrow with
+            | None    -> ""
+            | Some(s) -> Printf.sprintf "?(%s) " s
+          in
+          let s_dom = aux DomainSide tydom in
+          let s_cod = aux Outmost tycod in
+          let s = Printf.sprintf "%s%s -> %s" s_opts s_dom s_cod in
+          (Outmost, s)
+
+      | ProductType(tys) ->
+          let s = tys |> TupleList.to_list |> List.map (aux ProductElement) |> String.concat " * " in
+          (DomainSide, s)
+
+      | ListType(ty) ->
+          (ProductElement, Printf.sprintf "list %s" (aux Single ty))
+
+      | RefType(ty) ->
+          (ProductElement, Printf.sprintf "ref %s" (aux Single ty))
+
+      | CodeType(ty) ->
+          (ProductElement, Printf.sprintf "code %s" (aux Single ty))
+
+      | DataType((_ :: _) as tys, tyid) ->
+          let name = TypeID.extract_name tyid in
+          let s = Printf.sprintf "%s %s" name (tys |> List.map (aux Single) |> String.concat " ") in
+          (ProductElement, s)
+
+      | DataType([], tyid) ->
+          (Single, TypeID.extract_name tyid)
+
+      | HorzCommandType(cmdargtys) ->
+          let ss = cmdargtys |> List.map aux_cmd_arg in
+          (ProductElement, Printf.sprintf "inline [%s]" (String.concat ", " ss))
+
+      | VertCommandType(cmdargtys) ->
+          let ss = cmdargtys |> List.map aux_cmd_arg in
+          (ProductElement, Printf.sprintf "block [%s]" (String.concat ", " ss))
+
+      | MathCommandType(cmdargtys) ->
+          let ss = cmdargtys |> List.map aux_cmd_arg in
+          (ProductElement, Printf.sprintf "math [%s]" (String.concat ", " ss))
+
+      | TypeVariable(tv) ->
+          (Single, tvf plev tv)
+
+      | BaseType(bty) ->
+          (Single, show_base_type bty)
+
+      | RecordType(row) ->
+          let s = (show_row tvf rvf row) |> Option.value ~default:"" in
+          (Single, Printf.sprintf "(|%s|)" s)
+    in
+    if plev_required <=@ plev then
+      s
+    else
+      Printf.sprintf "(%s)" s
+
+  and aux_cmd_arg (CommandArgType(tylabmap, ty0)) =
+    let s_opts =
+      if LabelMap.cardinal tylabmap = 0 then
         ""
+      else
+        let ss =
+          tylabmap |> LabelMap.bindings |> List.map (fun (label, ty) ->
+            Printf.sprintf "%s : %s" label (aux Outmost ty)
+          )
+        in
+        Printf.sprintf "?(%s) " (String.concat ", " ss)
+    in
+    Printf.sprintf "%s%s" s_opts (aux ProductElement ty0)
 
-    | head :: tail ->
-        let strhd = iter Single head in
-        let strtl = iter_args tail in
-        strhd ^ " " ^ strtl
-
-
-and string_of_product tvf ortvf current_ht tys =
-  let iter = string_of_mono_type_sub tvf ortvf current_ht in
-  let iter_list = string_of_product tvf ortvf current_ht in
-    match tys with
-    | []           -> ""
-    | head :: tail ->
-        let strhead = iter ProductElement head in
-        let strtail = iter_list tail in
-        strhead ^
-        begin
-          match tail with
-          | [] -> ""
-          | _  -> " * " ^ strtail
-        end
+  in
+  aux plev ty
 
 
-let rec tvf_mono current_ht plev tv =
-  let iter = string_of_mono_type_sub (tvf_mono current_ht) (ortvf_mono current_ht) current_ht in
+and show_row : 'a 'b. (paren_level -> 'a -> string) -> ('b -> string) -> ('a, 'b) row -> string option =
+fun tvf rvf row ->
+  let NormalizedRow(ty_labmap, prv_opt) = TypeConv.normalize_row_general row in
+  if LabelMap.cardinal ty_labmap = 0 then
+    match prv_opt with
+    | None      -> None
+    | Some(prv) -> Some(rvf prv)
+  else
+    let ss =
+      ty_labmap |> LabelMap.bindings |> List.map (fun (label, ty) ->
+        Printf.sprintf "%s : %s" label (show_type tvf rvf Outmost ty)
+      )
+    in
+    match prv_opt with
+    | None      -> Some(Printf.sprintf "%s" (String.concat ", " ss))
+    | Some(prv) -> Some(Printf.sprintf "%s | %s" (String.concat ", " ss) (rvf prv))
+
+
+let rec tvf_mono (dispmap : DisplayMap.t) (plev : paren_level) (tv : mono_type_variable) : string =
   match tv with
-  | Updatable(tvuref) ->
+  | Updatable(tvref) ->
       begin
-        match !tvuref with
-        | MonoFree(fid) ->
-            let num = GeneralIDHashTable.intern_number current_ht (FreeID(fid)) in
-            let s =
-              let prefix = if FreeID.get_quantifiability fid then "'" else "'_" in
-              prefix ^ (variable_name_of_number num)
-            in
-            show_type_variable (iter Outmost) s
-
-        | MonoLink(ty) ->
-            iter plev ty
+        match !tvref with
+        | MonoFree(fid) -> dispmap |> DisplayMap.find_free_id fid
+        | MonoLink(ty)  -> show_type (tvf_mono dispmap) (rvf_mono dispmap) plev ty
       end
 
   | MustBeBound(mbbid) ->
-      MustBeBoundID.show mbbid
+      dispmap |> DisplayMap.find_bound_id (MustBeBoundID.to_bound_id mbbid)
 
 
-and ortvf_mono current_ht rv =
-  let ortvf = ortvf_mono current_ht in
-  let iter = string_of_mono_type_sub (tvf_mono current_ht) ortvf current_ht in
+and rvf_mono (dispmap : DisplayMap.t) (rv : mono_row_variable) : string =
   match rv with
   | UpdatableRow(rvref) ->
       begin
         match !rvref with
-        | MonoORFree(_)   -> ""
-        | MonoORLink(row) -> show_row "?(" ")" (iter Outmost) (ortvf_mono current_ht) row
+        | MonoORFree(_) ->
+            ""
+
+        | MonoORLink(row) ->
+            begin
+              match show_row (tvf_mono dispmap) (rvf_mono dispmap) row with
+              | None    -> ""
+              | Some(s) -> Printf.sprintf "?(%s)" s
+            end
       end
 
   | MustBeBoundRow(mbbrid) ->
-      failwith "TODO: ortvf_mono, MustBeBoundRow"
+      dispmap |> DisplayMap.find_bound_row_id (MustBeBoundRowID.to_bound_id mbbrid)
 
 
-let rec tvf_poly current_ht plev ptvi =
-  let iter_poly = string_of_mono_type_sub (tvf_poly current_ht) (ortvf_poly current_ht) current_ht in
-  match ptvi with
-  | PolyFree(tvref) ->
-      tvf_mono current_ht plev tvref
-
-  | PolyBound(bid) ->
-      let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
-      let s = "'#" ^ (variable_name_of_number num) in
-      show_type_variable (iter_poly Outmost) s
+let rec tvf_poly (dispmap : DisplayMap.t) (plev : paren_level) (ptv : poly_type_variable) : string =
+  match ptv with
+  | PolyFree(tvref) -> tvf_mono dispmap plev tvref
+  | PolyBound(bid)  -> dispmap |> DisplayMap.find_bound_id bid
 
 
-and ortvf_poly current_ht rv =
-  match rv with
-  | PolyORFree(rvref) ->
-      ortvf_mono current_ht rvref
-
-  | PolyORBound(brid) ->
-      failwith "TODO: ortvf_poly"
+and rvf_poly (dispmap : DisplayMap.t) (prv : poly_row_variable) : string =
+  match prv with
+  | PolyORFree(rvref) -> rvf_mono dispmap rvref
+  | PolyORBound(brid) -> dispmap |> DisplayMap.find_bound_row_id brid
 
 
-let string_of_mono_type (ty : mono_type) =
-  begin
-    GeneralIDHashTable.initialize ();
-    let current_ht = GeneralIDHashTable.create 32 in
-      string_of_mono_type_sub (tvf_mono current_ht) (ortvf_mono current_ht) current_ht Outmost ty
-  end
+let show_mono_type (ty : mono_type) =
+  let dispmap = DisplayMap.empty |> collect_ids_mono ty in
+  show_type (tvf_mono dispmap) (rvf_mono dispmap) Outmost ty
 
 
-let string_of_mono_type_double (ty1 : mono_type) (ty2 : mono_type) =
-  begin
-    GeneralIDHashTable.initialize ();
-    let current_ht = GeneralIDHashTable.create 32 in
-    let strf = string_of_mono_type_sub (tvf_mono current_ht) (ortvf_mono current_ht) current_ht Outmost in
-    let strty1 = strf ty1 in
-    let strty2 = strf ty2 in
-      (strty1, strty2)
-  end
+let show_mono_type_double (ty1 : mono_type) (ty2 : mono_type) =
+  let dispmap = DisplayMap.empty |> collect_ids_mono ty1 |> collect_ids_mono ty2 in
+  let tvf = tvf_mono dispmap in
+  let rvf = rvf_mono dispmap in
+  let s1 = show_type tvf rvf Outmost ty1 in
+  let s2 = show_type tvf rvf Outmost ty2 in
+  (s1, s2)
 
 
-let string_of_poly_type (Poly(pty) : poly_type) =
-  begin
-    GeneralIDHashTable.initialize ();
-    let current_ht = GeneralIDHashTable.create 32 in
-    string_of_mono_type_sub (tvf_poly current_ht) (ortvf_poly current_ht) current_ht Outmost pty
-  end
+let show_poly_type (Poly(pty) : poly_type) =
+  let dispmap = DisplayMap.empty |> collect_ids_poly (Poly(pty)) in
+  show_type (tvf_poly dispmap) (rvf_poly dispmap) Outmost pty

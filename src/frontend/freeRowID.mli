@@ -1,13 +1,17 @@
 
 open SyntaxBase
 
-type t  [@@deriving show]
+type t
 
 val initialize : unit -> unit
 
 val fresh : Level.t -> LabelSet.t -> t
 
+val compare : t -> t -> int
+
 val equal : t -> t -> bool
+
+val hash : t -> int
 
 val get_level : t -> Level.t
 
