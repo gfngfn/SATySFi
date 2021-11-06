@@ -140,10 +140,10 @@
   let extract_main (_, x) = x
 
 
-  let binary_operator (utastL : untyped_abstract_tree) (optok : Range.t * var_name) (utastR : untyped_abstract_tree) : untyped_abstract_tree =
-    let (rngop, opnm) = optok in
+  let binary_operator (utastL : untyped_abstract_tree) (op : Range.t * var_name) (utastR : untyped_abstract_tree) : untyped_abstract_tree =
+    let (rng_op, _) = op in
     let rng = make_range (Ranged utastL) (Ranged utastR) in
-      (rng, UTApply([], (Range.dummy "binary_operator", UTApply([], (rngop, UTContentOf([], opnm)), utastL)), utastR))
+    (rng, UTApply([], (Range.dummy "binary_operator", UTApply([], (rng_op, UTContentOf([], op)), utastL)), utastR))
 
 
   let make_uminus op = function
@@ -245,12 +245,16 @@
 
 %token<Range.t * Types.var_name> LOWER
 %token<Range.t * Types.constructor_name> UPPER
-%token<Range.t * Types.module_name list * Types.var_name> LONG_LOWER
-%token<Range.t * Types.module_name list * Types.constructor_name> LONG_UPPER
+%token<Range.t * (Types.module_name Types.ranged) list * Types.var_name Types.ranged> LONG_LOWER
+%token<Range.t * (Types.module_name Types.ranged) list * Types.constructor_name Types.ranged> LONG_UPPER
 
 %token<Range.t * Types.ctrlseq_name> BACKSLASH_CMD PLUS_CMD
-%token<Range.t * Types.module_name list * Types.ctrlseq_name> LONG_BACKSLASH_CMD LONG_PLUS_CMD
-%token<Range.t * Types.module_name list * Types.var_name> VAR_IN_TEXT
+
+%token<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged>
+  LONG_BACKSLASH_CMD LONG_PLUS_CMD
+
+%token<Range.t * (Types.module_name Types.ranged) list * Types.var_name Types.ranged>
+  VAR_IN_TEXT
 
 %token<Range.t * Types.type_variable_name> TYPEVAR
 %token<Range.t * Types.row_variable_name> ROWVAR
@@ -319,6 +323,8 @@
 %type<Types.untyped_command_argument> cmd_arg_expr
 %type<bool * Types.untyped_math> math_group
 %type<Types.untyped_math> math_bot
+%type<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged> backslash_cmd
+%type<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged> plus_cmd
 
 
 %%
@@ -391,15 +397,10 @@ mod_chain:
       { let (rng, modnm) = modident in (rng, ((rng, modnm), [])) }
   | modpath=LONG_UPPER
       {
-        let (rng, modnms, modnm0) = modpath in
-        match modnms with
-        | [] ->
-            assert false
-
-        | modnm1 :: modnms_rest ->
-            let projs = (List.append modnms_rest [ modnm0 ]) |> List.map (fun modnm -> (rng, modnm)) in
-            (rng, ((rng, modnm1), projs))
-              (* TODO: give appropriate ranges *)
+        let (rng, modidents, modident0) = modpath in
+        match modidents with
+        | []                          -> assert false
+        | modident1 :: modidents_rest -> (rng, (modident1, List.append modidents_rest [ modident0 ]))
       }
 ;
 bind:
@@ -417,8 +418,8 @@ bind_value:
       { UTNonRec(utnonrecbind) }
   | utrecbinds=bind_value_rec
       { UTRec(utrecbinds) }
-  | MUTABLE; var=LOWER; REVERSED_ARROW; utast=expr
-      { let mutbind = (var, utast) in UTMutable(mutbind) }
+  | MUTABLE; ident=LOWER; REVERSED_ARROW; utast=expr
+      { let mutbind = (ident, utast) in UTMutable(mutbind) }
   | INLINE; utnonrecbind=bind_inline
       { UTNonRec(utnonrecbind) }
   | BLOCK; utnonrecbind=bind_block
@@ -460,7 +461,7 @@ bind_inline:
         let rng = make_range (Ranged cs) (Ranged utast) in
         let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
         let varnm_ctx = "%context" in
-        let utast_ctx = (rng_ctx, UTContentOf([], varnm_ctx)) in
+        let utast_ctx = (rng_ctx, UTContentOf([], (rng_ctx, varnm_ctx))) in
         let utast_read = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utast_ctx, utast)) in
         let curried = curry_lambda_abstraction param_units utast_read in
         (cs, (rng, UTLambdaHorz(rng_ctx, varnm_ctx, curried)))
@@ -479,7 +480,7 @@ bind_block:
         let rng = make_range (Ranged cs) (Ranged utast) in
         let rng_ctx = Range.dummy "context-of-lightweight-let-block" in
         let varnm_ctx = "%context" in
-        let utast_ctx = (rng_ctx, UTContentOf([], varnm_ctx)) in
+        let utast_ctx = (rng_ctx, UTContentOf([], (rng_ctx, varnm_ctx))) in
         let utast_read = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utast_ctx, utast)) in
         let curried = curry_lambda_abstraction param_units utast_read in
         (cs, (rng, UTLambdaVert(rng_ctx, varnm_ctx, curried)))
@@ -541,9 +542,7 @@ sigexpr_bot:
       }
   | sigpath=LONG_UPPER
       {
-        let (rng, modnms, signm) = sigpath in
-        let sigident = (rng, signm) in (* TODO: give appropriate ranges *)
-        let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in (* TODO: give appropriate ranges *)
+        let (rng, modidents, sigident) = sigpath in
         let modchain =
           match modidents with
           | []                 -> assert false
@@ -789,8 +788,8 @@ expr_app:
 expr_un:
   | unop=UNOP_EXCLAM; utast2=expr_bot
       {
-        let (rng, varnm) = unop in
-        make_standard (Tok rng) (Ranged utast2) (UTApply([], (rng, UTContentOf([], varnm)), utast2))
+        let (rng, _) = unop in
+        make_standard (Tok rng) (Ranged utast2) (UTApply([], (rng, UTContentOf([], unop)), utast2))
       }
   | tok=EXACT_AMP; utast2=expr_bot
       { make_standard (Tok tok) (Ranged utast2) (UTNext(utast2)) }
@@ -803,11 +802,11 @@ expr_bot:
   | utast=expr_bot; ACCESS; rlabel=LOWER
       { make_standard (Ranged utast) (Ranged rlabel) (UTAccessField(utast, rlabel)) }
   | ident=LOWER
-      { let (rng, varnm) = ident in (rng, UTContentOf([], varnm)) }
+      { let (rng, _) = ident in (rng, UTContentOf([], ident)) }
   | long_ident=LONG_LOWER
-      { let (rng, modnms, varnm) = long_ident in (rng, UTContentOf(modnms, varnm)) }
+      { let (rng, modidents, ident) = long_ident in (rng, UTContentOf(modidents, ident)) }
   | tokL=L_PAREN; ident=binop; tokR=R_PAREN
-      { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], extract_main ident)) }
+      { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], ident)) }
   | ic=INT
       { let (rng, n) = ic in (rng, UTIntegerConstant(n)) }
   | fc=FLOAT
@@ -1029,9 +1028,9 @@ block:
 block_elem:
   | bcmd=plus_cmd; nargs=list(cmd_arg_expr); rsargs=cmd_args_text
       {
-        let (rng_cs, modnms, csnm) = bcmd in
+        let (rng_cs, modidents, cs) = bcmd in
         let (rng_last, sargs) = rsargs in
-        let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
+        let utast_cmd = (rng_cs, UTContentOf(modidents, cs)) in
         let args = List.append nargs sargs in
         make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertEmbedded(utast_cmd, args))
       }
@@ -1044,8 +1043,8 @@ block_elem:
 */
   | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {
-        let (rng, modnms, varnm) = long_ident in
-        let utast = (rng, UTContentOf(modnms, varnm)) in
+        let (rng, modidents, ident) = long_ident in
+        let utast = (rng, UTContentOf(modidents, ident)) in
         make_standard (Tok rng) (Tok tokR) (UTInputVertContent(utast))
       }
 ;
@@ -1217,13 +1216,13 @@ cmd_arg_text:
 ;
 backslash_cmd:
   | cs=BACKSLASH_CMD
-      { let (rng, csnm) = cs in (rng, [], csnm) }
+      { let (rng, csnm) = cs in (rng, [], (rng, csnm)) }
   | long_cs=LONG_BACKSLASH_CMD
       { long_cs }
 ;
 plus_cmd:
   | cs=PLUS_CMD
-      { let (rng, csnm) = cs in (rng, [], csnm) }
+      { let (rng, csnm) = cs in (rng, [], (rng, csnm)) }
   | long_cs=LONG_PLUS_CMD
       { long_cs }
 ;

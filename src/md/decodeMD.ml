@@ -276,13 +276,15 @@ let make_list_tree utastlst =
   ) utastlst (dummy_range, UTEndOfList)
 
 
-let make_inline_application ((rng, (mdlnmlst, cmdnm)) : command) (utasts : untyped_abstract_tree list) =
-  let utastcmd = (rng, UTContentOf(mdlnmlst, cmdnm)) in
+let make_inline_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
+  let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
+  let utastcmd = (rng, UTContentOf(modidents, (rng, csnm))) in
   [(dummy_range, UTInputHorzEmbedded(utastcmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
-let make_block_application ((rng, (mdlnmlst, cmdnm)) : command) (utasts : untyped_abstract_tree list) =
-  let utastcmd = (rng, UTContentOf(mdlnmlst, cmdnm)) in
+let make_block_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
+  let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
+  let utastcmd = (rng, UTContentOf(modidents, (rng, csnm))) in
   [(dummy_range, UTInputVertEmbedded(utastcmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
@@ -452,8 +454,9 @@ and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tre
 
 let decode (cmdrcd : command_record) (s : string) =
   let utastdoccmd =
-    let (rng, (mdlnms, varnm)) = cmdrcd.document in
-    (rng, UTContentOf(mdlnms, varnm))
+    let (rng, (modnms, varnm)) = cmdrcd.document in
+    let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
+    (rng, UTContentOf(modidents, (rng, varnm)))
   in
   let md = Omd.of_string s in
   let (strheader, md) =

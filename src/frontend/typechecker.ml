@@ -834,9 +834,23 @@ let rec typecheck
             end
       end
 
-  | UTContentOf(_, varnm) ->
+  | UTContentOf(modidents, (rng_var, varnm)) ->
+      let ventry_opt =
+        match modidents with
+        | [] ->
+            tyenv |> Typeenv.find_value varnm
+
+        | modident0 :: proj ->
+            let modchain = (modident0, proj) in
+            let mentry = find_module_chain tyenv modchain in
+            begin
+              match mentry.mod_signature with
+              | ConcStructure(ssig) -> ssig |> StructSig.find_value varnm
+              | ConcFunctor(_)      -> failwith "TODO (error): not a structure"
+            end
+      in
       begin
-        match tyenv |> Typeenv.find_value varnm with
+        match ventry_opt with
         | None ->
             failwith "TODO (error): UTContentOf, not found"
 (*
@@ -863,9 +877,6 @@ let rec typecheck
 
               | (Stage0, Stage0)
               | (Stage1, Stage1) ->
-(*
-                  let () = print_endline ("\n#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ "\n  (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
-*)
                   (ContentOf(rng, evid), tyres)
 
               | _ ->
@@ -1066,9 +1077,9 @@ let rec typecheck
       let (eA, tyA) = typecheck_iter tyenvI utastA in
       (LetMutableIn(evid, eI, eA), tyA)
 
-  | UTOverwrite(varrng, varnm, utastN) ->
+  | UTOverwrite(rng_var, varnm, utastN) ->
       begin
-        match typecheck_iter tyenv (varrng, UTContentOf([], varnm)) with
+        match typecheck_iter tyenv (rng_var, UTContentOf([], (rng_var, varnm))) with
         | ((ContentOf(_, evid) | Persistent(_, evid)), tyvar) ->
             let (eN, tyN) = typecheck_iter tyenv utastN in
             unify tyvar (get_range utastN, RefType(tyN));

@@ -98,11 +98,27 @@
     initialize VerticalState
 
 
-  let split_module_list (s : string) : module_name list * var_name =
-    let ss = String.split_on_char '.' s in
-    match List.rev ss with
-    | varnm :: modnms_rev -> (List.rev modnms_rev, varnm)
-    | []                  -> assert false
+  let split_module_list (rng : Range.t) (s : string) : (module_name ranged) list * var_name ranged =
+    let (fname, ln1, pos1) =
+      match Range.get_first rng with
+      | None         -> assert false
+      | Some(triple) -> triple
+    in
+    let idents =
+      let ss = String.split_on_char '.' s in
+      let (_, identacc) =
+        List.fold_left (fun (pos, identacc) s ->
+          let n = String.length s in
+          let rng = Range.make fname ln1 pos (pos + n) in
+          let ident = (rng, s) in
+          (pos + n + 1, Alist.extend identacc ident)
+        ) (pos1, Alist.empty) ss
+      in
+      Alist.to_list identacc
+    in
+    match List.rev idents with
+    | ident :: modidents_rev -> (List.rev modidents_rev, ident)
+    | []                     -> assert false
 
 }
 
@@ -283,8 +299,8 @@ rule progexpr stack = parse
       {
         let pos = get_pos lexbuf in
         let s = Lexing.lexeme lexbuf in
-        let (modnms, varnm) = split_module_list s in
-        LONG_LOWER(pos, modnms, varnm)
+        let (modidents, lower_ident) = split_module_list pos s in
+        LONG_LOWER(pos, modidents, lower_ident)
       }
   | lower
       {
@@ -325,8 +341,8 @@ rule progexpr stack = parse
       {
         let pos = get_pos lexbuf in
         let s = Lexing.lexeme lexbuf in
-        let (modnms, upper) = split_module_list s in
-        LONG_UPPER(pos, modnms, upper)
+        let (modidents, upper_ident) = split_module_list pos s in
+        LONG_UPPER(pos, modidents, upper_ident)
       }
   | upper
       { UPPER(get_pos lexbuf, Lexing.lexeme lexbuf) }
@@ -366,9 +382,10 @@ and vertexpr stack = parse
       }
   | ("#" (((upper ".")* lower) as s))
       {
-        let (modnms, csnm) = split_module_list s in
+        let pos = get_pos lexbuf in
+        let (modidents, cs) = split_module_list pos s in
         Stack.push ActiveState stack;
-        VAR_IN_TEXT(get_pos lexbuf, modnms, csnm)
+        VAR_IN_TEXT(pos, modidents, cs)
       }
   | ("+" (lower | upper) "@")
       {
@@ -382,9 +399,10 @@ and vertexpr stack = parse
       }
   | ("+" (((upper ".")+ (lower | upper)) as s))
       {
-        let (modnms, csnm) = split_module_list s in
+        let pos = get_pos lexbuf in
+        let (modidents, (rng, csnm)) = split_module_list pos s in
         Stack.push ActiveState stack;
-        LONG_PLUS_CMD(get_pos lexbuf, modnms, "+" ^ csnm)
+        LONG_PLUS_CMD(pos, modidents, (rng, "+" ^ csnm))
       }
   | "<"
       { Stack.push VerticalState stack; L_BLOCK_TEXT(get_pos lexbuf) }
@@ -462,9 +480,10 @@ and horzexpr stack = parse
       }
   | ("#" (((upper ".")* lower) as s))
       {
-        let (modnms, csnm) = split_module_list s in
+        let pos = get_pos lexbuf in
+        let (modidents, ident) = split_module_list pos s in
         Stack.push ActiveState stack;
-        VAR_IN_TEXT(get_pos lexbuf, modnms, csnm)
+        VAR_IN_TEXT(pos, modidents, ident)
       }
   | ("\\" (lower | upper))
       {
@@ -482,10 +501,10 @@ and horzexpr stack = parse
       }
   | ("\\" (((upper ".")+ (lower | upper)) as s))
       {
-        let (modnms, csnm) = split_module_list s in
-        let rng = get_pos lexbuf in
+        let pos = get_pos lexbuf in
+        let (modidents, (rng, csnm)) = split_module_list pos s in
         Stack.push ActiveState stack;
-        LONG_BACKSLASH_CMD(rng, modnms, "\\" ^ csnm)
+        LONG_BACKSLASH_CMD(pos, modidents, (rng, "\\" ^ csnm))
       }
   | ("\\" symbol)
       {
@@ -594,8 +613,9 @@ and mathexpr stack = parse
       { MATHCHARS(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("#" (((upper ".")* (lower | upper)) as s))
       {
-        let (modnms, csnm) = split_module_list s in
-        VAR_IN_TEXT(get_pos lexbuf, modnms, csnm)
+        let pos = get_pos lexbuf in
+        let (modidents, ident) = split_module_list pos s in
+        VAR_IN_TEXT(pos, modidents, ident)
       }
   | ("\\" (lower | upper))
       {
@@ -604,8 +624,9 @@ and mathexpr stack = parse
       }
   | ("\\" (((upper ".")* (lower | upper)) as s))
       {
-        let (modnms, csnm) = split_module_list s in
-        LONG_BACKSLASH_CMD(get_pos lexbuf, modnms, "\\" ^ csnm)
+        let pos = get_pos lexbuf in
+        let (modidents, (rng, csnm)) = split_module_list pos s in
+        LONG_BACKSLASH_CMD(pos, modidents, (rng, "\\" ^ csnm))
       }
   | ("\\" symbol)
       {

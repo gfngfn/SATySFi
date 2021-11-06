@@ -406,7 +406,7 @@ and untyped_abstract_tree_main =
   | UTAccessField          of untyped_abstract_tree * label ranged
   | UTUpdateField          of untyped_abstract_tree * label ranged * untyped_abstract_tree
 (* Fundamentals: *)
-  | UTContentOf            of (module_name list) * var_name
+  | UTContentOf            of ((module_name ranged) list) * var_name ranged
   | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
