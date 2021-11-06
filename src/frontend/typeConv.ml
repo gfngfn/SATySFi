@@ -420,3 +420,7 @@ let apply_type_scheme_mono (tyscheme : type_scheme) (ptys : mono_type list) : mo
 
 let make_opaque_type_scheme (arity : int) (tyid : TypeID.t) =
   failwith "TODO: make_opaque_type_scheme"
+
+
+let get_opaque_type (tyscheme : type_scheme) : TypeID.t option =
+  failwith "TODO: get_opaque_type"

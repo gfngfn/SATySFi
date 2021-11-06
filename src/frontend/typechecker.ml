@@ -1968,7 +1968,17 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
 
 
 and lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substitution option =
-  failwith "TODO: lookup_type_entry"
+  let Kind(bkds1) = tentry1.type_kind in
+  let Kind(bkds2) = tentry2.type_kind in
+  if List.length bkds1 = List.length bkds2 then
+    let subst =
+      match TypeConv.get_opaque_type tentry2.type_scheme with
+      | None        -> SubstMap.empty
+      | Some(tyid2) -> SubstMap.empty |> SubstMap.add tyid2 tentry1.type_scheme
+    in
+    Some(subst)
+  else
+    None
 
 
 and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : substitution =
