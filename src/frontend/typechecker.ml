@@ -116,17 +116,17 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (constrnm :
       let lev = pre.level in
       let tyid = centry.ctor_belongs_to in
       let (bids, pty) = centry.ctor_parameter in
-      let pairs =
-        bids |> List.map (fun bid ->
+      let (bidmap, tyacc) =
+        bids |> List.fold_left (fun (bidmap, tyacc) bid ->
           let fid = fresh_free_id qtfbl lev in
           let tv = Updatable(ref (MonoFree(fid))) in
           let ty = (Range.dummy "tc-constructor", TypeVariable(tv)) in
-          (ty, bid)
-        )
+          (bidmap |> BoundIDMap.add bid ty, Alist.extend tyacc ty)
+        ) (BoundIDMap.empty, Alist.empty)
       in
-      let ty = instantiate_type_scheme pairs pty in
-      let tyargs = pairs |> List.map (fun (ty, _) -> ty) in
-      (tyargs, tyid, ty)
+      let ty = instantiate_type_scheme bidmap pty in
+      let tys_arg = Alist.to_list tyacc in
+      (tys_arg, tyid, ty)
 
 
 let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module_entry =
