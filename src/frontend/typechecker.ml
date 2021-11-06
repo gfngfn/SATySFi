@@ -139,7 +139,7 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : c
           (bidmap |> BoundIDMap.add bid ty, Alist.extend tyacc ty)
         ) (BoundIDMap.empty, Alist.empty)
       in
-      let ty = TypeConv.instantiate_type_scheme bidmap pty in
+      let ty = TypeConv.instantiate_by_map_mono bidmap pty in
       let tys_arg = Alist.to_list tyacc in
       (tys_arg, tyid, ty)
 
@@ -2095,7 +2095,7 @@ and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_t
                       (* arity mismatch; this cannot happen *)
                       assert false
 
-                  | Some((_, ptymain)) ->
+                  | Some(Poly((_, ptymain))) ->
                       ptymain
                 end
           end
