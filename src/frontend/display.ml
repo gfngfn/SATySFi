@@ -4,22 +4,25 @@ open Types
 open StaticEnv
 
 
-let string_of_record_type (type a) (type b) (f : (a, b) typ -> string) (asc : ((a, b) typ) LabelMap.t) =
-  let rec aux lst =
-    match lst with
-    | []                     -> " -- "
-    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
-    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
+let show_row (type a) (type b) (s_left : string) (s_right : string) (tyf : (a, b) typ -> string) (rvf : b -> string) (row : (a, b) row) : string =
+  let NormalizedRow(ty_labmap, prv_opt) = TypeConv.normalize_row_general row in
+  let ss =
+    ty_labmap |> LabelMap.bindings |> List.map (fun (label, ty) ->
+      Printf.sprintf "%s : %s" label (tyf ty)
+    )
   in
-    "(|" ^ (aux (LabelMap.bindings asc)) ^ "|)"
+  match prv_opt with
+  | None      -> Printf.sprintf "%s %s %s" s_left s_right (String.concat ", " ss)
+  | Some(prv) -> Printf.sprintf "%s %s | %s %s" s_left s_right (String.concat ", " ss) (rvf prv)
 
 
-let rec variable_name_of_number (n : int) =
-  ( if n >= 26 then
+let rec variable_name_of_number (n : int) : string =
+  begin
+    if n >= 26 then
       variable_name_of_number ((n - n mod 26) / 26 - 1)
     else
       ""
-  ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
+  end ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
 
 let show_type_variable (type a) (type b) (f : (a, b) typ -> string) (name : string) =
@@ -90,12 +93,11 @@ type paren_level =
   | Single
 
 
-let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (current_ht : int GeneralIDHashTable.t) (plev : paren_level) ((_, tymain) : ('a, 'b) typ) =
+let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) (ortvf : 'b -> string) (current_ht : int GeneralIDHashTable.t) (plev : paren_level) ((_, tymain) : ('a, 'b) typ) =
   let iter = string_of_mono_type_sub tvf ortvf current_ht in
   let iter_cmd  = string_of_command_argument_type tvf ortvf current_ht in
   let iter_args = string_of_type_argument_list tvf ortvf current_ht in
   let iter_prod = string_of_product tvf ortvf current_ht in
-  let iter_or = string_of_option_row tvf ortvf current_ht in
     match tymain with
 
     | TypeVariable(tvi) -> tvf plev tvi
@@ -132,8 +134,8 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (curre
           | _                 -> s
         end
 
-    | FuncType(optrow, ((_, tydommain) as tydom), tycod) ->
-        let stropts = iter_or optrow in
+    | FuncType(optrow, tydom, tycod) ->
+        let stropts = show_row "?(" ")" (iter Outmost) ortvf optrow in
         let strdom = iter DomainSide tydom in
         let strcod = iter Outmost tycod in
         let s = stropts ^ strdom ^ " -> " ^ strcod in
@@ -174,32 +176,19 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (curre
         end
 
     | RecordType(row) ->
-        let asc = failwith "TODO: make Assoc.t from row" in
-        string_of_record_type (iter Outmost) asc
+        show_row "(|" "|)" (iter Outmost) ortvf row
 
-    | HorzCommandType(cmdargtylist) ->
-        let slist = List.map iter_cmd cmdargtylist in
-        "[" ^ (String.concat "; " slist) ^ "] inline-cmd"
+    | HorzCommandType(cmdargtys) ->
+        let ss = List.map iter_cmd cmdargtys in
+        Printf.sprintf "inline [%s]" (String.concat ", " ss)
 
-    | VertCommandType(cmdargtylist) ->
-        let slist = List.map iter_cmd cmdargtylist in
-        "[" ^ (String.concat "; " slist) ^ "] block-cmd"
+    | VertCommandType(cmdargtys) ->
+        let ss = List.map iter_cmd cmdargtys in
+        Printf.sprintf "block [%s]" (String.concat ", " ss)
 
-    | MathCommandType(cmdargtylist) ->
-        let slist = List.map iter_cmd cmdargtylist in
-        "[" ^ (String.concat "; " slist) ^ "] math-cmd"
-
-
-and string_of_option_row tvf ortvf current_ht = function
-  | RowCons((_, label), ty, tail) ->
-      let s = string_of_mono_type_sub tvf ortvf current_ht DomainSide ty in
-      Printf.sprintf "?%s %s -> %s" label s (string_of_option_row tvf ortvf current_ht tail)
-
-  | RowVar(orvi) ->
-      ortvf orvi
-
-  | RowEmpty ->
-      ""
+    | MathCommandType(cmdargtys) ->
+        let ss = List.map iter_cmd cmdargtys in
+        Printf.sprintf "math [%s]" (String.concat ", " ss)
 
 
 and string_of_command_argument_type tvf ortvf current_ht cmdargty =
@@ -266,12 +255,14 @@ let rec tvf_mono current_ht plev tv =
 
 
 and ortvf_mono current_ht rv =
+  let ortvf = ortvf_mono current_ht in
+  let iter = string_of_mono_type_sub (tvf_mono current_ht) ortvf current_ht in
   match rv with
   | UpdatableRow(rvref) ->
       begin
         match !rvref with
-        | MonoORFree(_)   -> "...?-> "
-        | MonoORLink(row) -> string_of_option_row (tvf_mono current_ht) (ortvf_mono current_ht) current_ht row
+        | MonoORFree(_)   -> ""
+        | MonoORLink(row) -> show_row "?(" ")" (iter Outmost) (ortvf_mono current_ht) row
       end
 
   | MustBeBoundRow(mbbrid) ->

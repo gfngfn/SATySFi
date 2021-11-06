@@ -831,7 +831,7 @@ and 'a path_component =
 
 and 'a pattern_branch_scheme =
   | PatternBranch      of pattern_tree * 'a
-  | PatternBranchWhen  of pattern_tree * 'a * 'a (* TODO: remove this constructor *)
+  | PatternBranchWhen  of pattern_tree * 'a * 'a (* TODO (enhance): remove this constructor *)
 
 and pattern_branch =
   abstract_tree pattern_branch_scheme
