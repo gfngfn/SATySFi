@@ -502,7 +502,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       assert false
 
   | Apply(ast_labmap, ast1, ast2) ->
-      failwith "TODO: Ir, Apply"
+      failwith "TODO (enhance): Ir, Apply"
 (*
       code2 env (fun cv1 cv2 -> CdApply(cv1, cv2)) ast1 ast2
 *)
@@ -656,7 +656,7 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
               (IRApply(List.length irargs, ircallee, irargs), env)
         end
       else
-        failwith "TODO: Ir, Apply"
+        failwith "TODO (enhance): Ir, Apply"
 
   | IfThenElse(astb, ast1, ast2) ->
       let (irb, env) = transform_0 env astb in

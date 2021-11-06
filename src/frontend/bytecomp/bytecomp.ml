@@ -48,8 +48,8 @@ let compile_and_exec_1 (env : environment) (ast : abstract_tree) : code_value * 
 
 
 let compile_and_exec_bindings_0 (env : environment) (binds : binding list) : environment =
-  failwith "TODO: Bytecomp.compile_and_exec_bindings_0"
+  failwith "TODO (enhance): Bytecomp.compile_and_exec_bindings_0"
 
 
 let compile_and_exec_bindings_1 (env : environment) (binds : binding list) : code_binding list * environment =
-  failwith "TODO: Bytecomp.compile_and_exec_bindings_1"
+  failwith "TODO (enhance): Bytecomp.compile_and_exec_bindings_1"

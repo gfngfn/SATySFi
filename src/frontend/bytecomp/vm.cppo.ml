@@ -557,7 +557,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       end
 
   | OpApply(n) ->
-      failwith "TODO: Vm, OpApply"
+      failwith "TODO (enhance): Vm, OpApply"
 (*
       begin
         match stack with
@@ -612,7 +612,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 *)
 
   | OpApplyT(n) ->
-      failwith "TODO: Vm, OpApplyT"
+      failwith "TODO (enhance): Vm, OpApplyT"
 (*
       begin
         match stack with
@@ -667,7 +667,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 *)
 
   | OpApplyOptional ->
-      failwith "TODO: Vm, OpApplyOptional"
+      failwith "TODO (enhance): Vm, OpApplyOptional"
 (*
       begin
         match stack with
@@ -689,7 +689,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 *)
 
   | OpApplyOmission ->
-      failwith "TODO: Vm, OpApplyOmission"
+      failwith "TODO (enhance): Vm, OpApplyOmission"
 (*
       begin
         match stack with

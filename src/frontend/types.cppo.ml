@@ -1111,7 +1111,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
 
 
 let unlift_code_bindings (codebinds : code_binding list) : binding list =
-  failwith "TODO: Types.unlift_code_bindings"
+  failwith "TODO (enhance): Types.unlift_code_bindings"
 
 
 module MathContext
