@@ -260,10 +260,22 @@ rule progexpr stack = parse
       { HORZMACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("\\" (lower | upper))
       { BACKSLASH_CMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("\\" (((upper ".")+ (lower | upper)) as s))
+      {
+        let pos = get_pos lexbuf in
+        let (modidents, (rng, csnm)) = split_module_list pos s in
+        LONG_BACKSLASH_CMD(pos, modidents, (rng, "\\" ^ csnm))
+      }
   | ("+" (lower | upper) "@")
       { VERTMACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("+" (lower | upper))
       { PLUS_CMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("+" (((upper ".")+ (lower | upper)) as s))
+      {
+        let pos = get_pos lexbuf in
+        let (modidents, (rng, csnm)) = split_module_list pos s in
+        LONG_PLUS_CMD(pos, modidents, (rng, "+" ^ csnm))
+      }
 
   | "?"  { QUESTION(get_pos lexbuf) }
   | ":>" { COERCE(get_pos lexbuf) }
@@ -310,6 +322,7 @@ rule progexpr stack = parse
         | "and"       -> AND(pos)
         | "as"        -> AS(pos)
         | "block"     -> BLOCK(pos)
+        | "command"   -> COMMAND(pos)
         | "else"      -> ELSE(pos)
         | "end"       -> END(pos)
         | "false"     -> FALSE(pos)

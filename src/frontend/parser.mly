@@ -243,7 +243,7 @@
 %}
 
 %token<Range.t>
-  AND AS BLOCK ELSE END FALSE FUN
+  AND AS BLOCK COMMAND ELSE END FALSE FUN
   IF IN INCLUDE INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
   REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH
 
@@ -681,7 +681,6 @@ typ_app:
           | (rngR, _) :: _ -> make_range (Ranged tyident) (Tok rngR)
           | _              -> assert false
         in
-        let (_, tynm) = tyident in
         (rng, MTypeName([], tyident, mntys))
       }
   | long_tyident=LONG_LOWER; mntys=nonempty_list(typ_bot)
@@ -830,8 +829,6 @@ expr_bot:
       { let (rng, _) = ident in (rng, UTContentOf([], ident)) }
   | long_ident=LONG_LOWER
       { let (rng, modidents, ident) = long_ident in (rng, UTContentOf(modidents, ident)) }
-  | tokL=L_PAREN; ident=binop; tokR=R_PAREN
-      { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], ident)) }
   | ic=INT
       { let (rng, n) = ic in (rng, UTIntegerConstant(n)) }
   | fc=FLOAT
@@ -852,6 +849,12 @@ expr_bot:
         let (rng, ipos, s) = tok in
         make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s))
       }
+  | tokL=L_PAREN; ident=binop; tokR=R_PAREN
+      { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], ident)) }
+  | tokL=L_PAREN; COMMAND; long_ident=backslash_cmd; tokR=R_PAREN
+      { let (_, modidents, cs) = long_ident in make_standard (Tok tokL) (Tok tokR) (UTContentOf(modidents, cs)) }
+  | tokL=L_PAREN; COMMAND; long_ident=plus_cmd; tokR=R_PAREN
+      { let (_, modidents, cs) = long_ident in make_standard (Tok tokL) (Tok tokR) (UTContentOf(modidents, cs)) }
   | tokL=L_PAREN; tokR=R_PAREN
       { make_standard (Tok tokL) (Tok tokR) UTUnitConstant }
   | tokL=L_PAREN; utast=expr; tokR=R_PAREN
