@@ -313,21 +313,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       let (valuecont, _) = interpret_0 env astcont in
       return @@ Constructor(constrnm, valuecont)
 
-  | Module(astmdl, astaft) ->
-      let (value, envopt) = interpret_0 env astmdl in
-      begin
-        match value with
-        | EvaluatedEnvironment ->
-            begin
-              match envopt with
-              | Some(envfinal) -> interpret_0 envfinal astaft
-              | None           -> report_bug_vm "no environment returned"
-            end
-
-        | _ ->
-            report_bug_reduction "Module" astmdl value
-      end
-
   | BackendMathList(astmlst) ->
       let mlstlst =
         List.map (fun astm -> get_math (interpret_0_value env astm)) astmlst
@@ -480,18 +465,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
   | NonValueConstructor(constrnm, ast1) ->
       let (code1, _) = interpret_1 env ast1 in
       return @@ CdConstructor(constrnm, code1)
-
-  | Module(ast1, ast2) ->
-      let (code1, envopt1) = interpret_1 env ast1 in
-      begin
-        match envopt1 with
-        | Some(env) ->
-            let (code2, envopt2) = interpret_1 env ast2 in
-            (CdModule(code1, code2), envopt2)
-
-        | None ->
-            report_bug_ast "not a module contents" ast
-      end
 
   | BackendMathList(astlst) ->
       let codelst = astlst |> List.map (interpret_1_value env) in

@@ -529,11 +529,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
             assert false
       end
 
-  | Module(ast1, ast2) ->
-      let (ir1, env) = transform_1 env ast1 in
-      let (ir2, env) = transform_1 env ast2 in
-      (IRCodeModule(ir1, ir2), env)
-
   | BackendMathList(astmlst) ->
       transform_1_primitive env astmlst (OpCodeMathList(List.length astmlst))
 
@@ -709,11 +704,6 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   | NonValueConstructor(constrnm, astcont) ->
       let (ircont, env) = transform_0 env astcont in
       (IRNonValueConstructor(constrnm, ircont), env)
-
-  | Module(astmdl, astaft) ->
-      let (irmdl, env) = transform_0 env astmdl in
-      let (iraft, env) = transform_0 env astaft in
-      (IRModule(irmdl, iraft), env)
 
 (* -- staging construct -- *)
 

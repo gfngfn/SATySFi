@@ -864,9 +864,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       exec (make_entry v :: stack) env code dump
 
   | OpPushEnv ->
-    (* -- returns the environment -- *)
-      let entry = (EvaluatedEnvironment, Some(env)) in
-      exec (entry :: stack) env code dump
+      failwith "TODO (enhance): OpPushEnv"
 
   | OpCheckStackTopBool(b, next) ->
       begin
@@ -1216,20 +1214,6 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | _ ->
             report_bug_vm "not a symbol (OpCodeOverwrite)"
       end
-
-  | OpCodeModule(instrs1, instrs2) ->
-      let (value1, envopt) = exec [] env instrs1 [] in
-      let env =
-        match envopt with
-        | Some(env) -> env
-        | None      -> report_bug_vm "not a module contents"
-      in
-      let cv1 = get_code value1 in
-      let (value2, envopt) = exec [] env instrs2 [] in
-      let cv2 = get_code value2 in
-      let entry = (CodeValue(CdModule(cv1, cv2)), envopt) in
-        (* -- returns the environment -- *)
-      exec (entry :: stack) env code dump
 
   | OpConvertSymbolToCode ->
       begin

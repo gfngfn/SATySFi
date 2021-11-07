@@ -623,7 +623,6 @@ and ir =
   | IRLetMutableIn          of varloc * ir * ir
   | IROverwrite             of varloc * ir
   | IRDereference           of ir
-  | IRModule                of ir * ir
 
   | IRCodeCombinator        of (code_value list -> code_value) * int * ir list
   | IRCodeRecord            of label list * ir list
@@ -635,7 +634,6 @@ and ir =
   | IRCodeFunction          of varloc LabelMap.t * ir_pattern_tree * ir
   | IRCodeLetMutableIn      of varloc * ir * ir
   | IRCodeOverwrite         of varloc * ir
-  | IRCodeModule            of ir * ir
 
 and 'a ir_letrec_binding_scheme =
   | IRLetRecBinding of varloc * 'a ir_pattern_branch_scheme
@@ -735,7 +733,6 @@ and instruction =
   | OpCodeFunction      of varloc LabelMap.t * ir_pattern_tree * instruction list
   | OpCodeLetMutable    of varloc * instruction list * instruction list
   | OpCodeOverwrite     of instruction list
-  | OpCodeModule        of instruction list * instruction list
   | OpConvertSymbolToCode
 #include "__insttype.gen.ml"
 
@@ -763,8 +760,6 @@ and syntactic_value =
   | Context      of input_context
   | CodeValue    of code_value
   | CodeSymbol   of CodeSymbol.t
-
-  | EvaluatedEnvironment
 
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
@@ -805,9 +800,7 @@ and abstract_tree =
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Dereference           of abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
-(* -- module system -- *)
-  | Module                of abstract_tree * abstract_tree
-  | BackendMathList             of abstract_tree list
+  | BackendMathList       of abstract_tree list
   | PrimitiveTuple        of abstract_tree TupleList.t
 (* -- staging constructs -- *)
   | Next                  of abstract_tree
@@ -931,7 +924,6 @@ and code_value =
   | CdConstructor   of constructor_name * code_value
   | CdTuple         of code_value TupleList.t
   | CdMathList      of code_value list
-  | CdModule        of code_value * code_value
 #include "__codetype.gen.ml"
 
 and code_input_horz_element =
@@ -1079,7 +1071,6 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
     | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
     | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
-    | CdModule(code1, code2)               -> Module(aux code1, aux code2)
 #include "__unliftcode.gen.ml"
 
   and aux_letrec_binding (CdLetRecBinding(symb, cdpatbr)) =
