@@ -2348,21 +2348,21 @@ and subtype_label_map_inclusive (internbid : type_intern) (internbrid : row_inte
 
 
 and subtype_poly_type (pty1 : poly_type) (pty2 : poly_type) : bool =
-  let bidht = BoundIDHashTable.create 32 in
-  let bridht = BoundRowIDHashTable.create 32 in
+  let bid_ht = BoundIDHashTable.create 32 in
+  let brid_ht = BoundRowIDHashTable.create 32 in
   let internbid (bid1 : BoundID.t) (pty2 : poly_type) : bool =
-    match BoundIDHashTable.find_opt bidht bid1 with
+    match BoundIDHashTable.find_opt bid_ht bid1 with
     | None ->
-        BoundIDHashTable.add bidht bid1 pty2;
+        BoundIDHashTable.add bid_ht bid1 pty2;
         true
 
     | Some(pty) ->
         poly_type_equal pty pty2
   in
   let internbrid (brid1 : BoundRowID.t) (nomprow2 : normalized_poly_row) : bool =
-    match BoundRowIDHashTable.find_opt bridht brid1 with
+    match BoundRowIDHashTable.find_opt brid_ht brid1 with
     | None ->
-        BoundRowIDHashTable.add bridht brid1 nomprow2;
+        BoundRowIDHashTable.add brid_ht brid1 nomprow2;
         true
 
     | Some(nomprow) ->
@@ -2448,7 +2448,8 @@ and poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
     | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
         BoundID.equal bid1 bid2
 
-    | (TypeVariable(PolyFree(_)), _) | (_, TypeVariable(PolyFree(_))) ->
+    | (TypeVariable(PolyFree(_)), _)
+    | (_, TypeVariable(PolyFree(_))) ->
         failwith "TODO (error): poly_type_equal, PolyFree"
 
     | (DataType(ptys1, tyid1), DataType(ptys2, tyid2)) ->
