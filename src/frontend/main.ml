@@ -292,11 +292,11 @@ let output_text abspath_out s =
   close_out outc
 
 
-let typecheck_library_file (stage : stage) (tyenv : Typeenv.t) (abspath_in : abs_path) (utbinds : untyped_binding list) : Typeenv.t * binding list =
+let typecheck_library_file (stage : stage) (tyenv : Typeenv.t) (abspath_in : abs_path) (utbinds : untyped_binding list) : abstract_tree * StructSig.t abstracted =
   Logging.begin_to_typecheck_file abspath_in;
-  let (binds, tyenv) = Typechecker.main_bindings stage tyenv utbinds in
+  let res = Typechecker.main_bindings stage tyenv utbinds in
   Logging.pass_type_check None;
-  (tyenv, binds)
+  res
 
 
 let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : abstract_tree =
@@ -426,7 +426,7 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
     aux 1
 
 
-let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * binding list) list) (ast_doc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * EvalVarID.t * abstract_tree) list) (ast_doc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
 
   let rec preprocess (codeacc : (abs_path * code_binding list) Alist.t) (env : environment) libs =
     match libs with
@@ -434,12 +434,12 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * bind
         let (codedoc, env) = preprocess_file ~is_document:true env abspath_in ast_doc in
         (env, Alist.to_list codeacc, codedoc)
 
-    | ((Stage0 | Persistent0), abspath, binds0) :: tail ->
-        let envnew = eval_library_file env abspath binds0 in
+    | ((Stage0 | Persistent0), abspath, evid0, e0) :: tail ->
+        let envnew = eval_library_file env abspath [ Bind(NonRec(evid0, e0)) ] in
         preprocess codeacc envnew tail
 
-    | (Stage1, abspath, binds1) :: tail ->
-        let (codebinds, envnew) = preprocess_library_file env abspath binds1 in
+    | (Stage1, abspath, evid1, e1) :: tail ->
+        let (codebinds, envnew) = preprocess_library_file env abspath [ Bind(NonRec(evid1, e1)) ] in
         preprocess (Alist.extend codeacc (abspath, codebinds)) envnew tail
   in
     (* --
@@ -1164,10 +1164,18 @@ let main () =
                 let ast = typecheck_document_file tyenv abspath utast in
                 (tyenv, libacc, Some(ast))
 
-            | LibraryFile((stage, (_modident, utbinds))) ->
-                (* TODO: use `modident` to divide namespaces *)
-                let (tyenv, binds) = typecheck_library_file stage tyenv abspath utbinds in
-                (tyenv, Alist.extend libacc (stage, abspath, binds), docopt)
+            | LibraryFile((stage, (modident, utbinds))) ->
+                let (_, modnm) = modident in
+                let (e, (_quant, ssig)) = typecheck_library_file stage tyenv abspath utbinds in
+                let evid = EvalVarID.fresh modident in
+                let mentry =
+                  {
+                    mod_signature = ConcStructure(ssig);
+                    mod_name      = Some(evid);
+                  }
+                in
+                let tyenv = tyenv |> Typeenv.add_module modnm mentry in
+                (tyenv, Alist.extend libacc (stage, abspath, evid, e), docopt)
           ) (tyenv, Alist.empty, None)
         in
         if OptionState.type_check_only () then

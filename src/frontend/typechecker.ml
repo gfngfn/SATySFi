@@ -1891,40 +1891,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       ((OpaqueIDMap.empty, modsig), e)
 
   | UTModBinds(utbinds) ->
-      let (binds, _, (quant, ssig)) = typecheck_binding_list stage tyenv utbinds in
-      let e_record =
-        let e_labmap =
-          ssig |> StructSig.fold
-            ~v:(fun x ventry e_labmap ->
-              let evid =
-                match ventry.val_name with
-                | None       -> assert false
-                | Some(evid) -> evid
-              in
-              e_labmap |> LabelMap.add x (ContentOf(Range.dummy "UTModBinds", evid))
-            )
-            ~t:(fun _tynm _tentry e_labmap -> e_labmap)
-            ~m:(fun modnm mentry e_labmap ->
-              let evid =
-                match mentry.mod_name with
-                | None       -> assert false
-                | Some(evid) -> evid
-              in
-              e_labmap |> LabelMap.add modnm (ContentOf(Range.dummy "UTModBinds", evid))
-            )
-            ~s:(fun _signm _sentry e_labmap -> e_labmap)
-            LabelMap.empty
-        in
-        Record(e_labmap)
-      in
-      let e =
-        List.fold_right (fun (Bind(rec_or_nonrec)) e ->
-          match rec_or_nonrec with
-          | NonRec(evid, e0)  -> LetNonRecIn(PVariable(evid), e0, e)
-          | Rec(recbinds)     -> LetRecIn(recbinds, e)
-          | Mutable(evid, e0) -> LetMutableIn(evid, e0, e)
-        ) binds e_record
-      in
+      let (e, (quant, ssig)) = typecheck_binding_list stage tyenv utbinds in
       ((quant, ConcStructure(ssig)), e)
 
   | UTModFunctor(modident1, utsig1, utmod2) ->
@@ -2799,19 +2766,55 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
       end
 
 
-and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t * StructSig.t abstracted =
-  let (bindacc, tyenv, quantacc, ssigacc) =
-    utbinds |> List.fold_left (fun (bindacc, tyenv, quantacc, ssigacc) utbind ->
-      let (binds, (quant, ssig)) = typecheck_binding stage tyenv utbind in
-      let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
-      let bindacc = Alist.append bindacc binds in
-      let quantacc = unify_quantifier quantacc quant in
-      match StructSig.union ssigacc ssig with
-      | Ok(ssigacc) -> (bindacc, tyenv, quantacc, ssigacc)
-      | Error(s)    -> let (rng, _) = utbind in raise (ConflictInSignature(rng, s))
-    ) (Alist.empty, tyenv, OpaqueIDMap.empty, StructSig.empty)
+and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : abstract_tree * StructSig.t abstracted =
+  let (binds, (quant, ssig)) =
+    let (bindacc, _tyenv, quantacc, ssigacc) =
+      utbinds |> List.fold_left (fun (bindacc, tyenv, quantacc, ssigacc) utbind ->
+        let (binds, (quant, ssig)) = typecheck_binding stage tyenv utbind in
+        let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
+        let bindacc = Alist.append bindacc binds in
+        let quantacc = unify_quantifier quantacc quant in
+        match StructSig.union ssigacc ssig with
+        | Ok(ssigacc) -> (bindacc, tyenv, quantacc, ssigacc)
+        | Error(s)    -> let (rng, _) = utbind in raise (ConflictInSignature(rng, s))
+      ) (Alist.empty, tyenv, OpaqueIDMap.empty, StructSig.empty)
+    in
+    (Alist.to_list bindacc, (quantacc, ssigacc))
   in
-  (Alist.to_list bindacc, tyenv, (quantacc, ssigacc))
+  let e_record =
+    let e_labmap =
+      ssig |> StructSig.fold
+        ~v:(fun x ventry e_labmap ->
+          let evid =
+            match ventry.val_name with
+            | None       -> assert false
+            | Some(evid) -> evid
+          in
+          e_labmap |> LabelMap.add x (ContentOf(Range.dummy "UTModBinds", evid))
+        )
+        ~t:(fun _tynm _tentry e_labmap -> e_labmap)
+        ~m:(fun modnm mentry e_labmap ->
+          let evid =
+            match mentry.mod_name with
+            | None       -> assert false
+            | Some(evid) -> evid
+          in
+          e_labmap |> LabelMap.add modnm (ContentOf(Range.dummy "UTModBinds", evid))
+        )
+        ~s:(fun _signm _sentry e_labmap -> e_labmap)
+        LabelMap.empty
+    in
+    Record(e_labmap)
+  in
+  let e =
+    List.fold_right (fun (Bind(rec_or_nonrec)) e ->
+      match rec_or_nonrec with
+      | NonRec(evid, e0)  -> LetNonRecIn(PVariable(evid), e0, e)
+      | Rec(recbinds)     -> LetRecIn(recbinds, e)
+      | Mutable(evid, e0) -> LetMutableIn(evid, e0, e)
+    ) binds e_record
+  in
+  (e, (quant, ssig))
 
 
 and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : SynonymNameSet.t =
@@ -3153,9 +3156,8 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : m
   (ty, e)
 
 
-let main_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : binding list * Typeenv.t =
-  let (binds, tyenv, _) = typecheck_binding_list stage tyenv utbinds in
-  (binds, tyenv)
+let main_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : abstract_tree * StructSig.t abstracted =
+  typecheck_binding_list stage tyenv utbinds
 
 
 let are_unifiable (ty1 : mono_type) (ty2 : mono_type) : bool =

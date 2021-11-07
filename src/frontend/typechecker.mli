@@ -26,7 +26,7 @@ exception EarlyMacroArgumentExpected     of Range.t * mono_type
 exception IllegalNumberOfTypeArguments   of Range.t * type_name * int * int
 exception MultiCharacterMathScriptWithoutBrace of Range.t
 
-val main_bindings : stage -> Typeenv.t -> untyped_binding list -> binding list * Typeenv.t
+val main_bindings : stage -> Typeenv.t -> untyped_binding list -> abstract_tree * StructSig.t abstracted
 
 val main : stage -> Typeenv.t -> untyped_abstract_tree -> mono_type * abstract_tree
 
