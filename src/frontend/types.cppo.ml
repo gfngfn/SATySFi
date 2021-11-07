@@ -549,8 +549,7 @@ and rec_or_nonrec =
   | Mutable of EvalVarID.t * abstract_tree
 
 and binding =
-  | BindValue  of rec_or_nonrec
-  | BindModule of ModuleID.t * binding list
+  | Bind of rec_or_nonrec
 
 and environment =
   location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref

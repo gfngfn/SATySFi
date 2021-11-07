@@ -128,7 +128,7 @@ and functor_signature = {
 }
 
 and module_entry = {
-  mod_name      : ModuleID.t option;
+  mod_name      : EvalVarID.t option;
   mod_signature : signature;
 }
 

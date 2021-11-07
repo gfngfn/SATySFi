@@ -43,7 +43,7 @@ type macro_entry = {
 }
 
 type module_entry = {
-  mod_name      : ModuleID.t option;
+  mod_name      : EvalVarID.t option;
   mod_signature : signature;
 }
 
