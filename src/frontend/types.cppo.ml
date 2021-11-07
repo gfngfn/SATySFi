@@ -55,7 +55,7 @@ type manual_type =
   Range.t * manual_type_main
 
 and manual_type_main =
-  | MTypeName        of type_name * manual_type list
+  | MTypeName        of (module_name ranged) list * type_name ranged * manual_type list
   | MTypeParam       of var_name
   | MFuncType        of (label ranged * manual_type) list * manual_type * manual_type
   | MProductType     of manual_type TupleList.t

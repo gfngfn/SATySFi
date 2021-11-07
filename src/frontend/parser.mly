@@ -674,15 +674,25 @@ typ_prod:
   }
 ;
 typ_app:
-  | tyident=LOWER mntys=nonempty_list(typ_bot)
+  | tyident=LOWER; mntys=nonempty_list(typ_bot)
       {
         let rng =
           match List.rev mntys with
-          | (rng_last, _) :: _ -> make_range (Ranged tyident) (Tok rng_last)
-          | _                  -> assert false
+          | (rngR, _) :: _ -> make_range (Ranged tyident) (Tok rngR)
+          | _              -> assert false
         in
         let (_, tynm) = tyident in
-        (rng, MTypeName(tynm, mntys))
+        (rng, MTypeName([], tyident, mntys))
+      }
+  | long_tyident=LONG_LOWER; mntys=nonempty_list(typ_bot)
+      {
+        let (rngL, modidents, tyident) = long_tyident in
+        let rng =
+          match List.rev mntys with
+          | (rngR, _) :: _ -> make_range (Tok rngL) (Tok rngR)
+          | _              -> assert false
+        in
+        (rng, MTypeName(modidents, tyident, mntys))
       }
   | tokL=INLINE; L_SQUARE; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=R_SQUARE
       { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MHorzCommandType(mncmdargtys)) }
@@ -695,7 +705,9 @@ typ_app:
 ;
 typ_bot:
   | tyident=LOWER
-      { let (rng, tynm) = tyident in (rng, MTypeName(tynm, [])) }
+      { let (rng, _) = tyident in (rng, MTypeName([], tyident, [])) }
+  | long_tyident=LONG_LOWER
+      { let (rng, modidents, tyident) = long_tyident in (rng, MTypeName(modidents, tyident, [])) }
   | tyvar=TYPEVAR
       { let (rng, tyvarnm) = tyvar in (rng, MTypeParam(tyvarnm)) }
   | tokL=L_RECORD; fields=optterm_nonempty_list(COMMA, typ_record_elem); tokR=R_RECORD

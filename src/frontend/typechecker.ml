@@ -1806,31 +1806,64 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
   let rec aux (rng, mtymain) =
     let tymain =
       match mtymain with
-      | MTypeName(tynm, mtyargs) ->
+      | MTypeName(modidents, tyident, mtyargs) ->
           let tyargs = mtyargs |> List.map aux in
           let len_actual = List.length tyargs in
+          let (_, tynm) = tyident in
           begin
-            match tyenv |> Typeenv.find_type tynm with
-            | None ->
+            match modidents with
+            | [] ->
                 begin
-                  match base_type_map |> TypeNameMap.find_opt tynm with
+                  match tyenv |> Typeenv.find_type tynm with
                   | None ->
-                      failwith "TODO (error): report undefined type name"
+                      begin
+                        match base_type_map |> TypeNameMap.find_opt tynm with
+                        | None ->
+                            failwith (Printf.sprintf "TODO (error): report undefined type name '%s'" tynm)
 
-                  | Some(bt) ->
-                      BaseType(bt)
+                        | Some(bt) ->
+                            BaseType(bt)
+                      end
+
+                  | Some(tentry) ->
+                      begin
+                        match TypeConv.apply_type_scheme_mono tentry.type_scheme tyargs with
+                        | Some((_, tymain)) ->
+                            tymain
+
+                        | None ->
+                            let (bids, _) = tentry.type_scheme in
+                            let len_expected = List.length bids in
+                            invalid rng tynm ~expect:len_expected ~actual:len_actual
+                      end
                 end
 
-            | Some(tentry) ->
+            | modident0 :: proj ->
+                let modchain = (modident0, proj) in
+                let (mentry, _) = find_module_chain tyenv modchain in
                 begin
-                  match TypeConv.apply_type_scheme_mono tentry.type_scheme tyargs with
-                  | Some((_, tymain)) ->
-                      tymain
+                  match mentry.mod_signature with
+                  | ConcFunctor(_) ->
+                      failwith "TODO (error): not a structure"
 
-                  | None ->
-                      let (bids, _) = tentry.type_scheme in
-                      let len_expected = List.length bids in
-                      invalid rng tynm ~expect:len_expected ~actual:len_actual
+                  | ConcStructure(ssig) ->
+                      begin
+                        match ssig |> StructSig.find_type tynm with
+                        | None ->
+                            failwith (Printf.sprintf "TODO (error): report undefined type name '%s'" tynm)
+
+                        | Some(tentry) ->
+                            begin
+                              match TypeConv.apply_type_scheme_mono tentry.type_scheme tyargs with
+                              | Some((_, tymain)) ->
+                                  tymain
+
+                              | None ->
+                                  let (bids, _) = tentry.type_scheme in
+                                  let len_expected = List.length bids in
+                                  invalid rng tynm ~expect:len_expected ~actual:len_actual
+                            end
+                      end
                 end
           end
 
@@ -2935,7 +2968,10 @@ and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (t
   in
   let rec aux ((_, mtymain) : manual_type) : unit =
     match mtymain with
-    | MTypeName(tynm, mtyargs) ->
+    | MTypeName(_ :: _, _, _) ->
+        ()
+
+    | MTypeName([], (_, tynm), mtyargs) ->
         List.iter aux mtyargs;
         register_if_needed tynm
 

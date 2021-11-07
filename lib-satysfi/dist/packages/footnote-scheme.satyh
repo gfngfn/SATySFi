@@ -1,3 +1,4 @@
+@require: pervasives
 @require: color
 @require: gr
 
@@ -79,7 +80,7 @@ module FootnoteScheme
           block-skip (size *' 0.5)
       end
     in
-      no-break
+      Pervasives.no-break
         (add-footnote (bb-before +++ bb) ++ ib-num
           ++ hook-page-break (fun _ _ -> (
             let () =

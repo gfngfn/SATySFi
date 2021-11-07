@@ -62,9 +62,9 @@ module StdJaBook
     show-pages    : bool,
     text-width    : length,
     text-height   : length,
-    text-origin   : point,
-    header-origin : point,
-    footer-origin : point,
+    text-origin   : Pervasives.point,
+    header-origin : Pervasives.point,
+    footer-origin : Pervasives.point,
     header-width  : length,
     footer-width  : length,
   |)
