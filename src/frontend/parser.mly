@@ -730,6 +730,8 @@ expr:
       { make_standard (Tok tokL) (Tok tokR) (UTPatternMatch(utast, branches)) }
   | tok=LET; valbind=bind_value; IN; utast2=expr
       { make_standard (Tok tok) (Ranged utast2) (UTLetIn(valbind, utast2)) }
+  | tok=LET; utpat=pattern_non_var; EXACT_EQ; utast1=expr; IN; utast2=expr
+      { make_standard (Tok tok) (Ranged utast2) (UTPatternMatch(utast1, [ UTPatternBranch(utpat, utast2) ])) }
   | tok=LET; OPEN; modident=UPPER; IN; utast=expr
       { make_standard (Tok tok) (Ranged utast) (UTOpenIn(modident, utast)) }
   | tok=IF; utast0=expr; THEN; utast1=expr; ELSE; utast2=expr
@@ -912,6 +914,12 @@ pattern:
   | utpat=pattern_cons
       { utpat }
 ;
+pattern_non_var:
+  | utpat=pattern_cons; AS; ident=LOWER
+      { make_standard (Ranged utpat) (Ranged ident) (UTPAsVariable(extract_main ident, utpat)) }
+  | utpat=pattern_non_var_cons
+      { utpat }
+;
 pattern_cons:
   | utpat1=pattern_bot; CONS; utpat2=pattern_cons
       { make_standard (Ranged utpat1) (Ranged utpat2) (UTPListCons(utpat1, utpat2)) }
@@ -925,7 +933,26 @@ pattern_cons:
   | utpat=pattern_bot
       { utpat }
 ;
+pattern_non_var_cons:
+  | utpat1=pattern_bot; CONS; utpat2=pattern_cons
+      { make_standard (Ranged utpat1) (Ranged utpat2) (UTPListCons(utpat1, utpat2)) }
+  | ctor=UPPER; utpat=pattern_bot
+      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor(extract_main ctor, utpat)) }
+  | ctor=UPPER
+      {
+        let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
+        let (rng, ctornm) = ctor in (rng, UTPConstructor(ctornm, utast_unit))
+      }
+  | utpat=pattern_non_var_bot
+      { utpat }
+;
 pattern_bot:
+  | ident=bound_identifier
+      { let (rng, varnm) = ident in (rng, UTPVariable(varnm)) }
+  | utpat=pattern_non_var_bot
+      { utpat }
+;
+pattern_non_var_bot:
   | ic=INT
       { let (rng, n) = ic in (rng, UTPIntegerConstant(n)) }
   | rng=TRUE
@@ -936,8 +963,6 @@ pattern_bot:
       { make_standard (Tok tokL) (Tok tokR) UTPUnitConstant }
   | rng=WILDCARD
       { (rng, UTPWildCard) }
-  | ident=bound_identifier
-      { let (rng, varnm) = ident in (rng, UTPVariable(varnm)) }
   | lit=STRING
       {
         let (rng, str, pre, post) = lit in

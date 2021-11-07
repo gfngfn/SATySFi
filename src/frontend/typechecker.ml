@@ -120,7 +120,7 @@ let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * ma
 let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : constructor_name) (rng : Range.t) =
   match tyenv |> Typeenv.find_constructor ctornm with
   | None ->
-      failwith "TODO (error): find_constructor_and_instantiate, not found"
+      failwith (Printf.sprintf "TODO (error): find_constructor_and_instantiate, not found '%s'" ctornm)
         (*
           let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
           raise (UndefinedConstructor(rng, constrnm, cands))
@@ -858,7 +858,7 @@ let rec typecheck
                   let cands = Typeenv.find_candidates tyenv mdlnmlst varnm rng in
                   raise (UndefinedVariable(rng, mdlnmlst, varnm, cands))
 *)
-                  failwith "TODO (error): not found"
+                  failwith (Printf.sprintf "TODO (error): not found '%s'" varnm)
 
               | Some(ventry) ->
                   ventry

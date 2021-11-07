@@ -326,7 +326,7 @@ rule progexpr stack = parse
         | "mutable"   -> MUTABLE(pos)
         | "of"        -> OF(pos)
         | "open"      -> OPEN(pos)
-        | "rec"       -> VAL(pos)
+        | "rec"       -> REC(pos)
         | "sig"       -> SIG(pos)
         | "signature" -> STRUCT(pos)
         | "struct"    -> STRUCT(pos)
@@ -375,7 +375,7 @@ and vertexpr stack = parse
         comment lexbuf;
         vertexpr stack lexbuf
       }
-  | (break | space)*
+  | (break | space)+
       {
         increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
         vertexpr stack lexbuf
