@@ -2022,10 +2022,10 @@ and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : 
 
 
 and substitute_abstract (subst : substitution) (absmodsig : signature abstracted) : signature abstracted =
-  let (oidset, modsig) = absmodsig in
+  let (quant, modsig) = absmodsig in
   let modsig = substitute_concrete subst modsig in
-  (oidset, modsig)
-    (* Strictly speaking, we should assert that `oidset` and the domain of `wtmap` be disjoint. *)
+  (quant, modsig)
+    (* Strictly speaking, we should assert that `quant` and the domain of `subst` be disjoint. *)
 
 
 and substitute_concrete (subst : substitution) (modsig : signature) : signature =
@@ -2048,7 +2048,7 @@ and substitute_concrete (subst : substitution) (modsig : signature) : signature 
         }
       in
       ConcFunctor(fsig)
-        (* Strictly speaking, we should assert that `oidset` and the domain of `wtmap` be disjoint. *)
+        (* Strictly speaking, we should assert that `quant` and the domain of `subst` be disjoint. *)
 
   | ConcStructure(ssig) ->
       let ssig = ssig |> substitute_struct subst in
@@ -2216,7 +2216,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
 
 
 and subtype_concrete_with_abstract (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : substitution =
-  let (oidset2, modsig2) = absmodsig2 in
+  let (_quant2, modsig2) = absmodsig2 in
   let subst = lookup_struct rng modsig1 modsig2 in
   let modsig2 = modsig2 |> substitute_concrete subst in
   subtype_concrete_with_concrete rng modsig1 modsig2;
@@ -2632,7 +2632,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
 
   | UTDeclModule((_, modnm), utsig) ->
       let absmodsig = typecheck_signature stage tyenv utsig in
-      let (oidset, modsig) = absmodsig in
+      let (quant, modsig) = absmodsig in
       let mentry =
         {
           mod_name      = None;
@@ -2640,7 +2640,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
         }
       in
       let ssig = StructSig.empty |> StructSig.add_module modnm mentry in
-      (oidset, ssig)
+      (quant, ssig)
 
   | UTDeclSignature((_, signm), utsig) ->
       let absmodsig = typecheck_signature stage tyenv utsig in
@@ -2649,7 +2649,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
 
   | UTDeclInclude(utsig) ->
       let absmodsig = typecheck_signature stage tyenv utsig in
-      let (oidset, modsig) = absmodsig in
+      let (quant, modsig) = absmodsig in
       begin
         match modsig with
         | ConcFunctor(_) ->
@@ -2657,7 +2657,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
             raise (NotAStructureSignature(rng))
 
         | ConcStructure(ssig) ->
-            (oidset, ssig)
+            (quant, ssig)
       end
 
 
@@ -2924,7 +2924,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
 
   | UTBindModule((rngm, modnm), utsigopt2, utmod1) ->
       let (absmodsig1, binds1) = typecheck_module stage tyenv utmod1 in
-      let (oidset, modsig) =
+      let (quant, modsig) =
         match utsigopt2 with
         | None ->
             absmodsig1
@@ -2944,7 +2944,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
         in
         StructSig.empty |> StructSig.add_module modnm mentry
       in
-      ([ BindModule(mid, binds1) ], (oidset, ssig))
+      ([ BindModule(mid, binds1) ], (quant, ssig))
 
   | UTBindSignature((_, signm), utsig) ->
       let absmodsig = typecheck_signature stage tyenv utsig in
