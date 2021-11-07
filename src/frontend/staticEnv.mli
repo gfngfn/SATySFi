@@ -92,6 +92,14 @@ module StructSig : sig
 
   val find_value : var_name -> t -> value_entry option
 
+  val add_constructor : constructor_name -> constructor_entry -> t -> t
+
+  val find_constructor : constructor_name -> t -> constructor_entry option
+
+  val add_dummy_fold : type_name -> poly_type -> t -> t
+
+  val find_dummy_fold : type_name -> t -> poly_type option
+
   val add_type : type_name -> type_entry -> t -> t
 
   val find_type : type_name -> t -> type_entry option
@@ -106,6 +114,8 @@ module StructSig : sig
 
   val fold :
     v:(var_name -> value_entry -> 'a -> 'a) ->
+    c:(constructor_name -> constructor_entry -> 'a -> 'a) ->
+    f:(type_name -> poly_type -> 'a -> 'a) ->
     t:(type_name -> type_entry -> 'a -> 'a) ->
     m:(module_name -> module_entry -> 'a -> 'a) ->
     s:(signature_name -> signature abstracted -> 'a -> 'a) ->
@@ -113,6 +123,8 @@ module StructSig : sig
 
   val map_and_fold :
     v:(var_name -> value_entry -> 'a -> value_entry * 'a) ->
+    c:(constructor_name -> constructor_entry -> 'a -> constructor_entry * 'a) ->
+    f:(type_name -> poly_type -> 'a -> poly_type * 'a) ->
     t:(type_name -> type_entry -> 'a -> type_entry * 'a) ->
     m:(module_name -> module_entry -> 'a -> module_entry * 'a) ->
     s:(signature_name -> signature abstracted -> 'a -> signature abstracted * 'a) ->
@@ -120,6 +132,8 @@ module StructSig : sig
 
   val map :
     v:(var_name -> value_entry -> value_entry) ->
+    c:(constructor_name -> constructor_entry -> constructor_entry) ->
+    f:(type_name -> poly_type -> poly_type) ->
     t:(type_name -> type_entry -> type_entry) ->
     m:(module_name -> module_entry -> module_entry) ->
     s:(signature_name -> signature abstracted -> signature abstracted) ->

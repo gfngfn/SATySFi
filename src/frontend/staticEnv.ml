@@ -116,10 +116,12 @@ and struct_signature =
   struct_signature_entry Alist.t
 
 and struct_signature_entry =
-  | SSValue     of var_name * value_entry
-  | SSType      of type_name * type_entry
-  | SSModule    of module_name * module_entry
-  | SSSignature of signature_name * signature abstracted
+  | SSValue       of var_name * value_entry
+  | SSConstructor of constructor_name * constructor_entry
+  | SSFold        of type_name * poly_type
+  | SSType        of type_name * type_entry
+  | SSModule      of module_name * module_entry
+  | SSSignature   of signature_name * signature abstracted
 
 and functor_signature = {
   opaques  : quantifier;
@@ -242,6 +244,28 @@ module StructSig = struct
     )
 
 
+  let add_constructor (ctornm : constructor_name) (centry : constructor_entry) (ssig : t) : t =
+    Alist.extend ssig (SSConstructor(ctornm, centry))
+
+
+  let find_constructor (ctornm : constructor_name) (ssig : t) : constructor_entry option =
+    ssig |> Alist.to_list_rev |> List.find_map (function
+    | SSConstructor(ctornm0, centry) -> if String.equal ctornm ctornm0 then Some(centry) else None
+    | _                              -> None
+    )
+
+
+  let add_dummy_fold (tynm : type_name) (pty : poly_type) (ssig : t) : t =
+    Alist.extend ssig (SSFold(tynm, pty))
+
+
+  let find_dummy_fold (tynm : type_name) (ssig : t) : poly_type option =
+    ssig |> Alist.to_list_rev |> List.find_map (function
+    | SSFold(tynm0, pty) -> if String.equal tynm tynm0 then Some(pty) else None
+    | _                  -> None
+    )
+
+
   let add_type (tynm : type_name) (tentry : type_entry) (ssig : t) : t =
     Alist.extend ssig (SSType(tynm, tentry))
 
@@ -275,22 +299,32 @@ module StructSig = struct
     )
 
 
-  let fold ~v:fv ~t:ft ~m:fm ~s:fs acc (ssig : t) =
+  let fold ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs acc (ssig : t) =
     ssig |> Alist.to_list |> List.fold_left (fun acc entry ->
       match entry with
-      | SSValue(x, ventry)        -> fv x ventry acc
-      | SSType(tynm, tentry)      -> ft tynm tentry acc
-      | SSModule(m, mentry)       -> fm m mentry acc
-      | SSSignature(s, absmodsig) -> fs s absmodsig acc
+      | SSValue(x, ventry)            -> fv x ventry acc
+      | SSConstructor(ctornm, centry) -> fc ctornm centry acc
+      | SSFold(tynm, pty)             -> ff tynm pty acc
+      | SSType(tynm, tentry)          -> ft tynm tentry acc
+      | SSModule(m, mentry)           -> fm m mentry acc
+      | SSSignature(s, absmodsig)     -> fs s absmodsig acc
     ) acc
 
 
-  let map_and_fold ~v:fv ~t:ft ~m:fm ~s:fs acc (ssig : t) =
+  let map_and_fold ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs acc (ssig : t) =
       ssig |> Alist.to_list |> List.fold_left (fun (sigracc, acc) entry ->
         match entry with
         | SSValue(x, ventry) ->
             let (ventry, acc) = fv x ventry acc in
             (Alist.extend sigracc (SSValue(x, ventry)), acc)
+
+        | SSConstructor(ctornm, centry) ->
+            let (centry, acc) = fc ctornm centry acc in
+            (Alist.extend sigracc (SSConstructor(ctornm, centry)), acc)
+
+        | SSFold(tynm, pty) ->
+            let (pty, acc) = ff tynm pty acc in
+            (Alist.extend sigracc (SSFold(tynm, pty)), acc)
 
         | SSType(tynm, tentry) ->
             let (tentry, acc) = ft tynm tentry acc in
@@ -307,10 +341,12 @@ module StructSig = struct
       ) (Alist.empty, acc)
 
 
-  let map ~v:fv ~t:ft ~m:fm ~s:fs (ssig : t) : t =
+  let map ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs (ssig : t) : t =
     let (ssig, ()) =
       ssig |> map_and_fold
         ~v:(fun x ventry () -> (fv x ventry, ()))
+        ~c:(fun ctornm centry () -> (fc ctornm centry, ()))
+        ~f:(fun tynm pty () -> (ff tynm pty, ()))
         ~t:(fun tynm tentry () -> (ft tynm tentry, ()))
         ~m:(fun modnm mentry () -> (fm modnm mentry, ()))
         ~s:(fun signm absmodsig () -> (fs signm absmodsig, ()))
@@ -333,10 +369,12 @@ module StructSig = struct
         ssig2 |> Alist.to_list |> List.fold_left (fun ssig entry ->
           let () =
             match entry with
-            | SSValue(x, _)         -> check_none x (find_value x ssig1)
-            | SSType(tynm, _)       -> check_none tynm (find_type tynm ssig1)
-            | SSModule(modnm, _)    -> check_none modnm (find_module modnm ssig1)
-            | SSSignature(signm, _) -> check_none signm (find_signature signm ssig1)
+            | SSValue(x, _)            -> check_none x (find_value x ssig1)
+            | SSConstructor(ctornm, _) -> check_none ctornm (find_constructor ctornm ssig1)
+            | SSFold(tynm, _)          -> check_none tynm (find_type tynm ssig1)
+            | SSType(tynm, _)          -> check_none tynm (find_type tynm ssig1)
+            | SSModule(modnm, _)       -> check_none modnm (find_module modnm ssig1)
+            | SSSignature(signm, _)    -> check_none signm (find_signature signm ssig1)
           in
           Alist.extend ssig entry
         ) ssig1

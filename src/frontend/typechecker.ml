@@ -58,6 +58,10 @@ module SynonymNameHashSet =
       let hash = Hashtbl.hash
     end)
 
+type constructor_map = poly_type ConstructorMap.t
+
+type variant_definition = type_name * TypeID.t * BoundID.t list * constructor_map
+
 module PatternVarMap = Map.Make(String)
 
 type pattern_var_map = (Range.t * EvalVarID.t * mono_type) PatternVarMap.t
@@ -86,6 +90,40 @@ let decode_manual_row_base_kind (mnrbkd : manual_row_base_kind) : row_base_kind 
     end;
     labset |> LabelSet.add label
   ) LabelSet.empty
+
+
+let add_dummy_fold (tynm : type_name) (tyid : TypeID.t) (bids : BoundID.t list) (ctorbrmap : constructor_map) (ssig : StructSig.t) : StructSig.t =
+  let bid = BoundID.fresh () in
+  let dr = Range.dummy "add_dummy_fold" in
+  let prow =
+    ConstructorMap.fold (fun ctornm (Poly(ptyarg)) prow ->
+      let pty = (dr, FuncType(RowEmpty, ptyarg, (dr, TypeVariable(PolyBound(bid))))) in
+      RowCons((dr, ctornm), pty, prow)
+    ) ctorbrmap RowEmpty
+  in
+  let ptydom1 = (dr, RecordType(prow)) in
+  let ptydom2 = (dr, DataType(bids |> List.map (fun bid -> (dr, TypeVariable(PolyBound(bid)))), tyid)) in
+  let ptycod = (dr, TypeVariable(PolyBound(bid))) in
+  let pty = (dr, FuncType(RowEmpty, ptydom1, (dr, FuncType(RowEmpty, ptydom2, ptycod)))) in
+  ssig |> StructSig.add_dummy_fold tynm (Poly(pty))
+
+
+let add_constructor_definitions (ctordefs : variant_definition list) (ssig : StructSig.t) : StructSig.t =
+  ctordefs |> List.fold_left (fun ssig ctordef ->
+    let (tynm, tyid, bids, ctorbrmap) = ctordef in
+    let ssig =
+      ConstructorMap.fold (fun ctornm ptyarg ssig ->
+        let centry =
+          {
+            ctor_belongs_to = tyid;
+            ctor_parameter  = (bids, ptyarg);
+          }
+        in
+        ssig |> StructSig.add_constructor ctornm centry
+      ) ctorbrmap ssig
+    in
+    ssig |> add_dummy_fold tynm tyid bids ctorbrmap
+  ) ssig
 
 
 let add_type_parameters (lev : Level.t) (tyvars : (type_variable_name ranged) list) (typarammap : type_parameter_map) : type_parameter_map * BoundID.t list =
@@ -2028,7 +2066,7 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
                   end
             ) ssig0
       in
-      let tydefs = bind_types stage tyenv tybinds in
+      let (tydefs, _ctordefs) = bind_types stage tyenv tybinds in
       let (subst, quant) =
         tydefs |> List.fold_left (fun (subst, quant) (tynm, tentry) ->
           let (tyid, kd_expected) =
@@ -2057,6 +2095,7 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
         ) (SubstMap.empty, quant0)
       in
       let modsig = modsig0 |> substitute_concrete subst in
+        (* TODO: use `ctordefs` to update `modsig` *)
       (quant, modsig)
 
 
@@ -2080,6 +2119,12 @@ and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : 
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
       ssig2 |> StructSig.fold
           ~v:(fun _x2 _ventry2 subst ->
+            subst
+          )
+          ~c:(fun _ctornm2 _centry2 subst ->
+            subst
+          )
+          ~f:(fun _tynm2 _pty subst ->
             subst
           )
           ~t:(fun tynm2 tentry2 subst ->
@@ -2206,10 +2251,33 @@ and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_t
   Poly(aux pty)
 
 
+and substitute_type_id (subst : substitution) (tyid_from : TypeID.t) : TypeID.t =
+  match subst |> SubstMap.find_opt tyid_from with
+  | None ->
+      tyid_from
+
+  | Some(tyscheme) ->
+      begin
+        match TypeConv.get_opaque_type tyscheme with
+        | None          -> assert false
+        | Some(tyid_to) -> tyid_to
+      end
+
+
 and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t =
   ssig |> StructSig.map
       ~v:(fun _x ventry ->
         { ventry with val_type = ventry.val_type |> substitute_poly_type subst }
+      )
+      ~c:(fun _ctornm centry ->
+        let (bids, pty_body) = centry.ctor_parameter in
+        {
+          ctor_belongs_to = centry.ctor_belongs_to |> substitute_type_id subst;
+          ctor_parameter  = (bids, pty_body |> substitute_poly_type subst);
+        }
+      )
+      ~f:(fun _tynm pty ->
+        pty |> substitute_poly_type subst
       )
       ~t:(fun _tynm tentry ->
         let (bids, pty) = tentry.type_scheme in
@@ -2266,6 +2334,41 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                  ()
                else
                  raise (PolymorphicContradiction(rng, x2, pty1, pty2))
+          )
+          ~c:(fun ctornm2 centry2 () ->
+            match ssig1 |> StructSig.find_constructor ctornm2 with
+            | None ->
+                failwith "TODO (error): missing required constructor name"
+
+            | Some(centry1) ->
+                let tyscheme1 = centry1.ctor_parameter in
+                let tyscheme2 = centry2.ctor_parameter in
+                if subtype_type_scheme tyscheme1 tyscheme2 then
+                  ()
+                else
+                  failwith "TODO (error): not a subtype (checked by constructors)"
+          )
+          ~f:(fun tynm2 pty2 () ->
+            match ssig1 |> StructSig.find_dummy_fold tynm2 with
+            | None ->
+                begin
+                  match ssig2 |> StructSig.find_type tynm2 with
+                  | None          -> assert false
+                  | Some(tentry2) -> failwith "TODO (error): missing required type name"
+                end
+
+            | Some(pty1) ->
+                if subtype_poly_type pty1 pty2 then
+                  ()
+                else
+                  begin
+                    match (ssig1 |> StructSig.find_type tynm2, ssig2 |> StructSig.find_type tynm2) with
+                    | (Some(_tentry1), Some(_tentry2)) ->
+                        failwith "TODO (error): not a subtype (checked by the dummy fold)"
+
+                    | _ ->
+                        assert false
+                  end
           )
           ~t:(fun tynm2 tentry2 () ->
             match ssig1 |> StructSig.find_type tynm2 with
@@ -2610,8 +2713,6 @@ and kind_equal (kd1 : kind) (kd2 : kind) : bool =
    `copy_contents` copies every target name occurred in `modsig1`
    into the corresponding occurrence in `modsig2`. *)
 and copy_contents (modsig1 : signature) (modsig2 : signature) =
-  modsig2
-(*
   match (modsig1, modsig2) with
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
       let ssig2new = copy_closure_in_structure ssig1 ssig2 in
@@ -2643,6 +2744,8 @@ and copy_closure_in_structure (ssig1 : StructSig.t) (ssig2 : StructSig.t) : Stru
       | None          -> assert false
       | Some(ventry1) -> { ventry2 with val_name = ventry1.val_name }
     )
+    ~c:(fun _ctornm centry2 -> centry2)
+    ~f:(fun _tynm pty2 -> pty2)
     ~t:(fun _tynm tentry2 -> tentry2)
     ~m:(fun modnm mentry2 ->
       match ssig1 |> StructSig.find_module modnm with
@@ -2650,7 +2753,7 @@ and copy_closure_in_structure (ssig1 : StructSig.t) (ssig2 : StructSig.t) : Stru
       | Some(mentry1) -> { mentry2 with mod_name = mentry1.mod_name }
     )
     ~s:(fun _signm sentry2 -> sentry2)
-*)
+
 
 and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : signature abstracted =
   let _ = subtype_signature rng modsig1 absmodsig2 in
@@ -2661,6 +2764,8 @@ and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signatu
 and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
   ssig |> StructSig.fold
     ~v:(fun x ventry -> Typeenv.add_value x ventry)
+    ~c:(fun ctornm centry -> Typeenv.add_constructor ctornm centry)
+    ~f:(fun _tynm _pty tyenv -> tyenv)
     ~t:(fun tynm tentry -> Typeenv.add_type tynm tentry)
     ~m:(fun modnm mentry -> Typeenv.add_module modnm mentry)
     ~s:(fun signm absmodsig -> Typeenv.add_signature signm absmodsig)
@@ -2792,6 +2897,8 @@ and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untype
           in
           e_labmap |> LabelMap.add x (ContentOf(Range.dummy "UTModBinds", evid))
         )
+        ~c:(fun _ctornm _centry e_labmap -> e_labmap)
+        ~f:(fun _tynm _pty e_labmap -> e_labmap)
         ~t:(fun _tynm _tentry e_labmap -> e_labmap)
         ~m:(fun modnm mentry e_labmap ->
           let evid =
@@ -2958,17 +3065,19 @@ and bind_types (stage : stage) (tyenv : Typeenv.t) (tybinds : untyped_type_bindi
   in
 
   (* Traverse each definition of the variant types. *)
-  let tydefacc =
-    vntacc |> Alist.to_list |> List.fold_left (fun tydefacc vnt ->
+  let (tydefacc, ctordefacc) =
+    vntacc |> Alist.to_list |> List.fold_left (fun (tydefacc, ctordefacc) vnt ->
       let (tyident, tyvars, vntbind, tyid, tentry) = vnt in
       let (_, tynm) = tyident in
       let (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
       let pre = { pre with type_parameters = typarammap } in
-      let _ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
-      Alist.extend tydefacc (tynm, tentry)
-    ) tydefacc
+      let ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
+      let tydefacc = Alist.extend tydefacc (tynm, tentry) in
+      let ctordefacc = Alist.extend ctordefacc (tynm, tyid, bids, ctorbrmap) in
+      (tydefacc, ctordefacc)
+    ) (tydefacc, Alist.empty)
   in
-  tydefacc |> Alist.to_list
+  (tydefacc |> Alist.to_list, ctordefacc |> Alist.to_list)
 
 
 and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding list * StructSig.t abstracted =
@@ -3059,12 +3168,13 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       assert false
 
   | UTBindType(tybinds) ->
-      let tydefs = bind_types stage tyenv tybinds in
+      let (tydefs, ctordefs) = bind_types stage tyenv tybinds in
       let ssig =
         tydefs |> List.fold_left (fun ssig (tynm, tentry) ->
           ssig |> StructSig.add_type tynm tentry
         ) StructSig.empty
       in
+      let ssig = ssig |> add_constructor_definitions ctordefs in
       ([], (OpaqueIDMap.empty, ssig))
 
   | UTBindModule(modident, utsigopt2, utmod1) ->
@@ -3117,6 +3227,8 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
                   let ssig = ssig |> StructSig.add_value x { ventry with val_name = Some(evid) } in
                   (bindacc, ssig)
                 )
+                ~c:(fun _ctornm _centry acc -> acc)
+                ~f:(fun _tynm _pty acc -> acc)
                 ~t:(fun _tynm _tentry acc -> acc)
                 ~m:(fun modnm mentry (bindacc, ssig) ->
                   let evid = EvalVarID.fresh (Range.dummy ("include:" ^ modnm), "(include)") in
