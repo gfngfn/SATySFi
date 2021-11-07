@@ -1965,8 +1965,60 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
       in
       (OpaqueIDMap.empty, ConcFunctor(fsig))
 
-  | UTSigWith(_utsig1, _modidents, _tybinds) ->
-      failwith "TODO: typecheck_signature, UTSigWith"
+  | UTSigWith(utsig0, modidents, tybinds) ->
+      let (quant0, modsig0) = typecheck_signature stage tyenv utsig0 in
+      let ssig =
+        match modsig0 with
+        | ConcFunctor(_) ->
+            failwith "TODO (error): not a structure"
+
+        | ConcStructure(ssig0) ->
+            modidents |> List.fold_left (fun ssig (rng, modnm) ->
+              match ssig |> StructSig.find_module modnm with
+              | None ->
+                  failwith "TODO (error): not found"
+
+              | Some(mentry) ->
+                  begin
+                    match mentry.mod_signature with
+                    | ConcFunctor(_) ->
+                        failwith "TODO (error): not a structure"
+
+                    | ConcStructure(ssig) ->
+                        ssig
+                  end
+            ) ssig0
+      in
+      let tydefs = bind_types stage tyenv tybinds in
+      let (subst, quant) =
+        tydefs |> List.fold_left (fun (subst, quant) (tynm, tentry) ->
+          let (tyid, kd_expected) =
+            match ssig |> StructSig.find_type tynm with
+            | None ->
+                failwith "TODO (error): type not found"
+
+            | Some(tentry) ->
+                begin
+                  match TypeConv.get_opaque_type tentry.type_scheme with
+                  | None ->
+                      failwith "TODO (error): cannot restrict transparent type"
+
+                  | Some(tyid) ->
+                      assert (quant |> OpaqueIDMap.mem tyid);
+                      (tyid, tentry.type_kind)
+                end
+          in
+          let kd_actual = tentry.type_kind in
+          if kind_equal kd_expected kd_actual then
+            let subst = subst |> SubstMap.add tyid tentry.type_scheme in
+            let quant = quant |> OpaqueIDMap.remove tyid in
+            (subst, quant)
+          else
+            failwith "TODO (error): kind mismatch"
+        ) (SubstMap.empty, quant0)
+      in
+      let modsig = modsig0 |> substitute_concrete subst in
+      (quant, modsig)
 
 
 and lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substitution option =
@@ -2507,6 +2559,14 @@ and poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
   aux pty1 pty2
 
 
+and kind_equal (kd1 : kind) (kd2 : kind) : bool =
+  let Kind(bkds1) = kd1 in
+  let Kind(bkds2) = kd2 in
+  match List.combine bkds1 bkds2 with
+  | exception Invalid_argument(_) -> false
+  | zipped                        -> zipped |> List.for_all (fun (TypeKind, TypeKind) -> true)
+
+
 (* Given `modsig1` and `modsig2` which are already known to satisfy `modsig1 <= modsig2`,
    `copy_contents` copies every target name occurred in `modsig1`
    into the corresponding occurrence in `modsig2`. *)
@@ -2728,6 +2788,112 @@ and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (t
   ) hashset SynonymNameSet.empty
 
 
+and bind_types (stage : stage) (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
+  let pre =
+    {
+      stage           = stage;
+      type_parameters = TypeParameterMap.empty;
+      row_parameters  = RowParameterMap.empty;
+      quantifiability = Quantifiable;
+      level           = Level.bottom;
+    }
+  in
+
+  (* Registers types to the type environment and the graph for detecting cyclic dependency. *)
+  let (synacc, vntacc, vertices, graph, tyenv) =
+    tybinds |> List.fold_left (fun (synacc, vntacc, vertices, graph, tyenv) tybind ->
+      let (tyident, typarams, syn_or_vnt) = tybind in
+      let (rng, tynm) = tyident in
+      match syn_or_vnt with
+      | UTBindSynonym(synbind) ->
+          let data =
+            SynonymDependencyGraph.{
+              position        = rng;
+              type_variables  = typarams;
+              definition_body = synbind;
+            }
+          in
+          let graph = graph |> SynonymDependencyGraph.add_vertex tynm data in
+          let synacc = Alist.extend synacc (tyident, typarams, synbind) in
+          (synacc, vntacc, vertices |> SynonymNameSet.add tynm, graph, tyenv)
+
+      | UTBindVariant(vntbind) ->
+          let tyid = TypeID.fresh tynm in
+          let arity = List.length typarams in
+          let tentry =
+            {
+              type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
+              type_kind   = Kind(List.init arity (fun _ -> TypeKind));
+            }
+          in
+          let tyenv = tyenv |> Typeenv.add_type tynm tentry in
+          let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, tyid, tentry) in
+          (synacc, vntacc, vertices, graph, tyenv)
+    ) (Alist.empty, Alist.empty, SynonymNameSet.empty, SynonymDependencyGraph.empty, tyenv)
+  in
+
+  (* Traverse each definition of the synonym types and extract dependencies between them. *)
+  let graph =
+    synacc |> Alist.to_list |> List.fold_left (fun graph syn ->
+      let ((_, tynm), tyvars, synbind) = syn in
+      let dependencies = get_dependency_on_synonym_types vertices pre tyenv synbind in
+      let graph =
+        graph |> SynonymNameSet.fold (fun tynm_dep graph ->
+          graph |> SynonymDependencyGraph.add_edge tynm tynm_dep
+        ) dependencies
+      in
+      graph
+    ) graph
+  in
+
+  (* Check that no cyclic dependency exists among synonym types. *)
+  let syns =
+    match SynonymDependencyGraph.topological_sort graph with
+    | Error(cycle) -> failwith "TODO (error): Typechecker.typecheck_binding, UTBindType, cycle"
+    | Ok(syns)     -> syns
+  in
+
+  (* Add the definition of the synonym types to the type environment. *)
+  let (tyenv, tydefacc) =
+    syns |> List.fold_left (fun (tyenv, tydefacc) syn ->
+      let (tynm, syndata) = syn in
+      let
+        SynonymDependencyGraph.{
+          type_variables  = tyvars;
+          definition_body = mty_body;
+          _
+        } = syndata
+      in
+      let (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
+      let pre = { pre with type_parameters = typarammap } in
+      let ty_body = decode_manual_type pre tyenv mty_body in
+      let pty_body = TypeConv.generalize Level.bottom ty_body in
+      let tentry =
+        {
+          type_scheme = (bids, pty_body);
+          type_kind   = Kind(bids |> List.map (fun _ -> TypeKind));
+        }
+      in
+      let tyenv = tyenv |> Typeenv.add_type tynm tentry in
+      let tydefacc = Alist.extend tydefacc (tynm, tentry) in
+      (tyenv, tydefacc)
+    ) (tyenv, Alist.empty)
+  in
+
+  (* Traverse each definition of the variant types. *)
+  let tydefacc =
+    vntacc |> Alist.to_list |> List.fold_left (fun tydefacc vnt ->
+      let (tyident, tyvars, vntbind, tyid, tentry) = vnt in
+      let (_, tynm) = tyident in
+      let (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
+      let pre = { pre with type_parameters = typarammap } in
+      let _ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
+      Alist.extend tydefacc (tynm, tentry)
+    ) tydefacc
+  in
+  tydefacc |> Alist.to_list
+
+
 and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding list * StructSig.t abstracted =
   let (_, utbindmain) = utbind in
   match utbindmain with
@@ -2816,111 +2982,9 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       assert false
 
   | UTBindType(tybinds) ->
-      let pre =
-        {
-          stage           = stage;
-          type_parameters = TypeParameterMap.empty;
-          row_parameters  = RowParameterMap.empty;
-          quantifiability = Quantifiable;
-          level           = Level.bottom;
-        }
-      in
-
-      (* Registers types to the type environment and the graph for detecting cyclic dependency. *)
-      let (synacc, vntacc, vertices, graph, tyenv) =
-        tybinds |> List.fold_left (fun (synacc, vntacc, vertices, graph, tyenv) tybind ->
-          let (tyident, typarams, syn_or_vnt) = tybind in
-          let (rng, tynm) = tyident in
-          match syn_or_vnt with
-          | UTBindSynonym(synbind) ->
-              let data =
-                SynonymDependencyGraph.{
-                  position        = rng;
-                  type_variables  = typarams;
-                  definition_body = synbind;
-                }
-              in
-              let graph = graph |> SynonymDependencyGraph.add_vertex tynm data in
-              let synacc = Alist.extend synacc (tyident, typarams, synbind) in
-              (synacc, vntacc, vertices |> SynonymNameSet.add tynm, graph, tyenv)
-
-          | UTBindVariant(vntbind) ->
-              let tyid = TypeID.fresh tynm in
-              let arity = List.length typarams in
-              let tentry =
-                {
-                  type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
-                  type_kind   = Kind(List.init arity (fun _ -> TypeKind));
-                }
-              in
-              let tyenv = tyenv |> Typeenv.add_type tynm tentry in
-              let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, tyid, tentry) in
-              (synacc, vntacc, vertices, graph, tyenv)
-        ) (Alist.empty, Alist.empty, SynonymNameSet.empty, SynonymDependencyGraph.empty, tyenv)
-      in
-
-      (* Traverse each definition of the synonym types and extract dependencies between them. *)
-      let graph =
-        synacc |> Alist.to_list |> List.fold_left (fun graph syn ->
-          let ((_, tynm), tyvars, synbind) = syn in
-          let dependencies = get_dependency_on_synonym_types vertices pre tyenv synbind in
-          let graph =
-            graph |> SynonymNameSet.fold (fun tynm_dep graph ->
-              graph |> SynonymDependencyGraph.add_edge tynm tynm_dep
-            ) dependencies
-          in
-          graph
-        ) graph
-      in
-
-      (* Check that no cyclic dependency exists among synonym types. *)
-      let syns =
-        match SynonymDependencyGraph.topological_sort graph with
-        | Error(cycle) -> failwith "TODO (error): Typechecker.typecheck_binding, UTBindType, cycle"
-        | Ok(syns)     -> syns
-      in
-
-      (* Add the definition of the synonym types to the type environment. *)
-      let (tyenv, tydefacc) =
-        syns |> List.fold_left (fun (tyenv, tydefacc) syn ->
-          let (tynm, syndata) = syn in
-          let
-            SynonymDependencyGraph.{
-              type_variables  = tyvars;
-              definition_body = mty_body;
-              _
-            } = syndata
-          in
-          let (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
-          let pre = { pre with type_parameters = typarammap } in
-          let ty_body = decode_manual_type pre tyenv mty_body in
-          let pty_body = TypeConv.generalize Level.bottom ty_body in
-          let tentry =
-            {
-              type_scheme = (bids, pty_body);
-              type_kind   = Kind(bids |> List.map (fun _ -> TypeKind));
-            }
-          in
-          let tyenv = tyenv |> Typeenv.add_type tynm tentry in
-          let tydefacc = Alist.extend tydefacc (tynm, tentry) in
-          (tyenv, tydefacc)
-        ) (tyenv, Alist.empty)
-      in
-
-      (* Traverse each definition of the variant types. *)
-      let tydefacc =
-        vntacc |> Alist.to_list |> List.fold_left (fun tydefacc vnt ->
-          let (tyident, tyvars, vntbind, tyid, tentry) = vnt in
-          let (_, tynm) = tyident in
-          let (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
-          let pre = { pre with type_parameters = typarammap } in
-          let _ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
-          Alist.extend tydefacc (tynm, tentry)
-        ) tydefacc
-      in
-
+      let tydefs = bind_types stage tyenv tybinds in
       let ssig =
-        tydefacc |> Alist.to_list |> List.fold_left (fun ssig (tynm, tentry) ->
+        tydefs |> List.fold_left (fun ssig (tynm, tentry) ->
           ssig |> StructSig.add_type tynm tentry
         ) StructSig.empty
       in
