@@ -88,7 +88,6 @@ type type_scheme =
   BoundID.t list * poly_type
 
 type value_entry = {
-  val_name  : EvalVarID.t option;
   val_type  : poly_type;
   val_stage : stage;
 }
@@ -128,14 +127,13 @@ and functor_signature = {
 }
 
 and module_entry = {
-  mod_name      : ModuleID.t option;
   mod_signature : signature;
 }
 
 and type_environment = {
-  values       : (value_entry * bool ref) ValueNameMap.t;
+  values       : (value_entry * EvalVarID.t * bool ref) ValueNameMap.t;
   types        : type_entry TypeNameMap.t;
-  modules      : module_entry ModuleNameMap.t;
+  modules      : (module_entry * EvalVarID.t) ModuleNameMap.t;
   signatures   : (signature abstracted) SignatureNameMap.t;
   constructors : constructor_entry ConstructorMap.t;
   macros       : macro_entry MacroNameMap.t;
@@ -166,15 +164,15 @@ module Typeenv = struct
     tyenv.macros |> MacroNameMap.find_opt csnm
 
 
-  let add_value (varnm : var_name) (ventry : value_entry) (tyenv : t) : t =
+  let add_value (varnm : var_name) ((ventry, evid) : value_entry * EvalVarID.t) (tyenv : t) : t =
     let is_used = ref false in
-    { tyenv with values = tyenv.values |> ValueNameMap.add varnm (ventry, is_used) }
+    { tyenv with values = tyenv.values |> ValueNameMap.add varnm (ventry, evid, is_used) }
 
 
-  let find_value (varnm : var_name) (tyenv : t) : value_entry option =
-    tyenv.values |> ValueNameMap.find_opt varnm |> Option.map (fun (ventry, is_used) ->
+  let find_value (varnm : var_name) (tyenv : t) : (value_entry * EvalVarID.t) option =
+    tyenv.values |> ValueNameMap.find_opt varnm |> Option.map (fun (ventry, evid, is_used) ->
       is_used := true;
-      ventry
+      (ventry, evid)
     )
 
 
@@ -204,11 +202,11 @@ module Typeenv = struct
     ) tyenv.constructors Alist.empty |> Alist.to_list
 
 
-  let add_module (m : module_name) (mentry : module_entry) (tyenv : t) : t =
-    { tyenv with modules = tyenv.modules |> ModuleNameMap.add m mentry }
+  let add_module (m : module_name) ((mentry, evid) : module_entry * EvalVarID.t) (tyenv : t) : t =
+    { tyenv with modules = tyenv.modules |> ModuleNameMap.add m (mentry, evid) }
 
 
-  let find_module (m : module_name) (tyenv : t) : module_entry option =
+  let find_module (m : module_name) (tyenv : t) : (module_entry * EvalVarID.t) option =
     tyenv.modules |> ModuleNameMap.find_opt m
 
 

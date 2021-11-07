@@ -22,7 +22,6 @@ and functor_signature = {
 }
 
 type value_entry = {
-  val_name  : EvalVarID.t option;
   val_type  : poly_type;
   val_stage : stage;
 }
@@ -43,7 +42,6 @@ type macro_entry = {
 }
 
 type module_entry = {
-  mod_name      : ModuleID.t option;
   mod_signature : signature;
 }
 
@@ -58,9 +56,9 @@ module Typeenv : sig
 
   val find_macro : ctrlseq_name -> t -> macro_entry option
 
-  val add_value : var_name -> value_entry -> t -> t
+  val add_value : var_name -> value_entry * EvalVarID.t -> t -> t
 
-  val find_value : var_name -> t -> value_entry option
+  val find_value : var_name -> t -> (value_entry * EvalVarID.t) option
 
   val add_type : type_name -> type_entry -> t -> t
 
@@ -72,9 +70,9 @@ module Typeenv : sig
 
   val enumerate_constructors : TypeID.t -> t -> (constructor_name * type_scheme) list
 
-  val add_module : module_name -> module_entry -> t -> t
+  val add_module : module_name -> module_entry * EvalVarID.t -> t -> t
 
-  val find_module : module_name -> t -> module_entry option
+  val find_module : module_name -> t -> (module_entry * EvalVarID.t) option
 
   val add_signature : signature_name -> signature abstracted -> t -> t
 

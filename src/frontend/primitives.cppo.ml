@@ -686,12 +686,11 @@ let make_environments table =
       let loc = ref temporary_ast in
       let ventry =
         {
-          val_name  = Some(evid);
           val_type  = pty;
           val_stage = Persistent0;
         }
       in
-      let tyenv = tyenv |> Typeenv.add_value varnm ventry in  (* temporary *)
+      let tyenv = tyenv |> Typeenv.add_value varnm (ventry, evid) in  (* temporary *)
       let env = add_to_environment env evid loc in
         (tyenv, env, Alist.extend acc (loc, deff))
     ) (tyenv, env, Alist.empty)
