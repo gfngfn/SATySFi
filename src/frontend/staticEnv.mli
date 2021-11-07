@@ -70,6 +70,8 @@ module Typeenv : sig
 
   val find_constructor : constructor_name -> t -> constructor_entry option
 
+  val enumerate_constructors : TypeID.t -> t -> (constructor_name * type_scheme) list
+
   val add_module : module_name -> module_entry -> t -> t
 
   val find_module : module_name -> t -> module_entry option

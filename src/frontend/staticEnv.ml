@@ -194,6 +194,16 @@ module Typeenv = struct
     tyenv.constructors |> ConstructorMap.find_opt ctornm
 
 
+  (* TODO (enhance): make this function more efficient *)
+  let enumerate_constructors (tyid : TypeID.t) (tyenv : t) : (constructor_name * type_scheme) list =
+    ConstructorMap.fold (fun ctornm centry acc ->
+      if TypeID.equal tyid centry.ctor_belongs_to then
+        Alist.extend acc (ctornm, centry.ctor_parameter)
+      else
+        acc
+    ) tyenv.constructors Alist.empty |> Alist.to_list
+
+
   let add_module (m : module_name) (mentry : module_entry) (tyenv : t) : t =
     { tyenv with modules = tyenv.modules |> ModuleNameMap.add m mentry }
 
