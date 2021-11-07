@@ -496,7 +496,7 @@ let occurs_row (frid : FreeRowID.t) (row : mono_row) =
   iter_row row
 
 
-let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) : unit =
   let unify = unify_sub in
 (*
   (* begin: for debug *)
@@ -508,18 +508,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
   in
   (* end: for debug *)
 *)
-  let unify_list tys1 tys2 =
-    try
-      let tyzipped = List.combine tys1 tys2 in
-      tyzipped |> List.iter (fun (t1, t2) -> unify t1 t2)
-    with
-    | Invalid_argument(_) ->
-        raise InternalContradictionError
-  in
-
     match (tymain1, tymain2) with
-
-    | (BaseType(bsty1), BaseType(bsty2))  when bsty1 = bsty2 -> ()
+    | (BaseType(bty1), BaseType(bty2)) ->
+        if bty1 = bty2 then
+          ()
+        else
+          raise InternalContradictionError
 
     | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2)) ->
         begin
@@ -532,20 +526,21 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
     | (VertCommandType(cmdargtys1), VertCommandType(cmdargtys2))
     | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) ->
         begin
-          try
-            List.iter2 (fun cmdargty1 cmdargty2 ->
-              match (cmdargty1, cmdargty2) with
-              | (CommandArgType(tylabmap1, ty1), CommandArgType(tylabmap2, ty2)) ->
-                  LabelMap.merge (fun label tyopt1 tyopt2 ->
-                    match (tyopt1, tyopt2) with
-                    | (Some(ty1), Some(ty2)) -> Some(unify ty1 ty2)
-                    | (_, None) | (None, _)  -> raise InternalContradictionError
-                  ) tylabmap1 tylabmap2 |> ignore;
-                  unify ty1 ty2
-            ) cmdargtys1 cmdargtys2
-          with
-          | Invalid_argument(_) ->
+          match List.combine cmdargtys1 cmdargtys2 with
+          | exception Invalid_argument(_) ->
               raise InternalContradictionError
+
+          | zipped ->
+              zipped |> List.iter (fun (cmdargty1, cmdargty2) ->
+                let CommandArgType(ty_labmap1, ty1) = cmdargty1 in
+                let CommandArgType(ty_labmap2, ty2) = cmdargty2 in
+                LabelMap.merge (fun label tyopt1 tyopt2 ->
+                  match (tyopt1, tyopt2) with
+                  | (Some(ty1), Some(ty2)) -> Some(unify ty1 ty2)
+                  | (_, None) | (None, _)  -> raise InternalContradictionError
+                ) ty_labmap1 ty_labmap2 |> ignore;
+                unify ty1 ty2
+              )
         end
 
     | (ProductType(tys1), ProductType(tys2)) ->
@@ -618,6 +613,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
       | _ ->
           raise InternalContradictionError
+
+
+and unify_list (tys1 : mono_type list) (tys2 : mono_type list) : unit =
+  match List.combine tys1 tys2 with
+  | exception Invalid_argument(_) -> raise InternalContradictionError
+  | zipped                        -> zipped |> List.iter (fun (t1, t2) -> unify_sub t1 t2)
 
 
 and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : unit =
@@ -736,11 +737,8 @@ let unify (ty1 : mono_type) (ty2 : mono_type) =
   try
     unify_sub ty1 ty2
   with
-  | InternalInclusionError ->
-      raise (InclusionError(ty1, ty2))
-
-  | InternalContradictionError ->
-      raise (ContradictionError(ty1, ty2))
+  | InternalInclusionError     -> raise (InclusionError(ty1, ty2))
+  | InternalContradictionError -> raise (ContradictionError(ty1, ty2))
 
 
 let fresh_type_variable (rng : Range.t) (pre : pre) : mono_type =
