@@ -148,8 +148,8 @@ module StdJaBook
 
 
   val get-standard-context wid =
-    get-initial-context wid % (command \math)
-      |> set-code-text-command % Code.(command \code)
+    get-initial-context wid (command \Math.math)
+      |> set-code-text-command (command \Code.code)
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese
@@ -268,17 +268,17 @@ val title-deco =
       in
       let ib-author = read-inline ctx-author it-author in
       let bb-title =
-%        if get-text-width ctx <' get-natural-width ib-title then
-%          form-paragraph ctx-title (ib-title ++ inline-fil)
+%        if get-text-width ctx <' Pervasives.get-natural-width ib-title then
+%          Pervasives.form-paragraph ctx-title (ib-title ++ inline-fil)
 %        else
-          form-paragraph (ctx-title |> set-paragraph-margin 12pt 0pt)
+          Pervasives.form-paragraph (ctx-title |> set-paragraph-margin 12pt 0pt)
             (inline-fil ++ ib-title ++ inline-fil)
       in
       let bb-line =
-        form-paragraph (ctx |> set-paragraph-margin title-line-margin title-line-margin)
+        Pervasives.form-paragraph (ctx |> set-paragraph-margin title-line-margin title-line-margin)
           (ib-line ++ inline-fil)
       in
-      let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
+      let bb-author = Pervasives.form-paragraph ctx-author (inline-fil ++ ib-author) in
         bb-title +++ bb-line +++ bb-author
     ))
 
@@ -337,7 +337,7 @@ val title-deco =
 
   val inline ctx \dummy it =
     let ib = read-inline (ctx |> set-text-color Color.white) it in
-    let w = get-natural-width ib in
+    let w = Pervasives.get-natural-width ib in
     ib ++ inline-skip (0pt -' w)
 
 
@@ -348,7 +348,7 @@ val title-deco =
 
   val make-dots-line ctx w =
     let ib = read-inline ctx {.} ++ inline-skip 1pt in
-    let wdot = get-natural-width ib in
+    let wdot = Pervasives.get-natural-width ib in
     let n = round (w /' wdot) in
     inline-fil ++ (repeat-inline n ib)
 
@@ -422,7 +422,7 @@ val title-deco =
                 let ib-title = read-inline ctx-doc {#it-num;. #title;} ++ inline-skip 3pt in
                 let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
                 let ib-middle =
-                  let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
+                  let w = (get-text-width ctx-doc) -' (Pervasives.get-natural-width ib-title) -' (Pervasives.get-natural-width ib-page) in
                     if w <' 0pt then inline-fil else
                       make-dots-line ctx-doc w
                 in
@@ -439,8 +439,8 @@ val title-deco =
                 in
                 let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
                 let ib-middle =
-                  let w = (get-text-width ctx-doc) -' (get-natural-width ib-indent)
-                    -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
+                  let w = (get-text-width ctx-doc) -' (Pervasives.get-natural-width ib-indent)
+                    -' (Pervasives.get-natural-width ib-title) -' (Pervasives.get-natural-width ib-page) in
                     if w <' 0pt then inline-fil else
                       make-dots-line ctx-doc w
                 in
@@ -541,13 +541,13 @@ val title-deco =
       else
         ib-inner ++ inline-fil
     in
-      form-paragraph ctx br-parag
+      Pervasives.form-paragraph ctx br-parag
 
 
   val block ctx +pn inner =
     let () = needs-indentation-ref <- true in
     let ib-inner = read-inline ctx inner in
-      form-paragraph ctx (ib-inner ++ inline-fil)
+      Pervasives.form-paragraph ctx (ib-inner ++ inline-fil)
 
 
   val section-scheme ctx label title outline-title-opt inner =
