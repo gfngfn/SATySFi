@@ -280,13 +280,23 @@ let make_string_sig col =
   ) [EWildCard] col)
 
 
-let make_variant_sig (pre : pre) (tyenv : Typeenv.t) (tyarglst : mono_type list) tyid =
-  let constrs =
-    failwith "TODO: make_variant_sig"
-    (* Typeenv.enumerate_constructors pre tyenv tyid *)
-  in
-  ElementSet.of_list (constrs |> List.map (fun (nm, tyf) ->
-    EConstructor(nm, tyf tyarglst)))
+let make_variant_sig (pre : pre) (tyenv : Typeenv.t) (tyargs : mono_type list) (tyid : TypeID.t) =
+  let ctors = tyenv |> Typeenv.enumerate_constructors tyid in
+  ctors |> List.map (fun (ctornm, tyscheme) ->
+    let (bids, pty_body) = tyscheme in
+    match List.combine bids tyargs with
+    | exception Invalid_argument(_) ->
+        assert false
+
+    | zipped ->
+        let bidmap =
+          zipped |> List.fold_left (fun bidmap (bid, tyarg) ->
+            bidmap |> BoundIDMap.add bid tyarg
+          ) BoundIDMap.empty
+        in
+        let ty = TypeConv.instantiate_by_map_mono bidmap pty_body in
+        EConstructor(ctornm, ty)
+  ) |> ElementSet.of_list
 
 
 let rec complete_sig col (pre : pre) (tyenv : Typeenv.t) ((_, tymain) : mono_type) =
