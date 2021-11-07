@@ -2504,8 +2504,48 @@ and poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
   aux pty1 pty2
 
 
+(* Given `modsig1` and `modsig2` which are already known to satisfy `modsig1 <= modsig2`,
+   `copy_contents` copies every target name occurred in `modsig1`
+   into the corresponding occurrence in `modsig2`. *)
 and copy_contents (modsig1 : signature) (modsig2 : signature) =
-  failwith "TODO: copy_contents"
+  match (modsig1, modsig2) with
+  | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
+      let ssig2new = copy_closure_in_structure ssig1 ssig2 in
+      (ConcStructure(ssig2new))
+
+  | (ConcFunctor(fsig1), ConcFunctor(fsig2)) ->
+      let { opaques = quant_dom1; domain = modsig_dom1; codomain = absmodsig_cod1 } = fsig1 in
+      let { opaques = quant_dom2; domain = modsig_dom2; codomain = absmodsig_cod2 } = fsig2 in
+      let modsig_dom2_new = copy_contents modsig_dom1 modsig_dom2 in
+      let absmodsig_cod2_new =
+        let (_, modsig_cod1) = absmodsig_cod1 in
+        let (quant_cod2, modsig_cod2) = absmodsig_cod2 in
+        let modsig_cod2_new = copy_contents modsig_cod1 modsig_cod2 in
+        (quant_cod2, modsig_cod2_new)
+      in
+      ConcFunctor({ fsig2 with
+        domain   = modsig_dom2_new;
+        codomain = absmodsig_cod2_new;
+      })
+
+  | _ ->
+      assert false
+
+
+and copy_closure_in_structure (ssig1 : StructSig.t) (ssig2 : StructSig.t) : StructSig.t =
+  ssig2 |> StructSig.map
+    ~v:(fun x ventry2 ->
+      match ssig1 |> StructSig.find_value x with
+      | None          -> assert false
+      | Some(ventry1) -> { ventry2 with val_name = ventry1.val_name }
+    )
+    ~t:(fun _tynm tentry2 -> tentry2)
+    ~m:(fun modnm mentry2 ->
+      match ssig1 |> StructSig.find_module modnm with
+      | None          -> assert false
+      | Some(mentry1) -> { mentry2 with mod_name = mentry1.mod_name }
+    )
+    ~s:(fun _signm sentry2 -> sentry2)
 
 
 and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : signature abstracted =
@@ -2516,11 +2556,11 @@ and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signatu
 
 and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
   ssig |> StructSig.fold
-      ~v:(fun x ventry -> Typeenv.add_value x ventry)
-      ~t:(fun tynm tentry -> Typeenv.add_type tynm tentry)
-      ~m:(fun modnm mentry -> Typeenv.add_module modnm mentry)
-      ~s:(fun signm absmodsig -> Typeenv.add_signature signm absmodsig)
-      tyenv
+    ~v:(fun x ventry -> Typeenv.add_value x ventry)
+    ~t:(fun tynm tentry -> Typeenv.add_type tynm tentry)
+    ~m:(fun modnm mentry -> Typeenv.add_module modnm mentry)
+    ~s:(fun signm absmodsig -> Typeenv.add_signature signm absmodsig)
+    tyenv
 
 
 and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : StructSig.t abstracted =
