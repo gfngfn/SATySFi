@@ -1856,7 +1856,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
   | UTModVar(modchain) ->
       let mentry = find_module_chain tyenv modchain in
       let modsig = mentry.mod_signature in
-      ((OpaqueIDMap.empty, modsig), [])  (* TODO: output *)
+      ((OpaqueIDMap.empty, modsig), [])  (* TODO: UTModVar, output *)
 
   | UTModBinds(utbinds) ->
       let (binds, _, (quant, ssig)) = typecheck_binding_list stage tyenv utbinds in
@@ -1883,18 +1883,22 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
         }
       in
       let absmodsig = (OpaqueIDMap.empty, ConcFunctor(fsig)) in
-      (absmodsig, [])
+      (absmodsig, [])  (* TODO: UTModFunctor, output *)
 
   | UTModApply(modchain1, modchain2) ->
       let mentry1 = find_module_chain tyenv modchain1 in
-      let _mentry2 = find_module_chain tyenv modchain1 in
+      let mentry2 = find_module_chain tyenv modchain1 in
       begin
         match mentry1.mod_signature with
         | ConcStructure(_) ->
             failwith "TODO (error): not a functor"
 
         | ConcFunctor(fsig1) ->
-            failwith "TODO: typecheck_module, UTModApply"
+            let { opaques = quant1; domain = modsig_dom1; codomain = absmodsig_cod1 } = fsig1 in
+            let modsig2 = mentry2.mod_signature in
+            let subst = subtype_concrete_with_abstract rng modsig2 (quant1, modsig_dom1) in
+            let absmodsig = absmodsig_cod1 |> substitute_abstract subst in
+            (absmodsig, [])  (* TODO: UTModApply, output *)
       end
 
   | UTModCoerce(modident1, utsig2) ->
@@ -1902,7 +1906,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       let modsig1 = mentry1.mod_signature in
       let absmodsig2 = typecheck_signature stage tyenv utsig2 in
       let absmodsig = coerce_signature rng modsig1 absmodsig2 in
-      (absmodsig, [])
+      (absmodsig, [])  (* TODO: UTModCoerce, output *)
 
 
 and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_signature) : signature abstracted =
