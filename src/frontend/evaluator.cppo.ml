@@ -40,7 +40,7 @@ let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
       begin
         match !rfvalue with
         | CodeSymbol(symb) -> Some(symb)
-        | v                -> report_bug_value "not a symbol" v
+        | v                -> report_bug_value (Printf.sprintf "not a symbol (%s)" (EvalVarID.show_direct evid)) v
       end
 
   | None ->
@@ -813,8 +813,31 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
 
 
 let interpret_bindings_0 (env : environment) (binds : binding list) : environment =
-  failwith "TODO: Evaluator.interpret_bindings_0"
+  binds |> List.fold_left (fun env (Bind(rec_or_nonrec)) ->
+    match rec_or_nonrec with
+    | NonRec(evid, ast) ->
+        let (value, _) = interpret_0 env ast in
+        add_to_environment env evid (ref value)
+
+    | _ ->
+        failwith "TODO: Evaluator.interpret_bindings_0"
+
+  ) env
 
 
 let interpret_bindings_1 (env : environment) (binds : binding list) : code_binding list * environment =
-  failwith "TODO: Evaluator.interpret_bindings_1"
+  let (codebindacc, env) =
+    binds |> List.fold_left (fun (codebindacc, env) (Bind(rec_or_nonrec)) ->
+      match rec_or_nonrec with
+      | NonRec(evid, ast) ->
+          let (code, _envopt) = interpret_1 env ast in
+          let (env, symb) = generate_symbol_for_eval_var_id evid env in
+          (Alist.extend codebindacc (CodeBinding(symb, code)), env)
+            (* TODO (enhance): fix `envopt` *)
+
+      | _ ->
+          failwith "TODO: Evaluator.interpret_bindings_0"
+
+    ) (Alist.empty, env)
+  in
+  (codebindacc |> Alist.to_list, env)

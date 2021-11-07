@@ -191,7 +191,7 @@ let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module
       mentry
 
 
-let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry * abstract_tree =
+let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry * (Range.t * EvalVarID.t * string list) =
   let (rng0, _) = modident0 in
   let mentry0 = find_module tyenv modident0 in
   let evid0 =
@@ -216,12 +216,7 @@ let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_
           end
     ) mentry0
   in
-  let e =
-    modidents |> List.fold_left (fun e (_, modnm) ->
-      AccessField(e, modnm)
-    ) (ContentOf(rng0, evid0))
-  in
-  (mentry, e)
+  (mentry, (rng0, evid0, modidents |> List.map (fun (_, modnm) -> modnm)))
 
 let abstraction (evid : EvalVarID.t) (ast : abstract_tree) : abstract_tree =
   Function(LabelMap.empty, PatternBranch(PVariable(evid), ast))
@@ -886,7 +881,21 @@ let rec typecheck
       end
 
   | UTContentOf(modidents, (rng_var, varnm)) ->
-      let (pty, e) =
+      let init_expression stage rng evid =
+        match (pre.stage, stage) with
+        | (Persistent0, Persistent0)
+        | (Stage0, Persistent0)
+        | (Stage1, Persistent0) ->
+            Persistent(rng, evid)
+
+        | (Stage0, Stage0)
+        | (Stage1, Stage1) ->
+            ContentOf(rng, evid)
+
+        | _ ->
+            raise (InvalidOccurrenceAsToStaging(rng, varnm, stage))
+      in
+      let (stage, pty, e) =
         match modidents with
         | [] ->
             let ventry =
@@ -906,11 +915,12 @@ let rec typecheck
               | None       -> assert false
               | Some(evid) -> evid
             in
-            (ventry.val_type, ContentOf(rng_var, evid))
+            let stage = ventry.val_stage in
+            (stage, ventry.val_type, init_expression stage rng_var evid)
 
         | modident0 :: proj ->
             let modchain = (modident0, proj) in
-            let (mentry, e) = find_module_chain tyenv modchain in
+            let (mentry, (rng0, evid0, labels)) = find_module_chain tyenv modchain in
             let ventry_opt =
               match mentry.mod_signature with
               | ConcStructure(ssig) -> ssig |> StructSig.find_value varnm
@@ -928,28 +938,17 @@ let rec typecheck
               | Some(ventry) ->
                   ventry
             in
-            (ventry.val_type, AccessField(e, varnm))
+            let stage = ventry.val_stage in
+            let e =
+              labels |> List.fold_left (fun e label ->
+                AccessField(e, label)
+              ) (init_expression stage rng0 evid0)
+            in
+            (stage, ventry.val_type, AccessField(e, varnm))
       in
       let tyfree = TypeConv.instantiate pre.level pre.quantifiability pty in
       let tyres = TypeConv.overwrite_range_of_type tyfree rng in
       (e, tyres)
-(*
-      let stage = ventry.val_stage in
-      begin
-        match (pre.stage, stage) with
-        | (Persistent0, Persistent0)
-        | (Stage0, Persistent0)
-        | (Stage1, Persistent0) ->
-            (Persistent(rng, evid), tyres)
-
-        | (Stage0, Stage0)
-        | (Stage1, Stage1) ->
-            (ContentOf(rng, evid), tyres)
-
-        | _ ->
-            raise (InvalidOccurrenceAsToStaging(rng, varnm, stage))
-      end
-*)
 
   | UTConstructor(constrnm, utast1) ->
       let (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
@@ -1964,8 +1963,9 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
   let (rng, utmodmain) = utmod in
   match utmodmain with
   | UTModVar(modchain) ->
-      let (mentry, e) = find_module_chain tyenv modchain in
+      let (mentry, (rng0, evid0, labels)) = find_module_chain tyenv modchain in
       let modsig = mentry.mod_signature in
+      let e = labels |> List.fold_left (fun e label -> AccessField(e, label)) (ContentOf(rng0, evid0)) in
       ((OpaqueIDMap.empty, modsig), e)
 
   | UTModBinds(utbinds) ->
@@ -1998,8 +1998,10 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       (absmodsig, abstraction evid e2)
 
   | UTModApply(modchain1, modchain2) ->
-      let (mentry1, e1) = find_module_chain tyenv modchain1 in
-      let (mentry2, e2) = find_module_chain tyenv modchain1 in
+      let (mentry1, (rng1, evid1, labels1)) = find_module_chain tyenv modchain1 in
+      let (mentry2, (rng2, evid2, labels2)) = find_module_chain tyenv modchain1 in
+      let e1 = labels1 |> List.fold_left (fun e label -> AccessField(e, label)) (ContentOf(rng1, evid1)) in
+      let e2 = labels2 |> List.fold_left (fun e label -> AccessField(e, label)) (ContentOf(rng2, evid2)) in
       begin
         match mentry1.mod_signature with
         | ConcStructure(_) ->

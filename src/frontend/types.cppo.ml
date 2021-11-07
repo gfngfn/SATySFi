@@ -534,9 +534,6 @@ type base_constant =
   | BCInputPos        of input_position
 [@@deriving show { with_path = false; }]
 
-type code_binding =
-  unit  (* TEMPORARY *)
-
 type 'a letrec_binding_scheme =
   | LetRecBinding of EvalVarID.t * 'a pattern_branch_scheme
 
@@ -956,6 +953,9 @@ and code_pattern_tree =
   | CdPConstructor          of constructor_name * code_pattern_tree
 [@@deriving show { with_path = false; }]
 
+type code_binding =
+  | CodeBinding of CodeSymbol.t * code_value
+
 type 'a cycle =
   | Loop  of 'a
   | Cycle of 'a TupleList.t
@@ -1098,7 +1098,10 @@ let rec unlift_code (code : code_value) : abstract_tree =
 
 
 let unlift_code_bindings (codebinds : code_binding list) : binding list =
-  failwith "TODO (enhance): Types.unlift_code_bindings"
+  codebinds |> List.map (fun (CodeBinding(symb, code)) ->
+    let ast = unlift_code code in
+    Bind(NonRec(CodeSymbol.unlift symb, ast))
+  )
 
 
 module MathContext
