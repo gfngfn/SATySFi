@@ -1,235 +1,241 @@
 @require: pervasives
 @require: math
-@require: stdja
+@require: stdjabook
 @require: vdecoset
 @require: hdecoset
 
 @import: paren
 
+module Local = struct
 
-type type-syntax =
-  | TypeName        of inline-text
-  | TypeConstructor of inline-text * (type-syntax list)
-  | Tuple           of type-syntax list
-  | Record          of (inline-text * type-syntax) list
-  | FuncType        of type-syntax * type-syntax
-
-
-let ( --> ) ty1 ty2 =
-  FuncType(ty1, ty2)
-%  ${\paren{#m1 \to #m2}}
-
-let type-name name =
-  TypeName(name)
-%  text-in-math MathOrd (fun ctx -> read-inline ctx name)
-
-let type-constructor name tylst =
-  TypeConstructor(name, tylst)
-
-let type-tuple tylst = Tuple(tylst)
-
-let type-record tylst = Record(tylst)
+  type type-syntax =
+    | TypeName        of inline-text
+    | TypeConstructor of inline-text * list type-syntax
+    | Tuple           of list type-syntax
+    | Record          of list (inline-text * type-syntax)
+    | FuncType        of type-syntax * type-syntax
 
 
-let tU = type-name {unit}
-let tI = type-name {int}
-let tB = type-name {bool}
-let tF = type-name {float}
-let tL = type-name {length}
-let tS = type-name {string}
-let tRE = type-name {regexp}
-let tIT = type-name {inline-text}
-let tIB = type-name {inline-boxes}
-let tBT = type-name {block-text}
-let tBB = type-name {block-boxes}
-let tPADS = type-name {paddings}
-let tDECO = type-name {deco}
-let tDECOSET = type-name {deco-set}
-let tCTX = type-name {context}
-let tGR = type-name {graphics}
-let tDOC = type-name {document}
-let tSCR = type-name {script}
-let tIMG = type-name {image}
-let tPT = type-name {point}
-let tPRP = type-name {pre-path}
-let tPATH = type-name {path}
-let tGR = type-name {graphics}
-let tCLR = type-name {color}
-let tFONT = type-name {font}
-let tLANG = type-name {language}
-let tMATHCLS = type-name {math-class}
-let tMATH = type-name {math}
-let tMKERNF = type-name {math-kern-func}
-let tMCSTY = type-name {math-char-style}
-let tPAREN = type-name {paren}
-let tMCCLS = type-name {math-char-class}
-let tPG = type-name {page}
-let tPAGECONTF = type-name {page-count-func}
-let tPAGEPARTSF = type-name {page-parts-func}
-let tTCTX = type-name {text-info}
-let tLIST ty = type-constructor {list} [ty]
-let tOPT ty = type-constructor {option} [ty]
-let tICMD ty = type-constructor {inline-cmd} [ty]
-let tPROD tylst = type-tuple tylst
-let tRECORD tylst = type-record tylst
-let tANY = type-name {Any}
-%  let token = type-name {list} in
-%    ${\paren{#m}\math-skip!(4pt)#token}
+  val ( --> ) ty1 ty2 =
+    FuncType(ty1, ty2)
+  %  ${\paren{#m1 \to #m2}}
+
+  val type-name name =
+    TypeName(name)
+  %  text-in-math MathOrd (fun ctx -> read-inline ctx name)
+
+  val type-constructor name tylst =
+    TypeConstructor(name, tylst)
+
+  val type-tuple tylst = Tuple(tylst)
+
+  val type-record tylst = Record(tylst)
 
 
-let-rec math-of-type ty =
-  match ty with
-  | TypeName(it) ->
-      text-in-math MathOrd (fun ctx -> read-inline ctx it)
-
-  | TypeConstructor(it, tylst) ->
-      let mlst =
-        tylst |> List.map (fun ty -> (
-          let m = math-of-type ty in
-            match ty with
-            | TypeName(_) -> m
-            | Tuple(_)    -> m
-            | Record(_)   -> m
-            | _           -> ${\paren{#m}}
-        ))
-      in
-        Math.join ${\math-skip!(4pt)} (List.append mlst [text-in-math MathOrd (fun ctx -> read-inline ctx it)])
-
-  | Tuple(tylst) ->
-      let mlst =
-        tylst |> List.map (fun ty -> (
-          let m = math-of-type ty in
-            match ty with
-            | TypeName(_) -> m
-            | Tuple(_)    -> m
-            | Record(_)   -> m
-            | _           -> ${\paren{#m}}
-        ))
-      in
-      let m = Math.join ${\ast} mlst in
-      ${\paren{#m}}
-
-  | Record(lst) ->
-      let mlst =
-        lst |> List.map (fun (key, ty) -> (
-          let m = math-of-type ty in
-          ${\text!(key) = #m}
-        ))
-      in
-      let m = Math.join ${\;\math-skip!(4pt)} mlst in
-      ${\record-paren{#m}}
-
-  | FuncType(ty1, ty2) ->
-      let m1 = math-of-type ty1 in
-      let m2 = math-of-type ty2 in
-      let m1 =
-        match ty1 with
-        | FuncType(_, _) -> ${\paren{#m1}}
-        | _              -> m1
-      in
-      ${#m1\to#m2}
+  val tU = type-name {unit}
+  val tI = type-name {int}
+  val tB = type-name {bool}
+  val tF = type-name {float}
+  val tL = type-name {length}
+  val tS = type-name {string}
+  val tRE = type-name {regexp}
+  val tIT = type-name {inline-text}
+  val tIB = type-name {inline-boxes}
+  val tBT = type-name {block-text}
+  val tBB = type-name {block-boxes}
+  val tPADS = type-name {paddings}
+  val tDECO = type-name {deco}
+  val tDECOSET = type-name {deco-set}
+  val tCTX = type-name {context}
+  val tGR = type-name {graphics}
+  val tDOC = type-name {document}
+  val tSCR = type-name {script}
+  val tIMG = type-name {image}
+  val tPT = type-name {point}
+  val tPRP = type-name {pre-path}
+  val tPATH = type-name {path}
+  val tCLR = type-name {color}
+  val tFONT = type-name {font}
+  val tLANG = type-name {language}
+  val tMATHCLS = type-name {math-class}
+  val tMATH = type-name {math}
+  val tMKERNF = type-name {math-kern-func}
+  val tMCSTY = type-name {math-char-style}
+  val tPAREN = type-name {paren}
+  val tMCCLS = type-name {math-char-class}
+  val tPG = type-name {page}
+  val tPAGECONTF = type-name {page-count-func}
+  val tPAGEPARTSF = type-name {page-parts-func}
+  val tTCTX = type-name {text-info}
+  val tLIST ty = type-constructor {list} [ty]
+  val tOPT ty = type-constructor {option} [ty]
+  val tICMD ty = type-constructor {inline-cmd} [ty]
+  val tPROD tylst = type-tuple tylst
+  val tRECORD tylst = type-record tylst
+  val tANY = type-name {Any}
+  %  val token = type-name {list} in
+  %    ${\paren{#m}\math-skip!(4pt)#token}
 
 
-let-math \math-of-type ty = math-of-type ty
+  val rec math-of-type ty =
+    match ty with
+    | TypeName(it) ->
+        text-in-math MathOrd (fun ctx -> read-inline ctx it)
 
-let-block ctx +centered-image wid srcpath =
-  let img = load-image srcpath in
-    line-break true true ctx (inline-fil ++ use-image-by-width img wid ++ inline-fil)
+    | TypeConstructor(it, tylst) ->
+        let mlst =
+          tylst |> List.map (fun ty -> (
+            let m = math-of-type ty in
+              match ty with
+              | TypeName(_) -> m
+              | Tuple(_)    -> m
+              | Record(_)   -> m
+              | _           -> ${\Math.paren{#m}}
+              end
+          ))
+        in
+          Math.join ${\Math.math-skip!(4pt)} (List.append mlst [text-in-math MathOrd (fun ctx -> read-inline ctx it)])
 
-let-rec repeat-inline ibacc n ib =
-  if n <= 0 then ibacc else
-    repeat-inline (ibacc ++ ib) (n - 1) ib
+    | Tuple(tylst) ->
+        let mlst =
+          tylst |> List.map (fun ty -> (
+            let m = math-of-type ty in
+              match ty with
+              | TypeName(_) -> m
+              | Tuple(_)    -> m
+              | Record(_)   -> m
+              | _           -> ${\Math.paren{#m}}
+              end
+          ))
+        in
+        let m = Math.join ${\Math.ast} mlst in
+        ${\Math.paren{#m}}
 
+    | Record(lst) ->
+        let mlst =
+          lst |> List.map (fun (key, ty) -> (
+            let m = math-of-type ty in
+            ${\Math.text!(key) = #m}
+          ))
+        in
+        let m = Math.join ${\;\Math.math-skip!(4pt)} mlst in
+        ${\LocalParen.record-paren{#m}}
 
-let-inline ctx \repeat n inner =
-  let ib = read-inline ctx inner in
-    repeat-inline inline-nil n ib
-
-
-let gap-paragraph = 12pt
-
-let gap-command = 6pt
-
-
-let command-scheme ctx ib-name ty inner =
-  let ib-colon = read-inline ctx {\ :\ } in
-  let indent = (ctx |> get-font-size) *' 2. in
-  let ib-inner = read-inline ctx inner in
-  let m-ty = embed-math ctx (math-of-type ty) in
-    line-break true false (ctx |> set-paragraph-margin gap-paragraph gap-command)
-      (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
-  +++
-    block-frame-breakable (ctx |> set-paragraph-margin gap-command gap-paragraph)
-      (indent, 0pt, 0pt, 0pt) VDecoSet.empty (fun ctx ->
-          form-paragraph (ctx |> set-paragraph-margin 0pt 0pt) (ib-inner ++ inline-fil)
-        )
-
-
-let name-context ctx =
-  ctx |> set-dominant-narrow-script Latin
-      |> set-font Latin (`lmmono`, 1., 0.)
-      |> set-text-color Color.red
-
-
-let-block ctx +command name ty inner =
-  let ctx-name = name-context ctx in
-  let ib-name = read-inline ctx-name (embed-string name) in
-    command-scheme ctx ib-name ty inner
-
-
-let-mutable flag <- true
-
-
-let-block ctx +commands namelst ty inner =
-  let ctx-name = name-context ctx in
-  let ib-comma = read-inline ctx {,\ } in
-  let () = flag <- true in
-  let ib-name =
-    namelst |> List.fold-left (fun acc name -> (
-      let ib-name = read-inline ctx-name (embed-string name) in
-      if !flag then
-        let () = flag <- false in
-        acc ++ ib-name
-      else
-        acc ++ ib-comma ++ ib-name
-    )) inline-nil
-  in
-    command-scheme ctx ib-name ty inner
+    | FuncType(ty1, ty2) ->
+        let m1 = math-of-type ty1 in
+        let m2 = math-of-type ty2 in
+        let m1 =
+          match ty1 with
+          | FuncType(_, _) -> ${\Math.paren{#m1}}
+          | _              -> m1
+          end
+        in
+        ${#m1\Math.to#m2}
+    end
 
 
-let-block ctx +type ty inner =
-  let font-size = get-font-size ctx in
-  let quad = discretionary 1000 (inline-skip font-size) inline-nil inline-nil in
-  let indent = (ctx |> get-font-size) *' 2. in
-  let ib-inner = read-inline ctx inner in
-    block-frame-breakable ctx (indent, 0pt, 0pt, 0pt) VDecoSet.empty
-        (fun ctx ->
-          form-paragraph (ctx |> set-paragraph-margin 0pt 0pt)
-            (inline-skip (0pt -' indent) ++ embed-math ctx (math-of-type ty) ++ quad ++ ib-inner ++ inline-fil)
-        )
+  val math \math-of-type ty = math-of-type ty
+
+  val block ctx +centered-image wid srcpath =
+    let img = load-image srcpath in
+      line-break true true ctx (inline-fil ++ use-image-by-width img wid ++ inline-fil)
+
+  val rec repeat-inline ibacc n ib =
+    if n <= 0 then ibacc else
+      repeat-inline (ibacc ++ ib) (n - 1) ib
 
 
-let-inline \subject-to-change = {\emph{〔今後仕様変更の可能性あり〕}}
-
-let-inline \discouraged = {\emph{〔使用非推奨〕}}
-
-
-let-inline ctx \meta m =
-  let ctx-meta =
-    ctx |> set-text-color Color.orange
-        |> set-font Latin StdJa.font-latin-italic
-  in
-    embed-math ctx-meta m
+  val inline ctx \repeat n inner =
+    let ib = read-inline ctx inner in
+      repeat-inline inline-nil n ib
 
 
-let-inline ctx \code inner =
-  let pads-code = (2pt, 2pt, 2pt, 2pt) in
-  let decoset-code = HDecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
-  let ctx-code =
-    name-context ctx |> set-math-command (command \meta)
-  in
-  let ib-frame =
-    inline-frame-breakable pads-code decoset-code
-      (read-inline ctx-code inner)
-  in
-    script-guard Latin ib-frame
+  val gap-paragraph = 12pt
+
+  val gap-command = 6pt
+
+
+  val command-scheme ctx ib-name ty inner =
+    let ib-colon = read-inline ctx {\ :\ } in
+    let indent = (ctx |> get-font-size) *' 2. in
+    let ib-inner = read-inline ctx inner in
+    let m-ty = embed-math ctx (math-of-type ty) in
+      line-break true false (ctx |> set-paragraph-margin gap-paragraph gap-command)
+        (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
+    +++
+      block-frame-breakable (ctx |> set-paragraph-margin gap-command gap-paragraph)
+        (indent, 0pt, 0pt, 0pt) VDecoSet.empty (fun ctx ->
+            Pervasives.form-paragraph (ctx |> set-paragraph-margin 0pt 0pt) (ib-inner ++ inline-fil)
+          )
+
+
+  val name-context ctx =
+    ctx |> set-dominant-narrow-script Latin
+        |> set-font Latin (`lmmono`, 1., 0.)
+        |> set-text-color Color.red
+
+
+  val block ctx +command name ty inner =
+    let ctx-name = name-context ctx in
+    let ib-name = read-inline ctx-name (embed-string name) in
+      command-scheme ctx ib-name ty inner
+
+
+  val mutable flag <- true
+
+
+  val block ctx +commands namelst ty inner =
+    let ctx-name = name-context ctx in
+    let ib-comma = read-inline ctx {,\ } in
+    let () = flag <- true in
+    let ib-name =
+      namelst |> List.fold-left (fun acc name -> (
+        let ib-name = read-inline ctx-name (embed-string name) in
+        if !flag then
+          let () = flag <- false in
+          acc ++ ib-name
+        else
+          acc ++ ib-comma ++ ib-name
+      )) inline-nil
+    in
+      command-scheme ctx ib-name ty inner
+
+
+  val block ctx +type ty inner =
+    let font-size = get-font-size ctx in
+    let quad = discretionary 1000 (inline-skip font-size) inline-nil inline-nil in
+    let indent = (ctx |> get-font-size) *' 2. in
+    let ib-inner = read-inline ctx inner in
+      block-frame-breakable ctx (indent, 0pt, 0pt, 0pt) VDecoSet.empty
+          (fun ctx ->
+            Pervasives.form-paragraph (ctx |> set-paragraph-margin 0pt 0pt)
+              (inline-skip (0pt -' indent) ++ embed-math ctx (math-of-type ty) ++ quad ++ ib-inner ++ inline-fil)
+          )
+
+
+  val inline \subject-to-change = {\StdJaBook.emph{〔今後仕様変更の可能性あり〕}}
+
+  val inline \discouraged = {\StdJaBook.emph{〔使用非推奨〕}}
+
+
+  val inline ctx \meta m =
+    let ctx-meta =
+      ctx |> set-text-color Color.orange
+          |> set-font Latin StdJaBook.font-latin-italic
+    in
+      embed-math ctx-meta m
+
+
+  val inline ctx \code inner =
+    let pads-code = (2pt, 2pt, 2pt, 2pt) in
+    let decoset-code = HDecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
+    let ctx-code =
+      name-context ctx |> set-math-command (command \meta)
+    in
+    let ib-frame =
+      inline-frame-breakable pads-code decoset-code
+        (read-inline ctx-code inner)
+    in
+      script-guard Latin ib-frame
+
+end

@@ -185,7 +185,7 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : c
 let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module_entry =
   match tyenv |> Typeenv.find_module modnm with
   | None ->
-      failwith "TODO (error): not found"
+      failwith (Printf.sprintf "TODO (error): not found '%s'" modnm)
 
   | Some(mentry) ->
       mentry
@@ -923,7 +923,7 @@ let rec typecheck
                   let cands = Typeenv.find_candidates tyenv mdlnmlst varnm rng in
                   raise (UndefinedVariable(rng, mdlnmlst, varnm, cands))
 *)
-                  failwith "TODO (error): not found"
+                  failwith (Printf.sprintf "TODO (error): not found '%s'" varnm)
 
               | Some(ventry) ->
                   ventry
@@ -1819,7 +1819,14 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                       begin
                         match base_type_map |> TypeNameMap.find_opt tynm with
                         | None ->
-                            failwith (Printf.sprintf "TODO (error): report undefined type name '%s'" tynm)
+                            begin
+                              match (tynm, tyargs) with
+                              | ("list", [ ty ]) -> ListType(ty)
+                              | ("ref", [ ty ])  -> RefType(ty)
+
+                              | _ ->
+                                  failwith (Printf.sprintf "TODO (error): report undefined type name '%s'" tynm)
+                            end
 
                         | Some(bt) ->
                             BaseType(bt)

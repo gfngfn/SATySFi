@@ -1,101 +1,103 @@
 @require: math
 @require: gr
 
+module LocalParen = struct
 
-let record-paren-left hgt dpt hgtaxis fontsize color =
-  let halflen = Math.half-length hgt dpt hgtaxis fontsize in
-  let w0 = fontsize *' 0.1 in
-  let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
-  let w2 = halflen *' 0.25 in %temporary
-  let w-extra = fontsize *' 0.25 in
-  let t1 = fontsize *' 0.05 in
-  let t2 = fontsize *' 0.05 in
-  let t3 = fontsize *' 0.0125 in
+  val record-paren-left hgt dpt hgtaxis fontsize color =
+    let halflen = Math.half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.25 in %temporary
+    let w-extra = fontsize *' 0.25 in
+    let t1 = fontsize *' 0.05 in
+    let t2 = fontsize *' 0.05 in
+    let t3 = fontsize *' 0.0125 in
 
-  let qA = halflen *' 0.35 in
-  let p1 = (w1 +' w2) *' 0.75 in
-  let q1 = halflen *' 0.3 in
+    let qA = halflen *' 0.35 in
+    let p1 = (w1 +' w2) *' 0.75 in
+    let q1 = halflen *' 0.3 in
 
-  let qB = halflen *' 0.45 in
-  let p2 = w2 *' 0.5 in
-  let q2 = halflen *' 0.2 in
+    let qB = halflen *' 0.45 in
+    let p2 = w2 *' 0.5 in
+    let q2 = halflen *' 0.2 in
 
-  let path (xpos, ypos) =
-    let yC = ypos +' hgtaxis in
-    let yU = yC +' halflen in
-    let yL = yC -' halflen in
-    let x0 = xpos +' w0 in
-    let x1 = x0 +' w1 in
-    let x2 = x1 +' w2 in
-    let outer =
-      start-path (x2, yU)
-        |> bezier-to (x2 -' p1, yU -' q1) (x0, yC +' qA) (x0, yC)
-        |> bezier-to (x0, yC -' qA) (x2 -' p1, yL +' q1) (x2, yL)
-        |> line-to (x2 +' t1, yL -' t3)
-        |> line-to (x2 +' t1, yU +' t3)
+    let path (xpos, ypos) =
+      let yC = ypos +' hgtaxis in
+      let yU = yC +' halflen in
+      let yL = yC -' halflen in
+      let x0 = xpos +' w0 in
+      let x1 = x0 +' w1 in
+      let x2 = x1 +' w2 in
+      let outer =
+        start-path (x2, yU)
+          |> bezier-to (x2 -' p1, yU -' q1) (x0, yC +' qA) (x0, yC)
+          |> bezier-to (x0, yC -' qA) (x2 -' p1, yL +' q1) (x2, yL)
+          |> line-to (x2 +' t1, yL -' t3)
+          |> line-to (x2 +' t1, yU +' t3)
+          |> close-with-line
+      in
+      let inner =
+        start-path (x2, yL +' t2)
+        |> bezier-to (x2 -' p2, yL +' q2) (x1, yC -' qB) (x1, yC)
+        |> bezier-to (x1, yC +' qB) (x2 -' p2, yU -' q2) (x2, yU -' t2)
         |> close-with-line
+      in
+        unite-path outer inner
     in
-    let inner =
-      start-path (x2, yL +' t2)
-      |> bezier-to (x2 -' p2, yL +' q2) (x1, yC -' qB) (x1, yC)
-      |> bezier-to (x1, yC +' qB) (x2 -' p2, yU -' q2) (x2, yU -' t2)
-      |> close-with-line
-    in
-      unite-path outer inner
-  in
-  let graphics point = [ fill color (path point); ] in
-  let kerninfo _ = 0pt in
-    (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    let graphics point = [ fill color (path point) ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-let record-paren-right hgt dpt hgtaxis fontsize color =
-  let halflen = Math.half-length hgt dpt hgtaxis fontsize in
-  let w0 = fontsize *' 0.1 in
-  let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
-  let w2 = halflen *' 0.25 in %temporary
-  let w-extra = fontsize *' 0.25 in
-  let t1 = fontsize *' 0.05 in
-  let t2 = fontsize *' 0.05 in
-  let t3 = fontsize *' 0.0125 in
+  val record-paren-right hgt dpt hgtaxis fontsize color =
+    let halflen = Math.half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.25 in %temporary
+    let w-extra = fontsize *' 0.25 in
+    let t1 = fontsize *' 0.05 in
+    let t2 = fontsize *' 0.05 in
+    let t3 = fontsize *' 0.0125 in
 
-  let qA = halflen *' 0.35 in
-  let p1 = (w1 +' w2) *' 0.75 in
-  let q1 = halflen *' 0.3 in
+    let qA = halflen *' 0.35 in
+    let p1 = (w1 +' w2) *' 0.75 in
+    let q1 = halflen *' 0.3 in
 
-  let qB = halflen *' 0.45 in
-  let p2 = w2 *' 0.5 in
-  let q2 = halflen *' 0.2 in
+    let qB = halflen *' 0.45 in
+    let p2 = w2 *' 0.5 in
+    let q2 = halflen *' 0.2 in
 
-  let wid = w0 +' w1 +' w2 +' w-extra in
+    let wid = w0 +' w1 +' w2 +' w-extra in
 
-  let path (xpos, ypos) =
-    let yC = ypos +' hgtaxis in
-    let yU = yC +' halflen in
-    let yL = yC -' halflen in
-    let x0 = xpos +' wid -' w0 in
-    let x1 = x0 -' w1 in
-    let x2 = x1 -' w2 in
-    let outer =
-      start-path (x2, yU)
-        |> bezier-to (x2 +' p1, yU -' q1) (x0, yC +' qA) (x0, yC)
-        |> bezier-to (x0, yC -' qA) (x2 +' p1, yL +' q1) (x2, yL)
-        |> line-to (x2 -' t1, yL -' t3)
-        |> line-to (x2 -' t1, yU +' t3)
+    let path (xpos, ypos) =
+      let yC = ypos +' hgtaxis in
+      let yU = yC +' halflen in
+      let yL = yC -' halflen in
+      let x0 = xpos +' wid -' w0 in
+      let x1 = x0 -' w1 in
+      let x2 = x1 -' w2 in
+      let outer =
+        start-path (x2, yU)
+          |> bezier-to (x2 +' p1, yU -' q1) (x0, yC +' qA) (x0, yC)
+          |> bezier-to (x0, yC -' qA) (x2 +' p1, yL +' q1) (x2, yL)
+          |> line-to (x2 -' t1, yL -' t3)
+          |> line-to (x2 -' t1, yU +' t3)
+          |> close-with-line
+      in
+      let inner =
+        start-path (x2, yL +' t2)
+        |> bezier-to (x2 +' p2, yL +' q2) (x1, yC -' qB) (x1, yC)
+        |> bezier-to (x1, yC +' qB) (x2 +' p2, yU -' q2) (x2, yU -' t2)
         |> close-with-line
+      in
+        unite-path outer inner
     in
-    let inner =
-      start-path (x2, yL +' t2)
-      |> bezier-to (x2 +' p2, yL +' q2) (x1, yC -' qB) (x1, yC)
-      |> bezier-to (x1, yC +' qB) (x2 +' p2, yU -' q2) (x2, yU -' t2)
-      |> close-with-line
-    in
-      unite-path outer inner
-  in
-  let graphics point = [ fill color (path point); ] in
-  let kerninfo _ = 0pt in
-    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    let graphics point = [ fill color (path point) ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-let-math \record-paren =
-  math-paren record-paren-left record-paren-right
+  val math \record-paren =
+    math-paren record-paren-left record-paren-right
 
+end
