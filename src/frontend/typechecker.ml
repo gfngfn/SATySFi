@@ -839,8 +839,11 @@ let rec typecheck
                   failwith "TODO (error): UTOpenIn, not a signature"
 
               | ConcStructure(ssig) ->
+                  failwith "TODO: UTOpenIn"
+(*
                   let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
                   typecheck_iter tyenv utast1
+*)
             end
       end
 
@@ -1890,7 +1893,29 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
   | UTModBinds(utbinds) ->
       let (binds, _, (quant, ssig)) = typecheck_binding_list stage tyenv utbinds in
       let e_record =
-        failwith "TODO: UTModBinds, make e_record from ssig"
+        let e_labmap =
+          ssig |> StructSig.fold
+            ~v:(fun x ventry e_labmap ->
+              let evid =
+                match ventry.val_name with
+                | None       -> assert false
+                | Some(evid) -> evid
+              in
+              e_labmap |> LabelMap.add x (ContentOf(Range.dummy "UTModBinds", evid))
+            )
+            ~t:(fun _tynm _tentry e_labmap -> e_labmap)
+            ~m:(fun modnm mentry e_labmap ->
+              let evid =
+                match mentry.mod_name with
+                | None       -> assert false
+                | Some(evid) -> evid
+              in
+              e_labmap |> LabelMap.add modnm (ContentOf(Range.dummy "UTModBinds", evid))
+            )
+            ~s:(fun _signm _sentry e_labmap -> e_labmap)
+            LabelMap.empty
+        in
+        Record(e_labmap)
       in
       let e =
         List.fold_right (fun (Bind(rec_or_nonrec)) e ->
