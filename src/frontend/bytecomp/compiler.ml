@@ -298,12 +298,6 @@ and compile (ir : ir) (cont : instruction list) =
       let instrs2 = compile ir2 [] in
       OpCodeModule(instrs1, instrs2) :: cont
 
-  | IRCodeFinishHeaderFile ->
-      OpCodeFinishHeaderFile :: cont
-
-  | IRCodeFinishStruct ->
-      OpCodeFinishStruct :: cont
-
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =
   let consif cond a b =

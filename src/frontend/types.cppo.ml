@@ -636,8 +636,6 @@ and ir =
   | IRCodeLetMutableIn      of varloc * ir * ir
   | IRCodeOverwrite         of varloc * ir
   | IRCodeModule            of ir * ir
-  | IRCodeFinishHeaderFile
-  | IRCodeFinishStruct
 
 and 'a ir_letrec_binding_scheme =
   | IRLetRecBinding of varloc * 'a ir_pattern_branch_scheme
@@ -738,8 +736,6 @@ and instruction =
   | OpCodeLetMutable    of varloc * instruction list * instruction list
   | OpCodeOverwrite     of instruction list
   | OpCodeModule        of instruction list * instruction list
-  | OpCodeFinishHeaderFile
-  | OpCodeFinishStruct
   | OpConvertSymbolToCode
 #include "__insttype.gen.ml"
 
@@ -786,8 +782,6 @@ and abstract_tree =
   | ASTBaseConstant       of base_constant
   | ASTEndOfList
   | ASTMath               of math list
-  | FinishHeaderFile
-  | FinishStruct
 (* -- input texts -- *)
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
@@ -918,8 +912,6 @@ and code_value =
   | CdBaseConstant  of base_constant
   | CdEndOfList
   | CdMath          of math list
-  | CdFinishHeaderFile
-  | CdFinishStruct
   | CdInputHorz     of code_input_horz_element list
   | CdInputVert     of code_input_vert_element list
   | CdContentOf     of Range.t * CodeSymbol.t
@@ -1068,8 +1060,6 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
     | CdMath(mlst)                         -> ASTMath(mlst)
-    | CdFinishHeaderFile                   -> FinishHeaderFile
-    | CdFinishStruct                       -> FinishStruct
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
     | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)

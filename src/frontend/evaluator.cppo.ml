@@ -180,12 +180,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
   | ASTMath(mlst) ->
       return @@ MathValue(mlst)
 
-  | FinishHeaderFile ->
-      (EvaluatedEnvironment, Some(env))
-
-  | FinishStruct ->
-      (EvaluatedEnvironment, Some(env))
-
   | InputHorz(ihlst) ->
       let imihlst = interpret_0_input_horz_content env ihlst in
       return @@ InputHorzClosure(imihlst, env)
@@ -372,12 +366,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
 
   | ASTEndOfList ->
       return @@ CdEndOfList
-
-  | FinishHeaderFile ->
-      (CdFinishHeaderFile, Some(env))
-
-  | FinishStruct ->
-      (CdFinishStruct, Some(env))
 
   | InputHorz(ihlst) ->
       let cdihlst = ihlst |> map_input_horz (interpret_1_value env) in

@@ -1231,16 +1231,6 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         (* -- returns the environment -- *)
       exec (entry :: stack) env code dump
 
-  | OpCodeFinishHeaderFile ->
-      let entry = (CodeValue(CdFinishHeaderFile), Some(env)) in
-        (* -- returns the environment -- *)
-      exec (entry :: stack) env code dump
-
-  | OpCodeFinishStruct ->
-      let entry = (CodeValue(CdFinishStruct), Some(env)) in
-        (* -- returns the environment -- *)
-      exec (entry :: stack) env code dump
-
   | OpConvertSymbolToCode ->
       begin
         match stack with

@@ -416,12 +416,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTEndOfList        -> code0 env CdEndOfList
   | ASTMath(mlst)       -> code0 env (CdMath(mlst))
 
-  | FinishHeaderFile ->
-      (IRCodeFinishHeaderFile, env)
-
-  | FinishStruct ->
-      (IRCodeFinishStruct, env)
-
   | InputHorz(ihlst) ->
       let (imihlst, env) = transform_1_input_horz_content env ihlst in
       (IRCodeInputHorz(imihlst), env)
@@ -567,12 +561,6 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
 
   | ASTEndOfList ->
       return (IRConstant(List([])))
-
-  | FinishHeaderFile ->
-      return IRTerminal
-
-  | FinishStruct ->
-      return IRTerminal
 
   | InputHorz(ihlst) ->
       let (imihlst, env) = transform_0_input_horz_content env ihlst in
