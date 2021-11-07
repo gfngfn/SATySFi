@@ -3,40 +3,44 @@
 @require: gr
 @require: option
 
-module Annot : sig
+module Annot
+% :> sig
+%
+%   direct \href : [(length * color)?; string; inline-text] inline-cmd
+%   val link-to-uri-frame : string -> (length * color) option -> deco-set
+%   val link-to-location-frame : string -> (length * color) option -> deco-set
+%   val register-location-frame : string -> deco-set
+%
+% end
+= struct
 
-  direct \href : [(length * color)?; string; inline-text] inline-cmd
-  val link-to-uri-frame : string -> (length * color) option -> deco-set
-  val link-to-location-frame : string -> (length * color) option -> deco-set
-  val register-location-frame : string -> deco-set
-
-end = struct
-
-  let link-to-uri-frame uri borderopt =
+  val link-to-uri-frame uri borderopt =
     let deco (x, y) w h d =
       let () = register-link-to-uri uri (x, y) w h d borderopt in []
     in
       (deco, deco, deco, deco)
 
 
-  let link-to-location-frame name borderopt =
+  val link-to-location-frame name borderopt =
     let deco (x, y) w h d =
       let () = register-link-to-location name (x, y) w h d borderopt in []
     in
       (deco, deco, deco, deco)
 
 
-  let-inline ctx \href ?:borderopt uri inner =
+  val inline ctx \href ?(border = borderopt) uri inner =
     let ib = read-inline ctx inner in
     let ibL =
       match get-leftmost-script ib with
       | Some(scriptL) -> script-guard scriptL inline-nil
       | None          -> inline-nil
+      end
     in
     let ibR =
       match get-rightmost-script ib with
       | Some(scriptR) -> script-guard scriptR inline-nil
       | None          -> inline-nil
+      end
     in
     let ib-frame =
       inline-frame-breakable (0pt, 0pt, 0pt, 0pt) (link-to-uri-frame uri borderopt) ib
@@ -44,7 +48,7 @@ end = struct
     ibL ++ ib-frame ++ ibR
 
 
-  let register-location-frame key =
+  val register-location-frame key =
     let decoR (x, y) w h d =
       let () = register-destination key (x, y +' h) in []
     in

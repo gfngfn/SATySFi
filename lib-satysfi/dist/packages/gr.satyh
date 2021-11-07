@@ -2,31 +2,33 @@
 @require: geom
 @require: list
 
-module Gr : sig
+module Gr
+% :> sig
+%
+%   val rectangle : point -> point -> path
+%   val rectangle-round       : length -> point -> point -> path
+%   val rectangle-round-left  : length -> point -> point -> path
+%   val rectangle-round-left-lower : length -> point -> point -> path
+%   val rectangle-round-left-upper : length -> point -> point -> path
+%   val rectangle-round-right : length -> point -> point -> path
+%   val poly-line : point -> point list -> path
+%   val polygon : point -> point list -> path
+%   val line : point -> point -> path
+%   val circle : point -> length -> path
+%   val text-centering : point -> inline-boxes -> graphics
+%   val text-leftward : point -> inline-boxes -> graphics
+%   val text-rightward : point -> inline-boxes -> graphics
+%   val arrow : length -> color -> length -> length -> length -> point -> point -> graphics list
+%   val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics list
+%   val rotate-path : point -> float -> path -> path
+%   val scale-path : point -> float -> float -> path -> path
+%   val rotate-graphics : point -> float -> graphics -> graphics
+%   val scale-graphics : point -> float -> float -> graphics -> graphics
+%
+% end
+= struct
 
-  val rectangle : point -> point -> path
-  val rectangle-round       : length -> point -> point -> path
-  val rectangle-round-left  : length -> point -> point -> path
-  val rectangle-round-left-lower : length -> point -> point -> path
-  val rectangle-round-left-upper : length -> point -> point -> path
-  val rectangle-round-right : length -> point -> point -> path
-  val poly-line : point -> point list -> path
-  val polygon : point -> point list -> path
-  val line : point -> point -> path
-  val circle : point -> length -> path
-  val text-centering : point -> inline-boxes -> graphics
-  val text-leftward : point -> inline-boxes -> graphics
-  val text-rightward : point -> inline-boxes -> graphics
-  val arrow : length -> color -> length -> length -> length -> point -> point -> graphics list
-  val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics list
-  val rotate-path : point -> float -> path -> path
-  val scale-path : point -> float -> float -> path -> path
-  val rotate-graphics : point -> float -> graphics -> graphics
-  val scale-graphics : point -> float -> float -> graphics -> graphics
-
-end = struct
-
-  let rectangle (x1, y1) (x2, y2) =
+  val rectangle (x1, y1) (x2, y2) =
     start-path (x1, y1)
       |> line-to (x1, y2)
       |> line-to (x2, y2)
@@ -34,12 +36,12 @@ end = struct
       |> close-with-line
 
 
-  let rectangle-round r (xA, yA) (xB, yB) =
+  val rectangle-round r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
-    let x1 = length-min xA xB in
-    let x2 = length-max xA xB in
-    let y1 = length-min yA yB in
-    let y2 = length-max yA yB in
+    let x1 = Pervasives.length-min xA xB in
+    let x2 = Pervasives.length-max xA xB in
+    let y1 = Pervasives.length-min yA yB in
+    let y2 = Pervasives.length-max yA yB in
       start-path                                 (x1, y1 +' r)
         |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
         |> line-to                               (x2 -' r, y1)
@@ -51,12 +53,12 @@ end = struct
         |> close-with-line
 
 
-  let rectangle-round-left r (xA, yA) (xB, yB) =
+  val rectangle-round-left r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
-    let x1 = length-min xA xB in
-    let x2 = length-max xA xB in
-    let y1 = length-min yA yB in
-    let y2 = length-max yA yB in
+    let x1 = Pervasives.length-min xA xB in
+    let x2 = Pervasives.length-max xA xB in
+    let y1 = Pervasives.length-min yA yB in
+    let y2 = Pervasives.length-max yA yB in
       start-path                                 (x1, y1 +' r)
         |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
         |> line-to                               (x2, y1)
@@ -66,12 +68,12 @@ end = struct
         |> close-with-line
 
 
-  let rectangle-round-left-lower r (xA, yA) (xB, yB) =
+  val rectangle-round-left-lower r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
-    let x1 = length-min xA xB in
-    let x2 = length-max xA xB in
-    let y1 = length-min yA yB in
-    let y2 = length-max yA yB in
+    let x1 = Pervasives.length-min xA xB in
+    let x2 = Pervasives.length-max xA xB in
+    let y1 = Pervasives.length-min yA yB in
+    let y2 = Pervasives.length-max yA yB in
       start-path                                 (x1, y1 +' r)
         |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
         |> line-to                               (x2, y1)
@@ -80,12 +82,12 @@ end = struct
         |> close-with-line
 
 
-  let rectangle-round-left-upper r (xA, yA) (xB, yB) =
+  val rectangle-round-left-upper r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
-    let x1 = length-min xA xB in
-    let x2 = length-max xA xB in
-    let y1 = length-min yA yB in
-    let y2 = length-max yA yB in
+    let x1 = Pervasives.length-min xA xB in
+    let x2 = Pervasives.length-max xA xB in
+    let y1 = Pervasives.length-min yA yB in
+    let y2 = Pervasives.length-max yA yB in
       start-path                                 (x1, y1)
         |> line-to                               (x2, y1)
         |> line-to                               (x2, y2)
@@ -94,12 +96,12 @@ end = struct
         |> close-with-line
 
 
-  let rectangle-round-right r (xA, yA) (xB, yB) =
+  val rectangle-round-right r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
-    let x1 = length-min xA xB in
-    let x2 = length-max xA xB in
-    let y1 = length-min yA yB in
-    let y2 = length-max yA yB in
+    let x1 = Pervasives.length-min xA xB in
+    let x2 = Pervasives.length-max xA xB in
+    let y1 = Pervasives.length-min yA yB in
+    let y2 = Pervasives.length-max yA yB in
       start-path                                 (x1, y1)
         |> line-to                               (x2 -' r, y1)
         |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)
@@ -109,23 +111,23 @@ end = struct
         |> close-with-line
 
 
-  let poly-line ptinit ptlst =
+  val poly-line ptinit ptlst =
     ptlst |> List.fold-left (fun acc pt -> (
       acc |> line-to pt
     )) (start-path ptinit) |> terminate-path
 
 
-  let polygon ptinit ptlst =
+  val polygon ptinit ptlst =
     ptlst |> List.fold-left (fun acc pt -> (
       acc |> line-to pt
     )) (start-path ptinit) |> close-with-line
 
 
-  let line pt1 pt2 =
+  val line pt1 pt2 =
     start-path pt1 |> line-to pt2 |> terminate-path
 
 
-  let circle (cx, cy) r =
+  val circle (cx, cy) r =
     let t = r *' 0.55228 in
       start-path (cx -' r, cy)
         |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
@@ -134,69 +136,69 @@ end = struct
         |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
 
 
-  let text-centering pt ib =
+  val text-centering pt ib =
     let gr = draw-text pt ib in
     let ((xmin, _), (xmax, _)) = get-graphics-bbox gr in
     let wid = xmax -' xmin in
       shift-graphics (0pt -' wid *' 0.5, 0pt) gr
 
 
-  let text-rightward =
+  val text-rightward =
     draw-text
 
 
-  let text-leftward pt ib =
+  val text-leftward pt ib =
     let gr = draw-text pt ib in
     let ((xmin, _), (xmax, _)) = get-graphics-bbox gr in
     let wid = xmax -' xmin in
       shift-graphics (0pt -' wid, 0pt) gr
 
 
-  let arrow-scheme strokef color lenL lenM lenP ((x1, y1) as pt1) ((x2, y2) as pt2) =
+  val arrow-scheme strokef color lenL lenM lenP ((x1, y1) as pt1) ((x2, y2) as pt2) =
     let theta = Geom.atan2-point pt2 pt1 in
     let (cx, cy) = (x2 +' lenL *' (cos theta), y2 +' lenL *' (sin theta)) in
     let (mx, my) = (x2 +' lenM *' (cos theta), y2 +' lenM *' (sin theta)) in
-    let phi = theta +. math-pi /. 2. in
+    let phi = theta +. Pervasives.math-pi /. 2. in
     let (p1, q1) = (cx +' lenP *' (cos phi), cy +' lenP *' (sin phi)) in
     let (p2, q2) = (cx -' lenP *' (cos phi), cy -' lenP *' (sin phi)) in
       [
-        strokef color (line pt1 (mx, my));
-        fill color (polygon pt2 [(p1, q1); (mx, my); (p2, q2)]);
+        strokef color (line pt1 (mx, my)),
+        fill color (polygon pt2 [(p1, q1), (mx, my), (p2, q2)]),
       ]
 
 
-  let arrow thkns =
+  val arrow thkns =
     arrow-scheme (stroke thkns)
 
 
-  let dashed-arrow thkns dash =
+  val dashed-arrow thkns dash =
     arrow-scheme (dashed-stroke thkns dash)
 
 
-  let rotate-path centpt angle path =
+  val rotate-path centpt angle path =
     let (centx, centy) = centpt in
-    let rad = angle *. math-pi /. 180. in
+    let rad = angle *. Pervasives.math-pi /. 180. in
     path |> shift-path (0pt -' centx, 0pt -' centy)
          |> linear-transform-path (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
          |> shift-path centpt
 
 
-  let scale-path centpt scalex scaley path =
+  val scale-path centpt scalex scaley path =
     let (centx, centy) = centpt in
     path |> shift-path (0pt -' centx, 0pt -' centy)
          |> linear-transform-path scalex 0. 0. scaley
          |> shift-path centpt
 
 
-  let rotate-graphics centpt angle gr =
+  val rotate-graphics centpt angle gr =
     let (centx, centy) = centpt in
-    let rad = angle *. math-pi /. 180. in
+    let rad = angle *. Pervasives.math-pi /. 180. in
     gr |> shift-graphics (0pt -' centx, 0pt -' centy)
        |> linear-transform-graphics (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
        |> shift-graphics centpt
 
 
-  let scale-graphics centpt scalex scaley gr =
+  val scale-graphics centpt scalex scaley gr =
     let (centx, centy) = centpt in
     gr |> shift-graphics (0pt -' centx, 0pt -' centy)
        |> linear-transform-graphics scalex 0. 0. scaley

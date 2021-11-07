@@ -1,104 +1,107 @@
+module Pervasives = struct
+
+  type point = length * length
+
+  type paren = length -> length -> length -> length -> color -> inline-boxes * (length -> length)
 
 
-type point = length * length
-
-type paren = length -> length -> length -> length -> color -> inline-boxes * (length -> length)
-
-
-let get-natural-width ib =
-  let (wid, _, _) = get-natural-metrics ib in
+  val get-natural-width ib =
+    let (wid, _, _) = get-natural-metrics ib in
     wid
 
 
-let form-paragraph = line-break true true
+  val form-paragraph = line-break true true
 
 
-let kern len = inline-skip (0pt -' len)
+  val kern len = inline-skip (0pt -' len)
 
 
-let-inline ctx \hskip len =
-  inline-skip len
+  val inline ctx \hskip len =
+    inline-skip len
 
 
-let no-break ib =
-  inline-frame-outer (0pt, 0pt, 0pt, 0pt) (fun _ _ _ _ -> []) ib
+  val no-break ib =
+    inline-frame-outer (0pt, 0pt, 0pt, 0pt) (fun _ _ _ _ -> []) ib
 
 
-let-inline ctx \no-break inner =
-  no-break (read-inline ctx inner)
+  val inline ctx \no-break inner =
+    no-break (read-inline ctx inner)
 
 
-let-inline ctx \SATySFi =
-  let size = get-font-size ctx in
-  let f = read-inline ctx in
-  let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> read-inline in
-  let ib =
-    f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
-  in
-    script-guard Latin (no-break ib)
+  val inline ctx \SATySFi =
+    let size = get-font-size ctx in
+    let f = read-inline ctx in
+    let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> read-inline in
+    let ib =
+      f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
+    in
+      script-guard Latin (no-break ib)
 
 
-let-inline ctx \LaTeX =
-  let size = get-font-size ctx in
-  let f = read-inline ctx in
-  let fA = ctx |> set-font-size (size *' 0.7)
-               |> set-manual-rising (size *' 0.2)
-               |> read-inline
-  in
-  let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
-               |> read-inline
-  in
-  let ib =
-    f {L} ++ kern (size *' 0.2) ++ fA {A}
-      ++ f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
-  in
-    script-guard Latin (no-break ib)
+  val inline ctx \LaTeX =
+    let size = get-font-size ctx in
+    let f = read-inline ctx in
+    let fA = ctx |> set-font-size (size *' 0.7)
+                 |> set-manual-rising (size *' 0.2)
+                 |> read-inline
+    in
+    let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
+                 |> read-inline
+    in
+    let ib =
+      f {L} ++ kern (size *' 0.2) ++ fA {A}
+        ++ f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
+    in
+      script-guard Latin (no-break ib)
 
 
-let-inline ctx \TeX =
-  let size = get-font-size ctx in
-  let f = read-inline ctx in
-  let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
-               |> read-inline
-  in
-  let ib =
-    f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
-  in
-    script-guard Latin (no-break ib)
+  val inline ctx \TeX =
+    let size = get-font-size ctx in
+    let f = read-inline ctx in
+    let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
+                 |> read-inline
+    in
+    let ib =
+      f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
+    in
+      script-guard Latin (no-break ib)
 
 
-let length-max len1 len2 =
-  if len1 <' len2 then len2 else len1
+  val length-max len1 len2 =
+    if len1 <' len2 then len2 else len1
 
 
-let length-min len1 len2 =
-  if len1 <' len2 then len1 else len2
+  val length-min len1 len2 =
+    if len1 <' len2 then len1 else len2
 
 
-let length-abs len =
-  if len <' 0pt then 0pt -' len else len
+  val length-abs len =
+    if len <' 0pt then 0pt -' len else len
 
 
-let-inline ctx \fil =
-  discretionary 0 inline-nil inline-fil inline-nil
+  val inline ctx \fil =
+    discretionary 0 inline-nil inline-fil inline-nil
 
 
-let-inline ctx \fil-both =
-  discretionary 0 inline-nil inline-fil inline-fil
+  val inline ctx \fil-both =
+    discretionary 0 inline-nil inline-fil inline-fil
 
 
-let mandatory-break ctx =
-  discretionary 0 (inline-skip (get-text-width ctx *' 2.)) inline-fil inline-nil
+  val mandatory-break ctx =
+    discretionary 0 (inline-skip (get-text-width ctx *' 2.)) inline-fil inline-nil
 
 
-let destruct-option default opt =
-  match opt with
-  | None    -> default
-  | Some(v) -> v
+  val destruct-option default opt =
+    match opt with
+    | None    -> default
+    | Some(v) -> v
+    end
 
 
-let math-pi = 3.1415926536
+  val math-pi = 3.1415926536
 
 
-let increment r =
-  r <- !r + 1
+  val increment r =
+    r <- !r + 1
+
+end
