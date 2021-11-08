@@ -410,7 +410,7 @@ and untyped_abstract_tree_main =
   | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTFunction             of (label ranged * var_name ranged) list * untyped_pattern_tree * untyped_abstract_tree
+  | UTFunction             of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option * untyped_abstract_tree
   | UTOpenIn               of module_name ranged * untyped_abstract_tree
 (* Pattern matching: *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
@@ -485,7 +485,7 @@ type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
 type untyped_parameter_unit =
-  | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree
+  | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
 
 type 'a input_horz_element_scheme =
   | InputHorzText         of string

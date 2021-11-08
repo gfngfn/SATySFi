@@ -34,8 +34,8 @@
   let curry_lambda_abstraction (param_units : untyped_parameter_unit list) (utast : untyped_abstract_tree) : untyped_abstract_tree =
     let rng = Range.dummy "curry_lambda_abstraction" in
     utast |> List.fold_right (fun param_unit utast ->
-      let UTParameterUnit(opts, utpat) = param_unit in
-      (rng, UTFunction(opts, utpat, utast))
+      let UTParameterUnit(opts, utpat, mnty_opt) = param_unit in
+      (rng, UTFunction(opts, utpat, mnty_opt, utast))
     ) param_units
 
 
@@ -607,7 +607,12 @@ param_unit:
   | opts_opt=option(opt_params); utpat=pattern_bot
       {
         let opts = opts_opt |> Option.value ~default:[] in
-        UTParameterUnit(opts, utpat)
+        UTParameterUnit(opts, utpat, None)
+      }
+  | opts_opt=option(opt_params); L_PAREN; utpat=pattern; COLON; mnty=typ; R_PAREN
+      {
+        let opts = opts_opt |> Option.value ~default:[] in
+        UTParameterUnit(opts, utpat, Some(mnty))
       }
 ;
 opt_params:

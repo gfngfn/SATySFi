@@ -1065,10 +1065,14 @@ let rec typecheck
             raise (ApplicationOfNonFunction(rng1, ty1))
       end
 
-  | UTFunction(opt_params, pat, utast1) ->
+  | UTFunction(opt_params, pat, mnty_opt, utast1) ->
       let utpatbr = UTPatternBranch(pat, utast1) in
       let (optrow, evid_labmap, tyenv) = add_optionals_to_type_environment tyenv pre opt_params in
       let (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
+      mnty_opt |> Option.map (fun mnty ->
+        let typat_annot = decode_manual_type pre tyenv mnty in
+        unify typat typat_annot;
+      ) |> ignore;
       (Function(evid_labmap, patbr), (rng, FuncType(optrow, typat, ty1)))
 
   | UTPatternMatch(utastO, utpatbrs) ->
@@ -1083,12 +1087,6 @@ let rec typecheck
       let (_, varnm) = ident in
       let evid = EvalVarID.fresh ident in
       let (e1, ty1) = typecheck presub tyenv utast1 in
-(*
-      tyannot |> Option.map (fun mnty ->
-        let tyA = decode_manual_type pre tyenv mnty in
-        unify ty1 tyA
-      ) |> ignore;
-*)
       let tyenv =
         let pty =
           if is_nonexpansive_expression e1 then
