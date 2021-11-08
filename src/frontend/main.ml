@@ -725,260 +725,243 @@ let error_log_environment suspended =
         NormalLine("missing required key '" ^ key ^ "'.");
       ]
 
-  | Typechecker.UndefinedVariable(rng, mdlnmlst, varnm, candidates) ->
-      let s = String.concat "." (List.append mdlnmlst [varnm]) in
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("undefined variable '" ^ s ^ "'.");
-        NormalLineOption(make_candidates_message candidates);
-      ]
+  | Typechecker.TypeError(tyerr) ->
+      begin
+        match tyerr with
+        | UndefinedVariable(rng, mdlnmlst, varnm, candidates) ->
+            let s = String.concat "." (List.append mdlnmlst [varnm]) in
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("undefined variable '" ^ s ^ "'.");
+              NormalLineOption(make_candidates_message candidates);
+            ]
 
-  | Typechecker.UndefinedConstructor(rng, constrnm, candidates) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("undefined constructor '" ^ constrnm ^ "'.");
-        NormalLineOption(make_candidates_message candidates);
-      ]
+        | UndefinedConstructor(rng, constrnm, candidates) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("undefined constructor '" ^ constrnm ^ "'.");
+              NormalLineOption(make_candidates_message candidates);
+            ]
 
-  | Typechecker.UndefinedHorzMacro(rng, csnm) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("undefined inline macro '" ^ csnm ^ "'.");
-      ]
+        | UndefinedHorzMacro(rng, csnm) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("undefined inline macro '" ^ csnm ^ "'.");
+            ]
 
-  | Typechecker.UndefinedVertMacro(rng, csnm) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("undefined block macro '" ^ csnm ^ "'.");
-      ]
+        | UndefinedVertMacro(rng, csnm) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("undefined block macro '" ^ csnm ^ "'.");
+            ]
 
-  | Typechecker.InvalidNumberOfMacroArguments(rng, macparamtys) ->
-      report_error Typechecker (List.append [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("invalid number of macro arguments; types expected on arguments are:");
-      ] (macparamtys |> List.map (function
-        | LateMacroParameter(ty)  -> DisplayLine("* " ^ (Display.show_mono_type ty))
-        | EarlyMacroParameter(ty) -> DisplayLine("* ~" ^ (Display.show_mono_type ty))
-      )))
+        | InvalidNumberOfMacroArguments(rng, macparamtys) ->
+            report_error Typechecker (List.append [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("invalid number of macro arguments; types expected on arguments are:");
+            ] (macparamtys |> List.map (function
+              | LateMacroParameter(ty)  -> DisplayLine("* " ^ (Display.show_mono_type ty))
+              | EarlyMacroParameter(ty) -> DisplayLine("* ~" ^ (Display.show_mono_type ty))
+            )))
 
-  | Typechecker.LateMacroArgumentExpected(rng, ty) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("an early macro argument is given, but a late argument of type");
-        DisplayLine(Display.show_mono_type ty);
-        NormalLine("is expected.");
-      ]
+        | LateMacroArgumentExpected(rng, ty) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("an early macro argument is given, but a late argument of type");
+              DisplayLine(Display.show_mono_type ty);
+              NormalLine("is expected.");
+            ]
 
-  | Typechecker.EarlyMacroArgumentExpected(rng, ty) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("a late macro argument is given, but an early argument of type");
-        DisplayLine(Display.show_mono_type ty);
-        NormalLine("is expected.");
-      ]
+        | EarlyMacroArgumentExpected(rng, ty) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("a late macro argument is given, but an early argument of type");
+              DisplayLine(Display.show_mono_type ty);
+              NormalLine("is expected.");
+            ]
 
-  | Typechecker.TooManyArgument(rngcmdapp, tycmd) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rngcmdapp) ^ ":");
-        NormalLine("too many argument(s);");
-        NormalLine("the command has type");
-        DisplayLine((Display.show_mono_type tycmd) ^ ".")
-      ]
+        | UnknownUnitOfLength(rng, unitnm) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("undefined unit of length '" ^ unitnm ^ "'.");
+            ]
 
-  | Typechecker.NeedsMoreArgument(rngcmdapp, tycmd, tyreq) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rngcmdapp) ^ ":");
-        NormalLine("needs more mandatory argument(s);");
-        NormalLine("the command has type");
-        DisplayLine((Display.show_mono_type tycmd) ^ ",");
-        NormalLine("and another argument of type");
-        DisplayLine(Display.show_mono_type tyreq);
-        NormalLine("is needed.");
-      ]
+        | HorzCommandInMath(rng) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("an inline command is used as a math command.");
+            ]
 
-  | Typechecker.InvalidOptionalCommandArgument(tycmd, rngarg) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rngarg) ^ ":");
-        NormalLine("invalid application of an optional argument;");
-        NormalLine("the command has type");
-        DisplayLine((Display.show_mono_type tycmd) ^ ".");
-      ]
+        | MathCommandInHorz(rng) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("a math command is used as an inline command.");
+            ]
 
-  | Typechecker.UnknownUnitOfLength(rng, unitnm) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("undefined unit of length '" ^ unitnm ^ "'.");
-      ]
+        | BreaksValueRestriction(rng) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("this expression breaks the value restriction;");
+              NormalLine("it should be a syntactic function.");
+            ]
 
-  | Typechecker.HorzCommandInMath(rng) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("an inline command is used as a math command.");
-      ]
+        | MultiplePatternVariable(rng1, rng2, varnm) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng1));
+              NormalLine("and at " ^ (Range.to_string rng2) ^ ":");
+              NormalLine("pattern variable '" ^ varnm ^ "' is bound more than once.");
+            ]
 
-  | Typechecker.MathCommandInHorz(rng) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("a math command is used as an inline command.");
-      ]
+        | MultipleFieldInRecord(rng, fldnm) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("this record expression has more than one field for '" ^ fldnm ^ "'.");
+            ]
 
-  | Typechecker.BreaksValueRestriction(rng) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("this expression breaks the value restriction;");
-        NormalLine("it should be a syntactic function.");
-      ]
+        | InvalidExpressionAsToStaging(rng, stage) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("invalid expression as to stage;");
+              NormalLine("should be used at " ^ (string_of_stage stage) ^ ".");
+            ]
 
-  | Typechecker.MultiplePatternVariable(rng1, rng2, varnm) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng1));
-        NormalLine("and at " ^ (Range.to_string rng2) ^ ":");
-        NormalLine("pattern variable '" ^ varnm ^ "' is bound more than once.");
-      ]
+        | InvalidOccurrenceAsToStaging(rng, varnm, stage) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("invalid occurrence of variable '" ^ varnm ^ "' as to stage;");
+              NormalLine("should be used at " ^ (string_of_stage stage) ^ ".");
+            ]
 
-  | Typechecker.MultipleFieldInRecord(rng, fldnm) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("this record expression has more than one field for '" ^ fldnm ^ "'.");
-      ]
-
-  | Typechecker.InvalidExpressionAsToStaging(rng, stage) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("invalid expression as to stage;");
-        NormalLine("should be used at " ^ (string_of_stage stage) ^ ".");
-      ]
-
-  | Typechecker.InvalidOccurrenceAsToStaging(rng, varnm, stage) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("invalid occurrence of variable '" ^ varnm ^ "' as to stage;");
-        NormalLine("should be used at " ^ (string_of_stage stage) ^ ".");
-      ]
-
-  | Typechecker.ApplicationOfNonFunction(rng, ty) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("this expression has type");
-        DisplayLine(Display.show_mono_type ty);
-        NormalLine("and thus it cannot be applied to arguments.");
-      ]
+        | ApplicationOfNonFunction(rng, ty) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("this expression has type");
+              DisplayLine(Display.show_mono_type ty);
+              NormalLine("and thus it cannot be applied to arguments.");
+            ]
 
 
-  | Typechecker.MultiCharacterMathScriptWithoutBrace(rng) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("more than one character is used as a math sub/superscript without braces;");
-        NormalLine("use braces for making association explicit.");
-      ]
+        | MultiCharacterMathScriptWithoutBrace(rng) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("more than one character is used as a math sub/superscript without braces;");
+              NormalLine("use braces for making association explicit.");
+            ]
 
-  | Typechecker.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("'" ^ tynm ^ "' is expected to have " ^ (string_of_int lenexp) ^ " type argument(s),");
-        NormalLine("but it has " ^ (string_of_int lenerr) ^ " type argument(s) here.");
-      ]
-(*
-  | Typeenv.UndefinedTypeName(rng, mdlnmlst, tynm, candidates) ->
-      let s = String.concat "." (List.append mdlnmlst [tynm]) in
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("undefined type name '" ^ s ^ "'");
-        NormalLineOption(make_candidates_message candidates);
-      ]
+        | IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
+            report_error Typechecker [
+              NormalLine("at " ^ (Range.to_string rng) ^ ":");
+              NormalLine("'" ^ tynm ^ "' is expected to have " ^ (string_of_int lenexp) ^ " type argument(s),");
+              NormalLine("but it has " ^ (string_of_int lenerr) ^ " type argument(s) here.");
+            ]
 
-  | Typeenv.UndefinedModuleName(rng, mdlnm, candidates) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("undefined module name '" ^ mdlnm ^ "'");
-        NormalLineOption(make_candidates_message candidates);
-      ]
+        | ContradictionError(((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+            let strty1 = Display.show_mono_type ty1 in
+            let strty2 = Display.show_mono_type ty2 in
+            let strrng1 = Range.to_string rng1 in
+            let strrng2 = Range.to_string rng2 in
+            let (posmsg, strtyA, strtyB, additional) =
+              match (Range.is_dummy rng1, Range.is_dummy rng2) with
+              | (true, true)   -> ("(cannot report position; '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')", strty1, strty2, [])
+              | (true, false)  -> ("at " ^ strrng2 ^ ":", strty2, strty1, [])
+              | (false, true)  -> ("at " ^ strrng1 ^ ":", strty1, strty2, [])
+              | (false, false) -> ("at " ^ strrng1 ^ ":", strty1, strty2, [ NormalLine("This constraint is required by the expression");
+                                                                            NormalLine("at " ^ strrng2 ^ "."); ])
+            in
+              report_error Typechecker (List.append [
+                NormalLine(posmsg);
+                NormalLine("this expression has type");
+                DisplayLine(strtyA ^ ",");
+                NormalLine("but is expected of type");
+                DisplayLine(strtyB ^ ".");
+              ] additional)
 
-  | Typeenv.UndefinedTypeArgument(rng, tyargnm, candidates) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("undefined type argument '" ^ tyargnm ^ "'");
-        NormalLineOption(make_candidates_message candidates);
-      ]
+        | InclusionError(((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+            let strty1 = Display.show_mono_type ty1 in
+            let strty2 = Display.show_mono_type ty2 in
+            let strrng1 = Range.to_string rng1 in
+            let strrng2 = Range.to_string rng2 in
+            let (posmsg, strtyA, strtyB, additional) =
+              match (Range.is_dummy rng1, Range.is_dummy rng2) with
+              | (true, true)   -> ("(cannot report position; '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')", strty1, strty2, [])
+              | (true, false)  -> ("at " ^ strrng2 ^ ":", strty2, strty1, [])
+              | (false, true)  -> ("at " ^ strrng1 ^ ":", strty1, strty2, [])
+              | (false, false) -> ("at " ^ strrng1 ^ ":", strty1, strty2, [ NormalLine("This constraint is required by the expression");
+                                                                            NormalLine("at " ^ strrng2 ^ "."); ])
+            in
+              report_error Typechecker (List.append [
+                NormalLine(posmsg);
+                NormalLine("this expression has types");
+                DisplayLine(strtyA);
+                NormalLine("and");
+                DisplayLine(strtyB);
+                NormalLine("at the same time, but these are incompatible.");
+              ] additional)
 
-  | Typeenv.CyclicTypeDefinition(reslist) ->
-      report_error Typechecker (
-        (NormalLine("cyclic synonym type definition:"))
-        :: (List.map (fun (rng, strty) -> DisplayLine(strty ^ " (at " ^ (Range.to_string rng) ^ ")")) reslist)
-      )
+        | TypeParameterBoundMoreThanOnce(rng, tyvarnm) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "type variable %s is bound more than once." tyvarnm);
+            ]
 
-  | Typeenv.MultipleTypeDefinition(rng1, rng2, tynm) ->
-      report_error Typechecker [
-        NormalLine("parallel type definition by the same name:");
-        DisplayLine(tynm ^ " (at " ^ (Range.to_string rng1) ^ ")");
-        DisplayLine(tynm ^ " (at " ^ (Range.to_string rng2) ^ ")");
-      ]
+        | ConflictInSignature(rng, member) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "'%s' is declared more than once in a signature." member);
+            ]
 
-  | Typeenv.NotProvidingTypeImplementation(rng, tynm) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("The implementation does not provide type '" ^ tynm ^ "',");
-        NormalLine("which is required by the signature.");
-      ]
+        | NotAStructureSignature(rng, _fsig) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine("not a structure signature (TODO (enhance): detailed report)");
+            ]
 
-  | Typeenv.NotProvidingValueImplementation(rng, varnm) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("The implementation does not provide value '" ^ varnm ^ "',");
-        NormalLine("which is required by the signature.");
-      ]
+        | MissingRequiredValueName(rng, x, pty) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "missing required value '%s' of type" x);
+              DisplayLine(Display.show_poly_type pty);
+            ]
 
-  | Typeenv.NotMatchingInterface(rng, varnm, tyenv1, pty1, tyenv2, pty2) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("The implementation of value '" ^ varnm ^ "' has type");
-        DisplayLine(Display.show_poly_type tyenv1 pty1);
-        NormalLine("which is inconsistent with the type required by the signature");
-        DisplayLine(Display.show_poly_type tyenv2 pty2);
-      ]
-*)
-  | Typechecker.ContradictionError(((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = Display.show_mono_type ty1 in
-      let strty2 = Display.show_mono_type ty2 in
-      let strrng1 = Range.to_string rng1 in
-      let strrng2 = Range.to_string rng2 in
-      let (posmsg, strtyA, strtyB, additional) =
-        match (Range.is_dummy rng1, Range.is_dummy rng2) with
-        | (true, true)   -> ("(cannot report position; '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')", strty1, strty2, [])
-        | (true, false)  -> ("at " ^ strrng2 ^ ":", strty2, strty1, [])
-        | (false, true)  -> ("at " ^ strrng1 ^ ":", strty1, strty2, [])
-        | (false, false) -> ("at " ^ strrng1 ^ ":", strty1, strty2, [ NormalLine("This constraint is required by the expression");
-                                                                      NormalLine("at " ^ strrng2 ^ "."); ])
-      in
-        report_error Typechecker (List.append [
-          NormalLine(posmsg);
-          NormalLine("this expression has type");
-          DisplayLine(strtyA ^ ",");
-          NormalLine("but is expected of type");
-          DisplayLine(strtyB ^ ".");
-        ] additional)
+        | MissingRequiredTypeName(rng, tynm, arity) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "missing required type '%s' of arity %d" tynm arity);
+            ]
 
-  | Typechecker.InclusionError(((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = Display.show_mono_type ty1 in
-      let strty2 = Display.show_mono_type ty2 in
-      let strrng1 = Range.to_string rng1 in
-      let strrng2 = Range.to_string rng2 in
-      let (posmsg, strtyA, strtyB, additional) =
-        match (Range.is_dummy rng1, Range.is_dummy rng2) with
-        | (true, true)   -> ("(cannot report position; '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')", strty1, strty2, [])
-        | (true, false)  -> ("at " ^ strrng2 ^ ":", strty2, strty1, [])
-        | (false, true)  -> ("at " ^ strrng1 ^ ":", strty1, strty2, [])
-        | (false, false) -> ("at " ^ strrng1 ^ ":", strty1, strty2, [ NormalLine("This constraint is required by the expression");
-                                                                      NormalLine("at " ^ strrng2 ^ "."); ])
-      in
-        report_error Typechecker (List.append [
-          NormalLine(posmsg);
-          NormalLine("this expression has types");
-          DisplayLine(strtyA);
-          NormalLine("and");
-          DisplayLine(strtyB);
-          NormalLine("at the same time, but these are incompatible.");
-        ] additional)
+        | MissingRequiredModuleName(rng, modnm, _modsig) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "missing required module '%s' (TODO (enhance): detailed report)" modnm);
+            ]
+
+        | MissingRequiredSignatureName(rng, signm, _absmodsig) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "missing required signature '%s' (TODO (enhance): detailed report)" signm);
+            ]
+
+        | NotASubtypeAboutType(rng, tynm) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "not a subtype about type '%s'." tynm);
+            ]
+
+        | NotASubtypeSignature(rng, _modsig1, _modsig2) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine("not a subtype signature (TODO (enhance): detailed report)");
+            ]
+
+        | NotASubtypePolymorphicType(rng, x, pty1, pty2) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "not a subtype about value '%s'; type" x);
+              DisplayLine(Display.show_poly_type pty1);
+              NormalLine("is not a subtype of");
+              DisplayLine(Display.show_poly_type pty2);
+            ]
+      end
 
   | Evaluator.EvalError(s)
   | Vm.ExecError(s)

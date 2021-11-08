@@ -2,43 +2,14 @@
 open MyUtil
 open SyntaxBase
 open Types
-open Display
 open StaticEnv
 
-exception UndefinedVariable              of Range.t * module_name list * var_name * var_name list
-exception UndefinedConstructor           of Range.t * var_name * var_name list
-exception InclusionError                 of mono_type * mono_type
-exception ContradictionError             of mono_type * mono_type
-exception UnknownUnitOfLength            of Range.t * length_unit_name
-exception HorzCommandInMath              of Range.t
-exception MathCommandInHorz              of Range.t
-exception BreaksValueRestriction         of Range.t
-exception MultiplePatternVariable        of Range.t * Range.t * var_name
-exception InvalidOptionalCommandArgument of mono_type * Range.t
-exception NeedsMoreArgument              of Range.t * mono_type * mono_type
-exception TooManyArgument                of Range.t * mono_type
-exception MultipleFieldInRecord          of Range.t * label
-exception ApplicationOfNonFunction       of Range.t * mono_type
-exception InvalidExpressionAsToStaging   of Range.t * stage
-exception InvalidOccurrenceAsToStaging   of Range.t * var_name * stage
-exception UndefinedHorzMacro             of Range.t * ctrlseq_name
-exception UndefinedVertMacro             of Range.t * ctrlseq_name
-exception InvalidNumberOfMacroArguments  of Range.t * macro_parameter_type list
-exception LateMacroArgumentExpected      of Range.t * mono_type
-exception EarlyMacroArgumentExpected     of Range.t * mono_type
-exception IllegalNumberOfTypeArguments   of Range.t * type_name * int * int
-exception TypeParameterBoundMoreThanOnce of Range.t * type_variable_name
-exception ConflictInSignature            of Range.t * string
-exception NotOfStructureType             of Range.t * signature
-exception NotAStructureSignature         of Range.t
-exception MissingRequiredValueName       of Range.t * var_name * poly_type
-exception MissingRequiredTypeName        of Range.t * type_name * int
-exception MissingRequiredModuleName      of Range.t * module_name * signature
-exception MissingRequiredSignatureName   of Range.t * signature_name * signature abstracted
-exception NotASubtypeAboutType           of Range.t * type_name
-exception NotASubtype                    of Range.t * signature * signature
-exception PolymorphicContradiction       of Range.t * var_name * poly_type * poly_type
-exception MultiCharacterMathScriptWithoutBrace of Range.t
+exception TypeError of TypeError.type_error
+
+
+let raise_error (tyerr : TypeError.type_error) =
+  raise (TypeError(tyerr))
+
 
 exception InternalInclusionError
 exception InternalContradictionError
@@ -128,7 +99,7 @@ let add_type_parameters (lev : Level.t) (tyvars : (type_variable_name ranged) li
   let (typarammap, bidacc) =
     tyvars |> List.fold_left (fun (typarammap, bidacc) (rng, tyvarnm) ->
       if typarammap |> TypeParameterMap.mem tyvarnm then
-        raise (TypeParameterBoundMoreThanOnce(rng, tyvarnm))
+        raise_error (TypeParameterBoundMoreThanOnce(rng, tyvarnm))
       else
         let mbbid = MustBeBoundID.fresh lev in
         let bid = MustBeBoundID.to_bound_id mbbid in
@@ -309,7 +280,7 @@ let rec is_nonexpansive_expression e =
 
 let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_var_map) : pattern_var_map =
   PatternVarMap.union (fun varnm (rng1, _, _) (rng2, _, _) ->
-    raise (MultiplePatternVariable(rng1, rng2, varnm))
+    raise_error (MultiplePatternVariable(rng1, rng2, varnm))
   ) patvarmap1 patvarmap2
 
 
@@ -781,8 +752,8 @@ let unify (ty1 : mono_type) (ty2 : mono_type) =
   try
     unify_sub ty1 ty2
   with
-  | InternalInclusionError     -> raise (InclusionError(ty1, ty2))
-  | InternalContradictionError -> raise (ContradictionError(ty1, ty2))
+  | InternalInclusionError     -> raise_error (InclusionError(ty1, ty2))
+  | InternalContradictionError -> raise_error (ContradictionError(ty1, ty2))
 
 
 let fresh_type_variable (rng : Range.t) (pre : pre) : mono_type =
@@ -823,7 +794,7 @@ let rec typecheck
       begin
         match pre.stage with
         | Stage1 | Persistent0 ->
-            raise (InvalidExpressionAsToStaging(rng, Stage0))
+            raise_error (InvalidExpressionAsToStaging(rng, Stage0))
 
         | Stage0 ->
             let e =
@@ -845,7 +816,7 @@ let rec typecheck
           | "cm"   -> Length.of_centimeter flt
           | "mm"   -> Length.of_millimeter flt
           | "inch" -> Length.of_inch flt
-          | _      -> raise (UnknownUnitOfLength(rng, unitnm))
+          | _      -> raise_error (UnknownUnitOfLength(rng, unitnm))
         in
         (base (BCLength(len)), (rng, BaseType(LengthType)))
 
@@ -891,7 +862,7 @@ let rec typecheck
             ContentOf(rng, evid)
 
         | _ ->
-            raise (InvalidOccurrenceAsToStaging(rng, varnm, stage))
+            raise_error (InvalidOccurrenceAsToStaging(rng, varnm, stage))
       in
       let (stage, pty, e) =
         match modidents with
@@ -901,7 +872,7 @@ let rec typecheck
               | None ->
 (*
                   let cands = Typeenv.find_candidates tyenv mdlnmlst varnm rng in
-                  raise (UndefinedVariable(rng, mdlnmlst, varnm, cands))
+                  raise_error (UndefinedVariable(rng, mdlnmlst, varnm, cands))
 *)
                   failwith (Printf.sprintf "TODO (error): not found '%s'" varnm)
 
@@ -929,7 +900,7 @@ let rec typecheck
               | None ->
 (*
                   let cands = Typeenv.find_candidates tyenv mdlnmlst varnm rng in
-                  raise (UndefinedVariable(rng, mdlnmlst, varnm, cands))
+                  raise_error (UndefinedVariable(rng, mdlnmlst, varnm, cands))
 *)
                   failwith (Printf.sprintf "TODO (error): not found '%s'" varnm)
 
@@ -1060,7 +1031,7 @@ let rec typecheck
 
         | ty1 ->
             let (rng1, _) = utast1 in
-            raise (ApplicationOfNonFunction(rng1, ty1))
+            raise_error (ApplicationOfNonFunction(rng1, ty1))
       end
 
   | UTFunction(opt_params, pat, mnty_opt, utast1) ->
@@ -1136,8 +1107,6 @@ let rec typecheck
       unify ty2 ty1;
       (IfThenElse(eB, e1, e2), ty1)
 
-(* ---- imperatives ---- *)
-
   | UTLetIn(UTMutable(ident, utastI), utastA) ->
       let (tyenvI, evid, eI, tyI) = make_type_environment_by_let_mutable pre tyenv ident utastI in
       let (eA, tyA) = typecheck_iter tyenvI utastA in
@@ -1150,24 +1119,18 @@ let rec typecheck
         | ((ContentOf(_, evid) | Persistent(_, evid)), tyvar) ->
             let (eN, tyN) = typecheck_iter tyenv utastN in
             unify tyvar (get_range utastN, RefType(tyN));
-              (* --
-                 actually 'get_range utastnew' is not good
-                 since the right side expression has type 't, not 't ref
-              -- *)
+              (* Actually `get_range utastN` is not good
+                 since the rhs expression has type `ty`, not `ref ty`  *)
             (Overwrite(evid, eN), (rng, BaseType(UnitType)))
 
         | _ ->
             assert false
       end
 
-(* ---- lightweight itemize ---- *)
-
   | UTItemize(utitmz) ->
       let eitmz = typecheck_itemize pre tyenv utitmz in
       let ty = TypeConv.overwrite_range_of_type (Primitives.itemize_type ()) rng in
       (eitmz, ty)
-
-(* ---- list ---- *)
 
   | UTListCons(utastH, utastT) ->
       let (eH, tyH) = typecheck_iter tyenv utastH in
@@ -1180,16 +1143,12 @@ let rec typecheck
       let beta = fresh_type_variable rng pre in
       (ASTEndOfList, (rng, ListType(beta)))
 
-(* ---- tuple ---- *)
-
   | UTTuple(utasts) ->
       let etys = TupleList.map (typecheck_iter tyenv) utasts in
       let es = TupleList.map fst etys in
       let tys = TupleList.map snd etys in
       let tyres = (rng, ProductType(tys)) in
       (PrimitiveTuple(es), tyres)
-
-(* ---- records ---- *)
 
   | UTRecord(fields) ->
       typecheck_record rng pre tyenv fields
@@ -1217,29 +1176,11 @@ let rec typecheck
       unify ty1 (Range.dummy "UTUpdateField", RecordType(row));
       (UpdateField(e1, label, e2), ty1)
 
-(* -- math -- *)
-
   | UTMath(utmath) ->
       let tymath = (rng, BaseType(MathType)) in
       let utast = typecheck_math pre tyenv utmath in
       (utast, tymath)
 
-(*
-(* ---- other fundamentals ---- *)
-  | UTDeclareVariantIn(mutvarntcons, utastA) ->
-      let tyenvnew = Typeenv.add_mutual_cons tyenv pre.level mutvarntcons in
-      typecheck_iter tyenvnew utastA
-  | UTModule(mdlrng, mdlnm, sigopt, utastM, utastA) ->
-      let tyenvinner = Typeenv.enter_new_module tyenv mdlnm in
-      let (eM, _) = typecheck_iter tyenvinner utastM in
-        (* -- the final type environment in the module has been written to `final_tyenv` -- *)
-      let tyenvmid = Typeenv.sigcheck mdlrng pre (!final_tyenv) tyenv sigopt in
-      let tyenvouter = Typeenv.leave_module tyenvmid in
-      let (eA, tyA) = typecheck_iter tyenvouter utastA in
-      (Module(eM, eA), tyA)
-*)
-
-(* ---- for lightweight command definition ---- *)
   | UTLexHorz(utastctx, utasth) ->
       let (ectx, tyctx) = typecheck_iter tyenv utastctx in
       let (eh, tyh) = typecheck_iter tyenv utasth in
@@ -1266,8 +1207,6 @@ let rec typecheck
       unify tyv (Range.dummy "ut-lex-vert-2", BaseType(TextColType));
       (eret, (rng, BaseType(bstyret)))
 
-(* -- staged constructs -- *)
-
   | UTNext(utast1) ->
       begin
         match pre.stage with
@@ -1276,14 +1215,14 @@ let rec typecheck
             (Next(e1), (rng, CodeType(ty1)))
 
         | Stage1 | Persistent0 ->
-            raise (InvalidExpressionAsToStaging(rng, Stage0))
+            raise_error (InvalidExpressionAsToStaging(rng, Stage0))
       end
 
   | UTPrev(utast1) ->
       begin
         match pre.stage with
         | Stage0 | Persistent0 ->
-            raise (InvalidExpressionAsToStaging(rng, Stage1))
+            raise_error (InvalidExpressionAsToStaging(rng, Stage1))
 
         | Stage1 ->
             let (e1, ty1) = typecheck_iter ~s:Stage0 tyenv utast1 in
@@ -1293,13 +1232,11 @@ let rec typecheck
       end
 
 (*
-(* -- macros -- *)
-
   | UTLetHorzMacroIn(rngcs, csnm, macparams, utast1, utast2) ->
       begin
         match pre.stage with
         | Stage0 | Persistent0 ->
-            raise (InvalidExpressionAsToStaging(rng, Stage1))
+            raise_error (InvalidExpressionAsToStaging(rng, Stage1))
 
         | Stage1 ->
             let (tyenv, argevids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
@@ -1315,7 +1252,7 @@ let rec typecheck
       begin
         match pre.stage with
         | Stage0 | Persistent0 ->
-            raise (InvalidExpressionAsToStaging(rng, Stage1))
+            raise_error (InvalidExpressionAsToStaging(rng, Stage1))
 
         | Stage1 ->
             let (tyenv, argevids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
@@ -1377,7 +1314,7 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
 
     | (false, (rng, UTMChars(uchs))) ->
         if List.length uchs >= 2 then
-          raise (MultiCharacterMathScriptWithoutBrace(rng))
+          raise_error (MultiCharacterMathScriptWithoutBrace(rng))
         else
           Logging.warn_math_script_without_brace rng
 
@@ -1417,7 +1354,7 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
 
           | HorzCommandType(_) ->
               let (rngcmd, _) = utastcmd in
-              raise (HorzCommandInMath(rngcmd))
+              raise_error (HorzCommandInMath(rngcmd))
 
           | _ ->
               assert false
@@ -1465,14 +1402,14 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
         begin
           match pre.stage with
           | Stage0 | Persistent0 ->
-              raise (InvalidExpressionAsToStaging(rngapp, Stage1))
+              raise_error (InvalidExpressionAsToStaging(rngapp, Stage1))
 
           | Stage1 ->
               let (rngcs, csnm) = vmacro in
               begin
                 match tyenv |> Typeenv.find_macro csnm with
                 | None ->
-                    raise (UndefinedVertMacro(rngcs, csnm))
+                    raise_error (UndefinedVertMacro(rngcs, csnm))
 
                 | Some(macentry) ->
                     let macparamtys =
@@ -1516,7 +1453,7 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
 
           | MathCommandType(_) ->
               let (rngcmd, _) = utastcmd in
-              raise (MathCommandInHorz(rngcmd))
+              raise_error (MathCommandInHorz(rngcmd))
 
           | _ ->
               assert false
@@ -1542,14 +1479,14 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
         begin
           match pre.stage with
           | Stage0 | Persistent0 ->
-              raise (InvalidExpressionAsToStaging(rngapp, Stage1))
+              raise_error (InvalidExpressionAsToStaging(rngapp, Stage1))
 
           | Stage1 ->
               let (rngcs, csnm) = hmacro in
               begin
                 match tyenv |> Typeenv.find_macro csnm with
                 | None ->
-                    raise (UndefinedHorzMacro(rngcs, csnm))
+                    raise_error (UndefinedHorzMacro(rngcs, csnm))
 
                 | Some(macentry) ->
                     let macparamtys =
@@ -1572,7 +1509,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
   let lenexp = List.length macparamtys in
   let lenact = List.length utmacargs in
   if (lenexp <> lenact) then
-    raise (InvalidNumberOfMacroArguments(rng, macparamtys))
+    raise_error (InvalidNumberOfMacroArguments(rng, macparamtys))
   else
     let argacc =
       List.fold_left2 (fun argacc macparamty utmacarg ->
@@ -1581,7 +1518,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
             let (earg, tyarg) = typecheck pre tyenv utast in
             unify tyarg tyexp;
             Alist.extend argacc (Next(earg))
-              (* -- late arguments are converted to quoted arguments -- *)
+              (* Late arguments are converted to quoted arguments. *)
 
         | (EarlyMacroParameter(tyexp), UTEarlyMacroArg(utast)) ->
             let (earg, tyarg) = typecheck { pre with stage = Stage0 } tyenv utast in
@@ -1589,10 +1526,10 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
             Alist.extend argacc earg
 
         | (LateMacroParameter(tyexp), UTEarlyMacroArg((rngarg, _))) ->
-            raise (LateMacroArgumentExpected(rngarg, tyexp))
+            raise_error (LateMacroArgumentExpected(rngarg, tyexp))
 
         | (EarlyMacroParameter(tyexp), UTLateMacroArg((rngarg, _))) ->
-            raise (EarlyMacroArgumentExpected(rngarg, tyexp))
+            raise_error (EarlyMacroArgumentExpected(rngarg, tyexp))
 
       ) Alist.empty macparamtys utmacargs
     in
@@ -1604,7 +1541,7 @@ and typecheck_record (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (fields : (
     fields |> List.fold_left (fun (easc, row) (rlabel, utast) ->
       let (rng_label, label) = rlabel in
       if easc |> LabelMap.mem label then
-        raise (MultipleFieldInRecord(rng_label, label))
+        raise_error (MultipleFieldInRecord(rng_label, label))
       else
         let (e, ty) = typecheck pre tyenv utast in
         (easc |> LabelMap.add label e, RowCons(rlabel, ty, row))
@@ -1696,8 +1633,8 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         begin
           match PatternVarMap.find_opt varnm patvarmap1 with
           | Some((rngsub, _, _)) ->
-            (* -- if 'varnm' also occurs in 'utpat1' -- *)
-              raise (MultiplePatternVariable(rngsub, rng, varnm))
+            (* If 'varnm' also occurs in `utpat1`: *)
+              raise_error (MultiplePatternVariable(rngsub, rng, varnm))
 
           | None ->
               let evid = EvalVarID.fresh (rng, varnm) in
@@ -1762,11 +1699,11 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
               tupleacc
             end else
             let (rng1, _) = utast1 in
-            raise (BreaksValueRestriction(rng1))
+            raise_error (BreaksValueRestriction(rng1))
 
         | _ ->
             let (rng1, _) = utast1 in
-            raise (BreaksValueRestriction(rng1))
+            raise_error (BreaksValueRestriction(rng1))
       end
     ) Alist.empty
   in
@@ -1796,7 +1733,7 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident 
 
 and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type =
   let invalid rng tynm ~expect:len_expected ~actual:len_actual =
-    raise (IllegalNumberOfTypeArguments(rng, tynm, len_expected, len_actual))
+    raise_error (IllegalNumberOfTypeArguments(rng, tynm, len_expected, len_actual))
   in
   let rec aux (rng, mtymain) =
     let tymain =
@@ -2169,13 +2106,13 @@ and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : 
             match ssig1 |> StructSig.find_type tynm2 with
             | None ->
                 let (bids, _) = tentry2.type_scheme in
-                raise (MissingRequiredTypeName(rng, tynm2, List.length bids))
+                raise_error (MissingRequiredTypeName(rng, tynm2, List.length bids))
 
             | Some(tentry1) ->
                 begin
                   match lookup_type_entry tentry1 tentry2 with
                   | None ->
-                      raise (NotASubtypeAboutType(rng, tynm2))
+                      raise_error (NotASubtypeAboutType(rng, tynm2))
 
                   | Some(subst0) ->
                       SubstMap.union take_left subst0 subst
@@ -2184,7 +2121,7 @@ and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : 
           ~m:(fun modnm2 { mod_signature = modsig2; _ } subst ->
             match ssig1 |> StructSig.find_module modnm2 with
             | None ->
-                raise (MissingRequiredModuleName(rng, modnm2, modsig2))
+                raise_error (MissingRequiredModuleName(rng, modnm2, modsig2))
 
             | Some({ mod_signature = modsig1; _ }) ->
                 let subst0 = lookup_struct rng modsig1 modsig2 in
@@ -2365,13 +2302,13 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
           ~v:(fun x2 { val_type = pty2; _ } () ->
             match ssig1 |> StructSig.find_value x2 with
             | None ->
-                raise (MissingRequiredValueName(rng, x2, pty2))
+                raise_error (MissingRequiredValueName(rng, x2, pty2))
 
             | Some({ val_type = pty1; _ }) ->
                if subtype_poly_type pty1 pty2 then
                  ()
                else
-                 raise (PolymorphicContradiction(rng, x2, pty1, pty2))
+                 raise_error (NotASubtypePolymorphicType(rng, x2, pty1, pty2))
           )
           ~c:(fun ctornm2 centry2 () ->
             match ssig1 |> StructSig.find_constructor ctornm2 with
@@ -2415,7 +2352,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                   let (bids, _) = tentry2.type_scheme in
                   List.length bids
                 in
-                raise (MissingRequiredTypeName(rng, tynm2, arity))
+                raise_error (MissingRequiredTypeName(rng, tynm2, arity))
 
             | Some(tentry1) ->
                 let tyscheme1 = tentry1.type_scheme in
@@ -2430,7 +2367,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
           ~m:(fun modnm2 { mod_signature = modsig2; _ } () ->
             match ssig1 |> StructSig.find_module modnm2 with
             | None ->
-                raise (MissingRequiredModuleName(rng, modnm2, modsig2))
+                raise_error (MissingRequiredModuleName(rng, modnm2, modsig2))
 
             | Some({ mod_signature = modsig1; _ }) ->
                 subtype_concrete_with_concrete rng modsig1 modsig2
@@ -2438,7 +2375,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
           ~s:(fun signm2 absmodsig2 () ->
             match ssig1 |> StructSig.find_signature signm2 with
             | None ->
-                raise (MissingRequiredSignatureName(rng, signm2, absmodsig2))
+                raise_error (MissingRequiredSignatureName(rng, signm2, absmodsig2))
 
             | Some(absmodsig1) ->
                 subtype_abstract_with_abstract rng absmodsig1 absmodsig2;
@@ -2451,7 +2388,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
       Format.printf "@[<v>not a subtype (range: %a)@," Range.pp rng;
       Format.printf "***1: @[<hv1>%a@]@," pp_signature modsig1;
       Format.printf "***2: @[<hv1>%a@]@]" pp_signature modsig2;
-      raise (NotASubtype(rng, modsig1, modsig2))
+      raise_error (NotASubtypeSignature(rng, modsig1, modsig2))
 
 
 and subtype_concrete_with_abstract (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : substitution =
@@ -2821,7 +2758,7 @@ and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : un
       let ssigacc =
         match StructSig.union ssigacc ssig with
         | Ok(ssigacc) -> ssigacc
-        | Error(s)    -> raise (ConflictInSignature(Range.dummy "TODO (error): add range to declarations", s))
+        | Error(s)    -> raise_error (ConflictInSignature(Range.dummy "TODO (error): add range to declarations", s))
       in
       let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
       (quantacc, ssigacc, tyenv)
@@ -2903,9 +2840,9 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
       let (quant, modsig) = absmodsig in
       begin
         match modsig with
-        | ConcFunctor(_) ->
+        | ConcFunctor(fsig) ->
             let (rng, _) = utsig in
-            raise (NotAStructureSignature(rng))
+            raise_error (NotAStructureSignature(rng, fsig))
 
         | ConcStructure(ssig) ->
             (quant, ssig)
@@ -2922,7 +2859,7 @@ and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untype
         let quantacc = unify_quantifier quantacc quant in
         match StructSig.union ssigacc ssig with
         | Ok(ssigacc) -> (bindacc, tyenv, quantacc, ssigacc)
-        | Error(s)    -> let (rng, _) = utbind in raise (ConflictInSignature(rng, s))
+        | Error(s)    -> let (rng, _) = utbind in raise_error (ConflictInSignature(rng, s))
       ) (Alist.empty, tyenv, OpaqueIDMap.empty, StructSig.empty)
     in
     (Alist.to_list bindacc, (quantacc, ssigacc))
