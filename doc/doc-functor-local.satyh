@@ -5,10 +5,10 @@ module FunctorLocal = struct
 
   module Code1Settings = struct
     val font-family      = `lmmono`
-    val text-color       = Color.green
-    val fill-color       = Color.black
+    val text-color       = RGB(0., 1., 0.)
+    val fill-color       = Gray(0.25)
     val stroke-color     = Color.red
-    val stroke-thickness = 2pt
+    val stroke-thickness = 1pt
   end
 
   module Code1 = Code.Make Code1Settings
