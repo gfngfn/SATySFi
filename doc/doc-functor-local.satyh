@@ -13,4 +13,14 @@ module FunctorLocal = struct
 
   module Code1 = Code.Make Code1Settings
 
+  module Code2Settings = struct
+    val font-family      = `lmsans`
+    val text-color       = RGB(0., 0., 1.)
+    val fill-color       = Gray(0.75)
+    val stroke-color     = Gray(0.5)
+    val stroke-thickness = 2pt
+  end
+
+  module Code2 = Code.Make Code2Settings
+
 end

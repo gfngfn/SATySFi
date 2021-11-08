@@ -24,4 +24,8 @@ StdJaBook.document (|
     msort  xs = merge (msort left) (msort right)
                 where (left,right) = halve xs
   ```);
+  +FunctorLocal.Code2.code(```
+    The quick brown fox
+    jumps over the lazy dog.
+  ```);
 >

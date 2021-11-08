@@ -15,6 +15,9 @@ StdJaBook.document (|
   show-toc = true,
 |) '<
   +StdJaBook.p{
+    F-ing modules移植途中です．今のところ処理出来る様子．やったぜ．
+  }
+  +StdJaBook.p{
     この文書では，\Pervasives.SATySFi;によって提供される型とプリミティヴを掲げる．
     特に根幹となるのは第\StdJaBook.ref(`sec:inline`);節（\StdJaBook.ref-page(`sec:inline`);ページ）である．
   }
