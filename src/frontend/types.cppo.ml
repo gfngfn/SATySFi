@@ -808,7 +808,6 @@ and abstract_tree =
   | InputVert             of input_vert_element list
 (* -- record value -- *)
   | Record                of abstract_tree LabelMap.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
   | AccessField           of abstract_tree * label
   | UpdateField           of abstract_tree * label * abstract_tree
 (* -- fundamental -- *)

@@ -363,8 +363,10 @@ let eval_main i env_freezed ast =
   valuedoc
 
 
-let eval_document_file (env : environment) (code : code_value) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+(*
   let ast = unlift_code code in
+*)
   let env_freezed = freeze_environment env in
   if OptionState.is_text_mode () then
     let rec aux i =
@@ -427,7 +429,7 @@ let eval_document_file (env : environment) (code : code_value) (abspath_out : ab
 
 
 let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * EvalVarID.t * abstract_tree) list) (ast_doc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
-
+(*
   let rec preprocess (codeacc : (abs_path * code_binding list) Alist.t) (env : environment) libs =
     match libs with
     | [] ->
@@ -446,20 +448,24 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * Eval
        each evaluation called in `preprocess` is run by the naive interpreter
        regardless of whether `--bytecomp` was specified.
        -- *)
-
-  let rec eval (env : environment) (codebinds : (abs_path * code_binding list) list) : environment =
-    match codebinds with
+*)
+  let rec eval (env : environment) libs : environment =
+    match libs with
     | [] ->
         env
 
-    | (abspath, codebinds) :: tail ->
-        let ast = unlift_code_bindings codebinds in
-        let env = eval_library_file env abspath ast in
+    | (Stage0, _, _, _) :: _ ->
+        failwith "TODO: Stage0; unsupported"
+
+    | ((Stage1 | Persistent0), abspath, evid, e) :: tail ->
+        let env = eval_library_file env abspath [ Bind(NonRec(evid, e)) ] in
         eval env tail
   in
+(*
   let (env, codebinds, codedoc) = preprocess Alist.empty env libs in
-  let env = eval env codebinds in
-  eval_document_file env codedoc abspath_out abspath_dump
+*)
+  let env = eval env libs in
+  eval_document_file env ast_doc abspath_out abspath_dump
 
 
 let convert_abs_path_to_show abspath =

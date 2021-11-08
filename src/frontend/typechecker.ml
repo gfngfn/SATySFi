@@ -1453,7 +1453,6 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
               aux (Alist.extend acc (InputVertEmbedded(eabs))) tail
 
           | _ ->
-              Format.printf "other than block command: %a (range: %a, ast: %a)" pp_mono_type tycmd Range.pp rngcmd pp_untyped_abstract_tree utastcmd;
               assert false
         end
 
@@ -3257,7 +3256,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       let (quant, modsig) = absmodsig in
       let (rng_mod, _) = utmod in
       let evid_included =
-        EvalVarID.fresh (rng_mod, "(include)")
+        EvalVarID.fresh (rng_mod, "(included)")
       in
       begin
         match modsig with
@@ -3266,8 +3265,8 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
             let (bindacc, ssig) =
               ssig |> StructSig.fold
                 ~v:(fun x ventry (bindacc, ssig) ->
-                  let evid = EvalVarID.fresh (Range.dummy ("include:" ^ x), "(include)") in
-                  let e = AccessField(ContentOf(rng_mod, evid), x) in
+                  let evid = EvalVarID.fresh (Range.dummy ("include:" ^ x), "(includeV)") in
+                  let e = AccessField(ContentOf(rng_mod, evid_included), x) in
                   let bindacc = Alist.extend bindacc (Bind(NonRec(evid, e))) in
                   let ssig = ssig |> StructSig.add_value x { ventry with val_name = Some(evid) } in
                   (bindacc, ssig)
@@ -3276,8 +3275,8 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
                 ~f:(fun _tynm _pty acc -> acc)
                 ~t:(fun _tynm _tentry acc -> acc)
                 ~m:(fun modnm mentry (bindacc, ssig) ->
-                  let evid = EvalVarID.fresh (Range.dummy ("include:" ^ modnm), "(include)") in
-                  let e = AccessField(ContentOf(rng_mod, evid), modnm) in
+                  let evid = EvalVarID.fresh (Range.dummy ("include:" ^ modnm), "(includeM)") in
+                  let e = AccessField(ContentOf(rng_mod, evid_included), modnm) in
                   let bindacc = Alist.extend bindacc (Bind(NonRec(evid, e))) in
                   let ssig = ssig |> StructSig.add_module modnm { mentry with mod_name = Some(evid) } in
                   (bindacc, ssig)
