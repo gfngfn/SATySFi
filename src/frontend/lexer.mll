@@ -341,7 +341,7 @@ rule progexpr stack = parse
         | "open"      -> OPEN(pos)
         | "rec"       -> REC(pos)
         | "sig"       -> SIG(pos)
-        | "signature" -> STRUCT(pos)
+        | "signature" -> SIGNATURE(pos)
         | "struct"    -> STRUCT(pos)
         | "then"      -> THEN(pos)
         | "true"      -> TRUE(pos)

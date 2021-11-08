@@ -105,7 +105,29 @@ type base_type =
 [@@deriving show]
 
 
-module TypeNameMap = Map.Make(String)
+module StringMap = struct
+  include Map.Make(String)
+
+
+  let pp_k ppf s =
+    Format.fprintf ppf "\"%s\"" s
+
+
+  let pp pp_v ppf oidmap =
+    pp_map fold pp_k pp_v ppf oidmap
+end
+
+module ValueNameMap = StringMap
+
+module TypeNameMap = StringMap
+
+module ModuleNameMap = StringMap
+
+module SignatureNameMap = StringMap
+
+module MacroNameMap = StringMap
+
+module ConstructorMap = StringMap
 
 
 let base_type_map : base_type TypeNameMap.t =
@@ -141,9 +163,11 @@ type row_base_kind =
 
 type base_kind =
   | TypeKind
+[@@deriving show { with_path = false }]
 
 type kind =
   | Kind of base_kind list
+[@@deriving show { with_path = false }]
 
 type ('a, 'b) typ =
   Range.t * ('a, 'b) type_main
@@ -205,6 +229,7 @@ and poly_type =
 
 and mono_row =
   (mono_type_variable, mono_row_variable) row
+[@@deriving show { with_path = false }]
 
 type poly_row =
   (poly_type_variable, poly_row_variable) row
@@ -218,7 +243,6 @@ type normalized_mono_row =
 type normalized_poly_row =
   (poly_type_variable, poly_row_variable) normalized_row
 
-
 type mono_command_argument_type =
   (mono_type_variable, mono_row_variable) command_argument_type
 
@@ -228,10 +252,14 @@ type poly_command_argument_type =
 type macro_parameter_type =
   | LateMacroParameter  of mono_type
   | EarlyMacroParameter of mono_type
+[@@deriving show { with_path = false }]
 
 type macro_type =
   | HorzMacroType of macro_parameter_type list
   | VertMacroType of macro_parameter_type list
+[@@deriving show { with_path = false }]
+
+type constructor_branch_map = poly_type ConstructorMap.t
 
 
 let pp_sep fmt () =
@@ -242,6 +270,7 @@ type stage =
   | Persistent0
   | Stage0
   | Stage1
+[@@deriving show { with_path = false }]
 
 module TypeParameterMap = Map.Make(String)
 
@@ -977,11 +1006,14 @@ module FreeIDMap = Map.Make(FreeID)
 
 module FreeRowIDMap = Map.Make(FreeRowID)
 
-module OpaqueIDMap = Map.Make(TypeID)
+module OpaqueIDMap = struct
+  include Map.Make(TypeID)
 
-module ConstructorMap = Map.Make(String)
 
-type constructor_branch_map = poly_type ConstructorMap.t
+  let pp pp_v ppf oidmap =
+    pp_map fold TypeID.pp pp_v ppf oidmap
+
+end
 
 
 let get_range (rng, _) = rng

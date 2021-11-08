@@ -429,6 +429,8 @@ bind:
       { (tokL, UTBindModule(modident, utsig_opt, utmod)) }
   | tokL=SIGNATURE; sigident=UPPER; EXACT_EQ; utsig=sigexpr
       { (tokL, UTBindSignature(sigident, utsig)) }
+  | tokL=INCLUDE; utmod=modexpr
+      { (tokL, UTBindInclude(utmod)) }
 ;
 bind_value:
   | utnonrecbind=bind_value_nonrec

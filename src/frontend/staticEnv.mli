@@ -20,6 +20,7 @@ and functor_signature = {
   domain   : signature;
   codomain : signature abstracted;
 }
+[@@deriving show]
 
 type value_entry = {
   val_name  : EvalVarID.t option;

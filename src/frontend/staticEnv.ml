@@ -66,47 +66,42 @@ module Distance = struct
 end
 
 
-module ValueNameMap = Map.Make(String)
-
-module TypeNameMap = Map.Make(String)
-
-module ModuleNameMap = Map.Make(String)
-
-module SignatureNameMap = Map.Make(String)
-
-module ConstructorMap = Map.Make(String)
-
-module MacroNameMap = Map.Make(String)
-
 type quantifier =
   kind OpaqueIDMap.t
+[@@deriving show { with_path = false }]
 
 type 'a abstracted =
   quantifier * 'a
+[@@deriving show { with_path = false }]
 
 type type_scheme =
   BoundID.t list * poly_type
+[@@deriving show { with_path = false }]
 
 type value_entry = {
   val_name  : EvalVarID.t option;
   val_type  : poly_type;
   val_stage : stage;
 }
+[@@deriving show { with_path = false }]
 
 type type_entry = {
   type_scheme : type_scheme;
   type_kind   : kind;
 }
+[@@deriving show { with_path = false }]
 
 type constructor_entry = {
   ctor_belongs_to : TypeID.t;
   ctor_parameter  : type_scheme;
 }
+[@@deriving show { with_path = false }]
 
 type macro_entry = {
   macro_type : macro_type;
   macro_name : EvalVarID.t;
 }
+[@@deriving show { with_path = false }]
 
 type signature =
   | ConcStructure of struct_signature
@@ -114,6 +109,9 @@ type signature =
 
 and struct_signature =
   struct_signature_entry Alist.t
+    [@printer (fun ppf ssentryacc ->
+      Format.fprintf ppf "%a" (Format.pp_print_list pp_struct_signature_entry) (Alist.to_list ssentryacc)
+    )]
 
 and struct_signature_entry =
   | SSValue       of var_name * value_entry
@@ -142,6 +140,7 @@ and type_environment = {
   constructors : constructor_entry ConstructorMap.t;
   macros       : macro_entry MacroNameMap.t;
 }
+[@@deriving show { with_path = false }]
 
 
 module Typeenv = struct

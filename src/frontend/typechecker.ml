@@ -58,9 +58,7 @@ module SynonymNameHashSet =
       let hash = Hashtbl.hash
     end)
 
-type constructor_map = poly_type ConstructorMap.t
-
-type variant_definition = type_name * TypeID.t * BoundID.t list * constructor_map
+type variant_definition = type_name * TypeID.t * BoundID.t list * constructor_branch_map
 
 module PatternVarMap = Map.Make(String)
 
@@ -92,7 +90,7 @@ let decode_manual_row_base_kind (mnrbkd : manual_row_base_kind) : row_base_kind 
   ) LabelSet.empty
 
 
-let add_dummy_fold (tynm : type_name) (tyid : TypeID.t) (bids : BoundID.t list) (ctorbrmap : constructor_map) (ssig : StructSig.t) : StructSig.t =
+let add_dummy_fold (tynm : type_name) (tyid : TypeID.t) (bids : BoundID.t list) (ctorbrmap : constructor_branch_map) (ssig : StructSig.t) : StructSig.t =
   let bid = BoundID.fresh () in
   let dr = Range.dummy "add_dummy_fold" in
   let prow =
@@ -1455,6 +1453,7 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
               aux (Alist.extend acc (InputVertEmbedded(eabs))) tail
 
           | _ ->
+              Format.printf "other than block command: %a (range: %a, ast: %a)" pp_mono_type tycmd Range.pp rngcmd pp_untyped_abstract_tree utastcmd;
               assert false
         end
 
@@ -1997,7 +1996,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
 
   | UTModApply(modchain1, modchain2) ->
       let (mentry1, (rng1, evid1, labels1)) = find_module_chain tyenv modchain1 in
-      let (mentry2, (rng2, evid2, labels2)) = find_module_chain tyenv modchain1 in
+      let (mentry2, (rng2, evid2, labels2)) = find_module_chain tyenv modchain2 in
       let e1 = labels1 |> List.fold_left (fun e label -> AccessField(e, label)) (ContentOf(rng1, evid1)) in
       let e2 = labels2 |> List.fold_left (fun e label -> AccessField(e, label)) (ContentOf(rng2, evid2)) in
       begin
@@ -2245,8 +2244,8 @@ and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_t
       | CodeType(pty) -> CodeType(aux pty)
 
       | HorzCommandType(pargs) -> HorzCommandType(pargs |> List.map aux_command_arg)
-      | VertCommandType(pargs) -> HorzCommandType(pargs |> List.map aux_command_arg)
-      | MathCommandType(pargs) -> HorzCommandType(pargs |> List.map aux_command_arg)
+      | VertCommandType(pargs) -> VertCommandType(pargs |> List.map aux_command_arg)
+      | MathCommandType(pargs) -> MathCommandType(pargs |> List.map aux_command_arg)
 
       | FuncType(poptrow, ptydom, ptycod) ->
           FuncType(aux_option_row poptrow, aux ptydom, aux ptycod)
@@ -2450,6 +2449,9 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
           ()
 
   | _ ->
+      Format.printf "@[<v>not a subtype (range: %a)@," Range.pp rng;
+      Format.printf "***1: @[<hv1>%a@]@," pp_signature modsig1;
+      Format.printf "***2: @[<hv1>%a@]@]" pp_signature modsig2;
       raise (NotASubtype(rng, modsig1, modsig2))
 
 
