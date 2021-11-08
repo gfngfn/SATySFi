@@ -1,0 +1,16 @@
+@require: code
+@require: color
+
+module FunctorLocal = struct
+
+  module Code1Settings = struct
+    val font-family      = `lmmono`
+    val text-color       = Color.green
+    val fill-color       = Color.black
+    val stroke-color     = Color.red
+    val stroke-thickness = 2pt
+  end
+
+  module Code1 = Code.Make Code1Settings
+
+end

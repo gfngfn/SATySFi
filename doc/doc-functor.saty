@@ -1,0 +1,13 @@
+@require: stdjabook
+@import: doc-functor-local
+
+StdJaBook.document (|
+  title      = {ファンクタ},
+  author     = {gfn},
+  show-title = true,
+  show-toc   = false,
+|) '<
+  +FunctorLocal.Code1.code(```
+    let x = 1 in x
+  ```);
+>

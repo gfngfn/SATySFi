@@ -19,110 +19,129 @@ module Code
 % end
  = struct
 
-  val code-fill-color = Gray(0.875)
-  val code-stroke-color = Gray(0.625)
-  val console-fill-color = Gray(0.25)
+  signature S = sig
+    val font-family      : string
+    val text-color       : color
+    val fill-color       : color
+    val stroke-color     : color
+    val stroke-thickness : length
+  end
 
 
-  val decoset-code =
-    VDecoSet.simple-frame 1pt code-stroke-color code-fill-color
+  module Make = fun(X : S) -> struct
+
+    val decoset-code =
+      VDecoSet.simple-frame X.stroke-thickness X.stroke-color X.fill-color
 
 
-  val dummy _ =
-    let strokef = stroke 1pt code-stroke-color in
-    let gr-back x y w d h =
-      fill code-fill-color (Gr.rectangle (x, y -' d) (x +' w, y +' h))
-    in
-    let decoS (x, y) w h d =
-      [
-        gr-back x y w d h,
-        strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h)),
-      ]
-    in
-    let decoH (x, y) w h d =
-      [
-        gr-back x y w d h,
-        strokef (Gr.poly-line (x, y -' d) [(x, y +' h), (x +' w, y +' h), (x +' w, y -' d),])
-      ]
-    in
-    let decoM (x, y) w h d =
-      [
-        gr-back x y w d h,
-        strokef (Gr.line (x, y -' d) (x, y +' h)),
-        strokef (Gr.line (x +' w, y -' d) (x +' w, y +' h)),
-      ]
-    in
-    let decoT (x, y) w h d =
-      [
-        gr-back x y w d h,
-        strokef (Gr.poly-line (x, y +' h) [(x, y -' d), (x +' w, y -' d), (x +' w, y +' h)])
-      ]
-    in
-      (decoS, decoH, decoM, decoT)
+    val set-code-font ctx =
+      ctx
+        |> set-font Latin (X.font-family, 1., 0.)
+        |> set-hyphen-penalty 100000
+
+
+    val scheme decoset ctx code =
+      let pads = (5pt, 5pt, 5pt, 5pt) in
+      block-frame-breakable ctx pads decoset (fun ctx -> (
+        let fontsize = get-font-size ctx in
+        let ctx = ctx |> set-code-font in
+        let charwid = Pervasives.get-natural-width (read-inline ctx {0}) in
+        let ctx-code =
+          ctx
+            |> set-space-ratio (charwid /' fontsize) 0. 0.
+            |> set-text-color X.text-color
+        in
+
+        let lstraw = split-into-lines code in
+        let lst =
+          match lstraw with
+          | []        -> lstraw
+          | x :: []   -> lstraw
+          | _ :: tail -> tail
+          end
+        in
+        let ib-code =
+          lst |> List.fold-left-adjacent (fun ibacc (i, s) _ optnext -> (
+            let ib-last =
+              match optnext with
+              | Some(_) -> inline-fil ++ discretionary 0 (inline-skip ((get-text-width ctx) *' 2.)) inline-nil inline-nil
+              | None    -> inline-fil
+              end
+            in
+            let ib =
+              inline-skip (charwid *' (float i))
+                ++ read-inline ctx-code (embed-string s)
+                ++ ib-last
+            in
+              ibacc ++ ib
+          )) inline-nil
+        in
+          line-break true true ctx ib-code
+      ))
+
+
+    val block ctx +code code =
+      scheme decoset-code ctx code
+
+
+    val inline ctx \d-code code =
+      inline-fil ++ embed-block-breakable ctx
+        (read-block ctx '<+code(code);>)
+
+
+    val inline ctx \code code =
+      script-guard Latin
+        (read-inline (ctx |> set-code-font) (embed-string code))
+
+
+    val block ctx +file-code file-name =
+      let lf = string-unexplode [10] in
+      let join s1 s2 = s1 ^ lf ^ s2 in
+      let str-list = read-file file-name in
+      let code = List.fold-left join ` ` str-list in
+      scheme decoset-code ctx code
+
+
+    val inline ctx \file-code file-name =
+      inline-fil ++ embed-block-breakable ctx
+        (read-block ctx '<+file-code(file-name);>)
+
+  end
+
+
+  module DefaultSettings = struct
+    val font-family      = `lmmono`
+    val text-color       = Gray(0.)
+    val fill-color       = Gray(0.875)
+    val stroke-color     = Gray(0.625)
+    val stroke-thickness = 1pt
+  end
+
+
+  include Make DefaultSettings
+
+
+  module ConsoleSettings = struct
+    val font-family      = `lmmono`
+    val text-color       = Gray(1.)
+    val fill-color       = Gray(0.25)
+    val stroke-color     = Gray(0.25)
+    val stroke-thickness = 0pt
+  end
+
+
+  module Console = Make ConsoleSettings
 
 
   val decoset-console =
     let deco (x, y) w h d =
-      [ fill console-fill-color (Gr.rectangle (x, y -' d) (x +' w, y +' h)) ]
+      [ fill ConsoleSettings.fill-color (Gr.rectangle (x, y -' d) (x +' w, y +' h)) ]
     in
-      (deco, deco, deco, deco)
-
-
-  val set-code-font ctx =
-    ctx |> set-font Latin (`lmmono`, 1., 0.)
-        |> set-hyphen-penalty 100000
-
-
-  val scheme decoset txtcolor ctx code =
-    let pads = (5pt, 5pt, 5pt, 5pt) in
-    block-frame-breakable ctx pads decoset (fun ctx -> (
-      let fontsize = get-font-size ctx in
-      let ctx = ctx |> set-code-font in
-      let charwid = Pervasives.get-natural-width (read-inline ctx {0}) in
-      let ctx-code =
-        ctx |> set-space-ratio (charwid /' fontsize) 0. 0.
-            |> set-text-color txtcolor
-      in
-
-      let lstraw = split-into-lines code in
-      let lst =
-        match lstraw with
-        | []        -> lstraw
-        | x :: []   -> lstraw
-        | _ :: tail -> tail
-        end
-      in
-      let ib-code =
-        lst |> List.fold-left-adjacent (fun ibacc (i, s) _ optnext -> (
-          let ib-last =
-            match optnext with
-            | Some(_) -> inline-fil ++ discretionary 0 (inline-skip ((get-text-width ctx) *' 2.)) inline-nil inline-nil
-            | None    -> inline-fil
-            end
-          in
-          let ib =
-            inline-skip (charwid *' (float i))
-              ++ read-inline ctx-code (embed-string s)
-              ++ ib-last
-          in
-            ibacc ++ ib
-        )) inline-nil
-      in
-        line-break true true ctx ib-code
-    ))
-
-
-  val block ctx +code code =
-    scheme decoset-code Color.black ctx code
-
-
-  val inline ctx \d-code code =
-    inline-fil ++ embed-block-breakable ctx
-      (read-block ctx '<+code(code);>)
+    (deco, deco, deco, deco)
 
 
   val block ctx +console code =
-    scheme decoset-console Color.white ctx code
+    Console.scheme decoset-console ctx code
 
 
   val inline ctx \console code =
@@ -130,23 +149,5 @@ module Code
       (read-block ctx '<+console(code);>)
 
 
-  val inline ctx \code code =
-    script-guard Latin
-      (read-inline (ctx |> set-code-font) (embed-string code))
-
-
-  val block ctx +file-code file-name =
-    let lf = string-unexplode [10] in
-    let join s1 s2 = s1 ^ lf ^ s2 in
-    let str-list = read-file file-name in
-    let code =
-      List.fold-left join ` ` str-list
-    in
-      scheme decoset-code Color.black ctx code
-
-
-  val inline ctx \file-code file-name =
-    inline-fil ++ embed-block-breakable ctx
-      (read-block ctx '<+file-code(file-name);>)
 
 end
