@@ -5,7 +5,9 @@ open StaticEnv
 
 type type_error =
   | UndefinedVariable                    of Range.t * module_name list * var_name * var_name list
-  | UndefinedConstructor                 of Range.t * var_name * var_name list
+  | UndefinedConstructor                 of Range.t * constructor_name * constructor_name list
+  | UndefinedModuleName                  of Range.t * module_name
+  | UndefinedKindName                    of Range.t * kind_name
   | UndefinedHorzMacro                   of Range.t * ctrlseq_name
   | UndefinedVertMacro                   of Range.t * ctrlseq_name
   | InvalidNumberOfMacroArguments        of Range.t * macro_parameter_type list
@@ -16,7 +18,7 @@ type type_error =
   | MathCommandInHorz                    of Range.t
   | BreaksValueRestriction               of Range.t
   | MultiplePatternVariable              of Range.t * Range.t * var_name
-  | MultipleFieldInRecord                of Range.t * label
+  | LabelUsedMoreThanOnce                of Range.t * label
   | InvalidExpressionAsToStaging         of Range.t * stage
   | InvalidOccurrenceAsToStaging         of Range.t * var_name * stage
   | ApplicationOfNonFunction             of Range.t * mono_type
@@ -26,12 +28,16 @@ type type_error =
   | InclusionError                       of mono_type * mono_type
   | TypeParameterBoundMoreThanOnce       of Range.t * type_variable_name
   | ConflictInSignature                  of Range.t * string
-
   | NotAStructureSignature               of Range.t * functor_signature
+(*
+  | NotAFunctorSignature                 of Range.t * StructSig.t
+*)
   | MissingRequiredValueName             of Range.t * var_name * poly_type
+  | MissingRequiredConstructorName       of Range.t * constructor_name * constructor_entry
   | MissingRequiredTypeName              of Range.t * type_name * int
   | MissingRequiredModuleName            of Range.t * module_name * signature
   | MissingRequiredSignatureName         of Range.t * signature_name * signature abstracted
-  | NotASubtypeAboutType                 of Range.t * type_name
+  | NotASubtypeAboutValue                of Range.t * var_name * poly_type * poly_type
+  | NotASubtypeAboutConstructor          of Range.t * constructor_name * type_scheme * type_scheme
+  | NotASubtypeAboutType                 of Range.t * type_name * type_entry * type_entry
   | NotASubtypeSignature                 of Range.t * signature * signature
-  | NotASubtypePolymorphicType           of Range.t * var_name * poly_type * poly_type

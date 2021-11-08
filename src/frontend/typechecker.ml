@@ -113,7 +113,7 @@ let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * ma
   let (rowparammap, bridacc) =
     rowvars |> List.fold_left (fun (rowparammap, bridacc) ((rng, rowvarnm), mnbrkd) ->
       if rowparammap |> RowParameterMap.mem rowvarnm then
-        failwith "TODO (error): row parameter bound more than once"
+        raise_error (LabelUsedMoreThanOnce(rng, rowvarnm))
       else
         let labset = decode_manual_row_base_kind mnbrkd in
         let mbbrid = MustBeBoundRowID.fresh lev labset in
@@ -154,7 +154,7 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : c
 let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module_entry =
   match tyenv |> Typeenv.find_module modnm with
   | None ->
-      failwith (Printf.sprintf "TODO (error): not found '%s'" modnm)
+      raise_error (UndefinedModuleName(rng, modnm))
 
   | Some(mentry) ->
       mentry
@@ -171,14 +171,14 @@ let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_
   let mentry =
     modidents |> List.fold_left (fun mentry (rng, modnm) ->
       match mentry.mod_signature with
-      | ConcFunctor(_) ->
-          failwith "TODO (error): not a structure"
+      | ConcFunctor(fsig) ->
+          raise_error (NotAStructureSignature(rng, fsig))
 
       | ConcStructure(ssig) ->
           begin
             match ssig |> StructSig.find_module modnm with
             | None ->
-                failwith "TODO (error): not found"
+                raise_error (UndefinedModuleName(rng, modnm))
 
             | Some(mentry) ->
                 mentry
@@ -828,17 +828,17 @@ let rec typecheck
       let ivlst = typecheck_input_vert rng pre tyenv utivlst in
       (InputVert(ivlst), (rng, BaseType(TextColType)))
 
-  | UTOpenIn((_, modnm), utast1) ->
+  | UTOpenIn((rng_mod, modnm), utast1) ->
       begin
         match tyenv |> Typeenv.find_module modnm with
         | None ->
-            failwith "TODO (error): UTOpenIn, not found"
+            raise_error (UndefinedModuleName(rng_mod, modnm))
 
         | Some(mentry) ->
             begin
               match mentry.mod_signature with
-              | ConcFunctor(_) ->
-                  failwith "TODO (error): UTOpenIn, not a signature"
+              | ConcFunctor(fsig) ->
+                  raise_error (NotAStructureSignature(rng_mod, fsig))
 
               | ConcStructure(ssig) ->
                   failwith "TODO: UTOpenIn"
@@ -893,7 +893,8 @@ let rec typecheck
             let ventry_opt =
               match mentry.mod_signature with
               | ConcStructure(ssig) -> ssig |> StructSig.find_value varnm
-              | ConcFunctor(_)      -> failwith "TODO (error): not a structure"
+              | ConcFunctor(fsig)   -> raise_error (NotAStructureSignature(rng, fsig))
+                  (*TODO (enhance): give a better code range to this error. *)
             in
             let ventry =
               match ventry_opt with
@@ -1541,7 +1542,7 @@ and typecheck_record (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (fields : (
     fields |> List.fold_left (fun (easc, row) (rlabel, utast) ->
       let (rng_label, label) = rlabel in
       if easc |> LabelMap.mem label then
-        raise_error (MultipleFieldInRecord(rng_label, label))
+        raise_error (LabelUsedMoreThanOnce(rng_label, label))
       else
         let (e, ty) = typecheck pre tyenv utast in
         (easc |> LabelMap.add label e, RowCons(rlabel, ty, row))
@@ -1782,8 +1783,9 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                 let (mentry, _) = find_module_chain tyenv modchain in
                 begin
                   match mentry.mod_signature with
-                  | ConcFunctor(_) ->
-                      failwith "TODO (error): not a structure"
+                  | ConcFunctor(fsig) ->
+                      raise_error (NotAStructureSignature(rng, fsig))
+                        (* TODO (enhance): give a better code range to this error *)
 
                   | ConcStructure(ssig) ->
                       begin
@@ -1836,9 +1838,9 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
       let MArgType(mnfields, mnty) = mncmdargty in
       let tylabmap =
         mnfields |> List.fold_left (fun tylabmap (rlabel, mnty) ->
-          let (_, label) = rlabel in
+          let (rng, label) = rlabel in
           if tylabmap |> LabelMap.mem label then
-            failwith "TODO (error): duplicated label"
+            raise_error (LabelUsedMoreThanOnce(rng, label))
           else
             let ty = aux mnty in
             tylabmap |> LabelMap.add label ty
@@ -1851,9 +1853,9 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
   and aux_row (mnfields : (label ranged * manual_type) list) =
     let (_, row) =
       mnfields |> List.fold_left (fun (labset, row) (rlabel, mnty) ->
-        let (_, label) = rlabel in
+        let (rng, label) = rlabel in
         if labset |> LabelSet.mem label then
-          failwith "TODO (error): duplicated label"
+          raise_error (LabelUsedMoreThanOnce(rng, label))
         else
           let row = RowCons(rlabel, aux mnty, row) in
           (labset |> LabelSet.add label, row)
@@ -1868,7 +1870,7 @@ and decode_manual_base_kind (mnbkd : manual_base_kind) : base_kind =
   let MKindName((rng, kdnm)) = mnbkd in
   match kdnm with
   | "o" -> TypeKind
-  | _   -> failwith "TODO (error): unknown kind"
+  | _   -> raise_error (UndefinedKindName(rng, kdnm))
 
 
 and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : kind =
@@ -1937,8 +1939,12 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       let e2 = labels2 |> List.fold_left (fun e label -> AccessField(e, label)) (ContentOf(rng2, evid2)) in
       begin
         match mentry1.mod_signature with
-        | ConcStructure(_) ->
+        | ConcStructure(ssig) ->
             failwith "TODO (error): not a functor"
+(*
+            let rng = make_range_from_module_chain modchain1 in
+            raise_error (NotAFunctorSignature(rng, ssig))
+*)
 
         | ConcFunctor(fsig1) ->
             let { opaques = quant1; domain = modsig_dom1; codomain = absmodsig_cod1 } = fsig1 in
@@ -2112,7 +2118,7 @@ and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : 
                 begin
                   match lookup_type_entry tentry1 tentry2 with
                   | None ->
-                      raise_error (NotASubtypeAboutType(rng, tynm2))
+                      raise_error (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
 
                   | Some(subst0) ->
                       SubstMap.union take_left subst0 subst
@@ -2308,12 +2314,12 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                if subtype_poly_type pty1 pty2 then
                  ()
                else
-                 raise_error (NotASubtypePolymorphicType(rng, x2, pty1, pty2))
+                 raise_error (NotASubtypeAboutValue(rng, x2, pty1, pty2))
           )
           ~c:(fun ctornm2 centry2 () ->
             match ssig1 |> StructSig.find_constructor ctornm2 with
             | None ->
-                failwith "TODO (error): missing required constructor name"
+                raise_error (MissingRequiredConstructorName(rng, ctornm2, centry2))
 
             | Some(centry1) ->
                 let tyscheme1 = centry1.ctor_parameter in
@@ -2321,15 +2327,20 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                 if subtype_type_scheme tyscheme1 tyscheme2 then
                   ()
                 else
-                  failwith "TODO (error): not a subtype (checked by constructors)"
+                  raise_error (NotASubtypeAboutConstructor(rng, ctornm2, tyscheme1, tyscheme2))
           )
           ~f:(fun tynm2 pty2 () ->
             match ssig1 |> StructSig.find_dummy_fold tynm2 with
             | None ->
                 begin
                   match ssig2 |> StructSig.find_type tynm2 with
-                  | None          -> assert false
-                  | Some(tentry2) -> failwith "TODO (error): missing required type name"
+                  | None ->
+                      assert false
+
+                  | Some(tentry2) ->
+                      let (bids, _) = tentry2.type_scheme in
+                      let arity = List.length bids in
+                      raise_error (MissingRequiredTypeName(rng, tynm2, arity))
                 end
 
             | Some(pty1) ->
@@ -2338,8 +2349,8 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                 else
                   begin
                     match (ssig1 |> StructSig.find_type tynm2, ssig2 |> StructSig.find_type tynm2) with
-                    | (Some(_tentry1), Some(_tentry2)) ->
-                        failwith "TODO (error): not a subtype (checked by the dummy fold)"
+                    | (Some(tentry1), Some(tentry2)) ->
+                        raise_error (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
 
                     | _ ->
                         assert false
@@ -2362,7 +2373,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                 if b1 && b2 then
                   ()
                 else
-                  failwith "TODO (error): not a subtype"
+                  raise_error (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
           )
           ~m:(fun modnm2 { mod_signature = modsig2; _ } () ->
             match ssig1 |> StructSig.find_module modnm2 with
@@ -2385,9 +2396,6 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
           ()
 
   | _ ->
-      Format.printf "@[<v>not a subtype (range: %a)@," Range.pp rng;
-      Format.printf "***1: @[<hv1>%a@]@," pp_signature modsig1;
-      Format.printf "***2: @[<hv1>%a@]@]" pp_signature modsig2;
       raise_error (NotASubtypeSignature(rng, modsig1, modsig2))
 
 
@@ -2624,7 +2632,7 @@ and poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
 
     | (TypeVariable(PolyFree(_)), _)
     | (_, TypeVariable(PolyFree(_))) ->
-        failwith "TODO (error): poly_type_equal, PolyFree"
+        false
 
     | (DataType(ptys1, tyid1), DataType(ptys2, tyid2)) ->
         TypeID.equal tyid1 tyid2 && aux_list ptys1 ptys2
@@ -2641,7 +2649,7 @@ and poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
         aux pty1 pty2
 
     | _ ->
-        failwith "TODO (error): poly_type_equal"
+        false
 
   and aux_list (ptys1 : poly_type_body list) (ptys2 : poly_type_body list) : bool =
     try
@@ -3224,8 +3232,8 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
             in
             (bindacc |> Alist.to_list, (quant, ssig))
 
-        | ConcFunctor(_) ->
-            failwith "TODO (error): Typechecker.typecheck_binding, UTBindInclude, not a structure"
+        | ConcFunctor(fsig) ->
+            raise_error (NotAStructureSignature(rng_mod, fsig))
       end
 
   | UTBindHorzMacro((_, _csnm), _macparams, _utast1) ->

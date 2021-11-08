@@ -736,11 +736,23 @@ let error_log_environment suspended =
               NormalLineOption(make_candidates_message candidates);
             ]
 
+        | UndefinedModuleName(rng, modnm) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "undefined module '%s'." modnm);
+            ]
+
         | UndefinedConstructor(rng, constrnm, candidates) ->
             report_error Typechecker [
               NormalLine("at " ^ (Range.to_string rng) ^ ":");
               NormalLine("undefined constructor '" ^ constrnm ^ "'.");
               NormalLineOption(make_candidates_message candidates);
+            ]
+
+        | UndefinedKindName(rng, kdnm) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "undefined kind '%s'." kdnm);
             ]
 
         | UndefinedHorzMacro(rng, csnm) ->
@@ -812,10 +824,10 @@ let error_log_environment suspended =
               NormalLine("pattern variable '" ^ varnm ^ "' is bound more than once.");
             ]
 
-        | MultipleFieldInRecord(rng, fldnm) ->
+        | LabelUsedMoreThanOnce(rng, label) ->
             report_error Typechecker [
-              NormalLine("at " ^ (Range.to_string rng) ^ ":");
-              NormalLine("this record expression has more than one field for '" ^ fldnm ^ "'.");
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "'%s' is used more than once." label);
             ]
 
         | InvalidExpressionAsToStaging(rng, stage) ->
@@ -923,6 +935,12 @@ let error_log_environment suspended =
               DisplayLine(Display.show_poly_type pty);
             ]
 
+        | MissingRequiredConstructorName(rng, ctornm, _centry) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "missing required constructor '%s' (TODO (enhance): detailed report)" ctornm);
+            ]
+
         | MissingRequiredTypeName(rng, tynm, arity) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
@@ -941,25 +959,31 @@ let error_log_environment suspended =
               NormalLine(Printf.sprintf "missing required signature '%s' (TODO (enhance): detailed report)" signm);
             ]
 
-        | NotASubtypeAboutType(rng, tynm) ->
-            report_error Typechecker [
-              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-              NormalLine(Printf.sprintf "not a subtype about type '%s'." tynm);
-            ]
-
-        | NotASubtypeSignature(rng, _modsig1, _modsig2) ->
-            report_error Typechecker [
-              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-              NormalLine("not a subtype signature (TODO (enhance): detailed report)");
-            ]
-
-        | NotASubtypePolymorphicType(rng, x, pty1, pty2) ->
+        | NotASubtypeAboutValue(rng, x, pty1, pty2) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
               NormalLine(Printf.sprintf "not a subtype about value '%s'; type" x);
               DisplayLine(Display.show_poly_type pty1);
               NormalLine("is not a subtype of");
               DisplayLine(Display.show_poly_type pty2);
+            ]
+
+        | NotASubtypeAboutConstructor(rng, ctornm, _tyscheme1, _tyscheme2) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "not a subtype about constructor '%s' (TODO (enhance): detailed report)" ctornm);
+            ]
+
+        | NotASubtypeAboutType(rng, tynm, _tentry1, _tentry2) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "not a subtype about type '%s' (TODO (enhance): detailed report)" tynm);
+            ]
+
+        | NotASubtypeSignature(rng, _modsig1, _modsig2) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine("not a subtype signature (TODO (enhance): detailed report)");
             ]
       end
 
