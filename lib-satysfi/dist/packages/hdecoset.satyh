@@ -1,14 +1,10 @@
 @require: gr
 
-module HDecoSet
-% :> sig
-%
-%   val empty : deco-set
-%   val simple-frame-stroke : length -> color -> deco-set
-%   val rectangle-round-fill : length -> length -> color -> deco-set
-%
-% end
-= struct
+module HDecoSet :> sig
+  val empty : deco-set
+  val simple-frame-stroke : length -> color -> deco-set
+  val rectangle-round-fill : length -> length -> color -> deco-set
+end = struct
 
   val empty =
     let deco _ _ _ _ = [] in

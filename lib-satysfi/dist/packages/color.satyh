@@ -1,25 +1,23 @@
 module Color
-% :> sig
-%
-%   val gray   : float -> color
-%   val rgb    : float -> float -> float -> color
-%   val black  : color
-%   val white  : color
-%   val red    : color
-%   val yellow : color
-%   val orange : color
-%   val blue   : color
-%
-%   % web color names
-%   val brown               : color
-%   val cyan                : color
-%   val green               : color
-%   val magenta             : color
-%   val pink                : color
-%   val purple              : color
-%
-% end
-= struct
+:> sig
+  val gray   : float -> color
+  val rgb    : float -> float -> float -> color
+  val black  : color
+  val white  : color
+  val red    : color
+  val yellow : color
+  val orange : color
+  val blue   : color
+
+  % web color names
+  val brown   : color
+  val cyan    : color
+  val green   : color
+  val magenta : color
+  val pink    : color
+  val purple  : color
+
+end = struct
 
   val gray x = Gray(x)
   val rgb r g b = RGB(r, g, b)

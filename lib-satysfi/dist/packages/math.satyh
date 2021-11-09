@@ -2,426 +2,425 @@
 @require: list
 @require: gr
 
-module Math
-% :> sig
-%
-%   val \math : [math] inline-cmd
-%   val +math : [inline-text?; math] block-cmd
-%   val \eqn : [inline-text?; math] inline-cmd
-%   val +math-list : [math list] block-cmd
-%   val \math-list : [math list] inline-cmd
-%   val +align : [(math list) list] block-cmd
-%   val \align : [(math list) list] inline-cmd
-%   val \text : [inline-text] math-cmd
-%   val \frac : [math; math] math-cmd
-%   val \sqrt : [math] math-cmd
-%   val \lower : [math; math] math-cmd
-%   val \upper : [math; math] math-cmd
-%   val \math-skip : [length] math-cmd
-%   val \math-color : [color; math] math-cmd
-%   val join : math -> math list -> math
-%   val half-length : length -> length -> length -> length -> length
-%
-%   val \mathord : [math] math-cmd
-%   val \mathbin : [math] math-cmd
-%   val \mathrel : [math] math-cmd
-%   val \mathop : [math] math-cmd
-%   val \mathprefix : [math] math-cmd
-%   val \mathpunct : [math] math-cmd
-%
-%   val \math-style : [math-char-class; math] math-cmd
-%   val \mathrm : [math] math-cmd
-%   val \mathbf : [math] math-cmd
-%   val \mathcal : [math] math-cmd
-%   val \mathfrak : [math] math-cmd
-%   val \mathbb : [math] math-cmd
-%   val \bm : [math] math-cmd
-%
-%   val \math-style-token : [math-char-class; string] math-cmd
-%   val \mathit-token : [string] math-cmd
-%   val \mathrm-token : [string] math-cmd
-%   val \mathbf-token : [string] math-cmd
-%
-%   val \alpha   : [] math-cmd
-%   val \beta    : [] math-cmd
-%   val \gamma   : [] math-cmd
-%   val \delta   : [] math-cmd
-%   val \epsilon : [] math-cmd
-%   val \zeta    : [] math-cmd
-%   val \eta     : [] math-cmd
-%   val \theta   : [] math-cmd
-%   val \iota    : [] math-cmd
-%   val \kappa   : [] math-cmd
-%   val \lambda  : [] math-cmd
-%   val \mu      : [] math-cmd
-%   val \nu      : [] math-cmd
-%   val \xi      : [] math-cmd
-%   val \omicron : [] math-cmd
-%   val \pi      : [] math-cmd
-%   val \rho     : [] math-cmd
-%   val \sigma   : [] math-cmd
-%   val \tau     : [] math-cmd
-%   val \upsilon : [] math-cmd
-%   val \phi     : [] math-cmd
-%   val \chi     : [] math-cmd
-%   val \psi     : [] math-cmd
-%   val \omega   : [] math-cmd
-%
-%   val \Alpha   : [] math-cmd
-%   val \Beta    : [] math-cmd
-%   val \Gamma   : [] math-cmd
-%   val \Delta   : [] math-cmd
-%   val \Epsilon : [] math-cmd
-%   val \Zeta    : [] math-cmd
-%   val \Eta     : [] math-cmd
-%   val \Theta   : [] math-cmd
-%   val \Iota    : [] math-cmd
-%   val \Kappa   : [] math-cmd
-%   val \Lambda  : [] math-cmd
-%   val \Mu      : [] math-cmd
-%   val \Nu      : [] math-cmd
-%   val \Xi      : [] math-cmd
-%   val \Omicron : [] math-cmd
-%   val \Pi      : [] math-cmd
-%   val \Rho     : [] math-cmd
-%   val \Sigma   : [] math-cmd
-%   val \Tau     : [] math-cmd
-%   val \Upsilon : [] math-cmd
-%   val \Phi     : [] math-cmd
-%   val \Chi     : [] math-cmd
-%   val \Psi     : [] math-cmd
-%   val \Omega   : [] math-cmd
-%
-%   val \to : [] math-cmd
-%   val \pm : [] math-cmd
-%   val \mp : [] math-cmd
-%   val \times : [] math-cmd
-%   val \setminus : [] math-cmd
-%   val \ast : [] math-cmd
-%   val \circ : [] math-cmd
-%   val \bullet : [] math-cmd
-%   val \cap : [] math-cmd
-%   val \cup : [] math-cmd
-%   val \uplus : [] math-cmd
-%   val \sqcap : [] math-cmd
-%   val \sqcup : [] math-cmd
-%   val \wedge : [] math-cmd
-%   val \vee : [] math-cmd
-%   val \oplus : [] math-cmd
-%   val \ominus : [] math-cmd
-%   val \otimes : [] math-cmd
-%   val \oslash : [] math-cmd
-%
-%   val \vdash : [] math-cmd
-%   val \nvdash : [] math-cmd
-%   val \dashv : [] math-cmd
-%   val \vDash : [] math-cmd
-%   val \nvDash : [] math-cmd
-%   val \Vdash : [] math-cmd
-%   val \nVdash : [] math-cmd
-%
-%   val \colon-rel : [] math-cmd
-%
-%   val \leq : [] math-cmd
-%   val \geq : [] math-cmd
-%   val \equiv : [] math-cmd
-%   val \nequiv : [] math-cmd
-%   val \neq : [] math-cmd
-%   val \sim : [] math-cmd
-%   val \nsim : [] math-cmd
-%   val \simeq : [] math-cmd
-%   val \nsimeq : [] math-cmd
-%   val \propto : [] math-cmd
-%   val \coloneq : [] math-cmd
-%   val \eqcolon : [] math-cmd
-%
-%   val \in : [] math-cmd
-%   val \nin : [] math-cmd
-%   val \ni : [] math-cmd
-%   val \nni : [] math-cmd
-%   val \subset : [] math-cmd
-%   val \supset : [] math-cmd
-%   val \nsubset : [] math-cmd
-%   val \nsupset : [] math-cmd
-%   val \subseteq : [] math-cmd
-%   val \supseteq : [] math-cmd
-%   val \nsubseteq : [] math-cmd
-%   val \nsupseteq : [] math-cmd
-%   val \subsetneq : [] math-cmd
-%   val \supsetneq : [] math-cmd
-%   val \sqsubset : [] math-cmd
-%   val \sqsupset : [] math-cmd
-%   val \sqsubseteq : [] math-cmd
-%   val \sqsupseteq : [] math-cmd
-%   val \nsqsubseteq : [] math-cmd
-%   val \nsqsupseteq : [] math-cmd
-%   val \sqsubsetneq : [] math-cmd
-%   val \sqsupsetneq : [] math-cmd
-%   val \prec : [] math-cmd
-%   val \succ : [] math-cmd
-%   val \nprec : [] math-cmd
-%   val \nsucc : [] math-cmd
-%   val \preccurlyeq : [] math-cmd
-%   val \succcurlyeq : [] math-cmd
-%   val \precsim : [] math-cmd
-%   val \succsim : [] math-cmd
-%   val \npreccurlyeq : [] math-cmd
-%   val \nsucccurlyeq : [] math-cmd
-%
-%   val \emptyset : [] math-cmd
-%   val \infty : [] math-cmd
-%   val \top : [] math-cmd
-%   val \bot : [] math-cmd
-%   val \therefore : [] math-cmd
-%   val \because : [] math-cmd
-%   val \forall : [] math-cmd
-%   val \exists : [] math-cmd
-%   val \nexists : [] math-cmd
-%   val \bigcirc : [] math-cmd
-%
-%   val \cdot  : [] math-cmd
-%   val \ldots : [] math-cmd
-%   val \cdots : [] math-cmd
-%   val \vdots : [] math-cmd
-%   val \ddots : [] math-cmd
-%   val \backddots : [] math-cmd
-%
-%   val \lim : [] math-cmd
-%   val \colim : [] math-cmd
-%   val \max : [] math-cmd
-%   val \min : [] math-cmd
-%   val \inf : [] math-cmd
-%   val \sup : [] math-cmd
-%   val \sin : [] math-cmd
-%   val \cos : [] math-cmd
-%   val \tan : [] math-cmd
-%   val \cot : [] math-cmd
-%   val \sec : [] math-cmd
-%   val \csc : [] math-cmd
-%   val \log : [] math-cmd
-%   val \tr : [] math-cmd
-%   val \det : [] math-cmd
-%   val \dom : [] math-cmd
-%   val \cod : [] math-cmd
-%   val \Ker : [] math-cmd
-%   val \Im : [] math-cmd
-%
-%   val \sum : [] math-cmd
-%   val \prod : [] math-cmd
-%   val \coprod : [] math-cmd
-%   val \bigwedge : [] math-cmd
-%   val \bigvee : [] math-cmd
-%   val \bigcap : [] math-cmd
-%   val \bigcup : [] math-cmd
-%
-%   val \land : [] math-cmd
-%   val \lor : [] math-cmd
-%
-%   val \Leftarrow : [] math-cmd
-%   val \Rightarrow : [] math-cmd
-%   val \Leftrightarrow : [] math-cmd
-%   val \Uparrow : [] math-cmd
-%   val \Downarrow : [] math-cmd
-%   val \Updownarrow : [] math-cmd
-%   val \nRightarrow : [] math-cmd
-%   val \nLeftarrow : [] math-cmd
-%   val \nLeftrightarrow : [] math-cmd
-%   val \leftarrow : [] math-cmd
-%   val \rightarrow : [] math-cmd
-%   val \uparrow : [] math-cmd
-%   val \downarrow : [] math-cmd
-%   val \updownarrow : [] math-cmd
-%   val \nwarrow : [] math-cmd
-%   val \nearrow : [] math-cmd
-%   val \searrow : [] math-cmd
-%   val \swarrow : [] math-cmd
-%   val \nleftarrow : [] math-cmd
-%   val \nrightarrow : [] math-cmd
-%   val \nleftrightarrow : [] math-cmd
-%   val \mapsto : [] math-cmd
-%   val \hookleftarrow : [] math-cmd
-%   val \hookrightarrow : [] math-cmd
-%   val \rightarrowtail : [] math-cmd
-%   val \leftarrowtail : [] math-cmd
-%   val \twoheadleftarrow : [] math-cmd
-%   val \twoheadrightarrow : [] math-cmd
-%   val \twoheaduparrow : [] math-cmd
-%   val \twoheaddownarrow : [] math-cmd
-%   val \leftharpoonup : [] math-cmd
-%   val \leftharpoondown : [] math-cmd
-%   val \rightharpoonup : [] math-cmd
-%   val \rightharpoondown : [] math-cmd
-%   val \rightleftharpoons : [] math-cmd
-%   val \upharpoonright : [] math-cmd
-%   val \upharpoonleft : [] math-cmd
-%   val \downharpoonright : [] math-cmd
-%   val \downharpoonleft : [] math-cmd
-%   val \longleftarrow : [] math-cmd
-%   val \longrightarrow : [] math-cmd
-%   val \longleftrightarrow : [] math-cmd
-%   val \Longleftarrow : [] math-cmd
-%   val \Longrightarrow : [] math-cmd
-%   val \Longleftrightarrow : [] math-cmd
-%   val \circlearrowleft : [] math-cmd
-%   val \circlearrowright : [] math-cmd
-%
-%   val \between : [] math-cmd
-%   val \pitchfork : [] math-cmd
-%   val \intercal : [] math-cmd
-%   val \ll : [] math-cmd
-%   val \gg : [] math-cmd
-%   val \lll : [] math-cmd
-%   val \ggg : [] math-cmd
-%   val \leqq : [] math-cmd
-%   val \geqq : [] math-cmd
-%   val \lneqq : [] math-cmd
-%   val \gneqq : [] math-cmd
-%   val \lnsim : [] math-cmd
-%   val \gnsim : [] math-cmd
-%   val \precnsim : [] math-cmd
-%   val \succnsim : [] math-cmd
-%   val \Subset : [] math-cmd
-%   val \Supset : [] math-cmd
-%   val \Cap : [] math-cmd
-%   val \Cup : [] math-cmd
-%   val \lhd : [] math-cmd
-%   val \rhd : [] math-cmd
-%   val \unlhd : [] math-cmd
-%   val \unrhd : [] math-cmd
-%   val \triangleleft : [] math-cmd
-%   val \triangleright : [] math-cmd
-%   val \trianglelefteq : [] math-cmd
-%   val \trianglerighteq : [] math-cmd
-%   val \backsim : [] math-cmd
-%   val \backsimeq : [] math-cmd
-%   val \eqcirc : [] math-cmd
-%   val \cong : [] math-cmd
-%   val \simneq : [] math-cmd
-%   val \ncong : [] math-cmd
-%   val \approx : [] math-cmd
-%   val \napprox : [] math-cmd
-%   val \approxeq : [] math-cmd
-%   val \curlyeqprec : [] math-cmd
-%   val \curlyeqsucc : [] math-cmd
-%   val \lessdot : [] math-cmd
-%   val \gtrdot : [] math-cmd
-%   val \lesssim : [] math-cmd
-%   val \gtrsim : [] math-cmd
-%   val \nlesssim : [] math-cmd
-%   val \ngtrsim : [] math-cmd
-%   val \lessgtr : [] math-cmd
-%   val \gtrless : [] math-cmd
-%   val \nlessgtr : [] math-cmd
-%   val \ngtrless : [] math-cmd
-%   val \ntriangleleft : [] math-cmd
-%   val \ntriangleright : [] math-cmd
-%   val \ntrianglelefteq : [] math-cmd
-%   val \ntrianglerighteq : [] math-cmd
-%   val \lesseqgtr : [] math-cmd
-%   val \gtreqless : [] math-cmd
-%   val \nless : [] math-cmd
-%   val \ngtr : [] math-cmd
-%   val \nleq : [] math-cmd
-%   val \ngeq : [] math-cmd
-%   val \asymp : [] math-cmd
-%   val \nasymp : [] math-cmd
-%   val \circeq : [] math-cmd
-%   val \Bumpeq : [] math-cmd
-%   val \bumpeq : [] math-cmd
-%   val \doteq : [] math-cmd
-%   val \doteqdot : [] math-cmd
-%   val \fallingdotseq : [] math-cmd
-%   val \risingdotseq : [] math-cmd
-%   val \mid : [] math-cmd
-%   val \nmid : [] math-cmd
-%   val \parallel : [] math-cmd
-%   val \nparallel : [] math-cmd
-%   val \Vvdash : [] math-cmd
-%   val \VDash : [] math-cmd
-%   val \coloncoloneq : [] math-cmd
-%   val \leqslant : [] math-cmd
-%   val \geqslant : [] math-cmd
-%   val \dashV : [] math-cmd
-%   val \Dashv : [] math-cmd
-%   val \DashV : [] math-cmd
-%   val \preceq : [] math-cmd
-%   val \succeq : [] math-cmd
-%
-%   val \amalg : [] math-cmd
-%   val \dotplus : [] math-cmd
-%   val \divideontimes : [] math-cmd
-%   val \odot : [] math-cmd
-%   val \circledcirc : [] math-cmd
-%   val \circledast : [] math-cmd
-% %  val \circledeq : [] math-cmd
-%   val \circleddash : [] math-cmd
-%   val \boxplus : [] math-cmd
-%   val \boxminus : [] math-cmd
-%   val \boxtimes : [] math-cmd
-%   val \boxdot : [] math-cmd
-%   val \curlyvee : [] math-cmd
-%   val \curlywedge : [] math-cmd
-%   val \Join : [] math-cmd
-%   val \ltimes : [] math-cmd
-%   val \rtimes : [] math-cmd
-%   val \leftthreetimes : [] math-cmd
-%   val \rightthreetimes : [] math-cmd
-%   val \wr : [] math-cmd
-%
-%   val \diamond : [] math-cmd
-%   val \star : [] math-cmd
-%   val \complement : [] math-cmd
-%   val \angle : [] math-cmd
-%   val \measuredangle : [] math-cmd
-%   val \sphericalangle : [] math-cmd
-%
-%   val \int : [] math-cmd
-%
-%   val \ordd : [] math-cmd
-%   val \partial : [] math-cmd
-%   val \nabla : [] math-cmd
-%
-%   val \paren : [math] math-cmd
-%   val \app : [math; math] math-cmd
-%   val \angle-bracket : [math] math-cmd
-%   val \brace : [math] math-cmd
-%   val \sqbracket : [math] math-cmd
-%   val \abs : [math] math-cmd
-%   val \norm : [math] math-cmd
-%   val \floor : [math] math-cmd
-%   val \ceil : [math] math-cmd
-%   val \set : [math] math-cmd
-%   val \setsep : [math; math] math-cmd
-%   val \cases : [(math * inline-text) list] math-cmd
-%
-%   val paren-left : paren
-%   val paren-right : paren
-%   val angle-left : length -> paren
-%   val angle-right : length -> paren
-%   val brace-left : paren
-%   val brace-right : paren
-%   val sqbracket-left : paren
-%   val sqbracket-right : paren
-%   val floor-left : paren
-%   val floor-right : paren
-%   val ceil-left : paren
-%   val ceil-right : paren
-%   val abs-left : paren
-%   val abs-right : paren
-%   val norm-left : paren
-%   val norm-right : paren
-%   val empty-paren : paren
-%   val bar-middle : paren
-%   val slash-middle : paren
-%
+module Math :> sig
+
+  val \math : inline [math-text]
+  val +math : block [?(tag : inline-text) math-text]
+  val \eqn : inline [?(tag : inline-text) math-text]
+  val +math-list : block [list math-text]
+  val \math-list : inline [list math-text]
+  val +align : block [list (list math-text)]
+  val \align : inline [list (list math-text)]
+  val \text : math [inline-text]
+  val \frac : math [math-text, math-text]
+  val \sqrt : math [math-text]
+  val \lower : math [math-text, math-text]
+  val \upper : math [math-text, math-text]
+  val \math-skip : math [length]
+  val \math-color : math [color, math-text]
+  val join : math-text -> list math-text -> math-text
+  val half-length : length -> length -> length -> length -> length
+
+  val \mathord : math [math-text]
+  val \mathbin : math [math-text]
+  val \mathrel : math [math-text]
+  val \mathop : math [math-text]
+  val \mathprefix : math [math-text]
+  val \mathpunct : math [math-text]
+
+  val \math-style : math [math-char-class, math-text]
+  val \mathrm : math [math-text]
+  val \mathbf : math [math-text]
+  val \mathcal : math [math-text]
+  val \mathfrak : math [math-text]
+  val \mathbb : math [math-text]
+  val \bm : math [math-text]
+
+  val \math-style-token : math [math-char-class, string]
+  val \mathit-token : math [string]
+  val \mathrm-token : math [string]
+  val \mathbf-token : math [string]
+
+  val \alpha   : math []
+  val \beta    : math []
+  val \gamma   : math []
+  val \delta   : math []
+  val \epsilon : math []
+  val \zeta    : math []
+  val \eta     : math []
+  val \theta   : math []
+  val \iota    : math []
+  val \kappa   : math []
+  val \lambda  : math []
+  val \mu      : math []
+  val \nu      : math []
+  val \xi      : math []
+  val \omicron : math []
+  val \pi      : math []
+  val \rho     : math []
+  val \sigma   : math []
+  val \tau     : math []
+  val \upsilon : math []
+  val \phi     : math []
+  val \chi     : math []
+  val \psi     : math []
+  val \omega   : math []
+
+  val \Alpha   : math []
+  val \Beta    : math []
+  val \Gamma   : math []
+  val \Delta   : math []
+  val \Epsilon : math []
+  val \Zeta    : math []
+  val \Eta     : math []
+  val \Theta   : math []
+  val \Iota    : math []
+  val \Kappa   : math []
+  val \Lambda  : math []
+  val \Mu      : math []
+  val \Nu      : math []
+  val \Xi      : math []
+  val \Omicron : math []
+  val \Pi      : math []
+  val \Rho     : math []
+  val \Sigma   : math []
+  val \Tau     : math []
+  val \Upsilon : math []
+  val \Phi     : math []
+  val \Chi     : math []
+  val \Psi     : math []
+  val \Omega   : math []
+
+  val \to : math []
+  val \pm : math []
+  val \mp : math []
+  val \times : math []
+  val \setminus : math []
+  val \ast : math []
+  val \circ : math []
+  val \bullet : math []
+  val \cap : math []
+  val \cup : math []
+  val \uplus : math []
+  val \sqcap : math []
+  val \sqcup : math []
+  val \wedge : math []
+  val \vee : math []
+  val \oplus : math []
+  val \ominus : math []
+  val \otimes : math []
+  val \oslash : math []
+
+  val \vdash : math []
+  val \nvdash : math []
+  val \dashv : math []
+  val \vDash : math []
+  val \nvDash : math []
+  val \Vdash : math []
+  val \nVdash : math []
+
+  val \colon-rel : math []
+
+  val \leq : math []
+  val \geq : math []
+  val \equiv : math []
+  val \nequiv : math []
+  val \neq : math []
+  val \sim : math []
+  val \nsim : math []
+  val \simeq : math []
+  val \nsimeq : math []
+  val \propto : math []
+  val \coloneq : math []
+  val \eqcolon : math []
+
+  val \in : math []
+  val \nin : math []
+  val \ni : math []
+  val \nni : math []
+  val \subset : math []
+  val \supset : math []
+  val \nsubset : math []
+  val \nsupset : math []
+  val \subseteq : math []
+  val \supseteq : math []
+  val \nsubseteq : math []
+  val \nsupseteq : math []
+  val \subsetneq : math []
+  val \supsetneq : math []
+  val \sqsubset : math []
+  val \sqsupset : math []
+  val \sqsubseteq : math []
+  val \sqsupseteq : math []
+  val \nsqsubseteq : math []
+  val \nsqsupseteq : math []
+  val \sqsubsetneq : math []
+  val \sqsupsetneq : math []
+  val \prec : math []
+  val \succ : math []
+  val \nprec : math []
+  val \nsucc : math []
+  val \preccurlyeq : math []
+  val \succcurlyeq : math []
+  val \precsim : math []
+  val \succsim : math []
+  val \npreccurlyeq : math []
+  val \nsucccurlyeq : math []
+
+  val \emptyset : math []
+  val \infty : math []
+  val \top : math []
+  val \bot : math []
+  val \therefore : math []
+  val \because : math []
+  val \forall : math []
+  val \exists : math []
+  val \nexists : math []
+  val \bigcirc : math []
+
+  val \cdot  : math []
+  val \ldots : math []
+  val \cdots : math []
+  val \vdots : math []
+  val \ddots : math []
+  val \backddots : math []
+
+  val \lim : math []
+  val \colim : math []
+  val \max : math []
+  val \min : math []
+  val \inf : math []
+  val \sup : math []
+  val \sin : math []
+  val \cos : math []
+  val \tan : math []
+  val \cot : math []
+  val \sec : math []
+  val \csc : math []
+  val \log : math []
+  val \tr : math []
+  val \det : math []
+  val \dom : math []
+  val \cod : math []
+  val \Ker : math []
+  val \Im : math []
+
+  val \sum : math []
+  val \prod : math []
+  val \coprod : math []
+  val \bigwedge : math []
+  val \bigvee : math []
+  val \bigcap : math []
+  val \bigcup : math []
+
+  val \land : math []
+  val \lor : math []
+
+  val \Leftarrow : math []
+  val \Rightarrow : math []
+  val \Leftrightarrow : math []
+  val \Uparrow : math []
+  val \Downarrow : math []
+  val \Updownarrow : math []
+  val \nRightarrow : math []
+  val \nLeftarrow : math []
+  val \nLeftrightarrow : math []
+  val \leftarrow : math []
+  val \rightarrow : math []
+  val \uparrow : math []
+  val \downarrow : math []
+  val \updownarrow : math []
+  val \nwarrow : math []
+  val \nearrow : math []
+  val \searrow : math []
+  val \swarrow : math []
+  val \nleftarrow : math []
+  val \nrightarrow : math []
+  val \nleftrightarrow : math []
+  val \mapsto : math []
+  val \hookleftarrow : math []
+  val \hookrightarrow : math []
+  val \rightarrowtail : math []
+  val \leftarrowtail : math []
+  val \twoheadleftarrow : math []
+  val \twoheadrightarrow : math []
+  val \twoheaduparrow : math []
+  val \twoheaddownarrow : math []
+  val \leftharpoonup : math []
+  val \leftharpoondown : math []
+  val \rightharpoonup : math []
+  val \rightharpoondown : math []
+  val \rightleftharpoons : math []
+  val \upharpoonright : math []
+  val \upharpoonleft : math []
+  val \downharpoonright : math []
+  val \downharpoonleft : math []
+  val \longleftarrow : math []
+  val \longrightarrow : math []
+  val \longleftrightarrow : math []
+  val \Longleftarrow : math []
+  val \Longrightarrow : math []
+  val \Longleftrightarrow : math []
+  val \circlearrowleft : math []
+  val \circlearrowright : math []
+
+  val \between : math []
+  val \pitchfork : math []
+  val \intercal : math []
+  val \ll : math []
+  val \gg : math []
+  val \lll : math []
+  val \ggg : math []
+  val \leqq : math []
+  val \geqq : math []
+  val \lneqq : math []
+  val \gneqq : math []
+  val \lnsim : math []
+  val \gnsim : math []
+  val \precnsim : math []
+  val \succnsim : math []
+  val \Subset : math []
+  val \Supset : math []
+  val \Cap : math []
+  val \Cup : math []
+  val \lhd : math []
+  val \rhd : math []
+  val \unlhd : math []
+  val \unrhd : math []
+  val \triangleleft : math []
+  val \triangleright : math []
+  val \trianglelefteq : math []
+  val \trianglerighteq : math []
+  val \backsim : math []
+  val \backsimeq : math []
+  val \eqcirc : math []
+  val \cong : math []
+  val \simneq : math []
+  val \ncong : math []
+  val \approx : math []
+  val \napprox : math []
+  val \approxeq : math []
+  val \curlyeqprec : math []
+  val \curlyeqsucc : math []
+  val \lessdot : math []
+  val \gtrdot : math []
+  val \lesssim : math []
+  val \gtrsim : math []
+  val \nlesssim : math []
+  val \ngtrsim : math []
+  val \lessgtr : math []
+  val \gtrless : math []
+  val \nlessgtr : math []
+  val \ngtrless : math []
+  val \ntriangleleft : math []
+  val \ntriangleright : math []
+  val \ntrianglelefteq : math []
+  val \ntrianglerighteq : math []
+  val \lesseqgtr : math []
+  val \gtreqless : math []
+  val \nless : math []
+  val \ngtr : math []
+  val \nleq : math []
+  val \ngeq : math []
+  val \asymp : math []
+  val \nasymp : math []
+  val \circeq : math []
+  val \Bumpeq : math []
+  val \bumpeq : math []
+  val \doteq : math []
+  val \doteqdot : math []
+  val \fallingdotseq : math []
+  val \risingdotseq : math []
+  val \mid : math []
+  val \nmid : math []
+  val \parallel : math []
+  val \nparallel : math []
+  val \Vvdash : math []
+  val \VDash : math []
+  val \coloncoloneq : math []
+  val \leqslant : math []
+  val \geqslant : math []
+  val \dashV : math []
+  val \Dashv : math []
+  val \DashV : math []
+  val \preceq : math []
+  val \succeq : math []
+
+  val \amalg : math []
+  val \dotplus : math []
+  val \divideontimes : math []
+  val \odot : math []
+  val \circledcirc : math []
+  val \circledast : math []
+%  val \circledeq : math []
+  val \circleddash : math []
+  val \boxplus : math []
+  val \boxminus : math []
+  val \boxtimes : math []
+  val \boxdot : math []
+  val \curlyvee : math []
+  val \curlywedge : math []
+  val \Join : math []
+  val \ltimes : math []
+  val \rtimes : math []
+  val \leftthreetimes : math []
+  val \rightthreetimes : math []
+  val \wr : math []
+
+  val \diamond : math []
+  val \star : math []
+  val \complement : math []
+  val \angle : math []
+  val \measuredangle : math []
+  val \sphericalangle : math []
+
+  val \int : math []
+
+  val \ordd : math []
+  val \partial : math []
+  val \nabla : math []
+
+  val \paren : math [math-text]
+  val \app : math [math-text, math-text]
+  val \angle-bracket : math [math-text]
+  val \brace : math [math-text]
+  val \sqbracket : math [math-text]
+  val \abs : math [math-text]
+  val \norm : math [math-text]
+  val \floor : math [math-text]
+  val \ceil : math [math-text]
+  val \set : math [math-text]
+  val \setsep : math [math-text, math-text]
+  val \cases : math [list (math-text * inline-text)]
+
+  type paren = Pervasives.paren %TODO (enhance): remove this
+  val paren-left : paren
+  val paren-right : paren
+  val angle-left : length -> paren
+  val angle-right : length -> paren
+  val brace-left : paren
+  val brace-right : paren
+  val sqbracket-left : paren
+  val sqbracket-right : paren
+  val floor-left : paren
+  val floor-right : paren
+  val ceil-left : paren
+  val ceil-right : paren
+  val abs-left : paren
+  val abs-right : paren
+  val norm-left : paren
+  val norm-right : paren
+  val empty-paren : paren
+  val bar-middle : paren
+  val slash-middle : paren
+
 %   % -- temporary --
-%   val \synteq : [] math-cmd
+%   val \synteq : math []
 %   val \tyjd : [math; math; math] math-cmd
-%   val \and-also : [] math-cmd
+%   val \and-also : math []
 %   val \tmabstyped : [math; math; math] math-cmd
 %
-% end
-= struct
+end = struct
 
   val join msep mlst =
     match
@@ -1020,6 +1019,8 @@ module Math
   val math \bi m =
     math-char-class MathBoldItalic m
 
+  type paren = Pervasives.paren %TODO (enhance): remove this
+
   val half-length hgt dpt hgtaxis fontsize =
     let minhalflen = fontsize *' 0.5 in
     let lenappend = fontsize *' 0.1 in
@@ -1431,7 +1432,7 @@ module Math
         |> close-with-line
 
 
-  val bracket-left pathf hgt dpt hgtaxis fontsize color =
+  val bracket-left pathf (hgt : length) (dpt : length) (hgtaxis : length) (fontsize : length) (color : color) =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let (w0, w1, w2, t) = bracket-metrics fontsize halflen in
     let path (xpos, ypos) =
@@ -1465,8 +1466,8 @@ module Math
     math-paren sqbracket-left sqbracket-right
 
 
-  val floor-left = bracket-left floor-path
-  val floor-right = bracket-right floor-path
+  val floor-left hgt = bracket-left floor-path hgt
+  val floor-right hgt = bracket-right floor-path hgt
   val math \floor =
     math-paren floor-left floor-right
 

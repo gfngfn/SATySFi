@@ -2,17 +2,12 @@
 @require: color
 @require: gr
 
-
-module FootnoteScheme
-% :> sig
-%
-%   val initialize : unit -> unit
-%   val start-page : unit -> unit
-%   val main : context -> (int -> inline-boxes) -> (int -> block-boxes) -> inline-boxes
-%   val main-no-number : context -> (unit -> inline-boxes) -> (unit -> block-boxes) -> inline-boxes
-%
-% end
-= struct
+module FootnoteScheme :> sig
+  val initialize : unit -> unit
+  val start-page : unit -> unit
+  val main : context -> (int -> inline-boxes) -> (int -> block-boxes) -> inline-boxes
+  val main-no-number : context -> (unit -> inline-boxes) -> (unit -> block-boxes) -> inline-boxes
+end = struct
 
   val mutable footnote-ref <- 0
   val mutable first-footnote <- true

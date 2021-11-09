@@ -3,16 +3,12 @@
 @require: option
 @require: gr
 
-module Itemize
-% :> sig
-%
-%   direct +listing : [bool?; itemize] block-cmd
-%   direct \listing : [bool?; itemize] inline-cmd
-%   direct +enumerate : [itemize] block-cmd
-%   direct \enumerate : [itemize] inline-cmd
-%
-% end
-= struct
+module Itemize :> sig
+  val +listing : block [?(break : bool) itemize]
+  val \listing : inline [?(break : bool) itemize]
+  val +enumerate : block [itemize]
+  val \enumerate : inline [itemize]
+end = struct
 
   val (+++>) = List.fold-left (+++)
   val concat-blocks = (+++>) block-nil
