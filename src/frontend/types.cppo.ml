@@ -151,7 +151,7 @@ let base_type_map : base_type TypeNameMap.t =
     ("graphics"    , GraphicsType);
     ("image"       , ImageType   );
     ("document"    , DocumentType);
-    ("math"        , MathType    );
+    ("math-text"   , MathType    );
     ("regexp"      , RegExpType  );
     ("text-info"   , TextInfoType);
   ]

@@ -246,10 +246,11 @@ let lift_poly_general (ptv : FreeID.t -> bool) (prv : FreeRowID.t -> bool) (ty :
         begin
           match !orviref with
           | MonoORFree(frid) ->
-              if prv frid then
-                RowEmpty
-              else
+              if not (prv frid) then
                 RowVar(PolyORFree(rv0))
+              else
+                RowEmpty
+                  (* TODO: fix this *)
 
           | MonoORLink(row) ->
               generalize_row row

@@ -3095,7 +3095,10 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
               unify ty1 tyA
             ) |> ignore;
 *)
+(*
             let should_be_polymorphic = is_nonexpansive_expression e1 in
+*)
+            let should_be_polymorphic = true in
             let ssig =
               let pty =
                 if should_be_polymorphic then

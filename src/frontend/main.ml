@@ -960,6 +960,7 @@ let error_log_environment suspended =
             ]
 
         | NotASubtypeAboutValue(rng, x, pty1, pty2) ->
+            Format.printf "pty1 = %a@, pty2 = %a@," pp_poly_type pty1 pp_poly_type pty2;
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
               NormalLine(Printf.sprintf "not a subtype about value '%s'; type" x);
