@@ -215,7 +215,7 @@ and mono_type_variable =
   | MustBeBound of MustBeBoundID.t
 
 and poly_type_variable =
-  | PolyFree  of mono_type_variable
+  | PolyFree  of mono_type_variable_updatable ref
   | PolyBound of BoundID.t
 
 and mono_type =

@@ -204,19 +204,19 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (opt_param
       let (rng, varnm) = ident in
       let evid = EvalVarID.fresh ident in
       let fid = fresh_free_id qtfbl lev in
-      let tv = Updatable(ref (MonoFree(fid))) in
-      let beta = (rng, TypeVariable(PolyFree(tv))) in
+      let tvuref = ref (MonoFree(fid)) in
+      let pbeta = (rng, TypeVariable(PolyFree(tvuref))) in
       let tyenv =
         let ventry =
           {
-            val_type  = Poly(Primitives.option_type beta);
+            val_type  = Poly(Primitives.option_type pbeta);
             val_name  = Some(evid);
             val_stage = pre.stage;
           }
         in
         tyenv |> Typeenv.add_value varnm ventry
       in
-      (tyenv, RowCons(rlabel, (rng, TypeVariable(tv)), row), evid_labmap |> LabelMap.add label evid)
+      (tyenv, RowCons(rlabel, (rng, TypeVariable(Updatable(tvuref))), row), evid_labmap |> LabelMap.add label evid)
     ) (tyenv, RowEmpty, LabelMap.empty)
   in
   (row, evid_labmap, tyenv)
@@ -234,8 +234,8 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       let evid = EvalVarID.fresh param in
       let (ptybody, beta) =
         let tvid = fresh_free_id pre.quantifiability pre.level in
-        let tv = Updatable(ref (MonoFree(tvid))) in
-        ((rng, TypeVariable(PolyFree(tv))), (rng, TypeVariable(tv)))
+        let tvuref = ref (MonoFree(tvid)) in
+        ((rng, TypeVariable(PolyFree(tvuref))), (rng, TypeVariable(Updatable(tvuref))))
       in
       let (pty, macpty) =
       match macparam with
@@ -1662,12 +1662,12 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
       let tv = Updatable(tvuref) in
       let rng = get_range astdef in
       let beta = (rng, TypeVariable(tv)) in
-      let pbeta = (rng, TypeVariable(PolyFree(tv))) in
+      let pbeta = TypeConv.lift_poly beta in
       let evid = EvalVarID.fresh (varrng, varnm) in
       let tyenv =
         let ventry =
           {
-            val_type  = Poly(pbeta);
+            val_type  = pbeta;
             val_name  = Some(evid);
             val_stage = pre.stage;
           }

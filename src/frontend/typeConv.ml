@@ -103,8 +103,8 @@ let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type
   let brid_ht : mono_row_variable BoundRowIDHashTable.t = BoundRowIDHashTable.create 32 in
   let intern_ty (rng : Range.t) (ptv : poly_type_variable) : mono_type =
     match ptv with
-    | PolyFree(tv) ->
-        (rng, TypeVariable(tv))
+    | PolyFree(tvuref) ->
+        (rng, TypeVariable(Updatable(tvuref)))
 
     | PolyBound(bid) ->
         begin
@@ -149,8 +149,8 @@ let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type
 let instantiate_by_map_mono (bidmap : mono_type BoundIDMap.t) (Poly(pty) : poly_type) : mono_type =
   let intern_ty (rng : Range.t) (ptv : poly_type_variable) =
     match ptv with
-    | PolyFree(tvref) ->
-        (rng, TypeVariable(tvref))
+    | PolyFree(tvuref) ->
+        (rng, TypeVariable(Updatable(tvuref)))
 
     | PolyBound(bid) ->
         begin
@@ -202,7 +202,7 @@ let lift_poly_general (ptv : FreeID.t -> bool) (prv : FreeRowID.t -> bool) (ty :
                 | MonoFree(fid) ->
                     let ptvi =
                       if not (ptv fid) then
-                        PolyFree(tv)
+                        PolyFree(tvuref)
                       else
                         begin
                           match FreeIDHashTable.find_opt tvidht fid with
@@ -349,8 +349,8 @@ let rec unlift_aux pty =
     | TypeVariable(ptvi) ->
         begin
           match ptvi with
-          | PolyFree(tvref) -> TypeVariable(tvref)
-          | PolyBound(_)    -> raise Exit
+          | PolyFree(tvuref) -> TypeVariable(Updatable(tvuref))
+          | PolyBound(_)     -> raise Exit
         end
 
     | FuncType(poptrow, pty1, pty2)   -> FuncType(unlift_aux_row poptrow, aux pty1, aux pty2)
