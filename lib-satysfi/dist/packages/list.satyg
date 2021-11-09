@@ -1,29 +1,27 @@
 @stage: persistent
 @require: option
 
-module List
-% :> sig
-%     val map : ('a -> 'b) -> 'a list -> 'b list
-%     val mapi : (int -> 'a -> 'b) -> 'a list -> 'b list
-%     val iter : ('a -> unit) -> 'a list -> unit
-%     val iteri : (int -> 'a -> unit) -> 'a list -> unit
-%     val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
-%     val fold-lefti : (int -> 'a -> 'b -> 'a) -> 'a -> 'b list -> 'a
-%     val fold-right : ('a -> 'b -> 'b) -> 'b -> 'a list -> 'b
-%     val filter : ('a -> bool) -> 'a list -> 'a list
-%     val assoc : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option
-%     val reverse : 'a list -> 'a list
-%     val append : 'a list -> 'a list -> 'a list
-%     val concat : ('a list) list -> 'a list
-%     val fold-left-adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
-%     val map-adjacent : ('a -> 'a option -> 'a option -> 'b) -> 'a list -> 'b list
-%     val mapi-adjacent : (int -> 'a -> 'a option -> 'a option -> 'b) -> 'a list -> 'b list
-%     val length : 'a list -> int
-%     val nth : int -> 'a list -> 'a option
-%     val is-empty : 'a list -> bool
-%     val map-with-ends : (bool -> bool -> 'a -> 'b) -> 'a list -> 'b list
-%   end
-= struct
+module List :> sig
+  val map 'a 'b : ('a -> 'b) -> list 'a -> list 'b
+  val mapi 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
+  val iter 'a : ('a -> unit) -> list 'a -> unit
+  val iteri 'a : (int -> 'a -> unit) -> list 'a -> unit
+  val fold-left 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
+  val fold-lefti 'a 'b : (int -> 'a -> 'b -> 'a) -> 'a -> list 'b -> 'a
+  val fold-right 'a 'b : ('a -> 'b -> 'b) -> 'b -> list 'a -> 'b
+  val filter 'a : ('a -> bool) -> list 'a -> list 'a
+  val assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
+  val reverse 'a : list 'a -> list 'a
+  val append 'a : list 'a -> list 'a -> list 'a
+  val concat 'a : list (list 'a) -> list 'a
+  val fold-left-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
+  val map-adjacent 'a 'b : ('a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
+  val mapi-adjacent 'a 'b : (int -> 'a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
+  val length 'a : list 'a -> int
+  val nth 'a : int -> list 'a -> option 'a
+  val is-empty 'a : list 'a -> bool
+  val map-with-ends 'a 'b : (bool -> bool -> 'a -> 'b) -> list 'a -> list 'b
+end = struct
 
     val rec map f ys =
       match ys with

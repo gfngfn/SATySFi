@@ -2,31 +2,30 @@
 @require: geom
 @require: list
 
-module Gr
-% :> sig
-%
-%   val rectangle : point -> point -> path
-%   val rectangle-round       : length -> point -> point -> path
-%   val rectangle-round-left  : length -> point -> point -> path
-%   val rectangle-round-left-lower : length -> point -> point -> path
-%   val rectangle-round-left-upper : length -> point -> point -> path
-%   val rectangle-round-right : length -> point -> point -> path
-%   val poly-line : point -> point list -> path
-%   val polygon : point -> point list -> path
-%   val line : point -> point -> path
-%   val circle : point -> length -> path
-%   val text-centering : point -> inline-boxes -> graphics
-%   val text-leftward : point -> inline-boxes -> graphics
-%   val text-rightward : point -> inline-boxes -> graphics
-%   val arrow : length -> color -> length -> length -> length -> point -> point -> graphics list
-%   val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics list
-%   val rotate-path : point -> float -> path -> path
-%   val scale-path : point -> float -> float -> path -> path
-%   val rotate-graphics : point -> float -> graphics -> graphics
-%   val scale-graphics : point -> float -> float -> graphics -> graphics
-%
-% end
-= struct
+module Gr :> sig
+  type point = Pervasives.point  %TODO (enhance): erase this
+  val rectangle : point -> point -> path
+  val rectangle-round : length -> point -> point -> path
+  val rectangle-round-left : length -> point -> point -> path
+  val rectangle-round-left-lower : length -> point -> point -> path
+  val rectangle-round-left-upper : length -> point -> point -> path
+  val rectangle-round-right : length -> point -> point -> path
+  val poly-line : point -> list point -> path
+  val polygon : point -> list point -> path
+  val line : point -> point -> path
+  val circle : point -> length -> path
+  val text-centering : point -> inline-boxes -> graphics
+  val text-leftward : point -> inline-boxes -> graphics
+  val text-rightward : point -> inline-boxes -> graphics
+  val arrow : length -> color -> length -> length -> length -> point -> point -> list graphics
+  val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> list graphics
+  val rotate-path : point -> float -> path -> path
+  val scale-path : point -> float -> float -> path -> path
+  val rotate-graphics : point -> float -> graphics -> graphics
+  val scale-graphics : point -> float -> float -> graphics -> graphics
+end = struct
+
+  type point = Pervasives.point  %TODO (enhance): erase this
 
   val rectangle (x1, y1) (x2, y2) =
     start-path (x1, y1)
