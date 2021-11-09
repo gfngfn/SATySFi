@@ -1812,7 +1812,7 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
           begin
             match pre.type_parameters |> TypeParameterMap.find_opt typaram with
             | None ->
-                failwith "TODO (error): unbound type parameter"
+                failwith (Printf.sprintf "TODO (error): unbound type parameter '%s' (%s)" typaram (Range.to_string rng))
 
             | Some(mbbid) ->
                 TypeVariable(MustBeBound(mbbid))
@@ -3257,8 +3257,22 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : m
   (ty, e)
 
 
-let main_bindings (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : abstract_tree * StructSig.t abstracted =
-  typecheck_binding_list stage tyenv utbinds
+let main_bindings (stage : stage) (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : abstract_tree * StructSig.t abstracted =
+  match utsig_opt with
+  | None ->
+      typecheck_binding_list stage tyenv utbinds
+
+  | Some(utsig) ->
+      let absmodsig = typecheck_signature stage tyenv utsig in
+      let (e, (_, ssig)) = typecheck_binding_list stage tyenv utbinds in
+      let rng = Range.dummy "main_bindings" in (* TODO (enhance): give appropriate ranges *)
+      let (quant, modsig) = coerce_signature rng (ConcStructure(ssig)) absmodsig in
+      let ssig =
+        match modsig with
+        | ConcFunctor(_)      -> assert false
+        | ConcStructure(ssig) -> ssig
+      in
+      (e, (quant, ssig))
 
 
 let are_unifiable (ty1 : mono_type) (ty2 : mono_type) : bool =

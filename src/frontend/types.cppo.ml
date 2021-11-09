@@ -506,7 +506,7 @@ and untyped_command_argument =
 [@@deriving show { with_path = false; }]
 
 type untyped_source_file =
-  | UTLibraryFile  of (module_name ranged * untyped_binding list)
+  | UTLibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
   | UTDocumentFile of untyped_abstract_tree
 [@@deriving show { with_path = false; }]
 

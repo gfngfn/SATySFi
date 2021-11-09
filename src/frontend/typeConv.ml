@@ -325,7 +325,7 @@ let generalize (lev : level) (ty : mono_type) : poly_type =
     FreeID.get_quantifiability fid && Level.less_than lev (FreeID.get_level fid)
   in
   let prv (frid : FreeRowID.t) : bool =
-    not (Level.less_than lev (FreeRowID.get_level frid))
+    Level.less_than lev (FreeRowID.get_level frid)
   in
   Poly(lift_poly_general ptv prv ty)
 

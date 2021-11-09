@@ -372,8 +372,8 @@ main:
       { (stage, header, UTDocumentFile(utast)) }
 ;
 main_lib:
-  | MODULE; modident=UPPER; EXACT_EQ; STRUCT; utbinds=list(bind); END
-      { (modident, utbinds) }
+  | MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; STRUCT; utbinds=list(bind); END
+      { (modident, utsig_opt, utbinds) }
 ;
 stage:
   |                    { Stage1 }
@@ -534,7 +534,7 @@ variant:
       { UTConstructorBranch(ctor, None) }
 ;
 sig_annot:
-  | COLON; utsig=sigexpr { utsig }
+  | COERCE; utsig=sigexpr { utsig }
 ;
 sigexpr:
   | utsig=sigexpr_bot; WITH; TYPE; tybinds=bind_type

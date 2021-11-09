@@ -97,7 +97,7 @@ module FileDependencyGraph = DirectedGraph.Make
 
 type file_info =
   | DocumentFile of untyped_abstract_tree
-  | LibraryFile  of stage * (module_name ranged * untyped_binding list)
+  | LibraryFile  of stage * (module_name ranged * untyped_signature option * untyped_binding list)
 
 
 let has_library_extension abspath =
@@ -292,9 +292,9 @@ let output_text abspath_out s =
   close_out outc
 
 
-let typecheck_library_file (stage : stage) (tyenv : Typeenv.t) (abspath_in : abs_path) (utbinds : untyped_binding list) : abstract_tree * StructSig.t abstracted =
+let typecheck_library_file (stage : stage) (tyenv : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : abstract_tree * StructSig.t abstracted =
   Logging.begin_to_typecheck_file abspath_in;
-  let res = Typechecker.main_bindings stage tyenv utbinds in
+  let res = Typechecker.main_bindings stage tyenv utsig_opt utbinds in
   Logging.pass_type_check None;
   res
 
@@ -1177,9 +1177,9 @@ let main () =
                 let ast = typecheck_document_file tyenv abspath utast in
                 (tyenv, libacc, Some(ast))
 
-            | LibraryFile((stage, (modident, utbinds))) ->
+            | LibraryFile((stage, (modident, utsig_opt, utbinds))) ->
                 let (_, modnm) = modident in
-                let (e, (_quant, ssig)) = typecheck_library_file stage tyenv abspath utbinds in
+                let (e, (_quant, ssig)) = typecheck_library_file stage tyenv abspath utsig_opt utbinds in
                 let evid = EvalVarID.fresh modident in
                 let mentry =
                   {
