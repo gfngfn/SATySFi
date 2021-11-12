@@ -40,6 +40,13 @@ type type_intern = (BoundID.t -> poly_type -> bool)
 type row_intern = (BoundRowID.t -> normalized_poly_row -> bool)
 
 
+let make_range_from_module_chain ((modident, projs) : module_name_chain) : Range.t =
+  let (rngL, _) = modident in
+  match List.rev projs with
+  | []             -> rngL
+  | (rngR, _) :: _ -> Range.unite rngL rngR
+
+
 let fresh_free_id (qtfbl : quantifiability) (lev : Level.t) : FreeID.t =
   FreeID.fresh lev (qtfbl = Quantifiable)
 
@@ -54,10 +61,10 @@ let unify_quantifier (quant1 : quantifier) (quant2 : quantifier) : quantifier =
 
 let decode_manual_row_base_kind (mnrbkd : manual_row_base_kind) : row_base_kind =
   mnrbkd |> List.fold_left (fun labset (rng, label) ->
-    if labset |> LabelSet.mem label then begin
-      failwith "TODO (warning): duplicate labels"
-    end;
-    labset |> LabelSet.add label
+    if labset |> LabelSet.mem label then
+      raise_error (LabelUsedMoreThanOnce(rng, label))
+    else
+      labset |> LabelSet.add label
   ) LabelSet.empty
 
 
@@ -127,11 +134,11 @@ let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * ma
 let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : constructor_name) (rng : Range.t) =
   match tyenv |> Typeenv.find_constructor ctornm with
   | None ->
-      failwith (Printf.sprintf "TODO (error): find_constructor_and_instantiate, not found '%s'" ctornm)
-        (*
-          let cands = Typeenv.find_constructor_candidates pre tyenv constrnm in
-          raise (UndefinedConstructor(rng, constrnm, cands))
-        *)
+      let cands =
+        []  (* TODO (enhance): find candidate constructors *)
+        (* tyenv |> Typeenv.find_constructor_candidates ctornm *)
+      in
+      raise_error (UndefinedConstructor(rng, ctornm, cands))
 
   | Some(centry) ->
       let qtfbl = pre.quantifiability in
@@ -330,7 +337,7 @@ let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type 
     | RowEmpty                                         -> tylabmap
     | RowVar(UpdatableRow{contents = MonoORFree(_)})   -> tylabmap
     | RowVar(UpdatableRow{contents = MonoORLink(row)}) -> aux_row tylabmap row
-    | RowVar(MustBeBoundRow(_))                        -> failwith "TODO (error): flatten_type, MustBeBoundRow"
+    | RowVar(MustBeBoundRow(_))                        -> assert false
     | RowCons((_, label), ty, row)                     -> aux_row (tylabmap |> LabelMap.add label ty) row
   in
   let rec aux acc ty =
@@ -640,7 +647,8 @@ and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : unit =
   match row with
   | RowCons((rng, label), ty, rowsub) ->
       if labset |> LabelSet.mem label then
-        failwith "TODO (error): should report error about label"
+        raise InternalContradictionError
+          (* TODO (error): should report error about label *)
       else
         solve_row_disjointness rowsub labset
 
@@ -656,7 +664,8 @@ and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : unit =
       if LabelSet.subset labset labset0 then
         ()
       else
-        failwith "TODO (error): insufficient constraint"
+        raise InternalContradictionError
+          (* TODO (error): insufficient constraint *)
 
   | RowEmpty ->
       ()
@@ -678,7 +687,8 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
   | RowVar(UpdatableRow({contents = MonoORFree(frid0)} as orvuref0)) ->
       let labset0 = FreeRowID.get_label_set frid0 in
       if labset0 |> LabelSet.mem label then
-        failwith "TODO (error): reject for the disjointness"
+        raise InternalContradictionError
+          (* TODO (error): reject for the disjointness *)
       else begin
         let lev0 = FreeRowID.get_level frid0 in
         let frid1 = FreeRowID.fresh lev0 LabelSet.empty in
@@ -690,13 +700,15 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
       end
 
   | RowVar(MustBeBoundRow(_)) ->
-      failwith "TODO (error): solve_row_membership, MustBeBoundRow"
+      raise InternalContradictionError
+        (* TODO (error): solve_row_membership, MustBeBoundRow *)
 
   | RowEmpty ->
-      failwith "TODO (error): solve_row_membership, RowEmpty"
+      raise InternalContradictionError
+        (* TODO (error): solve_row_membership, RowEmpty *)
 
 
-and unify_row (row1 : mono_row) (row2 : mono_row) =
+and unify_row (row1 : mono_row) (row2 : mono_row) : unit =
   match (row1, row2) with
   | (RowVar(UpdatableRow{contents = MonoORLink(row1sub)}), _) ->
       unify_row row1sub row2
@@ -870,11 +882,11 @@ let rec typecheck
             let ventry =
               match tyenv |> Typeenv.find_value varnm with
               | None ->
-(*
-                  let cands = Typeenv.find_candidates tyenv mdlnmlst varnm rng in
-                  raise_error (UndefinedVariable(rng, mdlnmlst, varnm, cands))
-*)
-                  failwith (Printf.sprintf "TODO (error): not found '%s'" varnm)
+                  let cands =
+                    [] (* TODO (enhance): find candidates *)
+                    (* tyenv |> Typeenv.find_candidates varnm *)
+                  in
+                  raise_error (UndefinedVariable(rng, varnm, cands))
 
               | Some(ventry) ->
                   ventry
@@ -890,20 +902,20 @@ let rec typecheck
         | modident0 :: proj ->
             let modchain = (modident0, proj) in
             let (mentry, (rng0, evid0, labels)) = find_module_chain tyenv modchain in
-            let ventry_opt =
+            let ssig =
               match mentry.mod_signature with
-              | ConcStructure(ssig) -> ssig |> StructSig.find_value varnm
+              | ConcStructure(ssig) -> ssig
               | ConcFunctor(fsig)   -> raise_error (NotAStructureSignature(rng, fsig))
                   (*TODO (enhance): give a better code range to this error. *)
             in
             let ventry =
-              match ventry_opt with
+              match ssig |> StructSig.find_value varnm with
               | None ->
-(*
-                  let cands = Typeenv.find_candidates tyenv mdlnmlst varnm rng in
-                  raise_error (UndefinedVariable(rng, mdlnmlst, varnm, cands))
-*)
-                  failwith (Printf.sprintf "TODO (error): not found '%s'" varnm)
+                  let cands =
+                    [] (* TODO (enhance): find candidates *)
+                    (* ssig |> StructSig.find_candidates varnm *)
+                  in
+                  raise_error (UndefinedVariable(rng, varnm, cands))
 
               | Some(ventry) ->
                   ventry
@@ -1273,16 +1285,16 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
       let utast_labmap =
         labeled_utasts |> List.fold_left (fun utast_labmap ((rng, label), utast) ->
           if utast_labmap |> LabelMap.mem label then
-            failwith "TODO (error): duplicated label"
+            raise_error (LabelUsedMoreThanOnce(rng, label))
           else
-            utast_labmap |> LabelMap.add label utast
+            utast_labmap |> LabelMap.add label (utast, rng)
         ) LabelMap.empty
       in
       let CommandArgType(ty_labmap, ty2) = cmdargty in
       let e_labmap =
-        LabelMap.merge (fun label utast_opt ty_opt ->
-          match (utast_opt, ty_opt) with
-          | (Some(utast1), Some(ty2)) ->
+        LabelMap.merge (fun label utast_and_rng_opt ty_opt ->
+          match (utast_and_rng_opt, ty_opt) with
+          | (Some((utast1, _)), Some(ty2)) ->
               let (e1, ty1) = typecheck pre tyenv utast1 in
               unify ty1 ty2;
               Some(e1)
@@ -1290,8 +1302,8 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
           | (None, Some(_)) ->
               None
 
-          | (Some(_), None) ->
-              failwith "TODO (error): typecheck_command_arguments, contradiction"
+          | (Some((_, rng)), None) ->
+              raise_error (UnexpectedOptionalLabel(rng, label, tycmd))
 
           | (None, None) ->
               assert false
@@ -1303,7 +1315,9 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
     ) ecmd utcmdargs cmdargtys
   with
   | Invalid_argument(_) ->
-      failwith "TODO (error): typecheck_command_arguments, arity mismatch"
+      let arity_expected = List.length cmdargtys in
+      let arity_actual = List.length utcmdargs in
+      raise_error (InvalidArityOfCommandApplication(rngcmdapp, arity_expected, arity_actual))
 
 
 and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
@@ -1742,7 +1756,7 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
       | MTypeName(modidents, tyident, mtyargs) ->
           let tyargs = mtyargs |> List.map aux in
           let len_actual = List.length tyargs in
-          let (_, tynm) = tyident in
+          let (rng_tynm, tynm) = tyident in
           begin
             match modidents with
             | [] ->
@@ -1753,12 +1767,23 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                         match base_type_map |> TypeNameMap.find_opt tynm with
                         | None ->
                             begin
-                              match (tynm, tyargs) with
-                              | ("list", [ ty ]) -> ListType(ty)
-                              | ("ref", [ ty ])  -> RefType(ty)
+                              match tynm with
+                              | "list" ->
+                                  begin
+                                    match tyargs with
+                                    | [ ty ] -> ListType(ty)
+                                    | _      -> invalid rng "list" ~expect:1 ~actual:len_actual
+                                  end
+
+                              | "ref" ->
+                                  begin
+                                    match tyargs with
+                                    | [ ty ] -> RefType(ty)
+                                    | _      -> invalid rng "ref" ~expect:1 ~actual:len_actual
+                                  end
 
                               | _ ->
-                                  failwith (Printf.sprintf "TODO (error): report undefined type name '%s'" tynm)
+                                  raise_error (UndefinedTypeName(rng_tynm, tynm))
                             end
 
                         | Some(bt) ->
@@ -1791,7 +1816,7 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                       begin
                         match ssig |> StructSig.find_type tynm with
                         | None ->
-                            failwith (Printf.sprintf "TODO (error): report undefined type name '%s'" tynm)
+                            raise_error (UndefinedTypeName(rng_tynm, tynm))
 
                         | Some(tentry) ->
                             begin
@@ -1812,7 +1837,7 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
           begin
             match pre.type_parameters |> TypeParameterMap.find_opt typaram with
             | None ->
-                failwith (Printf.sprintf "TODO (error): unbound type parameter '%s' (%s)" typaram (Range.to_string rng))
+                raise_error (UndefinedTypeVariable(rng, typaram))
 
             | Some(mbbid) ->
                 TypeVariable(MustBeBound(mbbid))
@@ -1940,11 +1965,8 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       begin
         match mentry1.mod_signature with
         | ConcStructure(ssig) ->
-            failwith "TODO (error): not a functor"
-(*
             let rng = make_range_from_module_chain modchain1 in
             raise_error (NotAFunctorSignature(rng, ssig))
-*)
 
         | ConcFunctor(fsig1) ->
             let { opaques = quant1; domain = modsig_dom1; codomain = absmodsig_cod1 } = fsig1 in
@@ -1973,28 +1995,23 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
   | UTSigVar(signm) ->
       begin
         match tyenv |> Typeenv.find_signature signm with
-        | None ->
-            failwith "TODO (error): typecheck_signature, UTSigVar, not found"
-
-        | Some(absmodsig) ->
-            absmodsig
+        | None            -> raise_error (UndefinedSignatureName(rng, signm))
+        | Some(absmodsig) -> absmodsig
       end
 
-  | UTSigPath(modchain1, (_, signm2)) ->
+  | UTSigPath(modchain1, (rng_signm, signm2)) ->
       let (mentry1, _) = find_module_chain tyenv modchain1 in
       begin
         match mentry1.mod_signature with
-        | ConcFunctor(_) ->
-            failwith "TODO (error): not a signature"
+        | ConcFunctor(fsig) ->
+            let rng = make_range_from_module_chain modchain1 in
+            raise_error (NotAStructureSignature(rng, fsig))
 
         | ConcStructure(ssig1) ->
             begin
               match ssig1 |> StructSig.find_signature signm2 with
-              | None ->
-                  failwith "TODO (error): typecheck_signature, UTSigPath, not found"
-
-              | Some(absmodsig2) ->
-                  absmodsig2
+              | None             -> raise_error (UndefinedSignatureName(rng_signm, signm2))
+              | Some(absmodsig2) -> absmodsig2
             end
       end
 
@@ -2027,23 +2044,20 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
       let (quant0, modsig0) = typecheck_signature stage tyenv utsig0 in
       let ssig =
         match modsig0 with
-        | ConcFunctor(_) ->
-            failwith "TODO (error): not a structure"
+        | ConcFunctor(fsig) ->
+            raise_error (NotAStructureSignature(rng, fsig))
 
         | ConcStructure(ssig0) ->
             modidents |> List.fold_left (fun ssig (rng, modnm) ->
               match ssig |> StructSig.find_module modnm with
               | None ->
-                  failwith "TODO (error): not found"
+                  raise_error (UndefinedModuleName(rng, modnm))
 
               | Some(mentry) ->
                   begin
                     match mentry.mod_signature with
-                    | ConcFunctor(_) ->
-                        failwith "TODO (error): not a structure"
-
-                    | ConcStructure(ssig) ->
-                        ssig
+                    | ConcFunctor(fsig)   -> raise_error (NotAStructureSignature(rng, fsig))
+                    | ConcStructure(ssig) -> ssig
                   end
             ) ssig0
       in
@@ -2053,13 +2067,13 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
           let (tyid, kd_expected) =
             match ssig |> StructSig.find_type tynm with
             | None ->
-                failwith "TODO (error): type not found"
+                raise_error (UndefinedTypeName(rng, tynm))
 
             | Some(tentry) ->
                 begin
                   match TypeConv.get_opaque_type tentry.type_scheme with
                   | None ->
-                      failwith "TODO (error): cannot restrict transparent type"
+                      raise_error (CannotRestrictTransparentType(rng, tynm))
 
                   | Some(tyid) ->
                       assert (quant |> OpaqueIDMap.mem tyid);
@@ -2072,7 +2086,7 @@ and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_sig
             let quant = quant |> OpaqueIDMap.remove tyid in
             (subst, quant)
           else
-            failwith "TODO (error): kind mismatch"
+            raise_error (KindContradiction(rng, tynm, kd_expected, kd_actual))
         ) (SubstMap.empty, quant0)
       in
       let modsig = modsig0 |> substitute_concrete subst in
@@ -3022,7 +3036,7 @@ and bind_types (stage : stage) (tyenv : Typeenv.t) (tybinds : untyped_type_bindi
   (* Check that no cyclic dependency exists among synonym types. *)
   let syns =
     match SynonymDependencyGraph.topological_sort graph with
-    | Error(cycle) -> failwith "TODO (error): Typechecker.typecheck_binding, UTBindType, cycle"
+    | Error(cycle) -> raise_error (CyclicSynonymTypeDefinition(cycle))
     | Ok(syns)     -> syns
   in
 

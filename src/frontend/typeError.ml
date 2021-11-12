@@ -4,10 +4,13 @@ open StaticEnv
 
 
 type type_error =
-  | UndefinedVariable                    of Range.t * module_name list * var_name * var_name list
+  | UndefinedVariable                    of Range.t * var_name * var_name list
   | UndefinedConstructor                 of Range.t * constructor_name * constructor_name list
-  | UndefinedModuleName                  of Range.t * module_name
+  | UndefinedTypeName                    of Range.t * type_name
+  | UndefinedTypeVariable                of Range.t * type_variable_name
   | UndefinedKindName                    of Range.t * kind_name
+  | UndefinedModuleName                  of Range.t * module_name
+  | UndefinedSignatureName               of Range.t * signature_name
   | UndefinedHorzMacro                   of Range.t * ctrlseq_name
   | UndefinedVertMacro                   of Range.t * ctrlseq_name
   | InvalidNumberOfMacroArguments        of Range.t * macro_parameter_type list
@@ -29,9 +32,7 @@ type type_error =
   | TypeParameterBoundMoreThanOnce       of Range.t * type_variable_name
   | ConflictInSignature                  of Range.t * string
   | NotAStructureSignature               of Range.t * functor_signature
-(*
   | NotAFunctorSignature                 of Range.t * StructSig.t
-*)
   | MissingRequiredValueName             of Range.t * var_name * poly_type
   | MissingRequiredConstructorName       of Range.t * constructor_name * constructor_entry
   | MissingRequiredTypeName              of Range.t * type_name * int
@@ -41,3 +42,8 @@ type type_error =
   | NotASubtypeAboutConstructor          of Range.t * constructor_name * type_scheme * type_scheme
   | NotASubtypeAboutType                 of Range.t * type_name * type_entry * type_entry
   | NotASubtypeSignature                 of Range.t * signature * signature
+  | UnexpectedOptionalLabel              of Range.t * label * mono_type
+  | InvalidArityOfCommandApplication     of Range.t * int * int
+  | CannotRestrictTransparentType        of Range.t * type_name
+  | KindContradiction                    of Range.t * type_name * kind * kind
+  | CyclicSynonymTypeDefinition          of (type_name * SynonymDependencyGraph.data) cycle

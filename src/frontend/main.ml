@@ -728,18 +728,11 @@ let error_log_environment suspended =
   | Typechecker.TypeError(tyerr) ->
       begin
         match tyerr with
-        | UndefinedVariable(rng, mdlnmlst, varnm, candidates) ->
-            let s = String.concat "." (List.append mdlnmlst [varnm]) in
-            report_error Typechecker [
-              NormalLine("at " ^ (Range.to_string rng) ^ ":");
-              NormalLine("undefined variable '" ^ s ^ "'.");
-              NormalLineOption(make_candidates_message candidates);
-            ]
-
-        | UndefinedModuleName(rng, modnm) ->
+        | UndefinedVariable(rng, varnm, candidates) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-              NormalLine(Printf.sprintf "undefined module '%s'." modnm);
+              NormalLine(Printf.sprintf "undefined variable '%s'." varnm);
+              NormalLineOption(make_candidates_message candidates);
             ]
 
         | UndefinedConstructor(rng, constrnm, candidates) ->
@@ -749,12 +742,35 @@ let error_log_environment suspended =
               NormalLineOption(make_candidates_message candidates);
             ]
 
+        | UndefinedTypeName(rng, tynm) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "undefined type '%s'." tynm);
+            ]
+
+        | UndefinedTypeVariable(rng, tyvarnm) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "undefined type variable '%s'." tyvarnm);
+            ]
+
         | UndefinedKindName(rng, kdnm) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
               NormalLine(Printf.sprintf "undefined kind '%s'." kdnm);
             ]
 
+        | UndefinedModuleName(rng, modnm) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "undefined module '%s'." modnm);
+            ]
+
+        | UndefinedSignatureName(rng, signm) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "undefined signature '%s'." signm);
+            ]
         | UndefinedHorzMacro(rng, csnm) ->
             report_error Typechecker [
               NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -928,6 +944,12 @@ let error_log_environment suspended =
               NormalLine("not a structure signature (TODO (enhance): detailed report)");
             ]
 
+        | NotAFunctorSignature(rng, _ssig) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine("not a functor signature (TODO (enhance): detailed report)");
+            ]
+
         | MissingRequiredValueName(rng, x, pty) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
@@ -986,6 +1008,52 @@ let error_log_environment suspended =
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
               NormalLine("not a subtype signature (TODO (enhance): detailed report)");
             ]
+
+        | UnexpectedOptionalLabel(rng, label, ty_cmd) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "unexpected application of label '%s';" label);
+              NormalLine(Printf.sprintf "the command used here has type");
+              DisplayLine(Display.show_mono_type ty_cmd);
+            ]
+
+        | InvalidArityOfCommandApplication(rng, arity_expected, arity_actual) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "this command expects %d argument(s)," arity_expected);
+              NormalLine(Printf.sprintf "but is applied to %d argument(s) here." arity_actual);
+            ]
+
+        | CannotRestrictTransparentType(rng, tynm) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "cannot restrict transparent type '%s'." tynm);
+            ]
+
+        | KindContradiction(rng, tynm, kd_expected, kd_actual) ->
+            let Kind(bkds_expected) = kd_expected in
+            let Kind(bkds_actual) = kd_actual in
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "type '%s' expects %d type argument(s)," tynm (List.length bkds_expected));
+              NormalLine(Printf.sprintf "but is applied to %d type argument(s)." (List.length bkds_actual));
+            ]
+
+        | CyclicSynonymTypeDefinition(cycle) ->
+            let pairs =
+              match cycle with
+              | Loop(pair)   -> [ pair ]
+              | Cycle(pairs) -> pairs |> TupleList.to_list
+            in
+            let lines =
+              pairs |> List.map (fun (tynm, data) ->
+                let rng = data.SynonymDependencyGraph.position in
+                DisplayLine(Printf.sprintf "- '%s' (%s)" tynm (Range.to_string rng))
+              )
+            in
+            report_error Typechecker
+              (NormalLine("the following synonym types are cyclic:") :: lines)
+
       end
 
   | Evaluator.EvalError(s)
