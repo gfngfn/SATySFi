@@ -93,7 +93,7 @@ module StdJaBook
       | Some(s) -> embed-string s
       end
     in
-    inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
+    script-guard Latin (inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it))
 
 
   val inline ctx \ref-page key =
@@ -599,7 +599,7 @@ val title-deco =
       bb-title +++ bb-inner
 
 
-  val block ctx +section ?(label = labelopt, outline-title = outline-title-opt) title inner =
+  val block ctx +section ?(ref = labelopt, outline = outline-title-opt) title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()

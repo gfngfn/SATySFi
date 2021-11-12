@@ -31,7 +31,8 @@ module Code
   module Make = fun(X : S) -> struct
 
     val decoset-code =
-      VDecoSet.simple-frame X.stroke-thickness X.stroke-color X.fill-color
+      VDecoSet.simple-frame
+        X.stroke-thickness X.stroke-color X.fill-color
 
 
     val set-code-font ctx =
@@ -42,10 +43,13 @@ module Code
 
     val scheme decoset ctx code =
       let pads = (5pt, 5pt, 5pt, 5pt) in
-      block-frame-breakable ctx pads decoset (fun ctx -> (
+      block-frame-breakable ctx pads decoset (fun ctx ->
         let fontsize = get-font-size ctx in
         let ctx = ctx |> set-code-font in
-        let charwid = Pervasives.get-natural-width (read-inline ctx {0}) in
+        let charwid =
+          Pervasives.get-natural-width
+            (read-inline ctx {0})
+        in
         let ctx-code =
           ctx
             |> set-space-ratio (charwid /' fontsize) 0. 0.
@@ -77,7 +81,7 @@ module Code
           )) inline-nil
         in
           line-break true true ctx ib-code
-      ))
+      )
 
 
     val block ctx +code code =
