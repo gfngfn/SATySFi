@@ -7,25 +7,17 @@ StdJaBook.document (|
   show-title = true,
   show-toc   = false,
 |) '<
-  +FunctorLocal.Code1.code(```
-    merge :: Ord a => [a] -> [a] -> [a]
-    merge [] ys         = ys
-    merge xs []         = xs
-    merge (x:xs) (y:ys) | x < y     = x:merge xs (y:ys)
-                        | otherwise = y:merge (x:xs) ys
+  +Local.PlainCode.code(```
+    #include<stdio.h>
 
-    halve :: [a] -> ([a],[a])
-    halve xs = (take lhx xs, drop lhx xs)
-               where lhx = length xs `div` 2
-
-    msort :: Ord a => [a] -> [a]
-    msort []  = []
-    msort [x] = [x]
-    msort  xs = merge (msort left) (msort right)
-                where (left,right) = halve xs
+    int main(void) {
+        printf("Hello Functor!");
+        return 0;
+    }
   ```);
-  +FunctorLocal.Code2.code(```
-    The quick brown fox
-    jumps over the lazy dog.
+  +Local.RetroTerm.code(```
+    $ gcc hello.c -o hello
+    $ ./hello
+    Hello Functor!
   ```);
 >

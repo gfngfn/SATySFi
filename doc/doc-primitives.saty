@@ -330,8 +330,8 @@ StdJaBook.document (|
 %         \Local.code{..}を含む\Local.code{${path}}は使用できない．
 %       }
 %     >
-%     +subsection?(label = `sec:inline`)({インライン方向に関する処理})<
-%       +command (`extract-string`) (Local.tIB --> Local.tS) {
+     +StdJaBook.subsection?(label = `sec:inline`)({インライン方向に関する処理})<
+%       +Local.command (`extract-string`) (Local.tIB --> Local.tS) {
 %         インラインボックス列を無理やり文字列に変換する．
 %       }
 %       +command (`read-inline`) (Local.tCTX --> (Local.tIT --> tIB)) {
@@ -575,7 +575,7 @@ StdJaBook.document (|
 %         ハイフネーションによって単語が分割されるときの左側の最小文字数を \Local.code{${n_1}} に，
 %         右側の最小文字数を \Local.code{${n_2}} にそれぞれ設定したテキスト文脈を返す．
 %       }
-%     >
+     >
 %     +subsection {数式に関する処理} <
 %       +command (`math-char`) (Local.tMATHCLS --> (Local.tS --> tMATH)) {
 %         \Local.code{math-char ${mathcls} ${s}}で文字列\Local.code{${s}}を数式中の文字として使えるようにしたものを返す．

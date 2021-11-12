@@ -1,26 +1,26 @@
 @require: code
 @require: color
 
-module FunctorLocal = struct
+module Local = struct
 
-  module Code1Settings = struct
+  module RetroTermSettings = struct
     val font-family      = `lmmono`
     val text-color       = RGB(0., 1., 0.)
     val fill-color       = Gray(0.25)
-    val stroke-color     = Color.red
-    val stroke-thickness = 1pt
-  end
-
-  module Code1 = Code.Make Code1Settings
-
-  module Code2Settings = struct
-    val font-family      = `lmsans`
-    val text-color       = RGB(0., 0., 1.)
-    val fill-color       = Gray(0.75)
-    val stroke-color     = Gray(0.5)
+    val stroke-color     = Color.green
     val stroke-thickness = 2pt
   end
 
-  module Code2 = Code.Make Code2Settings
+  module RetroTerm = Code.Make RetroTermSettings
+
+  module PlainCodeSettings = struct
+    val font      = `Menlo`
+    val text-color       = Color.black
+    val fill-color       = Gray(0.95)
+    val stroke-color     = Gray(0.75)
+    val stroke-thickness = 1pt
+  end
+
+  module PlainCode = Code.Make PlainCodeSettings
 
 end
