@@ -1,5 +1,5 @@
 @require: stdjabook
-@import: doc-functor-local
+@import: local
 
 StdJaBook.document (|
   title      = {ファンクタによるスタイル設定},
