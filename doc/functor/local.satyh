@@ -8,7 +8,7 @@ module Local = struct
     val text-color       = RGB(0., 1., 0.)
     val fill-color       = Gray(0.25)
     val stroke-color     = Color.green
-    val stroke-thickness = 2
+    val stroke-thickness = 2pt
   end
 
   module RetroTerm = Code.Make RetroTermSettings
