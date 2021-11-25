@@ -40,32 +40,36 @@ let show_error_category = function
   | System      -> "Error"
 
 
-let report_error (cat : error_category) (lines : line list) =
+let program_name = ref (Some "satysfi")
+
+let report_error ?rng (cat : error_category) (lines : line list) =
   let aux lst =
-    lst |> List.fold_left (fun is_first line ->
-      begin
+    lst |> List.iteri (fun i line ->
         match line with
         | NormalLine(s)
         | NormalLineOption(Some(s)) ->
-            if is_first then
-              print_endline s
+            if i = 0 then
+              Printf.printf "%s\n" s
             else
-              print_endline ("    " ^ s)
+              Printf.printf "%*s%s\n" 4 " " s
 
         | DisplayLine(s)
         | DisplayLineOption(Some(s)) ->
-            if is_first then
-              print_endline ("\n      " ^ s)
+            if i = 0 then
+              Printf.printf "\n%*s%s\n" 6 " " s
             else
-              print_endline ("      " ^ s)
+              Printf.printf "%*s%s\n" 6 " " s
 
         | _ ->
             ()
-      end;
-      false
-    ) true
+    )
   in
-  print_string ("! [" ^ (show_error_category cat) ^ "] ");
+  !program_name |> Option.iter (Printf.printf "%s:");
+  rng |> Option.iter (fun rng -> Printf.printf "%s:" @@ Range.to_string rng);
+  if Option.is_some !program_name || Option.is_some rng then begin
+      Printf.printf " "
+  end;
+  Printf.printf "%s: " (show_error_category cat);
   aux lines |> ignore;
   exit 1
 
