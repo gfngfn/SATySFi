@@ -38,7 +38,8 @@ jobs:
         uses: ocaml/setup-ocaml@v2
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
-          dune-cache: ${{ matrix.os != 'macos-latest' }}
+          # SATySFi only requires dune >=2.0, which has a problem on caching
+          dune-cache: ${{ matrix.os != 'macos-latest' && ! matrix.oldest-dependencies }}
 
           opam-depext: true
           opam-pin: true
