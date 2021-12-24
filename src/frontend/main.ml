@@ -646,8 +646,7 @@ let error_log_environment suspended =
       ]
 
   | Lexer.LexError(rng, s) ->
-      report_error Lexer [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+      report_error ~rng Lexer [
         NormalLine(s);
       ]
 
