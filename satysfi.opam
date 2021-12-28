@@ -31,7 +31,7 @@ depends: [
   "ocamlfind" {build}
   "otfm" {= "0.3.7+satysfi"}
   "ppx_deriving"
-  "re" {build}
+  "pcre" {>= "7.4.0" & < "7.5.0"}
   "uutf"
   "yojson-with-position" {= "1.4.2+satysfi"}
   "omd" {< "2.0.0~"}

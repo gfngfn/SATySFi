@@ -420,7 +420,7 @@ let get_float value : float =
   | _                         -> report_bug_value "get_float" value
 
 
-let get_regexp (value : syntactic_value) : Str.regexp =
+let get_regexp (value : syntactic_value) : Pcre.regexp =
   match value with
   | BaseConstant(BCRegExp(regexp)) -> regexp
   | _                              -> report_bug_value "get_regexp" value

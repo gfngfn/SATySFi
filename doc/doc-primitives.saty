@@ -299,7 +299,7 @@ document (|
       }
       +command (`regexp-of-string`) (tS --> tRE) {
         \code{regexp-of-string ${s}}で文字列から正規表現型を生成する．
-        使える正規表現の構文はOCamlの\code{Str.regexp}で使えるものと等しい．
+        使える正規表現の構文はPCREと等しい．
         正規表現として不適当な文字列が与えられた場合は実行時エラーが出る．
       }
       +command (`string-scan`) (tRE --> (tS --> (tOPT (tPROD [tS; tS])))) {

@@ -1,5 +1,5 @@
 (executable
  (name gencode)
- (libraries core_kernel re)
+ (libraries core_kernel pcre)
  ;; (preprocess (pps (ppx_driver.runner)))
  )
