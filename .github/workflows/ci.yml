@@ -19,6 +19,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Cache dist fonts
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-dist-fonts
+        with:
+          path: lib-satysfi/dist/fonts
+          key: ${{ env.cache-name }}-${{ hashFiles('download-fonts.sh') }}
+
       - name: Determine the default OPAM Repo
         id: determine-default-opam-repo
         # See https://docs.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#runner-context
@@ -51,3 +59,20 @@ jobs:
 
       - name: Build SATySFi
         run: opam exec -- make all
+
+      - name: Run tests
+        run: |
+          opam exec -- dune runtest
+
+      - name: Install SATySFi
+        run: |
+          opam install -y .
+          if [ -z "$(ls lib-satysfi/dist/fonts)" ]; then
+            ./download-fonts.sh
+          fi
+          ./install-libs.sh ~/.satysfi
+
+      - name: Build demo docs
+        run: |
+          (cd demo; opam exec -- make)
+          (cd doc; opam exec -- make)
