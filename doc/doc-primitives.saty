@@ -780,7 +780,7 @@ document (|
         \code{register-outline ${lst}}で\code{${lst}}の中身をPDFのしおりとして登録する．
         タプルの中身は，しおりの深さ・しおりのタイトル・ジャンプ先のキー名・デフォルトの折りたたみ状態をそれぞれあらわす．
       }
-      +command (`register-document-information`) ((tRECORD [({title}, tOPT tS); ({subjects}, tOPT tS); ({keywords}, tOPT tS); ({author}, tLIST tS)]) --> tU) {
+      +command (`register-document-information`) ((tRECORD [({title}, tOPT tS); ({subject}, tOPT tS); ({author}, tOPT tS); ({keywords}, tLIST tS)]) --> tU) {
         \code{register-document-information ${info}}で\code{${info}}の中身をPDFの辞書情報として登録する．
       }
     >
