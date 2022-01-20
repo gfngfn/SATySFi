@@ -447,12 +447,12 @@ bind_value:
       { UTNonRec(utnonrecbind) }
 /*
   | INLINE; dec=nxhorzmacrodec {
-      let (rngcs, csnm, macparams, utast1) = dec in
-      UTBindHorzMacro((rngcs, csnm), macparams, utast1)
+      let (rng_cs, csnm, macparams, utast1) = dec in
+      UTBindHorzMacro((rng_cs, csnm), macparams, utast1)
     }
   | BLOCK; dec=nxvertmacrodec {
-      let (rngcs, csnm, macparams, utast1) = dec in
-      UTBindVertMacro((rngcs, csnm), macparams, utast1)
+      let (rng_cs, csnm, macparams, utast1) = dec in
+      UTBindVertMacro((rng_cs, csnm), macparams, utast1)
     }
 */
 ;
@@ -628,14 +628,14 @@ opt_param:
 /*
 nxhorzmacrodec:
   | hmacro=HORZMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {
-      let (rngcs, csnm) = hmacro in
-      (rngcs, csnm, macparams, utast)
+      let (rng_cs, csnm) = hmacro in
+      (rng_cs, csnm, macparams, utast)
     }
 ;
 nxvertmacrodec:
   | vmacro=VERTMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {
-      let (rngcs, csnm) = vmacro in
-      (rngcs, csnm, macparams, utast)
+      let (rng_cs, csnm) = vmacro in
+      (rng_cs, csnm, macparams, utast)
     }
 ;
 macroparam:
@@ -668,17 +668,18 @@ typ:
       { mnty }
 ;
 typ_prod:
-  | mntys=separated_nonempty_list(EXACT_TIMES, typ_app) {
-      match (mntys, List.rev mntys) with
-      | ([mnty], [_]) ->
-          mnty
+  | mntys=separated_nonempty_list(EXACT_TIMES, typ_app)
+      {
+        match (mntys, List.rev mntys) with
+        | ([ mnty ], [ _ ]) ->
+            mnty
 
-      | (mnty1 :: mnty2 :: mntys_rest, mnty_last :: _) ->
-          make_standard (Ranged mnty1) (Ranged mnty_last) (MProductType(TupleList.make mnty1 mnty2 mntys_rest))
+        | (mnty1 :: mnty2 :: mntys_rest, mnty_last :: _) ->
+            make_standard (Ranged mnty1) (Ranged mnty_last) (MProductType(TupleList.make mnty1 mnty2 mntys_rest))
 
-      | (_, _) ->
-          assert false
-  }
+        | (_, _) ->
+            assert false
+      }
 ;
 typ_app:
   | tyident=LOWER; mntys=nonempty_list(typ_bot)
@@ -1047,9 +1048,9 @@ inline_elem_cmd:
       }
 /*
   | hmacro=HORZMACRO; macargsraw=macroargs {
-      let (rngcs, _) = hmacro in
-      let (rnglast, macroargs) = macargsraw in
-      make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzMacro(hmacro, macroargs))
+      let (rng_cs, _) = hmacro in
+      let (rng_last, macroargs) = macargsraw in
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(hmacro, macroargs))
     }
 */
   | tokL=L_MATH_TEXT; utast=math; tokR=R_MATH_TEXT
@@ -1094,9 +1095,9 @@ block_elem:
       }
 /*
   | vmacro=VERTMACRO; macargsraw=macroargs {
-      let (rngcs, _) = vmacro in
-      let (rnglast, macargs) = macargsraw in
-      make_standard (Tok rngcs) (Tok rnglast) (UTInputVertMacro(vmacro, macargs))
+      let (rng_cs, _) = vmacro in
+      let (rng_last, macargs) = macargsraw in
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(vmacro, macargs))
     }
 */
   | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
