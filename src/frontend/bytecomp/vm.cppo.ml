@@ -4,18 +4,19 @@ open LengthInterface
 open GraphicBase
 open SyntaxBase
 open Types
+open CompiledTypes
 open TypeConv
-open EvalUtil
+open CompiledEvalUtil
 
 
 exception ExecError of string
 
-type stack_entry = syntactic_value * vmenv option
+type stack_entry = compiled_value * vmenv option
 
 type stack = stack_entry list
 
 
-let make_entry (v : syntactic_value) : stack_entry =
+let make_entry (v : compiled_value) : stack_entry =
   (v, None)
 
 
@@ -30,7 +31,7 @@ type compiled_nom_input_horz_element =
   | CompiledNomInputHorzContent  of compiled_nom_input_horz_element list * vmenv
 
 
-let local_get_value (env : vmenv) (lv : int) (off : int) : syntactic_value =
+let local_get_value (env : vmenv) (lv : int) (off : int) : compiled_value =
   let (_, frames) = env in
     if lv = 0 then
       (List.hd frames).(off)
@@ -38,7 +39,7 @@ let local_get_value (env : vmenv) (lv : int) (off : int) : syntactic_value =
       (List.nth frames lv).(off)
 
 
-let local_set_value (env : vmenv) (lv : int) (off : int) (value : syntactic_value) : unit =
+let local_set_value (env : vmenv) (lv : int) (off : int) (value : compiled_value) : unit =
   let (_, frames) = env in
     if lv = 0 then
       (List.hd frames).(off) <- value
@@ -46,14 +47,14 @@ let local_set_value (env : vmenv) (lv : int) (off : int) (value : syntactic_valu
       (List.nth frames lv).(off) <- value
 
 
-let vmenv_global (env : vmenv) : environment =
+let vmenv_global (env : vmenv) : compiled_environment =
   let (global, _) = env in
-    global
+  global
 
 
 let newframe (env : vmenv) (size : int) : vmenv =
   let (global, local) = env in
-    (global, (Array.make size Nil) :: local)
+  (global, (Array.make size CVNil) :: local)
 
 
 let newframe_recycle (env : vmenv) (preenv : vmenv) (size : int) : vmenv =
@@ -61,12 +62,12 @@ let newframe_recycle (env : vmenv) (preenv : vmenv) (size : int) : vmenv =
     match preenv with
     | (_, prefrm :: _) ->
         if size > Array.length prefrm then
-          (global, (Array.make size Nil) :: local)
+          (global, (Array.make size CVNil) :: local)
         else
           (global, prefrm :: local)
 
     | _ ->
-        (global, (Array.make size Nil) :: local)
+        (global, (Array.make size CVNil) :: local)
 
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
@@ -74,7 +75,7 @@ let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_
   HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
-let popn (stack : stack) (n : int) : syntactic_value list * stack =
+let popn (stack : stack) (n : int) : compiled_value list * stack =
   let rec iter st n acc =
     if n = 0 then
       (acc, st)
@@ -92,7 +93,7 @@ let make_binding_op (var : varloc) : instruction =
   | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
 
 
-let rec exec_input_horz_content env ihlst =
+let rec exec_input_horz_content (env : vmenv) ihlst =
   let imihlist = ihlst |> List.map (function
     | CompiledInputHorzText(s) ->
         CompiledImInputHorzText(s)
@@ -178,7 +179,7 @@ and exec_code_input_vert env irivlst =
   )
 
 
-and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
+and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : compiled_value) (imivlst : compiled_intermediate_input_vert_element list) : compiled_value =
   let rec interpret_commands env imivlst =
     imivlst |> List.map (fun imiv ->
         match imiv with
@@ -195,7 +196,7 @@ and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_
   make_string s
 
 
-and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : compiled_value) (imihlst : compiled_intermediate_input_horz_element list) : compiled_value =
   let tctx = get_text_mode_context valuetctx in
     begin
       let rec normalize imihlst =
@@ -257,7 +258,7 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
     end
 
 
-and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
+and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : compiled_value) (imivlst : compiled_intermediate_input_vert_element list) : compiled_value =
   let rec interpret_commands env imivlst =
     imivlst |> List.map (fun imiv ->
         match imiv with
@@ -274,7 +275,7 @@ and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_va
   make_vert imvblst
 
 
-and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : compiled_value) (imihlst : compiled_intermediate_input_horz_element list) : compiled_value =
   let (ctx, ctxsub) = get_context valuectx in
     begin
       let rec normalize imihlst =
@@ -315,7 +316,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
                       let nmih =
                         CompiledNomInputHorzThunk([
                           OpPush(valuectx);
-                          OpPush(BaseConstant(BCString(s)));
+                          OpPush(CVBaseConstant(BCString(s)));
                           OpPush(valuectcmd);
                           OpApplyT(2)
                         ])
@@ -357,7 +358,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
     end
 
 
-and exec_application (env : vmenv) (vf : syntactic_value) (vargs : syntactic_value list) : syntactic_value =
+and exec_application (env : vmenv) (vf : compiled_value) (vargs : compiled_value list) : compiled_value =
   let len = List.length vargs in
     if len = 0 then
       vf
@@ -447,7 +448,7 @@ and exec_code_pattern_branch (env : vmenv) (comppatbr : (instruction list) ir_pa
       CdPatternBranchWhen(cdpat, cv0, cv1)
 
 
-and exec_value (stack : stack) (env : vmenv) (code : instruction list) dump : syntactic_value =
+and exec_value (stack : stack) (env : vmenv) (code : instruction list) dump : compiled_value =
   fst @@ exec stack env code dump
 
 
@@ -471,7 +472,7 @@ and exec (stack : stack) (env : vmenv) (code : instruction list) dump : stack_en
       exec_op op stack env code dump
 
 
-and exec_code (genv : environment) (code : instruction list) : syntactic_value * environment option =
+and exec_code (genv : compiled_environment) (code : instruction list) : compiled_value * compiled_environment option =
   let (value, envopt) = exec [] (genv, []) code [] in
   let glenvopt =
     match envopt with

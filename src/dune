@@ -41,7 +41,12 @@
 
 (rule
  (targets types.ml)
- (deps    (:src types.cppo.ml) __insttype.gen.ml __attype.gen.ml __codetype.gen.ml __unliftcode.gen.ml)
+ (deps    (:src types.cppo.ml) __attype.gen.ml __codetype.gen.ml __unliftcode.gen.ml)
+ (action  (run %{bin:cppo} %{src} -o %{targets})))
+
+(rule
+ (targets compiledTypes.ml)
+ (deps    (:src compiledTypes.cppo.ml) __insttype.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule

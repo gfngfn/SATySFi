@@ -2,6 +2,7 @@
 open MyUtil
 open LengthInterface
 open Types
+open CompiledTypes
 open EvalUtil
 
 
@@ -19,7 +20,7 @@ let report_bug_compiler_ast msg ast =
 let make_loading_op (var : varloc) : instruction =
   match var with
   | GlobalVar(loc, evid, refs) ->
-      if !loc = Nil then
+      if !loc = CVNil then
         OpLoadGlobal(loc, evid, !refs)
       else
         OpPush(!loc)
@@ -166,7 +167,7 @@ and compile (ir : ir) (cont : instruction list) =
         | LocalVar(_, _, evid, _) -> evid
       in
       let rng = Range.dummy "IRPersistent" in
-      OpPush(CodeValue(CdPersistent(rng, evid))) :: cont
+      OpPush(CVCodeValue(CdPersistent(rng, evid))) :: cont
 
   | IRSymbolOf(var) ->
       let loadop = make_loading_op var in

@@ -3,6 +3,7 @@ open MyUtil
 open LengthInterface
 open SyntaxBase
 open Types
+open CompiledTypes
 
 
 let report_bug_ir msg =
@@ -16,7 +17,7 @@ let report_bug_ir_ast msg ast =
 
 
 type frame = {
-  global : environment;
+  global : compiled_environment;
   vars   : varloc EvalVarIDMap.t;
   level  : int;
   size   : int;
@@ -108,7 +109,7 @@ and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element lis
   )
 
 
-and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment =
+and transform_ast_0 (env : compiled_environment) (ast : abstract_tree) : ir * compiled_environment =
   let (genv, _) = env in
   let initvars =
     EvalVarIDMap.fold (fun k v acc ->
@@ -120,7 +121,7 @@ and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment
   (ir, frame.global)
 
 
-and transform_ast_1 (env : environment) (ast : abstract_tree) : ir * environment =
+and transform_ast_1 (env : compiled_environment) (ast : abstract_tree) : ir * compiled_environment =
   let (genv, _) = env in
   let initvars =
     EvalVarIDMap.fold (fun k v acc ->
@@ -235,8 +236,8 @@ and new_level (env : frame) =
 and add_to_environment (env : frame) (evid : EvalVarID.t) : varloc * frame =
   let (var, newglobal) =
     if env.level = 0 then
-      let loc = ref Nil in
-      (GlobalVar(loc, evid, ref 0), Types.add_to_environment env.global evid loc)
+      let loc = ref CVNil in
+      (GlobalVar(loc, evid, ref 0), CompiledTypes.add_to_environment env.global evid loc)
     else
       (LocalVar(env.level, env.size, evid, ref 0), env.global)
   in
@@ -305,7 +306,7 @@ and check_primitive (env : frame) (ast : abstract_tree) : (int * (abstract_tree 
   match ast with
   | ContentOf(_, evid) ->
       begin
-        match Types.find_in_environment env.global evid with
+        match CompiledTypes.find_in_environment env.global evid with
         | Some(rfvalue) ->
             begin
               match !rfvalue with
@@ -549,13 +550,13 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   let return ir = (ir, env) in
   match ast with
   | ASTBaseConstant(bc) ->
-      return (IRConstant(BaseConstant(bc)))
+      return (IRConstant(CVBaseConstant(bc)))
 
   | ASTMath(mlst) ->
-      return (IRConstant(MathValue(mlst)))
+      return (IRConstant(CVMathValue(mlst)))
 
   | ASTEndOfList ->
-      return (IRConstant(List([])))
+      return (IRConstant(CVList([])))
 
   | InputHorz(ihlst) ->
       let (imihlst, env) = transform_0_input_horz_content env ihlst in
