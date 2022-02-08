@@ -575,7 +575,7 @@ and rec_or_nonrec =
   | Mutable of EvalVarID.t * abstract_tree
 
 and binding =
-  | Bind of rec_or_nonrec
+  | Bind of stage * rec_or_nonrec
 
 and environment =
   location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
@@ -981,9 +981,6 @@ and code_pattern_tree =
   | CdPConstructor          of constructor_name * code_pattern_tree
 [@@deriving show { with_path = false; }]
 
-type code_binding =
-  | CodeBinding of CodeSymbol.t * code_value
-
 type 'a cycle =
   | Loop  of 'a
   | Cycle of 'a TupleList.t
@@ -1126,13 +1123,6 @@ let rec unlift_code (code : code_value) : abstract_tree =
 
   in
   aux code
-
-
-let unlift_code_bindings (codebinds : code_binding list) : binding list =
-  codebinds |> List.map (fun (CodeBinding(symb, code)) ->
-    let ast = unlift_code code in
-    Bind(NonRec(CodeSymbol.unlift symb, ast))
-  )
 
 
 module MathContext

@@ -47,9 +47,5 @@ let compile_and_exec_1 (env : environment) (ast : abstract_tree) : code_value * 
   | _             -> report_bug_value "compile_and_exec_1: not a CodeValue(...)" value
 
 
-let compile_and_exec_bindings_0 (env : environment) (binds : binding list) : environment =
-  failwith "TODO (enhance): Bytecomp.compile_and_exec_bindings_0"
-
-
-let compile_and_exec_bindings_1 (env : environment) (binds : binding list) : code_binding list * environment =
-  failwith "TODO (enhance): Bytecomp.compile_and_exec_bindings_1"
+let compile_and_exec_bindings (env : environment) (binds : binding list) : environment =
+  failwith "TODO (enhance): Bytecomp.compile_and_exec_bindings"

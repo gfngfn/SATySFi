@@ -2914,11 +2914,18 @@ and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) 
     Record(e_labmap)
   in
   let e =
-    List.fold_right (fun (Bind(rec_or_nonrec)) e ->
-      match rec_or_nonrec with
-      | NonRec(evid, e0)  -> LetNonRecIn(PVariable(evid), e0, e)
-      | Rec(recbinds)     -> LetRecIn(recbinds, e)
-      | Mutable(evid, e0) -> LetMutableIn(evid, e0, e)
+    List.fold_right (fun (Bind(stage, rec_or_nonrec)) e ->
+      match stage with
+      | Stage0 ->
+          begin
+            match rec_or_nonrec with
+            | NonRec(evid, e0)  -> LetNonRecIn(PVariable(evid), e0, e)
+            | Rec(recbinds)     -> LetRecIn(recbinds, e)
+            | Mutable(evid, e0) -> LetMutableIn(evid, e0, e)
+          end
+
+      | _ ->
+          failwith "TODO: Stage1 or Persistent0"
     ) binds e_record
   in
   (e, (quant, ssig))
@@ -3168,7 +3175,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
             in
             (Mutable(evid, eI), ssig)
       in
-      ([ Bind(rec_or_nonrec) ], (OpaqueIDMap.empty, ssig))
+      ([ Bind(stage, rec_or_nonrec) ], (OpaqueIDMap.empty, ssig))
 
   | UTBindType([]) ->
       assert false
@@ -3206,7 +3213,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
         in
         StructSig.empty |> StructSig.add_module modnm mentry
       in
-      ([ Bind(NonRec(evid, e1)) ], (quant, ssig))
+      ([ Bind(Stage0, NonRec(evid, e1)) ], (quant, ssig))
 
   | UTBindSignature((_, signm), utsig) ->
       let absmodsig = typecheck_signature tyenv utsig in
@@ -3223,13 +3230,13 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       begin
         match modsig with
         | ConcStructure(ssig) ->
-            let bindacc = Alist.extend Alist.empty (Bind(NonRec(evid_included, e_included))) in
+            let bindacc = Alist.extend Alist.empty (Bind(Stage0, NonRec(evid_included, e_included))) in
             let (bindacc, ssig) =
               ssig |> StructSig.fold
                 ~v:(fun x ventry (bindacc, ssig) ->
                   let evid = EvalVarID.fresh (Range.dummy ("include:" ^ x), "(includeV)") in
                   let e = AccessField(ContentOf(rng_mod, evid_included), x) in
-                  let bindacc = Alist.extend bindacc (Bind(NonRec(evid, e))) in
+                  let bindacc = Alist.extend bindacc (Bind(Stage0, NonRec(evid, e))) in
                   let ssig = ssig |> StructSig.add_value x { ventry with val_name = Some(evid) } in
                   (bindacc, ssig)
                 )
@@ -3239,7 +3246,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
                 ~m:(fun modnm mentry (bindacc, ssig) ->
                   let evid = EvalVarID.fresh (Range.dummy ("include:" ^ modnm), "(includeM)") in
                   let e = AccessField(ContentOf(rng_mod, evid_included), modnm) in
-                  let bindacc = Alist.extend bindacc (Bind(NonRec(evid, e))) in
+                  let bindacc = Alist.extend bindacc (Bind(Stage0, NonRec(evid, e))) in
                   let ssig = ssig |> StructSig.add_module modnm { mentry with mod_name = Some(evid) } in
                   (bindacc, ssig)
                 )

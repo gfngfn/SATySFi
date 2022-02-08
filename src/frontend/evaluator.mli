@@ -6,9 +6,7 @@ val interpret_0 : environment -> abstract_tree -> syntactic_value * environment 
 
 val interpret_1 : environment -> abstract_tree -> code_value * environment option
 
-val interpret_bindings_0 : environment -> binding list -> environment
-
-val interpret_bindings_1 : environment -> binding list -> code_binding list * environment
+val interpret_bindings : environment -> binding list -> environment
 
 val select_pattern : Range.t -> environment -> syntactic_value -> pattern_branch list -> syntactic_value * environment option
 
