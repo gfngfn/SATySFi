@@ -306,7 +306,7 @@
 %right BINOP_TIMES EXACT_TIMES BINOP_DIVIDES MOD
 
 %start main
-%type<Types.stage * Types.header_element list * Types.untyped_source_file> main
+%type<Types.header_element list * Types.untyped_source_file> main
 %type<Types.untyped_module> modexpr
 %type<Types.module_name_chain Types.ranged> mod_chain
 %type<Types.untyped_binding> bind
@@ -366,20 +366,14 @@ optterm_nonempty_list(sep, X):
       { ident }
 ;
 main:
-  | stage=stage; header=list(headerelem); lib=main_lib; EOI
-      { (stage, header, UTLibraryFile(lib)) }
-  | stage=stage; header=list(headerelem); utast=expr_app; EOI
-      { (stage, header, UTDocumentFile(utast)) }
+  | header=list(headerelem); lib=main_lib; EOI
+      { (header, UTLibraryFile(lib)) }
+  | header=list(headerelem); utast=expr_app; EOI
+      { (header, UTDocumentFile(utast)) }
 ;
 main_lib:
   | MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; STRUCT; utbinds=list(bind); END
       { (modident, utsig_opt, utbinds) }
-;
-stage:
-  |                    { Stage1 }
-  | HEADER_STAGE0      { Stage0 }
-  | HEADER_STAGE1      { Stage1 }
-  | HEADER_PERSISTENT0 { Persistent0 }
 ;
 headerelem:
   | content=HEADER_REQUIRE { let (_, s) = content in HeaderRequire(s) }
@@ -422,7 +416,9 @@ mod_chain:
 ;
 bind:
   | tokL=VAL; valbind=bind_value
-      { (tokL, UTBindValue(valbind)) }
+      { (tokL, UTBindValue(Stage1, valbind)) }
+  | tokL=VAL; EXACT_TILDE; valbind=bind_value
+      { (tokL, UTBindValue(Stage0, valbind)) }
   | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
   | tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr
@@ -577,11 +573,13 @@ sigexpr_bot:
 ;
 decl:
   | VAL; ident=bound_identifier; mnquant=quant; COLON; mnty=typ
-      { UTDeclValue(ident, mnquant, mnty) }
+      { UTDeclValue(Stage1, ident, mnquant, mnty) }
+  | VAL; EXACT_TILDE; ident=bound_identifier; mnquant=quant; COLON; mnty=typ
+      { UTDeclValue(Stage0, ident, mnquant, mnty) }
   | VAL; cs=BACKSLASH_CMD; mnquant=quant; COLON; mnty=typ
-      { UTDeclValue(cs, mnquant, mnty) }
+      { UTDeclValue(Stage1, cs, mnquant, mnty) }
   | VAL; cs=PLUS_CMD; mnquant=quant; COLON; mnty=typ
-      { UTDeclValue(cs, mnquant, mnty) }
+      { UTDeclValue(Stage1, cs, mnquant, mnty) }
   | TYPE; tyident=LOWER; CONS; mnkd=kind
       { UTDeclTypeOpaque(tyident, mnkd) }
   | TYPE; uttypebind=bind_type

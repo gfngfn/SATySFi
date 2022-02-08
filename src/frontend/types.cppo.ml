@@ -308,7 +308,7 @@ type untyped_binding =
   untyped_binding_main ranged
 
 and untyped_binding_main =
-  | UTBindValue     of untyped_rec_or_nonrec
+  | UTBindValue     of stage * untyped_rec_or_nonrec
   | UTBindType      of untyped_type_binding list
   | UTBindModule    of module_name ranged * untyped_signature option * untyped_module
   | UTBindSignature of signature_name ranged * untyped_signature
@@ -341,7 +341,7 @@ and untyped_declaration =
     (* TEMPORARY; should be `untyped_declaration_main ranged`  *)
 
 and untyped_declaration_main =
-  | UTDeclValue      of var_name ranged * manual_quantifier * manual_type
+  | UTDeclValue      of stage * var_name ranged * manual_quantifier * manual_type
   | UTDeclTypeOpaque of type_name ranged * manual_kind
   | UTDeclModule     of module_name ranged * untyped_signature
   | UTDeclSignature  of signature_name ranged * untyped_signature
