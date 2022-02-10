@@ -315,14 +315,17 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
       raise (NotADocumentFile(abspath_in, tyenv, ty))
 
 
-let eval_library_file (env : environment) (abspath : abs_path) (binds : binding list) : environment =
+let eval_library_file (env : environment) (abspath : abs_path) (evid : EvalVarID.t) (ast : abstract_tree) : environment =
   Logging.begin_to_eval_file abspath;
   if OptionState.bytecomp_mode () then
-    Bytecomp.compile_and_exec_bindings_0 env binds
+    let (value, _) = Bytecomp.compile_and_exec_0 env ast in
+    add_to_environment env evid (ref value)
   else
-    Evaluator.interpret_bindings_0 env binds
+    let (value, _) = Evaluator.interpret_0 env ast in
+    add_to_environment env evid (ref value)
 
 
+(*
 let preprocess_library_file (env : environment) (abspath : abs_path) (binds : binding list) : code_binding list * environment =
   Logging.begin_to_preprocess_file abspath;
   if OptionState.bytecomp_mode () then
@@ -347,7 +350,7 @@ let preprocess_file ?(is_document : bool = false) (env : environment) (abspath :
       match envopt with
       | Some(envnew) -> (cd, envnew)
       | None         -> EvalUtil.report_bug_vm "environment not returned"
-
+*)
 
 let eval_main i env_freezed ast =
   Logging.start_evaluation i;
@@ -458,7 +461,7 @@ let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * Eval
         failwith "TODO: Stage0; unsupported"
 
     | ((Stage1 | Persistent0), abspath, evid, e) :: tail ->
-        let env = eval_library_file env abspath [ Bind(NonRec(evid, e)) ] in
+        let env = eval_library_file env abspath evid e in
         eval env tail
   in
 (*
