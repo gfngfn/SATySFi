@@ -308,32 +308,6 @@ let eval_library_file (env : environment) (abspath : abs_path) (evid : EvalVarID
     add_to_environment env evid (ref value)
 
 
-(*
-let preprocess_library_file (env : environment) (abspath : abs_path) (binds : binding list) : code_binding list * environment =
-  Logging.begin_to_preprocess_file abspath;
-  if OptionState.bytecomp_mode () then
-    Bytecomp.compile_and_exec_bindings_1 env binds
-  else
-    Evaluator.interpret_bindings env binds
-
-let preprocess_file ?(is_document : bool = false) (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value * environment =
-  Logging.begin_to_preprocess_file abspath;
-  let (cd, envopt) =
-    if OptionState.bytecomp_mode () then
-      Bytecomp.compile_and_exec_1 env ast
-    else
-      Evaluator.interpret_1 env ast
-  in
-    if is_document then
-      match envopt with
-      | None    -> (cd, env)
-      | Some(_) -> EvalUtil.report_bug_vm "environment returned for document"
-    else
-      match envopt with
-      | Some(envnew) -> (cd, envnew)
-      | None         -> EvalUtil.report_bug_vm "environment not returned"
-*)
-
 let eval_main i env_freezed ast =
   Logging.start_evaluation i;
   reset ();
@@ -349,9 +323,6 @@ let eval_main i env_freezed ast =
 
 
 let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
-(*
-  let ast = unlift_code code in
-*)
   let env_freezed = freeze_environment env in
   if OptionState.is_text_mode () then
     let rec aux i =

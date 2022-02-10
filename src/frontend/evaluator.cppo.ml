@@ -810,34 +810,3 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
     loc := Closure(LabelMap.empty, patbr, env)
   );
   env
-
-
-let interpret_bindings (env : environment) (binds : binding list) : environment =
-  binds |> List.fold_left (fun env (Bind(stage, rec_or_nonrec)) ->
-    match stage with
-    | Stage0 ->
-        begin
-          match rec_or_nonrec with
-          | NonRec(evid, ast) ->
-              let (value, _) = interpret_0 env ast in
-              add_to_environment env evid (ref value)
-
-          | _ ->
-              failwith "TODO: interpret_bindings, 0"
-        end
-
-    | Stage1 ->
-        begin
-          match rec_or_nonrec with
-          | NonRec(evid, ast) ->
-              let (_code, _envopt) = interpret_1 env ast in
-              let (_env, _symb) = generate_symbol_for_eval_var_id evid env in
-              failwith "TODO: interpret_bindings, 1-1"
-
-          | _ ->
-              failwith "TODO: interpret_bindings, 1-2"
-        end
-
-    | _ ->
-        failwith "TODO: interpret_bindings, Persistent0"
-  ) env
