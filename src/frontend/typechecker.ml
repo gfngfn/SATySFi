@@ -272,8 +272,7 @@ let rec is_nonexpansive_expression e =
   | ASTEndOfList
   | ASTMath(_)
   | Function(_)
-  | ContentOf(_)
-  | Persistent(_) ->
+  | ContentOf(_) ->
       true
 
   | NonValueConstructor(_, e1) -> iter e1
@@ -862,21 +861,7 @@ let rec typecheck
       end
 
   | UTContentOf(modidents, (rng_var, varnm)) ->
-      let init_expression stage rng evid =
-        match (pre.stage, stage) with
-        | (Persistent0, Persistent0)
-        | (Stage0, Persistent0)
-        | (Stage1, Persistent0) ->
-            Persistent(rng, evid)
-
-        | (Stage0, Stage0)
-        | (Stage1, Stage1) ->
-            ContentOf(rng, evid)
-
-        | _ ->
-            raise_error (InvalidOccurrenceAsToStaging(rng, varnm, stage))
-      in
-      let (stage, pty, e) =
+      let (pty, e) =
         match modidents with
         | [] ->
             let ventry =
@@ -897,7 +882,23 @@ let rec typecheck
               | Some(evid) -> evid
             in
             let stage = ventry.val_stage in
-            (stage, ventry.val_type, init_expression stage rng_var evid)
+            let e =
+              match (pre.stage, stage) with
+              | (Persistent0, Persistent0)
+              | (Stage0, Persistent0) ->
+                  ContentOf(rng, evid)
+
+              | (Stage1, Persistent0) ->
+                  Persistent(ContentOf(rng, evid))
+
+              | (Stage0, Stage0)
+              | (Stage1, Stage1) ->
+                  ContentOf(rng, evid)
+
+              | _ ->
+                  raise_error (InvalidOccurrenceAsToStaging(rng_var, varnm, stage))
+            in
+            (ventry.val_type, e)
 
         | modident0 :: proj ->
             let modchain = (modident0, proj) in
@@ -921,12 +922,29 @@ let rec typecheck
                   ventry
             in
             let stage = ventry.val_stage in
-            let e =
+            let e_mods =
               labels |> List.fold_left (fun e label ->
                 AccessField(e, label)
-              ) (init_expression stage rng0 evid0)
+              ) (ContentOf(rng0, evid0))
             in
-            (stage, ventry.val_type, AccessField(e, varnm))
+            let e =
+              let e_at_0 = AccessField(e_mods, varnm) in
+              match (pre.stage, stage) with
+              | (Persistent0, Persistent0)
+              | (Stage0, Persistent0)
+              | (Stage0, Stage0) ->
+                  e_at_0
+
+              | (Stage1, Persistent0) ->
+                  Persistent(e_at_0)
+
+              | (Stage1, Stage1) ->
+                  Prev(e_at_0)
+
+              | _ ->
+                  raise_error (InvalidOccurrenceAsToStaging(rng, varnm, stage))
+            in
+            (ventry.val_type, e)
       in
       let tyfree = TypeConv.instantiate pre.level pre.quantifiability pty in
       let tyres = TypeConv.overwrite_range_of_type tyfree rng in
@@ -1094,13 +1112,13 @@ let rec typecheck
       let quints = typecheck_letrec pre tyenv utrecbinds in
       let (tyenv, recbindacc) =
         quints |> List.fold_left (fun (tyenv, recbindacc) quint ->
-          let (x, pty, evid, stage, recbind) = quint in
+          let (x, pty, evid, recbind) = quint in
           let tyenv =
             let ventry =
               {
                 val_type  = pty;
                 val_name  = Some(evid);
-                val_stage = stage;
+                val_stage = pre.stage;
               }
             in
             tyenv |> Typeenv.add_value x ventry
@@ -1129,7 +1147,7 @@ let rec typecheck
       let (rng_var, _) = ident in
       begin
         match typecheck_iter tyenv (rng_var, UTContentOf([], ident)) with
-        | ((ContentOf(_, evid) | Persistent(_, evid)), tyvar) ->
+        | (ContentOf(_, evid), tyvar) ->
             let (eN, tyN) = typecheck_iter tyenv utastN in
             unify tyvar (get_range utastN, RefType(tyN));
               (* Actually `get_range utastN` is not good
@@ -1663,7 +1681,7 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         (PConstructor(constrnm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
 
 
-and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : (var_name * poly_type * EvalVarID.t * stage * letrec_binding) list =
+and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : (var_name * poly_type * EvalVarID.t * letrec_binding) list =
 
   (* First, adds a type variable for each bound identifier. *)
   let (tyenv, utrecacc) =
@@ -1725,7 +1743,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
 
   tupleacc |> Alist.to_list |> List.map (fun (varnm, ty, evid, recbind) ->
     let pty = TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty) in
-    (varnm, pty, evid, pre.stage, recbind)
+    (varnm, pty, evid, recbind)
   )
 
 
@@ -2914,18 +2932,11 @@ and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) 
     Record(e_labmap)
   in
   let e =
-    List.fold_right (fun (Bind(stage, rec_or_nonrec)) e ->
-      match stage with
-      | Stage0 ->
-          begin
-            match rec_or_nonrec with
-            | NonRec(evid, e0)  -> LetNonRecIn(PVariable(evid), e0, e)
-            | Rec(recbinds)     -> LetRecIn(recbinds, e)
-            | Mutable(evid, e0) -> LetMutableIn(evid, e0, e)
-          end
-
-      | _ ->
-          failwith "TODO: Stage1 or Persistent0"
+    List.fold_right (fun (Bind(rec_or_nonrec)) e ->
+      match rec_or_nonrec with
+      | NonRec(evid, e0)  -> LetNonRecIn(PVariable(evid), e0, e)
+      | Rec(recbinds)     -> LetRecIn(recbinds, e)
+      | Mutable(evid, e0) -> LetMutableIn(evid, e0, e)
     ) binds e_record
   in
   (e, (quant, ssig))
@@ -3103,13 +3114,18 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
           level           = Level.bottom;
         }
       in
-      let (rec_or_nonrec, ssig) =
+      let (rec_or_nonrecs, ssig) =
         match valbind with
         | UTNonRec(ident, utast1) ->
             let presub = { pre with level = Level.succ pre.level; } in
             let (_, varnm) = ident in
             let evid = EvalVarID.fresh ident in
-            let (e1, ty1) = typecheck presub tyenv utast1 in
+            let (e1_raw, ty1) = typecheck presub tyenv utast1 in
+            let e1 =
+              match stage with
+              | Stage1 -> Next(e1_raw)
+              | _      -> e1_raw
+            in
 (*
             tyannot |> Option.map (fun mnty ->
               let tyA = decode_manual_type pre tyenv mnty in
@@ -3136,13 +3152,13 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
               in
               StructSig.empty |> StructSig.add_value varnm ventry
             in
-            (NonRec(evid, e1), ssig)
+            ([ NonRec(evid, e1) ], ssig)
 
         | UTRec(utrecbinds) ->
             let quints = typecheck_letrec pre tyenv utrecbinds in
             let (recbindacc, ssig) =
               quints |> List.fold_left (fun (recbindacc, ssig) quint ->
-                let (x, pty, evid, stage, recbind) = quint in
+                let (x, pty, evid, recbind) = quint in
                 let ssig =
                   let ventry =
                     {
@@ -3157,7 +3173,74 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
                 (recbindacc, ssig)
               ) (Alist.empty, StructSig.empty)
             in
-            (Rec(recbindacc |> Alist.to_list), ssig)
+            let rec_or_nonrecs =
+              match stage with
+              | Stage0 | Persistent0 ->
+                  [ Rec(recbindacc |> Alist.to_list) ]
+
+              | Stage1 ->
+                  let temp0 = EvalVarID.fresh (Range.dummy "UTRec, Stage1, tuple", "UTRec, Stage1, tuple") in
+                  let origs_and_temps =
+                    quints |> List.map (fun (x, _, evid, recbind) ->
+                      let temp = EvalVarID.fresh (Range.dummy "UTRec, Stage1, temp", x) in
+                      (evid, temp, recbind)
+                    )
+                  in
+                  begin
+                    match origs_and_temps with
+                    | [] ->
+                        assert false
+
+                    | [ (evid, _temp, recbind) ] ->
+                        [
+                          NonRec(
+                            evid,
+                            LetRecIn(
+                              [ recbind ],
+                              ContentOf(Range.dummy "UTRec, Stage1, single", evid)
+                            )
+                          );
+                        ]
+
+                    | (evid1, temp1, _) :: (evid2, temp2, _) :: tail ->
+                        let e_tuple =
+                          let e1 = ContentOf(Range.dummy "UTRec, Stage1, e1", evid1) in
+                          let e2 = ContentOf(Range.dummy "UTRec, Stage1, e1", evid2) in
+                          let es =
+                            tail |> List.map (fun (evid, _, _) ->
+                              ContentOf(Range.dummy "UTRec, Stage1, es", evid)
+                            )
+                          in
+                          PrimitiveTuple(TupleList.make e1 e2 es)
+                        in
+                        let nonrec_main =
+                          let recbinds = quints |> List.map (fun (_, _, _, recbind) -> recbind) in
+                          NonRec(temp0, Next(LetRecIn(recbinds, e_tuple)))
+                        in
+                        let pat_tuple =
+                          let pat1 = PVariable(temp1) in
+                          let pat2 = PVariable(temp2) in
+                          let pats = tail |> List.map (fun (_, temp, _) -> PVariable(temp)) in
+                          PTuple(TupleList.make pat1 pat2 pats)
+                        in
+                        let nonrecs =
+                          origs_and_temps |> List.map (fun (evid, temp, _) ->
+                            let e =
+                              Next(
+                                LetNonRecIn(
+                                  pat_tuple,
+                                  Prev(ContentOf(Range.dummy "nonrec", temp0)),
+                                  ContentOf(Range.dummy "nonrec", temp)
+                                )
+                              )
+                            in
+                            NonRec(evid, e)
+                          )
+                        in
+                        nonrec_main :: nonrecs
+                  end
+            in
+            (rec_or_nonrecs, ssig)
 
         | UTMutable((rng, varnm) as var, utastI) ->
             let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
@@ -3173,9 +3256,10 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
               in
               StructSig.empty |> StructSig.add_value varnm ventry
             in
-            (Mutable(evid, eI), ssig)
+            ([ Mutable(evid, eI) ], ssig)
       in
-      ([ Bind(stage, rec_or_nonrec) ], (OpaqueIDMap.empty, ssig))
+      let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(rec_or_nonrec)) in
+      (binds, (OpaqueIDMap.empty, ssig))
 
   | UTBindType([]) ->
       assert false
@@ -3213,7 +3297,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
         in
         StructSig.empty |> StructSig.add_module modnm mentry
       in
-      ([ Bind(Stage0, NonRec(evid, e1)) ], (quant, ssig))
+      ([ Bind(NonRec(evid, e1)) ], (quant, ssig))
 
   | UTBindSignature((_, signm), utsig) ->
       let absmodsig = typecheck_signature tyenv utsig in
@@ -3230,13 +3314,13 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       begin
         match modsig with
         | ConcStructure(ssig) ->
-            let bindacc = Alist.extend Alist.empty (Bind(Stage0, NonRec(evid_included, e_included))) in
+            let bindacc = Alist.extend Alist.empty (Bind(NonRec(evid_included, e_included))) in
             let (bindacc, ssig) =
               ssig |> StructSig.fold
                 ~v:(fun x ventry (bindacc, ssig) ->
                   let evid = EvalVarID.fresh (Range.dummy ("include:" ^ x), "(includeV)") in
                   let e = AccessField(ContentOf(rng_mod, evid_included), x) in
-                  let bindacc = Alist.extend bindacc (Bind(Stage0, NonRec(evid, e))) in
+                  let bindacc = Alist.extend bindacc (Bind(NonRec(evid, e))) in
                   let ssig = ssig |> StructSig.add_value x { ventry with val_name = Some(evid) } in
                   (bindacc, ssig)
                 )
@@ -3246,7 +3330,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
                 ~m:(fun modnm mentry (bindacc, ssig) ->
                   let evid = EvalVarID.fresh (Range.dummy ("include:" ^ modnm), "(includeM)") in
                   let e = AccessField(ContentOf(rng_mod, evid_included), modnm) in
-                  let bindacc = Alist.extend bindacc (Bind(Stage0, NonRec(evid, e))) in
+                  let bindacc = Alist.extend bindacc (Bind(NonRec(evid, e))) in
                   let ssig = ssig |> StructSig.add_module modnm { mentry with mod_name = Some(evid) } in
                   (bindacc, ssig)
                 )

@@ -575,7 +575,7 @@ and rec_or_nonrec =
   | Mutable of EvalVarID.t * abstract_tree
 
 and binding =
-  | Bind of stage * rec_or_nonrec
+  | Bind of rec_or_nonrec
 
 and environment =
   location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
@@ -635,7 +635,6 @@ and ir =
   | IRLetRecIn              of (varloc * ir) list * ir
   | IRLetNonRecIn           of ir * ir_pattern_tree * ir
   | IRContentOf             of varloc
-  | IRPersistent            of varloc
   | IRSymbolOf              of varloc
   | IRIfThenElse            of ir * ir * ir
   | IRFunction              of int * varloc LabelMap.t * ir_pattern_tree list * ir
@@ -660,6 +659,7 @@ and ir =
   | IRCodeFunction          of varloc LabelMap.t * ir_pattern_tree * ir
   | IRCodeLetMutableIn      of varloc * ir * ir
   | IRCodeOverwrite         of varloc * ir
+  | IRLift                  of ir
 
 and 'a ir_letrec_binding_scheme =
   | IRLetRecBinding of varloc * 'a ir_pattern_branch_scheme
@@ -800,6 +800,7 @@ and syntactic_value =
   | CompiledInputVertClosure of compiled_intermediate_input_vert_element list * vmenv
 
 and abstract_tree =
+  | Value                 of syntactic_value
   | ASTBaseConstant       of base_constant
   | ASTEndOfList
   | ASTMath               of math list
@@ -814,7 +815,6 @@ and abstract_tree =
   | LetRecIn              of letrec_binding list * abstract_tree
   | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
   | ContentOf             of Range.t * EvalVarID.t
-  | Persistent            of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
   | Function              of EvalVarID.t LabelMap.t * pattern_branch
   | Apply                 of abstract_tree LabelMap.t * abstract_tree * abstract_tree
@@ -830,6 +830,8 @@ and abstract_tree =
 (* -- staging constructs -- *)
   | Next                  of abstract_tree
   | Prev                  of abstract_tree
+  | Persistent            of abstract_tree
+  | Lift                  of abstract_tree
 #include "__attype.gen.ml"
 
 and input_horz_element =
@@ -927,13 +929,13 @@ and math =
   | MathLowerLimit        of math list * math list
 
 and code_value =
+  | CdPersistent    of syntactic_value
   | CdBaseConstant  of base_constant
   | CdEndOfList
   | CdMath          of math list
   | CdInputHorz     of code_input_horz_element list
   | CdInputVert     of code_input_vert_element list
   | CdContentOf     of Range.t * CodeSymbol.t
-  | CdPersistent    of Range.t * EvalVarID.t
   | CdLetRecIn      of code_letrec_binding list * code_value
   | CdLetNonRecIn   of code_pattern_tree * code_value * code_value
   | CdFunction      of CodeSymbol.t LabelMap.t * code_pattern_branch
@@ -1077,13 +1079,13 @@ let map_path_component f g = function
 let rec unlift_code (code : code_value) : abstract_tree =
   let rec aux code =
     match code with
+    | CdPersistent(v)                      -> Value(v)
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
     | CdMath(mlst)                         -> ASTMath(mlst)
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
     | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
-    | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map aux_letrec_binding cdrecbinds, aux code1)
     | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(aux_pattern cdpat, aux code1, aux code2)
     | CdFunction(symb_labmap, cdpatbr)     -> Function(symb_labmap |> LabelMap.map CodeSymbol.unlift, aux_pattern_branch cdpatbr)

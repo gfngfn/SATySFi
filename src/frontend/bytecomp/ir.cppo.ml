@@ -412,6 +412,7 @@ and transform_1_pattern_branch (env : frame) (patbr : pattern_branch) : ir_patte
 
 and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   match ast with
+  | Value(v)            -> code0 env (CdPersistent(v))
   | ASTBaseConstant(bc) -> code0 env (CdBaseConstant(bc))
   | ASTEndOfList        -> code0 env CdEndOfList
   | ASTMath(mlst)       -> code0 env (CdMath(mlst))
@@ -469,13 +470,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
         match find_in_environment env evid with
         | Some(var) -> (IRSymbolOf(var), env)
         | None      -> failwith (Format.asprintf "%a not found" EvalVarID.pp evid)
-      end
-
-  | Persistent(rng, evid) ->
-      begin
-        match find_in_environment env evid with
-        | Some(var) -> (IRPersistent(var), env)
-        | None      -> assert false
       end
 
   | IfThenElse(ast0, ast1, ast2) ->
@@ -542,12 +536,21 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | Next(_) ->
       report_bug_ir "transform_1: Next at stage 1"
 
+  | Persistent(ast1) ->
+      failwith "TODO: Persistent"
+
+  | Lift(_) ->
+      report_bug_ir "transform_1: Lift at stage 1"
+
 #include "__ir_1.gen.ml"
 
 
 and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   let return ir = (ir, env) in
   match ast with
+  | Value(v) ->
+      return (IRConstant(v))
+
   | ASTBaseConstant(bc) ->
       return (IRConstant(BaseConstant(bc)))
 
@@ -574,8 +577,7 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       transform_0_tuple env asts
 (* -- fundamentals -- *)
 
-  | ContentOf(rng, evid)
-  | Persistent(rng, evid) ->
+  | ContentOf(rng, evid) ->
       begin
         match find_in_environment env evid with
         | Some(var) ->
@@ -708,9 +710,16 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
 (* -- staging construct -- *)
 
   | Prev(_) ->
-      report_bug_ir "Prev(...) cannot occur at transform_ir"
+      report_bug_ir "Prev(...) cannot occur at transform_1"
 
   | Next(ast1) ->
       transform_1 env ast1
+
+  | Persistent(_) ->
+      report_bug_ir "Persistent(...) cannot occur at transform_1"
+
+  | Lift(ast1) ->
+      let (ir1, env) = transform_0 env ast1 in
+      (IRLift(ir1), env)
 
 #include "__ir_0.gen.ml"

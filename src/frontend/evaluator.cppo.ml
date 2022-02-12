@@ -170,6 +170,8 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
   match ast with
 
 (* ---- basic value ---- *)
+  | Value(v) ->
+      return v
 
   | ASTBaseConstant(bc) ->
       return @@ BaseConstant(bc)
@@ -192,8 +194,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
 
 (* -- fundamentals -- *)
 
-  | ContentOf(rng, evid)
-  | Persistent(rng, evid) ->
+  | ContentOf(rng, evid) ->
       begin
         match find_in_environment env evid with
         | Some(rfvalue) ->
@@ -333,6 +334,13 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       let (code1, envopt1) = interpret_1 env ast1 in
       (CodeValue(code1), envopt1)
 
+  | Persistent(_) ->
+      report_bug_ast "Persistent(_) at stage 0" ast
+
+  | Lift(ast1) ->
+      let (value1, envopt1) = interpret_0 env ast1 in
+      (CodeValue(CdPersistent(value1)), envopt1)
+
 #include "__evaluator_0.gen.ml"
 
 and interpret_0_value env ast =
@@ -342,6 +350,8 @@ and interpret_0_value env ast =
 and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environment option =
   let return cd = (cd, None) in
   match ast with
+  | Value(v) ->
+      return @@ CdPersistent(v)
 
   | ASTBaseConstant(bc) ->
       return @@ CdBaseConstant(bc)
@@ -362,13 +372,26 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
 
   | ContentOf(rng, evid) ->
       begin
-        match find_symbol env evid with
-        | Some(symb) -> return @@ CdContentOf(rng, symb)
-        | None       -> report_bug_ast "symbol not found" ast
-      end
+        match find_in_environment env evid with
+        | Some(rfvalue) ->
+            begin
+              match !rfvalue with
+              | CodeSymbol(symb) ->
+                  return @@ CdContentOf(rng, symb)
 
- | Persistent(rng, evid) ->
-     return @@ CdPersistent(rng, evid)
+              | CodeValue(cv) ->
+                  return @@ cv
+
+              | v ->
+                  report_bug_value
+                    (Printf.sprintf "not a code value (%s, used at %s)"
+                      (EvalVarID.show_direct evid) (Range.show rng))
+                    v
+            end
+
+        | None ->
+            report_bug_ast ("not found (" ^ Range.show rng ^ ")") ast
+      end
 
   | LetRecIn(recbinds, ast2) ->
       let (env, zippedacc) =
@@ -485,6 +508,13 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
 
   | Next(_) ->
       report_bug_ast "Next(_) at stage 1" ast
+
+  | Persistent(ast1) ->
+      let (value1, envopt1) = interpret_0 env ast1 in
+      (CdPersistent(value1), envopt1)
+
+  | Lift(_) ->
+      report_bug_ast "Lift(_) at stage 1" ast
 
 #include "__evaluator_1.gen.ml"
 
