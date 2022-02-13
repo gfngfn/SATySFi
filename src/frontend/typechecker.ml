@@ -2934,9 +2934,10 @@ and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) 
   let e =
     List.fold_right (fun (Bind(rec_or_nonrec)) e ->
       match rec_or_nonrec with
-      | NonRec(evid, e0)  -> LetNonRecIn(PVariable(evid), e0, e)
-      | Rec(recbinds)     -> LetRecIn(recbinds, e)
-      | Mutable(evid, e0) -> LetMutableIn(evid, e0, e)
+      | NonRec(evid, e0)   -> LetNonRecIn(PVariable(evid), e0, e)
+      | Rec(recbinds)      -> LetRecIn(recbinds, e)
+      | Mutable0(evid, e0) -> LetMutableIn(evid, e0, e)
+      | Mutable1(evid, e0) -> Next(LetMutableIn(evid, e0, Prev(e)))
     ) binds e_record
   in
   (e, (quant, ssig))
@@ -3195,9 +3196,11 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
                         [
                           NonRec(
                             evid,
-                            LetRecIn(
-                              [ recbind ],
-                              ContentOf(Range.dummy "UTRec, Stage1, single", evid)
+                            Next(
+                              LetRecIn(
+                                [ recbind ],
+                                ContentOf(Range.dummy "UTRec, Stage1, single", evid)
+                              )
                             )
                           );
                         ]
@@ -3256,7 +3259,21 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
               in
               StructSig.empty |> StructSig.add_value varnm ventry
             in
-            ([ Mutable(evid, eI) ], ssig)
+            let rec_or_nonrecs =
+              match pre.stage with
+              | Stage0 | Persistent0 ->
+                  [ Mutable0(evid, eI) ]
+
+              | Stage1 ->
+                  [
+                    Mutable1(evid, eI);
+                    NonRec(
+                      evid,
+                      Next(ContentOf(Range.dummy "UTMutable, Stage1", evid))
+                    );
+                  ]
+            in
+            (rec_or_nonrecs, ssig)
       in
       let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(rec_or_nonrec)) in
       (binds, (OpaqueIDMap.empty, ssig))

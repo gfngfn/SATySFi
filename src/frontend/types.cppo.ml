@@ -570,9 +570,10 @@ and letrec_binding =
   abstract_tree letrec_binding_scheme
 
 and rec_or_nonrec =
-  | Rec     of letrec_binding list
-  | NonRec  of EvalVarID.t * abstract_tree
-  | Mutable of EvalVarID.t * abstract_tree
+  | Rec      of letrec_binding list
+  | NonRec   of EvalVarID.t * abstract_tree
+  | Mutable0 of EvalVarID.t * abstract_tree
+  | Mutable1 of EvalVarID.t * abstract_tree
 
 and binding =
   | Bind of rec_or_nonrec
