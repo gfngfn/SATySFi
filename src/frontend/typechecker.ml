@@ -3265,11 +3265,16 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
                   [ Mutable0(evid, eI) ]
 
               | Stage1 ->
+                  let symb =
+                    let varnm = EvalVarID.get_varnm evid in
+                    let rng = EvalVarID.get_range evid in
+                    CodeSymbol.fresh (rng, "symbol for " ^ varnm)
+                  in
                   [
                     Mutable1(evid, eI);
                     NonRec(
                       evid,
-                      Next(ContentOf(Range.dummy "UTMutable, Stage1", evid))
+                      Next(ASTCodeSymbol(symb))
                     );
                   ]
             in

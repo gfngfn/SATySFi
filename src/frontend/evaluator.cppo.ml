@@ -39,8 +39,14 @@ let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
   | Some(rfvalue) ->
       begin
         match !rfvalue with
-        | CodeSymbol(symb) -> Some(symb)
-        | v                -> report_bug_value (Printf.sprintf "not a symbol (%s)" (EvalVarID.show_direct evid)) v
+        | CodeSymbol(symb) ->
+            Some(symb)
+
+        | CodeValue(CdContentOf(_, symb)) ->
+            Some(symb)
+
+        | v ->
+            report_bug_value (Printf.sprintf "not a symbol (%s)" (EvalVarID.show_direct evid)) v
       end
 
   | None ->
@@ -170,9 +176,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
   match ast with
 
 (* ---- basic value ---- *)
-  | Value(v) ->
-      return v
-
   | ASTBaseConstant(bc) ->
       return @@ BaseConstant(bc)
 
@@ -341,6 +344,9 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       let (value1, envopt1) = interpret_0 env ast1 in
       (CodeValue(CdPersistent(value1)), envopt1)
 
+  | ASTCodeSymbol(symb) ->
+      report_bug_ast "ASTCodeSymbol(_) at stage 0" ast
+
 #include "__evaluator_0.gen.ml"
 
 and interpret_0_value env ast =
@@ -350,9 +356,6 @@ and interpret_0_value env ast =
 and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environment option =
   let return cd = (cd, None) in
   match ast with
-  | Value(v) ->
-      return @@ CdPersistent(v)
-
   | ASTBaseConstant(bc) ->
       return @@ CdBaseConstant(bc)
 
@@ -515,6 +518,9 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
 
   | Lift(_) ->
       report_bug_ast "Lift(_) at stage 1" ast
+
+  | ASTCodeSymbol(symb) ->
+      return @@ CdContentOf(Range.dummy "ASTCodeSymbol", symb)
 
 #include "__evaluator_1.gen.ml"
 

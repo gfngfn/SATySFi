@@ -412,7 +412,6 @@ and transform_1_pattern_branch (env : frame) (patbr : pattern_branch) : ir_patte
 
 and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   match ast with
-  | Value(v)            -> code0 env (CdPersistent(v))
   | ASTBaseConstant(bc) -> code0 env (CdBaseConstant(bc))
   | ASTEndOfList        -> code0 env CdEndOfList
   | ASTMath(mlst)       -> code0 env (CdMath(mlst))
@@ -542,15 +541,15 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | Lift(_) ->
       report_bug_ir "transform_1: Lift at stage 1"
 
+  | ASTCodeSymbol(symb) ->
+      report_bug_ir "transform_1: ASTCodeSymbol at stage 1"
+
 #include "__ir_1.gen.ml"
 
 
 and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   let return ir = (ir, env) in
   match ast with
-  | Value(v) ->
-      return (IRConstant(v))
-
   | ASTBaseConstant(bc) ->
       return (IRConstant(BaseConstant(bc)))
 
@@ -721,5 +720,8 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   | Lift(ast1) ->
       let (ir1, env) = transform_0 env ast1 in
       (IRLift(ir1), env)
+
+  | ASTCodeSymbol(symb) ->
+      return (IRConstant(CodeSymbol(symb)))
 
 #include "__ir_0.gen.ml"

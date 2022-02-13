@@ -801,7 +801,6 @@ and syntactic_value =
   | CompiledInputVertClosure of compiled_intermediate_input_vert_element list * vmenv
 
 and abstract_tree =
-  | Value                 of syntactic_value
   | ASTBaseConstant       of base_constant
   | ASTEndOfList
   | ASTMath               of math list
@@ -833,6 +832,7 @@ and abstract_tree =
   | Prev                  of abstract_tree
   | Persistent            of abstract_tree
   | Lift                  of abstract_tree
+  | ASTCodeSymbol         of CodeSymbol.t
 #include "__attype.gen.ml"
 
 and input_horz_element =
@@ -1080,7 +1080,7 @@ let map_path_component f g = function
 let rec unlift_code (code : code_value) : abstract_tree =
   let rec aux code =
     match code with
-    | CdPersistent(v)                      -> Value(v)
+    | CdPersistent(v)                      -> failwith "TODO: unlift_code, CdPersistent"
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
     | CdMath(mlst)                         -> ASTMath(mlst)
