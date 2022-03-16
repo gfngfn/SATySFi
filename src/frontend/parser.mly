@@ -375,6 +375,24 @@
 
   let primes (n : int) : Uchar.t list =
     List.init n (fun _ -> Uchar.of_int 0x2032)
+
+  let make_sup ~range ?prime ?sup base =
+    let make_primes r n =
+      r, UTMChars(primes n)
+    in
+    match prime, sup with
+    | None, None ->
+        range, snd base
+    | None, Some(b, p) ->
+        range, UTMSuperScript(base, b, p)
+    | Some(r, n), None ->
+        range, UTMSuperScript(base, true, make_primes r n)
+    | Some(r, n), Some(b, p) ->
+        let ps = make_standard (Tok r) (Ranged p) @@ UTMList [make_primes r n; p] in
+        range, UTMSuperScript(base, b, ps)
+
+  let make_sub ~range ~sub:(b, s) base =
+    range, UTMSubScript(base, b, s)
 %}
 
 %token <Range.t * Types.var_name> VAR
@@ -1082,55 +1100,61 @@ mathmain:
     }
 ;
 mathtop:
-  | utm1=mathbot; SUPERSCRIPT; mg2=mathgroup {
-      let (has_brace2, utm2) = mg2 in
-      make_standard (Ranged utm1) (Ranged utm2) (UTMSuperScript(utm1, has_brace2, utm2))
-    }
-  | utm1=mathbot; prm=PRIMES {
-      let (rng, n) = prm in
-      let utm2 = (rng, UTMChars(primes n)) in
-      make_standard (Ranged utm1) (Tok rng) (UTMSuperScript(utm1, true, utm2))
-    }
-  | utm1=mathbot; SUBSCRIPT; mg2=mathgroup; SUPERSCRIPT; mg3=mathgroup {
-      let (has_brace2, utm2) = mg2 in
-      let (has_brace3, utm3) = mg3 in
-      let utm12 = make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, has_brace2, utm2)) in
-      make_standard (Ranged utm1) (Ranged utm3) (UTMSuperScript(utm12, has_brace3, utm3))
-    }
-  | utm1=mathbot; prm=PRIMES; SUPERSCRIPT; mg3=mathgroup {
-      let (rng, n) = prm in
-      let utm2 = (rng, UTMChars(primes n)) in
-      let (has_brace3, utm3) = mg3 in
-      let utm23 = make_standard (Tok rng) (Ranged utm3) (UTMList([utm2; utm3])) in
-      make_standard (Ranged utm1) (Ranged utm3) (UTMSuperScript(utm1, has_brace3, utm23))
-    }
-  | utm1=mathbot; SUPERSCRIPT; mg2=mathgroup; SUBSCRIPT; mg3=mathgroup {
-      let (has_brace2, utm2) = mg2 in
-      let (has_brace3, utm3) = mg3 in
-      make_standard (Ranged utm1) (Ranged utm3)
-        (UTMSuperScript((Range.dummy "mathtop", UTMSubScript(utm1, has_brace3, utm3)), has_brace2, utm2))
-    }
-  | utm1=mathbot; prm=PRIMES; SUBSCRIPT; mg3=mathgroup {
-      let (rng, n) = prm in
-      let (has_brace3, utm3) = mg3 in
-      let utm2 = (rng, UTMChars(primes n)) in
-      make_standard (Ranged utm1) (Ranged utm3)
-        (UTMSuperScript((Range.dummy "mathtop", UTMSubScript(utm1, has_brace3, utm3)), true, utm2))
-    }
-  | utm1=mathbot; SUBSCRIPT; mg2=mathgroup {
-      let (has_brace2, utm2) = mg2 in
-      make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, has_brace2, utm2))
-    }
-  | utm=mathbot { utm }
+  | base=mathbot                                                                     {
+    (* a *)
+    base
+  }
+  | base=mathbot;                                         SUPERSCRIPT; sup=mathgroup {
+    (* a^p *)
+    base
+    |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+  }
+  | base=mathbot;               SUBSCRIPT; sub=mathgroup                             {
+    (* a_b *)
+    base
+    |> make_sub ~sub ~range:(make_range (Ranged base) (Ranged (snd sub)))
+  }
+  | base=mathbot;               SUBSCRIPT; sub=mathgroup; SUPERSCRIPT; sup=mathgroup {
+    (* a_b^p *)
+    base
+    |> make_sub ~sub ~range:(make_range (Ranged base) (Ranged (snd sub)))
+    |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+  }
+  | base=mathbot;               SUPERSCRIPT; sup=mathgroup; SUBSCRIPT; sub=mathgroup {
+    (* a^p_b *)
+    base
+    |> make_sub ~sub ~range:(Range.dummy "mathtop")
+    |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
+  }
+  | base=mathbot; prime=PRIMES                                                       {
+    (* a' *)
+    base
+    |> make_sup ~prime ~range:(make_range (Ranged base) (Tok (fst prime)))
+  }
+  | base=mathbot; prime=PRIMES;                           SUPERSCRIPT; sup=mathgroup {
+    (* a'^p *)
+    base
+    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+  }
+  | base=mathbot; prime=PRIMES; SUBSCRIPT; sub=mathgroup                             {
+    (* a'_b *)
+    base
+    |> make_sub ~sub ~range:(Range.dummy "mathtop")
+    |> make_sup ~prime ~range:(make_range (Ranged base) (Ranged (snd sub)))
+  }
+  | base=mathbot; prime=PRIMES; SUBSCRIPT; sub=mathgroup; SUPERSCRIPT; sup=mathgroup {
+    (* a'_b^p *)
+    base
+    |> make_sub ~sub ~range:(Range.dummy "mathtop")
+    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+  }
+  | base=mathbot; prime=PRIMES; SUPERSCRIPT; sup=mathgroup; SUBSCRIPT; sub=mathgroup {
+    (* a'^p_b *)
+    base
+    |> make_sub ~sub ~range:(Range.dummy "mathtop")
+    |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
+  }
 ;
-(*
-mathsubopt:
-  | utm1=mathbot; SUBSCRIPT; utm2=mathgroup {
-        make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, utm2))
-      }
-  | utm=mathbot { utm }
-;
-*)
 mathgroup:
   | opn=BMATHGRP; utm=mathmain; cls=EMATHGRP {
       (true, make_standard (Tok opn) (Tok cls) (extract_main utm))

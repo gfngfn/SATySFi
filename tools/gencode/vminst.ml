@@ -21,9 +21,7 @@ let def =
   Instruction.(
     [ inst "Concat"
         ~name:"^"
-        ~type_:{|
-~% (tS @-> tS @-> tS)
-|}
+        ~type_:Type.(tS @-> tS @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -37,9 +35,7 @@ make_string (s1 ^ s2)
 |}
     ; inst "PrimitiveSetMathVariantToChar"
         ~name:"set-math-variant-char"
-        ~type_:{|
-~% (tMCCLS @-> tI @-> tI @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tMCCLS @-> tI @-> tI @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -60,9 +56,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveSetMathChar"
         ~name:"set-math-char"
-        ~type_:{|
-~% (tI @-> tI @-> tMATHCLS @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tI @-> tI @-> tMATHCLS @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -83,9 +77,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveConvertStringForMath"
         ~name:"convert-string-for-math"
-        ~type_:{|
-~% (tCTX @-> tMCCLS @-> tS @-> tS)
-|}
+        ~type_:Type.(tCTX @-> tMCCLS @-> tS @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -99,9 +91,7 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let uchs = let uchs
 |}
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"
-        ~type_:{|
-~% (tICMD tMATH @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tICMD tMATH @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -116,9 +106,7 @@ Context(ctx, { ctxsub with math_command = mcmd; })
 |}
     ; inst "PrimitiveSetCodeTextCommand"
         ~name:"set-code-text-command"
-        ~type_:{|
-~% (tICMD tS @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tICMD tS @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -133,9 +121,7 @@ Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
     ; inst "BackendMathVariantCharDirect"
         ~name:"math-variant-char"
-        ~type_:{|
-~% (tMATHCLS @-> tMCSTY @-> tMATH)
-|}
+        ~type_:Type.(tMATHCLS @-> tMCSTY @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -151,9 +137,7 @@ MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
 |}
     ; inst "BackendGetLeftMathClass"
         ~name:"get-left-math-class"
-        ~type_:{|
-~% (tCTX @-> tMATH @-> tOPT tMATHCLS)
-|}
+        ~type_:Type.(tCTX @-> tMATH @-> tOPT tMATHCLS)
         ~fields:[
         ]
         ~params:[
@@ -173,9 +157,7 @@ match mathlst with
 |}
     ; inst "BackendGetRightMathClass"
         ~name:"get-right-math-class"
-        ~type_:{|
-~% (tCTX @-> tMATH @-> tOPT tMATHCLS)
-|}
+        ~type_:Type.(tCTX @-> tMATH @-> tOPT tMATHCLS)
         ~fields:[
         ]
         ~params:[
@@ -195,9 +177,7 @@ match List.rev mathlst with
 |}
     ; inst "BackendSpaceBetweenMaths"
         ~name:"space-between-maths"
-        ~type_:{|
-~% (tCTX @-> tMATH @-> tMATH @-> tOPT tIB)
-|}
+        ~type_:Type.(tCTX @-> tMATH @-> tMATH @-> tOPT tIB)
         ~fields:[
         ]
         ~params:[
@@ -215,9 +195,7 @@ match hbspaceopt with
 |}
     ; inst "BackendMathConcat"
         ~name:"math-concat"
-        ~type_:{|
-~% (tMATH @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -231,9 +209,7 @@ MathValue(List.append mlst1 mlst2)
 |}
     ; inst "BackendMathGroup"
         ~name:"math-group"
-        ~type_:{|
-~% (tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -248,9 +224,7 @@ MathValue([MathGroup(mathcls1, mathcls2, mlst)])
 |}
     ; inst "BackendMathSuperscript"
         ~name:"math-sup"
-        ~type_:{|
-~% (tMATH @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -264,9 +238,7 @@ MathValue([MathSuperscript(mlst1, mlst2)])
 |}
     ; inst "BackendMathSubscript"
         ~name:"math-sub"
-        ~type_:{|
-~% (tMATH @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -280,9 +252,7 @@ MathValue([MathSubscript(mlst1, mlst2)])
 |}
     ; inst "BackendMathFraction"
         ~name:"math-frac"
-        ~type_:{|
-~% (tMATH @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -296,9 +266,7 @@ MathValue([MathFraction(mlst1, mlst2)])
 |}
     ; inst "BackendMathRadical"
         ~name:"math-radical"
-        ~type_:{|
-~% (tOPT tMATH @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tOPT tMATH @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -316,9 +284,7 @@ match mlst1opt with
 |}
     ; inst "BackendMathParen"
         ~name:"math-paren"
-        ~type_:{|
-~% (tPAREN @-> tPAREN @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tPAREN @-> tPAREN @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -336,9 +302,7 @@ MathValue([MathParen(parenL, parenR, mlst1)])
 |}
     ; inst "BackendMathParenWithMiddle"
         ~name:"math-paren-with-middle"
-        ~type_:{|
-~% (tPAREN @-> tPAREN @-> tPAREN @-> tL tMATH @-> tMATH)
-|}
+        ~type_:Type.(tPAREN @-> tPAREN @-> tPAREN @-> tL tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -358,9 +322,7 @@ MathValue([MathParenWithMiddle(parenL, parenR, middle, mlstlst)])
 |}
     ; inst "BackendMathUpperLimit"
         ~name:"math-upper"
-        ~type_:{|
-~% (tMATH @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -374,9 +336,7 @@ MathValue([MathUpperLimit(mlst1, mlst2)])
 |}
     ; inst "BackendMathLowerLimit"
         ~name:"math-lower"
-        ~type_:{|
-~% (tMATH @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -390,9 +350,7 @@ MathValue([MathLowerLimit(mlst1, mlst2)])
 |}
     ; inst "BackendMathPullInScripts"
         ~name:"math-pull-in-scripts"
-        ~type_:{|
-~% (tMATHCLS @-> tMATHCLS @-> (tOPT tMATH @-> tOPT tMATH @-> tMATH) @-> tMATH)
-|}
+        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> (tOPT tMATH @-> tOPT tMATH @-> tMATH) @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -410,9 +368,7 @@ MathValue(mlst)
 |}
     ; inst "BackendMathChar"
         ~name:"math-char"
-        ~type_:{|
-~% (tMATHCLS @-> tS @-> tMATH)
-|}
+        ~type_:Type.(tMATHCLS @-> tS @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -427,9 +383,7 @@ MathValue(mlst)
 |}
     ; inst "BackendMathBigChar"
         ~name:"math-big-char"
-        ~type_:{|
-~% (tMATHCLS @-> tS @-> tMATH)
-|}
+        ~type_:Type.(tMATHCLS @-> tS @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -444,10 +398,7 @@ MathValue(mlst)
 |}
     ; inst "BackendMathCharWithKern"
         ~name:"math-char-with-kern"
-        ~type_:{|
-let mckf = tLN @-> tLN @-> tLN in
-  ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)
-|}
+        ~type_:Type.(tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -467,10 +418,7 @@ MathValue(mlst)
 |}
     ; inst "BackendMathBigCharWithKern"
         ~name:"math-big-char-with-kern"
-        ~type_:{|
-let mckf = tLN @-> tLN @-> tLN in
-  ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)
-|}
+        ~type_:Type.(tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -490,9 +438,7 @@ MathValue(mlst)
 |}
     ; inst "BackendMathText"
         ~name:"text-in-math"
-        ~type_:{|
-~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)
-|}
+        ~type_:Type.(tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -510,9 +456,7 @@ MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
 |}
     ; inst "BackendMathColor"
         ~name:"math-color"
-        ~type_:{|
-~% (tCLR @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tCLR @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -526,9 +470,7 @@ MathValue(HorzBox.([MathChangeContext(MathChangeColor(color), mlst)]))
 |}
     ; inst "BackendMathCharClass"
         ~name:"math-char-class"
-        ~type_:{|
-~% (tMCCLS @-> tMATH @-> tMATH)
-|}
+        ~type_:Type.(tMCCLS @-> tMATH @-> tMATH)
         ~fields:[
         ]
         ~params:[
@@ -542,9 +484,7 @@ MathValue(HorzBox.([MathChangeContext(MathChangeMathCharClass(mccls), mlst)]))
 |}
     ; inst "BackendEmbeddedMath"
         ~name:"embed-math"
-        ~type_:{|
-~% (tCTX @-> tMATH @-> tIB)
-|}
+        ~type_:Type.(tCTX @-> tMATH @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -559,9 +499,7 @@ make_horz hblst
 |}
     ; inst "BackendTabular"
         ~name:"tabular"
-        ~type_:{|
-~% ((tL (tL tCELL)) @-> tRULESF @-> tIB)
-|}
+        ~type_:Type.((tL (tL tCELL)) @-> tRULESF @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -583,9 +521,7 @@ make_horz (HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, 
 |}
     ; inst "BackendRegisterPdfImage"
         ~name:"load-pdf-image"
-        ~type_:{|
-~% (tS @-> tI @-> tIMG)
-|}
+        ~type_:Type.(tS @-> tI @-> tIMG)
         ~fields:[
         ]
         ~params:[
@@ -600,9 +536,7 @@ make_image_key imgkey
 |}
     ; inst "BackendRegisterOtherImage"
         ~name:"load-image"
-        ~type_:{|
-~% (tS @-> tIMG)
-|}
+        ~type_:Type.(tS @-> tIMG)
         ~fields:[
         ]
         ~params:[
@@ -636,9 +570,7 @@ match valueimg with
 |}
     ; inst "BackendHookPageBreak"
         ~name:"hook-page-break"
-        ~type_:{|
-~% ((tPBINFO @-> tPT @-> tU) @-> tIB)
-|}
+        ~type_:Type.((tPBINFO @-> tPT @-> tU) @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -652,9 +584,7 @@ make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 |}
     ; inst "BackendHookPageBreakBlock"
         ~name:"hook-page-break-block"
-        ~type_:{|
-~% ((tPBINFO @-> tPT @-> tU) @-> tBB)
-|}
+        ~type_:Type.((tPBINFO @-> tPT @-> tU) @-> tBB)
         ~fields:[
         ]
         ~params:[
@@ -668,9 +598,7 @@ make_vert (HorzBox.([VertHookPageBreak(hookf)]))
 |}
     ; inst "PathUnite"
         ~name:"unite-path"
-        ~type_:{|
-~% (tPATH @-> tPATH @-> tPATH)
-|}
+        ~type_:Type.(tPATH @-> tPATH @-> tPATH)
         ~fields:[
         ]
         ~params:[
@@ -683,9 +611,7 @@ make_path (List.append pathlst1 pathlst2)
 |}
     ; inst "PathShift"
         ~name:"shift-path"
-        ~type_:{|
-~% (tPT @-> tPATH @-> tPATH)
-|}
+        ~type_:Type.(tPT @-> tPATH @-> tPATH)
         ~fields:[
         ]
         ~params:[
@@ -698,9 +624,7 @@ make_path (List.map (shift_path ptshift) pathlst)
 |}
     ; inst "PathLinearTransform"
         ~name:"linear-transform-path"
-        ~type_:{|
-~% (tFL @-> tFL @-> tFL @-> tFL @-> tPATH @-> tPATH)
-|}
+        ~type_:Type.(tFL @-> tFL @-> tFL @-> tFL @-> tPATH @-> tPATH)
         ~fields:[
         ]
         ~params:[
@@ -716,9 +640,7 @@ make_path (List.map (linear_transform_path ((a, b), (c, d))) pathlst)
 |}
     ; inst "PathGetBoundingBox"
         ~name:"get-path-bbox"
-        ~type_:{|
-~% (tPATH @-> tPROD [tPT; tPT])
-|}
+        ~type_:Type.(tPATH @-> tPROD [tPT; tPT])
         ~fields:[
         ]
         ~params:[
@@ -733,9 +655,7 @@ Tuple([value1; value2])
 |}
     ; inst "PrePathBeginning"
         ~name:"start-path"
-        ~type_:{|
-~% (tPT @-> tPRP)
-|}
+        ~type_:Type.(tPT @-> tPRP)
         ~fields:[
         ]
         ~params:[
@@ -747,9 +667,7 @@ make_prepath (PrePath.start pt0)
 |}
     ; inst "PrePathLineTo"
         ~name:"line-to"
-        ~type_:{|
-~% (tPT @-> tPRP @-> tPRP)
-|}
+        ~type_:Type.(tPT @-> tPRP @-> tPRP)
         ~fields:[
         ]
         ~params:[
@@ -762,9 +680,7 @@ make_prepath (prepath |> PrePath.line_to pt1)
 |}
     ; inst "PrePathCubicBezierTo"
         ~name:"bezier-to"
-        ~type_:{|
-~% (tPT @-> tPT @-> tPT @-> tPRP @-> tPRP)
-|}
+        ~type_:Type.(tPT @-> tPT @-> tPT @-> tPRP @-> tPRP)
         ~fields:[
         ]
         ~params:[
@@ -779,9 +695,7 @@ make_prepath (prepath |> PrePath.bezier_to ptS ptT pt1)
 |}
     ; inst "PrePathTerminate"
         ~name:"terminate-path"
-        ~type_:{|
-~% (tPRP @-> tPATH)
-|}
+        ~type_:Type.(tPRP @-> tPATH)
         ~fields:[
         ]
         ~params:[
@@ -793,9 +707,7 @@ make_path ([prepath |> PrePath.terminate])
 |}
     ; inst "PrePathCloseWithLine"
         ~name:"close-with-line"
-        ~type_:{|
-~% (tPRP @-> tPATH)
-|}
+        ~type_:Type.(tPRP @-> tPATH)
         ~fields:[
         ]
         ~params:[
@@ -807,9 +719,7 @@ make_path ([prepath |> PrePath.close_with_line])
 |}
     ; inst "PrePathCloseWithCubicBezier"
         ~name:"close-with-bezier"
-        ~type_:{|
-~% (tPT @-> tPT @-> tPRP @-> tPATH)
-|}
+        ~type_:Type.(tPT @-> tPT @-> tPRP @-> tPATH)
         ~fields:[
         ]
         ~params:[
@@ -823,9 +733,7 @@ make_path ([prepath |> PrePath.close_with_bezier ptS ptT])
 |}
     ; inst "HorzConcat"
         ~name:"++"
-        ~type_:{|
-~% (tIB @-> tIB @-> tIB)
-|}
+        ~type_:Type.(tIB @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -838,9 +746,7 @@ make_horz (List.append hblst1 hblst2)
 |}
     ; inst "VertConcat"
         ~name:"+++"
-        ~type_:{|
-~% (tBB @-> tBB @-> tBB)
-|}
+        ~type_:Type.(tBB @-> tBB @-> tBB)
         ~fields:[
         ]
         ~params:[
@@ -853,9 +759,7 @@ make_vert (List.append vblst1 vblst2)
 |}
     ; inst "HorzLex"
         ~name:"read-inline"
-        ~type_:{|
-~% (tCTX @-> tIT @-> tIB)
-|}
+        ~type_:Type.(tCTX @-> tIT @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -875,9 +779,7 @@ match value1 with
 |}
     ; inst "VertLex"
         ~name:"read-block"
-        ~type_:{|
-~% (tCTX @-> tBT @-> tBB)
-|}
+        ~type_:Type.(tCTX @-> tBT @-> tBB)
         ~fields:[
         ]
         ~params:[
@@ -897,9 +799,7 @@ match value1 with
 |}
     ; inst "TextHorzLex"
         ~name:"stringify-inline"
-        ~type_:{|
-~% (tTCTX @-> tIT @-> tS)
-|}
+        ~type_:Type.(tTCTX @-> tIT @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -919,9 +819,7 @@ match value1 with
 |}
     ; inst "TextVertLex"
         ~name:"stringify-block"
-        ~type_:{|
-~% (tTCTX @-> tBT @-> tS)
-|}
+        ~type_:Type.(tTCTX @-> tBT @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -941,9 +839,7 @@ match value1 with
 |}
     ; inst "TextDeepenIndent"
         ~name:"deepen-indent"
-        ~type_:{|
-~% (tI @-> tTCTX @-> tTCTX)
-|}
+        ~type_:Type.(tI @-> tTCTX @-> tTCTX)
         ~fields:[
         ]
         ~params:[
@@ -957,9 +853,7 @@ BaseConstant(BCTextModeContext(tctx))
 |}
     ; inst "TextBreak"
         ~name:"break"
-        ~type_:{|
-~% (tTCTX @-> tS)
-|}
+        ~type_:Type.(tTCTX @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -973,9 +867,7 @@ make_string s
 |}
     ; inst "TextGetInitialTextModeContext"
         ~name:"get-initial-text-info"
-        ~type_:{|
-~% (tU @-> tTCTX)
-|}
+        ~type_:Type.(tU @-> tTCTX)
         ~fields:[
         ]
         ~params:[
@@ -993,9 +885,7 @@ match value1 with
 |}
     ; inst "PrimitiveEmbeddedVertBreakable"
         ~name:"embed-block-breakable"
-        ~type_:{|
-~% (tCTX @-> tBB @-> tIB)
-|}
+        ~type_:Type.(tCTX @-> tBB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1021,9 +911,7 @@ make_font_value (abbrev, size_ratio, rising_ratio)
 |}
     ; inst "BackendLineBreaking"
         ~name:"line-break"
-        ~type_:{|
-~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)
-|}
+        ~type_:Type.(tB @-> tB @-> tCTX @-> tIB @-> tBB)
         ~fields:[
         ]
         ~params:[
@@ -1042,9 +930,7 @@ make_vert imvblst
 |}
     ; inst "BackendPageBreaking"
         ~name:"page-break"
-        ~type_:{|
-~% (tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
-|}
+        ~type_:Type.(tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
         ~fields:[
         ]
         ~params:[
@@ -1062,9 +948,7 @@ BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), 
 |}
     ; inst "BackendPageBreakingTwoColumn"
         ~name:"page-break-two-column"
-        ~type_:{|
-~% (tPG @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
-|}
+        ~type_:Type.(tPG @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
         ~fields:[
         ]
         ~params:[
@@ -1085,9 +969,7 @@ BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun
 |}
     ; inst "BackendPageBreakingMultiColumn"
         ~name:"page-break-multicolumn"
-        ~type_:{|
-~% (tPG @-> tL tLN @-> (tU @-> tBB) @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
-|}
+        ~type_:Type.(tPG @-> tL tLN @-> (tU @-> tBB) @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
         ~fields:[
         ]
         ~params:[
@@ -1110,9 +992,7 @@ BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, colum
 |}
     ; inst "BackendVertFrame"
         ~name:"block-frame-breakable"
-        ~type_:{|
-~% (tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB)
-|}
+        ~type_:Type.(tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB)
         ~fields:[
         ]
         ~params:[
@@ -1150,9 +1030,7 @@ make_vert (HorzBox.([
 |}
     ; inst "BackendAddFootnote"
         ~name:"add-footnote"
-        ~type_:{|
-~% (tBB @-> tIB)
-|}
+        ~type_:Type.(tBB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1165,9 +1043,7 @@ make_horz (HorzBox.([HorzPure(PHGFootnote(imvblst))]))
 |}
     ; inst "BackendEmbeddedVertTop"
         ~name:"embed-block-top"
-        ~type_:{|
-~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)
-|}
+        ~type_:Type.(tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1191,9 +1067,7 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 |}
     ; inst "BackendVertSkip"
         ~name:"block-skip"
-        ~type_:{|
-~% (tLN @-> tBB)
-|}
+        ~type_:Type.(tLN @-> tBB)
         ~fields:[
         ]
         ~params:[
@@ -1205,9 +1079,7 @@ make_vert (HorzBox.([VertFixedBreakable(len)]))
 |}
     ; inst "BackendEmbeddedVertBottom"
         ~name:"embed-block-bottom"
-        ~type_:{|
-~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)
-|}
+        ~type_:Type.(tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1231,9 +1103,7 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 |}
     ; inst "BackendLineStackTop"
         ~name:"line-stack-top"
-        ~type_:{|
-~% ((tL tIB) @-> tIB)
-|}
+        ~type_:Type.((tL tIB) @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1249,9 +1119,7 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 |}
     ; inst "BackendLineStackBottom"
         ~name:"line-stack-bottom"
-        ~type_:{|
-~% ((tL tIB) @-> tIB)
-|}
+        ~type_:Type.((tL tIB) @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1267,9 +1135,7 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 |}
     ; inst "PrimitiveGetInitialContext"
         ~name:"get-initial-context"
-        ~type_:{|
-~% (tLN @-> tICMD tMATH @-> tCTX)
-|}
+        ~type_:Type.(tLN @-> tICMD tMATH @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1293,9 +1159,7 @@ Context(ctx, ctxsub)
 |}
     ; inst "PrimitiveSetHyphenMin"
         ~name:"set-hyphen-min"
-        ~type_:{|
-~% (tI @-> tI @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tI @-> tI @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1312,9 +1176,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveSetMinGapOfLines"
         ~name:"set-min-gap-of-lines"
-        ~type_:{|
-~% (tLN @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tLN @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1329,9 +1191,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveSetSpaceRatio"
         ~name:"set-space-ratio"
-        ~type_:{|
-~% (tFL @-> tFL @-> tFL @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tFL @-> tFL @-> tFL @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1350,9 +1210,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveSetAdjacentStretchRatio"
         ~name:"set-adjacent-stretch-ratio"
-        ~type_:{|
-~% (tFL @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tFL @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1367,9 +1225,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveSetSpaceRatioBetweenScripts"
         ~name:"set-space-ratio-between-scripts"
-        ~type_:{|
-~% (tFL @-> tFL @-> tFL @-> tSCR @-> tSCR @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tFL @-> tFL @-> tFL @-> tSCR @-> tSCR @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1391,9 +1247,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveGetSpaceRatioBetweenScripts"
         ~name:"get-space-ratio-between-scripts"
-        ~type_:{|
-~% (tCTX @-> tSCR @-> tSCR @-> tOPT (tPROD [tFL; tFL; tFL]))
-|}
+        ~type_:Type.(tCTX @-> tSCR @-> tSCR @-> tOPT (tPROD [tFL; tFL; tFL]))
         ~fields:[
         ]
         ~params:[
@@ -1416,9 +1270,7 @@ match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script
 |}
     ; inst "PrimitiveSetParagraphMargin"
         ~name:"set-paragraph-margin"
-        ~type_:{|
-~% (tLN @-> tLN @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tLN @-> tLN @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1435,9 +1287,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveSetParagraphMinAscenderAndDescender"
         ~name:"set-min-paragraph-ascender-and-descender"
-        ~type_:{|
-~% (tLN @-> tLN @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tLN @-> tLN @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1454,9 +1304,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveSetFontSize"
         ~name:"set-font-size"
-        ~type_:{|
-~% (tLN @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tLN @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1469,9 +1317,7 @@ Context(HorzBox.({ ctx with font_size = size; }), ctxsub)
 |}
     ; inst "PrimitiveGetFontSize"
         ~name:"get-font-size"
-        ~type_:{|
-~% (tCTX @-> tLN)
-|}
+        ~type_:Type.(tCTX @-> tLN)
         ~fields:[
         ]
         ~params:[
@@ -1483,9 +1329,7 @@ make_length (ctx.HorzBox.font_size)
 |}
     ; inst "PrimitiveSetFont"
         ~name:"set-font"
-        ~type_:{|
-~% (tSCR @-> tFONT @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tSCR @-> tFONT @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1500,9 +1344,7 @@ Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
 |}
     ; inst "PrimitiveGetFont"
         ~name:"get-font"
-        ~type_:{|
-~% (tSCR @-> tCTX @-> tFONT)
-|}
+        ~type_:Type.(tSCR @-> tCTX @-> tFONT)
         ~fields:[
         ]
         ~params:[
@@ -1516,9 +1358,7 @@ make_font_value fontwr
 |}
     ; inst "PrimitiveSetMathFont"
         ~name:"set-math-font"
-        ~type_:{|
-~% (tS @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tS @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1531,9 +1371,7 @@ Context(HorzBox.({ ctx with math_font = mfabbrev; }), ctxsub)
 |}
     ; inst "PrimitiveSetDominantWideScript"
         ~name:"set-dominant-wide-script"
-        ~type_:{|
-~% (tSCR @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tSCR @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1546,9 +1384,7 @@ Context(HorzBox.({ ctx with dominant_wide_script = script; }), ctxsub)
 |}
     ; inst "PrimitiveGetDominantWideScript"
         ~name:"get-dominant-wide-script"
-        ~type_:{|
-~% (tCTX @-> tSCR)
-|}
+        ~type_:Type.(tCTX @-> tSCR)
         ~fields:[
         ]
         ~params:[
@@ -1560,9 +1396,7 @@ make_script_value ctx.HorzBox.dominant_wide_script
 |}
     ; inst "PrimitiveSetDominantNarrowScript"
         ~name:"set-dominant-narrow-script"
-        ~type_:{|
-~% (tSCR @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tSCR @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1575,9 +1409,7 @@ Context(HorzBox.({ ctx with dominant_narrow_script = script; }), ctxsub)
 |}
     ; inst "PrimitiveGetDominantNarrowScript"
         ~name:"get-dominant-narrow-script"
-        ~type_:{|
-~% (tCTX @-> tSCR)
-|}
+        ~type_:Type.(tCTX @-> tSCR)
         ~fields:[
         ]
         ~params:[
@@ -1589,9 +1421,7 @@ make_script_value ctx.HorzBox.dominant_narrow_script
 |}
     ; inst "PrimitiveSetLangSys"
         ~name:"set-language"
-        ~type_:{|
-~% (tSCR @-> tLANG @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tSCR @-> tLANG @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1607,9 +1437,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveGetLangSys"
         ~name:"get-language"
-        ~type_:{|
-~% (tSCR @-> tCTX @-> tLANG)
-|}
+        ~type_:Type.(tSCR @-> tCTX @-> tLANG)
         ~fields:[
         ]
         ~params:[
@@ -1623,9 +1451,7 @@ make_language_system_value langsys
 |}
     ; inst "PrimitiveSetTextColor"
         ~name:"set-text-color"
-        ~type_:{|
-~% (tCLR @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tCLR @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1638,9 +1464,7 @@ Context(HorzBox.({ ctx with text_color = color; }), ctxsub)
 |}
     ; inst "PrimitiveGetTextColor"
         ~name:"get-text-color"
-        ~type_:{|
-~% (tCTX @-> tCLR)
-|}
+        ~type_:Type.(tCTX @-> tCLR)
         ~fields:[
         ]
         ~params:[
@@ -1653,9 +1477,7 @@ make_color_value color
 |}
     ; inst "PrimitiveSetLeading"
         ~name:"set-leading"
-        ~type_:{|
-~% (tLN @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tLN @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1668,9 +1490,7 @@ Context(HorzBox.({ ctx with leading = len; }), ctxsub)
 |}
     ; inst "PrimitiveGetTextWidth"
         ~name:"get-text-width"
-        ~type_:{|
-~% (tCTX @-> tLN)
-|}
+        ~type_:Type.(tCTX @-> tLN)
         ~fields:[
         ]
         ~params:[
@@ -1682,9 +1502,7 @@ make_length (ctx.HorzBox.paragraph_width)
 |}
     ; inst "PrimitiveSetManualRising"
         ~name:"set-manual-rising"
-        ~type_:{|
-~% (tLN @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tLN @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1697,9 +1515,7 @@ Context(HorzBox.({ ctx with manual_rising = rising; }), ctxsub)
 |}
     ; inst "PrimitiveRaise"
         ~name:"raise-inline"
-        ~type_:{|
-~% (tLN @-> tIB @-> tIB)
-|}
+        ~type_:Type.(tLN @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1712,9 +1528,7 @@ make_horz (HorzBox.([HorzPure(PHGRising(rising, hblst))]))
 |}
     ; inst "PrimitiveSetHyphenPenalty"
         ~name:"set-hyphen-penalty"
-        ~type_:{|
-~% (tI @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tI @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -1727,9 +1541,7 @@ Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
 |}
     ; inst "PrimitiveEmbed"
         ~name:"embed-string"
-        ~type_:{|
-~% (tS @-> tIT)
-|}
+        ~type_:Type.(tS @-> tIT)
         ~fields:[
         ]
         ~params:[
@@ -1745,9 +1557,7 @@ CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)
 |}
     ; inst "PrimitiveExtract"
         ~name:"extract-string"
-        ~type_:{|
-~% (tIB @-> tS)
-|}
+        ~type_:Type.(tIB @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -1760,9 +1570,7 @@ make_string (HorzBox.extract_string hblst)
 |}
     ; inst "PrimitiveGetAxisHeight"
         ~name:"get-axis-height"
-        ~type_:{|
-~% (tCTX @-> tLN)
-|}
+        ~type_:Type.(tCTX @-> tLN)
         ~fields:[
         ]
         ~params:[
@@ -1777,9 +1585,7 @@ let hgt = FontInfo.get_axis_height mfabbrev fontsize in
 |}
     ; inst "BackendFixedEmpty"
         ~name:"inline-skip"
-        ~type_:{|
-~% (tLN @-> tIB)
-|}
+        ~type_:Type.(tLN @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1791,9 +1597,7 @@ make_horz [HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))]
 |}
     ; inst "BackendOuterEmpty"
         ~name:"inline-glue"
-        ~type_:{|
-~% (tLN @-> tLN @-> tLN @-> tIB)
-|}
+        ~type_:Type.(tLN @-> tLN @-> tLN @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1807,9 +1611,7 @@ make_horz [HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch)
 |}
     ; inst "BackendOuterFrame"
         ~name:"inline-frame-outer"
-        ~type_:{|
-~% (tPADS @-> tDECO @-> tIB @-> tIB)
-|}
+        ~type_:Type.(tPADS @-> tDECO @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1827,9 +1629,7 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
 |}
     ; inst "BackendInnerFrame"
         ~name:"inline-frame-inner"
-        ~type_:{|
-~% (tPADS @-> tDECO @-> tIB @-> tIB)
-|}
+        ~type_:Type.(tPADS @-> tDECO @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1847,9 +1647,7 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
 |}
     ; inst "BackendFixedFrame"
         ~name:"inline-frame-fixed"
-        ~type_:{|
-~% (tLN @-> tPADS @-> tDECO @-> tIB @-> tIB)
-|}
+        ~type_:Type.(tLN @-> tPADS @-> tDECO @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1868,9 +1666,7 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
 |}
     ; inst "BackendOuterFrameBreakable"
         ~name:"inline-frame-breakable"
-        ~type_:{|
-~% (tPADS @-> tDECOSET @-> tIB @-> tIB)
-|}
+        ~type_:Type.(tPADS @-> tDECOSET @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1892,9 +1688,7 @@ make_horz ([HorzBox.HorzFrameBreakable(
 |}
     ; inst "BackendInlineGraphics"
         ~name:"inline-graphics"
-        ~type_:{|
-~% (tLN @-> tLN @-> tLN @-> tIGR @-> tIB)
-|}
+        ~type_:Type.(tLN @-> tLN @-> tLN @-> tIGR @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1911,9 +1705,7 @@ make_horz (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, grap
 |}
     ; inst "BackendInlineGraphicsOuter"
         ~name:"inline-graphics-outer"
-        ~type_:{|
-~% (tLN @-> tLN @-> tIGRO @-> tIB)
-|}
+        ~type_:Type.(tLN @-> tLN @-> tIGRO @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1929,9 +1721,7 @@ make_horz (HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphi
 |}
     ; inst "BackendScriptGuard"
         ~name:"script-guard"
-        ~type_:{|
-~% (tSCR @-> tIB @-> tIB)
-|}
+        ~type_:Type.(tSCR @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1944,9 +1734,7 @@ make_horz (HorzBox.([HorzScriptGuard(script, script, hblst)]))
 |}
     ; inst "BackendScriptGuardBoth"
         ~name:"script-guard-both"
-        ~type_:{|
-~% (tSCR @-> tSCR @-> tIB @-> tIB)
-|}
+        ~type_:Type.(tSCR @-> tSCR @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1960,9 +1748,7 @@ make_horz (HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
 |}
     ; inst "BackendGetLeftmostScript"
         ~name:"get-leftmost-script"
-        ~type_:{|
-~% (tIB @-> tOPT tSCR)
-|}
+        ~type_:Type.(tIB @-> tOPT tSCR)
         ~fields:[
         ]
         ~params:[
@@ -1975,9 +1761,7 @@ make_option make_script_value scriptopt
 |}
     ; inst "BackendGetRightmostScript"
         ~name:"get-rightmost-script"
-        ~type_:{|
-~% (tIB @-> tOPT tSCR)
-|}
+        ~type_:Type.(tIB @-> tOPT tSCR)
         ~fields:[
         ]
         ~params:[
@@ -1990,9 +1774,7 @@ make_option make_script_value scriptopt
 |}
     ; inst "BackendDiscretionary"
         ~name:"discretionary"
-        ~type_:{|
-~% (tI @-> tIB @-> tIB @-> tIB @-> tIB)
-|}
+        ~type_:Type.(tI @-> tIB @-> tIB @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -2007,9 +1789,7 @@ make_horz (HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
 |}
     ; inst "BackendRegisterCrossReference"
         ~name:"register-cross-reference"
-        ~type_:{|
-~% (tS @-> tS @-> tU)
-|}
+        ~type_:Type.(tS @-> tS @-> tU)
         ~fields:[
         ]
         ~params:[
@@ -2024,9 +1804,7 @@ const_unit
 |}
     ; inst "BackendGetCrossReference"
         ~name:"get-cross-reference"
-        ~type_:{|
-~% (tS @-> (tOPT tS))
-|}
+        ~type_:Type.(tS @-> (tOPT tS))
         ~fields:[
         ]
         ~params:[
@@ -2041,9 +1819,7 @@ match CrossRef.get k with
 |}
     ; inst "PrimitiveGetNaturalMetrics"
         ~name:"get-natural-metrics"
-        ~type_:{|
-~% (tIB @-> tPROD [tLN; tLN; tLN])
-|}
+        ~type_:Type.(tIB @-> tPROD [tLN; tLN; tLN])
         ~fields:[
         ]
         ~params:[
@@ -2060,9 +1836,7 @@ Tuple([
 |}
     ; inst "PrimitiveGetNaturalLength"
         ~name:"get-natural-length"
-        ~type_:{|
-~% (tBB @-> tLN)
-|}
+        ~type_:Type.(tBB @-> tLN)
         ~fields:[
         ]
         ~params:[
@@ -2076,9 +1850,7 @@ make_length (hgt +% (Length.negate dpt))
 |}
     ; inst "PrimitiveDisplayMessage"
         ~name:"display-message"
-        ~type_:{|
-~% (tS @-> tU)
-|}
+        ~type_:Type.(tS @-> tU)
         ~fields:[
         ]
         ~params:[
@@ -2106,9 +1878,7 @@ match valuetl with
 |}
     ; inst "PrimitiveSame"
         ~name:"string-same"
-        ~type_:{|
-~% (tS @-> tS @-> tB)
-|}
+        ~type_:Type.(tS @-> tS @-> tB)
         ~fields:[
         ]
         ~params:[
@@ -2122,9 +1892,7 @@ make_bool (String.equal str1 str2)
 |}
     ; inst "PrimitiveStringSub"
         ~name:"string-sub"
-        ~type_:{|
-~% (tS @-> tI @-> tI @-> tS)
-|}
+        ~type_:Type.(tS @-> tI @-> tI @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -2143,9 +1911,7 @@ make_string resstr
 |}
     ; inst "PrimitiveStringSubBytes"
         ~name:"string-sub-bytes"
-        ~type_:{|
-~% (tS @-> tI @-> tI @-> tS)
-|}
+        ~type_:Type.(tS @-> tI @-> tI @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -2164,9 +1930,7 @@ make_string resstr
 |}
     ; inst "PrimitiveStringLength"
         ~name:"string-length"
-        ~type_:{|
-~% (tS @-> tI)
-|}
+        ~type_:Type.(tS @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2179,9 +1943,7 @@ make_int (BatUTF8.length str)
 |}
     ; inst "PrimitiveStringByteLength"
         ~name:"string-byte-length"
-        ~type_:{|
-~% (tS @-> tI)
-|}
+        ~type_:Type.(tS @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2194,9 +1956,7 @@ make_int (String.length str)
 |}
     ; inst "PrimitiveStringScan"
         ~name:"string-scan"
-        ~type_:{|
-~% (tRE @-> tS @-> tOPT (tPROD [tS; tS]))
-|}
+        ~type_:Type.(tRE @-> tS @-> tOPT (tPROD [tS; tS]))
         ~fields:[
         ]
         ~params:[
@@ -2216,9 +1976,7 @@ else
 |}
     ; inst "PrimitiveStringUnexplode"
         ~name:"string-unexplode"
-        ~type_:{|
-~% ((tL tI) @-> tS)
-|}
+        ~type_:Type.((tL tI) @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -2233,9 +1991,7 @@ make_string s
 |}
     ; inst "PrimitiveStringExplode"
         ~name:"string-explode"
-        ~type_:{|
-~% (tS @-> (tL tI))
-|}
+        ~type_:Type.(tS @-> (tL tI))
         ~fields:[
         ]
         ~params:[
@@ -2254,9 +2010,7 @@ make_list make_int ilst
 |}
     ; inst "PrimitiveRegExpOfString"
         ~name:"regexp-of-string"
-        ~type_:{|
-~% (tS @-> tRE)
-|}
+        ~type_:Type.(tS @-> tRE)
         ~fields:[
         ]
         ~params:[
@@ -2273,9 +2027,7 @@ make_regexp regexp
 |}
     ; inst "PrimitiveStringMatch"
         ~name:"string-match"
-        ~type_:{|
-~% (tRE @-> tS @-> tB)
-|}
+        ~type_:Type.(tRE @-> tS @-> tB)
         ~fields:[
         ]
         ~params:[
@@ -2289,9 +2041,7 @@ make_bool (Str.string_match pat s 0)
 |}
     ; inst "PrimitiveSplitIntoLines"
         ~name:"split-into-lines"
-        ~type_:{|
-~% (tS @-> (tL (tPROD [tI; tS])))
-|}
+        ~type_:Type.(tS @-> (tL (tPROD [tI; tS])))
         ~fields:[
         ]
         ~params:[
@@ -2306,9 +2056,7 @@ pairlst |> make_list (fun (i, s) -> Tuple([make_int i; make_string s]))
 |}
     ; inst "PrimitiveSplitOnRegExp"
         ~name:"split-on-regexp"
-        ~type_:{|
-~% (tRE @-> tS @-> (tL (tPROD [tI; tS])))
-|}
+        ~type_:Type.(tRE @-> tS @-> (tL (tPROD [tI; tS])))
         ~fields:[
         ]
         ~params:[
@@ -2324,9 +2072,7 @@ pairlst |> make_list (fun (i, s) -> Tuple([make_int i; make_string s]))
 |}
     ; inst "PrimitiveArabic"
         ~name:"arabic"
-        ~type_:{|
-~% (tI @-> tS)
-|}
+        ~type_:Type.(tI @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -2339,9 +2085,7 @@ make_string (string_of_int num)
 |}
     ; inst "PrimitiveShowFloat"
         ~name:"show-float"
-        ~type_:{|
-~% (tFL @-> tS)
-|}
+        ~type_:Type.(tFL @-> tS)
         ~fields:[
         ]
         ~params:[
@@ -2354,9 +2098,7 @@ make_string (string_of_float fl)
 |}
     ; inst "PrimitiveFloat"
         ~name:"float"
-        ~type_:{|
-~% (tI @-> tFL)
-|}
+        ~type_:Type.(tI @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2369,9 +2111,7 @@ make_float (float_of_int ic1)
 |}
     ; inst "PrimitiveRound"
         ~name:"round"
-        ~type_:{|
-~% (tFL @-> tI)
-|}
+        ~type_:Type.(tFL @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2384,9 +2124,7 @@ make_int (int_of_float fc1)
 |}
     ; inst "PrimitiveDrawText"
         ~name:"draw-text"
-        ~type_:{|
-~% (tPT @-> tIB @-> tGR)
-|}
+        ~type_:Type.(tPT @-> tIB @-> tGR)
         ~fields:[
         ]
         ~params:[
@@ -2401,9 +2139,7 @@ make_graphics grelem
 |}
     ; inst "PrimitiveDrawStroke"
         ~name:"stroke"
-        ~type_:{|
-~% (tLN @-> tCLR @-> tPATH @-> tGR)
-|}
+        ~type_:Type.(tLN @-> tCLR @-> tPATH @-> tGR)
         ~fields:[
         ]
         ~params:[
@@ -2418,9 +2154,7 @@ make_graphics grelem
 |}
     ; inst "PrimitiveDrawFill"
         ~name:"fill"
-        ~type_:{|
-~% (tCLR @-> tPATH @-> tGR)
-|}
+        ~type_:Type.(tCLR @-> tPATH @-> tGR)
         ~fields:[
         ]
         ~params:[
@@ -2434,9 +2168,7 @@ make_graphics grelem
 |}
     ; inst "PrimitiveDrawDashedStroke"
         ~name:"dashed-stroke"
-        ~type_:{|
-~% (tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)
-|}
+        ~type_:Type.(tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)
         ~fields:[
         ]
         ~params:[
@@ -2453,9 +2185,7 @@ make_graphics grelem
 |}
     ; inst "PrimitiveLinearTransformGraphics"
         ~name:"linear-transform-graphics"
-        ~type_:{|
-~% (tFL @-> tFL @-> tFL @-> tFL @-> tGR @-> tGR)
-|}
+        ~type_:Type.(tFL @-> tFL @-> tFL @-> tFL @-> tGR @-> tGR)
         ~fields:[
         ]
         ~params:[
@@ -2471,9 +2201,7 @@ make_graphics (GraphicD.make_linear_trans (a, b, c, d) grelem)
 |}
     ; inst "PrimitiveShiftGraphics"
         ~name:"shift-graphics"
-        ~type_:{|
-~% (tPT @-> tGR @-> tGR)
-|}
+        ~type_:Type.(tPT @-> tGR @-> tGR)
         ~fields:[
         ]
         ~params:[
@@ -2486,9 +2214,7 @@ make_graphics (GraphicD.shift_element vec grelem)
 |}
     ; inst "PrimtiveGetGraphicsBBox"
         ~name:"get-graphics-bbox"
-        ~type_:{|
-~% (tGR @-> tPROD [tPT; tPT])
-|}
+        ~type_:Type.(tGR @-> tPROD [tPT; tPT])
         ~fields:[
         ]
         ~params:[
@@ -2508,9 +2234,7 @@ Tuple([value1; value2])
 |}
     ; inst "Times"
         ~name:"*"
-        ~type_:{|
-~% (tI @-> tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2524,9 +2248,7 @@ make_int (numl * numr)
 |}
     ; inst "Divides"
         ~name:"/"
-        ~type_:{|
-~% (tI @-> tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2541,9 +2263,7 @@ try make_int (numl / numr) with
 |}
     ; inst "Mod"
         ~name:"mod"
-        ~type_:{|
-~% (tI @-> tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2558,9 +2278,7 @@ try make_int (numl mod numr) with
 |}
     ; inst "Plus"
         ~name:"+"
-        ~type_:{|
-~% (tI @-> tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2574,9 +2292,7 @@ make_int (numl + numr)
 |}
     ; inst "Minus"
         ~name:"-"
-        ~type_:{|
-~% (tI @-> tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2590,9 +2306,7 @@ make_int (numl - numr)
 |}
     ; inst "EqualTo"
         ~name:"=="
-        ~type_:{|
-~% (tI @-> tI @-> tB)
-|}
+        ~type_:Type.(tI @-> tI @-> tB)
         ~fields:[
         ]
         ~params:[
@@ -2606,9 +2320,7 @@ make_bool (numl = numr)
 |}
     ; inst "GreaterThan"
         ~name:">"
-        ~type_:{|
-~% (tI @-> tI @-> tB)
-|}
+        ~type_:Type.(tI @-> tI @-> tB)
         ~fields:[
         ]
         ~params:[
@@ -2622,9 +2334,7 @@ make_bool (numl > numr)
 |}
     ; inst "LessThan"
         ~name:"<"
-        ~type_:{|
-~% (tI @-> tI @-> tB)
-|}
+        ~type_:Type.(tI @-> tI @-> tB)
         ~fields:[
         ]
         ~params:[
@@ -2638,9 +2348,7 @@ make_bool (numl < numr)
 |}
     ; inst "LogicalAnd"
         ~name:"&&"
-        ~type_:{|
-~% (tB @-> tB @-> tB)
-|}
+        ~type_:Type.(tB @-> tB @-> tB)
         ~fields:[
         ]
         ~params:[
@@ -2654,9 +2362,7 @@ make_bool (binl && binr)
 |}
     ; inst "LogicalOr"
         ~name:"||"
-        ~type_:{|
-~% (tB @-> tB @-> tB)
-|}
+        ~type_:Type.(tB @-> tB @-> tB)
         ~fields:[
         ]
         ~params:[
@@ -2670,9 +2376,7 @@ make_bool (binl || binr)
 |}
     ; inst "LogicalNot"
         ~name:"not"
-        ~type_:{|
-~% (tB @-> tB)
-|}
+        ~type_:Type.(tB @-> tB)
         ~fields:[
         ]
         ~params:[
@@ -2685,9 +2389,7 @@ make_bool (not binl)
 |}
     ; inst "BitShiftRight"
         ~name:">>"
-        ~type_:{|
-~% (tI @-> tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2705,9 +2407,7 @@ make_int bits
 |}
     ; inst "BitShiftLeft"
         ~name:"<<"
-        ~type_:{|
-~% (tI @-> tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2725,9 +2425,7 @@ make_int bits
 |}
     ; inst "BitXor"
         ~name:"bxor"
-        ~type_:{|
-~% (tI @-> tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2741,9 +2439,7 @@ make_int (numl lxor numr)
 |}
     ; inst "BitAnd"
         ~name:"band"
-        ~type_:{|
-~% (tI @-> tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2757,9 +2453,7 @@ make_int (numl land numr)
 |}
     ; inst "BitOr"
         ~name:"bor"
-        ~type_:{|
-~% (tI @-> tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2773,9 +2467,7 @@ make_int (numl lor numr)
 |}
     ; inst "BitNot"
         ~name:"bnot"
-        ~type_:{|
-~% (tI @-> tI)
-|}
+        ~type_:Type.(tI @-> tI)
         ~fields:[
         ]
         ~params:[
@@ -2788,9 +2480,7 @@ make_int (lnot num)
 |}
     ; inst "FloatPlus"
         ~name:"+."
-        ~type_:{|
-~% (tFL @-> tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2804,9 +2494,7 @@ make_float (flt1 +. flt2)
 |}
     ; inst "FloatMinus"
         ~name:"-."
-        ~type_:{|
-~% (tFL @-> tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2820,9 +2508,7 @@ make_float (flt1 -. flt2)
 |}
     ; inst "FloatTimes"
         ~name:"*."
-        ~type_:{|
-~% (tFL @-> tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2836,9 +2522,7 @@ make_float (flt1 *. flt2)
 |}
     ; inst "FloatDivides"
         ~name:"/."
-        ~type_:{|
-~% (tFL @-> tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2852,9 +2536,7 @@ make_float (flt1 /. flt2)
 |}
     ; inst "FloatSine"
         ~name:"sin"
-        ~type_:{|
-~% (tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2867,9 +2549,7 @@ make_float (sin flt1)
 |}
     ; inst "FloatArcSine"
         ~name:"asin"
-        ~type_:{|
-~% (tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2882,9 +2562,7 @@ make_float (asin flt1)
 |}
     ; inst "FloatCosine"
         ~name:"cos"
-        ~type_:{|
-~% (tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2897,9 +2575,7 @@ make_float (cos flt1)
 |}
     ; inst "FloatArcCosine"
         ~name:"acos"
-        ~type_:{|
-~% (tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2912,9 +2588,7 @@ make_float (acos flt1)
 |}
     ; inst "FloatTangent"
         ~name:"tan"
-        ~type_:{|
-~% (tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2927,9 +2601,7 @@ make_float (tan flt1)
 |}
     ; inst "FloatArcTangent"
         ~name:"atan"
-        ~type_:{|
-~% (tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2942,9 +2614,7 @@ make_float (atan flt1)
 |}
     ; inst "FloatArcTangent2"
         ~name:"atan2"
-        ~type_:{|
-~% (tFL @-> tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2958,9 +2628,7 @@ make_float (atan2 flt1 flt2)
 |}
     ; inst "FloatLogarithm"
         ~name:"log"
-        ~type_:{|
-~% (tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2973,9 +2641,7 @@ make_float (log flt)
 |}
     ; inst "FloatExponential"
         ~name:"exp"
-        ~type_:{|
-~% (tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -2988,9 +2654,7 @@ make_float (exp flt)
 |}
     ; inst "PrimitiveCeil"
         ~name:"ceil"
-        ~type_:{|
-~% (tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -3003,9 +2667,7 @@ make_float (ceil fc1)
 |}
     ; inst "PrimitiveFloor"
         ~name:"floor"
-        ~type_:{|
-~% (tFL @-> tFL)
-|}
+        ~type_:Type.(tFL @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -3018,9 +2680,7 @@ make_float (floor fc1)
 |}
     ; inst "LengthPlus"
         ~name:"+'"
-        ~type_:{|
-~% (tLN @-> tLN @-> tLN)
-|}
+        ~type_:Type.(tLN @-> tLN @-> tLN)
         ~fields:[
         ]
         ~params:[
@@ -3034,9 +2694,7 @@ make_length (HorzBox.(len1 +% len2))
 |}
     ; inst "LengthMinus"
         ~name:"-'"
-        ~type_:{|
-~% (tLN @-> tLN @-> tLN)
-|}
+        ~type_:Type.(tLN @-> tLN @-> tLN)
         ~fields:[
         ]
         ~params:[
@@ -3050,9 +2708,7 @@ make_length (HorzBox.(len1 -% len2))
 |}
     ; inst "LengthTimes"
         ~name:"*'"
-        ~type_:{|
-~% (tLN @-> tFL @-> tLN)
-|}
+        ~type_:Type.(tLN @-> tFL @-> tLN)
         ~fields:[
         ]
         ~params:[
@@ -3066,9 +2722,7 @@ make_length (HorzBox.(len1 *% flt2))
 |}
     ; inst "LengthDivides"
         ~name:"/'"
-        ~type_:{|
-~% (tLN @-> tLN @-> tFL)
-|}
+        ~type_:Type.(tLN @-> tLN @-> tFL)
         ~fields:[
         ]
         ~params:[
@@ -3082,9 +2736,7 @@ make_float (HorzBox.(len1 /% len2))
 |}
     ; inst "LengthLessThan"
         ~name:"<'"
-        ~type_:{|
-~% (tLN @-> tLN @-> tB)
-|}
+        ~type_:Type.(tLN @-> tLN @-> tB)
         ~fields:[
         ]
         ~params:[
@@ -3098,9 +2750,7 @@ make_bool (HorzBox.(len1 <% len2))
 |}
     ; inst "LengthGreaterThan"
         ~name:">'"
-        ~type_:{|
-~% (tLN @-> tLN @-> tB)
-|}
+        ~type_:Type.(tLN @-> tLN @-> tB)
         ~fields:[
         ]
         ~params:[
@@ -3114,9 +2764,7 @@ make_bool (HorzBox.(len2 <% len1))
 |}
     ; inst "PrimitiveSetWordBreakPenalty"
         ~name:"set-word-break-penalty"
-        ~type_:{|
-~% (tI @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tI @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -3131,9 +2779,7 @@ Context(HorzBox.{ ctx with
 |}
     ; inst "PrimitiveSetEveryWordBreak"
         ~name:"set-every-word-break"
-        ~type_:{|
-~% (tIB @-> tIB @-> tCTX @-> tCTX)
-|}
+        ~type_:Type.(tIB @-> tIB @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -3150,9 +2796,7 @@ Context(HorzBox.({ ctx with
 |}
     ; inst "PrimitiveGetEveryWordBreak"
         ~name:"get-every-word-break"
-        ~type_:{|
-~% (tCTX @-> tPROD [tIB; tIB])
-|}
+        ~type_:Type.(tCTX @-> tPROD [tIB; tIB])
         ~fields:[
         ]
         ~params:[
@@ -3166,9 +2810,7 @@ Tuple([make_horz hblst1; make_horz hblst2])
 |}
     ; inst "BackendProbeCrossReference"
         ~name:"probe-cross-reference"
-        ~type_:{|
-~% (tS @-> (tOPT tS))
-|}
+        ~type_:Type.(tS @-> (tOPT tS))
         ~fields:[
         ]
         ~params:[
@@ -3182,9 +2824,7 @@ match CrossRef.probe k with
 |}
     ; inst "BackendRegisterDestination"
         ~name:"register-destination"
-        ~type_:{|
-~% (tS @-> tPT @-> tU)
-|}
+        ~type_:Type.(tS @-> tPT @-> tU)
         ~fields:[
         ]
         ~params:[
@@ -3198,9 +2838,7 @@ const_unit
 |}
     ; inst "BackendRegisterLinkToUri"
         ~name:"register-link-to-uri"
-        ~type_:{|
-~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
-|}
+        ~type_:Type.(tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
         ~fields:[
         ]
         ~params:[
@@ -3219,9 +2857,7 @@ const_unit
 |}
     ; inst "BackendRegisterLinkToLocation"
         ~name:"register-link-to-location"
-        ~type_:{|
-~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
-|}
+        ~type_:Type.(tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
         ~fields:[
         ]
         ~params:[
@@ -3241,9 +2877,7 @@ const_unit
 |}
     ; inst "BackendRegisterOutline"
         ~name:"register-outline"
-        ~type_:{|
-~% ((tL(tPROD [tI; tS; tS; tB])) @-> tU)
-|}
+        ~type_:Type.((tL(tPROD [tI; tS; tS; tB])) @-> tU)
         ~fields:[
         ]
         ~params:[
@@ -3256,9 +2890,7 @@ const_unit
 |}
     ; inst "RegisterDocumentInformationDictionary"
         ~name:"register-document-information"
-        ~type_:{|
-~% (tDOCINFODIC @-> tU)
-|}
+        ~type_:Type.(tDOCINFODIC @-> tU)
         ~fields:[
         ]
         ~params:[
@@ -3272,10 +2904,7 @@ const_unit
 |}
     ; inst "AbortWithMessage"
         ~name:"abort-with-message"
-        ~type_:{|
-let tv = (let bid = BoundID.fresh UniversalKind () in PolyBound(bid)) in
-~% (tS @-> (~@ tv))
-|}
+        ~type_:Type.(forall "a" (fun a -> tS @-> a))
         ~fields:[
         ]
         ~params:[
@@ -3288,9 +2917,7 @@ raise (report_dynamic_error msg)
 |}
     ; inst "LiftString"
         ~name:"lift-string"
-        ~type_:{|
-~% (tS @-> tCODE tS)
-|}
+        ~type_:Type.(tS @-> tCODE tS)
         ~fields:[
         ]
         ~params:[
@@ -3303,9 +2930,7 @@ lift_string_to_code_value s
 |}
     ; inst "LiftInt"
         ~name:"lift-int"
-        ~type_:{|
-~% (tI @-> tCODE tI)
-|}
+        ~type_:Type.(tI @-> tCODE tI)
         ~fields:[
         ]
         ~params:[
@@ -3318,9 +2943,7 @@ lift_integer_to_code_value n
 |}
     ; inst "LiftFloat"
         ~name:"lift-float"
-        ~type_:{|
-~% (tFL @-> tCODE tFL)
-|}
+        ~type_:Type.(tFL @-> tCODE tFL)
         ~fields:[
         ]
         ~params:[
@@ -3333,9 +2956,7 @@ lift_float_to_code_value r
 |}
     ; inst "LiftLength"
         ~name:"lift-length"
-        ~type_:{|
-~% (tLN @-> tCODE tLN)
-|}
+        ~type_:Type.(tLN @-> tCODE tLN)
         ~fields:[
         ]
         ~params:[
@@ -3348,9 +2969,7 @@ lift_length_to_code_value len
 |}
     ; inst "PrimitiveGetInputPosition"
         ~name:"get-input-position"
-        ~type_:{|
-~% (tIPOS @-> tPROD [tS; tI; tI])
-|}
+        ~type_:Type.(tIPOS @-> tPROD [tS; tI; tI])
         ~fields:[
         ]
         ~params:[
@@ -3366,9 +2985,7 @@ Tuple([v1; v2; v3])
 |}
     ; inst "ReadFile"
         ~name:"read-file"
-        ~type_:{|
-~% (tS @-> tL tS)
-|}
+        ~type_:Type.(tS @-> tL tS)
         ~fields:[
         ]
         ~params:[
@@ -3400,9 +3017,7 @@ make_list make_string lines
 |}
     ; inst "ClipGraphicsByPath"
         ~name:"clip-graphics-by-path"
-        ~type_:{|
-~% (tPATH @-> tGR @-> tGR)
-|}
+        ~type_:Type.(tPATH @-> tGR @-> tGR)
         ~fields:[
         ]
         ~params:[
