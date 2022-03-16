@@ -73,6 +73,7 @@ jobs:
           ./install-libs.sh ~/.satysfi
 
       - name: Build demo docs
+        if: matrix.os == 'ubuntu-latest' &&  matrix.ocaml-version == '4.12.1'
         run: |
           (cd demo; opam exec -- make)
           (cd doc; opam exec -- make)
