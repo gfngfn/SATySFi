@@ -4,7 +4,7 @@
 
 
 let-inline ctx \do-fill f =
-    let ib = use-image-by-natural-size (load-image `images/peppers-rgb.jpg`)
+    let ib = use-image (load-image `images/peppers-rgb.jpg`)
     in
     let (w, h, d) = get-natural-metrics ib in
     inline-graphics w h d (fun (x, y) -> [
@@ -12,7 +12,7 @@ let-inline ctx \do-fill f =
     ])
 
 let-inline ctx \do-clip f =
-    let ib = use-image-by-natural-size (load-image `images/peppers-rgb.jpg`)
+    let ib = use-image (load-image `images/peppers-rgb.jpg`)
     in
     let (w, h, d) = get-natural-metrics ib in
     inline-graphics w h d (fun (x, y) -> [

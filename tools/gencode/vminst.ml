@@ -615,7 +615,7 @@ let imgkey = ImageInfo.add_image abspath in
 make_image_key imgkey
 |}
     ; inst "BackendUseImageByNaturalSize"
-        ~name:"use-image-by-natural-size"
+        ~name:"use-image"
         ~type_:{|
 ~% (tIMG @-> tIB)
 |}
@@ -632,28 +632,7 @@ match valueimg with
     make_horz (HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
 
 | _ ->
-    report_bug_vm "BackendUseImage"
-|}
-    ; inst "BackendUseImageByWidth"
-        ~name:"use-image-by-width"
-        ~type_:{|
-~% (tIMG @-> tLN @-> tIB)
-|}
-        ~fields:[
-        ]
-        ~params:[
-          param "valueimg";
-          param "wid" ~type_:"length";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~code:{|
-match valueimg with
-| BaseConstant(BCImageKey(imgkey)) ->
-    let hgt = ImageInfo.get_height_from_width imgkey wid in
-    make_horz (HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
-
-| _ ->
-    report_bug_vm "BackendUseImage"
+    report_bug_vm "BackendUseImageByNaturalSize"
 |}
     ; inst "BackendHookPageBreak"
         ~name:"hook-page-break"

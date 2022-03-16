@@ -658,9 +658,9 @@ document (|
         現在の実装では実行時エラーとなり処理を中止する．
         \subject-to-change;
       }
-      +command (`use-image-by-width`) (tIMG --> (tL --> tIB)) {
-        \code{use-image-by-width ${img} ${w}}で
-        画像\code{${img}}を幅\code{${w}}の大きさで描画したものをインラインボックス列として返す．
+      +command (`use-image`) (tIMG --> (tL --> tIB)) {
+        \code{use-image ${img}}で
+        画像\code{${img}}を自然な大きさで描画したものをインラインボックス列として返す．
       }
     >
     +subsection {グラフィックスに関する処理} <

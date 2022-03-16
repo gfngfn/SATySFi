@@ -67,6 +67,23 @@ let-inline ctx \TeX =
     script-guard Latin (no-break ib)
 
 
+let use-image-by-width img wid =
+  let ib = use-image img in
+  let g = ib |> draw-text (0pt, 0pt) in
+  let ((_, mh), (w, d)) = get-graphics-bbox g in
+  let r = wid /' w in
+  let hgh = (0pt -' (mh *' r)) in
+  let dpt = d *' r in
+  inline-graphics wid hgh dpt (fun (x, y) -> (
+    [
+      g |> linear-transform-graphics r 0. 0. r
+        |> shift-graphics (x, y -' dpt)
+    ]
+  ))
+
+
+
+
 let length-max len1 len2 =
   if len1 <' len2 then len2 else len1
 
