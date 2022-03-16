@@ -550,9 +550,7 @@ make_image_key imgkey
 |}
     ; inst "BackendUseImageByNaturalSize"
         ~name:"use-image"
-        ~type_:{|
-~% (tIMG @-> tIB)
-|}
+        ~type_:Type.(tIMG @-> tIB)
         ~fields:[
         ]
         ~params:[
