@@ -76,3 +76,4 @@ jobs:
         run: |
           (cd demo; opam exec -- make)
           (cd doc; opam exec -- make)
+          (cd tests; opam exec -- make)
