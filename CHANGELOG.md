@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.0.7] - 2022-04-14
 ### Fixed
 - Fix invalid errors emitted by `--type-check-only` by making the option extension-sensitive.
 - Fix the exhaustiveness check ([PR\#171](https://github.com/gfngfn/SATySFi/pull/171) by `matsud224`).
@@ -131,7 +133,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Initial version of SATySFi
 
 
-  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.6...HEAD
+  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.7...HEAD
+  [0.0.7]: https://github.com/gfngfn/SATySFi/compare/v0.0.6...v0.0.7
   [0.0.6]: https://github.com/gfngfn/SATySFi/compare/v0.0.5...v0.0.6
   [0.0.5]: https://github.com/gfngfn/SATySFi/compare/v0.0.4...v0.0.5
   [0.0.4]: https://github.com/gfngfn/SATySFi/compare/v0.0.3...v0.0.4
