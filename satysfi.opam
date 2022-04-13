@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "satysfi"
-version: "0.0.6"
+version: "0.0.7"
 maintainer: "gfngfn"
 authors: [
   "gfngfn"
