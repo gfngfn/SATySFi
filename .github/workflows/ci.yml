@@ -13,6 +13,9 @@ jobs:
           - 4.10.2
           - 4.11.2
           - 4.12.1
+        oldest-dependencies:
+          - true
+          - false
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -43,7 +46,8 @@ jobs:
         uses: ocaml/setup-ocaml@v2
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
-          dune-cache: ${{ matrix.os != 'macos-latest' }}
+          # SATySFi only requires dune >=2.0, which has a problem on caching
+          dune-cache: ${{ matrix.os != 'macos-latest' && ! matrix.oldest-dependencies }}
 
           opam-depext: true
           opam-pin: true
@@ -54,8 +58,16 @@ jobs:
             default: ${{ steps.determine-default-opam-repo.outputs.opam-repo-default }}
 
       - name: Install SATySFi dependencies
+        if: ${{ ! matrix.oldest-dependencies }}
         run: |
           opam install . --deps-only --with-doc --verbose
+
+      - name: Install SATySFi dependencies (oldest dependencies)
+        if: matrix.oldest-dependencies
+        run: |
+          OCAML_PACKAGE="ocaml.$(opam show --color=never -f version ocaml)"
+          opam install opam-0install
+          opam install --verbose $(opam exec -- opam-0install --prefer-oldest satysfi "$OCAML_PACKAGE")
 
       - name: Build SATySFi
         run: opam exec -- make all
