@@ -537,8 +537,8 @@ document (|
       +command (`set-min-gap-of-lines`) (tL --> (tCTX --> tCTX)) {
         \code{${ctx} \|\> set-min-gap-of-lines ${l}}で行間の最小値を引数の値に変更した文脈を返す．
       }
-      +command (`set-paragraph-margin`) (tL --> tL --> ((tCTX --> tCTX))) {
-        \code{${ctx} \|\> set-min-gap-of-lines ${l_1} ${l_2}}で段落の上のマージンを\code{${l_1}}に，
+      +command (`set-paragraph-margin`) (tL --> (tL --> (tCTX --> tCTX))) {
+        \code{${ctx} \|\> set-paragraph-margin ${l_1} ${l_2}}で段落の上のマージンを\code{${l_1}}に，
         段落の下のマージンを\code{${l_2}}にするように変更したテキスト文脈を返す．
         \subject-to-change;
       }
