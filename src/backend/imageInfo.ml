@@ -47,6 +47,14 @@ let get_height_from_width key wid =
     wid *% ((ymax -. ymin) /. (xmax -. xmin))
 
 
+let get_size key =
+  let (_,(_, _, pw, ph), _) = ImageHashTable.find key in
+  (* points to inches *)
+  let wid = pw /. 72. in
+  let hgt = ph /. 72. in
+  (Length.of_inch wid, Length.of_inch hgt)
+
+
 let get_ratio key wid hgt =
   let (_,bbox, valuemain) = ImageHashTable.find key in
     match valuemain with

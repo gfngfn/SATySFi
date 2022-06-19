@@ -3,16 +3,16 @@
 @import: ../lib-satysfi/dist/packages/color
 
 
-let-inline ctx \do-fill wid f =
-    let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid
+let-inline ctx \do-fill f =
+    let ib = use-image (load-image `images/peppers-rgb.jpg`)
     in
     let (w, h, d) = get-natural-metrics ib in
     inline-graphics w h d (fun (x, y) -> [
         fill (Color.blue) (f x y w (h +' d))
     ])
 
-let-inline ctx \do-clip wid f =
-    let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid
+let-inline ctx \do-clip f =
+    let ib = use-image (load-image `images/peppers-rgb.jpg`)
     in
     let (w, h, d) = get-natural-metrics ib in
     inline-graphics w h d (fun (x, y) -> [
@@ -42,11 +42,11 @@ document (|
   author = {\SATySFi; Contributors};
 |) '<
     +p {
-        \do-fill (5cm) (path-circle);
-        \do-clip (5cm) (path-circle);
+        \do-fill (path-circle);
+        \do-clip (path-circle);
     }
     +p {
-        \do-fill (5cm) (path-donut);
-        \do-clip (5cm) (path-donut);
+        \do-fill (path-donut);
+        \do-clip (path-donut);
     }
 >
