@@ -1,8 +1,13 @@
 @require: stdja
+@require: itemize
+@require: annot
 
 let-inline ctx \insert-image w path =
   let img = load-image path in
     use-image-by-width img w
+
+let-block ctx +newpage = clear-page
+
 in
 document (|
   title = {Tests for Images};
@@ -10,6 +15,7 @@ document (|
   show-title = true;
   show-toc = false;
 |) '<
+  +section{JPEG images}<
      +p{This is a jpeg image in gray scale.
        \insert-image(5cm)(`satysfi-logo-gray.jpg`);
      }
@@ -28,4 +34,47 @@ document (|
     +p{Yet another image in CMYK (broken).
        \insert-image(5cm)(`peppers-cmyk.jpg`);
     }
+  >
+
+  +newpage;
+
+  +section{PNG images}<
+    +p{
+      Images from \href(`http://www.schaik.com/pngsuite/`){PngSuite}.
+    }
+    +listing {
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basi0g01.png`);
+      PngSuite-2017jul19/basi0g01.png: PNG image data, 32 x 32, 1-bit grayscale, interlaced
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g01.png`);
+      PngSuite-2017jul19/basn0g01.png: PNG image data, 32 x 32, 1-bit grayscale, non-interlaced
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g02.png`);
+      PngSuite-2017jul19/basn0g02.png: PNG image data, 32 x 32, 2-bit grayscale, non-interlaced
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g04.png`);
+      PngSuite-2017jul19/basn0g04.png: PNG image data, 32 x 32, 4-bit grayscale, non-interlaced
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g08.png`);
+      PngSuite-2017jul19/basn0g08.png: PNG image data, 32 x 32, 8-bit grayscale, non-interlaced
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g16.png`);
+      PngSuite-2017jul19/basn0g16.png: PNG image data, 32 x 32, 16-bit grayscale, non-interlaced
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn2c08.png`);
+      PngSuite-2017jul19/basn2c08.png: PNG image data, 32 x 32, 8-bit/color RGB, non-interlaced
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn2c16.png`);
+      PngSuite-2017jul19/basn2c16.png: PNG image data, 32 x 32, 16-bit/color RGB, non-interlaced
+      * (Unsupported by camlimages) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn3p01.png`);
+      PngSuite-2017jul19/basn3p01.png: PNG image data, 32 x 32, 1-bit colormap, non-interlaced
+      * (Unsupported by camlimages) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn3p02.png`);
+      PngSuite-2017jul19/basn3p02.png: PNG image data, 32 x 32, 2-bit colormap, non-interlaced
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn3p04.png`);
+      PngSuite-2017jul19/basn3p04.png: PNG image data, 32 x 32, 4-bit colormap, non-interlaced
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn3p08.png`);
+      PngSuite-2017jul19/basn3p08.png: PNG image data, 32 x 32, 8-bit colormap, non-interlaced
+      * (Unsupported, alpha) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn4a08.png`);
+      PngSuite-2017jul19/basn4a08.png: PNG image data, 32 x 32, 8-bit gray+alpha, non-interlaced
+      * (Unsupported, alpha) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn4a16.png`);
+      PngSuite-2017jul19/basn4a16.png: PNG image data, 32 x 32, 16-bit gray+alpha, non-interlaced
+      * (Unsupported, alpha) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn6a08.png`);
+      PngSuite-2017jul19/basn6a08.png: PNG image data, 32 x 32, 8-bit/color RGBA, non-interlaced
+      * (Unsupported, alpha) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn6a16.png`);
+      PngSuite-2017jul19/basn6a16.png: PNG image data, 32 x 32, 16-bit/color RGBA, non-interlaced
+    }
+  >
 >
