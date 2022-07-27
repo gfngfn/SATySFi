@@ -1,9 +1,14 @@
-RM=rm -f
+TARGETS = \
+	test.pdf \
 
-all: test.saty
-	satysfi $<
+.PHONY: all clean
 
-.PHONY: clean
+.SUFFIXES: .saty .pdf
+
+.saty.pdf:
+	satysfi $< -o $@
+
+all:: $(TARGETS)
+
 clean:
-	$(RM) *.pdf *satysfi-aux *~
-
+	rm -f *.pdf *.satysfi-aux
