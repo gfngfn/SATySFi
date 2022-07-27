@@ -1,13 +1,13 @@
 TARGETS = \
 	clip.pdf \
+	glue1.pdf \
+	math2.pdf \
 	refactor1.pdf \
 	refactor2.pdf \
 	refactor3.pdf \
 	refactor5.pdf \
 #	first.pdf \
-#	glue1.pdf \
 #	math1.pdf \
-#	math2.pdf \
 #	refactor4.pdf \
 #	refactor6.pdf \
 
