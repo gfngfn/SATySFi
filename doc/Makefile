@@ -3,12 +3,14 @@ TARGETS = \
 	doc-lang.pdf \
 	math1.pdf \
 
+SATYSFI ?= satysfi
+
 .PHONY: all clean
 
 .SUFFIXES: .saty .pdf
 
 .saty.pdf:
-	satysfi $< -o $@
+	$(SATYSFI) $< -o $@
 
 all:: $(TARGETS)
 

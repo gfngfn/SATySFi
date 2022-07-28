@@ -1,7 +1,16 @@
+TARGETS = \
+	demo.pdf \
+
+SATYSFI ?= satysfi
+
 .PHONY: all clean
 
-all::
-	satysfi demo.saty
+.SUFFIXES: .saty .pdf
+
+.saty.pdf:
+	$(SATYSFI) $< -o $@
+
+all:: $(TARGETS)
 
 clean:
 	rm -f *.pdf *.satysfi-aux

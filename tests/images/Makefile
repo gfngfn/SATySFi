@@ -1,12 +1,14 @@
 TARGETS = \
 	test.pdf \
 
+SATYSFI ?= satysfi
+
 .PHONY: all clean
 
 .SUFFIXES: .saty .pdf
 
 .saty.pdf:
-	satysfi $< -o $@
+	$(SATYSFI) $< -o $@
 
 all:: $(TARGETS)
 

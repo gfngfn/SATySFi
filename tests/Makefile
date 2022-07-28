@@ -11,12 +11,14 @@ TARGETS = \
 #	refactor4.pdf \
 #	refactor6.pdf \
 
+SATYSFI ?= satysfi
+
 .PHONY: all clean
 
 .SUFFIXES: .saty .pdf
 
 .saty.pdf:
-	satysfi $< -o $@
+	$(SATYSFI) $< -o $@
 
 all:: $(TARGETS)
 
