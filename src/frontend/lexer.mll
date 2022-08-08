@@ -338,7 +338,8 @@ rule progexpr stack = parse
   | ((("-"? digit+ "." digit*) as flt) (identifier as unitnm))       { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
   | ((("-"? "." digit+) as flt) (identifier as unitnm))              { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
   | eof {
-      if Stack.length stack = 1 then EOI else
+      let pos = get_pos lexbuf in
+      if Stack.length stack = 1 then EOI(pos) else
         report_error lexbuf "text input ended while reading a program area"
     }
   | _ as c { report_error lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in a program area") }
@@ -391,7 +392,8 @@ and vertexpr stack = parse
       BHORZGRP(get_pos lexbuf)
     }
   | eof {
-      if Stack.length stack = 1 then EOI else
+      let pos = get_pos lexbuf in
+      if Stack.length stack = 1 then EOI(pos) else
         report_error lexbuf "unexpected end of input while reading a vertical area"
     }
   | _ as c {
@@ -498,7 +500,8 @@ and horzexpr stack = parse
       LITERAL(pos, s, false, omit_post)
     }
   | eof {
-      if Stack.length stack = 1 then EOI else
+      let pos = get_pos lexbuf in
+      if Stack.length stack = 1 then EOI(pos) else
         report_error lexbuf "unexpected end of input while reading an inline text area"
     }
   | str+ {

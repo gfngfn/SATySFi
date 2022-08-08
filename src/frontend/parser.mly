@@ -449,7 +449,7 @@
 %token <Range.t * int> ITEM
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
 %token <Range.t> HEADER_STAGE0 HEADER_STAGE1 HEADER_PERSISTENT0
-%token EOI
+%token <Range.t> EOI
 
 %left  BINOP_BAR
 %left  BINOP_AMP
@@ -515,6 +515,10 @@ optterm_nonempty_list(sep, X):
 main:
   | stage=stage; header=list(headerelem); utast=nxtoplevel { (stage, header, utast) }
   | stage=stage; header=list(headerelem); utast=nxwhl; EOI { (stage, header, utast) }
+  | rng=EOI {
+    raise (ParseErrorDetail(rng, "empty input"))
+  }
+
 ;
 stage:
   |                    { Stage1 }
