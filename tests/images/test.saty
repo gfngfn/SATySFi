@@ -2,47 +2,45 @@
 @require: itemize
 @require: annot
 
-let-inline ctx \insert-image w path =
+(let inline ctx \insert-image w path =
   let img = load-image path in
     use-image-by-width img w
-
-let-block ctx +newpage = clear-page
-
 in
-document (|
-  title = {Tests for Images};
-  author = {};
-  show-title = true;
-  show-toc = false;
+let block ctx +newpage = clear-page in
+StdJa.document (|
+  title = {Tests for Images},
+  author = {},
+  show-title = true,
+  show-toc = false,
 |) '<
-  +section{JPEG images}<
-     +p{This is a jpeg image in gray scale.
+  +StdJa.section{JPEG images}<
+     +StdJa.p{This is a jpeg image in gray scale.
        \insert-image(5cm)(`satysfi-logo-gray.jpg`);
      }
-     +p{This is a jpeg image with RGB color model.
+     +StdJa.p{This is a jpeg image with RGB color model.
        \insert-image(5cm)(`satysfi-logo-rgb.jpg`);
      }
-     +p{This is a jpeg image with CMYK color model. (It's broken)
+     +StdJa.p{This is a jpeg image with CMYK color model. (It's broken)
        \insert-image(5cm)(`satysfi-logo-cmyk.jpg`);
      }
-    +p{Yet another image in gray scale.
+    +StdJa.p{Yet another image in gray scale.
        \insert-image(5cm)(`peppers-gray.jpg`);
     }
-    +p{Yet another image in RGB.
+    +StdJa.p{Yet another image in RGB.
        \insert-image(5cm)(`peppers-rgb.jpg`);
     }
-    +p{Yet another image in CMYK (broken).
+    +StdJa.p{Yet another image in CMYK (broken).
        \insert-image(5cm)(`peppers-cmyk.jpg`);
     }
   >
 
   +newpage;
 
-  +section{PNG images}<
-    +p{
-      Images from \href(`http://www.schaik.com/pngsuite/`){PngSuite}.
+  +StdJa.section{PNG images}<
+    +StdJa.p{
+      Images from \Annot.href(`http://www.schaik.com/pngsuite/`){PngSuite}.
     }
-    +listing {
+    +Itemize.listing{
       * \insert-image(0.5cm)(`PngSuite-2017jul19/basi0g01.png`);
       PngSuite-2017jul19/basi0g01.png: PNG image data, 32 x 32, 1-bit grayscale, interlaced
       * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g01.png`);
@@ -78,3 +76,4 @@ document (|
     }
   >
 >
+)

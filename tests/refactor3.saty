@@ -1,19 +1,20 @@
+(
+  let math \text it =
+    text-in-math MathOrd (fun ctx -> read-inline ctx it)
+  in
 
-let-math \text it =
-  text-in-math MathOrd (fun ctx -> read-inline ctx it)
+  let math \token s = ${\text!{#s;}} in
 
-let-math \token s = ${\text!{#s;}}
+  let inline ctx \math = embed-math ctx in
 
-%let-math \token s = ${\text!(s)}
+  let math \exprabsI x e =
+    ${\token!{${A^{\token!{I}}}}#x.\token!{\ }#e}
+  in
 
-let-inline ctx \math = embed-math ctx
+  let it = {${\exprabsI{x}{e}}} in
 
-let-math \exprabsI x e =
-  ${\token!{${A^{\token!{I}}}}#x.\token!{\ }#e}
-
-let it = {${\exprabsI{x}{e}}}
-
-let ctx = get-initial-context 400pt (command \math)
-let pagecontf _ = (| text-origin = (20pt, 20pt); text-height = 600pt; |)
-let pagepartsf _ = (| header-origin = (0pt, 0pt); header-content = block-nil; footer-origin = (0pt, 0pt); footer-content = block-nil; |)
-in page-break A4Paper pagecontf pagepartsf (line-break true true ctx ((read-inline ctx it) ++ inline-fil))
+  let ctx = get-initial-context 400pt (command \math) in
+  let pagecontf _ = (| text-origin = (20pt, 20pt), text-height = 600pt, |) in
+  let pagepartsf _ = (| header-origin = (0pt, 0pt), header-content = block-nil, footer-origin = (0pt, 0pt), footer-content = block-nil, |) in
+  page-break A4Paper pagecontf pagepartsf (line-break true true ctx ((read-inline ctx it) ++ inline-fil))
+)

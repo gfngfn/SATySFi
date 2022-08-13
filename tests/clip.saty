@@ -3,15 +3,15 @@
 @import: ../lib-satysfi/dist/packages/color
 
 
-let-inline ctx \do-fill wid f =
+(let inline ctx \do-fill wid f =
     let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid
     in
     let (w, h, d) = get-natural-metrics ib in
     inline-graphics w h d (fun (x, y) -> [
         fill (Color.blue) (f x y w (h +' d))
     ])
-
-let-inline ctx \do-clip wid f =
+in
+let inline ctx \do-clip wid f =
     let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid
     in
     let (w, h, d) = get-natural-metrics ib in
@@ -19,7 +19,7 @@ let-inline ctx \do-clip wid f =
         draw-text (x, y) ib
             |> clip-graphics-by-path (f x y w (h +' d))
     ])
-
+in
 let path-circle x y w h =
     start-path (x +' w *' 0.5, y)
         |> bezier-to (x +' w *' 0.25, y) (x, y +' h *' 0.25) (x, y +' h *' 0.5)
@@ -28,25 +28,21 @@ let path-circle x y w h =
         |> bezier-to (x +' w, y +' h *' 0.25) (x +' w *' 0.75, y) (x +' w *' 0.5, y)
         |> close-with-line
 in
-
 let path-donut x y w h =
     unite-path
         (path-circle x y w h)
         (path-circle (x +' w *' 0.25) (y +' h *' 0.25) (w *' 0.5) (h *' 0.5))
 in
-
-
-
-document (|
-  title  = {Clipping Examples};
-  author = {\SATySFi; Contributors};
+Head.document (|
+  title  = {Clipping Examples},
+  author = {\Pervasives.SATySFi; Contributors},
 |) '<
-    +p {
+    +Head.p {
         \do-fill (5cm) (path-circle);
         \do-clip (5cm) (path-circle);
     }
-    +p {
+    +Head.p {
         \do-fill (5cm) (path-donut);
         \do-clip (5cm) (path-donut);
     }
->
+>)
