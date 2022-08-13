@@ -414,11 +414,11 @@ module Math :> sig
   val bar-middle : paren
   val slash-middle : paren
 
-%   % -- temporary --
-%   val \synteq : math []
-%   val \tyjd : [math; math; math] math-cmd
-%   val \and-also : math []
-%   val \tmabstyped : [math; math; math] math-cmd
+%   % -- temporary -- %TODO: remove this
+   val \synteq : math []
+   val \tyjd : math [math-text, math-text, math-text]
+   val \and-also : math []
+   val \tmabstyped : math [math-text, math-text, math-text]
 %
 end = struct
 
