@@ -257,6 +257,7 @@ let normalize_math_kind mkprev mknext mkraw =
         | MathRelation
         | MathOpen
         | MathPunct
+        | MathEnd
             -> true
         | _ -> false
       in

@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "satysfi"
-version: "0.0.6"
+version: "0.0.7"
 maintainer: "gfngfn"
 authors: [
   "gfngfn"
@@ -24,7 +24,7 @@ depends: [
   "batteries"
   "camlimages" {>= "5.0.1"}
   "camlpdf" {= "2.3.1+satysfi"}
-  "core_kernel" {>= "v0.13"}
+  "core_kernel" {>= "v0.13" & < "v0.15"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "dune" {build}
   "menhir"

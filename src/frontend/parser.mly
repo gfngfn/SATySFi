@@ -295,7 +295,7 @@
 %token <Range.t * Types.ctrlseq_name> HORZMACRO
 %token <Range.t * Types.ctrlseq_name> VERTMACRO
 
-%token EOI
+%token <Range.t> EOI
 
 %left  BINOP_BAR
 %left  BINOP_AMP
@@ -370,6 +370,8 @@ main:
       { (header, UTLibraryFile(lib)) }
   | header=list(headerelem); utast=expr_app; EOI
       { (header, UTDocumentFile(utast)) }
+  | rng=EOI
+      { raise (ParseErrorDetail(rng, "empty input")) }
 ;
 main_lib:
   | MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; STRUCT; utbinds=list(bind); END

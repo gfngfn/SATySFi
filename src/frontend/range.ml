@@ -1,7 +1,19 @@
 
+(*
+   format ranges in GNU style format.
+   https://www.gnu.org/prep/standards/html_node/Errors.html#Errors
+   *)
+let format_range fmt (fname, ln1, pos1, ln2, pos2) =
+  if ln1 = ln2 then
+    Format.fprintf fmt "%s:%d.%d-%d" fname ln1 (pos1 + 1) (pos2 + 1)
+  else
+    Format.fprintf fmt "%s:%d.%d-%d.%d" fname ln1 (pos1 + 1) ln2 (pos2 + 1)
+
 type t =
   | Dummy of string
   | Normal of string * int * int * int * int
+      [@printer fun fmt range ->
+        Format.fprintf fmt "(Range.Normal <%a>)" format_range range]
 [@@deriving show]
 
 

@@ -3,296 +3,242 @@
 
 ;; nx.saty
 (UTLibraryFile
-   (((Range.Normal ("nx.saty", 1, 7, 1, 9)), "Nx"),
-    [((Range.Normal ("nx.saty", 3, 2, 3, 5)),
+   (((Range.Normal <nx.saty:1.8-10>), "Nx"), None,
+    [((Range.Normal <nx.saty:3.3-6>),
       (UTBindValue
          (UTNonRec
-            (((Range.Normal ("nx.saty", 3, 6, 3, 8)), "xs"),
+            (((Range.Normal <nx.saty:3.7-9>), "xs"),
              (UTListCons ((UTIntegerConstant 1),
                 (UTListCons ((UTIntegerConstant 2),
                    (UTListCons ((UTIntegerConstant 3), UTEndOfList))))
                 ))))));
-      ((Range.Normal ("nx.saty", 4, 2, 4, 5)),
+      ((Range.Normal <nx.saty:4.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("nx.saty", 4, 6, 4, 8)), "ys"),
+             (((Range.Normal <nx.saty:4.7-9>), "ys"),
               (UTListCons ((UTIntegerConstant 1),
                  (UTListCons ((UTIntegerConstant 2),
                     (UTListCons ((UTIntegerConstant 3), UTEndOfList))))
                  ))))));
-      ((Range.Normal ("nx.saty", 6, 2, 6, 5)),
+      ((Range.Normal <nx.saty:6.3-6>),
+       (UTBindValue
+          (UTNonRec (((Range.Normal <nx.saty:6.7-9>), "r0"), (UTRecord [])))));
+      ((Range.Normal <nx.saty:7.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("nx.saty", 6, 6, 6, 8)), "r0"), (UTRecord [])))));
-      ((Range.Normal ("nx.saty", 7, 2, 7, 5)),
-       (UTBindValue
-          (UTNonRec
-             (((Range.Normal ("nx.saty", 7, 6, 7, 8)), "r1"),
+             (((Range.Normal <nx.saty:7.7-9>), "r1"),
               (UTRecord
-                 [(((Range.Normal ("nx.saty", 7, 14, 7, 15)), "x"),
+                 [(((Range.Normal <nx.saty:7.15-16>), "x"),
                    (UTIntegerConstant 1))])))));
-      ((Range.Normal ("nx.saty", 8, 2, 8, 5)),
+      ((Range.Normal <nx.saty:8.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("nx.saty", 8, 6, 8, 8)), "r2"),
+             (((Range.Normal <nx.saty:8.7-9>), "r2"),
               (UTRecord
-                 [(((Range.Normal ("nx.saty", 8, 18, 8, 19)), "x"),
+                 [(((Range.Normal <nx.saty:8.19-20>), "x"),
                    (UTIntegerConstant 1));
-                   (((Range.Normal ("nx.saty", 8, 25, 8, 26)), "y"),
+                   (((Range.Normal <nx.saty:8.26-27>), "y"),
                     (UTIntegerConstant 2))
                    ])))));
-      ((Range.Normal ("nx.saty", 9, 2, 9, 5)),
+      ((Range.Normal <nx.saty:9.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("nx.saty", 9, 6, 9, 12)), "r2semi"),
+             (((Range.Normal <nx.saty:9.7-13>), "r2semi"),
               (UTRecord
-                 [(((Range.Normal ("nx.saty", 9, 18, 9, 19)), "x"),
+                 [(((Range.Normal <nx.saty:9.19-20>), "x"),
                    (UTIntegerConstant 1));
-                   (((Range.Normal ("nx.saty", 9, 25, 9, 26)), "y"),
+                   (((Range.Normal <nx.saty:9.26-27>), "y"),
                     (UTIntegerConstant 2))
                    ])))));
-      ((Range.Normal ("nx.saty", 11, 2, 11, 5)),
+      ((Range.Normal <nx.saty:11.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("nx.saty", 11, 6, 11, 9)), "tp2"),
+             (((Range.Normal <nx.saty:11.7-10>), "tp2"),
               (UTTuple (UTIntegerConstant 1) (UTIntegerConstant 2) )))));
-      ((Range.Normal ("nx.saty", 12, 2, 12, 5)),
+      ((Range.Normal <nx.saty:12.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("nx.saty", 12, 6, 12, 9)), "tp3"),
+             (((Range.Normal <nx.saty:12.7-10>), "tp3"),
               (UTTuple (UTIntegerConstant 1) (UTIntegerConstant 2)
                  (UTIntegerConstant 3))))));
-      ((Range.Normal ("nx.saty", 14, 2, 14, 5)),
+      ((Range.Normal <nx.saty:14.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("nx.saty", 14, 6, 14, 13)), "op-test"),
+             (((Range.Normal <nx.saty:14.7-14>), "op-test"),
               (UTTuple
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 15, 13, 15, 15)), "||")
-                          )),
+                          ((Range.Normal <nx.saty:15.14-16>), "||"))),
                        (UTApply ([],
                           (UTApply ([],
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 15, 8, 15, 10)),
-                                 "||")
-                                )),
+                                ((Range.Normal <nx.saty:15.9-11>), "||"))),
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 15, 6, 15, 7)),
-                                 "a")
-                                ))
+                                ((Range.Normal <nx.saty:15.7-8>), "a")))
                              )),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 15, 11, 15, 12)), "b")
-                             ))
+                             ((Range.Normal <nx.saty:15.12-13>), "b")))
                           ))
                        )),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 15, 16, 15, 17)), "c")))
+                       ((Range.Normal <nx.saty:15.17-18>), "c")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 16, 13, 16, 15)), "&&")
-                          )),
+                          ((Range.Normal <nx.saty:16.14-16>), "&&"))),
                        (UTApply ([],
                           (UTApply ([],
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 16, 8, 16, 10)),
-                                 "&&")
-                                )),
+                                ((Range.Normal <nx.saty:16.9-11>), "&&"))),
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 16, 6, 16, 7)),
-                                 "a")
-                                ))
+                                ((Range.Normal <nx.saty:16.7-8>), "a")))
                              )),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 16, 11, 16, 12)), "b")
-                             ))
+                             ((Range.Normal <nx.saty:16.12-13>), "b")))
                           ))
                        )),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 16, 16, 16, 17)), "c")))
+                       ((Range.Normal <nx.saty:16.17-18>), "c")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 17, 8, 17, 10)), "=="))),
+                          ((Range.Normal <nx.saty:17.9-11>), "=="))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 17, 6, 17, 7)), "a")))
+                          ((Range.Normal <nx.saty:17.7-8>), "a")))
                        )),
                     (UTApply ([],
                        (UTApply ([],
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 17, 13, 17, 14)), ">")
-                             )),
+                             ((Range.Normal <nx.saty:17.14-15>), ">"))),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 17, 11, 17, 12)), "b")
-                             ))
+                             ((Range.Normal <nx.saty:17.12-13>), "b")))
                           )),
                        (UTApply ([],
                           (UTApply ([],
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 17, 17, 17, 18)),
-                                 "<")
-                                )),
+                                ((Range.Normal <nx.saty:17.18-19>), "<"))),
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 17, 15, 17, 16)),
-                                 "c")
-                                ))
+                                ((Range.Normal <nx.saty:17.16-17>), "c")))
                              )),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 17, 19, 17, 20)), "d")
-                             ))
+                             ((Range.Normal <nx.saty:17.20-21>), "d")))
                           ))
                        ))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 18, 8, 18, 9)), "^"))),
+                          ((Range.Normal <nx.saty:18.9-10>), "^"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 18, 6, 18, 7)), "a")))
+                          ((Range.Normal <nx.saty:18.7-8>), "a")))
                        )),
                     (UTApply ([],
                        (UTApply ([],
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 18, 12, 18, 14)),
-                              "::")
-                             )),
+                             ((Range.Normal <nx.saty:18.13-15>), "::"))),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 18, 10, 18, 11)), "b")
-                             ))
+                             ((Range.Normal <nx.saty:18.11-12>), "b")))
                           )),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 18, 15, 18, 16)), "c")))
+                          ((Range.Normal <nx.saty:18.16-17>), "c")))
                        ))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 19, 8, 19, 9)), "+"))),
+                          ((Range.Normal <nx.saty:19.9-10>), "+"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 19, 6, 19, 7)), "a")))
+                          ((Range.Normal <nx.saty:19.7-8>), "a")))
                        )),
                     (UTApply ([],
                        (UTApply ([],
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 19, 12, 19, 13)), "+")
-                             )),
+                             ((Range.Normal <nx.saty:19.13-14>), "+"))),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 19, 10, 19, 11)), "b")
-                             ))
+                             ((Range.Normal <nx.saty:19.11-12>), "b")))
                           )),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 19, 14, 19, 15)), "c")))
+                          ((Range.Normal <nx.saty:19.15-16>), "c")))
                        ))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 20, 12, 20, 14)), "-'")
+                          ((Range.Normal <nx.saty:20.13-15>), "-'"))),
+                       (UTApply ([],
+                          (UTApply ([],
+                             (UTContentOf ([],
+                                ((Range.Normal <nx.saty:20.9-10>), "-"))),
+                             (UTContentOf ([],
+                                ((Range.Normal <nx.saty:20.7-8>), "a")))
+                             )),
+                          (UTContentOf ([],
+                             ((Range.Normal <nx.saty:20.11-12>), "b")))
+                          ))
+                       )),
+                    (UTContentOf ([],
+                       ((Range.Normal <nx.saty:20.16-17>), "c")))
+                    ))
+                 (UTApply ([],
+                    (UTApply ([],
+                       (UTContentOf ([],
+                          ((Range.Normal <nx.saty:21.9-10>), "+"))),
+                       (UTContentOf ([],
+                          ((Range.Normal <nx.saty:21.7-8>), "a")))
+                       )),
+                    (UTApply ([],
+                       (UTApply ([],
+                          (UTContentOf ([],
+                             ((Range.Normal <nx.saty:21.17-18>), "+"))),
+                          (UTApply ([],
+                             (UTApply ([],
+                                (UTContentOf ([],
+                                   ((Range.Normal <nx.saty:21.13-14>), "-"))),
+                                (UTContentOf ([],
+                                   ((Range.Normal <nx.saty:21.11-12>), "b")))
+                                )),
+                             (UTContentOf ([],
+                                ((Range.Normal <nx.saty:21.15-16>), "c")))
+                             ))
+                          )),
+                       (UTContentOf ([],
+                          ((Range.Normal <nx.saty:21.19-20>), "d")))
+                       ))
+                    ))
+                 (UTApply ([],
+                    (UTApply ([],
+                       (UTContentOf ([],
+                          ((Range.Normal <nx.saty:22.9-10>), "*"))),
+                       (UTContentOf ([],
+                          ((Range.Normal <nx.saty:22.7-8>), "a")))
+                       )),
+                    (UTApply ([],
+                       (UTApply ([],
+                          (UTContentOf ([],
+                             ((Range.Normal <nx.saty:22.13-15>), "*'"))),
+                          (UTContentOf ([],
+                             ((Range.Normal <nx.saty:22.11-12>), "b")))
                           )),
                        (UTApply ([],
                           (UTApply ([],
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 20, 8, 20, 9)),
-                                 "-")
-                                )),
+                                ((Range.Normal <nx.saty:22.18-19>), "/"))),
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 20, 6, 20, 7)),
-                                 "a")
-                                ))
-                             )),
-                          (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 20, 10, 20, 11)), "b")
-                             ))
-                          ))
-                       )),
-                    (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 20, 15, 20, 16)), "c")))
-                    ))
-                 (UTApply ([],
-                    (UTApply ([],
-                       (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 21, 8, 21, 9)), "+"))),
-                       (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 21, 6, 21, 7)), "a")))
-                       )),
-                    (UTApply ([],
-                       (UTApply ([],
-                          (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 21, 16, 21, 17)), "+")
+                                ((Range.Normal <nx.saty:22.16-17>), "c")))
                              )),
                           (UTApply ([],
                              (UTApply ([],
                                 (UTContentOf ([],
-                                   ((Range.Normal ("nx.saty", 21, 12, 21, 13
-                                       )),
-                                    "-")
+                                   ((Range.Normal <nx.saty:22.22-25>), "mod")
                                    )),
                                 (UTContentOf ([],
-                                   ((Range.Normal ("nx.saty", 21, 10, 21, 11
-                                       )),
-                                    "b")
-                                   ))
+                                   ((Range.Normal <nx.saty:22.20-21>), "d")))
                                 )),
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 21, 14, 21, 15)),
-                                 "c")
-                                ))
-                             ))
-                          )),
-                       (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 21, 18, 21, 19)), "d")))
-                       ))
-                    ))
-                 (UTApply ([],
-                    (UTApply ([],
-                       (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 22, 8, 22, 9)), "*"))),
-                       (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 22, 6, 22, 7)), "a")))
-                       )),
-                    (UTApply ([],
-                       (UTApply ([],
-                          (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 22, 12, 22, 14)),
-                              "*'")
-                             )),
-                          (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 22, 10, 22, 11)), "b")
-                             ))
-                          )),
-                       (UTApply ([],
-                          (UTApply ([],
-                             (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 22, 17, 22, 18)),
-                                 "/")
-                                )),
-                             (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 22, 15, 22, 16)),
-                                 "c")
-                                ))
-                             )),
-                          (UTApply ([],
-                             (UTApply ([],
-                                (UTContentOf ([],
-                                   ((Range.Normal ("nx.saty", 22, 21, 22, 24
-                                       )),
-                                    "mod")
-                                   )),
-                                (UTContentOf ([],
-                                   ((Range.Normal ("nx.saty", 22, 19, 22, 20
-                                       )),
-                                    "d")
-                                   ))
-                                )),
-                             (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 22, 25, 22, 26)),
-                                 "e")
-                                ))
+                                ((Range.Normal <nx.saty:22.26-27>), "e")))
                              ))
                           ))
                        ))
@@ -300,156 +246,118 @@
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 23, 10, 23, 11)), "*"))),
+                          ((Range.Normal <nx.saty:23.11-12>), "*"))),
                        (UTApply ([],
                           (UTApply ([],
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 23, 6, 23, 7)),
-                                 "-")
-                                )),
+                                ((Range.Normal <nx.saty:23.7-8>), "-"))),
                              (UTIntegerConstant 0))),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 23, 8, 23, 9)), "a")
-                             ))
+                             ((Range.Normal <nx.saty:23.9-10>), "a")))
                           ))
                        )),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 23, 12, 23, 13)), "b")))
+                       ((Range.Normal <nx.saty:23.13-14>), "b")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 24, 8, 24, 10)), "||"))),
+                          ((Range.Normal <nx.saty:24.9-11>), "||"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 24, 6, 24, 7)), "a")))
+                          ((Range.Normal <nx.saty:24.7-8>), "a")))
                        )),
                     (UTApply ([],
                        (UTApply ([],
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 24, 13, 24, 15)),
-                              "&&")
-                             )),
+                             ((Range.Normal <nx.saty:24.14-16>), "&&"))),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 24, 11, 24, 12)), "a")
-                             ))
+                             ((Range.Normal <nx.saty:24.12-13>), "a")))
                           )),
                        (UTApply ([],
                           (UTApply ([],
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 24, 22, 24, 24)),
-                                 "==")
-                                )),
+                                ((Range.Normal <nx.saty:24.23-25>), "=="))),
                              (UTApply ([],
                                 (UTApply ([],
                                    (UTContentOf ([],
-                                      ((Range.Normal ("nx.saty", 24, 18, 24,
-                                          19)),
-                                       "^")
+                                      ((Range.Normal <nx.saty:24.19-20>), "^")
                                       )),
                                    (UTContentOf ([],
-                                      ((Range.Normal ("nx.saty", 24, 16, 24,
-                                          17)),
-                                       "b")
+                                      ((Range.Normal <nx.saty:24.17-18>), "b")
                                       ))
                                    )),
                                 (UTContentOf ([],
-                                   ((Range.Normal ("nx.saty", 24, 20, 24, 21
-                                       )),
-                                    "c")
-                                   ))
+                                   ((Range.Normal <nx.saty:24.21-22>), "c")))
                                 ))
                              )),
                           (UTApply ([],
                              (UTApply ([],
                                 (UTContentOf ([],
-                                   ((Range.Normal ("nx.saty", 24, 27, 24, 28
-                                       )),
-                                    ">")
-                                   )),
+                                   ((Range.Normal <nx.saty:24.28-29>), ">"))),
                                 (UTContentOf ([],
-                                   ((Range.Normal ("nx.saty", 24, 25, 24, 26
-                                       )),
-                                    "d")
-                                   ))
+                                   ((Range.Normal <nx.saty:24.26-27>), "d")))
                                 )),
                              (UTApply ([],
                                 (UTApply ([],
                                    (UTContentOf ([],
-                                      ((Range.Normal ("nx.saty", 24, 31, 24,
-                                          32)),
-                                       "<")
+                                      ((Range.Normal <nx.saty:24.32-33>), "<")
                                       )),
                                    (UTContentOf ([],
-                                      ((Range.Normal ("nx.saty", 24, 29, 24,
-                                          30)),
-                                       "e")
+                                      ((Range.Normal <nx.saty:24.30-31>), "e")
                                       ))
                                    )),
                                 (UTApply ([],
                                    (UTApply ([],
                                       (UTContentOf ([],
-                                         ((Range.Normal ("nx.saty", 24, 35,
-                                             24, 36)),
+                                         ((Range.Normal <nx.saty:24.36-37>),
                                           "^")
                                          )),
                                       (UTContentOf ([],
-                                         ((Range.Normal ("nx.saty", 24, 33,
-                                             24, 34)),
+                                         ((Range.Normal <nx.saty:24.34-35>),
                                           "f")
                                          ))
                                       )),
                                    (UTApply ([],
                                       (UTApply ([],
                                          (UTContentOf ([],
-                                            ((Range.Normal ("nx.saty", 24,
-                                                39, 24, 41)),
+                                            ((Range.Normal <nx.saty:24.40-42>),
                                              "::")
                                             )),
                                          (UTContentOf ([],
-                                            ((Range.Normal ("nx.saty", 24,
-                                                37, 24, 38)),
+                                            ((Range.Normal <nx.saty:24.38-39>),
                                              "g")
                                             ))
                                          )),
                                       (UTApply ([],
                                          (UTApply ([],
                                             (UTContentOf ([],
-                                               ((Range.Normal ("nx.saty", 24,
-                                                   44, 24, 45)),
+                                               ((Range.Normal <nx.saty:24.45-46>),
                                                 "+")
                                                )),
                                             (UTContentOf ([],
-                                               ((Range.Normal ("nx.saty", 24,
-                                                   42, 24, 43)),
+                                               ((Range.Normal <nx.saty:24.43-44>),
                                                 "h")
                                                ))
                                             )),
                                          (UTApply ([],
                                             (UTApply ([],
                                                (UTContentOf ([],
-                                                  ((Range.Normal ("nx.saty",
-                                                      24, 52, 24, 54)),
+                                                  ((Range.Normal <nx.saty:24.53-55>),
                                                    "-'")
                                                   )),
                                                (UTApply ([],
                                                   (UTApply ([],
                                                      (UTContentOf ([],
-                                                        ((Range.Normal (
-                                                            "nx.saty", 24,
-                                                            48, 24, 49)),
+                                                        ((Range.Normal <nx.saty:24.49-50>),
                                                          "-")
                                                         )),
                                                      (UTContentOf ([],
-                                                        ((Range.Normal (
-                                                            "nx.saty", 24,
-                                                            46, 24, 47)),
+                                                        ((Range.Normal <nx.saty:24.47-48>),
                                                          "i")
                                                         ))
                                                      )),
                                                   (UTContentOf ([],
-                                                     ((Range.Normal (
-                                                         "nx.saty", 24, 50,
-                                                         24, 51)),
+                                                     ((Range.Normal <nx.saty:24.51-52>),
                                                       "j")
                                                      ))
                                                   ))
@@ -457,30 +365,22 @@
                                             (UTApply ([],
                                                (UTApply ([],
                                                   (UTContentOf ([],
-                                                     ((Range.Normal (
-                                                         "nx.saty", 24, 57,
-                                                         24, 58)),
+                                                     ((Range.Normal <nx.saty:24.58-59>),
                                                       "*")
                                                      )),
                                                   (UTContentOf ([],
-                                                     ((Range.Normal (
-                                                         "nx.saty", 24, 55,
-                                                         24, 56)),
+                                                     ((Range.Normal <nx.saty:24.56-57>),
                                                       "k")
                                                      ))
                                                   )),
                                                (UTApply ([],
                                                   (UTApply ([],
                                                      (UTContentOf ([],
-                                                        ((Range.Normal (
-                                                            "nx.saty", 24,
-                                                            61, 24, 63)),
+                                                        ((Range.Normal <nx.saty:24.62-64>),
                                                          "*'")
                                                         )),
                                                      (UTContentOf ([],
-                                                        ((Range.Normal (
-                                                            "nx.saty", 24,
-                                                            59, 24, 60)),
+                                                        ((Range.Normal <nx.saty:24.60-61>),
                                                          "l")
                                                         ))
                                                      )),
@@ -488,16 +388,12 @@
                                                      (UTApply ([],
                                                         (UTContentOf (
                                                            [],
-                                                           ((Range.Normal (
-                                                               "nx.saty", 24,
-                                                               66, 24, 67)),
+                                                           ((Range.Normal <nx.saty:24.67-68>),
                                                             "/")
                                                            )),
                                                         (UTContentOf (
                                                            [],
-                                                           ((Range.Normal (
-                                                               "nx.saty", 24,
-                                                               64, 24, 65)),
+                                                           ((Range.Normal <nx.saty:24.65-66>),
                                                             "m")
                                                            ))
                                                         )),
@@ -505,26 +401,18 @@
                                                         (UTApply ([],
                                                            (UTContentOf (
                                                               [],
-                                                              ((Range.Normal (
-                                                                  "nx.saty",
-                                                                  24, 70, 24,
-                                                                  73)),
+                                                              ((Range.Normal <nx.saty:24.71-74>),
                                                                "mod")
                                                               )),
                                                            (UTContentOf (
                                                               [],
-                                                              ((Range.Normal (
-                                                                  "nx.saty",
-                                                                  24, 68, 24,
-                                                                  69)),
+                                                              ((Range.Normal <nx.saty:24.69-70>),
                                                                "n")
                                                               ))
                                                            )),
                                                         (UTContentOf (
                                                            [],
-                                                           ((Range.Normal (
-                                                               "nx.saty", 24,
-                                                               74, 24, 75)),
+                                                           ((Range.Normal <nx.saty:24.75-76>),
                                                             "o")
                                                            ))
                                                         ))
@@ -543,269 +431,254 @@
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 25, 10, 25, 11)), "*"))),
+                          ((Range.Normal <nx.saty:25.11-12>), "*"))),
                        (UTApply ([],
                           (UTApply ([],
                              (UTContentOf ([],
-                                ((Range.Normal ("nx.saty", 25, 6, 25, 7)),
-                                 "-")
-                                )),
+                                ((Range.Normal <nx.saty:25.7-8>), "-"))),
                              (UTIntegerConstant 0))),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 25, 8, 25, 9)), "a")
-                             ))
+                             ((Range.Normal <nx.saty:25.9-10>), "a")))
                           ))
                        )),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 25, 12, 25, 13)), "b")))
+                       ((Range.Normal <nx.saty:25.13-14>), "b")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 26, 12, 26, 13)), "*"))),
+                          ((Range.Normal <nx.saty:26.13-14>), "*"))),
                        (UTApply ([],
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 26, 6, 26, 9)), "not")
-                             )),
+                             ((Range.Normal <nx.saty:26.7-10>), "not"))),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 26, 10, 26, 11)), "a")
-                             ))
+                             ((Range.Normal <nx.saty:26.11-12>), "a")))
                           ))
                        )),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 26, 14, 26, 15)), "b")))
+                       ((Range.Normal <nx.saty:26.15-16>), "b")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 27, 10, 27, 11)), "*"))),
+                          ((Range.Normal <nx.saty:27.11-12>), "*"))),
                        (UTConstructor ("F",
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 27, 8, 27, 9)), "a")
-                             ))
+                             ((Range.Normal <nx.saty:27.9-10>), "a")))
                           ))
                        )),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 27, 12, 27, 13)), "b")))
+                       ((Range.Normal <nx.saty:27.13-14>), "b")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 28, 8, 28, 9)), "*"))),
+                          ((Range.Normal <nx.saty:28.9-10>), "*"))),
                        (UTConstructor ("A", UTUnitConstant)))),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 28, 10, 28, 11)), "b")))
+                       ((Range.Normal <nx.saty:28.11-12>), "b")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 29, 8, 29, 9)), "+"))),
+                          ((Range.Normal <nx.saty:29.9-10>), "+"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 29, 6, 29, 7)), "a")))
+                          ((Range.Normal <nx.saty:29.7-8>), "a")))
                        )),
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 29, 10, 29, 11)), "f"))),
+                          ((Range.Normal <nx.saty:29.11-12>), "f"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 29, 12, 29, 13)), "b")))
+                          ((Range.Normal <nx.saty:29.13-14>), "b")))
                        ))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 30, 8, 30, 9)), "-"))),
+                          ((Range.Normal <nx.saty:30.9-10>), "-"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 30, 6, 30, 7)), "f")))
+                          ((Range.Normal <nx.saty:30.7-8>), "f")))
                        )),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 30, 9, 30, 10)), "b")))
+                       ((Range.Normal <nx.saty:30.10-11>), "b")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 31, 12, 31, 14)), "&&")
-                          )),
+                          ((Range.Normal <nx.saty:31.13-15>), "&&"))),
                        (UTApply ([],
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 31, 6, 31, 9)), "not")
-                             )),
+                             ((Range.Normal <nx.saty:31.7-10>), "not"))),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 31, 10, 31, 11)), "a")
-                             ))
+                             ((Range.Normal <nx.saty:31.11-12>), "a")))
                           ))
                        )),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 31, 15, 31, 16)), "b")))
+                       ((Range.Normal <nx.saty:31.16-17>), "b")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 32, 8, 32, 10)), "||"))),
+                          ((Range.Normal <nx.saty:32.9-11>), "||"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 32, 6, 32, 7)), "a")))
+                          ((Range.Normal <nx.saty:32.7-8>), "a")))
                        )),
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 32, 11, 32, 14)), "not")
-                          )),
+                          ((Range.Normal <nx.saty:32.12-15>), "not"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 32, 15, 32, 16)), "b")))
+                          ((Range.Normal <nx.saty:32.16-17>), "b")))
                        ))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 33, 8, 33, 9)), "*"))),
+                          ((Range.Normal <nx.saty:33.9-10>), "*"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 33, 6, 33, 7)), "a")))
+                          ((Range.Normal <nx.saty:33.7-8>), "a")))
                        )),
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 33, 10, 33, 13)), "not")
-                          )),
+                          ((Range.Normal <nx.saty:33.11-14>), "not"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 33, 14, 33, 15)), "b")))
+                          ((Range.Normal <nx.saty:33.15-16>), "b")))
                        ))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 34, 8, 34, 9)), "*"))),
+                          ((Range.Normal <nx.saty:34.9-10>), "*"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 34, 6, 34, 7)), "a")))
+                          ((Range.Normal <nx.saty:34.7-8>), "a")))
                        )),
                     (UTConstructor ("F",
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 34, 12, 34, 13)), "b")))
+                          ((Range.Normal <nx.saty:34.13-14>), "b")))
                        ))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 35, 8, 35, 9)), "*"))),
+                          ((Range.Normal <nx.saty:35.9-10>), "*"))),
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 35, 6, 35, 7)), "a")))
+                          ((Range.Normal <nx.saty:35.7-8>), "a")))
                        )),
                     (UTConstructor ("B", UTUnitConstant))))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 36, 12, 36, 13)), "*"))),
+                          ((Range.Normal <nx.saty:36.13-14>), "*"))),
                        (UTApply ([],
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 36, 6, 36, 9)), "not")
-                             )),
+                             ((Range.Normal <nx.saty:36.7-10>), "not"))),
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 36, 10, 36, 11)), "a")
-                             ))
+                             ((Range.Normal <nx.saty:36.11-12>), "a")))
                           ))
                        )),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 36, 14, 36, 15)), "b")))
+                       ((Range.Normal <nx.saty:36.15-16>), "b")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 37, 10, 37, 11)), "*"))),
+                          ((Range.Normal <nx.saty:37.11-12>), "*"))),
                        (UTConstructor ("F",
                           (UTContentOf ([],
-                             ((Range.Normal ("nx.saty", 37, 8, 37, 9)), "a")
-                             ))
+                             ((Range.Normal <nx.saty:37.9-10>), "a")))
                           ))
                        )),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 37, 12, 37, 13)), "b")))
+                       ((Range.Normal <nx.saty:37.13-14>), "b")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 38, 8, 38, 9)), "*"))),
+                          ((Range.Normal <nx.saty:38.9-10>), "*"))),
                        (UTConstructor ("A", UTUnitConstant)))),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 38, 10, 38, 11)), "b")))
+                       ((Range.Normal <nx.saty:38.11-12>), "b")))
                     )))))));
-      ((Range.Normal ("nx.saty", 41, 2, 41, 5)),
+      ((Range.Normal <nx.saty:41.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("nx.saty", 41, 6, 41, 12)), "uminus"),
+             (((Range.Normal <nx.saty:41.7-13>), "uminus"),
               (UTTuple
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 41, 16, 41, 17)), "-"))),
+                          ((Range.Normal <nx.saty:41.17-18>), "-"))),
                        (UTIntegerConstant 0))),
                     (UTIntegerConstant 1)))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 41, 20, 41, 21)), "-"))),
+                          ((Range.Normal <nx.saty:41.21-22>), "-"))),
                        (UTIntegerConstant 0))),
                     (UTIntegerConstant 42)))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 41, 26, 41, 27)), "-.")
-                          )),
+                          ((Range.Normal <nx.saty:41.27-28>), "-."))),
                        (UTFloatConstant 0.))),
                     (UTFloatConstant 1.)))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 41, 32, 41, 33)), "-.")
-                          )),
+                          ((Range.Normal <nx.saty:41.33-34>), "-."))),
                        (UTFloatConstant 0.))),
                     (UTFloatConstant 3.14)))
                  (UTLengthDescription (-1., "mm"))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 41, 46, 41, 47)), "-'")
-                          )),
+                          ((Range.Normal <nx.saty:41.47-48>), "-'"))),
                        (UTLengthDescription (0., "cm")))),
                     (UTLengthDescription (2.71828, "cm"))))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 41, 59, 41, 60)), "-"))),
+                          ((Range.Normal <nx.saty:41.60-61>), "-"))),
                        (UTIntegerConstant 0))),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 41, 60, 41, 61)), "x")))
+                       ((Range.Normal <nx.saty:41.61-62>), "x")))
                     ))
                  (UTApply ([],
                     (UTApply ([],
                        (UTContentOf ([],
-                          ((Range.Normal ("nx.saty", 41, 63, 41, 64)), "-"))),
+                          ((Range.Normal <nx.saty:41.64-65>), "-"))),
                        (UTIntegerConstant 0))),
                     (UTContentOf ([],
-                       ((Range.Normal ("nx.saty", 41, 65, 41, 66)), "x")))
+                       ((Range.Normal <nx.saty:41.66-67>), "x")))
                     )))))))
       ]))
 
 ;; variants.saty
 (UTLibraryFile
-   (((Range.Normal ("variants.saty", 1, 7, 1, 15)), "Variants"),
-    [((Range.Normal ("variants.saty", 3, 2, 3, 6)),
+   (((Range.Normal <variants.saty:1.8-16>), "Variants"), None,
+    [((Range.Normal <variants.saty:3.3-7>),
       (UTBindType
-         [(((Range.Normal ("variants.saty", 3, 7, 3, 8)), "t"), [],
+         [(((Range.Normal <variants.saty:3.8-9>), "t"), [],
            (UTBindVariant
               [(UTConstructorBranch (
-                  ((Range.Normal ("variants.saty", 3, 11, 3, 12)), "X"), None
-                  ));
+                  ((Range.Normal <variants.saty:3.12-13>), "X"), None));
                 (UTConstructorBranch (
-                   ((Range.Normal ("variants.saty", 3, 15, 3, 16)), "Y"),
-                   None))
+                   ((Range.Normal <variants.saty:3.16-17>), "Y"), None))
                 ]));
-           (((Range.Normal ("variants.saty", 4, 6, 4, 7)), "s"), [],
+           (((Range.Normal <variants.saty:4.7-8>), "s"), [],
             (UTBindVariant
                [(UTConstructorBranch (
-                   ((Range.Normal ("variants.saty", 4, 10, 4, 11)), "Z"),
-                   (Some ((Range.Normal ("variants.saty", 4, 15, 4, 16)),
-                          (Types.MTypeName ("t", []))))
+                   ((Range.Normal <variants.saty:4.11-12>), "Z"),
+                   (Some ((Range.Normal <variants.saty:4.16-17>),
+                          (Types.MTypeName ([],
+                             ((Range.Normal <variants.saty:4.16-17>), "t"),
+                             []))))
                    ));
                  (UTConstructorBranch (
-                    ((Range.Normal ("variants.saty", 4, 19, 4, 20)), "W"),
-                    (Some ((Range.Normal ("variants.saty", 4, 24, 4, 25)),
-                           (Types.MTypeName ("u", []))))
+                    ((Range.Normal <variants.saty:4.20-21>), "W"),
+                    (Some ((Range.Normal <variants.saty:4.25-26>),
+                           (Types.MTypeName ([],
+                              ((Range.Normal <variants.saty:4.25-26>), "u"),
+                              []))))
                     ))
                  ]))
            ]))
@@ -813,69 +686,82 @@
 
 ;; txprod.saty
 (UTLibraryFile
-   (((Range.Normal ("txprod.saty", 1, 7, 1, 13)), "Txprod"),
-    [((Range.Normal ("txprod.saty", 3, 2, 3, 6)),
+   (((Range.Normal <txprod.saty:1.8-14>), "Txprod"), None,
+    [((Range.Normal <txprod.saty:3.3-7>),
       (UTBindType
-         [(((Range.Normal ("txprod.saty", 3, 7, 3, 8)), "t"), [],
+         [(((Range.Normal <txprod.saty:3.8-9>), "t"), [],
            (UTBindSynonym
-              ((Range.Normal ("txprod.saty", 3, 11, 3, 16)),
+              ((Range.Normal <txprod.saty:3.12-17>),
                (Types.MProductType
-                  ((Range.Normal ("txprod.saty", 3, 11, 3, 12)),
-                   (Types.MTypeName ("a", [])))
-                  ((Range.Normal ("txprod.saty", 3, 15, 3, 16)),
-                   (Types.MTypeName ("b", [])))
+                  ((Range.Normal <txprod.saty:3.12-13>),
+                   (Types.MTypeName ([],
+                      ((Range.Normal <txprod.saty:3.12-13>), "a"), [])))
+                  ((Range.Normal <txprod.saty:3.16-17>),
+                   (Types.MTypeName ([],
+                      ((Range.Normal <txprod.saty:3.16-17>), "b"), [])))
                   ))));
-           (((Range.Normal ("txprod.saty", 4, 6, 4, 7)), "s"), [],
+           (((Range.Normal <txprod.saty:4.7-8>), "s"), [],
             (UTBindSynonym
-               ((Range.Normal ("txprod.saty", 4, 10, 4, 19)),
+               ((Range.Normal <txprod.saty:4.11-20>),
                 (Types.MProductType
-                   ((Range.Normal ("txprod.saty", 4, 10, 4, 11)),
-                    (Types.MTypeName ("a", [])))
-                   ((Range.Normal ("txprod.saty", 4, 14, 4, 15)),
-                    (Types.MTypeName ("b", [])))
-                   ((Range.Normal ("txprod.saty", 4, 18, 4, 19)),
-                    (Types.MTypeName ("c", [])))))))
+                   ((Range.Normal <txprod.saty:4.11-12>),
+                    (Types.MTypeName ([],
+                       ((Range.Normal <txprod.saty:4.11-12>), "a"), [])))
+                   ((Range.Normal <txprod.saty:4.15-16>),
+                    (Types.MTypeName ([],
+                       ((Range.Normal <txprod.saty:4.15-16>), "b"), [])))
+                   ((Range.Normal <txprod.saty:4.19-20>),
+                    (Types.MTypeName ([],
+                       ((Range.Normal <txprod.saty:4.19-20>), "c"), [])))))))
            ]))
       ]))
 
 ;; txlist.saty
 (UTLibraryFile
-   (((Range.Normal ("txlist.saty", 1, 7, 1, 13)), "Txlist"),
-    [((Range.Normal ("txlist.saty", 3, 2, 3, 6)),
+   (((Range.Normal <txlist.saty:1.8-14>), "Txlist"), None,
+    [((Range.Normal <txlist.saty:3.3-7>),
       (UTBindType
-         [(((Range.Normal ("txlist.saty", 3, 7, 3, 8)), "t"), [],
+         [(((Range.Normal <txlist.saty:3.8-9>), "t"), [],
            (UTBindSynonym
-              ((Range.Normal ("txlist.saty", 3, 11, 3, 34)),
+              ((Range.Normal <txlist.saty:3.12-35>),
                (Types.MHorzCommandType
                   [(Types.MArgType (
-                      [(((Range.Normal ("txlist.saty", 3, 21, 3, 24)), "foo"),
-                        ((Range.Normal ("txlist.saty", 3, 27, 3, 28)),
-                         (Types.MTypeName ("u", []))))
+                      [(((Range.Normal <txlist.saty:3.22-25>), "foo"),
+                        ((Range.Normal <txlist.saty:3.28-29>),
+                         (Types.MTypeName ([],
+                            ((Range.Normal <txlist.saty:3.28-29>), "u"), 
+                            []))))
                         ],
-                      ((Range.Normal ("txlist.saty", 3, 31, 3, 32)),
-                       (Types.MTypeName ("s", [])))
+                      ((Range.Normal <txlist.saty:3.32-33>),
+                       (Types.MTypeName ([],
+                          ((Range.Normal <txlist.saty:3.32-33>), "s"), 
+                          [])))
                       ))
                     ]))));
-           (((Range.Normal ("txlist.saty", 4, 6, 4, 7)), "t"), [],
+           (((Range.Normal <txlist.saty:4.7-8>), "t"), [],
             (UTBindSynonym
-               ((Range.Normal ("txlist.saty", 4, 10, 4, 19)),
+               ((Range.Normal <txlist.saty:4.11-20>),
                 (Types.MHorzCommandType []))));
-           (((Range.Normal ("txlist.saty", 5, 6, 5, 7)), "t"), [],
+           (((Range.Normal <txlist.saty:5.7-8>), "t"), [],
             (UTBindSynonym
-               ((Range.Normal ("txlist.saty", 5, 10, 5, 20)),
+               ((Range.Normal <txlist.saty:5.11-21>),
                 (Types.MHorzCommandType
                    [(Types.MArgType ([],
-                       ((Range.Normal ("txlist.saty", 5, 18, 5, 19)),
-                        (Types.MTypeName ("s", [])))
+                       ((Range.Normal <txlist.saty:5.19-20>),
+                        (Types.MTypeName ([],
+                           ((Range.Normal <txlist.saty:5.19-20>), "s"), 
+                           [])))
                        ))
                      ]))));
-           (((Range.Normal ("txlist.saty", 6, 6, 6, 7)), "t"), [],
+           (((Range.Normal <txlist.saty:6.7-8>), "t"), [],
             (UTBindSynonym
-               ((Range.Normal ("txlist.saty", 6, 10, 6, 21)),
+               ((Range.Normal <txlist.saty:6.11-22>),
                 (Types.MHorzCommandType
                    [(Types.MArgType ([],
-                       ((Range.Normal ("txlist.saty", 6, 18, 6, 19)),
-                        (Types.MTypeName ("s", [])))
+                       ((Range.Normal <txlist.saty:6.19-20>),
+                        (Types.MTypeName ([],
+                           ((Range.Normal <txlist.saty:6.19-20>), "s"), 
+                           [])))
                        ))
                      ]))))
            ]))
@@ -883,72 +769,79 @@
 
 ;; txrecord.saty
 (UTLibraryFile
-   (((Range.Normal ("txrecord.saty", 1, 7, 1, 15)), "Txrecord"),
-    [((Range.Normal ("txrecord.saty", 3, 2, 3, 6)),
+   (((Range.Normal <txrecord.saty:1.8-16>), "Txrecord"), None,
+    [((Range.Normal <txrecord.saty:3.3-7>),
       (UTBindType
-         [(((Range.Normal ("txrecord.saty", 3, 7, 3, 8)), "t"), [],
+         [(((Range.Normal <txrecord.saty:3.8-9>), "t"), [],
            (UTBindSynonym
-              ((Range.Normal ("txrecord.saty", 3, 11, 3, 29)),
+              ((Range.Normal <txrecord.saty:3.12-30>),
                (Types.MRecordType
-                  [(((Range.Normal ("txrecord.saty", 3, 14, 3, 15)), "x"),
-                    ((Range.Normal ("txrecord.saty", 3, 18, 3, 19)),
-                     (Types.MTypeName ("a", []))));
-                    (((Range.Normal ("txrecord.saty", 3, 21, 3, 22)), "y"),
-                     ((Range.Normal ("txrecord.saty", 3, 25, 3, 26)),
-                      (Types.MTypeName ("b", []))))
+                  [(((Range.Normal <txrecord.saty:3.15-16>), "x"),
+                    ((Range.Normal <txrecord.saty:3.19-20>),
+                     (Types.MTypeName ([],
+                        ((Range.Normal <txrecord.saty:3.19-20>), "a"), 
+                        []))));
+                    (((Range.Normal <txrecord.saty:3.22-23>), "y"),
+                     ((Range.Normal <txrecord.saty:3.26-27>),
+                      (Types.MTypeName ([],
+                         ((Range.Normal <txrecord.saty:3.26-27>), "b"), 
+                         []))))
                     ]))));
-           (((Range.Normal ("txrecord.saty", 4, 6, 4, 7)), "t"), [],
+           (((Range.Normal <txrecord.saty:4.7-8>), "t"), [],
             (UTBindSynonym
-               ((Range.Normal ("txrecord.saty", 4, 10, 4, 29)),
+               ((Range.Normal <txrecord.saty:4.11-30>),
                 (Types.MRecordType
-                   [(((Range.Normal ("txrecord.saty", 4, 13, 4, 14)), "x"),
-                     ((Range.Normal ("txrecord.saty", 4, 17, 4, 18)),
-                      (Types.MTypeName ("a", []))));
-                     (((Range.Normal ("txrecord.saty", 4, 20, 4, 21)), "y"),
-                      ((Range.Normal ("txrecord.saty", 4, 24, 4, 25)),
-                       (Types.MTypeName ("b", []))))
+                   [(((Range.Normal <txrecord.saty:4.14-15>), "x"),
+                     ((Range.Normal <txrecord.saty:4.18-19>),
+                      (Types.MTypeName ([],
+                         ((Range.Normal <txrecord.saty:4.18-19>), "a"), 
+                         []))));
+                     (((Range.Normal <txrecord.saty:4.21-22>), "y"),
+                      ((Range.Normal <txrecord.saty:4.25-26>),
+                       (Types.MTypeName ([],
+                          ((Range.Normal <txrecord.saty:4.25-26>), "b"), 
+                          []))))
                      ]))));
-           (((Range.Normal ("txrecord.saty", 5, 6, 5, 7)), "t"), [],
+           (((Range.Normal <txrecord.saty:5.7-8>), "t"), [],
             (UTBindSynonym
-               ((Range.Normal ("txrecord.saty", 5, 10, 5, 21)),
+               ((Range.Normal <txrecord.saty:5.11-22>),
                 (Types.MRecordType
-                   [(((Range.Normal ("txrecord.saty", 5, 13, 5, 14)), "x"),
-                     ((Range.Normal ("txrecord.saty", 5, 17, 5, 18)),
-                      (Types.MTypeName ("a", []))))
+                   [(((Range.Normal <txrecord.saty:5.14-15>), "x"),
+                     ((Range.Normal <txrecord.saty:5.18-19>),
+                      (Types.MTypeName ([],
+                         ((Range.Normal <txrecord.saty:5.18-19>), "a"), 
+                         []))))
                      ]))))
            ]))
       ]))
 
 ;; pats.saty
 (UTLibraryFile
-   (((Range.Normal ("pats.saty", 1, 7, 1, 11)), "Pats"),
-    [((Range.Normal ("pats.saty", 3, 2, 3, 5)),
+   (((Range.Normal <pats.saty:1.8-12>), "Pats"), None,
+    [((Range.Normal <pats.saty:3.3-6>),
       (UTBindValue
          (UTNonRec
-            (((Range.Normal ("pats.saty", 3, 6, 3, 16)), "pats-test1"),
+            (((Range.Normal <pats.saty:3.7-17>), "pats-test1"),
              (UTPatternMatch (
-                (UTContentOf ([],
-                   ((Range.Normal ("pats.saty", 4, 10, 4, 11)), "a"))),
+                (UTContentOf ([], ((Range.Normal <pats.saty:4.11-12>), "a"))),
                 [(UTPatternBranch (
-                    ((Range.Normal ("pats.saty", 5, 6, 5, 7)),
-                     (UTPVariable "b")),
+                    ((Range.Normal <pats.saty:5.7-8>), (UTPVariable "b")),
                     (UTContentOf ([],
-                       ((Range.Normal ("pats.saty", 5, 11, 5, 12)), "d")))
+                       ((Range.Normal <pats.saty:5.12-13>), "d")))
                     ))
                   ]
                 ))))));
-      ((Range.Normal ("pats.saty", 8, 2, 8, 5)),
+      ((Range.Normal <pats.saty:8.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("pats.saty", 8, 6, 8, 16)), "pats-test2"),
+             (((Range.Normal <pats.saty:8.7-17>), "pats-test2"),
               (UTPatternMatch (
-                 (UTContentOf ([],
-                    ((Range.Normal ("pats.saty", 9, 10, 9, 11)), "a"))),
+                 (UTContentOf ([], ((Range.Normal <pats.saty:9.11-12>), "a")
+                    )),
                  [(UTPatternBranch (
-                     ((Range.Normal ("pats.saty", 10, 6, 10, 7)),
-                      (UTPVariable "b")),
+                     ((Range.Normal <pats.saty:10.7-8>), (UTPVariable "b")),
                      (UTContentOf ([],
-                        ((Range.Normal ("pats.saty", 10, 11, 10, 12)), "d")))
+                        ((Range.Normal <pats.saty:10.12-13>), "d")))
                      ))
                    ]
                  ))))))
@@ -956,25 +849,24 @@
 
 ;; pattuple.saty
 (UTLibraryFile
-   (((Range.Normal ("pattuple.saty", 1, 7, 1, 15)), "Pattuple"),
-    [((Range.Normal ("pattuple.saty", 3, 2, 3, 5)),
+   (((Range.Normal <pattuple.saty:1.8-16>), "Pattuple"), None,
+    [((Range.Normal <pattuple.saty:3.3-6>),
       (UTBindValue
          (UTNonRec
-            (((Range.Normal ("pattuple.saty", 3, 6, 3, 19)), "pattuple-test"),
+            (((Range.Normal <pattuple.saty:3.7-20>), "pattuple-test"),
              (UTPatternMatch (
                 (UTContentOf ([],
-                   ((Range.Normal ("pattuple.saty", 4, 10, 4, 11)), "a"))),
+                   ((Range.Normal <pattuple.saty:4.11-12>), "a"))),
                 [(UTPatternBranch (
-                    ((Range.Normal ("pattuple.saty", 5, 6, 5, 12)),
+                    ((Range.Normal <pattuple.saty:5.7-13>),
                      (UTPTuple
-                        ((Range.Normal ("pattuple.saty", 5, 7, 5, 8)),
+                        ((Range.Normal <pattuple.saty:5.8-9>),
                          (UTPVariable "b"))
-                        ((Range.Normal ("pattuple.saty", 5, 10, 5, 11)),
+                        ((Range.Normal <pattuple.saty:5.11-12>),
                          (UTPVariable "c"))
                         )),
                     (UTContentOf ([],
-                       ((Range.Normal ("pattuple.saty", 5, 16, 5, 17)), "d")
-                       ))
+                       ((Range.Normal <pattuple.saty:5.17-18>), "d")))
                     ))
                   ]
                 ))))))
@@ -982,54 +874,52 @@
 
 ;; patlist.saty
 (UTLibraryFile
-   (((Range.Normal ("patlist.saty", 1, 7, 1, 14)), "Patlist"),
-    [((Range.Normal ("patlist.saty", 3, 2, 3, 5)),
+   (((Range.Normal <patlist.saty:1.8-15>), "Patlist"), None,
+    [((Range.Normal <patlist.saty:3.3-6>),
       (UTBindValue
          (UTNonRec
-            (((Range.Normal ("patlist.saty", 3, 6, 3, 14)), "pat-test"),
+            (((Range.Normal <patlist.saty:3.7-15>), "pat-test"),
              (UTPatternMatch (
                 (UTContentOf ([],
-                   ((Range.Normal ("patlist.saty", 4, 10, 4, 11)), "a"))),
+                   ((Range.Normal <patlist.saty:4.11-12>), "a"))),
                 [(UTPatternBranch (
-                    ((Range.Normal ("patlist.saty", 5, 6, 5, 9)),
+                    ((Range.Normal <patlist.saty:5.7-10>),
                      (UTPListCons (
-                        ((Range.Normal ("patlist.saty", 5, 7, 5, 8)),
+                        ((Range.Normal <patlist.saty:5.8-9>),
                          (UTPVariable "b")),
                         ((Range.Dummy "list-pattern-nil"), UTPEndOfList)))),
                     (UTContentOf ([],
-                       ((Range.Normal ("patlist.saty", 5, 13, 5, 14)), "c")))
+                       ((Range.Normal <patlist.saty:5.14-15>), "c")))
                     ));
                   (UTPatternBranch (
-                     ((Range.Normal ("patlist.saty", 6, 6, 6, 12)),
+                     ((Range.Normal <patlist.saty:6.7-13>),
                       (UTPListCons (
-                         ((Range.Normal ("patlist.saty", 6, 7, 6, 8)),
+                         ((Range.Normal <patlist.saty:6.8-9>),
                           (UTPVariable "b")),
                          ((Range.Dummy "list-pattern-cons"),
                           (UTPListCons (
-                             ((Range.Normal ("patlist.saty", 6, 10, 6, 11)),
+                             ((Range.Normal <patlist.saty:6.11-12>),
                               (UTPVariable "c")),
                              ((Range.Dummy "list-pattern-nil"), UTPEndOfList)
                              )))
                          ))),
                      (UTContentOf ([],
-                        ((Range.Normal ("patlist.saty", 6, 16, 6, 17)), "d")
-                        ))
+                        ((Range.Normal <patlist.saty:6.17-18>), "d")))
                      ));
                   (UTPatternBranch (
-                     ((Range.Normal ("patlist.saty", 7, 6, 7, 13)),
+                     ((Range.Normal <patlist.saty:7.7-14>),
                       (UTPListCons (
-                         ((Range.Normal ("patlist.saty", 7, 7, 7, 8)),
+                         ((Range.Normal <patlist.saty:7.8-9>),
                           (UTPVariable "b")),
                          ((Range.Dummy "list-pattern-cons"),
                           (UTPListCons (
-                             ((Range.Normal ("patlist.saty", 7, 10, 7, 11)),
+                             ((Range.Normal <patlist.saty:7.11-12>),
                               (UTPVariable "c")),
                              ((Range.Dummy "list-pattern-nil"), UTPEndOfList)
                              )))
                          ))),
                      (UTContentOf ([],
-                        ((Range.Normal ("patlist.saty", 7, 17, 7, 18)), "d")
-                        ))
+                        ((Range.Normal <patlist.saty:7.18-19>), "d")))
                      ))
                   ]
                 ))))))
@@ -1037,367 +927,276 @@
 
 ;; sxlist.saty
 (UTLibraryFile
-   (((Range.Normal ("sxlist.saty", 1, 7, 1, 13)), "Sxlist"),
-    [((Range.Normal ("sxlist.saty", 3, 2, 3, 5)),
+   (((Range.Normal <sxlist.saty:1.8-14>), "Sxlist"), None,
+    [((Range.Normal <sxlist.saty:3.3-6>),
       (UTBindValue
-         (UTNonRec
-            (((Range.Normal ("sxlist.saty", 3, 6, 3, 7)), "x"), UTEndOfList))));
-      ((Range.Normal ("sxlist.saty", 4, 2, 4, 5)),
+         (UTNonRec (((Range.Normal <sxlist.saty:3.7-8>), "x"), UTEndOfList))));
+      ((Range.Normal <sxlist.saty:4.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("sxlist.saty", 4, 6, 4, 7)), "y"),
+             (((Range.Normal <sxlist.saty:4.7-8>), "y"),
               (UTListCons ((UTInputHorz [IT:aa]),
                  (UTListCons ((UTInputHorz [IT:bb]), UTEndOfList))))))))
       ]))
 
 ;; mathlist.saty
 (UTLibraryFile
-   (((Range.Normal ("mathlist.saty", 1, 7, 1, 15)), "Mathlist"),
-    [((Range.Normal ("mathlist.saty", 3, 2, 3, 5)),
+   (((Range.Normal <mathlist.saty:1.8-16>), "Mathlist"), None,
+    [((Range.Normal <mathlist.saty:3.3-6>),
       (UTBindValue
-         (UTNonRec
-            (((Range.Normal ("mathlist.saty", 3, 6, 3, 7)), "x"), UTEndOfList))));
-      ((Range.Normal ("mathlist.saty", 4, 2, 4, 5)),
+         (UTNonRec (((Range.Normal <mathlist.saty:3.7-8>), "x"), UTEndOfList))));
+      ((Range.Normal <mathlist.saty:4.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("mathlist.saty", 4, 6, 4, 7)), "y"),
+             (((Range.Normal <mathlist.saty:4.7-8>), "y"),
               (UTListCons (
                  (UTMath
-                    ((Range.Normal ("mathlist.saty", 4, 13, 4, 14)),
+                    ((Range.Normal <mathlist.saty:4.14-15>),
                      (UTMList
-                        [((Range.Normal ("mathlist.saty", 4, 13, 4, 14)),
+                        [((Range.Normal <mathlist.saty:4.14-15>),
                           (UTMChars "a"))]))),
                  (UTListCons (
                     (UTMath
-                       ((Range.Normal ("mathlist.saty", 4, 15, 4, 17)),
+                       ((Range.Normal <mathlist.saty:4.16-18>),
                         (UTMList
-                           [((Range.Normal ("mathlist.saty", 4, 15, 4, 16)),
+                           [((Range.Normal <mathlist.saty:4.16-17>),
                              (UTMChars "a"));
-                             ((Range.Normal ("mathlist.saty", 4, 16, 4, 17)),
+                             ((Range.Normal <mathlist.saty:4.17-18>),
                               (UTMChars "b"))
                              ]))),
                     UTEndOfList))
                  ))))));
-      ((Range.Normal ("mathlist.saty", 6, 2, 6, 5)),
+      ((Range.Normal <mathlist.saty:6.3-6>),
        (UTBindValue
           (UTNonRec
-             (((Range.Normal ("mathlist.saty", 6, 6, 6, 7)), "z"),
+             (((Range.Normal <mathlist.saty:6.7-8>), "z"),
               (UTInputVert
                  [BC:(UTContentOf ([],
-                        ((Range.Normal ("mathlist.saty", 7, 4, 7, 6)), "+p")
-                        )) (UTCommandArg ([],
-                              (UTInputHorz
-                                 [(UTInputHorzEmbeddedMath
-                                     (UTMath
-                                        ((Range.Normal ("mathlist.saty", 8,
-                                            8, 8, 9)),
-                                         (UTMList
-                                            [((Range.Normal ("mathlist.saty",
-                                                 8, 8, 8, 9)),
-                                              (UTMChars "a"))]))));
-                                   IT:
+                        ((Range.Normal <mathlist.saty:7.5-7>), "+p"))) (
+                   UTCommandArg ([],
+                     (UTInputHorz
+                        [(UTInputHorzEmbeddedMath
+                            (UTMath
+                               ((Range.Normal <mathlist.saty:8.9-10>),
+                                (UTMList
+                                   [((Range.Normal <mathlist.saty:8.9-10>),
+                                     (UTMChars "a"))]))));
+                          IT:
 ;
-                                   (UTInputHorzEmbeddedMath
-                                      (UTMath
-                                         ((Range.Normal ("mathlist.saty", 9,
-                                             8, 9, 11)),
-                                          (UTMList
-                                             [((Range.Normal (
-                                                  "mathlist.saty", 9, 8, 9,
-                                                  11)),
-                                               (UTMSuperScript (
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 9, 8,
-                                                      9, 9)),
-                                                   (UTMChars "a")),
-                                                  false,
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 9, 10,
-                                                      9, 11)),
-                                                   (UTMChars "1"))
-                                                  )))
-                                               ]))));
-                                   IT:
+                          (UTInputHorzEmbeddedMath
+                             (UTMath
+                                ((Range.Normal <mathlist.saty:9.9-12>),
+                                 (UTMList
+                                    [((Range.Normal <mathlist.saty:9.9-12>),
+                                      (UTMSuperScript (
+                                         ((Range.Normal <mathlist.saty:9.9-10>),
+                                          (UTMChars "a")),
+                                         false,
+                                         ((Range.Normal <mathlist.saty:9.11-12>),
+                                          (UTMChars "1"))
+                                         )))
+                                      ]))));
+                          IT:
 ;
-                                   (UTInputHorzEmbeddedMath
-                                      (UTMath
-                                         ((Range.Normal ("mathlist.saty", 10,
-                                             8, 10, 11)),
-                                          (UTMList
-                                             [((Range.Normal (
-                                                  "mathlist.saty", 10, 8, 10,
-                                                  11)),
-                                               (UTMSubScript (
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 10, 8,
-                                                      10, 9)),
-                                                   (UTMChars "a")),
-                                                  false,
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 10,
-                                                      10, 10, 11)),
-                                                   (UTMChars "2"))
-                                                  )))
-                                               ]))));
-                                   IT:
+                          (UTInputHorzEmbeddedMath
+                             (UTMath
+                                ((Range.Normal <mathlist.saty:10.9-12>),
+                                 (UTMList
+                                    [((Range.Normal <mathlist.saty:10.9-12>),
+                                      (UTMSubScript (
+                                         ((Range.Normal <mathlist.saty:10.9-10>),
+                                          (UTMChars "a")),
+                                         false,
+                                         ((Range.Normal <mathlist.saty:10.11-12>),
+                                          (UTMChars "2"))
+                                         )))
+                                      ]))));
+                          IT:
 ;
-                                   (UTInputHorzEmbeddedMath
-                                      (UTMath
-                                         ((Range.Normal ("mathlist.saty", 11,
-                                             8, 11, 13)),
-                                          (UTMList
-                                             [((Range.Normal (
-                                                  "mathlist.saty", 11, 8, 11,
-                                                  13)),
-                                               (UTMSuperScript (
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 11, 8,
-                                                      11, 11)),
-                                                   (UTMSubScript (
-                                                      ((Range.Normal (
-                                                          "mathlist.saty",
-                                                          11, 8, 11, 9)),
-                                                       (UTMChars "a")),
-                                                      false,
-                                                      ((Range.Normal (
-                                                          "mathlist.saty",
-                                                          11, 10, 11, 11)),
-                                                       (UTMChars "2"))
-                                                      ))),
-                                                  false,
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 11,
-                                                      12, 11, 13)),
-                                                   (UTMChars "1"))
-                                                  )))
-                                               ]))));
-                                   IT:
+                          (UTInputHorzEmbeddedMath
+                             (UTMath
+                                ((Range.Normal <mathlist.saty:11.9-14>),
+                                 (UTMList
+                                    [((Range.Normal <mathlist.saty:11.9-14>),
+                                      (UTMSuperScript (
+                                         ((Range.Normal <mathlist.saty:11.9-12>),
+                                          (UTMSubScript (
+                                             ((Range.Normal <mathlist.saty:11.9-10>),
+                                              (UTMChars "a")),
+                                             false,
+                                             ((Range.Normal <mathlist.saty:11.11-12>),
+                                              (UTMChars "2"))
+                                             ))),
+                                         false,
+                                         ((Range.Normal <mathlist.saty:11.13-14>),
+                                          (UTMChars "1"))
+                                         )))
+                                      ]))));
+                          IT:
 ;
-                                   (UTInputHorzEmbeddedMath
-                                      (UTMath
-                                         ((Range.Normal ("mathlist.saty", 12,
-                                             8, 12, 13)),
-                                          (UTMList
-                                             [((Range.Normal (
-                                                  "mathlist.saty", 12, 8, 12,
-                                                  13)),
-                                               (UTMSuperScript (
-                                                  ((Range.Dummy "mathtop"),
-                                                   (UTMSubScript (
-                                                      ((Range.Normal (
-                                                          "mathlist.saty",
-                                                          12, 8, 12, 9)),
-                                                       (UTMChars "a")),
-                                                      false,
-                                                      ((Range.Normal (
-                                                          "mathlist.saty",
-                                                          12, 12, 12, 13)),
-                                                       (UTMChars "2"))
-                                                      ))),
-                                                  false,
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 12,
-                                                      10, 12, 11)),
-                                                   (UTMChars "1"))
-                                                  )))
-                                               ]))));
-                                   IT:
+                          (UTInputHorzEmbeddedMath
+                             (UTMath
+                                ((Range.Normal <mathlist.saty:12.9-14>),
+                                 (UTMList
+                                    [((Range.Normal <mathlist.saty:12.9-14>),
+                                      (UTMSuperScript (
+                                         ((Range.Dummy "mathtop"),
+                                          (UTMSubScript (
+                                             ((Range.Normal <mathlist.saty:12.9-10>),
+                                              (UTMChars "a")),
+                                             false,
+                                             ((Range.Normal <mathlist.saty:12.13-14>),
+                                              (UTMChars "2"))
+                                             ))),
+                                         false,
+                                         ((Range.Normal <mathlist.saty:12.11-12>),
+                                          (UTMChars "1"))
+                                         )))
+                                      ]))));
+                          IT:
 ;
-                                   (UTInputHorzEmbeddedMath
-                                      (UTMath
-                                         ((Range.Normal ("mathlist.saty", 13,
-                                             8, 13, 10)),
-                                          (UTMList
-                                             [((Range.Normal (
-                                                  "mathlist.saty", 13, 8, 13,
-                                                  10)),
-                                               (UTMSuperScript (
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 13, 8,
-                                                      13, 9)),
-                                                   (UTMChars "a")),
-                                                  true,
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 13, 9,
-                                                      13, 10)),
-                                                   (UTMChars "′"))
-                                                  )))
-                                               ]))));
-                                   IT:
+                          (UTInputHorzEmbeddedMath
+                             (UTMath
+                                ((Range.Normal <mathlist.saty:13.9-11>),
+                                 (UTMList
+                                    [((Range.Normal <mathlist.saty:13.9-11>),
+                                      (UTMSuperScript (
+                                         ((Range.Normal <mathlist.saty:13.9-10>),
+                                          (UTMChars "a")),
+                                         true,
+                                         ((Range.Normal <mathlist.saty:13.10-11>),
+                                          (UTMChars "′"))
+                                         )))
+                                      ]))));
+                          IT:
 ;
-                                   (UTInputHorzEmbeddedMath
-                                      (UTMath
-                                         ((Range.Normal ("mathlist.saty", 14,
-                                             8, 14, 12)),
+                          (UTInputHorzEmbeddedMath
+                             (UTMath
+                                ((Range.Normal <mathlist.saty:14.9-13>),
+                                 (UTMList
+                                    [((Range.Normal <mathlist.saty:14.9-13>),
+                                      (UTMSuperScript (
+                                         ((Range.Normal <mathlist.saty:14.9-10>),
+                                          (UTMChars "a")),
+                                         false,
+                                         ((Range.Normal <mathlist.saty:14.10-13>),
                                           (UTMList
-                                             [((Range.Normal (
-                                                  "mathlist.saty", 14, 8, 14,
-                                                  12)),
-                                               (UTMSuperScript (
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 14, 8,
-                                                      14, 9)),
-                                                   (UTMChars "a")),
-                                                  false,
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 14, 9,
-                                                      14, 12)),
-                                                   (UTMList
-                                                      [((Range.Normal (
-                                                           "mathlist.saty",
-                                                           14, 9, 14, 10)),
-                                                        (UTMChars "′"));
-                                                        ((Range.Normal (
-                                                            "mathlist.saty",
-                                                            14, 11, 14, 12)),
-                                                         (UTMChars "1"))
-                                                        ]))
-                                                  )))
-                                               ]))));
-                                   IT:
+                                             [((Range.Normal <mathlist.saty:14.10-11>),
+                                               (UTMChars "′"));
+                                               ((Range.Normal <mathlist.saty:14.12-13>),
+                                                (UTMChars "1"))
+                                               ]))
+                                         )))
+                                      ]))));
+                          IT:
 ;
-                                   (UTInputHorzEmbeddedMath
-                                      (UTMath
-                                         ((Range.Normal ("mathlist.saty", 15,
-                                             8, 15, 12)),
-                                          (UTMList
-                                             [((Range.Normal (
-                                                  "mathlist.saty", 15, 8, 15,
-                                                  12)),
-                                               (UTMSuperScript (
-                                                  ((Range.Dummy "mathtop"),
-                                                   (UTMSubScript (
-                                                      ((Range.Normal (
-                                                          "mathlist.saty",
-                                                          15, 8, 15, 9)),
-                                                       (UTMChars "a")),
-                                                      false,
-                                                      ((Range.Normal (
-                                                          "mathlist.saty",
-                                                          15, 11, 15, 12)),
-                                                       (UTMChars "2"))
-                                                      ))),
-                                                  true,
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 15, 9,
-                                                      15, 10)),
-                                                   (UTMChars "′"))
-                                                  )))
-                                               ]))));
-                                   IT:
+                          (UTInputHorzEmbeddedMath
+                             (UTMath
+                                ((Range.Normal <mathlist.saty:15.9-13>),
+                                 (UTMList
+                                    [((Range.Normal <mathlist.saty:15.9-13>),
+                                      (UTMSuperScript (
+                                         ((Range.Dummy "mathtop"),
+                                          (UTMSubScript (
+                                             ((Range.Normal <mathlist.saty:15.9-10>),
+                                              (UTMChars "a")),
+                                             false,
+                                             ((Range.Normal <mathlist.saty:15.12-13>),
+                                              (UTMChars "2"))
+                                             ))),
+                                         true,
+                                         ((Range.Normal <mathlist.saty:15.10-11>),
+                                          (UTMChars "′"))
+                                         )))
+                                      ]))));
+                          IT:
 ;
-                                   (UTInputHorzEmbeddedMath
-                                      (UTMath
-                                         ((Range.Normal ("mathlist.saty", 16,
-                                             8, 16, 14)),
+                          (UTInputHorzEmbeddedMath
+                             (UTMath
+                                ((Range.Normal <mathlist.saty:16.9-15>),
+                                 (UTMList
+                                    [((Range.Normal <mathlist.saty:16.9-15>),
+                                      (UTMSuperScript (
+                                         ((Range.Dummy "mathtop"),
+                                          (UTMSubScript (
+                                             ((Range.Normal <mathlist.saty:16.9-10>),
+                                              (UTMChars "a")),
+                                             false,
+                                             ((Range.Normal <mathlist.saty:16.12-13>),
+                                              (UTMChars "2"))
+                                             ))),
+                                         false,
+                                         ((Range.Normal <mathlist.saty:16.10-15>),
                                           (UTMList
-                                             [((Range.Normal (
-                                                  "mathlist.saty", 16, 8, 16,
-                                                  14)),
-                                               (UTMSuperScript (
-                                                  ((Range.Dummy "mathtop"),
-                                                   (UTMSubScript (
-                                                      ((Range.Normal (
-                                                          "mathlist.saty",
-                                                          16, 8, 16, 9)),
-                                                       (UTMChars "a")),
-                                                      false,
-                                                      ((Range.Normal (
-                                                          "mathlist.saty",
-                                                          16, 11, 16, 12)),
-                                                       (UTMChars "2"))
-                                                      ))),
-                                                  false,
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 16, 9,
-                                                      16, 14)),
-                                                   (UTMList
-                                                      [((Range.Normal (
-                                                           "mathlist.saty",
-                                                           16, 9, 16, 10)),
-                                                        (UTMChars "′"));
-                                                        ((Range.Normal (
-                                                            "mathlist.saty",
-                                                            16, 13, 16, 14)),
-                                                         (UTMChars "1"))
-                                                        ]))
-                                                  )))
-                                               ]))));
-                                   IT:
+                                             [((Range.Normal <mathlist.saty:16.10-11>),
+                                               (UTMChars "′"));
+                                               ((Range.Normal <mathlist.saty:16.14-15>),
+                                                (UTMChars "1"))
+                                               ]))
+                                         )))
+                                      ]))));
+                          IT:
 ;
-                                   (UTInputHorzEmbeddedMath
-                                      (UTMath
-                                         ((Range.Normal ("mathlist.saty", 17,
-                                             8, 17, 14)),
+                          (UTInputHorzEmbeddedMath
+                             (UTMath
+                                ((Range.Normal <mathlist.saty:17.9-15>),
+                                 (UTMList
+                                    [((Range.Normal <mathlist.saty:17.9-15>),
+                                      (UTMSuperScript (
+                                         ((Range.Dummy "mathtop"),
+                                          (UTMSubScript (
+                                             ((Range.Normal <mathlist.saty:17.9-10>),
+                                              (UTMChars "a")),
+                                             false,
+                                             ((Range.Normal <mathlist.saty:17.14-15>),
+                                              (UTMChars "2"))
+                                             ))),
+                                         false,
+                                         ((Range.Normal <mathlist.saty:17.10-13>),
                                           (UTMList
-                                             [((Range.Normal (
-                                                  "mathlist.saty", 17, 8, 17,
-                                                  14)),
-                                               (UTMSuperScript (
-                                                  ((Range.Dummy "mathtop"),
-                                                   (UTMSubScript (
-                                                      ((Range.Normal (
-                                                          "mathlist.saty",
-                                                          17, 8, 17, 9)),
-                                                       (UTMChars "a")),
-                                                      false,
-                                                      ((Range.Normal (
-                                                          "mathlist.saty",
-                                                          17, 13, 17, 14)),
-                                                       (UTMChars "2"))
-                                                      ))),
-                                                  false,
-                                                  ((Range.Normal (
-                                                      "mathlist.saty", 17, 9,
-                                                      17, 12)),
-                                                   (UTMList
-                                                      [((Range.Normal (
-                                                           "mathlist.saty",
-                                                           17, 9, 17, 10)),
-                                                        (UTMChars "′"));
-                                                        ((Range.Normal (
-                                                            "mathlist.saty",
-                                                            17, 11, 17, 12)),
-                                                         (UTMChars "1"))
-                                                        ]))
-                                                  )))
-                                               ]))))
-                                   ])
-                              ))
+                                             [((Range.Normal <mathlist.saty:17.10-11>),
+                                               (UTMChars "′"));
+                                               ((Range.Normal <mathlist.saty:17.12-13>),
+                                                (UTMChars "1"))
+                                               ]))
+                                         )))
+                                      ]))))
+                          ])
+                     ))
                    ])))))
       ]))
 
 ;; toplevel.saty
 (UTLibraryFile
-   (((Range.Normal ("toplevel.saty", 1, 7, 1, 15)), "Toplevel"),
-    [((Range.Normal ("toplevel.saty", 3, 2, 3, 6)),
+   (((Range.Normal <toplevel.saty:1.8-16>), "Toplevel"), None,
+    [((Range.Normal <toplevel.saty:3.3-7>),
       (UTBindType
-         [(((Range.Normal ("toplevel.saty", 3, 7, 3, 8)), "t"), [],
+         [(((Range.Normal <toplevel.saty:3.8-9>), "t"), [],
            (UTBindSynonym
-              ((Range.Normal ("toplevel.saty", 3, 11, 3, 17)),
+              ((Range.Normal <toplevel.saty:3.12-18>),
                (Types.MFuncType ([],
-                  ((Range.Normal ("toplevel.saty", 3, 11, 3, 12)),
-                   (Types.MTypeName ("a", []))),
-                  ((Range.Normal ("toplevel.saty", 3, 16, 3, 17)),
-                   (Types.MTypeName ("b", [])))
+                  ((Range.Normal <toplevel.saty:3.12-13>),
+                   (Types.MTypeName ([],
+                      ((Range.Normal <toplevel.saty:3.12-13>), "a"), 
+                      []))),
+                  ((Range.Normal <toplevel.saty:3.17-18>),
+                   (Types.MTypeName ([],
+                      ((Range.Normal <toplevel.saty:3.17-18>), "b"), 
+                      [])))
                   )))));
-           (((Range.Normal ("toplevel.saty", 4, 6, 4, 7)), "s"), [],
+           (((Range.Normal <toplevel.saty:4.7-8>), "s"), [],
             (UTBindVariant
                [(UTConstructorBranch (
-                   ((Range.Normal ("toplevel.saty", 4, 10, 4, 11)), "A"),
-                   None));
+                   ((Range.Normal <toplevel.saty:4.11-12>), "A"), None));
                  (UTConstructorBranch (
-                    ((Range.Normal ("toplevel.saty", 4, 14, 4, 15)), "B"),
-                    None))
+                    ((Range.Normal <toplevel.saty:4.15-16>), "B"), None))
                  ]));
-           (((Range.Normal ("toplevel.saty", 5, 6, 5, 7)), "u"), [],
+           (((Range.Normal <toplevel.saty:5.7-8>), "u"), [],
             (UTBindVariant
                [(UTConstructorBranch (
-                   ((Range.Normal ("toplevel.saty", 6, 6, 6, 7)), "A"), None
-                   ));
+                   ((Range.Normal <toplevel.saty:6.7-8>), "A"), None));
                  (UTConstructorBranch (
-                    ((Range.Normal ("toplevel.saty", 7, 6, 7, 7)), "B"), None
-                    ))
+                    ((Range.Normal <toplevel.saty:7.7-8>), "B"), None))
                  ]))
            ]))
       ]))

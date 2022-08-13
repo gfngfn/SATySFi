@@ -168,96 +168,96 @@ StdJaBook.document (|
       \Local.code{UserDefinedPaper of ${\Local.math-of-type!(Local.tPROD [Local.tL, Local.tL])}}の9つの値構築子をもつ代数的データ型である．
       \Local.subject-to-change;
     }
-%     +Local.type (Local.tPAGECONTF) {
+%     +type (tPAGECONTF) {
 %       ページ番号を基に“そのページのテキストの領域の段落方向の長さ”と“そのページの中身を配置するときの左上の座標”を返す関数である．
 %       ${
-%         \Local.math-of-type!(
-%           (Local.tRECORD [({page-number}, Local.tI)]) -->
-%           (Local.tRECORD [
-%             ({text-height}, Local.tL),
-%             ({text-origin}, Local.tPT),
+%         \math-of-type!(
+%           (tRECORD [({page-number}, tI)]) -->
+%           (tRECORD [
+%             ({text-height}, tL);
+%             ({text-origin}, tPT);
 %           ])
 %         )
 %       }に等しい．
 %     }
-%     +Local.type (Local.tPAGEPARTSF) {
+%     +type (tPAGEPARTSF) {
 %       ページ番号を基にヘッダーとフッターの中身とその左上の座標を返す関数である．
 %       ${
-%         \Local.math-of-type!(
-%           (Local.tRECORD [({page-number}, tI)]) -->
-%           (Local.tRECORD [
-%             ({header-content}, tBB),
-%             ({header-origin}, tPT),
-%             ({footer-content}, tBB),
-%             ({footer-origin}, tPT),
+%         \math-of-type!(
+%           (tRECORD [({page-number}, tI)]) -->
+%           (tRECORD [
+%             ({header-content}, tBB);
+%             ({header-origin}, tPT);
+%             ({footer-content}, tBB);
+%             ({footer-origin}, tPT);
 %           ])
 %         )
 %       }に等しい．
 %     }
   >
-%   +section {プリミティヴ一覧} <
+  +StdJaBook.section {プリミティヴ一覧} <
 %     +subsection({基本演算})(
-%       let t-int-arith = tI --> (Local.tI --> tI) in
-%       let t-int-comp  = tI --> (Local.tI --> tB) in
-%       let t-bool-op = tB --> (Local.tB --> tB) in
+%       let t-int-arith = tI --> (tI --> tI) in
+%       let t-int-comp  = tI --> (tI --> tB) in
+%       let t-bool-op = tB --> (tB --> tB) in
 %     '<
-%       +commands [`+`, `-`, `*`] (Local.t-int-arith) {
+%       +commands [`+`; `-`; `*`] (t-int-arith) {
 %         整数の加算・減算・乗算．
 %       }
-%       +commands [`/`, `mod`] (Local.t-int-arith) {
-%         整数の除算と剰余．現在の仕様では，第2引数に \Local.code{0} を与えて評価した場合の結果は未定義．
+%       +commands [`/`; `mod`] (t-int-arith) {
+%         整数の除算と剰余．現在の仕様では，第2引数に \code{0} を与えて評価した場合の結果は未定義．
 %         現在の実装では実行時エラーとなり処理を中止する．
-%         \Local.subject-to-change;
+%         \subject-to-change;
 %       }
-%       +commands [`==`, `<>`, `<`, `>`, `<=`, `>=`] (Local.t-int-comp) {
+%       +commands [`==`; `<>`; `<`; `>`; `<=`; `>=`] (t-int-comp) {
 %         整数の比較演算．
 %       }
-%       +commands [`<<`, `>>`, `bxor`, `band`, `bor`] (Local.tI --> (Local.tI --> tI)) {
+%       +commands [`<<`; `>>`; `bxor`; `band`; `bor`] (tI --> (tI --> tI)) {
 %         整数のビット演算．
 %       }
-%       +command (`bnot`) (Local.tI --> tI) {
+%       +command (`bnot`) (tI --> tI) {
 %         整数のビットNOT演算
 %       }
-%       +commands [`&&`, `||`] (Local.t-bool-op) {
+%       +commands [`&&`; `||`] (t-bool-op) {
 %         真偽値の連言・選言．
 %       }
-%       +commands [`not`] (Local.tB --> tB) {
+%       +commands [`not`] (tB --> tB) {
 %         論理否定．
 %       }
-%       +commands [`+.`, `-.`] (Local.tF --> (Local.tF --> Local.tF)) {
+%       +commands [`+.`; `-.`] (tF --> (tF --> tF)) {
 %         浮動小数点数の加算・減算．IEEE754に従う．
 %       }
-%       +commands [`*.`, `/.`] (Local.tF --> (Local.tF --> Local.tF)) {
+%       +commands [`*.`; `/.`] (tF --> (tF --> tF)) {
 %         浮動小数点数の乗算・除算．
 %       }
-%       +commands [`+'`, `-'`] (Local.tL --> (Local.tL --> tL)) {
+%       +commands [`+'`; `-'`] (tL --> (tL --> tL)) {
 %         長さの加算・減算．内部的にはPDFポイント単位の浮動小数点数で扱われ，IEEE754に従う．
 %       }
-%       +commands [`*'`] (Local.tL --> (Local.tF --> tL)) {
+%       +commands [`*'`] (tL --> (tF --> tL)) {
 %         長さのスカラー演算．
 %       }
-%       +commands [`/'`] (Local.tL --> (Local.tL --> Local.tF)) {
+%       +commands [`/'`] (tL --> (tL --> tF)) {
 %         長さの割合．
 %       }
-%       +commands [`<'`, `>'`] (Local.tL --> (Local.tL --> tB)) {
+%       +commands [`<'`; `>'`] (tL --> (tL --> tB)) {
 %         長さの比較．
 %       }
-%       +command (`float`) (Local.tI --> Local.tF) {
+%       +command (`float`) (tI --> tF) {
 %         整数を浮動小数点数に変換する．
 %       }
-%       +command (`round`) (Local.tF --> tI) {
+%       +command (`round`) (tF --> tI) {
 %         浮動小数点数を整数に変換する．
 %       }
-%       +commands [`ceil`, `floor`] (Local.tF --> Local.tF) {
-%         \Local.code{ceil}で浮動小数点数の切り上げを，\Local.code{floor}で浮動小数点数の切り捨てを行う．
+%       +commands [`ceil`; `floor`] (tF --> tF) {
+%         \code{ceil}で浮動小数点数の切り上げを，\code{floor}で浮動小数点数の切り捨てを行う．
 %       }
-%       +commands [`sin`, `asin`, `cos`, `acos`, `tan`, `atan`] (Local.tF --> Local.tF) {
+%       +commands [`sin`; `asin`; `cos`; `acos`; `tan`; `atan`] (tF --> tF) {
 %         三角関数の演算を行う．
 %       }
-%       +command (`atan2`) (Local.tF --> (Local.tF --> Local.tF)) {
+%       +command (`atan2`) (tF --> (tF --> tF)) {
 %         三角関数の演算を行う．
 %       }
-%       +commands [`log`, `exp`] (Local.tF --> Local.tF) {
+%       +commands [`log`; `exp`] (tF --> tF) {
 %         指数と対数の演算を行う．
 %       }
 %     >);
@@ -268,383 +268,383 @@ StdJaBook.document (|
 %         Unicode正規化の指定などはおろかUnicodeコードポイント単位の扱いをサポートせず，
 %         直接UTF-8バイト列を扱うなど，低級な処理として形式化されているためである．
 %       }
-%       +command (`^`) (Local.tS --> (Local.tS --> Local.tS)) {
+%       +command (`^`) (tS --> (tS --> tS)) {
 %         文字列の結合．
 %       }
-%       +command (`arabic`) (Local.tI --> Local.tS) {
+%       +command (`arabic`) (tI --> tS) {
 %         受け取った整数の十進文字列を返す．
 %       }
-%       +command (`show-float`) (Local.tF --> Local.tS) {
+%       +command (`show-float`) (tF --> tS) {
 %         受け取った浮動小数点数の十進文字列を返す．
 %       }
-%       +command (`string-unexplode`) ((Local.tLIST tI) --> Local.tS) {
+%       +command (`string-unexplode`) ((tLIST tI) --> tS) {
 %         受け取った整数列をUnicodeコードポイント列と看なして対応する文字列を返す．
 %         Unicodeコードポイントとして不適切な整数が含まれていた場合の動作は未定義．
-%         \Local.subject-to-change;
+%         \subject-to-change;
 %       }
-%       +command (`string-explode`) (Local.tS --> (Local.tLIST tI)) {
+%       +command (`string-explode`) (tS --> (tLIST tI)) {
 %         受け取った文字列をUnicodeスカラー値のリストとして返す．
 %       }
-%       +command (`string-same`) (Local.tS --> (Local.tS --> tB)) {
+%       +command (`string-same`) (tS --> (tS --> tB)) {
 %         文字列がUTF-8のバイト列として等価かの判定．
-%         \Local.subject-to-change;\discouraged;
+%         \subject-to-change;\discouraged;
 %       }
-%       +command (`string-sub`) (Local.tS --> (Local.tI --> (Local.tI --> Local.tS))) {
-%         \Local.code{string-sub ${s} ${i} ${l}}で
-%         文字列\Local.code{${s}}の第\Local.code{${i}}番目の文字を先頭とする
-%         長さ\Local.code{${l}}の部分文字列を取り出す．
+%       +command (`string-sub`) (tS --> (tI --> (tI --> tS))) {
+%         \code{string-sub ${s} ${i} ${l}}で
+%         文字列\code{${s}}の第\code{${i}}番目の文字を先頭とする
+%         長さ\code{${l}}の部分文字列を取り出す．
 %         文字はUnicodeコードポイント単位．
-%         \Local.code{${i}}と\Local.code{${l}}による指定が部分文字列の範囲でない場合は実行時エラーが出る．
+%         \code{${i}}と\code{${l}}による指定が部分文字列の範囲でない場合は実行時エラーが出る．
 %       }
-%       +command (`string-length`) (Local.tS --> tI) {
+%       +command (`string-length`) (tS --> tI) {
 %         受け取った文字列のUnicodeコードポイントでの長さを返す．
 %       }
-%       +command (`split-into-lines`) (Local.tS --> (Local.tLIST (Local.tPROD [tI, Local.tS]))) {
-%         \Local.code{split-into-lines ${s}}で，\Local.code{${s}}が改行文字で分割され，
+%       +command (`split-into-lines`) (tS --> (tLIST (tPROD [tI; tS]))) {
+%         \code{split-into-lines ${s}}で，\code{${s}}が改行文字で分割され，
 %         分割後の文字列の先頭部分の半角スペースが取り除かれる．
 %         返り値の整数と文字列のペアの内，整数部分は取り除かれたスペースの数で，
 %         文字列部分はスペースが取り除かれた後の文字列である．
 %       }
-%       +command (`regexp-of-string`) (Local.tS --> tRE) {
-%         \Local.code{regexp-of-string ${s}}で文字列から正規表現型を生成する．
-%         使える正規表現の構文はOCamlの\Local.code{Str.regexp}で使えるものと等しい．
+%       +command (`regexp-of-string`) (tS --> tRE) {
+%         \code{regexp-of-string ${s}}で文字列から正規表現型を生成する．
+%         使える正規表現の構文はOCamlの\code{Str.regexp}で使えるものと等しい．
 %         正規表現として不適当な文字列が与えられた場合は実行時エラーが出る．
 %       }
-%       +command (`string-scan`) (Local.tRE --> (Local.tS --> (Local.tOPT (Local.tPROD [tS, Local.tS])))) {
-%         \Local.code{string-scan ${re} ${s}}で\Local.code{${s}}の\Local.code{${re}}が一致する部分文字列と，残りの文字列を返す．
-%         一文字も一致しなかった場合は\Local.code{None}が返る．
+%       +command (`string-scan`) (tRE --> (tS --> (tOPT (tPROD [tS; tS])))) {
+%         \code{string-scan ${re} ${s}}で\code{${s}}の\code{${re}}が一致する部分文字列と，残りの文字列を返す．
+%         一文字も一致しなかった場合は\code{None}が返る．
 %       }
-%       +command (`string-match`) (Local.tRE --> (Local.tS --> tB)) {
-%         \Local.code{string-match ${re} ${s}}で，\Local.code{${s}}が\Local.code{${re}}にマッチするか
+%       +command (`string-match`) (tRE --> (tS --> tB)) {
+%         \code{string-match ${re} ${s}}で，\code{${s}}が\code{${re}}にマッチするか
 %         を判定する．
 %       }
-%       +command (`split-on-regexp`) (Local.tRE --> (Local.tS --> (Local.tLIST (Local.tPROD [tI, Local.tS])))) {
-%         \Local.code{split-on-regexp ${re} ${s}}で，\Local.code{${re}}がマッチする部分で\Local.code{${s}}
+%       +command (`split-on-regexp`) (tRE --> (tS --> (tLIST (tPROD [tI; tS])))) {
+%         \code{split-on-regexp ${re} ${s}}で，\code{${re}}がマッチする部分で\code{${s}}
 %         が分割され，分割後の文字列の先頭部分の半角スペースが取り除かれる．
 %         返り値の整数と文字列のペアの内，整数部分は取り除かれたスペースの数で，
 %         文字列部分はスペースが取り除かれた後の文字列である．
 %       }
-%       +command (`read-file`) (Local.tS --> (Local.tLIST Local.tS)) {
-%         \Local.code{read-file ${path}}で文書ファイルから見て${path}の位置にある外部ファイルの
+%       +command (`read-file`) (tS --> (tLIST tS)) {
+%         \code{read-file ${path}}で文書ファイルから見て${path}の位置にある外部ファイルの
 %         中身を改行文字で分割したリストで返す．
-%         \Local.code{..}を含む\Local.code{${path}}は使用できない．
+%         \code{..}を含む\code{${path}}は使用できない．
 %       }
 %     >
-     +StdJaBook.subsection?(label = `sec:inline`)({インライン方向に関する処理})<
-%       +Local.command (`extract-string`) (Local.tIB --> Local.tS) {
+%     +subsection ?:(`sec:inline`) {インライン方向に関する処理} <
+%       +command (`extract-string`) (tIB --> tS) {
 %         インラインボックス列を無理やり文字列に変換する．
 %       }
-%       +command (`read-inline`) (Local.tCTX --> (Local.tIT --> tIB)) {
-%         \Local.code{read-inline ${ctx} ${it}}で
-%         文脈\Local.code{${ctx}}を用いて
-%         インラインテキスト\Local.code{${it}}を変換したインラインボックス列を返す．
+%       +command (`read-inline`) (tCTX --> (tIT --> tIB)) {
+%         \code{read-inline ${ctx} ${it}}で
+%         文脈\code{${ctx}}を用いて
+%         インラインテキスト\code{${it}}を変換したインラインボックス列を返す．
 %   %      \figure({テスト})('<+p{
 %   %        これは図だと思ってください．文章はテストのために一時的に入れているものです．
 %   %        \repeat(10){象の卵は大きいぞう．}
 %   %      }>);
 %       }
-%       +command (`inline-skip`) (Local.tL --> tIB) {
-%         \Local.code{inline-skip ${l}}で
-%         長さ\Local.code{${l}}の（伸縮しない）インライン方向の空白を返す．
+%       +command (`inline-skip`) (tL --> tIB) {
+%         \code{inline-skip ${l}}で
+%         長さ\code{${l}}の（伸縮しない）インライン方向の空白を返す．
 %   %      \figure({めっちゃリプライに使われる成瀬順})('<+centered-image(10cm)(`../tests/naruse1.jpg`);>);
 %       }
-%       +command (`inline-glue`) (Local.tL --> (Local.tL --> (Local.tL --> tIB))) {
-%         \Local.code{inline-glue ${l_0} ${l_1} ${l_2}}で
-%         自然長\Local.code{${l_0}}，縮小基準長\Local.code{${l_1}}，伸長基準長\Local.code{${l_2}}
+%       +command (`inline-glue`) (tL --> (tL --> (tL --> tIB))) {
+%         \code{inline-glue ${l_0} ${l_1} ${l_2}}で
+%         自然長\code{${l_0}}，縮小基準長\code{${l_1}}，伸長基準長\code{${l_2}}
 %         のインライン方向の空白を返す．
 %       }
-%       +command (`inline-fil`) (Local.tIB) {
+%       +command (`inline-fil`) (tIB) {
 %         自然長0，罰則なしで任意有限長に伸長できるインライン方向の空白．
 %         左揃え，右揃え，中央揃えなどに有用である．
 %         特に段落の整形を目的として
-%         \Local.code{line-break true true (${ib} ++ inline-fil)}の形で使う場面が多い．
+%         \code{line-break true true (${ib} ++ inline-fil)}の形で使う場面が多い．
 %       }
-%       +command (`++`) (Local.tIB --> (Local.tIB --> tIB)) {
+%       +command (`++`) (tIB --> (tIB --> tIB)) {
 %         2つのインラインボックス列を結合して返す．
 %       }
-%       +command (`inline-nil`) (Local.tIB) {
+%       +command (`inline-nil`) (tIB) {
 %         長さ0のインライン方向の空白．
-%         より正確に言えばこれは空白ではなく，任意のインラインボックス列\Local.code{${ib}}に対して
-%         \Local.code{${ib} ++ inline-nil}が\Local.code{${ib}}と全く同様に振舞うようになっている．
+%         より正確に言えばこれは空白ではなく，任意のインラインボックス列\code{${ib}}に対して
+%         \code{${ib} ++ inline-nil}が\code{${ib}}と全く同様に振舞うようになっている．
 %       }
-%       +command (`embed-string`) (Local.tS --> tIT) {
+%       +command (`embed-string`) (tS --> tIT) {
 %         文字列をインラインテキストに変換する．
 %       }
-%       +command (`embed-math`) (Local.tCTX --> (Local.tMATH --> tIB)) {
+%       +command (`embed-math`) (tCTX --> (tMATH --> tIB)) {
 %         数式をインラインボックス列に変換する．
 %       }
-%       +command (`discretionary`) (Local.tI --> (Local.tIB --> (Local.tIB --> (Local.tIB --> tIB)))) {
-%         \Local.code{line-break}による行分割の候補位置をつくる．
-%         \Local.code{discretionary ${p} ${ib_0} ${ib_1} ${ib_2}}で
-%         「行分割されなかったときは\Local.code{${ib_0}}を出力し，
-%         行分割されたときは分割位置の直前に\Local.code{${ib_1}}を挿入し直後に\Local.code{${ib_2}}を挿入する」
+%       +command (`discretionary`) (tI --> (tIB --> (tIB --> (tIB --> tIB)))) {
+%         \code{line-break}による行分割の候補位置をつくる．
+%         \code{discretionary ${p} ${ib_0} ${ib_1} ${ib_2}}で
+%         「行分割されなかったときは\code{${ib_0}}を出力し，
+%         行分割されたときは分割位置の直前に\code{${ib_1}}を挿入し直後に\code{${ib_2}}を挿入する」
 %         という効果をもつインラインボックス列を返す．
 %         なお，この位置で行分割することになるか否かにかかわらず，
-%         各\Local.code{${ib_i}}内にあるすべての行分割候補位置は行分割しない箇所として扱われる．
-%         \Local.code{${p}}はペナルティ値であり，“どの程度行分割してほしくないか”の指標である．
-%         \Local.code{10000}以上で「最悪」，すなわち「本当に行分割することが避けられない場合を除いてなんとしてもここで行分割しないでほしい」
-%         ことを指し，\Local.code{0}で「行分割の抑制も促進もしない」を指す．
-%         \Local.code{0}未満は「行分割しないよりも行分割する方が望ましい」ことを意味し，よりその位置での行分割が促進される．
+%         各\code{${ib_i}}内にあるすべての行分割候補位置は行分割しない箇所として扱われる．
+%         \code{${p}}はペナルティ値であり，“どの程度行分割してほしくないか”の指標である．
+%         \code{10000}以上で「最悪」，すなわち「本当に行分割することが避けられない場合を除いてなんとしてもここで行分割しないでほしい」
+%         ことを指し，\code{0}で「行分割の抑制も促進もしない」を指す．
+%         \code{0}未満は「行分割しないよりも行分割する方が望ましい」ことを意味し，よりその位置での行分割が促進される．
 %       }
-%       +command (`script-guard`) (Local.tSCR --> (Local.tIB --> tIB)) {
-%         \Local.code{script-guard ${script} ${ib}}で，インラインボックス列\Local.code{${ib}}を
-%         文字体系\Local.code{${script}}の単語として扱う．これは和欧間空白など異なる文字体系間のスペースの挿入の有無に影響を与える．
+%       +command (`script-guard`) (tSCR --> (tIB --> tIB)) {
+%         \code{script-guard ${script} ${ib}}で，インラインボックス列\code{${ib}}を
+%         文字体系\code{${script}}の単語として扱う．これは和欧間空白など異なる文字体系間のスペースの挿入の有無に影響を与える．
 %       }
-%       +command (`get-natural-width`) (Local.tIB --> tL) {
+%       +command (`get-natural-width`) (tIB --> tL) {
 %         インラインボックス列を受け取り，その自然な幅を返す．
 %       }
-%       +command (`get-natural-metrics`) (Local.tIB --> tPROD [tL, tL, tL]) {
+%       +command (`get-natural-metrics`) (tIB --> tPROD [tL; tL; tL]) {
 %         インラインボックス列を受け取り，その自然な幅・高さ・深さを返す．
 %       }
-%       +command (`inline-graphics`) (Local.tL --> (Local.tL --> (Local.tL --> ((Local.tPT --> tLIST tGR) --> tIB)))) {
-%         \Local.code{inline-graphics ${w} ${h} ${d} ${igr}}で
-%         幅\Local.code{${w}}，高さ\Local.code{${h}}，深さ\Local.code{${d}}の
-%         領域にインライングラフィックス\Local.code{${igr}}を描画したものをインラインボックス列として返す．
+%       +command (`inline-graphics`) (tL --> (tL --> (tL --> ((tPT --> tLIST tGR) --> tIB)))) {
+%         \code{inline-graphics ${w} ${h} ${d} ${igr}}で
+%         幅\code{${w}}，高さ\code{${h}}，深さ\code{${d}}の
+%         領域にインライングラフィックス\code{${igr}}を描画したものをインラインボックス列として返す．
 %       }
-%       +commands [`inline-frame-outer`, `inline-frame-inner`] (Local.tPADS --> (Local.tDECO --> (Local.tIB --> tIB))) {
-%         \Local.code{inline-frame-outer ${p} ${d} ${ib}}で
-%         パディング指定\Local.code{${p}}，装飾指定\Local.code{${d}}，
-%         内容\Local.code{${ib}}の，途中で行分割不可能なフレームを返す．
-%         \Local.code{inline-frame-outer}は外側の都合に合わせて内側の空白などが伸縮するのに対し，
-%         \Local.code{inline-frame-inner}は内側の自然な長さのみにより組まれる．
+%       +commands [`inline-frame-outer`; `inline-frame-inner`] (tPADS --> (tDECO --> (tIB --> tIB))) {
+%         \code{inline-frame-outer ${p} ${d} ${ib}}で
+%         パディング指定\code{${p}}，装飾指定\code{${d}}，
+%         内容\code{${ib}}の，途中で行分割不可能なフレームを返す．
+%         \code{inline-frame-outer}は外側の都合に合わせて内側の空白などが伸縮するのに対し，
+%         \code{inline-frame-inner}は内側の自然な長さのみにより組まれる．
 %         すなわち，後者は枠で囲われた部分全体が“1つの文字”のように振舞う．
 %       }
-%       +command (`inline-frame-breakable`) (Local.tPADS --> (Local.tDECOSET --> (Local.tIB --> tIB))) {
-%         \Local.code{inline-frame-breakable ${p} ${ds} ${ib}}で
-%         パディング指定\Local.code{${p}}，装飾4つ組指定\Local.code{${ds}}，
-%         内容\Local.code{${ib}}の，途中で行分割可能なフレームを返す．
+%       +command (`inline-frame-breakable`) (tPADS --> (tDECOSET --> (tIB --> tIB))) {
+%         \code{inline-frame-breakable ${p} ${ds} ${ib}}で
+%         パディング指定\code{${p}}，装飾4つ組指定\code{${ds}}，
+%         内容\code{${ib}}の，途中で行分割可能なフレームを返す．
 %       }
-%       +commands [`embed-block-top`, `embed-block-bottom`] (Local.tCTX --> (Local.tL --> ((Local.tCTX --> tBB) --> tIB))) {
-%         \Local.code{embed-block-top ${ctx} ${l} ${k}}
-%         で文脈\Local.code{${ctx}}をテキスト幅に関して\Local.code{${l}}に変更して
-%         継続\Local.code{${k}}に渡し，
+%       +commands [`embed-block-top`; `embed-block-bottom`] (tCTX --> (tL --> ((tCTX --> tBB) --> tIB))) {
+%         \code{embed-block-top ${ctx} ${l} ${k}}
+%         で文脈\code{${ctx}}をテキスト幅に関して\code{${l}}に変更して
+%         継続\code{${k}}に渡し，
 %         その結果のブロックボックス列をインラインボックス列内に埋め込む．
 %         高さと深さは中身の最初の行のベースラインが外のベースラインと一致するように決められる．
-%         \Local.code{embed-block-bottom}は
+%         \code{embed-block-bottom}は
 %         最後の行のベースラインが外のベースラインと一致することを除いて
-%         \Local.code{embed-block-top}と同様．
+%         \code{embed-block-top}と同様．
 %       }
-%       +commands [`line-stack-top`, `line-stack-bottom`] ((Local.tLIST tIB) --> tIB) {
+%       +commands [`line-stack-top`; `line-stack-bottom`] ((tLIST tIB) --> tIB) {
 %         複数のインラインボックス列をブロック方向に積む．全体の幅は最も長い行の幅となる．
-%         \Local.code{line-stack-top}は最初の行のベースラインが外のベースラインと一致するように位置が決められ，
-%         \Local.code{line-stack-bottom}は最後の行に合わせて決められる．
+%         \code{line-stack-top}は最初の行のベースラインが外のベースラインと一致するように位置が決められ，
+%         \code{line-stack-bottom}は最後の行に合わせて決められる．
 %       }
-%       +command (`embed-block-breakable`) (Local.tCTX --> (Local.tBB --> tIB)) {
-%         \Local.code{embed-block-breakable ${ctx} ${bb}}で\Local.code{${bb}}をインラインボックス列に“擬態”させて型検査を通し，インラインボックス列を組む時になってその“擬態”を解き，ブロックボックス列として振る舞うようにする．
+%       +command (`embed-block-breakable`) (tCTX --> (tBB --> tIB)) {
+%         \code{embed-block-breakable ${ctx} ${bb}}で\code{${bb}}をインラインボックス列に“擬態”させて型検査を通し，インラインボックス列を組む時になってその“擬態”を解き，ブロックボックス列として振る舞うようにする．
 %       }
 %     >
 %     +subsection {ブロック方向に関する処理} <
-%       +command (`read-block`) (Local.tCTX --> (Local.tBT --> tBB)) {
-%         \Local.code{read-block ${ctx} ${bt}}で
-%         文脈\Local.code{${ctx}}に従ってブロックテキスト\Local.code{${bt}}を
+%       +command (`read-block`) (tCTX --> (tBT --> tBB)) {
+%         \code{read-block ${ctx} ${bt}}で
+%         文脈\code{${ctx}}に従ってブロックテキスト\code{${bt}}を
 %         変換したブロックボックス列を返す．
 %       }
-%       +command (`line-break`) (Local.tB --> (Local.tB --> (Local.tCTX --> (Local.tIB --> tBB)))) {
-%         \Local.code{line-break ${b_1} ${b_2} ${ctx} ${ib}}
-%         で文脈\Local.code{${ctx}}にしたがってインラインボックス列\Local.code{${ib}}を
+%       +command (`line-break`) (tB --> (tB --> (tCTX --> (tIB --> tBB)))) {
+%         \code{line-break ${b_1} ${b_2} ${ctx} ${ib}}
+%         で文脈\code{${ctx}}にしたがってインラインボックス列\code{${ib}}を
 %         適切に行分割して段落の形に組んだブロックボックス列を返す．
-%         \Local.code{${b_1}}が\Local.code{true}のときはその段落の直前での改ページを許し，
-%         \Local.code{false}のときは許さない．
-%         \Local.code{${b_2}}も同様に段落の直後で改ページを許すかの指定である．
-%         \Local.subject-to-change;
+%         \code{${b_1}}が\code{true}のときはその段落の直前での改ページを許し，
+%         \code{false}のときは許さない．
+%         \code{${b_2}}も同様に段落の直後で改ページを許すかの指定である．
+%         \subject-to-change;
 %       }
-% %      +command (`form-document`) (Local.tCTX --> (Local.tBB --> tDOC)) {
+% %      +command (`form-document`) (tCTX --> (tBB --> tDOC)) {
 % %        与えられたインラインボックス列を適切にページ分割して文書に整形する．
 % %      }
-%       +command (`+++`) (Local.tBB --> (Local.tBB --> tBB)) {
+%       +command (`+++`) (tBB --> (tBB --> tBB)) {
 %         2つのブロックボックス列を結合して返す．
 %       }
-%       +command (`block-skip`) (Local.tL --> tBB) {
-%         \Local.code{block-skip ${l}}で
-%         長さ\Local.code{${l}}のブロック方向の空白を返す．
+%       +command (`block-skip`) (tL --> tBB) {
+%         \code{block-skip ${l}}で
+%         長さ\code{${l}}のブロック方向の空白を返す．
 %       }
-%       +command (`block-nil`) (Local.tBB) {
-%         高さ0のブロックボックス列．より正確には，任意のブロックボックス列\Local.code{${bb}}に対して
-%         \Local.code{${bb}}と\Local.code{${bb} +++ block-nil}が全く等価に振舞うようになっている．
+%       +command (`block-nil`) (tBB) {
+%         高さ0のブロックボックス列．より正確には，任意のブロックボックス列\code{${bb}}に対して
+%         \code{${bb}}と\code{${bb} +++ block-nil}が全く等価に振舞うようになっている．
 %       }
-%       +command (`block-frame-breakable`) (Local.tCTX --> (Local.tPADS --> (Local.tDECOSET --> ((Local.tCTX --> tBB) --> tBB)))) {
-%         \Local.code{block-frame-breakable ${ctx} ${pads} ${ds} ${k}}は
-%         文脈\Local.code{${ctx}}をテキスト幅に関して\Local.code{${pads}}を用いて変更して
-%         継続\Local.code{${k}}に渡し，その結果のブロックボックス列を装飾\Local.code{${ds}}のフレームで囲んだものを返す．
+%       +command (`block-frame-breakable`) (tCTX --> (tPADS --> (tDECOSET --> ((tCTX --> tBB) --> tBB)))) {
+%         \code{block-frame-breakable ${ctx} ${pads} ${ds} ${k}}は
+%         文脈\code{${ctx}}をテキスト幅に関して\code{${pads}}を用いて変更して
+%         継続\code{${k}}に渡し，その結果のブロックボックス列を装飾\code{${ds}}のフレームで囲んだものを返す．
 %         この処理でつくられるフレームは途中で改ページ可能である．
 %       }
-%       +command (`get-natural-length`) (Local.tBB --> tL) {
+%       +command (`get-natural-length`) (tBB --> tL) {
 %         ブロックボックス列を受け取り，そのブロック方向の長さを返す．
 %       }
 %     >
 %     +subsection {テキスト文脈に関する処理} <
-%       +command (`get-initial-context`) (Local.tL --> ((Local.tICMD tMATH) --> tCTX)) {
+%       +command (`get-initial-context`) (tL --> ((tICMD tMATH) --> tCTX)) {
 %         デフォルトのテキスト文脈を返す．
 %         第1引数は段落の幅を指定し，第2引数はインラインテキスト中に現れた数式に適用するコマンドを与える．
 %       }
-%       +command (`set-space-ratio`) (Local.tF --> (Local.tCTX --> tCTX)) {
-%         \Local.code{${ctx} \|\> set-space-ratio ${r}}で単語間空白の幅をフォントサイズの\Local.code{${r}}倍に変更したテキスト文脈を返す．
-%         \Local.subject-to-change;
+%       +command (`set-space-ratio`) (tF --> (tCTX --> tCTX)) {
+%         \code{${ctx} \|\> set-space-ratio ${r}}で単語間空白の幅をフォントサイズの\code{${r}}倍に変更したテキスト文脈を返す．
+%         \subject-to-change;
 %       }
-%       +command (`set-space-ratio-between-scripts`) (Local.tF --> (Local.tF --> (Local.tF --> (Local.tSCR --> (Local.tSCR --> (Local.tCTX --> tCTX)))))) {
-%         \Local.code{${ctx} \|\> set-space-ratio-between-scripts ${script_1} ${script_2} ${r_0} ${r_1} ${r_2}}で
-%         前方が文字体系\Local.code{${script_1}}の文字，
-%         後方が文字体系\Local.code{${script_2}}の文字，の隣接箇所で
+%       +command (`set-space-ratio-between-scripts`) (tF --> (tF --> (tF --> (tSCR --> (tSCR --> (tCTX --> tCTX)))))) {
+%         \code{${ctx} \|\> set-space-ratio-between-scripts ${script_1} ${script_2} ${r_0} ${r_1} ${r_2}}で
+%         前方が文字体系\code{${script_1}}の文字，
+%         後方が文字体系\code{${script_2}}の文字，の隣接箇所で
 %         自然長・収納基準長・伸長基準長の文字サイズに対する比率がそれぞれ
-%         \Local.code{${r_0}}・\Local.code{${r_1}}・\Local.code{${r_2}}になるようなグルーを
+%         \code{${r_0}}・\code{${r_1}}・\code{${r_2}}になるようなグルーを
 %         挿入するように変更したテキスト文脈を返す．
 %       }
-%       +command (`set-font-size`) (Local.tL --> (Local.tCTX --> tCTX)) {
-%         \Local.code{${ctx} \|\> set-font-size ${s}}でフォントサイズを\Local.code{${s}}に変更したテキスト文脈を返す．
+%       +command (`set-font-size`) (tL --> (tCTX --> tCTX)) {
+%         \code{${ctx} \|\> set-font-size ${s}}でフォントサイズを\code{${s}}に変更したテキスト文脈を返す．
 %       }
-%       +command (`get-font-size`) (Local.tCTX --> tL) {
+%       +command (`get-font-size`) (tCTX --> tL) {
 %         テキスト文脈が保持しているフォントサイズを返す．
 %       }
-%       +command (`set-font`) (Local.tSCR --> (Local.tFONT --> (Local.tCTX --> tCTX))) {
-%         \Local.code{${ctx} \|\> set-font ${script} ${font}}で
-%         文字体系\Local.code{${script}}の文字に対して使うフォントを\Local.code{${font}}に変更した文脈を返す．
+%       +command (`set-font`) (tSCR --> (tFONT --> (tCTX --> tCTX))) {
+%         \code{${ctx} \|\> set-font ${script} ${font}}で
+%         文字体系\code{${script}}の文字に対して使うフォントを\code{${font}}に変更した文脈を返す．
 %       }
-%       +command (`get-font`) (Local.tSCR --> (Local.tCTX --> Local.tFONT)) {
-%         \Local.code{get-font ${script} ${ctx}}で
-%         文字体系\Local.code{${script}}の文字に対して使うフォントを返す．
+%       +command (`get-font`) (tSCR --> (tCTX --> tFONT)) {
+%         \code{get-font ${script} ${ctx}}で
+%         文字体系\code{${script}}の文字に対して使うフォントを返す．
 %       }
-%       +command (`set-language`) (Local.tSCR --> (Local.tLANG --> (Local.tCTX --> tCTX))) {
-%         \Local.code{${ctx} \|\> set-language ${script} ${lang}}で
-%         文字体系\Local.code{${script}}に対して言語システム\Local.code{${lang}}を割り当てた文脈を返す．
+%       +command (`set-language`) (tSCR --> (tLANG --> (tCTX --> tCTX))) {
+%         \code{${ctx} \|\> set-language ${script} ${lang}}で
+%         文字体系\code{${script}}に対して言語システム\code{${lang}}を割り当てた文脈を返す．
 %       }
-%       +command (`get-language`) (Local.tSCR --> (Local.tCTX --> tLANG)) {
-%         \Local.code{${ctx} \|\> get-language ${script}}で
-%         文脈\Local.code{${ctx}}に於いて文字体系\Local.code{${script}}に割り当てられている言語システムを返す．
+%       +command (`get-language`) (tSCR --> (tCTX --> tLANG)) {
+%         \code{${ctx} \|\> get-language ${script}}で
+%         文脈\code{${ctx}}に於いて文字体系\code{${script}}に割り当てられている言語システムを返す．
 %       }
-%       +command (`set-math-font`) (Local.tS --> (Local.tCTX --> tCTX)) {
-%         \Local.code{${ctx} \|\> set-math-font ${fname}}で数式フォントを\Local.code{${fname}}に変更した文脈を返す．
+%       +command (`set-math-font`) (tS --> (tCTX --> tCTX)) {
+%         \code{${ctx} \|\> set-math-font ${fname}}で数式フォントを\code{${fname}}に変更した文脈を返す．
 %       }
-%       +command (`set-dominant-wide-script`) (Local.tSCR --> (Local.tCTX --> tCTX)) {
-%         \Local.code{${ctx} \|\> set-dominant-wide-script ${script}}で
-%         East\_Asian\_WidthプロパティがW (wide)，F (fullwidth)のいずれかである文字を文字体系\Local.code{${script}}の文字と看なす文脈を返す．
+%       +command (`set-dominant-wide-script`) (tSCR --> (tCTX --> tCTX)) {
+%         \code{${ctx} \|\> set-dominant-wide-script ${script}}で
+%         East\_Asian\_WidthプロパティがW (wide)，F (fullwidth)のいずれかである文字を文字体系\code{${script}}の文字と看なす文脈を返す．
 %       }
-%       +command (`get-dominant-wide-script`) (Local.tCTX --> Local.tSCR) {
+%       +command (`get-dominant-wide-script`) (tCTX --> tSCR) {
 %         受け取ったテキスト文脈に於いて
 %         East\_Asian\_WidthプロパティがW，Fのいずれかである文字がどの文字体系に属すると看なされているかを返す．
 %       }
-%       +command (`set-dominant-narrow-script`) (Local.tSCR --> (Local.tCTX --> tCTX)) {
-%         \Local.code{${ctx} \|\> set-dominant-wide-script ${script}}で
+%       +command (`set-dominant-narrow-script`) (tSCR --> (tCTX --> tCTX)) {
+%         \code{${ctx} \|\> set-dominant-wide-script ${script}}で
 %         East\_Asian\_WidthプロパティがNa (narrow)，H (halfwidth)，A (ambiguous)，N (neutral)のいずれか
-%         である文字を文字体系\Local.code{${script}}の文字と看なす文脈を返す．
+%         である文字を文字体系\code{${script}}の文字と看なす文脈を返す．
 %       }
-%       +command (`get-dominant-narrow-script`) (Local.tCTX --> Local.tSCR) {
+%       +command (`get-dominant-narrow-script`) (tCTX --> tSCR) {
 %         受け取ったテキスト文脈に於いて
 %         East\_Asian\_WidthプロパティがNa，H，A，Nのいずれかである文字がどの文字体系に属すると看なされているかを返す．
 %       }
-%       +command (`set-text-color`) (Local.tCLR --> (Local.tCTX --> tCTX)) {
-%         \Local.code{${ctx} \|\> set-text-color ${color}}で文字色を\Local.code{${color}}に変更した文脈を返す．
+%       +command (`set-text-color`) (tCLR --> (tCTX --> tCTX)) {
+%         \code{${ctx} \|\> set-text-color ${color}}で文字色を\code{${color}}に変更した文脈を返す．
 %       }
-%       +command (`get-text-color`) (Local.tCTX --> tCLR) {
+%       +command (`get-text-color`) (tCTX --> tCLR) {
 %         テキスト文脈が保持している文字色を返す．
 %       }
-%       +command (`set-leading`) (Local.tL --> (Local.tCTX --> tCTX)) {
-%         \Local.code{${ctx} \|\> set-leading ${l}}で行送りを\Local.code{${l}}に変更した文脈を返す．
+%       +command (`set-leading`) (tL --> (tCTX --> tCTX)) {
+%         \code{${ctx} \|\> set-leading ${l}}で行送りを\code{${l}}に変更した文脈を返す．
 %         これはフォントサイズに対する比での指定ではなく，直接長さを指定するプリミティヴであることに注意．
 %         すなわち，フォントサイズを変更しても標準の行送りの長さは変更されない．
 %       }
-%       +command (`set-min-gap-of-lines`) (Local.tL --> (Local.tCTX --> tCTX)) {
-%         \Local.code{${ctx} \|\> set-min-gap-of-lines ${l}}で行間の最小値を引数の値に変更した文脈を返す．
+%       +command (`set-min-gap-of-lines`) (tL --> (tCTX --> tCTX)) {
+%         \code{${ctx} \|\> set-min-gap-of-lines ${l}}で行間の最小値を引数の値に変更した文脈を返す．
 %       }
-%       +command (`set-paragraph-margin`) (Local.tL --> tL --> ((Local.tCTX --> tCTX))) {
-%         \Local.code{${ctx} \|\> set-min-gap-of-lines ${l_1} ${l_2}}で段落の上のマージンを\Local.code{${l_1}}に，
-%         段落の下のマージンを\Local.code{${l_2}}にするように変更したテキスト文脈を返す．
-%         \Local.subject-to-change;
+%       +command (`set-paragraph-margin`) (tL --> (tL --> (tCTX --> tCTX))) {
+%         \code{${ctx} \|\> set-paragraph-margin ${l_1} ${l_2}}で段落の上のマージンを\code{${l_1}}に，
+%         段落の下のマージンを\code{${l_2}}にするように変更したテキスト文脈を返す．
+%         \subject-to-change;
 %       }
-%       +command (`set-manual-rising`) (Local.tL --> (Local.tCTX --> tCTX)) {
-%         \Local.code{${ctx} \|\> set-manual-rising ${l}}で文字全体を長さ\Local.code{${l}}だけ持ち上げて組む文脈を返す．
+%       +command (`set-manual-rising`) (tL --> (tCTX --> tCTX)) {
+%         \code{${ctx} \|\> set-manual-rising ${l}}で文字全体を長さ\code{${l}}だけ持ち上げて組む文脈を返す．
 %       }
-%       +command (`get-text-width`) (Local.tCTX --> tL) {
-%         テキスト文脈が保持している段落幅を返す．\Local.code{line-break}はこの長さにしたがって行分割を行なう．
+%       +command (`get-text-width`) (tCTX --> tL) {
+%         テキスト文脈が保持している段落幅を返す．\code{line-break}はこの長さにしたがって行分割を行なう．
 %       }
-%       +command (`set-word-break-penalty`) (Local.tI --> (Local.tCTX --> tCTX)) {
-%         \Local.code{set-word-break-penalty ${p} ${ctx}}で“そこで行分割された場合に加算されるペナルティ値”を\Local.code{${p}}に設定したテキスト文脈を返す．
+%       +command (`set-word-break-penalty`) (tI --> (tCTX --> tCTX)) {
+%         \code{set-word-break-penalty ${p} ${ctx}}で“そこで行分割された場合に加算されるペナルティ値”を\code{${p}}に設定したテキスト文脈を返す．
 %       }
-%       +command (`set-every-word-break`) (Local.tIB --> (Local.tIB --> (Local.tCTX --> tCTX))) {
-%         \Local.code{set-every-word-break ${ib_1} ${ib_2} ${ctx}}で行分割候補箇所の“そこで行分割された場合に直前の行末に入る内容”を\Local.code{${ib_1}}に，
-%         “そこで行分割された場合に直後の行頭に入る内容”を\Local.code{${ib_2}}に設定したテキスト文脈を返す．
+%       +command (`set-every-word-break`) (tIB --> (tIB --> (tCTX --> tCTX))) {
+%         \code{set-every-word-break ${ib_1} ${ib_2} ${ctx}}で行分割候補箇所の“そこで行分割された場合に直前の行末に入る内容”を\code{${ib_1}}に，
+%         “そこで行分割された場合に直後の行頭に入る内容”を\code{${ib_2}}に設定したテキスト文脈を返す．
 %       }
-%       +command (`get-every-word-break`) (Local.tCTX --> (Local.tPROD [tIB, tIB])) {
-%         \Local.code{set-every-word-break}で設定されている\Local.code{${ib_1}}と\Local.code{${ib_2}}の内容を取得する．
+%       +command (`get-every-word-break`) (tCTX --> (tPROD [tIB; tIB])) {
+%         \code{set-every-word-break}で設定されている\code{${ib_1}}と\code{${ib_2}}の内容を取得する．
 %       }
-%       +command (`set-hyphen-penalty`) (Local.tI --> (Local.tCTX --> tCTX)) {
+%       +command (`set-hyphen-penalty`) (tI --> (tCTX --> tCTX)) {
 %         ハイフネーションによるペナルティを設定する．
 %         デフォルトは100である．
 %       }
-%       +command (`set-hyphen-min`) (Local.tI --> (Local.tI --> (Local.tCTX --> tCTX))) {
-%         \Local.code{${ctx} \|\> set-hyphen-min ${n_1} ${n_2}} で
-%         ハイフネーションによって単語が分割されるときの左側の最小文字数を \Local.code{${n_1}} に，
-%         右側の最小文字数を \Local.code{${n_2}} にそれぞれ設定したテキスト文脈を返す．
+%       +command (`set-hyphen-min`) (tI --> (tI --> (tCTX --> tCTX))) {
+%         \code{${ctx} \|\> set-hyphen-min ${n_1} ${n_2}} で
+%         ハイフネーションによって単語が分割されるときの左側の最小文字数を \code{${n_1}} に，
+%         右側の最小文字数を \code{${n_2}} にそれぞれ設定したテキスト文脈を返す．
 %       }
-     >
+%     >
 %     +subsection {数式に関する処理} <
-%       +command (`math-char`) (Local.tMATHCLS --> (Local.tS --> tMATH)) {
-%         \Local.code{math-char ${mathcls} ${s}}で文字列\Local.code{${s}}を数式中の文字として使えるようにしたものを返す．
-%         \Local.code{${mathcls}}はその文字をスペーシングに関してどのように扱ってほしいかの指定である．
+%       +command (`math-char`) (tMATHCLS --> (tS --> tMATH)) {
+%         \code{math-char ${mathcls} ${s}}で文字列\code{${s}}を数式中の文字として使えるようにしたものを返す．
+%         \code{${mathcls}}はその文字をスペーシングに関してどのように扱ってほしいかの指定である．
 %       }
-%       +command (`math-big-char`) (Local.tMATHCLS --> (Local.tS --> tMATH)) {
-%         \Local.code{math-char}の大型演算子版．
+%       +command (`math-big-char`) (tMATHCLS --> (tS --> tMATH)) {
+%         \code{math-char}の大型演算子版．
 %       }
-%       +command (`math-char-with-kern`) (Local.tMATHCLS --> (Local.tS --> (Local.tMKERNF --> (Local.tMKERNF --> tMATH)))) {
-%         \Local.code{math-char}と同様だが，添字や上附をつけるためのカーニング量を${y}座標に応じて長さを返す函数で指定できる．
+%       +command (`math-char-with-kern`) (tMATHCLS --> (tS --> (tMKERNF --> (tMKERNF --> tMATH)))) {
+%         \code{math-char}と同様だが，添字や上附をつけるためのカーニング量を${y}座標に応じて長さを返す函数で指定できる．
 %       }
-%       +command (`math-big-char-with-kern`) (Local.tMATHCLS --> (Local.tS --> (Local.tMKERNF --> (Local.tMKERNF --> tMATH)))) {
-%         \Local.code{math-char-with-kern}の大型演算子版．
+%       +command (`math-big-char-with-kern`) (tMATHCLS --> (tS --> (tMKERNF --> (tMKERNF --> tMATH)))) {
+%         \code{math-char-with-kern}の大型演算子版．
 %       }
-%       +commands [`math-sup`, `math-sub`, `math-upper`, `math-lower`] (Local.tMATH --> (Local.tMATH --> tMATH)) {
+%       +commands [`math-sup`; `math-sub`; `math-upper`; `math-lower`] (tMATH --> (tMATH --> tMATH)) {
 %         上附，添字，真上，真下．
 %       }
-%       +command (`math-frac`) (Local.tMATH --> (Local.tMATH --> tMATH)) {
+%       +command (`math-frac`) (tMATH --> (tMATH --> tMATH)) {
 %         分数．
 %       }
-%       +command (`math-radical`) ((Local.tOPT tMATH) --> (Local.tMATH --> tMATH)) {
+%       +command (`math-radical`) ((tOPT tMATH) --> (tMATH --> tMATH)) {
 %         根号．
-%         第1引数には現在のところ\Local.code{None}しか渡すことは出来ない．
+%         第1引数には現在のところ\code{None}しか渡すことは出来ない．
 %       }
-%       +command (`math-paren`) (Local.tPAREN --> (Local.tPAREN --> (Local.tMATH --> tMATH))) {
+%       +command (`math-paren`) (tPAREN --> (tPAREN --> (tMATH --> tMATH))) {
 %         中身に応じて自動で大きさが調整される括弧で囲う．
 %       }
-%       +command (`math-paren-with-middle`) (Local.tPAREN --> (Local.tPAREN --> (Local.tPAREN --> ((Local.tLIST tMATH) --> tMATH)))) {
+%       +command (`math-paren-with-middle`) (tPAREN --> (tPAREN --> (tPAREN --> ((tLIST tMATH) --> tMATH)))) {
 %         第3引数で与えた括弧で第4引数の数式のリストを区切って出力する．
-%         第1引数と第2引数の扱いは\Local.code{math-paren}を同じである．
+%         第1引数と第2引数の扱いは\code{math-paren}を同じである．
 %       }
-%       +command (`text-in-math`) (Local.tMATHCLS --> ((Local.tCTX --> tIB) --> tMATH)) {
+%       +command (`text-in-math`) (tMATHCLS --> ((tCTX --> tIB) --> tMATH)) {
 %         数式中にインラインボックス列を埋め込む．
 %       }
-%       +command (`math-variant-char`) (Local.tMATHCLS --> (Local.tMCSTY --> tMATH)) {
+%       +command (`math-variant-char`) (tMATHCLS --> (tMCSTY --> tMATH)) {
 %         数式用文字書体の指定（イタリック，ボールドローマン，スクリプトなど）に応じて変化する文字を定義する．
 %       }
-%       +command (`math-color`) (Local.tCLR --> (Local.tMATH --> tMATH)) {
+%       +command (`math-color`) (tCLR --> (tMATH --> tMATH)) {
 %         数式の文字色を変更する．
 %       }
-%       +command (`math-char-class`) (Local.tMCCLS --> (Local.tMATH --> tMATH)) {
+%       +command (`math-char-class`) (tMCCLS --> (tMATH --> tMATH)) {
 %         数式用文字書体を変更する．
 %       }
-%       +command (`math-concat`) (Local.tMATH --> (Local.tMATH --> tMATH)) {
+%       +command (`math-concat`) (tMATH --> (tMATH --> tMATH)) {
 %         数式を結合する．
 %       }
-%       +command (`math-group`) (Local.tMATHCLS --> (Local.tMATHCLS --> (Local.tMATH --> tMATH))) {
-%         \Local.code{math-group ${cls_1} ${cls_2} ${m}}で数式\Local.code{${m}}内は通常通りのスペーシングで組むが，
-%         \Local.code{${m}}全体の左側のスペーシングについては\Local.code{${cls_1}}を，
-%         右側のスペーシングについては\Local.code{${cls_2}}を持っているかのように扱わせる．
+%       +command (`math-group`) (tMATHCLS --> (tMATHCLS --> (tMATH --> tMATH))) {
+%         \code{math-group ${cls_1} ${cls_2} ${m}}で数式\code{${m}}内は通常通りのスペーシングで組むが，
+%         \code{${m}}全体の左側のスペーシングについては\code{${cls_1}}を，
+%         右側のスペーシングについては\code{${cls_2}}を持っているかのように扱わせる．
 %       }
-%       +command (`math-pull-in-scripts`) (Local.tMATHCLS --> (Local.tMATHCLS --> ((Local.tOPT tMATH --> (Local.tOPT tMATH --> tMATH)) --> tMATH))) {
+%       +command (`math-pull-in-scripts`) (tMATHCLS --> (tMATHCLS --> ((tOPT tMATH --> (tOPT tMATH --> tMATH)) --> tMATH))) {
 %         添字と指数がつけられたときに，“それらを内側に取り込んで使える”数式を作成する．
-%         \Local.code{math-pull-in-scripts ${cls_1} ${cls_2} ${f}}で
-%         \Local.code{${m}}全体の左側のスペーシングについては\Local.code{${cls_1}}を，
-%         右側のスペーシングについては\Local.code{${cls_2}}を持っているかのように扱わせる．
+%         \code{math-pull-in-scripts ${cls_1} ${cls_2} ${f}}で
+%         \code{${m}}全体の左側のスペーシングについては\code{${cls_1}}を，
+%         右側のスペーシングについては\code{${cls_2}}を持っているかのように扱わせる．
 %         “中身の数式”は使われた箇所で，
 %         \listing {
-%           * 添字も指数も付かなかった場合：\Local.code{${f} None None}
-%           * 添字\Local.code{${m_1}}だけついた場合：\Local.code{${f} Some(${m_1}) None}
-%           * 指数\Local.code{${m_2}}だけついた場合：\Local.code{${f} None Some(${m_2})}
-%           * 添字\Local.code{${m_1}}も指数\Local.code{${m_2}}もついた場合：\Local.code{${f} Some(${m_1}) Some(${m_2})}
+%           * 添字も指数も付かなかった場合：\code{${f} None None}
+%           * 添字\code{${m_1}}だけついた場合：\code{${f} Some(${m_1}) None}
+%           * 指数\code{${m_2}}だけついた場合：\code{${f} None Some(${m_2})}
+%           * 添字\code{${m_1}}も指数\code{${m_2}}もついた場合：\code{${f} Some(${m_1}) Some(${m_2})}
 %         }
 %         を評価した結果の数式となる．
 %       }
-%       +commands [`get-left-math-class`, `get-right-math-class`] (Local.tCTX --> (Local.tMATH --> tOPT tMATHCLS)) {
+%       +commands [`get-left-math-class`; `get-right-math-class`] (tCTX --> (tMATH --> tOPT tMATHCLS)) {
 %         第1引数のテキスト処理文脈に基づき，第2引数の数式の
 %         左端と右端がそれぞれどのような属性の “アトム” になっているか返す．
-%         数式が空の場合は\Local.code{None}が返る．
+%         数式が空の場合は\code{None}が返る．
 %       }
 %     >
 %     +subsection {画像に関する処理} <
@@ -652,184 +652,184 @@ StdJaBook.document (|
 %         外部の画像ファイルを読み込んで用いるためのプリミティヴを（まだ少数ながら）用意してある．
 %         現状ではPDFとJPEGのみをサポートしている．
 %       }
-%       +command (`load-pdf-image`) (Local.tS --> (Local.tI --> tIMG)) {
-%         外部PDFファイルのパスとページ番号\Local.code{${n}}（最初のページを1ページと数える）を受け取り，そのPDFの${n}ページ目を
+%       +command (`load-pdf-image`) (tS --> (tI --> tIMG)) {
+%         外部PDFファイルのパスとページ番号\code{${n}}（最初のページを1ページと数える）を受け取り，そのPDFの${n}ページ目を
 %         画像情報として返す．
 %         指定されたファイルが存在しない場合の動作は未定義．
 %         現在の実装では実行時エラーとなり処理を中止する．
-%         \Local.subject-to-change;
+%         \subject-to-change;
 %       }
-%       +command (`load-image`) (Local.tS --> tIMG) {
+%       +command (`load-image`) (tS --> tIMG) {
 %         外部の画像ファイルのパスを受け取り，その内容を画像情報として返す．
 %         現状では色空間がグレイスケールまたはRGBのJPEGファイルのみをサポートする．
 %         指定されたファイルが存在しない場合の動作は未定義．
 %         現在の実装では実行時エラーとなり処理を中止する．
-%         \Local.subject-to-change;
+%         \subject-to-change;
 %       }
-%       +command (`use-image-by-width`) (Local.tIMG --> (Local.tL --> tIB)) {
-%         \Local.code{use-image-by-width ${img} ${w}}で
-%         画像\Local.code{${img}}を幅\Local.code{${w}}の大きさで描画したものをインラインボックス列として返す．
+%       +command (`use-image-by-width`) (tIMG --> (tL --> tIB)) {
+%         \code{use-image-by-width ${img} ${w}}で
+%         画像\code{${img}}を幅\code{${w}}の大きさで描画したものをインラインボックス列として返す．
 %       }
 %     >
 %     +subsection {グラフィックスに関する処理} <
-%       +command (`start-path`) (Local.tPT --> tPRP) {
+%       +command (`start-path`) (tPT --> tPRP) {
 %         点を受け取り，その点からパスを開始する．
 %       }
-%       +command (`line-to`) (Local.tPT --> (Local.tPRP --> tPRP)) {
-%         \Local.code{${prepath} \|\> line-to ${v}}で
-%         未完パス\Local.code{${prepath}}を終点から点\Local.code{${v}}へと線分で延長したものを返す．
+%       +command (`line-to`) (tPT --> (tPRP --> tPRP)) {
+%         \code{${prepath} \|\> line-to ${v}}で
+%         未完パス\code{${prepath}}を終点から点\code{${v}}へと線分で延長したものを返す．
 %       }
-%       +command (`bezier-to`) (Local.tPT --> (Local.tPT --> (Local.tPT --> (Local.tPRP --> tPRP)))) {
-%         \Local.code{${prepath} \|\> bezier-to ${u_1} ${u_2} ${v}}で
-%         未完パス\Local.code{${prepath}}を終点から点\Local.code{${v}}へとBezier曲線で延長したものを返す．
-%         \Local.code{${u_1}}と\Local.code{${u_2}}は制御点である．
+%       +command (`bezier-to`) (tPT --> (tPT --> (tPT --> (tPRP --> tPRP)))) {
+%         \code{${prepath} \|\> bezier-to ${u_1} ${u_2} ${v}}で
+%         未完パス\code{${prepath}}を終点から点\code{${v}}へとBezier曲線で延長したものを返す．
+%         \code{${u_1}}と\code{${u_2}}は制御点である．
 %       }
-%       +command (`close-with-line`) (Local.tPRP --> tPATH) {
+%       +command (`close-with-line`) (tPRP --> tPATH) {
 %         未完パスを受け取り，起点と終点を線分で結んで閉じてできるパスを返す．
 %       }
-%       +command (`close-with-bezier`) (Local.tPT --> (Local.tPT --> (Local.tPRP --> tPATH))) {
-%         \Local.code{${prepath} \|\> close-with-bezier ${u_1} ${u_2}}で
-%         未完パス\Local.code{${prepath}}の起点と終点を制御点\Local.code{${u_1}}，\Local.code{${u_2}}のBezier曲線で結んで閉じてできるパスを返す．
+%       +command (`close-with-bezier`) (tPT --> (tPT --> (tPRP --> tPATH))) {
+%         \code{${prepath} \|\> close-with-bezier ${u_1} ${u_2}}で
+%         未完パス\code{${prepath}}の起点と終点を制御点\code{${u_1}}，\code{${u_2}}のBezier曲線で結んで閉じてできるパスを返す．
 %       }
-%       +command (`terminate-path`) (Local.tPRP --> tPATH) {
+%       +command (`terminate-path`) (tPRP --> tPATH) {
 %         未完パスを受け取り，開いたままのパスとして返す．
 %       }
-%       +command (`unite-path`) (Local.tPATH --> (Local.tPATH --> tPATH)) {
+%       +command (`unite-path`) (tPATH --> (tPATH --> tPATH)) {
 %         2つのパスを統合して1つにする．これはドーナツ形など中空のパスをつくるのに必須である．
 %       }
-%       +command (`clip-graphics-by-path`) (Local.tPATH --> (Local.tGR --> tGR)) {
-%         \Local.code{clip-graphics-by-path pat gr}でグラフィクス\Local.code{gr}をパス\Local.code{pat}で切り抜く。
+%       +command (`clip-graphics-by-path`) (tPATH --> (tGR --> tGR)) {
+%         \code{clip-graphics-by-path pat gr}でグラフィクス\code{gr}をパス\code{pat}で切り抜く。
 %       }
-%       +command (`fill`) (Local.tCLR --> (Local.tPATH --> tGR)) {
-%         \Local.code{fill ${color} ${path}}でパス\Local.code{${path}}の内側を色\Local.code{${color}}で塗ったグラフィックスを返す．
+%       +command (`fill`) (tCLR --> (tPATH --> tGR)) {
+%         \code{fill ${color} ${path}}でパス\code{${path}}の内側を色\code{${color}}で塗ったグラフィックスを返す．
 %         パスのどこが内側であるかは偶奇則によって決められる．
 %       }
-%       +command (`dashed-stroke`) (Local.tL --> ((Local.tPROD [tL, tL, tL]) --> (Local.tCLR --> (Local.tPATH --> tGR)))) {
-%         \Local.code{dashed-stroke ${t} ${\paren{len, space, start}} ${color} ${path}}で
-%         パス\Local.code{${path}}を幅\Local.code{${t}}，色\Local.code{${color}}の破線として描いたグラフィックスを返す．
-%         このとき，\Local.code{${len}}で破線一つ一つの長さを指定し，\Local.code{${space}}で破線同士の間の長さを指定し，\Local.code{${start}}で最初の破線の長さを指定する．
+%       +command (`dashed-stroke`) (tL --> ((tPROD [tL; tL; tL]) --> (tCLR --> (tPATH --> tGR)))) {
+%         \code{dashed-stroke ${t} ${\paren{len, space, start}} ${color} ${path}}で
+%         パス\code{${path}}を幅\code{${t}}，色\code{${color}}の破線として描いたグラフィックスを返す．
+%         このとき，\code{${len}}で破線一つ一つの長さを指定し，\code{${space}}で破線同士の間の長さを指定し，\code{${start}}で最初の破線の長さを指定する．
 %       }
-%       +command (`stroke`) (Local.tL --> (Local.tCLR --> (Local.tPATH --> tGR))) {
-%         \Local.code{stroke ${t} ${color} ${path}}で
-%         パス\Local.code{${path}}を幅\Local.code{${t}}，色\Local.code{${color}}の線として描いたグラフィックスを返す．
-%         \Local.subject-to-change;
+%       +command (`stroke`) (tL --> (tCLR --> (tPATH --> tGR))) {
+%         \code{stroke ${t} ${color} ${path}}で
+%         パス\code{${path}}を幅\code{${t}}，色\code{${color}}の線として描いたグラフィックスを返す．
+%         \subject-to-change;
 %       }
-%       +command (`draw-text`) (Local.tPT --> (Local.tIB --> tGR)) {
-%         \Local.code{draw-text ${v} ${ib}}で位置\Local.code{${v}}をベースラインの左端として
-%         インラインボックス列\Local.code{${ib}}を置いたグラフィックスを返す．
+%       +command (`draw-text`) (tPT --> (tIB --> tGR)) {
+%         \code{draw-text ${v} ${ib}}で位置\code{${v}}をベースラインの左端として
+%         インラインボックス列\code{${ib}}を置いたグラフィックスを返す．
 %       }
-%       +command (`shift-path`) (Local.tPT --> (Local.tPATH --> tPATH)) {
-%         \Local.code{${path} \|\> shift-path ${pt}}で\Local.code{${path}}を
-%         \Local.code{${pt}}座標分だけ移動させる．
+%       +command (`shift-path`) (tPT --> (tPATH --> tPATH)) {
+%         \code{${path} \|\> shift-path ${pt}}で\code{${path}}を
+%         \code{${pt}}座標分だけ移動させる．
 %       }
-%       +command (`shift-graphics`) (Local.tPT --> (Local.tGR --> tGR)) {
-%         \Local.code{${gr} \|\> shift-graphics ${pt}}で\Local.code{${gr}}を
-%         \Local.code{${pt}}座標分だけ移動させる．
+%       +command (`shift-graphics`) (tPT --> (tGR --> tGR)) {
+%         \code{${gr} \|\> shift-graphics ${pt}}で\code{${gr}}を
+%         \code{${pt}}座標分だけ移動させる．
 %       }
-%       +command (`get-path-bbox`) (Local.tPATH --> (Local.tPROD [tPT, tPT])) {
-%         \Local.code{get-path-bbox ${path}}で\Local.code{${path}}を
+%       +command (`get-path-bbox`) (tPATH --> (tPROD [tPT; tPT])) {
+%         \code{get-path-bbox ${path}}で\code{${path}}を
 %         のバウンディングボックスの座標の内，${x}座標が取る最小値と
 %         ${y}座標が取る最小値の組${\paren{x_{min}, y_{min}}}と，
 %         ${x}座標が取る最大値と${y}座標が取る最大値の組${\paren{x_{max}, y_{max}}}
 %         を返す．
 %       }
-%       +command (`get-graphics-bbox`) (Local.tGR --> (Local.tPROD [tPT, tPT])) {
-%         \Local.code{get-path-bbox}と同様に\Local.code{get-graphics-bbox ${gr}}で\Local.code{${gr}}を
+%       +command (`get-graphics-bbox`) (tGR --> (tPROD [tPT; tPT])) {
+%         \code{get-path-bbox}と同様に\code{get-graphics-bbox ${gr}}で\code{${gr}}を
 %         のバウンディングボックスの大きさを返す．
 %         ストロークの太さは考慮されない．
 %       }
-%       +command (`linear-transform-path`) (Local.tF --> (Local.tF --> (Local.tF --> (Local.tF --> (Local.tPATH --> tPATH))))) {
-%         \Local.code{${path} \|\> linear-transform-path ${a} ${b} ${c} ${d}}で\Local.code{${path}}に対して線形変換を行う．
+%       +command (`linear-transform-path`) (tF --> (tF --> (tF --> (tF --> (tPATH --> tPATH))))) {
+%         \code{${path} \|\> linear-transform-path ${a} ${b} ${c} ${d}}で\code{${path}}に対して線形変換を行う．
 %       }
-%       +command (`linear-transform-graphics`) (Local.tF --> (Local.tF --> (Local.tF --> (Local.tF --> (Local.tGR --> tGR))))) {
-%         \Local.code{${gr} \|\> linear-transform-graphics ${a} ${b} ${c} ${d}}で\Local.code{${gr}}に対して線形変換を行う．
+%       +command (`linear-transform-graphics`) (tF --> (tF --> (tF --> (tF --> (tGR --> tGR))))) {
+%         \code{${gr} \|\> linear-transform-graphics ${a} ${b} ${c} ${d}}で\code{${gr}}に対して線形変換を行う．
 %       }
 %     >
 %     +subsection {相互参照に関する処理} <
-%       +command (`register-cross-reference`) (Local.tS --> (Local.tS --> tU)) {
-%         \Local.code{register-cross-reference ${key} ${value}}で相互参照のID\Local.code{${key}}に内容\Local.code{${value}}を紐づけて登録する．
-%         既に\Local.code{${key}}に内容が紐づけられていた場合は内容は上書きされ，内容が異なっていた場合は不動点に達していないとして再度\Pervasives.SATySFi;の処理が行われる．
+%       +command (`register-cross-reference`) (tS --> (tS --> tU)) {
+%         \code{register-cross-reference ${key} ${value}}で相互参照のID\code{${key}}に内容\code{${value}}を紐づけて登録する．
+%         既に\code{${key}}に内容が紐づけられていた場合は内容は上書きされ，内容が異なっていた場合は不動点に達していないとして再度\SATySFi;の処理が行われる．
 %       }
-%       +command (`get-cross-reference`) (Local.tS --> (Local.tOPT Local.tS)) {
-%         \Local.code{get-cross-reference ${key}}で相互参照のID\Local.code{${key}}に紐づけられた内容\Local.code{${value}}を取得する．
-%         何も紐づけられたいなかった場合は\Local.code{None}を返す．
+%       +command (`get-cross-reference`) (tS --> (tOPT tS)) {
+%         \code{get-cross-reference ${key}}で相互参照のID\code{${key}}に紐づけられた内容\code{${value}}を取得する．
+%         何も紐づけられたいなかった場合は\code{None}を返す．
 %       }
 %     >
 %     +subsection {ページ分割に関する処理} <
-%       +command (`clear-page`) (Local.tBB) {
+%       +command (`clear-page`) (tBB) {
 %         強制的な改ページを行う．
 %       }
-%       +command (`add-footnote`) (Local.tBB --> tIB) {
-%         \Local.code{add-footnote ${bb}}でブロックボックス列\Local.code{${bb}}を脚注として挿入する．
-%         返り値のインラインボックス列は，これが挿入されたページに脚注が挿入されるようになる以外は\Local.code{inline-nil}と同じ挙動をする．
+%       +command (`add-footnote`) (tBB --> tIB) {
+%         \code{add-footnote ${bb}}でブロックボックス列\code{${bb}}を脚注として挿入する．
+%         返り値のインラインボックス列は，これが挿入されたページに脚注が挿入されるようになる以外は\code{inline-nil}と同じ挙動をする．
 %       }
-%       +command (`hook-page-break`) ((Local.tRECORD [({page-number}, tI)] --> (Local.tPT --> tU)) --> tIB) {
-%         \Local.code{hook-page-break ${f}}で\Local.code{inline-nil}と同じ挙動をするインラインボックス列を得ることができる．
+%       +command (`hook-page-break`) ((tRECORD [({page-number}, tI)] --> (tPT --> tU)) --> tIB) {
+%         \code{hook-page-break ${f}}で\code{inline-nil}と同じ挙動をするインラインボックス列を得ることができる．
 %         このインラインボックス列は，ページ分割処理の最中に与えた関数${f}に対してそのインラインボックス列が挿入されたページのページ番号とページ内の座標を与える．
 %       }
-%       +command (`hook-page-break-block`) ((Local.tRECORD [({page-number}, tI)] --> (Local.tPT --> tU)) --> tBB) {
-%         \Local.code{hook-page-break}のブロック版である．
+%       +command (`hook-page-break-block`) ((tRECORD [({page-number}, tI)] --> (tPT --> tU)) --> tBB) {
+%         \code{hook-page-break}のブロック版である．
 %       }
 %     >
 %     +subsection{PDFの機能に関する処理} <
-%       +command (`register-link-to-uri`) (Local.tS --> (Local.tPT --> (Local.tL --> (Local.tL --> (Local.tL --> ((Local.tOPT (Local.tPROD [tL, tCLR])) --> tU)))))) {
-%         \Local.code{register-link-to-uri ${uri} ${point} ${w} ${h} ${d} ${frame}}で\Local.code{${uri}}へのハイパーリンクを作成する．
-%         ハイパーリンクを設置する場所を座標\Local.code{${point}}・幅\Local.code{${w}}・高さ\Local.code{${h}}・深さ\Local.code{${d}}で指定し，
-%         PDFビューワでの閲覧時にのみ表示される枠線の幅と色を\Local.code{${frame}}で指定する．
+%       +command (`register-link-to-uri`) (tS --> (tPT --> (tL --> (tL --> (tL --> ((tOPT (tPROD [tL; tCLR])) --> tU)))))) {
+%         \code{register-link-to-uri ${uri} ${point} ${w} ${h} ${d} ${frame}}で\code{${uri}}へのハイパーリンクを作成する．
+%         ハイパーリンクを設置する場所を座標\code{${point}}・幅\code{${w}}・高さ\code{${h}}・深さ\code{${d}}で指定し，
+%         PDFビューワでの閲覧時にのみ表示される枠線の幅と色を\code{${frame}}で指定する．
 %       }
-%       +command (`register-link-to-location`) (Local.tS --> (Local.tPT --> (Local.tL --> (Local.tL --> (Local.tL --> ((Local.tOPT (Local.tPROD [tL, tCLR])) --> tU)))))) {
-%         \Local.code{register-link-to-location ${key} ${point} ${w} ${h} ${d} ${frame}}で\Local.code{${key}}へのハイパーリンクを作成する．
-%         \Local.code{${key}}は\Local.code{register-destination}で登録したものに対応する．
+%       +command (`register-link-to-location`) (tS --> (tPT --> (tL --> (tL --> (tL --> ((tOPT (tPROD [tL; tCLR])) --> tU)))))) {
+%         \code{register-link-to-location ${key} ${point} ${w} ${h} ${d} ${frame}}で\code{${key}}へのハイパーリンクを作成する．
+%         \code{${key}}は\code{register-destination}で登録したものに対応する．
 %       }
-%       +command (`register-destination`) (Local.tS --> (Local.tPT --> tU)) {
-%         \Local.code{register-destination ${key} ${point}}で\Local.code{${point}}をジャンプ先に指定したリンクを\Local.code{${key}}と紐づけて登録する．
+%       +command (`register-destination`) (tS --> (tPT --> tU)) {
+%         \code{register-destination ${key} ${point}}で\code{${point}}をジャンプ先に指定したリンクを\code{${key}}と紐づけて登録する．
 %       }
-%       +command (`register-outline`) ((Local.tLIST (Local.tPROD [tI, Local.tS, Local.tS, tB])) --> tU) {
-%         \Local.code{register-outline ${lst}}で\Local.code{${lst}}の中身をPDFのしおりとして登録する．
+%       +command (`register-outline`) ((tLIST (tPROD [tI; tS; tS; tB])) --> tU) {
+%         \code{register-outline ${lst}}で\code{${lst}}の中身をPDFのしおりとして登録する．
 %         タプルの中身は，しおりの深さ・しおりのタイトル・ジャンプ先のキー名・デフォルトの折りたたみ状態をそれぞれあらわす．
 %       }
-%       +command (`register-document-information`) ((Local.tRECORD [({title}, tOPT Local.tS), ({subjects}, tOPT Local.tS), ({keywords}, tOPT Local.tS), ({author}, tLIST Local.tS)]) --> tU) {
-%         \Local.code{register-document-information ${info}}で\Local.code{${info}}の中身をPDFの辞書情報として登録する．
+%       +command (`register-document-information`) ((tRECORD [({title}, tOPT tS); ({subject}, tOPT tS); ({author}, tOPT tS); ({keywords}, tLIST tS)]) --> tU) {
+%         \code{register-document-information ${info}}で\code{${info}}の中身をPDFの辞書情報として登録する．
 %       }
 %     >
 %     +subsection {document型に関する処理} <
-%       +command (`page-break`) (Local.tPG --> (Local.tPAGECONTF --> (Local.tPAGEPARTSF --> (Local.tBB --> tDOC)))) {
+%       +command (`page-break`) (tPG --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC)))) {
 %         ブロックボックス列をページ分割処理を施すための情報などが含まれたデータに変換する．
 %         一段組のみをサポートする．
 %       }
-%       +command (`page-break-two-column`) (Local.tPG --> (Local.tL --> ((Local.tU --> tBB) --> (Local.tPAGECONTF --> (Local.tPAGEPARTSF --> (Local.tBB --> tDOC)))))) {
+%       +command (`page-break-two-column`) (tPG --> (tL --> ((tU --> tBB) --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC)))))) {
 %         二段組をサポートする．
-%         第2引数は一段目と二段目の\Local.code{${text-origin}}の\Local.code{${x}}座標の差である．
+%         第2引数は一段目と二段目の\code{${text-origin}}の\code{${x}}座標の差である．
 %       }
-%       +command (`page-break-multicolumn`) (Local.tPG --> (Local.tLIST tL --> ((Local.tU --> tBB) --> ((Local.tU --> tBB) --> (Local.tPAGECONTF --> (Local.tPAGEPARTSF --> (Local.tBB --> tDOC))))))) {
+%       +command (`page-break-multicolumn`) (tPG --> (tLIST tL --> ((tU --> tBB) --> ((tU --> tBB) --> (tPAGECONTF --> (tPAGEPARTSF --> (tBB --> tDOC))))))) {
 %         多段組をサポートする．
 %       }
 %     >
 %     +subsection {テキスト出力モードに関する処理} <
-%       +command (`stringify-inline`) (Local.tTCTX --> (Local.tIT --> Local.tS)) {
-%         \Local.code{stringify-inline ${tinfo} ${it}}で\Local.code{${tinfo}}に基づいて\Local.code{${it}}を処理し，テキストに変換する．
+%       +command (`stringify-inline`) (tTCTX --> (tIT --> tS)) {
+%         \code{stringify-inline ${tinfo} ${it}}で\code{${tinfo}}に基づいて\code{${it}}を処理し，テキストに変換する．
 %       }
-%       +command (`stringify-block`) (Local.tTCTX --> (Local.tBT --> Local.tS)) {
-%         \Local.code{stringify-block ${tinfo} ${bt}}で\Local.code{${tinfo}}に基づいて\Local.code{${bt}}を処理し，テキストに変換する．
+%       +command (`stringify-block`) (tTCTX --> (tBT --> tS)) {
+%         \code{stringify-block ${tinfo} ${bt}}で\code{${tinfo}}に基づいて\code{${bt}}を処理し，テキストに変換する．
 %       }
-%       +command (`deepen-indent`) (Local.tI --> (Local.tTCTX --> Local.tS)) {
-%         \Local.code{${tinfo} \|\> deepen-indent ${i}}で\Local.code{${i}}分だけインデントの量を大きくしたテキスト文脈を返す．
+%       +command (`deepen-indent`) (tI --> (tTCTX --> tS)) {
+%         \code{${tinfo} \|\> deepen-indent ${i}}で\code{${i}}分だけインデントの量を大きくしたテキスト文脈を返す．
 %       }
-%       +command (`break`) (Local.tTCTX --> Local.tS) {
-%         改行文字を出力し，\Local.code{deepen-indent}で設定したインデントを出力する．
+%       +command (`break`) (tTCTX --> tS) {
+%         改行文字を出力し，\code{deepen-indent}で設定したインデントを出力する．
 %       }
-%       +command (`get-initial-text-info`) (Local.tU --> tTCTX) {
+%       +command (`get-initial-text-info`) (tU --> tTCTX) {
 %         テキスト文脈を返す．
 %       }
 %     >
 %     +subsection {文字列出力に関する処理} <
-%       +command (`display-message`) (Local.tS --> tU) {
-%         \Local.code{display-message ${msg}}で\Local.code{${msg}}を標準出力に出力する．
+%       +command (`display-message`) (tS --> tU) {
+%         \code{display-message ${msg}}で\code{${msg}}を標準出力に出力する．
 %       }
-%       +command (`abort-with-message`) (Local.tS --> tANY) {
-%         \Local.code{abort-with-message ${msg}}で\Local.code{${msg}}を出力し，\Pervasives.SATySFi;の処理を中止する．
+%       +command (`abort-with-message`) (tS --> tANY) {
+%         \code{abort-with-message ${msg}}で\code{${msg}}を出力し，\SATySFi;の処理を中止する．
 %         型は任意の型に評価される．
 %       }
 %     >
-%   >
+  >
 >
