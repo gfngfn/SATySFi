@@ -1,10 +1,21 @@
-#DEPS=pervasives.satyh gr.satyh list.satyh tabular.satyh math.satyh color.satyh deco.satyh decoset.satyh vdecoset.satyh stdja.satyh local.satyh
+TARGETS = \
+	doc-primitives.pdf \
+	doc-lang.pdf \
+	math1.pdf \
 
-all:
-	satysfi doc-primitives.saty -o primitives.pdf
+SATYSFI ?= satysfi
 
-lang:
-	satysfi doc-lang.saty -o lang.pdf
+.PHONY: all clean
 
-math1:
-	satysfi math1.saty -o math1.pdf
+.SUFFIXES: .saty .pdf
+
+.saty.pdf:
+	$(SATYSFI) $< -o $@
+
+all:: $(TARGETS)
+
+clean:
+	rm -f *.pdf *.satysfi-aux
+
+doc-primitives.pdf: local-math.satyh local.satyh paren.satyh
+doc-lang.pdf: local-math.satyh

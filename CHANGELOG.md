@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 ## [Unreleased]
 ### Fixed
+- Fix spacing at the beginning of math formulae ([PR\#333](https://github.com/gfngfn/SATySFi/pull/333) by `sankantsu`).
+- Fix spacing around `(` and `)` literally written in math formulae ([PR\#334](https://github.com/gfngfn/SATySFi/pull/334) by `sankantsu`).
+- Slightly improve how to report syntax errors for empty files ([PR\#330](https://github.com/gfngfn/SATySFi/pull/330) by `leque`).
+
+### Added
+- Extend `load-image` to support PNG images ([PR\#329](https://github.com/gfngfn/SATySFi/pull/329) by `leque`).
+
+## [0.0.7] - 2022-04-14
+### Fixed
 - Fix invalid errors emitted by `--type-check-only` by making the option extension-sensitive.
 - Fix the exhaustiveness check ([PR\#171](https://github.com/gfngfn/SATySFi/pull/171) by `matsud224`).
 - Fix how to handle digits under `\mathbb` ([PR\#286](https://github.com/gfngfn/SATySFi/pull/286) by `elpinal`).
@@ -84,7 +93,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Fix how to detect cyclic synonym type definition(s) ([bug reported by `nyuichi`]((https://github.com/gfngfn/SATySFi/issues/187))).
 - Fix how to embed fonts (by updating `otfm` from `v.0.3.6+satysfi` to `v.0.3.7+satysfi`, which was due to [a PR](https://github.com/gfngfn/otfm/pull/7) by `matsud224`).
 
-## Added
+### Added
 - Begins to support Markdown inputs.
 - Supports PDF hyperlinks ([PR\#113](https://github.com/gfngfn/SATySFi/pull/113) by `matsud224`).
 - Supports fixed-length list patterns ([PR\#123](https://github.com/gfngfn/SATySFi/pull/123) by `nekketsuuu`).
@@ -106,7 +115,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Add the MacroML-like notion of macro based on two-stage programming.
 - Supports two-column page break.
 
-## Deprecated
+### Deprecated
 - The use of `"src-dist":` entries in font hash files is deprecated; use `"src":` instead, which requires a font file’s path relative to `<LIBROOT>`. An entry of the form `"src-dist": "<path/to/font-file>"` is now treated equivalently to `"src": "dist/fonts/<path/to/font-file>"`.
 
 ## [0.0.3] - 2018-10-09
@@ -131,7 +140,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Initial version of SATySFi
 
 
-  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.6...HEAD
+  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.7...HEAD
+  [0.0.7]: https://github.com/gfngfn/SATySFi/compare/v0.0.6...v0.0.7
   [0.0.6]: https://github.com/gfngfn/SATySFi/compare/v0.0.5...v0.0.6
   [0.0.5]: https://github.com/gfngfn/SATySFi/compare/v0.0.4...v0.0.5
   [0.0.4]: https://github.com/gfngfn/SATySFi/compare/v0.0.3...v0.0.4

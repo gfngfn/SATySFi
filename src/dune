@@ -6,6 +6,7 @@
             batteries
             camlimages
             camlimages.jpeg
+            camlimages.png
             camlpdf
             core_kernel
             core_kernel.pairing_heap

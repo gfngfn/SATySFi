@@ -569,6 +569,8 @@ let default_math_class_map =
         (uchar_of_char '|', None,                      MathBinary);
         (uchar_of_char '/', None,                      MathOrdinary);
         (uchar_of_char ',', None,                      MathPunct);
+        (uchar_of_char '(', None,                      MathOpen);
+        (uchar_of_char ')', None,                      MathClose);
       ]
 
 

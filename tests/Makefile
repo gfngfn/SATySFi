@@ -1,10 +1,38 @@
-DEPS=list.satyh math.satyh head.satyh
+TARGETS = \
+	clip.pdf \
+	glue1.pdf \
+	math2.pdf \
+	refactor1.pdf \
+	refactor2.pdf \
+	refactor3.pdf \
+	refactor5.pdf \
+#	first.pdf \
+#	math1.pdf \
+#	refactor4.pdf \
+#	refactor6.pdf \
 
-all:
-	satysfi $(DEPS) first.saty -o output.pdf
+SATYSFI ?= satysfi
 
-math1:
-	satysfi $(DEPS) math1.saty -o output-math1.pdf
+.PHONY: all clean
 
-math2:
-	satysfi $(DEPS) math2.saty -o output-math2.pdf
+.SUFFIXES: .saty .pdf
+
+.saty.pdf:
+	$(SATYSFI) $< -o $@
+
+all:: $(TARGETS)
+
+all::
+	(cd images; make)
+
+clean::
+	rm -f *.pdf *.satysfi-aux
+
+clean::
+	(cd images; make clean)
+
+clip.pdf: head.satyh
+first.pdf: head.satyh
+glue1.pdf: head.satyh
+math1.pdf: head.satyh
+math2.pdf: head.satyh

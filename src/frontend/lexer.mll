@@ -373,8 +373,9 @@ rule progexpr stack = parse
       { LENGTH(get_pos lexbuf, float_of_string flt, unitnm) }
   | eof
       {
+        let pos = get_pos lexbuf in
         if Stack.length stack = 1 then
-          EOI
+          EOI(pos)
         else
           report_error lexbuf "text input ended while reading a program area"
       }
@@ -433,8 +434,9 @@ and vertexpr stack = parse
       }
   | eof
       {
+        let pos = get_pos lexbuf in
         if Stack.length stack = 1 then
-          EOI
+          EOI(pos)
         else
           report_error lexbuf "unexpected end of input while reading a vertical area"
       }
@@ -549,8 +551,9 @@ and horzexpr stack = parse
       }
   | eof
       {
+        let pos = get_pos lexbuf in
         if Stack.length stack = 1 then
-          EOI
+          EOI(pos)
         else
           report_error lexbuf "unexpected end of input while reading an inline text area"
       }

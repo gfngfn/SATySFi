@@ -18,7 +18,7 @@ let font-size-section = 18pt
 let font-ratio-latin = 1.
 let font-ratio-cjk = 0.88
 
-let font-latin-roman  = (`ArnoPro`, font-ratio-latin, 0.)
+let font-latin-roman  = (`Junicode`, font-ratio-latin, 0.)
 let font-latin-italic = (`lmroman-it`, font-ratio-latin, 0.)
 let font-latin-sans   = (`lmsans`, font-ratio-latin, 0.)
 let font-latin-mono   = (`lmmono`, font-ratio-latin, 0.)
