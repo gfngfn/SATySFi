@@ -3,35 +3,35 @@
 @import: local-math
 
 StdJa.document (|
-  title = {\SATySFi;言語仕様};
-  author = {Takashi SUWA};
-  show-title = true;
-  show-toc = false;
+  title = {\Pervasives.SATySFi;言語仕様},
+  author = {Takashi SUWA},
+  show-title = true,
+  show-toc = false,
 |) '<
-  +section {構文} <
-    +p {
-      \SATySFi;の構文は以下のように定義されている：
+  +StdJa.section {構文} <
+    +StdJa.p {
+      \Pervasives.SATySFi;の構文は以下のように定義されている：
     }
-    +p {
+    +StdJa.p {
       ${
-        \BNF{\patp}![
-          ${\varx};
-          ${\wildcard};
-          ${\cstc};
-          ${\patas{\patp}{\varx}};
-          ${\constrapp{\constrC}{\patp}};
-          ${\tuple![${\patp}; ${\ldots}; ${\patp}]}
+        \LocalMath.BNF{\LocalMath.patp}![
+          ${\LocalMath.varx},
+          ${\LocalMath.wildcard},
+          ${\LocalMath.cstc},
+          ${\LocalMath.patas{\LocalMath.patp}{\LocalMath.varx}},
+          ${\LocalMath.constrapp{\LocalMath.constrC}{\LocalMath.patp}},
+          ${\LocalMath.tuple![${\LocalMath.patp}, ${\Math.ldots}, ${\LocalMath.patp}]},
         ]
       }
     }
-    +p {
+    +StdJa.p {
       ${
-        \BNF{\valv}![
-          ${\cstc};
-          ${\exprfunc{\patsP}};
-          ${\exprabsI{\varx}{\expre}};
-          ${\exprabsB{\varx}{\expre}};
-          ${\valB{\bt}};
+        \LocalMath.BNF{\LocalMath.valv}![
+          ${\LocalMath.cstc},
+          ${\LocalMath.exprfunc{\LocalMath.patsP}},
+          ${\LocalMath.exprabsI{\LocalMath.varx}{\LocalMath.expre}},
+          ${\LocalMath.exprabsB{\LocalMath.varx}{\LocalMath.expre}},
+          ${\LocalMath.valB{\LocalMath.bt}},
         ]
       }
     }
