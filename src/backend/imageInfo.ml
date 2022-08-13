@@ -34,6 +34,10 @@ let get_xobject_dictionary pdfmain : Pdf.pdfobject =
                 let irxobj = LoadJpeg.make_xobject pdfmain colorspace widdots hgtdots (get_abs_path_string abspath) in
                 (tag, irxobj) :: acc
 
+            | Images.Png ->
+                let irxobj = LoadRawImage.make_xobject pdfmain colorspace widdots hgtdots abspath in
+                (tag, irxobj) :: acc
+
             | _ -> acc  (* temporary *)
           end
     ) |> List.rev
