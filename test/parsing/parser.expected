@@ -2,47 +2,42 @@
 ;;; To update this file, you should run `dune runtest; dune promote`.
 
 ;; nx.saty
-(UTLetNonRecIn (None,
-   ((Range.Normal ("nx.saty", 1, 4, 1, 6)), (UTPVariable "xs")),
+(UTLetNonRecIn (None, ((Range.Normal <nx.saty:1.5-7>), (UTPVariable "xs")),
    (UTListCons ((UTIntegerConstant 1),
       (UTListCons ((UTIntegerConstant 2),
          (UTListCons ((UTIntegerConstant 3), UTEndOfList))))
       )),
    (UTLetNonRecIn (None,
-      ((Range.Normal ("nx.saty", 2, 4, 2, 6)), (UTPVariable "ys")),
+      ((Range.Normal <nx.saty:2.5-7>), (UTPVariable "ys")),
       (UTListCons ((UTIntegerConstant 1),
          (UTListCons ((UTIntegerConstant 2),
             (UTListCons ((UTIntegerConstant 3), UTEndOfList))))
          )),
       (UTLetNonRecIn (None,
-         ((Range.Normal ("nx.saty", 4, 4, 4, 6)), (UTPVariable "r0")),
-         (UTRecord []),
+         ((Range.Normal <nx.saty:4.5-7>), (UTPVariable "r0")), (UTRecord []),
          (UTLetNonRecIn (None,
-            ((Range.Normal ("nx.saty", 5, 4, 5, 6)), (UTPVariable "r1")),
+            ((Range.Normal <nx.saty:5.5-7>), (UTPVariable "r1")),
             (UTRecord [("x", (UTIntegerConstant 1))]),
             (UTLetNonRecIn (None,
-               ((Range.Normal ("nx.saty", 6, 4, 6, 6)), (UTPVariable "r2")),
+               ((Range.Normal <nx.saty:6.5-7>), (UTPVariable "r2")),
                (UTRecord
                   [("x", (UTIntegerConstant 1)); ("y", (UTIntegerConstant 2))
                     ]),
                (UTLetNonRecIn (None,
-                  ((Range.Normal ("nx.saty", 7, 4, 7, 10)),
-                   (UTPVariable "r2semi")),
+                  ((Range.Normal <nx.saty:7.5-11>), (UTPVariable "r2semi")),
                   (UTRecord
                      [("x", (UTIntegerConstant 1));
                        ("y", (UTIntegerConstant 2))]),
                   (UTLetNonRecIn (None,
-                     ((Range.Normal ("nx.saty", 9, 4, 9, 7)),
-                      (UTPVariable "tp2")),
+                     ((Range.Normal <nx.saty:9.5-8>), (UTPVariable "tp2")),
                      (UTTuple [(UTIntegerConstant 1); (UTIntegerConstant 2)]),
                      (UTLetNonRecIn (None,
-                        ((Range.Normal ("nx.saty", 10, 4, 10, 7)),
-                         (UTPVariable "tp3")),
+                        ((Range.Normal <nx.saty:10.5-8>), (UTPVariable "tp3")),
                         (UTTuple
                            [(UTIntegerConstant 1); (UTIntegerConstant 2);
                              (UTIntegerConstant 3)]),
                         (UTLetNonRecIn (None,
-                           ((Range.Normal ("nx.saty", 12, 4, 12, 11)),
+                           ((Range.Normal <nx.saty:12.5-12>),
                             (UTPVariable "op-test")),
                            (UTTuple
                               [((|| ((|| a) b)) c); ((&& ((&& a) b)) c);
@@ -61,7 +56,7 @@
                                 ((* a) B(U:())); ((* (not a)) b);
                                 ((* F(a)) b); ((* A(U:())) b)]),
                            (UTLetNonRecIn (None,
-                              ((Range.Normal ("nx.saty", 39, 4, 39, 10)),
+                              ((Range.Normal <nx.saty:39.5-11>),
                                (UTPVariable "uminus")),
                               (UTTuple
                                  [((- (UTIntegerConstant 0)) (UTIntegerConstant
@@ -89,22 +84,20 @@
 
 ;; variants.saty
 (UTDeclareVariantIn (
-   (UTMutualVariantCons ([], (Range.Normal ("variants.saty", 1, 5, 1, 6)),
-      "t",
-      [((Range.Normal ("variants.saty", 1, 9, 1, 10)), "X",
+   (UTMutualVariantCons ([], (Range.Normal <variants.saty:1.6-7>), "t",
+      [((Range.Normal <variants.saty:1.10-11>), "X",
         ((Range.Dummy "dec-constructor-unit1"),
          (Types.MTypeName ([], [], "unit"))));
-        ((Range.Normal ("variants.saty", 1, 13, 1, 14)), "Y",
+        ((Range.Normal <variants.saty:1.14-15>), "Y",
          ((Range.Dummy "dec-constructor-unit1"),
           (Types.MTypeName ([], [], "unit"))))
         ],
-      (UTMutualVariantCons ([], (Range.Normal ("variants.saty", 2, 4, 2, 5)),
-         "s",
-         [((Range.Normal ("variants.saty", 2, 8, 2, 9)), "Z",
-           ((Range.Normal ("variants.saty", 2, 13, 2, 14)),
+      (UTMutualVariantCons ([], (Range.Normal <variants.saty:2.5-6>), "s",
+         [((Range.Normal <variants.saty:2.9-10>), "Z",
+           ((Range.Normal <variants.saty:2.14-15>),
             (Types.MTypeName ([], [], "t"))));
-           ((Range.Normal ("variants.saty", 2, 17, 2, 18)), "W",
-            ((Range.Normal ("variants.saty", 2, 22, 2, 23)),
+           ((Range.Normal <variants.saty:2.18-19>), "W",
+            ((Range.Normal <variants.saty:2.23-24>),
              (Types.MTypeName ([], [], "u"))))
            ],
          UTEndOfMutualVariant))
@@ -113,23 +106,22 @@
 
 ;; txprod.saty
 (UTDeclareVariantIn (
-   (UTMutualSynonymCons ([], (Range.Normal ("txprod.saty", 1, 5, 1, 6)), "t",
-      ((Range.Normal ("txprod.saty", 1, 9, 1, 14)),
+   (UTMutualSynonymCons ([], (Range.Normal <txprod.saty:1.6-7>), "t",
+      ((Range.Normal <txprod.saty:1.10-15>),
        (Types.MProductType
-          [((Range.Normal ("txprod.saty", 1, 9, 1, 10)),
+          [((Range.Normal <txprod.saty:1.10-11>),
             (Types.MTypeName ([], [], "a")));
-            ((Range.Normal ("txprod.saty", 1, 13, 1, 14)),
+            ((Range.Normal <txprod.saty:1.14-15>),
              (Types.MTypeName ([], [], "b")))
             ])),
-      (UTMutualSynonymCons ([], (Range.Normal ("txprod.saty", 2, 4, 2, 5)),
-         "s",
-         ((Range.Normal ("txprod.saty", 2, 8, 2, 17)),
+      (UTMutualSynonymCons ([], (Range.Normal <txprod.saty:2.5-6>), "s",
+         ((Range.Normal <txprod.saty:2.9-18>),
           (Types.MProductType
-             [((Range.Normal ("txprod.saty", 2, 8, 2, 9)),
+             [((Range.Normal <txprod.saty:2.9-10>),
                (Types.MTypeName ([], [], "a")));
-               ((Range.Normal ("txprod.saty", 2, 12, 2, 13)),
+               ((Range.Normal <txprod.saty:2.13-14>),
                 (Types.MTypeName ([], [], "b")));
-               ((Range.Normal ("txprod.saty", 2, 16, 2, 17)),
+               ((Range.Normal <txprod.saty:2.17-18>),
                 (Types.MTypeName ([], [], "c")))
                ])),
          UTEndOfMutualVariant))
@@ -138,45 +130,42 @@
 
 ;; txlist.saty
 (UTDeclareVariantIn (
-   (UTMutualSynonymCons ([], (Range.Normal ("txlist.saty", 1, 5, 1, 6)), "t",
-      ((Range.Normal ("txlist.saty", 1, 9, 1, 27)),
+   (UTMutualSynonymCons ([], (Range.Normal <txlist.saty:1.6-7>), "t",
+      ((Range.Normal <txlist.saty:1.10-28>),
        (Types.MHorzCommandType
           [(Types.MMandatoryArgumentType
-              ((Range.Normal ("txlist.saty", 1, 10, 1, 11)),
+              ((Range.Normal <txlist.saty:1.11-12>),
                (Types.MTypeName ([], [], "s"))));
             (Types.MOptionalArgumentType
-               ((Range.Normal ("txlist.saty", 1, 13, 1, 14)),
+               ((Range.Normal <txlist.saty:1.14-15>),
                 (Types.MTypeName ([], [], "u"))))
             ])),
-      (UTMutualSynonymCons ([], (Range.Normal ("txlist.saty", 2, 4, 2, 5)),
-         "t",
-         ((Range.Normal ("txlist.saty", 2, 8, 2, 26)),
+      (UTMutualSynonymCons ([], (Range.Normal <txlist.saty:2.5-6>), "t",
+         ((Range.Normal <txlist.saty:2.9-27>),
           (Types.MHorzCommandType
              [(Types.MOptionalArgumentType
-                 ((Range.Normal ("txlist.saty", 2, 9, 2, 10)),
+                 ((Range.Normal <txlist.saty:2.10-11>),
                   (Types.MTypeName ([], [], "s"))));
                (Types.MMandatoryArgumentType
-                  ((Range.Normal ("txlist.saty", 2, 13, 2, 14)),
+                  ((Range.Normal <txlist.saty:2.14-15>),
                    (Types.MTypeName ([], [], "u"))))
                ])),
-         (UTMutualSynonymCons ([],
-            (Range.Normal ("txlist.saty", 3, 4, 3, 5)), "t",
-            ((Range.Normal ("txlist.saty", 3, 8, 3, 21)),
-             (Types.MHorzCommandType [])),
-            (UTMutualSynonymCons ([],
-               (Range.Normal ("txlist.saty", 4, 4, 4, 5)), "t",
-               ((Range.Normal ("txlist.saty", 4, 8, 4, 22)),
+         (UTMutualSynonymCons ([], (Range.Normal <txlist.saty:3.5-6>), "t",
+            ((Range.Normal <txlist.saty:3.9-22>), (Types.MHorzCommandType [])),
+            (UTMutualSynonymCons ([], (Range.Normal <txlist.saty:4.5-6>),
+               "t",
+               ((Range.Normal <txlist.saty:4.9-23>),
                 (Types.MHorzCommandType
                    [(Types.MMandatoryArgumentType
-                       ((Range.Normal ("txlist.saty", 4, 9, 4, 10)),
+                       ((Range.Normal <txlist.saty:4.10-11>),
                         (Types.MTypeName ([], [], "s"))))
                      ])),
-               (UTMutualSynonymCons ([],
-                  (Range.Normal ("txlist.saty", 5, 4, 5, 5)), "t",
-                  ((Range.Normal ("txlist.saty", 5, 8, 5, 23)),
+               (UTMutualSynonymCons ([], (Range.Normal <txlist.saty:5.5-6>),
+                  "t",
+                  ((Range.Normal <txlist.saty:5.9-24>),
                    (Types.MHorzCommandType
                       [(Types.MMandatoryArgumentType
-                          ((Range.Normal ("txlist.saty", 5, 9, 5, 10)),
+                          ((Range.Normal <txlist.saty:5.10-11>),
                            (Types.MTypeName ([], [], "s"))))
                         ])),
                   UTEndOfMutualVariant))
@@ -188,14 +177,12 @@
 
 ;; txrecord.saty
 (UTDeclareVariantIn (
-   (UTMutualSynonymCons ([], (Range.Normal ("txrecord.saty", 1, 5, 1, 6)),
-      "t", ((Range.Normal ("txrecord.saty", 1, 9, 1, 25)), MRecordType(...)),
-      (UTMutualSynonymCons ([], (Range.Normal ("txrecord.saty", 2, 4, 2, 5)),
-         "t",
-         ((Range.Normal ("txrecord.saty", 2, 8, 2, 25)), MRecordType(...)),
-         (UTMutualSynonymCons ([],
-            (Range.Normal ("txrecord.saty", 3, 4, 3, 5)), "t",
-            ((Range.Normal ("txrecord.saty", 3, 8, 3, 18)), MRecordType(...)),
+   (UTMutualSynonymCons ([], (Range.Normal <txrecord.saty:1.6-7>), "t",
+      ((Range.Normal <txrecord.saty:1.10-26>), MRecordType(...)),
+      (UTMutualSynonymCons ([], (Range.Normal <txrecord.saty:2.5-6>), "t",
+         ((Range.Normal <txrecord.saty:2.9-26>), MRecordType(...)),
+         (UTMutualSynonymCons ([], (Range.Normal <txrecord.saty:3.5-6>), "t",
+            ((Range.Normal <txrecord.saty:3.9-19>), MRecordType(...)),
             UTEndOfMutualVariant))
          ))
       )),
@@ -203,24 +190,21 @@
 
 ;; pats.saty
 (UTLetNonRecIn (None,
-   ((Range.Normal ("pats.saty", 1, 4, 1, 14)), (UTPVariable "pats-test1")),
+   ((Range.Normal <pats.saty:1.5-15>), (UTPVariable "pats-test1")),
    (UTPatternMatch (a,
       [(UTPatternBranchWhen (
-          ((Range.Normal ("pats.saty", 3, 4, 3, 5)), (UTPVariable "b")), c, d
-          ));
+          ((Range.Normal <pats.saty:3.5-6>), (UTPVariable "b")), c, d));
         (UTPatternBranch (
-           ((Range.Normal ("pats.saty", 4, 4, 4, 5)), (UTPVariable "b")), d))
+           ((Range.Normal <pats.saty:4.5-6>), (UTPVariable "b")), d))
         ]
       )),
    (UTLetNonRecIn (None,
-      ((Range.Normal ("pats.saty", 6, 4, 6, 14)), (UTPVariable "pats-test2")),
+      ((Range.Normal <pats.saty:6.5-15>), (UTPVariable "pats-test2")),
       (UTPatternMatch (a,
          [(UTPatternBranch (
-             ((Range.Normal ("pats.saty", 8, 4, 8, 5)), (UTPVariable "b")), d
-             ));
+             ((Range.Normal <pats.saty:8.5-6>), (UTPVariable "b")), d));
            (UTPatternBranchWhen (
-              ((Range.Normal ("pats.saty", 9, 4, 9, 5)), (UTPVariable "b")),
-              c, d))
+              ((Range.Normal <pats.saty:9.5-6>), (UTPVariable "b")), c, d))
            ]
          )),
       UTFinishHeaderFile))
@@ -228,17 +212,13 @@
 
 ;; pattuple.saty
 (UTLetNonRecIn (None,
-   ((Range.Normal ("pattuple.saty", 1, 4, 1, 17)),
-    (UTPVariable "pattuple-test")),
+   ((Range.Normal <pattuple.saty:1.5-18>), (UTPVariable "pattuple-test")),
    (UTPatternMatch (a,
       [(UTPatternBranch (
-          ((Range.Normal ("pattuple.saty", 3, 4, 3, 10)),
+          ((Range.Normal <pattuple.saty:3.5-11>),
            (UTPTuple
-              [((Range.Normal ("pattuple.saty", 3, 5, 3, 6)),
-                (UTPVariable "b"));
-                ((Range.Normal ("pattuple.saty", 3, 8, 3, 9)),
-                 (UTPVariable "c"))
-                ])),
+              [((Range.Normal <pattuple.saty:3.6-7>), (UTPVariable "b"));
+                ((Range.Normal <pattuple.saty:3.9-10>), (UTPVariable "c"))])),
           d))
         ]
       )),
@@ -246,35 +226,31 @@
 
 ;; patlist.saty
 (UTLetNonRecIn (None,
-   ((Range.Normal ("patlist.saty", 1, 4, 1, 12)), (UTPVariable "pat-test")),
+   ((Range.Normal <patlist.saty:1.5-13>), (UTPVariable "pat-test")),
    (UTPatternMatch (a,
       [(UTPatternBranch (
-          ((Range.Normal ("patlist.saty", 3, 4, 3, 7)),
+          ((Range.Normal <patlist.saty:3.5-8>),
            (UTPListCons (
-              ((Range.Normal ("patlist.saty", 3, 5, 3, 6)), (UTPVariable "b")),
+              ((Range.Normal <patlist.saty:3.6-7>), (UTPVariable "b")),
               ((Range.Dummy "end-of-list-pattern"), UTPEndOfList)))),
           c));
         (UTPatternBranch (
-           ((Range.Normal ("patlist.saty", 4, 4, 4, 10)),
+           ((Range.Normal <patlist.saty:4.5-11>),
             (UTPListCons (
-               ((Range.Normal ("patlist.saty", 4, 5, 4, 6)),
-                (UTPVariable "b")),
-               ((Range.Normal ("patlist.saty", 4, 8, 4, 9)),
+               ((Range.Normal <patlist.saty:4.6-7>), (UTPVariable "b")),
+               ((Range.Normal <patlist.saty:4.9-10>),
                 (UTPListCons (
-                   ((Range.Normal ("patlist.saty", 4, 8, 4, 9)),
-                    (UTPVariable "c")),
+                   ((Range.Normal <patlist.saty:4.9-10>), (UTPVariable "c")),
                    ((Range.Dummy "end-of-list-pattern"), UTPEndOfList))))
                ))),
            d));
         (UTPatternBranch (
-           ((Range.Normal ("patlist.saty", 5, 4, 5, 11)),
+           ((Range.Normal <patlist.saty:5.5-12>),
             (UTPListCons (
-               ((Range.Normal ("patlist.saty", 5, 5, 5, 6)),
-                (UTPVariable "b")),
-               ((Range.Normal ("patlist.saty", 5, 8, 5, 9)),
+               ((Range.Normal <patlist.saty:5.6-7>), (UTPVariable "b")),
+               ((Range.Normal <patlist.saty:5.9-10>),
                 (UTPListCons (
-                   ((Range.Normal ("patlist.saty", 5, 8, 5, 9)),
-                    (UTPVariable "c")),
+                   ((Range.Normal <patlist.saty:5.9-10>), (UTPVariable "c")),
                    ((Range.Dummy "end-of-list-pattern"), UTPEndOfList))))
                ))),
            d))
@@ -283,65 +259,55 @@
    UTFinishHeaderFile))
 
 ;; sxlist.saty
-(UTLetNonRecIn (None,
-   ((Range.Normal ("sxlist.saty", 1, 4, 1, 5)), UTPWildCard), UTEndOfList,
-   (UTLetNonRecIn (None,
-      ((Range.Normal ("sxlist.saty", 2, 4, 2, 5)), UTPWildCard),
+(UTLetNonRecIn (None, ((Range.Normal <sxlist.saty:1.5-6>), UTPWildCard),
+   UTEndOfList,
+   (UTLetNonRecIn (None, ((Range.Normal <sxlist.saty:2.5-6>), UTPWildCard),
       (UTListCons ((UTInputHorz [IT:aa]),
          (UTListCons ((UTInputHorz [IT:bb]), UTEndOfList)))),
       UTFinishHeaderFile))
    ))
 
 ;; mathlist.saty
-(UTLetNonRecIn (None,
-   ((Range.Normal ("mathlist.saty", 1, 4, 1, 5)), UTPWildCard), UTEndOfList,
-   (UTLetNonRecIn (None,
-      ((Range.Normal ("mathlist.saty", 2, 4, 2, 5)), UTPWildCard),
+(UTLetNonRecIn (None, ((Range.Normal <mathlist.saty:1.5-6>), UTPWildCard),
+   UTEndOfList,
+   (UTLetNonRecIn (None, ((Range.Normal <mathlist.saty:2.5-6>), UTPWildCard),
       (UTListCons (
          (UTMath
-            ((Range.Normal ("mathlist.saty", 2, 11, 2, 12)),
+            ((Range.Normal <mathlist.saty:2.12-13>),
              (UTMList
-                [((Range.Normal ("mathlist.saty", 2, 11, 2, 12)),
-                  (UTMChars "a"))]))),
+                [((Range.Normal <mathlist.saty:2.12-13>), (UTMChars "a"))]))),
          (UTListCons (
             (UTMath
-               ((Range.Normal ("mathlist.saty", 2, 13, 2, 15)),
+               ((Range.Normal <mathlist.saty:2.14-16>),
                 (UTMList
-                   [((Range.Normal ("mathlist.saty", 2, 13, 2, 14)),
-                     (UTMChars "a"));
-                     ((Range.Normal ("mathlist.saty", 2, 14, 2, 15)),
-                      (UTMChars "b"))
+                   [((Range.Normal <mathlist.saty:2.14-15>), (UTMChars "a"));
+                     ((Range.Normal <mathlist.saty:2.15-16>), (UTMChars "b"))
                      ]))),
             UTEndOfList))
          )),
       (UTLetNonRecIn (None,
-         ((Range.Normal ("mathlist.saty", 4, 4, 4, 5)), UTPWildCard),
+         ((Range.Normal <mathlist.saty:4.5-6>), UTPWildCard),
          (UTInputVert
             [BC:+p (UTMandatoryArgument
                       (UTInputHorz
                          [(UTInputHorzEmbeddedMath
                              (UTMath
-                                ((Range.Normal ("mathlist.saty", 6, 6, 6, 7)),
+                                ((Range.Normal <mathlist.saty:6.7-8>),
                                  (UTMList
-                                    [((Range.Normal ("mathlist.saty", 6, 6,
-                                         6, 7)),
+                                    [((Range.Normal <mathlist.saty:6.7-8>),
                                       (UTMChars "a"))]))));
                            IT:
 ;
                            (UTInputHorzEmbeddedMath
                               (UTMath
-                                 ((Range.Normal ("mathlist.saty", 7, 6, 7, 9
-                                     )),
+                                 ((Range.Normal <mathlist.saty:7.7-10>),
                                   (UTMList
-                                     [((Range.Normal ("mathlist.saty", 7, 6,
-                                          7, 9)),
+                                     [((Range.Normal <mathlist.saty:7.7-10>),
                                        (UTMSuperScript (
-                                          ((Range.Normal ("mathlist.saty", 7,
-                                              6, 7, 7)),
+                                          ((Range.Normal <mathlist.saty:7.7-8>),
                                            (UTMChars "a")),
                                           false,
-                                          ((Range.Normal ("mathlist.saty", 7,
-                                              8, 7, 9)),
+                                          ((Range.Normal <mathlist.saty:7.9-10>),
                                            (UTMChars "1"))
                                           )))
                                        ]))));
@@ -349,18 +315,14 @@
 ;
                            (UTInputHorzEmbeddedMath
                               (UTMath
-                                 ((Range.Normal ("mathlist.saty", 8, 6, 8, 9
-                                     )),
+                                 ((Range.Normal <mathlist.saty:8.7-10>),
                                   (UTMList
-                                     [((Range.Normal ("mathlist.saty", 8, 6,
-                                          8, 9)),
+                                     [((Range.Normal <mathlist.saty:8.7-10>),
                                        (UTMSubScript (
-                                          ((Range.Normal ("mathlist.saty", 8,
-                                              6, 8, 7)),
+                                          ((Range.Normal <mathlist.saty:8.7-8>),
                                            (UTMChars "a")),
                                           false,
-                                          ((Range.Normal ("mathlist.saty", 8,
-                                              8, 8, 9)),
+                                          ((Range.Normal <mathlist.saty:8.9-10>),
                                            (UTMChars "2"))
                                           )))
                                        ]))));
@@ -368,28 +330,20 @@
 ;
                            (UTInputHorzEmbeddedMath
                               (UTMath
-                                 ((Range.Normal ("mathlist.saty", 9, 6, 9, 11
-                                     )),
+                                 ((Range.Normal <mathlist.saty:9.7-12>),
                                   (UTMList
-                                     [((Range.Normal ("mathlist.saty", 9, 6,
-                                          9, 11)),
+                                     [((Range.Normal <mathlist.saty:9.7-12>),
                                        (UTMSuperScript (
-                                          ((Range.Normal ("mathlist.saty", 9,
-                                              6, 9, 9)),
+                                          ((Range.Normal <mathlist.saty:9.7-10>),
                                            (UTMSubScript (
-                                              ((Range.Normal (
-                                                  "mathlist.saty", 9, 6, 9, 7
-                                                  )),
+                                              ((Range.Normal <mathlist.saty:9.7-8>),
                                                (UTMChars "a")),
                                               false,
-                                              ((Range.Normal (
-                                                  "mathlist.saty", 9, 8, 9, 9
-                                                  )),
+                                              ((Range.Normal <mathlist.saty:9.9-10>),
                                                (UTMChars "2"))
                                               ))),
                                           false,
-                                          ((Range.Normal ("mathlist.saty", 9,
-                                              10, 9, 11)),
+                                          ((Range.Normal <mathlist.saty:9.11-12>),
                                            (UTMChars "1"))
                                           )))
                                        ]))));
@@ -397,27 +351,20 @@
 ;
                            (UTInputHorzEmbeddedMath
                               (UTMath
-                                 ((Range.Normal ("mathlist.saty", 10, 6, 10,
-                                     11)),
+                                 ((Range.Normal <mathlist.saty:10.7-12>),
                                   (UTMList
-                                     [((Range.Normal ("mathlist.saty", 10, 6,
-                                          10, 11)),
+                                     [((Range.Normal <mathlist.saty:10.7-12>),
                                        (UTMSuperScript (
                                           ((Range.Dummy "mathtop"),
                                            (UTMSubScript (
-                                              ((Range.Normal (
-                                                  "mathlist.saty", 10, 6, 10,
-                                                  7)),
+                                              ((Range.Normal <mathlist.saty:10.7-8>),
                                                (UTMChars "a")),
                                               false,
-                                              ((Range.Normal (
-                                                  "mathlist.saty", 10, 10,
-                                                  10, 11)),
+                                              ((Range.Normal <mathlist.saty:10.11-12>),
                                                (UTMChars "2"))
                                               ))),
                                           false,
-                                          ((Range.Normal ("mathlist.saty",
-                                              10, 8, 10, 9)),
+                                          ((Range.Normal <mathlist.saty:10.9-10>),
                                            (UTMChars "1"))
                                           )))
                                        ]))));
@@ -425,18 +372,14 @@
 ;
                            (UTInputHorzEmbeddedMath
                               (UTMath
-                                 ((Range.Normal ("mathlist.saty", 11, 6, 11,
-                                     8)),
+                                 ((Range.Normal <mathlist.saty:11.7-9>),
                                   (UTMList
-                                     [((Range.Normal ("mathlist.saty", 11, 6,
-                                          11, 8)),
+                                     [((Range.Normal <mathlist.saty:11.7-9>),
                                        (UTMSuperScript (
-                                          ((Range.Normal ("mathlist.saty",
-                                              11, 6, 11, 7)),
+                                          ((Range.Normal <mathlist.saty:11.7-8>),
                                            (UTMChars "a")),
                                           true,
-                                          ((Range.Normal ("mathlist.saty",
-                                              11, 7, 11, 8)),
+                                          ((Range.Normal <mathlist.saty:11.8-9>),
                                            (UTMChars "′"))
                                           )))
                                        ]))));
@@ -444,26 +387,18 @@
 ;
                            (UTInputHorzEmbeddedMath
                               (UTMath
-                                 ((Range.Normal ("mathlist.saty", 12, 6, 12,
-                                     10)),
+                                 ((Range.Normal <mathlist.saty:12.7-11>),
                                   (UTMList
-                                     [((Range.Normal ("mathlist.saty", 12, 6,
-                                          12, 10)),
+                                     [((Range.Normal <mathlist.saty:12.7-11>),
                                        (UTMSuperScript (
-                                          ((Range.Normal ("mathlist.saty",
-                                              12, 6, 12, 7)),
+                                          ((Range.Normal <mathlist.saty:12.7-8>),
                                            (UTMChars "a")),
                                           false,
-                                          ((Range.Normal ("mathlist.saty",
-                                              12, 7, 12, 10)),
+                                          ((Range.Normal <mathlist.saty:12.8-11>),
                                            (UTMList
-                                              [((Range.Normal (
-                                                   "mathlist.saty", 12, 7,
-                                                   12, 8)),
+                                              [((Range.Normal <mathlist.saty:12.8-9>),
                                                 (UTMChars "′"));
-                                                ((Range.Normal (
-                                                    "mathlist.saty", 12, 9,
-                                                    12, 10)),
+                                                ((Range.Normal <mathlist.saty:12.10-11>),
                                                  (UTMChars "1"))
                                                 ]))
                                           )))
@@ -472,27 +407,20 @@
 ;
                            (UTInputHorzEmbeddedMath
                               (UTMath
-                                 ((Range.Normal ("mathlist.saty", 13, 6, 13,
-                                     10)),
+                                 ((Range.Normal <mathlist.saty:13.7-11>),
                                   (UTMList
-                                     [((Range.Normal ("mathlist.saty", 13, 6,
-                                          13, 10)),
+                                     [((Range.Normal <mathlist.saty:13.7-11>),
                                        (UTMSuperScript (
                                           ((Range.Dummy "mathtop"),
                                            (UTMSubScript (
-                                              ((Range.Normal (
-                                                  "mathlist.saty", 13, 6, 13,
-                                                  7)),
+                                              ((Range.Normal <mathlist.saty:13.7-8>),
                                                (UTMChars "a")),
                                               false,
-                                              ((Range.Normal (
-                                                  "mathlist.saty", 13, 9, 13,
-                                                  10)),
+                                              ((Range.Normal <mathlist.saty:13.10-11>),
                                                (UTMChars "2"))
                                               ))),
                                           true,
-                                          ((Range.Normal ("mathlist.saty",
-                                              13, 7, 13, 8)),
+                                          ((Range.Normal <mathlist.saty:13.8-9>),
                                            (UTMChars "′"))
                                           )))
                                        ]))));
@@ -500,35 +428,24 @@
 ;
                            (UTInputHorzEmbeddedMath
                               (UTMath
-                                 ((Range.Normal ("mathlist.saty", 14, 6, 14,
-                                     12)),
+                                 ((Range.Normal <mathlist.saty:14.7-13>),
                                   (UTMList
-                                     [((Range.Normal ("mathlist.saty", 14, 6,
-                                          14, 12)),
+                                     [((Range.Normal <mathlist.saty:14.7-13>),
                                        (UTMSuperScript (
                                           ((Range.Dummy "mathtop"),
                                            (UTMSubScript (
-                                              ((Range.Normal (
-                                                  "mathlist.saty", 14, 6, 14,
-                                                  7)),
+                                              ((Range.Normal <mathlist.saty:14.7-8>),
                                                (UTMChars "a")),
                                               false,
-                                              ((Range.Normal (
-                                                  "mathlist.saty", 14, 9, 14,
-                                                  10)),
+                                              ((Range.Normal <mathlist.saty:14.10-11>),
                                                (UTMChars "2"))
                                               ))),
                                           false,
-                                          ((Range.Normal ("mathlist.saty",
-                                              14, 7, 14, 12)),
+                                          ((Range.Normal <mathlist.saty:14.8-13>),
                                            (UTMList
-                                              [((Range.Normal (
-                                                   "mathlist.saty", 14, 7,
-                                                   14, 8)),
+                                              [((Range.Normal <mathlist.saty:14.8-9>),
                                                 (UTMChars "′"));
-                                                ((Range.Normal (
-                                                    "mathlist.saty", 14, 11,
-                                                    14, 12)),
+                                                ((Range.Normal <mathlist.saty:14.12-13>),
                                                  (UTMChars "1"))
                                                 ]))
                                           )))
@@ -537,35 +454,24 @@
 ;
                            (UTInputHorzEmbeddedMath
                               (UTMath
-                                 ((Range.Normal ("mathlist.saty", 15, 6, 15,
-                                     12)),
+                                 ((Range.Normal <mathlist.saty:15.7-13>),
                                   (UTMList
-                                     [((Range.Normal ("mathlist.saty", 15, 6,
-                                          15, 12)),
+                                     [((Range.Normal <mathlist.saty:15.7-13>),
                                        (UTMSuperScript (
                                           ((Range.Dummy "mathtop"),
                                            (UTMSubScript (
-                                              ((Range.Normal (
-                                                  "mathlist.saty", 15, 6, 15,
-                                                  7)),
+                                              ((Range.Normal <mathlist.saty:15.7-8>),
                                                (UTMChars "a")),
                                               false,
-                                              ((Range.Normal (
-                                                  "mathlist.saty", 15, 11,
-                                                  15, 12)),
+                                              ((Range.Normal <mathlist.saty:15.12-13>),
                                                (UTMChars "2"))
                                               ))),
                                           false,
-                                          ((Range.Normal ("mathlist.saty",
-                                              15, 7, 15, 10)),
+                                          ((Range.Normal <mathlist.saty:15.8-11>),
                                            (UTMList
-                                              [((Range.Normal (
-                                                   "mathlist.saty", 15, 7,
-                                                   15, 8)),
+                                              [((Range.Normal <mathlist.saty:15.8-9>),
                                                 (UTMChars "′"));
-                                                ((Range.Normal (
-                                                    "mathlist.saty", 15, 9,
-                                                    15, 10)),
+                                                ((Range.Normal <mathlist.saty:15.10-11>),
                                                  (UTMChars "1"))
                                                 ]))
                                           )))
@@ -578,30 +484,27 @@
 
 ;; toplevel.saty
 (UTDeclareVariantIn (
-   (UTMutualSynonymCons ([], (Range.Normal ("toplevel.saty", 1, 5, 1, 6)),
-      "t",
-      ((Range.Normal ("toplevel.saty", 1, 9, 1, 15)),
+   (UTMutualSynonymCons ([], (Range.Normal <toplevel.saty:1.6-7>), "t",
+      ((Range.Normal <toplevel.saty:1.10-16>),
        (Types.MFuncType ([],
-          ((Range.Normal ("toplevel.saty", 1, 9, 1, 10)),
+          ((Range.Normal <toplevel.saty:1.10-11>),
            (Types.MTypeName ([], [], "a"))),
-          ((Range.Normal ("toplevel.saty", 1, 14, 1, 15)),
+          ((Range.Normal <toplevel.saty:1.15-16>),
            (Types.MTypeName ([], [], "b")))
           ))),
-      (UTMutualVariantCons ([], (Range.Normal ("toplevel.saty", 2, 4, 2, 5)),
-         "s",
-         [((Range.Normal ("toplevel.saty", 2, 8, 2, 9)), "A",
+      (UTMutualVariantCons ([], (Range.Normal <toplevel.saty:2.5-6>), "s",
+         [((Range.Normal <toplevel.saty:2.9-10>), "A",
            ((Range.Dummy "dec-constructor-unit1"),
             (Types.MTypeName ([], [], "unit"))));
-           ((Range.Normal ("toplevel.saty", 2, 12, 2, 13)), "B",
+           ((Range.Normal <toplevel.saty:2.13-14>), "B",
             ((Range.Dummy "dec-constructor-unit1"),
              (Types.MTypeName ([], [], "unit"))))
            ],
-         (UTMutualVariantCons ([],
-            (Range.Normal ("toplevel.saty", 3, 4, 3, 5)), "u",
-            [((Range.Normal ("toplevel.saty", 4, 4, 4, 5)), "A",
+         (UTMutualVariantCons ([], (Range.Normal <toplevel.saty:3.5-6>), "u",
+            [((Range.Normal <toplevel.saty:4.5-6>), "A",
               ((Range.Dummy "dec-constructor-unit1"),
                (Types.MTypeName ([], [], "unit"))));
-              ((Range.Normal ("toplevel.saty", 5, 4, 5, 5)), "B",
+              ((Range.Normal <toplevel.saty:5.5-6>), "B",
                ((Range.Dummy "dec-constructor-unit1"),
                 (Types.MTypeName ([], [], "unit"))))
               ],
