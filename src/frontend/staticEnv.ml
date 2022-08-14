@@ -125,10 +125,10 @@ and functor_signature = {
   opaques  : quantifier;
   domain   : signature;
   codomain : signature abstracted;
+  closure  : (module_name ranged * untyped_module * type_environment) option;
 }
 
 and module_entry = {
-  mod_name      : EvalVarID.t option;
   mod_signature : signature;
 }
 
