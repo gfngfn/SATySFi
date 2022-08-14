@@ -96,7 +96,7 @@ let gen_interps_1 () =
       List.iter2 (fun codearg astarg ->
         puts "      let %s = interpret_1_value env %s in" codearg astarg;
       ) codeargs astargs;
-      puts "      return @@ Cd%s(%s)" inst (String.concat ", " codeargs);
+      puts "      Cd%s(%s)" inst (String.concat ", " codeargs);
       puts ""
 
   | _ ->
@@ -137,7 +137,7 @@ let gen_interps_0 () =
       if needs_reducef then begin
         puts "      let reducef = reduce_beta_list in"
       end;
-      puts "        return @@ begin";
+      puts "        begin";
       default code code_interp |> split_lines |> List.iter
         (puts "          %s");
       puts "        end";
