@@ -167,32 +167,24 @@ let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module
       mentry
 
 
-let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry * (Range.t * EvalVarID.t * string list) =
-  let (rng0, _) = modident0 in
+let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry =
   let mentry0 = find_module tyenv modident0 in
-  let evid0 =
-    match mentry0.mod_name with
-    | None        -> assert false
-    | Some(evid0) -> evid0
-  in
-  let mentry =
-    modidents |> List.fold_left (fun mentry (rng, modnm) ->
-      match mentry.mod_signature with
-      | ConcFunctor(fsig) ->
-          raise_error (NotAStructureSignature(rng, fsig))
+  modidents |> List.fold_left (fun mentry (rng, modnm) ->
+    match mentry.mod_signature with
+    | ConcFunctor(fsig) ->
+        raise_error (NotAStructureSignature(rng, fsig))
 
-      | ConcStructure(ssig) ->
-          begin
-            match ssig |> StructSig.find_module modnm with
-            | None ->
-                raise_error (UndefinedModuleName(rng, modnm))
+    | ConcStructure(ssig) ->
+        begin
+          match ssig |> StructSig.find_module modnm with
+          | None ->
+              raise_error (UndefinedModuleName(rng, modnm))
 
-            | Some(mentry) ->
-                mentry
-          end
-    ) mentry0
-  in
-  (mentry, (rng0, evid0, modidents |> List.map (fun (_, modnm) -> modnm)))
+          | Some(mentry) ->
+              mentry
+        end
+  ) mentry0
+
 
 let abstraction (evid : EvalVarID.t) (ast : abstract_tree) : abstract_tree =
   Function(LabelMap.empty, PatternBranch(PVariable(evid), ast))
@@ -902,7 +894,7 @@ let rec typecheck
 
         | modident0 :: proj ->
             let modchain = (modident0, proj) in
-            let (mentry, (rng0, evid0, labels)) = find_module_chain tyenv modchain in
+            let mentry = find_module_chain tyenv modchain in
             let ssig =
               match mentry.mod_signature with
               | ConcStructure(ssig) -> ssig
@@ -922,27 +914,30 @@ let rec typecheck
                   ventry
             in
             let stage = ventry.val_stage in
-            let e_mods =
-              labels |> List.fold_left (fun e label ->
-                AccessField(e, label)
-              ) (ContentOf(rng0, evid0))
+            let evid =
+              match ventry.val_name with
+              | None -> (* from a functor parameter *)
+                  EvalVarID.fresh (rng, "(dummy)")
+(*
+                  let (_, modnm0) = modident0 in failwith (Format.asprintf "%s, %a" modnm0 Range.pp rng)
+*)
+              | Some(evid) -> evid
             in
             let e =
-              let e_at_0 = AccessField(e_mods, varnm) in
               match (pre.stage, stage) with
               | (Persistent0, Persistent0)
-              | (Stage0, Persistent0)
-              | (Stage0, Stage0) ->
-                  e_at_0
+              | (Stage0, Persistent0) ->
+                  ContentOf(rng, evid)
 
               | (Stage1, Persistent0) ->
-                  Persistent(e_at_0)
+                  Persistent(ContentOf(rng, evid))
 
+              | (Stage0, Stage0)
               | (Stage1, Stage1) ->
-                  Prev(e_at_0)
+                  ContentOf(rng, evid)
 
               | _ ->
-                  raise_error (InvalidOccurrenceAsToStaging(rng, varnm, stage))
+                  raise_error (InvalidOccurrenceAsToStaging(rng_var, varnm, stage))
             in
             (ventry.val_type, e)
       in
@@ -1823,7 +1818,7 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
 
             | modident0 :: proj ->
                 let modchain = (modident0, proj) in
-                let (mentry, _) = find_module_chain tyenv modchain in
+                let mentry = find_module_chain tyenv modchain in
                 begin
                   match mentry.mod_signature with
                   | ConcFunctor(fsig) ->
@@ -1937,31 +1932,24 @@ and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : con
   ) ConstructorMap.empty
 
 
-and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * abstract_tree =
+and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * binding list =
   let (rng, utmodmain) = utmod in
   match utmodmain with
   | UTModVar(modchain) ->
-      let (mentry, (rng0, evid0, labels)) = find_module_chain tyenv modchain in
+      let mentry = find_module_chain tyenv modchain in
       let modsig = mentry.mod_signature in
-      let e = labels |> List.fold_left (fun e label -> AccessField(e, label)) (ContentOf(rng0, evid0)) in
-      ((OpaqueIDMap.empty, modsig), e)
+      ((OpaqueIDMap.empty, modsig), [])
 
   | UTModBinds(utbinds) ->
-      let (e, (quant, ssig)) = typecheck_binding_list tyenv utbinds in
-      ((quant, ConcStructure(ssig)), e)
+      let ((quant, ssig), binds) = typecheck_binding_list tyenv utbinds in
+      ((quant, ConcStructure(ssig)), binds)
 
   | UTModFunctor(modident1, utsig1, utmod2) ->
       let (_, modnm1) = modident1 in
       let absmodsig1 = typecheck_signature tyenv utsig1 in
       let (quant1, modsig1) = absmodsig1 in
-      let evid = EvalVarID.fresh modident1 in
-      let (absmodsig2, e2) =
-        let mentry1 =
-          {
-            mod_signature = modsig1;
-            mod_name      = Some(evid);
-          }
-        in
+      let (absmodsig2, _binds2) =
+        let mentry1 = { mod_signature = modsig1; } in
         let tyenv = tyenv |> Typeenv.add_module modnm1 mentry1 in
         typecheck_module tyenv utmod2
       in
@@ -1970,16 +1958,15 @@ and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : signature ab
           opaques  = quant1;
           domain   = modsig1;
           codomain = absmodsig2;
+          closure  = Some((modident1, utmod2, tyenv));
         }
       in
       let absmodsig = (OpaqueIDMap.empty, ConcFunctor(fsig)) in
-      (absmodsig, abstraction evid e2)
+      (absmodsig, [])
 
   | UTModApply(modchain1, modchain2) ->
-      let (mentry1, (rng1, evid1, labels1)) = find_module_chain tyenv modchain1 in
-      let (mentry2, (rng2, evid2, labels2)) = find_module_chain tyenv modchain2 in
-      let e1 = labels1 |> List.fold_left (fun e label -> AccessField(e, label)) (ContentOf(rng1, evid1)) in
-      let e2 = labels2 |> List.fold_left (fun e label -> AccessField(e, label)) (ContentOf(rng2, evid2)) in
+      let mentry1 = find_module_chain tyenv modchain1 in
+      let mentry2 = find_module_chain tyenv modchain2 in
       begin
         match mentry1.mod_signature with
         | ConcStructure(ssig) ->
@@ -1987,24 +1974,35 @@ and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : signature ab
             raise_error (NotAFunctorSignature(rng, ssig))
 
         | ConcFunctor(fsig1) ->
-            let { opaques = quant1; domain = modsig_dom1; codomain = absmodsig_cod1 } = fsig1 in
-            let modsig2 = mentry2.mod_signature in
-            let subst = subtype_concrete_with_abstract rng modsig2 (quant1, modsig_dom1) in
-            let absmodsig = absmodsig_cod1 |> substitute_abstract subst in
-            (absmodsig, Apply(LabelMap.empty, e1, e2))
+            begin
+              match fsig1 with
+              | {
+                  opaques  = quant1;
+                  domain   = modsig_dom1;
+                  codomain = absmodsig_cod1;
+                  closure  = Some(((_, modnm0), utmod0, tyenv0))
+                } ->
+                  let modsig2 = mentry2.mod_signature in
+                  let subst = subtype_concrete_with_abstract rng modsig2 (quant1, modsig_dom1) in
+                  let ((_, modsig0), binds) =
+                    let mentry0 = { mod_signature = modsig2; } in
+                    typecheck_module (tyenv0 |> Typeenv.add_module modnm0 mentry0) utmod0
+                  in
+                  let (quant1_subst, modsig_cod1_subst) = absmodsig_cod1 |> substitute_abstract subst in
+                  let absmodsig = (quant1_subst, copy_contents modsig0 modsig_cod1_subst) in
+                  (absmodsig, binds)
+
+              | _ ->
+                  assert false
+            end
       end
 
   | UTModCoerce(modident1, utsig2) ->
       let mentry1 = find_module tyenv modident1 in
-      let evid =
-        match mentry1.mod_name with
-        | None       -> assert false
-        | Some(evid) -> evid
-      in
       let modsig1 = mentry1.mod_signature in
       let absmodsig2 = typecheck_signature tyenv utsig2 in
       let absmodsig = coerce_signature rng modsig1 absmodsig2 in
-      (absmodsig, ContentOf(rng, evid))
+      (absmodsig, [])
 
 
 and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signature abstracted =
@@ -2018,7 +2016,7 @@ and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signat
       end
 
   | UTSigPath(modchain1, (rng_signm, signm2)) ->
-      let (mentry1, _) = find_module_chain tyenv modchain1 in
+      let mentry1 = find_module_chain tyenv modchain1 in
       begin
         match mentry1.mod_signature with
         | ConcFunctor(fsig) ->
@@ -2040,12 +2038,7 @@ and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signat
   | UTSigFunctor((_, modnm), utsig1, utsig2) ->
       let (quant1, modsig1) = typecheck_signature tyenv utsig1 in
       let absmodsig2 =
-        let mentry =
-          {
-            mod_signature = modsig1;
-            mod_name      = None;
-          }
-        in
+        let mentry = { mod_signature = modsig1; } in
         let tyenv = tyenv |> Typeenv.add_module modnm mentry in
         typecheck_signature tyenv utsig2
       in
@@ -2054,6 +2047,7 @@ and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signat
           opaques  = quant1;
           domain   = modsig1;
           codomain = absmodsig2;
+          closure  = None;
         }
       in
       (OpaqueIDMap.empty, ConcFunctor(fsig))
@@ -2198,6 +2192,7 @@ and substitute_concrete (subst : substitution) (modsig : signature) : signature 
           opaques  = quant;
           domain   = modsig1;
           codomain = absmodsig2;
+          closure  = failwith "TODO";
         }
       in
       ConcFunctor(fsig)
@@ -2301,7 +2296,7 @@ and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t 
       )
       ~m:(fun _modnm mentry ->
         let modsig = mentry.mod_signature |> substitute_concrete subst in
-        { mentry with mod_signature = modsig }
+        { mod_signature = modsig; }
       )
       ~s:(fun _signm absmodsig ->
         absmodsig |> substitute_abstract subst
@@ -2730,14 +2725,14 @@ and kind_equal (kd1 : kind) (kd2 : kind) : bool =
 (* Given `modsig1` and `modsig2` which are already known to satisfy `modsig1 <= modsig2`,
    `copy_contents` copies every target name occurred in `modsig1`
    into the corresponding occurrence in `modsig2`. *)
-and copy_contents (modsig1 : signature) (modsig2 : signature) =
+and copy_contents (modsig1 : signature) (modsig2 : signature) : signature =
   match (modsig1, modsig2) with
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
-      let ssig2new = copy_closure_in_structure ssig1 ssig2 in
-      (ConcStructure(ssig2new))
+      let ssig2_new = copy_closure_in_structure ssig1 ssig2 in
+      (ConcStructure(ssig2_new))
 
   | (ConcFunctor(fsig1), ConcFunctor(fsig2)) ->
-      let { opaques = quant_dom1; domain = modsig_dom1; codomain = absmodsig_cod1 } = fsig1 in
+      let { opaques = quant_dom1; domain = modsig_dom1; codomain = absmodsig_cod1; closure = closure } = fsig1 in
       let { opaques = quant_dom2; domain = modsig_dom2; codomain = absmodsig_cod2 } = fsig2 in
       let modsig_dom2_new = copy_contents modsig_dom1 modsig_dom2 in
       let absmodsig_cod2_new =
@@ -2749,6 +2744,7 @@ and copy_contents (modsig1 : signature) (modsig2 : signature) =
       ConcFunctor({ fsig2 with
         domain   = modsig_dom2_new;
         codomain = absmodsig_cod2_new;
+        closure  = closure;
       })
 
   | _ ->
@@ -2768,7 +2764,7 @@ and copy_closure_in_structure (ssig1 : StructSig.t) (ssig2 : StructSig.t) : Stru
     ~m:(fun modnm mentry2 ->
       match ssig1 |> StructSig.find_module modnm with
       | None          -> assert false
-      | Some(mentry1) -> { mentry2 with mod_name = mentry1.mod_name }
+      | Some(mentry1) -> { mod_signature = copy_contents mentry1.mod_signature mentry2.mod_signature }
     )
     ~s:(fun _signm sentry2 -> sentry2)
 
@@ -2861,12 +2857,7 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
   | UTDeclModule((_, modnm), utsig) ->
       let absmodsig = typecheck_signature tyenv utsig in
       let (quant, modsig) = absmodsig in
-      let mentry =
-        {
-          mod_signature = modsig;
-          mod_name      = None;
-        }
-      in
+      let mentry = { mod_signature = modsig; } in
       let ssig = StructSig.empty |> StructSig.add_module modnm mentry in
       (quant, ssig)
 
@@ -2889,7 +2880,7 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
       end
 
 
-and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) : abstract_tree * StructSig.t abstracted =
+and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
   let (binds, (quant, ssig)) =
     let (bindacc, _tyenv, quantacc, ssigacc) =
       utbinds |> List.fold_left (fun (bindacc, tyenv, quantacc, ssigacc) utbind ->
@@ -2904,43 +2895,7 @@ and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) 
     in
     (Alist.to_list bindacc, (quantacc, ssigacc))
   in
-  let e_record =
-    let e_labmap =
-      ssig |> StructSig.fold
-        ~v:(fun x ventry e_labmap ->
-          let evid =
-            match ventry.val_name with
-            | None       -> assert false
-            | Some(evid) -> evid
-          in
-          e_labmap |> LabelMap.add x (ContentOf(Range.dummy "UTModBinds", evid))
-        )
-        ~c:(fun _ctornm _centry e_labmap -> e_labmap)
-        ~f:(fun _tynm _pty e_labmap -> e_labmap)
-        ~t:(fun _tynm _tentry e_labmap -> e_labmap)
-        ~m:(fun modnm mentry e_labmap ->
-          let evid =
-            match mentry.mod_name with
-            | None       -> assert false
-            | Some(evid) -> evid
-          in
-          e_labmap |> LabelMap.add modnm (ContentOf(Range.dummy "UTModBinds", evid))
-        )
-        ~s:(fun _signm _sentry e_labmap -> e_labmap)
-        LabelMap.empty
-    in
-    Record(e_labmap)
-  in
-  let e =
-    List.fold_right (fun (Bind(rec_or_nonrec)) e ->
-      match rec_or_nonrec with
-      | NonRec(evid, e0)   -> LetNonRecIn(PVariable(evid), e0, e)
-      | Rec(recbinds)      -> LetRecIn(recbinds, e)
-      | Mutable0(evid, e0) -> LetMutableIn(evid, e0, e)
-      | Mutable1(evid, e0) -> Next(LetMutableIn(evid, e0, Prev(e)))
-    ) binds e_record
-  in
-  (e, (quant, ssig))
+  ((quant, ssig), binds)
 
 
 and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : SynonymNameSet.t =
@@ -3175,6 +3130,8 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
               ) (Alist.empty, StructSig.empty)
             in
             let rec_or_nonrecs =
+              [ Rec(recbindacc |> Alist.to_list) ]
+(*
               match stage with
               | Stage0 | Persistent0 ->
                   [ Rec(recbindacc |> Alist.to_list) ]
@@ -3242,6 +3199,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
                         in
                         nonrec_main :: nonrecs
                   end
+*)
             in
             (rec_or_nonrecs, ssig)
 
@@ -3259,28 +3217,9 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
               in
               StructSig.empty |> StructSig.add_value varnm ventry
             in
-            let rec_or_nonrecs =
-              match pre.stage with
-              | Stage0 | Persistent0 ->
-                  [ Mutable0(evid, eI) ]
-
-              | Stage1 ->
-                  let symb =
-                    let varnm = EvalVarID.get_varnm evid in
-                    let rng = EvalVarID.get_range evid in
-                    CodeSymbol.fresh (rng, "symbol for " ^ varnm)
-                  in
-                  [
-                    Mutable1(evid, eI);
-                    NonRec(
-                      evid,
-                      Next(ASTCodeSymbol(symb))
-                    );
-                  ]
-            in
-            (rec_or_nonrecs, ssig)
+            ([ Mutable(evid, eI) ], ssig)
       in
-      let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(rec_or_nonrec)) in
+      let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(stage, rec_or_nonrec)) in
       (binds, (OpaqueIDMap.empty, ssig))
 
   | UTBindType([]) ->
@@ -3298,7 +3237,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
 
   | UTBindModule(modident, utsigopt2, utmod1) ->
       let (rng_mod, modnm) = modident in
-      let (absmodsig1, e1) = typecheck_module tyenv utmod1 in
+      let (absmodsig1, binds1) = typecheck_module tyenv utmod1 in
       let (quant, modsig) =
         match utsigopt2 with
         | None ->
@@ -3309,17 +3248,11 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
             let absmodsig2 = typecheck_signature tyenv utsig2 in
             coerce_signature rng_mod modsig1 absmodsig2
       in
-      let evid = EvalVarID.fresh modident in
       let ssig =
-        let mentry =
-          {
-            mod_signature = modsig;
-            mod_name      = Some(evid);
-          }
-        in
+        let mentry = { mod_signature = modsig; } in
         StructSig.empty |> StructSig.add_module modnm mentry
       in
-      ([ Bind(NonRec(evid, e1)) ], (quant, ssig))
+      (binds1, (quant, ssig))
 
   | UTBindSignature((_, signm), utsig) ->
       let absmodsig = typecheck_signature tyenv utsig in
@@ -3327,42 +3260,15 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       ([], (OpaqueIDMap.empty, ssig))
 
   | UTBindInclude(utmod) ->
-      let (absmodsig, e_included) = typecheck_module tyenv utmod in
+      let (absmodsig, binds) = typecheck_module tyenv utmod in
       let (quant, modsig) = absmodsig in
-      let (rng_mod, _) = utmod in
-      let evid_included =
-        EvalVarID.fresh (rng_mod, "(included)")
-      in
       begin
         match modsig with
         | ConcStructure(ssig) ->
-            let bindacc = Alist.extend Alist.empty (Bind(NonRec(evid_included, e_included))) in
-            let (bindacc, ssig) =
-              ssig |> StructSig.fold
-                ~v:(fun x ventry (bindacc, ssig) ->
-                  let evid = EvalVarID.fresh (Range.dummy ("include:" ^ x), "(includeV)") in
-                  let e = AccessField(ContentOf(rng_mod, evid_included), x) in
-                  let bindacc = Alist.extend bindacc (Bind(NonRec(evid, e))) in
-                  let ssig = ssig |> StructSig.add_value x { ventry with val_name = Some(evid) } in
-                  (bindacc, ssig)
-                )
-                ~c:(fun _ctornm _centry acc -> acc)
-                ~f:(fun _tynm _pty acc -> acc)
-                ~t:(fun _tynm _tentry acc -> acc)
-                ~m:(fun modnm mentry (bindacc, ssig) ->
-                  let evid = EvalVarID.fresh (Range.dummy ("include:" ^ modnm), "(includeM)") in
-                  let e = AccessField(ContentOf(rng_mod, evid_included), modnm) in
-                  let bindacc = Alist.extend bindacc (Bind(NonRec(evid, e))) in
-                  let ssig = ssig |> StructSig.add_module modnm { mentry with mod_name = Some(evid) } in
-                  (bindacc, ssig)
-                )
-                ~s:(fun signm _sentry acc -> acc)
-                (bindacc, StructSig.empty)
-
-            in
-            (bindacc |> Alist.to_list, (quant, ssig))
+            (binds, (quant, ssig))
 
         | ConcFunctor(fsig) ->
+            let (rng_mod, _) = utmod in
             raise_error (NotAStructureSignature(rng_mod, fsig))
       end
 
@@ -3387,14 +3293,14 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : m
   (ty, e)
 
 
-let main_bindings (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : abstract_tree * StructSig.t abstracted =
+let main_bindings (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
   match utsig_opt with
   | None ->
       typecheck_binding_list tyenv utbinds
 
   | Some(utsig) ->
       let absmodsig = typecheck_signature tyenv utsig in
-      let (e, (_, ssig)) = typecheck_binding_list tyenv utbinds in
+      let ((_, ssig), binds) = typecheck_binding_list tyenv utbinds in
       let rng = Range.dummy "main_bindings" in (* TODO (enhance): give appropriate ranges *)
       let (quant, modsig) = coerce_signature rng (ConcStructure(ssig)) absmodsig in
       let ssig =
@@ -3402,7 +3308,7 @@ let main_bindings (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (ut
         | ConcFunctor(_)      -> assert false
         | ConcStructure(ssig) -> ssig
       in
-      (e, (quant, ssig))
+      ((quant, ssig), binds)
 
 
 let are_unifiable (ty1 : mono_type) (ty2 : mono_type) : bool =

@@ -275,7 +275,7 @@ let output_text abspath_out s =
   close_out outc
 
 
-let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : abstract_tree * StructSig.t abstracted =
+let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
   Logging.begin_to_typecheck_file abspath_in;
   let res = Typechecker.main_bindings tyenv utsig_opt utbinds in
   Logging.pass_type_check None;
@@ -298,14 +298,16 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
       raise (NotADocumentFile(abspath_in, tyenv, ty))
 
 
-let eval_library_file (env : environment) (abspath : abs_path) (evid : EvalVarID.t) (ast : abstract_tree) : environment =
+let eval_library_file (env : environment) (abspath : abs_path) (binds : binding list) : environment =
   Logging.begin_to_eval_file abspath;
   if OptionState.bytecomp_mode () then
+    failwith "TODO: eval_libary_file, Bytecomp"
+(*
     let (value, _) = Bytecomp.compile_and_exec_0 env ast in
     add_to_environment env evid (ref value)
+*)
   else
-    let (value, _) = Evaluator.interpret_0 env ast in
-    add_to_environment env evid (ref value)
+    Evaluator.interpret_bindings_0 env binds
 
 
 let eval_main i env_freezed ast =
@@ -384,7 +386,7 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
     aux 1
 
 
-let eval_abstract_tree_list (env : environment) (libs : (abs_path * EvalVarID.t * abstract_tree) list) (ast_doc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let eval_abstract_tree_list (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
 (*
   let rec preprocess (codeacc : (abs_path * code_binding list) Alist.t) (env : environment) libs =
     match libs with
@@ -410,8 +412,8 @@ let eval_abstract_tree_list (env : environment) (libs : (abs_path * EvalVarID.t 
     | [] ->
         env
 
-    | (abspath, evid, e) :: tail ->
-        let env = eval_library_file env abspath evid e in
+    | (abspath, binds) :: tail ->
+        let env = eval_library_file env abspath binds in
         eval env tail
   in
 (*
@@ -1200,16 +1202,10 @@ let main () =
 
             | LibraryFile((modident, utsig_opt, utbinds)) ->
                 let (_, modnm) = modident in
-                let (e, (_quant, ssig)) = typecheck_library_file tyenv abspath utsig_opt utbinds in
-                let evid = EvalVarID.fresh modident in
-                let mentry =
-                  {
-                    mod_signature = ConcStructure(ssig);
-                    mod_name      = Some(evid);
-                  }
-                in
+                let ((_quant, ssig), binds) = typecheck_library_file tyenv abspath utsig_opt utbinds in
+                let mentry = { mod_signature = ConcStructure(ssig); } in
                 let tyenv = tyenv |> Typeenv.add_module modnm mentry in
-                (tyenv, Alist.extend libacc (abspath, evid, e), docopt)
+                (tyenv, Alist.extend libacc (abspath, binds), docopt)
           ) (tyenv, Alist.empty, None)
         in
         if OptionState.type_check_only () then

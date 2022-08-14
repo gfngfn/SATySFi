@@ -19,8 +19,11 @@ and functor_signature = {
   opaques  : quantifier;
   domain   : signature;
   codomain : signature abstracted;
+  closure  : (module_name ranged * untyped_module * type_environment) option;
 }
 [@@deriving show]
+
+and type_environment
 
 type value_entry = {
   val_name  : EvalVarID.t option;
@@ -44,14 +47,13 @@ type macro_entry = {
 }
 
 type module_entry = {
-  mod_name      : EvalVarID.t option;
   mod_signature : signature;
 }
 
 
 module Typeenv : sig
 
-  type t
+  type t = type_environment
 
   val empty : t
 
