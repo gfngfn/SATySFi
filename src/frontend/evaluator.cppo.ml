@@ -819,8 +819,13 @@ let interpret_bindings_0 (env : environment) (binds : binding list) : environmen
         let (value, _) = interpret_0 env ast in
         add_to_environment env evid (ref value)
 
-    | _ ->
-        failwith "TODO: Evaluator.interpret_bindings_0"
+    | Rec(recbinds) ->
+        add_letrec_bindings_to_environment env recbinds
+
+    | Mutable(evid, ast_ini) ->
+        let (value_ini, _) = interpret_0 env ast_ini in
+        let stid = register_location env value_ini in
+        add_to_environment env evid (ref (Location(stid)))
 
   ) env
 
@@ -836,7 +841,7 @@ let interpret_bindings_1 (env : environment) (binds : binding list) : code_bindi
             (* TODO (enhance): fix `envopt` *)
 
       | _ ->
-          failwith "TODO: Evaluator.interpret_bindings_0"
+          failwith "TODO: Evaluator.interpret_bindings_1"
 
     ) (Alist.empty, env)
   in
