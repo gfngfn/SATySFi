@@ -156,15 +156,6 @@ rule progexpr stack = parse
         | "require" -> HEADER_REQUIRE(pos, content)
         | "import"  -> HEADER_IMPORT(pos, content)
 
-        | "stage" ->
-            begin
-              match content with
-              | "persistent" -> HEADER_PERSISTENT0(pos)
-              | "0"          -> HEADER_STAGE0(pos)
-              | "1"          -> HEADER_STAGE1(pos)
-              | _            -> raise (LexError(pos, "undefined stage type '" ^ content ^ "'; should be 'persistent', '0', or '1'."))
-            end
-
         | _ ->
             raise (LexError(pos, "undefined header type '" ^ headertype ^ "'"))
       }
@@ -339,6 +330,7 @@ rule progexpr stack = parse
         | "mutable"   -> MUTABLE(pos)
         | "of"        -> OF(pos)
         | "open"      -> OPEN(pos)
+        | "persistent"-> PERSISTENT(pos)
         | "rec"       -> REC(pos)
         | "sig"       -> SIG(pos)
         | "signature" -> SIGNATURE(pos)

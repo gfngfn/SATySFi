@@ -2346,6 +2346,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
 
             | Some({ val_type = pty1; val_stage = stage1; _ }) ->
                 match (stage1, stage2) with
+                | (Persistent0, Persistent0)
                 | (Persistent0, Stage0)
                 | (Persistent0, Stage1)
                 | (Stage0, Stage0)
