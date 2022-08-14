@@ -294,19 +294,19 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
             report_bug_ast ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast
       end
 
-  | Dereference(astcont) ->
-      let valuecont = interpret_0 env astcont in
+  | Dereference(ast_cont) ->
+      let value_cont = interpret_0 env ast_cont in
       begin
-        match valuecont with
+        match value_cont with
         | Location(stid) ->
             begin
               match find_location_value env stid with
               | Some(value) -> value
-              | None        -> report_bug_reduction "Dereference; not found" astcont valuecont
+              | None        -> report_bug_reduction "Dereference; not found" ast_cont value_cont
             end
 
         | _ ->
-            report_bug_reduction "Dereference" astcont valuecont
+            report_bug_reduction "Dereference" ast_cont value_cont
       end
 
   | PatternMatch(rng, astobj, patbrs) ->
@@ -317,8 +317,8 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       let value_cont = interpret_0 env ast_cont in
       Constructor(constrnm, value_cont)
 
-  | BackendMathList(astms) ->
-      let ms = astms |> List.map (fun astm -> get_math (interpret_0 env astm)) |> List.concat in
+  | BackendMathList(asts) ->
+      let ms = asts |> List.map (fun ast -> get_math (interpret_0 env ast)) |> List.concat in
       MathValue(ms)
 
   | PrimitiveTuple(asts) ->
@@ -362,13 +362,13 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | ASTEndOfList ->
       CdEndOfList
 
-  | InputHorz(ihlst) ->
-      let cdihlst = ihlst |> map_input_horz (interpret_1 env) in
-      CdInputHorz(cdihlst)
+  | InputHorz(ihs) ->
+      let cdihs = ihs |> map_input_horz (interpret_1 env) in
+      CdInputHorz(cdihs)
 
-  | InputVert(ivlst) ->
-      let cdivlst = ivlst |> map_input_vert (interpret_1 env) in
-      CdInputVert(cdivlst)
+  | InputVert(ivs) ->
+      let cdivs = ivs |> map_input_vert (interpret_1 env) in
+      CdInputVert(cdivs)
 
   | ContentOf(rng, evid) ->
       begin
@@ -401,8 +401,8 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | LetNonRecIn(pattr, ast1, ast2) ->
       let code1 = interpret_1 env ast1 in
       let (env, cdpattr) = interpret_1_pattern_tree env pattr in
-        (* -- generate the symbols corresponding to the variables in the pattern
-              and add them to the environment -- *)
+        (* Generate the symbols corresponding to the variables in the pattern
+           and add them to the environment *)
       let code2 = interpret_1 env ast2 in
       CdLetNonRecIn(cdpattr, code1, code2)
 
@@ -417,13 +417,9 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       CdFunction(symb_labmap, cdpatbr)
 
   | Apply(ast_labmap, ast1, ast2) ->
+      let code_labmap = ast_labmap |> LabelMap.map (interpret_1 env) in
       let code1 = interpret_1 env ast1 in
       let code2 = interpret_1 env ast2 in
-      let code_labmap =
-        ast_labmap |> LabelMap.map (fun ast0 ->
-          interpret_1 env ast0
-        )
-      in
       CdApply(code_labmap, code1, code2)
 
   | IfThenElse(ast0, ast1, ast2) ->
@@ -436,14 +432,14 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       let cdasc = asc |> LabelMap.map (interpret_1 env) in
       CdRecord(cdasc)
 
-  | AccessField(ast1, fldnm) ->
+  | AccessField(ast1, field) ->
       let code1 = interpret_1 env ast1 in
-      CdAccessField(code1, fldnm)
+      CdAccessField(code1, field)
 
-  | UpdateField(ast1, fldnm, ast2) ->
+  | UpdateField(ast1, field, ast2) ->
       let code1 = interpret_1 env ast1 in
       let code2 = interpret_1 env ast2 in
-      CdUpdateField(code1, fldnm, code2)
+      CdUpdateField(code1, field, code2)
 
   | LetMutableIn(evid, ast1, ast2) ->
       let (env, symb) = generate_symbol_for_eval_var_id evid env in
@@ -475,13 +471,12 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       let code1 = interpret_1 env ast1 in
       CdConstructor(constrnm, code1)
 
-  | BackendMathList(astlst) ->
-      let codelst = astlst |> List.map (interpret_1 env) in
-      CdMathList(codelst)
+  | BackendMathList(asts) ->
+      let codes = asts |> List.map (interpret_1 env) in
+      CdMathList(codes)
 
   | PrimitiveTuple(asts) ->
-      let codes = TupleList.map (interpret_1 env) asts in
-        (* -- should be left-to-right -- *)
+      let codes = asts |> TupleList.map (interpret_1 env) in
       CdTuple(codes)
 
   | Prev(ast1) ->
@@ -507,7 +502,7 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
 #include "__evaluator_1.gen.ml"
 
 
-and interpret_1_pattern_branch env = function
+and interpret_1_pattern_branch (env : environment) = function
   | PatternBranch(pattr, ast) ->
       let (env, cdpattr) = interpret_1_pattern_tree env pattr in
       CdPatternBranch(cdpattr, interpret_1 env ast)
@@ -517,7 +512,7 @@ and interpret_1_pattern_branch env = function
       CdPatternBranchWhen(cdpattr, interpret_1 env ast, interpret_1 env ast1)
 
 
-and interpret_1_pattern_tree env = function
+and interpret_1_pattern_tree (env : environment) = function
   | PUnitConstant       -> (env, CdPUnitConstant)
   | PBooleanConstant(b) -> (env, CdPBooleanConstant(b))
   | PIntegerConstant(n) -> (env, CdPIntegerConstant(n))
@@ -562,30 +557,30 @@ and interpret_1_pattern_tree env = function
       (env, CdPConstructor(ctor, cdpattr))
 
 
-and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
-  let rec interpret_commands env (imivlst : intermediate_input_vert_element list) =
-    imivlst |> List.map (fun imiv ->
+and interpret_text_mode_intermediate_input_vert (env : environment) (value_tctx : syntactic_value) (imivs : intermediate_input_vert_element list) : syntactic_value =
+  let rec interpret_commands (env : environment) (imivs : intermediate_input_vert_element list) =
+    imivs |> List.map (fun imiv ->
       match imiv with
-      | ImInputVertEmbedded(astabs) ->
-          let valueabs = interpret_0 env astabs in
-          let valuevert = reduce_beta valueabs valuetctx in
-          get_string valuevert
+      | ImInputVertEmbedded(ast_abs) ->
+          let value_abs = interpret_0 env ast_abs in
+          let value_vert = reduce_beta value_abs value_tctx in
+          get_string value_vert
 
-      | ImInputVertContent(imivlstsub, envsub) ->
-          interpret_commands envsub imivlstsub
+      | ImInputVertContent(imivs_sub, env_sub) ->
+          interpret_commands env_sub imivs_sub
 
     ) |> String.concat ""
   in
-  let s = interpret_commands env imivlst in
+  let s = interpret_commands env imivs in
   make_string s
 
 
-and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
+and interpret_text_mode_intermediate_input_horz (env : environment) (value_tctx : syntactic_value) (imihs : intermediate_input_horz_element list) : syntactic_value =
 
-  let tctx = get_text_mode_context valuetctx in
+  let tctx = get_text_mode_context value_tctx in
 
-  let rec normalize (imihlst : intermediate_input_horz_element list) =
-    imihlst |> List.fold_left (fun acc imih ->
+  let rec normalize (imihs : intermediate_input_horz_element list) =
+    imihs |> List.fold_left (fun acc imih ->
       match imih with
       | ImInputHorzEmbedded(astabs) ->
           let nmih = NomInputHorzEmbedded(astabs) in
@@ -600,75 +595,72 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx :
 
       | ImInputHorzEmbeddedMath(astmath) ->
           failwith "TODO: Evaluator_> math; remains to be supported."
-(*
-          let nmih = NomInputHorzThunk(Apply(Apply(Value(valuemcmd), Value(valuectx)), astmath)) in
-            Alist.extend acc nmih
-*)
+
       | ImInputHorzEmbeddedCodeText(s) ->
           failwith "TODO: Evaluator_> code text; remains to be supported."
 
-      | ImInputHorzContent(imihlstsub, envsub) ->
-          let nmihlstsub = normalize imihlstsub in
-          let nmih = NomInputHorzContent(nmihlstsub, envsub) in
+      | ImInputHorzContent(imihs_sub, env_sub) ->
+          let nmihs_sub = normalize imihs_sub in
+          let nmih = NomInputHorzContent(nmihs_sub, env_sub) in
           Alist.extend acc nmih
 
     ) Alist.empty |> Alist.to_list
   in
 
-  let rec interpret_commands env (nmihlst : nom_input_horz_element list) : string =
-    nmihlst |> List.map (fun nmih ->
+  let rec interpret_commands (env : environment) (nmihs : nom_input_horz_element list) : string =
+    nmihs |> List.map (fun nmih ->
       match nmih with
-      | NomInputHorzEmbedded(astabs) ->
-          let valueabs = interpret_0 env astabs in
-          let valueret = reduce_beta valueabs valuetctx in
-          get_string valueret
+      | NomInputHorzEmbedded(ast_abs) ->
+          let value_abs = interpret_0 env ast_abs in
+          let value_ret = reduce_beta value_abs value_tctx in
+          get_string value_ret
 
-      | NomInputHorzThunk(valuecmd, astarg) ->
-          let valuearg = interpret_0 env astarg in
-          let valueret = reduce_beta valuecmd valuearg in
-          get_string valueret
+      | NomInputHorzThunk(value_cmd, ast_arg) ->
+          let value_arg = interpret_0 env ast_arg in
+          let value_ret = reduce_beta value_cmd value_arg in
+          get_string value_ret
 
       | NomInputHorzText(s) ->
-          let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
-          let uchlstret = tctx |> TextBackend.stringify uchlst in
-          InternalText.to_utf8 (InternalText.of_uchar_list uchlstret)
+          let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+          let uchs_ret = tctx |> TextBackend.stringify uchs in
+          InternalText.to_utf8 (InternalText.of_uchar_list uchs_ret)
 
-      | NomInputHorzContent(nmihlstsub, envsub) ->
-          interpret_commands envsub nmihlstsub
+      | NomInputHorzContent(nmihs_sub, env_sub) ->
+          interpret_commands env_sub nmihs_sub
 
     ) |> String.concat ""
   in
 
-  let nmihlst = normalize imihlst in
-  let s = interpret_commands env nmihlst in
+  let nmihs = normalize imihs in
+  let s = interpret_commands env nmihs in
   make_string s
 
 
-and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
-  let rec interpret_commands env (imivlst : intermediate_input_vert_element list) =
-    imivlst |> List.map (fun imiv ->
+and interpret_pdf_mode_intermediate_input_vert (env : environment) (value_ctx : syntactic_value) (imivs : intermediate_input_vert_element list) : syntactic_value =
+  let rec interpret_commands (env : environment) (imivs : intermediate_input_vert_element list) =
+    imivs |> List.map (fun imiv ->
       match imiv with
-      | ImInputVertEmbedded(astabs) ->
-          let valueabs = interpret_0 env astabs in
-          let valuevert = reduce_beta valueabs valuectx in
-          get_vert valuevert
+      | ImInputVertEmbedded(ast_abs) ->
+          let value_abs = interpret_0 env ast_abs in
+          let value_vert = reduce_beta value_abs value_ctx in
+          get_vert value_vert
 
-      | ImInputVertContent(imivlstsub, envsub) ->
-          interpret_commands envsub imivlstsub
+      | ImInputVertContent(imivs_sub, env_sub) ->
+          interpret_commands env_sub imivs_sub
 
     ) |> List.concat
   in
-  let imvblst = interpret_commands env imivlst in
-  make_vert imvblst
+  let imvbs = interpret_commands env imivs in
+  make_vert imvbs
 
 
-and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
+and interpret_pdf_mode_intermediate_input_horz (env : environment) (value_ctx : syntactic_value) (imihs : intermediate_input_horz_element list) : syntactic_value =
 
-  let (ctx, ctxsub) = get_context valuectx in
-  let valuemcmd = make_math_command_func ctxsub.math_command in
+  let (ctx, ctxsub) = get_context value_ctx in
+  let value_mcmd = make_math_command_func ctxsub.math_command in
 
-  let rec normalize (imihlst : intermediate_input_horz_element list) =
-    imihlst |> List.fold_left (fun acc imih ->
+  let rec normalize (imihs : intermediate_input_horz_element list) =
+    imihs |> List.fold_left (fun acc imih ->
       match imih with
       | ImInputHorzEmbedded(astabs) ->
           let nmih = NomInputHorzEmbedded(astabs) in
@@ -681,9 +673,9 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
             | _                                   -> (Alist.extend acc (NomInputHorzText(s2)))
           end
 
-      | ImInputHorzEmbeddedMath(astmath) ->
-          let valuemcmdctx = reduce_beta valuemcmd valuectx in
-          let nmih = NomInputHorzThunk(valuemcmdctx, astmath) in
+      | ImInputHorzEmbeddedMath(ast_math) ->
+          let value_mcmdctx = reduce_beta value_mcmd value_ctx in
+          let nmih = NomInputHorzThunk(value_mcmdctx, ast_math) in
           Alist.extend acc nmih
 
       | ImInputHorzEmbeddedCodeText(s) ->
@@ -693,74 +685,74 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
                 let nmih = NomInputHorzText(s) in
                 Alist.extend acc nmih
 
-            | CodeTextCommand(valuectcmd) ->
-                let valuectcmdctx = reduce_beta valuectcmd valuectx in
-                let nmih = NomInputHorzThunk(valuectcmdctx, ASTBaseConstant(BCString(s))) in
+            | CodeTextCommand(value_ctcmd) ->
+                let value_ctcmdctx = reduce_beta value_ctcmd value_ctx in
+                let nmih = NomInputHorzThunk(value_ctcmdctx, ASTBaseConstant(BCString(s))) in
                 Alist.extend acc nmih
           end
 
-      | ImInputHorzContent(imihlstsub, envsub) ->
-          let nmihlstsub = normalize imihlstsub in
-          let nmih = NomInputHorzContent(nmihlstsub, envsub) in
+      | ImInputHorzContent(imihs_sub, env_sub) ->
+          let nmihs_sub = normalize imihs_sub in
+          let nmih = NomInputHorzContent(nmihs_sub, env_sub) in
           Alist.extend acc nmih
 
     ) Alist.empty |> Alist.to_list
   in
 
-  let rec interpret_commands env (nmihlst : nom_input_horz_element list) : HorzBox.horz_box list =
-    nmihlst |> List.map (fun nmih ->
+  let rec interpret_commands (env : environment) (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
+    nmihs |> List.map (fun nmih ->
       match nmih with
-      | NomInputHorzEmbedded(astabs) ->
-          let valueabs = interpret_0 env astabs in
-          let valuehorz = reduce_beta valueabs valuectx in
-          get_horz valuehorz
+      | NomInputHorzEmbedded(ast_abs) ->
+          let value_abs = interpret_0 env ast_abs in
+          let value_horz = reduce_beta value_abs value_ctx in
+          get_horz value_horz
 
-      | NomInputHorzThunk(valuemcmdctx, astmath) ->
-          let valuemath = interpret_0 env astmath in
-          let valuehorz = reduce_beta valuemcmdctx valuemath in
-          get_horz valuehorz
+      | NomInputHorzThunk(value_mcmdctx, ast_math) ->
+          let value_math = interpret_0 env ast_math in
+          let value_horz = reduce_beta value_mcmdctx value_math in
+          get_horz value_horz
 
       | NomInputHorzText(s) ->
           lex_horz_text ctx s
 
-      | NomInputHorzContent(nmihlstsub, envsub) ->
-          interpret_commands envsub nmihlstsub
+      | NomInputHorzContent(nmihs_sub, env_sub) ->
+          interpret_commands env_sub nmihs_sub
 
     ) |> List.concat
   in
 
-  let nmihlst = normalize imihlst in
-  let hblst = interpret_commands env nmihlst in
-  make_horz hblst
+  let nmihs = normalize imihs in
+  let hbs = interpret_commands env nmihs in
+  make_horz hbs
 
 
-and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) : syntactic_value =
-  let iter = select_pattern rng env valueobj in
+and select_pattern (rng : Range.t) (env : environment) (value_obj : syntactic_value) (patbrs : pattern_branch list) : syntactic_value =
+  let iter = select_pattern rng env value_obj in
   match patbrs with
   | [] ->
       report_dynamic_error ("no matches (" ^ (Range.to_string rng) ^ ")")
 
-  | PatternBranch(pat, astto) :: tail ->
+  | PatternBranch(pat, ast_to) :: tail ->
       begin
-        match check_pattern_matching env pat valueobj with
-        | Some(envnew) -> interpret_0 envnew astto
-        | None         -> iter tail
+        match check_pattern_matching env pat value_obj with
+        | Some(env_new) -> interpret_0 env_new ast_to
+        | None          -> iter tail
       end
 
-  | PatternBranchWhen(pat, astcond, astto) :: tail ->
+  | PatternBranchWhen(pat, ast_cond, ast_to) :: tail ->
       begin
-        match check_pattern_matching env pat valueobj with
-        | Some(envnew) ->
-            let cond = get_bool (interpret_0 envnew astcond) in
-            if cond then interpret_0 envnew astto else iter tail
+        match check_pattern_matching env pat value_obj with
+        | Some(env_new) ->
+            let cond = get_bool (interpret_0 env_new ast_cond) in
+            if cond then interpret_0 env_new ast_to else iter tail
 
         | None ->
             iter tail
       end
 
 
-and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : syntactic_value) : environment option =
-  match (pat, valueobj) with
+and check_pattern_matching (env : environment) (pat : pattern_tree) (value_obj : syntactic_value) : environment option =
+  match (pat, value_obj) with
   | (PIntegerConstant(pnc), BaseConstant(BCInt(nc))) ->
       if pnc = nc then Some(env) else None
 
@@ -770,40 +762,47 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
   | (PStringConstant(psc), BaseConstant(BCString(str2))) ->
       if String.equal psc str2 then Some(env) else None
 
-  | (PUnitConstant, BaseConstant(BCUnit)) -> Some(env)
-  | (PWildCard, _)                        -> Some(env)
+  | (PUnitConstant, BaseConstant(BCUnit)) ->
+      Some(env)
+
+  | (PWildCard, _) ->
+      Some(env)
 
   | (PVariable(evid), _) ->
-      let envnew = add_to_environment env evid (ref valueobj) in
-      Some(envnew)
+      let env = add_to_environment env evid (ref value_obj) in
+      Some(env)
 
-  | (PAsVariable(evid, psub), sub) ->
-      let envnew = add_to_environment env evid (ref sub) in
-      check_pattern_matching envnew psub sub
+  | (PAsVariable(evid, psub), _) ->
+      let open OptionMonad in
+      check_pattern_matching env psub value_obj >>= fun env ->
+      let env = add_to_environment env evid (ref value_obj) in
+      Some(env)
 
   | (PEndOfList, List([])) ->
       Some(env)
 
-  | (PListCons(phd, ptl), List(vhd :: vtail)) ->
+  | (PListCons(pat_head, pat_tail), List(v_head :: vs_tail)) ->
       let open OptionMonad in
-      check_pattern_matching env phd vhd >>= fun envhd ->
-      check_pattern_matching envhd ptl (List(vtail))
+      check_pattern_matching env pat_head v_head >>= fun env ->
+      check_pattern_matching env pat_tail (List(vs_tail))
 
-  | (PTuple(ps), Tuple(vlst)) ->
+  | (PTuple(ps), Tuple(vs)) ->
       let open OptionMonad in
       begin
         try
           List.fold_left2 (fun envopt p v ->
             envopt >>= fun env ->
             check_pattern_matching env p v
-          ) (Some(env)) (ps |> TupleList.to_list) vlst
+          ) (Some(env)) (ps |> TupleList.to_list) vs
         with
         | Invalid_argument(_) -> None
       end
 
-  | (PConstructor(cnm1, psub), Constructor(cnm2, sub))
-    when cnm1 = cnm2 ->
-      check_pattern_matching env psub sub
+  | (PConstructor(cnm1, psub), Constructor(cnm2, sub)) ->
+      if String.equal cnm1 cnm2 then
+        check_pattern_matching env psub sub
+      else
+        None
 
   | _ ->
       None
@@ -828,8 +827,8 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
 
 
 and interpret_letrec_bindings_1 (env : environment) (recbinds : letrec_binding list) : environment * code_letrec_binding list =
+  (* Generate the symbols for the identifiers and add them to the environment: *)
   let (env, zippedacc) =
-  (* -- generate the symbols for the identifiers and add them to the environment -- *)
     recbinds |> List.fold_left (fun (env, zippedacc) recbind ->
       let LetRecBinding(evid, _) = recbind in
       let (env, symb) = generate_symbol_for_eval_var_id evid env in
