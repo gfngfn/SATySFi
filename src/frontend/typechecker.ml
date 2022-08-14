@@ -915,7 +915,11 @@ let rec typecheck
             let stage = ventry.val_stage in
             let evid =
               match ventry.val_name with
-              | None       -> assert false
+              | None -> (* from a functor parameter *)
+                  EvalVarID.fresh (rng, "(dummy)")
+(*
+                  let (_, modnm0) = modident0 in failwith (Format.asprintf "%s, %a" modnm0 Range.pp rng)
+*)
               | Some(evid) -> evid
             in
             (stage, ventry.val_type, init_expression stage rng_var evid)
@@ -1963,11 +1967,12 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
                 } ->
                   let modsig2 = mentry2.mod_signature in
                   let subst = subtype_concrete_with_abstract rng modsig2 (quant1, modsig_dom1) in
-                  let absmodsig = absmodsig_cod1 |> substitute_abstract subst in
-                  let (_, binds) =
-                    let mentry0 = { mod_signature = modsig2 |> substitute_concrete subst; } in
+                  let ((_, modsig0), binds) =
+                    let mentry0 = { mod_signature = modsig2; } in
                     typecheck_module stage (tyenv0 |> Typeenv.add_module modnm0 mentry0) utmod0
                   in
+                  let (quant1_subst, modsig_cod1_subst) = absmodsig_cod1 |> substitute_abstract subst in
+                  let absmodsig = (quant1_subst, copy_contents modsig0 modsig_cod1_subst) in
                   (absmodsig, binds)
 
               | _ ->
@@ -2703,14 +2708,14 @@ and kind_equal (kd1 : kind) (kd2 : kind) : bool =
 (* Given `modsig1` and `modsig2` which are already known to satisfy `modsig1 <= modsig2`,
    `copy_contents` copies every target name occurred in `modsig1`
    into the corresponding occurrence in `modsig2`. *)
-and copy_contents (modsig1 : signature) (modsig2 : signature) =
+and copy_contents (modsig1 : signature) (modsig2 : signature) : signature =
   match (modsig1, modsig2) with
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
-      let ssig2new = copy_closure_in_structure ssig1 ssig2 in
-      (ConcStructure(ssig2new))
+      let ssig2_new = copy_closure_in_structure ssig1 ssig2 in
+      (ConcStructure(ssig2_new))
 
   | (ConcFunctor(fsig1), ConcFunctor(fsig2)) ->
-      let { opaques = quant_dom1; domain = modsig_dom1; codomain = absmodsig_cod1 } = fsig1 in
+      let { opaques = quant_dom1; domain = modsig_dom1; codomain = absmodsig_cod1; closure = closure } = fsig1 in
       let { opaques = quant_dom2; domain = modsig_dom2; codomain = absmodsig_cod2 } = fsig2 in
       let modsig_dom2_new = copy_contents modsig_dom1 modsig_dom2 in
       let absmodsig_cod2_new =
@@ -2722,6 +2727,7 @@ and copy_contents (modsig1 : signature) (modsig2 : signature) =
       ConcFunctor({ fsig2 with
         domain   = modsig_dom2_new;
         codomain = absmodsig_cod2_new;
+        closure  = closure;
       })
 
   | _ ->
@@ -2738,7 +2744,11 @@ and copy_closure_in_structure (ssig1 : StructSig.t) (ssig2 : StructSig.t) : Stru
     ~c:(fun _ctornm centry2 -> centry2)
     ~f:(fun _tynm pty2 -> pty2)
     ~t:(fun _tynm tentry2 -> tentry2)
-    ~m:(fun modnm mentry2 -> mentry2)
+    ~m:(fun modnm mentry2 ->
+      match ssig1 |> StructSig.find_module modnm with
+      | None          -> assert false
+      | Some(mentry1) -> { mod_signature = copy_contents mentry1.mod_signature mentry2.mod_signature }
+    )
     ~s:(fun _signm sentry2 -> sentry2)
 
 
