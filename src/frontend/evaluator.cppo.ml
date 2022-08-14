@@ -64,18 +64,17 @@ let generate_symbol_for_eval_var_id (evid : EvalVarID.t) (env : environment) : e
   (envnew, symb)
 
 
-let rec reduce_beta ?optional:(ast_labmap : abstract_tree LabelMap.t = LabelMap.empty) (value1 : syntactic_value) (value2 : syntactic_value) =
+let rec reduce_beta ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMap.empty) (value1 : syntactic_value) (value2 : syntactic_value) =
   match value1 with
   | Closure(evid_labmap, patbr, env1) ->
       let env1 =
         LabelMap.fold (fun label evid env ->
           let loc =
-            match ast_labmap |> LabelMap.find_opt label with
+            match val_labmap |> LabelMap.find_opt label with
             | None ->
                 ref (Constructor("None", const_unit))
 
-            | Some(ast0) ->
-                let value0 = interpret_0 env ast0 in
+            | Some(value0) ->
                 ref (Constructor("Some", value0))
           in
           add_to_environment env evid loc
@@ -220,10 +219,10 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       Closure(evids, patbrs, env)
 
   | Apply(ast_labmap, ast1, ast2) ->
-      (* TODO: fix when to evaluate optional values *)
+      let val_labmap = ast_labmap |> LabelMap.map (interpret_0 env) in
       let value1 = interpret_0 env ast1 in
       let value2 = interpret_0 env ast2 in
-      reduce_beta ~optional:ast_labmap value1 value2
+      reduce_beta ~optional:val_labmap value1 value2
 
   | IfThenElse(astb, ast1, ast2) ->
       let valueb = interpret_0 env astb in
