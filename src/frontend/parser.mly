@@ -245,7 +245,7 @@
 %token<Range.t>
   AND AS BLOCK COMMAND ELSE END FALSE FUN
   IF IN INCLUDE INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
-  REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH
+  REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH PERSISTENT
 
 %token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW SEMICOLON COMMA CONS ACCESS QUESTION COERCE
 
@@ -290,7 +290,6 @@
 %token<Range.t * int> ITEM
 
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
-%token <Range.t> HEADER_STAGE0 HEADER_STAGE1 HEADER_PERSISTENT0
 
 %token <Range.t * Types.ctrlseq_name> HORZMACRO
 %token <Range.t * Types.ctrlseq_name> VERTMACRO
@@ -421,6 +420,8 @@ bind:
       { (tokL, UTBindValue(Stage1, valbind)) }
   | tokL=VAL; EXACT_TILDE; valbind=bind_value
       { (tokL, UTBindValue(Stage0, valbind)) }
+  | tokL=VAL; PERSISTENT; EXACT_TILDE; valbind=bind_value
+      { (tokL, UTBindValue(Persistent0, valbind)) }
   | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
   | tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr
@@ -578,6 +579,8 @@ decl:
       { UTDeclValue(Stage1, ident, mnquant, mnty) }
   | VAL; EXACT_TILDE; ident=bound_identifier; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(Stage0, ident, mnquant, mnty) }
+  | VAL; PERSISTENT; EXACT_TILDE; ident=bound_identifier; mnquant=quant; COLON; mnty=typ
+      { UTDeclValue(Persistent0, ident, mnquant, mnty) }
   | VAL; cs=BACKSLASH_CMD; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(Stage1, cs, mnquant, mnty) }
   | VAL; cs=PLUS_CMD; mnquant=quant; COLON; mnty=typ

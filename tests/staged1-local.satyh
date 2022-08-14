@@ -1,4 +1,8 @@
-module Staged1Local = struct
+module Staged1Local :> sig
+
+  val ~gen-power : int -> code (int -> int)
+
+end = struct
 
   val ~gen-power n =
     let rec aux n s =
