@@ -341,8 +341,11 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       report_bug_ast "Persistent(_) at stage 0" ast
 
   | Lift(ast1) ->
+      failwith "TODO: Lift"
+(*
       let value1 = interpret_0 env ast1 in
       CodeValue(CdPersistent(value1))
+*)
 
   | ASTCodeSymbol(symb) ->
       report_bug_ast "ASTCodeSymbol(_) at stage 0" ast
@@ -498,9 +501,8 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | Next(_) ->
       report_bug_ast "Next(_) at stage 1" ast
 
-  | Persistent(ast1) ->
-      let value1 = interpret_0 env ast1 in
-      CdPersistent(value1)
+  | Persistent(rng, evid) ->
+      CdPersistent(rng, evid)
 
   | Lift(_) ->
       report_bug_ast "Lift(_) at stage 1" ast

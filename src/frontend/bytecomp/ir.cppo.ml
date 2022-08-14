@@ -535,7 +535,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | Next(_) ->
       report_bug_ir "transform_1: Next at stage 1"
 
-  | Persistent(ast1) ->
+  | Persistent(_, _) ->
       failwith "TODO: Persistent"
 
   | Lift(_) ->

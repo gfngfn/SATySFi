@@ -829,7 +829,7 @@ and abstract_tree =
 (* -- staging constructs -- *)
   | Next                  of abstract_tree
   | Prev                  of abstract_tree
-  | Persistent            of abstract_tree
+  | Persistent            of Range.t * EvalVarID.t
   | Lift                  of abstract_tree
   | ASTCodeSymbol         of CodeSymbol.t
 #include "__attype.gen.ml"
@@ -929,7 +929,7 @@ and math =
   | MathLowerLimit        of math list * math list
 
 and code_value =
-  | CdPersistent    of syntactic_value
+  | CdPersistent    of Range.t * EvalVarID.t
   | CdBaseConstant  of base_constant
   | CdEndOfList
   | CdMath          of math list
@@ -1084,7 +1084,7 @@ let map_path_component f g = function
 let rec unlift_code (code : code_value) : abstract_tree =
   let rec aux code =
     match code with
-    | CdPersistent(v)                      -> failwith (Format.asprintf "TODO: unlift_code, CdPersistent, %a" pp_syntactic_value v)
+    | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
     | CdMath(mlst)                         -> ASTMath(mlst)

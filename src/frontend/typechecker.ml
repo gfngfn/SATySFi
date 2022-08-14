@@ -882,7 +882,7 @@ let rec typecheck
 
               | (Stage1, Persistent0) ->
                   (Format.printf "persistent: %s, %a\n" varnm Range.pp rng); (* TEMPORARY *)
-                  Persistent(ContentOf(rng, evid))
+                  Persistent(rng, evid)
 
               | (Stage0, Stage0)
               | (Stage1, Stage1) ->
@@ -932,7 +932,7 @@ let rec typecheck
 
               | (Stage1, Persistent0) ->
                   (let (_, modnm0) = modident0 in Format.printf "persistent: %s, %a\n" modnm0 Range.pp rng); (* TEMPORARY *)
-                  Persistent(ContentOf(rng, evid))
+                  Persistent(rng, evid)
 
               | (Stage0, Stage0)
               | (Stage1, Stage1) ->
