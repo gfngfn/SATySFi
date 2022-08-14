@@ -983,6 +983,11 @@ and code_pattern_tree =
   | CdPConstructor          of constructor_name * code_pattern_tree
 [@@deriving show { with_path = false; }]
 
+type code_rec_or_nonrec =
+  | CdRec     of code_letrec_binding list
+  | CdNonRec  of CodeSymbol.t * code_value
+  | CdMutable of CodeSymbol.t * code_value
+
 type 'a cycle =
   | Loop  of 'a
   | Cycle of 'a TupleList.t
@@ -1079,16 +1084,16 @@ let map_path_component f g = function
 let rec unlift_code (code : code_value) : abstract_tree =
   let rec aux code =
     match code with
-    | CdPersistent(v)                      -> failwith "TODO: unlift_code, CdPersistent"
+    | CdPersistent(v)                      -> failwith (Format.asprintf "TODO: unlift_code, CdPersistent, %a" pp_syntactic_value v)
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
     | CdMath(mlst)                         -> ASTMath(mlst)
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
     | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
-    | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map aux_letrec_binding cdrecbinds, aux code1)
-    | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(aux_pattern cdpat, aux code1, aux code2)
-    | CdFunction(symb_labmap, cdpatbr)     -> Function(symb_labmap |> LabelMap.map CodeSymbol.unlift, aux_pattern_branch cdpatbr)
+    | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map unlift_letrec_binding cdrecbinds, aux code1)
+    | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(unlift_pattern cdpat, aux code1, aux code2)
+    | CdFunction(symb_labmap, cdpatbr)     -> Function(symb_labmap |> LabelMap.map CodeSymbol.unlift, unlift_pattern_branch cdpatbr)
     | CdApply(code_labmap, code1, code2)   -> Apply(code_labmap |> LabelMap.map aux, aux code1, aux code2)
     | CdIfThenElse(code1, code2, code3)    -> IfThenElse(aux code1, aux code2, aux code3)
     | CdRecord(cdasc)                      -> Record(cdasc |> LabelMap.map aux)
@@ -1097,34 +1102,43 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdLetMutableIn(symb, code1, code2)   -> LetMutableIn(CodeSymbol.unlift symb, aux code1, aux code2)
     | CdOverwrite(symb, code1)             -> Overwrite(CodeSymbol.unlift symb, aux code1)
     | CdDereference(code1)                 -> Dereference(aux code1)
-    | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
+    | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map unlift_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
     | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
     | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
 #include "__unliftcode.gen.ml"
-
-  and aux_letrec_binding (CdLetRecBinding(symb, cdpatbr)) =
-    LetRecBinding(CodeSymbol.unlift symb, aux_pattern_branch cdpatbr)
-
-  and aux_pattern_branch = function
-    | CdPatternBranch(cdpat, code)            -> PatternBranch(aux_pattern cdpat, aux code)
-    | CdPatternBranchWhen(cdpat, code, codeB) -> PatternBranchWhen(aux_pattern cdpat, aux code, aux codeB)
-
-  and aux_pattern = function
-    | CdPUnitConstant             -> PUnitConstant
-    | CdPBooleanConstant(b)       -> PBooleanConstant(b)
-    | CdPIntegerConstant(n)       -> PIntegerConstant(n)
-    | CdPStringConstant(s)        -> PStringConstant(s)
-    | CdPListCons(cdpat1, cdpat2) -> PListCons(aux_pattern cdpat1, aux_pattern cdpat2)
-    | CdPEndOfList                -> PEndOfList
-    | CdPTuple(cdpats)            -> PTuple(TupleList.map aux_pattern cdpats)
-    | CdPWildCard                 -> PWildCard
-    | CdPVariable(symb)           -> PVariable(CodeSymbol.unlift symb)
-    | CdPAsVariable(symb, cdpat)  -> PAsVariable(CodeSymbol.unlift symb, aux_pattern cdpat)
-    | CdPConstructor(ctor, cdpat) -> PConstructor(ctor, aux_pattern cdpat)
-
   in
   aux code
+
+
+and unlift_pattern = function
+  | CdPUnitConstant             -> PUnitConstant
+  | CdPBooleanConstant(b)       -> PBooleanConstant(b)
+  | CdPIntegerConstant(n)       -> PIntegerConstant(n)
+  | CdPStringConstant(s)        -> PStringConstant(s)
+  | CdPListCons(cdpat1, cdpat2) -> PListCons(unlift_pattern cdpat1, unlift_pattern cdpat2)
+  | CdPEndOfList                -> PEndOfList
+  | CdPTuple(cdpats)            -> PTuple(TupleList.map unlift_pattern cdpats)
+  | CdPWildCard                 -> PWildCard
+  | CdPVariable(symb)           -> PVariable(CodeSymbol.unlift symb)
+  | CdPAsVariable(symb, cdpat)  -> PAsVariable(CodeSymbol.unlift symb, unlift_pattern cdpat)
+  | CdPConstructor(ctor, cdpat) -> PConstructor(ctor, unlift_pattern cdpat)
+
+
+and unlift_letrec_binding (CdLetRecBinding(symb, cdpatbr)) =
+  LetRecBinding(CodeSymbol.unlift symb, unlift_pattern_branch cdpatbr)
+
+
+and unlift_pattern_branch = function
+  | CdPatternBranch(cdpat, code)            -> PatternBranch(unlift_pattern cdpat, unlift_code code)
+  | CdPatternBranchWhen(cdpat, code, codeB) -> PatternBranchWhen(unlift_pattern cdpat, unlift_code code, unlift_code codeB)
+
+
+let unlift_rec_or_nonrec (cd_rec_or_nonrec : code_rec_or_nonrec) : rec_or_nonrec =
+  match cd_rec_or_nonrec with
+  | CdNonRec(symb, code)  -> NonRec(CodeSymbol.unlift symb, unlift_code code)
+  | CdRec(cdrecbinds)     -> Rec(List.map unlift_letrec_binding cdrecbinds)
+  | CdMutable(symb, code) -> Mutable(CodeSymbol.unlift symb, unlift_code code)
 
 
 module MathContext

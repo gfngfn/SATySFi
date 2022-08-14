@@ -307,21 +307,23 @@ let eval_library_file (env : environment) (abspath : abs_path) (binds : binding 
     add_to_environment env evid (ref value)
 *)
   else
-    Evaluator.interpret_bindings_0 env binds
+    let (env, _) = Evaluator.interpret_bindings_0 env binds in
+    env
 
 
 let eval_main i env_freezed ast =
   Logging.start_evaluation i;
   reset ();
   let env = unfreeze_environment env_freezed in
-  let (valuedoc, _) =
+  let value_doc =
     if OptionState.bytecomp_mode () then
-      Bytecomp.compile_and_exec_0 env ast
+      let (value_doc, _) = Bytecomp.compile_and_exec_0 env ast in
+      value_doc
     else
       Evaluator.interpret_0 env ast
   in
   Logging.end_evaluation ();
-  valuedoc
+  value_doc
 
 
 let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
@@ -387,39 +389,38 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
 
 
 let eval_abstract_tree_list (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
-(*
-  let rec preprocess (codeacc : (abs_path * code_binding list) Alist.t) (env : environment) libs =
+  let rec preprocess (acc : (abs_path * code_rec_or_nonrec list) Alist.t) (env : environment) (libs : (abs_path * binding list) list) =
     match libs with
     | [] ->
-        let (codedoc, env) = preprocess_file ~is_document:true env abspath_in ast_doc in
-        (env, Alist.to_list codeacc, codedoc)
+        (env, Alist.to_list acc)
 
-    | ((Stage0 | Persistent0), abspath, evid0, e0) :: tail ->
-        let envnew = eval_library_file env abspath [ Bind(NonRec(evid0, e0)) ] in
-        preprocess codeacc envnew tail
-
-    | (Stage1, abspath, evid1, e1) :: tail ->
-        let (codebinds, envnew) = preprocess_library_file env abspath [ Bind(NonRec(evid1, e1)) ] in
-        preprocess (Alist.extend codeacc (abspath, codebinds)) envnew tail
+    | (abspath, binds) :: tail ->
+        let (env, cd_rec_or_nonrecs) = Evaluator.interpret_bindings_0 env binds in
+        preprocess (Alist.extend acc (abspath, cd_rec_or_nonrecs)) env tail
   in
     (* --
        each evaluation called in `preprocess` is run by the naive interpreter
        regardless of whether `--bytecomp` was specified.
        -- *)
-*)
-  let rec eval (env : environment) libs : environment =
-    match libs with
+  let rec eval (env : environment) (codebinds : (abs_path * code_rec_or_nonrec list) list) : environment =
+    match codebinds with
     | [] ->
         env
 
-    | (abspath, binds) :: tail ->
+    | (abspath, cd_rec_or_nonrecs) :: tail ->
+        let binds =
+          cd_rec_or_nonrecs |> List.map (fun cd_rec_or_nonrec ->
+            Bind(Stage0, unlift_rec_or_nonrec cd_rec_or_nonrec)
+          )
+        in
         let env = eval_library_file env abspath binds in
         eval env tail
   in
-(*
-  let (env, codebinds, codedoc) = preprocess Alist.empty env libs in
-*)
-  let env = eval env libs in
+
+  let (env, codebinds) = preprocess Alist.empty env libs in
+  let code_doc = Evaluator.interpret_1 env ast_doc in
+  let env = eval env codebinds in
+  let ast_doc = unlift_code code_doc in
   eval_document_file env ast_doc abspath_out abspath_dump
 
 

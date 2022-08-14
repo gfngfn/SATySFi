@@ -881,6 +881,7 @@ let rec typecheck
                   ContentOf(rng, evid)
 
               | (Stage1, Persistent0) ->
+                  (Format.printf "persistent: %s, %a\n" varnm Range.pp rng); (* TEMPORARY *)
                   Persistent(ContentOf(rng, evid))
 
               | (Stage0, Stage0)
@@ -930,6 +931,7 @@ let rec typecheck
                   ContentOf(rng, evid)
 
               | (Stage1, Persistent0) ->
+                  (let (_, modnm0) = modident0 in Format.printf "persistent: %s, %a\n" modnm0 Range.pp rng); (* TEMPORARY *)
                   Persistent(ContentOf(rng, evid))
 
               | (Stage0, Stage0)
@@ -3077,11 +3079,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
             let (_, varnm) = ident in
             let evid = EvalVarID.fresh ident in
             let (e1_raw, ty1) = typecheck presub tyenv utast1 in
-            let e1 =
-              match stage with
-              | Stage1 -> Next(e1_raw)
-              | _      -> e1_raw
-            in
+            let e1 = e1_raw in
 (*
             tyannot |> Option.map (fun mnty ->
               let tyA = decode_manual_type pre tyenv mnty in
