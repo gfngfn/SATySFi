@@ -97,7 +97,7 @@ module FileDependencyGraph = DirectedGraph.Make
 
 type file_info =
   | DocumentFile of untyped_abstract_tree
-  | LibraryFile  of stage * (module_name ranged * untyped_signature option * untyped_binding list)
+  | LibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
 
 
 let has_library_extension abspath =
@@ -142,35 +142,19 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : 
     Logging.begin_to_parse_file abspath;
     let curdir = Filename.dirname (get_abs_path_string abspath) in
     let inc = open_in_abs abspath in
-    let (stage, header, utsrc) = ParserInterface.process (basename_abs abspath) (Lexing.from_channel inc) in
+    let (header, utsrc) = ParserInterface.process (basename_abs abspath) (Lexing.from_channel inc) in
     close_in inc;
     let lib =
       match utsrc with
       | UTLibraryFile(lib) -> lib
       | UTDocumentFile(_)  -> raise (LibraryContainsWholeReturnValue(abspath))
     in
-    FileDependencyGraph.add_vertex dg abspath (LibraryFile(stage, lib));
+    FileDependencyGraph.add_vertex dg abspath (LibraryFile(lib));
     header |> List.iter (fun headerelem ->
       let abspath_sub = get_abs_path_of_header curdir headerelem in
       begin
         if FileDependencyGraph.mem_vertex abspath_sub dg then () else
           register_library_file dg abspath_sub
-      end;
-      begin
-        match FileDependencyGraph.get_vertex dg abspath_sub with
-        | LibraryFile(stage_sub, _) ->
-            begin
-              match (stage_sub, stage) with
-              | (Stage1, Stage0)
-              | (Stage1, Persistent0)
-              | (Stage0, Persistent0) ->
-                  raise (InvalidDependencyAsToStaging(abspath, stage, abspath_sub, stage_sub))
-              | _ ->
-                  ()
-            end
-
-        | DocumentFile(_) ->
-            assert false
       end;
       FileDependencyGraph.add_edge dg abspath abspath_sub
     )
@@ -242,14 +226,13 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : 
   Logging.begin_to_parse_file abspath_in;
   let file_in = open_in_abs abspath_in in
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
-  let (stage, header, utsrc) =
+  let (header, utsrc) =
     ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in)
   in
   let utast =
-    match (stage, utsrc) with
-    | (_, UTLibraryFile(_))           -> raise (DocumentLacksWholeReturnValue(abspath_in))
-    | (Stage1, UTDocumentFile(utast)) -> utast
-    | (_, UTDocumentFile(_))          -> raise DocumentShouldBeAtStage1
+    match utsrc with
+    | UTLibraryFile(_)      -> raise (DocumentLacksWholeReturnValue(abspath_in))
+    | UTDocumentFile(utast) -> utast
   in
   FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
   header |> List.iter (fun headerelem ->
@@ -292,9 +275,9 @@ let output_text abspath_out s =
   close_out outc
 
 
-let typecheck_library_file (stage : stage) (tyenv : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
+let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
   Logging.begin_to_typecheck_file abspath_in;
-  let res = Typechecker.main_bindings stage tyenv utsig_opt utbinds in
+  let res = Typechecker.main_bindings tyenv utsig_opt utbinds in
   Logging.pass_type_check None;
   res
 
@@ -318,55 +301,32 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
 let eval_library_file (env : environment) (abspath : abs_path) (binds : binding list) : environment =
   Logging.begin_to_eval_file abspath;
   if OptionState.bytecomp_mode () then
-    Bytecomp.compile_and_exec_bindings_0 env binds
+    failwith "TODO: eval_libary_file, Bytecomp"
+(*
+    let (value, _) = Bytecomp.compile_and_exec_0 env ast in
+    add_to_environment env evid (ref value)
+*)
   else
-    Evaluator.interpret_bindings_0 env binds
-
-
-let preprocess_library_file (env : environment) (abspath : abs_path) (binds : binding list) : code_binding list * environment =
-  Logging.begin_to_preprocess_file abspath;
-  if OptionState.bytecomp_mode () then
-    Bytecomp.compile_and_exec_bindings_1 env binds
-  else
-    Evaluator.interpret_bindings_1 env binds
-
-
-let preprocess_file ?(is_document : bool = false) (env : environment) (abspath : abs_path) (ast : abstract_tree) : code_value * environment =
-  Logging.begin_to_preprocess_file abspath;
-  let (cd, envopt) =
-    if OptionState.bytecomp_mode () then
-      Bytecomp.compile_and_exec_1 env ast
-    else
-      Evaluator.interpret_1 env ast
-  in
-    if is_document then
-      match envopt with
-      | None    -> (cd, env)
-      | Some(_) -> EvalUtil.report_bug_vm "environment returned for document"
-    else
-      match envopt with
-      | Some(envnew) -> (cd, envnew)
-      | None         -> EvalUtil.report_bug_vm "environment not returned"
+    let (env, _) = Evaluator.interpret_bindings_0 env binds in
+    env
 
 
 let eval_main i env_freezed ast =
   Logging.start_evaluation i;
   reset ();
   let env = unfreeze_environment env_freezed in
-  let (valuedoc, _) =
+  let value_doc =
     if OptionState.bytecomp_mode () then
-      Bytecomp.compile_and_exec_0 env ast
+      let (value_doc, _) = Bytecomp.compile_and_exec_0 env ast in
+      value_doc
     else
       Evaluator.interpret_0 env ast
   in
   Logging.end_evaluation ();
-  valuedoc
+  value_doc
 
 
 let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
-(*
-  let ast = unlift_code code in
-*)
   let env_freezed = freeze_environment env in
   if OptionState.is_text_mode () then
     let rec aux i =
@@ -428,43 +388,39 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
     aux 1
 
 
-let eval_abstract_tree_list (env : environment) (libs : (stage * abs_path * binding list) list) (ast_doc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
-(*
-  let rec preprocess (codeacc : (abs_path * code_binding list) Alist.t) (env : environment) libs =
+let eval_abstract_tree_list (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+  let rec preprocess (acc : (abs_path * code_rec_or_nonrec list) Alist.t) (env : environment) (libs : (abs_path * binding list) list) =
     match libs with
     | [] ->
-        let (codedoc, env) = preprocess_file ~is_document:true env abspath_in ast_doc in
-        (env, Alist.to_list codeacc, codedoc)
+        (env, Alist.to_list acc)
 
-    | ((Stage0 | Persistent0), abspath, evid0, e0) :: tail ->
-        let envnew = eval_library_file env abspath [ Bind(NonRec(evid0, e0)) ] in
-        preprocess codeacc envnew tail
-
-    | (Stage1, abspath, evid1, e1) :: tail ->
-        let (codebinds, envnew) = preprocess_library_file env abspath [ Bind(NonRec(evid1, e1)) ] in
-        preprocess (Alist.extend codeacc (abspath, codebinds)) envnew tail
+    | (abspath, binds) :: tail ->
+        let (env, cd_rec_or_nonrecs) = Evaluator.interpret_bindings_0 env binds in
+        preprocess (Alist.extend acc (abspath, cd_rec_or_nonrecs)) env tail
   in
     (* --
        each evaluation called in `preprocess` is run by the naive interpreter
        regardless of whether `--bytecomp` was specified.
        -- *)
-*)
-  let rec eval (env : environment) libs : environment =
-    match libs with
+  let rec eval (env : environment) (codebinds : (abs_path * code_rec_or_nonrec list) list) : environment =
+    match codebinds with
     | [] ->
         env
 
-    | (Stage0, _, _) :: _ ->
-        failwith "TODO: Stage0; unsupported"
-
-    | ((Stage1 | Persistent0), abspath, binds) :: tail ->
+    | (abspath, cd_rec_or_nonrecs) :: tail ->
+        let binds =
+          cd_rec_or_nonrecs |> List.map (fun cd_rec_or_nonrec ->
+            Bind(Stage0, unlift_rec_or_nonrec cd_rec_or_nonrec)
+          )
+        in
         let env = eval_library_file env abspath binds in
         eval env tail
   in
-(*
-  let (env, codebinds, codedoc) = preprocess Alist.empty env libs in
-*)
-  let env = eval env libs in
+
+  let (env, codebinds) = preprocess Alist.empty env libs in
+  let code_doc = Evaluator.interpret_1 env ast_doc in
+  let env = eval env codebinds in
+  let ast_doc = unlift_code code_doc in
   eval_document_file env ast_doc abspath_out abspath_dump
 
 
@@ -1245,12 +1201,12 @@ let main () =
                 let ast = typecheck_document_file tyenv abspath utast in
                 (tyenv, libacc, Some(ast))
 
-            | LibraryFile((stage, (modident, utsig_opt, utbinds))) ->
+            | LibraryFile((modident, utsig_opt, utbinds)) ->
                 let (_, modnm) = modident in
-                let ((_quant, ssig), binds) = typecheck_library_file stage tyenv abspath utsig_opt utbinds in
+                let ((_quant, ssig), binds) = typecheck_library_file tyenv abspath utsig_opt utbinds in
                 let mentry = { mod_signature = ConcStructure(ssig); } in
                 let tyenv = tyenv |> Typeenv.add_module modnm mentry in
-                (tyenv, Alist.extend libacc (stage, abspath, binds), docopt)
+                (tyenv, Alist.extend libacc (abspath, binds), docopt)
           ) (tyenv, Alist.empty, None)
         in
         if OptionState.type_check_only () then

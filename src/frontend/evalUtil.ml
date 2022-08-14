@@ -776,6 +776,23 @@ let lift_integer_to_code_value (n : int) = CodeValue(CdBaseConstant(BCInt(n)))
 let lift_float_to_code_value (r : float) = CodeValue(CdBaseConstant(BCFloat(r)))
 let lift_length_to_code_value (len : length) = CodeValue(CdBaseConstant(BCLength(len)))
 
+(*
+let rec lift_value (v : syntactic_value) : code_value =
+  let aux = lift_value in
+  match v with
+  | Nil                     -> assert false
+  | BaseConstant(bc)        -> CdBaseConstant(bc)
+  | Constructor(ctornm, v0) -> CdConstructor(ctornm, aux v0)
+  | List(vs)                -> CdList(vs |> List.map aux)
+  | Tuple(v1 :: v2 :: vs)   -> CdTuple(TupleList.make v1 v2 vs |> TupleList.map aux)
+  | Tuple(_)                -> assert false
+  | RecordValue(labmap)     -> CdRecord(labmap |> LabelMap.map aux)
+  | Location(loc)           -> CdLocation(loc)
+  | MathValue(ms)           -> CdMath(ms)
+  | Context(ictx)           -> CdContext(ictx)
+  | CodeValue(_)            -> assert false
+  | CodeSymbol(_)           -> assert false
+*)
 
 let get_input_position (v : syntactic_value) : input_position =
   match v with

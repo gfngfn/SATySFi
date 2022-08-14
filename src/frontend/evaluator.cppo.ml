@@ -39,8 +39,14 @@ let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
   | Some(rfvalue) ->
       begin
         match !rfvalue with
-        | CodeSymbol(symb) -> Some(symb)
-        | v                -> report_bug_value (Printf.sprintf "not a symbol (%s)" (EvalVarID.show_direct evid)) v
+        | CodeSymbol(symb) ->
+            Some(symb)
+
+        | CodeValue(CdContentOf(_, symb)) ->
+            Some(symb)
+
+        | v ->
+            report_bug_value (Printf.sprintf "not a symbol (%s)" (EvalVarID.show_direct evid)) v
       end
 
   | None ->
@@ -69,16 +75,16 @@ let rec reduce_beta ?optional:(ast_labmap : abstract_tree LabelMap.t = LabelMap.
                 ref (Constructor("None", const_unit))
 
             | Some(ast0) ->
-                let (value0, _) = interpret_0 env ast0 in
+                let value0 = interpret_0 env ast0 in
                 ref (Constructor("Some", value0))
           in
           add_to_environment env evid loc
         ) evid_labmap env1
       in
-      fst @@ select_pattern (Range.dummy "Apply") env1 value2 [patbr]
+      select_pattern (Range.dummy "Apply") env1 value2 [patbr]
 
   | PrimitiveClosure(patbr, env1, _, _) ->
-      fst @@ select_pattern (Range.dummy "Apply") env1 value2 [patbr]
+      select_pattern (Range.dummy "Apply") env1 value2 [patbr]
 
   | _ ->
       report_bug_value "reduce_beta: not a function" value1
@@ -89,7 +95,7 @@ and reduce_beta_list value1 valueargs =
 
 
 and interpret_point env ast =
-  let (value, _) = interpret_0 env ast in
+  let value = interpret_0 env ast in
   get_point value
 
 
@@ -136,7 +142,7 @@ and interpret_0_input_horz_content (env : environment) (ihlst : input_horz_eleme
         ImInputHorzEmbeddedCodeText(s)
 
     | InputHorzContent(ast) ->
-        let (value, _) = interpret_0 env ast in
+        let value = interpret_0 env ast in
         begin
           match value with
           | InputHorzClosure(imihlst, envsub) ->
@@ -153,7 +159,7 @@ and interpret_0_input_vert_content (env : environment) (ivlst : input_vert_eleme
         ImInputVertEmbedded(astabs)
 
     | InputVertContent(ast) ->
-        let (value, _) = interpret_0 env ast in
+        let value = interpret_0 env ast in
         begin
           match value with
           | InputVertClosure(imivlst, envsub) ->
@@ -165,12 +171,11 @@ and interpret_0_input_vert_content (env : environment) (ivlst : input_vert_eleme
   )
 
 
-and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * environment option =
-  let return v = (v, None) in
+and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
+  let return v = v in
   match ast with
 
 (* ---- basic value ---- *)
-
   | ASTBaseConstant(bc) ->
       return @@ BaseConstant(bc)
 
@@ -192,8 +197,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
 
 (* -- fundamentals -- *)
 
-  | ContentOf(rng, evid)
-  | Persistent(rng, evid) ->
+  | ContentOf(rng, evid) ->
       begin
         match find_in_environment env evid with
         | Some(rfvalue) ->
@@ -209,19 +213,19 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       interpret_0 envnew ast2
 
   | LetNonRecIn(pat, ast1, ast2) ->
-      let (value1, _) = interpret_0 env ast1 in
+      let value1 = interpret_0 env ast1 in
       select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)]
 
   | Function(evids, patbrs) ->
       return @@ Closure(evids, patbrs, env)
 
   | Apply(ast_labmap, ast1, ast2) ->
-      let (value1, _) = interpret_0 env ast1 in
-      let (value2, _) = interpret_0 env ast2 in
+      let value1 = interpret_0 env ast1 in
+      let value2 = interpret_0 env ast2 in
       return @@ reduce_beta ~optional:ast_labmap value1 value2
 
   | IfThenElse(astb, ast1, ast2) ->
-      let (valueb, _) = interpret_0 env astb in
+      let valueb = interpret_0 env astb in
       let b = get_bool valueb in
       if b then interpret_0 env ast1 else interpret_0 env ast2
 
@@ -231,7 +235,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       return @@ RecordValue(asc |> LabelMap.map (interpret_0_value env))
 
   | AccessField(ast1, fldnm) ->
-      let (value1, _) = interpret_0 env ast1 in
+      let value1 = interpret_0 env ast1 in
       begin
         match value1 with
         | RecordValue(asc1) ->
@@ -246,8 +250,8 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       end
 
   | UpdateField(ast1, fldnm, ast2) ->
-      let (value1, _) = interpret_0 env ast1 in
-      let (value2, _) = interpret_0 env ast2 in
+      let value1 = interpret_0 env ast1 in
+      let value2 = interpret_0 env ast2 in
       begin
         match value1 with
         | RecordValue(asc1) ->
@@ -265,7 +269,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
 (* ---- imperatives ---- *)
 
   | LetMutableIn(evid, astini, astaft) ->
-      let (valueini, _) = interpret_0 env astini in
+      let valueini = interpret_0 env astini in
       let stid = register_location env valueini in
       let envnew = add_to_environment env evid (ref (Location(stid))) in
       interpret_0 envnew astaft
@@ -278,7 +282,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
             begin
               match value with
               | Location(stid) ->
-                  let (valuenew, _) = interpret_0 env astnew in
+                  let valuenew = interpret_0 env astnew in
                   update_location env stid valuenew;
                   return @@ const_unit
 
@@ -291,7 +295,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       end
 
   | Dereference(astcont) ->
-      let (valuecont, _) = interpret_0 env astcont in
+      let valuecont = interpret_0 env astcont in
       begin
         match valuecont with
         | Location(stid) ->
@@ -306,11 +310,11 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       end
 
   | PatternMatch(rng, astobj, patbrs) ->
-      let (valueobj, _) = interpret_0 env astobj in
+      let valueobj = interpret_0 env astobj in
       select_pattern rng env valueobj patbrs
 
   | NonValueConstructor(constrnm, astcont) ->
-      let (valuecont, _) = interpret_0 env astcont in
+      let valuecont = interpret_0 env astcont in
       return @@ Constructor(constrnm, valuecont)
 
   | BackendMathList(astmlst) ->
@@ -330,19 +334,31 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value * en
       report_bug_ast "Prev(_) at stage 0" ast
 
   | Next(ast1) ->
-      let (code1, envopt1) = interpret_1 env ast1 in
-      (CodeValue(code1), envopt1)
+      let code1 = interpret_1 env ast1 in
+      CodeValue(code1)
+
+  | Persistent(_) ->
+      report_bug_ast "Persistent(_) at stage 0" ast
+
+  | Lift(ast1) ->
+      failwith "TODO: Lift"
+(*
+      let value1 = interpret_0 env ast1 in
+      CodeValue(CdPersistent(value1))
+*)
+
+  | ASTCodeSymbol(symb) ->
+      report_bug_ast "ASTCodeSymbol(_) at stage 0" ast
 
 #include "__evaluator_0.gen.ml"
 
 and interpret_0_value env ast =
-  fst @@ interpret_0 env ast
+  interpret_0 env ast
 
 
-and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environment option =
-  let return cd = (cd, None) in
+and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
+  let return cd = cd in
   match ast with
-
   | ASTBaseConstant(bc) ->
       return @@ CdBaseConstant(bc)
 
@@ -362,39 +378,39 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
 
   | ContentOf(rng, evid) ->
       begin
-        match find_symbol env evid with
-        | Some(symb) -> return @@ CdContentOf(rng, symb)
-        | None       -> report_bug_ast "symbol not found" ast
+        match find_in_environment env evid with
+        | Some(rfvalue) ->
+            begin
+              match !rfvalue with
+              | CodeSymbol(symb) ->
+                  return @@ CdContentOf(rng, symb)
+
+              | CodeValue(cv) ->
+                  return @@ cv
+
+              | v ->
+                  report_bug_value
+                    (Printf.sprintf "not a code value (%s, used at %s)"
+                      (EvalVarID.show_direct evid) (Range.show rng))
+                    v
+            end
+
+        | None ->
+            report_bug_ast ("not found (" ^ Range.show rng ^ ")") ast
       end
 
- | Persistent(rng, evid) ->
-     return @@ CdPersistent(rng, evid)
-
   | LetRecIn(recbinds, ast2) ->
-      let (env, zippedacc) =
-      (* -- generate the symbols for the identifiers and add them to the environment -- *)
-        recbinds |> List.fold_left (fun (env, zippedacc) recbind ->
-          let LetRecBinding(evid, _) = recbind in
-          let (env, symb) = generate_symbol_for_eval_var_id evid env in
-          (env, Alist.extend zippedacc (symb, recbind))
-        ) (env, Alist.empty)
-      in
-      let cdrecbinds =
-        zippedacc |> Alist.to_list |> List.map (fun (symb, LetRecBinding(evid, patbr)) ->
-          let cdpatbr = interpret_1_pattern_branch env patbr in
-          CdLetRecBinding(symb, cdpatbr)
-        )
-      in
-      let (code2, envopt2) = interpret_1 env ast2 in
-      (CdLetRecIn(cdrecbinds, code2), envopt2)
+      let (env, cdrecbinds) = interpret_letrec_bindings_1 env recbinds in
+      let code2 = interpret_1 env ast2 in
+      CdLetRecIn(cdrecbinds, code2)
 
   | LetNonRecIn(pattr, ast1, ast2) ->
-      let (code1, _) = interpret_1 env ast1 in
+      let code1 = interpret_1 env ast1 in
       let (env, cdpattr) = interpret_1_pattern_tree env pattr in
         (* -- generate the symbols corresponding to the variables in the pattern
               and add them to the environment -- *)
-      let (code2, envopt2) = interpret_1 env ast2 in
-      (CdLetNonRecIn(cdpattr, code1, code2), envopt2)
+      let code2 = interpret_1 env ast2 in
+      CdLetNonRecIn(cdpattr, code1, code2)
 
   | Function(evid_labmap, patbr) ->
       let (env, symb_labmap) =
@@ -407,20 +423,19 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       return @@ CdFunction(symb_labmap, cdpatbr)
 
   | Apply(ast_labmap, ast1, ast2) ->
-      let (code1, _) = interpret_1 env ast1 in
-      let (code2, _) = interpret_1 env ast2 in
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
       let code_labmap =
         ast_labmap |> LabelMap.map (fun ast0 ->
-          let (code0, _) = interpret_1 env ast0 in
-          code0
+          interpret_1 env ast0
         )
       in
       return @@ CdApply(code_labmap, code1, code2)
 
   | IfThenElse(ast0, ast1, ast2) ->
-      let (code0, _) = interpret_1 env ast0 in
-      let (code1, _) = interpret_1 env ast1 in
-      let (code2, _) = interpret_1 env ast2 in
+      let code0 = interpret_1 env ast0 in
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
       return @@ CdIfThenElse(code0, code1, code2)
 
   | Record(asc) ->
@@ -428,25 +443,25 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       return @@ CdRecord(cdasc)
 
   | AccessField(ast1, fldnm) ->
-      let (code1, _) = interpret_1 env ast1 in
+      let code1 = interpret_1 env ast1 in
       return @@ CdAccessField(code1, fldnm)
 
   | UpdateField(ast1, fldnm, ast2) ->
-      let (code1, _) = interpret_1 env ast1 in
-      let (code2, _) = interpret_1 env ast2 in
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
       return @@ CdUpdateField(code1, fldnm, code2)
 
   | LetMutableIn(evid, ast1, ast2) ->
       let (env, symb) = generate_symbol_for_eval_var_id evid env in
-      let (code1, _) = interpret_1 env ast1 in
-      let (code2, envopt2) = interpret_1 env ast2 in
-      (CdLetMutableIn(symb, code1, code2), envopt2)
+      let code1 = interpret_1 env ast1 in
+      let code2 = interpret_1 env ast2 in
+      CdLetMutableIn(symb, code1, code2)
 
   | Overwrite(evid, ast1) ->
       begin
         match find_symbol env evid with
         | Some(symb) ->
-            let (code1, _) = interpret_1 env ast1 in
+            let code1 = interpret_1 env ast1 in
             return @@ CdOverwrite(symb, code1)
 
         | None ->
@@ -454,16 +469,16 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       end
 
   | Dereference(ast1) ->
-      let (code1, _) = interpret_1 env ast1 in
+      let code1 = interpret_1 env ast1 in
       return @@ CdDereference(code1)
 
   | PatternMatch(rng, ast1, patbrs) ->
-      let (code1, _) = interpret_1 env ast1 in
+      let code1 = interpret_1 env ast1 in
       let cdpatbrs = patbrs |> List.map (interpret_1_pattern_branch env) in
       return @@ CdPatternMatch(rng, code1, cdpatbrs)
 
   | NonValueConstructor(constrnm, ast1) ->
-      let (code1, _) = interpret_1 env ast1 in
+      let code1 = interpret_1 env ast1 in
       return @@ CdConstructor(constrnm, code1)
 
   | BackendMathList(astlst) ->
@@ -476,20 +491,29 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       return @@ CdTuple(codes)
 
   | Prev(ast1) ->
-      let (value1, envopt1) = interpret_0 env ast1 in
+      let value1 = interpret_0 env ast1 in
       begin
         match value1 with
-        | CodeValue(code) -> (code, envopt1)
+        | CodeValue(code) -> code
         | _               -> report_bug_reduction "Prev; not a code value" ast value1
       end
 
   | Next(_) ->
       report_bug_ast "Next(_) at stage 1" ast
 
+  | Persistent(rng, evid) ->
+      CdPersistent(rng, evid)
+
+  | Lift(_) ->
+      report_bug_ast "Lift(_) at stage 1" ast
+
+  | ASTCodeSymbol(symb) ->
+      return @@ CdContentOf(Range.dummy "ASTCodeSymbol", symb)
+
 #include "__evaluator_1.gen.ml"
 
 and interpret_1_value env ast =
-  fst @@ interpret_1 env ast
+  interpret_1 env ast
 
 
 and interpret_1_pattern_branch env = function
@@ -552,7 +576,7 @@ and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value
     imivlst |> List.map (fun imiv ->
       match imiv with
       | ImInputVertEmbedded(astabs) ->
-          let (valueabs, _) = interpret_0 env astabs in
+          let valueabs = interpret_0 env astabs in
           let valuevert = reduce_beta valueabs valuetctx in
           get_string valuevert
 
@@ -604,12 +628,12 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx :
     nmihlst |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzEmbedded(astabs) ->
-          let (valueabs, _) = interpret_0 env astabs in
+          let valueabs = interpret_0 env astabs in
           let valueret = reduce_beta valueabs valuetctx in
           get_string valueret
 
       | NomInputHorzThunk(valuecmd, astarg) ->
-          let (valuearg, _) = interpret_0 env astarg in
+          let valuearg = interpret_0 env astarg in
           let valueret = reduce_beta valuecmd valuearg in
           get_string valueret
 
@@ -634,7 +658,7 @@ and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) 
     imivlst |> List.map (fun imiv ->
       match imiv with
       | ImInputVertEmbedded(astabs) ->
-          let (valueabs, _) = interpret_0 env astabs in
+          let valueabs = interpret_0 env astabs in
           let valuevert = reduce_beta valueabs valuectx in
           get_vert valuevert
 
@@ -696,12 +720,12 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
     nmihlst |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzEmbedded(astabs) ->
-          let (valueabs, _) = interpret_0 env astabs in
+          let valueabs = interpret_0 env astabs in
           let valuehorz = reduce_beta valueabs valuectx in
           get_horz valuehorz
 
       | NomInputHorzThunk(valuemcmdctx, astmath) ->
-          let (valuemath, _) = interpret_0 env astmath in
+          let valuemath = interpret_0 env astmath in
           let valuehorz = reduce_beta valuemcmdctx valuemath in
           get_horz valuehorz
 
@@ -719,7 +743,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : s
   make_horz hblst
 
 
-and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) : syntactic_value * environment option =
+and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) : syntactic_value =
   let iter = select_pattern rng env valueobj in
   match patbrs with
   | [] ->
@@ -812,37 +836,63 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
   env
 
 
-let interpret_bindings_0 (env : environment) (binds : binding list) : environment =
-  binds |> List.fold_left (fun env (Bind(rec_or_nonrec)) ->
-    match rec_or_nonrec with
-    | NonRec(evid, ast) ->
-        let (value, _) = interpret_0 env ast in
-        add_to_environment env evid (ref value)
-
-    | Rec(recbinds) ->
-        add_letrec_bindings_to_environment env recbinds
-
-    | Mutable(evid, ast_ini) ->
-        let (value_ini, _) = interpret_0 env ast_ini in
-        let stid = register_location env value_ini in
-        add_to_environment env evid (ref (Location(stid)))
-
-  ) env
-
-
-let interpret_bindings_1 (env : environment) (binds : binding list) : code_binding list * environment =
-  let (codebindacc, env) =
-    binds |> List.fold_left (fun (codebindacc, env) (Bind(rec_or_nonrec)) ->
-      match rec_or_nonrec with
-      | NonRec(evid, ast) ->
-          let (code, _envopt) = interpret_1 env ast in
-          let (env, symb) = generate_symbol_for_eval_var_id evid env in
-          (Alist.extend codebindacc (CodeBinding(symb, code)), env)
-            (* TODO (enhance): fix `envopt` *)
-
-      | _ ->
-          failwith "TODO: Evaluator.interpret_bindings_1"
-
-    ) (Alist.empty, env)
+and interpret_letrec_bindings_1 (env : environment) (recbinds : letrec_binding list) : environment * code_letrec_binding list =
+  let (env, zippedacc) =
+  (* -- generate the symbols for the identifiers and add them to the environment -- *)
+    recbinds |> List.fold_left (fun (env, zippedacc) recbind ->
+      let LetRecBinding(evid, _) = recbind in
+      let (env, symb) = generate_symbol_for_eval_var_id evid env in
+      (env, Alist.extend zippedacc (symb, recbind))
+    ) (env, Alist.empty)
   in
-  (codebindacc |> Alist.to_list, env)
+  let cdrecbinds =
+    zippedacc |> Alist.to_list |> List.map (fun (symb, LetRecBinding(evid, patbr)) ->
+      let cdpatbr = interpret_1_pattern_branch env patbr in
+      CdLetRecBinding(symb, cdpatbr)
+    )
+  in
+  (env, cdrecbinds)
+
+
+let interpret_bindings_0 (env : environment) (binds : binding list) : environment * code_rec_or_nonrec list =
+  let (env, acc) =
+    binds |> List.fold_left (fun (env, acc) (Bind(stage, rec_or_nonrec)) ->
+      match stage with
+      | Persistent0 | Stage0 ->
+          let env =
+            match rec_or_nonrec with
+            | NonRec(evid, ast) ->
+                let value = interpret_0 env ast in
+                add_to_environment env evid (ref value)
+
+            | Rec(recbinds) ->
+                add_letrec_bindings_to_environment env recbinds
+
+            | Mutable(evid, ast_ini) ->
+                let value_ini = interpret_0 env ast_ini in
+                let stid = register_location env value_ini in
+                add_to_environment env evid (ref (Location(stid)))
+          in
+          (env, acc)
+
+      | Stage1 ->
+          begin
+            match rec_or_nonrec with
+            | NonRec(evid, ast) ->
+                let code = interpret_1 env ast in
+                let (env, symb) = generate_symbol_for_eval_var_id evid env in
+                (env, Alist.extend acc (CdNonRec(symb, code)))
+
+            | Rec(recbinds) ->
+                let (env, cdrecbinds) = interpret_letrec_bindings_1 env recbinds in
+                (env, Alist.extend acc (CdRec(cdrecbinds)))
+
+            | Mutable(evid, ast) ->
+                let code = interpret_1 env ast in
+                let (env, symb) = generate_symbol_for_eval_var_id evid env in
+                (env, Alist.extend acc (CdMutable(symb, code)))
+          end
+
+    ) (env, Alist.empty)
+  in
+  (env, acc |> Alist.to_list)

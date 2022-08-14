@@ -159,15 +159,6 @@ and compile (ir : ir) (cont : instruction list) =
       let loadop = make_loading_op var in
       loadop :: cont
 
-  | IRPersistent(var) ->
-      let evid =
-        match var with
-        | GlobalVar(_, evid, _)   -> evid
-        | LocalVar(_, _, evid, _) -> evid
-      in
-      let rng = Range.dummy "IRPersistent" in
-      OpPush(CodeValue(CdPersistent(rng, evid))) :: cont
-
   | IRSymbolOf(var) ->
       let loadop = make_loading_op var in
       loadop :: OpConvertSymbolToCode :: cont
@@ -289,6 +280,9 @@ and compile (ir : ir) (cont : instruction list) =
       let loadop = make_loading_op var in
       let instrs1 = compile ir1 [] in
       loadop :: OpCodeOverwrite(instrs1) :: cont
+
+  | IRLift(_ir1) ->
+      failwith "TODO: IRLift"
 
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =
