@@ -224,15 +224,15 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       let value2 = interpret_0 env ast2 in
       reduce_beta ~optional:val_labmap value1 value2
 
-  | IfThenElse(astb, ast1, ast2) ->
-      let valueb = interpret_0 env astb in
-      let b = get_bool valueb in
+  | IfThenElse(ast0, ast1, ast2) ->
+      let value0 = interpret_0 env ast0 in
+      let b = get_bool value0 in
       if b then interpret_0 env ast1 else interpret_0 env ast2
 
 (* Records: *)
 
   | Record(asc) ->
-      RecordValue(asc |> LabelMap.map (interpret_0_value env))
+      RecordValue(asc |> LabelMap.map (interpret_0 env))
 
   | AccessField(ast1, fldnm) ->
       let value1 = interpret_0 env ast1 in
@@ -318,11 +318,11 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       Constructor(constrnm, value_cont)
 
   | BackendMathList(astms) ->
-      let ms = astms |> List.map (fun astm -> get_math (interpret_0_value env astm)) |> List.concat in
+      let ms = astms |> List.map (fun astm -> get_math (interpret_0 env astm)) |> List.concat in
       MathValue(ms)
 
   | PrimitiveTuple(asts) ->
-      let values = asts |> TupleList.map (interpret_0_value env) in
+      let values = asts |> TupleList.map (interpret_0 env) in
         (* Should be left-to-right *)
       Tuple(values |> TupleList.to_list)
 
@@ -350,9 +350,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
 
 #include "__evaluator_0.gen.ml"
 
-and interpret_0_value env ast =
-  interpret_0 env ast
-
 
 and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   match ast with
@@ -366,11 +363,11 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       CdEndOfList
 
   | InputHorz(ihlst) ->
-      let cdihlst = ihlst |> map_input_horz (interpret_1_value env) in
+      let cdihlst = ihlst |> map_input_horz (interpret_1 env) in
       CdInputHorz(cdihlst)
 
   | InputVert(ivlst) ->
-      let cdivlst = ivlst |> map_input_vert (interpret_1_value env) in
+      let cdivlst = ivlst |> map_input_vert (interpret_1 env) in
       CdInputVert(cdivlst)
 
   | ContentOf(rng, evid) ->
@@ -436,7 +433,7 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       CdIfThenElse(code0, code1, code2)
 
   | Record(asc) ->
-      let cdasc = asc |> LabelMap.map (interpret_1_value env) in
+      let cdasc = asc |> LabelMap.map (interpret_1 env) in
       CdRecord(cdasc)
 
   | AccessField(ast1, fldnm) ->
@@ -479,11 +476,11 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       CdConstructor(constrnm, code1)
 
   | BackendMathList(astlst) ->
-      let codelst = astlst |> List.map (interpret_1_value env) in
+      let codelst = astlst |> List.map (interpret_1 env) in
       CdMathList(codelst)
 
   | PrimitiveTuple(asts) ->
-      let codes = TupleList.map (interpret_1_value env) asts in
+      let codes = TupleList.map (interpret_1 env) asts in
         (* -- should be left-to-right -- *)
       CdTuple(codes)
 
@@ -510,18 +507,14 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
 #include "__evaluator_1.gen.ml"
 
 
-and interpret_1_value env ast =
-  interpret_1 env ast
-
-
 and interpret_1_pattern_branch env = function
   | PatternBranch(pattr, ast) ->
       let (env, cdpattr) = interpret_1_pattern_tree env pattr in
-      CdPatternBranch(cdpattr, interpret_1_value env ast)
+      CdPatternBranch(cdpattr, interpret_1 env ast)
 
   | PatternBranchWhen(pattr, ast, ast1) ->
       let (env, cdpattr) = interpret_1_pattern_tree env pattr in
-      CdPatternBranchWhen(cdpattr, interpret_1_value env ast, interpret_1_value env ast1)
+      CdPatternBranchWhen(cdpattr, interpret_1 env ast, interpret_1 env ast1)
 
 
 and interpret_1_pattern_tree env = function
@@ -758,7 +751,7 @@ and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_val
       begin
         match check_pattern_matching env pat valueobj with
         | Some(envnew) ->
-            let cond = get_bool (interpret_0_value envnew astcond) in
+            let cond = get_bool (interpret_0 envnew astcond) in
             if cond then interpret_0 envnew astto else iter tail
 
         | None ->

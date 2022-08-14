@@ -94,7 +94,7 @@ let gen_interps_1 () =
       let codeargs = params |> List.mapi (fun i _ -> "_code%d" @% i) in
       puts "  | %s(%s) ->" inst (String.concat ", " astargs);
       List.iter2 (fun codearg astarg ->
-        puts "      let %s = interpret_1_value env %s in" codearg astarg;
+        puts "      let %s = interpret_1 env %s in" codearg astarg;
       ) codeargs astargs;
       puts "      Cd%s(%s)" inst (String.concat ", " codeargs);
       puts ""
@@ -120,7 +120,7 @@ let gen_interps_0 () =
       puts "  | %s(%s) ->" inst (String.concat ", " astargs);
       List.combine params astargs |> List.iter (function
       | ({ Param.name; type_ = None }, astident) ->
-          puts "      let %s = interpret_0_value env %s in"
+          puts "      let %s = interpret_0 env %s in"
             name astident
 
       | _ ->
@@ -128,7 +128,7 @@ let gen_interps_0 () =
       );
       List.combine params astargs |> List.iter (function
       | ({ Param.name; type_ = Some t }, astident) ->
-          puts "      let %s = %s%s (interpret_0_value env %s) in"
+          puts "      let %s = %s%s (interpret_0 env %s) in"
             name Const.func_prefix t astident
 
       | _ ->
