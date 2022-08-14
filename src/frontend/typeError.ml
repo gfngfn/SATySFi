@@ -31,17 +31,17 @@ type type_error =
   | InclusionError                       of mono_type * mono_type
   | TypeParameterBoundMoreThanOnce       of Range.t * type_variable_name
   | ConflictInSignature                  of Range.t * string
-  | NotAStructureSignature               of Range.t * functor_signature
-  | NotAFunctorSignature                 of Range.t * StructSig.t
+  | NotAStructureSignature               of Range.t * EvalVarID.t functor_signature
+  | NotAFunctorSignature                 of Range.t * EvalVarID.t StructSig.t
   | MissingRequiredValueName             of Range.t * var_name * poly_type
   | MissingRequiredConstructorName       of Range.t * constructor_name * constructor_entry
   | MissingRequiredTypeName              of Range.t * type_name * int
-  | MissingRequiredModuleName            of Range.t * module_name * signature
-  | MissingRequiredSignatureName         of Range.t * signature_name * signature abstracted
+  | MissingRequiredModuleName            of Range.t * module_name * EvalVarID.t signature
+  | MissingRequiredSignatureName         of Range.t * signature_name * virtual_signature abstracted
   | NotASubtypeAboutValue                of Range.t * var_name * poly_type * poly_type
   | NotASubtypeAboutConstructor          of Range.t * constructor_name * type_scheme * type_scheme
   | NotASubtypeAboutType                 of Range.t * type_name * type_entry * type_entry
-  | NotASubtypeSignature                 of Range.t * signature * signature
+  | NotASubtypeSignature                 of Range.t * virtual_signature * virtual_signature
   | UnexpectedOptionalLabel              of Range.t * label * mono_type
   | InvalidArityOfCommandApplication     of Range.t * int * int
   | CannotRestrictTransparentType        of Range.t * type_name

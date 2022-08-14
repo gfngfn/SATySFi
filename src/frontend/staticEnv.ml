@@ -78,8 +78,8 @@ type type_scheme =
   BoundID.t list * poly_type
 [@@deriving show { with_path = false }]
 
-type value_entry = {
-  val_name  : EvalVarID.t option;
+type 'v value_entry = {
+  val_name  : 'v;
   val_type  : poly_type;
   val_stage : stage;
 }
@@ -103,52 +103,69 @@ type macro_entry = {
 }
 [@@deriving show { with_path = false }]
 
-type signature =
-  | ConcStructure of struct_signature
-  | ConcFunctor   of functor_signature
+type 'v signature =
+  | ConcStructure of 'v struct_signature
+  | ConcFunctor   of 'v functor_signature
 
-and struct_signature =
-  struct_signature_entry Alist.t
+and 'v struct_signature =
+  ('v struct_signature_entry) Alist.t
     [@printer (fun ppf ssentryacc ->
-      Format.fprintf ppf "%a" (Format.pp_print_list pp_struct_signature_entry) (Alist.to_list ssentryacc)
+(*
+      Format.fprintf ppf "%a" (Format.pp_print_list (pp_struct_signature_entry ppv)) (Alist.to_list ssentryacc)
+*)
+      ()
     )]
 
-and struct_signature_entry =
-  | SSValue       of var_name * value_entry
+and 'v struct_signature_entry =
+  | SSValue       of var_name * 'v value_entry
   | SSConstructor of constructor_name * constructor_entry
   | SSFold        of type_name * poly_type
   | SSType        of type_name * type_entry
-  | SSModule      of module_name * module_entry
-  | SSSignature   of signature_name * signature abstracted
+  | SSModule      of module_name * 'v module_entry
+  | SSSignature   of signature_name * (unit signature) abstracted
 
-and functor_signature = {
+and 'v functor_signature = {
   opaques  : quantifier;
-  domain   : signature;
-  codomain : signature abstracted;
-  closure  : (module_name ranged * untyped_module * type_environment) option;
+  domain   : 'v signature;
+  codomain : ('v signature) abstracted;
+  closure  : (module_name ranged * untyped_module * 'v type_environment) option;
 }
 
-and module_entry = {
-  mod_signature : signature;
+and 'v module_entry = {
+  mod_signature : 'v signature;
 }
 
-and type_environment = {
-  values       : (value_entry * bool ref) ValueNameMap.t;
+and 'v type_environment = {
+  values       : ('v value_entry * bool ref) ValueNameMap.t;
   types        : type_entry TypeNameMap.t;
-  modules      : module_entry ModuleNameMap.t;
-  signatures   : (signature abstracted) SignatureNameMap.t;
+  modules      : ('v module_entry) ModuleNameMap.t;
+  signatures   : (virtual_signature abstracted) SignatureNameMap.t;
   constructors : constructor_entry ConstructorMap.t;
   macros       : macro_entry MacroNameMap.t;
 }
+
+and virtual_signature = unit signature
 [@@deriving show { with_path = false }]
+
+type virtual_type_environment = unit type_environment
+
+type target_value_entry = EvalVarID.t value_entry
+
+type target_module_entry = EvalVarID.t module_entry
+
+type target_signature = EvalVarID.t signature
+
+type target_type_environment = EvalVarID.t type_environment
+
+type target_struct_signature = EvalVarID.t struct_signature
 
 
 module Typeenv = struct
 
-  type t = type_environment
+  type 'v t = 'v type_environment
 
 
-  let empty : t =
+  let empty : 'v t =
     {
       values       = ValueNameMap.empty;
       types        = TypeNameMap.empty;
@@ -159,44 +176,61 @@ module Typeenv = struct
     }
 
 
-  let add_macro (csnm : ctrlseq_name) (macentry : macro_entry) (tyenv : t) : t =
+  let forget (tyenv : target_type_environment) : virtual_type_environment =
+    {
+      values =
+        tyenv.values |> ValueNameMap.map (fun (ventry, bref) ->
+          ({
+            val_name  = ();
+            val_type  = ventry.val_type;
+            val_stage = ventry.val_stage;
+          }, bref));
+      types = tyenv.types;
+      modules = tyenv.modules;
+      signatures = tyenv.signatures;
+      constructors = tyenv.constructors;
+      macros = tyenv.macros;
+    }
+
+
+  let add_macro (csnm : ctrlseq_name) (macentry : macro_entry) (tyenv : 'v t) : 'v t =
     { tyenv with macros = tyenv.macros |> MacroNameMap.add csnm macentry }
 
 
-  let find_macro (csnm : ctrlseq_name) (tyenv : t) : macro_entry option =
+  let find_macro (csnm : ctrlseq_name) (tyenv : 'v t) : macro_entry option =
     tyenv.macros |> MacroNameMap.find_opt csnm
 
 
-  let add_value (varnm : var_name) (ventry : value_entry) (tyenv : t) : t =
+  let add_value (varnm : var_name) (ventry : 'v value_entry) (tyenv : 'v t) : 'v t =
     let is_used = ref false in
     { tyenv with values = tyenv.values |> ValueNameMap.add varnm (ventry, is_used) }
 
 
-  let find_value (varnm : var_name) (tyenv : t) : value_entry option =
+  let find_value (varnm : var_name) (tyenv : 'v t) : ('v value_entry) option =
     tyenv.values |> ValueNameMap.find_opt varnm |> Option.map (fun (ventry, is_used) ->
       is_used := true;
       ventry
     )
 
 
-  let add_type (tynm : type_name) (tentry : type_entry) (tyenv : t) : t =
+  let add_type (tynm : type_name) (tentry : type_entry) (tyenv : 'v t) : 'v t =
     { tyenv with types = tyenv.types |> TypeNameMap.add tynm tentry }
 
 
-  let find_type (tynm : type_name) (tyenv : t) : type_entry option =
+  let find_type (tynm : type_name) (tyenv : 'v t) : type_entry option =
     tyenv.types |> TypeNameMap.find_opt tynm
 
 
-  let add_constructor (ctornm : constructor_name) (centry : constructor_entry) (tyenv : t) : t =
+  let add_constructor (ctornm : constructor_name) (centry : constructor_entry) (tyenv : 'v t) : 'v t =
     { tyenv with constructors = tyenv.constructors |> ConstructorMap.add ctornm centry }
 
 
-  let find_constructor (ctornm : constructor_name) (tyenv : t) : constructor_entry option =
+  let find_constructor (ctornm : constructor_name) (tyenv : 'v t) : constructor_entry option =
     tyenv.constructors |> ConstructorMap.find_opt ctornm
 
 
   (* TODO (enhance): make this function more efficient *)
-  let enumerate_constructors (tyid : TypeID.t) (tyenv : t) : (constructor_name * type_scheme) list =
+  let enumerate_constructors (tyid : TypeID.t) (tyenv : 'v t) : (constructor_name * type_scheme) list =
     ConstructorMap.fold (fun ctornm centry acc ->
       if TypeID.equal tyid centry.ctor_belongs_to then
         Alist.extend acc (ctornm, centry.ctor_parameter)
@@ -205,19 +239,19 @@ module Typeenv = struct
     ) tyenv.constructors Alist.empty |> Alist.to_list
 
 
-  let add_module (m : module_name) (mentry : module_entry) (tyenv : t) : t =
+  let add_module (m : module_name) (mentry : 'v module_entry) (tyenv : 'v t) : 'v t =
     { tyenv with modules = tyenv.modules |> ModuleNameMap.add m mentry }
 
 
-  let find_module (m : module_name) (tyenv : t) : module_entry option =
+  let find_module (m : module_name) (tyenv : 'v t) : 'v module_entry option =
     tyenv.modules |> ModuleNameMap.find_opt m
 
 
-  let add_signature (s : signature_name) (absmodsig : signature abstracted) (tyenv : t) : t =
+  let add_signature (s : signature_name) (absmodsig : virtual_signature abstracted) (tyenv : 'v t) : 'v t =
     { tyenv with signatures = tyenv.signatures |> SignatureNameMap.add s absmodsig }
 
 
-  let find_signature (s : signature_name) (tyenv : t) : (signature abstracted) option =
+  let find_signature (s : signature_name) (tyenv : 'v t) : (virtual_signature abstracted) option =
     tyenv.signatures |> SignatureNameMap.find_opt s
 
 end
@@ -225,80 +259,80 @@ end
 
 module StructSig = struct
 
-  type t = struct_signature
+  type 'v t = 'v struct_signature
 
 
-  let empty : t =
+  let empty : 'v t =
     Alist.empty
 
 
-  let add_value (x : var_name) (ventry : value_entry) (ssig : t) : t =
+  let add_value (x : var_name) (ventry : 'v value_entry) (ssig : 'v t) : 'v t =
     Alist.extend ssig (SSValue(x, ventry))
 
 
-  let find_value (x : var_name) (ssig : t) : value_entry option =
+  let find_value (x : var_name) (ssig : 'v t) : ('v value_entry) option =
     ssig |> Alist.to_list_rev |> List.find_map (function
     | SSValue(x0, ventry) -> if String.equal x x0 then Some(ventry) else None
     | _                   -> None
     )
 
 
-  let add_constructor (ctornm : constructor_name) (centry : constructor_entry) (ssig : t) : t =
+  let add_constructor (ctornm : constructor_name) (centry : constructor_entry) (ssig : 'v t) : 'v t =
     Alist.extend ssig (SSConstructor(ctornm, centry))
 
 
-  let find_constructor (ctornm : constructor_name) (ssig : t) : constructor_entry option =
+  let find_constructor (ctornm : constructor_name) (ssig : 'v t) : constructor_entry option =
     ssig |> Alist.to_list_rev |> List.find_map (function
     | SSConstructor(ctornm0, centry) -> if String.equal ctornm ctornm0 then Some(centry) else None
     | _                              -> None
     )
 
 
-  let add_dummy_fold (tynm : type_name) (pty : poly_type) (ssig : t) : t =
+  let add_dummy_fold (tynm : type_name) (pty : poly_type) (ssig : 'v t) : 'v t =
     Alist.extend ssig (SSFold(tynm, pty))
 
 
-  let find_dummy_fold (tynm : type_name) (ssig : t) : poly_type option =
+  let find_dummy_fold (tynm : type_name) (ssig : 'v t) : poly_type option =
     ssig |> Alist.to_list_rev |> List.find_map (function
     | SSFold(tynm0, pty) -> if String.equal tynm tynm0 then Some(pty) else None
     | _                  -> None
     )
 
 
-  let add_type (tynm : type_name) (tentry : type_entry) (ssig : t) : t =
+  let add_type (tynm : type_name) (tentry : type_entry) (ssig : 'v t) : 'v t =
     Alist.extend ssig (SSType(tynm, tentry))
 
 
-  let find_type (tynm : type_name) (ssig : t) : type_entry option =
+  let find_type (tynm : type_name) (ssig : 'v t) : type_entry option =
     ssig |> Alist.to_list_rev |> List.find_map (function
     | SSType(tynm0, tentry) -> if String.equal tynm tynm0 then Some(tentry) else None
     | _                     -> None
     )
 
 
-  let add_module (m : module_name) (mentry : module_entry) (ssig : t) : t =
+  let add_module (m : module_name) (mentry : 'v module_entry) (ssig : 'v t) : 'v t =
     Alist.extend ssig (SSModule(m, mentry))
 
 
-  let find_module (m : module_name) (ssig : t) : module_entry option =
+  let find_module (m : module_name) (ssig : 'v t) : ('v module_entry) option =
     ssig |> Alist.to_list_rev |> List.find_map (function
     | SSModule(m0, mentry) -> if String.equal m m0 then Some(mentry) else None
     | _                    -> None
     )
 
 
-  let add_signature (s : signature_name) (absmodsig : signature abstracted) (ssig : t) : t =
+  let add_signature (s : signature_name) (absmodsig : virtual_signature abstracted) (ssig : 'v t) : 'v t =
     Alist.extend ssig (SSSignature(s, absmodsig))
 
 
-  let find_signature (s : signature_name) (ssig : t) : (signature abstracted) option =
+  let find_signature (s : signature_name) (ssig : 'v t) : (virtual_signature abstracted) option =
     ssig |> Alist.to_list_rev |> List.find_map (function
     | SSSignature(s0, absmodsig) -> if String.equal s s0 then Some(absmodsig) else None
     | _                          -> None
     )
 
 
-  let fold ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs acc (ssig : t) =
+  let fold ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs acc (ssig : 'v t) =
     ssig |> Alist.to_list |> List.fold_left (fun acc entry ->
       match entry with
       | SSValue(x, ventry)            -> fv x ventry acc
@@ -310,7 +344,7 @@ module StructSig = struct
     ) acc
 
 
-  let map_and_fold ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs acc (ssig : t) =
+  let map_and_fold ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs acc (ssig : 'v t) =
       ssig |> Alist.to_list |> List.fold_left (fun (sigracc, acc) entry ->
         match entry with
         | SSValue(x, ventry) ->
@@ -340,7 +374,7 @@ module StructSig = struct
       ) (Alist.empty, acc)
 
 
-  let map ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs (ssig : t) : t =
+  let map ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs (ssig : 'v t) : 'v t =
     let (ssig, ()) =
       ssig |> map_and_fold
         ~v:(fun x ventry () -> (fv x ventry, ()))
@@ -357,7 +391,7 @@ module StructSig = struct
   exception Conflict of string
 
 
-  let union (ssig1 : t) (ssig2 : t) : (t, string) result =
+  let union (ssig1 : 'v t) (ssig2 : 'v t) : ('v t, string) result =
     let check_none s opt =
       match opt with
       | None    -> ()

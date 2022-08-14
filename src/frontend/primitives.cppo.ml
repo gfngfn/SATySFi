@@ -183,7 +183,7 @@ let fresh_bound_id () =
   BoundID.fresh ()
 
 
-let add_variant_types vntdefs (tyenv : Typeenv.t) : Typeenv.t =
+let add_variant_types vntdefs (tyenv : target_type_environment) : target_type_environment =
   List.fold_left (fun tyenv (tynm, tyid, arity, ctors) ->
     let tentry =
       {
@@ -204,7 +204,7 @@ let add_variant_types vntdefs (tyenv : Typeenv.t) : Typeenv.t =
   ) tyenv vntdefs
 
 
-let add_synonym_types (syndefs : (type_name * type_scheme) list) (tyenv : Typeenv.t) : Typeenv.t =
+let add_synonym_types (syndefs : (type_name * type_scheme) list) (tyenv : target_type_environment) : target_type_environment =
   List.fold_left (fun tyenv (tynm, tyscheme) ->
     let (bids, _) = tyscheme in
     let tentry =
@@ -220,7 +220,7 @@ let add_synonym_types (syndefs : (type_name * type_scheme) list) (tyenv : Typeen
 let no_parameter = ([], Poly(tU))
 
 
-let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
+let add_general_default_types (tyenvmid : target_type_environment) : target_type_environment =
   let dr = Range.dummy "add_default_types" in
   let bid = fresh_bound_id () in
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
@@ -259,7 +259,7 @@ let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
     ]
 
 
-let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
+let add_pdf_mode_default_types (tyenvmid : target_type_environment) : target_type_environment =
   tyenvmid
     |> add_variant_types [
       ("color", vid_color, 0, [
@@ -688,7 +688,7 @@ let make_environments table =
       let loc = ref temporary_ast in
       let ventry =
         {
-          val_name  = Some(evid);
+          val_name  = evid;
           val_type  = pty;
           val_stage = Persistent0;
         }

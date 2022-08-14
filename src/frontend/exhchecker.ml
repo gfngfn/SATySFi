@@ -280,7 +280,7 @@ let make_string_sig col =
   ) [EWildCard] col)
 
 
-let make_variant_sig (pre : pre) (tyenv : Typeenv.t) (tyargs : mono_type list) (tyid : TypeID.t) =
+let make_variant_sig (pre : pre) (tyenv : 'v Typeenv.t) (tyargs : mono_type list) (tyid : TypeID.t) =
   let ctors = tyenv |> Typeenv.enumerate_constructors tyid in
   ctors |> List.map (fun (ctornm, tyscheme) ->
     let (bids, pty_body) = tyscheme in
@@ -299,7 +299,7 @@ let make_variant_sig (pre : pre) (tyenv : Typeenv.t) (tyargs : mono_type list) (
   ) |> ElementSet.of_list
 
 
-let rec complete_sig col (pre : pre) (tyenv : Typeenv.t) ((_, tymain) : mono_type) =
+let rec complete_sig col (pre : pre) (tyenv : 'v Typeenv.t) ((_, tymain) : mono_type) =
   match tymain with
   | TypeVariable(Updatable{contents= MonoLink(tylink)}) ->
       complete_sig col pre tyenv tylink
@@ -397,7 +397,7 @@ let non_empty = function
 
 
 let main (rng : Range.t) (patbrs : pattern_branch list) (ty : mono_type)
-    (pre : pre) (tyenv : Typeenv.t) : unit =
+    (pre : pre) (tyenv : 'v Typeenv.t) : unit =
   let patbrs =
     patbrs |> List.map (function
       | PatternBranch(p, a)          -> PatternBranch(normalize_pat p, a)

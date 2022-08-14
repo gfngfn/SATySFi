@@ -68,7 +68,7 @@ let decode_manual_row_base_kind (mnrbkd : manual_row_base_kind) : row_base_kind 
   ) LabelSet.empty
 
 
-let add_dummy_fold (tynm : type_name) (tyid : TypeID.t) (bids : BoundID.t list) (ctorbrmap : constructor_branch_map) (ssig : StructSig.t) : StructSig.t =
+let add_dummy_fold (tynm : type_name) (tyid : TypeID.t) (bids : BoundID.t list) (ctorbrmap : constructor_branch_map) (ssig : 'v StructSig.t) : 'v StructSig.t =
   let bid = BoundID.fresh () in
   let dr = Range.dummy "add_dummy_fold" in
   let prow =
@@ -84,7 +84,7 @@ let add_dummy_fold (tynm : type_name) (tyid : TypeID.t) (bids : BoundID.t list) 
   ssig |> StructSig.add_dummy_fold tynm (Poly(pty))
 
 
-let add_constructor_definitions (ctordefs : variant_definition list) (ssig : StructSig.t) : StructSig.t =
+let add_constructor_definitions (ctordefs : variant_definition list) (ssig : 'v StructSig.t) : 'v StructSig.t =
   ctordefs |> List.fold_left (fun ssig ctordef ->
     let (tynm, tyid, bids, ctorbrmap) = ctordef in
     let ssig =
@@ -131,7 +131,7 @@ let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * ma
   (rowparammap, Alist.to_list bridacc)
 
 
-let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : constructor_name) (rng : Range.t) =
+let find_constructor_and_instantiate (pre : pre) (tyenv : 'v Typeenv.t) (ctornm : constructor_name) (rng : Range.t) =
   match tyenv |> Typeenv.find_constructor ctornm with
   | None ->
       let cands =
@@ -158,7 +158,7 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : c
       (tys_arg, tyid, ty)
 
 
-let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module_entry =
+let find_module (tyenv : target_type_environment) ((rng, modnm) : module_name ranged) : target_module_entry =
   match tyenv |> Typeenv.find_module modnm with
   | None ->
       raise_error (UndefinedModuleName(rng, modnm))
@@ -167,7 +167,7 @@ let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module
       mentry
 
 
-let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry =
+let find_module_chain (tyenv : target_type_environment) ((modident0, modidents) : module_name_chain) : target_module_entry =
   let mentry0 = find_module tyenv modident0 in
   modidents |> List.fold_left (fun mentry (rng, modnm) ->
     match mentry.mod_signature with
@@ -194,7 +194,7 @@ let abstraction_list (evids : EvalVarID.t list) (ast : abstract_tree) : abstract
   List.fold_right abstraction evids ast
 
 
-let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (opt_params : (label ranged * var_name ranged) list) : mono_row * EvalVarID.t LabelMap.t * Typeenv.t =
+let add_optionals_to_type_environment (tyenv : target_type_environment) (pre : pre) (opt_params : (label ranged * var_name ranged) list) : mono_row * EvalVarID.t LabelMap.t * target_type_environment =
   let qtfbl = pre.quantifiability in
   let lev = pre.level in
   let (tyenv, row, evid_labmap) =
@@ -209,7 +209,7 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (opt_param
         let ventry =
           {
             val_type  = Poly(Primitives.option_type pbeta);
-            val_name  = Some(evid);
+            val_name  = evid;
             val_stage = pre.stage;
           }
         in
@@ -221,7 +221,7 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (opt_param
   (row, evid_labmap, tyenv)
 
 
-let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (macparams : untyped_macro_parameter list) : Typeenv.t * EvalVarID.t list * macro_parameter_type list =
+let add_macro_parameters_to_type_environment (tyenv : target_type_environment) (pre : pre) (macparams : untyped_macro_parameter list) : target_type_environment * EvalVarID.t list * macro_parameter_type list =
   let (tyenv, evidacc, macptyacc) =
     macparams |> List.fold_left (fun (tyenv, evidacc, macptyacc) macparam ->
       let param =
@@ -247,7 +247,7 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       let ventry =
         {
           val_type  = pty;
-          val_name = Some(evid);
+          val_name = evid;
           val_stage = Stage0;
         }
       in
@@ -283,13 +283,13 @@ let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_v
   ) patvarmap1 patvarmap2
 
 
-let add_pattern_var_mono (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
+let add_pattern_var_mono (pre : pre) (tyenv : target_type_environment) (patvarmap : pattern_var_map) : target_type_environment =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
     let pty = TypeConv.lift_poly (TypeConv.erase_range_of_type ty) in
     let ventry =
       {
         val_type  = pty;
-        val_name  = Some(evid);
+        val_name  = evid;
         val_stage = pre.stage;
       }
     in
@@ -297,13 +297,13 @@ let add_pattern_var_mono (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_va
   ) patvarmap tyenv
 
 
-let add_pattern_var_poly (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
+let add_pattern_var_poly (pre : pre) (tyenv : target_type_environment) (patvarmap : pattern_var_map) : target_type_environment =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
     let pty = TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty) in
     let ventry =
       {
         val_type  = pty;
-        val_name  = Some(evid);
+        val_name  = evid;
         val_stage = pre.stage;
       }
     in
@@ -771,7 +771,7 @@ let base bc =
 
 
 let rec typecheck
-    (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
+    (pre : pre) (tyenv : target_type_environment) ((rng, utastmain) : untyped_abstract_tree) =
   let typecheck_iter ?s:(s = pre.stage) ?l:(l = pre.level) ?p:(p = pre.type_parameters) ?r:(r = pre.row_parameters) ?q:(q = pre.quantifiability) t u =
     let presub =
       {
@@ -883,11 +883,7 @@ let rec typecheck
               | Some(ventry) ->
                   ventry
             in
-            let evid =
-              match ventry.val_name with
-              | None       -> assert false
-              | Some(evid) -> evid
-            in
+            let evid = ventry.val_name in
             let stage = ventry.val_stage in
             (stage, ventry.val_type, init_expression stage rng_var evid)
 
@@ -913,11 +909,7 @@ let rec typecheck
                   ventry
             in
             let stage = ventry.val_stage in
-            let evid =
-              match ventry.val_name with
-              | None       -> assert false
-              | Some(evid) -> evid
-            in
+            let evid = ventry.val_name in
             (stage, ventry.val_type, init_expression stage rng_var evid)
       in
       let tyfree = TypeConv.instantiate pre.level pre.quantifiability pty in
@@ -965,7 +957,7 @@ let rec typecheck
         let ventry =
           {
             val_type  = Poly(rng_var, BaseType(bstyvar));
-            val_name  = Some(evid);
+            val_name  = evid;
             val_stage = pre.stage;
           }
         in
@@ -989,7 +981,7 @@ let rec typecheck
         let ventry =
           {
             val_type  = Poly(rng_var, BaseType(bstyvar));
-            val_name  = Some(evid);
+            val_name  = evid;
             val_stage = pre.stage;
           }
         in
@@ -1073,7 +1065,7 @@ let rec typecheck
         let ventry =
           {
             val_type  = pty;
-            val_name  = Some(evid);
+            val_name  = evid;
             val_stage = pre.stage;
           }
         in
@@ -1091,7 +1083,7 @@ let rec typecheck
             let ventry =
               {
                 val_type  = pty;
-                val_name  = Some(evid);
+                val_name  = evid;
                 val_stage = stage;
               }
             in
@@ -1270,7 +1262,7 @@ let rec typecheck
       end
 *)
 
-and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) (tyenv : Typeenv.t) (utcmdargs : untyped_command_argument list) (cmdargtys : mono_command_argument_type list) : abstract_tree =
+and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) (tyenv : target_type_environment) (utcmdargs : untyped_command_argument list) (cmdargtys : mono_command_argument_type list) : abstract_tree =
   try
     List.fold_left2 (fun eacc utcmdarg cmdargty ->
       let UTCommandArg(labeled_utasts, utast1) = utcmdarg in
@@ -1373,7 +1365,7 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
         e0
 
 
-and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =
+and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : target_type_environment) (utivlst : untyped_input_vert_element list) : input_vert_element list =
   let rec aux acc utivlst =
     match utivlst with
     | [] ->
@@ -1435,7 +1427,7 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
   aux Alist.empty utivlst
 
 
-and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) : input_horz_element list =
+and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : target_type_environment) (utihlst : untyped_input_horz_element list) : input_horz_element list =
   let rec aux acc utihlst =
     match utihlst with
     | [] ->
@@ -1512,7 +1504,7 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
   aux Alist.empty utihlst
 
 
-and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (macparamtys : macro_parameter_type list) (utmacargs : untyped_macro_argument list) : abstract_tree list =
+and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : target_type_environment) (macparamtys : macro_parameter_type list) (utmacargs : untyped_macro_argument list) : abstract_tree list =
   let lenexp = List.length macparamtys in
   let lenact = List.length utmacargs in
   if (lenexp <> lenact) then
@@ -1543,7 +1535,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
     Alist.to_list argacc
 
 
-and typecheck_record (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (fields : (label ranged * untyped_abstract_tree) list) =
+and typecheck_record (rng : Range.t) (pre : pre) (tyenv : target_type_environment) (fields : (label ranged * untyped_abstract_tree) list) =
   let (easc, row) =
     fields |> List.fold_left (fun (easc, row) (rlabel, utast) ->
       let (rng_label, label) = rlabel in
@@ -1557,7 +1549,7 @@ and typecheck_record (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (fields : (
   (Record(easc), (rng, RecordType(row)))
 
 
-and typecheck_itemize (pre : pre) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
+and typecheck_itemize (pre : pre) (tyenv : target_type_environment) (UTItem(utast1, utitmzlst)) =
   let (e1, ty1) = typecheck pre tyenv utast1 in
   unify ty1 (Range.dummy "typecheck_itemize_string", BaseType(TextRowType));
   let e2 = typecheck_itemize_list pre tyenv utitmzlst in
@@ -1565,7 +1557,7 @@ and typecheck_itemize (pre : pre) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)
 
 
 and typecheck_itemize_list
-    (pre : pre) (tyenv : Typeenv.t) (utitmzlst : untyped_itemize list) =
+    (pre : pre) (tyenv : target_type_environment) (utitmzlst : untyped_itemize list) =
   match utitmzlst with
   | [] ->
       ASTEndOfList
@@ -1576,7 +1568,7 @@ and typecheck_itemize_list
       PrimitiveListCons(ehd, etl)
 
 
-and typecheck_pattern_branch (pre : pre) (tyenv : Typeenv.t) (utpatbr : untyped_pattern_branch) : pattern_branch * mono_type * mono_type =
+and typecheck_pattern_branch (pre : pre) (tyenv : target_type_environment) (utpatbr : untyped_pattern_branch) : pattern_branch * mono_type * mono_type =
   let UTPatternBranch(utpat, utast1) = utpatbr in
   let (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
   let tyenvpat = add_pattern_var_mono pre tyenv patvarmap in
@@ -1584,7 +1576,7 @@ and typecheck_pattern_branch (pre : pre) (tyenv : Typeenv.t) (utpatbr : untyped_
   (PatternBranch(epat, e1), typat, ty1)
 
 
-and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : pattern_branch list =
+and typecheck_pattern_branch_list (pre : pre) (tyenv : target_type_environment) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : pattern_branch list =
   utpatbrs |> List.map (fun utpatbr ->
     let (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
     unify typat tyobj;
@@ -1593,7 +1585,7 @@ and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : un
   )
 
 
-and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untyped_pattern_tree) : pattern_tree * mono_type * pattern_var_map =
+and typecheck_pattern (pre : pre) (tyenv : target_type_environment) ((rng, utpatmain) : untyped_pattern_tree) : pattern_tree * mono_type * pattern_var_map =
   let iter = typecheck_pattern pre tyenv in
     match utpatmain with
     | UTPIntegerConstant(nc) -> (PIntegerConstant(nc), (rng, BaseType(IntType)), PatternVarMap.empty)
@@ -1655,7 +1647,7 @@ and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untype
         (PConstructor(constrnm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
 
 
-and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : (var_name * poly_type * EvalVarID.t * stage * letrec_binding) list =
+and typecheck_letrec (pre : pre) (tyenv : target_type_environment) (utrecbinds : untyped_let_binding list) : (var_name * poly_type * EvalVarID.t * stage * letrec_binding) list =
 
   (* First, adds a type variable for each bound identifier. *)
   let (tyenv, utrecacc) =
@@ -1674,7 +1666,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
         let ventry =
           {
             val_type  = pbeta;
-            val_name  = Some(evid);
+            val_name  = evid;
             val_stage = pre.stage;
           }
         in
@@ -1721,7 +1713,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
   )
 
 
-and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) =
+and make_type_environment_by_let_mutable (pre : pre) (tyenv : target_type_environment) (ident : var_name ranged) (utastI : untyped_abstract_tree) =
   let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
   let (rng_var, varnm) = ident in
   let evid = EvalVarID.fresh ident in
@@ -1729,7 +1721,7 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident 
     let ventry =
       {
         val_type  = TypeConv.lift_poly (rng_var, RefType(tyI));
-        val_name  = Some(evid);
+        val_name  = evid;
         val_stage = pre.stage;
       }
     in
@@ -1738,7 +1730,7 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident 
   (tyenvI, evid, eI, tyI)
 
 
-and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type =
+and decode_manual_type (pre : pre) (tyenv : target_type_environment) (mty : manual_type) : mono_type =
   let invalid rng tynm ~expect:len_expected ~actual:len_actual =
     raise_error (IllegalNumberOfTypeArguments(rng, tynm, len_expected, len_actual))
   in
@@ -1890,14 +1882,14 @@ and decode_manual_base_kind (mnbkd : manual_base_kind) : base_kind =
   | _   -> raise_error (UndefinedKindName(rng, kdnm))
 
 
-and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : kind =
+and decode_manual_kind (pre : pre) (tyenv : target_type_environment) (mnkd : manual_kind) : kind =
   let MKind(mnbkds_dom, mnbkd_cod) = mnkd in
   let kds_dom = mnbkds_dom |> List.map decode_manual_base_kind in
   let TypeKind = decode_manual_base_kind mnbkd_cod in
   Kind(kds_dom)
 
 
-and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
+and make_constructor_branch_map (pre : pre) (tyenv : 'v Typeenv.t) (utctorbrs : constructor_branch list) =
   utctorbrs |> List.fold_left (fun ctormap utctorbr ->
     match utctorbr with
     | UTConstructorBranch((rng, ctornm), mty_opt) ->
@@ -1911,7 +1903,7 @@ and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : con
   ) ConstructorMap.empty
 
 
-and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * binding list =
+and typecheck_module (stage : stage) (tyenv : 'v Typeenv.t) (utmod : untyped_module) : target_signature abstracted * binding list =
   let (rng, utmodmain) = utmod in
   match utmodmain with
   | UTModVar(modchain) ->
@@ -1929,7 +1921,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       let (quant1, modsig1) = absmodsig1 in
       let (absmodsig2, _binds2) =
         let mentry1 = { mod_signature = modsig1; } in
-        let tyenv = tyenv |> Typeenv.add_module modnm1 mentry1 in
+        let tyenv = (Typeenv.forget tyenv) |> Typeenv.add_module modnm1 mentry1 in
         typecheck_module stage tyenv utmod2
       in
       let fsig =
@@ -1983,7 +1975,7 @@ and typecheck_module (stage : stage) (tyenv : Typeenv.t) (utmod : untyped_module
       (absmodsig, [])
 
 
-and typecheck_signature (stage : stage) (tyenv : Typeenv.t) (utsig : untyped_signature) : signature abstracted =
+and typecheck_signature (stage : stage) (tyenv : virtual_type_environment) (utsig : untyped_signature) : virtual_signature abstracted =
   let (rng, utsigmain) = utsig in
   match utsigmain with
   | UTSigVar(signm) ->
@@ -2098,7 +2090,7 @@ and lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substituti
     None
 
 
-and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : substitution =
+and lookup_struct (rng : Range.t) (modsig1 : 'v signature) (modsig2 : 'v signature) : substitution =
   let take_left = (fun _tyid to1 _to2 -> Some(to1)) in
   match (modsig1, modsig2) with
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
@@ -2146,14 +2138,14 @@ and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : 
       SubstMap.empty
 
 
-and substitute_abstract (subst : substitution) (absmodsig : signature abstracted) : signature abstracted =
+and substitute_abstract (subst : substitution) (absmodsig : ('v signature) abstracted) : ('v signature) abstracted =
   let (quant, modsig) = absmodsig in
   let modsig = substitute_concrete subst modsig in
   (quant, modsig)
     (* Strictly speaking, we should assert that `quant` and the domain of `subst` be disjoint. *)
 
 
-and substitute_concrete (subst : substitution) (modsig : signature) : signature =
+and substitute_concrete (subst : substitution) (modsig : 'v signature) : 'v signature =
   match modsig with
   | ConcFunctor(fsig) ->
       let
@@ -2250,7 +2242,7 @@ and substitute_type_id (subst : substitution) (tyid_from : TypeID.t) : TypeID.t 
       end
 
 
-and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t =
+and substitute_struct (subst : substitution) (ssig : 'v StructSig.t) : 'v StructSig.t =
   ssig |> StructSig.map
       ~v:(fun _x ventry ->
         { ventry with val_type = ventry.val_type |> substitute_poly_type subst }
@@ -2703,7 +2695,7 @@ and kind_equal (kd1 : kind) (kd2 : kind) : bool =
 (* Given `modsig1` and `modsig2` which are already known to satisfy `modsig1 <= modsig2`,
    `copy_contents` copies every target name occurred in `modsig1`
    into the corresponding occurrence in `modsig2`. *)
-and copy_contents (modsig1 : signature) (modsig2 : signature) =
+and copy_contents (modsig1 : target_signature) (modsig2 : virtual_signature) : target_signature =
   match (modsig1, modsig2) with
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
       let ssig2new = copy_closure_in_structure ssig1 ssig2 in
@@ -2728,7 +2720,7 @@ and copy_contents (modsig1 : signature) (modsig2 : signature) =
       assert false
 
 
-and copy_closure_in_structure (ssig1 : StructSig.t) (ssig2 : StructSig.t) : StructSig.t =
+and copy_closure_in_structure (ssig1 : 'v StructSig.t) (ssig2 : 'v StructSig.t) : 'v StructSig.t =
   ssig2 |> StructSig.map
     ~v:(fun x ventry2 ->
       match ssig1 |> StructSig.find_value x with
@@ -2742,13 +2734,13 @@ and copy_closure_in_structure (ssig1 : StructSig.t) (ssig2 : StructSig.t) : Stru
     ~s:(fun _signm sentry2 -> sentry2)
 
 
-and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : signature abstracted =
+and coerce_signature (rng : Range.t) (modsig1 : target_signature) (absmodsig2 : virtual_signature abstracted) : target_signature abstracted =
   let _ = subtype_signature rng modsig1 absmodsig2 in
   let (quant2, modsig2) = absmodsig2 in
   (quant2, copy_contents modsig1 modsig2)
 
 
-and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
+and add_to_type_environment_by_signature (ssig : EvalVarID.t StructSig.t) (tyenv : Typeenv.t) : Typeenv.t =
   ssig |> StructSig.fold
     ~v:(fun x ventry -> Typeenv.add_value x ventry)
     ~c:(fun ctornm centry -> Typeenv.add_constructor ctornm centry)
@@ -2759,7 +2751,7 @@ and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t
     tyenv
 
 
-and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : StructSig.t abstracted =
+and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : (unit StructSig.t) abstracted =
   let (quantacc, ssigacc, _) =
     utdecls |> List.fold_left (fun (quantacc, ssigacc, tyenv) utdecl ->
       let (quant, ssig) = typecheck_declaration stage tyenv utdecl in
@@ -2776,7 +2768,7 @@ and typecheck_declaration_list (stage : stage) (tyenv : Typeenv.t) (utdecls : un
   (quantacc, ssigacc)
 
 
-and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : StructSig.t abstracted =
+and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : (unit StructSig.t) abstracted =
   match utdecl with
   | UTDeclValue((_, x), (typarams, rowparams), mty) ->
       let pre =
@@ -2795,7 +2787,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
       let ventry =
         {
           val_type  = pty;
-          val_name  = None;
+          val_name  = ();
           val_stage = stage;
         }
       in
@@ -2853,7 +2845,7 @@ and typecheck_declaration (stage : stage) (tyenv : Typeenv.t) (utdecl : untyped_
       end
 
 
-and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
+and typecheck_binding_list (stage : stage) (tyenv : 'v Typeenv.t) (utbinds : untyped_binding list) : ('v StructSig.t) abstracted * binding list =
   let (binds, (quant, ssig)) =
     let (bindacc, _tyenv, quantacc, ssigacc) =
       utbinds |> List.fold_left (fun (bindacc, tyenv, quantacc, ssigacc) utbind ->
@@ -2871,7 +2863,7 @@ and typecheck_binding_list (stage : stage) (tyenv : Typeenv.t) (utbinds : untype
   ((quant, ssig), binds)
 
 
-and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : SynonymNameSet.t =
+and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : target_type_environment) (mty : manual_type) : SynonymNameSet.t =
   let hashset = SynonymNameHashSet.create 32 in
     (* A hash set is created on every (non-partial) call. *)
   let register_if_needed (tynm : type_name) : unit =
@@ -2922,7 +2914,7 @@ and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (t
   ) hashset SynonymNameSet.empty
 
 
-and bind_types (stage : stage) (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
+and bind_types (stage : stage) (tyenv : 'v Typeenv.t) (tybinds : untyped_type_binding list) =
   let pre =
     {
       stage           = stage;
@@ -3030,7 +3022,7 @@ and bind_types (stage : stage) (tyenv : Typeenv.t) (tybinds : untyped_type_bindi
   (tydefacc |> Alist.to_list, ctordefacc |> Alist.to_list)
 
 
-and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_binding) : binding list * StructSig.t abstracted =
+and typecheck_binding (stage : stage) (tyenv : 'v Typeenv.t) (utbind : untyped_binding) : binding list * (EvalVarID.t StructSig.t) abstracted =
   let (_, utbindmain) = utbind in
   match utbindmain with
   | UTBindValue(valbind) ->
@@ -3070,7 +3062,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
               let ventry =
                 {
                   val_type  = pty;
-                  val_name  = Some(evid);
+                  val_name  = evid;
                   val_stage = pre.stage;
                 }
               in
@@ -3087,7 +3079,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
                   let ventry =
                     {
                       val_type  = pty;
-                      val_name  = Some(evid);
+                      val_name  = evid;
                       val_stage = stage;
                     }
                   in
@@ -3107,7 +3099,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
               let ventry =
                 {
                   val_type  = pty;
-                  val_name  = Some(evid);
+                  val_name  = evid;
                   val_stage = pre.stage;
                 }
               in
@@ -3174,7 +3166,7 @@ and typecheck_binding (stage : stage) (tyenv : Typeenv.t) (utbind : untyped_bind
       failwith "TODO (enhance): Typechecker.typecheck_binding, UTBindVertMacro"
 
 
-let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : mono_type * abstract_tree =
+let main (stage : stage) (tyenv : target_type_environment) (utast : untyped_abstract_tree) : mono_type * abstract_tree =
   let pre =
     {
       stage           = stage;
@@ -3188,7 +3180,7 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : m
   (ty, e)
 
 
-let main_bindings (stage : stage) (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
+let main_bindings (stage : stage) (tyenv : target_type_environment) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : (EvalVarID.t StructSig.t) abstracted * binding list =
   match utsig_opt with
   | None ->
       typecheck_binding_list stage tyenv utbinds
