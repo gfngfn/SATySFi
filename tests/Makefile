@@ -6,6 +6,7 @@ TARGETS = \
 	refactor2.pdf \
 	refactor3.pdf \
 	refactor5.pdf \
+	staged1.pdf \
 #	first.pdf \
 #	math1.pdf \
 #	refactor4.pdf \

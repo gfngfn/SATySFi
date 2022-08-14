@@ -1,0 +1,16 @@
+@require: stdja
+@import: staged1-local
+
+(
+  let inline \show-int n =
+    embed-string (arabic n)
+  in
+  StdJa.document (|
+    title = {Staged 1},
+    author = {Takashi Suwa},
+    show-title = true,
+    show-toc = false,
+  |) '<
+    +StdJa.p{\show-int(let f = ~(Staged1Local.gen-power 5) in f 3);}
+  >
+)
