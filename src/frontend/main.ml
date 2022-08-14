@@ -946,6 +946,15 @@ let error_log_environment suspended =
               DisplayLine(Display.show_poly_type pty2);
             ]
 
+        | NotASubtypeAboutValueStage(rng, x, stage1, stage2) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "not a subtype about the stage of value '%s';" x);
+              DisplayLine(string_of_stage stage1);
+              NormalLine("is not consistent with");
+              DisplayLine(string_of_stage stage2);
+            ]
+
         | NotASubtypeAboutConstructor(rng, ctornm, _tyscheme1, _tyscheme2) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));

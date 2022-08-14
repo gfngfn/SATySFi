@@ -1781,6 +1781,13 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                         | None ->
                             begin
                               match tynm with
+                              | "code" ->
+                                  begin
+                                    match tyargs with
+                                    | [ ty ] -> CodeType(ty)
+                                    | _      -> invalid rng "code" ~expect:1 ~actual:len_actual
+                                  end
+
                               | "list" ->
                                   begin
                                     match tyargs with
@@ -2332,16 +2339,24 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
 
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
       ssig2 |> StructSig.fold
-          ~v:(fun x2 { val_type = pty2; _ } () ->
+          ~v:(fun x2 { val_type = pty2; val_stage = stage2; _ } () ->
             match ssig1 |> StructSig.find_value x2 with
             | None ->
                 raise_error (MissingRequiredValueName(rng, x2, pty2))
 
-            | Some({ val_type = pty1; _ }) ->
-               if subtype_poly_type pty1 pty2 then
-                 ()
-               else
-                 raise_error (NotASubtypeAboutValue(rng, x2, pty1, pty2))
+            | Some({ val_type = pty1; val_stage = stage1; _ }) ->
+                match (stage1, stage2) with
+                | (Persistent0, Stage0)
+                | (Persistent0, Stage1)
+                | (Stage0, Stage0)
+                | (Stage1, Stage1) ->
+                    if subtype_poly_type pty1 pty2 then
+                      ()
+                    else
+                      raise_error (NotASubtypeAboutValue(rng, x2, pty1, pty2))
+
+                | _ ->
+                    raise_error (NotASubtypeAboutValueStage(rng, x2, stage1, stage2))
           )
           ~c:(fun ctornm2 centry2 () ->
             match ssig1 |> StructSig.find_constructor ctornm2 with
