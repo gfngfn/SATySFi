@@ -35,7 +35,7 @@ let shift_path v path =
 
   | GeneralPath(pt0, pelst, cycleopt) ->
       let cycleopt_s =
-        cycleopt |> option_map (function
+        cycleopt |> Option.map (function
           | LineTo(()) as l             -> l
           | CubicBezierTo(pt1, pt2, ()) -> CubicBezierTo(pt1 +@% v, pt2 +@% v, ())
         )
@@ -77,7 +77,7 @@ let linear_transform_path mat path =
 
   | GeneralPath(pt0, pelst, cycleopt) ->
       let cycleopt_s =
-        cycleopt |> option_map (function
+        cycleopt |> Option.map (function
           | LineTo(()) as l             -> l
           | CubicBezierTo(pt1, pt2, ()) -> CubicBezierTo(trans pt1, trans pt2, ())
         )
@@ -182,4 +182,3 @@ let get_path_list_bbox pathlst =
     let (ptmin1, ptmax1) = get_path_bbox path in
       (update_min ptmin0 ptmin1, update_max ptmax0 ptmax1)
   ) bboxinit
-

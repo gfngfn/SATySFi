@@ -80,12 +80,6 @@ let list_fold_adjacent f init lst =
   aux None init lst
 
 
-let option_map f opt =
-  match opt with
-  | None    -> None
-  | Some(x) -> Some(f x)
-
-
 let pickup lst predicate e =
   match lst |> List.filter predicate with
   | head :: _ -> Ok(head)

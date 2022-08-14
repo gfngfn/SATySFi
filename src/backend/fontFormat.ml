@@ -411,7 +411,7 @@ module MarkTable
       let mark_map = make_mark_map pmf markassoc in
       let base_map =
         baseassoc |> List.fold_left (fun map (gidbase, arr) ->
-          map |> GMap.add gidbase (arr |> Array.map (option_map (base_record pmf)))
+          map |> GMap.add gidbase (arr |> Array.map (Option.map (base_record pmf)))
         ) GMap.empty
       in
       let entry = { class_count; mark_map; base_map; } in
@@ -427,7 +427,7 @@ module MarkTable
       in
       let lig_base_map =
         ligassoc |> List.fold_left (fun map (gidlig, comprcdlst) ->
-          let lst = comprcdlst |> List.map (Array.map (option_map (base_record pmf))) in
+          let lst = comprcdlst |> List.map (Array.map (Option.map (base_record pmf))) in
             map |> GMap.add gidlig (Array.of_list lst)
         ) GMap.empty
       in
@@ -1841,10 +1841,10 @@ module Type0
       let (objdescr, subset_tag_opt) = pdfobject_of_font_descriptor pdf dcdr fontdescr base_font (FontFile3("OpenType")) in
       let objwarr = pdfobject_of_width_array pdf dcdr in
       let pmoptdw =
-        cidty0font.CIDFontType0.dw |> option_map (per_mille dcdr)
+        cidty0font.CIDFontType0.dw |> Option.map (per_mille dcdr)
       in
       let pmpairoptdw2 =
-        cidty0font.CIDFontType0.dw2 |> option_map (fun (a, b) -> (per_mille dcdr a, per_mille dcdr b))
+        cidty0font.CIDFontType0.dw2 |> Option.map (fun (a, b) -> (per_mille dcdr a, per_mille dcdr b))
       in
       let objdescend =
         Pdf.Dictionary([
@@ -1884,10 +1884,10 @@ module Type0
         | _                -> remains_to_be_implemented "/CIDToGIDMap other than /Identity"
       in
       let dwpmopt =
-        cidty2font.CIDFontType2.dw |> option_map (fun dw -> per_mille dcdr dw)
+        cidty2font.CIDFontType2.dw |> Option.map (fun dw -> per_mille dcdr dw)
       in  (* -- per mille -- *)
       let dw2pmpairopt =
-        cidty2font.CIDFontType2.dw2 |> option_map (fun (a, b) -> (per_mille dcdr a, per_mille dcdr b))
+        cidty2font.CIDFontType2.dw2 |> Option.map (fun (a, b) -> (per_mille dcdr a, per_mille dcdr b))
       in
       let objwarr = pdfobject_of_width_array pdf dcdr in
       let objdescend =

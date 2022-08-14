@@ -19,19 +19,10 @@ type nom_input_horz_element =
   | NomInputHorzThunk    of syntactic_value * abstract_tree
   | NomInputHorzContent  of nom_input_horz_element list * environment
 
-(*
-let make_length_from_description flt unitnm =
-  match unitnm with  (* temporary; ad-hoc handling of unit names *)
-  | "pt"   -> Length.of_pdf_point flt
-  | "cm"   -> Length.of_centimeter flt
-  | "mm"   -> Length.of_millimeter flt
-  | "inch" -> Length.of_inch flt
-  | _      -> report_bug_vm "LengthDescription; unknown unit name"
-*)
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
-  let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
-  HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
+  let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
+  HorzBox.([HorzPure(PHCInnerString(ctx, uchs))])
 
 
 let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
@@ -89,41 +80,36 @@ let rec reduce_beta ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMa
       report_bug_value "reduce_beta: not a function" value1
 
 
-and reduce_beta_list value1 valueargs =
-  List.fold_left reduce_beta value1 valueargs
+and reduce_beta_list (value1 : syntactic_value) (value_args : syntactic_value list) : syntactic_value =
+  List.fold_left reduce_beta value1 value_args
 
 
-and interpret_point env ast =
-  let value = interpret_0 env ast in
-  get_point value
-
-
-and interpret_0_path (env : environment) pathcomplst cycleopt =
-  let pathelemlst =
-    pathcomplst |> List.map (function
-      | PathLineTo(astpt) ->
-          let pt = interpret_point env astpt in
+and interpret_0_path (env : environment) (pathcomps : (abstract_tree path_component) list) (cycle_opt : (unit path_component) option) =
+  let pathelems =
+    pathcomps |> List.map (function
+      | PathLineTo(ast_pt) ->
+          let pt = get_point (interpret_0 env ast_pt) in
           LineTo(pt)
 
-      | PathCubicBezierTo(astpt1, astpt2, astpt) ->
-          let pt1 = interpret_point env astpt1 in
-          let pt2 = interpret_point env astpt2 in
-          let pt = interpret_point env astpt in
+      | PathCubicBezierTo(ast_pt1, ast_pt2, ast_pt) ->
+          let pt1 = get_point (interpret_0 env ast_pt1) in
+          let pt2 = get_point (interpret_0 env ast_pt2) in
+          let pt = get_point (interpret_0 env ast_pt) in
           CubicBezierTo(pt1, pt2, pt)
     )
   in
-  let closingopt =
-    cycleopt |> option_map (function
+  let closing_opt =
+    cycle_opt |> Option.map (function
       | PathLineTo(()) ->
           LineTo(())
 
-      | PathCubicBezierTo(astpt1, astpt2, ()) ->
-          let pt1 = interpret_point env astpt1 in
-          let pt2 = interpret_point env astpt2 in
+      | PathCubicBezierTo(ast_pt1, ast_pt2, ()) ->
+          let pt1 = get_point (interpret_0 env ast_pt1) in
+          let pt2 = get_point (interpret_0 env ast_pt2) in
           CubicBezierTo(pt1, pt2, ())
     )
   in
-    (pathelemlst, closingopt)
+  (pathelems, closing_opt)
 
 
 and interpret_0_input_horz_content (env : environment) (ihlst : input_horz_element list) =
@@ -582,22 +568,22 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (value_tctx 
   let rec normalize (imihs : intermediate_input_horz_element list) =
     imihs |> List.fold_left (fun acc imih ->
       match imih with
-      | ImInputHorzEmbedded(astabs) ->
-          let nmih = NomInputHorzEmbedded(astabs) in
+      | ImInputHorzEmbedded(ast_abs) ->
+          let nmih = NomInputHorzEmbedded(ast_abs) in
           Alist.extend acc nmih
 
       | ImInputHorzText(s2) ->
           begin
             match Alist.chop_last acc with
-            | Some(accrest, NomInputHorzText(s1)) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
-            | _                                   -> (Alist.extend acc (NomInputHorzText(s2)))
+            | Some((accrest, NomInputHorzText(s1))) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
+            | _                                     -> (Alist.extend acc (NomInputHorzText(s2)))
           end
 
-      | ImInputHorzEmbeddedMath(astmath) ->
-          failwith "TODO: Evaluator_> math; remains to be supported."
+      | ImInputHorzEmbeddedMath(_ast_math) ->
+          failwith "TODO: text-mode math; remains to be supported."
 
-      | ImInputHorzEmbeddedCodeText(s) ->
-          failwith "TODO: Evaluator_> code text; remains to be supported."
+      | ImInputHorzEmbeddedCodeText(_s) ->
+          failwith "TODO: text-mode code text; remains to be supported."
 
       | ImInputHorzContent(imihs_sub, env_sub) ->
           let nmihs_sub = normalize imihs_sub in
@@ -726,31 +712,38 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (value_ctx : 
   make_horz hbs
 
 
+(* Selects the topmost pattern in `patbrs` that matches `value_obj`,
+   evaluates the corresponding expression, and returns the resulting value.
+   Raises an exception when no pattern matches `value_obj`. *)
 and select_pattern (rng : Range.t) (env : environment) (value_obj : syntactic_value) (patbrs : pattern_branch list) : syntactic_value =
-  let iter = select_pattern rng env value_obj in
-  match patbrs with
-  | [] ->
-      report_dynamic_error ("no matches (" ^ (Range.to_string rng) ^ ")")
+  let rec iter = function
+    | [] ->
+        report_dynamic_error ("no matches (" ^ (Range.to_string rng) ^ ")")
 
-  | PatternBranch(pat, ast_to) :: tail ->
-      begin
-        match check_pattern_matching env pat value_obj with
-        | Some(env_new) -> interpret_0 env_new ast_to
-        | None          -> iter tail
-      end
+    | PatternBranch(pat, ast_to) :: tail ->
+        begin
+          match check_pattern_matching env pat value_obj with
+          | Some(env_new) -> interpret_0 env_new ast_to
+          | None          -> iter tail
+        end
 
-  | PatternBranchWhen(pat, ast_cond, ast_to) :: tail ->
-      begin
-        match check_pattern_matching env pat value_obj with
-        | Some(env_new) ->
-            let cond = get_bool (interpret_0 env_new ast_cond) in
-            if cond then interpret_0 env_new ast_to else iter tail
+    | PatternBranchWhen(pat, ast_cond, ast_to) :: tail ->
+        begin
+          match check_pattern_matching env pat value_obj with
+          | Some(env_new) ->
+              let cond = get_bool (interpret_0 env_new ast_cond) in
+              if cond then interpret_0 env_new ast_to else iter tail
 
-        | None ->
-            iter tail
-      end
+          | None ->
+              iter tail
+        end
+  in
+  iter patbrs
 
 
+(* Checks whether pattern `pat` matches value `value_obj`.
+   Returns the environment extended by `pat` and `value_obj` from `env` if `pat` matches `value_obj`,
+   or returns `None` otherwise. *)
 and check_pattern_matching (env : environment) (pat : pattern_tree) (value_obj : syntactic_value) : environment option =
   match (pat, value_obj) with
   | (PIntegerConstant(pnc), BaseConstant(BCInt(nc))) ->
