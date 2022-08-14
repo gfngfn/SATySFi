@@ -22,7 +22,7 @@ type nom_input_horz_element =
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
-  HorzBox.([HorzPure(PHCInnerString(ctx, uchs))])
+  HorzBox.([ HorzPure(PHCInnerString(ctx, uchs)) ])
 
 
 let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
@@ -71,10 +71,10 @@ let rec reduce_beta ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMa
           add_to_environment env evid loc
         ) evid_labmap env1
       in
-      select_pattern (Range.dummy "Apply") env1 value2 [patbr]
+      select_pattern (Range.dummy "Apply") env1 value2 [ patbr ]
 
   | PrimitiveClosure(patbr, env1, _, _) ->
-      select_pattern (Range.dummy "Apply") env1 value2 [patbr]
+      select_pattern (Range.dummy "Apply") env1 value2 [ patbr ]
 
   | _ ->
       report_bug_value "reduce_beta: not a function" value1
@@ -112,16 +112,16 @@ and interpret_0_path (env : environment) (pathcomps : (abstract_tree path_compon
   (pathelems, closing_opt)
 
 
-and interpret_0_input_horz_content (env : environment) (ihlst : input_horz_element list) =
-  ihlst |> List.map (function
+and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element list) : intermediate_input_horz_element list =
+  ihs |> List.map (function
     | InputHorzText(s) ->
         ImInputHorzText(s)
 
-    | InputHorzEmbedded(astabs) ->
-        ImInputHorzEmbedded(astabs)
+    | InputHorzEmbedded(ast_abs) ->
+        ImInputHorzEmbedded(ast_abs)
 
-    | InputHorzEmbeddedMath(astmath) ->
-        ImInputHorzEmbeddedMath(astmath)
+    | InputHorzEmbeddedMath(ast_math) ->
+        ImInputHorzEmbeddedMath(ast_math)
 
     | InputHorzEmbeddedCodeText(s) ->
         ImInputHorzEmbeddedCodeText(s)
@@ -130,25 +130,25 @@ and interpret_0_input_horz_content (env : environment) (ihlst : input_horz_eleme
         let value = interpret_0 env ast in
         begin
           match value with
-          | InputHorzClosure(imihlst, envsub) ->
-              ImInputHorzContent(imihlst, envsub)
+          | InputHorzClosure(imihs, env_sub) ->
+              ImInputHorzContent(imihs, env_sub)
 
           | _ ->
               report_bug_reduction "interpret_input_horz_content" ast value
         end
   )
 
-and interpret_0_input_vert_content (env : environment) (ivlst : input_vert_element list) =
-  ivlst |> List.map (function
-    | InputVertEmbedded(astabs) ->
-        ImInputVertEmbedded(astabs)
+and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element list) : intermediate_input_vert_element list =
+  ivs |> List.map (function
+    | InputVertEmbedded(ast_abs) ->
+        ImInputVertEmbedded(ast_abs)
 
     | InputVertContent(ast) ->
         let value = interpret_0 env ast in
         begin
           match value with
-          | InputVertClosure(imivlst, envsub) ->
-              ImInputVertContent(imivlst, envsub)
+          | InputVertClosure(imivs, env_sub) ->
+              ImInputVertContent(imivs, env_sub)
 
           | _ ->
               report_bug_reduction "interpret_input_vert_content" ast value
@@ -342,8 +342,8 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | ASTBaseConstant(bc) ->
       CdBaseConstant(bc)
 
-  | ASTMath(mlst) ->
-      CdMath(mlst)
+  | ASTMath(ms) ->
+      CdMath(ms)
 
   | ASTEndOfList ->
       CdEndOfList
