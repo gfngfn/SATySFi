@@ -5,33 +5,37 @@
 (UTLibraryFile
    (((Range.Normal <nx.saty:1.8-10>), "Nx"), None,
     [((Range.Normal <nx.saty:3.3-6>),
-      (UTBindValue
+      (UTBindValue (Stage1,
          (UTNonRec
             (((Range.Normal <nx.saty:3.7-9>), "xs"),
              (UTListCons ((UTIntegerConstant 1),
                 (UTListCons ((UTIntegerConstant 2),
                    (UTListCons ((UTIntegerConstant 3), UTEndOfList))))
-                ))))));
+                ))))
+         )));
       ((Range.Normal <nx.saty:4.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <nx.saty:4.7-9>), "ys"),
               (UTListCons ((UTIntegerConstant 1),
                  (UTListCons ((UTIntegerConstant 2),
                     (UTListCons ((UTIntegerConstant 3), UTEndOfList))))
-                 ))))));
+                 ))))
+          )));
       ((Range.Normal <nx.saty:6.3-6>),
-       (UTBindValue
-          (UTNonRec (((Range.Normal <nx.saty:6.7-9>), "r0"), (UTRecord [])))));
+       (UTBindValue (Stage1,
+          (UTNonRec (((Range.Normal <nx.saty:6.7-9>), "r0"), (UTRecord [])))
+          )));
       ((Range.Normal <nx.saty:7.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <nx.saty:7.7-9>), "r1"),
               (UTRecord
                  [(((Range.Normal <nx.saty:7.15-16>), "x"),
-                   (UTIntegerConstant 1))])))));
+                   (UTIntegerConstant 1))])))
+          )));
       ((Range.Normal <nx.saty:8.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <nx.saty:8.7-9>), "r2"),
               (UTRecord
@@ -39,9 +43,10 @@
                    (UTIntegerConstant 1));
                    (((Range.Normal <nx.saty:8.26-27>), "y"),
                     (UTIntegerConstant 2))
-                   ])))));
+                   ])))
+          )));
       ((Range.Normal <nx.saty:9.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <nx.saty:9.7-13>), "r2semi"),
               (UTRecord
@@ -49,20 +54,23 @@
                    (UTIntegerConstant 1));
                    (((Range.Normal <nx.saty:9.26-27>), "y"),
                     (UTIntegerConstant 2))
-                   ])))));
+                   ])))
+          )));
       ((Range.Normal <nx.saty:11.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <nx.saty:11.7-10>), "tp2"),
-              (UTTuple (UTIntegerConstant 1) (UTIntegerConstant 2) )))));
+              (UTTuple (UTIntegerConstant 1) (UTIntegerConstant 2) )))
+          )));
       ((Range.Normal <nx.saty:12.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <nx.saty:12.7-10>), "tp3"),
               (UTTuple (UTIntegerConstant 1) (UTIntegerConstant 2)
-                 (UTIntegerConstant 3))))));
+                 (UTIntegerConstant 3))))
+          )));
       ((Range.Normal <nx.saty:14.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <nx.saty:14.7-14>), "op-test"),
               (UTTuple
@@ -597,9 +605,10 @@
                        (UTConstructor ("A", UTUnitConstant)))),
                     (UTContentOf ([],
                        ((Range.Normal <nx.saty:38.11-12>), "b")))
-                    )))))));
+                    )))))
+          )));
       ((Range.Normal <nx.saty:41.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <nx.saty:41.7-13>), "uminus"),
               (UTTuple
@@ -649,7 +658,8 @@
                        (UTIntegerConstant 0))),
                     (UTContentOf ([],
                        ((Range.Normal <nx.saty:41.66-67>), "x")))
-                    )))))))
+                    )))))
+          )))
       ]))
 
 ;; variants.saty
@@ -819,7 +829,7 @@
 (UTLibraryFile
    (((Range.Normal <pats.saty:1.8-12>), "Pats"), None,
     [((Range.Normal <pats.saty:3.3-6>),
-      (UTBindValue
+      (UTBindValue (Stage1,
          (UTNonRec
             (((Range.Normal <pats.saty:3.7-17>), "pats-test1"),
              (UTPatternMatch (
@@ -830,9 +840,10 @@
                        ((Range.Normal <pats.saty:5.12-13>), "d")))
                     ))
                   ]
-                ))))));
+                ))))
+         )));
       ((Range.Normal <pats.saty:8.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <pats.saty:8.7-17>), "pats-test2"),
               (UTPatternMatch (
@@ -844,14 +855,15 @@
                         ((Range.Normal <pats.saty:10.12-13>), "d")))
                      ))
                    ]
-                 ))))))
+                 ))))
+          )))
       ]))
 
 ;; pattuple.saty
 (UTLibraryFile
    (((Range.Normal <pattuple.saty:1.8-16>), "Pattuple"), None,
     [((Range.Normal <pattuple.saty:3.3-6>),
-      (UTBindValue
+      (UTBindValue (Stage1,
          (UTNonRec
             (((Range.Normal <pattuple.saty:3.7-20>), "pattuple-test"),
              (UTPatternMatch (
@@ -869,14 +881,15 @@
                        ((Range.Normal <pattuple.saty:5.17-18>), "d")))
                     ))
                   ]
-                ))))))
+                ))))
+         )))
       ]))
 
 ;; patlist.saty
 (UTLibraryFile
    (((Range.Normal <patlist.saty:1.8-15>), "Patlist"), None,
     [((Range.Normal <patlist.saty:3.3-6>),
-      (UTBindValue
+      (UTBindValue (Stage1,
          (UTNonRec
             (((Range.Normal <patlist.saty:3.7-15>), "pat-test"),
              (UTPatternMatch (
@@ -922,31 +935,35 @@
                         ((Range.Normal <patlist.saty:7.18-19>), "d")))
                      ))
                   ]
-                ))))))
+                ))))
+         )))
       ]))
 
 ;; sxlist.saty
 (UTLibraryFile
    (((Range.Normal <sxlist.saty:1.8-14>), "Sxlist"), None,
     [((Range.Normal <sxlist.saty:3.3-6>),
-      (UTBindValue
-         (UTNonRec (((Range.Normal <sxlist.saty:3.7-8>), "x"), UTEndOfList))));
+      (UTBindValue (Stage1,
+         (UTNonRec (((Range.Normal <sxlist.saty:3.7-8>), "x"), UTEndOfList))
+         )));
       ((Range.Normal <sxlist.saty:4.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <sxlist.saty:4.7-8>), "y"),
               (UTListCons ((UTInputHorz [IT:aa]),
-                 (UTListCons ((UTInputHorz [IT:bb]), UTEndOfList))))))))
+                 (UTListCons ((UTInputHorz [IT:bb]), UTEndOfList))))))
+          )))
       ]))
 
 ;; mathlist.saty
 (UTLibraryFile
    (((Range.Normal <mathlist.saty:1.8-16>), "Mathlist"), None,
     [((Range.Normal <mathlist.saty:3.3-6>),
-      (UTBindValue
-         (UTNonRec (((Range.Normal <mathlist.saty:3.7-8>), "x"), UTEndOfList))));
+      (UTBindValue (Stage1,
+         (UTNonRec (((Range.Normal <mathlist.saty:3.7-8>), "x"), UTEndOfList))
+         )));
       ((Range.Normal <mathlist.saty:4.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <mathlist.saty:4.7-8>), "y"),
               (UTListCons (
@@ -965,9 +982,10 @@
                               (UTMChars "b"))
                              ]))),
                     UTEndOfList))
-                 ))))));
+                 ))))
+          )));
       ((Range.Normal <mathlist.saty:6.3-6>),
-       (UTBindValue
+       (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <mathlist.saty:6.7-8>), "z"),
               (UTInputVert
@@ -1163,7 +1181,8 @@
                                       ]))))
                           ])
                      ))
-                   ])))))
+                   ])))
+          )))
       ]))
 
 ;; toplevel.saty

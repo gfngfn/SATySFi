@@ -2,7 +2,7 @@ open Core_kernel
 open Main__
 
 let () =
-  let proj (_, _, utsrc) = utsrc in
+  let proj (_, utsrc) = utsrc in
   Out_channel.print_endline ";;; generated automatically. DO NOT EDIT";
   Out_channel.print_endline ";;; To update this file, you should run `dune runtest; dune promote`.";
   Sys.argv
