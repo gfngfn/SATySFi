@@ -1,13 +1,14 @@
 @import: head
 
-(let inline ctx \glueneg = inline-glue 0pt 0pt (0pt -' 100pt) in
-Head.document (|
+let open Head in
+let inline ctx \glueneg = inline-glue 0pt 0pt (0pt -' 100pt) in
+document (|
   title = {Glue Test},
   author = {Takashi SUWA},
 |) '<
-  +Head.frame <
-    +Head.p {
+  +frame <
+    +p {
       \glueneg;The quick brown fox jumps over the\glueneg;lazy dog.
     }
   >
->)
+>

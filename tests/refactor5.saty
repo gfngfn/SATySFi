@@ -1,19 +1,18 @@
-(
-  let test1 ?(i = iopt) s =
-    match iopt with
-    | None    -> s
-    | Some(i) -> s ^ `(` ^ (arabic i) ^ `)`
-    end
-  in
 
-  let it = embed-string ((test1 `hoge`) ^ `/` ^ (test1 ?(i = 2) `piyo`) ^ `/` ^ (test1 `fuga`)) in
+let test1 ?(i = iopt) s =
+  match iopt with
+  | None    -> s
+  | Some(i) -> s ^ `(` ^ (arabic i) ^ `)`
+  end
+in
 
-  let inline ctx \math = embed-math ctx in
-  let ctx = get-initial-context 400pt (command \math) in
-  let pagecontf _ = (| text-origin = (20pt, 20pt), text-height = 600pt, |) in
-  let pagepartsf _ =
-    (| header-origin = (0pt, 0pt), header-content = block-nil,
-       footer-origin = (0pt, 0pt), footer-content = block-nil, |)
-  in
-  page-break A4Paper pagecontf pagepartsf (line-break true true ctx ((read-inline ctx it) ++ inline-fil))
-)
+let it = embed-string ((test1 `hoge`) ^ `/` ^ (test1 ?(i = 2) `piyo`) ^ `/` ^ (test1 `fuga`)) in
+
+let inline ctx \math = embed-math ctx in
+let ctx = get-initial-context 400pt (command \math) in
+let pagecontf _ = (| text-origin = (20pt, 20pt), text-height = 600pt, |) in
+let pagepartsf _ =
+  (| header-origin = (0pt, 0pt), header-content = block-nil,
+     footer-origin = (0pt, 0pt), footer-content = block-nil, |)
+in
+page-break A4Paper pagecontf pagepartsf (line-break true true ctx ((read-inline ctx it) ++ inline-fil))

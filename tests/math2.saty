@@ -2,27 +2,29 @@
 @import: head
 @require: math
 
-Head.document (|
+let open Math in
+let open Head in
+document (|
   title  = {Math Test 2},
   author = {Takashi SUWA},
 |) '<
-  +Head.make-title;
-  +Head.p-jp{
+  +make-title;
+  +p-jp{
     万有引力定数を ${G} として，距離 ${R} だけ離れた質量 ${M_1}，${M_2} の2物体間にはたらく重力は
   }
-  +Math.math(${
-    F = G \Math.frac{M_1 M_2}{R^2}
+  +math(${
+    F = G \frac{M_1 M_2}{R^2}
   });
-  +Head.p-jp{
+  +p-jp{
     と表される．
   }
-  +Math.math(${
-    Z = -\Math.mathrm{e}^x + f^{x^{n^2}}
+  +math(${
+    Z = -\mathrm{e}^x + f^{x^{n^2}}
   });
-  +Math.math(${
-    \Math.norm{x - y}, \Math.abs{x - y}, K\Math.sqbracket{X_1, X_2}, \Math.brace{a, b, c}, \Math.paren{x - \Math.frac{b}{2 a}}^{2}
+  +math(${
+    \norm{x - y}, \abs{x - y}, K\sqbracket{X_1, X_2}, \brace{a, b, c}, \paren{x - \frac{b}{2 a}}^{2}
   });
-  +Math.math(${
-    x > y \Math.Rightarrow x \Math.geq y \Math.Leftrightarrow y \Math.leq x \Math.Rightarrow \Math.max\Math.brace{x, y} = x
+  +math(${
+    x > y \Rightarrow x \geq y \Leftrightarrow y \leq x \Rightarrow \max\brace{x, y} = x
   });
 >

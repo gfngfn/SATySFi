@@ -1,28 +1,27 @@
-(
-  let rec fold-left f i l =
-    match l with
-    | []      -> i
-    | x :: xs -> fold-left f (f i x) xs
-    end
-  in
 
-  let sum = fold-left (+) 0 [3, 1, 4, 1, 5, 9, 2] in
+let rec fold-left f i l =
+  match l with
+  | []      -> i
+  | x :: xs -> fold-left f (f i x) xs
+  end
+in
 
-  let f t y =
-    if t == 0 then y else t + 2
-  in
-  let g p q =
-    match (p, q) with
-    | (0, y) -> y
-    | (t, _) -> t + 2
-    end
-  in
-  let s = arabic sum ^ `,` ^ arabic (f 0 42) ^ `,` ^ arabic (f 1 42) ^ `,` ^ arabic (g 0 42) ^ `,` ^ arabic (g 1 42) in
+let sum = fold-left (+) 0 [3, 1, 4, 1, 5, 9, 2] in
 
-  let inline ctx \math = embed-math ctx in
-  let ctx = get-initial-context 400pt (command \math) in
-  let pagecontf _ = (| text-origin = (20pt, 20pt), text-height = 600pt, |) in
-  let pagepartsf _ = (| header-origin = (0pt, 0pt), header-content = block-nil, footer-origin = (0pt, 0pt), footer-content = block-nil, |) in
+let f t y =
+  if t == 0 then y else t + 2
+in
+let g p q =
+  match (p, q) with
+  | (0, y) -> y
+  | (t, _) -> t + 2
+  end
+in
+let s = arabic sum ^ `,` ^ arabic (f 0 42) ^ `,` ^ arabic (f 1 42) ^ `,` ^ arabic (g 0 42) ^ `,` ^ arabic (g 1 42) in
 
-  page-break A4Paper pagecontf pagepartsf (line-break true true ctx ((read-inline ctx (embed-string s)) ++ inline-fil))
-)
+let inline ctx \math = embed-math ctx in
+let ctx = get-initial-context 400pt (command \math) in
+let pagecontf _ = (| text-origin = (20pt, 20pt), text-height = 600pt, |) in
+let pagepartsf _ = (| header-origin = (0pt, 0pt), header-content = block-nil, footer-origin = (0pt, 0pt), footer-content = block-nil, |) in
+
+page-break A4Paper pagecontf pagepartsf (line-break true true ctx ((read-inline ctx (embed-string s)) ++ inline-fil))

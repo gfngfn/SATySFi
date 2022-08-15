@@ -3,95 +3,101 @@
 @require: proof
 @require: tabular
 
-(let math \overwrite mf ma mb =
-  ${#mf\Math.sqbracket{#ma \Math.mapsto #mb}}
+let open Pervasives in
+let open Math in
+let open Proof in
+let open Tabular in
+let open StdJa in
+
+let math \overwrite mf ma mb =
+  ${#mf\sqbracket{#ma \mapsto #mb}}
 in
 
-StdJa.document (|
+document (|
   title  = {Math Test},
   author = {Takashi SUWA},
   show-title = false,
   show-toc = false,
 |) '<
-  +StdJa.p {
-    This document was typeset by using \Pervasives.SATySFi;.
+  +p {
+    This document was typeset by using \SATySFi;.
   }
-  +StdJa.p {
+  +p {
     Italics correction and kerning:
-      ${\Math.paren{F^n} \Math.paren{F} = \Math.paren{G \Math.frac{M m}{R^2}}^{n + 1}},
+      ${\paren{F^n} \paren{F} = \paren{G \frac{M m}{R^2}}^{n + 1}},
 
-    Big math: ${\Math.paren{\Math.frac{\Math.paren{\Math.frac{A}{B} + C}}{D^{\Math.paren{n - 1}}}}_2},\Pervasives.fil;
+    Big math: ${\paren{\frac{\paren{\frac{A}{B} + C}}{D^{\paren{n - 1}}}}_2},\fil;
 
-    parentheses: ${\Math.paren{\Math.paren{\Math.paren{A} + B} + C}}, ${\Math.brace{\Math.brace{\Math.brace{A} + B} + C}},
+    parentheses: ${\paren{\paren{\paren{A} + B} + C}}, ${\brace{\brace{\brace{A} + B} + C}},
 
-    radical: ${2 \Math.sqrt{3} + \Math.frac{2}{\Math.sqrt{5}} + \Math.frac{1}{\Math.sqrt{x^2 + 1}}}.\Pervasives.fil;
+    radical: ${2 \sqrt{3} + \frac{2}{\sqrt{5}} + \frac{1}{\sqrt{x^2 + 1}}}.\fil;
 
     The solution of the equation ${a x^2 + b x + c = 0} as to ${x} is
-      ${x = \Math.frac{-b \Math.pm \Math.sqrt{b^2 - 4ac}}{2a}}.
+      ${x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}.
 
-    Multiplex radicals: ${\Math.sqrt{\Math.sqrt{\Math.sqrt{\Math.sqrt{2}}}}},
+    Multiplex radicals: ${\sqrt{\sqrt{\sqrt{\sqrt{2}}}}},
 
-    limits: ${\Math.lower{\Math.lim}{n \Math.to \Math.infty} \Math.paren{1 + \Math.frac{1}{n}}^{n} = e},
+    limits: ${\lower{\lim}{n \to \infty} \paren{1 + \frac{1}{n}}^{n} = e},
 
-    fraction superscript: ${e^{\Math.frac{x}{2}}},
+    fraction superscript: ${e^{\frac{x}{2}}},
 
     sub-superscript: ${a_{n - 1}^{2} b},
 
-    sub-superscript correction: ${a_1^{\Math.frac{n}{2}}}, ${\Math.bm{f_1}^2},
+    sub-superscript correction: ${a_1^{\frac{n}{2}}}, ${\bm{f_1}^2},
 
-    big operator: ${\Math.upper{\Math.lower{\Math.sum}{n = 1}}{\Math.infty} \Math.frac{1}{n^2} = \Math.frac{\Math.pi^2}{6}},
+    big operator: ${\upper{\lower{\sum}{n = 1}}{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}},
 
-    integral: ${\Math.int_0^1 \Math.sqrt{1 - x^2} \Math.ordd x},
+    integral: ${\int_0^1 \sqrt{1 - x^2} \ordd x},
 
-    texts contained in formulae: ${\Math.frac{\Math.text!{Hoge}}{2} + \Math.sqrt{\Math.text!{Piyo}}},
+    texts contained in formulae: ${\frac{\text!{Hoge}}{2} + \sqrt{\text!{Piyo}}},
 
-    tuple: ${\Math.angle-bracket{x, y, z}}.
+    tuple: ${\angle-bracket{x, y, z}}.
   }
-  +Math.math (
-    let int1 = ${\Math.int_0^a} in
-    let int2 = ${\Math.int_0^\Math.sqrt{a^2 - x^2}} in
-    let sqrt2 = ${\Math.sqrt{x^2 + r^2}} in
+  +math (
+    let int1 = ${\int_0^a} in
+    let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
+    let sqrt2 = ${\sqrt{x^2 + r^2}} in
       ${
-        \Math.frac{#int1 x \Math.ordd x #int2 r #sqrt2 \Math.ordd r}{#int1 \Math.ordd x #int2 r #sqrt2 \Math.ordd r}
-          = \Math.frac{2a}{5}
+        \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{#int1 \ordd x #int2 r #sqrt2 \ordd r}
+          = \frac{2a}{5}
       }
   );
-  +StdJa.p (
+  +p (
     let test = ${ABCMNOPQRXYZabc} in
     {
-      Script:        ${\Math.math-style!(MathScript      ){#test}},
-      bold script:   ${\Math.math-style!(MathBoldScript  ){#test}},
-      Fraktur:       ${\Math.math-style!(MathFraktur     ){#test}},
-      bold Fraktur:  ${\Math.math-style!(MathBoldFraktur ){#test}},
-      double struck: ${\Math.math-style!(MathDoubleStruck){#test}}.
+      Script:        ${\math-style!(MathScript      ){#test}},
+      bold script:   ${\math-style!(MathBoldScript  ){#test}},
+      Fraktur:       ${\math-style!(MathFraktur     ){#test}},
+      bold Fraktur:  ${\math-style!(MathBoldFraktur ){#test}},
+      double struck: ${\math-style!(MathDoubleStruck){#test}}.
     });
-  +StdJa.p {Typing rule is defined as follows:}
-  +Math.math(${
-    \Proof.derive{|\Math.paren{\Math.app{\Math.Gamma}{x} \Math.synteq \Math.tau}|}{
-      \Math.tyjd{\Math.Gamma}{x}{\Math.tau}
+  +p {Typing rule is defined as follows:}
+  +math(${
+    \derive{|\paren{\app{\Gamma}{x} \synteq \tau}|}{
+      \tyjd{\Gamma}{x}{\tau}
     }
-
-    \Proof.derive{|
-      \Math.tyjd{\overwrite{\Math.Gamma}{x}{\Math.tau_1}}{M}{\Math.tau_2}
+    \math-skip!(2cm)
+    \derive{|
+      \tyjd{\overwrite{\Gamma}{x}{\tau_1}}{M}{\tau_2}
     |}{
-      \Math.tyjd{\Math.Gamma}{\Math.paren{\Math.tmabstyped{x}{\Math.tau_1}{M}}}{\Math.tau_1 \Math.to \Math.tau_2}
+      \tyjd{\Gamma}{\paren{\tmabstyped{x}{\tau_1}{M}}}{\tau_1 \to \tau_2}
     }
   });
-  +Math.math(${
-    \Proof.derive{|
-      \Math.tyjd{\Math.Gamma}{M}{\Math.tau_1 \Math.to \Math.tau_2} | \Math.tyjd{\Math.Gamma}{N}{\Math.tau_1}
+  +math(${
+    \derive{|
+      \tyjd{\Gamma}{M}{\tau_1 \to \tau_2} | \tyjd{\Gamma}{N}{\tau_1}
     |}{
-      \Math.tyjd{\Math.Gamma}{M N}{\Math.tau_2}
+      \tyjd{\Gamma}{M\ N}{\tau_2}
     }
   });
-  +Math.math(${
-    \Proof.derive{| A | \Proof.derive{| B | C |}{D} |}{E}
+  +math(${
+    \derive{| A | \derive{| B | C |}{D} |}{E}
   });
-  +StdJa.p {
+  +p {
     A table
-    \Tabular.tabular(fun cellf multif empty -> [
+    \tabular(fun cellf multif empty -> [
       [multif 2 1 {The}, cellf {quick}, cellf {brown}, multif 1 2 {fox jumps over}, empty,],
       [empty, multif 1 2 {the}, empty, cellf {lazy}, cellf {dog},],
     ])(fun xs ys -> []);
   }
->)
+>
