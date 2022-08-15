@@ -5,42 +5,51 @@
 @require: proof
 @import: local
 
-StdJaBook.document (|
-  title = {\Pervasives.SATySFi;概説},
+let open Pervasives in
+let open Math in
+let open Proof in
+let open Code in
+let open Itemize in
+let open Annot in
+let open StdJaBook in
+let open Local in
+document (|
+  title = {\SATySFi;概説},
   author = {Takashi SUWA},
   show-title = true,
   show-toc = true,
 |) '<
-  +StdJaBook.section{はじめに}<
-    +StdJaBook.p{
-      \Annot.href(`https://github.com/gfngfn/SATySFi`){\Local.dfn{\Pervasives.SATySFi;}}は，2017年度IPA未踏事業のひとつとして開発された，新しい組版処理システムである。
+  +section{はじめに}<
+    +p{
+      \href(`https://github.com/gfngfn/SATySFi`){\dfn{\SATySFi;}}は，
+      2017年度IPA未踏事業のひとつとして開発された，新しい組版処理システムである。
       一口に組版処理システムといっても，大きく分けて
 
-      \Itemize.listing{
-        * GUIの画面上に版面がプレヴューされた状態で文書を視覚的に記述していく\Local.dfn{WYISIWYGエディタ}方式
-        * \Local.dfn{マークアップ言語}によってテキストファイルとして文書を記述し，
+      \listing{
+        * GUIの画面上に版面がプレヴューされた状態で文書を視覚的に記述していく\dfn{WYISIWYGエディタ}方式
+        * \dfn{マークアップ言語}によってテキストファイルとして文書を記述し，
           言語処理系に入力として与えて最終的にPDFなどの形式で版面を出力する方式
       }%
 
-      の2つがあるが，\Pervasives.SATySFi;は後者にあたる。すなわち，\Pervasives.LaTeX;やtroffなどと同様の形式をとるソフトウェアだ。
-      では\Pervasives.LaTeX;をはじめとする既存のマークアップ言語方式と\Pervasives.SATySFi;との違いは何なのだろうか？
+      の2つがあるが，\SATySFi;は後者にあたる。すなわち，\LaTeX;やtroffなどと同様の形式をとるソフトウェアだ。
+      では\LaTeX;をはじめとする既存のマークアップ言語方式と\SATySFi;との違いは何なのだろうか？
       簡潔に言ってしまえば，最大の違いは
 
-      \Itemize.listing{
-        * コマンド定義を記述したコードの\StdJaBook.emph{可読性が高くカスタマイズしやすい}
-        * ユーザが不適格な入力を与えたときの\StdJaBook.emph{エラー報告がすばやく，わかりやすく提示される}
+      \listing{
+        * コマンド定義を記述したコードの\emph{可読性が高くカスタマイズしやすい}
+        * ユーザが不適格な入力を与えたときの\emph{エラー報告がすばやく，わかりやすく提示される}
       }%
 
       といった点にある。
-      この性質の詳細を述べる前に，\Pervasives.SATySFi;を実装した動機をもう少し詳しく順を追って説明したい。
+      この性質の詳細を述べる前に，\SATySFi;を実装した動機をもう少し詳しく順を追って説明したい。
     }
-    +StdJaBook.p{
+    +p{
       “マークアップ言語方式とWYSIWYG方式とのいずれが優れているのか” といった話題は
       （少なくとも一方に触れる人が多いためか）頻繁に目にし，もはや大喜利の様相を呈しているが，
       実際にはそれぞれの方式に利点と弱点のトレードオフがあるといってよい。
       WYSIWYG方式に比べたマークアップ言語方式一般の利点としては，あくまでも傾向ではあるが
 
-      \Itemize.listing{
+      \listing{
        * 入力がテキストファイルなので差分管理が簡単
        * ユーザ定義コマンドにより：
          ** 複雑な自動処理が実現できる
@@ -49,7 +58,7 @@ StdJaBook.document (|
 
       といったことが挙げられるだろう。一方で明白な弱点としては，
 
-      \Itemize.listing{
+      \listing{
         * 任意のテキストが入力として渡せるため，ユーザが意図しないコードを入力として与えやすい
       }%
 
@@ -62,42 +71,41 @@ StdJaBook.document (|
       処理系にとって不適格なコードが入力として渡された場合にどのようなエラー報告を行なうかが
       ユーザの執筆効率に多大な影響をもたらすと考えてよいだろう。
     }
-    +StdJaBook.p{
+    +p{
       ところが，既存のマークアップ言語方式の組版処理システムでは，
       この不適格な入力に対するエラー報告がわかりにくいという傾向がある。
-      特に\Pervasives.LaTeX;の場合を例に挙げると，以下のようなエラーログを数え切れないほど見たユーザは多いだろう：
+      特に\LaTeX;の場合を例に挙げると，以下のようなエラーログを数え切れないほど見たユーザは多いだろう：
     }
-    +Code.console(`! Undefined control sequence.`);
-    +Code.console(`! Missing $ inserted.`);
-    +Code.console(`! Missing number, treated as zero.`);
-    +StdJaBook.pn{
+    +console(`! Undefined control sequence.`);
+    +console(`! Missing $ inserted.`);
+    +console(`! Missing number, treated as zero.`);
+    +pn{
       場合によっては原因がすぐわかることもあるが，
       基本的には「組版処理中に初めて不整合が生じた」ときにエラーが報告される仕組みなので，
       ユーザの与り知らない，コマンドの実装内の記述と与えた引数の不整合によるエラーが直接報告されることも多い。
       「第${n}行目までで何かがおかしい」という程度の情報しか得られないことも多く，
       こうなるともはやコードをコメントアウトしながら二分探索して原因の場所を特定するしかない。
     }
-    +StdJaBook.p{
-      ようやく本題に戻るが，\Pervasives.SATySFi;はこれらの問題点を解決するひとつの答えである。
+    +p{
+      ようやく本題に戻るが，\SATySFi;はこれらの問題点を解決するひとつの答えである。
       具体的にはいわゆる函数型プログラミングに便利な言語をベースに設計されているため
 
-      \Itemize.listing{
-        * \StdJaBook.emph{強力な型がつく}
-        * グローバルな状態を意識せず\StdJaBook.emph{局所的な処理にだけ気を遣えばよい}
+      \listing{
+        * \emph{強力な型がつく}
+        * グローバルな状態を意識せず\emph{局所的な処理にだけ気を遣えばよい}
       }%
 
       といった函数型の知見の恩恵を享受でき，型検査という形でエラー報告が強化されているのである。
     }
-    +StdJaBook.p{
+    +p{
       ともあれ，ひとまずエラー報告能力に関しては一旦置いておき，
-      次の第\StdJaBook.ref(`sec:typesetting`);章では
+      次の第\ref(`sec:typesetting`);章では
       組版処理システムとしてどのような機能が実現されているかについて触れていく。
     }
   >
-%  +section?(ref = `sec:typesetting`){代表的な機能}<
-  +StdJaBook.section{代表的な機能}<
-    +StdJaBook.subsection{欧文組版}<
-      +StdJaBook.p{
+  +section?(ref = `sec:typesetting`)({代表的な機能})<
+    +subsection{欧文組版}<
+      +p{
         文字のグリフは正の幅を持ち，紙面には有限の幅がある。
         当たり前のことであるが，要するにただ文字を水平に並べていくだけでは紙面に収まらないので，
         どこかで改行しなければならない。
@@ -105,35 +113,35 @@ StdJaBook.document (|
         より限定的に「行分割」という言葉も使う。
         文字の列を組む処理をする際には，この行分割の処理が肝腎要となる。
       }
-      +StdJaBook.p{
+      +p{
         欧文組版，より一般には “alphabeticな” 文字体系による文字組版では，
         原則として単語間の空白のどこかで行分割し，各行の長さを両端揃えにする，
         という組み方が慣習的である。
-        単語間の空白だけでなく，場合によっては\Local.dfn{ハイフネーション}，
+        単語間の空白だけでなく，場合によっては\dfn{ハイフネーション}，
         すなわち単語中にハイフンを入れて行分割するという処理も施される。
       }
-      +StdJaBook.p{
-        この欧文組版に関して，\Pervasives.SATySFi;は偉大な先駆者である\Pervasives.TeX;の処理方法に倣い，
-        \Local.dfn{Knuth–Plassアルゴリズム} [Knuth 1978] と呼ばれるアルゴリズムで行分割処理を行なっている。
+      +p{
+        この欧文組版に関して，\SATySFi;は偉大な先駆者である\TeX;の処理方法に倣い，
+        \dfn{Knuth–Plassアルゴリズム} [Knuth 1978] と呼ばれるアルゴリズムで行分割処理を行なっている。
         また必要であれば単語中にハイフネーションを施す行分割も自動で行なってくれる。
         ハイフンを挿入してよい箇所は単語ごとに決まっているが，
-        これに関しては\Local.dfn{Liang–Knuthアルゴリズム}と呼ばれる処理により
+        これに関しては\dfn{Liang–Knuthアルゴリズム}と呼ばれる処理により
         ハイフネーションパターンの辞書から決定する方法が知られており [Liang 1983]，
-        \Pervasives.TeX;処理系に搭載されている。
-        やはり\Pervasives.SATySFi;もこれに追従して同様の処理を実現している。
+        \TeX;処理系に搭載されている。
+        やはり\SATySFi;もこれに追従して同様の処理を実現している。
       }
-      +StdJaBook.p{
-        実際に以下の\Pervasives.SATySFi;によって組まれた欧文を見てみよう。
+      +p{
+        実際に以下の\SATySFi;によって組まれた欧文を見てみよう。
         ところどころ合字処理が施されていたり，自動ハイフネーションが行われているのがわかるだろう：
       }
-      +Local.paragraph-frame<
-        +Local.p-latin{
+      +paragraph-frame<
+        +p-latin{
           The quick brown fox jumps over the lazy dog.
           ¿But aren’t Kafka’s Schloß and Æsop’s Œuvres often
           naïve vis-à-vis the dæmonic phœnix’s official rôle
           in fluffy soufflés?
         }
-        +Local.p-latin{
+        +p-latin{
           Lorem ipsum dolor sit amet, consectetur adipiscing elit,
           sed do eiusmod tempor incididunt ut labore
           et dolore magna aliqua.
@@ -149,61 +157,60 @@ StdJaBook.document (|
         }
       >
     >
-    +StdJaBook.subsection{和文組版}<
-      +StdJaBook.p{
+    +subsection{和文組版}<
+      +p{
         和文は慣習的に正方形を基調として文字を並べる組版が好まれ，
         基本的には単語の途中で改行しても構わないなど，欧文組版と比べるとやや緩やかな組版規則に見える。
         この文書も多くの箇所は日本語で書かれているし，読める方にとっては和文組版は馴染み深いものであろう。
         ただし，括弧類や句読点類の前後にスペース（アキ）をどの程度の大きさで入れるかといった視覚的調整は
         それほど自明ではない。また，いかに改行位置に関して寛容であると言っても例えば「チョコレート」を
         「チ」と「ョコレート」の間で行分割するとか「チョコレ」と「ート」に分けるといった組み方は
-        強く違和感を喚起してしまうから，\Local.dfn{行末禁則文字}や\Local.dfn{行頭禁則文字}といった取り決めが要請される。
+        強く違和感を喚起してしまうから，\dfn{行末禁則文字}や\dfn{行頭禁則文字}といった取り決めが要請される。
       }
-      +StdJaBook.p{
-        こうした規則をまとめたものとして『\Local.dfn{日本語組版処理の要件}』（W3C日本語組版タスクフォース，2012）
-        という文書が策定されており，通称として\Local.dfn{JLreq}と呼ばれる。
-        \Pervasives.SATySFi;およびその上に実装されたクラスファイル\Local.file{stdja}および\Local.file{stdjabook}は，
+      +p{
+        こうした規則をまとめたものとして『\dfn{日本語組版処理の要件}』（W3C日本語組版タスクフォース，2012）
+        という文書が策定されており，通称として\dfn{JLreq}と呼ばれる。
+        \SATySFi;およびその上に実装されたクラスファイル\file{stdja}および\file{stdjabook}は，
         万全ではないもののこのJLreqとして定められた和文組版規則に原則従って和文を組むように実装されている。
       }
-%      +StdJaBook.p{
+%      +p{
 %        具体的な例はここでは掲げない。幸いにもこの文書は多くの部分が和文で書かれており，
 %        いたるところに組版結果の例が見られるからである。和文と欧文の間に挿入された空白や，
 %        閉じ括弧や読点で終わっている行の末端に
 %        余分なスペースが入っていないことを確かめたりして楽しんでほしい。
 %      }
-%      +StdJaBook.p{
+%      +p{
 %        なお，和文組版では欧文組版のような合字処理やカーニング処理を施さずとも十分見栄えの良い組版ができる。
 %        ユーザからすれば知った話ではないがこれは組版処理システムを実装する人間の労力からすれば有難い話であり，
-%        実際\Pervasives.SATySFi;は和文文字の処理については合字の存在を加味していない。
+%        実際\SATySFi;は和文文字の処理については合字の存在を加味していない。
 %        ただし，近年は主にデザイン性の志向から字幅がプロポーショナルな和文文字のグリフを持つフォント，
 %        さらには合字処理により連綿などを表現するフォントなども登場しており，
 %        今後対応が必要になるものと想定している。
 %      }
     >
-    +StdJaBook.subsection{画像挿入機能}<
-      +Local.display-boxes('<
-        +StdJaBook.p{
-          画像が挿入できる証拠として，ロゴを図\StdJaBook.ref(`fig:logo`);に掲げておこう。
-%          \figure?(ref = `fig:logo`){\Pervasives.SATySFi;のロゴ}<
-          \StdJaBook.figure{\Pervasives.SATySFi;のロゴ}<
-            +Local.image-frame{\Local.insert-image(7cm)(`satysfi-logo.jpg`);}
+    +subsection{画像挿入機能}<
+      +display-boxes('<
+        +p{
+          画像が挿入できる証拠として，ロゴを図\ref(`fig:logo`);に掲げておこう。
+          \figure?(label = `fig:logo`)({\SATySFi;のロゴ})<
+            +image-frame{\insert-image(7cm)(`satysfi-logo.jpg`);}
           >
         }
       >)(```
-        +StdJaBook.p{
+        +p{
           画像が挿入できる証拠として，ロゴを図\ref(`fig:logo`);に掲げておこう。
-          \figure ?:(`fig:logo`){\Pervasives.SATySFi;のロゴ}<
+          \figure?(label = `fig:logo`)({\SATySFi;のロゴ})<
             +image-frame{\insert-image(7cm)(`satysfi-logo.jpg`);}
           >
         }
       ```);
     >
-    +StdJaBook.subsection{表}<
-      +StdJaBook.p{
-        \Pervasives.SATySFi;は表組み機能も備えている。コードは長いので省略する。
+    +subsection{表}<
+      +p{
+        \SATySFi;は表組み機能も備えている。コードは長いので省略する。
       }
-      +Local.frame<
-        +Local.centering{
+      +frame<
+        +centering{
           \Tabular.tabular(fun cellf multif empty -> [
             [cellf {Program}  , multif 1 2 {Answer}, empty, multif 1 2 {Time [s]}, empty,],
             [empty            , cellf {A}, cellf {B}, cellf {A}, cellf {B}],
@@ -240,65 +247,63 @@ StdJaBook.document (|
         }
       >
     >
-    +StdJaBook.subsection{数式}<
-      +StdJaBook.p{
-        既存の組版処理システムである\Pervasives.LaTeX;が圧倒的な高品質での出力を得意とする機能のひとつに数式組版がある。
-        \Pervasives.SATySFi;でも，十分にこれに肩を並べられるといってよい程度の数式組版が実現されている。
+    +subsection{数式}<
+      +p{
+        既存の組版処理システムである\LaTeX;が圧倒的な高品質での出力を得意とする機能のひとつに数式組版がある。
+        \SATySFi;でも，十分にこれに肩を並べられるといってよい程度の数式組版が実現されている。
         試しにちょっとした数式を並べてみよう：
       }
-      +Local.display-boxes('<
-        +Math.math-list[
-          ${F = G \Math.frac{M m}{R^2}},
-          ${\Local.limto{N}{\Math.infty} \Local.sums{n = 1}{N} \Math.frac{1}{n^2}
-                                                       = \Math.frac{\Math.pi^2}{6}},
-          ${\Math.paren{\Math.paren{\Math.paren{A} + B} + C}},
-          ${\Math.brace{\Math.brace{\Math.brace{A} + B} + C}}
+      +display-boxes('<
+        +math-list[
+          ${F = G \frac{M m}{R^2}},
+          ${\limto{N}{\infty} \sums{n = 1}{N} \frac{1}{n^2} = \frac{\pi^2}{6}},
+          ${\paren{\paren{\paren{A} + B} + C}},
+          ${\brace{\brace{\brace{A} + B} + C}}
         ];
       >)(```
         +math-list[
-          ${F = G \Math.frac{M m}{R^2}},
-          ${\Local.limto{N}{\Math.infty} \Local.sums{n = 1}{N} \Math.frac{1}{n^2}
-                                                       = \Math.frac{\Math.pi^2}{6}},
-          ${\Math.paren{\Math.paren{\Math.paren{A} + B} + C}},
-          ${\Math.brace{\Math.brace{\Math.brace{A} + B} + C}}
+          ${F = G \frac{M m}{R^2}},
+          ${\limto{N}{\infty} \sums{n = 1}{N} \frac{1}{n^2} = \frac{\pi^2}{6}},
+          ${\paren{\paren{\paren{A} + B} + C}},
+          ${\brace{\brace{\brace{A} + B} + C}}
         ];
       ```);
-      +Local.display-boxes('<
-        +StdJaBook.p{ The solution of the equation ${a x^2 + b x + c = 0}
-            as to ${x} is ${x = \Math.frac{-b \Math.pm \Math.sqrt{b^2 - 4ac}}{2a}}. }
+      +display-boxes('<
+        +p{ The solution of the equation ${a x^2 + b x + c = 0}
+            as to ${x} is ${x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}. }
       >)(```
-        +StdJaBook.p{ The solution of the equation ${a x^2 + b x + c = 0}
-            as to ${x} is ${x = \Math.frac{-b \Math.pm \Math.sqrt{b^2 - 4ac}}{2a}}. }
+        +p{ The solution of the equation ${a x^2 + b x + c = 0}
+            as to ${x} is ${x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}. }
       ```);
-      +Local.display-boxes('<
-        +Math.math(
-          let int1 = ${\Math.int_0^a} in
-          let int2 = ${\Math.int_0^\Math.sqrt{a^2 - x^2}} in
-          let sqrt2 = ${\Math.sqrt{x^2 + r^2}} in
-            ${
-              \Math.frac{#int1 x \Math.ordd x #int2 r #sqrt2 \Math.ordd r}{
-                #int1 \Math.ordd x #int2 r #sqrt2 \Math.ordd r} = \Math.frac{2a}{5} }
+      +display-boxes('<
+        +math(
+          let int1 = ${\int_0^a} in
+          let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
+          let sqrt2 = ${\sqrt{x^2 + r^2}} in
+          ${
+            \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
+              #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
         );
       >)(```
-        +Math.math(
-          let int1 = ${\Math.int_0^a} in
-          let int2 = ${\Math.int_0^\Math.sqrt{a^2 - x^2}} in
-          let sqrt2 = ${\Math.sqrt{x^2 + r^2}} in
-            ${
-              \Math.frac{#int1 x \Math.ordd x #int2 r #sqrt2 \Math.ordd r}{
-                #int1 \Math.ordd x #int2 r #sqrt2 \Math.ordd r} = \Math.frac{2a}{5} }
+        +math(
+          let int1 = ${\int_0^a} in
+          let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
+          let sqrt2 = ${\sqrt{x^2 + r^2}} in
+          ${
+            \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
+              #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
         );
       ```);
-      +Local.display-boxes('<
-        +Math.math(${
-          \Proof.derive{
-            | A | \Proof.derive{| B | C |}{D} |
+      +display-boxes('<
+        +math(${
+          \derive{
+            | A | \derive{| B | C |}{D} |
           }{E}
         });
       >)(```
-        +Math.math(${
-          \Proof.derive{
-            | A | \Proof.derive{| B | C |}{D} |
+        +math(${
+          \derive{
+            | A | \derive{| B | C |}{D} |
           }{E}
         });
       ```);

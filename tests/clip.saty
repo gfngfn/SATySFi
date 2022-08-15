@@ -3,7 +3,10 @@
 @import: ../lib-satysfi/dist/packages/color
 
 
-(let inline ctx \do-fill wid f =
+(
+  let open Pervasives in
+  let open Head in
+  let inline ctx \do-fill wid f =
     let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid
     in
     let (w, h, d) = get-natural-metrics ib in
@@ -33,15 +36,15 @@ let path-donut x y w h =
         (path-circle x y w h)
         (path-circle (x +' w *' 0.25) (y +' h *' 0.25) (w *' 0.5) (h *' 0.5))
 in
-Head.document (|
+document (|
   title  = {Clipping Examples},
-  author = {\Pervasives.SATySFi; Contributors},
+  author = {\SATySFi; Contributors},
 |) '<
-    +Head.p {
+    +p {
         \do-fill (5cm) (path-circle);
         \do-clip (5cm) (path-circle);
     }
-    +Head.p {
+    +p {
         \do-fill (5cm) (path-donut);
         \do-clip (5cm) (path-donut);
     }

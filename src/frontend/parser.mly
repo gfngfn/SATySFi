@@ -367,7 +367,7 @@ optterm_nonempty_list(sep, X):
 main:
   | header=list(headerelem); lib=main_lib; EOI
       { (header, UTLibraryFile(lib)) }
-  | header=list(headerelem); utast=expr_app; EOI
+  | header=list(headerelem); utast=expr; EOI
       { (header, UTDocumentFile(utast)) }
   | rng=EOI
       { raise (ParseErrorDetail(rng, "empty input")) }

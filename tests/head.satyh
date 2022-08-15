@@ -4,606 +4,607 @@
 
 module Head = struct
 
-val form-paragraph = line-break true true
+  val form-paragraph = line-break true true
 
-val gray x = Gray(x)
-val rgb r g b = RGB(r, g, b)
+  val gray x = Gray(x)
+  val rgb r g b = RGB(r, g, b)
 
-val black = gray 0.
-val red = rgb 1. 0. 0.
+  val black = gray 0.
+  val red = rgb 1. 0. 0.
 
-val font-size-normal  = 12pt
-val font-size-title   = 36pt
-val font-size-author  = 16pt
-val font-size-section = 18pt
+  val font-size-normal  = 12pt
+  val font-size-title   = 36pt
+  val font-size-author  = 16pt
+  val font-size-section = 18pt
 
-val font-ratio-latin = 1.
-val font-ratio-cjk = 0.88
+  val font-ratio-latin = 1.
+  val font-ratio-cjk = 0.88
 
-val font-latin-roman  = (`Junicode`, font-ratio-latin, 0.)
-val font-latin-italic = (`lmroman-it`, font-ratio-latin, 0.)
-val font-latin-sans   = (`lmsans`, font-ratio-latin, 0.)
-val font-latin-mono   = (`lmmono`, font-ratio-latin, 0.)
-val font-cjk-mincho   = (`ipaexm`, font-ratio-cjk  , 0.)
-val font-cjk-gothic   = (`ipaexg`, font-ratio-cjk  , 0.)
+  val font-latin-roman  = (`Junicode`, font-ratio-latin, 0.)
+  val font-latin-italic = (`lmroman-it`, font-ratio-latin, 0.)
+  val font-latin-sans   = (`lmsans`, font-ratio-latin, 0.)
+  val font-latin-mono   = (`lmmono`, font-ratio-latin, 0.)
+  val font-cjk-mincho   = (`ipaexm`, font-ratio-cjk  , 0.)
+  val font-cjk-gothic   = (`ipaexg`, font-ratio-cjk  , 0.)
 
-val set-latin-font font ctx =
-  ctx |> set-font Latin font
+  val set-latin-font font ctx =
+    ctx |> set-font Latin font
 
-val set-cjk-font font ctx =
-  ctx |> set-font HanIdeographic font
-      |> set-font Kana           font
+  val set-cjk-font font ctx =
+    ctx |> set-font HanIdeographic font
+        |> set-font Kana           font
 
-val inline ctx \emph inner =
-  let ctx-emph =
-    ctx |> set-font Latin font-latin-italic
-        |> set-cjk-font font-cjk-gothic
-        |> set-text-color (CMYK(1., 0., 0., 0.))
-  in
+  val inline ctx \emph inner =
+    let ctx-emph =
+      ctx |> set-font Latin font-latin-italic
+          |> set-cjk-font font-cjk-gothic
+          |> set-text-color (CMYK(1., 0., 0., 0.))
+    in
     read-inline ctx-emph inner
 
-val inline \emph2 inner = {\emph{#inner;}}
+  val inline \emph2 inner = {\emph{#inner;}}
 
-val mutable ref-title <- {}
-val mutable ref-author <- {}
+  val mutable ref-title <- {}
+  val mutable ref-author <- {}
 
-val document rcd inner =
-  let title = rcd#title in
-  let author = rcd#author in
-  let page = A4Paper in
-  let pt = (100pt, 100pt) in
-  let wid = 400pt in
-  let hgt = 650pt in
-  let ctx-doc =
-    get-initial-context wid (command \Math.math)
-      |> set-font Latin font-latin-roman
-      |> set-language Latin English
-      |> set-dominant-narrow-script Latin
-      |> set-math-font `lmodern`
-      |> set-hyphen-penalty 100
-  in
-  let () = ref-title <- title in
-  let () = ref-author <- author in
-  let bc = read-block ctx-doc inner in
-  let pagecontf _ = (| text-height = hgt, text-origin = pt |) in
-  let pagepartsf _ =
-    (|
-      header-origin  = (0pt, 0pt),
-      header-content = block-nil,
-      footer-origin  = (0pt, 0pt),
-      footer-content = block-nil,
-    |)
-  in
+  val document rcd inner =
+    let title = rcd#title in
+    let author = rcd#author in
+    let page = A4Paper in
+    let pt = (100pt, 100pt) in
+    let wid = 400pt in
+    let hgt = 650pt in
+    let ctx-doc =
+      get-initial-context wid (command \Math.math)
+        |> set-font Latin font-latin-roman
+        |> set-language Latin English
+        |> set-dominant-narrow-script Latin
+        |> set-math-font `lmodern`
+        |> set-hyphen-penalty 100
+    in
+    let () = ref-title <- title in
+    let () = ref-author <- author in
+    let bc = read-block ctx-doc inner in
+    let pagecontf _ = (| text-height = hgt, text-origin = pt |) in
+    let pagepartsf _ =
+      (|
+        header-origin  = (0pt, 0pt),
+        header-content = block-nil,
+        footer-origin  = (0pt, 0pt),
+        footer-content = block-nil,
+      |)
+    in
     page-break page pagecontf pagepartsf bc
 
-val title-deco =
-  let pads = (5pt, 5pt, 10pt, 10pt) in
-  let deco (x, y) wid hgt dpt =
-    let path1 =
-      let cx = 14pt in
-      let cy = 8pt in
-      let xL = x in
-      let xR = x +' wid in
-      let yT = y +' hgt in
-      let yB = y -' dpt in
-        start-path (xL, yT)
-          |> line-to (xR, yT)
-          |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
-          |> line-to (xL, yB)
-          |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
+  val title-deco =
+    let pads = (5pt, 5pt, 10pt, 10pt) in
+    let deco (x, y) wid hgt dpt =
+      let path1 =
+        let cx = 14pt in
+        let cy = 8pt in
+        let xL = x in
+        let xR = x +' wid in
+        let yT = y +' hgt in
+        let yB = y -' dpt in
+          start-path (xL, yT)
+            |> line-to (xR, yT)
+            |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
+            |> line-to (xL, yB)
+            |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
+      in
+      let path2 =
+        let cx = 12pt in
+        let cy = 8pt in
+        let gapx = 3pt in
+        let gapy = 5pt in
+        let xL = x +' gapx in
+        let xR = x +' wid -' gapx in
+        let yT = y +' hgt -' gapy in
+        let yB = y -' dpt +' gapy in
+          start-path (xL, yT)
+            |> line-to (xR, yT)
+            |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
+            |> line-to (xL, yB)
+            |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
+      in
+        [
+          stroke 3pt black path1,
+          stroke 1pt black path2,
+        ]
     in
-    let path2 =
-      let cx = 12pt in
-      let cy = 8pt in
-      let gapx = 3pt in
-      let gapy = 5pt in
-      let xL = x +' gapx in
-      let xR = x +' wid -' gapx in
-      let yT = y +' hgt -' gapy in
-      let yB = y -' dpt +' gapy in
-        start-path (xL, yT)
-          |> line-to (xR, yT)
-          |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
-          |> line-to (xL, yB)
-          |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
-    in
-      [
-        stroke 3pt black path1,
-        stroke 1pt black path2,
-      ]
-  in
-    (deco, deco, deco, deco)
+      (deco, deco, deco, deco)
 
-val block ctx +make-title =
-  let pads = (20pt, 20pt, 10pt, 10pt) in
-  block-frame-breakable ctx pads title-deco (fun ctx -> (
+  val block ctx +make-title =
+    let pads = (20pt, 20pt, 10pt, 10pt) in
+    block-frame-breakable ctx pads title-deco (fun ctx -> (
+      let ctx-title =
+        ctx |> set-font-size font-size-title
+            |> set-font Latin font-latin-roman
+      in
+      let ctx-author =
+        ctx |> set-font-size font-size-author
+            |> set-font Latin font-latin-roman
+      in
+      let ib-title = read-inline ctx-title (!ref-title) in
+      let ib-author = read-inline ctx-author (!ref-author) in
+      let bb-title = form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil) in
+      let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
+        bb-title +++ bb-author
+    ))
+
+  val indent = inline-skip 24pt
+
+  val indent-jp = inline-skip 10pt
+
+  val mutable needs-indentation-ref <- true
+
+  val block ctx +p inner =
+    let needs-indentation =
+      if !needs-indentation-ref then
+        true
+      else
+        let () = needs-indentation-ref <- true in
+          false
+    in
+    let br = read-inline ctx inner in
+    let br-parag =
+      if needs-indentation then
+        indent ++ br ++ inline-fil
+      else
+        br ++ inline-fil
+    in
+      form-paragraph ctx br-parag
+
+  val col-simple-decoset =
+    let lw = 1pt in
+    let lcolor = RGB(0., 0., 0.5) in
+    let frame-stroke = stroke lw lcolor in
+    let decoS (x, y) wid hgt dpt =
+      [ start-path (x, y -' dpt)
+          |> line-to (x, y +' hgt)
+          |> line-to (x +' wid, y +' hgt)
+          |> line-to (x +' wid, y -' dpt)
+          |> close-with-line
+          |> frame-stroke ]
+    in
+    let decoH (x, y) wid hgt dpt =
+      [ start-path (x, y -' dpt)
+          |> line-to (x, y +' hgt)
+          |> line-to (x +' wid, y +' hgt)
+          |> line-to (x +' wid, y -' dpt)
+          |> terminate-path
+          |> frame-stroke ]
+    in
+    let decoM (x, y) wid hgt dpt =
+      [ start-path (x, y -' dpt) |> line-to (x, y +' hgt) |> terminate-path |> frame-stroke,
+        start-path (x +' wid, y -' dpt) |> line-to (x +' wid, y +' hgt) |> terminate-path |> frame-stroke, ]
+    in
+    let decoT (x, y) wid hgt dpt =
+      [ start-path (x, y +' hgt)
+          |> line-to (x, y -' dpt)
+          |> line-to (x +' wid, y -' dpt)
+          |> line-to (x +' wid, y +' hgt)
+          |> terminate-path
+          |> frame-stroke ]
+    in
+      (decoS, decoH, decoM, decoT)
+
+  val block ctx +frame inner =
+    let pads = (10pt, 10pt, 5pt, 5pt) in
+    let () = needs-indentation-ref <- false in
+      block-frame-breakable ctx pads col-simple-decoset (fun ctx ->
+        read-block ctx inner)
+
+  val block ctx +p-jp inner =
+    let ctx-jp =
+      ctx |> set-cjk-font font-cjk-mincho
+          |> set-language HanIdeographic Japanese
+          |> set-language Kana Japanese
+          |> set-dominant-wide-script HanIdeographic
+          |> set-leading (get-font-size ctx *' 1.7)
+    in
+    let () = needs-indentation-ref <- true in
+    let br = read-inline ctx-jp inner in
+      form-paragraph ctx-jp (indent-jp ++ br ++ inline-fil)
+
+  val mutable num-section <- 0
+
+  val block ctx +section title inner =
     let ctx-title =
-      ctx |> set-font-size font-size-title
-          |> set-font Latin font-latin-roman
+      ctx |> set-font-size font-size-section
+          |> set-font Latin font-latin-sans
+          |> set-cjk-font font-cjk-gothic
     in
-    let ctx-author =
-      ctx |> set-font-size font-size-author
-          |> set-font Latin font-latin-roman
+    let () = num-section <- !num-section + 1 in
+    let () = needs-indentation-ref <- false in
+    let br-num = read-inline ctx-title (embed-string ((arabic (!num-section)) ^ `.`)) in
+    let br-title = read-inline ctx-title title in
+    let bc-title = line-break true false ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
+    let bc-inner = read-block ctx inner in
+      bc-title +++ bc-inner
+
+  val inline ctx \expand-spaces inner =
+    let ctx-inner = set-space-ratio 1.0 0.08 0.16 ctx in
+      read-inline ctx-inner inner
+
+  %val block-detailed ctx +px inner =
+  %  let br = read-inline ctx inner in
+  %  let bc = form-paragraph ctx (indent ++ br ++ inline-fil) in
+  %  let ctx-after = set-font Latin font-latin-italic ctx in
+  %    (ctx-after, bc)
+
+  val simple-decoset =
+    let frame-stroke = stroke 1pt red in
+    let margin-x = 2pt in
+    let margin-y = 2pt in
+    let decoS (x, y) wid hgt dpt =
+      let xb = x +' margin-x in
+      let widb = wid -' (margin-x *' 2.) in
+      let hgtb = hgt -' margin-y in
+      let dptb = dpt -' margin-y in
+      let path =
+        start-path (xb, y -' dptb)
+          |> line-to (xb, y +' hgtb)
+          |> line-to (xb +' widb, y +' hgtb)
+          |> line-to (xb +' widb, y -' dptb)
+          |> close-with-line
+      in
+      [ frame-stroke path ]
     in
-    let ib-title = read-inline ctx-title (!ref-title) in
-    let ib-author = read-inline ctx-author (!ref-author) in
-    let bb-title = form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil) in
-    let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
-      bb-title +++ bb-author
-  ))
-
-val indent = inline-skip 24pt
-
-val indent-jp = inline-skip 10pt
-
-val mutable needs-indentation-ref <- true
-
-val block ctx +p inner =
-  let needs-indentation =
-    if !needs-indentation-ref then
-      true
-    else
-      let () = needs-indentation-ref <- true in
-        false
-  in
-  let br = read-inline ctx inner in
-  let br-parag =
-    if needs-indentation then
-      indent ++ br ++ inline-fil
-    else
-      br ++ inline-fil
-  in
-    form-paragraph ctx br-parag
-
-val col-simple-decoset =
-  let lw = 1pt in
-  let lcolor = RGB(0., 0., 0.5) in
-  let frame-stroke = stroke lw lcolor in
-  let decoS (x, y) wid hgt dpt =
-    [ start-path (x, y -' dpt)
-        |> line-to (x, y +' hgt)
-        |> line-to (x +' wid, y +' hgt)
-        |> line-to (x +' wid, y -' dpt)
-        |> close-with-line
-        |> frame-stroke ]
-  in
-  let decoH (x, y) wid hgt dpt =
-    [ start-path (x, y -' dpt)
-        |> line-to (x, y +' hgt)
-        |> line-to (x +' wid, y +' hgt)
-        |> line-to (x +' wid, y -' dpt)
-        |> terminate-path
-        |> frame-stroke ]
-  in
-  let decoM (x, y) wid hgt dpt =
-    [ start-path (x, y -' dpt) |> line-to (x, y +' hgt) |> terminate-path |> frame-stroke,
-      start-path (x +' wid, y -' dpt) |> line-to (x +' wid, y +' hgt) |> terminate-path |> frame-stroke, ]
-  in
-  let decoT (x, y) wid hgt dpt =
-    [ start-path (x, y +' hgt)
-        |> line-to (x, y -' dpt)
-        |> line-to (x +' wid, y -' dpt)
-        |> line-to (x +' wid, y +' hgt)
-        |> terminate-path
-        |> frame-stroke ]
-  in
+    let decoH (x, y) wid hgt dpt =
+      let xb = x +' margin-x in
+      let widb = wid -' margin-x in
+      let hgtb = hgt -' margin-y in
+      let dptb = dpt -' margin-y in
+      let path =
+        start-path (xb +' widb, y -' dptb)
+          |> line-to (xb, y -' dptb)
+          |> line-to (xb, y +' hgtb)
+          |> line-to (xb +' widb, y +' hgtb)
+          |> terminate-path
+      in
+      [ frame-stroke path ]
+    in
+    let decoT (x, y) wid hgt dpt =
+      let xb = x in
+      let widb = wid -' margin-x in
+      let hgtb = hgt -' margin-y in
+      let dptb = dpt -' margin-y in
+      let path =
+        start-path (xb, y -' dptb)
+          |> line-to (xb +' widb, y -' dptb)
+          |> line-to (xb +' widb, y +' hgtb)
+          |> line-to (xb, y +' hgtb)
+          |> terminate-path
+      in
+      [ frame-stroke path ]
+    in
+    let decoM (x, y) wid hgt dpt =
+      let xb = x in
+      let widb = wid in
+      let hgtb = hgt -' margin-y in
+      let dptb = dpt -' margin-y in
+      [
+        frame-stroke (start-path (xb, y -' dptb) |> line-to (xb +' widb, y -' dptb) |> terminate-path),
+        frame-stroke (start-path (xb, y +' hgtb) |> line-to (xb +' widb, y +' hgtb) |> terminate-path),
+      ]
+    in
     (decoS, decoH, decoM, decoT)
 
-val block ctx +frame inner =
-  let pads = (10pt, 10pt, 5pt, 5pt) in
-  let () = needs-indentation-ref <- false in
-    block-frame-breakable ctx pads col-simple-decoset (fun ctx ->
-      read-block ctx inner)
 
-val block ctx +p-jp inner =
-  let ctx-jp =
-    ctx |> set-cjk-font font-cjk-mincho
-        |> set-language HanIdeographic Japanese
-        |> set-language Kana Japanese
-        |> set-dominant-wide-script HanIdeographic
-        |> set-leading (get-font-size ctx *' 1.7)
-  in
-  let () = needs-indentation-ref <- true in
-  let br = read-inline ctx-jp inner in
-    form-paragraph ctx-jp (indent-jp ++ br ++ inline-fil)
+  val simple-deco =
+    let (simple-deco, _, _, _) = simple-decoset in
+    simple-deco
 
-val mutable num-section <- 0
 
-val block ctx +section title inner =
-  let ctx-title =
-    ctx |> set-font-size font-size-section
-        |> set-font Latin font-latin-sans
-        |> set-cjk-font font-cjk-gothic
-  in
-  let () = num-section <- !num-section + 1 in
-  let () = needs-indentation-ref <- false in
-  let br-num = read-inline ctx-title (embed-string ((arabic (!num-section)) ^ `.`)) in
-  let br-title = read-inline ctx-title title in
-  let bc-title = line-break true false ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
-  let bc-inner = read-block ctx inner in
-    bc-title +++ bc-inner
-
-val inline ctx \expand-spaces inner =
-  let ctx-inner = set-space-ratio 1.0 0.08 0.16 ctx in
-    read-inline ctx-inner inner
-
-%val block-detailed ctx +px inner =
-%  let br = read-inline ctx inner in
-%  let bc = form-paragraph ctx (indent ++ br ++ inline-fil) in
-%  let ctx-after = set-font Latin font-latin-italic ctx in
-%    (ctx-after, bc)
-
-val simple-decoset =
-  let frame-stroke = stroke 1pt red in
-  let margin-x = 2pt in
-  let margin-y = 2pt in
-  let decoS (x, y) wid hgt dpt =
-    let xb = x +' margin-x in
-    let widb = wid -' (margin-x *' 2.) in
-    let hgtb = hgt -' margin-y in
-    let dptb = dpt -' margin-y in
-    let path =
-      start-path (xb, y -' dptb)
-        |> line-to (xb, y +' hgtb)
-        |> line-to (xb +' widb, y +' hgtb)
-        |> line-to (xb +' widb, y -' dptb)
-        |> close-with-line
+  val screen-decoset size ib-heading-raw =
+    let lskip = size *' 0.125 in
+    let ib-heading = inline-skip lskip ++ ib-heading-raw ++ inline-skip lskip in
+    let hwid = Pervasives.get-natural-width ib-heading in
+    let lshift = 10pt in
+    let frame-stroke = stroke 1pt black in
+    let decoS (x, y) wid hgt dpt =
+      let (x1, y1) = (x, y +' hgt)  in
+      let (x2, y2) = (x +' wid, y -' dpt) in
+        [ start-path (x1 +' lshift, y1)
+            |> line-to (x1, y1)
+            |> line-to (x1, y2)
+            |> line-to (x2, y2)
+            |> line-to (x2, y1)
+            |> line-to (x1 +' lshift +' hwid, y1)
+            |> terminate-path |> frame-stroke,
+          draw-text (x1 +' lshift, y1 -' size *' 0.4) ib-heading,
+        ]
     in
-    [ frame-stroke path ]
-  in
-  let decoH (x, y) wid hgt dpt =
-    let xb = x +' margin-x in
-    let widb = wid -' margin-x in
-    let hgtb = hgt -' margin-y in
-    let dptb = dpt -' margin-y in
-    let path =
-      start-path (xb +' widb, y -' dptb)
-        |> line-to (xb, y -' dptb)
-        |> line-to (xb, y +' hgtb)
-        |> line-to (xb +' widb, y +' hgtb)
-        |> terminate-path
+      (decoS, decoS, decoS, decoS)
+
+  val block ctx +screen heading contents =
+    let ib-heading = read-inline (ctx |> set-cjk-font font-cjk-gothic) heading in
+    let size = get-font-size ctx in
+    let pads = (10pt, 10pt, size *' 0.5 +' 10pt, 10pt) in
+      block-frame-breakable ctx pads (screen-decoset size ib-heading) (fun ctx ->
+        read-block ctx contents
+      )
+
+  val inline ctx \inline-frame inner =
+    let pads = (5pt, 5pt, 5pt, 5pt) in
+    let br = read-inline ctx inner in
+      (inline-frame-breakable pads simple-decoset br)
+
+
+  val paddings = (5pt, 5pt, 5pt, 5pt)
+
+  val inline ctx \frame-inner it =
+    inline-frame-inner paddings simple-deco (read-inline ctx it)
+
+  val inline ctx \frame-outer it =
+    inline-frame-outer paddings simple-deco (read-inline ctx it)
+
+  val inline ctx \frame-fixed wid it =
+    inline-frame-fixed wid paddings simple-deco (read-inline ctx it)
+
+
+  val (+++>) = List.fold-left (+++)
+
+  val item-indent = 16pt
+
+  val circle (cx, cy) r =
+    let t = r *' 0.55228 in
+      start-path (cx -' r, cy)
+        |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
+        |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
+        |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
+        |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
+
+  val bullet (x, y) =
+    let cx = x +' 4pt in
+    let cy = y +' 4pt in
+    let r = 2pt in
+      [ fill (Gray(0.)) (circle (cx, cy) r), ]
+
+  val rec item (ctx : context) (depth : int) (Item(parent, children) : itemize) =
+    let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (inline-skip 8pt) in
+    let bullet-width = Pervasives.get-natural-width br-bullet in
+    let parent-indent = item-indent *' (float depth) in
+    let br-parent =
+      embed-block-top ctx ((get-text-width ctx) -' parent-indent -' bullet-width) (fun ctx ->
+        form-paragraph ctx ((read-inline ctx parent) ++ inline-fil)
+      )
     in
-    [ frame-stroke path ]
-  in
-  let decoT (x, y) wid hgt dpt =
-    let xb = x in
-    let widb = wid -' margin-x in
-    let hgtb = hgt -' margin-y in
-    let dptb = dpt -' margin-y in
-    let path =
-      start-path (xb, y -' dptb)
-        |> line-to (xb +' widb, y -' dptb)
-        |> line-to (xb +' widb, y +' hgtb)
-        |> line-to (xb, y +' hgtb)
-        |> terminate-path
+    let bc-parent =
+      form-paragraph ctx
+        ((inline-skip parent-indent) ++ br-bullet ++ br-parent)
     in
-    [ frame-stroke path ]
-  in
-  let decoM (x, y) wid hgt dpt =
-    let xb = x in
-    let widb = wid in
-    let hgtb = hgt -' margin-y in
-    let dptb = dpt -' margin-y in
-    [
-      frame-stroke (start-path (xb, y -' dptb) |> line-to (xb +' widb, y -' dptb) |> terminate-path),
-      frame-stroke (start-path (xb, y +' hgtb) |> line-to (xb +' widb, y +' hgtb) |> terminate-path),
-    ]
-  in
-  (decoS, decoH, decoM, decoT)
+    let bclst-children = List.map (item ctx (depth + 1)) children in
+    bc-parent +++> bclst-children
 
-
-val simple-deco =
-  let (simple-deco, _, _, _) = simple-decoset in
-  simple-deco
-
-
-val screen-decoset size ib-heading-raw =
-  let lskip = size *' 0.125 in
-  let ib-heading = inline-skip lskip ++ ib-heading-raw ++ inline-skip lskip in
-  let hwid = Pervasives.get-natural-width ib-heading in
-  let lshift = 10pt in
-  let frame-stroke = stroke 1pt black in
-  let decoS (x, y) wid hgt dpt =
-    let (x1, y1) = (x, y +' hgt)  in
-    let (x2, y2) = (x +' wid, y -' dpt) in
-      [ start-path (x1 +' lshift, y1)
-          |> line-to (x1, y1)
-          |> line-to (x1, y2)
-          |> line-to (x2, y2)
-          |> line-to (x2, y1)
-          |> line-to (x1 +' lshift +' hwid, y1)
-          |> terminate-path |> frame-stroke,
-        draw-text (x1 +' lshift, y1 -' size *' 0.4) ib-heading,
-      ]
-  in
-    (decoS, decoS, decoS, decoS)
-
-val block ctx +screen heading contents =
-  let ib-heading = read-inline (ctx |> set-cjk-font font-cjk-gothic) heading in
-  let size = get-font-size ctx in
-  let pads = (10pt, 10pt, size *' 0.5 +' 10pt, 10pt) in
-    block-frame-breakable ctx pads (screen-decoset size ib-heading) (fun ctx ->
-      read-block ctx contents
-    )
-
-val inline ctx \inline-frame inner =
-  let pads = (5pt, 5pt, 5pt, 5pt) in
-  let br = read-inline ctx inner in
-    (inline-frame-breakable pads simple-decoset br)
-
-
-val paddings = (5pt, 5pt, 5pt, 5pt)
-
-val inline ctx \frame-inner it =
-  inline-frame-inner paddings simple-deco (read-inline ctx it)
-
-val inline ctx \frame-outer it =
-  inline-frame-outer paddings simple-deco (read-inline ctx it)
-
-val inline ctx \frame-fixed wid it =
-  inline-frame-fixed wid paddings simple-deco (read-inline ctx it)
-
-
-val (+++>) = List.fold-left (+++)
-
-val item-indent = 16pt
-
-val circle (cx, cy) r =
-  let t = r *' 0.55228 in
-    start-path (cx -' r, cy)
-      |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
-      |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
-      |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
-      |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
-
-val bullet (x, y) =
-  let cx = x +' 4pt in
-  let cy = y +' 4pt in
-  let r = 2pt in
-    [ fill (Gray(0.)) (circle (cx, cy) r), ]
-
-val rec item (ctx : context) (depth : int) (Item(parent, children) : itemize) =
-  let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (inline-skip 8pt) in
-  let bullet-width = Pervasives.get-natural-width br-bullet in
-  let parent-indent = item-indent *' (float depth) in
-  let br-parent =
-    embed-block-top ctx ((get-text-width ctx) -' parent-indent -' bullet-width) (fun ctx ->
-      form-paragraph ctx ((read-inline ctx parent) ++ inline-fil)
-    )
-  in
-  let bc-parent =
-    form-paragraph ctx
-      ((inline-skip parent-indent) ++ br-bullet ++ br-parent)
-  in
-  let bclst-children = List.map (item ctx (depth + 1)) children in
-  bc-parent +++> bclst-children
-
-val block ctx +listing (Item(_, itmzlst)) =
-  let bclst = List.map (item ctx 0) itmzlst in
+  val block ctx +listing (Item(_, itmzlst)) =
+    let bclst = List.map (item ctx 0) itmzlst in
     block-nil +++> bclst
 
-val block ctx +expand-leading inner =
-  read-block (ctx |> set-leading 32pt) inner
+  val block ctx +expand-leading inner =
+    read-block (ctx |> set-leading 32pt) inner
 
-val inline ctx \parbox-top wid inner =
-  embed-block-top ctx wid (fun ctx -> read-block ctx inner)
+  val inline ctx \parbox-top wid inner =
+    embed-block-top ctx wid (fun ctx -> read-block ctx inner)
 
-val inline ctx \parbox-bottom wid inner =
-  embed-block-bottom ctx wid (fun ctx -> read-block ctx inner)
+  val inline ctx \parbox-bottom wid inner =
+    embed-block-bottom ctx wid (fun ctx -> read-block ctx inner)
 
-val block ctx +repeat n inner =
-  let bc = read-block ctx inner in
-  let rec repeat acc i =
-    if i >= n then acc else
-      repeat (bc +++ acc) (i + 1)
-  in
+  val block ctx +repeat n inner =
+    let bc = read-block ctx inner in
+    let rec repeat acc i =
+      if i >= n then acc else
+        repeat (bc +++ acc) (i + 1)
+    in
     repeat block-nil 0
 
-val description ctx pairlst =
-  let indent = 24pt in
-  let bclst =
-    pairlst |> List.map (fun (item, descr) -> (
-      let br-item =
-        let ctx-item =
-          ctx |> set-font Latin font-latin-sans
-        in
+  val description ctx pairlst =
+    let indent = 24pt in
+    let bclst =
+      pairlst |> List.map (fun (item, descr) -> (
+        let br-item =
+          let ctx-item = ctx |> set-font Latin font-latin-sans in
           read-inline ctx-item item
-      in
-      let br-descr = read-inline ctx descr in
-      let br-pbox =
-        embed-block-top ctx ((get-text-width ctx) -' indent) (fun ctx ->
-          form-paragraph ctx ((inline-skip (0pt -' indent)) ++ br-item ++ (inline-skip 12pt) ++ br-descr ++ inline-fil)
-        )
-      in
+        in
+        let br-descr = read-inline ctx descr in
+        let br-pbox =
+          embed-block-top ctx ((get-text-width ctx) -' indent) (fun ctx ->
+            form-paragraph ctx ((inline-skip (0pt -' indent)) ++ br-item ++ (inline-skip 12pt) ++ br-descr ++ inline-fil)
+          )
+        in
         form-paragraph ctx ((inline-skip indent) ++ br-pbox)
-    ))
-  in
-    block-nil +++> bclst
+      ))
+    in
+      block-nil +++> bclst
 
-val block ctx +description pairlst =
-  description ctx pairlst
+  val block ctx +description pairlst =
+    description ctx pairlst
 
-val decoset-underline =
-  let distance = 4pt in
-  let deco (x, y) wid _ _ =
-    [ stroke 1pt (RGB(0., 0.5, 0.))
-        (start-path (x, y -' distance) |> line-to (x +' wid, y -' distance) |> terminate-path) ]
-  in
-    (deco, deco, deco, deco)
+  val decoset-underline =
+    let distance = 4pt in
+    let deco (x, y) wid _ _ =
+      [ stroke 1pt (RGB(0., 0.5, 0.))
+          (start-path (x, y -' distance) |> line-to (x +' wid, y -' distance) |> terminate-path) ]
+    in
+      (deco, deco, deco, deco)
 
-val inline ctx \underline inner =
-  let pads = (0pt, 0pt, 0pt, 0pt) in
-  let br = read-inline ctx inner in
+  val inline ctx \underline inner =
+    let pads = (0pt, 0pt, 0pt, 0pt) in
+    let br = read-inline ctx inner in
     inline-frame-breakable pads decoset-underline br
 
-val donut-path (cx, cy) r1 r2 =
-  unite-path (circle (cx, cy) r1) (circle (cx, cy) r2)
+  val donut-path (cx, cy) r1 r2 =
+    unite-path (circle (cx, cy) r1) (circle (cx, cy) r2)
 
-val inline ctx \donut =
-  let wid = 14pt in
-  let chgt = 4pt in
-  let r1 = 6pt in
-  let r2 = 3pt in
-    inline-graphics wid 12pt 0pt (fun (x, y) -> (
-      let cx = x +' wid *' 0.5 in
-      let cy = y +' chgt in
+  val inline ctx \donut =
+    let wid = 14pt in
+    let chgt = 4pt in
+    let r1 = 6pt in
+    let r2 = 3pt in
+      inline-graphics wid 12pt 0pt (fun (x, y) -> (
+        let cx = x +' wid *' 0.5 in
+        let cy = y +' chgt in
         [ fill (RGB(0.8, 0.5, 0.)) (donut-path (cx, cy) r1 r2), ]
-    ))
+      ))
 
-val inline ctx \donuts =
-  let r1 = 6pt in
-  let r2 = 3pt in
+  val inline ctx \donuts =
+    let r1 = 6pt in
+    let r2 = 3pt in
     inline-graphics 18pt 12pt 0pt (fun (x, y) -> (
       let cp1 = (x +' 7pt, y +' 4pt) in
       let cp2 = (x +' 11pt, y +' 1pt) in
-        [
-          fill (RGB(0.7, 0.4, 0.)) (donut-path cp2 r1 r2),
-          fill (RGB(0.8, 0.5, 0.)) (donut-path cp1 r1 r2),
-        ]
+      [
+        fill (RGB(0.7, 0.4, 0.)) (donut-path cp2 r1 r2),
+        fill (RGB(0.8, 0.5, 0.)) (donut-path cp1 r1 r2),
+      ]
     ))
 
 
-val kern len = inline-skip (0pt -' len)
+  val kern len = inline-skip (0pt -' len)
 
-val inline ctx \latex =
-  let size = get-font-size ctx in
-  let f = read-inline ctx in
-  let fA = ctx |> set-font-size (size *' 0.7)
-               |> set-manual-rising (size *' 0.2)
-               |> read-inline
-  in
-  let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
-               |> read-inline
-  in
-    f {L} ++ kern (size *' 0.2) ++ fA {A}
-      ++ f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
-
-val inline ctx \satysfi =
-  let size = get-font-size ctx in
-  let f = read-inline ctx in
-  let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> read-inline in
-   f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
-
-val inline ctx \raw-font-size font-size inner =
-  read-inline (ctx |> set-font-size font-size) inner
-
-val inline ctx \sample-diagram =
-  let wid = 100pt in
-  let hgt = 100pt in
-  let dpt = 10pt in
-  inline-graphics wid hgt dpt (fun (x, y) -> (
-    let path-frame =
-      start-path (x, y +' hgt)
-        |> line-to (x, y -' dpt)
-        |> line-to (x +' wid, y -' dpt)
-        |> line-to (x +' wid, y +' hgt)
-        |> close-with-line
+  val inline ctx \latex =
+    let size = get-font-size ctx in
+    let f = read-inline ctx in
+    let fA = ctx |> set-font-size (size *' 0.7)
+                 |> set-manual-rising (size *' 0.2)
+                 |> read-inline
     in
-    let br = read-inline ctx {Sample Text} in
-    let wid-text = Pervasives.get-natural-width br in
-      [
-        draw-text (x, y) br,
-        draw-text (x +' wid *' 0.5 -' wid-text *' 0.5, y +' 50pt) br,
-        stroke 2pt red path-frame,
-      ]
-  ))
+    let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
+                 |> read-inline
+    in
+      f {L} ++ kern (size *' 0.2) ++ fA {A}
+        ++ f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
 
-val inline ctx \new-line =
-  inline-fil ++ (discretionary (-10000) inline-nil inline-nil inline-nil)
+  val inline ctx \satysfi =
+    let size = get-font-size ctx in
+    let f = read-inline ctx in
+    let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> read-inline in
+     f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
 
-val block ctx +ignore _ = block-nil
+  val inline ctx \raw-font-size font-size inner =
+    read-inline (ctx |> set-font-size font-size) inner
 
-val inline ctx \stack-top lst =
-  let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+  val inline ctx \sample-diagram =
+    let wid = 100pt in
+    let hgt = 100pt in
+    let dpt = 10pt in
+    inline-graphics wid hgt dpt (fun (x, y) -> (
+      let path-frame =
+        start-path (x, y +' hgt)
+          |> line-to (x, y -' dpt)
+          |> line-to (x +' wid, y -' dpt)
+          |> line-to (x +' wid, y +' hgt)
+          |> close-with-line
+      in
+      let br = read-inline ctx {Sample Text} in
+      let wid-text = Pervasives.get-natural-width br in
+        [
+          draw-text (x, y) br,
+          draw-text (x +' wid *' 0.5 -' wid-text *' 0.5, y +' 50pt) br,
+          stroke 2pt red path-frame,
+        ]
+    ))
+
+  val inline ctx \new-line =
+    inline-fil ++ (discretionary (-10000) inline-nil inline-nil inline-nil)
+
+  val block ctx +ignore _ = block-nil
+
+  val inline ctx \stack-top lst =
+    let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
     line-stack-top iblst
 
-val inline ctx \stack-bottom lst =
-  let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+  val inline ctx \stack-bottom lst =
+    let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
     line-stack-bottom iblst
 
-val inline ctx \tabular lstf =
-  let pads = (5pt, 5pt, 2pt, 2pt) in
-  let cellf it = NormalCell(pads, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
-  let multif nr nc it = MultiCell(nr, nc, pads, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
-  let empty = EmptyCell in
-    tabular (lstf cellf multif empty) (fun xs ys -> (
+  val inline ctx \tabular lstf =
+    let pads = (5pt, 5pt, 2pt, 2pt) in
+    let cellf it = NormalCell(pads, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+    let multif nr nc it = MultiCell(nr, nc, pads, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+    let empty = EmptyCell in
+      tabular (lstf cellf multif empty) (fun xs ys -> (
         match (xs, List.reverse xs) with
         | (xF :: _, xL :: _) ->
-            ( match (ys, List.reverse ys) with
-              | (yF :: _, yL :: _) ->
-                  xs |> List.map (fun x -> start-path (x, yF) |> line-to (x, yL) |> terminate-path)
-                    |> List.map (stroke 1pt (RGB(0., 0., 0.)))
+            match (ys, List.reverse ys) with
+            | (yF :: _, yL :: _) ->
+                xs |> List.map (fun x -> start-path (x, yF) |> line-to (x, yL) |> terminate-path)
+                   |> List.map (stroke 1pt (RGB(0., 0., 0.)))
 
-              | _ -> []
-              end )
+            | _ ->
+                []
+            end
 
-        | _ -> []
-        end ))
+        | _ ->
+            []
+        end
+      ))
 
-module Img :> sig
-  val \import-pdf : inline [string, int, length]
-  val \import-image : inline [string, length]
-end = struct
-  val inline ctx \import-pdf filepath pageno wid =
-    let img = load-pdf-image filepath pageno in
+  module Img :> sig
+    val \import-pdf : inline [string, int, length]
+    val \import-image : inline [string, length]
+  end = struct
+    val inline ctx \import-pdf filepath pageno wid =
+      let img = load-pdf-image filepath pageno in
       use-image-by-width img wid
 
-  val inline ctx \import-image filepath wid =
-    let img = load-image filepath in
+    val inline ctx \import-image filepath wid =
+      let img = load-image filepath in
       use-image-by-width img wid
-end
+  end
 
 
-val inline ctx \fil =
-  inline-fil
+  val inline ctx \fil =
+    inline-fil
 
 
-val block ctx +code code =
-  let pads = (5pt, 5pt, 5pt, 5pt) in
-  block-frame-breakable ctx pads simple-decoset (fun ctx -> (
-    let fontsize = get-font-size ctx in
-    let charwid = Pervasives.get-natural-width (read-inline ctx {0}) in
-    let ctx-code =
-      ctx |> set-latin-font font-latin-mono
-          |> set-space-ratio (charwid /' fontsize) 0.08 0.16
-    in
+  val block ctx +code code =
+    let pads = (5pt, 5pt, 5pt, 5pt) in
+    block-frame-breakable ctx pads simple-decoset (fun ctx -> (
+      let fontsize = get-font-size ctx in
+      let charwid = Pervasives.get-natural-width (read-inline ctx {0}) in
+      let ctx-code =
+        ctx |> set-latin-font font-latin-mono
+            |> set-space-ratio (charwid /' fontsize) 0.08 0.16
+      in
 
-    let lst = split-into-lines code in
-    let ib-code =
-      lst |> List.fold-left-adjacent (fun ibacc (i, s) _ optnext -> (
-%        let () = display-message (`+code: (` ^ (arabic i) ^ `)` ^ s) in
-        let ib-last =
-          match optnext with
-          | Some(_) -> inline-fil ++ discretionary 0 (inline-skip 1000000pt) inline-nil inline-nil
-          | None    -> inline-fil
-          end
-        in
-        let ib =
-          inline-skip (charwid *' (float i))
-            ++ read-inline ctx-code (embed-string s)
-            ++ ib-last
-        in
-          ibacc ++ ib
-      )) inline-nil
-    in
+      let lst = split-into-lines code in
+      let ib-code =
+        lst |> List.fold-left-adjacent (fun ibacc (i, s) _ optnext -> (
+  %        let () = display-message (`+code: (` ^ (arabic i) ^ `)` ^ s) in
+          let ib-last =
+            match optnext with
+            | Some(_) -> inline-fil ++ discretionary 0 (inline-skip 1000000pt) inline-nil inline-nil
+            | None    -> inline-fil
+            end
+          in
+          let ib =
+            inline-skip (charwid *' (float i))
+              ++ read-inline ctx-code (embed-string s)
+              ++ ib-last
+          in
+            ibacc ++ ib
+        )) inline-nil
+      in
       line-break true true ctx ib-code
-  ))
+    ))
 
 
-val inline ctx \ruby itmain itruby =
-  let fontsize = get-font-size ctx in
-  let ctx-ruby = ctx |> set-font-size (fontsize *' 0.5) in
-  let ibmain = inline-fil ++ (read-inline ctx itmain) ++ inline-fil in
-  let ibruby = inline-fil ++ (read-inline ctx-ruby itruby) ++ inline-fil in
+  val inline ctx \ruby itmain itruby =
+    let fontsize = get-font-size ctx in
+    let ctx-ruby = ctx |> set-font-size (fontsize *' 0.5) in
+    let ibmain = inline-fil ++ (read-inline ctx itmain) ++ inline-fil in
+    let ibruby = inline-fil ++ (read-inline ctx-ruby itruby) ++ inline-fil in
     line-stack-bottom [ibruby, ibmain]
 
 
-val inline ctx \ruby-both itmain itrubyT itrubyB =
-  let fontsize = get-font-size ctx in
-  let ctx-ruby = ctx |> set-font-size (fontsize *' 0.5) in
-  let ibmain = inline-fil ++ (read-inline ctx itmain) ++ inline-fil in
-  let ibrubyT = inline-fil ++ (read-inline ctx-ruby itrubyT) ++ inline-fil in
-  let ibrubyB = inline-fil ++ (read-inline ctx-ruby itrubyB) ++ inline-fil in
+  val inline ctx \ruby-both itmain itrubyT itrubyB =
+    let fontsize = get-font-size ctx in
+    let ctx-ruby = ctx |> set-font-size (fontsize *' 0.5) in
+    let ibmain = inline-fil ++ (read-inline ctx itmain) ++ inline-fil in
+    let ibrubyT = inline-fil ++ (read-inline ctx-ruby itrubyT) ++ inline-fil in
+    let ibrubyB = inline-fil ++ (read-inline ctx-ruby itrubyB) ++ inline-fil in
     line-stack-top [line-stack-bottom [ibrubyT, ibmain], ibrubyB]
 
 end
