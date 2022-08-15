@@ -1,4 +1,8 @@
-module Macro1Local = struct
+module Macro1Local :> sig
+
+  val \message-with-pos@ : inline [~(input-position * string)]
+
+end = struct
 
   val inline \message-with-pos@ ~poss =
     ~(let (ipos, msg) = poss in

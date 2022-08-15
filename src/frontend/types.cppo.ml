@@ -155,6 +155,7 @@ let base_type_map : base_type TypeNameMap.t =
     ("math-text"   , MathType    );
     ("regexp"      , RegExpType  );
     ("text-info"   , TextInfoType);
+    ("input-position", InputPosType);
   ]
 
 

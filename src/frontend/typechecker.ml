@@ -1932,8 +1932,24 @@ and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : ki
   Kind(kds_dom)
 
 
-and decode_manual_macro_type (tyenv : Typeenv.t) (mmacty : manual_macro_type) : macro_type =
-  failwith "TODO: decode_manual_macro_type"
+and decode_manual_macro_type (pre : pre) (tyenv : Typeenv.t) (mmacty : manual_macro_type) : macro_type =
+  match mmacty with
+  | MHorzMacroType(mmacparamtys) ->
+      HorzMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
+
+  | MVertMacroType(mmacparamtys) ->
+      VertMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
+
+
+and decode_manual_macro_parameter_type (pre : pre) (tyenv : Typeenv.t) (mmacparamty : manual_macro_parameter_type) : macro_parameter_type =
+  match mmacparamty with
+  | MLateMacroParameter(mty) ->
+      let ty = decode_manual_type pre tyenv mty in
+      LateMacroParameter(TypeConv.lift_poly ty)
+
+  | MEarlyMacroParameter(mty) ->
+      let ty = decode_manual_type pre tyenv mty in
+      EarlyMacroParameter(TypeConv.lift_poly ty)
 
 
 and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
@@ -2960,7 +2976,16 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
       end
 
   | UTDeclMacro((rng_cs, csnm), (_, mmacty)) ->
-      let macty = decode_manual_macro_type tyenv mmacty in
+      let pre_init =
+        {
+          stage           = Stage0;
+          level           = Level.bottom;
+          type_parameters = TypeParameterMap.empty;
+          row_parameters  = RowParameterMap.empty;
+          quantifiability = Quantifiable;
+        }
+      in
+      let macty = decode_manual_macro_type pre_init tyenv mmacty in
       let macentry = { macro_type = macty; macro_name = None; } in
       let ssig = StructSig.empty |> StructSig.add_macro csnm macentry in
       (OpaqueIDMap.empty, ssig)
