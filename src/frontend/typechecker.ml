@@ -844,11 +844,8 @@ let rec typecheck
                   raise_error (NotAStructureSignature(rng_mod, fsig))
 
               | ConcStructure(ssig) ->
-                  failwith "TODO: UTOpenIn"
-(*
                   let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
                   typecheck_iter tyenv utast1
-*)
             end
       end
 
