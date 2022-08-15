@@ -812,7 +812,7 @@ end = struct
   let-math \bigcap = bigop `⋂`
   let-math \bigcup = bigop `⋃`
 
-  let-math \lnot = rel `¬`
+  let-math \lnot = ord `¬`
   let-math \land = rel `∧`
   let-math \lor  = rel `∨`
 
