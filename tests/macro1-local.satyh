@@ -1,0 +1,13 @@
+module Macro1Local = struct
+
+  val inline \message-with-pos@ ~poss =
+    ~(let (ipos, msg) = poss in
+      let (fname, ln, _) = get-input-position ipos in
+      &(let it-msg = embed-string ~(lift-string msg) in
+        let it-fname = embed-string ~(lift-string fname) in
+        let it-ln = embed-string (arabic ~(lift-int ln)) in
+        {#it-msg; (at line #it-ln; in #it-fname;)}
+      )
+    )
+
+end
