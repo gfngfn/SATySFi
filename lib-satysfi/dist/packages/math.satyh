@@ -213,6 +213,7 @@ module Math : sig
   direct \bigcap : [] math-cmd
   direct \bigcup : [] math-cmd
 
+  direct \lnot : [] math-cmd
   direct \land : [] math-cmd
   direct \lor : [] math-cmd
 
@@ -811,6 +812,7 @@ end = struct
   let-math \bigcap = bigop `⋂`
   let-math \bigcup = bigop `⋃`
 
+  let-math \lnot = ord `¬`
   let-math \land = rel `∧`
   let-math \lor  = rel `∨`
 
