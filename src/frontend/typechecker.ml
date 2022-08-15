@@ -1122,6 +1122,12 @@ let rec typecheck
       let (e2, ty2) = typecheck_iter tyenv utast2 in
       (LetRecIn(recbindacc |> Alist.to_list, e2), ty2)
 
+  | UTLetIn(UTInlineMacro(_, _, _), _) ->
+      failwith "TODO: UTLetIn, UTInlineMacro"
+
+  | UTLetIn(UTBlockMacro(_, _, _), _) ->
+      failwith "TODO: UTLetIn, UTBlockMacro"
+
   | UTIfThenElse(utastB, utast1, utast2) ->
       let (eB, tyB) = typecheck_iter tyenv utastB in
       unify tyB (Range.dummy "if-bool", BaseType(BoolType));
@@ -3227,6 +3233,12 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
               StructSig.empty |> StructSig.add_value varnm ventry
             in
             ([ Mutable(evid, eI) ], ssig)
+
+        | UTInlineMacro((rng, cs), macparams, utast) ->
+            failwith "TODO: UTInlineMacro"
+
+        | UTBlockMacro((rng, cs), macparams, utast) ->
+            failwith "TODO: UTBlockMacro"
       in
       let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(stage, rec_or_nonrec)) in
       (binds, (OpaqueIDMap.empty, ssig))

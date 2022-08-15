@@ -291,8 +291,8 @@
 
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
 
-%token <Range.t * Types.ctrlseq_name> HORZMACRO
-%token <Range.t * Types.ctrlseq_name> VERTMACRO
+%token <Range.t * Types.macro_name> BACKSLASH_MACRO
+%token <Range.t * Types.macro_name> PLUS_MACRO
 
 %token <Range.t> EOI
 
@@ -444,16 +444,16 @@ bind_value:
       { UTNonRec(utnonrecbind) }
   | MATH; utnonrecbind=bind_math
       { UTNonRec(utnonrecbind) }
-/*
-  | INLINE; dec=nxhorzmacrodec {
-      let (rng_cs, csnm, macparams, utast1) = dec in
-      UTBindHorzMacro((rng_cs, csnm), macparams, utast1)
-    }
-  | BLOCK; dec=nxvertmacrodec {
-      let (rng_cs, csnm, macparams, utast1) = dec in
-      UTBindVertMacro((rng_cs, csnm), macparams, utast1)
-    }
-*/
+  | INLINE; imacrobind=bind_inline_macro
+      {
+        let (rng_cs, csnm, macparams, utast1) = imacrobind in
+        UTInlineMacro((rng_cs, csnm), macparams, utast1)
+      }
+  | BLOCK; bmacrobind=bind_block_macro
+      {
+        let (rng_cs, csnm, macparams, utast1) = bmacrobind in
+        UTBlockMacro((rng_cs, csnm), macparams, utast1)
+      }
 ;
 bind_value_rec:
   | REC; valbinds=separated_nonempty_list(AND, bind_value_nonrec);
@@ -628,24 +628,22 @@ opt_param:
   | rlabel=LOWER; EXACT_EQ; ident=LOWER
       { (rlabel, ident) }
 ;
-/*
-nxhorzmacrodec:
-  | hmacro=HORZMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {
-      let (rng_cs, csnm) = hmacro in
+bind_inline_macro:
+  | imacro=BACKSLASH_MACRO; macparams=list(macro_param); EXACT_EQ; utast=expr {
+      let (rng_cs, csnm) = imacro in
       (rng_cs, csnm, macparams, utast)
     }
 ;
-nxvertmacrodec:
-  | vmacro=VERTMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {
-      let (rng_cs, csnm) = vmacro in
+bind_block_macro:
+  | bmacro=PLUS_MACRO; macparams=list(macro_param); EXACT_EQ; utast=expr {
+      let (rng_cs, csnm) = bmacro in
       (rng_cs, csnm, macparams, utast)
     }
 ;
-macroparam:
+macro_param:
   | var=LOWER              { UTLateMacroParam(var) }
   | EXACT_TILDE; var=LOWER { UTEarlyMacroParam(var) }
 ;
-*/
 kind:
   | bkd=kind_base; ARROW; kd=kind
       { let MKind(bkds_dom, bkd_cod) = kd in MKind(bkd :: bkds_dom, bkd_cod) }

@@ -248,7 +248,7 @@ rule progexpr stack = parse
             POSITIONED_STRING(pos, ipos, s)
       }
   | ("\\" (lower | upper) "@")
-      { HORZMACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
+      { BACKSLASH_MACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("\\" (lower | upper))
       { BACKSLASH_CMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("\\" (((upper ".")+ (lower | upper)) as s))
@@ -258,7 +258,7 @@ rule progexpr stack = parse
         LONG_BACKSLASH_CMD(pos, modidents, (rng, "\\" ^ csnm))
       }
   | ("+" (lower | upper) "@")
-      { VERTMACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
+      { PLUS_MACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("+" (lower | upper))
       { PLUS_CMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("+" (((upper ".")+ (lower | upper)) as s))
@@ -396,7 +396,7 @@ and vertexpr stack = parse
   | ("+" (lower | upper) "@")
       {
         Stack.push ActiveState stack;
-        VERTMACRO(get_pos lexbuf, Lexing.lexeme lexbuf)
+        PLUS_MACRO(get_pos lexbuf, Lexing.lexeme lexbuf)
       }
   | ("+" (lower | upper))
       {
@@ -504,7 +504,7 @@ and horzexpr stack = parse
         let tok = Lexing.lexeme lexbuf in
         let rng = get_pos lexbuf in
         Stack.push ActiveState stack;
-        HORZMACRO(rng, tok)
+        BACKSLASH_MACRO(rng, tok)
       }
   | ("\\" (((upper ".")+ (lower | upper)) as s))
       {

@@ -18,6 +18,7 @@ type class_name         = string  [@@deriving show]
 type type_name          = string  [@@deriving show]
 type kind_name          = string  [@@deriving show]
 type constructor_name   = string  [@@deriving show]
+type macro_name         = string  [@@deriving show]
 type module_name        = string  [@@deriving show]
 type signature_name     = string  [@@deriving show]
 type length_unit_name   = string  [@@deriving show]
@@ -296,8 +297,8 @@ let string_of_stage = function
 
 
 type untyped_macro_parameter =
-  | UTLateMacroParam  of (Range.t * var_name)
-  | UTEarlyMacroParam of (Range.t * var_name)
+  | UTLateMacroParam  of var_name ranged
+  | UTEarlyMacroParam of var_name ranged
 [@@deriving show { with_path = false; } ]
 
 type module_name_chain =
@@ -357,6 +358,8 @@ and untyped_rec_or_nonrec =
   | UTNonRec  of untyped_let_binding
   | UTRec     of untyped_let_binding list
   | UTMutable of untyped_let_mutable_binding
+  | UTInlineMacro of macro_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBlockMacro  of macro_name ranged * untyped_macro_parameter list * untyped_abstract_tree
 
 and untyped_let_binding =
   var_name ranged * untyped_abstract_tree
