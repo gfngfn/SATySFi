@@ -913,6 +913,13 @@ let error_log_environment suspended =
               DisplayLine(Display.show_poly_type pty);
             ]
 
+        | MissingRequiredMacroName(rng, csnm, macty) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "missing required macro '%s' of type" csnm);
+              DisplayLine(Display.show_macro_type macty);
+            ]
+
         | MissingRequiredConstructorName(rng, ctornm, _centry) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
@@ -953,6 +960,15 @@ let error_log_environment suspended =
               DisplayLine(string_of_stage stage1);
               NormalLine("is not consistent with");
               DisplayLine(string_of_stage stage2);
+            ]
+
+        | NotASubtypeAboutMacro(rng, csnm, macty1, macty2) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "not a subtype about macro '%s'; type" csnm);
+              DisplayLine(Display.show_macro_type macty1);
+              NormalLine("is not a subtype of");
+              DisplayLine(Display.show_macro_type macty2);
             ]
 
         | NotASubtypeAboutConstructor(rng, ctornm, _tyscheme1, _tyscheme2) ->

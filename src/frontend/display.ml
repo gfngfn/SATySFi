@@ -398,3 +398,7 @@ let show_mono_type_double (ty1 : mono_type) (ty2 : mono_type) =
 let show_poly_type (Poly(pty) : poly_type) =
   let dispmap = DisplayMap.empty |> collect_ids_poly (Poly(pty)) in
   show_type (tvf_poly dispmap) (rvf_poly dispmap) Outmost pty
+
+
+let show_macro_type (macty : macro_type) =
+  failwith "TODO: Display.show_macro_type"

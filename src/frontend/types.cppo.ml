@@ -358,8 +358,6 @@ and untyped_rec_or_nonrec =
   | UTNonRec  of untyped_let_binding
   | UTRec     of untyped_let_binding list
   | UTMutable of untyped_let_mutable_binding
-  | UTInlineMacro of macro_name ranged * untyped_macro_parameter list * untyped_abstract_tree
-  | UTBlockMacro  of macro_name ranged * untyped_macro_parameter list * untyped_abstract_tree
 
 and untyped_let_binding =
   var_name ranged * untyped_abstract_tree

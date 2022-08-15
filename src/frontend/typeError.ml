@@ -34,12 +34,14 @@ type type_error =
   | NotAStructureSignature               of Range.t * functor_signature
   | NotAFunctorSignature                 of Range.t * StructSig.t
   | MissingRequiredValueName             of Range.t * var_name * poly_type
+  | MissingRequiredMacroName             of Range.t * macro_name * macro_type
   | MissingRequiredConstructorName       of Range.t * constructor_name * constructor_entry
   | MissingRequiredTypeName              of Range.t * type_name * int
   | MissingRequiredModuleName            of Range.t * module_name * signature
   | MissingRequiredSignatureName         of Range.t * signature_name * signature abstracted
   | NotASubtypeAboutValue                of Range.t * var_name * poly_type * poly_type
   | NotASubtypeAboutValueStage           of Range.t * var_name * stage * stage
+  | NotASubtypeAboutMacro                of Range.t * macro_name * macro_type * macro_type
   | NotASubtypeAboutConstructor          of Range.t * constructor_name * type_scheme * type_scheme
   | NotASubtypeAboutType                 of Range.t * type_name * type_entry * type_entry
   | NotASubtypeSignature                 of Range.t * signature * signature

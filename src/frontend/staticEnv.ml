@@ -115,6 +115,7 @@ and struct_signature =
 
 and struct_signature_entry =
   | SSValue       of var_name * value_entry
+  | SSMacro       of macro_name * macro_entry
   | SSConstructor of constructor_name * constructor_entry
   | SSFold        of type_name * poly_type
   | SSType        of type_name * type_entry
@@ -159,11 +160,11 @@ module Typeenv = struct
     }
 
 
-  let add_macro (csnm : ctrlseq_name) (macentry : macro_entry) (tyenv : t) : t =
+  let add_macro (csnm : macro_name) (macentry : macro_entry) (tyenv : t) : t =
     { tyenv with macros = tyenv.macros |> MacroNameMap.add csnm macentry }
 
 
-  let find_macro (csnm : ctrlseq_name) (tyenv : t) : macro_entry option =
+  let find_macro (csnm : macro_name) (tyenv : t) : macro_entry option =
     tyenv.macros |> MacroNameMap.find_opt csnm
 
 
@@ -232,6 +233,17 @@ module StructSig = struct
     Alist.empty
 
 
+  let add_macro (csnm : macro_name) (macentry : macro_entry) (ssig : t) : t =
+    Alist.extend ssig (SSMacro(csnm, macentry))
+
+
+  let find_macro (csnm : macro_name) (ssig : t) : macro_entry option =
+    ssig |> Alist.to_list_rev |> List.find_map (function
+    | SSMacro(csnm0, macentry) -> if String.equal csnm csnm0 then Some(macentry) else None
+    | _                        -> None
+    )
+
+
   let add_value (x : var_name) (ventry : value_entry) (ssig : t) : t =
     Alist.extend ssig (SSValue(x, ventry))
 
@@ -298,10 +310,11 @@ module StructSig = struct
     )
 
 
-  let fold ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs acc (ssig : t) =
+  let fold ~v:fv ~a:fa ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs acc (ssig : t) =
     ssig |> Alist.to_list |> List.fold_left (fun acc entry ->
       match entry with
       | SSValue(x, ventry)            -> fv x ventry acc
+      | SSMacro(csnm, macentry)       -> fa csnm macentry acc
       | SSConstructor(ctornm, centry) -> fc ctornm centry acc
       | SSFold(tynm, pty)             -> ff tynm pty acc
       | SSType(tynm, tentry)          -> ft tynm tentry acc
@@ -310,40 +323,45 @@ module StructSig = struct
     ) acc
 
 
-  let map_and_fold ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs acc (ssig : t) =
-      ssig |> Alist.to_list |> List.fold_left (fun (sigracc, acc) entry ->
+  let map_and_fold ~v:fv ~a:fa ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs acc (ssig : t) =
+      ssig |> Alist.to_list |> List.fold_left (fun (ssig, acc) entry ->
         match entry with
         | SSValue(x, ventry) ->
             let (ventry, acc) = fv x ventry acc in
-            (Alist.extend sigracc (SSValue(x, ventry)), acc)
+            (Alist.extend ssig (SSValue(x, ventry)), acc)
+
+        | SSMacro(csnm, macentry) ->
+            let (macentry, acc) = fa csnm macentry acc in
+            (Alist.extend ssig (SSMacro(csnm, macentry)), acc)
 
         | SSConstructor(ctornm, centry) ->
             let (centry, acc) = fc ctornm centry acc in
-            (Alist.extend sigracc (SSConstructor(ctornm, centry)), acc)
+            (Alist.extend ssig (SSConstructor(ctornm, centry)), acc)
 
         | SSFold(tynm, pty) ->
             let (pty, acc) = ff tynm pty acc in
-            (Alist.extend sigracc (SSFold(tynm, pty)), acc)
+            (Alist.extend ssig (SSFold(tynm, pty)), acc)
 
         | SSType(tynm, tentry) ->
             let (tentry, acc) = ft tynm tentry acc in
-            (Alist.extend sigracc (SSType(tynm, tentry)), acc)
+            (Alist.extend ssig (SSType(tynm, tentry)), acc)
 
         | SSModule(modnm, mentry) ->
             let (mentry, acc) = fm modnm mentry acc in
-            (Alist.extend sigracc (SSModule(modnm, mentry)), acc)
+            (Alist.extend ssig (SSModule(modnm, mentry)), acc)
 
         | SSSignature(signm, absmodsig) ->
             let (absmodsig, acc) = fs signm absmodsig acc in
-            (Alist.extend sigracc (SSSignature(signm, absmodsig)), acc)
+            (Alist.extend ssig (SSSignature(signm, absmodsig)), acc)
 
       ) (Alist.empty, acc)
 
 
-  let map ~v:fv ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs (ssig : t) : t =
+  let map ~v:fv ~a:fa ~c:fc ~f:ff ~t:ft ~m:fm ~s:fs (ssig : t) : t =
     let (ssig, ()) =
       ssig |> map_and_fold
         ~v:(fun x ventry () -> (fv x ventry, ()))
+        ~a:(fun csnm macentry () -> (fa csnm macentry, ()))
         ~c:(fun ctornm centry () -> (fc ctornm centry, ()))
         ~f:(fun tynm pty () -> (ff tynm pty, ()))
         ~t:(fun tynm tentry () -> (ft tynm tentry, ()))
@@ -369,6 +387,7 @@ module StructSig = struct
           let () =
             match entry with
             | SSValue(x, _)            -> check_none x (find_value x ssig1)
+            | SSMacro(csnm, _)         -> check_none csnm (find_macro csnm ssig1)
             | SSConstructor(ctornm, _) -> check_none ctornm (find_constructor ctornm ssig1)
             | SSFold(tynm, _)          -> check_none tynm (find_type tynm ssig1)
             | SSType(tynm, _)          -> check_none tynm (find_type tynm ssig1)

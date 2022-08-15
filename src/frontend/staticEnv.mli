@@ -91,6 +91,10 @@ module StructSig : sig
 
   val empty : t
 
+  val add_macro : macro_name -> macro_entry -> t -> t
+
+  val find_macro : macro_name -> t -> macro_entry option
+
   val add_value : var_name -> value_entry -> t -> t
 
   val find_value : var_name -> t -> value_entry option
@@ -117,6 +121,7 @@ module StructSig : sig
 
   val fold :
     v:(var_name -> value_entry -> 'a -> 'a) ->
+    a:(macro_name -> macro_entry -> 'a -> 'a) ->
     c:(constructor_name -> constructor_entry -> 'a -> 'a) ->
     f:(type_name -> poly_type -> 'a -> 'a) ->
     t:(type_name -> type_entry -> 'a -> 'a) ->
@@ -126,6 +131,7 @@ module StructSig : sig
 
   val map_and_fold :
     v:(var_name -> value_entry -> 'a -> value_entry * 'a) ->
+    a:(macro_name -> macro_entry -> 'a -> macro_entry * 'a) ->
     c:(constructor_name -> constructor_entry -> 'a -> constructor_entry * 'a) ->
     f:(type_name -> poly_type -> 'a -> poly_type * 'a) ->
     t:(type_name -> type_entry -> 'a -> type_entry * 'a) ->
@@ -135,6 +141,7 @@ module StructSig : sig
 
   val map :
     v:(var_name -> value_entry -> value_entry) ->
+    a:(macro_name -> macro_entry -> macro_entry) ->
     c:(constructor_name -> constructor_entry -> constructor_entry) ->
     f:(type_name -> poly_type -> poly_type) ->
     t:(type_name -> type_entry -> type_entry) ->

@@ -422,6 +422,16 @@ bind:
       { (tokL, UTBindValue(Stage0, valbind)) }
   | tokL=VAL; PERSISTENT; EXACT_TILDE; valbind=bind_value
       { (tokL, UTBindValue(Persistent0, valbind)) }
+  | tokL=VAL; INLINE; imacrobind=bind_inline_macro
+      {
+        let (rng_cs, csnm, macparams, utast1) = imacrobind in
+        (tokL, UTBindHorzMacro((rng_cs, csnm), macparams, utast1))
+      }
+  | tokL=VAL; BLOCK; bmacrobind=bind_block_macro
+      {
+        let (rng_cs, csnm, macparams, utast1) = bmacrobind in
+        (tokL, UTBindVertMacro((rng_cs, csnm), macparams, utast1))
+      }
   | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
   | tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr
@@ -444,16 +454,6 @@ bind_value:
       { UTNonRec(utnonrecbind) }
   | MATH; utnonrecbind=bind_math
       { UTNonRec(utnonrecbind) }
-  | INLINE; imacrobind=bind_inline_macro
-      {
-        let (rng_cs, csnm, macparams, utast1) = imacrobind in
-        UTInlineMacro((rng_cs, csnm), macparams, utast1)
-      }
-  | BLOCK; bmacrobind=bind_block_macro
-      {
-        let (rng_cs, csnm, macparams, utast1) = bmacrobind in
-        UTBlockMacro((rng_cs, csnm), macparams, utast1)
-      }
 ;
 bind_value_rec:
   | REC; valbinds=separated_nonempty_list(AND, bind_value_nonrec);

@@ -1122,12 +1122,6 @@ let rec typecheck
       let (e2, ty2) = typecheck_iter tyenv utast2 in
       (LetRecIn(recbindacc |> Alist.to_list, e2), ty2)
 
-  | UTLetIn(UTInlineMacro(_, _, _), _) ->
-      failwith "TODO: UTLetIn, UTInlineMacro"
-
-  | UTLetIn(UTBlockMacro(_, _, _), _) ->
-      failwith "TODO: UTLetIn, UTBlockMacro"
-
   | UTIfThenElse(utastB, utast1, utast2) ->
       let (eB, tyB) = typecheck_iter tyenv utastB in
       unify tyB (Range.dummy "if-bool", BaseType(BoolType));
@@ -2138,6 +2132,9 @@ and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : 
           ~v:(fun _x2 _ventry2 subst ->
             subst
           )
+          ~a:(fun _csnm _macentry2 subst ->
+            subst
+          )
           ~c:(fun _ctornm2 _centry2 subst ->
             subst
           )
@@ -2282,10 +2279,17 @@ and substitute_type_id (subst : substitution) (tyid_from : TypeID.t) : TypeID.t 
       end
 
 
+and substitute_macro_type (subst : substitution) (macty : macro_type) : macro_type =
+  failwith "TODO: substitute_macro_type"
+
+
 and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t =
   ssig |> StructSig.map
       ~v:(fun _x ventry ->
         { ventry with val_type = ventry.val_type |> substitute_poly_type subst }
+      )
+      ~a:(fun csnm macentry ->
+        { macentry with macro_type = macentry.macro_type |> substitute_macro_type subst }
       )
       ~c:(fun _ctornm centry ->
         let (bids, pty_body) = centry.ctor_parameter in
@@ -2361,6 +2365,17 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
 
                 | _ ->
                     raise_error (NotASubtypeAboutValueStage(rng, x2, stage1, stage2))
+          )
+          ~a:(fun csnm2 { macro_type = macty2; _ } () ->
+            match ssig1 |> StructSig.find_macro csnm2 with
+            | None ->
+                raise_error (MissingRequiredMacroName(rng, csnm2, macty2))
+
+            | Some({ macro_type = macty1; _ }) ->
+                if subtype_macro_type macty1 macty2 then
+                  ()
+                else
+                  raise_error (NotASubtypeAboutMacro(rng, csnm2, macty1, macty2))
           )
           ~c:(fun ctornm2 centry2 () ->
             match ssig1 |> StructSig.find_constructor ctornm2 with
@@ -2741,6 +2756,10 @@ and kind_equal (kd1 : kind) (kd2 : kind) : bool =
   | zipped                        -> zipped |> List.for_all (fun (TypeKind, TypeKind) -> true)
 
 
+and subtype_macro_type (macty1 : macro_type) (macty2 : macro_type) : bool =
+  failwith "TODO: subtype_macro_type"
+
+
 (* Given `modsig1` and `modsig2` which are already known to satisfy `modsig1 <= modsig2`,
    `copy_contents` copies every target name occurred in `modsig1`
    into the corresponding occurrence in `modsig2`. *)
@@ -2777,6 +2796,11 @@ and copy_closure_in_structure (ssig1 : StructSig.t) (ssig2 : StructSig.t) : Stru
       | None          -> assert false
       | Some(ventry1) -> { ventry2 with val_name = ventry1.val_name }
     )
+    ~a:(fun csnm macentry2 ->
+      match ssig1 |> StructSig.find_macro csnm with
+      | None            -> assert false
+      | Some(macentry1) -> { macentry2 with macro_name = macentry1.macro_name }
+    )
     ~c:(fun _ctornm centry2 -> centry2)
     ~f:(fun _tynm pty2 -> pty2)
     ~t:(fun _tynm tentry2 -> tentry2)
@@ -2797,6 +2821,7 @@ and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signatu
 and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
   ssig |> StructSig.fold
     ~v:(fun x ventry -> Typeenv.add_value x ventry)
+    ~a:(fun csnm macentry -> Typeenv.add_macro csnm macentry)
     ~c:(fun ctornm centry -> Typeenv.add_constructor ctornm centry)
     ~f:(fun _tynm _pty tyenv -> tyenv)
     ~t:(fun tynm tentry -> Typeenv.add_type tynm tentry)
@@ -3233,12 +3258,6 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
               StructSig.empty |> StructSig.add_value varnm ventry
             in
             ([ Mutable(evid, eI) ], ssig)
-
-        | UTInlineMacro((rng, cs), macparams, utast) ->
-            failwith "TODO: UTInlineMacro"
-
-        | UTBlockMacro((rng, cs), macparams, utast) ->
-            failwith "TODO: UTBlockMacro"
       in
       let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(stage, rec_or_nonrec)) in
       (binds, (OpaqueIDMap.empty, ssig))
@@ -3293,10 +3312,28 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
             raise_error (NotAStructureSignature(rng_mod, fsig))
       end
 
-  | UTBindHorzMacro((_, _csnm), _macparams, _utast1) ->
-      failwith "TODO (enhance): Typechecker.typecheck_binding, UTBindHorzMacro"
+  | UTBindHorzMacro((rng_cs, csnm), macparams, utast1) ->
+      let pre =
+        {
+          stage           = Stage1;
+          type_parameters = TypeParameterMap.empty;
+          row_parameters  = RowParameterMap.empty;
+          quantifiability = Quantifiable;
+          level           = Level.bottom;
+        }
+      in
+      let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
+      let (e1, ty1) = typecheck pre tyenv utast1 in
+      unify ty1 (Range.dummy "let-inline-macro", BaseType(TextRowType));
+      let evid = EvalVarID.fresh (rng_cs, csnm) in
+      let ssig =
+        let macentry = { macro_type = HorzMacroType(macparamtys); macro_name = evid } in
+        StructSig.empty |> StructSig.add_macro csnm macentry
+      in
+      let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
+      (binds, (OpaqueIDMap.empty, ssig))
 
-  | UTBindVertMacro((_, _csnm), _macparams, _utast2) ->
+  | UTBindVertMacro((_, _csnm), macparams, utast2) ->
       failwith "TODO (enhance): Typechecker.typecheck_binding, UTBindVertMacro"
 
 
