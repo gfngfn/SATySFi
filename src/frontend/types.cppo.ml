@@ -251,8 +251,8 @@ type poly_command_argument_type =
   (poly_type_variable, poly_row_variable) command_argument_type
 
 type macro_parameter_type =
-  | LateMacroParameter  of mono_type
-  | EarlyMacroParameter of mono_type
+  | LateMacroParameter  of poly_type
+  | EarlyMacroParameter of poly_type
 [@@deriving show { with_path = false }]
 
 type macro_type =
@@ -384,7 +384,7 @@ and untyped_input_horz_element_main =
   | UTInputHorzContent      of untyped_abstract_tree
   | UTInputHorzEmbeddedMath of untyped_abstract_tree
   | UTInputHorzEmbeddedCodeText of string
-  | UTInputHorzMacro        of (Range.t * ctrlseq_name) * untyped_macro_argument list
+  | UTInputHorzMacro        of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
 and untyped_macro_argument =
   | UTLateMacroArg  of untyped_abstract_tree

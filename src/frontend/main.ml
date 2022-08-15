@@ -744,8 +744,8 @@ let error_log_environment suspended =
               NormalLine("at " ^ (Range.to_string rng) ^ ":");
               NormalLine("invalid number of macro arguments; types expected on arguments are:");
             ] (macparamtys |> List.map (function
-              | LateMacroParameter(ty)  -> DisplayLine("* " ^ (Display.show_mono_type ty))
-              | EarlyMacroParameter(ty) -> DisplayLine("* ~" ^ (Display.show_mono_type ty))
+              | LateMacroParameter(pty)  -> DisplayLine("* " ^ (Display.show_poly_type pty))
+              | EarlyMacroParameter(pty) -> DisplayLine("* ~" ^ (Display.show_poly_type pty))
             )))
 
         | LateMacroArgumentExpected(rng, ty) ->

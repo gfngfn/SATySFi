@@ -400,5 +400,22 @@ let show_poly_type (Poly(pty) : poly_type) =
   show_type (tvf_poly dispmap) (rvf_poly dispmap) Outmost pty
 
 
+let show_macro_parameter_type (macparamty : macro_parameter_type) =
+  match macparamty with
+  | LateMacroParameter(pty) ->
+      show_poly_type pty
+
+  | EarlyMacroParameter(pty) ->
+      let s = show_poly_type pty in
+      Printf.sprintf "~(%s)" s
+
+
 let show_macro_type (macty : macro_type) =
-  failwith "TODO: Display.show_macro_type"
+  match macty with
+  | HorzMacroType(macparamtys) ->
+      let ss = macparamtys |> List.map show_macro_parameter_type in
+      Printf.sprintf "inline [%s]" (String.concat ", " ss)
+
+  | VertMacroType(macparamtys) ->
+      let ss = macparamtys |> List.map show_macro_parameter_type in
+      Printf.sprintf "block [%s]" (String.concat ", " ss)

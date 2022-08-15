@@ -239,10 +239,10 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       let (pty, macpty) =
       match macparam with
       | UTLateMacroParam(_) ->
-          (Poly(Range.dummy "late-macro-param", CodeType(ptybody)), LateMacroParameter(beta))
+          (Poly(Range.dummy "late-macro-param", CodeType(ptybody)), LateMacroParameter(Poly(ptybody)))
 
       | UTEarlyMacroParam(_) ->
-          (Poly(ptybody), EarlyMacroParameter(beta))
+          (Poly(ptybody), EarlyMacroParameter(Poly(ptybody)))
       in
       let ventry =
         {
@@ -1500,31 +1500,50 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
     | (_, UTInputHorzText(s)) :: tail ->
         aux (Alist.extend acc (InputHorzText(s))) tail
 
-    | (rngapp, UTInputHorzMacro(hmacro, utmacargs)) :: tail ->
+    | (rng_app, UTInputHorzMacro(hmacro, utmacargs)) :: tail ->
         begin
           match pre.stage with
           | Stage0 | Persistent0 ->
-              raise_error (InvalidExpressionAsToStaging(rngapp, Stage1))
+              raise_error (InvalidExpressionAsToStaging(rng_app, Stage1))
 
           | Stage1 ->
-              let (rngcs, csnm) = hmacro in
-              begin
-                match tyenv |> Typeenv.find_macro csnm with
-                | None ->
-                    raise_error (UndefinedHorzMacro(rngcs, csnm))
+              let (rng_all, modidents, (rng_cs, csnm)) = hmacro in
+              let macentry =
+                match modidents with
+                | [] ->
+                    begin
+                      match tyenv |> Typeenv.find_macro csnm with
+                      | None           -> raise_error (UndefinedHorzMacro(rng_cs, csnm))
+                      | Some(macentry) -> macentry
+                    end
 
-                | Some(macentry) ->
-                    let macparamtys =
-                      match macentry.macro_type with
-                      | HorzMacroType(macparamtys) -> macparamtys
-                      | _                          -> assert false
-                    in
-                    let evid = macentry.macro_name in
-                    let eargs = typecheck_macro_arguments rngapp pre tyenv macparamtys utmacargs in
-                    let eapp = apply_tree_of_list (ContentOf(rngcs, evid)) eargs in
-                    let ih = InputHorzContent(Prev(eapp)) in
-                    aux (Alist.extend acc ih) tail
-              end
+                | modident0 :: proj ->
+                    let modchain = (modident0, proj) in
+                    let mentry = find_module_chain tyenv modchain in
+                    begin
+                      match mentry.mod_signature with
+                      | ConcFunctor(fsig) ->
+                          raise_error (NotAStructureSignature(rng, fsig))
+                            (* TODO (enhance): give a better code range to this error *)
+
+                      | ConcStructure(ssig) ->
+                          begin
+                            match ssig |> StructSig.find_macro csnm with
+                            | None           -> raise_error (UndefinedHorzMacro(rng_cs, csnm))
+                            | Some(macentry) -> macentry
+                          end
+                    end
+              in
+              let macparamtys =
+                match macentry.macro_type with
+                | HorzMacroType(macparamtys) -> macparamtys
+                | _                          -> assert false
+              in
+              let evid = macentry.macro_name in
+              let eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
+              let eapp = apply_tree_of_list (ContentOf(rng_cs, evid)) eargs in
+              let ih = InputHorzContent(Prev(eapp)) in
+              aux (Alist.extend acc ih) tail
         end
   in
   aux Alist.empty utihlst
@@ -1538,23 +1557,35 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
   else
     let argacc =
       List.fold_left2 (fun argacc macparamty utmacarg ->
-        match (macparamty, utmacarg) with
-        | (LateMacroParameter(tyexp), UTLateMacroArg(utast)) ->
-            let (earg, tyarg) = typecheck pre tyenv utast in
-            unify tyarg tyexp;
-            Alist.extend argacc (Next(earg))
-              (* Late arguments are converted to quoted arguments. *)
+        match macparamty with
+        | LateMacroParameter(ptyexp) ->
+            let tyexp = TypeConv.instantiate Level.bottom Quantifiable ptyexp in
+              (* No bound type variables are in `ptyexp` *)
+            begin
+              match utmacarg with
+              | UTLateMacroArg(utast) ->
+                  let (earg, tyarg) = typecheck pre tyenv utast in
+                  unify tyarg tyexp;
+                  Alist.extend argacc (Next(earg))
+                    (* Late arguments are converted to quoted arguments. *)
 
-        | (EarlyMacroParameter(tyexp), UTEarlyMacroArg(utast)) ->
-            let (earg, tyarg) = typecheck { pre with stage = Stage0 } tyenv utast in
-            unify tyarg tyexp;
-            Alist.extend argacc earg
+              | UTEarlyMacroArg((rngarg, _)) ->
+                  raise_error (LateMacroArgumentExpected(rngarg, tyexp))
+            end
 
-        | (LateMacroParameter(tyexp), UTEarlyMacroArg((rngarg, _))) ->
-            raise_error (LateMacroArgumentExpected(rngarg, tyexp))
+        | EarlyMacroParameter(ptyexp) ->
+            let tyexp = TypeConv.instantiate Level.bottom Quantifiable ptyexp in
+              (* No bound type variables are in `ptyexp` *)
+            begin
+              match utmacarg with
+              | UTLateMacroArg((rngarg, _)) ->
+                  raise_error (EarlyMacroArgumentExpected(rngarg, tyexp))
 
-        | (EarlyMacroParameter(tyexp), UTLateMacroArg((rngarg, _))) ->
-            raise_error (EarlyMacroArgumentExpected(rngarg, tyexp))
+              | UTEarlyMacroArg(utast) ->
+                  let (earg, tyarg) = typecheck { pre with stage = Stage0 } tyenv utast in
+                  unify tyarg tyexp;
+                  Alist.extend argacc earg
+            end
 
       ) Alist.empty macparamtys utmacargs
     in
@@ -2280,7 +2311,14 @@ and substitute_type_id (subst : substitution) (tyid_from : TypeID.t) : TypeID.t 
 
 
 and substitute_macro_type (subst : substitution) (macty : macro_type) : macro_type =
-  failwith "TODO: substitute_macro_type"
+  match macty with
+  | HorzMacroType(macparamtys) -> HorzMacroType(macparamtys |> List.map (substitute_macro_parameter_type subst))
+  | VertMacroType(macparamtys) -> VertMacroType(macparamtys |> List.map (substitute_macro_parameter_type subst))
+
+
+and substitute_macro_parameter_type (subst : substitution) = function
+  | LateMacroParameter(ty)  -> LateMacroParameter(ty |> substitute_poly_type subst)
+  | EarlyMacroParameter(ty) -> EarlyMacroParameter(ty |> substitute_poly_type subst)
 
 
 and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t =
@@ -2757,7 +2795,22 @@ and kind_equal (kd1 : kind) (kd2 : kind) : bool =
 
 
 and subtype_macro_type (macty1 : macro_type) (macty2 : macro_type) : bool =
-  failwith "TODO: subtype_macro_type"
+  let aux macparamtys1 macparamtys2 =
+    match List.combine macparamtys1 macparamtys2 with
+    | exception Invalid_argument(_) ->
+        false
+
+    | zipped ->
+        zipped |> List.for_all (function
+        | (LateMacroParameter(pty1), LateMacroParameter(pty2))   -> subtype_poly_type pty1 pty2
+        | (EarlyMacroParameter(pty1), EarlyMacroParameter(pty2)) -> subtype_poly_type pty1 pty2
+        | _                                                      -> false
+        )
+  in
+  match (macty1, macty2) with
+  | (HorzMacroType(macparamtys1), HorzMacroType(macparamtys2)) -> aux macparamtys1 macparamtys2
+  | (VertMacroType(macparamtys1), VertMacroType(macparamtys2)) -> aux macparamtys1 macparamtys2
+  | _                                                          -> false
 
 
 (* Given `modsig1` and `modsig2` which are already known to satisfy `modsig1 <= modsig2`,
@@ -3324,7 +3377,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       in
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
       let (e1, ty1) = typecheck pre tyenv utast1 in
-      unify ty1 (Range.dummy "let-inline-macro", BaseType(TextRowType));
+      unify ty1 (Range.dummy "val-inline-macro", BaseType(TextRowType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
         let macentry = { macro_type = HorzMacroType(macparamtys); macro_name = evid } in
@@ -3333,8 +3386,26 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
       (binds, (OpaqueIDMap.empty, ssig))
 
-  | UTBindVertMacro((_, _csnm), macparams, utast2) ->
-      failwith "TODO (enhance): Typechecker.typecheck_binding, UTBindVertMacro"
+  | UTBindVertMacro((rng_cs, csnm), macparams, utast1) ->
+      let pre =
+        {
+          stage           = Stage1;
+          type_parameters = TypeParameterMap.empty;
+          row_parameters  = RowParameterMap.empty;
+          quantifiability = Quantifiable;
+          level           = Level.bottom;
+        }
+      in
+      let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
+      let (e1, ty1) = typecheck pre tyenv utast1 in
+      unify ty1 (Range.dummy "val-block-macro", BaseType(TextColType));
+      let evid = EvalVarID.fresh (rng_cs, csnm) in
+      let ssig =
+        let macentry = { macro_type = HorzMacroType(macparamtys); macro_name = evid } in
+        StructSig.empty |> StructSig.add_macro csnm macentry
+      in
+      let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
+      (binds, (OpaqueIDMap.empty, ssig))
 
 
 let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : mono_type * abstract_tree =

@@ -291,8 +291,9 @@
 
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
 
-%token <Range.t * Types.macro_name> BACKSLASH_MACRO
-%token <Range.t * Types.macro_name> PLUS_MACRO
+%token <Range.t * Types.macro_name> BACKSLASH_MACRO PLUS_MACRO
+%token<Range.t * (Types.module_name Types.ranged) list * Types.macro_name Types.ranged>
+  LONG_BACKSLASH_MACRO LONG_PLUS_MACRO
 
 %token <Range.t> EOI
 
@@ -1047,13 +1048,18 @@ inline_elem_cmd:
         let args = List.append nargs sargs in
         make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzEmbedded(utast_cmd, args))
       }
-/*
-  | hmacro=HORZMACRO; macargsraw=macroargs {
-      let (rng_cs, _) = hmacro in
+
+  | imacro_raw=BACKSLASH_MACRO; macargsraw=macroargs {
+      let (rng_cs, csnm) = imacro_raw in
+      let imacro = (rng_cs, [], imacro_raw) in
       let (rng_last, macroargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(hmacro, macroargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(imacro, macroargs))
     }
-*/
+  | imacro=LONG_BACKSLASH_MACRO; macargsraw=macroargs {
+      let (rng_cs, _, _) = imacro in
+      let (rng_last, macroargs) = macargsraw in
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(imacro, macroargs))
+    }
   | tokL=L_MATH_TEXT; utast=math; tokR=R_MATH_TEXT
       { make_standard (Tok tokL) (Tok tokR) (UTInputHorzEmbeddedMath(utast)) }
   | literal=STRING
@@ -1227,7 +1233,7 @@ math_cmd_arg:
   | utcmdarg=cmd_arg_expr
       { utcmdarg }
 ;
-/*
+
 macroargs:
   | macnargs=list(macronarg); cls=SEMICOLON { (cls, macnargs) }
 ;
@@ -1235,7 +1241,6 @@ macronarg:
   | L_PAREN; expr=expr_bot; R_PAREN              { UTLateMacroArg(expr) }
   | EXACT_TILDE; L_PAREN; expr=expr_bot; R_PAREN { UTEarlyMacroArg(expr) }
 ;
-*/
 cmd_arg_expr:
   | mnopts=expr_opts; tokL=L_PAREN; utast=expr; tokR=R_PAREN
       { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }
