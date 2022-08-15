@@ -347,9 +347,18 @@ and untyped_declaration_main =
   | UTDeclModule     of module_name ranged * untyped_signature
   | UTDeclSignature  of signature_name ranged * untyped_signature
   | UTDeclInclude    of untyped_signature
+  | UTDeclMacro      of macro_name ranged * manual_macro_type ranged
 
 and manual_quantifier =
   (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
+
+and manual_macro_type =
+  | MHorzMacroType of manual_macro_parameter_type list
+  | MVertMacroType of manual_macro_parameter_type list
+
+and manual_macro_parameter_type =
+  | MLateMacroParameter  of manual_type
+  | MEarlyMacroParameter of manual_type
 
 and constructor_branch =
   | UTConstructorBranch of constructor_name ranged * manual_type option

@@ -99,7 +99,7 @@ type constructor_entry = {
 
 type macro_entry = {
   macro_type : macro_type;
-  macro_name : EvalVarID.t;
+  macro_name : EvalVarID.t option;
 }
 [@@deriving show { with_path = false }]
 

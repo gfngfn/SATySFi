@@ -586,6 +586,10 @@ decl:
       { UTDeclValue(Stage1, cs, mnquant, mnty) }
   | VAL; cs=PLUS_CMD; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(Stage1, cs, mnquant, mnty) }
+  | VAL; cs=BACKSLASH_MACRO; COLON; mnmacty=inline_macro_type
+      { UTDeclMacro(cs, mnmacty) }
+  | VAL; cs=PLUS_MACRO; COLON; mnmacty=block_macro_type
+      { UTDeclMacro(cs, mnmacty) }
   | TYPE; tyident=LOWER; CONS; mnkd=kind
       { UTDeclTypeOpaque(tyident, mnkd) }
   | TYPE; uttypebind=bind_type
@@ -746,6 +750,19 @@ typ_cmd_arg:
 typ_record_elem:
   | rlabel=LOWER; COLON; mnty=typ { (rlabel, mnty) }
 ;
+inline_macro_type:
+  | tokL=INLINE; L_SQUARE; mnmacroargtys=optterm_list(COMMA, typ_macro_arg); tokR=R_SQUARE
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MHorzMacroType(mnmacroargtys)) }
+;
+block_macro_type:
+  | tokL=BLOCK; L_SQUARE; mnmacroargtys=optterm_list(COMMA, typ_macro_arg); tokR=R_SQUARE
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MVertMacroType(mnmacroargtys)) }
+;
+typ_macro_arg:
+  | mnty=typ_prod
+      { MLateMacroParameter(mnty) }
+  | EXACT_TILDE; mnty=typ_bot
+      { MEarlyMacroParameter(mnty) }
 expr:
   | tokL=MATCH; utast=expr; WITH; BAR?; branches=separated_nonempty_list(BAR, branch); tokR=END
       { make_standard (Tok tokL) (Tok tokR) (UTPatternMatch(utast, branches)) }

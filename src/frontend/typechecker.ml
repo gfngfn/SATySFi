@@ -1438,7 +1438,11 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
                 | VertMacroType(macparamtys) -> macparamtys
                 | _                          -> assert false
               in
-              let evid = macentry.macro_name in
+              let evid =
+                match macentry.macro_name with
+                | Some(evid) -> evid
+                | None       -> assert false
+              in
               let eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
               let eapp = apply_tree_of_list (ContentOf(rng_cs, evid)) eargs in
               let iv = InputVertContent(Prev(eapp)) in
@@ -1510,7 +1514,11 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
                 | HorzMacroType(macparamtys) -> macparamtys
                 | _                          -> assert false
               in
-              let evid = macentry.macro_name in
+              let evid =
+                match macentry.macro_name with
+                | Some(evid) -> evid
+                | None       -> assert false
+              in
               let eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
               let eapp = apply_tree_of_list (ContentOf(rng_cs, evid)) eargs in
               let ih = InputHorzContent(Prev(eapp)) in
@@ -1922,6 +1930,10 @@ and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : ki
   let kds_dom = mnbkds_dom |> List.map decode_manual_base_kind in
   let TypeKind = decode_manual_base_kind mnbkd_cod in
   Kind(kds_dom)
+
+
+and decode_manual_macro_type (tyenv : Typeenv.t) (mmacty : manual_macro_type) : macro_type =
+  failwith "TODO: decode_manual_macro_type"
 
 
 and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
@@ -2947,6 +2959,12 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
             (quant, ssig)
       end
 
+  | UTDeclMacro((rng_cs, csnm), (_, mmacty)) ->
+      let macty = decode_manual_macro_type tyenv mmacty in
+      let macentry = { macro_type = macty; macro_name = None; } in
+      let ssig = StructSig.empty |> StructSig.add_macro csnm macentry in
+      (OpaqueIDMap.empty, ssig)
+
 
 and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
   let (binds, (quant, ssig)) =
@@ -3279,7 +3297,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       unify ty1 (Range.dummy "val-inline-macro", BaseType(TextRowType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
-        let macentry = { macro_type = HorzMacroType(macparamtys); macro_name = evid } in
+        let macentry = { macro_type = HorzMacroType(macparamtys); macro_name = Some(evid) } in
         StructSig.empty |> StructSig.add_macro csnm macentry
       in
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
@@ -3300,7 +3318,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       unify ty1 (Range.dummy "val-block-macro", BaseType(TextColType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
-        let macentry = { macro_type = HorzMacroType(macparamtys); macro_name = evid } in
+        let macentry = { macro_type = HorzMacroType(macparamtys); macro_name = Some(evid) } in
         StructSig.empty |> StructSig.add_macro csnm macentry
       in
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
