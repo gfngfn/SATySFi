@@ -1100,13 +1100,17 @@ block_elem:
         let args = List.append nargs sargs in
         make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertEmbedded(utast_cmd, args))
       }
-/*
-  | vmacro=VERTMACRO; macargsraw=macroargs {
-      let (rng_cs, _) = vmacro in
+  | bmacro_raw=PLUS_MACRO; macargsraw=macroargs {
+      let (rng_cs, _) = bmacro_raw in
+      let bmacro = (rng_cs, [], bmacro_raw) in
       let (rng_last, macargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(vmacro, macargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(bmacro, macargs))
     }
-*/
+  | bmacro=LONG_PLUS_MACRO; macargsraw=macroargs {
+      let (rng_cs, _, _) = bmacro in
+      let (rng_last, macargs) = macargsraw in
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(bmacro, macargs))
+    }
   | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {
         let (rng, modidents, ident) = long_ident in

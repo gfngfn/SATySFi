@@ -186,6 +186,39 @@ let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_
   ) mentry0
 
 
+let find_macro (tyenv : Typeenv.t) (modidents : (module_name ranged) list) ((rng_cs, csnm) : macro_name ranged) : macro_entry =
+  match modidents with
+  | [] ->
+      begin
+        match tyenv |> Typeenv.find_macro csnm with
+        | None           -> raise_error (UndefinedHorzMacro(rng_cs, csnm))
+        | Some(macentry) -> macentry
+      end
+
+  | modident0 :: proj ->
+      let modchain = (modident0, proj) in
+      let mentry = find_module_chain tyenv modchain in
+      begin
+        match mentry.mod_signature with
+        | ConcFunctor(fsig) ->
+            let (rng_first, _) = modident0 in
+            let rng_last =
+              match List.rev proj with
+              | []                 -> rng_first
+              | (rng_last, _) :: _ -> rng_last
+            in
+            let rng = Range.unite rng_first rng_last in
+            raise_error (NotAStructureSignature(rng, fsig))
+
+        | ConcStructure(ssig) ->
+            begin
+              match ssig |> StructSig.find_macro csnm with
+              | None           -> raise_error (UndefinedHorzMacro(rng_cs, csnm))
+              | Some(macentry) -> macentry
+            end
+      end
+
+
 let abstraction (evid : EvalVarID.t) (ast : abstract_tree) : abstract_tree =
   Function(LabelMap.empty, PatternBranch(PVariable(evid), ast))
 
@@ -1423,31 +1456,26 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
         unify ty0 (Range.dummy "UTInputVertContent", BaseType(TextColType));
         aux (Alist.extend acc (InputVertContent(e0))) tail
 
-    | (rngapp, UTInputVertMacro(vmacro, utmacargs)) :: tail ->
+    | (rng_app, UTInputVertMacro(bmacro, utmacargs)) :: tail ->
         begin
           match pre.stage with
           | Stage0 | Persistent0 ->
-              raise_error (InvalidExpressionAsToStaging(rngapp, Stage1))
+              raise_error (InvalidExpressionAsToStaging(rng_app, Stage1))
 
           | Stage1 ->
-              let (rngcs, csnm) = vmacro in
-              begin
-                match tyenv |> Typeenv.find_macro csnm with
-                | None ->
-                    raise_error (UndefinedVertMacro(rngcs, csnm))
-
-                | Some(macentry) ->
-                    let macparamtys =
-                      match macentry.macro_type with
-                      | VertMacroType(macparamtys) -> macparamtys
-                      | _                          -> assert false
-                    in
-                    let evid = macentry.macro_name in
-                    let eargs = typecheck_macro_arguments rngapp pre tyenv macparamtys utmacargs in
-                    let eapp = apply_tree_of_list (ContentOf(rngcs, evid)) eargs in
-                    let iv = InputVertContent(Prev(eapp)) in
-                    aux (Alist.extend acc iv) tail
-              end
+              let (rng_all, modidents, cs) = bmacro in
+              let (rng_cs, _csnm) = cs in
+              let macentry = find_macro tyenv modidents cs in
+              let macparamtys =
+                match macentry.macro_type with
+                | VertMacroType(macparamtys) -> macparamtys
+                | _                          -> assert false
+              in
+              let evid = macentry.macro_name in
+              let eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
+              let eapp = apply_tree_of_list (ContentOf(rng_cs, evid)) eargs in
+              let iv = InputVertContent(Prev(eapp)) in
+              aux (Alist.extend acc iv) tail
         end
   in
   aux Alist.empty utivlst
@@ -1507,33 +1535,9 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
               raise_error (InvalidExpressionAsToStaging(rng_app, Stage1))
 
           | Stage1 ->
-              let (rng_all, modidents, (rng_cs, csnm)) = hmacro in
-              let macentry =
-                match modidents with
-                | [] ->
-                    begin
-                      match tyenv |> Typeenv.find_macro csnm with
-                      | None           -> raise_error (UndefinedHorzMacro(rng_cs, csnm))
-                      | Some(macentry) -> macentry
-                    end
-
-                | modident0 :: proj ->
-                    let modchain = (modident0, proj) in
-                    let mentry = find_module_chain tyenv modchain in
-                    begin
-                      match mentry.mod_signature with
-                      | ConcFunctor(fsig) ->
-                          raise_error (NotAStructureSignature(rng, fsig))
-                            (* TODO (enhance): give a better code range to this error *)
-
-                      | ConcStructure(ssig) ->
-                          begin
-                            match ssig |> StructSig.find_macro csnm with
-                            | None           -> raise_error (UndefinedHorzMacro(rng_cs, csnm))
-                            | Some(macentry) -> macentry
-                          end
-                    end
-              in
+              let (rng_all, modidents, cs) = hmacro in
+              let (rng_cs, _csnm) = cs in
+              let macentry = find_macro tyenv modidents cs in
               let macparamtys =
                 match macentry.macro_type with
                 | HorzMacroType(macparamtys) -> macparamtys
