@@ -1287,39 +1287,6 @@ let rec typecheck
             (Prev(e1), beta)
       end
 
-(*
-  | UTLetHorzMacroIn(rngcs, csnm, macparams, utast1, utast2) ->
-      begin
-        match pre.stage with
-        | Stage0 | Persistent0 ->
-            raise_error (InvalidExpressionAsToStaging(rng, Stage1))
-
-        | Stage1 ->
-            let (tyenv, argevids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
-            let (e1, ty1) = typecheck_iter ~s:Stage1 tyenv utast1 in
-            unify ty1 (Range.dummy "let-inline-macro", BaseType(TextRowType));
-            let evid = EvalVarID.fresh (rngcs, csnm) in
-            let (e2, ty2) = typecheck_iter (Typeenv.add_macro tyenv csnm (HorzMacroType(macparamtys), evid)) utast2 in
-            let e = Prev(LetNonRecIn(PVariable(evid), abstraction_list argevids (Next(e1)), Next(e2))) in
-            (e, ty2)
-      end
-
-  | UTLetVertMacroIn(rngcs, csnm, macparams, utast1, utast2) ->
-      begin
-        match pre.stage with
-        | Stage0 | Persistent0 ->
-            raise_error (InvalidExpressionAsToStaging(rng, Stage1))
-
-        | Stage1 ->
-            let (tyenv, argevids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
-            let (e1, ty1) = typecheck_iter ~s:Stage1 tyenv utast1 in
-            unify ty1 (Range.dummy "let-block-macro", BaseType(TextColType));
-            let evid = EvalVarID.fresh (rngcs, csnm) in
-            let (e2, ty2) = typecheck_iter (Typeenv.add_macro tyenv csnm (VertMacroType(macparamtys), evid)) utast2 in
-            let e = Prev(LetNonRecIn(PVariable(evid), abstraction_list argevids (Next(e1)), Next(e2))) in
-            (e, ty2)
-      end
-*)
 
 and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) (tyenv : Typeenv.t) (utcmdargs : untyped_command_argument list) (cmdargtys : mono_command_argument_type list) : abstract_tree =
   try
@@ -3226,79 +3193,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
                 (recbindacc, ssig)
               ) (Alist.empty, StructSig.empty)
             in
-            let rec_or_nonrecs =
-              [ Rec(recbindacc |> Alist.to_list) ]
-(*
-              match stage with
-              | Stage0 | Persistent0 ->
-                  [ Rec(recbindacc |> Alist.to_list) ]
-
-              | Stage1 ->
-                  let temp0 = EvalVarID.fresh (Range.dummy "UTRec, Stage1, tuple", "UTRec, Stage1, tuple") in
-                  let origs_and_temps =
-                    quints |> List.map (fun (x, _, evid, recbind) ->
-                      let temp = EvalVarID.fresh (Range.dummy "UTRec, Stage1, temp", x) in
-                      (evid, temp, recbind)
-                    )
-                  in
-                  begin
-                    match origs_and_temps with
-                    | [] ->
-                        assert false
-
-                    | [ (evid, _temp, recbind) ] ->
-                        [
-                          NonRec(
-                            evid,
-                            Next(
-                              LetRecIn(
-                                [ recbind ],
-                                ContentOf(Range.dummy "UTRec, Stage1, single", evid)
-                              )
-                            )
-                          );
-                        ]
-
-                    | (evid1, temp1, _) :: (evid2, temp2, _) :: tail ->
-                        let e_tuple =
-                          let e1 = ContentOf(Range.dummy "UTRec, Stage1, e1", evid1) in
-                          let e2 = ContentOf(Range.dummy "UTRec, Stage1, e1", evid2) in
-                          let es =
-                            tail |> List.map (fun (evid, _, _) ->
-                              ContentOf(Range.dummy "UTRec, Stage1, es", evid)
-                            )
-                          in
-                          PrimitiveTuple(TupleList.make e1 e2 es)
-                        in
-                        let nonrec_main =
-                          let recbinds = quints |> List.map (fun (_, _, _, recbind) -> recbind) in
-                          NonRec(temp0, Next(LetRecIn(recbinds, e_tuple)))
-                        in
-                        let pat_tuple =
-                          let pat1 = PVariable(temp1) in
-                          let pat2 = PVariable(temp2) in
-                          let pats = tail |> List.map (fun (_, temp, _) -> PVariable(temp)) in
-                          PTuple(TupleList.make pat1 pat2 pats)
-                        in
-                        let nonrecs =
-                          origs_and_temps |> List.map (fun (evid, temp, _) ->
-                            let e =
-                              Next(
-                                LetNonRecIn(
-                                  pat_tuple,
-                                  Prev(ContentOf(Range.dummy "nonrec", temp0)),
-                                  ContentOf(Range.dummy "nonrec", temp)
-                                )
-                              )
-                            in
-                            NonRec(evid, e)
-                          )
-                        in
-                        nonrec_main :: nonrecs
-                  end
-*)
-            in
-            (rec_or_nonrecs, ssig)
+            ([ Rec(recbindacc |> Alist.to_list) ], ssig)
 
         | UTMutable((rng, varnm) as var, utastI) ->
             let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
