@@ -898,21 +898,7 @@ let error_log_environment suspended =
 
 
 let arg_version () =
-  print_string (
-    "  SATySFi version 0.0.7\n"
-(*
-      ^ "  (in the middle of the transition from Macrodown)\n"
-      ^ "    ____   ____       ________     _____   ______\n"
-      ^ "    \\   \\  \\   \\     /   _____|   /   __| /      \\\n"
-      ^ "     \\   \\  \\   \\   /   /        /   /   /   /\\   \\\n"
-      ^ "     /    \\  \\   \\  \\   \\       /   /   /   /  \\   \\\n"
-      ^ "    /      \\  \\   \\  \\   \\     /   /   /   /    \\   \\\n"
-      ^ "   /   /\\   \\  \\   \\  \\   \\   /   /   /   /      \\   \\\n"
-      ^ "  /   /  \\   \\  \\   \\  \\___\\ /___/   /   /        \\   \\\n"
-      ^ " /   /    \\   \\  \\   \\              /   /_________/   /\n"
-      ^ "/___/      \\___\\  \\___\\            /_________________/\n"
-*)
-  );
+  print_endline "  SATySFi version 0.1.0 alpha\n";
   exit 0
 
 
@@ -946,27 +932,69 @@ let arg_config (s : string) : unit =
 
 let arg_spec_list (curdir : string) =
   [
-    ("-o"                , Arg.String(arg_output curdir)             , " Specify output file"                                   );
-    ("--output"          , Arg.String(arg_output curdir)             , " Specify output file"                                   );
-    ("-v"                , Arg.Unit(arg_version)                     , " Prints version"                                        );
-    ("--version"         , Arg.Unit(arg_version)                     , " Prints version"                                        );
-    ("--full-path"       , Arg.Unit(OptionState.set_show_full_path)  , " Displays paths in full-path style"                     );
-    ("--debug-show-bbox" , Arg.Unit(OptionState.set_debug_show_bbox) , " Outputs bounding boxes for glyphs"                     );
-    ("--debug-show-space", Arg.Unit(OptionState.set_debug_show_space), " Outputs boxes for spaces"                              );
-    ("--debug-show-block-bbox", Arg.Unit(OptionState.set_debug_show_block_bbox), " Outputs bounding boxes for blocks"           );
-    ("--debug-show-block-space", Arg.Unit(OptionState.set_debug_show_block_space), " Outputs visualized block spaces"           );
-    ("--debug-show-overfull", Arg.Unit(OptionState.set_debug_show_overfull), " Outputs visualized overfull or underfull lines"  );
-    ("-t"                , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
-    ("--type-check-only" , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"                             );
-    ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"                                 );
-    ("--bytecomp"        , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"                                 );
-    ("--text-mode"       , Arg.String(text_mode)                     , " Set text mode"                                         );
-    ("--markdown"        , Arg.String(input_markdown)                , " Pass Markdown source as input"                         );
-    ("--show-fonts"      , Arg.Unit(OptionState.set_show_fonts)      , " Displays all the available fonts"                      );
-    ("-C"                , Arg.String(arg_config)                    , " Add colon-separated paths to configuration search path");
-    ("--config"          , Arg.String(arg_config)                    , " Add colon-separated paths to configuration search path");
-    ("--no-default-config", Arg.Unit(OptionState.set_no_default_config_paths), " Does not use default configuration search path");
-    ("--page-number-limit", Arg.Int(OptionState.set_page_number_limit), " Set the page number limit (default: 10000)"           );
+    ("-o",
+        Arg.String(arg_output curdir),
+        " Specify output file");
+    ("--output",
+        Arg.String(arg_output curdir),
+        " Specify output file");
+    ("-v",
+        Arg.Unit(arg_version),
+        " Prints version");
+    ("--version",
+        Arg.Unit(arg_version),
+        " Prints version");
+    ("--full-path",
+        Arg.Unit(OptionState.set_show_full_path),
+        " Displays paths in full-path style");
+    ("--debug-show-bbox",
+        Arg.Unit(OptionState.set_debug_show_bbox),
+        " Outputs bounding boxes for glyphs");
+    ("--debug-show-space",
+        Arg.Unit(OptionState.set_debug_show_space),
+        " Outputs boxes for spaces");
+    ("--debug-show-block-bbox",
+        Arg.Unit(OptionState.set_debug_show_block_bbox),
+        " Outputs bounding boxes for blocks");
+    ("--debug-show-block-space",
+        Arg.Unit(OptionState.set_debug_show_block_space),
+        " Outputs visualized block spaces");
+    ("--debug-show-overfull",
+        Arg.Unit(OptionState.set_debug_show_overfull),
+        " Outputs visualized overfull or underfull lines");
+    ("-t",
+        Arg.Unit(OptionState.set_type_check_only),
+        " Stops after type checking");
+    ("--type-check-only",
+        Arg.Unit(OptionState.set_type_check_only),
+        " Stops after type checking");
+    ("-b",
+        Arg.Unit(OptionState.set_bytecomp_mode),
+        " Use bytecode compiler");
+    ("--bytecomp",
+        Arg.Unit(OptionState.set_bytecomp_mode),
+        " Use bytecode compiler");
+    ("--text-mode",
+        Arg.String(text_mode),
+        " Set text mode");
+    ("--markdown",
+        Arg.String(input_markdown),
+        " Pass Markdown source as input");
+    ("--show-fonts",
+        Arg.Unit(OptionState.set_show_fonts),
+        " Displays all the available fonts");
+    ("-C",
+        Arg.String(arg_config),
+        " Add colon-separated paths to configuration search path");
+    ("--config",
+        Arg.String(arg_config),
+        " Add colon-separated paths to configuration search path");
+    ("--no-default-config",
+        Arg.Unit(OptionState.set_no_default_config_paths),
+        " Does not use default configuration search path");
+    ("--page-number-limit",
+        Arg.Int(OptionState.set_page_number_limit),
+        " Set the page number limit (default: 10000)");
   ]
 
 
