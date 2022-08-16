@@ -744,8 +744,8 @@ let error_log_environment suspended =
               NormalLine("at " ^ (Range.to_string rng) ^ ":");
               NormalLine("invalid number of macro arguments; types expected on arguments are:");
             ] (macparamtys |> List.map (function
-              | LateMacroParameter(pty)  -> DisplayLine("* " ^ (Display.show_poly_type pty))
-              | EarlyMacroParameter(pty) -> DisplayLine("* ~" ^ (Display.show_poly_type pty))
+              | LateMacroParameter(ty)  -> DisplayLine("* " ^ (Display.show_mono_type ty))
+              | EarlyMacroParameter(ty) -> DisplayLine("* ~" ^ (Display.show_mono_type ty))
             )))
 
         | LateMacroArgumentExpected(rng, ty) ->
@@ -913,11 +913,11 @@ let error_log_environment suspended =
               DisplayLine(Display.show_poly_type pty);
             ]
 
-        | MissingRequiredMacroName(rng, csnm, macty) ->
+        | MissingRequiredMacroName(rng, csnm, pmacty) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
               NormalLine(Printf.sprintf "missing required macro '%s' of type" csnm);
-              DisplayLine(Display.show_macro_type macty);
+              DisplayLine(Display.show_poly_macro_type pmacty);
             ]
 
         | MissingRequiredConstructorName(rng, ctornm, _centry) ->
@@ -962,13 +962,13 @@ let error_log_environment suspended =
               DisplayLine(string_of_stage stage2);
             ]
 
-        | NotASubtypeAboutMacro(rng, csnm, macty1, macty2) ->
+        | NotASubtypeAboutMacro(rng, csnm, pmacty1, pmacty2) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
               NormalLine(Printf.sprintf "not a subtype about macro '%s'; type" csnm);
-              DisplayLine(Display.show_macro_type macty1);
+              DisplayLine(Display.show_poly_macro_type pmacty1);
               NormalLine("is not a subtype of");
-              DisplayLine(Display.show_macro_type macty2);
+              DisplayLine(Display.show_poly_macro_type pmacty2);
             ]
 
         | NotASubtypeAboutConstructor(rng, ctornm, _tyscheme1, _tyscheme2) ->

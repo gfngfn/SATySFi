@@ -254,8 +254,8 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (opt_param
   (row, evid_labmap, tyenv)
 
 
-let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (macparams : untyped_macro_parameter list) : Typeenv.t * EvalVarID.t list * macro_parameter_type list =
-  let (tyenv, evidacc, macptyacc) =
+let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (macparams : untyped_macro_parameter list) : Typeenv.t * EvalVarID.t list * mono_macro_parameter_type list =
+  let (tyenv, evidacc, macparamtyacc) =
     macparams |> List.fold_left (fun (tyenv, evidacc, macptyacc) macparam ->
       let param =
         match macparam with
@@ -265,17 +265,17 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       let (rng, varnm) = param in
       let evid = EvalVarID.fresh param in
       let (ptybody, beta) =
-        let tvid = fresh_free_id pre.quantifiability pre.level in
+        let tvid = fresh_free_id pre.quantifiability (Level.succ pre.level) in
         let tvuref = ref (MonoFree(tvid)) in
         ((rng, TypeVariable(PolyFree(tvuref))), (rng, TypeVariable(Updatable(tvuref))))
       in
-      let (pty, macpty) =
+      let (pty, macparamty) =
       match macparam with
       | UTLateMacroParam(_) ->
-          (Poly(Range.dummy "late-macro-param", CodeType(ptybody)), LateMacroParameter(Poly(ptybody)))
+          (Poly(Range.dummy "late-macro-param", CodeType(ptybody)), LateMacroParameter(beta))
 
       | UTEarlyMacroParam(_) ->
-          (Poly(ptybody), EarlyMacroParameter(Poly(ptybody)))
+          (Poly(ptybody), EarlyMacroParameter(beta))
       in
       let ventry =
         {
@@ -284,10 +284,10 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
           val_stage = Stage0;
         }
       in
-      (tyenv |> Typeenv.add_value varnm ventry, Alist.extend evidacc evid, Alist.extend macptyacc macpty)
+      (tyenv |> Typeenv.add_value varnm ventry, Alist.extend evidacc evid, Alist.extend macptyacc macparamty)
     ) (tyenv, Alist.empty, Alist.empty)
   in
-  (tyenv, Alist.to_list evidacc, Alist.to_list macptyacc)
+  (tyenv, Alist.to_list evidacc, Alist.to_list macparamtyacc)
 
 
 let rec is_nonexpansive_expression e =
@@ -1433,8 +1433,9 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
               let (rng_all, modidents, cs) = bmacro in
               let (rng_cs, _csnm) = cs in
               let macentry = find_macro tyenv modidents cs in
+              let macty = TypeConv.instantiate_macro_type pre.level pre.quantifiability macentry.macro_type in
               let macparamtys =
-                match macentry.macro_type with
+                match macty with
                 | VertMacroType(macparamtys) -> macparamtys
                 | _                          -> assert false
               in
@@ -1509,8 +1510,9 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
               let (rng_all, modidents, cs) = hmacro in
               let (rng_cs, _csnm) = cs in
               let macentry = find_macro tyenv modidents cs in
+              let macty = TypeConv.instantiate_macro_type pre.level pre.quantifiability macentry.macro_type in
               let macparamtys =
-                match macentry.macro_type with
+                match macty with
                 | HorzMacroType(macparamtys) -> macparamtys
                 | _                          -> assert false
               in
@@ -1528,7 +1530,7 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
   aux Alist.empty utihlst
 
 
-and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (macparamtys : macro_parameter_type list) (utmacargs : untyped_macro_argument list) : abstract_tree list =
+and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (macparamtys : mono_macro_parameter_type list) (utmacargs : untyped_macro_argument list) : abstract_tree list =
   let lenexp = List.length macparamtys in
   let lenact = List.length utmacargs in
   if (lenexp <> lenact) then
@@ -1537,9 +1539,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
     let argacc =
       List.fold_left2 (fun argacc macparamty utmacarg ->
         match macparamty with
-        | LateMacroParameter(ptyexp) ->
-            let tyexp = TypeConv.instantiate Level.bottom Quantifiable ptyexp in
-              (* No bound type variables are in `ptyexp` *)
+        | LateMacroParameter(tyexp) ->
             begin
               match utmacarg with
               | UTLateMacroArg(utast) ->
@@ -1552,9 +1552,7 @@ and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (m
                   raise_error (LateMacroArgumentExpected(rngarg, tyexp))
             end
 
-        | EarlyMacroParameter(ptyexp) ->
-            let tyexp = TypeConv.instantiate Level.bottom Quantifiable ptyexp in
-              (* No bound type variables are in `ptyexp` *)
+        | EarlyMacroParameter(tyexp) ->
             begin
               match utmacarg with
               | UTLateMacroArg((rngarg, _)) ->
@@ -1932,7 +1930,7 @@ and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : ki
   Kind(kds_dom)
 
 
-and decode_manual_macro_type (pre : pre) (tyenv : Typeenv.t) (mmacty : manual_macro_type) : macro_type =
+and decode_manual_macro_type (pre : pre) (tyenv : Typeenv.t) (mmacty : manual_macro_type) : mono_macro_type =
   match mmacty with
   | MHorzMacroType(mmacparamtys) ->
       HorzMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
@@ -1941,15 +1939,15 @@ and decode_manual_macro_type (pre : pre) (tyenv : Typeenv.t) (mmacty : manual_ma
       VertMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
 
 
-and decode_manual_macro_parameter_type (pre : pre) (tyenv : Typeenv.t) (mmacparamty : manual_macro_parameter_type) : macro_parameter_type =
+and decode_manual_macro_parameter_type (pre : pre) (tyenv : Typeenv.t) (mmacparamty : manual_macro_parameter_type) : mono_macro_parameter_type =
   match mmacparamty with
   | MLateMacroParameter(mty) ->
       let ty = decode_manual_type pre tyenv mty in
-      LateMacroParameter(TypeConv.lift_poly ty)
+      LateMacroParameter(ty)
 
   | MEarlyMacroParameter(mty) ->
       let ty = decode_manual_type pre tyenv mty in
-      EarlyMacroParameter(TypeConv.lift_poly ty)
+      EarlyMacroParameter(ty)
 
 
 and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
@@ -2309,15 +2307,20 @@ and substitute_type_id (subst : substitution) (tyid_from : TypeID.t) : TypeID.t 
       end
 
 
-and substitute_macro_type (subst : substitution) (macty : macro_type) : macro_type =
-  match macty with
-  | HorzMacroType(macparamtys) -> HorzMacroType(macparamtys |> List.map (substitute_macro_parameter_type subst))
-  | VertMacroType(macparamtys) -> VertMacroType(macparamtys |> List.map (substitute_macro_parameter_type subst))
+and substitute_macro_type (subst : substitution) (pmacty : poly_macro_type) : poly_macro_type =
+  match pmacty with
+  | HorzMacroType(pmacparamtys) -> HorzMacroType(pmacparamtys |> List.map (substitute_macro_parameter_type subst))
+  | VertMacroType(pmacparamtys) -> VertMacroType(pmacparamtys |> List.map (substitute_macro_parameter_type subst))
 
 
 and substitute_macro_parameter_type (subst : substitution) = function
-  | LateMacroParameter(ty)  -> LateMacroParameter(ty |> substitute_poly_type subst)
-  | EarlyMacroParameter(ty) -> EarlyMacroParameter(ty |> substitute_poly_type subst)
+  | LateMacroParameter(pty) ->
+      let Poly(pty) = Poly(pty) |> substitute_poly_type subst in
+      LateMacroParameter(pty)
+
+  | EarlyMacroParameter(pty) ->
+      let Poly(pty) = Poly(pty) |> substitute_poly_type subst in
+      EarlyMacroParameter(pty)
 
 
 and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t =
@@ -2793,7 +2796,27 @@ and kind_equal (kd1 : kind) (kd2 : kind) : bool =
   | zipped                        -> zipped |> List.for_all (fun (TypeKind, TypeKind) -> true)
 
 
-and subtype_macro_type (macty1 : macro_type) (macty2 : macro_type) : bool =
+and subtype_macro_type (macty1 : poly_macro_type) (macty2 : poly_macro_type) : bool =
+  let bid_ht = BoundIDHashTable.create 32 in
+  let brid_ht = BoundRowIDHashTable.create 32 in
+  let internbid (bid1 : BoundID.t) (pty2 : poly_type) : bool =
+    match BoundIDHashTable.find_opt bid_ht bid1 with
+    | None ->
+        BoundIDHashTable.add bid_ht bid1 pty2;
+        true
+
+    | Some(pty) ->
+        poly_type_equal pty pty2
+  in
+  let internbrid (brid1 : BoundRowID.t) (nomprow2 : normalized_poly_row) : bool =
+    match BoundRowIDHashTable.find_opt brid_ht brid1 with
+    | None ->
+        BoundRowIDHashTable.add brid_ht brid1 nomprow2;
+        true
+
+    | Some(nomprow) ->
+        normalized_poly_row_equal nomprow nomprow2
+  in
   let aux macparamtys1 macparamtys2 =
     match List.combine macparamtys1 macparamtys2 with
     | exception Invalid_argument(_) ->
@@ -2801,9 +2824,14 @@ and subtype_macro_type (macty1 : macro_type) (macty2 : macro_type) : bool =
 
     | zipped ->
         zipped |> List.for_all (function
-        | (LateMacroParameter(pty1), LateMacroParameter(pty2))   -> subtype_poly_type pty1 pty2
-        | (EarlyMacroParameter(pty1), EarlyMacroParameter(pty2)) -> subtype_poly_type pty1 pty2
-        | _                                                      -> false
+        | (LateMacroParameter(pty1), LateMacroParameter(pty2)) ->
+            subtype_poly_type_impl internbid internbrid (Poly(pty1)) (Poly(pty2))
+
+        | (EarlyMacroParameter(pty1), EarlyMacroParameter(pty2)) ->
+            subtype_poly_type_impl internbid internbrid (Poly(pty1)) (Poly(pty2))
+
+        | _ ->
+            false
         )
   in
   match (macty1, macty2) with
@@ -2986,7 +3014,8 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
         }
       in
       let macty = decode_manual_macro_type pre_init tyenv mmacty in
-      let macentry = { macro_type = macty; macro_name = None; } in
+      let pmacty = TypeConv.generalize_macro_type macty in
+      let macentry = { macro_type = pmacty; macro_name = None; } in
       let ssig = StructSig.empty |> StructSig.add_macro csnm macentry in
       (OpaqueIDMap.empty, ssig)
 
@@ -3318,11 +3347,17 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
         }
       in
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
+      let macty = HorzMacroType(macparamtys) in
       let (e1, ty1) = typecheck pre tyenv utast1 in
       unify ty1 (Range.dummy "val-inline-macro", BaseType(TextRowType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
-        let macentry = { macro_type = HorzMacroType(macparamtys); macro_name = Some(evid) } in
+        let macentry =
+          {
+            macro_type = TypeConv.generalize_macro_type macty;
+            macro_name = Some(evid);
+          }
+        in
         StructSig.empty |> StructSig.add_macro csnm macentry
       in
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
@@ -3339,11 +3374,17 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
         }
       in
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
+      let macty = HorzMacroType(macparamtys) in
       let (e1, ty1) = typecheck pre tyenv utast1 in
       unify ty1 (Range.dummy "val-block-macro", BaseType(TextColType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
-        let macentry = { macro_type = HorzMacroType(macparamtys); macro_name = Some(evid) } in
+        let macentry =
+          {
+            macro_type = TypeConv.generalize_macro_type macty;
+            macro_name = Some(evid);
+          }
+        in
         StructSig.empty |> StructSig.add_macro csnm macentry
       in
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in

@@ -251,14 +251,30 @@ type mono_command_argument_type =
 type poly_command_argument_type =
   (poly_type_variable, poly_row_variable) command_argument_type
 
-type macro_parameter_type =
-  | LateMacroParameter  of poly_type
-  | EarlyMacroParameter of poly_type
+type ('a, 'b) macro_parameter_type =
+  | LateMacroParameter  of ('a, 'b) typ
+  | EarlyMacroParameter of ('a, 'b) typ
 [@@deriving show { with_path = false }]
 
-type macro_type =
-  | HorzMacroType of macro_parameter_type list
-  | VertMacroType of macro_parameter_type list
+type ('a, 'b) macro_type =
+  | HorzMacroType of (('a, 'b) macro_parameter_type) list
+  | VertMacroType of (('a, 'b) macro_parameter_type) list
+[@@deriving show { with_path = false }]
+
+type mono_macro_parameter_type =
+  (mono_type_variable, mono_row_variable) macro_parameter_type
+[@@deriving show { with_path = false }]
+
+type poly_macro_parameter_type =
+  (poly_type_variable, poly_row_variable) macro_parameter_type
+[@@deriving show { with_path = false }]
+
+type mono_macro_type =
+  (mono_type_variable, mono_row_variable) macro_type
+[@@deriving show { with_path = false }]
+
+type poly_macro_type =
+  (poly_type_variable, poly_row_variable) macro_type
 [@@deriving show { with_path = false }]
 
 type constructor_branch_map = poly_type ConstructorMap.t

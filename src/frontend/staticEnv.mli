@@ -42,7 +42,7 @@ type constructor_entry = {
 }
 
 type macro_entry = {
-  macro_type : macro_type;
+  macro_type : poly_macro_type;
   macro_name : EvalVarID.t option;
 }
 

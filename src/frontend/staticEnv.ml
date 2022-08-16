@@ -98,7 +98,7 @@ type constructor_entry = {
 [@@deriving show { with_path = false }]
 
 type macro_entry = {
-  macro_type : macro_type;
+  macro_type : poly_macro_type;
   macro_name : EvalVarID.t option;
 }
 [@@deriving show { with_path = false }]

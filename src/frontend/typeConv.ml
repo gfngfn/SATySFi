@@ -186,6 +186,10 @@ let instantiate_by_map_poly (bidmap : poly_type_body BoundIDMap.t) (Poly(pty) : 
   Poly(instantiate_impl intern_ty intern_row pty)
 
 
+let instantiate_macro_type (lev : level) (qtfbl : quantifiability) (pmacty : poly_macro_type) : mono_macro_type =
+  failwith "TODO: instantiate_macro_type"
+
+
 let lift_poly_general (ptv : FreeID.t -> bool) (prv : FreeRowID.t -> bool) (ty : mono_type) : poly_type_body =
   let tvidht = FreeIDHashTable.create 32 in
   let rec iter ((rng, tymain) : mono_type) =
@@ -337,6 +341,10 @@ let lift_poly_body =
 
 let lift_poly (ty : mono_type) : poly_type =
   Poly(lift_poly_body ty)
+
+
+let generalize_macro_type (macty : mono_macro_type) : poly_macro_type =
+  failwith "TODO: generalize_macro_type"
 
 
 let rec unlift_aux pty =
