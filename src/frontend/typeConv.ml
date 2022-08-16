@@ -210,8 +210,7 @@ let instantiate_macro_type (lev : level) (qtfbl : quantifiability) (pmacty : pol
   | VertMacroType(pmacparamtys) -> VertMacroType(pmacparamtys |> List.map aux)
 
 
-let lift_poly_general (ptv : FreeID.t -> bool) (prv : FreeRowID.t -> bool) (ty : mono_type) : poly_type_body =
-  let tvidht = FreeIDHashTable.create 32 in
+let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (prv : FreeRowID.t -> bool) (ty : mono_type) : poly_type_body =
   let rec iter ((rng, tymain) : mono_type) =
     match tymain with
     | TypeVariable(tv) ->
@@ -225,21 +224,11 @@ let lift_poly_general (ptv : FreeID.t -> bool) (prv : FreeRowID.t -> bool) (ty :
 
                 | MonoFree(fid) ->
                     let ptvi =
-                      if not (ptv fid) then
-                        PolyFree(tvuref)
-                      else
-                        begin
-                          match FreeIDHashTable.find_opt tvidht fid with
-                          | Some(bid) ->
-                              PolyBound(bid)
-
-                          | None ->
-                              let bid = BoundID.fresh () in
-                              FreeIDHashTable.add tvidht fid bid;
-                              PolyBound(bid)
-                        end
+                      match intern_ty fid with
+                      | None      -> PolyFree(tvuref)
+                      | Some(bid) -> PolyBound(bid)
                     in
-                      (rng, TypeVariable(ptvi))
+                    (rng, TypeVariable(ptvi))
               end
 
           | MustBeBound(mbbid) ->
@@ -345,18 +334,34 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
   iter ty
 
 
-let generalize (lev : level) (ty : mono_type) : poly_type =
-  let ptv (fid : FreeID.t) : bool =
-    FreeID.get_quantifiability fid && Level.less_than lev (FreeID.get_level fid)
+let make_type_generalization_intern (lev : level) (tvid_ht : BoundID.t FreeIDHashTable.t) =
+  let intern_ty (fid : FreeID.t) : BoundID.t option =
+    if not (FreeID.get_quantifiability fid && Level.less_than lev (FreeID.get_level fid)) then
+      None
+    else
+      match FreeIDHashTable.find_opt tvid_ht fid with
+      | Some(bid) ->
+          Some(bid)
+
+      | None ->
+          let bid = BoundID.fresh () in
+          FreeIDHashTable.add tvid_ht fid bid;
+          Some(bid)
   in
+  intern_ty
+
+
+let generalize (lev : level) (ty : mono_type) : poly_type =
+  let tvid_ht = FreeIDHashTable.create 32 in
+  let intern_ty = make_type_generalization_intern lev tvid_ht in
   let prv (frid : FreeRowID.t) : bool =
     Level.less_than lev (FreeRowID.get_level frid)
   in
-  Poly(lift_poly_general ptv prv ty)
+  Poly(lift_poly_general intern_ty prv ty)
 
 
 let lift_poly_body =
-  lift_poly_general (fun _ -> false) (fun _ -> false)
+  lift_poly_general (fun _ -> None) (fun _ -> false)
 
 
 let lift_poly (ty : mono_type) : poly_type =
@@ -364,7 +369,18 @@ let lift_poly (ty : mono_type) : poly_type =
 
 
 let generalize_macro_type (macty : mono_macro_type) : poly_macro_type =
-  failwith "TODO: generalize_macro_type"
+  let tvid_ht = FreeIDHashTable.create 32 in
+  let intern_ty = make_type_generalization_intern Level.bottom tvid_ht in
+  let prv (frid : FreeRowID.t) : bool =
+    Level.less_than Level.bottom (FreeRowID.get_level frid)
+  in
+  let aux = function
+    | LateMacroParameter(ty)  -> LateMacroParameter(lift_poly_general intern_ty prv ty)
+    | EarlyMacroParameter(ty) -> EarlyMacroParameter(lift_poly_general intern_ty prv ty)
+  in
+  match macty with
+  | HorzMacroType(macparamtys) -> HorzMacroType(macparamtys |> List.map aux)
+  | VertMacroType(macparamtys) -> VertMacroType(macparamtys |> List.map aux)
 
 
 let rec unlift_aux pty =
