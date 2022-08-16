@@ -6,85 +6,14 @@ open StaticEnv
 
 exception NoLibraryRootDesignation
 exception NoInputFileDesignation
-exception CyclicFileDependency        of abs_path list
-exception CannotReadFileOwingToSystem of string
-(*
-exception NotALibraryFile             of abs_path * Typeenv.t * mono_type
-*)
-exception NotADocumentFile            of abs_path * Typeenv.t * mono_type
-exception NotAStringFile              of abs_path * Typeenv.t * mono_type
+exception CyclicFileDependency            of abs_path list
+exception CannotReadFileOwingToSystem     of string
+exception NotADocumentFile                of abs_path * Typeenv.t * mono_type
+exception NotAStringFile                  of abs_path * Typeenv.t * mono_type
 exception LibraryContainsWholeReturnValue of abs_path
 exception DocumentLacksWholeReturnValue   of abs_path
 exception ShouldSpecifyOutputFile
-exception DocumentShouldBeAtStage1
-exception InvalidDependencyAsToStaging of abs_path * stage * abs_path * stage
-
-
-type line =
-  | NormalLine        of string
-  | DisplayLine       of string
-  | NormalLineOption  of string option
-  | DisplayLineOption of string option
-
-type error_category =
-  | Lexer
-  | Parser
-  | Typechecker
-  | Evaluator
-  | Interface
-  | System
-
-
-let show_error_category = function
-  | Lexer       -> "Syntax Error at Lexer"
-  | Parser      -> "Syntax Error at Parser"
-  | Typechecker -> "Type Error"
-  | Evaluator   -> "Error during Evaluation"
-  | Interface   -> "Error"
-  | System      -> "Error"
-
-
-let report_error (cat : error_category) (lines : line list) =
-  let aux lst =
-    lst |> List.fold_left (fun is_first line ->
-      begin
-        match line with
-        | NormalLine(s)
-        | NormalLineOption(Some(s)) ->
-            if is_first then
-              print_endline s
-            else
-              print_endline ("    " ^ s)
-
-        | DisplayLine(s)
-        | DisplayLineOption(Some(s)) ->
-            if is_first then
-              print_endline ("\n      " ^ s)
-            else
-              print_endline ("      " ^ s)
-
-        | _ ->
-            ()
-      end;
-      false
-    ) true
-  in
-  print_string ("! [" ^ (show_error_category cat) ^ "] ");
-  aux lines |> ignore;
-  exit 1
-
-
-let make_candidates_message (candidates : string list) =
-  let add_quote s = "'" ^ s ^ "'" in
-  let rec aux lst =
-    match List.rev lst with
-    | []        -> ""
-    | s :: []   -> add_quote s
-    | s :: rest -> (String.concat ", " (List.map add_quote (List.rev rest))) ^ " or " ^ (add_quote s)
-  in
-  match candidates with
-  | [] -> None
-  | _  -> Some("Did you mean " ^ (aux candidates) ^ "?")
+exception InvalidDependencyAsToStaging    of abs_path * stage * abs_path * stage
 
 
 module FileDependencyGraph = DirectedGraph.Make
@@ -100,7 +29,7 @@ type file_info =
   | LibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
 
 
-let has_library_extension abspath =
+let has_library_extension (abspath : abs_path) : bool =
   let ext = get_abs_path_extension abspath in
   match ext with
   | ".satyh" | ".satyg" ->
@@ -118,16 +47,16 @@ let has_library_extension abspath =
 
 let get_candidate_file_extensions () =
   match OptionState.get_mode () with
-  | None      -> [".satyh"; ".satyg"]
-  | Some(lst) -> List.append (lst |> List.map (fun s -> ".satyh-" ^ s)) [".satyg"]
+  | None          -> [ ".satyh"; ".satyg" ]
+  | Some(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
 
 
-let get_package_abs_path package =
+let get_package_abs_path (package : string) : abs_path =
   let extcands = get_candidate_file_extensions () in
   Config.resolve_package_exn package extcands
 
 
-let get_abs_path_of_header curdir headerelem =
+let get_abs_path_of_header (curdir : string) (headerelem : header_element) : abs_path =
   match headerelem with
   | HeaderRequire(package) ->
       get_package_abs_path package
@@ -161,7 +90,7 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : 
   end
 
 
-(* -- initialization that should be performed before every cross-reference-solving loop -- *)
+(* Initialization that should be performed before every cross-reference-solving loop *)
 let reset () =
   if OptionState.is_text_mode () then
     ()
@@ -172,8 +101,8 @@ let reset () =
   end
 
 
-(* -- initialization that should be performed before typechecking -- *)
-let initialize (abspath_dump : abs_path) =
+(* Initialization that should be performed before typechecking *)
+let initialize (abspath_dump : abs_path) : Typeenv.t * environment * bool =
   FreeID.initialize ();
   BoundID.initialize ();
   EvalVarID.initialize ();
@@ -194,10 +123,6 @@ let initialize (abspath_dump : abs_path) =
   (tyenv, env, dump_file_exists)
 
 
-let output_pdf pdfret =
-  HandlePdf.write_to_file pdfret
-
-
 module StoreIDMap = Map.Make(StoreID)
 
 
@@ -208,9 +133,9 @@ let freeze_environment (env : environment) : frozen_environment =
   let open MyUtil in
   let (valenv, stenvref) = env in
   let stmap =
-    StoreIDMap.empty @|> (!stenvref) @|> StoreIDHashTable.fold (fun stid value stmap ->
+     StoreIDMap.empty |> StoreIDHashTable.fold (fun stid value stmap ->
       stmap |> StoreIDMap.add stid value
-    )
+    ) (!stenvref)
   in
   (valenv, stenvref, stmap)
 
@@ -252,9 +177,6 @@ let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : str
   match MyUtil.string_of_file abspath_in with
   | Ok(data) ->
       let utast = DecodeMD.decode cmdrcd data in
-    (*
-        let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
-    *)
       FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
       depends |> List.iter (fun package ->
         let file_path_sub = get_package_abs_path package in
@@ -267,12 +189,6 @@ let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : str
 
   | Error(msg) ->
       raise (CannotReadFileOwingToSystem(msg))
-
-
-let output_text abspath_out s =
-  let outc = open_out_abs abspath_out in
-  output_string outc s;
-  close_out outc
 
 
 let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
@@ -298,6 +214,16 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
       raise (NotADocumentFile(abspath_in, tyenv, ty))
 
 
+let output_pdf (pdfret : HandlePdf.t) : unit =
+  HandlePdf.write_to_file pdfret
+
+
+let output_text (abspath_out : abs_path) (s : string) : unit =
+  let outc = open_out_abs abspath_out in
+  output_string outc s;
+  close_out outc
+
+
 let eval_library_file (env : environment) (abspath : abs_path) (binds : binding list) : environment =
   Logging.begin_to_eval_file abspath;
   if OptionState.bytecomp_mode () then
@@ -311,27 +237,27 @@ let eval_library_file (env : environment) (abspath : abs_path) (binds : binding 
     env
 
 
-let eval_main i env_freezed ast =
+let eval_main (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : syntactic_value =
   Logging.start_evaluation i;
   reset ();
   let env = unfreeze_environment env_freezed in
-  let value_doc =
+  let value =
     if OptionState.bytecomp_mode () then
-      let (value_doc, _) = Bytecomp.compile_and_exec_0 env ast in
-      value_doc
+      let (value, _) = Bytecomp.compile_and_exec_0 env ast in
+      value
     else
       Evaluator.interpret_0 env ast
   in
   Logging.end_evaluation ();
-  value_doc
+  value
 
 
 let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
   let env_freezed = freeze_environment env in
   if OptionState.is_text_mode () then
-    let rec aux i =
-      let valuestr = eval_main i env_freezed ast in
-      let s = EvalUtil.get_string valuestr in
+    let rec aux (i : int) =
+      let value_str = eval_main i env_freezed ast in
+      let s = EvalUtil.get_string value_str in
       match CrossRef.needs_another_trial abspath_dump with
       | CrossRef.NeedsAnotherTrial ->
           Logging.needs_another_trial ();
@@ -349,9 +275,9 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
     in
     aux 1
   else
-    let rec aux i =
-      let valuedoc = eval_main i env_freezed ast in
-      match valuedoc with
+    let rec aux (i : int) =
+      let value_doc = eval_main i env_freezed ast in
+      match value_doc with
       | BaseConstant(BCDocument(pagesize, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
           Logging.start_page_break ();
           State.start_page_break ();
@@ -383,20 +309,20 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
           end
 
       | _ ->
-          EvalUtil.report_bug_value "main; not a DocumentValue(...)" valuedoc
+          EvalUtil.report_bug_value "main; not a DocumentValue(...)" value_doc
     in
     aux 1
 
 
 let eval_abstract_tree_list (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
-  let rec preprocess (acc : (abs_path * code_rec_or_nonrec list) Alist.t) (env : environment) (libs : (abs_path * binding list) list) =
+  let rec preprocess ((env, acc) : environment * (abs_path * code_rec_or_nonrec list) Alist.t) (libs : (abs_path * binding list) list) =
     match libs with
     | [] ->
         (env, Alist.to_list acc)
 
     | (abspath, binds) :: tail ->
         let (env, cd_rec_or_nonrecs) = Evaluator.interpret_bindings_0 env binds in
-        preprocess (Alist.extend acc (abspath, cd_rec_or_nonrecs)) env tail
+        preprocess (env, Alist.extend acc (abspath, cd_rec_or_nonrecs)) tail
   in
     (* --
        each evaluation called in `preprocess` is run by the naive interpreter
@@ -417,19 +343,85 @@ let eval_abstract_tree_list (env : environment) (libs : (abs_path * binding list
         eval env tail
   in
 
-  let (env, codebinds) = preprocess Alist.empty env libs in
+  let (env, codebinds) = preprocess (env, Alist.empty) libs in
   let code_doc = Evaluator.interpret_1 env ast_doc in
   let env = eval env codebinds in
   let ast_doc = unlift_code code_doc in
   eval_document_file env ast_doc abspath_out abspath_dump
 
 
-let convert_abs_path_to_show abspath =
+let convert_abs_path_to_show (abspath : abs_path) : string =
   let abspathstr = get_abs_path_string abspath in
   if OptionState.show_full_path () then
     abspathstr
   else
     Filename.basename abspathstr
+
+
+type line =
+  | NormalLine        of string
+  | DisplayLine       of string
+  | NormalLineOption  of string option
+  | DisplayLineOption of string option
+
+type error_category =
+  | Lexer
+  | Parser
+  | Typechecker
+  | Evaluator
+  | Interface
+  | System
+
+
+let show_error_category = function
+  | Lexer       -> "Syntax Error at Lexer"
+  | Parser      -> "Syntax Error at Parser"
+  | Typechecker -> "Type Error"
+  | Evaluator   -> "Error during Evaluation"
+  | Interface   -> "Error"
+  | System      -> "Error"
+
+
+let report_error (cat : error_category) (lines : line list) =
+  let aux (lines : line list) =
+    lines |> List.fold_left (fun is_first line ->
+      begin
+        match line with
+        | NormalLine(s)
+        | NormalLineOption(Some(s)) ->
+            if is_first then
+              print_endline s
+            else
+              print_endline ("    " ^ s)
+
+        | DisplayLine(s)
+        | DisplayLineOption(Some(s)) ->
+            if is_first then
+              print_endline ("\n      " ^ s)
+            else
+              print_endline ("      " ^ s)
+
+        | _ ->
+            ()
+      end;
+      false
+    ) true
+  in
+  print_string ("! [" ^ (show_error_category cat) ^ "] ");
+  aux lines |> ignore;
+  exit 1
+
+
+let make_candidates_message (candidates : string list) =
+  let quote s = Printf.sprintf "'%s'" s in
+  let aux (rev_rest : string list) (last : string) =
+    match rev_rest with
+    | []     -> quote last
+    | _ :: _ -> Printf.sprintf "%s or %s" (String.concat ", " (List.map quote (List.rev rev_rest))) (quote last)
+  in
+  match List.rev candidates with
+  | []               -> None
+  | last :: rev_rest -> Some(Printf.sprintf "Did you mean %s?" (aux rev_rest last))
 
 
 let error_log_environment suspended =
@@ -488,14 +480,7 @@ let error_log_environment suspended =
         DisplayLine(s);
         NormalLine("candidate paths:");
       ] (pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath))))
-(*
-  | NotALibraryFile(abspath, tyenv, ty) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Typechecker [
-        NormalLine("file '" ^ fname ^ "' is not a header file; it is of type");
-        DisplayLine(string_of_mono_type tyenv ty);
-      ]
-*)
+
   | NotADocumentFile(abspath_in, tyenv, ty) ->
       let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
@@ -513,11 +498,6 @@ let error_log_environment suspended =
   | ShouldSpecifyOutputFile ->
       report_error Interface [
         NormalLine("should specify output file for text mode.");
-      ]
-
-  | DocumentShouldBeAtStage1 ->
-      report_error Interface [
-        NormalLine("invalid stage designation for a document file; should be at stage 1.");
       ]
 
   | InvalidDependencyAsToStaging(abspath1, stage1, abspath2, stage2) ->
