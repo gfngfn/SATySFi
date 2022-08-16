@@ -1019,6 +1019,10 @@ type 'a cycle =
   | Loop  of 'a
   | Cycle of 'a TupleList.t
 
+type file_info =
+  | DocumentFile of untyped_abstract_tree
+  | LibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
+
 
 module BoundIDHashTable = Hashtbl.Make(BoundID)
 

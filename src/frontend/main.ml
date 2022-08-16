@@ -6,88 +6,9 @@ open StaticEnv
 
 exception NoLibraryRootDesignation
 exception NoInputFileDesignation
-exception CyclicFileDependency            of abs_path list
-exception CannotReadFileOwingToSystem     of string
-exception NotADocumentFile                of abs_path * Typeenv.t * mono_type
-exception NotAStringFile                  of abs_path * Typeenv.t * mono_type
-exception LibraryContainsWholeReturnValue of abs_path
-exception DocumentLacksWholeReturnValue   of abs_path
+exception NotADocumentFile             of abs_path * Typeenv.t * mono_type
+exception NotAStringFile               of abs_path * Typeenv.t * mono_type
 exception ShouldSpecifyOutputFile
-exception InvalidDependencyAsToStaging    of abs_path * stage * abs_path * stage
-
-
-module FileDependencyGraph = DirectedGraph.Make
-  (struct
-    type t = abs_path
-    let compare ap1 ap2 = String.compare (get_abs_path_string ap1) (get_abs_path_string ap2)
-    let show ap = Filename.basename (get_abs_path_string ap)
-  end)
-
-
-type file_info =
-  | DocumentFile of untyped_abstract_tree
-  | LibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
-
-
-let has_library_extension (abspath : abs_path) : bool =
-  let ext = get_abs_path_extension abspath in
-  match ext with
-  | ".satyh" | ".satyg" ->
-      true
-
-  | _ ->
-      begin
-        try
-          let extpre = String.sub ext 0 7 in
-          String.equal extpre ".satyh-"
-        with
-        | _ -> false
-      end
-
-
-let get_candidate_file_extensions () =
-  match OptionState.get_mode () with
-  | None          -> [ ".satyh"; ".satyg" ]
-  | Some(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
-
-
-let get_package_abs_path (package : string) : abs_path =
-  let extcands = get_candidate_file_extensions () in
-  Config.resolve_package_exn package extcands
-
-
-let get_abs_path_of_header (curdir : string) (headerelem : header_element) : abs_path =
-  match headerelem with
-  | HeaderRequire(package) ->
-      get_package_abs_path package
-
-  | HeaderImport(s) ->
-      let extcands = get_candidate_file_extensions () in
-      Config.resolve_local_exn curdir s extcands
-
-
-let rec register_library_file (dg : file_info FileDependencyGraph.t) (abspath : abs_path) : unit =
-  begin
-    Logging.begin_to_parse_file abspath;
-    let curdir = Filename.dirname (get_abs_path_string abspath) in
-    let inc = open_in_abs abspath in
-    let (header, utsrc) = ParserInterface.process (basename_abs abspath) (Lexing.from_channel inc) in
-    close_in inc;
-    let lib =
-      match utsrc with
-      | UTLibraryFile(lib) -> lib
-      | UTDocumentFile(_)  -> raise (LibraryContainsWholeReturnValue(abspath))
-    in
-    FileDependencyGraph.add_vertex dg abspath (LibraryFile(lib));
-    header |> List.iter (fun headerelem ->
-      let abspath_sub = get_abs_path_of_header curdir headerelem in
-      begin
-        if FileDependencyGraph.mem_vertex abspath_sub dg then () else
-          register_library_file dg abspath_sub
-      end;
-      FileDependencyGraph.add_edge dg abspath abspath_sub
-    )
-  end
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
@@ -145,50 +66,6 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
   stmap |> StoreIDMap.iter (fun stid value -> StoreIDHashTable.add stenv stid value);
   stenvref := stenv;
   (valenv, ref stenv)
-
-
-let register_document_file (dg : file_info FileDependencyGraph.t) (abspath_in : abs_path) : unit =
-  Logging.begin_to_parse_file abspath_in;
-  let file_in = open_in_abs abspath_in in
-  let curdir = Filename.dirname (get_abs_path_string abspath_in) in
-  let (header, utsrc) =
-    ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in)
-  in
-  let utast =
-    match utsrc with
-    | UTLibraryFile(_)      -> raise (DocumentLacksWholeReturnValue(abspath_in))
-    | UTDocumentFile(utast) -> utast
-  in
-  FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
-  header |> List.iter (fun headerelem ->
-    let file_path_sub = get_abs_path_of_header curdir headerelem in
-    begin
-      if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-        register_library_file dg file_path_sub
-    end;
-    FileDependencyGraph.add_edge dg abspath_in file_path_sub
-  )
-
-
-let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : unit =
-  Logging.begin_to_parse_file abspath_in;
-  let abspath = Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md"))) in
-  let (cmdrcd, depends) = LoadMDSetting.main abspath in
-  match MyUtil.string_of_file abspath_in with
-  | Ok(data) ->
-      let utast = DecodeMD.decode cmdrcd data in
-      FileDependencyGraph.add_vertex dg abspath_in (DocumentFile(utast));
-      depends |> List.iter (fun package ->
-        let file_path_sub = get_package_abs_path package in
-        begin
-        if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-          register_library_file dg file_path_sub
-        end;
-        FileDependencyGraph.add_edge dg abspath_in file_path_sub
-      )
-
-  | Error(msg) ->
-      raise (CannotReadFileOwingToSystem(msg))
 
 
 let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
@@ -439,11 +316,17 @@ let error_log_environment suspended =
         NormalLine("no input file designation.");
       ]
 
-  | CyclicFileDependency(cycle) ->
+  | FileDependencyResolver.CyclicFileDependency(cycle) ->
       report_error Interface (
         (NormalLine("cyclic dependency detected:")) ::
         (cycle |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath)))
       )
+
+  | FileDependencyResolver.CannotReadFileOwingToSystem(msg) ->
+      report_error Interface [
+        NormalLine("cannot read file:");
+        DisplayLine(msg);
+      ]
 
   | Config.PackageNotFound(package, pathcands) ->
       report_error Interface (List.append [
@@ -491,20 +374,6 @@ let error_log_environment suspended =
   | ShouldSpecifyOutputFile ->
       report_error Interface [
         NormalLine("should specify output file for text mode.");
-      ]
-
-  | InvalidDependencyAsToStaging(abspath1, stage1, abspath2, stage2) ->
-      let fname1 = convert_abs_path_to_show abspath1 in
-      let fname2 = convert_abs_path_to_show abspath2 in
-      report_error Interface [
-        NormalLine("invalid dependency as to stage:");
-        NormalLine("'" ^ fname1 ^ "' (at " ^ (string_of_stage stage1) ^ ") depends on '" ^ fname2 ^ "' (at " ^ (string_of_stage stage2) ^ ")");
-      ]
-
-  | CannotReadFileOwingToSystem(msg) ->
-      report_error Interface [
-        NormalLine("cannot read file:");
-        DisplayLine(msg);
       ]
 
   | LoadHyph.InvalidPatternElement(rng) ->
@@ -1047,35 +916,35 @@ let arg_version () =
   exit 0
 
 
-let arg_output curdir s =
+let arg_output (curdir : string) (s : string) : unit =
   let abspathstr =
     if Filename.is_relative s then Filename.concat curdir s else s
   in
   OptionState.set_output_file (make_abs_path abspathstr)
 
 
-let handle_anonymous_arg (curdir : string) (s : string) =
+let handle_anonymous_arg (curdir : string) (s : string) : unit =
   let abspathstr =
     if Filename.is_relative s then Filename.concat curdir s else s
   in
   OptionState.set_input_file (make_abs_path abspathstr)
 
 
-let text_mode s =
-  let slst = String.split_on_char ',' s in
-  OptionState.set_text_mode slst
+let text_mode (s : string) : unit =
+  let formats = String.split_on_char ',' s in
+  OptionState.set_text_mode formats
 
 
-let input_markdown setting =
+let input_markdown (setting : string) : unit =
   OptionState.set_input_kind (OptionState.Markdown(setting))
 
 
-let arg_config s =
+let arg_config (s : string) : unit =
   let paths = String.split_on_char ':' s in
   OptionState.set_extra_config_paths paths
 
 
-let arg_spec_list curdir =
+let arg_spec_list (curdir : string) =
   [
     ("-o"                , Arg.String(arg_output curdir)             , " Specify output file"                                   );
     ("--output"          , Arg.String(arg_output curdir)             , " Specify output file"                                   );
@@ -1101,12 +970,12 @@ let arg_spec_list curdir =
   ]
 
 
-let setup_root_dirs () =
+let setup_root_dirs (curdir : string) =
   let runtime_dirs =
     if Sys.os_type = "Win32" then
       match Sys.getenv_opt "SATYSFI_RUNTIME" with
       | None    -> []
-      | Some(s) -> [s]
+      | Some(s) -> [ s ]
     else
       ["/usr/local/share/satysfi"; "/usr/share/satysfi"]
   in
@@ -1114,34 +983,34 @@ let setup_root_dirs () =
     if Sys.os_type = "Win32" then
       match Sys.getenv_opt "userprofile" with
       | None    -> []
-      | Some(s) -> [Filename.concat s ".satysfi"]
+      | Some(s) -> [ Filename.concat s ".satysfi" ]
     else
       match Sys.getenv_opt "HOME" with
       | None    -> []
-      | Some(s) -> [Filename.concat s ".satysfi"]
+      | Some(s) -> [ Filename.concat s ".satysfi" ]
   in
   let default_dirs =
     if OptionState.get_no_default_config_paths () then
       []
     else
-      List.concat [home_dirs; runtime_dirs]
+      List.concat [ home_dirs; runtime_dirs ]
   in
   let extra_dirs =
     match OptionState.get_extra_config_paths () with
-    | None -> [Filename.concat (Sys.getcwd ()) ".satysfi"]
-    | Some(lst) -> lst
+    | None             -> [ Filename.concat curdir ".satysfi" ]
+    | Some(extra_dirs) -> extra_dirs
   in
-  let ds = List.append extra_dirs default_dirs in
-  match ds with
+  let dirs = List.concat [ extra_dirs; default_dirs ] in
+  match dirs with
   | []     -> raise NoLibraryRootDesignation
-  | _ :: _ -> Config.initialize ds
+  | _ :: _ -> Config.initialize dirs
 
 
 let main () =
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
     Arg.parse (arg_spec_list curdir) (handle_anonymous_arg curdir) "";
-    setup_root_dirs ();
+    setup_root_dirs curdir;
     let abspath_in =
       match OptionState.input_file () with
       | None    -> raise NoInputFileDesignation
@@ -1168,51 +1037,31 @@ let main () =
     let (tyenv, env, dump_file_exists) = initialize abspath_dump in
     Logging.dump_file dump_file_exists abspath_dump;
 
-    let dg = FileDependencyGraph.create 32 in
-    begin
-      match OptionState.get_input_kind () with
-      | OptionState.SATySFi ->
-          if has_library_extension abspath_in && OptionState.type_check_only () then
-            register_library_file dg abspath_in
-          else
-            register_document_file dg abspath_in
+    (* Resolve dependency: *)
+    let inputs = FileDependencyResolver.main abspath_in in
 
-      | OptionState.Markdown(setting) ->
-          register_markdown_file dg setting abspath_in
-    end;
-    match FileDependencyGraph.find_cycle dg with
-    | Some(cycle) ->
-        raise (CyclicFileDependency(cycle))
+    (* Typechecking and elaboration: *)
+    let (_, libacc, ast_opt) =
+      inputs |> List.fold_left (fun (tyenv, libacc, docopt) (abspath, file_info) ->
+        match file_info with
+        | DocumentFile(utast) ->
+            let ast = typecheck_document_file tyenv abspath utast in
+            (tyenv, libacc, Some(ast))
 
-    | None ->
-        let inputs =
-          FileDependencyGraph.backward_bfs_fold (fun inputacc abspath file_info ->
-            Alist.extend inputacc (abspath, file_info)
-          ) Alist.empty dg |> Alist.to_list
-        in
+        | LibraryFile((modident, utsig_opt, utbinds)) ->
+            let (_, modnm) = modident in
+            let ((_quant, ssig), binds) = typecheck_library_file tyenv abspath utsig_opt utbinds in
+            let mentry = { mod_signature = ConcStructure(ssig); } in
+            let tyenv = tyenv |> Typeenv.add_module modnm mentry in
+            (tyenv, Alist.extend libacc (abspath, binds), docopt)
+      ) (tyenv, Alist.empty, None)
+    in
+    let libs = Alist.to_list libacc in
 
-        (* Typechecking and elaboration: *)
-        let (_, libacc, ast_opt) =
-          inputs |> List.fold_left (fun (tyenv, libacc, docopt) (abspath, file_info) ->
-            match file_info with
-            | DocumentFile(utast) ->
-                let ast = typecheck_document_file tyenv abspath utast in
-                (tyenv, libacc, Some(ast))
-
-            | LibraryFile((modident, utsig_opt, utbinds)) ->
-                let (_, modnm) = modident in
-                let ((_quant, ssig), binds) = typecheck_library_file tyenv abspath utsig_opt utbinds in
-                let mentry = { mod_signature = ConcStructure(ssig); } in
-                let tyenv = tyenv |> Typeenv.add_module modnm mentry in
-                (tyenv, Alist.extend libacc (abspath, binds), docopt)
-          ) (tyenv, Alist.empty, None)
-        in
-        let libs = Alist.to_list libacc in
-
-        if OptionState.type_check_only () then
-          ()
-        else
-          match ast_opt with
-          | None      -> assert false
-          | Some(ast) -> preprocess_and_evaluate env libs ast abspath_in abspath_out abspath_dump
+    if OptionState.type_check_only () then
+      ()
+    else
+      match ast_opt with
+      | None      -> assert false
+      | Some(ast) -> preprocess_and_evaluate env libs ast abspath_in abspath_out abspath_dump
   )
