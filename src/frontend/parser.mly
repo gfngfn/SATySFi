@@ -291,8 +291,9 @@
 
 %token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
 
-%token <Range.t * Types.ctrlseq_name> HORZMACRO
-%token <Range.t * Types.ctrlseq_name> VERTMACRO
+%token <Range.t * Types.macro_name> BACKSLASH_MACRO PLUS_MACRO
+%token<Range.t * (Types.module_name Types.ranged) list * Types.macro_name Types.ranged>
+  LONG_BACKSLASH_MACRO LONG_PLUS_MACRO
 
 %token <Range.t> EOI
 
@@ -422,6 +423,16 @@ bind:
       { (tokL, UTBindValue(Stage0, valbind)) }
   | tokL=VAL; PERSISTENT; EXACT_TILDE; valbind=bind_value
       { (tokL, UTBindValue(Persistent0, valbind)) }
+  | tokL=VAL; INLINE; imacrobind=bind_inline_macro
+      {
+        let (rng_cs, csnm, macparams, utast1) = imacrobind in
+        (tokL, UTBindHorzMacro((rng_cs, csnm), macparams, utast1))
+      }
+  | tokL=VAL; BLOCK; bmacrobind=bind_block_macro
+      {
+        let (rng_cs, csnm, macparams, utast1) = bmacrobind in
+        (tokL, UTBindVertMacro((rng_cs, csnm), macparams, utast1))
+      }
   | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
   | tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr
@@ -444,16 +455,6 @@ bind_value:
       { UTNonRec(utnonrecbind) }
   | MATH; utnonrecbind=bind_math
       { UTNonRec(utnonrecbind) }
-/*
-  | INLINE; dec=nxhorzmacrodec {
-      let (rng_cs, csnm, macparams, utast1) = dec in
-      UTBindHorzMacro((rng_cs, csnm), macparams, utast1)
-    }
-  | BLOCK; dec=nxvertmacrodec {
-      let (rng_cs, csnm, macparams, utast1) = dec in
-      UTBindVertMacro((rng_cs, csnm), macparams, utast1)
-    }
-*/
 ;
 bind_value_rec:
   | REC; valbinds=separated_nonempty_list(AND, bind_value_nonrec);
@@ -585,6 +586,10 @@ decl:
       { UTDeclValue(Stage1, cs, mnquant, mnty) }
   | VAL; cs=PLUS_CMD; mnquant=quant; COLON; mnty=typ
       { UTDeclValue(Stage1, cs, mnquant, mnty) }
+  | VAL; cs=BACKSLASH_MACRO; COLON; mnmacty=inline_macro_type
+      { UTDeclMacro(cs, mnmacty) }
+  | VAL; cs=PLUS_MACRO; COLON; mnmacty=block_macro_type
+      { UTDeclMacro(cs, mnmacty) }
   | TYPE; tyident=LOWER; CONS; mnkd=kind
       { UTDeclTypeOpaque(tyident, mnkd) }
   | TYPE; uttypebind=bind_type
@@ -628,24 +633,22 @@ opt_param:
   | rlabel=LOWER; EXACT_EQ; ident=LOWER
       { (rlabel, ident) }
 ;
-/*
-nxhorzmacrodec:
-  | hmacro=HORZMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {
-      let (rng_cs, csnm) = hmacro in
+bind_inline_macro:
+  | imacro=BACKSLASH_MACRO; macparams=list(macro_param); EXACT_EQ; utast=expr {
+      let (rng_cs, csnm) = imacro in
       (rng_cs, csnm, macparams, utast)
     }
 ;
-nxvertmacrodec:
-  | vmacro=VERTMACRO; macparams=list(macroparam); EXACT_EQ; utast=nxlet {
-      let (rng_cs, csnm) = vmacro in
+bind_block_macro:
+  | bmacro=PLUS_MACRO; macparams=list(macro_param); EXACT_EQ; utast=expr {
+      let (rng_cs, csnm) = bmacro in
       (rng_cs, csnm, macparams, utast)
     }
 ;
-macroparam:
+macro_param:
   | var=LOWER              { UTLateMacroParam(var) }
   | EXACT_TILDE; var=LOWER { UTEarlyMacroParam(var) }
 ;
-*/
 kind:
   | bkd=kind_base; ARROW; kd=kind
       { let MKind(bkds_dom, bkd_cod) = kd in MKind(bkd :: bkds_dom, bkd_cod) }
@@ -747,6 +750,19 @@ typ_cmd_arg:
 typ_record_elem:
   | rlabel=LOWER; COLON; mnty=typ { (rlabel, mnty) }
 ;
+inline_macro_type:
+  | tokL=INLINE; L_SQUARE; mnmacroargtys=optterm_list(COMMA, typ_macro_arg); tokR=R_SQUARE
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MHorzMacroType(mnmacroargtys)) }
+;
+block_macro_type:
+  | tokL=BLOCK; L_SQUARE; mnmacroargtys=optterm_list(COMMA, typ_macro_arg); tokR=R_SQUARE
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MVertMacroType(mnmacroargtys)) }
+;
+typ_macro_arg:
+  | mnty=typ_prod
+      { MLateMacroParameter(mnty) }
+  | EXACT_TILDE; mnty=typ_bot
+      { MEarlyMacroParameter(mnty) }
 expr:
   | tokL=MATCH; utast=expr; WITH; BAR?; branches=separated_nonempty_list(BAR, branch); tokR=END
       { make_standard (Tok tokL) (Tok tokR) (UTPatternMatch(utast, branches)) }
@@ -1049,13 +1065,18 @@ inline_elem_cmd:
         let args = List.append nargs sargs in
         make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzEmbedded(utast_cmd, args))
       }
-/*
-  | hmacro=HORZMACRO; macargsraw=macroargs {
-      let (rng_cs, _) = hmacro in
+
+  | imacro_raw=BACKSLASH_MACRO; macargsraw=macroargs {
+      let (rng_cs, csnm) = imacro_raw in
+      let imacro = (rng_cs, [], imacro_raw) in
       let (rng_last, macroargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(hmacro, macroargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(imacro, macroargs))
     }
-*/
+  | imacro=LONG_BACKSLASH_MACRO; macargsraw=macroargs {
+      let (rng_cs, _, _) = imacro in
+      let (rng_last, macroargs) = macargsraw in
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(imacro, macroargs))
+    }
   | tokL=L_MATH_TEXT; utast=math; tokR=R_MATH_TEXT
       { make_standard (Tok tokL) (Tok tokR) (UTInputHorzEmbeddedMath(utast)) }
   | literal=STRING
@@ -1096,13 +1117,17 @@ block_elem:
         let args = List.append nargs sargs in
         make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertEmbedded(utast_cmd, args))
       }
-/*
-  | vmacro=VERTMACRO; macargsraw=macroargs {
-      let (rng_cs, _) = vmacro in
+  | bmacro_raw=PLUS_MACRO; macargsraw=macroargs {
+      let (rng_cs, _) = bmacro_raw in
+      let bmacro = (rng_cs, [], bmacro_raw) in
       let (rng_last, macargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(vmacro, macargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(bmacro, macargs))
     }
-*/
+  | bmacro=LONG_PLUS_MACRO; macargsraw=macroargs {
+      let (rng_cs, _, _) = bmacro in
+      let (rng_last, macargs) = macargsraw in
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(bmacro, macargs))
+    }
   | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {
         let (rng, modidents, ident) = long_ident in
@@ -1229,7 +1254,7 @@ math_cmd_arg:
   | utcmdarg=cmd_arg_expr
       { utcmdarg }
 ;
-/*
+
 macroargs:
   | macnargs=list(macronarg); cls=SEMICOLON { (cls, macnargs) }
 ;
@@ -1237,7 +1262,6 @@ macronarg:
   | L_PAREN; expr=expr_bot; R_PAREN              { UTLateMacroArg(expr) }
   | EXACT_TILDE; L_PAREN; expr=expr_bot; R_PAREN { UTEarlyMacroArg(expr) }
 ;
-*/
 cmd_arg_expr:
   | mnopts=expr_opts; tokL=L_PAREN; utast=expr; tokR=R_PAREN
       { UTCommandArg(mnopts, make_standard (Tok tokL) (Tok tokR) (extract_main utast)) }

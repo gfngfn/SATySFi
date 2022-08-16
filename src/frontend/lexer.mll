@@ -247,25 +247,37 @@ rule progexpr stack = parse
             in
             POSITIONED_STRING(pos, ipos, s)
       }
-  | ("\\" (lower | upper) "@")
-      { HORZMACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("\\" (lower | upper))
       { BACKSLASH_CMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("\\" (lower | upper) "@")
+      { BACKSLASH_MACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("\\" (((upper ".")+ (lower | upper)) as s))
       {
         let pos = get_pos lexbuf in
         let (modidents, (rng, csnm)) = split_module_list pos s in
         LONG_BACKSLASH_CMD(pos, modidents, (rng, "\\" ^ csnm))
       }
-  | ("+" (lower | upper) "@")
-      { VERTMACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("\\" (((upper ".")+ (lower | upper)) "@" as s))
+      {
+        let pos = get_pos lexbuf in
+        let (modidents, (rng, csnm)) = split_module_list pos s in
+        LONG_BACKSLASH_MACRO(pos, modidents, (rng, "\\" ^ csnm))
+      }
   | ("+" (lower | upper))
       { PLUS_CMD(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("+" (lower | upper) "@")
+      { PLUS_MACRO(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("+" (((upper ".")+ (lower | upper)) as s))
       {
         let pos = get_pos lexbuf in
         let (modidents, (rng, csnm)) = split_module_list pos s in
         LONG_PLUS_CMD(pos, modidents, (rng, "+" ^ csnm))
+      }
+  | ("+" (((upper ".")+ (lower | upper)) "@" as s))
+      {
+        let pos = get_pos lexbuf in
+        let (modidents, (rng, csnm)) = split_module_list pos s in
+        LONG_PLUS_MACRO(pos, modidents, (rng, "+" ^ csnm))
       }
 
   | "?"  { QUESTION(get_pos lexbuf) }
@@ -393,15 +405,15 @@ and vertexpr stack = parse
         Stack.push ActiveState stack;
         VAR_IN_TEXT(pos, modidents, cs)
       }
-  | ("+" (lower | upper) "@")
-      {
-        Stack.push ActiveState stack;
-        VERTMACRO(get_pos lexbuf, Lexing.lexeme lexbuf)
-      }
   | ("+" (lower | upper))
       {
         Stack.push ActiveState stack;
         PLUS_CMD(get_pos lexbuf, Lexing.lexeme lexbuf)
+      }
+  | ("+" (lower | upper) "@")
+      {
+        Stack.push ActiveState stack;
+        PLUS_MACRO(get_pos lexbuf, Lexing.lexeme lexbuf)
       }
   | ("+" (((upper ".")+ (lower | upper)) as s))
       {
@@ -409,6 +421,13 @@ and vertexpr stack = parse
         let (modidents, (rng, csnm)) = split_module_list pos s in
         Stack.push ActiveState stack;
         LONG_PLUS_CMD(pos, modidents, (rng, "+" ^ csnm))
+      }
+  | ("+" (((upper ".")+ (lower | upper)) "@" as s))
+      {
+        let pos = get_pos lexbuf in
+        let (modidents, (rng, csnm)) = split_module_list pos s in
+        Stack.push ActiveState stack;
+        LONG_PLUS_MACRO(pos, modidents, (rng, "+" ^ csnm))
       }
   | "<"
       { Stack.push VerticalState stack; L_BLOCK_TEXT(get_pos lexbuf) }
@@ -504,7 +523,7 @@ and horzexpr stack = parse
         let tok = Lexing.lexeme lexbuf in
         let rng = get_pos lexbuf in
         Stack.push ActiveState stack;
-        HORZMACRO(rng, tok)
+        BACKSLASH_MACRO(rng, tok)
       }
   | ("\\" (((upper ".")+ (lower | upper)) as s))
       {
@@ -512,6 +531,13 @@ and horzexpr stack = parse
         let (modidents, (rng, csnm)) = split_module_list pos s in
         Stack.push ActiveState stack;
         LONG_BACKSLASH_CMD(pos, modidents, (rng, "\\" ^ csnm))
+      }
+  | ("\\" (((upper ".")+ (lower | upper)) "@" as s))
+      {
+        let pos = get_pos lexbuf in
+        let (modidents, (rng, csnm)) = split_module_list pos s in
+        Stack.push ActiveState stack;
+        LONG_BACKSLASH_MACRO(pos, modidents, (rng, "\\" ^ csnm))
       }
   | ("\\" symbol)
       {

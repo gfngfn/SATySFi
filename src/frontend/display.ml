@@ -398,3 +398,24 @@ let show_mono_type_double (ty1 : mono_type) (ty2 : mono_type) =
 let show_poly_type (Poly(pty) : poly_type) =
   let dispmap = DisplayMap.empty |> collect_ids_poly (Poly(pty)) in
   show_type (tvf_poly dispmap) (rvf_poly dispmap) Outmost pty
+
+
+let show_poly_macro_parameter_type (macparamty : poly_macro_parameter_type) =
+  match macparamty with
+  | LateMacroParameter(pty) ->
+      show_poly_type (Poly(pty))
+
+  | EarlyMacroParameter(pty) ->
+      let s = show_poly_type (Poly(pty)) in
+      Printf.sprintf "~(%s)" s
+
+
+let show_poly_macro_type (macty : poly_macro_type) =
+  match macty with
+  | HorzMacroType(macparamtys) ->
+      let ss = macparamtys |> List.map show_poly_macro_parameter_type in
+      Printf.sprintf "inline [%s]" (String.concat ", " ss)
+
+  | VertMacroType(macparamtys) ->
+      let ss = macparamtys |> List.map show_poly_macro_parameter_type in
+      Printf.sprintf "block [%s]" (String.concat ", " ss)

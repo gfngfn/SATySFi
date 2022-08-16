@@ -18,6 +18,7 @@ type class_name         = string  [@@deriving show]
 type type_name          = string  [@@deriving show]
 type kind_name          = string  [@@deriving show]
 type constructor_name   = string  [@@deriving show]
+type macro_name         = string  [@@deriving show]
 type module_name        = string  [@@deriving show]
 type signature_name     = string  [@@deriving show]
 type length_unit_name   = string  [@@deriving show]
@@ -154,6 +155,7 @@ let base_type_map : base_type TypeNameMap.t =
     ("math-text"   , MathType    );
     ("regexp"      , RegExpType  );
     ("text-info"   , TextInfoType);
+    ("input-position", InputPosType);
   ]
 
 
@@ -249,14 +251,30 @@ type mono_command_argument_type =
 type poly_command_argument_type =
   (poly_type_variable, poly_row_variable) command_argument_type
 
-type macro_parameter_type =
-  | LateMacroParameter  of mono_type
-  | EarlyMacroParameter of mono_type
+type ('a, 'b) macro_parameter_type =
+  | LateMacroParameter  of ('a, 'b) typ
+  | EarlyMacroParameter of ('a, 'b) typ
 [@@deriving show { with_path = false }]
 
-type macro_type =
-  | HorzMacroType of macro_parameter_type list
-  | VertMacroType of macro_parameter_type list
+type ('a, 'b) macro_type =
+  | HorzMacroType of (('a, 'b) macro_parameter_type) list
+  | VertMacroType of (('a, 'b) macro_parameter_type) list
+[@@deriving show { with_path = false }]
+
+type mono_macro_parameter_type =
+  (mono_type_variable, mono_row_variable) macro_parameter_type
+[@@deriving show { with_path = false }]
+
+type poly_macro_parameter_type =
+  (poly_type_variable, poly_row_variable) macro_parameter_type
+[@@deriving show { with_path = false }]
+
+type mono_macro_type =
+  (mono_type_variable, mono_row_variable) macro_type
+[@@deriving show { with_path = false }]
+
+type poly_macro_type =
+  (poly_type_variable, poly_row_variable) macro_type
 [@@deriving show { with_path = false }]
 
 type constructor_branch_map = poly_type ConstructorMap.t
@@ -296,8 +314,8 @@ let string_of_stage = function
 
 
 type untyped_macro_parameter =
-  | UTLateMacroParam  of (Range.t * var_name)
-  | UTEarlyMacroParam of (Range.t * var_name)
+  | UTLateMacroParam  of var_name ranged
+  | UTEarlyMacroParam of var_name ranged
 [@@deriving show { with_path = false; } ]
 
 type module_name_chain =
@@ -346,9 +364,18 @@ and untyped_declaration_main =
   | UTDeclModule     of module_name ranged * untyped_signature
   | UTDeclSignature  of signature_name ranged * untyped_signature
   | UTDeclInclude    of untyped_signature
+  | UTDeclMacro      of macro_name ranged * manual_macro_type ranged
 
 and manual_quantifier =
   (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
+
+and manual_macro_type =
+  | MHorzMacroType of manual_macro_parameter_type list
+  | MVertMacroType of manual_macro_parameter_type list
+
+and manual_macro_parameter_type =
+  | MLateMacroParameter  of manual_type
+  | MEarlyMacroParameter of manual_type
 
 and constructor_branch =
   | UTConstructorBranch of constructor_name ranged * manual_type option
@@ -383,7 +410,7 @@ and untyped_input_horz_element_main =
   | UTInputHorzContent      of untyped_abstract_tree
   | UTInputHorzEmbeddedMath of untyped_abstract_tree
   | UTInputHorzEmbeddedCodeText of string
-  | UTInputHorzMacro        of (Range.t * ctrlseq_name) * untyped_macro_argument list
+  | UTInputHorzMacro        of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
 and untyped_macro_argument =
   | UTLateMacroArg  of untyped_abstract_tree
@@ -396,7 +423,7 @@ and untyped_input_vert_element_main =
   | UTInputVertEmbedded of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "BC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
   | UTInputVertContent  of untyped_abstract_tree
-  | UTInputVertMacro    of (Range.t * ctrlseq_name) * untyped_macro_argument list
+  | UTInputVertMacro    of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
 and untyped_abstract_tree =
   Range.t * untyped_abstract_tree_main
