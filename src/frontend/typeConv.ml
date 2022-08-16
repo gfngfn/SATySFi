@@ -98,9 +98,7 @@ fun intern_ty intern_row prow ->
   | RowVar(prv)                -> intern_row prv
 
 
-let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type) : mono_type =
-  let bid_ht : mono_type_variable BoundIDHashTable.t = BoundIDHashTable.create 32 in
-  let brid_ht : mono_row_variable BoundRowIDHashTable.t = BoundRowIDHashTable.create 32 in
+let make_type_instantiation_intern (lev : level) (qtfbl : quantifiability) (bid_ht : mono_type_variable BoundIDHashTable.t) =
   let intern_ty (rng : Range.t) (ptv : poly_type_variable) : mono_type =
     match ptv with
     | PolyFree(tvuref) ->
@@ -122,6 +120,10 @@ let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type
               (rng, TypeVariable(tv))
         end
   in
+  intern_ty
+
+
+let make_row_instantiation_intern (lev : level) (brid_ht : mono_row_variable BoundRowIDHashTable.t) =
   let intern_row (prv : poly_row_variable) : mono_row =
     match prv with
     | PolyORFree(rvref) ->
@@ -143,6 +145,14 @@ let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type
               RowVar(rv)
         end
   in
+  intern_row
+
+
+let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type) : mono_type =
+  let bid_ht = BoundIDHashTable.create 32 in
+  let brid_ht = BoundRowIDHashTable.create 32 in
+  let intern_ty = make_type_instantiation_intern lev qtfbl bid_ht in
+  let intern_row = make_row_instantiation_intern lev brid_ht in
   instantiate_impl intern_ty intern_row pty
 
 
@@ -187,7 +197,17 @@ let instantiate_by_map_poly (bidmap : poly_type_body BoundIDMap.t) (Poly(pty) : 
 
 
 let instantiate_macro_type (lev : level) (qtfbl : quantifiability) (pmacty : poly_macro_type) : mono_macro_type =
-  failwith "TODO: instantiate_macro_type"
+  let bid_ht = BoundIDHashTable.create 32 in
+  let brid_ht = BoundRowIDHashTable.create 32 in
+  let intern_ty = make_type_instantiation_intern lev qtfbl bid_ht in
+  let intern_row = make_row_instantiation_intern lev brid_ht in
+  let aux = function
+    | LateMacroParameter(pty)  -> LateMacroParameter(instantiate_impl intern_ty intern_row pty)
+    | EarlyMacroParameter(pty) -> EarlyMacroParameter(instantiate_impl intern_ty intern_row pty)
+  in
+  match pmacty with
+  | HorzMacroType(pmacparamtys) -> HorzMacroType(pmacparamtys |> List.map aux)
+  | VertMacroType(pmacparamtys) -> VertMacroType(pmacparamtys |> List.map aux)
 
 
 let lift_poly_general (ptv : FreeID.t -> bool) (prv : FreeRowID.t -> bool) (ty : mono_type) : poly_type_body =
