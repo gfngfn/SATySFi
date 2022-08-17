@@ -325,6 +325,18 @@ let error_log_environment suspended =
         DisplayLine(msg);
       ]
 
+  | FileDependencyResolver.LibraryContainsWholeReturnValue(abspath) ->
+      let fname = get_abs_path_string abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "file '%s' is not a library; it has a return value." fname);
+      ]
+
+  | FileDependencyResolver.DocumentLacksWholeReturnValue(abspath) ->
+      let fname = get_abs_path_string abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
+      ]
+
   | Config.PackageNotFound(package, pathcands) ->
       report_error Interface (List.append [
         NormalLine("package file not found:");

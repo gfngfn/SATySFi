@@ -4,8 +4,8 @@ open Types
 
 
 exception CyclicFileDependency            of abs_path list
-exception LibraryContainsWholeReturnValue of abs_path
 exception CannotReadFileOwingToSystem     of string
+exception LibraryContainsWholeReturnValue of abs_path
 exception DocumentLacksWholeReturnValue   of abs_path
 
 
