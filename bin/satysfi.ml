@@ -140,7 +140,7 @@ let flag_no_default_config =
     ~doc:"Does not use default configuration search path"
 
 
-let command_main =
+let command_main : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   let term : unit Term.t =
     Term.(const build
@@ -162,11 +162,11 @@ let command_main =
       $ flag_no_default_config
     )
   in
-  let info : Term.info =
-    Term.info ~version:version "satysfi"
+  let info : Cmd.info =
+    Cmd.info ~version:version "satysfi"
   in
-  (term, info)
+  Cmd.v info term
 
 let () =
   let open Cmdliner in
-  Term.(exit (eval command_main))
+  exit (Cmd.eval command_main)
