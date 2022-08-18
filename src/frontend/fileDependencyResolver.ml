@@ -35,8 +35,8 @@ let has_library_extension (abspath : abs_path) : bool =
 
 let get_candidate_file_extensions () =
   match OptionState.get_mode () with
-  | None          -> [ ".satyh"; ".satyg" ]
-  | Some(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
+  | PdfMode           -> [ ".satyh"; ".satyg" ]
+  | TextMode(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
 
 
 let get_package_abs_path (package : string) : abs_path =

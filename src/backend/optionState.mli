@@ -5,6 +5,10 @@ type input_kind =
   | SATySFi
   | Markdown of string
 
+type output_mode =
+  | PdfMode
+  | TextMode of string list
+
 val set_input_kind : input_kind -> unit
 val get_input_kind : unit -> input_kind
 
@@ -44,7 +48,7 @@ val set_debug_show_overfull : unit -> unit
 val debug_show_overfull : unit -> bool
 
 val set_text_mode : string list -> unit
-val get_mode : unit -> (string list) option
+val get_mode : unit -> output_mode
 val is_text_mode : unit -> bool
 
 val set_extra_config_paths : string list -> unit

@@ -5,6 +5,10 @@ type input_kind =
   | SATySFi
   | Markdown of string
 
+type output_mode =
+  | PdfMode
+  | TextMode of string list
+
 type state = {
   mutable input_kind      : input_kind;
   mutable input_file      : abs_path option;
@@ -18,7 +22,7 @@ type state = {
   mutable debug_show_block_bbox : bool;
   mutable debug_show_block_space : bool;
   mutable debug_show_overfull : bool;
-  mutable mode             : (string list) option;
+  mutable output_mode            : output_mode;
   mutable extra_config_paths : string list option;
   mutable no_default_config_paths : bool;
   mutable page_number_limit : int;
@@ -38,7 +42,7 @@ let state = {
   debug_show_block_bbox = false;
   debug_show_block_space = false;
   debug_show_overfull = false;
-  mode             = None;
+  output_mode            = PdfMode;
   extra_config_paths = None;
   no_default_config_paths = false;
   page_number_limit       = 10000;
@@ -85,12 +89,12 @@ let debug_show_block_space ()     = state.debug_show_block_space
 let set_debug_show_overfull () = state.debug_show_overfull <- true
 let debug_show_overfull ()     = state.debug_show_overfull
 
-let set_text_mode lst = state.mode <- Some(lst)
-let get_mode () = state.mode
+let set_text_mode formats = state.output_mode <- TextMode(formats)
+let get_mode () = state.output_mode
 let is_text_mode () =
-  match state.mode with
-  | Some(_) -> true
-  | None -> false
+  match state.output_mode with
+  | TextMode(_) -> true
+  | PdfMode -> false
 
 let set_extra_config_paths lst = state.extra_config_paths <- Some(lst)
 let get_extra_config_paths () = state.extra_config_paths
