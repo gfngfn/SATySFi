@@ -9,53 +9,59 @@ type output_mode =
   | PdfMode
   | TextMode of string list
 
-val set_input_kind : input_kind -> unit
+type state = {
+  input_file             : abs_path option;
+  output_file            : abs_path option;
+  extra_config_paths     : (string list) option;
+  output_mode            : output_mode;
+  input_kind             : input_kind;
+  page_number_limit      : int;
+  show_full_path         : bool;
+  debug_show_bbox        : bool;
+  debug_show_space       : bool;
+  debug_show_block_bbox  : bool;
+  debug_show_block_space : bool;
+  debug_show_overfull    : bool;
+  type_check_only        : bool;
+  bytecomp               : bool;
+  show_fonts             : bool;
+  no_default_config      : bool;
+}
+
+val set : state -> unit
+
 val get_input_kind : unit -> input_kind
 
-val set_input_file : abs_path -> unit
-val input_file : unit -> abs_path option
+val get_input_file : unit -> abs_path option
+
+val get_output_file : unit -> abs_path option
+
+val is_type_check_only : unit -> bool
+
+val is_bytecomp_mode : unit -> bool
+
+val does_show_full_path : unit -> bool
+
+val does_show_fonts : unit -> bool
+
+val does_debug_show_bbox : unit -> bool
+
+val does_debug_show_space : unit -> bool
+
+val does_debug_show_block_bbox : unit -> bool
+
+val does_debug_show_block_space : unit -> bool
+
+val does_debug_show_overfull : unit -> bool
+
+val get_mode : unit -> output_mode
+
+val get_extra_config_paths : unit -> string list option
+
+val get_no_default_config_paths : unit -> bool
+
+val get_page_number_limit : unit -> int
 
 val job_directory : unit -> string
 
-val set_output_file : abs_path -> unit
-val output_file : unit -> abs_path option
-
-val set_type_check_only : unit -> unit
-val type_check_only : unit -> bool
-
-val set_bytecomp_mode : unit -> unit
-val bytecomp_mode : unit -> bool
-
-val set_show_full_path : unit -> unit
-val show_full_path : unit -> bool
-
-val set_show_fonts : unit -> unit
-val show_fonts : unit -> bool
-
-val set_debug_show_bbox : unit -> unit
-val debug_show_bbox : unit -> bool
-
-val set_debug_show_space : unit -> unit
-val debug_show_space : unit -> bool
-
-val set_debug_show_block_bbox : unit -> unit
-val debug_show_block_bbox : unit -> bool
-
-val set_debug_show_block_space : unit -> unit
-val debug_show_block_space : unit -> bool
-
-val set_debug_show_overfull : unit -> unit
-val debug_show_overfull : unit -> bool
-
-val set_text_mode : string list -> unit
-val get_mode : unit -> output_mode
 val is_text_mode : unit -> bool
-
-val set_extra_config_paths : string list -> unit
-val get_extra_config_paths : unit -> string list option
-
-val set_no_default_config_paths : unit -> unit
-val get_no_default_config_paths : unit -> bool
-
-val set_page_number_limit : int -> unit
-val get_page_number_limit : unit -> int

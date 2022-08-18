@@ -127,7 +127,7 @@ let main (abspath_in : abs_path) =
   begin
     match OptionState.get_input_kind () with
     | OptionState.SATySFi ->
-        if has_library_extension abspath_in && OptionState.type_check_only () then
+        if has_library_extension abspath_in && OptionState.is_type_check_only () then
           register_library_file dg abspath_in
         else
           register_document_file dg abspath_in

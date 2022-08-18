@@ -36,7 +36,7 @@ let initialize (abspath_dump : abs_path) : Typeenv.t * environment * bool =
       Primitives.make_pdf_mode_environments ()
   in
   begin
-    if OptionState.bytecomp_mode () then
+    if OptionState.is_bytecomp_mode () then
       Bytecomp.compile_environment env
     else
       ()
@@ -103,7 +103,7 @@ let output_text (abspath_out : abs_path) (s : string) : unit =
 
 let eval_library_file (env : environment) (abspath : abs_path) (binds : binding list) : environment =
   Logging.begin_to_eval_file abspath;
-  if OptionState.bytecomp_mode () then
+  if OptionState.is_bytecomp_mode () then
     failwith "TODO: eval_libary_file, Bytecomp"
 (*
     let (value, _) = Bytecomp.compile_and_exec_0 env ast in
@@ -119,7 +119,7 @@ let eval_main (i : int) (env_freezed : frozen_environment) (ast : abstract_tree)
   reset ();
   let env = unfreeze_environment env_freezed in
   let value =
-    if OptionState.bytecomp_mode () then
+    if OptionState.is_bytecomp_mode () then
       let (value, _) = Bytecomp.compile_and_exec_0 env ast in
       value
     else
@@ -222,7 +222,7 @@ let preprocess_and_evaluate (env : environment) (libs : (abs_path * binding list
 
 let convert_abs_path_to_show (abspath : abs_path) : string =
   let abspathstr = get_abs_path_string abspath in
-  if OptionState.show_full_path () then
+  if OptionState.does_show_full_path () then
     abspathstr
   else
     Filename.basename abspathstr
@@ -928,34 +928,6 @@ let error_log_environment suspended =
       report_error System [ NormalLine(s); ]
 
 
-let arg_output (curdir : string) (s : string) : unit =
-  let abspathstr =
-    if Filename.is_relative s then Filename.concat curdir s else s
-  in
-  OptionState.set_output_file (make_abs_path abspathstr)
-
-
-let handle_anonymous_arg (curdir : string) (s : string) : unit =
-  let abspathstr =
-    if Filename.is_relative s then Filename.concat curdir s else s
-  in
-  OptionState.set_input_file (make_abs_path abspathstr)
-
-
-let text_mode (s : string) : unit =
-  let formats = String.split_on_char ',' s in
-  OptionState.set_text_mode formats
-
-
-let input_markdown (setting : string) : unit =
-  OptionState.set_input_kind (OptionState.Markdown(setting))
-
-
-let arg_config (s : string) : unit =
-  let paths = String.split_on_char ':' s in
-  OptionState.set_extra_config_paths paths
-
-
 let setup_root_dirs (curdir : string) =
   let runtime_dirs =
     if Sys.os_type = "Win32" then
@@ -992,6 +964,11 @@ let setup_root_dirs (curdir : string) =
   | _ :: _ -> Config.initialize dirs
 
 
+let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
+  let abspath_str = if Filename.is_relative s then Filename.concat origin s else s in
+  make_abs_path abspath_str
+
+
 let build
     ~(fpath_in_opt : string option)
     ~(fpath_out_opt : string option)
@@ -1013,46 +990,41 @@ let build
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
 
-    begin
-      match fpath_in_opt with
-      | Some(fpath_in) -> handle_anonymous_arg curdir fpath_in
-      | None           -> ()
-    end;
-    begin
-      match fpath_out_opt with
-      | Some(fpath_out) -> arg_output curdir fpath_out
-      | None            -> ()
-    end;
-    begin
-      match config_paths_str_opt with
-      | Some(config_paths_str) -> arg_config config_paths_str
-      | None                   -> ()
-    end;
-    begin
+    let input_file = fpath_in_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
+    let output_file = fpath_out_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
+    let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
+    let output_mode =
       match text_mode_formats_str_opt with
-      | Some(text_mode_formats_str) -> text_mode text_mode_formats_str
-      | None                        -> ()
-    end;
-    begin
+      | None    -> OptionState.PdfMode
+      | Some(s) -> OptionState.TextMode(String.split_on_char ',' s)
+    in
+    let input_kind =
       match markdown_style_str_opt with
-      | Some(markdown_style_str) -> input_markdown markdown_style_str
-      | None                     -> ()
-    end;
-    OptionState.set_page_number_limit page_number_limit;
-    if show_full_path then OptionState.set_show_full_path ();
-    if debug_show_bbox then OptionState.set_debug_show_bbox ();
-    if debug_show_space then OptionState.set_debug_show_space ();
-    if debug_show_block_bbox then OptionState.set_debug_show_block_bbox ();
-    if debug_show_block_space then OptionState.set_debug_show_block_space ();
-    if debug_show_overfull then OptionState.set_debug_show_overfull ();
-    if type_check_only then OptionState.set_type_check_only ();
-    if bytecomp then OptionState.set_bytecomp_mode ();
-    if show_fonts then OptionState.set_show_fonts ();
-    if no_default_config then OptionState.set_no_default_config_paths ();
+      | None          -> OptionState.SATySFi
+      | Some(setting) -> OptionState.Markdown(setting)
+    in
+    OptionState.set OptionState.{
+      input_file;
+      output_file;
+      extra_config_paths;
+      output_mode;
+      input_kind;
+      page_number_limit;
+      show_full_path;
+      debug_show_bbox;
+      debug_show_space;
+      debug_show_block_bbox;
+      debug_show_block_space;
+      debug_show_overfull;
+      type_check_only;
+      bytecomp;
+      show_fonts;
+      no_default_config;
+    };
 
     setup_root_dirs curdir;
     let abspath_in =
-      match OptionState.input_file () with
+      match OptionState.get_input_file () with
       | None    -> raise NoInputFileDesignation
       | Some(v) -> v
     in
@@ -1063,7 +1035,7 @@ let build
     in
     let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
     let abspath_out =
-      match OptionState.output_file () with
+      match OptionState.get_output_file () with
       | Some(v) ->
           v
 
@@ -1098,7 +1070,7 @@ let build
     in
     let libs = Alist.to_list libacc in
 
-    if OptionState.type_check_only () then
+    if OptionState.is_type_check_only () then
       ()
     else
       match ast_opt with
