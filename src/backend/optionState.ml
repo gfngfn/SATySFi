@@ -10,7 +10,7 @@ type output_mode =
   | TextMode of string list
 
 type state = {
-  input_file             : abs_path option;
+  input_file             : abs_path;
   output_file            : abs_path option;
   extra_config_paths     : (string list) option;
   output_mode            : output_mode;
@@ -30,7 +30,7 @@ type state = {
 
 
 let state = ref {
-  input_file             = None;
+  input_file             = make_abs_path "/";
   output_file            = None;
   extra_config_paths     = None;
   output_mode            = PdfMode;
@@ -69,9 +69,8 @@ let get_no_default_config_paths () = (!state).no_default_config
 let get_page_number_limit () = (!state).page_number_limit
 
 let job_directory () =
-  match get_input_file () with
-  | None          -> assert false
-  | Some(abspath) -> Filename.dirname (get_abs_path_string abspath)
+  let abspath = get_input_file () in
+  Filename.dirname (get_abs_path_string abspath)
 
 let is_text_mode () =
   match (!state).output_mode with

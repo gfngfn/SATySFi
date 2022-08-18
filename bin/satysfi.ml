@@ -4,7 +4,7 @@ let version =
 
 
 let build
-  fpath_in_opt
+  fpath_in
   fpath_out_opt
   config_paths_str_opt
   text_mode_formats_str_opt
@@ -22,7 +22,7 @@ let build
   no_default_config
 =
   Main.build
-    ~fpath_in_opt
+    ~fpath_in
     ~fpath_out_opt
     ~config_paths_str_opt
     ~text_mode_formats_str_opt
@@ -40,9 +40,9 @@ let build
     ~no_default_config
 
 
-let arg_in : (string option) Cmdliner.Term.t =
+let arg_in : string Cmdliner.Term.t =
   let open Cmdliner in
-  Arg.(value (pos 0 (some file) None (info [])))
+  Arg.(required (pos 0 (some file) None (info [])))
 
 
 let flag_output : (string option) Cmdliner.Term.t =

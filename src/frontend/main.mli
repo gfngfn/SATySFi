@@ -1,6 +1,6 @@
 
 val build :
-  fpath_in_opt:(string option) ->
+  fpath_in:string ->
   fpath_out_opt:(string option) ->
   config_paths_str_opt:(string option) ->
   text_mode_formats_str_opt:(string option) ->

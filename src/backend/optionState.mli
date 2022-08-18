@@ -10,7 +10,7 @@ type output_mode =
   | TextMode of string list
 
 type state = {
-  input_file             : abs_path option;
+  input_file             : abs_path;
   output_file            : abs_path option;
   extra_config_paths     : (string list) option;
   output_mode            : output_mode;
@@ -32,7 +32,7 @@ val set : state -> unit
 
 val get_input_kind : unit -> input_kind
 
-val get_input_file : unit -> abs_path option
+val get_input_file : unit -> abs_path
 
 val get_output_file : unit -> abs_path option
 

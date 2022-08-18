@@ -5,7 +5,6 @@ open StaticEnv
 
 
 exception NoLibraryRootDesignation
-exception NoInputFileDesignation
 exception NotADocumentFile             of abs_path * Typeenv.t * mono_type
 exception NotAStringFile               of abs_path * Typeenv.t * mono_type
 exception ShouldSpecifyOutputFile
@@ -306,11 +305,6 @@ let error_log_environment suspended =
         NormalLine("cannot determine where the SATySFi library root is;");
         NormalLine("set appropriate environment variables");
         NormalLine("or specify configuration search paths with -C option.");
-      ]
-
-  | NoInputFileDesignation ->
-      report_error Interface [
-        NormalLine("no input file designation.");
       ]
 
   | FileDependencyResolver.CyclicFileDependency(cycle) ->
@@ -970,7 +964,7 @@ let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
 
 
 let build
-    ~(fpath_in_opt : string option)
+    ~(fpath_in : string)
     ~(fpath_out_opt : string option)
     ~(config_paths_str_opt : string option)
     ~(text_mode_formats_str_opt : string option)
@@ -990,7 +984,7 @@ let build
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
 
-    let input_file = fpath_in_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
+    let input_file = make_absolute_if_relative ~origin:curdir fpath_in in
     let output_file = fpath_out_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
     let output_mode =
@@ -1023,27 +1017,18 @@ let build
     };
 
     setup_root_dirs curdir;
-    let abspath_in =
-      match OptionState.get_input_file () with
-      | None    -> raise NoInputFileDesignation
-      | Some(v) -> v
-    in
-    let abspathstr_in = get_abs_path_string abspath_in in
+    let abspath_in = input_file in
     let basename_without_extension =
+      let abspathstr_in = get_abs_path_string abspath_in in
       try Filename.chop_extension abspathstr_in with
       | Invalid_argument(_) -> abspathstr_in
     in
     let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
     let abspath_out =
-      match OptionState.get_output_file () with
-      | Some(v) ->
-          v
-
-      | None ->
-          if OptionState.is_text_mode () then
-            raise ShouldSpecifyOutputFile
-          else
-            make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
+      match (output_mode, output_file) with
+      | (_, Some(abspath_out)) -> abspath_out
+      | (TextMode(_), None)    -> raise ShouldSpecifyOutputFile
+      | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
     in
     Logging.target_file abspath_out;
     let (tyenv, env, dump_file_exists) = initialize abspath_dump in
@@ -1070,7 +1055,7 @@ let build
     in
     let libs = Alist.to_list libacc in
 
-    if OptionState.is_type_check_only () then
+    if type_check_only then
       ()
     else
       match ast_opt with
