@@ -928,11 +928,6 @@ let error_log_environment suspended =
       report_error System [ NormalLine(s); ]
 
 
-let arg_version () =
-  print_endline "  SATySFi version 0.1.0 alpha\n";
-  exit 0
-
-
 let arg_output (curdir : string) (s : string) : unit =
   let abspathstr =
     if Filename.is_relative s then Filename.concat curdir s else s
@@ -959,74 +954,6 @@ let input_markdown (setting : string) : unit =
 let arg_config (s : string) : unit =
   let paths = String.split_on_char ':' s in
   OptionState.set_extra_config_paths paths
-
-
-let arg_spec_list (curdir : string) =
-  [
-    ("-o",
-        Arg.String(arg_output curdir),
-        " Specify output file");
-    ("--output",
-        Arg.String(arg_output curdir),
-        " Specify output file");
-    ("-v",
-        Arg.Unit(arg_version),
-        " Prints version");
-    ("--version",
-        Arg.Unit(arg_version),
-        " Prints version");
-    ("--full-path",
-        Arg.Unit(OptionState.set_show_full_path),
-        " Displays paths in full-path style");
-    ("--debug-show-bbox",
-        Arg.Unit(OptionState.set_debug_show_bbox),
-        " Outputs bounding boxes for glyphs");
-    ("--debug-show-space",
-        Arg.Unit(OptionState.set_debug_show_space),
-        " Outputs boxes for spaces");
-    ("--debug-show-block-bbox",
-        Arg.Unit(OptionState.set_debug_show_block_bbox),
-        " Outputs bounding boxes for blocks");
-    ("--debug-show-block-space",
-        Arg.Unit(OptionState.set_debug_show_block_space),
-        " Outputs visualized block spaces");
-    ("--debug-show-overfull",
-        Arg.Unit(OptionState.set_debug_show_overfull),
-        " Outputs visualized overfull or underfull lines");
-    ("-t",
-        Arg.Unit(OptionState.set_type_check_only),
-        " Stops after type checking");
-    ("--type-check-only",
-        Arg.Unit(OptionState.set_type_check_only),
-        " Stops after type checking");
-    ("-b",
-        Arg.Unit(OptionState.set_bytecomp_mode),
-        " Use bytecode compiler");
-    ("--bytecomp",
-        Arg.Unit(OptionState.set_bytecomp_mode),
-        " Use bytecode compiler");
-    ("--text-mode",
-        Arg.String(text_mode),
-        " Set text mode");
-    ("--markdown",
-        Arg.String(input_markdown),
-        " Pass Markdown source as input");
-    ("--show-fonts",
-        Arg.Unit(OptionState.set_show_fonts),
-        " Displays all the available fonts");
-    ("-C",
-        Arg.String(arg_config),
-        " Add colon-separated paths to configuration search path");
-    ("--config",
-        Arg.String(arg_config),
-        " Add colon-separated paths to configuration search path");
-    ("--no-default-config",
-        Arg.Unit(OptionState.set_no_default_config_paths),
-        " Does not use default configuration search path");
-    ("--page-number-limit",
-        Arg.Int(OptionState.set_page_number_limit),
-        " Set the page number limit (default: 10000)");
-  ]
 
 
 let setup_root_dirs (curdir : string) =
@@ -1065,10 +992,64 @@ let setup_root_dirs (curdir : string) =
   | _ :: _ -> Config.initialize dirs
 
 
-let main () =
+let build
+    ~(fpath_in_opt : string option)
+    ~(fpath_out_opt : string option)
+    ~(config_paths_str_opt : string option)
+    ~(text_mode_formats_str_opt : string option)
+    ~(markdown_style_str_opt : string option)
+    ~(page_number_limit : int)
+    ~(show_full_path : bool)
+    ~(debug_show_bbox : bool)
+    ~(debug_show_space : bool)
+    ~(debug_show_block_bbox : bool)
+    ~(debug_show_block_space : bool)
+    ~(debug_show_overfull : bool)
+    ~(type_check_only : bool)
+    ~(bytecomp : bool)
+    ~(show_fonts : bool)
+    ~(no_default_config : bool)
+=
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
-    Arg.parse (arg_spec_list curdir) (handle_anonymous_arg curdir) "";
+
+    begin
+      match fpath_in_opt with
+      | Some(fpath_in) -> handle_anonymous_arg curdir fpath_in
+      | None           -> ()
+    end;
+    begin
+      match fpath_out_opt with
+      | Some(fpath_out) -> arg_output curdir fpath_out
+      | None            -> ()
+    end;
+    begin
+      match config_paths_str_opt with
+      | Some(config_paths_str) -> arg_config config_paths_str
+      | None                   -> ()
+    end;
+    begin
+      match text_mode_formats_str_opt with
+      | Some(text_mode_formats_str) -> text_mode text_mode_formats_str
+      | None                        -> ()
+    end;
+    begin
+      match markdown_style_str_opt with
+      | Some(markdown_style_str) -> input_markdown markdown_style_str
+      | None                     -> ()
+    end;
+    OptionState.set_page_number_limit page_number_limit;
+    if show_full_path then OptionState.set_show_full_path ();
+    if debug_show_bbox then OptionState.set_debug_show_bbox ();
+    if debug_show_space then OptionState.set_debug_show_space ();
+    if debug_show_block_bbox then OptionState.set_debug_show_block_bbox ();
+    if debug_show_block_space then OptionState.set_debug_show_block_space ();
+    if debug_show_overfull then OptionState.set_debug_show_overfull ();
+    if type_check_only then OptionState.set_type_check_only ();
+    if bytecomp then OptionState.set_bytecomp_mode ();
+    if show_fonts then OptionState.set_show_fonts ();
+    if no_default_config then OptionState.set_no_default_config_paths ();
+
     setup_root_dirs curdir;
     let abspath_in =
       match OptionState.input_file () with

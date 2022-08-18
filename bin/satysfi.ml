@@ -1,32 +1,48 @@
 
 let version =
-  "0.1.0"
+  "SATySFi version 0.1.0 alpha"
 
 
 let build
-    (_fpath_in : string)
-    (_fpath_out_opt : string option)
-    (_config_paths_str : string option)
-    (_text_mode_formats_str : string option)
-    (_markdown_style_str : string option)
-    (_page_number_limit : int)
-    (_show_full_path : bool)
-    (_debug_show_bbox : bool)
-    (_debug_show_space : bool)
-    (_debug_show_block_bbox : bool)
-    (_debug_show_block_space : bool)
-    (_debug_show_overfull : bool)
-    (_type_check_only : bool)
-    (_bytecomp : bool)
-    (_show_fonts : bool)
-    (_no_default_config : bool)
+  fpath_in_opt
+  fpath_out_opt
+  config_paths_str_opt
+  text_mode_formats_str_opt
+  markdown_style_str_opt
+  page_number_limit
+  show_full_path
+  debug_show_bbox
+  debug_show_space
+  debug_show_block_bbox
+  debug_show_block_space
+  debug_show_overfull
+  type_check_only
+  bytecomp
+  show_fonts
+  no_default_config
 =
-  Main.main ()
+  Main.build
+    ~fpath_in_opt
+    ~fpath_out_opt
+    ~config_paths_str_opt
+    ~text_mode_formats_str_opt
+    ~markdown_style_str_opt
+    ~page_number_limit
+    ~show_full_path
+    ~debug_show_bbox
+    ~debug_show_space
+    ~debug_show_block_bbox
+    ~debug_show_block_space
+    ~debug_show_overfull
+    ~type_check_only
+    ~bytecomp
+    ~show_fonts
+    ~no_default_config
 
 
-let arg_in : string Cmdliner.Term.t =
+let arg_in : (string option) Cmdliner.Term.t =
   let open Cmdliner in
-  Arg.(required (pos 0 (some file) None (info [])))
+  Arg.(value (pos 0 (some file) None (info [])))
 
 
 let flag_output : (string option) Cmdliner.Term.t =
