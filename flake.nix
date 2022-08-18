@@ -26,7 +26,9 @@
     flake-utils,
     ...
   }:
-    flake-utils.lib.eachDefaultSystem (
+    flake-utils.lib.eachSystem [
+      "x86_64-linux"
+    ] (
       system: let
         inherit (pkgs) lib;
         pkgs = import nixpkgs {
@@ -35,7 +37,43 @@
             devshell.overlay
           ];
         };
+        scope = with opam-nix.lib.${system}; (queryToScope {
+            repos = [
+              opam-nix.inputs.opam-repository
+              (opam-nix.lib.${system}.makeOpamRepoRec satysfi-external-repo)
+            ];
+          } {
+            camlpdf = null; # "2.3.1+satysfi";
+            otfm = "0.3.7+satysfi";
+            yojson-with-position = "1.4.2+satysfi";
+            ocaml-base-compiler = null;
+          });
       in {
+        packages = {
+          inherit (scope) camlpdf otfm yojson-with-position;
+          # amlpdf = scope."";
+          # tfm = scope."";
+          # ojson-with-position = scope."";
+        };
+        packages.bin-satysfi =
+          (with opam-nix.lib.${system}; (
+            buildDuneProject
+            {
+              repos = [
+                opam-nix.inputs.opam-repository
+                (makeOpamRepoRec satysfi-external-repo)
+              ];
+              pinDepends = true;
+            }
+            "satysfi"
+            ./.
+            {
+              satysfi = null;
+              ocaml-base-compiler = null;
+            }
+          ))
+          .satysfi;
+
         packages.lib-satysfi = pkgs.stdenv.mkDerivation {
           name = "lib-satysfi";
           src = ./.;
@@ -62,6 +100,8 @@
 
         packages.default = self.packages.${system}.satysfi;
 
+        apps.satysfi = flake-utils.lib.mkApp {drv = self.packages.${system}.satysfi;};
+        apps.default = self.apps.${system}.satysfi;
 
         devShells.default = pkgs.devshell.mkShell {
           packages = with pkgs; [
@@ -72,7 +112,12 @@
         };
 
         checks = {
-          inherit (self.packages.${system}) satysfi satysfi-bin lib-satysfi;
+          inherit
+            (self.packages.${system})
+            bin-satysfi
+            lib-satysfi
+            satysfi
+            ;
         };
       }
     );
