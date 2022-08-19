@@ -78,6 +78,26 @@
                 }
                 "satysfi"
                 ./.
+                # You cannot purely build (without `--impure`)
+                # Ref. https://github.com/tweag/opam-nix/issues/17
+                # (with (nix-filter.lib);
+                #   filter {
+                #     root = ./.;
+                #     include = [
+                #       ./dune-project
+                #       ./satysfi.opam
+                #       ./Makefile
+                #       ./bin
+                #       ./obsolete
+                #       ./src
+                #       ./tools
+                #       ./lib-satysfi
+                #     ];
+                #     exclude = [
+                #       ".merlin"
+                #       # (matchExt "nix")
+                #     ];
+                #   })
                 {
                   satysfi = null;
                   ocaml-base-compiler = null;
