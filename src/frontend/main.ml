@@ -942,7 +942,7 @@ let setup_root_dirs (curdir : string) =
       | Some(s) -> [ Filename.concat s ".satysfi" ]
   in
   let default_dirs =
-    if OptionState.get_no_default_config_paths () then
+    if OptionState.use_no_default_config () then
       []
     else
       List.concat [ home_dirs; runtime_dirs ]
