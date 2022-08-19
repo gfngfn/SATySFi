@@ -4,6 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     opam-nix.url = "github:tweag/opam-nix";
+    nix-filter.url = "github:numtide/nix-filter";
     satysfi-external-repo = {
       url = "github:gfngfn/satysfi-external-repo";
       flake = false;
@@ -20,6 +21,7 @@
   outputs = {
     self,
     nixpkgs,
+    nix-filter,
     opam-nix,
     satysfi-external-repo,
     devshell,
@@ -30,14 +32,40 @@
       "x86_64-linux"
     ] (
       system: let
-        inherit (pkgs) lib;
+        inherit (pkgs) lib stdenv;
         pkgs = import nixpkgs {
           inherit system;
           overlays = [
             devshell.overlay
           ];
         };
+        mkDoc = {
+          name,
+          root,
+          entrypoint,
+          output,
+        }:
+          stdenv.mkDerivation {
+            name = "doc-${name}";
+            buildInputs = with self.packages.${system}; [satysfi];
+            src = with (nix-filter.lib);
+              filter {
+                root = root;
+                exclude = [
+                  (matchExt "pdf")
+                  (matchExt "satysfi-aux")
+                ];
+              };
+            buildPhase = ''
+              satysfi ${entrypoint} --output ${output}
+            '';
+            installPhase = ''
+              mkdir -p $out
+              cp ${output} $out
+            '';
+          };
       in {
+        packages.default = self.packages.${system}.satysfi;
         packages.satysfi =
           (
             (
@@ -99,7 +127,24 @@
           )
           .satysfi;
 
-        packages.default = self.packages.${system}.satysfi;
+        packages.doc-demo = mkDoc {
+          name = "demo";
+          root = ./demo;
+          entrypoint = "demo.saty";
+          output = "demo.pdf";
+        };
+        packages.doc-lang = mkDoc {
+          name = "lang";
+          root = ./doc;
+          entrypoint = "doc-lang.saty";
+          output = "doc-lang.pdf";
+        };
+        packages.doc-primitives = mkDoc {
+          name = "lang";
+          root = ./doc;
+          entrypoint = "doc-primitives.saty";
+          output = "doc-primitives.pdf";
+        };
 
         apps.satysfi = flake-utils.lib.mkApp {drv = self.packages.${system}.satysfi;};
         apps.default = self.apps.${system}.satysfi;
@@ -113,7 +158,13 @@
         };
 
         checks = {
-          inherit (self.packages.${system}) satysfi;
+          inherit
+            (self.packages.${system})
+            satysfi
+            doc-demo
+            doc-lang
+            doc-primitives
+            ;
         };
       }
     );

@@ -96,6 +96,21 @@
         "type": "github"
       }
     },
+    "nix-filter": {
+      "locked": {
+        "lastModified": 1660220294,
+        "narHash": "sha256-l22Z88iegFq7xCLr1/jkgX9svnnWA7kTLgDOAi9iq6k=",
+        "owner": "numtide",
+        "repo": "nix-filter",
+        "rev": "825abbb40ed6b1e5e5fce95e2c21a1f5881ecf61",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "nix-filter",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1643381941,
@@ -221,6 +236,7 @@
         "devshell": "devshell",
         "flake-compat": "flake-compat",
         "flake-utils": "flake-utils_2",
+        "nix-filter": "nix-filter",
         "nixpkgs": "nixpkgs_2",
         "opam-nix": "opam-nix",
         "satysfi-external-repo": "satysfi-external-repo"
