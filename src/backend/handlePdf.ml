@@ -67,7 +67,7 @@ let warn_ratios (fs : 'o op_funcs) (pbinfo : page_break_info) pt hgt dpt (ratios
   match ratios with
   | TooLong{ required = wid_required; actual = wid_actual } ->
       Logging.warn_overfull_line pageno;
-      if OptionState.debug_show_overfull () then
+      if OptionState.does_debug_show_overfull () then
         List.append
           (fs.test_frame color_show_overfull pt wid_actual hgt dpt)
           (fs.test_frame color_show_overfull pt wid_required hgt dpt)
@@ -76,7 +76,7 @@ let warn_ratios (fs : 'o op_funcs) (pbinfo : page_break_info) pt hgt dpt (ratios
 
   | TooShort{ required = wid_required; actual = wid_actual } ->
       Logging.warn_underfull_line pageno;
-      if OptionState.debug_show_overfull () then
+      if OptionState.does_debug_show_overfull () then
         List.append
           (fs.test_frame color_show_overfull pt wid_actual hgt dpt)
           (fs.test_frame color_show_overfull pt wid_required hgt dpt)
@@ -91,7 +91,7 @@ let warn_reachability (fs : 'o op_funcs) (pbinfo : page_break_info) pt hgt dpt (
   match reach with
   | Unreachable ->
       Logging.warn_unreachable pbinfo.current_page_number;
-      if OptionState.debug_show_overfull () then
+      if OptionState.does_debug_show_overfull () then
         let wid = Length.of_pdf_point 2. in  (* temporary *)
         fs.test_frame color_show_unreachable pt wid hgt dpt
       else
@@ -112,7 +112,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
     match evhbmain with
     | EvHorzEmpty ->
         let opaccnew =
-          if OptionState.debug_show_space () then
+          if OptionState.does_debug_show_space () then
             let opsgr = fs.test_box color_show_space (xpos, yposbaseline) wid (Length.of_pdf_point 2.) in
             Alist.append opacc opsgr
           else
@@ -143,7 +143,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
           let opsmain =
             fs.text hsinfo (xpos, yposbaseline +% hsinfo.rising) otxt
           in
-          if OptionState.debug_show_bbox () then
+          if OptionState.does_debug_show_bbox () then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
             List.append opsgr opsmain
           else
@@ -157,7 +157,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
           let opsmain =
             fs.math msinfo (xpos, yposbaseline) otxt
           in
-          if OptionState.debug_show_bbox () then
+          if OptionState.does_debug_show_bbox () then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
             List.append opsgr opsmain
           else
@@ -172,7 +172,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         in
         let opaccnew =
 (*
-          if OptionState.debug_show_bbox () then
+          if OptionState.does_debug_show_bbox () then
             Alist.append opaccsub (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
           else
 *)
@@ -193,7 +193,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let opsgr = pdfops_of_graphics fs pbinfo gr in
         let opaccsub = Alist.append opacc opsgr in
         let opaccnew =
-          if OptionState.debug_show_bbox () then
+          if OptionState.does_debug_show_bbox () then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
             Alist.append opaccsub opsgr
           else
@@ -289,7 +289,7 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
     match evvb with
     | EvVertFixedEmpty(debug_margins, vskip) ->
         let opacc =
-          if OptionState.debug_show_block_space () then
+          if OptionState.does_debug_show_block_space () then
             let ops =
               match debug_margins with
               | Fixed              -> fs.test_skip_fixed color_show_skip pos vskip
@@ -313,7 +313,7 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
           evhblst @|> (xpos, opacc) @|> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline)
         in
         let opaccend =
-          if OptionState.debug_show_block_bbox () then
+          if OptionState.does_debug_show_block_bbox () then
             let wid = xposlast -% xpos in
             Alist.append opaccend (fs.test_frame color_show_block_bbox (xpos, yposbaseline) wid hgt dpt)
           else
@@ -376,14 +376,14 @@ let opacc_of_body_and_footnote
 
   let opaccbody =
     let (_, opaccbody) = ops_of_evaled_vert_box_list fs_pdf pbinfo ptbody Alist.empty evvblstbody in
-    if OptionState.debug_show_block_bbox () then
+    if OptionState.does_debug_show_block_bbox () then
       Alist.append opaccbody (fs_pdf.test_scale color_show_frame ptbody txtlen)
     else
       opaccbody
   in
   let opaccfootnote =
     let (_, opaccfootnote) = ops_of_evaled_vert_box_list fs_pdf pbinfo ptfootnote Alist.empty evvblstfootnote in
-    if OptionState.debug_show_block_bbox () then
+    if OptionState.does_debug_show_block_bbox () then
       let wid = Length.of_pdf_point 5. in
       let len = Length.of_pdf_point 1. in
       Alist.append opaccfootnote (fs_pdf.test_box color_show_frame ptfootnote wid len)

@@ -453,7 +453,7 @@ let initialize () =
   in
   let font_hash_dist = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/fonts.satysfi-hash")) in
   let font_hash = List.append font_hash_local font_hash_dist in
-  if OptionState.show_fonts () then Logging.show_fonts font_hash;
+  if OptionState.does_show_fonts () then Logging.show_fonts font_hash;
   font_hash |> List.iter (fun (abbrev, data) ->
     match data with
     | FontAccess.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
@@ -466,7 +466,7 @@ let initialize () =
   in
   let math_font_hash_dist = LoadFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/mathfonts.satysfi-hash")) in
   let math_font_hash = List.append math_font_hash_local math_font_hash_dist in
-  if OptionState.show_fonts () then Logging.show_math_fonts math_font_hash;
+  if OptionState.does_show_fonts () then Logging.show_math_fonts math_font_hash;
   math_font_hash |> List.iter (fun (mfabbrev, data) ->
     match data with
     | FontAccess.Single(srcpath)        -> MathFontAbbrevHashTable.add mfabbrev srcpath
