@@ -38,7 +38,7 @@
           ];
         };
       in {
-        packages.bin-satysfi =
+        packages.satysfi =
           (
             (
               with opam-nix.lib.${system}; (
@@ -57,10 +57,6 @@
               )
             )
             .overrideScope' (self: super: {
-              satysfi = super.satysfi.overrideAttrs (oa: {
-                doNixSupport = false;
-                removeOcamlReferences = true;
-              });
               camlpdf = super.camlpdf.overrideAttrs (oa: {
                 nativeBuildInputs =
                   oa.nativeBuildInputs
@@ -80,34 +76,28 @@
                   oa.nativeBuildInputs
                   ++ (with pkgs.ocamlPackages; [cppo]);
               });
+              satysfi = super.satysfi.overrideAttrs (oa: {
+                doNixSupport = false;
+                removeOcamlReferences = true;
+                preConfigure = ''
+                  substituteInPlace src/frontend/main.ml \
+                  --replace \
+                    '/usr/local/share/satysfi"; "/usr/share/satysfi' \
+                    $out/share/satysfi
+                '';
+                installPhase = with pkgs; ''
+                  cp -r ${lmodern}/share/fonts/opentype/public/lm/* lib-satysfi/dist/fonts/
+                  cp -r ${lmmath}/share/fonts/opentype/latinmodern-math.otf lib-satysfi/dist/fonts/
+                  cp -r ${ipaexfont}/share/fonts/opentype/* lib-satysfi/dist/fonts/
+                  cp -r ${junicode}/share/fonts/junicode-ttf/* lib-satysfi/dist/fonts/
+                  make install PREFIX=$out LIBDIR=$out/share/satysfi
+                  mkdir -p $out/share/satysfi/
+                  cp -r lib-satysfi/dist/ $out/share/satysfi/
+                '';
+              });
             })
           )
           .satysfi;
-
-        packages.lib-satysfi = pkgs.stdenv.mkDerivation {
-          name = "lib-satysfi";
-          src = ./.;
-          dontBuild = true;
-          installPhase = with pkgs; ''
-            # https://github.com/NixOS/nixpkgs/blob/762b003329510ea855b4097a37511eb19c7077f0/pkgs/tools/typesetting/satysfi/default.nix
-            cp -r ${lmodern}/share/fonts/opentype/public/lm/* lib-satysfi/dist/fonts/
-            cp -r ${lmmath}/share/fonts/opentype/latinmodern-math.otf lib-satysfi/dist/fonts/
-            cp -r ${ipaexfont}/share/fonts/opentype/* lib-satysfi/dist/fonts/
-            cp -r ${junicode}/share/fonts/junicode-ttf/* lib-satysfi/dist/fonts/
-            mkdir -p $out/share/satysfi
-            cp -r lib-satysfi/dist/ $out/share/satysfi/
-          '';
-        };
-
-        packages.satysfi = pkgs.stdenv.mkDerivation {
-          name = "satysfi";
-          unpackPhase = "true";
-          installPhase = with self.packages.${system}; ''
-            mkdir -p $out/{bin,share}
-            cp -r ${bin-satysfi}/bin $out/bin
-            cp -r ${lib-satysfi}/share $out/share
-          '';
-        };
 
         packages.default = self.packages.${system}.satysfi;
 
@@ -123,12 +113,7 @@
         };
 
         checks = {
-          inherit
-            (self.packages.${system})
-            bin-satysfi
-            lib-satysfi
-            satysfi
-            ;
+          inherit (self.packages.${system}) satysfi;
         };
       }
     );
