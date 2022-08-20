@@ -166,6 +166,12 @@
           entrypoint = "doc-primitives.saty";
           output = "doc-primitives.pdf";
         };
+        packages.tests-images = mkDoc {
+          name = "tests-image";
+          root = ./tests/images;
+          entrypoint = "test.saty";
+          output = "test.pdf";
+        };
 
         apps.satysfi = flake-utils.lib.mkApp {drv = self.packages.${system}.satysfi;};
         apps.default = self.apps.${system}.satysfi;
