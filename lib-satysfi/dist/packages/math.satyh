@@ -213,6 +213,7 @@ module Math :> sig
   val \bigcap : math []
   val \bigcup : math []
 
+  val \lnot : math []
   val \land : math []
   val \lor : math []
 
@@ -820,6 +821,7 @@ end = struct
   val math \bigcap = bigop `⋂`
   val math \bigcup = bigop `⋃`
 
+  val math \lnot = ord `¬`
   val math \land = rel `∧`
   val math \lor  = rel `∨`
 
