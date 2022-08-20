@@ -39,6 +39,30 @@
           inherit system;
           overlays = [
             devshell.overlay
+            (self: super: {
+              satysfi = super.satysfi.overrideAttrs (oa: {
+                src = ./.;
+              });
+              ocamlPackages =
+                super.ocamlPackages
+                // {
+                  camlimages = super.ocamlPackages.camlimages.overrideAttrs (
+                    oa: {
+                      buildInputs = oa.buildInputs ++ (with self; [ocamlPackages.findlib]);
+                      propagatedBuildInputs = with self; [
+                        libpng12
+                        libjpeg
+                        libexif
+                        libtiff
+                        xorg.libXpm
+                        freetype
+                        giflib
+                        ghostscript
+                      ];
+                    }
+                  );
+                };
+            })
           ];
         };
 
@@ -161,7 +185,9 @@
       in {
         packages.default = self.packages.${system}.satysfi;
         packages.satysfi = ocamlPkgs.satysfi;
-        packages.camlimages = ocamlPkgs.camlimages;
+
+        packages.camlimages = pkgs.ocamlPackages.camlimages;
+        packages.satysfi2 = pkgs.satysfi;
 
         packages.doc-demo = mkDoc {
           name = "demo";
@@ -188,7 +214,10 @@
           output = "test.pdf";
         };
 
-        apps.satysfi = flake-utils.lib.mkApp {drv = self.packages.${system}.satysfi;};
+        apps.satysfi = flake-utils.lib.mkApp {
+          drv = self.packages.${system}.satysfi2;
+        };
+
         apps.default = self.apps.${system}.satysfi;
 
         devShells.default = pkgs.devshell.mkShell {
