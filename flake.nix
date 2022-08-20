@@ -34,12 +34,105 @@
     ] (
       system: let
         inherit (pkgs) lib stdenv;
+        inherit (opam-nix.lib.${system}) buildDuneProject makeOpamRepoRec;
         pkgs = import nixpkgs {
           inherit system;
           overlays = [
             devshell.overlay
           ];
         };
+
+        duneProject =
+          buildDuneProject {
+            repos = [
+              opam-nix.inputs.opam-repository
+              (makeOpamRepoRec satysfi-external-repo)
+            ];
+          }
+          "satysfi"
+          ./.
+          # You cannot purely build (without `--impure`)
+          # Ref. https://github.com/tweag/opam-nix/issues/17
+          # (with (nix-filter.lib);
+          #   filter {
+          #     root = ./.;
+          #     include = [
+          #       ./dune-project
+          #       ./satysfi.opam
+          #       ./Makefile
+          #       ./bin
+          #       ./obsolete
+          #       ./src
+          #       ./tools
+          #       ./lib-satysfi
+          #     ];
+          #     exclude = [
+          #       ".merlin"
+          #       # (matchExt "nix")
+          #     ];
+          #   })
+          {
+            satysfi = null;
+          };
+        duneProjectOverlay = self: super: {
+          camlimages = super.camlimages.overrideAttrs (oa: {
+            buildInputs =
+              oa.buildInputs
+              ++ (with pkgs; [libpng12])
+              ++ (with pkgs.ocamlPackages; [
+                # dune-configurator
+                # graphics
+                # lablgtk
+                # stdio
+              ]);
+            nativeBuildInputs =
+              oa.nativeBuildInputs
+              ++ (with pkgs.ocamlPackages; [
+                # findlib
+                cppo
+              ]);
+          });
+          camlpdf = super.camlpdf.overrideAttrs (oa: {
+            nativeBuildInputs =
+              oa.nativeBuildInputs
+              ++ (with pkgs; [which])
+              ++ (with pkgs.ocamlPackages; [findlib]);
+          });
+          otfm = super.otfm.overrideAttrs (oa: {
+            buildInputs =
+              oa.nativeBuildInputs
+              ++ (with pkgs; [ocamlPackages.topkg]);
+            nativeBuildInputs =
+              oa.nativeBuildInputs
+              ++ (with pkgs.ocamlPackages; [findlib ocamlbuild topkg]);
+          });
+          yojson-with-position = super.yojson-with-position.overrideAttrs (oa: {
+            nativeBuildInputs =
+              oa.nativeBuildInputs
+              ++ (with pkgs.ocamlPackages; [cppo]);
+          });
+          satysfi = super.satysfi.overrideAttrs (oa: {
+            doNixSupport = false;
+            removeOcamlReferences = true;
+            preConfigure = ''
+              substituteInPlace src/frontend/main.ml \
+              --replace \
+                '/usr/local/share/satysfi"; "/usr/share/satysfi' \
+                $out/share/satysfi
+            '';
+            installPhase = with pkgs; ''
+              cp -r ${lmodern}/share/fonts/opentype/public/lm/* lib-satysfi/dist/fonts/
+              cp -r ${lmmath}/share/fonts/opentype/latinmodern-math.otf lib-satysfi/dist/fonts/
+              cp -r ${ipaexfont}/share/fonts/opentype/* lib-satysfi/dist/fonts/
+              cp -r ${junicode}/share/fonts/junicode-ttf/* lib-satysfi/dist/fonts/
+              make install PREFIX=$out LIBDIR=$out/share/satysfi
+              mkdir -p $out/share/satysfi/
+              cp -r lib-satysfi/dist/ $out/share/satysfi/
+            '';
+          });
+        };
+        ocamlPkgs = duneProject.overrideScope' duneProjectOverlay;
+
         mkDoc = {
           name,
           root,
@@ -67,86 +160,8 @@
           };
       in {
         packages.default = self.packages.${system}.satysfi;
-        packages.satysfi =
-          (
-            (
-              with opam-nix.lib.${system}; (
-                buildDuneProject {
-                  repos = [
-                    opam-nix.inputs.opam-repository
-                    (opam-nix.lib.${system}.makeOpamRepoRec satysfi-external-repo)
-                  ];
-                }
-                "satysfi"
-                ./.
-                # You cannot purely build (without `--impure`)
-                # Ref. https://github.com/tweag/opam-nix/issues/17
-                # (with (nix-filter.lib);
-                #   filter {
-                #     root = ./.;
-                #     include = [
-                #       ./dune-project
-                #       ./satysfi.opam
-                #       ./Makefile
-                #       ./bin
-                #       ./obsolete
-                #       ./src
-                #       ./tools
-                #       ./lib-satysfi
-                #     ];
-                #     exclude = [
-                #       ".merlin"
-                #       # (matchExt "nix")
-                #     ];
-                #   })
-                {
-                  satysfi = null;
-                  ocaml-base-compiler = null;
-                }
-              )
-            )
-            .overrideScope' (self: super: {
-              camlpdf = super.camlpdf.overrideAttrs (oa: {
-                nativeBuildInputs =
-                  oa.nativeBuildInputs
-                  ++ (with pkgs; [which])
-                  ++ (with pkgs.ocamlPackages; [findlib]);
-              });
-              otfm = super.otfm.overrideAttrs (oa: {
-                buildInputs =
-                  oa.nativeBuildInputs
-                  ++ (with pkgs; [ocamlPackages.topkg]);
-                nativeBuildInputs =
-                  oa.nativeBuildInputs
-                  ++ (with pkgs.ocamlPackages; [findlib ocamlbuild topkg]);
-              });
-              yojson-with-position = super.yojson-with-position.overrideAttrs (oa: {
-                nativeBuildInputs =
-                  oa.nativeBuildInputs
-                  ++ (with pkgs.ocamlPackages; [cppo]);
-              });
-              satysfi = super.satysfi.overrideAttrs (oa: {
-                doNixSupport = false;
-                removeOcamlReferences = true;
-                preConfigure = ''
-                  substituteInPlace src/frontend/main.ml \
-                  --replace \
-                    '/usr/local/share/satysfi"; "/usr/share/satysfi' \
-                    $out/share/satysfi
-                '';
-                installPhase = with pkgs; ''
-                  cp -r ${lmodern}/share/fonts/opentype/public/lm/* lib-satysfi/dist/fonts/
-                  cp -r ${lmmath}/share/fonts/opentype/latinmodern-math.otf lib-satysfi/dist/fonts/
-                  cp -r ${ipaexfont}/share/fonts/opentype/* lib-satysfi/dist/fonts/
-                  cp -r ${junicode}/share/fonts/junicode-ttf/* lib-satysfi/dist/fonts/
-                  make install PREFIX=$out LIBDIR=$out/share/satysfi
-                  mkdir -p $out/share/satysfi/
-                  cp -r lib-satysfi/dist/ $out/share/satysfi/
-                '';
-              });
-            })
-          )
-          .satysfi;
+        packages.satysfi = ocamlPkgs.satysfi;
+        packages.camlimages = ocamlPkgs.camlimages;
 
         packages.doc-demo = mkDoc {
           name = "demo";
