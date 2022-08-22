@@ -39,30 +39,6 @@
           inherit system;
           overlays = [
             devshell.overlay
-            (self: super: {
-              satysfi = super.satysfi.overrideAttrs (oa: {
-                src = ./.;
-              });
-              ocamlPackages =
-                super.ocamlPackages
-                // {
-                  camlimages = super.ocamlPackages.camlimages.overrideAttrs (
-                    oa: {
-                      buildInputs = oa.buildInputs ++ (with self; [ocamlPackages.findlib]);
-                      propagatedBuildInputs = with self; [
-                        libpng12
-                        libjpeg
-                        libexif
-                        libtiff
-                        xorg.libXpm
-                        freetype
-                        giflib
-                        ghostscript
-                      ];
-                    }
-                  );
-                };
-            })
           ];
         };
 
@@ -72,66 +48,22 @@
               opam-nix.inputs.opam-repository
               (makeOpamRepoRec satysfi-external-repo)
             ];
-          }
-          "satysfi"
-          ./.
-          (with (nix-filter.lib);
+          } "satysfi" (with nix-filter.lib;
             filter {
               root = ./.;
               include = [
-                ./dune-project
-                ./satysfi.opam
-                ./Makefile
-                ./bin
-                ./obsolete
-                ./src
-                ./tools
-                ./lib-satysfi
+                "dune-project"
+                "satysfi.opam"
+                "Makefile"
+                (inDirectory "bin")
+                (inDirectory "obsolete")
+                (inDirectory "src")
+                (inDirectory "tools")
+                (inDirectory "lib-satysfi")
               ];
-              exclude = [
-                ".merlin"
-              ];
-            })
-          {
-            satysfi = null;
-          };
+              exclude = [".merlin"];
+            }) {satysfi = null;};
         duneProjectOverlay = self: super: {
-          camlimages = super.camlimages.overrideAttrs (oa: {
-            buildInputs =
-              oa.buildInputs
-              ++ (with pkgs; [libpng12])
-              ++ (with pkgs.ocamlPackages; [
-                # dune-configurator
-                # graphics
-                # lablgtk
-                # stdio
-              ]);
-            nativeBuildInputs =
-              oa.nativeBuildInputs
-              ++ (with pkgs.ocamlPackages; [
-                # findlib
-                cppo
-              ]);
-          });
-          camlpdf = super.camlpdf.overrideAttrs (oa: {
-            nativeBuildInputs =
-              oa.nativeBuildInputs
-              ++ (with pkgs; [which])
-              ++ (with pkgs.ocamlPackages; [findlib]);
-          });
-          otfm = super.otfm.overrideAttrs (oa: {
-            buildInputs =
-              oa.nativeBuildInputs
-              ++ (with pkgs; [ocamlPackages.topkg]);
-            nativeBuildInputs =
-              oa.nativeBuildInputs
-              ++ (with pkgs.ocamlPackages; [findlib ocamlbuild topkg]);
-          });
-          yojson-with-position = super.yojson-with-position.overrideAttrs (oa: {
-            nativeBuildInputs =
-              oa.nativeBuildInputs
-              ++ (with pkgs.ocamlPackages; [cppo]);
-          });
           satysfi = super.satysfi.overrideAttrs (oa: {
             doNixSupport = false;
             removeOcamlReferences = true;
@@ -182,9 +114,6 @@
       in {
         packages.default = self.packages.${system}.satysfi;
         packages.satysfi = ocamlPkgs.satysfi;
-
-        packages.camlimages = pkgs.ocamlPackages.camlimages;
-        packages.satysfi2 = pkgs.satysfi;
 
         packages.doc-demo = mkDoc {
           name = "demo";
