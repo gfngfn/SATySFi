@@ -98,16 +98,17 @@
     },
     "nix-filter": {
       "locked": {
-        "lastModified": 1660220294,
-        "narHash": "sha256-l22Z88iegFq7xCLr1/jkgX9svnnWA7kTLgDOAi9iq6k=",
+        "lastModified": 1659352118,
+        "narHash": "sha256-X/Tdlj/PYxcQg/1hcHXxdnDr5zLO22LohIudX+oT968=",
         "owner": "numtide",
         "repo": "nix-filter",
-        "rev": "825abbb40ed6b1e5e5fce95e2c21a1f5881ecf61",
+        "rev": "3e1fff9ec0112fe5ec61ea7cc6d37c1720d865f8",
         "type": "github"
       },
       "original": {
         "owner": "numtide",
         "repo": "nix-filter",
+        "rev": "3e1fff9ec0112fe5ec61ea7cc6d37c1720d865f8",
         "type": "github"
       }
     },

@@ -4,13 +4,13 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     opam-nix.url = "github:tweag/opam-nix";
-    nix-filter.url = "github:numtide/nix-filter";
     satysfi-external-repo = {
       url = "github:gfngfn/satysfi-external-repo";
       flake = false;
     };
 
     # develop
+    nix-filter.url = "github:numtide/nix-filter/3e1fff9ec0112fe5ec61ea7cc6d37c1720d865f8";
     devshell.url = "github:numtide/devshell";
     flake-utils.url = "github:numtide/flake-utils";
     flake-compat = {
@@ -75,26 +75,23 @@
           }
           "satysfi"
           ./.
-          # You cannot purely build (without `--impure`)
-          # Ref. https://github.com/tweag/opam-nix/issues/17
-          # (with (nix-filter.lib);
-          #   filter {
-          #     root = ./.;
-          #     include = [
-          #       ./dune-project
-          #       ./satysfi.opam
-          #       ./Makefile
-          #       ./bin
-          #       ./obsolete
-          #       ./src
-          #       ./tools
-          #       ./lib-satysfi
-          #     ];
-          #     exclude = [
-          #       ".merlin"
-          #       # (matchExt "nix")
-          #     ];
-          #   })
+          (with (nix-filter.lib);
+            filter {
+              root = ./.;
+              include = [
+                ./dune-project
+                ./satysfi.opam
+                ./Makefile
+                ./bin
+                ./obsolete
+                ./src
+                ./tools
+                ./lib-satysfi
+              ];
+              exclude = [
+                ".merlin"
+              ];
+            })
           {
             satysfi = null;
           };
