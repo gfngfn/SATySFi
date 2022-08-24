@@ -308,9 +308,14 @@ let error_log_environment suspended =
       ]
 
   | FileDependencyResolver.CyclicFileDependency(cycle) ->
+      let pairs =
+        match cycle with
+        | Loop(pair)   -> [ pair ]
+        | Cycle(pairs) -> pairs |> TupleList.to_list
+      in
       report_error Interface (
         (NormalLine("cyclic dependency detected:")) ::
-        (cycle |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath)))
+        (pairs |> List.map (fun (abspath, _) -> DisplayLine(get_abs_path_string abspath)))
       )
 
   | FileDependencyResolver.CannotReadFileOwingToSystem(msg) ->
