@@ -9,7 +9,7 @@ type data = {
   definition_body : manual_type;
 }
 
-type vertex = Impl.vertex
+module Vertex = Impl.Vertex
 
 type t = data Impl.t
 
@@ -17,15 +17,15 @@ type t = data Impl.t
 let empty = Impl.empty
 
 
-let add_vertex (tynm : type_name) (data : data) (graph : t) : t * vertex =
+let add_vertex (tynm : type_name) (data : data) (graph : t) : t * Vertex.t =
   Impl.add_vertex tynm data graph
 
 
-let get_vertex (tynm : type_name) (graph : t) : vertex option =
+let get_vertex (tynm : type_name) (graph : t) : Vertex.t option =
   Impl.get_vertex tynm graph
 
 
-let add_edge ~(from : vertex) ~(to_ : vertex) (graph : t) : t =
+let add_edge ~(from : Vertex.t) ~(to_ : Vertex.t) (graph : t) : t =
   Impl.add_edge ~from ~to_ graph
 
 

@@ -21,10 +21,10 @@ module Make (Element : ElementType) = struct
 
   type element = Element.t
 
-  type vertex = GraphImpl.V.t
+  module Vertex = GraphImpl.V
 
   type 'a t = {
-    labels : ('a * vertex) ElementMap.t;
+    labels : ('a * Vertex.t) ElementMap.t;
     main   : GraphImpl.t;
   }
 
@@ -36,7 +36,7 @@ module Make (Element : ElementType) = struct
     }
 
 
-  let add_vertex (elem : element) (data : 'a) (graph : 'a t) : 'a t * vertex =
+  let add_vertex (elem : element) (data : 'a) (graph : 'a t) : 'a t * Vertex.t =
     let vertex = GraphImpl.V.create elem in
     let graph =
       {
@@ -47,11 +47,11 @@ module Make (Element : ElementType) = struct
     (graph, vertex)
 
 
-  let get_vertex (elem : element) (graph : 'a t) : vertex option =
+  let get_vertex (elem : element) (graph : 'a t) : Vertex.t option =
     graph.labels |> ElementMap.find_opt elem |> Option.map (fun (_data, vertex) -> vertex)
 
 
-  let add_edge ~from:(vertex1 : vertex) ~to_:(vertex2 : vertex) (graph : 'a t) : 'a t =
+  let add_edge ~from:(vertex1 : Vertex.t) ~to_:(vertex2 : Vertex.t) (graph : 'a t) : 'a t =
     { graph with main = GraphImpl.add_edge graph.main vertex1 vertex2 }
 
 

@@ -10,7 +10,7 @@ end
 
 module Impl = DependencyGraph.Make(AbsPath)
 
-type vertex = Impl.vertex
+type vertex = Impl.Vertex.t
 
 type t = file_info Impl.t
 

@@ -15,8 +15,16 @@ module Make (Element : ElementType) : sig
   (** The type for keys standing for vertices. *)
   type element = Element.t
 
-  (** The type for “vertex tokens.” *)
-  type vertex
+  (** The module for “vertex tokens.” *)
+  module Vertex : sig
+    type t
+
+    val equal : t -> t -> bool
+
+    val compare : t -> t -> int
+
+    val hash : t -> int
+  end
 
   (** The type for graphs. *)
   type 'a t
@@ -27,16 +35,16 @@ module Make (Element : ElementType) : sig
   (** [add_vertex elem data g] adds to the graph [g] a vertex associated with [(elem, data)].
       Returns [(g', vertex)] where [g'] is the updated graph
       and [vertex] is the vertex token generated for [elem]. *)
-  val add_vertex : element -> 'a -> 'a t -> 'a t * vertex
+  val add_vertex : element -> 'a -> 'a t -> 'a t * Vertex.t
 
   (** [get_vertex elem g] returns:
       {ul
         {- [Some vertex] if [g] has [elem] as its vertex and the corresponding token is [vertex],}
         {- or returns [None] otherwise.}} *)
-  val get_vertex : element -> 'a t -> vertex option
+  val get_vertex : element -> 'a t -> Vertex.t option
 
   (** [add_edge ~from:v1 ~to_:v2 g] adds to the graph [g] an edge from [v1] to [v2]. *)
-  val add_edge : from:vertex -> to_:vertex -> 'a t -> 'a t
+  val add_edge : from:Vertex.t -> to_:Vertex.t -> 'a t -> 'a t
 
   (** [topological_sort g] performs a topological sort on vertices and returns:
       {ul
