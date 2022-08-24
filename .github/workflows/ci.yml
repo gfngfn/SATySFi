@@ -64,6 +64,7 @@ jobs:
       - name: Run tests
         run: |
           opam exec -- dune runtest
+          opam exec -- dune test
 
       - name: Install SATySFi
         run: |
