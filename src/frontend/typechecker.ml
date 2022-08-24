@@ -3114,8 +3114,8 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
               definition_body = synbind;
             }
           in
-          let graph = graph |> SynonymDependencyGraph.add_vertex tynm data in
-          let synacc = Alist.extend synacc (tyident, typarams, synbind) in
+          let (graph, vertex) = graph |> SynonymDependencyGraph.add_vertex tynm data in
+          let synacc = Alist.extend synacc (tyident, typarams, synbind, vertex) in
           (synacc, vntacc, vertices |> SynonymNameSet.add tynm, graph, tyenv)
 
       | UTBindVariant(vntbind) ->
@@ -3136,11 +3136,13 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
   (* Traverse each definition of the synonym types and extract dependencies between them. *)
   let graph =
     synacc |> Alist.to_list |> List.fold_left (fun graph syn ->
-      let ((_, tynm), tyvars, synbind) = syn in
+      let ((_, tynm), tyvars, synbind, vertex) = syn in
       let dependencies = get_dependency_on_synonym_types vertices pre tyenv synbind in
       let graph =
         graph |> SynonymNameSet.fold (fun tynm_dep graph ->
-          graph |> SynonymDependencyGraph.add_edge tynm tynm_dep
+          match graph |> SynonymDependencyGraph.get_vertex tynm_dep with
+          | None             -> assert false
+          | Some(vertex_dep) -> graph |> SynonymDependencyGraph.add_edge ~from:vertex ~to_:vertex_dep
         ) dependencies
       in
       graph

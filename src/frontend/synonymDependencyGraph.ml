@@ -15,8 +15,10 @@ type data = {
   definition_body : manual_type;
 }
 
+type vertex = GraphImpl.V.t
+
 type t = {
-  labels : (data * GraphImpl.V.t) IDMap.t;
+  labels : (data * vertex) IDMap.t;
   main   : GraphImpl.t;
 }
 
@@ -28,24 +30,22 @@ let empty : t =
   }
 
 
-let add_vertex (tynm : type_name) (data : data) (graph : t) : t =
+let add_vertex (tynm : type_name) (data : data) (graph : t) : t * vertex =
   let vertex = GraphImpl.V.create tynm in
-  {
-    labels = graph.labels |> IDMap.add tynm (data, vertex);
-    main   = GraphImpl.add_vertex graph.main vertex;
-  }
+  let graph =
+    {
+      labels = graph.labels |> IDMap.add tynm (data, vertex);
+      main   = GraphImpl.add_vertex graph.main vertex;
+    }
+  in
+  (graph, vertex)
 
 
-let get_vertex_token (map : (data * GraphImpl.V.t) IDMap.t) (tynm : type_name) : GraphImpl.V.t =
-  match map |> IDMap.find_opt tynm with
-  | None            -> assert false
-  | Some(_, vertex) -> vertex
+let get_vertex (tynm : type_name) (graph : t) : vertex option =
+  graph.labels |> IDMap.find_opt tynm |> Option.map (fun (_, vertex) -> vertex)
 
 
-let add_edge (tynm1 : type_name) (tynm2 : type_name) (graph : t) : t =
-  let map = graph.labels in
-  let vertex1 = get_vertex_token map tynm1 in
-  let vertex2 = get_vertex_token map tynm2 in
+let add_edge ~from:(vertex1 : vertex) ~to_:(vertex2 : vertex) (graph : t) : t =
   { graph with main = GraphImpl.add_edge graph.main vertex1 vertex2 }
 
 
