@@ -4,6 +4,7 @@ open Types
 
 module type ElementType = sig
   type t
+
   val compare : t -> t -> int
 end
 
