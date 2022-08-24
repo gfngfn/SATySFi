@@ -90,29 +90,38 @@ let register_document_file (graph : FileDependencyGraph.t) (abspath_in : abs_pat
   header |> List.fold_left (fun graph headerelem ->
     let abspath_sub = get_abs_path_of_header curdir headerelem in
     match graph |> FileDependencyGraph.get_vertex abspath_sub with
-    | Some(vertex_sub) -> assert false
-    | None             -> register_library_file graph ~prev:vertex abspath_sub
+    | Some(vertex_sub) ->
+        graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub
+
+    | None ->
+        register_library_file graph ~prev:vertex abspath_sub
+
   ) graph
 
 
 let register_markdown_file (graph : FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : FileDependencyGraph.t =
   Logging.begin_to_parse_file abspath_in;
-  let abspath = Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md"))) in
-  let (cmdrcd, depends) = LoadMDSetting.main abspath in
+  let (cmdrcd, depends) =
+    let abspath =
+      Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md")))
+    in
+    LoadMDSetting.main abspath
+  in
   let utast =
     match MyUtil.string_of_file abspath_in with
-    | Ok(data) ->
-        DecodeMD.decode cmdrcd data
-
-    | Error(msg) ->
-        raise (CannotReadFileOwingToSystem(msg))
+    | Ok(data)   -> DecodeMD.decode cmdrcd data
+    | Error(msg) -> raise (CannotReadFileOwingToSystem(msg))
   in
   let (graph, vertex) = graph |> FileDependencyGraph.add_vertex abspath_in (DocumentFile(utast)) in
   depends |> List.fold_left (fun graph package ->
     let abspath_sub = get_package_abs_path package in
     match graph |> FileDependencyGraph.get_vertex abspath_sub with
-    | Some(_vertex_sub) -> assert false
-    | None              -> register_library_file graph ~prev:vertex abspath_sub
+    | Some(vertex_sub) ->
+        graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub
+
+    | None ->
+        register_library_file graph ~prev:vertex abspath_sub
+
   ) graph
 
 

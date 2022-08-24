@@ -96,5 +96,5 @@ let topological_sort (graph : t) : ((type_name * data) list, (type_name * data) 
                 Alist.extend acc info
               ) graph.main Alist.empty
             in
-            Ok(Alist.to_list acc)
+            Ok(Alist.to_list acc) (* TODO: test this; maybe `Alist.to_list_rev` is appropriate *)
       end
