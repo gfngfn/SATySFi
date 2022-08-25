@@ -33,9 +33,10 @@ module Make (Element : ElementType) : sig
   val empty : 'a t
 
   (** [add_vertex elem data g] adds to the graph [g] a vertex associated with [(elem, data)].
-      Returns [(g', vertex)] where [g'] is the updated graph
-      and [vertex] is the vertex token generated for [elem]. *)
-  val add_vertex : element -> 'a -> 'a t -> 'a t * Vertex.t
+      Returns [Some (g', vertex)] where [g'] is the updated graph
+      and [vertex] is the vertex token generated for [elem] if [elem] is not present in [g],
+      or returns [None] if [g] has a vertex associated with [elem]. *)
+  val add_vertex : element -> 'a -> 'a t -> ('a t * Vertex.t) option
 
   (** [get_vertex elem g] returns:
       {ul

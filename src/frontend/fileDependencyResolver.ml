@@ -58,7 +58,11 @@ let rec register_library_file (graph : FileDependencyGraph.t) ~prev:(vertex_prev
       | UTLibraryFile(lib) -> lib
       | UTDocumentFile(_)  -> raise (LibraryContainsWholeReturnValue(abspath))
     in
-    let (graph, vertex) = graph |> FileDependencyGraph.add_vertex abspath (LibraryFile(lib)) in
+    let (graph, vertex) =
+      match graph |> FileDependencyGraph.add_vertex abspath (LibraryFile(lib)) with
+      | None       -> assert false
+      | Some(pair) -> pair
+    in
     let graph = FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex graph in
     header |> List.fold_left (fun graph headerelem ->
       let abspath_sub = get_abs_path_of_header curdir headerelem in
@@ -86,7 +90,11 @@ let register_document_file (graph : FileDependencyGraph.t) (abspath_in : abs_pat
     | UTLibraryFile(_)      -> raise (DocumentLacksWholeReturnValue(abspath_in))
     | UTDocumentFile(utast) -> utast
   in
-  let (graph, vertex) = graph |> FileDependencyGraph.add_vertex abspath_in (DocumentFile(utast)) in
+  let (graph, vertex) =
+    match graph |> FileDependencyGraph.add_vertex abspath_in (DocumentFile(utast)) with
+    | None       -> assert false
+    | Some(pair) -> pair
+  in
   header |> List.fold_left (fun graph headerelem ->
     let abspath_sub = get_abs_path_of_header curdir headerelem in
     match graph |> FileDependencyGraph.get_vertex abspath_sub with
@@ -112,7 +120,11 @@ let register_markdown_file (graph : FileDependencyGraph.t) (setting : string) (a
     | Ok(data)   -> DecodeMD.decode cmdrcd data
     | Error(msg) -> raise (CannotReadFileOwingToSystem(msg))
   in
-  let (graph, vertex) = graph |> FileDependencyGraph.add_vertex abspath_in (DocumentFile(utast)) in
+  let (graph, vertex) =
+    match graph |> FileDependencyGraph.add_vertex abspath_in (DocumentFile(utast)) with
+    | None       -> assert false
+    | Some(pair) -> pair
+  in
   depends |> List.fold_left (fun graph package ->
     let abspath_sub = get_package_abs_path package in
     match graph |> FileDependencyGraph.get_vertex abspath_sub with

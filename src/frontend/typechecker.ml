@@ -3109,7 +3109,14 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
               definition_body = synbind;
             }
           in
-          let (graph, vertex) = graph |> SynonymDependencyGraph.add_vertex tynm data in
+          let (graph, vertex) =
+            match graph |> SynonymDependencyGraph.add_vertex tynm data with
+            | None ->
+                raise_error (MultipleSynonymTypeDefinition(rng, tynm))
+
+            | Some(pair) ->
+                pair
+          in
           let synacc = Alist.extend synacc (tyident, typarams, synbind, vertex) in
           (synacc, vntacc, known_syns |> SynonymNameMap.add tynm vertex, graph, tyenv)
 

@@ -18,7 +18,7 @@ type t = file_info Impl.t
 let empty = Impl.empty
 
 
-let add_vertex (abspath : abs_path) (data : file_info) (graph : t) : t * vertex =
+let add_vertex (abspath : abs_path) (data : file_info) (graph : t) : (t * vertex) option =
   Impl.add_vertex abspath data graph
 
 

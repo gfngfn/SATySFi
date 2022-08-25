@@ -5,12 +5,17 @@ module DependencyGraph = Main__DependencyGraph
 module DG = DependencyGraph.Make(Int)
 
 
+let unwrap_option = function
+  | None    -> assert false
+  | Some(v) -> v
+
+
 (** Creates a graph of structure [v1 --> v2 --> v3]. *)
 let create_graph1 () =
   let graph = DG.empty in
-  let (graph, vertex1) = graph |> DG.add_vertex 1 "one" in
-  let (graph, vertex2) = graph |> DG.add_vertex 2 "two" in
-  let (graph, vertex3) = graph |> DG.add_vertex 3 "three" in
+  let (graph, vertex1) = graph |> DG.add_vertex 1 "one" |> unwrap_option in
+  let (graph, vertex2) = graph |> DG.add_vertex 2 "two" |> unwrap_option in
+  let (graph, vertex3) = graph |> DG.add_vertex 3 "three" |> unwrap_option in
   let graph = graph |> DG.add_edge ~from:vertex1 ~to_:vertex2 in
   let graph = graph |> DG.add_edge ~from:vertex2 ~to_:vertex3 in
   graph

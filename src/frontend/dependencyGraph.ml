@@ -36,15 +36,18 @@ module Make (Element : ElementType) = struct
     }
 
 
-  let add_vertex (elem : element) (data : 'a) (graph : 'a t) : 'a t * Vertex.t =
-    let vertex = GraphImpl.V.create elem in
-    let graph =
-      {
-        labels = graph.labels |> ElementMap.add elem (data, vertex);
-        main   = GraphImpl.add_vertex graph.main vertex
-      }
-    in
-    (graph, vertex)
+  let add_vertex (elem : element) (data : 'a) (graph : 'a t) : ('a t * Vertex.t) option =
+    if graph.labels |> ElementMap.mem elem then
+      None
+    else
+      let vertex = GraphImpl.V.create elem in
+      let graph =
+        {
+          labels = graph.labels |> ElementMap.add elem (data, vertex);
+          main   = GraphImpl.add_vertex graph.main vertex
+        }
+      in
+      Some((graph, vertex))
 
 
   let get_vertex (elem : element) (graph : 'a t) : Vertex.t option =

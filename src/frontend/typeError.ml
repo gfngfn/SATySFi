@@ -50,3 +50,4 @@ type type_error =
   | CannotRestrictTransparentType        of Range.t * type_name
   | KindContradiction                    of Range.t * type_name * kind * kind
   | CyclicSynonymTypeDefinition          of (type_name * SynonymDependencyGraph.data) cycle
+  | MultipleSynonymTypeDefinition        of Range.t * type_name
