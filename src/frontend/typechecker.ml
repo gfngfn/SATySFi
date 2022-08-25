@@ -19,15 +19,11 @@ module SubstMap = Map.Make(TypeID)
 
 type substitution = type_scheme SubstMap.t
 
-module SynonymNameSet = Set.Make(String)
+module SynonymNameMap = Map.Make(String)
 
-module SynonymNameHashSet =
-  Hashtbl.Make(
-    struct
-      type t = type_name
-      let equal = String.equal
-      let hash = Hashtbl.hash
-    end)
+module SynonymVertexHashSet = Hashtbl.Make(SynonymDependencyGraph.Vertex)
+
+module SynonymVertexSet = Set.Make(SynonymDependencyGraph.Vertex)
 
 type variant_definition = type_name * TypeID.t * BoundID.t list * constructor_branch_map
 
@@ -3038,14 +3034,13 @@ and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) 
   ((quant, ssig), binds)
 
 
-and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : SynonymNameSet.t =
-  let hashset = SynonymNameHashSet.create 32 in
+and get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.t SynonymNameMap.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : SynonymVertexSet.t =
+  let hashset = SynonymVertexHashSet.create 32 in
     (* A hash set is created on every (non-partial) call. *)
   let register_if_needed (tynm : type_name) : unit =
-    if vertices |> SynonymNameSet.mem tynm then
-      SynonymNameHashSet.add hashset tynm ()
-    else
-      ()
+    match known_syns |> SynonymNameMap.find_opt tynm with
+    | Some(vertex) -> SynonymVertexHashSet.add hashset vertex ()
+    | None         -> ()
   in
   let rec aux ((_, mtymain) : manual_type) : unit =
     match mtymain with
@@ -3084,9 +3079,9 @@ and get_dependency_on_synonym_types (vertices : SynonymNameSet.t) (pre : pre) (t
 
   in
   aux mty;
-  SynonymNameHashSet.fold (fun sid () set ->
-    set |> SynonymNameSet.add sid
-  ) hashset SynonymNameSet.empty
+  SynonymVertexHashSet.fold (fun sid () set ->
+    set |> SynonymVertexSet.add sid
+  ) hashset SynonymVertexSet.empty
 
 
 and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
@@ -3101,8 +3096,8 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
   in
 
   (* Registers types to the type environment and the graph for detecting cyclic dependency. *)
-  let (synacc, vntacc, vertices, graph, tyenv) =
-    tybinds |> List.fold_left (fun (synacc, vntacc, vertices, graph, tyenv) tybind ->
+  let (synacc, vntacc, known_syns, graph, tyenv) =
+    tybinds |> List.fold_left (fun (synacc, vntacc, known_syns, graph, tyenv) tybind ->
       let (tyident, typarams, syn_or_vnt) = tybind in
       let (rng, tynm) = tyident in
       match syn_or_vnt with
@@ -3114,9 +3109,17 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
               definition_body = synbind;
             }
           in
-          let graph = graph |> SynonymDependencyGraph.add_vertex tynm data in
-          let synacc = Alist.extend synacc (tyident, typarams, synbind) in
-          (synacc, vntacc, vertices |> SynonymNameSet.add tynm, graph, tyenv)
+          let (graph, vertex) =
+            match graph |> SynonymDependencyGraph.add_vertex tynm data with
+            | Error((data_prev, _)) ->
+                let rng_prev = data_prev.SynonymDependencyGraph.position in
+                raise_error (MultipleSynonymTypeDefinition(tynm, rng_prev, rng))
+
+            | Ok(pair) ->
+                pair
+          in
+          let synacc = Alist.extend synacc (tyident, typarams, synbind, vertex) in
+          (synacc, vntacc, known_syns |> SynonymNameMap.add tynm vertex, graph, tyenv)
 
       | UTBindVariant(vntbind) ->
           let tyid = TypeID.fresh tynm in
@@ -3129,18 +3132,18 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
           in
           let tyenv = tyenv |> Typeenv.add_type tynm tentry in
           let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, tyid, tentry) in
-          (synacc, vntacc, vertices, graph, tyenv)
-    ) (Alist.empty, Alist.empty, SynonymNameSet.empty, SynonymDependencyGraph.empty, tyenv)
+          (synacc, vntacc, known_syns, graph, tyenv)
+    ) (Alist.empty, Alist.empty, SynonymNameMap.empty, SynonymDependencyGraph.empty, tyenv)
   in
 
   (* Traverse each definition of the synonym types and extract dependencies between them. *)
   let graph =
     synacc |> Alist.to_list |> List.fold_left (fun graph syn ->
-      let ((_, tynm), tyvars, synbind) = syn in
-      let dependencies = get_dependency_on_synonym_types vertices pre tyenv synbind in
+      let ((_, tynm), tyvars, synbind, vertex) = syn in
+      let dependencies = get_dependency_on_synonym_types known_syns pre tyenv synbind in
       let graph =
-        graph |> SynonymNameSet.fold (fun tynm_dep graph ->
-          graph |> SynonymDependencyGraph.add_edge tynm tynm_dep
+        graph |> SynonymVertexSet.fold (fun vertex_dep graph ->
+          graph |> SynonymDependencyGraph.add_edge ~from:vertex ~to_:vertex_dep
         ) dependencies
       in
       graph

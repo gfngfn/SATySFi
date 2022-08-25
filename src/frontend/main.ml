@@ -308,9 +308,14 @@ let error_log_environment suspended =
       ]
 
   | FileDependencyResolver.CyclicFileDependency(cycle) ->
+      let pairs =
+        match cycle with
+        | Loop(pair)   -> [ pair ]
+        | Cycle(pairs) -> pairs |> TupleList.to_list
+      in
       report_error Interface (
         (NormalLine("cyclic dependency detected:")) ::
-        (cycle |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath)))
+        (pairs |> List.map (fun (abspath, _) -> DisplayLine(get_abs_path_string abspath)))
       )
 
   | FileDependencyResolver.CannotReadFileOwingToSystem(msg) ->
@@ -900,6 +905,13 @@ let error_log_environment suspended =
             in
             report_error Typechecker
               (NormalLine("the following synonym types are cyclic:") :: lines)
+
+        | MultipleSynonymTypeDefinition(tynm, rng1, rng2) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s" (Range.to_string rng1));
+              NormalLine(Printf.sprintf "and %s:" (Range.to_string rng2));
+              NormalLine(Printf.sprintf "synonym type '%s' is defined more than once." tynm);
+            ]
 
       end
 

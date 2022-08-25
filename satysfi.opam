@@ -37,6 +37,7 @@ depends: [
   "yojson-with-position" {= "1.4.2+satysfi"}
   "omd" {< "2.0.0~"}
   "ocamlgraph"
+  "alcotest" {with-test & >= "1.4.0"}
 ]
 synopsis: "A statically-typed, functional typesetting system"
 description: """

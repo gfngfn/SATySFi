@@ -1018,6 +1018,7 @@ type code_rec_or_nonrec =
 type 'a cycle =
   | Loop  of 'a
   | Cycle of 'a TupleList.t
+[@@deriving show { with_path = false; }]
 
 type file_info =
   | DocumentFile of untyped_abstract_tree

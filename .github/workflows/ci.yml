@@ -56,7 +56,7 @@ jobs:
 
       - name: Install SATySFi dependencies
         run: |
-          opam install . --deps-only --with-doc --verbose
+          opam install . --deps-only --with-doc --with-test --verbose
 
       - name: Build SATySFi
         run: opam exec -- make all
