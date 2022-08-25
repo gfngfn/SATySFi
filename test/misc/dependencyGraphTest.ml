@@ -29,7 +29,7 @@ let expect_pattern msg pp predicate got =
   if predicate got then
     Alcotest.(check pass) msg () ()
   else
-    Alcotest.failf "not of expected pattern; %a" pp got
+    Alcotest.failf "%s: not of expected pattern; %a" msg pp got
 
 
 let pp_int_and_string ppf (n, s) =
@@ -93,7 +93,7 @@ let test1 () =
   create_graph1 () |> continue_if_ok "cannot construct graph1" (fun graph1 ->
     DG.topological_sort graph1 |> continue_if_ok "cannot sort graph1" (fun got1 ->
       let expected1 = [ (3, "three"); (2, "two"); (1, "one") ] in
-      Alcotest.(check (list (pair int string))) "graph1" expected1 got1
+      Alcotest.(check (list (pair int string))) "should be [v3, v2, v1]" expected1 got1
     )
   )
 
@@ -102,7 +102,7 @@ let test2 () =
   create_graph2 () |> continue_if_ok "cannot construct graph2" (fun graph2 ->
     DG.topological_sort graph2 |> continue_if_ok "cannot sort graph2" (fun got2 ->
       let pp = Format.pp_print_list pp_int_and_string in
-      got2 |> expect_pattern "graph2" pp (function
+      got2 |> expect_pattern "v4 must be first, and v1 must be the last" pp (function
       | [ (4, "four"); _; _; (1, "one") ] -> true
       | _                                 -> false
       )
@@ -114,7 +114,7 @@ let test3 () =
   create_graph3 () |> continue_if_ok "cannot construct graph3" (fun graph3 ->
     DG.topological_sort graph3 |> continue_if_error "cannot find cycle" (fun cycle ->
       let pp = pp_cycle pp_int_and_string in
-      cycle |> expect_pattern "graph3" pp (function
+      cycle |> expect_pattern "is the cycle of v1, v2, and v3" pp (function
       | Cycle(xs) ->
           let sorted = xs |> TupleList.to_list |> List.sort (fun (n1, _) (n2, _) -> Int.compare n1 n2) in
           begin
@@ -134,7 +134,7 @@ let test4 () =
   create_graph4 () |> continue_if_ok "cannot construct graph4" (fun graph4 ->
     DG.topological_sort graph4 |> continue_if_error "cannot find cycle" (fun cycle ->
       let pp = pp_cycle pp_int_and_string in
-      cycle |> expect_pattern "graph3" pp (function
+      cycle |> expect_pattern "is the loop of v2" pp (function
       | Loop((2, "two")) -> true
       | _                -> false
       )
