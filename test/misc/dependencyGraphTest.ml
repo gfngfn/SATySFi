@@ -1,33 +1,50 @@
 
+open Main__MyUtil
+
+
 module DependencyGraph = Main__DependencyGraph
 
 
 module DG = DependencyGraph.Make(Int)
 
 
-let unwrap_option = function
-  | None    -> assert false
-  | Some(v) -> v
+let option_to_result s = function
+  | None    -> Error(s)
+  | Some(v) -> Ok(v)
+
+
+let map_error f = function
+  | Ok(v)    -> Ok(v)
+  | Error(e) -> Error(f e)
+
+
+let check_result f = function
+  | Ok(v)    -> f v
+  | Error(s) -> Alcotest.fail s
+
+
+let pp_int_and_string ppf (n, s) =
+  Format.fprintf ppf "(%d, %s)" n s
 
 
 (** Creates a graph of structure [v1 --> v2 --> v3]. *)
 let create_graph1 () =
+  let open OptionMonad in
   let graph = DG.empty in
-  let (graph, vertex1) = graph |> DG.add_vertex 1 "one" |> unwrap_option in
-  let (graph, vertex2) = graph |> DG.add_vertex 2 "two" |> unwrap_option in
-  let (graph, vertex3) = graph |> DG.add_vertex 3 "three" |> unwrap_option in
+  graph |> DG.add_vertex 1 "one" >>= fun (graph, vertex1) ->
+  graph |> DG.add_vertex 2 "two" >>= fun (graph, vertex2) ->
+  graph |> DG.add_vertex 3 "three" >>= fun (graph, vertex3) ->
   let graph = graph |> DG.add_edge ~from:vertex1 ~to_:vertex2 in
   let graph = graph |> DG.add_edge ~from:vertex2 ~to_:vertex3 in
-  graph
+  return graph
 
 
 let tests () =
-  let graph1 = create_graph1 () in
-  let result1 = DG.topological_sort graph1 in
-  match result1 with
-  | Error(_cycle) ->
-      Alcotest.fail "cannot sort graph1"
-
-  | Ok(got1) ->
-      let expected1 = [ (3, "three"); (2, "two"); (1, "one") ] in
-      Alcotest.(check (list (pair int string))) "graph1" expected1 got1
+  let expected1 = [ (3, "three"); (2, "two"); (1, "one") ] in
+  begin
+    let open ResultMonad in
+    create_graph1 () |> option_to_result "cannot construct graph1" >>= fun graph1 ->
+    DG.topological_sort graph1 |> map_error (fun _ -> "cannot sort graph1")
+  end |> check_result (fun got1 ->
+    Alcotest.(check (list (pair int string))) "graph1" expected1 got1
+  )
