@@ -60,8 +60,8 @@ let rec register_library_file (graph : FileDependencyGraph.t) ~prev:(vertex_prev
     in
     let (graph, vertex) =
       match graph |> FileDependencyGraph.add_vertex abspath (LibraryFile(lib)) with
-      | None       -> assert false
-      | Some(pair) -> pair
+      | Error(_) -> assert false
+      | Ok(pair) -> pair
     in
     let graph = FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex graph in
     header |> List.fold_left (fun graph headerelem ->
@@ -92,8 +92,8 @@ let register_document_file (graph : FileDependencyGraph.t) (abspath_in : abs_pat
   in
   let (graph, vertex) =
     match graph |> FileDependencyGraph.add_vertex abspath_in (DocumentFile(utast)) with
-    | None       -> assert false
-    | Some(pair) -> pair
+    | Error(_) -> assert false
+    | Ok(pair) -> pair
   in
   header |> List.fold_left (fun graph headerelem ->
     let abspath_sub = get_abs_path_of_header curdir headerelem in
@@ -122,8 +122,8 @@ let register_markdown_file (graph : FileDependencyGraph.t) (setting : string) (a
   in
   let (graph, vertex) =
     match graph |> FileDependencyGraph.add_vertex abspath_in (DocumentFile(utast)) with
-    | None       -> assert false
-    | Some(pair) -> pair
+    | Error(_) -> assert false
+    | Ok(pair) -> pair
   in
   depends |> List.fold_left (fun graph package ->
     let abspath_sub = get_package_abs_path package in

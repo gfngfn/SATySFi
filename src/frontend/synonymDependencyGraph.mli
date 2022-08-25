@@ -21,7 +21,7 @@ type t
 
 val empty : t
 
-val add_vertex : type_name -> data -> t -> (t * Vertex.t) option
+val add_vertex : type_name -> data -> t -> (t * Vertex.t, data * Vertex.t) result
 
 val get_vertex : type_name -> t -> Vertex.t option
 

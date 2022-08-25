@@ -8,7 +8,7 @@ type t
 
 val empty : t
 
-val add_vertex : abs_path -> file_info -> t -> (t * vertex) option
+val add_vertex : abs_path -> file_info -> t -> (t * vertex, file_info * vertex) result
 
 val get_vertex : abs_path -> t -> vertex option
 

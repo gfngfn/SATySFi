@@ -36,10 +36,12 @@ module Make (Element : ElementType) = struct
     }
 
 
-  let add_vertex (elem : element) (data : 'a) (graph : 'a t) : ('a t * Vertex.t) option =
-    if graph.labels |> ElementMap.mem elem then
-      None
-    else
+  let add_vertex (elem : element) (data : 'a) (graph : 'a t) : ('a t * Vertex.t, 'a * Vertex.t) result =
+    match graph.labels |> ElementMap.find_opt elem with
+    | Some(pair) ->
+        Error(pair)
+
+    | None ->
       let vertex = GraphImpl.V.create elem in
       let graph =
         {
@@ -47,7 +49,7 @@ module Make (Element : ElementType) = struct
           main   = GraphImpl.add_vertex graph.main vertex
         }
       in
-      Some((graph, vertex))
+      Ok((graph, vertex))
 
 
   let get_vertex (elem : element) (graph : 'a t) : Vertex.t option =

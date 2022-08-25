@@ -17,7 +17,7 @@ type t = data Impl.t
 let empty = Impl.empty
 
 
-let add_vertex (tynm : type_name) (data : data) (graph : t) : (t * Vertex.t) option =
+let add_vertex (tynm : type_name) (data : data) (graph : t) : (t * Vertex.t, data * Vertex.t) result =
   Impl.add_vertex tynm data graph
 
 

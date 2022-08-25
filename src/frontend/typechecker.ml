@@ -3111,10 +3111,11 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
           in
           let (graph, vertex) =
             match graph |> SynonymDependencyGraph.add_vertex tynm data with
-            | None ->
-                raise_error (MultipleSynonymTypeDefinition(rng, tynm))
+            | Error((data_prev, _)) ->
+                let rng_prev = data_prev.SynonymDependencyGraph.position in
+                raise_error (MultipleSynonymTypeDefinition(tynm, rng_prev, rng))
 
-            | Some(pair) ->
+            | Ok(pair) ->
                 pair
           in
           let synacc = Alist.extend synacc (tyident, typarams, synbind, vertex) in

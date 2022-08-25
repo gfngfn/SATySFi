@@ -906,9 +906,10 @@ let error_log_environment suspended =
             report_error Typechecker
               (NormalLine("the following synonym types are cyclic:") :: lines)
 
-        | MultipleSynonymTypeDefinition(rng, tynm) ->
+        | MultipleSynonymTypeDefinition(tynm, rng1, rng2) ->
             report_error Typechecker [
-              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "at %s" (Range.to_string rng1));
+              NormalLine(Printf.sprintf "and %s:" (Range.to_string rng2));
               NormalLine(Printf.sprintf "synonym type '%s' is defined more than once." tynm);
             ]
 
