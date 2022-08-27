@@ -10,61 +10,44 @@
 @require: annot
 
 
-module StdJa
-% :> sig
-%
-%   type config = (|
-%     paper-size    : page,
-%     show-pages    : bool,
-%     text-width    : length,
-%     text-height   : length,
-%     text-origin   : point,
-%     header-origin : point,
-%     footer-origin : point,
-%     header-width  : length,
-%     footer-width  : length,
-%   |)
-%
-%   val default-config : config
-%
-%   val document ?'r :
-%     (|
-%       title : inline-text,
-%       author : inline-text,
-%       show-toc : bool,
-%       show-title : bool,
-%     | ?'r |) -> ?(config : config) block-text -> document
-%
-%   val font-latin-roman  : string * float * float
-%   val font-latin-bold   : string * float * float
-%   val font-latin-italic : string * float * float
-%   val font-latin-sans   : string * float * float
-%   val font-latin-mono   : string * float * float
-%   val font-cjk-mincho   : string * float * float
-%   val font-cjk-gothic   : string * float * float
-%   val \ref : [string] inline-cmd
-%   val \ref-page : [string] inline-cmd
-%   val \figure : [inline-text; block-text] inline-cmd
-%   val +p : [inline-text] block-cmd
-%   val +pn : [inline-text] block-cmd
-%   val +section : [string?; string?; inline-text; block-text] block-cmd
-%   val +subsection : [string?; string?; inline-text; block-text] block-cmd
-%   val \emph : [inline-text] inline-cmd
-%
-% end
-= struct
+module StdJa :> sig
 
-  type config = (|
-    paper-size    : length * length,
-    show-pages    : bool,
-    text-width    : length,
-    text-height   : length,
-    text-origin   : Pervasives.point,
-    header-origin : Pervasives.point,
-    footer-origin : Pervasives.point,
-    header-width  : length,
-    footer-width  : length,
-  |)
+  val document :
+    ?(
+      show-page-number : bool,
+      show-title       : bool,
+      show-toc         : bool,
+      paper-size       : length * length,
+      text-width       : length,
+      text-height      : length,
+      text-origin      : Pervasives.point,
+      header-origin    : Pervasives.point,
+      footer-origin    : Pervasives.point,
+      header-width     : length,
+      footer-width     : length,
+    ) (|
+      title : inline-text,
+      author : inline-text,
+    |) -> block-text -> document
+
+  val font-latin-roman  : string * float * float
+  val font-latin-bold   : string * float * float
+  val font-latin-italic : string * float * float
+  val font-latin-sans   : string * float * float
+  val font-latin-mono   : string * float * float
+  val font-cjk-mincho   : string * float * float
+  val font-cjk-gothic   : string * float * float
+
+  val \ref : inline [string]
+  val \ref-page : inline [string]
+  val \figure : inline [inline-text, block-text]
+  val +p : block [inline-text]
+  val +pn : block [inline-text]
+  val +section : block [?(label : string, outline-title : string) inline-text, block-text]
+  val +subsection : block [?(label : string, outline-title : string) inline-text, block-text]
+  val \emph : inline [inline-text]
+
+end = struct
 
   type toc-element =
     | TOCElementSection    of string * inline-text
@@ -173,7 +156,7 @@ module StdJa
       ))
 
 
-val title-deco =
+  val title-deco =
     let pads = (5pt, 5pt, 10pt, 10pt) in
     let deco (x, y) wid hgt dpt =
       let path1 =
@@ -204,12 +187,12 @@ val title-deco =
             |> line-to (xL, yB)
             |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
       in
-        [
-          stroke 3pt Color.black path1,
-          stroke 1pt Color.black path2,
-        ]
+      [
+        stroke 3pt Color.black path1,
+        stroke 1pt Color.black path2,
+      ]
     in
-      (deco, deco, deco, deco)
+    (deco, deco, deco, deco)
 
 
   val block ctx +make-title it-title it-author =
@@ -279,36 +262,36 @@ val title-deco =
     end
 
 
-  val default-config =
-    (|
-      show-pages    = true,
-      paper-size    = PaperSize.a4,
-      text-width    = 440pt,
-      text-height   = 630pt,
-      text-origin   = (80pt, 100pt),
-      header-origin = (40pt, 30pt),
-      footer-origin = (40pt, 780pt),
-      header-width  = 520pt,
-      footer-width  = 520pt,
-    |)
-
-
-  val document record ?(config = configopt) inner =
+  val document
+    ?(
+      show-page-number = show-page-number-opt,
+      show-title       = show-title-opt,
+      show-toc         = show-toc-opt,
+      paper-size       = paper-size-opt,
+      text-width       = text-width-opt,
+      text-height      = text-height-opt,
+      text-origin      = text-origin-opt,
+      header-origin    = header-origin-opt,
+      footer-origin    = footer-origin-opt,
+      header-width     = header-width-opt,
+      footer-width     = footer-width-opt,
+    ) record inner =
     % -- mandatory designations --
     let title = record#title in
     let author = record#author in
 
     % -- optional designations --
-    let config = Option.from default-config configopt in
-    let page = config#paper-size in
-    let txtorg = config#text-origin in
-    let txtwid = config#text-width in
-    let txthgt = config#text-height in
-    let hdrorg = config#header-origin in
-    let ftrorg = config#footer-origin in
-    let hdrwid = config#header-width in
-    let ftrwid = config#footer-width in
-    let show-pages = config#show-pages in
+    let show-pages = show-page-number-opt |> Option.from true in
+    let show-title = show-title-opt |> Option.from true in
+    let show-toc = show-toc-opt |> Option.from false in
+    let page = paper-size-opt |> Option.from PaperSize.a4 in
+    let txtwid = text-width-opt |> Option.from 440pt in
+    let txthgt = text-height-opt |> Option.from 630pt in
+    let txtorg = text-origin-opt |> Option.from (80pt, 100pt) in
+    let hdrorg = header-origin-opt |> Option.from (40pt, 30pt) in
+    let ftrorg = footer-origin-opt |> Option.from (40pt, 780pt) in
+    let hdrwid = header-width-opt |> Option.from 520pt in
+    let ftrwid = footer-width-opt |> Option.from 520pt in
 
     % -- constants
     let thickness = 0.5pt in
@@ -317,7 +300,7 @@ val title-deco =
 
     % -- title --
     let bb-title =
-      if record#show-title then
+      if show-title then
         read-block ctx-doc '<+make-title(title)(author);>
       else
         block-nil
@@ -328,7 +311,7 @@ val title-deco =
 
     % -- table of contents --
     let bb-toc =
-      if not record#show-toc then
+      if not show-toc then
         block-nil
       else
         let bb-toc-title =
@@ -501,7 +484,7 @@ val title-deco =
       bb-title +++ bb-inner
 
 
-  val block ctx +section ?(ref = labelopt, outline = outline-title-opt) title inner =
+  val block ctx +section ?(label = labelopt, outline-title = outline-title-opt) title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()
@@ -511,7 +494,7 @@ val title-deco =
       section-scheme ctx label title outline-title-opt inner
 
 
-  val block ctx +subsection ?(ref = labelopt, outline = outline-title-opt) title inner =
+  val block ctx +subsection ?(label = labelopt, outline-title = outline-title-opt) title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()

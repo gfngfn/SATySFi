@@ -8,8 +8,6 @@ in
 document (|
   title = {Staged 1},
   author = {Takashi Suwa},
-  show-title = true,
-  show-toc = false,
 |) '<
   +p{\show-int(let f = ~(Staged1Local.gen-power 5) in f 3);}
 >

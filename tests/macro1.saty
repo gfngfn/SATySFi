@@ -5,8 +5,6 @@ let open StdJa in
 document (|
   title = {Macro 1},
   author = {Takashi Suwa},
-  show-title = true,
-  show-toc = false,
 |) '<
   +p{
     \Macro1Local.message-with-pos@~(@`Hello, macro!`);

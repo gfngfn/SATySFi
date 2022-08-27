@@ -210,7 +210,7 @@ let instantiate_macro_type (lev : level) (qtfbl : quantifiability) (pmacty : pol
   | VertMacroType(pmacparamtys) -> VertMacroType(pmacparamtys |> List.map aux)
 
 
-let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (prv : FreeRowID.t -> bool) (ty : mono_type) : poly_type_body =
+let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : FreeRowID.t -> LabelSet.t -> BoundRowID.t option) (ty : mono_type) : poly_type_body =
   let rec iter ((rng, tymain) : mono_type) =
     match tymain with
     | TypeVariable(tv) ->
@@ -236,9 +236,9 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (prv : FreeRowI
               (rng, TypeVariable(PolyBound(bid)))
         end
 
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(generalize_row optrow, iter tydom, iter tycod))
+    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(generalize_row LabelSet.empty optrow, iter tydom, iter tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map iter tys))
-    | RecordType(row)                   -> (rng, RecordType(generalize_row row))
+    | RecordType(row)                   -> (rng, RecordType(generalize_row LabelSet.empty row))
     | DataType(tyargs, tyid)            -> (rng, DataType(List.map iter tyargs, tyid))
     | ListType(tysub)                   -> (rng, ListType(iter tysub))
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
@@ -248,25 +248,29 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (prv : FreeRowI
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
     | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
-  and generalize_row = function
+  and generalize_row (labset : LabelSet.t) = function
     | RowEmpty ->
         RowEmpty
 
     | RowCons(rlabel, ty, tail) ->
-        RowCons(rlabel, iter ty, generalize_row tail)
+        let (_, label) = rlabel in
+        RowCons(rlabel, iter ty, generalize_row (labset |> LabelSet.add label) tail)
 
     | RowVar(UpdatableRow(orviref) as rv0) ->
         begin
           match !orviref with
           | MonoORFree(frid) ->
-              if not (prv frid) then
-                RowVar(PolyORFree(rv0))
-              else
-                RowEmpty
-                  (* TODO: fix this *)
+              begin
+                match intern_row frid labset with
+                | None ->
+                    RowVar(PolyORFree(rv0))
+
+                | Some(brid) ->
+                    RowVar(PolyORBound(brid))
+              end
 
           | MonoORLink(row) ->
-              generalize_row row
+              generalize_row labset row
         end
 
     | RowVar(MustBeBoundRow(mbbrid)) ->
@@ -351,17 +355,33 @@ let make_type_generalization_intern (lev : level) (tvid_ht : BoundID.t FreeIDHas
   intern_ty
 
 
+let make_row_generalization_intern (lev : level) (rvid_ht : BoundRowID.t FreeRowIDHashTable.t) =
+  let intern_row (frid : FreeRowID.t) (labset : LabelSet.t) : BoundRowID.t option =
+    if not (Level.less_than lev (FreeRowID.get_level frid)) then
+      None
+    else
+      match FreeRowIDHashTable.find_opt rvid_ht frid with
+      | Some(brid) ->
+          Some(brid)
+
+      | None ->
+          let brid = BoundRowID.fresh labset in
+          FreeRowIDHashTable.add rvid_ht frid brid;
+          Some(brid)
+  in
+  intern_row
+
+
 let generalize (lev : level) (ty : mono_type) : poly_type =
   let tvid_ht = FreeIDHashTable.create 32 in
+  let rvid_ht = FreeRowIDHashTable.create 32 in
   let intern_ty = make_type_generalization_intern lev tvid_ht in
-  let prv (frid : FreeRowID.t) : bool =
-    Level.less_than lev (FreeRowID.get_level frid)
-  in
-  Poly(lift_poly_general intern_ty prv ty)
+  let intern_row = make_row_generalization_intern lev rvid_ht in
+  Poly(lift_poly_general intern_ty intern_row ty)
 
 
 let lift_poly_body =
-  lift_poly_general (fun _ -> None) (fun _ -> false)
+  lift_poly_general (fun _ -> None) (fun _ _ -> None)
 
 
 let lift_poly (ty : mono_type) : poly_type =
@@ -370,13 +390,12 @@ let lift_poly (ty : mono_type) : poly_type =
 
 let generalize_macro_type (macty : mono_macro_type) : poly_macro_type =
   let tvid_ht = FreeIDHashTable.create 32 in
+  let rvid_ht = FreeRowIDHashTable.create 32 in
   let intern_ty = make_type_generalization_intern Level.bottom tvid_ht in
-  let prv (frid : FreeRowID.t) : bool =
-    Level.less_than Level.bottom (FreeRowID.get_level frid)
-  in
+  let intern_row = make_row_generalization_intern Level.bottom rvid_ht in
   let aux = function
-    | LateMacroParameter(ty)  -> LateMacroParameter(lift_poly_general intern_ty prv ty)
-    | EarlyMacroParameter(ty) -> EarlyMacroParameter(lift_poly_general intern_ty prv ty)
+    | LateMacroParameter(ty)  -> LateMacroParameter(lift_poly_general intern_ty intern_row ty)
+    | EarlyMacroParameter(ty) -> EarlyMacroParameter(lift_poly_general intern_ty intern_row ty)
   in
   match macty with
   | HorzMacroType(macparamtys) -> HorzMacroType(macparamtys |> List.map aux)

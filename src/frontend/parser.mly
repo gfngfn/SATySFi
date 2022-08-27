@@ -632,6 +632,7 @@ opt_params:
 opt_param:
   | rlabel=LOWER; EXACT_EQ; ident=LOWER
       { (rlabel, ident) }
+/* TODO: add more patterns here */
 ;
 bind_inline_macro:
   | imacro=BACKSLASH_MACRO; macparams=list(macro_param); EXACT_EQ; utast=expr {
@@ -664,11 +665,11 @@ kind_row:
 ;
 typ:
   | mnty1=typ_prod; ARROW; mnty2=typ
-      { make_standard (Ranged mnty1) (Ranged mnty2) (MFuncType([], mnty1, mnty2)) }
+      { make_standard (Ranged mnty1) (Ranged mnty2) (MFuncType([], None, mnty1, mnty2)) }
   | rmnopts=typ_opt_dom; mnty1=typ_prod; ARROW; mnty2=typ
       {
-        let (tokL, mnopts) = rmnopts in
-        make_standard (Tok tokL) (Ranged mnty2) (MFuncType(mnopts, mnty1, mnty2))
+        let (tokL, mnopts, rowvar_opt) = rmnopts in
+        make_standard (Tok tokL) (Ranged mnty2) (MFuncType(mnopts, rowvar_opt, mnty1, mnty2))
       }
   | mnty=typ_prod
       { mnty }
@@ -724,13 +725,17 @@ typ_bot:
   | tyvar=TYPEVAR
       { let (rng, tyvarnm) = tyvar in (rng, MTypeParam(tyvarnm)) }
   | tokL=L_RECORD; fields=optterm_nonempty_list(COMMA, typ_record_elem); tokR=R_RECORD
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MRecordType(fields)) }
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MRecordType(fields, None)) }
+  | tokL=L_RECORD; fields=optterm_nonempty_list(COMMA, typ_record_elem); BAR; rv=ROWVAR; tokR=R_RECORD
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MRecordType(fields, Some(rv))) }
   | L_PAREN; mnty=typ; R_PAREN
       { mnty }
 ;
 typ_opt_dom:
   | tokL=QUESTION; L_PAREN; mnopts=optterm_nonempty_list(COMMA, typ_opt_dom_entry); R_PAREN
-      { (tokL, mnopts) }
+      { (tokL, mnopts, None) }
+  | tokL=QUESTION; L_PAREN; mnopts=optterm_nonempty_list(COMMA, typ_opt_dom_entry); BAR; rowvar=ROWVAR R_PAREN
+      { (tokL, mnopts, Some(rowvar)) }
 ;
 typ_opt_dom_entry:
   | rlabel=LOWER; COLON; mnty=typ
@@ -741,8 +746,9 @@ typ_cmd_arg:
       {
         let mnopts =
           match rmnopts_opt with
-          | None              -> []
-          | Some((_, mnopts)) -> mnopts
+          | None                           -> []
+          | Some((_, mnopts, _rowvar_opt)) -> mnopts
+              (* TODO (error): report error if `_rowvar_opt` is `None` *)
         in
         MArgType(mnopts, mnty)
       }

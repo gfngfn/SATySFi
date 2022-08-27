@@ -13,11 +13,11 @@ let open Itemize in
 let open Annot in
 let open StdJaBook in
 let open Local in
-document (|
+document ?(
+  show-toc = true,
+) (|
   title = {\SATySFi;概説},
   author = {Takashi SUWA},
-  show-title = true,
-  show-toc = true,
 |) '<
   +section{はじめに}<
     +p{
@@ -103,7 +103,7 @@ document (|
       組版処理システムとしてどのような機能が実現されているかについて触れていく。
     }
   >
-  +section?(ref = `sec:typesetting`)({代表的な機能})<
+  +section?(label = `sec:typesetting`)({代表的な機能})<
     +subsection{欧文組版}<
       +p{
         文字のグリフは正の幅を持ち，紙面には有限の幅がある。

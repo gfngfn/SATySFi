@@ -13,11 +13,11 @@ let math \overwrite mf ma mb =
   ${#mf\sqbracket{#ma \mapsto #mb}}
 in
 
-document (|
+document ?(
+  show-title = false,
+) (|
   title  = {Math Test},
   author = {Takashi SUWA},
-  show-title = false,
-  show-toc = false,
 |) '<
   +p {
     This document was typeset by using \SATySFi;.
