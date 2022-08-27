@@ -28,13 +28,13 @@ module StdJaBook
 
    val default-config : config
 
-   val document :
+   val document (?'r :: (| title, author, show-toc, show-title |)) :
     (|
       title : inline-text,
       author : inline-text,
       show-toc : bool,
       show-title : bool,
-    |) -> ?(config : config) block-text -> document
+    | ?'r |) -> ?(config : config) block-text -> document
 
   val font-latin-roman  : string * float * float
   val font-latin-bold   : string * float * float
