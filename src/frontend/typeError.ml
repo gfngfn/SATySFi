@@ -8,6 +8,7 @@ type type_error =
   | UndefinedConstructor                 of Range.t * constructor_name * constructor_name list
   | UndefinedTypeName                    of Range.t * type_name
   | UndefinedTypeVariable                of Range.t * type_variable_name
+  | UndefinedRowVariable                 of Range.t * row_variable_name
   | UndefinedKindName                    of Range.t * kind_name
   | UndefinedModuleName                  of Range.t * module_name
   | UndefinedSignatureName               of Range.t * signature_name

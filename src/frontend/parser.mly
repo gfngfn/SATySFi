@@ -724,7 +724,9 @@ typ_bot:
   | tyvar=TYPEVAR
       { let (rng, tyvarnm) = tyvar in (rng, MTypeParam(tyvarnm)) }
   | tokL=L_RECORD; fields=optterm_nonempty_list(COMMA, typ_record_elem); tokR=R_RECORD
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MRecordType(fields)) }
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MRecordType(fields, None)) }
+  | tokL=L_RECORD; fields=optterm_nonempty_list(COMMA, typ_record_elem); BAR; rv=ROWVAR; tokR=R_RECORD
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MRecordType(fields, Some(rv))) }
   | L_PAREN; mnty=typ; R_PAREN
       { mnty }
 ;

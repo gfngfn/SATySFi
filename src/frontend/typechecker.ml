@@ -1865,13 +1865,14 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
           end
 
       | MFuncType(mnfields, mtydom, mtycod) ->
-          FuncType(aux_row mnfields, aux mtydom, aux mtycod)
+          let rowvar_opt = None in (* TODO *)
+          FuncType(aux_row mnfields rowvar_opt, aux mtydom, aux mtycod)
 
       | MProductType(mntys) ->
           ProductType(TupleList.map aux mntys)
 
-      | MRecordType(mnfields) ->
-          RecordType(aux_row mnfields)
+      | MRecordType(mnfields, rowvar) ->
+          RecordType(aux_row mnfields rowvar)
 
       | MHorzCommandType(mncmdargtys) -> HorzCommandType(aux_cmd_list mncmdargtys)
       | MVertCommandType(mncmdargtys) -> VertCommandType(aux_cmd_list mncmdargtys)
@@ -1896,7 +1897,22 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
       CommandArgType(tylabmap, ty)
     ) mncmdargtys
 
-  and aux_row (mnfields : (label ranged * manual_type) list) =
+  and aux_row (mnfields : (label ranged * manual_type) list) (rowvar_opt : (row_variable_name ranged) option) =
+    let row_end =
+      match rowvar_opt with
+      | None ->
+          RowEmpty
+
+      | Some((rng, rowparam)) ->
+          begin
+            match pre.row_parameters |> RowParameterMap.find_opt rowparam with
+            | None ->
+                raise_error (UndefinedRowVariable(rng, rowparam))
+
+            | Some(mbbrid) ->
+                RowVar(MustBeBoundRow(mbbrid))
+          end
+    in
     let (_, row) =
       mnfields |> List.fold_left (fun (labset, row) (rlabel, mnty) ->
         let (rng, label) = rlabel in
@@ -1905,7 +1921,7 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
         else
           let row = RowCons(rlabel, aux mnty, row) in
           (labset |> LabelSet.add label, row)
-      ) (LabelSet.empty, RowEmpty)
+      ) (LabelSet.empty, row_end)
     in
     row
   in
@@ -3059,7 +3075,7 @@ and get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.
     | MProductType(mtys) ->
         mtys |> TupleList.to_list |> List.iter aux
 
-    | MRecordType(mfields) ->
+    | MRecordType(mfields, _) ->
         aux_row mfields
 
     | MTypeParam(typaram) ->

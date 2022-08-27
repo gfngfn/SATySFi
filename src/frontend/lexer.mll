@@ -310,6 +310,10 @@ rule progexpr stack = parse
 
   | ("'" (lower as tyvarnm))
       { TYPEVAR(get_pos lexbuf, tyvarnm) }
+
+  | ("?'" (lower as tyvarnm))
+      { ROWVAR(get_pos lexbuf, tyvarnm) }
+
   | ((upper ".")+ lower)
       {
         let pos = get_pos lexbuf in

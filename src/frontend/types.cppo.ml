@@ -60,7 +60,7 @@ and manual_type_main =
   | MTypeParam       of var_name
   | MFuncType        of (label ranged * manual_type) list * manual_type * manual_type
   | MProductType     of manual_type TupleList.t
-  | MRecordType      of (label ranged * manual_type) list
+  | MRecordType      of (label ranged * manual_type) list * (row_variable_name ranged) option
   | MHorzCommandType of manual_command_argument_type list
   | MVertCommandType of manual_command_argument_type list
   | MMathCommandType of manual_command_argument_type list

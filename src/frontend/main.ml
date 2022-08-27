@@ -560,6 +560,12 @@ let error_log_environment suspended =
               NormalLine(Printf.sprintf "undefined type variable '%s'." tyvarnm);
             ]
 
+        | UndefinedRowVariable(rng, rowvarnm) ->
+            report_error Typechecker [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine(Printf.sprintf "undefined row variable '%s'." rowvarnm);
+            ]
+
         | UndefinedKindName(rng, kdnm) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
