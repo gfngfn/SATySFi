@@ -929,7 +929,7 @@ make_vert imvblst
 |}
     ; inst "BackendPageBreaking"
         ~name:"page-break"
-        ~type_:Type.(tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+        ~type_:Type.(tPROD [tLN; tLN] @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
         ~fields:[
         ]
         ~params:[
@@ -947,7 +947,7 @@ BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), 
 |}
     ; inst "BackendPageBreakingTwoColumn"
         ~name:"page-break-two-column"
-        ~type_:Type.(tPG @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+        ~type_:Type.(tPROD [tLN; tLN] @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
         ~fields:[
         ]
         ~params:[
@@ -968,7 +968,7 @@ BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun
 |}
     ; inst "BackendPageBreakingMultiColumn"
         ~name:"page-break-multicolumn"
-        ~type_:Type.(tPG @-> tL tLN @-> (tU @-> tBB) @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+        ~type_:Type.(tPROD [tLN; tLN] @-> tL tLN @-> (tU @-> tBB) @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
         ~fields:[
         ]
         ~params:[

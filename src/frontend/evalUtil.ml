@@ -340,27 +340,6 @@ let get_pair (getf1 : syntactic_value -> 'a) (getf2 : syntactic_value -> 'b) (va
   | _               -> report_bug_vm "get_pair"
 
 
-let get_page_size (value : syntactic_value) : HorzBox.page_size =
-  match value with
-  | Constructor("A0Paper" , BaseConstant(BCUnit)) -> HorzBox.A0Paper
-  | Constructor("A1Paper" , BaseConstant(BCUnit)) -> HorzBox.A1Paper
-  | Constructor("A2Paper" , BaseConstant(BCUnit)) -> HorzBox.A2Paper
-  | Constructor("A3Paper" , BaseConstant(BCUnit)) -> HorzBox.A3Paper
-  | Constructor("A4Paper" , BaseConstant(BCUnit)) -> HorzBox.A4Paper
-  | Constructor("A5Paper" , BaseConstant(BCUnit)) -> HorzBox.A5Paper
-  | Constructor("USLetter", BaseConstant(BCUnit)) -> HorzBox.USLetter
-  | Constructor("USLegal" , BaseConstant(BCUnit)) -> HorzBox.USLegal
-
-  | Constructor("UserDefinedPaper", Tuple([
-      BaseConstant(BCLength(pgwid));
-      BaseConstant(BCLength(pghgt));
-    ])) ->
-      HorzBox.UserDefinedPaper(pgwid, pghgt)
-
-  | _ ->
-      report_bug_vm "get_page_size"
-
-
 let get_tuple3 getf value =
   match value with
   | Tuple([v1; v2; v3]) ->
@@ -392,6 +371,10 @@ let get_length (value : syntactic_value) : length =
 
 
 let get_length_list = get_list get_length
+
+
+let get_page_size (value : syntactic_value) : length * length =
+  get_pair get_length get_length value
 
 
 let get_math value : math list =

@@ -153,17 +153,17 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
     let rec aux (i : int) =
       let value_doc = eval_main i env_freezed ast in
       match value_doc with
-      | BaseConstant(BCDocument(pagesize, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
+      | BaseConstant(BCDocument(paper_size, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
           Logging.start_page_break ();
           State.start_page_break ();
           let pdf =
             match pbstyle with
             | SingleColumn ->
-                PageBreak.main abspath_out pagesize
+                PageBreak.main abspath_out ~paper_size
                   columnhookf pagecontf pagepartsf imvblst
 
             | MultiColumn(origin_shifts) ->
-                PageBreak.main_multicolumn abspath_out pagesize
+                PageBreak.main_multicolumn abspath_out ~paper_size
                   origin_shifts columnhookf columnendhookf pagecontf pagepartsf imvblst
           in
           begin

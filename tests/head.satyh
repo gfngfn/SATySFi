@@ -1,6 +1,7 @@
 @require: list
 @require: math
 @require: proof
+@require: paper-size
 
 module Head = struct
 
@@ -50,7 +51,7 @@ module Head = struct
   val document rcd inner =
     let title = rcd#title in
     let author = rcd#author in
-    let page = A4Paper in
+    let paper-size = PaperSize.a4 in
     let pt = (100pt, 100pt) in
     let wid = 400pt in
     let hgt = 650pt in
@@ -74,7 +75,7 @@ module Head = struct
         footer-content = block-nil,
       |)
     in
-    page-break page pagecontf pagepartsf bc
+    page-break paper-size pagecontf pagepartsf bc
 
   val title-deco =
     let pads = (5pt, 5pt, 10pt, 10pt) in
