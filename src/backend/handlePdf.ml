@@ -403,25 +403,16 @@ let get_footnote_origin_position (paper_height : length) (content_height : lengt
   invert_coordinate paper_height (xorg, yorg +% content_height -% footnote_height)
 
 
-let get_pdf_paper  (pagesize : page_size) : Pdfpaper.t =
-  match pagesize with
-  | A0Paper                -> Pdfpaper.a0
-  | A1Paper                -> Pdfpaper.a1
-  | A2Paper                -> Pdfpaper.a2
-  | A3Paper                -> Pdfpaper.a3
-  | A4Paper                -> Pdfpaper.a4
-  | A5Paper                -> Pdfpaper.a5
-  | USLetter               -> Pdfpaper.usletter
-  | USLegal                -> Pdfpaper.uslegal
-  | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
+let get_pdf_paper  ((w, h) : length * length) : Pdfpaper.t =
+  Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
 
 
 let make_empty_page
-      (pagesize : page_size)
+      ~(paper_size : length * length)
       (pbinfo : page_break_info)
       (pagecontsch : page_content_scheme)
     : page =
-  let paper = get_pdf_paper pagesize in
+  let paper = get_pdf_paper paper_size in
   Page(paper, pagecontsch, Alist.empty, pbinfo)
 
 
