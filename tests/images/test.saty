@@ -10,8 +10,6 @@ let block ctx +newpage = clear-page in
 StdJa.document (|
   title = {Tests for Images},
   author = {},
-  show-title = true,
-  show-toc = false,
 |) '<
   +StdJa.section{JPEG images}<
      +StdJa.p{This is a jpeg image in gray scale.
