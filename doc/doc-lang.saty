@@ -8,8 +8,6 @@ let open LocalMath in
 document (|
   title = {\SATySFi;言語仕様},
   author = {Takashi SUWA},
-  show-title = true,
-  show-toc = false,
 |) '<
   +section {構文} <
     +p{

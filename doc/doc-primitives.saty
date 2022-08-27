@@ -11,14 +11,14 @@ let open Math in
 let open StdJaBook in
 let open Local in
 let open LocalMath in
-document (|
+document ?(
+  show-toc = true,
+) (|
   title = {
     \SATySFi;の\fil-both;\no-break{基本型}と
     \fil-both;\no-break{プリミティヴ}
   },
   author = {Takashi SUWA},
-  show-title = true,
-  show-toc = true,
 |) '<
   +p{
     この文書では，\SATySFi;によって提供される型とプリミティヴを掲げる．
