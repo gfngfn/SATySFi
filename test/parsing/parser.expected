@@ -1196,7 +1196,7 @@
          [(((Range.Normal <toplevel.saty:3.8-9>), "t"), [],
            (UTBindSynonym
               ((Range.Normal <toplevel.saty:3.12-18>),
-               (Types.MFuncType ([],
+               (Types.MFuncType ([], None,
                   ((Range.Normal <toplevel.saty:3.12-13>),
                    (Types.MTypeName ([],
                       ((Range.Normal <toplevel.saty:3.12-13>), "a"), 

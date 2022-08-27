@@ -1864,8 +1864,7 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                 TypeVariable(MustBeBound(mbbid))
           end
 
-      | MFuncType(mnfields, mtydom, mtycod) ->
-          let rowvar_opt = None in (* TODO *)
+      | MFuncType(mnfields, rowvar_opt, mtydom, mtycod) ->
           FuncType(aux_row mnfields rowvar_opt, aux mtydom, aux mtycod)
 
       | MProductType(mntys) ->
@@ -3067,7 +3066,7 @@ and get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.
         List.iter aux mtyargs;
         register_if_needed tynm
 
-    | MFuncType(mfields, mtydom, mtycod) ->
+    | MFuncType(mfields, _, mtydom, mtycod) ->
         aux_row mfields;
         aux mtydom;
         aux mtycod

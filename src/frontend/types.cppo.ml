@@ -58,7 +58,7 @@ type manual_type =
 and manual_type_main =
   | MTypeName        of (module_name ranged) list * type_name ranged * manual_type list
   | MTypeParam       of var_name
-  | MFuncType        of (label ranged * manual_type) list * manual_type * manual_type
+  | MFuncType        of (label ranged * manual_type) list * (row_variable_name ranged) option * manual_type * manual_type
   | MProductType     of manual_type TupleList.t
   | MRecordType      of (label ranged * manual_type) list * (row_variable_name ranged) option
   | MHorzCommandType of manual_command_argument_type list
