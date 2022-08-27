@@ -14,7 +14,7 @@ let open Annot in
 let open StdJaBook in
 let open Local in
 document ?(
-  config = (| default-config with show-toc = true |)
+  show-toc = true,
 ) (|
   title = {\SATySFi;概説},
   author = {Takashi SUWA},
