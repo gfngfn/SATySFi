@@ -15,6 +15,8 @@ module StdJa :> sig
   type config = (|
     paper-size    : length * length,
     show-pages    : bool,
+    show-toc      : bool,
+    show-title    : bool,
     text-width    : length,
     text-height   : length,
     text-origin   : Pervasives.point,
@@ -26,13 +28,11 @@ module StdJa :> sig
 
   val default-config : config
 
-  val document (?'r :: (| title, author, show-toc, show-title |)) :
-    (|
+  val document :
+    ?(config : config) (|
       title : inline-text,
       author : inline-text,
-      show-toc : bool,
-      show-title : bool,
-    | ?'r |) -> ?(config : config) block-text -> document
+    |) -> block-text -> document
 
   val font-latin-roman  : string * float * float
   val font-latin-bold   : string * float * float
@@ -56,6 +56,8 @@ end = struct
   type config = (|
     paper-size    : length * length,
     show-pages    : bool,
+    show-toc      : bool,
+    show-title    : bool,
     text-width    : length,
     text-height   : length,
     text-origin   : Pervasives.point,
@@ -281,6 +283,8 @@ val title-deco =
   val default-config =
     (|
       show-pages    = true,
+      show-title    = true,
+      show-toc      = false,
       paper-size    = PaperSize.a4,
       text-width    = 440pt,
       text-height   = 630pt,
@@ -292,13 +296,13 @@ val title-deco =
     |)
 
 
-  val document record ?(config = configopt) inner =
+  val document ?(config = config-opt) record inner =
     % -- mandatory designations --
     let title = record#title in
     let author = record#author in
 
     % -- optional designations --
-    let config = Option.from default-config configopt in
+    let config = config-opt |> Option.from default-config in
     let page = config#paper-size in
     let txtorg = config#text-origin in
     let txtwid = config#text-width in
@@ -307,6 +311,8 @@ val title-deco =
     let ftrorg = config#footer-origin in
     let hdrwid = config#header-width in
     let ftrwid = config#footer-width in
+    let show-title = config#show-title in
+    let show-toc = config#show-toc in
     let show-pages = config#show-pages in
 
     % -- constants
@@ -316,7 +322,7 @@ val title-deco =
 
     % -- title --
     let bb-title =
-      if record#show-title then
+      if show-title then
         read-block ctx-doc '<+make-title(title)(author);>
       else
         block-nil
@@ -327,7 +333,7 @@ val title-deco =
 
     % -- table of contents --
     let bb-toc =
-      if not record#show-toc then
+      if not show-toc then
         block-nil
       else
         let bb-toc-title =

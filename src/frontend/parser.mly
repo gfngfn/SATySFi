@@ -632,6 +632,7 @@ opt_params:
 opt_param:
   | rlabel=LOWER; EXACT_EQ; ident=LOWER
       { (rlabel, ident) }
+/* TODO: add more patterns here */
 ;
 bind_inline_macro:
   | imacro=BACKSLASH_MACRO; macparams=list(macro_param); EXACT_EQ; utast=expr {

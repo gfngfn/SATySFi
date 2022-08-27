@@ -13,11 +13,11 @@ let open Itemize in
 let open Annot in
 let open StdJaBook in
 let open Local in
-document (|
+document ?(
+  config = (| default-config with show-toc = true |)
+) (|
   title = {\SATySFi;概説},
   author = {Takashi SUWA},
-  show-title = true,
-  show-toc = true,
 |) '<
   +section{はじめに}<
     +p{
