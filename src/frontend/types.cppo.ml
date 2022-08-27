@@ -586,7 +586,7 @@ type base_constant =
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCTextModeContext of TextBackend.text_mode_context
-  | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+  | BCDocument        of (length * length) * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
   | BCInputPos        of input_position
 [@@deriving show { with_path = false; }]
 

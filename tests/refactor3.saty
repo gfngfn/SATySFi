@@ -14,6 +14,7 @@ in
 let it = {${\exprabsI{x}{e}}} in
 
 let ctx = get-initial-context 400pt (command \math) in
+let paper-size = (210mm, 297mm) in %A4
 let pagecontf _ = (| text-origin = (20pt, 20pt), text-height = 600pt, |) in
 let pagepartsf _ = (| header-origin = (0pt, 0pt), header-content = block-nil, footer-origin = (0pt, 0pt), footer-content = block-nil, |) in
-page-break A4Paper pagecontf pagepartsf (line-break true true ctx ((read-inline ctx it) ++ inline-fil))
+page-break paper-size pagecontf pagepartsf (line-break true true ctx ((read-inline ctx it) ++ inline-fil))

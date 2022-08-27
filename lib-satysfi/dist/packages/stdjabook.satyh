@@ -8,6 +8,7 @@
 @require: option
 @require: annot
 @require: footnote-scheme
+@require: paper-size
 
 
 module StdJaBook
@@ -58,7 +59,7 @@ module StdJaBook
 = struct
 
   type config = (|
-    paper-size    : page,
+    paper-size    : length * length,
     show-pages    : bool,
     text-width    : length,
     text-height   : length,
@@ -356,7 +357,7 @@ val title-deco =
   val default-config =
     (|
       show-pages    = true,
-      paper-size    = A4Paper,
+      paper-size    = PaperSize.a4,
       text-width    = 440pt,
       text-height   = 630pt,
       text-origin   = (80pt, 100pt),

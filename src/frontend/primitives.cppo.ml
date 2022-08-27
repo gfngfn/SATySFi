@@ -12,7 +12,6 @@ let vid_itemize  = TypeID.fresh "itemize"
 let vid_color    = TypeID.fresh "color"
 let vid_script   = TypeID.fresh "script"
 let vid_language = TypeID.fresh "language"
-let vid_page     = TypeID.fresh "page"
 let vid_mathcls  = TypeID.fresh "math-class"
 let vid_mccls    = TypeID.fresh "math-char-class"
 let vid_cell     = TypeID.fresh "cell"
@@ -63,7 +62,6 @@ let tITMZ ()      = (~! "itemize" , variant [] vid_itemize )
 let tSCR          = (~! "script"  , variant [] vid_script  )
 let tLANG         = (~! "language", variant [] vid_language)
 let tCLR          = (~! "color"   , variant [] vid_color   )
-let tPG           = (~! "page"    , variant [] vid_page    )
 let tMATHCLS      = (~! "mathcls" , variant [] vid_mathcls )
 let tMCCLS        = (~! "mccls"   , variant [] vid_mccls   )
 let tCELL         = (~! "cell"    , variant [] vid_cell    )
@@ -279,17 +277,6 @@ let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
         ("NoLanguageSystem", no_parameter);
       ]);
 
-      ("page", vid_page, 0, [
-        ("A0Paper"         , no_parameter);
-        ("A1Paper"         , no_parameter);
-        ("A2Paper"         , no_parameter);
-        ("A3Paper"         , no_parameter);
-        ("A4Paper"         , no_parameter);
-        ("A5Paper"         , no_parameter);
-        ("USLetter"        , no_parameter);
-        ("USLegal"         , no_parameter);
-        ("UserDefinedPaper", ([], Poly(tPROD [tLN; tLN])));
-      ]);
       ("cell", vid_cell, 0, [
         ("NormalCell", ([], Poly(tPROD [tPADS; tIB])));
         ("EmptyCell" , no_parameter);
