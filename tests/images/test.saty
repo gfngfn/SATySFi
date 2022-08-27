@@ -2,43 +2,47 @@
 @require: itemize
 @require: annot
 
-(let inline ctx \insert-image w path =
+let inline ctx \insert-image w path =
   let img = load-image path in
     use-image-by-width img w
 in
 let block ctx +newpage = clear-page in
-StdJa.document (|
+
+let open StdJa in
+let open Itemize in
+let open Annot in
+document (|
   title = {Tests for Images},
   author = {},
 |) '<
-  +StdJa.section{JPEG images}<
-     +StdJa.p{This is a jpeg image in gray scale.
+  +section{JPEG images}<
+     +p{This is a jpeg image in gray scale.
        \insert-image(5cm)(`satysfi-logo-gray.jpg`);
      }
-     +StdJa.p{This is a jpeg image with RGB color model.
+     +p{This is a jpeg image with RGB color model.
        \insert-image(5cm)(`satysfi-logo-rgb.jpg`);
      }
-     +StdJa.p{This is a jpeg image with CMYK color model. (It's broken)
+     +p{This is a jpeg image with CMYK color model. (It's broken)
        \insert-image(5cm)(`satysfi-logo-cmyk.jpg`);
      }
-    +StdJa.p{Yet another image in gray scale.
+    +p{Yet another image in gray scale.
        \insert-image(5cm)(`peppers-gray.jpg`);
     }
-    +StdJa.p{Yet another image in RGB.
+    +p{Yet another image in RGB.
        \insert-image(5cm)(`peppers-rgb.jpg`);
     }
-    +StdJa.p{Yet another image in CMYK (broken).
+    +p{Yet another image in CMYK (broken).
        \insert-image(5cm)(`peppers-cmyk.jpg`);
     }
   >
 
   +newpage;
 
-  +StdJa.section{PNG images}<
-    +StdJa.p{
-      Images from \Annot.href(`http://www.schaik.com/pngsuite/`){PngSuite}.
+  +section{PNG images}<
+    +p{
+      Images from \href(`http://www.schaik.com/pngsuite/`){PngSuite}.
     }
-    +Itemize.listing{
+    +listing{
       * \insert-image(0.5cm)(`PngSuite-2017jul19/basi0g01.png`);
       PngSuite-2017jul19/basi0g01.png: PNG image data, 32 x 32, 1-bit grayscale, interlaced
       * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g01.png`);
@@ -74,4 +78,3 @@ StdJa.document (|
     }
   >
 >
-)
