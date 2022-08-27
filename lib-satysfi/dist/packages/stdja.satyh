@@ -10,49 +10,48 @@
 @require: annot
 
 
-module StdJa
-% :> sig
-%
-%   type config = (|
-%     paper-size    : page,
-%     show-pages    : bool,
-%     text-width    : length,
-%     text-height   : length,
-%     text-origin   : point,
-%     header-origin : point,
-%     footer-origin : point,
-%     header-width  : length,
-%     footer-width  : length,
-%   |)
-%
-%   val default-config : config
-%
-%   val document ?'r :
-%     (|
-%       title : inline-text,
-%       author : inline-text,
-%       show-toc : bool,
-%       show-title : bool,
-%     | ?'r |) -> ?(config : config) block-text -> document
-%
-%   val font-latin-roman  : string * float * float
-%   val font-latin-bold   : string * float * float
-%   val font-latin-italic : string * float * float
-%   val font-latin-sans   : string * float * float
-%   val font-latin-mono   : string * float * float
-%   val font-cjk-mincho   : string * float * float
-%   val font-cjk-gothic   : string * float * float
-%   val \ref : [string] inline-cmd
-%   val \ref-page : [string] inline-cmd
-%   val \figure : [inline-text; block-text] inline-cmd
-%   val +p : [inline-text] block-cmd
-%   val +pn : [inline-text] block-cmd
-%   val +section : [string?; string?; inline-text; block-text] block-cmd
-%   val +subsection : [string?; string?; inline-text; block-text] block-cmd
-%   val \emph : [inline-text] inline-cmd
-%
-% end
-= struct
+module StdJa :> sig
+
+  type config = (|
+    paper-size    : length * length,
+    show-pages    : bool,
+    text-width    : length,
+    text-height   : length,
+    text-origin   : Pervasives.point,
+    header-origin : Pervasives.point,
+    footer-origin : Pervasives.point,
+    header-width  : length,
+    footer-width  : length,
+  |)
+
+  val default-config : config
+
+  val document :
+    (|
+      title : inline-text,
+      author : inline-text,
+      show-toc : bool,
+      show-title : bool,
+    |) -> ?(config : config) block-text -> document
+
+  val font-latin-roman  : string * float * float
+  val font-latin-bold   : string * float * float
+  val font-latin-italic : string * float * float
+  val font-latin-sans   : string * float * float
+  val font-latin-mono   : string * float * float
+  val font-cjk-mincho   : string * float * float
+  val font-cjk-gothic   : string * float * float
+
+  val \ref : inline [string]
+  val \ref-page : inline [string]
+  val \figure : inline [inline-text, block-text]
+  val +p : block [inline-text]
+  val +pn : block [inline-text]
+  val +section : block [?(label : string, outline-title : string) inline-text, block-text]
+  val +subsection : block [?(label : string, outline-title : string) inline-text, block-text]
+  val \emph : inline [inline-text]
+
+end = struct
 
   type config = (|
     paper-size    : length * length,
@@ -501,7 +500,7 @@ val title-deco =
       bb-title +++ bb-inner
 
 
-  val block ctx +section ?(ref = labelopt, outline = outline-title-opt) title inner =
+  val block ctx +section ?(label = labelopt, outline-title = outline-title-opt) title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()
@@ -511,7 +510,7 @@ val title-deco =
       section-scheme ctx label title outline-title-opt inner
 
 
-  val block ctx +subsection ?(ref = labelopt, outline = outline-title-opt) title inner =
+  val block ctx +subsection ?(label = labelopt, outline-title = outline-title-opt) title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()

@@ -103,7 +103,7 @@ document (|
       組版処理システムとしてどのような機能が実現されているかについて触れていく。
     }
   >
-  +section?(ref = `sec:typesetting`)({代表的な機能})<
+  +section?(label = `sec:typesetting`)({代表的な機能})<
     +subsection{欧文組版}<
       +p{
         文字のグリフは正の幅を持ち，紙面には有限の幅がある。
