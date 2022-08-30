@@ -2151,66 +2151,75 @@ let assoc_to_map f gidassoc =
   ) MathInfoMap.empty
 
 
-let get_math_decoder (fontname : string) (abspath : abs_path) : (math_decoder * font) option =
+let make_math_decoder_from_decoder (abspath : abs_path) ((dcdr, font) : decoder * font) =
   let open OptionMonad in
-  get_decoder_single fontname abspath >>= fun (dcdr, font) ->
   let d = dcdr.main in
-    match Otfm.math d with
-    | Error(oerr) ->
-        broken abspath oerr "get_math_decoder"
+  match Otfm.math d with
+  | Error(oerr) ->
+      broken abspath oerr "get_math_decoder_single"
 
-    | Ok(None) ->
-        None
+  | Ok(None) ->
+      None
 
-    | Ok(Some(mathraw)) ->
-        let micmap =
-          mathraw.Otfm.math_glyph_info.Otfm.math_italics_correction
-            |> assoc_to_map (fun v -> per_mille dcdr (get_main_math_value v))
-        in
-        let mkimap =
-          mathraw.Otfm.math_glyph_info.Otfm.math_kern_info
-            |> assoc_to_map convert_kern_info
-        in
-        let mvertvarmap =
-          mathraw.Otfm.math_variants.Otfm.vert_glyph_assoc
-            |> assoc_to_map (fun mgconstr -> mgconstr.Otfm.math_glyph_variant_record_list)
-        in
-        let mhorzvarmap =
-          mathraw.Otfm.math_variants.Otfm.horiz_glyph_assoc
-            |> assoc_to_map (fun mgconstr -> mgconstr.Otfm.math_glyph_variant_record_list)
-        in
-        let sstyopt =
-          let ( >>= ) = result_bind in
-          let res =
-            Otfm.gsub_script d >>= function
-            | None ->
-                Error(`Missing_script)
+  | Ok(Some(mathraw)) ->
+      let micmap =
+        mathraw.Otfm.math_glyph_info.Otfm.math_italics_correction
+          |> assoc_to_map (fun v -> per_mille dcdr (get_main_math_value v))
+      in
+      let mkimap =
+        mathraw.Otfm.math_glyph_info.Otfm.math_kern_info
+          |> assoc_to_map convert_kern_info
+      in
+      let mvertvarmap =
+        mathraw.Otfm.math_variants.Otfm.vert_glyph_assoc
+          |> assoc_to_map (fun mgconstr -> mgconstr.Otfm.math_glyph_variant_record_list)
+      in
+      let mhorzvarmap =
+        mathraw.Otfm.math_variants.Otfm.horiz_glyph_assoc
+          |> assoc_to_map (fun mgconstr -> mgconstr.Otfm.math_glyph_variant_record_list)
+      in
+      let sstyopt =
+        let ( >>= ) = result_bind in
+        let res =
+          Otfm.gsub_script d >>= function
+          | None ->
+              Error(`Missing_script)
 
-            | Some(scriptlst) ->
-                pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = "math") `Missing_script >>= fun script_math ->
-                select_gsub_langsys script_math >>= fun langsys ->
-                Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
-                pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "ssty") `Missing_feature
-          in
-          match res with
-          | Ok(feature_ssty)        -> Some(feature_ssty)
-          | Error(`Missing_script)
-          | Error(`Missing_feature) -> None
-          | Error(#Otfm.error as e) -> broken abspath e "get_math_decoder"
+          | Some(scriptlst) ->
+              pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = "math") `Missing_script >>= fun script_math ->
+              select_gsub_langsys script_math >>= fun langsys ->
+              Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
+              pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "ssty") `Missing_feature
         in
-        let md =
-          {
-            as_normal_font             = dcdr;
-            math_constants             = mathraw.Otfm.math_constants;
-            math_italics_correction    = micmap;
-            math_top_accent_attachment = MathInfoMap.empty;  (* temporary *)
-            math_vertical_variants     = mvertvarmap;
-            math_horizontal_variants   = mhorzvarmap;
-            math_kern_info             = mkimap;
-            script_style_info          = sstyopt;
-          }
-        in
-        Some((md, font))
+        match res with
+        | Ok(feature_ssty)        -> Some(feature_ssty)
+        | Error(`Missing_script)
+        | Error(`Missing_feature) -> None
+        | Error(#Otfm.error as e) -> broken abspath e "get_math_decoder"
+      in
+      let md =
+        {
+          as_normal_font             = dcdr;
+          math_constants             = mathraw.Otfm.math_constants;
+          math_italics_correction    = micmap;
+          math_top_accent_attachment = MathInfoMap.empty;  (* temporary *)
+          math_vertical_variants     = mvertvarmap;
+          math_horizontal_variants   = mhorzvarmap;
+          math_kern_info             = mkimap;
+          script_style_info          = sstyopt;
+        }
+      in
+      Some((md, font))
+
+
+let get_math_decoder_single (fontname : string) (abspath : abs_path) : (math_decoder * font) option =
+  let open OptionMonad in
+  get_decoder_single fontname abspath >>= make_math_decoder_from_decoder abspath
+
+
+let get_math_decoder_ttc (fontname : string) (abspath : abs_path) (i : int) : (math_decoder * font) option =
+  let open OptionMonad in
+  get_decoder_ttc fontname abspath i >>= make_math_decoder_from_decoder abspath
 
 
 let get_math_script_variant (md : math_decoder) (gid : glyph_id) : glyph_id =
