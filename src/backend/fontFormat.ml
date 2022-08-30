@@ -2156,7 +2156,7 @@ let make_math_decoder_from_decoder (abspath : abs_path) ((dcdr, font) : decoder 
   let d = dcdr.main in
   match Otfm.math d with
   | Error(oerr) ->
-      broken abspath oerr "get_math_decoder_single"
+      broken abspath oerr "make_math_decoder_from_decoder"
 
   | Ok(None) ->
       None
@@ -2195,7 +2195,7 @@ let make_math_decoder_from_decoder (abspath : abs_path) ((dcdr, font) : decoder 
         | Ok(feature_ssty)        -> Some(feature_ssty)
         | Error(`Missing_script)
         | Error(`Missing_feature) -> None
-        | Error(#Otfm.error as e) -> broken abspath e "get_math_decoder"
+        | Error(#Otfm.error as e) -> broken abspath e "make_math_decoder_from_decoder"
       in
       let md =
         {

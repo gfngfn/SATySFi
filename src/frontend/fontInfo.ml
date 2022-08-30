@@ -294,7 +294,7 @@ module MathFontAbbrevHashTable
                 begin
                   match FontFormat.get_math_decoder_single (mfabbrev ^ "-Composite-Math") (* temporary *) srcpath with
                   | None ->
-                    (* -- if the font file is a TrueTypeCollection -- *)
+                    (* -- if the font file does not have a MATH table or is a TrueType Collection -- *)
                       raise (NotASingleMathFont(mfabbrev, srcpath))
 
                   | Some((md, font)) ->
@@ -310,6 +310,7 @@ module MathFontAbbrevHashTable
                 begin
                   match FontFormat.get_math_decoder_ttc (mfabbrev ^ "-Composite-Math") (* temporary *) srcpath i with
                   | None ->
+                    (* -- if the font does not have a MATH table or is a single font file -- *)
                       raise (NotATTCMathFont(mfabbrev, srcpath, i))
 
                   | Some((md, font)) ->
