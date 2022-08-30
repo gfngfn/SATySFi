@@ -63,7 +63,9 @@ type math_kern_info =
 
 type math_decoder
 
-val get_math_decoder : string -> abs_path -> (math_decoder * font) option
+val get_math_decoder_single : string -> abs_path -> (math_decoder * font) option
+
+val get_math_decoder_ttc : string -> abs_path -> int -> (math_decoder * font) option
 
 val math_base_font : math_decoder -> decoder
 

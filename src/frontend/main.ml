@@ -602,7 +602,15 @@ let error_log_environment suspended =
       report_error Interface [
         NormalLine("the font file '" ^ fname ^ "',");
         NormalLine("which is associated with the font name '" ^ abbrev ^ "',");
-        NormalLine("is not a single font file; it is a TrueType collection.");
+        NormalLine("is not a single font file or does not have a MATH table.");
+      ]
+
+  | FontInfo.NotATTCElement(abbrev, abspath, i) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine("the font file '" ^ fname ^ "',");
+        NormalLine("which is associated with the font name '" ^ abbrev ^ "' and index " ^ (string_of_int i) ^ ",");
+        NormalLine("is not a TrueType collection or does not have a MATH table.");
       ]
 
   | FontInfo.NotASingleMathFont(mfabbrev, abspath) ->
@@ -611,6 +619,14 @@ let error_log_environment suspended =
         NormalLine("the font file '" ^ fname ^ "',");
         NormalLine("which is associated with the math font name '" ^ mfabbrev ^ "',");
         NormalLine("is not a single font file; it is a TrueType collection.");
+      ]
+
+  | FontInfo.NotATTCMathFont(mfabbrev, abspath, i) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine("the font file '" ^ fname ^ "',");
+        NormalLine("which is associated with the math font name '" ^ mfabbrev ^ "' and index " ^ (string_of_int i) ^ ",");
+        NormalLine("is not a TrueType collection; it is a single font file.");
       ]
 
   | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
