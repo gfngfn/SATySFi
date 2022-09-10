@@ -515,7 +515,7 @@ let rulesf xs ys =
   let valuexs = make_length_list xs in
   let valueys = make_length_list ys in
   let valueret = reducef valuerulesf [valuexs; valueys] in
-  get_graphics valueret
+  get_graphics ~msg:"tabular" valueret
 in
 make_horz (HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
 |}
@@ -2192,7 +2192,7 @@ make_graphics grelem
           param "b" ~type_:"float";
           param "c" ~type_:"float";
           param "d" ~type_:"float";
-          param "gr" ~type_:"graphics";
+          param "gr" ~type_:"graphics ~msg:\"linear-transform-graphics\"";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -2205,7 +2205,7 @@ make_graphics (GraphicD.make_linear_trans (a, b, c, d) gr)
         ]
         ~params:[
           param "vec" ~type_:"point";
-          param "gr" ~type_:"graphics";
+          param "gr" ~type_:"graphics ~msg:\"shift-graphics\"";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -2217,7 +2217,7 @@ make_graphics (GraphicD.shift vec gr)
         ~fields:[
         ]
         ~params:[
-          param "gr" ~type_:"graphics";
+          param "gr" ~type_:"graphics ~msg:\"get-graphics-bbox\"";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -3023,7 +3023,7 @@ make_list make_string lines
         ]
         ~params:[
           param "pathlst" ~type_:"path_value";
-          param "gr" ~type_:"graphics";
+          param "gr" ~type_:"graphics ~msg:\"clip-graphics-by-path\"";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -3040,7 +3040,7 @@ make_graphics (GraphicD.make_clip gr pathlst)
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let grs = get_list get_graphics value_grs in
+let grs = get_list (get_graphics ~msg:"unite-graphics") value_grs in
 make_graphics (GraphicD.concat grs)
 |}
     ])

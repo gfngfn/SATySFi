@@ -62,13 +62,13 @@ let get_list getf value =
   | _          -> report_bug_value "get_list" value
 
 
-let get_graphics value =
+let get_graphics ~msg (value : syntactic_value) =
   match value with
   | BaseConstant(BCGraphics(gr)) -> gr
-  | _                            -> report_bug_value "get_graphics" value
+  | _                            -> report_bug_value (Printf.sprintf "get_graphics (%s)" msg) value
 
 
-let get_paddings (value : syntactic_value) =
+let get_paddings (value : syntactic_value) : HorzBox.paddings =
   match value with
   | Tuple([
       BaseConstant(BCLength(lenL));
@@ -87,7 +87,7 @@ let get_paddings (value : syntactic_value) =
       report_bug_value "interpret_paddings" value
 
 
-let get_cell value : HorzBox.cell =
+let get_cell (value : syntactic_value) : HorzBox.cell =
     match value with
     | Constructor("NormalCell", Tuple([valuepads; BaseConstant(BCHorz(hblst))])) ->
         let pads = get_paddings valuepads in
@@ -602,7 +602,7 @@ let make_frame_deco reducef valuedeco =
      let valuedpt = BaseConstant(BCLength(Length.negate dpt)) in
        (* -- depth values for users are nonnegative -- *)
      let valueret = reducef valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
-     get_graphics valueret
+     get_graphics ~msg:"make_frame_deco" valueret
   )
 
 
@@ -665,7 +665,7 @@ let make_inline_graphics reducef valueg : HorzBox.fixed_graphics =
   (fun (xpos, ypos) ->
      let valuepos = Tuple([BaseConstant(BCLength(xpos)); BaseConstant(BCLength(ypos))]) in
      let valueret = reducef valueg [valuepos] in
-     get_graphics valueret
+     get_graphics ~msg:"make_inline_graphics" valueret
   )
 
 
@@ -674,7 +674,7 @@ let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
      let valuepos = Tuple([BaseConstant(BCLength(xpos)); BaseConstant(BCLength(ypos))]) in
      let valuewid = BaseConstant(BCLength(wid)) in
      let valueret = reducef valueg [valuewid; valuepos] in
-     get_graphics valueret
+     get_graphics ~msg:"make_inline_graphics_outer" valueret
   )
 
 
