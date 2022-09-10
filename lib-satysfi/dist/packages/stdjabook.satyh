@@ -172,7 +172,7 @@ end = struct
     let ds =
       match labelopt with
       | Some(label) -> Annot.register-location-frame label
-      | None        -> let d (_, _) _ _ _ = [] in (d, d, d, d)
+      | None        -> let d (_, _) _ _ _ = Gr.empty in (d, d, d, d)
       end
     in
     let bb-inner =
@@ -218,12 +218,12 @@ val title-deco =
             |> line-to (xL, yB)
             |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
       in
-        [
+        unite-graphics [
           stroke 3pt Color.black path1,
           stroke 1pt Color.black path2,
         ]
     in
-      (deco, deco, deco, deco)
+    (deco, deco, deco, deco)
 
 
   val block ctx +make-title it-title it-author =
@@ -247,7 +247,7 @@ val title-deco =
             |> terminate-path
         in
         inline-graphics wid thk 0pt (fun pt -> (
-          [ stroke thk Color.black (path pt), ]
+          stroke thk Color.black (path pt)
         ))
       in
       let ib-author = read-inline ctx-author it-author in
@@ -304,19 +304,21 @@ val title-deco =
     let th2 = section-line-thickness2 in
     let color = get-text-color ctx in
       line-break true false (ctx |> set-paragraph-margin section-top-margin 0pt)
-        (inline-graphics wid h 0pt (fun (x, y) -> [
-          stroke th1 color (Gr.line (x, y +' h) (x +' wid, y +' h)),
-          stroke th2 color (Gr.line (x, y) (x +' wid, y)),
-        ]))
+        (inline-graphics wid h 0pt (fun (x, y) ->
+          unite-graphics [
+            stroke th1 color (Gr.line (x, y +' h) (x +' wid, y +' h)),
+            stroke th2 color (Gr.line (x, y) (x +' wid, y)),
+          ]))
     +++
       line-break false false (ctx |> set-paragraph-margin section-top-padding section-bottom-padding)
         ib-heading
     +++
       line-break false false (ctx |> set-paragraph-margin 0pt section-bottom-margin)
-        (inline-graphics wid h 0pt (fun (x, y) -> [
-          stroke th2 color (Gr.line (x, y +' h) (x +' wid, y +' h)),
-          stroke th1 color (Gr.line (x, y) (x +' wid, y)),
-        ]))
+        (inline-graphics wid h 0pt (fun (x, y) ->
+          unite-graphics [
+            stroke th2 color (Gr.line (x, y +' h) (x +' wid, y +' h)),
+            stroke th1 color (Gr.line (x, y) (x +' wid, y)),
+          ]))
 
 
   val inline ctx \dummy it =
@@ -478,7 +480,7 @@ val title-deco =
           line-break true true ctx ib-text
             +++ line-break true true (ctx |> set-paragraph-margin header-line-margin-top header-line-margin-bottom)
               ((inline-graphics hdrwid thickness 0pt
-                (fun (x, y) -> [ fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness))])) ++ inline-fil)
+                (fun (x, y) -> fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness)))) ++ inline-fil)
             +++ bb-float-boxes
       in
       let footer =

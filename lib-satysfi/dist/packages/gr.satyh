@@ -14,11 +14,12 @@ module Gr :> sig
   val polygon : point -> list point -> path
   val line : point -> point -> path
   val circle : point -> length -> path
+  val empty : graphics
   val text-centering : point -> inline-boxes -> graphics
   val text-leftward : point -> inline-boxes -> graphics
   val text-rightward : point -> inline-boxes -> graphics
-  val arrow : length -> color -> length -> length -> length -> point -> point -> list graphics
-  val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> list graphics
+  val arrow : length -> color -> length -> length -> length -> point -> point -> graphics
+  val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics
   val rotate-path : point -> float -> path -> path
   val scale-path : point -> float -> float -> path -> path
   val rotate-graphics : point -> float -> graphics -> graphics
@@ -135,11 +136,22 @@ end = struct
         |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
 
 
+  val empty =
+    unite-graphics []
+
+
+  val get-nonempty-graphics-bbox gr =
+    match get-graphics-bbox gr with
+    | None       -> abort-with-message `get-nonempty-graphics-bbox`
+    | Some(bbox) -> bbox
+    end
+
+
   val text-centering pt ib =
     let gr = draw-text pt ib in
-    let ((xmin, _), (xmax, _)) = get-graphics-bbox gr in
+    let ((xmin, _), (xmax, _)) = get-nonempty-graphics-bbox gr in
     let wid = xmax -' xmin in
-      shift-graphics (0pt -' wid *' 0.5, 0pt) gr
+    shift-graphics (0pt -' wid *' 0.5, 0pt) gr
 
 
   val text-rightward =
@@ -148,9 +160,9 @@ end = struct
 
   val text-leftward pt ib =
     let gr = draw-text pt ib in
-    let ((xmin, _), (xmax, _)) = get-graphics-bbox gr in
+    let ((xmin, _), (xmax, _)) = get-nonempty-graphics-bbox gr in
     let wid = xmax -' xmin in
-      shift-graphics (0pt -' wid, 0pt) gr
+    shift-graphics (0pt -' wid, 0pt) gr
 
 
   val arrow-scheme strokef color lenL lenM lenP ((x1, y1) as pt1) ((x2, y2) as pt2) =
@@ -160,10 +172,10 @@ end = struct
     let phi = theta +. Pervasives.math-pi /. 2. in
     let (p1, q1) = (cx +' lenP *' (cos phi), cy +' lenP *' (sin phi)) in
     let (p2, q2) = (cx -' lenP *' (cos phi), cy -' lenP *' (sin phi)) in
-      [
-        strokef color (line pt1 (mx, my)),
-        fill color (polygon pt2 [(p1, q1), (mx, my), (p2, q2)]),
-      ]
+    unite-graphics [
+      strokef color (line pt1 (mx, my)),
+      fill color (polygon pt2 [(p1, q1), (mx, my), (p2, q2)]),
+    ]
 
 
   val arrow thkns =

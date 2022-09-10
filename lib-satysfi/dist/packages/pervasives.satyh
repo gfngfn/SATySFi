@@ -21,7 +21,7 @@ module Pervasives = struct
 
 
   val no-break ib =
-    inline-frame-outer (0pt, 0pt, 0pt, 0pt) (fun _ _ _ _ -> []) ib
+    inline-frame-outer (0pt, 0pt, 0pt, 0pt) (fun _ _ _ _ -> unite-graphics []) ib
 
 
   val inline ctx \no-break inner =
