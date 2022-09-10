@@ -69,11 +69,13 @@ module Proof
         end
       in
       let bar =
-          inline-graphics w (thickness +' gap) gap (fun (x, y) ->
-            List.append
-              [ fill color (Gr.rectangle (x, y) (x +' w, y +' thickness)) ]
-              (glnamef (x +' w, y -' (get-axis-height ctx)))
-          )
+          inline-graphics w (thickness +' gap) gap (fun (x, y) -> (
+            let grs =
+              fill color (Gr.rectangle (x, y) (x +' w, y +' thickness))
+                :: (glnamef (x +' w, y -' (get-axis-height ctx)))
+            in
+            unite-graphics grs
+          ))
       in
         line-stack-bottom [ib1, bar, ib2]
           ++ inline-skip wname

@@ -12,16 +12,18 @@ end = struct
 
   val link-to-uri-frame uri borderopt =
     let deco (x, y) w h d =
-      let () = register-link-to-uri uri (x, y) w h d borderopt in []
+      let () = register-link-to-uri uri (x, y) w h d borderopt in
+      Gr.empty
     in
       (deco, deco, deco, deco)
 
 
   val link-to-location-frame name borderopt =
     let deco (x, y) w h d =
-      let () = register-link-to-location name (x, y) w h d borderopt in []
+      let () = register-link-to-location name (x, y) w h d borderopt in
+      Gr.empty
     in
-      (deco, deco, deco, deco)
+    (deco, deco, deco, deco)
 
 
   val inline ctx \href ?(border = borderopt) uri inner =
@@ -46,9 +48,10 @@ end = struct
 
   val register-location-frame key =
     let decoR (x, y) w h d =
-      let () = register-destination key (x, y +' h) in []
+      let () = register-destination key (x, y +' h) in
+      Gr.empty
     in
-    let decoI _ _ _ _ = [] in
-      (decoR, decoR, decoI, decoI)
+    let decoI _ _ _ _ = Gr.empty in
+    (decoR, decoR, decoI, decoI)
 
 end

@@ -110,75 +110,115 @@ let pdfop_of_text_color = function
 
 type dash = length * length * length
 
+type matrix = float * float * float * float
+
 type 'a element =
   | Fill         of color * path list
   | Stroke       of length * color * path list
   | DashedStroke of length * dash * color * path list
   | HorzText     of point * 'a
-  | LinearTrans  of point * (float * float * float * float) * 'a element
-  | Clip         of path list * 'a element
+  | LinearTrans  of point * matrix * 'a t
+  | Clip         of path list * 'a t
+
+and 'a t = ('a element) list
 
 
-type 'a t = ('a element) Alist.t
+let empty : 'a t = []
 
 
-let empty = Alist.empty
+let concat (grs : ('a t) list) : 'a t =
+  List.concat grs
 
 
-let extend = Alist.extend
+let singleton (grelem : 'a element) : 'a t =
+  [ grelem ]
 
 
-let singleton elem = Alist.extend Alist.empty elem
-
-
-let rec shift_element v grelem =
+let rec shift_element (v : point) (grelem : 'a element) : 'a element =
   match grelem with
   | Fill(color, pathlst)                      -> Fill(color, pathlst |> List.map (shift_path v))
   | Stroke(thkns, color, pathlst)             -> Stroke(thkns, color, pathlst |> List.map (shift_path v))
   | DashedStroke(thkns, dash, color, pathlst) -> DashedStroke(thkns, dash, color, pathlst |> List.map (shift_path v))
   | HorzText(pt, textvalue)                   -> HorzText(pt +@% v, textvalue)
-  | LinearTrans(pt, mat, subelem)             -> LinearTrans(pt +@% v, mat, (shift_element v subelem))
-  | Clip(pathlst, subelem)                    -> Clip(List.map (shift_path v) pathlst, shift_element v subelem)
+  | LinearTrans(pt, mat, gr_sub)              -> LinearTrans(pt +@% v, mat, shift v gr_sub)
+  | Clip(pathlst, gr_sub)                     -> Clip(List.map (shift_path v) pathlst, shift v gr_sub)
 
 
-let rec get_element_bbox textbboxf grelem =
+and shift (v : point) (gr : 'a t) : 'a t =
+  gr |> List.map (shift_element v)
+
+
+let rec get_element_bbox textbboxf (grelem : 'a element) : (point * point) option =
   match grelem with
   | Fill(_, pathlst)
   | Stroke(_, _, pathlst)
   | DashedStroke(_, _, _, pathlst)
-  | Clip(pathlst, _)
-      -> get_path_list_bbox pathlst
-        (* -- currently ignores the thickness of the stroke -- *)
-  | HorzText(pt, textvalue) -> textbboxf pt textvalue
-  | LinearTrans(pt, mat, subelem) ->
-      let ((xmin, ymin), (xmax, ymax)) = get_element_bbox textbboxf subelem in
-      let (x1, y1) = linear_trans_point mat pt (xmin, ymin) in
-      let (x2, y2) = linear_trans_point mat pt (xmin, ymax) in
-      let (x3, y3) = linear_trans_point mat pt (xmax, ymin) in
-      let (x4, y4) = linear_trans_point mat pt (xmax, ymax) in
-      let xmin = x1 |> Length.min x2 |> Length.min x3 |> Length.min x4 in
-      let xmax = x1 |> Length.max x2 |> Length.max x3 |> Length.max x4 in
-      let ymin = y1 |> Length.min y2 |> Length.min y3 |> Length.min y4 in
-      let ymax = y1 |> Length.max y2 |> Length.max y3 |> Length.max y4 in
-      ((xmin, ymin), (xmax, ymax))
+  | Clip(pathlst, _) ->
+      Some(get_path_list_bbox pathlst)
+        (* Ignores the thickness of the stroke *)
 
-let make_fill (color : color) (pathlst : path list) : 'a element =
-  Fill(color, pathlst)
+  | HorzText(pt, textvalue) ->
+      Some(textbboxf pt textvalue)
 
-
-let make_stroke (thickness : length) (color : color) (pathlst : path list) : 'a element =
-  Stroke(thickness, color, pathlst)
+  | LinearTrans(pt, mat, gr) ->
+      get_bbox textbboxf gr |> Option.map (fun bbox ->
+        let ((xmin, ymin), (xmax, ymax)) = bbox in
+        let (x1, y1) = linear_trans_point mat pt (xmin, ymin) in
+        let (x2, y2) = linear_trans_point mat pt (xmin, ymax) in
+        let (x3, y3) = linear_trans_point mat pt (xmax, ymin) in
+        let (x4, y4) = linear_trans_point mat pt (xmax, ymax) in
+        let xmin = x1 |> Length.min x2 |> Length.min x3 |> Length.min x4 in
+        let xmax = x1 |> Length.max x2 |> Length.max x3 |> Length.max x4 in
+        let ymin = y1 |> Length.min y2 |> Length.min y3 |> Length.min y4 in
+        let ymax = y1 |> Length.max y2 |> Length.max y3 |> Length.max y4 in
+        ((xmin, ymin), (xmax, ymax))
+      )
 
 
-let make_dashed_stroke (thickness : length) (dash : dash) (color : color) (pathlst : path list) : 'a element =
-  DashedStroke(thickness, dash, color, pathlst)
+and get_bbox textbboxf (gr : 'a t) : (point * point) option =
+  gr |> List.fold_left (fun bbox0_opt grelem ->
+    let bbox_opt = get_element_bbox textbboxf grelem in
+    match bbox0_opt with
+    | None ->
+        bbox_opt
+
+    | Some(bbox0) ->
+        let ((xmin0, ymin0), (xmax0, ymax0)) = bbox0 in
+        begin
+          match bbox_opt with
+          | None ->
+              bbox0_opt
+
+          | Some(bbox) ->
+              let ((xmin, ymin), (xmax, ymax)) = bbox in
+              Some(((Length.min xmin0 xmin, Length.min ymin0 ymin), (Length.max xmax0 xmax, Length.max ymax0 ymax)))
+        end
+  ) None
 
 
-let make_text (pt : point) textvalue =
-  HorzText(pt, textvalue)
+let make_fill (color : color) (pathlst : path list) : 'a t =
+  singleton @@ Fill(color, pathlst)
 
-let make_linear_trans mat subelem =
-  LinearTrans((Length.zero, Length.zero), mat, subelem)
+
+let make_stroke (thickness : length) (color : color) (pathlst : path list) : 'a t =
+  singleton @@ Stroke(thickness, color, pathlst)
+
+
+let make_dashed_stroke (thickness : length) (dash : dash) (color : color) (pathlst : path list) : 'a t =
+  singleton @@ DashedStroke(thickness, dash, color, pathlst)
+
+
+let make_text (pt : point) (textvalue : 'a) : 'a t =
+  singleton @@ HorzText(pt, textvalue)
+
+
+let make_linear_trans (mat : matrix) (gr : 'a t) : 'a t =
+  singleton @@ LinearTrans((Length.zero, Length.zero), mat, gr)
+
+
+let make_clip (gr_sub : 'a t) (pathlst : path list) : 'a t =
+  singleton @@ Clip(pathlst, gr_sub)
+
 
 let pdfops_of_elements (ptorigin : point) (elemlst : (point path_element) list) (closingopt : (unit path_element) option) =
   let opacc =
@@ -281,7 +321,7 @@ let pdfops_of_text (pt : point) (tag : string) (fontsize : length) (color : colo
   ]
 
 
-let pdfops_of_image (pt : point) xratio yratio tag =
+let pdfops_of_image (pt : point) (xratio : float) (yratio : float) (tag : string) =
   [
     op_q;
     op_cm_scale xratio yratio pt;
@@ -289,30 +329,32 @@ let pdfops_of_image (pt : point) xratio yratio tag =
     op_Q;
   ]
 
-let rec to_pdfops (gr : 'a t) (f : point -> 'a -> Pdfops.t list) : Pdfops.t list =
-  let grelemlst = Alist.to_list gr in
-    grelemlst |> List.map (function
-      | Fill(color, pathlst)                    -> pdfops_of_fill color pathlst
-      | Stroke(thk, color, pathlst)             -> pdfops_of_stroke thk color pathlst
-      | DashedStroke(thk, dash, color, pathlst) -> pdfops_of_dashed_stroke thk dash color pathlst
-      | HorzText(pt, textvalue)                 -> f pt textvalue
-      | LinearTrans(pt, mat, subelem)           -> pdfops_of_lineartrans pt mat subelem f
-      | Clip(pathlst, subelem)                   -> pdfops_of_clip pathlst subelem f
-    ) |> List.concat
 
-and pdfops_of_lineartrans pt mat subelem f =
+let rec to_pdfops (gr : 'a t) (f : point -> 'a -> Pdfops.t list) : Pdfops.t list =
+  gr |> List.map (function
+    | Fill(color, pathlst)                    -> pdfops_of_fill color pathlst
+    | Stroke(thk, color, pathlst)             -> pdfops_of_stroke thk color pathlst
+    | DashedStroke(thk, dash, color, pathlst) -> pdfops_of_dashed_stroke thk dash color pathlst
+    | HorzText(pt, textvalue)                 -> f pt textvalue
+    | LinearTrans(pt, mat, subelem)           -> pdfops_of_lineartrans pt mat subelem f
+    | Clip(pathlst, subelem)                  -> pdfops_of_clip pathlst subelem f
+  ) |> List.concat
+
+
+and pdfops_of_lineartrans (pt : point) (mat : matrix) (gr_sub : 'a t) f =
   List.concat [
     [
       op_q;
       op_cm_linear_trans mat pt;
     ];
-    (to_pdfops (Alist.of_list [subelem]) f);
+    (to_pdfops gr_sub f);
     [
       op_Q;
     ];
   ]
 
-and pdfops_of_clip pathlst subelem f =
+
+and pdfops_of_clip (pathlst : path list) (gr_sub : 'a t) f =
   List.concat [
     [
       op_q;
@@ -323,7 +365,7 @@ and pdfops_of_clip pathlst subelem f =
       Pdfops.Op_W';
       Pdfops.Op_n;
     ];
-    (to_pdfops (Alist.of_list [subelem]) f);
+    (to_pdfops gr_sub f);
     [ op_Q ];
   ]
 
@@ -478,5 +520,3 @@ let pdfops_test_scale color (xpos, ypos) len =
       op_Q;
     ];
   ]
-
-let clip_graphics (grelem : 'a element) (pathlst : path list) : 'a element = Clip(pathlst, grelem)

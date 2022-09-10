@@ -108,12 +108,12 @@ module Head = struct
             |> line-to (xL, yB)
             |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
       in
-        [
-          stroke 3pt black path1,
-          stroke 1pt black path2,
-        ]
+      unite-graphics [
+        stroke 3pt black path1,
+        stroke 1pt black path2,
+      ]
     in
-      (deco, deco, deco, deco)
+    (deco, deco, deco, deco)
 
   val block ctx +make-title =
     let pads = (20pt, 20pt, 10pt, 10pt) in
@@ -161,34 +161,36 @@ module Head = struct
     let lcolor = RGB(0., 0., 0.5) in
     let frame-stroke = stroke lw lcolor in
     let decoS (x, y) wid hgt dpt =
-      [ start-path (x, y -' dpt)
-          |> line-to (x, y +' hgt)
-          |> line-to (x +' wid, y +' hgt)
-          |> line-to (x +' wid, y -' dpt)
-          |> close-with-line
-          |> frame-stroke ]
+      start-path (x, y -' dpt)
+        |> line-to (x, y +' hgt)
+        |> line-to (x +' wid, y +' hgt)
+        |> line-to (x +' wid, y -' dpt)
+        |> close-with-line
+        |> frame-stroke
     in
     let decoH (x, y) wid hgt dpt =
-      [ start-path (x, y -' dpt)
-          |> line-to (x, y +' hgt)
-          |> line-to (x +' wid, y +' hgt)
-          |> line-to (x +' wid, y -' dpt)
-          |> terminate-path
-          |> frame-stroke ]
+      start-path (x, y -' dpt)
+        |> line-to (x, y +' hgt)
+        |> line-to (x +' wid, y +' hgt)
+        |> line-to (x +' wid, y -' dpt)
+        |> terminate-path
+        |> frame-stroke
     in
     let decoM (x, y) wid hgt dpt =
-      [ start-path (x, y -' dpt) |> line-to (x, y +' hgt) |> terminate-path |> frame-stroke,
-        start-path (x +' wid, y -' dpt) |> line-to (x +' wid, y +' hgt) |> terminate-path |> frame-stroke, ]
+      unite-graphics [
+        start-path (x, y -' dpt) |> line-to (x, y +' hgt) |> terminate-path |> frame-stroke,
+        start-path (x +' wid, y -' dpt) |> line-to (x +' wid, y +' hgt) |> terminate-path |> frame-stroke,
+      ]
     in
     let decoT (x, y) wid hgt dpt =
-      [ start-path (x, y +' hgt)
-          |> line-to (x, y -' dpt)
-          |> line-to (x +' wid, y -' dpt)
-          |> line-to (x +' wid, y +' hgt)
-          |> terminate-path
-          |> frame-stroke ]
+      start-path (x, y +' hgt)
+        |> line-to (x, y -' dpt)
+        |> line-to (x +' wid, y -' dpt)
+        |> line-to (x +' wid, y +' hgt)
+        |> terminate-path
+        |> frame-stroke
     in
-      (decoS, decoH, decoM, decoT)
+    (decoS, decoH, decoM, decoT)
 
   val block ctx +frame inner =
     let pads = (10pt, 10pt, 5pt, 5pt) in
@@ -250,7 +252,7 @@ module Head = struct
           |> line-to (xb +' widb, y -' dptb)
           |> close-with-line
       in
-      [ frame-stroke path ]
+      frame-stroke path
     in
     let decoH (x, y) wid hgt dpt =
       let xb = x +' margin-x in
@@ -264,7 +266,7 @@ module Head = struct
           |> line-to (xb +' widb, y +' hgtb)
           |> terminate-path
       in
-      [ frame-stroke path ]
+      frame-stroke path
     in
     let decoT (x, y) wid hgt dpt =
       let xb = x in
@@ -278,14 +280,14 @@ module Head = struct
           |> line-to (xb, y +' hgtb)
           |> terminate-path
       in
-      [ frame-stroke path ]
+      frame-stroke path
     in
     let decoM (x, y) wid hgt dpt =
       let xb = x in
       let widb = wid in
       let hgtb = hgt -' margin-y in
       let dptb = dpt -' margin-y in
-      [
+      unite-graphics [
         frame-stroke (start-path (xb, y -' dptb) |> line-to (xb +' widb, y -' dptb) |> terminate-path),
         frame-stroke (start-path (xb, y +' hgtb) |> line-to (xb +' widb, y +' hgtb) |> terminate-path),
       ]
@@ -307,30 +309,31 @@ module Head = struct
     let decoS (x, y) wid hgt dpt =
       let (x1, y1) = (x, y +' hgt)  in
       let (x2, y2) = (x +' wid, y -' dpt) in
-        [ start-path (x1 +' lshift, y1)
-            |> line-to (x1, y1)
-            |> line-to (x1, y2)
-            |> line-to (x2, y2)
-            |> line-to (x2, y1)
-            |> line-to (x1 +' lshift +' hwid, y1)
-            |> terminate-path |> frame-stroke,
-          draw-text (x1 +' lshift, y1 -' size *' 0.4) ib-heading,
-        ]
+      unite-graphics [
+        start-path (x1 +' lshift, y1)
+          |> line-to (x1, y1)
+          |> line-to (x1, y2)
+          |> line-to (x2, y2)
+          |> line-to (x2, y1)
+          |> line-to (x1 +' lshift +' hwid, y1)
+          |> terminate-path |> frame-stroke,
+        draw-text (x1 +' lshift, y1 -' size *' 0.4) ib-heading,
+      ]
     in
-      (decoS, decoS, decoS, decoS)
+    (decoS, decoS, decoS, decoS)
 
   val block ctx +screen heading contents =
     let ib-heading = read-inline (ctx |> set-cjk-font font-cjk-gothic) heading in
     let size = get-font-size ctx in
     let pads = (10pt, 10pt, size *' 0.5 +' 10pt, 10pt) in
-      block-frame-breakable ctx pads (screen-decoset size ib-heading) (fun ctx ->
-        read-block ctx contents
-      )
+    block-frame-breakable ctx pads (screen-decoset size ib-heading) (fun ctx ->
+      read-block ctx contents
+    )
 
   val inline ctx \inline-frame inner =
     let pads = (5pt, 5pt, 5pt, 5pt) in
     let br = read-inline ctx inner in
-      (inline-frame-breakable pads simple-decoset br)
+    (inline-frame-breakable pads simple-decoset br)
 
 
   val paddings = (5pt, 5pt, 5pt, 5pt)
@@ -351,17 +354,17 @@ module Head = struct
 
   val circle (cx, cy) r =
     let t = r *' 0.55228 in
-      start-path (cx -' r, cy)
-        |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
-        |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
-        |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
-        |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
+    start-path (cx -' r, cy)
+      |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
+      |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
+      |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
+      |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
 
   val bullet (x, y) =
     let cx = x +' 4pt in
     let cy = y +' 4pt in
     let r = 2pt in
-      [ fill (Gray(0.)) (circle (cx, cy) r), ]
+    fill (Gray(0.)) (circle (cx, cy) r)
 
   val rec item (ctx : context) (depth : int) (Item(parent, children) : itemize) =
     let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (inline-skip 8pt) in
@@ -425,10 +428,10 @@ module Head = struct
   val decoset-underline =
     let distance = 4pt in
     let deco (x, y) wid _ _ =
-      [ stroke 1pt (RGB(0., 0.5, 0.))
-          (start-path (x, y -' distance) |> line-to (x +' wid, y -' distance) |> terminate-path) ]
+      stroke 1pt (RGB(0., 0.5, 0.))
+        (start-path (x, y -' distance) |> line-to (x +' wid, y -' distance) |> terminate-path)
     in
-      (deco, deco, deco, deco)
+    (deco, deco, deco, deco)
 
   val inline ctx \underline inner =
     let pads = (0pt, 0pt, 0pt, 0pt) in
@@ -446,7 +449,7 @@ module Head = struct
       inline-graphics wid 12pt 0pt (fun (x, y) -> (
         let cx = x +' wid *' 0.5 in
         let cy = y +' chgt in
-        [ fill (RGB(0.8, 0.5, 0.)) (donut-path (cx, cy) r1 r2), ]
+        fill (RGB(0.8, 0.5, 0.)) (donut-path (cx, cy) r1 r2)
       ))
 
   val inline ctx \donuts =
@@ -455,7 +458,7 @@ module Head = struct
     inline-graphics 18pt 12pt 0pt (fun (x, y) -> (
       let cp1 = (x +' 7pt, y +' 4pt) in
       let cp2 = (x +' 11pt, y +' 1pt) in
-      [
+      unite-graphics [
         fill (RGB(0.7, 0.4, 0.)) (donut-path cp2 r1 r2),
         fill (RGB(0.8, 0.5, 0.)) (donut-path cp1 r1 r2),
       ]
@@ -500,11 +503,11 @@ module Head = struct
       in
       let br = read-inline ctx {Sample Text} in
       let wid-text = Pervasives.get-natural-width br in
-        [
-          draw-text (x, y) br,
-          draw-text (x +' wid *' 0.5 -' wid-text *' 0.5, y +' 50pt) br,
-          stroke 2pt red path-frame,
-        ]
+      unite-graphics [
+        draw-text (x, y) br,
+        draw-text (x +' wid *' 0.5 -' wid-text *' 0.5, y +' 50pt) br,
+        stroke 2pt red path-frame,
+      ]
     ))
 
   val inline ctx \new-line =
@@ -526,20 +529,23 @@ module Head = struct
     let multif nr nc it = MultiCell(nr, nc, pads, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
     let empty = EmptyCell in
       tabular (lstf cellf multif empty) (fun xs ys -> (
-        match (xs, List.reverse xs) with
-        | (xF :: _, xL :: _) ->
-            match (ys, List.reverse ys) with
-            | (yF :: _, yL :: _) ->
-                xs |> List.map (fun x -> start-path (x, yF) |> line-to (x, yL) |> terminate-path)
-                   |> List.map (stroke 1pt (RGB(0., 0., 0.)))
+        let grs =
+          match (xs, List.reverse xs) with
+          | (xF :: _, xL :: _) ->
+              match (ys, List.reverse ys) with
+              | (yF :: _, yL :: _) ->
+                  xs |> List.map (fun x -> start-path (x, yF) |> line-to (x, yL) |> terminate-path)
+                     |> List.map (stroke 1pt (RGB(0., 0., 0.)))
 
-            | _ ->
-                []
-            end
+              | _ ->
+                  []
+              end
 
-        | _ ->
-            []
-        end
+          | _ ->
+              []
+          end
+        in
+        unite-graphics grs
       ))
 
   module Img :> sig

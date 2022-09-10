@@ -172,7 +172,7 @@ end = struct
           Annot.register-location-frame label
 
       | None ->
-          let d (_, _) _ _ _ = [] in (d, d, d, d)
+          let d (_, _) _ _ _ = Gr.empty in (d, d, d, d)
       end
     in
     let bb-inner =

@@ -139,7 +139,7 @@ module Code
 
   val decoset-console =
     let deco (x, y) w h d =
-      [ fill ConsoleSettings.fill-color (Gr.rectangle (x, y -' d) (x +' w, y +' h)) ]
+      fill ConsoleSettings.fill-color (Gr.rectangle (x, y -' d) (x +' w, y +' h))
     in
     (deco, deco, deco, deco)
 

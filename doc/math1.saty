@@ -2,6 +2,7 @@
 @require: stdja
 @require: proof
 @require: tabular
+@require: gr
 
 let open Pervasives in
 let open Math in
@@ -98,6 +99,6 @@ document ?(
     \tabular(fun cellf multif empty -> [
       [multif 2 1 {The}, cellf {quick}, cellf {brown}, multif 1 2 {fox jumps over}, empty,],
       [empty, multif 1 2 {the}, empty, cellf {lazy}, cellf {dog},],
-    ])(fun xs ys -> []);
+    ])(fun xs ys -> Gr.empty);
   }
 >

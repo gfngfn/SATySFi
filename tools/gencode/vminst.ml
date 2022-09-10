@@ -499,7 +499,7 @@ make_horz hblst
 |}
     ; inst "BackendTabular"
         ~name:"tabular"
-        ~type_:Type.((tL (tL tCELL)) @-> tRULESF @-> tIB)
+        ~type_:Type.((tL (tL tCELL)) @-> ((tL tLN) @-> (tL tLN) @-> tGR) @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -515,7 +515,7 @@ let rulesf xs ys =
   let valuexs = make_length_list xs in
   let valueys = make_length_list ys in
   let valueret = reducef valuerulesf [valuexs; valueys] in
-  graphics_of_list valueret
+  get_graphics ~msg:"tabular" valueret
 in
 make_horz (HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
 |}
@@ -2192,11 +2192,11 @@ make_graphics grelem
           param "b" ~type_:"float";
           param "c" ~type_:"float";
           param "d" ~type_:"float";
-          param "grelem" ~type_:"graphics_element";
+          param "gr" ~type_:"graphics ~msg:\"linear-transform-graphics\"";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_graphics (GraphicD.make_linear_trans (a, b, c, d) grelem)
+make_graphics (GraphicD.make_linear_trans (a, b, c, d) gr)
 |}
     ; inst "PrimitiveShiftGraphics"
         ~name:"shift-graphics"
@@ -2205,31 +2205,33 @@ make_graphics (GraphicD.make_linear_trans (a, b, c, d) grelem)
         ]
         ~params:[
           param "vec" ~type_:"point";
-          param "grelem" ~type_:"graphics_element";
+          param "gr" ~type_:"graphics ~msg:\"shift-graphics\"";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_graphics (GraphicD.shift_element vec grelem)
+make_graphics (GraphicD.shift vec gr)
 |}
     ; inst "PrimtiveGetGraphicsBBox"
         ~name:"get-graphics-bbox"
-        ~type_:Type.(tGR @-> tPROD [tPT; tPT])
+        ~type_:Type.(tGR @-> tOPT (tPROD [tPT; tPT]))
         ~fields:[
         ]
         ~params:[
-          param "grelem" ~type_:"graphics_element";
+          param "gr" ~type_:"graphics ~msg:\"get-graphics-bbox\"";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let (ptmin, ptmax) =
-  GraphicD.get_element_bbox (fun (x, y) imhblst ->
+let bbox_opt =
+  GraphicD.get_bbox (fun (x, y) imhblst ->
     let (wid, hgt, dpt) = HorzBox.get_metrics_of_intermediate_horz_box_list imhblst in
       ((x, y +% dpt), (x +% wid, y +% hgt))
-  ) grelem
+  ) gr
 in
-let value1 = make_point_value ptmin in
-let value2 = make_point_value ptmax in
-Tuple([value1; value2])
+bbox_opt |> make_option (fun (ptmin, ptmax) ->
+  let value1 = make_point_value ptmin in
+  let value2 = make_point_value ptmax in
+  Tuple([value1; value2])
+)
 |}
     ; inst "Times"
         ~name:"*"
@@ -3021,12 +3023,24 @@ make_list make_string lines
         ]
         ~params:[
           param "pathlst" ~type_:"path_value";
-          param "grelem" ~type_:"graphics_element";
+          param "gr" ~type_:"graphics ~msg:\"clip-graphics-by-path\"";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let grelem = GraphicD.clip_graphics grelem pathlst in
-make_graphics grelem
-(* Does it work correctly when len(pathlst) > 1 ?? *)
+make_graphics (GraphicD.make_clip gr pathlst)
+  (* Does it work correctly when len(pathlst) > 1 ?? *)
+|}
+    ; inst "UniteGraphics"
+        ~name:"unite-graphics"
+        ~type_:Type.(tL tGR @-> tGR)
+        ~fields:[
+        ]
+        ~params:[
+          param "value_grs"
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let grs = get_list (get_graphics ~msg:"unite-graphics") value_grs in
+make_graphics (GraphicD.concat grs)
 |}
     ])

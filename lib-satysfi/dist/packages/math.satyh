@@ -573,7 +573,7 @@ end = struct
     in
     let margin = get-font-size ctx *' margin-ratio in
       line-break true true (ctx |> set-paragraph-margin margin margin)
-        (inline-fil ++ (tabular celllstlst (fun _ _ -> [])) ++ inline-fil)
+        (inline-fil ++ (tabular celllstlst (fun _ _ -> Gr.empty)) ++ inline-fil)
         % temporary
 
 
@@ -1038,7 +1038,7 @@ end = struct
         |> line-to (xpos +' wid, ypos +' hgtaxis -' halflen)
         |> terminate-path
     in
-    let graphics point = [ stroke thk color (path point), ] in
+    let graphics point = stroke thk color (path point) in
     let kerninfo y =
       let widkern = widparen in
       let r = 0. in
@@ -1048,7 +1048,7 @@ end = struct
         else
           0pt
     in
-      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
   val angle-right thk hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
@@ -1060,7 +1060,7 @@ end = struct
         |> line-to (xpos, ypos +' hgtaxis -' halflen)
         |> terminate-path
     in
-    let graphics point = [ stroke thk color (path point), ] in
+    let graphics point = stroke thk color (path point) in
     let kerninfo y =
       let widkern = widparen in
       let r = 0. in
@@ -1105,7 +1105,7 @@ end = struct
         |> bezier-to (x1, ycenter +' qB) (x2 -' p2, ycenter +' halflen -' q2) (x2 +' t1, ycenter +' halflen -' t2)
         |> close-with-line
     in
-    let graphics point = [ fill color (path point), ] in
+    let graphics point = fill color (path point) in
     let kerninfo _ = 0pt in
       (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
@@ -1139,7 +1139,7 @@ end = struct
         |> bezier-to (x1, ycenter +' qB) (x2 -' p2, ycenter +' halflen -' q2) (x2 +' t1, ycenter +' halflen -' t2)
         |> close-with-line
     in
-    let graphics point = [ fill color (path point), ] in
+    let graphics point = fill color (path point) in
     let widparen = w0 +' w1 +' w2 +' w-extra in
     let kerninfo y =
       let widkern = widparen *' 0.5 in
@@ -1151,7 +1151,7 @@ end = struct
         else
           0pt
     in
-      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val math \paren =
@@ -1232,9 +1232,9 @@ end = struct
           |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
           |> close-with-line
     in
-    let graphics point = [ fill color (path point), ] in
+    let graphics point = fill color (path point) in
     let kerninfo _ = 0pt in
-      (inline-graphics (x4 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics (x4 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val brace-right hgt dpt hgtaxis fontsize color =
@@ -1308,9 +1308,9 @@ end = struct
           |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
           |> close-with-line
     in
-    let graphics point = [ fill color (path point), ] in
+    let graphics point = fill color (path point) in
     let kerninfo _ = 0pt in
-      (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val brace-left-long hgt dpt hgtaxis fontsize color =
@@ -1355,9 +1355,9 @@ end = struct
           fP (p2B, q2B), fP (p3A, q3A), fP (x3, y3),
         ]
     in
-    let graphics point = [ fill color (path point), ] in
+    let graphics point = fill color (path point) in
     let kerninfo _ = 0pt in
-      (inline-graphics (x2) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics (x2) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val math \brace =
@@ -1368,10 +1368,11 @@ end = struct
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let halfwid = fontsize *' 0.5 in
     let graphics (x, y) =
-      [ stroke 0.5pt color (Gr.line (x +' halfwid, y +' hgtaxis -' halflen) (x +' halfwid, y +' hgtaxis +' halflen)), ]
+      stroke 0.5pt color
+        (Gr.line (x +' halfwid, y +' hgtaxis -' halflen) (x +' halfwid, y +' hgtaxis +' halflen))
     in
     let kerninfo _ = 0pt in
-      (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val math \setsep m1 m2 =
@@ -1382,10 +1383,11 @@ end = struct
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let halfwid = halflen *' 0.5 in
     let graphics (x, y) =
-      [ stroke 0.5pt color (Gr.line (x, y +' hgtaxis -' halflen) (x +' halfwid *' 2., y +' hgtaxis +' halflen)), ]
+      stroke 0.5pt color
+        (Gr.line (x, y +' hgtaxis -' halflen) (x +' halfwid *' 2., y +' hgtaxis +' halflen))
     in
     let kerninfo _ = 0pt in
-      (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val bracket-metrics fontsize halflen =
@@ -1443,9 +1445,9 @@ end = struct
       let x2 = x1 +' w2 in
         pathf x0 x1 x2 t ypos hgtaxis halflen
     in
-    let graphics point = [ fill color (path point), ] in
+    let graphics point = fill color (path point) in
     let widparen = w0 +' w1 +' w2 in
-      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+    (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
 
   val bracket-right pathf hgt dpt hgtaxis fontsize color =
@@ -1458,8 +1460,8 @@ end = struct
       let x2 = x1 -' w2 in
         pathf x0 x1 x2 t ypos hgtaxis halflen
     in
-    let graphics point = [ fill color (path point), ] in
-      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+    let graphics point = fill color (path point) in
+    (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
 
   val sqbracket-left = bracket-left bracket-path
@@ -1491,9 +1493,9 @@ end = struct
         |> line-to (xpos +' wid *' 0.5, ypos +' hgtaxis -' halflen)
         |> close-with-line
     in
-    let graphics point = [ stroke 0.5pt color (path point), ] in
+    let graphics point = stroke 0.5pt color (path point) in
     let kerninfo _ = 0pt in
-      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val abs-right hgt dpt hgtaxis fontsize color =
@@ -1504,9 +1506,9 @@ end = struct
         |> line-to (xpos +' wid *' 0.5, ypos +' hgtaxis -' halflen)
         |> close-with-line
     in
-    let graphics point = [ stroke 0.5pt color (path point), ] in
+    let graphics point = stroke 0.5pt color (path point) in
     let kerninfo _ = 0pt in
-      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val math \abs =
@@ -1527,9 +1529,9 @@ end = struct
           |> close-with-line
       )
     in
-    let graphics point = [ stroke 0.5pt color (path point), ] in
+    let graphics point = stroke 0.5pt color (path point) in
     let kerninfo _ = 0pt in
-      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val norm-right hgt dpt hgtaxis fontsize color =
@@ -1546,9 +1548,9 @@ end = struct
           |> close-with-line
       )
     in
-    let graphics point = [ stroke 0.5pt color (path point), ] in
+    let graphics point = stroke 0.5pt color (path point) in
     let kerninfo _ = 0pt in
-      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val math \norm =
@@ -1571,14 +1573,14 @@ end = struct
               [NormalCell(pads, ib1), NormalCell(pads, ib2)]
           ))
         in
-        let ib = tabular celllstlst (fun _ _ -> []) in
+        let ib = tabular celllstlst (fun _ _ -> Gr.empty) in
         let (_, hgt, dpt) = get-natural-metrics ib in
         let hgtaxis = get-axis-height ctx in
           raise-inline (hgtaxis -' (hgt +' dpt) *' 0.5) ib
 
       ))
     in
-      math-paren brace-left empty-paren m-inner
+    math-paren brace-left empty-paren m-inner
 
 
 end

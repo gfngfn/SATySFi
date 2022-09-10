@@ -144,7 +144,7 @@ end = struct
     let () = ref-figure <- !ref-figure + 1 in
     let s-num = embed-string (arabic (!ref-figure)) in
     let bb-inner =
-      let d (_, _) _ _ _ = [] in
+      let d (_, _) _ _ _ = Gr.empty in
       block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) (d, d, d, d) (fun ctx -> (
         read-block ctx inner
           +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#s-num; #caption;} ++ inline-fil)
@@ -187,7 +187,7 @@ end = struct
             |> line-to (xL, yB)
             |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
       in
-      [
+      unite-graphics [
         stroke 3pt Color.black path1,
         stroke 1pt Color.black path2,
       ]
@@ -216,7 +216,7 @@ end = struct
             |> terminate-path
         in
         inline-graphics wid thk 0pt (fun pt -> (
-          [ stroke thk Color.black (path pt) ]
+          stroke thk Color.black (path pt)
         ))
       in
       let ib-author = read-inline ctx-author it-author in
@@ -381,7 +381,7 @@ end = struct
           line-break true true ctx ib-text
             +++ line-break true true (ctx |> set-paragraph-margin 0pt 6pt)
               ((inline-graphics hdrwid thickness 0pt
-                (fun (x, y) -> [ fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness))])) ++ inline-fil)
+                (fun (x, y) -> fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness)))) ++ inline-fil)
             +++ bb-float-boxes
       in
       let footer =

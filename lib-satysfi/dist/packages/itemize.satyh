@@ -23,7 +23,7 @@ end = struct
     let cx = x +' 4pt in
     let cy = y +' 4pt in
     let r = 2pt in
-      [ fill color (Gr.circle (cx, cy) r) ]
+    fill color (Gr.circle (cx, cy) r)
 
 
   val make-bullet ctx =
@@ -55,7 +55,7 @@ end = struct
         let parent-indent = item-indent *' (float depth) in
         let pads = (parent-indent +' bullet-width, 0pt, 0pt, 0pt) in
         let decos =
-          let deco _ _ _ _ = [] in
+          let deco _ _ _ _ = Gr.empty in
           (deco, deco, deco, deco)
         in
         let bb-parent =
