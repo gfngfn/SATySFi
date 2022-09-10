@@ -78,10 +78,10 @@ let tDECO = tDECO_raw
 let tDECOSET_raw = tPROD [tDECO; tDECO; tDECO; tDECO]
 let tDECOSET = tDECOSET_raw
 
-let tIGR_raw = tPT @-> (tL tGR)
+let tIGR_raw = tPT @-> tGR
 let tIGR = tIGR_raw
 
-let tIGRO_raw = tLN @-> tPT @-> (tL tGR)
+let tIGRO_raw = tLN @-> tPT @-> tGR
 let tIGRO = tIGRO_raw
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
@@ -167,7 +167,7 @@ let tPAGEPARTSF =
 
 
 let tRULESF =
-  (tL tLN) @-> (tL tLN) @-> (tL tGR)
+  (tL tLN) @-> (tL tLN) @-> tGR
 
 
 let option_type =
