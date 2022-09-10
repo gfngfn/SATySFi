@@ -44,9 +44,9 @@ module LocalParen = struct
       in
         unite-path outer inner
     in
-    let graphics point = [ fill color (path point) ] in
+    let graphics point = fill color (path point) in
     let kerninfo _ = 0pt in
-      (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val record-paren-right hgt dpt hgtaxis fontsize color =
@@ -92,9 +92,9 @@ module LocalParen = struct
       in
         unite-path outer inner
     in
-    let graphics point = [ fill color (path point) ] in
+    let graphics point = fill color (path point) in
     let kerninfo _ = 0pt in
-      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   val math \record-paren =
