@@ -573,7 +573,7 @@ end = struct
     in
     let margin = get-font-size ctx *' margin-ratio in
       line-break true true (ctx |> set-paragraph-margin margin margin)
-        (inline-fil ++ (tabular celllstlst (fun _ _ -> [])) ++ inline-fil)
+        (inline-fil ++ (tabular celllstlst (fun _ _ -> Gr.empty)) ++ inline-fil)
         % temporary
 
 
@@ -1573,7 +1573,7 @@ end = struct
               [NormalCell(pads, ib1), NormalCell(pads, ib2)]
           ))
         in
-        let ib = tabular celllstlst (fun _ _ -> []) in
+        let ib = tabular celllstlst (fun _ _ -> Gr.empty) in
         let (_, hgt, dpt) = get-natural-metrics ib in
         let hgtaxis = get-axis-height ctx in
           raise-inline (hgtaxis -' (hgt +' dpt) *' 0.5) ib

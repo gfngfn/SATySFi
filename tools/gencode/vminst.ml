@@ -499,7 +499,7 @@ make_horz hblst
 |}
     ; inst "BackendTabular"
         ~name:"tabular"
-        ~type_:Type.((tL (tL tCELL)) @-> tRULESF @-> tIB)
+        ~type_:Type.((tL (tL tCELL)) @-> ((tL tLN) @-> (tL tLN) @-> tGR) @-> tIB)
         ~fields:[
         ]
         ~params:[

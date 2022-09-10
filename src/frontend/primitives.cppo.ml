@@ -166,10 +166,6 @@ let tPAGEPARTSF =
   tPCINFO @-> tPAGEPARTS
 
 
-let tRULESF =
-  (tL tLN) @-> (tL tLN) @-> tGR
-
-
 let option_type =
   tOPT
 

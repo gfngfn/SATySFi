@@ -219,6 +219,7 @@ document ?(
             [cellf {Program 3}, cellf {Yes}, cellf {Yes}, cellf {${0.004}}, cellf {${0.078}}],
             [cellf {Program 4}, cellf {Yes}, cellf {Yes}, cellf {${0.008}}, cellf {${0.069}}],
           ])(fun xs ys -> (
+            let grs =
               match (ys, List.reverse ys) with
               | (y0 :: y1 :: y2 :: _, ylast :: _) ->
                     match (xs, List.reverse xs) with
@@ -243,6 +244,8 @@ document ?(
 
               | _ -> []
               end
+            in
+            unite-graphics grs
           ));
         }
       >
