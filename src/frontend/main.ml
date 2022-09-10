@@ -425,7 +425,15 @@ let error_log_environment suspended =
       report_error Interface [
         NormalLine(Printf.sprintf "the font file '%s'," fname);
         NormalLine(Printf.sprintf "which is associated with the font name '%s'," abbrev);
-        NormalLine("is not a single font file; it is a TrueType collection.");
+        NormalLine("is not a single font file.");
+      ]
+
+  | FontInfo.NotATTCElement(abbrev, abspath, i) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "the font file '%s'," fname);
+        NormalLine(Printf.sprintf "which is associated with the font name '%s' and index %d," abbrev i);
+        NormalLine("is not a TrueType collection.");
       ]
 
   | FontInfo.NotASingleMathFont(mfabbrev, abspath) ->
@@ -433,7 +441,15 @@ let error_log_environment suspended =
       report_error Interface [
         NormalLine(Printf.sprintf "the font file '%s'," fname);
         NormalLine(Printf.sprintf "which is associated with the math font name '%s'," mfabbrev);
-        NormalLine("is not a single font file; it is a TrueType collection.");
+        NormalLine("is not a single font file or does not have a MATH table.");
+      ]
+
+  | FontInfo.NotATTCMathFont(mfabbrev, abspath, i) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "the font file '%s'," fname);
+        NormalLine(Printf.sprintf "which is associated with the math font name '%s' and index %d," mfabbrev i);
+        NormalLine("is not a TrueType collection or does not have a MATH table.");
       ]
 
   | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
