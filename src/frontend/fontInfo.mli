@@ -8,7 +8,9 @@ open Types
 exception InvalidFontAbbrev     of font_abbrev
 exception InvalidMathFontAbbrev of math_font_abbrev
 exception NotASingleFont        of font_abbrev * abs_path
-exception NotASingleMathFont    of font_abbrev * abs_path
+exception NotATTCElement        of font_abbrev * abs_path * int
+exception NotASingleMathFont    of math_font_abbrev * abs_path
+exception NotATTCMathFont       of math_font_abbrev * abs_path * int
 
 type tag = string
 
