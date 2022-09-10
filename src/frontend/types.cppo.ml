@@ -82,7 +82,6 @@ type manual_kind =
 [@@deriving show]
 
 type base_type =
-  | EnvType
   | UnitType
   | BoolType
   | IntType

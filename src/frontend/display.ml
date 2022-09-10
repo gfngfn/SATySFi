@@ -196,7 +196,6 @@ let collect_ids_poly (Poly(pty) : poly_type) (dispmap : DisplayMap.t) : DisplayM
 
 
 let show_base_type = function
-  | EnvType     -> "env"  (* -- unused -- *)
   | UnitType    -> "unit"
   | BoolType    -> "bool"
   | IntType     -> "int"
