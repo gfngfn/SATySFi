@@ -62,23 +62,10 @@ let get_list getf value =
   | _          -> report_bug_value "get_list" value
 
 
-let get_graphics_element value =
+let get_graphics value =
   match value with
-  | BaseConstant(BCGraphics(grelem)) -> grelem
-  | _                                -> report_bug_value "get_graphics_element" value
-
-
-let graphics_of_list value : (HorzBox.intermediate_horz_box list) GraphicD.t =
-    match value with
-    | List(vlst) ->
-        vlst |> List.fold_left (fun gracc v ->
-          match v with
-          | BaseConstant(BCGraphics(grelem)) -> GraphicD.extend gracc grelem
-          | _                                -> report_bug_value "graphics_of_list:1" v
-        ) GraphicD.empty
-
-    | _ ->
-        report_bug_value "graphics_of_list:2" value
+  | BaseConstant(BCGraphics(gr)) -> gr
+  | _                            -> report_bug_value "get_graphics" value
 
 
 let get_paddings (value : syntactic_value) =
@@ -615,7 +602,7 @@ let make_frame_deco reducef valuedeco =
      let valuedpt = BaseConstant(BCLength(Length.negate dpt)) in
        (* -- depth values for users are nonnegative -- *)
      let valueret = reducef valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
-     graphics_of_list valueret
+     get_graphics valueret
   )
 
 
@@ -678,7 +665,7 @@ let make_inline_graphics reducef valueg : HorzBox.fixed_graphics =
   (fun (xpos, ypos) ->
      let valuepos = Tuple([BaseConstant(BCLength(xpos)); BaseConstant(BCLength(ypos))]) in
      let valueret = reducef valueg [valuepos] in
-     graphics_of_list valueret
+     get_graphics valueret
   )
 
 
@@ -687,7 +674,7 @@ let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
      let valuepos = Tuple([BaseConstant(BCLength(xpos)); BaseConstant(BCLength(ypos))]) in
      let valuewid = BaseConstant(BCLength(wid)) in
      let valueret = reducef valueg [valuewid; valuepos] in
-     graphics_of_list valueret
+     get_graphics valueret
   )
 
 

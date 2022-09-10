@@ -72,7 +72,7 @@ let tPT           = tPROD [tLN; tLN]
 let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
 
-let tDECO_raw = tPT @-> tLN @-> tLN @-> tLN @-> (tL tGR)
+let tDECO_raw = tPT @-> tLN @-> tLN @-> tLN @-> tGR
 let tDECO = tDECO_raw
 
 let tDECOSET_raw = tPROD [tDECO; tDECO; tDECO; tDECO]
@@ -400,23 +400,20 @@ let default_radical hgt_bar t_bar dpt fontsize color =
   let hB = hA -% wB *% a2 in
 
   let graphics (xpos, ypos) =
-    let grelem =
-      GraphicD.make_fill color [
-        GeneralPath((xpos +% wid, ypos +% hgt_bar), [
-          LineTo(xpos +% wM +% w1 +% w2, ypos -% nonnegdpt);
-          LineTo(xpos +% wM +% w1      , ypos -% nonnegdpt +% h2);
-          LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1);
-          LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1 +% t1);
-          LineTo(xpos +% wM +% wA      , ypos -% nonnegdpt +% hA);
-          LineTo(xpos +% wM +% wA +% wB, ypos -% nonnegdpt +% hB);
-          LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
-          LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
-        ], Some(LineTo(())))
-      ]
-    in
-      GraphicD.singleton grelem
+    GraphicD.make_fill color [
+      GeneralPath((xpos +% wid, ypos +% hgt_bar), [
+        LineTo(xpos +% wM +% w1 +% w2, ypos -% nonnegdpt);
+        LineTo(xpos +% wM +% w1      , ypos -% nonnegdpt +% h2);
+        LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1);
+        LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1 +% t1);
+        LineTo(xpos +% wM +% wA      , ypos -% nonnegdpt +% hA);
+        LineTo(xpos +% wM +% wA +% wB, ypos -% nonnegdpt +% hB);
+        LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
+        LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
+      ], Some(LineTo(())))
+    ]
   in
-    [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, nonnegdpt, graphics))]
+  [ HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, nonnegdpt, graphics)) ]
 
 
 let code_point cp = Uchar.of_int cp
