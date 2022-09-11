@@ -114,11 +114,11 @@ let make_clip (gr_sub : 'a t) (paths : path list) : 'a t =
   singleton @@ Clip(paths, gr_sub)
 
 
-let op_cm_translate (xdiff, ydiff) =
+let op_cm_translate ((xdiff, ydiff) : vector) : Pdfops.t =
   Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (!=> xdiff, !=> ydiff)])
 
 
-let op_cm_scale xratio yratio (xdiff, ydiff) =
+let op_cm_scale (xratio : float) (yratio : float) ((xdiff, ydiff) : vector) : Pdfops.t =
   let matr =
     let open Pdftransform in
       { a = xratio;    b = 0.;
@@ -128,7 +128,7 @@ let op_cm_scale xratio yratio (xdiff, ydiff) =
   Pdfops.Op_cm(matr)
 
 
-let op_cm_linear_trans (a, b, c, d) (xoff, yoff) =
+let op_cm_linear_trans ((a, b, c, d) : matrix) ((xoff, yoff) : vector) : Pdfops.t =
   let matr1 =
     let open Pdftransform in
     { a = 1.; b = 0.;
@@ -154,7 +154,7 @@ let op_cm_linear_trans (a, b, c, d) (xoff, yoff) =
   Pdfops.Op_cm(matr)
 
 
-let op_Tm_translate (xpos, ypos) =
+let op_Tm_translate ((xpos, ypos) : point) : Pdfops.t =
   Pdfops.Op_Tm(Pdftransform.matrix_of_transform [ Pdftransform.Translate(!=> xpos, !=> ypos) ])
 
 
@@ -198,21 +198,21 @@ let pdfop_of_text_color = function
   | DeviceCMYK(c, m, y, k) -> op_k (c, m, y, k)
 
 
-let pdfops_of_elements (ptorigin : point) (elems : (point path_element) list) (closingopt : (unit path_element) option) =
+let pdfops_of_elements (pt_origin : point) (elems : (point path_element) list) (closing_opt : (unit path_element) option) =
   let opacc =
     elems |> List.fold_left (fun acc elem ->
       match elem with
-      | LineTo(ptto)                    -> Alist.extend acc (op_l ptto)
-      | CubicBezierTo(ptc1, ptc2, ptto) -> Alist.extend acc (op_c ptc1 ptc2 ptto)
+      | LineTo(pt_to)                    -> Alist.extend acc (op_l pt_to)
+      | CubicBezierTo(ptc1, ptc2, pt_to) -> Alist.extend acc (op_c ptc1 ptc2 pt_to)
     ) Alist.empty
   in
-  let closingopacc =
-    match closingopt with
+  let opacc =
+    match closing_opt with
     | None                                -> opacc
     | Some(LineTo(()))                    -> Alist.extend opacc op_h
-    | Some(CubicBezierTo(ptc1, ptc2, ())) -> Alist.append opacc [op_c ptc1 ptc2 ptorigin; op_h]
+    | Some(CubicBezierTo(ptc1, ptc2, ())) -> Alist.append opacc [ op_c ptc1 ptc2 pt_origin; op_h ]
   in
-    Alist.to_list closingopacc
+  Alist.to_list opacc
 
 
 let pdfops_of_path (path : path) : Pdfops.t list =
@@ -225,14 +225,14 @@ let pdfops_of_path_list (paths : path list) : Pdfops.t list =
   paths |> List.map pdfops_of_path |> List.concat
 
 
-let pdfop_of_stroke_color stroke_color =
+let pdfop_of_stroke_color (stroke_color : color) : Pdfops.t =
   match stroke_color with
   | DeviceRGB(r, g, b)     -> op_RG (r, g, b)
   | DeviceCMYK(c, m, y, k) -> op_K (c, m, y, k)
   | DeviceGray(gray)       -> op_G gray
 
 
-let pdfop_of_fill_color fill_color =
+let pdfop_of_fill_color (fill_color : color) : Pdfops.t =
   match fill_color with
   | DeviceRGB(r, g, b)     -> op_rg (r, g, b)
   | DeviceCMYK(c, m, y, k) -> op_k (c, m, y, k)
@@ -242,11 +242,9 @@ let pdfop_of_fill_color fill_color =
 let pdfops_of_stroke (line_width : length) (stroke_color : color) (paths : path list) : Pdfops.t list =
   let ops_path = pdfops_of_path_list paths in
   let op_stroke_color = pdfop_of_stroke_color stroke_color in
-  let ops_state =
-    [ op_w line_width; ]
-  in
-  let op_draw = op_S in  (* -- draws only strokes -- *)
-    List.concat [[op_q; op_stroke_color]; ops_state; ops_path; [op_draw; op_Q]]
+  let ops_state = [ op_w line_width; ] in
+  let op_draw = op_S in  (* Draws only strokes *)
+  List.concat [ [ op_q; op_stroke_color ]; ops_state; ops_path; [ op_draw; op_Q ] ]
 
 
 let pdfops_of_dashed_stroke (line_width : length) (d1, d2, d0) (stroke_color : color) (paths : path list) : Pdfops.t list =
@@ -263,7 +261,7 @@ let pdfops_of_dashed_stroke (line_width : length) (d1, d2, d0) (stroke_color : c
 let pdfops_of_fill (fill_color : color) (paths : path list) : Pdfops.t list =
   let ops_path = pdfops_of_path_list paths in
   let op_fill_color = pdfop_of_fill_color fill_color in
-  let op_draw = op_f' in  (* -- draws fills by the even-odd rule -- *)
+  let op_draw = op_f' in  (* Draws fills by the even-odd rule *)
   List.concat [ [ op_q; op_fill_color ]; ops_path; [ op_draw; op_Q ] ]
 
 
@@ -391,7 +389,7 @@ let pdfops_test_skip_fixed (color : color) ((xpos, ypos) : point) (len : length)
   ]
 
 
-let pdfops_test_skip_between_lines color (xpos, ypos) len =
+let pdfops_test_skip_between_lines (color : color) ((xpos, ypos) : point) (len : length) : Pdfops.t list =
   let thk = Length.of_pdf_point 1. in
   let indent = Length.of_pdf_point 3. in
   let x = xpos +% indent in
@@ -405,7 +403,7 @@ let pdfops_test_skip_between_lines color (xpos, ypos) len =
   ]
 
 
-let pdfops_test_skip_margins color (xpos, ypos) len upperopt loweropt =
+let pdfops_test_skip_margins (color : color) ((xpos, ypos) : point) (len : length) (upper_opt : (bool * length) option) (lower_opt : (bool * length) option) : Pdfops.t list =
   let thk = Length.of_pdf_point 1. in
   let thk_nonbreakable = Length.of_pdf_point 0.2 in
   let indentC = Length.of_pdf_point 5. in
@@ -416,7 +414,7 @@ let pdfops_test_skip_margins color (xpos, ypos) len upperopt loweropt =
   let xL = xC +% gap in
   let yB = ypos -% len in
   let pdfopsU =
-    match upperopt with
+    match upper_opt with
     | None ->
         []
 
@@ -431,7 +429,7 @@ let pdfops_test_skip_margins color (xpos, ypos) len upperopt loweropt =
         ]
   in
   let pdfopsL =
-    match loweropt with
+    match lower_opt with
     | None ->
         []
 
@@ -463,7 +461,7 @@ let pdfops_test_skip_margins color (xpos, ypos) len upperopt loweropt =
   ]
 
 
-let pdfops_test_scale color (xpos, ypos) len =
+let pdfops_test_scale (color : color) ((xpos, ypos) : point) (len : length) : Pdfops.t list =
   let len_unit = Length.of_pdf_point 10. in
   let divs =
     let n = truncate (len /% len_unit) in

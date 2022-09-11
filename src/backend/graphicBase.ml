@@ -28,7 +28,7 @@ let ( +@% ) ((x, y) : point) ((vx, vy) : vector) : point =
   (x +% vx, y +% vy)
 
 
-let shift_path_element (v : vector) (pe : 'a path_element) : 'a path_element =
+let shift_path_element (v : vector) (pe : point path_element) : point path_element =
   match pe with
   | LineTo(pt)                  -> LineTo(pt +@% v)
   | CubicBezierTo(pt1, pt2, pt) -> CubicBezierTo(pt1 +@% v, pt2 +@% v, pt +@% v)
