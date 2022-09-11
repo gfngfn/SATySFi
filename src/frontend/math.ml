@@ -988,7 +988,7 @@ let horz_fraction_bar mathctx wid =
   let h_bart        = h_bar +% t_bar *% 0.5 in
   let bar_color = MathContext.color mathctx in
   let bar_graphics (xpos, ypos) =
-    GraphicD.make_fill bar_color [ Rectangle((xpos, ypos +% h_bart), (wid, t_bar)) ]
+    GraphicD.make_fill bar_color [ make_rectangle (xpos, ypos +% h_bart) wid t_bar ]
   in
   HorzPure(PHGFixedGraphics(wid, h_bart, Length.zero, bar_graphics))
 
@@ -1169,7 +1169,7 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
                 HorzPure(PHGFixedGraphics(w_cont, h_bar +% t_bar, Length.zero,
                   (fun (xpos, ypos) ->
                     GraphicD.make_fill (MathContext.color mathctx)
-                      [ Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar)) ]
+                      [ make_rectangle (xpos, ypos +% h_bar) w_cont t_bar ]
                   )
                 ))
               in

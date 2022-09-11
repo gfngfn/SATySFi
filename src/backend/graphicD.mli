@@ -13,7 +13,7 @@ val concat : ('a t) list -> 'a t
 
 val shift : point -> 'a t -> 'a t
 
-val get_bbox : (point -> 'a -> point * point) -> 'a t -> (point * point) option
+val get_bbox : (point -> 'a -> bbox_corners) -> 'a t -> bbox_corners option
 
 val make_fill : color -> path list -> 'a t
 
@@ -23,7 +23,7 @@ val make_dashed_stroke : length -> dash -> color -> path list -> 'a t
 
 val make_text : point -> 'a -> 'a t
 
-val make_linear_trans : (float * float * float * float) -> 'a t -> 'a t
+val make_linear_trans : matrix -> 'a t -> 'a t
 
 val make_clip : 'a t -> path list -> 'a t
 

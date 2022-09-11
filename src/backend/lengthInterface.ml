@@ -24,6 +24,10 @@ let ( <% ) = Length.less_than
 let ( <=% ) = Length.leq
 
 
+let ( !=> ) = Length.to_pdf_point
+let ( !<= ) = Length.of_pdf_point
+
+
 let add_stretchable strc1 strc2 =
   match (strc1, strc2) with
   | (FiniteStretch(w1), FiniteStretch(w2)) -> FiniteStretch(w1 +% w2)
