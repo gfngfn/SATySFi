@@ -631,11 +631,11 @@ make_path (List.map (shift_path ptshift) pathlst)
           param "b" ~type_:"float";
           param "c" ~type_:"float";
           param "d" ~type_:"float";
-          param "pathlst" ~type_:"path_value";
+          param "paths" ~type_:"path_value";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_path (List.map (linear_transform_path ((a, b), (c, d))) pathlst)
+make_path (List.map (linear_transform_path (a, b, c, d)) paths)
 |}
     ; inst "PathGetBoundingBox"
         ~name:"get-path-bbox"
