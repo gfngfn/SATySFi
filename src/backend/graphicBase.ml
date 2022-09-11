@@ -15,7 +15,6 @@ type 'a path_element =
 
 type path =
   | GeneralPath of point * (point path_element) list * (unit path_element) option
-  | Rectangle   of point * point
 
 type vector = point
 
@@ -36,9 +35,6 @@ let shift_path_element (v : vector) (pe : point path_element) : point path_eleme
 
 let shift_path (v : vector) (path : path) : path =
   match path with
-  | Rectangle(pt1, pt2) ->
-      Rectangle(pt1 +@% v, pt2 +@% v)
-
   | GeneralPath(pt0, pes, cycle_opt) ->
       let cycle_opt =
         cycle_opt |> Option.map (function
@@ -78,20 +74,10 @@ let centered_linear_transform_bbox (mat : matrix) ~(center : point) (bbox : bbox
   ((xmin, ymin), (xmax, ymax))
 
 
-let convert_rectangle_to_general_path (path : path) : path =
-  match path with
-  | Rectangle((pt1x, pt1y), (pt2x, pt2y)) ->
-      let pes =
-        [
-          LineTo(pt1x, pt2y);
-          LineTo(pt2x, pt2y);
-          LineTo(pt2x, pt1y);
-        ]
-      in
-      GeneralPath((pt1x, pt1y), pes, Some(LineTo(())))
-
-  | _ ->
-      path
+let make_rectangle ((x1, y1) : point) (wid : length) (hgt : length) : path =
+  let x2 = x1 +% wid in
+  let y2 = y1 +% hgt in
+  GeneralPath((x1, y1), [ LineTo(x1, y2); LineTo(x2, y2); LineTo(x2, y1); ], Some(LineTo(())))
 
 
 let linear_transform_path_element (mat : matrix) (pe : point path_element) : point path_element =
@@ -103,10 +89,7 @@ let linear_transform_path_element (mat : matrix) (pe : point path_element) : poi
 
 let linear_transform_path (mat : matrix) (path : path) : path =
   let trans = linear_transform_point mat in
-  match path |> convert_rectangle_to_general_path with
-  | Rectangle(pt1, pt2) ->
-      assert false
-
+  match path with
   | GeneralPath(pt0, pes, cycleopt) ->
       let cycleopt_s =
         cycleopt |> Option.map (function
@@ -182,9 +165,6 @@ let update_bbox_by_path_element ((ptmin, ptmax) : bbox_corners) (pt_from : point
 
 let get_path_bbox (path : path) : bbox_corners =
   match path with
-  | Rectangle(pt1, pt2) ->
-      (pt1, pt2)
-
   | GeneralPath(pt0, pes, cycle_opt) ->
       let bbox_init = (pt0, pt0) in
       let (bbox, pt_from) =
@@ -208,7 +188,6 @@ let get_path_list_bbox (paths : path list) : bbox_corners =
   let bbox_init =
     match paths with
     | []                          -> assert false  (* Does not deal with the empty path list *)
-    | Rectangle(pt1, pt2) :: _    -> (pt1, pt2)
     | GeneralPath(pt0, _, _) :: _ -> (pt0, pt0)
   in
   paths |> List.fold_left (fun (ptmin0, ptmax0) path ->

@@ -202,7 +202,6 @@ let pdfops_of_elements (pt_origin : point) (elems : (point path_element) list) (
 let pdfops_of_path (path : path) : Pdfops.t list =
   match path with
   | GeneralPath(ptorigin, elems, closingopt) -> (op_m ptorigin) :: (pdfops_of_elements ptorigin elems closingopt)
-  | Rectangle(pt1, pt2)                      -> [ op_re pt1 pt2 ]
 
 
 let pdfops_of_path_list (paths : path list) : Pdfops.t list =
