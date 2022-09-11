@@ -55,18 +55,7 @@ let rec get_element_bbox (textbboxf : point -> 'a -> bbox_corners) (grelem : 'a 
       Some(textbboxf pt textvalue)
 
   | LinearTrans(pt, mat, gr) ->
-      get_bbox textbboxf gr |> Option.map (fun bbox ->
-        let ((xmin, ymin), (xmax, ymax)) = bbox in
-        let (x1, y1) = centered_linear_transform_point mat ~center:pt (xmin, ymin) in
-        let (x2, y2) = centered_linear_transform_point mat ~center:pt (xmin, ymax) in
-        let (x3, y3) = centered_linear_transform_point mat ~center:pt (xmax, ymin) in
-        let (x4, y4) = centered_linear_transform_point mat ~center:pt (xmax, ymax) in
-        let xmin = x1 |> Length.min x2 |> Length.min x3 |> Length.min x4 in
-        let xmax = x1 |> Length.max x2 |> Length.max x3 |> Length.max x4 in
-        let ymin = y1 |> Length.min y2 |> Length.min y3 |> Length.min y4 in
-        let ymax = y1 |> Length.max y2 |> Length.max y3 |> Length.max y4 in
-        ((xmin, ymin), (xmax, ymax))
-      )
+      get_bbox textbboxf gr |> Option.map (centered_linear_transform_bbox mat ~center:pt)
 
 
 and get_bbox (textbboxf : point -> 'a -> bbox_corners) (gr : 'a t) : bbox_corners option =
@@ -77,15 +66,10 @@ and get_bbox (textbboxf : point -> 'a -> bbox_corners) (gr : 'a t) : bbox_corner
         bbox_opt
 
     | Some(bbox0) ->
-        let ((xmin0, ymin0), (xmax0, ymax0)) = bbox0 in
         begin
           match bbox_opt with
-          | None ->
-              bbox0_opt
-
-          | Some(bbox) ->
-              let ((xmin, ymin), (xmax, ymax)) = bbox in
-              Some(((Length.min xmin0 xmin, Length.min ymin0 ymin), (Length.max xmax0 xmax, Length.max ymax0 ymax)))
+          | None       -> bbox0_opt
+          | Some(bbox) -> Some(unite_bbox bbox0 bbox)
         end
   ) None
 

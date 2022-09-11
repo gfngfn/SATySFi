@@ -65,6 +65,19 @@ let centered_linear_transform_point ((a, b, c, d) : matrix) ~center:((cx, cy) : 
   (!<= (a *. relx +. b *. rely +. cx), !<= (c *. relx +. d *. rely +. cy))
 
 
+let centered_linear_transform_bbox (mat : matrix) ~(center : point) (bbox : bbox_corners) : bbox_corners =
+  let ((xmin, ymin), (xmax, ymax)) = bbox in
+  let (x1, y1) = centered_linear_transform_point mat ~center (xmin, ymin) in
+  let (x2, y2) = centered_linear_transform_point mat ~center (xmin, ymax) in
+  let (x3, y3) = centered_linear_transform_point mat ~center (xmax, ymin) in
+  let (x4, y4) = centered_linear_transform_point mat ~center (xmax, ymax) in
+  let xmin = x1 |> Length.min x2 |> Length.min x3 |> Length.min x4 in
+  let xmax = x1 |> Length.max x2 |> Length.max x3 |> Length.max x4 in
+  let ymin = y1 |> Length.min y2 |> Length.min y3 |> Length.min y4 in
+  let ymax = y1 |> Length.max y2 |> Length.max y3 |> Length.max y4 in
+  ((xmin, ymin), (xmax, ymax))
+
+
 let convert_rectangle_to_general_path (path : path) : path =
   match path with
   | Rectangle((pt1x, pt1y), (pt2x, pt2y)) ->
@@ -147,6 +160,12 @@ let update_min ((x0, y0) : point) ((x1, y1) : point) : point =
 
 let update_max ((x0, y0) : point) ((x1, y1) : point) : point =
   (Length.max x0 x1, Length.max y0 y1)
+
+
+let unite_bbox (bbox1 : bbox_corners) (bbox2 : bbox_corners) : bbox_corners =
+  let (pt_min1, pt_max1) = bbox1 in
+  let (pt_min2, pt_max2) = bbox2 in
+  (update_min pt_min1 pt_min2, update_max pt_max1 pt_max2)
 
 
 let update_bbox_by_path_element ((ptmin, ptmax) : bbox_corners) (pt_from : point) (pe : point path_element) : bbox_corners * point =
