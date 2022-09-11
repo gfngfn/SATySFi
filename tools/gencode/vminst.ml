@@ -306,19 +306,20 @@ MathValue([MathParen(parenL, parenR, mlst1)])
         ~fields:[
         ]
         ~params:[
-          param "valueparenL";
-          param "valueparenR";
-          param "valuemiddle";
-          param "mlstlst" ~type_:"math_list";
+          param "value_parenL";
+          param "value_parenR";
+          param "value_middle";
+          param "value_mss";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let parenL = make_paren reducef valueparenL in
-let parenR = make_paren reducef valueparenR in
-let middle = make_paren reducef valuemiddle in
-MathValue([MathParenWithMiddle(parenL, parenR, middle, mlstlst)])
+let parenL = make_paren reducef value_parenL in
+let parenR = make_paren reducef value_parenR in
+let middle = make_paren reducef value_middle in
+let mss = get_list get_math value_mss in
+MathValue([MathParenWithMiddle(parenL, parenR, middle, mss)])
 |}
     ; inst "BackendMathUpperLimit"
         ~name:"math-upper"
@@ -512,10 +513,10 @@ make_horz hblst
 let tabular = get_list (get_list get_cell) valuetabular in
 let (imtabular, widlst, lenlst, wid, hgt, dpt) = Tabular.main tabular in
 let rulesf xs ys =
-  let valuexs = make_length_list xs in
-  let valueys = make_length_list ys in
+  let valuexs = make_list make_length xs in
+  let valueys = make_list make_length ys in
   let valueret = reducef valuerulesf [valuexs; valueys] in
-  get_graphics ~msg:"tabular" valueret
+  get_graphics valueret
 in
 make_horz (HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
 |}
@@ -973,7 +974,7 @@ BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun
         ]
         ~params:[
           param "pagesize" ~type_:"page_size";
-          param "origin_shifts" ~type_:"length_list";
+          param "value_origin_shifts";
           param "valuecolumnhookf";
           param "valuecolumnendhookf";
           param "valuepagecontf";
@@ -983,6 +984,7 @@ BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
+let origin_shifts = get_list get_length value_origin_shifts in
 let columnhookf = make_column_hook_func reducef valuecolumnhookf in
 let columnendhookf = make_column_hook_func reducef valuecolumnendhookf in
 let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
@@ -2192,7 +2194,7 @@ make_graphics grelem
           param "b" ~type_:"float";
           param "c" ~type_:"float";
           param "d" ~type_:"float";
-          param "gr" ~type_:"graphics ~msg:\"linear-transform-graphics\"";
+          param "gr" ~type_:"graphics";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -2205,7 +2207,7 @@ make_graphics (GraphicD.make_linear_trans (a, b, c, d) gr)
         ]
         ~params:[
           param "vec" ~type_:"point";
-          param "gr" ~type_:"graphics ~msg:\"shift-graphics\"";
+          param "gr" ~type_:"graphics";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -2217,7 +2219,7 @@ make_graphics (GraphicD.shift vec gr)
         ~fields:[
         ]
         ~params:[
-          param "gr" ~type_:"graphics ~msg:\"get-graphics-bbox\"";
+          param "gr" ~type_:"graphics";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -3023,7 +3025,7 @@ make_list make_string lines
         ]
         ~params:[
           param "pathlst" ~type_:"path_value";
-          param "gr" ~type_:"graphics ~msg:\"clip-graphics-by-path\"";
+          param "gr" ~type_:"graphics";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -3040,7 +3042,7 @@ make_graphics (GraphicD.make_clip gr pathlst)
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let grs = get_list (get_graphics ~msg:"unite-graphics") value_grs in
+let grs = get_list get_graphics value_grs in
 make_graphics (GraphicD.concat grs)
 |}
     ])
