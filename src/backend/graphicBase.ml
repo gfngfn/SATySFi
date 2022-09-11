@@ -34,15 +34,14 @@ let shift_path_element (v : vector) (pe : point path_element) : point path_eleme
 
 
 let shift_path (v : vector) (path : path) : path =
-  match path with
-  | GeneralPath(pt0, pes, cycle_opt) ->
-      let cycle_opt =
-        cycle_opt |> Option.map (function
-          | LineTo(()) as l             -> l
-          | CubicBezierTo(pt1, pt2, ()) -> CubicBezierTo(pt1 +@% v, pt2 +@% v, ())
-        )
-      in
-      GeneralPath(pt0 +@% v, pes |> List.map (shift_path_element v), cycle_opt)
+  let GeneralPath(pt0, pes, cycle_opt) = path in
+  let cycle_opt =
+    cycle_opt |> Option.map (function
+      | LineTo(()) as l             -> l
+      | CubicBezierTo(pt1, pt2, ()) -> CubicBezierTo(pt1 +@% v, pt2 +@% v, ())
+    )
+  in
+  GeneralPath(pt0 +@% v, pes |> List.map (shift_path_element v), cycle_opt)
 
 
 let linear_transform_point (mat : matrix) ((x, y) : point) : point =
@@ -89,15 +88,14 @@ let linear_transform_path_element (mat : matrix) (pe : point path_element) : poi
 
 let linear_transform_path (mat : matrix) (path : path) : path =
   let trans = linear_transform_point mat in
-  match path with
-  | GeneralPath(pt0, pes, cycleopt) ->
-      let cycleopt_s =
-        cycleopt |> Option.map (function
-          | LineTo(()) as l             -> l
-          | CubicBezierTo(pt1, pt2, ()) -> CubicBezierTo(trans pt1, trans pt2, ())
-        )
-      in
-      GeneralPath(trans pt0, pes |> List.map (linear_transform_path_element mat), cycleopt_s)
+  let GeneralPath(pt0, pes, cycleopt) = path in
+  let cycleopt_s =
+    cycleopt |> Option.map (function
+      | LineTo(()) as l             -> l
+      | CubicBezierTo(pt1, pt2, ()) -> CubicBezierTo(trans pt1, trans pt2, ())
+    )
+  in
+  GeneralPath(trans pt0, pes |> List.map (linear_transform_path_element mat), cycleopt_s)
 
 
 let bezier_bbox ((x0, y0) : point) ((x1, y1) : point) ((x2, y2) : point) ((x3, y3) : point) : bbox_corners =
@@ -152,36 +150,33 @@ let unite_bbox (bbox1 : bbox_corners) (bbox2 : bbox_corners) : bbox_corners =
 
 
 let update_bbox_by_path_element ((ptmin, ptmax) : bbox_corners) (pt_from : point) (pe : point path_element) : bbox_corners * point =
-    match pe with
-    | LineTo(pt_to) ->
-        let bbox = (update_min ptmin pt_to, update_max ptmax pt_to) in
-        (bbox, pt_to)
+  match pe with
+  | LineTo(pt_to) ->
+      let bbox = (update_min ptmin pt_to, update_max ptmax pt_to) in
+      (bbox, pt_to)
 
-    | CubicBezierTo(pt1, pt2, pt_to) ->
-        let (ptminbz, ptmaxbz) = bezier_bbox pt_from pt1 pt2 pt_to in
-        let bbox = (update_min ptmin ptminbz, update_max ptmax ptmaxbz) in
-        (bbox, pt_to)
+  | CubicBezierTo(pt1, pt2, pt_to) ->
+      let (ptminbz, ptmaxbz) = bezier_bbox pt_from pt1 pt2 pt_to in
+      let bbox = (update_min ptmin ptminbz, update_max ptmax ptmaxbz) in
+      (bbox, pt_to)
 
 
 let get_path_bbox (path : path) : bbox_corners =
-  match path with
-  | GeneralPath(pt0, pes, cycle_opt) ->
-      let bbox_init = (pt0, pt0) in
-      let (bbox, pt_from) =
-        pes |> List.fold_left (fun (bbox, pt_from) pe ->
-          update_bbox_by_path_element bbox pt_from pe
-        ) (bbox_init, pt0)
-      in
-      begin
-        match cycle_opt with
-        | None
-        | Some(LineTo(())) ->
-            bbox
+  let GeneralPath(pt0, pes, cycle_opt) = path in
+  let bbox_init = (pt0, pt0) in
+  let (bbox, pt_from) =
+    pes |> List.fold_left (fun (bbox, pt_from) pe ->
+      update_bbox_by_path_element bbox pt_from pe
+    ) (bbox_init, pt0)
+  in
+  match cycle_opt with
+  | None
+  | Some(LineTo(())) ->
+      bbox
 
-        | Some(CubicBezierTo(pt1, pt2, ())) ->
-            let (bbox, _) = update_bbox_by_path_element bbox pt_from (CubicBezierTo(pt1, pt2, pt0)) in
-            bbox
-      end
+  | Some(CubicBezierTo(pt1, pt2, ())) ->
+      let (bbox, _) = update_bbox_by_path_element bbox pt_from (CubicBezierTo(pt1, pt2, pt0)) in
+      bbox
 
 
 let get_path_list_bbox (paths : path list) : bbox_corners =
