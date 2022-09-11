@@ -54,6 +54,17 @@ let linear_transform_point (mat : matrix) ((x, y) : point) : point =
   (x *% a +% y *% b, x *% c +% y *% d)
 
 
+(* Linear transform centered at point (cx, cy) *)
+let centered_linear_transform_point ((a, b, c, d) : matrix) ~center:((cx, cy) : point) ((x, y) : point) : point =
+  let x = !=> x in
+  let y = !=> y in
+  let cx = !=> cx in
+  let cy = !=> cy in
+  let relx = x -. cx in
+  let rely = y -. cy in
+  (!<= (a *. relx +. b *. rely +. cx), !<= (c *. relx +. d *. rely +. cy))
+
+
 let convert_rectangle_to_general_path (path : path) : path =
   match path with
   | Rectangle((pt1x, pt1y), (pt2x, pt2y)) ->
@@ -70,7 +81,7 @@ let convert_rectangle_to_general_path (path : path) : path =
       path
 
 
-let linear_transform_path_element (mat : matrix) (pe : 'a path_element) : 'a path_element =
+let linear_transform_path_element (mat : matrix) (pe : point path_element) : point path_element =
   let trans = linear_transform_point mat in
   match pe with
   | LineTo(pt)                  -> LineTo(trans pt)
@@ -121,9 +132,6 @@ let bezier_bbox ((x0, y0) : point) ((x1, y1) : point) ((x2, y2) : point) ((x3, y
         [r0; r3; bezier_point t_plus r0 r1 r2 r3; bezier_point t_minus r0 r1 r2 r3]
   in
 
-  let ( !=> ) = Length.to_pdf_point in
-  let ( !<= ) = Length.of_pdf_point in
-
   let xopts = aux (!=> x0) (!=> x1) (!=> x2) (!=> x3) in
   let xmax = xopts |> List.fold_left max (!=> x0) in
   let xmin = xopts |> List.fold_left min (!=> x0) in
@@ -141,7 +149,7 @@ let update_max ((x0, y0) : point) ((x1, y1) : point) : point =
   (Length.max x0 x1, Length.max y0 y1)
 
 
-let update_bbox_by_path_element ((ptmin, ptmax) : bbox_corners) (pt_from : point) (pe : 'a path_element) : bbox_corners * point =
+let update_bbox_by_path_element ((ptmin, ptmax) : bbox_corners) (pt_from : point) (pe : point path_element) : bbox_corners * point =
     match pe with
     | LineTo(pt_to) ->
         let bbox = (update_min ptmin pt_to, update_max ptmax pt_to) in

@@ -42,21 +42,6 @@ and shift (v : point) (gr : 'a t) : 'a t =
   gr |> List.map (shift_element v)
 
 
-let (~%) = Length.to_pdf_point
-
-
-(* linear transform centered at point (cx, cy) *)
-let linear_trans_point ((a, b, c, d) : matrix) ((cx, cy) : point) ((x, y) : point) : point =
-  let x = ~% x in
-  let y = ~% y in
-  let cx = ~% cx in
-  let cy = ~% cy in
-  let relx = x -. cx in
-  let rely = y -. cy in
-  (Length.of_pdf_point (a *. relx +. b *. rely +. cx),
-  Length.of_pdf_point (c *. relx +. d *. rely +. cy))
-
-
 let rec get_element_bbox (textbboxf : point -> 'a -> bbox_corners) (grelem : 'a element) : bbox_corners option =
   match grelem with
   | Fill(_, paths)
@@ -72,10 +57,10 @@ let rec get_element_bbox (textbboxf : point -> 'a -> bbox_corners) (grelem : 'a 
   | LinearTrans(pt, mat, gr) ->
       get_bbox textbboxf gr |> Option.map (fun bbox ->
         let ((xmin, ymin), (xmax, ymax)) = bbox in
-        let (x1, y1) = linear_trans_point mat pt (xmin, ymin) in
-        let (x2, y2) = linear_trans_point mat pt (xmin, ymax) in
-        let (x3, y3) = linear_trans_point mat pt (xmax, ymin) in
-        let (x4, y4) = linear_trans_point mat pt (xmax, ymax) in
+        let (x1, y1) = centered_linear_transform_point mat ~center:pt (xmin, ymin) in
+        let (x2, y2) = centered_linear_transform_point mat ~center:pt (xmin, ymax) in
+        let (x3, y3) = centered_linear_transform_point mat ~center:pt (xmax, ymin) in
+        let (x4, y4) = centered_linear_transform_point mat ~center:pt (xmax, ymax) in
         let xmin = x1 |> Length.min x2 |> Length.min x3 |> Length.min x4 in
         let xmax = x1 |> Length.max x2 |> Length.max x3 |> Length.max x4 in
         let ymin = y1 |> Length.min y2 |> Length.min y3 |> Length.min y4 in
@@ -130,7 +115,7 @@ let make_clip (gr_sub : 'a t) (paths : path list) : 'a t =
 
 
 let op_cm_translate (xdiff, ydiff) =
-  Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (~% xdiff, ~% ydiff)])
+  Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (!=> xdiff, !=> ydiff)])
 
 
 let op_cm_scale xratio yratio (xdiff, ydiff) =
@@ -138,7 +123,7 @@ let op_cm_scale xratio yratio (xdiff, ydiff) =
     let open Pdftransform in
       { a = xratio;    b = 0.;
         c = 0.;        d = yratio;
-        e = ~% xdiff;  f = ~% ydiff; }
+        e = !=> xdiff;  f = !=> ydiff; }
   in
   Pdfops.Op_cm(matr)
 
@@ -148,7 +133,7 @@ let op_cm_linear_trans (a, b, c, d) (xoff, yoff) =
     let open Pdftransform in
     { a = 1.; b = 0.;
       c = 0.; d = 1.;
-      e = ~-.(~% xoff);  f = ~-.(~% yoff); }
+      e = ~-.(!=> xoff);  f = ~-.(!=> yoff); }
   in
   let matr2 =
     let open Pdftransform in
@@ -160,7 +145,7 @@ let op_cm_linear_trans (a, b, c, d) (xoff, yoff) =
     let open Pdftransform in
     { a = 1.; b = 0.;
       c = 0.; d = 1.;
-      e = ~% xoff;  f = ~% yoff; }
+      e = !=> xoff;  f = !=> yoff; }
   in
   let matr =
     matr1 |> Pdftransform.matrix_compose matr2
@@ -170,21 +155,21 @@ let op_cm_linear_trans (a, b, c, d) (xoff, yoff) =
 
 
 let op_Tm_translate (xpos, ypos) =
-  Pdfops.Op_Tm(Pdftransform.matrix_of_transform [ Pdftransform.Translate(~% xpos, ~% ypos) ])
+  Pdfops.Op_Tm(Pdftransform.matrix_of_transform [ Pdftransform.Translate(!=> xpos, !=> ypos) ])
 
 
-let op_Tf tag sl = Pdfops.Op_Tf(tag, ~% sl)
+let op_Tf tag sl = Pdfops.Op_Tf(tag, !=> sl)
 let op_Tj str = Pdfops.Op_Tj(str)
 let op_Tj_hex str = Pdfops.Op_Tj_hex(str)
 let op_TJ obj = Pdfops.Op_TJ(obj)
-let op_Ts len = Pdfops.Op_Ts(~% len)
+let op_Ts len = Pdfops.Op_Ts(!=> len)
 let op_BT = Pdfops.Op_BT
 let op_ET = Pdfops.Op_ET
-let op_m (x, y) = Pdfops.Op_m(~% x, ~% y)
-let op_l (x, y) = Pdfops.Op_l(~% x, ~% y)
-let op_c (p1, q1) (p2, q2) (x, y) = Pdfops.Op_c(~% p1, ~% q1, ~% p2, ~% q2, ~% x, ~% y)
+let op_m (x, y) = Pdfops.Op_m(!=> x, !=> y)
+let op_l (x, y) = Pdfops.Op_l(!=> x, !=> y)
+let op_c (p1, q1) (p2, q2) (x, y) = Pdfops.Op_c(!=> p1, !=> q1, !=> p2, !=> q2, !=> x, !=> y)
 let op_h = Pdfops.Op_h
-let op_re (x, y) (w, h) = Pdfops.Op_re(~% x, ~% y, ~% w, ~% h)
+let op_re (x, y) (w, h) = Pdfops.Op_re(!=> x, !=> y, !=> w, !=> h)
 
 let op_q = Pdfops.Op_q
 let op_Q = Pdfops.Op_Q
@@ -201,8 +186,8 @@ let op_f = Pdfops.Op_f
 let op_f' = Pdfops.Op_f'
 let op_B = Pdfops.Op_B
 let op_B' = Pdfops.Op_B'
-let op_M ml = Pdfops.Op_M(~% ml)
-let op_w lw = Pdfops.Op_w(~% lw)
+let op_M ml = Pdfops.Op_M(!=> ml)
+let op_w lw = Pdfops.Op_w(!=> lw)
 
 let op_Do name = Pdfops.Op_Do(name)
 
@@ -268,7 +253,7 @@ let pdfops_of_dashed_stroke (line_width : length) (d1, d2, d0) (stroke_color : c
   let ops_path = pdfops_of_path_list paths in
   let op_stroke_color = pdfop_of_stroke_color stroke_color in
   let ops_state =
-    let op_dashed = Pdfops.Op_d([~% d1; ~% d2], ~% d0) in
+    let op_dashed = Pdfops.Op_d([ !=> d1; !=> d2 ], !=> d0) in
     [ op_w line_width; op_dashed ]
   in
   let op_draw = op_S in
