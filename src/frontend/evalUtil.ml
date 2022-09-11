@@ -62,10 +62,10 @@ let get_list getf value =
   | _          -> report_bug_value "get_list" value
 
 
-let get_graphics ~msg (value : syntactic_value) =
+let get_graphics (value : syntactic_value) =
   match value with
   | BaseConstant(BCGraphics(gr)) -> gr
-  | _                            -> report_bug_value (Printf.sprintf "get_graphics (%s)" msg) value
+  | _                            -> report_bug_value "get_graphics" value
 
 
 let get_paddings (value : syntactic_value) : HorzBox.paddings =
@@ -357,9 +357,6 @@ let get_length (value : syntactic_value) : length =
   | _                           -> report_bug_value "get_length" value
 
 
-let get_length_list = get_list get_length
-
-
 let get_page_size (value : syntactic_value) : length * length =
   get_pair get_length get_length value
 
@@ -368,9 +365,6 @@ let get_math value : math list =
     match value with
     | MathValue(mlst) -> mlst
     | _               -> report_bug_value "get_math" value
-
-
-let get_math_list = get_list get_math
 
 
 let get_bool value : bool =
@@ -488,14 +482,6 @@ let make_page_break_info pbinfo =
 
 let make_page_content_info pcinfo =
   make_page_break_info pcinfo  (* temporary *)
-(*
-  let asc =
-    LabelMap.of_list [
-      ("page-number", IntegerConstant(pcinfo.HorzBox.page_number));
-    ]
-  in
-    RecordValue(asc)
-*)
 
 
 let make_hook (reducef : syntactic_value -> syntactic_value list -> syntactic_value) (valuehook : syntactic_value) : (HorzBox.page_break_info -> point -> unit) =
@@ -600,9 +586,9 @@ let make_frame_deco reducef valuedeco =
      let valuewid = BaseConstant(BCLength(wid)) in
      let valuehgt = BaseConstant(BCLength(hgt)) in
      let valuedpt = BaseConstant(BCLength(Length.negate dpt)) in
-       (* -- depth values for users are nonnegative -- *)
+       (* Depth values for users are nonnegative *)
      let valueret = reducef valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
-     get_graphics ~msg:"make_frame_deco" valueret
+     get_graphics valueret
   )
 
 
@@ -618,7 +604,7 @@ let make_paren reducef valueparenf : HorzBox.paren =
   (fun hgt dpt hgtaxis fontsize color ->
      let valuehgt      = BaseConstant(BCLength(hgt)) in
      let valuedpt      = BaseConstant(BCLength(Length.negate dpt)) in
-     (* -- depth values for users are nonnegative -- *)
+     (* Depth values for users are nonnegative *)
      let valuehgtaxis  = BaseConstant(BCLength(hgtaxis)) in
      let valuefontsize = BaseConstant(BCLength(fontsize)) in
      let valuecolor    = make_color_value color in
@@ -665,7 +651,7 @@ let make_inline_graphics reducef valueg : HorzBox.fixed_graphics =
   (fun (xpos, ypos) ->
      let valuepos = Tuple([BaseConstant(BCLength(xpos)); BaseConstant(BCLength(ypos))]) in
      let valueret = reducef valueg [valuepos] in
-     get_graphics ~msg:"make_inline_graphics" valueret
+     get_graphics valueret
   )
 
 
@@ -674,33 +660,24 @@ let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
      let valuepos = Tuple([BaseConstant(BCLength(xpos)); BaseConstant(BCLength(ypos))]) in
      let valuewid = BaseConstant(BCLength(wid)) in
      let valueret = reducef valueg [valuewid; valuepos] in
-     get_graphics ~msg:"make_inline_graphics_outer" valueret
+     get_graphics valueret
   )
 
 
-(*
-let get_math_command_func reducef valuemcmd : math_command_func =
-  MathCommand(fun ctx mlst ->
-    let valuectx = Context(ctx) in
-    let valuemath = MathValue(mlst) in
-    let valueret = reducef valuemcmd [valuectx; valuemath] in
-    get_horz valueret
-  )
-*)
 let get_math_command_func _ valuemcmd =
   MathCommand(valuemcmd)
 
-let make_math_command_func (MathCommand(valuemcmd)) = valuemcmd
+
+let make_math_command_func (MathCommand(valuemcmd)) =
+  valuemcmd
+
 
 let get_code_text_command_func _ valuectcmd =
   CodeTextCommand(valuectcmd)
 
-let make_list (type a) (makef : a -> syntactic_value) (lst : a list) : syntactic_value =
-  List(lst |> List.map makef)
 
-
-let make_length_list lenlst =
-  List(lenlst |> List.map (fun l -> BaseConstant(BCLength(l))))
+let make_list (type a) (makef : a -> syntactic_value) (xs : a list) : syntactic_value =
+  List(xs |> List.map makef)
 
 
 let make_line_stack (hbss : (HorzBox.horz_box list) list) =
