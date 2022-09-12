@@ -506,11 +506,11 @@ bind_block:
       }
 ;
 bind_math:
-  | cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let rng = make_range (Ranged cs) (Ranged utast) in
         let curried = curry_lambda_abstraction param_units utast in
-        (cs, (rng, UTLambdaMath(curried)))
+        (cs, (rng, UTLambdaMath(ident_ctx, curried)))
       }
 ;
 bind_type:

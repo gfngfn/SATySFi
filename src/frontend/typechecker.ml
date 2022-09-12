@@ -999,59 +999,83 @@ let rec typecheck
       unify ty2 (get_range utast2, BaseType(TextRowType));
       (Concat(e1, e2), (rng, BaseType(TextRowType)))
 
-  | UTLambdaHorz(ident, utast1) ->
-      let (rng_var, varnm_ctx) = ident in
-      let (bstyvar, bstyret) =
+  | UTLambdaHorz(ident_ctx, utast1) ->
+      let (rng_var, varnm_ctx) = ident_ctx in
+      let (bsty_var, bsty_ret) =
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
           (ContextType, BoxRowType)
       in
-      let evid = EvalVarID.fresh ident in
-      let tyenvsub =
-        let ventry =
-          {
-            val_type  = Poly(rng_var, BaseType(bstyvar));
-            val_name  = Some(evid);
-            val_stage = pre.stage;
-          }
+      let evid = EvalVarID.fresh ident_ctx in
+      let (e1, ty1) =
+        let tyenv_sub =
+          let ventry =
+            {
+              val_type  = Poly(rng_var, BaseType(bsty_var));
+              val_name  = Some(evid);
+              val_stage = pre.stage;
+            }
+          in
+          tyenv |> Typeenv.add_value varnm_ctx ventry
         in
-        tyenv |> Typeenv.add_value varnm_ctx ventry
+        typecheck_iter tyenv_sub utast1
       in
-      let (e1, ty1) = typecheck_iter tyenvsub utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
-      unify tyret (Range.dummy "lambda-horz-return", BaseType(bstyret));
+      unify tyret (Range.dummy "lambda-horz-return", BaseType(bsty_ret));
       (abstraction evid e1, (rng, HorzCommandType(cmdargtylist)))
 
-  | UTLambdaVert(ident, utast1) ->
-      let (rng_var, varnm_ctx) = ident in
-      let (bstyvar, bstyret) =
+  | UTLambdaVert(ident_ctx, utast1) ->
+      let (rng_var, varnm_ctx) = ident_ctx in
+      let (bsty_var, bsty_ret) =
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
           (ContextType, BoxColType)
       in
-      let evid = EvalVarID.fresh ident in
-      let tyenvsub =
-        let ventry =
-          {
-            val_type  = Poly(rng_var, BaseType(bstyvar));
-            val_name  = Some(evid);
-            val_stage = pre.stage;
-          }
+      let evid = EvalVarID.fresh ident_ctx in
+      let (e1, ty1) =
+        let tyenv_sub =
+          let ventry =
+            {
+              val_type  = Poly(rng_var, BaseType(bsty_var));
+              val_name  = Some(evid);
+              val_stage = pre.stage;
+            }
+          in
+          tyenv |> Typeenv.add_value varnm_ctx ventry
         in
-        tyenv |> Typeenv.add_value varnm_ctx ventry
+        typecheck_iter tyenv_sub utast1
       in
-      let (e1, ty1) = typecheck_iter tyenvsub utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
-      unify tyret (Range.dummy "lambda-vert-return", BaseType(bstyret));
+      unify tyret (Range.dummy "lambda-vert-return", BaseType(bsty_ret));
       (abstraction evid e1, (rng, VertCommandType(cmdargtylist)))
 
-  | UTLambdaMath(utastF) ->
-      let (eF, tyF) = typecheck_iter tyenv utastF in
-      let (cmdargtylist, tyret) = flatten_type tyF in
-      unify tyret (Range.dummy "lambda-math-return", BaseType(MathType));
-      (eF, (rng, MathCommandType(cmdargtylist)))
+  | UTLambdaMath(ident_ctx, utast1) ->
+      let (rng_var, varnm_ctx) = ident_ctx in
+      let (bsty_var, bsty_ret) =
+        if OptionState.is_text_mode () then
+          (TextInfoType, StringType)
+        else
+          (ContextType, BoxMathType)
+      in
+      let evid = EvalVarID.fresh ident_ctx in
+      let (e1, ty1) =
+        let tyenv_sub =
+          let ventry =
+            {
+              val_type  = Poly(rng_var, BaseType(bsty_var));
+              val_name  = Some(evid);
+              val_stage = pre.stage;
+            }
+          in
+          tyenv |> Typeenv.add_value varnm_ctx ventry
+        in
+        typecheck_iter tyenv_sub utast1
+      in
+      let (cmdargtylist, tyret) = flatten_type ty1 in
+      unify tyret (Range.dummy "lambda-math-return", BaseType(bsty_ret));
+      (abstraction evid e1, (rng, MathCommandType(cmdargtylist)))
 
   | UTApply(opts, utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
@@ -1229,7 +1253,7 @@ let rec typecheck
       (UpdateField(e1, label, e2), ty1)
 
   | UTMath(utmath) ->
-      let tymath = (rng, BaseType(MathType)) in
+      let tymath = (rng, BaseType(TextMathType)) in
       let utast = typecheck_math pre tyenv utmath in
       (utast, tymath)
 
@@ -1383,7 +1407,7 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
 
     | UTMEmbed(utast0) ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "math-embedded-var", BaseType(MathType));
+        unify ty0 (Range.dummy "math-embedded-var", BaseType(TextMathType));
         e0
 
 
@@ -1480,9 +1504,9 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
               assert false
         end
 
-    | (_, UTInputHorzEmbeddedMath(utastmath)) :: tail ->
-        let (emath, tymath) = typecheck pre tyenv utastmath in
-        unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(MathType));
+    | (_, UTInputHorzEmbeddedMath(utast_math)) :: tail ->
+        let (emath, tymath) = typecheck pre tyenv utast_math in
+        unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(TextMathType));
         aux (Alist.extend acc (InputHorzEmbeddedMath(emath))) tail
 
     | (_, UTInputHorzEmbeddedCodeText(s)) :: tail ->

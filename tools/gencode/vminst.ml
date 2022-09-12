@@ -91,7 +91,7 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let uchs = let uchs
 |}
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"
-        ~type_:Type.(tICMD tMATH @-> tCTX @-> tCTX)
+        ~type_:Type.(tICMD tMT @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
@@ -121,7 +121,7 @@ Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
     ; inst "BackendMathVariantCharDirect"
         ~name:"math-variant-char"
-        ~type_:Type.(tMATHCLS @-> tMCSTY @-> tMATH)
+        ~type_:Type.(tMATHCLS @-> tMCSTY @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -137,7 +137,7 @@ MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
 |}
     ; inst "BackendGetLeftMathClass"
         ~name:"get-left-math-class"
-        ~type_:Type.(tCTX @-> tMATH @-> tOPT tMATHCLS)
+        ~type_:Type.(tCTX @-> tMB @-> tOPT tMATHCLS)
         ~fields:[
         ]
         ~params:[
@@ -157,7 +157,7 @@ match mathlst with
 |}
     ; inst "BackendGetRightMathClass"
         ~name:"get-right-math-class"
-        ~type_:Type.(tCTX @-> tMATH @-> tOPT tMATHCLS)
+        ~type_:Type.(tCTX @-> tMB @-> tOPT tMATHCLS)
         ~fields:[
         ]
         ~params:[
@@ -177,7 +177,7 @@ match List.rev mathlst with
 |}
     ; inst "BackendSpaceBetweenMaths"
         ~name:"space-between-maths"
-        ~type_:Type.(tCTX @-> tMATH @-> tMATH @-> tOPT tIB)
+        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tOPT tIB)
         ~fields:[
         ]
         ~params:[
@@ -195,7 +195,7 @@ match hbspaceopt with
 |}
     ; inst "BackendMathConcat"
         ~name:"math-concat"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
+        ~type_:Type.(tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -209,7 +209,7 @@ MathValue(List.append mlst1 mlst2)
 |}
     ; inst "BackendMathGroup"
         ~name:"math-group"
-        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)
+        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -224,7 +224,7 @@ MathValue([MathGroup(mathcls1, mathcls2, mlst)])
 |}
     ; inst "BackendMathSuperscript"
         ~name:"math-sup"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
+        ~type_:Type.(tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -238,7 +238,7 @@ MathValue([MathSuperscript(mlst1, mlst2)])
 |}
     ; inst "BackendMathSubscript"
         ~name:"math-sub"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
+        ~type_:Type.(tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -252,7 +252,7 @@ MathValue([MathSubscript(mlst1, mlst2)])
 |}
     ; inst "BackendMathFraction"
         ~name:"math-frac"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
+        ~type_:Type.(tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -266,7 +266,7 @@ MathValue([MathFraction(mlst1, mlst2)])
 |}
     ; inst "BackendMathRadical"
         ~name:"math-radical"
-        ~type_:Type.(tOPT tMATH @-> tMATH @-> tMATH)
+        ~type_:Type.(tOPT tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -284,7 +284,7 @@ match mlst1opt with
 |}
     ; inst "BackendMathParen"
         ~name:"math-paren"
-        ~type_:Type.(tPAREN @-> tPAREN @-> tMATH @-> tMATH)
+        ~type_:Type.(tPAREN @-> tPAREN @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -302,7 +302,7 @@ MathValue([MathParen(parenL, parenR, mlst1)])
 |}
     ; inst "BackendMathParenWithMiddle"
         ~name:"math-paren-with-middle"
-        ~type_:Type.(tPAREN @-> tPAREN @-> tPAREN @-> tL tMATH @-> tMATH)
+        ~type_:Type.(tPAREN @-> tPAREN @-> tPAREN @-> tL tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -323,7 +323,7 @@ MathValue([MathParenWithMiddle(parenL, parenR, middle, mss)])
 |}
     ; inst "BackendMathUpperLimit"
         ~name:"math-upper"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
+        ~type_:Type.(tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -337,7 +337,7 @@ MathValue([MathUpperLimit(mlst1, mlst2)])
 |}
     ; inst "BackendMathLowerLimit"
         ~name:"math-lower"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
+        ~type_:Type.(tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -351,7 +351,7 @@ MathValue([MathLowerLimit(mlst1, mlst2)])
 |}
     ; inst "BackendMathPullInScripts"
         ~name:"math-pull-in-scripts"
-        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> (tOPT tMATH @-> tOPT tMATH @-> tMATH) @-> tMATH)
+        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> (tOPT tMB @-> tOPT tMB @-> tMB) @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -369,7 +369,7 @@ MathValue(mlst)
 |}
     ; inst "BackendMathChar"
         ~name:"math-char"
-        ~type_:Type.(tMATHCLS @-> tS @-> tMATH)
+        ~type_:Type.(tMATHCLS @-> tS @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -384,7 +384,7 @@ MathValue(mlst)
 |}
     ; inst "BackendMathBigChar"
         ~name:"math-big-char"
-        ~type_:Type.(tMATHCLS @-> tS @-> tMATH)
+        ~type_:Type.(tMATHCLS @-> tS @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -399,7 +399,7 @@ MathValue(mlst)
 |}
     ; inst "BackendMathCharWithKern"
         ~name:"math-char-with-kern"
-        ~type_:Type.(tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)
+        ~type_:Type.(tMATHCLS @-> tS @-> mckf @-> mckf @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -419,7 +419,7 @@ MathValue(mlst)
 |}
     ; inst "BackendMathBigCharWithKern"
         ~name:"math-big-char-with-kern"
-        ~type_:Type.(tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)
+        ~type_:Type.(tMATHCLS @-> tS @-> mckf @-> mckf @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -439,7 +439,7 @@ MathValue(mlst)
 |}
     ; inst "BackendMathText"
         ~name:"text-in-math"
-        ~type_:Type.(tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)
+        ~type_:Type.(tMATHCLS @-> (tCTX @-> tIB) @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -455,9 +455,9 @@ let hblstf ictx =
 in
 MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
 |}
-    ; inst "BackendMathColor"
+    ; inst "BackendMathColor" (* TODO: migrate to contexts and abandon this *)
         ~name:"math-color"
-        ~type_:Type.(tCLR @-> tMATH @-> tMATH)
+        ~type_:Type.(tCLR @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -469,9 +469,9 @@ MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
         ~code:{|
 MathValue(HorzBox.([MathChangeContext(MathChangeColor(color), mlst)]))
 |}
-    ; inst "BackendMathCharClass"
+    ; inst "BackendMathCharClass" (* TODO: migrate to contexts and abandon this *)
         ~name:"math-char-class"
-        ~type_:Type.(tMCCLS @-> tMATH @-> tMATH)
+        ~type_:Type.(tMCCLS @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
@@ -485,7 +485,7 @@ MathValue(HorzBox.([MathChangeContext(MathChangeMathCharClass(mccls), mlst)]))
 |}
     ; inst "BackendEmbeddedMath"
         ~name:"embed-math"
-        ~type_:Type.(tCTX @-> tMATH @-> tIB)
+        ~type_:Type.(tCTX @-> tMB @-> tIB)
         ~fields:[
         ]
         ~params:[
@@ -1136,7 +1136,7 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 |}
     ; inst "PrimitiveGetInitialContext"
         ~name:"get-initial-context"
-        ~type_:Type.(tLN @-> tICMD tMATH @-> tCTX)
+        ~type_:Type.(tLN @-> tICMD tMT @-> tCTX)
         ~fields:[
         ]
         ~params:[

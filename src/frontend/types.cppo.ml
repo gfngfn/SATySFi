@@ -90,15 +90,16 @@ type base_type =
   | StringType
   | TextRowType
   | TextColType
+  | TextMathType
   | BoxRowType
   | BoxColType
+  | BoxMathType
   | ContextType
   | PrePathType
   | PathType
   | GraphicsType
   | ImageType
   | DocumentType
-  | MathType
   | RegExpType
   | TextInfoType
   | InputPosType
@@ -143,15 +144,16 @@ let base_type_map : base_type TypeNameMap.t =
     ("string"      , StringType  );
     ("inline-text" , TextRowType );
     ("block-text"  , TextColType );
+    ("math-text"   , TextMathType);
     ("inline-boxes", BoxRowType  );
     ("block-boxes" , BoxColType  );
+    ("math-boxes"  , BoxMathType );
     ("context"     , ContextType );
     ("pre-path"    , PrePathType );
     ("path"        , PathType    );
     ("graphics"    , GraphicsType);
     ("image"       , ImageType   );
     ("document"    , DocumentType);
-    ("math-text"   , MathType    );
     ("regexp"      , RegExpType  );
     ("text-info"   , TextInfoType);
     ("input-position", InputPosType);
@@ -444,7 +446,7 @@ and untyped_abstract_tree_main =
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaHorz           of var_name ranged * untyped_abstract_tree
   | UTLambdaVert           of var_name ranged * untyped_abstract_tree
-  | UTLambdaMath           of untyped_abstract_tree
+  | UTLambdaMath           of var_name ranged * untyped_abstract_tree
 (* Horizontal box lists: *)
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
