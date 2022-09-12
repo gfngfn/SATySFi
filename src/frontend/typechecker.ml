@@ -291,7 +291,6 @@ let rec is_nonexpansive_expression e =
   match e with
   | ASTBaseConstant(_)
   | ASTEndOfList
-  | ASTMath(_)
   | Function(_)
   | ContentOf(_) ->
       true
@@ -1254,8 +1253,8 @@ let rec typecheck
 
   | UTMath(utmath) ->
       let tymath = (rng, BaseType(TextMathType)) in
-      let utast = typecheck_math pre tyenv utmath in
-      (utast, tymath)
+      let ms = typecheck_math pre tyenv utmath in
+      (InputMath(ms), tymath)
 
   | UTLexHorz(utastctx, utasth) ->
       let (ectx, tyctx) = typecheck_iter tyenv utastctx in
@@ -1350,7 +1349,7 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
       raise_error (InvalidArityOfCommandApplication(rngcmdapp, arity_expected, arity_actual))
 
 
-and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
+and typecheck_math (pre : pre) (tyenv : Typeenv.t) ((rng, utmathmain) : untyped_math) : math_text list =
   let iter = typecheck_math pre tyenv in
   let check_brace (has_braceS : bool) (utmathS : untyped_math) : unit =
     match (has_braceS, utmathS) with
@@ -1369,24 +1368,23 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
   let open HorzBox in
     match utmathmain with
     | UTMChars(uchs) ->
-        let ms = uchs |> List.map (fun uch -> MathPure(MathVariantChar(uch))) in
-        ASTMath(ms)
+        uchs |> List.map (fun uch -> MathTextChar(uch))
 
-    | UTMList(utmathlst) ->
-        let astlst = utmathlst |> List.map iter in
-        BackendMathList(astlst)
+    | UTMList(utmaths) ->
+        let mss = utmaths |> List.map iter in
+        List.concat mss
 
     | UTMSubScript(utmathB, has_braceS, utmathS) ->
         check_brace has_braceS utmathS;
-        let astB = iter utmathB in
-        let astS = iter utmathS in
-        BackendMathSubscript(astB, astS)
+        let msB = iter utmathB in
+        let msS = iter utmathS in
+        [ MathTextSubscript(msB, msS) ]
 
     | UTMSuperScript(utmathB, has_braceS, utmathS) ->
         check_brace has_braceS utmathS;
-        let astB = iter utmathB in
-        let astS = iter utmathS in
-        BackendMathSuperscript(astB, astS)
+        let msB = iter utmathB in
+        let msS = iter utmathS in
+        [ MathTextSuperscript(msB, msS) ]
 
     | UTMCommand(utastcmd, utcmdarglst) ->
         let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
@@ -1394,8 +1392,8 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
         begin
           match tycmdmain with
           | MathCommandType(cmdargtylstreq) ->
-              let eapp = typecheck_command_arguments ecmd tycmd rng pre tyenv utcmdarglst cmdargtylstreq in
-              eapp
+              let _eapp = typecheck_command_arguments ecmd tycmd rng pre tyenv utcmdarglst cmdargtylstreq in
+              failwith "TODO: UTMCommand"
 
           | HorzCommandType(_) ->
               let (rngcmd, _) = utastcmd in
@@ -1408,7 +1406,7 @@ and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstra
     | UTMEmbed(utast0) ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
         unify ty0 (Range.dummy "math-embedded-var", BaseType(TextMathType));
-        e0
+        [ MathTextEmbed(e0) ]
 
 
 and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =

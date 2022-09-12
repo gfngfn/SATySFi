@@ -6,10 +6,6 @@ open HorzBox
 open Types
 
 
-type low_math_atom =
-  | LowMathGlyph        of math_string_info * length * length * length * OutputText.t
-  | LowMathEmbeddedHorz of horz_box list
-
 type left_kern =
   {
     kernTL             : FontInfo.math_kern_scheme;
@@ -29,7 +25,11 @@ type right_kern =
     last_depth         : length;
   }
 
-type low_math_pure = math_kind * length * length * length * low_math_atom * left_kern * right_kern
+type math_box_element =
+  | MathBoxGlyph        of HorzBox.math_string_info * length * length * length * OutputText.t
+  | MathBoxEmbeddedHorz of HorzBox.horz_box list
+
+type low_math_pure = math_kind * length * length * length * math_box_element * left_kern * right_kern
 
 type low_paren =
   {
@@ -478,49 +478,46 @@ let get_math_kind_of_math_element (ctx : input_context) = function
   | MathVariantChar(uch)            -> let (mk, _) = MathContext.convert_math_variant_char ctx uch in mk
   | MathVariantCharDirect(mk, _, _) -> mk
 
-
-let rec get_left_math_kind (ctx : input_context) = function
-  | MathPure(me)                   -> get_math_kind_of_math_element ctx me
-  | MathPullInScripts(mkL, _, _)   -> mkL
-  | MathGroup(mkL, _, _)           -> mkL
-  | MathSuperscript([], _)         -> MathEnd
-  | MathSuperscript(mathB :: _, _) -> get_left_math_kind ctx mathB
-  | MathSubscript([], _)           -> MathEnd
-  | MathSubscript(mathB :: _, _)   -> get_left_math_kind ctx mathB
-  | MathFraction(_, _)             -> MathInner
-  | MathRadical(_)                 -> MathInner
-  | MathRadicalWithDegree(_, _)    -> MathInner
-  | MathParen(_, _, _)             -> MathOpen
-  | MathParenWithMiddle(_, _, _, _) -> MathOpen
-  | MathLowerLimit(mathB :: _, _)  -> get_left_math_kind ctx mathB
-  | MathLowerLimit([], _)          -> MathEnd
-  | MathUpperLimit(mathB :: _, _)  -> get_left_math_kind ctx mathB
-  | MathUpperLimit([], _)          -> MathEnd
-  | MathChangeContext(_, [])       -> MathEnd
-  | MathChangeContext(_, m :: _)   -> get_left_math_kind ctx m
+let rec get_left_math_kind (ctx : input_context) : math_box -> math_kind = function
+  | MathBoxPure(me)                    -> get_math_kind_of_math_element ctx me
+  | MathBoxGroup(mkL, _, _)            -> mkL
+  | MathBoxSuperscript([], _)          -> MathEnd
+  | MathBoxSuperscript(mathB :: _, _)  -> get_left_math_kind ctx mathB
+  | MathBoxSubscript([], _)            -> MathEnd
+  | MathBoxSubscript(mathB :: _, _)    -> get_left_math_kind ctx mathB
+  | MathBoxFraction(_, _)              -> MathInner
+  | MathBoxRadical(_)                  -> MathInner
+  | MathBoxRadicalWithDegree(_, _)     -> MathInner
+  | MathBoxParen(_, _, _)              -> MathOpen
+  | MathBoxParenWithMiddle(_, _, _, _) -> MathOpen
+  | MathBoxLowerLimit(mathB :: _, _)   -> get_left_math_kind ctx mathB
+  | MathBoxLowerLimit([], _)           -> MathEnd
+  | MathBoxUpperLimit(mathB :: _, _)   -> get_left_math_kind ctx mathB
+  | MathBoxUpperLimit([], _)           -> MathEnd
+  | MathBoxChangeContext(_, [])        -> MathEnd
+  | MathBoxChangeContext(_, m :: _)    -> get_left_math_kind ctx m
 
 
-let rec get_right_math_kind (ctx : input_context) math =
+let rec get_right_math_kind (ctx : input_context) (math : math_box) : math_kind =
   try
     match math with
-    | MathPure(me)                 -> get_math_kind_of_math_element ctx me
-    | MathPullInScripts(_, mkR, _) -> mkR
-    | MathGroup(_, mkR, _)         -> mkR
-    | MathSuperscript([], _)       -> MathEnd
-    | MathSuperscript(mathlst, _)  -> get_right_math_kind ctx (List.hd (List.rev mathlst))
-    | MathSubscript([], _)         -> MathEnd
-    | MathSubscript(mathlst, _)    -> get_right_math_kind ctx (List.hd (List.rev mathlst))
-    | MathFraction(_, _)           -> MathInner
-    | MathRadical(_)               -> MathInner
-    | MathRadicalWithDegree(_, _)  -> MathInner
-    | MathParen(_, _, _)           -> MathClose
-    | MathParenWithMiddle(_, _, _, _) -> MathClose
-    | MathLowerLimit([], _)        -> MathEnd
-    | MathLowerLimit(mathlst, _)   -> get_right_math_kind ctx (List.hd (List.rev mathlst))
-    | MathUpperLimit([], _)        -> MathEnd
-    | MathUpperLimit(mathlst, _)   -> get_right_math_kind ctx (List.hd (List.rev mathlst))
-    | MathChangeContext(_, [])     -> MathEnd
-    | MathChangeContext(_, mlst)   -> get_right_math_kind ctx (List.hd (List.rev mlst))
+    | MathBoxPure(me)                 -> get_math_kind_of_math_element ctx me
+    | MathBoxGroup(_, mkR, _)         -> mkR
+    | MathBoxSuperscript([], _)       -> MathEnd
+    | MathBoxSuperscript(mathlst, _)  -> get_right_math_kind ctx (List.hd (List.rev mathlst))
+    | MathBoxSubscript([], _)         -> MathEnd
+    | MathBoxSubscript(mathlst, _)    -> get_right_math_kind ctx (List.hd (List.rev mathlst))
+    | MathBoxFraction(_, _)           -> MathInner
+    | MathBoxRadical(_)               -> MathInner
+    | MathBoxRadicalWithDegree(_, _)  -> MathInner
+    | MathBoxParen(_, _, _)           -> MathClose
+    | MathBoxParenWithMiddle(_, _, _, _) -> MathClose
+    | MathBoxLowerLimit([], _)        -> MathEnd
+    | MathBoxLowerLimit(mathlst, _)   -> get_right_math_kind ctx (List.hd (List.rev mathlst))
+    | MathBoxUpperLimit([], _)        -> MathEnd
+    | MathBoxUpperLimit(mathlst, _)   -> get_right_math_kind ctx (List.hd (List.rev mathlst))
+    | MathBoxChangeContext(_, [])     -> MathEnd
+    | MathBoxChangeContext(_, mlst)   -> get_right_math_kind ctx (List.hd (List.rev mlst))
   with
   | Invalid_argument(_) -> assert false
 
@@ -656,43 +653,43 @@ let make_radical mathctx radical hgt_bar t_bar dpt =
     hblst
 
 
-let convert_math_char mathctx is_big (uchlst : Uchar.t list) mk =
+let convert_math_char (mathctx : math_context) (is_big : bool) (uchlst : Uchar.t list) (mk : math_kind) =
   let mathstrinfo = FontInfo.get_math_string_info mathctx in
   let is_in_display = true (* temporary *) in
   let (otxt, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic (MathKernInfo(mkiopt)) in
-    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
+  (mk, wid, hgt, dpt, MathBoxGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
 
 
-let convert_math_char_with_kern mathctx is_big (uchlst : Uchar.t list) mk (kernfL : math_char_kern_func) (kernfR : math_char_kern_func) =
+let convert_math_char_with_kern (mathctx : math_context) (is_big : bool) (uchlst : Uchar.t list) (mk : math_kind) (kernfL : math_char_kern_func) (kernfR : math_char_kern_func) =
   let mathstrinfo = FontInfo.get_math_string_info mathctx in
   let is_in_display = true (* temporary *) in
   let (otxt, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
   let fontsize = mathstrinfo.math_font_size in
   let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
-    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
+  (mk, wid, hgt, dpt, MathBoxGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
 
 
-let change_math_context chg mathctx =
+let change_math_context (chg : math_context_change) (mathctx : math_context) : math_context =
   match chg with
   | MathChangeColor(color)         -> mathctx |> MathContext.set_color color
   | MathChangeMathCharClass(mccls) -> mathctx |> MathContext.set_math_char_class mccls
 
 
-let rec check_subscript mlstB =
+let rec check_subscript (mlstB : math_box list) =
   match List.rev mlstB with
-  | MathSubscript(mlstBB, mlstT) :: mtailrev ->
+  | MathBoxSubscript(mlstBB, mlstT) :: mtailrev ->
     (* -- if the last element of the base contents has a subscript -- *)
       let mlstBnew = List.rev_append mtailrev mlstBB in
       Some((mlstT, mlstBnew))
 
-  | MathChangeContext(chg, mlstBsub) :: mtailrev ->
+  | MathBoxChangeContext(chg, mlstBsub) :: mtailrev ->
       begin
         match check_subscript mlstBsub with
         | Some((mlstT, mlstBsubnew)) ->
-            let mlstBnew = List.rev (MathChangeContext(chg, mlstBsubnew) :: mtailrev) in
-              Some(([MathChangeContext(chg, mlstT)], mlstBnew))
+            let mlstBnew = List.rev (MathBoxChangeContext(chg, mlstBsubnew) :: mtailrev) in
+            Some(([ MathBoxChangeContext(chg, mlstT) ], mlstBnew))
 
         | None ->
             None
@@ -701,9 +698,9 @@ let rec check_subscript mlstB =
   | _ -> None
 
 
-let check_pull_in mlstB =
+let check_pull_in (mlstB : math_text list) =
   match List.rev mlstB with
-  | MathPullInScripts(mkL, mkR, mlstf) :: mtailrev ->
+  | MathTextPullInScripts(mkL, mkR, mlstf) :: mtailrev ->
     (* -- if the last element of the base contents is a pull-in-scripts -- *)
       Some(((mkL, mkR, mlstf), List.rev mtailrev))
 
@@ -711,13 +708,13 @@ let check_pull_in mlstB =
       None
 
 
-let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) (me : math_element) : low_math_pure =
+let convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) (me : math_element) : low_math_pure =
   match me with
   | MathElement(mkraw, MathEmbeddedText(hblstf)) ->
       let hblst = hblstf (MathContext.context_for_text mathctx) in
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
       let mk = normalize_math_kind mkprev mknext mkraw in
-        (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
+      (mk, wid, hgt, dpt, MathBoxEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
 
   | MathVariantChar(uch_from) ->
       let (mkrawv, uch_to) = MathContext.convert_math_variant_char (MathContext.context_for_text mathctx) uch_from in
@@ -740,23 +737,31 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         | MathBoldFraktur  -> mvsty.math_bold_fraktur
         | MathDoubleStruck -> mvsty.math_double_struck
       in
-        convert_math_char mathctx is_big uchlst mk
+      convert_math_char mathctx is_big uchlst mk
 
   | MathElement(mkraw, MathChar(is_big, uchlst)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
-        convert_math_char mathctx is_big uchlst mk
+      convert_math_char mathctx is_big uchlst mk
 
   | MathElement(mkraw, MathCharWithKern(is_big, uchlst, kernfL, kernfR)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
-        convert_math_char_with_kern mathctx is_big uchlst mk kernfL kernfR
+      convert_math_char_with_kern mathctx is_big uchlst mk kernfL kernfR
 
 
-and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =
+let rec convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math_box list) : low_math =
   let optres =
     mlst |> list_fold_adjacent (fun opt math mathprevopt mathnextopt ->
-      let mkprev = match mathprevopt with None -> mkfirst | Some(mathprev) -> get_right_math_kind (MathContext.context_for_text mathctx) mathprev in
-      let mknext = match mathnextopt with None -> mklast  | Some(mathnext) -> get_left_math_kind (MathContext.context_for_text mathctx) mathnext in
-        (* -- get the rightward math class of the previous, and the leftward math class of the next -- *)
+      let mkprev =
+        match mathprevopt with
+        | None           -> mkfirst
+        | Some(mathprev) -> get_right_math_kind (MathContext.context_for_text mathctx) mathprev
+      in
+      let mknext =
+        match mathnextopt with
+        | None -> mklast
+        | Some(mathnext) -> get_left_math_kind (MathContext.context_for_text mathctx) mathnext
+      in
+        (* Get the rightward math class of the previous, and the leftward math class of the next *)
       let (lmmain, hgt, dpt) = convert_to_low_single mkprev mknext mathctx math in
       let rk = get_right_kern lmmain hgt dpt in
       let lk = get_left_kern lmmain hgt dpt in
@@ -769,37 +774,37 @@ and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math
   | None ->
       let lk = no_left_kern Length.zero Length.zero MathEnd in
       let rk = no_right_kern Length.zero Length.zero MathEnd in
-        ([], Length.zero, Length.zero, lk, rk)
+      ([], Length.zero, Length.zero, lk, rk)
 
   | Some((hgt, dpt, lkfirst, rklast, lmmainacc)) ->
       (Alist.to_list lmmainacc, hgt, dpt, lkfirst, rklast)
 
 
-and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : math_context) (math : math) : low_math_main * length * length =
+and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : math_context) (math : math_box) : low_math_main * length * length =
   match math with
-  | MathPure(me) ->
+  | MathBoxPure(me) ->
       let (mk, wid, hgt, dpt, lme, lk, rk) = convert_math_element mathctx mkprev mknext me in
-        (LowMathPure(mk, wid, hgt, dpt, lme, lk, rk), hgt, dpt)
-
+      (LowMathPure(mk, wid, hgt, dpt, lme, lk, rk), hgt, dpt)
+(*
   | MathPullInScripts(mkL, mkR, mlstf) ->
       let mlstI = mlstf None None in
         (* -- invokes the math-generating function -- *)
       let lmI = convert_to_low mathctx mkprev mknext mlstI in
       let (_, h_inner, d_inner, _, rk) = lmI in
         (LowMathGroup(mkL, mkR, lmI), h_inner, d_inner)
-
-  | MathChangeContext(chg, mlstI) ->
+*)
+  | MathBoxChangeContext(chg, mlstI) ->
       let mathctxnew = mathctx |> change_math_context chg in
       let lmI = convert_to_low mathctxnew mkprev mknext mlstI in
       let (_, h_inner, d_inner, _, rk) = lmI in
-        (LowMathList(Some(chg), lmI), h_inner, d_inner)
+      (LowMathList(Some(chg), lmI), h_inner, d_inner)
 
-  | MathGroup(mkL, mkR, mlstC) ->
+  | MathBoxGroup(mkL, mkR, mlstC) ->
       let lmC = convert_to_low mathctx MathEnd MathClose mlstC in
       let (_, h_cont, d_cont, _, _) = lmC in
-        (LowMathGroup(mkL, mkR, lmC), h_cont, d_cont)
+      (LowMathGroup(mkL, mkR, lmC), h_cont, d_cont)
 
-  | MathFraction(mlstN, mlstD) ->
+  | MathBoxFraction(mlstN, mlstD) ->
       let lmN = convert_to_low mathctx MathEnd MathEnd mlstN in
       let lmD = convert_to_low mathctx MathEnd MathEnd mlstD in
       let (_, h_numer, d_numer, _, _) = lmN in
@@ -808,9 +813,10 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let d_denombl = denominator_baseline_depth mathctx h_denom in
       let h_frac = h_numerbl +% h_numer in
       let d_frac = d_denombl +% d_denom in
-        (LowMathFraction(h_numerbl, d_denombl, lmN, lmD), h_frac, d_frac)
+      (LowMathFraction(h_numerbl, d_denombl, lmN, lmD), h_frac, d_frac)
 
-  | MathSubscript(mlstB, mlstS) ->
+  | MathBoxSubscript(mlstB, mlstS) ->
+(*
       begin
         match check_pull_in mlstB with
         | Some((pullin, mlstB)) ->
@@ -818,6 +824,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
             invoke_pull_in_scripts (mathctx, mkprev, mknext) pullin (Some(mlstS)) None mlstB
 
         | None ->
+*)
             let lmB = convert_to_low mathctx mkprev MathEnd mlstB in
             let lmS = convert_to_low (MathContext.enter_script mathctx) MathEnd MathEnd mlstS in
             let (_, h_base, d_base, _, rkB) = lmB in
@@ -825,21 +832,24 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
             let d_subbl = subscript_baseline_depth mathctx rkB.last_depth h_sub in
             let h_whole = h_base in
             let d_whole = Length.min d_base (d_subbl +% d_sub) in
-              (LowMathSubscript(d_subbl, lmB, lmS), h_whole, d_whole)
+            (LowMathSubscript(d_subbl, lmB, lmS), h_whole, d_whole)
+(*
       end
+*)
 
-  | MathSuperscript(mlstB, mlstS) ->
+  | MathBoxSuperscript(mlstB, mlstS) ->
       begin
         match check_subscript mlstB with
         | Some((mlstT, mlstB)) ->
           (* -- if the last element of the base contents has a subscript -- *)
+(*
             begin
               match check_pull_in mlstB with
               | Some((pullin, mlstB)) ->
                 (* -- if the last element of the base contents is a pull-in-scipts -- *)
                   invoke_pull_in_scripts (mathctx, mkprev, mknext) pullin (Some(mlstT)) (Some(mlstS)) mlstB
-
               | None ->
+*)
                   let lmB = convert_to_low mathctx mkprev MathEnd mlstB in
                   let lmS = convert_to_low (MathContext.enter_script mathctx) MathEnd MathEnd mlstS in
                   let lmT = convert_to_low (MathContext.enter_script mathctx) MathEnd MathEnd mlstT in
@@ -851,11 +861,14 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
                   let (h_supbl, d_subbl) = correct_script_baseline_heights mathctx d_sup h_sub h_supbl_raw d_subbl_raw in
                   let h_whole = Length.max h_base (h_supbl +% h_sup) in
                   let d_whole = Length.min d_base (d_subbl +% d_sub) in
-                    (LowMathSubSuperscript(h_supbl, d_subbl, lmB, lmS, lmT), h_whole, d_whole)
+                  (LowMathSubSuperscript(h_supbl, d_subbl, lmB, lmS, lmT), h_whole, d_whole)
+(*
             end
+*)
 
         | None ->
           (* -- if the last element of the base contents does NOT have a subscript -- *)
+(*
             begin
               match check_pull_in mlstB with
               | Some((pullin, mlstB)) ->
@@ -863,6 +876,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
                   invoke_pull_in_scripts (mathctx, mkprev, mknext) pullin None (Some(mlstS)) mlstB
 
               | None ->
+*)
                   let lmB = convert_to_low mathctx mkprev MathEnd mlstB in
                   let lmS = convert_to_low (MathContext.enter_script mathctx) MathEnd MathEnd mlstS in
                   let (_, h_base, d_base, _, rkB) = lmB in
@@ -870,11 +884,13 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
                   let h_supbl = superscript_baseline_height mathctx h_base d_sup in
                   let h_whole = Length.max h_base (h_supbl +% h_sup) in
                   let d_whole = d_base in
-                    (LowMathSuperscript(h_supbl, lmB, lmS), h_whole, d_whole)
+                  (LowMathSuperscript(h_supbl, lmB, lmS), h_whole, d_whole)
+(*
             end
+*)
       end
 
-  | MathRadical(radical, mlstC) ->
+  | MathBoxRadical(radical, mlstC) ->
       let lmC = convert_to_low mathctx MathEnd MathEnd mlstC in
       let (_, h_cont, d_cont, _, _) = lmC in
       let (h_bar, t_bar, l_extra) = radical_bar_metrics mathctx h_cont in
@@ -884,7 +900,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let d_whole = d_cont in  (* temporary; should consider the depth of the radical sign *)
         (LowMathRadical(hblstrad, h_bar, t_bar, lmC), h_whole, d_whole)
 
-  | MathRadicalWithDegree(mlstD, mlstC) ->
+  | MathBoxRadicalWithDegree(mlstD, mlstC) ->
 (*
       let lmD = convert_to_low mathctx (scriptlev + 1) MathEnd MathEnd mlstD in
       let lmC = convert_to_low mathctx scriptlev MathEnd MathEnd mlstC in
@@ -899,7 +915,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
 *)
       failwith "unsupported; MathRadicalWithDegree"
 
-  | MathParen(parenL, parenR, mlstC) ->
+  | MathBoxParen(parenL, parenR, mlstC) ->
       let lmC = convert_to_low mathctx MathOpen MathClose mlstC in
       let (_, hC, dC, _, _) = lmC in
       let (hblstparenL, mkernsL) = make_paren mathctx parenL hC dC in
@@ -910,9 +926,9 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let d_whole = [dL; dR] |> List.fold_left Length.min dC in
       let lpL = { lp_main = hblstparenL; lp_height = hL; lp_depth = dL; lp_math_kern_scheme = mkernsL; } in
       let lpR = { lp_main = hblstparenR; lp_height = hR; lp_depth = dR; lp_math_kern_scheme = mkernsR; } in
-        (LowMathParen(lpL, lpR, lmC), h_whole, d_whole)
+      (LowMathParen(lpL, lpR, lmC), h_whole, d_whole)
 
-  | MathParenWithMiddle(parenL, parenR, middle, mlstlst) ->
+  | MathBoxParenWithMiddle(parenL, parenR, middle, mlstlst) ->
       let lmlst = List.map (convert_to_low mathctx MathOpen MathClose) mlstlst in
       let (hC, dC) =
         lmlst |> List.fold_left (fun (hacc, dacc) lm ->
@@ -930,9 +946,9 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let lpL = { lp_main = hblstparenL; lp_height = hL; lp_depth = dL; lp_math_kern_scheme = mkernsL; } in
       let lpR = { lp_main = hblstparenR; lp_height = hR; lp_depth = dR; lp_math_kern_scheme = mkernsR; } in
       let lpM = { lp_main = hblstmiddle; lp_height = hM; lp_depth = dM; lp_math_kern_scheme = FontInfo.no_math_kern; } in
-        (LowMathParenWithMiddle(lpL, lpR, lpM, lmlst), h_whole, d_whole)
+      (LowMathParenWithMiddle(lpL, lpR, lpM, lmlst), h_whole, d_whole)
 
-  | MathUpperLimit(mlstB, mlstU) ->
+  | MathBoxUpperLimit(mlstB, mlstU) ->
       let lmB = convert_to_low mathctx mkprev mknext mlstB in
       let lmU = convert_to_low (MathContext.enter_script mathctx) MathEnd MathEnd mlstU in
       let (_, h_base, d_base, _, _) = lmB in
@@ -940,9 +956,9 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let h_upbl = upper_limit_baseline_height mathctx h_base d_up in
       let h_whole = h_upbl +% h_up in
       let d_whole = d_base in
-        (LowMathUpperLimit(h_upbl, lmB, lmU), h_whole, d_whole)
+      (LowMathUpperLimit(h_upbl, lmB, lmU), h_whole, d_whole)
 
-  | MathLowerLimit(mlstB, mlstL) ->
+  | MathBoxLowerLimit(mlstB, mlstL) ->
       let lmB = convert_to_low mathctx mkprev mknext mlstB in
       let lmL = convert_to_low (MathContext.enter_script mathctx) MathEnd MathEnd mlstL in
       let (_, h_base, d_base, _, _) = lmB in
@@ -950,7 +966,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let d_lowbl = lower_limit_baseline_depth mathctx d_base h_low in
       let h_whole = h_base in
       let d_whole = d_lowbl +% d_low in
-        (LowMathLowerLimit(d_lowbl, lmB, lmL), h_whole, d_whole)
+      (LowMathLowerLimit(d_lowbl, lmB, lmL), h_whole, d_whole)
 
 
 (* --
@@ -958,21 +974,22 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
    'mlstTopt': 'None' or superscript enveloped in 'Some(_)'
    'mlstB': the math list attached before the math list generated by pull-in-scripts
    -- *)
+(*
 and invoke_pull_in_scripts (mathctx, mkprev, mknext) (mkL, mkR, mlstf) mlstSopt mlstTopt mlstB =
   let mlstIsub = mlstf mlstSopt mlstTopt in
     (* -- invokes the math-generating function -- *)
   let mlstI = List.append mlstB [MathGroup(mkL, mkR, mlstIsub)] in
   let lmI = convert_to_low mathctx mkprev mknext mlstI in
   let (_, h_inner, d_inner, _, rk) = lmI in
-    (LowMathList(None, lmI), h_inner, d_inner)
+  (LowMathList(None, lmI), h_inner, d_inner)
+*)
 
-
-let horz_of_low_math_element (lme : low_math_atom) : horz_box list =
+let horz_of_low_math_element (lme : math_box_element) : horz_box list =
   match lme with
-  | LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt) ->
-      [HorzPure(PHCInnerMathGlyph(mathstrinfo, wid, hgt, dpt, otxt))]
+  | MathBoxGlyph(mathstrinfo, wid, hgt, dpt, otxt) ->
+      [ HorzPure(PHCInnerMathGlyph(mathstrinfo, wid, hgt, dpt, otxt)) ]
 
-  | LowMathEmbeddedHorz(hblst) ->
+  | MathBoxEmbeddedHorz(hblst) ->
       hblst
 
 
@@ -1267,13 +1284,13 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
   aux Alist.empty mkprevfirst NoSpace lmmainlst
 
 
-let main (mathctx : math_context) (mathlst : math list) : horz_box list =
+let main (mathctx : math_context) (mathlst : math_box list) : horz_box list =
   let lmlst = convert_to_low mathctx MathEnd MathEnd mathlst in
   let hblst = horz_of_low_math mathctx MathEnd MathEnd lmlst in
     hblst
 
 
-let space_between_maths (mathctx : math_context) (mathlst1 : math list) (mathlst2 : math list) : horz_box option =
+let space_between_maths (mathctx : math_context) (mathlst1 : math_box list) (mathlst2 : math_box list) : horz_box option =
   let ctx = MathContext.context_for_text mathctx in
   match (List.rev mathlst1, mathlst2) with
   | (math1R :: _, math2L :: _) ->

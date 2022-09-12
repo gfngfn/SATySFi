@@ -414,7 +414,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   match ast with
   | ASTBaseConstant(bc) -> code0 env (CdBaseConstant(bc))
   | ASTEndOfList        -> code0 env CdEndOfList
-  | ASTMath(mlst)       -> code0 env (CdMath(mlst))
 
   | InputHorz(ihlst) ->
       let (imihlst, env) = transform_1_input_horz_content env ihlst in
@@ -423,6 +422,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | InputVert(ivlst) ->
       let (imivlst, env) = transform_1_input_vert_content env ivlst in
       (IRCodeInputVert(imivlst), env)
+
+  | InputMath(ms) ->
+      code0 env (CdInputMath(ms))
 
   | Record(asc) ->
       let (keyacc, iracc, env) =
@@ -522,9 +524,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
             assert false
       end
 
-  | BackendMathList(astmlst) ->
-      transform_1_primitive env astmlst (OpCodeMathList(List.length astmlst))
-
   | PrimitiveTuple(asts) ->
       let asts = asts |> TupleList.to_list in
       transform_1_primitive env asts (OpCodeMakeTuple(List.length asts))
@@ -553,9 +552,6 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTBaseConstant(bc) ->
       return (IRConstant(BaseConstant(bc)))
 
-  | ASTMath(mlst) ->
-      return (IRConstant(MathValue(mlst)))
-
   | ASTEndOfList ->
       return (IRConstant(List([])))
 
@@ -569,8 +565,8 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       (IRInputVert(imivlst), env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | BackendMathList(astmlst) ->
-      transform_0_primitive env astmlst (OpBackendMathList(List.length astmlst))
+  | InputMath(ms) ->
+      return (IRConstant(InputMathValue(ms)))
 
   | PrimitiveTuple(asts) ->
       transform_0_tuple env asts

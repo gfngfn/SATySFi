@@ -116,6 +116,7 @@ type math_string_info =
     math_font_size   : length;
     math_color       : color;
   }
+[@@deriving show { with_path = false }]
 
 (* -- internal representation of boxes -- *)
 

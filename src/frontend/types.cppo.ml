@@ -567,6 +567,11 @@ type page_break_style =
   | MultiColumn of length list
 [@@deriving show { with_path = false; }]
 
+type math_context_change =
+  | MathChangeColor         of color
+  | MathChangeMathCharClass of HorzBox.math_char_class
+[@@deriving show { with_path = false; }]
+
 type base_constant =
   | BCUnit
   | BCBool     of bool
@@ -771,13 +776,9 @@ and instruction =
   | OpSel of instruction list * instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpSel(...)")]
 
-  | OpBackendMathList of int
-      (* !! no-ircode *)
-
   | OpInsertArgs of syntactic_value list
   | OpApplyCodeCombinator of (code_value list -> code_value) * int
   | OpCodeMakeRecord of label list
-  | OpCodeMathList of int
   | OpCodeMakeTuple of int
   | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
   | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
@@ -810,16 +811,17 @@ and syntactic_value =
   | RecordValue  of syntactic_value LabelMap.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
   | Location     of StoreID.t
-  | MathValue    of math list
   | Context      of input_context
   | CodeValue    of code_value
   | CodeSymbol   of CodeSymbol.t
+  | MathBoxes    of math_box list
 
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
   | InputHorzClosure of intermediate_input_horz_element list * environment
   | InputVertClosure of intermediate_input_vert_element list * environment
+  | InputMathValue   of math_text list
 
 (* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
   | CompiledClosure          of varloc LabelMap.t * int * syntactic_value list * int * instruction list * vmenv
@@ -830,10 +832,10 @@ and syntactic_value =
 and abstract_tree =
   | ASTBaseConstant       of base_constant
   | ASTEndOfList
-  | ASTMath               of math list
 (* -- input texts -- *)
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
+  | InputMath             of math_text list
 (* -- record value -- *)
   | Record                of abstract_tree LabelMap.t
   | AccessField           of abstract_tree * label
@@ -852,7 +854,6 @@ and abstract_tree =
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Dereference           of abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
-  | BackendMathList       of abstract_tree list
   | PrimitiveTuple        of abstract_tree TupleList.t
 (* -- staging constructs -- *)
   | Next                  of abstract_tree
@@ -937,32 +938,36 @@ and math_element =
          (3) Unicode code point for all math_char_class
          -- *)
 
-and math_context_change =
-  | MathChangeColor         of color
-  | MathChangeMathCharClass of HorzBox.math_char_class
+and math_box =
+  | MathBoxPure              of math_element
+  | MathBoxChangeContext     of math_context_change * math_box list
+  | MathBoxSubscript         of math_box list * math_box list
+  | MathBoxSuperscript       of math_box list * math_box list
+  | MathBoxGroup             of HorzBox.math_kind * HorzBox.math_kind * math_box list
+  | MathBoxFraction          of math_box list * math_box list
+  | MathBoxRadicalWithDegree of math_box list * math_box list
+  | MathBoxRadical           of HorzBox.radical * math_box list
+  | MathBoxParen             of HorzBox.paren * HorzBox.paren * math_box list
+  | MathBoxParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math_box list) list
+  | MathBoxUpperLimit        of math_box list * math_box list
+  | MathBoxLowerLimit        of math_box list * math_box list
 
-and math =
-  | MathPure              of math_element
-  | MathPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math list) option -> (math list) option -> math list)
-  | MathChangeContext     of math_context_change * math list
-  | MathGroup             of HorzBox.math_kind * HorzBox.math_kind * math list
-  | MathSubscript         of math list * math list
-  | MathSuperscript       of math list * math list
-  | MathFraction          of math list * math list
-  | MathRadicalWithDegree of math list * math list
-  | MathRadical           of HorzBox.radical * math list
-  | MathParen             of HorzBox.paren * HorzBox.paren * math list
-  | MathParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math list) list
-  | MathUpperLimit        of math list * math list
-  | MathLowerLimit        of math list * math list
+and math_text =
+  | MathTextChar              of Uchar.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
+  | MathTextPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math_text list) option -> (math_text list) option -> math_box list)
+  | MathTextChangeContext     of math_context_change * math_text list
+  | MathTextSubscript         of math_text list * math_text list
+  | MathTextSuperscript       of math_text list * math_text list
+  | MathTextEmbed             of abstract_tree
 
 and code_value =
   | CdPersistent    of Range.t * EvalVarID.t
   | CdBaseConstant  of base_constant
   | CdEndOfList
-  | CdMath          of math list
   | CdInputHorz     of code_input_horz_element list
   | CdInputVert     of code_input_vert_element list
+  | CdInputMath     of math_text list
   | CdContentOf     of Range.t * CodeSymbol.t
   | CdLetRecIn      of code_letrec_binding list * code_value
   | CdLetNonRecIn   of code_pattern_tree * code_value * code_value
@@ -978,7 +983,6 @@ and code_value =
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
   | CdTuple         of code_value TupleList.t
-  | CdMathList      of code_value list
 #include "__codetype.gen.ml"
 
 and code_input_horz_element =
@@ -1120,7 +1124,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
-    | CdMath(mlst)                         -> ASTMath(mlst)
+    | CdInputMath(ms)                      -> InputMath(ms)
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
     | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
@@ -1138,7 +1142,6 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map unlift_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
     | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
-    | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
 #include "__unliftcode.gen.ml"
   in
   aux code

@@ -1048,19 +1048,6 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | _ -> report_bug_vm "invalid argument for OpSel"
       end
 
-  | OpBackendMathList(n) ->
-      let rec iter n st acc =
-        if n <= 0 then
-          (acc, st)
-        else
-          match st with
-          | (MathValue(m), _) :: stnew -> iter (n - 1) stnew (m :: acc)
-          | _                          -> report_bug_vm "BackendMathList"
-      in
-      let (mlst, stack) = iter n stack [] in
-      let entry = make_entry @@ MathValue(List.concat mlst) in
-      exec (entry :: stack) env code dump
-
   | OpInsertArgs(lst) ->
       begin
         match stack with
@@ -1093,19 +1080,6 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       in
       let (cdasc, stack) = collect (List.rev keylst) LabelMap.empty stack in
       let entry = make_entry @@ CodeValue(CdRecord(cdasc)) in
-      exec (entry :: stack) env code dump
-
-  | OpCodeMathList(n) ->
-      let rec iter n st acc =
-        if n <= 0 then
-          (acc, st)
-        else
-          match st with
-          | (CodeValue(cv), _) :: stnew -> iter (n - 1) stnew (cv :: acc)
-          | _                           -> report_bug_vm "CodeMathList"
-      in
-      let (cvlst, stack) = iter n stack [] in
-      let entry = make_entry @@ CodeValue(CdMathList(cvlst)) in
       exec (entry :: stack) env code dump
 
   | OpCodeMakeTuple(n) ->

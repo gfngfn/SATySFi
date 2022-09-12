@@ -167,9 +167,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | ASTEndOfList ->
       List([])
 
-  | ASTMath(ms) ->
-      MathValue(ms)
-
   | InputHorz(ihs) ->
       let imihs = interpret_0_input_horz_content env ihs in
       InputHorzClosure(imihs, env)
@@ -179,6 +176,9 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       let imivs = interpret_0_input_vert_content env ivs in
       InputVertClosure(imivs, env)
         (* Lazy evaluation; evaluates embedded variables only *)
+
+  | InputMath(ms) ->
+      InputMathValue(ms)
 
 (* Fundamentals: *)
 
@@ -303,10 +303,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       let value_cont = interpret_0 env ast_cont in
       Constructor(constrnm, value_cont)
 
-  | BackendMathList(asts) ->
-      let ms = asts |> List.map (fun ast -> get_math (interpret_0 env ast)) |> List.concat in
-      MathValue(ms)
-
   | PrimitiveTuple(asts) ->
       let values = asts |> TupleList.map (interpret_0 env) in
         (* Should be left-to-right *)
@@ -342,9 +338,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | ASTBaseConstant(bc) ->
       CdBaseConstant(bc)
 
-  | ASTMath(ms) ->
-      CdMath(ms)
-
   | ASTEndOfList ->
       CdEndOfList
 
@@ -355,6 +348,9 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | InputVert(ivs) ->
       let cdivs = ivs |> map_input_vert (interpret_1 env) in
       CdInputVert(cdivs)
+
+  | InputMath(ms) ->
+      CdInputMath(ms)
 
   | ContentOf(rng, evid) ->
       begin
@@ -456,10 +452,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | NonValueConstructor(constrnm, ast1) ->
       let code1 = interpret_1 env ast1 in
       CdConstructor(constrnm, code1)
-
-  | BackendMathList(asts) ->
-      let codes = asts |> List.map (interpret_1 env) in
-      CdMathList(codes)
 
   | PrimitiveTuple(asts) ->
       let codes = asts |> TupleList.map (interpret_1 env) in

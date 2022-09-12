@@ -133,7 +133,7 @@ Context(ctx, { ctxsub with code_text_command = ctcmd; })
         ~code:{|
 let is_big = false in  (* temporary *)
 let mvsty = get_math_variant_style valuercd in
-MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
+make_math_boxes [ HorzBox.(MathBoxPure(MathVariantCharDirect(mathcls, is_big, mvsty))) ]
 |}
     ; inst "BackendGetLeftMathClass"
         ~name:"get-left-math-class"
@@ -142,7 +142,7 @@ MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
         ]
         ~params:[
           param "ictx" ~type_:"context";
-          param "mathlst" ~type_:"math";
+          param "mathlst" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
@@ -162,7 +162,7 @@ match mathlst with
         ]
         ~params:[
           param "ictx" ~type_:"context";
-          param "mathlst" ~type_:"math";
+          param "mathlst" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
@@ -182,8 +182,8 @@ match List.rev mathlst with
         ]
         ~params:[
           param "ictx" ~type_:"context";
-          param "mathlst1" ~type_:"math";
-          param "mathlst2" ~type_:"math";
+          param "mathlst1" ~type_:"math_boxes";
+          param "mathlst2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -199,13 +199,13 @@ match hbspaceopt with
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
+          param "mlst1" ~type_:"math_boxes";
+          param "mlst2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-MathValue(List.append mlst1 mlst2)
+make_math_boxes (List.append mlst1 mlst2)
 |}
     ; inst "BackendMathGroup"
         ~name:"math-group"
@@ -215,12 +215,12 @@ MathValue(List.append mlst1 mlst2)
         ~params:[
           param "mathcls1" ~type_:"math_class";
           param "mathcls2" ~type_:"math_class";
-          param "mlst" ~type_:"math";
+          param "mlst" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-MathValue([MathGroup(mathcls1, mathcls2, mlst)])
+make_math_boxes [ MathBoxGroup(mathcls1, mathcls2, mlst) ]
 |}
     ; inst "BackendMathSuperscript"
         ~name:"math-sup"
@@ -228,13 +228,13 @@ MathValue([MathGroup(mathcls1, mathcls2, mlst)])
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
+          param "mlst1" ~type_:"math_boxes";
+          param "mlst2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-MathValue([MathSuperscript(mlst1, mlst2)])
+make_math_boxes [ MathBoxSuperscript(mlst1, mlst2) ]
 |}
     ; inst "BackendMathSubscript"
         ~name:"math-sub"
@@ -242,13 +242,13 @@ MathValue([MathSuperscript(mlst1, mlst2)])
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
+          param "mlst1" ~type_:"math_boxes";
+          param "mlst2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-MathValue([MathSubscript(mlst1, mlst2)])
+make_math_boxes [ MathBoxSubscript(mlst1, mlst2) ]
 |}
     ; inst "BackendMathFraction"
         ~name:"math-frac"
@@ -256,13 +256,13 @@ MathValue([MathSubscript(mlst1, mlst2)])
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
+          param "mlst1" ~type_:"math_boxes";
+          param "mlst2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-MathValue([MathFraction(mlst1, mlst2)])
+make_math_boxes [ MathBoxFraction(mlst1, mlst2) ]
 |}
     ; inst "BackendMathRadical"
         ~name:"math-radical"
@@ -271,16 +271,16 @@ MathValue([MathFraction(mlst1, mlst2)])
         ]
         ~params:[
           param "value1mopt";
-          param "mlst2" ~type_:"math";
+          param "mlst2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-let mlst1opt = get_option get_math value1mopt in
+let mlst1opt = get_option get_math_boxes value1mopt in
 let radical = Primitives.default_radical in  (* temporary; should be variable *)
 match mlst1opt with
-| None        -> MathValue([MathRadical(radical, mlst2)])
-| Some(mlst1) -> MathValue([MathRadicalWithDegree(mlst1, mlst2)])
+| None        -> make_math_boxes [ MathBoxRadical(radical, mlst2) ]
+| Some(mlst1) -> make_math_boxes [ MathBoxRadicalWithDegree(mlst1, mlst2) ]
 |}
     ; inst "BackendMathParen"
         ~name:"math-paren"
@@ -290,7 +290,7 @@ match mlst1opt with
         ~params:[
           param "valueparenL";
           param "valueparenR";
-          param "mlst1" ~type_:"math";
+          param "mlst1" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
@@ -298,7 +298,7 @@ match mlst1opt with
         ~code:{|
 let parenL = make_paren reducef valueparenL in
 let parenR = make_paren reducef valueparenR in
-MathValue([MathParen(parenL, parenR, mlst1)])
+make_math_boxes [ MathBoxParen(parenL, parenR, mlst1) ]
 |}
     ; inst "BackendMathParenWithMiddle"
         ~name:"math-paren-with-middle"
@@ -318,8 +318,8 @@ MathValue([MathParen(parenL, parenR, mlst1)])
 let parenL = make_paren reducef value_parenL in
 let parenR = make_paren reducef value_parenR in
 let middle = make_paren reducef value_middle in
-let mss = get_list get_math value_mss in
-MathValue([MathParenWithMiddle(parenL, parenR, middle, mss)])
+let mss = get_list get_math_boxes value_mss in
+make_math_boxes [ MathBoxParenWithMiddle(parenL, parenR, middle, mss) ]
 |}
     ; inst "BackendMathUpperLimit"
         ~name:"math-upper"
@@ -327,13 +327,13 @@ MathValue([MathParenWithMiddle(parenL, parenR, middle, mss)])
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
+          param "mlst1" ~type_:"math_boxes";
+          param "mlst2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-MathValue([MathUpperLimit(mlst1, mlst2)])
+make_math_boxes [ MathBoxUpperLimit(mlst1, mlst2) ]
 |}
     ; inst "BackendMathLowerLimit"
         ~name:"math-lower"
@@ -341,17 +341,17 @@ MathValue([MathUpperLimit(mlst1, mlst2)])
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
+          param "mlst1" ~type_:"math_boxes";
+          param "mlst2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-MathValue([MathLowerLimit(mlst1, mlst2)])
+make_math_boxes [ MathBoxLowerLimit(mlst1, mlst2) ]
 |}
     ; inst "BackendMathPullInScripts"
         ~name:"math-pull-in-scripts"
-        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> (tOPT tMB @-> tOPT tMB @-> tMB) @-> tMB)
+        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> (tOPT tMT @-> tOPT tMT @-> tMB) @-> tMT)
         ~fields:[
         ]
         ~params:[
@@ -364,8 +364,7 @@ MathValue([MathLowerLimit(mlst1, mlst2)])
         ~needs_reducef:true
         ~code:{|
 let mlstf = make_pull_in_scripts reducef valuef in
-let mlst = [HorzBox.(MathPullInScripts(mathcls1, mathcls2, mlstf))] in
-MathValue(mlst)
+make_math_text [ HorzBox.(MathTextPullInScripts(mathcls1, mathcls2, mlstf)) ]
 |}
     ; inst "BackendMathChar"
         ~name:"math-char"
@@ -379,8 +378,7 @@ MathValue(mlst)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(false, uchlst))))] in
-MathValue(mlst)
+make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathChar(false, uchlst)))) ]
 |}
     ; inst "BackendMathBigChar"
         ~name:"math-big-char"
@@ -394,8 +392,7 @@ MathValue(mlst)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(true, uchlst))))] in
-MathValue(mlst)
+make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathChar(true, uchlst)))) ]
 |}
     ; inst "BackendMathCharWithKern"
         ~name:"math-char-with-kern"
@@ -414,8 +411,7 @@ MathValue(mlst)
         ~code:{|
 let kernfL = make_math_char_kern_func reducef valuekernfL in
 let kernfR = make_math_char_kern_func reducef valuekernfR in
-let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(false, uchlst, kernfL, kernfR))))] in
-MathValue(mlst)
+make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathCharWithKern(false, uchlst, kernfL, kernfR)))) ]
 |}
     ; inst "BackendMathBigCharWithKern"
         ~name:"math-big-char-with-kern"
@@ -434,8 +430,7 @@ MathValue(mlst)
         ~code:{|
 let kernfL = make_math_char_kern_func reducef valuekernfL in
 let kernfR = make_math_char_kern_func reducef valuekernfR in
-let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(true, uchlst, kernfL, kernfR))))] in
-MathValue(mlst)
+make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathCharWithKern(true, uchlst, kernfL, kernfR)))) ]
 |}
     ; inst "BackendMathText"
         ~name:"text-in-math"
@@ -453,7 +448,7 @@ let hblstf ictx =
   let valueh = reducef valuef [Context(ictx)] in
   get_horz valueh
 in
-MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
+make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathEmbeddedText(hblstf)))) ]
 |}
     ; inst "BackendMathColor" (* TODO: migrate to contexts and abandon this *)
         ~name:"math-color"
@@ -462,12 +457,12 @@ MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
         ]
         ~params:[
           param "color" ~type_:"color";
-          param "mlst" ~type_:"math";
+          param "mlst" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-MathValue(HorzBox.([MathChangeContext(MathChangeColor(color), mlst)]))
+make_math_boxes [ HorzBox.(MathBoxChangeContext(MathChangeColor(color), mlst)) ]
 |}
     ; inst "BackendMathCharClass" (* TODO: migrate to contexts and abandon this *)
         ~name:"math-char-class"
@@ -476,12 +471,12 @@ MathValue(HorzBox.([MathChangeContext(MathChangeColor(color), mlst)]))
         ]
         ~params:[
           param "mccls" ~type_:"math_char_class";
-          param "mlst" ~type_:"math";
+          param "mlst" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-MathValue(HorzBox.([MathChangeContext(MathChangeMathCharClass(mccls), mlst)]))
+make_math_boxes [ HorzBox.(MathBoxChangeContext(MathChangeMathCharClass(mccls), mlst)) ]
 |}
     ; inst "BackendEmbeddedMath"
         ~name:"embed-math"
@@ -490,7 +485,7 @@ MathValue(HorzBox.([MathChangeContext(MathChangeMathCharClass(mccls), mlst)]))
         ]
         ~params:[
           param "ictx" ~type_:"context";
-          param "mlst" ~type_:"math";
+          param "mlst" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
