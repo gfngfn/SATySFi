@@ -469,12 +469,8 @@ let get_right_kern lmmain hgt dpt =
   | LowMathLowerLimit(_, (_, _, _, _, rk), _)  -> rk
 
 
-let get_math_kind_of_math_element = function
+let get_math_kind_of_math_element : math_element -> math_kind = function
   | MathElement(mk, _) -> mk
-(*
-  | MathVariantChar(uch)            -> let (mk, _) = MathContext.convert_math_variant_char ctx uch in mk
-  | MathVariantCharDirect(mk, _, _) -> mk
-*)
 
 let rec get_left_math_kind : math_box -> math_kind = function
   | MathBoxPure(me)                    -> get_math_kind_of_math_element me
@@ -492,10 +488,6 @@ let rec get_left_math_kind : math_box -> math_kind = function
   | MathBoxLowerLimit([], _)           -> MathEnd
   | MathBoxUpperLimit(mathB :: _, _)   -> get_left_math_kind mathB
   | MathBoxUpperLimit([], _)           -> MathEnd
-(*
-  | MathBoxChangeContext(_, [])        -> MathEnd
-  | MathBoxChangeContext(_, m :: _)    -> get_left_math_kind m
-*)
 
 
 let rec get_right_math_kind (math : math_box) : math_kind =
@@ -516,10 +508,6 @@ let rec get_right_math_kind (math : math_box) : math_kind =
     | MathBoxLowerLimit(mathlst, _)   -> get_right_math_kind (List.hd (List.rev mathlst))
     | MathBoxUpperLimit([], _)        -> MathEnd
     | MathBoxUpperLimit(mathlst, _)   -> get_right_math_kind (List.hd (List.rev mathlst))
-(*
-    | MathBoxChangeContext(_, [])     -> MathEnd
-    | MathBoxChangeContext(_, mlst)   -> get_right_math_kind (List.hd (List.rev mlst))
-*)
   with
   | Invalid_argument(_) -> assert false
 
@@ -673,35 +661,15 @@ let convert_math_char_with_kern (mathctx : math_context) (is_big : bool) (uchlst
   (mk, wid, hgt, dpt, MathBoxGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
 
 
-(*
-let change_math_context (chg : math_context_change) (mathctx : math_context) : math_context =
-  match chg with
-  | MathChangeColor(color)         -> mathctx |> MathContext.set_color color
-  | MathChangeMathCharClass(mccls) -> mathctx |> MathContext.set_math_char_class mccls
-*)
-
-
 let rec check_subscript (mlstB : math_box list) =
   match List.rev mlstB with
   | MathBoxSubscript(mlstBB, mlstT) :: mtailrev ->
-    (* -- if the last element of the base contents has a subscript -- *)
+    (* If the last element of the base contents has a subscript *)
       let mlstBnew = List.rev_append mtailrev mlstBB in
       Some((mlstT, mlstBnew))
 
-(*
-  | MathBoxChangeContext(chg, mlstBsub) :: mtailrev ->
-      begin
-        match check_subscript mlstBsub with
-        | Some((mlstT, mlstBsubnew)) ->
-            let mlstBnew = List.rev (MathBoxChangeContext(chg, mlstBsubnew) :: mtailrev) in
-            Some(([ MathBoxChangeContext(chg, mlstT) ], mlstBnew))
-
-        | None ->
-            None
-      end
-*)
-
-  | _ -> None
+  | _ ->
+      None
 
 
 let check_pull_in (mlstB : math_text list) =
@@ -720,30 +688,7 @@ let convert_math_element ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind)
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hbs in
       let mk = normalize_math_kind mk_prev mk_next mk_raw in
       (mk, wid, hgt, dpt, MathBoxEmbeddedHorz(hbs), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
-(*
-  | MathVariantChar(uch_from) ->
-      let (mkrawv, uch_to) = MathContext.convert_math_variant_char (MathContext.context_for_text mathctx) uch_from in
-      let mk = normalize_math_kind mkprev mknext mkrawv in
-      let is_big = false in
-      convert_math_char mathctx is_big [uch_to] mk
 
-  | MathVariantCharDirect(mkraw, is_big, mvsty) ->
-      let mk = normalize_math_kind mkprev mknext mkraw in
-      let mccls = MathContext.math_char_class mathctx in
-      let uchlst =
-        match mccls with
-        | MathItalic       -> mvsty.math_italic
-        | MathBoldItalic   -> mvsty.math_bold_italic
-        | MathRoman        -> mvsty.math_roman
-        | MathBoldRoman    -> mvsty.math_bold_roman
-        | MathScript       -> mvsty.math_script
-        | MathBoldScript   -> mvsty.math_bold_script
-        | MathFraktur      -> mvsty.math_fraktur
-        | MathBoldFraktur  -> mvsty.math_bold_fraktur
-        | MathDoubleStruck -> mvsty.math_double_struck
-      in
-      convert_math_char mathctx is_big uchlst mk
-*)
   | MathElement(mk_raw, MathChar{ context = ictx; is_big; chars = uchs }) ->
       let mathctx = MathContext.make ictx in
       let mk = normalize_math_kind mk_prev mk_next mk_raw in
@@ -799,12 +744,6 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
       let lmI = convert_to_low mathctx mkprev mknext mlstI in
       let (_, h_inner, d_inner, _, rk) = lmI in
         (LowMathGroup(mkL, mkR, lmI), h_inner, d_inner)
-
-  | MathBoxChangeContext(chg, mlstI) ->
-      let mathctxnew = mathctx |> change_math_context chg in
-      let lmI = convert_to_low mathctxnew mkprev mknext mlstI in
-      let (_, h_inner, d_inner, _, rk) = lmI in
-      (LowMathList(Some(chg), lmI), h_inner, d_inner)
 *)
 
   | MathBoxGroup(mkL, mkR, mlstC) ->

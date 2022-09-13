@@ -930,23 +930,9 @@ and math_element_main =
 
 and math_element =
   | MathElement           of HorzBox.math_kind * math_element_main
-(*
-  | MathVariantChar       of Uchar.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char>")]
-  | MathVariantCharDirect of HorzBox.math_kind * bool * HorzBox.math_variant_style
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
-      (* --
-         (1) math class
-         (2) whether it is a big operator
-         (3) Unicode code point for all math_char_class
-         -- *)
-*)
 
 and math_box =
   | MathBoxPure              of math_element
-(*
-  | MathBoxChangeContext     of math_context_change * math_box list
-*)
   | MathBoxSubscript         of math_box list * math_box list
   | MathBoxSuperscript       of math_box list * math_box list
   | MathBoxGroup             of HorzBox.math_kind * HorzBox.math_kind * math_box list
@@ -962,9 +948,6 @@ and math_text =
   | MathTextChar              of Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
   | MathTextPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math_text list) option -> (math_text list) option -> math_box list)
-(*
-  | MathTextChangeContext     of math_context_change * math_text list
-*)
   | MathTextSubscript         of math_text list * math_text list
   | MathTextSuperscript       of math_text list * math_text list
   | MathTextEmbed             of abstract_tree
