@@ -938,7 +938,11 @@ and math_box =
       base    : math_box list;
       sub     : math_box list;
     }
-  | MathBoxSuperscript       of math_box list * math_box list
+  | MathBoxSuperscript of {
+      context : input_context;
+      base    : math_box list;
+      sup     : math_box list;
+    }
   | MathBoxGroup             of HorzBox.math_kind * HorzBox.math_kind * math_box list
   | MathBoxFraction of {
       context     : input_context;

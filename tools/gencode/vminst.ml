@@ -232,21 +232,21 @@ make_math_boxes [ MathBoxGroup(mathcls1, mathcls2, mlst) ]
 |}
     ; inst "BackendMathSuperscript"
         ~name:"math-sup"
-        ~type_:Type.(tMB @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math_boxes";
-          param "mlst2" ~type_:"math_boxes";
+          param "ictx" ~type_:"context";
+          param "ms1" ~type_:"math_boxes";
+          param "ms2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-make_math_boxes [ MathBoxSuperscript(mlst1, mlst2) ]
+make_math_boxes [ MathBoxSuperscript{ context = ictx; base = ms1; sup = ms2 } ]
 |}
     ; inst "BackendMathSubscript"
         ~name:"math-sub"
-        ~type_:Type.(tMB @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[

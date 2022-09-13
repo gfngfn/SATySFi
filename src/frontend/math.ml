@@ -473,8 +473,13 @@ let get_math_kind_of_math_element : math_element -> math_kind = function
 let rec get_left_math_kind : math_box -> math_kind = function
   | MathBoxPure(me)                    -> get_math_kind_of_math_element me
   | MathBoxGroup(mkL, _, _)            -> mkL
-  | MathBoxSuperscript([], _)          -> MathEnd
-  | MathBoxSuperscript(mathB :: _, _)  -> get_left_math_kind mathB
+
+  | MathBoxSuperscript{ base; _} ->
+      begin
+        match base with
+        | []         -> MathEnd
+        | mathB :: _ -> get_left_math_kind mathB
+      end
 
   | MathBoxSubscript{ base; _ } ->
       begin
@@ -499,8 +504,13 @@ let rec get_right_math_kind (math : math_box) : math_kind =
     match math with
     | MathBoxPure(me)                 -> get_math_kind_of_math_element me
     | MathBoxGroup(_, mkR, _)         -> mkR
-    | MathBoxSuperscript([], _)       -> MathEnd
-    | MathBoxSuperscript(mathlst, _)  -> get_right_math_kind (List.hd (List.rev mathlst))
+
+    | MathBoxSuperscript{ base; _ } ->
+        begin
+          match List.rev base with
+          | []         -> MathEnd
+          | mathB :: _ -> get_right_math_kind mathB
+        end
 
     | MathBoxSubscript{ base; _ } ->
         begin
@@ -804,7 +814,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
       end
 *)
 
-  | MathBoxSuperscript(mlstB, mlstS) ->
+  | MathBoxSuperscript{ context = ictx; base = mlstB; sup = mlstS } ->
       begin
         match check_subscript mlstB with
         | Some((mlstT, mlstB)) ->
@@ -823,7 +833,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
                   let (_, h_base, d_base, _, rkB) = lmB in
                   let (_, h_sup, d_sup, _, _) = lmS in
                   let (_, h_sub, d_sub, _, _) = lmT in
-                  let mathctx = failwith "TODO: MathBoxSuperscript, mathctx 1" in
+                  let mathctx = MathContext.make ictx in
                   let h_supbl_raw = superscript_baseline_height mathctx h_base d_sup in
                   let d_subbl_raw = subscript_baseline_depth mathctx rkB.last_depth h_sub in
                   let (h_supbl, d_subbl) = correct_script_baseline_heights mathctx d_sup h_sub h_supbl_raw d_subbl_raw in
@@ -849,7 +859,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
                   let lmS = convert_to_low MathEnd MathEnd mlstS in
                   let (_, h_base, d_base, _, rkB) = lmB in
                   let (_, h_sup, d_sup, _, _)     = lmS in
-                  let mathctx = failwith "TODO: MathBoxSuperscript, mathctx 2" in
+                  let mathctx = MathContext.make ictx in
                   let h_supbl = superscript_baseline_height mathctx h_base d_sup in
                   let h_whole = Length.max h_base (h_supbl +% h_sup) in
                   let d_whole = d_base in
