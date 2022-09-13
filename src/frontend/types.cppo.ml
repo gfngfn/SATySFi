@@ -933,7 +933,11 @@ and math_element =
 
 and math_box =
   | MathBoxPure              of math_element
-  | MathBoxSubscript         of math_box list * math_box list
+  | MathBoxSubscript of {
+      context : input_context;
+      base    : math_box list;
+      sub     : math_box list;
+    }
   | MathBoxSuperscript       of math_box list * math_box list
   | MathBoxGroup             of HorzBox.math_kind * HorzBox.math_kind * math_box list
   | MathBoxFraction of {

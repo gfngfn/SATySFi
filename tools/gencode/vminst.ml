@@ -250,13 +250,13 @@ make_math_boxes [ MathBoxSuperscript(mlst1, mlst2) ]
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math_boxes";
-          param "mlst2" ~type_:"math_boxes";
+          param "ictx" ~type_:"context";
+          param "ms1" ~type_:"math_boxes";
+          param "ms2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-make_math_boxes [ MathBoxSubscript(mlst1, mlst2) ]
+make_math_boxes [ MathBoxSubscript{ context = ictx; base = ms1; sub = ms2 } ]
 |}
     ; inst "BackendMathFraction"
         ~name:"math-frac"

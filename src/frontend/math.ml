@@ -53,12 +53,11 @@ type low_math_main =
          (3) grouped contents
          -- *)
 
-  | LowMathSubscript of length * low_math * low_math
-      (* --
-         (1) baseline depth of the subscript
-         (2) base contents
-         (3) subscript contents
-         -- *)
+  | LowMathSubscript of {
+      sub_baseline_depth : length;
+      base               : low_math;
+      sub                : low_math;
+    }
 
   | LowMathSuperscript of length * low_math * low_math
       (* --
@@ -432,7 +431,7 @@ let get_left_kern lmmain hgt dpt =
   | LowMathPure(_, _, _, _, _, lk, _)          -> lk
   | LowMathList((_, _, _, lk, _))              -> lk
   | LowMathGroup(mkL, _, _)                    -> nokernf mkL
-  | LowMathSubscript(_, (_, _, _, lk, _), _)   -> lk
+  | LowMathSubscript{ base = (_, _, _, lk, _) } -> lk
   | LowMathSuperscript(_, (_, _, _, lk, _), _) -> lk
   | LowMathSubSuperscript(_, _, (_, _, _, lk, _), _, _) -> lk
   | LowMathFraction(_)                         -> nokernf MathInner
@@ -453,7 +452,7 @@ let get_right_kern lmmain hgt dpt =
   | LowMathPure(_, _, _, _, _, _, rk)          -> rk
   | LowMathList((_, _, _, _, rk))              -> rk
   | LowMathGroup(_, mkR, _)                    -> nokernf mkR
-  | LowMathSubscript(_, (_, _, _, _, rk), _)   -> nokernf rk.right_math_kind
+  | LowMathSubscript{ base = (_, _, _, _, rk) } -> nokernf rk.right_math_kind
   | LowMathSuperscript(_, (_, _, _, _, rk), _) -> nokernf rk.right_math_kind
   | LowMathSubSuperscript(_, _, (_, _, _, _, rk), _, _) -> nokernf rk.right_math_kind
   | LowMathFraction(_)                         -> nokernf MathInner
@@ -476,8 +475,14 @@ let rec get_left_math_kind : math_box -> math_kind = function
   | MathBoxGroup(mkL, _, _)            -> mkL
   | MathBoxSuperscript([], _)          -> MathEnd
   | MathBoxSuperscript(mathB :: _, _)  -> get_left_math_kind mathB
-  | MathBoxSubscript([], _)            -> MathEnd
-  | MathBoxSubscript(mathB :: _, _)    -> get_left_math_kind mathB
+
+  | MathBoxSubscript{ base; _ } ->
+      begin
+        match base with
+        | []         -> MathEnd
+        | mathB :: _ -> get_left_math_kind mathB
+      end
+
   | MathBoxFraction(_)                 -> MathInner
   | MathBoxRadical(_)                  -> MathInner
   | MathBoxRadicalWithDegree(_, _)     -> MathInner
@@ -496,8 +501,14 @@ let rec get_right_math_kind (math : math_box) : math_kind =
     | MathBoxGroup(_, mkR, _)         -> mkR
     | MathBoxSuperscript([], _)       -> MathEnd
     | MathBoxSuperscript(mathlst, _)  -> get_right_math_kind (List.hd (List.rev mathlst))
-    | MathBoxSubscript([], _)         -> MathEnd
-    | MathBoxSubscript(mathlst, _)    -> get_right_math_kind (List.hd (List.rev mathlst))
+
+    | MathBoxSubscript{ base; _ } ->
+        begin
+          match List.rev base with
+          | []         -> MathEnd
+          | mathB :: _ -> get_right_math_kind mathB
+        end
+
     | MathBoxFraction(_)              -> MathInner
     | MathBoxRadical(_)               -> MathInner
     | MathBoxRadicalWithDegree(_, _)  -> MathInner
@@ -662,7 +673,7 @@ let convert_math_char_with_kern (mathctx : math_context) (is_big : bool) (uchlst
 
 let rec check_subscript (mlstB : math_box list) =
   match List.rev mlstB with
-  | MathBoxSubscript(mlstBB, mlstT) :: mtailrev ->
+  | MathBoxSubscript{ base = mlstBB; sub = mlstT } :: mtailrev ->
     (* If the last element of the base contents has a subscript *)
       let mlstBnew = List.rev_append mtailrev mlstBB in
       Some((mlstT, mlstBnew))
@@ -770,7 +781,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
       in
       (lm, h_frac, d_frac)
 
-  | MathBoxSubscript(mlstB, mlstS) ->
+  | MathBoxSubscript{ context = ictx; base = mlstB; sub = mlstS } ->
 (*
       begin
         match check_pull_in mlstB with
@@ -784,11 +795,11 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
             let lmS = convert_to_low MathEnd MathEnd mlstS in
             let (_, h_base, d_base, _, rkB) = lmB in
             let (_, h_sub, d_sub, _, _)     = lmS in
-            let mathctx = failwith "TODO: MathBoxSubscript, mathctx" in
+            let mathctx = MathContext.make ictx in
             let d_subbl = subscript_baseline_depth mathctx rkB.last_depth h_sub in
             let h_whole = h_base in
             let d_whole = Length.min d_base (d_subbl +% d_sub) in
-            (LowMathSubscript(d_subbl, lmB, lmS), h_whole, d_whole)
+            (LowMathSubscript{ sub_baseline_depth = d_subbl; base = lmB; sub = lmS }, h_whole, d_whole)
 (*
       end
 *)
@@ -986,7 +997,7 @@ let get_space_correction = function
   | LowMathPure(_, _, _, _, _, _, rk)
       -> ItalicsCorrection(rk.italics_correction)
 
-  | LowMathSubscript(_, _, _)
+  | LowMathSubscript(_)
   | LowMathSuperscript(_, _, _)
   | LowMathSubSuperscript(_, _, _, _, _)
       -> SpaceAfterScript
@@ -1047,7 +1058,11 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
                 (hblstsup, hbspaceopt, rkB.right_math_kind)
 
-          | LowMathSubscript(d_subbl, lmB, lmS) ->
+          | LowMathSubscript{
+              sub_baseline_depth = d_subbl;
+              base               = lmB;
+              sub                = lmS;
+            } ->
               let (_, _, _, lkB, rkB) = lmB in
               let (_, h_sub, _, lkS, _) = lmS in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
