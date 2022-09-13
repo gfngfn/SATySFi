@@ -87,7 +87,15 @@ Context(HorzBox.({ ctx with
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let uchs = let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in uchs |> List.map (fun uch_from -> let (_, uch_to) = MathContext.convert_math_variant_char (ctx, ctxsub) uch_from in uch_to ) in make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchs))
+let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in
+let uchs =
+  let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+  uchs |> List.map (fun uch_from ->
+    let (_, uch_to) = MathContext.convert_math_variant_char (ctx, ctxsub) uch_from in
+    uch_to
+  )
+in
+make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchs))
 |}
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"
@@ -119,6 +127,7 @@ Context(ctx, { ctxsub with math_command = mcmd; })
 let ctcmd = get_code_text_command_func reducef valuecmd in
 Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
+(*
     ; inst "BackendMathVariantCharDirect"
         ~name:"math-variant-char"
         ~type_:Type.(tMATHCLS @-> tMCSTY @-> tMB)
@@ -135,44 +144,43 @@ let is_big = false in  (* temporary *)
 let mvsty = get_math_variant_style valuercd in
 make_math_boxes [ HorzBox.(MathBoxPure(MathVariantCharDirect(mathcls, is_big, mvsty))) ]
 |}
+*)
     ; inst "BackendGetLeftMathClass"
         ~name:"get-left-math-class"
-        ~type_:Type.(tCTX @-> tMB @-> tOPT tMATHCLS)
+        ~type_:Type.(tMB @-> tOPT tMATHCLS)
         ~fields:[
         ]
         ~params:[
-          param "ictx" ~type_:"context";
-          param "mathlst" ~type_:"math_boxes";
+          param "maths" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-match mathlst with
+match maths with
 | [] ->
     Constructor("None", const_unit)
 
 | math :: _ ->
-    let mathcls = Math.get_left_math_kind ictx math in
+    let mathcls = Math.get_left_math_kind math in
     make_math_class_option_value mathcls
 |}
     ; inst "BackendGetRightMathClass"
         ~name:"get-right-math-class"
-        ~type_:Type.(tCTX @-> tMB @-> tOPT tMATHCLS)
+        ~type_:Type.(tMB @-> tOPT tMATHCLS)
         ~fields:[
         ]
         ~params:[
-          param "ictx" ~type_:"context";
-          param "mathlst" ~type_:"math_boxes";
+          param "maths" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-match List.rev mathlst with
+match List.rev maths with
 | [] ->
     Constructor("None", const_unit)
 
 | math :: _ ->
-    let mathcls = Math.get_right_math_kind ictx math in
+    let mathcls = Math.get_right_math_kind math in
     make_math_class_option_value mathcls
 |}
     ; inst "BackendSpaceBetweenMaths"
@@ -368,88 +376,92 @@ make_math_text [ HorzBox.(MathTextPullInScripts(mathcls1, mathcls2, mlstf)) ]
 |}
     ; inst "BackendMathChar"
         ~name:"math-char"
-        ~type_:Type.(tMATHCLS @-> tS @-> tMB)
+        ~type_:Type.(tCTX @-> tMATHCLS @-> tS @-> tMB)
         ~fields:[
         ]
         ~params:[
+          param "ictx" ~type_:"context";
           param "mathcls" ~type_:"math_class";
-          param "uchlst" ~type_:"uchar_list";
+          param "uchs" ~type_:"uchar_list";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathChar(false, uchlst)))) ]
+let mchar = MathChar{ context = ictx; is_big = false; chars = uchs } in
+make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
 |}
     ; inst "BackendMathBigChar"
         ~name:"math-big-char"
-        ~type_:Type.(tMATHCLS @-> tS @-> tMB)
+        ~type_:Type.(tCTX @-> tMATHCLS @-> tS @-> tMB)
         ~fields:[
         ]
         ~params:[
+          param "ictx" ~type_:"context";
           param "mathcls" ~type_:"math_class";
-          param "uchlst" ~type_:"uchar_list";
+          param "uchs" ~type_:"uchar_list";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathChar(true, uchlst)))) ]
+let mchar = MathChar{ context = ictx; is_big = true; chars = uchs } in
+make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
 |}
     ; inst "BackendMathCharWithKern"
         ~name:"math-char-with-kern"
-        ~type_:Type.(tMATHCLS @-> tS @-> mckf @-> mckf @-> tMB)
+        ~type_:Type.(tCTX @-> tMATHCLS @-> tS @-> mckf @-> mckf @-> tMB)
         ~fields:[
         ]
         ~params:[
+          param "ictx" ~type_:"context";
           param "mathcls" ~type_:"math_class";
-          param "uchlst" ~type_:"uchar_list";
-          param "valuekernfL";
-          param "valuekernfR";
+          param "uchs" ~type_:"uchar_list";
+          param "value_left_kern";
+          param "value_right_kern";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let kernfL = make_math_char_kern_func reducef valuekernfL in
-let kernfR = make_math_char_kern_func reducef valuekernfR in
-make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathCharWithKern(false, uchlst, kernfL, kernfR)))) ]
+let left_kern = make_math_char_kern_func reducef value_left_kern in
+let right_kern = make_math_char_kern_func reducef value_right_kern in
+let mchar = MathCharWithKern{ context = ictx; is_big = false; chars = uchs; left_kern; right_kern } in
+make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
 |}
     ; inst "BackendMathBigCharWithKern"
         ~name:"math-big-char-with-kern"
-        ~type_:Type.(tMATHCLS @-> tS @-> mckf @-> mckf @-> tMB)
+        ~type_:Type.(tCTX @-> tMATHCLS @-> tS @-> mckf @-> mckf @-> tMB)
         ~fields:[
         ]
         ~params:[
+          param "ictx" ~type_:"context";
           param "mathcls" ~type_:"math_class";
-          param "uchlst" ~type_:"uchar_list";
-          param "valuekernfL";
-          param "valuekernfR";
+          param "uchs" ~type_:"uchar_list";
+          param "value_left_kern";
+          param "value_right_kern";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let kernfL = make_math_char_kern_func reducef valuekernfL in
-let kernfR = make_math_char_kern_func reducef valuekernfR in
-make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathCharWithKern(true, uchlst, kernfL, kernfR)))) ]
+let left_kern = make_math_char_kern_func reducef value_left_kern in
+let right_kern = make_math_char_kern_func reducef value_right_kern in
+let mchar = MathCharWithKern{ context = ictx; is_big = true; chars = uchs; left_kern; right_kern } in
+make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
 |}
-    ; inst "BackendMathText"
-        ~name:"text-in-math"
-        ~type_:Type.(tMATHCLS @-> (tCTX @-> tIB) @-> tMB)
+    ; inst "BackendEmbedHorzToMath"
+        ~name:"embed-inline-to-math"
+        ~type_:Type.(tMATHCLS @-> tIB @-> tMB)
         ~fields:[
         ]
         ~params:[
           param "mathcls" ~type_:"math_class";
-          param "valuef";
+          param "hbs" ~type_:"horz";
         ]
         ~is_pdf_mode_primitive:true
-        ~needs_reducef:true
         ~code:{|
-let hblstf ictx =
-  let valueh = reducef valuef [Context(ictx)] in
-  get_horz valueh
-in
-make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathEmbeddedText(hblstf)))) ]
+make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathEmbeddedText(hbs)))) ]
 |}
+(*
     ; inst "BackendMathColor" (* TODO: migrate to contexts and abandon this *)
         ~name:"math-color"
         ~type_:Type.(tCLR @-> tMB @-> tMB)
@@ -478,6 +490,7 @@ make_math_boxes [ HorzBox.(MathBoxChangeContext(MathChangeColor(color), mlst)) ]
         ~code:{|
 make_math_boxes [ HorzBox.(MathBoxChangeContext(MathChangeMathCharClass(mccls), mlst)) ]
 |}
+*)
     ; inst "BackendEmbeddedMath"
         ~name:"embed-math"
         ~type_:Type.(tCTX @-> tMB @-> tIB)

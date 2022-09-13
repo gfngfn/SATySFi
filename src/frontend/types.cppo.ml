@@ -567,10 +567,12 @@ type page_break_style =
   | MultiColumn of length list
 [@@deriving show { with_path = false; }]
 
+(*
 type math_context_change =
   | MathChangeColor         of color
   | MathChangeMathCharClass of HorzBox.math_char_class
 [@@deriving show { with_path = false; }]
+*)
 
 type base_constant =
   | BCUnit
@@ -910,24 +912,25 @@ and code_text_command_func =
   | CodeTextCommand of syntactic_value
 
 and math_element_main =
-  | MathChar         of bool * Uchar.t list
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
-      (* --
-         (1) whether it is a big operator
-         (2) Unicode code point (currently singular)
-         -- *)
-  | MathCharWithKern of bool * Uchar.t list * HorzBox.math_char_kern_func * HorzBox.math_char_kern_func
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char'>")]
-      (* --
-         (1) whether it is a big operator
-         (2) Unicode code point (currently singular)
-         (3) left-hand-side kerning function
-         (4) right-hand-side kerning function
-         --*)
-  | MathEmbeddedText of (input_context -> HorzBox.horz_box list)
+  | MathChar of {
+      context : input_context;
+      is_big  : bool;
+      chars   : Uchar.t list;
+    } [@printer (fun ppf _ _ _ -> Format.fprintf ppf "<math-char>")]
+
+  | MathCharWithKern of {
+      context    : input_context;
+      is_big     : bool;
+      chars      : Uchar.t list;
+      left_kern  : HorzBox.math_char_kern_func;
+      right_kern : HorzBox.math_char_kern_func;
+    } [@printer (fun ppf _ _ _ _ _ -> Format.fprintf ppf "<math-char'>")]
+
+  | MathEmbeddedText of HorzBox.horz_box list
 
 and math_element =
   | MathElement           of HorzBox.math_kind * math_element_main
+(*
   | MathVariantChar       of Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char>")]
   | MathVariantCharDirect of HorzBox.math_kind * bool * HorzBox.math_variant_style
@@ -937,10 +940,13 @@ and math_element =
          (2) whether it is a big operator
          (3) Unicode code point for all math_char_class
          -- *)
+*)
 
 and math_box =
   | MathBoxPure              of math_element
+(*
   | MathBoxChangeContext     of math_context_change * math_box list
+*)
   | MathBoxSubscript         of math_box list * math_box list
   | MathBoxSuperscript       of math_box list * math_box list
   | MathBoxGroup             of HorzBox.math_kind * HorzBox.math_kind * math_box list
@@ -956,7 +962,9 @@ and math_text =
   | MathTextChar              of Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
   | MathTextPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math_text list) option -> (math_text list) option -> math_box list)
+(*
   | MathTextChangeContext     of math_context_change * math_text list
+*)
   | MathTextSubscript         of math_text list * math_text list
   | MathTextSuperscript       of math_text list * math_text list
   | MathTextEmbed             of abstract_tree
