@@ -76,13 +76,12 @@ type low_math_main =
          (5) subscript contents
          -- *)
 
-  | LowMathFraction of length * length * low_math * low_math
-      (* --
-         (1) baseline height of the numerator
-         (2) baseline depth of the denominator
-         (3) numerator contents
-         (4) denominator contents
-         -- *)
+  | LowMathFraction of {
+      numerator_baseline_height  : length;
+      denominator_baseline_depth : length;
+      numerator                  : low_math;
+      denominator                : low_math;
+    }
 
   | LowMathRadical of low_radical * length * length * low_math
       (* --
@@ -436,7 +435,7 @@ let get_left_kern lmmain hgt dpt =
   | LowMathSubscript(_, (_, _, _, lk, _), _)   -> lk
   | LowMathSuperscript(_, (_, _, _, lk, _), _) -> lk
   | LowMathSubSuperscript(_, _, (_, _, _, lk, _), _, _) -> lk
-  | LowMathFraction(_, _, _, _)                -> nokernf MathInner
+  | LowMathFraction(_)                         -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
   | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
 
@@ -457,7 +456,7 @@ let get_right_kern lmmain hgt dpt =
   | LowMathSubscript(_, (_, _, _, _, rk), _)   -> nokernf rk.right_math_kind
   | LowMathSuperscript(_, (_, _, _, _, rk), _) -> nokernf rk.right_math_kind
   | LowMathSubSuperscript(_, _, (_, _, _, _, rk), _, _) -> nokernf rk.right_math_kind
-  | LowMathFraction(_, _, _, _)                -> nokernf MathInner
+  | LowMathFraction(_)                         -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
   | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
 
@@ -479,7 +478,7 @@ let rec get_left_math_kind : math_box -> math_kind = function
   | MathBoxSuperscript(mathB :: _, _)  -> get_left_math_kind mathB
   | MathBoxSubscript([], _)            -> MathEnd
   | MathBoxSubscript(mathB :: _, _)    -> get_left_math_kind mathB
-  | MathBoxFraction(_, _)              -> MathInner
+  | MathBoxFraction(_)                 -> MathInner
   | MathBoxRadical(_)                  -> MathInner
   | MathBoxRadicalWithDegree(_, _)     -> MathInner
   | MathBoxParen(_, _, _)              -> MathOpen
@@ -499,7 +498,7 @@ let rec get_right_math_kind (math : math_box) : math_kind =
     | MathBoxSuperscript(mathlst, _)  -> get_right_math_kind (List.hd (List.rev mathlst))
     | MathBoxSubscript([], _)         -> MathEnd
     | MathBoxSubscript(mathlst, _)    -> get_right_math_kind (List.hd (List.rev mathlst))
-    | MathBoxFraction(_, _)           -> MathInner
+    | MathBoxFraction(_)              -> MathInner
     | MathBoxRadical(_)               -> MathInner
     | MathBoxRadicalWithDegree(_, _)  -> MathInner
     | MathBoxParen(_, _, _)           -> MathClose
@@ -751,17 +750,25 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
       let (_, h_cont, d_cont, _, _) = lmC in
       (LowMathGroup(mkL, mkR, lmC), h_cont, d_cont)
 
-  | MathBoxFraction(mlstN, mlstD) ->
+  | MathBoxFraction{ context = ictx; numerator = mlstN; denominator = mlstD } ->
       let lmN = convert_to_low MathEnd MathEnd mlstN in
       let lmD = convert_to_low MathEnd MathEnd mlstD in
       let (_, h_numer, d_numer, _, _) = lmN in
       let (_, h_denom, d_denom, _, _) = lmD in
-      let mathctx = failwith "TODO: MathBoxFraction, mathctx" in
+      let mathctx = MathContext.make ictx in
       let h_numerbl = numerator_baseline_height mathctx d_numer in
       let d_denombl = denominator_baseline_depth mathctx h_denom in
       let h_frac = h_numerbl +% h_numer in
       let d_frac = d_denombl +% d_denom in
-      (LowMathFraction(h_numerbl, d_denombl, lmN, lmD), h_frac, d_frac)
+      let lm =
+        LowMathFraction{
+          numerator_baseline_height  = h_numerbl;
+          denominator_baseline_depth = d_denombl;
+          numerator                  = lmN;
+          denominator                = lmD;
+        }
+      in
+      (lm, h_frac, d_frac)
 
   | MathBoxSubscript(mlstB, mlstS) ->
 (*
@@ -1106,7 +1113,12 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               in
                 (hblstappended, hbspaceopt, rkB.right_math_kind)
 
-          | LowMathFraction(h_numerbl, d_denombl, lmN, lmD) ->
+          | LowMathFraction{
+              numerator_baseline_height  = h_numerbl;
+              denominator_baseline_depth = d_denombl;
+              numerator                  = lmN;
+              denominator                = lmD;
+            } ->
               let hblstN = horz_of_low_math mathctx MathEnd MathEnd lmN in
               let hblstD = horz_of_low_math mathctx MathEnd MathEnd lmD in
               let (w_numer, _, _) = LineBreak.get_natural_metrics hblstN in

@@ -260,17 +260,17 @@ make_math_boxes [ MathBoxSubscript(mlst1, mlst2) ]
 |}
     ; inst "BackendMathFraction"
         ~name:"math-frac"
-        ~type_:Type.(tMB @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math_boxes";
-          param "mlst2" ~type_:"math_boxes";
+          param "ictx" ~type_:"context";
+          param "ms1" ~type_:"math_boxes";
+          param "ms2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-make_math_boxes [ MathBoxFraction(mlst1, mlst2) ]
+make_math_boxes [ MathBoxFraction{ context = ictx; numerator = ms1; denominator = ms2 } ]
 |}
     ; inst "BackendMathRadical"
         ~name:"math-radical"

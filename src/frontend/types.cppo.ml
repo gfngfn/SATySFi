@@ -936,7 +936,11 @@ and math_box =
   | MathBoxSubscript         of math_box list * math_box list
   | MathBoxSuperscript       of math_box list * math_box list
   | MathBoxGroup             of HorzBox.math_kind * HorzBox.math_kind * math_box list
-  | MathBoxFraction          of math_box list * math_box list
+  | MathBoxFraction of {
+      context     : input_context;
+      numerator   : math_box list;
+      denominator : math_box list;
+    }
   | MathBoxRadicalWithDegree of math_box list * math_box list
   | MathBoxRadical           of HorzBox.radical * math_box list
   | MathBoxParen             of HorzBox.paren * HorzBox.paren * math_box list
