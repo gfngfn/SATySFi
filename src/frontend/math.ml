@@ -58,23 +58,18 @@ type low_math_main =
       base               : low_math;
       sub                : low_math;
     }
-
-  | LowMathSuperscript of length * low_math * low_math
-      (* --
-         (1) baseline height of the superscript
-         (2) base contents
-         (3) superscript contents
-         -- *)
-
-  | LowMathSubSuperscript of length * length * low_math * low_math * low_math
-      (* --
-         (1) baseline height of the superscript
-         (2) baseline height of the subscript
-         (3) base contents
-         (4) superscript contents
-         (5) subscript contents
-         -- *)
-
+  | LowMathSuperscript of {
+      sup_baseline_height : length;
+      base                : low_math;
+      sup                 : low_math;
+    }
+  | LowMathSubSuperscript of {
+      sup_baseline_height : length;
+      sub_baseline_depth  : length;
+      base                : low_math;
+      sup                 : low_math;
+      sub                 : low_math;
+    }
   | LowMathFraction of {
       numerator_baseline_height  : length;
       denominator_baseline_depth : length;
@@ -432,8 +427,8 @@ let get_left_kern lmmain hgt dpt =
   | LowMathList((_, _, _, lk, _))              -> lk
   | LowMathGroup(mkL, _, _)                    -> nokernf mkL
   | LowMathSubscript{ base = (_, _, _, lk, _) } -> lk
-  | LowMathSuperscript(_, (_, _, _, lk, _), _) -> lk
-  | LowMathSubSuperscript(_, _, (_, _, _, lk, _), _, _) -> lk
+  | LowMathSuperscript{ base = (_, _, _, lk, _) } -> lk
+  | LowMathSubSuperscript{ base = (_, _, _, lk, _) } -> lk
   | LowMathFraction(_)                         -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
   | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
@@ -453,8 +448,8 @@ let get_right_kern lmmain hgt dpt =
   | LowMathList((_, _, _, _, rk))              -> rk
   | LowMathGroup(_, mkR, _)                    -> nokernf mkR
   | LowMathSubscript{ base = (_, _, _, _, rk) } -> nokernf rk.right_math_kind
-  | LowMathSuperscript(_, (_, _, _, _, rk), _) -> nokernf rk.right_math_kind
-  | LowMathSubSuperscript(_, _, (_, _, _, _, rk), _, _) -> nokernf rk.right_math_kind
+  | LowMathSuperscript{ base = (_, _, _, _, rk) } -> nokernf rk.right_math_kind
+  | LowMathSubSuperscript{ base = (_, _, _, _, rk) } -> nokernf rk.right_math_kind
   | LowMathFraction(_)                         -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
   | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
@@ -839,7 +834,16 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
                   let (h_supbl, d_subbl) = correct_script_baseline_heights mathctx d_sup h_sub h_supbl_raw d_subbl_raw in
                   let h_whole = Length.max h_base (h_supbl +% h_sup) in
                   let d_whole = Length.min d_base (d_subbl +% d_sub) in
-                  (LowMathSubSuperscript(h_supbl, d_subbl, lmB, lmS, lmT), h_whole, d_whole)
+                  let lm =
+                    LowMathSubSuperscript{
+                      sup_baseline_height = h_supbl;
+                      sub_baseline_depth  = d_subbl;
+                      base                = lmB;
+                      sub                 = lmS;
+                      sup                 = lmT;
+                    }
+                  in
+                  (lm, h_whole, d_whole)
 (*
             end
 *)
@@ -863,7 +867,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
                   let h_supbl = superscript_baseline_height mathctx h_base d_sup in
                   let h_whole = Length.max h_base (h_supbl +% h_sup) in
                   let d_whole = d_base in
-                  (LowMathSuperscript(h_supbl, lmB, lmS), h_whole, d_whole)
+                  (LowMathSuperscript{ sup_baseline_height = h_supbl; base = lmB; sup = lmS }, h_whole, d_whole)
 (*
             end
 *)
@@ -1004,15 +1008,16 @@ let raise_horz r hblst =
 
 let get_space_correction = function
   | LowMathList((_, _, _, _, rk))
-  | LowMathPure(_, _, _, _, _, _, rk)
-      -> ItalicsCorrection(rk.italics_correction)
+  | LowMathPure(_, _, _, _, _, _, rk) ->
+      ItalicsCorrection(rk.italics_correction)
 
   | LowMathSubscript(_)
-  | LowMathSuperscript(_, _, _)
-  | LowMathSubSuperscript(_, _, _, _, _)
-      -> SpaceAfterScript
+  | LowMathSuperscript(_)
+  | LowMathSubSuperscript(_) ->
+      SpaceAfterScript
 
-  | _ -> NoSpace
+  | _ ->
+      NoSpace
 
 
 let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mklast : math_kind) (lm : low_math) =
@@ -1050,7 +1055,11 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr mkL in
                 (hblstC, hbspaceopt, mkR)
 
-          | LowMathSuperscript(h_supbl, lmB, lmS) ->
+          | LowMathSuperscript{
+              sup_baseline_height = h_supbl;
+              base                = lmB;
+              sup                 = lmS;
+            } ->
               let (_, _, _, lkB, rkB) = lmB in
               let (_, _, d_sup, lkS, _) = lmS in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
@@ -1096,7 +1105,13 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
                 (hblstsub, hbspaceopt, rkB.right_math_kind)
 
-          | LowMathSubSuperscript(h_supbl, d_subbl, lmB, lmS, lmT) ->
+          | LowMathSubSuperscript{
+              sup_baseline_height = h_supbl;
+              sub_baseline_depth  = d_subbl;
+              base                = lmB;
+              sub                 = lmS;
+              sup                 = lmT;
+            } ->
               let (_, _, _, lkB, rkB) = lmB in
               let (_, _, d_sup, lkS, _) = lmS in
               let (_, h_sub, _, lkT, _) = lmT in
