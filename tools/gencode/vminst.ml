@@ -327,31 +327,31 @@ make_math_boxes [ MathBoxParenWithMiddle(parenL, parenR, middle, mss) ]
 |}
     ; inst "BackendMathUpperLimit"
         ~name:"math-upper"
-        ~type_:Type.(tMB @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math_boxes";
-          param "mlst2" ~type_:"math_boxes";
+          param "ictx" ~type_:"context";
+          param "base" ~type_:"math_boxes";
+          param "upper" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-make_math_boxes [ MathBoxUpperLimit(mlst1, mlst2) ]
+make_math_boxes [ MathBoxUpperLimit{ context = ictx; base; upper } ]
 |}
     ; inst "BackendMathLowerLimit"
         ~name:"math-lower"
-        ~type_:Type.(tMB @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math_boxes";
-          param "mlst2" ~type_:"math_boxes";
+          param "ictx" ~type_:"context";
+          param "base" ~type_:"math_boxes";
+          param "lower" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-make_math_boxes [ MathBoxLowerLimit(mlst1, mlst2) ]
+make_math_boxes [ MathBoxLowerLimit{ context = ictx; base; lower } ]
 |}
     ; inst "BackendMathPullInScripts"
         ~name:"math-pull-in-scripts"

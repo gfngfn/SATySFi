@@ -106,19 +106,16 @@ type low_math_main =
          (4) list of inner contents
          -- *)
 
-  | LowMathUpperLimit of length * low_math * low_math
-      (* --
-         (1) baseline height of the upper script
-         (2) base contents
-         (3) upper script contents
-         -- *)
-
-  | LowMathLowerLimit of length * low_math * low_math
-      (* --
-         (1) baseline depth of the lower script
-         (2) base contents
-         (3) lower script contents
-         -- *)
+  | LowMathUpperLimit of {
+      upper_baseline_height : length;
+      base                  : low_math;
+      upper                 : low_math;
+    }
+  | LowMathLowerLimit of {
+      lower_baseline_depth : length;
+      base                 : low_math;
+      lower                : low_math;
+    }
 
 and low_math = low_math_main list * length * length * left_kern * right_kern
   (* -- lowmath has information about its height and depth -- *)
@@ -435,8 +432,8 @@ let get_left_kern lmmain hgt dpt =
   | LowMathParenWithMiddle(lpL, _, _, _)
       -> make_left_paren_kern lpL.lp_height lpL.lp_depth lpL.lp_math_kern_scheme
 
-  | LowMathUpperLimit(_, (_, _, _, lk, _), _)  -> lk
-  | LowMathLowerLimit(_, (_, _, _, lk, _), _)  -> lk
+  | LowMathUpperLimit{ base = (_, _, _, lk, _) } -> lk
+  | LowMathLowerLimit{ base = (_, _, _, lk, _) } -> lk
 
 
 let get_right_kern lmmain hgt dpt =
@@ -456,8 +453,8 @@ let get_right_kern lmmain hgt dpt =
   | LowMathParenWithMiddle(_, lpR, _, _)
       -> make_right_paren_kern lpR.lp_height lpR.lp_depth lpR.lp_math_kern_scheme
 
-  | LowMathUpperLimit(_, (_, _, _, _, rk), _)  -> rk
-  | LowMathLowerLimit(_, (_, _, _, _, rk), _)  -> rk
+  | LowMathUpperLimit{ base = (_, _, _, _, rk) } -> rk
+  | LowMathLowerLimit{ base = (_, _, _, _, rk) } -> rk
 
 
 let get_math_kind_of_math_element : math_element -> math_kind = function
@@ -489,46 +486,62 @@ let rec get_left_math_kind : math_box -> math_kind = function
   | MathBoxRadicalWithDegree(_, _)     -> MathInner
   | MathBoxParen(_, _, _)              -> MathOpen
   | MathBoxParenWithMiddle(_, _, _, _) -> MathOpen
-  | MathBoxLowerLimit(mathB :: _, _)   -> get_left_math_kind mathB
-  | MathBoxLowerLimit([], _)           -> MathEnd
-  | MathBoxUpperLimit(mathB :: _, _)   -> get_left_math_kind mathB
-  | MathBoxUpperLimit([], _)           -> MathEnd
+
+  | MathBoxLowerLimit{ base } ->
+      begin
+        match base with
+        | []         -> MathEnd
+        | mathB :: _ -> get_left_math_kind mathB
+      end
+
+  | MathBoxUpperLimit{ base } ->
+      begin
+        match base with
+        | []         -> MathEnd
+        | mathB :: _ -> get_left_math_kind mathB
+      end
 
 
-let rec get_right_math_kind (math : math_box) : math_kind =
-  try
-    match math with
-    | MathBoxPure(me) ->
-        get_math_kind_of_math_element me
+let rec get_right_math_kind : math_box -> math_kind = function
+  | MathBoxPure(me) ->
+      get_math_kind_of_math_element me
 
-    | MathBoxGroup{ right } ->
-        right
+  | MathBoxGroup{ right } ->
+      right
 
-    | MathBoxSuperscript{ base; _ } ->
-        begin
-          match List.rev base with
-          | []         -> MathEnd
-          | mathB :: _ -> get_right_math_kind mathB
-        end
+  | MathBoxSuperscript{ base; _ } ->
+      begin
+        match List.rev base with
+        | []         -> MathEnd
+        | mathB :: _ -> get_right_math_kind mathB
+      end
 
-    | MathBoxSubscript{ base; _ } ->
-        begin
-          match List.rev base with
-          | []         -> MathEnd
-          | mathB :: _ -> get_right_math_kind mathB
-        end
+  | MathBoxSubscript{ base; _ } ->
+      begin
+        match List.rev base with
+        | []         -> MathEnd
+        | mathB :: _ -> get_right_math_kind mathB
+      end
 
-    | MathBoxFraction(_)              -> MathInner
-    | MathBoxRadical(_)               -> MathInner
-    | MathBoxRadicalWithDegree(_, _)  -> MathInner
-    | MathBoxParen(_, _, _)           -> MathClose
-    | MathBoxParenWithMiddle(_, _, _, _) -> MathClose
-    | MathBoxLowerLimit([], _)        -> MathEnd
-    | MathBoxLowerLimit(mathlst, _)   -> get_right_math_kind (List.hd (List.rev mathlst))
-    | MathBoxUpperLimit([], _)        -> MathEnd
-    | MathBoxUpperLimit(mathlst, _)   -> get_right_math_kind (List.hd (List.rev mathlst))
-  with
-  | Invalid_argument(_) -> assert false
+  | MathBoxFraction(_)              -> MathInner
+  | MathBoxRadical(_)               -> MathInner
+  | MathBoxRadicalWithDegree(_, _)  -> MathInner
+  | MathBoxParen(_, _, _)           -> MathClose
+  | MathBoxParenWithMiddle(_, _, _, _) -> MathClose
+
+  | MathBoxLowerLimit{ base } ->
+      begin
+        match List.rev base with
+        | []         -> MathEnd
+        | mathB :: _ -> get_right_math_kind mathB
+      end
+
+  | MathBoxUpperLimit{ base } ->
+      begin
+        match List.rev base with
+        | []         -> MathEnd
+        | mathB :: _ -> get_right_math_kind mathB
+      end
 
 
 let superscript_baseline_height mathctx h_base d_sup =
@@ -938,27 +951,27 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
       let lpM = { lp_main = hblstmiddle; lp_height = hM; lp_depth = dM; lp_math_kern_scheme = FontInfo.no_math_kern; } in
       (LowMathParenWithMiddle(lpL, lpR, lpM, lmlst), h_whole, d_whole)
 
-  | MathBoxUpperLimit(mlstB, mlstU) ->
+  | MathBoxUpperLimit{ context = ictx; base = mlstB; upper = mlstU } ->
       let lmB = convert_to_low mkprev mknext mlstB in
       let lmU = convert_to_low MathEnd MathEnd mlstU in
       let (_, h_base, d_base, _, _) = lmB in
       let (_, h_up, d_up, _, _) = lmU in
-      let mathctx = failwith "TODO: MathBoxUpperLimit" in
+      let mathctx = MathContext.make ictx in
       let h_upbl = upper_limit_baseline_height mathctx h_base d_up in
       let h_whole = h_upbl +% h_up in
       let d_whole = d_base in
-      (LowMathUpperLimit(h_upbl, lmB, lmU), h_whole, d_whole)
+      (LowMathUpperLimit{ upper_baseline_height = h_upbl; base = lmB; upper = lmU }, h_whole, d_whole)
 
-  | MathBoxLowerLimit(mlstB, mlstL) ->
+  | MathBoxLowerLimit{ context = ictx; base = mlstB; lower = mlstL } ->
       let lmB = convert_to_low mkprev mknext mlstB in
       let lmL = convert_to_low MathEnd MathEnd mlstL in
       let (_, h_base, d_base, _, _) = lmB in
       let (_, h_low, d_low, _, _) = lmL in
-      let mathctx = failwith "TODO: MathBoxLowerLimit" in
+      let mathctx = MathContext.make ictx in
       let d_lowbl = lower_limit_baseline_depth mathctx d_base h_low in
       let h_whole = h_base in
       let d_whole = d_lowbl +% d_low in
-      (LowMathLowerLimit(d_lowbl, lmB, lmL), h_whole, d_whole)
+      (LowMathLowerLimit{ lower_baseline_depth = d_lowbl; base = lmB; lower = lmL }, h_whole, d_whole)
 
 
 (* --
@@ -1234,7 +1247,7 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathOpen in
                 (hblstsub, hbspaceopt, MathClose)
 
-          | LowMathUpperLimit(h_upbl, lmB, lmU) ->
+          | LowMathUpperLimit{ upper_baseline_height = h_upbl; base = lmB; upper = lmU } ->
               let (_, _, _, lkB, rkB) = lmB in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
                 (* needs reconsideration *)
@@ -1257,7 +1270,7 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
                 (hblstsub, hbspaceopt, rkB.right_math_kind)
 
-          | LowMathLowerLimit(d_lowbl, lmB, lmL) ->
+          | LowMathLowerLimit{ lower_baseline_depth = d_lowbl; base = lmB; lower = lmL } ->
               let (_, _, _, lkB, rkB) = lmB in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
                 (* needs reconsideration *)

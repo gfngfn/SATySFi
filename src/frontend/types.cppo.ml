@@ -957,8 +957,17 @@ and math_box =
   | MathBoxRadical           of HorzBox.radical * math_box list
   | MathBoxParen             of HorzBox.paren * HorzBox.paren * math_box list
   | MathBoxParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math_box list) list
-  | MathBoxUpperLimit        of math_box list * math_box list
-  | MathBoxLowerLimit        of math_box list * math_box list
+
+  | MathBoxUpperLimit of {
+      context : input_context;
+      base    : math_box list;
+      upper   : math_box list;
+    }
+  | MathBoxLowerLimit of {
+      context : input_context;
+      base    : math_box list;
+      lower   : math_box list;
+    }
 
 and math_text =
   | MathTextChar              of Uchar.t
