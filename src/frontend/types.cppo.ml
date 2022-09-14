@@ -561,8 +561,19 @@ type 'a input_vert_element_scheme =
   | InputVertContent  of 'a
 [@@deriving show { with_path = false; }]
 
+type 'a input_math_base_scheme =
+  | InputMathChar     of Uchar.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
+  | InputMathContent  of 'a
+  | InputMathEmbedded of 'a
+[@@deriving show { with_path = false; }]
+
 type 'a input_math_element_scheme =
-  unit (* TODO: define this *)
+  | InputMathElement of {
+      base : 'a input_math_base_scheme;
+      sub  : (('a input_math_element_scheme) list) option;
+      sup  : (('a input_math_element_scheme) list) option;
+    }
 [@@deriving show { with_path = false; }]
 
 type ('a, 'b) path_component_scheme =
@@ -902,20 +913,7 @@ and input_vert_element =
   abstract_tree input_vert_element_scheme
 
 and input_math_element =
-  | InputMathElement of {
-      base : input_math_base;
-      sub  : (input_math_element list) option;
-      sup  : (input_math_element list) option;
-    }
-
-and input_math_base =
-  | InputMathChar     of Uchar.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
-  | InputMathContent  of abstract_tree
-  | InputMathEmbedded of abstract_tree
-(*
-  | MathTextPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math_text list) option -> (math_text list) option -> math_box list)
-*)
+  abstract_tree input_math_element_scheme
 
 and 'a path_component =
   ('a, abstract_tree) path_component_scheme
@@ -1164,8 +1162,19 @@ let map_input_vert f ivlst =
   )
 
 
-let map_input_math f ms =
-  failwith "TODO: map_input_math"
+let rec map_input_math f ms =
+  ms |> List.map (fun m ->
+    let InputMathElement{ base; sub; sup } = m in
+    let base =
+      match base with
+      | InputMathChar(uch)     -> InputMathChar(uch)
+      | InputMathContent(ast)  -> InputMathContent(f ast)
+      | InputMathEmbedded(ast) -> InputMathEmbedded(f ast)
+    in
+    let sub = sub |> Option.map (map_input_math f) in
+    let sup = sup |> Option.map (map_input_math f) in
+    InputMathElement{ base; sub; sup }
+  )
 
 
 let map_path_component f g = function
