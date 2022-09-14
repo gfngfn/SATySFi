@@ -77,64 +77,65 @@ module Local = struct
   %    ${\paren{#m}\math-skip!(4pt)#token}
 
 
-  val rec math-of-type ty =
+  val rec math-of-type ctx ty =
     match ty with
     | TypeName(it) ->
-        text-in-math MathOrd (fun ctx -> read-inline ctx it)
+        embed-inline-to-math MathOrd (read-inline ctx it)
 
     | TypeConstructor(it, tylst) ->
         let mlst =
           tylst |> List.map (fun ty -> (
-            let m = math-of-type ty in
-              match ty with
-              | TypeName(_) -> m
-              | Tuple(_)    -> m
-              | Record(_)   -> m
-              | _           -> ${\Math.paren{#m}}
-              end
+            let m = math-of-type ctx ty in
+            match ty with
+            | TypeName(_) -> m
+            | Tuple(_)    -> m
+            | Record(_)   -> m
+            | _           -> Math.paren m
+            end
           ))
         in
-          Math.join ${\Math.math-skip!(4pt)} (List.append mlst [text-in-math MathOrd (fun ctx -> read-inline ctx it)])
+        Math.join-boxes ctx (read-math ctx ${\Math.math-skip!(4pt)})
+          (List.append mlst [ embed-inline-to-math MathOrd (read-inline ctx it) ])
 
     | Tuple(tylst) ->
         let mlst =
           tylst |> List.map (fun ty -> (
-            let m = math-of-type ty in
+            let m = math-of-type ctx ty in
               match ty with
               | TypeName(_) -> m
               | Tuple(_)    -> m
               | Record(_)   -> m
-              | _           -> ${\Math.paren{#m}}
+              | _           -> Math.paren m
               end
           ))
         in
-        let m = Math.join ${\Math.ast} mlst in
-        ${\Math.paren{#m}}
+        Math.paren (Math.join-boxes ctx (read-math ctx ${\Math.ast}) mlst)
 
     | Record(lst) ->
         let mlst =
           lst |> List.map (fun (key, ty) -> (
-            let m = math-of-type ty in
-            ${\Math.text!(key) = #m}
+            let m = math-of-type ctx ty in
+            math-concat (read-math ctx ${\Math.text!(key) =}) m
           ))
         in
-        let m = Math.join ${\;\Math.math-skip!(4pt)} mlst in
-        ${\LocalParen.record-paren{#m}}
+        let m = Math.join-boxes ctx (read-math ctx ${\;\Math.math-skip!(4pt)}) mlst in
+        LocalParen.record-paren m
 
     | FuncType(ty1, ty2) ->
-        let m1 = math-of-type ty1 in
-        let m2 = math-of-type ty2 in
+        let m1 = math-of-type ctx ty1 in
+        let m2 = math-of-type ctx ty2 in
         let m1 =
           match ty1 with
-          | FuncType(_, _) -> ${\Math.paren{#m1}}
+          | FuncType(_, _) -> Math.paren m1
           | _              -> m1
           end
         in
-        ${#m1\Math.to#m2}
+        math-concat (math-concat m1 (read-math ctx ${\Math.to})) m2
     end
 
 
-  val math \math-of-type ty = math-of-type ty
+  val math ctx \math-of-type ty =
+    math-of-type ctx ty
 
   val block ctx +centered-image wid srcpath =
     let img = load-image srcpath in
@@ -159,7 +160,7 @@ module Local = struct
     let ib-colon = read-inline ctx {\ :\ } in
     let indent = (ctx |> get-font-size) *' 2. in
     let ib-inner = read-inline ctx inner in
-    let m-ty = embed-math ctx (math-of-type ty) in
+    let m-ty = embed-math ctx (math-of-type ctx ty) in
       line-break true false (ctx |> set-paragraph-margin gap-paragraph gap-command)
         (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
     +++
@@ -209,7 +210,7 @@ module Local = struct
       block-frame-breakable ctx (indent, 0pt, 0pt, 0pt) VDecoSet.empty
           (fun ctx ->
             Pervasives.form-paragraph (ctx |> set-paragraph-margin 0pt 0pt)
-              (inline-skip (0pt -' indent) ++ embed-math ctx (math-of-type ty) ++ quad ++ ib-inner ++ inline-fil)
+              (inline-skip (0pt -' indent) ++ embed-math ctx (math-of-type ctx ty) ++ quad ++ ib-inner ++ inline-fil)
           )
 
 
@@ -223,7 +224,7 @@ module Local = struct
       ctx |> set-text-color Color.orange
           |> set-font Latin StdJaBook.font-latin-italic
     in
-      embed-math ctx-meta m
+    embed-math ctx-meta (read-math ctx-meta m)
 
 
   val inline ctx \code inner =
