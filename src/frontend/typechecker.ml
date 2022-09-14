@@ -1367,7 +1367,7 @@ and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_e
             match tycmdmain with
             | MathCommandType(cmdargtylstreq) ->
                 let eapp = typecheck_command_arguments ecmd tycmd rng pre tyenv utcmdarglst cmdargtylstreq in
-                InputMathCommand(eapp)
+                InputMathEmbedded(eapp)
 
             | HorzCommandType(_) ->
                 let (rngcmd, _) = utastcmd in

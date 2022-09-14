@@ -821,7 +821,17 @@ and intermediate_input_vert_element =
   | ImInputVertContent  of intermediate_input_vert_element list * environment
 
 and intermediate_input_math_element =
-  unit (* TODO: define this *)
+  | ImInputMathElement of {
+      base : intermediate_input_math_base;
+      sub  : (intermediate_input_math_element list) option;
+      sup  : (intermediate_input_math_element list) option;
+    }
+
+and intermediate_input_math_base =
+  | ImInputMathChar     of Uchar.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<im-input-math-char>")]
+  | ImInputMathEmbedded of abstract_tree
+  | ImInputMathContent  of intermediate_input_math_element list * environment
 
 and syntactic_value =
   | Nil  (* -- just for brief use -- *)
@@ -901,7 +911,7 @@ and input_math_element =
 and input_math_base =
   | InputMathChar     of Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
-  | InputMathCommand  of abstract_tree
+  | InputMathContent  of abstract_tree
   | InputMathEmbedded of abstract_tree
 (*
   | MathTextPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math_text list) option -> (math_text list) option -> math_box list)

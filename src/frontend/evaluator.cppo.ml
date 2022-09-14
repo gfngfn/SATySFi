@@ -157,7 +157,35 @@ and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element
 
 
 and interpret_0_input_math_content (env : environment) (ims : input_math_element list) : intermediate_input_math_element list =
-  failwith "TODO: interpret_0_input_math_content"
+  ims |> List.map (fun im ->
+    let InputMathElement{ base; sub; sup } = im in
+    let imbase =
+      match base with
+      | InputMathChar(uch) ->
+          ImInputMathChar(uch)
+
+      | InputMathEmbedded(ast_abs) ->
+          ImInputMathEmbedded(ast_abs)
+
+      | InputMathContent(ast) ->
+          let value = interpret_0 env ast in
+          begin
+            match value with
+            | InputMathClosure(imims, env_sub) ->
+                ImInputMathContent(imims, env_sub)
+
+            | _ ->
+                report_bug_reduction "interpret_0_input_math_content" ast value
+          end
+    in
+    let imsub = sub |> Option.map (interpret_0_input_math_content env) in
+    let imsup = sup |> Option.map (interpret_0_input_math_content env) in
+    ImInputMathElement{
+      base = imbase;
+      sub  = imsub;
+      sup  = imsup;
+    }
+  )
 
 
 and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
@@ -621,7 +649,50 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (value_tctx 
 
 
 and interpret_pdf_mode_intermediate_input_math (env : environment) (value_ctx : syntactic_value) (imims : intermediate_input_math_element list) : syntactic_value =
-  failwith "TODO: interpret_pdf_mode_intermediate_input_math"
+
+  let ictx = get_context value_ctx in (* TODO: refactor this *)
+
+  let rec interpret_commands (env : environment) (imims : intermediate_input_math_element list) =
+    imims |> List.map (fun imim ->
+      let ImInputMathElement{ base; sub; sup } = imim in
+      let mbs_base =
+        match base with
+        | ImInputMathChar(uch) ->
+            failwith "TODO: ImInputMathChar; should convert input code points to math code points here"
+
+        | ImInputMathEmbedded(ast_abs) ->
+            let value_abs = interpret_0 env ast_abs in
+            let value_math = reduce_beta value_abs value_ctx in
+            get_math_boxes value_math
+
+        | ImInputMathContent(imims_sub, env_sub) ->
+            interpret_commands env_sub imims_sub
+      in
+      let mbs_sub_opt = sub |> Option.map (interpret_commands env) in
+      let mbs_sup_opt = sup |> Option.map (interpret_commands env) in
+      match (mbs_sub_opt, mbs_sup_opt) with
+      | (None, None) ->
+          mbs_base
+
+      | (Some(mbs_sub), None) ->
+          [ MathBoxSubscript{ context = ictx; base = mbs_base; sub = mbs_sub } ]
+
+      | (None, Some(mbs_sup)) ->
+          [ MathBoxSuperscript{ context = ictx; base = mbs_base; sup = mbs_sup } ]
+
+      | (Some(mbs_sub), Some(mbs_sup)) ->
+          [
+            MathBoxSuperscript{
+              context = ictx;
+              base    = [ MathBoxSubscript{ context = ictx; base = mbs_base; sub = mbs_sub } ];
+              sup     = mbs_sup;
+            };
+          ]
+
+    ) |> List.concat
+  in
+  let mbs = interpret_commands env imims in
+  make_math_boxes mbs
 
 
 and interpret_pdf_mode_intermediate_input_vert (env : environment) (value_ctx : syntactic_value) (imivs : intermediate_input_vert_element list) : syntactic_value =
