@@ -219,27 +219,21 @@
     (Range.dummy "itemize1", UTItemize(contents))
 
 
-  let primes (n : int) : Uchar.t list =
-    List.init n (fun _ -> Uchar.of_int 0x2032)
+  let primes (rng : Range.t) (n : int) : untyped_input_math_element list =
+    List.init n (fun _ ->
+      (rng, UTInputMathElement{ base = UTInputMathChar(Uchar.of_int 0x2032); sup = None; sub = None })
+    )
 
 
-  let make_sup ~range ?prime ?sup base =
-    let make_primes r n =
-      (r, UTMChars(primes n))
+  let make_math_element ~(range : Range.t) ?(prime : (Range.t * int) option) ?(sup : (bool * untyped_input_math_element list) option) ?(sub : (bool * untyped_input_math_element list) option) (base : untyped_input_math_base) : untyped_input_math_element =
+    let sup =
+      match (prime, sup) with
+      | (None, None)                     -> None
+      | (None, Some((b, utmes)))         -> Some((b, utmes))
+      | (Some((r, n)), None)             -> Some((true, primes r n))
+      | (Some((r, n)), Some((b, utmes))) -> Some((b, List.append (primes r n) utmes))
     in
-    match (prime, sup) with
-    | (None, None) ->
-        (range, snd base)
-    | (None, Some((b, p))) ->
-        (range, UTMSuperScript(base, b, p))
-    | (Some((r, n)), None) ->
-        (range, UTMSuperScript(base, true, make_primes r n))
-    | (Some((r, n)), Some((b, p))) ->
-        let ps = make_standard (Tok r) (Ranged p) (UTMList [make_primes r n; p]) in
-        (range, UTMSuperScript(base, b, ps))
-
-  let make_sub ~range ~sub:(b, s) base =
-    (range, UTMSubScript(base, b, s))
+    (range, UTInputMathElement{ base; sup; sub })
 %}
 
 %token<Range.t>
@@ -338,8 +332,11 @@
 %type<Range.t * Types.untyped_command_argument list> cmd_args_text
 %type<Types.untyped_command_argument> cmd_arg_text
 %type<Types.untyped_command_argument> cmd_arg_expr
-%type<bool * Types.untyped_math> math_group
-%type<Types.untyped_math> math_bot
+%type<Types.untyped_abstract_tree> math
+%type<Types.untyped_abstract_tree> math_single
+%type<Range.t * (bool * Types.untyped_input_math_element list)> math_group
+%type<Types.untyped_input_math_element> math_elem
+%type<Range.t * Types.untyped_input_math_base> math_bot
 %type<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged> backslash_cmd
 %type<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged> plus_cmd
 
@@ -1142,99 +1139,116 @@ block_elem:
       }
 ;
 math:
-  | BAR; utms=list(terminated(math_single, BAR))
-      { utms |> List.map (fun utm -> let (rng, _) = utm in (rng, UTMath(utm))) |> make_list }
-  | utm=math_single
-      { let (rng, _) = utm in (rng, UTMath(utm)) }
+  | BAR; utasts=list(terminated(math_single, BAR))
+      { make_list utasts }
+  | utast=math_single
+      { utast }
 ;
 math_single:
-  | utms=list(math_elem)
+  | utmes=list(math_elem)
       {
         let rng =
-          match (utms, List.rev utms) with
+          match (utmes, List.rev utmes) with
           | ([], [])                         -> Range.dummy "empty-math"
           | ((rngL, _) :: _, (rngR, _) :: _) -> Range.unite rngL rngR
           | _                                -> assert false
         in
-        (rng, UTMList(utms))
+        (rng, UTMath(utmes))
       }
 ;
 math_elem:
   (* a: *)
-  | base=math_bot
-      { base }
-  (* a^p: *)
-  | base=math_bot; SUPERSCRIPT; sup=math_group
+  | bot=math_bot
       {
-        base
-          |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+        let (range, base) = bot in
+        base |> make_math_element ~range
+      }
+  (* a^p: *)
+  | bot=math_bot; SUPERSCRIPT; rsup=math_group
+      {
+        let (rngL, base) = bot in
+        let (rngR, sup) = rsup in
+        base |> make_math_element ~sup ~range:(make_range (Tok rngL) (Tok rngR))
       }
   (* a_b: *)
-  | base=math_bot; SUBSCRIPT; sub=math_group
+  | bot=math_bot; SUBSCRIPT; rsub=math_group
       {
-        base
-          |> make_sub ~sub ~range:(make_range (Ranged base) (Ranged (snd sub)))
+        let (rngL, base) = bot in
+        let (rngR, sub) = rsub in
+        base |> make_math_element ~sub ~range:(make_range (Tok rngL) (Tok rngR))
       }
   (* a_b^p: *)
-  | base=math_bot; SUBSCRIPT; sub=math_group; SUPERSCRIPT; sup=math_group
+  | bot=math_bot; SUBSCRIPT; rsub=math_group; SUPERSCRIPT; rsup=math_group
       {
-        base
-          |> make_sub ~sub ~range:(make_range (Ranged base) (Ranged (snd sub)))
-          |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+        let (rngL, base) = bot in
+        let (_, sub) = rsub in
+        let (rngR, sup) = rsup in
+        base |> make_math_element ~sub ~sup ~range:(make_range (Tok rngL) (Tok rngR))
       }
   (* a^p_b: *)
-  | base=math_bot; SUPERSCRIPT; sup=math_group; SUBSCRIPT; sub=math_group
+  | bot=math_bot; SUPERSCRIPT; rsup=math_group; SUBSCRIPT; rsub=math_group
       {
-        base
-          |> make_sub ~sub ~range:(Range.dummy "mathtop")
-          |> make_sup ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
+        let (rngL, base) = bot in
+        let (_, sup) = rsup in
+        let (rngR, sub) = rsub in
+        base |> make_math_element ~sub ~sup ~range:(make_range (Tok rngL) (Tok rngR))
       }
   (* a': *)
-  | base=math_bot; prime=PRIMES
+  | bot=math_bot; prime=PRIMES
       {
-        base
-          |> make_sup ~prime ~range:(make_range (Ranged base) (Tok (fst prime)))
+        let (rngL, base) = bot in
+        base |> make_math_element ~prime ~range:(make_range (Tok rngL) (Ranged prime))
       }
   (* a'^p: *)
-  | base=math_bot; prime=PRIMES; SUPERSCRIPT; sup=math_group
+  | bot=math_bot; prime=PRIMES; SUPERSCRIPT; rsup=math_group
       {
-        base
-          |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+        let (rngL, base) = bot in
+        let (rngR, sup) = rsup in
+        base |> make_math_element ~prime ~sup ~range:(make_range (Tok rngL) (Tok rngR))
       }
   (* a'_b: *)
-  | base=math_bot; prime=PRIMES; SUBSCRIPT; sub=math_group
+  | bot=math_bot; prime=PRIMES; SUBSCRIPT; rsub=math_group
       {
-        base
-          |> make_sub ~sub ~range:(Range.dummy "mathtop")
-          |> make_sup ~prime ~range:(make_range (Ranged base) (Ranged (snd sub)))
+        let (rngL, base) = bot in
+        let (rngR, sub) = rsub in
+        base |> make_math_element ~prime ~sub ~range:(make_range (Tok rngL) (Tok rngR))
       }
   (* a'_b^p: *)
-  | base=math_bot; prime=PRIMES; SUBSCRIPT; sub=math_group; SUPERSCRIPT; sup=math_group
+  | bot=math_bot; prime=PRIMES; SUBSCRIPT; rsub=math_group; SUPERSCRIPT; rsup=math_group
       {
-        base
-          |> make_sub ~sub ~range:(Range.dummy "mathtop")
-          |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sup)))
+        let (rngL, base) = bot in
+        let (_, sub) = rsub in
+        let (rngR, sup) = rsup in
+        base |> make_math_element ~prime ~sub ~sup ~range:(make_range (Tok rngL) (Tok rngR))
       }
   (* a'^p_b: *)
-  | base=math_bot; prime=PRIMES; SUPERSCRIPT; sup=math_group; SUBSCRIPT; sub=math_group
+  | bot=math_bot; prime=PRIMES; SUPERSCRIPT; rsup=math_group; SUBSCRIPT; rsub=math_group
       {
-        base
-          |> make_sub ~sub ~range:(Range.dummy "mathtop")
-          |> make_sup ~prime ~sup ~range:(make_range (Ranged base) (Ranged (snd sub)))
+        let (rngL, base) = bot in
+        let (_, sup) = rsup in
+        let (rngR, sub) = rsub in
+        base |> make_math_element ~prime ~sub ~sup ~range:(make_range (Tok rngL) (Tok rngR))
       }
 ;
 math_group:
-  | tokL=L_MATH_TEXT; utm=math_single; tokR=R_MATH_TEXT
-      { (true, make_standard (Tok tokL) (Tok tokR) (extract_main utm)) }
-  | utm=math_bot
-      { (false, utm) }
+  | tokL=L_MATH_TEXT; utmes=list(math_elem); tokR=R_MATH_TEXT
+      {
+        (make_range (Tok tokL) (Tok tokR), (true, utmes))
+      }
+  | bot=math_bot
+      {
+        let (range, base) = bot in
+        (range, (false, [ make_math_element ~range base ]))
+      }
 ;
 math_bot:
   | tok=MATHCHARS
       {
         let (rng, s) = tok in
         let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
-        (rng, UTMChars(uchs))
+        match uchs with
+        | [ uch ] -> (rng, UTInputMathChar(uch))
+        | _       -> failwith (Printf.sprintf "TODO: MATHCHARS (\"%s\", %s)" s (Range.to_string rng))
       }
   | mcmd=backslash_cmd; args=list(math_cmd_arg)
       {
@@ -1245,10 +1259,13 @@ math_bot:
           | UTCommandArg(_, (rng, _)) :: _ -> rng
         in
         let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
-        make_standard (Tok rng_cs) (Tok rng_last) (UTMCommand(utast_cmd, args))
+        make_standard (Tok rng_cs) (Tok rng_last) (UTInputMathApplyCommand(utast_cmd, args))
       }
   | long_ident=VAR_IN_TEXT
-      { let (rng, modnms, varnm) = long_ident in (rng, UTMEmbed((rng, UTContentOf(modnms, varnm)))) }
+      {
+        let (rng, modnms, varnm) = long_ident in
+        (rng, UTInputMathEmbedded((rng, UTContentOf(modnms, varnm))))
+      }
 ;
 math_cmd_arg:
   | mnopts=expr_opts; tokL=L_MATH_TEXT; utast=math; tokR=R_MATH_TEXT

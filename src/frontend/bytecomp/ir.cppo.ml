@@ -108,6 +108,14 @@ and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element lis
   )
 
 
+and transform_0_input_math_content (env : frame) (ims : input_math_element list) : ir_input_math_element list * frame =
+  failwith "TODO: transform_0_input_math_content"
+
+
+and transform_1_input_math_content (env : frame) (ims : input_math_element list) : (ir input_math_element_scheme) list * frame =
+  failwith "TODO: transform_1_input_math_content"
+
+
 and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment =
   let (genv, _) = env in
   let initvars =
@@ -423,8 +431,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       let (imivlst, env) = transform_1_input_vert_content env ivlst in
       (IRCodeInputVert(imivlst), env)
 
-  | InputMath(ms) ->
-      code0 env (CdInputMath(ms))
+  | InputMath(ims) ->
+      let (imims, env) = transform_1_input_math_content env ims in
+      (IRCodeInputMath(imims), env)
 
   | Record(asc) ->
       let (keyacc, iracc, env) =
@@ -565,8 +574,9 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       (IRInputVert(imivlst), env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | InputMath(ms) ->
-      return (IRConstant(InputMathValue(ms)))
+  | InputMath(ims) ->
+      let (imims, env) = transform_0_input_math_content env ims in
+      (IRInputMath(imims), env)
 
   | PrimitiveTuple(asts) ->
       transform_0_tuple env asts

@@ -1251,9 +1251,9 @@ let rec typecheck
       unify ty1 (Range.dummy "UTUpdateField", RecordType(row));
       (UpdateField(e1, label, e2), ty1)
 
-  | UTMath(utmath) ->
+  | UTMath(utmes) ->
       let tymath = (rng, BaseType(TextMathType)) in
-      let ms = typecheck_math pre tyenv utmath in
+      let ms = typecheck_math pre tyenv utmes in
       (InputMath(ms), tymath)
 
   | UTLexHorz(utastctx, utasth) ->
@@ -1349,64 +1349,43 @@ and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngc
       raise_error (InvalidArityOfCommandApplication(rngcmdapp, arity_expected, arity_actual))
 
 
-and typecheck_math (pre : pre) (tyenv : Typeenv.t) ((rng, utmathmain) : untyped_math) : math_text list =
-  let iter = typecheck_math pre tyenv in
-  let check_brace (has_braceS : bool) (utmathS : untyped_math) : unit =
-    match (has_braceS, utmathS) with
-    | (true, _) ->
-        ()
+and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_element list) : input_math_element list =
 
-    | (false, (rng, UTMChars(uchs))) ->
-        if List.length uchs >= 2 then
-          raise_error (MultiCharacterMathScriptWithoutBrace(rng))
-        else
-          Logging.warn_math_script_without_brace rng
+  let iter (b, utmes) = typecheck_math pre tyenv utmes in
 
-    | (false, (rng, _)) ->
-        Logging.warn_math_script_without_brace rng
-  in
-  let open HorzBox in
-    match utmathmain with
-    | UTMChars(uchs) ->
-        uchs |> List.map (fun uch -> MathTextChar(uch))
+  utmes |> List.map (fun utme ->
+    let (rng, UTInputMathElement{ base = utbase; sub = utsub_opt; sup = utsup_opt }) = utme in
+    let base =
+      match utbase with
+      | UTInputMathChar(uch) ->
+          InputMathChar(uch)
 
-    | UTMList(utmaths) ->
-        let mss = utmaths |> List.map iter in
-        List.concat mss
+      | UTInputMathApplyCommand(utastcmd, utcmdarglst) ->
+          let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
+          let (_, tycmdmain) = tycmd in
+          begin
+            match tycmdmain with
+            | MathCommandType(cmdargtylstreq) ->
+                let eapp = typecheck_command_arguments ecmd tycmd rng pre tyenv utcmdarglst cmdargtylstreq in
+                InputMathCommand(eapp)
 
-    | UTMSubScript(utmathB, has_braceS, utmathS) ->
-        check_brace has_braceS utmathS;
-        let msB = iter utmathB in
-        let msS = iter utmathS in
-        [ MathTextSubscript(msB, msS) ]
+            | HorzCommandType(_) ->
+                let (rngcmd, _) = utastcmd in
+                raise_error (HorzCommandInMath(rngcmd))
 
-    | UTMSuperScript(utmathB, has_braceS, utmathS) ->
-        check_brace has_braceS utmathS;
-        let msB = iter utmathB in
-        let msS = iter utmathS in
-        [ MathTextSuperscript(msB, msS) ]
+            | _ ->
+                assert false
+          end
 
-    | UTMCommand(utastcmd, utcmdarglst) ->
-        let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
-        let (_, tycmdmain) = tycmd in
-        begin
-          match tycmdmain with
-          | MathCommandType(cmdargtylstreq) ->
-              let _eapp = typecheck_command_arguments ecmd tycmd rng pre tyenv utcmdarglst cmdargtylstreq in
-              failwith "TODO: UTMCommand"
-
-          | HorzCommandType(_) ->
-              let (rngcmd, _) = utastcmd in
-              raise_error (HorzCommandInMath(rngcmd))
-
-          | _ ->
-              assert false
-        end
-
-    | UTMEmbed(utast0) ->
-        let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "math-embedded-var", BaseType(TextMathType));
-        [ MathTextEmbed(e0) ]
+      | UTInputMathEmbedded(utast0) ->
+          let (e0, ty0) = typecheck pre tyenv utast0 in
+          unify ty0 (Range.dummy "math-embedded-var", BaseType(TextMathType));
+          InputMathEmbedded(e0)
+    in
+    let sub = utsub_opt |> Option.map iter in
+    let sup = utsup_opt |> Option.map iter in
+    InputMathElement{ base; sub; sup }
+  )
 
 
 and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =

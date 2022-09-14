@@ -704,6 +704,7 @@ let rec check_subscript (mlstB : math_box list) =
       None
 
 
+(*
 let check_pull_in (mlstB : math_text list) =
   match List.rev mlstB with
   | MathTextPullInScripts(mkL, mkR, mlstf) :: mtailrev ->
@@ -712,6 +713,7 @@ let check_pull_in (mlstB : math_text list) =
 
   | _ ->
       None
+*)
 
 
 let convert_math_element ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind) (me : math_element) : low_math_pure =

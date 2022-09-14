@@ -353,6 +353,7 @@ make_math_boxes [ MathBoxUpperLimit{ context = ictx; base; upper } ]
         ~code:{|
 make_math_boxes [ MathBoxLowerLimit{ context = ictx; base; lower } ]
 |}
+(*
     ; inst "BackendMathPullInScripts"
         ~name:"math-pull-in-scripts"
         ~type_:Type.(tMATHCLS @-> tMATHCLS @-> (tOPT tMT @-> tOPT tMT @-> tMB) @-> tMT)
@@ -370,6 +371,7 @@ make_math_boxes [ MathBoxLowerLimit{ context = ictx; base; lower } ]
 let mlstf = make_pull_in_scripts reducef valuef in
 make_math_text [ HorzBox.(MathTextPullInScripts(mathcls1, mathcls2, mlstf)) ]
 |}
+*)
     ; inst "BackendMathChar"
         ~name:"math-char"
         ~type_:Type.(tCTX @-> tMATHCLS @-> tS @-> tMB)

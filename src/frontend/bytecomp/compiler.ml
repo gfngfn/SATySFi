@@ -153,6 +153,9 @@ and compile (ir : ir) (cont : instruction list) =
       OpClosureInputVert(compile_input_vert_content ivlst) :: cont
     (* -- lazy evaluation; evaluates embedded variables only -- *)
 
+  | IRInputMath(ims) ->
+      failwith "TODO: IRInputMath"
+
   (* -- fundamentals -- *)
 
   | IRContentOf(var) ->
@@ -254,6 +257,9 @@ and compile (ir : ir) (cont : instruction list) =
 
   | IRCodeInputVert(ivlst) ->
       OpCodeMakeInputVert(compile_code_input_vert ivlst) :: cont
+
+  | IRCodeInputMath(ims) ->
+      failwith "TODO: IRCodeInputMath"
 
   | IRCodePatternMatch(rng, ir, irpatbrs) ->
       compile ir @@ OpCodePatternMatch(rng, List.map compile_code_pattern_branch irpatbrs) :: cont

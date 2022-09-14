@@ -156,6 +156,10 @@ and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element
   )
 
 
+and interpret_0_input_math_content (env : environment) (ims : input_math_element list) : intermediate_input_math_element list =
+  failwith "TODO: interpret_0_input_math_content"
+
+
 and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   match ast with
 
@@ -177,8 +181,9 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       InputVertClosure(imivs, env)
         (* Lazy evaluation; evaluates embedded variables only *)
 
-  | InputMath(ms) ->
-      InputMathValue(ms)
+  | InputMath(ims) ->
+      let imims = interpret_0_input_math_content env ims in
+      InputMathValue(imims)
 
 (* Fundamentals: *)
 
@@ -349,8 +354,9 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       let cdivs = ivs |> map_input_vert (interpret_1 env) in
       CdInputVert(cdivs)
 
-  | InputMath(ms) ->
-      CdInputMath(ms)
+  | InputMath(ims) ->
+      let cdims = ims |> map_input_math (interpret_1 env) in
+      CdInputMath(cdims)
 
   | ContentOf(rng, evid) ->
       begin

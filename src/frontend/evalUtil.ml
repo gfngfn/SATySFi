@@ -361,10 +361,12 @@ let get_page_size (value : syntactic_value) : length * length =
   get_pair get_length get_length value
 
 
+(*
 let get_math_text value : math_text list =
     match value with
     | InputMathValue(ms) -> ms
     | _                  -> report_bug_value "get_math_text" value
+*)
 
 
 let get_math_boxes value : math_box list =
@@ -625,8 +627,10 @@ let make_paren reducef valueparenf : HorzBox.paren =
   )
 
 
+(*
 let make_math_text (ms : math_text list) : syntactic_value =
   InputMathValue(ms)
+*)
 
 
 let make_math_boxes (mbs : math_box list) : syntactic_value =
@@ -639,6 +643,7 @@ let make_option (type a) (makef : a -> syntactic_value) (opt : a option) : synta
   | Some(x) -> let value = makef x in Constructor("Some", value)
 
 
+(*
 let make_pull_in_scripts reducef valuef =
   (fun mopt1 mopt2 ->
      let value1 = make_option make_math_text mopt1 in
@@ -646,6 +651,7 @@ let make_pull_in_scripts reducef valuef =
      let valueret = reducef valuef [value1; value2] in
      get_math_boxes valueret
   )
+*)
 
 
 let make_math_char_kern_func reducef valuekernf : HorzBox.math_char_kern_func =
