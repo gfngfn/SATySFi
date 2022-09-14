@@ -154,7 +154,6 @@ make_math_boxes [ HorzBox.(MathBoxPure(MathVariantCharDirect(mathcls, is_big, mv
           param "maths" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
 match maths with
 | [] ->
@@ -173,7 +172,6 @@ match maths with
           param "maths" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
 match List.rev maths with
 | [] ->
@@ -190,16 +188,16 @@ match List.rev maths with
         ]
         ~params:[
           param "ictx" ~type_:"context";
-          param "mathlst1" ~type_:"math_boxes";
-          param "mathlst2" ~type_:"math_boxes";
+          param "ms1" ~type_:"math_boxes";
+          param "ms2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 let mathctx = MathContext.make ictx in
-let hbspaceopt = Math.space_between_maths mathctx mathlst1 mathlst2 in
-match hbspaceopt with
-| None          -> Constructor("None", const_unit)
-| Some(hbspace) -> Constructor("Some", make_horz [hbspace])
+let hb_space_opt = Math.space_between_maths mathctx ms1 ms2 in
+match hb_space_opt with
+| None           -> Constructor("None", const_unit)
+| Some(hb_space) -> Constructor("Some", make_horz [ hb_space ])
 |}
     ; inst "BackendMathConcat"
         ~name:"math-concat"
@@ -207,13 +205,12 @@ match hbspaceopt with
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math_boxes";
-          param "mlst2" ~type_:"math_boxes";
+          param "ms1" ~type_:"math_boxes";
+          param "ms2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-make_math_boxes (List.append mlst1 mlst2)
+make_math_boxes (List.append ms1 ms2)
 |}
     ; inst "BackendMathGroup"
         ~name:"math-group"
@@ -221,14 +218,13 @@ make_math_boxes (List.append mlst1 mlst2)
         ~fields:[
         ]
         ~params:[
-          param "mathcls1" ~type_:"math_class";
-          param "mathcls2" ~type_:"math_class";
-          param "mlst" ~type_:"math_boxes";
+          param "left" ~type_:"math_class";
+          param "right" ~type_:"math_class";
+          param "inner" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-make_math_boxes [ MathBoxGroup(mathcls1, mathcls2, mlst) ]
+make_math_boxes [ MathBoxGroup{ left; right; inner } ]
 |}
     ; inst "BackendMathSuperscript"
         ~name:"math-sup"

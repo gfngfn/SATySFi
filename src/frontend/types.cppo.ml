@@ -943,7 +943,11 @@ and math_box =
       base    : math_box list;
       sup     : math_box list;
     }
-  | MathBoxGroup             of HorzBox.math_kind * HorzBox.math_kind * math_box list
+  | MathBoxGroup of {
+      left  : HorzBox.math_kind;
+      right : HorzBox.math_kind;
+      inner : math_box list;
+    }
   | MathBoxFraction of {
       context     : input_context;
       numerator   : math_box list;

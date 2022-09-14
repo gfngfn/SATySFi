@@ -46,13 +46,11 @@ type low_math_main =
 
   | LowMathList of low_math
 
-  | LowMathGroup of math_kind * math_kind * low_math
-      (* --
-         (1) math class for leftward contents
-         (2) math class for rightward contents
-         (3) grouped contents
-         -- *)
-
+  | LowMathGroup of {
+      left  : math_kind;
+      right : math_kind;
+      inner : low_math;
+    }
   | LowMathSubscript of {
       sub_baseline_depth : length;
       base               : low_math;
@@ -425,7 +423,7 @@ let get_left_kern lmmain hgt dpt =
   match lmmain with
   | LowMathPure(_, _, _, _, _, lk, _)          -> lk
   | LowMathList((_, _, _, lk, _))              -> lk
-  | LowMathGroup(mkL, _, _)                    -> nokernf mkL
+  | LowMathGroup{ left }                       -> nokernf left
   | LowMathSubscript{ base = (_, _, _, lk, _) } -> lk
   | LowMathSuperscript{ base = (_, _, _, lk, _) } -> lk
   | LowMathSubSuperscript{ base = (_, _, _, lk, _) } -> lk
@@ -446,7 +444,7 @@ let get_right_kern lmmain hgt dpt =
   match lmmain with
   | LowMathPure(_, _, _, _, _, _, rk)          -> rk
   | LowMathList((_, _, _, _, rk))              -> rk
-  | LowMathGroup(_, mkR, _)                    -> nokernf mkR
+  | LowMathGroup{ right }                      -> nokernf right
   | LowMathSubscript{ base = (_, _, _, _, rk) } -> nokernf rk.right_math_kind
   | LowMathSuperscript{ base = (_, _, _, _, rk) } -> nokernf rk.right_math_kind
   | LowMathSubSuperscript{ base = (_, _, _, _, rk) } -> nokernf rk.right_math_kind
@@ -466,17 +464,20 @@ let get_math_kind_of_math_element : math_element -> math_kind = function
   | MathElement(mk, _) -> mk
 
 let rec get_left_math_kind : math_box -> math_kind = function
-  | MathBoxPure(me)                    -> get_math_kind_of_math_element me
-  | MathBoxGroup(mkL, _, _)            -> mkL
+  | MathBoxPure(me) ->
+      get_math_kind_of_math_element me
 
-  | MathBoxSuperscript{ base; _} ->
+  | MathBoxGroup{ left } ->
+      left
+
+  | MathBoxSuperscript{ base } ->
       begin
         match base with
         | []         -> MathEnd
         | mathB :: _ -> get_left_math_kind mathB
       end
 
-  | MathBoxSubscript{ base; _ } ->
+  | MathBoxSubscript{ base } ->
       begin
         match base with
         | []         -> MathEnd
@@ -497,8 +498,11 @@ let rec get_left_math_kind : math_box -> math_kind = function
 let rec get_right_math_kind (math : math_box) : math_kind =
   try
     match math with
-    | MathBoxPure(me)                 -> get_math_kind_of_math_element me
-    | MathBoxGroup(_, mkR, _)         -> mkR
+    | MathBoxPure(me) ->
+        get_math_kind_of_math_element me
+
+    | MathBoxGroup{ right } ->
+        right
 
     | MathBoxSuperscript{ base; _ } ->
         begin
@@ -761,10 +765,10 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
         (LowMathGroup(mkL, mkR, lmI), h_inner, d_inner)
 *)
 
-  | MathBoxGroup(mkL, mkR, mlstC) ->
+  | MathBoxGroup{ left = mkL; right = mkR; inner = mlstC } ->
       let lmC = convert_to_low MathEnd MathClose mlstC in
       let (_, h_cont, d_cont, _, _) = lmC in
-      (LowMathGroup(mkL, mkR, lmC), h_cont, d_cont)
+      (LowMathGroup{ left = mkL; right = mkR; inner = lmC }, h_cont, d_cont)
 
   | MathBoxFraction{ context = ictx; numerator = mlstN; denominator = mlstD } ->
       let lmN = convert_to_low MathEnd MathEnd mlstN in
@@ -1050,7 +1054,7 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr mk in
                 (hblstpure, hbspaceopt, mk)
 
-          | LowMathGroup(mkL, mkR, lmC) ->
+          | LowMathGroup{ left = mkL; right = mkR; inner = lmC } ->
               let hblstC = horz_of_low_math mathctx MathEnd MathClose lmC in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr mkL in
                 (hblstC, hbspaceopt, mkR)
