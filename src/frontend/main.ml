@@ -119,8 +119,7 @@ let eval_main (i : int) (env_freezed : frozen_environment) (ast : abstract_tree)
   let env = unfreeze_environment env_freezed in
   let value =
     if OptionState.is_bytecomp_mode () then
-      let (value, _) = Bytecomp.compile_and_exec_0 env ast in
-      value
+      Bytecomp.compile_and_exec_0 env ast
     else
       Evaluator.interpret_0 env ast
   in
