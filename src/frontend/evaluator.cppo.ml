@@ -183,7 +183,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
 
   | InputMath(ims) ->
       let imims = interpret_0_input_math_content env ims in
-      InputMathValue(imims)
+      InputMathClosure(imims, env)
 
 (* Fundamentals: *)
 
@@ -618,6 +618,10 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (value_tctx 
   let nmihs = normalize imihs in
   let s = interpret_commands env nmihs in
   make_string s
+
+
+and interpret_pdf_mode_intermediate_input_math (env : environment) (value_ctx : syntactic_value) (imims : intermediate_input_math_element list) : syntactic_value =
+  failwith "TODO: interpret_pdf_mode_intermediate_input_math"
 
 
 and interpret_pdf_mode_intermediate_input_vert (env : environment) (value_ctx : syntactic_value) (imivs : intermediate_input_vert_element list) : syntactic_value =

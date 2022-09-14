@@ -803,6 +803,26 @@ match value1 with
 | CompiledInputVertClosure(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
 | _                                       -> report_bug_vm "VertLex"
 |}
+    ; inst "MathLex"
+        ~name:"read-math"
+        ~type_:Type.(tCTX @-> tMT @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "valuectx";
+          param "value1";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code_interp:{|
+match value1 with
+| InputMathClosure(imims, envi) -> interpret_pdf_mode_intermediate_input_math envi valuectx imims
+| _                             -> report_bug_value "MathLex" value1
+|}
+        ~code:{|
+match value1 with
+| CompiledInputMathClosure(imims, envi) -> exec_pdf_mode_intermediate_input_math envi valuectx imims
+| _                                     -> report_bug_vm "MathLex"
+|}
     ; inst "TextHorzLex"
         ~name:"stringify-inline"
         ~type_:Type.(tTCTX @-> tIT @-> tS)

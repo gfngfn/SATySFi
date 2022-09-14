@@ -257,6 +257,10 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
     end
 
 
+and exec_pdf_mode_intermediate_input_math (env : vmenv) (valuectx : syntactic_value) (imivlst : compiled_intermediate_input_math_element list) : syntactic_value =
+  failwith "TODO: exec_pdf_mode_intermediate_input_math"
+
+
 and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
   let rec interpret_commands env imivlst =
     imivlst |> List.map (fun imiv ->

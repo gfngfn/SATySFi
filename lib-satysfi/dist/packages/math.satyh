@@ -443,7 +443,8 @@ end = struct
   val inline ctx \math fml =
     script-guard Latin (embed-math ctx fml)
 
-  val math \frac = math-frac
+  val math ctx \frac numer denom =
+    math-frac ctx (read-math ctx numer) (read-math ctx denom)
 
   val math \sqrt = math-radical None
 

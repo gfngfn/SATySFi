@@ -652,6 +652,9 @@ and compiled_intermediate_input_vert_element =
   | CompiledImInputVertEmbedded of instruction list
   | CompiledImInputVertContent  of compiled_intermediate_input_vert_element list * vmenv
 
+and compiled_intermediate_input_math_element =
+  unit (* TODO: define this *)
+
 and ir_input_horz_element =
   | IRInputHorzText         of string
   | IRInputHorzEmbedded     of ir
@@ -839,13 +842,14 @@ and syntactic_value =
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
   | InputHorzClosure of intermediate_input_horz_element list * environment
   | InputVertClosure of intermediate_input_vert_element list * environment
-  | InputMathValue   of intermediate_input_math_element list
+  | InputMathClosure of intermediate_input_math_element list * environment
 
 (* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
   | CompiledClosure          of varloc LabelMap.t * int * syntactic_value list * int * instruction list * vmenv
   | CompiledPrimitiveClosure of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
   | CompiledInputHorzClosure of compiled_intermediate_input_horz_element list * vmenv
   | CompiledInputVertClosure of compiled_intermediate_input_vert_element list * vmenv
+  | CompiledInputMathClosure of compiled_intermediate_input_math_element list * vmenv
 
 and abstract_tree =
   | ASTBaseConstant       of base_constant
