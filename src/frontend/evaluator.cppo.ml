@@ -778,8 +778,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
                   let env = add_to_environment env evid_sup (ref value_sup) in
                   interpret_0 env ast
                 in
-                let mbs_base = get_math_boxes value in
-                append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
+                get_math_boxes value
           end
 
       | InputMathValueGroup(imvs_group) ->
