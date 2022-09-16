@@ -502,15 +502,19 @@ bind_block:
       }
 ;
 bind_math:
-  | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); scripts_param_opt=option(scripts_param); EXACT_EQ; utast=expr
       {
         (cs,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaMath{
+          make_standard (Ranged cs) (Ranged utast) (UTLambdaMathCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
+            script_variables = scripts_param_opt;
             body             = utast;
           }))
       }
+;
+scripts_param:
+  | WITH; sub=LOWER; sup=LOWER { (sub, sup) }
 ;
 bind_type:
   | tybinds=separated_nonempty_list(AND, bind_type_single)

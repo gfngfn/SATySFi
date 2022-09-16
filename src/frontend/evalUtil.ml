@@ -265,7 +265,7 @@ let make_language_system_value langsys =
   Constructor(label, BaseConstant(BCUnit))
 
 
-let get_math_char_class (value : syntactic_value) =
+let get_math_char_class (value : syntactic_value) : HorzBox.math_char_class =
   match value with
   | Constructor("MathItalic"      , BaseConstant(BCUnit)) -> HorzBox.MathItalic
   | Constructor("MathBoldItalic"  , BaseConstant(BCUnit)) -> HorzBox.MathBoldItalic
@@ -277,6 +277,19 @@ let get_math_char_class (value : syntactic_value) =
   | Constructor("MathBoldFraktur" , BaseConstant(BCUnit)) -> HorzBox.MathBoldFraktur
   | Constructor("MathDoubleStruck", BaseConstant(BCUnit)) -> HorzBox.MathDoubleStruck
   | _                                                     -> report_bug_value "get_math_char_class" value
+
+
+let make_math_char_class (mccls : HorzBox.math_char_class) : syntactic_value =
+  match mccls with
+  | HorzBox.MathItalic       -> Constructor("MathItalic"      , BaseConstant(BCUnit))
+  | HorzBox.MathBoldItalic   -> Constructor("MathBoldItalic"  , BaseConstant(BCUnit))
+  | HorzBox.MathRoman        -> Constructor("MathRoman"       , BaseConstant(BCUnit))
+  | HorzBox.MathBoldRoman    -> Constructor("MathBoldRoman"   , BaseConstant(BCUnit))
+  | HorzBox.MathScript       -> Constructor("MathScript"      , BaseConstant(BCUnit))
+  | HorzBox.MathBoldScript   -> Constructor("MathBoldScript"  , BaseConstant(BCUnit))
+  | HorzBox.MathFraktur      -> Constructor("MathFraktur"     , BaseConstant(BCUnit))
+  | HorzBox.MathBoldFraktur  -> Constructor("MathBoldFraktur" , BaseConstant(BCUnit))
+  | HorzBox.MathDoubleStruck -> Constructor("MathDoubleStruck", BaseConstant(BCUnit))
 
 
 let get_math_class (value : syntactic_value) =

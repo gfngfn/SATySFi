@@ -475,18 +475,32 @@ make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathEmbeddedText(hbs
 make_math_boxes [ HorzBox.(MathBoxChangeContext(MathChangeColor(color), mlst)) ]
 |}
 *)
-    ; inst "BackendMathCharClass"
+    ; inst "BackendSetMathCharClass"
         ~name:"set-math-char-class"
         ~type_:Type.(tMCCLS @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
-          param "_mccls" ~type_:"math_char_class";
-          param "_ictx" ~type_:"context";
+          param "mccls" ~type_:"math_char_class";
+          param "ictx" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-failwith "TODO: set-math-char-class"
+let ictx = MathContext.(ictx |> make |> set_math_char_class mccls |> context_for_text) in
+Context(ictx)
+|}
+    ; inst "BackendGetMathCharClass"
+        ~name:"get-math-char-class"
+        ~type_:Type.(tCTX @-> tMCCLS)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let mccls = MathContext.(ictx |> make |> math_char_class) in
+make_math_char_class mccls
 |}
     ; inst "BackendEmbeddedMath"
         ~name:"embed-math"

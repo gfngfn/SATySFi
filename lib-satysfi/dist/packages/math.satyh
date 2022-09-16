@@ -610,18 +610,20 @@ end = struct
   val greek-lowercase ctx cp cpb =
     let s = single cp in
     let sb = single cpb in
-    abort-with-message `TODO: greek-lowercase`
-%      math-variant-char MathOrd (|
-%        italic        = s,
-%        bold-italic   = sb,
-%        roman         = s,
-%        bold-roman    = sb,
-%        script        = s,
-%        bold-script   = sb,
-%        fraktur       = s,
-%        bold-fraktur  = sb,
-%        double-struck = s,
-%      |)
+    let t =
+      match get-math-char-class ctx with
+      | MathItalic       -> s
+      | MathBoldItalic   -> sb
+      | MathRoman        -> s
+      | MathBoldRoman    -> sb
+      | MathScript       -> s
+      | MathBoldScript   -> sb
+      | MathFraktur      -> s
+      | MathBoldFraktur  -> sb
+      | MathDoubleStruck -> s
+      end
+    in
+    math-char ctx MathOrd t
 
 
   val greek-uppercase ctx cp cpb cpr cprb =
@@ -629,18 +631,21 @@ end = struct
     let sb = single cpb in
     let sr = single cpr in
     let srb = single cprb in
-    abort-with-message `TODO: greek-uppercase`
-%      math-variant-char MathOrd (|
-%        italic        = s,
-%        bold-italic   = sb,
-%        roman         = sr,
-%        bold-roman    = srb,
-%        script        = s,
-%        bold-script   = sb,
-%        fraktur       = s,
-%        bold-fraktur  = sb,
-%        double-struck = s,
-%      |)
+    let t =
+      match get-math-char-class ctx with
+      | MathItalic       -> s
+      | MathBoldItalic   -> sb
+      | MathRoman        -> sr
+      | MathBoldRoman    -> srb
+      | MathScript       -> s
+      | MathBoldScript   -> sb
+      | MathFraktur      -> s
+      | MathBoldFraktur  -> sb
+      | MathDoubleStruck -> s
+      end
+    in
+    math-char ctx MathOrd t
+
 
   val math ctx \alpha    = greek-lowercase ctx 0x1D6FC 0x1D736
   val math ctx \beta     = greek-lowercase ctx 0x1D6FD 0x1D737
@@ -699,22 +704,18 @@ end = struct
   val punct ctx = math-char ctx MathPunct
   val prefix ctx = math-char ctx MathPrefix
 
-  val vop-scheme ctx charf s =
+  val vop-scheme ctx charf s moptS moptT =
     let mop = charf ctx MathOp s in
-    abort-with-message `TODO: vop-scheme`
-%      math-pull-in-scripts MathOp MathOp
-%        (fun moptS moptT -> (
-%          let m =
-%            match moptS with
-%            | None     -> mop
-%            | Some(mS) -> math-lower mop mS
-%            end
-%          in
-%            match moptT with
-%            | None     -> m
-%            | Some(mT) -> math-upper m mT
-%            end
-%        ))
+    let m =
+      match moptS with
+      | None     -> mop
+      | Some(mS) -> math-lower ctx mop (read-math ctx mS)
+      end
+    in
+    match moptT with
+    | None     -> m
+    | Some(mT) -> math-upper ctx m (read-math ctx mT)
+    end
 
   val bigop ctx = vop-scheme ctx math-big-char
   val vop ctx = vop-scheme ctx math-char
@@ -813,12 +814,12 @@ end = struct
   val math ctx \ddots = ord ctx `⋱`
   val math ctx \backddots = ord ctx `⋰`
 
-  val math ctx \lim = vop ctx `lim`
-  val math ctx \colim = vop ctx `colim`
-  val math ctx \max = vop ctx `max`
-  val math ctx \min = vop ctx `min`
-  val math ctx \inf = vop ctx `inf`
-  val math ctx \sup = vop ctx `sup`
+  val math ctx \lim with sub sup = vop ctx `lim` sub sup
+  val math ctx \colim with sub sup = vop ctx `colim` sub sup
+  val math ctx \max with sub sup = vop ctx `max` sub sup
+  val math ctx \min with sub sup = vop ctx `min` sub sup
+  val math ctx \inf with sub sup = vop ctx `inf` sub sup
+  val math ctx \sup with sub sup = vop ctx `sup` sub sup
   val math ctx \sin = op ctx `sin`
   val math ctx \cos = op ctx `cos`
   val math ctx \tan = op ctx `tan`
@@ -833,13 +834,13 @@ end = struct
   val math ctx \Ker = op ctx `Ker`
   val math ctx \Im = op ctx `Im`
 
-  val math ctx \sum = bigop ctx `∑`
-  val math ctx \prod = bigop ctx `∏`
-  val math ctx \coprod = bigop ctx `∐`
-  val math ctx \bigwedge = bigop ctx `⋀`
-  val math ctx \bigvee = bigop ctx `⋁`
-  val math ctx \bigcap = bigop ctx `⋂`
-  val math ctx \bigcup = bigop ctx `⋃`
+  val math ctx \sum with sub sup = bigop ctx `∑` sub sup
+  val math ctx \prod with sub sup = bigop ctx `∏` sub sup
+  val math ctx \coprod with sub sup = bigop ctx `∐` sub sup
+  val math ctx \bigwedge with sub sup = bigop ctx `⋀` sub sup
+  val math ctx \bigvee with sub sup = bigop ctx `⋁` sub sup
+  val math ctx \bigcap with sub sup = bigop ctx `⋂` sub sup
+  val math ctx \bigcup with sub sup = bigop ctx `⋃` sub sup
 
   val math ctx \lnot = ord ctx `¬`
   val math ctx \land = rel ctx `∧`

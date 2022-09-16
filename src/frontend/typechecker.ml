@@ -1050,9 +1050,10 @@ let rec typecheck
       unify tyret (Range.dummy "lambda-vert-return", BaseType(bsty_ret));
       (abstraction evid e1, (rng, VertCommandType(cmdargtylist)))
 
-  | UTLambdaMath{
+  | UTLambdaMathCommand{
       parameters       = param_units;
       context_variable = ident_ctx;
+      script_variables = ident_pair_opt;
       body             = utast_body;
     } ->
       let (tyenv, params) = typecheck_abstraction pre tyenv param_units in
@@ -1064,26 +1065,63 @@ let rec typecheck
           (ContextType, BoxMathType)
       in
       let evid_ctx = EvalVarID.fresh ident_ctx in
-      let (e_body, ty_body) =
-        let tyenv =
-          let ventry =
-            {
-              val_type  = Poly(rng_ctx_var, BaseType(bsty_ctx_var));
-              val_name  = Some(evid_ctx);
-              val_stage = pre.stage;
-            }
-          in
-          tyenv |> Typeenv.add_value varnm_ctx ventry
-        in
-        typecheck_iter tyenv utast_body
+      let script_params_opt =
+        ident_pair_opt |> Option.map (fun (ident_sub, ident_sup) ->
+          let evid_sub = EvalVarID.fresh ident_sub in
+          let evid_sup = EvalVarID.fresh ident_sup in
+          (ident_sub, evid_sub, ident_sup, evid_sup)
+        )
       in
+      let tyenv =
+        let ventry =
+          {
+            val_type  = Poly(rng_ctx_var, BaseType(bsty_ctx_var));
+            val_name  = Some(evid_ctx);
+            val_stage = pre.stage;
+          }
+        in
+        tyenv |> Typeenv.add_value varnm_ctx ventry
+      in
+      let (tyenv, evid_pair_opt) =
+        match script_params_opt with
+        | None ->
+            (tyenv, None)
+
+        | Some((ident_sub, evid_sub, ident_sup, evid_sup)) ->
+            let (rng_sub_var, varnm_sub) = ident_sub in
+            let (rng_sup_var, varnm_sup) = ident_sup in
+            let pty_script rng =
+              Poly(rng, snd (Primitives.option_type (Range.dummy "sub-or-sup", BaseType(TextMathType))))
+            in
+            let ventry_sub =
+              {
+                val_type  = pty_script rng_sub_var;
+                val_name  = Some(evid_sub);
+                val_stage = pre.stage;
+              }
+            in
+            let ventry_sup =
+              {
+                val_type  = pty_script rng_sup_var;
+                val_name  = Some(evid_sup);
+                val_stage = pre.stage;
+              }
+            in
+            let tyenv =
+              tyenv
+                |> Typeenv.add_value varnm_sub ventry_sub
+                |> Typeenv.add_value varnm_sup ventry_sup
+            in
+            (tyenv, Some((evid_sub, evid_sup)))
+      in
+      let (e_body, ty_body) = typecheck_iter tyenv utast_body in
       unify ty_body (Range.dummy "lambda-math-return", BaseType(bsty_ret));
       let (e, cmdargtyacc) =
         params |> List.fold_left (fun (e, cmdargtyacc) (evid_labmap, pat, e_labmap, ty_pat) ->
           let e = Function(evid_labmap, PatternBranch(pat, e)) in
           let cmdargtyacc = Alist.extend cmdargtyacc (CommandArgType(e_labmap, ty_pat)) in
           (e, cmdargtyacc)
-        ) (LambdaMath(evid_ctx, None, e_body), Alist.empty)
+        ) (LambdaMath(evid_ctx, evid_pair_opt, e_body), Alist.empty)
       in
       (e, (rng, MathCommandType(cmdargtyacc |> Alist.to_list)))
 

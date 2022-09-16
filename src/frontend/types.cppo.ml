@@ -471,9 +471,10 @@ and untyped_abstract_tree_main =
   | UTLambdaHorz           of var_name ranged * untyped_abstract_tree
   | UTLambdaVert           of var_name ranged * untyped_abstract_tree
 
-  | UTLambdaMath of {
+  | UTLambdaMathCommand of {
       parameters       : untyped_parameter_unit list;
       context_variable : var_name ranged;
+      script_variables : (var_name ranged * var_name ranged) option;
       body             : untyped_abstract_tree;
     }
 
