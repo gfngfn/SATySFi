@@ -270,21 +270,22 @@ make_math_boxes [ MathBoxFraction{ context = ictx; numerator = ms1; denominator 
 |}
     ; inst "BackendMathRadical"
         ~name:"math-radical"
-        ~type_:Type.(tOPT tMB @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tOPT tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
+          param "context" ~type_:"context";
           param "value1mopt";
-          param "mlst2" ~type_:"math_boxes";
+          param "inner" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
 let mlst1opt = get_option get_math_boxes value1mopt in
-let radical = Primitives.default_radical in  (* temporary; should be variable *)
+let radical = Primitives.default_radical in  (* temporary; should be changeable *)
 match mlst1opt with
-| None        -> make_math_boxes [ MathBoxRadical(radical, mlst2) ]
-| Some(mlst1) -> make_math_boxes [ MathBoxRadicalWithDegree(mlst1, mlst2) ]
+| None        -> make_math_boxes [ MathBoxRadical{ context; radical; inner } ]
+| Some(mlst1) -> make_math_boxes [ MathBoxRadicalWithDegree(mlst1, inner) ]
 |}
     ; inst "BackendMathParen"
         ~name:"math-paren"

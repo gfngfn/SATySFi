@@ -918,7 +918,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (ictx : input
 and select_pattern (rng : Range.t) (env : environment) (value_obj : syntactic_value) (patbrs : pattern_branch list) : syntactic_value =
   let rec iter = function
     | [] ->
-        report_dynamic_error ("no matches (" ^ (Range.to_string rng) ^ ")")
+        report_dynamic_error (Format.asprintf "no matches (%s, %a)" (Range.to_string rng) pp_syntactic_value value_obj)
 
     | PatternBranch(pat, ast_to) :: tail ->
         begin

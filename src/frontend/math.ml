@@ -892,16 +892,16 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
 *)
       end
 
-  | MathBoxRadical(radical, mlstC) ->
+  | MathBoxRadical{ context = ictx; radical; inner = mlstC } ->
       let lmC = convert_to_low MathEnd MathEnd mlstC in
       let (_, h_cont, d_cont, _, _) = lmC in
-      let mathctx = failwith "TODO: MathBoxRadical" in
+      let mathctx = MathContext.make ictx in
       let (h_bar, t_bar, l_extra) = radical_bar_metrics mathctx h_cont in
       let hblstrad = make_radical mathctx radical h_bar t_bar d_cont in
       let h_rad = h_bar +% t_bar in
       let h_whole = h_rad +% l_extra in
       let d_whole = d_cont in  (* temporary; should consider the depth of the radical sign *)
-        (LowMathRadical(hblstrad, h_bar, t_bar, lmC), h_whole, d_whole)
+      (LowMathRadical(hblstrad, h_bar, t_bar, lmC), h_whole, d_whole)
 
   | MathBoxRadicalWithDegree(mlstD, mlstC) ->
 (*

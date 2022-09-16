@@ -1116,14 +1116,17 @@ let rec typecheck
       in
       let (e_body, ty_body) = typecheck_iter tyenv utast_body in
       unify ty_body (Range.dummy "lambda-math-return", BaseType(bsty_ret));
-      let (e, cmdargtyacc) =
-        params |> List.fold_left (fun (e, cmdargtyacc) (evid_labmap, pat, e_labmap, ty_pat) ->
-          let e = Function(evid_labmap, PatternBranch(pat, e)) in
-          let cmdargtyacc = Alist.extend cmdargtyacc (CommandArgType(e_labmap, ty_pat)) in
-          (e, cmdargtyacc)
-        ) (LambdaMath(evid_ctx, evid_pair_opt, e_body), Alist.empty)
+      let e =
+        List.fold_right (fun (evid_labmap, pat, ty_labmap, ty_pat) e ->
+          Function(evid_labmap, PatternBranch(pat, e))
+        ) params (LambdaMath(evid_ctx, evid_pair_opt, e_body))
       in
-      (e, (rng, MathCommandType(cmdargtyacc |> Alist.to_list)))
+      let cmdargtys =
+        params |> List.map (fun (_, _, ty_labmap, ty_pat) ->
+          CommandArgType(ty_labmap, ty_pat)
+        )
+      in
+      (e, (rng, MathCommandType(cmdargtys)))
 
   | UTApply(opts, utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in

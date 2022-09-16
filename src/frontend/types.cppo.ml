@@ -1028,7 +1028,11 @@ and math_box =
       denominator : math_box list;
     }
   | MathBoxRadicalWithDegree of math_box list * math_box list
-  | MathBoxRadical           of HorzBox.radical * math_box list
+  | MathBoxRadical of {
+      context : input_context;
+      radical : HorzBox.radical;
+      inner   : math_box list;
+    }
   | MathBoxParen of {
       context : input_context;
       left    : HorzBox.paren;

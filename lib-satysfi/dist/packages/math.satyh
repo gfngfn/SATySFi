@@ -463,7 +463,7 @@ end = struct
     math-frac ctx (read-math ctx numer) (read-math ctx denom)
 
   val math ctx \sqrt inner =
-    math-radical None (read-math ctx inner)
+    math-radical ctx None (read-math ctx inner)
 
   val math ctx \lower base lower =
     math-lower ctx (read-math ctx base) (read-math ctx lower)
