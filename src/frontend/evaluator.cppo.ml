@@ -169,8 +169,16 @@ and interpret_0_input_math_content (env : environment) (ims : input_math_element
           sup  = imvs_sup_opt;
         }
 
-    | InputMathEmbedded(ast_abs) ->
-        let value = interpret_0 env ast_abs in
+    | InputMathApplyCommand{
+        command   = ast_cmd;
+        arguments = args;
+      } ->
+        let ast =
+          args |> List.fold_left (fun e_acc (e_labmap, e_arg) ->
+            Apply(e_labmap, e_acc, e_arg)
+          ) ast_cmd
+        in
+        let value = interpret_0 env ast in
         let mclosure =
           match value with
           | MathCommandClosure(mclosure) -> mclosure

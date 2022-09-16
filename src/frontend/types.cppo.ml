@@ -448,7 +448,7 @@ and untyped_input_math_base =
         Format.fprintf ppf "(UTInputMathChar \"%s\")" (string_of_uchar uch)
       )]
   | UTInputMathApplyCommand of untyped_abstract_tree * untyped_command_argument list
-  | UTInputMathEmbedded     of untyped_abstract_tree
+  | UTInputMathContent      of untyped_abstract_tree
 
 and untyped_abstract_tree =
   Range.t * untyped_abstract_tree_main
@@ -470,7 +470,13 @@ and untyped_abstract_tree_main =
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaHorz           of var_name ranged * untyped_abstract_tree
   | UTLambdaVert           of var_name ranged * untyped_abstract_tree
-  | UTLambdaMath           of var_name ranged * untyped_abstract_tree
+
+  | UTLambdaMath of {
+      parameters       : untyped_parameter_unit list;
+      context_variable : var_name ranged;
+      body             : untyped_abstract_tree;
+    }
+
 (* Horizontal box lists: *)
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
@@ -491,7 +497,7 @@ and untyped_abstract_tree_main =
   | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTFunction             of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option * untyped_abstract_tree
+  | UTFunction             of untyped_parameter_unit * untyped_abstract_tree
   | UTOpenIn               of module_name ranged * untyped_abstract_tree
 (* Pattern matching: *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
@@ -538,6 +544,9 @@ and untyped_type_argument =
 
 and untyped_command_argument =
   | UTCommandArg of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree
+
+and untyped_parameter_unit =
+  | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
 [@@deriving show { with_path = false; }]
 
 type untyped_source_file =
@@ -547,9 +556,6 @@ type untyped_source_file =
 
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
-
-type untyped_parameter_unit =
-  | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
 
 type 'a input_horz_element_scheme =
   | InputHorzText         of string
@@ -565,10 +571,13 @@ type 'a input_vert_element_scheme =
 [@@deriving show { with_path = false; }]
 
 type 'a input_math_base_scheme =
-  | InputMathChar     of Uchar.t
+  | InputMathChar         of Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
-  | InputMathContent  of 'a
-  | InputMathEmbedded of 'a
+  | InputMathContent      of 'a
+  | InputMathApplyCommand of {
+      command   : 'a;
+      arguments : ('a LabelMap.t * 'a) list;
+    }
 [@@deriving show { with_path = false; }]
 
 type 'a input_math_element_scheme =
@@ -1188,9 +1197,25 @@ let rec map_input_math f ms =
     let InputMathElement{ base; sub; sup } = m in
     let base =
       match base with
-      | InputMathChar(uch)     -> InputMathChar(uch)
-      | InputMathContent(ast)  -> InputMathContent(f ast)
-      | InputMathEmbedded(ast) -> InputMathEmbedded(f ast)
+      | InputMathChar(uch) ->
+          InputMathChar(uch)
+
+      | InputMathContent(ast) ->
+          InputMathContent(f ast)
+
+      | InputMathApplyCommand{
+          command = ast_cmd;
+          arguments;
+        } ->
+          InputMathApplyCommand{
+            command =
+              f ast_cmd;
+
+            arguments =
+              arguments |> List.map (fun (ast_labmap, ast) ->
+                (ast_labmap |> LabelMap.map f, f ast)
+              )
+          }
     in
     let sub = sub |> Option.map (map_input_math f) in
     let sup = sup |> Option.map (map_input_math f) in

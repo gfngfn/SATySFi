@@ -34,8 +34,7 @@
   let curry_lambda_abstraction (param_units : untyped_parameter_unit list) (utast : untyped_abstract_tree) : untyped_abstract_tree =
     let rng = Range.dummy "curry_lambda_abstraction" in
     utast |> List.fold_right (fun param_unit utast ->
-      let UTParameterUnit(opts, utpat, mnty_opt) = param_unit in
-      (rng, UTFunction(opts, utpat, mnty_opt, utast))
+      (rng, UTFunction(param_unit, utast))
     ) param_units
 
 
@@ -505,9 +504,12 @@ bind_block:
 bind_math:
   | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
-        let rng = make_range (Ranged cs) (Ranged utast) in
-        let curried = curry_lambda_abstraction param_units utast in
-        (cs, (rng, UTLambdaMath(ident_ctx, curried)))
+        (cs,
+          make_standard (Ranged cs) (Ranged utast) (UTLambdaMath{
+            parameters       = param_units;
+            context_variable = ident_ctx;
+            body             = utast;
+          }))
       }
 ;
 bind_type:
@@ -1264,7 +1266,7 @@ math_bot:
   | long_ident=VAR_IN_TEXT
       {
         let (rng, modnms, varnm) = long_ident in
-        (rng, UTInputMathEmbedded((rng, UTContentOf(modnms, varnm))))
+        (rng, UTInputMathContent((rng, UTContentOf(modnms, varnm))))
       }
 ;
 math_cmd_arg:
