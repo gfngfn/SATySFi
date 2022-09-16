@@ -704,18 +704,6 @@ let rec check_subscript (mlstB : math_box list) =
       None
 
 
-(*
-let check_pull_in (mlstB : math_text list) =
-  match List.rev mlstB with
-  | MathTextPullInScripts(mkL, mkR, mlstf) :: mtailrev ->
-    (* -- if the last element of the base contents is a pull-in-scripts -- *)
-      Some(((mkL, mkR, mlstf), List.rev mtailrev))
-
-  | _ ->
-      None
-*)
-
-
 let convert_math_element ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind) (me : math_element) : low_math_pure =
   match me with
   | MathElement(mk_raw, MathEmbeddedText(hbs)) ->
@@ -771,14 +759,6 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
   | MathBoxPure(me) ->
       let (mk, wid, hgt, dpt, lme, lk, rk) = convert_math_element mkprev mknext me in
       (LowMathPure(mk, wid, hgt, dpt, lme, lk, rk), hgt, dpt)
-(*
-  | MathPullInScripts(mkL, mkR, mlstf) ->
-      let mlstI = mlstf None None in
-        (* -- invokes the math-generating function -- *)
-      let lmI = convert_to_low mathctx mkprev mknext mlstI in
-      let (_, h_inner, d_inner, _, rk) = lmI in
-        (LowMathGroup(mkL, mkR, lmI), h_inner, d_inner)
-*)
 
   | MathBoxGroup{ left = mkL; right = mkR; inner = mlstC } ->
       let lmC = convert_to_low MathEnd MathClose mlstC in
@@ -806,90 +786,55 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
       (lm, h_frac, d_frac)
 
   | MathBoxSubscript{ context = ictx; base = mlstB; sub = mlstS } ->
-(*
-      begin
-        match check_pull_in mlstB with
-        | Some((pullin, mlstB)) ->
-          (* -- if the last element of the base contents is a pull-in-scripts -- *)
-            invoke_pull_in_scripts (mathctx, mkprev, mknext) pullin (Some(mlstS)) None mlstB
-
-        | None ->
-*)
-            let lmB = convert_to_low mkprev MathEnd mlstB in
-            let lmS = convert_to_low MathEnd MathEnd mlstS in
-            let (_, h_base, d_base, _, rkB) = lmB in
-            let (_, h_sub, d_sub, _, _)     = lmS in
-            let mathctx = MathContext.make ictx in
-            let d_subbl = subscript_baseline_depth mathctx rkB.last_depth h_sub in
-            let h_whole = h_base in
-            let d_whole = Length.min d_base (d_subbl +% d_sub) in
-            (LowMathSubscript{ sub_baseline_depth = d_subbl; base = lmB; sub = lmS }, h_whole, d_whole)
-(*
-      end
-*)
+      let lmB = convert_to_low mkprev MathEnd mlstB in
+      let lmS = convert_to_low MathEnd MathEnd mlstS in
+      let (_, h_base, d_base, _, rkB) = lmB in
+      let (_, h_sub, d_sub, _, _)     = lmS in
+      let mathctx = MathContext.make ictx in
+      let d_subbl = subscript_baseline_depth mathctx rkB.last_depth h_sub in
+      let h_whole = h_base in
+      let d_whole = Length.min d_base (d_subbl +% d_sub) in
+      (LowMathSubscript{ sub_baseline_depth = d_subbl; base = lmB; sub = lmS }, h_whole, d_whole)
 
   | MathBoxSuperscript{ context = ictx; base = mlstB; sup = mlstS } ->
       begin
         match check_subscript mlstB with
         | Some((mlstT, mlstB)) ->
-          (* -- if the last element of the base contents has a subscript -- *)
-(*
-            begin
-              match check_pull_in mlstB with
-              | Some((pullin, mlstB)) ->
-                (* -- if the last element of the base contents is a pull-in-scipts -- *)
-                  invoke_pull_in_scripts (mathctx, mkprev, mknext) pullin (Some(mlstT)) (Some(mlstS)) mlstB
-              | None ->
-*)
-                  let lmB = convert_to_low mkprev MathEnd mlstB in
-                  let lmS = convert_to_low MathEnd MathEnd mlstS in
-                  let lmT = convert_to_low MathEnd MathEnd mlstT in
-                  let (_, h_base, d_base, _, rkB) = lmB in
-                  let (_, h_sup, d_sup, _, _) = lmS in
-                  let (_, h_sub, d_sub, _, _) = lmT in
-                  let mathctx = MathContext.make ictx in
-                  let h_supbl_raw = superscript_baseline_height mathctx h_base d_sup in
-                  let d_subbl_raw = subscript_baseline_depth mathctx rkB.last_depth h_sub in
-                  let (h_supbl, d_subbl) = correct_script_baseline_heights mathctx d_sup h_sub h_supbl_raw d_subbl_raw in
-                  let h_whole = Length.max h_base (h_supbl +% h_sup) in
-                  let d_whole = Length.min d_base (d_subbl +% d_sub) in
-                  let lm =
-                    LowMathSubSuperscript{
-                      sup_baseline_height = h_supbl;
-                      sub_baseline_depth  = d_subbl;
-                      base                = lmB;
-                      sub                 = lmS;
-                      sup                 = lmT;
-                    }
-                  in
-                  (lm, h_whole, d_whole)
-(*
-            end
-*)
+          (* If the last element of the base contents has a subscript *)
+            let lmB = convert_to_low mkprev MathEnd mlstB in
+            let lmS = convert_to_low MathEnd MathEnd mlstS in
+            let lmT = convert_to_low MathEnd MathEnd mlstT in
+            let (_, h_base, d_base, _, rkB) = lmB in
+            let (_, h_sup, d_sup, _, _) = lmS in
+            let (_, h_sub, d_sub, _, _) = lmT in
+            let mathctx = MathContext.make ictx in
+            let h_supbl_raw = superscript_baseline_height mathctx h_base d_sup in
+            let d_subbl_raw = subscript_baseline_depth mathctx rkB.last_depth h_sub in
+            let (h_supbl, d_subbl) = correct_script_baseline_heights mathctx d_sup h_sub h_supbl_raw d_subbl_raw in
+            let h_whole = Length.max h_base (h_supbl +% h_sup) in
+            let d_whole = Length.min d_base (d_subbl +% d_sub) in
+            let lm =
+              LowMathSubSuperscript{
+                sup_baseline_height = h_supbl;
+                sub_baseline_depth  = d_subbl;
+                base                = lmB;
+                sub                 = lmS;
+                sup                 = lmT;
+              }
+            in
+            (lm, h_whole, d_whole)
 
         | None ->
-          (* -- if the last element of the base contents does NOT have a subscript -- *)
-(*
-            begin
-              match check_pull_in mlstB with
-              | Some((pullin, mlstB)) ->
-                (* -- if the last element of the base contents is a pull-in-scipts -- *)
-                  invoke_pull_in_scripts (mathctx, mkprev, mknext) pullin None (Some(mlstS)) mlstB
-
-              | None ->
-*)
-                  let lmB = convert_to_low mkprev MathEnd mlstB in
-                  let lmS = convert_to_low MathEnd MathEnd mlstS in
-                  let (_, h_base, d_base, _, rkB) = lmB in
-                  let (_, h_sup, d_sup, _, _)     = lmS in
-                  let mathctx = MathContext.make ictx in
-                  let h_supbl = superscript_baseline_height mathctx h_base d_sup in
-                  let h_whole = Length.max h_base (h_supbl +% h_sup) in
-                  let d_whole = d_base in
-                  (LowMathSuperscript{ sup_baseline_height = h_supbl; base = lmB; sup = lmS }, h_whole, d_whole)
-(*
-            end
-*)
+          (* If the last element of the base contents does NOT have a subscript *)
+            let lmB = convert_to_low mkprev MathEnd mlstB in
+            let lmS = convert_to_low MathEnd MathEnd mlstS in
+            let (_, h_base, d_base, _, rkB) = lmB in
+            let (_, h_sup, d_sup, _, _)     = lmS in
+            let mathctx = MathContext.make ictx in
+            let h_supbl = superscript_baseline_height mathctx h_base d_sup in
+            let h_whole = Length.max h_base (h_supbl +% h_sup) in
+            let d_whole = d_base in
+            (LowMathSuperscript{ sup_baseline_height = h_supbl; base = lmB; sup = lmS }, h_whole, d_whole)
       end
 
   | MathBoxRadical{ context = ictx; radical; inner = mlstC } ->
@@ -900,7 +845,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
       let hblstrad = make_radical mathctx radical h_bar t_bar d_cont in
       let h_rad = h_bar +% t_bar in
       let h_whole = h_rad +% l_extra in
-      let d_whole = d_cont in  (* temporary; should consider the depth of the radical sign *)
+      let d_whole = d_cont in  (* TODO: consider the depth of the radical sign *)
       (LowMathRadical(hblstrad, h_bar, t_bar, lmC), h_whole, d_whole)
 
   | MathBoxRadicalWithDegree(mlstD, mlstC) ->
@@ -975,21 +920,6 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
       let d_whole = d_lowbl +% d_low in
       (LowMathLowerLimit{ lower_baseline_depth = d_lowbl; base = lmB; lower = lmL }, h_whole, d_whole)
 
-
-(* --
-   'mlstSopt': 'None' or subscript enveloped in 'Some(_)'
-   'mlstTopt': 'None' or superscript enveloped in 'Some(_)'
-   'mlstB': the math list attached before the math list generated by pull-in-scripts
-   -- *)
-(*
-and invoke_pull_in_scripts (mathctx, mkprev, mknext) (mkL, mkR, mlstf) mlstSopt mlstTopt mlstB =
-  let mlstIsub = mlstf mlstSopt mlstTopt in
-    (* -- invokes the math-generating function -- *)
-  let mlstI = List.append mlstB [MathGroup(mkL, mkR, mlstIsub)] in
-  let lmI = convert_to_low mathctx mkprev mknext mlstI in
-  let (_, h_inner, d_inner, _, rk) = lmI in
-  (LowMathList(None, lmI), h_inner, d_inner)
-*)
 
 let horz_of_low_math_element (lme : math_box_element) : horz_box list =
   match lme with

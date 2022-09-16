@@ -127,24 +127,6 @@ Context(ctx, { ctxsub with math_command = mcmd; })
 let ctcmd = get_code_text_command_func (reducef ~msg:"set-code-text-command") valuecmd in
 Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
-(*
-    ; inst "BackendMathVariantCharDirect"
-        ~name:"math-variant-char"
-        ~type_:Type.(tMATHCLS @-> tMCSTY @-> tMB)
-        ~fields:[
-        ]
-        ~params:[
-          param "mathcls" ~type_:"math_class";
-          param "valuercd";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-let is_big = false in  (* temporary *)
-let mvsty = get_math_variant_style valuercd in
-make_math_boxes [ HorzBox.(MathBoxPure(MathVariantCharDirect(mathcls, is_big, mvsty))) ]
-|}
-*)
     ; inst "BackendGetLeftMathClass"
         ~name:"get-left-math-class"
         ~type_:Type.(tMB @-> tOPT tMATHCLS)
@@ -355,25 +337,6 @@ make_math_boxes [ MathBoxUpperLimit{ context = ictx; base; upper } ]
         ~code:{|
 make_math_boxes [ MathBoxLowerLimit{ context = ictx; base; lower } ]
 |}
-(*
-    ; inst "BackendMathPullInScripts"
-        ~name:"math-pull-in-scripts"
-        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> (tOPT tMT @-> tOPT tMT @-> tMB) @-> tMT)
-        ~fields:[
-        ]
-        ~params:[
-          param "mathcls1" ~type_:"math_class";
-          param "mathcls2" ~type_:"math_class";
-          param "valuef";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~needs_reducef:true
-        ~code:{|
-let mlstf = make_pull_in_scripts reducef valuef in
-make_math_text [ HorzBox.(MathTextPullInScripts(mathcls1, mathcls2, mlstf)) ]
-|}
-*)
     ; inst "BackendMathChar"
         ~name:"math-char"
         ~type_:Type.(tCTX @-> tMATHCLS @-> tS @-> tMB)
@@ -461,22 +424,6 @@ make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
         ~code:{|
 make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathEmbeddedText(hbs)))) ]
 |}
-(*
-    ; inst "BackendMathColor" (* TODO: migrate to contexts and abandon this *)
-        ~name:"math-color"
-        ~type_:Type.(tCLR @-> tMB @-> tMB)
-        ~fields:[
-        ]
-        ~params:[
-          param "color" ~type_:"color";
-          param "mlst" ~type_:"math_boxes";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-make_math_boxes [ HorzBox.(MathBoxChangeContext(MathChangeColor(color), mlst)) ]
-|}
-*)
     ; inst "BackendSetMathCharClass"
         ~name:"set-math-char-class"
         ~type_:Type.(tMCCLS @-> tCTX @-> tCTX)
