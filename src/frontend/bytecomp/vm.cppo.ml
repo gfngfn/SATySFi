@@ -257,7 +257,7 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
     end
 
 
-and exec_pdf_mode_intermediate_input_math (env : vmenv) (valuectx : syntactic_value) (imivlst : compiled_intermediate_input_math_element list) : syntactic_value =
+and exec_pdf_mode_intermediate_input_math (env : vmenv) (ictx : input_context) (imivlst : compiled_intermediate_input_math_element list) : syntactic_value =
   failwith "TODO: exec_pdf_mode_intermediate_input_math"
 
 
@@ -278,8 +278,8 @@ and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_va
   make_vert imvblst
 
 
-and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
-  let (ctx, ctxsub) = get_context valuectx in
+and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+  let (ctx, ctxsub) = ictx in
     begin
       let rec normalize imihlst =
         imihlst |> List.fold_left (fun acc imih ->
@@ -300,7 +300,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
                 let nmih =
                   CompiledNomInputHorzThunk(
                     List.append mathcode [
-                      OpPush(valuectx);
+                      OpPush(Context(ictx));
                       OpForward(1);  (* -- put the context argument under the math argument -- *)
                       OpPush(valuemcmd);
                       OpApplyT(2)
@@ -318,7 +318,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
                   | CodeTextCommand(valuectcmd) ->
                       let nmih =
                         CompiledNomInputHorzThunk([
-                          OpPush(valuectx);
+                          OpPush(Context(ictx));
                           OpPush(BaseConstant(BCString(s)));
                           OpPush(valuectcmd);
                           OpApplyT(2)
@@ -339,7 +339,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
         nmihlst |> List.map (fun nmih ->
             match nmih with
             | CompiledNomInputHorzEmbedded(code) ->
-                let valueret = exec_value [make_entry valuectx] env (List.append code [OpApplyT(1)]) [] in
+                let valueret = exec_value [ make_entry (Context(ictx)) ] env (List.append code [ OpApplyT(1) ]) [] in
                   get_horz valueret
 
             | CompiledNomInputHorzThunk(code) ->

@@ -156,35 +156,79 @@ and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element
   )
 
 
-and interpret_0_input_math_content (env : environment) (ims : input_math_element list) : intermediate_input_math_element list =
+and interpret_0_input_math_content (env : environment) (ims : input_math_element list) : input_math_value_element list =
   ims |> List.map (fun im ->
-    let InputMathElement{ base; sub; sup } = im in
-    let imbase =
-      match base with
-      | InputMathChar(uch) ->
-          ImInputMathChar(uch)
+    let InputMathElement{ base = imbase; sub = ims_sub_opt; sup = ims_sup_opt } = im in
+    let imvs_sub_opt = ims_sub_opt |> Option.map (interpret_0_input_math_content env) in
+    let imvs_sup_opt = ims_sup_opt |> Option.map (interpret_0_input_math_content env) in
+    match imbase with
+    | InputMathChar(uch) ->
+        InputMathValueElement{
+          base = InputMathValueChar(uch);
+          sub  = imvs_sub_opt;
+          sup  = imvs_sup_opt;
+        }
 
-      | InputMathEmbedded(ast_abs) ->
-          ImInputMathEmbedded(ast_abs)
+    | InputMathEmbedded(ast_abs) ->
+        let value = interpret_0 env ast_abs in
+        let mclosure =
+          match value with
+          | MathCommandClosure(mclosure) -> mclosure
+          | _                            -> report_bug_value "InputMathEmbedded" value
+        in
+        InputMathValueElement{
+          base = InputMathValueEmbedded(mclosure);
+          sub  = imvs_sub_opt;
+          sup  = imvs_sup_opt;
+        }
 
-      | InputMathContent(ast) ->
-          let value = interpret_0 env ast in
-          begin
-            match value with
-            | InputMathClosure(imims, env_sub) ->
-                ImInputMathContent(imims, env_sub)
+    | InputMathContent(ast) ->
+        let value = interpret_0 env ast in
+        let imvs = get_math_text value in
+        let opt =
+          match imvs with
+          | [ imv0 ] ->
+              let
+                InputMathValueElement{
+                  base = imvbase0;
+                  sub  = imvs0_sub_opt;
+                  sup  = imvs0_sup_opt;
+                } = imv0
+              in
+              let open OptionMonad in
+              begin
+                match (imvs0_sub_opt, imvs_sub_opt) with
+                | (Some(_), Some(_)) -> None
+                | (Some(_), None)    -> Some(imvs0_sub_opt)
+                | (None, _)          -> Some(imvs_sub_opt)
+              end >>= fun imvs_sub_opt ->
+              begin
+                match (imvs0_sup_opt, imvs_sup_opt) with
+                | (Some(_), Some(_)) -> None
+                | (Some(_), None)    -> Some(imvs0_sup_opt)
+                | (None, _)          -> Some(imvs_sup_opt)
+              end >>= fun imvs_sup_opt ->
+              Some(InputMathValueElement{
+                base = imvbase0;
+                sub  = imvs_sub_opt;
+                sup  = imvs_sup_opt;
+              })
 
-            | _ ->
-                report_bug_reduction "interpret_0_input_math_content" ast value
-          end
-    in
-    let imsub = sub |> Option.map (interpret_0_input_math_content env) in
-    let imsup = sup |> Option.map (interpret_0_input_math_content env) in
-    ImInputMathElement{
-      base = imbase;
-      sub  = imsub;
-      sup  = imsup;
-    }
+          | _ ->
+              None
+        in
+        begin
+          match opt with
+          | None ->
+              InputMathValueElement{
+                base = InputMathValueGroup(imvs);
+                sub  = imvs_sub_opt;
+                sup  = imvs_sup_opt;
+              }
+
+          | Some(imv) ->
+              imv
+        end
   )
 
 
@@ -210,8 +254,29 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
         (* Lazy evaluation; evaluates embedded variables only *)
 
   | InputMath(ims) ->
-      let imims = interpret_0_input_math_content env ims in
-      InputMathClosure(imims, env)
+      let imvs = interpret_0_input_math_content env ims in
+      InputMathValue(imvs)
+
+  | LambdaMath(evid_ctx, evid_pair_opt, ast0) ->
+      let mclosure =
+        match evid_pair_opt with
+        | None ->
+            MathCommandClosureSimple{
+              context_binder = evid_ctx;
+              body           = ast0;
+              environment    = env;
+            }
+
+        | Some((evid_sub, evid_sup)) ->
+            MathCommandClosureWithScripts{
+              context_binder = evid_ctx;
+              sub_binders    = evid_sub;
+              sup_binders    = evid_sup;
+              body           = ast0;
+              environment    = env;
+            }
+      in
+      MathCommandClosure(mclosure)
 
 (* Fundamentals: *)
 
@@ -385,6 +450,9 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | InputMath(ims) ->
       let cdims = ims |> map_input_math (interpret_1 env) in
       CdInputMath(cdims)
+
+  | LambdaMath(evid, evid_pair_opt, ast0) ->
+      failwith "TODO: interpret_1, LambdaMath"
 
   | ContentOf(rng, evid) ->
       begin
@@ -648,54 +716,82 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (value_tctx 
   make_string s
 
 
-and interpret_pdf_mode_intermediate_input_math (env : environment) (value_ctx : syntactic_value) (imims : intermediate_input_math_element list) : syntactic_value =
+and append_sub_and_super_scripts (ictx : input_context) ~base:(mbs_base : math_box list) ~sub:(mbs_sub_opt : (math_box list) option) ~sup:(mbs_sup_opt : (math_box list) option) : math_box list =
+  match (mbs_sub_opt, mbs_sup_opt) with
+  | (None, None) ->
+      mbs_base
 
-  let ictx = get_context value_ctx in (* TODO: refactor this *)
+  | (Some(mbs_sub), None) ->
+      [ MathBoxSubscript{ context = ictx; base = mbs_base; sub = mbs_sub } ]
 
-  let rec interpret_commands (env : environment) (imims : intermediate_input_math_element list) =
-    imims |> List.map (fun imim ->
-      let ImInputMathElement{ base; sub; sup } = imim in
-      let mbs_base =
-        match base with
-        | ImInputMathChar(uch) ->
-            failwith "TODO: ImInputMathChar; should convert input code points to math code points here"
+  | (None, Some(mbs_sup)) ->
+      [ MathBoxSuperscript{ context = ictx; base = mbs_base; sup = mbs_sup } ]
 
-        | ImInputMathEmbedded(ast_abs) ->
-            let value_abs = interpret_0 env ast_abs in
-            let value_math = reduce_beta value_abs value_ctx in
-            get_math_boxes value_math
+  | (Some(mbs_sub), Some(mbs_sup)) ->
+      [
+        MathBoxSuperscript{
+          context = ictx;
+          base    = [ MathBoxSubscript{ context = ictx; base = mbs_base; sub = mbs_sub } ];
+          sup     = mbs_sup;
+        };
+      ]
 
-        | ImInputMathContent(imims_sub, env_sub) ->
-            interpret_commands env_sub imims_sub
-      in
-      let mbs_sub_opt = sub |> Option.map (interpret_commands env) in
-      let mbs_sup_opt = sup |> Option.map (interpret_commands env) in
-      match (mbs_sub_opt, mbs_sup_opt) with
-      | (None, None) ->
-          mbs_base
 
-      | (Some(mbs_sub), None) ->
-          [ MathBoxSubscript{ context = ictx; base = mbs_base; sub = mbs_sub } ]
+and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_element list) : math_box list =
+  let loc_ctx = ref (Context(ictx)) in
+  let rec iter (imvs : input_math_value_element list) =
+    imvs |> List.map (fun imv ->
+      let InputMathValueElement{ base; sub; sup } = imv in
+      let mbs_sub_opt = sub |> Option.map iter in
+      let mbs_sup_opt = sup |> Option.map iter in
+      match base with
+      | InputMathValueChar(uch) ->
+          failwith "TODO: InputMathValueChar"
 
-      | (None, Some(mbs_sup)) ->
-          [ MathBoxSuperscript{ context = ictx; base = mbs_base; sup = mbs_sup } ]
+      | InputMathValueEmbedded(mclosure) ->
+          begin
+            match mclosure with
+            | MathCommandClosureSimple{
+                context_binder = evid_ctx;
+                body           = ast;
+                environment    = env;
+              } ->
+                let value =
+                  let env = add_to_environment env evid_ctx loc_ctx in
+                  interpret_0 env ast
+                in
+                let mbs_base = get_math_boxes value in
+                append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
 
-      | (Some(mbs_sub), Some(mbs_sup)) ->
-          [
-            MathBoxSuperscript{
-              context = ictx;
-              base    = [ MathBoxSubscript{ context = ictx; base = mbs_base; sub = mbs_sub } ];
-              sup     = mbs_sup;
-            };
-          ]
+            | MathCommandClosureWithScripts{
+                context_binder = evid_ctx;
+                sub_binders    = evid_sub;
+                sup_binders    = evid_sup;
+                body           = ast;
+                environment    = env;
+              } ->
+                let value =
+                  let value_sub = make_option make_math_boxes mbs_sub_opt in
+                  let value_sup = make_option make_math_boxes mbs_sup_opt in
+                  let env = add_to_environment env evid_ctx loc_ctx in
+                  let env = add_to_environment env evid_sub (ref value_sub) in
+                  let env = add_to_environment env evid_sup (ref value_sup) in
+                  interpret_0 env ast
+                in
+                let mbs_base = get_math_boxes value in
+                append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
+          end
+
+      | InputMathValueGroup(imvs_group) ->
+          iter imvs_group
 
     ) |> List.concat
   in
-  let mbs = interpret_commands env imims in
-  make_math_boxes mbs
+  iter imvs
 
 
 and interpret_pdf_mode_intermediate_input_vert (env : environment) (value_ctx : syntactic_value) (imivs : intermediate_input_vert_element list) : syntactic_value =
+
   let rec interpret_commands (env : environment) (imivs : intermediate_input_vert_element list) =
     imivs |> List.map (fun imiv ->
       match imiv with
@@ -713,9 +809,9 @@ and interpret_pdf_mode_intermediate_input_vert (env : environment) (value_ctx : 
   make_vert imvbs
 
 
-and interpret_pdf_mode_intermediate_input_horz (env : environment) (value_ctx : syntactic_value) (imihs : intermediate_input_horz_element list) : syntactic_value =
+and interpret_pdf_mode_intermediate_input_horz (env : environment) (ictx : input_context) (imihs : intermediate_input_horz_element list) : syntactic_value =
 
-  let (ctx, ctxsub) = get_context value_ctx in
+  let (ctx, ctxsub) = ictx in
   let value_mcmd = make_math_command_func ctxsub.math_command in
 
   let rec normalize (imihs : intermediate_input_horz_element list) =
@@ -733,7 +829,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (value_ctx : 
           end
 
       | ImInputHorzEmbeddedMath(ast_math) ->
-          let value_mcmdctx = reduce_beta value_mcmd value_ctx in
+          let value_mcmdctx = reduce_beta value_mcmd (Context(ictx)) in
           let nmih = NomInputHorzThunk(value_mcmdctx, ast_math) in
           Alist.extend acc nmih
 
@@ -745,7 +841,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (value_ctx : 
                 Alist.extend acc nmih
 
             | CodeTextCommand(value_ctcmd) ->
-                let value_ctcmdctx = reduce_beta value_ctcmd value_ctx in
+                let value_ctcmdctx = reduce_beta value_ctcmd (Context(ictx)) in
                 let nmih = NomInputHorzThunk(value_ctcmdctx, ASTBaseConstant(BCString(s))) in
                 Alist.extend acc nmih
           end
@@ -763,7 +859,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (value_ctx : 
       match nmih with
       | NomInputHorzEmbedded(ast_abs) ->
           let value_abs = interpret_0 env ast_abs in
-          let value_horz = reduce_beta value_abs value_ctx in
+          let value_horz = reduce_beta value_abs (Context(ictx)) in
           get_horz value_horz
 
       | NomInputHorzThunk(value_mcmdctx, ast_math) ->

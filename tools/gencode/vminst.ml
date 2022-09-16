@@ -768,18 +768,18 @@ make_vert (List.append vblst1 vblst2)
         ~fields:[
         ]
         ~params:[
-          param "valuectx";
+          param "ictx" ~type_:"context";
           param "value1";
         ]
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
 match value1 with
-| InputHorzClosure(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi valuectx imihlst
+| InputHorzClosure(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi ictx imihlst
 | _                               -> report_bug_value "HorzLex" value1
 |}
         ~code:{|
 match value1 with
-| CompiledInputHorzClosure(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi valuectx imihlst
+| CompiledInputHorzClosure(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi ictx imihlst
 | _                                       -> report_bug_vm "HorzLex"
 |}
     ; inst "VertLex"
@@ -808,19 +808,21 @@ match value1 with
         ~fields:[
         ]
         ~params:[
-          param "valuectx";
+          param "ictx" ~type_:"context";
           param "value1";
         ]
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
-match value1 with
-| InputMathClosure(imims, envi) -> interpret_pdf_mode_intermediate_input_math envi valuectx imims
-| _                             -> report_bug_value "MathLex" value1
+let imvs = get_math_text value1 in
+let mbs = read_pdf_mode_math_text ictx imvs in
+make_math_boxes mbs
 |}
         ~code:{|
+failwith "MathLex" (*
 match value1 with
-| CompiledInputMathClosure(imims, envi) -> exec_pdf_mode_intermediate_input_math envi valuectx imims
+| CompiledInputMathClosure(imims, envi) -> exec_pdf_mode_intermediate_input_math envi ictx imims
 | _                                     -> report_bug_vm "MathLex"
+*)
 |}
     ; inst "TextHorzLex"
         ~name:"stringify-inline"

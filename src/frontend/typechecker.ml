@@ -1074,7 +1074,7 @@ let rec typecheck
       in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       unify tyret (Range.dummy "lambda-math-return", BaseType(bsty_ret));
-      (abstraction evid e1, (rng, MathCommandType(cmdargtylist)))
+      (LambdaMath(evid, None, e1), (rng, MathCommandType(cmdargtylist)))
 
   | UTApply(opts, utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in

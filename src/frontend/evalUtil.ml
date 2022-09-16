@@ -361,18 +361,17 @@ let get_page_size (value : syntactic_value) : length * length =
   get_pair get_length get_length value
 
 
-(*
-let get_math_text value : math_text list =
-    match value with
-    | InputMathValue(ms) -> ms
-    | _                  -> report_bug_value "get_math_text" value
-*)
+
+let get_math_text (value : syntactic_value) : input_math_value_element list =
+  match value with
+  | InputMathValue(imvs) -> imvs
+  | _                    -> report_bug_value "get_math_text" value
 
 
-let get_math_boxes value : math_box list =
-    match value with
-    | MathBoxes(mbs) -> mbs
-    | _              -> report_bug_value "get_math_boxes" value
+let get_math_boxes (value : syntactic_value) : math_box list =
+  match value with
+  | MathBoxes(mbs) -> mbs
+  | _              -> report_bug_value "get_math_boxes" value
 
 
 let get_bool value : bool =

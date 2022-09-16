@@ -10,4 +10,4 @@ val interpret_bindings_0 : environment -> binding list -> environment * code_rec
 
 val select_pattern : Range.t -> environment -> syntactic_value -> pattern_branch list -> syntactic_value
 
-val interpret_pdf_mode_intermediate_input_horz : environment -> syntactic_value -> intermediate_input_horz_element list -> syntactic_value
+val interpret_pdf_mode_intermediate_input_horz : environment -> input_context -> intermediate_input_horz_element list -> syntactic_value

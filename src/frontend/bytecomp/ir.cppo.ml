@@ -435,6 +435,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       let (imims, env) = transform_1_input_math_content env ims in
       (IRCodeInputMath(imims), env)
 
+  | LambdaMath(_, _, _) ->
+      failwith "TODO: transform_1, LambdaMath"
+
   | Record(asc) ->
       let (keyacc, iracc, env) =
         LabelMap.fold (fun key ast acc ->
@@ -577,6 +580,9 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   | InputMath(ims) ->
       let (imims, env) = transform_0_input_math_content env ims in
       (IRInputMath(imims), env)
+
+  | LambdaMath(_, _, _) ->
+      failwith "TODO: transform_0, LambdaMath"
 
   | PrimitiveTuple(asts) ->
       transform_0_tuple env asts

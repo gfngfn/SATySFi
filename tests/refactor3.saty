@@ -1,17 +1,19 @@
 
-let math \text it =
-  text-in-math MathOrd (fun ctx -> read-inline ctx it)
-in
+let inline ctx \math m = embed-math ctx (read-math ctx m) in
 
-let math \token s = ${\text!{#s;}} in
+%let math ctx \text it =
+%  embed-inline-to-math MathOrd (read-inline ctx it)
+%in
+%
+%let math ctx \token s = read-math ctx ${\text!{#s;}} in
+%
+%let math ctx \exprabsI x e =
+%  read-math ctx ${\token!{${A^{\token!{I}}}}#x.\token!{\ }#e}
+%in
+%
+%let it = {${\exprabsI{x}{e}}} in
 
-let inline ctx \math = embed-math ctx in
-
-let math \exprabsI x e =
-  ${\token!{${A^{\token!{I}}}}#x.\token!{\ }#e}
-in
-
-let it = {${\exprabsI{x}{e}}} in
+let it = {A ${F}} in
 
 let ctx = get-initial-context 400pt (command \math) in
 let paper-size = (210mm, 297mm) in %A4

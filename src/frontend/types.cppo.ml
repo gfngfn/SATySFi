@@ -7,6 +7,12 @@ exception ParseErrorDetail of Range.t * string
 exception IllegalArgumentLength of Range.t * int * int
 
 
+let string_of_uchar (uch : Uchar.t) : string =
+  let buf = Buffer.create 10 in
+  Buffer.add_utf_8_uchar buf uch;
+  Buffer.contents buf
+
+
 type 'a ranged =
   Range.t * 'a
 [@@deriving show]
@@ -439,10 +445,7 @@ and untyped_input_math_element_main =
 and untyped_input_math_base =
   | UTInputMathChar of Uchar.t
       [@printer (fun ppf uch ->
-        let buf = Buffer.create 10 in
-        Buffer.add_utf_8_uchar buf uch;
-        let s = Buffer.contents buf in
-        Format.fprintf ppf "(UTMChar \"%s\")" s
+        Format.fprintf ppf "(UTInputMathChar \"%s\")" (string_of_uchar uch)
       )]
   | UTInputMathApplyCommand of untyped_abstract_tree * untyped_command_argument list
   | UTInputMathEmbedded     of untyped_abstract_tree
@@ -831,18 +834,32 @@ and intermediate_input_vert_element =
   | ImInputVertEmbedded of abstract_tree
   | ImInputVertContent  of intermediate_input_vert_element list * environment
 
-and intermediate_input_math_element =
-  | ImInputMathElement of {
-      base : intermediate_input_math_base;
-      sub  : (intermediate_input_math_element list) option;
-      sup  : (intermediate_input_math_element list) option;
+and input_math_value_element =
+  | InputMathValueElement of {
+      base : input_math_value_base;
+      sub  : (input_math_value_element list) option;
+      sup  : (input_math_value_element list) option;
     }
 
-and intermediate_input_math_base =
-  | ImInputMathChar     of Uchar.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "<im-input-math-char>")]
-  | ImInputMathEmbedded of abstract_tree
-  | ImInputMathContent  of intermediate_input_math_element list * environment
+and input_math_value_base =
+  | InputMathValueChar     of Uchar.t
+      [@printer (fun fmt uch -> Format.fprintf fmt "ImInputMathChar \"%s\"" (string_of_uchar uch))]
+  | InputMathValueEmbedded of math_command_closure
+  | InputMathValueGroup    of input_math_value_element list
+
+and math_command_closure =
+  | MathCommandClosureSimple of {
+      context_binder : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
+  | MathCommandClosureWithScripts of {
+      context_binder : EvalVarID.t;
+      sub_binders    : EvalVarID.t;
+      sup_binders    : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
 
 and syntactic_value =
   | Nil  (* -- just for brief use -- *)
@@ -863,7 +880,9 @@ and syntactic_value =
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
   | InputHorzClosure of intermediate_input_horz_element list * environment
   | InputVertClosure of intermediate_input_vert_element list * environment
-  | InputMathClosure of intermediate_input_math_element list * environment
+  | InputMathValue   of input_math_value_element list
+
+  | MathCommandClosure of math_command_closure
 
 (* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
   | CompiledClosure          of varloc LabelMap.t * int * syntactic_value list * int * instruction list * vmenv
@@ -879,6 +898,7 @@ and abstract_tree =
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
   | InputMath             of input_math_element list
+  | LambdaMath            of EvalVarID.t * (EvalVarID.t * EvalVarID.t) option * abstract_tree
 (* -- record value -- *)
   | Record                of abstract_tree LabelMap.t
   | AccessField           of abstract_tree * label
