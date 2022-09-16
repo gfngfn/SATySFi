@@ -375,10 +375,10 @@ let get_page_size (value : syntactic_value) : length * length =
 
 
 
-let get_math_text (value : syntactic_value) : input_math_value_element list =
+let get_math_text ~msg (value : syntactic_value) : input_math_value_element list =
   match value with
   | InputMathValue(imvs) -> imvs
-  | _                    -> report_bug_value "get_math_text" value
+  | _                    -> report_bug_value (Printf.sprintf "get_math_text (%s)" msg) value
 
 
 let get_math_boxes (value : syntactic_value) : math_box list =
@@ -639,10 +639,8 @@ let make_paren reducef valueparenf : HorzBox.paren =
   )
 
 
-(*
-let make_math_text (ms : math_text list) : syntactic_value =
-  InputMathValue(ms)
-*)
+let make_math_text (imvs : input_math_value_element list) : syntactic_value =
+  InputMathValue(imvs)
 
 
 let make_math_boxes (mbs : math_box list) : syntactic_value =

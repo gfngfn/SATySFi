@@ -192,7 +192,7 @@ and interpret_0_input_math_content (env : environment) (ims : input_math_element
 
     | InputMathContent(ast) ->
         let value = interpret_0 env ast in
-        let imvs = get_math_text value in
+        let imvs = get_math_text ~msg:"InputMathContent" value in
         let opt =
           match imvs with
           | [ imv0 ] ->
@@ -762,8 +762,6 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
   let rec iter (imvs : input_math_value_element list) =
     imvs |> List.map (fun imv ->
       let InputMathValueElement{ base; sub; sup } = imv in
-      let mbs_sub_opt = sub |> Option.map iter in
-      let mbs_sup_opt = sup |> Option.map iter in
       match base with
       | InputMathValueChar(uch) ->
           let (mk, uch_aft) = MathContext.convert_math_variant_char ictx uch in
@@ -778,6 +776,8 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
               ));
             ]
           in
+          let mbs_sub_opt = sub |> Option.map iter in
+          let mbs_sup_opt = sup |> Option.map iter in
           append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
 
       | InputMathValueEmbedded(mclosure) ->
@@ -793,6 +793,8 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
                   interpret_0 env ast
                 in
                 let mbs_base = get_math_boxes value in
+                let mbs_sub_opt = sub |> Option.map iter in
+                let mbs_sup_opt = sup |> Option.map iter in
                 append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
 
             | MathCommandClosureWithScripts{
@@ -803,8 +805,8 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
                 environment    = env;
               } ->
                 let value =
-                  let value_sub = make_option make_math_boxes mbs_sub_opt in
-                  let value_sup = make_option make_math_boxes mbs_sup_opt in
+                  let value_sub = make_option make_math_text sub in
+                  let value_sup = make_option make_math_text sup in
                   let env = add_to_environment env evid_ctx loc_ctx in
                   let env = add_to_environment env evid_sub (ref value_sub) in
                   let env = add_to_environment env evid_sup (ref value_sup) in

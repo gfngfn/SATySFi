@@ -30,11 +30,11 @@ module Local = struct
 
 
   val math ctx \sums m1 m2 =
-    read-math ctx ${\Math.upper{\Math.lower{\Math.sum}{#m1}}{#m2}}
+    read-math ctx ${\Math.sum_{#m1}^{#m2}}
 
 
   val math ctx \limto m1 m2 =
-    read-math ctx ${\Math.lower{\Math.lim}{#m1 \Math.to #m2}}
+    read-math ctx ${\Math.lim_{#m1 \Math.to #m2}}
 
 
   val block ctx +frame content =

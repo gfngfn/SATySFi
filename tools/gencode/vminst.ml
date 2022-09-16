@@ -829,7 +829,7 @@ match value1 with
         ]
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
-let imvs = get_math_text value1 in
+let imvs = get_math_text ~msg:"MathLex" value1 in
 let mbs = read_pdf_mode_math_text ictx imvs in
 make_math_boxes mbs
 |}
