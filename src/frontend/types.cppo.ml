@@ -1040,6 +1040,7 @@ and code_value =
   | CdInputHorz     of code_input_horz_element list
   | CdInputVert     of code_input_vert_element list
   | CdInputMath     of code_input_math_element list
+  | CdLambdaMath    of CodeSymbol.t * (CodeSymbol.t * CodeSymbol.t) option * code_value
   | CdContentOf     of Range.t * CodeSymbol.t
   | CdLetRecIn      of code_letrec_binding list * code_value
   | CdLetNonRecIn   of code_pattern_tree * code_value * code_value
@@ -1217,6 +1218,15 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdInputMath(ms)                      -> InputMath(ms |> map_input_math aux)
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
+
+    | CdLambdaMath(symb_ctx, symb_pair_opt, code0) ->
+        let evid_pair_opt =
+          symb_pair_opt |> Option.map (fun (symb_sub, symb_sup) ->
+            (CodeSymbol.unlift symb_sub, CodeSymbol.unlift symb_sup)
+          )
+        in
+        LambdaMath(CodeSymbol.unlift symb_ctx, evid_pair_opt, aux code0)
+
     | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
     | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map unlift_letrec_binding cdrecbinds, aux code1)
     | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(unlift_pattern cdpat, aux code1, aux code2)

@@ -451,8 +451,20 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       let cdims = ims |> map_input_math (interpret_1 env) in
       CdInputMath(cdims)
 
-  | LambdaMath(evid, evid_pair_opt, ast0) ->
-      failwith "TODO: interpret_1, LambdaMath"
+  | LambdaMath(evid_ctx, evid_pair_opt, ast0) ->
+      let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
+      let (env, symb_pair_opt) =
+        match evid_pair_opt with
+        | None ->
+            (env, None)
+
+        | Some((evid_sub, evid_sup)) ->
+            let (env, symb_sub) = generate_symbol_for_eval_var_id evid_sub env in
+            let (env, symb_sup) = generate_symbol_for_eval_var_id evid_sup env in
+            (env, Some((symb_sub, symb_sup)))
+      in
+      let code0 = interpret_1 env ast0 in
+      CdLambdaMath(symb_ctx, symb_pair_opt, code0)
 
   | ContentOf(rng, evid) ->
       begin
