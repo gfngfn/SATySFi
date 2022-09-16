@@ -13,7 +13,7 @@ let inline ctx \math m = embed-math ctx (read-math ctx m) in
 %
 %let it = {${\exprabsI{x}{e}}} in
 
-let it = {A ${F}} in
+let it = {A ${E = m c^2}} in
 
 let ctx = get-initial-context 400pt (command \math) in
 let paper-size = (210mm, 297mm) in %A4

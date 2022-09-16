@@ -747,15 +747,18 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
       match base with
       | InputMathValueChar(uch) ->
           let (mk, uch_aft) = MathContext.convert_math_variant_char ictx uch in
-          [
-            MathBoxPure(MathElement(mk,
-              MathChar{
-                context = ictx;
-                is_big  = false;
-                chars   = [ uch_aft ];
-              }
-            ));
-          ]
+          let mbs_base =
+            [
+              MathBoxPure(MathElement(mk,
+                MathChar{
+                  context = ictx;
+                  is_big  = false;
+                  chars   = [ uch_aft ];
+                }
+              ));
+            ]
+          in
+          append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
 
       | InputMathValueEmbedded(mclosure) ->
           begin
