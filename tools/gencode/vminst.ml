@@ -288,21 +288,22 @@ match mlst1opt with
 |}
     ; inst "BackendMathParen"
         ~name:"math-paren"
-        ~type_:Type.(tPAREN @-> tPAREN @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tPAREN @-> tPAREN @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
-          param "valueparenL";
-          param "valueparenR";
-          param "mlst1" ~type_:"math_boxes";
+          param "context" ~type_:"context";
+          param "value_left";
+          param "value_right";
+          param "inner" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let parenL = make_paren (reducef ~msg:"math-paren 1") valueparenL in
-let parenR = make_paren (reducef ~msg:"math-paren 2") valueparenR in
-make_math_boxes [ MathBoxParen(parenL, parenR, mlst1) ]
+let left = make_paren (reducef ~msg:"math-paren 1") value_left in
+let right = make_paren (reducef ~msg:"math-paren 2") value_right in
+make_math_boxes [ MathBoxParen{ context; left; right; inner } ]
 |}
     ; inst "BackendMathParenWithMiddle"
         ~name:"math-paren-with-middle"

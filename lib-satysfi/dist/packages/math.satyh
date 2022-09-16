@@ -398,7 +398,7 @@ module Math :> sig
   type paren = Pervasives.paren %TODO (enhance): remove this
   val paren-left : paren
   val paren-right : paren
-  val paren : math-boxes -> math-boxes
+  val paren : context -> math-boxes -> math-boxes
   val angle-left : length -> paren
   val angle-right : length -> paren
   val brace-left : paren
@@ -1095,7 +1095,7 @@ end = struct
       (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
   val math ctx \angle-bracket m =
-    math-paren (angle-left 0.5pt) (angle-right 0.5pt) (read-math ctx m)
+    math-paren ctx (angle-left 0.5pt) (angle-right 0.5pt) (read-math ctx m)
 
   val paren-left hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
@@ -1176,12 +1176,12 @@ end = struct
     (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-  val paren mb =
-    math-paren paren-left paren-right mb
+  val paren ctx mb =
+    math-paren ctx paren-left paren-right mb
 
 
   val math ctx \paren m =
-    paren (read-math ctx m)
+    paren ctx (read-math ctx m)
 
 
   val math ctx \app m1 m2 =
@@ -1388,7 +1388,7 @@ end = struct
 
 
   val math ctx \brace m =
-    math-paren brace-left brace-right (read-math ctx m)
+    math-paren ctx brace-left brace-right (read-math ctx m)
 
 
   val bar-middle hgt dpt hgtaxis fontsize color =
@@ -1494,19 +1494,19 @@ end = struct
   val sqbracket-left = bracket-left bracket-path
   val sqbracket-right = bracket-right bracket-path
   val math ctx \sqbracket m =
-    math-paren sqbracket-left sqbracket-right (read-math ctx m)
+    math-paren ctx sqbracket-left sqbracket-right (read-math ctx m)
 
 
   val floor-left hgt = bracket-left floor-path hgt
   val floor-right hgt = bracket-right floor-path hgt
   val math ctx \floor m =
-    math-paren floor-left floor-right (read-math ctx m)
+    math-paren ctx floor-left floor-right (read-math ctx m)
 
 
   val ceil-left = bracket-left ceil-path
   val ceil-right = bracket-right ceil-path
   val math ctx \ceil m =
-    math-paren ceil-left ceil-right (read-math ctx m)
+    math-paren ctx ceil-left ceil-right (read-math ctx m)
 
 
   val empty-paren _ _ _ _ _ = (inline-nil, (fun _ -> 0pt))
@@ -1539,7 +1539,7 @@ end = struct
 
 
   val math ctx \abs m =
-    math-paren abs-left abs-right (read-math ctx m)
+    math-paren ctx abs-left abs-right (read-math ctx m)
 
 
   val norm-left hgt dpt hgtaxis fontsize color =
@@ -1581,7 +1581,7 @@ end = struct
 
 
   val math ctx \norm m =
-    math-paren norm-left norm-right (read-math ctx m)
+    math-paren ctx norm-left norm-right (read-math ctx m)
 
 
   val math ctx \set m =
@@ -1606,7 +1606,7 @@ end = struct
         raise-inline (hgtaxis -' (hgt +' dpt) *' 0.5) ib
       )
     in
-    math-paren brace-left empty-paren m-inner
+    math-paren ctx brace-left empty-paren m-inner
 
 
 end

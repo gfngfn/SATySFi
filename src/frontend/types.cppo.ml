@@ -1029,7 +1029,12 @@ and math_box =
     }
   | MathBoxRadicalWithDegree of math_box list * math_box list
   | MathBoxRadical           of HorzBox.radical * math_box list
-  | MathBoxParen             of HorzBox.paren * HorzBox.paren * math_box list
+  | MathBoxParen of {
+      context : input_context;
+      left    : HorzBox.paren;
+      right   : HorzBox.paren;
+      inner   : math_box list;
+    }
   | MathBoxParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math_box list) list
 
   | MathBoxUpperLimit of {

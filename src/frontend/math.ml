@@ -484,7 +484,7 @@ let rec get_left_math_kind : math_box -> math_kind = function
   | MathBoxFraction(_)                 -> MathInner
   | MathBoxRadical(_)                  -> MathInner
   | MathBoxRadicalWithDegree(_, _)     -> MathInner
-  | MathBoxParen(_, _, _)              -> MathOpen
+  | MathBoxParen(_)                    -> MathOpen
   | MathBoxParenWithMiddle(_, _, _, _) -> MathOpen
 
   | MathBoxLowerLimit{ base } ->
@@ -526,7 +526,7 @@ let rec get_right_math_kind : math_box -> math_kind = function
   | MathBoxFraction(_)              -> MathInner
   | MathBoxRadical(_)               -> MathInner
   | MathBoxRadicalWithDegree(_, _)  -> MathInner
-  | MathBoxParen(_, _, _)           -> MathClose
+  | MathBoxParen(_)                 -> MathClose
   | MathBoxParenWithMiddle(_, _, _, _) -> MathClose
 
   | MathBoxLowerLimit{ base } ->
@@ -918,10 +918,10 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (math : math
 *)
       failwith "unsupported; MathRadicalWithDegree"
 
-  | MathBoxParen(parenL, parenR, mlstC) ->
+  | MathBoxParen{ context = ictx; left = parenL; right = parenR; inner = mlstC } ->
       let lmC = convert_to_low MathOpen MathClose mlstC in
       let (_, hC, dC, _, _) = lmC in
-      let mathctx = failwith "TODO: MathBoxParen" in
+      let mathctx = MathContext.make ictx in
       let (hblstparenL, mkernsL) = make_paren mathctx parenL hC dC in
       let (hblstparenR, mkernsR) = make_paren mathctx parenR hC dC in
       let (_, hL, dL)   = LineBreak.get_natural_metrics hblstparenL in
