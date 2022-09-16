@@ -109,7 +109,7 @@ make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchs))
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let mcmd = get_math_command_func reducef valuecmd in
+let mcmd = get_math_command_func (reducef ~msg:"set-math-command") valuecmd in
 Context(ctx, { ctxsub with math_command = mcmd; })
 |}
     ; inst "PrimitiveSetCodeTextCommand"
@@ -124,7 +124,7 @@ Context(ctx, { ctxsub with math_command = mcmd; })
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let ctcmd = get_code_text_command_func reducef valuecmd in
+let ctcmd = get_code_text_command_func (reducef ~msg:"set-code-text-command") valuecmd in
 Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
 (*
@@ -300,8 +300,8 @@ match mlst1opt with
         ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let parenL = make_paren reducef valueparenL in
-let parenR = make_paren reducef valueparenR in
+let parenL = make_paren (reducef ~msg:"math-paren 1") valueparenL in
+let parenR = make_paren (reducef ~msg:"math-paren 2") valueparenR in
 make_math_boxes [ MathBoxParen(parenL, parenR, mlst1) ]
 |}
     ; inst "BackendMathParenWithMiddle"
@@ -319,9 +319,9 @@ make_math_boxes [ MathBoxParen(parenL, parenR, mlst1) ]
         ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let parenL = make_paren reducef value_parenL in
-let parenR = make_paren reducef value_parenR in
-let middle = make_paren reducef value_middle in
+let parenL = make_paren (reducef ~msg:"math-paren-with-middle 1") value_parenL in
+let parenR = make_paren (reducef ~msg:"math-paren-with-middle 2") value_parenR in
+let middle = make_paren (reducef ~msg:"math-paren-with-middle 3") value_middle in
 let mss = get_list get_math_boxes value_mss in
 make_math_boxes [ MathBoxParenWithMiddle(parenL, parenR, middle, mss) ]
 |}
@@ -420,8 +420,8 @@ make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
         ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let left_kern = make_math_char_kern_func reducef value_left_kern in
-let right_kern = make_math_char_kern_func reducef value_right_kern in
+let left_kern = make_math_char_kern_func (reducef ~msg:"math-char-with-kern 1") value_left_kern in
+let right_kern = make_math_char_kern_func (reducef ~msg:"math-char-with-kern 2") value_right_kern in
 let mchar = MathCharWithKern{ context = ictx; is_big = false; chars = uchs; left_kern; right_kern } in
 make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
 |}
@@ -441,8 +441,8 @@ make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
         ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let left_kern = make_math_char_kern_func reducef value_left_kern in
-let right_kern = make_math_char_kern_func reducef value_right_kern in
+let left_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern 1") value_left_kern in
+let right_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern 2") value_right_kern in
 let mchar = MathCharWithKern{ context = ictx; is_big = true; chars = uchs; left_kern; right_kern } in
 make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
 |}
@@ -520,7 +520,7 @@ let (imtabular, widlst, lenlst, wid, hgt, dpt) = Tabular.main tabular in
 let rulesf xs ys =
   let valuexs = make_list make_length xs in
   let valueys = make_list make_length ys in
-  let valueret = reducef valuerulesf [valuexs; valueys] in
+  let valueret = reducef ~msg:"tabular" valuerulesf [valuexs; valueys] in
   get_graphics valueret
 in
 make_horz (HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
@@ -584,7 +584,7 @@ match valueimg with
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let hookf = make_hook reducef hookf in
+let hookf = make_hook (reducef ~msg:"hook-page-break") hookf in
 make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 |}
     ; inst "BackendHookPageBreakBlock"
@@ -598,7 +598,7 @@ make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let hookf = make_hook reducef hookf in
+let hookf = make_hook (reducef ~msg:"hook-page-break-block") hookf in
 make_vert (HorzBox.([VertHookPageBreak(hookf)]))
 |}
     ; inst "PathUnite"
@@ -969,8 +969,8 @@ make_vert imvblst
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
-let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+let pagecontf = make_page_content_scheme_func (reducef ~msg:"page-break 1") valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func (reducef ~msg:"page-break 2") valuepagepartsf in
 BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), pagecontf, pagepartsf, vblst))
 |}
     ; inst "BackendPageBreakingTwoColumn"
@@ -989,9 +989,9 @@ BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), 
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let columnhookf = make_column_hook_func reducef valuecolumnhookf in
-let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
-let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+let columnhookf = make_column_hook_func (reducef ~msg:"page-break-two-column 1") valuecolumnhookf in
+let pagecontf = make_page_content_scheme_func (reducef ~msg:"page-break-two-column 2") valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func (reducef ~msg:"page-break-two-column 3") valuepagepartsf in
 BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun () -> []), pagecontf, pagepartsf, vblst))
 |}
     ; inst "BackendPageBreakingMultiColumn"
@@ -1012,10 +1012,10 @@ BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun
         ~needs_reducef:true
         ~code:{|
 let origin_shifts = get_list get_length value_origin_shifts in
-let columnhookf = make_column_hook_func reducef valuecolumnhookf in
-let columnendhookf = make_column_hook_func reducef valuecolumnendhookf in
-let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
-let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
+let columnhookf = make_column_hook_func (reducef ~msg:"page-break-multicolumn 1") valuecolumnhookf in
+let columnendhookf = make_column_hook_func (reducef ~msg:"page-break-multicolumn 2") valuecolumnendhookf in
+let pagecontf = make_page_content_scheme_func (reducef ~msg:"page-break-multicolumn 3") valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func (reducef ~msg:"page-break-multicolumn 4") valuepagepartsf in
 BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, columnendhookf, pagecontf, pagepartsf, vbs))
 |}
     ; inst "BackendVertFrame"
@@ -1038,7 +1038,7 @@ let valuectxsub =
   }), ctxsub)
 in
 let vblst =
-  let valuev = reducef valuek [valuectxsub] in
+  let valuev = reducef ~msg:"block-frame-breakable 0" valuek [valuectxsub] in
   get_vert valuev
 in
 let margins =
@@ -1049,10 +1049,10 @@ let margins =
 in
 make_vert (HorzBox.([
   VertFrame(margins, pads,
-    make_frame_deco reducef valuedecoS,
-    make_frame_deco reducef valuedecoH,
-    make_frame_deco reducef valuedecoM,
-    make_frame_deco reducef valuedecoT,
+    make_frame_deco (reducef ~msg:"block-frame-breakable 1") valuedecoS,
+    make_frame_deco (reducef ~msg:"block-frame-breakable 2") valuedecoH,
+    make_frame_deco (reducef ~msg:"block-frame-breakable 3") valuedecoM,
+    make_frame_deco (reducef ~msg:"block-frame-breakable 4") valuedecoT,
     ctx.paragraph_width, vblst);
 ]))
 |}
@@ -1086,7 +1086,7 @@ let valuectxsub =
   Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
 in
 let vblst =
-  let valuev = reducef valuek [valuectxsub] in
+  let valuev = reducef ~msg:"embed-block-top" valuek [valuectxsub] in
   get_vert valuev
 in
 let imvblst = PageBreak.solidify vblst in
@@ -1122,7 +1122,7 @@ let valuectxsub =
   Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
 in
 let vblst =
-  let valuev = reducef valuek [valuectxsub] in
+  let valuev = reducef ~msg:"embed-block-bottom" valuek [valuectxsub] in
     get_vert valuev
 in
 let imvblst = PageBreak.solidify vblst in
@@ -1174,7 +1174,7 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
         ~needs_reducef:true
         ~code:{|
 let ctx = Primitives.get_pdf_mode_initial_context txtwid in
-let mcmd = get_math_command_func reducef valuecmd in
+let mcmd = get_math_command_func (reducef ~msg:"get-initial-context") valuecmd in
 let ctcmd = DefaultCodeTextCommand in
 let ctxsub =
   {
@@ -1652,7 +1652,7 @@ make_horz [HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch)
         ~code:{|
 make_horz ([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
   pads,
-  make_frame_deco reducef valuedeco,
+  make_frame_deco (reducef ~msg:"inline-frame-outer") valuedeco,
   hblst))])
 |}
     ; inst "BackendInnerFrame"
@@ -1670,7 +1670,7 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
         ~code:{|
 make_horz ([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
   pads,
-  make_frame_deco reducef valuedeco,
+  make_frame_deco (reducef ~msg:"inline-frame-inner") valuedeco,
   hblst))])
 |}
     ; inst "BackendFixedFrame"
@@ -1689,7 +1689,7 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
         ~code:{|
 make_horz ([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
   pads, wid,
-  make_frame_deco reducef valuedeco,
+  make_frame_deco (reducef ~msg:"inline-frame-fixed") valuedeco,
   hblst))])
 |}
     ; inst "BackendOuterFrameBreakable"
@@ -1707,10 +1707,10 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
         ~code:{|
 make_horz ([HorzBox.HorzFrameBreakable(
   pads, Length.zero, Length.zero,
-  make_frame_deco reducef valuedecoS,
-  make_frame_deco reducef valuedecoH,
-  make_frame_deco reducef valuedecoM,
-  make_frame_deco reducef valuedecoT,
+  make_frame_deco (reducef ~msg:"inline-frame-breakable 1") valuedecoS,
+  make_frame_deco (reducef ~msg:"inline-frame-breakable 2") valuedecoH,
+  make_frame_deco (reducef ~msg:"inline-frame-breakable 3") valuedecoM,
+  make_frame_deco (reducef ~msg:"inline-frame-breakable 4") valuedecoT,
   hblst
 )])
 |}
@@ -1728,7 +1728,7 @@ make_horz ([HorzBox.HorzFrameBreakable(
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let graphics = make_inline_graphics reducef valueg in
+let graphics = make_inline_graphics (reducef ~msg:"inline-graphics") valueg in
 make_horz (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 |}
     ; inst "BackendInlineGraphicsOuter"
@@ -1744,7 +1744,7 @@ make_horz (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, grap
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let graphics = make_inline_graphics_outer reducef valueg in
+let graphics = make_inline_graphics_outer (reducef ~msg:"inline-graphics-outer") valueg in
 make_horz (HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
 |}
     ; inst "BackendScriptGuard"

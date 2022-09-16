@@ -55,7 +55,7 @@ let generate_symbol_for_eval_var_id (evid : EvalVarID.t) (env : environment) : e
   (envnew, symb)
 
 
-let rec reduce_beta ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMap.empty) (value1 : syntactic_value) (value2 : syntactic_value) =
+let rec reduce_beta ~msg ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMap.empty) (value1 : syntactic_value) (value2 : syntactic_value) =
   match value1 with
   | Closure(evid_labmap, patbr, env1) ->
       let env1 =
@@ -77,11 +77,11 @@ let rec reduce_beta ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMa
       select_pattern (Range.dummy "Apply") env1 value2 [ patbr ]
 
   | _ ->
-      report_bug_value "reduce_beta: not a function" value1
+      report_bug_value (Printf.sprintf "reduce_beta (%s): not a function" msg) value1
 
 
-and reduce_beta_list (value1 : syntactic_value) (value_args : syntactic_value list) : syntactic_value =
-  List.fold_left reduce_beta value1 value_args
+and reduce_beta_list ~msg (value1 : syntactic_value) (value_args : syntactic_value list) : syntactic_value =
+  List.fold_left (reduce_beta ~msg ~optional:LabelMap.empty) value1 value_args
 
 
 and interpret_0_path (env : environment) (pathcomps : (abstract_tree path_component) list) (cycle_opt : (unit path_component) option) =
@@ -306,7 +306,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       let val_labmap = ast_labmap |> LabelMap.map (interpret_0 env) in
       let value1 = interpret_0 env ast1 in
       let value2 = interpret_0 env ast2 in
-      reduce_beta ~optional:val_labmap value1 value2
+      reduce_beta ~msg:"Apply" ~optional:val_labmap value1 value2
 
   | IfThenElse(ast0, ast1, ast2) ->
       let value0 = interpret_0 env ast0 in
@@ -655,7 +655,7 @@ and interpret_text_mode_intermediate_input_vert (env : environment) (value_tctx 
       match imiv with
       | ImInputVertEmbedded(ast_abs) ->
           let value_abs = interpret_0 env ast_abs in
-          let value_vert = reduce_beta value_abs value_tctx in
+          let value_vert = reduce_beta ~msg:"interpret_text_mode_intermediate_input_vert" value_abs value_tctx in
           get_string value_vert
 
       | ImInputVertContent(imivs_sub, env_sub) ->
@@ -704,12 +704,12 @@ and interpret_text_mode_intermediate_input_horz (env : environment) (value_tctx 
       match nmih with
       | NomInputHorzEmbedded(ast_abs) ->
           let value_abs = interpret_0 env ast_abs in
-          let value_ret = reduce_beta value_abs value_tctx in
+          let value_ret = reduce_beta ~msg:"interpret_text_mode_intermediate_input_horz 1" value_abs value_tctx in
           get_string value_ret
 
       | NomInputHorzThunk(value_cmd, ast_arg) ->
           let value_arg = interpret_0 env ast_arg in
-          let value_ret = reduce_beta value_cmd value_arg in
+          let value_ret = reduce_beta ~msg:"interpret_text_mode_intermediate_input_horz 2" value_cmd value_arg in
           get_string value_ret
 
       | NomInputHorzText(s) ->
@@ -820,7 +820,7 @@ and interpret_pdf_mode_intermediate_input_vert (env : environment) (value_ctx : 
       match imiv with
       | ImInputVertEmbedded(ast_abs) ->
           let value_abs = interpret_0 env ast_abs in
-          let value_vert = reduce_beta value_abs value_ctx in
+          let value_vert = reduce_beta ~msg:"interpret_pdf_mode_intermediate_input_vert" value_abs value_ctx in
           get_vert value_vert
 
       | ImInputVertContent(imivs_sub, env_sub) ->
@@ -852,7 +852,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (ictx : input
           end
 
       | ImInputHorzEmbeddedMath(ast_math) ->
-          let value_mcmdctx = reduce_beta value_mcmd (Context(ictx)) in
+          let value_mcmdctx = reduce_beta ~msg:"interpret_pdf_mode_intermediate_input_horz 1" value_mcmd (Context(ictx)) in
           let nmih = NomInputHorzThunk(value_mcmdctx, ast_math) in
           Alist.extend acc nmih
 
@@ -864,7 +864,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (ictx : input
                 Alist.extend acc nmih
 
             | CodeTextCommand(value_ctcmd) ->
-                let value_ctcmdctx = reduce_beta value_ctcmd (Context(ictx)) in
+                let value_ctcmdctx = reduce_beta ~msg:"interpret_pdf_mode_intermediate_input_horz 2" value_ctcmd (Context(ictx)) in
                 let nmih = NomInputHorzThunk(value_ctcmdctx, ASTBaseConstant(BCString(s))) in
                 Alist.extend acc nmih
           end
@@ -882,12 +882,12 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (ictx : input
       match nmih with
       | NomInputHorzEmbedded(ast_abs) ->
           let value_abs = interpret_0 env ast_abs in
-          let value_horz = reduce_beta value_abs (Context(ictx)) in
+          let value_horz = reduce_beta ~msg:"interpret_pdf_mode_intermediate_input_horz 3" value_abs (Context(ictx)) in
           get_horz value_horz
 
       | NomInputHorzThunk(value_mcmdctx, ast_math) ->
           let value_math = interpret_0 env ast_math in
-          let value_horz = reduce_beta value_mcmdctx value_math in
+          let value_horz = reduce_beta ~msg:"interpret_pdf_mode_intermediate_input_horz 4" value_mcmdctx value_math in
           get_horz value_horz
 
       | NomInputHorzText(s) ->

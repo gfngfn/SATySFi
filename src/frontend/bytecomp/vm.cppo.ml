@@ -361,7 +361,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (
     end
 
 
-and exec_application (env : vmenv) (vf : syntactic_value) (vargs : syntactic_value list) : syntactic_value =
+and exec_application (env : vmenv) ~msg (vf : syntactic_value) (vargs : syntactic_value list) : syntactic_value =
   let len = List.length vargs in
     if len = 0 then
       vf
