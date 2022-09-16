@@ -29,12 +29,12 @@ module Local = struct
       script-guard Latin (read-inline ctx-file filename)
 
 
-  val math \sums m1 m2 =
-    ${\Math.upper{\Math.lower{\Math.sum}{#m1}}{#m2}}
+  val math ctx \sums m1 m2 =
+    read-math ctx ${\Math.upper{\Math.lower{\Math.sum}{#m1}}{#m2}}
 
 
-  val math \limto m1 m2 =
-    ${\Math.lower{\Math.lim}{#m1 \Math.to #m2}}
+  val math ctx \limto m1 m2 =
+    read-math ctx ${\Math.lower{\Math.lim}{#m1 \Math.to #m2}}
 
 
   val block ctx +frame content =
@@ -68,7 +68,7 @@ module Local = struct
   val block ctx +math-list mlst =
     let ib =
       mlst |> List.fold-left-adjacent (fun ibacc m _ mnextopt -> (
-        let ib = embed-math ctx m in
+        let ib = embed-math ctx (read-math ctx m) in
         match mnextopt with
         | None    -> ibacc ++ ib ++ inline-fil
         | Some(_) -> ibacc ++ ib ++ discretionary 1000 inline-fil inline-fil inline-fil

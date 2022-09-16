@@ -80,10 +80,10 @@ end = struct
     )
 
 
-  val math ctx \derive ?(name = nameopt, b = bopt) mlst m =
-    derive ctx nameopt bopt None mlst m
+  val math ctx \derive ?(name = nameopt, b = bopt) ms m =
+    derive ctx nameopt bopt None ms m
 
-  val math ctx \derive-multi ?(name = nameopt, b = bopt) w =
-    derive ctx nameopt bopt (Some(w))
+  val math ctx \derive-multi ?(name = nameopt, b = bopt) w ms m =
+    derive ctx nameopt bopt (Some(w)) ms m
 
 end

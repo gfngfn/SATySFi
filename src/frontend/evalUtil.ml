@@ -130,7 +130,7 @@ let get_color (value : syntactic_value) : color =
       DeviceCMYK(fltC, fltM, fltY, fltK)
 
   | _ ->
-      report_bug_value "interpret_color" value
+      report_bug_value "get_color" value
 
 
 let make_color_value color =
