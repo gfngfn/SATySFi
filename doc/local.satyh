@@ -90,7 +90,7 @@ module Local = struct
             | TypeName(_) -> m
             | Tuple(_)    -> m
             | Record(_)   -> m
-            | _           -> Math.paren m
+            | _           -> Math.paren ctx m
             end
           ))
         in
@@ -105,11 +105,11 @@ module Local = struct
               | TypeName(_) -> m
               | Tuple(_)    -> m
               | Record(_)   -> m
-              | _           -> Math.paren m
+              | _           -> Math.paren ctx m
               end
           ))
         in
-        Math.paren (Math.join-boxes ctx (read-math ctx ${\Math.ast}) mlst)
+        Math.paren ctx (Math.join-boxes ctx (read-math ctx ${\Math.ast}) mlst)
 
     | Record(lst) ->
         let mlst =
@@ -119,14 +119,14 @@ module Local = struct
           ))
         in
         let m = Math.join-boxes ctx (read-math ctx ${\;\Math.math-skip!(4pt)}) mlst in
-        LocalParen.record-paren m
+        LocalParen.record-paren ctx m
 
     | FuncType(ty1, ty2) ->
         let m1 = math-of-type ctx ty1 in
         let m2 = math-of-type ctx ty2 in
         let m1 =
           match ty1 with
-          | FuncType(_, _) -> Math.paren m1
+          | FuncType(_, _) -> Math.paren ctx m1
           | _              -> m1
           end
         in
