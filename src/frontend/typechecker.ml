@@ -975,13 +975,6 @@ let rec typecheck
       let tyres = (rng, DataType(tyargs, tyid)) in
       (NonValueConstructor(constrnm, e1), tyres)
 
-  | UTConcat(utast1, utast2) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      unify ty1 (get_range utast1, BaseType(TextRowType));
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      unify ty2 (get_range utast2, BaseType(TextRowType));
-      (Concat(e1, e2), (rng, BaseType(TextRowType)))
-
   | UTLambdaHorz(ident_ctx, utast1) ->
       let (rng_var, varnm_ctx) = ident_ctx in
       let (bsty_var, bsty_ret) =

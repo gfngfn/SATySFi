@@ -467,7 +467,6 @@ and untyped_abstract_tree_main =
 (* Input texts: *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
-  | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaHorz           of var_name ranged * untyped_abstract_tree
   | UTLambdaVert           of var_name ranged * untyped_abstract_tree
 
@@ -592,13 +591,6 @@ type page_break_style =
   | SingleColumn
   | MultiColumn of length list
 [@@deriving show { with_path = false; }]
-
-(*
-type math_context_change =
-  | MathChangeColor         of color
-  | MathChangeMathCharClass of HorzBox.math_char_class
-[@@deriving show { with_path = false; }]
-*)
 
 type base_constant =
   | BCUnit
