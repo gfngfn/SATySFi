@@ -467,6 +467,8 @@ and untyped_abstract_tree_main =
 (* Input texts: *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
+  | UTInputMath            of untyped_input_math_element list
+(* Command abstractions: *)
   | UTLambdaHorz           of var_name ranged * untyped_abstract_tree
   | UTLambdaVert           of var_name ranged * untyped_abstract_tree
 
@@ -476,7 +478,9 @@ and untyped_abstract_tree_main =
       script_variables : (var_name ranged * var_name ranged) option;
       body             : untyped_abstract_tree;
     }
-
+(* For lightweight command definitions: *)
+  | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
+  | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
 (* Lists: *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
@@ -493,17 +497,11 @@ and untyped_abstract_tree_main =
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTFunction             of untyped_parameter_unit * untyped_abstract_tree
   | UTOpenIn               of module_name ranged * untyped_abstract_tree
-(* Pattern matching: *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
   | UTConstructor          of constructor_name * untyped_abstract_tree
   | UTOverwrite            of var_name ranged * untyped_abstract_tree
 (* Lightweight itemizes: *)
   | UTItemize              of untyped_itemize
-(* Maths: *)
-  | UTMath                 of untyped_input_math_element list
-(* For lightweight command definitions: *)
-  | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
-  | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
 (* Multi-stage constructs: *)
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree

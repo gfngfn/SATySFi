@@ -857,6 +857,11 @@ let rec typecheck
       let ivlst = typecheck_input_vert rng pre tyenv utivlst in
       (InputVert(ivlst), (rng, BaseType(TextColType)))
 
+  | UTInputMath(utmes) ->
+      let tymath = (rng, BaseType(TextMathType)) in
+      let ms = typecheck_math pre tyenv utmes in
+      (InputMath(ms), tymath)
+
   | UTOpenIn((rng_mod, modnm), utast1) ->
       begin
         match tyenv |> Typeenv.find_module modnm with
@@ -1285,11 +1290,6 @@ let rec typecheck
       in
       unify ty1 (Range.dummy "UTUpdateField", RecordType(row));
       (UpdateField(e1, label, e2), ty1)
-
-  | UTMath(utmes) ->
-      let tymath = (rng, BaseType(TextMathType)) in
-      let ms = typecheck_math pre tyenv utmes in
-      (InputMath(ms), tymath)
 
   | UTLexHorz(utastctx, utasth) ->
       let (ectx, tyctx) = typecheck_iter tyenv utastctx in

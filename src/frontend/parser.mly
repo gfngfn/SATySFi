@@ -1159,7 +1159,7 @@ math_single:
           | ((rngL, _) :: _, (rngR, _) :: _) -> Range.unite rngL rngR
           | _                                -> assert false
         in
-        (rng, UTMath(utmes))
+        (rng, UTInputMath(utmes))
       }
 ;
 math_elem:
