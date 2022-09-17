@@ -201,6 +201,11 @@ let get_horz value : HorzBox.horz_box list =
   | _                           -> report_bug_value "get_horz" value
 
 
+let get_horz_text : syntactic_value -> input_horz_value_element list = function
+  | InputHorzValue(ihvs) -> ihvs
+  | value                -> report_bug_value "get_horz_text" value
+
+
 let get_point value =
   match value with
   | Tuple([
@@ -700,6 +705,16 @@ let make_math_command_func (MathCommand(valuemcmd)) =
 
 let get_code_text_command_func _ valuectcmd =
   CodeTextCommand(valuectcmd)
+
+
+let get_horz_command_closure : syntactic_value -> horz_command_closure = function
+  | HorzCommandClosure(hclosure) -> hclosure
+  | value                        -> report_bug_value "get_horz_command_closure" value
+
+
+let get_math_command_closure : syntactic_value -> math_command_closure = function
+  | MathCommandClosure(mclosure) -> mclosure
+  | value                        -> report_bug_value "get_math_command_closure" value
 
 
 let make_list (type a) (makef : a -> syntactic_value) (xs : a list) : syntactic_value =

@@ -96,11 +96,7 @@ and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element
     | InputHorzApplyCommand{ command = ast_cmd; arguments = args } ->
         let ast = convert_command_application_to_application ast_cmd args in
         let value = interpret_0 env ast in
-        let hclosure =
-          match value with
-          | HorzCommandClosure(hclosure) -> hclosure
-          | _                            -> report_bug_value "InputHorzApplyCommand" value
-        in
+        let hclosure = get_horz_command_closure value in
         [ InputHorzValueCommandClosure(hclosure) ]
 
     | InputHorzEmbeddedMath(ast_math) ->
@@ -113,11 +109,8 @@ and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element
 
     | InputHorzContent(ast) ->
         let value = interpret_0 env ast in
-        begin
-          match value with
-          | InputHorzValue(ihvs) -> ihvs
-          | _                    -> report_bug_reduction "interpret_input_horz_content" ast value
-        end
+        get_horz_text value
+
   ) |> List.concat
 
 
@@ -158,11 +151,7 @@ and interpret_0_input_math_content (env : environment) (ims : input_math_element
       } ->
         let ast = convert_command_application_to_application ast_cmd args in
         let value = interpret_0 env ast in
-        let mclosure =
-          match value with
-          | MathCommandClosure(mclosure) -> mclosure
-          | _                            -> report_bug_value "InputMathApplyCommand" value
-        in
+        let mclosure = get_math_command_closure value in
         InputMathValueElement{
           base = InputMathValueEmbedded(mclosure);
           sub  = imvs_sub_opt;
@@ -853,11 +842,7 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
           let value =
             reduce_beta ~msg:"InputHorzValueEmbeddedMath" value_mcmd (InputMathValue(imvs))
           in
-          let hclosure =
-            match value with
-            | HorzCommandClosure(hclosure) -> hclosure
-            | _                            -> report_bug_value "InputHorzValueEmbeddedMath" value
-          in
+          let hclosure = get_horz_command_closure value in
           Alist.extend acc (NomInputHorzCommandClosure(hclosure))
 
       | InputHorzValueEmbeddedCodeArea(s) ->
@@ -870,11 +855,7 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
                 let value =
                   reduce_beta ~msg:"InputHorzValueEmbeddedCodeArea" value_ctcmd (BaseConstant(BCString(s)))
                 in
-                let hclosure =
-                  match value with
-                  | HorzCommandClosure(hclosure) -> hclosure
-                  | _                            -> report_bug_value "InputHorzValueEmbeddedCodeArea" value
-                in
+                let hclosure = get_horz_command_closure value in
                 Alist.extend acc (NomInputHorzCommandClosure(hclosure))
           end
 
