@@ -26,20 +26,20 @@ type right_kern =
   }
 
 type low_math_atom_main =
-  | MathBoxGlyph of {
+  | LowMathAtomGlyph of {
       info   : HorzBox.math_string_info;
       width  : length;
       height : length;
       depth  : length;
       output : OutputText.t;
     }
-  | MathBoxEmbeddedHorz of {
+  | LowMathAtomEmbeddedHorz of {
       content : HorzBox.horz_box list;
       height  : length; (* Can be gained from `content` *)
       depth   : length; (* Can be gained from `content` *)
     }
 
-type low_math_atom = math_kind * low_math_atom_main * left_kern * right_kern
+type low_math_atom = low_math_atom_main * left_kern * right_kern
 
 type low_paren =
   {
@@ -52,10 +52,12 @@ type low_paren =
 type low_radical = horz_box list
 
 type low_math_main =
-  | LowMathAtom of low_math_atom
-
   | LowMathList of low_math
 
+  | LowMathAtom of {
+      kind : math_kind;
+      atom : low_math_atom;
+    }
   | LowMathGroup of {
       left  : math_kind;
       right : math_kind;
@@ -416,7 +418,7 @@ let make_right_paren_kern hR dR mkernsR =
 let get_left_kern lmmain hgt dpt =
   let nokernf = no_left_kern hgt dpt in
   match lmmain with
-  | LowMathAtom(_, _, lk, _)                   -> lk
+  | LowMathAtom{ atom = (_, lk, _) }           -> lk
   | LowMathList((_, _, _, lk, _))              -> lk
   | LowMathGroup{ left }                       -> nokernf left
   | LowMathSubscript{ base = (_, _, _, lk, _) } -> lk
@@ -436,7 +438,7 @@ let get_left_kern lmmain hgt dpt =
 let get_right_kern lmmain hgt dpt =
   let nokernf = no_right_kern hgt dpt in
   match lmmain with
-  | LowMathAtom(_, _, _, rk)                   -> rk
+  | LowMathAtom{ atom = (_, _, rk) }           -> rk
   | LowMathList((_, _, _, _, rk))              -> rk
   | LowMathGroup{ right }                      -> nokernf right
   | LowMathSubscript{ base = (_, _, _, _, rk) } -> nokernf rk.right_math_kind
@@ -672,7 +674,7 @@ let convert_math_char (mathctx : math_context) (is_big : bool) (uchlst : Uchar.t
   let (otxt, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic (MathKernInfo(mkiopt)) in
   let lma =
-    MathBoxGlyph{
+    LowMathAtomGlyph{
       info   = mathstrinfo;
       width  = wid;
       height = hgt;
@@ -680,7 +682,7 @@ let convert_math_char (mathctx : math_context) (is_big : bool) (uchlst : Uchar.t
       output = otxt;
     }
   in
-  (mk, lma, lk, rk)
+  (lma, lk, rk)
 
 
 let convert_math_char_with_kern (mathctx : math_context) (is_big : bool) (uchlst : Uchar.t list) (mk : math_kind) (kernfL : math_char_kern_func) (kernfR : math_char_kern_func) : low_math_atom =
@@ -691,7 +693,7 @@ let convert_math_char_with_kern (mathctx : math_context) (is_big : bool) (uchlst
   let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
   let lma =
-    MathBoxGlyph{
+    LowMathAtomGlyph{
       info   = mathstrinfo;
       width  = wid;
       height = hgt;
@@ -699,12 +701,13 @@ let convert_math_char_with_kern (mathctx : math_context) (is_big : bool) (uchlst
       output = otxt;
     }
   in
-  (mk, lma, lk, rk)
+  (lma, lk, rk)
 
 
-let get_height_and_depth_of_low_math_atom_main = function
-  | MathBoxGlyph{ height; depth }        -> (height, depth)
-  | MathBoxEmbeddedHorz{ height; depth } -> (height, depth)
+let get_height_and_depth_of_low_math_atom ((lma, _, _) : low_math_atom) : length * length =
+  match lma with
+  | LowMathAtomGlyph{ height; depth }        -> (height, depth)
+  | LowMathAtomEmbeddedHorz{ height; depth } -> (height, depth)
 
 
 let rec check_subscript (mlstB : math_box list) =
@@ -718,13 +721,12 @@ let rec check_subscript (mlstB : math_box list) =
       None
 
 
-let convert_math_element ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind) (mk_raw : math_kind) (ma : math_box_atom) : low_math_atom =
-  let mk = normalize_math_kind mk_prev mk_next mk_raw in
+let convert_math_element (mk : math_kind) (ma : math_box_atom) : low_math_atom =
   match ma with
   | MathEmbeddedHorz(hbs) ->
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hbs in
-      let lma = MathBoxEmbeddedHorz{ content = hbs; height = hgt; depth = dpt } in
-      (mk, lma, no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
+      let lma = LowMathAtomEmbeddedHorz{ content = hbs; height = hgt; depth = dpt } in
+      (lma, no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
 
   | MathChar{ context = ictx; is_big; chars = uchs } ->
       let mathctx = MathContext.make ictx in
@@ -770,9 +772,10 @@ let rec convert_to_low ~prev:(mk_first : math_kind) ~next:(mk_last : math_kind) 
 and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind) (math : math_box) : low_math_main * length * length =
   match math with
   | MathBoxAtom{ kind = mk_raw; main = ma } ->
-      let (mk, lme, lk, rk) = convert_math_element ~prev:mk_prev ~next:mk_next mk_raw ma in
-      let (hgt, dpt) = get_height_and_depth_of_low_math_atom_main lme in
-      (LowMathAtom(mk, lme, lk, rk), hgt, dpt)
+      let mk = normalize_math_kind mk_prev mk_next mk_raw in
+      let lmatom = convert_math_element mk ma in
+      let (hgt, dpt) = get_height_and_depth_of_low_math_atom lmatom in
+      (LowMathAtom{ kind = mk; atom = lmatom }, hgt, dpt)
 
   | MathBoxGroup{ left = mkL; right = mkR; inner = mlstC } ->
       let lmC = convert_to_low ~prev:MathEnd ~next:MathClose mlstC in
@@ -937,10 +940,10 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
 
 let horz_of_low_math_element (lme : low_math_atom_main) : horz_box list =
   match lme with
-  | MathBoxGlyph{ info = mathstrinfo; width; height; depth; output = otxt } ->
+  | LowMathAtomGlyph{ info = mathstrinfo; width; height; depth; output = otxt } ->
       [ HorzPure(PHCInnerMathGlyph(mathstrinfo, width, height, depth, otxt)) ]
 
-  | MathBoxEmbeddedHorz{ content = hbs } ->
+  | LowMathAtomEmbeddedHorz{ content = hbs } ->
       hbs
 
 
@@ -971,7 +974,7 @@ let raise_horz r hblst =
 
 let get_space_correction = function
   | LowMathList((_, _, _, _, rk))
-  | LowMathAtom((_, _, _, rk)) ->
+  | LowMathAtom{ atom = (_, _, rk) } ->
       ItalicsCorrection(rk.italics_correction)
 
   | LowMathSubscript(_)
@@ -1006,7 +1009,7 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let hbspaceopt = space_between_math_kinds mathctx ~prev:mk_prev corr lkI.left_math_kind in
               (hblst, hbspaceopt, rkI.right_math_kind)
 
-          | LowMathAtom(mk, lma, _, rk) ->
+          | LowMathAtom{ kind = mk; atom = (lma, _, rk) } ->
               let hblstpure = horz_of_low_math_element lma in
               let hbspaceopt = space_between_math_kinds mathctx ~prev:mk_prev corr mk in
               (hblstpure, hbspaceopt, mk)
