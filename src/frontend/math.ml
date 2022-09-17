@@ -74,29 +74,17 @@ type low_math_main =
       numerator                  : low_math;
       denominator                : low_math;
     }
-
-  | LowMathRadical of low_radical * length * length * low_math
-      (* --
-         (1) height of the bar
-         (2) thickness of the bar
-         (3) inner contents
-         -- *)
-
-  | LowMathRadicalWithDegree of length * length * length * low_math * low_math
-      (* --
-         (1) height of the bar
-         (2) thickness of the bar
-         (3) height of the bottom of the degree
-         (4) degree contents
-         (5) inner contents
-         -- *)
-
-  | LowMathParen of low_paren * low_paren * low_math
-      (* --
-         (1) graphical specification of the left parenthesis
-         (2) graphical specification of the right parenthesis
-         (3) inner contents
-         -- *)
+  | LowMathRadical of {
+      radical       : low_radical;
+      bar_height    : length;
+      bar_thickness : length;
+      inner         : low_math;
+    }
+  | LowMathParen of {
+      left  : low_paren;
+      right : low_paren;
+      inner : low_math;
+    }
 
   | LowMathParenWithMiddle of low_paren * low_paren * low_paren * (low_math list)
       (* --
@@ -426,9 +414,8 @@ let get_left_kern lmmain hgt dpt =
   | LowMathSubSuperscript{ base = (_, _, _, lk, _) } -> lk
   | LowMathFraction(_)                         -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
-  | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
 
-  | LowMathParen(lpL, _, _)
+  | LowMathParen{ left = lpL }
   | LowMathParenWithMiddle(lpL, _, _, _)
       -> make_left_paren_kern lpL.lp_height lpL.lp_depth lpL.lp_math_kern_scheme
 
@@ -447,9 +434,8 @@ let get_right_kern lmmain hgt dpt =
   | LowMathSubSuperscript{ base = (_, _, _, _, rk) } -> nokernf rk.right_math_kind
   | LowMathFraction(_)                         -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
-  | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
 
-  | LowMathParen(_, lpR, _)
+  | LowMathParen{ right = lpR }
   | LowMathParenWithMiddle(_, lpR, _, _)
       -> make_right_paren_kern lpR.lp_height lpR.lp_depth lpR.lp_math_kern_scheme
 
@@ -847,7 +833,15 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
         | None ->
             let h_whole = h_rad +% l_extra in
             let d_whole = d_cont in  (* TODO: consider the depth of the radical sign *)
-            (LowMathRadical(hblstrad, h_bar, t_bar, lmC), h_whole, d_whole)
+            let lm =
+              LowMathRadical{
+                radical       = hblstrad;
+                bar_height    = h_bar;
+                bar_thickness = t_bar;
+                inner         = lmC;
+              }
+            in
+            (lm, h_whole, d_whole)
       end
 
   | MathBoxParen{ context = ictx; left = parenL; right = parenR; inner = mlstC } ->
@@ -862,7 +856,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       let d_whole = [dL; dR] |> List.fold_left Length.min dC in
       let lpL = { lp_main = hblstparenL; lp_height = hL; lp_depth = dL; lp_math_kern_scheme = mkernsL; } in
       let lpR = { lp_main = hblstparenR; lp_height = hR; lp_depth = dR; lp_math_kern_scheme = mkernsR; } in
-      (LowMathParen(lpL, lpR, lmC), h_whole, d_whole)
+      (LowMathParen{ left = lpL; right = lpR; inner = lmC }, h_whole, d_whole)
 
   | MathBoxParenWithMiddle(parenL, parenR, middle, mlstlst) ->
       let lmlst = mlstlst |> List.map (convert_to_low ~prev:MathOpen ~next:MathClose) in
@@ -1116,7 +1110,12 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let hbspaceopt = space_between_math_kinds mathctx ~prev:mk_prev corr MathInner in
               (hblstsub, hbspaceopt, MathInner)
 
-          | LowMathRadical(hblstrad, h_bar, t_bar, lmC) ->
+          | LowMathRadical{
+              radical       = hblstrad;
+              bar_height    = h_bar;
+              bar_thickness = t_bar;
+              inner         = lmC;
+            } ->
               let hblstC = horz_of_low_math mathctx MathEnd MathEnd lmC in
               let (w_cont, _, _) = LineBreak.get_natural_metrics hblstC in
               let hbbar =
@@ -1132,10 +1131,7 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let hbspaceopt = space_between_math_kinds mathctx ~prev:mk_prev corr MathInner in
               (hblstsub, hbspaceopt, MathInner)
 
-          | LowMathRadicalWithDegree(h_bar, t_bar, h_degbl, lmD, lmC) ->
-              failwith "unsupported; LowMathRadicalWithDegree"  (* temporary *)
-
-          | LowMathParen(lpL, lpR, lmE) ->
+          | LowMathParen{ left = lpL; right = lpR; inner = lmE } ->
               let hblstparenL = lpL.lp_main in
               let hblstparenR = lpR.lp_main in
               let hblstE = horz_of_low_math mathctx MathOpen MathClose lmE in
