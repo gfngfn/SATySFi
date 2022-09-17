@@ -84,34 +84,6 @@ and reduce_beta_list ~msg (value1 : syntactic_value) (value_args : syntactic_val
   List.fold_left (reduce_beta ~msg ~optional:LabelMap.empty) value1 value_args
 
 
-and interpret_0_path (env : environment) (pathcomps : (abstract_tree path_component) list) (cycle_opt : (unit path_component) option) =
-  let pathelems =
-    pathcomps |> List.map (function
-      | PathLineTo(ast_pt) ->
-          let pt = get_point (interpret_0 env ast_pt) in
-          LineTo(pt)
-
-      | PathCubicBezierTo(ast_pt1, ast_pt2, ast_pt) ->
-          let pt1 = get_point (interpret_0 env ast_pt1) in
-          let pt2 = get_point (interpret_0 env ast_pt2) in
-          let pt = get_point (interpret_0 env ast_pt) in
-          CubicBezierTo(pt1, pt2, pt)
-    )
-  in
-  let closing_opt =
-    cycle_opt |> Option.map (function
-      | PathLineTo(()) ->
-          LineTo(())
-
-      | PathCubicBezierTo(ast_pt1, ast_pt2, ()) ->
-          let pt1 = get_point (interpret_0 env ast_pt1) in
-          let pt2 = get_point (interpret_0 env ast_pt2) in
-          CubicBezierTo(pt1, pt2, ())
-    )
-  in
-  (pathelems, closing_opt)
-
-
 and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element list) : intermediate_input_horz_element list =
   ihs |> List.map (function
     | InputHorzText(s) ->

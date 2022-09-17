@@ -478,12 +478,6 @@ and untyped_abstract_tree_main =
       body             : untyped_abstract_tree;
     }
 
-(* Horizontal box lists: *)
-  | UTHorz                 of HorzBox.horz_box list
-  | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
-(* Vertical box lists: *)
-  | UTVert                 of HorzBox.vert_box list
-  | UTVertConcat           of untyped_abstract_tree * untyped_abstract_tree
 (* Lists: *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList

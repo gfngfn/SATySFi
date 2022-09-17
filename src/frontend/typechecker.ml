@@ -818,8 +818,6 @@ let rec typecheck
   | UTStringConstant(sc)  -> (base (BCString(sc))   , (rng, BaseType(StringType)))
   | UTBooleanConstant(bc) -> (base (BCBool(bc))     , (rng, BaseType(BoolType))  )
   | UTUnitConstant        -> (base BCUnit           , (rng, BaseType(UnitType))  )
-  | UTHorz(hblst)         -> (base (BCHorz(hblst))  , (rng, BaseType(BoxRowType)))
-  | UTVert(imvblst)       -> (base (BCVert(imvblst)), (rng, BaseType(BoxColType)))
 
   | UTPositionedString(ipos, s) ->
       begin
@@ -976,20 +974,6 @@ let rec typecheck
       unify ty1 tyc;
       let tyres = (rng, DataType(tyargs, tyid)) in
       (NonValueConstructor(constrnm, e1), tyres)
-
-  | UTHorzConcat(utast1, utast2) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      unify ty1 (get_range utast1, BaseType(BoxRowType));
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      unify ty2 (get_range utast2, BaseType(BoxRowType));
-      (HorzConcat(e1, e2), (rng, BaseType(BoxRowType)))
-
-  | UTVertConcat(utast1, utast2) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      unify ty1 (get_range utast1, BaseType(BoxColType));
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      unify ty2 (get_range utast2, BaseType(BoxColType));
-      (VertConcat(e1, e2), (rng, BaseType(BoxColType)))
 
   | UTConcat(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
