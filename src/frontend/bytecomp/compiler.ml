@@ -110,6 +110,8 @@ and compile_input_vert_content (ivlst : ir_input_vert_element list) =
 
 
 and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
+  failwith "TODO: compile_code_input_vert"
+(*
   irivlst |> List.map (function
   | InputVertEmbedded(irabs) ->
       let compiled = compile irabs [] in
@@ -119,6 +121,7 @@ and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
       let compiled = compile ir [] in
       InputVertContent(compiled)
   )
+*)
 
 
 and compile_code_pattern_branch (irpatbr : ir_pattern_branch) : (instruction list) ir_pattern_branch_scheme =

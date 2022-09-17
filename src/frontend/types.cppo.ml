@@ -427,8 +427,12 @@ and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
   [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_input_vert_element_main utivmain)]
 
 and untyped_input_vert_element_main =
-  | UTInputVertEmbedded of untyped_abstract_tree * untyped_command_argument list
-      [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "BC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
+  | UTInputVertApplyCommand of untyped_abstract_tree * untyped_command_argument list
+      [@printer (fun fmt (utast, lst) ->
+        Format.fprintf fmt "BC:%a %a"
+          pp_untyped_abstract_tree utast
+          (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst
+      )]
   | UTInputVertContent  of untyped_abstract_tree
   | UTInputVertMacro    of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
@@ -566,8 +570,11 @@ type 'a input_horz_element_scheme =
 [@@deriving show { with_path = false; }]
 
 type 'a input_vert_element_scheme =
-  | InputVertEmbedded of 'a
   | InputVertContent  of 'a
+  | InputVertApplyCommand of {
+      command   : 'a;
+      arguments : ('a LabelMap.t * 'a) list;
+    }
 [@@deriving show { with_path = false; }]
 
 type 'a input_math_base_scheme =
@@ -1207,7 +1214,7 @@ let map_input_horz f ihlst =
         arguments =
           arguments |> List.map (fun (ast_labmap, ast) ->
             (ast_labmap |> LabelMap.map f, f ast)
-          )
+          );
       }
 
   | InputHorzContent(ast)        -> InputHorzContent(f ast)
@@ -1218,8 +1225,22 @@ let map_input_horz f ihlst =
 
 let map_input_vert f ivlst =
   ivlst |> List.map (function
-  | InputVertContent(ast)  -> InputVertContent(f ast)
-  | InputVertEmbedded(ast) -> InputVertEmbedded(f ast)
+  | InputVertContent(ast) ->
+      InputVertContent(f ast)
+
+  | InputVertApplyCommand{
+      command = ast_cmd;
+      arguments;
+    } ->
+      InputVertApplyCommand{
+        command =
+          f ast_cmd;
+
+        arguments =
+          arguments |> List.map (fun (ast_labmap, ast) ->
+            (ast_labmap |> LabelMap.map f, f ast)
+          );
+      }
   )
 
 

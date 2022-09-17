@@ -166,7 +166,10 @@ and exec_code_input_horz env irihlst =
   )
 *)
 
+
 and exec_code_input_vert env irivlst =
+  failwith "TODO: exec_code_input_vert"
+(*
   irivlst |> List.map (function
   | InputVertEmbedded(instrs) ->
       let value = exec_value [] env instrs [] in
@@ -178,6 +181,7 @@ and exec_code_input_vert env irivlst =
       let cv = get_code value in
       InputVertContent(cv)
   )
+*)
 
 
 and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =

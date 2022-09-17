@@ -1471,31 +1471,15 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
     | [] ->
         Alist.to_list acc
 
-    | (_, UTInputVertEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
-        let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
-        let (_, tycmdmain) = tycmd in
-        begin
-          match tycmdmain with
-          | VertCommandType(cmdargtylstreq) ->
-              let rngcmdapp =
-                match List.rev utcmdarglst with
-                | []                             -> rngcmd
-                | UTCommandArg(_, (rng, _)) :: _ -> Range.unite rngcmd rng
-              in
-              let evid = EvalVarID.fresh (Range.dummy "ctx-vert", "%ctx-vert") in
-              let ecmdctx = Apply(LabelMap.empty, ecmd, ContentOf(Range.dummy "ctx-vert", evid)) in
-              let eapp =
-                let args = typecheck_command_arguments tycmd rngcmdapp pre tyenv utcmdarglst cmdargtylstreq in
-                args |> List.fold_left (fun eacc (e_labmap, e_arg) ->
-                  Apply(e_labmap, eacc, e_arg)
-                ) ecmdctx
-              in
-              let eabs = abstraction evid eapp in
-              aux (Alist.extend acc (InputVertEmbedded(eabs))) tail
-
-          | _ ->
-              assert false
-        end
+    | (rng_cmdapp, UTInputVertApplyCommand(utast_cmd, utcmdargs)) :: tail ->
+        let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
+        let cmdargtys =
+          match ty_cmd with
+          | (_, VertCommandType(cmdargtys)) -> cmdargtys
+          | _                               -> assert false
+        in
+        let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
+        aux (Alist.extend acc (InputVertApplyCommand{ command = e_cmd; arguments = args })) tail
 
     | (_, UTInputVertContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in

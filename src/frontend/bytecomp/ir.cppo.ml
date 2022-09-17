@@ -86,7 +86,10 @@ and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element lis
   )
 *)
 
+
 and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
+  failwith "TODO: transform_0_input_vert_content"
+(*
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputVertEmbedded(astabs) ->
@@ -97,9 +100,12 @@ and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element lis
         let (ir, env) = transform_0 env ast in
         (IRInputVertContent(ir), env)
     )
+*)
 
 
 and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element list) : (ir input_vert_element_scheme) list * frame =
+  failwith "TODO: transform_1_input_vert_content"
+(*
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputVertEmbedded(astabs) ->
@@ -110,6 +116,7 @@ and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element lis
         let (ir, env) = transform_1 env ast in
         (InputVertContent(ir), env)
   )
+*)
 
 
 and transform_0_input_math_content (env : frame) (ims : input_math_element list) : ir_input_math_element list * frame =

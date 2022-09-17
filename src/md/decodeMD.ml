@@ -284,8 +284,8 @@ let make_inline_application ((rng, (modnms, csnm)) : command) (utasts : untyped_
 
 let make_block_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
   let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
-  let utastcmd = (rng, UTContentOf(modidents, (rng, csnm))) in
-  [(dummy_range, UTInputVertEmbedded(utastcmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
+  let utast_cmd = (rng, UTContentOf(modidents, (rng, csnm))) in
+  [(dummy_range, UTInputVertApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
 let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element) : untyped_input_horz_element list =

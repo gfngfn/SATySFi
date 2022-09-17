@@ -116,8 +116,13 @@ and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element
 
 and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element list) : intermediate_input_vert_element list =
   ivs |> List.map (function
-    | InputVertEmbedded(ast_abs) ->
+    | InputVertApplyCommand{ command = ast_cmd; arguments = args } ->
+        let ast = convert_command_application_to_application ast_cmd args in
+        let _value = interpret_0 env ast in
+        failwith "TODO: InputVertApplyCommand"
+(*
         ImInputVertEmbedded(ast_abs)
+*)
 
     | InputVertContent(ast) ->
         let value = interpret_0 env ast in

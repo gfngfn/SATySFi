@@ -1132,7 +1132,7 @@ block_elem:
         let (rng_last, sargs) = rsargs in
         let utast_cmd = (rng_cs, UTContentOf(modidents, cs)) in
         let args = List.append nargs sargs in
-        make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertEmbedded(utast_cmd, args))
+        make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertApplyCommand(utast_cmd, args))
       }
   | bmacro_raw=PLUS_MACRO; macargsraw=macroargs {
       let (rng_cs, _) = bmacro_raw in
