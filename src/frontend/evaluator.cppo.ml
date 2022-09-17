@@ -739,13 +739,10 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
           let (mk, uch_aft) = MathContext.convert_math_variant_char ictx uch in
           let mbs_base =
             [
-              MathBoxPure(MathElement(mk,
-                MathChar{
-                  context = ictx;
-                  is_big  = false;
-                  chars   = [ uch_aft ];
-                }
-              ));
+              MathBoxAtom{
+                kind = mk;
+                main = MathChar{ context = ictx; is_big = false; chars = [ uch_aft ] };
+              };
             ]
           in
           let mbs_sub_opt = sub |> Option.map iter in

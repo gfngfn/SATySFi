@@ -979,7 +979,7 @@ and code_text_command_func =
   | DefaultCodeTextCommand
   | CodeTextCommand of syntactic_value
 
-and math_element_main =
+and math_box_atom =
   | MathChar of {
       context : input_context;
       is_big  : bool;
@@ -996,11 +996,11 @@ and math_element_main =
 
   | MathEmbeddedText of HorzBox.horz_box list
 
-and math_element =
-  | MathElement           of HorzBox.math_kind * math_element_main
-
 and math_box =
-  | MathBoxPure              of math_element
+  | MathBoxAtom of {
+      kind : HorzBox.math_kind;
+      main : math_box_atom;
+    }
   | MathBoxSubscript of {
       context : input_context;
       base    : math_box list;

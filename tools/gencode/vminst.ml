@@ -350,8 +350,8 @@ make_math_boxes [ MathBoxLowerLimit{ context = ictx; base; lower } ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-let mchar = MathChar{ context = ictx; is_big = false; chars = uchs } in
-make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
+let ma = MathChar{ context = ictx; is_big = false; chars = uchs } in
+make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
 |}
     ; inst "BackendMathBigChar"
         ~name:"math-big-char"
@@ -366,8 +366,8 @@ make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-let mchar = MathChar{ context = ictx; is_big = true; chars = uchs } in
-make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
+let ma = MathChar{ context = ictx; is_big = true; chars = uchs } in
+make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
 |}
     ; inst "BackendMathCharWithKern"
         ~name:"math-char-with-kern"
@@ -387,8 +387,8 @@ make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
         ~code:{|
 let left_kern = make_math_char_kern_func (reducef ~msg:"math-char-with-kern 1") value_left_kern in
 let right_kern = make_math_char_kern_func (reducef ~msg:"math-char-with-kern 2") value_right_kern in
-let mchar = MathCharWithKern{ context = ictx; is_big = false; chars = uchs; left_kern; right_kern } in
-make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
+let ma = MathCharWithKern{ context = ictx; is_big = false; chars = uchs; left_kern; right_kern } in
+make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
 |}
     ; inst "BackendMathBigCharWithKern"
         ~name:"math-big-char-with-kern"
@@ -408,8 +408,8 @@ make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
         ~code:{|
 let left_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern 1") value_left_kern in
 let right_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern 2") value_right_kern in
-let mchar = MathCharWithKern{ context = ictx; is_big = true; chars = uchs; left_kern; right_kern } in
-make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
+let ma = MathCharWithKern{ context = ictx; is_big = true; chars = uchs; left_kern; right_kern } in
+make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
 |}
     ; inst "BackendEmbedHorzToMath"
         ~name:"embed-inline-to-math"
@@ -422,7 +422,7 @@ make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, mchar))) ]
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_math_boxes [ HorzBox.(MathBoxPure(MathElement(mathcls, MathEmbeddedText(hbs)))) ]
+make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = MathEmbeddedText(hbs) }) ]
 |}
     ; inst "BackendSetMathCharClass"
         ~name:"set-math-char-class"
