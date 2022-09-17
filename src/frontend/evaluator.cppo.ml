@@ -18,6 +18,12 @@ type nom_input_horz_element =
   | NomInputHorzCommandClosure of horz_command_closure
 
 
+let convert_command_application_to_application (e_cmd : abstract_tree) (args : (abstract_tree LabelMap.t * abstract_tree) list) : abstract_tree =
+  args |> List.fold_left (fun e_acc (e_labmap, e_arg) ->
+    Apply(e_labmap, e_acc, e_arg)
+  ) e_cmd
+
+
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
   HorzBox.([ HorzPure(PHCInnerString(ctx, uchs)) ])
@@ -87,8 +93,14 @@ and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element
     | InputHorzText(s) ->
         [ InputHorzValueText(s) ]
 
-    | InputHorzApplyCommand(ast_abs) ->
-        let hclosure = failwith "TODO: hclosure" in
+    | InputHorzApplyCommand{ command = ast_cmd; arguments = args } ->
+        let ast = convert_command_application_to_application ast_cmd args in
+        let value = interpret_0 env ast in
+        let hclosure =
+          match value with
+          | HorzCommandClosure(hclosure) -> hclosure
+          | _                            -> report_bug_value "InputHorzApplyCommand" value
+        in
         [ InputHorzValueCommandClosure(hclosure) ]
 
     | InputHorzEmbeddedMath(ast_math) ->
@@ -142,16 +154,12 @@ and interpret_0_input_math_content (env : environment) (ims : input_math_element
         command   = ast_cmd;
         arguments = args;
       } ->
-        let ast =
-          args |> List.fold_left (fun e_acc (e_labmap, e_arg) ->
-            Apply(e_labmap, e_acc, e_arg)
-          ) ast_cmd
-        in
+        let ast = convert_command_application_to_application ast_cmd args in
         let value = interpret_0 env ast in
         let mclosure =
           match value with
           | MathCommandClosure(mclosure) -> mclosure
-          | _                            -> report_bug_value "InputMathEmbedded" value
+          | _                            -> report_bug_value "InputMathApplyCommand" value
         in
         InputMathValueElement{
           base = InputMathValueEmbedded(mclosure);
@@ -232,6 +240,16 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | InputMath(ims) ->
       let imvs = interpret_0_input_math_content env ims in
       InputMathValue(imvs)
+
+  | LambdaHorz(evid_ctx, ast0) ->
+      let hclosure =
+        HorzCommandClosureSimple{
+          context_binder = evid_ctx;
+          body           = ast0;
+          environment    = env;
+        }
+      in
+      HorzCommandClosure(hclosure)
 
   | LambdaMath(evid_ctx, evid_pair_opt, ast0) ->
       let mclosure =
@@ -426,6 +444,11 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | InputMath(ims) ->
       let cdims = ims |> map_input_math (interpret_1 env) in
       CdInputMath(cdims)
+
+  | LambdaHorz(evid_ctx, ast0) ->
+      let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
+      let code0 = interpret_1 env ast0 in
+      CdLambdaHorz(symb_ctx, code0)
 
   | LambdaMath(evid_ctx, evid_pair_opt, ast0) ->
       let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
@@ -677,7 +700,7 @@ and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_v
       match nmih with
       | NomInputHorzCommandClosure(hclosure) ->
           let
-            HorzCommandClosure{
+            HorzCommandClosureSimple{
               context_binder = evid_ctx;
               body           = ast_body;
               environment    = env;
@@ -847,7 +870,7 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
       match nmih with
       | NomInputHorzCommandClosure(hclosure) ->
           let
-            HorzCommandClosure{
+            HorzCommandClosureSimple{
               context_binder = evid_ctx;
               body           = ast_body;
               environment    = env;

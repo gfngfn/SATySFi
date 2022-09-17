@@ -980,7 +980,12 @@ let rec typecheck
       let tyres = (rng, DataType(tyargs, tyid)) in
       (NonValueConstructor(constrnm, e1), tyres)
 
-  | UTLambdaHorz(ident_ctx, utast1) ->
+  | UTLambdaHorzCommand{
+      parameters       = param_units;
+      context_variable = ident_ctx;
+      body             = utast_body;
+    } ->
+      let (tyenv, params) = typecheck_abstraction pre tyenv param_units in
       let (rng_var, varnm_ctx) = ident_ctx in
       let (bsty_var, bsty_ret) =
         if OptionState.is_text_mode () then
@@ -988,23 +993,32 @@ let rec typecheck
         else
           (ContextType, BoxRowType)
       in
-      let evid = EvalVarID.fresh ident_ctx in
-      let (e1, ty1) =
-        let tyenv_sub =
+      let evid_ctx = EvalVarID.fresh ident_ctx in
+      let (e_body, ty_body) =
+        let tyenv =
           let ventry =
             {
               val_type  = Poly(rng_var, BaseType(bsty_var));
-              val_name  = Some(evid);
+              val_name  = Some(evid_ctx);
               val_stage = pre.stage;
             }
           in
           tyenv |> Typeenv.add_value varnm_ctx ventry
         in
-        typecheck_iter tyenv_sub utast1
+        typecheck_iter tyenv utast_body
       in
-      let (cmdargtylist, tyret) = flatten_type ty1 in
-      unify tyret (Range.dummy "lambda-horz-return", BaseType(bsty_ret));
-      (abstraction evid e1, (rng, HorzCommandType(cmdargtylist)))
+      unify ty_body (Range.dummy "lambda-horz-return", BaseType(bsty_ret));
+      let e =
+        List.fold_right (fun (evid_labmap, pat, _, _) e ->
+          Function(evid_labmap, PatternBranch(pat, e))
+        ) params (LambdaHorz(evid_ctx, e_body))
+      in
+      let cmdargtys =
+        params |> List.map (fun (_, _, ty_labmap, ty_pat) ->
+          CommandArgType(ty_labmap, ty_pat)
+        )
+      in
+      (e, (rng, HorzCommandType(cmdargtys)))
 
   | UTLambdaVert(ident_ctx, utast1) ->
       let (rng_var, varnm_ctx) = ident_ctx in
@@ -1099,7 +1113,7 @@ let rec typecheck
       let (e_body, ty_body) = typecheck_iter tyenv utast_body in
       unify ty_body (Range.dummy "lambda-math-return", BaseType(bsty_ret));
       let e =
-        List.fold_right (fun (evid_labmap, pat, ty_labmap, ty_pat) e ->
+        List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
         ) params (LambdaMath(evid_ctx, evid_pair_opt, e_body))
       in
@@ -1538,16 +1552,8 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
           | _ ->
               assert false
         in
-        let evid = EvalVarID.fresh (Range.dummy "ctx-horz", "%ctx-horz") in
-        let e_cmdctx = Apply(LabelMap.empty, e_cmd, ContentOf(Range.dummy "ctx-horz", evid)) in
-        let eapp =
-          let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
-          args |> List.fold_left (fun eacc (e_labmap, e_arg) ->
-            Apply(e_labmap, eacc, e_arg)
-          ) e_cmdctx
-        in
-        let e_abs = abstraction evid eapp in
-        aux (Alist.extend acc (InputHorzApplyCommand(e_abs))) tail
+        let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
+        aux (Alist.extend acc (InputHorzApplyCommand{ command = e_cmd; arguments = args })) tail
 
     | (_, UTInputHorzEmbeddedMath(utast_math)) :: tail ->
         let (emath, tymath) = typecheck pre tyenv utast_math in

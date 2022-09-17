@@ -469,7 +469,12 @@ and untyped_abstract_tree_main =
   | UTInputVert            of untyped_input_vert_element list
   | UTInputMath            of untyped_input_math_element list
 (* Command abstractions: *)
-  | UTLambdaHorz           of var_name ranged * untyped_abstract_tree
+  | UTLambdaHorzCommand of {
+      parameters       : untyped_parameter_unit list;
+      context_variable : var_name ranged;
+      body             : untyped_abstract_tree;
+    }
+
   | UTLambdaVert           of var_name ranged * untyped_abstract_tree
 
   | UTLambdaMathCommand of {
@@ -551,10 +556,13 @@ type untyped_letrec_pattern_branch =
 
 type 'a input_horz_element_scheme =
   | InputHorzText             of string
-  | InputHorzApplyCommand     of 'a
   | InputHorzContent          of 'a
   | InputHorzEmbeddedMath     of 'a
   | InputHorzEmbeddedCodeArea of string
+  | InputHorzApplyCommand of {
+      command   : 'a;
+      arguments : ('a LabelMap.t * 'a) list;
+    }
 [@@deriving show { with_path = false; }]
 
 type 'a input_vert_element_scheme =
@@ -841,7 +849,7 @@ and input_math_value_base =
   | InputMathValueGroup    of input_math_value_element list
 
 and horz_command_closure =
-  | HorzCommandClosure of {
+  | HorzCommandClosureSimple of {
       context_binder : EvalVarID.t;
       body           : abstract_tree;
       environment    : environment;
@@ -882,6 +890,7 @@ and syntactic_value =
   | InputVertClosure of intermediate_input_vert_element list * environment
   | InputMathValue   of input_math_value_element list
 
+  | HorzCommandClosure of horz_command_closure
   | MathCommandClosure of math_command_closure
 
 (* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
@@ -898,6 +907,7 @@ and abstract_tree =
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
   | InputMath             of input_math_element list
+  | LambdaHorz            of EvalVarID.t * abstract_tree
   | LambdaMath            of EvalVarID.t * (EvalVarID.t * EvalVarID.t) option * abstract_tree
 (* -- record value -- *)
   | Record                of abstract_tree LabelMap.t
@@ -1054,6 +1064,7 @@ and code_value =
   | CdInputHorz     of code_input_horz_element list
   | CdInputVert     of code_input_vert_element list
   | CdInputMath     of code_input_math_element list
+  | CdLambdaHorz    of CodeSymbol.t * code_value
   | CdLambdaMath    of CodeSymbol.t * (CodeSymbol.t * CodeSymbol.t) option * code_value
   | CdContentOf     of Range.t * CodeSymbol.t
   | CdLetRecIn      of code_letrec_binding list * code_value
@@ -1182,8 +1193,23 @@ let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value
 
 let map_input_horz f ihlst =
   ihlst |> List.map (function
-  | InputHorzText(s)             -> InputHorzText(s)
-  | InputHorzApplyCommand(ast)   -> InputHorzApplyCommand(f ast)
+  | InputHorzText(s) ->
+      InputHorzText(s)
+
+  | InputHorzApplyCommand{
+      command = ast_cmd;
+      arguments;
+    } ->
+      InputHorzApplyCommand{
+        command =
+          f ast_cmd;
+
+        arguments =
+          arguments |> List.map (fun (ast_labmap, ast) ->
+            (ast_labmap |> LabelMap.map f, f ast)
+          )
+      }
+
   | InputHorzContent(ast)        -> InputHorzContent(f ast)
   | InputHorzEmbeddedMath(ast)   -> InputHorzEmbeddedMath(f ast)
   | InputHorzEmbeddedCodeArea(s) -> InputHorzEmbeddedCodeArea(s)
@@ -1248,6 +1274,9 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdInputMath(ms)                      -> InputMath(ms |> map_input_math aux)
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
+
+    | CdLambdaHorz(symb_ctx, code0) ->
+        LambdaHorz(CodeSymbol.unlift symb_ctx, aux code0)
 
     | CdLambdaMath(symb_ctx, symb_pair_opt, code0) ->
         let evid_pair_opt =

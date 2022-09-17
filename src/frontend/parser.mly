@@ -466,20 +466,28 @@ bind_value_nonrec:
 bind_inline:
   | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
-        let curried = curry_lambda_abstraction param_units utast in
-        let rng = make_range (Ranged ident_ctx) (Ranged utast) in
-        (cs, (rng, UTLambdaHorz(ident_ctx, curried)))
+        (cs,
+          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaHorzCommand{
+            parameters       = param_units;
+            context_variable = ident_ctx;
+            body             = utast;
+          }))
       }
   | cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
         let varnm_ctx = "%context" in
         let ident_ctx = (rng_ctx, varnm_ctx) in
-        let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
-        let utast_read = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utast_ctx, utast)) in
-        let curried = curry_lambda_abstraction param_units utast_read in
-        let rng = make_range (Ranged cs) (Ranged utast) in
-        (cs, (rng, UTLambdaHorz(ident_ctx, curried)))
+        let utast_body =
+          let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
+          (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utast_ctx, utast))
+        in
+        (cs,
+          make_standard (Ranged cs) (Ranged utast) (UTLambdaHorzCommand{
+            parameters       = param_units;
+            context_variable = ident_ctx;
+            body             = utast_body;
+          }))
       }
 ;
 bind_block:
