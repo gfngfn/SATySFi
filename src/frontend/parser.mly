@@ -1072,7 +1072,7 @@ inline_elem_cmd:
         let utast_cmd = (rng_cs, UTContentOf(modidents, cs)) in
         let (rng_last, sargs) = rsargs in
         let args = List.append nargs sargs in
-        make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzEmbedded(utast_cmd, args))
+        make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzApplyCommand(utast_cmd, args))
       }
 
   | imacro_raw=BACKSLASH_MACRO; macargsraw=macroargs {
@@ -1091,7 +1091,7 @@ inline_elem_cmd:
   | literal=STRING
       {
         let (rng, str, pre, post) = literal in
-        make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeText(omit_spaces pre post str))
+        make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeArea(omit_spaces pre post str))
       }
   | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {

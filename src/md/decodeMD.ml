@@ -278,8 +278,8 @@ let make_list_tree utastlst =
 
 let make_inline_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
   let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
-  let utastcmd = (rng, UTContentOf(modidents, (rng, csnm))) in
-  [(dummy_range, UTInputHorzEmbedded(utastcmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
+  let utast_cmd = (rng, UTContentOf(modidents, (rng, csnm))) in
+  [(dummy_range, UTInputHorzApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
 let make_block_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =

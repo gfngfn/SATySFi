@@ -410,14 +410,14 @@ and untyped_input_horz_element =
     [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_input_horz_element_main utihmain)]
 
 and untyped_input_horz_element_main =
-  | UTInputHorzText         of string
+  | UTInputHorzText             of string
       [@printer (fun fmt s -> Format.fprintf fmt "IT:%s" s)]
-  | UTInputHorzEmbedded     of untyped_abstract_tree * untyped_command_argument list
+  | UTInputHorzApplyCommand     of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "IC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
-  | UTInputHorzContent      of untyped_abstract_tree
-  | UTInputHorzEmbeddedMath of untyped_abstract_tree
-  | UTInputHorzEmbeddedCodeText of string
-  | UTInputHorzMacro        of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
+  | UTInputHorzContent          of untyped_abstract_tree
+  | UTInputHorzEmbeddedMath     of untyped_abstract_tree
+  | UTInputHorzEmbeddedCodeArea of string
+  | UTInputHorzMacro            of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
 and untyped_macro_argument =
   | UTLateMacroArg  of untyped_abstract_tree
@@ -550,11 +550,11 @@ type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
 type 'a input_horz_element_scheme =
-  | InputHorzText         of string
-  | InputHorzEmbedded     of 'a
-  | InputHorzContent      of 'a
-  | InputHorzEmbeddedMath of 'a
-  | InputHorzEmbeddedCodeText of string
+  | InputHorzText             of string
+  | InputHorzApplyCommand     of 'a
+  | InputHorzContent          of 'a
+  | InputHorzEmbeddedMath     of 'a
+  | InputHorzEmbeddedCodeArea of string
 [@@deriving show { with_path = false; }]
 
 type 'a input_vert_element_scheme =
@@ -817,12 +817,11 @@ and instruction =
   | OpConvertSymbolToCode
 #include "__insttype.gen.ml"
 
-and intermediate_input_horz_element =
-  | ImInputHorzText         of string
-  | ImInputHorzEmbedded     of abstract_tree
-  | ImInputHorzContent      of intermediate_input_horz_element list * environment
-  | ImInputHorzEmbeddedMath of abstract_tree
-  | ImInputHorzEmbeddedCodeText of string
+and input_horz_value_element =
+  | InputHorzValueText             of string
+  | InputHorzValueCommandClosure   of horz_command_closure
+  | InputHorzValueEmbeddedMath     of abstract_tree
+  | InputHorzValueEmbeddedCodeArea of string
 
 and intermediate_input_vert_element =
   | ImInputVertEmbedded of abstract_tree
@@ -840,6 +839,13 @@ and input_math_value_base =
       [@printer (fun fmt uch -> Format.fprintf fmt "ImInputMathChar \"%s\"" (string_of_uchar uch))]
   | InputMathValueEmbedded of math_command_closure
   | InputMathValueGroup    of input_math_value_element list
+
+and horz_command_closure =
+  | HorzCommandClosure of {
+      context_binder : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
 
 and math_command_closure =
   | MathCommandClosureSimple of {
@@ -872,7 +878,7 @@ and syntactic_value =
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | InputHorzClosure of intermediate_input_horz_element list * environment
+  | InputHorzValue   of input_horz_value_element list
   | InputVertClosure of intermediate_input_vert_element list * environment
   | InputMathValue   of input_math_value_element list
 
@@ -1176,11 +1182,11 @@ let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value
 
 let map_input_horz f ihlst =
   ihlst |> List.map (function
-  | InputHorzText(s)           -> InputHorzText(s)
-  | InputHorzEmbedded(ast)     -> InputHorzEmbedded(f ast)
-  | InputHorzContent(ast)      -> InputHorzContent(f ast)
-  | InputHorzEmbeddedMath(ast) -> InputHorzEmbeddedMath(f ast)
-  | InputHorzEmbeddedCodeText(s) -> InputHorzEmbeddedCodeText(s)
+  | InputHorzText(s)             -> InputHorzText(s)
+  | InputHorzApplyCommand(ast)   -> InputHorzApplyCommand(f ast)
+  | InputHorzContent(ast)        -> InputHorzContent(f ast)
+  | InputHorzEmbeddedMath(ast)   -> InputHorzEmbeddedMath(f ast)
+  | InputHorzEmbeddedCodeArea(s) -> InputHorzEmbeddedCodeArea(s)
   )
 
 

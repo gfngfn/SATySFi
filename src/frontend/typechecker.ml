@@ -1524,43 +1524,38 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
     | [] ->
         Alist.to_list acc
 
-    | (_, UTInputHorzEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
-        let rngcmdapp =
-          match List.rev utcmdarglst with
-          | []                             -> rngcmd
-          | UTCommandArg(_, (rng, _)) :: _ -> Range.unite rngcmd rng
-        in
-        let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
-        let (_, tycmdmain) = tycmd in
-        begin
-          match tycmdmain with
-          | HorzCommandType(cmdargtylstreq) ->
-              let evid = EvalVarID.fresh (Range.dummy "ctx-horz", "%ctx-horz") in
-              let ecmdctx = Apply(LabelMap.empty, ecmd, ContentOf(Range.dummy "ctx-horz", evid)) in
-              let eapp =
-                let args = typecheck_command_arguments tycmd rngcmdapp pre tyenv utcmdarglst cmdargtylstreq in
-                args |> List.fold_left (fun eacc (e_labmap, e_arg) ->
-                  Apply(e_labmap, eacc, e_arg)
-                ) ecmdctx
-              in
-              let eabs = abstraction evid eapp in
-              aux (Alist.extend acc (InputHorzEmbedded(eabs))) tail
+    | (rng_cmdapp, UTInputHorzApplyCommand(utast_cmd, utcmdargs)) :: tail ->
+        let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
+        let cmdargtys =
+          match ty_cmd with
+          | (_, HorzCommandType(cmdargtys)) ->
+              cmdargtys
 
-          | MathCommandType(_) ->
-              let (rngcmd, _) = utastcmd in
-              raise_error (MathCommandInHorz(rngcmd))
+          | (_, MathCommandType(_)) ->
+              let (rng_cmd, _) = utast_cmd in
+              raise_error (MathCommandInHorz(rng_cmd))
 
           | _ ->
               assert false
-        end
+        in
+        let evid = EvalVarID.fresh (Range.dummy "ctx-horz", "%ctx-horz") in
+        let e_cmdctx = Apply(LabelMap.empty, e_cmd, ContentOf(Range.dummy "ctx-horz", evid)) in
+        let eapp =
+          let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
+          args |> List.fold_left (fun eacc (e_labmap, e_arg) ->
+            Apply(e_labmap, eacc, e_arg)
+          ) e_cmdctx
+        in
+        let e_abs = abstraction evid eapp in
+        aux (Alist.extend acc (InputHorzApplyCommand(e_abs))) tail
 
     | (_, UTInputHorzEmbeddedMath(utast_math)) :: tail ->
         let (emath, tymath) = typecheck pre tyenv utast_math in
         unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(TextMathType));
         aux (Alist.extend acc (InputHorzEmbeddedMath(emath))) tail
 
-    | (_, UTInputHorzEmbeddedCodeText(s)) :: tail ->
-        aux (Alist.extend acc (InputHorzEmbeddedCodeText(s))) tail
+    | (_, UTInputHorzEmbeddedCodeArea(s)) :: tail ->
+        aux (Alist.extend acc (InputHorzEmbeddedCodeArea(s))) tail
 
     | (_, UTInputHorzContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in

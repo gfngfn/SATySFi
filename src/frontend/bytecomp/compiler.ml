@@ -71,6 +71,8 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
 
 
 and compile_code_input_horz (irihlst : (ir input_horz_element_scheme) list) =
+  failwith "TODO: compile_code_input_horz"
+(*
   irihlst |> List.map (function
   | InputHorzText(s) ->
       InputHorzText(s)
@@ -90,6 +92,7 @@ and compile_code_input_horz (irihlst : (ir input_horz_element_scheme) list) =
       let compiled = compile ir [] in
       InputHorzContent(compiled)
   )
+*)
 
 
 and compile_input_vert_content (ivlst : ir_input_vert_element list) =

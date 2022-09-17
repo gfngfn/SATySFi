@@ -140,6 +140,8 @@ and exec_input_vert_content env ivlst =
 
 
 and exec_code_input_horz env irihlst =
+  failwith "TODO: exec_code_input_horz"
+(*
   irihlst |> List.map (function
   | InputHorzText(s) ->
       InputHorzText(s)
@@ -162,7 +164,7 @@ and exec_code_input_horz env irihlst =
       let cv = get_code value in
       InputHorzContent(cv)
   )
-
+*)
 
 and exec_code_input_vert env irivlst =
   irivlst |> List.map (function

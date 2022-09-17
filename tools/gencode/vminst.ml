@@ -736,13 +736,15 @@ make_vert (List.append vblst1 vblst2)
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
 match value1 with
-| InputHorzClosure(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi ictx imihlst
-| _                               -> report_bug_value "HorzLex" value1
+| InputHorzValue(ihvs) -> read_pdf_mode_horz_text ictx ihvs
+| _                    -> report_bug_value "HorzLex" value1
 |}
         ~code:{|
+failwith "TODO: HorzLex" (*
 match value1 with
 | CompiledInputHorzClosure(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi ictx imihlst
 | _                                       -> report_bug_vm "HorzLex"
+*)
 |}
     ; inst "VertLex"
         ~name:"read-block"
@@ -798,8 +800,8 @@ match value1 with
         ~is_text_mode_primitive:true
         ~code_interp:{|
 match value1 with
-| InputHorzClosure(imihlst, envi) -> interpret_text_mode_intermediate_input_horz envi valuetctx imihlst
-| _                               -> report_bug_value "TextHorzLex" value1
+| InputHorzValue(ihvs) -> read_text_mode_horz_text valuetctx ihvs
+| _                    -> report_bug_value "TextHorzLex" value1
 |}
         ~code:{|
 match value1 with
@@ -1540,7 +1542,7 @@ Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code_interp:{|
-InputHorzClosure([ImInputHorzText(str)], env)
+InputHorzValue([ InputHorzValueText(str) ])
 |}
         ~code:{|
 CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)

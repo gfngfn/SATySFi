@@ -14,10 +14,8 @@ let report_dynamic_error msg =
 
 
 type nom_input_horz_element =
-  | NomInputHorzText     of string
-  | NomInputHorzEmbedded of abstract_tree
-  | NomInputHorzThunk    of syntactic_value * abstract_tree
-  | NomInputHorzContent  of nom_input_horz_element list * environment
+  | NomInputHorzText           of string
+  | NomInputHorzCommandClosure of horz_command_closure
 
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
@@ -84,31 +82,30 @@ and reduce_beta_list ~msg (value1 : syntactic_value) (value_args : syntactic_val
   List.fold_left (reduce_beta ~msg ~optional:LabelMap.empty) value1 value_args
 
 
-and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element list) : intermediate_input_horz_element list =
+and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element list) : input_horz_value_element list =
   ihs |> List.map (function
     | InputHorzText(s) ->
-        ImInputHorzText(s)
+        [ InputHorzValueText(s) ]
 
-    | InputHorzEmbedded(ast_abs) ->
-        ImInputHorzEmbedded(ast_abs)
+    | InputHorzApplyCommand(ast_abs) ->
+        let hclosure = failwith "TODO: hclosure" in
+        [ InputHorzValueCommandClosure(hclosure) ]
 
     | InputHorzEmbeddedMath(ast_math) ->
-        ImInputHorzEmbeddedMath(ast_math)
+        [ InputHorzValueEmbeddedMath(ast_math) ]
 
-    | InputHorzEmbeddedCodeText(s) ->
-        ImInputHorzEmbeddedCodeText(s)
+    | InputHorzEmbeddedCodeArea(s) ->
+        [ InputHorzValueEmbeddedCodeArea(s) ]
 
     | InputHorzContent(ast) ->
         let value = interpret_0 env ast in
         begin
           match value with
-          | InputHorzClosure(imihs, env_sub) ->
-              ImInputHorzContent(imihs, env_sub)
-
-          | _ ->
-              report_bug_reduction "interpret_input_horz_content" ast value
+          | InputHorzValue(ihvs) -> ihvs
+          | _                    -> report_bug_reduction "interpret_input_horz_content" ast value
         end
-  )
+  ) |> List.concat
+
 
 and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element list) : intermediate_input_vert_element list =
   ivs |> List.map (function
@@ -224,9 +221,8 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       List([])
 
   | InputHorz(ihs) ->
-      let imihs = interpret_0_input_horz_content env ihs in
-      InputHorzClosure(imihs, env)
-        (* Lazy evaluation; evaluates embedded variables only *)
+      let ihvs = interpret_0_input_horz_content env ihs in
+      InputHorzValue(ihvs)
 
   | InputVert(ivs) ->
       let imivs = interpret_0_input_vert_content env ivs in
@@ -647,64 +643,62 @@ and interpret_text_mode_intermediate_input_vert (env : environment) (value_tctx 
   make_string s
 
 
-and interpret_text_mode_intermediate_input_horz (env : environment) (value_tctx : syntactic_value) (imihs : intermediate_input_horz_element list) : syntactic_value =
+and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_value_element list) : syntactic_value =
 
   let tctx = get_text_mode_context value_tctx in
+  let loc_tctx = ref value_tctx in
 
-  let rec normalize (imihs : intermediate_input_horz_element list) =
-    imihs |> List.fold_left (fun acc imih ->
-      match imih with
-      | ImInputHorzEmbedded(ast_abs) ->
-          let nmih = NomInputHorzEmbedded(ast_abs) in
+  (* Merges adjacent `InputHorzValueText`s into single `NomInputHorzText`. *)
+  let rec normalize (ihvs : input_horz_value_element list) =
+    ihvs |> List.fold_left (fun acc ihv ->
+      match ihv with
+      | InputHorzValueCommandClosure(hclosure) ->
+          let nmih = NomInputHorzCommandClosure(hclosure) in
           Alist.extend acc nmih
 
-      | ImInputHorzText(s2) ->
+      | InputHorzValueText(s2) ->
           begin
             match Alist.chop_last acc with
             | Some((accrest, NomInputHorzText(s1))) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
             | _                                     -> (Alist.extend acc (NomInputHorzText(s2)))
           end
 
-      | ImInputHorzEmbeddedMath(_ast_math) ->
-          failwith "TODO: text-mode math; remains to be supported."
+      | InputHorzValueEmbeddedMath(_ast_math) ->
+          failwith "TODO: text-mode math"
 
-      | ImInputHorzEmbeddedCodeText(_s) ->
-          failwith "TODO: text-mode code text; remains to be supported."
-
-      | ImInputHorzContent(imihs_sub, env_sub) ->
-          let nmihs_sub = normalize imihs_sub in
-          let nmih = NomInputHorzContent(nmihs_sub, env_sub) in
-          Alist.extend acc nmih
+      | InputHorzValueEmbeddedCodeArea(_s) ->
+          failwith "TODO: text-mode code text"
 
     ) Alist.empty |> Alist.to_list
   in
 
-  let rec interpret_commands (env : environment) (nmihs : nom_input_horz_element list) : string =
+  let rec interpret_commands (nmihs : nom_input_horz_element list) : string =
     nmihs |> List.map (fun nmih ->
       match nmih with
-      | NomInputHorzEmbedded(ast_abs) ->
-          let value_abs = interpret_0 env ast_abs in
-          let value_ret = reduce_beta ~msg:"interpret_text_mode_intermediate_input_horz 1" value_abs value_tctx in
-          get_string value_ret
-
-      | NomInputHorzThunk(value_cmd, ast_arg) ->
-          let value_arg = interpret_0 env ast_arg in
-          let value_ret = reduce_beta ~msg:"interpret_text_mode_intermediate_input_horz 2" value_cmd value_arg in
-          get_string value_ret
+      | NomInputHorzCommandClosure(hclosure) ->
+          let
+            HorzCommandClosure{
+              context_binder = evid_ctx;
+              body           = ast_body;
+              environment    = env;
+            } = hclosure
+          in
+          let value =
+            let env = add_to_environment env evid_ctx loc_tctx in
+            interpret_0 env ast_body
+          in
+          get_string value
 
       | NomInputHorzText(s) ->
           let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
           let uchs_ret = tctx |> TextBackend.stringify uchs in
           InternalText.to_utf8 (InternalText.of_uchar_list uchs_ret)
 
-      | NomInputHorzContent(nmihs_sub, env_sub) ->
-          interpret_commands env_sub nmihs_sub
-
     ) |> String.concat ""
   in
 
-  let nmihs = normalize imihs in
-  let s = interpret_commands env nmihs in
+  let nmihs = normalize ihvs in
+  let s = interpret_commands nmihs in
   make_string s
 
 
@@ -811,75 +805,68 @@ and interpret_pdf_mode_intermediate_input_vert (env : environment) (value_ctx : 
   make_vert imvbs
 
 
-and interpret_pdf_mode_intermediate_input_horz (env : environment) (ictx : input_context) (imihs : intermediate_input_horz_element list) : syntactic_value =
+and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_element list) : syntactic_value =
 
   let (ctx, ctxsub) = ictx in
-  let value_mcmd = make_math_command_func ctxsub.math_command in
+  let _value_mcmd = make_math_command_func ctxsub.math_command in
+  let loc_ctx = ref (Context(ictx)) in
 
-  let rec normalize (imihs : intermediate_input_horz_element list) =
+  let rec normalize (imihs : input_horz_value_element list) =
     imihs |> List.fold_left (fun acc imih ->
       match imih with
-      | ImInputHorzEmbedded(astabs) ->
-          let nmih = NomInputHorzEmbedded(astabs) in
-          Alist.extend acc nmih
+      | InputHorzValueCommandClosure(hclosure) ->
+          Alist.extend acc (NomInputHorzCommandClosure(hclosure))
 
-      | ImInputHorzText(s2) ->
+      | InputHorzValueText(s2) ->
           begin
             match Alist.chop_last acc with
             | Some(accrest, NomInputHorzText(s1)) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
             | _                                   -> (Alist.extend acc (NomInputHorzText(s2)))
           end
 
-      | ImInputHorzEmbeddedMath(ast_math) ->
-          let value_mcmdctx = reduce_beta ~msg:"interpret_pdf_mode_intermediate_input_horz 1" value_mcmd (Context(ictx)) in
-          let nmih = NomInputHorzThunk(value_mcmdctx, ast_math) in
-          Alist.extend acc nmih
+      | InputHorzValueEmbeddedMath(ast_math) ->
+          let hclosure = failwith "TODO: hclosure (use math command)" in
+          Alist.extend acc (NomInputHorzCommandClosure(hclosure))
 
-      | ImInputHorzEmbeddedCodeText(s) ->
+      | InputHorzValueEmbeddedCodeArea(s) ->
           begin
             match ctxsub.code_text_command with
             | DefaultCodeTextCommand ->
-                let nmih = NomInputHorzText(s) in
-                Alist.extend acc nmih
+                Alist.extend acc (NomInputHorzText(s))
 
             | CodeTextCommand(value_ctcmd) ->
-                let value_ctcmdctx = reduce_beta ~msg:"interpret_pdf_mode_intermediate_input_horz 2" value_ctcmd (Context(ictx)) in
-                let nmih = NomInputHorzThunk(value_ctcmdctx, ASTBaseConstant(BCString(s))) in
-                Alist.extend acc nmih
+                let hclosure = failwith "TODO: hclosure (use code text command)" in
+                Alist.extend acc (NomInputHorzCommandClosure(hclosure))
           end
-
-      | ImInputHorzContent(imihs_sub, env_sub) ->
-          let nmihs_sub = normalize imihs_sub in
-          let nmih = NomInputHorzContent(nmihs_sub, env_sub) in
-          Alist.extend acc nmih
 
     ) Alist.empty |> Alist.to_list
   in
 
-  let rec interpret_commands (env : environment) (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
+  let rec interpret_commands (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
     nmihs |> List.map (fun nmih ->
       match nmih with
-      | NomInputHorzEmbedded(ast_abs) ->
-          let value_abs = interpret_0 env ast_abs in
-          let value_horz = reduce_beta ~msg:"interpret_pdf_mode_intermediate_input_horz 3" value_abs (Context(ictx)) in
-          get_horz value_horz
-
-      | NomInputHorzThunk(value_mcmdctx, ast_math) ->
-          let value_math = interpret_0 env ast_math in
-          let value_horz = reduce_beta ~msg:"interpret_pdf_mode_intermediate_input_horz 4" value_mcmdctx value_math in
-          get_horz value_horz
+      | NomInputHorzCommandClosure(hclosure) ->
+          let
+            HorzCommandClosure{
+              context_binder = evid_ctx;
+              body           = ast_body;
+              environment    = env;
+            } = hclosure
+          in
+          let value =
+            let env = add_to_environment env evid_ctx loc_ctx in
+            interpret_0 env ast_body
+          in
+          get_horz value
 
       | NomInputHorzText(s) ->
           lex_horz_text ctx s
 
-      | NomInputHorzContent(nmihs_sub, env_sub) ->
-          interpret_commands env_sub nmihs_sub
-
     ) |> List.concat
   in
 
-  let nmihs = normalize imihs in
-  let hbs = interpret_commands env nmihs in
+  let nmihs = normalize ihvs in
+  let hbs = interpret_commands nmihs in
   make_horz hbs
 
 

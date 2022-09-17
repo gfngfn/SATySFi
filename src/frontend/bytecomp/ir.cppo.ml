@@ -37,6 +37,8 @@ let map_with_env (type a) (type b) (f : frame -> a -> b * frame) (env : frame) (
 
 
 let rec transform_0_input_horz_content (env : frame) (ihlst : input_horz_element list) : ir_input_horz_element list * frame =
+  failwith "TODO: transform_0_input_horz_content"
+(*
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputHorzText(s) ->
@@ -57,9 +59,11 @@ let rec transform_0_input_horz_content (env : frame) (ihlst : input_horz_element
         let (ir, env) = transform_0 env ast in
         (IRInputHorzContent(ir), env)
   )
-
+*)
 
 and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element list) : (ir input_horz_element_scheme) list * frame =
+  failwith "TODO: transform_1_input_horz_content"
+(*
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputHorzText(s) ->
@@ -80,7 +84,7 @@ and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element lis
         let (ir, env) = transform_1 env ast in
         (InputHorzContent(ir), env)
   )
-
+*)
 
 and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
   ivlst @|> env @|> map_with_env (fun env elem ->
