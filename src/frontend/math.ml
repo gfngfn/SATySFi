@@ -97,15 +97,12 @@ type low_math_main =
       right : low_paren;
       inner : low_math;
     }
-
-  | LowMathParenWithMiddle of low_paren * low_paren * low_paren * (low_math list)
-      (* --
-         (1) graphical specification of the left parenthesis
-         (2) graphical specification of the right parenthesis
-         (3) graphical specification of the middle sign
-         (4) list of inner contents
-         -- *)
-
+  | LowMathParenWithMiddle of {
+      left   : low_paren;
+      right  : low_paren;
+      middle : low_paren;
+      inner  : low_math list;
+    }
   | LowMathUpperLimit of {
       upper_baseline_height : length;
       base                  : low_math;
@@ -427,9 +424,9 @@ let get_left_kern lmmain hgt dpt =
   | LowMathFraction(_)                         -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
 
-  | LowMathParen{ left = lpL }
-  | LowMathParenWithMiddle(lpL, _, _, _)
-      -> make_left_paren_kern lpL.lp_height lpL.lp_depth lpL.lp_math_kern_scheme
+  | LowMathParen{ left }
+  | LowMathParenWithMiddle{ left } ->
+      make_left_paren_kern left.lp_height left.lp_depth left.lp_math_kern_scheme
 
   | LowMathUpperLimit{ base = (_, _, _, lk, _) } -> lk
   | LowMathLowerLimit{ base = (_, _, _, lk, _) } -> lk
@@ -447,9 +444,9 @@ let get_right_kern lmmain hgt dpt =
   | LowMathFraction(_)                         -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
 
-  | LowMathParen{ right = lpR }
-  | LowMathParenWithMiddle(_, lpR, _, _)
-      -> make_right_paren_kern lpR.lp_height lpR.lp_depth lpR.lp_math_kern_scheme
+  | LowMathParen{ right }
+  | LowMathParenWithMiddle{ right } ->
+      make_right_paren_kern right.lp_height right.lp_depth right.lp_math_kern_scheme
 
   | LowMathUpperLimit{ base = (_, _, _, _, rk) } -> rk
   | LowMathLowerLimit{ base = (_, _, _, _, rk) } -> rk
@@ -476,10 +473,10 @@ let rec get_left_math_kind : math_box -> math_kind = function
         | mathB :: _ -> get_left_math_kind mathB
       end
 
-  | MathBoxFraction(_)                 -> MathInner
-  | MathBoxRadical(_)                  -> MathInner
-  | MathBoxParen(_)                    -> MathOpen
-  | MathBoxParenWithMiddle(_, _, _, _) -> MathOpen
+  | MathBoxFraction(_)        -> MathInner
+  | MathBoxRadical(_)         -> MathInner
+  | MathBoxParen(_)           -> MathOpen
+  | MathBoxParenWithMiddle(_) -> MathOpen
 
   | MathBoxLowerLimit{ base } ->
       begin
@@ -517,10 +514,10 @@ let rec get_right_math_kind : math_box -> math_kind = function
         | mathB :: _ -> get_right_math_kind mathB
       end
 
-  | MathBoxFraction(_)              -> MathInner
-  | MathBoxRadical(_)               -> MathInner
-  | MathBoxParen(_)                 -> MathClose
-  | MathBoxParenWithMiddle(_, _, _, _) -> MathClose
+  | MathBoxFraction(_)        -> MathInner
+  | MathBoxRadical(_)         -> MathInner
+  | MathBoxParen(_)           -> MathClose
+  | MathBoxParenWithMiddle(_) -> MathClose
 
   | MathBoxLowerLimit{ base } ->
       begin
@@ -894,14 +891,14 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       let lpR = { lp_main = hblstparenR; lp_height = hR; lp_depth = dR; lp_math_kern_scheme = mkernsR; } in
       (LowMathParen{ left = lpL; right = lpR; inner = lmC }, h_whole, d_whole)
 
-  | MathBoxParenWithMiddle(parenL, parenR, middle, mlstlst) ->
+  | MathBoxParenWithMiddle{ context = ictx; left = parenL; right = parenR; middle; inner = mlstlst } ->
       let lmlst = mlstlst |> List.map (convert_to_low ~prev:MathOpen ~next:MathClose) in
       let (hC, dC) =
         lmlst |> List.fold_left (fun (hacc, dacc) lm ->
           let (_, h, d, _, _) = lm in (Length.max hacc h, Length.min dacc d)
         ) (Length.zero, Length.zero)
       in
-      let mathctx = failwith "TODO: MathBoxParenWithMiddle" in
+      let mathctx = MathContext.make ictx in
       let (hblstparenL, mkernsL) = make_paren mathctx parenL hC dC in
       let (hblstparenR, mkernsR) = make_paren mathctx parenR hC dC in
       let (hblstmiddle, _) = make_paren mathctx middle hC dC in
@@ -913,7 +910,15 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       let lpL = { lp_main = hblstparenL; lp_height = hL; lp_depth = dL; lp_math_kern_scheme = mkernsL; } in
       let lpR = { lp_main = hblstparenR; lp_height = hR; lp_depth = dR; lp_math_kern_scheme = mkernsR; } in
       let lpM = { lp_main = hblstmiddle; lp_height = hM; lp_depth = dM; lp_math_kern_scheme = FontInfo.no_math_kern; } in
-      (LowMathParenWithMiddle(lpL, lpR, lpM, lmlst), h_whole, d_whole)
+      let lm =
+        LowMathParenWithMiddle{
+          left   = lpL;
+          right  = lpR;
+          middle = lpM;
+          inner  = lmlst;
+        }
+      in
+      (lm, h_whole, d_whole)
 
   | MathBoxUpperLimit{ context = ictx; base = mlstB; upper = mlstU } ->
       let lmB = convert_to_low ~prev:mk_prev ~next:mk_next mlstB in
@@ -1175,7 +1180,7 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let hbspaceopt = space_between_math_kinds mathctx ~prev:mk_prev corr MathOpen in
               (hblstsub, hbspaceopt, MathClose)
 
-          | LowMathParenWithMiddle(lpL, lpR, lpM, lmlst) ->
+          | LowMathParenWithMiddle{ left = lpL; right = lpR; middle = lpM; inner = lmlst } ->
               let hblstparenL = lpL.lp_main in
               let hblstparenR = lpR.lp_main in
               let hblstmiddle = lpM.lp_main in

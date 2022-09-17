@@ -288,10 +288,11 @@ make_math_boxes [ MathBoxParen{ context; left; right; inner } ]
 |}
     ; inst "BackendMathParenWithMiddle"
         ~name:"math-paren-with-middle"
-        ~type_:Type.(tPAREN @-> tPAREN @-> tPAREN @-> tL tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tPAREN @-> tPAREN @-> tPAREN @-> tL tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
+          param "context" ~type_:"context";
           param "value_parenL";
           param "value_parenR";
           param "value_middle";
@@ -301,11 +302,11 @@ make_math_boxes [ MathBoxParen{ context; left; right; inner } ]
         ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let parenL = make_paren (reducef ~msg:"math-paren-with-middle 1") value_parenL in
-let parenR = make_paren (reducef ~msg:"math-paren-with-middle 2") value_parenR in
+let left = make_paren (reducef ~msg:"math-paren-with-middle 1") value_parenL in
+let right = make_paren (reducef ~msg:"math-paren-with-middle 2") value_parenR in
 let middle = make_paren (reducef ~msg:"math-paren-with-middle 3") value_middle in
-let mss = get_list get_math_boxes value_mss in
-make_math_boxes [ MathBoxParenWithMiddle(parenL, parenR, middle, mss) ]
+let inner = get_list get_math_boxes value_mss in
+make_math_boxes [ MathBoxParenWithMiddle{ context; left; right; middle; inner } ]
 |}
     ; inst "BackendMathUpperLimit"
         ~name:"math-upper"

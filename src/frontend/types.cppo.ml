@@ -1033,8 +1033,13 @@ and math_box =
       right   : HorzBox.paren;
       inner   : math_box list;
     }
-  | MathBoxParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math_box list) list
-
+  | MathBoxParenWithMiddle of {
+      context : input_context;
+      left    : HorzBox.paren;
+      right   : HorzBox.paren;
+      middle  : HorzBox.paren;
+      inner   : (math_box list) list;
+    }
   | MathBoxUpperLimit of {
       context : input_context;
       base    : math_box list;

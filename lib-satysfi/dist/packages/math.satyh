@@ -1403,7 +1403,7 @@ end = struct
 
 
   val math ctx \setsep m1 m2 =
-    math-paren-with-middle brace-left brace-right bar-middle [read-math ctx m1, read-math ctx m2]
+    math-paren-with-middle ctx brace-left brace-right bar-middle [read-math ctx m1, read-math ctx m2]
 
 
   val slash-middle hgt dpt hgtaxis fontsize color =
