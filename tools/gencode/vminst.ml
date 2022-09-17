@@ -263,11 +263,9 @@ make_math_boxes [ MathBoxFraction{ context = ictx; numerator = ms1; denominator 
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-let mlst1opt = get_option get_math_boxes value1mopt in
+let degree = get_option get_math_boxes value1mopt in
 let radical = Primitives.default_radical in  (* temporary; should be changeable *)
-match mlst1opt with
-| None        -> make_math_boxes [ MathBoxRadical{ context; radical; inner } ]
-| Some(mlst1) -> make_math_boxes [ MathBoxRadicalWithDegree(mlst1, inner) ]
+make_math_boxes [ MathBoxRadical{ context; radical; degree; inner } ]
 |}
     ; inst "BackendMathParen"
         ~name:"math-paren"
@@ -422,7 +420,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = MathEmbeddedText(hbs) }) ]
+make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = MathEmbeddedHorz(hbs) }) ]
 |}
     ; inst "BackendSetMathCharClass"
         ~name:"set-math-char-class"

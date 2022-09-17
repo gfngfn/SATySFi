@@ -480,7 +480,6 @@ let rec get_left_math_kind : math_box -> math_kind = function
 
   | MathBoxFraction(_)                 -> MathInner
   | MathBoxRadical(_)                  -> MathInner
-  | MathBoxRadicalWithDegree(_, _)     -> MathInner
   | MathBoxParen(_)                    -> MathOpen
   | MathBoxParenWithMiddle(_, _, _, _) -> MathOpen
 
@@ -522,7 +521,6 @@ let rec get_right_math_kind : math_box -> math_kind = function
 
   | MathBoxFraction(_)              -> MathInner
   | MathBoxRadical(_)               -> MathInner
-  | MathBoxRadicalWithDegree(_, _)  -> MathInner
   | MathBoxParen(_)                 -> MathClose
   | MathBoxParenWithMiddle(_, _, _, _) -> MathClose
 
@@ -703,7 +701,7 @@ let rec check_subscript (mlstB : math_box list) =
 
 let convert_math_element ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind) (mk_raw : math_kind) (ma : math_box_atom) : low_math_pure =
   match ma with
-  | MathEmbeddedText(hbs) ->
+  | MathEmbeddedHorz(hbs) ->
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hbs in
       let mk = normalize_math_kind mk_prev mk_next mk_raw in
       (mk, wid, hgt, dpt, MathBoxEmbeddedHorz(hbs), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
@@ -834,31 +832,23 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
             (LowMathSuperscript{ sup_baseline_height = h_supbl; base = lmB; sup = lmS }, h_whole, d_whole)
       end
 
-  | MathBoxRadical{ context = ictx; radical; inner = mlstC } ->
+  | MathBoxRadical{ context = ictx; radical; degree = mlstD_opt; inner = mlstC } ->
+      let mathctx = MathContext.make ictx in
       let lmC = convert_to_low ~prev:MathEnd ~next:MathEnd mlstC in
       let (_, h_cont, d_cont, _, _) = lmC in
-      let mathctx = MathContext.make ictx in
       let (h_bar, t_bar, l_extra) = radical_bar_metrics mathctx h_cont in
       let hblstrad = make_radical mathctx radical h_bar t_bar d_cont in
       let h_rad = h_bar +% t_bar in
-      let h_whole = h_rad +% l_extra in
-      let d_whole = d_cont in  (* TODO: consider the depth of the radical sign *)
-      (LowMathRadical(hblstrad, h_bar, t_bar, lmC), h_whole, d_whole)
+      begin
+        match mlstD_opt with
+        | Some(mlstD) ->
+            failwith "TODO: unsupported; MathRadicalWithDegree"
 
-  | MathBoxRadicalWithDegree(mlstD, mlstC) ->
-(*
-      let lmD = convert_to_low mathctx (scriptlev + 1) MathEnd MathEnd mlstD in
-      let lmC = convert_to_low mathctx scriptlev MathEnd MathEnd mlstC in
-      let (_, h_cont, d_cont, _, _) = lmC in
-      let (h_bar, t_bar, l_extra) = radical_bar_metrics mathctx scriptlev h_cont in
-      let h_rad = h_bar +% t_bar in
-      let (_, h_deg, d_deg, _, _) = lmD in
-      let h_degbl = radical_degree_baseline_height mathctx scriptlev h_rad d_deg in
-      let h_whole = Length.max (h_rad +% l_extra) (h_degbl +% h_deg) in
-      let d_whole = d_cont in  (* temporary; should consider the depth of the radical sign *)
-        (LowMathRadicalWithDegree(h_bar, t_bar, h_degbl, lmD, lmC), h_whole, d_whole)
-*)
-      failwith "unsupported; MathRadicalWithDegree"
+        | None ->
+            let h_whole = h_rad +% l_extra in
+            let d_whole = d_cont in  (* TODO: consider the depth of the radical sign *)
+            (LowMathRadical(hblstrad, h_bar, t_bar, lmC), h_whole, d_whole)
+      end
 
   | MathBoxParen{ context = ictx; left = parenL; right = parenR; inner = mlstC } ->
       let lmC = convert_to_low ~prev:MathOpen ~next:MathClose mlstC in

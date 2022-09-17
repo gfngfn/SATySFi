@@ -994,7 +994,7 @@ and math_box_atom =
       right_kern : HorzBox.math_char_kern_func;
     } [@printer (fun ppf _ _ _ _ _ -> Format.fprintf ppf "<math-char'>")]
 
-  | MathEmbeddedText of HorzBox.horz_box list
+  | MathEmbeddedHorz of HorzBox.horz_box list
 
 and math_box =
   | MathBoxAtom of {
@@ -1021,10 +1021,10 @@ and math_box =
       numerator   : math_box list;
       denominator : math_box list;
     }
-  | MathBoxRadicalWithDegree of math_box list * math_box list
   | MathBoxRadical of {
       context : input_context;
       radical : HorzBox.radical;
+      degree  : (math_box list) option;
       inner   : math_box list;
     }
   | MathBoxParen of {
