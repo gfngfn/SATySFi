@@ -758,8 +758,8 @@ match value1 with
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
 match value1 with
-| InputVertClosure(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
-| _                               -> report_bug_value "VertLex" value1
+| InputVertValue(ivvs) -> read_pdf_mode_vert_text valuectx ivvs
+| _                    -> report_bug_value "VertLex" value1
 |}
         ~code:{|
 match value1 with
@@ -820,13 +820,15 @@ match value1 with
         ~is_text_mode_primitive:true
         ~code_interp:{|
 match value1 with
-| InputVertClosure(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
-| _                               -> report_bug_value "TextVertLex" value1
+| InputVertValue(ivvs) -> read_text_mode_vert_text valuetctx ivvs
+| _                    -> report_bug_value "TextVertLex" value1
 |}
         ~code:{|
+failwith "TODO: TextVertLex" (*
 match value1 with
 | CompiledInputVertClosure(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
 | _                                       -> report_bug_vm "TextVertLex"
+*)
 |}
     ; inst "TextDeepenIndent"
         ~name:"deepen-indent"

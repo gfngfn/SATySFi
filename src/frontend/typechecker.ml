@@ -1020,7 +1020,12 @@ let rec typecheck
       in
       (e, (rng, HorzCommandType(cmdargtys)))
 
-  | UTLambdaVert(ident_ctx, utast1) ->
+  | UTLambdaVertCommand{
+      parameters       = param_units;
+      context_variable = ident_ctx;
+      body             = utast_body;
+    } ->
+      let (tyenv, params) = typecheck_abstraction pre tyenv param_units in
       let (rng_var, varnm_ctx) = ident_ctx in
       let (bsty_var, bsty_ret) =
         if OptionState.is_text_mode () then
@@ -1028,23 +1033,32 @@ let rec typecheck
         else
           (ContextType, BoxColType)
       in
-      let evid = EvalVarID.fresh ident_ctx in
-      let (e1, ty1) =
+      let evid_ctx = EvalVarID.fresh ident_ctx in
+      let (e_body, ty_body) =
         let tyenv_sub =
           let ventry =
             {
               val_type  = Poly(rng_var, BaseType(bsty_var));
-              val_name  = Some(evid);
+              val_name  = Some(evid_ctx);
               val_stage = pre.stage;
             }
           in
           tyenv |> Typeenv.add_value varnm_ctx ventry
         in
-        typecheck_iter tyenv_sub utast1
+        typecheck_iter tyenv_sub utast_body
       in
-      let (cmdargtylist, tyret) = flatten_type ty1 in
-      unify tyret (Range.dummy "lambda-vert-return", BaseType(bsty_ret));
-      (abstraction evid e1, (rng, VertCommandType(cmdargtylist)))
+      unify ty_body (Range.dummy "lambda-vert-return", BaseType(bsty_ret));
+      let e =
+        List.fold_right (fun (evid_labmap, pat, _, _) e ->
+          Function(evid_labmap, PatternBranch(pat, e))
+        ) params (LambdaVert(evid_ctx, e_body))
+      in
+      let cmdargtys =
+        params |> List.map (fun (_, _, ty_labmap, ty_pat) ->
+          CommandArgType(ty_labmap, ty_pat)
+        )
+      in
+      (e, (rng, VertCommandType(cmdargtys)))
 
   | UTLambdaMathCommand{
       parameters       = param_units;

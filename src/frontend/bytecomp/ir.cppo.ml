@@ -449,6 +449,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | LambdaHorz(_, _) ->
       failwith "TODO: transform_1, LambdaHorz"
 
+  | LambdaVert(_, _) ->
+      failwith "TODO: transform_1, LambdaVert"
+
   | LambdaMath(_, _, _) ->
       failwith "TODO: transform_1, LambdaMath"
 
@@ -597,6 +600,9 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
 
   | LambdaHorz(_, _) ->
       failwith "TODO: transform_0, LambdaHorz"
+
+  | LambdaVert(_, _) ->
+      failwith "TODO: transform_0, LambdaVert"
 
   | LambdaMath(_, _, _) ->
       failwith "TODO: transform_0, LambdaMath"

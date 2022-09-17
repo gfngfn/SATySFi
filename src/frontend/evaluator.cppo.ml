@@ -114,27 +114,19 @@ and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element
   ) |> List.concat
 
 
-and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element list) : intermediate_input_vert_element list =
+and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element list) : input_vert_value_element list =
   ivs |> List.map (function
     | InputVertApplyCommand{ command = ast_cmd; arguments = args } ->
         let ast = convert_command_application_to_application ast_cmd args in
-        let _value = interpret_0 env ast in
-        failwith "TODO: InputVertApplyCommand"
-(*
-        ImInputVertEmbedded(ast_abs)
-*)
+        let value = interpret_0 env ast in
+        let vclosure = get_vert_command_closure value in
+        [ InputVertValueCommandClosure(vclosure) ]
 
     | InputVertContent(ast) ->
         let value = interpret_0 env ast in
-        begin
-          match value with
-          | InputVertClosure(imivs, env_sub) ->
-              ImInputVertContent(imivs, env_sub)
+        get_vert_text value
 
-          | _ ->
-              report_bug_reduction "interpret_input_vert_content" ast value
-        end
-  )
+  ) |> List.concat
 
 
 and interpret_0_input_math_content (env : environment) (ims : input_math_element list) : input_math_value_element list =
@@ -229,9 +221,8 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       InputHorzValue(ihvs)
 
   | InputVert(ivs) ->
-      let imivs = interpret_0_input_vert_content env ivs in
-      InputVertClosure(imivs, env)
-        (* Lazy evaluation; evaluates embedded variables only *)
+      let ivvs = interpret_0_input_vert_content env ivs in
+      InputVertValue(ivvs)
 
   | InputMath(ims) ->
       let imvs = interpret_0_input_math_content env ims in
@@ -246,6 +237,16 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
         }
       in
       HorzCommandClosure(hclosure)
+
+  | LambdaVert(evid_ctx, ast0) ->
+      let vclosure =
+        VertCommandClosureSimple{
+          context_binder = evid_ctx;
+          body           = ast0;
+          environment    = env;
+        }
+      in
+      VertCommandClosure(vclosure)
 
   | LambdaMath(evid_ctx, evid_pair_opt, ast0) ->
       let mclosure =
@@ -446,6 +447,11 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       let code0 = interpret_1 env ast0 in
       CdLambdaHorz(symb_ctx, code0)
 
+  | LambdaVert(evid_ctx, ast0) ->
+      let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
+      let code0 = interpret_1 env ast0 in
+      CdLambdaVert(symb_ctx, code0)
+
   | LambdaMath(evid_ctx, evid_pair_opt, ast0) ->
       let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
       let (env, symb_pair_opt) =
@@ -644,21 +650,29 @@ and interpret_1_pattern_tree (env : environment) = function
       (env, CdPConstructor(ctor, cdpattr))
 
 
-and interpret_text_mode_intermediate_input_vert (env : environment) (value_tctx : syntactic_value) (imivs : intermediate_input_vert_element list) : syntactic_value =
-  let rec interpret_commands (env : environment) (imivs : intermediate_input_vert_element list) =
-    imivs |> List.map (fun imiv ->
-      match imiv with
-      | ImInputVertEmbedded(ast_abs) ->
-          let value_abs = interpret_0 env ast_abs in
-          let value_vert = reduce_beta ~msg:"interpret_text_mode_intermediate_input_vert" value_abs value_tctx in
-          get_string value_vert
+and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_value_element list) : syntactic_value =
 
-      | ImInputVertContent(imivs_sub, env_sub) ->
-          interpret_commands env_sub imivs_sub
+  let loc_tctx = ref value_tctx in
+
+  let rec interpret_commands (ivvs : input_vert_value_element list) =
+    ivvs |> List.map (function
+    | InputVertValueCommandClosure(vclosure) ->
+        let
+          VertCommandClosureSimple{
+            context_binder = evid_ctx;
+            body           = ast_body;
+            environment    = env;
+          } = vclosure
+        in
+        let value =
+          let env = add_to_environment env evid_ctx loc_tctx in
+          interpret_0 env ast_body
+        in
+        get_string value
 
     ) |> String.concat ""
   in
-  let s = interpret_commands env imivs in
+  let s = interpret_commands ivvs in
   make_string s
 
 
@@ -805,22 +819,29 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
   iter imvs
 
 
-and interpret_pdf_mode_intermediate_input_vert (env : environment) (value_ctx : syntactic_value) (imivs : intermediate_input_vert_element list) : syntactic_value =
+and read_pdf_mode_vert_text (value_ctx : syntactic_value) (ivvs : input_vert_value_element list) : syntactic_value =
 
-  let rec interpret_commands (env : environment) (imivs : intermediate_input_vert_element list) =
-    imivs |> List.map (fun imiv ->
-      match imiv with
-      | ImInputVertEmbedded(ast_abs) ->
-          let value_abs = interpret_0 env ast_abs in
-          let value_vert = reduce_beta ~msg:"interpret_pdf_mode_intermediate_input_vert" value_abs value_ctx in
-          get_vert value_vert
+  let loc_ctx = ref value_ctx in
 
-      | ImInputVertContent(imivs_sub, env_sub) ->
-          interpret_commands env_sub imivs_sub
+  let rec interpret_commands (ivvs : input_vert_value_element list) =
+    ivvs |> List.map (function
+    | InputVertValueCommandClosure(vclosure) ->
+        let
+          VertCommandClosureSimple{
+            context_binder = evid_ctx;
+            body           = ast_body;
+            environment    = env;
+          } = vclosure
+        in
+        let value =
+          let env = add_to_environment env evid_ctx loc_ctx in
+          interpret_0 env ast_body
+        in
+        get_vert value
 
     ) |> List.concat
   in
-  let imvbs = interpret_commands env imivs in
+  let imvbs = interpret_commands ivvs in
   make_vert imvbs
 
 
