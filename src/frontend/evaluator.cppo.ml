@@ -59,7 +59,7 @@ let generate_symbol_for_eval_var_id (evid : EvalVarID.t) (env : environment) : e
   (envnew, symb)
 
 
-let rec reduce_beta ~msg ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMap.empty) (value1 : syntactic_value) (value2 : syntactic_value) =
+let rec reduce_beta ~msg ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMap.empty) (value1 : syntactic_value) (value2 : syntactic_value) : syntactic_value =
   match value1 with
   | Closure(evid_labmap, patbr, env1) ->
       let env1 =
@@ -104,7 +104,9 @@ and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element
         [ InputHorzValueCommandClosure(hclosure) ]
 
     | InputHorzEmbeddedMath(ast_math) ->
-        [ InputHorzValueEmbeddedMath(ast_math) ]
+        let value = interpret_0 env ast_math in
+        let imvs = get_math_text ~msg:"InputHorzEmbeddedMath" value in
+        [ InputHorzValueEmbeddedMath(imvs) ]
 
     | InputHorzEmbeddedCodeArea(s) ->
         [ InputHorzValueEmbeddedCodeArea(s) ]
@@ -686,7 +688,7 @@ and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_v
             | _                                     -> (Alist.extend acc (NomInputHorzText(s2)))
           end
 
-      | InputHorzValueEmbeddedMath(_ast_math) ->
+      | InputHorzValueEmbeddedMath(_ims) ->
           failwith "TODO: text-mode math"
 
       | InputHorzValueEmbeddedCodeArea(_s) ->
@@ -831,7 +833,7 @@ and interpret_pdf_mode_intermediate_input_vert (env : environment) (value_ctx : 
 and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_element list) : syntactic_value =
 
   let (ctx, ctxsub) = ictx in
-  let _value_mcmd = make_math_command_func ctxsub.math_command in
+  let value_mcmd = make_math_command_func ctxsub.math_command in
   let loc_ctx = ref (Context(ictx)) in
 
   let rec normalize (imihs : input_horz_value_element list) =
@@ -847,8 +849,15 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
             | _                                   -> (Alist.extend acc (NomInputHorzText(s2)))
           end
 
-      | InputHorzValueEmbeddedMath(ast_math) ->
-          let hclosure = failwith "TODO: hclosure (use math command)" in
+      | InputHorzValueEmbeddedMath(imvs) ->
+          let value =
+            reduce_beta ~msg:"InputHorzValueEmbeddedMath" value_mcmd (InputMathValue(imvs))
+          in
+          let hclosure =
+            match value with
+            | HorzCommandClosure(hclosure) -> hclosure
+            | _                            -> report_bug_value "InputHorzValueEmbeddedMath" value
+          in
           Alist.extend acc (NomInputHorzCommandClosure(hclosure))
 
       | InputHorzValueEmbeddedCodeArea(s) ->
@@ -858,7 +867,14 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
                 Alist.extend acc (NomInputHorzText(s))
 
             | CodeTextCommand(value_ctcmd) ->
-                let hclosure = failwith "TODO: hclosure (use code text command)" in
+                let value =
+                  reduce_beta ~msg:"InputHorzValueEmbeddedCodeArea" value_ctcmd (BaseConstant(BCString(s)))
+                in
+                let hclosure =
+                  match value with
+                  | HorzCommandClosure(hclosure) -> hclosure
+                  | _                            -> report_bug_value "InputHorzValueEmbeddedCodeArea" value
+                in
                 Alist.extend acc (NomInputHorzCommandClosure(hclosure))
           end
 

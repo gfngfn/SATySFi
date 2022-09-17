@@ -828,7 +828,7 @@ and instruction =
 and input_horz_value_element =
   | InputHorzValueText             of string
   | InputHorzValueCommandClosure   of horz_command_closure
-  | InputHorzValueEmbeddedMath     of abstract_tree
+  | InputHorzValueEmbeddedMath     of input_math_value_element list
   | InputHorzValueEmbeddedCodeArea of string
 
 and intermediate_input_vert_element =
