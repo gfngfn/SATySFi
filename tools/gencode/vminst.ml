@@ -790,19 +790,20 @@ match value1 with
         ~fields:[
         ]
         ~params:[
-          param "valuetctx";
-          param "value1";
+          param "value_tctx";
+          param "ihvs" ~type_:"horz_text";
         ]
         ~is_text_mode_primitive:true
         ~code_interp:{|
-match value1 with
-| InputHorzValue(ihvs) -> read_text_mode_horz_text valuetctx ihvs
-| _                    -> report_bug_value "TextHorzLex" value1
+read_text_mode_horz_text value_tctx ihvs
 |}
         ~code:{|
+let _ = ihvs in
+failwith "TODO: TextHorzLex" (*
 match value1 with
 | CompiledInputHorzClosure(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
 | _                                       -> report_bug_vm "TextHorzLex"
+*)
 |}
     ; inst "TextVertLex"
         ~name:"stringify-block"
@@ -810,21 +811,37 @@ match value1 with
         ~fields:[
         ]
         ~params:[
-          param "valuetctx";
-          param "value1";
+          param "value_tctx";
+          param "ivvs" ~type_:"vert_text";
         ]
         ~is_text_mode_primitive:true
         ~code_interp:{|
-match value1 with
-| InputVertValue(ivvs) -> read_text_mode_vert_text valuetctx ivvs
-| _                    -> report_bug_value "TextVertLex" value1
+read_text_mode_vert_text value_tctx ivvs
 |}
         ~code:{|
+let _ = ivvs in
 failwith "TODO: TextVertLex" (*
 match value1 with
 | CompiledInputVertClosure(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
 | _                                       -> report_bug_vm "TextVertLex"
 *)
+|}
+    ; inst "TextMathLex"
+        ~name:"stringify-math"
+        ~type_:Type.(tTCTX @-> tMT @-> tS)
+        ~fields:[
+        ]
+        ~params:[
+          param "value_tctx";
+          param "imvs" ~type_:"math_text ~msg:\"TextMathLex\"";
+        ]
+        ~is_text_mode_primitive:true
+        ~code_interp:{|
+read_text_mode_math_text value_tctx imvs
+|}
+        ~code:{|
+let _ = imvs in
+failwith "TODO: TextVertLex"
 |}
     ; inst "TextDeepenIndent"
         ~name:"deepen-indent"

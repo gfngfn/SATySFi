@@ -650,6 +650,62 @@ and interpret_1_pattern_tree (env : environment) = function
       (env, CdPConstructor(ctor, cdpattr))
 
 
+and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_value_element list) : syntactic_value =
+
+  let loc_tctx = ref value_tctx in
+
+  let rec iter (imvs : input_math_value_element list) =
+    imvs |> List.map (fun imv ->
+      let InputMathValueElement{ base; sub; sup } = imv in
+      match base with
+      | InputMathValueChar(uch) ->
+          InternalText.to_utf8 (InternalText.of_uchar_list [ uch ])
+            (* TODO: define the conversion of chars and use it here *)
+
+      | InputMathValueEmbedded(mclosure) ->
+          begin
+            match mclosure with
+            | MathCommandClosureSimple{
+                context_binder = evid_ctx;
+                body           = ast_body;
+                environment    = env;
+              } ->
+                let value =
+                  let env = add_to_environment env evid_ctx loc_tctx in
+                  interpret_0 env ast_body
+                in
+                let _s_sub_opt = sub |> Option.map iter in
+                let _s_sup_opt = sup |> Option.map iter in
+                get_string value
+                  (* TODO: use `s_sub_opt` and `s_sup_opt` *)
+
+            | MathCommandClosureWithScripts{
+                context_binder = evid_ctx;
+                sub_binders    = evid_sub;
+                sup_binders    = evid_sup;
+                body           = ast;
+                environment    = env;
+              } ->
+                let value =
+                  let value_sub = make_option make_math_text sub in
+                  let value_sup = make_option make_math_text sup in
+                  let env = add_to_environment env evid_ctx loc_tctx in
+                  let env = add_to_environment env evid_sub (ref value_sub) in
+                  let env = add_to_environment env evid_sup (ref value_sup) in
+                  interpret_0 env ast
+                in
+                get_string value
+          end
+
+      | InputMathValueGroup(imvs_group) ->
+          iter imvs_group
+
+    ) |> String.concat ""
+  in
+  let s = iter imvs in
+  make_string s
+
+
 and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_value_element list) : syntactic_value =
 
   let loc_tctx = ref value_tctx in
