@@ -276,31 +276,42 @@ let make_language_system_value langsys =
 
 
 let get_math_char_class (value : syntactic_value) : HorzBox.math_char_class =
+  let open HorzBox in
   match value with
-  | Constructor("MathItalic"      , BaseConstant(BCUnit)) -> HorzBox.MathItalic
-  | Constructor("MathBoldItalic"  , BaseConstant(BCUnit)) -> HorzBox.MathBoldItalic
-  | Constructor("MathRoman"       , BaseConstant(BCUnit)) -> HorzBox.MathRoman
-  | Constructor("MathBoldRoman"   , BaseConstant(BCUnit)) -> HorzBox.MathBoldRoman
-  | Constructor("MathScript"      , BaseConstant(BCUnit)) -> HorzBox.MathScript
-  | Constructor("MathBoldScript"  , BaseConstant(BCUnit)) -> HorzBox.MathBoldScript
-  | Constructor("MathFraktur"     , BaseConstant(BCUnit)) -> HorzBox.MathFraktur
-  | Constructor("MathBoldFraktur" , BaseConstant(BCUnit)) -> HorzBox.MathBoldFraktur
-  | Constructor("MathDoubleStruck", BaseConstant(BCUnit)) -> HorzBox.MathDoubleStruck
-  | _                                                     -> report_bug_value "get_math_char_class" value
+  | Constructor("MathItalic"             , BaseConstant(BCUnit)) -> MathItalic
+  | Constructor("MathBoldItalic"         , BaseConstant(BCUnit)) -> MathBoldItalic
+  | Constructor("MathRoman"              , BaseConstant(BCUnit)) -> MathRoman
+  | Constructor("MathBoldRoman"          , BaseConstant(BCUnit)) -> MathBoldRoman
+  | Constructor("MathScript"             , BaseConstant(BCUnit)) -> MathScript
+  | Constructor("MathBoldScript"         , BaseConstant(BCUnit)) -> MathBoldScript
+  | Constructor("MathFraktur"            , BaseConstant(BCUnit)) -> MathFraktur
+  | Constructor("MathBoldFraktur"        , BaseConstant(BCUnit)) -> MathBoldFraktur
+  | Constructor("MathDoubleStruck"       , BaseConstant(BCUnit)) -> MathDoubleStruck
+  | Constructor("MathSansSerif"          , BaseConstant(BCUnit)) -> MathSansSerif
+  | Constructor("MathBoldSansSerif"      , BaseConstant(BCUnit)) -> MathBoldSansSerif
+  | Constructor("MathItalicSansSerif"    , BaseConstant(BCUnit)) -> MathItalicSansSerif
+  | Constructor("MathBoldItalicSansSerif", BaseConstant(BCUnit)) -> MathBoldItalicSansSerif
+  | Constructor("MathTypewriter"         , BaseConstant(BCUnit)) -> MathTypewriter
+  | _                                                            -> report_bug_value "get_math_char_class" value
 
 
 let make_math_char_class (mccls : HorzBox.math_char_class) : syntactic_value =
+  let open HorzBox in
   match mccls with
-  | HorzBox.MathItalic       -> Constructor("MathItalic"      , BaseConstant(BCUnit))
-  | HorzBox.MathBoldItalic   -> Constructor("MathBoldItalic"  , BaseConstant(BCUnit))
-  | HorzBox.MathRoman        -> Constructor("MathRoman"       , BaseConstant(BCUnit))
-  | HorzBox.MathBoldRoman    -> Constructor("MathBoldRoman"   , BaseConstant(BCUnit))
-  | HorzBox.MathScript       -> Constructor("MathScript"      , BaseConstant(BCUnit))
-  | HorzBox.MathBoldScript   -> Constructor("MathBoldScript"  , BaseConstant(BCUnit))
-  | HorzBox.MathFraktur      -> Constructor("MathFraktur"     , BaseConstant(BCUnit))
-  | HorzBox.MathBoldFraktur  -> Constructor("MathBoldFraktur" , BaseConstant(BCUnit))
-  | HorzBox.MathDoubleStruck -> Constructor("MathDoubleStruck", BaseConstant(BCUnit))
-
+  | MathItalic              -> Constructor("MathItalic"             , BaseConstant(BCUnit))
+  | MathBoldItalic          -> Constructor("MathBoldItalic"         , BaseConstant(BCUnit))
+  | MathRoman               -> Constructor("MathRoman"              , BaseConstant(BCUnit))
+  | MathBoldRoman           -> Constructor("MathBoldRoman"          , BaseConstant(BCUnit))
+  | MathScript              -> Constructor("MathScript"             , BaseConstant(BCUnit))
+  | MathBoldScript          -> Constructor("MathBoldScript"         , BaseConstant(BCUnit))
+  | MathFraktur             -> Constructor("MathFraktur"            , BaseConstant(BCUnit))
+  | MathBoldFraktur         -> Constructor("MathBoldFraktur"        , BaseConstant(BCUnit))
+  | MathDoubleStruck        -> Constructor("MathDoubleStruck"       , BaseConstant(BCUnit))
+  | MathSansSerif           -> Constructor("MathSansSerif"          , BaseConstant(BCUnit))
+  | MathBoldSansSerif       -> Constructor("MathBoldSansSerif"      , BaseConstant(BCUnit))
+  | MathItalicSansSerif     -> Constructor("MathItalicSansSerif"    , BaseConstant(BCUnit))
+  | MathBoldItalicSansSerif -> Constructor("MathBoldItalicSansSerif", BaseConstant(BCUnit))
+  | MathTypewriter          -> Constructor("MathTypewriter"         , BaseConstant(BCUnit))
 
 let get_math_class (value : syntactic_value) =
   let open HorzBox in

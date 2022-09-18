@@ -2,6 +2,7 @@ TARGETS = \
 	clip.pdf \
 	glue1.pdf \
 	math2.pdf \
+        math-typefaces.pdf \
 	refactor1.pdf \
 	refactor2.pdf \
 	refactor3.pdf \

@@ -143,8 +143,12 @@ type math_char_class =
   | MathFraktur
   | MathBoldFraktur
   | MathDoubleStruck
+  | MathSansSerif
+  | MathBoldSansSerif
+  | MathItalicSansSerif
+  | MathBoldItalicSansSerif
+  | MathTypewriter
 [@@deriving show { with_path = false }]
-(* TEMPORARY; should add more *)
 
 
 module MathVariantCharMap = Map.Make(Uchar)

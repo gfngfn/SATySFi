@@ -224,15 +224,20 @@ let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
         ("MathInner" , no_parameter);
       ]);
       ("math-char-class", vid_mccls, 0, [
-        ("MathItalic"      , no_parameter);
-        ("MathBoldItalic"  , no_parameter);
-        ("MathRoman"       , no_parameter);
-        ("MathBoldRoman"   , no_parameter);
-        ("MathScript"      , no_parameter);
-        ("MathBoldScript"  , no_parameter);
-        ("MathFraktur"     , no_parameter);
-        ("MathBoldFraktur" , no_parameter);
-        ("MathDoubleStruck", no_parameter);
+        ("MathItalic"             , no_parameter);
+        ("MathBoldItalic"         , no_parameter);
+        ("MathRoman"              , no_parameter);
+        ("MathBoldRoman"          , no_parameter);
+        ("MathScript"             , no_parameter);
+        ("MathBoldScript"         , no_parameter);
+        ("MathFraktur"            , no_parameter);
+        ("MathBoldFraktur"        , no_parameter);
+        ("MathDoubleStruck"       , no_parameter);
+        ("MathSansSerif"          , no_parameter);
+        ("MathBoldSansSerif"      , no_parameter);
+        ("MathItalicSansSerif"    , no_parameter);
+        ("MathBoldItalicSansSerif", no_parameter);
+        ("MathTypewriter"         , no_parameter);
       ]);
     ]
 
@@ -407,12 +412,7 @@ let default_math_variant_char_map : HorzBox.math_variant_char_map =
   let map =
     (range 0 25) |> List.fold_left (fun map i ->
       let uch_from = ascii_capital_of_index i in
-      let uch_italic =
-        if Uchar.equal uch_from (uchar_of_char 'h') then
-          code_point 0x210E
-        else
-          code_point (0x1D44E + i)
-      in
+      let uch_italic = code_point (0x1D434 + i) in
       let uch_bold_italic = code_point (0x1D468 + i) in
       let uch_roman = code_point (Char.code 'A' + i) in
       let uch_bold_roman = code_point (0x1D400 + i) in
@@ -470,16 +470,26 @@ let default_math_variant_char_map : HorzBox.math_variant_char_map =
         else
           code_point (0x1D538 + i)
       in
+      let uch_sans_serif = code_point (0x1D5A0 + i) in
+      let uch_bold_sans_serif = code_point (0x1D5D4 + i) in
+      let uch_italic_sans_serif = code_point (0x1D608 + i) in
+      let uch_bold_italic_sans_serif = code_point (0x1D63C + i) in
+      let uch_typewriter = code_point (0x1D670 + i) in
       map |> MathVariantCharMap.add uch_from (function
-        | MathItalic       -> (uch_italic, MathOrdinary)
-        | MathBoldItalic   -> (uch_bold_italic, MathOrdinary)
-        | MathRoman        -> (uch_roman, MathOrdinary)
-        | MathBoldRoman    -> (uch_bold_roman, MathOrdinary)
-        | MathScript       -> (uch_script, MathOrdinary)
-        | MathBoldScript   -> (uch_bold_script, MathOrdinary)
-        | MathFraktur      -> (uch_fraktur, MathOrdinary)
-        | MathBoldFraktur  -> (uch_bold_fraktur, MathOrdinary)
-        | MathDoubleStruck -> (uch_double_struck, MathOrdinary)
+        | MathItalic              -> (uch_italic, MathOrdinary)
+        | MathBoldItalic          -> (uch_bold_italic, MathOrdinary)
+        | MathRoman               -> (uch_roman, MathOrdinary)
+        | MathBoldRoman           -> (uch_bold_roman, MathOrdinary)
+        | MathScript              -> (uch_script, MathOrdinary)
+        | MathBoldScript          -> (uch_bold_script, MathOrdinary)
+        | MathFraktur             -> (uch_fraktur, MathOrdinary)
+        | MathBoldFraktur         -> (uch_bold_fraktur, MathOrdinary)
+        | MathDoubleStruck        -> (uch_double_struck, MathOrdinary)
+        | MathSansSerif           -> (uch_sans_serif, MathOrdinary)
+        | MathBoldSansSerif       -> (uch_bold_sans_serif, MathOrdinary)
+        | MathItalicSansSerif     -> (uch_italic_sans_serif, MathOrdinary)
+        | MathBoldItalicSansSerif -> (uch_bold_italic_sans_serif, MathOrdinary)
+        | MathTypewriter          -> (uch_typewriter, MathOrdinary)
       )
     ) map
   in
@@ -511,16 +521,26 @@ let default_math_variant_char_map : HorzBox.math_variant_char_map =
       let uch_fraktur = code_point (0x1D51E + i) in
       let uch_bold_fraktur = code_point (0x1D586 + i) in
       let uch_double_struck = code_point (0x1D552 + i) in
+      let uch_sans_serif = code_point (0x1D5BA + i) in
+      let uch_bold_sans_serif = code_point (0x1D5EE + i) in
+      let uch_italic_sans_serif = code_point (0x1D622 + i) in
+      let uch_bold_italic_sans_serif = code_point (0x1D656 + i) in
+      let uch_typewriter = code_point (0x1D68A + i) in
       map |> MathVariantCharMap.add uch_from (function
-        | MathItalic       -> (uch_italic, MathOrdinary)
-        | MathBoldItalic   -> (uch_bold_italic, MathOrdinary)
-        | MathRoman        -> (uch_roman, MathOrdinary)
-        | MathBoldRoman    -> (uch_bold_roman, MathOrdinary)
-        | MathScript       -> (uch_script, MathOrdinary)
-        | MathBoldScript   -> (uch_bold_script, MathOrdinary)
-        | MathFraktur      -> (uch_fraktur, MathOrdinary)
-        | MathBoldFraktur  -> (uch_bold_fraktur, MathOrdinary)
-        | MathDoubleStruck -> (uch_double_struck, MathOrdinary)
+        | MathItalic              -> (uch_italic, MathOrdinary)
+        | MathBoldItalic          -> (uch_bold_italic, MathOrdinary)
+        | MathRoman               -> (uch_roman, MathOrdinary)
+        | MathBoldRoman           -> (uch_bold_roman, MathOrdinary)
+        | MathScript              -> (uch_script, MathOrdinary)
+        | MathBoldScript          -> (uch_bold_script, MathOrdinary)
+        | MathFraktur             -> (uch_fraktur, MathOrdinary)
+        | MathBoldFraktur         -> (uch_bold_fraktur, MathOrdinary)
+        | MathDoubleStruck        -> (uch_double_struck, MathOrdinary)
+        | MathSansSerif           -> (uch_sans_serif, MathOrdinary)
+        | MathBoldSansSerif       -> (uch_bold_sans_serif, MathOrdinary)
+        | MathItalicSansSerif     -> (uch_italic_sans_serif, MathOrdinary)
+        | MathBoldItalicSansSerif -> (uch_bold_italic_sans_serif, MathOrdinary)
+        | MathTypewriter          -> (uch_typewriter, MathOrdinary)
       )
     ) map
   in
@@ -529,25 +549,38 @@ let default_math_variant_char_map : HorzBox.math_variant_char_map =
   let map =
     (range 0 9) |> List.fold_left (fun map i ->
       let uch_from = ascii_digit_of_index i in
-      let uch_italic = uch_from in
-      let uch_bold_italic = code_point (0x1D7CE + i) in
+
       let uch_roman = uch_from in
       let uch_bold_roman = code_point (0x1D7CE + i) in
-      let uch_script = uch_from in
-      let uch_bold_script = code_point (0x1D7CE + i) in
-      let uch_fraktur = uch_from in
-      let uch_bold_fraktur = code_point (0x1D7CE + i) in
       let uch_double_struck = code_point (0x1D7D8 + i) in
+      let uch_sans_serif = code_point (0x1D7E2 + i) in
+      let uch_bold_sans_serif = code_point (0x1D7EC + i) in
+      let uch_typewriter = code_point (0x1D7F6 + i) in
+
+      let uch_italic = uch_from in
+      let uch_bold_italic = uch_bold_roman in
+      let uch_bold_script = uch_bold_roman in
+      let uch_script = uch_from in
+      let uch_fraktur = uch_from in
+      let uch_bold_fraktur = uch_bold_roman in
+      let uch_italic_sans_serif = uch_sans_serif in
+      let uch_bold_italic_sans_serif = uch_bold_sans_serif in
+
       map |> MathVariantCharMap.add uch_from (function
-        | MathItalic       -> (uch_italic, MathOrdinary)
-        | MathBoldItalic   -> (uch_bold_italic, MathOrdinary)
-        | MathRoman        -> (uch_roman, MathOrdinary)
-        | MathBoldRoman    -> (uch_bold_roman, MathOrdinary)
-        | MathScript       -> (uch_script, MathOrdinary)
-        | MathBoldScript   -> (uch_bold_script, MathOrdinary)
-        | MathFraktur      -> (uch_fraktur, MathOrdinary)
-        | MathBoldFraktur  -> (uch_bold_fraktur, MathOrdinary)
-        | MathDoubleStruck -> (uch_double_struck, MathOrdinary)
+        | MathItalic              -> (uch_italic, MathOrdinary)
+        | MathBoldItalic          -> (uch_bold_italic, MathOrdinary)
+        | MathRoman               -> (uch_roman, MathOrdinary)
+        | MathBoldRoman           -> (uch_bold_roman, MathOrdinary)
+        | MathScript              -> (uch_script, MathOrdinary)
+        | MathBoldScript          -> (uch_bold_script, MathOrdinary)
+        | MathFraktur             -> (uch_fraktur, MathOrdinary)
+        | MathBoldFraktur         -> (uch_bold_fraktur, MathOrdinary)
+        | MathDoubleStruck        -> (uch_double_struck, MathOrdinary)
+        | MathSansSerif           -> (uch_sans_serif, MathOrdinary)
+        | MathBoldSansSerif       -> (uch_bold_sans_serif, MathOrdinary)
+        | MathItalicSansSerif     -> (uch_italic_sans_serif, MathOrdinary)
+        | MathBoldItalicSansSerif -> (uch_bold_italic_sans_serif, MathOrdinary)
+        | MathTypewriter          -> (uch_typewriter, MathOrdinary)
       )
     ) map
   in
