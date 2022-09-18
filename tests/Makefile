@@ -26,12 +26,14 @@ all:: $(TARGETS)
 
 all::
 	(cd images; make)
+	(cd text_mode; make)
 
 clean::
 	rm -f *.pdf *.satysfi-aux
 
 clean::
 	(cd images; make clean)
+	(cd text_mode; make clean)
 
 clip.pdf: head.satyh
 first.pdf: head.satyh
