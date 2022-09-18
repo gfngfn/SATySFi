@@ -415,18 +415,6 @@ and math_variant_value_main =
   | MathVariantToCharWithKern of bool * Uchar.t list * math_char_kern_func * math_char_kern_func
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char'>")]
 
-and paren = length -> length -> length -> length -> color -> horz_box list * math_kern_func
-  (* --
-     'paren':
-       the type for adjustable parentheses.
-       An adjustable parenthesis takes as arguments
-       (1-2) the height and the depth of the inner contents,
-       (3)   the axis height,
-       (4)   the font size, and
-       (5)   the color for glyphs,
-       and then returns its inline box representation and the function for kerning.
-     -- *)
-
 and radical = length -> length -> length -> length -> color -> horz_box list
   (* --
      'radical':

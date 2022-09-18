@@ -85,7 +85,7 @@ let tIGR = tIGR_raw
 let tIGRO_raw = tLN @-> tPT @-> tGR
 let tIGRO = tIGRO_raw
 
-let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
+let tPAREN = tLN @-> tLN @-> tCTX @-> tPROD [tIB; tLN @-> tLN]
 
 let tICMD ty = (~! "cmd", HorzCommandType([CommandArgType(LabelMap.empty, ty)]))
 

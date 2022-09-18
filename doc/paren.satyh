@@ -3,7 +3,10 @@
 
 module LocalParen = struct
 
-  val record-paren-left hgt dpt hgtaxis fontsize color =
+  val record-paren-left hgt dpt ctx =
+    let fontsize = get-font-size ctx in
+    let hgtaxis = fontsize *' get-math-axis-height-ratio ctx in
+    let color = get-text-color ctx in
     let halflen = Math.half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
@@ -49,7 +52,10 @@ module LocalParen = struct
     (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-  val record-paren-right hgt dpt hgtaxis fontsize color =
+  val record-paren-right hgt dpt ctx =
+    let fontsize = get-font-size ctx in
+    let hgtaxis = fontsize *' get-math-axis-height-ratio ctx in
+    let color = get-text-color ctx in
     let halflen = Math.half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.075 +' halflen *' 0.01 in

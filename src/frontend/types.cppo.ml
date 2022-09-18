@@ -1066,15 +1066,15 @@ and math_box =
     }
   | MathBoxParen of {
       context : input_context;
-      left    : HorzBox.paren;
-      right   : HorzBox.paren;
+      left    : paren;
+      right   : paren;
       inner   : math_box list;
     }
   | MathBoxParenWithMiddle of {
       context : input_context;
-      left    : HorzBox.paren;
-      right   : HorzBox.paren;
-      middle  : HorzBox.paren;
+      left    : paren;
+      right   : paren;
+      middle  : paren;
       inner   : (math_box list) list;
     }
   | MathBoxUpperLimit of {
@@ -1087,6 +1087,15 @@ and math_box =
       base    : math_box list;
       lower   : math_box list;
     }
+
+and paren =
+  length -> length -> input_context -> HorzBox.horz_box list * HorzBox.math_kern_func
+    (* The type for adjustable parentheses.
+       An adjustable parenthesis takes as arguments
+       (1) the height of the inner contents,
+       (2) the depth of the inner contents, and
+       (3) the context,
+       and then returns its inline box representation and the function for kerning. *)
 
 and code_value =
   | CdPersistent    of Range.t * EvalVarID.t
