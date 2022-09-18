@@ -990,12 +990,16 @@ and pattern_tree =
 and input_context =
   HorzBox.context_main * context_sub
 
-and text_mode_input_context =
-  TextBackend.context_main * context_sub
-
 and context_sub = {
   math_command      : math_command_func;
   code_text_command : code_text_command_func;
+}
+and text_mode_input_context =
+  TextBackend.context_main * text_mode_context_sub
+
+and text_mode_context_sub = {
+  text_mode_math_command      : math_command_func;
+  text_mode_code_text_command : code_text_command_func;
 }
 
 and math_command_func =

@@ -734,8 +734,8 @@ and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_v
 
 and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_value_element list) : syntactic_value =
 
-  let (tctx, ctxsub) = get_text_mode_context value_tctx in
-  let value_mcmd = make_math_command_func ctxsub.math_command in
+  let (tctx, tctxsub) = get_text_mode_context value_tctx in
+  let value_mcmd = make_math_command_func tctxsub.text_mode_math_command in
   let loc_tctx = ref value_tctx in
 
   (* Merges adjacent `InputHorzValueText`s into single `NomInputHorzText`. *)
@@ -762,7 +762,7 @@ and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_v
 
       | InputHorzValueEmbeddedCodeArea(s) ->
           begin
-            match make_code_text_command_func ctxsub.code_text_command with
+            match make_code_text_command_func tctxsub.text_mode_code_text_command with
             | None ->
                 Alist.extend acc (NomInputHorzText(s))
 

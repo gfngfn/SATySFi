@@ -905,13 +905,13 @@ make_string s
         ~code:{|
 let tctx = TextBackend.get_initial_text_mode_context () in
 let ctcmd = DefaultCodeTextCommand in
-let ctxsub =
+let tctxsub =
   {
-    math_command      = mcmd;
-    code_text_command = ctcmd;
+    text_mode_math_command      = mcmd;
+    text_mode_code_text_command = ctcmd;
   }
 in
-make_text_mode_context (tctx, ctxsub)
+make_text_mode_context (tctx, tctxsub)
 |}
     ; inst "PrimitiveEmbeddedVertBreakable"
         ~name:"embed-block-breakable"
