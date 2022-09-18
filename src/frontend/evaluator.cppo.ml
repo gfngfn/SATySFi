@@ -679,6 +679,7 @@ and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_v
 and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_value_element list) : syntactic_value =
 
   let (tctx, ctxsub) = get_text_mode_context value_tctx in
+  let value_mcmd = make_math_command_func ctxsub.math_command in
   let loc_tctx = ref value_tctx in
 
   (* Merges adjacent `InputHorzValueText`s into single `NomInputHorzText`. *)
@@ -696,11 +697,26 @@ and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_v
             | _                                     -> (Alist.extend acc (NomInputHorzText(s2)))
           end
 
-      | InputHorzValueEmbeddedMath(_ims) ->
-          failwith "TODO: text-mode math"
+      | InputHorzValueEmbeddedMath(imvs) ->
+          let value =
+            reduce_beta ~msg:"InputHorzValueEmbeddedMath" value_mcmd (InputMathValue(imvs))
+          in
+          let hclosure = get_horz_command_closure value in
+          Alist.extend acc (NomInputHorzCommandClosure(hclosure))
 
-      | InputHorzValueEmbeddedCodeArea(_s) ->
-          failwith "TODO: text-mode code text"
+      | InputHorzValueEmbeddedCodeArea(s) ->
+          begin
+            match make_code_text_command_func ctxsub.code_text_command with
+            | None ->
+                Alist.extend acc (NomInputHorzText(s))
+
+            | Some(value_ctcmd) ->
+                let value =
+                  reduce_beta ~msg:"InputHorzValueEmbeddedCodeArea" value_ctcmd (BaseConstant(BCString(s)))
+                in
+                let hclosure = get_horz_command_closure value in
+                Alist.extend acc (NomInputHorzCommandClosure(hclosure))
+          end
 
     ) Alist.empty |> Alist.to_list
   in
