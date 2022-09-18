@@ -43,3 +43,5 @@ val actual_math_font_size : math_context -> length
 val get_math_constants : math_context -> FontFormat.math_constants
 
 val get_font_dictionary : Pdf.t -> Pdf.pdfobject
+
+val find_math_decoder_exn : math_font_abbrev -> FontFormat.math_decoder

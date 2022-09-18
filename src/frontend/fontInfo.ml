@@ -333,14 +333,14 @@ let find_math_decoder_exn mfabbrev =
 
 
 let actual_math_font_size mathctx =
-  MathContext.actual_font_size mathctx find_math_decoder_exn
+  MathContext.font_size mathctx
 
 
 let get_math_string_info mathctx : math_string_info =
   {
-    math_font_abbrev = MathContext.math_font_abbrev mathctx;
-    math_font_size   = actual_math_font_size mathctx;
-    math_color       = MathContext.color mathctx;
+    info_math_font_abbrev = MathContext.math_font_abbrev mathctx;
+    info_math_font_size   = MathContext.font_size mathctx;
+    info_math_color       = MathContext.color mathctx;
   }
 
 

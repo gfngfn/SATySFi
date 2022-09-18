@@ -829,8 +829,7 @@ and append_sub_and_super_scripts (ictx : input_context) ~base:(mbs_base : math_b
 
 
 and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_element list) : math_box list =
-  let loc_ctx = ref (Context(ictx)) in
-  let rec iter (imvs : input_math_value_element list) =
+  let rec iter (ictx : input_context) (imvs : input_math_value_element list) =
     imvs |> List.map (fun imv ->
       let InputMathValueElement{ base; sub; sup } = imv in
       match base with
@@ -844,8 +843,9 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
               };
             ]
           in
-          let mbs_sub_opt = sub |> Option.map iter in
-          let mbs_sup_opt = sup |> Option.map iter in
+          let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+          let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
+          let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
           append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
 
       | InputMathValueEmbedded(mclosure) ->
@@ -857,12 +857,13 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
                 environment    = env;
               } ->
                 let value =
-                  let env = add_to_environment env evid_ctx loc_ctx in
+                  let env = add_to_environment env evid_ctx (ref (Context(ictx))) in
                   interpret_0 env ast
                 in
                 let mbs_base = get_math_boxes value in
-                let mbs_sub_opt = sub |> Option.map iter in
-                let mbs_sup_opt = sup |> Option.map iter in
+                let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+                let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
+                let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
                 append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
 
             | MathCommandClosureWithScripts{
@@ -875,7 +876,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
                 let value =
                   let value_sub = make_option make_math_text sub in
                   let value_sup = make_option make_math_text sup in
-                  let env = add_to_environment env evid_ctx loc_ctx in
+                  let env = add_to_environment env evid_ctx (ref (Context(ictx))) in
                   let env = add_to_environment env evid_sub (ref value_sub) in
                   let env = add_to_environment env evid_sup (ref value_sup) in
                   interpret_0 env ast
@@ -884,11 +885,11 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
           end
 
       | InputMathValueGroup(imvs_group) ->
-          iter imvs_group
+          iter ictx imvs_group
 
     ) |> List.concat
   in
-  iter imvs
+  iter ictx imvs
 
 
 and read_pdf_mode_vert_text (value_ctx : syntactic_value) (ivvs : input_vert_value_element list) : syntactic_value =

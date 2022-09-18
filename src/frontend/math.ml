@@ -680,7 +680,7 @@ let convert_math_char_with_kern (mathctx : math_context) (is_big : bool) (uchlst
   let mathstrinfo = FontInfo.get_math_string_info mathctx in
   let is_in_display = true (* temporary *) in
   let (otxt, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
-  let fontsize = mathstrinfo.math_font_size in
+  let fontsize = mathstrinfo.info_math_font_size in
   let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
   let lma =
@@ -1063,11 +1063,11 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let d_sup = lmS.low_depth in
               let lkS = lmS.low_left_kern in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (MathContext.enter_script mathctx) MathEnd MathEnd lmS in
+              let hblstS = horz_of_low_math (MathContext.enter_script FontInfo.find_math_decoder_exn mathctx) MathEnd MathEnd lmS in
               let h_base = rkB.last_height in
               let (l_base, l_sup) = superscript_correction_heights mathctx h_supbl h_base d_sup in
               let l_kernbase = calculate_kern mathctx rkB.kernTR l_base in
-              let l_kernsup  = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup in
+              let l_kernsup  = calculate_kern (MathContext.enter_script FontInfo.find_math_decoder_exn mathctx) lkS.kernBL l_sup in
               let l_italic   = rkB.italics_correction in
               let kern = l_italic +% l_kernbase +% l_kernsup in
               let hbkern = fixed_empty kern in
@@ -1087,7 +1087,7 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let h_sub = lmS.low_height in
               let lkS = lmS.low_left_kern in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (MathContext.enter_script mathctx) MathEnd MathEnd lmS in
+              let hblstS = horz_of_low_math (MathContext.enter_script FontInfo.find_math_decoder_exn mathctx) MathEnd MathEnd lmS in
               let d_base = rkB.last_depth in
               let (l_base, l_sub) = subscript_correction_heights mathctx d_subbl d_base h_sub in
               let l_kernbase = calculate_kern mathctx rkB.kernBR l_base in
@@ -1120,14 +1120,14 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let lkS = lmS.low_left_kern in
               let h_sub = lmT.low_height in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (MathContext.enter_script mathctx) MathEnd MathEnd lmS in
-              let hblstT = horz_of_low_math (MathContext.enter_script mathctx) MathEnd MathEnd lmT in
+              let hblstS = horz_of_low_math (MathContext.enter_script FontInfo.find_math_decoder_exn mathctx) MathEnd MathEnd lmS in
+              let hblstT = horz_of_low_math (MathContext.enter_script FontInfo.find_math_decoder_exn mathctx) MathEnd MathEnd lmT in
               let h_base = rkB.last_height in
               let d_base = rkB.last_depth in
 
               let (l_base_sup, l_sup) = superscript_correction_heights mathctx h_supbl h_base d_sup in
               let l_kernbase_sup = calculate_kern mathctx rkB.kernTR l_base_sup in
-              let l_kernsup      = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup in
+              let l_kernsup      = calculate_kern (MathContext.enter_script FontInfo.find_math_decoder_exn mathctx) lkS.kernBL l_sup in
               let l_italic       = rkB.italics_correction in
               let kernsup = l_italic +% l_kernbase_sup +% l_kernsup in
               let hbkernsup = fixed_empty kernsup in
@@ -1241,7 +1241,7 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let rkB = lmB.low_right_kern in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
                 (* needs reconsideration *)
-              let hblstU = horz_of_low_math (MathContext.enter_script mathctx) MathEnd MathEnd lmU in
+              let hblstU = horz_of_low_math (MathContext.enter_script FontInfo.find_math_decoder_exn mathctx) MathEnd MathEnd lmU in
               let (w_base, _, _) = LineBreak.get_natural_metrics hblstB in
               let (w_up, _, _) = LineBreak.get_natural_metrics hblstU in
               let hblstsub =
@@ -1265,7 +1265,7 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let rkB = lmB.low_right_kern in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
                 (* needs reconsideration *)
-              let hblstL = horz_of_low_math (MathContext.enter_script mathctx) MathEnd MathEnd lmL in
+              let hblstL = horz_of_low_math (MathContext.enter_script FontInfo.find_math_decoder_exn mathctx) MathEnd MathEnd lmL in
               let (w_base, _, _) = LineBreak.get_natural_metrics hblstB in
               let (w_low, _, _) = LineBreak.get_natural_metrics hblstL in
               let hblstsub =

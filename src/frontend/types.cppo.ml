@@ -1384,38 +1384,21 @@ module MathContext
     val convert_math_variant_char : input_context -> Uchar.t -> HorzBox.math_kind * Uchar.t
     val color : t -> color
     val set_color : color -> t -> t
-    val enter_script : t -> t
+    val enter_script : (HorzBox.math_font_abbrev -> FontFormat.math_decoder) -> t -> t
     val math_char_class : t -> HorzBox.math_char_class
     val set_math_char_class : HorzBox.math_char_class -> t -> t
     val is_in_base_level : t -> bool
-    val actual_font_size : t -> (HorzBox.math_font_abbrev -> FontFormat.math_decoder) -> length
-    val base_font_size : t -> length
+    val font_size : t -> length
     val math_font_abbrev : t -> HorzBox.math_font_abbrev
   end
 = struct
-    type level =
-      | BaseLevel
-      | ScriptLevel
-      | ScriptScriptLevel
 
-    type t =
-      {
-        mc_font_abbrev    : HorzBox.math_font_abbrev;
-        mc_base_font_size : length;
-        mc_level_int      : int;
-        mc_level          : level;
-        context_for_text  : input_context;
-      }
+    type t = input_context
+
 
     let make (ictx : input_context) : t =
-      let (ctx, _) = ictx in
-        {
-          mc_font_abbrev    = ctx.HorzBox.math_font;
-          mc_base_font_size = ctx.HorzBox.font_size;
-          mc_level_int      = 0;
-          mc_level          = BaseLevel;
-          context_for_text  = ictx;
-        }
+      ictx
+
 
     let convert_math_variant_char ((ctx, _) : input_context) (uch : Uchar.t) =
       let open HorzBox in
@@ -1433,58 +1416,67 @@ module MathContext
             | None               -> (MathOrdinary, uch)
           end
 
-    let context_for_text (mctx : t) =
-      mctx.context_for_text
-        (* temporary; maybe should update font size *)
 
-    let context_main (mctx : t) =
-      let (ctx, _) = mctx.context_for_text in
-        ctx
+    let context_for_text (ictx : t) =
+      ictx
 
-    let color (mctx : t) =
-      let (ctx, _) = mctx.context_for_text in
-        ctx.HorzBox.text_color
 
-    let set_color (color : color) (mctx : t) =
-      let (ctx, v) = mctx.context_for_text in
-      let ctxnew = { ctx with HorzBox.text_color = color; } in
-        { mctx with context_for_text = (ctxnew, v); }
+    let context_main ((ctx, _) : t) =
+      ctx
 
-    let math_char_class (mctx : t) =
-      let (ctx, _) = mctx.context_for_text in
-        ctx.HorzBox.math_char_class
 
-    let set_math_char_class mccls (mctx : t) =
-      let (ctx, v) = mctx.context_for_text in
-      let ctxnew = { ctx with HorzBox.math_char_class = mccls } in
-        { mctx with context_for_text = (ctxnew, v) }
+    let color ((ctx, _) : t) =
+      ctx.HorzBox.text_color
 
-    let enter_script mctx =
-      let levnew = mctx.mc_level_int + 1 in
-      match mctx.mc_level with
-      | BaseLevel         -> { mctx with mc_level = ScriptLevel;       mc_level_int = levnew; }
-      | ScriptLevel       -> { mctx with mc_level = ScriptScriptLevel; mc_level_int = levnew; }
-      | ScriptScriptLevel -> { mctx with                               mc_level_int = levnew; }
 
-    let is_in_base_level mctx =
-      match mctx.mc_level with
+    let set_color (color : color) ((ctx, ctxsub) : t) =
+      ({ ctx with HorzBox.text_color = color }, ctxsub)
+
+
+    let math_char_class ((ctx, _) : t) =
+      ctx.HorzBox.math_char_class
+
+
+    let set_math_char_class mccls ((ctx, ctxsub) : t) =
+      ({ ctx with HorzBox.math_char_class = mccls }, ctxsub)
+
+
+    let font_size ((ctx, _) : t)  =
+      ctx.font_size
+
+
+    let enter_script (mdf : HorzBox.math_font_abbrev -> FontFormat.math_decoder) ((ctx, ctxsub) : t) : t =
+      let size = ctx.font_size in
+      let md = mdf ctx.math_font_abbrev in
+      let mc = FontFormat.get_math_constants md in
+      let ctx =
+        match ctx.math_script_level with
+        | BaseLevel ->
+            { ctx with
+              font_size         = size *% mc.FontFormat.script_scale_down;
+              math_script_level = ScriptLevel;
+            }
+
+        | ScriptLevel ->
+            { ctx with
+              font_size         = size *% (mc.FontFormat.script_script_scale_down /. mc.FontFormat.script_scale_down);
+              math_script_level = ScriptScriptLevel;
+            }
+
+        | ScriptScriptLevel ->
+            ctx
+      in
+      (ctx, ctxsub)
+
+
+    let is_in_base_level ((ctx, _) : t) =
+      match ctx.math_script_level with
       | BaseLevel -> true
       | _         -> false
 
-    let actual_font_size mctx (mdf : HorzBox.math_font_abbrev -> FontFormat.math_decoder) =
-      let bfsize = mctx.mc_base_font_size in
-      let md = mdf mctx.mc_font_abbrev in
-      let mc = FontFormat.get_math_constants md in
-      match mctx.mc_level with
-      | BaseLevel         -> bfsize
-      | ScriptLevel       -> bfsize *% mc.FontFormat.script_scale_down
-      | ScriptScriptLevel -> bfsize *% mc.FontFormat.script_script_scale_down
 
-    let base_font_size mctx =
-      mctx.mc_base_font_size
-
-    let math_font_abbrev mctx =
-      mctx.mc_font_abbrev
+    let math_font_abbrev ((ctx, _) : t) =
+      ctx.math_font_abbrev
 
   end
 

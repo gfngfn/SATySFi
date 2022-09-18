@@ -577,7 +577,6 @@ let get_pdf_mode_initial_context wid =
       hyphen_badness         = 100;
       font_scheme            = !default_font_scheme_ref;
       font_size              = pdfpt 12.;
-      math_font              = "lmodern";  (* TEMPORARY *)
       dominant_wide_script   = CharBasis.OtherScript;
       dominant_narrow_script = CharBasis.OtherScript;
       langsys_scheme         = CharBasis.ScriptSchemeMap.empty;
@@ -609,6 +608,8 @@ let get_pdf_mode_initial_context wid =
       space_math_prefix      = (0.125, 0.04, 0.08);
       left_hyphen_min        = 3;
       right_hyphen_min       = 2;
+      math_font_abbrev       = "lmodern";  (* TEMPORARY *)
+      math_script_level      = HorzBox.BaseLevel;
     }
 
 

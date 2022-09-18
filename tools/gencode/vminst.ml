@@ -1373,7 +1373,7 @@ make_font_value fontwr
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with math_font = mfabbrev; }), ctxsub)
+Context(HorzBox.({ ctx with math_font_abbrev = mfabbrev; }), ctxsub)
 |}
     ; inst "PrimitiveSetDominantWideScript"
         ~name:"set-dominant-wide-script"
@@ -1585,9 +1585,9 @@ make_string (HorzBox.extract_string hblst)
         ~is_pdf_mode_primitive:true
         ~code:{|
 let fontsize = ctx.HorzBox.font_size in
-let mfabbrev = ctx.HorzBox.math_font in
+let mfabbrev = ctx.HorzBox.math_font_abbrev in
 let hgt = FontInfo.get_axis_height mfabbrev fontsize in
-  make_length (hgt)
+make_length (hgt)
 |}
     ; inst "BackendFixedEmpty"
         ~name:"inline-skip"
