@@ -652,6 +652,8 @@ and interpret_1_pattern_tree (env : environment) = function
 
 and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_value_element list) : syntactic_value =
 
+  let (_tctx, tctxsub) = get_text_mode_context value_tctx in
+  let value_mscriptsf = make_math_scripts_func tctxsub.text_mode_math_scripts_func in
   let loc_tctx = ref value_tctx in
 
   let rec iter (imvs : input_math_value_element list) =
@@ -659,8 +661,18 @@ and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_v
       let InputMathValueElement{ base; sub; sup } = imv in
       match base with
       | InputMathValueChar(uch) ->
-          InternalText.to_utf8 (InternalText.of_uchar_list [ uch ])
+          let s_base = InternalText.to_utf8 (InternalText.of_uchar_list [ uch ]) in
             (* TODO: define the conversion of chars and use it here *)
+          let s_sub_opt = sub |> Option.map iter in
+          let s_sup_opt = sup |> Option.map iter in
+          let value =
+            reduce_beta_list ~msg:"InputMathValueChar" value_mscriptsf [
+              make_string s_base;
+              make_option make_string s_sub_opt;
+              make_option make_string s_sup_opt;
+            ]
+          in
+          get_string value
 
       | InputMathValueEmbedded(mclosure) ->
           begin
@@ -670,14 +682,23 @@ and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_v
                 body           = ast_body;
                 environment    = env;
               } ->
-                let value =
-                  let env = add_to_environment env evid_ctx loc_tctx in
-                  interpret_0 env ast_body
+                let s_base =
+                  let value =
+                    let env = add_to_environment env evid_ctx loc_tctx in
+                    interpret_0 env ast_body
+                  in
+                  get_string value
                 in
-                let _s_sub_opt = sub |> Option.map iter in
-                let _s_sup_opt = sup |> Option.map iter in
+                let s_sub_opt = sub |> Option.map iter in
+                let s_sup_opt = sup |> Option.map iter in
+                let value =
+                  reduce_beta_list ~msg:"InputMathValueEmbedded" value_mscriptsf [
+                    make_string s_base;
+                    make_option make_string s_sub_opt;
+                    make_option make_string s_sup_opt;
+                  ]
+                in
                 get_string value
-                  (* TODO: use `s_sub_opt` and `s_sup_opt` *)
 
             | MathCommandClosureWithScripts{
                 context_binder = evid_ctx;
@@ -698,7 +719,17 @@ and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_v
           end
 
       | InputMathValueGroup(imvs_group) ->
-          iter imvs_group
+          let s_base = iter imvs_group in
+          let s_sub_opt = sub |> Option.map iter in
+          let s_sup_opt = sup |> Option.map iter in
+          let value =
+            reduce_beta_list ~msg:"InputMathValueGroup" value_mscriptsf [
+              make_string s_base;
+              make_option make_string s_sub_opt;
+              make_option make_string s_sup_opt;
+            ]
+          in
+          get_string value
 
     ) |> String.concat ""
   in
@@ -885,7 +916,11 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
           end
 
       | InputMathValueGroup(imvs_group) ->
-          iter ictx imvs_group
+          let mbs_base = iter ictx imvs_group in
+          let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+          let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
+          let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
+          append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
 
     ) |> List.concat
   in

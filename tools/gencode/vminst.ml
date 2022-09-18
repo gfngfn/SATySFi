@@ -895,11 +895,12 @@ make_string s
 |}
     ; inst "TextGetInitialTextModeContext"
         ~name:"get-initial-text-info"
-        ~type_:Type.(tICMD tMT @-> tTCTX)
+        ~type_:Type.(tICMD tMT @-> (tS @-> tOPT tS @-> tOPT tS @-> tS) @-> tTCTX)
         ~fields:[
         ]
         ~params:[
           param "mcmd" ~type_:"math_command_func";
+          param "mscriptsf" ~type_:"math_scripts_func";
         ]
         ~is_text_mode_primitive:true
         ~code:{|
@@ -909,6 +910,7 @@ let tctxsub =
   {
     text_mode_math_command      = mcmd;
     text_mode_code_text_command = ctcmd;
+    text_mode_math_scripts_func = mscriptsf;
   }
 in
 make_text_mode_context (tctx, tctxsub)

@@ -1000,15 +1000,21 @@ and text_mode_input_context =
 and text_mode_context_sub = {
   text_mode_math_command      : math_command_func;
   text_mode_code_text_command : code_text_command_func;
+  text_mode_math_scripts_func : math_scripts_func;
 }
 
 and math_command_func =
   | MathCommand of syntactic_value
-      (* (input_context -> math list -> HorzBox.horz_box list) *)
+      (* Function values of the form `λ(m : math). λinline(ctx : context). e` *)
 
 and code_text_command_func =
   | DefaultCodeTextCommand
   | CodeTextCommand of syntactic_value
+      (* Function values of the form `λ(s : string). λinline(ctx : context). e` *)
+
+and math_scripts_func =
+  | MathScriptsFunc of syntactic_value
+      (* Function values of the form `λ(base : string). λ(sub : option string). λ(sup : option string). e` *)
 
 and math_box_atom =
   | MathChar of {

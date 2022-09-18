@@ -722,6 +722,14 @@ let make_code_text_command_func (ctcmd : code_text_command_func) : syntactic_val
   | DefaultCodeTextCommand       -> None
 
 
+let get_math_scripts_func (value_mscriptsf : syntactic_value) : math_scripts_func =
+  MathScriptsFunc(value_mscriptsf)
+
+
+let make_math_scripts_func (MathScriptsFunc(value_mscriptsf) : math_scripts_func) : syntactic_value =
+  value_mscriptsf
+
+
 let get_horz_command_closure : syntactic_value -> horz_command_closure = function
   | HorzCommandClosure(hclosure) -> hclosure
   | value                        -> report_bug_value "get_horz_command_closure" value
