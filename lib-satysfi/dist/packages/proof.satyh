@@ -66,11 +66,12 @@ end = struct
             ((fun pt -> [Gr.text-rightward pt ib]), wname)
         end
       in
+      let axis-height = get-font-size ctx *' get-math-axis-height-ratio ctx in
       let bar =
           inline-graphics w (thickness +' gap) gap (fun (x, y) -> (
             let grs =
               fill color (Gr.rectangle (x, y) (x +' w, y +' thickness))
-                :: (glnamef (x +' w, y -' (get-axis-height ctx)))
+                :: (glnamef (x +' w, y -' axis-height))
             in
             unite-graphics grs
           ))
