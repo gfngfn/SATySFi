@@ -1421,18 +1421,19 @@ module MathContext
 
     let convert_math_variant_char ((ctx, _) : input_context) (uch : Uchar.t) =
       let open HorzBox in
-      let mcclsmap = ctx.math_variant_char_map in
-      let mccls = ctx.math_char_class in
-      let mkmap = ctx.math_class_map in
-      match mkmap |> HorzBox.MathClassMap.find_opt uch with
-      | Some(uchaft, mk) ->
-          (mk, uchaft)
+      match ctx.math_class_map |> HorzBox.MathClassMap.find_opt uch with
+      | Some((uch_after, mk)) ->
+          (mk, uch_after)
 
       | None ->
           begin
-            match mcclsmap |> HorzBox.MathVariantCharMap.find_opt (uch, mccls) with
-            | Some((uchaft, mk)) -> (mk, uchaft)
-            | None               -> (MathOrdinary, uch)
+            match ctx.math_variant_char_map |> HorzBox.MathVariantCharMap.find_opt uch with
+            | Some(f) ->
+                let (uch_after, mk) = f ctx.math_char_class in
+                (mk, uch_after)
+
+            | None ->
+                (MathOrdinary, uch)
           end
 
 
