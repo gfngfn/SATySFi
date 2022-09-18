@@ -71,6 +71,8 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
 
 
 and compile_code_input_horz (irihlst : (ir input_horz_element_scheme) list) =
+  failwith "TODO: compile_code_input_horz"
+(*
   irihlst |> List.map (function
   | InputHorzText(s) ->
       InputHorzText(s)
@@ -90,6 +92,7 @@ and compile_code_input_horz (irihlst : (ir input_horz_element_scheme) list) =
       let compiled = compile ir [] in
       InputHorzContent(compiled)
   )
+*)
 
 
 and compile_input_vert_content (ivlst : ir_input_vert_element list) =
@@ -107,6 +110,8 @@ and compile_input_vert_content (ivlst : ir_input_vert_element list) =
 
 
 and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
+  failwith "TODO: compile_code_input_vert"
+(*
   irivlst |> List.map (function
   | InputVertEmbedded(irabs) ->
       let compiled = compile irabs [] in
@@ -116,6 +121,7 @@ and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
       let compiled = compile ir [] in
       InputVertContent(compiled)
   )
+*)
 
 
 and compile_code_pattern_branch (irpatbr : ir_pattern_branch) : (instruction list) ir_pattern_branch_scheme =
@@ -152,6 +158,9 @@ and compile (ir : ir) (cont : instruction list) =
   | IRInputVert(ivlst) ->
       OpClosureInputVert(compile_input_vert_content ivlst) :: cont
     (* -- lazy evaluation; evaluates embedded variables only -- *)
+
+  | IRInputMath(ims) ->
+      failwith "TODO: IRInputMath"
 
   (* -- fundamentals -- *)
 
@@ -254,6 +263,9 @@ and compile (ir : ir) (cont : instruction list) =
 
   | IRCodeInputVert(ivlst) ->
       OpCodeMakeInputVert(compile_code_input_vert ivlst) :: cont
+
+  | IRCodeInputMath(ims) ->
+      failwith "TODO: IRCodeInputMath"
 
   | IRCodePatternMatch(rng, ir, irpatbrs) ->
       compile ir @@ OpCodePatternMatch(rng, List.map compile_code_pattern_branch irpatbrs) :: cont

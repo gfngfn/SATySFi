@@ -5,58 +5,65 @@ module LocalMath = struct
   val synt-color = RGB(0.0, 0.0, 0.75)
   val meta-color = RGB(0.75, 0.0, 0.75)
 
-  val math \synt-color m = ${\Math.math-color!(synt-color){#m}}
+  val math ctx \synt-color m =
+    read-math ctx ${\Math.math-color!(synt-color){#m}}
 
-  val math \token s = ${\synt-color{\Math.text!{#s;}}}
+  val math ctx \token s =
+    read-math ctx ${\synt-color{\Math.text!{#s;}}}
 
-  val math \patp = math-color meta-color ${p}
-  val math \varx = math-color meta-color ${x}
-  val math \cstc = math-color meta-color ${c}
-  val math \constrC = math-color meta-color ${C}
-  val math \patsP = math-color meta-color ${P}
-  val math \valv = math-color meta-color ${v}
-  val math \expre = math-color meta-color ${e}
-  val math \bt = math-color meta-color ${bt}
-  val math \it = math-color meta-color ${it}
+  val math-color ctx color m =
+    read-math (ctx |> set-text-color color) m
 
-  val math \valunit = math-color synt-color ${\Math.text!{()}}
-  val math \valtrue = math-color synt-color ${\token!{true}}
-  val math \valfalse = math-color synt-color ${\token!{false}}
+  val math ctx \patp = math-color ctx meta-color ${p}
+  val math ctx \varx = math-color ctx meta-color ${x}
+  val math ctx \cstc = math-color ctx meta-color ${c}
+  val math ctx \constrC = math-color ctx meta-color ${C}
+  val math ctx \patsP = math-color ctx meta-color ${P}
+  val math ctx \valv = math-color ctx meta-color ${v}
+  val math ctx \expre = math-color ctx meta-color ${e}
+  val math ctx \bt = math-color ctx meta-color ${bt}
+  val math ctx \it = math-color ctx meta-color ${it}
 
-  val math \valit m =
-    ${\Math.text!{\{}#m\Math.text!{\}}}
+  val math ctx \valunit = math-color ctx synt-color ${\Math.text!{()}}
+  val math ctx \valtrue = math-color ctx synt-color ${\token!{true}}
+  val math ctx \valfalse = math-color ctx synt-color ${\token!{false}}
 
-  val math \valbt m =
-    ${\Math.angle-bracket{#m}}
+  val math ctx \valit m =
+    read-math ctx ${\Math.text!{\{}#m\Math.text!{\}}}
 
-  val math \wildcard = ${\synt-color{\_}}
+  val math ctx \valbt m =
+    read-math ctx ${\Math.angle-bracket{#m}}
 
-  val math \patas p x =
-    ${#p \token!{\ as\ } #x}
+  val math ctx \wildcard =
+    read-math ctx ${\synt-color{\_}}
 
-  val math \constrapp m1 m2 = ${#m1 \Math.math-skip!(4pt) #m2}
+  val math ctx \patas p x =
+    read-math ctx ${#p \token!{\ as\ } #x}
 
-  val math \tuple mlst =
+  val math ctx \constrapp m1 m2 =
+    read-math ctx ${#m1 \Math.math-skip!(4pt) #m2}
+
+  val math ctx \tuple mlst =
     let inner = Math.join ${,} mlst in
-      math-color synt-color ${\Math.paren{\Math.math-skip!(2pt)#inner\Math.math-skip!(1pt)}}
+    math-color ctx synt-color ${\Math.paren{\Math.math-skip!(2pt)#inner\Math.math-skip!(1pt)}}
 
-  val math \exprfunc p =
-    ${\token!{function\ } #p}
+  val math ctx \exprfunc p =
+    read-math ctx ${\token!{function\ } #p}
 
-  val math \exprabsI x e =
-    ${\token!{${\Math.lambda^{\token!{I}}}}#x.\token!{\ }#e}
+  val math ctx \exprabsI x e =
+    read-math ctx ${\token!{${\Math.lambda^{\token!{I}}}}#x.\token!{\ }#e}
 
-  %val math \exprabsI x e =
+  %val math ctx \exprabsI x e =
   %  ${\synt-color{\lambda^{\mathrm{I}}}#x\token!{.\ }#e}
 
-  val math \exprabsB x e =
-    ${\synt-color{\Math.lambda^{\Math.mathrm{B}}}#x\token!{.\ }#e}
+  val math ctx \exprabsB x e =
+    read-math ctx ${\synt-color{\Math.lambda^{\Math.mathrm{B}}}#x\token!{.\ }#e}
 
-  val math \valB m =
-    ${\synt-color{\Math.angle-bracket{#m}}}
+  val math ctx \valB m =
+    read-math ctx ${\synt-color{\Math.angle-bracket{#m}}}
 
-  val math \BNF nontm mlst =
+  val math ctx \BNF nontm mlst =
     let defs = Math.join ${\|} mlst in
-      ${#nontm \Math.mathrel{: : =} #defs}
+    read-math ctx ${#nontm \Math.mathrel{: : =} #defs}
 
 end

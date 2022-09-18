@@ -1,0 +1,32 @@
+module Head = struct
+
+  val inline tinfo \math m =
+    `\(` ^ (stringify-math tinfo m) ^ `\)`
+
+  val block tinfo +p it =
+    `\indent `# ^ (stringify-inline tinfo it) ^ `\par `#
+
+  val output-scripts base sub-opt sup-opt =
+    match (sub-opt, sup-opt) with
+    | (None, None)           -> base
+    | (Some(sub), None)      -> base ^ `_{` ^ sub ^ `}`
+    | (None, Some(sup))      -> base ^ `^{` ^ sup ^ `}`
+    | (Some(sub), Some(sup)) -> base ^ `_{` ^ sub ^ `}` ^ `^{` ^ sup ^ `}`
+    end
+
+  val document bt =
+    let tinfo = get-initial-text-info (command \math) output-scripts in
+    `\documentclass{article}` ^
+    `\begin{document}` ^ (stringify-block tinfo bt) ^ `\end{document}`
+
+  val math tinfo \judge mG me mty =
+    let f = stringify-math tinfo in
+    (f mG) ^ `\vdash `# ^ (f me) ^ `:` ^ (f mty)
+
+  val math tinfo \Gamma =
+    `\Gamma `#
+
+  val math tinfo \tau =
+    `\tau `#
+
+end

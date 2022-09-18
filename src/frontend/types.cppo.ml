@@ -7,6 +7,12 @@ exception ParseErrorDetail of Range.t * string
 exception IllegalArgumentLength of Range.t * int * int
 
 
+let string_of_uchar (uch : Uchar.t) : string =
+  let buf = Buffer.create 10 in
+  Buffer.add_utf_8_uchar buf uch;
+  Buffer.contents buf
+
+
 type 'a ranged =
   Range.t * 'a
 [@@deriving show]
@@ -90,15 +96,16 @@ type base_type =
   | StringType
   | TextRowType
   | TextColType
+  | TextMathType
   | BoxRowType
   | BoxColType
+  | BoxMathType
   | ContextType
   | PrePathType
   | PathType
   | GraphicsType
   | ImageType
   | DocumentType
-  | MathType
   | RegExpType
   | TextInfoType
   | InputPosType
@@ -143,15 +150,16 @@ let base_type_map : base_type TypeNameMap.t =
     ("string"      , StringType  );
     ("inline-text" , TextRowType );
     ("block-text"  , TextColType );
+    ("math-text"   , TextMathType);
     ("inline-boxes", BoxRowType  );
     ("block-boxes" , BoxColType  );
+    ("math-boxes"  , BoxMathType );
     ("context"     , ContextType );
     ("pre-path"    , PrePathType );
     ("path"        , PathType    );
     ("graphics"    , GraphicsType);
     ("image"       , ImageType   );
     ("document"    , DocumentType);
-    ("math-text"   , MathType    );
     ("regexp"      , RegExpType  );
     ("text-info"   , TextInfoType);
     ("input-position", InputPosType);
@@ -402,14 +410,14 @@ and untyped_input_horz_element =
     [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_input_horz_element_main utihmain)]
 
 and untyped_input_horz_element_main =
-  | UTInputHorzText         of string
+  | UTInputHorzText             of string
       [@printer (fun fmt s -> Format.fprintf fmt "IT:%s" s)]
-  | UTInputHorzEmbedded     of untyped_abstract_tree * untyped_command_argument list
+  | UTInputHorzApplyCommand     of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "IC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
-  | UTInputHorzContent      of untyped_abstract_tree
-  | UTInputHorzEmbeddedMath of untyped_abstract_tree
-  | UTInputHorzEmbeddedCodeText of string
-  | UTInputHorzMacro        of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
+  | UTInputHorzContent          of untyped_abstract_tree
+  | UTInputHorzEmbeddedMath     of untyped_abstract_tree
+  | UTInputHorzEmbeddedCodeArea of string
+  | UTInputHorzMacro            of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
 and untyped_macro_argument =
   | UTLateMacroArg  of untyped_abstract_tree
@@ -419,10 +427,32 @@ and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
   [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_input_vert_element_main utivmain)]
 
 and untyped_input_vert_element_main =
-  | UTInputVertEmbedded of untyped_abstract_tree * untyped_command_argument list
-      [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "BC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
+  | UTInputVertApplyCommand of untyped_abstract_tree * untyped_command_argument list
+      [@printer (fun fmt (utast, lst) ->
+        Format.fprintf fmt "BC:%a %a"
+          pp_untyped_abstract_tree utast
+          (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst
+      )]
   | UTInputVertContent  of untyped_abstract_tree
   | UTInputVertMacro    of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
+
+and untyped_input_math_element =
+  Range.t * untyped_input_math_element_main
+
+and untyped_input_math_element_main =
+  | UTInputMathElement of {
+      base : untyped_input_math_base;
+      sup  : (bool * untyped_input_math_element list) option;
+      sub  : (bool * untyped_input_math_element list) option;
+    }
+
+and untyped_input_math_base =
+  | UTInputMathChar of Uchar.t
+      [@printer (fun ppf uch ->
+        Format.fprintf ppf "(UTInputMathChar \"%s\")" (string_of_uchar uch)
+      )]
+  | UTInputMathApplyCommand of untyped_abstract_tree * untyped_command_argument list
+  | UTInputMathContent      of untyped_abstract_tree
 
 and untyped_abstract_tree =
   Range.t * untyped_abstract_tree_main
@@ -441,16 +471,27 @@ and untyped_abstract_tree_main =
 (* Input texts: *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
-  | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
-  | UTLambdaHorz           of var_name ranged * untyped_abstract_tree
-  | UTLambdaVert           of var_name ranged * untyped_abstract_tree
-  | UTLambdaMath           of untyped_abstract_tree
-(* Horizontal box lists: *)
-  | UTHorz                 of HorzBox.horz_box list
-  | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
-(* Vertical box lists: *)
-  | UTVert                 of HorzBox.vert_box list
-  | UTVertConcat           of untyped_abstract_tree * untyped_abstract_tree
+  | UTInputMath            of untyped_input_math_element list
+(* Command abstractions: *)
+  | UTLambdaHorzCommand of {
+      parameters       : untyped_parameter_unit list;
+      context_variable : var_name ranged;
+      body             : untyped_abstract_tree;
+    }
+  | UTLambdaVertCommand of {
+      parameters       : untyped_parameter_unit list;
+      context_variable : var_name ranged;
+      body             : untyped_abstract_tree;
+    }
+  | UTLambdaMathCommand of {
+      parameters       : untyped_parameter_unit list;
+      context_variable : var_name ranged;
+      script_variables : (var_name ranged * var_name ranged) option;
+      body             : untyped_abstract_tree;
+    }
+(* For lightweight command definitions: *)
+  | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
+  | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
 (* Lists: *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
@@ -465,19 +506,13 @@ and untyped_abstract_tree_main =
   | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTFunction             of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option * untyped_abstract_tree
+  | UTFunction             of untyped_parameter_unit * untyped_abstract_tree
   | UTOpenIn               of module_name ranged * untyped_abstract_tree
-(* Pattern matching: *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
   | UTConstructor          of constructor_name * untyped_abstract_tree
   | UTOverwrite            of var_name ranged * untyped_abstract_tree
 (* Lightweight itemizes: *)
   | UTItemize              of untyped_itemize
-(* Maths: *)
-  | UTMath                 of untyped_math
-(* For lightweight command definitions: *)
-  | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
-  | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
 (* Multi-stage constructs: *)
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree
@@ -510,25 +545,11 @@ and untyped_unkinded_type_argument =
 and untyped_type_argument =
   Range.t * var_name * manual_kind
 
-and untyped_math =
-  Range.t * untyped_math_main
-
-and untyped_math_main =
-  | UTMChars       of Uchar.t list
-      [@printer (fun ppf uchs ->
-        let buf = Buffer.create (4 * List.length uchs) in
-        uchs |> List.iter (Buffer.add_utf_8_uchar buf);
-        let s = Buffer.contents buf in
-        Format.fprintf ppf "(UTMChars \"%s\")" s
-      )]
-  | UTMSuperScript of untyped_math * bool * untyped_math
-  | UTMSubScript   of untyped_math * bool * untyped_math
-  | UTMCommand     of untyped_abstract_tree * untyped_command_argument list
-  | UTMList        of untyped_math list
-  | UTMEmbed       of untyped_abstract_tree
-
 and untyped_command_argument =
   | UTCommandArg of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree
+
+and untyped_parameter_unit =
+  | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
 [@@deriving show { with_path = false; }]
 
 type untyped_source_file =
@@ -539,20 +560,41 @@ type untyped_source_file =
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
-type untyped_parameter_unit =
-  | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
-
 type 'a input_horz_element_scheme =
-  | InputHorzText         of string
-  | InputHorzEmbedded     of 'a
-  | InputHorzContent      of 'a
-  | InputHorzEmbeddedMath of 'a
-  | InputHorzEmbeddedCodeText of string
+  | InputHorzText             of string
+  | InputHorzContent          of 'a
+  | InputHorzEmbeddedMath     of 'a
+  | InputHorzEmbeddedCodeArea of string
+  | InputHorzApplyCommand of {
+      command   : 'a;
+      arguments : ('a LabelMap.t * 'a) list;
+    }
 [@@deriving show { with_path = false; }]
 
 type 'a input_vert_element_scheme =
-  | InputVertEmbedded of 'a
   | InputVertContent  of 'a
+  | InputVertApplyCommand of {
+      command   : 'a;
+      arguments : ('a LabelMap.t * 'a) list;
+    }
+[@@deriving show { with_path = false; }]
+
+type 'a input_math_base_scheme =
+  | InputMathChar         of Uchar.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
+  | InputMathContent      of 'a
+  | InputMathApplyCommand of {
+      command   : 'a;
+      arguments : ('a LabelMap.t * 'a) list;
+    }
+[@@deriving show { with_path = false; }]
+
+type 'a input_math_element_scheme =
+  | InputMathElement of {
+      base : 'a input_math_base_scheme;
+      sub  : (('a input_math_element_scheme) list) option;
+      sup  : (('a input_math_element_scheme) list) option;
+    }
 [@@deriving show { with_path = false; }]
 
 type ('a, 'b) path_component_scheme =
@@ -584,7 +626,6 @@ type base_constant =
   | BCVert     of HorzBox.vert_box list
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
-  | BCTextModeContext of TextBackend.text_mode_context
   | BCDocument        of (length * length) * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
   | BCInputPos        of input_position
 [@@deriving show { with_path = false; }]
@@ -635,6 +676,9 @@ and compiled_intermediate_input_vert_element =
   | CompiledImInputVertEmbedded of instruction list
   | CompiledImInputVertContent  of compiled_intermediate_input_vert_element list * vmenv
 
+and compiled_intermediate_input_math_element =
+  unit (* TODO: define this *)
+
 and ir_input_horz_element =
   | IRInputHorzText         of string
   | IRInputHorzEmbedded     of ir
@@ -646,6 +690,9 @@ and ir_input_vert_element =
   | IRInputVertEmbedded of ir
   | IRInputVertContent  of ir
 
+and ir_input_math_element =
+  unit (* TODO: define this *)
+
 and varloc =
   | GlobalVar of location * EvalVarID.t * int ref
   | LocalVar  of int * int * EvalVarID.t * int ref
@@ -655,6 +702,7 @@ and ir =
   | IRTerminal
   | IRInputHorz             of ir_input_horz_element list
   | IRInputVert             of ir_input_vert_element list
+  | IRInputMath             of ir_input_math_element list
   | IRRecord                of label list * ir list
   | IRAccessField           of ir * label
   | IRUpdateField           of ir * label * ir
@@ -679,6 +727,7 @@ and ir =
   | IRCodeRecord            of label list * ir list
   | IRCodeInputHorz         of (ir input_horz_element_scheme) list
   | IRCodeInputVert         of (ir input_vert_element_scheme) list
+  | IRCodeInputMath         of (ir input_math_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
   | IRCodeLetRecIn          of ir_letrec_binding list * ir
   | IRCodeLetNonRecIn       of ir_pattern_tree * ir * ir
@@ -769,13 +818,9 @@ and instruction =
   | OpSel of instruction list * instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpSel(...)")]
 
-  | OpBackendMathList of int
-      (* !! no-ircode *)
-
   | OpInsertArgs of syntactic_value list
   | OpApplyCodeCombinator of (code_value list -> code_value) * int
   | OpCodeMakeRecord of label list
-  | OpCodeMathList of int
   | OpCodeMakeTuple of int
   | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
   | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
@@ -788,16 +833,55 @@ and instruction =
   | OpConvertSymbolToCode
 #include "__insttype.gen.ml"
 
-and intermediate_input_horz_element =
-  | ImInputHorzText         of string
-  | ImInputHorzEmbedded     of abstract_tree
-  | ImInputHorzContent      of intermediate_input_horz_element list * environment
-  | ImInputHorzEmbeddedMath of abstract_tree
-  | ImInputHorzEmbeddedCodeText of string
+and input_horz_value_element =
+  | InputHorzValueText             of string
+  | InputHorzValueCommandClosure   of horz_command_closure
+  | InputHorzValueEmbeddedMath     of input_math_value_element list
+  | InputHorzValueEmbeddedCodeArea of string
 
-and intermediate_input_vert_element =
-  | ImInputVertEmbedded of abstract_tree
-  | ImInputVertContent  of intermediate_input_vert_element list * environment
+and input_vert_value_element =
+  | InputVertValueCommandClosure of vert_command_closure
+
+and input_math_value_element =
+  | InputMathValueElement of {
+      base : input_math_value_base;
+      sub  : (input_math_value_element list) option;
+      sup  : (input_math_value_element list) option;
+    }
+
+and input_math_value_base =
+  | InputMathValueChar     of Uchar.t
+      [@printer (fun fmt uch -> Format.fprintf fmt "ImInputMathChar \"%s\"" (string_of_uchar uch))]
+  | InputMathValueEmbedded of math_command_closure
+  | InputMathValueGroup    of input_math_value_element list
+
+and horz_command_closure =
+  | HorzCommandClosureSimple of {
+      context_binder : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
+
+and vert_command_closure =
+  | VertCommandClosureSimple of {
+      context_binder : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
+
+and math_command_closure =
+  | MathCommandClosureSimple of {
+      context_binder : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
+  | MathCommandClosureWithScripts of {
+      context_binder : EvalVarID.t;
+      sub_binders    : EvalVarID.t;
+      sup_binders    : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
 
 and syntactic_value =
   | Nil  (* -- just for brief use -- *)
@@ -808,30 +892,42 @@ and syntactic_value =
   | RecordValue  of syntactic_value LabelMap.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
   | Location     of StoreID.t
-  | MathValue    of math list
+
   | Context      of input_context
+  | TextModeContext of text_mode_input_context
+
   | CodeValue    of code_value
   | CodeSymbol   of CodeSymbol.t
+  | MathBoxes    of math_box list
 
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | InputHorzClosure of intermediate_input_horz_element list * environment
-  | InputVertClosure of intermediate_input_vert_element list * environment
+  | InputHorzValue   of input_horz_value_element list
+  | InputVertValue   of input_vert_value_element list
+  | InputMathValue   of input_math_value_element list
+
+  | HorzCommandClosure of horz_command_closure
+  | VertCommandClosure of vert_command_closure
+  | MathCommandClosure of math_command_closure
 
 (* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
   | CompiledClosure          of varloc LabelMap.t * int * syntactic_value list * int * instruction list * vmenv
   | CompiledPrimitiveClosure of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
   | CompiledInputHorzClosure of compiled_intermediate_input_horz_element list * vmenv
   | CompiledInputVertClosure of compiled_intermediate_input_vert_element list * vmenv
+  | CompiledInputMathClosure of compiled_intermediate_input_math_element list * vmenv
 
 and abstract_tree =
   | ASTBaseConstant       of base_constant
   | ASTEndOfList
-  | ASTMath               of math list
 (* -- input texts -- *)
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
+  | InputMath             of input_math_element list
+  | LambdaHorz            of EvalVarID.t * abstract_tree
+  | LambdaVert            of EvalVarID.t * abstract_tree
+  | LambdaMath            of EvalVarID.t * (EvalVarID.t * EvalVarID.t) option * abstract_tree
 (* -- record value -- *)
   | Record                of abstract_tree LabelMap.t
   | AccessField           of abstract_tree * label
@@ -850,7 +946,6 @@ and abstract_tree =
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Dereference           of abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
-  | BackendMathList       of abstract_tree list
   | PrimitiveTuple        of abstract_tree TupleList.t
 (* -- staging constructs -- *)
   | Next                  of abstract_tree
@@ -865,6 +960,9 @@ and input_horz_element =
 
 and input_vert_element =
   abstract_tree input_vert_element_scheme
+
+and input_math_element =
+  abstract_tree input_math_element_scheme
 
 and 'a path_component =
   ('a, abstract_tree) path_component_scheme
@@ -893,74 +991,113 @@ and input_context =
   HorzBox.context_main * context_sub
 
 and context_sub = {
-  math_command : math_command_func;
+  math_command      : math_command_func;
   code_text_command : code_text_command_func;
-  dummy : unit;
+}
+and text_mode_input_context =
+  TextBackend.context_main * text_mode_context_sub
+
+and text_mode_context_sub = {
+  text_mode_math_command      : math_command_func;
+  text_mode_code_text_command : code_text_command_func;
+  text_mode_math_scripts_func : math_scripts_func;
 }
 
 and math_command_func =
   | MathCommand of syntactic_value
-      (* (input_context -> math list -> HorzBox.horz_box list) *)
+      (* Function values of the form `λ(m : math). λinline(ctx : context). e` *)
 
 and code_text_command_func =
   | DefaultCodeTextCommand
   | CodeTextCommand of syntactic_value
+      (* Function values of the form `λ(s : string). λinline(ctx : context). e` *)
 
-and math_element_main =
-  | MathChar         of bool * Uchar.t list
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
-      (* --
-         (1) whether it is a big operator
-         (2) Unicode code point (currently singular)
-         -- *)
-  | MathCharWithKern of bool * Uchar.t list * HorzBox.math_char_kern_func * HorzBox.math_char_kern_func
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char'>")]
-      (* --
-         (1) whether it is a big operator
-         (2) Unicode code point (currently singular)
-         (3) left-hand-side kerning function
-         (4) right-hand-side kerning function
-         --*)
-  | MathEmbeddedText of (input_context -> HorzBox.horz_box list)
+and math_scripts_func =
+  | MathScriptsFunc of syntactic_value
+      (* Function values of the form `λ(base : string). λ(sub : option string). λ(sup : option string). e` *)
 
-and math_element =
-  | MathElement           of HorzBox.math_kind * math_element_main
-  | MathVariantChar       of Uchar.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char>")]
-  | MathVariantCharDirect of HorzBox.math_kind * bool * HorzBox.math_variant_style
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
-      (* --
-         (1) math class
-         (2) whether it is a big operator
-         (3) Unicode code point for all math_char_class
-         -- *)
+and math_box_atom =
+  | MathChar of {
+      context : input_context;
+      is_big  : bool;
+      chars   : Uchar.t list;
+    } [@printer (fun ppf _ _ _ -> Format.fprintf ppf "<math-char>")]
 
-and math_context_change =
-  | MathChangeColor         of color
-  | MathChangeMathCharClass of HorzBox.math_char_class
+  | MathCharWithKern of {
+      context    : input_context;
+      is_big     : bool;
+      chars      : Uchar.t list;
+      left_kern  : HorzBox.math_char_kern_func;
+      right_kern : HorzBox.math_char_kern_func;
+    } [@printer (fun ppf _ _ _ _ _ -> Format.fprintf ppf "<math-char'>")]
 
-and math =
-  | MathPure              of math_element
-  | MathPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math list) option -> (math list) option -> math list)
-  | MathChangeContext     of math_context_change * math list
-  | MathGroup             of HorzBox.math_kind * HorzBox.math_kind * math list
-  | MathSubscript         of math list * math list
-  | MathSuperscript       of math list * math list
-  | MathFraction          of math list * math list
-  | MathRadicalWithDegree of math list * math list
-  | MathRadical           of HorzBox.radical * math list
-  | MathParen             of HorzBox.paren * HorzBox.paren * math list
-  | MathParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math list) list
-  | MathUpperLimit        of math list * math list
-  | MathLowerLimit        of math list * math list
+  | MathEmbeddedHorz of HorzBox.horz_box list
+
+and math_box =
+  | MathBoxAtom of {
+      kind : HorzBox.math_kind;
+      main : math_box_atom;
+    }
+  | MathBoxSubscript of {
+      context : input_context;
+      base    : math_box list;
+      sub     : math_box list;
+    }
+  | MathBoxSuperscript of {
+      context : input_context;
+      base    : math_box list;
+      sup     : math_box list;
+    }
+  | MathBoxGroup of {
+      left  : HorzBox.math_kind;
+      right : HorzBox.math_kind;
+      inner : math_box list;
+    }
+  | MathBoxFraction of {
+      context     : input_context;
+      numerator   : math_box list;
+      denominator : math_box list;
+    }
+  | MathBoxRadical of {
+      context : input_context;
+      radical : HorzBox.radical;
+      degree  : (math_box list) option;
+      inner   : math_box list;
+    }
+  | MathBoxParen of {
+      context : input_context;
+      left    : HorzBox.paren;
+      right   : HorzBox.paren;
+      inner   : math_box list;
+    }
+  | MathBoxParenWithMiddle of {
+      context : input_context;
+      left    : HorzBox.paren;
+      right   : HorzBox.paren;
+      middle  : HorzBox.paren;
+      inner   : (math_box list) list;
+    }
+  | MathBoxUpperLimit of {
+      context : input_context;
+      base    : math_box list;
+      upper   : math_box list;
+    }
+  | MathBoxLowerLimit of {
+      context : input_context;
+      base    : math_box list;
+      lower   : math_box list;
+    }
 
 and code_value =
   | CdPersistent    of Range.t * EvalVarID.t
   | CdBaseConstant  of base_constant
   | CdEndOfList
-  | CdMath          of math list
   | CdInputHorz     of code_input_horz_element list
   | CdInputVert     of code_input_vert_element list
+  | CdInputMath     of code_input_math_element list
+  | CdLambdaHorz    of CodeSymbol.t * code_value
+  | CdLambdaVert    of CodeSymbol.t * code_value
+  | CdLambdaMath    of CodeSymbol.t * (CodeSymbol.t * CodeSymbol.t) option * code_value
   | CdContentOf     of Range.t * CodeSymbol.t
   | CdLetRecIn      of code_letrec_binding list * code_value
   | CdLetNonRecIn   of code_pattern_tree * code_value * code_value
@@ -976,7 +1113,6 @@ and code_value =
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
   | CdTuple         of code_value TupleList.t
-  | CdMathList      of code_value list
 #include "__codetype.gen.ml"
 
 and code_input_horz_element =
@@ -984,6 +1120,9 @@ and code_input_horz_element =
 
 and code_input_vert_element =
   code_value input_vert_element_scheme
+
+and code_input_math_element =
+  code_value input_math_element_scheme
 
 and 'a code_path_component =
   ('a, code_value) path_component_scheme
@@ -1086,18 +1225,78 @@ let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value
 
 let map_input_horz f ihlst =
   ihlst |> List.map (function
-  | InputHorzText(s)           -> InputHorzText(s)
-  | InputHorzEmbedded(ast)     -> InputHorzEmbedded(f ast)
-  | InputHorzContent(ast)      -> InputHorzContent(f ast)
-  | InputHorzEmbeddedMath(ast) -> InputHorzEmbeddedMath(f ast)
-  | InputHorzEmbeddedCodeText(s) -> InputHorzEmbeddedCodeText(s)
+  | InputHorzText(s) ->
+      InputHorzText(s)
+
+  | InputHorzApplyCommand{
+      command = ast_cmd;
+      arguments;
+    } ->
+      InputHorzApplyCommand{
+        command =
+          f ast_cmd;
+
+        arguments =
+          arguments |> List.map (fun (ast_labmap, ast) ->
+            (ast_labmap |> LabelMap.map f, f ast)
+          );
+      }
+
+  | InputHorzContent(ast)        -> InputHorzContent(f ast)
+  | InputHorzEmbeddedMath(ast)   -> InputHorzEmbeddedMath(f ast)
+  | InputHorzEmbeddedCodeArea(s) -> InputHorzEmbeddedCodeArea(s)
   )
 
 
 let map_input_vert f ivlst =
   ivlst |> List.map (function
-  | InputVertContent(ast)  -> InputVertContent(f ast)
-  | InputVertEmbedded(ast) -> InputVertEmbedded(f ast)
+  | InputVertContent(ast) ->
+      InputVertContent(f ast)
+
+  | InputVertApplyCommand{
+      command = ast_cmd;
+      arguments;
+    } ->
+      InputVertApplyCommand{
+        command =
+          f ast_cmd;
+
+        arguments =
+          arguments |> List.map (fun (ast_labmap, ast) ->
+            (ast_labmap |> LabelMap.map f, f ast)
+          );
+      }
+  )
+
+
+let rec map_input_math f ms =
+  ms |> List.map (fun m ->
+    let InputMathElement{ base; sub; sup } = m in
+    let base =
+      match base with
+      | InputMathChar(uch) ->
+          InputMathChar(uch)
+
+      | InputMathContent(ast) ->
+          InputMathContent(f ast)
+
+      | InputMathApplyCommand{
+          command = ast_cmd;
+          arguments;
+        } ->
+          InputMathApplyCommand{
+            command =
+              f ast_cmd;
+
+            arguments =
+              arguments |> List.map (fun (ast_labmap, ast) ->
+                (ast_labmap |> LabelMap.map f, f ast)
+              )
+          }
+    in
+    let sub = sub |> Option.map (map_input_math f) in
+    let sup = sup |> Option.map (map_input_math f) in
+    InputMathElement{ base; sub; sup }
   )
 
 
@@ -1118,9 +1317,24 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
-    | CdMath(mlst)                         -> ASTMath(mlst)
+    | CdInputMath(ms)                      -> InputMath(ms |> map_input_math aux)
     | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
     | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
+
+    | CdLambdaHorz(symb_ctx, code0) ->
+        LambdaHorz(CodeSymbol.unlift symb_ctx, aux code0)
+
+    | CdLambdaVert(symb_ctx, code0) ->
+        LambdaVert(CodeSymbol.unlift symb_ctx, aux code0)
+
+    | CdLambdaMath(symb_ctx, symb_pair_opt, code0) ->
+        let evid_pair_opt =
+          symb_pair_opt |> Option.map (fun (symb_sub, symb_sup) ->
+            (CodeSymbol.unlift symb_sub, CodeSymbol.unlift symb_sup)
+          )
+        in
+        LambdaMath(CodeSymbol.unlift symb_ctx, evid_pair_opt, aux code0)
+
     | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
     | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map unlift_letrec_binding cdrecbinds, aux code1)
     | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(unlift_pattern cdpat, aux code1, aux code2)
@@ -1136,7 +1350,6 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map unlift_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
     | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
-    | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
 #include "__unliftcode.gen.ml"
   in
   aux code
@@ -1181,38 +1394,21 @@ module MathContext
     val convert_math_variant_char : input_context -> Uchar.t -> HorzBox.math_kind * Uchar.t
     val color : t -> color
     val set_color : color -> t -> t
-    val enter_script : t -> t
+    val enter_script : (HorzBox.math_font_abbrev -> FontFormat.math_decoder) -> t -> t
     val math_char_class : t -> HorzBox.math_char_class
     val set_math_char_class : HorzBox.math_char_class -> t -> t
     val is_in_base_level : t -> bool
-    val actual_font_size : t -> (HorzBox.math_font_abbrev -> FontFormat.math_decoder) -> length
-    val base_font_size : t -> length
+    val font_size : t -> length
     val math_font_abbrev : t -> HorzBox.math_font_abbrev
   end
 = struct
-    type level =
-      | BaseLevel
-      | ScriptLevel
-      | ScriptScriptLevel
 
-    type t =
-      {
-        mc_font_abbrev    : HorzBox.math_font_abbrev;
-        mc_base_font_size : length;
-        mc_level_int      : int;
-        mc_level          : level;
-        context_for_text  : input_context;
-      }
+    type t = input_context
+
 
     let make (ictx : input_context) : t =
-      let (ctx, _) = ictx in
-        {
-          mc_font_abbrev    = ctx.HorzBox.math_font;
-          mc_base_font_size = ctx.HorzBox.font_size;
-          mc_level_int      = 0;
-          mc_level          = BaseLevel;
-          context_for_text  = ictx;
-        }
+      ictx
+
 
     let convert_math_variant_char ((ctx, _) : input_context) (uch : Uchar.t) =
       let open HorzBox in
@@ -1230,58 +1426,67 @@ module MathContext
             | None               -> (MathOrdinary, uch)
           end
 
-    let context_for_text (mctx : t) =
-      mctx.context_for_text
-        (* temporary; maybe should update font size *)
 
-    let context_main (mctx : t) =
-      let (ctx, _) = mctx.context_for_text in
-        ctx
+    let context_for_text (ictx : t) =
+      ictx
 
-    let color (mctx : t) =
-      let (ctx, _) = mctx.context_for_text in
-        ctx.HorzBox.text_color
 
-    let set_color (color : color) (mctx : t) =
-      let (ctx, v) = mctx.context_for_text in
-      let ctxnew = { ctx with HorzBox.text_color = color; } in
-        { mctx with context_for_text = (ctxnew, v); }
+    let context_main ((ctx, _) : t) =
+      ctx
 
-    let math_char_class (mctx : t) =
-      let (ctx, _) = mctx.context_for_text in
-        ctx.HorzBox.math_char_class
 
-    let set_math_char_class mccls (mctx : t) =
-      let (ctx, v) = mctx.context_for_text in
-      let ctxnew = { ctx with HorzBox.math_char_class = mccls } in
-        { mctx with context_for_text = (ctxnew, v) }
+    let color ((ctx, _) : t) =
+      ctx.HorzBox.text_color
 
-    let enter_script mctx =
-      let levnew = mctx.mc_level_int + 1 in
-      match mctx.mc_level with
-      | BaseLevel         -> { mctx with mc_level = ScriptLevel;       mc_level_int = levnew; }
-      | ScriptLevel       -> { mctx with mc_level = ScriptScriptLevel; mc_level_int = levnew; }
-      | ScriptScriptLevel -> { mctx with                               mc_level_int = levnew; }
 
-    let is_in_base_level mctx =
-      match mctx.mc_level with
+    let set_color (color : color) ((ctx, ctxsub) : t) =
+      ({ ctx with HorzBox.text_color = color }, ctxsub)
+
+
+    let math_char_class ((ctx, _) : t) =
+      ctx.HorzBox.math_char_class
+
+
+    let set_math_char_class mccls ((ctx, ctxsub) : t) =
+      ({ ctx with HorzBox.math_char_class = mccls }, ctxsub)
+
+
+    let font_size ((ctx, _) : t)  =
+      ctx.font_size
+
+
+    let enter_script (mdf : HorzBox.math_font_abbrev -> FontFormat.math_decoder) ((ctx, ctxsub) : t) : t =
+      let size = ctx.font_size in
+      let md = mdf ctx.math_font_abbrev in
+      let mc = FontFormat.get_math_constants md in
+      let ctx =
+        match ctx.math_script_level with
+        | BaseLevel ->
+            { ctx with
+              font_size         = size *% mc.FontFormat.script_scale_down;
+              math_script_level = ScriptLevel;
+            }
+
+        | ScriptLevel ->
+            { ctx with
+              font_size         = size *% (mc.FontFormat.script_script_scale_down /. mc.FontFormat.script_scale_down);
+              math_script_level = ScriptScriptLevel;
+            }
+
+        | ScriptScriptLevel ->
+            ctx
+      in
+      (ctx, ctxsub)
+
+
+    let is_in_base_level ((ctx, _) : t) =
+      match ctx.math_script_level with
       | BaseLevel -> true
       | _         -> false
 
-    let actual_font_size mctx (mdf : HorzBox.math_font_abbrev -> FontFormat.math_decoder) =
-      let bfsize = mctx.mc_base_font_size in
-      let md = mdf mctx.mc_font_abbrev in
-      let mc = FontFormat.get_math_constants md in
-      match mctx.mc_level with
-      | BaseLevel         -> bfsize
-      | ScriptLevel       -> bfsize *% mc.FontFormat.script_scale_down
-      | ScriptScriptLevel -> bfsize *% mc.FontFormat.script_script_scale_down
 
-    let base_font_size mctx =
-      mctx.mc_base_font_size
-
-    let math_font_abbrev mctx =
-      mctx.mc_font_abbrev
+    let math_font_abbrev ((ctx, _) : t) =
+      ctx.math_font_abbrev
 
   end
 

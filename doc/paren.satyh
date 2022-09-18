@@ -97,7 +97,10 @@ module LocalParen = struct
     (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-  val math \record-paren =
-    math-paren record-paren-left record-paren-right
+  val record-paren ctx mb =
+    math-paren ctx record-paren-left record-paren-right mb
+
+  val math ctx \record-paren m =
+    record-paren ctx (read-math ctx m)
 
 end

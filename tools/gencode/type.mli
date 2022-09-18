@@ -26,14 +26,15 @@ val tLN         : t
 val tS          : t
 val tIT         : t
 val tBT         : t
+val tMT         : t
 val tIB         : t
 val tBB         : t
+val tMB         : t
 val tCTX        : t
 val tTCTX       : t
 val tPATH       : t
 val tPRP        : t
 val tDOC        : t
-val tMATH       : t
 val tGR         : t
 val tIMG        : t
 val tRE         : t

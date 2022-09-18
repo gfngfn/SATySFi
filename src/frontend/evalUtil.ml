@@ -130,7 +130,7 @@ let get_color (value : syntactic_value) : color =
       DeviceCMYK(fltC, fltM, fltY, fltK)
 
   | _ ->
-      report_bug_value "interpret_color" value
+      report_bug_value "get_color" value
 
 
 let make_color_value color =
@@ -201,6 +201,16 @@ let get_horz value : HorzBox.horz_box list =
   | _                           -> report_bug_value "get_horz" value
 
 
+let get_vert_text : syntactic_value -> input_vert_value_element list = function
+  | InputVertValue(ivvs) -> ivvs
+  | value                -> report_bug_value "get_vert_text" value
+
+
+let get_horz_text : syntactic_value -> input_horz_value_element list = function
+  | InputHorzValue(ihvs) -> ihvs
+  | value                -> report_bug_value "get_horz_text" value
+
+
 let get_point value =
   match value with
   | Tuple([
@@ -265,7 +275,7 @@ let make_language_system_value langsys =
   Constructor(label, BaseConstant(BCUnit))
 
 
-let get_math_char_class (value : syntactic_value) =
+let get_math_char_class (value : syntactic_value) : HorzBox.math_char_class =
   match value with
   | Constructor("MathItalic"      , BaseConstant(BCUnit)) -> HorzBox.MathItalic
   | Constructor("MathBoldItalic"  , BaseConstant(BCUnit)) -> HorzBox.MathBoldItalic
@@ -277,6 +287,19 @@ let get_math_char_class (value : syntactic_value) =
   | Constructor("MathBoldFraktur" , BaseConstant(BCUnit)) -> HorzBox.MathBoldFraktur
   | Constructor("MathDoubleStruck", BaseConstant(BCUnit)) -> HorzBox.MathDoubleStruck
   | _                                                     -> report_bug_value "get_math_char_class" value
+
+
+let make_math_char_class (mccls : HorzBox.math_char_class) : syntactic_value =
+  match mccls with
+  | HorzBox.MathItalic       -> Constructor("MathItalic"      , BaseConstant(BCUnit))
+  | HorzBox.MathBoldItalic   -> Constructor("MathBoldItalic"  , BaseConstant(BCUnit))
+  | HorzBox.MathRoman        -> Constructor("MathRoman"       , BaseConstant(BCUnit))
+  | HorzBox.MathBoldRoman    -> Constructor("MathBoldRoman"   , BaseConstant(BCUnit))
+  | HorzBox.MathScript       -> Constructor("MathScript"      , BaseConstant(BCUnit))
+  | HorzBox.MathBoldScript   -> Constructor("MathBoldScript"  , BaseConstant(BCUnit))
+  | HorzBox.MathFraktur      -> Constructor("MathFraktur"     , BaseConstant(BCUnit))
+  | HorzBox.MathBoldFraktur  -> Constructor("MathBoldFraktur" , BaseConstant(BCUnit))
+  | HorzBox.MathDoubleStruck -> Constructor("MathDoubleStruck", BaseConstant(BCUnit))
 
 
 let get_math_class (value : syntactic_value) =
@@ -345,10 +368,14 @@ let get_context (value : syntactic_value) : input_context =
   | _             -> report_bug_value "get_context" value
 
 
-let get_text_mode_context (value : syntactic_value) : TextBackend.text_mode_context =
+let get_text_mode_context (value : syntactic_value) : text_mode_input_context =
   match value with
-  | BaseConstant(BCTextModeContext(tctx)) -> tctx
-  | _                                     -> report_bug_value "get_text_mode_context" value
+  | TextModeContext(tictx) -> tictx
+  | _                      -> report_bug_value "get_text_mode_context" value
+
+
+let make_text_mode_context (tictx : text_mode_input_context) : syntactic_value =
+  TextModeContext(tictx)
 
 
 let get_length (value : syntactic_value) : length =
@@ -361,10 +388,17 @@ let get_page_size (value : syntactic_value) : length * length =
   get_pair get_length get_length value
 
 
-let get_math value : math list =
-    match value with
-    | MathValue(mlst) -> mlst
-    | _               -> report_bug_value "get_math" value
+
+let get_math_text ~msg (value : syntactic_value) : input_math_value_element list =
+  match value with
+  | InputMathValue(imvs) -> imvs
+  | _                    -> report_bug_value (Printf.sprintf "get_math_text (%s)" msg) value
+
+
+let get_math_boxes (value : syntactic_value) : math_box list =
+  match value with
+  | MathBoxes(mbs) -> mbs
+  | _              -> report_bug_value "get_math_boxes" value
 
 
 let get_bool value : bool =
@@ -619,8 +653,12 @@ let make_paren reducef valueparenf : HorzBox.paren =
   )
 
 
-let make_math (mlst : math list) : syntactic_value =
-  MathValue(mlst)
+let make_math_text (imvs : input_math_value_element list) : syntactic_value =
+  InputMathValue(imvs)
+
+
+let make_math_boxes (mbs : math_box list) : syntactic_value =
+  MathBoxes(mbs)
 
 
 let make_option (type a) (makef : a -> syntactic_value) (opt : a option) : syntactic_value =
@@ -629,13 +667,15 @@ let make_option (type a) (makef : a -> syntactic_value) (opt : a option) : synta
   | Some(x) -> let value = makef x in Constructor("Some", value)
 
 
+(*
 let make_pull_in_scripts reducef valuef =
   (fun mopt1 mopt2 ->
-     let value1 = make_option make_math mopt1 in
-     let value2 = make_option make_math mopt2 in
+     let value1 = make_option make_math_text mopt1 in
+     let value2 = make_option make_math_text mopt2 in
      let valueret = reducef valuef [value1; value2] in
-     get_math valueret
+     get_math_boxes valueret
   )
+*)
 
 
 let make_math_char_kern_func reducef valuekernf : HorzBox.math_char_kern_func =
@@ -664,16 +704,45 @@ let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
   )
 
 
-let get_math_command_func _ valuemcmd =
-  MathCommand(valuemcmd)
+let get_math_command_func (value_mcmd : syntactic_value) : math_command_func =
+  MathCommand(value_mcmd)
 
 
-let make_math_command_func (MathCommand(valuemcmd)) =
-  valuemcmd
+let make_math_command_func (MathCommand(value_mcmd) : math_command_func) : syntactic_value =
+  value_mcmd
 
 
-let get_code_text_command_func _ valuectcmd =
-  CodeTextCommand(valuectcmd)
+let get_code_text_command_func (value_ctcmd : syntactic_value) : code_text_command_func =
+  CodeTextCommand(value_ctcmd)
+
+
+let make_code_text_command_func (ctcmd : code_text_command_func) : syntactic_value option =
+  match ctcmd with
+  | CodeTextCommand(value_ctcmd) -> Some(value_ctcmd)
+  | DefaultCodeTextCommand       -> None
+
+
+let get_math_scripts_func (value_mscriptsf : syntactic_value) : math_scripts_func =
+  MathScriptsFunc(value_mscriptsf)
+
+
+let make_math_scripts_func (MathScriptsFunc(value_mscriptsf) : math_scripts_func) : syntactic_value =
+  value_mscriptsf
+
+
+let get_horz_command_closure : syntactic_value -> horz_command_closure = function
+  | HorzCommandClosure(hclosure) -> hclosure
+  | value                        -> report_bug_value "get_horz_command_closure" value
+
+
+let get_vert_command_closure : syntactic_value -> vert_command_closure = function
+  | VertCommandClosure(vclosure) -> vclosure
+  | value                        -> report_bug_value "get_vert_command_closure" value
+
+
+let get_math_command_closure : syntactic_value -> math_command_closure = function
+  | MathCommandClosure(mclosure) -> mclosure
+  | value                        -> report_bug_value "get_math_command_closure" value
 
 
 let make_list (type a) (makef : a -> syntactic_value) (xs : a list) : syntactic_value =

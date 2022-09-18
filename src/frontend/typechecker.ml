@@ -223,7 +223,7 @@ let abstraction_list (evids : EvalVarID.t list) (ast : abstract_tree) : abstract
   List.fold_right abstraction evids ast
 
 
-let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (opt_params : (label ranged * var_name ranged) list) : mono_row * EvalVarID.t LabelMap.t * Typeenv.t =
+let add_optionals_to_type_environment ~(cons : label ranged -> mono_type -> 'a -> 'a) ~(nil : 'a) (tyenv : Typeenv.t) (pre : pre) (opt_params : (label ranged * var_name ranged) list) : 'a * EvalVarID.t LabelMap.t * Typeenv.t =
   let qtfbl = pre.quantifiability in
   let lev = pre.level in
   let (tyenv, row, evid_labmap) =
@@ -244,8 +244,8 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) (pre : pre) (opt_param
         in
         tyenv |> Typeenv.add_value varnm ventry
       in
-      (tyenv, RowCons(rlabel, (rng, TypeVariable(Updatable(tvuref))), row), evid_labmap |> LabelMap.add label evid)
-    ) (tyenv, RowEmpty, LabelMap.empty)
+      (tyenv, cons rlabel (rng, TypeVariable(Updatable(tvuref))) row, evid_labmap |> LabelMap.add label evid)
+    ) (tyenv, nil, LabelMap.empty)
   in
   (row, evid_labmap, tyenv)
 
@@ -291,7 +291,6 @@ let rec is_nonexpansive_expression e =
   match e with
   | ASTBaseConstant(_)
   | ASTEndOfList
-  | ASTMath(_)
   | Function(_)
   | ContentOf(_) ->
       true
@@ -819,8 +818,6 @@ let rec typecheck
   | UTStringConstant(sc)  -> (base (BCString(sc))   , (rng, BaseType(StringType)))
   | UTBooleanConstant(bc) -> (base (BCBool(bc))     , (rng, BaseType(BoolType))  )
   | UTUnitConstant        -> (base BCUnit           , (rng, BaseType(UnitType))  )
-  | UTHorz(hblst)         -> (base (BCHorz(hblst))  , (rng, BaseType(BoxRowType)))
-  | UTVert(imvblst)       -> (base (BCVert(imvblst)), (rng, BaseType(BoxColType)))
 
   | UTPositionedString(ipos, s) ->
       begin
@@ -859,6 +856,11 @@ let rec typecheck
   | UTInputVert(utivlst) ->
       let ivlst = typecheck_input_vert rng pre tyenv utivlst in
       (InputVert(ivlst), (rng, BaseType(TextColType)))
+
+  | UTInputMath(utmes) ->
+      let tymath = (rng, BaseType(TextMathType)) in
+      let ms = typecheck_math pre tyenv utmes in
+      (InputMath(ms), tymath)
 
   | UTOpenIn((rng_mod, modnm), utast1) ->
       begin
@@ -978,80 +980,163 @@ let rec typecheck
       let tyres = (rng, DataType(tyargs, tyid)) in
       (NonValueConstructor(constrnm, e1), tyres)
 
-  | UTHorzConcat(utast1, utast2) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      unify ty1 (get_range utast1, BaseType(BoxRowType));
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      unify ty2 (get_range utast2, BaseType(BoxRowType));
-      (HorzConcat(e1, e2), (rng, BaseType(BoxRowType)))
-
-  | UTVertConcat(utast1, utast2) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      unify ty1 (get_range utast1, BaseType(BoxColType));
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      unify ty2 (get_range utast2, BaseType(BoxColType));
-      (VertConcat(e1, e2), (rng, BaseType(BoxColType)))
-
-  | UTConcat(utast1, utast2) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      unify ty1 (get_range utast1, BaseType(TextRowType));
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      unify ty2 (get_range utast2, BaseType(TextRowType));
-      (Concat(e1, e2), (rng, BaseType(TextRowType)))
-
-  | UTLambdaHorz(ident, utast1) ->
-      let (rng_var, varnm_ctx) = ident in
-      let (bstyvar, bstyret) =
+  | UTLambdaHorzCommand{
+      parameters       = param_units;
+      context_variable = ident_ctx;
+      body             = utast_body;
+    } ->
+      let (tyenv, params) = typecheck_abstraction pre tyenv param_units in
+      let (rng_var, varnm_ctx) = ident_ctx in
+      let (bsty_var, bsty_ret) =
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
           (ContextType, BoxRowType)
       in
-      let evid = EvalVarID.fresh ident in
-      let tyenvsub =
-        let ventry =
-          {
-            val_type  = Poly(rng_var, BaseType(bstyvar));
-            val_name  = Some(evid);
-            val_stage = pre.stage;
-          }
+      let evid_ctx = EvalVarID.fresh ident_ctx in
+      let (e_body, ty_body) =
+        let tyenv =
+          let ventry =
+            {
+              val_type  = Poly(rng_var, BaseType(bsty_var));
+              val_name  = Some(evid_ctx);
+              val_stage = pre.stage;
+            }
+          in
+          tyenv |> Typeenv.add_value varnm_ctx ventry
         in
-        tyenv |> Typeenv.add_value varnm_ctx ventry
+        typecheck_iter tyenv utast_body
       in
-      let (e1, ty1) = typecheck_iter tyenvsub utast1 in
-      let (cmdargtylist, tyret) = flatten_type ty1 in
-      unify tyret (Range.dummy "lambda-horz-return", BaseType(bstyret));
-      (abstraction evid e1, (rng, HorzCommandType(cmdargtylist)))
+      unify ty_body (Range.dummy "lambda-horz-return", BaseType(bsty_ret));
+      let e =
+        List.fold_right (fun (evid_labmap, pat, _, _) e ->
+          Function(evid_labmap, PatternBranch(pat, e))
+        ) params (LambdaHorz(evid_ctx, e_body))
+      in
+      let cmdargtys =
+        params |> List.map (fun (_, _, ty_labmap, ty_pat) ->
+          CommandArgType(ty_labmap, ty_pat)
+        )
+      in
+      (e, (rng, HorzCommandType(cmdargtys)))
 
-  | UTLambdaVert(ident, utast1) ->
-      let (rng_var, varnm_ctx) = ident in
-      let (bstyvar, bstyret) =
+  | UTLambdaVertCommand{
+      parameters       = param_units;
+      context_variable = ident_ctx;
+      body             = utast_body;
+    } ->
+      let (tyenv, params) = typecheck_abstraction pre tyenv param_units in
+      let (rng_var, varnm_ctx) = ident_ctx in
+      let (bsty_var, bsty_ret) =
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
           (ContextType, BoxColType)
       in
-      let evid = EvalVarID.fresh ident in
-      let tyenvsub =
+      let evid_ctx = EvalVarID.fresh ident_ctx in
+      let (e_body, ty_body) =
+        let tyenv_sub =
+          let ventry =
+            {
+              val_type  = Poly(rng_var, BaseType(bsty_var));
+              val_name  = Some(evid_ctx);
+              val_stage = pre.stage;
+            }
+          in
+          tyenv |> Typeenv.add_value varnm_ctx ventry
+        in
+        typecheck_iter tyenv_sub utast_body
+      in
+      unify ty_body (Range.dummy "lambda-vert-return", BaseType(bsty_ret));
+      let e =
+        List.fold_right (fun (evid_labmap, pat, _, _) e ->
+          Function(evid_labmap, PatternBranch(pat, e))
+        ) params (LambdaVert(evid_ctx, e_body))
+      in
+      let cmdargtys =
+        params |> List.map (fun (_, _, ty_labmap, ty_pat) ->
+          CommandArgType(ty_labmap, ty_pat)
+        )
+      in
+      (e, (rng, VertCommandType(cmdargtys)))
+
+  | UTLambdaMathCommand{
+      parameters       = param_units;
+      context_variable = ident_ctx;
+      script_variables = ident_pair_opt;
+      body             = utast_body;
+    } ->
+      let (tyenv, params) = typecheck_abstraction pre tyenv param_units in
+      let (rng_ctx_var, varnm_ctx) = ident_ctx in
+      let (bsty_ctx_var, bsty_ret) =
+        if OptionState.is_text_mode () then
+          (TextInfoType, StringType)
+        else
+          (ContextType, BoxMathType)
+      in
+      let evid_ctx = EvalVarID.fresh ident_ctx in
+      let script_params_opt =
+        ident_pair_opt |> Option.map (fun (ident_sub, ident_sup) ->
+          let evid_sub = EvalVarID.fresh ident_sub in
+          let evid_sup = EvalVarID.fresh ident_sup in
+          (ident_sub, evid_sub, ident_sup, evid_sup)
+        )
+      in
+      let tyenv =
         let ventry =
           {
-            val_type  = Poly(rng_var, BaseType(bstyvar));
-            val_name  = Some(evid);
+            val_type  = Poly(rng_ctx_var, BaseType(bsty_ctx_var));
+            val_name  = Some(evid_ctx);
             val_stage = pre.stage;
           }
         in
         tyenv |> Typeenv.add_value varnm_ctx ventry
       in
-      let (e1, ty1) = typecheck_iter tyenvsub utast1 in
-      let (cmdargtylist, tyret) = flatten_type ty1 in
-      unify tyret (Range.dummy "lambda-vert-return", BaseType(bstyret));
-      (abstraction evid e1, (rng, VertCommandType(cmdargtylist)))
+      let (tyenv, evid_pair_opt) =
+        match script_params_opt with
+        | None ->
+            (tyenv, None)
 
-  | UTLambdaMath(utastF) ->
-      let (eF, tyF) = typecheck_iter tyenv utastF in
-      let (cmdargtylist, tyret) = flatten_type tyF in
-      unify tyret (Range.dummy "lambda-math-return", BaseType(MathType));
-      (eF, (rng, MathCommandType(cmdargtylist)))
+        | Some((ident_sub, evid_sub, ident_sup, evid_sup)) ->
+            let (rng_sub_var, varnm_sub) = ident_sub in
+            let (rng_sup_var, varnm_sup) = ident_sup in
+            let pty_script rng =
+              Poly(rng, snd (Primitives.option_type (Range.dummy "sub-or-sup", BaseType(TextMathType))))
+            in
+            let ventry_sub =
+              {
+                val_type  = pty_script rng_sub_var;
+                val_name  = Some(evid_sub);
+                val_stage = pre.stage;
+              }
+            in
+            let ventry_sup =
+              {
+                val_type  = pty_script rng_sup_var;
+                val_name  = Some(evid_sup);
+                val_stage = pre.stage;
+              }
+            in
+            let tyenv =
+              tyenv
+                |> Typeenv.add_value varnm_sub ventry_sub
+                |> Typeenv.add_value varnm_sup ventry_sup
+            in
+            (tyenv, Some((evid_sub, evid_sup)))
+      in
+      let (e_body, ty_body) = typecheck_iter tyenv utast_body in
+      unify ty_body (Range.dummy "lambda-math-return", BaseType(bsty_ret));
+      let e =
+        List.fold_right (fun (evid_labmap, pat, _, _) e ->
+          Function(evid_labmap, PatternBranch(pat, e))
+        ) params (LambdaMath(evid_ctx, evid_pair_opt, e_body))
+      in
+      let cmdargtys =
+        params |> List.map (fun (_, _, ty_labmap, ty_pat) ->
+          CommandArgType(ty_labmap, ty_pat)
+        )
+      in
+      (e, (rng, MathCommandType(cmdargtys)))
 
   | UTApply(opts, utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
@@ -1086,9 +1171,15 @@ let rec typecheck
             raise_error (ApplicationOfNonFunction(rng1, ty1))
       end
 
-  | UTFunction(opt_params, pat, mnty_opt, utast1) ->
+  | UTFunction(UTParameterUnit(opt_params, pat, mnty_opt), utast1) ->
+      let (optrow, evid_labmap, tyenv) =
+        let cons rlabel ty row =
+          (RowCons(rlabel, ty, row))
+        in
+        let nil = RowEmpty in
+        add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
+      in
       let utpatbr = UTPatternBranch(pat, utast1) in
-      let (optrow, evid_labmap, tyenv) = add_optionals_to_type_environment tyenv pre opt_params in
       let (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
       mnty_opt |> Option.map (fun mnty ->
         let typat_annot = decode_manual_type pre tyenv mnty in
@@ -1228,11 +1319,6 @@ let rec typecheck
       unify ty1 (Range.dummy "UTUpdateField", RecordType(row));
       (UpdateField(e1, label, e2), ty1)
 
-  | UTMath(utmath) ->
-      let tymath = (rng, BaseType(MathType)) in
-      let utast = typecheck_math pre tyenv utmath in
-      (utast, tymath)
-
   | UTLexHorz(utastctx, utasth) ->
       let (ectx, tyctx) = typecheck_iter tyenv utastctx in
       let (eh, tyh) = typecheck_iter tyenv utasth in
@@ -1284,107 +1370,113 @@ let rec typecheck
       end
 
 
-and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) (tyenv : Typeenv.t) (utcmdargs : untyped_command_argument list) (cmdargtys : mono_command_argument_type list) : abstract_tree =
-  try
-    List.fold_left2 (fun eacc utcmdarg cmdargty ->
-      let UTCommandArg(labeled_utasts, utast1) = utcmdarg in
-      let utast_labmap =
-        labeled_utasts |> List.fold_left (fun utast_labmap ((rng, label), utast) ->
-          if utast_labmap |> LabelMap.mem label then
-            raise_error (LabelUsedMoreThanOnce(rng, label))
-          else
-            utast_labmap |> LabelMap.add label (utast, rng)
-        ) LabelMap.empty
+and typecheck_abstraction (pre : pre) (tyenv : Typeenv.t) (param_units : untyped_parameter_unit list) : Typeenv.t * (EvalVarID.t LabelMap.t * pattern_tree * mono_type LabelMap.t * mono_type) list =
+  let (tyenv, acc) =
+    param_units |> List.fold_left (fun (tyenv, acc) param_unit ->
+      let UTParameterUnit(opt_params, utpat, mnty_opt) = param_unit in
+      let (ty_labmap, evid_labmap, tyenv) =
+        let cons (_, label) ty ty_labmap =
+          ty_labmap |> LabelMap.add label ty
+        in
+        let nil = LabelMap.empty in
+        add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
       in
-      let CommandArgType(ty_labmap, ty2) = cmdargty in
-      let e_labmap =
-        LabelMap.merge (fun label utast_and_rng_opt ty_opt ->
-          match (utast_and_rng_opt, ty_opt) with
-          | (Some((utast1, _)), Some(ty2)) ->
-              let (e1, ty1) = typecheck pre tyenv utast1 in
-              unify ty1 ty2;
-              Some(e1)
+      let (pat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
+      mnty_opt |> Option.map (fun mnty ->
+        let typat_annot = decode_manual_type pre tyenv mnty in
+        unify typat typat_annot;
+      ) |> ignore;
+      let tyenv = add_pattern_var_mono pre tyenv patvarmap in
+      (tyenv, Alist.extend acc (evid_labmap, pat, ty_labmap, typat))
+    ) (tyenv, Alist.empty)
+  in
+  (tyenv, acc |> Alist.to_list)
 
-          | (None, Some(_)) ->
-              None
 
-          | (Some((_, rng)), None) ->
-              raise_error (UnexpectedOptionalLabel(rng, label, tycmd))
 
-          | (None, None) ->
-              assert false
-        ) utast_labmap ty_labmap
-      in
-      let (e1, ty1) = typecheck pre tyenv utast1 in
-      unify ty1 ty2;
-      Apply(e_labmap, eacc, e1)
-    ) ecmd utcmdargs cmdargtys
-  with
-  | Invalid_argument(_) ->
+and typecheck_command_arguments (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) (tyenv : Typeenv.t) (utcmdargs : untyped_command_argument list) (cmdargtys : mono_command_argument_type list) : (abstract_tree LabelMap.t * abstract_tree) list =
+  let zipped =
+    try List.combine utcmdargs cmdargtys with
+    | Invalid_argument(_) ->
       let arity_expected = List.length cmdargtys in
       let arity_actual = List.length utcmdargs in
       raise_error (InvalidArityOfCommandApplication(rngcmdapp, arity_expected, arity_actual))
-
-
-and typecheck_math (pre : pre) tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
-  let iter = typecheck_math pre tyenv in
-  let check_brace (has_braceS : bool) (utmathS : untyped_math) : unit =
-    match (has_braceS, utmathS) with
-    | (true, _) ->
-        ()
-
-    | (false, (rng, UTMChars(uchs))) ->
-        if List.length uchs >= 2 then
-          raise_error (MultiCharacterMathScriptWithoutBrace(rng))
-        else
-          Logging.warn_math_script_without_brace rng
-
-    | (false, (rng, _)) ->
-        Logging.warn_math_script_without_brace rng
   in
-  let open HorzBox in
-    match utmathmain with
-    | UTMChars(uchs) ->
-        let ms = uchs |> List.map (fun uch -> MathPure(MathVariantChar(uch))) in
-        ASTMath(ms)
+  zipped |> List.map (fun (utcmdarg, cmdargty) ->
+    let UTCommandArg(labeled_utasts, utast1) = utcmdarg in
+    let utast_labmap =
+      labeled_utasts |> List.fold_left (fun utast_labmap ((rng, label), utast) ->
+        if utast_labmap |> LabelMap.mem label then
+          raise_error (LabelUsedMoreThanOnce(rng, label))
+        else
+          utast_labmap |> LabelMap.add label (utast, rng)
+      ) LabelMap.empty
+    in
+    let CommandArgType(ty_labmap, ty2) = cmdargty in
+    let e_labmap =
+      LabelMap.merge (fun label utast_and_rng_opt ty_opt ->
+        match (utast_and_rng_opt, ty_opt) with
+        | (Some((utast1, _)), Some(ty2)) ->
+            let (e1, ty1) = typecheck pre tyenv utast1 in
+            unify ty1 ty2;
+            Some(e1)
 
-    | UTMList(utmathlst) ->
-        let astlst = utmathlst |> List.map iter in
-        BackendMathList(astlst)
+        | (None, Some(_)) ->
+            None
 
-    | UTMSubScript(utmathB, has_braceS, utmathS) ->
-        check_brace has_braceS utmathS;
-        let astB = iter utmathB in
-        let astS = iter utmathS in
-        BackendMathSubscript(astB, astS)
+        | (Some((_, rng)), None) ->
+            raise_error (UnexpectedOptionalLabel(rng, label, tycmd))
 
-    | UTMSuperScript(utmathB, has_braceS, utmathS) ->
-        check_brace has_braceS utmathS;
-        let astB = iter utmathB in
-        let astS = iter utmathS in
-        BackendMathSuperscript(astB, astS)
+        | (None, None) ->
+            assert false
+      ) utast_labmap ty_labmap
+    in
+    let (e1, ty1) = typecheck pre tyenv utast1 in
+    unify ty1 ty2;
+    (e_labmap, e1)
+  )
 
-    | UTMCommand(utastcmd, utcmdarglst) ->
-        let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
-        let (_, tycmdmain) = tycmd in
-        begin
-          match tycmdmain with
-          | MathCommandType(cmdargtylstreq) ->
-              let eapp = typecheck_command_arguments ecmd tycmd rng pre tyenv utcmdarglst cmdargtylstreq in
-              eapp
 
-          | HorzCommandType(_) ->
-              let (rngcmd, _) = utastcmd in
-              raise_error (HorzCommandInMath(rngcmd))
+and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_element list) : input_math_element list =
 
-          | _ ->
-              assert false
-        end
+  let iter (b, utmes) = typecheck_math pre tyenv utmes in
 
-    | UTMEmbed(utast0) ->
-        let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "math-embedded-var", BaseType(MathType));
-        e0
+  utmes |> List.map (fun utme ->
+    let (rng, UTInputMathElement{ base = utbase; sub = utsub_opt; sup = utsup_opt }) = utme in
+    let base =
+      match utbase with
+      | UTInputMathChar(uch) ->
+          InputMathChar(uch)
+
+      | UTInputMathApplyCommand(utastcmd, utcmdarglst) ->
+          let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
+          let (_, tycmdmain) = tycmd in
+          begin
+            match tycmdmain with
+            | MathCommandType(cmdargtylstreq) ->
+                let args = typecheck_command_arguments tycmd rng pre tyenv utcmdarglst cmdargtylstreq in
+                InputMathApplyCommand{
+                  command   = ecmd;
+                  arguments = args;
+                }
+
+            | HorzCommandType(_) ->
+                let (rngcmd, _) = utastcmd in
+                raise_error (HorzCommandInMath(rngcmd))
+
+            | _ ->
+                failwith (Printf.sprintf "unexpected type: %s" (Display.show_mono_type tycmd))
+          end
+
+      | UTInputMathContent(utast0) ->
+          let (e0, ty0) = typecheck pre tyenv utast0 in
+          unify ty0 (Range.dummy "math-embedded-var", BaseType(TextMathType));
+          InputMathContent(e0)
+    in
+    let sub = utsub_opt |> Option.map iter in
+    let sup = utsup_opt |> Option.map iter in
+    InputMathElement{ base; sub; sup }
+  )
 
 
 and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =
@@ -1393,26 +1485,15 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
     | [] ->
         Alist.to_list acc
 
-    | (_, UTInputVertEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
-        let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
-        let (_, tycmdmain) = tycmd in
-        begin
-          match tycmdmain with
-          | VertCommandType(cmdargtylstreq) ->
-              let rngcmdapp =
-                match List.rev utcmdarglst with
-                | []                             -> rngcmd
-                | UTCommandArg(_, (rng, _)) :: _ -> Range.unite rngcmd rng
-              in
-              let evid = EvalVarID.fresh (Range.dummy "ctx-vert", "%ctx-vert") in
-              let ecmdctx = Apply(LabelMap.empty, ecmd, ContentOf(Range.dummy "ctx-vert", evid)) in
-              let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp pre tyenv utcmdarglst cmdargtylstreq in
-              let eabs = abstraction evid eapp in
-              aux (Alist.extend acc (InputVertEmbedded(eabs))) tail
-
-          | _ ->
-              assert false
-        end
+    | (rng_cmdapp, UTInputVertApplyCommand(utast_cmd, utcmdargs)) :: tail ->
+        let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
+        let cmdargtys =
+          match ty_cmd with
+          | (_, VertCommandType(cmdargtys)) -> cmdargtys
+          | _                               -> assert false
+        in
+        let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
+        aux (Alist.extend acc (InputVertApplyCommand{ command = e_cmd; arguments = args })) tail
 
     | (_, UTInputVertContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
@@ -1455,38 +1536,30 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
     | [] ->
         Alist.to_list acc
 
-    | (_, UTInputHorzEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
-        let rngcmdapp =
-          match List.rev utcmdarglst with
-          | []                             -> rngcmd
-          | UTCommandArg(_, (rng, _)) :: _ -> Range.unite rngcmd rng
-        in
-        let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
-        let (_, tycmdmain) = tycmd in
-        begin
-          match tycmdmain with
-          | HorzCommandType(cmdargtylstreq) ->
-              let evid = EvalVarID.fresh (Range.dummy "ctx-horz", "%ctx-horz") in
-              let ecmdctx = Apply(LabelMap.empty, ecmd, ContentOf(Range.dummy "ctx-horz", evid)) in
-              let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp pre tyenv utcmdarglst cmdargtylstreq in
-              let eabs = abstraction evid eapp in
-              aux (Alist.extend acc (InputHorzEmbedded(eabs))) tail
+    | (rng_cmdapp, UTInputHorzApplyCommand(utast_cmd, utcmdargs)) :: tail ->
+        let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
+        let cmdargtys =
+          match ty_cmd with
+          | (_, HorzCommandType(cmdargtys)) ->
+              cmdargtys
 
-          | MathCommandType(_) ->
-              let (rngcmd, _) = utastcmd in
-              raise_error (MathCommandInHorz(rngcmd))
+          | (_, MathCommandType(_)) ->
+              let (rng_cmd, _) = utast_cmd in
+              raise_error (MathCommandInHorz(rng_cmd))
 
           | _ ->
               assert false
-        end
+        in
+        let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
+        aux (Alist.extend acc (InputHorzApplyCommand{ command = e_cmd; arguments = args })) tail
 
-    | (_, UTInputHorzEmbeddedMath(utastmath)) :: tail ->
-        let (emath, tymath) = typecheck pre tyenv utastmath in
-        unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(MathType));
+    | (_, UTInputHorzEmbeddedMath(utast_math)) :: tail ->
+        let (emath, tymath) = typecheck pre tyenv utast_math in
+        unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(TextMathType));
         aux (Alist.extend acc (InputHorzEmbeddedMath(emath))) tail
 
-    | (_, UTInputHorzEmbeddedCodeText(s)) :: tail ->
-        aux (Alist.extend acc (InputHorzEmbeddedCodeText(s))) tail
+    | (_, UTInputHorzEmbeddedCodeArea(s)) :: tail ->
+        aux (Alist.extend acc (InputHorzEmbeddedCodeArea(s))) tail
 
     | (_, UTInputHorzContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in

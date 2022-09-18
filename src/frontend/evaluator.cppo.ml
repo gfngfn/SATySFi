@@ -14,10 +14,14 @@ let report_dynamic_error msg =
 
 
 type nom_input_horz_element =
-  | NomInputHorzText     of string
-  | NomInputHorzEmbedded of abstract_tree
-  | NomInputHorzThunk    of syntactic_value * abstract_tree
-  | NomInputHorzContent  of nom_input_horz_element list * environment
+  | NomInputHorzText           of string
+  | NomInputHorzCommandClosure of horz_command_closure
+
+
+let convert_command_application_to_application (e_cmd : abstract_tree) (args : (abstract_tree LabelMap.t * abstract_tree) list) : abstract_tree =
+  args |> List.fold_left (fun e_acc (e_labmap, e_arg) ->
+    Apply(e_labmap, e_acc, e_arg)
+  ) e_cmd
 
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
@@ -55,7 +59,7 @@ let generate_symbol_for_eval_var_id (evid : EvalVarID.t) (env : environment) : e
   (envnew, symb)
 
 
-let rec reduce_beta ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMap.empty) (value1 : syntactic_value) (value2 : syntactic_value) =
+let rec reduce_beta ~msg ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMap.empty) (value1 : syntactic_value) (value2 : syntactic_value) : syntactic_value =
   match value1 with
   | Closure(evid_labmap, patbr, env1) ->
       let env1 =
@@ -77,81 +81,126 @@ let rec reduce_beta ?optional:(val_labmap : syntactic_value LabelMap.t = LabelMa
       select_pattern (Range.dummy "Apply") env1 value2 [ patbr ]
 
   | _ ->
-      report_bug_value "reduce_beta: not a function" value1
+      report_bug_value (Printf.sprintf "reduce_beta (%s): not a function" msg) value1
 
 
-and reduce_beta_list (value1 : syntactic_value) (value_args : syntactic_value list) : syntactic_value =
-  List.fold_left reduce_beta value1 value_args
+and reduce_beta_list ~msg (value1 : syntactic_value) (value_args : syntactic_value list) : syntactic_value =
+  List.fold_left (reduce_beta ~msg ~optional:LabelMap.empty) value1 value_args
 
 
-and interpret_0_path (env : environment) (pathcomps : (abstract_tree path_component) list) (cycle_opt : (unit path_component) option) =
-  let pathelems =
-    pathcomps |> List.map (function
-      | PathLineTo(ast_pt) ->
-          let pt = get_point (interpret_0 env ast_pt) in
-          LineTo(pt)
-
-      | PathCubicBezierTo(ast_pt1, ast_pt2, ast_pt) ->
-          let pt1 = get_point (interpret_0 env ast_pt1) in
-          let pt2 = get_point (interpret_0 env ast_pt2) in
-          let pt = get_point (interpret_0 env ast_pt) in
-          CubicBezierTo(pt1, pt2, pt)
-    )
-  in
-  let closing_opt =
-    cycle_opt |> Option.map (function
-      | PathLineTo(()) ->
-          LineTo(())
-
-      | PathCubicBezierTo(ast_pt1, ast_pt2, ()) ->
-          let pt1 = get_point (interpret_0 env ast_pt1) in
-          let pt2 = get_point (interpret_0 env ast_pt2) in
-          CubicBezierTo(pt1, pt2, ())
-    )
-  in
-  (pathelems, closing_opt)
-
-
-and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element list) : intermediate_input_horz_element list =
+and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element list) : input_horz_value_element list =
   ihs |> List.map (function
     | InputHorzText(s) ->
-        ImInputHorzText(s)
+        [ InputHorzValueText(s) ]
 
-    | InputHorzEmbedded(ast_abs) ->
-        ImInputHorzEmbedded(ast_abs)
+    | InputHorzApplyCommand{ command = ast_cmd; arguments = args } ->
+        let ast = convert_command_application_to_application ast_cmd args in
+        let value = interpret_0 env ast in
+        let hclosure = get_horz_command_closure value in
+        [ InputHorzValueCommandClosure(hclosure) ]
 
     | InputHorzEmbeddedMath(ast_math) ->
-        ImInputHorzEmbeddedMath(ast_math)
+        let value = interpret_0 env ast_math in
+        let imvs = get_math_text ~msg:"InputHorzEmbeddedMath" value in
+        [ InputHorzValueEmbeddedMath(imvs) ]
 
-    | InputHorzEmbeddedCodeText(s) ->
-        ImInputHorzEmbeddedCodeText(s)
+    | InputHorzEmbeddedCodeArea(s) ->
+        [ InputHorzValueEmbeddedCodeArea(s) ]
 
     | InputHorzContent(ast) ->
         let value = interpret_0 env ast in
-        begin
-          match value with
-          | InputHorzClosure(imihs, env_sub) ->
-              ImInputHorzContent(imihs, env_sub)
+        get_horz_text value
 
-          | _ ->
-              report_bug_reduction "interpret_input_horz_content" ast value
-        end
-  )
+  ) |> List.concat
 
-and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element list) : intermediate_input_vert_element list =
+
+and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element list) : input_vert_value_element list =
   ivs |> List.map (function
-    | InputVertEmbedded(ast_abs) ->
-        ImInputVertEmbedded(ast_abs)
+    | InputVertApplyCommand{ command = ast_cmd; arguments = args } ->
+        let ast = convert_command_application_to_application ast_cmd args in
+        let value = interpret_0 env ast in
+        let vclosure = get_vert_command_closure value in
+        [ InputVertValueCommandClosure(vclosure) ]
 
     | InputVertContent(ast) ->
         let value = interpret_0 env ast in
-        begin
-          match value with
-          | InputVertClosure(imivs, env_sub) ->
-              ImInputVertContent(imivs, env_sub)
+        get_vert_text value
+
+  ) |> List.concat
+
+
+and interpret_0_input_math_content (env : environment) (ims : input_math_element list) : input_math_value_element list =
+  ims |> List.map (fun im ->
+    let InputMathElement{ base = imbase; sub = ims_sub_opt; sup = ims_sup_opt } = im in
+    let imvs_sub_opt = ims_sub_opt |> Option.map (interpret_0_input_math_content env) in
+    let imvs_sup_opt = ims_sup_opt |> Option.map (interpret_0_input_math_content env) in
+    match imbase with
+    | InputMathChar(uch) ->
+        InputMathValueElement{
+          base = InputMathValueChar(uch);
+          sub  = imvs_sub_opt;
+          sup  = imvs_sup_opt;
+        }
+
+    | InputMathApplyCommand{
+        command   = ast_cmd;
+        arguments = args;
+      } ->
+        let ast = convert_command_application_to_application ast_cmd args in
+        let value = interpret_0 env ast in
+        let mclosure = get_math_command_closure value in
+        InputMathValueElement{
+          base = InputMathValueEmbedded(mclosure);
+          sub  = imvs_sub_opt;
+          sup  = imvs_sup_opt;
+        }
+
+    | InputMathContent(ast) ->
+        let value = interpret_0 env ast in
+        let imvs = get_math_text ~msg:"InputMathContent" value in
+        let opt =
+          match imvs with
+          | [ imv0 ] ->
+              let
+                InputMathValueElement{
+                  base = imvbase0;
+                  sub  = imvs0_sub_opt;
+                  sup  = imvs0_sup_opt;
+                } = imv0
+              in
+              let open OptionMonad in
+              begin
+                match (imvs0_sub_opt, imvs_sub_opt) with
+                | (Some(_), Some(_)) -> None
+                | (Some(_), None)    -> Some(imvs0_sub_opt)
+                | (None, _)          -> Some(imvs_sub_opt)
+              end >>= fun imvs_sub_opt ->
+              begin
+                match (imvs0_sup_opt, imvs_sup_opt) with
+                | (Some(_), Some(_)) -> None
+                | (Some(_), None)    -> Some(imvs0_sup_opt)
+                | (None, _)          -> Some(imvs_sup_opt)
+              end >>= fun imvs_sup_opt ->
+              Some(InputMathValueElement{
+                base = imvbase0;
+                sub  = imvs_sub_opt;
+                sup  = imvs_sup_opt;
+              })
 
           | _ ->
-              report_bug_reduction "interpret_input_vert_content" ast value
+              None
+        in
+        begin
+          match opt with
+          | None ->
+              InputMathValueElement{
+                base = InputMathValueGroup(imvs);
+                sub  = imvs_sub_opt;
+                sup  = imvs_sup_opt;
+              }
+
+          | Some(imv) ->
+              imv
         end
   )
 
@@ -167,18 +216,58 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | ASTEndOfList ->
       List([])
 
-  | ASTMath(ms) ->
-      MathValue(ms)
-
   | InputHorz(ihs) ->
-      let imihs = interpret_0_input_horz_content env ihs in
-      InputHorzClosure(imihs, env)
-        (* Lazy evaluation; evaluates embedded variables only *)
+      let ihvs = interpret_0_input_horz_content env ihs in
+      InputHorzValue(ihvs)
 
   | InputVert(ivs) ->
-      let imivs = interpret_0_input_vert_content env ivs in
-      InputVertClosure(imivs, env)
-        (* Lazy evaluation; evaluates embedded variables only *)
+      let ivvs = interpret_0_input_vert_content env ivs in
+      InputVertValue(ivvs)
+
+  | InputMath(ims) ->
+      let imvs = interpret_0_input_math_content env ims in
+      InputMathValue(imvs)
+
+  | LambdaHorz(evid_ctx, ast0) ->
+      let hclosure =
+        HorzCommandClosureSimple{
+          context_binder = evid_ctx;
+          body           = ast0;
+          environment    = env;
+        }
+      in
+      HorzCommandClosure(hclosure)
+
+  | LambdaVert(evid_ctx, ast0) ->
+      let vclosure =
+        VertCommandClosureSimple{
+          context_binder = evid_ctx;
+          body           = ast0;
+          environment    = env;
+        }
+      in
+      VertCommandClosure(vclosure)
+
+  | LambdaMath(evid_ctx, evid_pair_opt, ast0) ->
+      let mclosure =
+        match evid_pair_opt with
+        | None ->
+            MathCommandClosureSimple{
+              context_binder = evid_ctx;
+              body           = ast0;
+              environment    = env;
+            }
+
+        | Some((evid_sub, evid_sup)) ->
+            MathCommandClosureWithScripts{
+              context_binder = evid_ctx;
+              sub_binders    = evid_sub;
+              sup_binders    = evid_sup;
+              body           = ast0;
+              environment    = env;
+            }
+      in
+      MathCommandClosure(mclosure)
 
 (* Fundamentals: *)
 
@@ -208,7 +297,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       let val_labmap = ast_labmap |> LabelMap.map (interpret_0 env) in
       let value1 = interpret_0 env ast1 in
       let value2 = interpret_0 env ast2 in
-      reduce_beta ~optional:val_labmap value1 value2
+      reduce_beta ~msg:"Apply" ~optional:val_labmap value1 value2
 
   | IfThenElse(ast0, ast1, ast2) ->
       let value0 = interpret_0 env ast0 in
@@ -303,10 +392,6 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       let value_cont = interpret_0 env ast_cont in
       Constructor(constrnm, value_cont)
 
-  | BackendMathList(asts) ->
-      let ms = asts |> List.map (fun ast -> get_math (interpret_0 env ast)) |> List.concat in
-      MathValue(ms)
-
   | PrimitiveTuple(asts) ->
       let values = asts |> TupleList.map (interpret_0 env) in
         (* Should be left-to-right *)
@@ -342,9 +427,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | ASTBaseConstant(bc) ->
       CdBaseConstant(bc)
 
-  | ASTMath(ms) ->
-      CdMath(ms)
-
   | ASTEndOfList ->
       CdEndOfList
 
@@ -355,6 +437,35 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | InputVert(ivs) ->
       let cdivs = ivs |> map_input_vert (interpret_1 env) in
       CdInputVert(cdivs)
+
+  | InputMath(ims) ->
+      let cdims = ims |> map_input_math (interpret_1 env) in
+      CdInputMath(cdims)
+
+  | LambdaHorz(evid_ctx, ast0) ->
+      let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
+      let code0 = interpret_1 env ast0 in
+      CdLambdaHorz(symb_ctx, code0)
+
+  | LambdaVert(evid_ctx, ast0) ->
+      let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
+      let code0 = interpret_1 env ast0 in
+      CdLambdaVert(symb_ctx, code0)
+
+  | LambdaMath(evid_ctx, evid_pair_opt, ast0) ->
+      let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
+      let (env, symb_pair_opt) =
+        match evid_pair_opt with
+        | None ->
+            (env, None)
+
+        | Some((evid_sub, evid_sup)) ->
+            let (env, symb_sub) = generate_symbol_for_eval_var_id evid_sub env in
+            let (env, symb_sup) = generate_symbol_for_eval_var_id evid_sup env in
+            (env, Some((symb_sub, symb_sup)))
+      in
+      let code0 = interpret_1 env ast0 in
+      CdLambdaMath(symb_ctx, symb_pair_opt, code0)
 
   | ContentOf(rng, evid) ->
       begin
@@ -457,10 +568,6 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       let code1 = interpret_1 env ast1 in
       CdConstructor(constrnm, code1)
 
-  | BackendMathList(asts) ->
-      let codes = asts |> List.map (interpret_1 env) in
-      CdMathList(codes)
-
   | PrimitiveTuple(asts) ->
       let codes = asts |> TupleList.map (interpret_1 env) in
       CdTuple(codes)
@@ -543,172 +650,377 @@ and interpret_1_pattern_tree (env : environment) = function
       (env, CdPConstructor(ctor, cdpattr))
 
 
-and interpret_text_mode_intermediate_input_vert (env : environment) (value_tctx : syntactic_value) (imivs : intermediate_input_vert_element list) : syntactic_value =
-  let rec interpret_commands (env : environment) (imivs : intermediate_input_vert_element list) =
-    imivs |> List.map (fun imiv ->
-      match imiv with
-      | ImInputVertEmbedded(ast_abs) ->
-          let value_abs = interpret_0 env ast_abs in
-          let value_vert = reduce_beta value_abs value_tctx in
-          get_string value_vert
+and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_value_element list) : syntactic_value =
 
-      | ImInputVertContent(imivs_sub, env_sub) ->
-          interpret_commands env_sub imivs_sub
+  let (_tctx, tctxsub) = get_text_mode_context value_tctx in
+  let value_mscriptsf = make_math_scripts_func tctxsub.text_mode_math_scripts_func in
+  let loc_tctx = ref value_tctx in
+
+  let rec iter (imvs : input_math_value_element list) =
+    imvs |> List.map (fun imv ->
+      let InputMathValueElement{ base; sub; sup } = imv in
+      match base with
+      | InputMathValueChar(uch) ->
+          let s_base = InternalText.to_utf8 (InternalText.of_uchar_list [ uch ]) in
+            (* TODO: define the conversion of chars and use it here *)
+          let s_sub_opt = sub |> Option.map iter in
+          let s_sup_opt = sup |> Option.map iter in
+          let value =
+            reduce_beta_list ~msg:"InputMathValueChar" value_mscriptsf [
+              make_string s_base;
+              make_option make_string s_sub_opt;
+              make_option make_string s_sup_opt;
+            ]
+          in
+          get_string value
+
+      | InputMathValueEmbedded(mclosure) ->
+          begin
+            match mclosure with
+            | MathCommandClosureSimple{
+                context_binder = evid_ctx;
+                body           = ast_body;
+                environment    = env;
+              } ->
+                let s_base =
+                  let value =
+                    let env = add_to_environment env evid_ctx loc_tctx in
+                    interpret_0 env ast_body
+                  in
+                  get_string value
+                in
+                let s_sub_opt = sub |> Option.map iter in
+                let s_sup_opt = sup |> Option.map iter in
+                let value =
+                  reduce_beta_list ~msg:"InputMathValueEmbedded" value_mscriptsf [
+                    make_string s_base;
+                    make_option make_string s_sub_opt;
+                    make_option make_string s_sup_opt;
+                  ]
+                in
+                get_string value
+
+            | MathCommandClosureWithScripts{
+                context_binder = evid_ctx;
+                sub_binders    = evid_sub;
+                sup_binders    = evid_sup;
+                body           = ast;
+                environment    = env;
+              } ->
+                let value =
+                  let value_sub = make_option make_math_text sub in
+                  let value_sup = make_option make_math_text sup in
+                  let env = add_to_environment env evid_ctx loc_tctx in
+                  let env = add_to_environment env evid_sub (ref value_sub) in
+                  let env = add_to_environment env evid_sup (ref value_sup) in
+                  interpret_0 env ast
+                in
+                get_string value
+          end
+
+      | InputMathValueGroup(imvs_group) ->
+          let s_base = iter imvs_group in
+          let s_sub_opt = sub |> Option.map iter in
+          let s_sup_opt = sup |> Option.map iter in
+          let value =
+            reduce_beta_list ~msg:"InputMathValueGroup" value_mscriptsf [
+              make_string s_base;
+              make_option make_string s_sub_opt;
+              make_option make_string s_sup_opt;
+            ]
+          in
+          get_string value
 
     ) |> String.concat ""
   in
-  let s = interpret_commands env imivs in
+  let s = iter imvs in
   make_string s
 
 
-and interpret_text_mode_intermediate_input_horz (env : environment) (value_tctx : syntactic_value) (imihs : intermediate_input_horz_element list) : syntactic_value =
+and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_value_element list) : syntactic_value =
 
-  let tctx = get_text_mode_context value_tctx in
+  let loc_tctx = ref value_tctx in
 
-  let rec normalize (imihs : intermediate_input_horz_element list) =
-    imihs |> List.fold_left (fun acc imih ->
-      match imih with
-      | ImInputHorzEmbedded(ast_abs) ->
-          let nmih = NomInputHorzEmbedded(ast_abs) in
+  let rec interpret_commands (ivvs : input_vert_value_element list) =
+    ivvs |> List.map (function
+    | InputVertValueCommandClosure(vclosure) ->
+        let
+          VertCommandClosureSimple{
+            context_binder = evid_ctx;
+            body           = ast_body;
+            environment    = env;
+          } = vclosure
+        in
+        let value =
+          let env = add_to_environment env evid_ctx loc_tctx in
+          interpret_0 env ast_body
+        in
+        get_string value
+
+    ) |> String.concat ""
+  in
+  let s = interpret_commands ivvs in
+  make_string s
+
+
+and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_value_element list) : syntactic_value =
+
+  let (tctx, tctxsub) = get_text_mode_context value_tctx in
+  let value_mcmd = make_math_command_func tctxsub.text_mode_math_command in
+  let loc_tctx = ref value_tctx in
+
+  (* Merges adjacent `InputHorzValueText`s into single `NomInputHorzText`. *)
+  let rec normalize (ihvs : input_horz_value_element list) =
+    ihvs |> List.fold_left (fun acc ihv ->
+      match ihv with
+      | InputHorzValueCommandClosure(hclosure) ->
+          let nmih = NomInputHorzCommandClosure(hclosure) in
           Alist.extend acc nmih
 
-      | ImInputHorzText(s2) ->
+      | InputHorzValueText(s2) ->
           begin
             match Alist.chop_last acc with
             | Some((accrest, NomInputHorzText(s1))) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
             | _                                     -> (Alist.extend acc (NomInputHorzText(s2)))
           end
 
-      | ImInputHorzEmbeddedMath(_ast_math) ->
-          failwith "TODO: text-mode math; remains to be supported."
+      | InputHorzValueEmbeddedMath(imvs) ->
+          let value =
+            reduce_beta ~msg:"InputHorzValueEmbeddedMath" value_mcmd (InputMathValue(imvs))
+          in
+          let hclosure = get_horz_command_closure value in
+          Alist.extend acc (NomInputHorzCommandClosure(hclosure))
 
-      | ImInputHorzEmbeddedCodeText(_s) ->
-          failwith "TODO: text-mode code text; remains to be supported."
+      | InputHorzValueEmbeddedCodeArea(s) ->
+          begin
+            match make_code_text_command_func tctxsub.text_mode_code_text_command with
+            | None ->
+                Alist.extend acc (NomInputHorzText(s))
 
-      | ImInputHorzContent(imihs_sub, env_sub) ->
-          let nmihs_sub = normalize imihs_sub in
-          let nmih = NomInputHorzContent(nmihs_sub, env_sub) in
-          Alist.extend acc nmih
+            | Some(value_ctcmd) ->
+                let value =
+                  reduce_beta ~msg:"InputHorzValueEmbeddedCodeArea" value_ctcmd (BaseConstant(BCString(s)))
+                in
+                let hclosure = get_horz_command_closure value in
+                Alist.extend acc (NomInputHorzCommandClosure(hclosure))
+          end
 
     ) Alist.empty |> Alist.to_list
   in
 
-  let rec interpret_commands (env : environment) (nmihs : nom_input_horz_element list) : string =
+  let rec interpret_commands (nmihs : nom_input_horz_element list) : string =
     nmihs |> List.map (fun nmih ->
       match nmih with
-      | NomInputHorzEmbedded(ast_abs) ->
-          let value_abs = interpret_0 env ast_abs in
-          let value_ret = reduce_beta value_abs value_tctx in
-          get_string value_ret
-
-      | NomInputHorzThunk(value_cmd, ast_arg) ->
-          let value_arg = interpret_0 env ast_arg in
-          let value_ret = reduce_beta value_cmd value_arg in
-          get_string value_ret
+      | NomInputHorzCommandClosure(hclosure) ->
+          let
+            HorzCommandClosureSimple{
+              context_binder = evid_ctx;
+              body           = ast_body;
+              environment    = env;
+            } = hclosure
+          in
+          let value =
+            let env = add_to_environment env evid_ctx loc_tctx in
+            interpret_0 env ast_body
+          in
+          get_string value
 
       | NomInputHorzText(s) ->
           let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
           let uchs_ret = tctx |> TextBackend.stringify uchs in
           InternalText.to_utf8 (InternalText.of_uchar_list uchs_ret)
 
-      | NomInputHorzContent(nmihs_sub, env_sub) ->
-          interpret_commands env_sub nmihs_sub
-
     ) |> String.concat ""
   in
 
-  let nmihs = normalize imihs in
-  let s = interpret_commands env nmihs in
+  let nmihs = normalize ihvs in
+  let s = interpret_commands nmihs in
   make_string s
 
 
-and interpret_pdf_mode_intermediate_input_vert (env : environment) (value_ctx : syntactic_value) (imivs : intermediate_input_vert_element list) : syntactic_value =
-  let rec interpret_commands (env : environment) (imivs : intermediate_input_vert_element list) =
-    imivs |> List.map (fun imiv ->
-      match imiv with
-      | ImInputVertEmbedded(ast_abs) ->
-          let value_abs = interpret_0 env ast_abs in
-          let value_vert = reduce_beta value_abs value_ctx in
-          get_vert value_vert
+and append_sub_and_super_scripts (ictx : input_context) ~base:(mbs_base : math_box list) ~sub:(mbs_sub_opt : (math_box list) option) ~sup:(mbs_sup_opt : (math_box list) option) : math_box list =
+  match (mbs_sub_opt, mbs_sup_opt) with
+  | (None, None) ->
+      mbs_base
 
-      | ImInputVertContent(imivs_sub, env_sub) ->
-          interpret_commands env_sub imivs_sub
+  | (Some(mbs_sub), None) ->
+      [ MathBoxSubscript{ context = ictx; base = mbs_base; sub = mbs_sub } ]
+
+  | (None, Some(mbs_sup)) ->
+      [ MathBoxSuperscript{ context = ictx; base = mbs_base; sup = mbs_sup } ]
+
+  | (Some(mbs_sub), Some(mbs_sup)) ->
+      [
+        MathBoxSuperscript{
+          context = ictx;
+          base    = [ MathBoxSubscript{ context = ictx; base = mbs_base; sub = mbs_sub } ];
+          sup     = mbs_sup;
+        };
+      ]
+
+
+and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_element list) : math_box list =
+  let rec iter (ictx : input_context) (imvs : input_math_value_element list) =
+    imvs |> List.map (fun imv ->
+      let InputMathValueElement{ base; sub; sup } = imv in
+      match base with
+      | InputMathValueChar(uch) ->
+          let (mk, uch_aft) = MathContext.convert_math_variant_char ictx uch in
+          let mbs_base =
+            [
+              MathBoxAtom{
+                kind = mk;
+                main = MathChar{ context = ictx; is_big = false; chars = [ uch_aft ] };
+              };
+            ]
+          in
+          let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+          let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
+          let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
+          append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
+
+      | InputMathValueEmbedded(mclosure) ->
+          begin
+            match mclosure with
+            | MathCommandClosureSimple{
+                context_binder = evid_ctx;
+                body           = ast;
+                environment    = env;
+              } ->
+                let value =
+                  let env = add_to_environment env evid_ctx (ref (Context(ictx))) in
+                  interpret_0 env ast
+                in
+                let mbs_base = get_math_boxes value in
+                let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+                let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
+                let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
+                append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
+
+            | MathCommandClosureWithScripts{
+                context_binder = evid_ctx;
+                sub_binders    = evid_sub;
+                sup_binders    = evid_sup;
+                body           = ast;
+                environment    = env;
+              } ->
+                let value =
+                  let value_sub = make_option make_math_text sub in
+                  let value_sup = make_option make_math_text sup in
+                  let env = add_to_environment env evid_ctx (ref (Context(ictx))) in
+                  let env = add_to_environment env evid_sub (ref value_sub) in
+                  let env = add_to_environment env evid_sup (ref value_sup) in
+                  interpret_0 env ast
+                in
+                get_math_boxes value
+          end
+
+      | InputMathValueGroup(imvs_group) ->
+          let mbs_base = iter ictx imvs_group in
+          let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+          let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
+          let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
+          append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
 
     ) |> List.concat
   in
-  let imvbs = interpret_commands env imivs in
+  iter ictx imvs
+
+
+and read_pdf_mode_vert_text (value_ctx : syntactic_value) (ivvs : input_vert_value_element list) : syntactic_value =
+
+  let loc_ctx = ref value_ctx in
+
+  let rec interpret_commands (ivvs : input_vert_value_element list) =
+    ivvs |> List.map (function
+    | InputVertValueCommandClosure(vclosure) ->
+        let
+          VertCommandClosureSimple{
+            context_binder = evid_ctx;
+            body           = ast_body;
+            environment    = env;
+          } = vclosure
+        in
+        let value =
+          let env = add_to_environment env evid_ctx loc_ctx in
+          interpret_0 env ast_body
+        in
+        get_vert value
+
+    ) |> List.concat
+  in
+  let imvbs = interpret_commands ivvs in
   make_vert imvbs
 
 
-and interpret_pdf_mode_intermediate_input_horz (env : environment) (value_ctx : syntactic_value) (imihs : intermediate_input_horz_element list) : syntactic_value =
+and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_element list) : syntactic_value =
 
-  let (ctx, ctxsub) = get_context value_ctx in
+  let (ctx, ctxsub) = ictx in
   let value_mcmd = make_math_command_func ctxsub.math_command in
+  let loc_ctx = ref (Context(ictx)) in
 
-  let rec normalize (imihs : intermediate_input_horz_element list) =
+  let rec normalize (imihs : input_horz_value_element list) =
     imihs |> List.fold_left (fun acc imih ->
       match imih with
-      | ImInputHorzEmbedded(astabs) ->
-          let nmih = NomInputHorzEmbedded(astabs) in
-          Alist.extend acc nmih
+      | InputHorzValueCommandClosure(hclosure) ->
+          Alist.extend acc (NomInputHorzCommandClosure(hclosure))
 
-      | ImInputHorzText(s2) ->
+      | InputHorzValueText(s2) ->
           begin
             match Alist.chop_last acc with
             | Some(accrest, NomInputHorzText(s1)) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
             | _                                   -> (Alist.extend acc (NomInputHorzText(s2)))
           end
 
-      | ImInputHorzEmbeddedMath(ast_math) ->
-          let value_mcmdctx = reduce_beta value_mcmd value_ctx in
-          let nmih = NomInputHorzThunk(value_mcmdctx, ast_math) in
-          Alist.extend acc nmih
+      | InputHorzValueEmbeddedMath(imvs) ->
+          let value =
+            reduce_beta ~msg:"InputHorzValueEmbeddedMath" value_mcmd (InputMathValue(imvs))
+          in
+          let hclosure = get_horz_command_closure value in
+          Alist.extend acc (NomInputHorzCommandClosure(hclosure))
 
-      | ImInputHorzEmbeddedCodeText(s) ->
+      | InputHorzValueEmbeddedCodeArea(s) ->
           begin
-            match ctxsub.code_text_command with
-            | DefaultCodeTextCommand ->
-                let nmih = NomInputHorzText(s) in
-                Alist.extend acc nmih
+            match make_code_text_command_func ctxsub.code_text_command with
+            | None ->
+                Alist.extend acc (NomInputHorzText(s))
 
-            | CodeTextCommand(value_ctcmd) ->
-                let value_ctcmdctx = reduce_beta value_ctcmd value_ctx in
-                let nmih = NomInputHorzThunk(value_ctcmdctx, ASTBaseConstant(BCString(s))) in
-                Alist.extend acc nmih
+            | Some(value_ctcmd) ->
+                let value =
+                  reduce_beta ~msg:"InputHorzValueEmbeddedCodeArea" value_ctcmd (BaseConstant(BCString(s)))
+                in
+                let hclosure = get_horz_command_closure value in
+                Alist.extend acc (NomInputHorzCommandClosure(hclosure))
           end
-
-      | ImInputHorzContent(imihs_sub, env_sub) ->
-          let nmihs_sub = normalize imihs_sub in
-          let nmih = NomInputHorzContent(nmihs_sub, env_sub) in
-          Alist.extend acc nmih
 
     ) Alist.empty |> Alist.to_list
   in
 
-  let rec interpret_commands (env : environment) (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
+  let rec interpret_commands (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
     nmihs |> List.map (fun nmih ->
       match nmih with
-      | NomInputHorzEmbedded(ast_abs) ->
-          let value_abs = interpret_0 env ast_abs in
-          let value_horz = reduce_beta value_abs value_ctx in
-          get_horz value_horz
-
-      | NomInputHorzThunk(value_mcmdctx, ast_math) ->
-          let value_math = interpret_0 env ast_math in
-          let value_horz = reduce_beta value_mcmdctx value_math in
-          get_horz value_horz
+      | NomInputHorzCommandClosure(hclosure) ->
+          let
+            HorzCommandClosureSimple{
+              context_binder = evid_ctx;
+              body           = ast_body;
+              environment    = env;
+            } = hclosure
+          in
+          let value =
+            let env = add_to_environment env evid_ctx loc_ctx in
+            interpret_0 env ast_body
+          in
+          get_horz value
 
       | NomInputHorzText(s) ->
           lex_horz_text ctx s
 
-      | NomInputHorzContent(nmihs_sub, env_sub) ->
-          interpret_commands env_sub nmihs_sub
-
     ) |> List.concat
   in
 
-  let nmihs = normalize imihs in
-  let hbs = interpret_commands env nmihs in
+  let nmihs = normalize ihvs in
+  let hbs = interpret_commands nmihs in
   make_horz hbs
 
 
@@ -718,7 +1030,7 @@ and interpret_pdf_mode_intermediate_input_horz (env : environment) (value_ctx : 
 and select_pattern (rng : Range.t) (env : environment) (value_obj : syntactic_value) (patbrs : pattern_branch list) : syntactic_value =
   let rec iter = function
     | [] ->
-        report_dynamic_error ("no matches (" ^ (Range.to_string rng) ^ ")")
+        report_dynamic_error (Format.asprintf "no matches (%s, %a)" (Range.to_string rng) pp_syntactic_value value_obj)
 
     | PatternBranch(pat, ast_to) :: tail ->
         begin

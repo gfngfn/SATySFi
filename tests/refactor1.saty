@@ -19,7 +19,7 @@ let g p q =
 in
 let s = arabic sum ^ `,` ^ arabic (f 0 42) ^ `,` ^ arabic (f 1 42) ^ `,` ^ arabic (g 0 42) ^ `,` ^ arabic (g 1 42) in
 
-let inline ctx \math = embed-math ctx in
+let inline ctx \math m = embed-math ctx (read-math ctx m) in
 let ctx = get-initial-context 400pt (command \math) in
 let paper-size = (210mm, 297mm) in %A4
 let pagecontf _ = (| text-origin = (20pt, 20pt), text-height = 600pt, |) in

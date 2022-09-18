@@ -10,8 +10,8 @@ let open Proof in
 let open Tabular in
 let open StdJa in
 
-let math \overwrite mf ma mb =
-  ${#mf\sqbracket{#ma \mapsto #mb}}
+let math ctx \overwrite mf ma mb =
+  read-math ctx ${#mf\sqbracket{#ma \mapsto #mb}}
 in
 
 document ?(

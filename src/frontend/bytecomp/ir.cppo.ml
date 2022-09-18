@@ -37,6 +37,8 @@ let map_with_env (type a) (type b) (f : frame -> a -> b * frame) (env : frame) (
 
 
 let rec transform_0_input_horz_content (env : frame) (ihlst : input_horz_element list) : ir_input_horz_element list * frame =
+  failwith "TODO: transform_0_input_horz_content"
+(*
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputHorzText(s) ->
@@ -57,9 +59,11 @@ let rec transform_0_input_horz_content (env : frame) (ihlst : input_horz_element
         let (ir, env) = transform_0 env ast in
         (IRInputHorzContent(ir), env)
   )
-
+*)
 
 and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element list) : (ir input_horz_element_scheme) list * frame =
+  failwith "TODO: transform_1_input_horz_content"
+(*
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputHorzText(s) ->
@@ -80,9 +84,12 @@ and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element lis
         let (ir, env) = transform_1 env ast in
         (InputHorzContent(ir), env)
   )
+*)
 
 
 and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
+  failwith "TODO: transform_0_input_vert_content"
+(*
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputVertEmbedded(astabs) ->
@@ -93,9 +100,12 @@ and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element lis
         let (ir, env) = transform_0 env ast in
         (IRInputVertContent(ir), env)
     )
+*)
 
 
 and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element list) : (ir input_vert_element_scheme) list * frame =
+  failwith "TODO: transform_1_input_vert_content"
+(*
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputVertEmbedded(astabs) ->
@@ -106,6 +116,15 @@ and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element lis
         let (ir, env) = transform_1 env ast in
         (InputVertContent(ir), env)
   )
+*)
+
+
+and transform_0_input_math_content (env : frame) (ims : input_math_element list) : ir_input_math_element list * frame =
+  failwith "TODO: transform_0_input_math_content"
+
+
+and transform_1_input_math_content (env : frame) (ims : input_math_element list) : (ir input_math_element_scheme) list * frame =
+  failwith "TODO: transform_1_input_math_content"
 
 
 and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment =
@@ -414,7 +433,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   match ast with
   | ASTBaseConstant(bc) -> code0 env (CdBaseConstant(bc))
   | ASTEndOfList        -> code0 env CdEndOfList
-  | ASTMath(mlst)       -> code0 env (CdMath(mlst))
 
   | InputHorz(ihlst) ->
       let (imihlst, env) = transform_1_input_horz_content env ihlst in
@@ -423,6 +441,19 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | InputVert(ivlst) ->
       let (imivlst, env) = transform_1_input_vert_content env ivlst in
       (IRCodeInputVert(imivlst), env)
+
+  | InputMath(ims) ->
+      let (imims, env) = transform_1_input_math_content env ims in
+      (IRCodeInputMath(imims), env)
+
+  | LambdaHorz(_, _) ->
+      failwith "TODO: transform_1, LambdaHorz"
+
+  | LambdaVert(_, _) ->
+      failwith "TODO: transform_1, LambdaVert"
+
+  | LambdaMath(_, _, _) ->
+      failwith "TODO: transform_1, LambdaMath"
 
   | Record(asc) ->
       let (keyacc, iracc, env) =
@@ -522,9 +553,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
             assert false
       end
 
-  | BackendMathList(astmlst) ->
-      transform_1_primitive env astmlst (OpCodeMathList(List.length astmlst))
-
   | PrimitiveTuple(asts) ->
       let asts = asts |> TupleList.to_list in
       transform_1_primitive env asts (OpCodeMakeTuple(List.length asts))
@@ -553,9 +581,6 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTBaseConstant(bc) ->
       return (IRConstant(BaseConstant(bc)))
 
-  | ASTMath(mlst) ->
-      return (IRConstant(MathValue(mlst)))
-
   | ASTEndOfList ->
       return (IRConstant(List([])))
 
@@ -569,8 +594,18 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       (IRInputVert(imivlst), env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | BackendMathList(astmlst) ->
-      transform_0_primitive env astmlst (OpBackendMathList(List.length astmlst))
+  | InputMath(ims) ->
+      let (imims, env) = transform_0_input_math_content env ims in
+      (IRInputMath(imims), env)
+
+  | LambdaHorz(_, _) ->
+      failwith "TODO: transform_0, LambdaHorz"
+
+  | LambdaVert(_, _) ->
+      failwith "TODO: transform_0, LambdaVert"
+
+  | LambdaMath(_, _, _) ->
+      failwith "TODO: transform_0, LambdaMath"
 
   | PrimitiveTuple(asts) ->
       transform_0_tuple env asts

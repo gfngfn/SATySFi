@@ -140,6 +140,8 @@ and exec_input_vert_content env ivlst =
 
 
 and exec_code_input_horz env irihlst =
+  failwith "TODO: exec_code_input_horz"
+(*
   irihlst |> List.map (function
   | InputHorzText(s) ->
       InputHorzText(s)
@@ -162,9 +164,12 @@ and exec_code_input_horz env irihlst =
       let cv = get_code value in
       InputHorzContent(cv)
   )
+*)
 
 
 and exec_code_input_vert env irivlst =
+  failwith "TODO: exec_code_input_vert"
+(*
   irivlst |> List.map (function
   | InputVertEmbedded(instrs) ->
       let value = exec_value [] env instrs [] in
@@ -176,6 +181,7 @@ and exec_code_input_vert env irivlst =
       let cv = get_code value in
       InputVertContent(cv)
   )
+*)
 
 
 and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
@@ -196,7 +202,7 @@ and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_
 
 
 and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
-  let tctx = get_text_mode_context valuetctx in
+  let (tctx, ctxsub) = get_text_mode_context valuetctx in
     begin
       let rec normalize imihlst =
         imihlst |> List.fold_left (fun acc imih ->
@@ -213,13 +219,13 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
                 end
 
             | CompiledImInputHorzEmbeddedMath(mathcode) ->
-                failwith "Vm_> math; remains to be supported."
+                failwith "TODO: (VM) math; remains to be supported."
 (*
                 let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuetctx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
                   Alist.extend acc nmih
 *)
             | CompiledImInputHorzEmbeddedCodeText(s) ->
-                failwith "Vm_> code text; remains to be supported."
+                failwith "TODO: (VM) code text; remains to be supported."
 
             | CompiledImInputHorzContent(imihlst, envsub) ->
                 let nmihlstsub = normalize imihlst in
@@ -257,6 +263,10 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
     end
 
 
+and exec_pdf_mode_intermediate_input_math (env : vmenv) (ictx : input_context) (imivlst : compiled_intermediate_input_math_element list) : syntactic_value =
+  failwith "TODO: exec_pdf_mode_intermediate_input_math"
+
+
 and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
   let rec interpret_commands env imivlst =
     imivlst |> List.map (fun imiv ->
@@ -274,8 +284,8 @@ and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_va
   make_vert imvblst
 
 
-and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
-  let (ctx, ctxsub) = get_context valuectx in
+and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+  let (ctx, ctxsub) = ictx in
     begin
       let rec normalize imihlst =
         imihlst |> List.fold_left (fun acc imih ->
@@ -296,7 +306,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
                 let nmih =
                   CompiledNomInputHorzThunk(
                     List.append mathcode [
-                      OpPush(valuectx);
+                      OpPush(Context(ictx));
                       OpForward(1);  (* -- put the context argument under the math argument -- *)
                       OpPush(valuemcmd);
                       OpApplyT(2)
@@ -314,7 +324,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
                   | CodeTextCommand(valuectcmd) ->
                       let nmih =
                         CompiledNomInputHorzThunk([
-                          OpPush(valuectx);
+                          OpPush(Context(ictx));
                           OpPush(BaseConstant(BCString(s)));
                           OpPush(valuectcmd);
                           OpApplyT(2)
@@ -335,7 +345,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
         nmihlst |> List.map (fun nmih ->
             match nmih with
             | CompiledNomInputHorzEmbedded(code) ->
-                let valueret = exec_value [make_entry valuectx] env (List.append code [OpApplyT(1)]) [] in
+                let valueret = exec_value [ make_entry (Context(ictx)) ] env (List.append code [ OpApplyT(1) ]) [] in
                   get_horz valueret
 
             | CompiledNomInputHorzThunk(code) ->
@@ -357,7 +367,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_va
     end
 
 
-and exec_application (env : vmenv) (vf : syntactic_value) (vargs : syntactic_value list) : syntactic_value =
+and exec_application (env : vmenv) ~msg (vf : syntactic_value) (vargs : syntactic_value list) : syntactic_value =
   let len = List.length vargs in
     if len = 0 then
       vf
@@ -1048,19 +1058,6 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | _ -> report_bug_vm "invalid argument for OpSel"
       end
 
-  | OpBackendMathList(n) ->
-      let rec iter n st acc =
-        if n <= 0 then
-          (acc, st)
-        else
-          match st with
-          | (MathValue(m), _) :: stnew -> iter (n - 1) stnew (m :: acc)
-          | _                          -> report_bug_vm "BackendMathList"
-      in
-      let (mlst, stack) = iter n stack [] in
-      let entry = make_entry @@ MathValue(List.concat mlst) in
-      exec (entry :: stack) env code dump
-
   | OpInsertArgs(lst) ->
       begin
         match stack with
@@ -1093,19 +1090,6 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       in
       let (cdasc, stack) = collect (List.rev keylst) LabelMap.empty stack in
       let entry = make_entry @@ CodeValue(CdRecord(cdasc)) in
-      exec (entry :: stack) env code dump
-
-  | OpCodeMathList(n) ->
-      let rec iter n st acc =
-        if n <= 0 then
-          (acc, st)
-        else
-          match st with
-          | (CodeValue(cv), _) :: stnew -> iter (n - 1) stnew (cv :: acc)
-          | _                           -> report_bug_vm "CodeMathList"
-      in
-      let (cvlst, stack) = iter n stack [] in
-      let entry = make_entry @@ CodeValue(CdMathList(cvlst)) in
       exec (entry :: stack) env code dump
 
   | OpCodeMakeTuple(n) ->

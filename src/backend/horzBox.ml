@@ -112,10 +112,11 @@ let pp_horz_string_info fmt info =
 
 type math_string_info =
   {
-    math_font_abbrev : math_font_abbrev;
-    math_font_size   : length;
-    math_color       : color;
+    info_math_font_abbrev : math_font_abbrev;
+    info_math_font_size   : length;
+    info_math_color       : color;
   }
+[@@deriving show { with_path = false }]
 
 (* -- internal representation of boxes -- *)
 
@@ -192,6 +193,11 @@ type debug_margin_info =
   | Both      of (breakability * length) * (breakability * length)
 [@@deriving show { with_path = false; }]
 
+type math_script_level =
+  | BaseLevel
+  | ScriptLevel
+  | ScriptScriptLevel
+[@@deriving show { with_path = false; }]
 
 type context_main = {
   hyphen_dictionary      : LoadHyph.t;
@@ -202,7 +208,6 @@ type context_main = {
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   langsys_scheme         : CharBasis.language_system CharBasis.ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
-  math_font              : math_font_abbrev;
   dominant_wide_script   : CharBasis.script;
   dominant_narrow_script : CharBasis.script;
   script_space_map       : (float * float * float) CharBasis.ScriptSpaceMap.t;
@@ -236,6 +241,8 @@ type context_main = {
   space_math_prefix      : float * float * float;
   left_hyphen_min        : int;
   right_hyphen_min       : int;
+  math_font_abbrev       : math_font_abbrev;
+  math_script_level      : math_script_level;
 }
 
 and decoration = point -> length -> length -> length -> (intermediate_horz_box list) GraphicD.t

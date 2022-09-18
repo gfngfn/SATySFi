@@ -1,33 +1,31 @@
 @require: gr
 
-module Proof
-% :> sig
-%
-%  direct \derive : [math?; bool?; math list; math] math-cmd
-%  direct \derive-multi : [math?; bool?; length; math list; math] math-cmd
-%
-% end
-= struct
+module Proof :> sig
 
-  val math \math-space len =
-    text-in-math MathOrd (fun _ -> inline-skip len)
+  val \derive : math [?(name : math-text, b : bool) list math-text, math-text]
+  val \derive-multi : math [?(name : math-text, b : bool) length, list math-text, math-text]
+
+end = struct
+
+  val math ctx \math-space len =
+    embed-inline-to-math MathOrd (inline-skip len)
 
 
   val length-max len1 len2 =
     if len1 <' len2 then len2 else len1
 
 
-  val derive nameopt bopt widopt mlst1 m2 =
+  val derive ctx nameopt bopt widopt (mlst1 : list math-text) (m2 : math-text) =
     let ib-space =
       match widopt with
       | None    -> inline-skip 30pt
       | Some(_) -> discretionary 100 (inline-skip 30pt) inline-fil inline-fil
       end
     in
-    text-in-math MathInner (fun ctx -> (
+    embed-inline-to-math MathInner (
       let ibacc1 =
         (mlst1 |> List.fold-left-adjacent (fun ibacc1 m prevopt _ -> (
-          let ibm = embed-math ctx m in
+          let ibm = embed-math ctx (read-math ctx m) in
           match prevopt with
           | None    -> inline-fil ++ ibm
           | Some(_) -> ibacc1 ++ ib-space ++ ibm
@@ -40,7 +38,7 @@ module Proof
         | Some(wid) -> embed-block-bottom ctx wid (fun ctx -> line-break true true ctx ibacc1)
         end
       in
-      let ib2 = inline-fil ++ (embed-math ctx m2) ++ inline-fil in
+      let ib2 = inline-fil ++ (embed-math ctx (read-math ctx m2)) ++ inline-fil in
       let w =
         match widopt with
         | None      -> length-max (Pervasives.get-natural-width ib1) (Pervasives.get-natural-width ib2)
@@ -56,7 +54,7 @@ module Proof
             ((fun _ -> []), 0pt)
 
         | Some(name) ->
-            let ib = embed-math ctx name in
+            let ib = embed-math ctx (read-math ctx name) in
             let (wname, _, _) = get-natural-metrics ib in
             let wname =
               match bopt with
@@ -79,13 +77,13 @@ module Proof
       in
         line-stack-bottom [ib1, bar, ib2]
           ++ inline-skip wname
-    ))
+    )
 
 
-  val math \derive ?(name = nameopt, b = bopt) mlst m =
-    derive nameopt bopt None mlst m
+  val math ctx \derive ?(name = nameopt, b = bopt) ms m =
+    derive ctx nameopt bopt None ms m
 
-  val math \derive-multi ?(name = nameopt, b = bopt) w =
-    derive nameopt bopt (Some(w))
+  val math ctx \derive-multi ?(name = nameopt, b = bopt) w ms m =
+    derive ctx nameopt bopt (Some(w)) ms m
 
 end

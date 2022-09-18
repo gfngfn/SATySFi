@@ -28,9 +28,9 @@ let pdfops_of_text hsinfo pt otxt =
   GraphicD.pdfops_of_text pt tag hsinfo.text_font_size hsinfo.text_color otxt
 
 
-let pdfops_of_math msinfo pt otxt =
-  let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
-  GraphicD.pdfops_of_text pt tag msinfo.math_font_size msinfo.math_color otxt
+let pdfops_of_math (msinfo : math_string_info) pt otxt =
+  let tag = FontInfo.get_math_tag msinfo.info_math_font_abbrev in
+  GraphicD.pdfops_of_text pt tag msinfo.info_math_font_size msinfo.info_math_color otxt
 
 
 let pdfops_of_image imgkey pt wid hgt =

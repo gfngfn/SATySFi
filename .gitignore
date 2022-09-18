@@ -7,6 +7,9 @@
 *.log
 *.aux
 *.dvi
+*.fdb_latexmk
+*.fls
+*.synctex.gz
 *.pdf
 *.out
 *.html
