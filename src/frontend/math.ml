@@ -295,7 +295,7 @@ let space_ord_prefix ctx fontsize =
 
 
 let space_after_script mathctx =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   if not (MathContext.is_in_base_level mathctx) then
     None
   else
@@ -307,7 +307,7 @@ let space_after_script mathctx =
 let space_between_math_kinds (mathctx : math_context) ~prev:(mk_prev : math_kind) (corr : space_correction) (mk : math_kind) : horz_box option =
   let is_in_script = not (MathContext.is_in_base_level mathctx) in
   let ctx = MathContext.context_main mathctx in
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
     if is_in_script then
       match (mk_prev, mk) with
       | (MathOperator, MathOrdinary)
@@ -529,7 +529,7 @@ let rec get_right_math_kind : math_box -> math_kind = function
 
 
 let superscript_baseline_height mathctx h_base d_sup =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let h_supbmin = fontsize *% mc.FontFormat.superscript_bottom_min in
   let h_supstd  = fontsize *% mc.FontFormat.superscript_shift_up in
@@ -547,7 +547,7 @@ let superscript_correction_heights mathctx h_supbl h_base d_sup =
 
 
 let subscript_baseline_depth mathctx d_base h_sub =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let h_subtmax = fontsize *% mc.FontFormat.subscript_top_max in
   let d_substd  = Length.negate (fontsize *% mc.FontFormat.subscript_shift_down) in
@@ -564,7 +564,7 @@ let subscript_correction_heights mathctx d_subbl d_base h_sub =
 
 
 let correct_script_baseline_heights mathctx d_sup h_sub h_supbl_raw d_subbl_raw =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let l_gapmin = fontsize *% mc.FontFormat.sub_superscript_gap_min in
   let l_gap = (h_supbl_raw +% d_sup) -% (d_subbl_raw +% h_sub) in
@@ -576,7 +576,7 @@ let correct_script_baseline_heights mathctx d_sup h_sub h_supbl_raw d_subbl_raw 
 
 
 let numerator_baseline_height mathctx d_numer =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let h_bar         = fontsize *% mc.FontFormat.axis_height in
   let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
@@ -587,7 +587,7 @@ let numerator_baseline_height mathctx d_numer =
 
 
 let denominator_baseline_depth mathctx h_denom =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let h_bar         = fontsize *% mc.FontFormat.axis_height in
   let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
@@ -598,7 +598,7 @@ let denominator_baseline_depth mathctx h_denom =
 
 
 let upper_limit_baseline_height mathctx h_base d_up =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let l_upmingap = fontsize *% mc.FontFormat.upper_limit_gap_min in
   let l_upblstd = fontsize *% mc.FontFormat.upper_limit_baseline_rise_min in
@@ -607,7 +607,7 @@ let upper_limit_baseline_height mathctx h_base d_up =
 
 
 let lower_limit_baseline_depth mathctx d_base h_low =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let l_lowmingap = fontsize *% mc.FontFormat.lower_limit_gap_min in
   let l_lowblstd = fontsize *% mc.FontFormat.lower_limit_baseline_drop_min in
@@ -622,7 +622,7 @@ let lower_limit_baseline_depth mathctx d_base h_low =
      and then returns the height, the thickness, and the extra ascender of the raducal rule.
    -- *)
 let radical_bar_metrics mathctx h_cont =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let l_radgap = fontsize *% mc.FontFormat.radical_d_vertical_gap in
   let t_bar    = fontsize *% mc.FontFormat.radical_rule_thickness in
@@ -646,7 +646,7 @@ let radical_degree_baseline_height mathctx scriptlev h_rad d_deg =
 
 
 let make_paren mathctx paren hgt dpt =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let h_bar = fontsize *% mc.FontFormat.axis_height in
   let (hblst, kernf) = paren hgt dpt h_bar fontsize (MathContext.color mathctx) in
@@ -654,7 +654,7 @@ let make_paren mathctx paren hgt dpt =
 
 
 let make_radical mathctx radical hgt_bar t_bar dpt =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let hblst = radical hgt_bar t_bar dpt fontsize (MathContext.color mathctx) in
     hblst
 
@@ -983,7 +983,7 @@ let ratioize n =
 
 
 let horz_fraction_bar mathctx wid =
-  let fontsize = FontInfo.actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let h_bar         = fontsize *% mc.FontFormat.axis_height in
   let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in

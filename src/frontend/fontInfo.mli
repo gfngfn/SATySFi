@@ -38,8 +38,6 @@ val get_math_kern : math_context -> math_kern_scheme -> length -> length
 
 val get_axis_height : math_font_abbrev -> length -> length
 
-val actual_math_font_size : math_context -> length
-
 val get_math_constants : math_context -> FontFormat.math_constants
 
 val get_font_dictionary : Pdf.t -> Pdf.pdfobject

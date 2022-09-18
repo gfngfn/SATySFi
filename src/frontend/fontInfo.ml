@@ -332,10 +332,6 @@ let find_math_decoder_exn mfabbrev =
   mfdfn.math_decoder
 
 
-let actual_math_font_size mathctx =
-  MathContext.font_size mathctx
-
-
 let get_math_string_info mathctx : math_string_info =
   {
     info_math_font_abbrev = MathContext.math_font_abbrev mathctx;
@@ -379,7 +375,7 @@ let get_axis_height (mfabbrev : math_font_abbrev) (fontsize : length) : length =
      (negative value stands for being closer to the previous glyph)
    -- *)
 let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrhgt : length) : length =
-  let fontsize = actual_math_font_size mathctx in
+  let fontsize = MathContext.font_size mathctx in
   let mfabbrev = MathContext.math_font_abbrev mathctx in
   let mfdfn = MathFontAbbrevHashTable.find mfabbrev in
   let md = mfdfn.math_decoder in
@@ -439,7 +435,7 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
     | gidlast :: _ -> FontFormat.get_math_correction_metrics md gidlast
     | []           -> (None, None)
   in
-  let f_skip = raw_length_to_skip_length (actual_math_font_size mathctx) in
+  let f_skip = raw_length_to_skip_length (MathContext.font_size mathctx) in
   let mic =
     match rawmicopt with
     | None         -> Length.zero
