@@ -1623,7 +1623,7 @@ end = struct
         in
         let ib = tabular celllstlst (fun _ _ -> Gr.empty) in
         let (_, hgt, dpt) = get-natural-metrics ib in
-        let hgtaxis = get-axis-height ctx in
+        let hgtaxis = size *' get-math-axis-height-ratio ctx in
         raise-inline (hgtaxis -' (hgt +' dpt) *' 0.5) ib
       )
     in
