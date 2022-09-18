@@ -678,7 +678,7 @@ and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_v
 
 and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_value_element list) : syntactic_value =
 
-  let tctx = get_text_mode_context value_tctx in
+  let (tctx, ctxsub) = get_text_mode_context value_tctx in
   let loc_tctx = ref value_tctx in
 
   (* Merges adjacent `InputHorzValueText`s into single `NomInputHorzText`. *)
@@ -873,11 +873,11 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
 
       | InputHorzValueEmbeddedCodeArea(s) ->
           begin
-            match ctxsub.code_text_command with
-            | DefaultCodeTextCommand ->
+            match make_code_text_command_func ctxsub.code_text_command with
+            | None ->
                 Alist.extend acc (NomInputHorzText(s))
 
-            | CodeTextCommand(value_ctcmd) ->
+            | Some(value_ctcmd) ->
                 let value =
                   reduce_beta ~msg:"InputHorzValueEmbeddedCodeArea" value_ctcmd (BaseConstant(BCString(s)))
                 in

@@ -202,7 +202,7 @@ and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_
 
 
 and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
-  let tctx = get_text_mode_context valuetctx in
+  let (tctx, ctxsub) = get_text_mode_context valuetctx in
     begin
       let rec normalize imihlst =
         imihlst |> List.fold_left (fun acc imih ->
@@ -219,13 +219,13 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
                 end
 
             | CompiledImInputHorzEmbeddedMath(mathcode) ->
-                failwith "Vm_> math; remains to be supported."
+                failwith "TODO: (VM) math; remains to be supported."
 (*
                 let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuetctx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
                   Alist.extend acc nmih
 *)
             | CompiledImInputHorzEmbeddedCodeText(s) ->
-                failwith "Vm_> code text; remains to be supported."
+                failwith "TODO: (VM) code text; remains to be supported."
 
             | CompiledImInputHorzContent(imihlst, envsub) ->
                 let nmihlstsub = normalize imihlst in

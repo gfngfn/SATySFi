@@ -368,10 +368,14 @@ let get_context (value : syntactic_value) : input_context =
   | _             -> report_bug_value "get_context" value
 
 
-let get_text_mode_context (value : syntactic_value) : TextBackend.text_mode_context =
+let get_text_mode_context (value : syntactic_value) : text_mode_input_context =
   match value with
-  | BaseConstant(BCTextModeContext(tctx)) -> tctx
-  | _                                     -> report_bug_value "get_text_mode_context" value
+  | TextModeContext(tictx) -> tictx
+  | _                      -> report_bug_value "get_text_mode_context" value
+
+
+let make_text_mode_context (tictx : text_mode_input_context) : syntactic_value =
+  TextModeContext(tictx)
 
 
 let get_length (value : syntactic_value) : length =
@@ -700,16 +704,22 @@ let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
   )
 
 
-let get_math_command_func _ valuemcmd =
-  MathCommand(valuemcmd)
+let get_math_command_func (value_mcmd : syntactic_value) : math_command_func =
+  MathCommand(value_mcmd)
 
 
-let make_math_command_func (MathCommand(valuemcmd)) =
-  valuemcmd
+let make_math_command_func (MathCommand(value_mcmd) : math_command_func) : syntactic_value =
+  value_mcmd
 
 
-let get_code_text_command_func _ valuectcmd =
-  CodeTextCommand(valuectcmd)
+let get_code_text_command_func (value_ctcmd : syntactic_value) : code_text_command_func =
+  CodeTextCommand(value_ctcmd)
+
+
+let make_code_text_command_func (ctcmd : code_text_command_func) : syntactic_value option =
+  match ctcmd with
+  | CodeTextCommand(value_ctcmd) -> Some(value_ctcmd)
+  | DefaultCodeTextCommand       -> None
 
 
 let get_horz_command_closure : syntactic_value -> horz_command_closure = function

@@ -626,7 +626,6 @@ type base_constant =
   | BCVert     of HorzBox.vert_box list
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
-  | BCTextModeContext of TextBackend.text_mode_context
   | BCDocument        of (length * length) * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
   | BCInputPos        of input_position
 [@@deriving show { with_path = false; }]
@@ -893,7 +892,10 @@ and syntactic_value =
   | RecordValue  of syntactic_value LabelMap.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
   | Location     of StoreID.t
+
   | Context      of input_context
+  | TextModeContext of text_mode_input_context
+
   | CodeValue    of code_value
   | CodeSymbol   of CodeSymbol.t
   | MathBoxes    of math_box list
@@ -988,10 +990,12 @@ and pattern_tree =
 and input_context =
   HorzBox.context_main * context_sub
 
+and text_mode_input_context =
+  TextBackend.context_main * context_sub
+
 and context_sub = {
-  math_command : math_command_func;
+  math_command      : math_command_func;
   code_text_command : code_text_command_func;
-  dummy : unit;
 }
 
 and math_command_func =

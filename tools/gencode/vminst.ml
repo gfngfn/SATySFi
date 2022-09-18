@@ -103,13 +103,11 @@ make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchs))
         ~fields:[
         ]
         ~params:[
-          param "valuecmd";
+          param "mcmd" ~type_:"math_command_func";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
-        ~needs_reducef:true
         ~code:{|
-let mcmd = get_math_command_func (reducef ~msg:"set-math-command") valuecmd in
 Context(ctx, { ctxsub with math_command = mcmd; })
 |}
     ; inst "PrimitiveSetCodeTextCommand"
@@ -118,13 +116,11 @@ Context(ctx, { ctxsub with math_command = mcmd; })
         ~fields:[
         ]
         ~params:[
-          param "valuecmd";
+          param "ctcmd" ~type_:"code_text_command_func";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
-        ~needs_reducef:true
         ~code:{|
-let ctcmd = get_code_text_command_func (reducef ~msg:"set-code-text-command") valuecmd in
 Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
     ; inst "BackendGetLeftMathClass"
@@ -837,12 +833,12 @@ match value1 with
         ]
         ~params:[
           param "i" ~type_:"int";
-          param "tctx" ~type_:"text_mode_context";
+          param "(tctx, ctxsub)" ~type_:"text_mode_context";
         ]
         ~is_text_mode_primitive:true
         ~code:{|
 let tctx = tctx |> TextBackend.deepen_indent i in
-BaseConstant(BCTextModeContext(tctx))
+make_text_mode_context (tctx, ctxsub)
 |}
     ; inst "TextBreak"
         ~name:"break"
@@ -850,7 +846,7 @@ BaseConstant(BCTextModeContext(tctx))
         ~fields:[
         ]
         ~params:[
-          param "tctx" ~type_:"text_mode_context";
+          param "(tctx, _)" ~type_:"text_mode_context";
         ]
         ~is_text_mode_primitive:true
         ~code:{|
@@ -860,21 +856,23 @@ make_string s
 |}
     ; inst "TextGetInitialTextModeContext"
         ~name:"get-initial-text-info"
-        ~type_:Type.(tU @-> tTCTX)
+        ~type_:Type.(tICMD tMT @-> tTCTX)
         ~fields:[
         ]
         ~params:[
-          param "value1";
+          param "mcmd" ~type_:"math_command_func";
         ]
         ~is_text_mode_primitive:true
         ~code:{|
-match value1 with
-| BaseConstant(BCUnit) ->
-    let tctx = TextBackend.get_initial_text_mode_context () in
-    BaseConstant(BCTextModeContext(tctx))
-
-| _ ->
-    report_bug_value "TextGetInitialTextModeContext" value1
+let tctx = TextBackend.get_initial_text_mode_context () in
+let ctcmd = DefaultCodeTextCommand in
+let ctxsub =
+  {
+    math_command      = mcmd;
+    code_text_command = ctcmd;
+  }
+in
+make_text_mode_context (tctx, ctxsub)
 |}
     ; inst "PrimitiveEmbeddedVertBreakable"
         ~name:"embed-block-breakable"
@@ -1134,19 +1132,16 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
         ]
         ~params:[
           param "txtwid" ~type_:"length";
-          param "valuecmd";
+          param "mcmd" ~type_:"math_command_func";
         ]
         ~is_pdf_mode_primitive:true
-        ~needs_reducef:true
         ~code:{|
 let ctx = Primitives.get_pdf_mode_initial_context txtwid in
-let mcmd = get_math_command_func (reducef ~msg:"get-initial-context") valuecmd in
 let ctcmd = DefaultCodeTextCommand in
 let ctxsub =
   {
-    math_command = mcmd;
+    math_command      = mcmd;
     code_text_command = ctcmd;
-    dummy = ();
   }
 in
 Context(ctx, ctxsub)
