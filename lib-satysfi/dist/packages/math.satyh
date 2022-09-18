@@ -466,10 +466,10 @@ end = struct
     math-radical ctx None (read-math ctx inner)
 
   val math ctx \lower base lower =
-    math-lower ctx (read-math ctx base) (read-math ctx lower)
+    math-lower ctx (read-math ctx base) (fun ctx -> read-math ctx lower)
 
   val math ctx \upper base upper =
-    math-upper ctx (read-math ctx base) (read-math ctx upper)
+    math-upper ctx (read-math ctx base) (fun ctx -> read-math ctx upper)
 
   val math ctx \text it =
     embed-inline-to-math MathOrd (read-inline ctx it)
@@ -709,12 +709,12 @@ end = struct
     let m =
       match moptS with
       | None     -> mop
-      | Some(mS) -> math-lower ctx mop (read-math ctx mS)
+      | Some(mS) -> math-lower ctx mop (fun ctx -> read-math ctx mS)
       end
     in
     match moptT with
     | None     -> m
-    | Some(mT) -> math-upper ctx m (read-math ctx mT)
+    | Some(mT) -> math-upper ctx m (fun ctx -> read-math ctx mT)
     end
 
   val bigop ctx = vop-scheme ctx math-big-char

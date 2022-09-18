@@ -206,31 +206,43 @@ make_math_boxes [ MathBoxGroup{ left; right; inner } ]
 |}
     ; inst "BackendMathSuperscript"
         ~name:"math-sup"
-        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tMB @-> (tCTX @-> tMB) @-> tMB)
         ~fields:[
         ]
         ~params:[
           param "ictx" ~type_:"context";
-          param "ms1" ~type_:"math_boxes";
-          param "ms2" ~type_:"math_boxes";
+          param "base" ~type_:"math_boxes";
+          param "value_sup_f";
         ]
         ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
         ~code:{|
-make_math_boxes [ MathBoxSuperscript{ context = ictx; base = ms1; sup = ms2 } ]
+let value_sup =
+  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+  reducef ~msg:"math-sup" value_sup_f [ Context(ictx) ]
+in
+let sup = get_math_boxes value_sup in
+make_math_boxes [ MathBoxSuperscript{ context = ictx; base; sup } ]
 |}
     ; inst "BackendMathSubscript"
         ~name:"math-sub"
-        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tMB @-> (tCTX @-> tMB) @-> tMB)
         ~fields:[
         ]
         ~params:[
           param "ictx" ~type_:"context";
-          param "ms1" ~type_:"math_boxes";
-          param "ms2" ~type_:"math_boxes";
+          param "base" ~type_:"math_boxes";
+          param "value_sub_f";
         ]
         ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
         ~code:{|
-make_math_boxes [ MathBoxSubscript{ context = ictx; base = ms1; sub = ms2 } ]
+let value_sub =
+  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+  reducef ~msg:"math-sup" value_sub_f [ Context(ictx) ]
+in
+let sub = get_math_boxes value_sub in
+make_math_boxes [ MathBoxSubscript{ context = ictx; base; sub } ]
 |}
     ; inst "BackendMathFraction"
         ~name:"math-frac"
@@ -275,7 +287,6 @@ make_math_boxes [ MathBoxRadical{ context; radical; degree; inner } ]
           param "inner" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
 let left = make_paren (reducef ~msg:"math-paren 1") value_left in
@@ -295,7 +306,6 @@ make_math_boxes [ MathBoxParen{ context; left; right; inner } ]
           param "value_mss";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
 let left = make_paren (reducef ~msg:"math-paren-with-middle 1") value_parenL in
@@ -306,30 +316,42 @@ make_math_boxes [ MathBoxParenWithMiddle{ context; left; right; middle; inner } 
 |}
     ; inst "BackendMathUpperLimit"
         ~name:"math-upper"
-        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tMB @-> (tCTX @-> tMB) @-> tMB)
         ~fields:[
         ]
         ~params:[
           param "ictx" ~type_:"context";
           param "base" ~type_:"math_boxes";
-          param "upper" ~type_:"math_boxes";
+          param "value_upper_f";
         ]
         ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
         ~code:{|
+let value_upper =
+  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+  reducef ~msg:"math-sup" value_upper_f [ Context(ictx) ]
+in
+let upper = get_math_boxes value_upper in
 make_math_boxes [ MathBoxUpperLimit{ context = ictx; base; upper } ]
 |}
     ; inst "BackendMathLowerLimit"
         ~name:"math-lower"
-        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tMB)
+        ~type_:Type.(tCTX @-> tMB @-> (tCTX @-> tMB) @-> tMB)
         ~fields:[
         ]
         ~params:[
           param "ictx" ~type_:"context";
           param "base" ~type_:"math_boxes";
-          param "lower" ~type_:"math_boxes";
+          param "value_lower_f";
         ]
         ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
         ~code:{|
+let value_lower =
+  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+  reducef ~msg:"math-sup" value_lower_f [ Context(ictx) ]
+in
+let lower = get_math_boxes value_lower in
 make_math_boxes [ MathBoxLowerLimit{ context = ictx; base; lower } ]
 |}
     ; inst "BackendMathChar"
