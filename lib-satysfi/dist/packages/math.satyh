@@ -1050,7 +1050,14 @@ end = struct
     let lenappend = fontsize *' 0.1 in
       Pervasives.length-max minhalflen ((Pervasives.length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend)
 
-  val angle-left thk hgt dpt hgtaxis fontsize color =
+  val extract-spec-from-context ctx =
+    let fontsize = get-font-size ctx in
+    let hgtaxis = fontsize *' get-math-axis-height-ratio ctx in
+    let color = get-text-color ctx in
+    (fontsize, hgtaxis, color)
+
+  val angle-left thk hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let widparen = halflen *' 0.375 in
     let wid = widparen +' fontsize *' 0.1 in
@@ -1072,7 +1079,8 @@ end = struct
     in
     (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
-  val angle-right thk hgt dpt hgtaxis fontsize color =
+  val angle-right thk hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let widparen = halflen *' 0.375 in
     let wid = widparen +' fontsize *' 0.1 in
@@ -1097,7 +1105,8 @@ end = struct
   val math ctx \angle-bracket m =
     math-paren ctx (angle-left 0.5pt) (angle-right 0.5pt) (read-math ctx m)
 
-  val paren-left hgt dpt hgtaxis fontsize color =
+  val paren-left hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
@@ -1131,7 +1140,8 @@ end = struct
     let kerninfo _ = 0pt in
       (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
-  val paren-right hgt dpt hgtaxis fontsize color =
+  val paren-right hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
@@ -1188,7 +1198,8 @@ end = struct
     read-math ctx ${#m1 \paren{#m2}}
 
 
-  val brace-left hgt dpt hgtaxis fontsize color =
+  val brace-left hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
 
     let t0 = fontsize *' 0.0125 in
     let t4 = fontsize *' 0.025 in
@@ -1264,7 +1275,8 @@ end = struct
     (inline-graphics (x4 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-  val brace-right hgt dpt hgtaxis fontsize color =
+  val brace-right hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
 
     let t0 = fontsize *' 0.0125 in
     let t4 = fontsize *' 0.025 in
@@ -1340,7 +1352,8 @@ end = struct
     (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-  val brace-left-long hgt dpt hgtaxis fontsize color =
+  val brace-left-long hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
 
     let t0B = fontsize *' 0.05 in
@@ -1391,7 +1404,8 @@ end = struct
     math-paren ctx brace-left brace-right (read-math ctx m)
 
 
-  val bar-middle hgt dpt hgtaxis fontsize color =
+  val bar-middle hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let halfwid = fontsize *' 0.5 in
     let graphics (x, y) =
@@ -1406,7 +1420,8 @@ end = struct
     math-paren-with-middle ctx brace-left brace-right bar-middle [read-math ctx m1, read-math ctx m2]
 
 
-  val slash-middle hgt dpt hgtaxis fontsize color =
+  val slash-middle hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let halfwid = halflen *' 0.5 in
     let graphics (x, y) =
@@ -1463,7 +1478,8 @@ end = struct
         |> close-with-line
 
 
-  val bracket-left pathf (hgt : length) (dpt : length) (hgtaxis : length) (fontsize : length) (color : color) =
+  val bracket-left pathf (hgt : length) (dpt : length) (ctx : context) =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let (w0, w1, w2, t) = bracket-metrics fontsize halflen in
     let path (xpos, ypos) =
@@ -1477,7 +1493,8 @@ end = struct
     (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
 
-  val bracket-right pathf hgt dpt hgtaxis fontsize color =
+  val bracket-right pathf (hgt : length) (dpt : length) (ctx : context) =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let (w0, w1, w2, t) = bracket-metrics fontsize halflen in
     let widparen = w0 +' w1 +' w2 in
@@ -1509,10 +1526,11 @@ end = struct
     math-paren ctx ceil-left ceil-right (read-math ctx m)
 
 
-  val empty-paren _ _ _ _ _ = (inline-nil, (fun _ -> 0pt))
+  val empty-paren _ _ _ = (inline-nil, (fun _ -> 0pt))
 
 
-  val abs-left hgt dpt hgtaxis fontsize color =
+  val abs-left hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let wid = 5.0pt in
     let path (xpos, ypos) =
@@ -1525,7 +1543,8 @@ end = struct
     (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-  val abs-right hgt dpt hgtaxis fontsize color =
+  val abs-right hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let wid = 5.0pt in
     let path (xpos, ypos) =
@@ -1542,7 +1561,8 @@ end = struct
     math-paren ctx abs-left abs-right (read-math ctx m)
 
 
-  val norm-left hgt dpt hgtaxis fontsize color =
+  val norm-left hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let wid = 7.0pt in
     let path (xpos, ypos) =
@@ -1561,7 +1581,8 @@ end = struct
     (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-  val norm-right hgt dpt hgtaxis fontsize color =
+  val norm-right hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let wid = 7.0pt in
     let path (xpos, ypos) =

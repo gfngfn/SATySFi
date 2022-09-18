@@ -645,12 +645,9 @@ let radical_degree_baseline_height mathctx scriptlev h_rad d_deg =
 *)
 
 
-let make_paren mathctx paren hgt dpt =
-  let fontsize = MathContext.font_size mathctx in
-  let mc = FontInfo.get_math_constants mathctx in
-  let h_bar = fontsize *% mc.FontFormat.axis_height in
-  let (hblst, kernf) = paren hgt dpt h_bar fontsize (MathContext.color mathctx) in
-    (hblst, FontInfo.make_dense_math_kern kernf)
+let make_paren mathctx (paren : paren) (height : length) (depth : length) =
+  let (hbs, kernf) = paren height depth (MathContext.context_for_text mathctx) in
+  (hbs, FontInfo.make_dense_math_kern kernf)
 
 
 let make_radical mathctx radical hgt_bar t_bar dpt =

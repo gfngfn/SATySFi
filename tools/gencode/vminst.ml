@@ -1298,6 +1298,20 @@ match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script
       make_float r2;
     ]))
 |}
+    ; inst "PrimitivieGetMathAxisHeightRatio"
+        ~name:"get-math-axis-height-ratio"
+        ~type_:Type.(tCTX @-> tFL)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let mctx = MathContext.make ictx in
+let mc = FontInfo.get_math_constants mctx in
+make_float (mc.FontFormat.axis_height)
+|}
     ; inst "PrimitiveSetParagraphMargin"
         ~name:"set-paragraph-margin"
         ~type_:Type.(tLN @-> tLN @-> tCTX @-> tCTX)
@@ -1597,21 +1611,6 @@ CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)
         ~is_text_mode_primitive:true
         ~code:{|
 make_string (HorzBox.extract_string hblst)
-|}
-    ; inst "PrimitiveGetAxisHeight"
-        ~name:"get-axis-height"
-        ~type_:Type.(tCTX @-> tLN)
-        ~fields:[
-        ]
-        ~params:[
-          param "(ctx, _)" ~type_:"context";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~code:{|
-let fontsize = ctx.HorzBox.font_size in
-let mfabbrev = ctx.HorzBox.math_font_abbrev in
-let hgt = FontInfo.get_axis_height mfabbrev fontsize in
-make_length (hgt)
 |}
     ; inst "BackendFixedEmpty"
         ~name:"inline-skip"

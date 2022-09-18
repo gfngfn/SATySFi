@@ -507,6 +507,25 @@ let get_outline (value : syntactic_value) =
       report_bug_value "get_outline" value
 
 
+let const_unit = BaseConstant(BCUnit)
+let make_bool b = BaseConstant(BCBool(b))
+let make_int n = BaseConstant(BCInt(n))
+let make_float x = BaseConstant(BCFloat(x))
+let make_length l = BaseConstant(BCLength(l))
+let make_string s = BaseConstant(BCString(s))
+let make_regexp re = BaseConstant(BCRegExp(re))
+let make_horz h = BaseConstant(BCHorz(h))
+let make_vert v = BaseConstant(BCVert(v))
+let make_path p = BaseConstant(BCPath(p))
+let make_prepath pp = BaseConstant(BCPrePath(pp))
+let make_graphics g = BaseConstant(BCGraphics(g))
+let make_image_key i = BaseConstant(BCImageKey(i))
+
+
+let make_context (ictx : input_context) : syntactic_value =
+  Context(ictx)
+
+
 let make_page_break_info pbinfo =
   let asc =
     LabelMap.singleton "page-number" (BaseConstant(BCInt(pbinfo.HorzBox.current_page_number)))
@@ -626,27 +645,26 @@ let make_frame_deco reducef valuedeco =
   )
 
 
-let make_math_kern_func reducef valuekernf : HorzBox.math_kern_func =
+let make_math_kern_func reducef (value_kernf : syntactic_value) : HorzBox.math_kern_func =
   (fun corrhgt ->
-    let astcorrhgt = BaseConstant(BCLength(corrhgt)) in
-    let valueret = reducef valuekernf [astcorrhgt] in
-    get_length valueret
+    let value_corrhgt = make_length corrhgt in
+    let value_ret = reducef value_kernf [ value_corrhgt ] in
+    get_length value_ret
   )
 
 
-let make_paren reducef valueparenf : HorzBox.paren =
-  (fun hgt dpt hgtaxis fontsize color ->
-     let valuehgt      = BaseConstant(BCLength(hgt)) in
-     let valuedpt      = BaseConstant(BCLength(Length.negate dpt)) in
-     (* Depth values for users are nonnegative *)
-     let valuehgtaxis  = BaseConstant(BCLength(hgtaxis)) in
-     let valuefontsize = BaseConstant(BCLength(fontsize)) in
-     let valuecolor    = make_color_value color in
-     let valueret = reducef valueparenf [valuehgt; valuedpt; valuehgtaxis; valuefontsize; valuecolor] in
-     match valueret with
-     | Tuple([BaseConstant(BCHorz(hblst)); valuekernf]) ->
-         let kernf = make_math_kern_func reducef valuekernf in
-         (hblst, kernf)
+let make_paren reducef (value_parenf : syntactic_value) : paren =
+  (fun hgt dpt ictx ->
+     let value_hgt = make_length hgt in
+     let value_dpt = make_length (Length.negate dpt) in
+       (* Depth values for users are nonnegative *)
+     let value_ctx = make_context ictx in
+     let value_ret = reducef value_parenf [ value_hgt; value_dpt; value_ctx ] in
+     match value_ret with
+     | Tuple([ value_hbs; value_kernf ]) ->
+         let hbs = get_horz value_hbs in
+         let kernf = make_math_kern_func reducef value_kernf in
+         (hbs, kernf)
 
      | _ ->
          report_bug_vm "make_paren"
@@ -770,21 +788,6 @@ let make_line_stack (hbss : (HorzBox.horz_box list) list) =
     ) Alist.empty |> Alist.to_list
   in
   (wid, vbs)
-
-
-let const_unit = BaseConstant(BCUnit)
-let make_bool b = BaseConstant(BCBool(b))
-let make_int n = BaseConstant(BCInt(n))
-let make_float x = BaseConstant(BCFloat(x))
-let make_length l = BaseConstant(BCLength(l))
-let make_string s = BaseConstant(BCString(s))
-let make_regexp re = BaseConstant(BCRegExp(re))
-let make_horz h = BaseConstant(BCHorz(h))
-let make_vert v = BaseConstant(BCVert(v))
-let make_path p = BaseConstant(BCPath(p))
-let make_prepath pp = BaseConstant(BCPrePath(pp))
-let make_graphics g = BaseConstant(BCGraphics(g))
-let make_image_key i = BaseConstant(BCImageKey(i))
 
 
 let lift_string_to_code_value (s : string) = CodeValue(CdBaseConstant(BCString(s)))
