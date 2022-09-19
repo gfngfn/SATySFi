@@ -22,15 +22,13 @@ type font_definition = {
 }
 
 
-module FontAbbrevHashTable
-: sig
-    val initialize : unit -> unit
-    val add_single : font_abbrev -> lib_path -> unit
-    val add_ttc : font_abbrev -> lib_path -> int -> unit
-    val fold : (font_abbrev -> font_definition -> 'a -> 'a) -> 'a -> 'a
-    val find : font_abbrev -> font_definition
-  end
-= struct
+module FontAbbrevHashTable : sig
+  val initialize : unit -> unit
+  val add_single : font_abbrev -> lib_path -> unit
+  val add_ttc : font_abbrev -> lib_path -> int -> unit
+  val fold : (font_abbrev -> font_definition -> 'a -> 'a) -> 'a -> 'a
+  val find : font_abbrev -> font_definition
+end = struct
 
     type font_store =
       | UnusedSingle
@@ -81,8 +79,8 @@ module FontAbbrevHashTable
     let fold (f : font_abbrev -> font_definition -> 'a -> 'a) init =
       Ht.fold (fun abbrev (_, storeref) acc ->
         match !storeref with
-        | UnusedSingle -> acc  (* -- ignores unused fonts -- *)
-        | UnusedTTC(_) -> acc
+        | UnusedSingle -> acc (* Ignores unused fonts *)
+        | UnusedTTC(_) -> acc (* Ignores unused fonts *)
         | Loaded(dfn)  -> f abbrev dfn acc
       ) abbrev_to_definition_hash_table init
 
@@ -165,11 +163,8 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcd
                   (otxtacc @>> (wpm, gsyn), wacc + w)
 
               | Some(FontFormat.PerMille(wkern)) ->
-(*
-                  PrintForDebug.kernE (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern);  (* for debug *)
-*)
                   ((otxtacc @*> wkern) @>> (wpm, gsyn), wacc + w + wkern)
-                    (* -- kerning value is negative if two characters are supposed to be closer -- *)
+                    (* Kerning values are negative if two characters are supposed to be closer *)
             end
       in
         (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
@@ -364,25 +359,22 @@ let make_dense_math_kern kernf = DenseMathKern(kernf)
 let make_discrete_math_kern mkern = DiscreteMathKern(mkern)
 
 
-let get_axis_height (mfabbrev : math_font_abbrev) (fontsize : length) : length =
-  let mfdfn = MathFontAbbrevHashTable.find mfabbrev in
-  let ratio = FontFormat.get_axis_height_ratio mfdfn.math_decoder in
-  fontsize *% ratio
-
-(* --
-   get_math_kern:
-     returns kerning length
-     (negative value stands for being closer to the previous glyph)
-   -- *)
+(* Returns kerning length (negative value stands for being closer to the previous glyph) *)
 let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrhgt : length) : length =
   let fontsize = MathContext.font_size mathctx in
   let mfabbrev = MathContext.math_font_abbrev mathctx in
   let mfdfn = MathFontAbbrevHashTable.find mfabbrev in
   let md = mfdfn.math_decoder in
   match mkern with
-  | NoMathKern              -> Length.zero
-  | DiscreteMathKern(mkern) -> let ratiok = FontFormat.find_kern_ratio md mkern (corrhgt /% fontsize) in fontsize *% ratiok
-  | DenseMathKern(kernf)    -> Length.negate (kernf corrhgt)
+  | NoMathKern ->
+      Length.zero
+
+  | DiscreteMathKern(mkern) ->
+      let ratiok = FontFormat.find_kern_ratio md mkern (corrhgt /% fontsize) in
+      fontsize *% ratiok
+
+  | DenseMathKern(kernf) ->
+      Length.negate (kernf corrhgt)
 
 
 let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big : bool) (uchlst : Uchar.t list) : OutputText.t * length * length * length * length * FontFormat.math_kern_info option =
@@ -414,13 +406,8 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
 
           | (gidvar, _) :: []
           | _ :: (gidvar, _) :: _ ->
-(*
-              Format.printf "FontInfo> variant exists: %d ---> %d\n"
-                (FontFormat.gid gidsub)
-                (FontFormat.gid gidvar);  (* for debug *)
-*)
               gidvar
-                (* -- somewhat ad-hoc; uses the second smallest as the glyph for display style -- *)
+                (* Somewhat ad-hoc; uses the second smallest as the glyph for display style *)
         else
           gidsub
       in
@@ -496,103 +483,3 @@ let initialize () =
     | FontAccess.Single(srcpath)        -> MathFontAbbrevHashTable.add_single mfabbrev srcpath
     | FontAccess.Collection(srcpath, i) -> MathFontAbbrevHashTable.add_ttc mfabbrev srcpath i
   );
-
-
-(* -- following are operations about handling glyphs -- *)
-
-(*
-type contour_element =
-  | OnCurve   of int * int
-  | Quadratic of int * int * int * int
-
-type contour = contour_element list
-
-
-let get_contour_list (dcdr : Otfm.decoder) (uch : Uchar.t) : contour list * (int * int * int * int) =
-  let (precntrlst, bbox) = FontFormat.get_uchar_raw_contour_list_and_bounding_box dcdr uch in
-
-  let transform_contour (precntr : (bool * int * int) list) : contour =
-    let (xfirst, yfirst) =
-      match precntr with
-      | (_, x, y) :: _ -> (x, y)
-      | []             -> assert false
-    in
-    let rec aux acc lst =
-    match lst with
-    | []                                                  -> List.rev acc
-    | (true, x, y) :: tail                                -> aux (OnCurve(x, y) :: acc) tail
-    | (false, x1, y1) :: (true, x, y) :: tail             -> aux (Quadratic(x1, y1, x, y) :: acc) tail
-    | (false, x1, y1) :: (((false, x2, y2) :: _) as tail) -> aux (Quadratic(x1, y1, (x1 + x2) / 2, (y1 + y2) / 2) :: acc) tail
-    | (false, x1, y1) :: []                               -> List.rev (Quadratic(x1, y1, xfirst, yfirst) :: acc)
-    in
-      aux [] precntr
-  in
-    (List.map transform_contour precntrlst, bbox)
-
-
-let svg_of_uchar ((xcur, ycur) : int * int) (dcdr : Otfm.decoder) (uch : Uchar.t) =
-  let (cntrlst, (xmin, ymin, xmax, ymax)) = get_contour_list dcdr uch in
-  let (adv, lsb) = FontFormat.get_uchar_horz_metrics dcdr uch in
-  let ( ~$ ) = string_of_int in
-  let dpoffset = 50 in
-  let display_x x = x in
-  let display_y y = 1000 - y in
-  let path_string_of_contour cntr =
-    let isfirst = ref true in
-    let lst =
-      cntr |> List.map (function
-        | OnCurve(xto, yto) ->
-            let prefix =
-              if !isfirst then begin isfirst := false ; "M" end else "L"
-            in
-            let circ =
-              "<circle cx=\"" ^ (~$ (display_x xto)) ^ "\" cy=\"" ^ (~$ (display_y yto)) ^ "\" r=\"5\" fill=\"green\" />"
-            in
-              (prefix ^ (~$ (display_x xto)) ^ "," ^ (~$ (display_y yto)), circ)
-        | Quadratic(x1, y1, xto, yto) ->
-            let circ =
-              "<circle cx=\"" ^ (~$ (display_x x1)) ^ "\" cy=\"" ^ (~$ (display_y y1)) ^ "\" r=\"5\" fill=\"orange\" />"
-                ^ "<circle cx=\"" ^ (~$ (display_x xto)) ^ "\" cy=\"" ^ (~$ (display_y yto)) ^ "\" r=\"5\" fill=\"green\" />"
-            in
-              ("Q" ^ (~$ (display_x x1)) ^ "," ^ (~$ (display_y y1)) ^ " " ^ (~$ (display_x xto)) ^ "," ^ (~$ (display_y yto)), circ)
-      )
-    in
-    let strlst = List.map (fun (x, _) -> x) lst in
-    let circlst = List.map (fun (_, y) -> y) lst in
-      ("<path d=\"" ^ (String.concat " " strlst) ^ " Z\" fill=\"none\" stroke=\"red\" stroke-width=\"5\" />", String.concat "" circlst)
-  in
-  let newpos = (xcur + xmax - xmin, ycur + ymax - ymin) in
-  let pclst = (cntrlst |> List.map path_string_of_contour) in
-  let pathlst = List.map (fun (x, _) -> x) pclst in
-  let circlst = List.map (fun (_, y) -> y) pclst in
-  let lst =
-    List.concat [
-      [
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
-        "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">";
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"1000\" height=\"1100\" viewBox=\"" ^ (~$ (display_x (0 - dpoffset))) ^ " " ^ (~$ (display_y (ymax + dpoffset))) ^ " " ^ (~$ (adv + 2 * dpoffset)) ^ " " ^ (~$ (ymax - ymin + 2 * dpoffset)) ^ "\">";
-        "<rect x=\"" ^ (~$ (display_x 0)) ^ "\" y=\"" ^ (~$ (display_y ymax)) ^ "\" width=\"" ^ (~$ adv) ^ "\" height=\"" ^ (~$ (ymax - ymin)) ^ "\" fill=\"gray\" stroke=\"purple\" stroke-width=\"5\" />";
-        "<rect x=\"" ^ (~$ (display_x xmin)) ^ "\" y=\"" ^ (~$ (display_y ymax)) ^ "\" width=\"" ^ (~$ (xmax - xmin)) ^ "\" height=\"" ^ (~$ (ymax - ymin)) ^ "\" fill=\"none\" stroke=\"blue\" stroke-width=\"5\" />";
-      ];
-      pathlst;
-      circlst;
-      ["</svg>"];
-    ]
-  in
-    (String.concat "" lst, newpos)
-
-*)
-
-(* for test *)
-(*
-let () =
-  initialize () ;
-(*
-  let testword = List.map Uchar.of_char ['O'; 'C'; 'a'; 'm'; 'l'] in
-  let res = get_width_of_word "Hlv" testword in
-    res |> List.iter (fun adv -> print_endline (string_of_int adv))
-*)
-  let dcdr = get_decoder "Hlv" in
-  let (paths, _) = svg_of_uchar (100, 100) dcdr (Uchar.of_char 'R') in
-    print_endline paths
-*)

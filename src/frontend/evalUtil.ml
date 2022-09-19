@@ -655,17 +655,6 @@ let make_option (type a) (makef : a -> syntactic_value) (opt : a option) : synta
   | Some(x) -> let value = makef x in Constructor("Some", value)
 
 
-(*
-let make_pull_in_scripts reducef valuef =
-  (fun mopt1 mopt2 ->
-     let value1 = make_option make_math_text mopt1 in
-     let value2 = make_option make_math_text mopt2 in
-     let valueret = reducef valuef [value1; value2] in
-     get_math_boxes valueret
-  )
-*)
-
-
 let make_math_char_kern_func reducef valuekernf : HorzBox.math_char_kern_func =
   (fun fontsize ypos ->
      let valuefontsize = BaseConstant(BCLength(fontsize)) in
