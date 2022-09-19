@@ -340,41 +340,17 @@ let get_math_tag mfabbrev =
   mfdfn.math_font_tag
 
 
-let get_math_constants mathctx =
+let get_math_constants (mathctx : math_context) : FontFormat.math_constants =
   let mfabbrev = MathContext.math_font_abbrev mathctx in
   let md = find_math_decoder_exn mfabbrev in
   FontFormat.get_math_constants md
 
 
-type math_kern_scheme =
-  | NoMathKern
-  | DiscreteMathKern of FontFormat.math_kern
-  | DenseMathKern    of math_kern_func
-
-
-let no_math_kern = NoMathKern
-
-let make_dense_math_kern kernf = DenseMathKern(kernf)
-
-let make_discrete_math_kern mkern = DiscreteMathKern(mkern)
-
-
-(* Returns kerning length (negative value stands for being closer to the previous glyph) *)
-let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrhgt : length) : length =
-  let fontsize = MathContext.font_size mathctx in
+let get_math_kern_ratio (mathctx : math_context) (mkern : FontFormat.math_kern) (r : float) : float =
   let mfabbrev = MathContext.math_font_abbrev mathctx in
   let mfdfn = MathFontAbbrevHashTable.find mfabbrev in
   let md = mfdfn.math_decoder in
-  match mkern with
-  | NoMathKern ->
-      Length.zero
-
-  | DiscreteMathKern(mkern) ->
-      let ratiok = FontFormat.find_kern_ratio md mkern (corrhgt /% fontsize) in
-      fontsize *% ratiok
-
-  | DenseMathKern(kernf) ->
-      Length.negate (kernf corrhgt)
+  FontFormat.find_kern_ratio md mkern r
 
 
 let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big : bool) (uchlst : Uchar.t list) : OutputText.t * length * length * length * length * FontFormat.math_kern_info option =
