@@ -12,4 +12,4 @@ val make_dense : HorzBox.math_kern_func -> t
 
 (** Given a correction height, this function returns
     a kerning length (negative value stands for being closer to the previous glyph). *)
-val calculate : math_context -> t -> length -> length
+val calculate : input_context -> t -> length -> length
