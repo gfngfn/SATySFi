@@ -35,24 +35,26 @@ make_string (s1 ^ s2)
 |}
     ; inst "PrimitiveSetMathVariantToChar"
         ~name:"set-math-variant-char"
-        ~type_:Type.(tMCCLS @-> tI @-> tI @-> tCTX @-> tCTX)
+        ~type_:Type.(tI @-> (tMCCLS @-> tI) @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
-          param "mccls" ~type_:"math_char_class";
-          param "cpfrom" ~type_:"int";
-          param "cpto" ~type_:"int";
+          param "cp_from" ~type_:"int";
+          param "value_selector";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
+        ~needs_reducef:true
         ~code:{|
-let uchfrom = Uchar.of_int cpfrom in
-let uchto = Uchar.of_int cpto in
-let mcclsmap = ctx.HorzBox.math_variant_char_map in
-Context(HorzBox.({ ctx with
-  math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) (uchto, MathOrdinary);
-}), ctxsub)
+let uch_from = Uchar.of_int cp_from in
+let selector = make_math_variant_char_selector (reducef ~msg:"set-math-variant-char") value_selector in
+let ctx =
+  HorzBox.({ ctx with
+    math_variant_char_map = ctx.math_variant_char_map |> MathVariantCharMap.add uch_from selector;
+  })
+in
+make_context (ctx, ctxsub)
 |}
     ; inst "PrimitiveSetMathChar"
         ~name:"set-math-char"

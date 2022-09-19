@@ -276,31 +276,42 @@ let make_language_system_value langsys =
 
 
 let get_math_char_class (value : syntactic_value) : HorzBox.math_char_class =
+  let open HorzBox in
   match value with
-  | Constructor("MathItalic"      , BaseConstant(BCUnit)) -> HorzBox.MathItalic
-  | Constructor("MathBoldItalic"  , BaseConstant(BCUnit)) -> HorzBox.MathBoldItalic
-  | Constructor("MathRoman"       , BaseConstant(BCUnit)) -> HorzBox.MathRoman
-  | Constructor("MathBoldRoman"   , BaseConstant(BCUnit)) -> HorzBox.MathBoldRoman
-  | Constructor("MathScript"      , BaseConstant(BCUnit)) -> HorzBox.MathScript
-  | Constructor("MathBoldScript"  , BaseConstant(BCUnit)) -> HorzBox.MathBoldScript
-  | Constructor("MathFraktur"     , BaseConstant(BCUnit)) -> HorzBox.MathFraktur
-  | Constructor("MathBoldFraktur" , BaseConstant(BCUnit)) -> HorzBox.MathBoldFraktur
-  | Constructor("MathDoubleStruck", BaseConstant(BCUnit)) -> HorzBox.MathDoubleStruck
-  | _                                                     -> report_bug_value "get_math_char_class" value
+  | Constructor("MathItalic"             , BaseConstant(BCUnit)) -> MathItalic
+  | Constructor("MathBoldItalic"         , BaseConstant(BCUnit)) -> MathBoldItalic
+  | Constructor("MathRoman"              , BaseConstant(BCUnit)) -> MathRoman
+  | Constructor("MathBoldRoman"          , BaseConstant(BCUnit)) -> MathBoldRoman
+  | Constructor("MathScript"             , BaseConstant(BCUnit)) -> MathScript
+  | Constructor("MathBoldScript"         , BaseConstant(BCUnit)) -> MathBoldScript
+  | Constructor("MathFraktur"            , BaseConstant(BCUnit)) -> MathFraktur
+  | Constructor("MathBoldFraktur"        , BaseConstant(BCUnit)) -> MathBoldFraktur
+  | Constructor("MathDoubleStruck"       , BaseConstant(BCUnit)) -> MathDoubleStruck
+  | Constructor("MathSansSerif"          , BaseConstant(BCUnit)) -> MathSansSerif
+  | Constructor("MathBoldSansSerif"      , BaseConstant(BCUnit)) -> MathBoldSansSerif
+  | Constructor("MathItalicSansSerif"    , BaseConstant(BCUnit)) -> MathItalicSansSerif
+  | Constructor("MathBoldItalicSansSerif", BaseConstant(BCUnit)) -> MathBoldItalicSansSerif
+  | Constructor("MathTypewriter"         , BaseConstant(BCUnit)) -> MathTypewriter
+  | _                                                            -> report_bug_value "get_math_char_class" value
 
 
 let make_math_char_class (mccls : HorzBox.math_char_class) : syntactic_value =
+  let open HorzBox in
   match mccls with
-  | HorzBox.MathItalic       -> Constructor("MathItalic"      , BaseConstant(BCUnit))
-  | HorzBox.MathBoldItalic   -> Constructor("MathBoldItalic"  , BaseConstant(BCUnit))
-  | HorzBox.MathRoman        -> Constructor("MathRoman"       , BaseConstant(BCUnit))
-  | HorzBox.MathBoldRoman    -> Constructor("MathBoldRoman"   , BaseConstant(BCUnit))
-  | HorzBox.MathScript       -> Constructor("MathScript"      , BaseConstant(BCUnit))
-  | HorzBox.MathBoldScript   -> Constructor("MathBoldScript"  , BaseConstant(BCUnit))
-  | HorzBox.MathFraktur      -> Constructor("MathFraktur"     , BaseConstant(BCUnit))
-  | HorzBox.MathBoldFraktur  -> Constructor("MathBoldFraktur" , BaseConstant(BCUnit))
-  | HorzBox.MathDoubleStruck -> Constructor("MathDoubleStruck", BaseConstant(BCUnit))
-
+  | MathItalic              -> Constructor("MathItalic"             , BaseConstant(BCUnit))
+  | MathBoldItalic          -> Constructor("MathBoldItalic"         , BaseConstant(BCUnit))
+  | MathRoman               -> Constructor("MathRoman"              , BaseConstant(BCUnit))
+  | MathBoldRoman           -> Constructor("MathBoldRoman"          , BaseConstant(BCUnit))
+  | MathScript              -> Constructor("MathScript"             , BaseConstant(BCUnit))
+  | MathBoldScript          -> Constructor("MathBoldScript"         , BaseConstant(BCUnit))
+  | MathFraktur             -> Constructor("MathFraktur"            , BaseConstant(BCUnit))
+  | MathBoldFraktur         -> Constructor("MathBoldFraktur"        , BaseConstant(BCUnit))
+  | MathDoubleStruck        -> Constructor("MathDoubleStruck"       , BaseConstant(BCUnit))
+  | MathSansSerif           -> Constructor("MathSansSerif"          , BaseConstant(BCUnit))
+  | MathBoldSansSerif       -> Constructor("MathBoldSansSerif"      , BaseConstant(BCUnit))
+  | MathItalicSansSerif     -> Constructor("MathItalicSansSerif"    , BaseConstant(BCUnit))
+  | MathBoldItalicSansSerif -> Constructor("MathBoldItalicSansSerif", BaseConstant(BCUnit))
+  | MathTypewriter          -> Constructor("MathTypewriter"         , BaseConstant(BCUnit))
 
 let get_math_class (value : syntactic_value) =
   let open HorzBox in
@@ -443,56 +454,6 @@ let get_prepath (value : syntactic_value) : PrePath.t =
   | _                                -> report_bug_value "get_prepath" value
 
 
-let get_math_variant_style value =
-  let rcd =
-    match value with
-    | RecordValue(rcd) -> rcd
-    | _                -> report_bug_value "get_math_variant_style: not a record" value
-  in
-    match
-      ( rcd |> LabelMap.find_opt "italic",
-        rcd |> LabelMap.find_opt "bold-italic",
-        rcd |> LabelMap.find_opt "roman",
-        rcd |> LabelMap.find_opt "bold-roman",
-        rcd |> LabelMap.find_opt "script",
-        rcd |> LabelMap.find_opt "bold-script",
-        rcd |> LabelMap.find_opt "fraktur",
-        rcd |> LabelMap.find_opt "bold-fraktur",
-        rcd |> LabelMap.find_opt "double-struck" )
-    with
-    | ( Some(vcpI),
-        Some(vcpBI),
-        Some(vcpR),
-        Some(vcpBR),
-        Some(vcpS),
-        Some(vcpBS),
-        Some(vcpF),
-        Some(vcpBF),
-        Some(vcpDS) ) ->
-          let uchlstI  = get_uchar_list vcpI  in
-          let uchlstBI = get_uchar_list vcpBI in
-          let uchlstR  = get_uchar_list vcpR  in
-          let uchlstBR = get_uchar_list vcpBR in
-          let uchlstS  = get_uchar_list vcpS  in
-          let uchlstBS = get_uchar_list vcpBS in
-          let uchlstF  = get_uchar_list vcpF  in
-          let uchlstBF = get_uchar_list vcpBF in
-          let uchlstDS = get_uchar_list vcpDS in
-            HorzBox.({
-              math_italic        = uchlstI ;
-              math_bold_italic   = uchlstBI;
-              math_roman         = uchlstR ;
-              math_bold_roman    = uchlstBR;
-              math_script        = uchlstS ;
-              math_bold_script   = uchlstBS;
-              math_fraktur       = uchlstF ;
-              math_bold_fraktur  = uchlstBF;
-              math_double_struck = uchlstDS;
-            })
-
-    | _ -> report_bug_value "get_math_variant_style: missing some fields" value
-
-
 let get_outline (value : syntactic_value) =
   match value with
   | Tuple([
@@ -524,6 +485,15 @@ let make_image_key i = BaseConstant(BCImageKey(i))
 
 let make_context (ictx : input_context) : syntactic_value =
   Context(ictx)
+
+
+let make_math_variant_char_selector (reducef : syntactic_value -> syntactic_value list -> syntactic_value) (value_selector : syntactic_value) =
+  (fun mccls ->
+    let value_mccls = make_math_char_class mccls in
+    let value_ret = reducef value_selector [ value_mccls ] in
+    let (cp_to, mk) = get_pair get_int get_math_class value_ret in
+    (Uchar.of_int cp_to, mk)
+  )
 
 
 let make_page_break_info pbinfo =

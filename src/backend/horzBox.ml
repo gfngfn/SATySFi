@@ -143,32 +143,15 @@ type math_char_class =
   | MathFraktur
   | MathBoldFraktur
   | MathDoubleStruck
+  | MathSansSerif
+  | MathBoldSansSerif
+  | MathItalicSansSerif
+  | MathBoldItalicSansSerif
+  | MathTypewriter
 [@@deriving show { with_path = false }]
-(* TEMPORARY; should add more *)
-
-type math_variant_style =
-  {
-    math_italic        : Uchar.t list;
-    math_bold_italic   : Uchar.t list;
-    math_roman         : Uchar.t list;
-    math_bold_roman    : Uchar.t list;
-    math_script        : Uchar.t list;
-    math_bold_script   : Uchar.t list;
-    math_fraktur       : Uchar.t list;
-    math_bold_fraktur  : Uchar.t list;
-    math_double_struck : Uchar.t list;
-  }
-
-let pp_math_variant_style =
-  (fun fmt _ -> Format.fprintf fmt "<math-variant-style>")
 
 
-module MathVariantCharMap = Map.Make
-  (struct
-    type t = Uchar.t * math_char_class
-    let compare = Pervasives.compare
-  end)
-
+module MathVariantCharMap = Map.Make(Uchar)
 
 module MathClassMap = Map.Make(Uchar)
 
@@ -199,6 +182,9 @@ type math_script_level =
   | ScriptScriptLevel
 [@@deriving show { with_path = false; }]
 
+type math_variant_char_map =
+  (math_char_class -> Uchar.t * math_kind) MathVariantCharMap.t
+
 type context_main = {
   hyphen_dictionary      : LoadHyph.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<hyph>")]
@@ -226,7 +212,7 @@ type context_main = {
   text_color             : color;
   manual_rising          : length;
   space_badness          : pure_badness;
-  math_variant_char_map  : (Uchar.t * math_kind) MathVariantCharMap.t;
+  math_variant_char_map  : math_variant_char_map;
     [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-map>")]
   math_class_map         : (Uchar.t * math_kind) MathClassMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<math-class-map>")]
@@ -401,19 +387,6 @@ and math_char_kern_func = length -> length -> length
 
 and math_kern_func = length -> length
   (* -- takes a y-position as a correction height and then returns a kerning value -- *)
-
-and math_variant_value = math_kind * math_variant_value_main
-
-and math_variant_value_main =
-  | MathVariantToChar         of bool * Uchar.t list
-      [@printer (fun fmt _ -> Format.fprintf fmt "<to-char>")]
-      (* --
-         (1) whether it is big or not
-         (2) contents
-         -- *)
-
-  | MathVariantToCharWithKern of bool * Uchar.t list * math_char_kern_func * math_char_kern_func
-      [@printer (fun fmt _ -> Format.fprintf fmt "<to-char'>")]
 
 and radical = length -> length -> length -> length -> color -> horz_box list
   (* --

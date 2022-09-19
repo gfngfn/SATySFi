@@ -36,6 +36,9 @@ module Math :> sig
   val \mathfrak : math [math-text]
   val \mathbb : math [math-text]
   val \bm : math [math-text]
+  val \mathit : math [math-text]
+  val \mathsf : math [math-text]
+  val \mathtt : math [math-text]
 
   val \math-style-token : math [math-char-class, string]
   val \mathit-token : math [string]
@@ -497,7 +500,9 @@ end = struct
   val math ctx \mathfrak m = read-math ctx ${\math-style!(MathFraktur){#m}}
   val math ctx \mathbb m = read-math ctx ${\math-style!(MathDoubleStruck){#m}}
   val math ctx \bm m = read-math ctx ${\math-style!(MathBoldItalic){#m}}
-
+  val math ctx \mathit m = read-math ctx ${\math-style!(MathItalic){#m}}
+  val math ctx \mathsf m = read-math ctx ${\math-style!(MathSansSerif){#m}}
+  val math ctx \mathtt m = read-math ctx ${\math-style!(MathTypewriter){#m}}
 
   val math ctx \math-style-token sty s =
     embed-inline-to-math MathOrd (
@@ -607,95 +612,93 @@ end = struct
   val single cp = string-unexplode [cp]
 
 
-  val greek-lowercase ctx cp cpb =
+  val greek ctx cp cpi cpb cpbi cpbss cpbiss =
     let s = single cp in
+    let si = single cpi in
     let sb = single cpb in
+    let sbi = single cpbi in
+    let sbss = single cpbss in
+    let sbiss = single cpbiss in
+    % typefaces marked with (*) are not defined in Unicode
     let t =
       match get-math-char-class ctx with
-      | MathItalic       -> s
-      | MathBoldItalic   -> sb
-      | MathRoman        -> s
-      | MathBoldRoman    -> sb
-      | MathScript       -> s
-      | MathBoldScript   -> sb
-      | MathFraktur      -> s
-      | MathBoldFraktur  -> sb
-      | MathDoubleStruck -> s
+      | MathItalic              -> si
+      | MathBoldItalic          -> sbi
+      | MathRoman               -> s
+      | MathBoldRoman           -> sb
+      | MathScript              -> si    % (*)
+      | MathBoldScript          -> sbi   % (*)
+      | MathFraktur             -> si    % (*)
+      | MathBoldFraktur         -> sbi   % (*)
+      | MathDoubleStruck        -> si    % (*)
+      | MathSansSerif           -> si    % (*)
+      | MathBoldSansSerif       -> sbss
+      | MathItalicSansSerif     -> si    % (*)
+      | MathBoldItalicSansSerif -> sbiss
+      | MathTypewriter          -> s     % (*)
       end
     in
     math-char ctx MathOrd t
 
 
-  val greek-uppercase ctx cp cpb cpr cprb =
-    let s = single cp in
-    let sb = single cpb in
-    let sr = single cpr in
-    let srb = single cprb in
-    let t =
-      match get-math-char-class ctx with
-      | MathItalic       -> s
-      | MathBoldItalic   -> sb
-      | MathRoman        -> sr
-      | MathBoldRoman    -> srb
-      | MathScript       -> s
-      | MathBoldScript   -> sb
-      | MathFraktur      -> s
-      | MathBoldFraktur  -> sb
-      | MathDoubleStruck -> s
-      end
-    in
-    math-char ctx MathOrd t
+  val greek-lowercase ctx i =
+    greek ctx (0x003B1 + i) (0x1D6FC + i) (0x1D6C2 + i) (0x1D736 + i) (0x1D770 + i) (0x1D7AA + i)
 
 
-  val math ctx \alpha    = greek-lowercase ctx 0x1D6FC 0x1D736
-  val math ctx \beta     = greek-lowercase ctx 0x1D6FD 0x1D737
-  val math ctx \gamma    = greek-lowercase ctx 0x1D6FE 0x1D738
-  val math ctx \delta    = greek-lowercase ctx 0x1D6FF 0x1D739
-  val math ctx \epsilon  = greek-lowercase ctx 0x1D700 0x1D73A
-  val math ctx \zeta     = greek-lowercase ctx 0x1D701 0x1D73B
-  val math ctx \eta      = greek-lowercase ctx 0x1D702 0x1D73C
-  val math ctx \theta    = greek-lowercase ctx 0x1D703 0x1D73D
-  val math ctx \iota     = greek-lowercase ctx 0x1D704 0x1D73E
-  val math ctx \kappa    = greek-lowercase ctx 0x1D705 0x1D73F
-  val math ctx \lambda   = greek-lowercase ctx 0x1D706 0x1D740
-  val math ctx \mu       = greek-lowercase ctx 0x1D707 0x1D741
-  val math ctx \nu       = greek-lowercase ctx 0x1D708 0x1D742
-  val math ctx \xi       = greek-lowercase ctx 0x1D709 0x1D743
-  val math ctx \omicron  = greek-lowercase ctx 0x1D70A 0x1D744
-  val math ctx \pi       = greek-lowercase ctx 0x1D70B 0x1D745
-  val math ctx \rho      = greek-lowercase ctx 0x1D70C 0x1D746
-  val math ctx \sigma    = greek-lowercase ctx 0x1D70E 0x1D748
-  val math ctx \tau      = greek-lowercase ctx 0x1D70F 0x1D749
-  val math ctx \upsilon  = greek-lowercase ctx 0x1D710 0x1D74A
-  val math ctx \phi      = greek-lowercase ctx 0x1D711 0x1D74B
-  val math ctx \chi      = greek-lowercase ctx 0x1D712 0x1D74C
-  val math ctx \psi      = greek-lowercase ctx 0x1D713 0x1D74D
-  val math ctx \omega    = greek-lowercase ctx 0x1D714 0x1D74E
+  val greek-uppercase ctx i =
+    greek ctx (0x00391 + i) (0x1D6E2 + i) (0x1D6A8 + i) (0x1D71C + i) (0x1D756 + i) (0x1D790 + i)
 
-  val math ctx \Alpha    = greek-uppercase ctx 0x1D6E2 0x1D71C 0x0391 0x1D6A8
-  val math ctx \Beta     = greek-uppercase ctx 0x1D6E3 0x1D71D 0x0392 0x1D6A9
-  val math ctx \Gamma    = greek-uppercase ctx 0x1D6E4 0x1D71E 0x0393 0x1D6AA
-  val math ctx \Delta    = greek-uppercase ctx 0x1D6E5 0x1D71F 0x0394 0x1D6AB
-  val math ctx \Epsilon  = greek-uppercase ctx 0x1D6E6 0x1D720 0x0395 0x1D6AC
-  val math ctx \Zeta     = greek-uppercase ctx 0x1D6E7 0x1D721 0x0396 0x1D6AD
-  val math ctx \Eta      = greek-uppercase ctx 0x1D6E8 0x1D722 0x0397 0x1D6AE
-  val math ctx \Theta    = greek-uppercase ctx 0x1D6E9 0x1D723 0x0398 0x1D6AF
-  val math ctx \Iota     = greek-uppercase ctx 0x1D6EA 0x1D724 0x0399 0x1D6B0
-  val math ctx \Kappa    = greek-uppercase ctx 0x1D6EB 0x1D725 0x039A 0x1D6B1
-  val math ctx \Lambda   = greek-uppercase ctx 0x1D6EC 0x1D726 0x039B 0x1D6B2
-  val math ctx \Mu       = greek-uppercase ctx 0x1D6ED 0x1D727 0x039C 0x1D6B3
-  val math ctx \Nu       = greek-uppercase ctx 0x1D6EE 0x1D728 0x039D 0x1D6B4
-  val math ctx \Xi       = greek-uppercase ctx 0x1D6EF 0x1D729 0x039E 0x1D6B5
-  val math ctx \Omicron  = greek-uppercase ctx 0x1D6F0 0x1D72A 0x039F 0x1D6B6
-  val math ctx \Pi       = greek-uppercase ctx 0x1D6F1 0x1D72B 0x03A0 0x1D6B7
-  val math ctx \Rho      = greek-uppercase ctx 0x1D6F2 0x1D72C 0x03A1 0x1D6B8
-  val math ctx \Sigma    = greek-uppercase ctx 0x1D6F4 0x1D72E 0x03A3 0x1D6BA
-  val math ctx \Tau      = greek-uppercase ctx 0x1D6F5 0x1D72F 0x03A4 0x1D6BB
-  val math ctx \Upsilon  = greek-uppercase ctx 0x1D6F6 0x1D730 0x03A5 0x1D6BC
-  val math ctx \Phi      = greek-uppercase ctx 0x1D6F7 0x1D731 0x03A6 0x1D6BD
-  val math ctx \Chi      = greek-uppercase ctx 0x1D6F8 0x1D732 0x03A7 0x1D6BE
-  val math ctx \Psi      = greek-uppercase ctx 0x1D6F9 0x1D733 0x03A8 0x1D6BF
-  val math ctx \Omega    = greek-uppercase ctx 0x1D6FA 0x1D734 0x03A9 0x1D6C0
+
+  val math ctx \alpha    = greek-lowercase ctx 0
+  val math ctx \beta     = greek-lowercase ctx 1
+  val math ctx \gamma    = greek-lowercase ctx 2
+  val math ctx \delta    = greek-lowercase ctx 3
+  val math ctx \epsilon  = greek-lowercase ctx 4
+  val math ctx \zeta     = greek-lowercase ctx 5
+  val math ctx \eta      = greek-lowercase ctx 6
+  val math ctx \theta    = greek-lowercase ctx 7
+  val math ctx \iota     = greek-lowercase ctx 8
+  val math ctx \kappa    = greek-lowercase ctx 9
+  val math ctx \lambda   = greek-lowercase ctx 10
+  val math ctx \mu       = greek-lowercase ctx 11
+  val math ctx \nu       = greek-lowercase ctx 12
+  val math ctx \xi       = greek-lowercase ctx 13
+  val math ctx \omicron  = greek-lowercase ctx 14
+  val math ctx \pi       = greek-lowercase ctx 15
+  val math ctx \rho      = greek-lowercase ctx 16
+  val math ctx \sigma    = greek-lowercase ctx 18
+  val math ctx \tau      = greek-lowercase ctx 19
+  val math ctx \upsilon  = greek-lowercase ctx 20
+  val math ctx \phi      = greek-lowercase ctx 21
+  val math ctx \chi      = greek-lowercase ctx 22
+  val math ctx \psi      = greek-lowercase ctx 23
+  val math ctx \omega    = greek-lowercase ctx 24
+
+  val math ctx \Alpha    = greek-uppercase ctx 0
+  val math ctx \Beta     = greek-uppercase ctx 1
+  val math ctx \Gamma    = greek-uppercase ctx 2
+  val math ctx \Delta    = greek-uppercase ctx 3
+  val math ctx \Epsilon  = greek-uppercase ctx 4
+  val math ctx \Zeta     = greek-uppercase ctx 5
+  val math ctx \Eta      = greek-uppercase ctx 6
+  val math ctx \Theta    = greek-uppercase ctx 7
+  val math ctx \Iota     = greek-uppercase ctx 8
+  val math ctx \Kappa    = greek-uppercase ctx 9
+  val math ctx \Lambda   = greek-uppercase ctx 10
+  val math ctx \Mu       = greek-uppercase ctx 11
+  val math ctx \Nu       = greek-uppercase ctx 12
+  val math ctx \Xi       = greek-uppercase ctx 13
+  val math ctx \Omicron  = greek-uppercase ctx 14
+  val math ctx \Pi       = greek-uppercase ctx 15
+  val math ctx \Rho      = greek-uppercase ctx 16
+  val math ctx \Sigma    = greek-uppercase ctx 18
+  val math ctx \Tau      = greek-uppercase ctx 19
+  val math ctx \Upsilon  = greek-uppercase ctx 20
+  val math ctx \Phi      = greek-uppercase ctx 21
+  val math ctx \Chi      = greek-uppercase ctx 22
+  val math ctx \Psi      = greek-uppercase ctx 23
+  val math ctx \Omega    = greek-uppercase ctx 24
+
 
   val ord ctx = math-char ctx MathOrd
   val bin ctx = math-char ctx MathBin
