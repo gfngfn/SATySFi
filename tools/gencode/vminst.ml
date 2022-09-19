@@ -437,7 +437,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
         ]
         ~params:[
           param "mathcls" ~type_:"math_class";
-          param "hbs" ~type_:"horz";
+          param "hbs" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -724,8 +724,8 @@ make_path ([prepath |> PrePath.close_with_bezier ptS ptT])
         ~fields:[
         ]
         ~params:[
-          param "hblst1" ~type_:"horz";
-          param "hblst2" ~type_:"horz";
+          param "hblst1" ~type_:"horz_boxes";
+          param "hblst2" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -737,8 +737,8 @@ make_horz (List.append hblst1 hblst2)
         ~fields:[
         ]
         ~params:[
-          param "vblst1" ~type_:"vert";
-          param "vblst2" ~type_:"vert";
+          param "vblst1" ~type_:"vert_boxes";
+          param "vblst2" ~type_:"vert_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -924,7 +924,7 @@ make_text_mode_context (tctx, tctxsub)
         ]
         ~params:[
           param "(ctx, _)" ~type_:"context";
-          param "vblst" ~type_:"vert";
+          param "vblst" ~type_:"vert_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -952,7 +952,7 @@ make_font_value (abbrev, size_ratio, rising_ratio)
           param "is_breakable_top" ~type_:"bool";
           param "is_breakable_bottom" ~type_:"bool";
           param "(ctx,  _)" ~type_:"context";
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -971,7 +971,7 @@ make_vert imvblst
           param "pagesize" ~type_:"page_size";
           param "valuepagecontf";
           param "valuepagepartsf";
-          param "vblst" ~type_:"vert";
+          param "vblst" ~type_:"vert_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
@@ -991,7 +991,7 @@ BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), 
           param "valuecolumnhookf";
           param "valuepagecontf";
           param "valuepagepartsf";
-          param "vblst" ~type_:"vert";
+          param "vblst" ~type_:"vert_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
@@ -1013,7 +1013,7 @@ BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun
           param "valuecolumnendhookf";
           param "valuepagecontf";
           param "valuepagepartsf";
-          param "vbs" ~type_:"vert";
+          param "vbs" ~type_:"vert_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
@@ -1033,20 +1033,20 @@ BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, colum
         ~params:[
           param "(ctx, ctxsub)" ~type_:"context";
           param "pads" ~type_:"paddings";
-          param "(valuedecoS, valuedecoH, valuedecoM, valuedecoT)" ~type_:"decoset";
-          param "valuek";
+          param "(value_decoS, value_decoH, value_decoM, value_decoT)" ~type_:"decoset";
+          param "value_f";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let valuectxsub =
-  Context(HorzBox.({ ctx with
+let ictx =
+  (HorzBox.({ ctx with
     paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR);
   }), ctxsub)
 in
-let vblst =
-  let valuev = reducef ~msg:"block-frame-breakable 0" valuek [valuectxsub] in
-  get_vert valuev
+let vbs =
+  let value = reducef ~msg:"block-frame-breakable 0" value_f [ make_context ictx ] in
+  get_vert_boxes value
 in
 let margins =
   HorzBox.{
@@ -1056,11 +1056,11 @@ let margins =
 in
 make_vert (HorzBox.([
   VertFrame(margins, pads,
-    make_frame_deco (reducef ~msg:"block-frame-breakable 1") valuedecoS,
-    make_frame_deco (reducef ~msg:"block-frame-breakable 2") valuedecoH,
-    make_frame_deco (reducef ~msg:"block-frame-breakable 3") valuedecoM,
-    make_frame_deco (reducef ~msg:"block-frame-breakable 4") valuedecoT,
-    ctx.paragraph_width, vblst);
+    make_frame_deco (reducef ~msg:"block-frame-breakable 1") value_decoS,
+    make_frame_deco (reducef ~msg:"block-frame-breakable 2") value_decoH,
+    make_frame_deco (reducef ~msg:"block-frame-breakable 3") value_decoM,
+    make_frame_deco (reducef ~msg:"block-frame-breakable 4") value_decoT,
+    ctx.paragraph_width, vbs);
 ]))
 |}
     ; inst "BackendAddFootnote"
@@ -1069,7 +1069,7 @@ make_vert (HorzBox.([
         ~fields:[
         ]
         ~params:[
-          param "vblst" ~type_:"vert";
+          param "vblst" ~type_:"vert_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -1084,21 +1084,19 @@ make_horz (HorzBox.([HorzPure(PHGFootnote(imvblst))]))
         ~params:[
           param "(ctx, ctxsub)" ~type_:"context";
           param "wid" ~type_:"length";
-          param "valuek";
+          param "value_f";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let valuectxsub =
-  Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
+let ictx = (HorzBox.({ ctx with paragraph_width = wid }), ctxsub) in
+let vbs =
+  let value = reducef ~msg:"embed-block-top" value_f [ make_context ictx ] in
+  get_vert_boxes value
 in
-let vblst =
-  let valuev = reducef ~msg:"embed-block-top" valuek [valuectxsub] in
-  get_vert valuev
-in
-let imvblst = PageBreak.solidify vblst in
-let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+let imvbs = PageBreak.solidify vbs in
+let (hgt, dpt) = PageBreak.adjust_to_first_line imvbs in
+make_horz (HorzBox.([ HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvbs)) ]))
 |}
     ; inst "BackendVertSkip"
         ~name:"block-skip"
@@ -1120,21 +1118,19 @@ make_vert (HorzBox.([VertFixedBreakable(len)]))
         ~params:[
           param "(ctx, ctxsub)" ~type_:"context";
           param "wid" ~type_:"length";
-          param "valuek";
+          param "value_f";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let valuectxsub =
-  Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
+let ictx = (HorzBox.({ ctx with paragraph_width = wid }), ctxsub) in
+let vbs =
+  let value = reducef ~msg:"embed-block-bottom" value_f [ make_context ictx ] in
+    get_vert_boxes value
 in
-let vblst =
-  let valuev = reducef ~msg:"embed-block-bottom" valuek [valuectxsub] in
-    get_vert valuev
-in
-let imvblst = PageBreak.solidify vblst in
-let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
-make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+let imvbs = PageBreak.solidify vbs in
+let (hgt, dpt) = PageBreak.adjust_to_last_line imvbs in
+make_horz (HorzBox.([ HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvbs)) ]))
 |}
     ; inst "BackendLineStackTop"
         ~name:"line-stack-top"
@@ -1142,15 +1138,15 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
         ~fields:[
         ]
         ~params:[
-          param "valuehblstlst";
+          param "value_hbss";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let hblstlst = get_list get_horz valuehblstlst in
-let (wid, vblst) = make_line_stack hblstlst in
-let imvblst = PageBreak.solidify vblst in
-let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+let hbss = get_list get_horz_boxes value_hbss in
+let (wid, vbs) = make_line_stack hbss in
+let imvbs = PageBreak.solidify vbs in
+let (hgt, dpt) = PageBreak.adjust_to_first_line imvbs in
+make_horz (HorzBox.([ HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvbs)) ]))
 |}
     ; inst "BackendLineStackBottom"
         ~name:"line-stack-bottom"
@@ -1158,15 +1154,15 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
         ~fields:[
         ]
         ~params:[
-          param "valuehblstlst";
+          param "value_hbss";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let hblstlst = get_list get_horz valuehblstlst in
-let (wid, vblst) = make_line_stack hblstlst in
-let imvblst = PageBreak.solidify vblst in
-let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
-make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+let hbss = get_list get_horz_boxes value_hbss in
+let (wid, vbs) = make_line_stack hbss in
+let imvbs = PageBreak.solidify vbs in
+let (hgt, dpt) = PageBreak.adjust_to_last_line imvbs in
+make_horz (HorzBox.([ HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvbs)) ]))
 |}
     ; inst "PrimitiveGetInitialContext"
         ~name:"get-initial-context"
@@ -1566,7 +1562,7 @@ Context(HorzBox.({ ctx with manual_rising = rising; }), ctxsub)
         ]
         ~params:[
           param "rising" ~type_:"length";
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -1607,7 +1603,7 @@ CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)
         ~fields:[
         ]
         ~params:[
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
@@ -1648,7 +1644,7 @@ make_horz [HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch)
         ~params:[
           param "pads" ~type_:"paddings";
           param "valuedeco";
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
@@ -1666,7 +1662,7 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
         ~params:[
           param "pads" ~type_:"paddings";
           param "valuedeco";
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
@@ -1685,7 +1681,7 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
           param "wid" ~type_:"length";
           param "pads" ~type_:"paddings";
           param "valuedeco";
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
@@ -1703,7 +1699,7 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
         ~params:[
           param "pads" ~type_:"paddings";
           param "(valuedecoS, valuedecoH, valuedecoM, valuedecoT)" ~type_:"decoset";
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
@@ -1757,7 +1753,7 @@ make_horz (HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphi
         ]
         ~params:[
           param "script" ~type_:"script";
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -1771,7 +1767,7 @@ make_horz (HorzBox.([HorzScriptGuard(script, script, hblst)]))
         ~params:[
           param "scriptL" ~type_:"script";
           param "scriptR" ~type_:"script";
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -1783,7 +1779,7 @@ make_horz (HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
         ~fields:[
         ]
         ~params:[
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -1796,7 +1792,7 @@ make_option make_script_value scriptopt
         ~fields:[
         ]
         ~params:[
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -1810,9 +1806,9 @@ make_option make_script_value scriptopt
         ]
         ~params:[
           param "pb" ~type_:"int";
-          param "hblst0" ~type_:"horz";
-          param "hblst1" ~type_:"horz";
-          param "hblst2" ~type_:"horz";
+          param "hblst0" ~type_:"horz_boxes";
+          param "hblst1" ~type_:"horz_boxes";
+          param "hblst2" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -1854,7 +1850,7 @@ match CrossRef.get k with
         ~fields:[
         ]
         ~params:[
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -1871,7 +1867,7 @@ Tuple([
         ~fields:[
         ]
         ~params:[
-          param "vblst" ~type_:"vert";
+          param "vblst" ~type_:"vert_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -2160,7 +2156,7 @@ make_int (int_of_float fc1)
         ]
         ~params:[
           param "pt" ~type_:"point";
-          param "hblst" ~type_:"horz";
+          param "hblst" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
@@ -2816,8 +2812,8 @@ Context(HorzBox.{ ctx with
         ~fields:[
         ]
         ~params:[
-          param "hblst1" ~type_:"horz";
-          param "hblst2" ~type_:"horz";
+          param "hblst1" ~type_:"horz_boxes";
+          param "hblst2" ~type_:"horz_boxes";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true

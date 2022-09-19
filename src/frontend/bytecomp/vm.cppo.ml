@@ -272,8 +272,8 @@ and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_va
     imivlst |> List.map (fun imiv ->
         match imiv with
         | CompiledImInputVertEmbedded(code) ->
-            let valueret = exec_value [make_entry valuectx] env (List.append code [OpApplyT(1)]) [] in
-              get_vert valueret
+            let value = exec_value [ make_entry valuectx ] env (List.append code [ OpApplyT(1) ]) [] in
+              get_vert_boxes value
 
         | CompiledImInputVertContent(imivlstsub, envsub) ->
             interpret_commands envsub imivlstsub
@@ -345,12 +345,12 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (
         nmihlst |> List.map (fun nmih ->
             match nmih with
             | CompiledNomInputHorzEmbedded(code) ->
-                let valueret = exec_value [ make_entry (Context(ictx)) ] env (List.append code [ OpApplyT(1) ]) [] in
-                  get_horz valueret
+                let value = exec_value [ make_entry (Context(ictx)) ] env (List.append code [ OpApplyT(1) ]) [] in
+                get_horz_boxes value
 
             | CompiledNomInputHorzThunk(code) ->
-                let valueret = exec_value [] env code [] in
-                  get_horz valueret
+                let value = exec_value [] env code [] in
+                get_horz_boxes value
 
             | CompiledNomInputHorzText(s) ->
                 lex_horz_text ctx s

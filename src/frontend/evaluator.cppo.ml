@@ -945,7 +945,7 @@ and read_pdf_mode_vert_text (value_ctx : syntactic_value) (ivvs : input_vert_val
           let env = add_to_environment env evid_ctx loc_ctx in
           interpret_0 env ast_body
         in
-        get_vert value
+        get_vert_boxes value
 
     ) |> List.concat
   in
@@ -1011,7 +1011,7 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
             let env = add_to_environment env evid_ctx loc_ctx in
             interpret_0 env ast_body
           in
-          get_horz value
+          get_horz_boxes value
 
       | NomInputHorzText(s) ->
           lex_horz_text ctx s
