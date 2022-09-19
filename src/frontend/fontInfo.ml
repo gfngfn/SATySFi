@@ -327,34 +327,23 @@ let find_math_decoder_exn mfabbrev =
   mfdfn.math_decoder
 
 
-let get_math_string_info mathctx : math_string_info =
-  {
-    info_math_font_abbrev = MathContext.math_font_abbrev mathctx;
-    info_math_font_size   = MathContext.font_size mathctx;
-    info_math_color       = MathContext.color mathctx;
-  }
-
-
 let get_math_tag mfabbrev =
   let mfdfn = MathFontAbbrevHashTable.find mfabbrev in
   mfdfn.math_font_tag
 
 
-let get_math_constants (mathctx : math_context) : FontFormat.math_constants =
-  let mfabbrev = MathContext.math_font_abbrev mathctx in
+let get_math_constants (mfabbrev : math_font_abbrev) : FontFormat.math_constants =
   let md = find_math_decoder_exn mfabbrev in
   FontFormat.get_math_constants md
 
 
-let get_math_kern_ratio (mathctx : math_context) (mkern : FontFormat.math_kern) (r : float) : float =
-  let mfabbrev = MathContext.math_font_abbrev mathctx in
+let get_math_kern_ratio (mfabbrev : math_font_abbrev) (mkern : FontFormat.math_kern) (r : float) : float =
   let mfdfn = MathFontAbbrevHashTable.find mfabbrev in
   let md = mfdfn.math_decoder in
   FontFormat.find_kern_ratio md mkern r
 
 
-let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big : bool) (uchlst : Uchar.t list) : OutputText.t * length * length * length * length * FontFormat.math_kern_info option =
-  let mfabbrev = MathContext.math_font_abbrev mathctx in
+let get_math_char_info (mfabbrev : math_font_abbrev) ~(is_in_base_level : bool) ~(is_in_display : bool) ~(is_big : bool) ~(font_size : length) (uchlst : Uchar.t list) : OutputText.t * length * length * length * length * FontFormat.math_kern_info option =
   let mfdfn = MathFontAbbrevHashTable.find mfabbrev in
   let md = mfdfn.math_decoder in
   let gidlst =
@@ -369,7 +358,7 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
             gid
       in
       let gidsub =
-        if MathContext.is_in_base_level mathctx then
+        if is_in_base_level then
           gidraw
         else
           FontFormat.get_math_script_variant md gidraw
@@ -398,7 +387,7 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
     | gidlast :: _ -> FontFormat.get_math_correction_metrics md gidlast
     | []           -> (None, None)
   in
-  let f_skip = raw_length_to_skip_length (MathContext.font_size mathctx) in
+  let f_skip = raw_length_to_skip_length font_size in
   let mic =
     match rawmicopt with
     | None         -> Length.zero

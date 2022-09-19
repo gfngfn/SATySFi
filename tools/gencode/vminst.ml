@@ -93,7 +93,7 @@ let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in
 let uchs =
   let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
   uchs |> List.map (fun uch_from ->
-    let (_, uch_to) = MathContext.convert_math_variant_char (ctx, ctxsub) uch_from in
+    let (_, uch_to) = Context.convert_math_variant_char (ctx, ctxsub) uch_from in
     uch_to
   )
 in
@@ -173,8 +173,7 @@ match List.rev maths with
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let mathctx = MathContext.make ictx in
-let hb_space_opt = Math.space_between_maths mathctx ms1 ms2 in
+let hb_space_opt = Math.space_between_maths ictx ms1 ms2 in
 match hb_space_opt with
 | None           -> Constructor("None", const_unit)
 | Some(hb_space) -> Constructor("Some", make_horz [ hb_space ])
@@ -220,7 +219,7 @@ make_math_boxes [ MathBoxGroup{ left; right; inner } ]
         ~needs_reducef:true
         ~code:{|
 let value_sup =
-  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
+  let ictx = Context.(ictx |> enter_script) in
   reducef ~msg:"math-sup" value_sup_f [ Context(ictx) ]
 in
 let sup = get_math_boxes value_sup in
@@ -240,7 +239,7 @@ make_math_boxes [ MathBoxSuperscript{ context = ictx; base; sup } ]
         ~needs_reducef:true
         ~code:{|
 let value_sub =
-  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
+  let ictx = Context.(ictx |> enter_script) in
   reducef ~msg:"math-sup" value_sub_f [ Context(ictx) ]
 in
 let sub = get_math_boxes value_sub in
@@ -330,7 +329,7 @@ make_math_boxes [ MathBoxParenWithMiddle{ context; left; right; middle; inner } 
         ~needs_reducef:true
         ~code:{|
 let value_upper =
-  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
+  let ictx = Context.(ictx |> enter_script) in
   reducef ~msg:"math-sup" value_upper_f [ Context(ictx) ]
 in
 let upper = get_math_boxes value_upper in
@@ -350,7 +349,7 @@ make_math_boxes [ MathBoxUpperLimit{ context = ictx; base; upper } ]
         ~needs_reducef:true
         ~code:{|
 let value_lower =
-  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
+  let ictx = Context.(ictx |> enter_script) in
   reducef ~msg:"math-sup" value_lower_f [ Context(ictx) ]
 in
 let lower = get_math_boxes value_lower in
@@ -454,7 +453,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = MathEmbeddedHorz(
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let ictx = MathContext.(ictx |> make |> set_math_char_class mccls |> context_for_text) in
+let ictx = Context.(ictx |> set_math_char_class mccls) in
 Context(ictx)
 |}
     ; inst "BackendGetMathCharClass"
@@ -467,7 +466,7 @@ Context(ictx)
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let mccls = MathContext.(ictx |> make |> math_char_class) in
+let mccls = Context.(ictx |> math_char_class) in
 make_math_char_class mccls
 |}
     ; inst "BackendEmbeddedMath"
@@ -481,8 +480,7 @@ make_math_char_class mccls
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let mathctx = MathContext.make ictx in
-let hblst = Math.main mathctx mlst in
+let hblst = Math.main ictx mlst in
 make_horz hblst
 |}
     ; inst "BackendTabular"
@@ -1306,8 +1304,8 @@ match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let mctx = MathContext.make ictx in
-let mc = FontInfo.get_math_constants mctx in
+let mfabbrev = Context.math_font_abbrev ictx in
+let mc = FontInfo.get_math_constants mfabbrev in
 make_float (mc.FontFormat.axis_height)
 |}
     ; inst "PrimitiveSetParagraphMargin"

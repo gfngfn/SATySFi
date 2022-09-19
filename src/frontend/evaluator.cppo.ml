@@ -865,7 +865,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
       let InputMathValueElement{ base; sub; sup } = imv in
       match base with
       | InputMathValueChar(uch) ->
-          let (mk, uch_aft) = MathContext.convert_math_variant_char ictx uch in
+          let (mk, uch_aft) = Context.convert_math_variant_char ictx uch in
           let mbs_base =
             [
               MathBoxAtom{
@@ -874,7 +874,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
               };
             ]
           in
-          let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
+          let ctx_scripts = Context.(ictx |> enter_script) in
           let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
           let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
           append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
@@ -892,7 +892,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
                   interpret_0 env ast
                 in
                 let mbs_base = get_math_boxes value in
-                let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
+                let ctx_scripts = Context.(ictx |> enter_script) in
                 let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
                 let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
                 append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
@@ -917,7 +917,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
 
       | InputMathValueGroup(imvs_group) ->
           let mbs_base = iter ictx imvs_group in
-          let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
+          let ctx_scripts = Context.(ictx |> enter_script) in
           let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
           let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
           append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt

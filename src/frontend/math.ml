@@ -295,19 +295,20 @@ let space_ord_prefix ctx fontsize =
 
 
 let space_after_script mathctx =
-  let fontsize = MathContext.font_size mathctx in
-  if not (MathContext.is_in_base_level mathctx) then
+  let fontsize = Context.font_size mathctx in
+  let mfabbrev = Context.math_font_abbrev mathctx in
+  if not (Context.is_in_base_level mathctx) then
     None
   else
-    let mc = FontInfo.get_math_constants mathctx in
+    let mc = FontInfo.get_math_constants mfabbrev in
     Some(outer_empty (fontsize *% mc.FontFormat.space_after_script) Length.zero Length.zero)
       (* temporary; should have variable stretchability and shrinkability *)
 
 
 let space_between_math_kinds (mathctx : math_context) ~prev:(mk_prev : math_kind) (corr : space_correction) (mk : math_kind) : horz_box option =
-  let is_in_script = not (MathContext.is_in_base_level mathctx) in
-  let (ctx, _) = MathContext.context_for_text mathctx in
-  let fontsize = MathContext.font_size mathctx in
+  let is_in_script = not (Context.is_in_base_level mathctx) in
+  let (ctx, _) = mathctx in
+  let fontsize = Context.font_size mathctx in
     if is_in_script then
       match (mk_prev, mk) with
       | (MathOperator, MathOrdinary)
@@ -528,9 +529,14 @@ let rec get_right_math_kind : math_box -> math_kind = function
       MathClose
 
 
+let get_math_constants (mathctx : math_context) =
+  let mfabbrev = Context.math_font_abbrev mathctx in
+  FontInfo.get_math_constants mfabbrev
+
+
 let superscript_baseline_height mathctx h_base d_sup =
-  let fontsize = MathContext.font_size mathctx in
-  let mc = FontInfo.get_math_constants mathctx in
+  let fontsize = Context.font_size mathctx in
+  let mc = get_math_constants mathctx in
   let h_supbmin = fontsize *% mc.FontFormat.superscript_bottom_min in
   let h_supstd  = fontsize *% mc.FontFormat.superscript_shift_up in
   let l_supdmax = fontsize *% mc.FontFormat.superscript_baseline_drop_max in
@@ -547,8 +553,8 @@ let superscript_correction_heights mathctx h_supbl h_base d_sup =
 
 
 let subscript_baseline_depth mathctx d_base h_sub =
-  let fontsize = MathContext.font_size mathctx in
-  let mc = FontInfo.get_math_constants mathctx in
+  let fontsize = Context.font_size mathctx in
+  let mc = get_math_constants mathctx in
   let h_subtmax = fontsize *% mc.FontFormat.subscript_top_max in
   let d_substd  = Length.negate (fontsize *% mc.FontFormat.subscript_shift_down) in
   let l_subdmin = fontsize *% mc.FontFormat.subscript_baseline_drop_min in
@@ -564,8 +570,8 @@ let subscript_correction_heights mathctx d_subbl d_base h_sub =
 
 
 let correct_script_baseline_heights mathctx d_sup h_sub h_supbl_raw d_subbl_raw =
-  let fontsize = MathContext.font_size mathctx in
-  let mc = FontInfo.get_math_constants mathctx in
+  let fontsize = Context.font_size mathctx in
+  let mc = get_math_constants mathctx in
   let l_gapmin = fontsize *% mc.FontFormat.sub_superscript_gap_min in
   let l_gap = (h_supbl_raw +% d_sup) -% (d_subbl_raw +% h_sub) in
   if l_gap <% l_gapmin then
@@ -576,8 +582,8 @@ let correct_script_baseline_heights mathctx d_sup h_sub h_supbl_raw d_subbl_raw 
 
 
 let numerator_baseline_height mathctx d_numer =
-  let fontsize = MathContext.font_size mathctx in
-  let mc = FontInfo.get_math_constants mathctx in
+  let fontsize = Context.font_size mathctx in
+  let mc = get_math_constants mathctx in
   let h_bar         = fontsize *% mc.FontFormat.axis_height in
   let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
   let h_numerstd    = fontsize *% mc.FontFormat.fraction_numer_d_shift_up in
@@ -587,8 +593,8 @@ let numerator_baseline_height mathctx d_numer =
 
 
 let denominator_baseline_depth mathctx h_denom =
-  let fontsize = MathContext.font_size mathctx in
-  let mc = FontInfo.get_math_constants mathctx in
+  let fontsize = Context.font_size mathctx in
+  let mc = get_math_constants mathctx in
   let h_bar         = fontsize *% mc.FontFormat.axis_height in
   let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
   let d_denomstd    = Length.negate (fontsize *% mc.FontFormat.fraction_denom_d_shift_down) in
@@ -598,8 +604,8 @@ let denominator_baseline_depth mathctx h_denom =
 
 
 let upper_limit_baseline_height mathctx h_base d_up =
-  let fontsize = MathContext.font_size mathctx in
-  let mc = FontInfo.get_math_constants mathctx in
+  let fontsize = Context.font_size mathctx in
+  let mc = get_math_constants mathctx in
   let l_upmingap = fontsize *% mc.FontFormat.upper_limit_gap_min in
   let l_upblstd = fontsize *% mc.FontFormat.upper_limit_baseline_rise_min in
   let h_upbl = Length.max (h_base +% l_upblstd) (h_base +% l_upmingap +% (Length.negate d_up)) in
@@ -607,8 +613,8 @@ let upper_limit_baseline_height mathctx h_base d_up =
 
 
 let lower_limit_baseline_depth mathctx d_base h_low =
-  let fontsize = MathContext.font_size mathctx in
-  let mc = FontInfo.get_math_constants mathctx in
+  let fontsize = Context.font_size mathctx in
+  let mc = get_math_constants mathctx in
   let l_lowmingap = fontsize *% mc.FontFormat.lower_limit_gap_min in
   let l_lowblstd = fontsize *% mc.FontFormat.lower_limit_baseline_drop_min in
   let d_lowbl = Length.min (d_base -% l_lowblstd) (d_base -% l_lowmingap -% h_low) in
@@ -622,8 +628,8 @@ let lower_limit_baseline_depth mathctx d_base h_low =
      and then returns the height, the thickness, and the extra ascender of the raducal rule.
    -- *)
 let radical_bar_metrics mathctx h_cont =
-  let fontsize = MathContext.font_size mathctx in
-  let mc = FontInfo.get_math_constants mathctx in
+  let fontsize = Context.font_size mathctx in
+  let mc = get_math_constants mathctx in
   let l_radgap = fontsize *% mc.FontFormat.radical_d_vertical_gap in
   let t_bar    = fontsize *% mc.FontFormat.radical_rule_thickness in
   let l_extra  = fontsize *% mc.FontFormat.radical_extra_ascender in
@@ -646,39 +652,30 @@ let radical_degree_baseline_height mathctx scriptlev h_rad d_deg =
 
 
 let make_paren mathctx (paren : paren) (height : length) (depth : length) =
-  let (hbs, kernf) = paren height depth (MathContext.context_for_text mathctx) in
+  let (hbs, kernf) = paren height depth mathctx in
   (hbs, MathKernScheme.make_dense kernf)
 
 
 let make_radical mathctx radical hgt_bar t_bar dpt =
-  let fontsize = MathContext.font_size mathctx in
-  let hblst = radical hgt_bar t_bar dpt fontsize (MathContext.color mathctx) in
+  let fontsize = Context.font_size mathctx in
+  let hblst = radical hgt_bar t_bar dpt fontsize (Context.color mathctx) in
     hblst
 
 
-let convert_math_char (mathctx : math_context) (is_big : bool) (uchlst : Uchar.t list) (mk : math_kind) : low_math_atom =
-  let mathstrinfo = FontInfo.get_math_string_info mathctx in
+let convert_math_char (mathctx : math_context) ~(kern : (math_char_kern_func * math_char_kern_func) option) ~(is_big : bool) (uchlst : Uchar.t list) (mk : math_kind) : low_math_atom =
+  let mathstrinfo = Context.get_math_string_info mathctx in
+  let mfabbrev = Context.math_font_abbrev mathctx in
+  let font_size = Context.font_size mathctx in
+  let is_in_base_level = Context.is_in_base_level mathctx in
   let is_in_display = true (* temporary *) in
-  let (otxt, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
-  let (lk, rk) = make_left_and_right_kern hgt dpt mk mic (MathKernInfo(mkiopt)) in
-  let lma =
-    LowMathAtomGlyph{
-      info   = mathstrinfo;
-      width  = wid;
-      height = hgt;
-      depth  = dpt;
-      output = otxt;
-    }
+  let (otxt, wid, hgt, dpt, mic, mkiopt) =
+    FontInfo.get_math_char_info mfabbrev ~is_in_base_level ~is_in_display ~is_big ~font_size uchlst
   in
-  { atom_main = lma; atom_left_kern = lk; atom_right_kern = rk }
-
-
-let convert_math_char_with_kern (mathctx : math_context) (is_big : bool) (uchlst : Uchar.t list) (mk : math_kind) (kernfL : math_char_kern_func) (kernfR : math_char_kern_func) : low_math_atom =
-  let mathstrinfo = FontInfo.get_math_string_info mathctx in
-  let is_in_display = true (* temporary *) in
-  let (otxt, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
-  let fontsize = mathstrinfo.info_math_font_size in
-  let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
+  let mkspec =
+    match kern with
+    | Some((kernfL, kernfR)) -> MathKernFunc(kernfL font_size, kernfR font_size) (* temporary *)
+    | None                   -> (MathKernInfo(mkiopt))
+  in
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
   let lma =
     LowMathAtomGlyph{
@@ -721,12 +718,10 @@ let convert_math_element (mk : math_kind) (ma : math_box_atom) : low_math_atom =
       }
 
   | MathChar{ context = ictx; is_big; chars = uchs } ->
-      let mathctx = MathContext.make ictx in
-      convert_math_char mathctx is_big uchs mk
+      convert_math_char ictx ~kern:None ~is_big uchs mk
 
   | MathCharWithKern{ context = ictx; is_big; chars = uchs; left_kern; right_kern } ->
-      let mathctx = MathContext.make ictx in
-      convert_math_char_with_kern mathctx is_big uchs mk left_kern right_kern
+      convert_math_char ictx ~kern:(Some((left_kern, right_kern))) ~is_big uchs mk
 
 
 let rec convert_to_low ~prev:(mk_first : math_kind) ~next:(mk_last : math_kind) (ms : math_box list) : low_math =
@@ -792,7 +787,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       let d_numer = lmN.low_depth in
       let h_denom = lmD.low_height in
       let d_denom = lmD.low_depth in
-      let mathctx = MathContext.make ictx in
+      let mathctx = ictx in
       let h_numerbl = numerator_baseline_height mathctx d_numer in
       let d_denombl = denominator_baseline_depth mathctx h_denom in
       let h_frac = h_numerbl +% h_numer in
@@ -815,7 +810,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       let rkB = lmB.low_right_kern in
       let h_sub = lmS.low_height in
       let d_sub = lmS.low_depth in
-      let mathctx = MathContext.make ictx in
+      let mathctx = ictx in
       let d_subbl = subscript_baseline_depth mathctx rkB.last_depth h_sub in
       let h_whole = h_base in (*TODO: take the height of subscripts into account *)
       let d_whole = Length.min d_base (d_subbl +% d_sub) in
@@ -836,7 +831,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
             let d_sup = lmS.low_depth in
             let h_sub = lmT.low_height in
             let d_sub = lmT.low_depth in
-            let mathctx = MathContext.make ictx in
+            let mathctx = ictx in
             let h_supbl_raw = superscript_baseline_height mathctx h_base d_sup in
             let d_subbl_raw = subscript_baseline_depth mathctx rkB.last_depth h_sub in
             let (h_supbl, d_subbl) = correct_script_baseline_heights mathctx d_sup h_sub h_supbl_raw d_subbl_raw in
@@ -861,7 +856,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
             let d_base = lmB.low_depth in
             let h_sup = lmS.low_height in
             let d_sup = lmS.low_depth in
-            let mathctx = MathContext.make ictx in
+            let mathctx = ictx in
             let h_supbl = superscript_baseline_height mathctx h_base d_sup in
             let h_whole = Length.max h_base (h_supbl +% h_sup) in
             let d_whole = d_base in (*TODO: take the depth of superscripts into account *)
@@ -869,7 +864,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       end
 
   | MathBoxRadical{ context = ictx; radical; degree = mlstD_opt; inner = mlstC } ->
-      let mathctx = MathContext.make ictx in
+      let mathctx = ictx in
       let lmC = convert_to_low ~prev:MathEnd ~next:MathEnd mlstC in
       let h_inner = lmC.low_height in
       let d_inner = lmC.low_depth in
@@ -899,7 +894,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       let lmC = convert_to_low ~prev:MathOpen ~next:MathClose mlstC in
       let h_inner = lmC.low_height in
       let d_inner = lmC.low_depth in
-      let mathctx = MathContext.make ictx in
+      let mathctx = ictx in
       let (hblstparenL, mkernsL) = make_paren mathctx parenL h_inner d_inner in
       let (hblstparenR, mkernsR) = make_paren mathctx parenR h_inner d_inner in
       let (_, hL, dL)   = LineBreak.get_natural_metrics hblstparenL in
@@ -917,7 +912,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
           (Length.max hacc lm.low_height, Length.min dacc lm.low_depth)
         ) (Length.zero, Length.zero)
       in
-      let mathctx = MathContext.make ictx in
+      let mathctx = ictx in
       let (hblstparenL, mkernsL) = make_paren mathctx parenL h_inner d_inner in
       let (hblstparenR, mkernsR) = make_paren mathctx parenR h_inner d_inner in
       let (hblstmiddle, _) = make_paren mathctx middle h_inner d_inner in
@@ -946,7 +941,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       let d_base = lmB.low_depth in
       let h_upper = lmU.low_height in
       let d_upper = lmU.low_depth in
-      let mathctx = MathContext.make ictx in
+      let mathctx = ictx in
       let h_upperbl = upper_limit_baseline_height mathctx h_base d_upper in
       let h_whole = h_upperbl +% h_upper in
       let d_whole = d_base in
@@ -959,7 +954,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       let d_base = lmB.low_depth in
       let h_lower = lmL.low_height in
       let d_lower = lmL.low_depth in
-      let mathctx = MathContext.make ictx in
+      let mathctx = ictx in
       let d_lowerbl = lower_limit_baseline_depth mathctx d_base h_lower in
       let h_whole = h_base in
       let d_whole = d_lowerbl +% d_lower in
@@ -980,12 +975,12 @@ let ratioize n =
 
 
 let horz_fraction_bar mathctx wid =
-  let fontsize = MathContext.font_size mathctx in
-  let mc = FontInfo.get_math_constants mathctx in
+  let fontsize = Context.font_size mathctx in
+  let mc = get_math_constants mathctx in
   let h_bar         = fontsize *% mc.FontFormat.axis_height in
   let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
   let h_bart        = h_bar +% t_bar *% 0.5 in
-  let bar_color = MathContext.color mathctx in
+  let bar_color = Context.color mathctx in
   let bar_graphics (xpos, ypos) =
     GraphicD.make_fill bar_color [ make_rectangle (xpos, ypos +% h_bart) wid t_bar ]
   in
@@ -1056,11 +1051,11 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let d_sup = lmS.low_depth in
               let lkS = lmS.low_left_kern in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (MathContext.enter_script FontInfo.get_math_constants mathctx) MathEnd MathEnd lmS in
+              let hblstS = horz_of_low_math (Context.enter_script mathctx) MathEnd MathEnd lmS in
               let h_base = rkB.last_height in
               let (l_base, l_sup) = superscript_correction_heights mathctx h_supbl h_base d_sup in
               let l_kernbase = MathKernScheme.calculate mathctx rkB.kernTR l_base in
-              let l_kernsup  = MathKernScheme.calculate (MathContext.enter_script FontInfo.get_math_constants mathctx) lkS.kernBL l_sup in
+              let l_kernsup  = MathKernScheme.calculate (Context.enter_script mathctx) lkS.kernBL l_sup in
               let l_italic   = rkB.italics_correction in
               let kern = l_italic +% l_kernbase +% l_kernsup in
               let hbkern = fixed_empty kern in
@@ -1080,7 +1075,7 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let h_sub = lmS.low_height in
               let lkS = lmS.low_left_kern in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (MathContext.enter_script FontInfo.get_math_constants mathctx) MathEnd MathEnd lmS in
+              let hblstS = horz_of_low_math (Context.enter_script mathctx) MathEnd MathEnd lmS in
               let d_base = rkB.last_depth in
               let (l_base, l_sub) = subscript_correction_heights mathctx d_subbl d_base h_sub in
               let l_kernbase = MathKernScheme.calculate mathctx rkB.kernBR l_base in
@@ -1113,14 +1108,14 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let lkS = lmS.low_left_kern in
               let h_sub = lmT.low_height in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (MathContext.enter_script FontInfo.get_math_constants mathctx) MathEnd MathEnd lmS in
-              let hblstT = horz_of_low_math (MathContext.enter_script FontInfo.get_math_constants mathctx) MathEnd MathEnd lmT in
+              let hblstS = horz_of_low_math (Context.enter_script mathctx) MathEnd MathEnd lmS in
+              let hblstT = horz_of_low_math (Context.enter_script mathctx) MathEnd MathEnd lmT in
               let h_base = rkB.last_height in
               let d_base = rkB.last_depth in
 
               let (l_base_sup, l_sup) = superscript_correction_heights mathctx h_supbl h_base d_sup in
               let l_kernbase_sup = MathKernScheme.calculate mathctx rkB.kernTR l_base_sup in
-              let l_kernsup      = MathKernScheme.calculate (MathContext.enter_script FontInfo.get_math_constants mathctx) lkS.kernBL l_sup in
+              let l_kernsup      = MathKernScheme.calculate (Context.enter_script mathctx) lkS.kernBL l_sup in
               let l_italic       = rkB.italics_correction in
               let kernsup = l_italic +% l_kernbase_sup +% l_kernsup in
               let hbkernsup = fixed_empty kernsup in
@@ -1190,7 +1185,7 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let hbbar =
                 HorzPure(PHGFixedGraphics(w_cont, h_bar +% t_bar, Length.zero,
                   (fun (xpos, ypos) ->
-                    GraphicD.make_fill (MathContext.color mathctx)
+                    GraphicD.make_fill (Context.color mathctx)
                       [ make_rectangle (xpos, ypos +% h_bar) w_cont t_bar ]
                   )
                 ))
@@ -1234,7 +1229,7 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let rkB = lmB.low_right_kern in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
                 (* needs reconsideration *)
-              let hblstU = horz_of_low_math (MathContext.enter_script FontInfo.get_math_constants mathctx) MathEnd MathEnd lmU in
+              let hblstU = horz_of_low_math (Context.enter_script mathctx) MathEnd MathEnd lmU in
               let (w_base, _, _) = LineBreak.get_natural_metrics hblstB in
               let (w_up, _, _) = LineBreak.get_natural_metrics hblstU in
               let hblstsub =
@@ -1258,7 +1253,7 @@ let rec horz_of_low_math (mathctx : math_context) ~prev:(mk_first : math_kind) ~
               let rkB = lmB.low_right_kern in
               let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
                 (* needs reconsideration *)
-              let hblstL = horz_of_low_math (MathContext.enter_script FontInfo.get_math_constants mathctx) MathEnd MathEnd lmL in
+              let hblstL = horz_of_low_math (Context.enter_script mathctx) MathEnd MathEnd lmL in
               let (w_base, _, _) = LineBreak.get_natural_metrics hblstB in
               let (w_low, _, _) = LineBreak.get_natural_metrics hblstL in
               let hblstsub =
