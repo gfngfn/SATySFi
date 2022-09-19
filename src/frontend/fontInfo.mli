@@ -31,5 +31,3 @@ val get_math_constants : math_context -> FontFormat.math_constants
 val get_math_kern_ratio : math_context -> FontFormat.math_kern -> float -> float
 
 val get_font_dictionary : Pdf.t -> Pdf.pdfobject
-
-val find_math_decoder_exn : math_font_abbrev -> FontFormat.math_decoder

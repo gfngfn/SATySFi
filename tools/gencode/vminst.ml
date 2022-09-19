@@ -220,7 +220,7 @@ make_math_boxes [ MathBoxGroup{ left; right; inner } ]
         ~needs_reducef:true
         ~code:{|
 let value_sup =
-  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
   reducef ~msg:"math-sup" value_sup_f [ Context(ictx) ]
 in
 let sup = get_math_boxes value_sup in
@@ -240,7 +240,7 @@ make_math_boxes [ MathBoxSuperscript{ context = ictx; base; sup } ]
         ~needs_reducef:true
         ~code:{|
 let value_sub =
-  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
   reducef ~msg:"math-sup" value_sub_f [ Context(ictx) ]
 in
 let sub = get_math_boxes value_sub in
@@ -330,7 +330,7 @@ make_math_boxes [ MathBoxParenWithMiddle{ context; left; right; middle; inner } 
         ~needs_reducef:true
         ~code:{|
 let value_upper =
-  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
   reducef ~msg:"math-sup" value_upper_f [ Context(ictx) ]
 in
 let upper = get_math_boxes value_upper in
@@ -350,7 +350,7 @@ make_math_boxes [ MathBoxUpperLimit{ context = ictx; base; upper } ]
         ~needs_reducef:true
         ~code:{|
 let value_lower =
-  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+  let ictx = MathContext.(ictx |> make |> enter_script FontInfo.get_math_constants |> context_for_text) in
   reducef ~msg:"math-sup" value_lower_f [ Context(ictx) ]
 in
 let lower = get_math_boxes value_lower in

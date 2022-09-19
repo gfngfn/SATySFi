@@ -1394,23 +1394,19 @@ let unlift_rec_or_nonrec (cd_rec_or_nonrec : code_rec_or_nonrec) : rec_or_nonrec
   | CdMutable(symb, code) -> Mutable(CodeSymbol.unlift symb, unlift_code code)
 
 
-module MathContext
-: sig
-    type t
-    val make : input_context -> t
-    val context_for_text : t -> input_context
-    val context_main : t -> HorzBox.context_main
-    val convert_math_variant_char : input_context -> Uchar.t -> HorzBox.math_kind * Uchar.t
-    val color : t -> color
-    val set_color : color -> t -> t
-    val enter_script : (HorzBox.math_font_abbrev -> FontFormat.math_decoder) -> t -> t
-    val math_char_class : t -> HorzBox.math_char_class
-    val set_math_char_class : HorzBox.math_char_class -> t -> t
-    val is_in_base_level : t -> bool
-    val font_size : t -> length
-    val math_font_abbrev : t -> HorzBox.math_font_abbrev
-  end
-= struct
+module MathContext : sig
+  type t
+  val make : input_context -> t
+  val context_for_text : t -> input_context
+  val convert_math_variant_char : input_context -> Uchar.t -> HorzBox.math_kind * Uchar.t
+  val color : t -> color
+  val enter_script : (t -> FontFormat.math_constants) -> t -> t
+  val math_char_class : t -> HorzBox.math_char_class
+  val set_math_char_class : HorzBox.math_char_class -> t -> t
+  val is_in_base_level : t -> bool
+  val font_size : t -> length
+  val math_font_abbrev : t -> HorzBox.math_font_abbrev
+end = struct
 
     type t = input_context
 
@@ -1441,16 +1437,8 @@ module MathContext
       ictx
 
 
-    let context_main ((ctx, _) : t) =
-      ctx
-
-
     let color ((ctx, _) : t) =
       ctx.HorzBox.text_color
-
-
-    let set_color (color : color) ((ctx, ctxsub) : t) =
-      ({ ctx with HorzBox.text_color = color }, ctxsub)
 
 
     let math_char_class ((ctx, _) : t) =
@@ -1465,10 +1453,10 @@ module MathContext
       ctx.font_size
 
 
-    let enter_script (mdf : HorzBox.math_font_abbrev -> FontFormat.math_decoder) ((ctx, ctxsub) : t) : t =
+    let enter_script (mcf : t -> FontFormat.math_constants) (ictx : t) : t =
+      let mc = mcf ictx in
+      let (ctx, ctxsub) = ictx in
       let size = ctx.font_size in
-      let md = mdf ctx.math_font_abbrev in
-      let mc = FontFormat.get_math_constants md in
       let ctx =
         match ctx.math_script_level with
         | BaseLevel ->
