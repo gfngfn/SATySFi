@@ -32,13 +32,11 @@ type font_with_size = font_abbrev * Length.t
 type font_with_ratio = font_abbrev * float * float
 [@@deriving show]
 
-type page_content_scheme =
-  {
-    page_content_origin : point;
-    page_content_height : length;
-  }
-
-let pp_page_content_scheme fmt _ = Format.fprintf fmt "<page-content-scheme>"
+type page_content_scheme = {
+  page_content_origin : point;
+  page_content_height : length;
+}
+[@@deriving show {with_path = false }]
 
 type page_break_info = {
   current_page_number : int;
@@ -47,33 +45,31 @@ type page_break_info = {
 
 type page_content_scheme_func = page_break_info -> page_content_scheme
 
-let pp_page_content_scheme_func fmt _ = Format.fprintf fmt "<page-content-scheme-func>"
+let pp_page_content_scheme_func fmt _ =
+  Format.fprintf fmt "<page-content-scheme-func>"
 
-type paddings =
-  {
-    paddingL : length;
-    paddingR : length;
-    paddingT : length;
-    paddingB : length;
-  }
+type paddings = {
+  paddingL : length;
+  paddingR : length;
+  paddingT : length;
+  paddingB : length;
+}
 [@@deriving show { with_path = false }]
 
 
-type horz_string_info =
-  {
-    font_abbrev    : font_abbrev;
-    text_font_size : length;
-    text_color     : color;
-    rising         : length;
-  }
+type horz_string_info = {
+  font_abbrev    : font_abbrev;
+  text_font_size : length;
+  text_color     : color;
+  rising         : length;
+}
 [@@deriving show { with_path = false }]
 
-type math_string_info =
-  {
-    info_math_font_abbrev : math_font_abbrev;
-    info_math_font_size   : length;
-    info_math_color       : color;
-  }
+type math_string_info = {
+  info_math_font_abbrev : math_font_abbrev;
+  info_math_font_size   : length;
+  info_math_color       : color;
+}
 [@@deriving show { with_path = false }]
 
 type math_kind =
