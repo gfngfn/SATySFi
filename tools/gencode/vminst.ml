@@ -1560,11 +1560,11 @@ Context(HorzBox.({ ctx with manual_rising = rising; }), ctxsub)
         ]
         ~params:[
           param "rising" ~type_:"length";
-          param "hblst" ~type_:"horz_boxes";
+          param "inner" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz (HorzBox.([HorzPure(PHGRising(rising, hblst))]))
+make_horz (HorzBox.([ HorzPure(PHGRising{ rising; inner }) ]))
 |}
     ; inst "PrimitiveSetHyphenPenalty"
         ~name:"set-hyphen-penalty"
@@ -1614,11 +1614,11 @@ make_string (HorzBox.extract_string hblst)
         ~fields:[
         ]
         ~params:[
-          param "wid" ~type_:"length";
+          param "width" ~type_:"length";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz [HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))]
+make_horz [ HorzBox.HorzPure(HorzBox.PHSFixedEmpty{ width }) ]
 |}
     ; inst "BackendOuterEmpty"
         ~name:"inline-glue"
@@ -1626,13 +1626,13 @@ make_horz [HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))]
         ~fields:[
         ]
         ~params:[
-          param "widnat" ~type_:"length";
-          param "widshrink" ~type_:"length";
-          param "widstretch" ~type_:"length";
+          param "natural" ~type_:"length";
+          param "shrinkable" ~type_:"length";
+          param "stretchable" ~type_:"length";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz [HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))]
+make_horz HorzBox.([ HorzPure(PHSOuterEmpty{ natural; shrinkable; stretchable }) ])
 |}
     ; inst "BackendOuterFrame"
         ~name:"inline-frame-outer"

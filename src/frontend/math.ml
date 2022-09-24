@@ -217,11 +217,11 @@ let make_left_and_right_kern hgt dpt mk mic mkspec : left_kern * right_kern =
 
 
 let fixed_empty wid =
-  HorzPure(PHSFixedEmpty(wid))
+  HorzPure(PHSFixedEmpty{ width = wid })
 
 
-let outer_empty wid shrink stretch =
-  HorzPure(PHSOuterEmpty(wid, shrink, stretch))
+let outer_empty natural shrinkable stretchable =
+  HorzPure(PHSOuterEmpty{ natural; shrinkable; stretchable })
 
 
 let normalize_math_kind mkprev mknext mkraw =
@@ -987,8 +987,8 @@ let horz_fraction_bar ictx wid =
   HorzPure(PHGFixedGraphics(wid, h_bart, Length.zero, bar_graphics))
 
 
-let raise_horz r hblst =
-  [HorzPure(PHGRising(r, hblst))]
+let raise_horz r hbs =
+  [ HorzPure(PHGRising{ rising = r; inner = hbs }) ]
 
 
 let get_space_correction = function

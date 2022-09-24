@@ -193,9 +193,15 @@ and outer_fil_graphics = length -> point -> (intermediate_horz_box list) Graphic
 
 and pure_horz_box =
 (* Spaces inserted before text processing: *)
-  | PHSOuterEmpty       of length * length * length
+  | PHSOuterEmpty of {
+      natural     : length;
+      shrinkable  : length;
+      stretchable : length;
+    }
   | PHSOuterFil
-  | PHSFixedEmpty       of length
+  | PHSFixedEmpty of {
+      width : length;
+    }
 (* Texts: *)
   | PHCInnerString of {
       context : context_main;
@@ -209,7 +215,10 @@ and pure_horz_box =
       output : OutputText.t;
     } [@printer (fun fmt _ _ _ _ _ -> Format.fprintf fmt "@[PHCInnerMathGlyph(...)@]")]
 (* Groups: *)
-  | PHGRising           of length * horz_box list
+  | PHGRising of {
+      rising : length;
+      inner  : horz_box list;
+    }
   | PHGFixedFrame       of paddings * length * decoration * horz_box list
   | PHGInnerFrame       of paddings * decoration * horz_box list
   | PHGOuterFrame       of paddings * decoration * horz_box list
@@ -467,7 +476,7 @@ let rec extract_string (hblst : horz_box list) : string =
     match hb with
     | HorzPure(PHCInnerString{ chars = uchs })       -> string_of_uchlst uchs
     | HorzPure(PHCInnerMathGlyph(_))                 -> ""
-    | HorzPure(PHGRising(_, hblst))                  -> extract_string hblst
+    | HorzPure(PHGRising{ inner = hbs })             -> extract_string hbs
     | HorzPure(PHGFixedFrame(_, _, _, hblst))        -> extract_string hblst
     | HorzPure(PHGInnerFrame(_, _, hblst))           -> extract_string hblst
     | HorzPure(PHGOuterFrame(_, _, hblst))           -> extract_string hblst

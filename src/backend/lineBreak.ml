@@ -134,18 +134,18 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
     } ->
       puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, otxt)))
 
-  | PHGRising(lenrising, hblst) ->
-      let lphblst = listf hblst in
-      let (widinfo, hgt, dpt) = get_total_metrics lphblst in
-      let hgtsub = Length.max Length.zero (hgt +% lenrising) in
-      let dptsub = Length.min Length.zero (dpt +% lenrising) in
-        puref (LBRising((widinfo, hgtsub, dptsub), lenrising, lphblst))
+  | PHGRising{ rising = len_rising; inner = hbs } ->
+      let lphbs = listf hbs in
+      let (widinfo, hgt, dpt) = get_total_metrics lphbs in
+      let hgtsub = Length.max Length.zero (hgt +% len_rising) in
+      let dptsub = Length.min Length.zero (dpt +% len_rising) in
+      puref (LBRising((widinfo, hgtsub, dptsub), len_rising, lphbs))
 
-  | PHSFixedEmpty(wid) ->
+  | PHSFixedEmpty{ width = wid } ->
       puref (LBAtom(empty_vert (natural wid), EvHorzEmpty))
 
-  | PHSOuterEmpty(wid, widshrink, widstretch) ->
-      puref (LBAtom(empty_vert { natural = wid; shrinkable = widshrink; stretchable = FiniteStretch(widstretch); }, EvHorzEmpty))
+  | PHSOuterEmpty{ natural; shrinkable; stretchable = wid_stretch } ->
+      puref (LBAtom(empty_vert { natural; shrinkable; stretchable = FiniteStretch(wid_stretch); }, EvHorzEmpty))
 
   | PHSOuterFil ->
       puref (LBAtom(empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, EvHorzEmpty))
@@ -1195,11 +1195,11 @@ let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
           | PHCInnerMathGlyph(_) ->
               Some(CharBasis.Latin)
 
-          | PHGRising(_, hblst0) ->
+          | PHGRising{ inner = hbs0 } ->
               begin
-                match hblst0 with
+                match hbs0 with
                 | [] -> aux tail
-                | _  -> aux hblst0
+                | _  -> aux hbs0
               end
 
           | PHGHookPageBreak(_)
@@ -1249,11 +1249,11 @@ let get_rightmost_script (hblst : horz_box list) : CharBasis.script option =
           | PHCInnerMathGlyph(_) ->
               Some(CharBasis.Latin)
 
-          | PHGRising(_, hblst0) ->
+          | PHGRising{ inner = hbs0 } ->
               begin
-                match hblst0 with
+                match hbs0 with
                 | [] -> aux revtail
-                | _  -> aux (List.rev hblst0)
+                | _  -> aux (List.rev hbs0)
               end
 
           | PHGHookPageBreak(_)
