@@ -150,23 +150,23 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHSOuterFil ->
       puref (LBAtom(empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, EvHorzEmpty))
 
-  | PHGOuterFrame(pads, deco, hblst) ->
-      let lphblst = listf hblst in
-      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-      let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-        puref (LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), deco, lphblstnew))
+  | PHGOuterFrame{ paddings = pads; decoration = deco; inner = hbs } ->
+      let lphbs = listf hbs in
+      let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
+      let (lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
+      puref (LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), deco, lphbs_new))
 
-  | PHGInnerFrame(pads, deco, hblst) ->
-      let lphblst = listf hblst in
-      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-      let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-        puref (LBFixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew))
+  | PHGInnerFrame{ paddings = pads; decoration = deco; inner = hbs } ->
+      let lphbs = listf hbs in
+      let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
+      let (lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
+      puref (LBFixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphbs_new))
 
-  | PHGFixedFrame(pads, wid_req, deco, hblst) ->
-      let lphblst = listf hblst in
-      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-      let (lphblstnew, _) = append_horz_padding_pure lphblst widinfo_sub pads in
-        puref (LBFixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew))
+  | PHGFixedFrame{ required_width = wid_req; paddings = pads; decoration = deco; inner = hbs } ->
+      let lphbs = listf hbs in
+      let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
+      let (lphbs_new, _) = append_horz_padding_pure lphbs widinfo_sub pads in
+      puref (LBFixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphbs_new))
 
   | PHGEmbeddedVert(wid, hgt, dpt, imvblst) ->
       puref (LBEmbeddedVert(wid, hgt, dpt, imvblst))

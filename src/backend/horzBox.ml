@@ -219,9 +219,22 @@ and pure_horz_box =
       rising : length;
       inner  : horz_box list;
     }
-  | PHGFixedFrame       of paddings * length * decoration * horz_box list
-  | PHGInnerFrame       of paddings * decoration * horz_box list
-  | PHGOuterFrame       of paddings * decoration * horz_box list
+  | PHGFixedFrame of {
+      required_width : length;
+      paddings       : paddings;
+      decoration     : decoration;
+      inner          : horz_box list;
+    }
+  | PHGInnerFrame of {
+      paddings   : paddings;
+      decoration : decoration;
+      inner      : horz_box list;
+    }
+  | PHGOuterFrame of {
+      paddings   : paddings;
+      decoration : decoration;
+      inner      : horz_box list;
+    }
   | PHGEmbeddedVert     of length * length * length * intermediate_vert_box list
   | PHGFixedGraphics    of length * length * length * fixed_graphics
   | PHGOuterFilGraphics of length * length * outer_fil_graphics
@@ -477,9 +490,9 @@ let rec extract_string (hblst : horz_box list) : string =
     | HorzPure(PHCInnerString{ chars = uchs })       -> string_of_uchlst uchs
     | HorzPure(PHCInnerMathGlyph(_))                 -> ""
     | HorzPure(PHGRising{ inner = hbs })             -> extract_string hbs
-    | HorzPure(PHGFixedFrame(_, _, _, hblst))        -> extract_string hblst
-    | HorzPure(PHGInnerFrame(_, _, hblst))           -> extract_string hblst
-    | HorzPure(PHGOuterFrame(_, _, hblst))           -> extract_string hblst
+    | HorzPure(PHGFixedFrame{ inner = hbs })         -> extract_string hbs
+    | HorzPure(PHGInnerFrame{ inner = hbs })         -> extract_string hbs
+    | HorzPure(PHGOuterFrame{ inner = hbs })         -> extract_string hbs
     | HorzDiscretionary(_, hblst0, _, _)             -> extract_string hblst0
     | HorzFrameBreakable(_, _, _, _, _, _, _, hblst) -> extract_string hblst
     | HorzScriptGuard(_, _, hblst)                   -> extract_string hblst

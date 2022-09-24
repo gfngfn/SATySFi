@@ -1640,17 +1640,15 @@ make_horz HorzBox.([ HorzPure(PHSOuterEmpty{ natural; shrinkable; stretchable })
         ~fields:[
         ]
         ~params:[
-          param "pads" ~type_:"paddings";
-          param "valuedeco";
-          param "hblst" ~type_:"horz_boxes";
+          param "paddings" ~type_:"paddings";
+          param "value_deco";
+          param "inner" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-make_horz ([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
-  pads,
-  make_frame_deco (reducef ~msg:"inline-frame-outer") valuedeco,
-  hblst))])
+let decoration = make_frame_deco (reducef ~msg:"inline-frame-outer") value_deco in
+make_horz HorzBox.([ HorzPure(PHGOuterFrame{ paddings; decoration; inner }) ])
 |}
     ; inst "BackendInnerFrame"
         ~name:"inline-frame-inner"
@@ -1658,17 +1656,15 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
         ~fields:[
         ]
         ~params:[
-          param "pads" ~type_:"paddings";
-          param "valuedeco";
-          param "hblst" ~type_:"horz_boxes";
+          param "paddings" ~type_:"paddings";
+          param "value_deco";
+          param "inner" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-make_horz ([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
-  pads,
-  make_frame_deco (reducef ~msg:"inline-frame-inner") valuedeco,
-  hblst))])
+let decoration = make_frame_deco (reducef ~msg:"inline-frame-inner") value_deco in
+make_horz HorzBox.([ HorzPure(PHGInnerFrame{ paddings; decoration; inner }) ])
 |}
     ; inst "BackendFixedFrame"
         ~name:"inline-frame-fixed"
@@ -1676,18 +1672,16 @@ make_horz ([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
         ~fields:[
         ]
         ~params:[
-          param "wid" ~type_:"length";
-          param "pads" ~type_:"paddings";
-          param "valuedeco";
-          param "hblst" ~type_:"horz_boxes";
+          param "required_width" ~type_:"length";
+          param "paddings" ~type_:"paddings";
+          param "value_deco";
+          param "inner" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-make_horz ([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
-  pads, wid,
-  make_frame_deco (reducef ~msg:"inline-frame-fixed") valuedeco,
-  hblst))])
+let decoration = make_frame_deco (reducef ~msg:"inline-frame-fixed") value_deco in
+make_horz HorzBox.([ HorzPure(PHGFixedFrame{ required_width; paddings; decoration; inner }) ])
 |}
     ; inst "BackendOuterFrameBreakable"
         ~name:"inline-frame-breakable"
