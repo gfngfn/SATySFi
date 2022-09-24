@@ -5,9 +5,6 @@ open CharBasis
 open LineBreakBox
 
 
-type chunk_info = context_main * script * line_break_class
-
-
 let to_chunks (ctx : context_main) (uchs : Uchar.t list) (alw_last : break_opportunity) : break_opportunity * line_break_chunk list =
   let (alw_first, tris) = LineBreakDataMap.append_break_opportunity uchs alw_last in
   let scrs = ScriptDataMap.divide_by_script ctx tris in
