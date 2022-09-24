@@ -13,8 +13,6 @@ type per_mille =
 
 type metrics = per_mille * per_mille * per_mille
 
-type indirect = int
-
 exception FailToLoadFontOwingToSystem of abs_path * string
 exception BrokenFont                  of abs_path * string
 exception CannotFindUnicodeCmap       of abs_path
