@@ -1156,6 +1156,7 @@ type 'a resource =
   | Data           of 'a
   | EmbeddedStream of int
 
+(*
 type predefined_encoding =
   | StandardEncoding
   | MacRomanEncoding
@@ -1163,10 +1164,12 @@ type predefined_encoding =
 
 type differences = (string * int) list
 
+(* for module Type1Scheme_ etc. *)
 type encoding =
   | ImplicitEncoding
   | PredefinedEncoding of predefined_encoding
   | CustomEncoding     of predefined_encoding * differences
+*)
 
 type cmap =
   | PredefinedCMap of string
@@ -1174,7 +1177,10 @@ type cmap =
   | CMapFile       of cmap_resource
 *)
 
+(*
+(* for module Type3 *)
 type matrix = float * float * float * float
+*)
 
 type font_stretch =
   | UltraCondensedStretch | ExtraCondensedStretch | CondensedStretch | SemiCondensedStetch
