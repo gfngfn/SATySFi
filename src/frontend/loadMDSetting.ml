@@ -5,8 +5,6 @@ module MYU = MyYojsonUtil
 module YS = Yojson.SafePos
 type json = YS.json
 
-type file_path = string
-
 exception MultipleCodeNameDesignation of Range.t * string
 exception NotAnInlineCommand          of Range.t * string
 exception NotABlockCommand            of Range.t * string
