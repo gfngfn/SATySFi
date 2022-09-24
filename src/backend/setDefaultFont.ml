@@ -6,11 +6,7 @@ module YS = Yojson.SafePos
 module MYU = MyYojsonUtil
 
 
-type dir_path    = string
-type file_path   = string
-type key         = string
 type font_abbrev = string
-type script      = string
 
 
 let read_single_assoc assoc =
