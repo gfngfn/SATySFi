@@ -247,12 +247,27 @@ and pure_horz_box =
       depth    : length;
       graphics : fixed_graphics;
     }
-  | PHGOuterFilGraphics of length * length * outer_fil_graphics
-  | PHGFixedTabular     of length * length * length * intermediate_row list * length list * length list * rules_func
-  | PHGFixedImage       of length * length * ImageInfo.key
-      [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
-  | PHGHookPageBreak    of (page_break_info -> point -> unit)
-  | PHGFootnote         of intermediate_vert_box list
+  | PHGOuterFilGraphics of {
+      height   : length;
+      depth    : length;
+      graphics : outer_fil_graphics;
+    }
+  | PHGFixedTabular of {
+      width         : length;
+      height        : length;
+      depth         : length;
+      rows          : intermediate_row list;
+      column_widths : length list;
+      lengths       : length list;
+      rule_graphics : rules_func;
+    }
+  | PHGFixedImage of {
+      width  : length;
+      height : length;
+      key    : ImageInfo.key;
+    } [@printer (fun fmt _ _ _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
+  | PHGHookPageBreak of (page_break_info -> point -> unit)
+  | PHGFootnote of intermediate_vert_box list
 
 and horz_box =
   | HorzPure                  of pure_horz_box

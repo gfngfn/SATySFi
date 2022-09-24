@@ -489,21 +489,29 @@ make_horz hblst
         ~fields:[
         ]
         ~params:[
-          param "valuetabular";
-          param "valuerulesf";
+          param "value_tabular";
+          param "value_rulesf";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let tabular = get_list (get_list get_cell) valuetabular in
-let (imtabular, widlst, lenlst, wid, hgt, dpt) = Tabular.main tabular in
+let tabular = get_list (get_list get_cell) value_tabular in
+let (imtabular, wids, lens, width, height, depth) = Tabular.main tabular in
 let rulesf xs ys =
-  let valuexs = make_list make_length xs in
-  let valueys = make_list make_length ys in
-  let valueret = reducef ~msg:"tabular" valuerulesf [valuexs; valueys] in
-  get_graphics valueret
+  let value_xs = make_list make_length xs in
+  let value_ys = make_list make_length ys in
+  let value = reducef ~msg:"tabular" value_rulesf [ value_xs; value_ys ] in
+  get_graphics value
 in
-make_horz (HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
+make_horz HorzBox.([ HorzPure(PHGFixedTabular{
+  width;
+  height;
+  depth;
+  rows          = imtabular;
+  column_widths = wids;
+  lengths       = lens;
+  rule_graphics = rulesf;
+})])
 |}
     ; inst "BackendRegisterPdfImage"
         ~name:"load-pdf-image"
@@ -540,18 +548,13 @@ make_image_key imgkey
         ~fields:[
         ]
         ~params:[
-          param "valueimg";
-          param "wid" ~type_:"length";
+          param "key" ~type_:"image";
+          param "width" ~type_:"length";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-match valueimg with
-| BaseConstant(BCImageKey(imgkey)) ->
-    let hgt = ImageInfo.get_height_from_width imgkey wid in
-    make_horz (HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
-
-| _ ->
-    report_bug_vm "BackendUseImage"
+let height = ImageInfo.get_height_from_width key width in
+make_horz HorzBox.([ HorzPure(PHGFixedImage{ width; height; key }) ])
 |}
     ; inst "BackendHookPageBreak"
         ~name:"hook-page-break"
@@ -1729,15 +1732,16 @@ make_horz HorzBox.([ HorzPure(PHGFixedGraphics{ width; height; depth; graphics }
         ~fields:[
         ]
         ~params:[
-          param "hgt" ~type_:"length";
-          param "dpt" ~type_:"length";
-          param "valueg";
+          param "height" ~type_:"length";
+          param "nonneg_depth" ~type_:"length";
+          param "value_g";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let graphics = make_inline_graphics_outer (reducef ~msg:"inline-graphics-outer") valueg in
-make_horz (HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
+let depth = Length.negate nonneg_depth in
+let graphics = make_inline_graphics_outer (reducef ~msg:"inline-graphics-outer") value_g in
+make_horz HorzBox.([ HorzPure(PHGOuterFilGraphics{ height; depth; graphics }) ])
 |}
     ; inst "BackendScriptGuard"
         ~name:"script-guard"

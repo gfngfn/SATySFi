@@ -209,6 +209,11 @@ let get_horz_text : syntactic_value -> input_horz_value_element list = function
   | value                -> report_bug_value "get_horz_text" value
 
 
+let get_image : syntactic_value -> ImageInfo.key = function
+  | BaseConstant(BCImageKey(imgkey)) -> imgkey
+  | value                            -> report_bug_value "get_image" value
+
+
 let get_point value =
   match value with
   | Tuple([

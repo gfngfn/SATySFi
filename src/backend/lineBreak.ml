@@ -174,13 +174,21 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHGFixedGraphics{ width = wid; height = hgt; depth = dpt; graphics } ->
       puref (LBFixedGraphics(wid, hgt, dpt, graphics))
 
-  | PHGOuterFilGraphics(hgt, dpt, graphics) ->
+  | PHGOuterFilGraphics{ height = hgt; depth = dpt; graphics } ->
       puref (LBOuterFilGraphics(hgt, dpt, graphics))
 
-  | PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) ->
+  | PHGFixedTabular{
+      width         = wid;
+      height        = hgt;
+      depth         = dpt;
+      rows          = imtabular;
+      column_widths = widlst;
+      lengths       = lenlst;
+      rule_graphics = rulesf;
+    } ->
       puref (LBFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))
 
-  | PHGFixedImage(wid, hgt, imgkey) ->
+  | PHGFixedImage{ width = wid; height = hgt; key = imgkey } ->
       puref (LBFixedImage(wid, hgt, imgkey))
 
   | PHGHookPageBreak(hookf) ->
