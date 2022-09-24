@@ -197,10 +197,17 @@ and pure_horz_box =
   | PHSOuterFil
   | PHSFixedEmpty       of length
 (* Texts: *)
-  | PHCInnerString      of context_main * Uchar.t list
-      [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedString(...)@]")]
-  | PHCInnerMathGlyph   of math_string_info * length * length * length * OutputText.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
+  | PHCInnerString of {
+      context : context_main;
+      chars   : Uchar.t list;
+    } [@printer (fun fmt _ _ -> Format.fprintf fmt "@[PHCInnerString(...)@]")]
+  | PHCInnerMathGlyph of {
+      info   : math_string_info;
+      width  : length;
+      height : length;
+      depth  : length;
+      output : OutputText.t;
+    } [@printer (fun fmt _ _ _ _ _ -> Format.fprintf fmt "@[PHCInnerMathGlyph(...)@]")]
 (* Groups: *)
   | PHGRising           of length * horz_box list
   | PHGFixedFrame       of paddings * length * decoration * horz_box list
@@ -458,8 +465,8 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
 let rec extract_string (hblst : horz_box list) : string =
   let rec extract_one hb =
     match hb with
-    | HorzPure(PHCInnerString(_, uchlst))            -> string_of_uchlst uchlst
-    | HorzPure(PHCInnerMathGlyph(_, _, _, _, otxt))  -> ""
+    | HorzPure(PHCInnerString{ chars = uchs })       -> string_of_uchlst uchs
+    | HorzPure(PHCInnerMathGlyph(_))                 -> ""
     | HorzPure(PHGRising(_, hblst))                  -> extract_string hblst
     | HorzPure(PHGFixedFrame(_, _, _, hblst))        -> extract_string hblst
     | HorzPure(PHGInnerFrame(_, _, hblst))           -> extract_string hblst

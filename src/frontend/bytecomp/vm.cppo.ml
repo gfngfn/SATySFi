@@ -71,7 +71,7 @@ let newframe_recycle (env : vmenv) (preenv : vmenv) (size : int) : vmenv =
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
-  HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
+  HorzBox.([ HorzPure(PHCInnerString{ context = ctx; chars = uchlst }) ])
 
 
 let popn (stack : stack) (n : int) : syntactic_value list * stack =

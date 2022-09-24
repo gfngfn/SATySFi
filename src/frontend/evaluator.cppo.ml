@@ -26,7 +26,7 @@ let convert_command_application_to_application (e_cmd : abstract_tree) (args : (
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
-  HorzBox.([ HorzPure(PHCInnerString(ctx, uchs)) ])
+  HorzBox.([ HorzPure(PHCInnerString{ context = ctx; chars = uchs }) ])
 
 
 let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =

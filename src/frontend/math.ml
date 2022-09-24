@@ -963,8 +963,8 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
 
 let horz_of_low_math_element (lme : low_math_atom_main) : horz_box list =
   match lme with
-  | LowMathAtomGlyph{ info = mathstrinfo; width; height; depth; output = otxt } ->
-      [ HorzPure(PHCInnerMathGlyph(mathstrinfo, width, height, depth, otxt)) ]
+  | LowMathAtomGlyph{ info; width; height; depth; output } ->
+      [ HorzPure(PHCInnerMathGlyph{ info; width; height; depth; output }) ]
 
   | LowMathAtomEmbeddedHorz{ content = hbs } ->
       hbs

@@ -122,10 +122,16 @@ let append_chunks (chunkacc : line_break_chunk Alist.t) (alwmid : CharBasis.brea
 
 let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : CharBasis.break_opportunity * line_break_chunk list -> a) (alwlast : CharBasis.break_opportunity) (phb : pure_horz_box) : a =
   match phb with
-  | PHCInnerString(ctx, uchlst) ->
-      chunkf (ConvertText.to_chunks ctx uchlst alwlast)
+  | PHCInnerString{ context = ctx; chars = uchs } ->
+      chunkf (ConvertText.to_chunks ctx uchs alwlast)
 
-  | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, otxt) ->
+  | PHCInnerMathGlyph{
+      info   = mathinfo;
+      width  = wid;
+      height = hgt;
+      depth  = dpt;
+      output = otxt;
+    } ->
       puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, otxt)))
 
   | PHGRising(lenrising, hblst) ->
@@ -259,11 +265,11 @@ let rec omit_skips (hblst : horz_box list) : horz_box list =
         | PHSFixedEmpty(_) ->
             omit_skips tail
 
-        | PHCInnerString(ctxmain, uchlst) ->
+        | PHCInnerString{ context = ctxmain; chars = uchlst } ->
             begin
               match omit_space_uchars uchlst with
               | []     -> omit_skips tail
-              | uchlst -> HorzPure(PHCInnerString(ctxmain, uchlst)) :: tail
+              | uchlst -> HorzPure(PHCInnerString{ context = ctxmain; chars = uchlst }) :: tail
             end
 
         | _ ->
@@ -1175,7 +1181,7 @@ let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
     | HorzPure(phb) :: tail ->
         begin
           match phb with
-          | PHCInnerString(ctxmain, uchlst) ->
+          | PHCInnerString{ context = ctxmain; chars = uchlst } ->
               let aux_chunks chunks =
                 match chunks with
                 | []                                            -> aux tail
@@ -1229,7 +1235,7 @@ let get_rightmost_script (hblst : horz_box list) : CharBasis.script option =
     | HorzPure(phb) :: revtail ->
         begin
           match phb with
-          | PHCInnerString(ctxmain, uchlst) ->
+          | PHCInnerString{ context = ctxmain; chars = uchlst } ->
               let aux_chunks chunkrev =
                 match chunkrev with
                 | []                                            -> aux revtail
