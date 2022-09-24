@@ -984,7 +984,7 @@ let horz_fraction_bar ictx wid =
   let bar_graphics (xpos, ypos) =
     GraphicD.make_fill bar_color [ make_rectangle (xpos, ypos +% h_bart) wid t_bar ]
   in
-  HorzPure(PHGFixedGraphics(wid, h_bart, Length.zero, bar_graphics))
+  HorzPure(PHGFixedGraphics{ width = wid; height = h_bart; depth = Length.zero; graphics = bar_graphics })
 
 
 let raise_horz r hbs =
@@ -1182,13 +1182,17 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
             } ->
               let hblstC = horz_of_low_math ictx MathEnd MathEnd lmC in
               let (w_cont, _, _) = LineBreak.get_natural_metrics hblstC in
+              let graphics (xpos, ypos) =
+                GraphicD.make_fill (Context.color ictx)
+                  [ make_rectangle (xpos, ypos +% h_bar) w_cont t_bar ]
+              in
               let hbbar =
-                HorzPure(PHGFixedGraphics(w_cont, h_bar +% t_bar, Length.zero,
-                  (fun (xpos, ypos) ->
-                    GraphicD.make_fill (Context.color ictx)
-                      [ make_rectangle (xpos, ypos +% h_bar) w_cont t_bar ]
-                  )
-                ))
+                HorzPure(PHGFixedGraphics{
+                  width  = w_cont;
+                  height = h_bar +% t_bar;
+                  depth  = Length.zero;
+                  graphics;
+                })
               in
               let hbback = fixed_empty (Length.negate w_cont) in
               let hblstsub = List.append hblstrad (hbbar :: hbback :: hblstC) in

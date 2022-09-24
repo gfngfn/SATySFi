@@ -235,8 +235,18 @@ and pure_horz_box =
       decoration : decoration;
       inner      : horz_box list;
     }
-  | PHGEmbeddedVert     of length * length * length * intermediate_vert_box list
-  | PHGFixedGraphics    of length * length * length * fixed_graphics
+  | PHGEmbeddedVert of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      contents : intermediate_vert_box list;
+    }
+  | PHGFixedGraphics of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      graphics : fixed_graphics;
+    }
   | PHGOuterFilGraphics of length * length * outer_fil_graphics
   | PHGFixedTabular     of length * length * length * intermediate_row list * length list * length list * rules_func
   | PHGFixedImage       of length * length * ImageInfo.key

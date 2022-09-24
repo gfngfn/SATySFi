@@ -1081,20 +1081,20 @@ make_horz (HorzBox.([HorzPure(PHGFootnote(imvblst))]))
         ]
         ~params:[
           param "(ctx, ctxsub)" ~type_:"context";
-          param "wid" ~type_:"length";
+          param "width" ~type_:"length";
           param "value_f";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let ictx = (HorzBox.({ ctx with paragraph_width = wid }), ctxsub) in
+let ictx = (HorzBox.({ ctx with paragraph_width = width }), ctxsub) in
 let vbs =
   let value = reducef ~msg:"embed-block-top" value_f [ make_context ictx ] in
   get_vert_boxes value
 in
-let imvbs = PageBreak.solidify vbs in
-let (hgt, dpt) = PageBreak.adjust_to_first_line imvbs in
-make_horz (HorzBox.([ HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvbs)) ]))
+let contents = PageBreak.solidify vbs in
+let (height, depth) = PageBreak.adjust_to_first_line contents in
+make_horz HorzBox.([ HorzPure(PHGEmbeddedVert{ width; height; depth; contents }) ])
 |}
     ; inst "BackendVertSkip"
         ~name:"block-skip"
@@ -1115,20 +1115,20 @@ make_vert (HorzBox.([VertFixedBreakable(len)]))
         ]
         ~params:[
           param "(ctx, ctxsub)" ~type_:"context";
-          param "wid" ~type_:"length";
+          param "width" ~type_:"length";
           param "value_f";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let ictx = (HorzBox.({ ctx with paragraph_width = wid }), ctxsub) in
+let ictx = (HorzBox.({ ctx with paragraph_width = width }), ctxsub) in
 let vbs =
   let value = reducef ~msg:"embed-block-bottom" value_f [ make_context ictx ] in
     get_vert_boxes value
 in
-let imvbs = PageBreak.solidify vbs in
-let (hgt, dpt) = PageBreak.adjust_to_last_line imvbs in
-make_horz (HorzBox.([ HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvbs)) ]))
+let contents = PageBreak.solidify vbs in
+let (height, depth) = PageBreak.adjust_to_last_line contents in
+make_horz HorzBox.([ HorzPure(PHGEmbeddedVert{ width; height; depth; contents }) ])
 |}
     ; inst "BackendLineStackTop"
         ~name:"line-stack-top"
@@ -1141,10 +1141,10 @@ make_horz (HorzBox.([ HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvbs)) ]))
         ~is_pdf_mode_primitive:true
         ~code:{|
 let hbss = get_list get_horz_boxes value_hbss in
-let (wid, vbs) = make_line_stack hbss in
-let imvbs = PageBreak.solidify vbs in
-let (hgt, dpt) = PageBreak.adjust_to_first_line imvbs in
-make_horz (HorzBox.([ HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvbs)) ]))
+let (width, vbs) = make_line_stack hbss in
+let contents = PageBreak.solidify vbs in
+let (height, depth) = PageBreak.adjust_to_first_line contents in
+make_horz HorzBox.([ HorzPure(PHGEmbeddedVert{ width; height; depth; contents }) ])
 |}
     ; inst "BackendLineStackBottom"
         ~name:"line-stack-bottom"
@@ -1157,10 +1157,10 @@ make_horz (HorzBox.([ HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvbs)) ]))
         ~is_pdf_mode_primitive:true
         ~code:{|
 let hbss = get_list get_horz_boxes value_hbss in
-let (wid, vbs) = make_line_stack hbss in
-let imvbs = PageBreak.solidify vbs in
-let (hgt, dpt) = PageBreak.adjust_to_last_line imvbs in
-make_horz (HorzBox.([ HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvbs)) ]))
+let (width, vbs) = make_line_stack hbss in
+let contents = PageBreak.solidify vbs in
+let (height, depth) = PageBreak.adjust_to_last_line contents in
+make_horz HorzBox.([ HorzPure(PHGEmbeddedVert{ width; height; depth; contents }) ])
 |}
     ; inst "PrimitiveGetInitialContext"
         ~name:"get-initial-context"
@@ -1711,16 +1711,17 @@ make_horz ([HorzBox.HorzFrameBreakable(
         ~fields:[
         ]
         ~params:[
-          param "wid" ~type_:"length";
-          param "hgt" ~type_:"length";
-          param "dpt" ~type_:"length";
-          param "valueg";
+          param "width" ~type_:"length";
+          param "height" ~type_:"length";
+          param "nonneg_depth" ~type_:"length";
+          param "value_g";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let graphics = make_inline_graphics (reducef ~msg:"inline-graphics") valueg in
-make_horz (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
+let depth = Length.negate nonneg_depth in
+let graphics = make_inline_graphics (reducef ~msg:"inline-graphics") value_g in
+make_horz HorzBox.([ HorzPure(PHGFixedGraphics{ width; height; depth; graphics }) ])
 |}
     ; inst "BackendInlineGraphicsOuter"
         ~name:"inline-graphics-outer"

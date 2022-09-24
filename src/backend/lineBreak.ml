@@ -168,10 +168,10 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       let (lphbs_new, _) = append_horz_padding_pure lphbs widinfo_sub pads in
       puref (LBFixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphbs_new))
 
-  | PHGEmbeddedVert(wid, hgt, dpt, imvblst) ->
-      puref (LBEmbeddedVert(wid, hgt, dpt, imvblst))
+  | PHGEmbeddedVert{ width = wid; height = hgt; depth = dpt; contents = imvbs } ->
+      puref (LBEmbeddedVert(wid, hgt, dpt, imvbs))
 
-  | PHGFixedGraphics(wid, hgt, dpt, graphics) ->
+  | PHGFixedGraphics{ width = wid; height = hgt; depth = dpt; graphics } ->
       puref (LBFixedGraphics(wid, hgt, dpt, graphics))
 
   | PHGOuterFilGraphics(hgt, dpt, graphics) ->
