@@ -4,8 +4,6 @@ open MyUtil
 module YS = Yojson.Safe
 module MYU = MyYojsonUtil
 
-exception InvalidYOJSON of abs_path * string
-
 
 module CrossRefHashTable = Hashtbl.Make
   (struct
