@@ -277,8 +277,18 @@ and horz_box =
       pre      : horz_box list;
       post     : horz_box list;
     } [@printer (fun fmt _ _ _ _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
-  | HorzEmbeddedVertBreakable of length * vert_box list
-  | HorzFrameBreakable        of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
+  | HorzEmbeddedVertBreakable of {
+      width    : length;
+      contents : vert_box list;
+    }
+  | HorzFrameBreakable of {
+      paddings              : paddings;
+      decoration_standalone : decoration;
+      decoration_head       : decoration;
+      decoration_middle     : decoration;
+      decoration_tail       : decoration;
+      contents              : horz_box list;
+    }
   | HorzScriptGuard           of CharBasis.script * CharBasis.script * horz_box list
   | HorzOmitSkipAfter
 
@@ -523,7 +533,7 @@ let rec extract_string (hblst : horz_box list) : string =
     | HorzPure(PHGInnerFrame{ inner = hbs })         -> extract_string hbs
     | HorzPure(PHGOuterFrame{ inner = hbs })         -> extract_string hbs
     | HorzDiscretionary{ no_break = hbs0 }           -> extract_string hbs0
-    | HorzFrameBreakable(_, _, _, _, _, _, _, hblst) -> extract_string hblst
+    | HorzFrameBreakable{ contents = hbs }           -> extract_string hbs
     | HorzScriptGuard(_, _, hblst)                   -> extract_string hblst
     | _                                              -> ""
   in

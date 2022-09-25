@@ -48,8 +48,8 @@ let get_metrics (lphb : lb_pure_box) : metrics =
       (widinfo, height, depth)
 
   | LBHookPageBreak(_)
-  | LBFootnote(_)
-      -> (widinfo_zero, Length.zero, Length.zero)
+  | LBFootnote(_) ->
+      (widinfo_zero, Length.zero, Length.zero)
 
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
@@ -303,6 +303,7 @@ let rec omit_skips (hblst : horz_box list) : horz_box list =
 
 
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list =
+  (* Use explicit recursion (instead of `List.fold_left` etc.) for handling `HorzOmitSkipAfter` *)
   let rec aux lbeacc hblst =
     match hblst with
     | [] ->
@@ -315,31 +316,38 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
         let dscrid = DiscretionaryID.fresh () in
         aux (Alist.extend lbeacc (LB(LBDiscretionary(penalty, dscrid, lphbs0, lphbs1, lphbs2)))) tail
 
-    | HorzEmbeddedVertBreakable(wid, vblst) :: tail ->
+    | HorzEmbeddedVertBreakable{ width = wid; contents = vbs } :: tail ->
         let dscrid = DiscretionaryID.fresh () in
-          aux (Alist.extend lbeacc (LB(LBEmbeddedVertBreakable(dscrid, wid, vblst)))) tail
+        aux (Alist.extend lbeacc (LB(LBEmbeddedVertBreakable(dscrid, wid, vbs)))) tail
 
     | HorzPure(phb) :: tail ->
         let alwlast = if can_break_before tail then CharBasis.AllowBreak else CharBasis.PreventBreak in
         let lbe = convert_pure_box_for_line_breaking convert_list_for_line_breaking_pure alwlast phb in
-          aux (Alist.extend lbeacc lbe) tail
+        aux (Alist.extend lbeacc lbe) tail
 
-    | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblst) :: tail ->
-        let lbelst = convert_list_for_line_breaking hblst in
-        let lhblst = normalize_chunks lbelst in
-        let lhblstnew = append_horz_padding lhblst pads in
-          aux (Alist.extend lbeacc (LB(LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblstnew)))) tail
+    | HorzFrameBreakable{
+        paddings              = pads;
+        decoration_standalone = decoS;
+        decoration_head       = decoH;
+        decoration_middle     = decoM;
+        decoration_tail       = decoT;
+        contents              = hbs;
+      } :: tail ->
+        let lbes = convert_list_for_line_breaking hbs in
+        let lhbs = normalize_chunks lbes in
+        let lhbs_new = append_horz_padding lhbs pads in
+        aux (Alist.extend lbeacc (LB(LBFrameBreakable(pads, decoS, decoH, decoM, decoT, lhbs_new)))) tail
 
     | HorzScriptGuard(scriptL, scriptR, hblstG) :: tail ->
         let lbelstG = convert_list_for_line_breaking hblstG in
         let lhblstG = normalize_chunks lbelstG in
-          aux (Alist.extend lbeacc (ScriptGuard(scriptR, scriptL, lhblstG))) tail
+        aux (Alist.extend lbeacc (ScriptGuard(scriptR, scriptL, lhblstG))) tail
 
     | HorzOmitSkipAfter :: tail ->
         let tail = omit_skips tail in
         aux lbeacc tail
   in
-    aux Alist.empty hblst
+  aux Alist.empty hblst
 
 
 and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box list =
@@ -351,16 +359,23 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
         let lphbs0 = aux Alist.empty hbs0 in
         aux (Alist.append lbpeacc lphbs0) tail
 
-    | HorzEmbeddedVertBreakable(width, vbs) :: tail ->
+    | HorzEmbeddedVertBreakable{ width; contents = vbs } :: tail ->
         let imvbs = PageBreak.solidify vbs in
         let (height, depth) = PageBreak.adjust_to_first_line imvbs in
         aux (Alist.extend lbpeacc (PLB(LBEmbeddedVert{ width; height; depth; contents = imvbs }))) tail
 
     | HorzPure(phb) :: tail ->
         let lbpe = convert_pure_box_for_line_breaking_pure convert_list_for_line_breaking_pure phb in
-          aux (Alist.extend lbpeacc lbpe) tail
+        aux (Alist.extend lbpeacc lbpe) tail
 
-    | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hbs0) :: tail ->
+    | HorzFrameBreakable{
+        paddings              = pads;
+        decoration_standalone = decoS;
+        decoration_head       = decoH;
+        decoration_middle     = decoM;
+        decoration_tail       = decoT;
+        contents              = hbs0;
+      } :: tail ->
         let lphbs0 = convert_list_for_line_breaking_pure hbs0 in
         let (widinfo0, hgt0, dpt0) = get_total_metrics lphbs0 in
         let (lphbs, widinfo_total) = append_horz_padding_pure lphbs0 widinfo0 pads in
@@ -369,7 +384,7 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
 
     | HorzScriptGuard(scriptL, scriptR, hblstG) :: tail ->
         let lphblstG = convert_list_for_line_breaking_pure hblstG in
-          aux (Alist.extend lbpeacc (PScriptGuard(scriptL, scriptR, lphblstG))) tail
+        aux (Alist.extend lbpeacc (PScriptGuard(scriptL, scriptR, lphblstG))) tail
 
     | HorzOmitSkipAfter :: tail ->
         let tail = omit_skips tail in
@@ -862,7 +877,7 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
     | LBPure(lphb) :: tail ->
         cut acclines (Alist.extend accline lphb) tail
 
-    | LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblst) :: tail ->
+    | LBFrameBreakable(pads, decoS, decoH, decoM, decoT, lhblst) :: tail ->
         let acclines_in_frame = cut Alist.empty Alist.empty lhblst in
         let (acclinesnew, acclinenew) =
           append_framed_lines (Alist.to_list acclines_in_frame) acclines accline decoS decoH decoM decoT pads
@@ -1132,7 +1147,7 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
         let wmapnew = wmap |> WidthMap.add_width_all widinfo in
         aux NormalState iterdepth wmapnew tail
 
-    | LBFrameBreakable(pads, wid1, wid2, _, _, _, _, lhblstsub) :: tail ->
+    | LBFrameBreakable(pads, _, _, _, _, lhblstsub) :: tail ->
         let wmapsub = aux NormalState (iterdepth + 1) wmap lhblstsub in
         aux NormalState iterdepth wmapsub tail
 

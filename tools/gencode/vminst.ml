@@ -925,12 +925,12 @@ make_text_mode_context (tctx, tctxsub)
         ]
         ~params:[
           param "(ctx, _)" ~type_:"context";
-          param "vblst" ~type_:"vert_boxes";
+          param "contents" ~type_:"vert_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let wid = ctx.HorzBox.paragraph_width in
-make_horz [HorzEmbeddedVertBreakable(wid, vblst)]
+let width = ctx.HorzBox.paragraph_width in
+make_horz [ HorzEmbeddedVertBreakable{ width; contents } ]
 |}
     ; inst "BackendFont"
         ~fields:[
@@ -1692,21 +1692,21 @@ make_horz HorzBox.([ HorzPure(PHGFixedFrame{ required_width; paddings; decoratio
         ~fields:[
         ]
         ~params:[
-          param "pads" ~type_:"paddings";
-          param "(valuedecoS, valuedecoH, valuedecoM, valuedecoT)" ~type_:"decoset";
-          param "hblst" ~type_:"horz_boxes";
+          param "paddings" ~type_:"paddings";
+          param "(value_decoS, value_decoH, value_decoM, value_decoT)" ~type_:"decoset";
+          param "contents" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-make_horz ([HorzBox.HorzFrameBreakable(
-  pads, Length.zero, Length.zero,
-  make_frame_deco (reducef ~msg:"inline-frame-breakable 1") valuedecoS,
-  make_frame_deco (reducef ~msg:"inline-frame-breakable 2") valuedecoH,
-  make_frame_deco (reducef ~msg:"inline-frame-breakable 3") valuedecoM,
-  make_frame_deco (reducef ~msg:"inline-frame-breakable 4") valuedecoT,
-  hblst
-)])
+make_horz HorzBox.([ HorzFrameBreakable{
+  paddings;
+  decoration_standalone = make_frame_deco (reducef ~msg:"inline-frame-breakable 1") value_decoS;
+  decoration_head       = make_frame_deco (reducef ~msg:"inline-frame-breakable 2") value_decoH;
+  decoration_middle     = make_frame_deco (reducef ~msg:"inline-frame-breakable 3") value_decoM;
+  decoration_tail       = make_frame_deco (reducef ~msg:"inline-frame-breakable 4") value_decoT;
+  contents;
+}])
 |}
     ; inst "BackendInlineGraphics"
         ~name:"inline-graphics"
