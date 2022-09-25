@@ -289,7 +289,11 @@ and horz_box =
       decoration_tail       : decoration;
       contents              : horz_box list;
     }
-  | HorzScriptGuard           of CharBasis.script * CharBasis.script * horz_box list
+  | HorzScriptGuard of {
+      left     : CharBasis.script;
+      right    : CharBasis.script;
+      contents : horz_box list;
+    }
   | HorzOmitSkipAfter
 
 and intermediate_graphics =
@@ -534,7 +538,7 @@ let rec extract_string (hblst : horz_box list) : string =
     | HorzPure(PHGOuterFrame{ inner = hbs })         -> extract_string hbs
     | HorzDiscretionary{ no_break = hbs0 }           -> extract_string hbs0
     | HorzFrameBreakable{ contents = hbs }           -> extract_string hbs
-    | HorzScriptGuard(_, _, hblst)                   -> extract_string hblst
+    | HorzScriptGuard{ contents = hbs }              -> extract_string hbs
     | _                                              -> ""
   in
   String.concat "" (List.map extract_one hblst)

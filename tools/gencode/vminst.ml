@@ -1750,11 +1750,11 @@ make_horz HorzBox.([ HorzPure(PHGOuterFilGraphics{ height; depth; graphics }) ])
         ]
         ~params:[
           param "script" ~type_:"script";
-          param "hblst" ~type_:"horz_boxes";
+          param "contents" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz (HorzBox.([HorzScriptGuard(script, script, hblst)]))
+make_horz HorzBox.([ HorzScriptGuard{ left = script; right = script; contents } ])
 |}
     ; inst "BackendScriptGuardBoth"
         ~name:"script-guard-both"
@@ -1762,13 +1762,13 @@ make_horz (HorzBox.([HorzScriptGuard(script, script, hblst)]))
         ~fields:[
         ]
         ~params:[
-          param "scriptL" ~type_:"script";
-          param "scriptR" ~type_:"script";
-          param "hblst" ~type_:"horz_boxes";
+          param "left" ~type_:"script";
+          param "right" ~type_:"script";
+          param "contents" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz (HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
+make_horz HorzBox.([ HorzScriptGuard{ left; right; contents } ])
 |}
     ; inst "BackendGetLeftmostScript"
         ~name:"get-leftmost-script"

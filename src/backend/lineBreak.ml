@@ -303,7 +303,7 @@ let rec omit_skips (hblst : horz_box list) : horz_box list =
 
 
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list =
-  (* Use explicit recursion (instead of `List.fold_left` etc.) for handling `HorzOmitSkipAfter` *)
+  (* Use explicit recursion (instead of `List.fold_left` etc.) for handling `HorzOmitSkipAfter`. *)
   let rec aux lbeacc hblst =
     match hblst with
     | [] ->
@@ -338,10 +338,10 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
         let lhbs_new = append_horz_padding lhbs pads in
         aux (Alist.extend lbeacc (LB(LBFrameBreakable(pads, decoS, decoH, decoM, decoT, lhbs_new)))) tail
 
-    | HorzScriptGuard(scriptL, scriptR, hblstG) :: tail ->
-        let lbelstG = convert_list_for_line_breaking hblstG in
-        let lhblstG = normalize_chunks lbelstG in
-        aux (Alist.extend lbeacc (ScriptGuard(scriptR, scriptL, lhblstG))) tail
+    | HorzScriptGuard{ left = scriptL; right = scriptR; contents = hbsG } :: tail ->
+        let lbesG = convert_list_for_line_breaking hbsG in
+        let lhbsG = normalize_chunks lbesG in
+        aux (Alist.extend lbeacc (ScriptGuard(scriptR, scriptL, lhbsG))) tail
 
     | HorzOmitSkipAfter :: tail ->
         let tail = omit_skips tail in
@@ -351,6 +351,7 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
 
 
 and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box list =
+  (* Use explicit recursion (instead of `List.fold_left` etc.) for handling `HorzOmitSkipAfter`. *)
   let rec aux lbpeacc hblst =
     match hblst with
     | [] -> Alist.to_list lbpeacc
@@ -382,16 +383,16 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
         let metrics = (widinfo_total, hgt0 +% pads.paddingT, dpt0 -% pads.paddingB) in
         aux (Alist.extend lbpeacc (PLB(LBOuterFrame{ metrics; decoration = decoS; contents = lphbs }))) tail
 
-    | HorzScriptGuard(scriptL, scriptR, hblstG) :: tail ->
-        let lphblstG = convert_list_for_line_breaking_pure hblstG in
-        aux (Alist.extend lbpeacc (PScriptGuard(scriptL, scriptR, lphblstG))) tail
+    | HorzScriptGuard{ left = scriptL; right = scriptR; contents = hbsG } :: tail ->
+        let lphbsG = convert_list_for_line_breaking_pure hbsG in
+        aux (Alist.extend lbpeacc (PScriptGuard(scriptL, scriptR, lphbsG))) tail
 
     | HorzOmitSkipAfter :: tail ->
         let tail = omit_skips tail in
         aux lbpeacc tail
   in
   let lbpelst = aux Alist.empty hblst in
-    normalize_chunks_pure lbpelst
+  normalize_chunks_pure lbpelst
 
 
 and normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
@@ -1218,7 +1219,7 @@ let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
     | [] ->
         None
 
-    | HorzScriptGuard(scriptL, _, _) :: _ ->
+    | HorzScriptGuard{ left = scriptL } :: _ ->
         Some(scriptL)
 
     | HorzDiscretionary{ no_break = hbs0 } :: tail ->
@@ -1272,7 +1273,7 @@ let get_rightmost_script (hblst : horz_box list) : CharBasis.script option =
     | [] ->
         None
 
-    | HorzScriptGuard(_, scriptR, _) :: _ ->
+    | HorzScriptGuard{ right = scriptR } :: _ ->
         Some(scriptR)
 
     | HorzDiscretionary{ no_break = hbs0 } :: revtail ->
