@@ -9,23 +9,11 @@ open LineBreakBox
 type chunk_info = context_main * script * line_break_class
 
 
-let to_chunk_main_list ctx uchlst alwlast : break_opportunity * line_break_chunk_main list =
-  let (alwfirst, trilst) = LineBreakDataMap.append_break_opportunity uchlst alwlast in
-  let scrlst = ScriptDataMap.divide_by_script ctx trilst in
-  (alwfirst, scrlst)
-
-
-let to_chunks ctx uchlst alwlast : break_opportunity * line_break_chunk list =
-  let (alwfirst, scrlstsp) = to_chunk_main_list ctx uchlst alwlast in
-  let chunklst =
-    scrlstsp |> List.map (fun chunkmain -> (ctx, chunkmain))
-  in
-    (alwfirst, chunklst)
-
-
-let half_kern (hsinfo : horz_string_info) : lb_pure_box =
-  let metrics = (natural (hsinfo.text_font_size *% -0.5), Length.zero, Length.zero) in
-  LBAtom{ metrics; main = EvHorzEmpty }
+let to_chunks (ctx : context_main) (uchs : Uchar.t list) (alw_last : break_opportunity) : break_opportunity * line_break_chunk list =
+  let (alw_first, tris) = LineBreakDataMap.append_break_opportunity uchs alw_last in
+  let scrs = ScriptDataMap.divide_by_script ctx tris in
+  let chunks = scrs |> List.map (fun chunkmain -> (ctx, chunkmain)) in
+  (alw_first, chunks)
 
 
 let pure_space_between_scripts ctx1 ctx2 size (script1 : script) (lbc1 : line_break_class) (script2 : script) (lbc2 : line_break_class) =
@@ -66,7 +54,6 @@ let line_break_space (metrics : metrics) : lb_pure_box =
   LBAtom{ metrics; main = EvHorzEmpty }
 
 
-
 let pure_space ctx : lb_pure_box =
   let widinfo = space_width_info ctx in
   line_break_space (widinfo, Length.zero, Length.zero)
@@ -78,13 +65,13 @@ let get_corrected_font_size ctx script =
 
 
 (* Inserts a shrinkable CJK halfwidth space. *)
-let pure_halfwidth_space_soft fontsize : lb_pure_box =
+let pure_halfwidth_space_soft (fontsize : length) : lb_pure_box =
   let widinfo = make_width_info (fontsize *% 0.5) (fontsize *% 0.25) (fontsize *% 0.25) in
   line_break_space (widinfo, Length.zero, Length.zero)
 
 
 (* Inserts a non-shrinkable CJK halfwidth space. *)
-let pure_halfwidth_space_hard fontsize : lb_pure_box =
+let pure_halfwidth_space_hard (fontsize : length) : lb_pure_box =
   let widinfo = make_width_info (fontsize *% 0.5) Length.zero (fontsize *% 0.25) in
   line_break_space (widinfo, Length.zero, Length.zero)
 
@@ -116,46 +103,41 @@ let quarterwidth_kern (ctx : context_main) (script : script) : lb_box =
   LBPure(line_break_space (natural (Length.negate (size *% 0.25)), Length.zero, Length.zero))
 
 
-let breakable_space lphbf ctx () : lb_box =
+let breakable_space (lphbf : horz_box list -> lb_pure_box list) (ctx : context_main) : lb_box =
   let dscrid = DiscretionaryID.fresh () in
   let lphb1 = lphbf ctx.before_word_break in
   let lphb2 = lphbf ctx.after_word_break in
-    LBDiscretionary(ctx.space_badness, dscrid, [pure_space ctx], lphb1, lphb2)
+  LBDiscretionary(ctx.space_badness, dscrid, [ pure_space ctx ], lphb1, lphb2)
 
 
-let unbreakable_space ctx : lb_box =
-    LBPure(pure_space ctx)
+let unbreakable_space (ctx : context_main) : lb_box =
+  LBPure(pure_space ctx)
 
 
-let inner_string_pure (ctx : context_main) (script : script) (uchseglst : uchar_segment list) : lb_pure_box =
-  let hsinfo = get_string_info ctx script in
-  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
-  LBAtom{ metrics = (natural wid, hgt, dpt); main = EvHorzString(hsinfo, hgt, dpt, otxt) }
-
-
-let generate_separation_list (uchseglstlst : (uchar_segment list) list) : (uchar_segment list * uchar_segment list) list =
+(* Perform conversion from `[A; B; C; D]` to [(A, BCD); (AB, CD); (ABC, D)]. *)
+let generate_separation_list (uchsegss : (uchar_segment list) list) : (uchar_segment list * uchar_segment list) list =
   let rec aux acc revprefix suffix =
     match suffix with
     | [] ->
         Alist.to_list acc
 
-    | uchseglst :: [] ->
+    | _uchsegs :: [] ->
         Alist.to_list acc
 
-    | uchseglst :: suffixnew ->
-        let revprefixnew = Alist.append revprefix uchseglst in
-        let accnew = Alist.extend acc (Alist.to_list revprefixnew, List.concat suffixnew) in
-          aux accnew revprefixnew suffixnew
+    | uchsegs :: suffix_new ->
+        let revprefix_new = Alist.append revprefix uchsegs in
+        let acc = Alist.extend acc (Alist.to_list revprefix_new, List.concat suffix_new) in
+        aux acc revprefix_new suffix_new
   in
-    aux Alist.empty Alist.empty uchseglstlst
+  aux Alist.empty Alist.empty uchsegss
 
 
-let make_string_atom (hsinfo : horz_string_info) (uchseglst : uchar_segment list) : lb_pure_box =
-  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
+let make_string_atom (hsinfo : horz_string_info) (uchsegs : uchar_segment list) : lb_pure_box =
+  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchsegs in
   LBAtom{ metrics = (natural wid, hgt, dpt); main = EvHorzString(hsinfo, hgt, dpt, otxt) }
 
 
-(* -- 'inner_string': makes an alphabetic word or a CJK character -- *)
+(* Makes an alphabetic word or a CJK character. *)
 let inner_string (ctx : context_main) (script : script) (uchseglst : uchar_segment list) : lb_box list =
   let hsinfo = get_string_info ctx script in
     match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchseglst with
@@ -165,7 +147,8 @@ let inner_string (ctx : context_main) (script : script) (uchseglst : uchar_segme
     | LoadHyph.Fractions(uchseglstlst) ->
         let uchseglst0 = List.concat uchseglstlst in
         let lphb0 = make_string_atom hsinfo uchseglst0 in
-        let lphb_hyphen = inner_string_pure ctx script [(Uchar.of_char '-', [])] in  (* temporary; should be variable *)
+        let lphb_hyphen = make_string_atom hsinfo [(Uchar.of_char '-', [])] in
+          (* TODO: make hyphens changeable *)
         let seplst = generate_separation_list uchseglstlst in
         let dscrlst =
           seplst |> List.fold_left (fun dscracc (uchseglstP, uchseglstS) ->
@@ -178,17 +161,17 @@ let inner_string (ctx : context_main) (script : script) (uchseglst : uchar_segme
         [LBDiscretionaryList(ctx.hyphen_badness, [lphb0], dscrlst)]
 
 
-let discretionary_if_breakable alw badns lphb () =
+let discretionary_if_breakable alw badns lphb =
   match alw with
   | AllowBreak ->
       let dscrid = DiscretionaryID.fresh () in
-        LBDiscretionary(badns, dscrid, [lphb], [], [])
+      LBDiscretionary(badns, dscrid, [lphb], [], [])
 
   | PreventBreak ->
       LBPure(lphb)
 
 
-(* temporary; should refer to the context for spacing between two scripts *)
+(* TODO: should refer to the context for spacing between two scripts *)
 let pure_space_between_classes (ctx1, script1, lbc1) (ctx2, script2, lbc2) =
   let size1 = get_corrected_font_size ctx1 script1 in
   let size2 = get_corrected_font_size ctx2 script2 in
@@ -223,20 +206,20 @@ let space_between_chunks info1 alw info2 : lb_box list =
     let size = Length.max ctx1.font_size ctx2.font_size in
       match pure_space_between_scripts ctx1 ctx2 size script1 lbc1 script2 lbc2 with
       | Some(lphb) ->
-          [discretionary_if_breakable alw badns lphb ()]
+          [ discretionary_if_breakable alw badns lphb ]
 
       | None ->
-        (* -- if there is no space between scripts -- *)
+        (* If there is no space between scripts: *)
           begin
             match pure_space_between_classes info1 info2 with
-            | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ()]
-            | Some(lphb) -> [discretionary_if_breakable alw badns lphb ()]
+            | None       -> [ discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ]
+            | Some(lphb) -> [ discretionary_if_breakable alw badns lphb ]
           end
   else
-  (* -- if scripts are the same -- *)
+  (* If scripts are the same: *)
     match pure_space_between_classes info1 info2 with
-    | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ()]
-    | Some(lphb) -> [discretionary_if_breakable alw badns lphb ()]
+    | None       -> [ discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ]
+    | Some(lphb) -> [ discretionary_if_breakable alw badns lphb ]
 
 
 let space_between_chunks_pure info1 info2 : lb_pure_box list =
@@ -255,30 +238,34 @@ let space_between_chunks_pure info1 info2 : lb_pure_box list =
             | Some(lphb) -> [lphb]
           end
   else
-  (* -- if scripts are the same -- *)
+  (* If scripts are the same: *)
     match pure_space_between_classes info1 info2 with
     | None       -> [adjacent_space ctx1 ctx2]
     | Some(lphb) -> [lphb]
 
 
-(* -- 'ideographic_single': converts single CJK character, not depending on adjacent characters -- *)
-let ideographic_single ctx script lbc uchlst =
-  let lphbraw = LBPure(inner_string_pure ctx script uchlst) in
+(* Converts single CJK character, not depending on adjacent characters. *)
+let ideographic_single ctx script lbc (uchseg : uchar_segment) : lb_box list =
+  let lphb_raw =
+    let hsinfo = get_string_info ctx script in
+    LBPure(make_string_atom hsinfo [ uchseg ])
+  in
   let hwkern = halfwidth_kern ctx script in
   let qwkern = quarterwidth_kern ctx script in
     match lbc with
-    | JLCP  (* -- JLreq cl-02; fullwidth close punctuation -- *)
-    | JLFS  (* -- JLreq cl-06; kuten (fullwidth full stops) -- *)
-    | JLCM  (* -- JLreq cl-07; touten (fullwidth commas) -- *)
-      -> [lphbraw; hwkern]
+    | JLCP    (* JLreq cl-02; fullwidth close punctuation *)
+    | JLFS    (* JLreq cl-06; kuten (fullwidth full stops) *)
+    | JLCM -> (* JLreq cl-07; touten (fullwidth commas) *)
+        [ lphb_raw; hwkern ]
 
-    | JLOP  (* -- JLreq cl-01; fullwidth open punctuation -- *)
-      -> [hwkern; lphbraw]
+    | JLOP -> (* JLreq cl-01; fullwidth open punctuation *)
+        [ hwkern; lphb_raw ]
 
-    | JLMD  (* -- JLreq cl-05; nakaten (fullwidth middle dot, fullwidth semicolon, etc.) -- *)
-      -> [qwkern; lphbraw; qwkern]
+    | JLMD -> (* JLreq cl-05; nakaten (fullwidth middle dot, fullwidth semicolon, etc.) *)
+        [ qwkern; lphb_raw; qwkern ]
 
-    | _ -> [lphbraw]
+    | _ ->
+        [ lphb_raw ]
 
 
 type chunk_accumulator =
@@ -314,7 +301,7 @@ let chunks_to_boxes (lphbf : horz_box list -> lb_pure_box list) (script_before :
         let (opt, lhblstmain) =
           match chunkmain with
           | Space ->
-              (AccNone, [breakable_space lphbf ctx ()])
+              (AccNone, [breakable_space lphbf ctx])
 
           | UnbreakableSpace ->
               (AccNone, [unbreakable_space ctx])
@@ -339,7 +326,7 @@ let chunks_to_boxes (lphbf : horz_box list -> lb_pure_box list) (script_before :
 
           | IdeographicChunk(script, lbc, uchseg, alwnext) ->
               let opt = AccSome((ctx, script, lbc), alwnext) in
-              let lhblststr = ideographic_single ctx script lbc [uchseg] in
+              let lhblststr = ideographic_single ctx script lbc uchseg in
               begin
                 match optprev with
                 | AccNone ->
@@ -389,9 +376,12 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
           | UnbreakableSpace ->
               (AccNone, [pure_space ctx])
 
-          | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
+          | AlphabeticChunk(script, lbcfirst, lbclast, uchsegs, alw) ->
               let opt = AccSome(((ctx, script, lbclast), alw)) in
-              let lphblstmain = [inner_string_pure ctx script uchlst] in
+              let lphblstmain =
+                let hsinfo = get_string_info ctx script in
+                [ make_string_atom hsinfo uchsegs ]
+              in
               begin
                 match optprev with
                 | AccInitial ->
@@ -407,9 +397,12 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
                     (opt, List.append autospace lphblstmain)
               end
 
-          | IdeographicChunk(script, lbc, uch, alw) ->
+          | IdeographicChunk(script, lbc, uchseg, alw) ->
               let opt = AccSome(((ctx, script, lbc), alw)) in
-              let lphblstmain = [inner_string_pure ctx script [uch]] in
+              let lphblstmain =
+                let hsinfo = get_string_info ctx script in
+                [ make_string_atom hsinfo [ uchseg ] ]
+              in
               begin
                 match optprev with
                 | AccInitial ->
