@@ -120,7 +120,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         in
         (xpos +% wid, opaccnew)
 
-    | EvHorzFrame(ratios, hgt_frame, dpt_frame, deco, imhbs) ->
+    | EvHorzFrame{ ratios; height = hgt_frame; depth = dpt_frame; decoration = deco; contents = imhbs } ->
         let ops_warning =
           let pt = (xpos, yposbaseline) in
           warn_ratios fs pbinfo pt hgt_frame dpt_frame ratios
@@ -138,7 +138,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let opaccnew = Alist.append opaccsub ops_foreground in
         (xposnew, opaccnew)
 
-    | EvHorzString(hsinfo, hgt, dpt, otxt) ->
+    | EvHorzString{ info = hsinfo; height = hgt; depth = dpt; output = otxt } ->
         let ops =
           let opsmain =
             fs.text hsinfo (xpos, yposbaseline +% hsinfo.rising) otxt
@@ -152,7 +152,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let opaccnew = Alist.append opacc ops in
         (xpos +% wid, opaccnew)
 
-    | EvHorzMathGlyph(msinfo, hgt, dpt, otxt) ->
+    | EvHorzMathGlyph{ info = msinfo; height = hgt; depth = dpt; output = otxt } ->
         let ops =
           let opsmain =
             fs.math msinfo (xpos, yposbaseline) otxt
@@ -166,7 +166,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let opaccnew = Alist.append opacc ops in
           (xpos +% wid, opaccnew)
 
-    | EvHorzRising(hgt, dpt, lenrising, evhblst) ->
+    | EvHorzRising{ height = hgt; depth = dpt; rising = lenrising; contents = evhblst } ->
         let (_, opaccsub) =
           evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo (yposbaseline +% lenrising)) (xpos, opacc)
         in
@@ -180,11 +180,11 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         in
         (xpos +% wid, opaccnew)
 
-    | EvHorzEmbeddedVert(hgt, dpt, evvblst) ->
+    | EvHorzEmbeddedVert{ height = hgt; depth = dpt; contents = evvblst } ->
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list fs pbinfo (xpos, yposbaseline +% hgt) opacc evvblst in
         (xpos +% wid, opaccnew)
 
-    | EvHorzInlineGraphics(hgt, dpt, graphics) ->
+    | EvHorzInlineGraphics{ height = hgt; depth = dpt; graphics } ->
         let gr =
           match graphics with
           | ImGraphicsFixed(grff)    -> grff (xpos, yposbaseline)
@@ -201,7 +201,14 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         in
         (xpos +% wid, opaccnew)
 
-    | EvHorzInlineTabular(hgt, dpt, evtabular, widlst, lenlst, rulesf) ->
+    | EvHorzInlineTabular{
+        height        = hgt;
+        depth         = dpt;
+        rows          = evtabular;
+        column_widths = widlst;
+        lengths       = lenlst;
+        rule_graphics = rulesf;
+      } ->
         let ops_tabular =
           ops_of_evaled_tabular fs pbinfo (xpos, yposbaseline +% hgt) evtabular
         in
@@ -223,7 +230,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let opaccnew = Alist.append (Alist.append opacc ops_tabular) ops_rules in
         (xpos +% wid, opaccnew)
 
-    | EvHorzInlineImage(hgt, imgkey) ->
+    | EvHorzInlineImage{ height = hgt; key = imgkey } ->
         let ops_image =
           fs.image imgkey (xpos, yposbaseline) wid hgt
         in
@@ -233,6 +240,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
     | EvHorzHookPageBreak(pbinfo, hookf) ->
         hookf pbinfo (xpos, yposbaseline);  (* Invokes the hook function. *)
         (xpos +% wid, opacc)
+          (* TODO: consider removing `pbinfo` from parameters *)
 
 
 and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point evtabular =

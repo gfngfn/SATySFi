@@ -129,15 +129,9 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHCInnerString{ context = ctx; chars = uchs } ->
       chunkf (ConvertText.to_chunks ctx uchs alwlast)
 
-  | PHCInnerMathGlyph{
-      info   = mathinfo;
-      width  = wid;
-      height = hgt;
-      depth  = dpt;
-      output = otxt;
-    } ->
-      let metrics = (natural wid, hgt, dpt) in
-      puref (LBAtom{ metrics; main = EvHorzMathGlyph(mathinfo, hgt, dpt, otxt) })
+  | PHCInnerMathGlyph{ info; width; height; depth; output } ->
+      let metrics = (natural width, height, depth) in
+      puref (LBAtom{ metrics; main = EvHorzMathGlyph{ info; height; depth; output } })
 
   | PHGRising{ rising = len_rising; inner = hbs0 } ->
       let lphbs0 = listf hbs0 in
@@ -692,8 +686,8 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     | LBFixedTabular{ width; height; depth; rows; column_widths; lengths; rule_graphics } ->
         ImHorzInlineTabular{ width; height; depth; rows; column_widths; lengths; rule_graphics }
 
-    | LBFixedImage{ width = wid; height = hgt; key = imgkey } ->
-        ImHorz(wid, EvHorzInlineImage(hgt, imgkey))
+    | LBFixedImage{ width; height; key } ->
+        ImHorz(width, EvHorzInlineImage{ height; key })
 
     | LBHookPageBreak(hookf) ->
         ImHorzHookPageBreak(hookf)

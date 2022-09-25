@@ -139,8 +139,9 @@ let generate_separation_list (uchsegss : (uchar_segment list) list) : (uchar_seg
 
 
 let make_string_atom (hsinfo : horz_string_info) (uchsegs : uchar_segment list) : lb_pure_box =
-  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchsegs in
-  LBAtom{ metrics = (natural wid, hgt, dpt); main = EvHorzString(hsinfo, hgt, dpt, otxt) }
+  let (otxt, width, height, depth) = FontInfo.get_metrics_of_word hsinfo uchsegs in
+  let metrics = (natural width, height, depth) in
+  LBAtom{ metrics; main = EvHorzString{ info = hsinfo; height; depth; output = otxt } }
 
 
 (* Makes an alphabetic word or a CJK character. *)

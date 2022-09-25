@@ -19,38 +19,45 @@ let rec embed_page_info (pbinfo : page_break_info) (imhblst : intermediate_horz_
       | ImHorz(evhb) ->
           ext evhb
 
-      | ImHorzRising{ width = wid; height = hgt; depth = dpt; rising = lenrising; contents = imhblst } ->
+      | ImHorzRising{ width; height; depth; rising; contents = imhblst } ->
           let (evhblst, footnotelst) = iter imhblst in
-          let evhb = (wid, EvHorzRising(hgt, dpt, lenrising, evhblst)) in
+          let evhb = (width, EvHorzRising{ height; depth; rising; contents = evhblst }) in
           (extH evhb, appendF footnotelst)
 
-      | ImHorzFrame{ ratios; width = wid; height = hgt; depth = dpt; decoration = deco; contents = imhbs } ->
+      | ImHorzFrame{ ratios; width; height; depth; decoration; contents = imhbs } ->
           let (evhbs, footnotelst) = iter imhbs in
-          let evhb = (wid, EvHorzFrame(ratios, hgt, dpt, deco, evhbs)) in
+          let evhb = (width, EvHorzFrame{ ratios; height; depth; decoration; contents = evhbs }) in
           (extH evhb, appendF footnotelst)
 
       | ImHorzInlineTabular{
-          width         = wid;
-          height        = hgt;
-          depth         = dpt;
-          rows          = imtabular;
-          column_widths = widlst;
-          lengths       = lenlst;
-          rule_graphics = rulesf;
+          width;
+          height;
+          depth;
+          rows = imtabular;
+          column_widths;
+          lengths;
+          rule_graphics;
         } ->
           let (evrowlst, footnotelst) = embed_page_info_to_tabular pbinfo imtabular in
-          ext (wid, EvHorzInlineTabular(hgt, dpt, evrowlst, widlst, lenlst, rulesf))
+          ext (width, EvHorzInlineTabular{
+            height;
+            depth;
+            rows = evrowlst;
+            column_widths;
+            lengths;
+            rule_graphics;
+          })
 
-      | ImHorzEmbeddedVert{ width = wid; height = hgt; depth = dpt; contents = imvblst } ->
+      | ImHorzEmbeddedVert{ width; height; depth; contents = imvblst } ->
           let (evvblst, footnotelst) = embed_page_info_vert pbinfo imvblst in
-          let evhb = (wid, EvHorzEmbeddedVert(hgt, dpt, evvblst)) in
+          let evhb = (width, EvHorzEmbeddedVert{ height; depth; contents = evvblst }) in
           (extH evhb, appendF footnotelst)
 
       | ImHorzHookPageBreak(hookf) ->
           ext (Length.zero, EvHorzHookPageBreak(pbinfo, hookf))
 
-      | ImHorzInlineGraphics{ width = wid; height = hgt; depth = dpt; graphics } ->
-          ext (wid, EvHorzInlineGraphics(hgt, dpt, graphics))
+      | ImHorzInlineGraphics{ width; height; depth; graphics } ->
+          ext (width, EvHorzInlineGraphics{ height; depth; graphics })
 
       | ImHorzFootnote(imvblst) ->
           (evhbacc, Alist.extend footnoteacc imvblst)

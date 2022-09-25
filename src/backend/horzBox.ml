@@ -213,7 +213,7 @@ and pure_horz_box =
       height : length;
       depth  : length;
       output : OutputText.t;
-    } [@printer (fun fmt _ _ _ _ _ -> Format.fprintf fmt "@[PHCInnerMathGlyph(...)@]")]
+    }
 (* Groups: *)
   | PHGRising of {
       rising : length;
@@ -276,7 +276,7 @@ and horz_box =
       no_break : horz_box list;
       pre      : horz_box list;
       post     : horz_box list;
-    } [@printer (fun fmt _ _ _ _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
+    }
   | HorzEmbeddedVertBreakable of {
       width    : length;
       contents : vert_box list;
@@ -347,25 +347,55 @@ and evaled_horz_box =
          (2) contents *)
 
 and evaled_horz_box_main =
-  | EvHorzString of horz_string_info * length * length * OutputText.t
-      (* (1) string information for writing string to PDF
-         (2) content height
-         (3) content depth
-         (4) content string *)
-
-  | EvHorzMathGlyph      of math_string_info * length * length * OutputText.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
-  | EvHorzRising         of length * length * length * evaled_horz_box list
+  | EvHorzString of {
+      info   : horz_string_info;
+      height : length;
+      depth  : length;
+      output : OutputText.t;
+    }
+  | EvHorzMathGlyph of {
+      info   : math_string_info;
+      height : length;
+      depth  : length;
+      output : OutputText.t;
+    }
+  | EvHorzRising of {
+      height   : length;
+      depth    : length;
+      rising   : length;
+      contents : evaled_horz_box list;
+    }
   | EvHorzEmpty
-  | EvHorzFrame          of ratios * length * length * decoration * evaled_horz_box list
-  | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
-  | EvHorzInlineGraphics of length * length * intermediate_graphics
-  | EvHorzInlineTabular  of length * length * evaled_row list * length list * length list * rules_func
-  | EvHorzInlineImage    of length * ImageInfo.key
-      [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
-  | EvHorzHookPageBreak  of page_break_info * (page_break_info -> point -> unit)
-      (* (1) page number determined during the page breaking
-         (2) hook function invoked during the construction of PDF data *)
+  | EvHorzFrame of {
+      ratios     : ratios;
+      height     : length;
+      depth      : length;
+      decoration : decoration;
+      contents   : evaled_horz_box list;
+    }
+  | EvHorzEmbeddedVert of {
+      height   : length;
+      depth    : length;
+      contents : evaled_vert_box list;
+    }
+  | EvHorzInlineGraphics of {
+      height   : length;
+      depth    : length;
+      graphics : intermediate_graphics;
+    }
+  | EvHorzInlineTabular of {
+      height        : length;
+      depth         : length;
+      rows          : evaled_row list;
+      column_widths : length list;
+      lengths       : length list;
+      rule_graphics : rules_func;
+    }
+  | EvHorzInlineImage of {
+      height : length;
+      key    : ImageInfo.key;
+    } [@printer (fun fmt _ _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
+  | EvHorzHookPageBreak of page_break_info * (page_break_info -> point -> unit)
 
 and vert_box =
   | VertParagraph      of margins * paragraph_element list
@@ -511,19 +541,19 @@ let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length 
     | EvHorzHookPageBreak(_, _) ->
         (Length.zero, Length.zero)
 
-    | EvHorzInlineImage(h, _) ->
-        (h, Length.zero)
+    | EvHorzInlineImage{ height } ->
+        (height, Length.zero)
 
-    | EvHorzString(_, h, d, _)
-    | EvHorzRising(h, d, _, _)
-    | EvHorzMathGlyph(_, h, d, _)
-    | EvHorzEmbeddedVert(h, d, _)
-    | EvHorzInlineGraphics(h, d, _)
-    | EvHorzInlineTabular(h, d, _, _, _, _)
-    | EvHorzFrame(_, h, d, _, _) ->
-        (h, d)
+    | EvHorzString{ height; depth }
+    | EvHorzMathGlyph{ height; depth }
+    | EvHorzRising{ height; depth }
+    | EvHorzFrame{ height; depth }
+    | EvHorzEmbeddedVert{ height; depth }
+    | EvHorzInlineGraphics{ height; depth }
+    | EvHorzInlineTabular{ height; depth } ->
+        (height, depth)
   in
-    (wid, hgt, dpt)
+  (wid, hgt, dpt)
 
 
 let rec get_height_of_evaled_vert_box_list evvblst =
