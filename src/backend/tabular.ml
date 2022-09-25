@@ -262,9 +262,9 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
               let wid = access widarr indexC in
               let hblstwithpads =
                 List.concat [
-                  [HorzPure(PHSFixedEmpty(pads.paddingL))];
+                  [ HorzPure(PHSFixedEmpty{ width = pads.paddingL }) ];
                   hblst;
-                  [HorzPure(PHSFixedEmpty(pads.paddingR))];
+                  [ HorzPure(PHSFixedEmpty{ width = pads.paddingR }) ];
                 ]
               in
               let (imhbs, ratios, hgt, dpt) = LineBreak.fit hblstwithpads wid in
@@ -279,9 +279,9 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
               let widmulti = multi_cell_width widarr indexC nc in
               let hblstwithpads =
                 List.concat [
-                  [HorzPure(PHSFixedEmpty(pads.paddingL))];
+                  [ HorzPure(PHSFixedEmpty{ width = pads.paddingL }) ];
                   hblst;
-                  [HorzPure(PHSFixedEmpty(pads.paddingR))];
+                  [ HorzPure(PHSFixedEmpty{ width = pads.paddingR }) ];
                 ]
               in
               let (imhbs, ratios, hgt, dpt) = LineBreak.fit hblstwithpads widmulti in

@@ -1,18 +1,19 @@
 
-type length = Length.t  [@@deriving show]
+type length = Length.t
+[@@deriving show]
 
 type point = length * length
+[@@deriving show]
 
 type stretchable =
   | FiniteStretch of length
   | Fils          of int
 
-type length_info =
-  {
-    natural     : length;
-    shrinkable  : length;
-    stretchable : stretchable;
-  }
+type length_info = {
+  natural     : length;
+  shrinkable  : length;
+  stretchable : stretchable;
+}
 
 
 let ( +% ) = Length.add

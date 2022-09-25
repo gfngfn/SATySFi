@@ -398,7 +398,7 @@ let default_radical hgt_bar t_bar dpt fontsize color =
       ], Some(LineTo(())))
     ]
   in
-  [ HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, nonnegdpt, graphics)) ]
+  [ HorzPure(PHGFixedGraphics{ width = wid; height = hgt_bar +% t_bar; depth = nonnegdpt; graphics }) ]
 
 
 let code_point cp = Uchar.of_int cp

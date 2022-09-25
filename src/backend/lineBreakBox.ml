@@ -7,24 +7,88 @@ open CharBasis
 type metrics = length_info * length * length
 
 type lb_pure_box =
-  | LBAtom          of metrics * evaled_horz_box_main
-  | LBRising        of metrics * length * lb_pure_box list
-  | LBOuterFrame    of metrics * decoration * lb_pure_box list
-  | LBFixedFrame    of length * length * length * decoration * lb_pure_box list
-  | LBEmbeddedVert  of length * length * length * intermediate_vert_box list
-  | LBFixedGraphics of length * length * length * fixed_graphics
-  | LBOuterFilGraphics of length * length * outer_fil_graphics
-  | LBFixedTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
-  | LBFixedImage    of length * length * ImageInfo.key
+  | LBAtom of {
+      metrics : metrics;
+      main    : evaled_horz_box_main;
+    }
+  | LBRising of {
+      metrics  : metrics;
+      rising   : length;
+      contents : lb_pure_box list;
+    }
+  | LBOuterFrame of {
+      metrics    : metrics;
+      decoration : decoration;
+      contents   : lb_pure_box list;
+    }
+  | LBFixedFrame of {
+      width      : length;
+      height     : length;
+      depth      : length;
+      decoration : decoration;
+      contents   : lb_pure_box list;
+    }
+  | LBEmbeddedVert of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      contents : intermediate_vert_box list;
+    }
+  | LBFixedGraphics of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      graphics : fixed_graphics;
+    }
+  | LBOuterFilGraphics of {
+      height   : length;
+      depth    : length;
+      graphics : outer_fil_graphics;
+    }
+  | LBFixedTabular of {
+      width         : length;
+      height        : length;
+      depth         : length;
+      rows          : intermediate_row list;
+      column_widths : length list;
+      row_heights   : length list;
+      rule_graphics : rules_func;
+    }
+  | LBFixedImage    of {
+      width  : length;
+      height : length;
+      key    : ImageInfo.key;
+    }
   | LBHookPageBreak of (page_break_info -> point -> unit)
-  | LBFootnote      of intermediate_vert_box list
+  | LBFootnote of intermediate_vert_box list
 
 type lb_box =
-  | LBPure           of lb_pure_box
-  | LBDiscretionary  of pure_badness * DiscretionaryID.t * lb_pure_box list * lb_pure_box list * lb_pure_box list
-  | LBDiscretionaryList of pure_badness * lb_pure_box list * (DiscretionaryID.t * lb_pure_box list * lb_pure_box list) list
-  | LBFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * lb_box list
-  | LBEmbeddedVertBreakable of DiscretionaryID.t * length * vert_box list
+  | LBPure of lb_pure_box
+  | LBDiscretionary of {
+      penalty  : pure_badness;
+      id       : DiscretionaryID.t;
+      no_break : lb_pure_box list;
+      pre      : lb_pure_box list;
+      post     : lb_pure_box list;
+    }
+  | LBDiscretionaryList of {
+      penalty    : pure_badness;
+      no_break   : lb_pure_box list;
+      candidates : (DiscretionaryID.t * lb_pure_box list * lb_pure_box list) list;
+    }
+  | LBFrameBreakable of {
+      paddings              : paddings;
+      decoration_standalone : decoration;
+      decoration_head       : decoration;
+      decoration_middle     : decoration;
+      decoration_tail       : decoration;
+      contents              : lb_box list;
+    }
+  | LBEmbeddedVertBreakable of {
+      id       : DiscretionaryID.t;
+      width    : length;
+      contents : vert_box list;
+    }
 
 
 let make_width_info widnat widshrink widstretch =

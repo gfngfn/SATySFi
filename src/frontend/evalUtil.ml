@@ -189,16 +189,14 @@ let make_font_value (abbrev, sizer, risingr) =
   ])
 
 
-let get_vert value : HorzBox.vert_box list =
-  match value with
-  | BaseConstant(BCVert(vblst)) -> vblst
-  | _                           -> report_bug_value "get_vert" value
+let get_vert_boxes : syntactic_value -> HorzBox.vert_box list = function
+  | BaseConstant(BCVert(vbs)) -> vbs
+  | value                     -> report_bug_value "get_vert_boxes" value
 
 
-let get_horz value : HorzBox.horz_box list =
-  match value with
-  | BaseConstant(BCHorz(hblst)) -> hblst
-  | _                           -> report_bug_value "get_horz" value
+let get_horz_boxes : syntactic_value -> HorzBox.horz_box list = function
+  | BaseConstant(BCHorz(hbs)) -> hbs
+  | value                     -> report_bug_value "get_horz_boxes" value
 
 
 let get_vert_text : syntactic_value -> input_vert_value_element list = function
@@ -209,6 +207,11 @@ let get_vert_text : syntactic_value -> input_vert_value_element list = function
 let get_horz_text : syntactic_value -> input_horz_value_element list = function
   | InputHorzValue(ihvs) -> ihvs
   | value                -> report_bug_value "get_horz_text" value
+
+
+let get_image : syntactic_value -> ImageInfo.key = function
+  | BaseConstant(BCImageKey(imgkey)) -> imgkey
+  | value                            -> report_bug_value "get_image" value
 
 
 let get_point value =
@@ -521,7 +524,7 @@ let make_hook (reducef : syntactic_value -> syntactic_value list -> syntactic_va
 let make_column_hook_func reducef valuef : HorzBox.column_hook_func =
   (fun () ->
     let valueret = reducef valuef [BaseConstant(BCUnit)] in
-    get_vert valueret
+    get_vert_boxes valueret
   )
 
 
@@ -632,7 +635,7 @@ let make_paren reducef (value_parenf : syntactic_value) : paren =
      let value_ret = reducef value_parenf [ value_hgt; value_dpt; value_ctx ] in
      match value_ret with
      | Tuple([ value_hbs; value_kernf ]) ->
-         let hbs = get_horz value_hbs in
+         let hbs = get_horz_boxes value_hbs in
          let kernf = make_math_kern_func reducef value_kernf in
          (hbs, kernf)
 
@@ -653,17 +656,6 @@ let make_option (type a) (makef : a -> syntactic_value) (opt : a option) : synta
   match opt with
   | None    -> Constructor("None", BaseConstant(BCUnit))
   | Some(x) -> let value = makef x in Constructor("Some", value)
-
-
-(*
-let make_pull_in_scripts reducef valuef =
-  (fun mopt1 mopt2 ->
-     let value1 = make_option make_math_text mopt1 in
-     let value2 = make_option make_math_text mopt2 in
-     let valueret = reducef valuef [value1; value2] in
-     get_math_boxes valueret
-  )
-*)
 
 
 let make_math_char_kern_func reducef valuekernf : HorzBox.math_char_kern_func =

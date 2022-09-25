@@ -26,7 +26,7 @@ let convert_command_application_to_application (e_cmd : abstract_tree) (args : (
 
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
-  HorzBox.([ HorzPure(PHCInnerString(ctx, uchs)) ])
+  HorzBox.([ HorzPure(PHCInnerString{ context = ctx; chars = uchs }) ])
 
 
 let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
@@ -865,7 +865,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
       let InputMathValueElement{ base; sub; sup } = imv in
       match base with
       | InputMathValueChar(uch) ->
-          let (mk, uch_aft) = MathContext.convert_math_variant_char ictx uch in
+          let (mk, uch_aft) = Context.convert_math_variant_char ictx uch in
           let mbs_base =
             [
               MathBoxAtom{
@@ -874,7 +874,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
               };
             ]
           in
-          let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+          let ctx_scripts = Context.(ictx |> enter_script) in
           let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
           let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
           append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
@@ -892,7 +892,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
                   interpret_0 env ast
                 in
                 let mbs_base = get_math_boxes value in
-                let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+                let ctx_scripts = Context.(ictx |> enter_script) in
                 let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
                 let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
                 append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
@@ -917,7 +917,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
 
       | InputMathValueGroup(imvs_group) ->
           let mbs_base = iter ictx imvs_group in
-          let ctx_scripts = MathContext.(ictx |> make |> enter_script FontInfo.find_math_decoder_exn |> context_for_text) in
+          let ctx_scripts = Context.(ictx |> enter_script) in
           let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in
           let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
           append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
@@ -945,7 +945,7 @@ and read_pdf_mode_vert_text (value_ctx : syntactic_value) (ivvs : input_vert_val
           let env = add_to_environment env evid_ctx loc_ctx in
           interpret_0 env ast_body
         in
-        get_vert value
+        get_vert_boxes value
 
     ) |> List.concat
   in
@@ -1011,7 +1011,7 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
             let env = add_to_environment env evid_ctx loc_ctx in
             interpret_0 env ast_body
           in
-          get_horz value
+          get_horz_boxes value
 
       | NomInputHorzText(s) ->
           lex_horz_text ctx s

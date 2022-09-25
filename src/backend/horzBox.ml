@@ -25,25 +25,18 @@ type math_font_abbrev = string
 [@@deriving show]
 
 type file_path = string
-(*
-type encoding_in_pdf =
-  | Latin1
-  | UTF16BE
-  | IdentityH
-*)
+
 type font_with_size = font_abbrev * Length.t
 [@@deriving show]
 
 type font_with_ratio = font_abbrev * float * float
 [@@deriving show]
 
-type page_content_scheme =
-  {
-    page_content_origin : point;
-    page_content_height : length;
-  }
-
-let pp_page_content_scheme fmt _ = Format.fprintf fmt "<page-content-scheme>"
+type page_content_scheme = {
+  page_content_origin : point;
+  page_content_height : length;
+}
+[@@deriving show {with_path = false }]
 
 type page_break_info = {
   current_page_number : int;
@@ -52,73 +45,32 @@ type page_break_info = {
 
 type page_content_scheme_func = page_break_info -> page_content_scheme
 
-let pp_page_content_scheme_func fmt _ = Format.fprintf fmt "<page-content-scheme-func>"
+let pp_page_content_scheme_func fmt _ =
+  Format.fprintf fmt "<page-content-scheme-func>"
 
-type paddings =
-  {
-    paddingL : length;
-    paddingR : length;
-    paddingT : length;
-    paddingB : length;
-  }
+type paddings = {
+  paddingL : length;
+  paddingR : length;
+  paddingT : length;
+  paddingB : length;
+}
 [@@deriving show { with_path = false }]
 
-(*
-type line_dash =
-  | SolidLine
-  | DashedLine of length * length * length
 
-type line_join =
-  | MiterJoin
-  | RoundJoin
-  | BevelJoin
-
-type line_cap =
-  | ButtCap
-  | RoundCap
-  | ProjectingSquareCap
-
-(* will be deprecated *)
-type graphics_state =
-  {
-    line_width   : length;
-    line_dash    : line_dash;
-    line_join    : line_join;
-    line_cap     : line_cap;
-    miter_limit  : length;
-    fill_color   : color;
-    stroke_color : color;
-  }
-
-(* will be deprecated *)
-type graphics_command =
-  | DrawStroke
-  | DrawFillByNonzero
-  | DrawFillByEvenOdd
-  | DrawBothByNonzero
-  | DrawBothByEvenOdd
-*)
-
-type horz_string_info =
-  {
-    font_abbrev    : font_abbrev;
-    text_font_size : length;
-    text_color     : color;
-    rising         : length;
-  }
-
-let pp_horz_string_info fmt info =
-  Format.fprintf fmt "(HSinfo)"
-
-type math_string_info =
-  {
-    info_math_font_abbrev : math_font_abbrev;
-    info_math_font_size   : length;
-    info_math_color       : color;
-  }
+type horz_string_info = {
+  font_abbrev    : font_abbrev;
+  text_font_size : length;
+  text_color     : color;
+  rising         : length;
+}
 [@@deriving show { with_path = false }]
 
-(* -- internal representation of boxes -- *)
+type math_string_info = {
+  info_math_font_abbrev : math_font_abbrev;
+  info_math_font_size   : length;
+  info_math_color       : color;
+}
+[@@deriving show { with_path = false }]
 
 type math_kind =
   | MathOrdinary
@@ -128,7 +80,7 @@ type math_kind =
   | MathPunct
   | MathOpen
   | MathClose
-  | MathPrefix    (* -- mainly for differantial operator 'd', '\partial', etc. -- *)
+  | MathPrefix (* Mainly for differantial operator `d`, `\partial`, etc. *)
   | MathInner
   | MathEnd
 [@@deriving show { with_path = false }]
@@ -186,49 +138,49 @@ type math_variant_char_map =
   (math_char_class -> Uchar.t * math_kind) MathVariantCharMap.t
 
 type context_main = {
-  hyphen_dictionary      : LoadHyph.t;
+  hyphen_dictionary       : LoadHyph.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<hyph>")]
-  hyphen_badness         : int;
-  font_size              : length;
-  font_scheme            : font_with_ratio CharBasis.ScriptSchemeMap.t;
+  hyphen_badness          : int;
+  font_size               : length;
+  font_scheme             : font_with_ratio CharBasis.ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
-  langsys_scheme         : CharBasis.language_system CharBasis.ScriptSchemeMap.t;
+  langsys_scheme          : CharBasis.language_system CharBasis.ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
-  dominant_wide_script   : CharBasis.script;
-  dominant_narrow_script : CharBasis.script;
-  script_space_map       : (float * float * float) CharBasis.ScriptSpaceMap.t;
+  dominant_wide_script    : CharBasis.script;
+  dominant_narrow_script  : CharBasis.script;
+  script_space_map        : (float * float * float) CharBasis.ScriptSpaceMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
-  space_natural          : float;
-  space_shrink           : float;
-  space_stretch          : float;
-  adjacent_stretch       : float;
-  paragraph_width        : length;
-  paragraph_top          : length;
-  paragraph_bottom       : length;
+  space_natural           : float;
+  space_shrink            : float;
+  space_stretch           : float;
+  adjacent_stretch        : float;
+  paragraph_width         : length;
+  paragraph_top           : length;
+  paragraph_bottom        : length;
   min_first_line_ascender : length;
   min_last_line_descender : length;
-  leading                : length;
-  min_gap_of_lines       : length;
-  text_color             : color;
-  manual_rising          : length;
-  space_badness          : pure_badness;
-  math_variant_char_map  : math_variant_char_map;
+  leading                 : length;
+  min_gap_of_lines        : length;
+  text_color              : color;
+  manual_rising           : length;
+  space_badness           : pure_badness;
+  math_variant_char_map   : math_variant_char_map;
     [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-map>")]
-  math_class_map         : (Uchar.t * math_kind) MathClassMap.t;
+  math_class_map          : (Uchar.t * math_kind) MathClassMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<math-class-map>")]
-  math_char_class        : math_char_class;
-  before_word_break      : horz_box list;
-  after_word_break       : horz_box list;
-  space_math_bin         : float * float * float;
-  space_math_rel         : float * float * float;
-  space_math_op          : float * float * float;
-  space_math_punct       : float * float * float;
-  space_math_inner       : float * float * float;
-  space_math_prefix      : float * float * float;
-  left_hyphen_min        : int;
-  right_hyphen_min       : int;
-  math_font_abbrev       : math_font_abbrev;
-  math_script_level      : math_script_level;
+  math_char_class         : math_char_class;
+  before_word_break       : horz_box list;
+  after_word_break        : horz_box list;
+  space_math_bin          : float * float * float;
+  space_math_rel          : float * float * float;
+  space_math_op           : float * float * float;
+  space_math_punct        : float * float * float;
+  space_math_inner        : float * float * float;
+  space_math_prefix       : float * float * float;
+  left_hyphen_min         : int;
+  right_hyphen_min        : int;
+  math_font_abbrev        : math_font_abbrev;
+  math_script_level       : math_script_level;
 }
 
 and decoration = point -> length -> length -> length -> (intermediate_horz_box list) GraphicD.t
@@ -240,36 +192,108 @@ and fixed_graphics = point -> (intermediate_horz_box list) GraphicD.t
 and outer_fil_graphics = length -> point -> (intermediate_horz_box list) GraphicD.t
 
 and pure_horz_box =
-(* -- spaces inserted before text processing -- *)
-  | PHSOuterEmpty     of length * length * length
+(* Spaces inserted before text processing: *)
+  | PHSOuterEmpty of {
+      natural     : length;
+      shrinkable  : length;
+      stretchable : length;
+    }
   | PHSOuterFil
-  | PHSFixedEmpty     of length
-(* -- texts -- *)
-  | PHCInnerString    of context_main * Uchar.t list
-      [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedString(...)@]")]
-  | PHCInnerMathGlyph of math_string_info * length * length * length * OutputText.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
-(* -- groups -- *)
-  | PHGRising         of length * horz_box list
-  | PHGFixedFrame     of paddings * length * decoration * horz_box list
-  | PHGInnerFrame     of paddings * decoration * horz_box list
-  | PHGOuterFrame     of paddings * decoration * horz_box list
-  | PHGEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | PHGFixedGraphics  of length * length * length * fixed_graphics
-  | PHGOuterFilGraphics of length * length * outer_fil_graphics
-  | PHGFixedTabular   of length * length * length * intermediate_row list * length list * length list * rules_func
-  | PHGFixedImage     of length * length * ImageInfo.key
-      [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
-  | PHGHookPageBreak  of (page_break_info -> point -> unit)
-  | PHGFootnote       of intermediate_vert_box list
+  | PHSFixedEmpty of {
+      width : length;
+    }
+(* Texts: *)
+  | PHCInnerString of {
+      context : context_main;
+      chars   : Uchar.t list;
+    } [@printer (fun fmt _ _ -> Format.fprintf fmt "@[PHCInnerString(...)@]")]
+  | PHCInnerMathGlyph of {
+      info   : math_string_info;
+      width  : length;
+      height : length;
+      depth  : length;
+      output : OutputText.t;
+    }
+(* Groups: *)
+  | PHGRising of {
+      rising   : length;
+      contents : horz_box list;
+    }
+  | PHGFixedFrame of {
+      required_width : length;
+      paddings       : paddings;
+      decoration     : decoration;
+      contents       : horz_box list;
+    }
+  | PHGInnerFrame of {
+      paddings   : paddings;
+      decoration : decoration;
+      contents   : horz_box list;
+    }
+  | PHGOuterFrame of {
+      paddings   : paddings;
+      decoration : decoration;
+      contents   : horz_box list;
+    }
+  | PHGEmbeddedVert of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      contents : intermediate_vert_box list;
+    }
+  | PHGFixedGraphics of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      graphics : fixed_graphics;
+    }
+  | PHGOuterFilGraphics of {
+      height   : length;
+      depth    : length;
+      graphics : outer_fil_graphics;
+    }
+  | PHGFixedTabular of {
+      width         : length;
+      height        : length;
+      depth         : length;
+      rows          : intermediate_row list;
+      column_widths : length list;
+      row_heights   : length list;
+      rule_graphics : rules_func;
+    }
+  | PHGFixedImage of {
+      width  : length;
+      height : length;
+      key    : ImageInfo.key;
+    } [@printer (fun fmt _ _ _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
+  | PHGHookPageBreak of (page_break_info -> point -> unit)
+  | PHGFootnote of intermediate_vert_box list
 
 and horz_box =
-  | HorzPure           of pure_horz_box
-  | HorzDiscretionary  of pure_badness * horz_box list * horz_box list * horz_box list
-      [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
-  | HorzEmbeddedVertBreakable of length * vert_box list
-  | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
-  | HorzScriptGuard    of CharBasis.script * CharBasis.script * horz_box list
+  | HorzPure of pure_horz_box
+  | HorzDiscretionary of {
+      penalty  : pure_badness;
+      no_break : horz_box list;
+      pre      : horz_box list;
+      post     : horz_box list;
+    }
+  | HorzEmbeddedVertBreakable of {
+      width    : length;
+      contents : vert_box list;
+    }
+  | HorzFrameBreakable of {
+      paddings              : paddings;
+      decoration_standalone : decoration;
+      decoration_head       : decoration;
+      decoration_middle     : decoration;
+      decoration_tail       : decoration;
+      contents              : horz_box list;
+    }
+  | HorzScriptGuard of {
+      left     : CharBasis.script;
+      right    : CharBasis.script;
+      contents : horz_box list;
+    }
   | HorzOmitSkipAfter
 
 and intermediate_graphics =
@@ -277,55 +301,109 @@ and intermediate_graphics =
   | ImGraphicsVariable of outer_fil_graphics
 
 and intermediate_horz_box =
-  | ImHorz               of evaled_horz_box
-  | ImHorzRising         of length * length * length * length * intermediate_horz_box list
-  | ImHorzFrame          of ratios * length * length * length * decoration * intermediate_horz_box list
-  | ImHorzInlineTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
-  | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | ImHorzInlineGraphics of length * length * length * intermediate_graphics
-  | ImHorzHookPageBreak  of (page_break_info -> point -> unit)
-  | ImHorzFootnote       of intermediate_vert_box list
+  | ImHorz of evaled_horz_box
+  | ImHorzRising of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      rising   : length;
+      contents : intermediate_horz_box list;
+    }
+  | ImHorzFrame of {
+      ratios     : ratios;
+      width      : length;
+      height     : length;
+      depth      : length;
+      decoration : decoration;
+      contents   : intermediate_horz_box list;
+    }
+  | ImHorzInlineTabular of {
+      width         : length;
+      height        : length;
+      depth         : length;
+      rows          : intermediate_row list;
+      column_widths : length list;
+      row_heights   : length list;
+      rule_graphics : rules_func;
+    }
+  | ImHorzEmbeddedVert of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      contents : intermediate_vert_box list;
+    }
+  | ImHorzInlineGraphics of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      graphics : intermediate_graphics;
+    }
+  | ImHorzHookPageBreak of (page_break_info -> point -> unit)
+  | ImHorzFootnote of intermediate_vert_box list
 
 and evaled_horz_box =
   length * evaled_horz_box_main
-      (* --
-         (1) width
-         (2) contents
-         -- *)
+      (* (1) width
+         (2) contents *)
 
 and evaled_horz_box_main =
-  | EvHorzString of horz_string_info * length * length * OutputText.t
-      (* --
-         (1) string information for writing string to PDF
-         (2) content height
-         (3) content depth
-         (4) content string
-         -- *)
-
-  | EvHorzMathGlyph      of math_string_info * length * length * OutputText.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
-  | EvHorzRising         of length * length * length * evaled_horz_box list
+  | EvHorzString of {
+      info   : horz_string_info;
+      height : length;
+      depth  : length;
+      output : OutputText.t;
+    }
+  | EvHorzMathGlyph of {
+      info   : math_string_info;
+      height : length;
+      depth  : length;
+      output : OutputText.t;
+    }
+  | EvHorzRising of {
+      height   : length;
+      depth    : length;
+      rising   : length;
+      contents : evaled_horz_box list;
+    }
   | EvHorzEmpty
-  | EvHorzFrame          of ratios * length * length * decoration * evaled_horz_box list
-  | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
-  | EvHorzInlineGraphics of length * length * intermediate_graphics
-  | EvHorzInlineTabular  of length * length * evaled_row list * length list * length list * rules_func
-  | EvHorzInlineImage    of length * ImageInfo.key
-      [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
-  | EvHorzHookPageBreak  of page_break_info * (page_break_info -> point -> unit)
-      (* --
-         (1) page number determined during the page breaking
-         (2) hook function invoked during the construction of PDF data
-         -- *)
+  | EvHorzFrame of {
+      ratios     : ratios;
+      height     : length;
+      depth      : length;
+      decoration : decoration;
+      contents   : evaled_horz_box list;
+    }
+  | EvHorzEmbeddedVert of {
+      height   : length;
+      depth    : length;
+      contents : evaled_vert_box list;
+    }
+  | EvHorzInlineGraphics of {
+      height   : length;
+      depth    : length;
+      graphics : intermediate_graphics;
+    }
+  | EvHorzInlineTabular of {
+      height        : length;
+      depth         : length;
+      rows          : evaled_row list;
+      column_widths : length list;
+      row_heights   : length list;
+      rule_graphics : rules_func;
+    }
+  | EvHorzInlineImage of {
+      height : length;
+      key    : ImageInfo.key;
+    } [@printer (fun fmt _ _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
+  | EvHorzHookPageBreak of page_break_info * (page_break_info -> point -> unit)
 
 and vert_box =
   | VertParagraph      of margins * paragraph_element list
   | VertFixedBreakable of length
       [@printer (fun fmt _ -> Format.fprintf fmt "Breakable")]
   | VertFrame          of margins * paddings * decoration * decoration * decoration * decoration * length * vert_box list
-(*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
   | VertClearPage
-  | VertHookPageBreak of (page_break_info -> point -> unit)
+  | VertHookPageBreak   of (page_break_info -> point -> unit)
 
 and margins = {
   margin_top    : (breakability * length) option;
@@ -338,19 +416,17 @@ and paragraph_element =
   | VertParagSkip of length
 
 and intermediate_vert_box =
-  | ImVertLine       of reachability * length * length * intermediate_horz_box list
-  | ImVertFixedEmpty of debug_margin_info * length
-  | ImVertFrame      of paddings * decoration * length * intermediate_vert_box list
+  | ImVertLine          of reachability * length * length * intermediate_horz_box list
+  | ImVertFixedEmpty    of debug_margin_info * length
+  | ImVertFrame         of paddings * decoration * length * intermediate_vert_box list
   | ImVertHookPageBreak of (page_break_info -> point -> unit)
 
 and evaled_vert_box =
   | EvVertLine       of reachability * length * length * evaled_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
-      (* --
-         (1) height of the contents
+      (* (1) height of the contents
          (2) depth of the contents (nonpositive)
-         (3) contents
-         -- *)
+         (3) contents *)
   | EvVertFixedEmpty of debug_margin_info * length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
@@ -367,59 +443,56 @@ and page_parts_scheme = {
 
 and page_content_info =
   page_break_info  (* temporary *)
-(*
-{
-  page_number : int;
-}
-*)
 
-and page_parts_scheme_func = page_content_info -> page_parts_scheme
+and page_parts_scheme_func =
+  page_content_info -> page_parts_scheme
 
+and column_hook_func =
+  unit -> vert_box list
 
-and column_hook_func = unit -> vert_box list
+and math_char_kern_func =
+  length -> length -> length
+    (* Takes the actual font size and the y-position,
+       and returns a kerning value (positive for making characters closer). *)
 
+and math_kern_func =
+  length -> length
+    (* Takes a y-position as a correction height and then returns a kerning value. *)
 
-and math_char_kern_func = length -> length -> length
-  (* --
-     takes the actual font size and the y-position,
-     and returns a kerning value (positive for making characters closer)
-     -- *)
+and radical =
+  length -> length -> length -> length -> color -> horz_box list
+    (* The type for adjustable radicals. An adjustable radical takes as arguments
 
-and math_kern_func = length -> length
-  (* -- takes a y-position as a correction height and then returns a kerning value -- *)
-
-and radical = length -> length -> length -> length -> color -> horz_box list
-  (* --
-     'radical':
-       the type for adjustable radicals.
-       An adjustable radical takes as arguments
        (1-2) the height and the thickness of the bar required by the math font,
        (3)   the depth of the inner contents,
        (4)   the font size, and
        (5)   the color for glyphs,
-       and then returns the inline box representation.
-     -- *)
+
+       and then returns the inline box representation. *)
 
 and cell =
   | NormalCell of paddings * horz_box list
   | EmptyCell
   | MultiCell  of int * int * paddings * horz_box list
 
-and row = cell list
+and row =
+  cell list
 
 and intermediate_cell =
   | ImNormalCell of ratios * (length * length * length) * intermediate_horz_box list
   | ImEmptyCell  of length
   | ImMultiCell  of ratios * (int * int * length * length * length * length) * intermediate_horz_box list
 
-and intermediate_row = length * intermediate_cell list
+and intermediate_row =
+  length * intermediate_cell list
 
 and evaled_cell =
   | EvNormalCell of ratios * (length * length * length) * evaled_horz_box list
   | EvEmptyCell  of length
   | EvMultiCell  of ratios * (int * int * length * length * length * length) * evaled_horz_box list
 
-and evaled_row = length * evaled_cell list
+and evaled_row =
+  length * evaled_cell list
 [@@deriving show { with_path = false }]
 
 type column = cell list
@@ -428,11 +501,11 @@ type column = cell list
 let normalize_script ctx script_raw =
   match script_raw with
   | CharBasis.CommonNarrow
-  | CharBasis.Inherited
-      -> ctx.dominant_narrow_script
+  | CharBasis.Inherited ->
+      ctx.dominant_narrow_script
 
-  | CharBasis.CommonWide
-      -> ctx.dominant_wide_script
+  | CharBasis.CommonWide ->
+      ctx.dominant_wide_script
 
   | _ -> script_raw
 
@@ -465,22 +538,22 @@ let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length 
   let (hgt, dpt) =
     match evhbmain with
     | EvHorzEmpty
-    | EvHorzHookPageBreak(_, _)
-        -> (Length.zero, Length.zero)
+    | EvHorzHookPageBreak(_, _) ->
+        (Length.zero, Length.zero)
 
-    | EvHorzInlineImage(h, _) ->
-        (h, Length.zero)
+    | EvHorzInlineImage{ height } ->
+        (height, Length.zero)
 
-    | EvHorzString(_, h, d, _)
-    | EvHorzRising(h, d, _, _)
-    | EvHorzMathGlyph(_, h, d, _)
-    | EvHorzEmbeddedVert(h, d, _)
-    | EvHorzInlineGraphics(h, d, _)
-    | EvHorzInlineTabular(h, d, _, _, _, _)
-    | EvHorzFrame(_, h, d, _, _)
-         -> (h, d)
+    | EvHorzString{ height; depth }
+    | EvHorzMathGlyph{ height; depth }
+    | EvHorzRising{ height; depth }
+    | EvHorzFrame{ height; depth }
+    | EvHorzEmbeddedVert{ height; depth }
+    | EvHorzInlineGraphics{ height; depth }
+    | EvHorzInlineTabular{ height; depth } ->
+        (height, depth)
   in
-    (wid, hgt, dpt)
+  (wid, hgt, dpt)
 
 
 let rec get_height_of_evaled_vert_box_list evvblst =
@@ -501,32 +574,32 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
           get_metrics_of_evaled_horz_box evhb
 
       | ImHorzHookPageBreak(_)
-      | ImHorzFootnote(_)
-          -> (Length.zero, Length.zero, Length.zero)
+      | ImHorzFootnote(_) ->
+          (Length.zero, Length.zero, Length.zero)
 
-      | ImHorzRising(w, h, d, _, _)
-      | ImHorzFrame(_, w, h, d, _, _)
-      | ImHorzInlineTabular(w, h, d, _, _, _, _)
-      | ImHorzInlineGraphics(w, h, d, _)
-      | ImHorzEmbeddedVert(w, h, d, _)
-           -> (w, h, d)
+      | ImHorzRising{ width; height; depth }
+      | ImHorzFrame{ width; height; depth }
+      | ImHorzInlineTabular{ width; height; depth }
+      | ImHorzEmbeddedVert{ width; height; depth }
+      | ImHorzInlineGraphics{ width; height; depth } ->
+          (width, height, depth)
     in
-      (wid +% w, Length.max hgt h, Length.min dpt d)
+    (wid +% w, Length.max hgt h, Length.min dpt d)
   ) (Length.zero, Length.zero, Length.zero)
 
 
 let rec extract_string (hblst : horz_box list) : string =
   let rec extract_one hb =
     match hb with
-    | HorzPure(PHCInnerString(_, uchlst))            -> string_of_uchlst uchlst
-    | HorzPure(PHCInnerMathGlyph(_, _, _, _, otxt))  -> ""
-    | HorzPure(PHGRising(_, hblst))                  -> extract_string hblst
-    | HorzPure(PHGFixedFrame(_, _, _, hblst))        -> extract_string hblst
-    | HorzPure(PHGInnerFrame(_, _, hblst))           -> extract_string hblst
-    | HorzPure(PHGOuterFrame(_, _, hblst))           -> extract_string hblst
-    | HorzDiscretionary(_, hblst0, _, _)             -> extract_string hblst0
-    | HorzFrameBreakable(_, _, _, _, _, _, _, hblst) -> extract_string hblst
-    | HorzScriptGuard(_, _, hblst)                   -> extract_string hblst
-    | _                                              -> ""
+    | HorzPure(PHCInnerString{ chars = uchs })  -> string_of_uchlst uchs
+    | HorzPure(PHCInnerMathGlyph(_))            -> ""
+    | HorzPure(PHGRising{ contents = hbs })     -> extract_string hbs
+    | HorzPure(PHGFixedFrame{ contents = hbs }) -> extract_string hbs
+    | HorzPure(PHGInnerFrame{ contents = hbs }) -> extract_string hbs
+    | HorzPure(PHGOuterFrame{ contents = hbs }) -> extract_string hbs
+    | HorzDiscretionary{ no_break = hbs0 }      -> extract_string hbs0
+    | HorzFrameBreakable{ contents = hbs }      -> extract_string hbs
+    | HorzScriptGuard{ contents = hbs }         -> extract_string hbs
+    | _                                         -> ""
   in
-    String.concat "" (List.map extract_one hblst)
+  String.concat "" (List.map extract_one hblst)
