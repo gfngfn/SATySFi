@@ -509,7 +509,7 @@ make_horz HorzBox.([ HorzPure(PHGFixedTabular{
   depth;
   rows          = imtabular;
   column_widths = wids;
-  lengths       = lens;
+  row_heights   = lens;
   rule_graphics = rulesf;
 })])
 |}
@@ -1563,11 +1563,11 @@ Context(HorzBox.({ ctx with manual_rising = rising; }), ctxsub)
         ]
         ~params:[
           param "rising" ~type_:"length";
-          param "inner" ~type_:"horz_boxes";
+          param "contents" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz (HorzBox.([ HorzPure(PHGRising{ rising; inner }) ]))
+make_horz HorzBox.([ HorzPure(PHGRising{ rising; contents }) ])
 |}
     ; inst "PrimitiveSetHyphenPenalty"
         ~name:"set-hyphen-penalty"
@@ -1645,13 +1645,13 @@ make_horz HorzBox.([ HorzPure(PHSOuterEmpty{ natural; shrinkable; stretchable })
         ~params:[
           param "paddings" ~type_:"paddings";
           param "value_deco";
-          param "inner" ~type_:"horz_boxes";
+          param "contents" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
 let decoration = make_frame_deco (reducef ~msg:"inline-frame-outer") value_deco in
-make_horz HorzBox.([ HorzPure(PHGOuterFrame{ paddings; decoration; inner }) ])
+make_horz HorzBox.([ HorzPure(PHGOuterFrame{ paddings; decoration; contents }) ])
 |}
     ; inst "BackendInnerFrame"
         ~name:"inline-frame-inner"
@@ -1661,13 +1661,13 @@ make_horz HorzBox.([ HorzPure(PHGOuterFrame{ paddings; decoration; inner }) ])
         ~params:[
           param "paddings" ~type_:"paddings";
           param "value_deco";
-          param "inner" ~type_:"horz_boxes";
+          param "contents" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
 let decoration = make_frame_deco (reducef ~msg:"inline-frame-inner") value_deco in
-make_horz HorzBox.([ HorzPure(PHGInnerFrame{ paddings; decoration; inner }) ])
+make_horz HorzBox.([ HorzPure(PHGInnerFrame{ paddings; decoration; contents }) ])
 |}
     ; inst "BackendFixedFrame"
         ~name:"inline-frame-fixed"
@@ -1678,13 +1678,13 @@ make_horz HorzBox.([ HorzPure(PHGInnerFrame{ paddings; decoration; inner }) ])
           param "required_width" ~type_:"length";
           param "paddings" ~type_:"paddings";
           param "value_deco";
-          param "inner" ~type_:"horz_boxes";
+          param "contents" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
 let decoration = make_frame_deco (reducef ~msg:"inline-frame-fixed") value_deco in
-make_horz HorzBox.([ HorzPure(PHGFixedFrame{ required_width; paddings; decoration; inner }) ])
+make_horz HorzBox.([ HorzPure(PHGFixedFrame{ required_width; paddings; decoration; contents }) ])
 |}
     ; inst "BackendOuterFrameBreakable"
         ~name:"inline-frame-breakable"

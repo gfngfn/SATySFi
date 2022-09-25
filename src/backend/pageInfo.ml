@@ -35,7 +35,7 @@ let rec embed_page_info (pbinfo : page_break_info) (imhblst : intermediate_horz_
           depth;
           rows = imtabular;
           column_widths;
-          lengths;
+          row_heights;
           rule_graphics;
         } ->
           let (evrowlst, footnotelst) = embed_page_info_to_tabular pbinfo imtabular in
@@ -44,7 +44,7 @@ let rec embed_page_info (pbinfo : page_break_info) (imhblst : intermediate_horz_
             depth;
             rows = evrowlst;
             column_widths;
-            lengths;
+            row_heights;
             rule_graphics;
           })
 

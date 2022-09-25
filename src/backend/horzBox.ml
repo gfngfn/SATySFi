@@ -216,24 +216,24 @@ and pure_horz_box =
     }
 (* Groups: *)
   | PHGRising of {
-      rising : length;
-      inner  : horz_box list;
+      rising   : length;
+      contents : horz_box list;
     }
   | PHGFixedFrame of {
       required_width : length;
       paddings       : paddings;
       decoration     : decoration;
-      inner          : horz_box list;
+      contents       : horz_box list;
     }
   | PHGInnerFrame of {
       paddings   : paddings;
       decoration : decoration;
-      inner      : horz_box list;
+      contents   : horz_box list;
     }
   | PHGOuterFrame of {
       paddings   : paddings;
       decoration : decoration;
-      inner      : horz_box list;
+      contents   : horz_box list;
     }
   | PHGEmbeddedVert of {
       width    : length;
@@ -258,7 +258,7 @@ and pure_horz_box =
       depth         : length;
       rows          : intermediate_row list;
       column_widths : length list;
-      lengths       : length list;
+      row_heights   : length list;
       rule_graphics : rules_func;
     }
   | PHGFixedImage of {
@@ -323,7 +323,7 @@ and intermediate_horz_box =
       depth         : length;
       rows          : intermediate_row list;
       column_widths : length list;
-      lengths       : length list;
+      row_heights   : length list;
       rule_graphics : rules_func;
     }
   | ImHorzEmbeddedVert of {
@@ -388,7 +388,7 @@ and evaled_horz_box_main =
       depth         : length;
       rows          : evaled_row list;
       column_widths : length list;
-      lengths       : length list;
+      row_heights   : length list;
       rule_graphics : rules_func;
     }
   | EvHorzInlineImage of {
@@ -591,15 +591,15 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
 let rec extract_string (hblst : horz_box list) : string =
   let rec extract_one hb =
     match hb with
-    | HorzPure(PHCInnerString{ chars = uchs })       -> string_of_uchlst uchs
-    | HorzPure(PHCInnerMathGlyph(_))                 -> ""
-    | HorzPure(PHGRising{ inner = hbs })             -> extract_string hbs
-    | HorzPure(PHGFixedFrame{ inner = hbs })         -> extract_string hbs
-    | HorzPure(PHGInnerFrame{ inner = hbs })         -> extract_string hbs
-    | HorzPure(PHGOuterFrame{ inner = hbs })         -> extract_string hbs
-    | HorzDiscretionary{ no_break = hbs0 }           -> extract_string hbs0
-    | HorzFrameBreakable{ contents = hbs }           -> extract_string hbs
-    | HorzScriptGuard{ contents = hbs }              -> extract_string hbs
-    | _                                              -> ""
+    | HorzPure(PHCInnerString{ chars = uchs })  -> string_of_uchlst uchs
+    | HorzPure(PHCInnerMathGlyph(_))            -> ""
+    | HorzPure(PHGRising{ contents = hbs })     -> extract_string hbs
+    | HorzPure(PHGFixedFrame{ contents = hbs }) -> extract_string hbs
+    | HorzPure(PHGInnerFrame{ contents = hbs }) -> extract_string hbs
+    | HorzPure(PHGOuterFrame{ contents = hbs }) -> extract_string hbs
+    | HorzDiscretionary{ no_break = hbs0 }      -> extract_string hbs0
+    | HorzFrameBreakable{ contents = hbs }      -> extract_string hbs
+    | HorzScriptGuard{ contents = hbs }         -> extract_string hbs
+    | _                                         -> ""
   in
   String.concat "" (List.map extract_one hblst)

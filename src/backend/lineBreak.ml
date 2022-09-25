@@ -133,7 +133,7 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       let metrics = (natural width, height, depth) in
       puref (LBAtom{ metrics; main = EvHorzMathGlyph{ info; height; depth; output } })
 
-  | PHGRising{ rising = len_rising; inner = hbs0 } ->
+  | PHGRising{ rising = len_rising; contents = hbs0 } ->
       let lphbs0 = listf hbs0 in
       let (widinfo0, hgt0, dpt0) = get_total_metrics lphbs0 in
       let hgt = Length.max Length.zero (hgt0 +% len_rising) in
@@ -152,7 +152,7 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       let metrics = empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); } in
       puref (LBAtom{ metrics; main = EvHorzEmpty })
 
-  | PHGOuterFrame{ paddings = pads; decoration; inner = hbs } ->
+  | PHGOuterFrame{ paddings = pads; decoration; contents = hbs } ->
       let lphbs = listf hbs in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
       let (_lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
@@ -160,7 +160,7 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       puref (LBOuterFrame{ metrics; decoration; contents = lphbs })
         (* TODO: doubtful; maybe should use `lphbs_new` for `contents` *)
 
-  | PHGInnerFrame{ paddings = pads; decoration = deco; inner = hbs } ->
+  | PHGInnerFrame{ paddings = pads; decoration = deco; contents = hbs } ->
       let lphbs = listf hbs in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
       let (lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
@@ -172,7 +172,7 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
         contents   = lphbs_new;
       })
 
-  | PHGFixedFrame{ required_width = wid_req; paddings = pads; decoration = deco; inner = hbs } ->
+  | PHGFixedFrame{ required_width = wid_req; paddings = pads; decoration = deco; contents = hbs } ->
       let lphbs = listf hbs in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
       let (lphbs_new, _) = append_horz_padding_pure lphbs widinfo_sub pads in
@@ -193,8 +193,8 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHGOuterFilGraphics{ height; depth; graphics } ->
       puref (LBOuterFilGraphics{ height; depth; graphics })
 
-  | PHGFixedTabular{ width; height; depth; rows; column_widths; lengths; rule_graphics } ->
-      puref (LBFixedTabular{ width; height; depth; rows; column_widths; lengths; rule_graphics })
+  | PHGFixedTabular{ width; height; depth; rows; column_widths; row_heights; rule_graphics } ->
+      puref (LBFixedTabular{ width; height; depth; rows; column_widths; row_heights; rule_graphics })
 
   | PHGFixedImage{ width; height; key } ->
       puref (LBFixedImage{ width; height; key })
@@ -683,8 +683,8 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     | LBOuterFilGraphics{ height; depth; graphics } ->
         ImHorzInlineGraphics{ width = widperfil; height; depth; graphics = ImGraphicsVariable(graphics) }
 
-    | LBFixedTabular{ width; height; depth; rows; column_widths; lengths; rule_graphics } ->
-        ImHorzInlineTabular{ width; height; depth; rows; column_widths; lengths; rule_graphics }
+    | LBFixedTabular{ width; height; depth; rows; column_widths; row_heights; rule_graphics } ->
+        ImHorzInlineTabular{ width; height; depth; rows; column_widths; row_heights; rule_graphics }
 
     | LBFixedImage{ width; height; key } ->
         ImHorz(width, EvHorzInlineImage{ height; key })
@@ -1246,7 +1246,7 @@ let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
           | PHCInnerMathGlyph(_) ->
               Some(CharBasis.Latin)
 
-          | PHGRising{ inner = hbs0 } ->
+          | PHGRising{ contents = hbs0 } ->
               begin
                 match hbs0 with
                 | [] -> aux tail
@@ -1300,7 +1300,7 @@ let get_rightmost_script (hblst : horz_box list) : CharBasis.script option =
           | PHCInnerMathGlyph(_) ->
               Some(CharBasis.Latin)
 
-          | PHGRising{ inner = hbs0 } ->
+          | PHGRising{ contents = hbs0 } ->
               begin
                 match hbs0 with
                 | [] -> aux revtail

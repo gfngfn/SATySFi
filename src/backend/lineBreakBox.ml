@@ -51,7 +51,7 @@ type lb_pure_box =
       depth         : length;
       rows          : intermediate_row list;
       column_widths : length list;
-      lengths       : length list;
+      row_heights   : length list;
       rule_graphics : rules_func;
     }
   | LBFixedImage    of {

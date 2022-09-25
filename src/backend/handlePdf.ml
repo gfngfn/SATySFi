@@ -206,7 +206,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         depth         = dpt;
         rows          = evtabular;
         column_widths = widlst;
-        lengths       = lenlst;
+        row_heights   = lenlst;
         rule_graphics = rulesf;
       } ->
         let ops_tabular =

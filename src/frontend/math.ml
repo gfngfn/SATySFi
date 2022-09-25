@@ -988,7 +988,7 @@ let horz_fraction_bar ictx wid =
 
 
 let raise_horz r hbs =
-  [ HorzPure(PHGRising{ rising = r; inner = hbs }) ]
+  [ HorzPure(PHGRising{ rising = r; contents = hbs }) ]
 
 
 let get_space_correction = function
