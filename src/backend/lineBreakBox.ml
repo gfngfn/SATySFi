@@ -76,7 +76,14 @@ type lb_box =
       no_break   : lb_pure_box list;
       candidates : (DiscretionaryID.t * lb_pure_box list * lb_pure_box list) list;
     }
-  | LBFrameBreakable of paddings * decoration * decoration * decoration * decoration * lb_box list
+  | LBFrameBreakable of {
+      paddings              : paddings;
+      decoration_standalone : decoration;
+      decoration_head       : decoration;
+      decoration_middle     : decoration;
+      decoration_tail       : decoration;
+      contents              : lb_box list;
+    }
   | LBEmbeddedVertBreakable of DiscretionaryID.t * length * vert_box list
 
 

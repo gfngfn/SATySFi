@@ -337,7 +337,17 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
         let lbes = convert_list_for_line_breaking hbs in
         let lhbs = normalize_chunks lbes in
         let lhbs_new = append_horz_padding lhbs pads in
-        aux (Alist.extend lbeacc (LB(LBFrameBreakable(pads, decoS, decoH, decoM, decoT, lhbs_new)))) tail
+        let lb =
+          LBFrameBreakable{
+            paddings              = pads;
+            decoration_standalone = decoS;
+            decoration_head       = decoH;
+            decoration_middle     = decoM;
+            decoration_tail       = decoT;
+            contents              = lhbs_new;
+          }
+        in
+        aux (Alist.extend lbeacc (LB(lb))) tail
 
     | HorzScriptGuard{ left = scriptL; right = scriptR; contents = hbsG } :: tail ->
         let lbesG = convert_list_for_line_breaking hbsG in
@@ -873,8 +883,15 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
     | LBPure(lphb) :: tail ->
         cut acclines (Alist.extend accline lphb) tail
 
-    | LBFrameBreakable(pads, decoS, decoH, decoM, decoT, lhblst) :: tail ->
-        let acclines_in_frame = cut Alist.empty Alist.empty lhblst in
+    | LBFrameBreakable{
+        paddings              = pads;
+        decoration_standalone = decoS;
+        decoration_head       = decoH;
+        decoration_middle     = decoM;
+        decoration_tail       = decoT;
+        contents              = lhbs;
+      } :: tail ->
+        let acclines_in_frame = cut Alist.empty Alist.empty lhbs in
         let (acclinesnew, acclinenew) =
           append_framed_lines (Alist.to_list acclines_in_frame) acclines accline decoS decoH decoM decoT pads
         in
@@ -1106,7 +1123,7 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
 
     | LBDiscretionaryList{ penalty; no_break = lphbs0; candidates } :: tail ->
         let widinfo0 = get_width_info_list lphbs0 in
-        let (wmapsub, foundpairacc) =
+        let (wmap_sub, foundpairacc) =
           candidates |> List.fold_left (fun (wmap, foundpairacc) (dscrid, lphbs1, lphbs2) ->
             let widinfo1 = get_width_info_list lphbs1 in
             let widinfo2 = get_width_info_list lphbs2 in
@@ -1117,11 +1134,11 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
               (wmap_sub, foundpairacc)
           ) (wmap, Alist.empty)
         in
-        let wmapall = wmapsub |> WidthMap.add_width_all widinfo0 in
+        let wmap_all = wmap_sub |> WidthMap.add_width_all widinfo0 in
         let wmap =
           foundpairacc |> Alist.to_list |> List.fold_left (fun wmap (dscrid, widinfo2) ->
             wmap |> WidthMap.add dscrid widinfo2
-          ) wmapall
+          ) wmap_all
         in
         aux NormalState iterdepth wmap tail
 
@@ -1135,17 +1152,17 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
               let (_, _) = update_graph wmap dscrid widinfo_zero 0 () in
               ()
         end;
-        let wmapnew = WidthMap.empty |> WidthMap.add dscrid widinfo_zero in
-        aux (ImmediateAfterEmbeddedVert(dscrid)) iterdepth wmapnew tail
+        let wmap = WidthMap.empty |> WidthMap.add dscrid widinfo_zero in
+        aux (ImmediateAfterEmbeddedVert(dscrid)) iterdepth wmap tail
 
     | LBPure(lphb) :: tail ->
         let widinfo = get_width_info lphb in
-        let wmapnew = wmap |> WidthMap.add_width_all widinfo in
-        aux NormalState iterdepth wmapnew tail
+        let wmap = wmap |> WidthMap.add_width_all widinfo in
+        aux NormalState iterdepth wmap tail
 
-    | LBFrameBreakable(pads, _, _, _, _, lhblstsub) :: tail ->
-        let wmapsub = aux NormalState (iterdepth + 1) wmap lhblstsub in
-        aux NormalState iterdepth wmapsub tail
+    | LBFrameBreakable{ paddings = pads; contents = lhbs_sub } :: tail ->
+        let wmap_sub = aux NormalState (iterdepth + 1) wmap lhbs_sub in
+        aux NormalState iterdepth wmap_sub tail
 
     | [] ->
         if iterdepth = 0 then
@@ -1156,19 +1173,19 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
 
           | NormalState ->
               let dscrid = DiscretionaryID.final in
-              let (_, wmapfinal) = update_graph wmap dscrid widinfo_zero 0 () in
-              wmapfinal
+              let (_, wmap_final) = update_graph wmap dscrid widinfo_zero 0 () in
+              wmap_final
         else
           wmap
   in
 
-  let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning widinfo_zero in
+  let wmap_init = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning widinfo_zero in
   begin
     DiscretionaryID.initialize ();
     LineBreakGraph.add_vertex grph DiscretionaryID.beginning;
     let lbelst = convert_list_for_line_breaking hblst in
     let lhblst = normalize_chunks lbelst in
-    let _ = aux NormalState 0 wmapinit lhblst in
+    let _ = aux NormalState 0 wmap_init lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
       | None ->
