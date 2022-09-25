@@ -32,12 +32,12 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   | LBRising{ metrics }                       -> metrics
   | LBOuterFrame{ metrics }                   -> metrics
   | LBFixedFrame{ width; height; depth }      -> (natural width, height, depth)
-  | LBEmbeddedVert(wid, hgt, dpt, _)          -> (natural wid, hgt, dpt)
-  | LBFixedGraphics(wid, hgt, dpt, _)         -> (natural wid, hgt, dpt)
-  | LBFixedTabular(wid, hgt, dpt, _, _, _, _) -> (natural wid, hgt, dpt)
-  | LBFixedImage(wid, hgt, _)                 -> (natural wid, hgt, Length.zero)
+  | LBEmbeddedVert{ width; height; depth }    -> (natural width, height, depth)
+  | LBFixedGraphics{ width; height; depth }   -> (natural width, height, depth)
+  | LBFixedTabular{ width; height; depth }    -> (natural width, height, depth)
+  | LBFixedImage{ width; height}              -> (natural width, height, Length.zero)
 
-  | LBOuterFilGraphics(hgt, dpt, _) ->
+  | LBOuterFilGraphics{ height; depth } ->
       let widinfo =
         {
           natural     = Length.zero;
@@ -45,7 +45,7 @@ let get_metrics (lphb : lb_pure_box) : metrics =
           stretchable = Fils(1);
         }
       in
-        (widinfo, hgt, dpt)
+      (widinfo, height, depth)
 
   | LBHookPageBreak(_)
   | LBFootnote(_)
@@ -190,28 +190,20 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
         contents   = lphbs_new;
       })
 
-  | PHGEmbeddedVert{ width = wid; height = hgt; depth = dpt; contents = imvbs } ->
-      puref (LBEmbeddedVert(wid, hgt, dpt, imvbs))
+  | PHGEmbeddedVert{ width; height; depth; contents } ->
+      puref (LBEmbeddedVert{ width; height; depth; contents })
 
-  | PHGFixedGraphics{ width = wid; height = hgt; depth = dpt; graphics } ->
-      puref (LBFixedGraphics(wid, hgt, dpt, graphics))
+  | PHGFixedGraphics{ width; height; depth; graphics } ->
+      puref (LBFixedGraphics{ width; height; depth; graphics })
 
-  | PHGOuterFilGraphics{ height = hgt; depth = dpt; graphics } ->
-      puref (LBOuterFilGraphics(hgt, dpt, graphics))
+  | PHGOuterFilGraphics{ height; depth; graphics } ->
+      puref (LBOuterFilGraphics{ height; depth; graphics })
 
-  | PHGFixedTabular{
-      width         = wid;
-      height        = hgt;
-      depth         = dpt;
-      rows          = imtabular;
-      column_widths = widlst;
-      lengths       = lenlst;
-      rule_graphics = rulesf;
-    } ->
-      puref (LBFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))
+  | PHGFixedTabular{ width; height; depth; rows; column_widths; lengths; rule_graphics } ->
+      puref (LBFixedTabular{ width; height; depth; rows; column_widths; lengths; rule_graphics })
 
-  | PHGFixedImage{ width = wid; height = hgt; key = imgkey } ->
-      puref (LBFixedImage(wid, hgt, imgkey))
+  | PHGFixedImage{ width; height; key } ->
+      puref (LBFixedImage{ width; height; key })
 
   | PHGHookPageBreak(hookf) ->
       puref (LBHookPageBreak(hookf))
@@ -359,10 +351,10 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
         let lphblst0 = aux Alist.empty hblst0 in
           aux (Alist.append lbpeacc lphblst0) tail
 
-    | HorzEmbeddedVertBreakable(wid, vblst) :: tail ->
-        let imvblst = PageBreak.solidify vblst in
-        let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-          aux (Alist.extend lbpeacc (PLB(LBEmbeddedVert(wid, hgt, dpt, imvblst)))) tail
+    | HorzEmbeddedVertBreakable(width, vbs) :: tail ->
+        let imvbs = PageBreak.solidify vbs in
+        let (height, depth) = PageBreak.adjust_to_first_line imvbs in
+        aux (Alist.extend lbpeacc (PLB(LBEmbeddedVert{ width; height; depth; contents = imvbs }))) tail
 
     | HorzPure(phb) :: tail ->
         let lbpe = convert_pure_box_for_line_breaking_pure convert_list_for_line_breaking_pure phb in
@@ -659,19 +651,27 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         let (imhbs, ratios, _, _) = determine_widths (Some(wid_frame)) lphbs in
         ImHorzFrame(ratios, wid_frame, hgt_frame, dpt_frame, deco, imhbs)
 
-    | LBEmbeddedVert(wid, hgt, dpt, imvblst) ->
-        ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)
+    | LBEmbeddedVert{ width = wid; height = hgt; depth = dpt; contents = imvbs } ->
+        ImHorzEmbeddedVert(wid, hgt, dpt, imvbs)
 
-    | LBFixedGraphics(wid, hgt, dpt, graphics) ->
+    | LBFixedGraphics{ width = wid; height = hgt; depth = dpt; graphics } ->
         ImHorzInlineGraphics(wid, hgt, dpt, ImGraphicsFixed(graphics))
 
-    | LBOuterFilGraphics(hgt, dpt, graphics) ->
+    | LBOuterFilGraphics{ height = hgt; depth = dpt; graphics } ->
         ImHorzInlineGraphics(widperfil, hgt, dpt, ImGraphicsVariable(graphics))
 
-    | LBFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) ->
+    | LBFixedTabular{
+        width         = wid;
+        height        = hgt;
+        depth         = dpt;
+        rows          = imtabular;
+        column_widths = widlst;
+        lengths       = lenlst;
+        rule_graphics = rulesf;
+      } ->
         ImHorzInlineTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf)
 
-    | LBFixedImage(wid, hgt, imgkey) ->
+    | LBFixedImage{ width = wid; height = hgt; key = imgkey } ->
         ImHorz(wid, EvHorzInlineImage(hgt, imgkey))
 
     | LBHookPageBreak(hookf) ->
@@ -788,12 +788,12 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
                 aux None None acclines tail
           end
 
-      | AlreadyVert(wid, vblst) :: tail ->
-          let imvblst = PageBreak.solidify vblst in
-          let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-          let metr_sub = (natural wid, hgt, dpt) in
+      | AlreadyVert(width, vbs) :: tail ->
+          let imvbs = PageBreak.solidify vbs in
+          let (height, depth) = PageBreak.adjust_to_first_line imvbs in
+          let metr_sub = (natural width, height, depth) in
           let metr_total = append_vert_padding metr_sub pads in
-          let inner = [LBEmbeddedVert(wid, hgt, dpt, imvblst)] in
+          let inner = [ LBEmbeddedVert{ width; height; depth; contents = imvbs } ] in
           begin
             match first with
             | Some(accline) -> (* First line *)

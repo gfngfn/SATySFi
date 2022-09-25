@@ -28,11 +28,37 @@ type lb_pure_box =
       decoration : decoration;
       contents   : lb_pure_box list;
     }
-  | LBEmbeddedVert  of length * length * length * intermediate_vert_box list
-  | LBFixedGraphics of length * length * length * fixed_graphics
-  | LBOuterFilGraphics of length * length * outer_fil_graphics
-  | LBFixedTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
-  | LBFixedImage    of length * length * ImageInfo.key
+  | LBEmbeddedVert of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      contents : intermediate_vert_box list;
+    }
+  | LBFixedGraphics of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      graphics : fixed_graphics;
+    }
+  | LBOuterFilGraphics of {
+      height   : length;
+      depth    : length;
+      graphics : outer_fil_graphics;
+    }
+  | LBFixedTabular of {
+      width         : length;
+      height        : length;
+      depth         : length;
+      rows          : intermediate_row list;
+      column_widths : length list;
+      lengths       : length list;
+      rule_graphics : rules_func;
+    }
+  | LBFixedImage    of {
+      width  : length;
+      height : length;
+      key    : ImageInfo.key;
+    }
   | LBHookPageBreak of (page_break_info -> point -> unit)
   | LBFootnote      of intermediate_vert_box list
 
