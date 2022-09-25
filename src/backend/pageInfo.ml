@@ -19,21 +19,29 @@ let rec embed_page_info (pbinfo : page_break_info) (imhblst : intermediate_horz_
       | ImHorz(evhb) ->
           ext evhb
 
-      | ImHorzRising(wid, hgt, dpt, lenrising, imhblst) ->
+      | ImHorzRising{ width = wid; height = hgt; depth = dpt; rising = lenrising; contents = imhblst } ->
           let (evhblst, footnotelst) = iter imhblst in
           let evhb = (wid, EvHorzRising(hgt, dpt, lenrising, evhblst)) in
           (extH evhb, appendF footnotelst)
 
-      | ImHorzFrame(ratios, wid, hgt, dpt, deco, imhbs) ->
+      | ImHorzFrame{ ratios; width = wid; height = hgt; depth = dpt; decoration = deco; contents = imhbs } ->
           let (evhbs, footnotelst) = iter imhbs in
           let evhb = (wid, EvHorzFrame(ratios, hgt, dpt, deco, evhbs)) in
           (extH evhb, appendF footnotelst)
 
-      | ImHorzInlineTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) ->
+      | ImHorzInlineTabular{
+          width         = wid;
+          height        = hgt;
+          depth         = dpt;
+          rows          = imtabular;
+          column_widths = widlst;
+          lengths       = lenlst;
+          rule_graphics = rulesf;
+        } ->
           let (evrowlst, footnotelst) = embed_page_info_to_tabular pbinfo imtabular in
           ext (wid, EvHorzInlineTabular(hgt, dpt, evrowlst, widlst, lenlst, rulesf))
 
-      | ImHorzEmbeddedVert(wid, hgt, dpt, imvblst) ->
+      | ImHorzEmbeddedVert{ width = wid; height = hgt; depth = dpt; contents = imvblst } ->
           let (evvblst, footnotelst) = embed_page_info_vert pbinfo imvblst in
           let evhb = (wid, EvHorzEmbeddedVert(hgt, dpt, evvblst)) in
           (extH evhb, appendF footnotelst)
@@ -41,7 +49,7 @@ let rec embed_page_info (pbinfo : page_break_info) (imhblst : intermediate_horz_
       | ImHorzHookPageBreak(hookf) ->
           ext (Length.zero, EvHorzHookPageBreak(pbinfo, hookf))
 
-      | ImHorzInlineGraphics(wid, hgt, dpt, graphics) ->
+      | ImHorzInlineGraphics{ width = wid; height = hgt; depth = dpt; graphics } ->
           ext (wid, EvHorzInlineGraphics(hgt, dpt, graphics))
 
       | ImHorzFootnote(imvblst) ->

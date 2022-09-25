@@ -301,14 +301,45 @@ and intermediate_graphics =
   | ImGraphicsVariable of outer_fil_graphics
 
 and intermediate_horz_box =
-  | ImHorz               of evaled_horz_box
-  | ImHorzRising         of length * length * length * length * intermediate_horz_box list
-  | ImHorzFrame          of ratios * length * length * length * decoration * intermediate_horz_box list
-  | ImHorzInlineTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
-  | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | ImHorzInlineGraphics of length * length * length * intermediate_graphics
-  | ImHorzHookPageBreak  of (page_break_info -> point -> unit)
-  | ImHorzFootnote       of intermediate_vert_box list
+  | ImHorz of evaled_horz_box
+  | ImHorzRising of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      rising   : length;
+      contents : intermediate_horz_box list;
+    }
+  | ImHorzFrame of {
+      ratios     : ratios;
+      width      : length;
+      height     : length;
+      depth      : length;
+      decoration : decoration;
+      contents   : intermediate_horz_box list;
+    }
+  | ImHorzInlineTabular of {
+      width         : length;
+      height        : length;
+      depth         : length;
+      rows          : intermediate_row list;
+      column_widths : length list;
+      lengths       : length list;
+      rule_graphics : rules_func;
+    }
+  | ImHorzEmbeddedVert of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      contents : intermediate_vert_box list;
+    }
+  | ImHorzInlineGraphics of {
+      width    : length;
+      height   : length;
+      depth    : length;
+      graphics : intermediate_graphics;
+    }
+  | ImHorzHookPageBreak of (page_break_info -> point -> unit)
+  | ImHorzFootnote of intermediate_vert_box list
 
 and evaled_horz_box =
   length * evaled_horz_box_main
@@ -516,12 +547,12 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
       | ImHorzFootnote(_) ->
           (Length.zero, Length.zero, Length.zero)
 
-      | ImHorzRising(w, h, d, _, _)
-      | ImHorzFrame(_, w, h, d, _, _)
-      | ImHorzInlineTabular(w, h, d, _, _, _, _)
-      | ImHorzInlineGraphics(w, h, d, _)
-      | ImHorzEmbeddedVert(w, h, d, _) ->
-          (w, h, d)
+      | ImHorzRising{ width; height; depth }
+      | ImHorzFrame{ width; height; depth }
+      | ImHorzInlineTabular{ width; height; depth }
+      | ImHorzEmbeddedVert{ width; height; depth }
+      | ImHorzInlineGraphics{ width; height; depth } ->
+          (width, height, depth)
     in
     (wid +% w, Length.max hgt h, Length.min dpt d)
   ) (Length.zero, Length.zero, Length.zero)

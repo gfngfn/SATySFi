@@ -616,14 +616,14 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
   let get_intermediate_total_width imhblst =
     imhblst |> List.fold_left (fun wacc imhb ->
       match imhb with
-      | ImHorz(w, _)                             -> wacc +% w
-      | ImHorzRising(w, _, _, _, _)              -> wacc +% w
-      | ImHorzFrame(_, w, _, _, _, _)            -> wacc +% w
-      | ImHorzInlineTabular(w, _, _, _, _, _, _) -> wacc +% w
-      | ImHorzInlineGraphics(w, _, _, _)         -> wacc +% w
-      | ImHorzEmbeddedVert(w, _, _, _)           -> wacc +% w
-      | ImHorzHookPageBreak(_)                   -> wacc
-      | ImHorzFootnote(_)                        -> wacc
+      | ImHorz(w, _)                  -> wacc +% w
+      | ImHorzRising{ width }         -> wacc +% width
+      | ImHorzFrame{ width }          -> wacc +% width
+      | ImHorzInlineTabular{ width }  -> wacc +% width
+      | ImHorzInlineGraphics{ width } -> wacc +% width
+      | ImHorzEmbeddedVert{ width }   -> wacc +% width
+      | ImHorzHookPageBreak(_)        -> wacc
+      | ImHorzFootnote(_)             -> wacc
     ) Length.zero
   in
 
@@ -659,45 +659,38 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
               ImHorz(widinfo.natural +% widappend, evhb)
         end
 
-    | LBRising{ metrics = (_, hgt0, dpt0); rising = len_rising; contents = lphbs0 } ->
+    | LBRising{ metrics = (_, height, depth); rising = rising; contents = lphbs0 } ->
         let imhbs = lphbs0 |> List.map (main_conversion lbratios widperfil) in
         let wid_total = get_intermediate_total_width imhbs in
-        ImHorzRising(wid_total, hgt0, dpt0, len_rising, imhbs)
+        ImHorzRising{ width = wid_total; height; depth; rising; contents = imhbs }
 
-    | LBOuterFrame{ metrics = (_, hgt_frame, dpt_frame); decoration = deco; contents = lphbs } ->
+    | LBOuterFrame{ metrics = (_, height, depth); decoration; contents = lphbs } ->
         let imhbs = lphbs |> List.map (main_conversion lbratios widperfil) in
         let wid_total = get_intermediate_total_width imhbs in
-        ImHorzFrame(Permissible(0.), wid_total, hgt_frame, dpt_frame, deco, imhbs)
+        ImHorzFrame{
+          ratios     = Permissible(0.);
+          width      = wid_total;
+          height;
+          depth;
+          decoration;
+          contents   = imhbs;
+        }
 
-    | LBFixedFrame{
-        width      = wid_frame;
-        height     = hgt_frame;
-        depth      = dpt_frame;
-        decoration = deco;
-        contents   = lphbs;
-      } ->
-        let (imhbs, ratios, _, _) = determine_widths (Some(wid_frame)) lphbs in
-        ImHorzFrame(ratios, wid_frame, hgt_frame, dpt_frame, deco, imhbs)
+    | LBFixedFrame{ width; height; depth; decoration; contents = lphbs } ->
+        let (imhbs, ratios, _, _) = determine_widths (Some(width)) lphbs in
+        ImHorzFrame{ ratios; width; height; depth; decoration; contents = imhbs }
 
-    | LBEmbeddedVert{ width = wid; height = hgt; depth = dpt; contents = imvbs } ->
-        ImHorzEmbeddedVert(wid, hgt, dpt, imvbs)
+    | LBEmbeddedVert{ width; height; depth; contents } ->
+        ImHorzEmbeddedVert{ width; height; depth; contents }
 
-    | LBFixedGraphics{ width = wid; height = hgt; depth = dpt; graphics } ->
-        ImHorzInlineGraphics(wid, hgt, dpt, ImGraphicsFixed(graphics))
+    | LBFixedGraphics{ width; height; depth; graphics } ->
+        ImHorzInlineGraphics{ width; height; depth; graphics = ImGraphicsFixed(graphics) }
 
-    | LBOuterFilGraphics{ height = hgt; depth = dpt; graphics } ->
-        ImHorzInlineGraphics(widperfil, hgt, dpt, ImGraphicsVariable(graphics))
+    | LBOuterFilGraphics{ height; depth; graphics } ->
+        ImHorzInlineGraphics{ width = widperfil; height; depth; graphics = ImGraphicsVariable(graphics) }
 
-    | LBFixedTabular{
-        width         = wid;
-        height        = hgt;
-        depth         = dpt;
-        rows          = imtabular;
-        column_widths = widlst;
-        lengths       = lenlst;
-        rule_graphics = rulesf;
-      } ->
-        ImHorzInlineTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf)
+    | LBFixedTabular{ width; height; depth; rows; column_widths; lengths; rule_graphics } ->
+        ImHorzInlineTabular{ width; height; depth; rows; column_widths; lengths; rule_graphics }
 
     | LBFixedImage{ width = wid; height = hgt; key = imgkey } ->
         ImHorz(wid, EvHorzInlineImage(hgt, imgkey))

@@ -60,7 +60,7 @@ type lb_pure_box =
       key    : ImageInfo.key;
     }
   | LBHookPageBreak of (page_break_info -> point -> unit)
-  | LBFootnote      of intermediate_vert_box list
+  | LBFootnote of intermediate_vert_box list
 
 type lb_box =
   | LBPure of lb_pure_box
