@@ -314,7 +314,8 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
         let lphbs1 = convert_list_for_line_breaking_pure hbs1 in
         let lphbs2 = convert_list_for_line_breaking_pure hbs2 in
         let dscrid = DiscretionaryID.fresh () in
-        aux (Alist.extend lbeacc (LB(LBDiscretionary(penalty, dscrid, lphbs0, lphbs1, lphbs2)))) tail
+        let lb = LBDiscretionary{ penalty; id = dscrid; no_break = lphbs0; pre = lphbs1; post = lphbs2 } in
+        aux (Alist.extend lbeacc (LB(lb))) tail
 
     | HorzEmbeddedVertBreakable{ width = wid; contents = vbs } :: tail ->
         let dscrid = DiscretionaryID.fresh () in
@@ -835,14 +836,14 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
      -- *)
   let rec cut (acclines : line_either Alist.t) (accline : lb_pure_box Alist.t) (lhblst : lb_box list) : line_either Alist.t =
     match lhblst with
-    | LBDiscretionary(_, dscrid, lphblst0, lphblst1, lphblst2) :: tail ->
+    | LBDiscretionary{ id = dscrid; no_break = lphbs0; pre = lphbs1; post = lphbs2 } :: tail ->
         if List.mem dscrid path then
-          let acclinesub = Alist.append accline lphblst1 in
-          let acclinefresh = Alist.of_list lphblst2 in
-            cut (Alist.extend acclines (PureLine(Alist.to_list acclinesub))) acclinefresh tail
+          let accline_sub = Alist.append accline lphbs1 in
+          let accline_fresh = Alist.of_list lphbs2 in
+            cut (Alist.extend acclines (PureLine(Alist.to_list accline_sub))) accline_fresh tail
         else
-          let acclinenew = Alist.append accline lphblst0 in
-            cut acclines acclinenew tail
+          let accline = Alist.append accline lphbs0 in
+          cut acclines accline tail
 
     | LBDiscretionaryList(_, lphblst0, dscrlst) :: tail ->
         begin
@@ -1096,18 +1097,18 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
 
   let rec aux (state : lb_state) (iterdepth : int) (wmap : WidthMap.t) (lhblst : lb_box list) : WidthMap.t =
     match lhblst with
-    | LBDiscretionary(pnlty, dscrid, lphblst0, lphblst1, lphblst2) :: tail ->
-        let widinfo0 = get_width_info_list lphblst0 in
-        let widinfo1 = get_width_info_list lphblst1 in
-        let widinfo2 = get_width_info_list lphblst2 in
-        let (found, wmapsub) = update_graph wmap dscrid widinfo1 pnlty () in
-        let wmapnew =
+    | LBDiscretionary{ penalty; id = dscrid; no_break = lphbs0; pre = lphbs1; post = lphbs2 } :: tail ->
+        let widinfo0 = get_width_info_list lphbs0 in
+        let widinfo1 = get_width_info_list lphbs1 in
+        let widinfo2 = get_width_info_list lphbs2 in
+        let (found, wmap_sub) = update_graph wmap dscrid widinfo1 penalty () in
+        let wmap =
           if found then
-            wmapsub |> WidthMap.add_width_all widinfo0 |> WidthMap.add dscrid widinfo2
+            wmap_sub |> WidthMap.add_width_all widinfo0 |> WidthMap.add dscrid widinfo2
           else
-            wmapsub |> WidthMap.add_width_all widinfo0
+            wmap_sub |> WidthMap.add_width_all widinfo0
         in
-        aux NormalState iterdepth wmapnew tail
+        aux NormalState iterdepth wmap tail
 
     | LBDiscretionaryList(pnlty, lphblst0, dscrlst) :: tail ->
         let widinfo0 = get_width_info_list lphblst0 in

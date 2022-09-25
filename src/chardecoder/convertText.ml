@@ -105,9 +105,15 @@ let quarterwidth_kern (ctx : context_main) (script : script) : lb_box =
 
 let breakable_space (lphbf : horz_box list -> lb_pure_box list) (ctx : context_main) : lb_box =
   let dscrid = DiscretionaryID.fresh () in
-  let lphb1 = lphbf ctx.before_word_break in
-  let lphb2 = lphbf ctx.after_word_break in
-  LBDiscretionary(ctx.space_badness, dscrid, [ pure_space ctx ], lphb1, lphb2)
+  let lphbs1 = lphbf ctx.before_word_break in
+  let lphbs2 = lphbf ctx.after_word_break in
+  LBDiscretionary{
+    penalty  = ctx.space_badness;
+    id       = dscrid;
+    no_break = [ pure_space ctx ];
+    pre      = lphbs1;
+    post     = lphbs2;
+  }
 
 
 let unbreakable_space (ctx : context_main) : lb_box =
@@ -161,11 +167,17 @@ let inner_string (ctx : context_main) (script : script) (uchseglst : uchar_segme
         [LBDiscretionaryList(ctx.hyphen_badness, [lphb0], dscrlst)]
 
 
-let discretionary_if_breakable alw badns lphb =
+let discretionary_if_breakable alw (penalty : pure_badness) lphb =
   match alw with
   | AllowBreak ->
       let dscrid = DiscretionaryID.fresh () in
-      LBDiscretionary(badns, dscrid, [lphb], [], [])
+      LBDiscretionary{
+        penalty;
+        id       = dscrid;
+        no_break = [ lphb ];
+        pre      = [];
+        post     = [];
+      }
 
   | PreventBreak ->
       LBPure(lphb)

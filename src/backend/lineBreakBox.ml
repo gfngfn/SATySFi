@@ -63,8 +63,14 @@ type lb_pure_box =
   | LBFootnote      of intermediate_vert_box list
 
 type lb_box =
-  | LBPure           of lb_pure_box
-  | LBDiscretionary  of pure_badness * DiscretionaryID.t * lb_pure_box list * lb_pure_box list * lb_pure_box list
+  | LBPure of lb_pure_box
+  | LBDiscretionary of {
+      penalty  : pure_badness;
+      id       : DiscretionaryID.t;
+      no_break : lb_pure_box list;
+      pre      : lb_pure_box list;
+      post     : lb_pure_box list;
+    }
   | LBDiscretionaryList of pure_badness * lb_pure_box list * (DiscretionaryID.t * lb_pure_box list * lb_pure_box list) list
   | LBFrameBreakable of paddings * decoration * decoration * decoration * decoration * lb_box list
   | LBEmbeddedVertBreakable of DiscretionaryID.t * length * vert_box list
