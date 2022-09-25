@@ -297,13 +297,12 @@ let space_ord_prefix ctx fontsize =
 
 let space_after_script ictx =
   let fontsize = Context.font_size ictx in
-  let mfabbrev = Context.math_font_abbrev ictx in
   if not (Context.is_in_base_level ictx) then
     None
   else
-    let mc = FontInfo.get_math_constants mfabbrev in
+    let mc = Context.get_math_constants ictx in
     Some(outer_empty (fontsize *% mc.FontFormat.space_after_script) Length.zero Length.zero)
-      (* temporary; should have variable stretchability and shrinkability *)
+      (* TODO: should have variable stretchability and shrinkability *)
 
 
 let space_between_math_kinds (ictx : input_context) ~prev:(mk_prev : math_kind) (corr : space_correction) (mk : math_kind) : horz_box option =
@@ -529,14 +528,9 @@ let rec get_right_math_kind : math_box -> math_kind = function
       MathClose
 
 
-let get_math_constants (ictx : input_context) =
-  let mfabbrev = Context.math_font_abbrev ictx in
-  FontInfo.get_math_constants mfabbrev
-
-
 let superscript_baseline_height ictx h_base d_sup =
   let fontsize = Context.font_size ictx in
-  let mc = get_math_constants ictx in
+  let mc = Context.get_math_constants ictx in
   let h_supbmin = fontsize *% mc.FontFormat.superscript_bottom_min in
   let h_supstd  = fontsize *% mc.FontFormat.superscript_shift_up in
   let l_supdmax = fontsize *% mc.FontFormat.superscript_baseline_drop_max in
@@ -554,7 +548,7 @@ let superscript_correction_heights ictx h_supbl h_base d_sup =
 
 let subscript_baseline_depth ictx d_base h_sub =
   let fontsize = Context.font_size ictx in
-  let mc = get_math_constants ictx in
+  let mc = Context.get_math_constants ictx in
   let h_subtmax = fontsize *% mc.FontFormat.subscript_top_max in
   let d_substd  = Length.negate (fontsize *% mc.FontFormat.subscript_shift_down) in
   let l_subdmin = fontsize *% mc.FontFormat.subscript_baseline_drop_min in
@@ -571,7 +565,7 @@ let subscript_correction_heights ictx d_subbl d_base h_sub =
 
 let correct_script_baseline_heights ictx d_sup h_sub h_supbl_raw d_subbl_raw =
   let fontsize = Context.font_size ictx in
-  let mc = get_math_constants ictx in
+  let mc = Context.get_math_constants ictx in
   let l_gapmin = fontsize *% mc.FontFormat.sub_superscript_gap_min in
   let l_gap = (h_supbl_raw +% d_sup) -% (d_subbl_raw +% h_sub) in
   if l_gap <% l_gapmin then
@@ -583,7 +577,7 @@ let correct_script_baseline_heights ictx d_sup h_sub h_supbl_raw d_subbl_raw =
 
 let numerator_baseline_height ictx d_numer =
   let fontsize = Context.font_size ictx in
-  let mc = get_math_constants ictx in
+  let mc = Context.get_math_constants ictx in
   let h_bar         = fontsize *% mc.FontFormat.axis_height in
   let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
   let h_numerstd    = fontsize *% mc.FontFormat.fraction_numer_d_shift_up in
@@ -594,7 +588,7 @@ let numerator_baseline_height ictx d_numer =
 
 let denominator_baseline_depth ictx h_denom =
   let fontsize = Context.font_size ictx in
-  let mc = get_math_constants ictx in
+  let mc = Context.get_math_constants ictx in
   let h_bar         = fontsize *% mc.FontFormat.axis_height in
   let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
   let d_denomstd    = Length.negate (fontsize *% mc.FontFormat.fraction_denom_d_shift_down) in
@@ -605,7 +599,7 @@ let denominator_baseline_depth ictx h_denom =
 
 let upper_limit_baseline_height ictx h_base d_up =
   let fontsize = Context.font_size ictx in
-  let mc = get_math_constants ictx in
+  let mc = Context.get_math_constants ictx in
   let l_upmingap = fontsize *% mc.FontFormat.upper_limit_gap_min in
   let l_upblstd = fontsize *% mc.FontFormat.upper_limit_baseline_rise_min in
   let h_upbl = Length.max (h_base +% l_upblstd) (h_base +% l_upmingap +% (Length.negate d_up)) in
@@ -614,7 +608,7 @@ let upper_limit_baseline_height ictx h_base d_up =
 
 let lower_limit_baseline_depth ictx d_base h_low =
   let fontsize = Context.font_size ictx in
-  let mc = get_math_constants ictx in
+  let mc = Context.get_math_constants ictx in
   let l_lowmingap = fontsize *% mc.FontFormat.lower_limit_gap_min in
   let l_lowblstd = fontsize *% mc.FontFormat.lower_limit_baseline_drop_min in
   let d_lowbl = Length.min (d_base -% l_lowblstd) (d_base -% l_lowmingap -% h_low) in
@@ -629,7 +623,7 @@ let lower_limit_baseline_depth ictx d_base h_low =
    -- *)
 let radical_bar_metrics ictx h_cont =
   let fontsize = Context.font_size ictx in
-  let mc = get_math_constants ictx in
+  let mc = Context.get_math_constants ictx in
   let l_radgap = fontsize *% mc.FontFormat.radical_d_vertical_gap in
   let t_bar    = fontsize *% mc.FontFormat.radical_rule_thickness in
   let l_extra  = fontsize *% mc.FontFormat.radical_extra_ascender in
@@ -664,11 +658,11 @@ let make_radical ictx radical hgt_bar t_bar dpt =
 
 let convert_math_char (ictx : input_context) ~(kern : (math_char_kern_func * math_char_kern_func) option) ~(is_big : bool) (uchlst : Uchar.t list) (mk : math_kind) : low_math_atom =
   let mathstrinfo = Context.get_math_string_info ictx in
-  let mfabbrev = Context.math_font_abbrev ictx in
   let font_size = Context.font_size ictx in
   let is_in_base_level = Context.is_in_base_level ictx in
   let is_in_display = true (* temporary *) in
   let (otxt, wid, hgt, dpt, mic, mkiopt) =
+    let mfabbrev = Context.math_font_abbrev ictx in
     FontInfo.get_math_char_info mfabbrev ~is_in_base_level ~is_in_display ~is_big ~font_size uchlst
   in
   let mkspec =
@@ -976,10 +970,10 @@ let ratioize n =
 
 let horz_fraction_bar ictx wid =
   let fontsize = Context.font_size ictx in
-  let mc = get_math_constants ictx in
-  let h_bar         = fontsize *% mc.FontFormat.axis_height in
-  let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
-  let h_bart        = h_bar +% t_bar *% 0.5 in
+  let mc = Context.get_math_constants ictx in
+  let h_bar = fontsize *% mc.FontFormat.axis_height in
+  let t_bar = fontsize *% mc.FontFormat.fraction_rule_thickness in
+  let h_bart = h_bar +% t_bar *% 0.5 in
   let bar_color = Context.color ictx in
   let bar_graphics (xpos, ypos) =
     GraphicD.make_fill bar_color [ make_rectangle (xpos, ypos +% h_bart) wid t_bar ]

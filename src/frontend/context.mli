@@ -21,4 +21,6 @@ val font_size : t -> length
 
 val math_font_abbrev : t -> HorzBox.math_font_abbrev
 
+val get_math_constants : t -> FontFormat.math_constants
+
 val get_math_string_info : t -> HorzBox.math_string_info

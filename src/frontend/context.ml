@@ -6,10 +6,6 @@ open LengthInterface
 type t = input_context
 
 
-let make (ictx : input_context) : t =
-  ictx
-
-
 let convert_math_variant_char ((ctx, _) : input_context) (uch : Uchar.t) =
   let open HorzBox in
   match ctx.math_class_map |> HorzBox.MathClassMap.find_opt uch with
@@ -26,10 +22,6 @@ let convert_math_variant_char ((ctx, _) : input_context) (uch : Uchar.t) =
         | None ->
             (MathOrdinary, uch)
       end
-
-
-let context_for_text (ictx : t) =
-  ictx
 
 
 let color ((ctx, _) : t) =
@@ -50,6 +42,11 @@ let font_size ((ctx, _) : t)  =
 
 let math_font_abbrev ((ctx, _) : t) =
   ctx.math_font_abbrev
+
+
+let get_math_constants (ictx : input_context) =
+  let mfabbrev = math_font_abbrev ictx in
+  FontInfo.get_math_constants mfabbrev
 
 
 let enter_script (ictx : t) : t =
