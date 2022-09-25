@@ -24,7 +24,8 @@ let to_chunks ctx uchlst alwlast : break_opportunity * line_break_chunk list =
 
 
 let half_kern (hsinfo : horz_string_info) : lb_pure_box =
-  LBAtom((natural (hsinfo.text_font_size *% -0.5), Length.zero, Length.zero), EvHorzEmpty)
+  let metrics = (natural (hsinfo.text_font_size *% -0.5), Length.zero, Length.zero) in
+  LBAtom{ metrics; main = EvHorzEmpty }
 
 
 let pure_space_between_scripts ctx1 ctx2 size (script1 : script) (lbc1 : line_break_class) (script2 : script) (lbc2 : line_break_class) =
@@ -41,81 +42,78 @@ let pure_space_between_scripts ctx1 ctx2 size (script1 : script) (lbc1 : line_br
     | (Some(tuple), None)
     | (None, Some(tuple)) ->
         let (r0, r1, r2) = tuple in
-          Some(LBAtom((natural (size *% r0), size *% r1, size *% r2), EvHorzEmpty))
+        let metrics = (natural (size *% r0), size *% r1, size *% r2) in
+        Some(LBAtom{ metrics; main = EvHorzEmpty })
 
     | (Some(tuple1), Some(tuple2)) ->
         let (r10, r11, r12) = tuple1 in
         let (r20, r21, r22) = tuple2 in
         let (r0, r1, r2) = (max r10 r20, max r11 r21, max r12 r22) in
-          Some(LBAtom((natural (size *% r0), size *% r1, size *% r2), EvHorzEmpty))
-(*
-    match (script1, script2) with
-    | (HanIdeographic    , Latin             )
-    | (Latin             , HanIdeographic    )
-    | (HiraganaOrKatakana, Latin             )
-    | (Latin             , HiraganaOrKatakana)
-      ->
-        Some(LBAtom((natural (size *% 0.24), size *% 0.08, size *% 0.16), EvHorzEmpty))
-          (* temporary; shold refer to the context for spacing information between two scripts *)
-    | _ -> None
-*)
+        let metrics = (natural (size *% r0), size *% r1, size *% r2) in
+        Some(LBAtom{ metrics; main = EvHorzEmpty })
 
-let space_width_info ctx : length_info =
+
+let space_width_info (ctx : context_main) : length_info =
   let size = ctx.font_size in
-    (* -- uses font size directly, not multiplied by the ratio of the dominant script -- *)
+    (* Uses font size directly, not multiplied by the ratio of the dominant script. *)
   let widnatural = size *% ctx.space_natural in
   let widshrink  = size *% ctx.space_shrink in
   let widstretch = size *% ctx.space_stretch in
-    make_width_info widnatural widshrink widstretch
+  make_width_info widnatural widshrink widstretch
+
+
+let line_break_space (metrics : metrics) : lb_pure_box =
+  LBAtom{ metrics; main = EvHorzEmpty }
+
 
 
 let pure_space ctx : lb_pure_box =
   let widinfo = space_width_info ctx in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+  line_break_space (widinfo, Length.zero, Length.zero)
 
 
 let get_corrected_font_size ctx script =
   let (_, font_ratio, _) = get_font_with_ratio ctx script in
-    ctx.font_size *% font_ratio
+  ctx.font_size *% font_ratio
 
 
-(* -- 'pure_halfwidth_space_soft': inserts a shrinkable CJK halfwidth space -- *)
+(* Inserts a shrinkable CJK halfwidth space. *)
 let pure_halfwidth_space_soft fontsize : lb_pure_box =
   let widinfo = make_width_info (fontsize *% 0.5) (fontsize *% 0.25) (fontsize *% 0.25) in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+  line_break_space (widinfo, Length.zero, Length.zero)
 
 
-(* -- 'pure_halfwidth_space_hard': inserts a non-shrinkable CJK halfwidth space -- *)
+(* Inserts a non-shrinkable CJK halfwidth space. *)
 let pure_halfwidth_space_hard fontsize : lb_pure_box =
   let widinfo = make_width_info (fontsize *% 0.5) Length.zero (fontsize *% 0.25) in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+  line_break_space (widinfo, Length.zero, Length.zero)
 
 
-(* -- 'pure_fullwidth_space': inserts a shrinkable CJK fullwidth space -- *)
-let pure_fullwidth_space fontsize : lb_pure_box =
+(* Inserts a shrinkable CJK fullwidth space. *)
+let pure_fullwidth_space (fontsize : length) : lb_pure_box =
   let widinfo = make_width_info fontsize (fontsize *% 0.5) (fontsize *% 0.5) in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+  line_break_space (widinfo, Length.zero, Length.zero)
 
 
-(*  -- 'adjacent_space': inserts glue between directly adjacent CJK characters -- *)
-let adjacent_space ctx1 ctx2 =
+(* Inserts glue between directly adjacent CJK characters. *)
+let adjacent_space (ctx1 : context_main) (ctx2 : context_main) =
   let fontsize = Length.max ctx1.font_size ctx2.font_size in
   let ratio = max ctx1.adjacent_stretch ctx2.adjacent_stretch in
   let widstretch = fontsize *% ratio in
   let widinfo = make_width_info Length.zero Length.zero widstretch in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+  line_break_space (widinfo, Length.zero, Length.zero)
 
 
-(*  -- 'halfwidth_kern': inserts a solid backward halfwidth kern for CJK characters -- *)
-let halfwidth_kern ctx script : lb_box =
+(* Inserts a solid backward halfwidth kern for CJK characters. *)
+let halfwidth_kern (ctx : context_main) (script : script) : lb_box =
   let size = get_corrected_font_size ctx script in
-    LBPure(LBAtom((natural (Length.negate (size *% 0.5)), Length.zero, Length.zero), EvHorzEmpty))
+  LBPure(line_break_space (natural (Length.negate (size *% 0.5)), Length.zero, Length.zero))
 
 
-(*  -- 'quarterwidth_kern': inserts a solid backward quaterwidth kern for CJK characters -- *)
-let quarterwidth_kern ctx script : lb_box =
+(* Inserts a solid backward quaterwidth kern for CJK characters. *)
+let quarterwidth_kern (ctx : context_main) (script : script) : lb_box =
   let size = get_corrected_font_size ctx script in
-    LBPure(LBAtom((natural (Length.negate (size *% 0.25)), Length.zero, Length.zero), EvHorzEmpty))
+  LBPure(line_break_space (natural (Length.negate (size *% 0.25)), Length.zero, Length.zero))
 
 
 let breakable_space lphbf ctx () : lb_box =
@@ -132,7 +130,7 @@ let unbreakable_space ctx : lb_box =
 let inner_string_pure (ctx : context_main) (script : script) (uchseglst : uchar_segment list) : lb_pure_box =
   let hsinfo = get_string_info ctx script in
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
-    LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
+  LBAtom{ metrics = (natural wid, hgt, dpt); main = EvHorzString(hsinfo, hgt, dpt, otxt) }
 
 
 let generate_separation_list (uchseglstlst : (uchar_segment list) list) : (uchar_segment list * uchar_segment list) list =
@@ -154,7 +152,7 @@ let generate_separation_list (uchseglstlst : (uchar_segment list) list) : (uchar
 
 let make_string_atom (hsinfo : horz_string_info) (uchseglst : uchar_segment list) : lb_pure_box =
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
-    LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
+  LBAtom{ metrics = (natural wid, hgt, dpt); main = EvHorzString(hsinfo, hgt, dpt, otxt) }
 
 
 (* -- 'inner_string': makes an alphabetic word or a CJK character -- *)

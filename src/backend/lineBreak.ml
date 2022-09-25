@@ -28,7 +28,7 @@ let ( ~@ ) = int_of_float
 
 let get_metrics (lphb : lb_pure_box) : metrics =
   match lphb with
-  | LBAtom(metr, _)                           -> metr
+  | LBAtom{ metrics }                         -> metrics
   | LBRising(metr, _, _)                      -> metr
   | LBOuterFrame(metr, _, _)                  -> metr
   | LBFixedFrame(wid, hgt, dpt, _, _)         -> (natural wid, hgt, dpt)
@@ -77,16 +77,20 @@ let append_vert_padding (metr : metrics) (pads : paddings) : metrics =
 
 
 let append_horz_padding (lhblst : lb_box list) (pads : paddings) =
+  let metrics1 = empty_vert (natural pads.paddingL) in
+  let metrics2 = empty_vert (natural pads.paddingR) in
   List.append
-    (LBPure(LBAtom(empty_vert (natural pads.paddingL), EvHorzEmpty)) :: lhblst)
-    (LBPure(LBAtom(empty_vert (natural pads.paddingR), EvHorzEmpty)) :: [])
+    (LBPure(LBAtom{ metrics = metrics1; main = EvHorzEmpty }) :: lhblst)
+    (LBPure(LBAtom{ metrics = metrics2; main = EvHorzEmpty }) :: [])
 
 
 let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : length_info) (pads : paddings) =
+  let metrics1 = empty_vert (natural pads.paddingL) in
+  let metrics2 = empty_vert (natural pads.paddingR) in
   let lphblstnew =
     List.append
-      (LBAtom(empty_vert (natural pads.paddingL), EvHorzEmpty) :: lphblst)
-      (LBAtom(empty_vert (natural pads.paddingR), EvHorzEmpty) :: [])
+      (LBAtom{ metrics = metrics1; main = EvHorzEmpty } :: lphblst)
+      (LBAtom{ metrics = metrics2; main = EvHorzEmpty } :: [])
   in
   let widinfonew =
     {
@@ -132,7 +136,8 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       depth  = dpt;
       output = otxt;
     } ->
-      puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, otxt)))
+      let metrics = (natural wid, hgt, dpt) in
+      puref (LBAtom{ metrics; main = EvHorzMathGlyph(mathinfo, hgt, dpt, otxt) })
 
   | PHGRising{ rising = len_rising; inner = hbs } ->
       let lphbs = listf hbs in
@@ -142,13 +147,16 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       puref (LBRising((widinfo, hgtsub, dptsub), len_rising, lphbs))
 
   | PHSFixedEmpty{ width = wid } ->
-      puref (LBAtom(empty_vert (natural wid), EvHorzEmpty))
+      let metrics = empty_vert (natural wid) in
+      puref (LBAtom{ metrics; main = EvHorzEmpty })
 
   | PHSOuterEmpty{ natural; shrinkable; stretchable = wid_stretch } ->
-      puref (LBAtom(empty_vert { natural; shrinkable; stretchable = FiniteStretch(wid_stretch); }, EvHorzEmpty))
+      let metrics = empty_vert { natural; shrinkable; stretchable = FiniteStretch(wid_stretch); } in
+      puref (LBAtom{ metrics; main = EvHorzEmpty })
 
   | PHSOuterFil ->
-      puref (LBAtom(empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, EvHorzEmpty))
+      let metrics = empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); } in
+      puref (LBAtom{ metrics; main = EvHorzEmpty })
 
   | PHGOuterFrame{ paddings = pads; decoration = deco; inner = hbs } ->
       let lphbs = listf hbs in
@@ -586,7 +594,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 
   let rec main_conversion lbratios widperfil lphb : intermediate_horz_box =
     match lphb with
-    | LBAtom((widinfo, _, _), evhb) ->
+    | LBAtom{ metrics = (widinfo, _, _); main = evhb } ->
         begin
           match widinfo.stretchable with
           | Fils(nfil) ->

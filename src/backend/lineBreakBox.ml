@@ -7,7 +7,10 @@ open CharBasis
 type metrics = length_info * length * length
 
 type lb_pure_box =
-  | LBAtom          of metrics * evaled_horz_box_main
+  | LBAtom of {
+      metrics : metrics;
+      main    : evaled_horz_box_main;
+    }
   | LBRising        of metrics * length * lb_pure_box list
   | LBOuterFrame    of metrics * decoration * lb_pure_box list
   | LBFixedFrame    of length * length * length * decoration * lb_pure_box list
