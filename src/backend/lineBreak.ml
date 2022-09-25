@@ -308,12 +308,12 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
     | [] ->
         Alist.to_list lbeacc
 
-    | HorzDiscretionary(pnlty, hblst0, hblst1, hblst2) :: tail ->
-        let lphblst0 = convert_list_for_line_breaking_pure hblst0 in
-        let lphblst1 = convert_list_for_line_breaking_pure hblst1 in
-        let lphblst2 = convert_list_for_line_breaking_pure hblst2 in
+    | HorzDiscretionary{ penalty; no_break = hbs0; pre = hbs1; post = hbs2 } :: tail ->
+        let lphbs0 = convert_list_for_line_breaking_pure hbs0 in
+        let lphbs1 = convert_list_for_line_breaking_pure hbs1 in
+        let lphbs2 = convert_list_for_line_breaking_pure hbs2 in
         let dscrid = DiscretionaryID.fresh () in
-          aux (Alist.extend lbeacc (LB(LBDiscretionary(pnlty, dscrid, lphblst0, lphblst1, lphblst2)))) tail
+        aux (Alist.extend lbeacc (LB(LBDiscretionary(penalty, dscrid, lphbs0, lphbs1, lphbs2)))) tail
 
     | HorzEmbeddedVertBreakable(wid, vblst) :: tail ->
         let dscrid = DiscretionaryID.fresh () in
@@ -347,9 +347,9 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
     match hblst with
     | [] -> Alist.to_list lbpeacc
 
-    | HorzDiscretionary(pnlty, hblst0, _, _) :: tail ->
-        let lphblst0 = aux Alist.empty hblst0 in
-          aux (Alist.append lbpeacc lphblst0) tail
+    | HorzDiscretionary{ no_break = hbs0 } :: tail ->
+        let lphbs0 = aux Alist.empty hbs0 in
+        aux (Alist.append lbpeacc lphbs0) tail
 
     | HorzEmbeddedVertBreakable(width, vbs) :: tail ->
         let imvbs = PageBreak.solidify vbs in
@@ -1206,11 +1206,11 @@ let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
     | HorzScriptGuard(scriptL, _, _) :: _ ->
         Some(scriptL)
 
-    | HorzDiscretionary(_, hblst0, _, _) :: tail ->
+    | HorzDiscretionary{ no_break = hbs0 } :: tail ->
         begin
-          match hblst0 with
+          match hbs0 with
           | [] -> aux tail
-          | _  -> aux hblst0
+          | _  -> aux hbs0
         end
 
     | HorzPure(phb) :: tail ->
@@ -1260,11 +1260,11 @@ let get_rightmost_script (hblst : horz_box list) : CharBasis.script option =
     | HorzScriptGuard(_, scriptR, _) :: _ ->
         Some(scriptR)
 
-    | HorzDiscretionary(_, hblst0, _, _) :: revtail ->
+    | HorzDiscretionary{ no_break = hbs0 } :: revtail ->
         begin
-          match hblst0 with
+          match hbs0 with
           | [] -> aux revtail
-          | _  -> aux (List.rev hblst0)
+          | _  -> aux (List.rev hbs0)
         end
 
     | HorzPure(phb) :: revtail ->

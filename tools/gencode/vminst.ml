@@ -1802,14 +1802,14 @@ make_option make_script_value scriptopt
         ~fields:[
         ]
         ~params:[
-          param "pb" ~type_:"int";
-          param "hblst0" ~type_:"horz_boxes";
-          param "hblst1" ~type_:"horz_boxes";
-          param "hblst2" ~type_:"horz_boxes";
+          param "penalty" ~type_:"int";
+          param "no_break" ~type_:"horz_boxes";
+          param "pre" ~type_:"horz_boxes";
+          param "post" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz (HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
+make_horz HorzBox.([ HorzDiscretionary{ penalty; no_break; pre; post } ])
 |}
     ; inst "BackendRegisterCrossReference"
         ~name:"register-cross-reference"

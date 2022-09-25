@@ -270,9 +270,13 @@ and pure_horz_box =
   | PHGFootnote of intermediate_vert_box list
 
 and horz_box =
-  | HorzPure                  of pure_horz_box
-  | HorzDiscretionary         of pure_badness * horz_box list * horz_box list * horz_box list
-      [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
+  | HorzPure of pure_horz_box
+  | HorzDiscretionary of {
+      penalty  : pure_badness;
+      no_break : horz_box list;
+      pre      : horz_box list;
+      post     : horz_box list;
+    } [@printer (fun fmt _ _ _ _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
   | HorzEmbeddedVertBreakable of length * vert_box list
   | HorzFrameBreakable        of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
   | HorzScriptGuard           of CharBasis.script * CharBasis.script * horz_box list
@@ -518,7 +522,7 @@ let rec extract_string (hblst : horz_box list) : string =
     | HorzPure(PHGFixedFrame{ inner = hbs })         -> extract_string hbs
     | HorzPure(PHGInnerFrame{ inner = hbs })         -> extract_string hbs
     | HorzPure(PHGOuterFrame{ inner = hbs })         -> extract_string hbs
-    | HorzDiscretionary(_, hblst0, _, _)             -> extract_string hblst0
+    | HorzDiscretionary{ no_break = hbs0 }           -> extract_string hbs0
     | HorzFrameBreakable(_, _, _, _, _, _, _, hblst) -> extract_string hblst
     | HorzScriptGuard(_, _, hblst)                   -> extract_string hblst
     | _                                              -> ""
