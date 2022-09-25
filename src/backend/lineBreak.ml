@@ -29,9 +29,9 @@ let ( ~@ ) = int_of_float
 let get_metrics (lphb : lb_pure_box) : metrics =
   match lphb with
   | LBAtom{ metrics }                         -> metrics
-  | LBRising(metr, _, _)                      -> metr
-  | LBOuterFrame(metr, _, _)                  -> metr
-  | LBFixedFrame(wid, hgt, dpt, _, _)         -> (natural wid, hgt, dpt)
+  | LBRising{ metrics }                       -> metrics
+  | LBOuterFrame{ metrics }                   -> metrics
+  | LBFixedFrame{ width; height; depth }      -> (natural width, height, depth)
   | LBEmbeddedVert(wid, hgt, dpt, _)          -> (natural wid, hgt, dpt)
   | LBFixedGraphics(wid, hgt, dpt, _)         -> (natural wid, hgt, dpt)
   | LBFixedTabular(wid, hgt, dpt, _, _, _, _) -> (natural wid, hgt, dpt)
@@ -139,12 +139,12 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       let metrics = (natural wid, hgt, dpt) in
       puref (LBAtom{ metrics; main = EvHorzMathGlyph(mathinfo, hgt, dpt, otxt) })
 
-  | PHGRising{ rising = len_rising; inner = hbs } ->
-      let lphbs = listf hbs in
-      let (widinfo, hgt, dpt) = get_total_metrics lphbs in
-      let hgtsub = Length.max Length.zero (hgt +% len_rising) in
-      let dptsub = Length.min Length.zero (dpt +% len_rising) in
-      puref (LBRising((widinfo, hgtsub, dptsub), len_rising, lphbs))
+  | PHGRising{ rising = len_rising; inner = hbs0 } ->
+      let lphbs0 = listf hbs0 in
+      let (widinfo0, hgt0, dpt0) = get_total_metrics lphbs0 in
+      let hgt = Length.max Length.zero (hgt0 +% len_rising) in
+      let dpt = Length.min Length.zero (dpt0 +% len_rising) in
+      puref (LBRising{ metrics = (widinfo0, hgt, dpt); rising = len_rising; contents = lphbs0 })
 
   | PHSFixedEmpty{ width = wid } ->
       let metrics = empty_vert (natural wid) in
@@ -158,23 +158,37 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       let metrics = empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); } in
       puref (LBAtom{ metrics; main = EvHorzEmpty })
 
-  | PHGOuterFrame{ paddings = pads; decoration = deco; inner = hbs } ->
+  | PHGOuterFrame{ paddings = pads; decoration; inner = hbs } ->
       let lphbs = listf hbs in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
-      let (lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
-      puref (LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), deco, lphbs_new))
+      let (_lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
+      let metrics = (widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB) in
+      puref (LBOuterFrame{ metrics; decoration; contents = lphbs })
+        (* TODO: doubtful; maybe should use `lphbs_new` for `contents` *)
 
   | PHGInnerFrame{ paddings = pads; decoration = deco; inner = hbs } ->
       let lphbs = listf hbs in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
       let (lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
-      puref (LBFixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphbs_new))
+      puref (LBFixedFrame{
+        width      = widinfo_total.natural;
+        height     = hgt +% pads.paddingT;
+        depth      = dpt -% pads.paddingB;
+        decoration = deco;
+        contents   = lphbs_new;
+      })
 
   | PHGFixedFrame{ required_width = wid_req; paddings = pads; decoration = deco; inner = hbs } ->
       let lphbs = listf hbs in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
       let (lphbs_new, _) = append_horz_padding_pure lphbs widinfo_sub pads in
-      puref (LBFixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphbs_new))
+      puref (LBFixedFrame{
+        width      = wid_req;
+        height     = hgt +% pads.paddingT;
+        depth      = dpt -% pads.paddingB;
+        decoration = deco;
+        contents   = lphbs_new;
+      })
 
   | PHGEmbeddedVert{ width = wid; height = hgt; depth = dpt; contents = imvbs } ->
       puref (LBEmbeddedVert(wid, hgt, dpt, imvbs))
@@ -354,11 +368,12 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
         let lbpe = convert_pure_box_for_line_breaking_pure convert_list_for_line_breaking_pure phb in
           aux (Alist.extend lbpeacc lbpe) tail
 
-    | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblstsub) :: tail ->
-        let lphblst = convert_list_for_line_breaking_pure hblstsub in
-        let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-        let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-          aux (Alist.extend lbpeacc (PLB(LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst)))) tail
+    | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hbs0) :: tail ->
+        let lphbs0 = convert_list_for_line_breaking_pure hbs0 in
+        let (widinfo0, hgt0, dpt0) = get_total_metrics lphbs0 in
+        let (lphbs, widinfo_total) = append_horz_padding_pure lphbs0 widinfo0 pads in
+        let metrics = (widinfo_total, hgt0 +% pads.paddingT, dpt0 -% pads.paddingB) in
+        aux (Alist.extend lbpeacc (PLB(LBOuterFrame{ metrics; decoration = decoS; contents = lphbs }))) tail
 
     | HorzScriptGuard(scriptL, scriptR, hblstG) :: tail ->
         let lphblstG = convert_list_for_line_breaking_pure hblstG in
@@ -624,19 +639,25 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
               ImHorz(widinfo.natural +% widappend, evhb)
         end
 
-    | LBRising((_, hgtsub, dptsub), lenrising, lphblstsub) ->
-        let imhblst = lphblstsub |> List.map (main_conversion lbratios widperfil) in
-        let wid_total = get_intermediate_total_width imhblst in
-          ImHorzRising(wid_total, hgtsub, dptsub, lenrising, imhblst)
+    | LBRising{ metrics = (_, hgt0, dpt0); rising = len_rising; contents = lphbs0 } ->
+        let imhbs = lphbs0 |> List.map (main_conversion lbratios widperfil) in
+        let wid_total = get_intermediate_total_width imhbs in
+        ImHorzRising(wid_total, hgt0, dpt0, len_rising, imhbs)
 
-    | LBOuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
-        let imhblst = lphblstsub |> List.map (main_conversion lbratios widperfil) in
-        let wid_total = get_intermediate_total_width imhblst in
-          ImHorzFrame(Permissible(0.), wid_total, hgt_frame, dpt_frame, deco, imhblst)
+    | LBOuterFrame{ metrics = (_, hgt_frame, dpt_frame); decoration = deco; contents = lphbs } ->
+        let imhbs = lphbs |> List.map (main_conversion lbratios widperfil) in
+        let wid_total = get_intermediate_total_width imhbs in
+        ImHorzFrame(Permissible(0.), wid_total, hgt_frame, dpt_frame, deco, imhbs)
 
-    | LBFixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
-        let (imhblst, ratios, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
-        ImHorzFrame(ratios, wid_frame, hgt_frame, dpt_frame, deco, imhblst)
+    | LBFixedFrame{
+        width      = wid_frame;
+        height     = hgt_frame;
+        depth      = dpt_frame;
+        decoration = deco;
+        contents   = lphbs;
+      } ->
+        let (imhbs, ratios, _, _) = determine_widths (Some(wid_frame)) lphbs in
+        ImHorzFrame(ratios, wid_frame, hgt_frame, dpt_frame, deco, imhbs)
 
     | LBEmbeddedVert(wid, hgt, dpt, imvblst) ->
         ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)
@@ -740,11 +761,13 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
           let metr_total = append_vert_padding metr_sub pads in
           begin
             match first with
-            | Some(accline) ->  (* -- single line -- *)
-                aux None (Some(Alist.extend accline (LBOuterFrame(metr_total, decoS, line)))) acclines []
+            | Some(accline) -> (* Single line *)
+                let lb = LBOuterFrame{ metrics = metr_total; decoration = decoS; contents = line } in
+                aux None (Some(Alist.extend accline lb)) acclines []
 
-            | None ->  (* -- last line -- *)
-                aux None (Some(Alist.extend Alist.empty (LBOuterFrame(metr_total, decoT, line)))) acclines []
+            | None -> (* Last line *)
+                let lb = LBOuterFrame{ metrics = metr_total; decoration = decoT; contents = line } in
+                aux None (Some(Alist.extend Alist.empty lb)) acclines []
           end
 
       | PureLine(line) :: tail ->
@@ -752,19 +775,17 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
           let metr_total = append_vert_padding metr_sub pads in
           begin
             match first with
-            | Some(accline) ->  (* -- first line -- *)
-                let acclinesnew =
-                  Alist.extend acclines
-                    (PureLine(Alist.to_list (Alist.extend accline (LBOuterFrame(metr_total, decoH, line)))))
+            | Some(accline) -> (* First line *)
+                let lb = LBOuterFrame{ metrics = metr_total; decoration = decoH; contents = line } in
+                let acclines =
+                  Alist.extend acclines (PureLine(Alist.to_list (Alist.extend accline lb)))
                 in
-                  aux None None acclinesnew tail
+                aux None None acclines tail
 
             | None ->
-                let acclinesnew =
-                  Alist.extend acclines
-                    (PureLine([LBOuterFrame(metr_total, decoM, line)]))
-                in
-                  aux None None acclinesnew tail
+                let lb = LBOuterFrame{ metrics = metr_total; decoration = decoM; contents = line } in
+                let acclines = Alist.extend acclines (PureLine([ lb ])) in
+                aux None None acclines tail
           end
 
       | AlreadyVert(wid, vblst) :: tail ->
@@ -775,19 +796,17 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
           let inner = [LBEmbeddedVert(wid, hgt, dpt, imvblst)] in
           begin
             match first with
-            | Some(accline) ->  (* -- first line -- *)
-                let acclinesnew =
-                  Alist.extend acclines
-                    (PureLine(Alist.to_list (Alist.extend accline (LBOuterFrame(metr_total, decoH, inner)))))
+            | Some(accline) -> (* First line *)
+                let lb = LBOuterFrame{ metrics = metr_total; decoration = decoH; contents = inner } in
+                let acclines =
+                  Alist.extend acclines (PureLine(Alist.to_list (Alist.extend accline lb)))
                 in
-                  aux None None acclinesnew tail
+                aux None None acclines tail
 
             | None ->
-                let acclinesnew =
-                  Alist.extend acclines
-                    (PureLine([LBOuterFrame(metr_total, decoM, inner)]))
-                in
-                  aux None None acclinesnew tail
+                let lb = LBOuterFrame{ metrics = metr_total; decoration = decoM; contents = inner } in
+                let acclines = Alist.extend acclines (PureLine([ lb ])) in
+                aux None None acclines tail
           end
     in
       aux (Some(accline_before)) None acclines_before lines_in_frame
