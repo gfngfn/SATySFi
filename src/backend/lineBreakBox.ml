@@ -84,7 +84,11 @@ type lb_box =
       decoration_tail       : decoration;
       contents              : lb_box list;
     }
-  | LBEmbeddedVertBreakable of DiscretionaryID.t * length * vert_box list
+  | LBEmbeddedVertBreakable of {
+      id       : DiscretionaryID.t;
+      width    : length;
+      contents : vert_box list;
+    }
 
 
 let make_width_info widnat widshrink widstretch =

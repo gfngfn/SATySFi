@@ -317,9 +317,10 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
         let lb = LBDiscretionary{ penalty; id = dscrid; no_break = lphbs0; pre = lphbs1; post = lphbs2 } in
         aux (Alist.extend lbeacc (LB(lb))) tail
 
-    | HorzEmbeddedVertBreakable{ width = wid; contents = vbs } :: tail ->
+    | HorzEmbeddedVertBreakable{ width; contents = vbs } :: tail ->
         let dscrid = DiscretionaryID.fresh () in
-        aux (Alist.extend lbeacc (LB(LBEmbeddedVertBreakable(dscrid, wid, vbs)))) tail
+        let lb = LBEmbeddedVertBreakable{ id = dscrid; width; contents = vbs } in
+        aux (Alist.extend lbeacc (LB(lb))) tail
 
     | HorzPure(phb) :: tail ->
         let alwlast = if can_break_before tail then CharBasis.AllowBreak else CharBasis.PreventBreak in
@@ -868,17 +869,17 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
               cut (Alist.extend acclines (PureLine(Alist.to_list accline_sub))) accline_fresh tail
         end
 
-    | LBEmbeddedVertBreakable(dscrid, wid, vblst) :: tail ->
+    | LBEmbeddedVertBreakable{ id = dscrid; width; contents = vbs } :: tail ->
         if not (List.mem dscrid path) then
           assert false
         else
-          let le = AlreadyVert(wid, vblst) in
-          let acclinesnew =
+          let le = AlreadyVert(width, vbs) in
+          let acclines =
             match Alist.to_list accline with
             | []     -> Alist.extend acclines le
             | _ :: _ -> Alist.extend (Alist.extend acclines (PureLine(Alist.to_list accline))) le
           in
-            cut acclinesnew Alist.empty tail
+          cut acclines Alist.empty tail
 
     | LBPure(lphb) :: tail ->
         cut acclines (Alist.extend accline lphb) tail
@@ -1142,7 +1143,7 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
         in
         aux NormalState iterdepth wmap tail
 
-    | LBEmbeddedVertBreakable(dscrid, _, _) :: tail ->
+    | LBEmbeddedVertBreakable{ id = dscrid } :: tail ->
         begin
           match state with
           | ImmediateAfterEmbeddedVert(dscrid_last) ->
