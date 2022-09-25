@@ -845,23 +845,17 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
           let accline = Alist.append accline lphbs0 in
           cut acclines accline tail
 
-    | LBDiscretionaryList(_, lphblst0, dscrlst) :: tail ->
+    | LBDiscretionaryList{ no_break = lphbs0; candidates } :: tail ->
         begin
-          match dscrlst |> List.find_opt (fun (dscrid, _, _) -> List.mem dscrid path) with
+          match candidates |> List.find_opt (fun (dscrid, _, _) -> List.mem dscrid path) with
           | None ->
-(*
-              Format.printf "LineBreak> None\n";  (* for debug *)
-*)
-              let acclinenew = Alist.append accline lphblst0 in
-                cut acclines acclinenew tail
+              let accline = Alist.append accline lphbs0 in
+              cut acclines accline tail
 
-          | Some((dscrid, lphblst1, lphblst2)) ->
-(*
-              Format.printf "LineBreak> Some(%s)\n" (DiscretionaryID.show dscrid);  (* for debug *)
-*)
-              let acclinesub = Alist.append accline lphblst1 in
-              let acclinefresh = Alist.of_list lphblst2 in
-                cut (Alist.extend acclines (PureLine(Alist.to_list acclinesub))) acclinefresh tail
+          | Some((_dscrid, lphbs1, lphbs2)) ->
+              let accline_sub = Alist.append accline lphbs1 in
+              let accline_fresh = Alist.of_list lphbs2 in
+              cut (Alist.extend acclines (PureLine(Alist.to_list accline_sub))) accline_fresh tail
         end
 
     | LBEmbeddedVertBreakable(dscrid, wid, vblst) :: tail ->
@@ -1110,26 +1104,26 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
         in
         aux NormalState iterdepth wmap tail
 
-    | LBDiscretionaryList(pnlty, lphblst0, dscrlst) :: tail ->
-        let widinfo0 = get_width_info_list lphblst0 in
+    | LBDiscretionaryList{ penalty; no_break = lphbs0; candidates } :: tail ->
+        let widinfo0 = get_width_info_list lphbs0 in
         let (wmapsub, foundpairacc) =
-          dscrlst |> List.fold_left (fun (wmap, foundpairacc) (dscrid, lphblst1, lphblst2) ->
-            let widinfo1 = get_width_info_list lphblst1 in
-            let widinfo2 = get_width_info_list lphblst2 in
-            let (found, wmapsub) = update_graph wmap dscrid widinfo1 pnlty () in
+          candidates |> List.fold_left (fun (wmap, foundpairacc) (dscrid, lphbs1, lphbs2) ->
+            let widinfo1 = get_width_info_list lphbs1 in
+            let widinfo2 = get_width_info_list lphbs2 in
+            let (found, wmap_sub) = update_graph wmap dscrid widinfo1 penalty () in
             if found then
-              (wmapsub, Alist.extend foundpairacc (dscrid, widinfo2))
+              (wmap_sub, Alist.extend foundpairacc (dscrid, widinfo2))
             else
-              (wmapsub, foundpairacc)
+              (wmap_sub, foundpairacc)
           ) (wmap, Alist.empty)
         in
         let wmapall = wmapsub |> WidthMap.add_width_all widinfo0 in
-        let wmapnew =
+        let wmap =
           foundpairacc |> Alist.to_list |> List.fold_left (fun wmap (dscrid, widinfo2) ->
             wmap |> WidthMap.add dscrid widinfo2
           ) wmapall
         in
-        aux NormalState iterdepth wmapnew tail
+        aux NormalState iterdepth wmap tail
 
     | LBEmbeddedVertBreakable(dscrid, _, _) :: tail ->
         begin

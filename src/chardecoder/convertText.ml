@@ -144,27 +144,27 @@ let make_string_atom (hsinfo : horz_string_info) (uchsegs : uchar_segment list) 
 
 
 (* Makes an alphabetic word or a CJK character. *)
-let inner_string (ctx : context_main) (script : script) (uchseglst : uchar_segment list) : lb_box list =
+let inner_string (ctx : context_main) (script : script) (uchsegs : uchar_segment list) : lb_box list =
   let hsinfo = get_string_info ctx script in
-    match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchseglst with
-    | LoadHyph.Single(uchseglst) ->
-        [LBPure(make_string_atom hsinfo uchseglst)]
+    match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchsegs with
+    | LoadHyph.Single(uchsegs) ->
+        [ LBPure(make_string_atom hsinfo uchsegs) ]
 
-    | LoadHyph.Fractions(uchseglstlst) ->
-        let uchseglst0 = List.concat uchseglstlst in
-        let lphb0 = make_string_atom hsinfo uchseglst0 in
+    | LoadHyph.Fractions(uchsegss) ->
+        let uchsegs0 = List.concat uchsegss in
+        let lphb0 = make_string_atom hsinfo uchsegs0 in
         let lphb_hyphen = make_string_atom hsinfo [(Uchar.of_char '-', [])] in
           (* TODO: make hyphens changeable *)
-        let seplst = generate_separation_list uchseglstlst in
-        let dscrlst =
-          seplst |> List.fold_left (fun dscracc (uchseglstP, uchseglstS) ->
-            let lphbP = make_string_atom hsinfo uchseglstP in
-            let lphbS = make_string_atom hsinfo uchseglstS in
+        let seps = generate_separation_list uchsegss in
+        let candidates =
+          seps |> List.fold_left (fun dscracc (uchsegsP, uchsegsS) ->
+            let lphbP = make_string_atom hsinfo uchsegsP in
+            let lphbS = make_string_atom hsinfo uchsegsS in
             let dscrid = DiscretionaryID.fresh () in
-              Alist.extend dscracc (dscrid, [lphbP; lphb_hyphen], [lphbS])
+              Alist.extend dscracc (dscrid, [ lphbP; lphb_hyphen ], [ lphbS ])
           ) Alist.empty |> Alist.to_list
         in
-        [LBDiscretionaryList(ctx.hyphen_badness, [lphb0], dscrlst)]
+        [ LBDiscretionaryList{ penalty = ctx.hyphen_badness; no_break = [ lphb0 ]; candidates } ]
 
 
 let discretionary_if_breakable alw (penalty : pure_badness) lphb =

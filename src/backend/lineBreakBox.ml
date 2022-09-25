@@ -71,7 +71,11 @@ type lb_box =
       pre      : lb_pure_box list;
       post     : lb_pure_box list;
     }
-  | LBDiscretionaryList of pure_badness * lb_pure_box list * (DiscretionaryID.t * lb_pure_box list * lb_pure_box list) list
+  | LBDiscretionaryList of {
+      penalty    : pure_badness;
+      no_break   : lb_pure_box list;
+      candidates : (DiscretionaryID.t * lb_pure_box list * lb_pure_box list) list;
+    }
   | LBFrameBreakable of paddings * decoration * decoration * decoration * decoration * lb_box list
   | LBEmbeddedVertBreakable of DiscretionaryID.t * length * vert_box list
 
