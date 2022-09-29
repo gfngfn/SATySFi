@@ -1,7 +1,6 @@
 
 open SyntaxBase
 open Types
-open StaticEnv
 
 
 let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t FreeRowIDHashTable.t) (bid_ht : unit BoundIDHashTable.t) (brid_ht : LabelSet.t BoundRowIDHashTable.t) =

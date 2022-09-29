@@ -50,7 +50,6 @@ type frozen_environment = location EvalVarIDMap.t * (syntactic_value StoreIDHash
 
 
 let freeze_environment (env : environment) : frozen_environment =
-  let open MyUtil in
   let (valenv, stenvref) = env in
   let stmap =
     StoreIDMap.empty |> StoreIDHashTable.fold (fun stid value stmap ->

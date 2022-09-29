@@ -369,7 +369,7 @@ make_math_boxes [ MathBoxLowerLimit{ context = ictx; base; lower } ]
         ~is_text_mode_primitive:true
         ~code:{|
 let ma = MathChar{ context = ictx; is_big = false; chars = uchs } in
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
 |}
     ; inst "BackendMathBigChar"
         ~name:"math-big-char"
@@ -385,7 +385,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
         ~is_text_mode_primitive:true
         ~code:{|
 let ma = MathChar{ context = ictx; is_big = true; chars = uchs } in
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
 |}
     ; inst "BackendMathCharWithKern"
         ~name:"math-char-with-kern"
@@ -406,7 +406,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
 let left_kern = make_math_char_kern_func (reducef ~msg:"math-char-with-kern 1") value_left_kern in
 let right_kern = make_math_char_kern_func (reducef ~msg:"math-char-with-kern 2") value_right_kern in
 let ma = MathCharWithKern{ context = ictx; is_big = false; chars = uchs; left_kern; right_kern } in
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
 |}
     ; inst "BackendMathBigCharWithKern"
         ~name:"math-big-char-with-kern"
@@ -427,7 +427,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
 let left_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern 1") value_left_kern in
 let right_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern 2") value_right_kern in
 let ma = MathCharWithKern{ context = ictx; is_big = true; chars = uchs; left_kern; right_kern } in
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
 |}
     ; inst "BackendEmbedHorzToMath"
         ~name:"embed-inline-to-math"
@@ -440,7 +440,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = MathEmbeddedHorz(hbs) }) ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = MathEmbeddedHorz(hbs) } ]
 |}
     ; inst "BackendSetMathCharClass"
         ~name:"set-math-char-class"
@@ -2716,7 +2716,7 @@ make_float (floor fc1)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_length (HorzBox.(len1 +% len2))
+make_length (len1 +% len2)
 |}
     ; inst "LengthMinus"
         ~name:"-'"
@@ -2730,7 +2730,7 @@ make_length (HorzBox.(len1 +% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_length (HorzBox.(len1 -% len2))
+make_length (len1 -% len2)
 |}
     ; inst "LengthTimes"
         ~name:"*'"
@@ -2744,7 +2744,7 @@ make_length (HorzBox.(len1 -% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_length (HorzBox.(len1 *% flt2))
+make_length (len1 *% flt2)
 |}
     ; inst "LengthDivides"
         ~name:"/'"
@@ -2758,7 +2758,7 @@ make_length (HorzBox.(len1 *% flt2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_float (HorzBox.(len1 /% len2))
+make_float (len1 /% len2)
 |}
     ; inst "LengthLessThan"
         ~name:"<'"
@@ -2772,7 +2772,7 @@ make_float (HorzBox.(len1 /% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_bool (HorzBox.(len1 <% len2))
+make_bool (len1 <% len2)
 |}
     ; inst "LengthGreaterThan"
         ~name:">'"
@@ -2786,7 +2786,7 @@ make_bool (HorzBox.(len1 <% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_bool (HorzBox.(len2 <% len1))
+make_bool (len2 <% len1)
 |}
     ; inst "PrimitiveSetWordBreakPenalty"
         ~name:"set-word-break-penalty"

@@ -1,5 +1,4 @@
 open Types
-open StaticEnv
 
 val show_mono_type : mono_type -> string
 

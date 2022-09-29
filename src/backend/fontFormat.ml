@@ -2152,7 +2152,6 @@ let assoc_to_map f gidassoc =
 
 
 let make_math_decoder_from_decoder (abspath : abs_path) ((dcdr, font) : decoder * font) =
-  let open OptionMonad in
   let d = dcdr.main in
   match Otfm.math d with
   | Error(oerr) ->

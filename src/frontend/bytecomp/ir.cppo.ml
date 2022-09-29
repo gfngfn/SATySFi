@@ -1,6 +1,5 @@
 
 open MyUtil
-open LengthInterface
 open SyntaxBase
 open Types
 
