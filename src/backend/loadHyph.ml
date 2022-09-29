@@ -168,7 +168,7 @@ let match_prefix (opt : (number ref * number) option) (pairlst : (Uchar.t * numb
     aux accinit pairlst clst
 
 
-let rec match_every (numbeginning : number) pairlst clst =
+let match_every (numbeginning : number) pairlst clst =
   let rec aux (refoptprev : (number ref) option) pairlst clst =
   match clst with
   | [] ->

@@ -741,7 +741,7 @@ and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_v
 
   let loc_tctx = ref value_tctx in
 
-  let rec interpret_commands (ivvs : input_vert_value_element list) =
+  let interpret_commands (ivvs : input_vert_value_element list) =
     ivvs |> List.map (function
     | InputVertValueCommandClosure(vclosure) ->
         let
@@ -770,7 +770,7 @@ and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_v
   let loc_tctx = ref value_tctx in
 
   (* Merges adjacent `InputHorzValueText`s into single `NomInputHorzText`. *)
-  let rec normalize (ihvs : input_horz_value_element list) =
+  let normalize (ihvs : input_horz_value_element list) =
     ihvs |> List.fold_left (fun acc ihv ->
       match ihv with
       | InputHorzValueCommandClosure(hclosure) ->
@@ -808,7 +808,7 @@ and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_v
     ) Alist.empty |> Alist.to_list
   in
 
-  let rec interpret_commands (nmihs : nom_input_horz_element list) : string =
+  let interpret_commands (nmihs : nom_input_horz_element list) : string =
     nmihs |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzCommandClosure(hclosure) ->
@@ -931,7 +931,7 @@ and read_pdf_mode_vert_text (value_ctx : syntactic_value) (ivvs : input_vert_val
 
   let loc_ctx = ref value_ctx in
 
-  let rec interpret_commands (ivvs : input_vert_value_element list) =
+  let interpret_commands (ivvs : input_vert_value_element list) =
     ivvs |> List.map (function
     | InputVertValueCommandClosure(vclosure) ->
         let
@@ -959,7 +959,7 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
   let value_mcmd = make_math_command_func ctxsub.math_command in
   let loc_ctx = ref (Context(ictx)) in
 
-  let rec normalize (imihs : input_horz_value_element list) =
+  let normalize (imihs : input_horz_value_element list) =
     imihs |> List.fold_left (fun acc imih ->
       match imih with
       | InputHorzValueCommandClosure(hclosure) ->
@@ -996,7 +996,7 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
     ) Alist.empty |> Alist.to_list
   in
 
-  let rec interpret_commands (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
+  let interpret_commands (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
     nmihs |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzCommandClosure(hclosure) ->

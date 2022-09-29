@@ -589,7 +589,7 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
 
 
 let rec extract_string (hblst : horz_box list) : string =
-  let rec extract_one hb =
+  let extract_one hb =
     match hb with
     | HorzPure(PHCInnerString{ chars = uchs })  -> string_of_uchlst uchs
     | HorzPure(PHCInnerMathGlyph(_))            -> ""

@@ -689,7 +689,7 @@ let get_height_and_depth_of_low_math_atom (lma : low_math_atom) : length * lengt
   | LowMathAtomEmbeddedHorz{ height; depth } -> (height, depth)
 
 
-let rec check_subscript (mlstB : math_box list) =
+let check_subscript (mlstB : math_box list) =
   match List.rev mlstB with
   | MathBoxSubscript{ base = mlstBB; sub = mlstT } :: mtailrev ->
     (* If the last element of the base contents has a subscript *)

@@ -369,7 +369,7 @@ and rvf_mono (dispmap : DisplayMap.t) (rv : mono_row_variable) : string =
       dispmap |> DisplayMap.find_bound_row_id (MustBeBoundRowID.to_bound_id mbbrid)
 
 
-let rec tvf_poly (dispmap : DisplayMap.t) (plev : paren_level) (ptv : poly_type_variable) : string =
+let tvf_poly (dispmap : DisplayMap.t) (plev : paren_level) (ptv : poly_type_variable) : string =
   match ptv with
   | PolyFree(tvuref) -> tvf_mono_updatable dispmap plev !tvuref
   | PolyBound(bid)   -> dispmap |> DisplayMap.find_bound_id bid

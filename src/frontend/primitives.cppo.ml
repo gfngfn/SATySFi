@@ -285,14 +285,14 @@ let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 
 let dr = Range.dummy "dummy:lambda"
 
-let rec lambda1 astf env =
+let lambda1 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda1-1)") in
     lamenv env evid1 1 (astf (!- evid1))
       (fun lst -> match lst with
                   | [a1] -> astf a1
                   | _ -> failwith "internal error")
 
-let rec lambda2 astf env =
+let lambda2 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda2-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda2-2)") in
     lamenv env evid1 2 (lam evid2 (astf (!- evid1) (!- evid2)))
@@ -300,7 +300,7 @@ let rec lambda2 astf env =
                   | [a1;a2] -> astf a1 a2
                   | _ -> failwith "internal error")
 
-let rec lambda3 astf env =
+let lambda3 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda3-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda3-2)") in
   let evid3 = EvalVarID.fresh (dr, "(dummy:lambda3-3)") in
@@ -309,7 +309,7 @@ let rec lambda3 astf env =
                   | [a1;a2;a3] -> astf a1 a2 a3
                   | _ -> failwith "internal error")
 
-let rec lambda4 astf env =
+let lambda4 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda4-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda4-2)") in
   let evid3 = EvalVarID.fresh (dr, "(dummy:lambda4-3)") in
@@ -319,7 +319,7 @@ let rec lambda4 astf env =
                   | [a1;a2;a3;a4] -> astf a1 a2 a3 a4
                   | _ -> failwith "internal error")
 
-let rec lambda5 astf env =
+let lambda5 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda5-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda5-2)") in
   let evid3 = EvalVarID.fresh (dr, "(dummy:lambda5-3)") in
@@ -330,7 +330,7 @@ let rec lambda5 astf env =
                   | [a1;a2;a3;a4;a5] -> astf a1 a2 a3 a4 a5
                   | _ -> failwith "internal error")
 
-let rec lambda6 astf env =
+let lambda6 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda6-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda6-2)") in
   let evid3 = EvalVarID.fresh (dr, "(dummy:lambda6-3)") in
@@ -342,7 +342,7 @@ let rec lambda6 astf env =
                   | [a1;a2;a3;a4;a5;a6] -> astf a1 a2 a3 a4 a5 a6
                   | _ -> failwith "internal error")
 
-let rec lambda7 astf env =
+let lambda7 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda7-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda7-2)") in
   let evid3 = EvalVarID.fresh (dr, "(dummy:lambda7-3)") in

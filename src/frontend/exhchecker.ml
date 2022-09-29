@@ -155,7 +155,7 @@ let expand_mat mat i epat ty =
     | ([], y::ys)        -> inner_append [] ys (y :: acc)
     | ([], [])           -> List.rev acc
   in
-  let rec sub epat pat =
+  let sub epat pat =
     match (epat, pat) with
     | (ExpandListCons, PListCons(h, t))->
         [[h]; [t]]
@@ -188,8 +188,8 @@ let rec fold_left3 f a b c d =
   | _                           -> a
 
 
-let rec get_specialized_mat mat patinfo ele tylst =
-  let rec iter fst mat =
+let get_specialized_mat mat patinfo ele tylst =
+  let iter fst mat =
     let (nmat, ninfo, nomatch) =
       List.fold_left (fun (cols, info, no_match) col ->
         let (newcol, newinfo, no_m) =
