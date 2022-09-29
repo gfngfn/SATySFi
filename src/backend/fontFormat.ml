@@ -2075,7 +2075,6 @@ let find_kerning (dcdr : decoder) (gidprev : glyph_id) (gid : glyph_id) : per_mi
 module MathInfoMap = Map.Make
   (struct
     type t = original_glyph_id
-    let equal = (=)
     let compare = Stdlib.compare
   end)
 
