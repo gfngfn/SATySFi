@@ -409,14 +409,14 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | Persistent(_) ->
       report_bug_ast "Persistent(_) at stage 0" ast
 
-  | Lift(ast1) ->
+  | Lift(_ast1) ->
       failwith "TODO: Lift"
 (*
       let value1 = interpret_0 env ast1 in
       CodeValue(CdPersistent(value1))
 *)
 
-  | ASTCodeSymbol(symb) ->
+  | ASTCodeSymbol(_symb) ->
       report_bug_ast "ASTCodeSymbol(_) at stage 0" ast
 
 #include "__evaluator_0.gen.ml"
@@ -1125,7 +1125,7 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
       add_to_environment env evid loc
     ) env
   in
-  tris |> List.iter (fun (evid, loc, patbr) ->
+  tris |> List.iter (fun (_evid, loc, patbr) ->
     loc := Closure(LabelMap.empty, patbr, env)
   );
   env
@@ -1141,7 +1141,7 @@ and interpret_letrec_bindings_1 (env : environment) (recbinds : letrec_binding l
     ) (env, Alist.empty)
   in
   let cdrecbinds =
-    zippedacc |> Alist.to_list |> List.map (fun (symb, LetRecBinding(evid, patbr)) ->
+    zippedacc |> Alist.to_list |> List.map (fun (symb, LetRecBinding(_evid, patbr)) ->
       let cdpatbr = interpret_1_pattern_branch env patbr in
       CdLetRecBinding(symb, cdpatbr)
     )

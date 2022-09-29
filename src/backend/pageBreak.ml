@@ -684,7 +684,7 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
       | PBVertSkip(debug_margins, len)     -> ImVertFixedEmpty(debug_margins, len)
       | PBClearPage                        -> ImVertFixedEmpty(Fixed, Length.zero)
 
-      | PBVertFrame(_, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) ->
+      | PBVertFrame(_, pads, decoS, _decoH, _decoM, _decoT, wid, pbvblstsub) ->
           let imvblstsub = aux pbvblstsub in
           ImVertFrame(pads, decoS, wid, imvblstsub)
 

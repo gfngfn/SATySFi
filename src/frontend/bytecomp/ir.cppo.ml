@@ -35,7 +35,7 @@ let map_with_env (type a) (type b) (f : frame -> a -> b * frame) (env : frame) (
   iter env lst Alist.empty
 
 
-let rec transform_0_input_horz_content (env : frame) (ihlst : input_horz_element list) : ir_input_horz_element list * frame =
+let rec transform_0_input_horz_content (_env : frame) (_ihlst : input_horz_element list) : ir_input_horz_element list * frame =
   failwith "TODO: transform_0_input_horz_content"
 (*
   ihlst @|> env @|> map_with_env (fun env elem ->
@@ -60,7 +60,7 @@ let rec transform_0_input_horz_content (env : frame) (ihlst : input_horz_element
   )
 *)
 
-and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element list) : (ir input_horz_element_scheme) list * frame =
+and transform_1_input_horz_content (_env : frame) (_ihlst : input_horz_element list) : (ir input_horz_element_scheme) list * frame =
   failwith "TODO: transform_1_input_horz_content"
 (*
   ihlst @|> env @|> map_with_env (fun env elem ->
@@ -86,7 +86,7 @@ and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element lis
 *)
 
 
-and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
+and transform_0_input_vert_content (_env : frame) (_ivlst : input_vert_element list) : ir_input_vert_element list * frame =
   failwith "TODO: transform_0_input_vert_content"
 (*
   ivlst @|> env @|> map_with_env (fun env elem ->
@@ -102,7 +102,7 @@ and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element lis
 *)
 
 
-and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element list) : (ir input_vert_element_scheme) list * frame =
+and transform_1_input_vert_content (_env : frame) (_ivlst : input_vert_element list) : (ir input_vert_element_scheme) list * frame =
   failwith "TODO: transform_1_input_vert_content"
 (*
   ivlst @|> env @|> map_with_env (fun env elem ->
@@ -118,11 +118,11 @@ and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element lis
 *)
 
 
-and transform_0_input_math_content (env : frame) (ims : input_math_element list) : ir_input_math_element list * frame =
+and transform_0_input_math_content (_env : frame) (_ims : input_math_element list) : ir_input_math_element list * frame =
   failwith "TODO: transform_0_input_math_content"
 
 
-and transform_1_input_math_content (env : frame) (ims : input_math_element list) : (ir input_math_element_scheme) list * frame =
+and transform_1_input_math_content (_env : frame) (_ims : input_math_element list) : (ir input_math_element_scheme) list * frame =
   failwith "TODO: transform_1_input_math_content"
 
 
@@ -494,7 +494,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       let (ir2, env) = transform_1 env ast2 in
       (IRCodeLetNonRecIn(irpat, ir1, ir2), env)
 
-  | ContentOf(rng, evid) ->
+  | ContentOf(_rng, evid) ->
       begin
         match find_in_environment env evid with
         | Some(var) -> (IRSymbolOf(var), env)
@@ -518,7 +518,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | Function(_, PatternBranchWhen(_, _, _)) ->
       assert false
 
-  | Apply(ast_labmap, ast1, ast2) ->
+  | Apply(_ast_labmap, _ast1, _ast2) ->
       failwith "TODO (enhance): Ir, Apply"
 (*
       code2 env (fun cv1 cv2 -> CdApply(cv1, cv2)) ast1 ast2
@@ -568,7 +568,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | Lift(_) ->
       report_bug_ir "transform_1: Lift at stage 1"
 
-  | ASTCodeSymbol(symb) ->
+  | ASTCodeSymbol(_symb) ->
       report_bug_ir "transform_1: ASTCodeSymbol at stage 1"
 
 #include "__ir_1.gen.ml"

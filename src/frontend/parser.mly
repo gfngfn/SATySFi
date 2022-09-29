@@ -1092,7 +1092,7 @@ inline_elem_cmd:
       }
 
   | imacro_raw=BACKSLASH_MACRO; macargsraw=macroargs {
-      let (rng_cs, csnm) = imacro_raw in
+      let (rng_cs, _csnm) = imacro_raw in
       let imacro = (rng_cs, [], imacro_raw) in
       let (rng_last, macroargs) = macargsraw in
       make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(imacro, macroargs))
@@ -1120,7 +1120,7 @@ inline_elem_text:
   | ichars=nonempty_list(inline_char)
       {
         let rng = make_range_from_list ichars in
-        let text = String.concat "" (ichars |> List.map (fun (r, t) -> t)) in
+        let text = String.concat "" (ichars |> List.map (fun (_, t) -> t)) in
         (rng, UTInputHorzText(text))
       }
 ;

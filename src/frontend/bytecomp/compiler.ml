@@ -67,7 +67,7 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
   compiled_ihlist
 
 
-and compile_code_input_horz (irihlst : (ir input_horz_element_scheme) list) =
+and compile_code_input_horz (_irihlst : (ir input_horz_element_scheme) list) =
   failwith "TODO: compile_code_input_horz"
 (*
   irihlst |> List.map (function
@@ -106,7 +106,7 @@ and compile_input_vert_content (ivlst : ir_input_vert_element list) =
   compiled_ivlist
 
 
-and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
+and compile_code_input_vert (_irivlst : (ir input_vert_element_scheme) list) =
   failwith "TODO: compile_code_input_vert"
 (*
   irivlst |> List.map (function
@@ -156,7 +156,7 @@ and compile (ir : ir) (cont : instruction list) =
       OpClosureInputVert(compile_input_vert_content ivlst) :: cont
     (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | IRInputMath(ims) ->
+  | IRInputMath(_ims) ->
       failwith "TODO: IRInputMath"
 
   (* -- fundamentals -- *)
@@ -187,11 +187,11 @@ and compile (ir : ir) (cont : instruction list) =
       else
         OpClosure(varloc_labmap, List.length irpatlst, framesize, optcode) :: cont
 
-  | IRApply(arity, ircallee, irargs) ->
+  | IRApply(_arity, ircallee, irargs) ->
       let n = List.length irargs in
       compile ircallee @@ (compile_list irargs @@ OpForward(n) :: emit_appop n cont false)
 
-  | IRApplyPrimitive(op, arity, irargs) ->
+  | IRApplyPrimitive(op, _arity, irargs) ->
       compile_list irargs (op :: cont)
 
   | IRApplyOptional(ircallee, iroptarg) ->
@@ -261,7 +261,7 @@ and compile (ir : ir) (cont : instruction list) =
   | IRCodeInputVert(ivlst) ->
       OpCodeMakeInputVert(compile_code_input_vert ivlst) :: cont
 
-  | IRCodeInputMath(ims) ->
+  | IRCodeInputMath(_ims) ->
       failwith "TODO: IRCodeInputMath"
 
   | IRCodePatternMatch(rng, ir, irpatbrs) ->

@@ -31,7 +31,7 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
           | EmptyCell ->
               aux (Alist.extend restacc None) hgtmax dptmin rtail ctail
 
-          | MultiCell(numrow, numcol, pads, hblst) ->
+          | MultiCell(numrow, _numcol, pads, hblst) ->
               let (_, hgt, dpt) = LineBreak.get_natural_metrics hblst in
               let len = (hgt +% pads.paddingT) +% ((Length.negate dpt) +% pads.paddingB) in
                 (* needs reconsideration *)
@@ -46,7 +46,7 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
               aux (Alist.extend restacc restelem) hgtmax dptmin rtail ctail
         end
 
-    | ((Some((numrow, len)) as rsome) :: rtail, cell :: ctail) ->
+    | ((Some((numrow, _len)) as rsome) :: rtail, cell :: ctail) ->
         begin
           match cell with
           | NormalCell(_)
@@ -101,7 +101,7 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
           | EmptyCell ->
               aux (Alist.extend restacc None) widmax rtail ctail
 
-          | MultiCell(numrow, numcol, pads, hblst) ->
+          | MultiCell(_numrow, numcol, pads, hblst) ->
               let (widraw, _, _) = LineBreak.get_natural_metrics hblst in
               let wid = pads.paddingL +% widraw +% pads.paddingR in
               let widmaxnew =
@@ -267,7 +267,7 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                   [ HorzPure(PHSFixedEmpty{ width = pads.paddingR }) ];
                 ]
               in
-              let (imhbs, ratios, hgt, dpt) = LineBreak.fit hblstwithpads wid in
+              let (imhbs, ratios, _hgt, _dpt) = LineBreak.fit hblstwithpads wid in
                 ImNormalCell(ratios, (wid, hgtnmlcell, dptnmlcell), imhbs)
                 (* temporary; should return information about vertical psitioning *)
 

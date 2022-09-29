@@ -926,7 +926,7 @@ module KerningTable
       let htC = HtClass.create 1024 (* arbitrary constant *) in
       begin
         lst |> List.iter (fun (cls1, pairposlst) ->
-          pairposlst |> List.iter (fun (cls2, valrcd1, valrcd2) ->
+          pairposlst |> List.iter (fun (cls2, valrcd1, _valrcd2) ->
             match valrcd1.Otfm.x_advance with
             | None      -> ()
             | Some(0)   -> ()
@@ -996,7 +996,7 @@ let get_kerning_table srcpath (d : Otfm.decoder) =
         pickup featurelst (fun gf -> Otfm.gpos_feature_tag gf = "kern") `Missing_feature >>= fun feature ->
         () |> Otfm.gpos feature
           ~pair1:(fun () (gid1, pairposlst) ->
-            pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
+            pairposlst |> List.iter (fun (gid2, valrcd1, _valrcd2) ->
               match valrcd1.Otfm.x_advance with
               | None      -> ()
               | Some(xa1) -> kerntbl |> KerningTable.add gid1 gid2 xa1
@@ -1044,7 +1044,7 @@ let per_mille (dcdr : decoder) (w : design_units) : per_mille =
   per_mille_raw dcdr.units_per_em w
 
 
-let get_original_gid (dcdr : decoder) (gid : glyph_id) : original_glyph_id =
+let get_original_gid (_dcdr : decoder) (gid : glyph_id) : original_glyph_id =
   let SubsetGlyphID(gidorg, _) = gid in
   gidorg
 
@@ -1097,9 +1097,9 @@ let get_glyph_advance_width (dcdr : decoder) (gidorgkey : original_glyph_id) : p
     )
   in
     match hmtxres with
-    | Error(e)             -> broken dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gidorgkey)
-    | Ok(None)             -> PerMille(0)
-    | Ok(Some((adv, lsb))) -> per_mille dcdr adv
+    | Error(e)              -> broken dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gidorgkey)
+    | Ok(None)              -> PerMille(0)
+    | Ok(Some((adv, _lsb))) -> per_mille dcdr adv
 
 
 let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
@@ -1669,7 +1669,7 @@ type cid_font =
   | CIDFontType2 of CIDFontType2.font
 
 
-let pdfobject_of_cmap pdf cmap =
+let pdfobject_of_cmap _pdf cmap =
   match cmap with
   | PredefinedCMap(cmapname) -> Pdf.Name("/" ^ cmapname)
 (*
@@ -1710,8 +1710,7 @@ module ToUnicodeCMap
         "endcmap CMapName currentdict/CMap defineresource pop end end"
       in
       let buf = Buffer.create ((15 + (6 + 512) * 64 + 10) * 1024) in
-      Array.iteri (fun i ht ->
-        let ht = touccmap.(i) in
+      Array.iter (fun ht ->
         let num = GSHt.length ht in
         if num <= 0 then
           ()
@@ -2005,15 +2004,15 @@ let cid_font_type_2 cidty2font fontname cmap =
 let get_font (dcdr : decoder) (fontreg : font_registration) (fontname : string) : font =
   let cmap = PredefinedCMap("Identity-H") in
   match fontreg with
-  | CIDFontType0Registration(cidsysinfo, embedW) ->
+  | CIDFontType0Registration(cidsysinfo, _embedW) ->
       let cidty0font = CIDFontType0.of_decoder dcdr cidsysinfo in
       (cid_font_type_0 cidty0font fontname cmap)
 
-  | CIDFontType2TTRegistration(cidsysinfo, embedW) ->
+  | CIDFontType2TTRegistration(cidsysinfo, _embedW) ->
       let cidty2font = CIDFontType2.of_decoder dcdr cidsysinfo true in
       (cid_font_type_2 cidty2font fontname cmap)
 
-  | CIDFontType2OTRegistration(cidsysinfo, embedW) ->
+  | CIDFontType2OTRegistration(cidsysinfo, _embedW) ->
       let cidty2font = CIDFontType2.of_decoder dcdr cidsysinfo true (* temporary *) in
       (cid_font_type_2 cidty2font fontname cmap)
 
@@ -2243,7 +2242,7 @@ let get_math_script_variant (md : math_decoder) (gid : glyph_id) : glyph_id =
       in
       let res = Otfm.gsub feature_ssty ~single:f_single ~alt:f_alt None in
       match res with
-      | Error(oerr)          -> gid  (* temporary; maybe should emit an error *)
+      | Error(_oerr)         -> gid  (* temporary; maybe should emit an error *)
       | Ok(None)             -> gid
       | Ok(Some(gidorgssty)) -> intern_gid dcdr gidorgssty
 

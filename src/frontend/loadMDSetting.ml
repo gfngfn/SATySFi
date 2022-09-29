@@ -53,7 +53,7 @@ let get_command pair (k : string) (assoc : MYU.assoc) =
   get_command_main pair rng s
 
 
-let make_code_name_map pair ((pos, _) as json : json) : DecodeMD.command DecodeMD.CodeNameMap.t =
+let make_code_name_map pair (json : json) : DecodeMD.command DecodeMD.CodeNameMap.t =
   let open DecodeMD in
   let pairs = json |> YS.Util.to_list in
   pairs |> List.fold_left (fun accmap json ->

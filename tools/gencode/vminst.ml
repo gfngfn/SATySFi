@@ -761,6 +761,8 @@ match value1 with
 | _                    -> report_bug_value "HorzLex" value1
 |}
         ~code:{|
+let _ = ictx in
+let _ = value1 in
 failwith "TODO: HorzLex" (*
 match value1 with
 | CompiledInputHorzClosure(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi ictx imihlst
@@ -803,6 +805,8 @@ let mbs = read_pdf_mode_math_text ictx imvs in
 make_math_boxes mbs
 |}
         ~code:{|
+let _ = ictx in
+let _ = value1 in
 failwith "MathLex" (*
 match value1 with
 | CompiledInputMathClosure(imims, envi) -> exec_pdf_mode_intermediate_input_math envi ictx imims
@@ -823,6 +827,7 @@ match value1 with
 read_text_mode_horz_text value_tctx ihvs
 |}
         ~code:{|
+let _ = value_tctx in
 let _ = ihvs in
 failwith "TODO: TextHorzLex" (*
 match value1 with
@@ -844,6 +849,7 @@ match value1 with
 read_text_mode_vert_text value_tctx ivvs
 |}
         ~code:{|
+let _ = value_tctx in
 let _ = ivvs in
 failwith "TODO: TextVertLex" (*
 match value1 with
@@ -865,6 +871,7 @@ match value1 with
 read_text_mode_math_text value_tctx imvs
 |}
         ~code:{|
+let _ = value_tctx in
 let _ = imvs in
 failwith "TODO: TextVertLex"
 |}
@@ -1929,7 +1936,7 @@ make_bool (String.equal str1 str2)
         ~code:{|
 let resstr =
   try BatUTF8.sub str pos wid with
-  | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub"
+  | Invalid_argument(_) -> report_dynamic_error "illegal index for string-sub"
 in
 make_string resstr
 |}
@@ -1948,7 +1955,7 @@ make_string resstr
         ~code:{|
 let resstr =
   try String.sub str pos wid with
-  | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub-bytes"
+  | Invalid_argument(_) -> report_dynamic_error "illegal index for string-sub-bytes"
 in
 make_string resstr
 |}
@@ -2427,7 +2434,7 @@ make_bool (not binl)
         ~code:{|
 let bits =
   try numl lsr numr with
-  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '>>'"
+  | Invalid_argument(_) -> report_dynamic_error "Bit offset out of bounds for '>>'"
 in
 make_int bits
 |}
@@ -2445,7 +2452,7 @@ make_int bits
         ~code:{|
 let bits =
   try numl lsl numr with
-  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '<<'"
+  | Invalid_argument(_) -> report_dynamic_error "Bit offset out of bounds for '<<'"
 in
 make_int bits
 |}

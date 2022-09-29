@@ -540,7 +540,7 @@ let superscript_baseline_height ictx h_base d_sup =
 
 
 (* -- calculates the base correction height and the superscript correction height -- *)
-let superscript_correction_heights ictx h_supbl h_base d_sup =
+let superscript_correction_heights _ictx h_supbl h_base d_sup =
   let l_base = h_supbl +% d_sup in
   let l_sup = h_base -% h_supbl in
     (l_base, l_sup)
@@ -557,7 +557,7 @@ let subscript_baseline_depth ictx d_base h_sub =
     d_subbl
 
 
-let subscript_correction_heights ictx d_subbl d_base h_sub =
+let subscript_correction_heights _ictx d_subbl d_base h_sub =
   let l_base = h_sub +% d_base in
   let l_sub = d_base -% d_subbl in
     (l_base, l_sub)
@@ -703,7 +703,7 @@ let check_subscript (mlstB : math_box list) =
 let convert_math_element (mk : math_kind) (ma : math_box_atom) : low_math_atom =
   match ma with
   | MathEmbeddedHorz(hbs) ->
-      let (wid, hgt, dpt) = LineBreak.get_natural_metrics hbs in
+      let (_wid, hgt, dpt) = LineBreak.get_natural_metrics hbs in
       let lma = LowMathAtomEmbeddedHorz{ content = hbs; height = hgt; depth = dpt } in
       {
         atom_main       = lma;
@@ -867,7 +867,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       let h_rad = h_bar +% t_bar in
       begin
         match mlstD_opt with
-        | Some(mlstD) ->
+        | Some(_mlstD) ->
             failwith "TODO: unsupported; MathRadicalWithDegree"
 
         | None ->

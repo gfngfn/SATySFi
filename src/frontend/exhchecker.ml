@@ -111,7 +111,7 @@ let rec string_of_instance ins =
   | IListCons(car, cdr) ->
       (string_of_instance car) ^ "::" ^ (string_of_instance cdr)
 
-  | IConstructor(nm, iins, (_, BaseType(UnitType))) -> nm
+  | IConstructor(nm, _iins, (_, BaseType(UnitType))) -> nm
 
   | IConstructor(nm, IWildCard, (_, ProductType(tys))) ->
       nm ^ "(" ^ (String.concat ", " (repeat (tys |> TupleList.to_list |> List.length) "_")) ^ ")"
@@ -147,7 +147,7 @@ let rec normalize_pat pat =
   | _                    -> pat
 
 
-let expand_mat mat i epat ty =
+let expand_mat mat i epat _ty =
   let rec inner_append a b acc =
     match (a, b) with
     | (x :: xs, y :: ys) -> inner_append xs ys (List.append x y :: acc)
@@ -191,7 +191,7 @@ let rec fold_left3 f a b c d =
 let get_specialized_mat mat patinfo ele tylst =
   let iter fst mat =
     let (nmat, ninfo, nomatch) =
-      List.fold_left (fun (cols, info, no_match) col ->
+      List.fold_left (fun (cols, _info, no_match) col ->
         let (newcol, newinfo, no_m) =
           fold_left3 (fun (col, info, no_m) p q i ->
             let needs_append =
@@ -219,8 +219,8 @@ let get_specialized_mat mat patinfo ele tylst =
                 -> false
             in
               match (needs_append, i) with
-              | (true, (n, PatternBranch(_, _)))        -> (q :: col, i :: info, false)
-              | (true, (n, PatternBranchWhen(_, _, _))) -> (q :: col, i :: info, no_m)
+              | (true, (_, PatternBranch(_, _)))        -> (q :: col, i :: info, false)
+              | (true, (_, PatternBranchWhen(_, _, _))) -> (q :: col, i :: info, no_m)
               | (false, _)                              -> (col, info, no_m)
 
           ) ([], [], true) fst col patinfo
@@ -248,7 +248,7 @@ let get_specialized_mat mat patinfo ele tylst =
     | _ ->
         begin
           match mat with
-          | x :: xs ->
+          | x :: _ ->
               let (nmat, ninfo, nomatch) = iter x mat in
                 (List.tl nmat, ninfo, List.tl tylst, NoExpand, nomatch)
 
@@ -280,7 +280,7 @@ let make_string_sig col =
   ) [EWildCard] col)
 
 
-let make_variant_sig (pre : pre) (tyenv : Typeenv.t) (tyargs : mono_type list) (tyid : TypeID.t) =
+let make_variant_sig (_pre : pre) (tyenv : Typeenv.t) (tyargs : mono_type list) (tyid : TypeID.t) =
   let ctors = tyenv |> Typeenv.enumerate_constructors tyid in
   ctors |> List.map (fun (ctornm, tyscheme) ->
     let (bids, pty_body) = tyscheme in

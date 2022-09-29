@@ -189,7 +189,7 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
     aux 1
 
 
-let preprocess_and_evaluate (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let preprocess_and_evaluate (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
 
   (* Performs preprecessing:
        each evaluation called in `preprocess` is run by the naive interpreter
@@ -364,14 +364,14 @@ let error_log_environment suspended =
         NormalLine("candidate paths:");
       ] (pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath))))
 
-  | NotADocumentFile(abspath_in, tyenv, ty) ->
+  | NotADocumentFile(abspath_in, _tyenv, ty) ->
       let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
         NormalLine(Printf.sprintf "file '%s' is not a document file; it is of type" fname);
         DisplayLine(Display.show_mono_type ty);
       ]
 
-  | NotAStringFile(abspath_in, tyenv, ty) ->
+  | NotAStringFile(abspath_in, _tyenv, ty) ->
       let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
         NormalLine(Printf.sprintf "file '%s' is not a file for generating text; it is of type" fname);

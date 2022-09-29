@@ -198,7 +198,7 @@ let lookup_patterns (lmin : int) (rmin : int) (patlst : pattern list) (uchseglst
   let len = List.length uchseglst in
   let clst = uchseglst |> List.map (fun uchseg -> (uchseg, ref 0)) in
   let () =
-    patlst |> List.iter (fun (beginning, pairlst, final) ->
+    patlst |> List.iter (fun (beginning, pairlst, _final) ->
       match beginning with
       | TopOfWord               -> match_prefix None pairlst clst
       | ArbitraryBeginning(num) -> match_every num pairlst clst

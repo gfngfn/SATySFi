@@ -780,7 +780,7 @@ and instruction =
   | OpBranchIfNot of instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpBranchIfNot(...)")]
   | OpLoadGlobal of syntactic_value ref * EvalVarID.t * int
-      [@printer ((fun fmt (r, evid, refs) -> Format.fprintf fmt "OpLoadGlobal(%s)" (EvalVarID.show_direct evid)))]
+      [@printer ((fun fmt (_r, evid, _refs) -> Format.fprintf fmt "OpLoadGlobal(%s)" (EvalVarID.show_direct evid)))]
   | OpLoadLocal of int * int * EvalVarID.t * int
   | OpDereference
       (* !! pdf, no-interp *)

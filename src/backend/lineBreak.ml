@@ -378,9 +378,9 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
     | HorzFrameBreakable{
         paddings              = pads;
         decoration_standalone = decoS;
-        decoration_head       = decoH;
-        decoration_middle     = decoM;
-        decoration_tail       = decoT;
+        decoration_head       = _decoH;
+        decoration_middle     = _decoM;
+        decoration_tail       = _decoT;
         contents              = hbs0;
       } :: tail ->
         let lphbs0 = convert_list_for_line_breaking_pure hbs0 in
@@ -492,7 +492,7 @@ and normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
               aux (Alist.extend (Alist.append lphbacc lphblst) lphb) None lbpetail
         end
 
-    | PScriptGuard(scriptL, scriptR, lphblstG) :: lbpetail  ->
+    | PScriptGuard(scriptL, _scriptR, lphblstG) :: lbpetail  ->
         begin
           match chunkaccopt with
           | None ->
@@ -1148,7 +1148,7 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
         let wmap = wmap |> WidthMap.add_width_all widinfo in
         aux NormalState iterdepth wmap tail
 
-    | LBFrameBreakable{ paddings = pads; contents = lhbs_sub } :: tail ->
+    | LBFrameBreakable{ paddings = _pads; contents = lhbs_sub } :: tail ->
         let wmap_sub = aux NormalState (iterdepth + 1) wmap lhbs_sub in
         aux NormalState iterdepth wmap_sub tail
 
