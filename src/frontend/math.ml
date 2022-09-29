@@ -421,72 +421,72 @@ let make_right_paren_kern hR dR mkernsR =
 let get_left_kern lmmain hgt dpt =
   let nokernf = no_left_kern hgt dpt in
   match lmmain with
-  | LowMathAtom{ atom } ->
+  | LowMathAtom{ atom; _ } ->
       atom.atom_left_kern
 
   | LowMathList(lm) ->
       lm.low_left_kern
 
-  | LowMathGroup{ left } ->
+  | LowMathGroup{ left; _ } ->
       nokernf left
 
-  | LowMathSubscript{ base = lm }
-  | LowMathSuperscript{ base = lm }
-  | LowMathSubSuperscript{ base = lm }
-  | LowMathUpperLimit{ base = lm }
-  | LowMathLowerLimit{ base = lm } ->
+  | LowMathSubscript{ base = lm; _ }
+  | LowMathSuperscript{ base = lm; _ }
+  | LowMathSubSuperscript{ base = lm; _ }
+  | LowMathUpperLimit{ base = lm; _ }
+  | LowMathLowerLimit{ base = lm; _ } ->
       lm.low_left_kern
 
   | LowMathFraction(_)
   | LowMathRadical(_) ->
       nokernf MathInner
 
-  | LowMathParen{ left }
-  | LowMathParenWithMiddle{ left } ->
+  | LowMathParen{ left; _ }
+  | LowMathParenWithMiddle{ left; _ } ->
       make_left_paren_kern left.lp_height left.lp_depth left.lp_math_kern_scheme
 
 
 let get_right_kern lmmain hgt dpt =
   let nokernf = no_right_kern hgt dpt in
   match lmmain with
-  | LowMathAtom{ atom } ->
+  | LowMathAtom{ atom; _ } ->
       atom.atom_right_kern
 
   | LowMathList(lm) ->
       lm.low_right_kern
 
-  | LowMathGroup{ right } ->
+  | LowMathGroup{ right; _ } ->
       nokernf right
 
-  | LowMathSubscript{ base = lm }
-  | LowMathSuperscript{ base = lm }
-  | LowMathSubSuperscript{ base = lm } ->
+  | LowMathSubscript{ base = lm; _ }
+  | LowMathSuperscript{ base = lm; _ }
+  | LowMathSubSuperscript{ base = lm; _ } ->
       nokernf lm.low_right_kern.right_math_kind
 
-  | LowMathUpperLimit{ base = lm }
-  | LowMathLowerLimit{ base = lm } ->
+  | LowMathUpperLimit{ base = lm; _ }
+  | LowMathLowerLimit{ base = lm; _ } ->
       lm.low_right_kern
 
   | LowMathFraction(_)
   | LowMathRadical(_) ->
       nokernf MathInner
 
-  | LowMathParen{ right }
-  | LowMathParenWithMiddle{ right } ->
+  | LowMathParen{ right; _ }
+  | LowMathParenWithMiddle{ right; _ } ->
       make_right_paren_kern right.lp_height right.lp_depth right.lp_math_kern_scheme
 
 
 let rec get_left_math_kind : math_box -> math_kind = function
-  | MathBoxAtom{ kind } ->
+  | MathBoxAtom{ kind; _ } ->
       kind
 
-  | MathBoxGroup{ left } ->
+  | MathBoxGroup{ left; _ } ->
       left
 
-  | MathBoxSuperscript{ base }
-  | MathBoxSubscript{ base }
-  | MathBoxLowerLimit{ base }
-  | MathBoxUpperLimit{ base } ->
+  | MathBoxSuperscript{ base; _ }
+  | MathBoxSubscript{ base; _ }
+  | MathBoxLowerLimit{ base; _ }
+  | MathBoxUpperLimit{ base; _ } ->
       begin
         match base with
         | []         -> MathEnd
@@ -503,16 +503,16 @@ let rec get_left_math_kind : math_box -> math_kind = function
 
 
 let rec get_right_math_kind : math_box -> math_kind = function
-  | MathBoxAtom{ kind } ->
+  | MathBoxAtom{ kind; _ } ->
       kind
 
-  | MathBoxGroup{ right } ->
+  | MathBoxGroup{ right; _ } ->
       right
 
-  | MathBoxSuperscript{ base }
-  | MathBoxSubscript{ base }
-  | MathBoxLowerLimit{ base }
-  | MathBoxUpperLimit{ base } ->
+  | MathBoxSuperscript{ base; _ }
+  | MathBoxSubscript{ base; _ }
+  | MathBoxLowerLimit{ base; _ }
+  | MathBoxUpperLimit{ base; _ } ->
       begin
         match List.rev base with
         | []         -> MathEnd
@@ -685,13 +685,13 @@ let convert_math_char (ictx : input_context) ~(kern : (math_char_kern_func * mat
 
 let get_height_and_depth_of_low_math_atom (lma : low_math_atom) : length * length =
   match lma.atom_main with
-  | LowMathAtomGlyph{ height; depth }        -> (height, depth)
-  | LowMathAtomEmbeddedHorz{ height; depth } -> (height, depth)
+  | LowMathAtomGlyph{ height; depth; _ }        -> (height, depth)
+  | LowMathAtomEmbeddedHorz{ height; depth; _ } -> (height, depth)
 
 
 let check_subscript (mlstB : math_box list) =
   match List.rev mlstB with
-  | MathBoxSubscript{ base = mlstBB; sub = mlstT } :: mtailrev ->
+  | MathBoxSubscript{ base = mlstBB; sub = mlstT; _ } :: mtailrev ->
     (* If the last element of the base contents has a subscript *)
       let mlstBnew = List.rev_append mtailrev mlstBB in
       Some((mlstT, mlstBnew))
@@ -960,7 +960,7 @@ let horz_of_low_math_element (lme : low_math_atom_main) : horz_box list =
   | LowMathAtomGlyph{ info; width; height; depth; output } ->
       [ HorzPure(PHCInnerMathGlyph{ info; width; height; depth; output }) ]
 
-  | LowMathAtomEmbeddedHorz{ content = hbs } ->
+  | LowMathAtomEmbeddedHorz{ content = hbs; _ } ->
       hbs
 
 
@@ -989,7 +989,7 @@ let get_space_correction = function
   | LowMathList(lm) ->
       ItalicsCorrection(lm.low_right_kern.italics_correction)
 
-  | LowMathAtom{ atom } ->
+  | LowMathAtom{ atom; _ } ->
       ItalicsCorrection(atom.atom_right_kern.italics_correction)
 
   | LowMathSubscript(_)

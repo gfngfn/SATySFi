@@ -2300,7 +2300,8 @@ and substitute_concrete (subst : substitution) (modsig : signature) : signature 
         {
           opaques = quant;
           domain  = modsig1;
-          codomain = absmodsig2
+          codomain = absmodsig2;
+          _
         } = fsig
       in
       let modsig1 = modsig1 |> substitute_concrete subst in
@@ -2454,6 +2455,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
           opaques  = quant1;
           domain   = modsigdom1;
           codomain = absmodsigcod1;
+          _
         } = fsig1
       in
       let
@@ -2461,6 +2463,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
           opaques  = _quant2;
           domain   = modsigdom2;
           codomain = absmodsigcod2;
+          _
         } = fsig2
       in
       let subst = subtype_concrete_with_abstract rng modsigdom2 (quant1, modsigdom1) in
@@ -2934,7 +2937,7 @@ and copy_contents (modsig1 : signature) (modsig2 : signature) : signature =
 
   | (ConcFunctor(fsig1), ConcFunctor(fsig2)) ->
       let { opaques = _quant_dom1; domain = modsig_dom1; codomain = absmodsig_cod1; closure = closure } = fsig1 in
-      let { opaques = _quant_dom2; domain = modsig_dom2; codomain = absmodsig_cod2 } = fsig2 in
+      let { opaques = _quant_dom2; domain = modsig_dom2; codomain = absmodsig_cod2; _ } = fsig2 in
       let modsig_dom2_new = copy_contents modsig_dom1 modsig_dom2 in
       let absmodsig_cod2_new =
         let (_, modsig_cod1) = absmodsig_cod1 in
