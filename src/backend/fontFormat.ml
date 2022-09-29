@@ -336,14 +336,14 @@ let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
 module GSet = Set.Make
   (struct
     type t = original_glyph_id
-    let compare = Pervasives.compare
+    let compare = Stdlib.compare
   end)
 
 
 module GMap = Map.Make
   (struct
     type t = original_glyph_id
-    let compare = Pervasives.compare
+    let compare = Stdlib.compare
   end)
 
 
@@ -2073,7 +2073,7 @@ module MathInfoMap = Map.Make
   (struct
     type t = original_glyph_id
     let equal = (=)
-    let compare = Pervasives.compare
+    let compare = Stdlib.compare
   end)
 
 
