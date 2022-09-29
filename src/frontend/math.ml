@@ -1005,7 +1005,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
   let rec aux (hbacc : horz_box Alist.t) (mk_prev : math_kind) (corr : space_correction) lmmainlst =
     match lmmainlst with
     | [] ->
-        let hb_space_opt = space_between_math_kinds ictx mk_prev corr mk_last in
+        let hb_space_opt = space_between_math_kinds ictx ~prev:mk_prev corr mk_last in
         begin
           match hb_space_opt with
           | None           -> Alist.to_list hbacc
@@ -1031,7 +1031,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               (hblstpure, hbspaceopt, mk)
 
           | LowMathGroup{ left = mkL; right = mkR; inner = lmC } ->
-              let hblstC = horz_of_low_math ictx MathEnd MathClose lmC in
+              let hblstC = horz_of_low_math ictx ~prev:MathEnd ~next:MathClose lmC in
               let hbspaceopt = space_between_math_kinds ictx ~prev:mk_prev corr mkL in
               (hblstC, hbspaceopt, mkR)
 
@@ -1044,8 +1044,8 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               let rkB = lmB.low_right_kern in
               let d_sup = lmS.low_depth in
               let lkS = lmS.low_left_kern in
-              let hblstB = horz_of_low_math ictx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmS in
+              let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
+              let hblstS = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmS in
               let h_base = rkB.last_height in
               let (l_base, l_sup) = superscript_correction_heights ictx h_supbl h_base d_sup in
               let l_kernbase = MathKernScheme.calculate ictx rkB.kernTR l_base in
@@ -1068,8 +1068,8 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               let rkB = lmB.low_right_kern in
               let h_sub = lmS.low_height in
               let lkS = lmS.low_left_kern in
-              let hblstB = horz_of_low_math ictx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmS in
+              let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
+              let hblstS = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmS in
               let d_base = rkB.last_depth in
               let (l_base, l_sub) = subscript_correction_heights ictx d_subbl d_base h_sub in
               let l_kernbase = MathKernScheme.calculate ictx rkB.kernBR l_base in
@@ -1101,9 +1101,9 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               let d_sup = lmS.low_depth in
               let lkS = lmS.low_left_kern in
               let h_sub = lmT.low_height in
-              let hblstB = horz_of_low_math ictx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmS in
-              let hblstT = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmT in
+              let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
+              let hblstS = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmS in
+              let hblstT = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmT in
               let h_base = rkB.last_height in
               let d_base = rkB.last_depth in
 
@@ -1145,8 +1145,8 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               numerator                  = lmN;
               denominator                = lmD;
             } ->
-              let hblstN = horz_of_low_math ictx MathEnd MathEnd lmN in
-              let hblstD = horz_of_low_math ictx MathEnd MathEnd lmD in
+              let hblstN = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmN in
+              let hblstD = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmD in
               let (w_numer, _, _) = LineBreak.get_natural_metrics hblstN in
               let (w_denom, _, _) = LineBreak.get_natural_metrics hblstD in
               let (hblstNret, hblstDret, w_frac) =
@@ -1174,7 +1174,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               bar_thickness = t_bar;
               inner         = lmC;
             } ->
-              let hblstC = horz_of_low_math ictx MathEnd MathEnd lmC in
+              let hblstC = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmC in
               let (w_cont, _, _) = LineBreak.get_natural_metrics hblstC in
               let graphics (xpos, ypos) =
                 GraphicD.make_fill (Context.color ictx)
@@ -1196,7 +1196,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
           | LowMathParen{ left = lpL; right = lpR; inner = lmE } ->
               let hblstparenL = lpL.lp_main in
               let hblstparenR = lpR.lp_main in
-              let hblstE = horz_of_low_math ictx MathOpen MathClose lmE in
+              let hblstE = horz_of_low_math ictx ~prev:MathOpen ~next:MathClose lmE in
               let hblstsub = List.concat [hblstparenL; hblstE; hblstparenR] in
               let hbspaceopt = space_between_math_kinds ictx ~prev:mk_prev corr MathOpen in
               (hblstsub, hbspaceopt, MathClose)
@@ -1225,9 +1225,9 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
           | LowMathUpperLimit{ upper_baseline_height = h_upbl; base = lmB; upper = lmU } ->
               let lkB = lmB.low_left_kern in
               let rkB = lmB.low_right_kern in
-              let hblstB = horz_of_low_math ictx MathEnd MathEnd lmB in
+              let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
                 (* needs reconsideration *)
-              let hblstU = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmU in
+              let hblstU = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmU in
               let (w_base, _, _) = LineBreak.get_natural_metrics hblstB in
               let (w_up, _, _) = LineBreak.get_natural_metrics hblstU in
               let hblstsub =
@@ -1249,9 +1249,9 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
           | LowMathLowerLimit{ lower_baseline_depth = d_lowbl; base = lmB; lower = lmL } ->
               let lkB = lmB.low_left_kern in
               let rkB = lmB.low_right_kern in
-              let hblstB = horz_of_low_math ictx MathEnd MathEnd lmB in
+              let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
                 (* needs reconsideration *)
-              let hblstL = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmL in
+              let hblstL = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmL in
               let (w_base, _, _) = LineBreak.get_natural_metrics hblstB in
               let (w_low, _, _) = LineBreak.get_natural_metrics hblstL in
               let hblstsub =
@@ -1283,7 +1283,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
 
 let main (ictx : input_context) (ms : math_box list) : horz_box list =
   let lms = convert_to_low ~prev:MathEnd ~next:MathEnd ms in
-  horz_of_low_math ictx MathEnd MathEnd lms
+  horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lms
 
 
 let space_between_maths (ictx : input_context) (mathlst1 : math_box list) (mathlst2 : math_box list) : horz_box option =
@@ -1291,13 +1291,13 @@ let space_between_maths (ictx : input_context) (mathlst1 : math_box list) (mathl
   | (math1R :: _, math2L :: _) ->
       let mk1R = get_right_math_kind math1R in
       let mk2L = get_left_math_kind math2L in
-      let lm1 = convert_to_low MathEnd mk2L mathlst1 in
+      let lm1 = convert_to_low ~prev:MathEnd ~next:mk2L mathlst1 in
       let corr =
         match lm1.low_main with
         | lmmain :: _ -> get_space_correction lmmain
         | []          -> NoSpace
       in
-      space_between_math_kinds ictx mk1R corr mk2L
+      space_between_math_kinds ictx ~prev:mk1R corr mk2L
 
   | _ ->
       None
