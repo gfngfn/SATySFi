@@ -1492,7 +1492,8 @@ let get_postscript_name (dcdr : decoder) =
   | Ok(Some(x)) -> x
 
 
-type embedding =
+(* -w -unused-constructor *)
+type[@ocaml.warning "-37"] embedding =
   | FontFile
   | FontFile2
   | FontFile3 of string
@@ -1631,7 +1632,8 @@ module CIDFontType0
   end
 
 
-type cid_to_gid_map =
+(* -w -unused-constructor *)
+type[@ocaml.warning "-37"] cid_to_gid_map =
   | CIDToGIDIdentity
   | CIDToGIDStream   of (string resource) ref  (* temporary *)
 

@@ -226,7 +226,8 @@ let convert_abs_path_to_show (abspath : abs_path) : string =
     Filename.basename abspathstr
 
 
-type line =
+(* -w -unused-constructor *)
+type[@ocaml.warning "-37"] line =
   | NormalLine        of string
   | DisplayLine       of string
   | NormalLineOption  of string option

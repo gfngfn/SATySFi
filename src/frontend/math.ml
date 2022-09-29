@@ -52,7 +52,8 @@ type low_paren = {
 
 type low_radical = horz_box list
 
-type low_math_main =
+(* -w -unused-constructor *)
+type[@ocaml.warning "-37"] low_math_main =
   | LowMathList of low_math
 
   | LowMathAtom of {
