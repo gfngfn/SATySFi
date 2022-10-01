@@ -694,9 +694,9 @@ let check_subscript (mlstB : math_box list) =
 
 let convert_math_element (mk : math_kind) (ma : math_box_atom) : low_math_atom =
   match ma with
-  | MathEmbeddedHorz(hbs) ->
-      let (_wid, hgt, dpt) = LineBreak.get_natural_metrics hbs in
-      let lma = LowMathAtomEmbeddedHorz{ content = hbs; height = hgt; depth = dpt } in
+  | MathEmbeddedInline(ibs) ->
+      let (_wid, hgt, dpt) = LineBreak.get_natural_metrics ibs in
+      let lma = LowMathAtomEmbeddedHorz{ content = ibs; height = hgt; depth = dpt } in
       {
         atom_main       = lma;
         atom_left_kern  = no_left_kern hgt dpt mk;

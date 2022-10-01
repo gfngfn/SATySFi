@@ -1030,7 +1030,7 @@ and math_box_atom =
       right_kern : HorzBox.math_char_kern_func;
     } [@printer (fun ppf _ _ _ _ _ -> Format.fprintf ppf "<math-char'>")]
 
-  | MathEmbeddedHorz of HorzBox.horz_box list
+  | MathEmbeddedInline of HorzBox.horz_box list
 
 and math_box =
   | MathBoxAtom of {

@@ -429,18 +429,18 @@ let right_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern
 let ma = MathCharWithKern{ context = ictx; is_big = true; chars = uchs; left_kern; right_kern } in
 make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
 |}
-    ; inst "BackendEmbedHorzToMath"
+    ; inst "PrimitiveEmbedInlineToMath"
         ~name:"embed-inline-to-math"
         ~type_:Type.(tMATHCLS @-> tIB @-> tMB)
         ~fields:[
         ]
         ~params:[
           param "mathcls" ~type_:"math_class";
-          param "hbs" ~type_:"horz_boxes";
+          param "ibs" ~type_:"horz_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_math_boxes [ MathBoxAtom{ kind = mathcls; main = MathEmbeddedHorz(hbs) } ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = MathEmbeddedInline(ibs) } ]
 |}
     ; inst "BackendSetMathCharClass"
         ~name:"set-math-char-class"
