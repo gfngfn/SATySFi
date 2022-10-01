@@ -939,7 +939,7 @@ let rec typecheck
       let tyres = (rng, DataType(tyargs, tyid)) in
       (NonValueConstructor(constrnm, e1), tyres)
 
-  | UTLambdaHorzCommand{
+  | UTLambdaInlineCommand{
       parameters       = param_units;
       context_variable = ident_ctx;
       body             = utast_body;
@@ -979,7 +979,7 @@ let rec typecheck
       in
       (e, (rng, InlineCommandType(cmdargtys)))
 
-  | UTLambdaVertCommand{
+  | UTLambdaBlockCommand{
       parameters       = param_units;
       context_variable = ident_ctx;
       body             = utast_body;
@@ -1278,31 +1278,31 @@ let rec typecheck
       unify ty1 (Range.dummy "UTUpdateField", RecordType(row));
       (UpdateField(e1, label, e2), ty1)
 
-  | UTLexHorz(utastctx, utasth) ->
-      let (ectx, tyctx) = typecheck_iter tyenv utastctx in
-      let (eh, tyh) = typecheck_iter tyenv utasth in
-      let (eret, bstyctx, bstyret) =
+  | UTReadInline(utast_ctx, utastI) ->
+      let (e_ctx, ty_ctx) = typecheck_iter tyenv utast_ctx in
+      let (eI, tyI) = typecheck_iter tyenv utastI in
+      let (e_ret, bsty_ctx, bsty_ret) =
         if OptionState.is_text_mode () then
-          (TextHorzLex(ectx, eh), TextInfoType, StringType)
+          (PrimitiveStringifyInline(e_ctx, eI), TextInfoType, StringType)
         else
-          (HorzLex(ectx, eh), ContextType, InlineBoxesType)
+          (PrimitiveReadInline(e_ctx, eI), ContextType, InlineBoxesType)
       in
-      unify tyctx (Range.dummy "ut-lex-horz-1", BaseType(bstyctx));
-      unify tyh (Range.dummy "ut-lex-horz-2", BaseType(InlineTextType));
-      (eret, (rng, BaseType(bstyret)))
+      unify ty_ctx (Range.dummy "ut-lex-horz-1", BaseType(bsty_ctx));
+      unify tyI (Range.dummy "ut-lex-horz-2", BaseType(InlineTextType));
+      (e_ret, (rng, BaseType(bsty_ret)))
 
-  | UTLexVert(utastctx, utastv) ->
-      let (ectx, tyctx) = typecheck_iter tyenv utastctx in
-      let (ev, tyv) = typecheck_iter tyenv utastv in
-      let (eret, bstyctx, bstyret) =
+  | UTReadBlock(utast_ctx, utastB) ->
+      let (e_ctx, ty_ctx) = typecheck_iter tyenv utast_ctx in
+      let (eB, tyB) = typecheck_iter tyenv utastB in
+      let (e_ret, bsty_ctx, bsty_ret) =
         if OptionState.is_text_mode () then
-          (TextVertLex(ectx, ev), TextInfoType, StringType)
+          (PrimitiveStringifyBlock(e_ctx, eB), TextInfoType, StringType)
         else
-          (VertLex(ectx, ev), ContextType, BlockBoxesType)
+          (PrimitiveReadBlock(e_ctx, eB), ContextType, BlockBoxesType)
       in
-      unify tyctx (Range.dummy "ut-lex-vert-1", BaseType(bstyctx));
-      unify tyv (Range.dummy "ut-lex-vert-2", BaseType(BlockTextType));
-      (eret, (rng, BaseType(bstyret)))
+      unify ty_ctx (Range.dummy "ut-lex-vert-1", BaseType(bsty_ctx));
+      unify tyB (Range.dummy "ut-lex-vert-2", BaseType(BlockTextType));
+      (e_ret, (rng, BaseType(bsty_ret)))
 
   | UTNext(utast1) ->
       begin

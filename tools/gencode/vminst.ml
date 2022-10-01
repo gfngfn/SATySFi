@@ -745,7 +745,7 @@ make_horz (List.append hblst1 hblst2)
         ~code:{|
 make_vert (List.append vblst1 vblst2)
 |}
-    ; inst "HorzLex"
+    ; inst "PrimitiveReadInline"
         ~name:"read-inline"
         ~type_:Type.(tCTX @-> tIT @-> tIB)
         ~fields:[
@@ -768,7 +768,7 @@ match value1 with
 | _                                       -> report_bug_vm "HorzLex"
 *)
 |}
-    ; inst "VertLex"
+    ; inst "PrimitiveReadBlock"
         ~name:"read-block"
         ~type_:Type.(tCTX @-> tBT @-> tBB)
         ~fields:[
@@ -811,7 +811,7 @@ match value1 with
 | _                                     -> report_bug_vm "MathLex"
 *)
 |}
-    ; inst "TextHorzLex"
+    ; inst "PrimitiveStringifyInline"
         ~name:"stringify-inline"
         ~type_:Type.(tTCTX @-> tIT @-> tS)
         ~fields:[
@@ -833,7 +833,7 @@ match value1 with
 | _                                       -> report_bug_vm "TextHorzLex"
 *)
 |}
-    ; inst "TextVertLex"
+    ; inst "PrimitiveStringifyBlock"
         ~name:"stringify-block"
         ~type_:Type.(tTCTX @-> tBT @-> tS)
         ~fields:[

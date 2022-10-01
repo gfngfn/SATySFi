@@ -467,7 +467,7 @@ bind_inline:
   | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         (cs,
-          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaHorzCommand{
+          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaInlineCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
             body             = utast;
@@ -480,10 +480,10 @@ bind_inline:
         let ident_ctx = (rng_ctx, varnm_ctx) in
         let utast_body =
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
-          (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utast_ctx, utast))
+          (Range.dummy "read-inline-of-lightweight-let-inline", UTReadInline(utast_ctx, utast))
         in
         (cs,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaHorzCommand{
+          make_standard (Ranged cs) (Ranged utast) (UTLambdaInlineCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
             body             = utast_body;
@@ -494,7 +494,7 @@ bind_block:
   | ident_ctx=LOWER; cs=PLUS_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         (cs,
-          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaVertCommand{
+          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaBlockCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
             body             = utast;
@@ -507,10 +507,10 @@ bind_block:
         let ident_ctx = (rng_ctx, varnm_ctx) in
         let utast_body =
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
-          (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utast_ctx, utast))
+          (Range.dummy "read-block-of-lightweight-let-block", UTReadBlock(utast_ctx, utast))
         in
         (cs,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaVertCommand{
+          make_standard (Ranged cs) (Ranged utast) (UTLambdaBlockCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
             body             = utast_body;

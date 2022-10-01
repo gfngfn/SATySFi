@@ -472,12 +472,12 @@ and untyped_abstract_tree_main =
   | UTBlockText           of untyped_input_vert_element list
   | UTMathText            of untyped_input_math_element list
 (* Command abstractions: *)
-  | UTLambdaHorzCommand of {
+  | UTLambdaInlineCommand of {
       parameters       : untyped_parameter_unit list;
       context_variable : var_name ranged;
       body             : untyped_abstract_tree;
     }
-  | UTLambdaVertCommand of {
+  | UTLambdaBlockCommand of {
       parameters       : untyped_parameter_unit list;
       context_variable : var_name ranged;
       body             : untyped_abstract_tree;
@@ -489,8 +489,8 @@ and untyped_abstract_tree_main =
       body             : untyped_abstract_tree;
     }
 (* For lightweight command definitions: *)
-  | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
-  | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
+  | UTReadInline           of untyped_abstract_tree * untyped_abstract_tree
+  | UTReadBlock            of untyped_abstract_tree * untyped_abstract_tree
 (* Lists: *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
