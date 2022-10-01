@@ -143,7 +143,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 
   [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.8...HEAD
-  [0.0.7]: https://github.com/gfngfn/SATySFi/compare/v0.0.7...v0.0.8
+  [0.0.8]: https://github.com/gfngfn/SATySFi/compare/v0.0.7...v0.0.8
   [0.0.7]: https://github.com/gfngfn/SATySFi/compare/v0.0.6...v0.0.7
   [0.0.6]: https://github.com/gfngfn/SATySFi/compare/v0.0.5...v0.0.6
   [0.0.5]: https://github.com/gfngfn/SATySFi/compare/v0.0.4...v0.0.5
