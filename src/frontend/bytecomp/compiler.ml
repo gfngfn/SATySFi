@@ -44,7 +44,9 @@ and emit_appop arity cont inc_ctx =
     appop :: cont
 
 
-and compile_input_horz_content (ihlst : ir_input_horz_element list) =
+and compile_input_horz_content (_ihlst : ir_input_horz_element list) =
+  failwith "TODO: compile_input_horz_content"
+(*
   let compiled_ihlist =
     ihlst |> List.map (function
     | IRInputHorzText(s) ->
@@ -65,7 +67,7 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
     )
   in
   compiled_ihlist
-
+*)
 
 and compile_code_input_horz (_irits : (ir inline_text_element_scheme) list) =
   failwith "TODO: compile_code_input_horz"
@@ -92,7 +94,9 @@ and compile_code_input_horz (_irits : (ir inline_text_element_scheme) list) =
 *)
 
 
-and compile_input_vert_content (ivlst : ir_input_vert_element list) =
+and compile_input_vert_content (_ivlst : ir_input_vert_element list) =
+  failwith "TODO: compile_input_vert_content"
+(*
   let compiled_ivlist =
     ivlst |> List.map (function
     | IRInputVertEmbedded(irabs) ->
@@ -104,6 +108,7 @@ and compile_input_vert_content (ivlst : ir_input_vert_element list) =
     )
   in
   compiled_ivlist
+*)
 
 
 and compile_code_input_vert (_irbts : (ir block_text_element_scheme) list) =

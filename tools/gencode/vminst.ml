@@ -1601,7 +1601,11 @@ Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
 InlineTextValue([ InlineTextValueString(str) ])
 |}
         ~code:{|
+let _ = str in
+failwith "TODO: vm, embed-string"
+(*
 CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)
+*)
 |}
     ; inst "PrimitiveExtract"
         ~name:"extract-string"

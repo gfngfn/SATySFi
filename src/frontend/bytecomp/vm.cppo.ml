@@ -22,13 +22,13 @@ let make_entry (v : syntactic_value) : stack_entry =
 let report_dynamic_error msg =
   raise (ExecError(msg))
 
-
+(*
 type compiled_nom_input_horz_element =
   | CompiledNomInputHorzText     of string
   | CompiledNomInputHorzEmbedded of instruction list
   | CompiledNomInputHorzThunk    of instruction list
   | CompiledNomInputHorzContent  of compiled_nom_input_horz_element list * vmenv
-
+*)
 
 let local_get_value (env : vmenv) (lv : int) (off : int) : syntactic_value =
   let (_, frames) = env in
@@ -92,7 +92,9 @@ let make_binding_op (var : varloc) : instruction =
   | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
 
 
-let rec exec_input_horz_content env ihlst =
+let rec exec_input_horz_content _env _ihlst =
+  failwith "TODO: exec_input_horz_content"
+(*
   let imihlist = ihlst |> List.map (function
     | CompiledInputHorzText(s) ->
         CompiledImInputHorzText(s)
@@ -118,9 +120,12 @@ let rec exec_input_horz_content env ihlst =
 
   ) in
     CompiledInputHorzClosure(imihlist, env)
+*)
 
 
-and exec_input_vert_content env ivlst =
+and exec_input_vert_content _env _ivlst =
+  failwith "TODO: exec_code_vert_content"
+(*
   let imivlst = ivlst |> List.map (function
     | CompiledInputVertEmbedded(code) ->
         CompiledImInputVertEmbedded(code)
@@ -137,7 +142,7 @@ and exec_input_vert_content env ivlst =
 
   ) in
     CompiledInputVertClosure(imivlst, env)
-
+*)
 
 and exec_code_input_horz _env _irihlst =
   failwith "TODO: exec_code_input_horz"
@@ -184,7 +189,9 @@ and exec_code_input_vert _env _irivlst =
 *)
 
 
-and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
+and exec_text_mode_intermediate_input_vert (_env : vmenv) (_valuetctx : syntactic_value) (_imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
+  failwith "TODO: exec_text_mode_intermediate_input_vert"
+(*
   let rec interpret_commands env imivlst =
     imivlst |> List.map (fun imiv ->
         match imiv with
@@ -199,9 +206,11 @@ and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_
   in
   let s = interpret_commands env imivlst in
   make_string s
+*)
 
-
-and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+and exec_text_mode_intermediate_input_horz (_env : vmenv) (_valuetctx : syntactic_value) (_imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+  failwith "TODO: exec_text_mode_intermediate_input_horz"
+(*
   let (tctx, _ctxsub) = get_text_mode_context valuetctx in
     begin
       let rec normalize imihlst =
@@ -261,13 +270,16 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
       let s = interpret_commands env nmihlst in
       make_string s
     end
+*)
 
 
 and exec_pdf_mode_intermediate_input_math (_env : vmenv) (_ictx : input_context) (_imivlst : compiled_intermediate_input_math_element list) : syntactic_value =
   failwith "TODO: exec_pdf_mode_intermediate_input_math"
 
 
-and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
+and exec_pdf_mode_intermediate_input_vert (_env : vmenv) (_valuectx : syntactic_value) (_imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
+  failwith "TODO: exec_pdf_mode_intermediate_input_vert"
+(*
   let rec interpret_commands env imivlst =
     imivlst |> List.map (fun imiv ->
         match imiv with
@@ -282,9 +294,12 @@ and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_va
   in
   let imvblst = interpret_commands env imivlst in
   make_vert imvblst
+*)
 
 
-and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+and exec_pdf_mode_intermediate_input_horz (_env : vmenv) (_ictx : input_context) (_imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+  failwith "TODO: exec_pdf_mode_intermediate_input_horz"
+(*
   let (ctx, ctxsub) = ictx in
     begin
       let rec normalize imihlst =
@@ -365,6 +380,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (
       let hblst = interpret_commands env nmihlst in
       make_horz hblst
     end
+*)
 
 
 and exec_application (env : vmenv) ~msg:_ (vf : syntactic_value) (vargs : syntactic_value list) : syntactic_value =

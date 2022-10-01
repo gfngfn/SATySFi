@@ -654,26 +654,38 @@ and vmenv =
   environment * (syntactic_value array) list
 
 and compiled_input_horz_element =
+  unit (* TODO: define this *)
+(*
   | CompiledInputHorzText         of string
   | CompiledInputHorzEmbedded     of instruction list
   | CompiledInputHorzContent      of instruction list
   | CompiledInputHorzEmbeddedMath of instruction list
   | CompiledInputHorzEmbeddedCodeText of string
+*)
 
 and compiled_intermediate_input_horz_element =
+  unit (* TODO: define this *)
+(*
   | CompiledImInputHorzText         of string
   | CompiledImInputHorzEmbedded     of instruction list
   | CompiledImInputHorzContent of compiled_intermediate_input_horz_element list * vmenv
   | CompiledImInputHorzEmbeddedMath of instruction list
   | CompiledImInputHorzEmbeddedCodeText of string
+*)
 
 and compiled_input_vert_element =
+  unit (* TODO: define this *)
+(*
   | CompiledInputVertEmbedded of instruction list
   | CompiledInputVertContent  of instruction list
+*)
 
 and compiled_intermediate_input_vert_element =
+  unit (* TODO: define this *)
+(*
   | CompiledImInputVertEmbedded of instruction list
   | CompiledImInputVertContent  of compiled_intermediate_input_vert_element list * vmenv
+*)
 
 and compiled_intermediate_input_math_element =
   unit (* TODO: define this *)
