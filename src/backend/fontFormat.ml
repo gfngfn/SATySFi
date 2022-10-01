@@ -161,7 +161,6 @@ let hex_of_glyph_id ((SubsetGlyphID(_, SubsetNumber(n))) : glyph_id) =
 module SubsetMap : sig
   type t
   val create : int -> t
-  val create_dummy : unit -> t
   val intern : original_glyph_id -> t -> subset_glyph_id
   val to_list : t -> (original_glyph_id list) option
 end = struct
@@ -175,7 +174,6 @@ end = struct
 
     type t =
       | Subset of subset
-      | Dummy
 
 
     let create n =
@@ -190,15 +188,8 @@ end = struct
       }
 
 
-    let create_dummy () =
-      Dummy
-
-
     let intern gidorg submap =
       match submap with
-      | Dummy ->
-          SubsetNumber(gidorg)
-
       | Subset(r) ->
           let ht = r.original_to_subset in
           let revht = r.subset_to_original in
@@ -222,7 +213,6 @@ end = struct
     let to_list submap =
       match submap with
       | Subset(r) -> Some(Alist.to_list !(r.store))
-      | Dummy     -> None
 
   end
 
