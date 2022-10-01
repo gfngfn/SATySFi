@@ -902,9 +902,9 @@ and syntactic_value =
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | InputHorzValue   of input_horz_value_element list
-  | InputVertValue   of input_vert_value_element list
-  | InputMathValue   of input_math_value_element list
+  | InlineTextValue  of input_horz_value_element list
+  | BlockTextValue   of input_vert_value_element list
+  | MathTextValue    of input_math_value_element list
 
   | HorzCommandClosure of horz_command_closure
   | VertCommandClosure of vert_command_closure

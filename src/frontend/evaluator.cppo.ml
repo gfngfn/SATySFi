@@ -218,15 +218,15 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
 
   | InlineText(ihs) ->
       let ihvs = interpret_0_input_horz_content env ihs in
-      InputHorzValue(ihvs)
+      InlineTextValue(ihvs)
 
   | BlockText(ivs) ->
       let ivvs = interpret_0_input_vert_content env ivs in
-      InputVertValue(ivvs)
+      BlockTextValue(ivvs)
 
   | MathText(ims) ->
       let imvs = interpret_0_input_math_content env ims in
-      InputMathValue(imvs)
+      MathTextValue(imvs)
 
   | LambdaHorz(evid_ctx, ast0) ->
       let hclosure =
@@ -786,7 +786,7 @@ and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_v
 
       | InputHorzValueEmbeddedMath(imvs) ->
           let value =
-            reduce_beta ~msg:"InputHorzValueEmbeddedMath" value_mcmd (InputMathValue(imvs))
+            reduce_beta ~msg:"InputHorzValueEmbeddedMath" value_mcmd (MathTextValue(imvs))
           in
           let hclosure = get_horz_command_closure value in
           Alist.extend acc (NomInputHorzCommandClosure(hclosure))
@@ -974,7 +974,7 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
 
       | InputHorzValueEmbeddedMath(imvs) ->
           let value =
-            reduce_beta ~msg:"InputHorzValueEmbeddedMath" value_mcmd (InputMathValue(imvs))
+            reduce_beta ~msg:"InputHorzValueEmbeddedMath" value_mcmd (MathTextValue(imvs))
           in
           let hclosure = get_horz_command_closure value in
           Alist.extend acc (NomInputHorzCommandClosure(hclosure))

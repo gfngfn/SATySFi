@@ -200,13 +200,13 @@ let get_horz_boxes : syntactic_value -> HorzBox.horz_box list = function
 
 
 let get_vert_text : syntactic_value -> input_vert_value_element list = function
-  | InputVertValue(ivvs) -> ivvs
+  | BlockTextValue(ivvs) -> ivvs
   | value                -> report_bug_value "get_vert_text" value
 
 
 let get_horz_text : syntactic_value -> input_horz_value_element list = function
-  | InputHorzValue(ihvs) -> ihvs
-  | value                -> report_bug_value "get_horz_text" value
+  | InlineTextValue(ihvs) -> ihvs
+  | value                 -> report_bug_value "get_horz_text" value
 
 
 let get_image : syntactic_value -> ImageInfo.key = function
@@ -403,10 +403,9 @@ let get_page_size (value : syntactic_value) : length * length =
 
 
 
-let get_math_text ~msg (value : syntactic_value) : input_math_value_element list =
-  match value with
-  | InputMathValue(imvs) -> imvs
-  | _                    -> report_bug_value (Printf.sprintf "get_math_text (%s)" msg) value
+let get_math_text ~msg : syntactic_value -> input_math_value_element list = function
+  | MathTextValue(imvs) -> imvs
+  | other               -> report_bug_value (Printf.sprintf "get_math_text (%s)" msg) other
 
 
 let get_math_boxes (value : syntactic_value) : math_box list =
@@ -645,7 +644,7 @@ let make_paren reducef (value_parenf : syntactic_value) : paren =
 
 
 let make_math_text (imvs : input_math_value_element list) : syntactic_value =
-  InputMathValue(imvs)
+  MathTextValue(imvs)
 
 
 let make_math_boxes (mbs : math_box list) : syntactic_value =
