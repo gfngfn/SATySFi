@@ -970,7 +970,7 @@ let rec typecheck
       let e =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
-        ) params (LambdaHorz(evid_ctx, e_body))
+        ) params (LambdaInline(evid_ctx, e_body))
       in
       let cmdargtys =
         params |> List.map (fun (_, _, ty_labmap, ty_pat) ->
@@ -1010,7 +1010,7 @@ let rec typecheck
       let e =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
-        ) params (LambdaVert(evid_ctx, e_body))
+        ) params (LambdaBlock(evid_ctx, e_body))
       in
       let cmdargtys =
         params |> List.map (fun (_, _, ty_labmap, ty_pat) ->

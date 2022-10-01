@@ -710,13 +710,13 @@ let make_math_scripts_func (MathScriptsFunc(value_mscriptsf) : math_scripts_func
 
 
 let get_horz_command_closure : syntactic_value -> horz_command_closure = function
-  | HorzCommandClosure(hclosure) -> hclosure
-  | value                        -> report_bug_value "get_horz_command_closure" value
+  | InlineCommandClosure(iclosure) -> iclosure
+  | value                          -> report_bug_value "get_horz_command_closure" value
 
 
 let get_vert_command_closure : syntactic_value -> vert_command_closure = function
-  | VertCommandClosure(vclosure) -> vclosure
-  | value                        -> report_bug_value "get_vert_command_closure" value
+  | BlockCommandClosure(bclosure) -> bclosure
+  | value                         -> report_bug_value "get_vert_command_closure" value
 
 
 let get_math_command_closure : syntactic_value -> math_command_closure = function

@@ -855,14 +855,14 @@ and input_math_value_base =
   | InputMathValueGroup    of input_math_value_element list
 
 and horz_command_closure =
-  | HorzCommandClosureSimple of {
+  | InlineCommandClosureSimple of {
       context_binder : EvalVarID.t;
       body           : abstract_tree;
       environment    : environment;
     }
 
 and vert_command_closure =
-  | VertCommandClosureSimple of {
+  | BlockCommandClosureSimple of {
       context_binder : EvalVarID.t;
       body           : abstract_tree;
       environment    : environment;
@@ -906,9 +906,9 @@ and syntactic_value =
   | BlockTextValue   of input_vert_value_element list
   | MathTextValue    of input_math_value_element list
 
-  | HorzCommandClosure of horz_command_closure
-  | VertCommandClosure of vert_command_closure
-  | MathCommandClosure of math_command_closure
+  | InlineCommandClosure of horz_command_closure
+  | BlockCommandClosure  of vert_command_closure
+  | MathCommandClosure   of math_command_closure
 
 (* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
   | CompiledClosure          of varloc LabelMap.t * int * syntactic_value list * int * instruction list * vmenv
@@ -924,8 +924,8 @@ and abstract_tree =
   | InlineText            of input_horz_element list
   | BlockText             of input_vert_element list
   | MathText              of input_math_element list
-  | LambdaHorz            of EvalVarID.t * abstract_tree
-  | LambdaVert            of EvalVarID.t * abstract_tree
+  | LambdaInline          of EvalVarID.t * abstract_tree
+  | LambdaBlock           of EvalVarID.t * abstract_tree
   | LambdaMath            of EvalVarID.t * (EvalVarID.t * EvalVarID.t) option * abstract_tree
 (* -- record value -- *)
   | Record                of abstract_tree LabelMap.t
@@ -1103,8 +1103,8 @@ and code_value =
   | CdInlineText    of code_input_horz_element list
   | CdBlockText     of code_input_vert_element list
   | CdMathText      of code_input_math_element list
-  | CdLambdaHorz    of CodeSymbol.t * code_value
-  | CdLambdaVert    of CodeSymbol.t * code_value
+  | CdLambdaInline  of CodeSymbol.t * code_value
+  | CdLambdaBlock   of CodeSymbol.t * code_value
   | CdLambdaMath    of CodeSymbol.t * (CodeSymbol.t * CodeSymbol.t) option * code_value
   | CdContentOf     of Range.t * CodeSymbol.t
   | CdLetRecIn      of code_letrec_binding list * code_value
@@ -1329,11 +1329,11 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdBlockText(cdbts)                   -> BlockText(cdbts |> map_input_vert aux)
     | CdMathText(cdmts)                    -> MathText(cdmts |> map_input_math aux)
 
-    | CdLambdaHorz(symb_ctx, code0) ->
-        LambdaHorz(CodeSymbol.unlift symb_ctx, aux code0)
+    | CdLambdaInline(symb_ctx, code0) ->
+        LambdaInline(CodeSymbol.unlift symb_ctx, aux code0)
 
-    | CdLambdaVert(symb_ctx, code0) ->
-        LambdaVert(CodeSymbol.unlift symb_ctx, aux code0)
+    | CdLambdaBlock(symb_ctx, code0) ->
+        LambdaBlock(CodeSymbol.unlift symb_ctx, aux code0)
 
     | CdLambdaMath(symb_ctx, symb_pair_opt, code0) ->
         let evid_pair_opt =

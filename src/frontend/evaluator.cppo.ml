@@ -228,25 +228,25 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       let imvs = interpret_0_input_math_content env ims in
       MathTextValue(imvs)
 
-  | LambdaHorz(evid_ctx, ast0) ->
-      let hclosure =
-        HorzCommandClosureSimple{
+  | LambdaInline(evid_ctx, ast0) ->
+      let iclosure =
+        InlineCommandClosureSimple{
           context_binder = evid_ctx;
           body           = ast0;
           environment    = env;
         }
       in
-      HorzCommandClosure(hclosure)
+      InlineCommandClosure(iclosure)
 
-  | LambdaVert(evid_ctx, ast0) ->
-      let vclosure =
-        VertCommandClosureSimple{
+  | LambdaBlock(evid_ctx, ast0) ->
+      let bclosure =
+        BlockCommandClosureSimple{
           context_binder = evid_ctx;
           body           = ast0;
           environment    = env;
         }
       in
-      VertCommandClosure(vclosure)
+      BlockCommandClosure(bclosure)
 
   | LambdaMath(evid_ctx, evid_pair_opt, ast0) ->
       let mclosure =
@@ -442,15 +442,15 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       let cdmts = mts |> map_input_math (interpret_1 env) in
       CdMathText(cdmts)
 
-  | LambdaHorz(evid_ctx, ast0) ->
+  | LambdaInline(evid_ctx, ast0) ->
       let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
       let code0 = interpret_1 env ast0 in
-      CdLambdaHorz(symb_ctx, code0)
+      CdLambdaInline(symb_ctx, code0)
 
-  | LambdaVert(evid_ctx, ast0) ->
+  | LambdaBlock(evid_ctx, ast0) ->
       let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
       let code0 = interpret_1 env ast0 in
-      CdLambdaVert(symb_ctx, code0)
+      CdLambdaBlock(symb_ctx, code0)
 
   | LambdaMath(evid_ctx, evid_pair_opt, ast0) ->
       let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in
@@ -743,13 +743,13 @@ and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_v
 
   let interpret_commands (ivvs : input_vert_value_element list) =
     ivvs |> List.map (function
-    | InputVertValueCommandClosure(vclosure) ->
+    | InputVertValueCommandClosure(bclosure) ->
         let
-          VertCommandClosureSimple{
+          BlockCommandClosureSimple{
             context_binder = evid_ctx;
             body           = ast_body;
             environment    = env;
-          } = vclosure
+          } = bclosure
         in
         let value =
           let env = add_to_environment env evid_ctx loc_tctx in
@@ -811,13 +811,13 @@ and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_v
   let interpret_commands (nmihs : nom_input_horz_element list) : string =
     nmihs |> List.map (fun nmih ->
       match nmih with
-      | NomInputHorzCommandClosure(hclosure) ->
+      | NomInputHorzCommandClosure(iclosure) ->
           let
-            HorzCommandClosureSimple{
+            InlineCommandClosureSimple{
               context_binder = evid_ctx;
               body           = ast_body;
               environment    = env;
-            } = hclosure
+            } = iclosure
           in
           let value =
             let env = add_to_environment env evid_ctx loc_tctx in
@@ -933,13 +933,13 @@ and read_pdf_mode_vert_text (value_ctx : syntactic_value) (ivvs : input_vert_val
 
   let interpret_commands (ivvs : input_vert_value_element list) =
     ivvs |> List.map (function
-    | InputVertValueCommandClosure(vclosure) ->
+    | InputVertValueCommandClosure(bclosure) ->
         let
-          VertCommandClosureSimple{
+          BlockCommandClosureSimple{
             context_binder = evid_ctx;
             body           = ast_body;
             environment    = env;
-          } = vclosure
+          } = bclosure
         in
         let value =
           let env = add_to_environment env evid_ctx loc_ctx in
@@ -999,13 +999,13 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
   let interpret_commands (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
     nmihs |> List.map (fun nmih ->
       match nmih with
-      | NomInputHorzCommandClosure(hclosure) ->
+      | NomInputHorzCommandClosure(iclosure) ->
           let
-            HorzCommandClosureSimple{
+            InlineCommandClosureSimple{
               context_binder = evid_ctx;
               body           = ast_body;
               environment    = env;
-            } = hclosure
+            } = iclosure
           in
           let value =
             let env = add_to_environment env evid_ctx loc_ctx in

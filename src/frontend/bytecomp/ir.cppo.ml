@@ -445,11 +445,11 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       let (imims, env) = transform_1_input_math_content env ims in
       (IRCodeInputMath(imims), env)
 
-  | LambdaHorz(_, _) ->
-      failwith "TODO: transform_1, LambdaHorz"
+  | LambdaInline(_, _) ->
+      failwith "TODO: transform_1, LambdaInline"
 
-  | LambdaVert(_, _) ->
-      failwith "TODO: transform_1, LambdaVert"
+  | LambdaBlock(_, _) ->
+      failwith "TODO: transform_1, LambdaBlock"
 
   | LambdaMath(_, _, _) ->
       failwith "TODO: transform_1, LambdaMath"
@@ -597,11 +597,11 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       let (imims, env) = transform_0_input_math_content env ims in
       (IRInputMath(imims), env)
 
-  | LambdaHorz(_, _) ->
-      failwith "TODO: transform_0, LambdaHorz"
+  | LambdaInline(_, _) ->
+      failwith "TODO: transform_0, LambdaInline"
 
-  | LambdaVert(_, _) ->
-      failwith "TODO: transform_0, LambdaVert"
+  | LambdaBlock(_, _) ->
+      failwith "TODO: transform_0, LambdaBlock"
 
   | LambdaMath(_, _, _) ->
       failwith "TODO: transform_0, LambdaMath"
