@@ -651,55 +651,55 @@ and location =
 and vmenv =
   environment * (syntactic_value array) list
 
-and compiled_input_horz_element =
+and compiled_inline_text_element =
   unit (* TODO: define this *)
 (*
-  | CompiledInputHorzText         of string
-  | CompiledInputHorzEmbedded     of instruction list
-  | CompiledInputHorzContent      of instruction list
-  | CompiledInputHorzEmbeddedMath of instruction list
-  | CompiledInputHorzEmbeddedCodeText of string
+  | CompiledInlineTextText         of string
+  | CompiledInlineTextEmbedded     of instruction list
+  | CompiledInlineTextContent      of instruction list
+  | CompiledInlineTextEmbeddedMath of instruction list
+  | CompiledInlineTextEmbeddedCodeText of string
 *)
 
-and compiled_intermediate_input_horz_element =
+and compiled_intermediate_inline_text_element =
   unit (* TODO: define this *)
 (*
-  | CompiledImInputHorzText         of string
-  | CompiledImInputHorzEmbedded     of instruction list
-  | CompiledImInputHorzContent of compiled_intermediate_input_horz_element list * vmenv
-  | CompiledImInputHorzEmbeddedMath of instruction list
-  | CompiledImInputHorzEmbeddedCodeText of string
+  | CompiledImInlineTextText         of string
+  | CompiledImInlineTextEmbedded     of instruction list
+  | CompiledImInlineTextContent of compiled_intermediate_inline_text_element list * vmenv
+  | CompiledImInlineTextEmbeddedMath of instruction list
+  | CompiledImInlineTextEmbeddedCodeText of string
 *)
 
-and compiled_input_vert_element =
+and compiled_block_text_element =
   unit (* TODO: define this *)
 (*
-  | CompiledInputVertEmbedded of instruction list
-  | CompiledInputVertContent  of instruction list
+  | CompiledBlockTextEmbedded of instruction list
+  | CompiledBlockTextContent  of instruction list
 *)
 
-and compiled_intermediate_input_vert_element =
+and compiled_intermediate_block_text_element =
   unit (* TODO: define this *)
 (*
-  | CompiledImInputVertEmbedded of instruction list
-  | CompiledImInputVertContent  of compiled_intermediate_input_vert_element list * vmenv
+  | CompiledImBlockTextEmbedded of instruction list
+  | CompiledImBlockTextContent  of compiled_intermediate_block_text_element list * vmenv
 *)
 
-and compiled_intermediate_input_math_element =
+and compiled_intermediate_math_text_element =
   unit (* TODO: define this *)
 
-and ir_input_horz_element =
-  | IRInputHorzText         of string
-  | IRInputHorzEmbedded     of ir
-  | IRInputHorzContent      of ir
-  | IRInputHorzEmbeddedMath of ir
-  | IRInputHorzEmbeddedCodeText of string
+and ir_inline_text_element =
+  | IRInlineTextText         of string
+  | IRInlineTextEmbedded     of ir
+  | IRInlineTextContent      of ir
+  | IRInlineTextEmbeddedMath of ir
+  | IRInlineTextEmbeddedCodeText of string
 
-and ir_input_vert_element =
-  | IRInputVertEmbedded of ir
-  | IRInputVertContent  of ir
+and ir_block_text_element =
+  | IRBlockTextEmbedded of ir
+  | IRBlockTextContent  of ir
 
-and ir_input_math_element =
+and ir_math_text_element =
   unit (* TODO: define this *)
 
 and varloc =
@@ -709,9 +709,9 @@ and varloc =
 and ir =
   | IRConstant              of syntactic_value
   | IRTerminal
-  | IRInputHorz             of ir_input_horz_element list
-  | IRInputVert             of ir_input_vert_element list
-  | IRInputMath             of ir_input_math_element list
+  | IRInlineText            of ir_inline_text_element list
+  | IRBlockText             of ir_block_text_element list
+  | IRMathText              of ir_math_text_element list
   | IRRecord                of label list * ir list
   | IRAccessField           of ir * label
   | IRUpdateField           of ir * label * ir
@@ -734,9 +734,9 @@ and ir =
 
   | IRCodeCombinator        of (code_value list -> code_value) * int * ir list
   | IRCodeRecord            of label list * ir list
-  | IRCodeInputHorz         of (ir inline_text_element_scheme) list
-  | IRCodeInputVert         of (ir block_text_element_scheme) list
-  | IRCodeInputMath         of (ir math_text_element_scheme) list
+  | IRCodeInlineText        of (ir inline_text_element_scheme) list
+  | IRCodeBlockText         of (ir block_text_element_scheme) list
+  | IRCodeMathText          of (ir math_text_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
   | IRCodeLetRecIn          of ir_letrec_binding list * ir
   | IRCodeLetNonRecIn       of ir_pattern_tree * ir * ir
@@ -816,8 +816,8 @@ and instruction =
   | OpCheckStackTopTupleCons of instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopTupleCons(...)")]
   | OpClosure of varloc LabelMap.t * int * int * instruction list
-  | OpClosureInputHorz of compiled_input_horz_element list
-  | OpClosureInputVert of compiled_input_vert_element list
+  | OpClosureInlineText of compiled_inline_text_element list
+  | OpClosureBlockText of compiled_block_text_element list
   | OpBindLocationGlobal of syntactic_value ref * EvalVarID.t
   | OpBindLocationLocal of int * int * EvalVarID.t
   | OpUpdateGlobal of syntactic_value ref * EvalVarID.t
@@ -831,8 +831,8 @@ and instruction =
   | OpApplyCodeCombinator of (code_value list -> code_value) * int
   | OpCodeMakeRecord of label list
   | OpCodeMakeTuple of int
-  | OpCodeMakeInputHorz of ((instruction list) inline_text_element_scheme) list
-  | OpCodeMakeInputVert of ((instruction list) block_text_element_scheme) list
+  | OpCodeMakeInlineText of ((instruction list) inline_text_element_scheme) list
+  | OpCodeMakeBlockText of ((instruction list) block_text_element_scheme) list
   | OpCodePatternMatch  of Range.t * ((instruction list) ir_pattern_branch_scheme) list
   | OpCodeLetRec        of ((instruction list) ir_letrec_binding_scheme) list * instruction list
   | OpCodeLetNonRec     of ir_pattern_tree * instruction list * instruction list
@@ -923,9 +923,9 @@ and syntactic_value =
 (* Values for the SECD machine, i.e. `vm.cppo.ml`: *)
   | CompiledClosure          of varloc LabelMap.t * int * syntactic_value list * int * instruction list * vmenv
   | CompiledPrimitiveClosure of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
-  | CompiledInputHorzClosure of compiled_intermediate_input_horz_element list * vmenv
-  | CompiledInputVertClosure of compiled_intermediate_input_vert_element list * vmenv
-  | CompiledInputMathClosure of compiled_intermediate_input_math_element list * vmenv
+  | CompiledInlineTextClosure of compiled_intermediate_inline_text_element list * vmenv
+  | CompiledBlockTextClosure  of compiled_intermediate_block_text_element list * vmenv
+  | CompiledMathTextClosure   of compiled_intermediate_math_text_element list * vmenv
 
 and abstract_tree =
 (* Texts: *)

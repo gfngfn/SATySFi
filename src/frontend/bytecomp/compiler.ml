@@ -44,84 +44,84 @@ and emit_appop arity cont inc_ctx =
     appop :: cont
 
 
-and compile_input_horz_content (_ihlst : ir_input_horz_element list) =
-  failwith "TODO: compile_input_horz_content"
+and compile_inline_text_content (_ihlst : ir_inline_text_element list) =
+  failwith "TODO: compile_inline_text_content"
 (*
   let compiled_ihlist =
     ihlst |> List.map (function
-    | IRInputHorzText(s) ->
-        CompiledInputHorzText(s)
+    | IRInlineTextText(s) ->
+        CompiledInlineTextText(s)
 
-    | IRInputHorzEmbedded(irabs) ->
+    | IRInlineTextEmbedded(irabs) ->
         let compiled = compile irabs [] in
-        CompiledInputHorzEmbedded(compiled)
+        CompiledInlineTextEmbedded(compiled)
 
-    | IRInputHorzEmbeddedMath(irmath) ->
-        CompiledInputHorzEmbeddedMath(compile irmath [])
+    | IRInlineTextEmbeddedMath(irmath) ->
+        CompiledInlineTextEmbeddedMath(compile irmath [])
 
-    | IRInputHorzEmbeddedCodeText(s) ->
-        CompiledInputHorzEmbeddedCodeText(s)
+    | IRInlineTextEmbeddedCodeText(s) ->
+        CompiledInlineTextEmbeddedCodeText(s)
 
-    | IRInputHorzContent(ir) ->
-        CompiledInputHorzContent(compile ir [])
+    | IRInlineTextContent(ir) ->
+        CompiledInlineTextContent(compile ir [])
     )
   in
   compiled_ihlist
 *)
 
-and compile_code_input_horz (_irits : (ir inline_text_element_scheme) list) =
-  failwith "TODO: compile_code_input_horz"
+and compile_code_inline_text (_irits : (ir inline_text_element_scheme) list) =
+  failwith "TODO: compile_code_inline_text"
 (*
   irihlst |> List.map (function
-  | InputHorzText(s) ->
-      InputHorzText(s)
+  | InlineTextText(s) ->
+      InlineTextText(s)
 
-  | InputHorzEmbedded(irabs) ->
+  | InlineTextEmbedded(irabs) ->
       let compiled = compile irabs [] in
-      InputHorzEmbedded(compiled)
+      InlineTextEmbedded(compiled)
 
-  | InputHorzEmbeddedMath(irmath) ->
+  | InlineTextEmbeddedMath(irmath) ->
       let compiled = compile irmath [] in
-      InputHorzEmbeddedMath(compiled)
+      InlineTextEmbeddedMath(compiled)
 
-  | InputHorzEmbeddedCodeText(s) ->
-      InputHorzEmbeddedCodeText(s)
+  | InlineTextEmbeddedCodeText(s) ->
+      InlineTextEmbeddedCodeText(s)
 
-  | InputHorzContent(ir) ->
+  | InlineTextContent(ir) ->
       let compiled = compile ir [] in
-      InputHorzContent(compiled)
+      InlineTextContent(compiled)
   )
 *)
 
 
-and compile_input_vert_content (_ivlst : ir_input_vert_element list) =
-  failwith "TODO: compile_input_vert_content"
+and compile_block_text_content (_ivlst : ir_block_text_element list) =
+  failwith "TODO: compile_block_text_content"
 (*
   let compiled_ivlist =
     ivlst |> List.map (function
-    | IRInputVertEmbedded(irabs) ->
+    | IRBlockTextEmbedded(irabs) ->
         let compiled = compile irabs [] in
-        CompiledInputVertEmbedded(compiled)
+        CompiledBlockTextEmbedded(compiled)
 
-    | IRInputVertContent(ir) ->
-        CompiledInputVertContent(compile ir [])
+    | IRBlockTextContent(ir) ->
+        CompiledBlockTextContent(compile ir [])
     )
   in
   compiled_ivlist
 *)
 
 
-and compile_code_input_vert (_irbts : (ir block_text_element_scheme) list) =
-  failwith "TODO: compile_code_input_vert"
+and compile_code_block_text (_irbts : (ir block_text_element_scheme) list) =
+  failwith "TODO: compile_code_block_text"
 (*
   irivlst |> List.map (function
-  | InputVertEmbedded(irabs) ->
+  | BlockTextEmbedded(irabs) ->
       let compiled = compile irabs [] in
-      InputVertEmbedded(compiled)
+      BlockTextEmbedded(compiled)
 
-  | InputVertContent(ir) ->
+  | BlockTextContent(ir) ->
       let compiled = compile ir [] in
-      InputVertContent(compiled)
+      BlockTextContent(compiled)
   )
 *)
 
@@ -153,16 +153,16 @@ and compile (ir : ir) (cont : instruction list) =
   | IRTerminal ->
       OpPushEnv :: cont
 
-  | IRInputHorz(ihlst) ->
-      OpClosureInputHorz(compile_input_horz_content ihlst) :: cont
+  | IRInlineText(ihlst) ->
+      OpClosureInlineText(compile_inline_text_content ihlst) :: cont
     (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | IRInputVert(ivlst) ->
-      OpClosureInputVert(compile_input_vert_content ivlst) :: cont
+  | IRBlockText(ivlst) ->
+      OpClosureBlockText(compile_block_text_content ivlst) :: cont
     (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | IRInputMath(_ims) ->
-      failwith "TODO: IRInputMath"
+  | IRMathText(_ims) ->
+      failwith "TODO: IRMathText"
 
   (* -- fundamentals -- *)
 
@@ -260,14 +260,14 @@ and compile (ir : ir) (cont : instruction list) =
   | IRCodeRecord(keylst, irargs) ->
       compile_list irargs (OpCodeMakeRecord(keylst) :: cont)
 
-  | IRCodeInputHorz(ihlst) ->
-      OpCodeMakeInputHorz(compile_code_input_horz ihlst) :: cont
+  | IRCodeInlineText(ihlst) ->
+      OpCodeMakeInlineText(compile_code_inline_text ihlst) :: cont
 
-  | IRCodeInputVert(ivlst) ->
-      OpCodeMakeInputVert(compile_code_input_vert ivlst) :: cont
+  | IRCodeBlockText(ivlst) ->
+      OpCodeMakeBlockText(compile_code_block_text ivlst) :: cont
 
-  | IRCodeInputMath(_ims) ->
-      failwith "TODO: IRCodeInputMath"
+  | IRCodeMathText(_ims) ->
+      failwith "TODO: IRCodeMathText"
 
   | IRCodePatternMatch(rng, ir, irpatbrs) ->
       compile ir @@ OpCodePatternMatch(rng, List.map compile_code_pattern_branch irpatbrs) :: cont

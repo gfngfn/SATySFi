@@ -35,95 +35,95 @@ let map_with_env (type a) (type b) (f : frame -> a -> b * frame) (env : frame) (
   iter env lst Alist.empty
 
 
-let rec transform_0_input_horz_content (_env : frame) (_its : inline_text_element list) : ir_input_horz_element list * frame =
-  failwith "TODO: transform_0_input_horz_content"
+let rec transform_0_inline_text_content (_env : frame) (_its : inline_text_element list) : ir_inline_text_element list * frame =
+  failwith "TODO: transform_0_inline_text_content"
 (*
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
-    | InputHorzText(s) ->
-        (IRInputHorzText(s), env)
+    | InlineTextText(s) ->
+        (IRInlineTextText(s), env)
 
-    | InputHorzEmbedded(astabs) ->
+    | InlineTextEmbedded(astabs) ->
         let (irabs, env) = transform_0 env astabs in
-        (IRInputHorzEmbedded(irabs), env)
+        (IRInlineTextEmbedded(irabs), env)
 
-    | InputHorzEmbeddedMath(astmath) ->
+    | InlineTextEmbeddedMath(astmath) ->
         let (irmath, env) = transform_0 env astmath in
-        (IRInputHorzEmbeddedMath(irmath), env)
+        (IRInlineTextEmbeddedMath(irmath), env)
 
-    | InputHorzEmbeddedCodeText(s) ->
-        (IRInputHorzEmbeddedCodeText(s), env)
+    | InlineTextEmbeddedCodeText(s) ->
+        (IRInlineTextEmbeddedCodeText(s), env)
 
-    | InputHorzContent(ast) ->
+    | InlineTextContent(ast) ->
         let (ir, env) = transform_0 env ast in
-        (IRInputHorzContent(ir), env)
+        (IRInlineTextContent(ir), env)
   )
 *)
 
-and transform_1_input_horz_content (_env : frame) (_its : inline_text_element list) : (ir inline_text_element_scheme) list * frame =
-  failwith "TODO: transform_1_input_horz_content"
+and transform_1_inline_text_content (_env : frame) (_its : inline_text_element list) : (ir inline_text_element_scheme) list * frame =
+  failwith "TODO: transform_1_inline_text_content"
 (*
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
-    | InputHorzText(s) ->
-        (InputHorzText(s), env)
+    | InlineTextText(s) ->
+        (InlineTextText(s), env)
 
-    | InputHorzEmbedded(astabs) ->
+    | InlineTextEmbedded(astabs) ->
         let (irabs, env) = transform_1 env astabs in
-        (InputHorzEmbedded(irabs), env)
+        (InlineTextEmbedded(irabs), env)
 
-    | InputHorzEmbeddedMath(astmath) ->
+    | InlineTextEmbeddedMath(astmath) ->
         let (irmath, env) = transform_1 env astmath in
-        (InputHorzEmbeddedMath(irmath), env)
+        (InlineTextEmbeddedMath(irmath), env)
 
-    | InputHorzEmbeddedCodeText(s) ->
-        (InputHorzEmbeddedCodeText(s), env)
+    | InlineTextEmbeddedCodeText(s) ->
+        (InlineTextEmbeddedCodeText(s), env)
 
-    | InputHorzContent(ast) ->
+    | InlineTextContent(ast) ->
         let (ir, env) = transform_1 env ast in
-        (InputHorzContent(ir), env)
+        (InlineTextContent(ir), env)
   )
 *)
 
 
-and transform_0_input_vert_content (_env : frame) (_bts : block_text_element list) : ir_input_vert_element list * frame =
-  failwith "TODO: transform_0_input_vert_content"
+and transform_0_block_text_content (_env : frame) (_bts : block_text_element list) : ir_block_text_element list * frame =
+  failwith "TODO: transform_0_block_text_content"
 (*
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
-    | InputVertEmbedded(astabs) ->
+    | BlockTextEmbedded(astabs) ->
         let (irabs, env) = transform_0 env astabs in
-        (IRInputVertEmbedded(irabs), env)
+        (IRBlockTextEmbedded(irabs), env)
 
-    | InputVertContent(ast) ->
+    | BlockTextContent(ast) ->
         let (ir, env) = transform_0 env ast in
-        (IRInputVertContent(ir), env)
+        (IRBlockTextContent(ir), env)
     )
 *)
 
 
-and transform_1_input_vert_content (_env : frame) (_bts : block_text_element list) : (ir block_text_element_scheme) list * frame =
-  failwith "TODO: transform_1_input_vert_content"
+and transform_1_block_text_content (_env : frame) (_bts : block_text_element list) : (ir block_text_element_scheme) list * frame =
+  failwith "TODO: transform_1_block_text_content"
 (*
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
-    | InputVertEmbedded(astabs) ->
+    | BlockTextEmbedded(astabs) ->
         let (irabs, env) = transform_1 env astabs in
-        (InputVertEmbedded(irabs), env)
+        (BlockTextEmbedded(irabs), env)
 
-    | InputVertContent(ast) ->
+    | BlockTextContent(ast) ->
         let (ir, env) = transform_1 env ast in
-        (InputVertContent(ir), env)
+        (BlockTextContent(ir), env)
   )
 *)
 
 
-and transform_0_input_math_content (_env : frame) (_ims : math_text_element list) : ir_input_math_element list * frame =
-  failwith "TODO: transform_0_input_math_content"
+and transform_0_math_text_content (_env : frame) (_ims : math_text_element list) : ir_math_text_element list * frame =
+  failwith "TODO: transform_0_math_text_content"
 
 
-and transform_1_input_math_content (_env : frame) (_ims : math_text_element list) : (ir math_text_element_scheme) list * frame =
-  failwith "TODO: transform_1_input_math_content"
+and transform_1_math_text_content (_env : frame) (_ims : math_text_element list) : (ir math_text_element_scheme) list * frame =
+  failwith "TODO: transform_1_math_text_content"
 
 
 and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment =
@@ -344,8 +344,8 @@ and transform_1_horz_input ih : frame =
     ih |> List.fold_left (fun (acc, env) ihelem ->
       let (ir, env) =
         match ihelem with
-        | InputHorzText(s)       -> (InputHorzText(s), env)
-        | InputHorzEmbedded(ast) -> let (code, env) = transform_1 env ast in (InputHorzEmbedded(code))
+        | InlineTextText(s)       -> (InlineTextText(s), env)
+        | InlineTextEmbedded(ast) -> let (code, env) = transform_1 env ast in (InlineTextEmbedded(code))
       in
       (Alist.extend acc code, env)
     ) (Alist.empty, env)
@@ -434,16 +434,16 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTEndOfList        -> code0 env CdEndOfList
 
   | InlineText(ihlst) ->
-      let (imihlst, env) = transform_1_input_horz_content env ihlst in
-      (IRCodeInputHorz(imihlst), env)
+      let (imihlst, env) = transform_1_inline_text_content env ihlst in
+      (IRCodeInlineText(imihlst), env)
 
   | BlockText(ivlst) ->
-      let (imivlst, env) = transform_1_input_vert_content env ivlst in
-      (IRCodeInputVert(imivlst), env)
+      let (imivlst, env) = transform_1_block_text_content env ivlst in
+      (IRCodeBlockText(imivlst), env)
 
   | MathText(ims) ->
-      let (imims, env) = transform_1_input_math_content env ims in
-      (IRCodeInputMath(imims), env)
+      let (imims, env) = transform_1_math_text_content env ims in
+      (IRCodeMathText(imims), env)
 
   | LambdaInline(_, _) ->
       failwith "TODO: transform_1, LambdaInline"
@@ -584,18 +584,16 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       return (IRConstant(List([])))
 
   | InlineText(ihlst) ->
-      let (imihlst, env) = transform_0_input_horz_content env ihlst in
-      (IRInputHorz(imihlst), env)
-        (* -- lazy evaluation; evaluates embedded variables only -- *)
+      let (imihlst, env) = transform_0_inline_text_content env ihlst in
+      (IRInlineText(imihlst), env)
 
   | BlockText(ivlst) ->
-      let (imivlst, env) = transform_0_input_vert_content env ivlst in
-      (IRInputVert(imivlst), env)
-        (* -- lazy evaluation; evaluates embedded variables only -- *)
+      let (imivlst, env) = transform_0_block_text_content env ivlst in
+      (IRBlockText(imivlst), env)
 
   | MathText(ims) ->
-      let (imims, env) = transform_0_input_math_content env ims in
-      (IRInputMath(imims), env)
+      let (imims, env) = transform_0_math_text_content env ims in
+      (IRMathText(imims), env)
 
   | LambdaInline(_, _) ->
       failwith "TODO: transform_0, LambdaInline"

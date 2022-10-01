@@ -762,10 +762,10 @@ read_pdf_mode_inline_text ictx ihvs
         ~code:{|
 let _ = ictx in
 let _ = value1 in
-failwith "TODO: HorzLex" (*
+failwith "TODO: PrimitiveReadInline" (*
 match value1 with
-| CompiledInputHorzClosure(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi ictx imihlst
-| _                                       -> report_bug_vm "HorzLex"
+| CompiledInlineTextClosure(imihlst, envi) -> exec_pdf_mode_intermediate_inline_text envi ictx imihlst
+| _                                        -> report_bug_vm "PrimitiveReadInline"
 *)
 |}
     ; inst "PrimitiveReadBlock"
@@ -784,10 +784,10 @@ read_pdf_mode_block_text valuectx bts
 |}
         ~code:{|
 match value1 with
-| CompiledInputVertClosure(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
-| _                                       -> report_bug_vm "VertLex"
+| CompiledBlockTextClosure(imivlst, envi) -> exec_pdf_mode_intermediate_block_text envi valuectx imivlst
+| _                                       -> report_bug_vm "PrimitiveReadBlock"
 |}
-    ; inst "MathLex"
+    ; inst "PrimitiveReadMath"
         ~name:"read-math"
         ~type_:Type.(tCTX @-> tMT @-> tMB)
         ~fields:[
@@ -798,17 +798,17 @@ match value1 with
         ]
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
-let imvs = get_math_text ~msg:"MathLex" value1 in
+let imvs = get_math_text ~msg:"PrimitiveReadMath" value1 in
 let mbs = read_pdf_mode_math_text ictx imvs in
 make_math_boxes mbs
 |}
         ~code:{|
 let _ = ictx in
 let _ = value1 in
-failwith "MathLex" (*
+failwith "TODO: PrimitiveReadMath" (*
 match value1 with
-| CompiledInputMathClosure(imims, envi) -> exec_pdf_mode_intermediate_input_math envi ictx imims
-| _                                     -> report_bug_vm "MathLex"
+| CompiledInputMathClosure(imims, envi) -> exec_pdf_mode_intermediate_math_text envi ictx imims
+| _                                     -> report_bug_vm "PrimitiveReadMath"
 *)
 |}
     ; inst "PrimitiveStringifyInline"
@@ -827,10 +827,10 @@ read_text_mode_inline_text value_tctx its
         ~code:{|
 let _ = value_tctx in
 let _ = its in
-failwith "TODO: TextHorzLex" (*
+failwith "TODO: PrimitiveStringifyInline" (*
 match value1 with
-| CompiledInputHorzClosure(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
-| _                                       -> report_bug_vm "TextHorzLex"
+| CompiledInlineTextClosure(imihlst, envi) -> exec_text_mode_intermediate_inline_text envi valuetctx imihlst
+| _                                        -> report_bug_vm "PrimitiveStringifyInline"
 *)
 |}
     ; inst "PrimitiveStringifyBlock"
@@ -849,20 +849,20 @@ read_text_mode_block_text value_tctx bts
         ~code:{|
 let _ = value_tctx in
 let _ = bts in
-failwith "TODO: TextVertLex" (*
+failwith "TODO: PrimitiveStringifyBlock" (*
 match value1 with
-| CompiledInputVertClosure(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
-| _                                       -> report_bug_vm "TextVertLex"
+| CompiledBlockTextClosure(imivlst, envi) -> exec_text_mode_intermediate_block_text envi valuetctx imivlst
+| _                                       -> report_bug_vm "PrimitiveStringifyBlock"
 *)
 |}
-    ; inst "TextMathLex"
+    ; inst "PrimitiveStringifyMath"
         ~name:"stringify-math"
         ~type_:Type.(tTCTX @-> tMT @-> tS)
         ~fields:[
         ]
         ~params:[
           param "value_tctx";
-          param "imvs" ~type_:"math_text ~msg:\"TextMathLex\"";
+          param "imvs" ~type_:"math_text ~msg:\"PrimitiveStringifyMath\"";
         ]
         ~is_text_mode_primitive:true
         ~code_interp:{|
@@ -871,7 +871,7 @@ read_text_mode_math_text value_tctx imvs
         ~code:{|
 let _ = value_tctx in
 let _ = imvs in
-failwith "TODO: TextVertLex"
+failwith "TODO: PrimitiveStringifyMath"
 |}
     ; inst "TextDeepenIndent"
         ~name:"deepen-indent"
@@ -1604,7 +1604,7 @@ InlineTextValue([ InlineTextValueString(str) ])
 let _ = str in
 failwith "TODO: vm, embed-string"
 (*
-CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)
+CompiledInlineTextClosure([CompiledImInlineTextText(str)], env)
 *)
 |}
     ; inst "PrimitiveExtract"
