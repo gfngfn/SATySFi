@@ -756,8 +756,8 @@ make_vert (List.append vblst1 vblst2)
         ]
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
-let ihvs = get_horz_text value1 in
-read_pdf_mode_horz_text ictx ihvs
+let ihvs = get_inline_text value1 in
+read_pdf_mode_inline_text ictx ihvs
 |}
         ~code:{|
 let _ = ictx in
@@ -818,15 +818,15 @@ match value1 with
         ]
         ~params:[
           param "value_tctx";
-          param "ihvs" ~type_:"horz_text";
+          param "its" ~type_:"inline_text";
         ]
         ~is_text_mode_primitive:true
         ~code_interp:{|
-read_text_mode_horz_text value_tctx ihvs
+read_text_mode_inline_text value_tctx its
 |}
         ~code:{|
 let _ = value_tctx in
-let _ = ihvs in
+let _ = its in
 failwith "TODO: TextHorzLex" (*
 match value1 with
 | CompiledInputHorzClosure(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
@@ -1598,7 +1598,7 @@ Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code_interp:{|
-InlineTextValue([ InputHorzValueText(str) ])
+InlineTextValue([ InlineTextValueText(str) ])
 |}
         ~code:{|
 CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)

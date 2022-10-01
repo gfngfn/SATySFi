@@ -832,11 +832,11 @@ and instruction =
   | OpConvertSymbolToCode
 #include "__insttype.gen.ml"
 
-and input_horz_value_element =
-  | InputHorzValueText             of string
-  | InputHorzValueCommandClosure   of horz_command_closure
-  | InputHorzValueEmbeddedMath     of input_math_value_element list
-  | InputHorzValueEmbeddedCodeArea of string
+and inline_text_value_element =
+  | InlineTextValueText             of string
+  | InlineTextValueCommandClosure   of horz_command_closure
+  | InlineTextValueEmbeddedMath     of input_math_value_element list
+  | InlineTextValueEmbeddedCodeArea of string
 
 and input_vert_value_element =
   | InputVertValueCommandClosure of vert_command_closure
@@ -902,7 +902,7 @@ and syntactic_value =
 (* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
   | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | InlineTextValue  of input_horz_value_element list
+  | InlineTextValue  of inline_text_value_element list
   | BlockTextValue   of input_vert_value_element list
   | MathTextValue    of input_math_value_element list
 

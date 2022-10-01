@@ -204,9 +204,9 @@ let get_vert_text : syntactic_value -> input_vert_value_element list = function
   | value                -> report_bug_value "get_vert_text" value
 
 
-let get_horz_text : syntactic_value -> input_horz_value_element list = function
+let get_inline_text : syntactic_value -> inline_text_value_element list = function
   | InlineTextValue(ihvs) -> ihvs
-  | value                 -> report_bug_value "get_horz_text" value
+  | value                 -> report_bug_value "get_inline_text" value
 
 
 let get_image : syntactic_value -> ImageInfo.key = function
