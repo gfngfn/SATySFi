@@ -1406,24 +1406,23 @@ and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_math_text_el
       | UTMathTextChar(uch) ->
           MathTextChar(uch)
 
-      | UTMathTextApplyCommand(utastcmd, utcmdarglst) ->
-          let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
-          let (_, tycmdmain) = tycmd in
+      | UTMathTextApplyCommand(utast_cmd, utcmdarglst) ->
+          let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
           begin
-            match tycmdmain with
-            | MathCommandType(cmdargtylstreq) ->
-                let args = typecheck_command_arguments tycmd rng pre tyenv utcmdarglst cmdargtylstreq in
+            match ty_cmd with
+            | (_, MathCommandType(cmdargtys)) ->
+                let args = typecheck_command_arguments ty_cmd rng pre tyenv utcmdarglst cmdargtys in
                 MathTextApplyCommand{
-                  command   = ecmd;
+                  command   = e_cmd;
                   arguments = args;
                 }
 
-            | InlineCommandType(_) ->
-                let (rngcmd, _) = utastcmd in
-                raise_error (HorzCommandInMath(rngcmd))
+            | (_, InlineCommandType(_)) ->
+                let (rng_cmd, _) = utast_cmd in
+                raise_error (InlineCommandInMath(rng_cmd))
 
             | _ ->
-                failwith (Printf.sprintf "unexpected type: %s" (Display.show_mono_type tycmd))
+                failwith (Printf.sprintf "unexpected type: %s" (Display.show_mono_type ty_cmd))
           end
 
       | UTMathTextContent(utast0) ->
@@ -1496,7 +1495,7 @@ and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utit
 
           | (_, MathCommandType(_)) ->
               let (rng_cmd, _) = utast_cmd in
-              raise_error (MathCommandInHorz(rng_cmd))
+              raise_error (MathCommandInInline(rng_cmd))
 
           | _ ->
               assert false

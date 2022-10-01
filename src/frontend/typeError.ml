@@ -17,8 +17,8 @@ type type_error =
   | LateMacroArgumentExpected            of Range.t * mono_type
   | EarlyMacroArgumentExpected           of Range.t * mono_type
   | UnknownUnitOfLength                  of Range.t * length_unit_name
-  | HorzCommandInMath                    of Range.t
-  | MathCommandInHorz                    of Range.t
+  | InlineCommandInMath                  of Range.t
+  | MathCommandInInline                  of Range.t
   | BreaksValueRestriction               of Range.t
   | MultiplePatternVariable              of Range.t * Range.t * var_name
   | LabelUsedMoreThanOnce                of Range.t * label

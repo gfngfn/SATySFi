@@ -31,7 +31,7 @@ type low_math_atom_main =
       depth  : length;
       output : OutputText.t;
     }
-  | LowMathAtomEmbeddedHorz of {
+  | LowMathAtomEmbeddedInline of {
       content : HorzBox.horz_box list;
       height  : length; (* Can be gained from `content` *)
       depth   : length; (* Can be gained from `content` *)
@@ -677,8 +677,8 @@ let convert_math_char (ictx : input_context) ~(kern : (math_char_kern_func * mat
 
 let get_height_and_depth_of_low_math_atom (lma : low_math_atom) : length * length =
   match lma.atom_main with
-  | LowMathAtomGlyph{ height; depth; _ }        -> (height, depth)
-  | LowMathAtomEmbeddedHorz{ height; depth; _ } -> (height, depth)
+  | LowMathAtomGlyph{ height; depth; _ }          -> (height, depth)
+  | LowMathAtomEmbeddedInline{ height; depth; _ } -> (height, depth)
 
 
 let check_subscript (mlstB : math_box list) =
@@ -696,7 +696,7 @@ let convert_math_element (mk : math_kind) (ma : math_box_atom) : low_math_atom =
   match ma with
   | MathEmbeddedInline(ibs) ->
       let (_wid, hgt, dpt) = LineBreak.get_natural_metrics ibs in
-      let lma = LowMathAtomEmbeddedHorz{ content = ibs; height = hgt; depth = dpt } in
+      let lma = LowMathAtomEmbeddedInline{ content = ibs; height = hgt; depth = dpt } in
       {
         atom_main       = lma;
         atom_left_kern  = no_left_kern hgt dpt mk;
@@ -952,7 +952,7 @@ let horz_of_low_math_element (lme : low_math_atom_main) : horz_box list =
   | LowMathAtomGlyph{ info; width; height; depth; output } ->
       [ HorzPure(PHCInnerMathGlyph{ info; width; height; depth; output }) ]
 
-  | LowMathAtomEmbeddedHorz{ content = hbs; _ } ->
+  | LowMathAtomEmbeddedInline{ content = hbs; _ } ->
       hbs
 
 
