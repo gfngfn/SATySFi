@@ -764,7 +764,6 @@ let rec typecheck
     typecheck presub t u
   in
   match utastmain with
-  | UTStringEmpty         -> (base (BCString(""))   , (rng, BaseType(StringType)))
   | UTIntegerConstant(nc) -> (base (BCInt(nc))      , (rng, BaseType(IntType))   )
   | UTFloatConstant(nc)   -> (base (BCFloat(nc))    , (rng, BaseType(FloatType)) )
   | UTStringConstant(sc)  -> (base (BCString(sc))   , (rng, BaseType(StringType)))

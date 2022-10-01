@@ -309,7 +309,7 @@ type pre = {
   level           : level;
   type_parameters : type_parameter_map;
   row_parameters  : row_parameter_map;
-  quantifiability : quantifiability;  (* maybe omitted in the future *)
+  quantifiability : quantifiability;  (* TODO: maybe omitted in the future *)
   stage           : stage;
 }
 
@@ -363,7 +363,7 @@ and untyped_signature_main =
 
 and untyped_declaration =
   untyped_declaration_main
-    (* TEMPORARY; should be `untyped_declaration_main ranged`  *)
+    (* TODO; should be `untyped_declaration_main ranged`  *)
 
 and untyped_declaration_main =
   | UTDeclValue      of stage * var_name ranged * manual_quantifier * manual_type
@@ -465,7 +465,6 @@ and untyped_abstract_tree_main =
   | UTIntegerConstant      of int
   | UTFloatConstant        of float
   | UTLengthDescription    of float * length_unit_name
-  | UTStringEmpty
   | UTStringConstant       of string
   | UTPositionedString     of input_position * string
 (* Input texts: *)
