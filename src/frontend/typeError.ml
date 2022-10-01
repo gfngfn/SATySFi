@@ -12,8 +12,7 @@ type type_error =
   | UndefinedKindName                    of Range.t * kind_name
   | UndefinedModuleName                  of Range.t * module_name
   | UndefinedSignatureName               of Range.t * signature_name
-  | UndefinedHorzMacro                   of Range.t * command_name
-  | UndefinedVertMacro                   of Range.t * command_name
+  | UndefinedMacro                       of Range.t * macro_name
   | InvalidNumberOfMacroArguments        of Range.t * mono_macro_parameter_type list
   | LateMacroArgumentExpected            of Range.t * mono_type
   | EarlyMacroArgumentExpected           of Range.t * mono_type

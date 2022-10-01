@@ -186,7 +186,7 @@ let find_macro (tyenv : Typeenv.t) (modidents : (module_name ranged) list) ((rng
   | [] ->
       begin
         match tyenv |> Typeenv.find_macro csnm with
-        | None           -> raise_error (UndefinedHorzMacro(rng_cs, csnm))
+        | None           -> raise_error (UndefinedMacro(rng_cs, csnm))
         | Some(macentry) -> macentry
       end
 
@@ -208,7 +208,7 @@ let find_macro (tyenv : Typeenv.t) (modidents : (module_name ranged) list) ((rng
         | ConcStructure(ssig) ->
             begin
               match ssig |> StructSig.find_macro csnm with
-              | None           -> raise_error (UndefinedHorzMacro(rng_cs, csnm))
+              | None           -> raise_error (UndefinedMacro(rng_cs, csnm))
               | Some(macentry) -> macentry
             end
       end
