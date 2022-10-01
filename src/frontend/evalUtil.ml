@@ -89,9 +89,9 @@ let get_paddings (value : syntactic_value) : HorzBox.paddings =
 
 let get_cell (value : syntactic_value) : HorzBox.cell =
     match value with
-    | Constructor("NormalCell", Tuple([valuepads; BaseConstant(BCHorz(hblst))])) ->
+    | Constructor("NormalCell", Tuple([valuepads; BaseConstant(BCInlineBoxes(ibs))])) ->
         let pads = get_paddings valuepads in
-        HorzBox.NormalCell(pads, hblst)
+        HorzBox.NormalCell(pads, ibs)
 
     | Constructor("EmptyCell", BaseConstant(BCUnit)) ->
         HorzBox.EmptyCell
@@ -100,10 +100,10 @@ let get_cell (value : syntactic_value) : HorzBox.cell =
         BaseConstant(BCInt(nr));
         BaseConstant(BCInt(nc));
         valuepads;
-        BaseConstant(BCHorz(hblst));
+        BaseConstant(BCInlineBoxes(ibs));
       ])) ->
         let pads = get_paddings valuepads in
-        HorzBox.MultiCell(nr, nc, pads, hblst)
+        HorzBox.MultiCell(nr, nc, pads, ibs)
 
     | _ ->
         report_bug_value "get_cell" value
@@ -190,13 +190,13 @@ let make_font_value (abbrev, sizer, risingr) =
 
 
 let get_vert_boxes : syntactic_value -> HorzBox.vert_box list = function
-  | BaseConstant(BCVert(vbs)) -> vbs
-  | value                     -> report_bug_value "get_vert_boxes" value
+  | BaseConstant(BCBlockBoxes(bbs)) -> bbs
+  | value                           -> report_bug_value "get_vert_boxes" value
 
 
 let get_horz_boxes : syntactic_value -> HorzBox.horz_box list = function
-  | BaseConstant(BCHorz(hbs)) -> hbs
-  | value                     -> report_bug_value "get_horz_boxes" value
+  | BaseConstant(BCInlineBoxes(ibs)) -> ibs
+  | value                            -> report_bug_value "get_horz_boxes" value
 
 
 let get_vert_text : syntactic_value -> input_vert_value_element list = function
@@ -477,8 +477,8 @@ let make_float x = BaseConstant(BCFloat(x))
 let make_length l = BaseConstant(BCLength(l))
 let make_string s = BaseConstant(BCString(s))
 let make_regexp re = BaseConstant(BCRegExp(re))
-let make_horz h = BaseConstant(BCHorz(h))
-let make_vert v = BaseConstant(BCVert(v))
+let make_horz ibs = BaseConstant(BCInlineBoxes(ibs))
+let make_vert bbs = BaseConstant(BCBlockBoxes(bbs))
 let make_path p = BaseConstant(BCPath(p))
 let make_prepath pp = BaseConstant(BCPrePath(pp))
 let make_graphics g = BaseConstant(BCGraphics(g))
@@ -590,7 +590,7 @@ and make_page_parts_scheme_func reducef valuef : HorzBox.page_parts_scheme_func 
                asc |> LabelMap.find_opt "footer-origin",
                asc |> LabelMap.find_opt "footer-content")
            with
-           | (Some(vHO), Some(BaseConstant(BCVert(vHCvert))), Some(vFO), Some(BaseConstant(BCVert(vFCvert)))) ->
+           | (Some(vHO), Some(BaseConstant(BCBlockBoxes(vHCvert))), Some(vFO), Some(BaseConstant(BCBlockBoxes(vFCvert)))) ->
                HorzBox.({
                  header_origin  = get_point vHO;
                  header_content = PageBreak.solidify vHCvert;

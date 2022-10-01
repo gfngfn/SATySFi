@@ -621,8 +621,8 @@ type base_constant =
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
   | BCImageKey of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
-  | BCHorz     of HorzBox.horz_box list
-  | BCVert     of HorzBox.vert_box list
+  | BCInlineBoxes of HorzBox.horz_box list
+  | BCBlockBoxes  of HorzBox.vert_box list
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCDocument        of (length * length) * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list

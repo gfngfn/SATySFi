@@ -692,11 +692,11 @@ let base bc = BaseConstant(bc)
 let pdf_mode_table =
   List.append general_table
     [
-      ("inline-fil", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzPure(PHSOuterFil)])))));
-      ("inline-nil", ~% tIB, (fun _ -> base (BCHorz([])))                               );
-      ("omit-skip-after", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzOmitSkipAfter])))));
-      ("block-nil" , ~% tBB, (fun _ -> base (BCVert([])))                               );
-      ("clear-page", ~% tBB, (fun _ -> base (BCVert(HorzBox.([VertClearPage]))))        );
+      ("inline-fil"     , ~% tIB, (fun _ -> base (BCInlineBoxes(HorzBox.([HorzPure(PHSOuterFil)])))));
+      ("inline-nil"     , ~% tIB, (fun _ -> base (BCInlineBoxes([]))));
+      ("omit-skip-after", ~% tIB, (fun _ -> base (BCInlineBoxes(HorzBox.([HorzOmitSkipAfter])))));
+      ("block-nil"      , ~% tBB, (fun _ -> base (BCBlockBoxes([]))));
+      ("clear-page"     , ~% tBB, (fun _ -> base (BCBlockBoxes(HorzBox.([VertClearPage])))));
 
 #include "__primitives_pdf_mode.gen.ml"
     ]
