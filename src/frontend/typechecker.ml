@@ -965,7 +965,7 @@ let rec typecheck
         in
         typecheck_iter tyenv utast_body
       in
-      unify ty_body (Range.dummy "lambda-horz-return", BaseType(bsty_ret));
+      unify ty_body (Range.dummy "lambda-inline-return", BaseType(bsty_ret));
       let e =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
@@ -1005,7 +1005,7 @@ let rec typecheck
         in
         typecheck_iter tyenv_sub utast_body
       in
-      unify ty_body (Range.dummy "lambda-vert-return", BaseType(bsty_ret));
+      unify ty_body (Range.dummy "lambda-block-return", BaseType(bsty_ret));
       let e =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
@@ -1286,8 +1286,8 @@ let rec typecheck
         else
           (PrimitiveReadInline(e_ctx, eI), ContextType, InlineBoxesType)
       in
-      unify ty_ctx (Range.dummy "ut-lex-horz-1", BaseType(bsty_ctx));
-      unify tyI (Range.dummy "ut-lex-horz-2", BaseType(InlineTextType));
+      unify ty_ctx (Range.dummy "ut-read-inline-1", BaseType(bsty_ctx));
+      unify tyI (Range.dummy "ut-read-inline-2", BaseType(InlineTextType));
       (e_ret, (rng, BaseType(bsty_ret)))
 
   | UTReadBlock(utast_ctx, utastB) ->
@@ -1299,8 +1299,8 @@ let rec typecheck
         else
           (PrimitiveReadBlock(e_ctx, eB), ContextType, BlockBoxesType)
       in
-      unify ty_ctx (Range.dummy "ut-lex-vert-1", BaseType(bsty_ctx));
-      unify tyB (Range.dummy "ut-lex-vert-2", BaseType(BlockTextType));
+      unify ty_ctx (Range.dummy "ut-read-block-1", BaseType(bsty_ctx));
+      unify tyB (Range.dummy "ut-read-block-2", BaseType(BlockTextType));
       (e_ret, (rng, BaseType(bsty_ret)))
 
   | UTNext(utast1) ->
@@ -1505,7 +1505,7 @@ and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utit
 
     | (_, UTInlineTextEmbeddedMath(utast_math)) ->
         let (emath, tymath) = typecheck pre tyenv utast_math in
-        unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(MathTextType));
+        unify tymath (Range.dummy "ut-inline-text-embedded-math", BaseType(MathTextType));
         Alist.extend acc (InlineTextEmbeddedMath(emath))
 
     | (_, UTInlineTextEmbeddedCodeArea(s)) ->
@@ -1513,7 +1513,7 @@ and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utit
 
     | (_, UTInlineTextContent(utast0)) ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "ut-input-horz-content", BaseType(InlineTextType));
+        unify ty0 (Range.dummy "ut-inline-text-content", BaseType(InlineTextType));
         Alist.extend acc (InlineTextContent(e0))
 
     | (_, UTInlineTextString(s)) ->

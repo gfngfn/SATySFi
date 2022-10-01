@@ -449,10 +449,10 @@ and lex_block stack = parse
         if Stack.length stack = 1 then
           EOI(pos)
         else
-          report_error lexbuf "unexpected end of input while reading a vertical area"
+          report_error lexbuf "unexpected end of input while reading a block text area"
       }
   | _ as c
-      { report_error lexbuf (Printf.sprintf "unexpected character '%s' in a vertical area" (String.make 1 c)) }
+      { report_error lexbuf (Printf.sprintf "unexpected character '%s' in a block text area" (String.make 1 c)) }
 
 and lex_inline stack = parse
   | "%"

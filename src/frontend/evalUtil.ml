@@ -189,14 +189,14 @@ let make_font_value (abbrev, sizer, risingr) =
   ])
 
 
-let get_vert_boxes : syntactic_value -> HorzBox.vert_box list = function
+let get_block_boxes : syntactic_value -> HorzBox.vert_box list = function
   | BaseConstant(BCBlockBoxes(bbs)) -> bbs
-  | value                           -> report_bug_value "get_vert_boxes" value
+  | value                           -> report_bug_value "get_block_boxes" value
 
 
-let get_horz_boxes : syntactic_value -> HorzBox.horz_box list = function
+let get_inline_boxes : syntactic_value -> HorzBox.horz_box list = function
   | BaseConstant(BCInlineBoxes(ibs)) -> ibs
-  | value                            -> report_bug_value "get_horz_boxes" value
+  | value                            -> report_bug_value "get_inline_boxes" value
 
 
 let get_block_text : syntactic_value -> block_text_value_element list = function
@@ -477,8 +477,8 @@ let make_float x = BaseConstant(BCFloat(x))
 let make_length l = BaseConstant(BCLength(l))
 let make_string s = BaseConstant(BCString(s))
 let make_regexp re = BaseConstant(BCRegExp(re))
-let make_horz ibs = BaseConstant(BCInlineBoxes(ibs))
-let make_vert bbs = BaseConstant(BCBlockBoxes(bbs))
+let make_inline_boxes ibs = BaseConstant(BCInlineBoxes(ibs))
+let make_block_boxes bbs = BaseConstant(BCBlockBoxes(bbs))
 let make_path p = BaseConstant(BCPath(p))
 let make_prepath pp = BaseConstant(BCPrePath(pp))
 let make_graphics g = BaseConstant(BCGraphics(g))
@@ -523,7 +523,7 @@ let make_hook (reducef : syntactic_value -> syntactic_value list -> syntactic_va
 let make_column_hook_func reducef valuef : HorzBox.column_hook_func =
   (fun () ->
     let valueret = reducef valuef [BaseConstant(BCUnit)] in
-    get_vert_boxes valueret
+    get_block_boxes valueret
   )
 
 
@@ -633,10 +633,10 @@ let make_paren reducef (value_parenf : syntactic_value) : paren =
      let value_ctx = make_context ictx in
      let value_ret = reducef value_parenf [ value_hgt; value_dpt; value_ctx ] in
      match value_ret with
-     | Tuple([ value_hbs; value_kernf ]) ->
-         let hbs = get_horz_boxes value_hbs in
+     | Tuple([ value_ibs; value_kernf ]) ->
+         let ibs = get_inline_boxes value_ibs in
          let kernf = make_math_kern_func reducef value_kernf in
-         (hbs, kernf)
+         (ibs, kernf)
 
      | _ ->
          report_bug_vm "make_paren"

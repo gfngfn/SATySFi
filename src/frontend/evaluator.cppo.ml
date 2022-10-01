@@ -939,12 +939,12 @@ and read_pdf_mode_block_text (value_ctx : syntactic_value) (btvs : block_text_va
           let env = add_to_environment env evid_ctx loc_ctx in
           interpret_0 env ast_body
         in
-        get_vert_boxes value
+        get_block_boxes value
 
     ) |> List.concat
   in
   let imvbs = interpret_commands btvs in
-  make_vert imvbs
+  make_block_boxes imvbs
 
 
 and read_pdf_mode_inline_text (ictx : input_context) (itvs : inline_text_value_element list) : syntactic_value =
@@ -1004,7 +1004,7 @@ and read_pdf_mode_inline_text (ictx : input_context) (itvs : inline_text_value_e
           let env = add_to_environment env evid_ctx loc_ctx in
           interpret_0 env ast_body
         in
-        get_horz_boxes value
+        get_inline_boxes value
 
     | NomInlineTextString(s_utf8) ->
         let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
@@ -1015,7 +1015,7 @@ and read_pdf_mode_inline_text (ictx : input_context) (itvs : inline_text_value_e
 
   let nmihs = normalize itvs in
   let hbs = interpret_commands nmihs in
-  make_horz hbs
+  make_inline_boxes hbs
 
 
 (* Selects the topmost pattern in `patbrs` that matches `value_obj`,
