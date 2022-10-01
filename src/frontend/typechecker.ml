@@ -3390,7 +3390,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
             raise_error (NotAStructureSignature(rng_mod, fsig))
       end
 
-  | UTBindHorzMacro((rng_cs, csnm), macparams, utast1) ->
+  | UTBindInlineMacro((rng_cs, csnm), macparams, utast1) ->
       let pre =
         {
           stage           = Stage1;
@@ -3417,7 +3417,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
       (binds, (OpaqueIDMap.empty, ssig))
 
-  | UTBindVertMacro((rng_cs, csnm), macparams, utast1) ->
+  | UTBindBlockMacro((rng_cs, csnm), macparams, utast1) ->
       let pre =
         {
           stage           = Stage1;

@@ -333,13 +333,13 @@ type untyped_binding =
   untyped_binding_main ranged
 
 and untyped_binding_main =
-  | UTBindValue     of stage * untyped_rec_or_nonrec
-  | UTBindType      of untyped_type_binding list
-  | UTBindModule    of module_name ranged * untyped_signature option * untyped_module
-  | UTBindSignature of signature_name ranged * untyped_signature
-  | UTBindInclude   of untyped_module
-  | UTBindHorzMacro of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
-  | UTBindVertMacro of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindValue       of stage * untyped_rec_or_nonrec
+  | UTBindType        of untyped_type_binding list
+  | UTBindModule      of module_name ranged * untyped_signature option * untyped_module
+  | UTBindSignature   of signature_name ranged * untyped_signature
+  | UTBindInclude     of untyped_module
+  | UTBindInlineMacro of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindBlockMacro  of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
 
 and untyped_module =
   untyped_module_main ranged

@@ -422,12 +422,12 @@ bind:
   | tokL=VAL; INLINE; imacrobind=bind_inline_macro
       {
         let (rng_cs, csnm, macparams, utast1) = imacrobind in
-        (tokL, UTBindHorzMacro((rng_cs, csnm), macparams, utast1))
+        (tokL, UTBindInlineMacro((rng_cs, csnm), macparams, utast1))
       }
   | tokL=VAL; BLOCK; bmacrobind=bind_block_macro
       {
         let (rng_cs, csnm, macparams, utast1) = bmacrobind in
-        (tokL, UTBindVertMacro((rng_cs, csnm), macparams, utast1))
+        (tokL, UTBindBlockMacro((rng_cs, csnm), macparams, utast1))
       }
   | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
