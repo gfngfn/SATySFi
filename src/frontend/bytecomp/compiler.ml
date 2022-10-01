@@ -67,7 +67,7 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
   compiled_ihlist
 
 
-and compile_code_input_horz (_irihlst : (ir input_horz_element_scheme) list) =
+and compile_code_input_horz (_irits : (ir inline_text_element_scheme) list) =
   failwith "TODO: compile_code_input_horz"
 (*
   irihlst |> List.map (function

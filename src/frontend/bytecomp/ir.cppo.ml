@@ -35,7 +35,7 @@ let map_with_env (type a) (type b) (f : frame -> a -> b * frame) (env : frame) (
   iter env lst Alist.empty
 
 
-let rec transform_0_input_horz_content (_env : frame) (_ihlst : input_horz_element list) : ir_input_horz_element list * frame =
+let rec transform_0_input_horz_content (_env : frame) (_its : inline_text_element list) : ir_input_horz_element list * frame =
   failwith "TODO: transform_0_input_horz_content"
 (*
   ihlst @|> env @|> map_with_env (fun env elem ->
@@ -60,7 +60,7 @@ let rec transform_0_input_horz_content (_env : frame) (_ihlst : input_horz_eleme
   )
 *)
 
-and transform_1_input_horz_content (_env : frame) (_ihlst : input_horz_element list) : (ir input_horz_element_scheme) list * frame =
+and transform_1_input_horz_content (_env : frame) (_its : inline_text_element list) : (ir inline_text_element_scheme) list * frame =
   failwith "TODO: transform_1_input_horz_content"
 (*
   ihlst @|> env @|> map_with_env (fun env elem ->

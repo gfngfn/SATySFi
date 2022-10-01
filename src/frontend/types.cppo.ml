@@ -559,12 +559,12 @@ type untyped_source_file =
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
-type 'a input_horz_element_scheme =
-  | InputHorzText             of string
-  | InputHorzContent          of 'a
-  | InputHorzEmbeddedMath     of 'a
-  | InputHorzEmbeddedCodeArea of string
-  | InputHorzApplyCommand of {
+type 'a inline_text_element_scheme =
+  | InlineTextString           of string
+  | InlineTextContent          of 'a
+  | InlineTextEmbeddedMath     of 'a
+  | InlineTextEmbeddedCodeArea of string
+  | InlineTextApplyCommand of {
       command   : 'a;
       arguments : ('a LabelMap.t * 'a) list;
     }
@@ -724,7 +724,7 @@ and ir =
 
   | IRCodeCombinator        of (code_value list -> code_value) * int * ir list
   | IRCodeRecord            of label list * ir list
-  | IRCodeInputHorz         of (ir input_horz_element_scheme) list
+  | IRCodeInputHorz         of (ir inline_text_element_scheme) list
   | IRCodeInputVert         of (ir input_vert_element_scheme) list
   | IRCodeInputMath         of (ir input_math_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
@@ -821,7 +821,7 @@ and instruction =
   | OpApplyCodeCombinator of (code_value list -> code_value) * int
   | OpCodeMakeRecord of label list
   | OpCodeMakeTuple of int
-  | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
+  | OpCodeMakeInputHorz of ((instruction list) inline_text_element_scheme) list
   | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
   | OpCodePatternMatch  of Range.t * ((instruction list) ir_pattern_branch_scheme) list
   | OpCodeLetRec        of ((instruction list) ir_letrec_binding_scheme) list * instruction list
@@ -921,7 +921,7 @@ and abstract_tree =
   | ASTBaseConstant       of base_constant
   | ASTEndOfList
 (* -- input texts -- *)
-  | InlineText            of input_horz_element list
+  | InlineText            of inline_text_element list
   | BlockText             of input_vert_element list
   | MathText              of input_math_element list
   | LambdaInline          of EvalVarID.t * abstract_tree
@@ -954,8 +954,8 @@ and abstract_tree =
   | ASTCodeSymbol         of CodeSymbol.t
 #include "__attype.gen.ml"
 
-and input_horz_element =
-  abstract_tree input_horz_element_scheme
+and inline_text_element =
+  abstract_tree inline_text_element_scheme
 
 and input_vert_element =
   abstract_tree input_vert_element_scheme
@@ -1100,7 +1100,7 @@ and code_value =
   | CdPersistent    of Range.t * EvalVarID.t
   | CdBaseConstant  of base_constant
   | CdEndOfList
-  | CdInlineText    of code_input_horz_element list
+  | CdInlineText    of code_inline_text_element list
   | CdBlockText     of code_input_vert_element list
   | CdMathText      of code_input_math_element list
   | CdLambdaInline  of CodeSymbol.t * code_value
@@ -1123,8 +1123,8 @@ and code_value =
   | CdTuple         of code_value TupleList.t
 #include "__codetype.gen.ml"
 
-and code_input_horz_element =
-  code_value input_horz_element_scheme
+and code_inline_text_element =
+  code_value inline_text_element_scheme
 
 and code_input_vert_element =
   code_value input_vert_element_scheme
@@ -1233,14 +1233,14 @@ let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value
 
 let map_input_horz f ihlst =
   ihlst |> List.map (function
-  | InputHorzText(s) ->
-      InputHorzText(s)
+  | InlineTextString(s) ->
+      InlineTextString(s)
 
-  | InputHorzApplyCommand{
+  | InlineTextApplyCommand{
       command = ast_cmd;
       arguments;
     } ->
-      InputHorzApplyCommand{
+      InlineTextApplyCommand{
         command =
           f ast_cmd;
 
@@ -1250,9 +1250,9 @@ let map_input_horz f ihlst =
           );
       }
 
-  | InputHorzContent(ast)        -> InputHorzContent(f ast)
-  | InputHorzEmbeddedMath(ast)   -> InputHorzEmbeddedMath(f ast)
-  | InputHorzEmbeddedCodeArea(s) -> InputHorzEmbeddedCodeArea(s)
+  | InlineTextContent(ast)        -> InlineTextContent(f ast)
+  | InlineTextEmbeddedMath(ast)   -> InlineTextEmbeddedMath(f ast)
+  | InlineTextEmbeddedCodeArea(s) -> InlineTextEmbeddedCodeArea(s)
   )
 
 

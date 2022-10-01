@@ -809,7 +809,7 @@ let rec typecheck
         (base (BCLength(len)), (rng, BaseType(LengthType)))
 
   | UTInlineText(utiis) ->
-      let ihlst = typecheck_input_horz rng pre tyenv utiis in
+      let ihlst = typecheck_inline_text rng pre tyenv utiis in
       (InlineText(ihlst), (rng, BaseType(InlineTextType)))
 
   | UTBlockText(utibs) ->
@@ -1489,7 +1489,7 @@ and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
   aux Alist.empty utivlst
 
 
-and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) : input_horz_element list =
+and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) : inline_text_element list =
   let rec aux acc utihlst =
     match utihlst with
     | [] ->
@@ -1510,23 +1510,23 @@ and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihl
               assert false
         in
         let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
-        aux (Alist.extend acc (InputHorzApplyCommand{ command = e_cmd; arguments = args })) tail
+        aux (Alist.extend acc (InlineTextApplyCommand{ command = e_cmd; arguments = args })) tail
 
     | (_, UTInputHorzEmbeddedMath(utast_math)) :: tail ->
         let (emath, tymath) = typecheck pre tyenv utast_math in
         unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(MathTextType));
-        aux (Alist.extend acc (InputHorzEmbeddedMath(emath))) tail
+        aux (Alist.extend acc (InlineTextEmbeddedMath(emath))) tail
 
     | (_, UTInputHorzEmbeddedCodeArea(s)) :: tail ->
-        aux (Alist.extend acc (InputHorzEmbeddedCodeArea(s))) tail
+        aux (Alist.extend acc (InlineTextEmbeddedCodeArea(s))) tail
 
     | (_, UTInputHorzContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
         unify ty0 (Range.dummy "ut-input-horz-content", BaseType(InlineTextType));
-        aux (Alist.extend acc (InputHorzContent(e0))) tail
+        aux (Alist.extend acc (InlineTextContent(e0))) tail
 
     | (_, UTInputHorzText(s)) :: tail ->
-        aux (Alist.extend acc (InputHorzText(s))) tail
+        aux (Alist.extend acc (InlineTextString(s))) tail
 
     | (rng_app, UTInputHorzMacro(hmacro, utmacargs)) :: tail ->
         begin
@@ -1551,7 +1551,7 @@ and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihl
               in
               let eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
               let eapp = apply_tree_of_list (ContentOf(rng_cs, evid)) eargs in
-              let ih = InputHorzContent(Prev(eapp)) in
+              let ih = InlineTextContent(Prev(eapp)) in
               aux (Alist.extend acc ih) tail
         end
   in
