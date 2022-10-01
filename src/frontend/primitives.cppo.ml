@@ -680,9 +680,9 @@ let general_table : (var_name * poly_type * (environment -> syntactic_value)) li
       ( "!"  , ptyderef             , lambda1 (fun v1 -> Dereference(v1))                   );
       ( "::" , ptycons              , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))      );
       ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(LabelMap.empty, vf, vx))  );
-      ( "<>" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(EqualTo(v1, v2)))    );
-      ( ">=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(LessThan(v1, v2)))   );
-      ( "<=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))));
+      ( "<>" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveEqualTo(v1, v2)))    );
+      ( ">=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveLessThan(v1, v2)))   );
+      ( "<=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveGreaterThan(v1, v2))));
     ]
 
 
