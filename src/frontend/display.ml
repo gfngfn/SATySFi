@@ -413,10 +413,10 @@ let show_poly_macro_parameter_type (macparamty : poly_macro_parameter_type) =
 
 let show_poly_macro_type (macty : poly_macro_type) =
   match macty with
-  | HorzMacroType(macparamtys) ->
+  | InlineMacroType(macparamtys) ->
       let ss = macparamtys |> List.map show_poly_macro_parameter_type in
       Printf.sprintf "inline [%s]" (String.concat ", " ss)
 
-  | VertMacroType(macparamtys) ->
+  | BlockMacroType(macparamtys) ->
       let ss = macparamtys |> List.map show_poly_macro_parameter_type in
       Printf.sprintf "block [%s]" (String.concat ", " ss)

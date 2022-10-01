@@ -777,11 +777,11 @@ typ_record_elem:
 ;
 inline_macro_type:
   | tokL=INLINE; L_SQUARE; mnmacroargtys=optterm_list(COMMA, typ_macro_arg); tokR=R_SQUARE
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MHorzMacroType(mnmacroargtys)) }
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MInlineMacroType(mnmacroargtys)) }
 ;
 block_macro_type:
   | tokL=BLOCK; L_SQUARE; mnmacroargtys=optterm_list(COMMA, typ_macro_arg); tokR=R_SQUARE
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MVertMacroType(mnmacroargtys)) }
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MBlockMacroType(mnmacroargtys)) }
 ;
 typ_macro_arg:
   | mnty=typ_prod

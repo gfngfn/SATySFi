@@ -206,8 +206,8 @@ let instantiate_macro_type (lev : level) (qtfbl : quantifiability) (pmacty : pol
     | EarlyMacroParameter(pty) -> EarlyMacroParameter(instantiate_impl intern_ty intern_row pty)
   in
   match pmacty with
-  | HorzMacroType(pmacparamtys) -> HorzMacroType(pmacparamtys |> List.map aux)
-  | VertMacroType(pmacparamtys) -> VertMacroType(pmacparamtys |> List.map aux)
+  | InlineMacroType(pmacparamtys) -> InlineMacroType(pmacparamtys |> List.map aux)
+  | BlockMacroType(pmacparamtys)  -> BlockMacroType(pmacparamtys |> List.map aux)
 
 
 let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : FreeRowID.t -> LabelSet.t -> BoundRowID.t option) (ty : mono_type) : poly_type_body =
@@ -398,8 +398,8 @@ let generalize_macro_type (macty : mono_macro_type) : poly_macro_type =
     | EarlyMacroParameter(ty) -> EarlyMacroParameter(lift_poly_general intern_ty intern_row ty)
   in
   match macty with
-  | HorzMacroType(macparamtys) -> HorzMacroType(macparamtys |> List.map aux)
-  | VertMacroType(macparamtys) -> VertMacroType(macparamtys |> List.map aux)
+  | InlineMacroType(macparamtys) -> InlineMacroType(macparamtys |> List.map aux)
+  | BlockMacroType(macparamtys)  -> BlockMacroType(macparamtys |> List.map aux)
 
 
 let rec unlift_aux pty =

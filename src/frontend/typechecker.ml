@@ -1472,8 +1472,8 @@ and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
               let macty = TypeConv.instantiate_macro_type pre.level pre.quantifiability macentry.macro_type in
               let macparamtys =
                 match macty with
-                | VertMacroType(macparamtys) -> macparamtys
-                | _                          -> assert false
+                | BlockMacroType(macparamtys) -> macparamtys
+                | _                           -> assert false
               in
               let evid =
                 match macentry.macro_name with
@@ -1541,8 +1541,8 @@ and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihl
               let macty = TypeConv.instantiate_macro_type pre.level pre.quantifiability macentry.macro_type in
               let macparamtys =
                 match macty with
-                | HorzMacroType(macparamtys) -> macparamtys
-                | _                          -> assert false
+                | InlineMacroType(macparamtys) -> macparamtys
+                | _                            -> assert false
               in
               let evid =
                 match macentry.macro_name with
@@ -1975,11 +1975,11 @@ and decode_manual_kind (_pre : pre) (_tyenv : Typeenv.t) (mnkd : manual_kind) : 
 
 and decode_manual_macro_type (pre : pre) (tyenv : Typeenv.t) (mmacty : manual_macro_type) : mono_macro_type =
   match mmacty with
-  | MHorzMacroType(mmacparamtys) ->
-      HorzMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
+  | MInlineMacroType(mmacparamtys) ->
+      InlineMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
 
-  | MVertMacroType(mmacparamtys) ->
-      VertMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
+  | MBlockMacroType(mmacparamtys) ->
+      BlockMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
 
 
 and decode_manual_macro_parameter_type (pre : pre) (tyenv : Typeenv.t) (mmacparamty : manual_macro_parameter_type) : mono_macro_parameter_type =
@@ -2353,8 +2353,8 @@ and substitute_type_id (subst : substitution) (tyid_from : TypeID.t) : TypeID.t 
 
 and substitute_macro_type (subst : substitution) (pmacty : poly_macro_type) : poly_macro_type =
   match pmacty with
-  | HorzMacroType(pmacparamtys) -> HorzMacroType(pmacparamtys |> List.map (substitute_macro_parameter_type subst))
-  | VertMacroType(pmacparamtys) -> VertMacroType(pmacparamtys |> List.map (substitute_macro_parameter_type subst))
+  | InlineMacroType(pmacparamtys) -> InlineMacroType(pmacparamtys |> List.map (substitute_macro_parameter_type subst))
+  | BlockMacroType(pmacparamtys)  -> BlockMacroType(pmacparamtys |> List.map (substitute_macro_parameter_type subst))
 
 
 and substitute_macro_parameter_type (subst : substitution) = function
@@ -2881,9 +2881,9 @@ and subtype_macro_type (macty1 : poly_macro_type) (macty2 : poly_macro_type) : b
         )
   in
   match (macty1, macty2) with
-  | (HorzMacroType(macparamtys1), HorzMacroType(macparamtys2)) -> aux macparamtys1 macparamtys2
-  | (VertMacroType(macparamtys1), VertMacroType(macparamtys2)) -> aux macparamtys1 macparamtys2
-  | _                                                          -> false
+  | (InlineMacroType(macparamtys1), InlineMacroType(macparamtys2)) -> aux macparamtys1 macparamtys2
+  | (BlockMacroType(macparamtys1), BlockMacroType(macparamtys2))   -> aux macparamtys1 macparamtys2
+  | _                                                              -> false
 
 
 (* Given `modsig1` and `modsig2` which are already known to satisfy `modsig1 <= modsig2`,
@@ -3401,7 +3401,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
         }
       in
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
-      let macty = HorzMacroType(macparamtys) in
+      let macty = InlineMacroType(macparamtys) in
       let (e1, ty1) = typecheck pre tyenv utast1 in
       unify ty1 (Range.dummy "val-inline-macro", BaseType(InlineTextType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in
@@ -3428,7 +3428,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
         }
       in
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
-      let macty = HorzMacroType(macparamtys) in
+      let macty = BlockMacroType(macparamtys) in
       let (e1, ty1) = typecheck pre tyenv utast1 in
       unify ty1 (Range.dummy "val-block-macro", BaseType(BlockTextType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in

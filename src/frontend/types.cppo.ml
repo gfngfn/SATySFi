@@ -264,8 +264,8 @@ type ('a, 'b) macro_parameter_type =
 [@@deriving show { with_path = false }]
 
 type ('a, 'b) macro_type =
-  | HorzMacroType of (('a, 'b) macro_parameter_type) list
-  | VertMacroType of (('a, 'b) macro_parameter_type) list
+  | InlineMacroType of (('a, 'b) macro_parameter_type) list
+  | BlockMacroType  of (('a, 'b) macro_parameter_type) list
 [@@deriving show { with_path = false }]
 
 type mono_macro_parameter_type =
@@ -377,8 +377,8 @@ and manual_quantifier =
   (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
 
 and manual_macro_type =
-  | MHorzMacroType of manual_macro_parameter_type list
-  | MVertMacroType of manual_macro_parameter_type list
+  | MInlineMacroType of manual_macro_parameter_type list
+  | MBlockMacroType  of manual_macro_parameter_type list
 
 and manual_macro_parameter_type =
   | MLateMacroParameter  of manual_type
