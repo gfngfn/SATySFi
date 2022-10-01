@@ -430,17 +430,17 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | ASTEndOfList ->
       CdEndOfList
 
-  | InlineText(ihs) ->
-      let cdihs = ihs |> map_input_horz (interpret_1 env) in
-      CdInputHorz(cdihs)
+  | InlineText(its) ->
+      let cdits = its |> map_input_horz (interpret_1 env) in
+      CdInlineText(cdits)
 
-  | BlockText(ivs) ->
-      let cdivs = ivs |> map_input_vert (interpret_1 env) in
-      CdInputVert(cdivs)
+  | BlockText(bts) ->
+      let cdbts = bts |> map_input_vert (interpret_1 env) in
+      CdBlockText(cdbts)
 
-  | MathText(ims) ->
-      let cdims = ims |> map_input_math (interpret_1 env) in
-      CdInputMath(cdims)
+  | MathText(mts) ->
+      let cdmts = mts |> map_input_math (interpret_1 env) in
+      CdMathText(cdmts)
 
   | LambdaHorz(evid_ctx, ast0) ->
       let (env, symb_ctx) = generate_symbol_for_eval_var_id evid_ctx env in

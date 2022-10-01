@@ -1112,12 +1112,12 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 
   | OpCodeMakeInputHorz(compihlst) ->
       let cdihlst = exec_code_input_horz env compihlst in
-      let entry = make_entry @@ CodeValue(CdInputHorz(cdihlst)) in
+      let entry = make_entry @@ CodeValue(CdInlineText(cdihlst)) in
       exec (entry :: stack) env code dump
 
   | OpCodeMakeInputVert(compivlst) ->
       let cdivlst = exec_code_input_vert env compivlst in
-      let entry = make_entry @@ CodeValue(CdInputVert(cdivlst)) in
+      let entry = make_entry @@ CodeValue(CdBlockText(cdivlst)) in
       exec (entry :: stack) env code dump
 
   | OpCodePatternMatch(rng, comppatbrs) ->

@@ -1100,9 +1100,9 @@ and code_value =
   | CdPersistent    of Range.t * EvalVarID.t
   | CdBaseConstant  of base_constant
   | CdEndOfList
-  | CdInputHorz     of code_input_horz_element list
-  | CdInputVert     of code_input_vert_element list
-  | CdInputMath     of code_input_math_element list
+  | CdInlineText    of code_input_horz_element list
+  | CdBlockText     of code_input_vert_element list
+  | CdMathText      of code_input_math_element list
   | CdLambdaHorz    of CodeSymbol.t * code_value
   | CdLambdaVert    of CodeSymbol.t * code_value
   | CdLambdaMath    of CodeSymbol.t * (CodeSymbol.t * CodeSymbol.t) option * code_value
@@ -1325,9 +1325,9 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
-    | CdInputMath(ms)                      -> MathText(ms |> map_input_math aux)
-    | CdInputHorz(cdihlst)                 -> InlineText(cdihlst |> map_input_horz aux)
-    | CdInputVert(cdivlst)                 -> BlockText(cdivlst |> map_input_vert aux)
+    | CdInlineText(cdits)                  -> InlineText(cdits |> map_input_horz aux)
+    | CdBlockText(cdbts)                   -> BlockText(cdbts |> map_input_vert aux)
+    | CdMathText(cdmts)                    -> MathText(cdmts |> map_input_math aux)
 
     | CdLambdaHorz(symb_ctx, code0) ->
         LambdaHorz(CodeSymbol.unlift symb_ctx, aux code0)
