@@ -199,9 +199,9 @@ let get_horz_boxes : syntactic_value -> HorzBox.horz_box list = function
   | value                            -> report_bug_value "get_horz_boxes" value
 
 
-let get_vert_text : syntactic_value -> input_vert_value_element list = function
+let get_block_text : syntactic_value -> block_text_value_element list = function
   | BlockTextValue(ivvs) -> ivvs
-  | value                -> report_bug_value "get_vert_text" value
+  | value                -> report_bug_value "get_block_text" value
 
 
 let get_inline_text : syntactic_value -> inline_text_value_element list = function

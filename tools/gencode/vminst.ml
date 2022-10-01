@@ -779,8 +779,8 @@ match value1 with
         ]
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
-let ivvs = get_vert_text value1 in
-read_pdf_mode_vert_text valuectx ivvs
+let bts = get_block_text value1 in
+read_pdf_mode_block_text valuectx bts
 |}
         ~code:{|
 match value1 with
@@ -840,15 +840,15 @@ match value1 with
         ]
         ~params:[
           param "value_tctx";
-          param "ivvs" ~type_:"vert_text";
+          param "bts" ~type_:"block_text";
         ]
         ~is_text_mode_primitive:true
         ~code_interp:{|
-read_text_mode_vert_text value_tctx ivvs
+read_text_mode_block_text value_tctx bts
 |}
         ~code:{|
 let _ = value_tctx in
-let _ = ivvs in
+let _ = bts in
 failwith "TODO: TextVertLex" (*
 match value1 with
 | CompiledInputVertClosure(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst

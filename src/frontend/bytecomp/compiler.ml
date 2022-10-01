@@ -106,7 +106,7 @@ and compile_input_vert_content (ivlst : ir_input_vert_element list) =
   compiled_ivlist
 
 
-and compile_code_input_vert (_irivlst : (ir input_vert_element_scheme) list) =
+and compile_code_input_vert (_irbts : (ir block_text_element_scheme) list) =
   failwith "TODO: compile_code_input_vert"
 (*
   irivlst |> List.map (function

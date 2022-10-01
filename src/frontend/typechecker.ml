@@ -808,18 +808,17 @@ let rec typecheck
         in
         (base (BCLength(len)), (rng, BaseType(LengthType)))
 
-  | UTInlineText(utiis) ->
-      let ihlst = typecheck_inline_text rng pre tyenv utiis in
-      (InlineText(ihlst), (rng, BaseType(InlineTextType)))
+  | UTInlineText(utits) ->
+      let its = typecheck_inline_text rng pre tyenv utits in
+      (InlineText(its), (rng, BaseType(InlineTextType)))
 
-  | UTBlockText(utibs) ->
-      let ivlst = typecheck_input_vert rng pre tyenv utibs in
-      (BlockText(ivlst), (rng, BaseType(BlockTextType)))
+  | UTBlockText(utbts) ->
+      let bts = typecheck_block_text rng pre tyenv utbts in
+      (BlockText(bts), (rng, BaseType(BlockTextType)))
 
-  | UTMathText(utmes) ->
-      let tymath = (rng, BaseType(MathTextType)) in
-      let ms = typecheck_math pre tyenv utmes in
-      (MathText(ms), tymath)
+  | UTMathText(utmts) ->
+      let mts = typecheck_math pre tyenv utmts in
+      (MathText(mts), (rng, BaseType(MathTextType)))
 
   | UTOpenIn((rng_mod, modnm), utast1) ->
       begin
@@ -1438,7 +1437,7 @@ and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_e
   )
 
 
-and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =
+and typecheck_block_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : block_text_element list =
   let rec aux acc utivlst =
     match utivlst with
     | [] ->
@@ -1452,12 +1451,12 @@ and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
           | _                                -> assert false
         in
         let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
-        aux (Alist.extend acc (InputVertApplyCommand{ command = e_cmd; arguments = args })) tail
+        aux (Alist.extend acc (BlockTextApplyCommand{ command = e_cmd; arguments = args })) tail
 
     | (_, UTInputVertContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
         unify ty0 (Range.dummy "UTInputVertContent", BaseType(BlockTextType));
-        aux (Alist.extend acc (InputVertContent(e0))) tail
+        aux (Alist.extend acc (BlockTextContent(e0))) tail
 
     | (rng_app, UTInputVertMacro(bmacro, utmacargs)) :: tail ->
         begin
@@ -1482,7 +1481,7 @@ and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
               in
               let eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
               let eapp = apply_tree_of_list (ContentOf(rng_cs, evid)) eargs in
-              let iv = InputVertContent(Prev(eapp)) in
+              let iv = BlockTextContent(Prev(eapp)) in
               aux (Alist.extend acc iv) tail
         end
   in

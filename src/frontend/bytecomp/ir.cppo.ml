@@ -86,7 +86,7 @@ and transform_1_input_horz_content (_env : frame) (_its : inline_text_element li
 *)
 
 
-and transform_0_input_vert_content (_env : frame) (_ivlst : input_vert_element list) : ir_input_vert_element list * frame =
+and transform_0_input_vert_content (_env : frame) (_bts : block_text_element list) : ir_input_vert_element list * frame =
   failwith "TODO: transform_0_input_vert_content"
 (*
   ivlst @|> env @|> map_with_env (fun env elem ->
@@ -102,7 +102,7 @@ and transform_0_input_vert_content (_env : frame) (_ivlst : input_vert_element l
 *)
 
 
-and transform_1_input_vert_content (_env : frame) (_ivlst : input_vert_element list) : (ir input_vert_element_scheme) list * frame =
+and transform_1_input_vert_content (_env : frame) (_bts : block_text_element list) : (ir block_text_element_scheme) list * frame =
   failwith "TODO: transform_1_input_vert_content"
 (*
   ivlst @|> env @|> map_with_env (fun env elem ->

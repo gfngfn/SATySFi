@@ -570,9 +570,9 @@ type 'a inline_text_element_scheme =
     }
 [@@deriving show { with_path = false; }]
 
-type 'a input_vert_element_scheme =
-  | InputVertContent  of 'a
-  | InputVertApplyCommand of {
+type 'a block_text_element_scheme =
+  | BlockTextContent of 'a
+  | BlockTextApplyCommand of {
       command   : 'a;
       arguments : ('a LabelMap.t * 'a) list;
     }
@@ -725,7 +725,7 @@ and ir =
   | IRCodeCombinator        of (code_value list -> code_value) * int * ir list
   | IRCodeRecord            of label list * ir list
   | IRCodeInputHorz         of (ir inline_text_element_scheme) list
-  | IRCodeInputVert         of (ir input_vert_element_scheme) list
+  | IRCodeInputVert         of (ir block_text_element_scheme) list
   | IRCodeInputMath         of (ir input_math_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
   | IRCodeLetRecIn          of ir_letrec_binding list * ir
@@ -822,7 +822,7 @@ and instruction =
   | OpCodeMakeRecord of label list
   | OpCodeMakeTuple of int
   | OpCodeMakeInputHorz of ((instruction list) inline_text_element_scheme) list
-  | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
+  | OpCodeMakeInputVert of ((instruction list) block_text_element_scheme) list
   | OpCodePatternMatch  of Range.t * ((instruction list) ir_pattern_branch_scheme) list
   | OpCodeLetRec        of ((instruction list) ir_letrec_binding_scheme) list * instruction list
   | OpCodeLetNonRec     of ir_pattern_tree * instruction list * instruction list
@@ -838,8 +838,8 @@ and inline_text_value_element =
   | InlineTextValueEmbeddedMath     of input_math_value_element list
   | InlineTextValueEmbeddedCodeArea of string
 
-and input_vert_value_element =
-  | InputVertValueCommandClosure of block_command_closure
+and block_text_value_element =
+  | BlockTextValueCommandClosure of block_command_closure
 
 and input_math_value_element =
   | InputMathValueElement of {
@@ -903,7 +903,7 @@ and syntactic_value =
   | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
   | InlineTextValue  of inline_text_value_element list
-  | BlockTextValue   of input_vert_value_element list
+  | BlockTextValue   of block_text_value_element list
   | MathTextValue    of input_math_value_element list
 
   | InlineCommandClosure of inline_command_closure
@@ -922,7 +922,7 @@ and abstract_tree =
   | ASTEndOfList
 (* -- input texts -- *)
   | InlineText            of inline_text_element list
-  | BlockText             of input_vert_element list
+  | BlockText             of block_text_element list
   | MathText              of input_math_element list
   | LambdaInline          of EvalVarID.t * abstract_tree
   | LambdaBlock           of EvalVarID.t * abstract_tree
@@ -957,8 +957,8 @@ and abstract_tree =
 and inline_text_element =
   abstract_tree inline_text_element_scheme
 
-and input_vert_element =
-  abstract_tree input_vert_element_scheme
+and block_text_element =
+  abstract_tree block_text_element_scheme
 
 and input_math_element =
   abstract_tree input_math_element_scheme
@@ -1101,7 +1101,7 @@ and code_value =
   | CdBaseConstant  of base_constant
   | CdEndOfList
   | CdInlineText    of code_inline_text_element list
-  | CdBlockText     of code_input_vert_element list
+  | CdBlockText     of code_block_text_element list
   | CdMathText      of code_input_math_element list
   | CdLambdaInline  of CodeSymbol.t * code_value
   | CdLambdaBlock   of CodeSymbol.t * code_value
@@ -1126,8 +1126,8 @@ and code_value =
 and code_inline_text_element =
   code_value inline_text_element_scheme
 
-and code_input_vert_element =
-  code_value input_vert_element_scheme
+and code_block_text_element =
+  code_value block_text_element_scheme
 
 and code_input_math_element =
   code_value input_math_element_scheme
@@ -1258,14 +1258,14 @@ let map_input_horz f ihlst =
 
 let map_input_vert f ivlst =
   ivlst |> List.map (function
-  | InputVertContent(ast) ->
-      InputVertContent(f ast)
+  | BlockTextContent(ast) ->
+      BlockTextContent(f ast)
 
-  | InputVertApplyCommand{
+  | BlockTextApplyCommand{
       command = ast_cmd;
       arguments;
     } ->
-      InputVertApplyCommand{
+      BlockTextApplyCommand{
         command =
           f ast_cmd;
 

@@ -114,17 +114,17 @@ and interpret_0_input_horz_content (env : environment) (its : inline_text_elemen
   ) |> List.concat
 
 
-and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element list) : input_vert_value_element list =
-  ivs |> List.map (function
-    | InputVertApplyCommand{ command = ast_cmd; arguments = args } ->
+and interpret_0_input_vert_content (env : environment) (bts : block_text_element list) : block_text_value_element list =
+  bts |> List.map (function
+    | BlockTextApplyCommand{ command = ast_cmd; arguments = args } ->
         let ast = convert_command_application_to_application ast_cmd args in
         let value = interpret_0 env ast in
         let bclosure = get_block_command_closure value in
-        [ InputVertValueCommandClosure(bclosure) ]
+        [ BlockTextValueCommandClosure(bclosure) ]
 
-    | InputVertContent(ast) ->
+    | BlockTextContent(ast) ->
         let value = interpret_0 env ast in
-        get_vert_text value
+        get_block_text value
 
   ) |> List.concat
 
@@ -737,13 +737,13 @@ and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_v
   make_string s
 
 
-and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_value_element list) : syntactic_value =
+and read_text_mode_block_text (value_tctx : syntactic_value) (btvs : block_text_value_element list) : syntactic_value =
 
   let loc_tctx = ref value_tctx in
 
-  let interpret_commands (ivvs : input_vert_value_element list) =
-    ivvs |> List.map (function
-    | InputVertValueCommandClosure(bclosure) ->
+  let interpret_commands (btvs : block_text_value_element list) =
+    btvs |> List.map (function
+    | BlockTextValueCommandClosure(bclosure) ->
         let
           BlockCommandClosureSimple{
             context_binder = evid_ctx;
@@ -759,7 +759,7 @@ and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_v
 
     ) |> String.concat ""
   in
-  let s = interpret_commands ivvs in
+  let s = interpret_commands btvs in
   make_string s
 
 
@@ -927,13 +927,13 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
   iter ictx imvs
 
 
-and read_pdf_mode_vert_text (value_ctx : syntactic_value) (ivvs : input_vert_value_element list) : syntactic_value =
+and read_pdf_mode_block_text (value_ctx : syntactic_value) (btvs : block_text_value_element list) : syntactic_value =
 
   let loc_ctx = ref value_ctx in
 
-  let interpret_commands (ivvs : input_vert_value_element list) =
-    ivvs |> List.map (function
-    | InputVertValueCommandClosure(bclosure) ->
+  let interpret_commands (btvs : block_text_value_element list) =
+    btvs |> List.map (function
+    | BlockTextValueCommandClosure(bclosure) ->
         let
           BlockCommandClosureSimple{
             context_binder = evid_ctx;
@@ -949,7 +949,7 @@ and read_pdf_mode_vert_text (value_ctx : syntactic_value) (ivvs : input_vert_val
 
     ) |> List.concat
   in
-  let imvbs = interpret_commands ivvs in
+  let imvbs = interpret_commands btvs in
   make_vert imvbs
 
 
