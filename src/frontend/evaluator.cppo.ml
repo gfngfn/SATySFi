@@ -15,7 +15,7 @@ let report_dynamic_error msg =
 
 type nom_input_horz_element =
   | NomInputHorzText           of string
-  | NomInputHorzCommandClosure of horz_command_closure
+  | NomInputHorzCommandClosure of inline_command_closure
 
 
 let convert_command_application_to_application (e_cmd : abstract_tree) (args : (abstract_tree LabelMap.t * abstract_tree) list) : abstract_tree =
@@ -96,8 +96,8 @@ and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element
     | InputHorzApplyCommand{ command = ast_cmd; arguments = args } ->
         let ast = convert_command_application_to_application ast_cmd args in
         let value = interpret_0 env ast in
-        let hclosure = get_horz_command_closure value in
-        [ InlineTextValueCommandClosure(hclosure) ]
+        let iclosure = get_inline_command_closure value in
+        [ InlineTextValueCommandClosure(iclosure) ]
 
     | InputHorzEmbeddedMath(ast_math) ->
         let value = interpret_0 env ast_math in
@@ -119,8 +119,8 @@ and interpret_0_input_vert_content (env : environment) (ivs : input_vert_element
     | InputVertApplyCommand{ command = ast_cmd; arguments = args } ->
         let ast = convert_command_application_to_application ast_cmd args in
         let value = interpret_0 env ast in
-        let vclosure = get_vert_command_closure value in
-        [ InputVertValueCommandClosure(vclosure) ]
+        let bclosure = get_block_command_closure value in
+        [ InputVertValueCommandClosure(bclosure) ]
 
     | InputVertContent(ast) ->
         let value = interpret_0 env ast in
@@ -788,8 +788,8 @@ and read_text_mode_inline_text (value_tctx : syntactic_value) (itvs : inline_tex
           let value =
             reduce_beta ~msg:"InlineTextValueEmbeddedMath" value_mcmd (MathTextValue(imvs))
           in
-          let hclosure = get_horz_command_closure value in
-          Alist.extend acc (NomInputHorzCommandClosure(hclosure))
+          let iclosure = get_inline_command_closure value in
+          Alist.extend acc (NomInputHorzCommandClosure(iclosure))
 
       | InlineTextValueEmbeddedCodeArea(s) ->
           begin
@@ -801,8 +801,8 @@ and read_text_mode_inline_text (value_tctx : syntactic_value) (itvs : inline_tex
                 let value =
                   reduce_beta ~msg:"InlineTextValueEmbeddedCodeArea" value_ctcmd (BaseConstant(BCString(s)))
                 in
-                let hclosure = get_horz_command_closure value in
-                Alist.extend acc (NomInputHorzCommandClosure(hclosure))
+                let iclosure = get_inline_command_closure value in
+                Alist.extend acc (NomInputHorzCommandClosure(iclosure))
           end
 
     ) Alist.empty |> Alist.to_list
@@ -976,8 +976,8 @@ and read_pdf_mode_inline_text (ictx : input_context) (itvs : inline_text_value_e
           let value =
             reduce_beta ~msg:"InlineTextValueEmbeddedMath" value_mcmd (MathTextValue(imvs))
           in
-          let hclosure = get_horz_command_closure value in
-          Alist.extend acc (NomInputHorzCommandClosure(hclosure))
+          let iclosure = get_inline_command_closure value in
+          Alist.extend acc (NomInputHorzCommandClosure(iclosure))
 
       | InlineTextValueEmbeddedCodeArea(s) ->
           begin
@@ -989,8 +989,8 @@ and read_pdf_mode_inline_text (ictx : input_context) (itvs : inline_text_value_e
                 let value =
                   reduce_beta ~msg:"InlineTextValueEmbeddedCodeArea" value_ctcmd (BaseConstant(BCString(s)))
                 in
-                let hclosure = get_horz_command_closure value in
-                Alist.extend acc (NomInputHorzCommandClosure(hclosure))
+                let iclosure = get_inline_command_closure value in
+                Alist.extend acc (NomInputHorzCommandClosure(iclosure))
           end
 
     ) Alist.empty |> Alist.to_list

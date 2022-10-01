@@ -709,14 +709,14 @@ let make_math_scripts_func (MathScriptsFunc(value_mscriptsf) : math_scripts_func
   value_mscriptsf
 
 
-let get_horz_command_closure : syntactic_value -> horz_command_closure = function
+let get_inline_command_closure : syntactic_value -> inline_command_closure = function
   | InlineCommandClosure(iclosure) -> iclosure
-  | value                          -> report_bug_value "get_horz_command_closure" value
+  | value                          -> report_bug_value "get_inline_command_closure" value
 
 
-let get_vert_command_closure : syntactic_value -> vert_command_closure = function
+let get_block_command_closure : syntactic_value -> block_command_closure = function
   | BlockCommandClosure(bclosure) -> bclosure
-  | value                         -> report_bug_value "get_vert_command_closure" value
+  | value                         -> report_bug_value "get_block_command_closure" value
 
 
 let get_math_command_closure : syntactic_value -> math_command_closure = function

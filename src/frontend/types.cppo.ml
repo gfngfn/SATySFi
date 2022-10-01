@@ -834,12 +834,12 @@ and instruction =
 
 and inline_text_value_element =
   | InlineTextValueText             of string
-  | InlineTextValueCommandClosure   of horz_command_closure
+  | InlineTextValueCommandClosure   of inline_command_closure
   | InlineTextValueEmbeddedMath     of input_math_value_element list
   | InlineTextValueEmbeddedCodeArea of string
 
 and input_vert_value_element =
-  | InputVertValueCommandClosure of vert_command_closure
+  | InputVertValueCommandClosure of block_command_closure
 
 and input_math_value_element =
   | InputMathValueElement of {
@@ -854,14 +854,14 @@ and input_math_value_base =
   | InputMathValueEmbedded of math_command_closure
   | InputMathValueGroup    of input_math_value_element list
 
-and horz_command_closure =
+and inline_command_closure =
   | InlineCommandClosureSimple of {
       context_binder : EvalVarID.t;
       body           : abstract_tree;
       environment    : environment;
     }
 
-and vert_command_closure =
+and block_command_closure =
   | BlockCommandClosureSimple of {
       context_binder : EvalVarID.t;
       body           : abstract_tree;
@@ -906,8 +906,8 @@ and syntactic_value =
   | BlockTextValue   of input_vert_value_element list
   | MathTextValue    of input_math_value_element list
 
-  | InlineCommandClosure of horz_command_closure
-  | BlockCommandClosure  of vert_command_closure
+  | InlineCommandClosure of inline_command_closure
+  | BlockCommandClosure  of block_command_closure
   | MathCommandClosure   of math_command_closure
 
 (* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
