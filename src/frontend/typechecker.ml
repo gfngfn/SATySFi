@@ -808,18 +808,18 @@ let rec typecheck
         in
         (base (BCLength(len)), (rng, BaseType(LengthType)))
 
-  | UTInputHorz(utihlst) ->
-      let ihlst = typecheck_input_horz rng pre tyenv utihlst in
-      (InputHorz(ihlst), (rng, BaseType(InlineTextType)))
+  | UTInlineText(utiis) ->
+      let ihlst = typecheck_input_horz rng pre tyenv utiis in
+      (InlineText(ihlst), (rng, BaseType(InlineTextType)))
 
-  | UTInputVert(utivlst) ->
-      let ivlst = typecheck_input_vert rng pre tyenv utivlst in
-      (InputVert(ivlst), (rng, BaseType(BlockTextType)))
+  | UTBlockText(utibs) ->
+      let ivlst = typecheck_input_vert rng pre tyenv utibs in
+      (BlockText(ivlst), (rng, BaseType(BlockTextType)))
 
-  | UTInputMath(utmes) ->
+  | UTMathText(utmes) ->
       let tymath = (rng, BaseType(MathTextType)) in
       let ms = typecheck_math pre tyenv utmes in
-      (InputMath(ms), tymath)
+      (MathText(ms), tymath)
 
   | UTOpenIn((rng_mod, modnm), utast1) ->
       begin

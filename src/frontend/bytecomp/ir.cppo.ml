@@ -433,15 +433,15 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTBaseConstant(bc) -> code0 env (CdBaseConstant(bc))
   | ASTEndOfList        -> code0 env CdEndOfList
 
-  | InputHorz(ihlst) ->
+  | InlineText(ihlst) ->
       let (imihlst, env) = transform_1_input_horz_content env ihlst in
       (IRCodeInputHorz(imihlst), env)
 
-  | InputVert(ivlst) ->
+  | BlockText(ivlst) ->
       let (imivlst, env) = transform_1_input_vert_content env ivlst in
       (IRCodeInputVert(imivlst), env)
 
-  | InputMath(ims) ->
+  | MathText(ims) ->
       let (imims, env) = transform_1_input_math_content env ims in
       (IRCodeInputMath(imims), env)
 
@@ -583,17 +583,17 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTEndOfList ->
       return (IRConstant(List([])))
 
-  | InputHorz(ihlst) ->
+  | InlineText(ihlst) ->
       let (imihlst, env) = transform_0_input_horz_content env ihlst in
       (IRInputHorz(imihlst), env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | InputVert(ivlst) ->
+  | BlockText(ivlst) ->
       let (imivlst, env) = transform_0_input_vert_content env ivlst in
       (IRInputVert(imivlst), env)
         (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | InputMath(ims) ->
+  | MathText(ims) ->
       let (imims, env) = transform_0_input_math_content env ims in
       (IRInputMath(imims), env)
 

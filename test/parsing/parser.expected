@@ -953,8 +953,8 @@
        (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <sxlist.saty:4.7-8>), "y"),
-              (UTListCons ((UTInputHorz [IT:aa]),
-                 (UTListCons ((UTInputHorz [IT:bb]), UTEndOfList))))))
+              (UTListCons ((UTInlineText [IT:aa]),
+                 (UTListCons ((UTInlineText [IT:bb]), UTEndOfList))))))
           )))
       ]))
 
@@ -970,13 +970,13 @@
           (UTNonRec
              (((Range.Normal <mathlist.saty:4.7-8>), "y"),
               (UTListCons (
-                 (UTInputMath
+                 (UTMathText
                     [((Range.Normal <mathlist.saty:4.14-15>),
                       UTInputMathElement {base = (UTInputMathChar "a");
                         sup = None; sub = None})
                       ]),
                  (UTListCons (
-                    (UTInputMath
+                    (UTMathText
                        [((Range.Normal <mathlist.saty:4.16-17>),
                          UTInputMathElement {base = (UTInputMathChar "a");
                            sup = None; sub = None});
@@ -991,13 +991,13 @@
        (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <mathlist.saty:6.7-8>), "z"),
-              (UTInputVert
+              (UTBlockText
                  [BC:(UTContentOf ([],
                         ((Range.Normal <mathlist.saty:7.5-7>), "+p"))) (
                    UTCommandArg ([],
-                     (UTInputHorz
+                     (UTInlineText
                         [(UTInputHorzEmbeddedMath
-                            (UTInputMath
+                            (UTMathText
                                [((Range.Normal <mathlist.saty:8.9-10>),
                                  UTInputMathElement {
                                    base = (UTInputMathChar "a"); sup = None;
@@ -1006,7 +1006,7 @@
                           IT:
 ;
                           (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:9.9-12>),
                                   UTInputMathElement {
                                     base = (UTInputMathChar "a");
@@ -1022,7 +1022,7 @@
                           IT:
 ;
                           (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:10.9-12>),
                                   UTInputMathElement {
                                     base = (UTInputMathChar "a"); sup = None;
@@ -1037,7 +1037,7 @@
                           IT:
 ;
                           (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:11.9-14>),
                                   UTInputMathElement {
                                     base = (UTInputMathChar "a");
@@ -1059,7 +1059,7 @@
                           IT:
 ;
                           (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:12.9-14>),
                                   UTInputMathElement {
                                     base = (UTInputMathChar "a");
@@ -1081,7 +1081,7 @@
                           IT:
 ;
                           (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:13.9-11>),
                                   UTInputMathElement {
                                     base = (UTInputMathChar "a");
@@ -1097,7 +1097,7 @@
                           IT:
 ;
                           (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:14.9-13>),
                                   UTInputMathElement {
                                     base = (UTInputMathChar "a");
@@ -1117,7 +1117,7 @@
                           IT:
 ;
                           (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:15.9-13>),
                                   UTInputMathElement {
                                     base = (UTInputMathChar "a");
@@ -1139,7 +1139,7 @@
                           IT:
 ;
                           (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:16.9-15>),
                                   UTInputMathElement {
                                     base = (UTInputMathChar "a");
@@ -1165,7 +1165,7 @@
                           IT:
 ;
                           (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:17.9-15>),
                                   UTInputMathElement {
                                     base = (UTInputMathChar "a");

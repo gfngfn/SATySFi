@@ -468,9 +468,9 @@ and untyped_abstract_tree_main =
   | UTStringConstant       of string
   | UTPositionedString     of input_position * string
 (* Input texts: *)
-  | UTInputHorz            of untyped_input_horz_element list
-  | UTInputVert            of untyped_input_vert_element list
-  | UTInputMath            of untyped_input_math_element list
+  | UTInlineText          of untyped_input_horz_element list
+  | UTBlockText           of untyped_input_vert_element list
+  | UTMathText            of untyped_input_math_element list
 (* Command abstractions: *)
   | UTLambdaHorzCommand of {
       parameters       : untyped_parameter_unit list;
@@ -921,9 +921,9 @@ and abstract_tree =
   | ASTBaseConstant       of base_constant
   | ASTEndOfList
 (* -- input texts -- *)
-  | InputHorz             of input_horz_element list
-  | InputVert             of input_vert_element list
-  | InputMath             of input_math_element list
+  | InlineText            of input_horz_element list
+  | BlockText             of input_vert_element list
+  | MathText              of input_math_element list
   | LambdaHorz            of EvalVarID.t * abstract_tree
   | LambdaVert            of EvalVarID.t * abstract_tree
   | LambdaMath            of EvalVarID.t * (EvalVarID.t * EvalVarID.t) option * abstract_tree
@@ -1325,9 +1325,9 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
-    | CdInputMath(ms)                      -> InputMath(ms |> map_input_math aux)
-    | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
-    | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
+    | CdInputMath(ms)                      -> MathText(ms |> map_input_math aux)
+    | CdInputHorz(cdihlst)                 -> InlineText(cdihlst |> map_input_horz aux)
+    | CdInputVert(cdivlst)                 -> BlockText(cdivlst |> map_input_vert aux)
 
     | CdLambdaHorz(symb_ctx, code0) ->
         LambdaHorz(CodeSymbol.unlift symb_ctx, aux code0)

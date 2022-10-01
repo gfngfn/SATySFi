@@ -216,15 +216,15 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | ASTEndOfList ->
       List([])
 
-  | InputHorz(ihs) ->
+  | InlineText(ihs) ->
       let ihvs = interpret_0_input_horz_content env ihs in
       InputHorzValue(ihvs)
 
-  | InputVert(ivs) ->
+  | BlockText(ivs) ->
       let ivvs = interpret_0_input_vert_content env ivs in
       InputVertValue(ivvs)
 
-  | InputMath(ims) ->
+  | MathText(ims) ->
       let imvs = interpret_0_input_math_content env ims in
       InputMathValue(imvs)
 
@@ -430,15 +430,15 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | ASTEndOfList ->
       CdEndOfList
 
-  | InputHorz(ihs) ->
+  | InlineText(ihs) ->
       let cdihs = ihs |> map_input_horz (interpret_1 env) in
       CdInputHorz(cdihs)
 
-  | InputVert(ivs) ->
+  | BlockText(ivs) ->
       let cdivs = ivs |> map_input_vert (interpret_1 env) in
       CdInputVert(cdivs)
 
-  | InputMath(ims) ->
+  | MathText(ims) ->
       let cdims = ims |> map_input_math (interpret_1 env) in
       CdInputMath(cdims)
 

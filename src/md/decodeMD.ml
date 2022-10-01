@@ -367,7 +367,7 @@ and convert_inline (cmdrcd : command_record) (iln : inline) : untyped_abstract_t
     ) Alist.empty
   in
   let utih = Alist.to_list ibacc in
-  (dummy_range, UTInputHorz(utih))
+  (dummy_range, UTInlineText(utih))
 
 
 and convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_input_vert_element list =
@@ -436,7 +436,7 @@ and convert_block_element (cmdrcd : command_record) (blke : block_element) : unt
 
   | BlockRaw(s) ->
       let cmd = cmdrcd.err_block in
-      make_block_application cmd [(dummy_range, UTInputHorz[(dummy_range, UTInputHorzText(s))])]
+      make_block_application cmd [ (dummy_range, UTInlineText([ (dummy_range, UTInputHorzText(s)) ])) ]
 
 
 and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tree =
@@ -446,7 +446,7 @@ and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tre
     ) Alist.empty
   in
   let utiv = Alist.to_list bbacc in
-  (dummy_range, UTInputVert(utiv))
+  (dummy_range, UTBlockText(utiv))
 
 
 let decode (cmdrcd : command_record) (s : string) =

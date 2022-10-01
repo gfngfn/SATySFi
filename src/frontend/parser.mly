@@ -214,7 +214,7 @@
 
 
   let make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
-    let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInputHorz([])), [])) lst 0 in
+    let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInlineText([])), [])) lst 0 in
     (Range.dummy "itemize1", UTItemize(contents))
 
 
@@ -1070,7 +1070,7 @@ inline_itemize_elem:
 ;
 inline_single:
   | ielems=inline_elems
-      { let rng = make_range_from_list ielems in (rng, UTInputHorz(ielems)) }
+      { let rng = make_range_from_list ielems in (rng, UTInlineText(ielems)) }
 ;
 inline_elems:
   | itext=inline_elem_text; icmd=inline_elem_cmd; ielems=inline_elems
@@ -1131,7 +1131,7 @@ inline_char:
 ;
 block:
   | belems=list(block_elem)
-      { (make_range_from_list belems, UTInputVert(belems)) }
+      { (make_range_from_list belems, UTBlockText(belems)) }
 ;
 block_elem:
   | bcmd=plus_cmd; nargs=list(cmd_arg_expr); rsargs=cmd_args_text
@@ -1175,7 +1175,7 @@ math_single:
           | ((rngL, _) :: _, (rngR, _) :: _) -> Range.unite rngL rngR
           | _                                -> assert false
         in
-        (rng, UTInputMath(utmes))
+        (rng, UTMathText(utmes))
       }
 ;
 math_elem:
