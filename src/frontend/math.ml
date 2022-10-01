@@ -531,11 +531,11 @@ let superscript_baseline_height ictx h_base d_sup =
     h_supbl
 
 
-(* -- calculates the base correction height and the superscript correction height -- *)
-let superscript_correction_heights _ictx h_supbl h_base d_sup =
+(* Calculates the base correction height and the superscript correction height. *)
+let superscript_correction_heights h_supbl h_base d_sup =
   let l_base = h_supbl +% d_sup in
   let l_sup = h_base -% h_supbl in
-    (l_base, l_sup)
+  (l_base, l_sup)
 
 
 let subscript_baseline_depth ictx d_base h_sub =
@@ -549,10 +549,10 @@ let subscript_baseline_depth ictx d_base h_sub =
     d_subbl
 
 
-let subscript_correction_heights _ictx d_subbl d_base h_sub =
+let subscript_correction_heights d_subbl d_base h_sub =
   let l_base = h_sub +% d_base in
   let l_sub = d_base -% d_subbl in
-    (l_base, l_sub)
+  (l_base, l_sub)
 
 
 let correct_script_baseline_heights ictx d_sup h_sub h_supbl_raw d_subbl_raw =
@@ -1028,7 +1028,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
               let hblstS = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmS in
               let h_base = rkB.last_height in
-              let (l_base, l_sup) = superscript_correction_heights ictx h_supbl h_base d_sup in
+              let (l_base, l_sup) = superscript_correction_heights h_supbl h_base d_sup in
               let l_kernbase = MathKernScheme.calculate ictx rkB.kernTR l_base in
               let l_kernsup  = MathKernScheme.calculate (Context.enter_script ictx) lkS.kernBL l_sup in
               let l_italic   = rkB.italics_correction in
@@ -1052,7 +1052,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
               let hblstS = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmS in
               let d_base = rkB.last_depth in
-              let (l_base, l_sub) = subscript_correction_heights ictx d_subbl d_base h_sub in
+              let (l_base, l_sub) = subscript_correction_heights d_subbl d_base h_sub in
               let l_kernbase = MathKernScheme.calculate ictx rkB.kernBR l_base in
               let l_kernsub  = MathKernScheme.calculate ictx lkS.kernTL l_sub in
               let kern = l_kernbase +% l_kernsub in
@@ -1088,14 +1088,14 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               let h_base = rkB.last_height in
               let d_base = rkB.last_depth in
 
-              let (l_base_sup, l_sup) = superscript_correction_heights ictx h_supbl h_base d_sup in
+              let (l_base_sup, l_sup) = superscript_correction_heights h_supbl h_base d_sup in
               let l_kernbase_sup = MathKernScheme.calculate ictx rkB.kernTR l_base_sup in
               let l_kernsup      = MathKernScheme.calculate (Context.enter_script ictx) lkS.kernBL l_sup in
               let l_italic       = rkB.italics_correction in
               let kernsup = l_italic +% l_kernbase_sup +% l_kernsup in
               let hbkernsup = fixed_empty kernsup in
 
-              let (l_base_sub, l_sub) = subscript_correction_heights ictx d_subbl d_base h_sub in
+              let (l_base_sub, l_sub) = subscript_correction_heights d_subbl d_base h_sub in
               let l_kernbase_sub = MathKernScheme.calculate ictx rkB.kernBR l_base_sub in
               let l_kernsub      = MathKernScheme.calculate ictx lkS.kernTL l_sub in
               let kernsub = (l_kernbase_sub +% l_kernsub) in
