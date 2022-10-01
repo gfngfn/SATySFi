@@ -17,7 +17,7 @@ type 'a ranged =
   Range.t * 'a
 [@@deriving show]
 
-type ctrlseq_name       = string  [@@deriving show]
+type command_name       = string  [@@deriving show]
 type var_name           = string  [@@deriving show]
 type id_name            = string  [@@deriving show]
 type class_name         = string  [@@deriving show]
@@ -338,8 +338,8 @@ and untyped_binding_main =
   | UTBindModule    of module_name ranged * untyped_signature option * untyped_module
   | UTBindSignature of signature_name ranged * untyped_signature
   | UTBindInclude   of untyped_module
-  | UTBindHorzMacro of ctrlseq_name ranged * untyped_macro_parameter list * untyped_abstract_tree
-  | UTBindVertMacro of ctrlseq_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindHorzMacro of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindVertMacro of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
 
 and untyped_module =
   untyped_module_main ranged

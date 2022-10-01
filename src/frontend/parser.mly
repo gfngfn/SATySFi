@@ -258,9 +258,9 @@
 %token<Range.t * (Types.module_name Types.ranged) list * Types.var_name Types.ranged> LONG_LOWER
 %token<Range.t * (Types.module_name Types.ranged) list * Types.constructor_name Types.ranged> LONG_UPPER
 
-%token<Range.t * Types.ctrlseq_name> BACKSLASH_CMD PLUS_CMD
+%token<Range.t * Types.command_name> BACKSLASH_CMD PLUS_CMD
 
-%token<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged>
+%token<Range.t * (Types.module_name Types.ranged) list * Types.command_name Types.ranged>
   LONG_BACKSLASH_CMD LONG_PLUS_CMD
 
 %token<Range.t * (Types.module_name Types.ranged) list * Types.var_name Types.ranged>
@@ -336,8 +336,8 @@
 %type<Range.t * (bool * Types.untyped_input_math_element list)> math_group
 %type<Types.untyped_input_math_element> math_elem
 %type<Range.t * Types.untyped_input_math_base> math_bot
-%type<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged> backslash_cmd
-%type<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged> plus_cmd
+%type<Range.t * (Types.module_name Types.ranged) list * Types.command_name Types.ranged> backslash_cmd
+%type<Range.t * (Types.module_name Types.ranged) list * Types.command_name Types.ranged> plus_cmd
 
 
 %%
