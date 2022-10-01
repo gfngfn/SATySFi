@@ -19,8 +19,6 @@ type 'a ranged =
 
 type command_name       = string  [@@deriving show]
 type var_name           = string  [@@deriving show]
-type id_name            = string  [@@deriving show]
-type class_name         = string  [@@deriving show]
 type type_name          = string  [@@deriving show]
 type kind_name          = string  [@@deriving show]
 type constructor_name   = string  [@@deriving show]
@@ -895,7 +893,7 @@ and math_command_closure =
     }
 
 and syntactic_value =
-  | Nil  (* -- just for brief use -- *)
+  | Nil  (* Just for brief use. *)
   | BaseConstant of base_constant
   | Constructor  of constructor_name * syntactic_value
   | List         of syntactic_value list
@@ -911,7 +909,7 @@ and syntactic_value =
   | CodeSymbol   of CodeSymbol.t
   | MathBoxes    of math_box list
 
-(* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
+(* Values for the naive interpreter, i.e. `evaluator.cppo.ml`: *)
   | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
   | InlineTextValue  of inline_text_value_element list
@@ -922,7 +920,7 @@ and syntactic_value =
   | BlockCommandClosure  of block_command_closure
   | MathCommandClosure   of math_command_closure
 
-(* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
+(* Values for the SECD machine, i.e. `vm.cppo.ml`: *)
   | CompiledClosure          of varloc LabelMap.t * int * syntactic_value list * int * instruction list * vmenv
   | CompiledPrimitiveClosure of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
   | CompiledInputHorzClosure of compiled_intermediate_input_horz_element list * vmenv
@@ -930,40 +928,42 @@ and syntactic_value =
   | CompiledInputMathClosure of compiled_intermediate_input_math_element list * vmenv
 
 and abstract_tree =
-  | ASTBaseConstant       of base_constant
-  | ASTEndOfList
-(* -- input texts -- *)
+(* Texts: *)
   | InlineText            of inline_text_element list
   | BlockText             of block_text_element list
   | MathText              of math_text_element list
+(* Command abstractions: *)
   | LambdaInline          of EvalVarID.t * abstract_tree
   | LambdaBlock           of EvalVarID.t * abstract_tree
   | LambdaMath            of EvalVarID.t * (EvalVarID.t * EvalVarID.t) option * abstract_tree
-(* -- record value -- *)
+(* Record manipulation: *)
   | Record                of abstract_tree LabelMap.t
   | AccessField           of abstract_tree * label
   | UpdateField           of abstract_tree * label * abstract_tree
-(* -- fundamental -- *)
+(* Fundamentals: *)
+  | ASTBaseConstant       of base_constant
   | LetRecIn              of letrec_binding list * abstract_tree
   | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
   | ContentOf             of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
   | Function              of EvalVarID.t LabelMap.t * pattern_branch
   | Apply                 of abstract_tree LabelMap.t * abstract_tree * abstract_tree
-(* -- pattern match -- *)
+(* Patterns and datatypes: *)
+  | PrimitiveTuple        of abstract_tree TupleList.t
   | PatternMatch          of Range.t * abstract_tree * pattern_branch list
   | NonValueConstructor   of constructor_name * abstract_tree
-(* -- imperative -- *)
+  | ASTEndOfList
+(* Imperative operations: *)
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Dereference           of abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
-  | PrimitiveTuple        of abstract_tree TupleList.t
-(* -- staging constructs -- *)
+(* Staging constructs: *)
   | Next                  of abstract_tree
   | Prev                  of abstract_tree
   | Persistent            of Range.t * EvalVarID.t
   | Lift                  of abstract_tree
   | ASTCodeSymbol         of CodeSymbol.t
+(* Primitive applications: *)
 #include "__attype.gen.ml"
 
 and inline_text_element =
