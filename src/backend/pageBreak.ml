@@ -11,7 +11,6 @@ exception PageNumberLimitExceeded of int
 type frame_breaking =
   | Beginning
   | Midway
-[@@deriving show { with_path = false; }]
 
 type pb_vert_box = pb_vert_box_main * breakability
   (* --
@@ -21,18 +20,10 @@ type pb_vert_box = pb_vert_box_main * breakability
 
 and pb_vert_box_main =
   | PBVertLine  of reachability * length * length * intermediate_horz_box list
-      [@printer (fun fmt (_, h, d, _) -> Format.fprintf fmt "PBVertLine@[<hov>(%a,@ %a,@ <imhb-list>)@]" pp_length h pp_length d)]
   | PBVertSkip  of debug_margin_info * length
   | PBVertFrame of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
-      [@printer (fun fmt (fbr, pads, _, _, _, _, w, pbvblst) ->
-        Format.fprintf fmt "PBVertFrame@[<hov>(%a,@ %a,@ ...,@ %a,@ %a)@]"
-          pp_frame_breaking fbr
-          pp_paddings pads
-          pp_length w
-          (Format.pp_print_list pp_pb_vert_box) pbvblst)]
   | PBClearPage
   | PBHookPageBreak of (page_break_info -> point -> unit)
-[@@deriving show { with_path = false; }]
 
 type pb_normalized =
   | Normalized of pb_vert_box list

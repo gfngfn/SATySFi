@@ -1,7 +1,5 @@
-(* -unused-value-declaration *)
-[@@@ocaml.warning "-32"]
 
-type t  [@@deriving show]
+type t
 
 val zero : t
 
@@ -37,4 +35,4 @@ val of_millimeter : float -> t
 
 val of_inch : float -> t
 
-val show : t -> string
+val pp : Format.formatter -> t -> unit

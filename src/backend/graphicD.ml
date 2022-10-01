@@ -1,5 +1,3 @@
-(* -unused-value-declaration *)
-[@@@ocaml.warning "-32"]
 
 open LengthInterface
 open GraphicBase
@@ -145,8 +143,10 @@ let op_Tm_translate ((xpos, ypos) : point) : Pdfops.t =
 
 
 let op_Tf tag sl = Pdfops.Op_Tf(tag, !=> sl)
+(*
 let op_Tj str = Pdfops.Op_Tj(str)
 let op_Tj_hex str = Pdfops.Op_Tj_hex(str)
+*)
 let op_TJ obj = Pdfops.Op_TJ(obj)
 let op_Ts len = Pdfops.Op_Ts(!=> len)
 let op_BT = Pdfops.Op_BT
@@ -168,11 +168,17 @@ let op_G gray = Pdfops.Op_G(gray)
 let op_g gray = Pdfops.Op_g(gray)
 
 let op_S = Pdfops.Op_S
+
+(*
 let op_f = Pdfops.Op_f
+*)
 let op_f' = Pdfops.Op_f'
+(*
 let op_B = Pdfops.Op_B
 let op_B' = Pdfops.Op_B'
 let op_M ml = Pdfops.Op_M(!=> ml)
+*)
+
 let op_w lw = Pdfops.Op_w(!=> lw)
 
 let op_Do name = Pdfops.Op_Do(name)
