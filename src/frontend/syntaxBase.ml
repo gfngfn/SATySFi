@@ -1,12 +1,12 @@
 
-let pp_set fold _pp_elem ppf set =
+let pp_set fold pp_elem ppf set =
   Format.fprintf ppf "@[<hv1>{";
   fold (fun k is_first ->
     begin
       if is_first then
-        Format.fprintf ppf "%s" k
+        Format.fprintf ppf "%a" pp_elem k
       else
-        Format.fprintf ppf ",@ %s" k
+        Format.fprintf ppf ",@ %a" pp_elem k
     end;
     false
   ) set true |> ignore;

@@ -226,12 +226,9 @@ let convert_abs_path_to_show (abspath : abs_path) : string =
     Filename.basename abspathstr
 
 
-(* -w -unused-constructor *)
-type[@ocaml.warning "-37"] line =
-  | NormalLine        of string
-  | DisplayLine       of string
-  | NormalLineOption  of string option
-  | DisplayLineOption of string option
+type line =
+  | NormalLine  of string
+  | DisplayLine of string
 
 type error_category =
   | Lexer
@@ -253,25 +250,20 @@ let show_error_category = function
 
 let report_error (cat : error_category) (lines : line list) =
   print_string (Printf.sprintf "! [%s] " (show_error_category cat));
-  lines |> List.fold_left (fun is_first line ->
+  lines |> List.fold_left (fun (is_first : bool) (line : line) ->
     begin
       match line with
-      | NormalLine(s)
-      | NormalLineOption(Some(s)) ->
+      | NormalLine(s) ->
           if is_first then
             print_endline s
           else
             print_endline ("    " ^ s)
 
-      | DisplayLine(s)
-      | DisplayLineOption(Some(s)) ->
+      | DisplayLine(s) ->
           if is_first then
             print_endline ("\n      " ^ s)
           else
             print_endline ("      " ^ s)
-
-      | _ ->
-          ()
     end;
     false
   ) true |> ignore;
@@ -551,18 +543,32 @@ let error_log_environment suspended =
       begin
         match tyerr with
         | UndefinedVariable(rng, varnm, candidates) ->
-            report_error Typechecker [
-              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-              NormalLine(Printf.sprintf "undefined variable '%s'." varnm);
-              NormalLineOption(make_candidates_message candidates);
-            ]
+            let candidates_message_lines =
+              match make_candidates_message candidates with
+              | None    -> []
+              | Some(s) -> [ NormalLine(s) ]
+            in
+            report_error Typechecker (List.concat [
+              [
+                NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+                NormalLine(Printf.sprintf "undefined variable '%s'." varnm);
+              ];
+              candidates_message_lines;
+            ])
 
         | UndefinedConstructor(rng, constrnm, candidates) ->
-            report_error Typechecker [
-              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-              NormalLine(Printf.sprintf "undefined constructor '%s'." constrnm);
-              NormalLineOption(make_candidates_message candidates);
-            ]
+            let candidates_message_lines =
+              match make_candidates_message candidates with
+              | None    -> []
+              | Some(s) -> [ NormalLine(s) ]
+            in
+            report_error Typechecker (List.concat [
+              [
+                NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+                NormalLine(Printf.sprintf "undefined constructor '%s'." constrnm);
+              ];
+              candidates_message_lines;
+            ])
 
         | UndefinedTypeName(rng, tynm) ->
             report_error Typechecker [
