@@ -56,9 +56,10 @@ let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t F
     | RecordType(row) ->
         aux_mono_row row
 
-    | HorzCommandType(cmdargtys) -> cmdargtys |> List.iter aux_mono_cmd_arg
-    | VertCommandType(cmdargtys) -> cmdargtys |> List.iter aux_mono_cmd_arg
-    | MathCommandType(cmdargtys) -> cmdargtys |> List.iter aux_mono_cmd_arg
+    | InlineCommandType(cmdargtys)
+    | BlockCommandType(cmdargtys)
+    | MathCommandType(cmdargtys) ->
+        cmdargtys |> List.iter aux_mono_cmd_arg
 
     | CodeType(ty) ->
         aux_mono ty
@@ -93,9 +94,10 @@ let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t F
     | DataType(ptys, _tyid) ->
         ptys |> List.iter aux_poly
 
-    | HorzCommandType(pcmdargtys) -> pcmdargtys |> List.iter aux_poly_cmd_arg
-    | VertCommandType(pcmdargtys) -> pcmdargtys |> List.iter aux_poly_cmd_arg
-    | MathCommandType(pcmdargtys) -> pcmdargtys |> List.iter aux_poly_cmd_arg
+    | InlineCommandType(pcmdargtys)
+    | BlockCommandType(pcmdargtys)
+    | MathCommandType(pcmdargtys) ->
+        pcmdargtys |> List.iter aux_poly_cmd_arg
 
     | CodeType(pty) ->
         aux_poly pty
@@ -273,11 +275,11 @@ fun tvf rvf plev ty ->
       | DataType([], tyid) ->
           (Single, TypeID.extract_name tyid)
 
-      | HorzCommandType(cmdargtys) ->
+      | InlineCommandType(cmdargtys) ->
           let ss = cmdargtys |> List.map aux_cmd_arg in
           (ProductElement, Printf.sprintf "inline [%s]" (String.concat ", " ss))
 
-      | VertCommandType(cmdargtys) ->
+      | BlockCommandType(cmdargtys) ->
           let ss = cmdargtys |> List.map aux_cmd_arg in
           (ProductElement, Printf.sprintf "block [%s]" (String.concat ", " ss))
 

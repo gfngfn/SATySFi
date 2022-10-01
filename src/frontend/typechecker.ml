@@ -368,10 +368,14 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
     | DataType(tyargs, _tyid)        -> iter_list tyargs
     | RecordType(row)                -> iter_row row
     | BaseType(_)                    -> false
-    | HorzCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | VertCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | MathCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | CodeType(tysub)                -> iter tysub
+
+    | InlineCommandType(cmdargtys)
+    | BlockCommandType(cmdargtys)
+    | MathCommandType(cmdargtys) ->
+        iter_cmd_list cmdargtys
+
+    | CodeType(tysub) ->
+        iter tysub
 
   and iter_list tys =
     List.exists iter tys
@@ -445,10 +449,14 @@ let occurs_row (frid : FreeRowID.t) (row : mono_row) =
     | DataType(tyargs, _tyid)        -> iter_list tyargs
     | RecordType(row)                -> iter_row row
     | BaseType(_)                    -> false
-    | HorzCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | VertCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | MathCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | CodeType(tysub)                -> iter tysub
+
+    | InlineCommandType(cmdargtys)
+    | BlockCommandType(cmdargtys)
+    | MathCommandType(cmdargtys) ->
+        iter_cmd_list cmdargtys
+
+    | CodeType(tysub) ->
+        iter tysub
 
   and iter_list (tys : mono_type list) =
     List.exists iter tys
@@ -515,8 +523,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           unify tycod1 tycod2;
         end
 
-    | (HorzCommandType(cmdargtys1), HorzCommandType(cmdargtys2))
-    | (VertCommandType(cmdargtys1), VertCommandType(cmdargtys2))
+    | (InlineCommandType(cmdargtys1), InlineCommandType(cmdargtys2))
+    | (BlockCommandType(cmdargtys1), BlockCommandType(cmdargtys2))
     | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) ->
         begin
           match List.combine cmdargtys1 cmdargtys2 with
@@ -969,7 +977,7 @@ let rec typecheck
           CommandArgType(ty_labmap, ty_pat)
         )
       in
-      (e, (rng, HorzCommandType(cmdargtys)))
+      (e, (rng, InlineCommandType(cmdargtys)))
 
   | UTLambdaVertCommand{
       parameters       = param_units;
@@ -1009,7 +1017,7 @@ let rec typecheck
           CommandArgType(ty_labmap, ty_pat)
         )
       in
-      (e, (rng, VertCommandType(cmdargtys)))
+      (e, (rng, BlockCommandType(cmdargtys)))
 
   | UTLambdaMathCommand{
       parameters       = param_units;
@@ -1411,7 +1419,7 @@ and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_e
                   arguments = args;
                 }
 
-            | HorzCommandType(_) ->
+            | InlineCommandType(_) ->
                 let (rngcmd, _) = utastcmd in
                 raise_error (HorzCommandInMath(rngcmd))
 
@@ -1440,8 +1448,8 @@ and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
         let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
         let cmdargtys =
           match ty_cmd with
-          | (_, VertCommandType(cmdargtys)) -> cmdargtys
-          | _                               -> assert false
+          | (_, BlockCommandType(cmdargtys)) -> cmdargtys
+          | _                                -> assert false
         in
         let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
         aux (Alist.extend acc (InputVertApplyCommand{ command = e_cmd; arguments = args })) tail
@@ -1491,7 +1499,7 @@ and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihl
         let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
         let cmdargtys =
           match ty_cmd with
-          | (_, HorzCommandType(cmdargtys)) ->
+          | (_, InlineCommandType(cmdargtys)) ->
               cmdargtys
 
           | (_, MathCommandType(_)) ->
@@ -1897,9 +1905,9 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
       | MRecordType(mnfields, rowvar) ->
           RecordType(aux_row mnfields rowvar)
 
-      | MHorzCommandType(mncmdargtys) -> HorzCommandType(aux_cmd_list mncmdargtys)
-      | MVertCommandType(mncmdargtys) -> VertCommandType(aux_cmd_list mncmdargtys)
-      | MMathCommandType(mncmdargtys) -> MathCommandType(aux_cmd_list mncmdargtys)
+      | MInlineCommandType(mncmdargtys) -> InlineCommandType(aux_cmd_list mncmdargtys)
+      | MBlockCommandType(mncmdargtys)  -> BlockCommandType(aux_cmd_list mncmdargtys)
+      | MMathCommandType(mncmdargtys)   -> MathCommandType(aux_cmd_list mncmdargtys)
     in
     (rng, tymain)
 
@@ -2283,9 +2291,9 @@ and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_t
       | RefType(pty)  -> RefType(aux pty)
       | CodeType(pty) -> CodeType(aux pty)
 
-      | HorzCommandType(pargs) -> HorzCommandType(pargs |> List.map aux_command_arg)
-      | VertCommandType(pargs) -> VertCommandType(pargs |> List.map aux_command_arg)
-      | MathCommandType(pargs) -> MathCommandType(pargs |> List.map aux_command_arg)
+      | InlineCommandType(pargs) -> InlineCommandType(pargs |> List.map aux_command_arg)
+      | BlockCommandType(pargs)  -> BlockCommandType(pargs |> List.map aux_command_arg)
+      | MathCommandType(pargs)   -> MathCommandType(pargs |> List.map aux_command_arg)
 
       | FuncType(poptrow, ptydom, ptycod) ->
           FuncType(aux_option_row poptrow, aux ptydom, aux ptycod)
@@ -2582,9 +2590,9 @@ and subtype_poly_type_impl (internbid : type_intern) (internbrid : row_intern) (
     | (RefType(pty1), RefType(pty2))   -> aux pty1 pty2
     | (BaseType(bty1), BaseType(bty2)) -> bty1 = bty2
 
-    | (HorzCommandType(cmdargtys1), HorzCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
-    | (VertCommandType(cmdargtys1), VertCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
-    | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
+    | (InlineCommandType(cmdargtys1), InlineCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
+    | (BlockCommandType(cmdargtys1), BlockCommandType(cmdargtys2))   -> aux_cmd_list cmdargtys1 cmdargtys2
+    | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2))     -> aux_cmd_list cmdargtys1 cmdargtys2
 
     | (CodeType(pty1), CodeType(pty2)) ->
         aux pty1 pty2
@@ -2779,9 +2787,9 @@ and poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
     | (RecordType(prow1), RecordType(prow2)) ->
         poly_row_equal prow1 prow2
 
-    | (HorzCommandType(cmdargtys1), HorzCommandType(cmdargtys2))
-    | (VertCommandType(cmdargtys1), HorzCommandType(cmdargtys2))
-    | (MathCommandType(cmdargtys1), HorzCommandType(cmdargtys2)) ->
+    | (InlineCommandType(cmdargtys1), InlineCommandType(cmdargtys2))
+    | (BlockCommandType(cmdargtys1), BlockCommandType(cmdargtys2))
+    | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) ->
         aux_cmd_list cmdargtys1 cmdargtys2
 
     | (CodeType(pty1), CodeType(pty2)) ->
@@ -3107,9 +3115,10 @@ and get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.
     | MTypeParam(_typaram) ->
         ()
 
-    | MHorzCommandType(mcmdargtys) -> mcmdargtys |> List.iter aux_cmd_arg
-    | MVertCommandType(mcmdargtys) -> mcmdargtys |> List.iter aux_cmd_arg
-    | MMathCommandType(mcmdargtys) -> mcmdargtys |> List.iter aux_cmd_arg
+    | MInlineCommandType(mcmdargtys)
+    | MBlockCommandType(mcmdargtys)
+    | MMathCommandType(mcmdargtys) ->
+        mcmdargtys |> List.iter aux_cmd_arg
 
   and aux_row (mfields : (label ranged * manual_type) list) : unit =
     mfields |> List.iter (fun (_, mty) -> aux mty)

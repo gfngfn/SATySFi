@@ -86,7 +86,7 @@ let tIGRO = tIGRO_raw
 
 let tPAREN = tLN @-> tLN @-> tCTX @-> tPROD [tIB; tLN @-> tLN]
 
-let tICMD ty = (~! "cmd", HorzCommandType([CommandArgType(LabelMap.empty, ty)]))
+let tICMD ty = (~! "cmd", InlineCommandType([CommandArgType(LabelMap.empty, ty)]))
 
 
 let make_row kts =

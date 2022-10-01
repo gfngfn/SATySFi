@@ -728,9 +728,9 @@ typ_app:
         (rng, MTypeName(modidents, tyident, mntys))
       }
   | tokL=INLINE; L_SQUARE; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=R_SQUARE
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MHorzCommandType(mncmdargtys)) }
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MInlineCommandType(mncmdargtys)) }
   | tokL=BLOCK; L_SQUARE; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=R_SQUARE
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MVertCommandType(mncmdargtys)) }
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MBlockCommandType(mncmdargtys)) }
   | tokL=MATH; L_SQUARE; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=R_SQUARE
       { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MMathCommandType(mncmdargtys)) }
   | mnty=typ_bot

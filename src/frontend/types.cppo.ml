@@ -62,14 +62,14 @@ type manual_type =
   Range.t * manual_type_main
 
 and manual_type_main =
-  | MTypeName        of (module_name ranged) list * type_name ranged * manual_type list
-  | MTypeParam       of var_name
-  | MFuncType        of (label ranged * manual_type) list * (row_variable_name ranged) option * manual_type * manual_type
-  | MProductType     of manual_type TupleList.t
-  | MRecordType      of (label ranged * manual_type) list * (row_variable_name ranged) option
-  | MHorzCommandType of manual_command_argument_type list
-  | MVertCommandType of manual_command_argument_type list
-  | MMathCommandType of manual_command_argument_type list
+  | MTypeName          of (module_name ranged) list * type_name ranged * manual_type list
+  | MTypeParam         of var_name
+  | MFuncType          of (label ranged * manual_type) list * (row_variable_name ranged) option * manual_type * manual_type
+  | MProductType       of manual_type TupleList.t
+  | MRecordType        of (label ranged * manual_type) list * (row_variable_name ranged) option
+  | MInlineCommandType of manual_command_argument_type list
+  | MBlockCommandType  of manual_command_argument_type list
+  | MMathCommandType   of manual_command_argument_type list
 [@@deriving show]
 
 and manual_command_argument_type =
@@ -182,18 +182,18 @@ type ('a, 'b) typ =
   Range.t * ('a, 'b) type_main
 
 and ('a, 'b) type_main =
-  | BaseType        of base_type
-  | FuncType        of ('a, 'b) row * ('a, 'b) typ * ('a, 'b) typ
-  | ListType        of ('a, 'b) typ
-  | RefType         of ('a, 'b) typ
-  | ProductType     of (('a, 'b) typ) TupleList.t
-  | TypeVariable    of 'a
-  | DataType        of (('a, 'b) typ) list * TypeID.t
-  | RecordType      of ('a, 'b) row
-  | HorzCommandType of (('a, 'b) command_argument_type) list
-  | VertCommandType of (('a, 'b) command_argument_type) list
-  | MathCommandType of (('a, 'b) command_argument_type) list
-  | CodeType        of ('a, 'b) typ
+  | BaseType          of base_type
+  | FuncType          of ('a, 'b) row * ('a, 'b) typ * ('a, 'b) typ
+  | ListType          of ('a, 'b) typ
+  | RefType           of ('a, 'b) typ
+  | ProductType       of (('a, 'b) typ) TupleList.t
+  | TypeVariable      of 'a
+  | DataType          of (('a, 'b) typ) list * TypeID.t
+  | RecordType        of ('a, 'b) row
+  | InlineCommandType of (('a, 'b) command_argument_type) list
+  | BlockCommandType  of (('a, 'b) command_argument_type) list
+  | MathCommandType   of (('a, 'b) command_argument_type) list
+  | CodeType          of ('a, 'b) typ
 
 and ('a, 'b) command_argument_type =
   | CommandArgType of (('a, 'b) typ) LabelMap.t * ('a, 'b) typ

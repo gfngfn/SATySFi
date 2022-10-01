@@ -43,9 +43,9 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
     | DataType(tyargs, tyid)            -> (rng, DataType(List.map iter tyargs, tyid))
     | ListType(tycont)                  -> (rng, ListType(iter tycont))
     | RefType(tycont)                   -> (rng, RefType(iter tycont))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
+    | InlineCommandType(tys)            -> (rng, InlineCommandType(List.map (lift_argument_type iter) tys))
+    | BlockCommandType(tys)             -> (rng, BlockCommandType(List.map (lift_argument_type iter) tys))
+    | MathCommandType(tys)              -> (rng, MathCommandType(List.map (lift_argument_type iter) tys))
     | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
 
@@ -82,9 +82,9 @@ fun intern_ty intern_row pty ->
   | ListType(tysub)                -> (rng, ListType(aux tysub))
   | RefType(tysub)                 -> (rng, RefType(aux tysub))
   | BaseType(bty)                  -> (rng, BaseType(bty))
-  | HorzCommandType(tylist)        -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
-  | VertCommandType(tylist)        -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
-  | MathCommandType(tylist)        -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
+  | InlineCommandType(tys)         -> (rng, InlineCommandType(List.map (lift_argument_type aux) tys))
+  | BlockCommandType(tys)          -> (rng, BlockCommandType(List.map (lift_argument_type aux) tys))
+  | MathCommandType(tys)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tys))
   | CodeType(tysub)                -> (rng, CodeType(aux tysub))
 
 
@@ -243,9 +243,9 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
     | ListType(tysub)                   -> (rng, ListType(iter tysub))
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
     | BaseType(bty)                     -> (rng, BaseType(bty))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
+    | InlineCommandType(tys)            -> (rng, InlineCommandType(List.map (lift_argument_type iter) tys))
+    | BlockCommandType(tys)             -> (rng, BlockCommandType(List.map (lift_argument_type iter) tys))
+    | MathCommandType(tys)              -> (rng, MathCommandType(List.map (lift_argument_type iter) tys))
     | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
   and generalize_row (labset : LabelSet.t) = function
@@ -305,10 +305,10 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
     | ListType(tycont)               -> iter tycont
     | DataType(tyargs, _)            -> List.for_all iter tyargs
 
-    | HorzCommandType(cmdargtylst)
-    | VertCommandType(cmdargtylst)
-    | MathCommandType(cmdargtylst) ->
-        List.for_all iter_cmd cmdargtylst
+    | InlineCommandType(cmdargtys)
+    | BlockCommandType(cmdargtys)
+    | MathCommandType(cmdargtys) ->
+        List.for_all iter_cmd cmdargtys
 
     | CodeType(tysub) ->
         iter tysub
@@ -422,9 +422,9 @@ let rec unlift_aux pty =
     | ListType(ptysub)                -> ListType(aux ptysub)
     | RefType(ptysub)                 -> RefType(aux ptysub)
     | DataType(ptyargs, tyid)         -> DataType(List.map aux ptyargs, tyid)
-    | HorzCommandType(catyl)          -> HorzCommandType(List.map unlift_aux_cmd catyl)
-    | VertCommandType(catyl)          -> VertCommandType(List.map unlift_aux_cmd catyl)
-    | MathCommandType(catyl)          -> MathCommandType(List.map unlift_aux_cmd catyl)
+    | InlineCommandType(cmdargtys)    -> InlineCommandType(List.map unlift_aux_cmd cmdargtys)
+    | BlockCommandType(cmdargtys)     -> BlockCommandType(List.map unlift_aux_cmd cmdargtys)
+    | MathCommandType(cmdargtys)      -> MathCommandType(List.map unlift_aux_cmd cmdargtys)
     | CodeType(ptysub)                -> CodeType(aux ptysub)
   in
   (rng, ptymainnew)
