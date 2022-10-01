@@ -1088,40 +1088,40 @@ inline_elem_cmd:
         let utast_cmd = (rng_cs, UTContentOf(modidents, cs)) in
         let (rng_last, sargs) = rsargs in
         let args = List.append nargs sargs in
-        make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzApplyCommand(utast_cmd, args))
+        make_standard (Tok rng_cs) (Tok rng_last) (UTInlineTextApplyCommand(utast_cmd, args))
       }
 
   | imacro_raw=BACKSLASH_MACRO; macargsraw=macroargs {
       let (rng_cs, _csnm) = imacro_raw in
       let imacro = (rng_cs, [], imacro_raw) in
       let (rng_last, macroargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(imacro, macroargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInlineTextMacro(imacro, macroargs))
     }
   | imacro=LONG_BACKSLASH_MACRO; macargsraw=macroargs {
       let (rng_cs, _, _) = imacro in
       let (rng_last, macroargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(imacro, macroargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInlineTextMacro(imacro, macroargs))
     }
   | tokL=L_MATH_TEXT; utast=math; tokR=R_MATH_TEXT
-      { make_standard (Tok tokL) (Tok tokR) (UTInputHorzEmbeddedMath(utast)) }
+      { make_standard (Tok tokL) (Tok tokR) (UTInlineTextEmbeddedMath(utast)) }
   | literal=STRING
       {
         let (rng, str, pre, post) = literal in
-        make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeArea(omit_spaces pre post str))
+        make_standard (Tok rng) (Tok rng) (UTInlineTextEmbeddedCodeArea(omit_spaces pre post str))
       }
   | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {
         let (rng, modidents, ident) = long_ident in
         let utast = (rng, UTContentOf(modidents, ident)) in
-        make_standard (Tok rng) (Tok tokR) (UTInputHorzContent(utast))
+        make_standard (Tok rng) (Tok tokR) (UTInlineTextContent(utast))
       }
 ;
 inline_elem_text:
   | ichars=nonempty_list(inline_char)
       {
         let rng = make_range_from_list ichars in
-        let text = String.concat "" (ichars |> List.map (fun (_, t) -> t)) in
-        (rng, UTInputHorzText(text))
+        let s = String.concat "" (ichars |> List.map (fun (_, t) -> t)) in
+        (rng, UTInlineTextString(s))
       }
 ;
 inline_char:

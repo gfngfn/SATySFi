@@ -1488,13 +1488,13 @@ and typecheck_block_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
   aux Alist.empty utivlst
 
 
-and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) : inline_text_element list =
-  let rec aux acc utihlst =
-    match utihlst with
+and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utits : untyped_inline_text_element list) : inline_text_element list =
+  let rec aux acc utits =
+    match utits with
     | [] ->
         Alist.to_list acc
 
-    | (rng_cmdapp, UTInputHorzApplyCommand(utast_cmd, utcmdargs)) :: tail ->
+    | (rng_cmdapp, UTInlineTextApplyCommand(utast_cmd, utcmdargs)) :: tail ->
         let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
         let cmdargtys =
           match ty_cmd with
@@ -1511,23 +1511,23 @@ and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utih
         let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
         aux (Alist.extend acc (InlineTextApplyCommand{ command = e_cmd; arguments = args })) tail
 
-    | (_, UTInputHorzEmbeddedMath(utast_math)) :: tail ->
+    | (_, UTInlineTextEmbeddedMath(utast_math)) :: tail ->
         let (emath, tymath) = typecheck pre tyenv utast_math in
         unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(MathTextType));
         aux (Alist.extend acc (InlineTextEmbeddedMath(emath))) tail
 
-    | (_, UTInputHorzEmbeddedCodeArea(s)) :: tail ->
+    | (_, UTInlineTextEmbeddedCodeArea(s)) :: tail ->
         aux (Alist.extend acc (InlineTextEmbeddedCodeArea(s))) tail
 
-    | (_, UTInputHorzContent(utast0)) :: tail ->
+    | (_, UTInlineTextContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
         unify ty0 (Range.dummy "ut-input-horz-content", BaseType(InlineTextType));
         aux (Alist.extend acc (InlineTextContent(e0))) tail
 
-    | (_, UTInputHorzText(s)) :: tail ->
+    | (_, UTInlineTextString(s)) :: tail ->
         aux (Alist.extend acc (InlineTextString(s))) tail
 
-    | (rng_app, UTInputHorzMacro(hmacro, utmacargs)) :: tail ->
+    | (rng_app, UTInlineTextMacro(hmacro, utmacargs)) :: tail ->
         begin
           match pre.stage with
           | Stage0 | Persistent0 ->
@@ -1554,7 +1554,7 @@ and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utih
               aux (Alist.extend acc ih) tail
         end
   in
-  aux Alist.empty utihlst
+  aux Alist.empty utits
 
 
 and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (macparamtys : mono_macro_parameter_type list) (utmacargs : untyped_macro_argument list) : abstract_tree list =

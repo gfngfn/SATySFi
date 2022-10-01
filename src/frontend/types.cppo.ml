@@ -405,19 +405,19 @@ and untyped_synonym_or_variant =
   | UTBindSynonym of manual_type
   | UTBindVariant of constructor_branch list
 
-and untyped_input_horz_element =
-  Range.t * untyped_input_horz_element_main
-    [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_input_horz_element_main utihmain)]
+and untyped_inline_text_element =
+  Range.t * untyped_inline_text_element_main
+    [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_inline_text_element_main utihmain)]
 
-and untyped_input_horz_element_main =
-  | UTInputHorzText             of string
+and untyped_inline_text_element_main =
+  | UTInlineTextString           of string
       [@printer (fun fmt s -> Format.fprintf fmt "IT:%s" s)]
-  | UTInputHorzApplyCommand     of untyped_abstract_tree * untyped_command_argument list
+  | UTInlineTextApplyCommand     of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "IC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
-  | UTInputHorzContent          of untyped_abstract_tree
-  | UTInputHorzEmbeddedMath     of untyped_abstract_tree
-  | UTInputHorzEmbeddedCodeArea of string
-  | UTInputHorzMacro            of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
+  | UTInlineTextContent          of untyped_abstract_tree
+  | UTInlineTextEmbeddedMath     of untyped_abstract_tree
+  | UTInlineTextEmbeddedCodeArea of string
+  | UTInlineTextMacro            of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
 and untyped_macro_argument =
   | UTLateMacroArg  of untyped_abstract_tree
@@ -468,7 +468,7 @@ and untyped_abstract_tree_main =
   | UTStringConstant       of string
   | UTPositionedString     of input_position * string
 (* Input texts: *)
-  | UTInlineText          of untyped_input_horz_element list
+  | UTInlineText          of untyped_inline_text_element list
   | UTBlockText           of untyped_input_vert_element list
   | UTMathText            of untyped_input_math_element list
 (* Command abstractions: *)

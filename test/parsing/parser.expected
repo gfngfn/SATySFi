@@ -996,7 +996,7 @@
                         ((Range.Normal <mathlist.saty:7.5-7>), "+p"))) (
                    UTCommandArg ([],
                      (UTInlineText
-                        [(UTInputHorzEmbeddedMath
+                        [(UTInlineTextEmbeddedMath
                             (UTMathText
                                [((Range.Normal <mathlist.saty:8.9-10>),
                                  UTInputMathElement {
@@ -1005,7 +1005,7 @@
                                  ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
+                          (UTInlineTextEmbeddedMath
                              (UTMathText
                                 [((Range.Normal <mathlist.saty:9.9-12>),
                                   UTInputMathElement {
@@ -1021,7 +1021,7 @@
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
+                          (UTInlineTextEmbeddedMath
                              (UTMathText
                                 [((Range.Normal <mathlist.saty:10.9-12>),
                                   UTInputMathElement {
@@ -1036,7 +1036,7 @@
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
+                          (UTInlineTextEmbeddedMath
                              (UTMathText
                                 [((Range.Normal <mathlist.saty:11.9-14>),
                                   UTInputMathElement {
@@ -1058,7 +1058,7 @@
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
+                          (UTInlineTextEmbeddedMath
                              (UTMathText
                                 [((Range.Normal <mathlist.saty:12.9-14>),
                                   UTInputMathElement {
@@ -1080,7 +1080,7 @@
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
+                          (UTInlineTextEmbeddedMath
                              (UTMathText
                                 [((Range.Normal <mathlist.saty:13.9-11>),
                                   UTInputMathElement {
@@ -1096,7 +1096,7 @@
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
+                          (UTInlineTextEmbeddedMath
                              (UTMathText
                                 [((Range.Normal <mathlist.saty:14.9-13>),
                                   UTInputMathElement {
@@ -1116,7 +1116,7 @@
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
+                          (UTInlineTextEmbeddedMath
                              (UTMathText
                                 [((Range.Normal <mathlist.saty:15.9-13>),
                                   UTInputMathElement {
@@ -1138,7 +1138,7 @@
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
+                          (UTInlineTextEmbeddedMath
                              (UTMathText
                                 [((Range.Normal <mathlist.saty:16.9-15>),
                                   UTInputMathElement {
@@ -1164,7 +1164,7 @@
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
+                          (UTInlineTextEmbeddedMath
                              (UTMathText
                                 [((Range.Normal <mathlist.saty:17.9-15>),
                                   UTInputMathElement {
