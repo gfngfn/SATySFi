@@ -802,14 +802,14 @@ let rec typecheck
 
   | UTInputHorz(utihlst) ->
       let ihlst = typecheck_input_horz rng pre tyenv utihlst in
-      (InputHorz(ihlst), (rng, BaseType(TextRowType)))
+      (InputHorz(ihlst), (rng, BaseType(InlineTextType)))
 
   | UTInputVert(utivlst) ->
       let ivlst = typecheck_input_vert rng pre tyenv utivlst in
-      (InputVert(ivlst), (rng, BaseType(TextColType)))
+      (InputVert(ivlst), (rng, BaseType(BlockTextType)))
 
   | UTInputMath(utmes) ->
-      let tymath = (rng, BaseType(TextMathType)) in
+      let tymath = (rng, BaseType(MathTextType)) in
       let ms = typecheck_math pre tyenv utmes in
       (InputMath(ms), tymath)
 
@@ -942,7 +942,7 @@ let rec typecheck
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
-          (ContextType, BoxRowType)
+          (ContextType, InlineBoxesType)
       in
       let evid_ctx = EvalVarID.fresh ident_ctx in
       let (e_body, ty_body) =
@@ -982,7 +982,7 @@ let rec typecheck
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
-          (ContextType, BoxColType)
+          (ContextType, BlockBoxesType)
       in
       let evid_ctx = EvalVarID.fresh ident_ctx in
       let (e_body, ty_body) =
@@ -1023,7 +1023,7 @@ let rec typecheck
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
-          (ContextType, BoxMathType)
+          (ContextType, MathBoxesType)
       in
       let evid_ctx = EvalVarID.fresh ident_ctx in
       let script_params_opt =
@@ -1052,7 +1052,7 @@ let rec typecheck
             let (rng_sub_var, varnm_sub) = ident_sub in
             let (rng_sup_var, varnm_sup) = ident_sup in
             let pty_script rng =
-              Poly(rng, snd (Primitives.option_type (Range.dummy "sub-or-sup", BaseType(TextMathType))))
+              Poly(rng, snd (Primitives.option_type (Range.dummy "sub-or-sup", BaseType(MathTextType))))
             in
             let ventry_sub =
               {
@@ -1277,10 +1277,10 @@ let rec typecheck
         if OptionState.is_text_mode () then
           (TextHorzLex(ectx, eh), TextInfoType, StringType)
         else
-          (HorzLex(ectx, eh), ContextType, BoxRowType)
+          (HorzLex(ectx, eh), ContextType, InlineBoxesType)
       in
       unify tyctx (Range.dummy "ut-lex-horz-1", BaseType(bstyctx));
-      unify tyh (Range.dummy "ut-lex-horz-2", BaseType(TextRowType));
+      unify tyh (Range.dummy "ut-lex-horz-2", BaseType(InlineTextType));
       (eret, (rng, BaseType(bstyret)))
 
   | UTLexVert(utastctx, utastv) ->
@@ -1290,10 +1290,10 @@ let rec typecheck
         if OptionState.is_text_mode () then
           (TextVertLex(ectx, ev), TextInfoType, StringType)
         else
-          (VertLex(ectx, ev), ContextType, BoxColType)
+          (VertLex(ectx, ev), ContextType, BlockBoxesType)
       in
       unify tyctx (Range.dummy "ut-lex-vert-1", BaseType(bstyctx));
-      unify tyv (Range.dummy "ut-lex-vert-2", BaseType(TextColType));
+      unify tyv (Range.dummy "ut-lex-vert-2", BaseType(BlockTextType));
       (eret, (rng, BaseType(bstyret)))
 
   | UTNext(utast1) ->
@@ -1421,7 +1421,7 @@ and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_e
 
       | UTInputMathContent(utast0) ->
           let (e0, ty0) = typecheck pre tyenv utast0 in
-          unify ty0 (Range.dummy "math-embedded-var", BaseType(TextMathType));
+          unify ty0 (Range.dummy "math-embedded-var", BaseType(MathTextType));
           InputMathContent(e0)
     in
     let sub = utsub_opt |> Option.map iter in
@@ -1448,7 +1448,7 @@ and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
 
     | (_, UTInputVertContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "UTInputVertContent", BaseType(TextColType));
+        unify ty0 (Range.dummy "UTInputVertContent", BaseType(BlockTextType));
         aux (Alist.extend acc (InputVertContent(e0))) tail
 
     | (rng_app, UTInputVertMacro(bmacro, utmacargs)) :: tail ->
@@ -1506,7 +1506,7 @@ and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihl
 
     | (_, UTInputHorzEmbeddedMath(utast_math)) :: tail ->
         let (emath, tymath) = typecheck pre tyenv utast_math in
-        unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(TextMathType));
+        unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(MathTextType));
         aux (Alist.extend acc (InputHorzEmbeddedMath(emath))) tail
 
     | (_, UTInputHorzEmbeddedCodeArea(s)) :: tail ->
@@ -1514,7 +1514,7 @@ and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihl
 
     | (_, UTInputHorzContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "ut-input-horz-content", BaseType(TextRowType));
+        unify ty0 (Range.dummy "ut-input-horz-content", BaseType(InlineTextType));
         aux (Alist.extend acc (InputHorzContent(e0))) tail
 
     | (_, UTInputHorzText(s)) :: tail ->
@@ -1605,7 +1605,7 @@ and typecheck_record (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (fields : (
 
 and typecheck_itemize (pre : pre) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
   let (e1, ty1) = typecheck pre tyenv utast1 in
-  unify ty1 (Range.dummy "typecheck_itemize_string", BaseType(TextRowType));
+  unify ty1 (Range.dummy "typecheck_itemize_string", BaseType(InlineTextType));
   let e2 = typecheck_itemize_list pre tyenv utitmzlst in
   (NonValueConstructor("Item", PrimitiveTuple(TupleList.make e1 e2 [])))
 
@@ -3394,7 +3394,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
       let macty = HorzMacroType(macparamtys) in
       let (e1, ty1) = typecheck pre tyenv utast1 in
-      unify ty1 (Range.dummy "val-inline-macro", BaseType(TextRowType));
+      unify ty1 (Range.dummy "val-inline-macro", BaseType(InlineTextType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
         let macentry =
@@ -3421,7 +3421,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
       let macty = HorzMacroType(macparamtys) in
       let (e1, ty1) = typecheck pre tyenv utast1 in
-      unify ty1 (Range.dummy "val-block-macro", BaseType(TextColType));
+      unify ty1 (Range.dummy "val-block-macro", BaseType(BlockTextType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
         let macentry =

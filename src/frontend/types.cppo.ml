@@ -94,12 +94,12 @@ type base_type =
   | FloatType
   | LengthType
   | StringType
-  | TextRowType
-  | TextColType
-  | TextMathType
-  | BoxRowType
-  | BoxColType
-  | BoxMathType
+  | InlineTextType
+  | BlockTextType
+  | MathTextType
+  | InlineBoxesType
+  | BlockBoxesType
+  | MathBoxesType
   | ContextType
   | PrePathType
   | PathType
@@ -142,26 +142,26 @@ let base_type_map : base_type TypeNameMap.t =
     map |> TypeNameMap.add tynm bt
   ) TypeNameMap.empty
   [
-    ("unit"        , UnitType    );
-    ("bool"        , BoolType    );
-    ("int"         , IntType     );
-    ("float"       , FloatType   );
-    ("length"      , LengthType  );
-    ("string"      , StringType  );
-    ("inline-text" , TextRowType );
-    ("block-text"  , TextColType );
-    ("math-text"   , TextMathType);
-    ("inline-boxes", BoxRowType  );
-    ("block-boxes" , BoxColType  );
-    ("math-boxes"  , BoxMathType );
-    ("context"     , ContextType );
-    ("pre-path"    , PrePathType );
-    ("path"        , PathType    );
-    ("graphics"    , GraphicsType);
-    ("image"       , ImageType   );
-    ("document"    , DocumentType);
-    ("regexp"      , RegExpType  );
-    ("text-info"   , TextInfoType);
+    ("unit"          , UnitType);
+    ("bool"          , BoolType);
+    ("int"           , IntType);
+    ("float"         , FloatType);
+    ("length"        , LengthType);
+    ("string"        , StringType);
+    ("inline-text"   , InlineTextType);
+    ("block-text"    , BlockTextType);
+    ("math-text"     , MathTextType);
+    ("inline-boxes"  , InlineBoxesType);
+    ("block-boxes"   , BlockBoxesType);
+    ("math-boxes"    , MathBoxesType);
+    ("context"       , ContextType);
+    ("pre-path"      , PrePathType);
+    ("path"          , PathType);
+    ("graphics"      , GraphicsType);
+    ("image"         , ImageType);
+    ("document"      , DocumentType);
+    ("regexp"        , RegExpType);
+    ("text-info"     , TextInfoType);
     ("input-position", InputPosType);
   ]
 
