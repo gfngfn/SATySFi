@@ -58,10 +58,10 @@ and erase_range_of_row (row : mono_row) =
       let rlabel = (Range.dummy "erased", label) in
       RowCons(rlabel, erase_range_of_type ty, erase_range_of_row tail)
 
-  | RowVar(UpdatableRow{contents = MonoORLink(optrow)}) ->
+  | RowVar(UpdatableRow{contents = MonoRowLink(optrow)}) ->
       erase_range_of_row optrow
 
-  | RowVar(UpdatableRow{contents = MonoORFree(_)}) ->
+  | RowVar(UpdatableRow{contents = MonoRowFree(_)}) ->
       row
 
   | RowVar(MustBeBoundRow(_)) ->
@@ -126,10 +126,10 @@ let make_type_instantiation_intern (lev : level) (qtfbl : quantifiability) (bid_
 let make_row_instantiation_intern (lev : level) (brid_ht : mono_row_variable BoundRowIDHashTable.t) =
   let intern_row (prv : poly_row_variable) : mono_row =
     match prv with
-    | PolyORFree(rvref) ->
+    | PolyRowFree(rvref) ->
         RowVar(rvref)
 
-    | PolyORBound(brid) ->
+    | PolyRowBound(brid) ->
         begin
           match BoundRowIDHashTable.find_opt brid_ht brid with
           | Some(rv) ->
@@ -138,7 +138,7 @@ let make_row_instantiation_intern (lev : level) (brid_ht : mono_row_variable Bou
           | None ->
               let rv =
                 let frid = FreeRowID.fresh lev (BoundRowID.get_label_set brid) in
-                let rvref = ref (MonoORFree(frid)) in
+                let rvref = ref (MonoRowFree(frid)) in
                 UpdatableRow(rvref)
               in
               BoundRowIDHashTable.add brid_ht brid rv;
@@ -171,8 +171,8 @@ let instantiate_by_map_mono (bidmap : mono_type BoundIDMap.t) (Poly(pty) : poly_
   in
   let intern_row (prv : poly_row_variable) =
     match prv with
-    | PolyORFree(rvref) -> RowVar(rvref)
-    | PolyORBound(_)    -> assert false
+    | PolyRowFree(rvref) -> RowVar(rvref)
+    | PolyRowBound(_)    -> assert false
   in
   instantiate_impl intern_ty intern_row pty
 
@@ -259,23 +259,23 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
     | RowVar(UpdatableRow(orviref) as rv0) ->
         begin
           match !orviref with
-          | MonoORFree(frid) ->
+          | MonoRowFree(frid) ->
               begin
                 match intern_row frid labset with
                 | None ->
-                    RowVar(PolyORFree(rv0))
+                    RowVar(PolyRowFree(rv0))
 
                 | Some(brid) ->
-                    RowVar(PolyORBound(brid))
+                    RowVar(PolyRowBound(brid))
               end
 
-          | MonoORLink(row) ->
+          | MonoRowLink(row) ->
               generalize_row labset row
         end
 
     | RowVar(MustBeBoundRow(mbbrid)) ->
         let brid = MustBeBoundRowID.to_bound_id mbbrid in
-        RowVar(PolyORBound(brid))
+        RowVar(PolyRowBound(brid))
   in
   iter ty
 
@@ -327,8 +327,8 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
     | RowVar(UpdatableRow(rvref)) ->
         begin
           match !rvref with
-          | MonoORFree(frid) -> Level.less_than lev (FreeRowID.get_level frid)
-          | MonoORLink(row)  -> iter_row row
+          | MonoRowFree(frid) -> Level.less_than lev (FreeRowID.get_level frid)
+          | MonoRowLink(row)  -> iter_row row
         end
 
     | RowVar(MustBeBoundRow(mbbrid)) ->
@@ -436,10 +436,10 @@ and unlift_aux_cmd = function
 
 
 and unlift_aux_row = function
-  | RowEmpty                   -> RowEmpty
-  | RowCons(rlabel, pty, tail) -> RowCons(rlabel, unlift_aux pty, unlift_aux_row tail)
-  | RowVar(PolyORFree(rvref))  -> RowVar(rvref)
-  | RowVar(PolyORBound(_))     -> raise Exit
+  | RowEmpty                    -> RowEmpty
+  | RowCons(rlabel, pty, tail)  -> RowCons(rlabel, unlift_aux pty, unlift_aux_row tail)
+  | RowVar(PolyRowFree(rvref))  -> RowVar(rvref)
+  | RowVar(PolyRowBound(_))     -> raise Exit
 
 
 let unlift_poly (pty : poly_type_body) : mono_type option =
@@ -469,10 +469,10 @@ let normalize_poly_row (prow : poly_row) : normalized_poly_row =
 
 let normalize_mono_row (row : mono_row) : normalized_mono_row =
   let rec aux labmap = function
-    | RowCons((_, label), ty, row)                     -> aux (labmap |> LabelMap.add label ty) row
-    | RowVar(UpdatableRow{contents = MonoORLink(row)}) -> aux labmap row
-    | RowVar(rv)                                       -> NormalizedRow(labmap, Some(rv))
-    | RowEmpty                                         -> NormalizedRow(labmap, None)
+    | RowCons((_, label), ty, row)                      -> aux (labmap |> LabelMap.add label ty) row
+    | RowVar(UpdatableRow{contents = MonoRowLink(row)}) -> aux labmap row
+    | RowVar(rv)                                        -> NormalizedRow(labmap, Some(rv))
+    | RowEmpty                                          -> NormalizedRow(labmap, None)
   in
   aux LabelMap.empty row
 

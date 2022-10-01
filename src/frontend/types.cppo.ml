@@ -204,16 +204,16 @@ and ('a, 'b) row =
   | RowEmpty
 
 and mono_row_variable_updatable =
-  | MonoORFree of FreeRowID.t
-  | MonoORLink of mono_row
+  | MonoRowFree of FreeRowID.t
+  | MonoRowLink of mono_row
 
 and mono_row_variable =
   | UpdatableRow   of mono_row_variable_updatable ref
   | MustBeBoundRow of MustBeBoundRowID.t
 
 and poly_row_variable =
-  | PolyORFree  of mono_row_variable
-  | PolyORBound of BoundRowID.t
+  | PolyRowFree  of mono_row_variable
+  | PolyRowBound of BoundRowID.t
 
 and mono_type_variable_updatable =
   | MonoFree of FreeID.t

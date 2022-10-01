@@ -101,26 +101,26 @@ let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t F
         aux_poly pty
 
   and aux_mono_row : mono_row -> unit = function
-    | RowCons(_rlabel, ty, row)                         -> aux_mono ty; aux_mono_row row
-    | RowVar(UpdatableRow{contents = MonoORLink(row)})  -> aux_mono_row row
-    | RowVar(UpdatableRow{contents = MonoORFree(frid)}) -> aux_free_row_id frid
-    | RowVar(MustBeBoundRow(_mbbrid))                   -> ()
-    | RowEmpty                                          -> ()
+    | RowCons(_rlabel, ty, row)                          -> aux_mono ty; aux_mono_row row
+    | RowVar(UpdatableRow{contents = MonoRowLink(row)})  -> aux_mono_row row
+    | RowVar(UpdatableRow{contents = MonoRowFree(frid)}) -> aux_free_row_id frid
+    | RowVar(MustBeBoundRow(_mbbrid))                    -> ()
+    | RowEmpty                                           -> ()
 
   and aux_poly_row : poly_row -> unit = function
     | RowCons(_rlabel, pty, prow) ->
         aux_poly pty;
         aux_poly_row prow
 
-    | RowVar(PolyORFree(prv)) ->
+    | RowVar(PolyRowFree(prv)) ->
         begin
           match prv with
-          | UpdatableRow{contents = MonoORLink(row)}  -> aux_mono_row row
-          | UpdatableRow{contents = MonoORFree(frid)} -> aux_free_row_id frid
-          | MustBeBoundRow(_)                         -> ()
+          | UpdatableRow{contents = MonoRowLink(row)}  -> aux_mono_row row
+          | UpdatableRow{contents = MonoRowFree(frid)} -> aux_free_row_id frid
+          | MustBeBoundRow(_)                          -> ()
         end
 
-    | RowVar(PolyORBound(brid)) ->
+    | RowVar(PolyRowBound(brid)) ->
         aux_bound_row_id brid
 
     | RowEmpty ->
@@ -353,10 +353,10 @@ and rvf_mono (dispmap : DisplayMap.t) (rv : mono_row_variable) : string =
   | UpdatableRow(rvref) ->
       begin
         match !rvref with
-        | MonoORFree(_) ->
+        | MonoRowFree(_) ->
             ""
 
-        | MonoORLink(row) ->
+        | MonoRowLink(row) ->
             begin
               match show_row (tvf_mono dispmap) (rvf_mono dispmap) row with
               | None    -> ""
@@ -376,8 +376,8 @@ let tvf_poly (dispmap : DisplayMap.t) (plev : paren_level) (ptv : poly_type_vari
 
 and rvf_poly (dispmap : DisplayMap.t) (prv : poly_row_variable) : string =
   match prv with
-  | PolyORFree(rvref) -> rvf_mono dispmap rvref
-  | PolyORBound(brid) -> dispmap |> DisplayMap.find_bound_row_id brid
+  | PolyRowFree(rvref) -> rvf_mono dispmap rvref
+  | PolyRowBound(brid) -> dispmap |> DisplayMap.find_bound_row_id brid
 
 
 let show_mono_type (ty : mono_type) =
