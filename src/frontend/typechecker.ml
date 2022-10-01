@@ -1437,13 +1437,13 @@ and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_e
   )
 
 
-and typecheck_block_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : block_text_element list =
-  let rec aux acc utivlst =
-    match utivlst with
+and typecheck_block_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utbts : untyped_block_text_element list) : block_text_element list =
+  let rec aux acc utbts =
+    match utbts with
     | [] ->
         Alist.to_list acc
 
-    | (rng_cmdapp, UTInputVertApplyCommand(utast_cmd, utcmdargs)) :: tail ->
+    | (rng_cmdapp, UTBlockTextApplyCommand(utast_cmd, utcmdargs)) :: tail ->
         let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
         let cmdargtys =
           match ty_cmd with
@@ -1453,12 +1453,12 @@ and typecheck_block_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
         let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
         aux (Alist.extend acc (BlockTextApplyCommand{ command = e_cmd; arguments = args })) tail
 
-    | (_, UTInputVertContent(utast0)) :: tail ->
+    | (_, UTBlockTextContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "UTInputVertContent", BaseType(BlockTextType));
+        unify ty0 (Range.dummy "UTBlockTextContent", BaseType(BlockTextType));
         aux (Alist.extend acc (BlockTextContent(e0))) tail
 
-    | (rng_app, UTInputVertMacro(bmacro, utmacargs)) :: tail ->
+    | (rng_app, UTBlockTextMacro(bmacro, utmacargs)) :: tail ->
         begin
           match pre.stage with
           | Stage0 | Persistent0 ->
@@ -1485,7 +1485,7 @@ and typecheck_block_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
               aux (Alist.extend acc iv) tail
         end
   in
-  aux Alist.empty utivlst
+  aux Alist.empty utbts
 
 
 and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utits : untyped_inline_text_element list) : inline_text_element list =

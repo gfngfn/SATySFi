@@ -423,18 +423,18 @@ and untyped_macro_argument =
   | UTLateMacroArg  of untyped_abstract_tree
   | UTEarlyMacroArg of untyped_abstract_tree
 
-and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
-  [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_input_vert_element_main utivmain)]
+and untyped_block_text_element = Range.t * untyped_block_text_element_main
+  [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_block_text_element_main utivmain)]
 
-and untyped_input_vert_element_main =
-  | UTInputVertApplyCommand of untyped_abstract_tree * untyped_command_argument list
+and untyped_block_text_element_main =
+  | UTBlockTextApplyCommand of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) ->
         Format.fprintf fmt "BC:%a %a"
           pp_untyped_abstract_tree utast
           (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst
       )]
-  | UTInputVertContent  of untyped_abstract_tree
-  | UTInputVertMacro    of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
+  | UTBlockTextContent  of untyped_abstract_tree
+  | UTBlockTextMacro    of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
 and untyped_input_math_element =
   Range.t * untyped_input_math_element_main
@@ -469,7 +469,7 @@ and untyped_abstract_tree_main =
   | UTPositionedString     of input_position * string
 (* Input texts: *)
   | UTInlineText          of untyped_inline_text_element list
-  | UTBlockText           of untyped_input_vert_element list
+  | UTBlockText           of untyped_block_text_element list
   | UTMathText            of untyped_input_math_element list
 (* Command abstractions: *)
   | UTLambdaInlineCommand of {

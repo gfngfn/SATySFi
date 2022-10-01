@@ -327,7 +327,7 @@
 %type<Types.untyped_abstract_tree> inline
 %type<Types.untyped_abstract_tree> inline_single
 %type<Types.untyped_abstract_tree> block
-%type<Types.untyped_input_vert_element> block_elem
+%type<Types.untyped_block_text_element> block_elem
 %type<Range.t * Types.untyped_command_argument list> cmd_args_text
 %type<Types.untyped_command_argument> cmd_arg_text
 %type<Types.untyped_command_argument> cmd_arg_expr
@@ -1140,24 +1140,24 @@ block_elem:
         let (rng_last, sargs) = rsargs in
         let utast_cmd = (rng_cs, UTContentOf(modidents, cs)) in
         let args = List.append nargs sargs in
-        make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertApplyCommand(utast_cmd, args))
+        make_standard (Tok rng_cs) (Tok rng_last) (UTBlockTextApplyCommand(utast_cmd, args))
       }
   | bmacro_raw=PLUS_MACRO; macargsraw=macroargs {
       let (rng_cs, _) = bmacro_raw in
       let bmacro = (rng_cs, [], bmacro_raw) in
       let (rng_last, macargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(bmacro, macargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTBlockTextMacro(bmacro, macargs))
     }
   | bmacro=LONG_PLUS_MACRO; macargsraw=macroargs {
       let (rng_cs, _, _) = bmacro in
       let (rng_last, macargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(bmacro, macargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTBlockTextMacro(bmacro, macargs))
     }
   | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {
         let (rng, modidents, ident) = long_ident in
         let utast = (rng, UTContentOf(modidents, ident)) in
-        make_standard (Tok rng) (Tok tokR) (UTInputVertContent(utast))
+        make_standard (Tok rng) (Tok tokR) (UTBlockTextContent(utast))
       }
 ;
 math:

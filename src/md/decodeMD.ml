@@ -282,7 +282,7 @@ let make_inline_application ((rng, (modnms, csnm)) : command) (utasts : untyped_
 let make_block_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
   let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
   let utast_cmd = (rng, UTContentOf(modidents, (rng, csnm))) in
-  [(dummy_range, UTInputVertApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
+  [(dummy_range, UTBlockTextApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
 let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element) : untyped_inline_text_element list =
@@ -370,7 +370,7 @@ and convert_inline (cmdrcd : command_record) (iln : inline) : untyped_abstract_t
   (dummy_range, UTInlineText(utih))
 
 
-and convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_input_vert_element list =
+and convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_block_text_element list =
   match blke with
   | Paragraph(iln) ->
       let utastarg = convert_inline cmdrcd iln in
