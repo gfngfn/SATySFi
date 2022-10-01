@@ -403,8 +403,8 @@ let get_page_size (value : syntactic_value) : length * length =
 
 
 
-let get_math_text ~msg : syntactic_value -> input_math_value_element list = function
-  | MathTextValue(imvs) -> imvs
+let get_math_text ~(msg : string) : syntactic_value -> math_text_value_element list = function
+  | MathTextValue(mtvs) -> mtvs
   | other               -> report_bug_value (Printf.sprintf "get_math_text (%s)" msg) other
 
 
@@ -643,8 +643,8 @@ let make_paren reducef (value_parenf : syntactic_value) : paren =
   )
 
 
-let make_math_text (imvs : input_math_value_element list) : syntactic_value =
-  MathTextValue(imvs)
+let make_math_text (mtvs : math_text_value_element list) : syntactic_value =
+  MathTextValue(mtvs)
 
 
 let make_math_boxes (mbs : math_box list) : syntactic_value =

@@ -129,40 +129,40 @@ and interpret_0_input_vert_content (env : environment) (bts : block_text_element
   ) |> List.concat
 
 
-and interpret_0_input_math_content (env : environment) (ims : input_math_element list) : input_math_value_element list =
+and interpret_0_input_math_content (env : environment) (ims : math_text_element list) : math_text_value_element list =
   ims |> List.map (fun im ->
-    let InputMathElement{ base = imbase; sub = ims_sub_opt; sup = ims_sup_opt } = im in
+    let MathTextElement{ base = imbase; sub = ims_sub_opt; sup = ims_sup_opt } = im in
     let imvs_sub_opt = ims_sub_opt |> Option.map (interpret_0_input_math_content env) in
     let imvs_sup_opt = ims_sup_opt |> Option.map (interpret_0_input_math_content env) in
     match imbase with
-    | InputMathChar(uch) ->
-        InputMathValueElement{
-          base = InputMathValueChar(uch);
+    | MathTextChar(uch) ->
+        MathTextValueElement{
+          base = MathTextValueChar(uch);
           sub  = imvs_sub_opt;
           sup  = imvs_sup_opt;
         }
 
-    | InputMathApplyCommand{
+    | MathTextApplyCommand{
         command   = ast_cmd;
         arguments = args;
       } ->
         let ast = convert_command_application_to_application ast_cmd args in
         let value = interpret_0 env ast in
         let mclosure = get_math_command_closure value in
-        InputMathValueElement{
-          base = InputMathValueEmbedded(mclosure);
+        MathTextValueElement{
+          base = MathTextValueEmbedded(mclosure);
           sub  = imvs_sub_opt;
           sup  = imvs_sup_opt;
         }
 
-    | InputMathContent(ast) ->
+    | MathTextContent(ast) ->
         let value = interpret_0 env ast in
-        let imvs = get_math_text ~msg:"InputMathContent" value in
+        let imvs = get_math_text ~msg:"MathTextContent" value in
         let opt =
           match imvs with
           | [ imv0 ] ->
               let
-                InputMathValueElement{
+                MathTextValueElement{
                   base = imvbase0;
                   sub  = imvs0_sub_opt;
                   sup  = imvs0_sup_opt;
@@ -181,7 +181,7 @@ and interpret_0_input_math_content (env : environment) (ims : input_math_element
                 | (Some(_), None)    -> Some(imvs0_sup_opt)
                 | (None, _)          -> Some(imvs_sup_opt)
               end >>= fun imvs_sup_opt ->
-              Some(InputMathValueElement{
+              Some(MathTextValueElement{
                 base = imvbase0;
                 sub  = imvs_sub_opt;
                 sup  = imvs_sup_opt;
@@ -193,8 +193,8 @@ and interpret_0_input_math_content (env : environment) (ims : input_math_element
         begin
           match opt with
           | None ->
-              InputMathValueElement{
-                base = InputMathValueGroup(imvs);
+              MathTextValueElement{
+                base = MathTextValueGroup(imvs);
                 sub  = imvs_sub_opt;
                 sup  = imvs_sup_opt;
               }
@@ -431,15 +431,15 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       CdEndOfList
 
   | InlineText(its) ->
-      let cdits = its |> map_input_horz (interpret_1 env) in
+      let cdits = its |> map_inline_text (interpret_1 env) in
       CdInlineText(cdits)
 
   | BlockText(bts) ->
-      let cdbts = bts |> map_input_vert (interpret_1 env) in
+      let cdbts = bts |> map_block_text (interpret_1 env) in
       CdBlockText(cdbts)
 
   | MathText(mts) ->
-      let cdmts = mts |> map_input_math (interpret_1 env) in
+      let cdmts = mts |> map_math_text (interpret_1 env) in
       CdMathText(cdmts)
 
   | LambdaInline(evid_ctx, ast0) ->
@@ -650,23 +650,23 @@ and interpret_1_pattern_tree (env : environment) = function
       (env, CdPConstructor(ctor, cdpattr))
 
 
-and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_value_element list) : syntactic_value =
+and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : math_text_value_element list) : syntactic_value =
 
   let (_tctx, tctxsub) = get_text_mode_context value_tctx in
   let value_mscriptsf = make_math_scripts_func tctxsub.text_mode_math_scripts_func in
   let loc_tctx = ref value_tctx in
 
-  let rec iter (imvs : input_math_value_element list) =
+  let rec iter (imvs : math_text_value_element list) =
     imvs |> List.map (fun imv ->
-      let InputMathValueElement{ base; sub; sup } = imv in
+      let MathTextValueElement{ base; sub; sup } = imv in
       match base with
-      | InputMathValueChar(uch) ->
+      | MathTextValueChar(uch) ->
           let s_base = InternalText.to_utf8 (InternalText.of_uchar_list [ uch ]) in
             (* TODO: define the conversion of chars and use it here *)
           let s_sub_opt = sub |> Option.map iter in
           let s_sup_opt = sup |> Option.map iter in
           let value =
-            reduce_beta_list ~msg:"InputMathValueChar" value_mscriptsf [
+            reduce_beta_list ~msg:"MathTextValueChar" value_mscriptsf [
               make_string s_base;
               make_option make_string s_sub_opt;
               make_option make_string s_sup_opt;
@@ -674,7 +674,7 @@ and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_v
           in
           get_string value
 
-      | InputMathValueEmbedded(mclosure) ->
+      | MathTextValueEmbedded(mclosure) ->
           begin
             match mclosure with
             | MathCommandClosureSimple{
@@ -692,7 +692,7 @@ and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_v
                 let s_sub_opt = sub |> Option.map iter in
                 let s_sup_opt = sup |> Option.map iter in
                 let value =
-                  reduce_beta_list ~msg:"InputMathValueEmbedded" value_mscriptsf [
+                  reduce_beta_list ~msg:"MathTextValueEmbedded" value_mscriptsf [
                     make_string s_base;
                     make_option make_string s_sub_opt;
                     make_option make_string s_sup_opt;
@@ -718,12 +718,12 @@ and read_text_mode_math_text (value_tctx : syntactic_value) (imvs : input_math_v
                 get_string value
           end
 
-      | InputMathValueGroup(imvs_group) ->
+      | MathTextValueGroup(imvs_group) ->
           let s_base = iter imvs_group in
           let s_sub_opt = sub |> Option.map iter in
           let s_sup_opt = sup |> Option.map iter in
           let value =
-            reduce_beta_list ~msg:"InputMathValueGroup" value_mscriptsf [
+            reduce_beta_list ~msg:"MathTextValueGroup" value_mscriptsf [
               make_string s_base;
               make_option make_string s_sub_opt;
               make_option make_string s_sup_opt;
@@ -859,12 +859,12 @@ and append_sub_and_super_scripts (ictx : input_context) ~base:(mbs_base : math_b
       ]
 
 
-and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_element list) : math_box list =
-  let rec iter (ictx : input_context) (imvs : input_math_value_element list) =
+and read_pdf_mode_math_text (ictx : input_context) (imvs : math_text_value_element list) : math_box list =
+  let rec iter (ictx : input_context) (imvs : math_text_value_element list) =
     imvs |> List.map (fun imv ->
-      let InputMathValueElement{ base; sub; sup } = imv in
+      let MathTextValueElement{ base; sub; sup } = imv in
       match base with
-      | InputMathValueChar(uch) ->
+      | MathTextValueChar(uch) ->
           let (mk, uch_aft) = Context.convert_math_variant_char ictx uch in
           let mbs_base =
             [
@@ -879,7 +879,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
           let mbs_sup_opt = sup |> Option.map (iter ctx_scripts) in
           append_sub_and_super_scripts ictx ~base:mbs_base ~sub:mbs_sub_opt ~sup:mbs_sup_opt
 
-      | InputMathValueEmbedded(mclosure) ->
+      | MathTextValueEmbedded(mclosure) ->
           begin
             match mclosure with
             | MathCommandClosureSimple{
@@ -915,7 +915,7 @@ and read_pdf_mode_math_text (ictx : input_context) (imvs : input_math_value_elem
                 get_math_boxes value
           end
 
-      | InputMathValueGroup(imvs_group) ->
+      | MathTextValueGroup(imvs_group) ->
           let mbs_base = iter ictx imvs_group in
           let ctx_scripts = Context.(ictx |> enter_script) in
           let mbs_sub_opt = sub |> Option.map (iter ctx_scripts) in

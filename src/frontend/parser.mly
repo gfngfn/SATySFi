@@ -218,13 +218,13 @@
     (Range.dummy "itemize1", UTItemize(contents))
 
 
-  let primes (rng : Range.t) (n : int) : untyped_input_math_element list =
+  let primes (rng : Range.t) (n : int) : untyped_math_text_element list =
     List.init n (fun _ ->
-      (rng, UTInputMathElement{ base = UTInputMathChar(Uchar.of_int 0x2032); sup = None; sub = None })
+      (rng, UTMathTextElement{ base = UTMathTextChar(Uchar.of_int 0x2032); sup = None; sub = None })
     )
 
 
-  let make_math_element ~(range : Range.t) ?(prime : (Range.t * int) option) ?(sup : (bool * untyped_input_math_element list) option) ?(sub : (bool * untyped_input_math_element list) option) (base : untyped_input_math_base) : untyped_input_math_element =
+  let make_math_element ~(range : Range.t) ?(prime : (Range.t * int) option) ?(sup : (bool * untyped_math_text_element list) option) ?(sub : (bool * untyped_math_text_element list) option) (base : untyped_math_text_base) : untyped_math_text_element =
     let sup =
       match (prime, sup) with
       | (None, None)                     -> None
@@ -232,7 +232,7 @@
       | (Some((r, n)), None)             -> Some((true, primes r n))
       | (Some((r, n)), Some((b, utmes))) -> Some((b, List.append (primes r n) utmes))
     in
-    (range, UTInputMathElement{ base; sup; sub })
+    (range, UTMathTextElement{ base; sup; sub })
 %}
 
 %token<Range.t>
@@ -333,9 +333,9 @@
 %type<Types.untyped_command_argument> cmd_arg_expr
 %type<Types.untyped_abstract_tree> math
 %type<Types.untyped_abstract_tree> math_single
-%type<Range.t * (bool * Types.untyped_input_math_element list)> math_group
-%type<Types.untyped_input_math_element> math_elem
-%type<Range.t * Types.untyped_input_math_base> math_bot
+%type<Range.t * (bool * Types.untyped_math_text_element list)> math_group
+%type<Types.untyped_math_text_element> math_elem
+%type<Range.t * Types.untyped_math_text_base> math_bot
 %type<Range.t * (Types.module_name Types.ranged) list * Types.command_name Types.ranged> backslash_cmd
 %type<Range.t * (Types.module_name Types.ranged) list * Types.command_name Types.ranged> plus_cmd
 
@@ -1269,7 +1269,7 @@ math_bot:
         let (rng, s) = tok in
         let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
         match uchs with
-        | [ uch ] -> (rng, UTInputMathChar(uch))
+        | [ uch ] -> (rng, UTMathTextChar(uch))
         | _       -> failwith (Printf.sprintf "TODO: MATHCHARS (\"%s\", %s)" s (Range.to_string rng))
       }
   | mcmd=backslash_cmd; args=list(math_cmd_arg)
@@ -1281,12 +1281,12 @@ math_bot:
           | UTCommandArg(_, (rng, _)) :: _ -> rng
         in
         let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
-        make_standard (Tok rng_cs) (Tok rng_last) (UTInputMathApplyCommand(utast_cmd, args))
+        make_standard (Tok rng_cs) (Tok rng_last) (UTMathTextApplyCommand(utast_cmd, args))
       }
   | long_ident=VAR_IN_TEXT
       {
         let (rng, modnms, varnm) = long_ident in
-        (rng, UTInputMathContent((rng, UTContentOf(modnms, varnm))))
+        (rng, UTMathTextContent((rng, UTContentOf(modnms, varnm))))
       }
 ;
 math_cmd_arg:

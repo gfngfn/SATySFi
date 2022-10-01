@@ -118,11 +118,11 @@ and transform_1_input_vert_content (_env : frame) (_bts : block_text_element lis
 *)
 
 
-and transform_0_input_math_content (_env : frame) (_ims : input_math_element list) : ir_input_math_element list * frame =
+and transform_0_input_math_content (_env : frame) (_ims : math_text_element list) : ir_input_math_element list * frame =
   failwith "TODO: transform_0_input_math_content"
 
 
-and transform_1_input_math_content (_env : frame) (_ims : input_math_element list) : (ir input_math_element_scheme) list * frame =
+and transform_1_input_math_content (_env : frame) (_ims : math_text_element list) : (ir math_text_element_scheme) list * frame =
   failwith "TODO: transform_1_input_math_content"
 
 

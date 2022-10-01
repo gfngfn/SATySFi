@@ -436,23 +436,23 @@ and untyped_block_text_element_main =
   | UTBlockTextContent  of untyped_abstract_tree
   | UTBlockTextMacro    of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
-and untyped_input_math_element =
-  Range.t * untyped_input_math_element_main
+and untyped_math_text_element =
+  Range.t * untyped_math_text_element_main
 
-and untyped_input_math_element_main =
-  | UTInputMathElement of {
-      base : untyped_input_math_base;
-      sup  : (bool * untyped_input_math_element list) option;
-      sub  : (bool * untyped_input_math_element list) option;
+and untyped_math_text_element_main =
+  | UTMathTextElement of {
+      base : untyped_math_text_base;
+      sup  : (bool * untyped_math_text_element list) option;
+      sub  : (bool * untyped_math_text_element list) option;
     }
 
-and untyped_input_math_base =
-  | UTInputMathChar of Uchar.t
+and untyped_math_text_base =
+  | UTMathTextChar of Uchar.t
       [@printer (fun ppf uch ->
-        Format.fprintf ppf "(UTInputMathChar \"%s\")" (string_of_uchar uch)
+        Format.fprintf ppf "(UTMathTextChar \"%s\")" (string_of_uchar uch)
       )]
-  | UTInputMathApplyCommand of untyped_abstract_tree * untyped_command_argument list
-  | UTInputMathContent      of untyped_abstract_tree
+  | UTMathTextApplyCommand of untyped_abstract_tree * untyped_command_argument list
+  | UTMathTextContent      of untyped_abstract_tree
 
 and untyped_abstract_tree =
   Range.t * untyped_abstract_tree_main
@@ -470,7 +470,7 @@ and untyped_abstract_tree_main =
 (* Input texts: *)
   | UTInlineText          of untyped_inline_text_element list
   | UTBlockText           of untyped_block_text_element list
-  | UTMathText            of untyped_input_math_element list
+  | UTMathText            of untyped_math_text_element list
 (* Command abstractions: *)
   | UTLambdaInlineCommand of {
       parameters       : untyped_parameter_unit list;
@@ -578,21 +578,21 @@ type 'a block_text_element_scheme =
     }
 [@@deriving show { with_path = false; }]
 
-type 'a input_math_base_scheme =
-  | InputMathChar         of Uchar.t
+type 'a math_text_base_scheme =
+  | MathTextChar         of Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
-  | InputMathContent      of 'a
-  | InputMathApplyCommand of {
+  | MathTextContent      of 'a
+  | MathTextApplyCommand of {
       command   : 'a;
       arguments : ('a LabelMap.t * 'a) list;
     }
 [@@deriving show { with_path = false; }]
 
-type 'a input_math_element_scheme =
-  | InputMathElement of {
-      base : 'a input_math_base_scheme;
-      sub  : (('a input_math_element_scheme) list) option;
-      sup  : (('a input_math_element_scheme) list) option;
+type 'a math_text_element_scheme =
+  | MathTextElement of {
+      base : 'a math_text_base_scheme;
+      sub  : (('a math_text_element_scheme) list) option;
+      sup  : (('a math_text_element_scheme) list) option;
     }
 [@@deriving show { with_path = false; }]
 
@@ -726,7 +726,7 @@ and ir =
   | IRCodeRecord            of label list * ir list
   | IRCodeInputHorz         of (ir inline_text_element_scheme) list
   | IRCodeInputVert         of (ir block_text_element_scheme) list
-  | IRCodeInputMath         of (ir input_math_element_scheme) list
+  | IRCodeInputMath         of (ir math_text_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
   | IRCodeLetRecIn          of ir_letrec_binding list * ir
   | IRCodeLetNonRecIn       of ir_pattern_tree * ir * ir
@@ -835,24 +835,24 @@ and instruction =
 and inline_text_value_element =
   | InlineTextValueString           of string
   | InlineTextValueCommandClosure   of inline_command_closure
-  | InlineTextValueEmbeddedMath     of input_math_value_element list
+  | InlineTextValueEmbeddedMath     of math_text_value_element list
   | InlineTextValueEmbeddedCodeArea of string
 
 and block_text_value_element =
   | BlockTextValueCommandClosure of block_command_closure
 
-and input_math_value_element =
-  | InputMathValueElement of {
-      base : input_math_value_base;
-      sub  : (input_math_value_element list) option;
-      sup  : (input_math_value_element list) option;
+and math_text_value_element =
+  | MathTextValueElement of {
+      base : math_text_value_base;
+      sub  : (math_text_value_element list) option;
+      sup  : (math_text_value_element list) option;
     }
 
-and input_math_value_base =
-  | InputMathValueChar     of Uchar.t
-      [@printer (fun fmt uch -> Format.fprintf fmt "ImInputMathChar \"%s\"" (string_of_uchar uch))]
-  | InputMathValueEmbedded of math_command_closure
-  | InputMathValueGroup    of input_math_value_element list
+and math_text_value_base =
+  | MathTextValueChar     of Uchar.t
+      [@printer (fun fmt uch -> Format.fprintf fmt "ImMathTextChar \"%s\"" (string_of_uchar uch))]
+  | MathTextValueEmbedded of math_command_closure
+  | MathTextValueGroup    of math_text_value_element list
 
 and inline_command_closure =
   | InlineCommandClosureSimple of {
@@ -904,7 +904,7 @@ and syntactic_value =
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
   | InlineTextValue  of inline_text_value_element list
   | BlockTextValue   of block_text_value_element list
-  | MathTextValue    of input_math_value_element list
+  | MathTextValue    of math_text_value_element list
 
   | InlineCommandClosure of inline_command_closure
   | BlockCommandClosure  of block_command_closure
@@ -923,7 +923,7 @@ and abstract_tree =
 (* -- input texts -- *)
   | InlineText            of inline_text_element list
   | BlockText             of block_text_element list
-  | MathText              of input_math_element list
+  | MathText              of math_text_element list
   | LambdaInline          of EvalVarID.t * abstract_tree
   | LambdaBlock           of EvalVarID.t * abstract_tree
   | LambdaMath            of EvalVarID.t * (EvalVarID.t * EvalVarID.t) option * abstract_tree
@@ -960,8 +960,8 @@ and inline_text_element =
 and block_text_element =
   abstract_tree block_text_element_scheme
 
-and input_math_element =
-  abstract_tree input_math_element_scheme
+and math_text_element =
+  abstract_tree math_text_element_scheme
 
 and 'a path_component =
   ('a, abstract_tree) path_component_scheme
@@ -1102,7 +1102,7 @@ and code_value =
   | CdEndOfList
   | CdInlineText    of code_inline_text_element list
   | CdBlockText     of code_block_text_element list
-  | CdMathText      of code_input_math_element list
+  | CdMathText      of code_math_text_element list
   | CdLambdaInline  of CodeSymbol.t * code_value
   | CdLambdaBlock   of CodeSymbol.t * code_value
   | CdLambdaMath    of CodeSymbol.t * (CodeSymbol.t * CodeSymbol.t) option * code_value
@@ -1129,8 +1129,8 @@ and code_inline_text_element =
 and code_block_text_element =
   code_value block_text_element_scheme
 
-and code_input_math_element =
-  code_value input_math_element_scheme
+and code_math_text_element =
+  code_value math_text_element_scheme
 
 and 'a code_path_component =
   ('a, code_value) path_component_scheme
@@ -1231,7 +1231,7 @@ let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value
   StoreIDHashTable.find_opt (!stenvref) stid
 
 
-let map_input_horz f ihlst =
+let map_inline_text f ihlst =
   ihlst |> List.map (function
   | InlineTextString(s) ->
       InlineTextString(s)
@@ -1256,7 +1256,7 @@ let map_input_horz f ihlst =
   )
 
 
-let map_input_vert f ivlst =
+let map_block_text f ivlst =
   ivlst |> List.map (function
   | BlockTextContent(ast) ->
       BlockTextContent(f ast)
@@ -1277,22 +1277,22 @@ let map_input_vert f ivlst =
   )
 
 
-let rec map_input_math f ms =
+let rec map_math_text f ms =
   ms |> List.map (fun m ->
-    let InputMathElement{ base; sub; sup } = m in
+    let MathTextElement{ base; sub; sup } = m in
     let base =
       match base with
-      | InputMathChar(uch) ->
-          InputMathChar(uch)
+      | MathTextChar(uch) ->
+          MathTextChar(uch)
 
-      | InputMathContent(ast) ->
-          InputMathContent(f ast)
+      | MathTextContent(ast) ->
+          MathTextContent(f ast)
 
-      | InputMathApplyCommand{
+      | MathTextApplyCommand{
           command = ast_cmd;
           arguments;
         } ->
-          InputMathApplyCommand{
+          MathTextApplyCommand{
             command =
               f ast_cmd;
 
@@ -1302,9 +1302,9 @@ let rec map_input_math f ms =
               )
           }
     in
-    let sub = sub |> Option.map (map_input_math f) in
-    let sup = sup |> Option.map (map_input_math f) in
-    InputMathElement{ base; sub; sup }
+    let sub = sub |> Option.map (map_math_text f) in
+    let sup = sup |> Option.map (map_math_text f) in
+    MathTextElement{ base; sub; sup }
   )
 
 
@@ -1325,9 +1325,9 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
-    | CdInlineText(cdits)                  -> InlineText(cdits |> map_input_horz aux)
-    | CdBlockText(cdbts)                   -> BlockText(cdbts |> map_input_vert aux)
-    | CdMathText(cdmts)                    -> MathText(cdmts |> map_input_math aux)
+    | CdInlineText(cdits)                  -> InlineText(cdits |> map_inline_text aux)
+    | CdBlockText(cdbts)                   -> BlockText(cdbts |> map_block_text aux)
+    | CdMathText(cdmts)                    -> MathText(cdmts |> map_math_text aux)
 
     | CdLambdaInline(symb_ctx, code0) ->
         LambdaInline(CodeSymbol.unlift symb_ctx, aux code0)

@@ -1395,25 +1395,25 @@ and typecheck_command_arguments (tycmd : mono_type) (rngcmdapp : Range.t) (pre :
   )
 
 
-and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_element list) : input_math_element list =
+and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_math_text_element list) : math_text_element list =
 
   let iter (_b, utmes) = typecheck_math pre tyenv utmes in
 
   utmes |> List.map (fun utme ->
-    let (rng, UTInputMathElement{ base = utbase; sub = utsub_opt; sup = utsup_opt }) = utme in
+    let (rng, UTMathTextElement{ base = utbase; sub = utsub_opt; sup = utsup_opt }) = utme in
     let base =
       match utbase with
-      | UTInputMathChar(uch) ->
-          InputMathChar(uch)
+      | UTMathTextChar(uch) ->
+          MathTextChar(uch)
 
-      | UTInputMathApplyCommand(utastcmd, utcmdarglst) ->
+      | UTMathTextApplyCommand(utastcmd, utcmdarglst) ->
           let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
           let (_, tycmdmain) = tycmd in
           begin
             match tycmdmain with
             | MathCommandType(cmdargtylstreq) ->
                 let args = typecheck_command_arguments tycmd rng pre tyenv utcmdarglst cmdargtylstreq in
-                InputMathApplyCommand{
+                MathTextApplyCommand{
                   command   = ecmd;
                   arguments = args;
                 }
@@ -1426,14 +1426,14 @@ and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_e
                 failwith (Printf.sprintf "unexpected type: %s" (Display.show_mono_type tycmd))
           end
 
-      | UTInputMathContent(utast0) ->
+      | UTMathTextContent(utast0) ->
           let (e0, ty0) = typecheck pre tyenv utast0 in
           unify ty0 (Range.dummy "math-embedded-var", BaseType(MathTextType));
-          InputMathContent(e0)
+          MathTextContent(e0)
     in
     let sub = utsub_opt |> Option.map iter in
     let sup = utsup_opt |> Option.map iter in
-    InputMathElement{ base; sub; sup }
+    MathTextElement{ base; sub; sup }
   )
 
 
