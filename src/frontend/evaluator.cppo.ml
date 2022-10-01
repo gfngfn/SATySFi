@@ -409,14 +409,14 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | Persistent(_) ->
       report_bug_ast "Persistent(_) at stage 0" ast
 
-  | Lift(ast1) ->
+  | Lift(_ast1) ->
       failwith "TODO: Lift"
 (*
       let value1 = interpret_0 env ast1 in
       CodeValue(CdPersistent(value1))
 *)
 
-  | ASTCodeSymbol(symb) ->
+  | ASTCodeSymbol(_symb) ->
       report_bug_ast "ASTCodeSymbol(_) at stage 0" ast
 
 #include "__evaluator_0.gen.ml"
@@ -741,7 +741,7 @@ and read_text_mode_vert_text (value_tctx : syntactic_value) (ivvs : input_vert_v
 
   let loc_tctx = ref value_tctx in
 
-  let rec interpret_commands (ivvs : input_vert_value_element list) =
+  let interpret_commands (ivvs : input_vert_value_element list) =
     ivvs |> List.map (function
     | InputVertValueCommandClosure(vclosure) ->
         let
@@ -770,7 +770,7 @@ and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_v
   let loc_tctx = ref value_tctx in
 
   (* Merges adjacent `InputHorzValueText`s into single `NomInputHorzText`. *)
-  let rec normalize (ihvs : input_horz_value_element list) =
+  let normalize (ihvs : input_horz_value_element list) =
     ihvs |> List.fold_left (fun acc ihv ->
       match ihv with
       | InputHorzValueCommandClosure(hclosure) ->
@@ -808,7 +808,7 @@ and read_text_mode_horz_text (value_tctx : syntactic_value) (ihvs : input_horz_v
     ) Alist.empty |> Alist.to_list
   in
 
-  let rec interpret_commands (nmihs : nom_input_horz_element list) : string =
+  let interpret_commands (nmihs : nom_input_horz_element list) : string =
     nmihs |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzCommandClosure(hclosure) ->
@@ -931,7 +931,7 @@ and read_pdf_mode_vert_text (value_ctx : syntactic_value) (ivvs : input_vert_val
 
   let loc_ctx = ref value_ctx in
 
-  let rec interpret_commands (ivvs : input_vert_value_element list) =
+  let interpret_commands (ivvs : input_vert_value_element list) =
     ivvs |> List.map (function
     | InputVertValueCommandClosure(vclosure) ->
         let
@@ -959,7 +959,7 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
   let value_mcmd = make_math_command_func ctxsub.math_command in
   let loc_ctx = ref (Context(ictx)) in
 
-  let rec normalize (imihs : input_horz_value_element list) =
+  let normalize (imihs : input_horz_value_element list) =
     imihs |> List.fold_left (fun acc imih ->
       match imih with
       | InputHorzValueCommandClosure(hclosure) ->
@@ -996,7 +996,7 @@ and read_pdf_mode_horz_text (ictx : input_context) (ihvs : input_horz_value_elem
     ) Alist.empty |> Alist.to_list
   in
 
-  let rec interpret_commands (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
+  let interpret_commands (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
     nmihs |> List.map (fun nmih ->
       match nmih with
       | NomInputHorzCommandClosure(hclosure) ->
@@ -1125,7 +1125,7 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
       add_to_environment env evid loc
     ) env
   in
-  tris |> List.iter (fun (evid, loc, patbr) ->
+  tris |> List.iter (fun (_evid, loc, patbr) ->
     loc := Closure(LabelMap.empty, patbr, env)
   );
   env
@@ -1141,7 +1141,7 @@ and interpret_letrec_bindings_1 (env : environment) (recbinds : letrec_binding l
     ) (env, Alist.empty)
   in
   let cdrecbinds =
-    zippedacc |> Alist.to_list |> List.map (fun (symb, LetRecBinding(evid, patbr)) ->
+    zippedacc |> Alist.to_list |> List.map (fun (symb, LetRecBinding(_evid, patbr)) ->
       let cdpatbr = interpret_1_pattern_branch env patbr in
       CdLetRecBinding(symb, cdpatbr)
     )

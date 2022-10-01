@@ -3,7 +3,6 @@ open MyUtil
 open LengthInterface
 open HorzBox
 open CharBasis
-open Types
 
 exception InvalidFontAbbrev     of font_abbrev
 exception InvalidMathFontAbbrev of math_font_abbrev

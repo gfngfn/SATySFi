@@ -38,7 +38,7 @@ let rec embed_page_info (pbinfo : page_break_info) (imhblst : intermediate_horz_
           row_heights;
           rule_graphics;
         } ->
-          let (evrowlst, footnotelst) = embed_page_info_to_tabular pbinfo imtabular in
+          let (evrowlst, _footnotelst) = embed_page_info_to_tabular pbinfo imtabular in
           ext (width, EvHorzInlineTabular{
             height;
             depth;

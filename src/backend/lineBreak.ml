@@ -28,16 +28,16 @@ let ( ~@ ) = int_of_float
 
 let get_metrics (lphb : lb_pure_box) : metrics =
   match lphb with
-  | LBAtom{ metrics }                         -> metrics
-  | LBRising{ metrics }                       -> metrics
-  | LBOuterFrame{ metrics }                   -> metrics
-  | LBFixedFrame{ width; height; depth }      -> (natural width, height, depth)
-  | LBEmbeddedVert{ width; height; depth }    -> (natural width, height, depth)
-  | LBFixedGraphics{ width; height; depth }   -> (natural width, height, depth)
-  | LBFixedTabular{ width; height; depth }    -> (natural width, height, depth)
-  | LBFixedImage{ width; height}              -> (natural width, height, Length.zero)
+  | LBAtom{ metrics; _ }                       -> metrics
+  | LBRising{ metrics; _ }                     -> metrics
+  | LBOuterFrame{ metrics; _ }                 -> metrics
+  | LBFixedFrame{ width; height; depth; _ }    -> (natural width, height, depth)
+  | LBEmbeddedVert{ width; height; depth; _ }  -> (natural width, height, depth)
+  | LBFixedGraphics{ width; height; depth; _ } -> (natural width, height, depth)
+  | LBFixedTabular{ width; height; depth; _ }  -> (natural width, height, depth)
+  | LBFixedImage{ width; height; _ }           -> (natural width, height, Length.zero)
 
-  | LBOuterFilGraphics{ height; depth } ->
+  | LBOuterFilGraphics{ height; depth; _ } ->
       let widinfo =
         {
           natural     = Length.zero;
@@ -362,7 +362,7 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
     match hblst with
     | [] -> Alist.to_list lbpeacc
 
-    | HorzDiscretionary{ no_break = hbs0 } :: tail ->
+    | HorzDiscretionary{ no_break = hbs0; _ } :: tail ->
         let lphbs0 = aux Alist.empty hbs0 in
         aux (Alist.append lbpeacc lphbs0) tail
 
@@ -378,9 +378,9 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
     | HorzFrameBreakable{
         paddings              = pads;
         decoration_standalone = decoS;
-        decoration_head       = decoH;
-        decoration_middle     = decoM;
-        decoration_tail       = decoT;
+        decoration_head       = _decoH;
+        decoration_middle     = _decoM;
+        decoration_tail       = _decoT;
         contents              = hbs0;
       } :: tail ->
         let lphbs0 = convert_list_for_line_breaking_pure hbs0 in
@@ -492,7 +492,7 @@ and normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
               aux (Alist.extend (Alist.append lphbacc lphblst) lphb) None lbpetail
         end
 
-    | PScriptGuard(scriptL, scriptR, lphblstG) :: lbpetail  ->
+    | PScriptGuard(scriptL, _scriptR, lphblstG) :: lbpetail  ->
         begin
           match chunkaccopt with
           | None ->
@@ -610,14 +610,14 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
   let get_intermediate_total_width imhblst =
     imhblst |> List.fold_left (fun wacc imhb ->
       match imhb with
-      | ImHorz(w, _)                  -> wacc +% w
-      | ImHorzRising{ width }         -> wacc +% width
-      | ImHorzFrame{ width }          -> wacc +% width
-      | ImHorzInlineTabular{ width }  -> wacc +% width
-      | ImHorzInlineGraphics{ width } -> wacc +% width
-      | ImHorzEmbeddedVert{ width }   -> wacc +% width
-      | ImHorzHookPageBreak(_)        -> wacc
-      | ImHorzFootnote(_)             -> wacc
+      | ImHorz(w, _)                     -> wacc +% w
+      | ImHorzRising{ width; _ }         -> wacc +% width
+      | ImHorzFrame{ width; _ }          -> wacc +% width
+      | ImHorzInlineTabular{ width; _ }  -> wacc +% width
+      | ImHorzInlineGraphics{ width; _ } -> wacc +% width
+      | ImHorzEmbeddedVert{ width; _ }   -> wacc +% width
+      | ImHorzHookPageBreak(_)           -> wacc
+      | ImHorzFootnote(_)                -> wacc
     ) Length.zero
   in
 
@@ -834,7 +834,7 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
      -- *)
   let rec cut (acclines : line_either Alist.t) (accline : lb_pure_box Alist.t) (lhblst : lb_box list) : line_either Alist.t =
     match lhblst with
-    | LBDiscretionary{ id = dscrid; no_break = lphbs0; pre = lphbs1; post = lphbs2 } :: tail ->
+    | LBDiscretionary{ id = dscrid; no_break = lphbs0; pre = lphbs1; post = lphbs2; _ } :: tail ->
         if List.mem dscrid path then
           let accline_sub = Alist.append accline lphbs1 in
           let accline_fresh = Alist.of_list lphbs2 in
@@ -843,7 +843,7 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
           let accline = Alist.append accline lphbs0 in
           cut acclines accline tail
 
-    | LBDiscretionaryList{ no_break = lphbs0; candidates } :: tail ->
+    | LBDiscretionaryList{ no_break = lphbs0; candidates; _ } :: tail ->
         begin
           match candidates |> List.find_opt (fun (dscrid, _, _) -> List.mem dscrid path) with
           | None ->
@@ -1130,7 +1130,7 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
         in
         aux NormalState iterdepth wmap tail
 
-    | LBEmbeddedVertBreakable{ id = dscrid } :: tail ->
+    | LBEmbeddedVertBreakable{ id = dscrid; _ } :: tail ->
         begin
           match state with
           | ImmediateAfterEmbeddedVert(dscrid_last) ->
@@ -1148,7 +1148,7 @@ let main ((breakability_top, paragraph_margin_top) : breakability * length) ((br
         let wmap = wmap |> WidthMap.add_width_all widinfo in
         aux NormalState iterdepth wmap tail
 
-    | LBFrameBreakable{ paddings = pads; contents = lhbs_sub } :: tail ->
+    | LBFrameBreakable{ paddings = _pads; contents = lhbs_sub; _ } :: tail ->
         let wmap_sub = aux NormalState (iterdepth + 1) wmap lhbs_sub in
         aux NormalState iterdepth wmap_sub tail
 
@@ -1219,10 +1219,10 @@ let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
     | [] ->
         None
 
-    | HorzScriptGuard{ left = scriptL } :: _ ->
+    | HorzScriptGuard{ left = scriptL; _ } :: _ ->
         Some(scriptL)
 
-    | HorzDiscretionary{ no_break = hbs0 } :: tail ->
+    | HorzDiscretionary{ no_break = hbs0; _ } :: tail ->
         begin
           match hbs0 with
           | [] -> aux tail
@@ -1246,7 +1246,7 @@ let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
           | PHCInnerMathGlyph(_) ->
               Some(CharBasis.Latin)
 
-          | PHGRising{ contents = hbs0 } ->
+          | PHGRising{ contents = hbs0; _ } ->
               begin
                 match hbs0 with
                 | [] -> aux tail
@@ -1273,10 +1273,10 @@ let get_rightmost_script (hblst : horz_box list) : CharBasis.script option =
     | [] ->
         None
 
-    | HorzScriptGuard{ right = scriptR } :: _ ->
+    | HorzScriptGuard{ right = scriptR; _ } :: _ ->
         Some(scriptR)
 
-    | HorzDiscretionary{ no_break = hbs0 } :: revtail ->
+    | HorzDiscretionary{ no_break = hbs0; _ } :: revtail ->
         begin
           match hbs0 with
           | [] -> aux revtail
@@ -1300,7 +1300,7 @@ let get_rightmost_script (hblst : horz_box list) : CharBasis.script option =
           | PHCInnerMathGlyph(_) ->
               Some(CharBasis.Latin)
 
-          | PHGRising{ contents = hbs0 } ->
+          | PHGRising{ contents = hbs0; _ } ->
               begin
                 match hbs0 with
                 | [] -> aux revtail

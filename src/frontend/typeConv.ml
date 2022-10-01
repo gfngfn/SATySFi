@@ -28,8 +28,8 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
           | Updatable(tvref) ->
               begin
                 match !tvref with
-                | MonoFree(fid) -> (rng, tymain)
-                | MonoLink(ty)  -> erase_range_of_type ty
+                | MonoFree(_fid) -> (rng, tymain)
+                | MonoLink(ty)   -> erase_range_of_type ty
               end
 
         | MustBeBound(_) ->

@@ -418,7 +418,7 @@ let get_math_boxes (value : syntactic_value) : math_box list =
 let get_bool value : bool =
   match value with
   | BaseConstant(BCBool(bc)) -> bc
-  | other                    -> report_bug_value "get_bool" value
+  | _                        -> report_bug_value "get_bool" value
 
 
 let get_int (value : syntactic_value) : int =

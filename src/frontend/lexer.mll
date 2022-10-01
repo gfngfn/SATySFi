@@ -60,7 +60,7 @@
     lexbuf.lex_curr_p <- { lcp with pos_bol = lcp.pos_cnum + amt; }
 
 
-  let rec increment_line_for_each_break (lexbuf : Lexing.lexbuf) (str : string) : unit =
+  let increment_line_for_each_break (lexbuf : Lexing.lexbuf) (str : string) : unit =
     let len = String.length str in
     let rec aux num has_break tail_spaces prev =
       if num >= len then

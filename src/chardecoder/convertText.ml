@@ -1,12 +1,8 @@
 
-open MyUtil
 open LengthInterface
 open HorzBox
 open CharBasis
 open LineBreakBox
-
-
-type chunk_info = context_main * script * line_break_class
 
 
 let to_chunks (ctx : context_main) (uchs : Uchar.t list) (alw_last : break_opportunity) : break_opportunity * line_break_chunk list =
@@ -372,7 +368,7 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
           | AccNone ->
               Alist.to_list lphbacc
 
-          | AccSome(infoprev, alw) ->
+          | AccSome(infoprev, _alw) ->
               let (ctx, _, _) = infoprev in
               let info_after = (ctx, script_after, XX) in
               let autospace = space_between_chunks_pure infoprev info_after in
@@ -405,7 +401,7 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
                 | AccNone ->
                     (opt, lphblstmain)
 
-                | AccSome((infoprev, alw)) ->
+                | AccSome((infoprev, _alw)) ->
                     let autospace = space_between_chunks_pure infoprev (ctx, script, lbcfirst) in
                     (opt, List.append autospace lphblstmain)
               end
@@ -426,7 +422,7 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
                 | AccNone ->
                     (opt, lphblstmain)
 
-                | AccSome((infoprev, alw)) ->
+                | AccSome((infoprev, _alw)) ->
                     let autospace = space_between_chunks_pure infoprev (ctx, script, lbc) in
                     (opt, List.append autospace lphblstmain)
               end

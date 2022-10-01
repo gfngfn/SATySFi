@@ -326,7 +326,7 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
         | None      -> [(dummy_range, UTInputHorzText("\n"))]
       end
 
-  | Url(href, iln, title) ->
+  | Url(href, iln, _title) ->
       let utastarg1 = (dummy_range, UTStringConstant(href)) in
       let utastarg2 = convert_inline cmdrcd iln in
       make_inline_application cmdrcd.url [utastarg1; utastarg2]

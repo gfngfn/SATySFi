@@ -1,5 +1,4 @@
 
-open LengthInterface
 open Length
 
 

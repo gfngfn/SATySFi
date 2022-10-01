@@ -166,7 +166,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let opaccnew = Alist.append opacc ops in
           (xpos +% wid, opaccnew)
 
-    | EvHorzRising{ height = hgt; depth = dpt; rising = lenrising; contents = evhblst } ->
+    | EvHorzRising{ height = _hgt; depth = _dpt; rising = lenrising; contents = evhblst } ->
         let (_, opaccsub) =
           evhblst |> List.fold_left (ops_of_evaled_horz_box fs pbinfo (yposbaseline +% lenrising)) (xpos, opacc)
         in
@@ -180,7 +180,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         in
         (xpos +% wid, opaccnew)
 
-    | EvHorzEmbeddedVert{ height = hgt; depth = dpt; contents = evvblst } ->
+    | EvHorzEmbeddedVert{ height = hgt; depth = _dpt; contents = evvblst } ->
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list fs pbinfo (xpos, yposbaseline +% hgt) opacc evvblst in
         (xpos +% wid, opaccnew)
 
@@ -203,7 +203,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
 
     | EvHorzInlineTabular{
         height        = hgt;
-        depth         = dpt;
+        depth         = _dpt;
         rows          = evtabular;
         column_widths = widlst;
         row_heights   = lenlst;
@@ -268,7 +268,7 @@ and ops_of_evaled_tabular (fs : 'o op_funcs) (pbinfo : page_break_info) point ev
               in
               (opaccnew, (xpos +% wid, ypos))
 
-          | EvMultiCell(ratios, (_, _, widsingle, widcell, hgt, dpt), evhblst) ->
+          | EvMultiCell(ratios, (_, _, widsingle, _widcell, hgt, dpt), evhblst) ->
               let yposbaseline = ypos -% hgt in
               let ops_warning =
                 warn_ratios fs pbinfo (xpos, yposbaseline) hgt dpt ratios
@@ -456,7 +456,7 @@ let add_column_to_page
   Page(paper, pagecontsch, Alist.cat opacc opacccolumn, pbinfo)
 
 
-let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc, flnm)) : t) : t =
+let write_page (Page(paper, _pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc, flnm)) : t) : t =
 
   let paper_height = get_paper_height paper in
 

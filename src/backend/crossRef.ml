@@ -4,8 +4,6 @@ open MyUtil
 module YS = Yojson.Safe
 module MYU = MyYojsonUtil
 
-exception InvalidYOJSON of abs_path * string
-
 
 module CrossRefHashTable = Hashtbl.Make
   (struct
@@ -27,7 +25,7 @@ let main_hash_table = CrossRefHashTable.create 32
   (* temporary; initial size *)
 
 
-let read_assoc (abspath : abs_path) (assoc : (string * YS.json) list) : unit =
+let read_assoc (assoc : (string * YS.json) list) : unit =
   assoc |> List.iter (fun (key, vjson) ->
     let value = vjson |> YS.Util.to_string in
     CrossRefHashTable.add main_hash_table key value
@@ -39,7 +37,7 @@ let read_dump_file (abspath : abs_path) : unit =
     let json = YS.from_file (get_abs_path_string abspath) in
       (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
     let assoc = json |> YS.Util.to_assoc in
-    read_assoc abspath assoc
+    read_assoc assoc
   with
   | Yojson.Json_error(msg) -> MYU.syntax_error (get_abs_path_string abspath) msg
 

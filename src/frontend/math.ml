@@ -52,7 +52,8 @@ type low_paren = {
 
 type low_radical = horz_box list
 
-type low_math_main =
+(* -w -unused-constructor *)
+type[@ocaml.warning "-37"] low_math_main =
   | LowMathList of low_math
 
   | LowMathAtom of {
@@ -421,72 +422,72 @@ let make_right_paren_kern hR dR mkernsR =
 let get_left_kern lmmain hgt dpt =
   let nokernf = no_left_kern hgt dpt in
   match lmmain with
-  | LowMathAtom{ atom } ->
+  | LowMathAtom{ atom; _ } ->
       atom.atom_left_kern
 
   | LowMathList(lm) ->
       lm.low_left_kern
 
-  | LowMathGroup{ left } ->
+  | LowMathGroup{ left; _ } ->
       nokernf left
 
-  | LowMathSubscript{ base = lm }
-  | LowMathSuperscript{ base = lm }
-  | LowMathSubSuperscript{ base = lm }
-  | LowMathUpperLimit{ base = lm }
-  | LowMathLowerLimit{ base = lm } ->
+  | LowMathSubscript{ base = lm; _ }
+  | LowMathSuperscript{ base = lm; _ }
+  | LowMathSubSuperscript{ base = lm; _ }
+  | LowMathUpperLimit{ base = lm; _ }
+  | LowMathLowerLimit{ base = lm; _ } ->
       lm.low_left_kern
 
   | LowMathFraction(_)
   | LowMathRadical(_) ->
       nokernf MathInner
 
-  | LowMathParen{ left }
-  | LowMathParenWithMiddle{ left } ->
+  | LowMathParen{ left; _ }
+  | LowMathParenWithMiddle{ left; _ } ->
       make_left_paren_kern left.lp_height left.lp_depth left.lp_math_kern_scheme
 
 
 let get_right_kern lmmain hgt dpt =
   let nokernf = no_right_kern hgt dpt in
   match lmmain with
-  | LowMathAtom{ atom } ->
+  | LowMathAtom{ atom; _ } ->
       atom.atom_right_kern
 
   | LowMathList(lm) ->
       lm.low_right_kern
 
-  | LowMathGroup{ right } ->
+  | LowMathGroup{ right; _ } ->
       nokernf right
 
-  | LowMathSubscript{ base = lm }
-  | LowMathSuperscript{ base = lm }
-  | LowMathSubSuperscript{ base = lm } ->
+  | LowMathSubscript{ base = lm; _ }
+  | LowMathSuperscript{ base = lm; _ }
+  | LowMathSubSuperscript{ base = lm; _ } ->
       nokernf lm.low_right_kern.right_math_kind
 
-  | LowMathUpperLimit{ base = lm }
-  | LowMathLowerLimit{ base = lm } ->
+  | LowMathUpperLimit{ base = lm; _ }
+  | LowMathLowerLimit{ base = lm; _ } ->
       lm.low_right_kern
 
   | LowMathFraction(_)
   | LowMathRadical(_) ->
       nokernf MathInner
 
-  | LowMathParen{ right }
-  | LowMathParenWithMiddle{ right } ->
+  | LowMathParen{ right; _ }
+  | LowMathParenWithMiddle{ right; _ } ->
       make_right_paren_kern right.lp_height right.lp_depth right.lp_math_kern_scheme
 
 
 let rec get_left_math_kind : math_box -> math_kind = function
-  | MathBoxAtom{ kind } ->
+  | MathBoxAtom{ kind; _ } ->
       kind
 
-  | MathBoxGroup{ left } ->
+  | MathBoxGroup{ left; _ } ->
       left
 
-  | MathBoxSuperscript{ base }
-  | MathBoxSubscript{ base }
-  | MathBoxLowerLimit{ base }
-  | MathBoxUpperLimit{ base } ->
+  | MathBoxSuperscript{ base; _ }
+  | MathBoxSubscript{ base; _ }
+  | MathBoxLowerLimit{ base; _ }
+  | MathBoxUpperLimit{ base; _ } ->
       begin
         match base with
         | []         -> MathEnd
@@ -503,16 +504,16 @@ let rec get_left_math_kind : math_box -> math_kind = function
 
 
 let rec get_right_math_kind : math_box -> math_kind = function
-  | MathBoxAtom{ kind } ->
+  | MathBoxAtom{ kind; _ } ->
       kind
 
-  | MathBoxGroup{ right } ->
+  | MathBoxGroup{ right; _ } ->
       right
 
-  | MathBoxSuperscript{ base }
-  | MathBoxSubscript{ base }
-  | MathBoxLowerLimit{ base }
-  | MathBoxUpperLimit{ base } ->
+  | MathBoxSuperscript{ base; _ }
+  | MathBoxSubscript{ base; _ }
+  | MathBoxLowerLimit{ base; _ }
+  | MathBoxUpperLimit{ base; _ } ->
       begin
         match List.rev base with
         | []         -> MathEnd
@@ -540,7 +541,7 @@ let superscript_baseline_height ictx h_base d_sup =
 
 
 (* -- calculates the base correction height and the superscript correction height -- *)
-let superscript_correction_heights ictx h_supbl h_base d_sup =
+let superscript_correction_heights _ictx h_supbl h_base d_sup =
   let l_base = h_supbl +% d_sup in
   let l_sup = h_base -% h_supbl in
     (l_base, l_sup)
@@ -557,7 +558,7 @@ let subscript_baseline_depth ictx d_base h_sub =
     d_subbl
 
 
-let subscript_correction_heights ictx d_subbl d_base h_sub =
+let subscript_correction_heights _ictx d_subbl d_base h_sub =
   let l_base = h_sub +% d_base in
   let l_sub = d_base -% d_subbl in
     (l_base, l_sub)
@@ -685,13 +686,13 @@ let convert_math_char (ictx : input_context) ~(kern : (math_char_kern_func * mat
 
 let get_height_and_depth_of_low_math_atom (lma : low_math_atom) : length * length =
   match lma.atom_main with
-  | LowMathAtomGlyph{ height; depth }        -> (height, depth)
-  | LowMathAtomEmbeddedHorz{ height; depth } -> (height, depth)
+  | LowMathAtomGlyph{ height; depth; _ }        -> (height, depth)
+  | LowMathAtomEmbeddedHorz{ height; depth; _ } -> (height, depth)
 
 
-let rec check_subscript (mlstB : math_box list) =
+let check_subscript (mlstB : math_box list) =
   match List.rev mlstB with
-  | MathBoxSubscript{ base = mlstBB; sub = mlstT } :: mtailrev ->
+  | MathBoxSubscript{ base = mlstBB; sub = mlstT; _ } :: mtailrev ->
     (* If the last element of the base contents has a subscript *)
       let mlstBnew = List.rev_append mtailrev mlstBB in
       Some((mlstT, mlstBnew))
@@ -703,7 +704,7 @@ let rec check_subscript (mlstB : math_box list) =
 let convert_math_element (mk : math_kind) (ma : math_box_atom) : low_math_atom =
   match ma with
   | MathEmbeddedHorz(hbs) ->
-      let (wid, hgt, dpt) = LineBreak.get_natural_metrics hbs in
+      let (_wid, hgt, dpt) = LineBreak.get_natural_metrics hbs in
       let lma = LowMathAtomEmbeddedHorz{ content = hbs; height = hgt; depth = dpt } in
       {
         atom_main       = lma;
@@ -867,7 +868,7 @@ and convert_to_low_single ~prev:(mk_prev : math_kind) ~next:(mk_next : math_kind
       let h_rad = h_bar +% t_bar in
       begin
         match mlstD_opt with
-        | Some(mlstD) ->
+        | Some(_mlstD) ->
             failwith "TODO: unsupported; MathRadicalWithDegree"
 
         | None ->
@@ -960,7 +961,7 @@ let horz_of_low_math_element (lme : low_math_atom_main) : horz_box list =
   | LowMathAtomGlyph{ info; width; height; depth; output } ->
       [ HorzPure(PHCInnerMathGlyph{ info; width; height; depth; output }) ]
 
-  | LowMathAtomEmbeddedHorz{ content = hbs } ->
+  | LowMathAtomEmbeddedHorz{ content = hbs; _ } ->
       hbs
 
 
@@ -989,7 +990,7 @@ let get_space_correction = function
   | LowMathList(lm) ->
       ItalicsCorrection(lm.low_right_kern.italics_correction)
 
-  | LowMathAtom{ atom } ->
+  | LowMathAtom{ atom; _ } ->
       ItalicsCorrection(atom.atom_right_kern.italics_correction)
 
   | LowMathSubscript(_)
@@ -1005,7 +1006,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
   let rec aux (hbacc : horz_box Alist.t) (mk_prev : math_kind) (corr : space_correction) lmmainlst =
     match lmmainlst with
     | [] ->
-        let hb_space_opt = space_between_math_kinds ictx mk_prev corr mk_last in
+        let hb_space_opt = space_between_math_kinds ictx ~prev:mk_prev corr mk_last in
         begin
           match hb_space_opt with
           | None           -> Alist.to_list hbacc
@@ -1031,7 +1032,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               (hblstpure, hbspaceopt, mk)
 
           | LowMathGroup{ left = mkL; right = mkR; inner = lmC } ->
-              let hblstC = horz_of_low_math ictx MathEnd MathClose lmC in
+              let hblstC = horz_of_low_math ictx ~prev:MathEnd ~next:MathClose lmC in
               let hbspaceopt = space_between_math_kinds ictx ~prev:mk_prev corr mkL in
               (hblstC, hbspaceopt, mkR)
 
@@ -1044,8 +1045,8 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               let rkB = lmB.low_right_kern in
               let d_sup = lmS.low_depth in
               let lkS = lmS.low_left_kern in
-              let hblstB = horz_of_low_math ictx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmS in
+              let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
+              let hblstS = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmS in
               let h_base = rkB.last_height in
               let (l_base, l_sup) = superscript_correction_heights ictx h_supbl h_base d_sup in
               let l_kernbase = MathKernScheme.calculate ictx rkB.kernTR l_base in
@@ -1068,8 +1069,8 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               let rkB = lmB.low_right_kern in
               let h_sub = lmS.low_height in
               let lkS = lmS.low_left_kern in
-              let hblstB = horz_of_low_math ictx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmS in
+              let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
+              let hblstS = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmS in
               let d_base = rkB.last_depth in
               let (l_base, l_sub) = subscript_correction_heights ictx d_subbl d_base h_sub in
               let l_kernbase = MathKernScheme.calculate ictx rkB.kernBR l_base in
@@ -1101,9 +1102,9 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               let d_sup = lmS.low_depth in
               let lkS = lmS.low_left_kern in
               let h_sub = lmT.low_height in
-              let hblstB = horz_of_low_math ictx MathEnd MathEnd lmB in
-              let hblstS = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmS in
-              let hblstT = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmT in
+              let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
+              let hblstS = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmS in
+              let hblstT = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmT in
               let h_base = rkB.last_height in
               let d_base = rkB.last_depth in
 
@@ -1145,8 +1146,8 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               numerator                  = lmN;
               denominator                = lmD;
             } ->
-              let hblstN = horz_of_low_math ictx MathEnd MathEnd lmN in
-              let hblstD = horz_of_low_math ictx MathEnd MathEnd lmD in
+              let hblstN = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmN in
+              let hblstD = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmD in
               let (w_numer, _, _) = LineBreak.get_natural_metrics hblstN in
               let (w_denom, _, _) = LineBreak.get_natural_metrics hblstD in
               let (hblstNret, hblstDret, w_frac) =
@@ -1174,7 +1175,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
               bar_thickness = t_bar;
               inner         = lmC;
             } ->
-              let hblstC = horz_of_low_math ictx MathEnd MathEnd lmC in
+              let hblstC = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmC in
               let (w_cont, _, _) = LineBreak.get_natural_metrics hblstC in
               let graphics (xpos, ypos) =
                 GraphicD.make_fill (Context.color ictx)
@@ -1196,7 +1197,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
           | LowMathParen{ left = lpL; right = lpR; inner = lmE } ->
               let hblstparenL = lpL.lp_main in
               let hblstparenR = lpR.lp_main in
-              let hblstE = horz_of_low_math ictx MathOpen MathClose lmE in
+              let hblstE = horz_of_low_math ictx ~prev:MathOpen ~next:MathClose lmE in
               let hblstsub = List.concat [hblstparenL; hblstE; hblstparenR] in
               let hbspaceopt = space_between_math_kinds ictx ~prev:mk_prev corr MathOpen in
               (hblstsub, hbspaceopt, MathClose)
@@ -1225,9 +1226,9 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
           | LowMathUpperLimit{ upper_baseline_height = h_upbl; base = lmB; upper = lmU } ->
               let lkB = lmB.low_left_kern in
               let rkB = lmB.low_right_kern in
-              let hblstB = horz_of_low_math ictx MathEnd MathEnd lmB in
+              let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
                 (* needs reconsideration *)
-              let hblstU = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmU in
+              let hblstU = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmU in
               let (w_base, _, _) = LineBreak.get_natural_metrics hblstB in
               let (w_up, _, _) = LineBreak.get_natural_metrics hblstU in
               let hblstsub =
@@ -1249,9 +1250,9 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
           | LowMathLowerLimit{ lower_baseline_depth = d_lowbl; base = lmB; lower = lmL } ->
               let lkB = lmB.low_left_kern in
               let rkB = lmB.low_right_kern in
-              let hblstB = horz_of_low_math ictx MathEnd MathEnd lmB in
+              let hblstB = horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lmB in
                 (* needs reconsideration *)
-              let hblstL = horz_of_low_math (Context.enter_script ictx) MathEnd MathEnd lmL in
+              let hblstL = horz_of_low_math (Context.enter_script ictx) ~prev:MathEnd ~next:MathEnd lmL in
               let (w_base, _, _) = LineBreak.get_natural_metrics hblstB in
               let (w_low, _, _) = LineBreak.get_natural_metrics hblstL in
               let hblstsub =
@@ -1283,7 +1284,7 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
 
 let main (ictx : input_context) (ms : math_box list) : horz_box list =
   let lms = convert_to_low ~prev:MathEnd ~next:MathEnd ms in
-  horz_of_low_math ictx MathEnd MathEnd lms
+  horz_of_low_math ictx ~prev:MathEnd ~next:MathEnd lms
 
 
 let space_between_maths (ictx : input_context) (mathlst1 : math_box list) (mathlst2 : math_box list) : horz_box option =
@@ -1291,13 +1292,13 @@ let space_between_maths (ictx : input_context) (mathlst1 : math_box list) (mathl
   | (math1R :: _, math2L :: _) ->
       let mk1R = get_right_math_kind math1R in
       let mk2L = get_left_math_kind math2L in
-      let lm1 = convert_to_low MathEnd mk2L mathlst1 in
+      let lm1 = convert_to_low ~prev:MathEnd ~next:mk2L mathlst1 in
       let corr =
         match lm1.low_main with
         | lmmain :: _ -> get_space_correction lmmain
         | []          -> NoSpace
       in
-      space_between_math_kinds ictx mk1R corr mk2L
+      space_between_math_kinds ictx ~prev:mk1R corr mk2L
 
   | _ ->
       None

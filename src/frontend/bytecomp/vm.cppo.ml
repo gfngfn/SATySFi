@@ -1,10 +1,8 @@
 
-open MyUtil
 open LengthInterface
 open GraphicBase
 open SyntaxBase
 open Types
-open TypeConv
 open EvalUtil
 
 
@@ -139,7 +137,7 @@ and exec_input_vert_content env ivlst =
     CompiledInputVertClosure(imivlst, env)
 
 
-and exec_code_input_horz env irihlst =
+and exec_code_input_horz _env _irihlst =
   failwith "TODO: exec_code_input_horz"
 (*
   irihlst |> List.map (function
@@ -167,7 +165,7 @@ and exec_code_input_horz env irihlst =
 *)
 
 
-and exec_code_input_vert env irivlst =
+and exec_code_input_vert _env _irivlst =
   failwith "TODO: exec_code_input_vert"
 (*
   irivlst |> List.map (function
@@ -202,7 +200,7 @@ and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_
 
 
 and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
-  let (tctx, ctxsub) = get_text_mode_context valuetctx in
+  let (tctx, _ctxsub) = get_text_mode_context valuetctx in
     begin
       let rec normalize imihlst =
         imihlst |> List.fold_left (fun acc imih ->
@@ -218,13 +216,13 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
                   | _                                           -> (Alist.extend acc (CompiledNomInputHorzText(s2)))
                 end
 
-            | CompiledImInputHorzEmbeddedMath(mathcode) ->
+            | CompiledImInputHorzEmbeddedMath(_mathcode) ->
                 failwith "TODO: (VM) math; remains to be supported."
 (*
                 let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuetctx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
                   Alist.extend acc nmih
 *)
-            | CompiledImInputHorzEmbeddedCodeText(s) ->
+            | CompiledImInputHorzEmbeddedCodeText(_s) ->
                 failwith "TODO: (VM) code text; remains to be supported."
 
             | CompiledImInputHorzContent(imihlst, envsub) ->
@@ -263,7 +261,7 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
     end
 
 
-and exec_pdf_mode_intermediate_input_math (env : vmenv) (ictx : input_context) (imivlst : compiled_intermediate_input_math_element list) : syntactic_value =
+and exec_pdf_mode_intermediate_input_math (_env : vmenv) (_ictx : input_context) (_imivlst : compiled_intermediate_input_math_element list) : syntactic_value =
   failwith "TODO: exec_pdf_mode_intermediate_input_math"
 
 
@@ -367,7 +365,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (
     end
 
 
-and exec_application (env : vmenv) ~msg (vf : syntactic_value) (vargs : syntactic_value list) : syntactic_value =
+and exec_application (env : vmenv) ~msg:_ (vf : syntactic_value) (vargs : syntactic_value list) : syntactic_value =
   let len = List.length vargs in
     if len = 0 then
       vf
@@ -566,7 +564,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 
       end
 
-  | OpApply(n) ->
+  | OpApply(_n) ->
       failwith "TODO (enhance): Vm, OpApply"
 (*
       begin
@@ -621,7 +619,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       end
 *)
 
-  | OpApplyT(n) ->
+  | OpApplyT(_n) ->
       failwith "TODO (enhance): Vm, OpApplyT"
 (*
       begin
@@ -720,7 +718,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       end
 *)
 
-  | OpBindGlobal(loc, evid, refs) ->
+  | OpBindGlobal(loc, _evid, _refs) ->
       begin
         match stack with
         | (v, _) :: stack ->
@@ -732,7 +730,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | _ -> report_bug_vm "invalid argument for OpBindGlobal"
       end
 
-  | OpBindLocal(lv, offset, evid, refs) ->
+  | OpBindLocal(lv, offset, evid, _refs) ->
       begin
             begin
               match stack with
@@ -752,8 +750,8 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
               binds |> List.iter (fun (var, code) ->
                 let recfunc = exec_value [] env code [] in
                   match var with
-                  | GlobalVar(loc, evid, refs) -> loc := recfunc
-                  | LocalVar(lv, offset, evid, refs) -> local_set_value env lv offset recfunc
+                  | GlobalVar(loc, _evid, _refs) -> loc := recfunc
+                  | LocalVar(lv, offset, _evid, _refs) -> local_set_value env lv offset recfunc
               );
               exec stack env code dump
             end
@@ -794,7 +792,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | _ -> report_bug_vm "invalid argument for OpBranchIfNot"
       end
 
-  | OpLoadGlobal(loc, evid, refs) ->
+  | OpLoadGlobal(loc, _evid, _refs) ->
       begin
             begin
               let v = !loc in
@@ -803,7 +801,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
 
       end
 
-  | OpLoadLocal(lv, offset, evid, refs) ->
+  | OpLoadLocal(lv, offset, _evid, _refs) ->
       begin
             begin
               let v = local_get_value env lv offset in
@@ -981,7 +979,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       let imivclos = exec_input_vert_content env imivlst in
       exec (make_entry imivclos :: stack) env code dump
 
-  | OpBindLocationGlobal(loc, evid) ->
+  | OpBindLocationGlobal(loc, _evid) ->
       begin
         match stack with
         | (valueini, _) :: stack ->
@@ -994,7 +992,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | _ -> report_bug_vm "invalid argument for OpBindLocationGlobal"
       end
 
-  | OpBindLocationLocal(lv, offset, evid) ->
+  | OpBindLocationLocal(lv, offset, _evid) ->
       begin
         match stack with
         | (valueini, _) :: stack ->
@@ -1007,7 +1005,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | _ -> report_bug_vm "invalid argument for OpBindLocationLocal"
       end
 
-  | OpUpdateGlobal(loc, evid) ->
+  | OpUpdateGlobal(loc, _evid) ->
       begin
         match stack with
         | (valuenew, _) :: stack ->
@@ -1026,7 +1024,7 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
         | _ -> report_bug_vm "invalid argument for OpUpdateGlobal"
       end
 
-  | OpUpdateLocal(lv, offset, evid) ->
+  | OpUpdateLocal(lv, offset, _evid) ->
       begin
         match stack with
         | (valuenew, _) :: stack ->

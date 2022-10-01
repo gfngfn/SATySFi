@@ -369,7 +369,7 @@ make_math_boxes [ MathBoxLowerLimit{ context = ictx; base; lower } ]
         ~is_text_mode_primitive:true
         ~code:{|
 let ma = MathChar{ context = ictx; is_big = false; chars = uchs } in
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
 |}
     ; inst "BackendMathBigChar"
         ~name:"math-big-char"
@@ -385,7 +385,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
         ~is_text_mode_primitive:true
         ~code:{|
 let ma = MathChar{ context = ictx; is_big = true; chars = uchs } in
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
 |}
     ; inst "BackendMathCharWithKern"
         ~name:"math-char-with-kern"
@@ -406,7 +406,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
 let left_kern = make_math_char_kern_func (reducef ~msg:"math-char-with-kern 1") value_left_kern in
 let right_kern = make_math_char_kern_func (reducef ~msg:"math-char-with-kern 2") value_right_kern in
 let ma = MathCharWithKern{ context = ictx; is_big = false; chars = uchs; left_kern; right_kern } in
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
 |}
     ; inst "BackendMathBigCharWithKern"
         ~name:"math-big-char-with-kern"
@@ -427,7 +427,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
 let left_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern 1") value_left_kern in
 let right_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern 2") value_right_kern in
 let ma = MathCharWithKern{ context = ictx; is_big = true; chars = uchs; left_kern; right_kern } in
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
 |}
     ; inst "BackendEmbedHorzToMath"
         ~name:"embed-inline-to-math"
@@ -440,7 +440,7 @@ make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = ma }) ]
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_math_boxes [ HorzBox.(MathBoxAtom{ kind = mathcls; main = MathEmbeddedHorz(hbs) }) ]
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = MathEmbeddedHorz(hbs) } ]
 |}
     ; inst "BackendSetMathCharClass"
         ~name:"set-math-char-class"
@@ -761,6 +761,8 @@ match value1 with
 | _                    -> report_bug_value "HorzLex" value1
 |}
         ~code:{|
+let _ = ictx in
+let _ = value1 in
 failwith "TODO: HorzLex" (*
 match value1 with
 | CompiledInputHorzClosure(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi ictx imihlst
@@ -803,6 +805,8 @@ let mbs = read_pdf_mode_math_text ictx imvs in
 make_math_boxes mbs
 |}
         ~code:{|
+let _ = ictx in
+let _ = value1 in
 failwith "MathLex" (*
 match value1 with
 | CompiledInputMathClosure(imims, envi) -> exec_pdf_mode_intermediate_input_math envi ictx imims
@@ -823,6 +827,7 @@ match value1 with
 read_text_mode_horz_text value_tctx ihvs
 |}
         ~code:{|
+let _ = value_tctx in
 let _ = ihvs in
 failwith "TODO: TextHorzLex" (*
 match value1 with
@@ -844,6 +849,7 @@ match value1 with
 read_text_mode_vert_text value_tctx ivvs
 |}
         ~code:{|
+let _ = value_tctx in
 let _ = ivvs in
 failwith "TODO: TextVertLex" (*
 match value1 with
@@ -865,6 +871,7 @@ match value1 with
 read_text_mode_math_text value_tctx imvs
 |}
         ~code:{|
+let _ = value_tctx in
 let _ = imvs in
 failwith "TODO: TextVertLex"
 |}
@@ -1929,7 +1936,7 @@ make_bool (String.equal str1 str2)
         ~code:{|
 let resstr =
   try BatUTF8.sub str pos wid with
-  | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub"
+  | Invalid_argument(_) -> report_dynamic_error "illegal index for string-sub"
 in
 make_string resstr
 |}
@@ -1948,7 +1955,7 @@ make_string resstr
         ~code:{|
 let resstr =
   try String.sub str pos wid with
-  | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub-bytes"
+  | Invalid_argument(_) -> report_dynamic_error "illegal index for string-sub-bytes"
 in
 make_string resstr
 |}
@@ -2427,7 +2434,7 @@ make_bool (not binl)
         ~code:{|
 let bits =
   try numl lsr numr with
-  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '>>'"
+  | Invalid_argument(_) -> report_dynamic_error "Bit offset out of bounds for '>>'"
 in
 make_int bits
 |}
@@ -2445,7 +2452,7 @@ make_int bits
         ~code:{|
 let bits =
   try numl lsl numr with
-  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '<<'"
+  | Invalid_argument(_) -> report_dynamic_error "Bit offset out of bounds for '<<'"
 in
 make_int bits
 |}
@@ -2716,7 +2723,7 @@ make_float (floor fc1)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_length (HorzBox.(len1 +% len2))
+make_length (len1 +% len2)
 |}
     ; inst "LengthMinus"
         ~name:"-'"
@@ -2730,7 +2737,7 @@ make_length (HorzBox.(len1 +% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_length (HorzBox.(len1 -% len2))
+make_length (len1 -% len2)
 |}
     ; inst "LengthTimes"
         ~name:"*'"
@@ -2744,7 +2751,7 @@ make_length (HorzBox.(len1 -% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_length (HorzBox.(len1 *% flt2))
+make_length (len1 *% flt2)
 |}
     ; inst "LengthDivides"
         ~name:"/'"
@@ -2758,7 +2765,7 @@ make_length (HorzBox.(len1 *% flt2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_float (HorzBox.(len1 /% len2))
+make_float (len1 /% len2)
 |}
     ; inst "LengthLessThan"
         ~name:"<'"
@@ -2772,7 +2779,7 @@ make_float (HorzBox.(len1 /% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_bool (HorzBox.(len1 <% len2))
+make_bool (len1 <% len2)
 |}
     ; inst "LengthGreaterThan"
         ~name:">'"
@@ -2786,7 +2793,7 @@ make_bool (HorzBox.(len1 <% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_bool (HorzBox.(len2 <% len1))
+make_bool (len2 <% len1)
 |}
     ; inst "PrimitiveSetWordBreakPenalty"
         ~name:"set-word-break-penalty"

@@ -1,5 +1,4 @@
 
-open MyUtil
 open SyntaxBase
 open Types
 open StaticEnv
@@ -360,7 +359,7 @@ let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type 
     | RowCons((_, label), ty, row)                     -> aux_row (tylabmap |> LabelMap.add label ty) row
   in
   let rec aux acc ty =
-    let (rng, tymain) = ty in
+    let (_rng, tymain) = ty in
       match tymain with
       | TypeVariable(Updatable{contents = MonoLink(tysub)}) ->
           aux acc tysub
@@ -575,7 +574,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
               zipped |> List.iter (fun (cmdargty1, cmdargty2) ->
                 let CommandArgType(ty_labmap1, ty1) = cmdargty1 in
                 let CommandArgType(ty_labmap2, ty2) = cmdargty2 in
-                LabelMap.merge (fun label tyopt1 tyopt2 ->
+                LabelMap.merge (fun _label tyopt1 tyopt2 ->
                   match (tyopt1, tyopt2) with
                   | (Some(ty1), Some(ty2)) -> Some(unify ty1 ty2)
                   | (_, None) | (None, _)  -> raise InternalContradictionError
@@ -664,7 +663,7 @@ and unify_list (tys1 : mono_type list) (tys2 : mono_type list) : unit =
 
 and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : unit =
   match row with
-  | RowCons((rng, label), ty, rowsub) ->
+  | RowCons((_rng, label), _ty, rowsub) ->
       if labset |> LabelSet.mem label then
         raise InternalContradictionError
           (* TODO (error): should report error about label *)
@@ -1251,7 +1250,7 @@ let rec typecheck
       (IfThenElse(eB, e1, e2), ty1)
 
   | UTLetIn(UTMutable(ident, utastI), utastA) ->
-      let (tyenvI, evid, eI, tyI) = make_type_environment_by_let_mutable pre tyenv ident utastI in
+      let (tyenvI, evid, eI, _tyI) = make_type_environment_by_let_mutable pre tyenv ident utastI in
       let (eA, tyA) = typecheck_iter tyenvI utastA in
       (LetMutableIn(evid, eI, eA), tyA)
 
@@ -1439,7 +1438,7 @@ and typecheck_command_arguments (tycmd : mono_type) (rngcmdapp : Range.t) (pre :
 
 and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_element list) : input_math_element list =
 
-  let iter (b, utmes) = typecheck_math pre tyenv utmes in
+  let iter (_b, utmes) = typecheck_math pre tyenv utmes in
 
   utmes |> List.map (fun utme ->
     let (rng, UTInputMathElement{ base = utbase; sub = utsub_opt; sup = utsup_opt }) = utme in
@@ -1479,7 +1478,7 @@ and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_e
   )
 
 
-and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =
+and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =
   let rec aux acc utivlst =
     match utivlst with
     | [] ->
@@ -1507,7 +1506,7 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
               raise_error (InvalidExpressionAsToStaging(rng_app, Stage1))
 
           | Stage1 ->
-              let (rng_all, modidents, cs) = bmacro in
+              let (_rng_all, modidents, cs) = bmacro in
               let (rng_cs, _csnm) = cs in
               let macentry = find_macro tyenv modidents cs in
               let macty = TypeConv.instantiate_macro_type pre.level pre.quantifiability macentry.macro_type in
@@ -1530,7 +1529,7 @@ and typecheck_input_vert (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivls
   aux Alist.empty utivlst
 
 
-and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) : input_horz_element list =
+and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) : input_horz_element list =
   let rec aux acc utihlst =
     match utihlst with
     | [] ->
@@ -1576,7 +1575,7 @@ and typecheck_input_horz (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihls
               raise_error (InvalidExpressionAsToStaging(rng_app, Stage1))
 
           | Stage1 ->
-              let (rng_all, modidents, cs) = hmacro in
+              let (_rng_all, modidents, cs) = hmacro in
               let (rng_cs, _csnm) = cs in
               let macentry = find_macro tyenv modidents cs in
               let macty = TypeConv.instantiate_macro_type pre.level pre.quantifiability macentry.macro_type in
@@ -2007,7 +2006,7 @@ and decode_manual_base_kind (mnbkd : manual_base_kind) : base_kind =
   | _   -> raise_error (UndefinedKindName(rng, kdnm))
 
 
-and decode_manual_kind (pre : pre) (tyenv : Typeenv.t) (mnkd : manual_kind) : kind =
+and decode_manual_kind (_pre : pre) (_tyenv : Typeenv.t) (mnkd : manual_kind) : kind =
   let MKind(mnbkds_dom, mnbkd_cod) = mnkd in
   let kds_dom = mnbkds_dom |> List.map decode_manual_base_kind in
   let TypeKind = decode_manual_base_kind mnbkd_cod in
@@ -2037,7 +2036,7 @@ and decode_manual_macro_parameter_type (pre : pre) (tyenv : Typeenv.t) (mmacpara
 and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
   utctorbrs |> List.fold_left (fun ctormap utctorbr ->
     match utctorbr with
-    | UTConstructorBranch((rng, ctornm), mty_opt) ->
+    | UTConstructorBranch((_rng, ctornm), mty_opt) ->
         let ty =
           match mty_opt with
           | Some(mty) -> decode_manual_type pre tyenv mty
@@ -2301,7 +2300,8 @@ and substitute_concrete (subst : substitution) (modsig : signature) : signature 
         {
           opaques = quant;
           domain  = modsig1;
-          codomain = absmodsig2
+          codomain = absmodsig2;
+          _
         } = fsig
       in
       let modsig1 = modsig1 |> substitute_concrete subst in
@@ -2412,7 +2412,7 @@ and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t 
       ~v:(fun _x ventry ->
         { ventry with val_type = ventry.val_type |> substitute_poly_type subst }
       )
-      ~a:(fun csnm macentry ->
+      ~a:(fun _csnm macentry ->
         { macentry with macro_type = macentry.macro_type |> substitute_macro_type subst }
       )
       ~c:(fun _ctornm centry ->
@@ -2455,13 +2455,15 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
           opaques  = quant1;
           domain   = modsigdom1;
           codomain = absmodsigcod1;
+          _
         } = fsig1
       in
       let
         {
-          opaques  = quant2;
+          opaques  = _quant2;
           domain   = modsigdom2;
           codomain = absmodsigcod2;
+          _
         } = fsig2
       in
       let subst = subtype_concrete_with_abstract rng modsigdom2 (quant1, modsigdom1) in
@@ -2682,7 +2684,7 @@ and subtype_row_with_equal_domain (internbid : type_intern) (internbrid : row_in
 
 
 and subtype_label_map_with_equal_domain (internbid : type_intern) (internbrid : row_intern) (pty_labmap1 : poly_type_body LabelMap.t) (pty_labmap2 : poly_type_body LabelMap.t) : bool =
-  LabelMap.merge (fun label pty1_opt pty2_opt ->
+  LabelMap.merge (fun _label pty1_opt pty2_opt ->
     match (pty1_opt, pty2_opt) with
     | (Some(pty1), Some(pty2)) -> Some(subtype_poly_type_impl internbid internbrid (Poly(pty1)) (Poly(pty2)))
     | _                        -> Some(false)
@@ -2694,7 +2696,7 @@ and subtype_label_map_with_equal_domain (internbid : type_intern) (internbrid : 
    by referring and updating `internbid` and `internbrid`. *)
 and subtype_label_map_inclusive (internbid : type_intern) (internbrid : row_intern) (pty_labmap1 : poly_type_body LabelMap.t) (pty_labmap2 : poly_type_body LabelMap.t) : (poly_type_body LabelMap.t) option =
   let merged =
-    LabelMap.merge (fun label pty1_opt pty2_opt ->
+    LabelMap.merge (fun _label pty1_opt pty2_opt ->
       match (pty1_opt, pty2_opt) with
       | (Some(pty1), Some(pty2)) -> Some(Ok(subtype_poly_type_impl internbid internbrid (Poly(pty1)) (Poly(pty2))))
       | (None, Some(pty2))       -> Some(Error(pty2))
@@ -2763,7 +2765,7 @@ and subtype_type_scheme (tyscheme1 : type_scheme) (tyscheme2 : type_scheme) : bo
         | _ ->
             false
       in
-      let internbrid (brid1 : BoundRowID.t) (nomprow2 : normalized_poly_row) : bool =
+      let internbrid (_brid1 : BoundRowID.t) (_nomprow2 : normalized_poly_row) : bool =
         false
       in
       subtype_poly_type_impl internbid internbrid pty1 pty2
@@ -2860,7 +2862,7 @@ and poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
 
   and aux_labeled_map ptylabmap1 ptylabmap2 =
     let labmap =
-      LabelMap.merge (fun label pty1_opt pty2_opt ->
+      LabelMap.merge (fun _label pty1_opt pty2_opt ->
         match (pty1_opt, pty2_opt) with
         | (Some(pty1), Some(pty2)) -> Some(aux pty1 pty2)
         | _                        -> Some(false)
@@ -2934,8 +2936,8 @@ and copy_contents (modsig1 : signature) (modsig2 : signature) : signature =
       (ConcStructure(ssig2_new))
 
   | (ConcFunctor(fsig1), ConcFunctor(fsig2)) ->
-      let { opaques = quant_dom1; domain = modsig_dom1; codomain = absmodsig_cod1; closure = closure } = fsig1 in
-      let { opaques = quant_dom2; domain = modsig_dom2; codomain = absmodsig_cod2 } = fsig2 in
+      let { opaques = _quant_dom1; domain = modsig_dom1; codomain = absmodsig_cod1; closure = closure } = fsig1 in
+      let { opaques = _quant_dom2; domain = modsig_dom2; codomain = absmodsig_cod2; _ } = fsig2 in
       let modsig_dom2_new = copy_contents modsig_dom1 modsig_dom2 in
       let absmodsig_cod2_new =
         let (_, modsig_cod1) = absmodsig_cod1 in
@@ -3087,7 +3089,7 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
             (quant, ssig)
       end
 
-  | UTDeclMacro((rng_cs, csnm), (_, mmacty)) ->
+  | UTDeclMacro((_rng_cs, csnm), (_, mmacty)) ->
       let pre_init =
         {
           stage           = Stage0;
@@ -3122,7 +3124,7 @@ and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) 
   ((quant, ssig), binds)
 
 
-and get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.t SynonymNameMap.t) (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : SynonymVertexSet.t =
+and get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.t SynonymNameMap.t) (_pre : pre) (_tyenv : Typeenv.t) (mty : manual_type) : SynonymVertexSet.t =
   let hashset = SynonymVertexHashSet.create 32 in
     (* A hash set is created on every (non-partial) call. *)
   let register_if_needed (tynm : type_name) : unit =
@@ -3150,7 +3152,7 @@ and get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.
     | MRecordType(mfields, _) ->
         aux_row mfields
 
-    | MTypeParam(typaram) ->
+    | MTypeParam(_typaram) ->
         ()
 
     | MHorzCommandType(mcmdargtys) -> mcmdargtys |> List.iter aux_cmd_arg
@@ -3227,7 +3229,7 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
   (* Traverse each definition of the synonym types and extract dependencies between them. *)
   let graph =
     synacc |> Alist.to_list |> List.fold_left (fun graph syn ->
-      let ((_, tynm), tyvars, synbind, vertex) = syn in
+      let ((_, _tynm), _tyvars, synbind, vertex) = syn in
       let dependencies = get_dependency_on_synonym_types known_syns pre tyenv synbind in
       let graph =
         graph |> SynonymVertexSet.fold (fun vertex_dep graph ->
