@@ -734,7 +734,7 @@
          [(((Range.Normal <txlist.saty:3.8-9>), "t"), [],
            (UTBindSynonym
               ((Range.Normal <txlist.saty:3.12-35>),
-               (Types.MHorzCommandType
+               (Types.MInlineCommandType
                   [(Types.MArgType (
                       [(((Range.Normal <txlist.saty:3.22-25>), "foo"),
                         ((Range.Normal <txlist.saty:3.28-29>),
@@ -751,11 +751,11 @@
            (((Range.Normal <txlist.saty:4.7-8>), "t"), [],
             (UTBindSynonym
                ((Range.Normal <txlist.saty:4.11-20>),
-                (Types.MHorzCommandType []))));
+                (Types.MInlineCommandType []))));
            (((Range.Normal <txlist.saty:5.7-8>), "t"), [],
             (UTBindSynonym
                ((Range.Normal <txlist.saty:5.11-21>),
-                (Types.MHorzCommandType
+                (Types.MInlineCommandType
                    [(Types.MArgType ([],
                        ((Range.Normal <txlist.saty:5.19-20>),
                         (Types.MTypeName ([],
@@ -766,7 +766,7 @@
            (((Range.Normal <txlist.saty:6.7-8>), "t"), [],
             (UTBindSynonym
                ((Range.Normal <txlist.saty:6.11-22>),
-                (Types.MHorzCommandType
+                (Types.MInlineCommandType
                    [(Types.MArgType ([],
                        ((Range.Normal <txlist.saty:6.19-20>),
                         (Types.MTypeName ([],
