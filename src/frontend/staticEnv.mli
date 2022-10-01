@@ -57,9 +57,9 @@ module Typeenv : sig
 
   val empty : t
 
-  val add_macro : ctrlseq_name -> macro_entry -> t -> t
+  val add_macro : command_name -> macro_entry -> t -> t
 
-  val find_macro : ctrlseq_name -> t -> macro_entry option
+  val find_macro : command_name -> t -> macro_entry option
 
   val add_value : var_name -> value_entry -> t -> t
 

@@ -22,13 +22,13 @@ let make_entry (v : syntactic_value) : stack_entry =
 let report_dynamic_error msg =
   raise (ExecError(msg))
 
-
-type compiled_nom_input_horz_element =
-  | CompiledNomInputHorzText     of string
-  | CompiledNomInputHorzEmbedded of instruction list
-  | CompiledNomInputHorzThunk    of instruction list
-  | CompiledNomInputHorzContent  of compiled_nom_input_horz_element list * vmenv
-
+(*
+type compiled_nom_inline_text_element =
+  | CompiledNomInlineTextText     of string
+  | CompiledNomInlineTextEmbedded of instruction list
+  | CompiledNomInlineTextThunk    of instruction list
+  | CompiledNomInlineTextContent  of compiled_nom_inline_text_element list * vmenv
+*)
 
 let local_get_value (env : vmenv) (lv : int) (off : int) : syntactic_value =
   let (_, frames) = env in
@@ -92,166 +92,175 @@ let make_binding_op (var : varloc) : instruction =
   | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
 
 
-let rec exec_input_horz_content env ihlst =
+let rec exec_inline_text_content _env _ihlst =
+  failwith "TODO: exec_inline_text_content"
+(*
   let imihlist = ihlst |> List.map (function
-    | CompiledInputHorzText(s) ->
-        CompiledImInputHorzText(s)
+    | CompiledInlineTextText(s) ->
+        CompiledImInlineTextText(s)
 
-    | CompiledInputHorzEmbedded(code) ->
-        CompiledImInputHorzEmbedded(code)
+    | CompiledInlineTextEmbedded(code) ->
+        CompiledImInlineTextEmbedded(code)
 
-    | CompiledInputHorzEmbeddedMath(code) ->
-        CompiledImInputHorzEmbeddedMath(code)
+    | CompiledInlineTextEmbeddedMath(code) ->
+        CompiledImInlineTextEmbeddedMath(code)
 
-    | CompiledInputHorzEmbeddedCodeText(s) ->
-        CompiledImInputHorzEmbeddedCodeText(s)
+    | CompiledInlineTextEmbeddedCodeText(s) ->
+        CompiledImInlineTextEmbeddedCodeText(s)
 
-    | CompiledInputHorzContent(code) ->
+    | CompiledInlineTextContent(code) ->
         let value = exec_value [] env code [] in
         begin
           match value with
-          | CompiledInputHorzClosure(imihlst, envsub) ->
-              CompiledImInputHorzContent(imihlst, envsub)
+          | CompiledInlineTextClosure(imihlst, envsub) ->
+              CompiledImInlineTextContent(imihlst, envsub)
 
-          | _ -> report_bug_vm "exec_input_horz_content"
+          | _ -> report_bug_vm "exec_inline_text_content"
         end
 
   ) in
-    CompiledInputHorzClosure(imihlist, env)
+    CompiledInlineTextClosure(imihlist, env)
+*)
 
 
-and exec_input_vert_content env ivlst =
+and exec_block_text_content _env _ivlst =
+  failwith "TODO: exec_code_vert_content"
+(*
   let imivlst = ivlst |> List.map (function
-    | CompiledInputVertEmbedded(code) ->
-        CompiledImInputVertEmbedded(code)
+    | CompiledBlockTextEmbedded(code) ->
+        CompiledImBlockTextEmbedded(code)
 
-    | CompiledInputVertContent(code) ->
+    | CompiledBlockTextContent(code) ->
         let value = exec_value [] env code [] in
         begin
           match value with
-          | CompiledInputVertClosure(imivlst, envsub) ->
-              CompiledImInputVertContent(imivlst, envsub)
+          | CompiledBlockTextClosure(imivlst, envsub) ->
+              CompiledImBlockTextContent(imivlst, envsub)
 
-          | _ -> report_bug_vm "exec_input_vert_content"
+          | _ -> report_bug_vm "exec_block_text_content"
         end
 
   ) in
-    CompiledInputVertClosure(imivlst, env)
+    CompiledBlockTextClosure(imivlst, env)
+*)
 
-
-and exec_code_input_horz _env _irihlst =
-  failwith "TODO: exec_code_input_horz"
+and exec_code_inline_text _env _irihlst =
+  failwith "TODO: exec_code_inline_text"
 (*
   irihlst |> List.map (function
-  | InputHorzText(s) ->
-      InputHorzText(s)
+  | InlineTextText(s) ->
+      InlineTextText(s)
 
-  | InputHorzEmbedded(instrs) ->
+  | InlineTextEmbedded(instrs) ->
       let value = exec_value [] env instrs [] in
       let cv = get_code value in
-      InputHorzEmbedded(cv)
+      InlineTextEmbedded(cv)
 
-  | InputHorzEmbeddedMath(instrs) ->
+  | InlineTextEmbeddedMath(instrs) ->
       let value = exec_value [] env instrs [] in
       let cv = get_code value in
-      InputHorzEmbeddedMath(cv)
+      InlineTextEmbeddedMath(cv)
 
-  | InputHorzEmbeddedCodeText(s) ->
-      InputHorzEmbeddedCodeText(s)
+  | InlineTextEmbeddedCodeText(s) ->
+      InlineTextEmbeddedCodeText(s)
 
-  | InputHorzContent(instrs) ->
+  | InlineTextContent(instrs) ->
       let value = exec_value [] env instrs [] in
       let cv = get_code value in
-      InputHorzContent(cv)
+      InlineTextContent(cv)
   )
 *)
 
 
-and exec_code_input_vert _env _irivlst =
-  failwith "TODO: exec_code_input_vert"
+and exec_code_block_text _env _irivlst =
+  failwith "TODO: exec_code_block_text"
 (*
   irivlst |> List.map (function
-  | InputVertEmbedded(instrs) ->
+  | BlockTextEmbedded(instrs) ->
       let value = exec_value [] env instrs [] in
       let cv = get_code value in
-      InputVertEmbedded(cv)
+      BlockTextEmbedded(cv)
 
-  | InputVertContent(instrs) ->
+  | BlockTextContent(instrs) ->
       let value = exec_value [] env instrs [] in
       let cv = get_code value in
-      InputVertContent(cv)
+      BlockTextContent(cv)
   )
 *)
 
 
-and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
+and exec_text_mode_intermediate_block_text (_env : vmenv) (_valuetctx : syntactic_value) (_imivlst : compiled_intermediate_block_text_element list) : syntactic_value =
+  failwith "TODO: exec_text_mode_intermediate_block_text"
+(*
   let rec interpret_commands env imivlst =
     imivlst |> List.map (fun imiv ->
         match imiv with
-        | CompiledImInputVertEmbedded(code) ->
+        | CompiledImBlockTextEmbedded(code) ->
             let valueret = exec_value [make_entry valuetctx] env (List.append code [OpApplyT(1)]) [] in
               get_string valueret
 
-        | CompiledImInputVertContent(imivlstsub, envsub) ->
+        | CompiledImBlockTextContent(imivlstsub, envsub) ->
             interpret_commands envsub imivlstsub
 
       ) |> String.concat ""
   in
   let s = interpret_commands env imivlst in
   make_string s
+*)
 
-
-and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+and exec_text_mode_intermediate_inline_text (_env : vmenv) (_valuetctx : syntactic_value) (_imihlst : compiled_intermediate_inline_text_element list) : syntactic_value =
+  failwith "TODO: exec_text_mode_intermediate_inline_text"
+(*
   let (tctx, _ctxsub) = get_text_mode_context valuetctx in
     begin
       let rec normalize imihlst =
         imihlst |> List.fold_left (fun acc imih ->
             match imih with
-            | CompiledImInputHorzEmbedded(code) ->
-                let nmih = CompiledNomInputHorzEmbedded(code) in
+            | CompiledImInlineTextEmbedded(code) ->
+                let nmih = CompiledNomInlineTextEmbedded(code) in
                   Alist.extend acc nmih
 
-            | CompiledImInputHorzText(s2) ->
+            | CompiledImInlineTextText(s2) ->
                 begin
                   match Alist.chop_last acc with
-                  | Some(accrest, CompiledNomInputHorzText(s1)) -> (Alist.extend accrest (CompiledNomInputHorzText(s1 ^ s2)))
-                  | _                                           -> (Alist.extend acc (CompiledNomInputHorzText(s2)))
+                  | Some(accrest, CompiledNomInlineTextText(s1)) -> (Alist.extend accrest (CompiledNomInlineTextText(s1 ^ s2)))
+                  | _                                           -> (Alist.extend acc (CompiledNomInlineTextText(s2)))
                 end
 
-            | CompiledImInputHorzEmbeddedMath(_mathcode) ->
+            | CompiledImInlineTextEmbeddedMath(_mathcode) ->
                 failwith "TODO: (VM) math; remains to be supported."
 (*
-                let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuetctx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
+                let nmih = CompiledNomInlineTextThunk(List.append mathcode [OpPush(valuetctx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
                   Alist.extend acc nmih
 *)
-            | CompiledImInputHorzEmbeddedCodeText(_s) ->
+            | CompiledImInlineTextEmbeddedCodeText(_s) ->
                 failwith "TODO: (VM) code text; remains to be supported."
 
-            | CompiledImInputHorzContent(imihlst, envsub) ->
+            | CompiledImInlineTextContent(imihlst, envsub) ->
                 let nmihlstsub = normalize imihlst in
-                let nmih = CompiledNomInputHorzContent(nmihlstsub, envsub) in
+                let nmih = CompiledNomInlineTextContent(nmihlstsub, envsub) in
                   Alist.extend acc nmih
 
           ) Alist.empty |> Alist.to_list
       in
 
-      let rec interpret_commands (env : vmenv) (nmihlst : compiled_nom_input_horz_element list) : string =
+      let rec interpret_commands (env : vmenv) (nmihlst : compiled_nom_inline_text_element list) : string =
         nmihlst |> List.map (fun nmih ->
             match nmih with
-            | CompiledNomInputHorzEmbedded(code) ->
+            | CompiledNomInlineTextEmbedded(code) ->
                 let valueret = exec_value [make_entry valuetctx] env (List.append code [OpApplyT(1)]) [] in
                   get_string valueret
 
-            | CompiledNomInputHorzThunk(code) ->
+            | CompiledNomInlineTextThunk(code) ->
                 let valueret = exec_value [] env code [] in
                   get_string valueret
 
-            | CompiledNomInputHorzText(s) ->
+            | CompiledNomInlineTextText(s) ->
                 let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
                 let uchlstret = TextBackend.stringify uchlst tctx in
                   InternalText.to_utf8 (InternalText.of_uchar_list uchlstret)
 
-            | CompiledNomInputHorzContent(nmihlstsub, envsub) ->
+            | CompiledNomInlineTextContent(nmihlstsub, envsub) ->
                 interpret_commands envsub nmihlstsub
 
           ) |> String.concat ""
@@ -261,50 +270,56 @@ and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_
       let s = interpret_commands env nmihlst in
       make_string s
     end
+*)
 
 
-and exec_pdf_mode_intermediate_input_math (_env : vmenv) (_ictx : input_context) (_imivlst : compiled_intermediate_input_math_element list) : syntactic_value =
-  failwith "TODO: exec_pdf_mode_intermediate_input_math"
+and exec_pdf_mode_intermediate_math_text (_env : vmenv) (_ictx : input_context) (_imivlst : compiled_intermediate_math_text_element list) : syntactic_value =
+  failwith "TODO: exec_pdf_mode_intermediate_math_text"
 
 
-and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
+and exec_pdf_mode_intermediate_block_text (_env : vmenv) (_valuectx : syntactic_value) (_imivlst : compiled_intermediate_block_text_element list) : syntactic_value =
+  failwith "TODO: exec_pdf_mode_intermediate_block_text"
+(*
   let rec interpret_commands env imivlst =
     imivlst |> List.map (fun imiv ->
         match imiv with
-        | CompiledImInputVertEmbedded(code) ->
+        | CompiledImBlockTextEmbedded(code) ->
             let value = exec_value [ make_entry valuectx ] env (List.append code [ OpApplyT(1) ]) [] in
               get_vert_boxes value
 
-        | CompiledImInputVertContent(imivlstsub, envsub) ->
+        | CompiledImBlockTextContent(imivlstsub, envsub) ->
             interpret_commands envsub imivlstsub
 
       ) |> List.concat
   in
   let imvblst = interpret_commands env imivlst in
   make_vert imvblst
+*)
 
 
-and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+and exec_pdf_mode_intermediate_inline_text (_env : vmenv) (_ictx : input_context) (_imihlst : compiled_intermediate_inline_text_element list) : syntactic_value =
+  failwith "TODO: exec_pdf_mode_intermediate_inline_text"
+(*
   let (ctx, ctxsub) = ictx in
     begin
       let rec normalize imihlst =
         imihlst |> List.fold_left (fun acc imih ->
             match imih with
-            | CompiledImInputHorzEmbedded(code) ->
-                let nmih = CompiledNomInputHorzEmbedded(code) in
+            | CompiledImInlineTextEmbedded(code) ->
+                let nmih = CompiledNomInlineTextEmbedded(code) in
                   Alist.extend acc nmih
 
-            | CompiledImInputHorzText(s2) ->
+            | CompiledImInlineTextText(s2) ->
                 begin
                   match Alist.chop_last acc with
-                  | Some(accrest, CompiledNomInputHorzText(s1)) -> (Alist.extend accrest (CompiledNomInputHorzText(s1 ^ s2)))
-                  | _                                           -> (Alist.extend acc (CompiledNomInputHorzText(s2)))
+                  | Some(accrest, CompiledNomInlineTextText(s1)) -> (Alist.extend accrest (CompiledNomInlineTextText(s1 ^ s2)))
+                  | _                                           -> (Alist.extend acc (CompiledNomInlineTextText(s2)))
                 end
 
-            | CompiledImInputHorzEmbeddedMath(mathcode) ->
+            | CompiledImInlineTextEmbeddedMath(mathcode) ->
                 let MathCommand(valuemcmd) = ctxsub.math_command in
                 let nmih =
-                  CompiledNomInputHorzThunk(
+                  CompiledNomInlineTextThunk(
                     List.append mathcode [
                       OpPush(Context(ictx));
                       OpForward(1);  (* -- put the context argument under the math argument -- *)
@@ -314,16 +329,16 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (
                 in
                 Alist.extend acc nmih
 
-            | CompiledImInputHorzEmbeddedCodeText(s) ->
+            | CompiledImInlineTextEmbeddedCodeText(s) ->
                 begin
                   match ctxsub.code_text_command with
                   | DefaultCodeTextCommand ->
-                      let nmih = CompiledNomInputHorzText(s) in
+                      let nmih = CompiledNomInlineTextText(s) in
                       Alist.extend acc nmih
 
                   | CodeTextCommand(valuectcmd) ->
                       let nmih =
-                        CompiledNomInputHorzThunk([
+                        CompiledNomInlineTextThunk([
                           OpPush(Context(ictx));
                           OpPush(BaseConstant(BCString(s)));
                           OpPush(valuectcmd);
@@ -333,29 +348,29 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (
                       Alist.extend acc nmih
                 end
 
-            | CompiledImInputHorzContent(imihlst, envsub) ->
+            | CompiledImInlineTextContent(imihlst, envsub) ->
                 let nmihlstsub = normalize imihlst in
-                let nmih = CompiledNomInputHorzContent(nmihlstsub, envsub) in
+                let nmih = CompiledNomInlineTextContent(nmihlstsub, envsub) in
                   Alist.extend acc nmih
 
           ) Alist.empty |> Alist.to_list
       in
 
-      let rec interpret_commands (env : vmenv) (nmihlst : compiled_nom_input_horz_element list) : HorzBox.horz_box list =
+      let rec interpret_commands (env : vmenv) (nmihlst : compiled_nom_inline_text_element list) : HorzBox.horz_box list =
         nmihlst |> List.map (fun nmih ->
             match nmih with
-            | CompiledNomInputHorzEmbedded(code) ->
+            | CompiledNomInlineTextEmbedded(code) ->
                 let value = exec_value [ make_entry (Context(ictx)) ] env (List.append code [ OpApplyT(1) ]) [] in
                 get_horz_boxes value
 
-            | CompiledNomInputHorzThunk(code) ->
+            | CompiledNomInlineTextThunk(code) ->
                 let value = exec_value [] env code [] in
                 get_horz_boxes value
 
-            | CompiledNomInputHorzText(s) ->
+            | CompiledNomInlineTextText(s) ->
                 lex_horz_text ctx s
 
-            | CompiledNomInputHorzContent(nmihlstsub, envsub) ->
+            | CompiledNomInlineTextContent(nmihlstsub, envsub) ->
                 interpret_commands envsub nmihlstsub
 
           ) |> List.concat
@@ -365,6 +380,7 @@ and exec_pdf_mode_intermediate_input_horz (env : vmenv) (ictx : input_context) (
       let hblst = interpret_commands env nmihlst in
       make_horz hblst
     end
+*)
 
 
 and exec_application (env : vmenv) ~msg:_ (vf : syntactic_value) (vargs : syntactic_value list) : syntactic_value =
@@ -973,12 +989,12 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       let entry = make_entry @@ CompiledClosure(varloc_labmap, arity, [], framesize, body, env) in
       exec (entry :: stack) env code dump
 
-  | OpClosureInputHorz(imihlst) ->
-      let imihclos = exec_input_horz_content env imihlst in
+  | OpClosureInlineText(imihlst) ->
+      let imihclos = exec_inline_text_content env imihlst in
       exec (make_entry imihclos :: stack) env code dump
 
-  | OpClosureInputVert(imivlst) ->
-      let imivclos = exec_input_vert_content env imivlst in
+  | OpClosureBlockText(imivlst) ->
+      let imivclos = exec_block_text_content env imivlst in
       exec (make_entry imivclos :: stack) env code dump
 
   | OpBindLocationGlobal(loc, _evid) ->
@@ -1110,14 +1126,14 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
       let entry = make_entry @@ CodeValue(CdTuple(cvs)) in
       exec (entry :: stack) env code dump
 
-  | OpCodeMakeInputHorz(compihlst) ->
-      let cdihlst = exec_code_input_horz env compihlst in
-      let entry = make_entry @@ CodeValue(CdInputHorz(cdihlst)) in
+  | OpCodeMakeInlineText(compihlst) ->
+      let cdihlst = exec_code_inline_text env compihlst in
+      let entry = make_entry @@ CodeValue(CdInlineText(cdihlst)) in
       exec (entry :: stack) env code dump
 
-  | OpCodeMakeInputVert(compivlst) ->
-      let cdivlst = exec_code_input_vert env compivlst in
-      let entry = make_entry @@ CodeValue(CdInputVert(cdivlst)) in
+  | OpCodeMakeBlockText(compivlst) ->
+      let cdivlst = exec_code_block_text env compivlst in
+      let entry = make_entry @@ CodeValue(CdBlockText(cdivlst)) in
       exec (entry :: stack) env code dump
 
   | OpCodePatternMatch(rng, comppatbrs) ->

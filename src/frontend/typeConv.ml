@@ -43,9 +43,9 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
     | DataType(tyargs, tyid)            -> (rng, DataType(List.map iter tyargs, tyid))
     | ListType(tycont)                  -> (rng, ListType(iter tycont))
     | RefType(tycont)                   -> (rng, RefType(iter tycont))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
+    | InlineCommandType(tys)            -> (rng, InlineCommandType(List.map (lift_argument_type iter) tys))
+    | BlockCommandType(tys)             -> (rng, BlockCommandType(List.map (lift_argument_type iter) tys))
+    | MathCommandType(tys)              -> (rng, MathCommandType(List.map (lift_argument_type iter) tys))
     | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
 
@@ -58,10 +58,10 @@ and erase_range_of_row (row : mono_row) =
       let rlabel = (Range.dummy "erased", label) in
       RowCons(rlabel, erase_range_of_type ty, erase_range_of_row tail)
 
-  | RowVar(UpdatableRow{contents = MonoORLink(optrow)}) ->
+  | RowVar(UpdatableRow{contents = MonoRowLink(optrow)}) ->
       erase_range_of_row optrow
 
-  | RowVar(UpdatableRow{contents = MonoORFree(_)}) ->
+  | RowVar(UpdatableRow{contents = MonoRowFree(_)}) ->
       row
 
   | RowVar(MustBeBoundRow(_)) ->
@@ -82,9 +82,9 @@ fun intern_ty intern_row pty ->
   | ListType(tysub)                -> (rng, ListType(aux tysub))
   | RefType(tysub)                 -> (rng, RefType(aux tysub))
   | BaseType(bty)                  -> (rng, BaseType(bty))
-  | HorzCommandType(tylist)        -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
-  | VertCommandType(tylist)        -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
-  | MathCommandType(tylist)        -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
+  | InlineCommandType(tys)         -> (rng, InlineCommandType(List.map (lift_argument_type aux) tys))
+  | BlockCommandType(tys)          -> (rng, BlockCommandType(List.map (lift_argument_type aux) tys))
+  | MathCommandType(tys)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tys))
   | CodeType(tysub)                -> (rng, CodeType(aux tysub))
 
 
@@ -126,10 +126,10 @@ let make_type_instantiation_intern (lev : level) (qtfbl : quantifiability) (bid_
 let make_row_instantiation_intern (lev : level) (brid_ht : mono_row_variable BoundRowIDHashTable.t) =
   let intern_row (prv : poly_row_variable) : mono_row =
     match prv with
-    | PolyORFree(rvref) ->
+    | PolyRowFree(rvref) ->
         RowVar(rvref)
 
-    | PolyORBound(brid) ->
+    | PolyRowBound(brid) ->
         begin
           match BoundRowIDHashTable.find_opt brid_ht brid with
           | Some(rv) ->
@@ -138,7 +138,7 @@ let make_row_instantiation_intern (lev : level) (brid_ht : mono_row_variable Bou
           | None ->
               let rv =
                 let frid = FreeRowID.fresh lev (BoundRowID.get_label_set brid) in
-                let rvref = ref (MonoORFree(frid)) in
+                let rvref = ref (MonoRowFree(frid)) in
                 UpdatableRow(rvref)
               in
               BoundRowIDHashTable.add brid_ht brid rv;
@@ -171,8 +171,8 @@ let instantiate_by_map_mono (bidmap : mono_type BoundIDMap.t) (Poly(pty) : poly_
   in
   let intern_row (prv : poly_row_variable) =
     match prv with
-    | PolyORFree(rvref) -> RowVar(rvref)
-    | PolyORBound(_)    -> assert false
+    | PolyRowFree(rvref) -> RowVar(rvref)
+    | PolyRowBound(_)    -> assert false
   in
   instantiate_impl intern_ty intern_row pty
 
@@ -206,8 +206,8 @@ let instantiate_macro_type (lev : level) (qtfbl : quantifiability) (pmacty : pol
     | EarlyMacroParameter(pty) -> EarlyMacroParameter(instantiate_impl intern_ty intern_row pty)
   in
   match pmacty with
-  | HorzMacroType(pmacparamtys) -> HorzMacroType(pmacparamtys |> List.map aux)
-  | VertMacroType(pmacparamtys) -> VertMacroType(pmacparamtys |> List.map aux)
+  | InlineMacroType(pmacparamtys) -> InlineMacroType(pmacparamtys |> List.map aux)
+  | BlockMacroType(pmacparamtys)  -> BlockMacroType(pmacparamtys |> List.map aux)
 
 
 let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : FreeRowID.t -> LabelSet.t -> BoundRowID.t option) (ty : mono_type) : poly_type_body =
@@ -243,9 +243,9 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
     | ListType(tysub)                   -> (rng, ListType(iter tysub))
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
     | BaseType(bty)                     -> (rng, BaseType(bty))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
+    | InlineCommandType(tys)            -> (rng, InlineCommandType(List.map (lift_argument_type iter) tys))
+    | BlockCommandType(tys)             -> (rng, BlockCommandType(List.map (lift_argument_type iter) tys))
+    | MathCommandType(tys)              -> (rng, MathCommandType(List.map (lift_argument_type iter) tys))
     | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
   and generalize_row (labset : LabelSet.t) = function
@@ -259,23 +259,23 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
     | RowVar(UpdatableRow(orviref) as rv0) ->
         begin
           match !orviref with
-          | MonoORFree(frid) ->
+          | MonoRowFree(frid) ->
               begin
                 match intern_row frid labset with
                 | None ->
-                    RowVar(PolyORFree(rv0))
+                    RowVar(PolyRowFree(rv0))
 
                 | Some(brid) ->
-                    RowVar(PolyORBound(brid))
+                    RowVar(PolyRowBound(brid))
               end
 
-          | MonoORLink(row) ->
+          | MonoRowLink(row) ->
               generalize_row labset row
         end
 
     | RowVar(MustBeBoundRow(mbbrid)) ->
         let brid = MustBeBoundRowID.to_bound_id mbbrid in
-        RowVar(PolyORBound(brid))
+        RowVar(PolyRowBound(brid))
   in
   iter ty
 
@@ -305,10 +305,10 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
     | ListType(tycont)               -> iter tycont
     | DataType(tyargs, _)            -> List.for_all iter tyargs
 
-    | HorzCommandType(cmdargtylst)
-    | VertCommandType(cmdargtylst)
-    | MathCommandType(cmdargtylst) ->
-        List.for_all iter_cmd cmdargtylst
+    | InlineCommandType(cmdargtys)
+    | BlockCommandType(cmdargtys)
+    | MathCommandType(cmdargtys) ->
+        List.for_all iter_cmd cmdargtys
 
     | CodeType(tysub) ->
         iter tysub
@@ -327,8 +327,8 @@ let check_level (lev : Level.t) (ty : mono_type) : bool =
     | RowVar(UpdatableRow(rvref)) ->
         begin
           match !rvref with
-          | MonoORFree(frid) -> Level.less_than lev (FreeRowID.get_level frid)
-          | MonoORLink(row)  -> iter_row row
+          | MonoRowFree(frid) -> Level.less_than lev (FreeRowID.get_level frid)
+          | MonoRowLink(row)  -> iter_row row
         end
 
     | RowVar(MustBeBoundRow(mbbrid)) ->
@@ -398,8 +398,8 @@ let generalize_macro_type (macty : mono_macro_type) : poly_macro_type =
     | EarlyMacroParameter(ty) -> EarlyMacroParameter(lift_poly_general intern_ty intern_row ty)
   in
   match macty with
-  | HorzMacroType(macparamtys) -> HorzMacroType(macparamtys |> List.map aux)
-  | VertMacroType(macparamtys) -> VertMacroType(macparamtys |> List.map aux)
+  | InlineMacroType(macparamtys) -> InlineMacroType(macparamtys |> List.map aux)
+  | BlockMacroType(macparamtys)  -> BlockMacroType(macparamtys |> List.map aux)
 
 
 let rec unlift_aux pty =
@@ -422,9 +422,9 @@ let rec unlift_aux pty =
     | ListType(ptysub)                -> ListType(aux ptysub)
     | RefType(ptysub)                 -> RefType(aux ptysub)
     | DataType(ptyargs, tyid)         -> DataType(List.map aux ptyargs, tyid)
-    | HorzCommandType(catyl)          -> HorzCommandType(List.map unlift_aux_cmd catyl)
-    | VertCommandType(catyl)          -> VertCommandType(List.map unlift_aux_cmd catyl)
-    | MathCommandType(catyl)          -> MathCommandType(List.map unlift_aux_cmd catyl)
+    | InlineCommandType(cmdargtys)    -> InlineCommandType(List.map unlift_aux_cmd cmdargtys)
+    | BlockCommandType(cmdargtys)     -> BlockCommandType(List.map unlift_aux_cmd cmdargtys)
+    | MathCommandType(cmdargtys)      -> MathCommandType(List.map unlift_aux_cmd cmdargtys)
     | CodeType(ptysub)                -> CodeType(aux ptysub)
   in
   (rng, ptymainnew)
@@ -436,10 +436,10 @@ and unlift_aux_cmd = function
 
 
 and unlift_aux_row = function
-  | RowEmpty                   -> RowEmpty
-  | RowCons(rlabel, pty, tail) -> RowCons(rlabel, unlift_aux pty, unlift_aux_row tail)
-  | RowVar(PolyORFree(rvref))  -> RowVar(rvref)
-  | RowVar(PolyORBound(_))     -> raise Exit
+  | RowEmpty                    -> RowEmpty
+  | RowCons(rlabel, pty, tail)  -> RowCons(rlabel, unlift_aux pty, unlift_aux_row tail)
+  | RowVar(PolyRowFree(rvref))  -> RowVar(rvref)
+  | RowVar(PolyRowBound(_))     -> raise Exit
 
 
 let unlift_poly (pty : poly_type_body) : mono_type option =
@@ -469,10 +469,10 @@ let normalize_poly_row (prow : poly_row) : normalized_poly_row =
 
 let normalize_mono_row (row : mono_row) : normalized_mono_row =
   let rec aux labmap = function
-    | RowCons((_, label), ty, row)                     -> aux (labmap |> LabelMap.add label ty) row
-    | RowVar(UpdatableRow{contents = MonoORLink(row)}) -> aux labmap row
-    | RowVar(rv)                                       -> NormalizedRow(labmap, Some(rv))
-    | RowEmpty                                         -> NormalizedRow(labmap, None)
+    | RowCons((_, label), ty, row)                      -> aux (labmap |> LabelMap.add label ty) row
+    | RowVar(UpdatableRow{contents = MonoRowLink(row)}) -> aux labmap row
+    | RowVar(rv)                                        -> NormalizedRow(labmap, Some(rv))
+    | RowEmpty                                          -> NormalizedRow(labmap, None)
   in
   aux LabelMap.empty row
 

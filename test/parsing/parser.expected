@@ -734,7 +734,7 @@
          [(((Range.Normal <txlist.saty:3.8-9>), "t"), [],
            (UTBindSynonym
               ((Range.Normal <txlist.saty:3.12-35>),
-               (Types.MHorzCommandType
+               (Types.MInlineCommandType
                   [(Types.MArgType (
                       [(((Range.Normal <txlist.saty:3.22-25>), "foo"),
                         ((Range.Normal <txlist.saty:3.28-29>),
@@ -751,11 +751,11 @@
            (((Range.Normal <txlist.saty:4.7-8>), "t"), [],
             (UTBindSynonym
                ((Range.Normal <txlist.saty:4.11-20>),
-                (Types.MHorzCommandType []))));
+                (Types.MInlineCommandType []))));
            (((Range.Normal <txlist.saty:5.7-8>), "t"), [],
             (UTBindSynonym
                ((Range.Normal <txlist.saty:5.11-21>),
-                (Types.MHorzCommandType
+                (Types.MInlineCommandType
                    [(Types.MArgType ([],
                        ((Range.Normal <txlist.saty:5.19-20>),
                         (Types.MTypeName ([],
@@ -766,7 +766,7 @@
            (((Range.Normal <txlist.saty:6.7-8>), "t"), [],
             (UTBindSynonym
                ((Range.Normal <txlist.saty:6.11-22>),
-                (Types.MHorzCommandType
+                (Types.MInlineCommandType
                    [(Types.MArgType ([],
                        ((Range.Normal <txlist.saty:6.19-20>),
                         (Types.MTypeName ([],
@@ -953,8 +953,8 @@
        (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <sxlist.saty:4.7-8>), "y"),
-              (UTListCons ((UTInputHorz [IT:aa]),
-                 (UTListCons ((UTInputHorz [IT:bb]), UTEndOfList))))))
+              (UTListCons ((UTInlineText [IT:aa]),
+                 (UTListCons ((UTInlineText [IT:bb]), UTEndOfList))))))
           )))
       ]))
 
@@ -970,18 +970,18 @@
           (UTNonRec
              (((Range.Normal <mathlist.saty:4.7-8>), "y"),
               (UTListCons (
-                 (UTInputMath
+                 (UTMathText
                     [((Range.Normal <mathlist.saty:4.14-15>),
-                      UTInputMathElement {base = (UTInputMathChar "a");
+                      UTMathTextElement {base = (UTMathTextChar "a");
                         sup = None; sub = None})
                       ]),
                  (UTListCons (
-                    (UTInputMath
+                    (UTMathText
                        [((Range.Normal <mathlist.saty:4.16-17>),
-                         UTInputMathElement {base = (UTInputMathChar "a");
+                         UTMathTextElement {base = (UTMathTextChar "a");
                            sup = None; sub = None});
                          ((Range.Normal <mathlist.saty:4.17-18>),
-                          UTInputMathElement {base = (UTInputMathChar "b");
+                          UTMathTextElement {base = (UTMathTextChar "b");
                             sup = None; sub = None})
                          ]),
                     UTEndOfList))
@@ -991,200 +991,200 @@
        (UTBindValue (Stage1,
           (UTNonRec
              (((Range.Normal <mathlist.saty:6.7-8>), "z"),
-              (UTInputVert
+              (UTBlockText
                  [BC:(UTContentOf ([],
                         ((Range.Normal <mathlist.saty:7.5-7>), "+p"))) (
                    UTCommandArg ([],
-                     (UTInputHorz
-                        [(UTInputHorzEmbeddedMath
-                            (UTInputMath
+                     (UTInlineText
+                        [(UTInlineTextEmbeddedMath
+                            (UTMathText
                                [((Range.Normal <mathlist.saty:8.9-10>),
-                                 UTInputMathElement {
-                                   base = (UTInputMathChar "a"); sup = None;
+                                 UTMathTextElement {
+                                   base = (UTMathTextChar "a"); sup = None;
                                    sub = None})
                                  ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                          (UTInlineTextEmbeddedMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:9.9-12>),
-                                  UTInputMathElement {
-                                    base = (UTInputMathChar "a");
+                                  UTMathTextElement {
+                                    base = (UTMathTextChar "a");
                                     sup =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:9.11-12>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "1");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "1");
                                                sup = None; sub = None})
                                              ]));
                                     sub = None})
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                          (UTInlineTextEmbeddedMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:10.9-12>),
-                                  UTInputMathElement {
-                                    base = (UTInputMathChar "a"); sup = None;
+                                  UTMathTextElement {
+                                    base = (UTMathTextChar "a"); sup = None;
                                     sub =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:10.11-12>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "2");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "2");
                                                sup = None; sub = None})
                                              ]))})
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                          (UTInlineTextEmbeddedMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:11.9-14>),
-                                  UTInputMathElement {
-                                    base = (UTInputMathChar "a");
+                                  UTMathTextElement {
+                                    base = (UTMathTextChar "a");
                                     sup =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:11.13-14>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "1");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "1");
                                                sup = None; sub = None})
                                              ]));
                                     sub =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:11.11-12>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "2");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "2");
                                                sup = None; sub = None})
                                              ]))})
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                          (UTInlineTextEmbeddedMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:12.9-14>),
-                                  UTInputMathElement {
-                                    base = (UTInputMathChar "a");
+                                  UTMathTextElement {
+                                    base = (UTMathTextChar "a");
                                     sup =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:12.11-12>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "1");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "1");
                                                sup = None; sub = None})
                                              ]));
                                     sub =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:12.13-14>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "2");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "2");
                                                sup = None; sub = None})
                                              ]))})
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                          (UTInlineTextEmbeddedMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:13.9-11>),
-                                  UTInputMathElement {
-                                    base = (UTInputMathChar "a");
+                                  UTMathTextElement {
+                                    base = (UTMathTextChar "a");
                                     sup =
                                     (Some (true,
                                            [((Range.Normal <mathlist.saty:13.10-11>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "′");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "′");
                                                sup = None; sub = None})
                                              ]));
                                     sub = None})
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                          (UTInlineTextEmbeddedMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:14.9-13>),
-                                  UTInputMathElement {
-                                    base = (UTInputMathChar "a");
+                                  UTMathTextElement {
+                                    base = (UTMathTextChar "a");
                                     sup =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:14.10-11>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "′");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "′");
                                                sup = None; sub = None});
                                              ((Range.Normal <mathlist.saty:14.12-13>),
-                                              UTInputMathElement {
-                                                base = (UTInputMathChar "1");
+                                              UTMathTextElement {
+                                                base = (UTMathTextChar "1");
                                                 sup = None; sub = None})
                                              ]));
                                     sub = None})
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                          (UTInlineTextEmbeddedMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:15.9-13>),
-                                  UTInputMathElement {
-                                    base = (UTInputMathChar "a");
+                                  UTMathTextElement {
+                                    base = (UTMathTextChar "a");
                                     sup =
                                     (Some (true,
                                            [((Range.Normal <mathlist.saty:15.10-11>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "′");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "′");
                                                sup = None; sub = None})
                                              ]));
                                     sub =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:15.12-13>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "2");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "2");
                                                sup = None; sub = None})
                                              ]))})
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                          (UTInlineTextEmbeddedMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:16.9-15>),
-                                  UTInputMathElement {
-                                    base = (UTInputMathChar "a");
+                                  UTMathTextElement {
+                                    base = (UTMathTextChar "a");
                                     sup =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:16.10-11>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "′");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "′");
                                                sup = None; sub = None});
                                              ((Range.Normal <mathlist.saty:16.14-15>),
-                                              UTInputMathElement {
-                                                base = (UTInputMathChar "1");
+                                              UTMathTextElement {
+                                                base = (UTMathTextChar "1");
                                                 sup = None; sub = None})
                                              ]));
                                     sub =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:16.12-13>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "2");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "2");
                                                sup = None; sub = None})
                                              ]))})
                                   ]));
                           IT:
 ;
-                          (UTInputHorzEmbeddedMath
-                             (UTInputMath
+                          (UTInlineTextEmbeddedMath
+                             (UTMathText
                                 [((Range.Normal <mathlist.saty:17.9-15>),
-                                  UTInputMathElement {
-                                    base = (UTInputMathChar "a");
+                                  UTMathTextElement {
+                                    base = (UTMathTextChar "a");
                                     sup =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:17.10-11>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "′");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "′");
                                                sup = None; sub = None});
                                              ((Range.Normal <mathlist.saty:17.12-13>),
-                                              UTInputMathElement {
-                                                base = (UTInputMathChar "1");
+                                              UTMathTextElement {
+                                                base = (UTMathTextChar "1");
                                                 sup = None; sub = None})
                                              ]));
                                     sub =
                                     (Some (false,
                                            [((Range.Normal <mathlist.saty:17.14-15>),
-                                             UTInputMathElement {
-                                               base = (UTInputMathChar "2");
+                                             UTMathTextElement {
+                                               base = (UTMathTextChar "2");
                                                sup = None; sub = None})
                                              ]))})
                                   ]))

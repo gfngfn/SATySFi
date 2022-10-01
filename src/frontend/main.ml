@@ -605,16 +605,10 @@ let error_log_environment suspended =
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
               NormalLine(Printf.sprintf "undefined signature '%s'." signm);
             ]
-        | UndefinedHorzMacro(rng, csnm) ->
+        | UndefinedMacro(rng, csnm) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-              NormalLine(Printf.sprintf "undefined inline macro '%s'." csnm);
-            ]
-
-        | UndefinedVertMacro(rng, csnm) ->
-            report_error Typechecker [
-              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-              NormalLine(Printf.sprintf "undefined block macro '%s'." csnm);
+              NormalLine(Printf.sprintf "undefined macro '%s'." csnm);
             ]
 
         | InvalidNumberOfMacroArguments(rng, macparamtys) ->
@@ -648,13 +642,13 @@ let error_log_environment suspended =
               NormalLine(Printf.sprintf "undefined unit of length '%s'." unitnm);
             ]
 
-        | HorzCommandInMath(rng) ->
+        | InlineCommandInMath(rng) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
               NormalLine("an inline command is used as a math command.");
             ]
 
-        | MathCommandInHorz(rng) ->
+        | MathCommandInInline(rng) ->
             report_error Typechecker [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
               NormalLine("a math command is used as an inline command.");

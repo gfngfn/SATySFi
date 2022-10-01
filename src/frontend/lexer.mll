@@ -21,11 +21,11 @@
    *)
 
   type lexer_state =
-    | ProgramState    (* program mode *)
-    | VerticalState   (* block mode *)
-    | HorizontalState (* inline mode *)
-    | ActiveState     (* active mode *)
-    | MathState       (* math mode *)
+    | ProgramState (* program mode *)
+    | BlockState   (* block mode *)
+    | InlineState  (* inline mode *)
+    | ActiveState  (* active mode *)
+    | MathState    (* math mode *)
 
 
   let get_pos (lexbuf : Lexing.lexbuf) : Range.t =
@@ -90,12 +90,8 @@
     stack
 
 
-  let reset_to_progexpr () =
+  let reset_to_program () =
     initialize ProgramState
-
-
-  let reset_to_vertexpr () =
-    initialize VerticalState
 
 
   let split_module_list (rng : Range.t) (s : string) : (module_name ranged) list * var_name ranged =
@@ -142,11 +138,11 @@ let mathsymbol = (mathsymboltop | '?')
 let mathascii = (small | capital | digit)
 let mathstr = [^ '+' '-' '*' '/' ':' '=' '<' '>' '~' '.' ',' '`' '?' ' ' '\t' '\n' '\r' '\\' '{' '}' '%' '|' '$' '#' ';' '\'' '^' '_' '!' 'a'-'z' 'A'-'Z' '0'-'9']
 
-rule progexpr stack = parse
+rule lex_program stack = parse
   | "%"
       {
         comment lexbuf;
-        progexpr stack lexbuf
+        lex_program stack lexbuf
       }
   | ("@" (lower as headertype) ":" (" "*) (nonbreak* as content) (break | eof))
       {
@@ -160,11 +156,11 @@ rule progexpr stack = parse
             raise (LexError(pos, "undefined header type '" ^ headertype ^ "'"))
       }
   | space
-      { progexpr stack lexbuf }
+      { lex_program stack lexbuf }
   | break
       {
         increment_line lexbuf;
-        progexpr stack lexbuf
+        lex_program stack lexbuf
       }
   | "("
       { Stack.push ProgramState stack; L_PAREN(get_pos lexbuf) }
@@ -192,13 +188,13 @@ rule progexpr stack = parse
       }
   | "{"
       {
-        Stack.push HorizontalState stack;
+        Stack.push InlineState stack;
         skip_spaces lexbuf;
         L_INLINE_TEXT(get_pos lexbuf)
       }
   | "'<"
       {
-        Stack.push VerticalState stack;
+        Stack.push BlockState stack;
         L_BLOCK_TEXT(get_pos lexbuf)
       }
   | "${"
@@ -391,16 +387,16 @@ rule progexpr stack = parse
       { report_error lexbuf (Printf.sprintf "illegal token '%s' in a program area" (String.make 1 c)) }
 
 
-and vertexpr stack = parse
+and lex_block stack = parse
   | "%"
       {
         comment lexbuf;
-        vertexpr stack lexbuf
+        lex_block stack lexbuf
       }
   | (break | space)+
       {
         increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-        vertexpr stack lexbuf
+        lex_block stack lexbuf
       }
   | ("#" (((upper ".")* lower) as s))
       {
@@ -434,7 +430,7 @@ and vertexpr stack = parse
         LONG_PLUS_MACRO(pos, modidents, (rng, "+" ^ csnm))
       }
   | "<"
-      { Stack.push VerticalState stack; L_BLOCK_TEXT(get_pos lexbuf) }
+      { Stack.push BlockState stack; L_BLOCK_TEXT(get_pos lexbuf) }
   | ">"
       {
         let pos = get_pos lexbuf in
@@ -443,7 +439,7 @@ and vertexpr stack = parse
       }
   | "{"
       {
-        Stack.push HorizontalState stack;
+        Stack.push InlineState stack;
         skip_spaces lexbuf;
         L_INLINE_TEXT(get_pos lexbuf)
       }
@@ -453,22 +449,22 @@ and vertexpr stack = parse
         if Stack.length stack = 1 then
           EOI(pos)
         else
-          report_error lexbuf "unexpected end of input while reading a vertical area"
+          report_error lexbuf "unexpected end of input while reading a block text area"
       }
   | _ as c
-      { report_error lexbuf (Printf.sprintf "unexpected character '%s' in a vertical area" (String.make 1 c)) }
+      { report_error lexbuf (Printf.sprintf "unexpected character '%s' in a block text area" (String.make 1 c)) }
 
-and horzexpr stack = parse
+and lex_inline stack = parse
   | "%"
       {
         comment lexbuf;
         skip_spaces lexbuf;
-        horzexpr stack lexbuf
+        lex_inline stack lexbuf
       }
   | ((break | space)* "{")
       {
         increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-        Stack.push HorizontalState stack;
+        Stack.push InlineState stack;
         skip_spaces lexbuf;
         L_INLINE_TEXT(get_pos lexbuf)
       }
@@ -482,7 +478,7 @@ and horzexpr stack = parse
   | ((break | space)* "<")
       {
         increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-        Stack.push VerticalState stack;
+        Stack.push BlockState stack;
         L_BLOCK_TEXT(get_pos lexbuf)
       }
   | ((break | space)* "|")
@@ -586,27 +582,27 @@ and horzexpr stack = parse
       { report_error lexbuf (Printf.sprintf "illegal token '%s' in an inline text area" (String.make 1 c)) }
 
 
-and mathexpr stack = parse
+and lex_math stack = parse
   | space
-      { mathexpr stack lexbuf }
+      { lex_math stack lexbuf }
   | break
-      { increment_line lexbuf; mathexpr stack lexbuf }
+      { increment_line lexbuf; lex_math stack lexbuf }
   | "%"
       {
         comment lexbuf;
-        mathexpr stack lexbuf
+        lex_math stack lexbuf
       }
   | "?"
       { QUESTION(get_pos lexbuf) }
   | "!{"
       {
-        Stack.push HorizontalState stack;
+        Stack.push InlineState stack;
         skip_spaces lexbuf;
         L_INLINE_TEXT(get_pos lexbuf);
       }
   | "!<"
       {
-        Stack.push VerticalState stack;
+        Stack.push BlockState stack;
         L_BLOCK_TEXT(get_pos lexbuf)
       }
   | "!("
@@ -677,16 +673,16 @@ and mathexpr stack = parse
       { report_error lexbuf "unexpected end of file in a math area" }
 
 
-and active stack = parse
+and lex_active stack = parse
   | "%"
       {
         comment lexbuf;
-        active stack lexbuf
+        lex_active stack lexbuf
       }
   | space
-      { active stack lexbuf }
+      { lex_active stack lexbuf }
   | break
-      { increment_line lexbuf; active stack lexbuf }
+      { increment_line lexbuf; lex_active stack lexbuf }
   | "~"
       { EXACT_TILDE(get_pos lexbuf) }
   | "?"
@@ -710,7 +706,7 @@ and active stack = parse
       {
         let pos = get_pos lexbuf in
         pop lexbuf "BUG; this cannot happen" stack;
-        Stack.push HorizontalState stack;
+        Stack.push InlineState stack;
         skip_spaces lexbuf;
         L_INLINE_TEXT(pos)
       }
@@ -718,7 +714,7 @@ and active stack = parse
       {
         let pos = get_pos lexbuf in
         pop lexbuf "BUG; this cannot happen" stack;
-        Stack.push VerticalState stack;
+        Stack.push BlockState stack;
         L_BLOCK_TEXT(pos)
       }
   | ";"
@@ -812,10 +808,10 @@ and skip_spaces = parse
 {
   let cut_token stack lexbuf =
     match Stack.top stack with
-    | ProgramState    -> progexpr stack lexbuf
-    | VerticalState   -> vertexpr stack lexbuf
-    | HorizontalState -> horzexpr stack lexbuf
-    | ActiveState     -> active stack lexbuf
-    | MathState       -> mathexpr stack lexbuf
+    | ProgramState -> lex_program stack lexbuf
+    | BlockState   -> lex_block stack lexbuf
+    | InlineState  -> lex_inline stack lexbuf
+    | ActiveState  -> lex_active stack lexbuf
+    | MathState    -> lex_math stack lexbuf
 
 }

@@ -56,9 +56,10 @@ let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t F
     | RecordType(row) ->
         aux_mono_row row
 
-    | HorzCommandType(cmdargtys) -> cmdargtys |> List.iter aux_mono_cmd_arg
-    | VertCommandType(cmdargtys) -> cmdargtys |> List.iter aux_mono_cmd_arg
-    | MathCommandType(cmdargtys) -> cmdargtys |> List.iter aux_mono_cmd_arg
+    | InlineCommandType(cmdargtys)
+    | BlockCommandType(cmdargtys)
+    | MathCommandType(cmdargtys) ->
+        cmdargtys |> List.iter aux_mono_cmd_arg
 
     | CodeType(ty) ->
         aux_mono ty
@@ -93,34 +94,35 @@ let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t F
     | DataType(ptys, _tyid) ->
         ptys |> List.iter aux_poly
 
-    | HorzCommandType(pcmdargtys) -> pcmdargtys |> List.iter aux_poly_cmd_arg
-    | VertCommandType(pcmdargtys) -> pcmdargtys |> List.iter aux_poly_cmd_arg
-    | MathCommandType(pcmdargtys) -> pcmdargtys |> List.iter aux_poly_cmd_arg
+    | InlineCommandType(pcmdargtys)
+    | BlockCommandType(pcmdargtys)
+    | MathCommandType(pcmdargtys) ->
+        pcmdargtys |> List.iter aux_poly_cmd_arg
 
     | CodeType(pty) ->
         aux_poly pty
 
   and aux_mono_row : mono_row -> unit = function
-    | RowCons(_rlabel, ty, row)                         -> aux_mono ty; aux_mono_row row
-    | RowVar(UpdatableRow{contents = MonoORLink(row)})  -> aux_mono_row row
-    | RowVar(UpdatableRow{contents = MonoORFree(frid)}) -> aux_free_row_id frid
-    | RowVar(MustBeBoundRow(_mbbrid))                   -> ()
-    | RowEmpty                                          -> ()
+    | RowCons(_rlabel, ty, row)                          -> aux_mono ty; aux_mono_row row
+    | RowVar(UpdatableRow{contents = MonoRowLink(row)})  -> aux_mono_row row
+    | RowVar(UpdatableRow{contents = MonoRowFree(frid)}) -> aux_free_row_id frid
+    | RowVar(MustBeBoundRow(_mbbrid))                    -> ()
+    | RowEmpty                                           -> ()
 
   and aux_poly_row : poly_row -> unit = function
     | RowCons(_rlabel, pty, prow) ->
         aux_poly pty;
         aux_poly_row prow
 
-    | RowVar(PolyORFree(prv)) ->
+    | RowVar(PolyRowFree(prv)) ->
         begin
           match prv with
-          | UpdatableRow{contents = MonoORLink(row)}  -> aux_mono_row row
-          | UpdatableRow{contents = MonoORFree(frid)} -> aux_free_row_id frid
-          | MustBeBoundRow(_)                         -> ()
+          | UpdatableRow{contents = MonoRowLink(row)}  -> aux_mono_row row
+          | UpdatableRow{contents = MonoRowFree(frid)} -> aux_free_row_id frid
+          | MustBeBoundRow(_)                          -> ()
         end
 
-    | RowVar(PolyORBound(brid)) ->
+    | RowVar(PolyRowBound(brid)) ->
         aux_bound_row_id brid
 
     | RowEmpty ->
@@ -195,27 +197,27 @@ let collect_ids_poly (Poly(pty) : poly_type) (dispmap : DisplayMap.t) : DisplayM
 
 
 let show_base_type = function
-  | UnitType    -> "unit"
-  | BoolType    -> "bool"
-  | IntType     -> "int"
-  | FloatType   -> "float"
-  | StringType  -> "string"
-  | TextRowType -> "inline-text"
-  | TextColType -> "block-text"
-  | TextMathType -> "math-text"
-  | BoxRowType  -> "inline-boxes"
-  | BoxColType  -> "block-boxes"
-  | BoxMathType -> "math-boxes"
-  | ContextType -> "context"
-  | PrePathType -> "pre-path"
-  | PathType    -> "path"
-  | LengthType  -> "length"
-  | GraphicsType -> "graphics"
-  | ImageType    -> "image"
-  | DocumentType -> "document"
-  | RegExpType   -> "regexp"
-  | TextInfoType -> "text-info"
-  | InputPosType -> "input-position"
+  | UnitType        -> "unit"
+  | BoolType        -> "bool"
+  | IntType         -> "int"
+  | FloatType       -> "float"
+  | LengthType      -> "length"
+  | StringType      -> "string"
+  | InlineTextType  -> "inline-text"
+  | BlockTextType   -> "block-text"
+  | MathTextType    -> "math-text"
+  | InlineBoxesType -> "inline-boxes"
+  | BlockBoxesType  -> "block-boxes"
+  | MathBoxesType   -> "math-boxes"
+  | ContextType     -> "context"
+  | PrePathType     -> "pre-path"
+  | PathType        -> "path"
+  | GraphicsType    -> "graphics"
+  | ImageType       -> "image"
+  | DocumentType    -> "document"
+  | RegExpType      -> "regexp"
+  | TextInfoType    -> "text-info"
+  | InputPosType    -> "input-position"
 
 
 type paren_level =
@@ -273,11 +275,11 @@ fun tvf rvf plev ty ->
       | DataType([], tyid) ->
           (Single, TypeID.extract_name tyid)
 
-      | HorzCommandType(cmdargtys) ->
+      | InlineCommandType(cmdargtys) ->
           let ss = cmdargtys |> List.map aux_cmd_arg in
           (ProductElement, Printf.sprintf "inline [%s]" (String.concat ", " ss))
 
-      | VertCommandType(cmdargtys) ->
+      | BlockCommandType(cmdargtys) ->
           let ss = cmdargtys |> List.map aux_cmd_arg in
           (ProductElement, Printf.sprintf "block [%s]" (String.concat ", " ss))
 
@@ -353,10 +355,10 @@ and rvf_mono (dispmap : DisplayMap.t) (rv : mono_row_variable) : string =
   | UpdatableRow(rvref) ->
       begin
         match !rvref with
-        | MonoORFree(_) ->
+        | MonoRowFree(_) ->
             ""
 
-        | MonoORLink(row) ->
+        | MonoRowLink(row) ->
             begin
               match show_row (tvf_mono dispmap) (rvf_mono dispmap) row with
               | None    -> ""
@@ -376,8 +378,8 @@ let tvf_poly (dispmap : DisplayMap.t) (plev : paren_level) (ptv : poly_type_vari
 
 and rvf_poly (dispmap : DisplayMap.t) (prv : poly_row_variable) : string =
   match prv with
-  | PolyORFree(rvref) -> rvf_mono dispmap rvref
-  | PolyORBound(brid) -> dispmap |> DisplayMap.find_bound_row_id brid
+  | PolyRowFree(rvref) -> rvf_mono dispmap rvref
+  | PolyRowBound(brid) -> dispmap |> DisplayMap.find_bound_row_id brid
 
 
 let show_mono_type (ty : mono_type) =
@@ -411,10 +413,10 @@ let show_poly_macro_parameter_type (macparamty : poly_macro_parameter_type) =
 
 let show_poly_macro_type (macty : poly_macro_type) =
   match macty with
-  | HorzMacroType(macparamtys) ->
+  | InlineMacroType(macparamtys) ->
       let ss = macparamtys |> List.map show_poly_macro_parameter_type in
       Printf.sprintf "inline [%s]" (String.concat ", " ss)
 
-  | VertMacroType(macparamtys) ->
+  | BlockMacroType(macparamtys) ->
       let ss = macparamtys |> List.map show_poly_macro_parameter_type in
       Printf.sprintf "block [%s]" (String.concat ", " ss)

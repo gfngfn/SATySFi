@@ -89,9 +89,9 @@ let get_paddings (value : syntactic_value) : HorzBox.paddings =
 
 let get_cell (value : syntactic_value) : HorzBox.cell =
     match value with
-    | Constructor("NormalCell", Tuple([valuepads; BaseConstant(BCHorz(hblst))])) ->
+    | Constructor("NormalCell", Tuple([valuepads; BaseConstant(BCInlineBoxes(ibs))])) ->
         let pads = get_paddings valuepads in
-        HorzBox.NormalCell(pads, hblst)
+        HorzBox.NormalCell(pads, ibs)
 
     | Constructor("EmptyCell", BaseConstant(BCUnit)) ->
         HorzBox.EmptyCell
@@ -100,10 +100,10 @@ let get_cell (value : syntactic_value) : HorzBox.cell =
         BaseConstant(BCInt(nr));
         BaseConstant(BCInt(nc));
         valuepads;
-        BaseConstant(BCHorz(hblst));
+        BaseConstant(BCInlineBoxes(ibs));
       ])) ->
         let pads = get_paddings valuepads in
-        HorzBox.MultiCell(nr, nc, pads, hblst)
+        HorzBox.MultiCell(nr, nc, pads, ibs)
 
     | _ ->
         report_bug_value "get_cell" value
@@ -189,24 +189,24 @@ let make_font_value (abbrev, sizer, risingr) =
   ])
 
 
-let get_vert_boxes : syntactic_value -> HorzBox.vert_box list = function
-  | BaseConstant(BCVert(vbs)) -> vbs
-  | value                     -> report_bug_value "get_vert_boxes" value
+let get_block_boxes : syntactic_value -> HorzBox.vert_box list = function
+  | BaseConstant(BCBlockBoxes(bbs)) -> bbs
+  | value                           -> report_bug_value "get_block_boxes" value
 
 
-let get_horz_boxes : syntactic_value -> HorzBox.horz_box list = function
-  | BaseConstant(BCHorz(hbs)) -> hbs
-  | value                     -> report_bug_value "get_horz_boxes" value
+let get_inline_boxes : syntactic_value -> HorzBox.horz_box list = function
+  | BaseConstant(BCInlineBoxes(ibs)) -> ibs
+  | value                            -> report_bug_value "get_inline_boxes" value
 
 
-let get_vert_text : syntactic_value -> input_vert_value_element list = function
-  | InputVertValue(ivvs) -> ivvs
-  | value                -> report_bug_value "get_vert_text" value
+let get_block_text : syntactic_value -> block_text_value_element list = function
+  | BlockTextValue(ivvs) -> ivvs
+  | value                -> report_bug_value "get_block_text" value
 
 
-let get_horz_text : syntactic_value -> input_horz_value_element list = function
-  | InputHorzValue(ihvs) -> ihvs
-  | value                -> report_bug_value "get_horz_text" value
+let get_inline_text : syntactic_value -> inline_text_value_element list = function
+  | InlineTextValue(ihvs) -> ihvs
+  | value                 -> report_bug_value "get_inline_text" value
 
 
 let get_image : syntactic_value -> ImageInfo.key = function
@@ -403,10 +403,9 @@ let get_page_size (value : syntactic_value) : length * length =
 
 
 
-let get_math_text ~msg (value : syntactic_value) : input_math_value_element list =
-  match value with
-  | InputMathValue(imvs) -> imvs
-  | _                    -> report_bug_value (Printf.sprintf "get_math_text (%s)" msg) value
+let get_math_text ~(msg : string) : syntactic_value -> math_text_value_element list = function
+  | MathTextValue(mtvs) -> mtvs
+  | other               -> report_bug_value (Printf.sprintf "get_math_text (%s)" msg) other
 
 
 let get_math_boxes (value : syntactic_value) : math_box list =
@@ -478,8 +477,8 @@ let make_float x = BaseConstant(BCFloat(x))
 let make_length l = BaseConstant(BCLength(l))
 let make_string s = BaseConstant(BCString(s))
 let make_regexp re = BaseConstant(BCRegExp(re))
-let make_horz h = BaseConstant(BCHorz(h))
-let make_vert v = BaseConstant(BCVert(v))
+let make_inline_boxes ibs = BaseConstant(BCInlineBoxes(ibs))
+let make_block_boxes bbs = BaseConstant(BCBlockBoxes(bbs))
 let make_path p = BaseConstant(BCPath(p))
 let make_prepath pp = BaseConstant(BCPrePath(pp))
 let make_graphics g = BaseConstant(BCGraphics(g))
@@ -524,7 +523,7 @@ let make_hook (reducef : syntactic_value -> syntactic_value list -> syntactic_va
 let make_column_hook_func reducef valuef : HorzBox.column_hook_func =
   (fun () ->
     let valueret = reducef valuef [BaseConstant(BCUnit)] in
-    get_vert_boxes valueret
+    get_block_boxes valueret
   )
 
 
@@ -591,7 +590,7 @@ and make_page_parts_scheme_func reducef valuef : HorzBox.page_parts_scheme_func 
                asc |> LabelMap.find_opt "footer-origin",
                asc |> LabelMap.find_opt "footer-content")
            with
-           | (Some(vHO), Some(BaseConstant(BCVert(vHCvert))), Some(vFO), Some(BaseConstant(BCVert(vFCvert)))) ->
+           | (Some(vHO), Some(BaseConstant(BCBlockBoxes(vHCvert))), Some(vFO), Some(BaseConstant(BCBlockBoxes(vFCvert)))) ->
                HorzBox.({
                  header_origin  = get_point vHO;
                  header_content = PageBreak.solidify vHCvert;
@@ -634,18 +633,18 @@ let make_paren reducef (value_parenf : syntactic_value) : paren =
      let value_ctx = make_context ictx in
      let value_ret = reducef value_parenf [ value_hgt; value_dpt; value_ctx ] in
      match value_ret with
-     | Tuple([ value_hbs; value_kernf ]) ->
-         let hbs = get_horz_boxes value_hbs in
+     | Tuple([ value_ibs; value_kernf ]) ->
+         let ibs = get_inline_boxes value_ibs in
          let kernf = make_math_kern_func reducef value_kernf in
-         (hbs, kernf)
+         (ibs, kernf)
 
      | _ ->
          report_bug_vm "make_paren"
   )
 
 
-let make_math_text (imvs : input_math_value_element list) : syntactic_value =
-  InputMathValue(imvs)
+let make_math_text (mtvs : math_text_value_element list) : syntactic_value =
+  MathTextValue(mtvs)
 
 
 let make_math_boxes (mbs : math_box list) : syntactic_value =
@@ -710,14 +709,14 @@ let make_math_scripts_func (MathScriptsFunc(value_mscriptsf) : math_scripts_func
   value_mscriptsf
 
 
-let get_horz_command_closure : syntactic_value -> horz_command_closure = function
-  | HorzCommandClosure(hclosure) -> hclosure
-  | value                        -> report_bug_value "get_horz_command_closure" value
+let get_inline_command_closure : syntactic_value -> inline_command_closure = function
+  | InlineCommandClosure(iclosure) -> iclosure
+  | value                          -> report_bug_value "get_inline_command_closure" value
 
 
-let get_vert_command_closure : syntactic_value -> vert_command_closure = function
-  | VertCommandClosure(vclosure) -> vclosure
-  | value                        -> report_bug_value "get_vert_command_closure" value
+let get_block_command_closure : syntactic_value -> block_command_closure = function
+  | BlockCommandClosure(bclosure) -> bclosure
+  | value                         -> report_bug_value "get_block_command_closure" value
 
 
 let get_math_command_closure : syntactic_value -> math_command_closure = function

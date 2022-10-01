@@ -276,19 +276,19 @@ let make_list_tree utastlst =
 let make_inline_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
   let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
   let utast_cmd = (rng, UTContentOf(modidents, (rng, csnm))) in
-  [(dummy_range, UTInputHorzApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
+  [(dummy_range, UTInlineTextApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
 let make_block_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
   let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
   let utast_cmd = (rng, UTContentOf(modidents, (rng, csnm))) in
-  [(dummy_range, UTInputVertApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
+  [(dummy_range, UTBlockTextApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
-let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element) : untyped_input_horz_element list =
+let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element) : untyped_inline_text_element list =
   match ilne with
   | Text(s) ->
-      [(dummy_range, UTInputHorzText(s))]
+      [(dummy_range, UTInlineTextString(s))]
 
   | Emph(iln) ->
       let utastarg = convert_inline cmdrcd iln in
@@ -320,7 +320,7 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       begin
         match cmdrcd.hard_break with
         | Some(cmd) -> make_inline_application cmd []
-        | None      -> [(dummy_range, UTInputHorzText("\n"))]
+        | None      -> [(dummy_range, UTInlineTextString("\n"))]
       end
 
   | Url(href, iln, _title) ->
@@ -367,10 +367,10 @@ and convert_inline (cmdrcd : command_record) (iln : inline) : untyped_abstract_t
     ) Alist.empty
   in
   let utih = Alist.to_list ibacc in
-  (dummy_range, UTInputHorz(utih))
+  (dummy_range, UTInlineText(utih))
 
 
-and convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_input_vert_element list =
+and convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_block_text_element list =
   match blke with
   | Paragraph(iln) ->
       let utastarg = convert_inline cmdrcd iln in
@@ -436,7 +436,7 @@ and convert_block_element (cmdrcd : command_record) (blke : block_element) : unt
 
   | BlockRaw(s) ->
       let cmd = cmdrcd.err_block in
-      make_block_application cmd [(dummy_range, UTInputHorz[(dummy_range, UTInputHorzText(s))])]
+      make_block_application cmd [ (dummy_range, UTInlineText([ (dummy_range, UTInlineTextString(s)) ])) ]
 
 
 and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tree =
@@ -446,7 +446,7 @@ and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tre
     ) Alist.empty
   in
   let utiv = Alist.to_list bbacc in
-  (dummy_range, UTInputVert(utiv))
+  (dummy_range, UTBlockText(utiv))
 
 
 let decode (cmdrcd : command_record) (s : string) =

@@ -214,17 +214,17 @@
 
 
   let make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
-    let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInputHorz([])), [])) lst 0 in
+    let contents = make_list_to_itemize_sub (UTItem((Range.dummy "itemize2", UTInlineText([])), [])) lst 0 in
     (Range.dummy "itemize1", UTItemize(contents))
 
 
-  let primes (rng : Range.t) (n : int) : untyped_input_math_element list =
+  let primes (rng : Range.t) (n : int) : untyped_math_text_element list =
     List.init n (fun _ ->
-      (rng, UTInputMathElement{ base = UTInputMathChar(Uchar.of_int 0x2032); sup = None; sub = None })
+      (rng, UTMathTextElement{ base = UTMathTextChar(Uchar.of_int 0x2032); sup = None; sub = None })
     )
 
 
-  let make_math_element ~(range : Range.t) ?(prime : (Range.t * int) option) ?(sup : (bool * untyped_input_math_element list) option) ?(sub : (bool * untyped_input_math_element list) option) (base : untyped_input_math_base) : untyped_input_math_element =
+  let make_math_element ~(range : Range.t) ?(prime : (Range.t * int) option) ?(sup : (bool * untyped_math_text_element list) option) ?(sub : (bool * untyped_math_text_element list) option) (base : untyped_math_text_base) : untyped_math_text_element =
     let sup =
       match (prime, sup) with
       | (None, None)                     -> None
@@ -232,7 +232,7 @@
       | (Some((r, n)), None)             -> Some((true, primes r n))
       | (Some((r, n)), Some((b, utmes))) -> Some((b, List.append (primes r n) utmes))
     in
-    (range, UTInputMathElement{ base; sup; sub })
+    (range, UTMathTextElement{ base; sup; sub })
 %}
 
 %token<Range.t>
@@ -258,9 +258,9 @@
 %token<Range.t * (Types.module_name Types.ranged) list * Types.var_name Types.ranged> LONG_LOWER
 %token<Range.t * (Types.module_name Types.ranged) list * Types.constructor_name Types.ranged> LONG_UPPER
 
-%token<Range.t * Types.ctrlseq_name> BACKSLASH_CMD PLUS_CMD
+%token<Range.t * Types.command_name> BACKSLASH_CMD PLUS_CMD
 
-%token<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged>
+%token<Range.t * (Types.module_name Types.ranged) list * Types.command_name Types.ranged>
   LONG_BACKSLASH_CMD LONG_PLUS_CMD
 
 %token<Range.t * (Types.module_name Types.ranged) list * Types.var_name Types.ranged>
@@ -327,17 +327,17 @@
 %type<Types.untyped_abstract_tree> inline
 %type<Types.untyped_abstract_tree> inline_single
 %type<Types.untyped_abstract_tree> block
-%type<Types.untyped_input_vert_element> block_elem
+%type<Types.untyped_block_text_element> block_elem
 %type<Range.t * Types.untyped_command_argument list> cmd_args_text
 %type<Types.untyped_command_argument> cmd_arg_text
 %type<Types.untyped_command_argument> cmd_arg_expr
 %type<Types.untyped_abstract_tree> math
 %type<Types.untyped_abstract_tree> math_single
-%type<Range.t * (bool * Types.untyped_input_math_element list)> math_group
-%type<Types.untyped_input_math_element> math_elem
-%type<Range.t * Types.untyped_input_math_base> math_bot
-%type<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged> backslash_cmd
-%type<Range.t * (Types.module_name Types.ranged) list * Types.ctrlseq_name Types.ranged> plus_cmd
+%type<Range.t * (bool * Types.untyped_math_text_element list)> math_group
+%type<Types.untyped_math_text_element> math_elem
+%type<Range.t * Types.untyped_math_text_base> math_bot
+%type<Range.t * (Types.module_name Types.ranged) list * Types.command_name Types.ranged> backslash_cmd
+%type<Range.t * (Types.module_name Types.ranged) list * Types.command_name Types.ranged> plus_cmd
 
 
 %%
@@ -422,12 +422,12 @@ bind:
   | tokL=VAL; INLINE; imacrobind=bind_inline_macro
       {
         let (rng_cs, csnm, macparams, utast1) = imacrobind in
-        (tokL, UTBindHorzMacro((rng_cs, csnm), macparams, utast1))
+        (tokL, UTBindInlineMacro((rng_cs, csnm), macparams, utast1))
       }
   | tokL=VAL; BLOCK; bmacrobind=bind_block_macro
       {
         let (rng_cs, csnm, macparams, utast1) = bmacrobind in
-        (tokL, UTBindVertMacro((rng_cs, csnm), macparams, utast1))
+        (tokL, UTBindBlockMacro((rng_cs, csnm), macparams, utast1))
       }
   | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
@@ -467,7 +467,7 @@ bind_inline:
   | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         (cs,
-          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaHorzCommand{
+          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaInlineCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
             body             = utast;
@@ -480,10 +480,10 @@ bind_inline:
         let ident_ctx = (rng_ctx, varnm_ctx) in
         let utast_body =
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
-          (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utast_ctx, utast))
+          (Range.dummy "read-inline-of-lightweight-let-inline", UTReadInline(utast_ctx, utast))
         in
         (cs,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaHorzCommand{
+          make_standard (Ranged cs) (Ranged utast) (UTLambdaInlineCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
             body             = utast_body;
@@ -494,7 +494,7 @@ bind_block:
   | ident_ctx=LOWER; cs=PLUS_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         (cs,
-          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaVertCommand{
+          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaBlockCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
             body             = utast;
@@ -507,10 +507,10 @@ bind_block:
         let ident_ctx = (rng_ctx, varnm_ctx) in
         let utast_body =
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
-          (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utast_ctx, utast))
+          (Range.dummy "read-block-of-lightweight-let-block", UTReadBlock(utast_ctx, utast))
         in
         (cs,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaVertCommand{
+          make_standard (Ranged cs) (Ranged utast) (UTLambdaBlockCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
             body             = utast_body;
@@ -728,9 +728,9 @@ typ_app:
         (rng, MTypeName(modidents, tyident, mntys))
       }
   | tokL=INLINE; L_SQUARE; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=R_SQUARE
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MHorzCommandType(mncmdargtys)) }
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MInlineCommandType(mncmdargtys)) }
   | tokL=BLOCK; L_SQUARE; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=R_SQUARE
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MVertCommandType(mncmdargtys)) }
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MBlockCommandType(mncmdargtys)) }
   | tokL=MATH; L_SQUARE; mncmdargtys=optterm_list(COMMA, typ_cmd_arg); tokR=R_SQUARE
       { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MMathCommandType(mncmdargtys)) }
   | mnty=typ_bot
@@ -777,11 +777,11 @@ typ_record_elem:
 ;
 inline_macro_type:
   | tokL=INLINE; L_SQUARE; mnmacroargtys=optterm_list(COMMA, typ_macro_arg); tokR=R_SQUARE
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MHorzMacroType(mnmacroargtys)) }
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MInlineMacroType(mnmacroargtys)) }
 ;
 block_macro_type:
   | tokL=BLOCK; L_SQUARE; mnmacroargtys=optterm_list(COMMA, typ_macro_arg); tokR=R_SQUARE
-      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MVertMacroType(mnmacroargtys)) }
+      { let rng = make_range (Tok tokL) (Tok tokR) in (rng, MBlockMacroType(mnmacroargtys)) }
 ;
 typ_macro_arg:
   | mnty=typ_prod
@@ -1070,7 +1070,7 @@ inline_itemize_elem:
 ;
 inline_single:
   | ielems=inline_elems
-      { let rng = make_range_from_list ielems in (rng, UTInputHorz(ielems)) }
+      { let rng = make_range_from_list ielems in (rng, UTInlineText(ielems)) }
 ;
 inline_elems:
   | itext=inline_elem_text; icmd=inline_elem_cmd; ielems=inline_elems
@@ -1088,40 +1088,40 @@ inline_elem_cmd:
         let utast_cmd = (rng_cs, UTContentOf(modidents, cs)) in
         let (rng_last, sargs) = rsargs in
         let args = List.append nargs sargs in
-        make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzApplyCommand(utast_cmd, args))
+        make_standard (Tok rng_cs) (Tok rng_last) (UTInlineTextApplyCommand(utast_cmd, args))
       }
 
   | imacro_raw=BACKSLASH_MACRO; macargsraw=macroargs {
       let (rng_cs, _csnm) = imacro_raw in
       let imacro = (rng_cs, [], imacro_raw) in
       let (rng_last, macroargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(imacro, macroargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInlineTextMacro(imacro, macroargs))
     }
   | imacro=LONG_BACKSLASH_MACRO; macargsraw=macroargs {
       let (rng_cs, _, _) = imacro in
       let (rng_last, macroargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputHorzMacro(imacro, macroargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTInlineTextMacro(imacro, macroargs))
     }
   | tokL=L_MATH_TEXT; utast=math; tokR=R_MATH_TEXT
-      { make_standard (Tok tokL) (Tok tokR) (UTInputHorzEmbeddedMath(utast)) }
+      { make_standard (Tok tokL) (Tok tokR) (UTInlineTextEmbeddedMath(utast)) }
   | literal=STRING
       {
         let (rng, str, pre, post) = literal in
-        make_standard (Tok rng) (Tok rng) (UTInputHorzEmbeddedCodeArea(omit_spaces pre post str))
+        make_standard (Tok rng) (Tok rng) (UTInlineTextEmbeddedCodeArea(omit_spaces pre post str))
       }
   | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {
         let (rng, modidents, ident) = long_ident in
         let utast = (rng, UTContentOf(modidents, ident)) in
-        make_standard (Tok rng) (Tok tokR) (UTInputHorzContent(utast))
+        make_standard (Tok rng) (Tok tokR) (UTInlineTextContent(utast))
       }
 ;
 inline_elem_text:
   | ichars=nonempty_list(inline_char)
       {
         let rng = make_range_from_list ichars in
-        let text = String.concat "" (ichars |> List.map (fun (_, t) -> t)) in
-        (rng, UTInputHorzText(text))
+        let s = String.concat "" (ichars |> List.map (fun (_, t) -> t)) in
+        (rng, UTInlineTextString(s))
       }
 ;
 inline_char:
@@ -1131,7 +1131,7 @@ inline_char:
 ;
 block:
   | belems=list(block_elem)
-      { (make_range_from_list belems, UTInputVert(belems)) }
+      { (make_range_from_list belems, UTBlockText(belems)) }
 ;
 block_elem:
   | bcmd=plus_cmd; nargs=list(cmd_arg_expr); rsargs=cmd_args_text
@@ -1140,24 +1140,24 @@ block_elem:
         let (rng_last, sargs) = rsargs in
         let utast_cmd = (rng_cs, UTContentOf(modidents, cs)) in
         let args = List.append nargs sargs in
-        make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertApplyCommand(utast_cmd, args))
+        make_standard (Tok rng_cs) (Tok rng_last) (UTBlockTextApplyCommand(utast_cmd, args))
       }
   | bmacro_raw=PLUS_MACRO; macargsraw=macroargs {
       let (rng_cs, _) = bmacro_raw in
       let bmacro = (rng_cs, [], bmacro_raw) in
       let (rng_last, macargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(bmacro, macargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTBlockTextMacro(bmacro, macargs))
     }
   | bmacro=LONG_PLUS_MACRO; macargsraw=macroargs {
       let (rng_cs, _, _) = bmacro in
       let (rng_last, macargs) = macargsraw in
-      make_standard (Tok rng_cs) (Tok rng_last) (UTInputVertMacro(bmacro, macargs))
+      make_standard (Tok rng_cs) (Tok rng_last) (UTBlockTextMacro(bmacro, macargs))
     }
   | long_ident=VAR_IN_TEXT; tokR=SEMICOLON
       {
         let (rng, modidents, ident) = long_ident in
         let utast = (rng, UTContentOf(modidents, ident)) in
-        make_standard (Tok rng) (Tok tokR) (UTInputVertContent(utast))
+        make_standard (Tok rng) (Tok tokR) (UTBlockTextContent(utast))
       }
 ;
 math:
@@ -1175,7 +1175,7 @@ math_single:
           | ((rngL, _) :: _, (rngR, _) :: _) -> Range.unite rngL rngR
           | _                                -> assert false
         in
-        (rng, UTInputMath(utmes))
+        (rng, UTMathText(utmes))
       }
 ;
 math_elem:
@@ -1269,7 +1269,7 @@ math_bot:
         let (rng, s) = tok in
         let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
         match uchs with
-        | [ uch ] -> (rng, UTInputMathChar(uch))
+        | [ uch ] -> (rng, UTMathTextChar(uch))
         | _       -> failwith (Printf.sprintf "TODO: MATHCHARS (\"%s\", %s)" s (Range.to_string rng))
       }
   | mcmd=backslash_cmd; args=list(math_cmd_arg)
@@ -1281,12 +1281,12 @@ math_bot:
           | UTCommandArg(_, (rng, _)) :: _ -> rng
         in
         let utast_cmd = (rng_cs, UTContentOf(modnms, csnm)) in
-        make_standard (Tok rng_cs) (Tok rng_last) (UTInputMathApplyCommand(utast_cmd, args))
+        make_standard (Tok rng_cs) (Tok rng_last) (UTMathTextApplyCommand(utast_cmd, args))
       }
   | long_ident=VAR_IN_TEXT
       {
         let (rng, modnms, varnm) = long_ident in
-        (rng, UTInputMathContent((rng, UTContentOf(modnms, varnm))))
+        (rng, UTMathTextContent((rng, UTContentOf(modnms, varnm))))
       }
 ;
 math_cmd_arg:

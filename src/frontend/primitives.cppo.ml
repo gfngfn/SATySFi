@@ -23,34 +23,32 @@ let ( ~! ) = Range.dummy
 let variant tyargs tyid = DataType(tyargs, tyid)
 
 
-(* -- base types and base type constructors -- *)
-let tU            = (~! "unit"    , BaseType(UnitType)    )
-let tI            = (~! "int"     , BaseType(IntType)     )
-let tFL           = (~! "float"   , BaseType(FloatType)   )
-let tB            = (~! "bool"    , BaseType(BoolType)    )
-let tLN           = (~! "length"  , BaseType(LengthType)  )
-let tS            = (~! "string"  , BaseType(StringType)  )
-let tIT           = (~! "itext"   , BaseType(TextRowType) )
-let tBT           = (~! "btext"   , BaseType(TextColType) )
-let tMT           = (~! "mtext"   , BaseType(TextMathType))
-let tIB           = (~! "iboxes"  , BaseType(BoxRowType)  )
-let tBB           = (~! "bboxes"  , BaseType(BoxColType)  )
-let tMB           = (~! "mboxes"  , BaseType(BoxMathType) )
+(* Base types and base type constructors: *)
+let tU    = (~! "unit"          , BaseType(UnitType))
+let tB    = (~! "bool"          , BaseType(BoolType))
+let tI    = (~! "int"           , BaseType(IntType))
+let tFL   = (~! "float"         , BaseType(FloatType))
+let tLN   = (~! "length"        , BaseType(LengthType))
+let tS    = (~! "string"        , BaseType(StringType))
+let tIT   = (~! "inline-text"   , BaseType(InlineTextType))
+let tBT   = (~! "block-text"    , BaseType(BlockTextType))
+let tMT   = (~! "math-text"     , BaseType(MathTextType))
+let tIB   = (~! "inline-boxes"  , BaseType(InlineBoxesType))
+let tBB   = (~! "block-boxes"   , BaseType(BlockBoxesType))
+let tMB   = (~! "math-boxes"    , BaseType(MathBoxesType))
+let tCTX  = (~! "context"       , BaseType(ContextType))
+let tPRP  = (~! "pre-path"      , BaseType(PrePathType))
+let tPATH = (~! "path"          , BaseType(PathType))
+let tGR   = (~! "graphics"      , BaseType(GraphicsType))
+let tIMG  = (~! "image"         , BaseType(ImageType))
+let tDOC  = (~! "document"      , BaseType(DocumentType))
+let tRE   = (~! "regexp"        , BaseType(RegExpType))
+let tTCTX = (~! "text-info"     , BaseType(TextInfoType))
+let tIPOS = (~! "input-position", BaseType(InputPosType))
 
-let tCTX          = (~! "context" , BaseType(ContextType) )
-let tTCTX         = (~! "text-info", BaseType(TextInfoType))
-let tPATH         = (~! "path"    , BaseType(PathType)    )
-let tPRP          = (~! "pre-path", BaseType(PrePathType) )
-let tDOC          = (~! "document", BaseType(DocumentType))
-let tGR           = (~! "graphics", BaseType(GraphicsType))
-let tIMG          = (~! "image"   , BaseType(ImageType)   )
-let tRE           = (~! "regexp"  , BaseType(RegExpType)  )
-
-let tIPOS         = (~! "input-position", BaseType(InputPosType))
-
-let tL ty         = (~! "list"    , ListType(ty)          )
-let tR ty         = (~! "ref"     , RefType(ty)           )
-let tCODE ty      = (~! "code"    , CodeType(ty)          )
+let tL ty = (~! "list", ListType(ty))
+let tR ty = (~! "ref", RefType(ty))
+let tCODE ty = (~! "code", CodeType(ty))
 
 let tPROD = function
   | ty1 :: ty2 :: tyrest -> (~! "product", ProductType(TupleList.make ty1 ty2 tyrest))
@@ -88,7 +86,7 @@ let tIGRO = tIGRO_raw
 
 let tPAREN = tLN @-> tLN @-> tCTX @-> tPROD [tIB; tLN @-> tLN]
 
-let tICMD ty = (~! "cmd", HorzCommandType([CommandArgType(LabelMap.empty, ty)]))
+let tICMD ty = (~! "cmd", InlineCommandType([CommandArgType(LabelMap.empty, ty)]))
 
 
 let make_row kts =
@@ -682,9 +680,9 @@ let general_table : (var_name * poly_type * (environment -> syntactic_value)) li
       ( "!"  , ptyderef             , lambda1 (fun v1 -> Dereference(v1))                   );
       ( "::" , ptycons              , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))      );
       ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(LabelMap.empty, vf, vx))  );
-      ( "<>" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(EqualTo(v1, v2)))    );
-      ( ">=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(LessThan(v1, v2)))   );
-      ( "<=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))));
+      ( "<>" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveEqualTo(v1, v2)))    );
+      ( ">=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveLessThan(v1, v2)))   );
+      ( "<=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveGreaterThan(v1, v2))));
     ]
 
 
@@ -694,11 +692,11 @@ let base bc = BaseConstant(bc)
 let pdf_mode_table =
   List.append general_table
     [
-      ("inline-fil", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzPure(PHSOuterFil)])))));
-      ("inline-nil", ~% tIB, (fun _ -> base (BCHorz([])))                               );
-      ("omit-skip-after", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzOmitSkipAfter])))));
-      ("block-nil" , ~% tBB, (fun _ -> base (BCVert([])))                               );
-      ("clear-page", ~% tBB, (fun _ -> base (BCVert(HorzBox.([VertClearPage]))))        );
+      ("inline-fil"     , ~% tIB, (fun _ -> base (BCInlineBoxes(HorzBox.([HorzPure(PHSOuterFil)])))));
+      ("inline-nil"     , ~% tIB, (fun _ -> base (BCInlineBoxes([]))));
+      ("omit-skip-after", ~% tIB, (fun _ -> base (BCInlineBoxes(HorzBox.([HorzOmitSkipAfter])))));
+      ("block-nil"      , ~% tBB, (fun _ -> base (BCBlockBoxes([]))));
+      ("clear-page"     , ~% tBB, (fun _ -> base (BCBlockBoxes(HorzBox.([VertClearPage])))));
 
 #include "__primitives_pdf_mode.gen.ml"
     ]

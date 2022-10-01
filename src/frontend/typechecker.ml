@@ -186,7 +186,7 @@ let find_macro (tyenv : Typeenv.t) (modidents : (module_name ranged) list) ((rng
   | [] ->
       begin
         match tyenv |> Typeenv.find_macro csnm with
-        | None           -> raise_error (UndefinedHorzMacro(rng_cs, csnm))
+        | None           -> raise_error (UndefinedMacro(rng_cs, csnm))
         | Some(macentry) -> macentry
       end
 
@@ -208,7 +208,7 @@ let find_macro (tyenv : Typeenv.t) (modidents : (module_name ranged) list) ((rng
         | ConcStructure(ssig) ->
             begin
               match ssig |> StructSig.find_macro csnm with
-              | None           -> raise_error (UndefinedHorzMacro(rng_cs, csnm))
+              | None           -> raise_error (UndefinedMacro(rng_cs, csnm))
               | Some(macentry) -> macentry
             end
       end
@@ -368,10 +368,14 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
     | DataType(tyargs, _tyid)        -> iter_list tyargs
     | RecordType(row)                -> iter_row row
     | BaseType(_)                    -> false
-    | HorzCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | VertCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | MathCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | CodeType(tysub)                -> iter tysub
+
+    | InlineCommandType(cmdargtys)
+    | BlockCommandType(cmdargtys)
+    | MathCommandType(cmdargtys) ->
+        iter_cmd_list cmdargtys
+
+    | CodeType(tysub) ->
+        iter tysub
 
   and iter_list tys =
     List.exists iter tys
@@ -393,10 +397,10 @@ let occurs (fid : FreeID.t) (ty : mono_type) =
     | RowVar(UpdatableRow(orvuref)) ->
         begin
           match !orvuref with
-          | MonoORLink(row) ->
+          | MonoRowLink(row) ->
               iter_row row
 
-          | MonoORFree(frid0) ->
+          | MonoRowFree(frid0) ->
               let lev0 = FreeRowID.get_level frid0 in
               if Level.less_than lev lev0 then FreeRowID.set_level frid0 lev; (* Updates the level *)
               false
@@ -445,10 +449,14 @@ let occurs_row (frid : FreeRowID.t) (row : mono_row) =
     | DataType(tyargs, _tyid)        -> iter_list tyargs
     | RecordType(row)                -> iter_row row
     | BaseType(_)                    -> false
-    | HorzCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | VertCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | MathCommandType(cmdargtys)     -> iter_cmd_list cmdargtys
-    | CodeType(tysub)                -> iter tysub
+
+    | InlineCommandType(cmdargtys)
+    | BlockCommandType(cmdargtys)
+    | MathCommandType(cmdargtys) ->
+        iter_cmd_list cmdargtys
+
+    | CodeType(tysub) ->
+        iter tysub
 
   and iter_list (tys : mono_type list) =
     List.exists iter tys
@@ -470,10 +478,10 @@ let occurs_row (frid : FreeRowID.t) (row : mono_row) =
     | RowVar(UpdatableRow(orvuref)) ->
         begin
           match !orvuref with
-          | MonoORLink(row) ->
+          | MonoRowLink(row) ->
               iter_row row
 
-          | MonoORFree(frid0) ->
+          | MonoRowFree(frid0) ->
               if FreeRowID.equal frid frid0 then
                 true
               else
@@ -515,8 +523,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           unify tycod1 tycod2;
         end
 
-    | (HorzCommandType(cmdargtys1), HorzCommandType(cmdargtys2))
-    | (VertCommandType(cmdargtys1), VertCommandType(cmdargtys2))
+    | (InlineCommandType(cmdargtys1), InlineCommandType(cmdargtys2))
+    | (BlockCommandType(cmdargtys1), BlockCommandType(cmdargtys2))
     | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) ->
         begin
           match List.combine cmdargtys1 cmdargtys2 with
@@ -623,10 +631,10 @@ and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : unit =
       else
         solve_row_disjointness rowsub labset
 
-  | RowVar(UpdatableRow{contents = MonoORLink(rowsub)}) ->
+  | RowVar(UpdatableRow{contents = MonoRowLink(rowsub)}) ->
       solve_row_disjointness rowsub labset
 
-  | RowVar(UpdatableRow{contents = MonoORFree(frid0)}) ->
+  | RowVar(UpdatableRow{contents = MonoRowFree(frid0)}) ->
       let labset0 = FreeRowID.get_label_set frid0 in
       FreeRowID.set_label_set frid0 (LabelSet.union labset0 labset)
 
@@ -652,10 +660,10 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
         let row0rest = solve_row_membership rng label ty row0 in
         RowCons((rng0, label0), ty0, row0rest)
 
-  | RowVar(UpdatableRow{contents = MonoORLink(row0)}) ->
+  | RowVar(UpdatableRow{contents = MonoRowLink(row0)}) ->
       solve_row_membership rng label ty row0
 
-  | RowVar(UpdatableRow({contents = MonoORFree(frid0)} as orvuref0)) ->
+  | RowVar(UpdatableRow({contents = MonoRowFree(frid0)} as orvuref0)) ->
       let labset0 = FreeRowID.get_label_set frid0 in
       if labset0 |> LabelSet.mem label then
         raise InternalContradictionError
@@ -663,10 +671,10 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
       else begin
         let lev0 = FreeRowID.get_level frid0 in
         let frid1 = FreeRowID.fresh lev0 LabelSet.empty in
-        let rvref1 = ref (MonoORFree(frid1)) in
+        let rvref1 = ref (MonoRowFree(frid1)) in
         let row_rest = RowVar(UpdatableRow(rvref1)) in
         let row_new = RowCons((rng, label), ty, row_rest) in
-        orvuref0 := MonoORLink(row_new);
+        orvuref0 := MonoRowLink(row_new);
         row_rest
       end
 
@@ -681,34 +689,34 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
 
 and unify_row (row1 : mono_row) (row2 : mono_row) : unit =
   match (row1, row2) with
-  | (RowVar(UpdatableRow{contents = MonoORLink(row1sub)}), _) ->
+  | (RowVar(UpdatableRow{contents = MonoRowLink(row1sub)}), _) ->
       unify_row row1sub row2
 
-  | (_, RowVar(UpdatableRow{contents = MonoORLink(row2sub)})) ->
+  | (_, RowVar(UpdatableRow{contents = MonoRowLink(row2sub)})) ->
       unify_row row1 row2sub
 
-  | (RowVar(UpdatableRow({contents = MonoORFree(frid1)} as rvref1)), RowVar(UpdatableRow{contents = MonoORFree(frid2)})) ->
+  | (RowVar(UpdatableRow({contents = MonoRowFree(frid1)} as rvref1)), RowVar(UpdatableRow{contents = MonoRowFree(frid2)})) ->
       if FreeRowID.equal frid1 frid2 then
         ()
       else
-        rvref1 := MonoORLink(row2)
+        rvref1 := MonoRowLink(row2)
 
-  | (RowVar(UpdatableRow({contents = MonoORFree(frid1)} as rvref1)), _) ->
+  | (RowVar(UpdatableRow({contents = MonoRowFree(frid1)} as rvref1)), _) ->
       if occurs_row frid1 row2 then
         raise InternalInclusionError
       else begin
         let labset1 = FreeRowID.get_label_set frid1 in
         solve_row_disjointness row2 labset1;
-        rvref1 := MonoORLink(row2)
+        rvref1 := MonoRowLink(row2)
       end
 
-  | (_, RowVar(UpdatableRow({contents = MonoORFree(frid2)} as rvref2))) ->
+  | (_, RowVar(UpdatableRow({contents = MonoRowFree(frid2)} as rvref2))) ->
       if occurs_row frid2 row1 then
         raise InternalInclusionError
       else begin
         let labset2 = FreeRowID.get_label_set frid2 in
         solve_row_disjointness row1 labset2;
-        rvref2 := MonoORLink(row1)
+        rvref2 := MonoRowLink(row1)
       end
 
   | (RowVar(MustBeBoundRow(mbbrid1)), RowVar(MustBeBoundRow(mbbrid2))) ->
@@ -764,7 +772,6 @@ let rec typecheck
     typecheck presub t u
   in
   match utastmain with
-  | UTStringEmpty         -> (base (BCString(""))   , (rng, BaseType(StringType)))
   | UTIntegerConstant(nc) -> (base (BCInt(nc))      , (rng, BaseType(IntType))   )
   | UTFloatConstant(nc)   -> (base (BCFloat(nc))    , (rng, BaseType(FloatType)) )
   | UTStringConstant(sc)  -> (base (BCString(sc))   , (rng, BaseType(StringType)))
@@ -801,18 +808,17 @@ let rec typecheck
         in
         (base (BCLength(len)), (rng, BaseType(LengthType)))
 
-  | UTInputHorz(utihlst) ->
-      let ihlst = typecheck_input_horz rng pre tyenv utihlst in
-      (InputHorz(ihlst), (rng, BaseType(TextRowType)))
+  | UTInlineText(utits) ->
+      let its = typecheck_inline_text rng pre tyenv utits in
+      (InlineText(its), (rng, BaseType(InlineTextType)))
 
-  | UTInputVert(utivlst) ->
-      let ivlst = typecheck_input_vert rng pre tyenv utivlst in
-      (InputVert(ivlst), (rng, BaseType(TextColType)))
+  | UTBlockText(utbts) ->
+      let bts = typecheck_block_text rng pre tyenv utbts in
+      (BlockText(bts), (rng, BaseType(BlockTextType)))
 
-  | UTInputMath(utmes) ->
-      let tymath = (rng, BaseType(TextMathType)) in
-      let ms = typecheck_math pre tyenv utmes in
-      (InputMath(ms), tymath)
+  | UTMathText(utmts) ->
+      let mts = typecheck_math pre tyenv utmts in
+      (MathText(mts), (rng, BaseType(MathTextType)))
 
   | UTOpenIn((rng_mod, modnm), utast1) ->
       begin
@@ -932,7 +938,7 @@ let rec typecheck
       let tyres = (rng, DataType(tyargs, tyid)) in
       (NonValueConstructor(constrnm, e1), tyres)
 
-  | UTLambdaHorzCommand{
+  | UTLambdaInlineCommand{
       parameters       = param_units;
       context_variable = ident_ctx;
       body             = utast_body;
@@ -943,7 +949,7 @@ let rec typecheck
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
-          (ContextType, BoxRowType)
+          (ContextType, InlineBoxesType)
       in
       let evid_ctx = EvalVarID.fresh ident_ctx in
       let (e_body, ty_body) =
@@ -959,20 +965,20 @@ let rec typecheck
         in
         typecheck_iter tyenv utast_body
       in
-      unify ty_body (Range.dummy "lambda-horz-return", BaseType(bsty_ret));
+      unify ty_body (Range.dummy "lambda-inline-return", BaseType(bsty_ret));
       let e =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
-        ) params (LambdaHorz(evid_ctx, e_body))
+        ) params (LambdaInline(evid_ctx, e_body))
       in
       let cmdargtys =
         params |> List.map (fun (_, _, ty_labmap, ty_pat) ->
           CommandArgType(ty_labmap, ty_pat)
         )
       in
-      (e, (rng, HorzCommandType(cmdargtys)))
+      (e, (rng, InlineCommandType(cmdargtys)))
 
-  | UTLambdaVertCommand{
+  | UTLambdaBlockCommand{
       parameters       = param_units;
       context_variable = ident_ctx;
       body             = utast_body;
@@ -983,7 +989,7 @@ let rec typecheck
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
-          (ContextType, BoxColType)
+          (ContextType, BlockBoxesType)
       in
       let evid_ctx = EvalVarID.fresh ident_ctx in
       let (e_body, ty_body) =
@@ -999,18 +1005,18 @@ let rec typecheck
         in
         typecheck_iter tyenv_sub utast_body
       in
-      unify ty_body (Range.dummy "lambda-vert-return", BaseType(bsty_ret));
+      unify ty_body (Range.dummy "lambda-block-return", BaseType(bsty_ret));
       let e =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
-        ) params (LambdaVert(evid_ctx, e_body))
+        ) params (LambdaBlock(evid_ctx, e_body))
       in
       let cmdargtys =
         params |> List.map (fun (_, _, ty_labmap, ty_pat) ->
           CommandArgType(ty_labmap, ty_pat)
         )
       in
-      (e, (rng, VertCommandType(cmdargtys)))
+      (e, (rng, BlockCommandType(cmdargtys)))
 
   | UTLambdaMathCommand{
       parameters       = param_units;
@@ -1024,7 +1030,7 @@ let rec typecheck
         if OptionState.is_text_mode () then
           (TextInfoType, StringType)
         else
-          (ContextType, BoxMathType)
+          (ContextType, MathBoxesType)
       in
       let evid_ctx = EvalVarID.fresh ident_ctx in
       let script_params_opt =
@@ -1053,7 +1059,7 @@ let rec typecheck
             let (rng_sub_var, varnm_sub) = ident_sub in
             let (rng_sup_var, varnm_sup) = ident_sup in
             let pty_script rng =
-              Poly(rng, snd (Primitives.option_type (Range.dummy "sub-or-sup", BaseType(TextMathType))))
+              Poly(rng, snd (Primitives.option_type (Range.dummy "sub-or-sup", BaseType(MathTextType))))
             in
             let ventry_sub =
               {
@@ -1095,7 +1101,7 @@ let rec typecheck
       let (e2, ty2) = typecheck_iter tyenv utast2 in
       let frid = FreeRowID.fresh pre.level LabelSet.empty in
       let (e_labmap0, labset0, row0) =
-        let rvref = ref (MonoORFree(frid)) in
+        let rvref = ref (MonoRowFree(frid)) in
         opts |> List.fold_left (fun (e_labmap, labset, row) (rlabel, utast0) ->
           let (_, label) = rlabel in
           let (e0, ty0) = typecheck_iter tyenv utast0 in
@@ -1253,7 +1259,7 @@ let rec typecheck
       let beta = fresh_type_variable rng pre in
       let row =
         let frid = fresh_free_row_id pre.level (LabelSet.singleton label) in
-        let rvuref = ref (MonoORFree(frid)) in
+        let rvuref = ref (MonoRowFree(frid)) in
         RowCons((Range.dummy "UTAccessField", label), beta, RowVar(UpdatableRow(rvuref)))
       in
       unify ty1 (Range.dummy "UTAccessField", RecordType(row));
@@ -1265,37 +1271,37 @@ let rec typecheck
       let (e2, ty2) = typecheck_iter tyenv utast2 in
       let row =
         let frid = fresh_free_row_id pre.level (LabelSet.singleton label) in
-        let rvuref = ref (MonoORFree(frid)) in
+        let rvuref = ref (MonoRowFree(frid)) in
         RowCons(rlabel, ty2, RowVar(UpdatableRow(rvuref)))
       in
       unify ty1 (Range.dummy "UTUpdateField", RecordType(row));
       (UpdateField(e1, label, e2), ty1)
 
-  | UTLexHorz(utastctx, utasth) ->
-      let (ectx, tyctx) = typecheck_iter tyenv utastctx in
-      let (eh, tyh) = typecheck_iter tyenv utasth in
-      let (eret, bstyctx, bstyret) =
+  | UTReadInline(utast_ctx, utastI) ->
+      let (e_ctx, ty_ctx) = typecheck_iter tyenv utast_ctx in
+      let (eI, tyI) = typecheck_iter tyenv utastI in
+      let (e_ret, bsty_ctx, bsty_ret) =
         if OptionState.is_text_mode () then
-          (TextHorzLex(ectx, eh), TextInfoType, StringType)
+          (PrimitiveStringifyInline(e_ctx, eI), TextInfoType, StringType)
         else
-          (HorzLex(ectx, eh), ContextType, BoxRowType)
+          (PrimitiveReadInline(e_ctx, eI), ContextType, InlineBoxesType)
       in
-      unify tyctx (Range.dummy "ut-lex-horz-1", BaseType(bstyctx));
-      unify tyh (Range.dummy "ut-lex-horz-2", BaseType(TextRowType));
-      (eret, (rng, BaseType(bstyret)))
+      unify ty_ctx (Range.dummy "ut-read-inline-1", BaseType(bsty_ctx));
+      unify tyI (Range.dummy "ut-read-inline-2", BaseType(InlineTextType));
+      (e_ret, (rng, BaseType(bsty_ret)))
 
-  | UTLexVert(utastctx, utastv) ->
-      let (ectx, tyctx) = typecheck_iter tyenv utastctx in
-      let (ev, tyv) = typecheck_iter tyenv utastv in
-      let (eret, bstyctx, bstyret) =
+  | UTReadBlock(utast_ctx, utastB) ->
+      let (e_ctx, ty_ctx) = typecheck_iter tyenv utast_ctx in
+      let (eB, tyB) = typecheck_iter tyenv utastB in
+      let (e_ret, bsty_ctx, bsty_ret) =
         if OptionState.is_text_mode () then
-          (TextVertLex(ectx, ev), TextInfoType, StringType)
+          (PrimitiveStringifyBlock(e_ctx, eB), TextInfoType, StringType)
         else
-          (VertLex(ectx, ev), ContextType, BoxColType)
+          (PrimitiveReadBlock(e_ctx, eB), ContextType, BlockBoxesType)
       in
-      unify tyctx (Range.dummy "ut-lex-vert-1", BaseType(bstyctx));
-      unify tyv (Range.dummy "ut-lex-vert-2", BaseType(TextColType));
-      (eret, (rng, BaseType(bstyret)))
+      unify ty_ctx (Range.dummy "ut-read-block-1", BaseType(bsty_ctx));
+      unify tyB (Range.dummy "ut-read-block-2", BaseType(BlockTextType));
+      (e_ret, (rng, BaseType(bsty_ret)))
 
   | UTNext(utast1) ->
       begin
@@ -1389,70 +1395,66 @@ and typecheck_command_arguments (tycmd : mono_type) (rngcmdapp : Range.t) (pre :
   )
 
 
-and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_input_math_element list) : input_math_element list =
+and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_math_text_element list) : math_text_element list =
 
   let iter (_b, utmes) = typecheck_math pre tyenv utmes in
 
   utmes |> List.map (fun utme ->
-    let (rng, UTInputMathElement{ base = utbase; sub = utsub_opt; sup = utsup_opt }) = utme in
+    let (rng, UTMathTextElement{ base = utbase; sub = utsub_opt; sup = utsup_opt }) = utme in
     let base =
       match utbase with
-      | UTInputMathChar(uch) ->
-          InputMathChar(uch)
+      | UTMathTextChar(uch) ->
+          MathTextChar(uch)
 
-      | UTInputMathApplyCommand(utastcmd, utcmdarglst) ->
-          let (ecmd, tycmd) = typecheck pre tyenv utastcmd in
-          let (_, tycmdmain) = tycmd in
+      | UTMathTextApplyCommand(utast_cmd, utcmdarglst) ->
+          let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
           begin
-            match tycmdmain with
-            | MathCommandType(cmdargtylstreq) ->
-                let args = typecheck_command_arguments tycmd rng pre tyenv utcmdarglst cmdargtylstreq in
-                InputMathApplyCommand{
-                  command   = ecmd;
+            match ty_cmd with
+            | (_, MathCommandType(cmdargtys)) ->
+                let args = typecheck_command_arguments ty_cmd rng pre tyenv utcmdarglst cmdargtys in
+                MathTextApplyCommand{
+                  command   = e_cmd;
                   arguments = args;
                 }
 
-            | HorzCommandType(_) ->
-                let (rngcmd, _) = utastcmd in
-                raise_error (HorzCommandInMath(rngcmd))
+            | (_, InlineCommandType(_)) ->
+                let (rng_cmd, _) = utast_cmd in
+                raise_error (InlineCommandInMath(rng_cmd))
 
             | _ ->
-                failwith (Printf.sprintf "unexpected type: %s" (Display.show_mono_type tycmd))
+                failwith (Printf.sprintf "unexpected type: %s" (Display.show_mono_type ty_cmd))
           end
 
-      | UTInputMathContent(utast0) ->
+      | UTMathTextContent(utast0) ->
           let (e0, ty0) = typecheck pre tyenv utast0 in
-          unify ty0 (Range.dummy "math-embedded-var", BaseType(TextMathType));
-          InputMathContent(e0)
+          unify ty0 (Range.dummy "math-embedded-var", BaseType(MathTextType));
+          MathTextContent(e0)
     in
     let sub = utsub_opt |> Option.map iter in
     let sup = utsup_opt |> Option.map iter in
-    InputMathElement{ base; sub; sup }
+    MathTextElement{ base; sub; sup }
   )
 
 
-and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =
-  let rec aux acc utivlst =
-    match utivlst with
-    | [] ->
-        Alist.to_list acc
-
-    | (rng_cmdapp, UTInputVertApplyCommand(utast_cmd, utcmdargs)) :: tail ->
+and typecheck_block_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utbts : untyped_block_text_element list) : block_text_element list =
+  utbts |> List.fold_left (fun acc utbt ->
+    match utbt with
+    | (rng_cmdapp, UTBlockTextApplyCommand(utast_cmd, utcmdargs)) ->
         let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
         let cmdargtys =
           match ty_cmd with
-          | (_, VertCommandType(cmdargtys)) -> cmdargtys
-          | _                               -> assert false
+          | (_, BlockCommandType(cmdargtys)) -> cmdargtys
+          | _                                -> assert false
         in
         let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
-        aux (Alist.extend acc (InputVertApplyCommand{ command = e_cmd; arguments = args })) tail
+        Alist.extend acc (BlockTextApplyCommand{ command = e_cmd; arguments = args })
 
-    | (_, UTInputVertContent(utast0)) :: tail ->
+    | (_, UTBlockTextContent(utast0)) ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "UTInputVertContent", BaseType(TextColType));
-        aux (Alist.extend acc (InputVertContent(e0))) tail
+        unify ty0 (Range.dummy "UTBlockTextContent", BaseType(BlockTextType));
+        Alist.extend acc (BlockTextContent(e0))
 
-    | (rng_app, UTInputVertMacro(bmacro, utmacargs)) :: tail ->
+    | (rng_app, UTBlockTextMacro(bmacro, utmacargs)) ->
         begin
           match pre.stage with
           | Stage0 | Persistent0 ->
@@ -1465,8 +1467,8 @@ and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
               let macty = TypeConv.instantiate_macro_type pre.level pre.quantifiability macentry.macro_type in
               let macparamtys =
                 match macty with
-                | VertMacroType(macparamtys) -> macparamtys
-                | _                          -> assert false
+                | BlockMacroType(macparamtys) -> macparamtys
+                | _                           -> assert false
               in
               let evid =
                 match macentry.macro_name with
@@ -1475,53 +1477,49 @@ and typecheck_input_vert (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utivl
               in
               let eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
               let eapp = apply_tree_of_list (ContentOf(rng_cs, evid)) eargs in
-              let iv = InputVertContent(Prev(eapp)) in
-              aux (Alist.extend acc iv) tail
+              Alist.extend acc (BlockTextContent(Prev(eapp)))
         end
-  in
-  aux Alist.empty utivlst
+
+  ) Alist.empty |> Alist.to_list
 
 
-and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) : input_horz_element list =
-  let rec aux acc utihlst =
-    match utihlst with
-    | [] ->
-        Alist.to_list acc
-
-    | (rng_cmdapp, UTInputHorzApplyCommand(utast_cmd, utcmdargs)) :: tail ->
+and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utits : untyped_inline_text_element list) : inline_text_element list =
+  utits |> List.fold_left (fun acc utit ->
+    match utit with
+    | (rng_cmdapp, UTInlineTextApplyCommand(utast_cmd, utcmdargs)) ->
         let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
         let cmdargtys =
           match ty_cmd with
-          | (_, HorzCommandType(cmdargtys)) ->
+          | (_, InlineCommandType(cmdargtys)) ->
               cmdargtys
 
           | (_, MathCommandType(_)) ->
               let (rng_cmd, _) = utast_cmd in
-              raise_error (MathCommandInHorz(rng_cmd))
+              raise_error (MathCommandInInline(rng_cmd))
 
           | _ ->
               assert false
         in
         let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
-        aux (Alist.extend acc (InputHorzApplyCommand{ command = e_cmd; arguments = args })) tail
+        Alist.extend acc (InlineTextApplyCommand{ command = e_cmd; arguments = args })
 
-    | (_, UTInputHorzEmbeddedMath(utast_math)) :: tail ->
+    | (_, UTInlineTextEmbeddedMath(utast_math)) ->
         let (emath, tymath) = typecheck pre tyenv utast_math in
-        unify tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(TextMathType));
-        aux (Alist.extend acc (InputHorzEmbeddedMath(emath))) tail
+        unify tymath (Range.dummy "ut-inline-text-embedded-math", BaseType(MathTextType));
+        Alist.extend acc (InlineTextEmbeddedMath(emath))
 
-    | (_, UTInputHorzEmbeddedCodeArea(s)) :: tail ->
-        aux (Alist.extend acc (InputHorzEmbeddedCodeArea(s))) tail
+    | (_, UTInlineTextEmbeddedCodeArea(s)) ->
+        Alist.extend acc (InlineTextEmbeddedCodeArea(s))
 
-    | (_, UTInputHorzContent(utast0)) :: tail ->
+    | (_, UTInlineTextContent(utast0)) ->
         let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "ut-input-horz-content", BaseType(TextRowType));
-        aux (Alist.extend acc (InputHorzContent(e0))) tail
+        unify ty0 (Range.dummy "ut-inline-text-content", BaseType(InlineTextType));
+        Alist.extend acc (InlineTextContent(e0))
 
-    | (_, UTInputHorzText(s)) :: tail ->
-        aux (Alist.extend acc (InputHorzText(s))) tail
+    | (_, UTInlineTextString(s)) ->
+        Alist.extend acc (InlineTextString(s))
 
-    | (rng_app, UTInputHorzMacro(hmacro, utmacargs)) :: tail ->
+    | (rng_app, UTInlineTextMacro(hmacro, utmacargs)) ->
         begin
           match pre.stage with
           | Stage0 | Persistent0 ->
@@ -1534,8 +1532,8 @@ and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihl
               let macty = TypeConv.instantiate_macro_type pre.level pre.quantifiability macentry.macro_type in
               let macparamtys =
                 match macty with
-                | HorzMacroType(macparamtys) -> macparamtys
-                | _                          -> assert false
+                | InlineMacroType(macparamtys) -> macparamtys
+                | _                            -> assert false
               in
               let evid =
                 match macentry.macro_name with
@@ -1544,11 +1542,10 @@ and typecheck_input_horz (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utihl
               in
               let eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
               let eapp = apply_tree_of_list (ContentOf(rng_cs, evid)) eargs in
-              let ih = InputHorzContent(Prev(eapp)) in
-              aux (Alist.extend acc ih) tail
+              Alist.extend acc (InlineTextContent(Prev(eapp)))
         end
-  in
-  aux Alist.empty utihlst
+
+  ) Alist.empty |> Alist.to_list
 
 
 and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (macparamtys : mono_macro_parameter_type list) (utmacargs : untyped_macro_argument list) : abstract_tree list =
@@ -1606,7 +1603,7 @@ and typecheck_record (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (fields : (
 
 and typecheck_itemize (pre : pre) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
   let (e1, ty1) = typecheck pre tyenv utast1 in
-  unify ty1 (Range.dummy "typecheck_itemize_string", BaseType(TextRowType));
+  unify ty1 (Range.dummy "typecheck_itemize_string", BaseType(InlineTextType));
   let e2 = typecheck_itemize_list pre tyenv utitmzlst in
   (NonValueConstructor("Item", PrimitiveTuple(TupleList.make e1 e2 [])))
 
@@ -1898,9 +1895,9 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
       | MRecordType(mnfields, rowvar) ->
           RecordType(aux_row mnfields rowvar)
 
-      | MHorzCommandType(mncmdargtys) -> HorzCommandType(aux_cmd_list mncmdargtys)
-      | MVertCommandType(mncmdargtys) -> VertCommandType(aux_cmd_list mncmdargtys)
-      | MMathCommandType(mncmdargtys) -> MathCommandType(aux_cmd_list mncmdargtys)
+      | MInlineCommandType(mncmdargtys) -> InlineCommandType(aux_cmd_list mncmdargtys)
+      | MBlockCommandType(mncmdargtys)  -> BlockCommandType(aux_cmd_list mncmdargtys)
+      | MMathCommandType(mncmdargtys)   -> MathCommandType(aux_cmd_list mncmdargtys)
     in
     (rng, tymain)
 
@@ -1968,11 +1965,11 @@ and decode_manual_kind (_pre : pre) (_tyenv : Typeenv.t) (mnkd : manual_kind) : 
 
 and decode_manual_macro_type (pre : pre) (tyenv : Typeenv.t) (mmacty : manual_macro_type) : mono_macro_type =
   match mmacty with
-  | MHorzMacroType(mmacparamtys) ->
-      HorzMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
+  | MInlineMacroType(mmacparamtys) ->
+      InlineMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
 
-  | MVertMacroType(mmacparamtys) ->
-      VertMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
+  | MBlockMacroType(mmacparamtys) ->
+      BlockMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
 
 
 and decode_manual_macro_parameter_type (pre : pre) (tyenv : Typeenv.t) (mmacparamty : manual_macro_parameter_type) : mono_macro_parameter_type =
@@ -2284,9 +2281,9 @@ and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_t
       | RefType(pty)  -> RefType(aux pty)
       | CodeType(pty) -> CodeType(aux pty)
 
-      | HorzCommandType(pargs) -> HorzCommandType(pargs |> List.map aux_command_arg)
-      | VertCommandType(pargs) -> VertCommandType(pargs |> List.map aux_command_arg)
-      | MathCommandType(pargs) -> MathCommandType(pargs |> List.map aux_command_arg)
+      | InlineCommandType(pargs) -> InlineCommandType(pargs |> List.map aux_command_arg)
+      | BlockCommandType(pargs)  -> BlockCommandType(pargs |> List.map aux_command_arg)
+      | MathCommandType(pargs)   -> MathCommandType(pargs |> List.map aux_command_arg)
 
       | FuncType(poptrow, ptydom, ptycod) ->
           FuncType(aux_option_row poptrow, aux ptydom, aux ptycod)
@@ -2346,8 +2343,8 @@ and substitute_type_id (subst : substitution) (tyid_from : TypeID.t) : TypeID.t 
 
 and substitute_macro_type (subst : substitution) (pmacty : poly_macro_type) : poly_macro_type =
   match pmacty with
-  | HorzMacroType(pmacparamtys) -> HorzMacroType(pmacparamtys |> List.map (substitute_macro_parameter_type subst))
-  | VertMacroType(pmacparamtys) -> VertMacroType(pmacparamtys |> List.map (substitute_macro_parameter_type subst))
+  | InlineMacroType(pmacparamtys) -> InlineMacroType(pmacparamtys |> List.map (substitute_macro_parameter_type subst))
+  | BlockMacroType(pmacparamtys)  -> BlockMacroType(pmacparamtys |> List.map (substitute_macro_parameter_type subst))
 
 
 and substitute_macro_parameter_type (subst : substitution) = function
@@ -2583,9 +2580,9 @@ and subtype_poly_type_impl (internbid : type_intern) (internbrid : row_intern) (
     | (RefType(pty1), RefType(pty2))   -> aux pty1 pty2
     | (BaseType(bty1), BaseType(bty2)) -> bty1 = bty2
 
-    | (HorzCommandType(cmdargtys1), HorzCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
-    | (VertCommandType(cmdargtys1), VertCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
-    | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
+    | (InlineCommandType(cmdargtys1), InlineCommandType(cmdargtys2)) -> aux_cmd_list cmdargtys1 cmdargtys2
+    | (BlockCommandType(cmdargtys1), BlockCommandType(cmdargtys2))   -> aux_cmd_list cmdargtys1 cmdargtys2
+    | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2))     -> aux_cmd_list cmdargtys1 cmdargtys2
 
     | (CodeType(pty1), CodeType(pty2)) ->
         aux pty1 pty2
@@ -2621,13 +2618,13 @@ and subtype_row_with_equal_domain (internbid : type_intern) (internbrid : row_in
   | (None, None) ->
       subtype_label_map_with_equal_domain internbid internbrid pty_labmap1 pty_labmap2
 
-  | (Some(PolyORFree(_)), _) | (_, Some(PolyORFree(_))) ->
+  | (Some(PolyRowFree(_)), _) | (_, Some(PolyRowFree(_))) ->
       assert false
 
-  | (None, Some(PolyORBound(_brid2))) ->
+  | (None, Some(PolyRowBound(_brid2))) ->
       false
 
-  | (Some(PolyORBound(brid1)), _) ->
+  | (Some(PolyRowBound(brid1)), _) ->
       let opt = subtype_label_map_inclusive internbid internbrid pty_labmap1 pty_labmap2 in
       begin
         match opt with
@@ -2741,9 +2738,9 @@ and normalized_poly_row_equal (nomrow1 : normalized_poly_row) (nomrow2 : normali
   in
   bmap && begin
     match (rowvar1_opt, rowvar2_opt) with
-    | (None, None)                                         -> true
-    | (Some(PolyORBound(brid1)), Some(PolyORBound(brid2))) -> BoundRowID.equal brid1 brid2
-    | _                                                    -> false
+    | (None, None)                                           -> true
+    | (Some(PolyRowBound(brid1)), Some(PolyRowBound(brid2))) -> BoundRowID.equal brid1 brid2
+    | _                                                      -> false
   end
 
 
@@ -2780,9 +2777,9 @@ and poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
     | (RecordType(prow1), RecordType(prow2)) ->
         poly_row_equal prow1 prow2
 
-    | (HorzCommandType(cmdargtys1), HorzCommandType(cmdargtys2))
-    | (VertCommandType(cmdargtys1), HorzCommandType(cmdargtys2))
-    | (MathCommandType(cmdargtys1), HorzCommandType(cmdargtys2)) ->
+    | (InlineCommandType(cmdargtys1), InlineCommandType(cmdargtys2))
+    | (BlockCommandType(cmdargtys1), BlockCommandType(cmdargtys2))
+    | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) ->
         aux_cmd_list cmdargtys1 cmdargtys2
 
     | (CodeType(pty1), CodeType(pty2)) ->
@@ -2874,9 +2871,9 @@ and subtype_macro_type (macty1 : poly_macro_type) (macty2 : poly_macro_type) : b
         )
   in
   match (macty1, macty2) with
-  | (HorzMacroType(macparamtys1), HorzMacroType(macparamtys2)) -> aux macparamtys1 macparamtys2
-  | (VertMacroType(macparamtys1), VertMacroType(macparamtys2)) -> aux macparamtys1 macparamtys2
-  | _                                                          -> false
+  | (InlineMacroType(macparamtys1), InlineMacroType(macparamtys2)) -> aux macparamtys1 macparamtys2
+  | (BlockMacroType(macparamtys1), BlockMacroType(macparamtys2))   -> aux macparamtys1 macparamtys2
+  | _                                                              -> false
 
 
 (* Given `modsig1` and `modsig2` which are already known to satisfy `modsig1 <= modsig2`,
@@ -3108,9 +3105,10 @@ and get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.
     | MTypeParam(_typaram) ->
         ()
 
-    | MHorzCommandType(mcmdargtys) -> mcmdargtys |> List.iter aux_cmd_arg
-    | MVertCommandType(mcmdargtys) -> mcmdargtys |> List.iter aux_cmd_arg
-    | MMathCommandType(mcmdargtys) -> mcmdargtys |> List.iter aux_cmd_arg
+    | MInlineCommandType(mcmdargtys)
+    | MBlockCommandType(mcmdargtys)
+    | MMathCommandType(mcmdargtys) ->
+        mcmdargtys |> List.iter aux_cmd_arg
 
   and aux_row (mfields : (label ranged * manual_type) list) : unit =
     mfields |> List.iter (fun (_, mty) -> aux mty)
@@ -3382,7 +3380,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
             raise_error (NotAStructureSignature(rng_mod, fsig))
       end
 
-  | UTBindHorzMacro((rng_cs, csnm), macparams, utast1) ->
+  | UTBindInlineMacro((rng_cs, csnm), macparams, utast1) ->
       let pre =
         {
           stage           = Stage1;
@@ -3393,9 +3391,9 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
         }
       in
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
-      let macty = HorzMacroType(macparamtys) in
+      let macty = InlineMacroType(macparamtys) in
       let (e1, ty1) = typecheck pre tyenv utast1 in
-      unify ty1 (Range.dummy "val-inline-macro", BaseType(TextRowType));
+      unify ty1 (Range.dummy "val-inline-macro", BaseType(InlineTextType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
         let macentry =
@@ -3409,7 +3407,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
       (binds, (OpaqueIDMap.empty, ssig))
 
-  | UTBindVertMacro((rng_cs, csnm), macparams, utast1) ->
+  | UTBindBlockMacro((rng_cs, csnm), macparams, utast1) ->
       let pre =
         {
           stage           = Stage1;
@@ -3420,9 +3418,9 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
         }
       in
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
-      let macty = HorzMacroType(macparamtys) in
+      let macty = BlockMacroType(macparamtys) in
       let (e1, ty1) = typecheck pre tyenv utast1 in
-      unify ty1 (Range.dummy "val-block-macro", BaseType(TextColType));
+      unify ty1 (Range.dummy "val-block-macro", BaseType(BlockTextType));
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
         let macentry =

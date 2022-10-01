@@ -17,10 +17,8 @@ type 'a ranged =
   Range.t * 'a
 [@@deriving show]
 
-type ctrlseq_name       = string  [@@deriving show]
+type command_name       = string  [@@deriving show]
 type var_name           = string  [@@deriving show]
-type id_name            = string  [@@deriving show]
-type class_name         = string  [@@deriving show]
 type type_name          = string  [@@deriving show]
 type kind_name          = string  [@@deriving show]
 type constructor_name   = string  [@@deriving show]
@@ -62,14 +60,14 @@ type manual_type =
   Range.t * manual_type_main
 
 and manual_type_main =
-  | MTypeName        of (module_name ranged) list * type_name ranged * manual_type list
-  | MTypeParam       of var_name
-  | MFuncType        of (label ranged * manual_type) list * (row_variable_name ranged) option * manual_type * manual_type
-  | MProductType     of manual_type TupleList.t
-  | MRecordType      of (label ranged * manual_type) list * (row_variable_name ranged) option
-  | MHorzCommandType of manual_command_argument_type list
-  | MVertCommandType of manual_command_argument_type list
-  | MMathCommandType of manual_command_argument_type list
+  | MTypeName          of (module_name ranged) list * type_name ranged * manual_type list
+  | MTypeParam         of var_name
+  | MFuncType          of (label ranged * manual_type) list * (row_variable_name ranged) option * manual_type * manual_type
+  | MProductType       of manual_type TupleList.t
+  | MRecordType        of (label ranged * manual_type) list * (row_variable_name ranged) option
+  | MInlineCommandType of manual_command_argument_type list
+  | MBlockCommandType  of manual_command_argument_type list
+  | MMathCommandType   of manual_command_argument_type list
 [@@deriving show]
 
 and manual_command_argument_type =
@@ -94,12 +92,12 @@ type base_type =
   | FloatType
   | LengthType
   | StringType
-  | TextRowType
-  | TextColType
-  | TextMathType
-  | BoxRowType
-  | BoxColType
-  | BoxMathType
+  | InlineTextType
+  | BlockTextType
+  | MathTextType
+  | InlineBoxesType
+  | BlockBoxesType
+  | MathBoxesType
   | ContextType
   | PrePathType
   | PathType
@@ -142,26 +140,26 @@ let base_type_map : base_type TypeNameMap.t =
     map |> TypeNameMap.add tynm bt
   ) TypeNameMap.empty
   [
-    ("unit"        , UnitType    );
-    ("bool"        , BoolType    );
-    ("int"         , IntType     );
-    ("float"       , FloatType   );
-    ("length"      , LengthType  );
-    ("string"      , StringType  );
-    ("inline-text" , TextRowType );
-    ("block-text"  , TextColType );
-    ("math-text"   , TextMathType);
-    ("inline-boxes", BoxRowType  );
-    ("block-boxes" , BoxColType  );
-    ("math-boxes"  , BoxMathType );
-    ("context"     , ContextType );
-    ("pre-path"    , PrePathType );
-    ("path"        , PathType    );
-    ("graphics"    , GraphicsType);
-    ("image"       , ImageType   );
-    ("document"    , DocumentType);
-    ("regexp"      , RegExpType  );
-    ("text-info"   , TextInfoType);
+    ("unit"          , UnitType);
+    ("bool"          , BoolType);
+    ("int"           , IntType);
+    ("float"         , FloatType);
+    ("length"        , LengthType);
+    ("string"        , StringType);
+    ("inline-text"   , InlineTextType);
+    ("block-text"    , BlockTextType);
+    ("math-text"     , MathTextType);
+    ("inline-boxes"  , InlineBoxesType);
+    ("block-boxes"   , BlockBoxesType);
+    ("math-boxes"    , MathBoxesType);
+    ("context"       , ContextType);
+    ("pre-path"      , PrePathType);
+    ("path"          , PathType);
+    ("graphics"      , GraphicsType);
+    ("image"         , ImageType);
+    ("document"      , DocumentType);
+    ("regexp"        , RegExpType);
+    ("text-info"     , TextInfoType);
     ("input-position", InputPosType);
   ]
 
@@ -182,18 +180,18 @@ type ('a, 'b) typ =
   Range.t * ('a, 'b) type_main
 
 and ('a, 'b) type_main =
-  | BaseType        of base_type
-  | FuncType        of ('a, 'b) row * ('a, 'b) typ * ('a, 'b) typ
-  | ListType        of ('a, 'b) typ
-  | RefType         of ('a, 'b) typ
-  | ProductType     of (('a, 'b) typ) TupleList.t
-  | TypeVariable    of 'a
-  | DataType        of (('a, 'b) typ) list * TypeID.t
-  | RecordType      of ('a, 'b) row
-  | HorzCommandType of (('a, 'b) command_argument_type) list
-  | VertCommandType of (('a, 'b) command_argument_type) list
-  | MathCommandType of (('a, 'b) command_argument_type) list
-  | CodeType        of ('a, 'b) typ
+  | BaseType          of base_type
+  | FuncType          of ('a, 'b) row * ('a, 'b) typ * ('a, 'b) typ
+  | ListType          of ('a, 'b) typ
+  | RefType           of ('a, 'b) typ
+  | ProductType       of (('a, 'b) typ) TupleList.t
+  | TypeVariable      of 'a
+  | DataType          of (('a, 'b) typ) list * TypeID.t
+  | RecordType        of ('a, 'b) row
+  | InlineCommandType of (('a, 'b) command_argument_type) list
+  | BlockCommandType  of (('a, 'b) command_argument_type) list
+  | MathCommandType   of (('a, 'b) command_argument_type) list
+  | CodeType          of ('a, 'b) typ
 
 and ('a, 'b) command_argument_type =
   | CommandArgType of (('a, 'b) typ) LabelMap.t * ('a, 'b) typ
@@ -204,16 +202,16 @@ and ('a, 'b) row =
   | RowEmpty
 
 and mono_row_variable_updatable =
-  | MonoORFree of FreeRowID.t
-  | MonoORLink of mono_row
+  | MonoRowFree of FreeRowID.t
+  | MonoRowLink of mono_row
 
 and mono_row_variable =
   | UpdatableRow   of mono_row_variable_updatable ref
   | MustBeBoundRow of MustBeBoundRowID.t
 
 and poly_row_variable =
-  | PolyORFree  of mono_row_variable
-  | PolyORBound of BoundRowID.t
+  | PolyRowFree  of mono_row_variable
+  | PolyRowBound of BoundRowID.t
 
 and mono_type_variable_updatable =
   | MonoFree of FreeID.t
@@ -264,8 +262,8 @@ type ('a, 'b) macro_parameter_type =
 [@@deriving show { with_path = false }]
 
 type ('a, 'b) macro_type =
-  | HorzMacroType of (('a, 'b) macro_parameter_type) list
-  | VertMacroType of (('a, 'b) macro_parameter_type) list
+  | InlineMacroType of (('a, 'b) macro_parameter_type) list
+  | BlockMacroType  of (('a, 'b) macro_parameter_type) list
 [@@deriving show { with_path = false }]
 
 type mono_macro_parameter_type =
@@ -309,7 +307,7 @@ type pre = {
   level           : level;
   type_parameters : type_parameter_map;
   row_parameters  : row_parameter_map;
-  quantifiability : quantifiability;  (* maybe omitted in the future *)
+  quantifiability : quantifiability;  (* TODO: maybe omitted in the future *)
   stage           : stage;
 }
 
@@ -333,13 +331,13 @@ type untyped_binding =
   untyped_binding_main ranged
 
 and untyped_binding_main =
-  | UTBindValue     of stage * untyped_rec_or_nonrec
-  | UTBindType      of untyped_type_binding list
-  | UTBindModule    of module_name ranged * untyped_signature option * untyped_module
-  | UTBindSignature of signature_name ranged * untyped_signature
-  | UTBindInclude   of untyped_module
-  | UTBindHorzMacro of ctrlseq_name ranged * untyped_macro_parameter list * untyped_abstract_tree
-  | UTBindVertMacro of ctrlseq_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindValue       of stage * untyped_rec_or_nonrec
+  | UTBindType        of untyped_type_binding list
+  | UTBindModule      of module_name ranged * untyped_signature option * untyped_module
+  | UTBindSignature   of signature_name ranged * untyped_signature
+  | UTBindInclude     of untyped_module
+  | UTBindInlineMacro of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindBlockMacro  of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
 
 and untyped_module =
   untyped_module_main ranged
@@ -363,7 +361,7 @@ and untyped_signature_main =
 
 and untyped_declaration =
   untyped_declaration_main
-    (* TEMPORARY; should be `untyped_declaration_main ranged`  *)
+    (* TODO; should be `untyped_declaration_main ranged`  *)
 
 and untyped_declaration_main =
   | UTDeclValue      of stage * var_name ranged * manual_quantifier * manual_type
@@ -377,8 +375,8 @@ and manual_quantifier =
   (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
 
 and manual_macro_type =
-  | MHorzMacroType of manual_macro_parameter_type list
-  | MVertMacroType of manual_macro_parameter_type list
+  | MInlineMacroType of manual_macro_parameter_type list
+  | MBlockMacroType  of manual_macro_parameter_type list
 
 and manual_macro_parameter_type =
   | MLateMacroParameter  of manual_type
@@ -405,54 +403,54 @@ and untyped_synonym_or_variant =
   | UTBindSynonym of manual_type
   | UTBindVariant of constructor_branch list
 
-and untyped_input_horz_element =
-  Range.t * untyped_input_horz_element_main
-    [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_input_horz_element_main utihmain)]
+and untyped_inline_text_element =
+  Range.t * untyped_inline_text_element_main
+    [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_inline_text_element_main utihmain)]
 
-and untyped_input_horz_element_main =
-  | UTInputHorzText             of string
+and untyped_inline_text_element_main =
+  | UTInlineTextString           of string
       [@printer (fun fmt s -> Format.fprintf fmt "IT:%s" s)]
-  | UTInputHorzApplyCommand     of untyped_abstract_tree * untyped_command_argument list
+  | UTInlineTextApplyCommand     of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "IC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
-  | UTInputHorzContent          of untyped_abstract_tree
-  | UTInputHorzEmbeddedMath     of untyped_abstract_tree
-  | UTInputHorzEmbeddedCodeArea of string
-  | UTInputHorzMacro            of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
+  | UTInlineTextContent          of untyped_abstract_tree
+  | UTInlineTextEmbeddedMath     of untyped_abstract_tree
+  | UTInlineTextEmbeddedCodeArea of string
+  | UTInlineTextMacro            of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
 and untyped_macro_argument =
   | UTLateMacroArg  of untyped_abstract_tree
   | UTEarlyMacroArg of untyped_abstract_tree
 
-and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
-  [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_input_vert_element_main utivmain)]
+and untyped_block_text_element = Range.t * untyped_block_text_element_main
+  [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_block_text_element_main utivmain)]
 
-and untyped_input_vert_element_main =
-  | UTInputVertApplyCommand of untyped_abstract_tree * untyped_command_argument list
+and untyped_block_text_element_main =
+  | UTBlockTextApplyCommand of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) ->
         Format.fprintf fmt "BC:%a %a"
           pp_untyped_abstract_tree utast
           (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst
       )]
-  | UTInputVertContent  of untyped_abstract_tree
-  | UTInputVertMacro    of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
+  | UTBlockTextContent  of untyped_abstract_tree
+  | UTBlockTextMacro    of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
-and untyped_input_math_element =
-  Range.t * untyped_input_math_element_main
+and untyped_math_text_element =
+  Range.t * untyped_math_text_element_main
 
-and untyped_input_math_element_main =
-  | UTInputMathElement of {
-      base : untyped_input_math_base;
-      sup  : (bool * untyped_input_math_element list) option;
-      sub  : (bool * untyped_input_math_element list) option;
+and untyped_math_text_element_main =
+  | UTMathTextElement of {
+      base : untyped_math_text_base;
+      sup  : (bool * untyped_math_text_element list) option;
+      sub  : (bool * untyped_math_text_element list) option;
     }
 
-and untyped_input_math_base =
-  | UTInputMathChar of Uchar.t
+and untyped_math_text_base =
+  | UTMathTextChar of Uchar.t
       [@printer (fun ppf uch ->
-        Format.fprintf ppf "(UTInputMathChar \"%s\")" (string_of_uchar uch)
+        Format.fprintf ppf "(UTMathTextChar \"%s\")" (string_of_uchar uch)
       )]
-  | UTInputMathApplyCommand of untyped_abstract_tree * untyped_command_argument list
-  | UTInputMathContent      of untyped_abstract_tree
+  | UTMathTextApplyCommand of untyped_abstract_tree * untyped_command_argument list
+  | UTMathTextContent      of untyped_abstract_tree
 
 and untyped_abstract_tree =
   Range.t * untyped_abstract_tree_main
@@ -465,20 +463,19 @@ and untyped_abstract_tree_main =
   | UTIntegerConstant      of int
   | UTFloatConstant        of float
   | UTLengthDescription    of float * length_unit_name
-  | UTStringEmpty
   | UTStringConstant       of string
   | UTPositionedString     of input_position * string
 (* Input texts: *)
-  | UTInputHorz            of untyped_input_horz_element list
-  | UTInputVert            of untyped_input_vert_element list
-  | UTInputMath            of untyped_input_math_element list
+  | UTInlineText          of untyped_inline_text_element list
+  | UTBlockText           of untyped_block_text_element list
+  | UTMathText            of untyped_math_text_element list
 (* Command abstractions: *)
-  | UTLambdaHorzCommand of {
+  | UTLambdaInlineCommand of {
       parameters       : untyped_parameter_unit list;
       context_variable : var_name ranged;
       body             : untyped_abstract_tree;
     }
-  | UTLambdaVertCommand of {
+  | UTLambdaBlockCommand of {
       parameters       : untyped_parameter_unit list;
       context_variable : var_name ranged;
       body             : untyped_abstract_tree;
@@ -490,8 +487,8 @@ and untyped_abstract_tree_main =
       body             : untyped_abstract_tree;
     }
 (* For lightweight command definitions: *)
-  | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
-  | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
+  | UTReadInline           of untyped_abstract_tree * untyped_abstract_tree
+  | UTReadBlock            of untyped_abstract_tree * untyped_abstract_tree
 (* Lists: *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
@@ -560,40 +557,40 @@ type untyped_source_file =
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
-type 'a input_horz_element_scheme =
-  | InputHorzText             of string
-  | InputHorzContent          of 'a
-  | InputHorzEmbeddedMath     of 'a
-  | InputHorzEmbeddedCodeArea of string
-  | InputHorzApplyCommand of {
+type 'a inline_text_element_scheme =
+  | InlineTextString           of string
+  | InlineTextContent          of 'a
+  | InlineTextEmbeddedMath     of 'a
+  | InlineTextEmbeddedCodeArea of string
+  | InlineTextApplyCommand of {
       command   : 'a;
       arguments : ('a LabelMap.t * 'a) list;
     }
 [@@deriving show { with_path = false; }]
 
-type 'a input_vert_element_scheme =
-  | InputVertContent  of 'a
-  | InputVertApplyCommand of {
+type 'a block_text_element_scheme =
+  | BlockTextContent of 'a
+  | BlockTextApplyCommand of {
       command   : 'a;
       arguments : ('a LabelMap.t * 'a) list;
     }
 [@@deriving show { with_path = false; }]
 
-type 'a input_math_base_scheme =
-  | InputMathChar         of Uchar.t
+type 'a math_text_base_scheme =
+  | MathTextChar         of Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
-  | InputMathContent      of 'a
-  | InputMathApplyCommand of {
+  | MathTextContent      of 'a
+  | MathTextApplyCommand of {
       command   : 'a;
       arguments : ('a LabelMap.t * 'a) list;
     }
 [@@deriving show { with_path = false; }]
 
-type 'a input_math_element_scheme =
-  | InputMathElement of {
-      base : 'a input_math_base_scheme;
-      sub  : (('a input_math_element_scheme) list) option;
-      sup  : (('a input_math_element_scheme) list) option;
+type 'a math_text_element_scheme =
+  | MathTextElement of {
+      base : 'a math_text_base_scheme;
+      sub  : (('a math_text_element_scheme) list) option;
+      sup  : (('a math_text_element_scheme) list) option;
     }
 [@@deriving show { with_path = false; }]
 
@@ -622,8 +619,8 @@ type base_constant =
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
   | BCImageKey of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
-  | BCHorz     of HorzBox.horz_box list
-  | BCVert     of HorzBox.vert_box list
+  | BCInlineBoxes of HorzBox.horz_box list
+  | BCBlockBoxes  of HorzBox.vert_box list
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCDocument        of (length * length) * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
@@ -654,43 +651,55 @@ and location =
 and vmenv =
   environment * (syntactic_value array) list
 
-and compiled_input_horz_element =
-  | CompiledInputHorzText         of string
-  | CompiledInputHorzEmbedded     of instruction list
-  | CompiledInputHorzContent      of instruction list
-  | CompiledInputHorzEmbeddedMath of instruction list
-  | CompiledInputHorzEmbeddedCodeText of string
+and compiled_inline_text_element =
+  unit (* TODO: define this *)
+(*
+  | CompiledInlineTextText         of string
+  | CompiledInlineTextEmbedded     of instruction list
+  | CompiledInlineTextContent      of instruction list
+  | CompiledInlineTextEmbeddedMath of instruction list
+  | CompiledInlineTextEmbeddedCodeText of string
+*)
 
-and compiled_intermediate_input_horz_element =
-  | CompiledImInputHorzText         of string
-  | CompiledImInputHorzEmbedded     of instruction list
-  | CompiledImInputHorzContent of compiled_intermediate_input_horz_element list * vmenv
-  | CompiledImInputHorzEmbeddedMath of instruction list
-  | CompiledImInputHorzEmbeddedCodeText of string
+and compiled_intermediate_inline_text_element =
+  unit (* TODO: define this *)
+(*
+  | CompiledImInlineTextText         of string
+  | CompiledImInlineTextEmbedded     of instruction list
+  | CompiledImInlineTextContent of compiled_intermediate_inline_text_element list * vmenv
+  | CompiledImInlineTextEmbeddedMath of instruction list
+  | CompiledImInlineTextEmbeddedCodeText of string
+*)
 
-and compiled_input_vert_element =
-  | CompiledInputVertEmbedded of instruction list
-  | CompiledInputVertContent  of instruction list
+and compiled_block_text_element =
+  unit (* TODO: define this *)
+(*
+  | CompiledBlockTextEmbedded of instruction list
+  | CompiledBlockTextContent  of instruction list
+*)
 
-and compiled_intermediate_input_vert_element =
-  | CompiledImInputVertEmbedded of instruction list
-  | CompiledImInputVertContent  of compiled_intermediate_input_vert_element list * vmenv
+and compiled_intermediate_block_text_element =
+  unit (* TODO: define this *)
+(*
+  | CompiledImBlockTextEmbedded of instruction list
+  | CompiledImBlockTextContent  of compiled_intermediate_block_text_element list * vmenv
+*)
 
-and compiled_intermediate_input_math_element =
+and compiled_intermediate_math_text_element =
   unit (* TODO: define this *)
 
-and ir_input_horz_element =
-  | IRInputHorzText         of string
-  | IRInputHorzEmbedded     of ir
-  | IRInputHorzContent      of ir
-  | IRInputHorzEmbeddedMath of ir
-  | IRInputHorzEmbeddedCodeText of string
+and ir_inline_text_element =
+  | IRInlineTextText         of string
+  | IRInlineTextEmbedded     of ir
+  | IRInlineTextContent      of ir
+  | IRInlineTextEmbeddedMath of ir
+  | IRInlineTextEmbeddedCodeText of string
 
-and ir_input_vert_element =
-  | IRInputVertEmbedded of ir
-  | IRInputVertContent  of ir
+and ir_block_text_element =
+  | IRBlockTextEmbedded of ir
+  | IRBlockTextContent  of ir
 
-and ir_input_math_element =
+and ir_math_text_element =
   unit (* TODO: define this *)
 
 and varloc =
@@ -700,9 +709,9 @@ and varloc =
 and ir =
   | IRConstant              of syntactic_value
   | IRTerminal
-  | IRInputHorz             of ir_input_horz_element list
-  | IRInputVert             of ir_input_vert_element list
-  | IRInputMath             of ir_input_math_element list
+  | IRInlineText            of ir_inline_text_element list
+  | IRBlockText             of ir_block_text_element list
+  | IRMathText              of ir_math_text_element list
   | IRRecord                of label list * ir list
   | IRAccessField           of ir * label
   | IRUpdateField           of ir * label * ir
@@ -725,9 +734,9 @@ and ir =
 
   | IRCodeCombinator        of (code_value list -> code_value) * int * ir list
   | IRCodeRecord            of label list * ir list
-  | IRCodeInputHorz         of (ir input_horz_element_scheme) list
-  | IRCodeInputVert         of (ir input_vert_element_scheme) list
-  | IRCodeInputMath         of (ir input_math_element_scheme) list
+  | IRCodeInlineText        of (ir inline_text_element_scheme) list
+  | IRCodeBlockText         of (ir block_text_element_scheme) list
+  | IRCodeMathText          of (ir math_text_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
   | IRCodeLetRecIn          of ir_letrec_binding list * ir
   | IRCodeLetNonRecIn       of ir_pattern_tree * ir * ir
@@ -807,8 +816,8 @@ and instruction =
   | OpCheckStackTopTupleCons of instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopTupleCons(...)")]
   | OpClosure of varloc LabelMap.t * int * int * instruction list
-  | OpClosureInputHorz of compiled_input_horz_element list
-  | OpClosureInputVert of compiled_input_vert_element list
+  | OpClosureInlineText of compiled_inline_text_element list
+  | OpClosureBlockText of compiled_block_text_element list
   | OpBindLocationGlobal of syntactic_value ref * EvalVarID.t
   | OpBindLocationLocal of int * int * EvalVarID.t
   | OpUpdateGlobal of syntactic_value ref * EvalVarID.t
@@ -822,8 +831,8 @@ and instruction =
   | OpApplyCodeCombinator of (code_value list -> code_value) * int
   | OpCodeMakeRecord of label list
   | OpCodeMakeTuple of int
-  | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
-  | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
+  | OpCodeMakeInlineText of ((instruction list) inline_text_element_scheme) list
+  | OpCodeMakeBlockText of ((instruction list) block_text_element_scheme) list
   | OpCodePatternMatch  of Range.t * ((instruction list) ir_pattern_branch_scheme) list
   | OpCodeLetRec        of ((instruction list) ir_letrec_binding_scheme) list * instruction list
   | OpCodeLetNonRec     of ir_pattern_tree * instruction list * instruction list
@@ -833,37 +842,37 @@ and instruction =
   | OpConvertSymbolToCode
 #include "__insttype.gen.ml"
 
-and input_horz_value_element =
-  | InputHorzValueText             of string
-  | InputHorzValueCommandClosure   of horz_command_closure
-  | InputHorzValueEmbeddedMath     of input_math_value_element list
-  | InputHorzValueEmbeddedCodeArea of string
+and inline_text_value_element =
+  | InlineTextValueString           of string
+  | InlineTextValueCommandClosure   of inline_command_closure
+  | InlineTextValueEmbeddedMath     of math_text_value_element list
+  | InlineTextValueEmbeddedCodeArea of string
 
-and input_vert_value_element =
-  | InputVertValueCommandClosure of vert_command_closure
+and block_text_value_element =
+  | BlockTextValueCommandClosure of block_command_closure
 
-and input_math_value_element =
-  | InputMathValueElement of {
-      base : input_math_value_base;
-      sub  : (input_math_value_element list) option;
-      sup  : (input_math_value_element list) option;
+and math_text_value_element =
+  | MathTextValueElement of {
+      base : math_text_value_base;
+      sub  : (math_text_value_element list) option;
+      sup  : (math_text_value_element list) option;
     }
 
-and input_math_value_base =
-  | InputMathValueChar     of Uchar.t
-      [@printer (fun fmt uch -> Format.fprintf fmt "ImInputMathChar \"%s\"" (string_of_uchar uch))]
-  | InputMathValueEmbedded of math_command_closure
-  | InputMathValueGroup    of input_math_value_element list
+and math_text_value_base =
+  | MathTextValueChar     of Uchar.t
+      [@printer (fun fmt uch -> Format.fprintf fmt "ImMathTextChar \"%s\"" (string_of_uchar uch))]
+  | MathTextValueEmbedded of math_command_closure
+  | MathTextValueGroup    of math_text_value_element list
 
-and horz_command_closure =
-  | HorzCommandClosureSimple of {
+and inline_command_closure =
+  | InlineCommandClosureSimple of {
       context_binder : EvalVarID.t;
       body           : abstract_tree;
       environment    : environment;
     }
 
-and vert_command_closure =
-  | VertCommandClosureSimple of {
+and block_command_closure =
+  | BlockCommandClosureSimple of {
       context_binder : EvalVarID.t;
       body           : abstract_tree;
       environment    : environment;
@@ -884,7 +893,7 @@ and math_command_closure =
     }
 
 and syntactic_value =
-  | Nil  (* -- just for brief use -- *)
+  | Nil  (* Just for brief use. *)
   | BaseConstant of base_constant
   | Constructor  of constructor_name * syntactic_value
   | List         of syntactic_value list
@@ -900,69 +909,71 @@ and syntactic_value =
   | CodeSymbol   of CodeSymbol.t
   | MathBoxes    of math_box list
 
-(* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
+(* Values for the naive interpreter, i.e. `evaluator.cppo.ml`: *)
   | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | InputHorzValue   of input_horz_value_element list
-  | InputVertValue   of input_vert_value_element list
-  | InputMathValue   of input_math_value_element list
+  | InlineTextValue  of inline_text_value_element list
+  | BlockTextValue   of block_text_value_element list
+  | MathTextValue    of math_text_value_element list
 
-  | HorzCommandClosure of horz_command_closure
-  | VertCommandClosure of vert_command_closure
-  | MathCommandClosure of math_command_closure
+  | InlineCommandClosure of inline_command_closure
+  | BlockCommandClosure  of block_command_closure
+  | MathCommandClosure   of math_command_closure
 
-(* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
+(* Values for the SECD machine, i.e. `vm.cppo.ml`: *)
   | CompiledClosure          of varloc LabelMap.t * int * syntactic_value list * int * instruction list * vmenv
   | CompiledPrimitiveClosure of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
-  | CompiledInputHorzClosure of compiled_intermediate_input_horz_element list * vmenv
-  | CompiledInputVertClosure of compiled_intermediate_input_vert_element list * vmenv
-  | CompiledInputMathClosure of compiled_intermediate_input_math_element list * vmenv
+  | CompiledInlineTextClosure of compiled_intermediate_inline_text_element list * vmenv
+  | CompiledBlockTextClosure  of compiled_intermediate_block_text_element list * vmenv
+  | CompiledMathTextClosure   of compiled_intermediate_math_text_element list * vmenv
 
 and abstract_tree =
-  | ASTBaseConstant       of base_constant
-  | ASTEndOfList
-(* -- input texts -- *)
-  | InputHorz             of input_horz_element list
-  | InputVert             of input_vert_element list
-  | InputMath             of input_math_element list
-  | LambdaHorz            of EvalVarID.t * abstract_tree
-  | LambdaVert            of EvalVarID.t * abstract_tree
+(* Texts: *)
+  | InlineText            of inline_text_element list
+  | BlockText             of block_text_element list
+  | MathText              of math_text_element list
+(* Command abstractions: *)
+  | LambdaInline          of EvalVarID.t * abstract_tree
+  | LambdaBlock           of EvalVarID.t * abstract_tree
   | LambdaMath            of EvalVarID.t * (EvalVarID.t * EvalVarID.t) option * abstract_tree
-(* -- record value -- *)
+(* Record manipulation: *)
   | Record                of abstract_tree LabelMap.t
   | AccessField           of abstract_tree * label
   | UpdateField           of abstract_tree * label * abstract_tree
-(* -- fundamental -- *)
+(* Fundamentals: *)
+  | ASTBaseConstant       of base_constant
   | LetRecIn              of letrec_binding list * abstract_tree
   | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
   | ContentOf             of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
   | Function              of EvalVarID.t LabelMap.t * pattern_branch
   | Apply                 of abstract_tree LabelMap.t * abstract_tree * abstract_tree
-(* -- pattern match -- *)
+(* Patterns and datatypes: *)
+  | PrimitiveTuple        of abstract_tree TupleList.t
   | PatternMatch          of Range.t * abstract_tree * pattern_branch list
   | NonValueConstructor   of constructor_name * abstract_tree
-(* -- imperative -- *)
+  | ASTEndOfList
+(* Imperative operations: *)
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Dereference           of abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
-  | PrimitiveTuple        of abstract_tree TupleList.t
-(* -- staging constructs -- *)
+(* Staging constructs: *)
   | Next                  of abstract_tree
   | Prev                  of abstract_tree
   | Persistent            of Range.t * EvalVarID.t
   | Lift                  of abstract_tree
   | ASTCodeSymbol         of CodeSymbol.t
+(* Primitive applications: *)
 #include "__attype.gen.ml"
 
-and input_horz_element =
-  abstract_tree input_horz_element_scheme
+and inline_text_element =
+  abstract_tree inline_text_element_scheme
 
-and input_vert_element =
-  abstract_tree input_vert_element_scheme
+and block_text_element =
+  abstract_tree block_text_element_scheme
 
-and input_math_element =
-  abstract_tree input_math_element_scheme
+and math_text_element =
+  abstract_tree math_text_element_scheme
 
 and 'a path_component =
   ('a, abstract_tree) path_component_scheme
@@ -1031,7 +1042,7 @@ and math_box_atom =
       right_kern : HorzBox.math_char_kern_func;
     } [@printer (fun ppf _ _ _ _ _ -> Format.fprintf ppf "<math-char'>")]
 
-  | MathEmbeddedHorz of HorzBox.horz_box list
+  | MathEmbeddedInline of HorzBox.horz_box list
 
 and math_box =
   | MathBoxAtom of {
@@ -1101,11 +1112,11 @@ and code_value =
   | CdPersistent    of Range.t * EvalVarID.t
   | CdBaseConstant  of base_constant
   | CdEndOfList
-  | CdInputHorz     of code_input_horz_element list
-  | CdInputVert     of code_input_vert_element list
-  | CdInputMath     of code_input_math_element list
-  | CdLambdaHorz    of CodeSymbol.t * code_value
-  | CdLambdaVert    of CodeSymbol.t * code_value
+  | CdInlineText    of code_inline_text_element list
+  | CdBlockText     of code_block_text_element list
+  | CdMathText      of code_math_text_element list
+  | CdLambdaInline  of CodeSymbol.t * code_value
+  | CdLambdaBlock   of CodeSymbol.t * code_value
   | CdLambdaMath    of CodeSymbol.t * (CodeSymbol.t * CodeSymbol.t) option * code_value
   | CdContentOf     of Range.t * CodeSymbol.t
   | CdLetRecIn      of code_letrec_binding list * code_value
@@ -1124,14 +1135,14 @@ and code_value =
   | CdTuple         of code_value TupleList.t
 #include "__codetype.gen.ml"
 
-and code_input_horz_element =
-  code_value input_horz_element_scheme
+and code_inline_text_element =
+  code_value inline_text_element_scheme
 
-and code_input_vert_element =
-  code_value input_vert_element_scheme
+and code_block_text_element =
+  code_value block_text_element_scheme
 
-and code_input_math_element =
-  code_value input_math_element_scheme
+and code_math_text_element =
+  code_value math_text_element_scheme
 
 and 'a code_path_component =
   ('a, code_value) path_component_scheme
@@ -1232,16 +1243,16 @@ let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value
   StoreIDHashTable.find_opt (!stenvref) stid
 
 
-let map_input_horz f ihlst =
+let map_inline_text f ihlst =
   ihlst |> List.map (function
-  | InputHorzText(s) ->
-      InputHorzText(s)
+  | InlineTextString(s) ->
+      InlineTextString(s)
 
-  | InputHorzApplyCommand{
+  | InlineTextApplyCommand{
       command = ast_cmd;
       arguments;
     } ->
-      InputHorzApplyCommand{
+      InlineTextApplyCommand{
         command =
           f ast_cmd;
 
@@ -1251,22 +1262,22 @@ let map_input_horz f ihlst =
           );
       }
 
-  | InputHorzContent(ast)        -> InputHorzContent(f ast)
-  | InputHorzEmbeddedMath(ast)   -> InputHorzEmbeddedMath(f ast)
-  | InputHorzEmbeddedCodeArea(s) -> InputHorzEmbeddedCodeArea(s)
+  | InlineTextContent(ast)        -> InlineTextContent(f ast)
+  | InlineTextEmbeddedMath(ast)   -> InlineTextEmbeddedMath(f ast)
+  | InlineTextEmbeddedCodeArea(s) -> InlineTextEmbeddedCodeArea(s)
   )
 
 
-let map_input_vert f ivlst =
+let map_block_text f ivlst =
   ivlst |> List.map (function
-  | InputVertContent(ast) ->
-      InputVertContent(f ast)
+  | BlockTextContent(ast) ->
+      BlockTextContent(f ast)
 
-  | InputVertApplyCommand{
+  | BlockTextApplyCommand{
       command = ast_cmd;
       arguments;
     } ->
-      InputVertApplyCommand{
+      BlockTextApplyCommand{
         command =
           f ast_cmd;
 
@@ -1278,22 +1289,22 @@ let map_input_vert f ivlst =
   )
 
 
-let rec map_input_math f ms =
+let rec map_math_text f ms =
   ms |> List.map (fun m ->
-    let InputMathElement{ base; sub; sup } = m in
+    let MathTextElement{ base; sub; sup } = m in
     let base =
       match base with
-      | InputMathChar(uch) ->
-          InputMathChar(uch)
+      | MathTextChar(uch) ->
+          MathTextChar(uch)
 
-      | InputMathContent(ast) ->
-          InputMathContent(f ast)
+      | MathTextContent(ast) ->
+          MathTextContent(f ast)
 
-      | InputMathApplyCommand{
+      | MathTextApplyCommand{
           command = ast_cmd;
           arguments;
         } ->
-          InputMathApplyCommand{
+          MathTextApplyCommand{
             command =
               f ast_cmd;
 
@@ -1303,9 +1314,9 @@ let rec map_input_math f ms =
               )
           }
     in
-    let sub = sub |> Option.map (map_input_math f) in
-    let sup = sup |> Option.map (map_input_math f) in
-    InputMathElement{ base; sub; sup }
+    let sub = sub |> Option.map (map_math_text f) in
+    let sup = sup |> Option.map (map_math_text f) in
+    MathTextElement{ base; sub; sup }
   )
 
 
@@ -1326,15 +1337,15 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
-    | CdInputMath(ms)                      -> InputMath(ms |> map_input_math aux)
-    | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
-    | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
+    | CdInlineText(cdits)                  -> InlineText(cdits |> map_inline_text aux)
+    | CdBlockText(cdbts)                   -> BlockText(cdbts |> map_block_text aux)
+    | CdMathText(cdmts)                    -> MathText(cdmts |> map_math_text aux)
 
-    | CdLambdaHorz(symb_ctx, code0) ->
-        LambdaHorz(CodeSymbol.unlift symb_ctx, aux code0)
+    | CdLambdaInline(symb_ctx, code0) ->
+        LambdaInline(CodeSymbol.unlift symb_ctx, aux code0)
 
-    | CdLambdaVert(symb_ctx, code0) ->
-        LambdaVert(CodeSymbol.unlift symb_ctx, aux code0)
+    | CdLambdaBlock(symb_ctx, code0) ->
+        LambdaBlock(CodeSymbol.unlift symb_ctx, aux code0)
 
     | CdLambdaMath(symb_ctx, symb_pair_opt, code0) ->
         let evid_pair_opt =
