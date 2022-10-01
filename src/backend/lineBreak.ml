@@ -22,10 +22,6 @@ type internal_ratios =
   | LBTooShort    of length
 
 
-let ( ~. ) = float_of_int
-let ( ~@ ) = int_of_float
-
-
 let get_metrics (lphb : lb_pure_box) : metrics =
   match lphb with
   | LBAtom{ metrics; _ }                       -> metrics
@@ -568,7 +564,7 @@ let calculate_ratios (wid_required : length) (widinfo_total : length_info) : int
       match stretch with
       | Fils(nfil) ->
           if nfil > 0 then
-            (LBPermissible(0.), widdiff *% (1. /. (~. nfil)))
+            (LBPermissible(0.), widdiff *% (1. /. (float_of_int nfil)))
           else
             assert false
               (* The number of fils cannot be nonpositive *)

@@ -72,12 +72,6 @@ let pure_halfwidth_space_hard (fontsize : length) : lb_pure_box =
   line_break_space (widinfo, Length.zero, Length.zero)
 
 
-(* Inserts a shrinkable CJK fullwidth space. *)
-let pure_fullwidth_space (fontsize : length) : lb_pure_box =
-  let widinfo = make_width_info fontsize (fontsize *% 0.5) (fontsize *% 0.5) in
-  line_break_space (widinfo, Length.zero, Length.zero)
-
-
 (* Inserts glue between directly adjacent CJK characters. *)
 let adjacent_space (ctx1 : context_main) (ctx2 : context_main) =
   let fontsize = Length.max ctx1.font_size ctx2.font_size in

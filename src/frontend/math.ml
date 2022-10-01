@@ -956,10 +956,6 @@ let horz_of_low_math_element (lme : low_math_atom_main) : horz_box list =
       hbs
 
 
-let ratioize n =
-  (float_of_int n) /. 1000.
-
-
 let horz_fraction_bar ictx wid =
   let fontsize = Context.font_size ictx in
   let mc = Context.get_math_constants ictx in

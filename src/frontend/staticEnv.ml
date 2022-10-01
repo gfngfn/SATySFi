@@ -1,3 +1,5 @@
+(* -unused-value-declaration *)
+[@@@ocaml.warning "-32"]
 
 open Types
 

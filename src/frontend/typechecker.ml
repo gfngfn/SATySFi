@@ -323,56 +323,9 @@ let add_pattern_var_mono (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_va
   ) patvarmap tyenv
 
 
-let add_pattern_var_poly (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
-  PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
-    let pty = TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty) in
-    let ventry =
-      {
-        val_type  = pty;
-        val_name  = Some(evid);
-        val_stage = pre.stage;
-      }
-    in
-    tyenvacc |> Typeenv.add_value varnm ventry
-  ) patvarmap tyenv
-
-
-let point_type_main =
-  (ProductType(TupleList.make
-    (Range.dummy "point-type-1", BaseType(LengthType))
-    (Range.dummy "point-type-2", BaseType(LengthType))
-    []))
-
-
 (* `apply_tree_of_list` converts `e0` and `[e1; ...; eN]` into `(e0 e1 ... eN)`. *)
 let apply_tree_of_list (astfunc : abstract_tree) (asts : abstract_tree list) =
   List.fold_left (fun astf astx -> Apply(LabelMap.empty, astf, astx)) astfunc asts
-
-
-(* `flatten_type` converts type `(t1 -> ... -> tN -> t)` into `([t1; ...; tN], t)`. *)
-let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type =
-  let rec aux_row (tylabmap : mono_type LabelMap.t) = function
-    | RowEmpty                                         -> tylabmap
-    | RowVar(UpdatableRow{contents = MonoORFree(_)})   -> tylabmap
-    | RowVar(UpdatableRow{contents = MonoORLink(row)}) -> aux_row tylabmap row
-    | RowVar(MustBeBoundRow(_))                        -> assert false
-    | RowCons((_, label), ty, row)                     -> aux_row (tylabmap |> LabelMap.add label ty) row
-  in
-  let rec aux acc ty =
-    let (_rng, tymain) = ty in
-      match tymain with
-      | TypeVariable(Updatable{contents = MonoLink(tysub)}) ->
-          aux acc tysub
-
-      | FuncType(optrow, tydom, tycod) ->
-          let tylabmap = aux_row LabelMap.empty optrow in
-          let acc = Alist.extend acc (CommandArgType(tylabmap, tydom)) in
-          aux acc tycod
-
-      | _ ->
-          (Alist.to_list acc, ty)
-  in
-  aux Alist.empty ty
 
 
 let occurs (fid : FreeID.t) (ty : mono_type) =

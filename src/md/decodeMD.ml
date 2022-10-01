@@ -4,7 +4,6 @@ open Types
 
 type section_level =
   | H1 | H2 | H3 | H4 | H5 | H6
-[@@deriving show { with_path = false; }]
 
 type block_element =
   | Section of section_level * inline * block
@@ -15,18 +14,17 @@ type block_element =
   | OlInline of inline list
   | Blockquote of block
   | CodeBlock of Omd.name * string
-      [@printer (fun fmt (name, s) -> Format.fprintf fmt "CodeBlock(\"%s\",@ \"%s\")" name s)]
   | Hr
   | BlockRaw of string
 
-and block = block_element list
+and block =
+  block_element list
 
 and inline_element =
   | Text of string
   | Emph of inline
   | Bold of inline
   | Code of Omd.name * string
-      [@printer (fun fmt (name, s) -> Format.fprintf fmt "Code(\"%s\",@ \"%s\")" name s)]
   | Br
   | Url of string * inline * string
   | Ref of string * string * (string * string) option
@@ -34,16 +32,15 @@ and inline_element =
   | InlineRaw of string
   | EmbeddedBlock of block
 
-and inline = inline_element list
-[@@deriving show { with_path = false; }]
+and inline =
+  inline_element list
 
-type middle_record =
-  {
-    pre_contents        : Omd.t;
-    current_heading     : Omd.t;
-    current_accumulated : Omd.element Alist.t;
-    accumulated         : (inline * Omd.t) Alist.t;
-  }
+type middle_record = {
+  pre_contents        : Omd.t;
+  current_heading     : Omd.t;
+  current_accumulated : Omd.element Alist.t;
+  accumulated         : (inline * Omd.t) Alist.t;
+}
 
 type accumulator =
   | Beginning of Omd.element Alist.t

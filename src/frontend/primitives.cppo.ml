@@ -1,3 +1,5 @@
+(* -unused-value-declaration *)
+[@@@ocaml.warning "-32"]
 
 open MyUtil
 open LengthInterface
@@ -15,7 +17,6 @@ let vid_language = TypeID.fresh "language"
 let vid_mathcls  = TypeID.fresh "math-class"
 let vid_mccls    = TypeID.fresh "math-char-class"
 let vid_cell     = TypeID.fresh "cell"
-let vid_image    = TypeID.fresh "image"
 
 let ( ~! ) = Range.dummy
 
