@@ -13,7 +13,7 @@ let report_dynamic_error msg =
   raise (EvalError(msg))
 
 
-type nom_input_horz_element =
+type normalized_inline_text_element =
   | NomInlineTextString         of string
   | NomInlineTextCommandClosure of inline_command_closure
 
@@ -22,11 +22,6 @@ let convert_command_application_to_application (e_cmd : abstract_tree) (args : (
   args |> List.fold_left (fun e_acc (e_labmap, e_arg) ->
     Apply(e_labmap, e_acc, e_arg)
   ) e_cmd
-
-
-let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
-  let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
-  HorzBox.([ HorzPure(PHCInnerString{ context = ctx; chars = uchs }) ])
 
 
 let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
@@ -88,7 +83,7 @@ and reduce_beta_list ~msg (value1 : syntactic_value) (value_args : syntactic_val
   List.fold_left (reduce_beta ~msg ~optional:LabelMap.empty) value1 value_args
 
 
-and interpret_0_input_horz_content (env : environment) (its : inline_text_element list) : inline_text_value_element list =
+and interpret_0_inline_text (env : environment) (its : inline_text_element list) : inline_text_value_element list =
   its |> List.map (function
     | InlineTextString(s) ->
         [ InlineTextValueString(s) ]
@@ -114,7 +109,7 @@ and interpret_0_input_horz_content (env : environment) (its : inline_text_elemen
   ) |> List.concat
 
 
-and interpret_0_input_vert_content (env : environment) (bts : block_text_element list) : block_text_value_element list =
+and interpret_0_block_text (env : environment) (bts : block_text_element list) : block_text_value_element list =
   bts |> List.map (function
     | BlockTextApplyCommand{ command = ast_cmd; arguments = args } ->
         let ast = convert_command_application_to_application ast_cmd args in
@@ -129,11 +124,11 @@ and interpret_0_input_vert_content (env : environment) (bts : block_text_element
   ) |> List.concat
 
 
-and interpret_0_input_math_content (env : environment) (ims : math_text_element list) : math_text_value_element list =
+and interpret_0_math_text (env : environment) (ims : math_text_element list) : math_text_value_element list =
   ims |> List.map (fun im ->
     let MathTextElement{ base = imbase; sub = ims_sub_opt; sup = ims_sup_opt } = im in
-    let imvs_sub_opt = ims_sub_opt |> Option.map (interpret_0_input_math_content env) in
-    let imvs_sup_opt = ims_sup_opt |> Option.map (interpret_0_input_math_content env) in
+    let imvs_sub_opt = ims_sub_opt |> Option.map (interpret_0_math_text env) in
+    let imvs_sup_opt = ims_sup_opt |> Option.map (interpret_0_math_text env) in
     match imbase with
     | MathTextChar(uch) ->
         MathTextValueElement{
@@ -216,17 +211,17 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | ASTEndOfList ->
       List([])
 
-  | InlineText(ihs) ->
-      let ihvs = interpret_0_input_horz_content env ihs in
-      InlineTextValue(ihvs)
+  | InlineText(its) ->
+      let itvs = interpret_0_inline_text env its in
+      InlineTextValue(itvs)
 
-  | BlockText(ivs) ->
-      let ivvs = interpret_0_input_vert_content env ivs in
-      BlockTextValue(ivvs)
+  | BlockText(bts) ->
+      let btvs = interpret_0_block_text env bts in
+      BlockTextValue(btvs)
 
-  | MathText(ims) ->
-      let imvs = interpret_0_input_math_content env ims in
-      MathTextValue(imvs)
+  | MathText(mts) ->
+      let mtvs = interpret_0_math_text env mts in
+      MathTextValue(mtvs)
 
   | LambdaInline(evid_ctx, ast0) ->
       let iclosure =
@@ -808,33 +803,32 @@ and read_text_mode_inline_text (value_tctx : syntactic_value) (itvs : inline_tex
     ) Alist.empty |> Alist.to_list
   in
 
-  let interpret_commands (nmihs : nom_input_horz_element list) : string =
-    nmihs |> List.map (fun nmih ->
-      match nmih with
-      | NomInlineTextCommandClosure(iclosure) ->
-          let
-            InlineCommandClosureSimple{
-              context_binder = evid_ctx;
-              body           = ast_body;
-              environment    = env;
-            } = iclosure
-          in
-          let value =
-            let env = add_to_environment env evid_ctx loc_tctx in
-            interpret_0 env ast_body
-          in
-          get_string value
+  let interpret_commands (nits : normalized_inline_text_element list) : string =
+    nits |> List.map (function
+    | NomInlineTextCommandClosure(iclosure) ->
+        let
+          InlineCommandClosureSimple{
+            context_binder = evid_ctx;
+            body           = ast_body;
+            environment    = env;
+          } = iclosure
+        in
+        let value =
+          let env = add_to_environment env evid_ctx loc_tctx in
+          interpret_0 env ast_body
+        in
+        get_string value
 
-      | NomInlineTextString(s) ->
-          let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
-          let uchs_ret = tctx |> TextBackend.stringify uchs in
-          InternalText.to_utf8 (InternalText.of_uchar_list uchs_ret)
+    | NomInlineTextString(s) ->
+        let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+        let uchs_ret = tctx |> TextBackend.stringify uchs in
+        InternalText.to_utf8 (InternalText.of_uchar_list uchs_ret)
 
     ) |> String.concat ""
   in
 
-  let nmihs = normalize itvs in
-  let s = interpret_commands nmihs in
+  let nits = normalize itvs in
+  let s = interpret_commands nits in
   make_string s
 
 
@@ -996,25 +990,25 @@ and read_pdf_mode_inline_text (ictx : input_context) (itvs : inline_text_value_e
     ) Alist.empty |> Alist.to_list
   in
 
-  let interpret_commands (nmihs : nom_input_horz_element list) : HorzBox.horz_box list =
-    nmihs |> List.map (fun nmih ->
-      match nmih with
-      | NomInlineTextCommandClosure(iclosure) ->
-          let
-            InlineCommandClosureSimple{
-              context_binder = evid_ctx;
-              body           = ast_body;
-              environment    = env;
-            } = iclosure
-          in
-          let value =
-            let env = add_to_environment env evid_ctx loc_ctx in
-            interpret_0 env ast_body
-          in
-          get_horz_boxes value
+  let interpret_commands (nits : normalized_inline_text_element list) : HorzBox.horz_box list =
+    nits |> List.map (function
+    | NomInlineTextCommandClosure(iclosure) ->
+        let
+          InlineCommandClosureSimple{
+            context_binder = evid_ctx;
+            body           = ast_body;
+            environment    = env;
+          } = iclosure
+        in
+        let value =
+          let env = add_to_environment env evid_ctx loc_ctx in
+          interpret_0 env ast_body
+        in
+        get_horz_boxes value
 
-      | NomInlineTextString(s) ->
-          lex_horz_text ctx s
+    | NomInlineTextString(s_utf8) ->
+        let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
+        HorzBox.([ HorzPure(PHCInnerString{ context = ctx; chars = uchs }) ])
 
     ) |> List.concat
   in
