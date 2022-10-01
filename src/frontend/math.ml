@@ -52,10 +52,7 @@ type low_paren = {
 
 type low_radical = horz_box list
 
-(* -w -unused-constructor *)
-type[@ocaml.warning "-37"] low_math_main =
-  | LowMathList of low_math
-
+type low_math_main =
   | LowMathAtom of {
       kind : math_kind;
       atom : low_math_atom;
@@ -425,9 +422,6 @@ let get_left_kern lmmain hgt dpt =
   | LowMathAtom{ atom; _ } ->
       atom.atom_left_kern
 
-  | LowMathList(lm) ->
-      lm.low_left_kern
-
   | LowMathGroup{ left; _ } ->
       nokernf left
 
@@ -452,9 +446,6 @@ let get_right_kern lmmain hgt dpt =
   match lmmain with
   | LowMathAtom{ atom; _ } ->
       atom.atom_right_kern
-
-  | LowMathList(lm) ->
-      lm.low_right_kern
 
   | LowMathGroup{ right; _ } ->
       nokernf right
@@ -987,9 +978,6 @@ let raise_horz r hbs =
 
 
 let get_space_correction = function
-  | LowMathList(lm) ->
-      ItalicsCorrection(lm.low_right_kern.italics_correction)
-
   | LowMathAtom{ atom; _ } ->
       ItalicsCorrection(atom.atom_right_kern.italics_correction)
 
@@ -1018,14 +1006,6 @@ let rec horz_of_low_math (ictx : input_context) ~prev:(mk_first : math_kind) ~ne
         let corrnext = get_space_correction lmmain in
         let (hblst, hbspaceopt, mk) =
           match lmmain with
-          | LowMathList(lmI) ->
-              let lkI = lmI.low_left_kern in
-              let rkI = lmI.low_right_kern in
-              let hblst = horz_of_low_math ictx ~prev:mk_first ~next:MathEnd lmI in
-                (* TODO: doubtful; replace `mk_first` with `mk_prev` *)
-              let hbspaceopt = space_between_math_kinds ictx ~prev:mk_prev corr lkI.left_math_kind in
-              (hblst, hbspaceopt, rkI.right_math_kind)
-
           | LowMathAtom{ kind = mk; atom } ->
               let hblstpure = horz_of_low_math_element atom.atom_main in
               let hbspaceopt = space_between_math_kinds ictx ~prev:mk_prev corr mk in
