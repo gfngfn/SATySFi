@@ -1587,7 +1587,7 @@ make_horz HorzBox.([ HorzPure(PHGRising{ rising; contents }) ])
         ~code:{|
 Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
 |}
-    ; inst "PrimitiveEmbed"
+    ; inst "PrimitiveEmbedString"
         ~name:"embed-string"
         ~type_:Type.(tS @-> tIT)
         ~fields:[
@@ -1598,7 +1598,7 @@ Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code_interp:{|
-InlineTextValue([ InlineTextValueText(str) ])
+InlineTextValue([ InlineTextValueString(str) ])
 |}
         ~code:{|
 CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)

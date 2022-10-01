@@ -833,7 +833,7 @@ and instruction =
 #include "__insttype.gen.ml"
 
 and inline_text_value_element =
-  | InlineTextValueText             of string
+  | InlineTextValueString           of string
   | InlineTextValueCommandClosure   of inline_command_closure
   | InlineTextValueEmbeddedMath     of input_math_value_element list
   | InlineTextValueEmbeddedCodeArea of string

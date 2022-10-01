@@ -91,7 +91,7 @@ and reduce_beta_list ~msg (value1 : syntactic_value) (value_args : syntactic_val
 and interpret_0_input_horz_content (env : environment) (ihs : input_horz_element list) : inline_text_value_element list =
   ihs |> List.map (function
     | InputHorzText(s) ->
-        [ InlineTextValueText(s) ]
+        [ InlineTextValueString(s) ]
 
     | InputHorzApplyCommand{ command = ast_cmd; arguments = args } ->
         let ast = convert_command_application_to_application ast_cmd args in
@@ -777,7 +777,7 @@ and read_text_mode_inline_text (value_tctx : syntactic_value) (itvs : inline_tex
           let nmih = NomInputHorzCommandClosure(hclosure) in
           Alist.extend acc nmih
 
-      | InlineTextValueText(s2) ->
+      | InlineTextValueString(s2) ->
           begin
             match Alist.chop_last acc with
             | Some((accrest, NomInputHorzText(s1))) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
@@ -965,7 +965,7 @@ and read_pdf_mode_inline_text (ictx : input_context) (itvs : inline_text_value_e
       | InlineTextValueCommandClosure(hclosure) ->
           Alist.extend acc (NomInputHorzCommandClosure(hclosure))
 
-      | InlineTextValueText(s2) ->
+      | InlineTextValueString(s2) ->
           begin
             match Alist.chop_last acc with
             | Some(accrest, NomInputHorzText(s1)) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
