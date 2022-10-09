@@ -720,9 +720,14 @@ let error_log_environment suspended =
               NormalLine(Printf.sprintf "but it has %d type argument(s) here." lenerr);
             ]
 
-        | TypeUnificationError(((rng1, _) as ty1), ((rng2, _) as ty2), Contradiction) ->
-            let strty1 = Display.show_mono_type ty1 in
-            let strty2 = Display.show_mono_type ty2 in
+        | TypeUnificationError(((rng1, _) as ty1), ((rng2, _) as ty2), ue) ->
+            let dispmap =
+              DisplayMap.empty
+                |> Display.collect_ids_mono ty1
+                |> Display.collect_ids_mono ty2
+            in
+            let strty1 = Display.show_mono_type_by_map dispmap ty1 in
+            let strty2 = Display.show_mono_type_by_map dispmap ty2 in
             let strrng1 = Range.to_string rng1 in
             let strrng2 = Range.to_string rng2 in
             let (posmsg, strtyA, strtyB, additional) =
@@ -744,46 +749,78 @@ let error_log_environment suspended =
                         NormalLine(Printf.sprintf "at %s." strrng2);
                       ])
             in
-              report_error Typechecker (List.append [
+            let detail =
+              match ue with
+              | TypeContradiction(ty1_sub, ty2_sub) ->
+                  let dispmap =
+                    dispmap
+                      |> Display.collect_ids_mono ty1_sub
+                      |> Display.collect_ids_mono ty2_sub
+                  in
+                  let str_ty1_sub = Display.show_mono_type_by_map dispmap ty1_sub in
+                  let str_ty2_sub = Display.show_mono_type_by_map dispmap ty2_sub in
+                  [
+                    NormalLine("type");
+                    DisplayLine(str_ty1_sub);
+                    NormalLine("is not compatible with");
+                    DisplayLine(Printf.sprintf "%s." str_ty2_sub);
+                  ]
+
+              | TypeVariableInclusion(fid, ty) ->
+                  let dispmap = dispmap |> Display.collect_ids_mono ty in
+                  let (dispmap, str_fid) = dispmap |> DisplayMap.add_free_id fid in
+                  let str_ty = Display.show_mono_type_by_map dispmap ty in
+                  [
+                    NormalLine(Printf.sprintf "type variable %s occurs in" str_fid);
+                    DisplayLine(Printf.sprintf "%s." str_ty);
+                  ]
+
+              | RowContradiction(_row1, _row2) ->
+                  [] (* TODO (error): detailed report *)
+
+              | RowVariableInclusion(_frid, _row) ->
+                  [] (* TODO (error): detailed report *)
+
+              | CommandArityMismatch(len1, len2) ->
+                  [
+                    NormalLine(Printf.sprintf "The command type has %d type argument(s), but is expected to have %d." len1 len2);
+                  ]
+
+              | CommandOptionalLabelMismatch(label) ->
+                  [
+                    NormalLine(Printf.sprintf "Label '%s' in a command type makes the contradiction." label);
+                  ]
+
+              | BreaksRowDisjointness(label) ->
+                  [
+                    NormalLine(Printf.sprintf "The row must not contain label '%s'." label);
+                  ]
+
+              | BreaksLabelMembershipByFreeRowVariable(_frid, _label_expected, _labset) ->
+                  [] (* TODO (error): detailed report *)
+
+              | BreaksLabelMembershipByBoundRowVariable(_mbbrid, _label) ->
+                  [] (* TODO (error): detailed report *)
+
+              | BreaksLabelMembershipByEmptyRow(label) ->
+                  [
+                    NormalLine(Printf.sprintf "The empty row does not contain label '%s'." label);
+                  ]
+
+              | InsufficientRowVariableConstraint(_mbbrid, _labset_expected, _labset_actual) ->
+                  [] (* TODO (error): detailed report *)
+            in
+            report_error Typechecker (List.concat [
+              [
                 NormalLine(posmsg);
                 NormalLine("this expression has type");
                 DisplayLine(Printf.sprintf "%s," strtyA);
                 NormalLine("but is expected of type");
                 DisplayLine(Printf.sprintf "%s." strtyB);
-              ] additional)
-
-        | TypeUnificationError(((rng1, _) as ty1), ((rng2, _) as ty2), Inclusion) ->
-            let strty1 = Display.show_mono_type ty1 in
-            let strty2 = Display.show_mono_type ty2 in
-            let strrng1 = Range.to_string rng1 in
-            let strrng2 = Range.to_string rng2 in
-            let (posmsg, strtyA, strtyB, additional) =
-              match (Range.is_dummy rng1, Range.is_dummy rng2) with
-              | (true, true) ->
-                  (Printf.sprintf "(cannot report position; '%s', '%s')" (Range.message rng1) (Range.message rng2),
-                      strty1, strty2, [])
-
-              | (true, false) ->
-                  (Printf.sprintf "at %s:" strrng2, strty2, strty1, [])
-
-              | (false, true) ->
-                  (Printf.sprintf "at %s:" strrng1, strty1, strty2, [])
-
-              | (false, false) ->
-                  (Printf.sprintf "at %s:" strrng1, strty1, strty2,
-                      [
-                        NormalLine("This constraint is required by the expression");
-                        NormalLine(Printf.sprintf "at %s." strrng2);
-                      ])
-            in
-              report_error Typechecker (List.append [
-                NormalLine(posmsg);
-                NormalLine("this expression has types");
-                DisplayLine(strtyA);
-                NormalLine("and");
-                DisplayLine(strtyB);
-                NormalLine("at the same time, but these are incompatible.");
-              ] additional)
+              ];
+              detail;
+              additional;
+            ])
 
         | RowUnificationError(_row1, _row2, _) ->
             failwith "TODO (error): RowUnificationError"

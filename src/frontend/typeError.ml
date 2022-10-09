@@ -2,10 +2,21 @@
 open Types
 open StaticEnv
 
+open SyntaxBase
+
 
 type unification_error =
-  | Inclusion
-  | Contradiction
+  | TypeContradiction                       of mono_type * mono_type
+  | TypeVariableInclusion                   of FreeID.t * mono_type
+  | RowContradiction                        of mono_row * mono_row
+  | RowVariableInclusion                    of FreeRowID.t * mono_row
+  | CommandArityMismatch                    of int * int
+  | CommandOptionalLabelMismatch            of label
+  | BreaksRowDisjointness                   of label
+  | BreaksLabelMembershipByFreeRowVariable  of FreeRowID.t * label * LabelSet.t
+  | BreaksLabelMembershipByBoundRowVariable of MustBeBoundRowID.t * label
+  | BreaksLabelMembershipByEmptyRow         of label
+  | InsufficientRowVariableConstraint       of MustBeBoundRowID.t * LabelSet.t * LabelSet.t
 
 type type_error =
   | UndefinedVariable                    of Range.t * var_name * var_name list

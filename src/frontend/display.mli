@@ -1,5 +1,9 @@
 open Types
 
+val collect_ids_mono : mono_type -> DisplayMap.t -> DisplayMap.t
+
+val show_mono_type_by_map : DisplayMap.t -> mono_type -> string
+
 val show_mono_type : mono_type -> string
 
 val show_mono_type_double : mono_type -> mono_type -> (string * string)

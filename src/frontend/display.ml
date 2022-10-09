@@ -155,7 +155,8 @@ let collect_ids_mono (ty : mono_type) (dispmap : DisplayMap.t) : DisplayMap.t =
   aux_mono ty;
   let dispmap =
     FreeIDHashTable.fold (fun fid () dispmap ->
-      dispmap |> DisplayMap.add_free_id fid
+      let (dispmap, _) = dispmap |> DisplayMap.add_free_id fid in
+      dispmap
     ) fid_ht dispmap
   in
   let dispmap =
@@ -175,7 +176,8 @@ let collect_ids_poly (Poly(pty) : poly_type) (dispmap : DisplayMap.t) : DisplayM
   aux_poly pty;
   let dispmap =
     FreeIDHashTable.fold (fun fid () dispmap ->
-      dispmap |> DisplayMap.add_free_id fid
+      let (dispmap, _) = dispmap |> DisplayMap.add_free_id fid in
+      dispmap
     ) fid_ht dispmap
   in
   let dispmap =
@@ -382,9 +384,13 @@ and rvf_poly (dispmap : DisplayMap.t) (prv : poly_row_variable) : string =
   | PolyRowBound(brid) -> dispmap |> DisplayMap.find_bound_row_id brid
 
 
+let show_mono_type_by_map (dispmap : DisplayMap.t) (ty : mono_type) =
+  show_type (tvf_mono dispmap) (rvf_mono dispmap) Outmost ty
+
+
 let show_mono_type (ty : mono_type) =
   let dispmap = DisplayMap.empty |> collect_ids_mono ty in
-  show_type (tvf_mono dispmap) (rvf_mono dispmap) Outmost ty
+  show_mono_type_by_map dispmap ty
 
 
 let show_mono_type_double (ty1 : mono_type) (ty2 : mono_type) =

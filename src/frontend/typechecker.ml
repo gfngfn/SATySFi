@@ -537,7 +537,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
         if bty1 = bty2 then
           return ()
         else
-          err Contradiction
+          err (TypeContradiction(ty1, ty2))
 
     | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2)) ->
         let+ () = unify_row_sub optrow1 optrow2 in
@@ -553,16 +553,18 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             return @@ List.combine cmdargtys1 cmdargtys2
           with
           | Invalid_argument(_) ->
-              err Contradiction
+              let len1 = List.length cmdargtys1 in
+              let len2 = List.length cmdargtys2 in
+              err (CommandArityMismatch(len1, len2))
         in
         zipped |> foldM (fun () (cmdargty1, cmdargty2) ->
           let CommandArgType(ty_labmap1, ty1) = cmdargty1 in
           let CommandArgType(ty_labmap2, ty2) = cmdargty2 in
           let resmap =
-            LabelMap.merge (fun _label tyopt1 tyopt2 ->
+            LabelMap.merge (fun label tyopt1 tyopt2 ->
               match (tyopt1, tyopt2) with
               | (Some(ty1), Some(ty2)) -> Some(unify ty1 ty2)
-              | (_, None) | (None, _)  -> Some(err Contradiction)
+              | (_, None) | (None, _)  -> Some(err (CommandOptionalLabelMismatch(label)))
             ) ty_labmap1 ty_labmap2
           in
           let+ () =
@@ -575,16 +577,18 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
         ) ()
 
     | (ProductType(tys1), ProductType(tys2)) ->
-        unify_list (tys1 |> TupleList.to_list) (tys2 |> TupleList.to_list)
+        let ue = TypeContradiction(ty1, ty2) in
+        unify_list ~error:ue (tys1 |> TupleList.to_list) (tys2 |> TupleList.to_list)
 
     | (RecordType(row1), RecordType(row2)) ->
         unify_row_sub row1 row2
 
     | (DataType(tyargs1, tyid1), DataType(tyargs2, tyid2)) ->
+        let ue = TypeContradiction(ty1, ty2) in
         if TypeID.equal tyid1 tyid2 then
-          unify_list tyargs1 tyargs2
+          unify_list ~error:ue tyargs1 tyargs2
         else
-          err Contradiction
+          err ue
 
     | (ListType(tysub1), ListType(tysub2)) -> unify tysub1 tysub2
     | (RefType(tysub1), RefType(tysub2))   -> unify tysub1 tysub2
@@ -624,7 +628,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
       | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)), _) ->
           let chk = occurs fid1 ty2 in
           if chk then
-            err Inclusion
+            err (TypeVariableInclusion(fid1, ty2))
           else begin
             let ty2new = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
             tvref1 := MonoLink(ty2new);
@@ -634,7 +638,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
       | (_, TypeVariable(Updatable({contents = MonoFree(fid2)} as tvref2))) ->
           let chk = occurs fid2 ty1 in
           if chk then
-            err Inclusion
+            err (TypeVariableInclusion(fid2, ty1))
           else begin
             let ty1new = if Range.is_dummy rng2 then (rng1, tymain1) else (rng2, tymain1) in
             tvref2 := MonoLink(ty1new);
@@ -645,20 +649,20 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           if MustBeBoundID.equal mbbid1 mbbid2 then
             return ()
           else
-            err Contradiction
+            err (TypeContradiction(ty1, ty2))
 
       | _ ->
-          err Contradiction
+          err (TypeContradiction(ty1, ty2))
 
 
-and unify_list (tys1 : mono_type list) (tys2 : mono_type list) : (unit, unification_error) result =
+and unify_list ~error:(ue : unification_error) (tys1 : mono_type list) (tys2 : mono_type list) : (unit, unification_error) result =
   let open ResultMonad in
   let+ zipped =
     try
       return @@ List.combine tys1 tys2
     with
     | Invalid_argument(_) ->
-        err Contradiction
+        err ue
   in
   zipped |> foldM (fun () (t1, t2) ->
     unify_sub t1 t2
@@ -670,8 +674,7 @@ and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : (unit, unifi
   match row with
   | RowCons((_rng, label), _ty, rowsub) ->
       if labset |> LabelSet.mem label then
-        err Contradiction
-          (* TODO (error): should report error about label *)
+        err (BreaksRowDisjointness(label))
       else
         solve_row_disjointness rowsub labset
 
@@ -688,8 +691,7 @@ and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : (unit, unifi
       if LabelSet.subset labset labset0 then
         return ()
       else
-        err Contradiction
-          (* TODO (error): insufficient constraint *)
+        err (InsufficientRowVariableConstraint(mbbrid0, labset, labset0))
 
   | RowEmpty ->
       return ()
@@ -712,8 +714,7 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
   | RowVar(UpdatableRow({contents = MonoRowFree(frid0)} as orvuref0)) ->
       let labset0 = FreeRowID.get_label_set frid0 in
       if labset0 |> LabelSet.mem label then
-        err Contradiction
-          (* TODO (error): reject for the disjointness *)
+        err (BreaksLabelMembershipByFreeRowVariable(frid0, label, labset0))
       else begin
         let lev0 = FreeRowID.get_level frid0 in
         let frid1 = FreeRowID.fresh lev0 LabelSet.empty in
@@ -724,13 +725,11 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
         return row_rest
       end
 
-  | RowVar(MustBeBoundRow(_)) ->
-      err Contradiction
-        (* TODO (error): solve_row_membership, MustBeBoundRow *)
+  | RowVar(MustBeBoundRow(mbbrid0)) ->
+      err (BreaksLabelMembershipByBoundRowVariable(mbbrid0, label))
 
   | RowEmpty ->
-      err Contradiction
-        (* TODO (error): solve_row_membership, RowEmpty *)
+      err (BreaksLabelMembershipByEmptyRow(label))
 
 
 and unify_row_sub (row1 : mono_row) (row2 : mono_row) : (unit, unification_error) result =
@@ -752,7 +751,7 @@ and unify_row_sub (row1 : mono_row) (row2 : mono_row) : (unit, unification_error
 
   | (RowVar(UpdatableRow({contents = MonoRowFree(frid1)} as rvref1)), _) ->
       if occurs_row frid1 row2 then
-        err Inclusion
+        err (RowVariableInclusion(frid1, row2))
       else begin
         let labset1 = FreeRowID.get_label_set frid1 in
         let+ () = solve_row_disjointness row2 labset1 in
@@ -762,7 +761,7 @@ and unify_row_sub (row1 : mono_row) (row2 : mono_row) : (unit, unification_error
 
   | (_, RowVar(UpdatableRow({contents = MonoRowFree(frid2)} as rvref2))) ->
       if occurs_row frid2 row1 then
-        err Inclusion
+        err (RowVariableInclusion(frid2, row1))
       else begin
         let labset2 = FreeRowID.get_label_set frid2 in
         let+ () = solve_row_disjointness row1 labset2 in
@@ -774,10 +773,10 @@ and unify_row_sub (row1 : mono_row) (row2 : mono_row) : (unit, unification_error
       if MustBeBoundRowID.equal mbbrid1 mbbrid2 then
         return ()
       else
-        err Contradiction
+        err (RowContradiction(row1, row2))
 
   | (RowVar(MustBeBoundRow(_)), _) | (_, RowVar(MustBeBoundRow(_))) ->
-      err Contradiction
+        err (RowContradiction(row1, row2))
 
   | (RowCons((rng, label), ty1, row1sub), _) ->
       let+ row2rest = solve_row_membership rng label ty1 row2 in
@@ -787,7 +786,7 @@ and unify_row_sub (row1 : mono_row) (row2 : mono_row) : (unit, unification_error
       return ()
 
   | (RowEmpty, RowCons(_, _, _)) ->
-      err Contradiction
+      err (RowContradiction(row1, row2))
 
 
 let unify (ty1 : mono_type) (ty2 : mono_type) : unit ok =

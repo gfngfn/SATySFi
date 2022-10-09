@@ -38,15 +38,20 @@ let make_value (prefix : string) (i : int) =
 
 let add_free_id fid dispmap =
   let fids = dispmap.free_ids in
-  if fids |> FreeIDMap.mem fid then
-    dispmap
-  else
-    let i = dispmap.current_max in
-    let s = make_value "'" i in
-    { dispmap with
-      current_max = i + 1;
-      free_ids    = fids |> FreeIDMap.add fid s;
-    }
+  match fids |> FreeIDMap.find_opt fid with
+  | Some(s) ->
+      (dispmap, s)
+
+  | None ->
+      let i = dispmap.current_max in
+      let s = make_value "'" i in
+      let dispmap =
+        { dispmap with
+          current_max = i + 1;
+          free_ids    = fids |> FreeIDMap.add fid s;
+        }
+      in
+      (dispmap, s)
 
 
 let add_free_row_id frid labset dispmap =

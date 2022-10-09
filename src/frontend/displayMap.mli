@@ -6,7 +6,7 @@ type t
 
 val empty : t
 
-val add_free_id : FreeID.t -> t -> t
+val add_free_id : FreeID.t -> t -> t * string
 
 val add_free_row_id : FreeRowID.t -> LabelSet.t -> t -> t
 
