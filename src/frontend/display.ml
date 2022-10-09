@@ -301,7 +301,7 @@ fun show_row tvf plev ty ->
 
       | RecordType(row) ->
           let s = (show_row row) |> Option.value ~default:"" in
-          (Single, Printf.sprintf "(|%s|)" s)
+          (Single, Printf.sprintf "(| %s |)" s)
     in
     if plev_required <=@ plev then
       s
