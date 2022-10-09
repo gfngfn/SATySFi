@@ -43,7 +43,7 @@ type type_error =
   | MultiCharacterMathScriptWithoutBrace of Range.t
   | IllegalNumberOfTypeArguments         of Range.t * type_name * int * int
   | TypeUnificationError                 of mono_type * mono_type * unification_error
-  | RowUnificationError                  of mono_row * mono_row * unification_error
+  | RowUnificationError                  of Range.t * mono_row * mono_row * unification_error
   | TypeParameterBoundMoreThanOnce       of Range.t * type_variable_name
   | ConflictInSignature                  of Range.t * string
   | NotAStructureSignature               of Range.t * functor_signature

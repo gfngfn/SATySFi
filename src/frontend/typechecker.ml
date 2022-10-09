@@ -793,8 +793,8 @@ let unify (ty1 : mono_type) (ty2 : mono_type) : unit ok =
   unify_sub ty1 ty2 |> Result.map_error (fun uerr -> TypeUnificationError(ty1, ty2, uerr))
 
 
-let unify_row (row1 : mono_row) (row2 : mono_row) : unit ok =
-  unify_row_sub row1 row2 |> Result.map_error (fun uerr -> RowUnificationError(row1, row2, uerr))
+let unify_row (rng : Range.t) (row1 : mono_row) (row2 : mono_row) : unit ok =
+  unify_row_sub row1 row2 |> Result.map_error (fun uerr -> RowUnificationError(rng, row1, row2, uerr))
 
 
 
@@ -1165,7 +1165,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       begin
         match TypeConv.unlink ty1 with
         | (_, FuncType(row, tydom, tycod)) ->
-            let+ () = unify_row row0 row in
+            let+ () = unify_row rng row0 row in
             let+ () = unify ty2 tydom in
             let tycodnew = TypeConv.overwrite_range_of_type tycod rng in
             return (eret, tycodnew)

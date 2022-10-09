@@ -2,13 +2,14 @@
 open MyUtil
 open Types
 open StaticEnv
+open TypeError
 
 
 exception NoLibraryRootDesignation
 exception NotADocumentFile             of abs_path * Typeenv.t * mono_type
 exception NotAStringFile               of abs_path * Typeenv.t * mono_type
 exception ShouldSpecifyOutputFile
-exception TypeError                    of TypeError.type_error
+exception TypeError                    of type_error
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
@@ -289,6 +290,91 @@ let make_candidates_message (candidates : string list) =
   match List.rev candidates with
   | []               -> None
   | last :: rev_rest -> Some(Printf.sprintf "Did you mean %s?" (aux rev_rest last))
+
+
+let make_unification_error_message (dispmap : DisplayMap.t) (ue : unification_error) =
+  match ue with
+  | TypeContradiction(ty1_sub, ty2_sub) ->
+      let dispmap =
+        dispmap
+          |> Display.collect_ids_mono ty1_sub
+          |> Display.collect_ids_mono ty2_sub
+      in
+      let str_ty1_sub = Display.show_mono_type_by_map dispmap ty1_sub in
+      let str_ty2_sub = Display.show_mono_type_by_map dispmap ty2_sub in
+      [
+        NormalLine("Type");
+        DisplayLine(str_ty1_sub);
+        NormalLine("is not compatible with");
+        DisplayLine(Printf.sprintf "%s." str_ty2_sub);
+      ]
+
+  | TypeVariableInclusion(fid, ty) ->
+      let dispmap = dispmap |> Display.collect_ids_mono ty in
+      let (dispmap, str_fid) = dispmap |> DisplayMap.add_free_id fid in
+      let str_ty = Display.show_mono_type_by_map dispmap ty in
+      [
+        NormalLine(Printf.sprintf "Type variable %s occurs in" str_fid);
+        DisplayLine(Printf.sprintf "%s." str_ty);
+      ]
+
+  | RowContradiction(row1, row2) ->
+      let dispmap =
+        dispmap
+          |> Display.collect_ids_mono_row row1
+          |> Display.collect_ids_mono_row row2
+      in
+      let str_row1 = Display.show_mono_row_by_map dispmap row1 |> Option.value ~default:"" in
+      let str_row2 = Display.show_mono_row_by_map dispmap row1 |> Option.value ~default:"" in
+      [
+        NormalLine("Row");
+        DisplayLine(str_row1);
+        NormalLine("is not compatible with");
+        DisplayLine(Printf.sprintf "%s." str_row2);
+      ]
+
+  | RowVariableInclusion(frid, row) ->
+      let labset = FreeRowID.get_label_set frid in
+      let (dispmap, str_frid) = dispmap |> DisplayMap.add_free_row_id frid labset in
+      let dispmap = dispmap |> Display.collect_ids_mono_row row in
+      let str_row = Display.show_mono_row_by_map dispmap row |> Option.value ~default:"" in
+      [
+        NormalLine(Printf.sprintf "Row variable %s occurs in" str_frid);
+        DisplayLine(Printf.sprintf "%s." str_row);
+      ]
+
+  | CommandArityMismatch(len1, len2) ->
+      [
+        NormalLine(Printf.sprintf "The command type has %d type argument(s), but is expected to have %d." len1 len2);
+      ]
+
+  | CommandOptionalLabelMismatch(label) ->
+      [
+        NormalLine(Printf.sprintf "Label '%s' in a command type makes the contradiction." label);
+      ]
+
+  | BreaksRowDisjointness(label) ->
+      [
+        NormalLine(Printf.sprintf "The row must not contain label '%s'." label);
+      ]
+
+  | BreaksLabelMembershipByFreeRowVariable(_frid, label, _labset) ->
+      [
+        NormalLine(Printf.sprintf "The row does not contain label '%s'." label);
+      ] (* TODO (error): detailed report *)
+
+  | BreaksLabelMembershipByBoundRowVariable(_mbbrid, label) ->
+      [
+        NormalLine(Printf.sprintf "The row does not contain label '%s'." label);
+      ] (* TODO (error): detailed report *)
+
+  | BreaksLabelMembershipByEmptyRow(label) ->
+      [
+        NormalLine(Printf.sprintf "The row does not contain label '%s'." label);
+      ]
+
+  | InsufficientRowVariableConstraint(_mbbrid, _labset_expected, _labset_actual) ->
+      [] (* TODO (error): detailed report *)
 
 
 let error_log_environment suspended =
@@ -749,90 +835,7 @@ let error_log_environment suspended =
                         NormalLine(Printf.sprintf "at %s." strrng2);
                       ])
             in
-            let detail =
-              match ue with
-              | TypeContradiction(ty1_sub, ty2_sub) ->
-                  let dispmap =
-                    dispmap
-                      |> Display.collect_ids_mono ty1_sub
-                      |> Display.collect_ids_mono ty2_sub
-                  in
-                  let str_ty1_sub = Display.show_mono_type_by_map dispmap ty1_sub in
-                  let str_ty2_sub = Display.show_mono_type_by_map dispmap ty2_sub in
-                  [
-                    NormalLine("Type");
-                    DisplayLine(str_ty1_sub);
-                    NormalLine("is not compatible with");
-                    DisplayLine(Printf.sprintf "%s." str_ty2_sub);
-                  ]
-
-              | TypeVariableInclusion(fid, ty) ->
-                  let dispmap = dispmap |> Display.collect_ids_mono ty in
-                  let (dispmap, str_fid) = dispmap |> DisplayMap.add_free_id fid in
-                  let str_ty = Display.show_mono_type_by_map dispmap ty in
-                  [
-                    NormalLine(Printf.sprintf "Type variable %s occurs in" str_fid);
-                    DisplayLine(Printf.sprintf "%s." str_ty);
-                  ]
-
-              | RowContradiction(row1, row2) ->
-                  let dispmap =
-                    dispmap
-                      |> Display.collect_ids_mono_row row1
-                      |> Display.collect_ids_mono_row row2
-                  in
-                  let str_row1 = Display.show_mono_row_by_map dispmap row1 |> Option.value ~default:"" in
-                  let str_row2 = Display.show_mono_row_by_map dispmap row1 |> Option.value ~default:"" in
-                  [
-                    NormalLine("Row");
-                    DisplayLine(str_row1);
-                    NormalLine("is not compatible with");
-                    DisplayLine(Printf.sprintf "%s." str_row2);
-                  ]
-
-              | RowVariableInclusion(frid, row) ->
-                  let labset = FreeRowID.get_label_set frid in
-                  let (dispmap, str_frid) = dispmap |> DisplayMap.add_free_row_id frid labset in
-                  let dispmap = dispmap |> Display.collect_ids_mono_row row in
-                  let str_row = Display.show_mono_row_by_map dispmap row |> Option.value ~default:"" in
-                  [
-                    NormalLine(Printf.sprintf "Row variable %s occurs in" str_frid);
-                    DisplayLine(Printf.sprintf "%s." str_row);
-                  ]
-
-              | CommandArityMismatch(len1, len2) ->
-                  [
-                    NormalLine(Printf.sprintf "The command type has %d type argument(s), but is expected to have %d." len1 len2);
-                  ]
-
-              | CommandOptionalLabelMismatch(label) ->
-                  [
-                    NormalLine(Printf.sprintf "Label '%s' in a command type makes the contradiction." label);
-                  ]
-
-              | BreaksRowDisjointness(label) ->
-                  [
-                    NormalLine(Printf.sprintf "The row must not contain label '%s'." label);
-                  ]
-
-              | BreaksLabelMembershipByFreeRowVariable(_frid, label, _labset) ->
-                  [
-                    NormalLine(Printf.sprintf "The row does not contain label '%s'." label);
-                  ] (* TODO (error): detailed report *)
-
-              | BreaksLabelMembershipByBoundRowVariable(_mbbrid, label) ->
-                  [
-                    NormalLine(Printf.sprintf "The row does not contain label '%s'." label);
-                  ] (* TODO (error): detailed report *)
-
-              | BreaksLabelMembershipByEmptyRow(label) ->
-                  [
-                    NormalLine(Printf.sprintf "The row does not contain label '%s'." label);
-                  ]
-
-              | InsufficientRowVariableConstraint(_mbbrid, _labset_expected, _labset_actual) ->
-                  [] (* TODO (error): detailed report *)
-            in
+            let detail = make_unification_error_message dispmap ue in
             report_error Typechecker (List.concat [
               [
                 NormalLine(posmsg);
@@ -845,8 +848,26 @@ let error_log_environment suspended =
               additional;
             ])
 
-        | RowUnificationError(_row1, _row2, _) ->
-            failwith "TODO (error): RowUnificationError"
+        | RowUnificationError(rng, row1, row2, ue) ->
+            let dispmap =
+              DisplayMap.empty
+                |> Display.collect_ids_mono_row row1
+                |> Display.collect_ids_mono_row row2
+            in
+            let str_row1 = Display.show_mono_row_by_map dispmap row1 |> Option.value ~default:"" in
+            let str_row2 = Display.show_mono_row_by_map dispmap row2 |> Option.value ~default:"" in
+            let detail = make_unification_error_message dispmap ue in
+            report_error Typechecker (List.concat [
+              [
+                NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+                NormalLine("the option row is");
+                DisplayLine(str_row1);
+                NormalLine("and");
+                DisplayLine(Printf.sprintf "%s," str_row2);
+                NormalLine("at the same time, but these are incompatible.");
+              ];
+              detail;
+            ])
 
         | TypeParameterBoundMoreThanOnce(rng, tyvarnm) ->
             report_error Typechecker [
