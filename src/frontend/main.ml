@@ -760,7 +760,7 @@ let error_log_environment suspended =
                   let str_ty1_sub = Display.show_mono_type_by_map dispmap ty1_sub in
                   let str_ty2_sub = Display.show_mono_type_by_map dispmap ty2_sub in
                   [
-                    NormalLine("type");
+                    NormalLine("Type");
                     DisplayLine(str_ty1_sub);
                     NormalLine("is not compatible with");
                     DisplayLine(Printf.sprintf "%s." str_ty2_sub);
@@ -771,7 +771,7 @@ let error_log_environment suspended =
                   let (dispmap, str_fid) = dispmap |> DisplayMap.add_free_id fid in
                   let str_ty = Display.show_mono_type_by_map dispmap ty in
                   [
-                    NormalLine(Printf.sprintf "type variable %s occurs in" str_fid);
+                    NormalLine(Printf.sprintf "Type variable %s occurs in" str_fid);
                     DisplayLine(Printf.sprintf "%s." str_ty);
                   ]
 
@@ -796,15 +796,19 @@ let error_log_environment suspended =
                     NormalLine(Printf.sprintf "The row must not contain label '%s'." label);
                   ]
 
-              | BreaksLabelMembershipByFreeRowVariable(_frid, _label_expected, _labset) ->
-                  [] (* TODO (error): detailed report *)
+              | BreaksLabelMembershipByFreeRowVariable(_frid, label, _labset) ->
+                  [
+                    NormalLine(Printf.sprintf "The row does not contain label '%s'." label);
+                  ] (* TODO (error): detailed report *)
 
-              | BreaksLabelMembershipByBoundRowVariable(_mbbrid, _label) ->
-                  [] (* TODO (error): detailed report *)
+              | BreaksLabelMembershipByBoundRowVariable(_mbbrid, label) ->
+                  [
+                    NormalLine(Printf.sprintf "The row does not contain label '%s'." label);
+                  ] (* TODO (error): detailed report *)
 
               | BreaksLabelMembershipByEmptyRow(label) ->
                   [
-                    NormalLine(Printf.sprintf "The empty row does not contain label '%s'." label);
+                    NormalLine(Printf.sprintf "The row does not contain label '%s'." label);
                   ]
 
               | InsufficientRowVariableConstraint(_mbbrid, _labset_expected, _labset_actual) ->
