@@ -775,11 +775,30 @@ let error_log_environment suspended =
                     DisplayLine(Printf.sprintf "%s." str_ty);
                   ]
 
-              | RowContradiction(_row1, _row2) ->
-                  [] (* TODO (error): detailed report *)
+              | RowContradiction(row1, row2) ->
+                  let dispmap =
+                    dispmap
+                      |> Display.collect_ids_mono_row row1
+                      |> Display.collect_ids_mono_row row2
+                  in
+                  let str_row1 = Display.show_mono_row_by_map dispmap row1 |> Option.value ~default:"" in
+                  let str_row2 = Display.show_mono_row_by_map dispmap row1 |> Option.value ~default:"" in
+                  [
+                    NormalLine("Row");
+                    DisplayLine(str_row1);
+                    NormalLine("is not compatible with");
+                    DisplayLine(Printf.sprintf "%s." str_row2);
+                  ]
 
-              | RowVariableInclusion(_frid, _row) ->
-                  [] (* TODO (error): detailed report *)
+              | RowVariableInclusion(frid, row) ->
+                  let labset = FreeRowID.get_label_set frid in
+                  let (dispmap, str_frid) = dispmap |> DisplayMap.add_free_row_id frid labset in
+                  let dispmap = dispmap |> Display.collect_ids_mono_row row in
+                  let str_row = Display.show_mono_row_by_map dispmap row |> Option.value ~default:"" in
+                  [
+                    NormalLine(Printf.sprintf "Row variable %s occurs in" str_frid);
+                    DisplayLine(Printf.sprintf "%s." str_row);
+                  ]
 
               | CommandArityMismatch(len1, len2) ->
                   [

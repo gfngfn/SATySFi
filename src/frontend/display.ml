@@ -143,16 +143,10 @@ let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t F
     LabelMap.iter (fun _ pty -> aux_poly pty) plabmap
 
   in
-  (aux_mono, aux_poly)
+  (aux_mono, aux_mono_row, aux_poly, aux_poly_row)
 
 
-let collect_ids_mono (ty : mono_type) (dispmap : DisplayMap.t) : DisplayMap.t =
-  let fid_ht = DisplayMap.make_free_id_hash_set dispmap in
-  let frid_ht = DisplayMap.make_free_row_id_hash_set dispmap in
-  let bid_ht = DisplayMap.make_bound_id_hash_set dispmap in
-  let brid_ht = DisplayMap.make_bound_row_id_hash_set dispmap in
-  let (aux_mono, _) = collect_ids_scheme fid_ht frid_ht bid_ht brid_ht in
-  aux_mono ty;
+let collect_from_hash_tables (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t FreeRowIDHashTable.t) (bid_ht : unit BoundIDHashTable.t) (brid_ht : LabelSet.t BoundRowIDHashTable.t) (dispmap : DisplayMap.t) : DisplayMap.t =
   let dispmap =
     FreeIDHashTable.fold (fun fid () dispmap ->
       let (dispmap, _) = dispmap |> DisplayMap.add_free_id fid in
@@ -161,28 +155,8 @@ let collect_ids_mono (ty : mono_type) (dispmap : DisplayMap.t) : DisplayMap.t =
   in
   let dispmap =
     FreeRowIDHashTable.fold (fun frid labset dispmap ->
-      dispmap |> DisplayMap.add_free_row_id frid labset
-    ) frid_ht dispmap
-  in
-  dispmap
-
-
-let collect_ids_poly (Poly(pty) : poly_type) (dispmap : DisplayMap.t) : DisplayMap.t =
-  let fid_ht = DisplayMap.make_free_id_hash_set dispmap in
-  let frid_ht = DisplayMap.make_free_row_id_hash_set dispmap in
-  let bid_ht = DisplayMap.make_bound_id_hash_set dispmap in
-  let brid_ht = DisplayMap.make_bound_row_id_hash_set dispmap in
-  let (_, aux_poly) = collect_ids_scheme fid_ht frid_ht bid_ht brid_ht in
-  aux_poly pty;
-  let dispmap =
-    FreeIDHashTable.fold (fun fid () dispmap ->
-      let (dispmap, _) = dispmap |> DisplayMap.add_free_id fid in
+      let (dispmap, _) = dispmap |> DisplayMap.add_free_row_id frid labset in
       dispmap
-    ) fid_ht dispmap
-  in
-  let dispmap =
-    FreeRowIDHashTable.fold (fun frid labset dispmap ->
-      dispmap |> DisplayMap.add_free_row_id frid labset
     ) frid_ht dispmap
   in
   let dispmap =
@@ -196,6 +170,36 @@ let collect_ids_poly (Poly(pty) : poly_type) (dispmap : DisplayMap.t) : DisplayM
     ) brid_ht dispmap
   in
   dispmap
+
+
+let collect_ids_mono (ty : mono_type) (dispmap : DisplayMap.t) : DisplayMap.t =
+  let fid_ht = DisplayMap.make_free_id_hash_set dispmap in
+  let frid_ht = DisplayMap.make_free_row_id_hash_set dispmap in
+  let bid_ht = DisplayMap.make_bound_id_hash_set dispmap in
+  let brid_ht = DisplayMap.make_bound_row_id_hash_set dispmap in
+  let (aux_mono, _, _, _) = collect_ids_scheme fid_ht frid_ht bid_ht brid_ht in
+  aux_mono ty;
+  dispmap |> collect_from_hash_tables fid_ht frid_ht bid_ht brid_ht
+
+
+let collect_ids_mono_row (row : mono_row) (dispmap : DisplayMap.t) : DisplayMap.t =
+  let fid_ht = DisplayMap.make_free_id_hash_set dispmap in
+  let frid_ht = DisplayMap.make_free_row_id_hash_set dispmap in
+  let bid_ht = DisplayMap.make_bound_id_hash_set dispmap in
+  let brid_ht = DisplayMap.make_bound_row_id_hash_set dispmap in
+  let (_, aux_mono_row, _, _) = collect_ids_scheme fid_ht frid_ht bid_ht brid_ht in
+  aux_mono_row row;
+  dispmap |> collect_from_hash_tables fid_ht frid_ht bid_ht brid_ht
+
+
+let collect_ids_poly (Poly(pty) : poly_type) (dispmap : DisplayMap.t) : DisplayMap.t =
+  let fid_ht = DisplayMap.make_free_id_hash_set dispmap in
+  let frid_ht = DisplayMap.make_free_row_id_hash_set dispmap in
+  let bid_ht = DisplayMap.make_bound_id_hash_set dispmap in
+  let brid_ht = DisplayMap.make_bound_row_id_hash_set dispmap in
+  let (_, _, aux_poly, _) = collect_ids_scheme fid_ht frid_ht bid_ht brid_ht in
+  aux_poly pty;
+  dispmap |> collect_from_hash_tables fid_ht frid_ht bid_ht brid_ht
 
 
 let show_base_type = function
