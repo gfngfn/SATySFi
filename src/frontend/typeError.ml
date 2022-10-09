@@ -3,6 +3,10 @@ open Types
 open StaticEnv
 
 
+type unification_error =
+  | Inclusion
+  | Contradiction
+
 type type_error =
   | UndefinedVariable                    of Range.t * var_name * var_name list
   | UndefinedConstructor                 of Range.t * constructor_name * constructor_name list
@@ -27,8 +31,8 @@ type type_error =
   | ApplicationOfNonFunction             of Range.t * mono_type
   | MultiCharacterMathScriptWithoutBrace of Range.t
   | IllegalNumberOfTypeArguments         of Range.t * type_name * int * int
-  | ContradictionError                   of mono_type * mono_type
-  | InclusionError                       of mono_type * mono_type
+  | TypeUnificationError                 of mono_type * mono_type * unification_error
+  | RowUnificationError                  of mono_row * mono_row * unification_error
   | TypeParameterBoundMoreThanOnce       of Range.t * type_variable_name
   | ConflictInSignature                  of Range.t * string
   | NotAStructureSignature               of Range.t * functor_signature

@@ -8,9 +8,6 @@ open TypeError
 
 type 'a ok = ('a, type_error) result
 
-exception InternalInclusionError
-exception InternalContradictionError
-
 
 module SubstMap = Map.Make(TypeID)
 
@@ -522,7 +519,8 @@ let occurs_row (frid : FreeRowID.t) (row : mono_row) =
   iter_row row
 
 
-let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) : unit =
+let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) : (unit, unification_error) result =
+  let open ResultMonad in
   let unify = unify_sub in
 (*
   (* begin: for debug *)
@@ -537,49 +535,56 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
     match (tymain1, tymain2) with
     | (BaseType(bty1), BaseType(bty2)) ->
         if bty1 = bty2 then
-          ()
+          return ()
         else
-          raise InternalContradictionError
+          err Contradiction
 
     | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2)) ->
-        begin
-          unify_row optrow1 optrow2;
-          unify tydom1 tydom2;
-          unify tycod1 tycod2;
-        end
+        let+ () = unify_row_sub optrow1 optrow2 in
+        let+ () = unify tydom1 tydom2 in
+        let+ () = unify tycod1 tycod2 in
+        return ()
 
     | (InlineCommandType(cmdargtys1), InlineCommandType(cmdargtys2))
     | (BlockCommandType(cmdargtys1), BlockCommandType(cmdargtys2))
     | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) ->
-        begin
-          match List.combine cmdargtys1 cmdargtys2 with
-          | exception Invalid_argument(_) ->
-              raise InternalContradictionError
-
-          | zipped ->
-              zipped |> List.iter (fun (cmdargty1, cmdargty2) ->
-                let CommandArgType(ty_labmap1, ty1) = cmdargty1 in
-                let CommandArgType(ty_labmap2, ty2) = cmdargty2 in
-                LabelMap.merge (fun _label tyopt1 tyopt2 ->
-                  match (tyopt1, tyopt2) with
-                  | (Some(ty1), Some(ty2)) -> Some(unify ty1 ty2)
-                  | (_, None) | (None, _)  -> raise InternalContradictionError
-                ) ty_labmap1 ty_labmap2 |> ignore;
-                unify ty1 ty2
-              )
-        end
+        let+ zipped =
+          try
+            return @@ List.combine cmdargtys1 cmdargtys2
+          with
+          | Invalid_argument(_) ->
+              err Contradiction
+        in
+        zipped |> foldM (fun () (cmdargty1, cmdargty2) ->
+          let CommandArgType(ty_labmap1, ty1) = cmdargty1 in
+          let CommandArgType(ty_labmap2, ty2) = cmdargty2 in
+          let resmap =
+            LabelMap.merge (fun _label tyopt1 tyopt2 ->
+              match (tyopt1, tyopt2) with
+              | (Some(ty1), Some(ty2)) -> Some(unify ty1 ty2)
+              | (_, None) | (None, _)  -> Some(err Contradiction)
+            ) ty_labmap1 ty_labmap2
+          in
+          let+ () =
+            LabelMap.fold (fun _label res_elem res ->
+              res >>= fun () ->
+              res_elem
+            ) resmap (return ())
+          in
+          unify ty1 ty2
+        ) ()
 
     | (ProductType(tys1), ProductType(tys2)) ->
         unify_list (tys1 |> TupleList.to_list) (tys2 |> TupleList.to_list)
 
     | (RecordType(row1), RecordType(row2)) ->
-        unify_row row1 row2
+        unify_row_sub row1 row2
 
     | (DataType(tyargs1, tyid1), DataType(tyargs2, tyid2)) ->
         if TypeID.equal tyid1 tyid2 then
           unify_list tyargs1 tyargs2
         else
-          raise InternalContradictionError
+          err Contradiction
 
     | (ListType(tysub1), ListType(tysub2)) -> unify tysub1 tysub2
     | (RefType(tysub1), RefType(tysub2))   -> unify tysub1 tysub2
@@ -591,7 +596,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
     | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)),
           TypeVariable(Updatable({contents = MonoFree(fid2)} as tvref2))) ->
         if FreeID.equal fid1 fid2 then
-          ()
+          return ()
         else begin
           (* Equate quantifiabilities *)
           begin
@@ -612,46 +617,60 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           FreeID.set_level fid2 lev_min;
 
           let (tvref_old, ty_new) = if Range.is_dummy rng1 then (tvref1, ty2) else (tvref2, ty1) in
-          tvref_old := MonoLink(ty_new)
+          tvref_old := MonoLink(ty_new);
+          return ()
         end
 
       | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)), _) ->
           let chk = occurs fid1 ty2 in
           if chk then
-            raise InternalInclusionError
-          else
+            err Inclusion
+          else begin
             let ty2new = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-            tvref1 := MonoLink(ty2new)
+            tvref1 := MonoLink(ty2new);
+            return ()
+          end
 
       | (_, TypeVariable(Updatable({contents = MonoFree(fid2)} as tvref2))) ->
           let chk = occurs fid2 ty1 in
           if chk then
-            raise InternalInclusionError
-          else
+            err Inclusion
+          else begin
             let ty1new = if Range.is_dummy rng2 then (rng1, tymain1) else (rng2, tymain1) in
-            tvref2 := MonoLink(ty1new)
+            tvref2 := MonoLink(ty1new);
+            return ()
+          end
 
       | (TypeVariable(MustBeBound(mbbid1)), TypeVariable(MustBeBound(mbbid2))) ->
           if MustBeBoundID.equal mbbid1 mbbid2 then
-            ()
+            return ()
           else
-            raise InternalContradictionError
+            err Contradiction
 
       | _ ->
-          raise InternalContradictionError
+          err Contradiction
 
 
-and unify_list (tys1 : mono_type list) (tys2 : mono_type list) : unit =
-  match List.combine tys1 tys2 with
-  | exception Invalid_argument(_) -> raise InternalContradictionError
-  | zipped                        -> zipped |> List.iter (fun (t1, t2) -> unify_sub t1 t2)
+and unify_list (tys1 : mono_type list) (tys2 : mono_type list) : (unit, unification_error) result =
+  let open ResultMonad in
+  let+ zipped =
+    try
+      return @@ List.combine tys1 tys2
+    with
+    | Invalid_argument(_) ->
+        err Contradiction
+  in
+  zipped |> foldM (fun () (t1, t2) ->
+    unify_sub t1 t2
+  ) ()
 
 
-and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : unit =
+and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : (unit, unification_error) result =
+  let open ResultMonad in
   match row with
   | RowCons((_rng, label), _ty, rowsub) ->
       if labset |> LabelSet.mem label then
-        raise InternalContradictionError
+        err Contradiction
           (* TODO (error): should report error about label *)
       else
         solve_row_disjointness rowsub labset
@@ -661,29 +680,31 @@ and solve_row_disjointness (row : mono_row) (labset : LabelSet.t) : unit =
 
   | RowVar(UpdatableRow{contents = MonoRowFree(frid0)}) ->
       let labset0 = FreeRowID.get_label_set frid0 in
-      FreeRowID.set_label_set frid0 (LabelSet.union labset0 labset)
+      FreeRowID.set_label_set frid0 (LabelSet.union labset0 labset);
+      return ()
 
   | RowVar(MustBeBoundRow(mbbrid0)) ->
       let labset0 = BoundRowID.get_label_set (MustBeBoundRowID.to_bound_id mbbrid0) in
       if LabelSet.subset labset labset0 then
-        ()
+        return ()
       else
-        raise InternalContradictionError
+        err Contradiction
           (* TODO (error): insufficient constraint *)
 
   | RowEmpty ->
-      ()
+      return ()
 
 
-and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row : mono_row) : mono_row =
+and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row : mono_row) : (mono_row, unification_error) result =
+  let open ResultMonad in
   match row with
   | RowCons((rng0, label0), ty0, row0) ->
-      if String.equal label0 label then begin
-        unify_sub ty0 ty;
-        row0
-      end else
-        let row0rest = solve_row_membership rng label ty row0 in
-        RowCons((rng0, label0), ty0, row0rest)
+      if String.equal label0 label then
+        let+ () = unify_sub ty0 ty in
+        return row0
+      else
+        let+ row0rest = solve_row_membership rng label ty row0 in
+        return @@ RowCons((rng0, label0), ty0, row0rest)
 
   | RowVar(UpdatableRow{contents = MonoRowLink(row0)}) ->
       solve_row_membership rng label ty row0
@@ -691,7 +712,7 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
   | RowVar(UpdatableRow({contents = MonoRowFree(frid0)} as orvuref0)) ->
       let labset0 = FreeRowID.get_label_set frid0 in
       if labset0 |> LabelSet.mem label then
-        raise InternalContradictionError
+        err Contradiction
           (* TODO (error): reject for the disjointness *)
       else begin
         let lev0 = FreeRowID.get_level frid0 in
@@ -700,78 +721,82 @@ and solve_row_membership (rng : Range.t) (label : label) (ty : mono_type) (row :
         let row_rest = RowVar(UpdatableRow(rvref1)) in
         let row_new = RowCons((rng, label), ty, row_rest) in
         orvuref0 := MonoRowLink(row_new);
-        row_rest
+        return row_rest
       end
 
   | RowVar(MustBeBoundRow(_)) ->
-      raise InternalContradictionError
+      err Contradiction
         (* TODO (error): solve_row_membership, MustBeBoundRow *)
 
   | RowEmpty ->
-      raise InternalContradictionError
+      err Contradiction
         (* TODO (error): solve_row_membership, RowEmpty *)
 
 
-and unify_row (row1 : mono_row) (row2 : mono_row) : unit =
+and unify_row_sub (row1 : mono_row) (row2 : mono_row) : (unit, unification_error) result =
+  let open ResultMonad in
   match (row1, row2) with
   | (RowVar(UpdatableRow{contents = MonoRowLink(row1sub)}), _) ->
-      unify_row row1sub row2
+      unify_row_sub row1sub row2
 
   | (_, RowVar(UpdatableRow{contents = MonoRowLink(row2sub)})) ->
-      unify_row row1 row2sub
+      unify_row_sub row1 row2sub
 
   | (RowVar(UpdatableRow({contents = MonoRowFree(frid1)} as rvref1)), RowVar(UpdatableRow{contents = MonoRowFree(frid2)})) ->
       if FreeRowID.equal frid1 frid2 then
-        ()
-      else
-        rvref1 := MonoRowLink(row2)
+        return ()
+      else begin
+        rvref1 := MonoRowLink(row2);
+        return ()
+      end
 
   | (RowVar(UpdatableRow({contents = MonoRowFree(frid1)} as rvref1)), _) ->
       if occurs_row frid1 row2 then
-        raise InternalInclusionError
+        err Inclusion
       else begin
         let labset1 = FreeRowID.get_label_set frid1 in
-        solve_row_disjointness row2 labset1;
-        rvref1 := MonoRowLink(row2)
+        let+ () = solve_row_disjointness row2 labset1 in
+        rvref1 := MonoRowLink(row2);
+        return ()
       end
 
   | (_, RowVar(UpdatableRow({contents = MonoRowFree(frid2)} as rvref2))) ->
       if occurs_row frid2 row1 then
-        raise InternalInclusionError
+        err Inclusion
       else begin
         let labset2 = FreeRowID.get_label_set frid2 in
-        solve_row_disjointness row1 labset2;
-        rvref2 := MonoRowLink(row1)
+        let+ () = solve_row_disjointness row1 labset2 in
+        rvref2 := MonoRowLink(row1);
+        return ()
       end
 
   | (RowVar(MustBeBoundRow(mbbrid1)), RowVar(MustBeBoundRow(mbbrid2))) ->
       if MustBeBoundRowID.equal mbbrid1 mbbrid2 then
-        ()
+        return ()
       else
-        raise InternalContradictionError
+        err Contradiction
 
   | (RowVar(MustBeBoundRow(_)), _) | (_, RowVar(MustBeBoundRow(_))) ->
-      raise InternalContradictionError
+      err Contradiction
 
   | (RowCons((rng, label), ty1, row1sub), _) ->
-      let row2rest = solve_row_membership rng label ty1 row2 in
-      unify_row row1sub row2rest
+      let+ row2rest = solve_row_membership rng label ty1 row2 in
+      unify_row_sub row1sub row2rest
 
   | (RowEmpty, RowEmpty) ->
-      ()
+      return ()
 
   | (RowEmpty, RowCons(_, _, _)) ->
-      raise InternalContradictionError
+      err Contradiction
 
 
 let unify (ty1 : mono_type) (ty2 : mono_type) : unit ok =
-  let open ResultMonad in
-  try
-    unify_sub ty1 ty2;
-    return ()
-  with
-  | InternalInclusionError     -> err (InclusionError(ty1, ty2))
-  | InternalContradictionError -> err (ContradictionError(ty1, ty2))
+  unify_sub ty1 ty2 |> Result.map_error (fun uerr -> TypeUnificationError(ty1, ty2, uerr))
+
+
+let unify_row (row1 : mono_row) (row2 : mono_row) : unit ok =
+  unify_row_sub row1 row2 |> Result.map_error (fun uerr -> RowUnificationError(row1, row2, uerr))
+
 
 
 let fresh_type_variable (rng : Range.t) (pre : pre) : mono_type =
@@ -1141,7 +1166,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       begin
         match TypeConv.unlink ty1 with
         | (_, FuncType(row, tydom, tycod)) ->
-            unify_row row0 row;
+            let+ () = unify_row row0 row in
             let+ () = unify ty2 tydom in
             let tycodnew = TypeConv.overwrite_range_of_type tycod rng in
             return (eret, tycodnew)
@@ -3565,9 +3590,6 @@ let main_bindings (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (ut
 
 
 let are_unifiable (ty1 : mono_type) (ty2 : mono_type) : bool =
-  try
-    unify_sub ty1 ty2;
-    true
-  with
-  | InternalContradictionError -> false
-  | InternalInclusionError     -> false
+  match unify_sub ty1 ty2 with
+  | Error(_) -> false
+  | Ok(_)    -> true

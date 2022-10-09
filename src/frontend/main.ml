@@ -720,7 +720,7 @@ let error_log_environment suspended =
               NormalLine(Printf.sprintf "but it has %d type argument(s) here." lenerr);
             ]
 
-        | ContradictionError(((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+        | TypeUnificationError(((rng1, _) as ty1), ((rng2, _) as ty2), Contradiction) ->
             let strty1 = Display.show_mono_type ty1 in
             let strty2 = Display.show_mono_type ty2 in
             let strrng1 = Range.to_string rng1 in
@@ -752,7 +752,7 @@ let error_log_environment suspended =
                 DisplayLine(Printf.sprintf "%s." strtyB);
               ] additional)
 
-        | InclusionError(((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+        | TypeUnificationError(((rng1, _) as ty1), ((rng2, _) as ty2), Inclusion) ->
             let strty1 = Display.show_mono_type ty1 in
             let strty2 = Display.show_mono_type ty2 in
             let strrng1 = Range.to_string rng1 in
@@ -784,6 +784,9 @@ let error_log_environment suspended =
                 DisplayLine(strtyB);
                 NormalLine("at the same time, but these are incompatible.");
               ] additional)
+
+        | RowUnificationError(_row1, _row2, _) ->
+            failwith "TODO (error): RowUnificationError"
 
         | TypeParameterBoundMoreThanOnce(rng, tyvarnm) ->
             report_error Typechecker [
