@@ -452,8 +452,8 @@ let unlift_row (prow : poly_row) : mono_row option =
   | Exit -> None
 
 
-let normalize_row_general : ('a, 'b) row -> ('a, 'b) normalized_row =
-fun prow ->
+(* Normalizes the polymorphic row `prow`. Here, `MonoRow` is not supposed to occur in `prow`. *)
+let normalize_poly_row (prow : poly_row) : normalized_poly_row =
   let rec aux plabmap = function
     | RowCons((_, label), pty, prow) -> aux (plabmap |> LabelMap.add label pty) prow
     | RowVar(prv)                    -> NormalizedRow(plabmap, Some(prv))
@@ -462,17 +462,13 @@ fun prow ->
   aux LabelMap.empty prow
 
 
-(* Normalizes the polymorphic row `prow`. Here, `MonoRow` is not supposed to occur in `prow`. *)
-let normalize_poly_row (prow : poly_row) : normalized_poly_row =
-  normalize_row_general prow
-
-
 let normalize_mono_row (row : mono_row) : normalized_mono_row =
   let rec aux labmap = function
-    | RowCons((_, label), ty, row)                      -> aux (labmap |> LabelMap.add label ty) row
-    | RowVar(UpdatableRow{contents = MonoRowLink(row)}) -> aux labmap row
-    | RowVar(rv)                                        -> NormalizedRow(labmap, Some(rv))
-    | RowEmpty                                          -> NormalizedRow(labmap, None)
+    | RowCons((_, label), ty, row)                       -> aux (labmap |> LabelMap.add label ty) row
+    | RowVar(UpdatableRow{contents = MonoRowLink(row)})  -> aux labmap row
+    | RowVar(UpdatableRow{contents = MonoRowFree(frid)}) -> NormalizedRow(labmap, Some(NormFreeRow(frid)))
+    | RowVar(MustBeBoundRow(mbbrid))                     -> NormalizedRow(labmap, Some(NormMustBeBoundRow(mbbrid)))
+    | RowEmpty                                           -> NormalizedRow(labmap, None)
   in
   aux LabelMap.empty row
 

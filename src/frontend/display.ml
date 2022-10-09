@@ -240,14 +240,14 @@ let ( <=@ ) plev1 plev2 =
   paren_level_number plev1 <= paren_level_number plev2
 
 
-let rec show_type : 'a 'b. (paren_level -> 'a -> string) -> ('b -> string) -> paren_level -> ('a, 'b) typ -> string =
-fun tvf rvf plev ty ->
+let show_type : 'a 'b. (('a, 'b) row -> string option) -> (paren_level -> 'a -> string) -> paren_level -> ('a, 'b) typ -> string =
+fun show_row tvf plev ty ->
   let rec aux plev (_, tymain) =
     let (plev_required, s) =
       match tymain with
       | FuncType(optrow, tydom, tycod) ->
           let s_opts =
-            match show_row tvf rvf optrow with
+            match show_row optrow with
             | None    -> ""
             | Some(s) -> Printf.sprintf "?(%s) " s
           in
@@ -296,7 +296,7 @@ fun tvf rvf plev ty ->
           (Single, show_base_type bty)
 
       | RecordType(row) ->
-          let s = (show_row tvf rvf row) |> Option.value ~default:"" in
+          let s = (show_row row) |> Option.value ~default:"" in
           (Single, Printf.sprintf "(|%s|)" s)
     in
     if plev_required <=@ plev then
@@ -322,24 +322,6 @@ fun tvf rvf plev ty ->
   aux plev ty
 
 
-and show_row : 'a 'b. (paren_level -> 'a -> string) -> ('b -> string) -> ('a, 'b) row -> string option =
-fun tvf rvf row ->
-  let NormalizedRow(ty_labmap, prv_opt) = TypeConv.normalize_row_general row in
-  if LabelMap.cardinal ty_labmap = 0 then
-    match prv_opt with
-    | None      -> None
-    | Some(prv) -> Some(rvf prv)
-  else
-    let ss =
-      ty_labmap |> LabelMap.bindings |> List.map (fun (label, ty) ->
-        Printf.sprintf "%s : %s" label (show_type tvf rvf Outmost ty)
-      )
-    in
-    match prv_opt with
-    | None      -> Some(Printf.sprintf "%s" (String.concat ", " ss))
-    | Some(prv) -> Some(Printf.sprintf "%s | %s" (String.concat ", " ss) (rvf prv))
-
-
 let rec tvf_mono (dispmap : DisplayMap.t) (plev : paren_level) (tv : mono_type_variable) : string =
   match tv with
   | Updatable(tvuref)  -> tvf_mono_updatable dispmap plev !tvuref
@@ -349,7 +331,7 @@ let rec tvf_mono (dispmap : DisplayMap.t) (plev : paren_level) (tv : mono_type_v
 and tvf_mono_updatable (dispmap : DisplayMap.t) (plev : paren_level) (tvu : mono_type_variable_updatable) : string =
   match tvu with
   | MonoFree(fid) -> dispmap |> DisplayMap.find_free_id fid
-  | MonoLink(ty)  -> show_type (tvf_mono dispmap) (rvf_mono dispmap) plev ty
+  | MonoLink(ty)  -> show_type (show_mono_row_by_map dispmap) (tvf_mono dispmap) plev ty
 
 
 and rvf_mono (dispmap : DisplayMap.t) (rv : mono_row_variable) : string =
@@ -357,12 +339,12 @@ and rvf_mono (dispmap : DisplayMap.t) (rv : mono_row_variable) : string =
   | UpdatableRow(rvref) ->
       begin
         match !rvref with
-        | MonoRowFree(_) ->
-            ""
+        | MonoRowFree(frid) ->
+            dispmap |> DisplayMap.find_free_row_id frid
 
         | MonoRowLink(row) ->
             begin
-              match show_row (tvf_mono dispmap) (rvf_mono dispmap) row with
+              match show_mono_row_by_map dispmap row with
               | None    -> ""
               | Some(s) -> Printf.sprintf "?(%s)" s
             end
@@ -372,20 +354,74 @@ and rvf_mono (dispmap : DisplayMap.t) (rv : mono_row_variable) : string =
       dispmap |> DisplayMap.find_bound_row_id (MustBeBoundRowID.to_bound_id mbbrid)
 
 
+and show_mono_row_by_map (dispmap : DisplayMap.t) (row : mono_row) : string option =
+  let NormalizedRow(ty_labmap, nrv_opt) = TypeConv.normalize_mono_row row in
+  if LabelMap.cardinal ty_labmap = 0 then
+    match nrv_opt with
+    | None ->
+        None
+
+    | Some(NormFreeRow(frid)) ->
+        Some(dispmap |> DisplayMap.find_free_row_id frid)
+
+    | Some(NormMustBeBoundRow(mbbrid)) ->
+        Some(dispmap |> DisplayMap.find_bound_row_id (MustBeBoundRowID.to_bound_id mbbrid))
+  else
+    let ss =
+      ty_labmap |> LabelMap.bindings |> List.map (fun (label, ty) ->
+        let s_ty = show_type (show_mono_row_by_map dispmap) (tvf_mono dispmap) Outmost ty in
+        Printf.sprintf "%s : %s" label s_ty
+      )
+    in
+    match nrv_opt with
+    | None ->
+        Some(Printf.sprintf "%s" (String.concat ", " ss))
+
+    | Some(NormFreeRow(frid)) ->
+        let s_frid = dispmap |> DisplayMap.find_free_row_id frid in
+        Some(Printf.sprintf "%s | %s" (String.concat ", " ss) s_frid)
+
+    | Some(NormMustBeBoundRow(mbbrid)) ->
+        let s_mbbrid = dispmap |> DisplayMap.find_bound_row_id (MustBeBoundRowID.to_bound_id mbbrid) in
+        Some(Printf.sprintf "%s | %s" (String.concat ", " ss) s_mbbrid)
+
+
 let tvf_poly (dispmap : DisplayMap.t) (plev : paren_level) (ptv : poly_type_variable) : string =
   match ptv with
   | PolyFree(tvuref) -> tvf_mono_updatable dispmap plev !tvuref
   | PolyBound(bid)   -> dispmap |> DisplayMap.find_bound_id bid
 
 
-and rvf_poly (dispmap : DisplayMap.t) (prv : poly_row_variable) : string =
+let rvf_poly (dispmap : DisplayMap.t) (prv : poly_row_variable) : string =
   match prv with
   | PolyRowFree(rvref) -> rvf_mono dispmap rvref
   | PolyRowBound(brid) -> dispmap |> DisplayMap.find_bound_row_id brid
 
 
+let rec show_poly_row_by_map (dispmap : DisplayMap.t) (prow : poly_row) : string option =
+  let NormalizedRow(pty_labmap, prv_opt) = TypeConv.normalize_poly_row prow in
+  if LabelMap.cardinal pty_labmap = 0 then
+    match prv_opt with
+    | None      -> None
+    | Some(prv) -> Some(rvf_poly dispmap prv)
+  else
+    let ss =
+      pty_labmap |> LabelMap.bindings |> List.map (fun (label, pty) ->
+        let s_ty = show_type (show_poly_row_by_map dispmap) (tvf_poly dispmap) Outmost pty in
+        Printf.sprintf "%s : %s" label s_ty
+      )
+    in
+    match prv_opt with
+    | None ->
+        Some(Printf.sprintf "%s" (String.concat ", " ss))
+
+    | Some(prv) ->
+        let s_prv = rvf_poly dispmap prv in
+        Some(Printf.sprintf "%s | %s" (String.concat ", " ss) s_prv)
+
+
 let show_mono_type_by_map (dispmap : DisplayMap.t) (ty : mono_type) =
-  show_type (tvf_mono dispmap) (rvf_mono dispmap) Outmost ty
+  show_type (show_mono_row_by_map dispmap) (tvf_mono dispmap) Outmost ty
 
 
 let show_mono_type (ty : mono_type) =
@@ -395,16 +431,16 @@ let show_mono_type (ty : mono_type) =
 
 let show_mono_type_double (ty1 : mono_type) (ty2 : mono_type) =
   let dispmap = DisplayMap.empty |> collect_ids_mono ty1 |> collect_ids_mono ty2 in
+  let show_row = show_mono_row_by_map dispmap in
   let tvf = tvf_mono dispmap in
-  let rvf = rvf_mono dispmap in
-  let s1 = show_type tvf rvf Outmost ty1 in
-  let s2 = show_type tvf rvf Outmost ty2 in
+  let s1 = show_type show_row tvf Outmost ty1 in
+  let s2 = show_type show_row tvf Outmost ty2 in
   (s1, s2)
 
 
 let show_poly_type (Poly(pty) : poly_type) =
   let dispmap = DisplayMap.empty |> collect_ids_poly (Poly(pty)) in
-  show_type (tvf_poly dispmap) (rvf_poly dispmap) Outmost pty
+  show_type (show_poly_row_by_map dispmap) (tvf_poly dispmap) Outmost pty
 
 
 let show_poly_macro_parameter_type (macparamty : poly_macro_parameter_type) =
