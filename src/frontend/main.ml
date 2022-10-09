@@ -8,6 +8,7 @@ exception NoLibraryRootDesignation
 exception NotADocumentFile             of abs_path * Typeenv.t * mono_type
 exception NotAStringFile               of abs_path * Typeenv.t * mono_type
 exception ShouldSpecifyOutputFile
+exception TypeError                    of TypeError.type_error
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
@@ -68,14 +69,22 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
 
 let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
   Logging.begin_to_typecheck_file abspath_in;
-  let res = Typechecker.main_bindings tyenv utsig_opt utbinds in
+  let pair =
+    match Typechecker.main_bindings tyenv utsig_opt utbinds with
+    | Ok(pair) -> pair
+    | Error(e) -> raise (TypeError(e))
+  in
   Logging.pass_type_check None;
-  res
+  pair
 
 
 let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : abstract_tree =
   Logging.begin_to_typecheck_file abspath_in;
-  let (ty, ast) = Typechecker.main Stage1 tyenv utast in
+  let (ty, ast) =
+    match Typechecker.main Stage1 tyenv utast with
+    | Ok(pair) -> pair
+    | Error(e) -> raise (TypeError(e))
+  in
   Logging.pass_type_check (Some(Display.show_mono_type ty));
   if OptionState.is_text_mode () then
     if Typechecker.are_unifiable ty (Range.dummy "text-mode", BaseType(StringType)) then
@@ -539,7 +548,7 @@ let error_log_environment suspended =
         NormalLine(Printf.sprintf "missing required key '%s'." key);
       ]
 
-  | Typechecker.TypeError(tyerr) ->
+  | TypeError(tyerr) ->
       begin
         match tyerr with
         | UndefinedVariable(rng, varnm, candidates) ->

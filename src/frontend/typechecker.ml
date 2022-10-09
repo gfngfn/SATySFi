@@ -2,13 +2,11 @@
 open SyntaxBase
 open Types
 open StaticEnv
+open MyUtil
+open TypeError
 
-exception TypeError of TypeError.type_error
 
-
-let raise_error (tyerr : TypeError.type_error) =
-  raise (TypeError(tyerr))
-
+type 'a ok = ('a, type_error) result
 
 exception InternalInclusionError
 exception InternalContradictionError
@@ -54,12 +52,13 @@ let unify_quantifier (quant1 : quantifier) (quant2 : quantifier) : quantifier =
   OpaqueIDMap.union (fun _ _kd1 kd2 -> Some(kd2)) quant1 quant2
 
 
-let decode_manual_row_base_kind (mnrbkd : manual_row_base_kind) : row_base_kind =
-  mnrbkd |> List.fold_left (fun labset (rng, label) ->
+let decode_manual_row_base_kind (mnrbkd : manual_row_base_kind) : row_base_kind ok =
+  let open ResultMonad in
+  mnrbkd |> foldM (fun labset (rng, label) ->
     if labset |> LabelSet.mem label then
-      raise_error (LabelUsedMoreThanOnce(rng, label))
+      err (LabelUsedMoreThanOnce(rng, label))
     else
-      labset |> LabelSet.add label
+      return (labset |> LabelSet.add label)
   ) LabelSet.empty
 
 
@@ -97,43 +96,46 @@ let add_constructor_definitions (ctordefs : variant_definition list) (ssig : Str
   ) ssig
 
 
-let add_type_parameters (lev : Level.t) (tyvars : (type_variable_name ranged) list) (typarammap : type_parameter_map) : type_parameter_map * BoundID.t list =
-  let (typarammap, bidacc) =
-    tyvars |> List.fold_left (fun (typarammap, bidacc) (rng, tyvarnm) ->
+let add_type_parameters (lev : Level.t) (tyvars : (type_variable_name ranged) list) (typarammap : type_parameter_map) : (type_parameter_map * BoundID.t list) ok =
+  let open ResultMonad in
+  let+ (typarammap, bidacc) =
+    tyvars |> foldM (fun (typarammap, bidacc) (rng, tyvarnm) ->
       if typarammap |> TypeParameterMap.mem tyvarnm then
-        raise_error (TypeParameterBoundMoreThanOnce(rng, tyvarnm))
+        err (TypeParameterBoundMoreThanOnce(rng, tyvarnm))
       else
         let mbbid = MustBeBoundID.fresh lev in
         let bid = MustBeBoundID.to_bound_id mbbid in
-        (typarammap |> TypeParameterMap.add tyvarnm mbbid, Alist.extend bidacc bid)
+        return (typarammap |> TypeParameterMap.add tyvarnm mbbid, Alist.extend bidacc bid)
     ) (typarammap, Alist.empty)
   in
-  (typarammap, Alist.to_list bidacc)
+  return (typarammap, Alist.to_list bidacc)
 
 
-let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * manual_row_base_kind) list) (rowparammap : row_parameter_map) : row_parameter_map * BoundRowID.t list =
-  let (rowparammap, bridacc) =
-    rowvars |> List.fold_left (fun (rowparammap, bridacc) ((rng, rowvarnm), mnbrkd) ->
+let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * manual_row_base_kind) list) (rowparammap : row_parameter_map) : (row_parameter_map * BoundRowID.t list) ok =
+  let open ResultMonad in
+  let+ (rowparammap, bridacc) =
+    rowvars |> foldM (fun (rowparammap, bridacc) ((rng, rowvarnm), mnbrkd) ->
       if rowparammap |> RowParameterMap.mem rowvarnm then
-        raise_error (LabelUsedMoreThanOnce(rng, rowvarnm))
+        err (LabelUsedMoreThanOnce(rng, rowvarnm))
       else
-        let labset = decode_manual_row_base_kind mnbrkd in
+        decode_manual_row_base_kind mnbrkd >>= fun labset ->
         let mbbrid = MustBeBoundRowID.fresh lev labset in
         let brid = MustBeBoundRowID.to_bound_id mbbrid in
-        (rowparammap |> RowParameterMap.add rowvarnm mbbrid, Alist.extend bridacc brid)
+        return (rowparammap |> RowParameterMap.add rowvarnm mbbrid, Alist.extend bridacc brid)
     ) (rowparammap, Alist.empty)
   in
-  (rowparammap, Alist.to_list bridacc)
+  return (rowparammap, Alist.to_list bridacc)
 
 
-let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : constructor_name) (rng : Range.t) =
+let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : constructor_name) (rng : Range.t) : (mono_type list * TypeID.t * mono_type) ok =
+  let open ResultMonad in
   match tyenv |> Typeenv.find_constructor ctornm with
   | None ->
       let cands =
         []  (* TODO (enhance): find candidate constructors *)
         (* tyenv |> Typeenv.find_constructor_candidates ctornm *)
       in
-      raise_error (UndefinedConstructor(rng, ctornm, cands))
+      err (UndefinedConstructor(rng, ctornm, cands))
 
   | Some(centry) ->
       let qtfbl = pre.quantifiability in
@@ -150,49 +152,52 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : c
       in
       let ty = TypeConv.instantiate_by_map_mono bidmap pty in
       let tys_arg = Alist.to_list tyacc in
-      (tys_arg, tyid, ty)
+      return (tys_arg, tyid, ty)
 
 
-let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module_entry =
+let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module_entry ok =
+  let open ResultMonad in
   match tyenv |> Typeenv.find_module modnm with
   | None ->
-      raise_error (UndefinedModuleName(rng, modnm))
+      err (UndefinedModuleName(rng, modnm))
 
   | Some(mentry) ->
-      mentry
+      return mentry
 
 
-let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry =
-  let mentry0 = find_module tyenv modident0 in
-  modidents |> List.fold_left (fun mentry (rng, modnm) ->
+let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry ok =
+  let open ResultMonad in
+  let+ mentry0 = find_module tyenv modident0 in
+  modidents |> foldM (fun mentry (rng, modnm) ->
     match mentry.mod_signature with
     | ConcFunctor(fsig) ->
-        raise_error (NotAStructureSignature(rng, fsig))
+        err (NotAStructureSignature(rng, fsig))
 
     | ConcStructure(ssig) ->
         begin
           match ssig |> StructSig.find_module modnm with
           | None ->
-              raise_error (UndefinedModuleName(rng, modnm))
+              err (UndefinedModuleName(rng, modnm))
 
           | Some(mentry) ->
-              mentry
+              return mentry
         end
   ) mentry0
 
 
-let find_macro (tyenv : Typeenv.t) (modidents : (module_name ranged) list) ((rng_cs, csnm) : macro_name ranged) : macro_entry =
+let find_macro (tyenv : Typeenv.t) (modidents : (module_name ranged) list) ((rng_cs, csnm) : macro_name ranged) : macro_entry ok =
+  let open ResultMonad in
   match modidents with
   | [] ->
       begin
         match tyenv |> Typeenv.find_macro csnm with
-        | None           -> raise_error (UndefinedMacro(rng_cs, csnm))
-        | Some(macentry) -> macentry
+        | None           -> err (UndefinedMacro(rng_cs, csnm))
+        | Some(macentry) -> return macentry
       end
 
   | modident0 :: proj ->
       let modchain = (modident0, proj) in
-      let mentry = find_module_chain tyenv modchain in
+      let+ mentry = find_module_chain tyenv modchain in
       begin
         match mentry.mod_signature with
         | ConcFunctor(fsig) ->
@@ -203,13 +208,13 @@ let find_macro (tyenv : Typeenv.t) (modidents : (module_name ranged) list) ((rng
               | (rng_last, _) :: _ -> rng_last
             in
             let rng = Range.unite rng_first rng_last in
-            raise_error (NotAStructureSignature(rng, fsig))
+            err (NotAStructureSignature(rng, fsig))
 
         | ConcStructure(ssig) ->
             begin
               match ssig |> StructSig.find_macro csnm with
-              | None           -> raise_error (UndefinedMacro(rng_cs, csnm))
-              | Some(macentry) -> macentry
+              | None           -> err (UndefinedMacro(rng_cs, csnm))
+              | Some(macentry) -> return macentry
             end
       end
 
@@ -303,10 +308,30 @@ let rec is_nonexpansive_expression e =
   | _                          -> false
 
 
-let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_var_map) : pattern_var_map =
-  PatternVarMap.union (fun varnm (rng1, _, _) (rng2, _, _) ->
-    raise_error (MultiplePatternVariable(rng1, rng2, varnm))
-  ) patvarmap1 patvarmap2
+let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_var_map) : pattern_var_map ok =
+  let open ResultMonad in
+  let resmap =
+    PatternVarMap.merge (fun varnm patvar1_opt patvar2_opt ->
+      match (patvar1_opt, patvar2_opt) with
+      | (None, None) ->
+          None
+
+      | (Some(patvar1), None) ->
+          Some(return patvar1)
+
+      | (None, Some(patvar2)) ->
+          Some(return patvar2)
+
+      | (Some((rng1, _, _)), Some((rng2, _, _))) ->
+          Some(err (MultiplePatternVariable(rng1, rng2, varnm)))
+
+    ) patvarmap1 patvarmap2
+  in
+  PatternVarMap.fold (fun label patvar_res patvarmap_res ->
+    patvarmap_res >>= fun patvarmap ->
+    patvar_res >>= fun patvar ->
+    return (patvarmap |> PatternVarMap.add label patvar)
+  ) resmap (return PatternVarMap.empty)
 
 
 let add_pattern_var_mono (pre : pre) (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
@@ -739,12 +764,14 @@ and unify_row (row1 : mono_row) (row2 : mono_row) : unit =
       raise InternalContradictionError
 
 
-let unify (ty1 : mono_type) (ty2 : mono_type) =
+let unify (ty1 : mono_type) (ty2 : mono_type) : unit ok =
+  let open ResultMonad in
   try
-    unify_sub ty1 ty2
+    unify_sub ty1 ty2;
+    return ()
   with
-  | InternalInclusionError     -> raise_error (InclusionError(ty1, ty2))
-  | InternalContradictionError -> raise_error (ContradictionError(ty1, ty2))
+  | InternalInclusionError     -> err (InclusionError(ty1, ty2))
+  | InternalContradictionError -> err (ContradictionError(ty1, ty2))
 
 
 let fresh_type_variable (rng : Range.t) (pre : pre) : mono_type =
@@ -757,8 +784,8 @@ let base bc =
   ASTBaseConstant(bc)
 
 
-let rec typecheck
-    (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
+let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) : (abstract_tree * mono_type) ok =
+  let open ResultMonad in
   let typecheck_iter ?s:(s = pre.stage) ?l:(l = pre.level) ?p:(p = pre.type_parameters) ?r:(r = pre.row_parameters) ?q:(q = pre.quantifiability) t u =
     let presub =
       {
@@ -772,17 +799,17 @@ let rec typecheck
     typecheck presub t u
   in
   match utastmain with
-  | UTIntegerConstant(nc) -> (base (BCInt(nc))      , (rng, BaseType(IntType))   )
-  | UTFloatConstant(nc)   -> (base (BCFloat(nc))    , (rng, BaseType(FloatType)) )
-  | UTStringConstant(sc)  -> (base (BCString(sc))   , (rng, BaseType(StringType)))
-  | UTBooleanConstant(bc) -> (base (BCBool(bc))     , (rng, BaseType(BoolType))  )
-  | UTUnitConstant        -> (base BCUnit           , (rng, BaseType(UnitType))  )
+  | UTIntegerConstant(nc) -> return (base (BCInt(nc))   , (rng, BaseType(IntType))   )
+  | UTFloatConstant(nc)   -> return (base (BCFloat(nc)) , (rng, BaseType(FloatType)) )
+  | UTStringConstant(sc)  -> return (base (BCString(sc)), (rng, BaseType(StringType)))
+  | UTBooleanConstant(bc) -> return (base (BCBool(bc))  , (rng, BaseType(BoolType))  )
+  | UTUnitConstant        -> return (base BCUnit        , (rng, BaseType(UnitType))  )
 
   | UTPositionedString(ipos, s) ->
       begin
         match pre.stage with
         | Stage1 | Persistent0 ->
-            raise_error (InvalidExpressionAsToStaging(rng, Stage0))
+            err (InvalidExpressionAsToStaging(rng, Stage0))
 
         | Stage0 ->
             let e =
@@ -794,43 +821,43 @@ let rec typecheck
               let ty2 = (Range.dummy "positioned2", BaseType(StringType)) in
               (rng, ProductType(TupleList.make ty1 ty2 []))
             in
-            (e, ty)
+            return (e, ty)
       end
 
   | UTLengthDescription(flt, unitnm) ->
-        let len =
+        let+ len =
           match unitnm with  (* temporary; ad-hoc handling of unit names *)
-          | "pt"   -> Length.of_pdf_point flt
-          | "cm"   -> Length.of_centimeter flt
-          | "mm"   -> Length.of_millimeter flt
-          | "inch" -> Length.of_inch flt
-          | _      -> raise_error (UnknownUnitOfLength(rng, unitnm))
+          | "pt"   -> return @@ Length.of_pdf_point flt
+          | "cm"   -> return @@ Length.of_centimeter flt
+          | "mm"   -> return @@ Length.of_millimeter flt
+          | "inch" -> return @@ Length.of_inch flt
+          | _      -> err (UnknownUnitOfLength(rng, unitnm))
         in
-        (base (BCLength(len)), (rng, BaseType(LengthType)))
+        return (base (BCLength(len)), (rng, BaseType(LengthType)))
 
   | UTInlineText(utits) ->
-      let its = typecheck_inline_text rng pre tyenv utits in
-      (InlineText(its), (rng, BaseType(InlineTextType)))
+      let+ its = typecheck_inline_text rng pre tyenv utits in
+      return (InlineText(its), (rng, BaseType(InlineTextType)))
 
   | UTBlockText(utbts) ->
-      let bts = typecheck_block_text rng pre tyenv utbts in
-      (BlockText(bts), (rng, BaseType(BlockTextType)))
+      let+ bts = typecheck_block_text rng pre tyenv utbts in
+      return (BlockText(bts), (rng, BaseType(BlockTextType)))
 
   | UTMathText(utmts) ->
-      let mts = typecheck_math pre tyenv utmts in
-      (MathText(mts), (rng, BaseType(MathTextType)))
+      let+ mts = typecheck_math pre tyenv utmts in
+      return (MathText(mts), (rng, BaseType(MathTextType)))
 
   | UTOpenIn((rng_mod, modnm), utast1) ->
       begin
         match tyenv |> Typeenv.find_module modnm with
         | None ->
-            raise_error (UndefinedModuleName(rng_mod, modnm))
+            err (UndefinedModuleName(rng_mod, modnm))
 
         | Some(mentry) ->
             begin
               match mentry.mod_signature with
               | ConcFunctor(fsig) ->
-                  raise_error (NotAStructureSignature(rng_mod, fsig))
+                  err (NotAStructureSignature(rng_mod, fsig))
 
               | ConcStructure(ssig) ->
                   let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
@@ -839,20 +866,20 @@ let rec typecheck
       end
 
   | UTContentOf(modidents, (rng_var, varnm)) ->
-      let (pty, e) =
+      let+ (pty, e) =
         match modidents with
         | [] ->
-            let ventry =
+            let+ ventry =
               match tyenv |> Typeenv.find_value varnm with
               | None ->
                   let cands =
                     [] (* TODO (enhance): find candidates *)
                     (* tyenv |> Typeenv.find_candidates varnm *)
                   in
-                  raise_error (UndefinedVariable(rng, varnm, cands))
+                  err (UndefinedVariable(rng, varnm, cands))
 
               | Some(ventry) ->
-                  ventry
+                  return ventry
             in
             let evid =
               match ventry.val_name with
@@ -860,44 +887,44 @@ let rec typecheck
               | Some(evid) -> evid
             in
             let stage = ventry.val_stage in
-            let e =
+            let+ e =
               match (pre.stage, stage) with
               | (Persistent0, Persistent0)
               | (Stage0, Persistent0) ->
-                  ContentOf(rng, evid)
+                  return @@ ContentOf(rng, evid)
 
               | (Stage1, Persistent0) ->
-                  Persistent(rng, evid)
+                  return @@ Persistent(rng, evid)
 
               | (Stage0, Stage0)
               | (Stage1, Stage1) ->
-                  ContentOf(rng, evid)
+                  return @@ ContentOf(rng, evid)
 
               | _ ->
-                  raise_error (InvalidOccurrenceAsToStaging(rng_var, varnm, stage))
+                  err (InvalidOccurrenceAsToStaging(rng_var, varnm, stage))
             in
-            (ventry.val_type, e)
+            return (ventry.val_type, e)
 
         | modident0 :: proj ->
             let modchain = (modident0, proj) in
-            let mentry = find_module_chain tyenv modchain in
-            let ssig =
+            let+ mentry = find_module_chain tyenv modchain in
+            let+ ssig =
               match mentry.mod_signature with
-              | ConcStructure(ssig) -> ssig
-              | ConcFunctor(fsig)   -> raise_error (NotAStructureSignature(rng, fsig))
+              | ConcStructure(ssig) -> return ssig
+              | ConcFunctor(fsig)   -> err (NotAStructureSignature(rng, fsig))
                   (*TODO (enhance): give a better code range to this error. *)
             in
-            let ventry =
+            let+ ventry =
               match ssig |> StructSig.find_value varnm with
               | None ->
                   let cands =
                     [] (* TODO (enhance): find candidates *)
                     (* ssig |> StructSig.find_candidates varnm *)
                   in
-                  raise_error (UndefinedVariable(rng, varnm, cands))
+                  err (UndefinedVariable(rng, varnm, cands))
 
               | Some(ventry) ->
-                  ventry
+                  return ventry
             in
             let stage = ventry.val_stage in
             let evid =
@@ -909,41 +936,41 @@ let rec typecheck
 *)
               | Some(evid) -> evid
             in
-            let e =
+            let+ e =
               match (pre.stage, stage) with
               | (Persistent0, Persistent0)
               | (Stage0, Persistent0) ->
-                  ContentOf(rng, evid)
+                  return @@ ContentOf(rng, evid)
 
               | (Stage1, Persistent0) ->
-                  Persistent(rng, evid)
+                  return @@ Persistent(rng, evid)
 
               | (Stage0, Stage0)
               | (Stage1, Stage1) ->
-                  ContentOf(rng, evid)
+                  return @@ ContentOf(rng, evid)
 
               | _ ->
-                  raise_error (InvalidOccurrenceAsToStaging(rng_var, varnm, stage))
+                  err (InvalidOccurrenceAsToStaging(rng_var, varnm, stage))
             in
-            (ventry.val_type, e)
+            return (ventry.val_type, e)
       in
       let tyfree = TypeConv.instantiate pre.level pre.quantifiability pty in
       let tyres = TypeConv.overwrite_range_of_type tyfree rng in
-      (e, tyres)
+      return (e, tyres)
 
   | UTConstructor(constrnm, utast1) ->
-      let (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      unify ty1 tyc;
+      let+ (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+      let+ (e1, ty1) = typecheck_iter tyenv utast1 in
+      let+ () = unify ty1 tyc in
       let tyres = (rng, DataType(tyargs, tyid)) in
-      (NonValueConstructor(constrnm, e1), tyres)
+      return (NonValueConstructor(constrnm, e1), tyres)
 
   | UTLambdaInlineCommand{
       parameters       = param_units;
       context_variable = ident_ctx;
       body             = utast_body;
     } ->
-      let (tyenv, params) = typecheck_abstraction pre tyenv param_units in
+      let+ (tyenv, params) = typecheck_abstraction pre tyenv param_units in
       let (rng_var, varnm_ctx) = ident_ctx in
       let (bsty_var, bsty_ret) =
         if OptionState.is_text_mode () then
@@ -952,7 +979,7 @@ let rec typecheck
           (ContextType, InlineBoxesType)
       in
       let evid_ctx = EvalVarID.fresh ident_ctx in
-      let (e_body, ty_body) =
+      let+ (e_body, ty_body) =
         let tyenv =
           let ventry =
             {
@@ -965,7 +992,7 @@ let rec typecheck
         in
         typecheck_iter tyenv utast_body
       in
-      unify ty_body (Range.dummy "lambda-inline-return", BaseType(bsty_ret));
+      let+ () = unify ty_body (Range.dummy "lambda-inline-return", BaseType(bsty_ret)) in
       let e =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
@@ -976,14 +1003,14 @@ let rec typecheck
           CommandArgType(ty_labmap, ty_pat)
         )
       in
-      (e, (rng, InlineCommandType(cmdargtys)))
+      return (e, (rng, InlineCommandType(cmdargtys)))
 
   | UTLambdaBlockCommand{
       parameters       = param_units;
       context_variable = ident_ctx;
       body             = utast_body;
     } ->
-      let (tyenv, params) = typecheck_abstraction pre tyenv param_units in
+      let+ (tyenv, params) = typecheck_abstraction pre tyenv param_units in
       let (rng_var, varnm_ctx) = ident_ctx in
       let (bsty_var, bsty_ret) =
         if OptionState.is_text_mode () then
@@ -992,7 +1019,7 @@ let rec typecheck
           (ContextType, BlockBoxesType)
       in
       let evid_ctx = EvalVarID.fresh ident_ctx in
-      let (e_body, ty_body) =
+      let+ (e_body, ty_body) =
         let tyenv_sub =
           let ventry =
             {
@@ -1005,7 +1032,7 @@ let rec typecheck
         in
         typecheck_iter tyenv_sub utast_body
       in
-      unify ty_body (Range.dummy "lambda-block-return", BaseType(bsty_ret));
+      let+ () = unify ty_body (Range.dummy "lambda-block-return", BaseType(bsty_ret)) in
       let e =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
@@ -1016,7 +1043,7 @@ let rec typecheck
           CommandArgType(ty_labmap, ty_pat)
         )
       in
-      (e, (rng, BlockCommandType(cmdargtys)))
+      return (e, (rng, BlockCommandType(cmdargtys)))
 
   | UTLambdaMathCommand{
       parameters       = param_units;
@@ -1024,7 +1051,7 @@ let rec typecheck
       script_variables = ident_pair_opt;
       body             = utast_body;
     } ->
-      let (tyenv, params) = typecheck_abstraction pre tyenv param_units in
+      let+ (tyenv, params) = typecheck_abstraction pre tyenv param_units in
       let (rng_ctx_var, varnm_ctx) = ident_ctx in
       let (bsty_ctx_var, bsty_ret) =
         if OptionState.is_text_mode () then
@@ -1082,8 +1109,8 @@ let rec typecheck
             in
             (tyenv, Some((evid_sub, evid_sup)))
       in
-      let (e_body, ty_body) = typecheck_iter tyenv utast_body in
-      unify ty_body (Range.dummy "lambda-math-return", BaseType(bsty_ret));
+      let+ (e_body, ty_body) = typecheck_iter tyenv utast_body in
+      let+ () = unify ty_body (Range.dummy "lambda-math-return", BaseType(bsty_ret)) in
       let e =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
@@ -1094,18 +1121,18 @@ let rec typecheck
           CommandArgType(ty_labmap, ty_pat)
         )
       in
-      (e, (rng, MathCommandType(cmdargtys)))
+      return (e, (rng, MathCommandType(cmdargtys)))
 
   | UTApply(opts, utast1, utast2) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
+      let+ (e1, ty1) = typecheck_iter tyenv utast1 in
+      let+ (e2, ty2) = typecheck_iter tyenv utast2 in
       let frid = FreeRowID.fresh pre.level LabelSet.empty in
-      let (e_labmap0, labset0, row0) =
+      let+ (e_labmap0, labset0, row0) =
         let rvref = ref (MonoRowFree(frid)) in
-        opts |> List.fold_left (fun (e_labmap, labset, row) (rlabel, utast0) ->
+        opts |> foldM (fun (e_labmap, labset, row) (rlabel, utast0) ->
           let (_, label) = rlabel in
-          let (e0, ty0) = typecheck_iter tyenv utast0 in
-          (e_labmap |> LabelMap.add label e0, labset |> LabelSet.add label, RowCons(rlabel, ty0, row))
+          let+ (e0, ty0) = typecheck_iter tyenv utast0 in
+          return (e_labmap |> LabelMap.add label e0, labset |> LabelSet.add label, RowCons(rlabel, ty0, row))
         ) (LabelMap.empty, LabelSet.empty, RowVar(UpdatableRow(rvref)))
       in
       let labset = FreeRowID.get_label_set frid in
@@ -1115,18 +1142,18 @@ let rec typecheck
         match TypeConv.unlink ty1 with
         | (_, FuncType(row, tydom, tycod)) ->
             unify_row row0 row;
-            unify ty2 tydom;
+            let+ () = unify ty2 tydom in
             let tycodnew = TypeConv.overwrite_range_of_type tycod rng in
-            (eret, tycodnew)
+            return (eret, tycodnew)
 
         | (_, TypeVariable(_)) as ty1 ->
             let beta = fresh_type_variable rng pre in
-            unify ty1 (get_range utast1, FuncType(row0, ty2, beta));
-            (eret, beta)
+            let+ () = unify ty1 (get_range utast1, FuncType(row0, ty2, beta)) in
+            return (eret, beta)
 
         | ty1 ->
             let (rng1, _) = utast1 in
-            raise_error (ApplicationOfNonFunction(rng1, ty1))
+            err (ApplicationOfNonFunction(rng1, ty1))
       end
 
   | UTFunction(UTParameterUnit(opt_params, pat, mnty_opt), utast1) ->
@@ -1138,25 +1165,27 @@ let rec typecheck
         add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
       in
       let utpatbr = UTPatternBranch(pat, utast1) in
-      let (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
-      mnty_opt |> Option.map (fun mnty ->
-        let typat_annot = decode_manual_type pre tyenv mnty in
-        unify typat typat_annot;
-      ) |> ignore;
-      (Function(evid_labmap, patbr), (rng, FuncType(optrow, typat, ty1)))
+      let+ (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
+      let+ _unit_opt =
+        mnty_opt |> optionM (fun mnty ->
+          let+ typat_annot = decode_manual_type pre tyenv mnty in
+          unify typat typat_annot
+        )
+      in
+      return (Function(evid_labmap, patbr), (rng, FuncType(optrow, typat, ty1)))
 
   | UTPatternMatch(utastO, utpatbrs) ->
-      let (eO, tyO) = typecheck_iter tyenv utastO in
+      let+ (eO, tyO) = typecheck_iter tyenv utastO in
       let beta = fresh_type_variable (Range.dummy "ut-pattern-match") pre in
-      let patbrs = typecheck_pattern_branch_list pre tyenv utpatbrs tyO beta in
+      let+ patbrs = typecheck_pattern_branch_list pre tyenv utpatbrs tyO beta in
       Exhchecker.main rng patbrs tyO pre tyenv;
-      (PatternMatch(rng, eO, patbrs), beta)
+      return (PatternMatch(rng, eO, patbrs), beta)
 
   | UTLetIn(UTNonRec((ident, utast1)), utast2) ->
       let presub = { pre with level = Level.succ pre.level; } in
       let (_, varnm) = ident in
       let evid = EvalVarID.fresh ident in
-      let (e1, ty1) = typecheck presub tyenv utast1 in
+      let+ (e1, ty1) = typecheck presub tyenv utast1 in
       let tyenv =
         let pty =
           if is_nonexpansive_expression e1 then
@@ -1175,11 +1204,11 @@ let rec typecheck
         in
         tyenv |> Typeenv.add_value varnm ventry
       in
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      (LetNonRecIn(PVariable(evid), e1, e2), ty2)
+      let+ (e2, ty2) = typecheck_iter tyenv utast2 in
+      return (LetNonRecIn(PVariable(evid), e1, e2), ty2)
 
   | UTLetIn(UTRec(utrecbinds), utast2) ->
-      let quints = typecheck_letrec pre tyenv utrecbinds in
+      let+ quints = typecheck_letrec pre tyenv utrecbinds in
       let (tyenv, recbindacc) =
         quints |> List.fold_left (fun (tyenv, recbindacc) quint ->
           let (x, pty, evid, recbind) = quint in
@@ -1197,140 +1226,142 @@ let rec typecheck
           (tyenv, recbindacc)
         ) (tyenv, Alist.empty)
       in
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      (LetRecIn(recbindacc |> Alist.to_list, e2), ty2)
+      let+ (e2, ty2) = typecheck_iter tyenv utast2 in
+      return (LetRecIn(recbindacc |> Alist.to_list, e2), ty2)
 
   | UTIfThenElse(utastB, utast1, utast2) ->
-      let (eB, tyB) = typecheck_iter tyenv utastB in
-      unify tyB (Range.dummy "if-bool", BaseType(BoolType));
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
-      unify ty2 ty1;
-      (IfThenElse(eB, e1, e2), ty1)
+      let+ (eB, tyB) = typecheck_iter tyenv utastB in
+      let+ () = unify tyB (Range.dummy "if-bool", BaseType(BoolType)) in
+      let+ (e1, ty1) = typecheck_iter tyenv utast1 in
+      let+ (e2, ty2) = typecheck_iter tyenv utast2 in
+      let+ () = unify ty2 ty1 in
+      return (IfThenElse(eB, e1, e2), ty1)
 
   | UTLetIn(UTMutable(ident, utastI), utastA) ->
-      let (tyenvI, evid, eI, _tyI) = make_type_environment_by_let_mutable pre tyenv ident utastI in
-      let (eA, tyA) = typecheck_iter tyenvI utastA in
-      (LetMutableIn(evid, eI, eA), tyA)
+      let+ (tyenvI, evid, eI, _tyI) = make_type_environment_by_let_mutable pre tyenv ident utastI in
+      let+ (eA, tyA) = typecheck_iter tyenvI utastA in
+      return (LetMutableIn(evid, eI, eA), tyA)
 
   | UTOverwrite(ident, utastN) ->
       let (rng_var, _) = ident in
+      let+ sub = typecheck_iter tyenv (rng_var, UTContentOf([], ident)) in
       begin
-        match typecheck_iter tyenv (rng_var, UTContentOf([], ident)) with
+        match sub with
         | (ContentOf(_, evid), tyvar) ->
-            let (eN, tyN) = typecheck_iter tyenv utastN in
-            unify tyvar (get_range utastN, RefType(tyN));
+            let+ (eN, tyN) = typecheck_iter tyenv utastN in
+            let+ () = unify tyvar (get_range utastN, RefType(tyN)) in
               (* Actually `get_range utastN` is not good
-                 since the rhs expression has type `ty`, not `ref ty`  *)
-            (Overwrite(evid, eN), (rng, BaseType(UnitType)))
+                 since the rhs expression has type `ty`, not `ref ty`. *)
+            return (Overwrite(evid, eN), (rng, BaseType(UnitType)))
 
         | _ ->
             assert false
       end
 
   | UTItemize(utitmz) ->
-      let eitmz = typecheck_itemize pre tyenv utitmz in
+      let+ eitmz = typecheck_itemize pre tyenv utitmz in
       let ty = TypeConv.overwrite_range_of_type (Primitives.itemize_type ()) rng in
-      (eitmz, ty)
+      return (eitmz, ty)
 
   | UTListCons(utastH, utastT) ->
-      let (eH, tyH) = typecheck_iter tyenv utastH in
-      let (eT, tyT) = typecheck_iter tyenv utastT in
-      unify tyT (Range.dummy "list-cons", ListType(tyH));
+      let+ (eH, tyH) = typecheck_iter tyenv utastH in
+      let+ (eT, tyT) = typecheck_iter tyenv utastT in
+      let+ () = unify tyT (Range.dummy "list-cons", ListType(tyH)) in
       let tyres = (rng, ListType(tyH)) in
-      (PrimitiveListCons(eH, eT), tyres)
+      return (PrimitiveListCons(eH, eT), tyres)
 
   | UTEndOfList ->
       let beta = fresh_type_variable rng pre in
-      (ASTEndOfList, (rng, ListType(beta)))
+      return (ASTEndOfList, (rng, ListType(beta)))
 
   | UTTuple(utasts) ->
-      let etys = TupleList.map (typecheck_iter tyenv) utasts in
+      let+ etys = TupleList.mapM (typecheck_iter tyenv) utasts in
       let es = TupleList.map fst etys in
       let tys = TupleList.map snd etys in
       let tyres = (rng, ProductType(tys)) in
-      (PrimitiveTuple(es), tyres)
+      return (PrimitiveTuple(es), tyres)
 
   | UTRecord(fields) ->
       typecheck_record rng pre tyenv fields
 
   | UTAccessField(utast1, (_, label)) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let+ (e1, ty1) = typecheck_iter tyenv utast1 in
       let beta = fresh_type_variable rng pre in
       let row =
         let frid = fresh_free_row_id pre.level (LabelSet.singleton label) in
         let rvuref = ref (MonoRowFree(frid)) in
         RowCons((Range.dummy "UTAccessField", label), beta, RowVar(UpdatableRow(rvuref)))
       in
-      unify ty1 (Range.dummy "UTAccessField", RecordType(row));
-      (AccessField(e1, label), beta)
+      let+ () = unify ty1 (Range.dummy "UTAccessField", RecordType(row)) in
+      return (AccessField(e1, label), beta)
 
   | UTUpdateField(utast1, rlabel, utast2) ->
       let (_, label) = rlabel in
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let (e2, ty2) = typecheck_iter tyenv utast2 in
+      let+ (e1, ty1) = typecheck_iter tyenv utast1 in
+      let+ (e2, ty2) = typecheck_iter tyenv utast2 in
       let row =
         let frid = fresh_free_row_id pre.level (LabelSet.singleton label) in
         let rvuref = ref (MonoRowFree(frid)) in
         RowCons(rlabel, ty2, RowVar(UpdatableRow(rvuref)))
       in
-      unify ty1 (Range.dummy "UTUpdateField", RecordType(row));
-      (UpdateField(e1, label, e2), ty1)
+      let+ () = unify ty1 (Range.dummy "UTUpdateField", RecordType(row)) in
+      return (UpdateField(e1, label, e2), ty1)
 
   | UTReadInline(utast_ctx, utastI) ->
-      let (e_ctx, ty_ctx) = typecheck_iter tyenv utast_ctx in
-      let (eI, tyI) = typecheck_iter tyenv utastI in
+      let+ (e_ctx, ty_ctx) = typecheck_iter tyenv utast_ctx in
+      let+ (eI, tyI) = typecheck_iter tyenv utastI in
       let (e_ret, bsty_ctx, bsty_ret) =
         if OptionState.is_text_mode () then
           (PrimitiveStringifyInline(e_ctx, eI), TextInfoType, StringType)
         else
           (PrimitiveReadInline(e_ctx, eI), ContextType, InlineBoxesType)
       in
-      unify ty_ctx (Range.dummy "ut-read-inline-1", BaseType(bsty_ctx));
-      unify tyI (Range.dummy "ut-read-inline-2", BaseType(InlineTextType));
-      (e_ret, (rng, BaseType(bsty_ret)))
+      let+ () = unify ty_ctx (Range.dummy "ut-read-inline-1", BaseType(bsty_ctx)) in
+      let+ () = unify tyI (Range.dummy "ut-read-inline-2", BaseType(InlineTextType)) in
+      return (e_ret, (rng, BaseType(bsty_ret)))
 
   | UTReadBlock(utast_ctx, utastB) ->
-      let (e_ctx, ty_ctx) = typecheck_iter tyenv utast_ctx in
-      let (eB, tyB) = typecheck_iter tyenv utastB in
+      let+ (e_ctx, ty_ctx) = typecheck_iter tyenv utast_ctx in
+      let+ (eB, tyB) = typecheck_iter tyenv utastB in
       let (e_ret, bsty_ctx, bsty_ret) =
         if OptionState.is_text_mode () then
           (PrimitiveStringifyBlock(e_ctx, eB), TextInfoType, StringType)
         else
           (PrimitiveReadBlock(e_ctx, eB), ContextType, BlockBoxesType)
       in
-      unify ty_ctx (Range.dummy "ut-read-block-1", BaseType(bsty_ctx));
-      unify tyB (Range.dummy "ut-read-block-2", BaseType(BlockTextType));
-      (e_ret, (rng, BaseType(bsty_ret)))
+      let+ () = unify ty_ctx (Range.dummy "ut-read-block-1", BaseType(bsty_ctx)) in
+      let+ () = unify tyB (Range.dummy "ut-read-block-2", BaseType(BlockTextType)) in
+      return (e_ret, (rng, BaseType(bsty_ret)))
 
   | UTNext(utast1) ->
       begin
         match pre.stage with
         | Stage0 ->
-            let (e1, ty1) = typecheck_iter ~s:Stage1 tyenv utast1 in
-            (Next(e1), (rng, CodeType(ty1)))
+            let+ (e1, ty1) = typecheck_iter ~s:Stage1 tyenv utast1 in
+            return (Next(e1), (rng, CodeType(ty1)))
 
         | Stage1 | Persistent0 ->
-            raise_error (InvalidExpressionAsToStaging(rng, Stage0))
+            err (InvalidExpressionAsToStaging(rng, Stage0))
       end
 
   | UTPrev(utast1) ->
       begin
         match pre.stage with
         | Stage0 | Persistent0 ->
-            raise_error (InvalidExpressionAsToStaging(rng, Stage1))
+            err (InvalidExpressionAsToStaging(rng, Stage1))
 
         | Stage1 ->
-            let (e1, ty1) = typecheck_iter ~s:Stage0 tyenv utast1 in
+            let+ (e1, ty1) = typecheck_iter ~s:Stage0 tyenv utast1 in
             let beta = fresh_type_variable rng pre in
-            unify ty1 (Range.dummy "prev", CodeType(beta));
-            (Prev(e1), beta)
+            let+ () = unify ty1 (Range.dummy "prev", CodeType(beta)) in
+            return (Prev(e1), beta)
       end
 
 
-and typecheck_abstraction (pre : pre) (tyenv : Typeenv.t) (param_units : untyped_parameter_unit list) : Typeenv.t * (EvalVarID.t LabelMap.t * pattern_tree * mono_type LabelMap.t * mono_type) list =
-  let (tyenv, acc) =
-    param_units |> List.fold_left (fun (tyenv, acc) param_unit ->
+and typecheck_abstraction (pre : pre) (tyenv : Typeenv.t) (param_units : untyped_parameter_unit list) : (Typeenv.t * (EvalVarID.t LabelMap.t * pattern_tree * mono_type LabelMap.t * mono_type) list) ok =
+  let open ResultMonad in
+  let+ (tyenv, acc) =
+    param_units |> foldM (fun (tyenv, acc) param_unit ->
       let UTParameterUnit(opt_params, utpat, mnty_opt) = param_unit in
       let (ty_labmap, evid_labmap, tyenv) =
         let cons (_, label) ty ty_labmap =
@@ -1339,131 +1370,136 @@ and typecheck_abstraction (pre : pre) (tyenv : Typeenv.t) (param_units : untyped
         let nil = LabelMap.empty in
         add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
       in
-      let (pat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
-      mnty_opt |> Option.map (fun mnty ->
-        let typat_annot = decode_manual_type pre tyenv mnty in
-        unify typat typat_annot;
-      ) |> ignore;
+      let+ (pat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
+      let+ _unit_opt =
+        mnty_opt |> optionM (fun mnty ->
+          let+ typat_annot = decode_manual_type pre tyenv mnty in
+          unify typat typat_annot
+        )
+      in
       let tyenv = add_pattern_var_mono pre tyenv patvarmap in
-      (tyenv, Alist.extend acc (evid_labmap, pat, ty_labmap, typat))
+      return (tyenv, Alist.extend acc (evid_labmap, pat, ty_labmap, typat))
     ) (tyenv, Alist.empty)
   in
-  (tyenv, acc |> Alist.to_list)
+  return (tyenv, acc |> Alist.to_list)
 
 
 
-and typecheck_command_arguments (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) (tyenv : Typeenv.t) (utcmdargs : untyped_command_argument list) (cmdargtys : mono_command_argument_type list) : (abstract_tree LabelMap.t * abstract_tree) list =
-  let zipped =
-    try List.combine utcmdargs cmdargtys with
+and typecheck_command_arguments (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) (tyenv : Typeenv.t) (utcmdargs : untyped_command_argument list) (cmdargtys : mono_command_argument_type list) : ((abstract_tree LabelMap.t * abstract_tree) list) ok =
+  let open ResultMonad in
+  let+ zipped =
+    try
+      return @@ List.combine utcmdargs cmdargtys
+    with
     | Invalid_argument(_) ->
       let arity_expected = List.length cmdargtys in
       let arity_actual = List.length utcmdargs in
-      raise_error (InvalidArityOfCommandApplication(rngcmdapp, arity_expected, arity_actual))
+      err (InvalidArityOfCommandApplication(rngcmdapp, arity_expected, arity_actual))
   in
-  zipped |> List.map (fun (utcmdarg, cmdargty) ->
+  zipped |> mapM (fun (utcmdarg, cmdargty) ->
     let UTCommandArg(labeled_utasts, utast1) = utcmdarg in
-    let utast_labmap =
-      labeled_utasts |> List.fold_left (fun utast_labmap ((rng, label), utast) ->
+    let+ utast_labmap =
+      labeled_utasts |> foldM (fun utast_labmap ((rng, label), utast) ->
         if utast_labmap |> LabelMap.mem label then
-          raise_error (LabelUsedMoreThanOnce(rng, label))
+          err (LabelUsedMoreThanOnce(rng, label))
         else
-          utast_labmap |> LabelMap.add label (utast, rng)
+          return (utast_labmap |> LabelMap.add label (utast, rng))
       ) LabelMap.empty
     in
     let CommandArgType(ty_labmap, ty2) = cmdargty in
-    let e_labmap =
-      LabelMap.merge (fun label utast_and_rng_opt ty_opt ->
+    let+ e_labmap =
+      LabelMap.mergeM (fun label utast_and_rng_opt ty_opt ->
         match (utast_and_rng_opt, ty_opt) with
         | (Some((utast1, _)), Some(ty2)) ->
-            let (e1, ty1) = typecheck pre tyenv utast1 in
-            unify ty1 ty2;
-            Some(e1)
-
-        | (None, Some(_)) ->
-            None
+            let+ (e1, ty1) = typecheck pre tyenv utast1 in
+            let+ () = unify ty1 ty2 in
+            return @@ Some(e1)
 
         | (Some((_, rng)), None) ->
-            raise_error (UnexpectedOptionalLabel(rng, label, tycmd))
+            err (UnexpectedOptionalLabel(rng, label, tycmd))
 
-        | (None, None) ->
-            assert false
+        | (None, _) ->
+            return None
+
       ) utast_labmap ty_labmap
     in
-    let (e1, ty1) = typecheck pre tyenv utast1 in
-    unify ty1 ty2;
-    (e_labmap, e1)
+    let+ (e1, ty1) = typecheck pre tyenv utast1 in
+    let+ () = unify ty1 ty2 in
+    return (e_labmap, e1)
   )
 
 
-and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_math_text_element list) : math_text_element list =
+and typecheck_math (pre : pre) (tyenv : Typeenv.t) (utmes : untyped_math_text_element list) : (math_text_element list) ok =
+  let open ResultMonad in
 
   let iter (_b, utmes) = typecheck_math pre tyenv utmes in
 
-  utmes |> List.map (fun utme ->
+  utmes |> mapM (fun utme ->
     let (rng, UTMathTextElement{ base = utbase; sub = utsub_opt; sup = utsup_opt }) = utme in
-    let base =
+    let+ base =
       match utbase with
       | UTMathTextChar(uch) ->
-          MathTextChar(uch)
+          return @@ MathTextChar(uch)
 
       | UTMathTextApplyCommand(utast_cmd, utcmdarglst) ->
-          let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
+          let+ (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
           begin
             match ty_cmd with
             | (_, MathCommandType(cmdargtys)) ->
-                let args = typecheck_command_arguments ty_cmd rng pre tyenv utcmdarglst cmdargtys in
-                MathTextApplyCommand{
+                let+ args = typecheck_command_arguments ty_cmd rng pre tyenv utcmdarglst cmdargtys in
+                return @@ MathTextApplyCommand{
                   command   = e_cmd;
                   arguments = args;
                 }
 
             | (_, InlineCommandType(_)) ->
                 let (rng_cmd, _) = utast_cmd in
-                raise_error (InlineCommandInMath(rng_cmd))
+                err (InlineCommandInMath(rng_cmd))
 
             | _ ->
                 failwith (Printf.sprintf "unexpected type: %s" (Display.show_mono_type ty_cmd))
           end
 
       | UTMathTextContent(utast0) ->
-          let (e0, ty0) = typecheck pre tyenv utast0 in
-          unify ty0 (Range.dummy "math-embedded-var", BaseType(MathTextType));
-          MathTextContent(e0)
+          let+ (e0, ty0) = typecheck pre tyenv utast0 in
+          let+ () = unify ty0 (Range.dummy "math-embedded-var", BaseType(MathTextType)) in
+          return @@ MathTextContent(e0)
     in
-    let sub = utsub_opt |> Option.map iter in
-    let sup = utsup_opt |> Option.map iter in
-    MathTextElement{ base; sub; sup }
+    let+ sub = utsub_opt |> optionM iter in
+    let+ sup = utsup_opt |> optionM iter in
+    return @@ MathTextElement{ base; sub; sup }
   )
 
 
-and typecheck_block_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utbts : untyped_block_text_element list) : block_text_element list =
-  utbts |> List.fold_left (fun acc utbt ->
+and typecheck_block_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utbts : untyped_block_text_element list) : (block_text_element list) ok =
+  let open ResultMonad in
+  utbts |> foldM (fun acc utbt ->
     match utbt with
     | (rng_cmdapp, UTBlockTextApplyCommand(utast_cmd, utcmdargs)) ->
-        let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
+        let+ (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
         let cmdargtys =
           match ty_cmd with
           | (_, BlockCommandType(cmdargtys)) -> cmdargtys
           | _                                -> assert false
         in
-        let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
-        Alist.extend acc (BlockTextApplyCommand{ command = e_cmd; arguments = args })
+        let+ args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
+        return @@ Alist.extend acc (BlockTextApplyCommand{ command = e_cmd; arguments = args })
 
     | (_, UTBlockTextContent(utast0)) ->
-        let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "UTBlockTextContent", BaseType(BlockTextType));
-        Alist.extend acc (BlockTextContent(e0))
+        let+ (e0, ty0) = typecheck pre tyenv utast0 in
+        let+ () = unify ty0 (Range.dummy "UTBlockTextContent", BaseType(BlockTextType)) in
+        return @@ Alist.extend acc (BlockTextContent(e0))
 
     | (rng_app, UTBlockTextMacro(bmacro, utmacargs)) ->
         begin
           match pre.stage with
           | Stage0 | Persistent0 ->
-              raise_error (InvalidExpressionAsToStaging(rng_app, Stage1))
+              err (InvalidExpressionAsToStaging(rng_app, Stage1))
 
           | Stage1 ->
               let (_rng_all, modidents, cs) = bmacro in
               let (rng_cs, _csnm) = cs in
-              let macentry = find_macro tyenv modidents cs in
+              let+ macentry = find_macro tyenv modidents cs in
               let macty = TypeConv.instantiate_macro_type pre.level pre.quantifiability macentry.macro_type in
               let macparamtys =
                 match macty with
@@ -1475,60 +1511,62 @@ and typecheck_block_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utbts
                 | Some(evid) -> evid
                 | None       -> assert false
               in
-              let eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
+              let+ eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
               let eapp = apply_tree_of_list (ContentOf(rng_cs, evid)) eargs in
-              Alist.extend acc (BlockTextContent(Prev(eapp)))
+              return @@ Alist.extend acc (BlockTextContent(Prev(eapp)))
         end
 
-  ) Alist.empty |> Alist.to_list
+  ) Alist.empty >>= fun acc ->
+  return @@ Alist.to_list acc
 
 
-and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utits : untyped_inline_text_element list) : inline_text_element list =
-  utits |> List.fold_left (fun acc utit ->
+and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utits : untyped_inline_text_element list) : (inline_text_element list) ok =
+  let open ResultMonad in
+  utits |> foldM (fun acc utit ->
     match utit with
     | (rng_cmdapp, UTInlineTextApplyCommand(utast_cmd, utcmdargs)) ->
-        let (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
-        let cmdargtys =
+        let+ (e_cmd, ty_cmd) = typecheck pre tyenv utast_cmd in
+        let+ cmdargtys =
           match ty_cmd with
           | (_, InlineCommandType(cmdargtys)) ->
-              cmdargtys
+              return cmdargtys
 
           | (_, MathCommandType(_)) ->
               let (rng_cmd, _) = utast_cmd in
-              raise_error (MathCommandInInline(rng_cmd))
+              err (MathCommandInInline(rng_cmd))
 
           | _ ->
               assert false
         in
-        let args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
-        Alist.extend acc (InlineTextApplyCommand{ command = e_cmd; arguments = args })
+        let+ args = typecheck_command_arguments ty_cmd rng_cmdapp pre tyenv utcmdargs cmdargtys in
+        return @@ Alist.extend acc (InlineTextApplyCommand{ command = e_cmd; arguments = args })
 
     | (_, UTInlineTextEmbeddedMath(utast_math)) ->
-        let (emath, tymath) = typecheck pre tyenv utast_math in
-        unify tymath (Range.dummy "ut-inline-text-embedded-math", BaseType(MathTextType));
-        Alist.extend acc (InlineTextEmbeddedMath(emath))
+        let+ (emath, tymath) = typecheck pre tyenv utast_math in
+        let+ () = unify tymath (Range.dummy "ut-inline-text-embedded-math", BaseType(MathTextType)) in
+        return @@ Alist.extend acc (InlineTextEmbeddedMath(emath))
 
     | (_, UTInlineTextEmbeddedCodeArea(s)) ->
-        Alist.extend acc (InlineTextEmbeddedCodeArea(s))
+        return @@ Alist.extend acc (InlineTextEmbeddedCodeArea(s))
 
     | (_, UTInlineTextContent(utast0)) ->
-        let (e0, ty0) = typecheck pre tyenv utast0 in
-        unify ty0 (Range.dummy "ut-inline-text-content", BaseType(InlineTextType));
-        Alist.extend acc (InlineTextContent(e0))
+        let+ (e0, ty0) = typecheck pre tyenv utast0 in
+        let+ () = unify ty0 (Range.dummy "ut-inline-text-content", BaseType(InlineTextType)) in
+        return @@ Alist.extend acc (InlineTextContent(e0))
 
     | (_, UTInlineTextString(s)) ->
-        Alist.extend acc (InlineTextString(s))
+        return @@ Alist.extend acc (InlineTextString(s))
 
     | (rng_app, UTInlineTextMacro(hmacro, utmacargs)) ->
         begin
           match pre.stage with
           | Stage0 | Persistent0 ->
-              raise_error (InvalidExpressionAsToStaging(rng_app, Stage1))
+              err (InvalidExpressionAsToStaging(rng_app, Stage1))
 
           | Stage1 ->
               let (_rng_all, modidents, cs) = hmacro in
               let (rng_cs, _csnm) = cs in
-              let macentry = find_macro tyenv modidents cs in
+              let+ macentry = find_macro tyenv modidents cs in
               let macty = TypeConv.instantiate_macro_type pre.level pre.quantifiability macentry.macro_type in
               let macparamtys =
                 match macty with
@@ -1540,166 +1578,176 @@ and typecheck_inline_text (_rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (utit
                 | Some(evid) -> evid
                 | None       -> assert false
               in
-              let eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
+              let+ eargs = typecheck_macro_arguments rng_app pre tyenv macparamtys utmacargs in
               let eapp = apply_tree_of_list (ContentOf(rng_cs, evid)) eargs in
-              Alist.extend acc (InlineTextContent(Prev(eapp)))
+              return @@ Alist.extend acc (InlineTextContent(Prev(eapp)))
         end
 
-  ) Alist.empty |> Alist.to_list
+  ) Alist.empty >>= fun acc ->
+  return @@ Alist.to_list acc
 
 
-and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (macparamtys : mono_macro_parameter_type list) (utmacargs : untyped_macro_argument list) : abstract_tree list =
-  let lenexp = List.length macparamtys in
-  let lenact = List.length utmacargs in
-  if (lenexp <> lenact) then
-    raise_error (InvalidNumberOfMacroArguments(rng, macparamtys))
-  else
-    let argacc =
-      List.fold_left2 (fun argacc macparamty utmacarg ->
-        match macparamty with
-        | LateMacroParameter(tyexp) ->
-            begin
-              match utmacarg with
-              | UTLateMacroArg(utast) ->
-                  let (earg, tyarg) = typecheck pre tyenv utast in
-                  unify tyarg tyexp;
-                  Alist.extend argacc (Next(earg))
-                    (* Late arguments are converted to quoted arguments. *)
+and typecheck_macro_arguments (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (macparamtys : mono_macro_parameter_type list) (utmacargs : untyped_macro_argument list) : (abstract_tree list) ok =
+  let open ResultMonad in
+  let+ zipped =
+    try
+      return @@ List.combine macparamtys utmacargs
+    with
+    | Invalid_argument(_) ->
+        err (InvalidNumberOfMacroArguments(rng, macparamtys))
+  in
+  let+ argacc =
+    zipped |> foldM (fun argacc (macparamty, utmacarg) ->
+      match macparamty with
+      | LateMacroParameter(tyexp) ->
+          begin
+            match utmacarg with
+            | UTLateMacroArg(utast) ->
+                let+ (earg, tyarg) = typecheck pre tyenv utast in
+                let+ () = unify tyarg tyexp in
+                return @@ Alist.extend argacc (Next(earg))
+                  (* Late arguments are converted to quoted arguments. *)
 
-              | UTEarlyMacroArg((rngarg, _)) ->
-                  raise_error (LateMacroArgumentExpected(rngarg, tyexp))
-            end
+            | UTEarlyMacroArg((rngarg, _)) ->
+                err (LateMacroArgumentExpected(rngarg, tyexp))
+          end
 
-        | EarlyMacroParameter(tyexp) ->
-            begin
-              match utmacarg with
-              | UTLateMacroArg((rngarg, _)) ->
-                  raise_error (EarlyMacroArgumentExpected(rngarg, tyexp))
+      | EarlyMacroParameter(tyexp) ->
+          begin
+            match utmacarg with
+            | UTLateMacroArg((rngarg, _)) ->
+                err (EarlyMacroArgumentExpected(rngarg, tyexp))
 
-              | UTEarlyMacroArg(utast) ->
-                  let (earg, tyarg) = typecheck { pre with stage = Stage0 } tyenv utast in
-                  unify tyarg tyexp;
-                  Alist.extend argacc earg
-            end
+            | UTEarlyMacroArg(utast) ->
+                let+ (earg, tyarg) = typecheck { pre with stage = Stage0 } tyenv utast in
+                let+ () = unify tyarg tyexp in
+                return @@ Alist.extend argacc earg
+          end
 
-      ) Alist.empty macparamtys utmacargs
-    in
-    Alist.to_list argacc
+    ) Alist.empty
+  in
+  return @@ Alist.to_list argacc
 
 
-and typecheck_record (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (fields : (label ranged * untyped_abstract_tree) list) =
-  let (easc, row) =
-    fields |> List.fold_left (fun (easc, row) (rlabel, utast) ->
+and typecheck_record (rng : Range.t) (pre : pre) (tyenv : Typeenv.t) (fields : (label ranged * untyped_abstract_tree) list) : (abstract_tree * mono_type) ok =
+  let open ResultMonad in
+  let+ (easc, row) =
+    fields |> foldM (fun (easc, row) (rlabel, utast) ->
       let (rng_label, label) = rlabel in
       if easc |> LabelMap.mem label then
-        raise_error (LabelUsedMoreThanOnce(rng_label, label))
+        err (LabelUsedMoreThanOnce(rng_label, label))
       else
-        let (e, ty) = typecheck pre tyenv utast in
-        (easc |> LabelMap.add label e, RowCons(rlabel, ty, row))
+        let+ (e, ty) = typecheck pre tyenv utast in
+        return (easc |> LabelMap.add label e, RowCons(rlabel, ty, row))
     ) (LabelMap.empty, RowEmpty)
   in
-  (Record(easc), (rng, RecordType(row)))
+  return (Record(easc), (rng, RecordType(row)))
 
 
-and typecheck_itemize (pre : pre) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
-  let (e1, ty1) = typecheck pre tyenv utast1 in
-  unify ty1 (Range.dummy "typecheck_itemize_string", BaseType(InlineTextType));
-  let e2 = typecheck_itemize_list pre tyenv utitmzlst in
-  (NonValueConstructor("Item", PrimitiveTuple(TupleList.make e1 e2 [])))
+and typecheck_itemize (pre : pre) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) : abstract_tree ok =
+  let open ResultMonad in
+  let+ (e1, ty1) = typecheck pre tyenv utast1 in
+  let+ () = unify ty1 (Range.dummy "typecheck_itemize_string", BaseType(InlineTextType)) in
+  let+ e2 = typecheck_itemize_list pre tyenv utitmzlst in
+  return (NonValueConstructor("Item", PrimitiveTuple(TupleList.make e1 e2 [])))
 
 
-and typecheck_itemize_list
-    (pre : pre) (tyenv : Typeenv.t) (utitmzlst : untyped_itemize list) =
+and typecheck_itemize_list (pre : pre) (tyenv : Typeenv.t) (utitmzlst : untyped_itemize list) : abstract_tree ok =
+  let open ResultMonad in
   match utitmzlst with
   | [] ->
-      ASTEndOfList
+      return ASTEndOfList
 
   | hditmz :: tlitmzlst ->
-      let ehd = typecheck_itemize pre tyenv hditmz in
-      let etl = typecheck_itemize_list pre tyenv tlitmzlst in
-      PrimitiveListCons(ehd, etl)
+      let+ ehd = typecheck_itemize pre tyenv hditmz in
+      let+ etl = typecheck_itemize_list pre tyenv tlitmzlst in
+      return @@ PrimitiveListCons(ehd, etl)
 
 
-and typecheck_pattern_branch (pre : pre) (tyenv : Typeenv.t) (utpatbr : untyped_pattern_branch) : pattern_branch * mono_type * mono_type =
+and typecheck_pattern_branch (pre : pre) (tyenv : Typeenv.t) (utpatbr : untyped_pattern_branch) : (pattern_branch * mono_type * mono_type) ok =
+  let open ResultMonad in
   let UTPatternBranch(utpat, utast1) = utpatbr in
-  let (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
+  let+ (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
   let tyenvpat = add_pattern_var_mono pre tyenv patvarmap in
-  let (e1, ty1) = typecheck pre tyenvpat utast1 in
-  (PatternBranch(epat, e1), typat, ty1)
+  let+ (e1, ty1) = typecheck pre tyenvpat utast1 in
+  return (PatternBranch(epat, e1), typat, ty1)
 
 
-and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : pattern_branch list =
-  utpatbrs |> List.map (fun utpatbr ->
-    let (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
-    unify typat tyobj;
-    unify ty1 tyres;
-    patbr
+and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : (pattern_branch list) ok =
+  let open ResultMonad in
+  utpatbrs |> mapM (fun utpatbr ->
+    let+ (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
+    let+ () = unify typat tyobj in
+    let+ () = unify ty1 tyres in
+    return patbr
   )
 
 
-and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untyped_pattern_tree) : pattern_tree * mono_type * pattern_var_map =
+and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untyped_pattern_tree) : (pattern_tree * mono_type * pattern_var_map) ok =
+  let open ResultMonad in
   let iter = typecheck_pattern pre tyenv in
     match utpatmain with
-    | UTPIntegerConstant(nc) -> (PIntegerConstant(nc), (rng, BaseType(IntType)), PatternVarMap.empty)
-    | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BaseType(BoolType)), PatternVarMap.empty)
-    | UTPUnitConstant        -> (PUnitConstant, (rng, BaseType(UnitType)), PatternVarMap.empty)
+    | UTPIntegerConstant(nc) -> return (PIntegerConstant(nc), (rng, BaseType(IntType)), PatternVarMap.empty)
+    | UTPBooleanConstant(bc) -> return (PBooleanConstant(bc), (rng, BaseType(BoolType)), PatternVarMap.empty)
+    | UTPUnitConstant        -> return (PUnitConstant, (rng, BaseType(UnitType)), PatternVarMap.empty)
 
     | UTPStringConstant(sc) ->
-        (PStringConstant(sc), (rng, BaseType(StringType)), PatternVarMap.empty)
+        return (PStringConstant(sc), (rng, BaseType(StringType)), PatternVarMap.empty)
 
     | UTPListCons(utpat1, utpat2) ->
-        let (epat1, typat1, patvarmap1) = iter utpat1 in
-        let (epat2, typat2, patvarmap2) = iter utpat2 in
-        unify typat2 (Range.dummy "pattern-list-cons", ListType(typat1));
-        let patvarmap = unite_pattern_var_map patvarmap1 patvarmap2 in
-        (PListCons(epat1, epat2), typat2, patvarmap)
+        let+ (epat1, typat1, patvarmap1) = iter utpat1 in
+        let+ (epat2, typat2, patvarmap2) = iter utpat2 in
+        let+ () = unify typat2 (Range.dummy "pattern-list-cons", ListType(typat1)) in
+        let+ patvarmap = unite_pattern_var_map patvarmap1 patvarmap2 in
+        return (PListCons(epat1, epat2), typat2, patvarmap)
 
     | UTPEndOfList ->
         let beta = fresh_type_variable rng pre in
-        (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
+        return (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
 
     | UTPTuple(utpats) ->
-        let tris = TupleList.map iter utpats in
+        let+ tris = TupleList.mapM iter utpats in
         let epats = tris |> TupleList.map (fun (epat, _, _) -> epat) in
         let typats = tris |> TupleList.map (fun (_, typat, _) -> typat) in
         let tyres = (rng, ProductType(typats)) in
-        let patvarmap =
+        let+ patvarmap =
           let patvarmaps = tris |> TupleList.to_list |> List.map (fun (_, _, patvarmap) -> patvarmap) in
-          List.fold_left unite_pattern_var_map PatternVarMap.empty patvarmaps
+          patvarmaps |> foldM unite_pattern_var_map PatternVarMap.empty
         in
-        (PTuple(epats), tyres, patvarmap)
+        return (PTuple(epats), tyres, patvarmap)
 
     | UTPWildCard ->
         let beta = fresh_type_variable rng pre in
-        (PWildCard, beta, PatternVarMap.empty)
+        return (PWildCard, beta, PatternVarMap.empty)
 
     | UTPVariable(varnm) ->
         let beta = fresh_type_variable rng pre in
         let evid = EvalVarID.fresh (rng, varnm) in
-        (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
+        return (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
 
     | UTPAsVariable(varnm, utpat1) ->
         let beta = fresh_type_variable rng pre in
-        let (epat1, typat1, patvarmap1) = iter utpat1 in
+        let+ (epat1, typat1, patvarmap1) = iter utpat1 in
         begin
           match PatternVarMap.find_opt varnm patvarmap1 with
           | Some((rngsub, _, _)) ->
             (* If 'varnm' also occurs in `utpat1`: *)
-              raise_error (MultiplePatternVariable(rngsub, rng, varnm))
+              err (MultiplePatternVariable(rngsub, rng, varnm))
 
           | None ->
               let evid = EvalVarID.fresh (rng, varnm) in
-              (PAsVariable(evid, epat1), typat1, patvarmap1 |> PatternVarMap.add varnm (rng, evid, beta))
+              return (PAsVariable(evid, epat1), typat1, patvarmap1 |> PatternVarMap.add varnm (rng, evid, beta))
         end
 
     | UTPConstructor(constrnm, utpat1) ->
-        let (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
-        let (epat1, typat1, tyenv1) = iter utpat1 in
-        unify tyc typat1;
-        (PConstructor(constrnm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
+        let+ (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+        let+ (epat1, typat1, tyenv1) = iter utpat1 in
+        let+ () = unify tyc typat1 in
+        return (PConstructor(constrnm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
 
 
-and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : (var_name * poly_type * EvalVarID.t * letrec_binding) list =
+and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : ((var_name * poly_type * EvalVarID.t * letrec_binding) list) ok =
+  let open ResultMonad in
 
   (* First, adds a type variable for each bound identifier. *)
   let (tyenv, utrecacc) =
@@ -1730,15 +1778,15 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
   in
 
   (* Typechecks each body of the definitions. *)
-  let tupleacc =
-    utrecacc |> Alist.to_list |> List.fold_left (fun tupleacc utrec ->
+  let+ tupleacc =
+    utrecacc |> Alist.to_list |> foldM (fun tupleacc utrec ->
       let (((_, varnm), utast1), beta, evid) = utrec in
-      let (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenv utast1 in
+      let+ (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenv utast1 in
       begin
         match e1 with
         | Function(evid_labmap, patbr1) ->
             if LabelMap.cardinal evid_labmap = 0 then begin
-              unify ty1 beta;
+              let+ () = unify ty1 beta in
 (*
               mntyopt |> Option.map (fun mnty ->
                 let tyin = decode_manual_type pre tyenv mnty in
@@ -1747,26 +1795,30 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
 *)
               let recbind = LetRecBinding(evid, patbr1) in
               let tupleacc = Alist.extend tupleacc (varnm, beta, evid, recbind) in
-              tupleacc
+              return tupleacc
             end else
-            let (rng1, _) = utast1 in
-            raise_error (BreaksValueRestriction(rng1))
+              let (rng1, _) = utast1 in
+              err (BreaksValueRestriction(rng1))
 
         | _ ->
             let (rng1, _) = utast1 in
-            raise_error (BreaksValueRestriction(rng1))
+            err (BreaksValueRestriction(rng1))
       end
     ) Alist.empty
   in
 
-  tupleacc |> Alist.to_list |> List.map (fun (varnm, ty, evid, recbind) ->
-    let pty = TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty) in
-    (varnm, pty, evid, recbind)
-  )
+  let tuples =
+    tupleacc |> Alist.to_list |> List.map (fun (varnm, ty, evid, recbind) ->
+      let pty = TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty) in
+      (varnm, pty, evid, recbind)
+    )
+  in
+  return tuples
 
 
-and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) =
-  let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
+and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) : (Typeenv.t * EvalVarID.t * abstract_tree * mono_type) ok =
+  let open ResultMonad in
+  let+ (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
   let (rng_var, varnm) = ident in
   let evid = EvalVarID.fresh ident in
   let tyenvI =
@@ -1779,18 +1831,19 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident 
     in
     tyenv |> Typeenv.add_value varnm ventry
   in
-  (tyenvI, evid, eI, tyI)
+  return (tyenvI, evid, eI, tyI)
 
 
-and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type =
+and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mono_type ok =
+  let open ResultMonad in
   let invalid rng tynm ~expect:len_expected ~actual:len_actual =
-    raise_error (IllegalNumberOfTypeArguments(rng, tynm, len_expected, len_actual))
+    err (IllegalNumberOfTypeArguments(rng, tynm, len_expected, len_actual))
   in
-  let rec aux (rng, mtymain) =
-    let tymain =
+  let rec aux ((rng, mtymain) : manual_type) : mono_type ok =
+    let+ tymain =
       match mtymain with
       | MTypeName(modidents, tyident, mtyargs) ->
-          let tyargs = mtyargs |> List.map aux in
+          let+ tyargs = mtyargs |> mapM aux in
           let len_actual = List.length tyargs in
           let (rng_tynm, tynm) = tyident in
           begin
@@ -1807,37 +1860,37 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                               | "code" ->
                                   begin
                                     match tyargs with
-                                    | [ ty ] -> CodeType(ty)
+                                    | [ ty ] -> return @@ CodeType(ty)
                                     | _      -> invalid rng "code" ~expect:1 ~actual:len_actual
                                   end
 
                               | "list" ->
                                   begin
                                     match tyargs with
-                                    | [ ty ] -> ListType(ty)
+                                    | [ ty ] -> return @@ ListType(ty)
                                     | _      -> invalid rng "list" ~expect:1 ~actual:len_actual
                                   end
 
                               | "ref" ->
                                   begin
                                     match tyargs with
-                                    | [ ty ] -> RefType(ty)
+                                    | [ ty ] -> return @@ RefType(ty)
                                     | _      -> invalid rng "ref" ~expect:1 ~actual:len_actual
                                   end
 
                               | _ ->
-                                  raise_error (UndefinedTypeName(rng_tynm, tynm))
+                                  err (UndefinedTypeName(rng_tynm, tynm))
                             end
 
                         | Some(bt) ->
-                            BaseType(bt)
+                            return @@ BaseType(bt)
                       end
 
                   | Some(tentry) ->
                       begin
                         match TypeConv.apply_type_scheme_mono tentry.type_scheme tyargs with
                         | Some((_, tymain)) ->
-                            tymain
+                            return tymain
 
                         | None ->
                             let (bids, _) = tentry.type_scheme in
@@ -1848,24 +1901,24 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
 
             | modident0 :: proj ->
                 let modchain = (modident0, proj) in
-                let mentry = find_module_chain tyenv modchain in
+                let+ mentry = find_module_chain tyenv modchain in
                 begin
                   match mentry.mod_signature with
                   | ConcFunctor(fsig) ->
-                      raise_error (NotAStructureSignature(rng, fsig))
+                      err (NotAStructureSignature(rng, fsig))
                         (* TODO (enhance): give a better code range to this error *)
 
                   | ConcStructure(ssig) ->
                       begin
                         match ssig |> StructSig.find_type tynm with
                         | None ->
-                            raise_error (UndefinedTypeName(rng_tynm, tynm))
+                            err (UndefinedTypeName(rng_tynm, tynm))
 
                         | Some(tentry) ->
                             begin
                               match TypeConv.apply_type_scheme_mono tentry.type_scheme tyargs with
                               | Some((_, tymain)) ->
-                                  tymain
+                                  return tymain
 
                               | None ->
                                   let (bids, _) = tentry.type_scheme in
@@ -1880,140 +1933,162 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
           begin
             match pre.type_parameters |> TypeParameterMap.find_opt typaram with
             | None ->
-                raise_error (UndefinedTypeVariable(rng, typaram))
+                err (UndefinedTypeVariable(rng, typaram))
 
             | Some(mbbid) ->
-                TypeVariable(MustBeBound(mbbid))
+                return @@ TypeVariable(MustBeBound(mbbid))
           end
 
       | MFuncType(mnfields, rowvar_opt, mtydom, mtycod) ->
-          FuncType(aux_row mnfields rowvar_opt, aux mtydom, aux mtycod)
+          let+ row = aux_row mnfields rowvar_opt in
+          let+ ty_dom = aux mtydom in
+          let+ ty_cod = aux mtycod in
+          return @@ FuncType(row, ty_dom, ty_cod)
 
       | MProductType(mntys) ->
-          ProductType(TupleList.map aux mntys)
+          let+ tys = TupleList.mapM aux mntys in
+          return @@ ProductType(tys)
 
       | MRecordType(mnfields, rowvar) ->
-          RecordType(aux_row mnfields rowvar)
+          let+ row = aux_row mnfields rowvar in
+          return @@ RecordType(row)
 
-      | MInlineCommandType(mncmdargtys) -> InlineCommandType(aux_cmd_list mncmdargtys)
-      | MBlockCommandType(mncmdargtys)  -> BlockCommandType(aux_cmd_list mncmdargtys)
-      | MMathCommandType(mncmdargtys)   -> MathCommandType(aux_cmd_list mncmdargtys)
+      | MInlineCommandType(mncmdargtys) ->
+          let+ cmdargtys = aux_cmd_list mncmdargtys in
+          return @@ InlineCommandType(cmdargtys)
+
+      | MBlockCommandType(mncmdargtys) ->
+          let+ cmdargtys = aux_cmd_list mncmdargtys in
+          return @@ BlockCommandType(cmdargtys)
+
+      | MMathCommandType(mncmdargtys) ->
+          let+ cmdargtys = aux_cmd_list mncmdargtys in
+          return @@ MathCommandType(cmdargtys)
     in
-    (rng, tymain)
+    return (rng, tymain)
 
-  and aux_cmd_list (mncmdargtys : manual_command_argument_type list) : mono_command_argument_type list =
-    List.map (fun mncmdargty ->
+  and aux_cmd_list (mncmdargtys : manual_command_argument_type list) : (mono_command_argument_type list) ok =
+    mncmdargtys |> mapM (fun mncmdargty ->
       let MArgType(mnfields, mnty) = mncmdargty in
-      let tylabmap =
-        mnfields |> List.fold_left (fun tylabmap (rlabel, mnty) ->
+      let+ tylabmap =
+        mnfields |> foldM (fun tylabmap (rlabel, mnty) ->
           let (rng, label) = rlabel in
           if tylabmap |> LabelMap.mem label then
-            raise_error (LabelUsedMoreThanOnce(rng, label))
+            err (LabelUsedMoreThanOnce(rng, label))
           else
-            let ty = aux mnty in
-            tylabmap |> LabelMap.add label ty
+            let+ ty = aux mnty in
+            return (tylabmap |> LabelMap.add label ty)
         ) LabelMap.empty
       in
-      let ty = aux mnty in
-      CommandArgType(tylabmap, ty)
-    ) mncmdargtys
+      let+ ty = aux mnty in
+      return @@ CommandArgType(tylabmap, ty)
+    )
 
-  and aux_row (mnfields : (label ranged * manual_type) list) (rowvar_opt : (row_variable_name ranged) option) =
-    let row_end =
+  and aux_row (mnfields : (label ranged * manual_type) list) (rowvar_opt : (row_variable_name ranged) option) : mono_row ok =
+    let+ row_end =
       match rowvar_opt with
       | None ->
-          RowEmpty
+          return RowEmpty
 
       | Some((rng, rowparam)) ->
           begin
             match pre.row_parameters |> RowParameterMap.find_opt rowparam with
             | None ->
-                raise_error (UndefinedRowVariable(rng, rowparam))
+                err (UndefinedRowVariable(rng, rowparam))
 
             | Some(mbbrid) ->
-                RowVar(MustBeBoundRow(mbbrid))
+                return @@ RowVar(MustBeBoundRow(mbbrid))
           end
     in
-    let (_, row) =
-      mnfields |> List.fold_left (fun (labset, row) (rlabel, mnty) ->
+    let+ (_, row) =
+      mnfields |> foldM (fun (labset, row) (rlabel, mnty) ->
         let (rng, label) = rlabel in
         if labset |> LabelSet.mem label then
-          raise_error (LabelUsedMoreThanOnce(rng, label))
+          err (LabelUsedMoreThanOnce(rng, label))
         else
-          let row = RowCons(rlabel, aux mnty, row) in
-          (labset |> LabelSet.add label, row)
+          let+ ty = aux mnty in
+          let row = RowCons(rlabel, ty, row) in
+          return (labset |> LabelSet.add label, row)
       ) (LabelSet.empty, row_end)
     in
-    row
+    return row
   in
   aux mty
 
 
-and decode_manual_base_kind (mnbkd : manual_base_kind) : base_kind =
+and decode_manual_base_kind (mnbkd : manual_base_kind) : base_kind ok =
+  let open ResultMonad in
   let MKindName((rng, kdnm)) = mnbkd in
   match kdnm with
-  | "o" -> TypeKind
-  | _   -> raise_error (UndefinedKindName(rng, kdnm))
+  | "o" -> return TypeKind
+  | _   -> err (UndefinedKindName(rng, kdnm))
 
 
-and decode_manual_kind (_pre : pre) (_tyenv : Typeenv.t) (mnkd : manual_kind) : kind =
+and decode_manual_kind (_pre : pre) (_tyenv : Typeenv.t) (mnkd : manual_kind) : kind ok =
+  let open ResultMonad in
   let MKind(mnbkds_dom, mnbkd_cod) = mnkd in
-  let kds_dom = mnbkds_dom |> List.map decode_manual_base_kind in
-  let TypeKind = decode_manual_base_kind mnbkd_cod in
-  Kind(kds_dom)
+  let+ kds_dom = mnbkds_dom |> mapM decode_manual_base_kind in
+  let+ TypeKind = decode_manual_base_kind mnbkd_cod in
+  return @@ Kind(kds_dom)
 
 
-and decode_manual_macro_type (pre : pre) (tyenv : Typeenv.t) (mmacty : manual_macro_type) : mono_macro_type =
+and decode_manual_macro_type (pre : pre) (tyenv : Typeenv.t) (mmacty : manual_macro_type) : mono_macro_type ok =
+  let open ResultMonad in
   match mmacty with
   | MInlineMacroType(mmacparamtys) ->
-      InlineMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
+      let+ macparamtys = mmacparamtys |> mapM (decode_manual_macro_parameter_type pre tyenv) in
+      return @@ InlineMacroType(macparamtys)
 
   | MBlockMacroType(mmacparamtys) ->
-      BlockMacroType(mmacparamtys |> List.map (decode_manual_macro_parameter_type pre tyenv))
+      let+ macparamtys = mmacparamtys |> mapM (decode_manual_macro_parameter_type pre tyenv) in
+      return @@ BlockMacroType(macparamtys)
 
 
-and decode_manual_macro_parameter_type (pre : pre) (tyenv : Typeenv.t) (mmacparamty : manual_macro_parameter_type) : mono_macro_parameter_type =
+and decode_manual_macro_parameter_type (pre : pre) (tyenv : Typeenv.t) (mmacparamty : manual_macro_parameter_type) : mono_macro_parameter_type ok =
+  let open ResultMonad in
   match mmacparamty with
   | MLateMacroParameter(mty) ->
-      let ty = decode_manual_type pre tyenv mty in
-      LateMacroParameter(ty)
+      let+ ty = decode_manual_type pre tyenv mty in
+      return @@ LateMacroParameter(ty)
 
   | MEarlyMacroParameter(mty) ->
-      let ty = decode_manual_type pre tyenv mty in
-      EarlyMacroParameter(ty)
+      let+ ty = decode_manual_type pre tyenv mty in
+      return @@ EarlyMacroParameter(ty)
 
 
-and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) =
-  utctorbrs |> List.fold_left (fun ctormap utctorbr ->
+and make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) : constructor_branch_map ok =
+  let open ResultMonad in
+  utctorbrs |> foldM (fun ctormap utctorbr ->
     match utctorbr with
     | UTConstructorBranch((_rng, ctornm), mty_opt) ->
-        let ty =
+        let+ ty =
           match mty_opt with
           | Some(mty) -> decode_manual_type pre tyenv mty
-          | None      -> (Range.dummy "unit", BaseType(UnitType))
+          | None      -> return (Range.dummy "unit", BaseType(UnitType))
         in
         let pty = TypeConv.generalize pre.level ty in
-        ctormap |> ConstructorMap.add ctornm pty
+        return (ctormap |> ConstructorMap.add ctornm pty)
   ) ConstructorMap.empty
 
 
-and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : signature abstracted * binding list =
+and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : (signature abstracted * binding list) ok =
+  let open ResultMonad in
   let (rng, utmodmain) = utmod in
   match utmodmain with
   | UTModVar(modchain) ->
-      let mentry = find_module_chain tyenv modchain in
+      let+ mentry = find_module_chain tyenv modchain in
       let modsig = mentry.mod_signature in
-      ((OpaqueIDMap.empty, modsig), [])
+      return ((OpaqueIDMap.empty, modsig), [])
 
   | UTModBinds(utbinds) ->
-      let ((quant, ssig), binds) = typecheck_binding_list tyenv utbinds in
-      ((quant, ConcStructure(ssig)), binds)
+      let+ ((quant, ssig), binds) = typecheck_binding_list tyenv utbinds in
+      return ((quant, ConcStructure(ssig)), binds)
 
   | UTModFunctor(modident1, utsig1, utmod2) ->
       let (_, modnm1) = modident1 in
-      let absmodsig1 = typecheck_signature tyenv utsig1 in
+      let+ absmodsig1 = typecheck_signature tyenv utsig1 in
       let (quant1, modsig1) = absmodsig1 in
-      let (absmodsig2, _binds2) =
+      let+ (absmodsig2, _binds2) =
         let mentry1 = { mod_signature = modsig1; } in
         let tyenv = tyenv |> Typeenv.add_module modnm1 mentry1 in
         typecheck_module tyenv utmod2
@@ -2027,16 +2102,16 @@ and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : signature ab
         }
       in
       let absmodsig = (OpaqueIDMap.empty, ConcFunctor(fsig)) in
-      (absmodsig, [])
+      return (absmodsig, [])
 
   | UTModApply(modchain1, modchain2) ->
-      let mentry1 = find_module_chain tyenv modchain1 in
-      let mentry2 = find_module_chain tyenv modchain2 in
+      let+ mentry1 = find_module_chain tyenv modchain1 in
+      let+ mentry2 = find_module_chain tyenv modchain2 in
       begin
         match mentry1.mod_signature with
         | ConcStructure(ssig) ->
             let rng = make_range_from_module_chain modchain1 in
-            raise_error (NotAFunctorSignature(rng, ssig))
+            err (NotAFunctorSignature(rng, ssig))
 
         | ConcFunctor(fsig1) ->
             begin
@@ -2048,14 +2123,14 @@ and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : signature ab
                   closure  = Some(((_, modnm0), utmod0, tyenv0))
                 } ->
                   let modsig2 = mentry2.mod_signature in
-                  let subst = subtype_concrete_with_abstract rng modsig2 (quant1, modsig_dom1) in
-                  let ((_, modsig0), binds) =
+                  let+ subst = subtype_concrete_with_abstract rng modsig2 (quant1, modsig_dom1) in
+                  let+ ((_, modsig0), binds) =
                     let mentry0 = { mod_signature = modsig2; } in
                     typecheck_module (tyenv0 |> Typeenv.add_module modnm0 mentry0) utmod0
                   in
                   let (quant1_subst, modsig_cod1_subst) = absmodsig_cod1 |> substitute_abstract subst in
                   let absmodsig = (quant1_subst, copy_contents modsig0 modsig_cod1_subst) in
-                  (absmodsig, binds)
+                  return (absmodsig, binds)
 
               | _ ->
                   assert false
@@ -2063,46 +2138,47 @@ and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : signature ab
       end
 
   | UTModCoerce(modident1, utsig2) ->
-      let mentry1 = find_module tyenv modident1 in
+      let+ mentry1 = find_module tyenv modident1 in
       let modsig1 = mentry1.mod_signature in
-      let absmodsig2 = typecheck_signature tyenv utsig2 in
-      let absmodsig = coerce_signature rng modsig1 absmodsig2 in
-      (absmodsig, [])
+      let+ absmodsig2 = typecheck_signature tyenv utsig2 in
+      let+ absmodsig = coerce_signature rng modsig1 absmodsig2 in
+      return (absmodsig, [])
 
 
-and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signature abstracted =
+and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : (signature abstracted) ok =
+  let open ResultMonad in
   let (rng, utsigmain) = utsig in
   match utsigmain with
   | UTSigVar(signm) ->
       begin
         match tyenv |> Typeenv.find_signature signm with
-        | None            -> raise_error (UndefinedSignatureName(rng, signm))
-        | Some(absmodsig) -> absmodsig
+        | None            -> err (UndefinedSignatureName(rng, signm))
+        | Some(absmodsig) -> return absmodsig
       end
 
   | UTSigPath(modchain1, (rng_signm, signm2)) ->
-      let mentry1 = find_module_chain tyenv modchain1 in
+      let+ mentry1 = find_module_chain tyenv modchain1 in
       begin
         match mentry1.mod_signature with
         | ConcFunctor(fsig) ->
             let rng = make_range_from_module_chain modchain1 in
-            raise_error (NotAStructureSignature(rng, fsig))
+            err (NotAStructureSignature(rng, fsig))
 
         | ConcStructure(ssig1) ->
             begin
               match ssig1 |> StructSig.find_signature signm2 with
-              | None             -> raise_error (UndefinedSignatureName(rng_signm, signm2))
-              | Some(absmodsig2) -> absmodsig2
+              | None             -> err (UndefinedSignatureName(rng_signm, signm2))
+              | Some(absmodsig2) -> return absmodsig2
             end
       end
 
   | UTSigDecls(utdecls) ->
-      let (quant, ssig) = typecheck_declaration_list tyenv utdecls in
-      (quant, ConcStructure(ssig))
+      let+ (quant, ssig) = typecheck_declaration_list tyenv utdecls in
+      return (quant, ConcStructure(ssig))
 
   | UTSigFunctor((_, modnm), utsig1, utsig2) ->
-      let (quant1, modsig1) = typecheck_signature tyenv utsig1 in
-      let absmodsig2 =
+      let+ (quant1, modsig1) = typecheck_signature tyenv utsig1 in
+      let+ absmodsig2 =
         let mentry = { mod_signature = modsig1; } in
         let tyenv = tyenv |> Typeenv.add_module modnm mentry in
         typecheck_signature tyenv utsig2
@@ -2115,60 +2191,60 @@ and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : signat
           closure  = None;
         }
       in
-      (OpaqueIDMap.empty, ConcFunctor(fsig))
+      return (OpaqueIDMap.empty, ConcFunctor(fsig))
 
   | UTSigWith(utsig0, modidents, tybinds) ->
-      let (quant0, modsig0) = typecheck_signature tyenv utsig0 in
-      let ssig =
+      let+ (quant0, modsig0) = typecheck_signature tyenv utsig0 in
+      let+ ssig =
         match modsig0 with
         | ConcFunctor(fsig) ->
-            raise_error (NotAStructureSignature(rng, fsig))
+            err (NotAStructureSignature(rng, fsig))
 
         | ConcStructure(ssig0) ->
-            modidents |> List.fold_left (fun ssig (rng, modnm) ->
+            modidents |> foldM (fun ssig (rng, modnm) ->
               match ssig |> StructSig.find_module modnm with
               | None ->
-                  raise_error (UndefinedModuleName(rng, modnm))
+                  err (UndefinedModuleName(rng, modnm))
 
               | Some(mentry) ->
                   begin
                     match mentry.mod_signature with
-                    | ConcFunctor(fsig)   -> raise_error (NotAStructureSignature(rng, fsig))
-                    | ConcStructure(ssig) -> ssig
+                    | ConcFunctor(fsig)   -> err (NotAStructureSignature(rng, fsig))
+                    | ConcStructure(ssig) -> return ssig
                   end
             ) ssig0
       in
-      let (tydefs, _ctordefs) = bind_types tyenv tybinds in
-      let (subst, quant) =
-        tydefs |> List.fold_left (fun (subst, quant) (tynm, tentry) ->
-          let (tyid, kd_expected) =
+      let+ (tydefs, _ctordefs) = bind_types tyenv tybinds in
+      let+ (subst, quant) =
+        tydefs |> foldM (fun (subst, quant) (tynm, tentry) ->
+          let+ (tyid, kd_expected) =
             match ssig |> StructSig.find_type tynm with
             | None ->
-                raise_error (UndefinedTypeName(rng, tynm))
+                err (UndefinedTypeName(rng, tynm))
 
             | Some(tentry) ->
                 begin
                   match TypeConv.get_opaque_type tentry.type_scheme with
                   | None ->
-                      raise_error (CannotRestrictTransparentType(rng, tynm))
+                      err (CannotRestrictTransparentType(rng, tynm))
 
                   | Some(tyid) ->
                       assert (quant |> OpaqueIDMap.mem tyid);
-                      (tyid, tentry.type_kind)
+                      return (tyid, tentry.type_kind)
                 end
           in
           let kd_actual = tentry.type_kind in
           if kind_equal kd_expected kd_actual then
             let subst = subst |> SubstMap.add tyid tentry.type_scheme in
             let quant = quant |> OpaqueIDMap.remove tyid in
-            (subst, quant)
+            return (subst, quant)
           else
-            raise_error (KindContradiction(rng, tynm, kd_expected, kd_actual))
+            err (KindContradiction(rng, tynm, kd_expected, kd_actual))
         ) (SubstMap.empty, quant0)
       in
       let modsig = modsig0 |> substitute_concrete subst in
         (* TODO: use `ctordefs` to update `modsig` *)
-      (quant, modsig)
+      return (quant, modsig)
 
 
 and lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substitution option =
@@ -2185,55 +2261,58 @@ and lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substituti
     None
 
 
-and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : substitution =
+and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : substitution ok =
+  let open ResultMonad in
   let take_left = (fun _tyid to1 _to2 -> Some(to1)) in
   match (modsig1, modsig2) with
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
       ssig2 |> StructSig.fold
-          ~v:(fun _x2 _ventry2 subst ->
-            subst
+          ~v:(fun _x2 _ventry2 res ->
+            res
           )
-          ~a:(fun _csnm _macentry2 subst ->
-            subst
+          ~a:(fun _csnm _macentry2 res ->
+            res
           )
-          ~c:(fun _ctornm2 _centry2 subst ->
-            subst
+          ~c:(fun _ctornm2 _centry2 res ->
+            res
           )
-          ~f:(fun _tynm2 _pty subst ->
-            subst
+          ~f:(fun _tynm2 _pty res ->
+            res
           )
-          ~t:(fun tynm2 tentry2 subst ->
+          ~t:(fun tynm2 tentry2 res ->
+            res >>= fun subst ->
             match ssig1 |> StructSig.find_type tynm2 with
             | None ->
                 let (bids, _) = tentry2.type_scheme in
-                raise_error (MissingRequiredTypeName(rng, tynm2, List.length bids))
+                err (MissingRequiredTypeName(rng, tynm2, List.length bids))
 
             | Some(tentry1) ->
                 begin
                   match lookup_type_entry tentry1 tentry2 with
                   | None ->
-                      raise_error (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
+                      err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
 
                   | Some(subst0) ->
-                      SubstMap.union take_left subst0 subst
+                      return @@ SubstMap.union take_left subst0 subst
                 end
           )
-          ~m:(fun modnm2 { mod_signature = modsig2; _ } subst ->
+          ~m:(fun modnm2 { mod_signature = modsig2; _ } res ->
+            res >>= fun subst ->
             match ssig1 |> StructSig.find_module modnm2 with
             | None ->
-                raise_error (MissingRequiredModuleName(rng, modnm2, modsig2))
+                err (MissingRequiredModuleName(rng, modnm2, modsig2))
 
             | Some({ mod_signature = modsig1; _ }) ->
-                let subst0 = lookup_struct rng modsig1 modsig2 in
-                SubstMap.union take_left subst0 subst
+                let+ subst0 = lookup_struct rng modsig1 modsig2 in
+                return @@ SubstMap.union take_left subst0 subst
           )
-          ~s:(fun _ _ subst ->
-            subst
+          ~s:(fun _ _ res ->
+            res
           )
-          SubstMap.empty
+          (return SubstMap.empty)
 
   | _ ->
-      SubstMap.empty
+      return SubstMap.empty
 
 
 and substitute_abstract (subst : substitution) (absmodsig : signature abstracted) : signature abstracted =
@@ -2391,13 +2470,15 @@ and substitute_struct (subst : substitution) (ssig : StructSig.t) : StructSig.t 
       )
 
 
-and subtype_abstract_with_abstract (rng : Range.t) (absmodsig1 : signature abstracted) (absmodsig2 : signature abstracted) : unit =
+and subtype_abstract_with_abstract (rng : Range.t) (absmodsig1 : signature abstracted) (absmodsig2 : signature abstracted) : unit ok =
+  let open ResultMonad in
   let (_, modsig1) = absmodsig1 in
-  let _ = subtype_concrete_with_abstract rng modsig1 absmodsig2 in
-  ()
+  let+ _ = subtype_concrete_with_abstract rng modsig1 absmodsig2 in
+  return ()
 
 
-and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig2 : signature) =
+and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : unit ok =
+  let open ResultMonad in
   match (modsig1, modsig2) with
   | (ConcFunctor(fsig1), ConcFunctor(fsig2)) ->
       let
@@ -2416,16 +2497,17 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
           _
         } = fsig2
       in
-      let subst = subtype_concrete_with_abstract rng modsigdom2 (quant1, modsigdom1) in
+      let+ subst = subtype_concrete_with_abstract rng modsigdom2 (quant1, modsigdom1) in
       let absmodsigcod1 = absmodsigcod1 |> substitute_abstract subst in
       subtype_abstract_with_abstract rng absmodsigcod1 absmodsigcod2
 
   | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
       ssig2 |> StructSig.fold
-          ~v:(fun x2 { val_type = pty2; val_stage = stage2; _ } () ->
+          ~v:(fun x2 { val_type = pty2; val_stage = stage2; _ } res ->
+            res >>= fun () ->
             match ssig1 |> StructSig.find_value x2 with
             | None ->
-                raise_error (MissingRequiredValueName(rng, x2, pty2))
+                err (MissingRequiredValueName(rng, x2, pty2))
 
             | Some({ val_type = pty1; val_stage = stage1; _ }) ->
                 match (stage1, stage2) with
@@ -2435,38 +2517,41 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                 | (Stage0, Stage0)
                 | (Stage1, Stage1) ->
                     if subtype_poly_type pty1 pty2 then
-                      ()
+                      return ()
                     else
-                      raise_error (NotASubtypeAboutValue(rng, x2, pty1, pty2))
+                      err (NotASubtypeAboutValue(rng, x2, pty1, pty2))
 
                 | _ ->
-                    raise_error (NotASubtypeAboutValueStage(rng, x2, stage1, stage2))
+                    err (NotASubtypeAboutValueStage(rng, x2, stage1, stage2))
           )
-          ~a:(fun csnm2 { macro_type = macty2; _ } () ->
+          ~a:(fun csnm2 { macro_type = macty2; _ } res ->
+            res >>= fun () ->
             match ssig1 |> StructSig.find_macro csnm2 with
             | None ->
-                raise_error (MissingRequiredMacroName(rng, csnm2, macty2))
+                err (MissingRequiredMacroName(rng, csnm2, macty2))
 
             | Some({ macro_type = macty1; _ }) ->
                 if subtype_macro_type macty1 macty2 then
-                  ()
+                  return ()
                 else
-                  raise_error (NotASubtypeAboutMacro(rng, csnm2, macty1, macty2))
+                  err (NotASubtypeAboutMacro(rng, csnm2, macty1, macty2))
           )
-          ~c:(fun ctornm2 centry2 () ->
+          ~c:(fun ctornm2 centry2 res ->
+            res >>= fun () ->
             match ssig1 |> StructSig.find_constructor ctornm2 with
             | None ->
-                raise_error (MissingRequiredConstructorName(rng, ctornm2, centry2))
+                err (MissingRequiredConstructorName(rng, ctornm2, centry2))
 
             | Some(centry1) ->
                 let tyscheme1 = centry1.ctor_parameter in
                 let tyscheme2 = centry2.ctor_parameter in
                 if subtype_type_scheme tyscheme1 tyscheme2 then
-                  ()
+                  return ()
                 else
-                  raise_error (NotASubtypeAboutConstructor(rng, ctornm2, tyscheme1, tyscheme2))
+                  err (NotASubtypeAboutConstructor(rng, ctornm2, tyscheme1, tyscheme2))
           )
-          ~f:(fun tynm2 pty2 () ->
+          ~f:(fun tynm2 pty2 res ->
+            res >>= fun () ->
             match ssig1 |> StructSig.find_dummy_fold tynm2 with
             | None ->
                 begin
@@ -2477,30 +2562,31 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                   | Some(tentry2) ->
                       let (bids, _) = tentry2.type_scheme in
                       let arity = List.length bids in
-                      raise_error (MissingRequiredTypeName(rng, tynm2, arity))
+                      err (MissingRequiredTypeName(rng, tynm2, arity))
                 end
 
             | Some(pty1) ->
                 if subtype_poly_type pty1 pty2 then
-                  ()
+                  return ()
                 else
                   begin
                     match (ssig1 |> StructSig.find_type tynm2, ssig2 |> StructSig.find_type tynm2) with
                     | (Some(tentry1), Some(tentry2)) ->
-                        raise_error (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
+                        err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
 
                     | _ ->
                         assert false
                   end
           )
-          ~t:(fun tynm2 tentry2 () ->
+          ~t:(fun tynm2 tentry2 res ->
+            res >>= fun () ->
             match ssig1 |> StructSig.find_type tynm2 with
             | None ->
                 let arity =
                   let (bids, _) = tentry2.type_scheme in
                   List.length bids
                 in
-                raise_error (MissingRequiredTypeName(rng, tynm2, arity))
+                err (MissingRequiredTypeName(rng, tynm2, arity))
 
             | Some(tentry1) ->
                 let tyscheme1 = tentry1.type_scheme in
@@ -2508,40 +2594,43 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                 let b1 = subtype_type_scheme tyscheme1 tyscheme2 in
                 let b2 = subtype_type_scheme tyscheme2 tyscheme1 in
                 if b1 && b2 then
-                  ()
+                  return ()
                 else
-                  raise_error (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
+                  err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
           )
-          ~m:(fun modnm2 { mod_signature = modsig2; _ } () ->
+          ~m:(fun modnm2 { mod_signature = modsig2; _ } res ->
+            res >>= fun () ->
             match ssig1 |> StructSig.find_module modnm2 with
             | None ->
-                raise_error (MissingRequiredModuleName(rng, modnm2, modsig2))
+                err (MissingRequiredModuleName(rng, modnm2, modsig2))
 
             | Some({ mod_signature = modsig1; _ }) ->
                 subtype_concrete_with_concrete rng modsig1 modsig2
           )
-          ~s:(fun signm2 absmodsig2 () ->
+          ~s:(fun signm2 absmodsig2 res ->
+            res >>= fun () ->
             match ssig1 |> StructSig.find_signature signm2 with
             | None ->
-                raise_error (MissingRequiredSignatureName(rng, signm2, absmodsig2))
+                err (MissingRequiredSignatureName(rng, signm2, absmodsig2))
 
             | Some(absmodsig1) ->
-                subtype_abstract_with_abstract rng absmodsig1 absmodsig2;
-                subtype_abstract_with_abstract rng absmodsig2 absmodsig1;
-                ()
+                let+ () = subtype_abstract_with_abstract rng absmodsig1 absmodsig2 in
+                let+ () = subtype_abstract_with_abstract rng absmodsig2 absmodsig1 in
+                return ()
           )
-          ()
+          (return ())
 
   | _ ->
-      raise_error (NotASubtypeSignature(rng, modsig1, modsig2))
+      err (NotASubtypeSignature(rng, modsig1, modsig2))
 
 
-and subtype_concrete_with_abstract (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : substitution =
+and subtype_concrete_with_abstract (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : substitution ok =
+  let open ResultMonad in
   let (_quant2, modsig2) = absmodsig2 in
-  let subst = lookup_struct rng modsig1 modsig2 in
+  let+ subst = lookup_struct rng modsig1 modsig2 in
   let modsig2 = modsig2 |> substitute_concrete subst in
-  subtype_concrete_with_concrete rng modsig1 modsig2;
-  subst
+  let+ () = subtype_concrete_with_concrete rng modsig1 modsig2 in
+  return subst
 
 
 and subtype_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) =
@@ -2928,10 +3017,11 @@ and copy_closure_in_structure (ssig1 : StructSig.t) (ssig2 : StructSig.t) : Stru
     ~s:(fun _signm sentry2 -> sentry2)
 
 
-and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : signature abstracted =
-  let _ = subtype_signature rng modsig1 absmodsig2 in
+and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : (signature abstracted) ok =
+  let open ResultMonad in
+  let+ _subst = subtype_signature rng modsig1 absmodsig2 in
   let (quant2, modsig2) = absmodsig2 in
-  (quant2, copy_contents modsig1 modsig2)
+  return (quant2, copy_contents modsig1 modsig2)
 
 
 and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
@@ -2946,29 +3036,31 @@ and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t
     tyenv
 
 
-and typecheck_declaration_list (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : StructSig.t abstracted =
-  let (quantacc, ssigacc, _) =
-    utdecls |> List.fold_left (fun (quantacc, ssigacc, tyenv) utdecl ->
-      let (quant, ssig) = typecheck_declaration tyenv utdecl in
+and typecheck_declaration_list (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : (StructSig.t abstracted) ok =
+  let open ResultMonad in
+  let+ (quantacc, ssigacc, _) =
+    utdecls |> foldM (fun (quantacc, ssigacc, tyenv) utdecl ->
+      let+ (quant, ssig) = typecheck_declaration tyenv utdecl in
       let quantacc = unify_quantifier quantacc quant in
-      let ssigacc =
+      let+ ssigacc =
         match StructSig.union ssigacc ssig with
-        | Ok(ssigacc) -> ssigacc
-        | Error(s)    -> raise_error (ConflictInSignature(Range.dummy "TODO (error): add range to declarations", s))
+        | Ok(ssigacc) -> return ssigacc
+        | Error(s)    -> err (ConflictInSignature(Range.dummy "TODO (error): add range to declarations", s))
       in
       let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
-      (quantacc, ssigacc, tyenv)
+      return (quantacc, ssigacc, tyenv)
     ) (OpaqueIDMap.empty, StructSig.empty, tyenv)
   in
-  (quantacc, ssigacc)
+  return (quantacc, ssigacc)
 
 
-and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : StructSig.t abstracted =
+and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : (StructSig.t abstracted) ok =
+  let open ResultMonad in
   match utdecl with
   | UTDeclValue(stage, (_, x), (typarams, rowparams), mty) ->
+      let+ (typarammap, _) = TypeParameterMap.empty |> add_type_parameters (Level.succ Level.bottom) typarams in
+      let+ (rowparammap, _) = RowParameterMap.empty |> add_row_parameters (Level.succ Level.bottom) rowparams in
       let pre =
-        let (typarammap, _) = TypeParameterMap.empty |> add_type_parameters (Level.succ Level.bottom) typarams in
-        let (rowparammap, _) = RowParameterMap.empty |> add_row_parameters (Level.succ Level.bottom) rowparams in
         {
           stage           = stage;
           level           = Level.succ Level.bottom;
@@ -2977,7 +3069,7 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
           quantifiability = Quantifiable;
         }
       in
-      let ty = decode_manual_type pre tyenv mty in
+      let+ ty = decode_manual_type pre tyenv mty in
       let pty = TypeConv.generalize Level.bottom ty in
       let ventry =
         {
@@ -2987,7 +3079,7 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
         }
       in
       let ssig = StructSig.empty |> StructSig.add_value x ventry in
-      (OpaqueIDMap.empty, ssig)
+      return (OpaqueIDMap.empty, ssig)
 
   | UTDeclTypeOpaque((_, tynm), mnkd) ->
       let pre_init =
@@ -3004,7 +3096,7 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
         let MKind(mnbkds, _) = mnkd in
         List.length mnbkds
       in
-      let kd = decode_manual_kind pre_init tyenv mnkd in
+      let+ kd = decode_manual_kind pre_init tyenv mnkd in
       let tentry =
         {
           type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
@@ -3012,31 +3104,31 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
         }
       in
       let ssig = StructSig.empty |> StructSig.add_type tynm tentry in
-      (OpaqueIDMap.singleton tyid kd, ssig)
+      return (OpaqueIDMap.singleton tyid kd, ssig)
 
   | UTDeclModule((_, modnm), utsig) ->
-      let absmodsig = typecheck_signature tyenv utsig in
+      let+ absmodsig = typecheck_signature tyenv utsig in
       let (quant, modsig) = absmodsig in
       let mentry = { mod_signature = modsig; } in
       let ssig = StructSig.empty |> StructSig.add_module modnm mentry in
-      (quant, ssig)
+      return (quant, ssig)
 
   | UTDeclSignature((_, signm), utsig) ->
-      let absmodsig = typecheck_signature tyenv utsig in
+      let+ absmodsig = typecheck_signature tyenv utsig in
       let ssig = StructSig.empty |> StructSig.add_signature signm absmodsig in
-      (OpaqueIDMap.empty, ssig)
+      return (OpaqueIDMap.empty, ssig)
 
   | UTDeclInclude(utsig) ->
-      let absmodsig = typecheck_signature tyenv utsig in
+      let+ absmodsig = typecheck_signature tyenv utsig in
       let (quant, modsig) = absmodsig in
       begin
         match modsig with
         | ConcFunctor(fsig) ->
             let (rng, _) = utsig in
-            raise_error (NotAStructureSignature(rng, fsig))
+            err (NotAStructureSignature(rng, fsig))
 
         | ConcStructure(ssig) ->
-            (quant, ssig)
+            return (quant, ssig)
       end
 
   | UTDeclMacro((_rng_cs, csnm), (_, mmacty)) ->
@@ -3049,29 +3141,30 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : S
           quantifiability = Quantifiable;
         }
       in
-      let macty = decode_manual_macro_type pre_init tyenv mmacty in
+      let+ macty = decode_manual_macro_type pre_init tyenv mmacty in
       let pmacty = TypeConv.generalize_macro_type macty in
       let macentry = { macro_type = pmacty; macro_name = None; } in
       let ssig = StructSig.empty |> StructSig.add_macro csnm macentry in
-      (OpaqueIDMap.empty, ssig)
+      return (OpaqueIDMap.empty, ssig)
 
 
-and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
-  let (binds, (quant, ssig)) =
-    let (bindacc, _tyenv, quantacc, ssigacc) =
-      utbinds |> List.fold_left (fun (bindacc, tyenv, quantacc, ssigacc) utbind ->
-        let (binds, (quant, ssig)) = typecheck_binding tyenv utbind in
+and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
+  let open ResultMonad in
+  let+ (binds, (quant, ssig)) =
+    let+ (bindacc, _tyenv, quantacc, ssigacc) =
+      utbinds |> foldM (fun (bindacc, tyenv, quantacc, ssigacc) utbind ->
+        let+ (binds, (quant, ssig)) = typecheck_binding tyenv utbind in
         let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
         let bindacc = Alist.append bindacc binds in
         let quantacc = unify_quantifier quantacc quant in
         match StructSig.union ssigacc ssig with
-        | Ok(ssigacc) -> (bindacc, tyenv, quantacc, ssigacc)
-        | Error(s)    -> let (rng, _) = utbind in raise_error (ConflictInSignature(rng, s))
+        | Ok(ssigacc) -> return (bindacc, tyenv, quantacc, ssigacc)
+        | Error(s)    -> let (rng, _) = utbind in err (ConflictInSignature(rng, s))
       ) (Alist.empty, tyenv, OpaqueIDMap.empty, StructSig.empty)
     in
-    (Alist.to_list bindacc, (quantacc, ssigacc))
+    return (Alist.to_list bindacc, (quantacc, ssigacc))
   in
-  ((quant, ssig), binds)
+  return ((quant, ssig), binds)
 
 
 and get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.t SynonymNameMap.t) (_pre : pre) (_tyenv : Typeenv.t) (mty : manual_type) : SynonymVertexSet.t =
@@ -3125,7 +3218,8 @@ and get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.
   ) hashset SynonymVertexSet.empty
 
 
-and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
+and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) : ((type_name * type_entry) list * (constructor_name * TypeID.t * BoundID.t list * constructor_branch_map) list) ok =
+  let open ResultMonad in
   let pre =
     {
       stage           = Stage0;
@@ -3137,8 +3231,8 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
   in
 
   (* Registers types to the type environment and the graph for detecting cyclic dependency. *)
-  let (synacc, vntacc, known_syns, graph, tyenv) =
-    tybinds |> List.fold_left (fun (synacc, vntacc, known_syns, graph, tyenv) tybind ->
+  let+ (synacc, vntacc, known_syns, graph, tyenv) =
+    tybinds |> foldM (fun (synacc, vntacc, known_syns, graph, tyenv) tybind ->
       let (tyident, typarams, syn_or_vnt) = tybind in
       let (rng, tynm) = tyident in
       match syn_or_vnt with
@@ -3150,17 +3244,17 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
               definition_body = synbind;
             }
           in
-          let (graph, vertex) =
+          let+ (graph, vertex) =
             match graph |> SynonymDependencyGraph.add_vertex tynm data with
             | Error((data_prev, _)) ->
                 let rng_prev = data_prev.SynonymDependencyGraph.position in
-                raise_error (MultipleSynonymTypeDefinition(tynm, rng_prev, rng))
+                err (MultipleSynonymTypeDefinition(tynm, rng_prev, rng))
 
             | Ok(pair) ->
-                pair
+                return pair
           in
           let synacc = Alist.extend synacc (tyident, typarams, synbind, vertex) in
-          (synacc, vntacc, known_syns |> SynonymNameMap.add tynm vertex, graph, tyenv)
+          return (synacc, vntacc, known_syns |> SynonymNameMap.add tynm vertex, graph, tyenv)
 
       | UTBindVariant(vntbind) ->
           let tyid = TypeID.fresh tynm in
@@ -3173,7 +3267,7 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
           in
           let tyenv = tyenv |> Typeenv.add_type tynm tentry in
           let vntacc = Alist.extend vntacc (tyident, typarams, vntbind, tyid, tentry) in
-          (synacc, vntacc, known_syns, graph, tyenv)
+          return (synacc, vntacc, known_syns, graph, tyenv)
     ) (Alist.empty, Alist.empty, SynonymNameMap.empty, SynonymDependencyGraph.empty, tyenv)
   in
 
@@ -3192,15 +3286,15 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
   in
 
   (* Check that no cyclic dependency exists among synonym types. *)
-  let syns =
+  let+ syns =
     match SynonymDependencyGraph.topological_sort graph with
-    | Error(cycle) -> raise_error (CyclicSynonymTypeDefinition(cycle))
-    | Ok(syns)     -> syns
+    | Error(cycle) -> err (CyclicSynonymTypeDefinition(cycle))
+    | Ok(syns)     -> return syns
   in
 
   (* Add the definition of the synonym types to the type environment. *)
-  let (tyenv, tydefacc) =
-    syns |> List.fold_left (fun (tyenv, tydefacc) syn ->
+  let+ (tyenv, tydefacc) =
+    syns |> foldM (fun (tyenv, tydefacc) syn ->
       let (tynm, syndata) = syn in
       let
         SynonymDependencyGraph.{
@@ -3209,9 +3303,9 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
           _
         } = syndata
       in
-      let (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
+      let+ (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
       let pre = { pre with type_parameters = typarammap } in
-      let ty_body = decode_manual_type pre tyenv mty_body in
+      let+ ty_body = decode_manual_type pre tyenv mty_body in
       let pty_body = TypeConv.generalize Level.bottom ty_body in
       let tentry =
         {
@@ -3221,27 +3315,28 @@ and bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) =
       in
       let tyenv = tyenv |> Typeenv.add_type tynm tentry in
       let tydefacc = Alist.extend tydefacc (tynm, tentry) in
-      (tyenv, tydefacc)
+      return (tyenv, tydefacc)
     ) (tyenv, Alist.empty)
   in
 
   (* Traverse each definition of the variant types. *)
-  let (tydefacc, ctordefacc) =
-    vntacc |> Alist.to_list |> List.fold_left (fun (tydefacc, ctordefacc) vnt ->
+  let+ (tydefacc, ctordefacc) =
+    vntacc |> Alist.to_list |> foldM (fun (tydefacc, ctordefacc) vnt ->
       let (tyident, tyvars, vntbind, tyid, tentry) = vnt in
       let (_, tynm) = tyident in
-      let (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
+      let+ (typarammap, bids) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) tyvars in
       let pre = { pre with type_parameters = typarammap } in
-      let ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
+      let+ ctorbrmap = make_constructor_branch_map pre tyenv vntbind in
       let tydefacc = Alist.extend tydefacc (tynm, tentry) in
       let ctordefacc = Alist.extend ctordefacc (tynm, tyid, bids, ctorbrmap) in
-      (tydefacc, ctordefacc)
+      return (tydefacc, ctordefacc)
     ) (tydefacc, Alist.empty)
   in
-  (tydefacc |> Alist.to_list, ctordefacc |> Alist.to_list)
+  return (tydefacc |> Alist.to_list, ctordefacc |> Alist.to_list)
 
 
-and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding list * StructSig.t abstracted =
+and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding list * StructSig.t abstracted) ok =
+  let open ResultMonad in
   let (_, utbindmain) = utbind in
   match utbindmain with
   | UTBindValue(stage, valbind) ->
@@ -3254,13 +3349,13 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
           level           = Level.bottom;
         }
       in
-      let (rec_or_nonrecs, ssig) =
+      let+ (rec_or_nonrecs, ssig) =
         match valbind with
         | UTNonRec(ident, utast1) ->
             let presub = { pre with level = Level.succ pre.level; } in
             let (_, varnm) = ident in
             let evid = EvalVarID.fresh ident in
-            let (e1_raw, ty1) = typecheck presub tyenv utast1 in
+            let+ (e1_raw, ty1) = typecheck presub tyenv utast1 in
             let e1 = e1_raw in
 (*
             tyannot |> Option.map (fun mnty ->
@@ -3288,10 +3383,10 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
               in
               StructSig.empty |> StructSig.add_value varnm ventry
             in
-            ([ NonRec(evid, e1) ], ssig)
+            return ([ NonRec(evid, e1) ], ssig)
 
         | UTRec(utrecbinds) ->
-            let quints = typecheck_letrec pre tyenv utrecbinds in
+            let+ quints = typecheck_letrec pre tyenv utrecbinds in
             let (recbindacc, ssig) =
               quints |> List.fold_left (fun (recbindacc, ssig) quint ->
                 let (x, pty, evid, recbind) = quint in
@@ -3309,10 +3404,10 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
                 (recbindacc, ssig)
               ) (Alist.empty, StructSig.empty)
             in
-            ([ Rec(recbindacc |> Alist.to_list) ], ssig)
+            return ([ Rec(recbindacc |> Alist.to_list) ], ssig)
 
         | UTMutable((rng, varnm) as var, utastI) ->
-            let (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
+            let+ (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
             let evid = EvalVarID.fresh var in
             let pty = TypeConv.lift_poly (rng, RefType(tyI)) in
             let ssig =
@@ -3325,59 +3420,59 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
               in
               StructSig.empty |> StructSig.add_value varnm ventry
             in
-            ([ Mutable(evid, eI) ], ssig)
+            return ([ Mutable(evid, eI) ], ssig)
       in
       let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(stage, rec_or_nonrec)) in
-      (binds, (OpaqueIDMap.empty, ssig))
+      return (binds, (OpaqueIDMap.empty, ssig))
 
   | UTBindType([]) ->
       assert false
 
   | UTBindType(tybinds) ->
-      let (tydefs, ctordefs) = bind_types tyenv tybinds in
+      let+ (tydefs, ctordefs) = bind_types tyenv tybinds in
       let ssig =
         tydefs |> List.fold_left (fun ssig (tynm, tentry) ->
           ssig |> StructSig.add_type tynm tentry
         ) StructSig.empty
       in
       let ssig = ssig |> add_constructor_definitions ctordefs in
-      ([], (OpaqueIDMap.empty, ssig))
+      return ([], (OpaqueIDMap.empty, ssig))
 
   | UTBindModule(modident, utsigopt2, utmod1) ->
       let (rng_mod, modnm) = modident in
-      let (absmodsig1, binds1) = typecheck_module tyenv utmod1 in
-      let (quant, modsig) =
+      let+ (absmodsig1, binds1) = typecheck_module tyenv utmod1 in
+      let+ (quant, modsig) =
         match utsigopt2 with
         | None ->
-            absmodsig1
+            return absmodsig1
 
         | Some(utsig2) ->
             let (_, modsig1) = absmodsig1 in
-            let absmodsig2 = typecheck_signature tyenv utsig2 in
+            let+ absmodsig2 = typecheck_signature tyenv utsig2 in
             coerce_signature rng_mod modsig1 absmodsig2
       in
       let ssig =
         let mentry = { mod_signature = modsig; } in
         StructSig.empty |> StructSig.add_module modnm mentry
       in
-      (binds1, (quant, ssig))
+      return (binds1, (quant, ssig))
 
   | UTBindSignature((_, signm), utsig) ->
-      let absmodsig = typecheck_signature tyenv utsig in
+      let+ absmodsig = typecheck_signature tyenv utsig in
       let ssig = StructSig.empty |> StructSig.add_signature signm absmodsig in
-      ([], (OpaqueIDMap.empty, ssig))
+      return ([], (OpaqueIDMap.empty, ssig))
 
   | UTBindInclude(utmod) ->
-      let (absmodsig, binds) = typecheck_module tyenv utmod in
+      let+ (absmodsig, binds) = typecheck_module tyenv utmod in
       let (quant, modsig) = absmodsig in
       begin
         match modsig with
         | ConcStructure(ssig) ->
-            (binds, (quant, ssig))
+            return (binds, (quant, ssig))
 
         | ConcFunctor(fsig) ->
             let (rng_mod, _) = utmod in
-            raise_error (NotAStructureSignature(rng_mod, fsig))
+            err (NotAStructureSignature(rng_mod, fsig))
       end
 
   | UTBindInlineMacro((rng_cs, csnm), macparams, utast1) ->
@@ -3392,8 +3487,8 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       in
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
       let macty = InlineMacroType(macparamtys) in
-      let (e1, ty1) = typecheck pre tyenv utast1 in
-      unify ty1 (Range.dummy "val-inline-macro", BaseType(InlineTextType));
+      let+ (e1, ty1) = typecheck pre tyenv utast1 in
+      let+ () = unify ty1 (Range.dummy "val-inline-macro", BaseType(InlineTextType)) in
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
         let macentry =
@@ -3405,7 +3500,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
         StructSig.empty |> StructSig.add_macro csnm macentry
       in
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
-      (binds, (OpaqueIDMap.empty, ssig))
+      return (binds, (OpaqueIDMap.empty, ssig))
 
   | UTBindBlockMacro((rng_cs, csnm), macparams, utast1) ->
       let pre =
@@ -3419,8 +3514,8 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
       in
       let (tyenv, evids, macparamtys) = add_macro_parameters_to_type_environment tyenv pre macparams in
       let macty = BlockMacroType(macparamtys) in
-      let (e1, ty1) = typecheck pre tyenv utast1 in
-      unify ty1 (Range.dummy "val-block-macro", BaseType(BlockTextType));
+      let+ (e1, ty1) = typecheck pre tyenv utast1 in
+      let+ () = unify ty1 (Range.dummy "val-block-macro", BaseType(BlockTextType)) in
       let evid = EvalVarID.fresh (rng_cs, csnm) in
       let ssig =
         let macentry =
@@ -3432,10 +3527,11 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : binding l
         StructSig.empty |> StructSig.add_macro csnm macentry
       in
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
-      (binds, (OpaqueIDMap.empty, ssig))
+      return (binds, (OpaqueIDMap.empty, ssig))
 
 
-let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : mono_type * abstract_tree =
+let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : (mono_type * abstract_tree) ok =
+  let open ResultMonad in
   let pre =
     {
       stage           = stage;
@@ -3445,26 +3541,27 @@ let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : m
       level           = Level.bottom;
     }
   in
-  let (e, ty) = typecheck pre tyenv utast in
-  (ty, e)
+  let+ (e, ty) = typecheck pre tyenv utast in
+  return (ty, e)
 
 
-let main_bindings (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
+let main_bindings (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
+  let open ResultMonad in
   match utsig_opt with
   | None ->
       typecheck_binding_list tyenv utbinds
 
   | Some(utsig) ->
-      let absmodsig = typecheck_signature tyenv utsig in
-      let ((_, ssig), binds) = typecheck_binding_list tyenv utbinds in
+      let+ absmodsig = typecheck_signature tyenv utsig in
+      let+ ((_, ssig), binds) = typecheck_binding_list tyenv utbinds in
       let rng = Range.dummy "main_bindings" in (* TODO (enhance): give appropriate ranges *)
-      let (quant, modsig) = coerce_signature rng (ConcStructure(ssig)) absmodsig in
+      let+ (quant, modsig) = coerce_signature rng (ConcStructure(ssig)) absmodsig in
       let ssig =
         match modsig with
         | ConcFunctor(_)      -> assert false
         | ConcStructure(ssig) -> ssig
       in
-      ((quant, ssig), binds)
+      return ((quant, ssig), binds)
 
 
 let are_unifiable (ty1 : mono_type) (ty2 : mono_type) : bool =
