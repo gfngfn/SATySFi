@@ -105,7 +105,7 @@ module ResultMonad = struct
 
   let err e = Error(e)
 
-  let ( let+ ) = ( >>= )
+  let ( let* ) = ( >>= )
 
   let foldM f acc vs =
     vs |> List.fold_left (fun res v ->
