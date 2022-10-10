@@ -129,7 +129,7 @@ let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : c
   match tyenv |> Typeenv.find_constructor ctornm with
   | None ->
       let cands =
-        []  (* TODO (enhance): find candidate constructors *)
+        []  (* TODO (error): find candidate constructors *)
         (* tyenv |> Typeenv.find_constructor_candidates ctornm *)
       in
       err (UndefinedConstructor(rng, ctornm, cands))
@@ -896,7 +896,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
               match tyenv |> Typeenv.find_value varnm with
               | None ->
                   let cands =
-                    [] (* TODO (enhance): find candidates *)
+                    [] (* TODO (error): find candidates *)
                     (* tyenv |> Typeenv.find_candidates varnm *)
                   in
                   err (UndefinedVariable(rng, varnm, cands))
@@ -935,13 +935,13 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
               match mentry.mod_signature with
               | ConcStructure(ssig) -> return ssig
               | ConcFunctor(fsig)   -> err (NotAStructureSignature(rng, fsig))
-                  (*TODO (enhance): give a better code range to this error. *)
+                  (*TODO (error): give a better code range to this error. *)
             in
             let* ventry =
               match ssig |> StructSig.find_value varnm with
               | None ->
                   let cands =
-                    [] (* TODO (enhance): find candidates *)
+                    [] (* TODO (error): find candidates *)
                     (* ssig |> StructSig.find_candidates varnm *)
                   in
                   err (UndefinedVariable(rng, varnm, cands))
@@ -1929,7 +1929,7 @@ and decode_manual_type (pre : pre) (tyenv : Typeenv.t) (mty : manual_type) : mon
                   match mentry.mod_signature with
                   | ConcFunctor(fsig) ->
                       err (NotAStructureSignature(rng, fsig))
-                        (* TODO (enhance): give a better code range to this error *)
+                        (* TODO (error): give a better code range to this error *)
 
                   | ConcStructure(ssig) ->
                       begin
@@ -2363,7 +2363,7 @@ and substitute_concrete (subst : substitution) (modsig : signature) : signature 
           opaques  = quant;
           domain   = modsig1;
           codomain = absmodsig2;
-          closure  = failwith "TODO";
+          closure  = failwith "TODO: substitute_concrete, closure";
         }
       in
       ConcFunctor(fsig)
@@ -3577,7 +3577,7 @@ let main_bindings (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (ut
   | Some(utsig) ->
       let* absmodsig = typecheck_signature tyenv utsig in
       let* ((_, ssig), binds) = typecheck_binding_list tyenv utbinds in
-      let rng = Range.dummy "main_bindings" in (* TODO (enhance): give appropriate ranges *)
+      let rng = Range.dummy "main_bindings" in (* TODO (error): give appropriate ranges *)
       let* (quant, modsig) = coerce_signature rng (ConcStructure(ssig)) absmodsig in
       let ssig =
         match modsig with
