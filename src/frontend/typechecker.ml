@@ -521,7 +521,6 @@ let occurs_row (frid : FreeRowID.t) (row : mono_row) =
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) : (unit, unification_error) result =
   let open ResultMonad in
-  let unify = unify_sub in
 (*
   (* begin: for debug *)
   let () =
@@ -541,8 +540,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
     | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2)) ->
         let* () = unify_row_sub optrow1 optrow2 in
-        let* () = unify tydom1 tydom2 in
-        let* () = unify tycod1 tycod2 in
+        let* () = unify_sub tydom1 tydom2 in
+        let* () = unify_sub tycod1 tycod2 in
         return ()
 
     | (InlineCommandType(cmdargtys1), InlineCommandType(cmdargtys2))
@@ -563,7 +562,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           let resmap =
             LabelMap.merge (fun label tyopt1 tyopt2 ->
               match (tyopt1, tyopt2) with
-              | (Some(ty1), Some(ty2)) -> Some(unify ty1 ty2)
+              | (Some(ty1), Some(ty2)) -> Some(unify_sub ty1 ty2)
               | (_, None) | (None, _)  -> Some(err (CommandOptionalLabelMismatch(label)))
             ) ty_labmap1 ty_labmap2
           in
@@ -573,7 +572,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
               res_elem
             ) resmap (return ())
           in
-          unify ty1 ty2
+          unify_sub ty1 ty2
         ) ()
 
     | (ProductType(tys1), ProductType(tys2)) ->
@@ -590,12 +589,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
         else
           err ue
 
-    | (ListType(tysub1), ListType(tysub2)) -> unify tysub1 tysub2
-    | (RefType(tysub1), RefType(tysub2))   -> unify tysub1 tysub2
-    | (CodeType(tysub1), CodeType(tysub2)) -> unify tysub1 tysub2
+    | (ListType(tysub1), ListType(tysub2)) -> unify_sub tysub1 tysub2
+    | (RefType(tysub1), RefType(tysub2))   -> unify_sub tysub1 tysub2
+    | (CodeType(tysub1), CodeType(tysub2)) -> unify_sub tysub1 tysub2
 
-    | (TypeVariable(Updatable{contents = MonoLink(tylinked1)}), _) -> unify tylinked1 ty2
-    | (_, TypeVariable(Updatable{contents = MonoLink(tylinked2)})) -> unify ty1 tylinked2
+    | (TypeVariable(Updatable{contents = MonoLink(tylinked1)}), _) -> unify_sub tylinked1 ty2
+    | (_, TypeVariable(Updatable{contents = MonoLink(tylinked2)})) -> unify_sub ty1 tylinked2
 
     | (TypeVariable(Updatable({contents = MonoFree(fid1)} as tvref1)),
           TypeVariable(Updatable({contents = MonoFree(fid2)} as tvref2))) ->
