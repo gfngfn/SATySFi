@@ -1,6 +1,7 @@
 %{
 
   exception IllegalArgumentLength of Range.t * int * int
+  exception TrailingOptionalArgument of Range.t
 
 
   let report_bug_parser msg =
@@ -50,7 +51,7 @@
   let rec curry_lambda_abstract (optargacc : (Range.t * var_name) Alist.t) (rng : Range.t) (utarglst : untyped_argument list) (utastdef : untyped_abstract_tree) =
     match utarglst with
     | [] ->
-        utastdef
+        if Alist.to_list optargacc = [] then utastdef else raise (TrailingOptionalArgument(rng))
 
     | UTPatternArgument(argpat) :: utargtail ->
         (rng, UTFunction(Alist.to_list optargacc, argpat, curry_lambda_abstract Alist.empty rng utargtail utastdef))
