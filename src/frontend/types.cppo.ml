@@ -4,8 +4,6 @@ open GraphicBase
 open SyntaxBase
 
 exception ParseErrorDetail of Range.t * string
-exception IllegalArgumentLength of Range.t * int * int
-exception TrailingOptionalArgument of Range.t
 
 
 let string_of_uchar (uch : Uchar.t) : string =
