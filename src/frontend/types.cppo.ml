@@ -4,6 +4,7 @@ open GraphicBase
 
 exception ParseErrorDetail of Range.t * string
 exception IllegalArgumentLength of Range.t * int * int
+exception TrailingOptionalArgument of Range.t
 
 
 type ctrlseq_name       = string  [@@deriving show]
