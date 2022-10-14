@@ -6,7 +6,7 @@ open Types
 
 module Distance = struct
 
-  let edit_distance s1 s2 mindist =
+  let edit_distance (s1 : string) (s2 : string) (mindist : int) : int =
     let len1 = String.length s1 in
     let len2 = String.length s2 in
     if abs (len1 - len2) > mindist then
@@ -30,7 +30,7 @@ module Distance = struct
       end
 
 
-  let initial_candidates nm =
+  let initial_candidates (nm : string) =
     let maxdist =
       match String.length nm with
       | 1 | 2 -> 0
@@ -38,7 +38,7 @@ module Distance = struct
       | 5 | 6 -> 2
       | _     -> 3
     in
-      ([], maxdist)
+    ([], maxdist)
 
 
   let get_candidates_cont foldf map nm acc =
@@ -222,6 +222,10 @@ module Typeenv = struct
   let find_signature (s : signature_name) (tyenv : t) : (signature abstracted) option =
     tyenv.signatures |> SignatureNameMap.find_opt s
 
+
+  let fold_value (f : var_name -> value_entry -> 'a -> 'a) (tyenv : t) (acc : 'a) : 'a =
+    ValueNameMap.fold (fun x (ventry, _is_used) -> f x ventry) tyenv.values acc
+
 end
 
 
@@ -404,21 +408,22 @@ module StructSig = struct
 
 end
 
-(*
-(* PUBLIC *)
-let find_candidates (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : var_name list =
-  let open OptionMonad in
-  let nmtoid = tyenv.name_to_id_map in
-  let mtr = tyenv.main_tree in
-  let addrlst = Alist.to_list tyenv.current_address in
-  let addrlast =
-    mdlnmlst |> List.map (fun nm ->
-      match nmtoid |> ModuleNameMap.find_opt nm with
-      | None        -> assert false
-      | Some(mdlid) -> mdlid
-    )
+
+let find_candidates_in_type_environment (tyenv : Typeenv.t) (varnm : var_name) : var_name list =
+  Distance.get_candidates Typeenv.fold_value tyenv varnm
+
+
+let find_candidates_in_struct_sig (ssig : StructSig.t) (varnm : var_name) : var_name list =
+  let fold_value f (ssig : StructSig.t) acc =
+    StructSig.fold
+      ~v:(fun x ventry acc -> f x ventry acc)
+      ~a:(fun _ _ acc -> acc)
+      ~c:(fun _ _ acc -> acc)
+      ~f:(fun _ _ acc -> acc)
+      ~t:(fun _ _ acc -> acc)
+      ~m:(fun _ _ acc -> acc)
+      ~s:(fun _ _ acc -> acc)
+      acc
+      ssig
   in
-    get_candidates_last @@ ModuleTree.fold_backward mtr addrlst addrlast (fun acc (vdmap, _, _, sigopt) ->
-      get_candidates_cont VarMap.fold vdmap varnm acc
-    ) (initial_candidates varnm)
-*)
+  Distance.get_candidates fold_value ssig varnm
