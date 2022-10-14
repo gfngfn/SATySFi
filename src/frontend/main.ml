@@ -580,6 +580,12 @@ let error_log_environment suspended =
         NormalLine(Printf.sprintf "but is expected to have %d." lenexp);
       ]
 
+  | TrailingOptionalArgument(rng) ->
+      report_error Parser [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("non-optional argument is needed at the end.");
+      ]
+
   | ParserInterface.Error(rng) ->
       report_error Parser [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
