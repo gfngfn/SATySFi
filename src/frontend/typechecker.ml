@@ -895,10 +895,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
             let* ventry =
               match tyenv |> Typeenv.find_value varnm with
               | None ->
-                  let cands =
-                    [] (* TODO (error): find candidates *)
-                    (* tyenv |> Typeenv.find_candidates varnm *)
-                  in
+                  let cands = find_candidates_in_type_environment tyenv varnm in
                   err (UndefinedVariable(rng, varnm, cands))
 
               | Some(ventry) ->
@@ -940,10 +937,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
             let* ventry =
               match ssig |> StructSig.find_value varnm with
               | None ->
-                  let cands =
-                    [] (* TODO (error): find candidates *)
-                    (* ssig |> StructSig.find_candidates varnm *)
-                  in
+                  let cands = find_candidates_in_struct_sig ssig varnm in
                   err (UndefinedVariable(rng, varnm, cands))
 
               | Some(ventry) ->

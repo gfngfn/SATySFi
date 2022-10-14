@@ -83,6 +83,8 @@ module Typeenv : sig
 
   val find_signature : signature_name -> t -> (signature abstracted) option
 
+  val fold_value : (var_name -> value_entry -> 'a -> 'a) -> t -> 'a -> 'a
+
 end
 
 module StructSig : sig
@@ -152,3 +154,7 @@ module StructSig : sig
   val union : t -> t -> (t, string) result
 
 end
+
+val find_candidates_in_type_environment : Typeenv.t -> var_name -> var_name list
+
+val find_candidates_in_struct_sig : StructSig.t -> var_name -> var_name list
