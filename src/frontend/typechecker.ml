@@ -224,6 +224,18 @@ let abstraction_list (evids : EvalVarID.t list) (ast : abstract_tree) : abstract
   List.fold_right abstraction evids ast
 
 
+let add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
+  ssig |> StructSig.fold
+    ~v:(fun x ventry -> Typeenv.add_value x ventry)
+    ~a:(fun csnm macentry -> Typeenv.add_macro csnm macentry)
+    ~c:(fun ctornm centry -> Typeenv.add_constructor ctornm centry)
+    ~f:(fun _tynm _pty tyenv -> tyenv)
+    ~t:(fun tynm tentry -> Typeenv.add_type tynm tentry)
+    ~m:(fun modnm mentry -> Typeenv.add_module modnm mentry)
+    ~s:(fun signm absmodsig -> Typeenv.add_signature signm absmodsig)
+    tyenv
+
+
 let add_optionals_to_type_environment ~(cons : label ranged -> mono_type -> 'a -> 'a) ~(nil : 'a) (tyenv : Typeenv.t) (pre : pre) (opt_params : (label ranged * var_name ranged) list) : 'a * EvalVarID.t LabelMap.t * Typeenv.t =
   let qtfbl = pre.quantifiability in
   let lev = pre.level in
@@ -604,6 +616,69 @@ let make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : con
         let pty = TypeConv.generalize pre.level ty in
         return (ctormap |> ConstructorMap.add ctornm pty)
   ) ConstructorMap.empty
+
+
+let rec typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untyped_pattern_tree) : (pattern_tree * mono_type * pattern_var_map) ok =
+  let open ResultMonad in
+  let iter = typecheck_pattern pre tyenv in
+    match utpatmain with
+    | UTPIntegerConstant(nc) -> return (PIntegerConstant(nc), (rng, BaseType(IntType)), PatternVarMap.empty)
+    | UTPBooleanConstant(bc) -> return (PBooleanConstant(bc), (rng, BaseType(BoolType)), PatternVarMap.empty)
+    | UTPUnitConstant        -> return (PUnitConstant, (rng, BaseType(UnitType)), PatternVarMap.empty)
+
+    | UTPStringConstant(sc) ->
+        return (PStringConstant(sc), (rng, BaseType(StringType)), PatternVarMap.empty)
+
+    | UTPListCons(utpat1, utpat2) ->
+        let* (epat1, typat1, patvarmap1) = iter utpat1 in
+        let* (epat2, typat2, patvarmap2) = iter utpat2 in
+        let* () = unify typat2 (Range.dummy "pattern-list-cons", ListType(typat1)) in
+        let* patvarmap = unite_pattern_var_map patvarmap1 patvarmap2 in
+        return (PListCons(epat1, epat2), typat2, patvarmap)
+
+    | UTPEndOfList ->
+        let beta = fresh_type_variable rng pre in
+        return (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
+
+    | UTPTuple(utpats) ->
+        let* tris = TupleList.mapM iter utpats in
+        let epats = tris |> TupleList.map (fun (epat, _, _) -> epat) in
+        let typats = tris |> TupleList.map (fun (_, typat, _) -> typat) in
+        let tyres = (rng, ProductType(typats)) in
+        let* patvarmap =
+          let patvarmaps = tris |> TupleList.to_list |> List.map (fun (_, _, patvarmap) -> patvarmap) in
+          patvarmaps |> foldM unite_pattern_var_map PatternVarMap.empty
+        in
+        return (PTuple(epats), tyres, patvarmap)
+
+    | UTPWildCard ->
+        let beta = fresh_type_variable rng pre in
+        return (PWildCard, beta, PatternVarMap.empty)
+
+    | UTPVariable(varnm) ->
+        let beta = fresh_type_variable rng pre in
+        let evid = EvalVarID.fresh (rng, varnm) in
+        return (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
+
+    | UTPAsVariable(varnm, utpat1) ->
+        let beta = fresh_type_variable rng pre in
+        let* (epat1, typat1, patvarmap1) = iter utpat1 in
+        begin
+          match PatternVarMap.find_opt varnm patvarmap1 with
+          | Some((rngsub, _, _)) ->
+            (* If 'varnm' also occurs in `utpat1`: *)
+              err (MultiplePatternVariable(rngsub, rng, varnm))
+
+          | None ->
+              let evid = EvalVarID.fresh (rng, varnm) in
+              return (PAsVariable(evid, epat1), typat1, patvarmap1 |> PatternVarMap.add varnm (rng, evid, beta))
+        end
+
+    | UTPConstructor(constrnm, utpat1) ->
+        let* (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+        let* (epat1, typat1, tyenv1) = iter utpat1 in
+        let* () = unify tyc typat1 in
+        return (PConstructor(constrnm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
 
 
 let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) : (abstract_tree * mono_type) ok =
@@ -1054,7 +1129,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       return (IfThenElse(eB, e1, e2), ty1)
 
   | UTLetIn(UTMutable(ident, utastI), utastA) ->
-      let* (tyenvI, evid, eI, _tyI) = make_type_environment_by_let_mutable pre tyenv ident utastI in
+      let* (tyenvI, evid, eI, _tyI) = typecheck_let_mutable pre tyenv ident utastI in
       let* (eA, tyA) = typecheck_iter tyenvI utastA in
       return (LetMutableIn(evid, eI, eA), tyA)
 
@@ -1499,69 +1574,6 @@ and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : un
   )
 
 
-and typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : untyped_pattern_tree) : (pattern_tree * mono_type * pattern_var_map) ok =
-  let open ResultMonad in
-  let iter = typecheck_pattern pre tyenv in
-    match utpatmain with
-    | UTPIntegerConstant(nc) -> return (PIntegerConstant(nc), (rng, BaseType(IntType)), PatternVarMap.empty)
-    | UTPBooleanConstant(bc) -> return (PBooleanConstant(bc), (rng, BaseType(BoolType)), PatternVarMap.empty)
-    | UTPUnitConstant        -> return (PUnitConstant, (rng, BaseType(UnitType)), PatternVarMap.empty)
-
-    | UTPStringConstant(sc) ->
-        return (PStringConstant(sc), (rng, BaseType(StringType)), PatternVarMap.empty)
-
-    | UTPListCons(utpat1, utpat2) ->
-        let* (epat1, typat1, patvarmap1) = iter utpat1 in
-        let* (epat2, typat2, patvarmap2) = iter utpat2 in
-        let* () = unify typat2 (Range.dummy "pattern-list-cons", ListType(typat1)) in
-        let* patvarmap = unite_pattern_var_map patvarmap1 patvarmap2 in
-        return (PListCons(epat1, epat2), typat2, patvarmap)
-
-    | UTPEndOfList ->
-        let beta = fresh_type_variable rng pre in
-        return (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
-
-    | UTPTuple(utpats) ->
-        let* tris = TupleList.mapM iter utpats in
-        let epats = tris |> TupleList.map (fun (epat, _, _) -> epat) in
-        let typats = tris |> TupleList.map (fun (_, typat, _) -> typat) in
-        let tyres = (rng, ProductType(typats)) in
-        let* patvarmap =
-          let patvarmaps = tris |> TupleList.to_list |> List.map (fun (_, _, patvarmap) -> patvarmap) in
-          patvarmaps |> foldM unite_pattern_var_map PatternVarMap.empty
-        in
-        return (PTuple(epats), tyres, patvarmap)
-
-    | UTPWildCard ->
-        let beta = fresh_type_variable rng pre in
-        return (PWildCard, beta, PatternVarMap.empty)
-
-    | UTPVariable(varnm) ->
-        let beta = fresh_type_variable rng pre in
-        let evid = EvalVarID.fresh (rng, varnm) in
-        return (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
-
-    | UTPAsVariable(varnm, utpat1) ->
-        let beta = fresh_type_variable rng pre in
-        let* (epat1, typat1, patvarmap1) = iter utpat1 in
-        begin
-          match PatternVarMap.find_opt varnm patvarmap1 with
-          | Some((rngsub, _, _)) ->
-            (* If 'varnm' also occurs in `utpat1`: *)
-              err (MultiplePatternVariable(rngsub, rng, varnm))
-
-          | None ->
-              let evid = EvalVarID.fresh (rng, varnm) in
-              return (PAsVariable(evid, epat1), typat1, patvarmap1 |> PatternVarMap.add varnm (rng, evid, beta))
-        end
-
-    | UTPConstructor(constrnm, utpat1) ->
-        let* (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
-        let* (epat1, typat1, tyenv1) = iter utpat1 in
-        let* () = unify tyc typat1 in
-        return (PConstructor(constrnm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
-
-
 and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : ((var_name * poly_type * EvalVarID.t * letrec_binding) list) ok =
   let open ResultMonad in
 
@@ -1593,7 +1605,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
     ) (tyenv, Alist.empty)
   in
 
-  (* Typechecks each body of the definitions. *)
+  (* Typechecks each body of the definitions: *)
   let* tupleacc =
     utrecacc |> Alist.to_list |> foldM (fun tupleacc utrec ->
       let (((_, varnm), utast1), beta, evid) = utrec in
@@ -1632,7 +1644,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
   return tuples
 
 
-and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) : (Typeenv.t * EvalVarID.t * abstract_tree * mono_type) ok =
+and typecheck_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) : (Typeenv.t * EvalVarID.t * abstract_tree * mono_type) ok =
   let open ResultMonad in
   let* (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
   let (rng_var, varnm) = ident in
@@ -1650,7 +1662,75 @@ and make_type_environment_by_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident 
   return (tyenvI, evid, eI, tyI)
 
 
-and typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : (signature abstracted * binding list) ok =
+let lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substitution option =
+  let Kind(bkds1) = tentry1.type_kind in
+  let Kind(bkds2) = tentry2.type_kind in
+  if List.length bkds1 = List.length bkds2 then
+    let subst =
+      match TypeConv.get_opaque_type tentry2.type_scheme with
+      | None        -> SubstMap.empty
+      | Some(tyid2) -> SubstMap.empty |> SubstMap.add tyid2 tentry1.type_scheme
+    in
+    Some(subst)
+  else
+    None
+
+
+let rec lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : substitution ok =
+  let open ResultMonad in
+  let take_left = (fun _tyid to1 _to2 -> Some(to1)) in
+  match (modsig1, modsig2) with
+  | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
+      ssig2 |> StructSig.fold
+          ~v:(fun _x2 _ventry2 res ->
+            res
+          )
+          ~a:(fun _csnm _macentry2 res ->
+            res
+          )
+          ~c:(fun _ctornm2 _centry2 res ->
+            res
+          )
+          ~f:(fun _tynm2 _pty res ->
+            res
+          )
+          ~t:(fun tynm2 tentry2 res ->
+            res >>= fun subst ->
+            match ssig1 |> StructSig.find_type tynm2 with
+            | None ->
+                let (bids, _) = tentry2.type_scheme in
+                err (MissingRequiredTypeName(rng, tynm2, List.length bids))
+
+            | Some(tentry1) ->
+                begin
+                  match lookup_type_entry tentry1 tentry2 with
+                  | None ->
+                      err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
+
+                  | Some(subst0) ->
+                      return @@ SubstMap.union take_left subst0 subst
+                end
+          )
+          ~m:(fun modnm2 { mod_signature = modsig2; _ } res ->
+            res >>= fun subst ->
+            match ssig1 |> StructSig.find_module modnm2 with
+            | None ->
+                err (MissingRequiredModuleName(rng, modnm2, modsig2))
+
+            | Some({ mod_signature = modsig1; _ }) ->
+                let* subst0 = lookup_struct rng modsig1 modsig2 in
+                return @@ SubstMap.union take_left subst0 subst
+          )
+          ~s:(fun _ _ res ->
+            res
+          )
+          (return SubstMap.empty)
+
+  | _ ->
+      return SubstMap.empty
+
+
+let rec typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : (signature abstracted * binding list) ok =
   let open ResultMonad in
   let (rng, utmodmain) = utmod in
   match utmodmain with
@@ -1824,74 +1904,6 @@ and typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : (signa
       let modsig = modsig0 |> substitute_concrete subst in
         (* TODO: use `ctordefs` to update `modsig` *)
       return (quant, modsig)
-
-
-and lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substitution option =
-  let Kind(bkds1) = tentry1.type_kind in
-  let Kind(bkds2) = tentry2.type_kind in
-  if List.length bkds1 = List.length bkds2 then
-    let subst =
-      match TypeConv.get_opaque_type tentry2.type_scheme with
-      | None        -> SubstMap.empty
-      | Some(tyid2) -> SubstMap.empty |> SubstMap.add tyid2 tentry1.type_scheme
-    in
-    Some(subst)
-  else
-    None
-
-
-and lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : substitution ok =
-  let open ResultMonad in
-  let take_left = (fun _tyid to1 _to2 -> Some(to1)) in
-  match (modsig1, modsig2) with
-  | (ConcStructure(ssig1), ConcStructure(ssig2)) ->
-      ssig2 |> StructSig.fold
-          ~v:(fun _x2 _ventry2 res ->
-            res
-          )
-          ~a:(fun _csnm _macentry2 res ->
-            res
-          )
-          ~c:(fun _ctornm2 _centry2 res ->
-            res
-          )
-          ~f:(fun _tynm2 _pty res ->
-            res
-          )
-          ~t:(fun tynm2 tentry2 res ->
-            res >>= fun subst ->
-            match ssig1 |> StructSig.find_type tynm2 with
-            | None ->
-                let (bids, _) = tentry2.type_scheme in
-                err (MissingRequiredTypeName(rng, tynm2, List.length bids))
-
-            | Some(tentry1) ->
-                begin
-                  match lookup_type_entry tentry1 tentry2 with
-                  | None ->
-                      err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
-
-                  | Some(subst0) ->
-                      return @@ SubstMap.union take_left subst0 subst
-                end
-          )
-          ~m:(fun modnm2 { mod_signature = modsig2; _ } res ->
-            res >>= fun subst ->
-            match ssig1 |> StructSig.find_module modnm2 with
-            | None ->
-                err (MissingRequiredModuleName(rng, modnm2, modsig2))
-
-            | Some({ mod_signature = modsig1; _ }) ->
-                let* subst0 = lookup_struct rng modsig1 modsig2 in
-                return @@ SubstMap.union take_left subst0 subst
-          )
-          ~s:(fun _ _ res ->
-            res
-          )
-          (return SubstMap.empty)
-
-  | _ ->
-      return SubstMap.empty
 
 
 and substitute_abstract (subst : substitution) (absmodsig : signature abstracted) : signature abstracted =
@@ -2210,10 +2222,6 @@ and subtype_concrete_with_abstract (rng : Range.t) (modsig1 : signature) (absmod
   let modsig2 = modsig2 |> substitute_concrete subst in
   let* () = subtype_concrete_with_concrete rng modsig1 modsig2 in
   return subst
-
-
-and subtype_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) =
-  subtype_concrete_with_abstract rng modsig1 absmodsig2
 
 
 and subtype_poly_type_impl (internbid : type_intern) (internbrid : row_intern) (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
@@ -2598,21 +2606,9 @@ and copy_closure_in_structure (ssig1 : StructSig.t) (ssig2 : StructSig.t) : Stru
 
 and coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signature abstracted) : (signature abstracted) ok =
   let open ResultMonad in
-  let* _subst = subtype_signature rng modsig1 absmodsig2 in
+  let* _subst = subtype_concrete_with_abstract rng modsig1 absmodsig2 in
   let (quant2, modsig2) = absmodsig2 in
   return (quant2, copy_contents modsig1 modsig2)
-
-
-and add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) =
-  ssig |> StructSig.fold
-    ~v:(fun x ventry -> Typeenv.add_value x ventry)
-    ~a:(fun csnm macentry -> Typeenv.add_macro csnm macentry)
-    ~c:(fun ctornm centry -> Typeenv.add_constructor ctornm centry)
-    ~f:(fun _tynm _pty tyenv -> tyenv)
-    ~t:(fun tynm tentry -> Typeenv.add_type tynm tentry)
-    ~m:(fun modnm mentry -> Typeenv.add_module modnm mentry)
-    ~s:(fun signm absmodsig -> Typeenv.add_signature signm absmodsig)
-    tyenv
 
 
 and typecheck_declaration_list (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : (StructSig.t abstracted) ok =
