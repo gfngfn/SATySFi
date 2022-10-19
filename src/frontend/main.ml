@@ -71,7 +71,7 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
 let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
   Logging.begin_to_typecheck_file abspath_in;
   let pair =
-    match Typechecker.main_bindings tyenv utsig_opt utbinds with
+    match ModuleTypechecker.main tyenv utsig_opt utbinds with
     | Ok(pair) -> pair
     | Error(e) -> raise (TypeError(e))
   in
