@@ -7,15 +7,21 @@ open TypeError
 open TypecheckUtil
 
 
+(* The type for predicates that takes [bid : BoundID.t] and [pty : poly_type]
+   and judges whether [bid] is mapped to a type equal to [pty] in the current context. *)
 type type_intern = (BoundID.t -> poly_type -> bool)
 
+(* The type for predicates that takes [brid : BoundRowID.t] and [nomrow : normalized_poly_row]
+   and judges whether [brid] is mapped to a row equal to [nomrow] in the current context. *)
 type row_intern = (BoundRowID.t -> normalized_poly_row -> bool)
 
 
+(* `lookup_type_entry σ_1 σ_2` returns:
+   - `None` if `σ_1` cannot be a subtype of `θ(σ_2)` with any substitution `θ`,
+   - `Some(ω_2 ↦ σ_1)` if `σ_2` is an opaque type `ω_2`, or
+   - `Some(∅)` if `σ_2` is not an opaque type. *)
 let lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substitution option =
-  let Kind(bkds1) = tentry1.type_kind in
-  let Kind(bkds2) = tentry2.type_kind in
-  if List.length bkds1 = List.length bkds2 then
+  if TypeConv.kind_equal tentry1.type_kind tentry2.type_kind then
     let subst =
       match TypeConv.get_opaque_type tentry2.type_scheme with
       | None        -> SubstMap.empty
@@ -26,6 +32,8 @@ let lookup_type_entry (tentry1 : type_entry) (tentry2 : type_entry) : substituti
     None
 
 
+(* `lookup_struct rng Σ_1 Σ_2` compares `Σ_1` and `Σ_2` by traversing only structures,
+   and returns a candidate substitution `θ` that satisfies `Σ_1 <: θ(Σ_2)`. *)
 let rec lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature) : substitution ok =
   let open ResultMonad in
   let take_left = (fun _tyid to1 _to2 -> Some(to1)) in
