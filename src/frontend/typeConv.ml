@@ -280,66 +280,6 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
   iter ty
 
 
-(*
-let check_level (lev : Level.t) (ty : mono_type) : bool =
-  let rec iter (_, tymain) =
-    match tymain with
-    | TypeVariable(tv) ->
-        begin
-          match tv with
-          | Updatable(tvuref) ->
-              begin
-                match !tvuref with
-                | MonoLink(ty)  -> iter ty
-                | MonoFree(fid) -> Level.less_than lev (FreeID.get_level fid)
-              end
-
-          | MustBeBound(mbbid) ->
-              Level.less_than lev (MustBeBoundID.get_level mbbid)
-        end
-
-    | ProductType(tys)               -> tys |> TupleList.to_list |> List.for_all iter
-    | RecordType(row)                -> iter_row row
-    | FuncType(optrow, tydom, tycod) -> iter_row optrow && iter tydom && iter tycod
-    | RefType(tycont)                -> iter tycont
-    | BaseType(_)                    -> true
-    | ListType(tycont)               -> iter tycont
-    | DataType(tyargs, _)            -> List.for_all iter tyargs
-
-    | InlineCommandType(cmdargtys)
-    | BlockCommandType(cmdargtys)
-    | MathCommandType(cmdargtys) ->
-        List.for_all iter_cmd cmdargtys
-
-    | CodeType(tysub) ->
-        iter tysub
-
-  and iter_cmd = function
-    | CommandArgType(tylabmap, ty) ->
-        tylabmap |> LabelMap.for_all (fun _label -> iter) && iter ty
-
-  and iter_row = function
-    | RowEmpty ->
-        true
-
-    | RowCons(_, ty, tail) ->
-        iter ty && iter_row tail
-
-    | RowVar(UpdatableRow(rvref)) ->
-        begin
-          match !rvref with
-          | MonoRowFree(frid) -> Level.less_than lev (FreeRowID.get_level frid)
-          | MonoRowLink(row)  -> iter_row row
-        end
-
-    | RowVar(MustBeBoundRow(mbbrid)) ->
-        Level.less_than lev (MustBeBoundRowID.get_level mbbrid)
-
-  in
-  iter ty
-*)
-
-
 let make_type_generalization_intern (lev : level) (tvid_ht : BoundID.t FreeIDHashTable.t) =
   let intern_ty (fid : FreeID.t) : BoundID.t option =
     if not (FreeID.get_quantifiability fid && Level.less_than lev (FreeID.get_level fid)) then
@@ -402,58 +342,6 @@ let generalize_macro_type (macty : mono_macro_type) : poly_macro_type =
   match macty with
   | InlineMacroType(macparamtys) -> InlineMacroType(macparamtys |> List.map aux)
   | BlockMacroType(macparamtys)  -> BlockMacroType(macparamtys |> List.map aux)
-
-
-(*
-let rec unlift_aux pty =
-  let aux = unlift_aux in
-  let (rng, ptymain) = pty in
-  let ptymainnew =
-    match ptymain with
-    | BaseType(bt) -> BaseType(bt)
-
-    | TypeVariable(ptvi) ->
-        begin
-          match ptvi with
-          | PolyFree(tvuref) -> TypeVariable(Updatable(tvuref))
-          | PolyBound(_)     -> raise Exit
-        end
-
-    | FuncType(poptrow, pty1, pty2)   -> FuncType(unlift_aux_row poptrow, aux pty1, aux pty2)
-    | ProductType(ptys)               -> ProductType(TupleList.map aux ptys)
-    | RecordType(prow)                -> RecordType(unlift_aux_row prow)
-    | ListType(ptysub)                -> ListType(aux ptysub)
-    | RefType(ptysub)                 -> RefType(aux ptysub)
-    | DataType(ptyargs, tyid)         -> DataType(List.map aux ptyargs, tyid)
-    | InlineCommandType(cmdargtys)    -> InlineCommandType(List.map unlift_aux_cmd cmdargtys)
-    | BlockCommandType(cmdargtys)     -> BlockCommandType(List.map unlift_aux_cmd cmdargtys)
-    | MathCommandType(cmdargtys)      -> MathCommandType(List.map unlift_aux_cmd cmdargtys)
-    | CodeType(ptysub)                -> CodeType(aux ptysub)
-  in
-  (rng, ptymainnew)
-
-
-and unlift_aux_cmd = function
-  | CommandArgType(ptylabmap, pty) ->
-      CommandArgType(ptylabmap |> LabelMap.map unlift_aux, unlift_aux pty)
-
-
-and unlift_aux_row = function
-  | RowEmpty                    -> RowEmpty
-  | RowCons(rlabel, pty, tail)  -> RowCons(rlabel, unlift_aux pty, unlift_aux_row tail)
-  | RowVar(PolyRowFree(rvref))  -> RowVar(rvref)
-  | RowVar(PolyRowBound(_))     -> raise Exit
-
-
-let unlift_poly (pty : poly_type_body) : mono_type option =
-  try Some(unlift_aux pty) with
-  | Exit -> None
-
-
-let unlift_row (prow : poly_row) : mono_row option =
-  try Some(unlift_aux_row prow) with
-  | Exit -> None
-*)
 
 
 (* Normalizes the polymorphic row `prow`. Here, `MonoRow` is not supposed to occur in `prow`. *)
