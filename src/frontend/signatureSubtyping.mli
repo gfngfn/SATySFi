@@ -2,7 +2,7 @@
 open StaticEnv
 open TypecheckUtil
 
-(** [substitute_concrete θ ξ] means [θ(ξ)],
+(** [substitute_abstract θ ξ] means [θ(ξ)],
     i.e., the application of the substitution [θ] to the abstract signature [ξ]. *)
 val substitute_abstract : substitution -> signature abstracted -> signature abstracted
 

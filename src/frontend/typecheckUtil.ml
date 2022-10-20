@@ -10,6 +10,7 @@ type 'a ok = ('a, type_error) result
 
 module SubstMap = Map.Make(TypeID)
 
+(* The type for substitutions that map opaque types to concrete types. *)
 type substitution = type_scheme SubstMap.t
 
 type variant_definition = type_name * TypeID.t * BoundID.t list * constructor_branch_map
