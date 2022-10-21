@@ -11,6 +11,8 @@ type type_scheme =
 
 type struct_signature
 
+type type_environment
+
 type signature =
   | ConcStructure of struct_signature
   | ConcFunctor   of functor_signature
@@ -22,8 +24,6 @@ and functor_signature = {
   closure  : (module_name ranged * untyped_module * type_environment) option;
 }
 [@@deriving show]
-
-and type_environment
 
 type value_entry = {
   val_name  : EvalVarID.t option;

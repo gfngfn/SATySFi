@@ -280,64 +280,6 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
   iter ty
 
 
-let check_level (lev : Level.t) (ty : mono_type) : bool =
-  let rec iter (_, tymain) =
-    match tymain with
-    | TypeVariable(tv) ->
-        begin
-          match tv with
-          | Updatable(tvuref) ->
-              begin
-                match !tvuref with
-                | MonoLink(ty)  -> iter ty
-                | MonoFree(fid) -> Level.less_than lev (FreeID.get_level fid)
-              end
-
-          | MustBeBound(mbbid) ->
-              Level.less_than lev (MustBeBoundID.get_level mbbid)
-        end
-
-    | ProductType(tys)               -> tys |> TupleList.to_list |> List.for_all iter
-    | RecordType(row)                -> iter_row row
-    | FuncType(optrow, tydom, tycod) -> iter_row optrow && iter tydom && iter tycod
-    | RefType(tycont)                -> iter tycont
-    | BaseType(_)                    -> true
-    | ListType(tycont)               -> iter tycont
-    | DataType(tyargs, _)            -> List.for_all iter tyargs
-
-    | InlineCommandType(cmdargtys)
-    | BlockCommandType(cmdargtys)
-    | MathCommandType(cmdargtys) ->
-        List.for_all iter_cmd cmdargtys
-
-    | CodeType(tysub) ->
-        iter tysub
-
-  and iter_cmd = function
-    | CommandArgType(tylabmap, ty) ->
-        tylabmap |> LabelMap.for_all (fun _label -> iter) && iter ty
-
-  and iter_row = function
-    | RowEmpty ->
-        true
-
-    | RowCons(_, ty, tail) ->
-        iter ty && iter_row tail
-
-    | RowVar(UpdatableRow(rvref)) ->
-        begin
-          match !rvref with
-          | MonoRowFree(frid) -> Level.less_than lev (FreeRowID.get_level frid)
-          | MonoRowLink(row)  -> iter_row row
-        end
-
-    | RowVar(MustBeBoundRow(mbbrid)) ->
-        Level.less_than lev (MustBeBoundRowID.get_level mbbrid)
-
-  in
-  iter ty
-
-
 let make_type_generalization_intern (lev : level) (tvid_ht : BoundID.t FreeIDHashTable.t) =
   let intern_ty (fid : FreeID.t) : BoundID.t option =
     if not (FreeID.get_quantifiability fid && Level.less_than lev (FreeID.get_level fid)) then
@@ -400,56 +342,6 @@ let generalize_macro_type (macty : mono_macro_type) : poly_macro_type =
   match macty with
   | InlineMacroType(macparamtys) -> InlineMacroType(macparamtys |> List.map aux)
   | BlockMacroType(macparamtys)  -> BlockMacroType(macparamtys |> List.map aux)
-
-
-let rec unlift_aux pty =
-  let aux = unlift_aux in
-  let (rng, ptymain) = pty in
-  let ptymainnew =
-    match ptymain with
-    | BaseType(bt) -> BaseType(bt)
-
-    | TypeVariable(ptvi) ->
-        begin
-          match ptvi with
-          | PolyFree(tvuref) -> TypeVariable(Updatable(tvuref))
-          | PolyBound(_)     -> raise Exit
-        end
-
-    | FuncType(poptrow, pty1, pty2)   -> FuncType(unlift_aux_row poptrow, aux pty1, aux pty2)
-    | ProductType(ptys)               -> ProductType(TupleList.map aux ptys)
-    | RecordType(prow)                -> RecordType(unlift_aux_row prow)
-    | ListType(ptysub)                -> ListType(aux ptysub)
-    | RefType(ptysub)                 -> RefType(aux ptysub)
-    | DataType(ptyargs, tyid)         -> DataType(List.map aux ptyargs, tyid)
-    | InlineCommandType(cmdargtys)    -> InlineCommandType(List.map unlift_aux_cmd cmdargtys)
-    | BlockCommandType(cmdargtys)     -> BlockCommandType(List.map unlift_aux_cmd cmdargtys)
-    | MathCommandType(cmdargtys)      -> MathCommandType(List.map unlift_aux_cmd cmdargtys)
-    | CodeType(ptysub)                -> CodeType(aux ptysub)
-  in
-  (rng, ptymainnew)
-
-
-and unlift_aux_cmd = function
-  | CommandArgType(ptylabmap, pty) ->
-      CommandArgType(ptylabmap |> LabelMap.map unlift_aux, unlift_aux pty)
-
-
-and unlift_aux_row = function
-  | RowEmpty                    -> RowEmpty
-  | RowCons(rlabel, pty, tail)  -> RowCons(rlabel, unlift_aux pty, unlift_aux_row tail)
-  | RowVar(PolyRowFree(rvref))  -> RowVar(rvref)
-  | RowVar(PolyRowBound(_))     -> raise Exit
-
-
-let unlift_poly (pty : poly_type_body) : mono_type option =
-  try Some(unlift_aux pty) with
-  | Exit -> None
-
-
-let unlift_row (prow : poly_row) : mono_row option =
-  try Some(unlift_aux_row prow) with
-  | Exit -> None
 
 
 (* Normalizes the polymorphic row `prow`. Here, `MonoRow` is not supposed to occur in `prow`. *)
@@ -534,3 +426,114 @@ let get_opaque_type (tyscheme : type_scheme) : TypeID.t option =
 
   | _ ->
       None
+
+
+let kind_equal (kd1 : kind) (kd2 : kind) : bool =
+  let Kind(bkds1) = kd1 in
+  let Kind(bkds2) = kd2 in
+  match List.combine bkds1 bkds2 with
+  | exception Invalid_argument(_) -> false
+  | zipped                        -> zipped |> List.for_all (fun (TypeKind, TypeKind) -> true)
+
+
+let rec poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
+  let rec aux (pty1 : poly_type_body) (pty2 : poly_type_body) =
+    let (_, ptymain1) = pty1 in
+    let (_, ptymain2) = pty2 in
+    match (ptymain1, ptymain2) with
+    | (BaseType(bty1), BaseType(bty2)) ->
+        bty1 = bty2
+
+    | (FuncType(poptrow1, ptydom1, ptycod1), FuncType(poptrow2, ptydom2, ptycod2)) ->
+        poly_row_equal poptrow1 poptrow2 && aux ptydom1 ptydom2 && aux ptycod1 ptycod2
+
+    | (ListType(pty1), ListType(pty2)) ->
+        aux pty1 pty2
+
+    | (RefType(pty1), RefType(pty2)) ->
+        aux pty1 pty2
+
+    | (ProductType(ptys1), ProductType(ptys2)) ->
+        aux_list (TupleList.to_list ptys1) (TupleList.to_list ptys2)
+
+    | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
+        BoundID.equal bid1 bid2
+
+    | (TypeVariable(PolyFree(_)), _)
+    | (_, TypeVariable(PolyFree(_))) ->
+        false
+
+    | (DataType(ptys1, tyid1), DataType(ptys2, tyid2)) ->
+        TypeID.equal tyid1 tyid2 && aux_list ptys1 ptys2
+
+    | (RecordType(prow1), RecordType(prow2)) ->
+        poly_row_equal prow1 prow2
+
+    | (InlineCommandType(cmdargtys1), InlineCommandType(cmdargtys2))
+    | (BlockCommandType(cmdargtys1), BlockCommandType(cmdargtys2))
+    | (MathCommandType(cmdargtys1), MathCommandType(cmdargtys2)) ->
+        aux_cmd_list cmdargtys1 cmdargtys2
+
+    | (CodeType(pty1), CodeType(pty2)) ->
+        aux pty1 pty2
+
+    | _ ->
+        false
+
+  and aux_list (ptys1 : poly_type_body list) (ptys2 : poly_type_body list) : bool =
+    try
+      List.fold_left2 (fun b pty1 pty2 ->
+        b && aux pty1 pty2
+      ) true ptys1 ptys2
+    with
+    | Invalid_argument(_) ->
+        false
+
+  and aux_cmd_list (cmdargtys1 : poly_command_argument_type list) (cmdargtys2 : poly_command_argument_type list) : bool =
+    try
+      List.fold_left2 (fun b cmdargty1 cmdargty2 ->
+        b && begin
+          let CommandArgType(ptylabmap1, pty1) = cmdargty1 in
+          let CommandArgType(ptylabmap2, pty2) = cmdargty2 in
+          aux_labeled_map ptylabmap1 ptylabmap2 && aux pty1 pty2
+        end
+      ) true cmdargtys1 cmdargtys2
+    with
+    | Invalid_argument(_) ->
+        false
+
+  and aux_labeled_map ptylabmap1 ptylabmap2 =
+    let labmap =
+      LabelMap.merge (fun _label pty1_opt pty2_opt ->
+        match (pty1_opt, pty2_opt) with
+        | (Some(pty1), Some(pty2)) -> Some(aux pty1 pty2)
+        | _                        -> Some(false)
+      ) ptylabmap1 ptylabmap2
+    in
+    labmap |> LabelMap.for_all (fun _label b -> b)
+
+  in
+  aux pty1 pty2
+
+
+and poly_row_equal (prow1 : poly_row) (prow2 : poly_row) : bool =
+  normalized_poly_row_equal (normalize_poly_row prow1) (normalize_poly_row prow2)
+
+
+and normalized_poly_row_equal (nomrow1 : normalized_poly_row) (nomrow2 : normalized_poly_row) : bool =
+  let NormalizedRow(plabmap1, rowvar1_opt) = nomrow1 in
+  let NormalizedRow(plabmap2, rowvar2_opt) = nomrow2 in
+  let bmap =
+    LabelMap.merge (fun _ ptyopt1 ptyopt2 ->
+      match (ptyopt1, ptyopt2) with
+      | (None, None)             -> None
+      | (Some(pty1), Some(pty2)) -> Some(poly_type_equal (Poly(pty1)) (Poly(pty2)))
+      | _                        -> Some(false)
+    ) plabmap1 plabmap2 |> LabelMap.for_all (fun _label b -> b)
+  in
+  bmap && begin
+    match (rowvar1_opt, rowvar2_opt) with
+    | (None, None)                                           -> true
+    | (Some(PolyRowBound(brid1)), Some(PolyRowBound(brid2))) -> BoundRowID.equal brid1 brid2
+    | _                                                      -> false
+  end
