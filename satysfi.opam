@@ -29,7 +29,7 @@ depends: [
   "dune" {build}
   "menhir"
   "ocamlfind" {build}
-  "otfm" {= "0.3.7+satysfi"}
+  "otfed"
   "ppx_deriving"
   "re" {build}
   "uutf"
