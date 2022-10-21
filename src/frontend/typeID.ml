@@ -24,7 +24,7 @@ let extract_name (id : t) : string =
 
 
 let compare (id1 : t) (id2 : t) =
-  id2.number - id1.number
+  Int.compare id2.number id1.number
 
 
 let equal (id1 : t) (id2 : t) =
