@@ -1,11 +1,12 @@
-open Core_kernel
+open Core
 open Main__
 
 let () =
   let proj (_, utsrc) = utsrc in
   Out_channel.print_endline ";;; generated automatically. DO NOT EDIT";
   Out_channel.print_endline ";;; To update this file, you should run `dune runtest; dune promote`.";
-  Sys.argv
+  let argv = Sys.get_argv () in
+  argv
   |> Array.to_list
   |> List.tl
   |> Option.value ~default:[]
@@ -22,6 +23,6 @@ let () =
       |> print_endline
     with
     | ParserInterface.Error(rng) ->
-      Out_channel.fprintf stderr "%s: parse error: %s\n" Sys.argv.(0) @@ Range.to_string rng;
-      exit 1
+        Out_channel.fprintf stderr "%s: parse error: %s\n" argv.(0) @@ Range.to_string rng;
+        exit 1
   end

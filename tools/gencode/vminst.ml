@@ -3029,7 +3029,7 @@ Tuple([v1; v2; v3])
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-let parts = Core_kernel.Filename.parts relpath in
+let parts = Core.Filename.parts relpath in
 begin
   if parts |> List.exists (String.equal "..") then
     report_dynamic_error "cannot access files by using '..'"

@@ -33,7 +33,7 @@ let make_value (prefix : string) (i : int) =
       aux (ch :: chs) r
   in
   let chs = aux [] i in
-  prefix ^ (Core_kernel.String.of_char_list chs)
+  prefix ^ (Core.String.of_char_list chs)
 
 
 let add_free_id fid dispmap =

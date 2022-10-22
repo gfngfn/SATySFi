@@ -27,6 +27,16 @@ let of_utf8 (str_utf8 : string) : t =
   Buffer.contents buffer
 
 
+let of_utf16be (str_utf16be : string) : t =
+  let buffer = Buffer.create (String.length str_utf16be) in
+  let aux () _i = function
+    | `Malformed(_) -> Uutf.Buffer.add_utf_8 buffer Uutf.u_rep
+    | `Uchar(uch)   -> Uutf.Buffer.add_utf_8 buffer uch
+  in
+  Uutf.String.fold_utf_16be aux () str_utf16be;
+  Buffer.contents buffer
+
+
 let to_utf16be_hex (intext : t) =
   let buffer = Buffer.create (String.length intext * 4) in
   let decoder = Uutf.decoder ~encoding:`UTF_8 (`String(intext)) in
