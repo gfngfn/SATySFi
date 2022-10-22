@@ -166,13 +166,15 @@ let hex_of_glyph_id ((SubsetGlyphID(_, SubsetNumber(n))) : glyph_id) =
 module SubsetMap
 : sig
     type t
-    val create : int -> t
+    val create : abs_path -> D.source -> int -> t
     val intern : original_glyph_id -> t -> subset_glyph_id
     val to_list : t -> original_glyph_id list
   end
 = struct
 
     type subset = {
+      file_path          : abs_path;
+      decoder            : D.source;
       original_to_subset : subset_glyph_id GOHt.t;
       subset_to_original : original_glyph_id GSHt.t;
       count : int ref;
@@ -183,11 +185,13 @@ module SubsetMap
       | Subset of subset
 
 
-    let create n =
+    let create file_path d n =
       let ht = GOHt.create n in
       let revht = GSHt.create n in
       GOHt.add ht 0 (SubsetNumber(0));
       Subset{
+        file_path          = file_path;
+        decoder            = d;
         original_to_subset = ht;
         subset_to_original = revht;
         count = ref 0;
@@ -195,7 +199,40 @@ module SubsetMap
       }
 
 
-    let intern gidorg submap =
+    let get_elements_of_composite_glyph ~(file_path : abs_path) (d : D.source) (gidorg : original_glyph_id) : original_glyph_id list =
+      let res =
+        let open ResultMonad in
+        match d with
+        | D.Cff(_) ->
+            return []
+
+        | D.Ttf(ttf) ->
+            D.Ttf.loca ttf gidorg >>= function
+            | None ->
+                return []
+
+            | Some(loc) ->
+                D.Ttf.glyf ttf loc >>= fun ttf_glyph_info ->
+                begin
+                  match ttf_glyph_info.description with
+                  | SimpleGlyph(_) ->
+                      return []
+
+                  | CompositeGlyph(composite) ->
+                      return begin
+                        composite.composite_components |> List.map (fun components ->
+                          components.V.Ttf.component_glyph_id
+                        )
+                      end
+                end
+      in
+      match res with
+      | Error(e)    -> broken file_path e "add_element_of_composite_glyph"
+      | Ok(gidorgs) -> gidorgs
+
+
+
+    let rec intern gidorg submap =
       match submap with
       | Subset(r) ->
           let ht = r.original_to_subset in
@@ -214,8 +251,11 @@ module SubsetMap
                 GSHt.add revht gidsub gidorg;
                 let alst = Alist.extend (!store) gidorg in
                 store := alst;
+                let gidorgs_elem = get_elements_of_composite_glyph ~file_path:r.file_path r.decoder gidorg in
+                gidorgs_elem |> List.iter (fun gidorg_elem -> intern gidorg_elem submap |> ignore);
                 gidsub
           end
+
 
     let to_list submap =
       match submap with
@@ -1067,9 +1107,9 @@ let get_original_gid (dcdr : decoder) (gid : glyph_id) : original_glyph_id =
   gidorg
 
 
-let get_ttf_raw_bbox (ttf : D.ttf_source) (gid_org : original_glyph_id) : ((design_units * design_units * design_units * design_units) option) ok =
+let get_ttf_raw_bbox (ttf : D.ttf_source) (gidorg : original_glyph_id) : ((design_units * design_units * design_units * design_units) option) ok =
   let open ResultMonad in
-  D.Ttf.loca ttf gid_org >>= function
+  D.Ttf.loca ttf gidorg >>= function
   | None ->
       return None
 
@@ -1085,11 +1125,11 @@ let bbox_zero =
   (PerMille(0), PerMille(0), PerMille(0), PerMille(0))
 
 
-let get_ttf_bbox ~(units_per_em : int) ~(file_path : abs_path) (ttf : D.ttf_source) (gid_org : original_glyph_id) : bbox =
+let get_ttf_bbox ~(units_per_em : int) ~(file_path : abs_path) (ttf : D.ttf_source) (gidorg : original_glyph_id) : bbox =
   let f = per_mille ~units_per_em in
-  match get_ttf_raw_bbox ttf gid_org with
+  match get_ttf_raw_bbox ttf gidorg with
   | Error(e) ->
-      broken file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gid_org)
+      broken file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gidorg)
 
   | Ok(None) ->
       bbox_zero
@@ -1099,30 +1139,30 @@ let get_ttf_bbox ~(units_per_em : int) ~(file_path : abs_path) (ttf : D.ttf_sour
       (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
 
 
-let get_glyph_advance_width (dcdr : decoder) (gid_org_key : original_glyph_id) : per_mille =
+let get_glyph_advance_width (dcdr : decoder) (gidorg_key : original_glyph_id) : per_mille =
   let d = dcdr.main in
   let res =
     let open ResultMonad in
     D.Hmtx.get d >>= fun ihmtx ->
-    D.Hmtx.access ihmtx gid_org_key
+    D.Hmtx.access ihmtx gidorg_key
   in
   match res with
-  | Error(e)             -> broken dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gid_org_key)
+  | Error(e)             -> broken dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gidorg_key)
   | Ok(None)             -> PerMille(0)
   | Ok(Some((adv, lsb))) -> per_mille ~units_per_em:dcdr.units_per_em adv
 
 
-let get_bbox (dcdr : decoder) (gid_org : original_glyph_id) : bbox =
+let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
   let units_per_em = dcdr.units_per_em in
   let file_path = dcdr.file_path in
   match dcdr.main with
   | D.Ttf(ttf) ->
-      get_ttf_bbox ~units_per_em ~file_path ttf gid_org
+      get_ttf_bbox ~units_per_em ~file_path ttf gidorg
 
   | D.Cff(cff) ->
       let res =
         let open ResultMonad in
-        D.Cff.charstring cff gid_org >>= function
+        D.Cff.charstring cff gidorg >>= function
         | None ->
             return bbox_zero
               (* needs reconsideration; maybe should emit an error *)
@@ -1142,7 +1182,7 @@ let get_bbox (dcdr : decoder) (gid_org : original_glyph_id) : bbox =
       in
       match res with
       | Error(oerr) ->
-          broken dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gid_org)
+          broken dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gidorg)
 
       | Ok(bbox_opt) ->
           bbox_opt
@@ -1304,7 +1344,7 @@ let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string opt
     let gidorgs = SubsetMap.to_list dcdr.subset_map in
     match Otfed.Subset.make ~omit_cmap:true d gidorgs with
     | Error(e) ->
-        let msg = Format.asprintf "%a" Otfed.Subset.Error.pp e in
+        let msg = Format.asprintf "pdfstream_of_decoder: %a" Otfed.Subset.Error.pp e in
         raise (BrokenFont(dcdr.file_path, msg))
 
     | Ok(s) ->
@@ -1371,40 +1411,6 @@ let get_cmap_subtable srcpath (d : D.source) : V.Cmap.subtable =
   | Ok(subtbl)  -> subtbl
 
 
-let add_element_of_composite_glyph (dcdr : decoder) (gid_org : original_glyph_id) =
-  let open ResultMonad in
-  let d = dcdr.main in
-  let submap = dcdr.subset_map in
-  let rec aux ttf gid_org =
-    let _ = submap |> SubsetMap.intern gid_org in
-    D.Ttf.loca ttf gid_org >>= function
-    | None ->
-        return ()
-
-    | Some(loc) ->
-        D.Ttf.glyf ttf loc >>= fun ttf_glyph_info ->
-        begin
-          match ttf_glyph_info.description with
-          | SimpleGlyph(_) ->
-              return ()
-
-          | CompositeGlyph(composite) ->
-              composite.composite_components |> List.fold_left (fun res components ->
-                res >>= fun () ->
-                aux ttf components.V.Ttf.component_glyph_id
-              ) (return ())
-        end
-  in
-  let res =
-    match d with
-    | D.Ttf(ttf) -> aux ttf gid_org
-    | D.Cff(_)   -> return ()
-  in
-  match res with
-  | Error(e) -> broken dcdr.file_path e "add_element_of_composite_glyph"
-  | Ok(())   -> ()
-
-
 (* PUBLIC *)
 let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
   let gidtbl = dcdr.glyph_id_table in
@@ -1416,26 +1422,9 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
         let open OptionMonad in
         get_glyph_id_main dcdr.file_path dcdr.cmap_subtable uch >>= fun gidorg ->
         gidtbl |> GlyphIDTable.add uch gidorg;
-        add_element_of_composite_glyph dcdr gidorg;
         let gid = intern_gid dcdr gidorg in
         return gid
 
-
-(*
-let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) (gidorg : original_glyph_id)
-    : ((((bool * design_units * design_units) list) list * (design_units * design_units * design_units * design_units)) option) ok =
-  let d = dcdr.main in
-  let open ResultMonad in
-  Otfm.loca d gidorg >>= function
-  | None ->
-      return None
-
-  | Some(gloc) ->
-      Otfm.glyf d gloc >>= function
-      | (`Composite(_), _)          -> return None
-          (* temporary; does not deal with composite glyphs *)
-      | (`Simple(precntrlst), bbox) -> return (Some((precntrlst, bbox)))
-*)
 
 let of_per_mille = function
   | PerMille(x) -> Pdf.Integer(x)
@@ -1530,103 +1519,6 @@ let font_file_info_of_embedding embedding =
   | FontFile2      -> ("/FontFile2", None)
   | FontFile3(sub) -> ("/FontFile3", Some(sub))
 
-(*
-module Type1Scheme_
-= struct
-    type font = {
-        name            : string option;
-          (* --
-               obsolete field; required in PDF 1.0
-               but optional in all other versions
-             -- *)
-        base_font       : string;
-        first_char      : int;
-        last_char       : int;
-        widths          : int list;
-        font_descriptor : font_descriptor;
-        encoding        : encoding;
-        to_unicode      : cmap_resource option;
-      }
-
-
-    let of_decoder dcdr fc lc =
-      let base_font = get_postscript_name dcdr in
-        {
-          name            = None;
-          base_font       = base_font;
-          first_char      = fc;
-          last_char       = lc;
-          widths          = get_truetype_widths_list dcdr fc lc;
-          font_descriptor = font_descriptor_of_decoder dcdr base_font;
-          encoding        = PredefinedEncoding(StandardEncoding);
-          to_unicode      = None;
-        }
-
-
-    let to_pdfdict_scheme fontsubtype embedding pdf trtyfont dcdr =
-      let d = dcdr.main in
-      let fontname  = trtyfont.base_font in
-      let firstchar = trtyfont.first_char in
-      let lastchar  = trtyfont.last_char in
-      let widths    = trtyfont.widths in
-      let fontdescr = trtyfont.font_descriptor in
-      let (font_file_key, embedsubtypeopt) = font_file_info_of_embedding embedding in
-      let irstream = add_stream_of_decoder pdf d embedsubtypeopt in
-        (* -- add to the PDF the stream in which the font file is embedded -- *)
-      let objdescr =
-        Pdf.Dictionary[
-          ("/Type"       , Pdf.Name("/FontDescriptor"));
-          ("/FontName"   , Pdf.Name("/" ^ fontname));
-          ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
-          ("/FontBBox"   , Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
-          ("/ItalicAngle", Pdf.Real(fontdescr.italic_angle));
-          ("/Ascent"     , of_per_mille fontdescr.ascent);
-          ("/Descent"    , of_per_mille fontdescr.descent);
-          ("/StemV"      , Pdf.Real(fontdescr.stemv));
-          (font_file_key , Pdf.Indirect(irstream));
-        ]
-      in
-      let irdescr = Pdf.addobj pdf objdescr in
-        Pdf.Dictionary[
-          ("/Type"          , Pdf.Name("/Font"));
-          ("/Subtype"       , Pdf.Name("/" ^ fontsubtype));
-          ("/BaseFont"      , Pdf.Name("/" ^ fontname));
-          ("/FirstChar"     , Pdf.Integer(firstchar));
-          ("/LastChar"      , Pdf.Integer(lastchar));
-          ("/Widths"        , Pdf.Array(List.map (fun x -> Pdf.Integer(x)) widths));
-          ("/FontDescriptor", Pdf.Indirect(irdescr));
-        ]
-end
-
-module Type1
-= struct
-    include Type1Scheme_
-
-    let to_pdfdict = to_pdfdict_scheme "Type1" (FontFile3("Type1C"))
-  end
-
-module TrueType
-= struct
-    include Type1Scheme_
-
-    let to_pdfdict = to_pdfdict_scheme "TrueType" FontFile2
-  end
-
-module Type3
-= struct
-    type font = {
-        name            : string;
-        font_bbox       : bbox;
-        font_matrix     : matrix;
-        encoding        : encoding;
-        first_char      : int;
-        last_char       : int;
-        widths          : int list;
-        font_descriptor : font_descriptor;
-        to_unicode      : cmap_resource option;
-      }
-  end
-*)
 
 module CIDFontType0
 = struct
@@ -1961,26 +1853,17 @@ module Type0
   end
 
 type font =
-(*  | Type1    of Type1.font *)
-(*  | Type1C *)
-(*  | MMType1 *)
-(*  | Type3 *)
-(*  | TrueType of TrueType.font *)
-  | Type0    of Type0.font
+  | Type0 of Type0.font
 
 
 let make_dictionary (pdf : Pdf.t) (font : font) (dcdr : decoder) : Pdf.pdfobject =
   match font with
-(*
-  | FontFormat.Type1(ty1font)     -> FontFormat.Type1.to_pdfdict pdf ty1font dcdr
-  | FontFormat.TrueType(trtyfont) -> FontFormat.TrueType.to_pdfdict pdf trtyfont dcdr
-*)
   | Type0(ty0font) -> Type0.to_pdfdict pdf ty0font dcdr
 
 
 let make_decoder (abspath : abs_path) (d : D.source) : decoder =
   let cmapsubtbl = get_cmap_subtable abspath d in
-  let submap = SubsetMap.create 32 in  (* temporary; initial size of hash tables *)
+  let submap = SubsetMap.create abspath d 32 in  (* temporary; initial size of hash tables *)
   let gidtbl = GlyphIDTable.create submap 256 in  (* temporary; initial size of hash tables *)
   let bboxtbl = GlyphBBoxTable.create 256 in  (* temporary; initial size of hash tables *)
   let (rcdhhea, ascent, descent) =
