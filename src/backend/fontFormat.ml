@@ -167,9 +167,8 @@ module SubsetMap
 : sig
     type t
     val create : int -> t
-    val create_dummy : unit -> t
     val intern : original_glyph_id -> t -> subset_glyph_id
-    val to_list : t -> (original_glyph_id list) option
+    val to_list : t -> original_glyph_id list
   end
 = struct
 
@@ -182,7 +181,6 @@ module SubsetMap
 
     type t =
       | Subset of subset
-      | Dummy
 
 
     let create n =
@@ -197,15 +195,8 @@ module SubsetMap
       }
 
 
-    let create_dummy () =
-      Dummy
-
-
     let intern gidorg submap =
       match submap with
-      | Dummy ->
-          SubsetNumber(gidorg)
-
       | Subset(r) ->
           let ht = r.original_to_subset in
           let revht = r.subset_to_original in
@@ -228,8 +219,7 @@ module SubsetMap
 
     let to_list submap =
       match submap with
-      | Subset(r) -> Some(Alist.to_list !(r.store))
-      | Dummy     -> None
+      | Subset(r) -> Alist.to_list !(r.store)
 
   end
 
@@ -1213,17 +1203,28 @@ let intern_gid (dcdr : decoder) (gidorg : original_glyph_id) : glyph_id =
   SubsetGlyphID(gidorg, dcdr.subset_map |> SubsetMap.intern gidorg)
 
 
-let font_stretch_of_width_class srcpath = function
-  | 1 -> UltraCondensedStretch
-  | 2 -> ExtraCondensedStretch
-  | 3 -> CondensedStretch
-  | 4 -> SemiCondensedStetch
-  | 5 -> NormalStretch
-  | 6 -> SemiExpandedStretch
-  | 7 -> ExpandedStretch
-  | 8 -> ExtraExpandedStretch
-  | 9 -> UltraExpandedStretch
-  | w -> raise (BrokenFont(srcpath, "illegal width class " ^ (string_of_int w)))
+let font_stretch_of_width_class = function
+  | V.Os2.WidthUltraCondensed -> UltraCondensedStretch
+  | V.Os2.WidthExtraCondensed -> ExtraCondensedStretch
+  | V.Os2.WidthCondensed      -> CondensedStretch
+  | V.Os2.WidthSemiCondensed  -> SemiCondensedStetch
+  | V.Os2.WidthMedium         -> NormalStretch
+  | V.Os2.WidthSemiExpanded   -> SemiExpandedStretch
+  | V.Os2.WidthExpanded       -> ExpandedStretch
+  | V.Os2.WidthExtraExpanded  -> ExtraExpandedStretch
+  | V.Os2.WidthUltraExpanded  -> UltraExpandedStretch
+
+
+let font_weight_of_weight_class = function
+  | V.Os2.WeightThin       -> 100
+  | V.Os2.WeightExtraLight -> 200
+  | V.Os2.WeightLight      -> 300
+  | V.Os2.WeightNormal     -> 400
+  | V.Os2.WeightMedium     -> 500
+  | V.Os2.WeightSemiBold   -> 600
+  | V.Os2.WeightBold       -> 700
+  | V.Os2.WeightExtraBold  -> 800
+  | V.Os2.WeightBlack      -> 900
 
 
 type font_descriptor = {
@@ -1300,20 +1301,14 @@ let add_subset_tag tagopt fontname =
 let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string option) : (Pdf.pdfobject * string option) =
   let d = dcdr.main in
   let (data, subset_tag) =
-      match SubsetMap.to_list dcdr.subset_map with
-      | None ->
-          begin
-            match D.source_src d with
-            | `String(s) -> (s, None)
-          end
+    let gidorgs = SubsetMap.to_list dcdr.subset_map in
+    match Otfed.Subset.make ~omit_cmap:true d gidorgs with
+    | Error(e) ->
+        let msg = Format.asprintf "%a" Otfed.Subset.Error.pp e in
+        raise (BrokenFont(dcdr.file_path, msg))
 
-      | Some(gidorglst) ->
-          begin
-            match OtfSubset.make d dcdr.cff_info gidorglst with
-            | Error(e)    -> broken dcdr.file_path e "pdfstream_of_decoder"
-            | Ok(None)    -> assert false
-            | Ok(Some(s)) -> (s, Some(get_subset_tag ()))
-          end
+    | Ok(s) ->
+        (s, Some(get_subset_tag ()))
   in
   let (filter, bt) = to_flate_pdf_bytes data in
   let len = Pdfio.bytes_size bt in
@@ -1483,8 +1478,8 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
       {
         font_name    = font_name; (* -- same as Otfm.postscript_name dcdr -- *)
         font_family  = "";    (* temporary; should be gotten from decoder *)
-        font_stretch = Some(font_stretch_of_width_class dcdr.file_path ios2.I.Os2.value.us_width_class);
-        font_weight  = Some(ios2.I.Os2.value.us_weight_class);
+        font_stretch = Some(font_stretch_of_width_class ios2.I.Os2.value.us_width_class);
+        font_weight  = Some(font_weight_of_weight_class ios2.I.Os2.value.us_weight_class);
         flags        = None;  (* temporary; should be gotten from decoder *)
         font_bbox    = bbox;
         italic_angle = 0.;    (* temporary; should be gotten from decoder; 'post.italicAngle' *)
@@ -1498,7 +1493,26 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
 
 let get_postscript_name (dcdr : decoder) =
   let d = dcdr.main in
-  match Otfm.postscript_name d with
+  let res =
+    let open ResultMonad in
+    D.Name.get d >>= fun iname ->
+    return begin
+      iname.V.Name.name_records |> List.find_map (fun name_record ->
+        let V.Name.{ platform_id; encoding_id; name_id; name; _ } = name_record in
+        if name_id = 6 then
+        (* If the entry contains the PostScript name: *)
+          if platform_id = 0 || platform_id = 1 then
+            Some(name)
+          else if platform_id = 3 && encoding_id = 1 then
+            Some(InternalText.to_utf8 (InternalText.of_utf16be name))
+          else
+            None
+        else
+          None
+      )
+    end
+  in
+  match res with
   | Error(e)    -> broken dcdr.file_path e "get_postscript_name"
   | Ok(None)    -> assert false  (* temporary *)
   | Ok(Some(x)) -> x
@@ -2179,11 +2193,21 @@ let make_math_decoder_from_decoder (abspath : abs_path) ((dcdr, font) : decoder 
       in
       let mvertvarmap =
         mathraw.V.Math.math_variants.V.Math.vert_glyph_assoc
-          |> assoc_to_map (fun mgconstr -> mgconstr.V.Math.math_glyph_variant_record_list)
+          |> assoc_to_map (fun mgconstr ->
+            mgconstr.V.Math.math_glyph_variant_record_list |> List.map (function
+            | V.Math.{ variant_glyph; advance_measurement } ->
+                (variant_glyph, advance_measurement)
+            )
+          )
       in
       let mhorzvarmap =
         mathraw.V.Math.math_variants.V.Math.horiz_glyph_assoc
-          |> assoc_to_map (fun mgconstr -> mgconstr.V.Math.math_glyph_variant_record_list)
+          |> assoc_to_map (fun mgconstr ->
+            mgconstr.V.Math.math_glyph_variant_record_list |> List.map (function
+            | V.Math.{ variant_glyph; advance_measurement } ->
+                (variant_glyph, advance_measurement)
+            )
+          )
       in
       let sstyopt =
         let res =
@@ -2257,7 +2281,7 @@ let get_math_script_variant (md : math_decoder) (gid : glyph_id) : glyph_id =
         | (None, [])            -> opt
         | (None, gidorgto :: _) -> if gidorgfrom = gidorg then Some(gidorgto) else opt
       in
-      let res = Otfm.gsub feature_ssty ~single:f_single ~alt:f_alt None in
+      let res = D.Gsub.fold_subtables ~single:f_single ~alt:f_alt feature_ssty None in
       match res with
       | Error(oerr)          -> gid  (* temporary; maybe should emit an error *)
       | Ok(None)             -> gid
