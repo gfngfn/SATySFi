@@ -2192,7 +2192,7 @@ let get_math_glyph_metrics (md : math_decoder) (gid : glyph_id) : per_mille * pe
   let dcdr = md.as_normal_font in
   let (wid, _, _) = get_glyph_metrics dcdr gid in
   let gidorg = get_original_gid dcdr gid in
-  let (_, _, ymin, ymax) = get_bbox md.as_normal_font gidorg in
+  let (_, ymin, _, ymax) = get_bbox md.as_normal_font gidorg in
   let hgt = truncate_negative ymax in
   let dpt = truncate_positive ymin in
   (wid, hgt, dpt)
