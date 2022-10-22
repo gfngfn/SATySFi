@@ -11,7 +11,7 @@
             core_kernel
             core_kernel.pairing_heap
             menhirLib
-            otfm
+            otfed
             uutf
             yojson-with-position
             omd
