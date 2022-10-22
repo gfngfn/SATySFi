@@ -31,7 +31,7 @@ let opt_map f = function
 
 
 let split_lines s =
-  Core_kernel.String.split_lines s
+  Core.String.split_lines s
 
 
 let nullp = function
