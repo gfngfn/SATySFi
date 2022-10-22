@@ -1375,19 +1375,8 @@ let get_glyph_id_main srcpath (cmapsubtbl : V.Cmap.subtable) (uch_key : Uchar.t)
   ) cmapsubtbl.mapping None
 
 
-let cmap_predicate subtbls =
-  let f =
-    function
-    | V.Cmap.{ platform_id = 0; _ }
-    | V.Cmap.{ platform_id = 3; encoding_id = 10 }
-    | V.Cmap.{ platform_id = 3; encoding_id = 1 }
-    | V.Cmap.{ platform_id = 1; _ } ->
-        true
-
-    | _ ->
-        false
-  in
-  subtbls |> List.find_opt (fun subtbl -> f subtbl.V.Cmap.subtable_ids)
+let cmap_predicate f =
+  List.find_opt (fun (subtbl, format) -> f (subtbl.V.Cmap.subtable_ids, format))
 
 
 let get_cmap_subtable srcpath (d : D.source) : V.Cmap.subtable =
@@ -1397,18 +1386,32 @@ let get_cmap_subtable srcpath (d : D.source) : V.Cmap.subtable =
     D.Cmap.get_subtables icmap >>= fun isubtbls ->
     isubtbls |> List.fold_left (fun res isubtbl -> (* TODO: refactor here by using `mapM` *)
       res >>= fun acc ->
+      let format = D.Cmap.get_format_number isubtbl in
       D.Cmap.unmarshal_subtable isubtbl >>= fun subtbl ->
-      return (Alist.extend acc subtbl)
+      return (Alist.extend acc (subtbl, format))
     ) (return Alist.empty) >>= fun acc ->
     let subtbls = Alist.to_list acc in
-    let opt = cmap_predicate subtbls in
+      let opt =
+        List.fold_left (fun opt idspred ->
+          match opt with
+          | Some(_) -> opt
+          | None    -> subtbls |> (cmap_predicate idspred)
+        ) None [
+          (fun (V.Cmap.{ platform_id; _ }, format) -> platform_id = 0 && format = 12);
+          (fun (V.Cmap.{ platform_id; _ }, format) -> platform_id = 0 && format = 4);
+          (fun (V.Cmap.{ platform_id; _ }, format) -> platform_id = 0);
+          (fun (V.Cmap.{ platform_id; encoding_id }, _) -> platform_id = 3 && encoding_id = 10);
+          (fun (V.Cmap.{ platform_id; encoding_id }, _) -> platform_id = 3 && encoding_id = 1);
+          (fun (V.Cmap.{ platform_id; _ }, _) -> platform_id = 1);
+        ]
+      in
     match opt with
     | None         -> raise (CannotFindUnicodeCmap(srcpath))
     | Some(subtbl) -> return subtbl
   in
   match res with
-  | Error(oerr) -> broken srcpath oerr "get_cmap_subtable"
-  | Ok(subtbl)  -> subtbl
+  | Error(oerr)     -> broken srcpath oerr "get_cmap_subtable"
+  | Ok((subtbl, _)) -> subtbl
 
 
 (* PUBLIC *)
