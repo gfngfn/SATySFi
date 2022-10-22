@@ -24,12 +24,12 @@ depends: [
   "batteries"
   "camlimages" {>= "5.0.1"}
   "camlpdf" {= "2.3.1+satysfi"}
-  "core_kernel" {>= "v0.13" & < "v0.15"}
+  "core" {>= "v0.13"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "dune" {build}
   "menhir"
   "ocamlfind" {build}
-  "otfed"
+  "otfed" {= "0.0.1"}
   "ppx_deriving"
   "re" {build}
   "uutf"
