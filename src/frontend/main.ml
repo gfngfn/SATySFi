@@ -1154,8 +1154,9 @@ let build
     let (tyenv, env, dump_file_exists) = initialize abspath_dump in
     Logging.dump_file dump_file_exists abspath_dump;
 
-    (* Resolve dependency: *)
-    let inputs = FileDependencyResolver.main abspath_in in
+    (* Resolve dependency of the document and the local source files: *)
+    let (inputs, _packages) = FileDependencyResolver.main abspath_in in
+    (* TODO: use `packages` *)
 
     (* Typechecking and elaboration: *)
     let (_, libacc, ast_opt) =

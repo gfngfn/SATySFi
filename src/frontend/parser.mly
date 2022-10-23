@@ -238,7 +238,7 @@
 %token<Range.t>
   AND AS BLOCK COMMAND ELSE END FALSE FUN
   IF IN INCLUDE INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
-  REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH PERSISTENT
+  REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH PERSISTENT PACKAGE USE
 
 %token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW SEMICOLON COMMA CONS ACCESS QUESTION COERCE
 
@@ -281,8 +281,6 @@
 %token<Range.t * int> PRIMES
 %token<Range.t> SUBSCRIPT SUPERSCRIPT
 %token<Range.t * int> ITEM
-
-%token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
 
 %token <Range.t * Types.macro_name> BACKSLASH_MACRO PLUS_MACRO
 %token<Range.t * (Types.module_name Types.ranged) list * Types.macro_name Types.ranged>
@@ -374,8 +372,16 @@ main_lib:
       { (modident, utsig_opt, utbinds) }
 ;
 headerelem:
-  | content=HEADER_REQUIRE { let (_, s) = content in HeaderRequire(s) }
-  | content=HEADER_IMPORT  { let (_, s) = content in HeaderImport(s) }
+  | USE; PACKAGE; modident=UPPER
+     { HeaderUsePackage(modident) }
+  | USE; modident=UPPER
+     { HeaderUse(modident) }
+  | USE; modident=UPPER; OF; tok=STRING
+     {
+       let (_rng, str, pre, post) = tok in
+       let s = omit_spaces pre post str in
+       HeaderUseOf(modident, s)
+     }
 ;
 modexpr:
   | tokL=FUN; L_PAREN; modident=UPPER; COLON; utsig=sigexpr; R_PAREN; ARROW; utmod=modexpr

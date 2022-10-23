@@ -38,8 +38,9 @@ type input_position = {
 [@@deriving show { with_path = false }]
 
 type header_element =
-  | HeaderRequire of string
-  | HeaderImport  of string
+  | HeaderUsePackage of module_name ranged
+  | HeaderUse        of module_name ranged
+  | HeaderUseOf      of module_name ranged * string
 
 
 type quantifiability = Quantifiable | Unquantifiable
@@ -1185,6 +1186,7 @@ type file_info =
   | DocumentFile of untyped_abstract_tree
   | LibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
 
+module PackageNameSet = Set.Make(String)
 
 module BoundIDHashTable = Hashtbl.Make(BoundID)
 

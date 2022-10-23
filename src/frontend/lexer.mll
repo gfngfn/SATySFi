@@ -144,17 +144,6 @@ rule lex_program stack = parse
         comment lexbuf;
         lex_program stack lexbuf
       }
-  | ("@" (lower as headertype) ":" (" "*) (nonbreak* as content) (break | eof))
-      {
-        let pos = get_pos lexbuf in
-        increment_line lexbuf;
-        match headertype with
-        | "require" -> HEADER_REQUIRE(pos, content)
-        | "import"  -> HEADER_IMPORT(pos, content)
-
-        | _ ->
-            raise (LexError(pos, "undefined header type '" ^ headertype ^ "'"))
-      }
   | space
       { lex_program stack lexbuf }
   | break
@@ -342,6 +331,7 @@ rule lex_program stack = parse
         | "mutable"   -> MUTABLE(pos)
         | "of"        -> OF(pos)
         | "open"      -> OPEN(pos)
+        | "package"   -> PACKAGE(pos)
         | "persistent"-> PERSISTENT(pos)
         | "rec"       -> REC(pos)
         | "sig"       -> SIG(pos)
@@ -350,6 +340,7 @@ rule lex_program stack = parse
         | "then"      -> THEN(pos)
         | "true"      -> TRUE(pos)
         | "type"      -> TYPE(pos)
+        | "use"       -> USE(pos)
         | "val"       -> VAL(pos)
         | "with"      -> WITH(pos)
         | _           -> LOWER(pos, tokstr)

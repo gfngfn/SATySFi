@@ -31,22 +31,33 @@ let get_candidate_file_extensions () =
   | TextMode(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
 
 
+(*
 let get_package_abs_path (package : string) : abs_path =
   let extcands = get_candidate_file_extensions () in
   Config.resolve_package_exn package extcands
+*)
 
 
-let get_abs_path_of_header (curdir : string) (headerelem : header_element) : abs_path =
+type local_or_package =
+  | Local   of module_name ranged * abs_path
+  | Package of module_name ranged
+
+
+let get_header (curdir : string) (headerelem : header_element) : local_or_package =
   match headerelem with
-  | HeaderRequire(package) ->
-      get_package_abs_path package
+  | HeaderUsePackage(modident) ->
+      Package(modident)
 
-  | HeaderImport(s) ->
+  | HeaderUse(_) ->
+      failwith "TODO (error): cannot use 'use X' here; use 'use X of path' instead"
+
+  | HeaderUseOf(modident, s_relpath) ->
       let extcands = get_candidate_file_extensions () in
-      Config.resolve_local_exn curdir s extcands
+      let abspath = Config.resolve_local_exn curdir s_relpath extcands in
+      Local(modident, abspath)
 
 
-let rec register_library_file (graph : FileDependencyGraph.t) ~prev:(vertex_prev : FileDependencyGraph.vertex) (abspath : abs_path) : FileDependencyGraph.t =
+let rec register_library_file (graph : FileDependencyGraph.t) (packages : PackageNameSet.t) ~prev:(vertex_prev : FileDependencyGraph.vertex) (abspath : abs_path) : FileDependencyGraph.t * PackageNameSet.t =
   begin
     Logging.begin_to_parse_file abspath;
     let curdir = Filename.dirname (get_abs_path_string abspath) in
@@ -64,21 +75,28 @@ let rec register_library_file (graph : FileDependencyGraph.t) ~prev:(vertex_prev
       | Ok(pair) -> pair
     in
     let graph = FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex graph in
-    header |> List.fold_left (fun graph headerelem ->
-      let abspath_sub = get_abs_path_of_header curdir headerelem in
-      match graph |> FileDependencyGraph.get_vertex abspath_sub with
-      | Some(vertex_sub) ->
-        (* If `abs_path` has already been parsed *)
-          graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub
+    header |> List.fold_left (fun (graph, packages) headerelem ->
+      match get_header curdir headerelem with
+      | Package((_, main_module_name)) ->
+          (graph, packages |> PackageNameSet.add main_module_name)
 
-      | None ->
-          register_library_file graph ~prev:vertex abspath_sub
+      | Local(_modident_sub, abspath_sub) ->
+          begin
+            match graph |> FileDependencyGraph.get_vertex abspath_sub with
+            | Some(vertex_sub) ->
+              (* If `abs_path` has already been parsed *)
+                let graph = graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub in
+                (graph, packages)
 
-    ) graph
+            | None ->
+                register_library_file graph packages ~prev:vertex abspath_sub
+          end
+
+    ) (graph, packages)
   end
 
 
-let register_document_file (graph : FileDependencyGraph.t) (abspath_in : abs_path) : FileDependencyGraph.t =
+let register_document_file (graph : FileDependencyGraph.t) (packages : PackageNameSet.t) (abspath_in : abs_path) : FileDependencyGraph.t * PackageNameSet.t =
   Logging.begin_to_parse_file abspath_in;
   let file_in = open_in_abs abspath_in in
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
@@ -95,18 +113,26 @@ let register_document_file (graph : FileDependencyGraph.t) (abspath_in : abs_pat
     | Error(_) -> assert false
     | Ok(pair) -> pair
   in
-  header |> List.fold_left (fun graph headerelem ->
-    let abspath_sub = get_abs_path_of_header curdir headerelem in
-    match graph |> FileDependencyGraph.get_vertex abspath_sub with
-    | Some(vertex_sub) ->
-        graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub
+  header |> List.fold_left (fun (graph, packages) headerelem ->
+    match get_header curdir headerelem with
+    | Package((_, main_module_name)) ->
+        (graph, packages |> PackageNameSet.add main_module_name)
 
-    | None ->
-        register_library_file graph ~prev:vertex abspath_sub
+    | Local(_, abspath_sub) ->
+        begin
+          match graph |> FileDependencyGraph.get_vertex abspath_sub with
+          | Some(vertex_sub) ->
+              let graph = graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub in
+              (graph, packages)
 
-  ) graph
+          | None ->
+              register_library_file graph packages ~prev:vertex abspath_sub
+        end
+
+  ) (graph, packages)
 
 
+(*
 let register_markdown_file (graph : FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : FileDependencyGraph.t =
   Logging.begin_to_parse_file abspath_in;
   let (cmdrcd, depends) =
@@ -135,26 +161,30 @@ let register_markdown_file (graph : FileDependencyGraph.t) (setting : string) (a
         register_library_file graph ~prev:vertex abspath_sub
 
   ) graph
+*)
 
 
-
-let main (abspath_in : abs_path) =
+let main (abspath_in : abs_path) : (abs_path * file_info) list * PackageNameSet.t =
   let graph = FileDependencyGraph.empty in
-  let graph =
+  let packages = PackageNameSet.empty in
+  let (graph, packages) =
     match OptionState.get_input_kind () with
     | OptionState.SATySFi ->
         if has_library_extension abspath_in && OptionState.is_type_check_only () then
-          let vertex = failwith "TODO" in
-          register_library_file graph ~prev:vertex abspath_in
+          let vertex = failwith "TODO: type-check-only" in
+          register_library_file graph packages ~prev:vertex abspath_in
         else
-          register_document_file graph abspath_in
+          register_document_file graph packages abspath_in
 
-    | OptionState.Markdown(setting) ->
+    | OptionState.Markdown(_setting) ->
+        failwith "TODO: Markdown"
+(*
         register_markdown_file graph setting abspath_in
+*)
   in
   match FileDependencyGraph.topological_sort graph with
   | Error(cycle) ->
       raise (CyclicFileDependency(cycle))
 
   | Ok(inputs) ->
-      inputs
+      (inputs, packages)
