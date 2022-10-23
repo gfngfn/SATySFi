@@ -10,6 +10,7 @@ exception NotADocumentFile             of abs_path * Typeenv.t * mono_type
 exception NotAStringFile               of abs_path * Typeenv.t * mono_type
 exception ShouldSpecifyOutputFile
 exception OpenFileDependencyError      of OpenFileDependencyResolver.error
+exception OpenPackageDependencyError   of OpenPackageDependencyResolver.error
 exception TypeError                    of type_error
 
 
@@ -432,6 +433,9 @@ let error_log_environment suspended =
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
             ]
       end
+
+  | OpenPackageDependencyError(_e) ->
+      failwith "TODO (error): OpenPackageDependencyError"
 
   | Config.PackageNotFound(package, pathcands) ->
       report_error Interface (List.append [
@@ -1160,12 +1164,19 @@ let build
     Logging.dump_file dump_file_exists abspath_dump;
 
     (* Resolve dependency of the document and the local source files: *)
-    let (inputs, _packages) =
+    let (inputs, package_names) =
       match OpenFileDependencyResolver.main abspath_in with
       | Ok(pair) -> pair
       | Error(e) -> raise (OpenFileDependencyError(e))
     in
-    (* TODO: use `packages` *)
+
+    (* Resolve dependency among packages that the document depends on: *)
+    let _sorted_packages =
+      match OpenPackageDependencyResolver.main package_names with
+      | Ok(sorted_packages) -> sorted_packages
+      | Error(e)            -> raise (OpenPackageDependencyError(e))
+    in
+    (* TODO: use `sorted_packages` *)
 
     (* Typechecking and elaboration: *)
     let (_, libacc, ast_opt) =

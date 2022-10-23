@@ -1186,6 +1186,9 @@ type file_info =
   | DocumentFile of untyped_abstract_tree
   | LibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
 
+type package_info =
+  unit (* TODO: define this *)
+
 module PackageNameSet = Set.Make(String)
 
 module BoundIDHashTable = Hashtbl.Make(BoundID)
