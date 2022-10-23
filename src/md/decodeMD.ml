@@ -474,11 +474,10 @@ let decode (cmdrcd : command_record) (s : string) =
     | _ ->
         (cmdrcd.header_default, md)
   in
-  let lexbuf = Lexing.from_string strheader in
   let utasthead =
-    match ParserInterface.process "(markdown)" lexbuf with
-    | ([], UTDocumentFile(u)) -> u
-    | _                       -> failwith "TODO (error): invalid header expression"
+    match ParserInterface.process_text "(markdown)" strheader with
+    | Ok(([], UTDocumentFile(u))) -> u
+    | _                           -> failwith "TODO (error): invalid header expression"
   in
   let blk = normalize_h1 md in
 (*

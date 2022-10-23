@@ -8,6 +8,7 @@ type error =
   | CannotReadFileOwingToSystem     of string
   | LibraryContainsWholeReturnValue of abs_path
   | DocumentLacksWholeReturnValue   of abs_path
+  | FailedToParse                   of Range.t
 
 type 'a ok = ('a, error) result
 
@@ -64,9 +65,10 @@ let rec register_library_file (graph : FileDependencyGraph.t) (packages : Packag
   let open ResultMonad in
   Logging.begin_to_parse_file abspath;
   let curdir = Filename.dirname (get_abs_path_string abspath) in
-  let inc = open_in_abs abspath in
-  let (header, utsrc) = ParserInterface.process (basename_abs abspath) (Lexing.from_channel inc) in
-  close_in inc;
+  let* (header, utsrc) =
+    ParserInterface.process_file abspath
+      |> Result.map_error (fun rng -> FailedToParse(rng))
+  in
   let* lib =
     match utsrc with
     | UTLibraryFile(lib) -> return lib
@@ -101,10 +103,10 @@ let rec register_library_file (graph : FileDependencyGraph.t) (packages : Packag
 let register_document_file (graph : FileDependencyGraph.t) (packages : PackageNameSet.t) (abspath_in : abs_path) : (FileDependencyGraph.t * PackageNameSet.t) ok =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
-  let file_in = open_in_abs abspath_in in
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
-  let (header, utsrc) =
-    ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in)
+  let* (header, utsrc) =
+    ParserInterface.process_file abspath_in
+      |> Result.map_error (fun rng -> FailedToParse(rng))
   in
   let* utast =
     match utsrc with

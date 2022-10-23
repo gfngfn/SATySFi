@@ -426,6 +426,11 @@ let error_log_environment suspended =
             report_error Interface [
               NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
             ]
+
+        | FailedToParse(rng) ->
+            report_error Parser [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+            ]
       end
 
   | Config.PackageNotFound(package, pathcands) ->
@@ -576,11 +581,6 @@ let error_log_environment suspended =
       report_error Lexer [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(s);
-      ]
-
-  | ParserInterface.Error(rng) ->
-      report_error Parser [
-        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
       ]
 
   | ParseErrorDetail(rng, s) ->

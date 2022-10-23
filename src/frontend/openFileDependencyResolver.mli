@@ -7,5 +7,6 @@ type error =
   | CannotReadFileOwingToSystem     of string
   | LibraryContainsWholeReturnValue of abs_path
   | DocumentLacksWholeReturnValue   of abs_path
+  | FailedToParse                   of Range.t
 
 val main : abs_path -> ((abs_path * file_info) list * PackageNameSet.t, error) result
