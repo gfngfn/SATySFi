@@ -553,9 +553,17 @@ and untyped_parameter_unit =
   | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
 [@@deriving show { with_path = false; }]
 
+type untyped_library_file =
+  header_element list * (module_name ranged * untyped_signature option * untyped_binding list)
+[@@deriving show { with_path = false; }]
+
+type untyped_document_file =
+  header_element list * untyped_abstract_tree
+[@@deriving show { with_path = false; }]
+
 type untyped_source_file =
-  | UTLibraryFile  of header_element list * (module_name ranged * untyped_signature option * untyped_binding list)
-  | UTDocumentFile of header_element list * untyped_abstract_tree
+  | UTLibraryFile  of untyped_library_file
+  | UTDocumentFile of untyped_document_file
 [@@deriving show { with_path = false; }]
 
 type package_info =

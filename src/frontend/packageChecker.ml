@@ -6,9 +6,10 @@ open TypeError
 
 
 type error =
-  | TypeError        of type_error
-  | NotADocumentFile of abs_path * Typeenv.t * mono_type
-  | NotAStringFile   of abs_path * Typeenv.t * mono_type
+  | TypeError                 of type_error
+  | ClosedFileDependencyError of ClosedFileDependencyResolver.error
+  | NotADocumentFile          of abs_path * Typeenv.t * mono_type
+  | NotAStringFile            of abs_path * Typeenv.t * mono_type
 
 type 'a ok = ('a, error) result
 
@@ -63,7 +64,9 @@ let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (_package : p
   let utlibs = failwith "TODO: extract `utlibs` from `package`" in
 
   (* Resolve dependency among the source files in the package: *)
-  let* sorted_utlibs = ClosedFileDependencyResolver.main utlibs in
+  let* sorted_utlibs =
+    ClosedFileDependencyResolver.main utlibs |> Result.map_error (fun e -> ClosedFileDependencyError(e))
+  in
 
   (* Typecheck each source file: *)
   let* (_genv, libacc) =
@@ -85,7 +88,7 @@ let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (_package : p
   return (ssig, libs)
 
 
-let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) sorted_locals =
+let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sorted_locals : (abs_path * untyped_source_file) list) : ((abs_path * binding list) list * abstract_tree option) ok =
   let open ResultMonad in
   let* (_, libacc, doc_opt) =
     sorted_locals |> foldM (fun (genv, libacc, doc_opt) (abspath, utsrc) ->

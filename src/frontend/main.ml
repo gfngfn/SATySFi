@@ -603,6 +603,9 @@ let error_log_environment suspended =
         DisplayLine(Display.show_mono_type ty);
       ]
 
+  | PackageCheckError(ClosedFileDependencyError(_)) ->
+      failwith "TODO (error): ClosedFileDependencyError"
+
   | PackageCheckError(TypeError(tyerr)) ->
       begin
         match tyerr with
