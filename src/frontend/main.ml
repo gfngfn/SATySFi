@@ -1171,12 +1171,28 @@ let build
     in
 
     (* Resolve dependency among packages that the document depends on: *)
-    let _sorted_packages =
+    let sorted_packages =
       match OpenPackageDependencyResolver.main package_names with
       | Ok(sorted_packages) -> sorted_packages
       | Error(e)            -> raise (OpenPackageDependencyError(e))
     in
-    (* TODO: use `sorted_packages` *)
+
+    (* Typecheck every package: *)
+    let (_genv, bindacc) =
+      sorted_packages |> List.fold_left (fun (genv, bindacc) package ->
+        let main_module_name = failwith "TODO: main_module_name; extract it from `package`" in
+        let (absmodsig, binds) =
+          match PackageChecker.main genv package with
+          | Ok(pair)  -> pair
+          | Error(_e) -> failwith "TODO (error): PackageChecker, Error"
+        in
+        let genv = genv |> GlobalTypeenv.add main_module_name absmodsig in
+        let bindacc = Alist.append bindacc binds in
+        (genv, bindacc)
+      ) (GlobalTypeenv.empty, Alist.empty)
+    in
+    let _binds = bindacc |> Alist.to_list in
+    (* TODO: use `genv` and `binds` *)
 
     (* Typechecking and elaboration: *)
     let (_, libacc, ast_opt) =

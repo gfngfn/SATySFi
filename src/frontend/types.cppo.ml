@@ -1189,6 +1189,8 @@ type file_info =
 type package_info =
   unit (* TODO: define this *)
 
+module GlobalTypeenv = Map.Make(String)
+
 module PackageNameSet = Set.Make(String)
 
 module BoundIDHashTable = Hashtbl.Make(BoundID)
