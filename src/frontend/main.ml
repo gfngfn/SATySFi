@@ -606,6 +606,9 @@ let error_log_environment suspended =
   | PackageCheckError(ClosedFileDependencyError(_)) ->
       failwith "TODO (error): ClosedFileDependencyError"
 
+  | PackageCheckError(NoMainModule(_)) ->
+      failwith "TODO (error): NoMainModule"
+
   | PackageCheckError(TypeError(tyerr)) ->
       begin
         match tyerr with
@@ -1150,7 +1153,7 @@ let build
     (* Typecheck every package: *)
     let (genv, libacc) =
       sorted_packages |> List.fold_left (fun (genv, libacc) package ->
-        let main_module_name = failwith "TODO: main_module_name; extract it from `package`" in
+        let main_module_name = package.main_module_name in
         let (ssig, libs) =
           match PackageChecker.main tyenv_prim genv package with
           | Ok(pair)  -> pair

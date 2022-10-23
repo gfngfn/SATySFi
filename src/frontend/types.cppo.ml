@@ -2,6 +2,7 @@
 open LengthInterface
 open GraphicBase
 open SyntaxBase
+open MyUtil
 
 exception ParseErrorDetail of Range.t * string
 
@@ -566,8 +567,10 @@ type untyped_source_file =
   | UTDocumentFile of untyped_document_file
 [@@deriving show { with_path = false; }]
 
-type package_info =
-  unit (* TODO: define this *)
+type package_info = {
+  main_module_name : module_name;
+  modules          : (abs_path * untyped_library_file) list;
+}
 
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree

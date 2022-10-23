@@ -10,6 +10,7 @@ type error =
   | ClosedFileDependencyError of ClosedFileDependencyResolver.error
   | NotADocumentFile          of abs_path * Typeenv.t * mono_type
   | NotAStringFile            of abs_path * Typeenv.t * mono_type
+  | NoMainModule              of module_name
 
 type 'a ok = ('a, error) result
 
@@ -59,9 +60,10 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
       err (NotADocumentFile(abspath_in, tyenv, ty))
 
 
-let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (_package : package_info) : (StructSig.t * (abs_path * binding list) list) ok =
+let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : package_info) : (StructSig.t * (abs_path * binding list) list) ok =
   let open ResultMonad in
-  let utlibs = failwith "TODO: extract `utlibs` from `package`" in
+  let main_module_name = package.main_module_name in
+  let utlibs = package.modules in
 
   (* Resolve dependency among the source files in the package: *)
   let* sorted_utlibs =
@@ -69,23 +71,34 @@ let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (_package : p
   in
 
   (* Typecheck each source file: *)
-  let* (_genv, libacc) =
-    sorted_utlibs |> foldM (fun (genv, libacc) (abspath, utlib) ->
+  let* (_genv, libacc, ssig_opt) =
+    sorted_utlibs |> foldM (fun (genv, libacc, ssig_opt) (abspath, utlib) ->
       let (header, (modident, utsig_opt, utbinds)) = utlib in
       let (_, modnm) = modident in
-      let* ((_quant, ssig), binds) =
-        let tyenv = tyenv_prim |> add_dependency_to_type_environment header genv in
-        typecheck_library_file tyenv abspath utsig_opt utbinds
-      in
-      let genv = genv |> GlobalTypeenv.add modnm ssig in
-      return (genv, Alist.extend libacc (abspath, binds))
-    ) (genv, Alist.empty)
+      if String.equal modnm main_module_name then
+        let ((_quant, ssig), binds) =
+          failwith "TODO: typecheck the main module"
+        in
+        let genv = genv |> GlobalTypeenv.add modnm ssig in
+        return (genv, Alist.extend libacc (abspath, binds), Some(ssig))
+      else
+        let* ((_quant, ssig), binds) =
+          let tyenv = tyenv_prim |> add_dependency_to_type_environment header genv in
+          typecheck_library_file tyenv abspath utsig_opt utbinds
+        in
+        let genv = genv |> GlobalTypeenv.add modnm ssig in
+        return (genv, Alist.extend libacc (abspath, binds), ssig_opt)
+    ) (genv, Alist.empty, None)
   in
   let libs = Alist.to_list libacc in
 
   (* TODO: check the main module *)
-  let ssig = failwith "TODO: PackageChecker, check the main module" in
-  return (ssig, libs)
+  match ssig_opt with
+  | Some(ssig) ->
+      return (ssig, libs)
+
+  | None ->
+      err @@ NoMainModule(main_module_name)
 
 
 let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sorted_locals : (abs_path * untyped_library_file) list) (utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
