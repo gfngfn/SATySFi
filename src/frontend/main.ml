@@ -1134,10 +1134,10 @@ let build
     Logging.dump_file dump_file_exists abspath_dump;
 
     (* Resolve dependency of the document and the local source files: *)
-    let (sorted_locals, package_names) =
+    let (package_names, sorted_locals, utdoc) =
       match OpenFileDependencyResolver.main abspath_in with
-      | Ok(pair) -> pair
-      | Error(e) -> raise (OpenFileDependencyError(e))
+      | Ok(triple) -> triple
+      | Error(e)   -> raise (OpenFileDependencyError(e))
     in
 
     (* Resolve dependency among packages that the document depends on: *)
@@ -1163,8 +1163,8 @@ let build
     in
 
     (* Typechecking and elaboration: *)
-    let (libs_local, doc_opt) =
-      match PackageChecker.main_document tyenv_prim genv sorted_locals with
+    let (libs_local, ast_doc) =
+      match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
       | Ok(pair) -> pair
       | Error(e) -> raise (PackageCheckError(e))
     in
@@ -1173,7 +1173,5 @@ let build
     if type_check_only then
       ()
     else
-      match doc_opt with
-      | None      -> assert false
-      | Some(ast) -> preprocess_and_evaluate env libs ast abspath_in abspath_out abspath_dump
+      preprocess_and_evaluate env libs ast_doc abspath_in abspath_out abspath_dump
   )

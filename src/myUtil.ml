@@ -254,3 +254,10 @@ let get_abs_path_string (AbsPath(pathstr)) = pathstr
 let get_lib_path_string (LibPath(pathstr)) = pathstr
 
 let get_abs_path_extension (AbsPath(pathstr)) = Filename.extension pathstr
+
+
+module AbsPath = struct
+  type t = abs_path
+
+  let compare ap1 ap2 = String.compare (get_abs_path_string ap1) (get_abs_path_string ap2)
+end

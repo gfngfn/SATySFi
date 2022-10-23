@@ -4,7 +4,7 @@ open Types
 
 
 type error =
-  | CyclicFileDependency            of (abs_path * untyped_source_file) cycle
+  | CyclicFileDependency            of (abs_path * untyped_library_file) cycle
   | CannotReadFileOwingToSystem     of string
   | LibraryContainsWholeReturnValue of abs_path
   | DocumentLacksWholeReturnValue   of abs_path
@@ -61,46 +61,49 @@ let get_header (curdir : string) (headerelem : header_element) : local_or_packag
       Local(modident, abspath)
 
 
-let rec register_library_file (graph : FileDependencyGraph.t) (packages : PackageNameSet.t) ~prev:(vertex_prev : FileDependencyGraph.vertex) (abspath : abs_path) : (FileDependencyGraph.t * PackageNameSet.t) ok =
+let rec register_library_file (graph : FileDependencyGraph.t) (package_names : PackageNameSet.t) ~prev:(vertex_prev_opt : FileDependencyGraph.vertex option) (abspath : abs_path) : (PackageNameSet.t * FileDependencyGraph.t) ok =
   let open ResultMonad in
-  Logging.begin_to_parse_file abspath;
-  let curdir = Filename.dirname (get_abs_path_string abspath) in
-  let* utsrc =
-    ParserInterface.process_file abspath
-      |> Result.map_error (fun rng -> FailedToParse(rng))
-  in
-  let* (header, utsrc) =
-    match utsrc with
-    | UTLibraryFile(header, _) -> return (header, utsrc)
-    | UTDocumentFile(_, _)     -> err @@ LibraryContainsWholeReturnValue(abspath)
-  in
-  let (graph, vertex) =
-    match graph |> FileDependencyGraph.add_vertex abspath utsrc with
-    | Error(_) -> assert false
-    | Ok(pair) -> pair
-  in
-  let graph = FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex graph in
-    header |> foldM (fun (graph, packages) headerelem ->
-      match get_header curdir headerelem with
-      | Package((_, main_module_name)) ->
-          return (graph, packages |> PackageNameSet.add main_module_name)
+  match graph |> FileDependencyGraph.get_vertex abspath with
+  | Some(vertex) ->
+    (* If `abspath` has already been parsed: *)
+      let graph =
+        match vertex_prev_opt with
+        | None              -> graph
+        | Some(vertex_prev) -> graph |> FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
+      in
+      return (package_names, graph)
 
-      | Local(_modident_sub, abspath_sub) ->
-          begin
-            match graph |> FileDependencyGraph.get_vertex abspath_sub with
-            | Some(vertex_sub) ->
-              (* If `abs_path` has already been parsed *)
-                let graph = graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub in
-                return (graph, packages)
+  | None ->
+      let curdir = Filename.dirname (get_abs_path_string abspath) in
+      let* utlib =
+        Logging.begin_to_parse_file abspath;
+        let* utsrc = ParserInterface.process_file abspath |> Result.map_error (fun rng -> FailedToParse(rng)) in
+        match utsrc with
+        | UTLibraryFile(utlib) -> return utlib
+        | UTDocumentFile(_, _) -> err @@ LibraryContainsWholeReturnValue(abspath)
+      in
+      let (header, _) = utlib in
+      let (graph, vertex) =
+        match graph |> FileDependencyGraph.add_vertex abspath utlib with
+        | Error(_vertex) -> assert false
+        | Ok(pair)       -> pair
+      in
+      let graph =
+        match vertex_prev_opt with
+        | None              -> graph
+        | Some(vertex_prev) -> graph |> FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
+      in
+      header |> foldM (fun (package_names, graph) headerelem ->
+        match get_header curdir headerelem with
+        | Package((_, main_module_name)) ->
+            return (package_names |> PackageNameSet.add main_module_name, graph)
 
-            | None ->
-                register_library_file graph packages ~prev:vertex abspath_sub
-          end
-
-    ) (graph, packages)
+        | Local(_modident_sub, abspath_sub) ->
+            register_library_file graph package_names ~prev:(Some(vertex)) abspath_sub
+      ) (package_names, graph)
 
 
-let register_document_file (graph : FileDependencyGraph.t) (packages : PackageNameSet.t) (abspath_in : abs_path) : (FileDependencyGraph.t * PackageNameSet.t) ok =
+let register_document_file (graph : FileDependencyGraph.t) (package_names : PackageNameSet.t) (abspath_in : abs_path) : (PackageNameSet.t * FileDependencyGraph.t * untyped_document_file) ok =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
@@ -108,34 +111,23 @@ let register_document_file (graph : FileDependencyGraph.t) (packages : PackageNa
     ParserInterface.process_file abspath_in
       |> Result.map_error (fun rng -> FailedToParse(rng))
   in
-  let* (header, utsrc) =
+  let* utdoc =
     match utsrc with
-    | UTLibraryFile(_)          -> err @@ DocumentLacksWholeReturnValue(abspath_in)
-    | UTDocumentFile(header, _) -> return (header, utsrc)
+    | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
+    | UTDocumentFile(utdoc) -> return utdoc
   in
-  let (graph, vertex) =
-    match graph |> FileDependencyGraph.add_vertex abspath_in utsrc with
-    | Error(_) -> assert false
-    | Ok(pair) -> pair
+  let (header, _) = utdoc in
+  let* (package_names, graph) =
+    header |> foldM (fun (package_names, graph) headerelem ->
+      match get_header curdir headerelem with
+      | Package((_, main_module_name)) ->
+          return (package_names |> PackageNameSet.add main_module_name, graph)
+
+      | Local(_, abspath_sub) ->
+          register_library_file graph package_names ~prev:None abspath_sub
+    ) (package_names, graph)
   in
-  header |> foldM (fun (graph, packages) headerelem ->
-    match get_header curdir headerelem with
-    | Package((_, main_module_name)) ->
-        return (graph, packages |> PackageNameSet.add main_module_name)
-
-    | Local(_, abspath_sub) ->
-        begin
-          match graph |> FileDependencyGraph.get_vertex abspath_sub with
-          | Some(vertex_sub) ->
-              let graph = graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub in
-              return (graph, packages)
-
-          | None ->
-              register_library_file graph packages ~prev:vertex abspath_sub
-        end
-
-  ) (graph, packages)
-
+  return (package_names, graph, utdoc)
 
 (*
 let register_markdown_file (graph : FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : FileDependencyGraph.t =
@@ -169,18 +161,20 @@ let register_markdown_file (graph : FileDependencyGraph.t) (setting : string) (a
 *)
 
 
-let main (abspath_in : abs_path) : ((abs_path * untyped_source_file) list * PackageNameSet.t) ok =
+let main (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
   let graph = FileDependencyGraph.empty in
-  let packages = PackageNameSet.empty in
-  let* (graph, packages) =
+  let package_names = PackageNameSet.empty in
+  let* (package_names, graph, utdoc) =
     match OptionState.get_input_kind () with
     | OptionState.SATySFi ->
         if has_library_extension abspath_in && OptionState.is_type_check_only () then
-          let vertex = failwith "TODO: type-check-only" in
-          register_library_file graph packages ~prev:vertex abspath_in
+          failwith "TODO: --type-check-only"
+(*
+          register_library_file graph package_names ~prev:None abspath_in
+*)
         else
-          register_document_file graph packages abspath_in
+          register_document_file graph package_names abspath_in
 
     | OptionState.Markdown(_setting) ->
         failwith "TODO: Markdown"
@@ -188,8 +182,8 @@ let main (abspath_in : abs_path) : ((abs_path * untyped_source_file) list * Pack
         register_markdown_file graph setting abspath_in
 *)
   in
-  begin
+  let* sorted_locals =
     FileDependencyGraph.topological_sort graph
       |> Result.map_error (fun cycle -> CyclicFileDependency(cycle))
-  end >>= fun inputs ->
-  return (inputs, packages)
+  in
+  return (package_names, sorted_locals, utdoc)

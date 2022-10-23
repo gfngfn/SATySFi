@@ -78,3 +78,9 @@ val get_abs_path_string : abs_path -> string
 val get_lib_path_string : lib_path -> string
 
 val get_abs_path_extension : abs_path -> string
+
+module AbsPath : sig
+  type t = abs_path
+
+  val compare : t -> t -> int
+end
