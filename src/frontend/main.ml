@@ -1092,6 +1092,26 @@ let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
   make_abs_path abspath_str
 
 
+let add_dependency_to_type_environment header genv tyenv =
+  header |> List.fold_left (fun tyenv headerelem ->
+    match headerelem with
+    | HeaderUse(_) ->
+        assert false
+
+    | HeaderUsePackage((_, modnm))
+    | HeaderUseOf((_, modnm), _) ->
+        begin
+          match genv |> GlobalTypeenv.find_opt modnm with
+          | None ->
+              assert false
+
+          | Some(ssig) ->
+              let mentry = { mod_signature = ConcStructure(ssig) } in
+              tyenv |> Typeenv.add_module modnm mentry
+        end
+  ) tyenv
+
+
 let build
     ~(fpath_in : string)
     ~(fpath_out_opt : string option)
@@ -1160,7 +1180,7 @@ let build
       | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
     in
     Logging.target_file abspath_out;
-    let (_tyenv_prim, env, dump_file_exists) = initialize abspath_dump in
+    let (tyenv_prim, env, dump_file_exists) = initialize abspath_dump in
     Logging.dump_file dump_file_exists abspath_dump;
 
     (* Resolve dependency of the document and the local source files: *)
@@ -1196,20 +1216,20 @@ let build
     let (_, libacc, doc_opt) =
       sorted_locals |> List.fold_left (fun (genv, libacc, doc_opt) (abspath, utsrc) ->
         match utsrc with
-        | UTDocumentFile(_header, utast) ->
+        | UTDocumentFile(header, utast) ->
             let ast =
-              let tyenv = failwith "TODO: make `tyenv` from `tyenv_prim`, `genv`, and `header`" in
+              let tyenv = tyenv_prim |> add_dependency_to_type_environment header genv in
               typecheck_document_file tyenv abspath utast
             in
             (genv, libacc, Some(ast))
 
-        | UTLibraryFile(_header, (modident, utsig_opt, utbinds)) ->
+        | UTLibraryFile(header, (modident, utsig_opt, utbinds)) ->
             let (_, modnm) = modident in
-            let (absssig, binds) =
-              let tyenv = failwith "TODO: make `tyenv` from `tyenv_prim`, `genv`, and `header`" in
+            let ((_quant, ssig), binds) =
+              let tyenv = tyenv_prim |> add_dependency_to_type_environment header genv in
               typecheck_library_file tyenv abspath utsig_opt utbinds
             in
-            let genv = genv |> GlobalTypeenv.add modnm absssig in
+            let genv = genv |> GlobalTypeenv.add modnm ssig in
             (genv, Alist.extend libacc (abspath, binds), doc_opt)
       ) (genv, libacc, None)
     in
