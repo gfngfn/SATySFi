@@ -6,12 +6,10 @@ open TypeError
 
 
 exception NoLibraryRootDesignation
-exception NotADocumentFile             of abs_path * Typeenv.t * mono_type
-exception NotAStringFile               of abs_path * Typeenv.t * mono_type
 exception ShouldSpecifyOutputFile
 exception OpenFileDependencyError      of OpenFileDependencyResolver.error
 exception OpenPackageDependencyError   of OpenPackageDependencyResolver.error
-exception TypeError                    of type_error
+exception PackageCheckError            of PackageChecker.error
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
@@ -68,37 +66,6 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
   stmap |> StoreIDMap.iter (fun stid value -> StoreIDHashTable.add stenv stid value);
   stenvref := stenv;
   (valenv, ref stenv)
-
-
-let typecheck_library_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : StructSig.t abstracted * binding list =
-  Logging.begin_to_typecheck_file abspath_in;
-  let pair =
-    match ModuleTypechecker.main tyenv utsig_opt utbinds with
-    | Ok(pair) -> pair
-    | Error(e) -> raise (TypeError(e))
-  in
-  Logging.pass_type_check None;
-  pair
-
-
-let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : abstract_tree =
-  Logging.begin_to_typecheck_file abspath_in;
-  let (ty, ast) =
-    match Typechecker.main Stage1 tyenv utast with
-    | Ok(pair) -> pair
-    | Error(e) -> raise (TypeError(e))
-  in
-  Logging.pass_type_check (Some(Display.show_mono_type ty));
-  if OptionState.is_text_mode () then
-    if Typechecker.are_unifiable ty (Range.dummy "text-mode", BaseType(StringType)) then
-      ast
-    else
-      raise (NotAStringFile(abspath_in, tyenv, ty))
-  else
-    if Typechecker.are_unifiable ty (Range.dummy "pdf-mode", BaseType(DocumentType)) then
-      ast
-    else
-      raise (NotADocumentFile(abspath_in, tyenv, ty))
 
 
 let output_pdf (pdfret : HandlePdf.t) : unit =
@@ -466,20 +433,6 @@ let error_log_environment suspended =
         NormalLine("candidate paths:");
       ] (pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath))))
 
-  | NotADocumentFile(abspath_in, _tyenv, ty) ->
-      let fname = convert_abs_path_to_show abspath_in in
-      report_error Typechecker [
-        NormalLine(Printf.sprintf "file '%s' is not a document file; it is of type" fname);
-        DisplayLine(Display.show_mono_type ty);
-      ]
-
-  | NotAStringFile(abspath_in, _tyenv, ty) ->
-      let fname = convert_abs_path_to_show abspath_in in
-      report_error Typechecker [
-        NormalLine(Printf.sprintf "file '%s' is not a file for generating text; it is of type" fname);
-        DisplayLine(Display.show_mono_type ty);
-      ]
-
   | ShouldSpecifyOutputFile ->
       report_error Interface [
         NormalLine("should specify output file for text mode.");
@@ -636,7 +589,21 @@ let error_log_environment suspended =
         NormalLine(Printf.sprintf "missing required key '%s'." key);
       ]
 
-  | TypeError(tyerr) ->
+  | PackageCheckError(NotADocumentFile(abspath_in, _tyenv, ty)) ->
+      let fname = convert_abs_path_to_show abspath_in in
+      report_error Typechecker [
+        NormalLine(Printf.sprintf "file '%s' is not a document file; it is of type" fname);
+        DisplayLine(Display.show_mono_type ty);
+      ]
+
+  | PackageCheckError(NotAStringFile(abspath_in, _tyenv, ty)) ->
+      let fname = convert_abs_path_to_show abspath_in in
+      report_error Typechecker [
+        NormalLine(Printf.sprintf "file '%s' is not a file for generating text; it is of type" fname);
+        DisplayLine(Display.show_mono_type ty);
+      ]
+
+  | PackageCheckError(TypeError(tyerr)) ->
       begin
         match tyerr with
         | UndefinedVariable(rng, varnm, candidates) ->
@@ -1092,26 +1059,6 @@ let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
   make_abs_path abspath_str
 
 
-let add_dependency_to_type_environment header genv tyenv =
-  header |> List.fold_left (fun tyenv headerelem ->
-    match headerelem with
-    | HeaderUse(_) ->
-        assert false
-
-    | HeaderUsePackage((_, modnm))
-    | HeaderUseOf((_, modnm), _) ->
-        begin
-          match genv |> GlobalTypeenv.find_opt modnm with
-          | None ->
-              assert false
-
-          | Some(ssig) ->
-              let mentry = { mod_signature = ConcStructure(ssig) } in
-              tyenv |> Typeenv.add_module modnm mentry
-        end
-  ) tyenv
-
-
 let build
     ~(fpath_in : string)
     ~(fpath_out_opt : string option)
@@ -1201,39 +1148,24 @@ let build
     let (genv, libacc) =
       sorted_packages |> List.fold_left (fun (genv, libacc) package ->
         let main_module_name = failwith "TODO: main_module_name; extract it from `package`" in
-        let (absmodsig, libs) =
-          match PackageChecker.main genv package with
+        let (ssig, libs) =
+          match PackageChecker.main tyenv_prim genv package with
           | Ok(pair)  -> pair
           | Error(_e) -> failwith "TODO (error): PackageChecker, Error"
         in
-        let genv = genv |> GlobalTypeenv.add main_module_name absmodsig in
+        let genv = genv |> GlobalTypeenv.add main_module_name ssig in
         let libacc = Alist.append libacc libs in
         (genv, libacc)
       ) (GlobalTypeenv.empty, Alist.empty)
     in
 
     (* Typechecking and elaboration: *)
-    let (_, libacc, doc_opt) =
-      sorted_locals |> List.fold_left (fun (genv, libacc, doc_opt) (abspath, utsrc) ->
-        match utsrc with
-        | UTDocumentFile(header, utast) ->
-            let ast =
-              let tyenv = tyenv_prim |> add_dependency_to_type_environment header genv in
-              typecheck_document_file tyenv abspath utast
-            in
-            (genv, libacc, Some(ast))
-
-        | UTLibraryFile(header, (modident, utsig_opt, utbinds)) ->
-            let (_, modnm) = modident in
-            let ((_quant, ssig), binds) =
-              let tyenv = tyenv_prim |> add_dependency_to_type_environment header genv in
-              typecheck_library_file tyenv abspath utsig_opt utbinds
-            in
-            let genv = genv |> GlobalTypeenv.add modnm ssig in
-            (genv, Alist.extend libacc (abspath, binds), doc_opt)
-      ) (genv, libacc, None)
+    let (libs_local, doc_opt) =
+      match PackageChecker.main_document tyenv_prim genv sorted_locals with
+      | Ok(pair) -> pair
+      | Error(e) -> raise (PackageCheckError(e))
     in
-    let libs = Alist.to_list libacc in
+    let libs = Alist.to_list (Alist.append libacc libs_local) in
 
     if type_check_only then
       ()
