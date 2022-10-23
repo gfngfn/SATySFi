@@ -18,6 +18,13 @@ let resolve fn =
   if Sys.file_exists fn then Some(fn) else None
 
 
+let resolve_directory fn =
+  try
+    if Sys.is_directory fn then Some(make_abs_path fn) else None
+  with
+  | Sys_error(_) -> None
+
+
 (* --
    `resolve_lib_file` receives a file path relative to `LIBROOT`
    and returns its corresponding absolute path.
@@ -99,6 +106,24 @@ let resolve_package_exn package extcands =
 
   | Ok(fn_local) ->
       fn_local
+
+
+let resolve_package_directory main_module_name =
+  let open ResultMonad in
+  let dirs = !satysfi_root_dirs in
+  let pathcands_local =
+    dirs |> List.map (fun dir ->
+      Filename.concat (Filename.concat dir "local/packages") main_module_name
+    )
+  in
+  let pathcands_dist =
+    dirs |> List.map (fun dir ->
+      Filename.concat (Filename.concat dir "dist/packages") main_module_name
+    )
+  in
+  match MyUtil.first_some resolve_directory (List.append pathcands_local pathcands_dist) with
+  | None    -> err (List.append pathcands_local pathcands_dist)
+  | Some(p) -> return p
 
 
 let resolve_local_exn dir s extcands =

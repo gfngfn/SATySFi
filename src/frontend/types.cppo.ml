@@ -568,6 +568,7 @@ type untyped_source_file =
 [@@deriving show { with_path = false; }]
 
 type package_info = {
+  dependencies     : module_name list;
   main_module_name : module_name;
   modules          : (abs_path * untyped_library_file) list;
 }

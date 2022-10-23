@@ -16,4 +16,6 @@ val resolve_lib_file_from_candidates_exn : lib_path list -> abs_path
 
 val resolve_package_exn : string -> string list -> abs_path
 
+val resolve_package_directory : string -> (abs_path, string list) result
+
 val resolve_local_exn : string -> string -> string list -> abs_path
