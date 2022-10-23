@@ -885,14 +885,13 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
       return (binds, (OpaqueIDMap.empty, ssig))
 
 
-let main (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
+let main (tyenv : Typeenv.t) (absmodsig_opt : (signature abstracted) option) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
   let open ResultMonad in
-  match utsig_opt with
+  match absmodsig_opt with
   | None ->
       typecheck_binding_list tyenv utbinds
 
-  | Some(utsig) ->
-      let* absmodsig = typecheck_signature tyenv utsig in
+  | Some(absmodsig) ->
       let* ((_, ssig), binds) = typecheck_binding_list tyenv utbinds in
       let rng = Range.dummy "main_bindings" in (* TODO (error): give appropriate ranges *)
       let* (quant, modsig) = coerce_signature rng (ConcStructure(ssig)) absmodsig in
