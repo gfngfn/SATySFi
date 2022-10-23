@@ -297,7 +297,7 @@
 %right BINOP_TIMES EXACT_TIMES BINOP_DIVIDES MOD
 
 %start main
-%type<Types.header_element list * Types.untyped_source_file> main
+%type<Types.untyped_source_file> main
 %type<Types.untyped_module> modexpr
 %type<Types.module_name_chain Types.ranged> mod_chain
 %type<Types.untyped_binding> bind
@@ -361,9 +361,9 @@ optterm_nonempty_list(sep, X):
 ;
 main:
   | header=list(headerelem); lib=main_lib; EOI
-      { (header, UTLibraryFile(lib)) }
+      { UTLibraryFile(header, lib) }
   | header=list(headerelem); utast=expr; EOI
-      { (header, UTDocumentFile(utast)) }
+      { UTDocumentFile(header, utast) }
   | rng=EOI
       { raise (ParseErrorDetail(rng, "empty input")) }
 ;

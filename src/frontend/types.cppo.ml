@@ -41,7 +41,7 @@ type header_element =
   | HeaderUsePackage of module_name ranged
   | HeaderUse        of module_name ranged
   | HeaderUseOf      of module_name ranged * string
-
+[@@deriving show { with_path = false }]
 
 type quantifiability = Quantifiable | Unquantifiable
 [@@deriving show]
@@ -554,9 +554,12 @@ and untyped_parameter_unit =
 [@@deriving show { with_path = false; }]
 
 type untyped_source_file =
-  | UTLibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
-  | UTDocumentFile of untyped_abstract_tree
+  | UTLibraryFile  of header_element list * (module_name ranged * untyped_signature option * untyped_binding list)
+  | UTDocumentFile of header_element list * untyped_abstract_tree
 [@@deriving show { with_path = false; }]
+
+type package_info =
+  unit (* TODO: define this *)
 
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
@@ -1181,13 +1184,6 @@ type 'a cycle =
   | Loop  of 'a
   | Cycle of 'a TupleList.t
 [@@deriving show { with_path = false; }]
-
-type file_info =
-  | DocumentFile of untyped_abstract_tree
-  | LibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
-
-type package_info =
-  unit (* TODO: define this *)
 
 module GlobalTypeenv = Map.Make(String)
 

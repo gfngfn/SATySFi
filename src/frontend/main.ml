@@ -1160,11 +1160,11 @@ let build
       | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
     in
     Logging.target_file abspath_out;
-    let (tyenv, env, dump_file_exists) = initialize abspath_dump in
+    let (_tyenv_prim, env, dump_file_exists) = initialize abspath_dump in
     Logging.dump_file dump_file_exists abspath_dump;
 
     (* Resolve dependency of the document and the local source files: *)
-    let (inputs, package_names) =
+    let (sorted_locals, package_names) =
       match OpenFileDependencyResolver.main abspath_in with
       | Ok(pair) -> pair
       | Error(e) -> raise (OpenFileDependencyError(e))
@@ -1178,44 +1178,47 @@ let build
     in
 
     (* Typecheck every package: *)
-    let (_genv, bindacc) =
-      sorted_packages |> List.fold_left (fun (genv, bindacc) package ->
+    let (genv, libacc) =
+      sorted_packages |> List.fold_left (fun (genv, libacc) package ->
         let main_module_name = failwith "TODO: main_module_name; extract it from `package`" in
-        let (absmodsig, binds) =
+        let (absmodsig, libs) =
           match PackageChecker.main genv package with
           | Ok(pair)  -> pair
           | Error(_e) -> failwith "TODO (error): PackageChecker, Error"
         in
         let genv = genv |> GlobalTypeenv.add main_module_name absmodsig in
-        let bindacc = Alist.append bindacc binds in
-        (genv, bindacc)
+        let libacc = Alist.append libacc libs in
+        (genv, libacc)
       ) (GlobalTypeenv.empty, Alist.empty)
     in
-    let _binds = bindacc |> Alist.to_list in
-    (* TODO: use `genv` and `binds` *)
 
     (* Typechecking and elaboration: *)
-    let (_, libacc, ast_opt) =
-      inputs |> List.fold_left (fun (tyenv, libacc, docopt) (abspath, file_info) ->
-        match file_info with
-        | DocumentFile(utast) ->
-            let ast = typecheck_document_file tyenv abspath utast in
-            (tyenv, libacc, Some(ast))
+    let (_, libacc, doc_opt) =
+      sorted_locals |> List.fold_left (fun (genv, libacc, doc_opt) (abspath, utsrc) ->
+        match utsrc with
+        | UTDocumentFile(_header, utast) ->
+            let ast =
+              let tyenv = failwith "TODO: make `tyenv` from `tyenv_prim`, `genv`, and `header`" in
+              typecheck_document_file tyenv abspath utast
+            in
+            (genv, libacc, Some(ast))
 
-        | LibraryFile((modident, utsig_opt, utbinds)) ->
+        | UTLibraryFile(_header, (modident, utsig_opt, utbinds)) ->
             let (_, modnm) = modident in
-            let ((_quant, ssig), binds) = typecheck_library_file tyenv abspath utsig_opt utbinds in
-            let mentry = { mod_signature = ConcStructure(ssig); } in
-            let tyenv = tyenv |> Typeenv.add_module modnm mentry in
-            (tyenv, Alist.extend libacc (abspath, binds), docopt)
-      ) (tyenv, Alist.empty, None)
+            let (absssig, binds) =
+              let tyenv = failwith "TODO: make `tyenv` from `tyenv_prim`, `genv`, and `header`" in
+              typecheck_library_file tyenv abspath utsig_opt utbinds
+            in
+            let genv = genv |> GlobalTypeenv.add modnm absssig in
+            (genv, Alist.extend libacc (abspath, binds), doc_opt)
+      ) (genv, libacc, None)
     in
     let libs = Alist.to_list libacc in
 
     if type_check_only then
       ()
     else
-      match ast_opt with
+      match doc_opt with
       | None      -> assert false
       | Some(ast) -> preprocess_and_evaluate env libs ast abspath_in abspath_out abspath_dump
   )

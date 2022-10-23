@@ -7,8 +7,8 @@ open MyUtil
 open Types
 
 
-let k_success (utmain : header_element list * untyped_source_file) =
-  utmain
+let k_success (utsrc : untyped_source_file) =
+  utsrc
 
 
 let k_fail chkpt =

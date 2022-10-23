@@ -429,4 +429,4 @@ let find_candidates_in_struct_sig (ssig : StructSig.t) (varnm : var_name) : var_
   Distance.get_candidates fold_value ssig varnm
 
 
-type global_type_environment = (signature abstracted) GlobalTypeenv.t
+type global_type_environment = (StructSig.t abstracted) GlobalTypeenv.t

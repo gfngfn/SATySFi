@@ -4,7 +4,7 @@ open Types
 
 
 type error =
-  | CyclicFileDependency            of (abs_path * file_info) cycle
+  | CyclicFileDependency            of (abs_path * untyped_source_file) cycle
   | CannotReadFileOwingToSystem     of string
   | LibraryContainsWholeReturnValue of abs_path
   | DocumentLacksWholeReturnValue   of abs_path
@@ -65,17 +65,17 @@ let rec register_library_file (graph : FileDependencyGraph.t) (packages : Packag
   let open ResultMonad in
   Logging.begin_to_parse_file abspath;
   let curdir = Filename.dirname (get_abs_path_string abspath) in
-  let* (header, utsrc) =
+  let* utsrc =
     ParserInterface.process_file abspath
       |> Result.map_error (fun rng -> FailedToParse(rng))
   in
-  let* lib =
+  let* (header, utsrc) =
     match utsrc with
-    | UTLibraryFile(lib) -> return lib
-    | UTDocumentFile(_)  -> err @@ LibraryContainsWholeReturnValue(abspath)
+    | UTLibraryFile(header, _) -> return (header, utsrc)
+    | UTDocumentFile(_, _)     -> err @@ LibraryContainsWholeReturnValue(abspath)
   in
   let (graph, vertex) =
-    match graph |> FileDependencyGraph.add_vertex abspath (LibraryFile(lib)) with
+    match graph |> FileDependencyGraph.add_vertex abspath utsrc with
     | Error(_) -> assert false
     | Ok(pair) -> pair
   in
@@ -104,17 +104,17 @@ let register_document_file (graph : FileDependencyGraph.t) (packages : PackageNa
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
-  let* (header, utsrc) =
+  let* utsrc =
     ParserInterface.process_file abspath_in
       |> Result.map_error (fun rng -> FailedToParse(rng))
   in
-  let* utast =
+  let* (header, utsrc) =
     match utsrc with
-    | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
-    | UTDocumentFile(utast) -> return utast
+    | UTLibraryFile(_)          -> err @@ DocumentLacksWholeReturnValue(abspath_in)
+    | UTDocumentFile(header, _) -> return (header, utsrc)
   in
   let (graph, vertex) =
-    match graph |> FileDependencyGraph.add_vertex abspath_in (DocumentFile(utast)) with
+    match graph |> FileDependencyGraph.add_vertex abspath_in utsrc with
     | Error(_) -> assert false
     | Ok(pair) -> pair
   in
@@ -169,7 +169,7 @@ let register_markdown_file (graph : FileDependencyGraph.t) (setting : string) (a
 *)
 
 
-let main (abspath_in : abs_path) : ((abs_path * file_info) list * PackageNameSet.t) ok =
+let main (abspath_in : abs_path) : ((abs_path * untyped_source_file) list * PackageNameSet.t) ok =
   let open ResultMonad in
   let graph = FileDependencyGraph.empty in
   let packages = PackageNameSet.empty in

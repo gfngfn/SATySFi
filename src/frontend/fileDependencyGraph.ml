@@ -12,13 +12,13 @@ module Impl = DependencyGraph.Make(AbsPath)
 
 type vertex = Impl.Vertex.t
 
-type t = file_info Impl.t
+type t = untyped_source_file Impl.t
 
 
 let empty = Impl.empty
 
 
-let add_vertex (abspath : abs_path) (data : file_info) (graph : t) : (t * vertex, file_info * vertex) result =
+let add_vertex (abspath : abs_path) (data : untyped_source_file) (graph : t) : (t * vertex, untyped_source_file * vertex) result =
   Impl.add_vertex abspath data graph
 
 
@@ -30,5 +30,5 @@ let add_edge ~(from : vertex) ~(to_ : vertex) (graph : t) : t =
   Impl.add_edge ~from ~to_ graph
 
 
-let topological_sort (graph : t) : ((abs_path * file_info) list, (abs_path * file_info) cycle) result =
+let topological_sort (graph : t) : ((abs_path * untyped_source_file) list, (abs_path * untyped_source_file) cycle) result =
   Impl.topological_sort graph
