@@ -9,6 +9,7 @@ exception NoLibraryRootDesignation
 exception NotADocumentFile             of abs_path * Typeenv.t * mono_type
 exception NotAStringFile               of abs_path * Typeenv.t * mono_type
 exception ShouldSpecifyOutputFile
+exception OpenFileDependencyError      of OpenFileDependencyResolver.error
 exception TypeError                    of type_error
 
 
@@ -394,34 +395,38 @@ let error_log_environment suspended =
         NormalLine("or specify configuration search paths with -C option.");
       ]
 
-  | OpenFileDependencyResolver.CyclicFileDependency(cycle) ->
-      let pairs =
-        match cycle with
-        | Loop(pair)   -> [ pair ]
-        | Cycle(pairs) -> pairs |> TupleList.to_list
-      in
-      report_error Interface (
-        (NormalLine("cyclic dependency detected:")) ::
-        (pairs |> List.map (fun (abspath, _) -> DisplayLine(get_abs_path_string abspath)))
-      )
+  | OpenFileDependencyError(e) ->
+      begin
+        match e with
+        | CyclicFileDependency(cycle) ->
+            let pairs =
+              match cycle with
+              | Loop(pair)   -> [ pair ]
+              | Cycle(pairs) -> pairs |> TupleList.to_list
+            in
+            report_error Interface (
+              (NormalLine("cyclic dependency detected:")) ::
+                (pairs |> List.map (fun (abspath, _) -> DisplayLine(get_abs_path_string abspath)))
+            )
 
-  | OpenFileDependencyResolver.CannotReadFileOwingToSystem(msg) ->
-      report_error Interface [
-        NormalLine("cannot read file:");
-        DisplayLine(msg);
-      ]
+        | CannotReadFileOwingToSystem(msg) ->
+            report_error Interface [
+              NormalLine("cannot read file:");
+              DisplayLine(msg);
+            ]
 
-  | OpenFileDependencyResolver.LibraryContainsWholeReturnValue(abspath) ->
-      let fname = get_abs_path_string abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "file '%s' is not a library; it has a return value." fname);
-      ]
+        | LibraryContainsWholeReturnValue(abspath) ->
+            let fname = get_abs_path_string abspath in
+            report_error Interface [
+              NormalLine(Printf.sprintf "file '%s' is not a library; it has a return value." fname);
+            ]
 
-  | OpenFileDependencyResolver.DocumentLacksWholeReturnValue(abspath) ->
-      let fname = get_abs_path_string abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
-      ]
+        | DocumentLacksWholeReturnValue(abspath) ->
+            let fname = get_abs_path_string abspath in
+            report_error Interface [
+              NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
+            ]
+      end
 
   | Config.PackageNotFound(package, pathcands) ->
       report_error Interface (List.append [
@@ -1155,7 +1160,11 @@ let build
     Logging.dump_file dump_file_exists abspath_dump;
 
     (* Resolve dependency of the document and the local source files: *)
-    let (inputs, _packages) = OpenFileDependencyResolver.main abspath_in in
+    let (inputs, _packages) =
+      match OpenFileDependencyResolver.main abspath_in with
+      | Ok(pair) -> pair
+      | Error(e) -> raise (OpenFileDependencyError(e))
+    in
     (* TODO: use `packages` *)
 
     (* Typechecking and elaboration: *)
