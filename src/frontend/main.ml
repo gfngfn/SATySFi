@@ -394,7 +394,7 @@ let error_log_environment suspended =
         NormalLine("or specify configuration search paths with -C option.");
       ]
 
-  | FileDependencyResolver.CyclicFileDependency(cycle) ->
+  | OpenFileDependencyResolver.CyclicFileDependency(cycle) ->
       let pairs =
         match cycle with
         | Loop(pair)   -> [ pair ]
@@ -405,19 +405,19 @@ let error_log_environment suspended =
         (pairs |> List.map (fun (abspath, _) -> DisplayLine(get_abs_path_string abspath)))
       )
 
-  | FileDependencyResolver.CannotReadFileOwingToSystem(msg) ->
+  | OpenFileDependencyResolver.CannotReadFileOwingToSystem(msg) ->
       report_error Interface [
         NormalLine("cannot read file:");
         DisplayLine(msg);
       ]
 
-  | FileDependencyResolver.LibraryContainsWholeReturnValue(abspath) ->
+  | OpenFileDependencyResolver.LibraryContainsWholeReturnValue(abspath) ->
       let fname = get_abs_path_string abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "file '%s' is not a library; it has a return value." fname);
       ]
 
-  | FileDependencyResolver.DocumentLacksWholeReturnValue(abspath) ->
+  | OpenFileDependencyResolver.DocumentLacksWholeReturnValue(abspath) ->
       let fname = get_abs_path_string abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
@@ -1155,7 +1155,7 @@ let build
     Logging.dump_file dump_file_exists abspath_dump;
 
     (* Resolve dependency of the document and the local source files: *)
-    let (inputs, _packages) = FileDependencyResolver.main abspath_in in
+    let (inputs, _packages) = OpenFileDependencyResolver.main abspath_in in
     (* TODO: use `packages` *)
 
     (* Typechecking and elaboration: *)
