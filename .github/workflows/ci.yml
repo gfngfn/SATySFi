@@ -32,12 +32,18 @@ jobs:
         # See https://docs.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#runner-context
         # and https://github.com/ocaml/setup-ocaml/blob/4ac56b0fd440c3eef30fd1e34c96e0c740a807da/src/constants.ts#L45
         run: |
-          if [ "${{ runner.os }}" = "Windows" ] ; then
+          if [ "${{ runner.os }}" = "Windows" ]; then
             DEFAULT_OPAM_REPO="https://github.com/fdopen/opam-repository-mingw.git#opam2"
           else
             DEFAULT_OPAM_REPO="https://github.com/ocaml/opam-repository.git"
           fi
           echo "::set-output name=opam-repo-default::$(echo "$DEFAULT_OPAM_REPO")"
+
+      - name: Install tools
+        run: |
+          if [ "${{ matrix.os }}" == 'macos-latest' ]; then
+            brew install coreutils
+          fi
 
       - name: Setup OCaml ${{ matrix.ocaml-version }} and pin satysfi
         uses: ocaml/setup-ocaml@v2
@@ -70,7 +76,11 @@ jobs:
           if [ -z "$(ls lib-satysfi/dist/fonts)" ]; then
             ./download-fonts.sh
           fi
-          ./install-libs.sh ~/.satysfi
+          if [ "${{ matrix.os }}" == 'macos-latest' ]; then
+            ./install-libs.sh ~/.satysfi /opt/homebrew/opt/coreutils/libexec/gnubin/install
+          else
+            ./install-libs.sh ~/.satysfi install
+          fi
 
       - name: Build demo docs
         run: |

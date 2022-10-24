@@ -1,18 +1,19 @@
 #!/bin/sh
 
 LIBDIR=${1:-/usr/local/share/satysfi}
+INSTALL=${2:-install}
 
-install -d ${LIBDIR}
-install -d ${LIBDIR}/dist
-install -d ${LIBDIR}/dist/unidata
-install -m 644 lib-satysfi/dist/unidata/*.txt ${LIBDIR}/dist/unidata
-install -d ${LIBDIR}/dist/fonts
-install -m 644 lib-satysfi/dist/fonts/* ${LIBDIR}/dist/fonts
-install -d ${LIBDIR}/dist/hash
-install -m 644 lib-satysfi/dist/hash/* ${LIBDIR}/dist/hash
-install -d ${LIBDIR}/dist/hyph
-install -m 644 lib-satysfi/dist/hyph/* ${LIBDIR}/dist/hyph
-install -d ${LIBDIR}/dist/packages
-(cd lib-satysfi && find dist/packages -type f -exec install -Dm 644 "{}" "${LIBDIR}/{}" \;)
-install -d ${LIBDIR}/dist/md
-install -m 644 lib-satysfi/dist/md/* ${LIBDIR}/dist/md
+"${INSTALL}" -d "${LIBDIR}"
+"${INSTALL}" -d "${LIBDIR}/dist"
+"${INSTALL}" -d "${LIBDIR}/dist/unidata"
+"${INSTALL}" -m 644 lib-satysfi/dist/unidata/*.txt "${LIBDIR}/dist/unidata"
+"${INSTALL}" -d "${LIBDIR}/dist/fonts"
+"${INSTALL}" -m 644 lib-satysfi/dist/fonts/* "${LIBDIR}/dist/fonts"
+"${INSTALL}" -d "${LIBDIR}/dist/hash"
+"${INSTALL}" -m 644 lib-satysfi/dist/hash/* "${LIBDIR}/dist/hash"
+"${INSTALL}" -d "${LIBDIR}/dist/hyph"
+"${INSTALL}" -m 644 lib-satysfi/dist/hyph/* "${LIBDIR}/dist/hyph"
+"${INSTALL}" -d "${LIBDIR}/dist/packages"
+(cd lib-satysfi && find dist/packages -type f -exec "${INSTALL}" -Dm 644 "{}" "${LIBDIR}/{}" \;)
+"${INSTALL}" -d "${LIBDIR}/dist/md"
+"${INSTALL}" -m 644 lib-satysfi/dist/md/* "${LIBDIR}/dist/md"
