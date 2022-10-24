@@ -1,9 +1,10 @@
-% -*- coding: utf-8 -*-
-@require: stdja
-@require: proof
-@require: tabular
-@require: gr
+use package Stdlib
+use package Math
+use package Proof
+use package Tabular
+use package StdJa
 
+let open Stdlib in
 let open Pervasives in
 let open Math in
 let open Proof in
