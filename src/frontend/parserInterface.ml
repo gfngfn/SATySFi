@@ -24,7 +24,7 @@ let k_fail chkpt =
       assert false
 
 
-let process_common fname lexbuf =
+let process_common (fname : string) (lexbuf : Lexing.lexbuf) =
   let open ResultMonad in
   let stack = Lexer.reset_to_program () in
   lexbuf.Lexing.lex_curr_p <- { lexbuf.Lexing.lex_curr_p with pos_fname = fname };
