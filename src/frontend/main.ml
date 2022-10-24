@@ -401,7 +401,7 @@ let error_log_environment suspended =
             ]
       end
 
-  | OpenPackageDependencyError(_e) ->
+  | OpenPackageDependencyError(e) ->
       failwith "TODO (error): OpenPackageDependencyError"
 
   | Config.PackageNotFound(package, pathcands) ->

@@ -1,9 +1,10 @@
-@require: stdjabook
-@require: code
-@require: itemize
-@require: tabular
-@require: proof
-@import: local
+use package Stdjabook
+use package Annot
+use package Code
+use package Itemize
+use package Tabular
+use package Proof
+use Local of `./local`
 
 let open Pervasives in
 let open Math in

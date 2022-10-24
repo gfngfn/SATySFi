@@ -1,7 +1,7 @@
-@require: stdjabook
-@require: hdecoset
-@require: vdecoset
-@require: code
+use package Stdjabook
+use package HDecoSet
+use package VDecoSet
+use package Code
 
 
 module Local = struct

@@ -1,4 +1,4 @@
-@require: option
+use Option
 
 module List :> sig
   val persistent ~map 'a 'b : ('a -> 'b) -> list 'a -> list 'b
