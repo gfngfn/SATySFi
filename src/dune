@@ -16,7 +16,7 @@
             yojson-with-position
             omd
             ocamlgraph
-            )
+            yaml)
  (preprocess (pps
               ppx_deriving.show
               ))

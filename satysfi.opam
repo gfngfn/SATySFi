@@ -38,6 +38,7 @@ depends: [
   "omd" {< "2.0.0~"}
   "ocamlgraph"
   "alcotest" {with-test & >= "1.4.0"}
+  "yaml" {>= "2.1.0"}
 ]
 synopsis: "A statically-typed, functional typesetting system"
 description: """
