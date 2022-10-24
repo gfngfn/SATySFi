@@ -7,10 +7,6 @@ type error =
       expected : module_name;
       got      : module_name;
     }
-  | DependencyNotFound of {
-      depending : module_name;
-      depended  : module_name;
-    }
   | PackageDirectoryNotFound of string list
   | PackageReadingError of PackageReader.error
   | CyclicPackageDependency of (module_name * package_info) cycle
@@ -21,14 +17,28 @@ type 'a ok = ('a, error) result
 
 module PackageDependencyGraph = DependencyGraph.Make(String)
 
+type graph = package_info PackageDependencyGraph.t
 
-let main (package_name_set : PackageNameSet.t) : (package_info list) ok =
+type vertex = PackageDependencyGraph.Vertex.t
+
+
+let rec add_package (graph : graph) ~prev:(vertex_prev_opt : vertex option) (main_module_name : module_name) : graph ok =
   let open ResultMonad in
-  let main_module_names = package_name_set |> PackageNameSet.elements in
+  match graph |> PackageDependencyGraph.get_vertex main_module_name with
+  | Some(vertex) ->
+    (* If `main_module_name` has already been read: *)
+      let graph =
+        match vertex_prev_opt with
+        | None ->
+            graph
 
-  (* Add vertices: *)
-  let* (graph, entryacc) =
-    main_module_names |> foldM (fun (graph, entryacc) main_module_name ->
+        | Some(vertex_prev) ->
+            graph |> PackageDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
+      in
+      return graph
+
+  | None ->
+      Printf.printf "****PACKAGE: %s\n" main_module_name; (* TODO: remove this *)
       let* absdir =
         Config.resolve_package_directory main_module_name
           |> Result.map_error (fun cands -> PackageDirectoryNotFound(cands))
@@ -38,38 +48,38 @@ let main (package_name_set : PackageNameSet.t) : (package_info list) ok =
           |> Result.map_error (fun e -> PackageReadingError(e))
       in
       if String.equal package.main_module_name main_module_name then
-        match graph |> PackageDependencyGraph.add_vertex main_module_name package with
-        | Error(_) ->
-            assert false
-
-        | Ok((graph, vertex)) ->
-            let entry = (package, vertex) in
-            return (graph, Alist.extend entryacc entry)
+        let (graph, vertex) =
+          match graph |> PackageDependencyGraph.add_vertex main_module_name package with
+          | Error(_) -> assert false
+          | Ok(pair) -> pair
+        in
+        let graph =
+          match vertex_prev_opt with
+          | None              -> graph
+          | Some(vertex_prev) -> graph |> PackageDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
+        in
+        package.dependencies |> foldM (fun graph main_module_name_dep ->
+          Printf.printf "****DEP2: %s ---> %s\n" main_module_name main_module_name_dep; (* TODO: remove this *)
+          add_package graph ~prev:(Some(vertex)) main_module_name_dep
+        ) graph
       else
         err @@ MainModuleNameMismatch{
           expected = main_module_name;
           got      = package.main_module_name;
         }
-    ) (PackageDependencyGraph.empty, Alist.empty)
-  in
 
+
+let main (package_name_set_init : PackageNameSet.t) : (package_info list) ok =
+  let open ResultMonad in
+  let main_module_names_init = package_name_set_init |> PackageNameSet.elements in
   let* graph =
-    entryacc |> Alist.to_list |> foldM (fun graph (package, vertex) ->
-      let main_module_names_dep = package.dependencies in
-      main_module_names_dep |> foldM (fun graph main_module_name_dep ->
-        match graph |> PackageDependencyGraph.get_vertex main_module_name_dep with
-        | None ->
-            err @@ DependencyNotFound{
-              depending = package.main_module_name;
-              depended  = main_module_name_dep;
-            }
-
-        | Some(vertex_dep) ->
-            return (graph |> PackageDependencyGraph.add_edge ~from:vertex ~to_:vertex_dep)
-      ) graph
-    ) graph
+    main_module_names_init |> foldM (fun graph main_module_name ->
+      add_package graph ~prev:None main_module_name
+    ) PackageDependencyGraph.empty
   in
-
-  PackageDependencyGraph.topological_sort graph
-    |> Result.map (fun pairs -> pairs |> List.map (fun (_, package) -> package))
-    |> Result.map_error (fun cycle -> CyclicPackageDependency(cycle))
+  let* pairs =
+    PackageDependencyGraph.topological_sort graph
+      |> Result.map_error (fun cycle -> CyclicPackageDependency(cycle))
+  in
+  Printf.printf "****SORTED: %s\n" (pairs |> List.map (fun (n, _) -> n) |> String.concat " > "); (* TODO: remove this *)
+  return (pairs |> List.map (fun (_, package) -> package))

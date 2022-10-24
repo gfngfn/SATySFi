@@ -402,7 +402,7 @@ let error_log_environment suspended =
       end
 
   | OpenPackageDependencyError(e) ->
-      failwith (Format.asprintf "%a" OpenPackageDependencyResolver.pp_error e)
+      failwith (Format.asprintf "TODO (error): %a" OpenPackageDependencyResolver.pp_error e)
 
   | Config.PackageNotFound(package, pathcands) ->
       report_error Interface (List.append [
@@ -589,25 +589,28 @@ let error_log_environment suspended =
         NormalLine(Printf.sprintf "missing required key '%s'." key);
       ]
 
-  | PackageCheckError(NotADocumentFile(abspath_in, _tyenv, ty)) ->
+  | PackageCheckError(NotADocumentFile(abspath_in, ty)) ->
       let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
         NormalLine(Printf.sprintf "file '%s' is not a document file; it is of type" fname);
         DisplayLine(Display.show_mono_type ty);
       ]
 
-  | PackageCheckError(NotAStringFile(abspath_in, _tyenv, ty)) ->
+  | PackageCheckError(NotAStringFile(abspath_in, ty)) ->
       let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
         NormalLine(Printf.sprintf "file '%s' is not a file for generating text; it is of type" fname);
         DisplayLine(Display.show_mono_type ty);
       ]
 
-  | PackageCheckError(ClosedFileDependencyError(_)) ->
-      failwith "TODO (error): ClosedFileDependencyError"
+  | PackageCheckError(ClosedFileDependencyError(e)) ->
+      failwith (Format.asprintf "TODO (error): %a" ClosedFileDependencyResolver.pp_error e)
 
   | PackageCheckError(NoMainModule(_)) ->
       failwith "TODO (error): NoMainModule"
+
+  | PackageCheckError(UnknownPackageDependency(rng, modnm)) ->
+      failwith (Format.asprintf "TODO (error): %a %s" Range.pp rng modnm)
 
   | PackageCheckError(TypeError(tyerr)) ->
       begin
@@ -1156,8 +1159,8 @@ let build
         let main_module_name = package.main_module_name in
         let (ssig, libs) =
           match PackageChecker.main tyenv_prim genv package with
-          | Ok(pair)  -> pair
-          | Error(_e) -> failwith "TODO (error): PackageChecker, Error"
+          | Ok(pair) -> pair
+          | Error(e) -> raise (PackageCheckError(e))
         in
         let genv = genv |> GlobalTypeenv.add main_module_name ssig in
         let libacc = Alist.append libacc libs in

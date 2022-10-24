@@ -8,33 +8,47 @@ open TypeError
 type error =
   | TypeError                 of type_error
   | ClosedFileDependencyError of ClosedFileDependencyResolver.error
-  | NotADocumentFile          of abs_path * Typeenv.t * mono_type
-  | NotAStringFile            of abs_path * Typeenv.t * mono_type
+  | NotADocumentFile          of abs_path * mono_type
+  | NotAStringFile            of abs_path * mono_type
   | NoMainModule              of module_name
+  | UnknownPackageDependency  of Range.t * module_name
 
 type 'a ok = ('a, error) result
 
+type dependency_kind = PackageDependency | LocalDependency
 
-let add_dependency_to_type_environment ~(package_only : bool) (header : header_element list) (genv : global_type_environment) (tyenv : Typeenv.t) =
-  header |> List.fold_left (fun tyenv headerelem ->
-    let modnm_opt =
+
+let add_dependency_to_type_environment ~(package_only : bool) (header : header_element list) (genv : global_type_environment) (tyenv : Typeenv.t) : Typeenv.t ok =
+  let open ResultMonad in
+  header |> foldM (fun tyenv headerelem ->
+    let opt =
       match headerelem with
-      | HeaderUse((_, modnm)) | HeaderUseOf((_, modnm), _) -> if package_only then None else Some(modnm)
-      | HeaderUsePackage((_, modnm))                       -> Some(modnm)
-    in
-    match modnm_opt with
-    | None ->
-        tyenv
+      | HeaderUse(modident)
+      | HeaderUseOf(modident, _) ->
+          if package_only then
+            None
+          else
+            Some((LocalDependency, modident))
 
-    | Some(modnm) ->
+      | HeaderUsePackage(modident) ->
+          Some((PackageDependency, modident))
+    in
+    match opt with
+    | None ->
+        return tyenv
+
+    | Some((kind, (rng, modnm))) ->
         begin
-          match genv |> GlobalTypeenv.find_opt modnm with
-          | None ->
+          match (kind, genv |> GlobalTypeenv.find_opt modnm) with
+          | (LocalDependency, None) ->
               assert false
 
-          | Some(ssig) ->
+          | (PackageDependency, None) ->
+              err @@ UnknownPackageDependency(rng, modnm)
+
+          | (_, Some(ssig)) ->
               let mentry = { mod_signature = ConcStructure(ssig) } in
-              tyenv |> Typeenv.add_module modnm mentry
+              return (tyenv |> Typeenv.add_module modnm mentry)
         end
   ) tyenv
 
@@ -60,12 +74,12 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
     if Typechecker.are_unifiable ty (Range.dummy "text-mode", BaseType(StringType)) then
       return ast
     else
-      err (NotAStringFile(abspath_in, tyenv, ty))
+      err (NotAStringFile(abspath_in, ty))
   else
     if Typechecker.are_unifiable ty (Range.dummy "pdf-mode", BaseType(DocumentType)) then
       return ast
     else
-      err (NotADocumentFile(abspath_in, tyenv, ty))
+      err (NotADocumentFile(abspath_in, ty))
 
 
 let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : package_info) : (StructSig.t * (abs_path * binding list) list) ok =
@@ -82,11 +96,11 @@ let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : pa
   let* (_genv, libacc, ssig_opt) =
     sorted_utlibs |> foldM (fun (genv, libacc, ssig_opt) (abspath, utlib) ->
       let (header, (modident, utsig_opt, utbinds)) = utlib in
-      let tyenv_for_struct = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
+      let* tyenv_for_struct = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
       let (_, modnm) = modident in
       if String.equal modnm main_module_name then
         let* ((_quant, ssig), binds) =
-          let tyenv_for_sig = tyenv_prim |> add_dependency_to_type_environment ~package_only:true header genv in
+          let* tyenv_for_sig = tyenv_prim |> add_dependency_to_type_environment ~package_only:true header genv in
           typecheck_library_file ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_sig abspath utsig_opt utbinds
         in
         let genv = genv |> GlobalTypeenv.add modnm ssig in
@@ -113,7 +127,7 @@ let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sor
       let (header, (modident, utsig_opt, utbinds)) = utlib in
       let (_, modnm) = modident in
       let* ((_quant, ssig), binds) =
-        let tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
+        let* tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
         typecheck_library_file ~for_struct:tyenv ~for_sig:tyenv abspath utsig_opt utbinds
       in
       let genv = genv |> GlobalTypeenv.add modnm ssig in
@@ -125,7 +139,7 @@ let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sor
   (* Typecheck the document: *)
   let* ast_doc =
     let (abspath, (header, utast)) = utdoc in
-    let tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
+    let* tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
     typecheck_document_file tyenv abspath utast
   in
 
