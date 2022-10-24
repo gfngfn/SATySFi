@@ -14,6 +14,7 @@ type error =
   | PackageDirectoryNotFound of string list
   | PackageReadingError of PackageReader.error
   | CyclicPackageDependency of (module_name * package_info) cycle
+[@@deriving show { with_path = false }]
 
 type 'a ok = ('a, error) result
 

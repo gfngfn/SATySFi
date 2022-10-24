@@ -7,6 +7,7 @@ type error =
   | PackageConfigError    of YamlDecoder.error
   | FailedToParse         of Range.t
   | NotALibraryFile       of abs_path
+[@@deriving show { with_path = false }]
 
 type 'a ok = ('a, error) result
 
@@ -86,8 +87,8 @@ let main (absdir_package : abs_path) : package_info ok =
         let* acc =
           abspaths_src |> foldM (fun acc abspath_src ->
             let* utsrc =
-              ParserInterface.process_file abspath_src
-                |> Result.map_error (fun rng -> FailedToParse(rng))
+              Logging.begin_to_parse_file abspath_src;
+              ParserInterface.process_file abspath_src |> Result.map_error (fun rng -> FailedToParse(rng))
             in
             match utsrc with
             | UTLibraryFile(utlib) ->

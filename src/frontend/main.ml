@@ -402,7 +402,7 @@ let error_log_environment suspended =
       end
 
   | OpenPackageDependencyError(e) ->
-      failwith "TODO (error): OpenPackageDependencyError"
+      failwith (Format.asprintf "%a" OpenPackageDependencyResolver.pp_error e)
 
   | Config.PackageNotFound(package, pathcands) ->
       report_error Interface (List.append [

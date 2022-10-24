@@ -2,6 +2,7 @@
 exception RemainsToBeImplemented of string
 
 type abs_path = AbsPath of string
+[@@deriving show { with_path = false }]
 
 type lib_path = LibPath of string
 

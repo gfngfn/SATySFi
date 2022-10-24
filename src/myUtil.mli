@@ -2,6 +2,7 @@
 exception RemainsToBeImplemented of string
 
 type abs_path
+[@@deriving show]
 
 type lib_path
 

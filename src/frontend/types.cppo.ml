@@ -572,6 +572,7 @@ type package_info = {
   main_module_name : module_name;
   modules          : (abs_path * untyped_library_file) list;
 }
+[@@deriving show { with_path = false }]
 
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
