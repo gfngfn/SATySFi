@@ -1,14 +1,8 @@
-% -*- coding: utf-8 -*-
-@require: pervasives
-@require: gr
-@require: list
-@require: math
-@require: code
-@require: color
-@require: option
-@require: annot
-@require: footnote-scheme
-@require: paper-size
+use package Stdlib
+use package Math
+use package Annot
+use package Code
+use package FootnoteScheme
 
 
 module StdJaBook :> sig
@@ -21,9 +15,9 @@ module StdJaBook :> sig
       paper-size       : length * length,
       text-width       : length,
       text-height      : length,
-      text-origin      : Pervasives.point,
-      header-origin    : Pervasives.point,
-      footer-origin    : Pervasives.point,
+      text-origin      : Stdlib.Pervasives.point,
+      header-origin    : Stdlib.Pervasives.point,
+      footer-origin    : Stdlib.Pervasives.point,
       header-width     : length,
       footer-width     : length,
     ) (|
@@ -52,6 +46,15 @@ module StdJaBook :> sig
   val \footnote : inline [inline-text]
 
 end = struct
+
+  %- TODO: remove this by using 'open'
+  module Option = Stdlib.Option
+  module List = Stdlib.List
+  module Pervasives = Stdlib.Pervasives
+  module Gr = Stdlib.Gr
+  module Color = Stdlib.Color
+  module PaperSize = Stdlib.PaperSize
+
 
   type toc-element =
     | TOCElementSection    of string * inline-text

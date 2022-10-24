@@ -1,6 +1,4 @@
-@require: pervasives
-@require: color
-@require: gr
+use package Stdlib
 
 module FootnoteScheme :> sig
   val initialize : unit -> unit
@@ -8,6 +6,12 @@ module FootnoteScheme :> sig
   val main : context -> (int -> inline-boxes) -> (int -> block-boxes) -> inline-boxes
   val main-no-number : context -> (unit -> inline-boxes) -> (unit -> block-boxes) -> inline-boxes
 end = struct
+
+  %- TODO: remove this by using 'open'
+  module Pervasives = Stdlib.Pervasives
+  module Color = Stdlib.Color
+  module Gr = Stdlib.Gr
+
 
   val mutable footnote-ref <- 0
   val mutable first-footnote <- true

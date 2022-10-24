@@ -2,7 +2,12 @@ use Option
 use List
 use Pervasives
 use Geom
+use Color
 use Gr
+use PaperSize
+use Deco
+use HDecoSet
+use VDecoSet
 
 module Stdlib :> sig
   module Option : sig
@@ -59,6 +64,24 @@ module Stdlib :> sig
     val atan2-point : point -> point -> float
     val div-perp : point -> point -> float -> length -> point
   end
+  module Color : sig
+    val gray   : float -> color
+    val rgb    : float -> float -> float -> color
+    val black  : color
+    val white  : color
+    val red    : color
+    val yellow : color
+    val orange : color
+    val blue   : color
+
+    % web color names
+    val brown   : color
+    val cyan    : color
+    val green   : color
+    val magenta : color
+    val pink    : color
+    val purple  : color
+  end
   module Gr : sig
     type point = Pervasives.point  %TODO (enhance): erase this
     val rectangle : point -> point -> path
@@ -82,10 +105,47 @@ module Stdlib :> sig
     val rotate-graphics : point -> float -> graphics -> graphics
     val scale-graphics : point -> float -> float -> graphics -> graphics
   end
+  module PaperSize : sig
+    val persistent ~a0 : length * length
+    val persistent ~a1 : length * length
+    val persistent ~a2 : length * length
+    val persistent ~a3 : length * length
+    val persistent ~a4 : length * length
+    val persistent ~a5 : length * length
+    val persistent ~a6 : length * length
+    val persistent ~a7 : length * length
+    val persistent ~a8 : length * length
+    val persistent ~a9 : length * length
+    val persistent ~a10 : length * length
+
+    val persistent ~us-letter : length * length
+    val persistent ~us-legal : length * length
+  end
+  module Deco : sig
+    val empty : deco
+    val simple-frame : length -> color -> color -> deco
+  end
+  module HDecoSet : sig
+    val empty : deco-set
+    val simple-frame-stroke : length -> color -> deco-set
+    val rectangle-round-fill : length -> length -> color -> deco-set
+  end
+  module VDecoSet : sig
+    val empty : deco-set
+    val simple-frame-stroke : length -> color -> deco-set
+    val simple-frame : length -> color -> color -> deco-set
+    val paper : deco-set
+    val quote-round : length -> length -> color -> deco-set
+  end
 end = struct
   module Option = Option
   module List = List
   module Pervasives = Pervasives
   module Geom = Geom
+  module Color = Color
   module Gr = Gr
+  module PaperSize = PaperSize
+  module Deco = Deco
+  module HDecoSet = HDecoSet
+  module VDecoSet = VDecoSet
 end

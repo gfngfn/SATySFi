@@ -1,7 +1,4 @@
-@require: pervasives
-@require: list
-@require: option
-@require: gr
+use package Stdlib
 
 module Itemize :> sig
   val +listing : block [?(break : bool) itemize]
@@ -9,6 +6,13 @@ module Itemize :> sig
   val +enumerate : block [itemize]
   val \enumerate : inline [itemize]
 end = struct
+
+  %- TODO: remove this by using 'open'
+  module List = Stdlib.List
+  module Option = Stdlib.Option
+  module Pervasives = Stdlib.Pervasives
+  module Gr = Stdlib.Gr
+
 
   val (+++>) = List.fold-left (+++)
   val concat-blocks = (+++>) block-nil

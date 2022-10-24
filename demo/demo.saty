@@ -1,11 +1,14 @@
-use package Stdjabook
+use package Stdlib
+use package Math
 use package Annot
 use package Code
 use package Itemize
-use package Tabular
 use package Proof
+use package Tabular
+use package StdJaBook
 use Local of `./local`
 
+let open Stdlib in
 let open Pervasives in
 let open Math in
 let open Proof in

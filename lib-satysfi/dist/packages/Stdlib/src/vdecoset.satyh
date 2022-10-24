@@ -1,5 +1,5 @@
-@require: color
-@require: gr
+use Color
+use Gr
 
 module VDecoSet :> sig
   val empty : deco-set

@@ -1,4 +1,4 @@
-@require: gr
+use Gr
 
 module HDecoSet :> sig
   val empty : deco-set

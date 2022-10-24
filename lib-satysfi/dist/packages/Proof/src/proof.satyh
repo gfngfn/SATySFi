@@ -1,4 +1,4 @@
-@require: gr
+use package Stdlib
 
 module Proof :> sig
 
@@ -6,6 +6,12 @@ module Proof :> sig
   val \derive-multi : math [?(name : math-text, b : bool) length, list math-text, math-text]
 
 end = struct
+
+  %- TODO: remove this by using 'open'
+  module List = Stdlib.List
+  module Pervasives = Stdlib.Pervasives
+  module Gr = Stdlib.Gr
+
 
   val math ctx \math-space len =
     embed-inline-to-math MathOrd (inline-skip len)

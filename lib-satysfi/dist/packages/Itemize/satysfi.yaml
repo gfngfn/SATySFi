@@ -1,0 +1,6 @@
+language: "v0.1.0"
+main_module: "Itemize"
+source_directories:
+  - "./src"
+dependencies:
+  - "Stdlib"
