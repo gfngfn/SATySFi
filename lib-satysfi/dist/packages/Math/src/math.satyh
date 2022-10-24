@@ -1,6 +1,4 @@
-@require: pervasives
-@require: list
-@require: gr
+use package Stdlib
 
 module Math :> sig
 
@@ -398,7 +396,7 @@ module Math :> sig
   val \setsep : math [math-text, math-text]
   val \cases : math [list (math-text * inline-text)]
 
-  type paren = Pervasives.paren %TODO (enhance): remove this
+  type paren = Stdlib.Pervasives.paren %TODO (enhance): remove this
   val paren-left : paren
   val paren-right : paren
   val paren : context -> math-boxes -> math-boxes
@@ -427,6 +425,11 @@ module Math :> sig
    val \tmabstyped : math [math-text, math-text, math-text]
 %
 end = struct
+
+  %- TODO: replace this with 'open'
+  module List = Stdlib.List
+  module Pervasives = Stdlib.Pervasives
+  module Gr = Stdlib.Gr
 
   val join (msep : math-text) (ms : list math-text) =
     match

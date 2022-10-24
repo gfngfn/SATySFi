@@ -1,4 +1,4 @@
-@require: pervasives
+use Pervasives
 
 module Geom :> sig
   type point = Pervasives.point %TODO (enhance): remove this

@@ -1,5 +1,8 @@
 use Option
 use List
+use Pervasives
+use Geom
+use Gr
 
 module Stdlib :> sig
   module Option : sig
@@ -29,7 +32,60 @@ module Stdlib :> sig
     val persistent ~is-empty 'a : list 'a -> bool
     val persistent ~map-with-ends 'a 'b : (bool -> bool -> 'a -> 'b) -> list 'a -> list 'b
   end
+  module Pervasives : sig
+    type point = length * length
+    type paren = length -> length -> context -> inline-boxes * (length -> length)
+    val get-natural-width : inline-boxes -> length
+    val form-paragraph : context -> inline-boxes -> block-boxes
+    val kern : length -> inline-boxes
+    val \hskip : inline [length]
+    val no-break : inline-boxes -> inline-boxes
+    val \no-break : inline [inline-text]
+    val \SATySFi : inline []
+    val \LaTeX : inline []
+    val \TeX : inline []
+    val length-max : length -> length -> length
+    val length-min : length -> length -> length
+    val length-abs : length -> length
+    val \fil : inline []
+    val \fil-both : inline []
+    val mandatory-break : context -> inline-boxes
+    val destruct-option 'a : 'a -> option 'a -> 'a
+    val math-pi : float
+    val increment : ref int -> unit
+  end
+  module Geom : sig
+    type point = Pervasives.point %TODO (enhance): remove this
+    val atan2-point : point -> point -> float
+    val div-perp : point -> point -> float -> length -> point
+  end
+  module Gr : sig
+    type point = Pervasives.point  %TODO (enhance): erase this
+    val rectangle : point -> point -> path
+    val rectangle-round : length -> point -> point -> path
+    val rectangle-round-left : length -> point -> point -> path
+    val rectangle-round-left-lower : length -> point -> point -> path
+    val rectangle-round-left-upper : length -> point -> point -> path
+    val rectangle-round-right : length -> point -> point -> path
+    val poly-line : point -> list point -> path
+    val polygon : point -> list point -> path
+    val line : point -> point -> path
+    val circle : point -> length -> path
+    val empty : graphics
+    val text-centering : point -> inline-boxes -> graphics
+    val text-leftward : point -> inline-boxes -> graphics
+    val text-rightward : point -> inline-boxes -> graphics
+    val arrow : length -> color -> length -> length -> length -> point -> point -> graphics
+    val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics
+    val rotate-path : point -> float -> path -> path
+    val scale-path : point -> float -> float -> path -> path
+    val rotate-graphics : point -> float -> graphics -> graphics
+    val scale-graphics : point -> float -> float -> graphics -> graphics
+  end
 end = struct
   module Option = Option
   module List = List
+  module Pervasives = Pervasives
+  module Geom = Geom
+  module Gr = Gr
 end

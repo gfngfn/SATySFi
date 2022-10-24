@@ -1,6 +1,6 @@
-@require: pervasives
-@require: geom
-@require: list
+use Pervasives
+use Geom
+use List
 
 module Gr :> sig
   type point = Pervasives.point  %TODO (enhance): erase this
