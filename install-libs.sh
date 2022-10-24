@@ -13,6 +13,6 @@ install -m 644 lib-satysfi/dist/hash/* ${LIBDIR}/dist/hash
 install -d ${LIBDIR}/dist/hyph
 install -m 644 lib-satysfi/dist/hyph/* ${LIBDIR}/dist/hyph
 install -d ${LIBDIR}/dist/packages
-install -m 644 lib-satysfi/dist/packages/* ${LIBDIR}/dist/packages
+find lib-satysfi/dist/packages/ -type f -exec install -m 644 "{}" ${LIBDIR}/dist/packages \;
 install -d ${LIBDIR}/dist/md
 install -m 644 lib-satysfi/dist/md/* ${LIBDIR}/dist/md
