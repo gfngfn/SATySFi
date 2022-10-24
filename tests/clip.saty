@@ -1,7 +1,7 @@
-% -*- coding: utf-8 -*-
-@import: head
-@import: ../lib-satysfi/dist/packages/color
+use package Stdlib
+use Head of `head`
 
+let open Stdlib in
 let open Pervasives in
 let open Head in
 

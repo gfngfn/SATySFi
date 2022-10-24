@@ -1,5 +1,5 @@
-@require: stdja
-@import: staged1-local
+use package StdJa
+use Staged1Local of `staged1-local`
 
 let open StdJa in
 let inline \show-int n =

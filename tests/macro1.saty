@@ -1,5 +1,5 @@
-@require: stdjareport
-@import: macro1-local
+use package StdJaReport
+use Macro1Local of `macro1-local`
 
 let open StdJaReport in
 document (|

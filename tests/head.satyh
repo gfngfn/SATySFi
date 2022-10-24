@@ -1,9 +1,14 @@
-@require: list
-@require: math
-@require: proof
-@require: paper-size
+use package Stdlib
+use package Math
+use package Proof
 
 module Head = struct
+
+  %- TODO: remove this by using 'open'
+  module List = Stdlib.List
+  module Pervasives = Stdlib.Pervasives
+  module PaperSize = Stdlib.PaperSize
+
 
   val form-paragraph = line-break true true
 

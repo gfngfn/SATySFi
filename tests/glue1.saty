@@ -1,4 +1,4 @@
-@import: head
+use Head of `head`
 
 let open Head in
 let inline ctx \glueneg = inline-glue 0pt 0pt (0pt -' 100pt) in

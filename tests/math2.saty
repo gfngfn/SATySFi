@@ -1,6 +1,5 @@
-% -*- coding: utf-8 -*-
-@import: head
-@require: math
+use package Math
+use Head of `head`
 
 let open Math in
 let open Head in

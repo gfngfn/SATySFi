@@ -1,4 +1,4 @@
-@import: head
+use Head of `head`
 
 let open Head in
 document '<

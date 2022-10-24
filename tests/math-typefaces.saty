@@ -1,6 +1,9 @@
-@require: stdjareport
-@require: itemize
+use package Stdlib
+use package Math
+use package Itemize
+use package StdJaReport
 
+let open Stdlib in
 let open Pervasives in
 let open Math in
 let open Itemize in

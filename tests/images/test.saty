@@ -1,6 +1,6 @@
-@require: stdja
-@require: itemize
-@require: annot
+use package StdJa
+use package Itemize
+use package Annot
 
 let inline ctx \insert-image w path =
   let img = load-image path in
