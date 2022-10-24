@@ -77,7 +77,7 @@ jobs:
             ./download-fonts.sh
           fi
           if [ "${{ matrix.os }}" == 'macos-latest' ]; then
-            ./install-libs.sh ~/.satysfi /opt/homebrew/opt/coreutils/libexec/gnubin/install
+            ./install-libs.sh ~/.satysfi ginstall
           else
             ./install-libs.sh ~/.satysfi install
           fi
