@@ -1,7 +1,9 @@
-% -*- coding: utf-8 -*-
-@require: stdja
-@import: local-math
+use package Stdlib
+use package Math
+use package StdJa
+use LocalMath of `local-math`
 
+let open Stdlib in
 let open Pervasives in
 let open StdJa in
 let open LocalMath in
