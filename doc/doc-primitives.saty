@@ -1,10 +1,11 @@
-% -*- coding: utf-8 -*-
-@require: pervasives
-@require: itemize
-@require: stdjabook
-@import: local
-@import: local-math
+use package Stdlib
+use package Math
+use package Itemize
+use package StdJaBook
+use Local of `local`
+use LocalMath of `local-math`
 
+let open Stdlib in
 let open Pervasives in
 let open Itemize in
 let open Math in

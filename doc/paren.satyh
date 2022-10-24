@@ -1,7 +1,11 @@
-@require: math
-@require: gr
+use package Stdlib
+use package Math
 
 module LocalParen = struct
+
+  %- TODO: remove this by using 'open'
+  module Gr = Stdlib.Gr
+
 
   val record-paren-left hgt dpt ctx =
     let fontsize = get-font-size ctx in

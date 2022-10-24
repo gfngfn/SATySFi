@@ -1,12 +1,17 @@
-@require: pervasives
-@require: math
-@require: stdjabook
-@require: vdecoset
-@require: hdecoset
-
-@import: paren
+use package Stdlib
+use package Math
+use package StdJaBook
+use LocalParen of `paren`
 
 module Local = struct
+
+  %- TODO: remove this by using 'open'
+  module List = Stdlib.List
+  module Pervasives = Stdlib.Pervasives
+  module Color = Stdlib.Color
+  module VDecoSet = Stdlib.VDecoSet
+  module HDecoSet = Stdlib.HDecoSet
+
 
   type type-syntax =
     | TypeName        of inline-text
