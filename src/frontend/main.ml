@@ -769,6 +769,190 @@ let report_type_error = function
       ]
 
 
+let report_config_error = function
+  | NotADocumentFile(abspath_in, ty) ->
+      let fname = convert_abs_path_to_show abspath_in in
+      report_error Typechecker [
+        NormalLine(Printf.sprintf "file '%s' is not a document file; it is of type" fname);
+        DisplayLine(Display.show_mono_type ty);
+      ]
+
+  | NotAStringFile(abspath_in, ty) ->
+      let fname = convert_abs_path_to_show abspath_in in
+      report_error Typechecker [
+        NormalLine(Printf.sprintf "file '%s' is not a file for generating text; it is of type" fname);
+        DisplayLine(Display.show_mono_type ty);
+      ]
+
+  | FileModuleNotFound(rng, modnm) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "cannot find a source file that defines module '%s'." modnm);
+      ]
+
+  | NoMainModule(modnm) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "no main module '%s'." modnm);
+      ]
+
+  | UnknownPackageDependency(rng, modnm) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "dependency on unknown package '%s'" modnm);
+      ]
+
+  | TypeError(tyerr) ->
+      report_type_error tyerr
+
+  | CyclicFileDependency(cycle) ->
+      let pairs =
+        match cycle with
+        | Loop(pair)   -> [ pair ]
+        | Cycle(pairs) -> pairs |> TupleList.to_list
+      in
+      report_error Interface (
+        (NormalLine("cyclic dependency detected:")) ::
+          (pairs |> List.map (fun (abspath, _) -> DisplayLine(get_abs_path_string abspath)))
+      )
+
+  | CannotReadFileOwingToSystem(msg) ->
+      report_error Interface [
+        NormalLine("cannot read file:");
+        DisplayLine(msg);
+      ]
+
+  | LibraryContainsWholeReturnValue(abspath) ->
+      let fname = get_abs_path_string abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "file '%s' is not a library; it has a return value." fname);
+      ]
+
+  | DocumentLacksWholeReturnValue(abspath) ->
+      let fname = get_abs_path_string abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
+      ]
+
+  | CannotUseHeaderUse(rng) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine("cannot specify 'use ...' here; use 'use ... of ...' instead.");
+      ]
+
+  | FailedToParse(e) ->
+      report_parse_error e
+
+  | MainModuleNameMismatch{ expected; got } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "main module name mismatch; expected '%s' but got '%s'." expected got);
+      ]
+
+  | PackageDirectoryNotFound(candidate_paths) ->
+      let lines =
+        candidate_paths |> List.map (fun path ->
+          DisplayLine(Printf.sprintf "- %s" path)
+        )
+      in
+      report_error Interface
+        (NormalLine("cannot find package directory. candidates:") :: lines)
+
+  | PackageConfigNotFound(abspath) ->
+      report_error Interface [
+        NormalLine("cannot find a package config at:");
+        DisplayLine(get_abs_path_string abspath);
+      ]
+
+  | PackageConfigError(_) ->
+      report_error Interface [
+        NormalLine("package config error (TODO: detailed reports)");
+      ]
+
+  | NotALibraryFile(abspath) ->
+      report_error Interface [
+        NormalLine("the following file is expected to be a library file, but is not:");
+        DisplayLine(get_abs_path_string abspath);
+      ]
+
+  | CyclicPackageDependency(cycle) ->
+      let pairs =
+        match cycle with
+        | Loop(pair)   -> [ pair ]
+        | Cycle(pairs) -> pairs |> TupleList.to_list
+      in
+      let lines =
+        pairs |> List.map (fun (modnm, _package) ->
+          DisplayLine(Printf.sprintf "- '%s'" modnm)
+        )
+      in
+      report_error Interface
+        (NormalLine("the following packages are cyclic:") :: lines)
+
+  | CannotFindLibraryFile(libpath, candidate_paths) ->
+      let lines =
+        candidate_paths |> List.map (fun path ->
+          DisplayLine(Printf.sprintf "- %s" path)
+        )
+      in
+      report_error Interface
+        (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
+
+  | LocalFileNotFound{ relative; candidates } ->
+      let lines =
+        candidates |> List.map (fun path ->
+          DisplayLine(Printf.sprintf "- %s" path)
+        )
+      in
+      report_error Interface
+        (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
+
+
+let report_font_error = function
+  | InvalidFontAbbrev(abbrev) ->
+      report_error Interface [
+        NormalLine (Printf.sprintf "cannot find a font named '%s'." abbrev);
+      ]
+
+  | InvalidMathFontAbbrev(mfabbrev) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "cannot find a math font named '%s'." mfabbrev);
+      ]
+
+  | NotASingleFont(abbrev, abspath) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "the font file '%s'," fname);
+        NormalLine(Printf.sprintf "which is associated with the font name '%s'," abbrev);
+        NormalLine("is not a single font file.");
+      ]
+
+  | NotATTCElement(abbrev, abspath, i) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "the font file '%s'," fname);
+        NormalLine(Printf.sprintf "which is associated with the font name '%s' and index %d," abbrev i);
+        NormalLine("is not a TrueType collection.");
+      ]
+
+  | NotASingleMathFont(mfabbrev, abspath) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "the font file '%s'," fname);
+        NormalLine(Printf.sprintf "which is associated with the math font name '%s'," mfabbrev);
+        NormalLine("is not a single font file or does not have a MATH table.");
+      ]
+
+  | NotATTCMathFont(mfabbrev, abspath, i) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "the font file '%s'," fname);
+        NormalLine(Printf.sprintf "which is associated with the math font name '%s' and index %d," mfabbrev i);
+        NormalLine("is not a TrueType collection or does not have a MATH table.");
+      ]
+
+  | ConfigErrorAsToFont(e) ->
+      report_config_error e
+
+
 let error_log_environment suspended =
   try
     suspended ()
@@ -797,6 +981,12 @@ let error_log_environment suspended =
         NormalLine("invalid string for hyphenation pattern.");
       ]
 
+  | ConfigError(e) ->
+      report_config_error e
+
+  | FontInfo.FontInfoError(e) ->
+      report_font_error e
+
   | FontFormat.FailToLoadFontOwingToSystem(abspath, msg) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
@@ -816,51 +1006,6 @@ let error_log_environment suspended =
       report_error Interface [
         NormalLine(Printf.sprintf "font file '%s' does not have 'cmap' subtable for Unicode code points." fname);
       ]
-
-  | FontInfo.InvalidFontAbbrev(abbrev) ->
-      report_error Interface [
-        NormalLine (Printf.sprintf "cannot find a font named '%s'." abbrev);
-      ]
-
-  | FontInfo.InvalidMathFontAbbrev(mfabbrev) ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "cannot find a math font named '%s'." mfabbrev);
-      ]
-
-  | FontInfo.NotASingleFont(abbrev, abspath) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the font name '%s'," abbrev);
-        NormalLine("is not a single font file.");
-      ]
-
-  | FontInfo.NotATTCElement(abbrev, abspath, i) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the font name '%s' and index %d," abbrev i);
-        NormalLine("is not a TrueType collection.");
-      ]
-
-  | FontInfo.NotASingleMathFont(mfabbrev, abspath) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the math font name '%s'," mfabbrev);
-        NormalLine("is not a single font file or does not have a MATH table.");
-      ]
-
-  | FontInfo.NotATTCMathFont(mfabbrev, abspath, i) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the math font name '%s' and index %d," mfabbrev i);
-        NormalLine("is not a TrueType collection or does not have a MATH table.");
-      ]
-
-  | FontInfo.CannotFindFontFile(abbrev, _e) ->
-      failwith (Printf.sprintf "TODO: CannotFindFontFile, %s" abbrev)
 
   | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
       let fname = convert_abs_path_to_show abspath in
@@ -938,146 +1083,6 @@ let error_log_environment suspended =
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "missing required key '%s'." key);
       ]
-
-  | ConfigError(e) ->
-      begin
-        match e with
-        | NotADocumentFile(abspath_in, ty) ->
-            let fname = convert_abs_path_to_show abspath_in in
-            report_error Typechecker [
-              NormalLine(Printf.sprintf "file '%s' is not a document file; it is of type" fname);
-              DisplayLine(Display.show_mono_type ty);
-            ]
-
-        | NotAStringFile(abspath_in, ty) ->
-            let fname = convert_abs_path_to_show abspath_in in
-            report_error Typechecker [
-              NormalLine(Printf.sprintf "file '%s' is not a file for generating text; it is of type" fname);
-              DisplayLine(Display.show_mono_type ty);
-            ]
-
-        | FileModuleNotFound(rng, modnm) ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-              NormalLine(Printf.sprintf "cannot find a source file that defines module '%s'." modnm);
-            ]
-
-        | NoMainModule(modnm) ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "no main module '%s'." modnm);
-            ]
-
-        | UnknownPackageDependency(rng, modnm) ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-              NormalLine(Printf.sprintf "dependency on unknown package '%s'" modnm);
-            ]
-
-        | TypeError(tyerr) ->
-            report_type_error tyerr
-
-        | CyclicFileDependency(cycle) ->
-            let pairs =
-              match cycle with
-              | Loop(pair)   -> [ pair ]
-              | Cycle(pairs) -> pairs |> TupleList.to_list
-            in
-            report_error Interface (
-              (NormalLine("cyclic dependency detected:")) ::
-                (pairs |> List.map (fun (abspath, _) -> DisplayLine(get_abs_path_string abspath)))
-            )
-
-        | CannotReadFileOwingToSystem(msg) ->
-            report_error Interface [
-              NormalLine("cannot read file:");
-              DisplayLine(msg);
-            ]
-
-        | LibraryContainsWholeReturnValue(abspath) ->
-            let fname = get_abs_path_string abspath in
-            report_error Interface [
-              NormalLine(Printf.sprintf "file '%s' is not a library; it has a return value." fname);
-            ]
-
-        | DocumentLacksWholeReturnValue(abspath) ->
-            let fname = get_abs_path_string abspath in
-            report_error Interface [
-              NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
-            ]
-
-        | CannotUseHeaderUse(rng) ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-              NormalLine("cannot specify 'use ...' here; use 'use ... of ...' instead.");
-            ]
-
-        | FailedToParse(e) ->
-            report_parse_error e
-
-        | MainModuleNameMismatch{ expected; got } ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "main module name mismatch; expected '%s' but got '%s'." expected got);
-            ]
-
-        | PackageDirectoryNotFound(candidate_paths) ->
-            let lines =
-              candidate_paths |> List.map (fun path ->
-                DisplayLine(Printf.sprintf "- %s" path)
-              )
-            in
-            report_error Interface
-              (NormalLine("cannot find package directory. candidates:") :: lines)
-
-        | PackageConfigNotFound(abspath) ->
-            report_error Interface [
-              NormalLine("cannot find a package config at:");
-              DisplayLine(get_abs_path_string abspath);
-            ]
-
-        | PackageConfigError(_) ->
-            report_error Interface [
-              NormalLine("package config error (TODO: detailed reports)");
-            ]
-
-        | NotALibraryFile(abspath) ->
-            report_error Interface [
-              NormalLine("the following file is expected to be a library file, but is not:");
-              DisplayLine(get_abs_path_string abspath);
-            ]
-
-        | CyclicPackageDependency(cycle) ->
-            let pairs =
-              match cycle with
-              | Loop(pair)   -> [ pair ]
-              | Cycle(pairs) -> pairs |> TupleList.to_list
-            in
-            let lines =
-              pairs |> List.map (fun (modnm, _package) ->
-                DisplayLine(Printf.sprintf "- '%s'" modnm)
-              )
-            in
-            report_error Interface
-              (NormalLine("the following packages are cyclic:") :: lines)
-
-        | CannotFindLibraryFile(libpath, candidate_paths) ->
-            let lines =
-              candidate_paths |> List.map (fun path ->
-                DisplayLine(Printf.sprintf "- %s" path)
-              )
-            in
-            report_error Interface
-              (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
-
-        | LocalFileNotFound{ relative; candidates } ->
-            let lines =
-              candidates |> List.map (fun path ->
-                DisplayLine(Printf.sprintf "- %s" path)
-              )
-            in
-            report_error Interface
-              (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
-
-      end
 
   | Evaluator.EvalError(s)
   | Vm.ExecError(s)
