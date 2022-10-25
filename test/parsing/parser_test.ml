@@ -3,8 +3,8 @@ open Main__
 
 let () =
   let proj s = function
-    | Error(rng) ->
-        Out_channel.fprintf stderr "%s: parse error: %s\n" s @@ Range.to_string rng;
+    | Error(e) ->
+        Out_channel.fprintf stderr "%s: parse error: %s\n" s @@ Types.show_parse_error e;
         exit 1
     | Ok(utsrc) ->
         utsrc
