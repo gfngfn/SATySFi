@@ -5,9 +5,9 @@ SATYSFI ?= satysfi
 
 .PHONY: all clean
 
-.SUFFIXES: .saty .pdf
+.SUFFIXES: .md .pdf
 
-.saty.pdf:
+.md.pdf:
 	$(SATYSFI) --markdown "mdja" $< -o $@
 
 all:: $(TARGETS)
