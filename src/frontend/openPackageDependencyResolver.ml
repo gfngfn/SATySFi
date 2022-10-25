@@ -1,19 +1,10 @@
 
 open MyUtil
 open Types
+open ConfigError
 
-type error =
-  | MainModuleNameMismatch of {
-      expected : module_name;
-      got      : module_name;
-    }
-  | PackageDirectoryNotFound of string list
-  | PackageReadingError of PackageReader.error
-  | CyclicPackageDependency of (module_name * package_info) cycle
-[@@deriving show { with_path = false }]
 
-type 'a ok = ('a, error) result
-
+type 'a ok = ('a, config_error) result
 
 module PackageDependencyGraph = DependencyGraph.Make(String)
 
@@ -42,10 +33,7 @@ let rec add_package (extensions : string list) (graph : graph) ~prev:(vertex_pre
         Config.resolve_package_directory main_module_name
           |> Result.map_error (fun cands -> PackageDirectoryNotFound(cands))
       in
-      let* package =
-        PackageReader.main ~extensions absdir
-          |> Result.map_error (fun e -> PackageReadingError(e))
-      in
+      let* package = PackageReader.main ~extensions absdir in
       if String.equal package.main_module_name main_module_name then
         let (graph, vertex) =
           match graph |> PackageDependencyGraph.add_vertex main_module_name package with

@@ -1,17 +1,10 @@
 
 open MyUtil
 open Types
+open ConfigError
 
 
-type error =
-  | CyclicFileDependency            of (abs_path * untyped_library_file) cycle
-  | CannotReadFileOwingToSystem     of string
-  | LibraryContainsWholeReturnValue of abs_path
-  | DocumentLacksWholeReturnValue   of abs_path
-  | CannotUseHeaderUse              of Range.t
-  | FailedToParse                   of parse_error
-
-type 'a ok = ('a, error) result
+type 'a ok = ('a, config_error) result
 
 
 let has_library_extension (abspath : abs_path) : bool =

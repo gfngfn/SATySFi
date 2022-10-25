@@ -1,12 +1,6 @@
 
 open MyUtil
 open Types
+open ConfigError
 
-type error =
-  | PackageConfigNotFound of abs_path
-  | PackageConfigError    of YamlDecoder.error
-  | FailedToParse         of parse_error
-  | NotALibraryFile       of abs_path
-[@@deriving show]
-
-val main : extensions:(string list) -> abs_path -> (package_info, error) result
+val main : extensions:(string list) -> abs_path -> (package_info, config_error) result

@@ -1,15 +1,9 @@
 
 open MyUtil
 open Types
+open ConfigError
 
-type error =
-  | PackageConfigNotFound of abs_path
-  | PackageConfigError    of YamlDecoder.error
-  | FailedToParse         of parse_error
-  | NotALibraryFile       of abs_path
-[@@deriving show { with_path = false }]
-
-type 'a ok = ('a, error) result
+type 'a ok = ('a, config_error) result
 
 type relative_path = string
 

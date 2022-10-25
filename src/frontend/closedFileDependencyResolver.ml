@@ -1,13 +1,9 @@
 
 open MyUtil
 open Types
+open ConfigError
 
-type error =
-  | FileModuleNotFound   of Range.t * module_name
-  | CyclicFileDependency of (abs_path * untyped_library_file) cycle
-[@@deriving show { with_path = false }]
-
-type 'a ok = ('a, error) result
+type 'a ok = ('a, config_error) result
 
 
 let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untyped_library_file) list) ok =

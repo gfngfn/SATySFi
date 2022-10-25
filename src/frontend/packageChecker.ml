@@ -2,18 +2,9 @@
 open MyUtil
 open Types
 open StaticEnv
-open TypeError
+open ConfigError
 
-
-type error =
-  | TypeError                 of type_error
-  | ClosedFileDependencyError of ClosedFileDependencyResolver.error
-  | NotADocumentFile          of abs_path * mono_type
-  | NotAStringFile            of abs_path * mono_type
-  | NoMainModule              of module_name
-  | UnknownPackageDependency  of Range.t * module_name
-
-type 'a ok = ('a, error) result
+type 'a ok = ('a, config_error) result
 
 type dependency_kind = PackageDependency | LocalDependency
 
@@ -88,9 +79,7 @@ let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : pa
   let utlibs = package.modules in
 
   (* Resolve dependency among the source files in the package: *)
-  let* sorted_utlibs =
-    ClosedFileDependencyResolver.main utlibs |> Result.map_error (fun e -> ClosedFileDependencyError(e))
-  in
+  let* sorted_utlibs = ClosedFileDependencyResolver.main utlibs in
 
   (* Typecheck each source file: *)
   let* (_genv, libacc, ssig_opt) =
