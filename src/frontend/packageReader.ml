@@ -5,7 +5,7 @@ open Types
 type error =
   | PackageConfigNotFound of abs_path
   | PackageConfigError    of YamlDecoder.error
-  | FailedToParse         of Range.t
+  | FailedToParse         of parse_error
   | NotALibraryFile       of abs_path
 [@@deriving show { with_path = false }]
 
@@ -87,7 +87,7 @@ let main ~(extensions : string list) (absdir_package : abs_path) : package_info 
           abspaths_src |> foldM (fun acc abspath_src ->
             let* utsrc =
               Logging.begin_to_parse_file abspath_src;
-              ParserInterface.process_file abspath_src |> Result.map_error (fun rng -> FailedToParse(rng))
+              ParserInterface.process_file abspath_src |> Result.map_error (fun e -> FailedToParse(e))
             in
             match utsrc with
             | UTLibraryFile(utlib) ->

@@ -209,8 +209,7 @@
           let newresitmz = insert_last [] resitmz 1 depth utast in
           make_list_to_itemize_sub newresitmz tail depth
         else
-          raise (ParseErrorDetail(rng, "syntax error: illegal item depth "
-            ^ (string_of_int depth) ^ " after " ^ (string_of_int crrntdp)))
+          raise (ParseError(IllegalItemDepth{ range = rng; before = depth; current = crrntdp }))
 
 
   let make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
@@ -365,7 +364,7 @@ main:
   | header=list(headerelem); utast=expr; EOI
       { UTDocumentFile(header, utast) }
   | rng=EOI
-      { raise (ParseErrorDetail(rng, "empty input")) }
+      { raise (ParseError(EmptyInputFile(rng))) }
 ;
 main_lib:
   | MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; STRUCT; utbinds=list(bind); END

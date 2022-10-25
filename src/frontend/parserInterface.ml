@@ -1,6 +1,4 @@
 
-exception InternalError of Range.t
-
 module I = Parser.MenhirInterpreter
 
 open MyUtil
@@ -18,7 +16,7 @@ let k_fail chkpt =
       let cnumS = lposS.Lexing.pos_cnum - lposS.Lexing.pos_bol in
       let cnumE = lposE.Lexing.pos_cnum - lposE.Lexing.pos_bol in
       let rng = Range.make lposS.Lexing.pos_fname lposS.Lexing.pos_lnum cnumS cnumE in
-      raise (InternalError(rng))
+      raise (ParseError(CannotProgressParsing(rng)))
 
   | _ ->
       assert false
@@ -32,8 +30,8 @@ let process_common (fname : string) (lexbuf : Lexing.lexbuf) =
   try
     return @@ I.loop_handle k_success k_fail supplier (Parser.Incremental.main lexbuf.Lexing.lex_curr_p)
   with
-  | InternalError(rng) ->
-      err rng
+  | ParseError(e) ->
+      err e
 
 
 let process_file (abspath : abs_path) =

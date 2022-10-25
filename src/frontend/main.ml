@@ -401,10 +401,26 @@ let error_log_environment suspended =
               NormalLine("cannot specify 'use ...' here; use 'use ... of ...' instead.");
             ]
 
-        | FailedToParse(rng) ->
-            report_error Parser [
-              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-            ]
+        | FailedToParse(e) ->
+            begin
+              match e with
+              | CannotProgressParsing(rng) ->
+                  report_error Parser [
+                    NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+                  ]
+
+              | IllegalItemDepth{ range = rng; before; current } ->
+                  report_error Parser [
+                    NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+                    NormalLine(Printf.sprintf "illegal item depth %d after %d" before current);
+                  ]
+
+              | EmptyInputFile(rng) ->
+                  report_error Parser [
+                    NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+                    NormalLine("empty input.");
+                  ]
+            end
       end
 
   | OpenPackageDependencyError(e) ->
@@ -544,12 +560,6 @@ let error_log_environment suspended =
       report_error Lexer [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(s);
-      ]
-
-  | ParseErrorDetail(rng, s) ->
-      report_error Parser [
-        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(s)
       ]
 
   | LoadMDSetting.MultipleCodeNameDesignation(rng, s) ->

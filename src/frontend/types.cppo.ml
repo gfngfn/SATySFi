@@ -4,7 +4,17 @@ open GraphicBase
 open SyntaxBase
 open MyUtil
 
-exception ParseErrorDetail of Range.t * string
+type parse_error =
+  | CannotProgressParsing of Range.t
+  | IllegalItemDepth of {
+      range   : Range.t;
+      before  : int;
+      current : int;
+    }
+  | EmptyInputFile of Range.t
+[@@deriving show { with_path = false }]
+
+exception ParseError of parse_error
 
 
 let string_of_uchar (uch : Uchar.t) : string =

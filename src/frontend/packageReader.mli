@@ -5,7 +5,7 @@ open Types
 type error =
   | PackageConfigNotFound of abs_path
   | PackageConfigError    of YamlDecoder.error
-  | FailedToParse         of Range.t
+  | FailedToParse         of parse_error
   | NotALibraryFile       of abs_path
 [@@deriving show]
 

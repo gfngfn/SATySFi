@@ -9,7 +9,7 @@ type error =
   | LibraryContainsWholeReturnValue of abs_path
   | DocumentLacksWholeReturnValue   of abs_path
   | CannotUseHeaderUse              of Range.t
-  | FailedToParse                   of Range.t
+  | FailedToParse                   of parse_error
 
 type 'a ok = ('a, error) result
 
