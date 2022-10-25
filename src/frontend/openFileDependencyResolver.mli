@@ -7,6 +7,7 @@ type error =
   | CannotReadFileOwingToSystem     of string
   | LibraryContainsWholeReturnValue of abs_path
   | DocumentLacksWholeReturnValue   of abs_path
+  | CannotUseHeaderUse              of Range.t
   | FailedToParse                   of Range.t
 
-val main : abs_path -> (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file, error) result
+val main : abs_path -> (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file option, error) result

@@ -395,6 +395,12 @@ let error_log_environment suspended =
               NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
             ]
 
+        | CannotUseHeaderUse(rng) ->
+            report_error Interface [
+              NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+              NormalLine("cannot specify 'use ...' here; use 'use ... of ...' instead.");
+            ]
+
         | FailedToParse(rng) ->
             report_error Parser [
               NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
@@ -1140,7 +1146,7 @@ let build
     Logging.dump_file dump_file_exists abspath_dump;
 
     (* Resolve dependency of the document and the local source files: *)
-    let (package_names, sorted_locals, utdoc) =
+    let (package_names, sorted_locals, utdoc_opt) =
       match OpenFileDependencyResolver.main abspath_in with
       | Ok(triple) -> triple
       | Error(e)   -> raise (OpenFileDependencyError(e))
@@ -1168,16 +1174,21 @@ let build
       ) (GlobalTypeenv.empty, Alist.empty)
     in
 
-    (* Typechecking and elaboration: *)
-    let (libs_local, ast_doc) =
-      match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
-      | Ok(pair) -> pair
-      | Error(e) -> raise (PackageCheckError(e))
-    in
-    let libs = Alist.to_list (Alist.append libacc libs_local) in
+    match utdoc_opt with
+    | None ->
+        ()
 
-    if type_check_only then
-      ()
-    else
-      preprocess_and_evaluate env libs ast_doc abspath_in abspath_out abspath_dump
+    | Some(utdoc) ->
+        (* Typechecking and elaboration: *)
+        let (libs_local, ast_doc) =
+          match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+          | Ok(pair) -> pair
+          | Error(e) -> raise (PackageCheckError(e))
+        in
+        let libs = Alist.to_list (Alist.append libacc libs_local) in
+
+        if type_check_only then
+          ()
+        else
+          preprocess_and_evaluate env libs ast_doc abspath_in abspath_out abspath_dump
   )

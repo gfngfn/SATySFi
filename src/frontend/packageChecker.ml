@@ -41,7 +41,7 @@ let add_dependency_to_type_environment ~(package_only : bool) (header : header_e
         begin
           match (kind, genv |> GlobalTypeenv.find_opt modnm) with
           | (LocalDependency, None) ->
-              failwith (Printf.sprintf "TODO: add_dependency_to_type_environment %s" modnm)
+              assert false
 
           | (PackageDependency, None) ->
               err @@ UnknownPackageDependency(rng, modnm)
@@ -122,12 +122,10 @@ let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : pa
 
 let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sorted_locals : (abs_path * untyped_library_file) list) (utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
   let open ResultMonad in
-  Format.printf "****LOCALS: %s\n" (sorted_locals |> List.map (fun (_, (_, ((_, modnm), _, _))) -> modnm) |> String.concat ", "); (* TODO: remove this *)
   let* (genv, libacc) =
     sorted_locals |> foldM (fun (genv, libacc) (abspath, utlib) ->
       let (header, (modident, utsig_opt, utbinds)) = utlib in
       let (_, modnm) = modident in
-      Format.printf "****ADD: %s %a\n" modnm (Format.pp_print_list pp_header_element) header; (* TODO: remove this *)
       let* ((_quant, ssig), binds) =
         let* tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
         typecheck_library_file ~for_struct:tyenv ~for_sig:tyenv abspath utsig_opt utbinds
@@ -141,7 +139,6 @@ let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sor
   (* Typecheck the document: *)
   let* ast_doc =
     let (abspath, (header, utast)) = utdoc in
-    Format.printf "****ADD TO DOC: %a\n" (Format.pp_print_list pp_header_element) header; (* TODO: remove this *)
     let* tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
     typecheck_document_file tyenv abspath utast
   in

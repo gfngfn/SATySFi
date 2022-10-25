@@ -8,6 +8,7 @@ type error =
   | CannotReadFileOwingToSystem     of string
   | LibraryContainsWholeReturnValue of abs_path
   | DocumentLacksWholeReturnValue   of abs_path
+  | CannotUseHeaderUse              of Range.t
   | FailedToParse                   of Range.t
 
 type 'a ok = ('a, error) result
@@ -35,30 +36,24 @@ let get_candidate_file_extensions () =
   | TextMode(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
 
 
-(*
-let get_package_abs_path (package : string) : abs_path =
-  let extcands = get_candidate_file_extensions () in
-  Config.resolve_package_exn package extcands
-*)
-
-
 type local_or_package =
   | Local   of module_name ranged * abs_path
   | Package of module_name ranged
 
 
-let get_header (curdir : string) (headerelem : header_element) : local_or_package =
+let get_header (curdir : string) (headerelem : header_element) : local_or_package ok =
+  let open ResultMonad in
   match headerelem with
   | HeaderUsePackage(modident) ->
-      Package(modident)
+      return @@ Package(modident)
 
-  | HeaderUse(_) ->
-      failwith "TODO (error): cannot use 'use X' here; use 'use X of path' instead"
+  | HeaderUse((rng, _)) ->
+      err @@ CannotUseHeaderUse(rng)
 
   | HeaderUseOf(modident, s_relpath) ->
       let extcands = get_candidate_file_extensions () in
       let abspath = Config.resolve_local_exn curdir s_relpath extcands in
-      Local(modident, abspath)
+      return @@ Local(modident, abspath)
 
 
 let rec register_library_file (graph : FileDependencyGraph.t) (package_names : PackageNameSet.t) ~prev:(vertex_prev_opt : FileDependencyGraph.vertex option) (abspath : abs_path) : (PackageNameSet.t * FileDependencyGraph.t) ok =
@@ -94,7 +89,8 @@ let rec register_library_file (graph : FileDependencyGraph.t) (package_names : P
         | Some(vertex_prev) -> graph |> FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
       in
       header |> foldM (fun (package_names, graph) headerelem ->
-        match get_header curdir headerelem with
+        let* local_or_package = get_header curdir headerelem in
+        match local_or_package with
         | Package((_, main_module_name)) ->
             return (package_names |> PackageNameSet.add main_module_name, graph)
 
@@ -103,7 +99,7 @@ let rec register_library_file (graph : FileDependencyGraph.t) (package_names : P
       ) (package_names, graph)
 
 
-let register_document_file (graph : FileDependencyGraph.t) (package_names : PackageNameSet.t) (abspath_in : abs_path) : (PackageNameSet.t * FileDependencyGraph.t * untyped_document_file) ok =
+let register_document_file (abspath_in : abs_path) : (PackageNameSet.t * FileDependencyGraph.t * untyped_document_file) ok =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
@@ -119,71 +115,66 @@ let register_document_file (graph : FileDependencyGraph.t) (package_names : Pack
   let (header, _) = utdoc in
   let* (package_names, graph) =
     header |> foldM (fun (package_names, graph) headerelem ->
-      match get_header curdir headerelem with
+      let* local_or_package = get_header curdir headerelem in
+      match local_or_package with
       | Package((_, main_module_name)) ->
           return (package_names |> PackageNameSet.add main_module_name, graph)
 
       | Local(_, abspath_sub) ->
           register_library_file graph package_names ~prev:None abspath_sub
-    ) (package_names, graph)
+    ) (PackageNameSet.empty, FileDependencyGraph.empty)
   in
   return (package_names, graph, utdoc)
 
-(*
-let register_markdown_file (graph : FileDependencyGraph.t) (setting : string) (abspath_in : abs_path) : FileDependencyGraph.t =
+
+let register_markdown_file (setting : string) (abspath_in : abs_path) : (PackageNameSet.t * untyped_document_file) ok =
+  let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
   let (cmdrcd, depends) =
     let abspath =
       Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md")))
+        (* TODO: error handling by `ResultMonad` *)
     in
     LoadMDSetting.main abspath
   in
-  let utast =
+  let* utast =
     match MyUtil.string_of_file abspath_in with
-    | Ok(data)   -> DecodeMD.decode cmdrcd data
-    | Error(msg) -> raise (CannotReadFileOwingToSystem(msg))
+    | Ok(data)   -> return (DecodeMD.decode cmdrcd data)
+    | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in
-  let (graph, vertex) =
-    match graph |> FileDependencyGraph.add_vertex abspath_in (DocumentFile(utast)) with
-    | Error(_) -> assert false
-    | Ok(pair) -> pair
+  let package_names =
+    depends |> List.fold_left (fun package_names main_module_name ->
+      package_names |> PackageNameSet.add main_module_name
+    ) PackageNameSet.empty
   in
-  depends |> List.fold_left (fun graph package ->
-    let abspath_sub = get_package_abs_path package in
-    match graph |> FileDependencyGraph.get_vertex abspath_sub with
-    | Some(vertex_sub) ->
-        graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub
-
-    | None ->
-        register_library_file graph ~prev:vertex abspath_sub
-
-  ) graph
-*)
+  let header =
+    depends |> List.map (fun main_module_name ->
+      HeaderUsePackage((Range.dummy "md-header", main_module_name))
+    )
+  in
+  return (package_names, (header, utast))
 
 
-let main (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file) ok =
+let main (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file option) ok =
   let open ResultMonad in
-  let graph = FileDependencyGraph.empty in
-  let package_names = PackageNameSet.empty in
-  let* (package_names, graph, utdoc) =
+  let* (package_names, graph, utdoc_opt) =
     match OptionState.get_input_kind () with
     | OptionState.SATySFi ->
         if has_library_extension abspath_in && OptionState.is_type_check_only () then
-          failwith "TODO: --type-check-only"
-(*
-          register_library_file graph package_names ~prev:None abspath_in
-*)
+          let graph = FileDependencyGraph.empty in
+          let package_names = PackageNameSet.empty in
+          let* (package_names, graph) = register_library_file graph package_names ~prev:None abspath_in in
+          return (package_names, graph, None)
         else
-          register_document_file graph package_names abspath_in
+          let* (package_names, graph, utdoc) = register_document_file abspath_in in
+          return (package_names, graph, Some(utdoc))
 
-    | OptionState.Markdown(_setting) ->
-        failwith "TODO: Markdown"
-(*
-        register_markdown_file graph setting abspath_in
-*)
+    | OptionState.Markdown(setting) ->
+        let* (package_names, utdoc) = register_markdown_file setting abspath_in in
+        return (package_names, FileDependencyGraph.empty, Some(utdoc))
   in
   let* sorted_locals =
     FileDependencyGraph.topological_sort graph
       |> Result.map_error (fun cycle -> CyclicFileDependency(cycle))
   in
-  return (package_names, sorted_locals, utdoc)
+  return (package_names, sorted_locals, utdoc_opt)

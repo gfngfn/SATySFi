@@ -38,7 +38,6 @@ let rec add_package (graph : graph) ~prev:(vertex_prev_opt : vertex option) (mai
       return graph
 
   | None ->
-      Printf.printf "****PACKAGE: %s\n" main_module_name; (* TODO: remove this *)
       let* absdir =
         Config.resolve_package_directory main_module_name
           |> Result.map_error (fun cands -> PackageDirectoryNotFound(cands))
@@ -59,7 +58,6 @@ let rec add_package (graph : graph) ~prev:(vertex_prev_opt : vertex option) (mai
           | Some(vertex_prev) -> graph |> PackageDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
         in
         package.dependencies |> foldM (fun graph main_module_name_dep ->
-          Printf.printf "****DEP2: %s ---> %s\n" main_module_name main_module_name_dep; (* TODO: remove this *)
           add_package graph ~prev:(Some(vertex)) main_module_name_dep
         ) graph
       else
@@ -81,5 +79,4 @@ let main (package_name_set_init : PackageNameSet.t) : (package_info list) ok =
     PackageDependencyGraph.topological_sort graph
       |> Result.map_error (fun cycle -> CyclicPackageDependency(cycle))
   in
-  Printf.printf "****SORTED: %s\n" (pairs |> List.map (fun (n, _) -> n) |> String.concat " > "); (* TODO: remove this *)
   return (pairs |> List.map (fun (_, package) -> package))

@@ -22,14 +22,14 @@ let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untype
         | Error(_) -> assert false
         | Ok(pair) -> pair
       in
-      let entry = (modnm, utlib, vertex) in
+      let entry = (utlib, vertex) in
       (graph, modnm_to_path |> ModuleNameMap.add modnm abspath, Alist.extend entryacc entry)
     ) (FileDependencyGraph.empty, ModuleNameMap.empty, Alist.empty)
   in
 
   (* Add edges: *)
   let* graph =
-    entryacc |> Alist.to_list |> foldM (fun graph (modnm, utlib, vertex) ->
+    entryacc |> Alist.to_list |> foldM (fun graph (utlib, vertex) ->
       let (header, _) = utlib in
       header |> foldM (fun graph headerelem ->
         match headerelem with
@@ -46,7 +46,6 @@ let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untype
                         assert false
 
                     | Some(vertex_sub) ->
-                        Printf.printf "****SRC DEP: %s ---> %s\n" modnm modnm_sub; (* TODO: remove this *)
                         let graph = graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub in
                         return graph
                   end

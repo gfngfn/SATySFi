@@ -1,0 +1,11 @@
+language: "v0.1.0"
+main_module: "MDJa"
+source_directories:
+  - "./src"
+dependencies:
+  - "Stdlib"
+  - "Math"
+  - "Code"
+  - "Itemize"
+  - "Annot"
+  - "FootnoteScheme"

@@ -1,99 +1,103 @@
-@require: pervasives
-@require: code
-@require: math
-@require: itemize
-@require: color
-@require: hdecoset
-@require: vdecoset
-@require: annot
+use package Stdlib
+use package Math
+use package Code
+use package Itemize
+use package Annot
 
+module MDJa :> sig
+  val document : (|
+    title  : inline-text,
+    author : inline-text,
+  |) -> block-text -> document
 
-module MDJa : sig
-  val document : 'a -> block-text -> document
-    constraint 'a :: (|
-      title  : inline-text;
-      author : inline-text;
-    |)
+  val +h1 : block [inline-text, block-text]
+  val +h2 : block [inline-text, block-text]
+  val +h3 : block [inline-text, block-text]
+  val +h4 : block [inline-text, block-text]
+  val +p : block [inline-text]
+  val +ul : block [list inline-text]
+  val +ul-block : block [list block-text]
+  val +ol : block [list inline-text]
+  val +code : block [string]
+  val +console : block [string]
+  val +quote : block [block-text]
+  val +hr : block []
+  val +error : block [string]
 
-  direct +h1 : [inline-text; block-text] block-cmd
-  direct +h2 : [inline-text; block-text] block-cmd
-  direct +h3 : [inline-text; block-text] block-cmd
-  direct +h4 : [inline-text; block-text] block-cmd
-  direct +p : [inline-text] block-cmd
-  direct +ul : [inline-text list] block-cmd
-  direct +ul-block : [block-text list] block-cmd
-  direct +ol : [inline-text list] block-cmd
-  direct +code : [string] block-cmd
-  direct +console : [string] block-cmd
-  direct +quote : [block-text] block-cmd
-  direct +hr : [] block-cmd
-  direct +error : [string] block-cmd
-
-  direct \code : [string] inline-cmd
-  direct \emph : [inline-text] inline-cmd
-  direct \bold : [inline-text] inline-cmd
-  direct \link : [string; inline-text] inline-cmd
-  direct \reference : [string; string; (string * string) option] inline-cmd
-  direct \img : [string; string; string] inline-cmd
-  direct \hard-break : [] inline-cmd
-  direct \embed-block : [block-text] inline-cmd
-  direct \error : [string] inline-cmd
+  val \code : inline [string]
+  val \emph : inline [inline-text]
+  val \bold : inline [inline-text]
+  val \link : inline [string, inline-text]
+  val \reference : inline [string, string, option (string * string)]
+  val \img : inline [string, string, string]
+  val \hard-break : inline []
+  val \embed-block : inline [block-text]
+  val \error : inline [string]
 end = struct
 
-
-  let paper = A4Paper
-  let text-origin = (80pt, 100pt)
-  let text-width = 440pt
-  let text-height = 630pt
-  let footer-origin = (40pt, 780pt)
-
-  let skip-before-content = 20pt
-
-  let font-size-main = 12pt
-  let font-size-title = 20pt
-  let font-size-h1 = 18pt
-  let font-size-h2 = 16pt
-  let font-size-h3 = 14pt
-  let font-size-h4 = 12.5pt
-
-  let font-ratio-cjk = 0.88
-
-  let font-latin-roman  = (`Junicode`   , 1., 0.)
-  let font-latin-italic = (`Junicode-it`, 1., 0.)
-  let font-latin-sans   = (`lmsans`     , 1., 0.)
-  let font-latin-mono   = (`lmmono`     , 1., 0.)
-
-  let font-cjk-gothic = (`ipaexg`, font-ratio-cjk, 0.)
-  let font-cjk-mincho = (`ipaexm`, font-ratio-cjk, 0.)
-
-  let hr-margin = 5mm
-  let hr-thickness = 1pt
-
-  let code-background = Gray(0.875)
-
-  let text-color-link = RGB(0.0, 0.5, 1.0)
+  %- TODO: remove this by using 'open'
+  module List = Stdlib.List
+  module Pervasives = Stdlib.Pervasives
+  module Color = Stdlib.Color
+  module Gr = Stdlib.Gr
+  module PaperSize = Stdlib.PaperSize
+  module HDecoSet = Stdlib.HDecoSet
+  module VDecoSet = Stdlib.VDecoSet
 
 
-  let-mutable h1-number <- 0
-  let-mutable h2-number <- 0
-  let-mutable h3-number <- 0
-  let-mutable h4-number <- 0
-  let-mutable h5-number <- 0
-  let-mutable h6-number <- 0
-  let-mutable reference-acc <- []
+  val paper = PaperSize.a4
+  val text-origin = (80pt, 100pt)
+  val text-width = 440pt
+  val text-height = 630pt
+  val footer-origin = (40pt, 780pt)
+
+  val skip-before-content = 20pt
+
+  val font-size-main = 12pt
+  val font-size-title = 20pt
+  val font-size-h1 = 18pt
+  val font-size-h2 = 16pt
+  val font-size-h3 = 14pt
+  val font-size-h4 = 12.5pt
+
+  val font-ratio-cjk = 0.88
+
+  val font-latin-roman  = (`Junicode`   , 1., 0.)
+  val font-latin-italic = (`Junicode-it`, 1., 0.)
+  val font-latin-sans   = (`lmsans`     , 1., 0.)
+  val font-latin-mono   = (`lmmono`     , 1., 0.)
+
+  val font-cjk-gothic = (`ipaexg`, font-ratio-cjk, 0.)
+  val font-cjk-mincho = (`ipaexm`, font-ratio-cjk, 0.)
+
+  val hr-margin = 5mm
+  val hr-thickness = 1pt
+
+  val code-background = Gray(0.875)
+
+  val text-color-link = RGB(0.0, 0.5, 1.0)
 
 
-  let set-latin-font font ctx =
+  val mutable h1-number <- 0
+  val mutable h2-number <- 0
+  val mutable h3-number <- 0
+  val mutable h4-number <- 0
+  val mutable h5-number <- 0
+  val mutable h6-number <- 0
+  val mutable reference-acc <- []
+
+
+  val set-latin-font font ctx =
     ctx |> set-font Latin font
 
 
-  let set-cjk-font font ctx =
+  val set-cjk-font font ctx =
     ctx |> set-font Kana font
         |> set-font HanIdeographic font
 
 
-  let initial-context =
-    get-initial-context text-width (command \math)
+  val initial-context =
+    get-initial-context text-width (command \Math.math)
       |> set-dominant-narrow-script Latin
       |> set-dominant-wide-script Kana
       |> set-latin-font font-latin-roman
@@ -102,45 +106,45 @@ end = struct
       |> set-space-ratio 0.275 0.08 0.12
 
 
-  let footer pbinfo =
+  val footer pbinfo =
     let it-nombre = embed-string (arabic pbinfo#page-number) in
     let ctx = initial-context in
     line-break true true ctx
       (inline-fil ++ read-inline ctx {— #it-nombre; —} ++ inline-fil)
 
 
-  let make-title-context ctx =
+  val make-title-context ctx =
     ctx |> set-font-size font-size-title
         |> set-latin-font font-latin-roman
         |> set-cjk-font font-cjk-mincho
 
 
-  let pads-zero = (0pt, 0pt, 0pt, 0pt)
+  val pads-zero = (0pt, 0pt, 0pt, 0pt)
 
 
-  let-inline ctx \link url it =
+  val inline ctx \link url it =
     inline-frame-breakable pads-zero (Annot.link-to-uri-frame url None)
       (read-inline (ctx |> set-text-color text-color-link) it)
 
 
-  let-inline ctx \jump key-pdf-loc it =
+  val inline ctx \jump key-pdf-loc it =
     inline-frame-breakable pads-zero (Annot.link-to-location-frame key-pdf-loc None)
       (read-inline (ctx |> set-text-color text-color-link) it)
 
 
-  let set-heading-font size ctx =
+  val set-heading-font size ctx =
     ctx |> set-latin-font font-latin-sans
         |> set-cjk-font font-cjk-gothic
         |> set-font-size size
 
 
-  let h1-heading = set-heading-font font-size-h1
-  let h2-heading = set-heading-font font-size-h2
-  let h3-heading = set-heading-font font-size-h3
-  let h4-heading = set-heading-font font-size-h4
+  val h1-heading = set-heading-font font-size-h1
+  val h2-heading = set-heading-font font-size-h2
+  val h3-heading = set-heading-font font-size-h3
+  val h4-heading = set-heading-font font-size-h4
 
 
-  let document rcd bt =
+  val document rcd bt =
     let ctx = initial-context in
     let bb-title =
       let ctx = ctx |> make-title-context in
@@ -174,42 +178,43 @@ end = struct
             line-break true false ctx (read-inline ctx {参考文献} ++ inline-fil)
           in
           bb-heading +++ bb-body
+      end
     in
     let pagecontf _ =
       (|
-        text-origin = text-origin;
-        text-height = text-height;
+        text-origin = text-origin,
+        text-height = text-height,
       |)
     in
     let pagepartsf pbinfo =
       (|
-        header-origin  = (0pt, 0pt);
-        header-content = block-nil;
-        footer-origin  = footer-origin;
-        footer-content = footer pbinfo;
+        header-origin  = (0pt, 0pt),
+        header-content = block-nil,
+        footer-origin  = footer-origin,
+        footer-content = footer pbinfo,
       |)
     in
     page-break paper pagecontf pagepartsf
       (List.fold-left (+++) block-nil [
-        bb-title; bb-author;
-        block-skip skip-before-content;
-        bb-main;
-        bb-reference;
+        bb-title, bb-author,
+        block-skip skip-before-content,
+        bb-main,
+        bb-reference,
       ])
 
 
-  let increment-counter counter counter-children =
+  val increment-counter counter counter-children =
     let () = counter <- !counter + 1 in
     counter-children |> List.iter (fun r -> (r <- 0))
 
 
-  let heading-scheme ctx bb-title bt =
+  val heading-scheme ctx bb-title bt =
     let bb-content = read-block ctx bt in
     bb-title +++ bb-content
 
 
-  let-block ctx +h1 it bt =
-    let () = increment-counter h1-number [h2-number; h3-number; h4-number; h5-number; h6-number] in
+  val block ctx +h1 it bt =
+    let () = increment-counter h1-number [h2-number, h3-number, h4-number, h5-number, h6-number] in
     let bb-title =
       let s-num = arabic !h1-number in
       let it-num = embed-string s-num in
@@ -220,8 +225,8 @@ end = struct
     heading-scheme ctx bb-title bt
 
 
-  let-block ctx +h2 it bt =
-    let () = increment-counter h2-number [h3-number; h4-number; h5-number; h6-number] in
+  val block ctx +h2 it bt =
+    let () = increment-counter h2-number [h3-number, h4-number, h5-number, h6-number] in
     let bb-title =
       let s-num = arabic !h1-number ^ `.` ^ arabic !h2-number in
       let it-num = embed-string s-num in
@@ -232,8 +237,8 @@ end = struct
     heading-scheme ctx bb-title bt
 
 
-  let-block ctx +h3 it bt =
-    let () = increment-counter h3-number [h4-number; h5-number; h6-number] in
+  val block ctx +h3 it bt =
+    let () = increment-counter h3-number [h4-number, h5-number, h6-number] in
     let bb-title =
       let s-num = arabic !h1-number ^ `.` ^ arabic !h2-number ^ `.` ^ arabic !h3-number in
       let it-num = embed-string s-num in
@@ -244,7 +249,7 @@ end = struct
     heading-scheme ctx bb-title bt
 
 
-  let-block ctx +h4 it bt =
+  val block ctx +h4 it bt =
     let bb-title =
       let s-num = arabic !h1-number ^ `.` ^ arabic !h2-number ^ `.` ^ arabic !h3-number ^ `.` ^ arabic !h4-number in
       let it-num = embed-string s-num in
@@ -255,54 +260,54 @@ end = struct
     heading-scheme ctx bb-title bt
 
 
-  let get-quad-size ctx =
+  val get-quad-size ctx =
     get-font-size ctx *' font-ratio-cjk
 
 
-  let-block ctx +p it =
+  val block ctx +p it =
     let indent-size = 0pt in % get-quad-size ctx in
     line-break true true ctx
       (inline-skip indent-size ++ read-inline ctx it ++ inline-fil)
 
 
-  let-block +ul its =
+  val block +ul its =
     let items = its |> List.map (fun it -> Item(it, [])) in
-    '<+listing?:(true)(Item({}, items));>
+    '<+Itemize.listing?(break = true)(Item({}, items));>
 
 
-  let-inline ctx \embed-block bt =
+  val inline ctx \embed-ul-block bt =
     embed-block-breakable ctx (read-block ctx bt) ++ inline-fil
 
 
-  let-block ctx +ul-block bts =
+  val block ctx +ul-block bts =
     let items =
       bts |> List.map (fun bt -> (
-        Item({\embed-block(bt);}, [])
+        Item({\embed-ul-block(bt);}, [])
       ))
     in
-    read-block ctx '<+listing?:(true)(Item({}, items));>
+    read-block ctx '<+Itemize.listing?(break = true)(Item({}, items));>
 
 
-  let-block +ol its =
+  val block +ol its =
     let items = its |> List.map (fun it -> Item(it, [])) in
-    '<+enumerate(Item({}, items));>
+    '<+Itemize.enumerate(Item({}, items));>
 
 
-  let fix-block-code s =
+  val fix-block-code s =
     string-unexplode [0x0A] ^ s
       % dirty trick; should fix '+Code.code' and the parser of SATySFi
 
 
-  let-block ctx +code s =
+  val block ctx +code s =
     let ctx = set-font-size (get-font-size ctx *' 0.875) ctx in
     read-block ctx '<+Code.code(fix-block-code s);>
 
 
-  let-block +console s =
+  val block +console s =
     '<+Code.console(fix-block-code s);>
 
 
-  let-block ctx +quote it =
+  val block ctx +quote it =
     let qsize = get-quad-size ctx in
     let pads = (qsize, 0pt, 0pt, 0pt) in
     let decoset = VDecoSet.quote-round 6pt 4pt (Gray(0.75)) in
@@ -310,23 +315,23 @@ end = struct
       (fun ctx -> read-block ctx it)
 
 
-  let-block ctx +hr =
+  val block ctx +hr =
     let w = get-text-width ctx in
     let h = hr-margin +' hr-thickness *' 0.5 in
     let color = (Gray(0.75)) in
     line-break true true ctx
       (inline-graphics w h h (fun (x, y) ->
-        [ stroke hr-thickness color (Gr.line (x, y) (x +' w, y)); ]
+        stroke hr-thickness color (Gr.line (x, y) (x +' w, y))
       ))
 
-  let-block ctx +error s =
+  val block ctx +error s =
     let ctx = ctx |> set-text-color Color.red in
     let it = embed-string s in
     line-break true true ctx
       (read-inline ctx {ERROR (B): \"#it;\"} ++ inline-fil)
 
 
-  let-inline ctx \emph it =
+  val inline ctx \emph it =
     let ctx =
       ctx |> set-cjk-font font-cjk-gothic
           |> set-latin-font font-latin-sans
@@ -334,15 +339,15 @@ end = struct
     read-inline ctx it
 
 
-  let-inline \bold it =
+  val inline \bold it =
     {\emph(it);}
 
 
-  let strut h d =
-    inline-graphics 0pt h d (fun _ -> [])
+  val strut h d =
+    inline-graphics 0pt h d (fun _ -> unite-graphics [])
 
 
-  let-inline ctx \code s =
+  val inline ctx \code s =
     let ib-strut = strut 8pt 3pt in
     let ib =
       let ctx =
@@ -358,7 +363,7 @@ end = struct
     script-guard Latin (inline-frame-breakable pads decoset ib)
 
 
-  let-inline ctx \url s =
+  val inline ctx \url s =
     let ctx =
       ctx |> set-latin-font font-latin-mono
           |> set-cjk-font font-cjk-gothic
@@ -366,7 +371,7 @@ end = struct
     read-inline ctx (embed-string s)
 
 
-  let-inline ctx \reference tag display opt =
+  val inline ctx \reference tag display opt =
     let it = embed-string display in
     match opt with
     | None ->
@@ -382,19 +387,18 @@ end = struct
         let key-pdf-loc = `reference:` ^ tag in
         let it-tag = embed-string tag in
         read-inline ctx {\jump(key-pdf-loc){#it; [#it-tag;]}}
+    end
 
-  let-inline ctx \img alt src title =
+  val inline ctx \img alt src title =
     use-image-by-width (load-image src) 5cm
 
-  let-inline ctx \hard-break =
-    mandatory-break ctx
+  val inline ctx \hard-break =
+    Pervasives.mandatory-break ctx
 
-
-  let-inline ctx \embed-block bt =
+  val inline ctx \embed-block bt =
     inline-fil ++ embed-block-breakable ctx (read-block ctx bt) ++ omit-skip-after
 
-
-  let-inline ctx \error s =
+  val inline ctx \error s =
     let ctx = ctx |> set-text-color Color.red in
     let it = embed-string s in
     read-inline ctx {ERROR (I): \"#it;\"}
