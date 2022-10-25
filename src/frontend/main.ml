@@ -1074,6 +1074,12 @@ let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
   make_abs_path abspath_str
 
 
+let get_candidate_file_extensions () =
+  match OptionState.get_output_mode () with
+  | PdfMode           -> [ ".satyh"; ".satyg" ]
+  | TextMode(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
+
+
 let build
     ~(fpath_in : string)
     ~(fpath_out_opt : string option)
@@ -1145,16 +1151,18 @@ let build
     let (tyenv_prim, env, dump_file_exists) = initialize abspath_dump in
     Logging.dump_file dump_file_exists abspath_dump;
 
+    let extensions = get_candidate_file_extensions () in
+
     (* Resolve dependency of the document and the local source files: *)
     let (package_names, sorted_locals, utdoc_opt) =
-      match OpenFileDependencyResolver.main abspath_in with
+      match OpenFileDependencyResolver.main ~extensions abspath_in with
       | Ok(triple) -> triple
       | Error(e)   -> raise (OpenFileDependencyError(e))
     in
 
     (* Resolve dependency among packages that the document depends on: *)
     let sorted_packages =
-      match OpenPackageDependencyResolver.main package_names with
+      match OpenPackageDependencyResolver.main ~extensions package_names with
       | Ok(sorted_packages) -> sorted_packages
       | Error(e)            -> raise (OpenPackageDependencyError(e))
     in

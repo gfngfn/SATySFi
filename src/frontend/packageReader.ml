@@ -67,7 +67,7 @@ let listup_sources_in_directory (extensions : string list) (absdir_src : abs_pat
   )
 
 
-let main (absdir_package : abs_path) : package_info ok =
+let main ~(extensions : string list) (absdir_package : abs_path) : package_info ok =
   let open ResultMonad in
   let* config = load_config absdir_package in
   let* package =
@@ -82,7 +82,6 @@ let main (absdir_package : abs_path) : package_info ok =
             make_abs_path (Filename.concat (get_abs_path_string absdir_package) source_directory)
           )
         in
-        let extensions = [ ".satyh"; ".satyg" ] in (* TODO: generalize this to the text mode *)
         let abspaths_src = absdirs_src |> List.map (listup_sources_in_directory extensions) |> List.concat in
         let* acc =
           abspaths_src |> foldM (fun acc abspath_src ->

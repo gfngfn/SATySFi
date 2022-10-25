@@ -22,7 +22,7 @@ type graph = package_info PackageDependencyGraph.t
 type vertex = PackageDependencyGraph.Vertex.t
 
 
-let rec add_package (graph : graph) ~prev:(vertex_prev_opt : vertex option) (main_module_name : module_name) : graph ok =
+let rec add_package (extensions : string list) (graph : graph) ~prev:(vertex_prev_opt : vertex option) (main_module_name : module_name) : graph ok =
   let open ResultMonad in
   match graph |> PackageDependencyGraph.get_vertex main_module_name with
   | Some(vertex) ->
@@ -43,7 +43,7 @@ let rec add_package (graph : graph) ~prev:(vertex_prev_opt : vertex option) (mai
           |> Result.map_error (fun cands -> PackageDirectoryNotFound(cands))
       in
       let* package =
-        PackageReader.main absdir
+        PackageReader.main ~extensions absdir
           |> Result.map_error (fun e -> PackageReadingError(e))
       in
       if String.equal package.main_module_name main_module_name then
@@ -58,7 +58,7 @@ let rec add_package (graph : graph) ~prev:(vertex_prev_opt : vertex option) (mai
           | Some(vertex_prev) -> graph |> PackageDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
         in
         package.dependencies |> foldM (fun graph main_module_name_dep ->
-          add_package graph ~prev:(Some(vertex)) main_module_name_dep
+          add_package extensions graph ~prev:(Some(vertex)) main_module_name_dep
         ) graph
       else
         err @@ MainModuleNameMismatch{
@@ -67,12 +67,12 @@ let rec add_package (graph : graph) ~prev:(vertex_prev_opt : vertex option) (mai
         }
 
 
-let main (package_name_set_init : PackageNameSet.t) : (package_info list) ok =
+let main ~(extensions : string list) (package_name_set_init : PackageNameSet.t) : (package_info list) ok =
   let open ResultMonad in
   let main_module_names_init = package_name_set_init |> PackageNameSet.elements in
   let* graph =
     main_module_names_init |> foldM (fun graph main_module_name ->
-      add_package graph ~prev:None main_module_name
+      add_package extensions graph ~prev:None main_module_name
     ) PackageDependencyGraph.empty
   in
   let* pairs =

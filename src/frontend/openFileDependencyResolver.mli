@@ -10,4 +10,4 @@ type error =
   | CannotUseHeaderUse              of Range.t
   | FailedToParse                   of Range.t
 
-val main : abs_path -> (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file option, error) result
+val main : extensions:(string list) -> abs_path -> (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file option, error) result
