@@ -25,3 +25,8 @@ type config_error =
   | NotAStringFile            of abs_path * mono_type
   | NoMainModule              of module_name
   | UnknownPackageDependency  of Range.t * module_name
+  | CannotFindLibraryFile     of lib_path * string list
+  | LocalFileNotFound of {
+      relative   : string;
+      candidates : string list;
+    }

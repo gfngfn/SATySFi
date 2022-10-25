@@ -1,5 +1,6 @@
 
 open MyUtil
+open ConfigError
 open LengthInterface
 open HorzBox
 open CharBasis
@@ -10,10 +11,11 @@ exception NotASingleFont        of font_abbrev * abs_path
 exception NotATTCElement        of font_abbrev * abs_path * int
 exception NotASingleMathFont    of math_font_abbrev * abs_path
 exception NotATTCMathFont       of math_font_abbrev * abs_path * int
+exception CannotFindFontFile    of font_abbrev * config_error
 
 type tag = string
 
-val initialize : unit -> unit
+val initialize : unit -> (unit, config_error) result
 
 val get_metrics_of_word : horz_string_info -> uchar_segment list -> OutputText.t * length * length * length
 

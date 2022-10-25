@@ -38,7 +38,7 @@ let get_header (extensions : string list) (curdir : string) (headerelem : header
       err @@ CannotUseHeaderUse(rng)
 
   | HeaderUseOf(modident, s_relpath) ->
-      let abspath = Config.resolve_local_exn curdir s_relpath extensions in
+      let* abspath = Config.resolve_local ~extensions ~origin:curdir ~relative:s_relpath in
       return @@ Local(modident, abspath)
 
 
@@ -116,13 +116,8 @@ let register_document_file (extensions : string list) (abspath_in : abs_path) : 
 let register_markdown_file (setting : string) (abspath_in : abs_path) : (PackageNameSet.t * untyped_document_file) ok =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
-  let (cmdrcd, depends) =
-    let abspath =
-      Config.resolve_lib_file_exn (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md")))
-        (* TODO: error handling by `ResultMonad` *)
-    in
-    LoadMDSetting.main abspath
-  in
+  let* abspath = Config.resolve_lib_file (make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md"))) in
+  let (cmdrcd, depends) = LoadMDSetting.main abspath in (* TODO: make this monadic *)
   let* utast =
     match MyUtil.string_of_file abspath_in with
     | Ok(data)   -> return (DecodeMD.decode cmdrcd data)

@@ -738,11 +738,15 @@ let make_environments table =
 
 
 let make_pdf_mode_environments () =
-  default_font_scheme_ref := SetDefaultFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/default-font.satysfi-hash"));
-  default_hyphen_dictionary := LoadHyph.main (Config.resolve_lib_file_exn (make_lib_path "dist/hyph/english.satysfi-hyph"));
-    (* temporary; should depend on the current language -- *)
-  make_environments pdf_mode_table
+  let open ResultMonad in
+  let* abspath_default_font = Config.resolve_lib_file (make_lib_path "dist/hash/default-font.satysfi-hash") in
+  let* abspath_hyphen = Config.resolve_lib_file (make_lib_path "dist/hyph/english.satysfi-hyph") in
+  default_font_scheme_ref := SetDefaultFont.main abspath_default_font;
+  default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
+    (* TODO: should depend on the current language *)
+  return @@ make_environments pdf_mode_table
 
 
 let make_text_mode_environments () =
-  make_environments text_mode_table
+  let open ResultMonad in
+  return @@ make_environments text_mode_table

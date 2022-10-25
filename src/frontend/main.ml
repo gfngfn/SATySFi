@@ -13,12 +13,14 @@ exception ConfigError of config_error
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
 let reset () =
+  let open ResultMonad in
   if OptionState.is_text_mode () then
-    ()
+    return ()
   else begin
-    FontInfo.initialize ();
+    let* () = FontInfo.initialize () in
     ImageInfo.initialize ();
     NamedDest.initialize ();
+    return ()
   end
 
 
@@ -29,11 +31,16 @@ let initialize (abspath_dump : abs_path) : Typeenv.t * environment * bool =
   EvalVarID.initialize ();
   StoreID.initialize ();
   let dump_file_exists = CrossRef.initialize abspath_dump in
-  let (tyenv, env) =
+  let res =
     if OptionState.is_text_mode () then
       Primitives.make_text_mode_environments ()
     else
       Primitives.make_pdf_mode_environments ()
+  in
+  let (tyenv, env) =
+    match res with
+    | Ok(pair) -> pair
+    | Error(e) -> raise (ConfigError(e))
   in
   begin
     if OptionState.is_bytecomp_mode () then
@@ -92,7 +99,12 @@ let eval_library_file (env : environment) (abspath : abs_path) (binds : binding 
 
 let eval_main (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : syntactic_value =
   Logging.start_evaluation i;
-  reset ();
+  let res = reset () in
+  begin
+    match res with
+    | Ok(())   -> ()
+    | Error(e) -> raise (ConfigError(e))
+  end;
   let env = unfreeze_environment env_freezed in
   let value =
     if OptionState.is_bytecomp_mode () then
@@ -774,35 +786,6 @@ let error_log_environment suspended =
         NormalLine("or specify configuration search paths with -C option.");
       ]
 
-  | Config.PackageNotFound(package, pathcands) ->
-      report_error Interface (List.append [
-        NormalLine("package file not found:");
-        DisplayLine(package);
-        NormalLine("candidate paths:");
-      ] (pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath))))
-
-  | Config.LibraryFileNotFound(relpath, pathcands) ->
-      report_error Interface (List.append [
-        NormalLine("library file not found:");
-        DisplayLine(get_lib_path_string relpath);
-        NormalLine("candidate paths:");
-      ] (pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath))))
-
-  | Config.LibraryFilesNotFound(relpaths, pathcands) ->
-      report_error Interface (List.concat [
-        [ NormalLine("any of the following library file(s) not found:"); ];
-        relpaths |> List.map (fun relpath -> DisplayLine(get_lib_path_string relpath));
-        [ NormalLine("candidate paths:"); ];
-        pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath));
-      ])
-
-  | Config.ImportedFileNotFound(s, pathcands) ->
-      report_error Interface (List.append [
-        NormalLine("imported file not found:");
-        DisplayLine(s);
-        NormalLine("candidate paths:");
-      ] (pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath))))
-
   | ShouldSpecifyOutputFile ->
       report_error Interface [
         NormalLine("should specify output file for text mode.");
@@ -875,6 +858,9 @@ let error_log_environment suspended =
         NormalLine(Printf.sprintf "which is associated with the math font name '%s' and index %d," mfabbrev i);
         NormalLine("is not a TrueType collection or does not have a MATH table.");
       ]
+
+  | FontInfo.CannotFindFontFile(abbrev, _e) ->
+      failwith (Printf.sprintf "TODO: CannotFindFontFile, %s" abbrev)
 
   | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
       let fname = convert_abs_path_to_show abspath in
@@ -1072,6 +1058,25 @@ let error_log_environment suspended =
             in
             report_error Interface
               (NormalLine("the following packages are cyclic:") :: lines)
+
+        | CannotFindLibraryFile(libpath, candidate_paths) ->
+            let lines =
+              candidate_paths |> List.map (fun path ->
+                DisplayLine(Printf.sprintf "- %s" path)
+              )
+            in
+            report_error Interface
+              (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
+
+        | LocalFileNotFound{ relative; candidates } ->
+            let lines =
+              candidates |> List.map (fun path ->
+                DisplayLine(Printf.sprintf "- %s" path)
+              )
+            in
+            report_error Interface
+              (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
+
       end
 
   | Evaluator.EvalError(s)
