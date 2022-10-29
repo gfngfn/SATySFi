@@ -1,7 +1,7 @@
 
 type error
 
-val pp_error : Format.formatter -> error -> unit
+val show_error : error -> string
 
 type 'a t
 

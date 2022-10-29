@@ -17,11 +17,16 @@ type config_error =
     }
   | PackageDirectoryNotFound  of string list
   | PackageConfigNotFound     of abs_path
-  | PackageConfigError        of YamlDecoder.error
+  | PackageConfigError        of abs_path * YamlDecoder.error
   | LockConfigNotFound        of abs_path
-  | LockConfigError           of YamlDecoder.error
+  | LockConfigError           of abs_path * YamlDecoder.error
+  | LockNameConflict          of lock_name
+  | DependencyOnUnknownLock of {
+      depending : lock_name;
+      depended  : lock_name;
+    }
+  | CyclicLockDependency      of (lock_name * untyped_package) cycle
   | NotALibraryFile           of abs_path
-  | CyclicLockDependency      of (module_name * lock_info) cycle
   | TypeError                 of TypeError.type_error
   | FileModuleNotFound        of Range.t * module_name
   | NotADocumentFile          of abs_path * mono_type

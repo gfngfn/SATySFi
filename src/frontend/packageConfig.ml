@@ -100,4 +100,4 @@ let load (absdir_package : abs_path) : t ok =
   in
   let s = Core.In_channel.input_all inc in
   close_in inc;
-  YamlDecoder.run config_decoder s |> Result.map_error (fun e -> PackageConfigError(e))
+  YamlDecoder.run config_decoder s |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))

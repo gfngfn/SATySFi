@@ -862,9 +862,10 @@ let report_config_error = function
         DisplayLine(get_abs_path_string abspath);
       ]
 
-  | PackageConfigError(_) ->
+  | PackageConfigError(abspath, e) ->
       report_error Interface [
-        NormalLine("package config error (TODO: detailed reports)");
+        NormalLine(Printf.sprintf "at %s:" (get_abs_path_string abspath));
+        NormalLine(Printf.sprintf "package config error; %s" (YamlDecoder.show_error e));
       ]
 
   | LockConfigNotFound(abspath) ->
@@ -873,15 +874,20 @@ let report_config_error = function
         DisplayLine(get_abs_path_string abspath);
       ]
 
-  | LockConfigError(_) ->
+  | LockConfigError(abspath, e) ->
       report_error Interface [
-        NormalLine("lock config error (TODO: detailed reports)");
+        NormalLine(Printf.sprintf "at %s:" (get_abs_path_string abspath));
+        NormalLine(Printf.sprintf "lock config error; %s" (YamlDecoder.show_error e));
       ]
 
-  | NotALibraryFile(abspath) ->
+  | LockNameConflict(lock_name) ->
       report_error Interface [
-        NormalLine("the following file is expected to be a library file, but is not:");
-        DisplayLine(get_abs_path_string abspath);
+        NormalLine(Printf.sprintf "lock name conflict: '%s'" lock_name);
+      ]
+
+  | DependencyOnUnknownLock{ depending; depended } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "unknown depended lock '%s' of '%s'." depended depending);
       ]
 
   | CyclicLockDependency(cycle) ->
@@ -897,6 +903,12 @@ let report_config_error = function
       in
       report_error Interface
         (NormalLine("the following packages are cyclic:") :: lines)
+
+  | NotALibraryFile(abspath) ->
+      report_error Interface [
+        NormalLine("the following file is expected to be a library file, but is not:");
+        DisplayLine(get_abs_path_string abspath);
+      ]
 
   | CannotFindLibraryFile(libpath, candidate_paths) ->
       let lines =
@@ -1251,16 +1263,16 @@ let build
       | Error(e)   -> raise (ConfigError(e))
     in
 
-    (* Resolve dependency among packages that the document depends on: *)
+    (* Resolve dependency among locked packages: *)
     let sorted_packages =
       match ClosedLockDependencyResolver.main ~extensions lock_config with
       | Ok(sorted_packages) -> sorted_packages
       | Error(e)            -> raise (ConfigError(e))
     in
 
-    (* Typecheck every package: *)
+    (* Typecheck every locked package: *)
     let (genv, libacc) =
-      sorted_packages |> List.fold_left (fun (genv, libacc) package ->
+      sorted_packages |> List.fold_left (fun (genv, libacc) (_lock_name, package) ->
         let main_module_name = package.main_module_name in
         let (ssig, libs) =
           match PackageChecker.main tyenv_prim genv package with

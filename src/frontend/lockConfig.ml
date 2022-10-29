@@ -18,7 +18,7 @@ let lock_location_decoder : abs_path YamlDecoder.t =
       get "path" string >>= fun s_libpath ->
       match Config.resolve_lib_file (make_lib_path s_libpath) with
       | Ok(abspath) -> succeed abspath
-      | Error(_e)   -> failwith "TODO (error): not found"
+      | Error(_e)   -> failure (Printf.sprintf "locked package not found at '%s'" s_libpath)
     end;
   ]
   ~on_error:(fun other ->
@@ -56,4 +56,4 @@ let load (abspath_lock_config : abs_path) : t ok =
   in
   let s = Core.In_channel.input_all inc in
   close_in inc;
-  YamlDecoder.run lock_config_decoder s |> Result.map_error (fun e -> LockConfigError(e))
+  YamlDecoder.run lock_config_decoder s |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))

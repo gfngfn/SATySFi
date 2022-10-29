@@ -12,16 +12,14 @@ type error =
   | OtherMessage of string
 
 
-let pp_error (ppf : Format.formatter) =
-  let p = Format.fprintf in
-  function
-  | FieldNotFound(field) -> p ppf "field '%s' not found" field
-  | NotAFloat            -> p ppf "not a float value"
-  | NotAString           -> p ppf "not a string value"
-  | NotABool             -> p ppf "not a Boolean value"
-  | NotAnArray           -> p ppf "not an array"
-  | NotAnObject          -> p ppf "not an object"
-  | OtherMessage(msg)    -> p ppf "%s" msg
+let show_error = function
+  | FieldNotFound(field) -> Printf.sprintf "field '%s' not found" field
+  | NotAFloat            -> Printf.sprintf "not a float value"
+  | NotAString           -> Printf.sprintf "not a string value"
+  | NotABool             -> Printf.sprintf "not a Boolean value"
+  | NotAnArray           -> Printf.sprintf "not an array"
+  | NotAnObject          -> Printf.sprintf "not an object"
+  | OtherMessage(msg)    -> Printf.sprintf "%s" msg
 
 
 type 'a t = Yaml.value -> ('a, error) result
