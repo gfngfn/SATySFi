@@ -8,23 +8,74 @@ type 'a ok = ('a, config_error) result
 
 type relative_path = string
 
-type t =
-  | Version_0_1 of {
+type dependency_spec = {
+  depended_package_name : string;
+  version_constraints   : unit; (* TODO: define this *)
+}
+
+type package_contents =
+  | Library of {
       main_module_name   : module_name;
       source_directories : relative_path list;
-      dependencies       : module_name list;
+      dependencies       : dependency_spec list;
+    }
+  | Document of {
+      document_file : relative_path;
+      dependencies  : dependency_spec list;
     }
 
+type t = {
+  package_name     : string;
+  package_version  : string;
+  package_contents : package_contents;
+}
 
-let config_version_0_1_decoder =
+
+let dependency_decoder : dependency_spec YamlDecoder.t =
   let open YamlDecoder in
-  get "main_module" string >>= fun main_module_name ->
-  get "source_directories" (list string) >>= fun source_directories ->
-  get_or_else "dependencies" (list string) [] >>= fun dependencies ->
-  succeed @@ Version_0_1 {
-    main_module_name;
-    source_directories;
-    dependencies;
+  get "package_name" string >>= fun depended_package_name ->
+  succeed {
+    depended_package_name;
+    version_constraints = ();
+  }
+
+
+let contents_decoder : package_contents YamlDecoder.t =
+  let open YamlDecoder in
+  branch "type" [
+    "library" ==> begin
+      get "main_module" string >>= fun main_module_name ->
+      get "source_directories" (list string) >>= fun source_directories ->
+      get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
+      succeed @@ Library {
+        main_module_name;
+        source_directories;
+        dependencies;
+      }
+    end;
+    "document" ==> begin
+      get "file" string >>= fun document_file ->
+      get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
+      succeed @@ Document {
+        document_file;
+        dependencies;
+      }
+    end;
+  ]
+  ~on_error:(fun other ->
+    Printf.sprintf "unsupported type '%s' for specifying package contents" other
+  )
+
+
+let config_decoder : t YamlDecoder.t =
+  let open YamlDecoder in
+  get "package_name" string >>= fun package_name ->
+  get "version" string >>= fun package_version ->
+  get "contents" contents_decoder >>= fun package_contents ->
+  succeed @@ {
+    package_name;
+    package_version;
+    package_contents;
   }
 
 
@@ -32,8 +83,8 @@ let config_decoder =
   let open YamlDecoder in
   get "language" string >>= fun language ->
   match language with
-  | "v0.1.0" -> config_version_0_1_decoder
-  | _        -> failure (Printf.sprintf "unknown language version '%s'" language)
+  | "0.1.0" -> config_decoder
+  | _       -> failure (Printf.sprintf "unknown language version '%s'" language)
 
 
 let load (absdir_package : abs_path) : t ok =

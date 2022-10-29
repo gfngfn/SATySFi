@@ -19,7 +19,7 @@ type config_error =
   | PackageConfigNotFound     of abs_path
   | PackageConfigError        of YamlDecoder.error
   | NotALibraryFile           of abs_path
-  | CyclicPackageDependency   of (module_name * package_info) cycle
+  | CyclicLockDependency      of (module_name * lock_info) cycle
   | TypeError                 of TypeError.type_error
   | FileModuleNotFound        of Range.t * module_name
   | NotADocumentFile          of abs_path * mono_type

@@ -873,14 +873,14 @@ let report_config_error = function
         DisplayLine(get_abs_path_string abspath);
       ]
 
-  | CyclicPackageDependency(cycle) ->
+  | CyclicLockDependency(cycle) ->
       let pairs =
         match cycle with
         | Loop(pair)   -> [ pair ]
         | Cycle(pairs) -> pairs |> TupleList.to_list
       in
       let lines =
-        pairs |> List.map (fun (modnm, _package) ->
+        pairs |> List.map (fun (modnm, _lock) ->
           DisplayLine(Printf.sprintf "- '%s'" modnm)
         )
       in
@@ -1210,7 +1210,15 @@ let build
       try Filename.chop_extension abspathstr_in with
       | Invalid_argument(_) -> abspathstr_in
     in
-    let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
+
+    let abspath_lock_config = make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension) in
+    Logging.lock_config_file abspath_lock_config;
+    let lock_config =
+      match LockConfig.load abspath_lock_config with
+      | Ok(lock_config) -> lock_config
+      | Error(e)        -> raise (ConfigError(e))
+    in
+
     let abspath_out =
       match (output_mode, output_file) with
       | (_, Some(abspath_out)) -> abspath_out
@@ -1218,13 +1226,15 @@ let build
       | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
     in
     Logging.target_file abspath_out;
+
+    let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
     let (tyenv_prim, env, dump_file_exists) = initialize abspath_dump in
     Logging.dump_file dump_file_exists abspath_dump;
 
     let extensions = get_candidate_file_extensions () in
 
     (* Resolve dependency of the document and the local source files: *)
-    let (package_names, sorted_locals, utdoc_opt) =
+    let (_dep_main_module_names, sorted_locals, utdoc_opt) =
       match OpenFileDependencyResolver.main ~extensions abspath_in with
       | Ok(triple) -> triple
       | Error(e)   -> raise (ConfigError(e))
@@ -1232,7 +1242,7 @@ let build
 
     (* Resolve dependency among packages that the document depends on: *)
     let sorted_packages =
-      match OpenPackageDependencyResolver.main ~extensions package_names with
+      match ClosedLockDependencyResolver.main ~extensions lock_config with
       | Ok(sorted_packages) -> sorted_packages
       | Error(e)            -> raise (ConfigError(e))
     in
