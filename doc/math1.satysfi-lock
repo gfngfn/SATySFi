@@ -1,0 +1,50 @@
+locks:
+  - name: "stdlib.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/Stdlib/"
+
+  - name: "math.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/Math/"
+    dependencies:
+      - "stdlib.0.0.1"
+
+  - name: "proof.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/Proof"
+    dependencies:
+      - "stdlib.0.0.1"
+
+  - name: "tabular.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/Tabular"
+    dependencies:
+      - "stdlib.0.0.1"
+
+  - name: "std-ja.0.0.1"
+    dependencies:
+      - "stdlib.0.0.1"
+      - "math.0.0.1"
+      - "annot.0.0.1"
+      - "code.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/StdJa/"
+
+  - name: "annot.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/Annot/"
+    dependencies:
+      - "stdlib.0.0.1"
+
+  - name: "code.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/Code/"
+    dependencies:
+      - "stdlib.0.0.1"
