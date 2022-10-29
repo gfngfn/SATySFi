@@ -50,15 +50,17 @@ fun yval ->
 let ( >>= ) = bind
 
 
-let get_scheme (field : string) (d : 'a t) (k : unit -> ('a, error) result) : 'a t =
+let get_scheme (field : string) (d : 'a t) (k_absent : unit -> ('a, error) result) : 'a t =
   let open ResultMonad in
   function
   | `O(keyvals) ->
       begin
         match
-          List.find_map (fun (k, v) -> if String.equal k field then Some(v) else None) keyvals
+          keyvals |> List.find_map (fun (k, v) ->
+            if String.equal k field then Some(v) else None
+          )
         with
-        | None    -> k ()
+        | None    -> k_absent ()
         | Some(v) -> d v
       end
 
