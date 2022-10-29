@@ -1,0 +1,12 @@
+locks:
+  - name: "stdlib.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/Stdlib/"
+
+  - name: "math.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/Math/"
+    dependencies:
+      - "stdlib.0.0.1"

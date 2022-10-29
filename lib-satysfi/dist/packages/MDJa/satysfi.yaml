@@ -1,11 +1,15 @@
-language: "v0.1.0"
-main_module: "MDJa"
-source_directories:
-  - "./src"
-dependencies:
-  - "Stdlib"
-  - "Math"
-  - "Code"
-  - "Itemize"
-  - "Annot"
-  - "FootnoteScheme"
+language: "0.1.0"
+package_name: "md-ja"
+version: "0.0.1"
+contents:
+  type: "library"
+  main_module: "MDJa"
+  source_directories:
+    - "./src"
+  dependencies:
+    - package_name: "stdlib"
+    - package_name: "math"
+    - package_name: "code"
+    - package_name: "itemize"
+    - package_name: "annot"
+    - package_name: "footnote-scheme"
