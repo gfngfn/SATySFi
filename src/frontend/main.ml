@@ -867,6 +867,17 @@ let report_config_error = function
         NormalLine("package config error (TODO: detailed reports)");
       ]
 
+  | LockConfigNotFound(abspath) ->
+      report_error Interface [
+        NormalLine("cannot find a lock config at:");
+        DisplayLine(get_abs_path_string abspath);
+      ]
+
+  | LockConfigError(_) ->
+      report_error Interface [
+        NormalLine("lock config error (TODO: detailed reports)");
+      ]
+
   | NotALibraryFile(abspath) ->
       report_error Interface [
         NormalLine("the following file is expected to be a library file, but is not:");

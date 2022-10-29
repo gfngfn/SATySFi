@@ -585,10 +585,9 @@ type untyped_package = {
 [@@deriving show { with_path = false }]
 
 type lock_info = {
-  lock_name             : lock_name;
-  lock_main_module_name : module_name;
-  lock_dependencies     : lock_name list;
-  lock_directory        : abs_path;
+  lock_name         : lock_name;
+  lock_dependencies : lock_name list;
+  lock_directory    : abs_path;
 }
 [@@deriving show { with_path = false }]
 

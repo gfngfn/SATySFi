@@ -18,6 +18,8 @@ type config_error =
   | PackageDirectoryNotFound  of string list
   | PackageConfigNotFound     of abs_path
   | PackageConfigError        of YamlDecoder.error
+  | LockConfigNotFound        of abs_path
+  | LockConfigError           of YamlDecoder.error
   | NotALibraryFile           of abs_path
   | CyclicLockDependency      of (module_name * lock_info) cycle
   | TypeError                 of TypeError.type_error
