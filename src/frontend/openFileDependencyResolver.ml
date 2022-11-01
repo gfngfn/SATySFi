@@ -7,6 +7,13 @@ open ConfigError
 type 'a ok = ('a, config_error) result
 
 
+module FileDependencyGraph = DependencyGraph.Make(AbsPath)
+
+type graph = untyped_library_file FileDependencyGraph.t
+
+type vertex = FileDependencyGraph.Vertex.t
+
+
 let has_library_extension (abspath : abs_path) : bool =
   let ext = get_abs_path_extension abspath in
   match ext with
@@ -42,7 +49,7 @@ let get_header (extensions : string list) (curdir : string) (headerelem : header
       return @@ Local(modident, abspath)
 
 
-let rec register_library_file (extensions : string list) (graph : FileDependencyGraph.t) (package_names : PackageNameSet.t) ~prev:(vertex_prev_opt : FileDependencyGraph.vertex option) (abspath : abs_path) : (PackageNameSet.t * FileDependencyGraph.t) ok =
+let rec register_library_file (extensions : string list) (graph : graph) (package_names : PackageNameSet.t) ~prev:(vertex_prev_opt : vertex option) (abspath : abs_path) : (PackageNameSet.t * graph) ok =
   let open ResultMonad in
   match graph |> FileDependencyGraph.get_vertex abspath with
   | Some(vertex) ->
@@ -85,7 +92,7 @@ let rec register_library_file (extensions : string list) (graph : FileDependency
       ) (package_names, graph)
 
 
-let register_document_file (extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t * FileDependencyGraph.t * untyped_document_file) ok =
+let register_document_file (extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t * graph * untyped_document_file) ok =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
