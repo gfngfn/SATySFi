@@ -18,8 +18,11 @@ let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untype
       let (_, ((_, modnm), _, _)) = utlib in
       let* (graph, vertex) =
         match graph |> SourceModuleDependencyGraph.add_vertex modnm (abspath, utlib) with
-        | Error(_) -> err @@ FileModuleNameConflict(modnm, abspath)
-        | Ok(pair) -> return pair
+        | Error(((abspath_prev, _utlib_prev), _vertex_prev)) ->
+            err @@ FileModuleNameConflict(modnm, abspath_prev, abspath)
+
+        | Ok(pair) ->
+            return pair
       in
       return (graph, Alist.extend entryacc (utlib, vertex))
     ) (SourceModuleDependencyGraph.empty, Alist.empty)

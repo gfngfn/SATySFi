@@ -790,10 +790,11 @@ let report_config_error = function
         NormalLine(Printf.sprintf "cannot find a source file that defines module '%s'." modnm);
       ]
 
-  | FileModuleNameConflict(modnm, abspath) ->
+  | FileModuleNameConflict(modnm, abspath1, abspath2) ->
       report_error Interface [
-        NormalLine(Printf.sprintf "more than one file defines module '%s';" modnm);
-        NormalLine(Printf.sprintf "one is '%s'." (get_abs_path_string abspath));
+        NormalLine(Printf.sprintf "more than one file defines module '%s':" modnm);
+        DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath1));
+        DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath2));
       ]
 
   | NoMainModule(modnm) ->

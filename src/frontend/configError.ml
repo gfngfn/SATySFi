@@ -30,7 +30,7 @@ type config_error =
   | NotALibraryFile           of abs_path
   | TypeError                 of TypeError.type_error
   | FileModuleNotFound        of Range.t * module_name
-  | FileModuleNameConflict    of module_name * abs_path
+  | FileModuleNameConflict    of module_name * abs_path * abs_path
   | NotADocumentFile          of abs_path * mono_type
   | NotAStringFile            of abs_path * mono_type
   | NoMainModule              of module_name
