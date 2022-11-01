@@ -8,7 +8,7 @@ exception FontInfoError of font_error
 
 type tag = string
 
-val initialize : unit -> (unit, config_error) result
+val initialize : unit -> unit
 
 val get_metrics_of_word : horz_string_info -> uchar_segment list -> OutputText.t * length * length * length
 

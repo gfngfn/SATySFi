@@ -4,6 +4,29 @@ open Types
 open HorzBox
 
 
+type yaml_error =
+  | ParseError         of string
+  | FieldNotFound      of YamlDecoder.context * string
+  | NotAFloat          of YamlDecoder.context
+  | NotAString         of YamlDecoder.context
+  | NotABool           of YamlDecoder.context
+  | NotAnArray         of YamlDecoder.context
+  | NotAnObject        of YamlDecoder.context
+  | UnexpectedTag      of YamlDecoder.context * string
+  | PackageNotFound    of lib_path * abs_path list
+  | UnexpectedLanguage of string
+
+module YamlError = struct
+  type t = yaml_error
+  let parse_error s = ParseError(s)
+  let field_not_found context s = FieldNotFound(context, s)
+  let not_a_float context = NotAFloat(context)
+  let not_a_string context = NotAString(context)
+  let not_a_bool context = NotABool(context)
+  let not_an_array context = NotAnArray(context)
+  let not_an_object context = NotAnObject(context)
+end
+
 type config_error =
   | CyclicFileDependency            of (abs_path * untyped_library_file) cycle
   | CannotReadFileOwingToSystem     of string
@@ -18,9 +41,9 @@ type config_error =
     }
   | PackageDirectoryNotFound  of string list
   | PackageConfigNotFound     of abs_path
-  | PackageConfigError        of abs_path * YamlDecoder.error
+  | PackageConfigError        of abs_path * yaml_error
   | LockConfigNotFound        of abs_path
-  | LockConfigError           of abs_path * YamlDecoder.error
+  | LockConfigError           of abs_path * yaml_error
   | LockNameConflict          of lock_name
   | DependencyOnUnknownLock of {
       depending : lock_name;
@@ -35,17 +58,17 @@ type config_error =
   | NotAStringFile            of abs_path * mono_type
   | NoMainModule              of module_name
   | UnknownPackageDependency  of Range.t * module_name
-  | CannotFindLibraryFile     of lib_path * string list
+  | CannotFindLibraryFile     of lib_path * abs_path list
   | LocalFileNotFound of {
       relative   : string;
-      candidates : string list;
+      candidates : abs_path list;
     }
 
 type font_error =
-  | InvalidFontAbbrev     of font_abbrev
-  | InvalidMathFontAbbrev of math_font_abbrev
-  | NotASingleFont        of font_abbrev * abs_path
-  | NotATTCElement        of font_abbrev * abs_path * int
-  | NotASingleMathFont    of math_font_abbrev * abs_path
-  | NotATTCMathFont       of math_font_abbrev * abs_path * int
-  | ConfigErrorAsToFont   of config_error
+  | InvalidFontAbbrev             of font_abbrev
+  | InvalidMathFontAbbrev         of math_font_abbrev
+  | NotASingleFont                of font_abbrev * abs_path
+  | NotATTCElement                of font_abbrev * abs_path * int
+  | NotASingleMathFont            of math_font_abbrev * abs_path
+  | NotATTCMathFont               of math_font_abbrev * abs_path * int
+  | CannotFindLibraryFileAsToFont of lib_path * abs_path list

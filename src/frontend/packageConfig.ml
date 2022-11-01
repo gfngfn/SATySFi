@@ -31,8 +31,11 @@ type t = {
 }
 
 
-let dependency_decoder : dependency_spec YamlDecoder.t =
-  let open YamlDecoder in
+module PackageConfigDecoder = YamlDecoder.Make(YamlError)
+
+
+let dependency_decoder : dependency_spec PackageConfigDecoder.t =
+  let open PackageConfigDecoder in
   get "package_name" string >>= fun depended_package_name ->
   succeed {
     depended_package_name;
@@ -40,8 +43,8 @@ let dependency_decoder : dependency_spec YamlDecoder.t =
   }
 
 
-let contents_decoder : package_contents YamlDecoder.t =
-  let open YamlDecoder in
+let contents_decoder : package_contents PackageConfigDecoder.t =
+  let open PackageConfigDecoder in
   branch "type" [
     "library" ==> begin
       get "main_module" string >>= fun main_module_name ->
@@ -62,13 +65,13 @@ let contents_decoder : package_contents YamlDecoder.t =
       }
     end;
   ]
-  ~on_error:(fun other ->
-    Printf.sprintf "unsupported type '%s' for specifying package contents" other
+  ~other:(fun tag ->
+    failure (fun context -> UnexpectedTag(context, tag))
   )
 
 
-let config_decoder : t YamlDecoder.t =
-  let open YamlDecoder in
+let config_decoder : t PackageConfigDecoder.t =
+  let open PackageConfigDecoder in
   get "package_name" string >>= fun package_name ->
   get "version" string >>= fun package_version ->
   get "contents" contents_decoder >>= fun package_contents ->
@@ -80,11 +83,11 @@ let config_decoder : t YamlDecoder.t =
 
 
 let config_decoder =
-  let open YamlDecoder in
+  let open PackageConfigDecoder in
   get "language" string >>= fun language ->
   match language with
   | "0.1.0" -> config_decoder
-  | _       -> failure (Printf.sprintf "unknown language version '%s'" language)
+  | _       -> failure (fun _context -> UnexpectedLanguage(language))
 
 
 let load (absdir_package : abs_path) : t ok =
@@ -100,4 +103,5 @@ let load (absdir_package : abs_path) : t ok =
   in
   let s = Core.In_channel.input_all inc in
   close_in inc;
-  YamlDecoder.run config_decoder s |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))
+  PackageConfigDecoder.run config_decoder s
+    |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))

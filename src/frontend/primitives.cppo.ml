@@ -7,6 +7,8 @@ open GraphicBase
 open SyntaxBase
 open Types
 open StaticEnv
+open ConfigError
+
 
 (* -- type IDs for predefined data types -- *)
 let vid_option   = TypeID.fresh "option"
@@ -737,10 +739,15 @@ let make_environments table =
   (tyenv, env)
 
 
+let resolve_lib_file (libpath : lib_path) =
+  Config.resolve_lib_file libpath
+    |> Result.map_error (fun candidates -> CannotFindLibraryFile(libpath, candidates))
+
+
 let make_pdf_mode_environments () =
   let open ResultMonad in
-  let* abspath_default_font = Config.resolve_lib_file (make_lib_path "dist/hash/default-font.satysfi-hash") in
-  let* abspath_hyphen = Config.resolve_lib_file (make_lib_path "dist/hyph/english.satysfi-hyph") in
+  let* abspath_default_font = resolve_lib_file (make_lib_path "dist/hash/default-font.satysfi-hash") in
+  let* abspath_hyphen = resolve_lib_file (make_lib_path "dist/hyph/english.satysfi-hyph") in
   default_font_scheme_ref := SetDefaultFont.main abspath_default_font;
   default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
     (* TODO: should depend on the current language *)

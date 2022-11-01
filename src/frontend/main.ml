@@ -17,7 +17,7 @@ let reset () =
   if OptionState.is_text_mode () then
     return ()
   else begin
-    let* () = FontInfo.initialize () in
+    FontInfo.initialize ();
     ImageInfo.initialize ();
     NamedDest.initialize ();
     return ()
@@ -769,6 +769,59 @@ let report_type_error = function
       ]
 
 
+let show_yaml_context (context : YamlDecoder.context) =
+  match context with
+  | [] ->
+      ""
+
+  | _ :: _ ->
+      let s_context =
+        let open YamlDecoder in
+        context |> List.map (function
+        | Field(field) -> Printf.sprintf ".%s" field
+        | Index(index) -> Printf.sprintf ".[%d]" index
+        ) |> String.concat ""
+      in
+      Printf.sprintf " (context: %s)" s_context
+
+
+let make_yaml_error_lines = function
+  | ParseError(s) ->
+      [ NormalLine(Printf.sprintf "parse error: %s" s) ]
+
+  | FieldNotFound(yctx, field) ->
+      [ NormalLine(Printf.sprintf "field '%s' not found%s" field (show_yaml_context yctx)) ]
+
+  | NotAFloat(yctx) ->
+      [ NormalLine(Printf.sprintf "not a float value%s" (show_yaml_context yctx)) ]
+
+  | NotAString(yctx) ->
+      [ NormalLine(Printf.sprintf "not a string value%s" (show_yaml_context yctx)) ]
+
+  | NotABool(yctx) ->
+      [ NormalLine(Printf.sprintf "not a Boolean value%s" (show_yaml_context yctx)) ]
+
+  | NotAnArray(yctx) ->
+      [ NormalLine(Printf.sprintf "not an array%s" (show_yaml_context yctx)) ]
+
+  | NotAnObject(yctx) ->
+      [ NormalLine(Printf.sprintf "not an object%s" (show_yaml_context yctx)) ]
+
+  | UnexpectedTag(yctx, tag) ->
+      [ NormalLine(Printf.sprintf "unexpected type tag '%s'%s" tag (show_yaml_context yctx)) ]
+
+  | PackageNotFound(libpath, candidates) ->
+      let lines =
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+        )
+      in
+      (NormalLine(Printf.sprintf "package '%s' not found. candidates:" (get_lib_path_string libpath)) :: lines)
+
+  | UnexpectedLanguage(s_language_version) ->
+      [ NormalLine(Printf.sprintf "unexpected language version '%s'" s_language_version) ]
+
+
 let report_config_error = function
   | NotADocumentFile(abspath_in, ty) ->
       let fname = convert_abs_path_to_show abspath_in in
@@ -876,10 +929,10 @@ let report_config_error = function
       ]
 
   | PackageConfigError(abspath, e) ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "at %s:" (get_abs_path_string abspath));
-        NormalLine(Printf.sprintf "package config error; %s" (YamlDecoder.show_error e));
-      ]
+      report_error Interface (List.concat [
+        [ NormalLine(Printf.sprintf "in %s: package config error;" (get_abs_path_string abspath)) ];
+        make_yaml_error_lines e;
+      ])
 
   | LockConfigNotFound(abspath) ->
       report_error Interface [
@@ -888,10 +941,10 @@ let report_config_error = function
       ]
 
   | LockConfigError(abspath, e) ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "at %s:" (get_abs_path_string abspath));
-        NormalLine(Printf.sprintf "lock config error; %s" (YamlDecoder.show_error e));
-      ]
+      report_error Interface (List.concat [
+        [ NormalLine(Printf.sprintf "in %s: lock config error;" (get_abs_path_string abspath)) ];
+        make_yaml_error_lines e;
+      ])
 
   | LockNameConflict(lock_name) ->
       report_error Interface [
@@ -925,8 +978,8 @@ let report_config_error = function
 
   | CannotFindLibraryFile(libpath, candidate_paths) ->
       let lines =
-        candidate_paths |> List.map (fun path ->
-          DisplayLine(Printf.sprintf "- %s" path)
+        candidate_paths |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
         )
       in
       report_error Interface
@@ -934,8 +987,8 @@ let report_config_error = function
 
   | LocalFileNotFound{ relative; candidates } ->
       let lines =
-        candidates |> List.map (fun path ->
-          DisplayLine(Printf.sprintf "- %s" path)
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
         )
       in
       report_error Interface
@@ -985,8 +1038,14 @@ let report_font_error = function
         NormalLine("is not a TrueType collection or does not have a MATH table.");
       ]
 
-  | ConfigErrorAsToFont(e) ->
-      report_config_error e
+  | CannotFindLibraryFileAsToFont(libpath, candidates) ->
+      let lines =
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+        )
+      in
+      report_error Interface
+        (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
 
 
 let error_log_environment suspended =
