@@ -7,6 +7,14 @@ open GraphicBase
 type pure_badness = int
 [@@deriving show]
 
+module PureBadness = struct
+  type t = pure_badness
+  let show = Int.to_string
+  let add = Int.add
+  let compare = Int.compare
+  let zero = Int.zero
+end
+
 type ratios =
   | TooShort    of { required : length; actual : length }
   | Permissible of float
