@@ -1215,6 +1215,12 @@ type 'a cycle =
   | Cycle of 'a TupleList.t
 [@@deriving show { with_path = false; }]
 
+
+let map_cycle f = function
+  | Loop(v)   -> Loop(f v)
+  | Cycle(vs) -> Cycle(TupleList.map f vs)
+
+
 module GlobalTypeenv = Map.Make(String)
 
 module PackageNameSet = Set.Make(String)
