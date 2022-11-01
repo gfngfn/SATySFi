@@ -839,10 +839,16 @@ let report_config_error = function
         NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
       ]
 
-  | CannotUseHeaderUse(rng) ->
+  | CannotUseHeaderUse((rng, modnm)) ->
       report_error Interface [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine("cannot specify 'use ...' here; use 'use ... of ...' instead.");
+        NormalLine(Printf.sprintf "cannot specify 'use %s' here; use 'use %s of ...' instead." modnm modnm);
+      ]
+
+  | CannotUseHeaderUseOf((rng, modnm)) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "cannot specify 'use %s of ...' here; use 'use %s' instead." modnm modnm);
       ]
 
   | FailedToParse(e) ->

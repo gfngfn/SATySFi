@@ -9,7 +9,8 @@ type config_error =
   | CannotReadFileOwingToSystem     of string
   | LibraryContainsWholeReturnValue of abs_path
   | DocumentLacksWholeReturnValue   of abs_path
-  | CannotUseHeaderUse              of Range.t
+  | CannotUseHeaderUse              of module_name ranged
+  | CannotUseHeaderUseOf            of module_name ranged
   | FailedToParse                   of parse_error
   | MainModuleNameMismatch of {
       expected : module_name;

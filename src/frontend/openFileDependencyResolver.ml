@@ -34,8 +34,8 @@ let get_header (extensions : string list) (curdir : string) (headerelem : header
   | HeaderUsePackage(modident) ->
       return @@ Package(modident)
 
-  | HeaderUse((rng, _)) ->
-      err @@ CannotUseHeaderUse(rng)
+  | HeaderUse(modident) ->
+      err @@ CannotUseHeaderUse(modident)
 
   | HeaderUseOf(modident, s_relpath) ->
       let* abspath = Config.resolve_local ~extensions ~origin:curdir ~relative:s_relpath in

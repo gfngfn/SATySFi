@@ -45,8 +45,8 @@ let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untype
         | HeaderUsePackage(_) ->
             return graph
 
-        | HeaderUseOf(_, _) ->
-            assert false
+        | HeaderUseOf(modident, _) ->
+            err @@ CannotUseHeaderUseOf(modident)
 
       ) graph
     ) graph

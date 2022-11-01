@@ -32,7 +32,7 @@ let add_dependency_to_type_environment ~(package_only : bool) (header : header_e
         begin
           match (kind, genv |> GlobalTypeenv.find_opt modnm) with
           | (LocalDependency, None) ->
-              assert false
+              assert false (* Local dependency must be resolved beforehand. *)
 
           | (PackageDependency, None) ->
               err @@ UnknownPackageDependency(rng, modnm)
