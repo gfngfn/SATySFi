@@ -537,15 +537,7 @@ module WidthMap
   end
 
 
-module LineBreakGraph = FlowGraph.Make
-  (DiscretionaryID)
-  (struct
-    type t = pure_badness
-    let show = string_of_int
-    let add = ( + )
-    let compare b1 b2 = b1 - b2
-    let zero = 0
-  end)
+module LineBreakGraph = FlowGraph.Make(DiscretionaryID)(PureBadness)
 
 
 module RemovalSet = MutableSet.Make(DiscretionaryID)
