@@ -45,6 +45,6 @@ locks:
   - name: "code.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/Code/"
+      path: "./dist/packages/code/code.0.0.1/"
     dependencies:
       - "stdlib.0.0.1"
