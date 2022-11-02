@@ -8,39 +8,21 @@ type 'a ok = ('a, config_error) result
 
 type relative_path = string
 
-type dependency_spec = {
-  depended_package_name : string;
-  version_constraints   : unit; (* TODO: define this *)
-}
-
 type package_contents =
   | Library of {
       main_module_name   : module_name;
       source_directories : relative_path list;
-      dependencies       : dependency_spec list;
     }
   | Document of {
       document_file : relative_path;
-      dependencies  : dependency_spec list;
     }
 
 type t = {
-  package_name     : string;
-  package_version  : string;
   package_contents : package_contents;
 }
 
 
 module PackageConfigDecoder = YamlDecoder.Make(YamlError)
-
-
-let dependency_decoder : dependency_spec PackageConfigDecoder.t =
-  let open PackageConfigDecoder in
-  get "package_name" string >>= fun depended_package_name ->
-  succeed {
-    depended_package_name;
-    version_constraints = ();
-  }
 
 
 let contents_decoder : package_contents PackageConfigDecoder.t =
@@ -49,19 +31,15 @@ let contents_decoder : package_contents PackageConfigDecoder.t =
     "library" ==> begin
       get "main_module" string >>= fun main_module_name ->
       get "source_directories" (list string) >>= fun source_directories ->
-      get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
       succeed @@ Library {
         main_module_name;
         source_directories;
-        dependencies;
       }
     end;
     "document" ==> begin
       get "file" string >>= fun document_file ->
-      get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
       succeed @@ Document {
         document_file;
-        dependencies;
       }
     end;
   ]
@@ -70,14 +48,10 @@ let contents_decoder : package_contents PackageConfigDecoder.t =
   )
 
 
-let config_decoder : t PackageConfigDecoder.t =
+let version_0_1_config_decoder : t PackageConfigDecoder.t =
   let open PackageConfigDecoder in
-  get "package_name" string >>= fun package_name ->
-  get "version" string >>= fun package_version ->
   get "contents" contents_decoder >>= fun package_contents ->
   succeed @@ {
-    package_name;
-    package_version;
     package_contents;
   }
 
@@ -86,7 +60,7 @@ let config_decoder =
   let open PackageConfigDecoder in
   get "language" string >>= fun language ->
   match language with
-  | "0.1.0" -> config_decoder
+  | "0.1.0" -> version_0_1_config_decoder
   | _       -> failure (fun _context -> UnexpectedLanguage(language))
 
 

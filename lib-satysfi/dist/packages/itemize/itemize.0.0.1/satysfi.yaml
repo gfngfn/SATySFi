@@ -1,10 +1,6 @@
 language: "0.1.0"
-package_name: "itemize"
-version: "0.0.1"
 contents:
   type: "library"
   main_module: "Itemize"
   source_directories:
     - "./src"
-  dependencies:
-    - package_name: "stdlib"

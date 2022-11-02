@@ -1,14 +1,6 @@
 language: "0.1.0"
-package_name: "std-ja-report"
-version: "0.0.1"
 contents:
   type: "library"
   main_module: "StdJaReport"
   source_directories:
     - "./src"
-  dependencies:
-    - package_name: "stdlib"
-    - package_name: "math"
-    - package_name: "code"
-    - package_name: "annot"
-    - package_name: "footnote-scheme"

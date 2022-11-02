@@ -28,7 +28,6 @@ let main ~(extensions : string list) (absdir_package : abs_path) : untyped_packa
     | PackageConfig.Library {
         main_module_name;
         source_directories;
-        dependencies = _;
       } ->
         let absdirs_src =
           source_directories |> List.map (fun source_directory ->

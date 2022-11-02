@@ -1,10 +1,6 @@
 language: "0.1.0"
-package_name: "code"
-version: "0.0.1"
 contents:
   type: "library"
   main_module: "Code"
   source_directories:
     - "./src"
-  dependencies:
-    - package_name: "stdlib"
