@@ -20,7 +20,7 @@ locks:
       - "footnote-scheme.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/StdJaBook/"
+      path: "./dist/packages/std-ja-book/std-ja-book.0.0.1/"
 
   - name: "annot.0.0.1"
     location:

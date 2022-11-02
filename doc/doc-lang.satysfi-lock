@@ -19,7 +19,7 @@ locks:
       - "code.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/StdJa/"
+      path: "./dist/packages/std-ja/std-ja.0.0.1/"
 
   - name: "annot.0.0.1"
     location:

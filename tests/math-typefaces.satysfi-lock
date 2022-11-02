@@ -21,7 +21,7 @@ locks:
   - name: "std-ja-report.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/StdJaReport"
+      path: "./dist/packages/std-ja-report/std-ja-report.0.0.1"
     dependencies:
       - "stdlib.0.0.1"
       - "math.0.0.1"
