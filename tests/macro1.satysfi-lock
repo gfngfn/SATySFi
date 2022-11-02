@@ -39,6 +39,6 @@ locks:
   - name: "footnote-scheme.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/FootnoteScheme/"
+      path: "./dist/packages/footnote-scheme/footnote-scheme.0.0.1/"
     dependencies:
       - "stdlib.0.0.1"
