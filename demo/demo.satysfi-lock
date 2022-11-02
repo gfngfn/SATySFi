@@ -53,7 +53,7 @@ locks:
   - name: "proof.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/Proof"
+      path: "./dist/packages/proof/proof.0.0.1"
     dependencies:
       - "stdlib.0.0.1"
 
