@@ -2,7 +2,7 @@ locks:
   - name: "stdlib.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/Stdlib/"
+      path: "./dist/packages/stdlib/stdlib.0.0.1/"
 
   - name: "math.0.0.1"
     location:
