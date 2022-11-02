@@ -7,6 +7,6 @@ locks:
   - name: "math.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/Math/"
+      path: "./dist/packages/math/math.0.0.1/"
     dependencies:
       - "stdlib.0.0.1"
