@@ -46,6 +46,6 @@ locks:
   - name: "itemize.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/Itemize"
+      path: "./dist/packages/itemize/itemize.0.0.1"
     dependencies:
       - "stdlib.0.0.1"
