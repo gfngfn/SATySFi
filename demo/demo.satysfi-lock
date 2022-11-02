@@ -60,6 +60,6 @@ locks:
   - name: "tabular.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/Tabular"
+      path: "./dist/packages/tabular/tabular.0.0.1"
     dependencies:
       - "stdlib.0.0.1"
