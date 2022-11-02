@@ -25,7 +25,7 @@ locks:
   - name: "annot.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/Annot/"
+      path: "./dist/packages/annot/annot.0.0.1/"
     dependencies:
       - "stdlib.0.0.1"
 
