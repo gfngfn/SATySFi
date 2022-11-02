@@ -14,7 +14,7 @@ locks:
   - name: "md-ja.0.0.1"
     location:
       type: "global"
-      path: "./dist/packages/MDJa/"
+      path: "./dist/packages/md-ja/md-ja.0.0.1/"
     dependencies:
       - "stdlib.0.0.1"
       - "math.0.0.1"
