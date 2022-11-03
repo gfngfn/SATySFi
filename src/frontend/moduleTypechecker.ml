@@ -116,6 +116,38 @@ let add_constructor_definitions (ctordefs : variant_definition list) (ssig : Str
   ) ssig
 
 
+let rec update_subsignature (modnms : module_name list) (updater : signature -> signature) (modsig : signature) : signature =
+  match modnms with
+  | [] ->
+      updater modsig
+
+  | modnm0 :: proj ->
+      begin
+        match modsig with
+        | ConcFunctor(_) ->
+            assert false
+
+        | ConcStructure(ssig) ->
+            let ssig =
+              ssig |> StructSig.map
+                ~v:(fun _x ventry -> ventry)
+                ~a:(fun _csnm macentry -> macentry)
+                ~c:(fun _ctornm centry -> centry)
+                ~f:(fun _tynm pty -> pty)
+                ~t:(fun _tynm tentry -> tentry)
+                ~m:(fun modnm mentry ->
+                  if String.equal modnm modnm0 then
+                    let modsig = mentry.mod_signature |> update_subsignature proj updater in
+                    { mod_signature = modsig }
+                  else
+                    mentry
+                )
+                ~s:(fun _signm sentry -> sentry)
+            in
+            ConcStructure(ssig)
+      end
+
+
 let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (macparams : untyped_macro_parameter list) : Typeenv.t * EvalVarID.t list * mono_macro_parameter_type list =
   let (tyenv, evidacc, macparamtyacc) =
     macparams |> List.fold_left (fun (tyenv, evidacc, macptyacc) macparam ->
@@ -448,7 +480,7 @@ let rec typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : (s
                   end
             ) ssig0
       in
-      let* (tydefs, _ctordefs) = bind_types tyenv tybinds in
+      let* (tydefs, ctordefs) = bind_types tyenv tybinds in
       let* (subst, quant) =
         tydefs |> foldM (fun (subst, quant) (tynm, tentry) ->
           let* (tyid, kd_expected) =
@@ -477,7 +509,15 @@ let rec typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : (s
         ) (SubstMap.empty, quant0)
       in
       let modsig = modsig0 |> SignatureSubtyping.substitute_concrete subst in
-        (* TODO: use `ctordefs` to update `modsig` *)
+      let modsig =
+        modsig |> update_subsignature (modidents |> List.map (fun (_, modnm) -> modnm)) (function
+        | ConcFunctor(_) ->
+            assert false
+
+        | ConcStructure(ssig) ->
+            ConcStructure(ssig |> add_constructor_definitions ctordefs)
+        )
+      in
       return (quant, modsig)
 
 
