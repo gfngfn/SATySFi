@@ -481,7 +481,7 @@
                      (UTApply ([],
                         (UTContentOf ([],
                            ((Range.Normal <nx.saty:27.11-12>), "*"))),
-                        (UTConstructor ("F",
+                        (UTConstructor ([], "F",
                            (UTContentOf ([],
                               ((Range.Normal <nx.saty:27.9-10>), "a")))
                            ))
@@ -493,7 +493,7 @@
                      (UTApply ([],
                         (UTContentOf ([],
                            ((Range.Normal <nx.saty:28.9-10>), "*"))),
-                        (UTConstructor ("A", UTUnitConstant)))),
+                        (UTConstructor ([], "A", UTUnitConstant)))),
                      (UTContentOf ([],
                         ((Range.Normal <nx.saty:28.11-12>), "b")))
                      ))
@@ -570,7 +570,7 @@
                         (UTContentOf ([],
                            ((Range.Normal <nx.saty:34.7-8>), "a")))
                         )),
-                     (UTConstructor ("F",
+                     (UTConstructor ([], "F",
                         (UTContentOf ([],
                            ((Range.Normal <nx.saty:34.13-14>), "b")))
                         ))
@@ -582,7 +582,7 @@
                         (UTContentOf ([],
                            ((Range.Normal <nx.saty:35.7-8>), "a")))
                         )),
-                     (UTConstructor ("B", UTUnitConstant))))
+                     (UTConstructor ([], "B", UTUnitConstant))))
                   (UTApply ([],
                      (UTApply ([],
                         (UTContentOf ([],
@@ -601,7 +601,7 @@
                      (UTApply ([],
                         (UTContentOf ([],
                            ((Range.Normal <nx.saty:37.11-12>), "*"))),
-                        (UTConstructor ("F",
+                        (UTConstructor ([], "F",
                            (UTContentOf ([],
                               ((Range.Normal <nx.saty:37.9-10>), "a")))
                            ))
@@ -613,7 +613,7 @@
                      (UTApply ([],
                         (UTContentOf ([],
                            ((Range.Normal <nx.saty:38.9-10>), "*"))),
-                        (UTConstructor ("A", UTUnitConstant)))),
+                        (UTConstructor ([], "A", UTUnitConstant)))),
                      (UTContentOf ([],
                         ((Range.Normal <nx.saty:38.11-12>), "b")))
                      )))))
