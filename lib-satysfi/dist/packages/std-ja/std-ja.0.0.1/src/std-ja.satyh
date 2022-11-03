@@ -13,9 +13,9 @@ module StdJa :> sig
       paper-size       : length * length,
       text-width       : length,
       text-height      : length,
-      text-origin      : Stdlib.Pervasives.point, %- TODO: remove this by using 'open'
-      header-origin    : Stdlib.Pervasives.point,
-      footer-origin    : Stdlib.Pervasives.point,
+      text-origin      : Pervasives.point, %- TODO: remove this by using 'open'
+      header-origin    : Pervasives.point,
+      footer-origin    : Pervasives.point,
       header-width     : length,
       footer-width     : length,
     ) (|
