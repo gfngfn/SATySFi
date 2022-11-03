@@ -17,7 +17,7 @@ let reset () =
   if OptionState.is_text_mode () then
     return ()
   else begin
-    let* () = FontInfo.initialize () in
+    FontInfo.initialize ();
     ImageInfo.initialize ();
     NamedDest.initialize ();
     return ()
@@ -769,6 +769,59 @@ let report_type_error = function
       ]
 
 
+let show_yaml_context (context : YamlDecoder.context) =
+  match context with
+  | [] ->
+      ""
+
+  | _ :: _ ->
+      let s_context =
+        let open YamlDecoder in
+        context |> List.map (function
+        | Field(field) -> Printf.sprintf ".%s" field
+        | Index(index) -> Printf.sprintf ".[%d]" index
+        ) |> String.concat ""
+      in
+      Printf.sprintf " (context: %s)" s_context
+
+
+let make_yaml_error_lines = function
+  | ParseError(s) ->
+      [ NormalLine(Printf.sprintf "parse error: %s" s) ]
+
+  | FieldNotFound(yctx, field) ->
+      [ NormalLine(Printf.sprintf "field '%s' not found%s" field (show_yaml_context yctx)) ]
+
+  | NotAFloat(yctx) ->
+      [ NormalLine(Printf.sprintf "not a float value%s" (show_yaml_context yctx)) ]
+
+  | NotAString(yctx) ->
+      [ NormalLine(Printf.sprintf "not a string value%s" (show_yaml_context yctx)) ]
+
+  | NotABool(yctx) ->
+      [ NormalLine(Printf.sprintf "not a Boolean value%s" (show_yaml_context yctx)) ]
+
+  | NotAnArray(yctx) ->
+      [ NormalLine(Printf.sprintf "not an array%s" (show_yaml_context yctx)) ]
+
+  | NotAnObject(yctx) ->
+      [ NormalLine(Printf.sprintf "not an object%s" (show_yaml_context yctx)) ]
+
+  | UnexpectedTag(yctx, tag) ->
+      [ NormalLine(Printf.sprintf "unexpected type tag '%s'%s" tag (show_yaml_context yctx)) ]
+
+  | PackageNotFound(libpath, candidates) ->
+      let lines =
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+        )
+      in
+      (NormalLine(Printf.sprintf "package '%s' not found. candidates:" (get_lib_path_string libpath)) :: lines)
+
+  | UnexpectedLanguage(s_language_version) ->
+      [ NormalLine(Printf.sprintf "unexpected language version '%s'" s_language_version) ]
+
+
 let report_config_error = function
   | NotADocumentFile(abspath_in, ty) ->
       let fname = convert_abs_path_to_show abspath_in in
@@ -788,6 +841,13 @@ let report_config_error = function
       report_error Interface [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "cannot find a source file that defines module '%s'." modnm);
+      ]
+
+  | FileModuleNameConflict(modnm, abspath1, abspath2) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "more than one file defines module '%s':" modnm);
+        DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath1));
+        DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath2));
       ]
 
   | NoMainModule(modnm) ->
@@ -833,10 +893,16 @@ let report_config_error = function
         NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
       ]
 
-  | CannotUseHeaderUse(rng) ->
+  | CannotUseHeaderUse((rng, modnm)) ->
       report_error Interface [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine("cannot specify 'use ...' here; use 'use ... of ...' instead.");
+        NormalLine(Printf.sprintf "cannot specify 'use %s' here; use 'use %s of ...' instead." modnm modnm);
+      ]
+
+  | CannotUseHeaderUseOf((rng, modnm)) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "cannot specify 'use %s of ...' here; use 'use %s' instead." modnm modnm);
       ]
 
   | FailedToParse(e) ->
@@ -862,10 +928,47 @@ let report_config_error = function
         DisplayLine(get_abs_path_string abspath);
       ]
 
-  | PackageConfigError(_) ->
+  | PackageConfigError(abspath, e) ->
+      report_error Interface (List.concat [
+        [ NormalLine(Printf.sprintf "in %s: package config error;" (get_abs_path_string abspath)) ];
+        make_yaml_error_lines e;
+      ])
+
+  | LockConfigNotFound(abspath) ->
       report_error Interface [
-        NormalLine("package config error (TODO: detailed reports)");
+        NormalLine("cannot find a lock config at:");
+        DisplayLine(get_abs_path_string abspath);
       ]
+
+  | LockConfigError(abspath, e) ->
+      report_error Interface (List.concat [
+        [ NormalLine(Printf.sprintf "in %s: lock config error;" (get_abs_path_string abspath)) ];
+        make_yaml_error_lines e;
+      ])
+
+  | LockNameConflict(lock_name) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "lock name conflict: '%s'" lock_name);
+      ]
+
+  | DependencyOnUnknownLock{ depending; depended } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "unknown depended lock '%s' of '%s'." depended depending);
+      ]
+
+  | CyclicLockDependency(cycle) ->
+      let pairs =
+        match cycle with
+        | Loop(pair)   -> [ pair ]
+        | Cycle(pairs) -> pairs |> TupleList.to_list
+      in
+      let lines =
+        pairs |> List.map (fun (modnm, _lock) ->
+          DisplayLine(Printf.sprintf "- '%s'" modnm)
+        )
+      in
+      report_error Interface
+        (NormalLine("the following packages are cyclic:") :: lines)
 
   | NotALibraryFile(abspath) ->
       report_error Interface [
@@ -873,24 +976,10 @@ let report_config_error = function
         DisplayLine(get_abs_path_string abspath);
       ]
 
-  | CyclicPackageDependency(cycle) ->
-      let pairs =
-        match cycle with
-        | Loop(pair)   -> [ pair ]
-        | Cycle(pairs) -> pairs |> TupleList.to_list
-      in
-      let lines =
-        pairs |> List.map (fun (modnm, _package) ->
-          DisplayLine(Printf.sprintf "- '%s'" modnm)
-        )
-      in
-      report_error Interface
-        (NormalLine("the following packages are cyclic:") :: lines)
-
   | CannotFindLibraryFile(libpath, candidate_paths) ->
       let lines =
-        candidate_paths |> List.map (fun path ->
-          DisplayLine(Printf.sprintf "- %s" path)
+        candidate_paths |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
         )
       in
       report_error Interface
@@ -898,8 +987,8 @@ let report_config_error = function
 
   | LocalFileNotFound{ relative; candidates } ->
       let lines =
-        candidates |> List.map (fun path ->
-          DisplayLine(Printf.sprintf "- %s" path)
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
         )
       in
       report_error Interface
@@ -949,8 +1038,14 @@ let report_font_error = function
         NormalLine("is not a TrueType collection or does not have a MATH table.");
       ]
 
-  | ConfigErrorAsToFont(e) ->
-      report_config_error e
+  | CannotFindLibraryFileAsToFont(libpath, candidates) ->
+      let lines =
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+        )
+      in
+      report_error Interface
+        (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
 
 
 let error_log_environment suspended =
@@ -1210,7 +1305,15 @@ let build
       try Filename.chop_extension abspathstr_in with
       | Invalid_argument(_) -> abspathstr_in
     in
-    let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
+
+    let abspath_lock_config = make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension) in
+    Logging.lock_config_file abspath_lock_config;
+    let lock_config =
+      match LockConfig.load abspath_lock_config with
+      | Ok(lock_config) -> lock_config
+      | Error(e)        -> raise (ConfigError(e))
+    in
+
     let abspath_out =
       match (output_mode, output_file) with
       | (_, Some(abspath_out)) -> abspath_out
@@ -1218,28 +1321,30 @@ let build
       | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
     in
     Logging.target_file abspath_out;
+
+    let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
     let (tyenv_prim, env, dump_file_exists) = initialize abspath_dump in
     Logging.dump_file dump_file_exists abspath_dump;
 
     let extensions = get_candidate_file_extensions () in
 
     (* Resolve dependency of the document and the local source files: *)
-    let (package_names, sorted_locals, utdoc_opt) =
+    let (_dep_main_module_names, sorted_locals, utdoc_opt) =
       match OpenFileDependencyResolver.main ~extensions abspath_in with
       | Ok(triple) -> triple
       | Error(e)   -> raise (ConfigError(e))
     in
 
-    (* Resolve dependency among packages that the document depends on: *)
+    (* Resolve dependency among locked packages: *)
     let sorted_packages =
-      match OpenPackageDependencyResolver.main ~extensions package_names with
+      match ClosedLockDependencyResolver.main ~extensions lock_config with
       | Ok(sorted_packages) -> sorted_packages
       | Error(e)            -> raise (ConfigError(e))
     in
 
-    (* Typecheck every package: *)
+    (* Typecheck every locked package: *)
     let (genv, libacc) =
-      sorted_packages |> List.fold_left (fun (genv, libacc) package ->
+      sorted_packages |> List.fold_left (fun (genv, libacc) (_lock_name, package) ->
         let main_module_name = package.main_module_name in
         let (ssig, libs) =
           match PackageChecker.main tyenv_prim genv package with

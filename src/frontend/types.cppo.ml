@@ -4,6 +4,7 @@ open GraphicBase
 open SyntaxBase
 open MyUtil
 
+
 type parse_error =
   | CannotProgressParsing of Range.t
   | IllegalItemDepth of {
@@ -40,6 +41,7 @@ type type_variable_name = string  [@@deriving show]
 type row_variable_name  = string  [@@deriving show]
 type label              = string  [@@deriving show]
 
+type lock_name = string  [@@deriving show]
 
 type input_position = {
   input_file_name : string;
@@ -577,10 +579,16 @@ type untyped_source_file =
   | UTDocumentFile of untyped_document_file
 [@@deriving show { with_path = false; }]
 
-type package_info = {
-  dependencies     : module_name list;
+type untyped_package = {
   main_module_name : module_name;
   modules          : (abs_path * untyped_library_file) list;
+}
+[@@deriving show { with_path = false }]
+
+type lock_info = {
+  lock_name         : lock_name;
+  lock_dependencies : lock_name list;
+  lock_directory    : abs_path;
 }
 [@@deriving show { with_path = false }]
 
@@ -1207,6 +1215,12 @@ type 'a cycle =
   | Loop  of 'a
   | Cycle of 'a TupleList.t
 [@@deriving show { with_path = false; }]
+
+
+let map_cycle f = function
+  | Loop(v)   -> Loop(f v)
+  | Cycle(vs) -> Cycle(TupleList.map f vs)
+
 
 module GlobalTypeenv = Map.Make(String)
 

@@ -1,0 +1,52 @@
+locks:
+  - name: "stdlib.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/stdlib/stdlib.0.0.1/"
+
+  - name: "math.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/math/math.0.0.1/"
+    dependencies:
+      - "stdlib.0.0.1"
+
+  - name: "md-ja.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/md-ja/md-ja.0.0.1/"
+    dependencies:
+      - "stdlib.0.0.1"
+      - "math.0.0.1"
+      - "code.0.0.1"
+      - "itemize.0.0.1"
+      - "annot.0.0.1"
+      - "footnote-scheme.0.0.1"
+
+  - name: "annot.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/annot/annot.0.0.1/"
+    dependencies:
+      - "stdlib.0.0.1"
+
+  - name: "code.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/code/code.0.0.1/"
+    dependencies:
+      - "stdlib.0.0.1"
+
+  - name: "footnote-scheme.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/footnote-scheme/footnote-scheme.0.0.1/"
+    dependencies:
+      - "stdlib.0.0.1"
+
+  - name: "itemize.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/itemize/itemize.0.0.1"
+    dependencies:
+      - "stdlib.0.0.1"

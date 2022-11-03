@@ -32,7 +32,7 @@ let add_dependency_to_type_environment ~(package_only : bool) (header : header_e
         begin
           match (kind, genv |> GlobalTypeenv.find_opt modnm) with
           | (LocalDependency, None) ->
-              assert false
+              assert false (* Local dependency must be resolved beforehand. *)
 
           | (PackageDependency, None) ->
               err @@ UnknownPackageDependency(rng, modnm)
@@ -73,7 +73,7 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
       err (NotADocumentFile(abspath_in, ty))
 
 
-let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : package_info) : (StructSig.t * (abs_path * binding list) list) ok =
+let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : untyped_package) : (StructSig.t * (abs_path * binding list) list) ok =
   let open ResultMonad in
   let main_module_name = package.main_module_name in
   let utlibs = package.modules in

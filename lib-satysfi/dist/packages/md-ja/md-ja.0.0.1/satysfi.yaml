@@ -1,0 +1,6 @@
+language: "0.1.0"
+contents:
+  type: "library"
+  main_module: "MDJa"
+  source_directories:
+    - "./src"

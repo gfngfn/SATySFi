@@ -1,42 +1,65 @@
 
-type error
+type context_element =
+  | Field of string
+  | Index of int
 
-val pp_error : Format.formatter -> error -> unit
+type context =
+  context_element list
 
-type 'a t
+module type ErrorType = sig
+  type t
 
-val run : 'a t -> string -> ('a, error) result
+  val parse_error : string -> t
 
-val succeed : 'a -> 'a t
+  val field_not_found : context -> string -> t
 
-val failure : string -> 'a t
+  val not_a_float : context -> t
 
-val bind : 'a t -> ('a -> 'b t) -> 'b t
+  val not_a_string : context -> t
 
-val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
+  val not_a_bool : context -> t
 
-val get : string -> 'a t -> 'a t
+  val not_an_array : context -> t
 
-val get_opt : string -> 'a t -> ('a option) t
+  val not_an_object : context -> t
+end
 
-val get_or_else : string -> 'a t -> 'a -> 'a t
+module Make (Err : ErrorType) : sig
+  type 'a t
 
-val number : float t
+  val run : 'a t -> string -> ('a, Err.t) result
 
-val string : string t
+  val succeed : 'a -> 'a t
 
-val bool : bool t
+  val failure : (context -> Err.t) -> 'a t
 
-val list : 'a t -> ('a list) t
+  val bind : 'a t -> ('a -> 'b t) -> 'b t
 
-type 'a branch
+  val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
 
-val branch : string -> ('a branch) list -> on_error:(string -> string) -> 'a t
+  val get : string -> 'a t -> 'a t
 
-val ( ==> ) : string -> 'a t -> 'a branch
+  val get_opt : string -> 'a t -> ('a option) t
 
-val map : ('a -> 'b) -> 'a t -> 'b t
+  val get_or_else : string -> 'a t -> 'a -> 'a t
 
-val map2 : ('a1 -> 'a2 -> 'b) -> 'a1 t -> 'a2 t -> 'b t
+  val number : float t
 
-val map3 : ('a1 -> 'a2 -> 'a3 -> 'b) -> 'a1 t -> 'a2 t -> 'a3 t -> 'b t
+  val string : string t
+
+  val bool : bool t
+
+  val list : 'a t -> ('a list) t
+
+  type 'a branch
+
+  val branch : string -> ('a branch) list -> other:(string -> 'a t) -> 'a t
+
+  val ( ==> ) : string -> 'a t -> 'a branch
+
+  val map : ('a -> 'b) -> 'a t -> 'b t
+
+  val map2 : ('a1 -> 'a2 -> 'b) -> 'a1 t -> 'a2 t -> 'b t
+
+  val map3 : ('a1 -> 'a2 -> 'a3 -> 'b) -> 'a1 t -> 'a2 t -> 'a3 t -> 'b t
+end

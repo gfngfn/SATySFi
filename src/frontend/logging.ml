@@ -100,6 +100,10 @@ let  dump_file dump_file_exists dump_file =
     print_endline ("  dump file: '" ^ (show_path dump_file) ^ "' (will be created)")
 
 
+let lock_config_file (abspath_lock_config : abs_path) =
+  Printf.printf "  lock file: '%s'\n" (show_path abspath_lock_config)
+
+
 let begin_to_embed_fonts () =
   print_endline (" ---- ---- ---- ----");
   print_endline ("  embedding fonts ...")

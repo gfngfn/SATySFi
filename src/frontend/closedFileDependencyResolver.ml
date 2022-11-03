@@ -6,21 +6,26 @@ open ConfigError
 type 'a ok = ('a, config_error) result
 
 
+module SourceModuleDependencyGraph = DependencyGraph.Make(String)
+
+
 let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untyped_library_file) list) ok =
   let open ResultMonad in
 
   (* Add vertices: *)
-  let (graph, modnm_to_path, entryacc) =
-    utlibs |> List.fold_left (fun (graph, modnm_to_path, entryacc) (abspath, utlib) ->
+  let* (graph, entryacc) =
+    utlibs |> foldM (fun (graph, entryacc) (abspath, utlib) ->
       let (_, ((_, modnm), _, _)) = utlib in
-      let (graph, vertex) =
-        match graph |> FileDependencyGraph.add_vertex abspath utlib with
-        | Error(_) -> assert false
-        | Ok(pair) -> pair
+      let* (graph, vertex) =
+        match graph |> SourceModuleDependencyGraph.add_vertex modnm (abspath, utlib) with
+        | Error(((abspath_prev, _utlib_prev), _vertex_prev)) ->
+            err @@ FileModuleNameConflict(modnm, abspath_prev, abspath)
+
+        | Ok(pair) ->
+            return pair
       in
-      let entry = (utlib, vertex) in
-      (graph, modnm_to_path |> ModuleNameMap.add modnm abspath, Alist.extend entryacc entry)
-    ) (FileDependencyGraph.empty, ModuleNameMap.empty, Alist.empty)
+      return (graph, Alist.extend entryacc (utlib, vertex))
+    ) (SourceModuleDependencyGraph.empty, Alist.empty)
   in
 
   (* Add edges: *)
@@ -31,30 +36,31 @@ let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untype
         match headerelem with
         | HeaderUse((rng, modnm_sub)) ->
             begin
-              match modnm_to_path |> ModuleNameMap.find_opt modnm_sub with
+              match graph |> SourceModuleDependencyGraph.get_vertex modnm_sub with
               | None ->
                   err @@ FileModuleNotFound(rng, modnm_sub)
 
-              | Some(abspath_sub) ->
-                  begin
-                    match graph |> FileDependencyGraph.get_vertex abspath_sub with
-                    | None ->
-                        assert false
-
-                    | Some(vertex_sub) ->
-                        let graph = graph |> FileDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub in
-                        return graph
-                  end
+              | Some(vertex_sub) ->
+                  let graph = graph |> SourceModuleDependencyGraph.add_edge ~from:vertex ~to_:vertex_sub in
+                  return graph
             end
 
         | HeaderUsePackage(_) ->
             return graph
 
-        | HeaderUseOf(_, _) ->
-            assert false
+        | HeaderUseOf(modident, _) ->
+            err @@ CannotUseHeaderUseOf(modident)
 
       ) graph
     ) graph
   in
 
-  FileDependencyGraph.topological_sort graph |> Result.map_error (fun cycle -> CyclicFileDependency(cycle))
+  (* Solve dependency: *)
+  let* sorted =
+    SourceModuleDependencyGraph.topological_sort graph
+      |> Result.map_error (fun cycle ->
+        let cycle = cycle |> map_cycle (fun (_modnm, pair) -> pair) in
+        CyclicFileDependency(cycle)
+      )
+  in
+  return (sorted |> List.map (fun (_modnm, pair) -> pair))

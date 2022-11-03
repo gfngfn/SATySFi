@@ -8,32 +8,60 @@ type 'a ok = ('a, config_error) result
 
 type relative_path = string
 
-type t =
-  | Version_0_1 of {
+type package_contents =
+  | Library of {
       main_module_name   : module_name;
       source_directories : relative_path list;
-      dependencies       : module_name list;
+    }
+  | Document of {
+      document_file : relative_path;
     }
 
+type t = {
+  package_contents : package_contents;
+}
 
-let config_version_0_1_decoder =
-  let open YamlDecoder in
-  get "main_module" string >>= fun main_module_name ->
-  get "source_directories" (list string) >>= fun source_directories ->
-  get_or_else "dependencies" (list string) [] >>= fun dependencies ->
-  succeed @@ Version_0_1 {
-    main_module_name;
-    source_directories;
-    dependencies;
+
+module PackageConfigDecoder = YamlDecoder.Make(YamlError)
+
+
+let contents_decoder : package_contents PackageConfigDecoder.t =
+  let open PackageConfigDecoder in
+  branch "type" [
+    "library" ==> begin
+      get "main_module" string >>= fun main_module_name ->
+      get "source_directories" (list string) >>= fun source_directories ->
+      succeed @@ Library {
+        main_module_name;
+        source_directories;
+      }
+    end;
+    "document" ==> begin
+      get "file" string >>= fun document_file ->
+      succeed @@ Document {
+        document_file;
+      }
+    end;
+  ]
+  ~other:(fun tag ->
+    failure (fun context -> UnexpectedTag(context, tag))
+  )
+
+
+let version_0_1_config_decoder : t PackageConfigDecoder.t =
+  let open PackageConfigDecoder in
+  get "contents" contents_decoder >>= fun package_contents ->
+  succeed @@ {
+    package_contents;
   }
 
 
 let config_decoder =
-  let open YamlDecoder in
+  let open PackageConfigDecoder in
   get "language" string >>= fun language ->
   match language with
-  | "v0.1.0" -> config_version_0_1_decoder
-  | _        -> failure (Printf.sprintf "unknown language version '%s'" language)
+  | "0.1.0" -> version_0_1_config_decoder
+  | _       -> failure (fun _context -> UnexpectedLanguage(language))
 
 
 let load (absdir_package : abs_path) : t ok =
@@ -49,4 +77,5 @@ let load (absdir_package : abs_path) : t ok =
   in
   let s = Core.In_channel.input_all inc in
   close_in inc;
-  YamlDecoder.run config_decoder s |> Result.map_error (fun e -> PackageConfigError(e))
+  PackageConfigDecoder.run config_decoder s
+    |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))

@@ -1,6 +1,5 @@
 use package Stdlib
 use package Math
-use package Proof
 
 module Head = struct
 

@@ -20,7 +20,8 @@ type font_definition = {
 
 
 let resolve_lib_file (relpath : lib_path) =
-  Config.resolve_lib_file relpath |> Result.map_error (fun e -> ConfigErrorAsToFont(e))
+  Config.resolve_lib_file relpath
+    |> Result.map_error (fun candidates -> CannotFindLibraryFileAsToFont(relpath, candidates))
 
 
 module FontAbbrevHashTable : sig
@@ -431,40 +432,45 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
 
 
 let initialize () =
-  let open ResultMonad in
-  FontAbbrevHashTable.initialize ();
-  MathFontAbbrevHashTable.initialize ();
-  let* abspath_S   = Config.resolve_lib_file (make_lib_path "dist/unidata/Scripts.txt") in
-  let* abspath_EAW = Config.resolve_lib_file (make_lib_path "dist/unidata/EastAsianWidth.txt") in
-  ScriptDataMap.set_from_file abspath_S abspath_EAW;
-  let* abspath_LB = Config.resolve_lib_file (make_lib_path "dist/unidata/LineBreak.txt") in
-  LineBreakDataMap.set_from_file abspath_LB;
-  let font_hash_local =
-    match Config.resolve_lib_file (make_lib_path "local/hash/fonts.satysfi-hash") with
-    | Error(_)    -> []
-    | Ok(abspath) -> LoadFont.main abspath
+  let res =
+    let open ResultMonad in
+    FontAbbrevHashTable.initialize ();
+    MathFontAbbrevHashTable.initialize ();
+    let* abspath_S   = resolve_lib_file (make_lib_path "dist/unidata/Scripts.txt") in
+    let* abspath_EAW = resolve_lib_file (make_lib_path "dist/unidata/EastAsianWidth.txt") in
+    ScriptDataMap.set_from_file abspath_S abspath_EAW;
+    let* abspath_LB = resolve_lib_file (make_lib_path "dist/unidata/LineBreak.txt") in
+    LineBreakDataMap.set_from_file abspath_LB;
+    let font_hash_local =
+      match Config.resolve_lib_file (make_lib_path "local/hash/fonts.satysfi-hash") with
+      | Error(_)    -> []
+      | Ok(abspath) -> LoadFont.main abspath
+    in
+    let* abspath_fonts = resolve_lib_file (make_lib_path "dist/hash/fonts.satysfi-hash") in
+    let font_hash_dist = LoadFont.main abspath_fonts in
+    let font_hash = List.append font_hash_local font_hash_dist in
+    if OptionState.does_show_fonts () then Logging.show_fonts font_hash;
+    font_hash |> List.iter (fun (abbrev, data) ->
+      match data with
+      | FontAccess.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
+      | FontAccess.Collection(relpath, i) -> FontAbbrevHashTable.add_ttc abbrev relpath i
+    );
+    let math_font_hash_local =
+      match Config.resolve_lib_file (make_lib_path "local/hash/mathfonts.satysfi-hash") with
+      | Error(_)    -> []
+      | Ok(abspath) -> LoadFont.main abspath
+    in
+    let* abspath_mathfonts = resolve_lib_file (make_lib_path "dist/hash/mathfonts.satysfi-hash") in
+    let math_font_hash_dist = LoadFont.main abspath_mathfonts in
+    let math_font_hash = List.append math_font_hash_local math_font_hash_dist in
+    if OptionState.does_show_fonts () then Logging.show_math_fonts math_font_hash;
+    math_font_hash |> List.iter (fun (mfabbrev, data) ->
+      match data with
+      | FontAccess.Single(srcpath)        -> MathFontAbbrevHashTable.add_single mfabbrev srcpath
+      | FontAccess.Collection(srcpath, i) -> MathFontAbbrevHashTable.add_ttc mfabbrev srcpath i
+    );
+    return ()
   in
-  let* abspath_fonts = Config.resolve_lib_file (make_lib_path "dist/hash/fonts.satysfi-hash") in
-  let font_hash_dist = LoadFont.main abspath_fonts in
-  let font_hash = List.append font_hash_local font_hash_dist in
-  if OptionState.does_show_fonts () then Logging.show_fonts font_hash;
-  font_hash |> List.iter (fun (abbrev, data) ->
-    match data with
-    | FontAccess.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
-    | FontAccess.Collection(relpath, i) -> FontAbbrevHashTable.add_ttc abbrev relpath i
-  );
-  let math_font_hash_local =
-    match Config.resolve_lib_file (make_lib_path "local/hash/mathfonts.satysfi-hash") with
-    | Error(_)    -> []
-    | Ok(abspath) -> LoadFont.main abspath
-  in
-  let* abspath_mathfonts = Config.resolve_lib_file (make_lib_path "dist/hash/mathfonts.satysfi-hash") in
-  let math_font_hash_dist = LoadFont.main abspath_mathfonts in
-  let math_font_hash = List.append math_font_hash_local math_font_hash_dist in
-  if OptionState.does_show_fonts () then Logging.show_math_fonts math_font_hash;
-  math_font_hash |> List.iter (fun (mfabbrev, data) ->
-    match data with
-    | FontAccess.Single(srcpath)        -> MathFontAbbrevHashTable.add_single mfabbrev srcpath
-    | FontAccess.Collection(srcpath, i) -> MathFontAbbrevHashTable.add_ttc mfabbrev srcpath i
-  );
-  return ()
+  match res with
+  | Ok(())   -> ()
+  | Error(e) -> raise (FontInfoError(e))

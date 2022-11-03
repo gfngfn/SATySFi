@@ -17,15 +17,17 @@ let listup_sources_in_directory (extensions : string list) (absdir_src : abs_pat
   )
 
 
-let main ~(extensions : string list) (absdir_package : abs_path) : package_info ok =
+let main ~(extensions : string list) (absdir_package : abs_path) : untyped_package ok =
   let open ResultMonad in
   let* config = PackageConfig.load absdir_package in
   let* package =
-    match config with
-    | PackageConfig.Version_0_1 {
+    match config.package_contents with
+    | PackageConfig.Document(_) ->
+        failwith "TODO: PackageConfig.Document"
+
+    | PackageConfig.Library {
         main_module_name;
         source_directories;
-        dependencies;
       } ->
         let absdirs_src =
           source_directories |> List.map (fun source_directory ->
@@ -52,7 +54,6 @@ let main ~(extensions : string list) (absdir_package : abs_path) : package_info 
         return {
           main_module_name;
           modules;
-          dependencies;
         }
   in
   return package
