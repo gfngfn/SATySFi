@@ -845,12 +845,23 @@ expr_op:
   | tok=EXACT_MINUS; utast2=expr_app
       { make_uminus tok utast2 }
   | ctor=UPPER; utast2=expr_un
-      { make_standard (Ranged ctor) (Ranged utast2) (UTConstructor(extract_main ctor, utast2)) }
+      { make_standard (Ranged ctor) (Ranged utast2) (UTConstructor([], extract_main ctor, utast2)) }
+  | long_ctor=LONG_UPPER; utast2=expr_un
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        make_standard (Tok rng) (Ranged utast2) (UTConstructor(modidents, extract_main ctor, utast2))
+      }
   | ctor=UPPER
       {
         let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
         let (rng, ctornm) = ctor in
-        (rng, UTConstructor(ctornm, utast_unit))
+        (rng, UTConstructor([], ctornm, utast_unit))
+      }
+  | long_ctor=LONG_UPPER
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
+        (rng, UTConstructor(modidents, extract_main ctor, utast_unit))
       }
   | utast=expr_app
       { utast }
@@ -864,7 +875,14 @@ expr_app:
       {
         let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
         let (rng, ctornm) = ctor in
-        let utast2 = (rng, UTConstructor(ctornm, utast_unit)) in
+        let utast2 = (rng, UTConstructor([], ctornm, utast_unit)) in
+        make_standard (Ranged utast1) (Tok rng) (UTApply(mnopts, utast1, utast2))
+      }
+  | utast1=expr_app; mnopts=expr_opts; long_ctor=LONG_UPPER
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
+        let utast2 = (rng, UTConstructor(modidents, extract_main ctor, utast_unit)) in
         make_standard (Ranged utast1) (Tok rng) (UTApply(mnopts, utast1, utast2))
       }
   | utast=expr_un

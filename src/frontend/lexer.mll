@@ -306,11 +306,6 @@ rule lex_program stack = parse
         let (modidents, lower_ident) = split_module_list pos s in
         LONG_LOWER(pos, modidents, lower_ident)
       }
-  | (upper as s) "."
-      {
-        let pos = get_pos lexbuf in
-        UPPER_DOT(pos, s)
-      }
   | lower
       {
         let tokstr = Lexing.lexeme lexbuf in
@@ -356,6 +351,11 @@ rule lex_program stack = parse
         let s = Lexing.lexeme lexbuf in
         let (modidents, upper_ident) = split_module_list pos s in
         LONG_UPPER(pos, modidents, upper_ident)
+      }
+  | (upper as s) "."
+      {
+        let pos = get_pos lexbuf in
+        UPPER_DOT(pos, s)
       }
   | upper
       { UPPER(get_pos lexbuf, Lexing.lexeme lexbuf) }

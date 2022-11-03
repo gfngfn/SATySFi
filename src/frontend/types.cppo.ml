@@ -526,14 +526,14 @@ and untyped_abstract_tree_main =
   | UTAccessField          of untyped_abstract_tree * label ranged
   | UTUpdateField          of untyped_abstract_tree * label ranged * untyped_abstract_tree
 (* Fundamentals: *)
-  | UTContentOf            of ((module_name ranged) list) * var_name ranged
+  | UTContentOf            of (module_name ranged) list * var_name ranged
   | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTFunction             of untyped_parameter_unit * untyped_abstract_tree
   | UTOpenIn               of module_name ranged * untyped_abstract_tree
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
-  | UTConstructor          of constructor_name * untyped_abstract_tree
+  | UTConstructor          of (module_name ranged) list * constructor_name * untyped_abstract_tree
   | UTOverwrite            of var_name ranged * untyped_abstract_tree
 (* Lightweight itemizes: *)
   | UTItemize              of untyped_itemize

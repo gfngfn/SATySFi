@@ -334,13 +334,13 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       let utastarg3 =
         match refopt with
         | None ->
-            (dummy_range, UTConstructor("None", (dummy_range, UTUnitConstant)))
+            (dummy_range, UTConstructor([], "None", (dummy_range, UTUnitConstant)))
 
         | Some((title, url)) ->
             let u1 = (dummy_range, UTStringConstant(title)) in
             let u2 = (dummy_range, UTStringConstant(url)) in
             let upair = (dummy_range, UTTuple(TupleList.make u1 u2 [])) in
-            (dummy_range, UTConstructor("Some", upair))
+            (dummy_range, UTConstructor([], "Some", upair))
 
       in
       make_inline_application cmdrcd.reference [utastarg1; utastarg2; utastarg3]

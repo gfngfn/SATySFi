@@ -12,32 +12,49 @@ module PatternVarMap = Map.Make(String)
 type pattern_var_map = (Range.t * EvalVarID.t * mono_type) PatternVarMap.t
 
 
-let find_constructor_and_instantiate (pre : pre) (tyenv : Typeenv.t) (ctornm : constructor_name) (rng : Range.t) : (mono_type list * TypeID.t * mono_type) ok =
+let find_constructor (rng : Range.t) (tyenv : Typeenv.t) (modidents : (module_name ranged) list) (ctornm : constructor_name) : constructor_entry ok =
   let open ResultMonad in
-  match tyenv |> Typeenv.find_constructor ctornm with
+  let* centry_opt =
+    match modidents with
+    | [] ->
+        return (tyenv |> Typeenv.find_constructor ctornm)
+
+    | modident0 :: proj ->
+        let modchain = (modident0, proj) in
+        let* mentry = find_module_chain tyenv modchain in
+        let* ssig =
+          match mentry.mod_signature with
+          | ConcStructure(ssig) -> return ssig
+          | ConcFunctor(fsig)   -> err (NotAStructureSignature(rng, fsig))
+              (*TODO (error): give a better code range to this error. *)
+        in
+        return (ssig |> StructSig.find_constructor ctornm)
+  in
+  match centry_opt with
   | None ->
-      let cands =
-        []  (* TODO (error): find candidate constructors *)
-        (* tyenv |> Typeenv.find_constructor_candidates ctornm *)
-      in
+      let cands = [] in (* TODO (error): find candidate constructors *)
       err (UndefinedConstructor(rng, ctornm, cands))
 
   | Some(centry) ->
-      let qtfbl = pre.quantifiability in
-      let lev = pre.level in
-      let tyid = centry.ctor_belongs_to in
-      let (bids, pty) = centry.ctor_parameter in
-      let (bidmap, tyacc) =
-        bids |> List.fold_left (fun (bidmap, tyacc) bid ->
-          let fid = fresh_free_id qtfbl lev in
-          let tv = Updatable(ref (MonoFree(fid))) in
-          let ty = (Range.dummy "tc-constructor", TypeVariable(tv)) in
-          (bidmap |> BoundIDMap.add bid ty, Alist.extend tyacc ty)
-        ) (BoundIDMap.empty, Alist.empty)
-      in
-      let ty = TypeConv.instantiate_by_map_mono bidmap pty in
-      let tys_arg = Alist.to_list tyacc in
-      return (tys_arg, tyid, ty)
+      return centry
+
+
+let instantiate_constructor (pre : pre) (centry : constructor_entry) : mono_type list * TypeID.t * mono_type =
+  let qtfbl = pre.quantifiability in
+  let lev = pre.level in
+  let tyid = centry.ctor_belongs_to in
+  let (bids, pty) = centry.ctor_parameter in
+  let (bidmap, tyacc) =
+    bids |> List.fold_left (fun (bidmap, tyacc) bid ->
+      let fid = fresh_free_id qtfbl lev in
+      let tv = Updatable(ref (MonoFree(fid))) in
+      let ty = (Range.dummy "tc-constructor", TypeVariable(tv)) in
+      (bidmap |> BoundIDMap.add bid ty, Alist.extend tyacc ty)
+    ) (BoundIDMap.empty, Alist.empty)
+  in
+  let ty = TypeConv.instantiate_by_map_mono bidmap pty in
+  let tys_arg = Alist.to_list tyacc in
+  (tys_arg, tyid, ty)
 
 
 let find_macro (tyenv : Typeenv.t) (modidents : (module_name ranged) list) ((rng_cs, csnm) : macro_name ranged) : macro_entry ok =
@@ -230,11 +247,12 @@ let rec typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : un
               return (PAsVariable(evid, epat1), typat1, patvarmap1 |> PatternVarMap.add varnm (rng, evid, beta))
         end
 
-    | UTPConstructor(constrnm, utpat1) ->
-        let* (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+    | UTPConstructor(ctornm, utpat1) ->
+        let* centry = find_constructor rng tyenv [] ctornm in
+        let (tyargs, tyid, tyc) = instantiate_constructor pre centry in
         let* (epat1, typat1, tyenv1) = iter utpat1 in
         let* () = unify tyc typat1 in
-        return (PConstructor(constrnm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
+        return (PConstructor(ctornm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
 
 
 let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) : (abstract_tree * mono_type) ok =
@@ -405,12 +423,13 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       let tyres = TypeConv.overwrite_range_of_type tyfree rng in
       return (e, tyres)
 
-  | UTConstructor(constrnm, utast1) ->
-      let* (tyargs, tyid, tyc) = find_constructor_and_instantiate pre tyenv constrnm rng in
+  | UTConstructor(modidents, ctornm, utast1) ->
+      let* centry = find_constructor rng tyenv modidents ctornm in
+      let (tyargs, tyid, tyc) = instantiate_constructor pre centry in
       let* (e1, ty1) = typecheck_iter tyenv utast1 in
       let* () = unify ty1 tyc in
       let tyres = (rng, DataType(tyargs, tyid)) in
-      return (NonValueConstructor(constrnm, e1), tyres)
+      return (NonValueConstructor(ctornm, e1), tyres)
 
   | UTLambdaInlineCommand{
       parameters       = param_units;
