@@ -1,0 +1,5 @@
+locks:
+  - name: "stdlib.0.0.1"
+    location:
+      type: "global"
+      path: "./dist/packages/stdlib/stdlib.0.0.1/"
