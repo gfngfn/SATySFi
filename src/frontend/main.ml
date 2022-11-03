@@ -8,7 +8,6 @@ open TypeError
 
 exception NoLibraryRootDesignation
 exception ShouldSpecifyOutputFile
-exception UnexpectedInputExtension of string
 exception ConfigError of config_error
 
 
@@ -1256,6 +1255,31 @@ type build_input =
     }
 
 
+let check_depended_packages ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
+  (* Resolve dependency among locked packages: *)
+  let sorted_packages =
+    match ClosedLockDependencyResolver.main ~extensions lock_config with
+    | Ok(sorted_packages) -> sorted_packages
+    | Error(e)            -> raise (ConfigError(e))
+  in
+
+  (* Typecheck every locked package: *)
+  let (genv, libacc) =
+    sorted_packages |> List.fold_left (fun (genv, libacc) (_lock_name, package) ->
+      let main_module_name = package.main_module_name in
+      let (ssig, libs) =
+        match PackageChecker.main tyenv_prim genv package with
+        | Ok(pair) -> pair
+        | Error(e) -> raise (ConfigError(e))
+      in
+      let genv = genv |> GlobalTypeenv.add main_module_name ssig in
+      let libacc = Alist.append libacc libs in
+      (genv, libacc)
+    ) (GlobalTypeenv.empty, Alist.empty)
+  in
+  (genv, Alist.to_list libacc)
+
+
 let build
     ~(fpath_in : string)
     ~(fpath_out_opt : string option)
@@ -1313,33 +1337,28 @@ let build
     let abspath_in = input_file in
     let build_input =
       let abspathstr_in = get_abs_path_string abspath_in in
-      match Filename.extension abspathstr_in with
-      | ".saty" ->
-        (* If the input is a document file: *)
-          let basename_without_extension = Filename.remove_extension abspathstr_in in
-          let abspath_lock_config = make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension) in
-          let abspath_out =
-            match (output_mode, output_file) with
-            | (_, Some(abspath_out)) -> abspath_out
-            | (TextMode(_), None)    -> raise ShouldSpecifyOutputFile
-            | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
-          in
-          let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
-          DocumentInput{
-            lock = abspath_lock_config;
-            out  = abspath_out;
-            dump = abspath_dump;
-          }
-
-      | "" ->
+      if Sys.is_directory abspathstr_in then
         (* If the input is a package directory: *)
           let abspath_lock_config = make_abs_path (Printf.sprintf "%s/package.satysfi-lock" abspathstr_in) in
           PackageInput{
             lock = abspath_lock_config;
           }
-
-      | ext ->
-          raise (UnexpectedInputExtension(ext))
+      else
+        (* If the input is a document file: *)
+        let basename_without_extension = Filename.remove_extension abspathstr_in in
+        let abspath_lock_config = make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension) in
+        let abspath_out =
+          match (output_mode, output_file) with
+          | (_, Some(abspath_out)) -> abspath_out
+          | (TextMode(_), None)    -> raise ShouldSpecifyOutputFile
+          | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
+        in
+        let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
+        DocumentInput{
+          lock = abspath_lock_config;
+          out  = abspath_out;
+          dump = abspath_dump;
+        }
     in
 
     let extensions = get_candidate_file_extensions () in
@@ -1350,12 +1369,25 @@ let build
         lock = abspath_lock_config;
       } ->
         Logging.lock_config_file abspath_lock_config;
-        let _lock_config =
+        let lock_config =
           match LockConfig.load abspath_lock_config with
           | Ok(lock_config) -> lock_config
           | Error(e)        -> raise (ConfigError(e))
         in
-        failwith "TODO: PackageInput"
+
+        let package =
+          match PackageReader.main ~extensions abspath_in with
+          | Ok(package) -> package
+          | Error(e)    -> raise (ConfigError(e))
+        in
+
+        let (genv, _libs_dep) = check_depended_packages ~extensions tyenv_prim lock_config in
+
+        begin
+          match PackageChecker.main tyenv_prim genv package with
+          | Ok((_ssig, _libs)) -> ()
+          | Error(e)           -> raise (ConfigError(e))
+        end
 
     | DocumentInput{
         lock = abspath_lock_config;
@@ -1375,49 +1407,23 @@ let build
         Logging.dump_file dump_file_exists abspath_dump;
 
         (* Resolve dependency of the document and the local source files: *)
-        let (_dep_main_module_names, sorted_locals, utdoc_opt) =
+        let (_dep_main_module_names, sorted_locals, utdoc) =
           match OpenFileDependencyResolver.main ~extensions abspath_in with
           | Ok(triple) -> triple
           | Error(e)   -> raise (ConfigError(e))
         in
 
-        (* Resolve dependency among locked packages: *)
-        let sorted_packages =
-          match ClosedLockDependencyResolver.main ~extensions lock_config with
-          | Ok(sorted_packages) -> sorted_packages
-          | Error(e)            -> raise (ConfigError(e))
+        let (genv, libs) = check_depended_packages ~extensions tyenv_prim lock_config in
+
+        (* Typechecking and elaboration: *)
+        let (libs_local, ast_doc) =
+          match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+          | Ok(pair) -> pair
+          | Error(e) -> raise (ConfigError(e))
         in
-
-        (* Typecheck every locked package: *)
-        let (genv, libacc) =
-          sorted_packages |> List.fold_left (fun (genv, libacc) (_lock_name, package) ->
-            let main_module_name = package.main_module_name in
-            let (ssig, libs) =
-              match PackageChecker.main tyenv_prim genv package with
-              | Ok(pair) -> pair
-              | Error(e) -> raise (ConfigError(e))
-            in
-            let genv = genv |> GlobalTypeenv.add main_module_name ssig in
-            let libacc = Alist.append libacc libs in
-            (genv, libacc)
-          ) (GlobalTypeenv.empty, Alist.empty)
-        in
-
-        match utdoc_opt with
-        | None ->
-            ()
-
-        | Some(utdoc) ->
-            (* Typechecking and elaboration: *)
-            let (libs_local, ast_doc) =
-              match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
-              | Ok(pair) -> pair
-              | Error(e) -> raise (ConfigError(e))
-            in
-            let libs = Alist.to_list (Alist.append libacc libs_local) in
-
-            if type_check_only then
-              ()
-            else
-              preprocess_and_evaluate env libs ast_doc abspath_in abspath_out abspath_dump
+        let libs = List.append libs libs_local in
+        if type_check_only then
+          ()
+        else
+          preprocess_and_evaluate env libs ast_doc abspath_in abspath_out abspath_dump
   )

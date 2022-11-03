@@ -13,23 +13,6 @@ type graph = untyped_library_file FileDependencyGraph.t
 
 type vertex = FileDependencyGraph.Vertex.t
 
-
-let has_library_extension (abspath : abs_path) : bool =
-  let ext = get_abs_path_extension abspath in
-  match ext with
-  | ".satyh" | ".satyg" ->
-      true
-
-  | _ ->
-      begin
-        try
-          let extpre = String.sub ext 0 7 in
-          String.equal extpre ".satyh-"
-        with
-        | _ -> false
-      end
-
-
 type local_or_package =
   | Local   of module_name ranged * abs_path
   | Package of module_name ranged
@@ -150,28 +133,20 @@ let register_markdown_file (setting : string) (abspath_in : abs_path) : (Package
   return (package_names, (header, utast))
 
 
-let main ~(extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file option) ok =
+let main ~(extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
-  let* (package_names, graph, utdoc_opt) =
+  let* (package_names, graph, utdoc) =
     match OptionState.get_input_kind () with
     | OptionState.SATySFi ->
-        if has_library_extension abspath_in && OptionState.is_type_check_only () then
-          let graph = FileDependencyGraph.empty in
-          let package_names = PackageNameSet.empty in
-          let* (package_names, graph) =
-            register_library_file extensions graph package_names ~prev:None abspath_in
-          in
-          return (package_names, graph, None)
-        else
-          let* (package_names, graph, utdoc) = register_document_file extensions abspath_in in
-          return (package_names, graph, Some(utdoc))
+        let* (package_names, graph, utdoc) = register_document_file extensions abspath_in in
+        return (package_names, graph, utdoc)
 
     | OptionState.Markdown(setting) ->
         let* (package_names, utdoc) = register_markdown_file setting abspath_in in
-        return (package_names, FileDependencyGraph.empty, Some(utdoc))
+        return (package_names, FileDependencyGraph.empty, utdoc)
   in
   let* sorted_locals =
     FileDependencyGraph.topological_sort graph
       |> Result.map_error (fun cycle -> CyclicFileDependency(cycle))
   in
-  return (package_names, sorted_locals, utdoc_opt)
+  return (package_names, sorted_locals, utdoc)
