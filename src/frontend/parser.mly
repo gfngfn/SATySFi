@@ -253,7 +253,7 @@
 %token<Range.t * Types.var_name> UNOP_EXCLAM
 
 %token<Range.t * Types.var_name> LOWER
-%token<Range.t * Types.constructor_name> UPPER
+%token<Range.t * Types.constructor_name> UPPER UPPER_DOT
 %token<Range.t * (Types.module_name Types.ranged) list * Types.var_name Types.ranged> LONG_LOWER
 %token<Range.t * (Types.module_name Types.ranged) list * Types.constructor_name Types.ranged> LONG_UPPER
 
@@ -928,6 +928,11 @@ expr_bot:
 
         | utast2 :: utast_rest ->
             make_standard (Tok tokL) (Tok tokR) (UTTuple(TupleList.make utast1 utast2 utast_rest))
+      }
+  | upper_dot=UPPER_DOT; L_PAREN; utast=expr; tokR=R_PAREN
+      {
+        let (tokL, _) = upper_dot in
+        make_standard (Tok tokL) (Tok tokR) (UTOpenIn(upper_dot, utast))
       }
   | utast=expr_bot_list
       { utast }
