@@ -51,7 +51,7 @@ jobs:
           ocaml-compiler: ${{ matrix.ocaml-version }}
           dune-cache: ${{ matrix.os != 'macos-latest' }}
 
-          opam-depext: false
+          opam-depext: true
           opam-pin: true
 
           opam-repositories: |
