@@ -1023,11 +1023,23 @@ pattern_cons:
   | utpat1=pattern_bot; CONS; utpat2=pattern_cons
       { make_standard (Ranged utpat1) (Ranged utpat2) (UTPListCons(utpat1, utpat2)) }
   | ctor=UPPER; utpat=pattern_bot
-      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor(extract_main ctor, utpat)) }
+      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor([], extract_main ctor, utpat)) }
+  | long_ctor=LONG_UPPER; utpat=pattern_bot
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        make_standard (Tok rng) (Ranged utpat) (UTPConstructor(modidents, extract_main ctor, utpat))
+      }
   | ctor=UPPER
       {
         let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
-        let (rng, ctornm) = ctor in (rng, UTPConstructor(ctornm, utast_unit))
+        let (rng, ctornm) = ctor in
+        (rng, UTPConstructor([], ctornm, utast_unit))
+      }
+  | long_ctor=LONG_UPPER
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
+        (rng, UTPConstructor(modidents, extract_main ctor, utast_unit))
       }
   | utpat=pattern_bot
       { utpat }
@@ -1036,11 +1048,22 @@ pattern_non_var_cons:
   | utpat1=pattern_bot; CONS; utpat2=pattern_cons
       { make_standard (Ranged utpat1) (Ranged utpat2) (UTPListCons(utpat1, utpat2)) }
   | ctor=UPPER; utpat=pattern_bot
-      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor(extract_main ctor, utpat)) }
+      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor([], extract_main ctor, utpat)) }
+  | long_ctor=LONG_UPPER; utpat=pattern_bot
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        make_standard (Tok rng) (Ranged utpat) (UTPConstructor(modidents, extract_main ctor, utpat))
+      }
   | ctor=UPPER
       {
         let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
-        let (rng, ctornm) = ctor in (rng, UTPConstructor(ctornm, utast_unit))
+        let (rng, ctornm) = ctor in (rng, UTPConstructor([], ctornm, utast_unit))
+      }
+  | long_ctor=LONG_UPPER
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
+        (rng, UTPConstructor(modidents, extract_main ctor, utast_unit))
       }
   | utpat=pattern_non_var_bot
       { utpat }

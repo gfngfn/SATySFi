@@ -247,8 +247,8 @@ let rec typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : un
               return (PAsVariable(evid, epat1), typat1, patvarmap1 |> PatternVarMap.add varnm (rng, evid, beta))
         end
 
-    | UTPConstructor(ctornm, utpat1) ->
-        let* centry = find_constructor rng tyenv [] ctornm in
+    | UTPConstructor(modidents, ctornm, utpat1) ->
+        let* centry = find_constructor rng tyenv modidents ctornm in
         let (tyargs, tyid, tyc) = instantiate_constructor pre centry in
         let* (epat1, typat1, tyenv1) = iter utpat1 in
         let* () = unify tyc typat1 in

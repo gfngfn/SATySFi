@@ -558,7 +558,7 @@ and untyped_pattern_tree_main =
   | UTPWildCard
   | UTPVariable            of var_name
   | UTPAsVariable          of var_name * untyped_pattern_tree
-  | UTPConstructor         of constructor_name * untyped_pattern_tree
+  | UTPConstructor         of (module_name ranged) list * constructor_name * untyped_pattern_tree
 
 and untyped_pattern_branch =
   | UTPatternBranch of untyped_pattern_tree * untyped_abstract_tree
