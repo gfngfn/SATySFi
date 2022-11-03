@@ -1,9 +1,7 @@
-use package Stdlib
-use Head of `head`
+use package open Stdlib
+use open Head of `head`
 
-let open Stdlib in
 let open Pervasives in
-let open Head in
 
 let inline ctx \do-fill wid f =
   let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid in

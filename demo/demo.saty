@@ -1,22 +1,14 @@
-use package Stdlib
-use package Math
-use package Annot
-use package Code
-use package Itemize
-use package Proof
+use package open Stdlib
+use package open Math
+use package open Annot
+use package open Code
+use package open Itemize
+use package open Proof
 use package Tabular
-use package StdJaBook
-use Local of `./local`
+use package open StdJaBook
+use open Local of `./local`
 
-let open Stdlib in
 let open Pervasives in
-let open Math in
-let open Proof in
-let open Code in
-let open Itemize in
-let open Annot in
-let open StdJaBook in
-let open Local in
 document ?(
   show-toc = true,
 ) (|
