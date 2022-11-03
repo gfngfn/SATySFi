@@ -1,17 +1,11 @@
-use package Stdlib
-use package Math
-use package Itemize
-use package StdJaBook
-use Local of `local`
-use LocalMath of `local-math`
+use package open Stdlib
+use package open Math
+use package open Itemize
+use package open StdJaBook
+use open Local of `local`
+use open LocalMath of `local-math`
 
-let open Stdlib in
 let open Pervasives in
-let open Itemize in
-let open Math in
-let open StdJaBook in
-let open Local in
-let open LocalMath in
 document ?(
   show-toc = true,
 ) (|

@@ -38,13 +38,13 @@ type local_or_package =
 let get_header (extensions : string list) (curdir : string) (headerelem : header_element) : local_or_package ok =
   let open ResultMonad in
   match headerelem with
-  | HeaderUsePackage(modident) ->
+  | HeaderUsePackage{ module_name = modident; _ } ->
       return @@ Package(modident)
 
-  | HeaderUse(modident) ->
+  | HeaderUse{ module_name = modident; _ } ->
       err @@ CannotUseHeaderUse(modident)
 
-  | HeaderUseOf(modident, s_relpath) ->
+  | HeaderUseOf{ module_name = modident; path = s_relpath; _ } ->
       let* abspath =
         Config.resolve_local ~extensions ~origin:curdir ~relative:s_relpath
           |> Result.map_error (fun candidates -> LocalFileNotFound{ relative = s_relpath; candidates })
@@ -144,7 +144,7 @@ let register_markdown_file (setting : string) (abspath_in : abs_path) : (Package
   in
   let header =
     depends |> List.map (fun main_module_name ->
-      HeaderUsePackage((Range.dummy "md-header", main_module_name))
+      HeaderUsePackage{ opening = false; module_name = (Range.dummy "md-header", main_module_name) }
     )
   in
   return (package_names, (header, utast))

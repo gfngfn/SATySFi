@@ -51,9 +51,19 @@ type input_position = {
 [@@deriving show { with_path = false }]
 
 type header_element =
-  | HeaderUsePackage of module_name ranged
-  | HeaderUse        of module_name ranged
-  | HeaderUseOf      of module_name ranged * string
+  | HeaderUsePackage of {
+      opening     : bool;
+      module_name : module_name ranged;
+    }
+  | HeaderUse of {
+      opening     : bool;
+      module_name : module_name ranged;
+    }
+  | HeaderUseOf of {
+      opening     : bool;
+      module_name : module_name ranged;
+      path        : string;
+    }
 [@@deriving show { with_path = false }]
 
 type quantifiability = Quantifiable | Unquantifiable

@@ -1,12 +1,9 @@
-use package Stdlib
-use package Math
-use package StdJa
-use LocalMath of `local-math`
+use package open Stdlib
+use package open StdJa
+use package open Math
+use open LocalMath of `local-math`
 
-let open Stdlib in
 let open Pervasives in
-let open StdJa in
-let open LocalMath in
 document (|
   title = {\SATySFi;言語仕様},
   author = {Takashi SUWA},
@@ -23,7 +20,7 @@ document (|
           ${\cstc},
           ${\patas{\patp}{\varx}},
           ${\constrapp{\constrC}{\patp}},
-          ${\tuple![${\patp}, ${\Math.ldots}, ${\patp}]},
+          ${\tuple![${\patp}, ${\ldots}, ${\patp}]},
         ]
       }
     }

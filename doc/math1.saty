@@ -1,15 +1,10 @@
-use package Stdlib
-use package Math
-use package Proof
-use package Tabular
-use package StdJa
+use package open Stdlib
+use package open Math
+use package open Proof
+use package open Tabular
+use package open StdJa
 
-let open Stdlib in
 let open Pervasives in
-let open Math in
-let open Proof in
-let open Tabular in
-let open StdJa in
 
 let math ctx \overwrite mf ma mb =
   read-math ctx ${#mf\sqbracket{#ma \mapsto #mb}}

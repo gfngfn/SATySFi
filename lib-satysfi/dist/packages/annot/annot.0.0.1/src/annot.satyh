@@ -1,4 +1,4 @@
-use package Stdlib
+use package open Stdlib
 
 module Annot :> sig
   val \href : inline [?(border : length * color) string, inline-text]
@@ -6,13 +6,6 @@ module Annot :> sig
   val link-to-location-frame : string -> option (length * color) -> deco-set
   val register-location-frame : string -> deco-set
 end = struct
-
-  %- TODO: remove this by using 'open'
-  module Option = Stdlib.Option
-  module Pervasives = Stdlib.Pervasives
-  module Color = Stdlib.Color
-  module Gr = Stdlib.Gr
-
 
   val link-to-uri-frame uri borderopt =
     let deco (x, y) w h d =
