@@ -396,7 +396,7 @@ module Math :> sig
   val \setsep : math [math-text, math-text]
   val \cases : math [list (math-text * inline-text)]
 
-  type paren = Stdlib.Pervasives.paren %TODO (enhance): remove this
+  type paren = Pervasives.paren %TODO (enhance): remove this
   val paren-left : paren
   val paren-right : paren
   val paren : context -> math-boxes -> math-boxes

@@ -38,11 +38,15 @@ let add_dependency_to_type_environment ~(package_only : bool) (header : header_e
               err @@ UnknownPackageDependency(rng, modnm)
 
           | (_, Some(ssig)) ->
-              if opening then
-                return (tyenv |> TypecheckUtil.add_to_type_environment_by_signature ssig)
-              else
-                let mentry = { mod_signature = ConcStructure(ssig) } in
-                return (tyenv |> Typeenv.add_module modnm mentry)
+              let mentry = { mod_signature = ConcStructure(ssig) } in
+              let tyenv = tyenv |> Typeenv.add_module modnm mentry in
+              let tyenv =
+                if opening then
+                  tyenv |> TypecheckUtil.add_to_type_environment_by_signature ssig
+                else
+                  tyenv
+              in
+              return tyenv
         end
   ) tyenv
 
