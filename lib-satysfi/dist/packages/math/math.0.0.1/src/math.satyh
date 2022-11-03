@@ -1,4 +1,4 @@
-use package Stdlib
+use package open Stdlib
 
 module Math :> sig
 
@@ -425,11 +425,6 @@ module Math :> sig
    val \tmabstyped : math [math-text, math-text, math-text]
 %
 end = struct
-
-  %- TODO: replace this with 'open'
-  module List = Stdlib.List
-  module Pervasives = Stdlib.Pervasives
-  module Gr = Stdlib.Gr
 
   val join (msep : math-text) (ms : list math-text) =
     match

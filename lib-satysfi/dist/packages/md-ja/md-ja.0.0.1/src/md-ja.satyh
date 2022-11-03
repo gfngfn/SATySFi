@@ -1,4 +1,4 @@
-use package Stdlib
+use package open Stdlib
 use package Math
 use package Code
 use package Itemize
@@ -34,16 +34,6 @@ module MDJa :> sig
   val \embed-block : inline [block-text]
   val \error : inline [string]
 end = struct
-
-  %- TODO: remove this by using 'open'
-  module List = Stdlib.List
-  module Pervasives = Stdlib.Pervasives
-  module Color = Stdlib.Color
-  module Gr = Stdlib.Gr
-  module PaperSize = Stdlib.PaperSize
-  module HDecoSet = Stdlib.HDecoSet
-  module VDecoSet = Stdlib.VDecoSet
-
 
   val paper = PaperSize.a4
   val text-origin = (80pt, 100pt)

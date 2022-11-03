@@ -1,4 +1,4 @@
-use package Stdlib
+use package open Stdlib
 use package Math
 use package Code
 use package Annot
@@ -48,15 +48,6 @@ module StdJaReport :> sig
   val \footnote : inline [inline-text]
 
 end = struct
-
-  %- TODO: remove this by using 'open'
-  module Pervasives = Stdlib.Pervasives
-  module Gr = Stdlib.Gr
-  module List = Stdlib.List
-  module Color = Stdlib.Color
-  module Option = Stdlib.Option
-  module PaperSize = Stdlib.PaperSize
-
 
 %  type toc-element =
 %    | TOCElementChapter    of string * inline-text

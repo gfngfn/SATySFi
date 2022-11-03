@@ -1,4 +1,4 @@
-use package Stdlib
+use package open Stdlib
 
 module Code
 % :> sig
@@ -14,14 +14,6 @@ module Code
 %
 % end
  = struct
-
-  %- TODO: remove this by using 'open'
-  module Pervasives = Stdlib.Pervasives
-  module List = Stdlib.List
-  module Color = Stdlib.Color
-  module Gr = Stdlib.Gr
-  module VDecoSet = Stdlib.VDecoSet
-
 
   signature S = sig
     val font-family      : string
