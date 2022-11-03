@@ -34,7 +34,7 @@ let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untype
       let (header, _) = utlib in
       header |> foldM (fun graph headerelem ->
         match headerelem with
-        | HeaderUse((rng, modnm_sub)) ->
+        | HeaderUse{ module_name = (rng, modnm_sub); _ } ->
             begin
               match graph |> SourceModuleDependencyGraph.get_vertex modnm_sub with
               | None ->
@@ -48,7 +48,7 @@ let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untype
         | HeaderUsePackage(_) ->
             return graph
 
-        | HeaderUseOf(modident, _) ->
+        | HeaderUseOf{ module_name = modident; _ } ->
             err @@ CannotUseHeaderUseOf(modident)
 
       ) graph

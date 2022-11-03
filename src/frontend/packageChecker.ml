@@ -14,21 +14,21 @@ let add_dependency_to_type_environment ~(package_only : bool) (header : header_e
   header |> foldM (fun tyenv headerelem ->
     let opt =
       match headerelem with
-      | HeaderUse(modident)
-      | HeaderUseOf(modident, _) ->
+      | HeaderUse{ opening; module_name = modident }
+      | HeaderUseOf{ opening; module_name = modident; _ } ->
           if package_only then
             None
           else
-            Some((LocalDependency, modident))
+            Some((LocalDependency, opening, modident))
 
-      | HeaderUsePackage(modident) ->
-          Some((PackageDependency, modident))
+      | HeaderUsePackage{ opening; module_name = modident } ->
+          Some((PackageDependency, opening, modident))
     in
     match opt with
     | None ->
         return tyenv
 
-    | Some((kind, (rng, modnm))) ->
+    | Some((kind, opening, (rng, modnm))) ->
         begin
           match (kind, genv |> GlobalTypeenv.find_opt modnm) with
           | (LocalDependency, None) ->
@@ -38,8 +38,11 @@ let add_dependency_to_type_environment ~(package_only : bool) (header : header_e
               err @@ UnknownPackageDependency(rng, modnm)
 
           | (_, Some(ssig)) ->
-              let mentry = { mod_signature = ConcStructure(ssig) } in
-              return (tyenv |> Typeenv.add_module modnm mentry)
+              if opening then
+                return (tyenv |> TypecheckUtil.add_to_type_environment_by_signature ssig)
+              else
+                let mentry = { mod_signature = ConcStructure(ssig) } in
+                return (tyenv |> Typeenv.add_module modnm mentry)
         end
   ) tyenv
 

@@ -371,16 +371,20 @@ main_lib:
       { (modident, utsig_opt, utbinds) }
 ;
 headerelem:
-  | USE; PACKAGE; modident=UPPER
-     { HeaderUsePackage(modident) }
-  | USE; modident=UPPER
-     { HeaderUse(modident) }
-  | USE; modident=UPPER; OF; tok=STRING
+  | USE; PACKAGE; opening=optional_open; modident=UPPER
+     { HeaderUsePackage{ opening; module_name = modident } }
+  | USE; opening=optional_open; modident=UPPER
+     { HeaderUse{ opening; module_name = modident } }
+  | USE; opening=optional_open; modident=UPPER; OF; tok=STRING
      {
        let (_rng, str, pre, post) = tok in
        let s = omit_spaces pre post str in
-       HeaderUseOf(modident, s)
+       HeaderUseOf{ opening; module_name = modident; path = s }
      }
+;
+optional_open:
+  | OPEN { true }
+  |      { false }
 ;
 modexpr:
   | tokL=FUN; L_PAREN; modident=UPPER; COLON; utsig=sigexpr; R_PAREN; ARROW; utmod=modexpr
