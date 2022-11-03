@@ -35,6 +35,7 @@ type type_entry = {
   type_scheme : type_scheme;
   type_kind   : kind;
 }
+[@@deriving show]
 
 type constructor_entry = {
   ctor_belongs_to : TypeID.t;

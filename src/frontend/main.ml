@@ -703,7 +703,8 @@ let report_type_error = function
         NormalLine(Printf.sprintf "not a subtype about constructor '%s' (TODO (enhance): detailed report)" ctornm);
       ]
 
-  | NotASubtypeAboutType(rng, tynm, _tentry1, _tentry2) ->
+  | NotASubtypeAboutType(rng, tynm, tentry1, tentry2) ->
+      Format.printf "1: %a,@ 2: %a@," pp_type_entry tentry1 pp_type_entry tentry2; (* TODO: remove this *)
       report_error Typechecker [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "not a subtype about type '%s' (TODO (enhance): detailed report)" tynm);

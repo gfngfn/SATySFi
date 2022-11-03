@@ -63,6 +63,7 @@ let rec lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature
                 begin
                   match lookup_type_entry tentry1 tentry2 with
                   | None ->
+                      let () = print_endline "****** 3" in (* TODO: remove this *)
                       err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
 
                   | Some(subst0) ->
@@ -345,6 +346,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                   begin
                     match (ssig1 |> StructSig.find_type tynm2, ssig2 |> StructSig.find_type tynm2) with
                     | (Some(tentry1), Some(tentry2)) ->
+                        print_endline "****** 1"; (* TODO: remove this *)
                         err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
 
                     | _ ->
@@ -369,6 +371,7 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                 if b1 && b2 then
                   return ()
                 else
+                  let () = print_endline "****** 2" in (* TODO: remove this *)
                   err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
           )
           ~m:(fun modnm2 { mod_signature = modsig2; _ } res ->
@@ -565,9 +568,9 @@ and subtype_type_scheme (tyscheme1 : type_scheme) (tyscheme2 : type_scheme) : bo
         match pty2 with
         | (_, TypeVariable(PolyBound(bid2))) ->
             begin
-              match map |> BoundIDMap.find_opt bid1 with
+              match map |> BoundIDMap.find_opt bid2 with
               | None      -> false
-              | Some(bid) -> BoundID.equal bid bid2
+              | Some(bid) -> BoundID.equal bid bid1
             end
 
         | _ ->
