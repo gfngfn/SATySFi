@@ -7,6 +7,10 @@ module SolverInput = struct
   module Role = struct
 
     type t =
+      | LocalRole of {
+          requires : package_dependency list;
+          context  : package_context;
+        }
       | Role of {
           package_name : package_name;
           context      : package_context;
@@ -14,14 +18,19 @@ module SolverInput = struct
 
 
     let pp ppf (role : t) =
-      let Role{ package_name; _ } = role in
-      Format.fprintf ppf "%s" package_name
+      match role with
+      | Role{ package_name; _ } -> Format.fprintf ppf "%s" package_name
+      | LocalRole(_)            -> Format.fprintf ppf "local"
 
 
     let compare (role1 : t) (role2 : t) =
-      let Role{ package_name = name1; _ } = role1 in
-      let Role{ package_name = name2; _ } = role2 in
-      String.compare name1 name2
+      match (role1, role2) with
+      | (LocalRole(_), LocalRole(_)) -> 0
+      | (LocalRole(_), _)            -> 1
+      | (_, LocalRole(_))            -> -1
+
+      | (Role{ package_name = name1; _ }, Role{ package_name = name2; _ }) ->
+          String.compare name1 name2
 
   end
 
@@ -53,8 +62,11 @@ module SolverInput = struct
 
   type impl =
     | DummyImpl
+    | LocalImpl of {
+        dependencies : dependency list;
+      }
     | Impl of {
-        role         : Role.t;
+        package_name : package_name;
         version      : SemanticVersion.t;
         dependencies : dependency list;
       }
@@ -77,7 +89,10 @@ module SolverInput = struct
     | DummyImpl ->
         Format.fprintf ppf "dummy"
 
-    | Impl{ role = Role{ package_name; _ }; version; _ } ->
+    | LocalImpl(_) ->
+        Format.fprintf ppf "local"
+
+    | Impl{ package_name; version; _ } ->
         Format.fprintf ppf "%s %s" package_name (SemanticVersion.to_string version)
 
 
@@ -93,6 +108,7 @@ module SolverInput = struct
   let pp_version (ppf : Format.formatter) (impl : impl) =
     match impl with
     | DummyImpl          -> Format.fprintf ppf "dummy"
+    | LocalImpl(_)       -> Format.fprintf ppf "local"
     | Impl{ version; _ } -> Format.fprintf ppf "%s" (SemanticVersion.to_string version)
 
 
@@ -108,8 +124,8 @@ module SolverInput = struct
 
   let requires (_role : Role.t) (impl : impl) : dependency list * command_name list =
     match impl with
-    | DummyImpl               -> ([], [])
-    | Impl{ dependencies; _ } -> (dependencies, [])
+    | DummyImpl | LocalImpl(_) -> ([], [])
+    | Impl{ dependencies; _ }  -> (dependencies, [])
 
 
   (* Unused *)
@@ -117,24 +133,32 @@ module SolverInput = struct
     ([], [])
 
 
+  let make_internal_dependency (context : package_context) (requires : package_dependency list) : dependency list =
+    requires |> List.map (function
+    | PackageDependency{ package_name; restrictions } ->
+        Dependency{ role = Role{ package_name; context }; restrictions }
+    )
+
+
   let implementations (role : Role.t) : role_information =
-    let Role{ package_name; context } = role in
-    let impl_records =
-      context.registry_contents |> PackageNameMap.find_opt package_name |> Option.value ~default:[]
-    in
-    let impls =
-      impl_records |> List.map (fun impl_record ->
-        let version = impl_record.version in
-        let dependencies =
-          impl_record.requires |> List.map (function
-          | PackageDependency{ package_name; restrictions } ->
-              Dependency{ role = Role{ package_name; context }; restrictions }
+    match role with
+    | Role{ package_name; context } ->
+        let impl_records =
+          context.registry_contents |> PackageNameMap.find_opt package_name |> Option.value ~default:[]
+        in
+        let impls =
+          impl_records |> List.map (fun impl_record ->
+            let version = impl_record.version in
+            let dependencies = make_internal_dependency context impl_record.requires in
+            Impl{ package_name; version; dependencies }
           )
         in
-        Impl{ role; version; dependencies }
-      )
-    in
-    { replacement = None; impls }
+        { replacement = None; impls }
+
+    | LocalRole{ requires; context } ->
+        let dependencies = make_internal_dependency context requires in
+        let impls = [ LocalImpl{ dependencies } ] in
+        { replacement = None; impls }
 
 
   let restrictions (dep : dependency) : restriction list =
@@ -146,6 +170,9 @@ module SolverInput = struct
     match impl with
     | DummyImpl ->
         false
+
+    | LocalImpl(_) ->
+        true
 
     | Impl{ version = semver_provided; _} ->
         begin
@@ -162,10 +189,10 @@ module SolverInput = struct
 
   let conflict_class (impl : impl) : conflict_class list =
     match impl with
-    | DummyImpl ->
+    | DummyImpl | LocalImpl(_) ->
         []
 
-    | Impl{ role = Role{ package_name; _ }; _ } ->
+    | Impl{ package_name; _ } ->
         [ package_name ] (* TODO: take major versions into account *)
 
 
@@ -178,6 +205,10 @@ module SolverInput = struct
     | (DummyImpl, DummyImpl) -> 0
     | (DummyImpl, _)         -> 1
     | (_, DummyImpl)         -> -1
+
+    | (LocalImpl(_), LocalImpl(_)) -> 0
+    | (LocalImpl(_), _)            -> 1
+    | (_, LocalImpl(_))            -> -1
 
     | (Impl{ version = semver1; _ }, Impl{ version = semver2; _ }) ->
         SemanticVersion.compare semver1 semver2
@@ -216,10 +247,10 @@ type package_solution = {
 }
 
 
-let solve (context : package_context) (package_name : package_name) : (package_solution list) option =
+let solve (context : package_context) (requires : package_dependency list) : (package_solution list) option =
   let output_opt =
     InternalSolver.do_solve ~closest_match:false {
-      role    = Role{ package_name; context };
+      role    = LocalRole{ requires; context };
       command = None;
     }
   in
@@ -227,26 +258,34 @@ let solve (context : package_context) (package_name : package_name) : (package_s
     let open InternalSolver in
     let rolemap = output |> Output.to_map in
     let acc =
-      Output.RoleMap.fold (fun role impl acc ->
+      Output.RoleMap.fold (fun _role impl acc ->
         let open SolverInput in
-        let Role{ package_name; _ } = role in
-        match Output.unwrap impl with
-        | DummyImpl ->
+        let impl = Output.unwrap impl in
+        match impl with
+        | DummyImpl | LocalImpl(_) ->
             acc
 
-        | Impl{ version = locked_version; dependencies; _ } ->
-            let locked_dependencies =
-              dependencies |> List.map (fun dep ->
+        | Impl{ package_name; version = locked_version; dependencies; _ } ->
+            let locked_dependency_acc =
+              dependencies |> List.fold_left (fun locked_dependency_acc dep ->
                 let Dependency{ role = role_dep; _ } = dep in
-                let Role{ package_name = package_name_dep; _ } = role in
-                match rolemap |> Output.RoleMap.find_opt role_dep |> Option.map Output.unwrap with
-                | None | Some(DummyImpl) ->
-                    assert false
+                match role_dep with
+                | Role{ package_name = package_name_dep; _ } ->
+                    begin
+                      match rolemap |> Output.RoleMap.find_opt role_dep |> Option.map Output.unwrap with
+                      | None | Some(DummyImpl) | Some(LocalImpl(_)) ->
+                          locked_dependency_acc
 
-                | Some(Impl{ version = version_dep; _ }) ->
-                    (package_name_dep, version_dep)
-              )
+                      | Some(Impl{ version = version_dep; _ }) ->
+                          Alist.extend locked_dependency_acc (package_name_dep, version_dep)
+                    end
+
+                | LocalRole(_) ->
+                    locked_dependency_acc
+
+              ) Alist.empty
             in
+            let locked_dependencies = Alist.to_list locked_dependency_acc in
             Alist.extend acc { package_name; locked_version; locked_dependencies }
 
       ) rolemap Alist.empty
