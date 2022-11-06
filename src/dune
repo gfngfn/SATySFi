@@ -17,7 +17,8 @@
             omd
             ocamlgraph
             yaml
-            0install-solver)
+            0install-solver
+            semver2)
  (preprocess (pps
               ppx_deriving.show
               ))

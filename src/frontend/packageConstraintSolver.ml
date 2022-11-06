@@ -1,12 +1,6 @@
 
 type package_name = string
 
-type semver = string
-
-
-let is_backward_compatible ~new_:(_ : semver) ~old:(_ : semver) : bool =
-  failwith "TODO: is_backward_compatible"
-
 
 module SolverInput = struct
 
@@ -32,7 +26,7 @@ module SolverInput = struct
   type command_name = string
 
   type restriction =
-    | CompatibleWith of semver
+    | CompatibleWith of SemanticVersion.t
 
   type dependency =
     | Dependency of {
@@ -55,7 +49,7 @@ module SolverInput = struct
     | DummyImpl
     | Impl of {
         role         : Role.t;
-        version      : semver;
+        version      : SemanticVersion.t;
         dependencies : dependency list;
       }
 
@@ -72,12 +66,17 @@ module SolverInput = struct
   type rejection = unit (* TODO: define this *)
 
 
-  let pp_impl (_ppf : Format.formatter) (_impl : impl) =
-    failwith "TODO: SolverInput.pp_impl"
+  let pp_impl (ppf : Format.formatter) (impl : impl) =
+    match impl with
+    | DummyImpl ->
+        Format.fprintf ppf "dummy"
+
+    | Impl{ role; version; _ } ->
+        Format.fprintf ppf "%s %s" role (SemanticVersion.to_string version)
 
 
-  let pp_impl_long (_ppf : Format.formatter) (_impl : impl) =
-    failwith "TODO: SolverInput.pp_impl_long"
+  let pp_impl_long (ppf : Format.formatter) (impl : impl) =
+    pp_impl ppf impl (* TODO: show dependencies *)
 
 
   (* Unused *)
@@ -85,8 +84,10 @@ module SolverInput = struct
     ()
 
 
-  let pp_version (_ppf : Format.formatter) (_impl : impl) =
-    failwith "TODO: SolverInput.pp_version"
+  let pp_version (ppf : Format.formatter) (impl : impl) =
+    match impl with
+    | DummyImpl          -> Format.fprintf ppf "dummy"
+    | Impl{ version; _ } -> Format.fprintf ppf "%s" (SemanticVersion.to_string version)
 
 
   (* Unused *)
@@ -128,7 +129,7 @@ module SolverInput = struct
         begin
           match restr with
           | CompatibleWith(semver_required) ->
-              is_backward_compatible ~new_:semver_provided ~old:semver_required
+              SemanticVersion.is_compatible ~old:semver_required ~new_:semver_provided
         end
 
 
@@ -144,11 +145,17 @@ module SolverInput = struct
 
 
   let rejects (_role : Role.t) : (impl * rejection) list * string list =
-    failwith "TODO: SolverInput.rejects"
+    ([], []) (* TODO: define `rejection` and implement this *)
 
 
-  let compare_version (_impl1 : impl) (_impl2 : impl) : int =
-    failwith "TODO: SolverInput.compare_version"
+  let compare_version (impl1 : impl) (impl2 : impl) : int =
+    match (impl1, impl2) with
+    | (DummyImpl, DummyImpl) -> 0
+    | (DummyImpl, _)         -> 1
+    | (_, DummyImpl)         -> -1
+
+    | (Impl{ version = semver1; _ }, Impl{ version = semver2; _ }) ->
+        SemanticVersion.compare semver1 semver2
 
 
   let user_restrictions (_role : Role.t) : restriction option =
@@ -159,12 +166,13 @@ module SolverInput = struct
     ""
 
 
-  let string_of_restriction (_restr : restriction) : string =
-    failwith "TODO: SolverInput.string_of_restriction"
+  let string_of_restriction (restr : restriction) : string =
+    match restr with
+    | CompatibleWith(semver) -> SemanticVersion.to_string semver
 
 
   let describe_problem (_impl : impl) (_rej : rejection) : string =
-    failwith "TODO: SolverInput.describe_problem"
+    "" (* TODO: define `rejection` and implement this *)
 
 
   let dummy_impl : impl =
