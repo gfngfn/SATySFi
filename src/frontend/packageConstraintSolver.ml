@@ -181,11 +181,52 @@ module SolverInput = struct
 end
 
 
-module Impl = Zeroinstall_solver.Make(SolverInput)
+module InternalSolver = Zeroinstall_solver.Make(SolverInput)
 
 
-let solve (package_name : package_name) =
-  Impl.do_solve {
-    role    = package_name;
-    command = None;
-  }
+type package_solution = {
+  package_name   : package_name;
+  locked_version : SemanticVersion.t;
+  dependencies   : (package_name * SemanticVersion.t) list;
+}
+
+
+let solve (package_name : package_name) : (package_solution list) option =
+  let output_opt =
+    InternalSolver.do_solve ~closest_match:false {
+      role    = package_name;
+      command = None;
+    }
+  in
+  output_opt |> Option.map (fun output ->
+    let open InternalSolver in
+    let rolemap = output |> Output.to_map in
+    let acc =
+      Output.RoleMap.fold (fun role impl acc ->
+        let open SolverInput in
+        match Output.unwrap impl with
+        | DummyImpl ->
+            acc
+
+        | Impl{ version; dependencies; _ } ->
+            let dependencies_with_version =
+              dependencies |> List.map (fun dep ->
+                let Dependency{ role = role_dep; _ } = dep in
+                match rolemap |> Output.RoleMap.find_opt role_dep |> Option.map Output.unwrap with
+                | None | Some(DummyImpl) ->
+                    assert false
+
+                | Some(Impl{ version = version_dep; _ }) ->
+                    (role_dep, version_dep)
+              )
+            in
+            Alist.extend acc {
+              package_name   = role;
+              locked_version = version;
+              dependencies   = dependencies_with_version;
+            }
+
+      ) rolemap Alist.empty
+    in
+    Alist.to_list acc
+  )
