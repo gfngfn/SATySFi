@@ -16,7 +16,8 @@
             yojson-with-position
             omd
             ocamlgraph
-            yaml)
+            yaml
+            0install-solver)
  (preprocess (pps
               ppx_deriving.show
               ))
