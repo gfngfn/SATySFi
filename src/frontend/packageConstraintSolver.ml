@@ -1,5 +1,5 @@
 
-type package_name = string
+open PackageSystemBase
 
 
 module SolverInput = struct
@@ -25,14 +25,9 @@ module SolverInput = struct
   (* Unused *)
   type command_name = string
 
-  type restriction =
-    | CompatibleWith of SemanticVersion.t
+  type restriction = package_restriction
 
-  type dependency =
-    | Dependency of {
-        role         : Role.t;
-        restrictions : restriction list;
-      }
+  type dependency = package_dependency
 
   type dep_info = {
     dep_role              : Role.t;
@@ -111,8 +106,18 @@ module SolverInput = struct
     ([], [])
 
 
-  let implementations (_role : Role.t) : role_information =
-    failwith "TODO: SolverInput.implementations; must access registry"
+  let implementations (role : Role.t) : role_information =
+    let impl_records = PackageRegistry.find role in
+    let impls =
+          impl_records |> List.map (fun impl_record ->
+            Impl{
+              role         = role;
+              version      = impl_record.PackageRegistry.version;
+              dependencies = impl_record.PackageRegistry.requires;
+            }
+          )
+    in
+    { replacement = None; impls }
 
 
   let restrictions (dep : dependency) : restriction list =
