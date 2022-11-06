@@ -1,11 +1,22 @@
 
+module PackageNameMap = Map.Make(String)
+
 type package_name = string
 
 type package_restriction =
   | CompatibleWith of SemanticVersion.t
 
 type package_dependency =
-    | Dependency of {
-        role         : package_name;
+    | PackageDependency of {
+        package_name : package_name;
         restrictions : package_restriction list;
       }
+
+type implementation_record = {
+  version  : SemanticVersion.t;
+  requires : package_dependency list;
+}
+
+type package_context = {
+  registry_contents : (implementation_record list) PackageNameMap.t;
+}
