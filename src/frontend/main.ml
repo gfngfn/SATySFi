@@ -2,6 +2,7 @@
 open MyUtil
 open Types
 open StaticEnv
+open PackageSystemBase
 open ConfigError
 open TypeError
 
@@ -9,7 +10,6 @@ open TypeError
 exception NoLibraryRootDesignation
 exception ShouldSpecifyOutputFile
 exception ConfigError of config_error
-exception CannotSolvePackageConstraints
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
@@ -999,6 +999,11 @@ let report_config_error : config_error -> unit = function
       report_error Interface
         (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
 
+  | CannotSolvePackageConstraints ->
+      report_error Interface [
+        NormalLine("cannot solve package constraints.");
+      ]
+
 
 let report_font_error : font_error -> unit = function
   | InvalidFontAbbrev(abbrev) ->
@@ -1457,6 +1462,31 @@ type solve_input =
   | DocumentSolveInput
 
 
+let make_lock_name (package_name : package_name) (semver : SemanticVersion.t) : lock_name =
+  Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string semver)
+
+
+let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t =
+  let locked_packages =
+    solutions |> List.map (fun solution ->
+      let package_name = solution.package_name in
+      let lock_name = make_lock_name package_name solution.locked_version in
+      let lock_location =
+        LockConfig.GlobalLocation{
+          path = Printf.sprintf "./dist/packages/%s/%s/" package_name lock_name;
+        }
+      in
+      let lock_dependencies =
+        solution.locked_dependencies |> List.map (fun (package_name_dep, semver_dep) ->
+          make_lock_name package_name_dep semver_dep
+        )
+      in
+      LockConfig.{ lock_name; lock_location; lock_dependencies }
+    )
+  in
+  LockConfig.{ locked_packages }
+
+
 let solve
     ~(fpath_in : string)
 =
@@ -1468,19 +1498,19 @@ let solve
     let solve_input =
       let abspathstr_in = get_abs_path_string abspath_in in
       if Sys.is_directory abspathstr_in then
-        (* If the input is a package directory: *)
-          let abspath_lock_config = make_package_lock_config_path abspathstr_in in
-          PackageSolveInput{
-            root = abspath_in;
-            lock = abspath_lock_config;
-          }
+      (* If the input is a package directory: *)
+        let abspath_lock_config = make_package_lock_config_path abspathstr_in in
+        PackageSolveInput{
+          root = abspath_in;
+          lock = abspath_lock_config;
+        }
       else
         DocumentSolveInput
     in
     match solve_input with
     | PackageSolveInput{
         root = absdir_package;
-        lock = _abspath_lock_config;
+        lock = abspath_lock_config;
       } ->
         let res =
           let open ResultMonad in
@@ -1493,10 +1523,12 @@ let solve
                 begin
                   match solutions_opt with
                   | None ->
-                      raise CannotSolvePackageConstraints
+                      err CannotSolvePackageConstraints
 
-                  | Some(_solutions) ->
-                      failwith "TODO: Main.solve, write a lock file"
+                  | Some(solutions) ->
+                      let lock_config = convert_solutions_to_lock_config solutions in
+                      LockConfig.write abspath_lock_config lock_config;
+                      return ()
                 end
           end
         in

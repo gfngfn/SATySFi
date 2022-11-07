@@ -64,6 +64,7 @@ type config_error =
       relative   : string;
       candidates : abs_path list;
     }
+  | CannotSolvePackageConstraints
 
 type font_error =
   | InvalidFontAbbrev             of font_abbrev

@@ -7,10 +7,10 @@ type package_restriction =
   | CompatibleWith of SemanticVersion.t
 
 type package_dependency =
-    | PackageDependency of {
-        package_name : package_name;
-        restrictions : package_restriction list;
-      }
+  | PackageDependency of {
+      package_name : package_name;
+      restrictions : package_restriction list;
+    }
 
 type implementation_record = {
   version  : SemanticVersion.t;
