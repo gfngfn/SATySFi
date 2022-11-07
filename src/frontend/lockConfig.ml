@@ -108,11 +108,12 @@ let load (abspath_lock_config : abs_path) : t ok =
     |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))
 
 
-let write (_abspath_lock_config : abs_path) (lock_config : t) : unit =
+let write (abspath_lock_config : abs_path) (lock_config : t) : unit =
   let yaml = lock_config_encoder lock_config in
-  match Yaml.to_string ~encoding:`Utf8 ~layout_style:`Block ~scalar_style:`Double_quoted yaml with
-  | Ok(s) ->
-      print_endline s (* TODO: output to file *)
+  match Yaml.to_string ~encoding:`Utf8 ~layout_style:`Block ~scalar_style:`Plain yaml with
+  | Ok(data) ->
+      Core.Out_channel.write_all (get_abs_path_string abspath_lock_config) ~data;
+      Logging.end_lock_output abspath_lock_config
 
   | Error(_) ->
       assert false

@@ -135,6 +135,12 @@ let show_package_dependency_solutions (solutions : package_solution list) =
   )
 
 
+let end_lock_output file_name_out =
+  print_endline (" ---- ---- ---- ----");
+  print_endline ("  output written on '" ^ (show_path file_name_out) ^ "'.")
+
+
+
 let show_single_font abbrev relpath =
   print_endline ("    * `" ^ abbrev ^ "`: '" ^ (get_lib_path_string relpath) ^ "'")
 
