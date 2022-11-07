@@ -1,3 +1,8 @@
+#[dependencies [
+  (`std-ja`, `0.0.1`),
+  (`itemize`, `0.0.1`),
+  (`annot`, `0.0.1`),
+]]
 use package StdJa
 use package Itemize
 use package Annot

@@ -1,3 +1,6 @@
+#[dependencies [
+  (`std-ja`, `0.0.1`),
+]]
 use package StdJa
 use Staged1Local of `staged1-local`
 

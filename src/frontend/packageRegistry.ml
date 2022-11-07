@@ -98,6 +98,18 @@ let load_cache () : package_context ok =
           ];
         };
       ]);
+      ("std-ja-report", [
+        {
+          version = !@ "0.0.1";
+          requires = [
+            dependency "stdlib" (!@ "0.0.1");
+            dependency "math" (!@ "0.0.1");
+            dependency "annot" (!@ "0.0.1");
+            dependency "code" (!@ "0.0.1");
+            dependency "footnote-scheme" (!@ "0.0.1");
+          ];
+        };
+      ]);
     ]
   in
   return { registry_contents }
