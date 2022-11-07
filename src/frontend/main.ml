@@ -1246,10 +1246,10 @@ let get_candidate_file_extensions () =
 
 
 type build_input =
-  | PackageInput of {
+  | PackageBuildInput of {
       lock : abs_path;
     }
-  | DocumentInput of {
+  | DocumentBuildInput of {
       lock : abs_path;
       out  : abs_path;
       dump : abs_path;
@@ -1279,6 +1279,14 @@ let check_depended_packages ~(extensions : string list) (tyenv_prim : Typeenv.t)
     ) (GlobalTypeenv.empty, Alist.empty)
   in
   (genv, Alist.to_list libacc)
+
+
+let make_package_lock_config_path (abspathstr_in : string) =
+  make_abs_path (Printf.sprintf "%s/package.satysfi-lock" abspathstr_in)
+
+
+let make_document_lock_config_path (basename_without_extension : string) =
+  make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension)
 
 
 let build
@@ -1340,14 +1348,14 @@ let build
       let abspathstr_in = get_abs_path_string abspath_in in
       if Sys.is_directory abspathstr_in then
         (* If the input is a package directory: *)
-          let abspath_lock_config = make_abs_path (Printf.sprintf "%s/package.satysfi-lock" abspathstr_in) in
-          PackageInput{
+          let abspath_lock_config = make_package_lock_config_path abspathstr_in in
+          PackageBuildInput{
             lock = abspath_lock_config;
           }
       else
         (* If the input is a document file: *)
         let basename_without_extension = Filename.remove_extension abspathstr_in in
-        let abspath_lock_config = make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension) in
+        let abspath_lock_config = make_document_lock_config_path basename_without_extension in
         let abspath_out =
           match (output_mode, output_file) with
           | (_, Some(abspath_out)) -> abspath_out
@@ -1355,7 +1363,7 @@ let build
           | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
         in
         let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
-        DocumentInput{
+        DocumentBuildInput{
           lock = abspath_lock_config;
           out  = abspath_out;
           dump = abspath_dump;
@@ -1366,7 +1374,7 @@ let build
     let (tyenv_prim, env) = initialize () in
 
     match build_input with
-    | PackageInput{
+    | PackageBuildInput{
         lock = abspath_lock_config;
       } ->
         Logging.lock_config_file abspath_lock_config;
@@ -1390,7 +1398,7 @@ let build
           | Error(e)           -> raise (ConfigError(e))
         end
 
-    | DocumentInput{
+    | DocumentBuildInput{
         lock = abspath_lock_config;
         out  = abspath_out;
         dump = abspath_dump;
@@ -1430,9 +1438,49 @@ let build
   )
 
 
+type solve_input =
+  | PackageSolveInput of {
+      root : abs_path;
+      lock : abs_path;
+    }
+  | DocumentSolveInput
+
+
 let solve
-    ~fpath_in:(_ : string)
+    ~(fpath_in : string)
 =
   error_log_environment (fun () ->
-    failwith "TODO: Main.solve"
+    let curdir = Sys.getcwd () in
+
+    let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
+    let solve_input =
+      let abspathstr_in = get_abs_path_string abspath_in in
+      if Sys.is_directory abspathstr_in then
+        (* If the input is a package directory: *)
+          let abspath_lock_config = make_package_lock_config_path abspathstr_in in
+          PackageSolveInput{
+            root = abspath_in;
+            lock = abspath_lock_config;
+          }
+      else
+        DocumentSolveInput
+    in
+    match solve_input with
+    | PackageSolveInput{
+        root = absdir_package;
+        lock = _abspath_lock_config;
+      } ->
+        let res =
+          let open ResultMonad in
+          let* _config = PackageConfig.load absdir_package in
+          failwith "TODO: Main.solve"
+        in
+        begin
+          match res with
+          | Ok(())   -> ()
+          | Error(e) -> raise (ConfigError(e))
+        end
+
+    | DocumentSolveInput ->
+        failwith "TODO: Main.solve, DocumentSolveInput"
   )
