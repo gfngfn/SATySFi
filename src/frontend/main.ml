@@ -1596,9 +1596,7 @@ let solve
             return (docattr.DocumentAttribute.dependencies, abspath_lock_config)
       in
 
-      (* TODO: remove this: *)
-      Format.printf "@[<v>**** DEPENDENCIES:@ %a@,"
-        (Format.pp_print_list pp_package_dependency) dependencies;
+      Logging.show_package_dependency_before_solving dependencies;
 
       let* package_context = PackageRegistry.load_cache () in
       let solutions_opt = PackageConstraintSolver.solve package_context dependencies in
@@ -1609,9 +1607,7 @@ let solve
 
         | Some(solutions) ->
 
-            (* TODO: remove this: *)
-            Format.printf "**** SOLUTIONS:@ %a@,@]"
-              (Format.pp_print_list pp_package_solution) solutions;
+            Logging.show_package_dependency_solutions solutions;
 
             let lock_config = convert_solutions_to_lock_config solutions in
             LockConfig.write abspath_lock_config lock_config;
