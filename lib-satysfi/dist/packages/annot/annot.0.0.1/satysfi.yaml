@@ -4,3 +4,7 @@ contents:
   main_module: "Annot"
   source_directories:
     - "./src"
+  dependencies:
+    - name: "stdlib"
+      requirements:
+        - "0.0.1"

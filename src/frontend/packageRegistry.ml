@@ -36,8 +36,65 @@ let load_cache () : package_context ok =
       ("math", [
         {
           version = !@ "0.0.1";
+          requires = [ dependency "stdlib" (!@ "0.0.1") ];
+        };
+      ]);
+      ("code", [
+        {
+          version = !@ "0.0.1";
+          requires = [ dependency "stdlib" (!@ "0.0.1") ];
+        };
+      ]);
+      ("annot", [
+        {
+          version = !@ "0.0.1";
+          requires = [ dependency "stdlib" (!@ "0.0.1") ];
+        };
+      ]);
+      ("itemize", [
+        {
+          version = !@ "0.0.1";
+          requires = [ dependency "stdlib" (!@ "0.0.1") ];
+        };
+      ]);
+      ("proof", [
+        {
+          version = !@ "0.0.1";
+          requires = [ dependency "stdlib" (!@ "0.0.1") ];
+        };
+      ]);
+      ("tabular", [
+        {
+          version = !@ "0.0.1";
+          requires = [ dependency "stdlib" (!@ "0.0.1") ];
+        };
+      ]);
+      ("footnote-scheme", [
+        {
+          version = !@ "0.0.1";
+          requires = [ dependency "stdlib" (!@ "0.0.1") ];
+        };
+      ]);
+      ("std-ja", [
+        {
+          version = !@ "0.0.1";
           requires = [
             dependency "stdlib" (!@ "0.0.1");
+            dependency "math" (!@ "0.0.1");
+            dependency "annot" (!@ "0.0.1");
+            dependency "code" (!@ "0.0.1");
+          ];
+        };
+      ]);
+      ("std-ja-book", [
+        {
+          version = !@ "0.0.1";
+          requires = [
+            dependency "stdlib" (!@ "0.0.1");
+            dependency "math" (!@ "0.0.1");
+            dependency "annot" (!@ "0.0.1");
+            dependency "code" (!@ "0.0.1");
+            dependency "footnote-scheme" (!@ "0.0.1");
           ];
         };
       ]);

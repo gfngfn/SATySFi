@@ -4,3 +4,4 @@ contents:
   main_module: "Stdlib"
   source_directories:
     - "./src"
+  dependencies: []
