@@ -42,14 +42,12 @@ module SolverInput = struct
   type command_name = string
 
   type restriction = package_restriction
-  [@@deriving show { with_path = false }]
 
   type dependency =
     | Dependency of {
         role         : Role.t;
         restrictions : package_restriction list;
       }
-  [@@deriving show { with_path = false }]
 
   type dep_info = {
     dep_role              : Role.t;
@@ -120,13 +118,11 @@ module SolverInput = struct
 
 
   let dep_info (dep : dependency) : dep_info =
-    Format.printf "@[<hov2>DEP_INFO dep: %a@]@," pp_dependency dep; (* TODO: remove this *)
     let Dependency{ role; _ } = dep in
     { dep_role = role; dep_importance = `Essential; dep_required_commands = [] }
 
 
   let requires (_role : Role.t) (impl : impl) : dependency list * command_name list =
-    Format.printf "@[<hov2>REQUIRES@ impl: %a@]@," pp_impl impl; (* TODO: remove this *)
     match impl with
     | DummyImpl                 -> ([], [])
     | LocalImpl{ dependencies } -> (dependencies, [])
@@ -148,7 +144,6 @@ module SolverInput = struct
   let implementations (role : Role.t) : role_information =
     match role with
     | Role{ package_name; context } ->
-        Format.printf "@[<hov2>IMPLEMENTATIONS: %s@]@," package_name; (* TODO: remove this *)
         let impl_records =
           context.registry_contents |> PackageNameMap.find_opt package_name |> Option.value ~default:[]
         in
@@ -162,21 +157,17 @@ module SolverInput = struct
         { replacement = None; impls }
 
     | LocalRole{ requires; context } ->
-        Format.printf "@[<hov2>IMPLEMENTATIONS: local (requires: %a)@]@,"
-          (Format.pp_print_list pp_package_dependency) requires; (* TODO: remove this *)
         let dependencies = make_internal_dependency context requires in
         let impls = [ LocalImpl{ dependencies } ] in
         { replacement = None; impls }
 
 
   let restrictions (dep : dependency) : restriction list =
-    Format.printf "@[<hov2>RESTRICTIONS: %a@]\n" pp_dependency dep; (* TODO: remove this *)
     let Dependency{ restrictions; _ } = dep in
     restrictions
 
 
   let meets_restriction (impl : impl) (restr : restriction) : bool =
-    Format.printf "@[<hov2>MEETS_RESTRICTION impl: %a, restr: %a@]@," pp_impl impl pp_restriction restr; (* TODO: define this *)
     match impl with
     | DummyImpl ->
         false
@@ -198,10 +189,9 @@ module SolverInput = struct
 
 
   let conflict_class (impl : impl) : conflict_class list =
-    Format.printf "@[<hov2>CONFLICT_CLASS impl: %a@]@," pp_impl impl; (* TODO: remove this *)
     match impl with
     | DummyImpl | LocalImpl(_) ->
-        [ "*" ] (* TODO: improve this *)
+        [ "*" ]
 
     | Impl{ package_name; _ } ->
         [ package_name ] (* TODO: take major versions into account *)
@@ -252,14 +242,12 @@ module InternalSolver = Zeroinstall_solver.Make(SolverInput)
 
 
 let solve (context : package_context) (requires : package_dependency list) : (package_solution list) option =
-  Format.printf "@[<v>"; (* TODO: remove this *)
   let output_opt =
     InternalSolver.do_solve ~closest_match:false {
       role    = LocalRole{ requires; context };
       command = None;
     }
   in
-  Format.printf "@]"; (* TODO: remove this *)
   output_opt |> Option.map (fun output ->
     let open InternalSolver in
     let rolemap = output |> Output.to_map in
