@@ -20,3 +20,9 @@ type implementation_record = {
 type package_context = {
   registry_contents : (implementation_record list) PackageNameMap.t;
 }
+
+type package_solution = {
+  package_name        : package_name;
+  locked_version      : SemanticVersion.t;
+  locked_dependencies : (package_name * SemanticVersion.t) list;
+}

@@ -240,13 +240,6 @@ end
 module InternalSolver = Zeroinstall_solver.Make(SolverInput)
 
 
-type package_solution = {
-  package_name        : package_name;
-  locked_version      : SemanticVersion.t;
-  locked_dependencies : (package_name * SemanticVersion.t) list;
-}
-
-
 let solve (context : package_context) (requires : package_dependency list) : (package_solution list) option =
   let output_opt =
     InternalSolver.do_solve ~closest_match:false {
