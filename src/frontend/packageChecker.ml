@@ -91,7 +91,7 @@ let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : un
   (* Typecheck each source file: *)
   let* (_genv, libacc, ssig_opt) =
     sorted_utlibs |> foldM (fun (genv, libacc, ssig_opt) (abspath, utlib) ->
-      let (header, (modident, utsig_opt, utbinds)) = utlib in
+      let (_attrs, header, (modident, utsig_opt, utbinds)) = utlib in
       let* tyenv_for_struct = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
       let (_, modnm) = modident in
       if String.equal modnm main_module_name then
@@ -116,11 +116,11 @@ let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : un
   | None       -> err @@ NoMainModule(main_module_name)
 
 
-let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sorted_locals : (abs_path * untyped_library_file) list) (utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
+let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sorted_locals : (abs_path * untyped_library_file) list) (abspath_and_utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
   let open ResultMonad in
   let* (genv, libacc) =
     sorted_locals |> foldM (fun (genv, libacc) (abspath, utlib) ->
-      let (header, (modident, utsig_opt, utbinds)) = utlib in
+      let (_attrs, header, (modident, utsig_opt, utbinds)) = utlib in
       let (_, modnm) = modident in
       let* ((_quant, ssig), binds) =
         let* tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
@@ -134,7 +134,7 @@ let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sor
 
   (* Typecheck the document: *)
   let* ast_doc =
-    let (abspath, (header, utast)) = utdoc in
+    let (abspath, (_attrs, header, utast)) = abspath_and_utdoc in
     let* tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
     typecheck_document_file tyenv abspath utast
   in

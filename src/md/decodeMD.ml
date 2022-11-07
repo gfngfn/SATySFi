@@ -476,8 +476,8 @@ let decode (cmdrcd : command_record) (s : string) =
   in
   let utasthead =
     match ParserInterface.process_text "(markdown)" strheader with
-    | Ok(UTDocumentFile([], u)) -> u
-    | _                         -> failwith "TODO (error): invalid header expression"
+    | Ok(UTDocumentFile([], [], u)) -> u
+    | _                             -> failwith "TODO (error): invalid header expression"
   in
   let blk = normalize_h1 md in
 (*
