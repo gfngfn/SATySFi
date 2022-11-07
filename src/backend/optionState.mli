@@ -9,14 +9,12 @@ type output_mode =
   | PdfMode
   | TextMode of string list
 
-type state = {
+type build_state = {
   input_file             : abs_path;
   output_file            : abs_path option;
-  extra_config_paths     : (string list) option;
-  output_mode            : output_mode;
   input_kind             : input_kind;
+  output_mode            : output_mode;
   page_number_limit      : int;
-  show_full_path         : bool;
   debug_show_bbox        : bool;
   debug_show_space       : bool;
   debug_show_block_bbox  : bool;
@@ -24,8 +22,18 @@ type state = {
   debug_show_overfull    : bool;
   type_check_only        : bool;
   bytecomp               : bool;
-  show_fonts             : bool;
-  no_default_config      : bool;
+}
+
+type command_state =
+  | BuildState of build_state
+  | SolveState
+
+type state = {
+  command_state      : command_state;
+  extra_config_paths : (string list) option;
+  show_full_path     : bool;
+  show_fonts         : bool;
+  no_default_config  : bool;
 }
 
 val set : state -> unit

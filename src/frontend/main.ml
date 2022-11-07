@@ -1364,20 +1364,23 @@ let build
       | Some(setting) -> OptionState.Markdown(setting)
     in
     OptionState.set OptionState.{
-      input_file;
-      output_file;
+      command_state =
+        BuildState{
+          input_file;
+          output_file;
+          output_mode;
+          input_kind;
+          page_number_limit;
+          debug_show_bbox;
+          debug_show_space;
+          debug_show_block_bbox;
+          debug_show_block_space;
+          debug_show_overfull;
+          type_check_only;
+          bytecomp;
+        };
       extra_config_paths;
-      output_mode;
-      input_kind;
-      page_number_limit;
       show_full_path;
-      debug_show_bbox;
-      debug_show_space;
-      debug_show_block_bbox;
-      debug_show_block_space;
-      debug_show_overfull;
-      type_check_only;
-      bytecomp;
       show_fonts;
       no_default_config;
     };
@@ -1491,6 +1494,7 @@ type solve_input =
     }
   | DocumentSolveInput of {
       path : abs_path; (* The absolute path to the document file *)
+      lock : abs_path; (* A path for writing a resulting lock file *)
     }
 
 
@@ -1541,6 +1545,15 @@ let solve
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
 
+    (* TODO: add options *)
+    OptionState.set OptionState.{
+      command_state = SolveState;
+      extra_config_paths = None;
+      show_full_path = false;
+      show_fonts = false;
+      no_default_config = false;
+    };
+
     setup_root_dirs ~no_default_config:false ~extra_config_paths:None curdir;
     let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
     let solve_input =
@@ -1553,48 +1566,57 @@ let solve
           lock = abspath_lock_config;
         }
       else
+        let basename_without_extension = Filename.remove_extension (get_abs_path_string abspath_in) in
+        let abspath_lock_config = make_document_lock_config_path basename_without_extension in
         DocumentSolveInput{
           path = abspath_in;
+          lock = abspath_lock_config;
         }
     in
     let res =
       let open ResultMonad in
-      match solve_input with
-      | PackageSolveInput{
-          root = absdir_package;
-          lock = abspath_lock_config;
-        } ->
-          let* config = PackageConfig.load absdir_package in
-          begin
-            match config.package_contents with
-            | PackageConfig.Library{ dependencies; _ } ->
+      let* (dependencies, abspath_lock_config) =
+        match solve_input with
+        | PackageSolveInput{
+            root = absdir_package;
+            lock = abspath_lock_config;
+          } ->
+            let* config = PackageConfig.load absdir_package in
+            begin
+              match config.package_contents with
+              | PackageConfig.Library{ dependencies; _ } ->
+                  return (dependencies, abspath_lock_config)
+            end
 
-                (* TODO: remove this: *)
-                Format.printf "@[<v>**** DEPENDENCIES:@ %a@,"
-                  (Format.pp_print_list pp_package_dependency) dependencies;
+        | DocumentSolveInput{
+            path = abspath_in;
+            lock = abspath_lock_config;
+          } ->
+            let* docattr = extract_attributes_from_document_file abspath_in in
+            return (docattr.DocumentAttribute.dependencies, abspath_lock_config)
+      in
 
-                let* package_context = PackageRegistry.load_cache () in
-                let solutions_opt = PackageConstraintSolver.solve package_context dependencies in
-                begin
-                  match solutions_opt with
-                  | None ->
-                      err CannotSolvePackageConstraints
+      (* TODO: remove this: *)
+      Format.printf "@[<v>**** DEPENDENCIES:@ %a@,"
+        (Format.pp_print_list pp_package_dependency) dependencies;
 
-                  | Some(solutions) ->
+      let* package_context = PackageRegistry.load_cache () in
+      let solutions_opt = PackageConstraintSolver.solve package_context dependencies in
+      begin
+        match solutions_opt with
+        | None ->
+            err CannotSolvePackageConstraints
 
-                      (* TODO: remove this: *)
-                      Format.printf "**** SOLUTIONS:@ %a@,@]"
-                        (Format.pp_print_list pp_package_solution) solutions;
+        | Some(solutions) ->
 
-                      let lock_config = convert_solutions_to_lock_config solutions in
-                      LockConfig.write abspath_lock_config lock_config;
-                      return ()
-                end
-          end
+            (* TODO: remove this: *)
+            Format.printf "**** SOLUTIONS:@ %a@,@]"
+              (Format.pp_print_list pp_package_solution) solutions;
 
-      | DocumentSolveInput{ path = abspath_in } ->
-          let* _docattr = extract_attributes_from_document_file abspath_in in
-          failwith "TODO: Main.solve, DocumentSolveInput"
+            let lock_config = convert_solutions_to_lock_config solutions in
+            LockConfig.write abspath_lock_config lock_config;
+            return ()
+      end
     in
     begin
       match res with
