@@ -17,3 +17,7 @@ val build :
   show_fonts:bool ->
   no_default_config:bool ->
   unit
+
+val solve :
+  fpath_in:string ->
+  unit

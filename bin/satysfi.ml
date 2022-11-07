@@ -40,6 +40,13 @@ let build
     ~no_default_config
 
 
+let solve
+  fpath_in
+=
+  Main.solve
+    ~fpath_in
+
+
 let arg_in : string Cmdliner.Term.t =
   let open Cmdliner in
   Arg.(required (pos 0 (some file) None (info [])))
@@ -140,7 +147,7 @@ let flag_no_default_config =
     ~doc:"Does not use default configuration search path"
 
 
-let command_main : unit Cmdliner.Cmd.t =
+let command_build =
   let open Cmdliner in
   let term : unit Term.t =
     Term.(const build
@@ -163,10 +170,36 @@ let command_main : unit Cmdliner.Cmd.t =
     )
   in
   let info : Cmd.info =
-    Cmd.info ~version:version "satysfi"
+    Cmd.info "build"
   in
   Cmd.v info term
 
+
+let command_solve =
+  let open Cmdliner in
+  let term : unit Term.t =
+    Term.(const solve
+      $ arg_in
+    )
+  in
+  let info : Cmd.info =
+    Cmd.info "solve"
+  in
+  Cmd.v info term
+
+
 let () =
   let open Cmdliner in
-  exit (Cmd.eval command_main)
+  let term : unit Term.t =
+    Term.(ret (const (`Error(true, "No subcommand specified."))))
+  in
+  let info : Cmd.info =
+    Cmd.info ~version:version "satysfi"
+  in
+  let subcommands =
+    [
+      command_build;
+      command_solve;
+    ]
+  in
+  Stdlib.exit (Cmd.eval (Cmd.group ~default:term info subcommands))

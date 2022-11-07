@@ -10,7 +10,7 @@ SATYSFI ?= satysfi
 .SUFFIXES: .saty .pdf
 
 .saty.pdf:
-	$(SATYSFI) $< -o $@
+	$(SATYSFI) build $< -o $@
 
 all:: $(TARGETS)
 

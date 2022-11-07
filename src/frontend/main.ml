@@ -1428,3 +1428,11 @@ let build
         else
           preprocess_and_evaluate env libs ast_doc abspath_in abspath_out abspath_dump
   )
+
+
+let solve
+    ~fpath_in:(_ : string)
+=
+  error_log_environment (fun () ->
+    failwith "TODO: Main.solve"
+  )
