@@ -1208,7 +1208,7 @@ let error_log_environment (suspended : unit -> unit) : unit =
       report_error System [ NormalLine(s); ]
 
 
-let setup_root_dirs (curdir : string) =
+let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string list) option) (curdir : string) =
   let runtime_dirs =
     if Sys.os_type = "Win32" then
       match Sys.getenv_opt "SATYSFI_RUNTIME" with
@@ -1228,13 +1228,13 @@ let setup_root_dirs (curdir : string) =
       | Some(s) -> [ Filename.concat s ".satysfi" ]
   in
   let default_dirs =
-    if OptionState.use_no_default_config () then
+    if no_default_config then
       []
     else
       List.concat [ home_dirs; runtime_dirs ]
   in
   let extra_dirs =
-    match OptionState.get_extra_config_paths () with
+    match extra_config_paths with
     | None             -> [ Filename.concat curdir ".satysfi" ]
     | Some(extra_dirs) -> extra_dirs
   in
@@ -1352,7 +1352,7 @@ let build
       no_default_config;
     };
 
-    setup_root_dirs curdir;
+    setup_root_dirs ~no_default_config ~extra_config_paths curdir;
     let abspath_in = input_file in
     let build_input =
       let abspathstr_in = get_abs_path_string abspath_in in
@@ -1493,7 +1493,7 @@ let solve
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
 
-    setup_root_dirs curdir;
+    setup_root_dirs ~no_default_config:false ~extra_config_paths:None curdir;
     let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
     let solve_input =
       let abspathstr_in = get_abs_path_string abspath_in in
@@ -1526,6 +1526,13 @@ let solve
                       err CannotSolvePackageConstraints
 
                   | Some(solutions) ->
+
+                      (* TODO: remove this: *)
+                      Format.printf "@[<v>**** DEPENDENCIES:@ %a@,"
+                        (Format.pp_print_list pp_package_dependency) dependencies;
+                      Format.printf "**** SOLUTIONS:@ %a@,@]"
+                        (Format.pp_print_list pp_package_solution) solutions;
+
                       let lock_config = convert_solutions_to_lock_config solutions in
                       LockConfig.write abspath_lock_config lock_config;
                       return ()

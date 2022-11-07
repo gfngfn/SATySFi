@@ -10,6 +10,14 @@ let to_string (semver : t) : string =
   Semver.to_string semver
 
 
+let pp ppf semver =
+  Format.fprintf ppf "%s" (to_string semver)
+
+
+let show =
+  to_string
+
+
 let compare =
   Semver.compare
 

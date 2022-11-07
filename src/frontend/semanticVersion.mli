@@ -1,5 +1,6 @@
 
 type t
+[@@deriving show]
 
 val parse : string -> t option
 
