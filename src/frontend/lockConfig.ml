@@ -45,6 +45,21 @@ let lock_location_decoder : lock_location LockConfigDecoder.t =
   )
 
 
+let lock_location_encoder (loc : lock_location) : Yaml.value =
+  match loc with
+  | GlobalLocation{ path = s_libpath } ->
+      `O([
+        ("type", `String("global"));
+        ("path", `String(s_libpath));
+      ])
+
+  | LocalLocation{ path = s_relpath } ->
+      `O([
+        ("type", `String("local"));
+        ("path", `String(s_relpath));
+      ])
+
+
 let lock_decoder : locked_package LockConfigDecoder.t =
   let open LockConfigDecoder in
   get "name" string >>= fun lock_name ->
@@ -57,12 +72,26 @@ let lock_decoder : locked_package LockConfigDecoder.t =
   }
 
 
+let lock_encoder (lock : locked_package) : Yaml.value =
+  `O([
+    ("name", `String(lock.lock_name));
+    ("location", lock_location_encoder lock.lock_location);
+    ("dependencies", `A(lock.lock_dependencies |> List.map (fun lock_name -> `String(lock_name))))
+  ])
+
+
 let lock_config_decoder : t LockConfigDecoder.t =
   let open LockConfigDecoder in
   get_or_else "locks" (list lock_decoder) [] >>= fun locked_packages ->
   succeed {
     locked_packages;
   }
+
+
+let lock_config_encoder (lock_config : t) : Yaml.value =
+  `O([
+    ("locks", `A(lock_config.locked_packages |> List.map lock_encoder))
+  ])
 
 
 let load (abspath_lock_config : abs_path) : t ok =
@@ -79,5 +108,11 @@ let load (abspath_lock_config : abs_path) : t ok =
     |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))
 
 
-let write (_abspath_lock_config : abs_path) (_lock_config : t) : unit =
-  failwith "TODO: LockConfig.write"
+let write (_abspath_lock_config : abs_path) (lock_config : t) : unit =
+  let yaml = lock_config_encoder lock_config in
+  match Yaml.to_string ~encoding:`Utf8 ~layout_style:`Block ~scalar_style:`Double_quoted yaml with
+  | Ok(s) ->
+      print_endline s (* TODO: output to file *)
+
+  | Error(_) ->
+      assert false
