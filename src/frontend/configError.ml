@@ -5,16 +5,17 @@ open HorzBox
 
 
 type yaml_error =
-  | ParseError         of string
-  | FieldNotFound      of YamlDecoder.context * string
-  | NotAFloat          of YamlDecoder.context
-  | NotAString         of YamlDecoder.context
-  | NotABool           of YamlDecoder.context
-  | NotAnArray         of YamlDecoder.context
-  | NotAnObject        of YamlDecoder.context
-  | UnexpectedTag      of YamlDecoder.context * string
-  | PackageNotFound    of lib_path * abs_path list
-  | UnexpectedLanguage of string
+  | ParseError          of string
+  | FieldNotFound       of YamlDecoder.context * string
+  | NotAFloat           of YamlDecoder.context
+  | NotAString          of YamlDecoder.context
+  | NotABool            of YamlDecoder.context
+  | NotAnArray          of YamlDecoder.context
+  | NotAnObject         of YamlDecoder.context
+  | UnexpectedTag       of YamlDecoder.context * string
+  | PackageNotFound     of lib_path * abs_path list
+  | UnexpectedLanguage  of string
+  | NotASemanticVersion of YamlDecoder.context * string
 
 module YamlError = struct
   type t = yaml_error

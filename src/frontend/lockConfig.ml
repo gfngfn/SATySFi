@@ -70,3 +70,7 @@ let load (abspath_lock_config : abs_path) : t ok =
   let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
   LockConfigDecoder.run (lock_config_decoder ~lock_config_dir) s
     |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))
+
+
+let write (_abspath_lock_config : abs_path) (_lock_config : t) : unit =
+  failwith "TODO: LockConfig.write"

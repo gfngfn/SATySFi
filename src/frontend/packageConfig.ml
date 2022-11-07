@@ -2,6 +2,7 @@
 open MyUtil
 open Types
 open ConfigError
+open PackageSystemBase
 
 
 type 'a ok = ('a, config_error) result
@@ -12,9 +13,7 @@ type package_contents =
   | Library of {
       main_module_name   : module_name;
       source_directories : relative_path list;
-    }
-  | Document of {
-      document_file : relative_path;
+      dependencies       : package_dependency list;
     }
 
 type t = {
@@ -25,21 +24,35 @@ type t = {
 module PackageConfigDecoder = YamlDecoder.Make(YamlError)
 
 
+let requirement_decoder : package_restriction PackageConfigDecoder.t =
+  let open PackageConfigDecoder in
+  string >>= fun s_version ->
+  match SemanticVersion.parse s_version with
+  | None         -> failure (fun context -> NotASemanticVersion(context, s_version))
+  | Some(semver) -> succeed @@ CompatibleWith(semver)
+
+
+let dependency_decoder : package_dependency PackageConfigDecoder.t =
+  let open PackageConfigDecoder in
+  get "name" string >>= fun package_name ->
+  get "requirements" (list requirement_decoder) >>= fun restrictions ->
+  succeed @@ PackageDependency{
+    package_name;
+    restrictions;
+  }
+
+
 let contents_decoder : package_contents PackageConfigDecoder.t =
   let open PackageConfigDecoder in
   branch "type" [
     "library" ==> begin
       get "main_module" string >>= fun main_module_name ->
       get "source_directories" (list string) >>= fun source_directories ->
+      get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
       succeed @@ Library {
         main_module_name;
         source_directories;
-      }
-    end;
-    "document" ==> begin
-      get "file" string >>= fun document_file ->
-      succeed @@ Document {
-        document_file;
+        dependencies;
       }
     end;
   ]

@@ -9,6 +9,7 @@ open TypeError
 exception NoLibraryRootDesignation
 exception ShouldSpecifyOutputFile
 exception ConfigError of config_error
+exception CannotSolvePackageConstraints
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
@@ -821,6 +822,9 @@ let make_yaml_error_lines = function
   | UnexpectedLanguage(s_language_version) ->
       [ NormalLine(Printf.sprintf "unexpected language version '%s'" s_language_version) ]
 
+  | NotASemanticVersion(yctx, s) ->
+      [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
+
 
 let report_config_error = function
   | NotADocumentFile(abspath_in, ty) ->
@@ -1452,6 +1456,7 @@ let solve
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
 
+    setup_root_dirs curdir;
     let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
     let solve_input =
       let abspathstr_in = get_abs_path_string abspath_in in
@@ -1472,8 +1477,21 @@ let solve
       } ->
         let res =
           let open ResultMonad in
-          let* _config = PackageConfig.load absdir_package in
-          failwith "TODO: Main.solve"
+          let* config = PackageConfig.load absdir_package in
+          begin
+            match config.package_contents with
+            | PackageConfig.Library{ dependencies; _ } ->
+                let* package_context = PackageRegistry.load_cache () in
+                let solutions_opt = PackageConstraintSolver.solve package_context dependencies in
+                begin
+                  match solutions_opt with
+                  | None ->
+                      raise CannotSolvePackageConstraints
+
+                  | Some(_solutions) ->
+                      failwith "TODO: Main.solve, write a lock file"
+                end
+          end
         in
         begin
           match res with

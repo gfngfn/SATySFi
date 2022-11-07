@@ -22,13 +22,7 @@ let main ~(extensions : string list) (absdir_package : abs_path) : untyped_packa
   let* config = PackageConfig.load absdir_package in
   let* package =
     match config.package_contents with
-    | PackageConfig.Document(_) ->
-        failwith "TODO: PackageConfig.Document"
-
-    | PackageConfig.Library {
-        main_module_name;
-        source_directories;
-      } ->
+    | PackageConfig.Library{ main_module_name; source_directories; _ } ->
         let absdirs_src =
           source_directories |> List.map (fun source_directory ->
             make_abs_path (Filename.concat (get_abs_path_string absdir_package) source_directory)
