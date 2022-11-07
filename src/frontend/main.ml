@@ -786,7 +786,7 @@ let show_yaml_context (context : YamlDecoder.context) =
       Printf.sprintf " (context: %s)" s_context
 
 
-let make_yaml_error_lines = function
+let make_yaml_error_lines : yaml_error -> line list = function
   | ParseError(s) ->
       [ NormalLine(Printf.sprintf "parse error: %s" s) ]
 
@@ -811,14 +811,6 @@ let make_yaml_error_lines = function
   | UnexpectedTag(yctx, tag) ->
       [ NormalLine(Printf.sprintf "unexpected type tag '%s'%s" tag (show_yaml_context yctx)) ]
 
-  | PackageNotFound(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      (NormalLine(Printf.sprintf "package '%s' not found. candidates:" (get_lib_path_string libpath)) :: lines)
-
   | UnexpectedLanguage(s_language_version) ->
       [ NormalLine(Printf.sprintf "unexpected language version '%s'" s_language_version) ]
 
@@ -826,7 +818,7 @@ let make_yaml_error_lines = function
       [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
 
 
-let report_config_error = function
+let report_config_error : config_error -> unit = function
   | NotADocumentFile(abspath_in, ty) ->
       let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
@@ -955,6 +947,15 @@ let report_config_error = function
         NormalLine(Printf.sprintf "lock name conflict: '%s'" lock_name);
       ]
 
+  | LockedPackageNotFound(libpath, candidates) ->
+      let lines =
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+        )
+      in
+      report_error Interface
+        (NormalLine(Printf.sprintf "package '%s' not found. candidates:" (get_lib_path_string libpath)) :: lines)
+
   | DependencyOnUnknownLock{ depending; depended } ->
       report_error Interface [
         NormalLine(Printf.sprintf "unknown depended lock '%s' of '%s'." depended depending);
@@ -999,7 +1000,7 @@ let report_config_error = function
         (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
 
 
-let report_font_error = function
+let report_font_error : font_error -> unit = function
   | InvalidFontAbbrev(abbrev) ->
       report_error Interface [
         NormalLine (Printf.sprintf "cannot find a font named '%s'." abbrev);
@@ -1052,7 +1053,7 @@ let report_font_error = function
         (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
 
 
-let error_log_environment suspended =
+let error_log_environment (suspended : unit -> unit) : unit =
   try
     suspended ()
   with
@@ -1260,10 +1261,10 @@ type build_input =
     }
 
 
-let check_depended_packages ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
+let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
   (* Resolve dependency among locked packages: *)
   let sorted_packages =
-    match ClosedLockDependencyResolver.main ~extensions lock_config with
+    match ClosedLockDependencyResolver.main ~lock_config_dir ~extensions lock_config with
     | Ok(sorted_packages) -> sorted_packages
     | Error(e)            -> raise (ConfigError(e))
   in
@@ -1394,7 +1395,10 @@ let build
           | Error(e)    -> raise (ConfigError(e))
         in
 
-        let (genv, _libs_dep) = check_depended_packages ~extensions tyenv_prim lock_config in
+        let (genv, _libs_dep) =
+          let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
+          check_depended_packages ~lock_config_dir ~extensions tyenv_prim lock_config
+        in
 
         begin
           match PackageChecker.main tyenv_prim genv package with
@@ -1426,7 +1430,10 @@ let build
           | Error(e)   -> raise (ConfigError(e))
         in
 
-        let (genv, libs) = check_depended_packages ~extensions tyenv_prim lock_config in
+        let (genv, libs) =
+          let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
+          check_depended_packages ~lock_config_dir ~extensions tyenv_prim lock_config
+        in
 
         (* Typechecking and elaboration: *)
         let (libs_local, ast_doc) =

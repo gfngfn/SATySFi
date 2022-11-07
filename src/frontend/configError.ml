@@ -13,7 +13,6 @@ type yaml_error =
   | NotAnArray          of YamlDecoder.context
   | NotAnObject         of YamlDecoder.context
   | UnexpectedTag       of YamlDecoder.context * string
-  | PackageNotFound     of lib_path * abs_path list
   | UnexpectedLanguage  of string
   | NotASemanticVersion of YamlDecoder.context * string
 
@@ -46,6 +45,7 @@ type config_error =
   | LockConfigNotFound        of abs_path
   | LockConfigError           of abs_path * yaml_error
   | LockNameConflict          of lock_name
+  | LockedPackageNotFound     of lib_path * abs_path list
   | DependencyOnUnknownLock of {
       depending : lock_name;
       depended  : lock_name;

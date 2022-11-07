@@ -6,30 +6,38 @@ open ConfigError
 
 type 'a ok = ('a, config_error) result
 
+type lock_location =
+  | GlobalLocation of {
+      path : string;
+    }
+  | LocalLocation of {
+      path : string;
+    }
+
+type locked_package = {
+  lock_name         : lock_name;
+  lock_location     : lock_location;
+  lock_dependencies : lock_name list;
+}
+
 type t = {
-  locked_packages : lock_info list;
+  locked_packages : locked_package list;
 }
 
 
 module LockConfigDecoder = YamlDecoder.Make(YamlError)
 
 
-let lock_location_decoder ~(lock_config_dir : abs_path) : abs_path LockConfigDecoder.t =
+let lock_location_decoder : lock_location LockConfigDecoder.t =
   let open LockConfigDecoder in
   branch "type" [
     "global" ==> begin
       get "path" string >>= fun s_libpath ->
-      let libpath = make_lib_path s_libpath in
-      match Config.resolve_lib_file libpath with
-      | Ok(abspath)       -> succeed abspath
-      | Error(candidates) -> failure (fun _context -> PackageNotFound(libpath, candidates))
+      succeed @@ GlobalLocation{ path = s_libpath }
     end;
     "local" ==> begin
       get "path" string >>= fun s_relpath ->
-      let abspath =
-        make_abs_path (Filename.concat (get_abs_path_string lock_config_dir) s_relpath)
-      in
-      succeed abspath
+      succeed @@ LocalLocation{ path = s_relpath }
     end;
   ]
   ~other:(fun tag ->
@@ -37,21 +45,21 @@ let lock_location_decoder ~(lock_config_dir : abs_path) : abs_path LockConfigDec
   )
 
 
-let lock_decoder ~(lock_config_dir : abs_path) : lock_info LockConfigDecoder.t =
+let lock_decoder : locked_package LockConfigDecoder.t =
   let open LockConfigDecoder in
   get "name" string >>= fun lock_name ->
-  get "location" (lock_location_decoder ~lock_config_dir) >>= fun lock_directory ->
+  get "location" lock_location_decoder >>= fun lock_location ->
   get_or_else "dependencies" (list string) [] >>= fun lock_dependencies ->
   succeed {
     lock_name;
-    lock_directory;
+    lock_location;
     lock_dependencies;
   }
 
 
-let lock_config_decoder ~(lock_config_dir : abs_path) : t LockConfigDecoder.t =
+let lock_config_decoder : t LockConfigDecoder.t =
   let open LockConfigDecoder in
-  get_or_else "locks" (list (lock_decoder ~lock_config_dir)) [] >>= fun locked_packages ->
+  get_or_else "locks" (list lock_decoder) [] >>= fun locked_packages ->
   succeed {
     locked_packages;
   }
@@ -67,8 +75,7 @@ let load (abspath_lock_config : abs_path) : t ok =
   in
   let s = Core.In_channel.input_all inc in
   close_in inc;
-  let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
-  LockConfigDecoder.run (lock_config_decoder ~lock_config_dir) s
+  LockConfigDecoder.run lock_config_decoder s
     |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))
 
 
