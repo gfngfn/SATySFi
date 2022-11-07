@@ -818,6 +818,33 @@ let make_yaml_error_lines : yaml_error -> line list = function
       [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
 
 
+let report_document_attribute_error : DocumentAttribute.error -> unit = function
+  | MoreThanOneDependencyAttribute(rng1, rng2) ->
+      report_error Interface [
+        NormalLine("More than one attribute defines dependencies:");
+        DisplayLine(Printf.sprintf "- %s" (Range.to_string rng1));
+        DisplayLine(Printf.sprintf "- %s" (Range.to_string rng2));
+      ]
+
+  | NotASemanticVersion(rng, s) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "not a semantic version: '%s'" s);
+      ]
+
+  | NotAPackageDependency(rng) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "not a package dependency description.");
+      ]
+
+  | NotAListLiteral(rng) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "not a list literal.");
+      ]
+
+
 let report_config_error : config_error -> unit = function
   | NotADocumentFile(abspath_in, ty) ->
       let fname = convert_abs_path_to_show abspath_in in
@@ -1003,6 +1030,9 @@ let report_config_error : config_error -> unit = function
       report_error Interface [
         NormalLine("cannot solve package constraints.");
       ]
+
+  | DocumentAttributeError(e) ->
+      report_document_attribute_error e
 
 
 let report_font_error : font_error -> unit = function
@@ -1456,10 +1486,12 @@ let build
 
 type solve_input =
   | PackageSolveInput of {
-      root : abs_path;
-      lock : abs_path;
+      root : abs_path; (* The absolute path of a directory used as the package root *)
+      lock : abs_path; (* A path for writing a resulting lock file *)
     }
-  | DocumentSolveInput
+  | DocumentSolveInput of {
+      path : abs_path; (* The absolute path to the document file *)
+    }
 
 
 let make_lock_name (package_name : package_name) (semver : SemanticVersion.t) : lock_name =
@@ -1487,6 +1519,22 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
   LockConfig.{ locked_packages }
 
 
+let extract_attributes_from_document_file (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
+  let open ResultMonad in
+  Logging.begin_to_parse_file abspath_in;
+  let* utsrc =
+    ParserInterface.process_file abspath_in
+      |> Result.map_error (fun rng -> FailedToParse(rng))
+  in
+  let* (attrs, _header, _utast) =
+    match utsrc with
+    | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
+    | UTDocumentFile(utdoc) -> return utdoc
+  in
+  DocumentAttribute.make attrs
+    |> Result.map_error (fun e -> DocumentAttributeError(e))
+
+
 let solve
     ~(fpath_in : string)
 =
@@ -1505,19 +1553,26 @@ let solve
           lock = abspath_lock_config;
         }
       else
-        DocumentSolveInput
+        DocumentSolveInput{
+          path = abspath_in;
+        }
     in
-    match solve_input with
-    | PackageSolveInput{
-        root = absdir_package;
-        lock = abspath_lock_config;
-      } ->
-        let res =
-          let open ResultMonad in
+    let res =
+      let open ResultMonad in
+      match solve_input with
+      | PackageSolveInput{
+          root = absdir_package;
+          lock = abspath_lock_config;
+        } ->
           let* config = PackageConfig.load absdir_package in
           begin
             match config.package_contents with
             | PackageConfig.Library{ dependencies; _ } ->
+
+                (* TODO: remove this: *)
+                Format.printf "@[<v>**** DEPENDENCIES:@ %a@,"
+                  (Format.pp_print_list pp_package_dependency) dependencies;
+
                 let* package_context = PackageRegistry.load_cache () in
                 let solutions_opt = PackageConstraintSolver.solve package_context dependencies in
                 begin
@@ -1528,8 +1583,6 @@ let solve
                   | Some(solutions) ->
 
                       (* TODO: remove this: *)
-                      Format.printf "@[<v>**** DEPENDENCIES:@ %a@,"
-                        (Format.pp_print_list pp_package_dependency) dependencies;
                       Format.printf "**** SOLUTIONS:@ %a@,@]"
                         (Format.pp_print_list pp_package_solution) solutions;
 
@@ -1538,13 +1591,14 @@ let solve
                       return ()
                 end
           end
-        in
-        begin
-          match res with
-          | Ok(())   -> ()
-          | Error(e) -> raise (ConfigError(e))
-        end
 
-    | DocumentSolveInput ->
-        failwith "TODO: Main.solve, DocumentSolveInput"
+      | DocumentSolveInput{ path = abspath_in } ->
+          let* _docattr = extract_attributes_from_document_file abspath_in in
+          failwith "TODO: Main.solve, DocumentSolveInput"
+    in
+    begin
+      match res with
+      | Ok(())   -> ()
+      | Error(e) -> raise (ConfigError(e))
+    end
   )

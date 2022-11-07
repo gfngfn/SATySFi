@@ -65,6 +65,7 @@ type config_error =
       candidates : abs_path list;
     }
   | CannotSolvePackageConstraints
+  | DocumentAttributeError    of DocumentAttribute.error
 
 type font_error =
   | InvalidFontAbbrev             of font_abbrev
