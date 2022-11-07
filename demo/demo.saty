@@ -1,3 +1,11 @@
+#[dependencies [
+  (`stdlib`, `0.0.1`),
+  (`math`, `0.0.1`),
+  (`code`, `0.0.1`),
+  (`itemize`, `0.0.1`),
+  (`tabular`, `0.0.1`),
+  (`std-ja-book`, `0.0.1`),
+]]
 use package open Stdlib
 use package open Math
 use package open Annot
