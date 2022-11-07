@@ -3,7 +3,7 @@
 
 ;; nx.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <nx.saty:1.8-10>), "Nx"), None,
      [((Range.Normal <nx.saty:3.3-6>),
        (UTBindValue (Stage1,
@@ -675,7 +675,7 @@
 
 ;; variants.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <variants.saty:1.8-16>), "Variants"), None,
      [((Range.Normal <variants.saty:3.3-7>),
        (UTBindType
@@ -708,7 +708,7 @@
 
 ;; txprod.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <txprod.saty:1.8-14>), "Txprod"), None,
      [((Range.Normal <txprod.saty:3.3-7>),
        (UTBindType
@@ -744,7 +744,7 @@
 
 ;; txlist.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <txlist.saty:1.8-14>), "Txlist"), None,
      [((Range.Normal <txlist.saty:3.3-7>),
        (UTBindType
@@ -796,7 +796,7 @@
 
 ;; txrecord.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <txrecord.saty:1.8-16>), "Txrecord"), None,
      [((Range.Normal <txrecord.saty:3.3-7>),
        (UTBindType
@@ -848,7 +848,7 @@
 
 ;; pats.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <pats.saty:1.8-12>), "Pats"), None,
      [((Range.Normal <pats.saty:3.3-6>),
        (UTBindValue (Stage1,
@@ -884,7 +884,7 @@
 
 ;; pattuple.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <pattuple.saty:1.8-16>), "Pattuple"), None,
      [((Range.Normal <pattuple.saty:3.3-6>),
        (UTBindValue (Stage1,
@@ -911,7 +911,7 @@
 
 ;; patlist.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <patlist.saty:1.8-15>), "Patlist"), None,
      [((Range.Normal <patlist.saty:3.3-6>),
        (UTBindValue (Stage1,
@@ -966,7 +966,7 @@
 
 ;; sxlist.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <sxlist.saty:1.8-14>), "Sxlist"), None,
      [((Range.Normal <sxlist.saty:3.3-6>),
        (UTBindValue (Stage1,
@@ -983,7 +983,7 @@
 
 ;; mathlist.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <mathlist.saty:1.8-16>), "Mathlist"), None,
      [((Range.Normal <mathlist.saty:3.3-6>),
        (UTBindValue (Stage1,
@@ -1221,7 +1221,7 @@
 
 ;; toplevel.saty
 (UTLibraryFile
-   ([],
+   ([], [],
     (((Range.Normal <toplevel.saty:1.8-16>), "Toplevel"), None,
      [((Range.Normal <toplevel.saty:3.3-7>),
        (UTBindType
