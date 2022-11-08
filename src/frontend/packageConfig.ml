@@ -2,6 +2,7 @@
 open MyUtil
 open Types
 open ConfigError
+open ConfigUtil
 open PackageSystemBase
 
 
@@ -21,29 +22,8 @@ type t = {
 }
 
 
-module PackageConfigDecoder = YamlDecoder.Make(YamlError)
-
-
-let requirement_decoder : package_restriction PackageConfigDecoder.t =
-  let open PackageConfigDecoder in
-  string >>= fun s_version ->
-  match SemanticVersion.parse s_version with
-  | None         -> failure (fun context -> NotASemanticVersion(context, s_version))
-  | Some(semver) -> succeed @@ CompatibleWith(semver)
-
-
-let dependency_decoder : package_dependency PackageConfigDecoder.t =
-  let open PackageConfigDecoder in
-  get "name" string >>= fun package_name ->
-  get "requirements" (list requirement_decoder) >>= fun restrictions ->
-  succeed @@ PackageDependency{
-    package_name;
-    restrictions;
-  }
-
-
-let contents_decoder : package_contents PackageConfigDecoder.t =
-  let open PackageConfigDecoder in
+let contents_decoder : package_contents ConfigDecoder.t =
+  let open ConfigDecoder in
   branch "type" [
     "library" ==> begin
       get "main_module" string >>= fun main_module_name ->
@@ -61,8 +41,8 @@ let contents_decoder : package_contents PackageConfigDecoder.t =
   )
 
 
-let version_0_1_config_decoder : t PackageConfigDecoder.t =
-  let open PackageConfigDecoder in
+let version_0_1_config_decoder : t ConfigDecoder.t =
+  let open ConfigDecoder in
   get "contents" contents_decoder >>= fun package_contents ->
   succeed @@ {
     package_contents;
@@ -70,7 +50,7 @@ let version_0_1_config_decoder : t PackageConfigDecoder.t =
 
 
 let config_decoder =
-  let open PackageConfigDecoder in
+  let open ConfigDecoder in
   get "language" string >>= fun language ->
   match language with
   | "0.1.0" -> version_0_1_config_decoder
@@ -90,5 +70,5 @@ let load (absdir_package : abs_path) : t ok =
   in
   let s = Core.In_channel.input_all inc in
   close_in inc;
-  PackageConfigDecoder.run config_decoder s
+  ConfigDecoder.run config_decoder s
     |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))

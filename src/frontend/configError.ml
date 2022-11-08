@@ -15,6 +15,10 @@ type yaml_error =
   | UnexpectedTag       of YamlDecoder.context * string
   | UnexpectedLanguage  of string
   | NotASemanticVersion of YamlDecoder.context * string
+  | MultiplePackageDefinition of {
+      context      : YamlDecoder.context;
+      package_name : string;
+    }
 
 module YamlError = struct
   type t = yaml_error
@@ -44,6 +48,9 @@ type config_error =
   | PackageConfigError        of abs_path * yaml_error
   | LockConfigNotFound        of abs_path
   | LockConfigError           of abs_path * yaml_error
+  | RegistryConfigNotFound    of abs_path
+  | RegistryConfigNotFoundIn  of lib_path * abs_path list
+  | RegistryConfigError       of abs_path * yaml_error
   | LockNameConflict          of lock_name
   | LockedPackageNotFound     of lib_path * abs_path list
   | DependencyOnUnknownLock of {

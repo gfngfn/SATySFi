@@ -2,6 +2,7 @@
 open MyUtil
 open Types
 open ConfigError
+open ConfigUtil
 
 
 type 'a ok = ('a, config_error) result
@@ -25,11 +26,8 @@ type t = {
 }
 
 
-module LockConfigDecoder = YamlDecoder.Make(YamlError)
-
-
-let lock_location_decoder : lock_location LockConfigDecoder.t =
-  let open LockConfigDecoder in
+let lock_location_decoder : lock_location ConfigDecoder.t =
+  let open ConfigDecoder in
   branch "type" [
     "global" ==> begin
       get "path" string >>= fun s_libpath ->
@@ -60,8 +58,8 @@ let lock_location_encoder (loc : lock_location) : Yaml.value =
       ])
 
 
-let lock_decoder : locked_package LockConfigDecoder.t =
-  let open LockConfigDecoder in
+let lock_decoder : locked_package ConfigDecoder.t =
+  let open ConfigDecoder in
   get "name" string >>= fun lock_name ->
   get "location" lock_location_decoder >>= fun lock_location ->
   get_or_else "dependencies" (list string) [] >>= fun lock_dependencies ->
@@ -80,8 +78,8 @@ let lock_encoder (lock : locked_package) : Yaml.value =
   ])
 
 
-let lock_config_decoder : t LockConfigDecoder.t =
-  let open LockConfigDecoder in
+let lock_config_decoder : t ConfigDecoder.t =
+  let open ConfigDecoder in
   get_or_else "locks" (list lock_decoder) [] >>= fun locked_packages ->
   succeed {
     locked_packages;
@@ -104,7 +102,7 @@ let load (abspath_lock_config : abs_path) : t ok =
   in
   let s = Core.In_channel.input_all inc in
   close_in inc;
-  LockConfigDecoder.run lock_config_decoder s
+  ConfigDecoder.run lock_config_decoder s
     |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))
 
 

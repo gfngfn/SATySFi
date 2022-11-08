@@ -817,6 +817,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | NotASemanticVersion(yctx, s) ->
       [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
 
+  | MultiplePackageDefinition{ context = yctx; package_name } ->
+      [ NormalLine(Printf.sprintf "More than one definition for package '%s'%s" package_name (show_yaml_context yctx)) ]
+
 
 let report_document_attribute_error : DocumentAttribute.error -> unit = function
   | MoreThanOneDependencyAttribute(rng1, rng2) ->
@@ -966,6 +969,29 @@ let report_config_error : config_error -> unit = function
   | LockConfigError(abspath, e) ->
       report_error Interface (List.concat [
         [ NormalLine(Printf.sprintf "in %s: lock config error;" (get_abs_path_string abspath)) ];
+        make_yaml_error_lines e;
+      ])
+
+  | RegistryConfigNotFound(abspath) ->
+      report_error Interface [
+        NormalLine("cannot find a registry config at:");
+        DisplayLine(get_abs_path_string abspath);
+      ]
+
+  | RegistryConfigNotFoundIn(libpath, candidates) ->
+      let lines =
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+        )
+      in
+      report_error Interface (List.concat [
+        [ NormalLine(Printf.sprintf "cannot find a registry config '%s'. candidates:" (get_lib_path_string libpath)) ];
+        lines;
+      ])
+
+  | RegistryConfigError(abspath, e) ->
+      report_error Interface (List.concat [
+        [ NormalLine(Printf.sprintf "in %s: registry config error;" (get_abs_path_string abspath)) ];
         make_yaml_error_lines e;
       ])
 
@@ -1573,8 +1599,14 @@ let solve
           lock = abspath_lock_config;
         }
     in
+
     let res =
       let open ResultMonad in
+      let* abspath_registry_config =
+        let libpath = make_lib_path "dist/package/cache/registry.yaml" in
+        Config.resolve_lib_file libpath
+          |> Result.map_error (fun candidates -> RegistryConfigNotFoundIn(libpath, candidates))
+      in
       let* (dependencies, abspath_lock_config) =
         match solve_input with
         | PackageSolveInput{
@@ -1598,7 +1630,7 @@ let solve
 
       Logging.show_package_dependency_before_solving dependencies;
 
-      let* package_context = PackageRegistry.load_cache () in
+      let* package_context = PackageRegistry.load abspath_registry_config in
       let solutions_opt = PackageConstraintSolver.solve package_context dependencies in
       begin
         match solutions_opt with
