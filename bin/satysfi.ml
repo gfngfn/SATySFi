@@ -42,9 +42,15 @@ let build
 
 let solve
   fpath_in
+  show_full_path
+  config_paths_str_opt
+  no_default_config
 =
   Main.solve
     ~fpath_in
+    ~show_full_path
+    ~config_paths_str_opt
+    ~no_default_config
 
 
 let arg_in : string Cmdliner.Term.t =
@@ -180,6 +186,9 @@ let command_solve =
   let term : unit Term.t =
     Term.(const solve
       $ arg_in
+      $ flag_full_path
+      $ flag_config
+      $ flag_no_default_config
     )
   in
   let info : Cmd.info =

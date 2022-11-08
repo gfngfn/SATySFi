@@ -1567,20 +1567,25 @@ let extract_attributes_from_document_file (abspath_in : abs_path) : (DocumentAtt
 
 let solve
     ~(fpath_in : string)
+    ~(show_full_path : bool)
+    ~(config_paths_str_opt : string option)
+    ~(no_default_config : bool)
 =
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
 
-    (* TODO: add options *)
+    let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
+
     OptionState.set OptionState.{
       command_state = SolveState;
-      extra_config_paths = None;
-      show_full_path = false;
+      extra_config_paths;
+      show_full_path;
       show_fonts = false;
-      no_default_config = false;
+      no_default_config;
     };
 
-    setup_root_dirs ~no_default_config:false ~extra_config_paths:None curdir;
+    setup_root_dirs ~no_default_config ~extra_config_paths curdir;
+
     let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
     let solve_input =
       let abspathstr_in = get_abs_path_string abspath_in in
@@ -1603,7 +1608,7 @@ let solve
     let res =
       let open ResultMonad in
       let* abspath_registry_config =
-        let libpath = make_lib_path "dist/package/cache/registry.yaml" in
+        let libpath = make_lib_path "dist/cache/registry.yaml" in
         Config.resolve_lib_file libpath
           |> Result.map_error (fun candidates -> RegistryConfigNotFoundIn(libpath, candidates))
       in

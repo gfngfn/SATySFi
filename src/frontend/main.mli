@@ -20,4 +20,7 @@ val build :
 
 val solve :
   fpath_in:string ->
+  show_full_path:bool ->
+  config_paths_str_opt:(string option) ->
+  no_default_config:bool ->
   unit

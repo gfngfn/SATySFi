@@ -17,3 +17,5 @@ INSTALL=${2:-install}
 (cd lib-satysfi && find dist/packages -type f -exec "${INSTALL}" -Dm 644 "{}" "${LIBDIR}/{}" \;)
 "${INSTALL}" -d "${LIBDIR}/dist/md"
 "${INSTALL}" -m 644 lib-satysfi/dist/md/* "${LIBDIR}/dist/md"
+"${INSTALL}" -d "${LIBDIR}/dist/cache"
+"${INSTALL}" -m 644 lib-satysfi/dist/cache/* "${LIBDIR}/dist/cache"
