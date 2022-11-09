@@ -2,6 +2,7 @@
 open MyUtil
 open Types
 open ConfigError
+open PackageSystemBase
 
 type relative_path = string
 
@@ -9,9 +10,7 @@ type package_contents =
   | Library of {
       main_module_name   : module_name;
       source_directories : relative_path list;
-    }
-  | Document of {
-      document_file : relative_path;
+      dependencies       : package_dependency list;
     }
 
 type t = {

@@ -10,34 +10,53 @@ type 'a ok = ('a, config_error) result
 module LockDependencyGraph = DependencyGraph.Make(String)
 
 
-let main ~(extensions : string list) (lock_config : LockConfig.t) : ((lock_name * untyped_package) list) ok =
+let main ~(lock_config_dir : abs_path) ~(extensions : string list) (lock_config : LockConfig.t) : ((lock_name * untyped_package) list) ok =
   let open ResultMonad in
 
   let locks = lock_config.LockConfig.locked_packages in
 
   (* Add vertices: *)
   let* (graph, entryacc) =
-    locks |> foldM (fun (graph, entryacc) lock ->
+    locks |> foldM (fun (graph, entryacc) (lock : LockConfig.locked_package) ->
       let lock_name = lock.lock_name in
-      let absdir_package = lock.lock_directory in
+      let* absdir_package =
+        match lock.lock_location with
+        | GlobalLocation{ path = s_libpath } ->
+            let libpath = make_lib_path s_libpath in
+            begin
+              match Config.resolve_lib_file libpath with
+              | Ok(abspath)       -> return abspath
+              | Error(candidates) -> err @@ LockedPackageNotFound(libpath, candidates)
+            end
+
+        | LocalLocation{ path = s_relpath } ->
+            return (make_abs_path (Filename.concat (get_abs_path_string lock_config_dir) s_relpath))
+      in
       let* package = PackageReader.main ~extensions absdir_package in
       let* (graph, vertex) =
         graph |> LockDependencyGraph.add_vertex lock_name package
           |> Result.map_error (fun _ -> LockNameConflict(lock_name))
       in
-      return (graph, Alist.extend entryacc (lock, vertex))
+      let lock_info =
+        {
+          lock_name;
+          lock_directory    = absdir_package;
+          lock_dependencies = lock.lock_dependencies;
+        }
+      in
+      return (graph, Alist.extend entryacc (lock_info, vertex))
     ) (LockDependencyGraph.empty, Alist.empty)
   in
 
   (* Add edges: *)
   let* graph =
-    entryacc |> Alist.to_list |> foldM (fun graph (lock, vertex) ->
-      lock.lock_dependencies |> foldM (fun graph lock_name_dep ->
+    entryacc |> Alist.to_list |> foldM (fun graph (lock_info, vertex) ->
+      lock_info.lock_dependencies |> foldM (fun graph lock_name_dep ->
         begin
           match graph |> LockDependencyGraph.get_vertex lock_name_dep with
           | None ->
               err @@ DependencyOnUnknownLock{
-                depending = lock.lock_name;
+                depending = lock_info.lock_name;
                 depended  = lock_name_dep;
               }
 

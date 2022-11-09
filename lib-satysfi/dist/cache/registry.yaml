@@ -1,0 +1,87 @@
+packages:
+- name: "stdlib"
+  implementations:
+  - version: "0.0.1"
+    dependencies: []
+- name: "math"
+  implementations:
+  - version: "0.0.1"
+    dependencies:
+    - name: "stdlib"
+      requirements: [ "0.0.1" ]
+- name: "code"
+  implementations:
+  - version: "0.0.1"
+    dependencies:
+    - name: "stdlib"
+      requirements: [ "0.0.1" ]
+- name: "annot"
+  implementations:
+  - version: "0.0.1"
+    dependencies:
+    - name: "stdlib"
+      requirements: [ "0.0.1" ]
+- name: "itemize"
+  implementations:
+  - version: "0.0.1"
+    dependencies:
+    - name: "stdlib"
+      requirements: [ "0.0.1" ]
+- name: "proof"
+  implementations:
+  - version: "0.0.1"
+    dependencies:
+    - name: "stdlib"
+      requirements: [ "0.0.1" ]
+- name: "tabular"
+  implementations:
+  - version: "0.0.1"
+    dependencies:
+    - name: "stdlib"
+      requirements: [ "0.0.1" ]
+- name: "footnote-scheme"
+  implementations:
+  - version: "0.0.1"
+    dependencies:
+    - name: "stdlib"
+      requirements: [ "0.0.1" ]
+- name: "std-ja"
+  implementations:
+  - version: "0.0.1"
+    dependencies:
+    - name: "stdlib"
+      requirements: [ "0.0.1" ]
+    - name: "math"
+      requirements: [ "0.0.1" ]
+    - name: "annot"
+      requirements: [ "0.0.1" ]
+    - name: "code"
+      requirements: [ "0.0.1" ]
+- name: "std-ja-book"
+  implementations:
+  - version: "0.0.1"
+    dependencies:
+    - name: "stdlib"
+      requirements: [ "0.0.1" ]
+    - name: "math"
+      requirements: [ "0.0.1" ]
+    - name: "annot"
+      requirements: [ "0.0.1" ]
+    - name: "code"
+      requirements: [ "0.0.1" ]
+    - name: "footnote-scheme"
+      requirements: [ "0.0.1" ]
+- name: "std-ja-report"
+  implementations:
+  - version: "0.0.1"
+    dependencies:
+    - name: "stdlib"
+      requirements: [ "0.0.1" ]
+    - name: "math"
+      requirements: [ "0.0.1" ]
+    - name: "annot"
+      requirements: [ "0.0.1" ]
+    - name: "code"
+      requirements: [ "0.0.1" ]
+    - name: "footnote-scheme"
+      requirements: [ "0.0.1" ]

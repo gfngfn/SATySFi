@@ -53,10 +53,10 @@ let rec register_library_file (extensions : string list) (graph : graph) (packag
         Logging.begin_to_parse_file abspath;
         let* utsrc = ParserInterface.process_file abspath |> Result.map_error (fun rng -> FailedToParse(rng)) in
         match utsrc with
-        | UTLibraryFile(utlib) -> return utlib
-        | UTDocumentFile(_, _) -> err @@ LibraryContainsWholeReturnValue(abspath)
+        | UTLibraryFile(utlib)    -> return utlib
+        | UTDocumentFile(_, _, _) -> err @@ LibraryContainsWholeReturnValue(abspath)
       in
-      let (header, _) = utlib in
+      let (_attrs, header, _) = utlib in
       let (graph, vertex) =
         match graph |> FileDependencyGraph.add_vertex abspath utlib with
         | Error(_vertex) -> assert false
@@ -91,7 +91,7 @@ let register_document_file (extensions : string list) (abspath_in : abs_path) : 
     | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
     | UTDocumentFile(utdoc) -> return utdoc
   in
-  let (header, _) = utdoc in
+  let (_attrs, header, _) = utdoc in
   let* (package_names, graph) =
     header |> foldM (fun (package_names, graph) headerelem ->
       let* local_or_package = get_header extensions curdir headerelem in
@@ -130,7 +130,8 @@ let register_markdown_file (setting : string) (abspath_in : abs_path) : (Package
       HeaderUsePackage{ opening = false; module_name = (Range.dummy "md-header", main_module_name) }
     )
   in
-  return (package_names, (header, utast))
+  let utdoc = ([], header, utast) in
+  return (package_names, utdoc)
 
 
 let main ~(extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file) ok =

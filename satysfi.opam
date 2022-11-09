@@ -39,6 +39,8 @@ depends: [
   "ocamlgraph"
   "alcotest" {with-test & >= "1.4.0"}
   "yaml" {>= "2.1.0"}
+  "0install-solver" {>= "2.0" & < "3.0"}
+  "semver2" {>= "1.2.0"}
 ]
 synopsis: "A statically-typed, functional typesetting system"
 description: """

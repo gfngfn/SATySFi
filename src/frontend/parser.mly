@@ -245,6 +245,8 @@
   L_PAREN R_PAREN L_SQUARE R_SQUARE L_RECORD R_RECORD
   L_BLOCK_TEXT R_BLOCK_TEXT L_INLINE_TEXT R_INLINE_TEXT L_MATH_TEXT R_MATH_TEXT
 
+%token<Range.t * Types.attribute_name> ATTRIBUTE_L_SQUARE
+
 %token<Range.t> EXACT_MINUS EXACT_TIMES EXACT_AMP EXACT_TILDE EXACT_EQ
 
 %token<Range.t * Types.var_name>
@@ -297,6 +299,7 @@
 
 %start main
 %type<Types.untyped_source_file> main
+%type<Types.untyped_attribute> attribute
 %type<Types.untyped_module> modexpr
 %type<Types.module_name_chain Types.ranged> mod_chain
 %type<Types.untyped_binding> bind
@@ -359,10 +362,10 @@ optterm_nonempty_list(sep, X):
       { ident }
 ;
 main:
-  | header=list(headerelem); lib=main_lib; EOI
-      { UTLibraryFile(header, lib) }
-  | header=list(headerelem); utast=expr; EOI
-      { UTDocumentFile(header, utast) }
+  | attrs=list(attribute); header=list(headerelem); lib=main_lib; EOI
+      { UTLibraryFile(attrs, header, lib) }
+  | attrs=list(attribute); header=list(headerelem); utast=expr; EOI
+      { UTDocumentFile(attrs, header, utast) }
   | rng=EOI
       { raise (ParseError(EmptyInputFile(rng))) }
 ;
@@ -385,6 +388,13 @@ headerelem:
 optional_open:
   | OPEN { true }
   |      { false }
+;
+attribute:
+  | attr_left=ATTRIBUTE_L_SQUARE; utast=expr; tokR=R_SQUARE
+      {
+        let (tokL, attrnm) = attr_left in
+        make_standard (Tok tokL) (Tok tokR) (UTAttribute(attrnm, utast))
+      }
 ;
 modexpr:
   | tokL=FUN; L_PAREN; modident=UPPER; COLON; utsig=sigexpr; R_PAREN; ARROW; utmod=modexpr

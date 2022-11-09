@@ -5,16 +5,20 @@ open HorzBox
 
 
 type yaml_error =
-  | ParseError         of string
-  | FieldNotFound      of YamlDecoder.context * string
-  | NotAFloat          of YamlDecoder.context
-  | NotAString         of YamlDecoder.context
-  | NotABool           of YamlDecoder.context
-  | NotAnArray         of YamlDecoder.context
-  | NotAnObject        of YamlDecoder.context
-  | UnexpectedTag      of YamlDecoder.context * string
-  | PackageNotFound    of lib_path * abs_path list
-  | UnexpectedLanguage of string
+  | ParseError          of string
+  | FieldNotFound       of YamlDecoder.context * string
+  | NotAFloat           of YamlDecoder.context
+  | NotAString          of YamlDecoder.context
+  | NotABool            of YamlDecoder.context
+  | NotAnArray          of YamlDecoder.context
+  | NotAnObject         of YamlDecoder.context
+  | UnexpectedTag       of YamlDecoder.context * string
+  | UnexpectedLanguage  of string
+  | NotASemanticVersion of YamlDecoder.context * string
+  | MultiplePackageDefinition of {
+      context      : YamlDecoder.context;
+      package_name : string;
+    }
 
 module YamlError = struct
   type t = yaml_error
@@ -44,7 +48,11 @@ type config_error =
   | PackageConfigError        of abs_path * yaml_error
   | LockConfigNotFound        of abs_path
   | LockConfigError           of abs_path * yaml_error
+  | RegistryConfigNotFound    of abs_path
+  | RegistryConfigNotFoundIn  of lib_path * abs_path list
+  | RegistryConfigError       of abs_path * yaml_error
   | LockNameConflict          of lock_name
+  | LockedPackageNotFound     of lib_path * abs_path list
   | DependencyOnUnknownLock of {
       depending : lock_name;
       depended  : lock_name;
@@ -63,6 +71,8 @@ type config_error =
       relative   : string;
       candidates : abs_path list;
     }
+  | CannotSolvePackageConstraints
+  | DocumentAttributeError    of DocumentAttribute.error
 
 type font_error =
   | InvalidFontAbbrev             of font_abbrev

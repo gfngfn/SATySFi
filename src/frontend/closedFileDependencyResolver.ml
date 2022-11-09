@@ -15,7 +15,7 @@ let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untype
   (* Add vertices: *)
   let* (graph, entryacc) =
     utlibs |> foldM (fun (graph, entryacc) (abspath, utlib) ->
-      let (_, ((_, modnm), _, _)) = utlib in
+      let (_attrs, _header, ((_, modnm), _, _)) = utlib in
       let* (graph, vertex) =
         match graph |> SourceModuleDependencyGraph.add_vertex modnm (abspath, utlib) with
         | Error(((abspath_prev, _utlib_prev), _vertex_prev)) ->
@@ -31,7 +31,7 @@ let main (utlibs : (abs_path * untyped_library_file) list) : ((abs_path * untype
   (* Add edges: *)
   let* graph =
     entryacc |> Alist.to_list |> foldM (fun graph (utlib, vertex) ->
-      let (header, _) = utlib in
+      let (_attrs, header, _) = utlib in
       header |> foldM (fun graph headerelem ->
         match headerelem with
         | HeaderUse{ module_name = (rng, modnm_sub); _ } ->

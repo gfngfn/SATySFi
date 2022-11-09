@@ -1,5 +1,6 @@
 
 open MyUtil
+open PackageSystemBase
 
 
 let show_path abspath =
@@ -112,6 +113,32 @@ let begin_to_embed_fonts () =
 let begin_to_write_page () =
   print_endline (" ---- ---- ---- ----");
   print_endline ("  writing pages ...")
+
+
+let show_package_dependency_before_solving (dependencies : package_dependency list) =
+  Printf.printf "  package dependencies to solve:\n";
+  dependencies |> List.iter (function
+  | PackageDependency{ package_name; restrictions } ->
+      let s_restr =
+        restrictions |> List.map (function
+        | CompatibleWith(semver) -> SemanticVersion.to_string semver
+        ) |> String.concat ", "
+      in
+      Printf.printf "  - %s (%s)\n" package_name s_restr;
+  )
+
+
+let show_package_dependency_solutions (solutions : package_solution list) =
+  Printf.printf "  package dependency solutions:\n";
+    solutions |> List.iter (fun solution ->
+      Printf.printf "  - %s %s\n" solution.package_name (SemanticVersion.to_string solution.locked_version)
+  )
+
+
+let end_lock_output file_name_out =
+  print_endline (" ---- ---- ---- ----");
+  print_endline ("  output written on '" ^ (show_path file_name_out) ^ "'.")
+
 
 
 let show_single_font abbrev relpath =

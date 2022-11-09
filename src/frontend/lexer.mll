@@ -191,6 +191,8 @@ rule lex_program stack = parse
         Stack.push MathState stack;
         L_MATH_TEXT(get_pos lexbuf)
       }
+  | ("#[" (lower as s))
+      { Stack.push ProgramState stack; ATTRIBUTE_L_SQUARE(get_pos lexbuf, s) }
   | "`"+
       {
         let pos_start = get_pos lexbuf in

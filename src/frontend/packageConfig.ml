@@ -2,6 +2,8 @@
 open MyUtil
 open Types
 open ConfigError
+open ConfigUtil
+open PackageSystemBase
 
 
 type 'a ok = ('a, config_error) result
@@ -12,9 +14,7 @@ type package_contents =
   | Library of {
       main_module_name   : module_name;
       source_directories : relative_path list;
-    }
-  | Document of {
-      document_file : relative_path;
+      dependencies       : package_dependency list;
     }
 
 type t = {
@@ -22,24 +22,17 @@ type t = {
 }
 
 
-module PackageConfigDecoder = YamlDecoder.Make(YamlError)
-
-
-let contents_decoder : package_contents PackageConfigDecoder.t =
-  let open PackageConfigDecoder in
+let contents_decoder : package_contents ConfigDecoder.t =
+  let open ConfigDecoder in
   branch "type" [
     "library" ==> begin
       get "main_module" string >>= fun main_module_name ->
       get "source_directories" (list string) >>= fun source_directories ->
+      get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
       succeed @@ Library {
         main_module_name;
         source_directories;
-      }
-    end;
-    "document" ==> begin
-      get "file" string >>= fun document_file ->
-      succeed @@ Document {
-        document_file;
+        dependencies;
       }
     end;
   ]
@@ -48,8 +41,8 @@ let contents_decoder : package_contents PackageConfigDecoder.t =
   )
 
 
-let version_0_1_config_decoder : t PackageConfigDecoder.t =
-  let open PackageConfigDecoder in
+let version_0_1_config_decoder : t ConfigDecoder.t =
+  let open ConfigDecoder in
   get "contents" contents_decoder >>= fun package_contents ->
   succeed @@ {
     package_contents;
@@ -57,7 +50,7 @@ let version_0_1_config_decoder : t PackageConfigDecoder.t =
 
 
 let config_decoder =
-  let open PackageConfigDecoder in
+  let open ConfigDecoder in
   get "language" string >>= fun language ->
   match language with
   | "0.1.0" -> version_0_1_config_decoder
@@ -77,5 +70,5 @@ let load (absdir_package : abs_path) : t ok =
   in
   let s = Core.In_channel.input_all inc in
   close_in inc;
-  PackageConfigDecoder.run config_decoder s
+  ConfigDecoder.run config_decoder s
     |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))

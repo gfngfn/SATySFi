@@ -43,6 +43,8 @@ type label              = string  [@@deriving show]
 
 type lock_name = string  [@@deriving show]
 
+type attribute_name = string  [@@deriving show]
+
 type input_position = {
   input_file_name : string;
   input_line      : int;
@@ -576,12 +578,20 @@ and untyped_parameter_unit =
   | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
 [@@deriving show { with_path = false; }]
 
+type untyped_attribute_main =
+  | UTAttribute of attribute_name * untyped_abstract_tree
+[@@deriving show { with_path = false; }]
+
+type untyped_attribute =
+  untyped_attribute_main ranged
+[@@deriving show { with_path = false; }]
+
 type untyped_library_file =
-  header_element list * (module_name ranged * untyped_signature option * untyped_binding list)
+  untyped_attribute list * header_element list * (module_name ranged * untyped_signature option * untyped_binding list)
 [@@deriving show { with_path = false; }]
 
 type untyped_document_file =
-  header_element list * untyped_abstract_tree
+  untyped_attribute list * header_element list * untyped_abstract_tree
 [@@deriving show { with_path = false; }]
 
 type untyped_source_file =

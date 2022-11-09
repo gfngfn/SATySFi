@@ -2,6 +2,7 @@
 open MyUtil
 open Types
 open StaticEnv
+open PackageSystemBase
 open ConfigError
 open TypeError
 
@@ -785,7 +786,7 @@ let show_yaml_context (context : YamlDecoder.context) =
       Printf.sprintf " (context: %s)" s_context
 
 
-let make_yaml_error_lines = function
+let make_yaml_error_lines : yaml_error -> line list = function
   | ParseError(s) ->
       [ NormalLine(Printf.sprintf "parse error: %s" s) ]
 
@@ -810,19 +811,44 @@ let make_yaml_error_lines = function
   | UnexpectedTag(yctx, tag) ->
       [ NormalLine(Printf.sprintf "unexpected type tag '%s'%s" tag (show_yaml_context yctx)) ]
 
-  | PackageNotFound(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      (NormalLine(Printf.sprintf "package '%s' not found. candidates:" (get_lib_path_string libpath)) :: lines)
-
   | UnexpectedLanguage(s_language_version) ->
       [ NormalLine(Printf.sprintf "unexpected language version '%s'" s_language_version) ]
 
+  | NotASemanticVersion(yctx, s) ->
+      [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
 
-let report_config_error = function
+  | MultiplePackageDefinition{ context = yctx; package_name } ->
+      [ NormalLine(Printf.sprintf "More than one definition for package '%s'%s" package_name (show_yaml_context yctx)) ]
+
+
+let report_document_attribute_error : DocumentAttribute.error -> unit = function
+  | MoreThanOneDependencyAttribute(rng1, rng2) ->
+      report_error Interface [
+        NormalLine("More than one attribute defines dependencies:");
+        DisplayLine(Printf.sprintf "- %s" (Range.to_string rng1));
+        DisplayLine(Printf.sprintf "- %s" (Range.to_string rng2));
+      ]
+
+  | NotASemanticVersion(rng, s) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "not a semantic version: '%s'" s);
+      ]
+
+  | NotAPackageDependency(rng) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "not a package dependency description.");
+      ]
+
+  | NotAListLiteral(rng) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "not a list literal.");
+      ]
+
+
+let report_config_error : config_error -> unit = function
   | NotADocumentFile(abspath_in, ty) ->
       let fname = convert_abs_path_to_show abspath_in in
       report_error Typechecker [
@@ -946,10 +972,42 @@ let report_config_error = function
         make_yaml_error_lines e;
       ])
 
+  | RegistryConfigNotFound(abspath) ->
+      report_error Interface [
+        NormalLine("cannot find a registry config at:");
+        DisplayLine(get_abs_path_string abspath);
+      ]
+
+  | RegistryConfigNotFoundIn(libpath, candidates) ->
+      let lines =
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+        )
+      in
+      report_error Interface (List.concat [
+        [ NormalLine(Printf.sprintf "cannot find a registry config '%s'. candidates:" (get_lib_path_string libpath)) ];
+        lines;
+      ])
+
+  | RegistryConfigError(abspath, e) ->
+      report_error Interface (List.concat [
+        [ NormalLine(Printf.sprintf "in %s: registry config error;" (get_abs_path_string abspath)) ];
+        make_yaml_error_lines e;
+      ])
+
   | LockNameConflict(lock_name) ->
       report_error Interface [
         NormalLine(Printf.sprintf "lock name conflict: '%s'" lock_name);
       ]
+
+  | LockedPackageNotFound(libpath, candidates) ->
+      let lines =
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+        )
+      in
+      report_error Interface
+        (NormalLine(Printf.sprintf "package '%s' not found. candidates:" (get_lib_path_string libpath)) :: lines)
 
   | DependencyOnUnknownLock{ depending; depended } ->
       report_error Interface [
@@ -994,8 +1052,16 @@ let report_config_error = function
       report_error Interface
         (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
 
+  | CannotSolvePackageConstraints ->
+      report_error Interface [
+        NormalLine("cannot solve package constraints.");
+      ]
 
-let report_font_error = function
+  | DocumentAttributeError(e) ->
+      report_document_attribute_error e
+
+
+let report_font_error : font_error -> unit = function
   | InvalidFontAbbrev(abbrev) ->
       report_error Interface [
         NormalLine (Printf.sprintf "cannot find a font named '%s'." abbrev);
@@ -1048,7 +1114,7 @@ let report_font_error = function
         (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
 
 
-let error_log_environment suspended =
+let error_log_environment (suspended : unit -> unit) : unit =
   try
     suspended ()
   with
@@ -1198,7 +1264,7 @@ let error_log_environment suspended =
       report_error System [ NormalLine(s); ]
 
 
-let setup_root_dirs (curdir : string) =
+let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string list) option) (curdir : string) =
   let runtime_dirs =
     if Sys.os_type = "Win32" then
       match Sys.getenv_opt "SATYSFI_RUNTIME" with
@@ -1218,13 +1284,13 @@ let setup_root_dirs (curdir : string) =
       | Some(s) -> [ Filename.concat s ".satysfi" ]
   in
   let default_dirs =
-    if OptionState.use_no_default_config () then
+    if no_default_config then
       []
     else
       List.concat [ home_dirs; runtime_dirs ]
   in
   let extra_dirs =
-    match OptionState.get_extra_config_paths () with
+    match extra_config_paths with
     | None             -> [ Filename.concat curdir ".satysfi" ]
     | Some(extra_dirs) -> extra_dirs
   in
@@ -1246,20 +1312,20 @@ let get_candidate_file_extensions () =
 
 
 type build_input =
-  | PackageInput of {
+  | PackageBuildInput of {
       lock : abs_path;
     }
-  | DocumentInput of {
+  | DocumentBuildInput of {
       lock : abs_path;
       out  : abs_path;
       dump : abs_path;
     }
 
 
-let check_depended_packages ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
+let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
   (* Resolve dependency among locked packages: *)
   let sorted_packages =
-    match ClosedLockDependencyResolver.main ~extensions lock_config with
+    match ClosedLockDependencyResolver.main ~lock_config_dir ~extensions lock_config with
     | Ok(sorted_packages) -> sorted_packages
     | Error(e)            -> raise (ConfigError(e))
   in
@@ -1279,6 +1345,14 @@ let check_depended_packages ~(extensions : string list) (tyenv_prim : Typeenv.t)
     ) (GlobalTypeenv.empty, Alist.empty)
   in
   (genv, Alist.to_list libacc)
+
+
+let make_package_lock_config_path (abspathstr_in : string) =
+  make_abs_path (Printf.sprintf "%s/package.satysfi-lock" abspathstr_in)
+
+
+let make_document_lock_config_path (basename_without_extension : string) =
+  make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension)
 
 
 let build
@@ -1316,38 +1390,41 @@ let build
       | Some(setting) -> OptionState.Markdown(setting)
     in
     OptionState.set OptionState.{
-      input_file;
-      output_file;
+      command_state =
+        BuildState{
+          input_file;
+          output_file;
+          output_mode;
+          input_kind;
+          page_number_limit;
+          debug_show_bbox;
+          debug_show_space;
+          debug_show_block_bbox;
+          debug_show_block_space;
+          debug_show_overfull;
+          type_check_only;
+          bytecomp;
+        };
       extra_config_paths;
-      output_mode;
-      input_kind;
-      page_number_limit;
       show_full_path;
-      debug_show_bbox;
-      debug_show_space;
-      debug_show_block_bbox;
-      debug_show_block_space;
-      debug_show_overfull;
-      type_check_only;
-      bytecomp;
       show_fonts;
       no_default_config;
     };
 
-    setup_root_dirs curdir;
+    setup_root_dirs ~no_default_config ~extra_config_paths curdir;
     let abspath_in = input_file in
     let build_input =
       let abspathstr_in = get_abs_path_string abspath_in in
       if Sys.is_directory abspathstr_in then
         (* If the input is a package directory: *)
-          let abspath_lock_config = make_abs_path (Printf.sprintf "%s/package.satysfi-lock" abspathstr_in) in
-          PackageInput{
+          let abspath_lock_config = make_package_lock_config_path abspathstr_in in
+          PackageBuildInput{
             lock = abspath_lock_config;
           }
       else
         (* If the input is a document file: *)
         let basename_without_extension = Filename.remove_extension abspathstr_in in
-        let abspath_lock_config = make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension) in
+        let abspath_lock_config = make_document_lock_config_path basename_without_extension in
         let abspath_out =
           match (output_mode, output_file) with
           | (_, Some(abspath_out)) -> abspath_out
@@ -1355,7 +1432,7 @@ let build
           | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
         in
         let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
-        DocumentInput{
+        DocumentBuildInput{
           lock = abspath_lock_config;
           out  = abspath_out;
           dump = abspath_dump;
@@ -1366,7 +1443,7 @@ let build
     let (tyenv_prim, env) = initialize () in
 
     match build_input with
-    | PackageInput{
+    | PackageBuildInput{
         lock = abspath_lock_config;
       } ->
         Logging.lock_config_file abspath_lock_config;
@@ -1382,7 +1459,10 @@ let build
           | Error(e)    -> raise (ConfigError(e))
         in
 
-        let (genv, _libs_dep) = check_depended_packages ~extensions tyenv_prim lock_config in
+        let (genv, _libs_dep) =
+          let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
+          check_depended_packages ~lock_config_dir ~extensions tyenv_prim lock_config
+        in
 
         begin
           match PackageChecker.main tyenv_prim genv package with
@@ -1390,7 +1470,7 @@ let build
           | Error(e)           -> raise (ConfigError(e))
         end
 
-    | DocumentInput{
+    | DocumentBuildInput{
         lock = abspath_lock_config;
         out  = abspath_out;
         dump = abspath_dump;
@@ -1414,7 +1494,10 @@ let build
           | Error(e)   -> raise (ConfigError(e))
         in
 
-        let (genv, libs) = check_depended_packages ~extensions tyenv_prim lock_config in
+        let (genv, libs) =
+          let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
+          check_depended_packages ~lock_config_dir ~extensions tyenv_prim lock_config
+        in
 
         (* Typechecking and elaboration: *)
         let (libs_local, ast_doc) =
@@ -1427,4 +1510,150 @@ let build
           ()
         else
           preprocess_and_evaluate env libs ast_doc abspath_in abspath_out abspath_dump
+  )
+
+
+type solve_input =
+  | PackageSolveInput of {
+      root : abs_path; (* The absolute path of a directory used as the package root *)
+      lock : abs_path; (* A path for writing a resulting lock file *)
+    }
+  | DocumentSolveInput of {
+      path : abs_path; (* The absolute path to the document file *)
+      lock : abs_path; (* A path for writing a resulting lock file *)
+    }
+
+
+let make_lock_name (package_name : package_name) (semver : SemanticVersion.t) : lock_name =
+  Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string semver)
+
+
+let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t =
+  let locked_packages =
+    solutions |> List.map (fun solution ->
+      let package_name = solution.package_name in
+      let lock_name = make_lock_name package_name solution.locked_version in
+      let lock_location =
+        LockConfig.GlobalLocation{
+          path = Printf.sprintf "./dist/packages/%s/%s/" package_name lock_name;
+        }
+      in
+      let lock_dependencies =
+        solution.locked_dependencies |> List.map (fun (package_name_dep, semver_dep) ->
+          make_lock_name package_name_dep semver_dep
+        )
+      in
+      LockConfig.{ lock_name; lock_location; lock_dependencies }
+    )
+  in
+  LockConfig.{ locked_packages }
+
+
+let extract_attributes_from_document_file (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
+  let open ResultMonad in
+  Logging.begin_to_parse_file abspath_in;
+  let* utsrc =
+    ParserInterface.process_file abspath_in
+      |> Result.map_error (fun rng -> FailedToParse(rng))
+  in
+  let* (attrs, _header, _utast) =
+    match utsrc with
+    | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
+    | UTDocumentFile(utdoc) -> return utdoc
+  in
+  DocumentAttribute.make attrs
+    |> Result.map_error (fun e -> DocumentAttributeError(e))
+
+
+let solve
+    ~(fpath_in : string)
+    ~(show_full_path : bool)
+    ~(config_paths_str_opt : string option)
+    ~(no_default_config : bool)
+=
+  error_log_environment (fun () ->
+    let curdir = Sys.getcwd () in
+
+    let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
+
+    OptionState.set OptionState.{
+      command_state = SolveState;
+      extra_config_paths;
+      show_full_path;
+      show_fonts = false;
+      no_default_config;
+    };
+
+    setup_root_dirs ~no_default_config ~extra_config_paths curdir;
+
+    let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
+    let solve_input =
+      let abspathstr_in = get_abs_path_string abspath_in in
+      if Sys.is_directory abspathstr_in then
+      (* If the input is a package directory: *)
+        let abspath_lock_config = make_package_lock_config_path abspathstr_in in
+        PackageSolveInput{
+          root = abspath_in;
+          lock = abspath_lock_config;
+        }
+      else
+        let basename_without_extension = Filename.remove_extension (get_abs_path_string abspath_in) in
+        let abspath_lock_config = make_document_lock_config_path basename_without_extension in
+        DocumentSolveInput{
+          path = abspath_in;
+          lock = abspath_lock_config;
+        }
+    in
+
+    let res =
+      let open ResultMonad in
+      let* abspath_registry_config =
+        let libpath = make_lib_path "dist/cache/registry.yaml" in
+        Config.resolve_lib_file libpath
+          |> Result.map_error (fun candidates -> RegistryConfigNotFoundIn(libpath, candidates))
+      in
+      let* (dependencies, abspath_lock_config) =
+        match solve_input with
+        | PackageSolveInput{
+            root = absdir_package;
+            lock = abspath_lock_config;
+          } ->
+            let* config = PackageConfig.load absdir_package in
+            begin
+              match config.package_contents with
+              | PackageConfig.Library{ dependencies; _ } ->
+                  return (dependencies, abspath_lock_config)
+            end
+
+        | DocumentSolveInput{
+            path = abspath_in;
+            lock = abspath_lock_config;
+          } ->
+            let* docattr = extract_attributes_from_document_file abspath_in in
+            return (docattr.DocumentAttribute.dependencies, abspath_lock_config)
+      in
+
+      Logging.show_package_dependency_before_solving dependencies;
+
+      let* package_context = PackageRegistry.load abspath_registry_config in
+      let solutions_opt = PackageConstraintSolver.solve package_context dependencies in
+      begin
+        match solutions_opt with
+        | None ->
+            err CannotSolvePackageConstraints
+
+        | Some(solutions) ->
+
+            Logging.show_package_dependency_solutions solutions;
+
+            let lock_config = convert_solutions_to_lock_config solutions in
+            LockConfig.write abspath_lock_config lock_config;
+            return ()
+      end
+    in
+    begin
+      match res with
+      | Ok(())   -> ()
+      | Error(e) -> raise (ConfigError(e))
+    end
   )

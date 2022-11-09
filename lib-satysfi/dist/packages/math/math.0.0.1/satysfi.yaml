@@ -4,3 +4,7 @@ contents:
   main_module: "Math"
   source_directories:
     - "./src"
+  dependencies:
+    - name: "stdlib"
+      requirements:
+        - "0.0.1"

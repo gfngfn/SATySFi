@@ -8,7 +8,7 @@ SATYSFI ?= satysfi
 .SUFFIXES: .saty .tex
 
 .saty.tex:
-	$(SATYSFI) $< --text-mode "latex" -o $@
+	$(SATYSFI) build $< --text-mode "latex" -o $@
 
 all:: $(TARGETS)
 

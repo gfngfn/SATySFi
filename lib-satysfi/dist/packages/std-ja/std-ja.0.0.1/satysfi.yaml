@@ -4,3 +4,19 @@ contents:
   main_module: "StdJa"
   source_directories:
     - "./src"
+  dependencies:
+    - name: "stdlib"
+      requirements:
+        - "0.0.1"
+
+    - name: "math"
+      requirements:
+        - "0.0.1"
+
+    - name: "annot"
+      requirements:
+        - "0.0.1"
+
+    - name: "code"
+      requirements:
+        - "0.0.1"
