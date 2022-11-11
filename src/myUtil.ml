@@ -22,14 +22,6 @@ let rec range i j =
     i :: (range (i + 1) j)
 
 
-let list_make n c =
-  let rec aux acc n =
-    if n <= 0 then List.rev acc else
-      aux (c :: acc) (n - 1)
-  in
-  aux [] n
-
-
 let list_fold_left_index f init lst =
   let (_, ret) =
     lst |> List.fold_left (fun (i, acc) x -> (i + 1, f i acc x)) (0, init)

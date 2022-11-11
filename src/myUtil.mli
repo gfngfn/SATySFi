@@ -12,8 +12,6 @@ val string_of_uchar_list : Uchar.t list -> string
 
 val range : int -> int -> int list
 
-val list_make : int -> 'a -> 'a list
-
 val list_fold_left_index : (int -> 'a -> 'b -> 'a) -> 'a -> 'b list -> 'a
 
 val list_some : ('a option) list -> 'a list
