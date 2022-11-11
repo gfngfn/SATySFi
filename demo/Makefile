@@ -25,9 +25,10 @@ SATYSFI ?= satysfi
 %.satysfi-lock-expected: %.satysfi-lock
 	cp $*.satysfi-lock $*.satysfi-lock-expected
 
-# Entrypoint:
+# Entrypoint for typesetting documents:
 all:: $(TARGETS)
 
+# Entrypoint for promoting lock files:
 promote:: $(EXPECTED_LOCKS)
 
 clean:
