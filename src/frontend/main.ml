@@ -78,10 +78,8 @@ let output_pdf (pdfret : HandlePdf.t) : unit =
   HandlePdf.write_to_file pdfret
 
 
-let output_text (abspath_out : abs_path) (s : string) : unit =
-  let outc = open_out_abs abspath_out in
-  output_string outc s;
-  close_out outc
+let output_text (abspath_out : abs_path) (data : string) : unit =
+  Core.Out_channel.write_all (get_abs_path_string abspath_out) ~data
 
 
 let eval_library_file (env : environment) (abspath : abs_path) (binds : binding list) : environment =

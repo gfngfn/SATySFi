@@ -1,11 +1,6 @@
 
 exception RemainsToBeImplemented of string
 
-type abs_path = AbsPath of string
-[@@deriving show { with_path = false }]
-
-type lib_path = LibPath of string
-
 
 let remains_to_be_implemented msg =
   raise (RemainsToBeImplemented(msg))
@@ -46,12 +41,14 @@ let ( @|> ) = ( |> )
      ---- *)
 
 
+type abs_path = AbsPath of string
+[@@deriving show { with_path = false }]
+
+type lib_path = LibPath of string
+
+
 let open_in_abs (AbsPath(pathstr)) =
   open_in pathstr
-
-
-let open_out_abs (AbsPath(pathstr)) =
-  open_out pathstr
 
 
 let basename_abs (AbsPath(pathstr)) =

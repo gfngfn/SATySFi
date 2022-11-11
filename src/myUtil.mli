@@ -18,8 +18,6 @@ val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
 val open_in_abs : abs_path -> in_channel
 
-val open_out_abs : abs_path -> out_channel
-
 val basename_abs : abs_path -> string
 
 val make_abs_path : string -> abs_path
