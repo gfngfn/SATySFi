@@ -14,8 +14,6 @@ val range : int -> int -> int list
 
 val list_fold_adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
 
-val pickup : 'a list -> ('a -> bool) -> 'b -> ('a, 'b) result
-
 module OptionMonad : sig
   val ( >>= ) : 'a option -> ('a -> 'b option) -> 'b option
   val return : 'a -> 'a option

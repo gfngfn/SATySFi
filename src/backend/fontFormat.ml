@@ -27,6 +27,13 @@ let broken srcpath oerr s =
   raise (BrokenFont(srcpath, msg ^ "; " ^ s))
 
 
+let pickup xs predicate e =
+  let open ResultMonad in
+  match xs |> List.filter predicate with
+  | head :: _ -> return head
+  | []        -> err e
+
+
 type cid_system_info = {
   registry   : string;
   ordering   : string;

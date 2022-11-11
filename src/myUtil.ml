@@ -39,12 +39,6 @@ let list_fold_adjacent f init lst =
   aux None init lst
 
 
-let pickup lst predicate e =
-  match lst |> List.filter predicate with
-  | head :: _ -> Ok(head)
-  | []        -> Error(e)
-
-
 module OptionMonad = struct
   let ( >>= ) x f =
     match x with
