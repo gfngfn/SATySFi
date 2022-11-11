@@ -8,15 +8,7 @@ type lib_path
 
 val remains_to_be_implemented : string -> 'a
 
-val uchar_of_char : char -> Uchar.t
-
-val ascii_capital_of_index : int -> Uchar.t
-
-val ascii_small_of_index : int -> Uchar.t
-
-val ascii_digit_of_index : int -> Uchar.t
-
-val string_of_uchlst : Uchar.t list -> string
+val string_of_uchar_list : Uchar.t list -> string
 
 val range : int -> int -> int list
 

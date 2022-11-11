@@ -402,7 +402,24 @@ let default_radical hgt_bar t_bar dpt fontsize color =
   [ HorzPure(PHGFixedGraphics{ width = wid; height = hgt_bar +% t_bar; depth = nonnegdpt; graphics }) ]
 
 
-let code_point cp = Uchar.of_int cp
+let code_point =
+  Uchar.of_int
+
+
+let uchar_of_char =
+  Core.Uchar.of_char
+
+
+let ascii_capital_of_index (i : int) : Uchar.t =
+  Uchar.of_int ((Char.code 'A') + i)
+
+
+let ascii_small_of_index (i : int) : Uchar.t =
+  Uchar.of_int ((Char.code 'a') + i)
+
+
+let ascii_digit_of_index (i : int) : Uchar.t =
+  Uchar.of_int ((Char.code '0') + i)
 
 
 let default_math_variant_char_map : HorzBox.math_variant_char_map =

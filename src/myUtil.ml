@@ -11,26 +11,10 @@ let remains_to_be_implemented msg =
   raise (RemainsToBeImplemented(msg))
 
 
-let uchar_of_char ch =
-  Uchar.of_int (Char.code ch)
-
-
-let ascii_capital_of_index i =
-  Uchar.of_int ((Char.code 'A') + i)
-
-
-let ascii_small_of_index i =
-  Uchar.of_int ((Char.code 'a') + i)
-
-
-let ascii_digit_of_index i =
-  Uchar.of_int ((Char.code '0') + i)
-
-
-let string_of_uchlst uchlst =
-  let buffer = Buffer.create ((List.length uchlst) * 4) in
-    List.iter (fun u -> Uutf.Buffer.add_utf_8 buffer u) uchlst;
-    Buffer.contents buffer
+let string_of_uchar_list (uchs : Uchar.t list) : string =
+  let buffer = Buffer.create ((List.length uchs) * 4) in
+  List.iter (fun u -> Uutf.Buffer.add_utf_8 buffer u) uchs;
+  Buffer.contents buffer
 
 
 let rec range i j =
