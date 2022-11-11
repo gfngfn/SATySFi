@@ -22,13 +22,6 @@ let rec range i j =
     i :: (range (i + 1) j)
 
 
-let list_fold_left_index f init lst =
-  let (_, ret) =
-    lst |> List.fold_left (fun (i, acc) x -> (i + 1, f i acc x)) (0, init)
-  in
-    ret
-
-
 let list_fold_adjacent f init lst =
   let rec aux leftopt init lst =
     match lst with

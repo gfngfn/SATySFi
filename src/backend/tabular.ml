@@ -1,5 +1,4 @@
 
-open MyUtil
 open LengthInterface
 open HorzBox
 
@@ -248,10 +247,10 @@ let multi_cell_vertical vmetrarr indexR nr =
 let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) (htabular : row list) : intermediate_row list =
   let vmetrarr = Array.of_list vmetrlst in
   let widarr = Array.of_list widlst in
-  htabular |> list_fold_left_index (fun indexR evrowacc row ->
+  htabular |> Core.List.foldi ~f:(fun indexR evrowacc row ->
     let (hgtnmlcell, dptnmlcell) = access vmetrarr indexR in
     let evrow =
-      row |> list_fold_left_index (fun indexC evcellacc cell ->
+      row |> Core.List.foldi ~f:(fun indexC evcellacc cell ->
         let evcell =
           match cell with
           | EmptyCell ->
@@ -299,11 +298,11 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                 ImMultiCell(ratios, (nr, nc, widsingle, widmulti, hgtcell, dptcell), imhbs)
         in
           Alist.extend evcellacc evcell
-      ) Alist.empty |> Alist.to_list
+      ) ~init:Alist.empty |> Alist.to_list
     in
     let vlen = hgtnmlcell +% (Length.negate dptnmlcell) in
       Alist.extend evrowacc (vlen, evrow)
-  ) Alist.empty |> Alist.to_list
+  ) ~init:Alist.empty |> Alist.to_list
 
 
 let main (tabular : row list) : intermediate_row list * length list * length list * length * length * length =
