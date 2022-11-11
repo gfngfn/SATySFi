@@ -116,7 +116,7 @@ let register_markdown_file (setting : string) (abspath_in : abs_path) : (Package
   in
   let (cmdrcd, depends) = LoadMDSetting.main abspath in (* TODO: make this monadic *)
   let* utast =
-    match MyUtil.string_of_file abspath_in with
+    match read_file abspath_in with
     | Ok(data)   -> return (DecodeMD.decode cmdrcd data)
     | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in

@@ -71,7 +71,7 @@ let extract_registration (d : D.source) =
 
 
 let get_main_decoder_single (abspath : abs_path) : ((D.source * font_registration) option) ok =
-  match string_of_file abspath with
+  match read_file abspath with
   | Ok(s) ->
       let open ResultMonad in
       begin
@@ -89,7 +89,7 @@ let get_main_decoder_single (abspath : abs_path) : ((D.source * font_registratio
 
 
 let get_main_decoder_ttc (abspath : abs_path) (i : int) : ((D.source * font_registration) option) ok =
-  match string_of_file abspath with
+  match read_file abspath with
   | Ok(s) ->
       let open ResultMonad in
       begin

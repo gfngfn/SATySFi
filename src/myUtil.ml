@@ -190,62 +190,6 @@ let basename_abs (AbsPath(pathstr)) =
   Filename.basename pathstr
 
 
-let string_of_file (abspath : abs_path) : (string, string) result =
-  try
-    let ic = open_in_bin_abs abspath in
-    let bufsize = 65536 in
-    let stepsize = 65536 in
-    let buf = Buffer.create bufsize in
-    let bytes = Bytes.create stepsize in
-    let flag = ref true in
-    try
-      while !flag do
-        let c = input ic bytes 0 bufsize in
-        if c = 0 then
-          flag := false
-        else
-          Buffer.add_subbytes buf bytes 0 c
-      done;
-      close_in ic;
-      let s = Buffer.contents buf in
-      Ok(s)
-    with
-    | Failure(_) -> close_in ic; assert false
-  with
-  | Sys_error(msg) -> Error(msg)
-
-(*
-let string_of_file (srcpath : file_path) : string =
-  let bufsize = 65536 in  (* arbitrary constant; the initial size of the buffer for loading font format file *)
-  let buf : Buffer.t = Buffer.create bufsize in
-  let byt : bytes = Bytes.create bufsize in
-  let ic =
-    try
-      open_in_bin srcpath
-    with
-    | Sys_error(msg) -> raise (FailToLoadFontOwingToSystem(srcpath, msg))
-  in
-
-  let rec aux () =
-    let c = input ic byt 0 bufsize in
-      if c = 0 then
-        begin
-          close_in ic;
-          Buffer.contents buf
-        end
-      else
-        begin
-          Buffer.add_subbytes buf byt 0 c;
-          aux ()
-        end
-  in
-  try
-    aux ()
-  with
-  | Failure(_)     -> begin close_in ic; raise (FailToLoadFontOwingToSize(srcpath)) end
-  | Sys_error(msg) -> begin close_in ic; raise (FailToLoadFontOwingToSystem(srcpath, msg)) end
-*)
-
 let make_abs_path pathstr = AbsPath(pathstr)
 
 let make_lib_path pathstr = LibPath(pathstr)
@@ -262,3 +206,12 @@ module AbsPath = struct
 
   let compare ap1 ap2 = String.compare (get_abs_path_string ap1) (get_abs_path_string ap2)
 end
+
+
+let read_file (abspath : abs_path) : (string, string) result =
+  let open ResultMonad in
+  try
+    return @@ Core.In_channel.read_all (get_abs_path_string abspath)
+  with
+  | Sys_error(s) ->
+      err s

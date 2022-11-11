@@ -42,14 +42,9 @@ let registry_config_decoder : package_context ConfigDecoder.t =
 
 let load (abspath_registry_config : abs_path) : package_context ok =
   let open ResultMonad in
-  (* TODO: load this from a cache file *)
-  let* inc =
-    try
-      return (open_in_abs abspath_registry_config)
-    with
-    | Sys_error(_) -> err (RegistryConfigNotFound(abspath_registry_config))
+  let* s =
+    read_file abspath_registry_config
+      |> Result.map_error (fun _ -> RegistryConfigNotFound(abspath_registry_config))
   in
-  let s = Core.In_channel.input_all inc in
-  close_in inc;
   ConfigDecoder.run registry_config_decoder s
     |> Result.map_error (fun e -> RegistryConfigError(abspath_registry_config, e))

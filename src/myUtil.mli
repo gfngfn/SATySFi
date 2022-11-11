@@ -68,8 +68,6 @@ val dirname_abs : abs_path -> string
 
 val basename_abs : abs_path -> string
 
-val string_of_file : abs_path -> (string, string) result
-
 val make_abs_path : string -> abs_path
 
 val make_lib_path : string -> lib_path
@@ -85,3 +83,5 @@ module AbsPath : sig
 
   val compare : t -> t -> int
 end
+
+val read_file : abs_path -> (string, string) result
