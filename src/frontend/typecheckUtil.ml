@@ -2,7 +2,6 @@
 open SyntaxBase
 open StaticEnv
 open Types
-open MyUtil
 open TypeError
 
 

@@ -1,6 +1,6 @@
 
-open Main__MyUtil
 open Main__Types
+module ResultMonad = Main__ResultMonad
 module TupleList = Main__TupleList
 
 

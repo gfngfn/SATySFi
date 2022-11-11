@@ -1,7 +1,6 @@
 
 open SyntaxBase
 open Types
-open MyUtil
 open StaticEnv
 open TypeError
 open TypecheckUtil

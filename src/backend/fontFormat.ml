@@ -27,6 +27,13 @@ let broken srcpath oerr s =
   raise (BrokenFont(srcpath, msg ^ "; " ^ s))
 
 
+let pickup xs predicate e =
+  let open ResultMonad in
+  match xs |> List.filter predicate with
+  | head :: _ -> return head
+  | []        -> err e
+
+
 type cid_system_info = {
   registry   : string;
   ordering   : string;
@@ -71,7 +78,7 @@ let extract_registration (d : D.source) =
 
 
 let get_main_decoder_single (abspath : abs_path) : ((D.source * font_registration) option) ok =
-  match string_of_file abspath with
+  match read_file abspath with
   | Ok(s) ->
       let open ResultMonad in
       begin
@@ -89,7 +96,7 @@ let get_main_decoder_single (abspath : abs_path) : ((D.source * font_registratio
 
 
 let get_main_decoder_ttc (abspath : abs_path) (i : int) : ((D.source * font_registration) option) ok =
-  match string_of_file abspath with
+  match read_file abspath with
   | Ok(s) ->
       let open ResultMonad in
       begin
@@ -1233,26 +1240,26 @@ let to_flate_pdf_bytes (data : string) : string * Pdfio.bytes =
   let src_len = String.length data in
   let write_byte_as_input buf =
     let src_offset = !src_offset_ref in
-    if src_offset >= src_len then 0 else
-      begin
-        let len =
-          if src_len - src_offset < 1024 then src_len - src_offset else 1024
-        in
-        src_offset_ref += len;
-        Bytes.blit_string data src_offset buf 0 len;
-        len
-      end
+    if src_offset >= src_len then
+      0
+    else begin
+      let len = if src_len - src_offset < 1024 then src_len - src_offset else 1024 in
+      src_offset_ref := src_offset + len;
+      Bytes.blit_string data src_offset buf 0 len;
+      len
+    end
   in
   let out_offset_ref = ref 0 in
   let bufout = Bytes.create (2 * src_len) in
     (* In the worst case, the output size is 1.003 times as large as the input size. *)
   let write_byte_as_output bufret len =
     let out_offset = !out_offset_ref in
-    if len <= 0 then () else
-      begin
-        out_offset_ref += len;
-        Bytes.blit bufret 0 bufout out_offset len
-      end
+    if len <= 0 then
+      ()
+    else begin
+      out_offset_ref := out_offset + len;
+      Bytes.blit bufret 0 bufout out_offset len
+    end
   in
   Pdfflate.compress ~level:9 write_byte_as_input write_byte_as_output;
   let out_len = !out_offset_ref in

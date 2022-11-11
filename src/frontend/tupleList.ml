@@ -1,7 +1,4 @@
 
-open MyUtil
-
-
 type 'a t = 'a * 'a * 'a list
 
 

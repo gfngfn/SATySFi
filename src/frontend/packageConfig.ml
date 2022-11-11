@@ -62,13 +62,9 @@ let load (absdir_package : abs_path) : t ok =
   let abspath_config =
     make_abs_path (Filename.concat (get_abs_path_string absdir_package) "satysfi.yaml")
   in
-  let* inc =
-    try
-      return (open_in_abs abspath_config)
-    with
-    | Sys_error(_) -> err (PackageConfigNotFound(abspath_config))
+  let* s =
+    read_file abspath_config
+      |> Result.map_error (fun _ -> PackageConfigNotFound(abspath_config))
   in
-  let s = Core.In_channel.input_all inc in
-  close_in inc;
   ConfigDecoder.run config_decoder s
     |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))

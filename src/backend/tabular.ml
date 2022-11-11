@@ -1,5 +1,4 @@
 
-open MyUtil
 open LengthInterface
 open HorzBox
 
@@ -192,7 +191,7 @@ let normalize_tabular (tabular : row list) : int * row list =
   in
   let htabular =
     tabular |> List.fold_left (fun acc row ->
-      let empties = list_make (ncols - (List.length row)) EmptyCell in
+      let empties = List.init (ncols - (List.length row)) (fun _ -> EmptyCell) in
         Alist.extend acc (List.append row empties)
     ) Alist.empty |> Alist.to_list
   in
@@ -248,10 +247,10 @@ let multi_cell_vertical vmetrarr indexR nr =
 let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) (htabular : row list) : intermediate_row list =
   let vmetrarr = Array.of_list vmetrlst in
   let widarr = Array.of_list widlst in
-  htabular |> list_fold_left_index (fun indexR evrowacc row ->
+  htabular |> Core.List.foldi ~f:(fun indexR evrowacc row ->
     let (hgtnmlcell, dptnmlcell) = access vmetrarr indexR in
     let evrow =
-      row |> list_fold_left_index (fun indexC evcellacc cell ->
+      row |> Core.List.foldi ~f:(fun indexC evcellacc cell ->
         let evcell =
           match cell with
           | EmptyCell ->
@@ -299,11 +298,11 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                 ImMultiCell(ratios, (nr, nc, widsingle, widmulti, hgtcell, dptcell), imhbs)
         in
           Alist.extend evcellacc evcell
-      ) Alist.empty |> Alist.to_list
+      ) ~init:Alist.empty |> Alist.to_list
     in
     let vlen = hgtnmlcell +% (Length.negate dptnmlcell) in
       Alist.extend evrowacc (vlen, evrow)
-  ) Alist.empty |> Alist.to_list
+  ) ~init:Alist.empty |> Alist.to_list
 
 
 let main (tabular : row list) : intermediate_row list * length list * length list * length * length * length =
@@ -320,7 +319,7 @@ let main (tabular : row list) : intermediate_row list * length list * length lis
 *)
       let (rest, hgt, dpt) = determine_row_metrics restprev row in
         (rest, Alist.extend vmetracc (hgt, dpt))
-    ) (list_make ncols None, Alist.empty)
+    ) (List.init ncols (fun _ -> None), Alist.empty)
   in
   let vmetrlst = Alist.to_list vmetracc in
 
@@ -331,7 +330,7 @@ let main (tabular : row list) : intermediate_row list * length list * length lis
 *)
       let (rest, wid) = determine_column_width restprev col in
       (rest, Alist.extend widacc wid)
-    ) (list_make nrows None, Alist.empty)
+    ) (List.init nrows (fun _ -> None), Alist.empty)
   in
   let widlst = Alist.to_list widacc in
 

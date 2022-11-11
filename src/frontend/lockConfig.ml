@@ -94,14 +94,10 @@ let lock_config_encoder (lock_config : t) : Yaml.value =
 
 let load (abspath_lock_config : abs_path) : t ok =
   let open ResultMonad in
-  let* inc =
-    try
-      return (open_in_abs abspath_lock_config)
-    with
-    | Sys_error(_) -> err (LockConfigNotFound(abspath_lock_config))
+  let* s =
+    read_file abspath_lock_config
+      |> Result.map_error (fun _ -> LockConfigNotFound(abspath_lock_config))
   in
-  let s = Core.In_channel.input_all inc in
-  close_in inc;
   ConfigDecoder.run lock_config_decoder s
     |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))
 
