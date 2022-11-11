@@ -1,7 +1,4 @@
 
-open MyUtil
-
-
 type context_element =
   | Field of string
   | Index of int

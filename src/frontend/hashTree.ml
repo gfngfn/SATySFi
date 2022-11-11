@@ -1,6 +1,4 @@
 
-open MyUtil
-
 module type S =
   sig
     type key
@@ -124,6 +122,6 @@ module Make (Key : Map.OrderedType) =
         match result with
         | None    -> acc
         | Some(x) -> x
-    
+
 
   end

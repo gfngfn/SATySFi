@@ -14,28 +14,6 @@ val range : int -> int -> int list
 
 val list_fold_adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
 
-module OptionMonad : sig
-  val ( >>= ) : 'a option -> ('a -> 'b option) -> 'b option
-  val return : 'a -> 'a option
-end
-
-module ResultMonad : sig
-  val ( >>= ) : ('a, 'e) result -> ('a -> ('b, 'e) result) -> ('b, 'e) result
-  val return : 'a -> ('a, 'e) result
-  val err : 'e -> ('a, 'e) result
-  val ( let* ) : ('a, 'e) result -> ('a -> ('b, 'e) result) -> ('b, 'e) result
-  val foldM : ('a -> 'b -> ('a, 'e) result) -> 'a -> 'b list -> ('a, 'e) result
-  val mapM : ('a -> ('b, 'e) result) -> 'a list -> ('b list, 'e) result
-  val optionM : ('a -> ('b, 'e) result) -> 'a option -> ('b option, 'e) result
-end
-
-module EscapeMonad : sig
-  val ( >>= ) : [< `Continue of 'a | `Escape of 'b ] -> ('a -> ([> `Escape of 'b ] as 'c)) -> 'c
-  val continue : 'a -> [> `Continue of 'a ]
-  val escape : 'a -> [> `Escape of 'a ]
-  val force : [< `Escape of 'a ] -> 'a
-end
-
 val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
 val open_in_abs : abs_path -> in_channel
