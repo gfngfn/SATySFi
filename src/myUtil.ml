@@ -106,22 +106,6 @@ let ( @|> ) = ( |> )
      ---- *)
 
 
-let first_some f lst =
-  let rec aux = function
-    | [] ->
-        None
-
-    | x :: xs ->
-        let opt = f x in
-        begin
-          match opt with
-          | Some(_) -> opt
-          | None    -> aux xs
-        end
-  in
-    aux lst
-
-
 let open_in_abs (AbsPath(pathstr)) =
   open_in pathstr
 

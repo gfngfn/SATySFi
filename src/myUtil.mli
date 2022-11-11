@@ -40,8 +40,6 @@ val ( += ) : int ref -> int -> unit
 
 val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
-val first_some : ('a -> 'b option) -> 'a list -> 'b option
-
 val open_in_abs : abs_path -> in_channel
 
 val open_in_bin_abs : abs_path -> in_channel

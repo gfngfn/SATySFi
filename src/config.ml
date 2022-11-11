@@ -20,7 +20,7 @@ let resolve_lib_file (relpath : lib_path) : (abs_path, abs_path list) result =
   let dirs = !satysfi_root_dirs in
   let relpathstr = get_lib_path_string relpath in
   let pathcands = dirs |> List.map (fun dir -> Filename.concat dir relpathstr) in
-  match first_some resolve pathcands with
+  match pathcands |> List.find_map resolve with
   | None          -> err (pathcands |> List.map make_abs_path)
   | Some(pathstr) -> return @@ make_abs_path pathstr
 
@@ -29,6 +29,6 @@ let resolve_local ~(extensions : string list) ~origin:(dir : string) ~relative:(
   let open ResultMonad in
   let path_without_ext = Filename.concat dir s in
   let pathcands = extensions |> List.map (fun ext -> path_without_ext ^ ext) in
-  match first_some resolve pathcands with
+  match pathcands |> List.find_map resolve with
   | None          -> err (pathcands |> List.map make_abs_path)
   | Some(pathstr) -> return @@ make_abs_path pathstr
