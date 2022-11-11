@@ -36,8 +36,6 @@ module EscapeMonad : sig
   val force : [< `Escape of 'a ] -> 'a
 end
 
-val ( += ) : int ref -> int -> unit
-
 val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
 val open_in_abs : abs_path -> in_channel

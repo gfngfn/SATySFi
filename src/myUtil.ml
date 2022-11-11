@@ -95,10 +95,6 @@ module EscapeMonad = struct
 end
 
 
-let ( += ) r n =
-  r := !r + n
-
-
 let ( @|> ) = ( |> )
   (* ----
       right-associative version;
