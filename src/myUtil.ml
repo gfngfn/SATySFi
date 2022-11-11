@@ -50,16 +50,8 @@ let open_in_abs (AbsPath(pathstr)) =
   open_in pathstr
 
 
-let open_in_bin_abs (AbsPath(pathstr)) =
-  open_in_bin pathstr
-
-
 let open_out_abs (AbsPath(pathstr)) =
   open_out pathstr
-
-
-let dirname_abs (AbsPath(pathstr)) =
-  Filename.dirname pathstr
 
 
 let basename_abs (AbsPath(pathstr)) =
@@ -73,8 +65,6 @@ let make_lib_path pathstr = LibPath(pathstr)
 let get_abs_path_string (AbsPath(pathstr)) = pathstr
 
 let get_lib_path_string (LibPath(pathstr)) = pathstr
-
-let get_abs_path_extension (AbsPath(pathstr)) = Filename.extension pathstr
 
 
 module AbsPath = struct

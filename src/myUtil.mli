@@ -18,11 +18,7 @@ val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
 val open_in_abs : abs_path -> in_channel
 
-val open_in_bin_abs : abs_path -> in_channel
-
 val open_out_abs : abs_path -> out_channel
-
-val dirname_abs : abs_path -> string
 
 val basename_abs : abs_path -> string
 
@@ -33,8 +29,6 @@ val make_lib_path : string -> lib_path
 val get_abs_path_string : abs_path -> string
 
 val get_lib_path_string : lib_path -> string
-
-val get_abs_path_extension : abs_path -> string
 
 module AbsPath : sig
   type t = abs_path
