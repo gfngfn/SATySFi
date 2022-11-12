@@ -9,7 +9,6 @@ use package FontIpaEx
 use package FontLatinModern
 use package FontLatinModernMath
 
-
 module StdJaBook :> sig
 
   val document :
@@ -141,7 +140,7 @@ end = struct
       |> set-font Kana           font-cjk-mincho
       |> set-font HanIdeographic font-cjk-mincho
       |> set-font Latin          font-latin-roman
-      |> set-font OtherScript    font-cjk-mincho
+      |> set-font OtherScript    font-latin-roman
       |> set-math-font FontLatinModernMath.main
       |> set-hyphen-penalty 100
 

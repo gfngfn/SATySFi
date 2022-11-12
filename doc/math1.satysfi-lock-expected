@@ -11,6 +11,12 @@ locks:
     path: ./dist/packages/code/code.0.0.1/
   dependencies:
   - stdlib.0.0.1
+  - font-latin-modern.0.0.1
+- name: font-latin-modern.0.0.1
+  location:
+    type: global
+    path: ./dist/packages/font-latin-modern/font-latin-modern.0.0.1/
+  dependencies: []
 - name: math.0.0.1
   location:
     type: global

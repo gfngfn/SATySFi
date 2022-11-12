@@ -6,17 +6,18 @@ contents:
     - "./src"
   dependencies:
     - name: "stdlib"
-      requirements:
-        - "0.0.1"
-
+      requirements: [ "0.0.1" ]
     - name: "math"
-      requirements:
-        - "0.0.1"
-
+      requirements: [ "0.0.1" ]
     - name: "annot"
-      requirements:
-        - "0.0.1"
-
+      requirements: [ "0.0.1" ]
     - name: "code"
-      requirements:
-        - "0.0.1"
+      requirements: [ "0.0.1" ]
+    - name: "font-junicode"
+      requirements: [ "0.0.1" ]
+    - name: "font-latin-modern"
+      requirements: [ "0.0.1" ]
+    - name: "font-ipa-ex"
+      requirements: [ "0.0.1" ]
+    - name: "font-latin-modern-math"
+      requirements: [ "0.0.1" ]
