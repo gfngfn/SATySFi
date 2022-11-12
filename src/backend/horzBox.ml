@@ -66,7 +66,7 @@ type paddings = {
 
 
 type horz_string_info = {
-  font_abbrev    : FontKey.t;
+  font_key       : FontKey.t;
   text_font_size : length;
   text_color     : color;
   rising         : length;
@@ -533,9 +533,9 @@ let get_language_system ctx script_raw =
 
 
 let get_string_info ctx script_raw =
-  let (font_abbrev, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
+  let (fontkey, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
     {
-      font_abbrev    = font_abbrev;
+      font_key       = fontkey;
       text_font_size = ctx.font_size *% ratio;
       text_color     = ctx.text_color;
       rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;

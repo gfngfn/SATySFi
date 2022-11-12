@@ -23,8 +23,8 @@ type 'o op_funcs = {
 }
 
 
-let pdfops_of_text hsinfo pt otxt =
-  let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
+let pdfops_of_text (hsinfo : horz_string_info) pt otxt =
+  let tag = FontInfo.get_font_tag hsinfo.font_key in
   GraphicD.pdfops_of_text pt tag hsinfo.text_font_size hsinfo.text_color otxt
 
 

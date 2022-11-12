@@ -42,14 +42,14 @@ end = struct
   module Ht = Hashtbl.Make(FontKey)
 
 
-  let abbrev_to_definition_hash_table : (abs_path * font_store ref) Ht.t = Ht.create 32
+  let key_to_definition_hash_table : (abs_path * font_store ref) Ht.t = Ht.create 32
 
   let current_tag_number = ref 0
 
 
   let initialize () =
     Printf.printf "**** INITIALIZE\n"; (* TODO: remove this *)
-    Ht.clear abbrev_to_definition_hash_table;
+    Ht.clear key_to_definition_hash_table;
     FontKey.initialize ();
     current_tag_number := 0
 
@@ -63,7 +63,7 @@ end = struct
   let add_single (abspath : abs_path) : key =
     let key = FontKey.generate () in
     let storeref = ref UnusedSingle in
-    Ht.add abbrev_to_definition_hash_table key (abspath, storeref);
+    Ht.add key_to_definition_hash_table key (abspath, storeref);
     Printf.printf "**** %s = SINGLE %s\n" (FontKey.show key) (get_abs_path_string abspath); (* TODO: remove this *)
     key
 
@@ -72,7 +72,7 @@ end = struct
   let add_ttc (abspath : abs_path) (index : int) : key =
     let key = FontKey.generate () in
     let storeref = ref (UnusedTTC(index)) in
-    Ht.add abbrev_to_definition_hash_table key (abspath, storeref);
+    Ht.add key_to_definition_hash_table key (abspath, storeref);
     Printf.printf "**** %s = TTC %s, %d\n" (FontKey.show key) (get_abs_path_string abspath) index; (* TODO: remove this *)
     key
 
@@ -83,14 +83,14 @@ end = struct
       | UnusedSingle -> acc (* Ignores unused fonts *)
       | UnusedTTC(_) -> acc (* Ignores unused fonts *)
       | Loaded(dfn)  -> f key dfn acc
-    ) abbrev_to_definition_hash_table init
+    ) key_to_definition_hash_table init
 
 
   let find (key : key) : font_definition ok =
     let open ResultMonad in
-    match Ht.find_opt abbrev_to_definition_hash_table key with
+    match Ht.find_opt key_to_definition_hash_table key with
     | None ->
-        Printf.printf "**** FIND %s\n" (FontKey.show key);
+        Printf.printf "**** FIND %s\n" (FontKey.show key); (* TODO: remove this *)
         assert false
 
     | Some((abspath, storeref)) ->
@@ -204,9 +204,9 @@ let get_glyph_id dcdr uch =
 
 
 let get_metrics_of_word (hsinfo : horz_string_info) (uchseglst : uchar_segment list) : OutputText.t * length * length * length =
-  let font_abbrev = hsinfo.font_abbrev in
+  let fontkey = hsinfo.font_key in
   let f_skip = raw_length_to_skip_length hsinfo.text_font_size in
-  let dfn = get_font_definition_exn font_abbrev in
+  let dfn = get_font_definition_exn fontkey in
   let dcdr = dfn.decoder in
   let gseglst =
     uchseglst |> List.map (fun (ubase, umarks) ->
