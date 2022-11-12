@@ -599,10 +599,20 @@ type untyped_source_file =
   | UTDocumentFile of untyped_document_file
 [@@deriving show { with_path = false; }]
 
-type untyped_package = {
-  main_module_name : module_name;
-  modules          : (abs_path * untyped_library_file) list;
-}
+type font_file_contents =
+  | OpentypeSingle     of var_name
+  | OpentypeCollection of var_name list
+[@@deriving show { with_path = false }]
+
+type untyped_package =
+  | UTLibraryPackage of {
+      main_module_name : module_name;
+      modules          : (abs_path * untyped_library_file) list;
+    }
+  | UTFontPackage of {
+      main_module_name : module_name;
+      font_files       : (abs_path * font_file_contents) list;
+    }
 [@@deriving show { with_path = false }]
 
 type lock_info = {

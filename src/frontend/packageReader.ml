@@ -45,9 +45,22 @@ let main ~(extensions : string list) (absdir_package : abs_path) : untyped_packa
           ) Alist.empty
         in
         let modules = Alist.to_list acc in
-        return {
+        return @@ UTLibraryPackage{
           main_module_name;
           modules;
+        }
+
+    | PackageConfig.Font{ main_module_name; font_file_descriptions } ->
+        let font_files =
+          font_file_descriptions |> List.map (fun font_file_description ->
+            let PackageConfig.{ font_file_path; font_file_contents } = font_file_description in
+            let abspath = make_abs_path (Filename.concat (get_abs_path_string absdir_package) font_file_path) in
+            (abspath, font_file_contents)
+          )
+        in
+        return @@ UTFontPackage{
+          main_module_name;
+          font_files;
         }
   in
   return package

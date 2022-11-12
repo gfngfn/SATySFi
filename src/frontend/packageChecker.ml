@@ -80,10 +80,8 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
       err (NotADocumentFile(abspath_in, ty))
 
 
-let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : untyped_package) : (StructSig.t * (abs_path * binding list) list) ok =
+let check_library_package (tyenv_prim : Typeenv.t) (genv : global_type_environment) (main_module_name : module_name) (utlibs : (abs_path * untyped_library_file) list) =
   let open ResultMonad in
-  let main_module_name = package.main_module_name in
-  let utlibs = package.modules in
 
   (* Resolve dependency among the source files in the package: *)
   let* sorted_utlibs = ClosedFileDependencyResolver.main utlibs in
@@ -114,6 +112,19 @@ let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : un
   match ssig_opt with
   | Some(ssig) -> return (ssig, libs)
   | None       -> err @@ NoMainModule(main_module_name)
+
+
+let check_font_package (_main_module_name : module_name) (_font_files : (abs_path * font_file_contents) list) =
+  failwith "TODO: check_font_package"
+
+
+let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : untyped_package) : (StructSig.t * (abs_path * binding list) list) ok =
+  match package with
+  | UTLibraryPackage{ main_module_name; modules = utlibs } ->
+      check_library_package tyenv_prim genv main_module_name utlibs
+
+  | UTFontPackage{ main_module_name; font_files } ->
+      check_font_package main_module_name font_files
 
 
 let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sorted_locals : (abs_path * untyped_library_file) list) (abspath_and_utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =

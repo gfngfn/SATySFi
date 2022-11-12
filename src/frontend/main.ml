@@ -1331,7 +1331,11 @@ let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string 
   (* Typecheck every locked package: *)
   let (genv, libacc) =
     sorted_packages |> List.fold_left (fun (genv, libacc) (_lock_name, package) ->
-      let main_module_name = package.main_module_name in
+      let main_module_name =
+        match package with
+        | UTLibraryPackage{ main_module_name; _ } -> main_module_name
+        | UTFontPackage{ main_module_name; _ }    -> main_module_name
+      in
       let (ssig, libs) =
         match PackageChecker.main tyenv_prim genv package with
         | Ok(pair) -> pair
@@ -1620,6 +1624,10 @@ let solve
             begin
               match config.package_contents with
               | PackageConfig.Library{ dependencies; _ } ->
+                  return (dependencies, abspath_lock_config)
+
+              | PackageConfig.Font(_) ->
+                  let dependencies = [] in
                   return (dependencies, abspath_lock_config)
             end
 
