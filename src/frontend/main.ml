@@ -1485,7 +1485,7 @@ let build
         Logging.target_file abspath_out;
 
         let dump_file_exists = CrossRef.initialize abspath_dump in
-        Logging.dump_file dump_file_exists abspath_dump;
+        Logging.dump_file ~already_exists:dump_file_exists abspath_dump;
 
         (* Resolve dependency of the document and the local source files: *)
         let (_dep_main_module_names, sorted_locals, utdoc) =

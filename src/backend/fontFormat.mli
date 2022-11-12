@@ -24,6 +24,8 @@ val hex_of_glyph_id : glyph_id -> string
 
 type decoder
 
+val postscript_name : decoder -> string
+
 type 'a resource =
   | Data           of 'a
   | EmbeddedStream of int

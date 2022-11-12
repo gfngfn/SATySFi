@@ -1043,6 +1043,10 @@ type decoder = {
 }
 
 
+let postscript_name (dcdr : decoder) : string =
+  dcdr.postscript_name
+
+
 let get_original_gid (_dcdr : decoder) (gid : glyph_id) : original_glyph_id =
   let SubsetGlyphID(gidorg, _) = gid in
   gidorg

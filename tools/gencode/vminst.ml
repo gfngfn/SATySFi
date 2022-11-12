@@ -273,7 +273,7 @@ make_math_boxes [ MathBoxFraction{ context = ictx; numerator = ms1; denominator 
         ~is_text_mode_primitive:true
         ~code:{|
 let degree = get_option get_math_boxes value1mopt in
-let radical = Primitives.default_radical in  (* temporary; should be changeable *)
+let radical = Primitives.default_radical in  (* TODO: make this changeable *)
 make_math_boxes [ MathBoxRadical{ context; radical; degree; inner } ]
 |}
     ; inst "PrimitiveMathParen"
@@ -937,20 +937,6 @@ make_text_mode_context (tctx, tctxsub)
 let width = ctx.HorzBox.paragraph_width in
 make_inline_boxes [ HorzEmbeddedVertBreakable{ width; contents } ]
 |}
-(*
-    ; inst "PrimitiveFont"
-        ~fields:[
-        ]
-        ~params:[
-          param "abbrev" ~type_:"string";
-          param "size_ratio" ~type_:"float";
-          param "rising_ratio" ~type_:"float";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~code:{|
-make_font_value (abbrev, size_ratio, rising_ratio)
-|}
-*)
     ; inst "PrimitiveLineBreak"
         ~name:"line-break"
         ~type_:Type.(tB @-> tB @-> tCTX @-> tIB @-> tBB)

@@ -178,13 +178,10 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcd
     (gsynlst |> List.map (fun (gid, _) -> gid) (* temporary *), otxt, (FontFormat.PerMille(rawwid), FontFormat.PerMille(rawhgt), FontFormat.PerMille(rawdpt)))
 
 
-let get_glyph_id dcdr uch =
+let get_glyph_id (dcdr : FontFormat.decoder) (uch : Uchar.t) =
   match raise_if_err @@ FontFormat.get_glyph_id dcdr uch with
   | None ->
-      (* TODO: fix this *)
-(*
-      Logging.warn_no_glyph font_abbrev uch;
-*)
+      Logging.warn_no_glyph (FontFormat.postscript_name dcdr) uch;
       FontFormat.notdef
 
   | Some(gid) ->
@@ -349,9 +346,8 @@ let get_math_char_info (mathkey : math_key) ~(is_in_base_level : bool) ~(is_in_d
       let gidraw =
         match raise_if_err @@ FontFormat.get_math_glyph_id md uch with
         | None ->
-(*
-            Logging.warn_no_math_glyph mfabbrev uch; (* TODO: fix this *)
-*)
+            let fontname = FontFormat.postscript_name (FontFormat.math_base_font md) in
+            Logging.warn_no_math_glyph fontname uch;
             FontFormat.notdef
 
         | Some(gid) ->
