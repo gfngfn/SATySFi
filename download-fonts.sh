@@ -53,7 +53,7 @@ unzip -o "$CACHE/$NAME.zip" "*.otf" -d lib-satysfi/dist/packages/font-latin-mode
 NAME=latinmodern-math-1959
 download_file "$NAME.zip" "http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip"
 unzip -o "$CACHE/$NAME.zip" "*.otf" -d "$CACHE/"
-cp "$CACHE"/latinmodern-math-1959/otf/latinmodern-math.otf lib-satysfi/dist/fonts/
+cp "$CACHE"/latinmodern-math-1959/otf/latinmodern-math.otf lib-satysfi/dist/packages/font-latin-modern-math/font-latin-modern-math.0.0.1/fonts/
 
 # Junicode
 NAME=junicode-1.002

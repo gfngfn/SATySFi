@@ -413,12 +413,22 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | ASTCodeSymbol(_symb) ->
       report_bug_ast "ASTCodeSymbol(_) at stage 0" ast
 
-  | LoadSingleFont(abspath_font) ->
-      let fontkey = FontInfo.add_single abspath_font in
+  | LoadSingleFont{ path; used_as_math_font } ->
+      let fontkey =
+        if used_as_math_font then
+          FontInfo.add_math_single path
+        else
+          FontInfo.add_single path
+      in
       BaseConstant(BCFontKey(fontkey))
 
-  | LoadCollectionFont(abspath_font, index) ->
-      let fontkey = FontInfo.add_ttc abspath_font index in
+  | LoadCollectionFont{ path; index; used_as_math_font } ->
+      let fontkey =
+        if used_as_math_font then
+          FontInfo.add_math_ttc path index
+        else
+          FontInfo.add_ttc path index
+      in
       BaseConstant(BCFontKey(fontkey))
 
 #include "__evaluator_0.gen.ml"
@@ -594,11 +604,11 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | ASTCodeSymbol(symb) ->
       CdContentOf(Range.dummy "ASTCodeSymbol", symb)
 
-  | LoadSingleFont(abspath_font) ->
-      CdLoadSingleFont(abspath_font)
+  | LoadSingleFont{ path; used_as_math_font } ->
+      CdLoadSingleFont{ path; used_as_math_font }
 
-  | LoadCollectionFont(abspath_font, index) ->
-      CdLoadCollectionFont(abspath_font, index)
+  | LoadCollectionFont{ path; index; used_as_math_font } ->
+      CdLoadCollectionFont{ path; index; used_as_math_font }
 
 #include "__evaluator_1.gen.ml"
 

@@ -606,6 +606,13 @@ type font_file_contents =
   | OpentypeCollection of var_name list
 [@@deriving show { with_path = false }]
 
+type font_file_record = {
+  r_font_file_path     : abs_path;
+  r_font_file_contents : font_file_contents;
+  r_used_as_math_font  : bool;
+}
+[@@deriving show { with_path = false }]
+
 type untyped_package =
   | UTLibraryPackage of {
       main_module_name : module_name;
@@ -613,7 +620,7 @@ type untyped_package =
     }
   | UTFontPackage of {
       main_module_name : module_name;
-      font_files       : (abs_path * font_file_contents) list;
+      font_files       : font_file_record list;
     }
 [@@deriving show { with_path = false }]
 
@@ -1035,8 +1042,15 @@ and abstract_tree =
   | Lift                  of abstract_tree
   | ASTCodeSymbol         of CodeSymbol.t
 (* Fonts: *)
-  | LoadSingleFont        of abs_path
-  | LoadCollectionFont    of abs_path * int
+  | LoadSingleFont of {
+      path              : abs_path;
+      used_as_math_font : bool;
+    }
+  | LoadCollectionFont of {
+      path              : abs_path;
+      index             : int;
+      used_as_math_font : bool;
+    }
 (* Primitive applications: *)
 #include "__attype.gen.ml"
 
@@ -1207,8 +1221,16 @@ and code_value =
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
   | CdTuple         of code_value TupleList.t
-  | CdLoadSingleFont     of abs_path
-  | CdLoadCollectionFont of abs_path * int
+
+  | CdLoadSingleFont of {
+      path              : abs_path;
+      used_as_math_font : bool;
+    }
+  | CdLoadCollectionFont of {
+      path              : abs_path;
+      index             : int;
+      used_as_math_font : bool;
+    }
 #include "__codetype.gen.ml"
 
 and code_inline_text_element =
@@ -1452,8 +1474,11 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
     | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
 
-    | CdLoadSingleFont(abspath)            -> LoadSingleFont(abspath)
-    | CdLoadCollectionFont(abspath, index) -> LoadCollectionFont(abspath, index)
+    | CdLoadSingleFont{ path; used_as_math_font } ->
+        LoadSingleFont{ path; used_as_math_font }
+
+    | CdLoadCollectionFont{ path; index; used_as_math_font } ->
+        LoadCollectionFont{ path; index; used_as_math_font }
 #include "__unliftcode.gen.ml"
   in
   aux code

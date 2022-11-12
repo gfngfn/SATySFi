@@ -1,7 +1,6 @@
 
 open MyUtil
 open Types
-open HorzBox
 
 
 type yaml_error =
@@ -75,9 +74,8 @@ type config_error =
   | DocumentAttributeError    of DocumentAttribute.error
 
 type font_error =
-  | InvalidMathFontAbbrev         of math_font_abbrev
   | NotASingleFont                of abs_path
   | NotATTCElement                of abs_path * int
-  | NotASingleMathFont            of math_font_abbrev * abs_path
-  | NotATTCMathFont               of math_font_abbrev * abs_path * int
+  | NotASingleMathFont            of abs_path
+  | NotATTCMathFont               of abs_path * int
   | CannotFindLibraryFileAsToFont of lib_path * abs_path list

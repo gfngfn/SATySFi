@@ -7,6 +7,7 @@ use package FootnoteScheme
 use package FontJunicode
 use package FontIpaEx
 use package FontLatinModern
+use package FontLatinModernMath
 
 
 module StdJaBook :> sig
@@ -141,7 +142,7 @@ end = struct
       |> set-font HanIdeographic font-cjk-mincho
       |> set-font Latin          font-latin-roman
       |> set-font OtherScript    font-cjk-mincho
-      |> set-math-font `lmodern`
+      |> set-math-font FontLatinModernMath.main
       |> set-hyphen-penalty 100
 
 

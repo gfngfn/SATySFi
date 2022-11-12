@@ -168,6 +168,12 @@ let get_decoset (value : syntactic_value) =
       report_bug_value "interpret_decoset" value
 
 
+let get_font_key (value : syntactic_value) : FontKey.t =
+  match value with
+  | BaseConstant(BCFontKey(fontkey)) -> fontkey
+  | _                                -> report_bug_value "get_font_key" value
+
+
 let get_font_with_ratio (value : syntactic_value) : HorzBox.font_with_ratio =
   match value with
   | Tuple([

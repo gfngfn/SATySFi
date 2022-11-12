@@ -114,15 +114,22 @@ let check_library_package (tyenv_prim : Typeenv.t) (genv : global_type_environme
   | None       -> err @@ NoMainModule(main_module_name)
 
 
-let check_font_package (_main_module_name : module_name) (font_files : (abs_path * font_file_contents) list) =
+let check_font_package (_main_module_name : module_name) (font_files : font_file_record list) =
   let open ResultMonad in
   let stage = Persistent0 in
   let (ssig, libacc) =
-    font_files |> List.fold_left (fun (ssig, libacc) (abspath_font, font_file_contents) ->
+    font_files |> List.fold_left (fun (ssig, libacc) r ->
+      let
+        {
+          r_font_file_path     = path;
+          r_font_file_contents = font_file_contents;
+          r_used_as_math_font  = used_as_math_font;
+        } = r
+      in
       match font_file_contents with
       | OpentypeSingle(varnm) ->
           let evid = EvalVarID.fresh (Range.dummy "font-package 1", varnm) in
-          let bind = Bind(stage, NonRec(evid, LoadSingleFont(abspath_font))) in
+          let bind = Bind(stage, NonRec(evid, LoadSingleFont{ path; used_as_math_font })) in
           let ventry =
             {
               val_name  = Some(evid);
@@ -130,13 +137,13 @@ let check_font_package (_main_module_name : module_name) (font_files : (abs_path
               val_stage = stage;
             }
           in
-          (ssig |> StructSig.add_value varnm ventry, Alist.extend libacc (abspath_font, [ bind ]))
+          (ssig |> StructSig.add_value varnm ventry, Alist.extend libacc (path, [ bind ]))
 
       | OpentypeCollection(varnms) ->
           let (ssig, bindacc, _) =
             varnms |> List.fold_left (fun (ssig, bindacc, index) varnm ->
               let evid = EvalVarID.fresh (Range.dummy "font-package 3", varnm) in
-              let bind = Bind(stage, NonRec(evid, LoadCollectionFont(abspath_font, index))) in
+              let bind = Bind(stage, NonRec(evid, LoadCollectionFont{ path; index; used_as_math_font })) in
               let ventry =
                 {
                   val_name  = Some(evid);
@@ -147,7 +154,7 @@ let check_font_package (_main_module_name : module_name) (font_files : (abs_path
               (ssig |> StructSig.add_value varnm ventry, Alist.extend bindacc bind, index + 1)
             ) (ssig, Alist.empty, 0)
           in
-          (ssig, Alist.extend libacc (abspath_font, Alist.to_list bindacc))
+          (ssig, Alist.extend libacc (path, Alist.to_list bindacc))
 
     ) (StructSig.empty, Alist.empty)
   in

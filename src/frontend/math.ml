@@ -654,8 +654,8 @@ let convert_math_char (ictx : input_context) ~(kern : (math_char_kern_func * mat
   let is_in_base_level = Context.is_in_base_level ictx in
   let is_in_display = true (* temporary *) in
   let (otxt, wid, hgt, dpt, mic, mkiopt) =
-    let mfabbrev = Context.math_font_abbrev ictx in
-    FontInfo.get_math_char_info mfabbrev ~is_in_base_level ~is_in_display ~is_big ~font_size uchlst
+    let mathkey = Context.math_font_key_exn ictx in
+    FontInfo.get_math_char_info mathkey ~is_in_base_level ~is_in_display ~is_big ~font_size uchlst
   in
   let mkspec =
     match kern with

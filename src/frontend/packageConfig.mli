@@ -9,6 +9,7 @@ type relative_path = string
 type font_file_description = {
   font_file_path     : relative_path;
   font_file_contents : font_file_contents;
+  used_as_math_font  : bool;
 }
 
 type package_contents =

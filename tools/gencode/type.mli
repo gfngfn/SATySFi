@@ -56,6 +56,7 @@ val tPAGECONTF  : t
 val tPAGEPARTSF : t
 val tPADS       : t
 val tDECOSET    : t
+val tFONTKEY    : t
 val tFONTWR     : t
 val tDECO       : t
 val tIGR        : t

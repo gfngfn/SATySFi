@@ -29,7 +29,7 @@ let pdfops_of_text (hsinfo : horz_string_info) pt otxt =
 
 
 let pdfops_of_math (msinfo : math_string_info) pt otxt =
-  let tag = FontInfo.get_math_tag msinfo.info_math_font_abbrev in
+  let tag = FontInfo.get_math_tag msinfo.info_math_font_key in
   GraphicD.pdfops_of_text pt tag msinfo.info_math_font_size msinfo.info_math_color otxt
 
 

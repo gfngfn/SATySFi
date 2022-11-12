@@ -1314,8 +1314,8 @@ match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let mfabbrev = Context.math_font_abbrev ictx in
-let mc = FontInfo.get_math_constants mfabbrev in
+let mathkey = Context.math_font_key_exn ictx in
+let mc = FontInfo.get_math_constants mathkey in
 make_float (mc.FontFormat.axis_height)
 |}
     ; inst "PrimitiveSetParagraphMargin"
@@ -1408,16 +1408,16 @@ make_font_with_ratio_value fontwr
 |}
     ; inst "PrimitiveSetMathFont"
         ~name:"set-math-font"
-        ~type_:Type.(tS @-> tCTX @-> tCTX)
+        ~type_:Type.(tFONTKEY @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
-          param "mfabbrev" ~type_:"string";
+          param "mathkey" ~type_:"font_key";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with math_font_abbrev = mfabbrev; }), ctxsub)
+Context(HorzBox.({ ctx with math_font_key = Some(mathkey); }), ctxsub)
 |}
     ; inst "PrimitiveSetDominantWideScript"
         ~name:"set-dominant-wide-script"

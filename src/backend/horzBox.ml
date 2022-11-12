@@ -29,9 +29,6 @@ type reachability =
   | Reachable of ratios
 [@@deriving show]
 
-type math_font_abbrev = string
-[@@deriving show]
-
 type file_path = string
 
 type font_with_size = FontKey.t * Length.t
@@ -74,9 +71,9 @@ type horz_string_info = {
 [@@deriving show { with_path = false }]
 
 type math_string_info = {
-  info_math_font_abbrev : math_font_abbrev;
-  info_math_font_size   : length;
-  info_math_color       : color;
+  info_math_font_key  : FontKey.t;
+  info_math_font_size : length;
+  info_math_color     : color;
 }
 [@@deriving show { with_path = false }]
 
@@ -187,7 +184,7 @@ type context_main = {
   space_math_prefix       : float * float * float;
   left_hyphen_min         : int;
   right_hyphen_min        : int;
-  math_font_abbrev        : math_font_abbrev;
+  math_font_key           : FontKey.t option;
   math_script_level       : math_script_level;
 }
 

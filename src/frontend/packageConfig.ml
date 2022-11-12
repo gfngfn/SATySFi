@@ -13,6 +13,7 @@ type relative_path = string
 type font_file_description = {
   font_file_path     : relative_path;
   font_file_contents : font_file_contents;
+  used_as_math_font  : bool;
 }
 
 type package_contents =
@@ -51,10 +52,12 @@ let font_file_contents_decoder : font_file_contents ConfigDecoder.t =
 let font_file_description_decoder : font_file_description ConfigDecoder.t =
   let open ConfigDecoder in
   get "path" string >>= fun font_file_path ->
+  get_or_else "math" bool false >>= fun used_as_math_font ->
   get "contents" font_file_contents_decoder >>= fun font_file_contents ->
   succeed @@ {
     font_file_path;
     font_file_contents;
+    used_as_math_font;
   }
 
 

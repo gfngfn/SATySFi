@@ -79,6 +79,8 @@ packages:
       requirements: [ "0.0.1" ]
     - name: "font-ipa-ex"
       requirements: [ "0.0.1" ]
+    - name: "font-latin-modern-math"
+      requirements: [ "0.0.1" ]
 - name: "std-ja-report"
   implementations:
   - version: "0.0.1"
@@ -102,6 +104,10 @@ packages:
   - version: "0.0.1"
     dependencies: []
 - name: "font-ipa-ex"
+  implementations:
+  - version: "0.0.1"
+    dependencies: []
+- name: "font-latin-modern-math"
   implementations:
   - version: "0.0.1"
     dependencies: []

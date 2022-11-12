@@ -574,7 +574,7 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | LoadSingleFont(_) ->
       failwith "TODO: LoadSingleFont"
 
-  | LoadCollectionFont(_, _) ->
+  | LoadCollectionFont(_) ->
       failwith "TODO: LoadCollectionFont"
 
 #include "__ir_1.gen.ml"
@@ -765,7 +765,7 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   | LoadSingleFont(_) ->
       failwith "TODO: LoadSingleFont"
 
-  | LoadCollectionFont(_, _) ->
+  | LoadCollectionFont(_) ->
       failwith "TODO: LoadCollectionFont"
 
 #include "__ir_0.gen.ml"

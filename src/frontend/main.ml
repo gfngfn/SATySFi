@@ -1061,11 +1061,6 @@ let report_config_error : config_error -> unit = function
 
 
 let report_font_error : font_error -> unit = function
-  | InvalidMathFontAbbrev(mfabbrev) ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "cannot find a math font named '%s'." mfabbrev);
-      ]
-
   | NotASingleFont(abspath) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
@@ -1078,20 +1073,16 @@ let report_font_error : font_error -> unit = function
         NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection." fname index);
       ]
 
-  | NotASingleMathFont(mfabbrev, abspath) ->
+  | NotASingleMathFont(abspath) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the math font name '%s'," mfabbrev);
-        NormalLine("is not a single font file or does not have a MATH table.");
+        NormalLine(Printf.sprintf "the font file '%s' is not a single font file or does not have a MATH table." fname);
       ]
 
-  | NotATTCMathFont(mfabbrev, abspath, i) ->
+  | NotATTCMathFont(abspath, index) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the math font name '%s' and index %d," mfabbrev i);
-        NormalLine("is not a TrueType collection or does not have a MATH table.");
+        NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection or does not have a MATH table." fname index);
       ]
 
   | CannotFindLibraryFileAsToFont(libpath, candidates) ->

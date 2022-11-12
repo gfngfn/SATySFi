@@ -681,7 +681,7 @@ let get_pdf_mode_initial_context wid =
       space_math_prefix      = (0.125, 0.04, 0.08);
       left_hyphen_min        = 3;
       right_hyphen_min       = 2;
-      math_font_abbrev       = "lmodern";  (* TEMPORARY *)
+      math_font_key          = None;
       math_script_level      = HorzBox.BaseLevel;
     }
 

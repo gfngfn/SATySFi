@@ -14,6 +14,8 @@ type tag = string
 
 type key = FontKey.t
 
+type math_key = FontKey.t
+
 type font_definition = {
   font_tag : tag;
   font     : FontFormat.font;
@@ -231,154 +233,157 @@ type math_font_definition = {
 }
 
 
-module MathFontAbbrevHashTable
-: sig
-    val initialize : unit -> unit
-    val add_single : math_font_abbrev -> lib_path -> unit
-    val add_ttc : math_font_abbrev -> lib_path -> int -> unit
-    val fold : (math_font_abbrev -> math_font_definition -> 'a -> 'a) -> 'a -> 'a
-    val find : math_font_abbrev -> math_font_definition ok
-  end
-= struct
+module MathFontHashTable : sig
+  val initialize : unit -> unit
+  val add_single : abs_path -> math_key
+  val add_ttc : abs_path -> int -> math_key
+  val fold : (math_key -> math_font_definition -> 'a -> 'a) -> 'a -> 'a
+  val find : math_key -> math_font_definition ok
+end = struct
 
-    type math_font_store =
-      | UnusedMathSingle
-      | UnusedMathTTC    of int
-      | LoadedMath       of math_font_definition
+  type math_font_store =
+    | UnusedMathSingle
+    | UnusedMathTTC    of int
+    | LoadedMath       of math_font_definition
 
-    module Ht = Hashtbl.Make
-      (struct
-        type t = math_font_abbrev
-        let equal = (=)
-        let hash = Hashtbl.hash
-      end)
+  module Ht = Hashtbl.Make(FontKey)
 
-    let abbrev_to_definition_hash_table : (lib_path * math_font_store ref) Ht.t = Ht.create 32
+  let key_to_definition_hash_table : (abs_path * math_font_store ref) Ht.t = Ht.create 32
 
-    let current_tag_number = ref 0
+  let current_tag_number = ref 0
 
 
-    let initialize () =
-      Ht.clear abbrev_to_definition_hash_table;
-      current_tag_number := 0
+  let initialize () =
+    Printf.printf "**** INITIALIZE MATH\n"; (* TODO: remove this *)
+    Ht.clear key_to_definition_hash_table;
+    current_tag_number := 0
 
 
-    let generate_tag () =
-      incr current_tag_number;
-      "/M" ^ (string_of_int !current_tag_number)
+  let generate_tag () =
+    incr current_tag_number;
+    "/M" ^ (string_of_int !current_tag_number)
 
 
-    let add_single mfabbrev relpath =
-      match mfabbrev |> Ht.find_opt abbrev_to_definition_hash_table with
-      | Some((relpath, _)) ->
-          Logging.warn_duplicate_math_font_hash mfabbrev relpath
-
-      | None ->
-          let storeref = ref UnusedMathSingle in
-          Ht.add abbrev_to_definition_hash_table mfabbrev (relpath, storeref)
+  let add_single (abspath : abs_path) : math_key =
+    let mathkey = FontKey.generate () in
+    let storeref = ref UnusedMathSingle in
+    Ht.add key_to_definition_hash_table mathkey (abspath, storeref);
+    Printf.printf "**** %s = MATH SINGLE %s\n" (FontKey.show mathkey) (get_abs_path_string abspath); (* TODO: remove this *)
+    mathkey
 
 
-    let add_ttc mfabbrev relpath i =
-      if mfabbrev |> Ht.mem abbrev_to_definition_hash_table then
-        Logging.warn_duplicate_font_hash mfabbrev relpath
-      else
-        let storeref = ref (UnusedMathTTC(i)) in
-        Ht.add abbrev_to_definition_hash_table mfabbrev (relpath, storeref)
+  let add_ttc (abspath : abs_path) (index : int) : math_key =
+    let mathkey = FontKey.generate () in
+    let storeref = ref (UnusedMathTTC(index)) in
+    Ht.add key_to_definition_hash_table mathkey (abspath, storeref);
+    Printf.printf "**** %s = MATH TTC %s, %d\n" (FontKey.show mathkey) (get_abs_path_string abspath) index; (* TODO: remove this *)
+    mathkey
 
 
-    let fold f init =
-      Ht.fold (fun mfabbrev (_, storeref) acc ->
-        match !storeref with
-        | UnusedMathSingle  -> acc  (* Ignores unused math fonts *)
-        | UnusedMathTTC(_)  -> acc  (* Ignores unused math fonts *)
-        | LoadedMath(mfdfn) -> f mfabbrev mfdfn acc
-      ) abbrev_to_definition_hash_table init
+  let fold f init =
+    Ht.fold (fun mathkey (_, storeref) acc ->
+      match !storeref with
+      | UnusedMathSingle  -> acc  (* Ignores unused math fonts *)
+      | UnusedMathTTC(_)  -> acc  (* Ignores unused math fonts *)
+      | LoadedMath(mfdfn) -> f mathkey mfdfn acc
+    ) key_to_definition_hash_table init
 
 
-    let find (mfabbrev : math_font_abbrev) : math_font_definition ok =
-      let open ResultMonad in
-      match Ht.find_opt abbrev_to_definition_hash_table mfabbrev with
-      | None ->
-          err @@ InvalidMathFontAbbrev(mfabbrev)
+  let find (mathkey : math_key) : math_font_definition ok =
+    let open ResultMonad in
+    match Ht.find_opt key_to_definition_hash_table mathkey with
+    | None ->
+        Printf.printf "**** FIND MATH %s\n" (FontKey.show mathkey); (* TODO: remove this *)
+        assert false
 
-      | Some((relpath, storeref)) ->
-          begin
-            match !storeref with
-            | UnusedMathSingle ->
-              (* If this is the first access to the single math font: *)
-                let* abspath = resolve_lib_file relpath in
-                begin
-                  match FontFormat.get_math_decoder_single (mfabbrev ^ "-Composite-Math") (* temporary *) abspath with
-                  | None ->
-                    (* If the font file does not have a MATH table or is a TrueType collection: *)
-                      err @@ NotASingleMathFont(mfabbrev, abspath)
+    | Some((abspath, storeref)) ->
+        begin
+          match !storeref with
+          | UnusedMathSingle ->
+            (* If this is the first access to the single math font: *)
+              let fontname = Printf.sprintf "id-%s-Composite-Math" (FontKey.show mathkey) in (* TODO: fix this *)
+              begin
+                match FontFormat.get_math_decoder_single fontname abspath with
+                | None ->
+                  (* If the font file does not have a MATH table or is a TrueType collection: *)
+                    err @@ NotASingleMathFont(abspath)
 
-                  | Some((md, font)) ->
-                      let tag = generate_tag () in
-                      let mfdfn = { math_font_tag = tag; math_font = font; math_decoder = md; } in
-                      storeref := LoadedMath(mfdfn);
-                      return mfdfn
-                end
+                | Some((md, font)) ->
+                    let tag = generate_tag () in
+                    let mfdfn = { math_font_tag = tag; math_font = font; math_decoder = md; } in
+                    storeref := LoadedMath(mfdfn);
+                    return mfdfn
+              end
 
-            | UnusedMathTTC(i) ->
-              (* If this is the first access to the collection math font: *)
-                let* abspath = resolve_lib_file relpath in
-                begin
-                  match FontFormat.get_math_decoder_ttc (mfabbrev ^ "-Composite-Math") (* temporary *) abspath i with
-                  | None ->
-                    (* If the font does not have a MATH table or is a single font file: *)
-                      err @@ NotATTCMathFont(mfabbrev, abspath, i)
+          | UnusedMathTTC(i) ->
+            (* If this is the first access to the collection math font: *)
+              let fontname = Printf.sprintf "id-%s-Composite-Math" (FontKey.show mathkey) in (* TODO: fix this *)
+              begin
+                match FontFormat.get_math_decoder_ttc fontname abspath i with
+                | None ->
+                  (* If the font does not have a MATH table or is a single font file: *)
+                    err @@ NotATTCMathFont(abspath, i)
 
-                  | Some((md, font)) ->
-                      let tag = generate_tag () in
-                      let mfdfn = { math_font_tag = tag; math_font = font; math_decoder = md; } in
-                      storeref := LoadedMath(mfdfn);
-                      return mfdfn
-                end
+                | Some((md, font)) ->
+                    let tag = generate_tag () in
+                    let mfdfn = { math_font_tag = tag; math_font = font; math_decoder = md; } in
+                    storeref := LoadedMath(mfdfn);
+                    return mfdfn
+              end
 
-            | LoadedMath(mfdfn) ->
-                return mfdfn
-          end
+          | LoadedMath(mfdfn) ->
+              return mfdfn
+        end
 
-  end
+end
 
 
-let find_math_font_definition_exn (mfabbrev : math_font_abbrev) =
-  match MathFontAbbrevHashTable.find mfabbrev with
+let add_math_single (abspath : abs_path) : math_key =
+  MathFontHashTable.add_single abspath
+
+
+let add_math_ttc (abspath : abs_path) (index : int) : math_key =
+  MathFontHashTable.add_ttc abspath index
+
+
+let find_math_font_definition_exn (mathkey : math_key) =
+  match MathFontHashTable.find mathkey with
   | Ok(mfdfn) -> mfdfn
   | Error(e)  -> raise (FontInfoError(e))
 
 
-let find_math_decoder_exn (mfabbrev : math_font_abbrev) =
-  let mfdfn = find_math_font_definition_exn mfabbrev in
+let find_math_decoder_exn (mathkey : math_key) =
+  let mfdfn = find_math_font_definition_exn mathkey in
   mfdfn.math_decoder
 
 
-let get_math_tag (mfabbrev : math_font_abbrev) =
-  let mfdfn = find_math_font_definition_exn mfabbrev in
+let get_math_tag (mathkey : math_key) =
+  let mfdfn = find_math_font_definition_exn mathkey in
   mfdfn.math_font_tag
 
 
-let get_math_constants (mfabbrev : math_font_abbrev) : FontFormat.math_constants =
-  let md = find_math_decoder_exn mfabbrev in
+let get_math_constants (mathkey : math_key) : FontFormat.math_constants =
+  let md = find_math_decoder_exn mathkey in
   FontFormat.get_math_constants md
 
 
-let get_math_kern_ratio (mfabbrev : math_font_abbrev) (mkern : FontFormat.math_kern) (r : float) : float =
-  let mfdfn = find_math_font_definition_exn mfabbrev in
+let get_math_kern_ratio (mathkey : math_key) (mkern : FontFormat.math_kern) (r : float) : float =
+  let mfdfn = find_math_font_definition_exn mathkey in
   let md = mfdfn.math_decoder in
   FontFormat.find_kern_ratio md mkern r
 
 
-let get_math_char_info (mfabbrev : math_font_abbrev) ~(is_in_base_level : bool) ~(is_in_display : bool) ~(is_big : bool) ~(font_size : length) (uchlst : Uchar.t list) : OutputText.t * length * length * length * length * FontFormat.math_kern_info option =
-  let mfdfn = find_math_font_definition_exn mfabbrev in
+let get_math_char_info (mathkey : math_key) ~(is_in_base_level : bool) ~(is_in_display : bool) ~(is_big : bool) ~(font_size : length) (uchlst : Uchar.t list) : OutputText.t * length * length * length * length * FontFormat.math_kern_info option =
+  let mfdfn = find_math_font_definition_exn mathkey in
   let md = mfdfn.math_decoder in
   let gidlst =
     uchlst |> List.map (fun uch ->
       let gidraw =
         match FontFormat.get_math_glyph_id md uch with
         | None ->
-            Logging.warn_no_math_glyph mfabbrev uch;
+(*
+            Logging.warn_no_math_glyph mfabbrev uch; (* TODO: fix this *)
+*)
             FontFormat.notdef
 
         | Some(gid) ->
@@ -431,7 +436,7 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
       let dcdr = dfn.decoder in
       let obj = FontFormat.make_dictionary pdf font dcdr in
       (tag, obj) :: acc
-    ) |> MathFontAbbrevHashTable.fold (fun _ mfdfn acc ->
+    ) |> MathFontHashTable.fold (fun _ mfdfn acc ->
       let tag = mfdfn.math_font_tag in
       let font = mfdfn.math_font in
       let md = mfdfn.math_decoder in
@@ -446,7 +451,7 @@ let initialize () =
   let res =
     let open ResultMonad in
     FontHashTable.initialize ();
-    MathFontAbbrevHashTable.initialize ();
+    MathFontHashTable.initialize ();
     let* abspath_S   = resolve_lib_file (make_lib_path "dist/unidata/Scripts.txt") in
     let* abspath_EAW = resolve_lib_file (make_lib_path "dist/unidata/EastAsianWidth.txt") in
     ScriptDataMap.set_from_file abspath_S abspath_EAW;
@@ -463,7 +468,6 @@ let initialize () =
     if OptionState.does_show_fonts () then Logging.show_fonts font_hash;
 (*
     font_hash |> List.iter (fun (name, data) ->
-      let abbrev = StringFontAbbrev(name) in
       match data with
       | FontAccess.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
       | FontAccess.Collection(relpath, i) -> FontAbbrevHashTable.add_ttc abbrev relpath i
@@ -478,11 +482,13 @@ let initialize () =
     let math_font_hash_dist = LoadFont.main abspath_mathfonts in
     let math_font_hash = List.append math_font_hash_local math_font_hash_dist in
     if OptionState.does_show_fonts () then Logging.show_math_fonts math_font_hash;
+(*
     math_font_hash |> List.iter (fun (mfabbrev, data) ->
       match data with
       | FontAccess.Single(srcpath)        -> MathFontAbbrevHashTable.add_single mfabbrev srcpath
       | FontAccess.Collection(srcpath, i) -> MathFontAbbrevHashTable.add_ttc mfabbrev srcpath i
     );
+*)
     return ()
   in
   match res with
