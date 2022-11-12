@@ -56,7 +56,7 @@ type font_registration =
       (* Last boolean: true iff it should embed /W information *)
 
 
-let extract_registration (d : D.source) : font_registration ok =
+let extract_registration ~(file_path : abs_path) (d : D.source) : font_registration ok =
   let open ResultMonad in
   begin
     match d with
@@ -82,7 +82,7 @@ let extract_registration (d : D.source) : font_registration ok =
     | D.Ttf(_) ->
         return (CIDFontType2OTRegistration(adobe_identity, true))
   end
-    |> Result.map_error (fun e -> FailedToDecodeFont(e))
+    |> Result.map_error (fun e -> FailedToDecodeFont(file_path, e))
 
 
 let get_main_decoder_single (abspath : abs_path) : (D.source * font_registration) ok =
@@ -93,14 +93,14 @@ let get_main_decoder_single (abspath : abs_path) : (D.source * font_registration
   in
   let* source =
     D.source_of_string data
-      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+      |> Result.map_error (fun e -> FailedToDecodeFont(abspath, e))
   in
   match source with
   | D.Collection(_) ->
       err @@ NotASingleFont(abspath)
 
   | D.Single(d) ->
-      extract_registration d >>= fun registration ->
+      extract_registration ~file_path:abspath d >>= fun registration ->
       return (d, registration)
 
 
@@ -112,7 +112,7 @@ let get_main_decoder_ttc (abspath : abs_path) (index : int) : (D.source * font_r
   in
   let* source =
     D.source_of_string data
-      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+      |> Result.map_error (fun e -> FailedToDecodeFont(abspath, e))
   in
   match source with
   | D.Single(_) ->
@@ -126,7 +126,7 @@ let get_main_decoder_ttc (abspath : abs_path) (index : int) : (D.source * font_r
             err @@ CollectionIndexOutOfBounds{ path = abspath; index; num_elements }
 
         | Some(d) ->
-            extract_registration d >>= fun registration ->
+            extract_registration ~file_path:abspath d >>= fun registration ->
             return (d, registration)
       end
 
@@ -1088,7 +1088,7 @@ let get_original_gid (_dcdr : decoder) (gid : glyph_id) : original_glyph_id =
   gidorg
 
 
-let get_ttf_raw_bbox (ttf : D.ttf_source) (gidorg : original_glyph_id) : ((design_units * design_units * design_units * design_units) option) ok =
+let get_ttf_raw_bbox ~(file_path : abs_path) (ttf : D.ttf_source) (gidorg : original_glyph_id) : ((design_units * design_units * design_units * design_units) option) ok =
   let open ResultMonad in
   begin
     D.Ttf.loca ttf gidorg >>= function
@@ -1100,16 +1100,16 @@ let get_ttf_raw_bbox (ttf : D.ttf_source) (gidorg : original_glyph_id) : ((desig
         let V.{ x_min; y_min; x_max; y_max } = ttf_glyph_info.bounding_box in
         return (Some((x_min, y_min, x_max, y_max)))
   end
-    |> Result.map_error (fun e -> FailedToDecodeFont(e))
+    |> Result.map_error (fun e -> FailedToDecodeFont(file_path, e))
 
 let bbox_zero =
   (PerMille(0), PerMille(0), PerMille(0), PerMille(0))
 
 
-let get_ttf_bbox ~(units_per_em : int) (ttf : D.ttf_source) (gidorg : original_glyph_id) : bbox ok =
+let get_ttf_bbox ~(units_per_em : int) ~(file_path : abs_path) (ttf : D.ttf_source) (gidorg : original_glyph_id) : bbox ok =
   let open ResultMonad in
   let f = per_mille ~units_per_em in
-  let* bbox_opt = get_ttf_raw_bbox ttf gidorg in
+  let* bbox_opt = get_ttf_raw_bbox ~file_path ttf gidorg in
   match bbox_opt with
   | None ->
       return bbox_zero
@@ -1135,9 +1135,10 @@ let get_glyph_advance_width (dcdr : decoder) (gidorg_key : original_glyph_id) : 
 let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox ok =
   let open ResultMonad in
   let units_per_em = dcdr.units_per_em in
+  let abspath = dcdr.file_path in
   match dcdr.main with
   | D.Ttf(ttf) ->
-      get_ttf_bbox ~units_per_em ttf gidorg
+      get_ttf_bbox ~units_per_em ~file_path:abspath ttf gidorg
 
   | D.Cff(cff) ->
       begin
@@ -1159,7 +1160,7 @@ let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox ok =
                   (f x_min, f y_min, f x_max, f y_max)
             end
       end
-        |> Result.map_error (fun e -> FailedToDecodeFont(e))
+        |> Result.map_error (fun e -> FailedToDecodeFont(abspath, e))
 
 
 let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics ok =
@@ -1372,7 +1373,7 @@ let get_cmap_subtable ~(file_path : abs_path) (d : D.source) : V.Cmap.subtable o
       in
       return opt
     end
-      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+      |> Result.map_error (fun e -> FailedToDecodeFont(file_path, e))
   in
   match opt with
   | None              -> err @@ CannotFindUnicodeCmap(file_path)
@@ -1451,7 +1452,7 @@ let get_postscript_name ~(file_path : abs_path) (d : D.source) : string ok =
   let open ResultMonad in
   let* vname =
     D.Name.get d
-      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+      |> Result.map_error (fun e -> FailedToDecodeFont(file_path, e))
   in
   let name_opt =
     vname.V.Name.name_records |> List.find_map (fun name_record ->
@@ -1829,14 +1830,14 @@ let make_decoder (abspath : abs_path) (d : D.source) : decoder ok =
       let* ihhea = D.Hhea.get d in
       return (ihhea, ihhea.value.ascender, ihhea.value.descender)
     end
-      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+      |> Result.map_error (fun e -> FailedToDecodeFont(abspath, e))
   in
   let* (rcdhead, units_per_em) =
     begin
       let* ihead = D.Head.get d in
       return (ihead, ihead.value.units_per_em)
     end
-      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+      |> Result.map_error (fun e -> FailedToDecodeFont(abspath, e))
   in
   let* postscript_name = get_postscript_name ~file_path:abspath d in
   let kerntbl = get_kerning_table abspath d in
@@ -2024,7 +2025,7 @@ let make_math_decoder_from_decoder (abspath : abs_path) (dcdr : decoder) (font :
   let d = dcdr.main in
   let* mathraw_opt =
     D.Math.get d
-      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+      |> Result.map_error (fun e -> FailedToDecodeFont(abspath, e))
   in
   match mathraw_opt with
   | None ->
@@ -2082,7 +2083,7 @@ let make_math_decoder_from_decoder (abspath : abs_path) (dcdr : decoder) (font :
             return None
 
         | Error(GeneralError(e)) ->
-            err @@ FailedToDecodeFont(e)
+            err @@ FailedToDecodeFont(abspath, e)
       in
       let md =
         {

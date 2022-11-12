@@ -1069,9 +1069,10 @@ let report_font_error : font_error -> unit = function
         DisplayLine(msg);
       ]
 
-  | FailedToDecodeFont(e) ->
+  | FailedToDecodeFont(abspath, e) ->
+      let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine("failed to decode font;");
+        NormalLine(Printf.sprintf "cannot decode font file '%s';" fname);
         NormalLine(Format.asprintf "%a" Otfed.Decode.Error.pp e);
       ]
 

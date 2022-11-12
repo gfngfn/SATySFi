@@ -3,7 +3,7 @@ open MyUtil
 
 type font_error =
   | FailedToReadFont              of abs_path * string
-  | FailedToDecodeFont            of Otfed.Decode.Error.t
+  | FailedToDecodeFont            of abs_path * Otfed.Decode.Error.t
   | NotASingleFont                of abs_path
   | NotAFontCollectionElement     of abs_path * int
   | CannotFindLibraryFileAsToFont of lib_path * abs_path list
