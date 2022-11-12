@@ -23,6 +23,11 @@ type font_definition = {
 }
 
 
+let raise_if_err = function
+  | Ok(v)    -> v
+  | Error(e) -> raise (FontInfoError(e))
+
+
 let resolve_lib_file (relpath : lib_path) =
   Config.resolve_lib_file relpath
     |> Result.map_error (fun candidates -> CannotFindLibraryFileAsToFont(relpath, candidates))
@@ -174,7 +179,7 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcd
 
 
 let get_glyph_id dcdr uch =
-  match FontFormat.get_glyph_id_exn dcdr uch with
+  match raise_if_err @@ FontFormat.get_glyph_id dcdr uch with
   | None ->
       (* TODO: fix this *)
 (*
@@ -198,8 +203,10 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchseglst : uchar_segment l
       (gbase, gmarks)
     )
   in
-  let gsynlst = FontFormat.convert_to_ligatures_exn dcdr gseglst in
-  let (_, otxt, (rawwid, rawhgt, rawdpt)) = convert_gid_list (FontFormat.get_glyph_metrics_exn dcdr) dcdr gsynlst in
+  let gsynlst = raise_if_err @@ FontFormat.convert_to_ligatures dcdr gseglst in
+  let (_, otxt, (rawwid, rawhgt, rawdpt)) =
+    convert_gid_list (fun gid -> raise_if_err @@ FontFormat.get_glyph_metrics dcdr gid) dcdr gsynlst
+  in
   let wid = f_skip rawwid in
   let hgtsub = f_skip rawhgt in
   let dptsub = f_skip rawdpt in
@@ -340,7 +347,7 @@ let get_math_char_info (mathkey : math_key) ~(is_in_base_level : bool) ~(is_in_d
   let gidlst =
     uchlst |> List.map (fun uch ->
       let gidraw =
-        match FontFormat.get_math_glyph_id_exn md uch with
+        match raise_if_err @@ FontFormat.get_math_glyph_id md uch with
         | None ->
 (*
             Logging.warn_no_math_glyph mfabbrev uch; (* TODO: fix this *)
@@ -354,11 +361,11 @@ let get_math_char_info (mathkey : math_key) ~(is_in_base_level : bool) ~(is_in_d
         if is_in_base_level then
           gidraw
         else
-          FontFormat.get_math_script_variant_exn md gidraw
+          raise_if_err @@ FontFormat.get_math_script_variant md gidraw
       in
       let gid =
         if is_in_display && is_big then
-          match FontFormat.get_math_vertical_variants_exn md gidsub with
+          match raise_if_err @@ FontFormat.get_math_vertical_variants md gidsub with
           | [] ->
               gidsub
 
@@ -373,7 +380,10 @@ let get_math_char_info (mathkey : math_key) ~(is_in_base_level : bool) ~(is_in_d
     )
   in
   let (gidligedlst, otxt, (rawwid, rawhgt, rawdpt)) =
-    convert_gid_list (FontFormat.get_math_glyph_metrics_exn md) (FontFormat.math_base_font md) gidlst
+    convert_gid_list
+      (fun gid -> raise_if_err @@ FontFormat.get_math_glyph_metrics md gid)
+      (FontFormat.math_base_font md)
+      gidlst
   in
   let (rawmicopt, rawmkiopt) =
     match List.rev gidligedlst with
@@ -395,13 +405,13 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
       let tag = dfn.font_tag in
       let font = dfn.font in
       let dcdr = dfn.decoder in
-      let obj = FontFormat.make_dictionary_exn pdf font dcdr in
+      let obj = raise_if_err @@ FontFormat.make_dictionary pdf font dcdr in
       (tag, obj) :: acc
     ) |> MathFontHashTable.fold (fun _ mfdfn acc ->
       let tag = mfdfn.math_font_tag in
       let font = mfdfn.math_font in
       let md = mfdfn.math_decoder in
-      let obj = FontFormat.make_dictionary_exn pdf font (FontFormat.math_base_font md) in
+      let obj = raise_if_err @@ FontFormat.make_dictionary pdf font (FontFormat.math_base_font md) in
       (tag, obj) :: acc
     )
   in

@@ -2,7 +2,7 @@
 open MyUtil
 open FontError
 
-exception FontError  of font_error
+type 'a ok = ('a, font_error) result
 
 type glyph_id
 
@@ -36,17 +36,17 @@ type cmap =
 
 type font
 
-val make_dictionary_exn : Pdf.t -> font -> decoder -> Pdf.pdfobject
+val make_dictionary : Pdf.t -> font -> decoder -> Pdf.pdfobject ok
 
-val get_decoder_single : abs_path -> (decoder * font, font_error) result
+val get_decoder_single : abs_path -> (decoder * font) ok
 
-val get_decoder_ttc : abs_path -> int -> (decoder * font, font_error) result
+val get_decoder_ttc : abs_path -> int -> (decoder * font) ok
 
-val get_glyph_metrics_exn : decoder -> glyph_id -> metrics
+val get_glyph_metrics : decoder -> glyph_id -> metrics ok
 
-val get_glyph_id_exn : decoder -> Uchar.t -> glyph_id option
+val get_glyph_id : decoder -> Uchar.t -> (glyph_id option) ok
 
-val convert_to_ligatures_exn : decoder -> glyph_segment list -> glyph_synthesis list
+val convert_to_ligatures : decoder -> glyph_segment list -> (glyph_synthesis list) ok
 
 val find_kerning : decoder -> glyph_id -> glyph_id -> per_mille option
 
@@ -62,23 +62,23 @@ type math_kern_info =
 
 type math_decoder
 
-val get_math_decoder_single : abs_path -> (math_decoder * font, font_error) result
+val get_math_decoder_single : abs_path -> (math_decoder * font) ok
 
-val get_math_decoder_ttc : abs_path -> int -> (math_decoder * font, font_error) result
+val get_math_decoder_ttc : abs_path -> int -> (math_decoder * font) ok
 
 val math_base_font : math_decoder -> decoder
 
-val get_math_glyph_id_exn : math_decoder -> Uchar.t -> glyph_id option
+val get_math_glyph_id : math_decoder -> Uchar.t -> (glyph_id option) ok
 
-val get_math_script_variant_exn : math_decoder -> glyph_id -> glyph_id
+val get_math_script_variant : math_decoder -> glyph_id -> (glyph_id) ok
 
-val get_math_glyph_metrics_exn : math_decoder -> glyph_id -> metrics
+val get_math_glyph_metrics : math_decoder -> glyph_id -> metrics ok
 
 val get_math_correction_metrics : math_decoder -> glyph_id -> per_mille option * math_kern_info option
 
-val get_math_vertical_variants_exn : math_decoder -> glyph_id -> (glyph_id * float) list
+val get_math_vertical_variants : math_decoder -> glyph_id -> ((glyph_id * float) list) ok
 
-val get_math_horizontal_variants_exn : math_decoder -> glyph_id -> (glyph_id * float) list
+val get_math_horizontal_variants : math_decoder -> glyph_id -> ((glyph_id * float) list) ok
 
 type math_constants =
   {

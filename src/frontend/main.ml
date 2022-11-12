@@ -1164,9 +1164,6 @@ let error_log_environment (suspended : unit -> unit) : unit =
   | FontInfo.FontInfoError(e) ->
       report_font_error e
 
-  | FontFormat.FontError(e) ->
-      report_font_error e
-
   | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [

@@ -7,8 +7,6 @@ module I = Otfed.Intermediate
 module D = Otfed.Decode
 
 
-exception FontError  of font_error
-
 type original_glyph_id = V.glyph_id
 
 type 'a ok = ('a, font_error) result
@@ -19,11 +17,6 @@ type per_mille =
   | PerMille of int
 
 type metrics = per_mille * per_mille * per_mille
-
-
-let raise_if_err = function
-  | Ok(v)    -> v
-  | Error(e) -> raise (FontError(e))
 
 
 let pickup (xs : 'a list) (predicate : 'a -> bool) (e : 'b) (k : 'a -> ('b, 'e) result) : ('b, 'e) result =
@@ -1150,10 +1143,6 @@ let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics ok =
   return (wid, hgt, dpt)
 
 
-let get_glyph_metrics_exn (dcdr : decoder) (gid : glyph_id) : metrics =
-  raise_if_err @@ get_glyph_metrics dcdr gid
-
-
 type 'a resource =
   | Data           of 'a
   | EmbeddedStream of int
@@ -1360,10 +1349,6 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : (glyph_id option) ok =
           let* () = gidtbl |> GlyphIDTable.add uch gidorg in
           let* gid = intern_gid dcdr gidorg in
           return @@ Some(gid)
-
-
-let get_glyph_id_exn (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
-  raise_if_err @@ get_glyph_id dcdr uch
 
 
 let of_per_mille = function
@@ -1804,10 +1789,6 @@ let make_dictionary (pdf : Pdf.t) (font : font) (dcdr : decoder) : Pdf.pdfobject
   | Type0(ty0font) -> Type0.to_pdfdict pdf ty0font dcdr
 
 
-let make_dictionary_exn (pdf : Pdf.t) (font : font) (dcdr : decoder) : Pdf.pdfobject =
-  raise_if_err @@ make_dictionary pdf font dcdr
-
-
 let make_decoder (abspath : abs_path) (d : D.source) : decoder ok =
   let open ResultMonad in
   let* cmapsubtbl = get_cmap_subtable ~file_path:abspath d in
@@ -1918,10 +1899,6 @@ let convert_to_ligatures (dcdr : decoder) (seglst : glyph_segment list) : (glyph
   in
   let segorglst = seglst |> List.map orgsegf in
   aux Alist.empty segorglst
-
-
-let convert_to_ligatures_exn (dcdr : decoder) (segs : glyph_segment list) : glyph_synthesis list =
-  raise_if_err @@ convert_to_ligatures dcdr segs
 
 
 let find_kerning (dcdr : decoder) (gidprev : glyph_id) (gid : glyph_id) : per_mille option =
@@ -2127,17 +2104,9 @@ let get_math_script_variant (md : math_decoder) (gid : glyph_id) : glyph_id ok =
       | Some(gidorg_ssty) -> intern_gid dcdr gidorg_ssty
 
 
-let get_math_script_variant_exn (md : math_decoder) (gid : glyph_id) : glyph_id =
-  raise_if_err @@ get_math_script_variant md gid
-
-
 let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) : (glyph_id option) ok =
   let dcdr = md.as_normal_font in
   get_glyph_id dcdr uch
-
-
-let get_math_glyph_id_exn (md : math_decoder) (uch : Uchar.t) : glyph_id option =
-  raise_if_err @@ get_math_glyph_id md uch
 
 
 let truncate_negative (PerMille(x)) =
@@ -2157,10 +2126,6 @@ let get_math_glyph_metrics (md : math_decoder) (gid : glyph_id) : metrics ok =
   let hgt = truncate_negative ymax in
   let dpt = truncate_positive ymin in
   return (wid, hgt, dpt)
-
-
-let get_math_glyph_metrics_exn (md : math_decoder) (gid : glyph_id) : metrics =
-  raise_if_err @@ get_math_glyph_metrics md gid
 
 
 let get_math_correction_metrics (md : math_decoder) (gid : glyph_id) : per_mille option * math_kern_info option =
@@ -2190,17 +2155,9 @@ let get_math_vertical_variants (md : math_decoder) (gid : glyph_id) : ((glyph_id
   mvertvarmap |> get_math_variants md gid
 
 
-let get_math_vertical_variants_exn (md : math_decoder) (gid : glyph_id) : (glyph_id * float) list =
-  raise_if_err @@ get_math_vertical_variants md gid
-
-
 let get_math_horizontal_variants (md : math_decoder) (gid : glyph_id) =
   let mhorzvarmap = md.math_horizontal_variants in
   mhorzvarmap |> get_math_variants md gid
-
-
-let get_math_horizontal_variants_exn (md : math_decoder) (gid : glyph_id) : (glyph_id * float) list =
-  raise_if_err @@ get_math_horizontal_variants md gid
 
 
 type math_constants = {
