@@ -1,14 +1,18 @@
 
 open MyUtil
+open FontError
 
 module V = Otfed.Value
 module I = Otfed.Intermediate
 module D = Otfed.Decode
 
 
+exception FontError  of font_error
+exception BrokenFont of abs_path * string
+
 type original_glyph_id = V.glyph_id
 
-type 'a ok = ('a, D.Error.t) result
+type 'a ok = ('a, font_error) result
 
 type design_units = V.design_units
 
@@ -17,14 +21,15 @@ type per_mille =
 
 type metrics = per_mille * per_mille * per_mille
 
-exception FailToLoadFontOwingToSystem of abs_path * string
-exception BrokenFont                  of abs_path * string
-exception CannotFindUnicodeCmap       of abs_path
-
 
 let broken srcpath oerr s =
   let msg = Format.asprintf "%a" D.Error.pp oerr in
   raise (BrokenFont(srcpath, msg ^ "; " ^ s))
+
+
+let raise_if_err = function
+  | Ok(v)    -> v
+  | Error(e) -> raise (FontError(e))
 
 
 let pickup xs predicate e =
@@ -51,8 +56,9 @@ type font_registration =
       (* Last boolean: true iff it should embed /W information *)
 
 
-let extract_registration (d : D.source) =
+let extract_registration (d : D.source) : font_registration ok =
   let open ResultMonad in
+  begin
     match d with
     | D.Cff(cff) ->
         begin
@@ -75,49 +81,54 @@ let extract_registration (d : D.source) =
 
     | D.Ttf(_) ->
         return (CIDFontType2OTRegistration(adobe_identity, true))
+  end
+    |> Result.map_error (fun e -> FailedToDecodeFont(e))
 
 
-let get_main_decoder_single (abspath : abs_path) : ((D.source * font_registration) option) ok =
-  match read_file abspath with
-  | Ok(s) ->
-      let open ResultMonad in
+let get_main_decoder_single (abspath : abs_path) : (D.source * font_registration) ok =
+  let open ResultMonad in
+  let* data =
+    read_file abspath
+      |> Result.map_error (fun msg -> FailedToReadFont(abspath, msg))
+  in
+  let* source =
+    D.source_of_string data
+      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+  in
+  match source with
+  | D.Collection(_) ->
+      err @@ NotASingleFont(abspath)
+
+  | D.Single(d) ->
+      extract_registration d >>= fun registration ->
+      return (d, registration)
+
+
+let get_main_decoder_ttc (abspath : abs_path) (index : int) : (D.source * font_registration) ok =
+  let open ResultMonad in
+  let* data =
+    read_file abspath
+      |> Result.map_error (fun msg -> FailedToReadFont(abspath, msg))
+  in
+  let* source =
+    D.source_of_string data
+      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+  in
+  match source with
+  | D.Single(_) ->
+      err @@ NotAFontCollectionElement(abspath, index)
+
+  | D.Collection(ds) ->
       begin
-        D.source_of_string s >>= function
-        | D.Collection(_) ->
-            return None
+        match List.nth_opt ds index with
+        | None ->
+            let num_elements = List.length ds in
+            err @@ CollectionIndexOutOfBounds{ path = abspath; index; num_elements }
 
-        | D.Single(d) ->
+        | Some(d) ->
             extract_registration d >>= fun registration ->
-            return (Some((d, registration)))
+            return (d, registration)
       end
-
-  | Error(msg) ->
-      raise (FailToLoadFontOwingToSystem(abspath, msg))
-
-
-let get_main_decoder_ttc (abspath : abs_path) (i : int) : ((D.source * font_registration) option) ok =
-  match read_file abspath with
-  | Ok(s) ->
-      let open ResultMonad in
-      begin
-        D.source_of_string s >>= function
-        | D.Single(_) ->
-            return None
-
-        | D.Collection(ds) ->
-            begin
-              match List.nth_opt ds i with
-              | None ->
-                  return None
-
-              | Some(d) ->
-                  extract_registration d >>= fun registration ->
-                  return (Some((d, registration)))
-            end
-      end
-
-  | Error(msg) ->
-      raise (FailToLoadFontOwingToSystem(abspath, msg))
 
 
 module UHt = Hashtbl.Make(struct
@@ -1055,6 +1066,7 @@ let get_kerning_table srcpath (d : D.source) =
 
 type decoder = {
   file_path           : abs_path;
+  postscript_name     : string;
   main                : D.source;
   cmap_subtable       : V.Cmap.subtable;
   head_record         : I.Head.t;
@@ -1078,32 +1090,33 @@ let get_original_gid (_dcdr : decoder) (gid : glyph_id) : original_glyph_id =
 
 let get_ttf_raw_bbox (ttf : D.ttf_source) (gidorg : original_glyph_id) : ((design_units * design_units * design_units * design_units) option) ok =
   let open ResultMonad in
-  D.Ttf.loca ttf gidorg >>= function
-  | None ->
-      return None
+  begin
+    D.Ttf.loca ttf gidorg >>= function
+    | None ->
+        return None
 
-  | Some(gloc) ->
-      D.Ttf.glyf ttf gloc >>= fun ttf_glyph_info ->
-      let V.{ x_min; y_min; x_max; y_max } = ttf_glyph_info.bounding_box in
-      return (Some((x_min, y_min, x_max, y_max)))
-
+    | Some(gloc) ->
+        D.Ttf.glyf ttf gloc >>= fun ttf_glyph_info ->
+        let V.{ x_min; y_min; x_max; y_max } = ttf_glyph_info.bounding_box in
+        return (Some((x_min, y_min, x_max, y_max)))
+  end
+    |> Result.map_error (fun e -> FailedToDecodeFont(e))
 
 let bbox_zero =
   (PerMille(0), PerMille(0), PerMille(0), PerMille(0))
 
 
-let get_ttf_bbox ~(units_per_em : int) ~(file_path : abs_path) (ttf : D.ttf_source) (gidorg : original_glyph_id) : bbox =
+let get_ttf_bbox ~(units_per_em : int) (ttf : D.ttf_source) (gidorg : original_glyph_id) : bbox ok =
+  let open ResultMonad in
   let f = per_mille ~units_per_em in
-  match get_ttf_raw_bbox ttf gidorg with
-  | Error(e) ->
-      broken file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gidorg)
+  let* bbox_opt = get_ttf_raw_bbox ttf gidorg in
+  match bbox_opt with
+  | None ->
+      return bbox_zero
 
-  | Ok(None) ->
-      bbox_zero
-
-  | Ok(Some(bbox_raw)) ->
+  | Some(bbox_raw) ->
       let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
-      (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
+      return (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
 
 
 let get_glyph_advance_width (dcdr : decoder) (gidorg_key : original_glyph_id) : per_mille =
@@ -1119,16 +1132,15 @@ let get_glyph_advance_width (dcdr : decoder) (gidorg_key : original_glyph_id) : 
   | Ok(Some((adv, _lsb))) -> per_mille ~units_per_em:dcdr.units_per_em adv
 
 
-let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
+let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox ok =
+  let open ResultMonad in
   let units_per_em = dcdr.units_per_em in
-  let file_path = dcdr.file_path in
   match dcdr.main with
   | D.Ttf(ttf) ->
-      get_ttf_bbox ~units_per_em ~file_path ttf gidorg
+      get_ttf_bbox ~units_per_em ttf gidorg
 
   | D.Cff(cff) ->
-      let res =
-        let open ResultMonad in
+      begin
         D.Cff.charstring cff gidorg >>= function
         | None ->
             return bbox_zero
@@ -1146,33 +1158,33 @@ let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
                   let f = per_mille ~units_per_em in
                   (f x_min, f y_min, f x_max, f y_max)
             end
-      in
-      match res with
-      | Error(oerr) ->
-          broken dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gidorg)
-
-      | Ok(bbox_opt) ->
-          bbox_opt
+      end
+        |> Result.map_error (fun e -> FailedToDecodeFont(e))
 
 
-let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
+let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics ok =
+  let open ResultMonad in
   let bboxtbl = dcdr.glyph_bbox_table in
   let gidorg = get_original_gid dcdr gid in
-  let (wid, (_, ymin, _, ymax)) =
+  let* (wid, (_, ymin, _, ymax)) =
     match bboxtbl |> GlyphBBoxTable.find_opt gidorg with
     | Some(pair) ->
-        pair
+        return pair
 
     | None ->
         let wid = get_glyph_advance_width dcdr gidorg in
-        let bbox = get_bbox dcdr gidorg in
+        let* bbox = get_bbox dcdr gidorg in
         let pair = (wid, bbox) in
         bboxtbl |> GlyphBBoxTable.add gidorg pair;
-        pair
+        return pair
   in
   let hgt = ymax in
   let dpt = ymin in
-  (wid, hgt, dpt)
+  return (wid, hgt, dpt)
+
+
+let get_glyph_metrics_exn (dcdr : decoder) (gid : glyph_id) : metrics =
+  raise_if_err @@ get_glyph_metrics dcdr gid
 
 
 type 'a resource =
@@ -1331,18 +1343,19 @@ let cmap_predicate f =
   List.find_opt (fun (subtbl, format) -> f (subtbl.V.Cmap.subtable_ids, format))
 
 
-let get_cmap_subtable srcpath (d : D.source) : V.Cmap.subtable =
-  let res =
-    let open ResultMonad in
-    D.Cmap.get d >>= fun icmap ->
-    D.Cmap.get_subtables icmap >>= fun isubtbls ->
-    isubtbls |> List.fold_left (fun res isubtbl -> (* TODO: refactor here by using `mapM` *)
-      res >>= fun acc ->
-      let format = D.Cmap.get_format_number isubtbl in
-      D.Cmap.unmarshal_subtable isubtbl >>= fun subtbl ->
-      return (Alist.extend acc (subtbl, format))
-    ) (return Alist.empty) >>= fun acc ->
-    let subtbls = Alist.to_list acc in
+let get_cmap_subtable ~(file_path : abs_path) (d : D.source) : V.Cmap.subtable ok =
+  let open ResultMonad in
+  let* opt =
+    begin
+      D.Cmap.get d >>= fun icmap ->
+      D.Cmap.get_subtables icmap >>= fun isubtbls ->
+      isubtbls |> List.fold_left (fun res isubtbl -> (* TODO: refactor here by using `mapM` *)
+        res >>= fun acc ->
+        let format = D.Cmap.get_format_number isubtbl in
+        D.Cmap.unmarshal_subtable isubtbl >>= fun subtbl ->
+        return (Alist.extend acc (subtbl, format))
+      ) (return Alist.empty) >>= fun acc ->
+      let subtbls = Alist.to_list acc in
       let opt =
         List.fold_left (fun opt idspred ->
           match opt with
@@ -1357,13 +1370,13 @@ let get_cmap_subtable srcpath (d : D.source) : V.Cmap.subtable =
           (fun (V.Cmap.{ platform_id; _ }, _) -> platform_id = 1);
         ]
       in
-    match opt with
-    | None         -> raise (CannotFindUnicodeCmap(srcpath))
-    | Some(subtbl) -> return subtbl
+      return opt
+    end
+      |> Result.map_error (fun e -> FailedToDecodeFont(e))
   in
-  match res with
-  | Error(oerr)     -> broken srcpath oerr "get_cmap_subtable"
-  | Ok((subtbl, _)) -> subtbl
+  match opt with
+  | None              -> err @@ CannotFindUnicodeCmap(file_path)
+  | Some((subtbl, _)) -> return subtbl
 
 
 let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
@@ -1434,31 +1447,32 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
       }
 
 
-let get_postscript_name (dcdr : decoder) =
-  let d = dcdr.main in
-  let res =
-    let open ResultMonad in
-    D.Name.get d >>= fun iname ->
-    return begin
-      iname.V.Name.name_records |> List.find_map (fun name_record ->
-        let V.Name.{ platform_id; encoding_id; name_id; name; _ } = name_record in
-        if name_id = 6 then
-        (* If the entry contains the PostScript name: *)
-          if platform_id = 0 || platform_id = 1 then
-            Some(name)
-          else if platform_id = 3 && encoding_id = 1 then
-            Some(InternalText.to_utf8 (InternalText.of_utf16be name))
-          else
-            None
+let get_postscript_name ~(file_path : abs_path) (d : D.source) : string ok =
+  let open ResultMonad in
+  let* vname =
+    D.Name.get d
+      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+  in
+  let name_opt =
+    vname.V.Name.name_records |> List.find_map (fun name_record ->
+      let V.Name.{ platform_id; encoding_id; name_id; name; _ } = name_record in
+      if name_id = 6 then
+        if platform_id = 0 || platform_id = 1 then
+          Some(name)
+        else if platform_id = 3 && encoding_id = 1 then
+          Some(InternalText.to_utf8 (InternalText.of_utf16be name))
         else
           None
-      )
-    end
+      else
+        None
+    )
   in
-  match res with
-  | Error(e)    -> broken dcdr.file_path e "get_postscript_name"
-  | Ok(None)    -> assert false  (* temporary *)
-  | Ok(Some(x)) -> x
+  match name_opt with
+  | None ->
+      err @@ PostscriptNameNotFound(file_path)
+
+  | Some(name) ->
+      return name
 
 
 (* -w -unused-constructor *)
@@ -1475,31 +1489,30 @@ let font_file_info_of_embedding embedding =
   | FontFile3(sub) -> ("/FontFile3", Some(sub))
 
 
-module CIDFontType0
-= struct
-    type font = {
-        cid_system_info : cid_system_info;
-        base_font       : string;
-        font_descriptor : font_descriptor;
-        dw              : design_units option;  (* Represented by units defined by head.unitsPerEm *)
-        dw2             : (int * int) option;
-          (* temporary; should contain more fields; /W2 *)
-      }
-      (* Doesn't have to contain information about /W entry;
-         the PDF file will be furnished with /W entry when outputted
-         according to the glyph metrics table. *)
+module CIDFontType0 = struct
+  type font = {
+      cid_system_info : cid_system_info;
+      base_font       : string;
+      font_descriptor : font_descriptor;
+      dw              : design_units option;  (* Represented by units defined by head.unitsPerEm *)
+      dw2             : (int * int) option;
+        (* temporary; should contain more fields; /W2 *)
+    }
+    (* Doesn't have to contain information about /W entry;
+       the PDF file will be furnished with /W entry when outputted
+       according to the glyph metrics table. *)
 
 
-    let of_decoder dcdr cidsysinfo =
-      let base_font = get_postscript_name dcdr in
-        {
-          cid_system_info = cidsysinfo;
-          base_font       = base_font;
-          font_descriptor = font_descriptor_of_decoder dcdr base_font;
-          dw              = None;  (* temporary *)
-          dw2             = None;  (* temporary *)
-        }
-  end
+  let of_decoder dcdr cidsysinfo =
+    let base_font = dcdr.postscript_name in
+    {
+      cid_system_info = cidsysinfo;
+      base_font       = base_font;
+      font_descriptor = font_descriptor_of_decoder dcdr base_font;
+      dw              = None;  (* temporary *)
+      dw2             = None;  (* temporary *)
+    }
+end
 
 
 (* -w -unused-constructor *)
@@ -1508,34 +1521,33 @@ type[@ocaml.warning "-37"] cid_to_gid_map =
   | CIDToGIDStream   of (string resource) ref  (* temporary *)
 
 
-module CIDFontType2
-= struct
-    type font = {
-        cid_system_info  : cid_system_info;
-        base_font        : string;
-        font_descriptor  : font_descriptor;
-        dw               : int option;
-        dw2              : (int * int) option;
-        cid_to_gid_map   : cid_to_gid_map;
-        is_pure_truetype : bool;
-          (* temporary; should contain more fields; /W2 *)
+module CIDFontType2 = struct
+  type font = {
+      cid_system_info  : cid_system_info;
+      base_font        : string;
+      font_descriptor  : font_descriptor;
+      dw               : int option;
+      dw2              : (int * int) option;
+      cid_to_gid_map   : cid_to_gid_map;
+      is_pure_truetype : bool;
+        (* temporary; should contain more fields; /W2 *)
+    }
+    (* Doesn't have to contain information about /W entry;
+       the /W entry will be added by using the glyph metrics table when the PDF file is outputted. *)
+
+
+  let of_decoder dcdr cidsysinfo isptt =
+    let base_font = dcdr.postscript_name in
+      {
+        cid_system_info  = cidsysinfo;
+        base_font        = base_font;
+        font_descriptor  = font_descriptor_of_decoder dcdr base_font;
+        dw               = None;  (* temporary *)
+        dw2              = None;  (* temporary *)
+        is_pure_truetype = isptt;
+        cid_to_gid_map   = CIDToGIDIdentity;  (* temporary *)
       }
-      (* Doesn't have to contain information about /W entry;
-         the /W entry will be added by using the glyph metrics table when the PDF file is outputted. *)
-
-
-    let of_decoder dcdr cidsysinfo isptt =
-      let base_font = get_postscript_name dcdr in
-        {
-          cid_system_info  = cidsysinfo;
-          base_font        = base_font;
-          font_descriptor  = font_descriptor_of_decoder dcdr base_font;
-          dw               = None;  (* temporary *)
-          dw2              = None;  (* temporary *)
-          is_pure_truetype = isptt;
-          cid_to_gid_map   = CIDToGIDIdentity;  (* temporary *)
-        }
-  end
+end
 
 
 type cid_font =
@@ -1806,40 +1818,47 @@ let make_dictionary (pdf : Pdf.t) (font : font) (dcdr : decoder) : Pdf.pdfobject
   | Type0(ty0font) -> Type0.to_pdfdict pdf ty0font dcdr
 
 
-let make_decoder (abspath : abs_path) (d : D.source) : decoder =
-  let cmapsubtbl = get_cmap_subtable abspath d in
+let make_decoder (abspath : abs_path) (d : D.source) : decoder ok =
+  let open ResultMonad in
+  let* cmapsubtbl = get_cmap_subtable ~file_path:abspath d in
   let submap = SubsetMap.create abspath d 32 in  (* temporary; initial size of hash tables *)
   let gidtbl = GlyphIDTable.create submap 256 in  (* temporary; initial size of hash tables *)
   let bboxtbl = GlyphBBoxTable.create 256 in  (* temporary; initial size of hash tables *)
-  let (rcdhhea, ascent, descent) =
-    match D.Hhea.get d with
-    | Ok(ihhea) -> (ihhea, ihhea.value.ascender, ihhea.value.descender)
-    | Error(e)  -> broken abspath e "make_decoder (hhea)"
+  let* (rcdhhea, ascent, descent) =
+    begin
+      let* ihhea = D.Hhea.get d in
+      return (ihhea, ihhea.value.ascender, ihhea.value.descender)
+    end
+      |> Result.map_error (fun e -> FailedToDecodeFont(e))
   in
-  let (rcdhead, units_per_em) =
-    match D.Head.get d with
-    | Ok(ihead) -> (ihead, ihead.value.units_per_em)
-    | Error(e)  -> broken abspath e "make_decoder (head)"
+  let* (rcdhead, units_per_em) =
+    begin
+      let* ihead = D.Head.get d in
+      return (ihead, ihead.value.units_per_em)
+    end
+      |> Result.map_error (fun e -> FailedToDecodeFont(e))
   in
+  let* postscript_name = get_postscript_name ~file_path:abspath d in
   let kerntbl = get_kerning_table abspath d in
   let ligtbl = get_ligature_table abspath submap d in
   let mktbl = get_mark_table abspath units_per_em d in
-    {
-      file_path           = abspath;
-      main                = d;
-      cmap_subtable       = cmapsubtbl;
-      head_record         = rcdhead;
-      hhea_record         = rcdhhea;
-      kerning_table       = kerntbl;
-      ligature_table      = ligtbl;
-      mark_table          = mktbl;
-      subset_map          = submap;
-      glyph_id_table      = gidtbl;
-      glyph_bbox_table    = bboxtbl;
-      units_per_em        = units_per_em;
-      default_ascent      = per_mille ~units_per_em ascent;
-      default_descent     = per_mille ~units_per_em descent;
-    }
+  return {
+    file_path           = abspath;
+    postscript_name     = postscript_name;
+    main                = d;
+    cmap_subtable       = cmapsubtbl;
+    head_record         = rcdhead;
+    hhea_record         = rcdhhea;
+    kerning_table       = kerntbl;
+    ligature_table      = ligtbl;
+    mark_table          = mktbl;
+    subset_map          = submap;
+    glyph_id_table      = gidtbl;
+    glyph_bbox_table    = bboxtbl;
+    units_per_em        = units_per_em;
+    default_ascent      = per_mille ~units_per_em ascent;
+    default_descent     = per_mille ~units_per_em descent;
+  }
 
 
 let cid_font_type_0 cidty0font fontname cmap =
@@ -1850,33 +1869,34 @@ let cid_font_type_2 cidty2font fontname cmap =
   Type0(Type0.of_cid_font (CIDFontType2(cidty2font)) fontname cmap)
 
 
-let get_font (dcdr : decoder) (fontreg : font_registration) (fontname : string) : font =
+let get_font (dcdr : decoder) (fontreg : font_registration) : font =
   let cmap = PredefinedCMap("Identity-H") in
   match fontreg with
   | CIDFontType0Registration(cidsysinfo, _embedW) ->
       let cidty0font = CIDFontType0.of_decoder dcdr cidsysinfo in
-      (cid_font_type_0 cidty0font fontname cmap)
+      (cid_font_type_0 cidty0font dcdr.postscript_name cmap)
 
   | CIDFontType2OTRegistration(cidsysinfo, _embedW) ->
       let cidty2font = CIDFontType2.of_decoder dcdr cidsysinfo true (* temporary *) in
-      (cid_font_type_2 cidty2font fontname cmap)
+      (cid_font_type_2 cidty2font dcdr.postscript_name cmap)
 
 
-let get_decoder_single (fontname : string) (abspath : abs_path) : (decoder * font) option =
-  match get_main_decoder_single abspath with
-  | Error(oerr)            -> broken abspath oerr "get_decoder_single"
-  | Ok(None)               -> None
-  | Ok(Some((d, fontreg))) -> let dcdr = make_decoder abspath d in Some((dcdr, get_font dcdr fontreg fontname))
+let get_decoder_single (abspath : abs_path) : (decoder * font) ok =
+  let open ResultMonad in
+  let* (d, fontreg) = get_main_decoder_single abspath in
+  let* dcdr = make_decoder abspath d in
+  return (dcdr, get_font dcdr fontreg)
 
 
-let get_decoder_ttc (fontname : string) (abspath :abs_path) (i : int) : (decoder * font) option =
-  match get_main_decoder_ttc abspath i with
-  | Error(oerr)            -> broken abspath oerr "get_decoder_ttc"
-  | Ok(None)               -> None
-  | Ok(Some((d, fontreg))) -> let dcdr = make_decoder abspath d in Some((dcdr, get_font dcdr fontreg fontname))
+let get_decoder_ttc (abspath :abs_path) (index : int) : (decoder * font) ok =
+  let open ResultMonad in
+  let* (d, fontreg) = get_main_decoder_ttc abspath index in
+  let* dcdr = make_decoder abspath d in
+  return (dcdr, get_font dcdr fontreg)
 
 
-let convert_to_ligatures (dcdr : decoder) (seglst : glyph_segment list) : glyph_synthesis list =
+let convert_to_ligatures (dcdr : decoder) (seglst : glyph_segment list) : (glyph_synthesis list) ok =
+  let open ResultMonad in
   let ligtbl = dcdr.ligature_table in
   let mktbl = dcdr.mark_table in
   let intf = intern_gid dcdr in
@@ -1889,19 +1909,23 @@ let convert_to_ligatures (dcdr : decoder) (seglst : glyph_segment list) : glyph_
   let rec aux acc segorglst =
     match ligtbl |> LigatureTable.match_prefix segorglst mktbl with
     | ReachEnd ->
-        Alist.to_list acc
+        return @@ Alist.to_list acc
 
     | Match(gidorglig, markorginfolst, segorgrest) ->
-        let markinfolst =
-          markorginfolst |> List.map (fun (gidorg, v) ->
-            let (w, _, _) = get_glyph_metrics dcdr (intf gidorg) in
-              Mark(intf gidorg, w, v)
+        let* markinfolst =
+          markorginfolst |> mapM (fun (gidorg, v) ->
+            let* (w, _, _) = get_glyph_metrics dcdr (intf gidorg) in
+            return @@ Mark(intf gidorg, w, v)
           )
         in
         aux (Alist.extend acc (intf gidorglig, markinfolst)) segorgrest
   in
   let segorglst = seglst |> List.map orgsegf in
   aux Alist.empty segorglst
+
+
+let convert_to_ligatures_exn (dcdr : decoder) (segs : glyph_segment list) : glyph_synthesis list =
+  raise_if_err @@ convert_to_ligatures dcdr segs
 
 
 let find_kerning (dcdr : decoder) (gidprev : glyph_id) (gid : glyph_id) : per_mille option =
@@ -1994,17 +2018,19 @@ let assoc_to_map f gidassoc =
   ) MathInfoMap.empty
 
 
-let make_math_decoder_from_decoder (abspath : abs_path) ((dcdr, font) : decoder * font) =
+let make_math_decoder_from_decoder (abspath : abs_path) (dcdr : decoder) (font : font) : (math_decoder * font) ok =
+  let open ResultMonad in
   let units_per_em = dcdr.units_per_em in
   let d = dcdr.main in
-  match D.Math.get d with
-  | Error(oerr) ->
-      broken abspath oerr "make_math_decoder_from_decoder"
+  let* mathraw_opt =
+    D.Math.get d
+      |> Result.map_error (fun e -> FailedToDecodeFont(e))
+  in
+  match mathraw_opt with
+  | None ->
+      err @@ NoMathTable(abspath)
 
-  | Ok(None) ->
-      None
-
-  | Ok(Some(mathraw)) ->
+  | Some(mathraw) ->
       let micmap =
         mathraw.V.Math.math_glyph_info.V.Math.math_italics_correction
           |> assoc_to_map (fun v -> per_mille ~units_per_em (get_main_math_value v))
@@ -2031,7 +2057,7 @@ let make_math_decoder_from_decoder (abspath : abs_path) ((dcdr, font) : decoder 
             )
           )
       in
-      let sstyopt =
+      let* ssty_opt =
         let res =
           let open ResultMonad in
           inject @@ D.Gsub.get d >>= function
@@ -2049,14 +2075,14 @@ let make_math_decoder_from_decoder (abspath : abs_path) ((dcdr, font) : decoder 
         in
         match res with
         | Ok(feature_ssty) ->
-            Some(feature_ssty)
+            return @@ Some(feature_ssty)
 
         | Error(MissingScript)
         | Error(MissingFeature) ->
-            None
+            return None
 
-        | Error(GeneralError(oerr)) ->
-            broken abspath oerr "make_math_decoder_from_decoder"
+        | Error(GeneralError(e)) ->
+            err @@ FailedToDecodeFont(e)
       in
       let md =
         {
@@ -2067,20 +2093,22 @@ let make_math_decoder_from_decoder (abspath : abs_path) ((dcdr, font) : decoder 
           math_vertical_variants     = mvertvarmap;
           math_horizontal_variants   = mhorzvarmap;
           math_kern_info             = mkimap;
-          script_style_info          = sstyopt;
+          script_style_info          = ssty_opt;
         }
       in
-      Some((md, font))
+      return (md, font)
 
 
-let get_math_decoder_single (fontname : string) (abspath : abs_path) : (math_decoder * font) option =
-  let open OptionMonad in
-  get_decoder_single fontname abspath >>= make_math_decoder_from_decoder abspath
+let get_math_decoder_single (abspath : abs_path) : (math_decoder * font) ok =
+  let open ResultMonad in
+  let* (dcdr, font) = get_decoder_single abspath in
+  make_math_decoder_from_decoder abspath dcdr font
 
 
-let get_math_decoder_ttc (fontname : string) (abspath : abs_path) (i : int) : (math_decoder * font) option =
-  let open OptionMonad in
-  get_decoder_ttc fontname abspath i >>= make_math_decoder_from_decoder abspath
+let get_math_decoder_ttc (abspath : abs_path) (index : int) : (math_decoder * font) ok =
+  let open ResultMonad in
+  let* (dcdr, font) = get_decoder_ttc abspath index in
+  make_math_decoder_from_decoder abspath dcdr font
 
 
 let get_math_script_variant (md : math_decoder) (gid : glyph_id) : glyph_id =
@@ -2124,14 +2152,19 @@ let truncate_positive (PerMille(x)) =
   PerMille(min 0 x)
 
 
-let get_math_glyph_metrics (md : math_decoder) (gid : glyph_id) : per_mille * per_mille * per_mille =
+let get_math_glyph_metrics (md : math_decoder) (gid : glyph_id) : metrics ok =
+  let open ResultMonad in
   let dcdr = md.as_normal_font in
-  let (wid, _, _) = get_glyph_metrics dcdr gid in
+  let* (wid, _, _) = get_glyph_metrics dcdr gid in
   let gidorg = get_original_gid dcdr gid in
-  let (_, ymin, _, ymax) = get_bbox md.as_normal_font gidorg in
+  let* (_, ymin, _, ymax) = get_bbox md.as_normal_font gidorg in
   let hgt = truncate_negative ymax in
   let dpt = truncate_positive ymin in
-  (wid, hgt, dpt)
+  return (wid, hgt, dpt)
+
+
+let get_math_glyph_metrics_exn (md : math_decoder) (gid : glyph_id) : metrics =
+  raise_if_err @@ get_math_glyph_metrics md gid
 
 
 let get_math_correction_metrics (md : math_decoder) (gid : glyph_id) : per_mille option * math_kern_info option =

@@ -1,6 +1,6 @@
 
 open MyUtil
-open ConfigError
+open FontError
 open LengthInterface
 open HorzBox
 open CharBasis
@@ -99,34 +99,19 @@ end = struct
 
           | UnusedSingle ->
             (* If this is the first access to the single font: *)
-              let fontname = Printf.sprintf "id-%s-Composite" (FontKey.show key) in (* TODO: fix this *)
-              begin
-                match FontFormat.get_decoder_single fontname abspath with
-                | None ->
-                  (* If the font file is a TrueType collection: *)
-                    err @@ NotASingleFont(abspath)
+              let* (dcdr, font) = FontFormat.get_decoder_single abspath in
+              let tag = generate_tag () in
+              let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
+              storeref := Loaded(dfn);
+              return dfn
 
-                | Some((dcdr, font)) ->
-                    let tag = generate_tag () in
-                    let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
-                    storeref := Loaded(dfn);
-                    return dfn
-              end
-
-          | UnusedTTC(i) ->
+          | UnusedTTC(index) ->
             (* If this is the first access to the TrueType collection: *)
-              let fontname = Printf.sprintf "id-%s-Composite" (FontKey.show key) in (* TODO: fix this *)
-              begin
-                match FontFormat.get_decoder_ttc fontname abspath i with
-                | None ->
-                    err @@ NotATTCElement(abspath, i)
-
-                | Some((dcdr, font)) ->
-                    let tag = generate_tag () in
-                    let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
-                    storeref := Loaded(dfn);
-                    return dfn
-              end
+              let* (dcdr, font) = FontFormat.get_decoder_ttc abspath index in
+              let tag = generate_tag () in
+              let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
+              storeref := Loaded(dfn);
+              return dfn
         end
 
 end
@@ -213,8 +198,8 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchseglst : uchar_segment l
       (gbase, gmarks)
     )
   in
-  let gsynlst = FontFormat.convert_to_ligatures dcdr gseglst in
-  let (_, otxt, (rawwid, rawhgt, rawdpt)) = convert_gid_list (FontFormat.get_glyph_metrics dcdr) dcdr gsynlst in
+  let gsynlst = FontFormat.convert_to_ligatures_exn dcdr gseglst in
+  let (_, otxt, (rawwid, rawhgt, rawdpt)) = convert_gid_list (FontFormat.get_glyph_metrics_exn dcdr) dcdr gsynlst in
   let wid = f_skip rawwid in
   let hgtsub = f_skip rawhgt in
   let dptsub = f_skip rawdpt in
@@ -293,35 +278,19 @@ end = struct
           match !storeref with
           | UnusedMathSingle ->
             (* If this is the first access to the single math font: *)
-              let fontname = Printf.sprintf "id-%s-Composite-Math" (FontKey.show mathkey) in (* TODO: fix this *)
-              begin
-                match FontFormat.get_math_decoder_single fontname abspath with
-                | None ->
-                  (* If the font file does not have a MATH table or is a TrueType collection: *)
-                    err @@ NotASingleMathFont(abspath)
+              let* (md, font) = FontFormat.get_math_decoder_single abspath in
+              let tag = generate_tag () in
+              let mfdfn = { math_font_tag = tag; math_font = font; math_decoder = md; } in
+              storeref := LoadedMath(mfdfn);
+              return mfdfn
 
-                | Some((md, font)) ->
-                    let tag = generate_tag () in
-                    let mfdfn = { math_font_tag = tag; math_font = font; math_decoder = md; } in
-                    storeref := LoadedMath(mfdfn);
-                    return mfdfn
-              end
-
-          | UnusedMathTTC(i) ->
+          | UnusedMathTTC(index) ->
             (* If this is the first access to the collection math font: *)
-              let fontname = Printf.sprintf "id-%s-Composite-Math" (FontKey.show mathkey) in (* TODO: fix this *)
-              begin
-                match FontFormat.get_math_decoder_ttc fontname abspath i with
-                | None ->
-                  (* If the font does not have a MATH table or is a single font file: *)
-                    err @@ NotATTCMathFont(abspath, i)
-
-                | Some((md, font)) ->
-                    let tag = generate_tag () in
-                    let mfdfn = { math_font_tag = tag; math_font = font; math_decoder = md; } in
-                    storeref := LoadedMath(mfdfn);
-                    return mfdfn
-              end
+              let* (md, font) = FontFormat.get_math_decoder_ttc abspath index in
+              let tag = generate_tag () in
+              let mfdfn = { math_font_tag = tag; math_font = font; math_decoder = md; } in
+              storeref := LoadedMath(mfdfn);
+              return mfdfn
 
           | LoadedMath(mfdfn) ->
               return mfdfn
@@ -404,7 +373,7 @@ let get_math_char_info (mathkey : math_key) ~(is_in_base_level : bool) ~(is_in_d
     )
   in
   let (gidligedlst, otxt, (rawwid, rawhgt, rawdpt)) =
-    convert_gid_list (FontFormat.get_math_glyph_metrics md) (FontFormat.math_base_font md) gidlst
+    convert_gid_list (FontFormat.get_math_glyph_metrics_exn md) (FontFormat.math_base_font md) gidlst
   in
   let (rawmicopt, rawmkiopt) =
     match List.rev gidligedlst with

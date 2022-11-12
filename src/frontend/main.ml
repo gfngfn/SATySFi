@@ -4,6 +4,7 @@ open Types
 open StaticEnv
 open PackageSystemBase
 open ConfigError
+open FontError
 open TypeError
 
 
@@ -1061,28 +1062,29 @@ let report_config_error : config_error -> unit = function
 
 
 let report_font_error : font_error -> unit = function
+  | FailedToReadFont(abspath, msg) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "cannot load font file '%s';" fname);
+        DisplayLine(msg);
+      ]
+
+  | FailedToDecodeFont(e) ->
+      report_error Interface [
+        NormalLine("failed to decode font;");
+        NormalLine(Format.asprintf "%a" Otfed.Decode.Error.pp e);
+      ]
+
   | NotASingleFont(abspath) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "the font file '%s' is not a single font file." fname);
       ]
 
-  | NotATTCElement(abspath, index) ->
+  | NotAFontCollectionElement(abspath, index) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection." fname index);
-      ]
-
-  | NotASingleMathFont(abspath) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s' is not a single font file or does not have a MATH table." fname);
-      ]
-
-  | NotATTCMathFont(abspath, index) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection or does not have a MATH table." fname index);
       ]
 
   | CannotFindLibraryFileAsToFont(libpath, candidates) ->
@@ -1093,6 +1095,31 @@ let report_font_error : font_error -> unit = function
       in
       report_error Interface
         (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
+
+  | NoMathTable(abspath) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "font file '%s' does not have a 'MATH' table." fname);
+      ]
+
+  | PostscriptNameNotFound(abspath) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "font file '%s' does not have a PostScript name." fname);
+      ]
+
+  | CannotFindUnicodeCmap(abspath) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "font file '%s' does not have a 'cmap' subtable for Unicode code points." fname);
+      ]
+
+  | CollectionIndexOutOfBounds{ path; index; num_elements } ->
+      let fname = convert_abs_path_to_show path in
+      report_error Interface [
+        NormalLine(Printf.sprintf "%d: index out of bounds;" index);
+        NormalLine(Printf.sprintf "font file '%s' has %d elements." fname num_elements);
+      ]
 
 
 let error_log_environment (suspended : unit -> unit) : unit =
@@ -1129,13 +1156,6 @@ let error_log_environment (suspended : unit -> unit) : unit =
   | FontInfo.FontInfoError(e) ->
       report_font_error e
 
-  | FontFormat.FailToLoadFontOwingToSystem(abspath, msg) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "cannot load font file '%s';" fname);
-        DisplayLine(msg);
-      ]
-
   | FontFormat.BrokenFont(abspath, msg) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
@@ -1143,11 +1163,8 @@ let error_log_environment (suspended : unit -> unit) : unit =
         DisplayLine(msg);
       ]
 
-  | FontFormat.CannotFindUnicodeCmap(abspath) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "font file '%s' does not have 'cmap' subtable for Unicode code points." fname);
-      ]
+  | FontFormat.FontError(e) ->
+      report_font_error e
 
   | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
       let fname = convert_abs_path_to_show abspath in

@@ -1,5 +1,9 @@
 
 open MyUtil
+open FontError
+
+exception BrokenFont of abs_path * string
+exception FontError  of font_error
 
 type glyph_id
 
@@ -21,10 +25,6 @@ val hex_of_glyph_id : glyph_id -> string
 
 type decoder
 
-exception FailToLoadFontOwingToSystem of abs_path * string
-exception BrokenFont                  of abs_path * string
-exception CannotFindUnicodeCmap       of abs_path
-
 type 'a resource =
   | Data           of 'a
   | EmbeddedStream of int
@@ -39,15 +39,15 @@ type font
 
 val make_dictionary : Pdf.t -> font -> decoder -> Pdf.pdfobject
 
-val get_decoder_single : string -> abs_path -> (decoder * font) option
+val get_decoder_single : abs_path -> (decoder * font, font_error) result
 
-val get_decoder_ttc : string -> abs_path -> int -> (decoder * font) option
+val get_decoder_ttc : abs_path -> int -> (decoder * font, font_error) result
 
-val get_glyph_metrics : decoder -> glyph_id -> metrics
+val get_glyph_metrics_exn : decoder -> glyph_id -> metrics
 
 val get_glyph_id : decoder -> Uchar.t -> glyph_id option
 
-val convert_to_ligatures : decoder -> glyph_segment list -> glyph_synthesis list
+val convert_to_ligatures_exn : decoder -> glyph_segment list -> glyph_synthesis list
 
 val find_kerning : decoder -> glyph_id -> glyph_id -> per_mille option
 
@@ -63,9 +63,9 @@ type math_kern_info =
 
 type math_decoder
 
-val get_math_decoder_single : string -> abs_path -> (math_decoder * font) option
+val get_math_decoder_single : abs_path -> (math_decoder * font, font_error) result
 
-val get_math_decoder_ttc : string -> abs_path -> int -> (math_decoder * font) option
+val get_math_decoder_ttc : abs_path -> int -> (math_decoder * font, font_error) result
 
 val math_base_font : math_decoder -> decoder
 
@@ -73,7 +73,7 @@ val get_math_glyph_id : math_decoder -> Uchar.t -> glyph_id option
 
 val get_math_script_variant : math_decoder -> glyph_id -> glyph_id
 
-val get_math_glyph_metrics : math_decoder -> glyph_id -> metrics
+val get_math_glyph_metrics_exn : math_decoder -> glyph_id -> metrics
 
 val get_math_correction_metrics : math_decoder -> glyph_id -> per_mille option * math_kern_info option
 

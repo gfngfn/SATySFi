@@ -72,10 +72,3 @@ type config_error =
     }
   | CannotSolvePackageConstraints
   | DocumentAttributeError    of DocumentAttribute.error
-
-type font_error =
-  | NotASingleFont                of abs_path
-  | NotATTCElement                of abs_path * int
-  | NotASingleMathFont            of abs_path
-  | NotATTCMathFont               of abs_path * int
-  | CannotFindLibraryFileAsToFont of lib_path * abs_path list

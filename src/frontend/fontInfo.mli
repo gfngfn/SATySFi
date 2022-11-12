@@ -1,6 +1,6 @@
 
 open MyUtil
-open ConfigError
+open FontError
 open LengthInterface
 open HorzBox
 open CharBasis
