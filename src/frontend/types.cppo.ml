@@ -689,6 +689,7 @@ type base_constant =
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
   | BCImageKey of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
+  | BCFontKey  of FontKey.t
   | BCInlineBoxes of HorzBox.horz_box list
   | BCBlockBoxes  of HorzBox.vert_box list
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.t
@@ -1206,6 +1207,8 @@ and code_value =
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
   | CdTuple         of code_value TupleList.t
+  | CdLoadSingleFont     of abs_path
+  | CdLoadCollectionFont of abs_path * int
 #include "__codetype.gen.ml"
 
 and code_inline_text_element =
@@ -1448,6 +1451,9 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map unlift_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
     | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
+
+    | CdLoadSingleFont(abspath)            -> LoadSingleFont(abspath)
+    | CdLoadCollectionFont(abspath, index) -> LoadCollectionFont(abspath, index)
 #include "__unliftcode.gen.ml"
   in
   aux code

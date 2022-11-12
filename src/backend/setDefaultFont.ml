@@ -1,19 +1,19 @@
 
 open MyUtil
+(*
+open HorzBox
+*)
 open CharBasis
-
+(*
 module YS = Yojson.SafePos
 module MYU = MyYojsonUtil
-
-
-type font_abbrev = string
-
-
+*)
+(*
 let read_single_assoc assoc =
-    let abbrev = assoc |> MYU.find "font-name" |> YS.Util.to_string in
+    let name = assoc |> MYU.find "font-name" |> YS.Util.to_string in
     let ratio = assoc |> MYU.find "ratio" |> YS.Util.to_float in
     let rising = assoc |> MYU.find "rising" |> YS.Util.to_float in
-    (abbrev, ratio, rising)
+    (StringFontAbbrev(name), ratio, rising)
 
 
 let read_assoc (assoc : MYU.assoc) =
@@ -27,9 +27,11 @@ let read_assoc (assoc : MYU.assoc) =
     ("kana"           , HiraganaOrKatakana);
     ("other-script"   , OtherScript);
   ]
+*)
 
-
-let main (abspath : abs_path) : (font_abbrev * float * float) ScriptSchemeMap.t =
+let main (_abspath : abs_path) : (FontKey.t * float * float) ScriptSchemeMap.t =
+  ScriptSchemeMap.empty
+(*
   let pathstr = get_abs_path_string abspath in
   try
     let json = YS.from_file ~fname:pathstr pathstr in
@@ -38,3 +40,4 @@ let main (abspath : abs_path) : (font_abbrev * float * float) ScriptSchemeMap.t 
     read_assoc assoc
   with
   | Yojson.Json_error(msg) -> MYU.syntax_error pathstr msg
+*)

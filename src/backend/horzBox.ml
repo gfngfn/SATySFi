@@ -26,18 +26,15 @@ type reachability =
   | Reachable of ratios
 [@@deriving show]
 
-type font_abbrev = string
-[@@deriving show]
-
 type math_font_abbrev = string
 [@@deriving show]
 
 type file_path = string
 
-type font_with_size = font_abbrev * Length.t
+type font_with_size = FontKey.t * Length.t
 [@@deriving show]
 
-type font_with_ratio = font_abbrev * float * float
+type font_with_ratio = FontKey.t * float * float
 [@@deriving show]
 
 type page_content_scheme = {
@@ -66,7 +63,7 @@ type paddings = {
 
 
 type horz_string_info = {
-  font_abbrev    : font_abbrev;
+  font_abbrev    : FontKey.t;
   text_font_size : length;
   text_color     : color;
   rising         : length;

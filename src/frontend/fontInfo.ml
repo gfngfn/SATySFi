@@ -12,6 +12,8 @@ type 'a ok = ('a, font_error) result
 
 type tag = string
 
+type key = FontKey.t
+
 type font_definition = {
   font_tag : tag;
   font     : FontFormat.font;
@@ -24,124 +26,126 @@ let resolve_lib_file (relpath : lib_path) =
     |> Result.map_error (fun candidates -> CannotFindLibraryFileAsToFont(relpath, candidates))
 
 
-module FontAbbrevHashTable : sig
+module FontHashTable : sig
   val initialize : unit -> unit
-  val add_single : font_abbrev -> lib_path -> unit
-  val add_ttc : font_abbrev -> lib_path -> int -> unit
-  val fold : (font_abbrev -> font_definition -> 'a -> 'a) -> 'a -> 'a
-  val find : font_abbrev -> font_definition ok
+  val add_single : abs_path -> key
+  val add_ttc : abs_path -> int -> key
+  val fold : (key -> font_definition -> 'a -> 'a) -> 'a -> 'a
+  val find : key -> font_definition ok
 end = struct
 
-    type font_store =
-      | UnusedSingle
-      | UnusedTTC    of int
-      | Loaded       of font_definition
+  type font_store =
+    | UnusedSingle
+    | UnusedTTC    of int
+    | Loaded       of font_definition
 
-    module Ht = Hashtbl.Make
-      (struct
-        type t = font_abbrev
-        let equal = (=)
-        let hash = Hashtbl.hash
-      end)
+  module Ht = Hashtbl.Make(FontKey)
 
 
-    let abbrev_to_definition_hash_table : (lib_path * font_store ref) Ht.t = Ht.create 32
+  let abbrev_to_definition_hash_table : (abs_path * font_store ref) Ht.t = Ht.create 32
 
-    let current_tag_number = ref 0
-
-
-    let initialize () =
-      Ht.clear abbrev_to_definition_hash_table;
-      current_tag_number := 0
+  let current_tag_number = ref 0
 
 
-    let generate_tag () =
-      incr current_tag_number;
-      "/F" ^ (string_of_int !current_tag_number)
+  let initialize () =
+    Ht.clear abbrev_to_definition_hash_table;
+    FontKey.initialize ();
+    current_tag_number := 0
 
 
-    let add_single abbrev relpath =
-      match abbrev |> Ht.find_opt abbrev_to_definition_hash_table with
-      | Some((relpath, _)) ->
-          Logging.warn_duplicate_font_hash abbrev relpath
-
-      | None ->
-          let storeref = ref UnusedSingle in
-          Ht.add abbrev_to_definition_hash_table abbrev (relpath, storeref)
+  let generate_tag () =
+    incr current_tag_number;
+    "/F" ^ (string_of_int !current_tag_number)
 
 
-    let add_ttc abbrev relpath i =
-      if abbrev |> Ht.mem abbrev_to_definition_hash_table then
-        Logging.warn_duplicate_font_hash abbrev relpath
-      else
-        let storeref = ref (UnusedTTC(i)) in
-        Ht.add abbrev_to_definition_hash_table abbrev (relpath, storeref)
+  (* TODO: check duplicate registration *)
+  let add_single (abspath : abs_path) : key =
+    let key = FontKey.generate () in
+    let storeref = ref UnusedSingle in
+    Ht.add abbrev_to_definition_hash_table key (abspath, storeref);
+    key
 
 
-    let fold (f : font_abbrev -> font_definition -> 'a -> 'a) init =
-      Ht.fold (fun abbrev (_, storeref) acc ->
-        match !storeref with
-        | UnusedSingle -> acc (* Ignores unused fonts *)
-        | UnusedTTC(_) -> acc (* Ignores unused fonts *)
-        | Loaded(dfn)  -> f abbrev dfn acc
-      ) abbrev_to_definition_hash_table init
+  (* TODO: check duplicate registration *)
+  let add_ttc (abspath : abs_path) (index : int) : key =
+    let key = FontKey.generate () in
+    let storeref = ref (UnusedTTC(index)) in
+    Ht.add abbrev_to_definition_hash_table key (abspath, storeref);
+    key
 
 
-    let find (abbrev : font_abbrev) : font_definition ok =
-      let open ResultMonad in
-      match Ht.find_opt abbrev_to_definition_hash_table abbrev with
-      | None ->
-          err @@ InvalidFontAbbrev(abbrev)
-
-      | Some((relpath, storeref)) ->
-          begin
-            match !storeref with
-            | Loaded(dfn) ->
-                return dfn
-
-            | UnusedSingle ->
-              (* If this is the first access to the single font: *)
-                let* abspath = resolve_lib_file relpath in
-                begin
-                  match FontFormat.get_decoder_single (abbrev ^ "-Composite") (* temporary *) abspath with
-                  | None ->
-                    (* If the font file is a TrueType collection: *)
-                      err @@ NotASingleFont(abbrev, abspath)
-
-                  | Some((dcdr, font)) ->
-                      let tag = generate_tag () in
-                      let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
-                      storeref := Loaded(dfn);
-                      return dfn
-                end
-
-            | UnusedTTC(i) ->
-              (* If this is the first access to the TrueType collection: *)
-                let* abspath = resolve_lib_file relpath in
-                begin
-                  match FontFormat.get_decoder_ttc (abbrev ^ "-Composite") (* temporary *) abspath i with
-                  | None ->
-                      err @@ NotATTCElement(abbrev, abspath, i)
-
-                  | Some((dcdr, font)) ->
-                      let tag = generate_tag () in
-                      let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
-                      storeref := Loaded(dfn);
-                      return dfn
-                end
-          end
-
-  end
+  let fold (f : key -> font_definition -> 'a -> 'a) (init : 'a) =
+    Ht.fold (fun key (_, storeref) acc ->
+      match !storeref with
+      | UnusedSingle -> acc (* Ignores unused fonts *)
+      | UnusedTTC(_) -> acc (* Ignores unused fonts *)
+      | Loaded(dfn)  -> f key dfn acc
+    ) abbrev_to_definition_hash_table init
 
 
-let get_font_definition_exn (abbrev : font_abbrev) =
-  match FontAbbrevHashTable.find abbrev with
+  let find (key : key) : font_definition ok =
+    let open ResultMonad in
+    match Ht.find_opt abbrev_to_definition_hash_table key with
+    | None ->
+        assert false
+
+    | Some((abspath, storeref)) ->
+        begin
+          match !storeref with
+          | Loaded(dfn) ->
+              return dfn
+
+          | UnusedSingle ->
+            (* If this is the first access to the single font: *)
+              let fontname = Printf.sprintf "id-%s-Composite" (FontKey.show key) in (* TODO: fix this *)
+              begin
+                match FontFormat.get_decoder_single fontname abspath with
+                | None ->
+                  (* If the font file is a TrueType collection: *)
+                    err @@ NotASingleFont(abspath)
+
+                | Some((dcdr, font)) ->
+                    let tag = generate_tag () in
+                    let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
+                    storeref := Loaded(dfn);
+                    return dfn
+              end
+
+          | UnusedTTC(i) ->
+            (* If this is the first access to the TrueType collection: *)
+              let fontname = Printf.sprintf "id-%s-Composite" (FontKey.show key) in (* TODO: fix this *)
+              begin
+                match FontFormat.get_decoder_ttc fontname abspath i with
+                | None ->
+                    err @@ NotATTCElement(abspath, i)
+
+                | Some((dcdr, font)) ->
+                    let tag = generate_tag () in
+                    let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
+                    storeref := Loaded(dfn);
+                    return dfn
+              end
+        end
+
+end
+
+
+let add_single (abspath : abs_path) : key =
+  FontHashTable.add_single abspath
+
+
+let add_ttc (abspath : abs_path) (index : int) : key =
+  FontHashTable.add_ttc abspath index
+
+
+let get_font_definition_exn (key : key) : font_definition =
+  match FontHashTable.find key with
   | Ok(dfn)  -> dfn
   | Error(e) -> raise (FontInfoError(e))
 
 
-let get_font_tag (abbrev : font_abbrev) : tag =
-  let dfn = get_font_definition_exn abbrev in
+let get_font_tag (key : key) : tag =
+  let dfn = get_font_definition_exn key in
   dfn.font_tag
 
 
@@ -182,10 +186,13 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcd
     (gsynlst |> List.map (fun (gid, _) -> gid) (* temporary *), otxt, (FontFormat.PerMille(rawwid), FontFormat.PerMille(rawhgt), FontFormat.PerMille(rawdpt)))
 
 
-let get_glyph_id font_abbrev dcdr uch =
+let get_glyph_id dcdr uch =
   match FontFormat.get_glyph_id dcdr uch with
   | None ->
+      (* TODO: fix this *)
+(*
       Logging.warn_no_glyph font_abbrev uch;
+*)
       FontFormat.notdef
 
   | Some(gid) ->
@@ -199,8 +206,8 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchseglst : uchar_segment l
   let dcdr = dfn.decoder in
   let gseglst =
     uchseglst |> List.map (fun (ubase, umarks) ->
-      let gbase = get_glyph_id font_abbrev dcdr ubase in
-      let gmarks = List.map (get_glyph_id font_abbrev dcdr) umarks in
+      let gbase = get_glyph_id dcdr ubase in
+      let gmarks = List.map (get_glyph_id dcdr) umarks in
       (gbase, gmarks)
     )
   in
@@ -237,7 +244,7 @@ module MathFontAbbrevHashTable
 
     module Ht = Hashtbl.Make
       (struct
-        type t = font_abbrev
+        type t = math_font_abbrev
         let equal = (=)
         let hash = Hashtbl.hash
       end)
@@ -414,7 +421,7 @@ let get_math_char_info (mfabbrev : math_font_abbrev) ~(is_in_base_level : bool) 
 
 let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
   let keyval =
-    [] |> FontAbbrevHashTable.fold (fun _ dfn acc ->
+    [] |> FontHashTable.fold (fun _ dfn acc ->
       let tag = dfn.font_tag in
       let font = dfn.font in
       let dcdr = dfn.decoder in
@@ -434,7 +441,7 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
 let initialize () =
   let res =
     let open ResultMonad in
-    FontAbbrevHashTable.initialize ();
+    FontHashTable.initialize ();
     MathFontAbbrevHashTable.initialize ();
     let* abspath_S   = resolve_lib_file (make_lib_path "dist/unidata/Scripts.txt") in
     let* abspath_EAW = resolve_lib_file (make_lib_path "dist/unidata/EastAsianWidth.txt") in
@@ -450,11 +457,14 @@ let initialize () =
     let font_hash_dist = LoadFont.main abspath_fonts in
     let font_hash = List.append font_hash_local font_hash_dist in
     if OptionState.does_show_fonts () then Logging.show_fonts font_hash;
-    font_hash |> List.iter (fun (abbrev, data) ->
+(*
+    font_hash |> List.iter (fun (name, data) ->
+      let abbrev = StringFontAbbrev(name) in
       match data with
       | FontAccess.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
       | FontAccess.Collection(relpath, i) -> FontAbbrevHashTable.add_ttc abbrev relpath i
     );
+*)
     let math_font_hash_local =
       match Config.resolve_lib_file (make_lib_path "local/hash/mathfonts.satysfi-hash") with
       | Error(_)    -> []

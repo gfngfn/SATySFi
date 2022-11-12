@@ -1060,30 +1060,21 @@ let report_config_error : config_error -> unit = function
 
 
 let report_font_error : font_error -> unit = function
-  | InvalidFontAbbrev(abbrev) ->
-      report_error Interface [
-        NormalLine (Printf.sprintf "cannot find a font named '%s'." abbrev);
-      ]
-
   | InvalidMathFontAbbrev(mfabbrev) ->
       report_error Interface [
         NormalLine(Printf.sprintf "cannot find a math font named '%s'." mfabbrev);
       ]
 
-  | NotASingleFont(abbrev, abspath) ->
+  | NotASingleFont(abspath) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the font name '%s'," abbrev);
-        NormalLine("is not a single font file.");
+        NormalLine(Printf.sprintf "the font file '%s' is not a single font file." fname);
       ]
 
-  | NotATTCElement(abbrev, abspath, i) ->
+  | NotATTCElement(abspath, index) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the font name '%s' and index %d," abbrev i);
-        NormalLine("is not a TrueType collection.");
+        NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection." fname index);
       ]
 
   | NotASingleMathFont(mfabbrev, abspath) ->

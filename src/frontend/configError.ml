@@ -75,10 +75,9 @@ type config_error =
   | DocumentAttributeError    of DocumentAttribute.error
 
 type font_error =
-  | InvalidFontAbbrev             of font_abbrev
   | InvalidMathFontAbbrev         of math_font_abbrev
-  | NotASingleFont                of font_abbrev * abs_path
-  | NotATTCElement                of font_abbrev * abs_path * int
+  | NotASingleFont                of abs_path
+  | NotATTCElement                of abs_path * int
   | NotASingleMathFont            of math_font_abbrev * abs_path
   | NotATTCMathFont               of math_font_abbrev * abs_path * int
   | CannotFindLibraryFileAsToFont of lib_path * abs_path list

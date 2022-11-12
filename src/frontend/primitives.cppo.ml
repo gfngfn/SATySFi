@@ -43,6 +43,7 @@ let tPRP  = (~! "pre-path"      , BaseType(PrePathType))
 let tPATH = (~! "path"          , BaseType(PathType))
 let tGR   = (~! "graphics"      , BaseType(GraphicsType))
 let tIMG  = (~! "image"         , BaseType(ImageType))
+let tFONTKEY = (~! "font"       , BaseType(FontType))
 let tDOC  = (~! "document"      , BaseType(DocumentType))
 let tRE   = (~! "regexp"        , BaseType(RegExpType))
 let tTCTX = (~! "text-info"     , BaseType(TextInfoType))
@@ -69,7 +70,7 @@ let tMCCLS        = (~! "mccls"   , variant [] vid_mccls   )
 let tCELL         = (~! "cell"    , variant [] vid_cell    )
 
 (* -- predefined alias types -- *)
-let tFONT         = tPROD [tS; tFL; tFL]
+let tFONTWR       = tPROD [tFONTKEY; tFL; tFL]
 let tPT           = tPROD [tLN; tLN]
 let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]

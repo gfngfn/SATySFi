@@ -413,11 +413,13 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | ASTCodeSymbol(_symb) ->
       report_bug_ast "ASTCodeSymbol(_) at stage 0" ast
 
-  | LoadSingleFont(_abspath_font) ->
-      failwith "TODO: LoadSingleFont"
+  | LoadSingleFont(abspath_font) ->
+      let fontkey = FontInfo.add_single abspath_font in
+      BaseConstant(BCFontKey(fontkey))
 
-  | LoadCollectionFont(_abspath_font, _index) ->
-      failwith "TODO: LoadCollectionFont"
+  | LoadCollectionFont(abspath_font, index) ->
+      let fontkey = FontInfo.add_ttc abspath_font index in
+      BaseConstant(BCFontKey(fontkey))
 
 #include "__evaluator_0.gen.ml"
 
@@ -592,11 +594,11 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | ASTCodeSymbol(symb) ->
       CdContentOf(Range.dummy "ASTCodeSymbol", symb)
 
-  | LoadSingleFont(_abspath_font) ->
-      failwith "TODO: LoadSingleFont"
+  | LoadSingleFont(abspath_font) ->
+      CdLoadSingleFont(abspath_font)
 
-  | LoadCollectionFont(_abspath_font, _index) ->
-      failwith "TODO: LoadCollectionFont"
+  | LoadCollectionFont(abspath_font, index) ->
+      CdLoadCollectionFont(abspath_font, index)
 
 #include "__evaluator_1.gen.ml"
 

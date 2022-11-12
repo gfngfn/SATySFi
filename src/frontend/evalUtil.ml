@@ -168,22 +168,22 @@ let get_decoset (value : syntactic_value) =
       report_bug_value "interpret_decoset" value
 
 
-let get_font (value : syntactic_value) : HorzBox.font_with_ratio =
+let get_font_with_ratio (value : syntactic_value) : HorzBox.font_with_ratio =
   match value with
   | Tuple([
-      BaseConstant(BCString(abbrev));
+      BaseConstant(BCFontKey(fontkey));
       BaseConstant(BCFloat(sizer));
       BaseConstant(BCFloat(risingr));
     ]) ->
-      (abbrev, sizer, risingr)
+      (fontkey, sizer, risingr)
 
   | _ ->
       report_bug_value "interpret_font" value
 
 
-let make_font_value (abbrev, sizer, risingr) =
+let make_font_with_ratio_value ((fontkey, sizer, risingr) : HorzBox.font_with_ratio) =
   Tuple([
-    BaseConstant(BCString(abbrev));
+    BaseConstant(BCFontKey(fontkey));
     BaseConstant(BCFloat(sizer));
     BaseConstant(BCFloat(risingr));
   ])

@@ -937,6 +937,7 @@ make_text_mode_context (tctx, tctxsub)
 let width = ctx.HorzBox.paragraph_width in
 make_inline_boxes [ HorzEmbeddedVertBreakable{ width; contents } ]
 |}
+(*
     ; inst "PrimitiveFont"
         ~fields:[
         ]
@@ -949,6 +950,7 @@ make_inline_boxes [ HorzEmbeddedVertBreakable{ width; contents } ]
         ~code:{|
 make_font_value (abbrev, size_ratio, rising_ratio)
 |}
+*)
     ; inst "PrimitiveLineBreak"
         ~name:"line-break"
         ~type_:Type.(tB @-> tB @-> tCTX @-> tIB @-> tBB)
@@ -1377,12 +1379,12 @@ make_length (ctx.HorzBox.font_size)
 |}
     ; inst "PrimitiveSetFont"
         ~name:"set-font"
-        ~type_:Type.(tSCR @-> tFONT @-> tCTX @-> tCTX)
+        ~type_:Type.(tSCR @-> tFONTWR @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
           param "script" ~type_:"script";
-          param "font_info" ~type_:"font";
+          param "font_info" ~type_:"font_with_ratio";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
@@ -1392,7 +1394,7 @@ Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
 |}
     ; inst "PrimitiveGetFont"
         ~name:"get-font"
-        ~type_:Type.(tSCR @-> tCTX @-> tFONT)
+        ~type_:Type.(tSCR @-> tCTX @-> tFONTWR)
         ~fields:[
         ]
         ~params:[
@@ -1402,7 +1404,7 @@ Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
         ~is_pdf_mode_primitive:true
         ~code:{|
 let fontwr = HorzBox.get_font_with_ratio ctx script in
-make_font_value fontwr
+make_font_with_ratio_value fontwr
 |}
     ; inst "PrimitiveSetMathFont"
         ~name:"set-math-font"
