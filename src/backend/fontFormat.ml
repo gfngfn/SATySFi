@@ -552,15 +552,15 @@ end
 
 let select_langsys gxxx_langsys script =
   let open ResultMonad in
-    gxxx_langsys script >>= fun langsys_res ->
-    let langsys =
-      match langsys_res with
-      | (Some(langsys), _)   -> langsys
-      | (None, langsys :: _) -> langsys
-      | (None, [])           -> remains_to_be_implemented "no langsys"
-        (* TODO: should depend on the current language system *)
-    in
-    return langsys
+  gxxx_langsys script >>= fun langsys_res ->
+  let langsys =
+    match langsys_res with
+    | (Some(langsys), _)   -> langsys
+    | (None, langsys :: _) -> langsys
+    | (None, [])           -> remains_to_be_implemented "no langsys"
+      (* TODO: should depend on the current language system *)
+  in
+  return langsys
 
 
 let select_gpos_langsys = select_langsys D.Gpos.langsyses
@@ -824,7 +824,7 @@ end = struct
           begin
             match gomarks with
             | _ :: _ ->
-              (* temporary; should refer to MarkToMark table
+              (* TODO: should refer to MarkToMark table
                  in order to handle diacritical marks after the first one *)
                 begin
                   match attach_marks false mktbl MarkTable.find_base_opt gobase gomarks with
@@ -846,7 +846,7 @@ end = struct
                       begin
                         match lookup mktbl liginfolst segorgtail with
                         | None                                   -> Match(gobase, [], segorgtail)
-                        | Some((golig, markinfolst, segorgrest)) -> Match(golig, markinfolst, segorgrest)  (* temporary *)
+                        | Some((golig, markinfolst, segorgrest)) -> Match(golig, markinfolst, segorgrest)  (* TODO *)
                       end
                 end
           end
@@ -1205,14 +1205,13 @@ type font_descriptor = {
     font_family  : string;
     font_stretch : font_stretch option;
     font_weight  : int option;  (* Ranges only over {100, 200, ..., 900}. *)
-    flags        : int option;  (* temporary; maybe should be handled as a boolean record *)
+    flags        : int option;  (* TODO: handle this as a boolean record *)
     font_bbox    : bbox;
     italic_angle : float;
     ascent       : per_mille;
     descent      : per_mille;
     stemv        : float;
     font_data    : (D.source resource) ref;
-      (* temporary; should contain more fields *)
   }
 
 
@@ -1317,13 +1316,11 @@ let get_cmap_subtable ~(file_path : abs_path) (d : D.source) : V.Cmap.subtable o
     begin
       D.Cmap.get d >>= fun icmap ->
       D.Cmap.get_subtables icmap >>= fun isubtbls ->
-      isubtbls |> List.fold_left (fun res isubtbl -> (* TODO: refactor here by using `mapM` *)
-        res >>= fun acc ->
+      isubtbls |> mapM (fun isubtbl ->
         let format = D.Cmap.get_format_number isubtbl in
         D.Cmap.unmarshal_subtable isubtbl >>= fun subtbl ->
-        return (Alist.extend acc (subtbl, format))
-      ) (return Alist.empty) >>= fun acc ->
-      let subtbls = Alist.to_list acc in
+        return (subtbl, format)
+      ) >>= fun subtbls ->
       let opt =
         List.fold_left (fun opt idspred ->
           match opt with
@@ -1406,18 +1403,17 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) : font_desc
        per_mille ~units_per_em head_derived.y_max)
     in
     return {
-      font_name    = font_name; (* Same as `Otfm.postscript_name dcdr` *)
-      font_family  = "";    (* temporary; should be gotten from decoder *)
+      font_name    = font_name; (* PostScript name *)
+      font_family  = "";    (* TODO: get this from decoder *)
       font_stretch = Some(font_stretch_of_width_class ios2.I.Os2.value.us_width_class);
       font_weight  = Some(font_weight_of_weight_class ios2.I.Os2.value.us_weight_class);
-      flags        = None;  (* temporary; should be gotten from decoder *)
+      flags        = None;  (* TODO: get this from decoder *)
       font_bbox    = bbox;
-      italic_angle = 0.;    (* temporary; should be gotten from decoder; 'post.italicAngle' *)
+      italic_angle = 0.;    (* TODO: get this from decoder; 'post.italicAngle' *)
       ascent       = per_mille ~units_per_em ihhea.I.Hhea.value.ascender;
       descent      = per_mille ~units_per_em ihhea.I.Hhea.value.descender;
-      stemv        = 0.;    (* temporary; should be gotten from decoder *)
+      stemv        = 0.;    (* TODO: get this from decoder *)
       font_data    = ref (Data(d));
-        (* temporary; should contain more fields *)
     }
   end
     |> Result.map_error (fun e -> FailedToDecodeFont(dcdr.file_path, e))
@@ -1466,16 +1462,16 @@ let font_file_info_of_embedding embedding =
 
 
 module CIDFontType0 = struct
+
   type font = {
-      cid_system_info : cid_system_info;
-      base_font       : string;
-      font_descriptor : font_descriptor;
-      dw              : design_units option;  (* Represented by units defined by head.unitsPerEm *)
-      dw2             : (int * int) option;
-        (* temporary; should contain more fields; /W2 *)
-    }
+    cid_system_info : cid_system_info;
+    base_font       : string;
+    font_descriptor : font_descriptor;
+    dw              : design_units option;
+    dw2             : (int * int) option;
+  }
     (* Doesn't have to contain information about /W entry;
-       the PDF file will be furnished with /W entry when outputted
+       the resulting PDF file will be furnished with /W entry when output
        according to the glyph metrics table. *)
 
 
@@ -1490,16 +1486,18 @@ module CIDFontType0 = struct
       dw              = None;  (* temporary *)
       dw2             = None;  (* temporary *)
     }
+
 end
 
 
 (* -w -unused-constructor *)
 type[@ocaml.warning "-37"] cid_to_gid_map =
   | CIDToGIDIdentity
-  | CIDToGIDStream   of (string resource) ref  (* temporary *)
+  | CIDToGIDStream   of (string resource) ref  (* TODO *)
 
 
 module CIDFontType2 = struct
+
   type font = {
       cid_system_info  : cid_system_info;
       base_font        : string;
@@ -1508,10 +1506,9 @@ module CIDFontType2 = struct
       dw2              : (int * int) option;
       cid_to_gid_map   : cid_to_gid_map;
       is_pure_truetype : bool;
-        (* temporary; should contain more fields; /W2 *)
     }
     (* Doesn't have to contain information about /W entry;
-       the /W entry will be added by using the glyph metrics table when the PDF file is outputted. *)
+       the /W entry will be added by using the glyph metrics table when outputting the PDF file. *)
 
 
   let of_decoder ~(is_pure_truetype : bool) (dcdr : decoder) (cidsysinfo : cid_system_info) : font ok =
@@ -1522,11 +1519,12 @@ module CIDFontType2 = struct
       cid_system_info  = cidsysinfo;
       base_font        = base_font;
       font_descriptor  = font_descriptor;
-      dw               = None;  (* temporary *)
-      dw2              = None;  (* temporary *)
+      dw               = None;  (* TODO *)
+      dw2              = None;  (* TODO *)
       is_pure_truetype = is_pure_truetype;
-      cid_to_gid_map   = CIDToGIDIdentity;  (* temporary *)
+      cid_to_gid_map   = CIDToGIDIdentity;  (* TODO *)
     }
+
 end
 
 
@@ -1546,63 +1544,64 @@ let pdfobject_of_bbox (PerMille(xmin), PerMille(ymin), PerMille(xmax), PerMille(
   Pdf.Array[Pdf.Integer(xmin); Pdf.Integer(ymin); Pdf.Integer(xmax); Pdf.Integer(ymax)]
 
 
-module ToUnicodeCMap
-: sig
-    type t
-    val create : unit -> t
-    val add_single : t -> subset_glyph_id -> Uchar.t list -> unit
-    val stringify : t -> string
-  end
-= struct
+module ToUnicodeCMap : sig
+  type t
+  val create : unit -> t
+  val add_single : t -> subset_glyph_id -> Uchar.t list -> unit
+  val stringify : t -> string
+end = struct
 
-    type t = ((Uchar.t list) GSHt.t) array
+  type t = ((Uchar.t list) GSHt.t) array
 
-    let create () =
-      Array.init 1024 (fun _ -> GSHt.create 32)
 
-    let add_single touccmap gid uchlst =
-      let i = match gid with SubsetNumber(n) -> n / 64 in
-      GSHt.add (touccmap.(i)) gid uchlst
+  let create () =
+    Array.init 1024 (fun _ -> GSHt.create 32)
 
-    let stringify touccmap =
-      let prefix =
-          "/CIDInit/ProcSet findresource begin "
-        ^ "12 dict begin begincmap/CIDSystemInfo<<"
-        ^ "/Registry(Adobe)/Ordering(UCS)/Supplement 0>> def"
-        ^ "/CMapName/Adobe-Identity-UCS def/CMapType 2 def "
-        ^ "1 begincodespacerange<0000><FFFF>endcodespacerange "
-      in
-      let postfix =
-        "endcmap CMapName currentdict/CMap defineresource pop end end"
-      in
-      let buf = Buffer.create ((15 + (6 + 512) * 64 + 10) * 1024) in
-      Array.iter (fun ht ->
-        let num = GSHt.length ht in
-        if num <= 0 then
-          ()
-        else
-          begin
-            Printf.bprintf buf "%d beginbfchar" num;
-            GSHt.iter (fun (SubsetNumber(n)) uchlst ->
-              let dst = (InternalText.to_utf16be_hex (InternalText.of_uchar_list uchlst)) in
-              Printf.bprintf buf "<%04X><%s>" n dst
-            ) ht;
-            Printf.bprintf buf "endbfchar ";
-          end
-      ) touccmap;
-      let strmain = Buffer.contents buf in
-      let res = prefix ^ strmain ^ postfix in
-      res
 
-  end
+  let add_single touccmap gid uchlst =
+    let i = match gid with SubsetNumber(n) -> n / 64 in
+    GSHt.add (touccmap.(i)) gid uchlst
+
+
+  let stringify touccmap =
+    let prefix =
+        "/CIDInit/ProcSet findresource begin "
+      ^ "12 dict begin begincmap/CIDSystemInfo<<"
+      ^ "/Registry(Adobe)/Ordering(UCS)/Supplement 0>> def"
+      ^ "/CMapName/Adobe-Identity-UCS def/CMapType 2 def "
+      ^ "1 begincodespacerange<0000><FFFF>endcodespacerange "
+    in
+    let postfix =
+      "endcmap CMapName currentdict/CMap defineresource pop end end"
+    in
+    let buf = Buffer.create ((15 + (6 + 512) * 64 + 10) * 1024) in
+    Array.iter (fun ht ->
+      let num = GSHt.length ht in
+      if num <= 0 then
+        ()
+      else
+        begin
+          Printf.bprintf buf "%d beginbfchar" num;
+          GSHt.iter (fun (SubsetNumber(n)) uchlst ->
+            let dst = (InternalText.to_utf16be_hex (InternalText.of_uchar_list uchlst)) in
+            Printf.bprintf buf "<%04X><%s>" n dst
+          ) ht;
+          Printf.bprintf buf "endbfchar ";
+        end
+    ) touccmap;
+    let strmain = Buffer.contents buf in
+    let res = prefix ^ strmain ^ postfix in
+    res
+
+end
 
 
 module Type0 = struct
   type font = {
-      base_font        : string;
-      encoding         : cmap;
-      descendant_fonts : cid_font;  (* Represented as a singleton list in PDF. *)
-    }
+    base_font        : string;
+    encoding         : cmap;
+    descendant_fonts : cid_font;  (* Represented as a singleton list in PDF. *)
+  }
 
 
   let of_cid_font cidfont fontname cmap =
@@ -1622,7 +1621,7 @@ module Type0 = struct
       Pdf.Dictionary[
         ("/Type"       , Pdf.Name("/FontDescriptor"));
         ("/FontName"   , Pdf.Name("/" ^ (add_subset_tag subset_tag_opt base_font)));
-        ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
+        ("/Flags"      , Pdf.Integer(4));  (* TODO: make this changeable *)
         ("/FontBBox"   , pdfobject_of_bbox fontdescr.font_bbox);
         ("/ItalicAngle", Pdf.Real(fontdescr.italic_angle));
         ("/Ascent"     , of_per_mille fontdescr.ascent);
@@ -1720,7 +1719,6 @@ module Type0 = struct
         ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
         ("/FontDescriptor", obj_descr);
         ("/W"             , obj_warr);
-          (* temporary; should add more; /W2 *)
       ] |> add_entry_if_non_null "/DW"  (of_per_mille_opt pmoptdw)
         |> add_entry_if_non_null "/DW2" (of_per_mille_pair_opt pmpairoptdw2))
     in
@@ -1994,7 +1992,7 @@ let convert_kern (mkopt : V.Math.math_kern option) : math_kern =
     match mk with
     | ([], kernlast :: [])                       -> (Alist.to_list acc, f kernlast)
     | (hgthead :: hgttail, kernhead :: kerntail) -> aux (Alist.extend acc (f hgthead, f kernhead)) (hgttail, kerntail)
-    | _                                          -> assert false  (* temporary; should report error *)
+    | _                                          -> assert false  (* TODO: report error *)
   in
   match mkopt with
   | None     -> ([], 0)
@@ -2076,7 +2074,7 @@ let make_math_decoder_from_decoder (abspath : abs_path) (dcdr : decoder) (font :
           as_normal_font             = dcdr;
           math_constants             = mathraw.V.Math.math_constants;
           math_italics_correction    = micmap;
-          math_top_accent_attachment = MathInfoMap.empty;  (* temporary *)
+          math_top_accent_attachment = MathInfoMap.empty;  (* TODO *)
           math_vertical_variants     = mvertvarmap;
           math_horizontal_variants   = mhorzvarmap;
           math_kern_info             = mkimap;
