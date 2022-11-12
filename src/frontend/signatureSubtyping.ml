@@ -62,7 +62,6 @@ let rec lookup_struct (rng : Range.t) (modsig1 : signature) (modsig2 : signature
                 begin
                   match lookup_type_entry tentry1 tentry2 with
                   | None ->
-                      let () = print_endline "****** 3" in (* TODO: remove this *)
                       err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
 
                   | Some(subst0) ->
@@ -345,7 +344,6 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                   begin
                     match (ssig1 |> StructSig.find_type tynm2, ssig2 |> StructSig.find_type tynm2) with
                     | (Some(tentry1), Some(tentry2)) ->
-                        print_endline "****** 1"; (* TODO: remove this *)
                         err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
 
                     | _ ->
@@ -370,7 +368,6 @@ and subtype_concrete_with_concrete (rng : Range.t) (modsig1 : signature) (modsig
                 if b1 && b2 then
                   return ()
                 else
-                  let () = print_endline "****** 2" in (* TODO: remove this *)
                   err (NotASubtypeAboutType(rng, tynm2, tentry1, tentry2))
           )
           ~m:(fun modnm2 { mod_signature = modsig2; _ } res ->

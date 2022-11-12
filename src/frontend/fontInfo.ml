@@ -50,7 +50,6 @@ end = struct
 
 
   let initialize () =
-    Printf.printf "**** INITIALIZE\n"; (* TODO: remove this *)
     Ht.clear key_to_definition_hash_table;
     FontKey.initialize ();
     current_tag_number := 0
@@ -66,7 +65,6 @@ end = struct
     let key = FontKey.generate () in
     let storeref = ref UnusedSingle in
     Ht.add key_to_definition_hash_table key (abspath, storeref);
-    Printf.printf "**** %s = SINGLE %s\n" (FontKey.show key) (get_abs_path_string abspath); (* TODO: remove this *)
     key
 
 
@@ -75,7 +73,6 @@ end = struct
     let key = FontKey.generate () in
     let storeref = ref (UnusedTTC(index)) in
     Ht.add key_to_definition_hash_table key (abspath, storeref);
-    Printf.printf "**** %s = TTC %s, %d\n" (FontKey.show key) (get_abs_path_string abspath) index; (* TODO: remove this *)
     key
 
 
@@ -92,7 +89,6 @@ end = struct
     let open ResultMonad in
     match Ht.find_opt key_to_definition_hash_table key with
     | None ->
-        Printf.printf "**** FIND %s\n" (FontKey.show key); (* TODO: remove this *)
         assert false
 
     | Some((abspath, storeref)) ->
@@ -254,7 +250,6 @@ end = struct
 
 
   let initialize () =
-    Printf.printf "**** INITIALIZE MATH\n"; (* TODO: remove this *)
     Ht.clear key_to_definition_hash_table;
     current_tag_number := 0
 
@@ -268,7 +263,6 @@ end = struct
     let mathkey = FontKey.generate () in
     let storeref = ref UnusedMathSingle in
     Ht.add key_to_definition_hash_table mathkey (abspath, storeref);
-    Printf.printf "**** %s = MATH SINGLE %s\n" (FontKey.show mathkey) (get_abs_path_string abspath); (* TODO: remove this *)
     mathkey
 
 
@@ -276,7 +270,6 @@ end = struct
     let mathkey = FontKey.generate () in
     let storeref = ref (UnusedMathTTC(index)) in
     Ht.add key_to_definition_hash_table mathkey (abspath, storeref);
-    Printf.printf "**** %s = MATH TTC %s, %d\n" (FontKey.show mathkey) (get_abs_path_string abspath) index; (* TODO: remove this *)
     mathkey
 
 
@@ -293,7 +286,6 @@ end = struct
     let open ResultMonad in
     match Ht.find_opt key_to_definition_hash_table mathkey with
     | None ->
-        Printf.printf "**** FIND MATH %s\n" (FontKey.show mathkey); (* TODO: remove this *)
         assert false
 
     | Some((abspath, storeref)) ->
