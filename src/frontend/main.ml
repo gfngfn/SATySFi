@@ -1158,6 +1158,18 @@ let error_log_environment (suspended : unit -> unit) : unit =
         NormalLine("invalid string for hyphenation pattern.");
       ]
 
+  | HorzBox.FontIsNotSet{ raw; normalized } ->
+      report_error Interface [
+        NormalLine("font is not set;");
+        DisplayLine(Printf.sprintf "- raw script: %s" (CharBasis.show_script raw));
+        DisplayLine(Printf.sprintf "- normalized script: %s" (CharBasis.show_script normalized));
+      ]
+
+  | HorzBox.MathFontIsNotSet ->
+      report_error Interface [
+        NormalLine("math font is not set.");
+      ]
+
   | ConfigError(e) ->
       report_config_error e
 

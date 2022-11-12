@@ -3,8 +3,6 @@ open Types
 open LengthInterface
 
 
-exception MathFontIsNotSet
-
 type t = input_context
 
 
@@ -44,7 +42,7 @@ let font_size ((ctx, _) : t)  =
 
 let math_font_key_exn ((ctx, _) : t) =
   match ctx.math_font_key with
-  | None          -> raise MathFontIsNotSet
+  | None          -> raise HorzBox.MathFontIsNotSet
   | Some(mathkey) -> mathkey
 
 

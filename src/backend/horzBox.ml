@@ -4,7 +4,12 @@ open LengthInterface
 open GraphicBase
 
 
-exception NoFontIsSet of CharBasis.script * CharBasis.script
+exception FontIsNotSet of {
+  raw        : CharBasis.script;
+  normalized : CharBasis.script;
+}
+
+exception MathFontIsNotSet
 
 
 type pure_badness = int
@@ -518,7 +523,7 @@ let normalize_script ctx script_raw =
 let get_font_with_ratio ctx script_raw =
   let script = normalize_script ctx script_raw in
     match ctx.font_scheme |> CharBasis.ScriptSchemeMap.find_opt script with
-    | None          -> raise (NoFontIsSet(script_raw, script))
+    | None          -> raise (FontIsNotSet{ raw = script_raw; normalized = script })
     | Some(fontsch) -> fontsch
 
 
