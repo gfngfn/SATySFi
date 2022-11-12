@@ -1,0 +1,13 @@
+language: "0.1.0"
+contents:
+  type: "font"
+  main_module: "FontLatinModern"
+  elements:
+  - path: "./fonts/lmmono10-regular.otf"
+    contents:
+      type: "opentype_single"
+      name: "mono"
+  - path: "./fonts/lmsans10-regular.otf"
+    contents:
+      type: "opentype_single"
+      name: "sans"

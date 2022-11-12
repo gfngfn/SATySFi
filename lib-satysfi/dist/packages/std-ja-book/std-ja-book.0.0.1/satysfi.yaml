@@ -24,3 +24,15 @@ contents:
     - name: "footnote-scheme"
       requirements:
         - "0.0.1"
+
+    - name: "font-junicode"
+      requirements:
+        - "0.0.1"
+
+    - name: "font-latin-modern"
+      requirements:
+        - "0.0.1"
+
+    - name: "font-ipa-ex"
+      requirements:
+        - "0.0.1"

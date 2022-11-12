@@ -48,6 +48,7 @@ end = struct
 
 
   let initialize () =
+    Printf.printf "**** INITIALIZE\n"; (* TODO: remove this *)
     Ht.clear abbrev_to_definition_hash_table;
     FontKey.initialize ();
     current_tag_number := 0
@@ -63,6 +64,7 @@ end = struct
     let key = FontKey.generate () in
     let storeref = ref UnusedSingle in
     Ht.add abbrev_to_definition_hash_table key (abspath, storeref);
+    Printf.printf "**** %s = SINGLE %s\n" (FontKey.show key) (get_abs_path_string abspath); (* TODO: remove this *)
     key
 
 
@@ -71,6 +73,7 @@ end = struct
     let key = FontKey.generate () in
     let storeref = ref (UnusedTTC(index)) in
     Ht.add abbrev_to_definition_hash_table key (abspath, storeref);
+    Printf.printf "**** %s = TTC %s, %d\n" (FontKey.show key) (get_abs_path_string abspath) index; (* TODO: remove this *)
     key
 
 
@@ -87,6 +90,7 @@ end = struct
     let open ResultMonad in
     match Ht.find_opt abbrev_to_definition_hash_table key with
     | None ->
+        Printf.printf "**** FIND %s\n" (FontKey.show key);
         assert false
 
     | Some((abspath, storeref)) ->

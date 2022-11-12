@@ -18,7 +18,6 @@ let reset () =
   if OptionState.is_text_mode () then
     return ()
   else begin
-    FontInfo.initialize ();
     ImageInfo.initialize ();
     NamedDest.initialize ();
     return ()
@@ -31,6 +30,7 @@ let initialize () : Typeenv.t * environment =
   BoundID.initialize ();
   EvalVarID.initialize ();
   StoreID.initialize ();
+  FontInfo.initialize ();
   let res =
     if OptionState.is_text_mode () then
       Primitives.make_text_mode_environments ()
@@ -184,6 +184,7 @@ let preprocess_and_evaluate (env : environment) (libs : (abs_path * binding list
        regardless of whether `--bytecomp` was specified. *)
   let (env, codebindacc) =
     libs |> List.fold_left (fun (env, codebindacc) (abspath, binds) ->
+      Logging.begin_to_preprocess_file abspath;
       let (env, cd_rec_or_nonrecs) = Evaluator.interpret_bindings_0 env binds in
       (env, Alist.extend codebindacc (abspath, cd_rec_or_nonrecs))
     ) (env, Alist.empty)

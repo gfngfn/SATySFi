@@ -178,7 +178,7 @@ let get_font_with_ratio (value : syntactic_value) : HorzBox.font_with_ratio =
       (fontkey, sizer, risingr)
 
   | _ ->
-      report_bug_value "interpret_font" value
+      report_bug_value "get_font_with_ratio" value
 
 
 let make_font_with_ratio_value ((fontkey, sizer, risingr) : HorzBox.font_with_ratio) =

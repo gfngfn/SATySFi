@@ -1,0 +1,21 @@
+language: "0.1.0"
+contents:
+  type: "font"
+  main_module: "FontJunicode"
+  elements:
+  - path: "./fonts/Junicode.ttf"
+    contents:
+      type: "opentype_single"
+      name: "normal"
+  - path: "./fonts/Junicode-Bold.ttf"
+    contents:
+      type: "opentype_single"
+      name: "bold"
+  - path: "./fonts/Junicode-Italic.ttf"
+    contents:
+      type: "opentype_single"
+      name: "italic"
+  - path: "./fonts/Junicode-BoldItalic.ttf"
+    contents:
+      type: "opentype_single"
+      name: "bold-italic"

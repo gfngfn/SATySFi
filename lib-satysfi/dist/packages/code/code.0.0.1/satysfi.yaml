@@ -8,3 +8,6 @@ contents:
     - name: "stdlib"
       requirements:
         - "0.0.1"
+    - name: "latin-modern"
+      requirements:
+        - "0.0.1"

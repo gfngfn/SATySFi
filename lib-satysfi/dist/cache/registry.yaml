@@ -15,6 +15,8 @@ packages:
     dependencies:
     - name: "stdlib"
       requirements: [ "0.0.1" ]
+    - name: "font-latin-modern"
+      requirements: [ "0.0.1" ]
 - name: "annot"
   implementations:
   - version: "0.0.1"
@@ -71,6 +73,12 @@ packages:
       requirements: [ "0.0.1" ]
     - name: "footnote-scheme"
       requirements: [ "0.0.1" ]
+    - name: "font-junicode"
+      requirements: [ "0.0.1" ]
+    - name: "font-latin-modern"
+      requirements: [ "0.0.1" ]
+    - name: "font-ipa-ex"
+      requirements: [ "0.0.1" ]
 - name: "std-ja-report"
   implementations:
   - version: "0.0.1"
@@ -85,3 +93,15 @@ packages:
       requirements: [ "0.0.1" ]
     - name: "footnote-scheme"
       requirements: [ "0.0.1" ]
+- name: "font-latin-modern"
+  implementations:
+  - version: "0.0.1"
+    dependencies: []
+- name: "font-junicode"
+  implementations:
+  - version: "0.0.1"
+    dependencies: []
+- name: "font-ipa-ex"
+  implementations:
+  - version: "0.0.1"
+    dependencies: []
