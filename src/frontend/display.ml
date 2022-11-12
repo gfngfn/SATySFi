@@ -220,6 +220,7 @@ let show_base_type = function
   | PathType        -> "path"
   | GraphicsType    -> "graphics"
   | ImageType       -> "image"
+  | FontType        -> "font"
   | DocumentType    -> "document"
   | RegExpType      -> "regexp"
   | TextInfoType    -> "text-info"

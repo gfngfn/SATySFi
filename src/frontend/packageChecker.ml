@@ -114,8 +114,44 @@ let check_library_package (tyenv_prim : Typeenv.t) (genv : global_type_environme
   | None       -> err @@ NoMainModule(main_module_name)
 
 
-let check_font_package (_main_module_name : module_name) (_font_files : (abs_path * font_file_contents) list) =
-  failwith "TODO: check_font_package"
+let check_font_package (_main_module_name : module_name) (font_files : (abs_path * font_file_contents) list) =
+  let open ResultMonad in
+  let stage = Persistent0 in
+  let (ssig, libacc) =
+    font_files |> List.fold_left (fun (ssig, libacc) (abspath_font, font_file_contents) ->
+      match font_file_contents with
+      | OpentypeSingle(varnm) ->
+          let evid = EvalVarID.fresh (Range.dummy "font-package 1", varnm) in
+          let bind = Bind(stage, NonRec(evid, LoadSingleFont(abspath_font))) in
+          let ventry =
+            {
+              val_name  = Some(evid);
+              val_type  = Poly(Range.dummy "font-package 2", BaseType(FontType));
+              val_stage = stage;
+            }
+          in
+          (ssig |> StructSig.add_value varnm ventry, Alist.extend libacc (abspath_font, [ bind ]))
+
+      | OpentypeCollection(varnms) ->
+          let (ssig, bindacc, _) =
+            varnms |> List.fold_left (fun (ssig, bindacc, index) varnm ->
+              let evid = EvalVarID.fresh (Range.dummy "font-package 3", varnm) in
+              let bind = Bind(stage, NonRec(evid, LoadCollectionFont(abspath_font, index))) in
+              let ventry =
+                {
+                  val_name  = Some(evid);
+                  val_type  = Poly(Range.dummy "font-package 4", BaseType(FontType));
+                  val_stage = stage;
+                }
+              in
+              (ssig |> StructSig.add_value varnm ventry, Alist.extend bindacc bind, index + 1)
+            ) (ssig, Alist.empty, 0)
+          in
+          (ssig, Alist.extend libacc (abspath_font, Alist.to_list bindacc))
+
+    ) (StructSig.empty, Alist.empty)
+  in
+  return (ssig, Alist.to_list libacc)
 
 
 let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : untyped_package) : (StructSig.t * (abs_path * binding list) list) ok =

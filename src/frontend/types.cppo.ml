@@ -128,6 +128,7 @@ type base_type =
   | PathType
   | GraphicsType
   | ImageType
+  | FontType
   | DocumentType
   | RegExpType
   | TextInfoType
@@ -182,6 +183,7 @@ let base_type_map : base_type TypeNameMap.t =
     ("path"          , PathType);
     ("graphics"      , GraphicsType);
     ("image"         , ImageType);
+    ("font"          , FontType);
     ("document"      , DocumentType);
     ("regexp"        , RegExpType);
     ("text-info"     , TextInfoType);
@@ -1031,6 +1033,9 @@ and abstract_tree =
   | Persistent            of Range.t * EvalVarID.t
   | Lift                  of abstract_tree
   | ASTCodeSymbol         of CodeSymbol.t
+(* Fonts: *)
+  | LoadSingleFont        of abs_path
+  | LoadCollectionFont    of abs_path * int
 (* Primitive applications: *)
 #include "__attype.gen.ml"
 
