@@ -457,38 +457,6 @@ let initialize () =
     ScriptDataMap.set_from_file abspath_S abspath_EAW;
     let* abspath_LB = resolve_lib_file (make_lib_path "dist/unidata/LineBreak.txt") in
     LineBreakDataMap.set_from_file abspath_LB;
-    let font_hash_local =
-      match Config.resolve_lib_file (make_lib_path "local/hash/fonts.satysfi-hash") with
-      | Error(_)    -> []
-      | Ok(abspath) -> LoadFont.main abspath
-    in
-    let* abspath_fonts = resolve_lib_file (make_lib_path "dist/hash/fonts.satysfi-hash") in
-    let font_hash_dist = LoadFont.main abspath_fonts in
-    let font_hash = List.append font_hash_local font_hash_dist in
-    if OptionState.does_show_fonts () then Logging.show_fonts font_hash;
-(*
-    font_hash |> List.iter (fun (name, data) ->
-      match data with
-      | FontAccess.Single(relpath)        -> FontAbbrevHashTable.add_single abbrev relpath
-      | FontAccess.Collection(relpath, i) -> FontAbbrevHashTable.add_ttc abbrev relpath i
-    );
-*)
-    let math_font_hash_local =
-      match Config.resolve_lib_file (make_lib_path "local/hash/mathfonts.satysfi-hash") with
-      | Error(_)    -> []
-      | Ok(abspath) -> LoadFont.main abspath
-    in
-    let* abspath_mathfonts = resolve_lib_file (make_lib_path "dist/hash/mathfonts.satysfi-hash") in
-    let math_font_hash_dist = LoadFont.main abspath_mathfonts in
-    let math_font_hash = List.append math_font_hash_local math_font_hash_dist in
-    if OptionState.does_show_fonts () then Logging.show_math_fonts math_font_hash;
-(*
-    math_font_hash |> List.iter (fun (mfabbrev, data) ->
-      match data with
-      | FontAccess.Single(srcpath)        -> MathFontAbbrevHashTable.add_single mfabbrev srcpath
-      | FontAccess.Collection(srcpath, i) -> MathFontAbbrevHashTable.add_ttc mfabbrev srcpath i
-    );
-*)
     return ()
   in
   match res with

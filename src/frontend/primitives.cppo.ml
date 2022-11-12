@@ -628,8 +628,6 @@ let default_math_class_map =
       ]
 
 
-let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
-
 let default_hyphen_dictionary = ref LoadHyph.empty
 
 
@@ -648,7 +646,7 @@ let get_pdf_mode_initial_context wid =
     {
       hyphen_dictionary      = !default_hyphen_dictionary;
       hyphen_badness         = 100;
-      font_scheme            = !default_font_scheme_ref;
+      font_scheme            = CharBasis.ScriptSchemeMap.empty;
       font_size              = pdfpt 12.;
       dominant_wide_script   = CharBasis.OtherScript;
       dominant_narrow_script = CharBasis.OtherScript;
@@ -764,9 +762,7 @@ let resolve_lib_file (libpath : lib_path) =
 
 let make_pdf_mode_environments () =
   let open ResultMonad in
-  let* abspath_default_font = resolve_lib_file (make_lib_path "dist/hash/default-font.satysfi-hash") in
   let* abspath_hyphen = resolve_lib_file (make_lib_path "dist/hyph/english.satysfi-hyph") in
-  default_font_scheme_ref := SetDefaultFont.main abspath_default_font;
   default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
     (* TODO: should depend on the current language *)
   return @@ make_environments pdf_mode_table
