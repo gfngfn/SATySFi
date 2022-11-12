@@ -11,6 +11,27 @@ locks:
     path: ./dist/packages/code/code.0.0.1/
   dependencies:
   - stdlib.0.0.1
+  - font-latin-modern.0.0.1
+- name: font-ipa-ex.0.0.1
+  location:
+    type: global
+    path: ./dist/packages/font-ipa-ex/font-ipa-ex.0.0.1/
+  dependencies: []
+- name: font-junicode.0.0.1
+  location:
+    type: global
+    path: ./dist/packages/font-junicode/font-junicode.0.0.1/
+  dependencies: []
+- name: font-latin-modern.0.0.1
+  location:
+    type: global
+    path: ./dist/packages/font-latin-modern/font-latin-modern.0.0.1/
+  dependencies: []
+- name: font-latin-modern-math.0.0.1
+  location:
+    type: global
+    path: ./dist/packages/font-latin-modern-math/font-latin-modern-math.0.0.1/
+  dependencies: []
 - name: footnote-scheme.0.0.1
   location:
     type: global
@@ -39,6 +60,10 @@ locks:
   - annot.0.0.1
   - code.0.0.1
   - footnote-scheme.0.0.1
+  - font-junicode.0.0.1
+  - font-latin-modern.0.0.1
+  - font-ipa-ex.0.0.1
+  - font-latin-modern-math.0.0.1
 - name: stdlib.0.0.1
   location:
     type: global

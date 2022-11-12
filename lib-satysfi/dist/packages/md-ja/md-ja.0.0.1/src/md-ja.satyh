@@ -4,6 +4,11 @@ use package Code
 use package Itemize
 use package Annot
 
+use package FontJunicode
+use package FontIpaEx
+use package FontLatinModern
+use package FontLatinModernMath
+
 module MDJa :> sig
   val document : (|
     title  : inline-text,
@@ -52,13 +57,13 @@ end = struct
 
   val font-ratio-cjk = 0.88
 
-  val font-latin-roman  = (`Junicode`   , 1., 0.)
-  val font-latin-italic = (`Junicode-it`, 1., 0.)
-  val font-latin-sans   = (`lmsans`     , 1., 0.)
-  val font-latin-mono   = (`lmmono`     , 1., 0.)
+  val font-latin-roman  = (FontJunicode.normal, 1., 0.)
+  val font-latin-italic = (FontJunicode.italic, 1., 0.)
+  val font-latin-sans   = (FontLatinModern.sans, 1., 0.)
+  val font-latin-mono   = (FontLatinModern.mono, 1., 0.)
 
-  val font-cjk-gothic = (`ipaexg`, font-ratio-cjk, 0.)
-  val font-cjk-mincho = (`ipaexm`, font-ratio-cjk, 0.)
+  val font-cjk-gothic = (FontIpaEx.gothic, font-ratio-cjk, 0.)
+  val font-cjk-mincho = (FontIpaEx.mincho, font-ratio-cjk, 0.)
 
   val hr-margin = 5mm
   val hr-thickness = 1pt
@@ -92,6 +97,7 @@ end = struct
       |> set-dominant-wide-script Kana
       |> set-latin-font font-latin-roman
       |> set-cjk-font font-cjk-mincho
+      |> set-font OtherScript font-latin-roman
       |> set-hyphen-penalty 1000
       |> set-space-ratio 0.275 0.08 0.12
 
