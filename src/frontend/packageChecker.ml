@@ -80,10 +80,8 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
       err (NotADocumentFile(abspath_in, ty))
 
 
-let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : untyped_package) : (StructSig.t * (abs_path * binding list) list) ok =
+let check_library_package (tyenv_prim : Typeenv.t) (genv : global_type_environment) (main_module_name : module_name) (utlibs : (abs_path * untyped_library_file) list) =
   let open ResultMonad in
-  let main_module_name = package.main_module_name in
-  let utlibs = package.modules in
 
   (* Resolve dependency among the source files in the package: *)
   let* sorted_utlibs = ClosedFileDependencyResolver.main utlibs in
@@ -114,6 +112,62 @@ let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : un
   match ssig_opt with
   | Some(ssig) -> return (ssig, libs)
   | None       -> err @@ NoMainModule(main_module_name)
+
+
+let check_font_package (_main_module_name : module_name) (font_files : font_file_record list) =
+  let open ResultMonad in
+  let stage = Persistent0 in
+  let (ssig, libacc) =
+    font_files |> List.fold_left (fun (ssig, libacc) r ->
+      let
+        {
+          r_font_file_path     = path;
+          r_font_file_contents = font_file_contents;
+          r_used_as_math_font  = used_as_math_font;
+        } = r
+      in
+      match font_file_contents with
+      | OpentypeSingle(varnm) ->
+          let evid = EvalVarID.fresh (Range.dummy "font-package 1", varnm) in
+          let bind = Bind(stage, NonRec(evid, LoadSingleFont{ path; used_as_math_font })) in
+          let ventry =
+            {
+              val_name  = Some(evid);
+              val_type  = Poly(Range.dummy "font-package 2", BaseType(FontType));
+              val_stage = stage;
+            }
+          in
+          (ssig |> StructSig.add_value varnm ventry, Alist.extend libacc (path, [ bind ]))
+
+      | OpentypeCollection(varnms) ->
+          let (ssig, bindacc, _) =
+            varnms |> List.fold_left (fun (ssig, bindacc, index) varnm ->
+              let evid = EvalVarID.fresh (Range.dummy "font-package 3", varnm) in
+              let bind = Bind(stage, NonRec(evid, LoadCollectionFont{ path; index; used_as_math_font })) in
+              let ventry =
+                {
+                  val_name  = Some(evid);
+                  val_type  = Poly(Range.dummy "font-package 4", BaseType(FontType));
+                  val_stage = stage;
+                }
+              in
+              (ssig |> StructSig.add_value varnm ventry, Alist.extend bindacc bind, index + 1)
+            ) (ssig, Alist.empty, 0)
+          in
+          (ssig, Alist.extend libacc (path, Alist.to_list bindacc))
+
+    ) (StructSig.empty, Alist.empty)
+  in
+  return (ssig, Alist.to_list libacc)
+
+
+let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : untyped_package) : (StructSig.t * (abs_path * binding list) list) ok =
+  match package with
+  | UTLibraryPackage{ main_module_name; modules = utlibs } ->
+      check_library_package tyenv_prim genv main_module_name utlibs
+
+  | UTFontPackage{ main_module_name; font_files } ->
+      check_font_package main_module_name font_files
 
 
 let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sorted_locals : (abs_path * untyped_library_file) list) (abspath_and_utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =

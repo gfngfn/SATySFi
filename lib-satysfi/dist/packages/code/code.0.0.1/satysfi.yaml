@@ -6,5 +6,6 @@ contents:
     - "./src"
   dependencies:
     - name: "stdlib"
-      requirements:
-        - "0.0.1"
+      requirements: [ "0.0.1" ]
+    - name: "font-latin-modern"
+      requirements: [ "0.0.1" ]

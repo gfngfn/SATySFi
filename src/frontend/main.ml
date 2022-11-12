@@ -4,6 +4,7 @@ open Types
 open StaticEnv
 open PackageSystemBase
 open ConfigError
+open FontError
 open TypeError
 
 
@@ -18,7 +19,6 @@ let reset () =
   if OptionState.is_text_mode () then
     return ()
   else begin
-    FontInfo.initialize ();
     ImageInfo.initialize ();
     NamedDest.initialize ();
     return ()
@@ -31,6 +31,7 @@ let initialize () : Typeenv.t * environment =
   BoundID.initialize ();
   EvalVarID.initialize ();
   StoreID.initialize ();
+  FontInfo.initialize ();
   let res =
     if OptionState.is_text_mode () then
       Primitives.make_text_mode_environments ()
@@ -184,6 +185,7 @@ let preprocess_and_evaluate (env : environment) (libs : (abs_path * binding list
        regardless of whether `--bytecomp` was specified. *)
   let (env, codebindacc) =
     libs |> List.fold_left (fun (env, codebindacc) (abspath, binds) ->
+      Logging.begin_to_preprocess_file abspath;
       let (env, cd_rec_or_nonrecs) = Evaluator.interpret_bindings_0 env binds in
       (env, Alist.extend codebindacc (abspath, cd_rec_or_nonrecs))
     ) (env, Alist.empty)
@@ -1060,46 +1062,37 @@ let report_config_error : config_error -> unit = function
 
 
 let report_font_error : font_error -> unit = function
-  | InvalidFontAbbrev(abbrev) ->
-      report_error Interface [
-        NormalLine (Printf.sprintf "cannot find a font named '%s'." abbrev);
-      ]
-
-  | InvalidMathFontAbbrev(mfabbrev) ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "cannot find a math font named '%s'." mfabbrev);
-      ]
-
-  | NotASingleFont(abbrev, abspath) ->
+  | FailedToReadFont(abspath, msg) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the font name '%s'," abbrev);
-        NormalLine("is not a single font file.");
+        NormalLine(Printf.sprintf "cannot load font file '%s';" fname);
+        DisplayLine(msg);
       ]
 
-  | NotATTCElement(abbrev, abspath, i) ->
+  | FailedToDecodeFont(abspath, e) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the font name '%s' and index %d," abbrev i);
-        NormalLine("is not a TrueType collection.");
+        NormalLine(Printf.sprintf "cannot decode font file '%s';" fname);
+        NormalLine(Format.asprintf "%a" Otfed.Decode.Error.pp e);
       ]
 
-  | NotASingleMathFont(mfabbrev, abspath) ->
+  | FailedToMakeSubset(abspath, e) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the math font name '%s'," mfabbrev);
-        NormalLine("is not a single font file or does not have a MATH table.");
+        NormalLine(Printf.sprintf "cannot make a subset of font file '%s';" fname);
+        NormalLine(Format.asprintf "%a" Otfed.Subset.Error.pp e);
       ]
 
-  | NotATTCMathFont(mfabbrev, abspath, i) ->
+  | NotASingleFont(abspath) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
-        NormalLine(Printf.sprintf "the font file '%s'," fname);
-        NormalLine(Printf.sprintf "which is associated with the math font name '%s' and index %d," mfabbrev i);
-        NormalLine("is not a TrueType collection or does not have a MATH table.");
+        NormalLine(Printf.sprintf "the font file '%s' is not a single font file." fname);
+      ]
+
+  | NotAFontCollectionElement(abspath, index) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection." fname index);
       ]
 
   | CannotFindLibraryFileAsToFont(libpath, candidates) ->
@@ -1110,6 +1103,31 @@ let report_font_error : font_error -> unit = function
       in
       report_error Interface
         (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
+
+  | NoMathTable(abspath) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "font file '%s' does not have a 'MATH' table." fname);
+      ]
+
+  | PostscriptNameNotFound(abspath) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "font file '%s' does not have a PostScript name." fname);
+      ]
+
+  | CannotFindUnicodeCmap(abspath) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "font file '%s' does not have a 'cmap' subtable for Unicode code points." fname);
+      ]
+
+  | CollectionIndexOutOfBounds{ path; index; num_elements } ->
+      let fname = convert_abs_path_to_show path in
+      report_error Interface [
+        NormalLine(Printf.sprintf "%d: index out of bounds;" index);
+        NormalLine(Printf.sprintf "font file '%s' has %d elements." fname num_elements);
+      ]
 
 
 let error_log_environment (suspended : unit -> unit) : unit =
@@ -1140,31 +1158,23 @@ let error_log_environment (suspended : unit -> unit) : unit =
         NormalLine("invalid string for hyphenation pattern.");
       ]
 
+  | HorzBox.FontIsNotSet{ raw; normalized } ->
+      report_error Interface [
+        NormalLine("font is not set;");
+        DisplayLine(Printf.sprintf "- raw script: %s" (CharBasis.show_script raw));
+        DisplayLine(Printf.sprintf "- normalized script: %s" (CharBasis.show_script normalized));
+      ]
+
+  | HorzBox.MathFontIsNotSet ->
+      report_error Interface [
+        NormalLine("math font is not set.");
+      ]
+
   | ConfigError(e) ->
       report_config_error e
 
   | FontInfo.FontInfoError(e) ->
       report_font_error e
-
-  | FontFormat.FailToLoadFontOwingToSystem(abspath, msg) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "cannot load font file '%s';" fname);
-        DisplayLine(msg);
-      ]
-
-  | FontFormat.BrokenFont(abspath, msg) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "font file '%s' is broken;" fname);
-        DisplayLine(msg);
-      ]
-
-  | FontFormat.CannotFindUnicodeCmap(abspath) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "font file '%s' does not have 'cmap' subtable for Unicode code points." fname);
-      ]
 
   | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
       let fname = convert_abs_path_to_show abspath in
@@ -1331,7 +1341,11 @@ let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string 
   (* Typecheck every locked package: *)
   let (genv, libacc) =
     sorted_packages |> List.fold_left (fun (genv, libacc) (_lock_name, package) ->
-      let main_module_name = package.main_module_name in
+      let main_module_name =
+        match package with
+        | UTLibraryPackage{ main_module_name; _ } -> main_module_name
+        | UTFontPackage{ main_module_name; _ }    -> main_module_name
+      in
       let (ssig, libs) =
         match PackageChecker.main tyenv_prim genv package with
         | Ok(pair) -> pair
@@ -1483,7 +1497,7 @@ let build
         Logging.target_file abspath_out;
 
         let dump_file_exists = CrossRef.initialize abspath_dump in
-        Logging.dump_file dump_file_exists abspath_dump;
+        Logging.dump_file ~already_exists:dump_file_exists abspath_dump;
 
         (* Resolve dependency of the document and the local source files: *)
         let (_dep_main_module_names, sorted_locals, utdoc) =
@@ -1620,6 +1634,10 @@ let solve
             begin
               match config.package_contents with
               | PackageConfig.Library{ dependencies; _ } ->
+                  return (dependencies, abspath_lock_config)
+
+              | PackageConfig.Font(_) ->
+                  let dependencies = [] in
                   return (dependencies, abspath_lock_config)
             end
 

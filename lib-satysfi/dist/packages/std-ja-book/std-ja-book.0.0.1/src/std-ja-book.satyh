@@ -4,6 +4,10 @@ use package Annot
 use package Code
 use package FootnoteScheme
 
+use package FontJunicode
+use package FontIpaEx
+use package FontLatinModern
+use package FontLatinModernMath
 
 module StdJaBook :> sig
 
@@ -25,15 +29,15 @@ module StdJaBook :> sig
       author : inline-text,
     |) -> block-text -> document
 
-  val font-latin-roman  : string * float * float
-  val font-latin-bold   : string * float * float
-  val font-latin-italic : string * float * float
-  val font-latin-sans   : string * float * float
-  val font-latin-mono   : string * float * float
-  val font-cjk-mincho   : string * float * float
-  val font-cjk-gothic   : string * float * float
-  val set-latin-font : (string * float * float) -> context -> context
-  val set-cjk-font   : (string * float * float) -> context -> context
+  val font-latin-roman  : font * float * float
+  val font-latin-bold   : font * float * float
+  val font-latin-italic : font * float * float
+  val font-latin-sans   : font * float * float
+  val font-latin-mono   : font * float * float
+  val font-cjk-mincho   : font * float * float
+  val font-cjk-gothic   : font * float * float
+  val set-latin-font : (font * float * float) -> context -> context
+  val set-cjk-font   : (font * float * float) -> context -> context
 
   val \ref : inline [string]
   val \ref-page : inline [string]
@@ -107,13 +111,13 @@ end = struct
   val font-ratio-latin = 1.
   val font-ratio-cjk = 0.88
 
-  val font-latin-roman  = (`Junicode`   , font-ratio-latin, 0.)
-  val font-latin-bold   = (`Junicode-b` , font-ratio-latin, 0.)
-  val font-latin-italic = (`Junicode-it`, font-ratio-latin, 0.)
-  val font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
-  val font-latin-mono   = (`lmmono`    , font-ratio-latin, 0.)
-  val font-cjk-mincho   = (`ipaexm`    , font-ratio-cjk  , 0.)
-  val font-cjk-gothic   = (`ipaexg`    , font-ratio-cjk  , 0.)
+  val font-latin-roman  = (FontJunicode.normal , font-ratio-latin, 0.)
+  val font-latin-bold   = (FontJunicode.bold   , font-ratio-latin, 0.)
+  val font-latin-italic = (FontJunicode.italic , font-ratio-latin, 0.)
+  val font-latin-sans   = (FontLatinModern.sans, font-ratio-latin, 0.)
+  val font-latin-mono   = (FontLatinModern.mono, font-ratio-latin, 0.)
+  val font-cjk-mincho   = (FontIpaEx.mincho    , font-ratio-cjk  , 0.)
+  val font-cjk-gothic   = (FontIpaEx.gothic    , font-ratio-cjk  , 0.)
 
 
   val set-latin-font font ctx =
@@ -136,7 +140,8 @@ end = struct
       |> set-font Kana           font-cjk-mincho
       |> set-font HanIdeographic font-cjk-mincho
       |> set-font Latin          font-latin-roman
-      |> set-math-font `lmodern`
+      |> set-font OtherScript    font-latin-roman
+      |> set-math-font FontLatinModernMath.main
       |> set-hyphen-penalty 100
 
 

@@ -1,0 +1,10 @@
+language: "0.1.0"
+contents:
+  type: "font"
+  main_module: "FontLatinModernMath"
+  elements:
+  - path: "./fonts/latinmodern-math.otf"
+    math: true
+    contents:
+      type: "opentype_single"
+      name: "main"

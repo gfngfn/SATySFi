@@ -4,6 +4,14 @@ open LengthInterface
 open GraphicBase
 
 
+exception FontIsNotSet of {
+  raw        : CharBasis.script;
+  normalized : CharBasis.script;
+}
+
+exception MathFontIsNotSet
+
+
 type pure_badness = int
 [@@deriving show]
 
@@ -26,18 +34,12 @@ type reachability =
   | Reachable of ratios
 [@@deriving show]
 
-type font_abbrev = string
-[@@deriving show]
-
-type math_font_abbrev = string
-[@@deriving show]
-
 type file_path = string
 
-type font_with_size = font_abbrev * Length.t
+type font_with_size = FontKey.t * Length.t
 [@@deriving show]
 
-type font_with_ratio = font_abbrev * float * float
+type font_with_ratio = FontKey.t * float * float
 [@@deriving show]
 
 type page_content_scheme = {
@@ -66,7 +68,7 @@ type paddings = {
 
 
 type horz_string_info = {
-  font_abbrev    : font_abbrev;
+  font_key       : FontKey.t;
   text_font_size : length;
   text_color     : color;
   rising         : length;
@@ -74,9 +76,9 @@ type horz_string_info = {
 [@@deriving show { with_path = false }]
 
 type math_string_info = {
-  info_math_font_abbrev : math_font_abbrev;
-  info_math_font_size   : length;
-  info_math_color       : color;
+  info_math_font_key  : FontKey.t;
+  info_math_font_size : length;
+  info_math_color     : color;
 }
 [@@deriving show { with_path = false }]
 
@@ -187,7 +189,7 @@ type context_main = {
   space_math_prefix       : float * float * float;
   left_hyphen_min         : int;
   right_hyphen_min        : int;
-  math_font_abbrev        : math_font_abbrev;
+  math_font_key           : FontKey.t option;
   math_script_level       : math_script_level;
 }
 
@@ -521,7 +523,7 @@ let normalize_script ctx script_raw =
 let get_font_with_ratio ctx script_raw =
   let script = normalize_script ctx script_raw in
     match ctx.font_scheme |> CharBasis.ScriptSchemeMap.find_opt script with
-    | None          -> failwith "get_font_with_ratio"
+    | None          -> raise (FontIsNotSet{ raw = script_raw; normalized = script })
     | Some(fontsch) -> fontsch
 
 
@@ -533,9 +535,9 @@ let get_language_system ctx script_raw =
 
 
 let get_string_info ctx script_raw =
-  let (font_abbrev, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
+  let (fontkey, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
     {
-      font_abbrev    = font_abbrev;
+      font_key       = fontkey;
       text_font_size = ctx.font_size *% ratio;
       text_color     = ctx.text_color;
       rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;

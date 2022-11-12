@@ -1,5 +1,7 @@
 use package open Stdlib
 
+use package FontLatinModern
+
 module Code
 % :> sig
 %
@@ -16,7 +18,7 @@ module Code
  = struct
 
   signature S = sig
-    val font-family      : string
+    val font-family      : font
     val text-color       : color
     val fill-color       : color
     val stroke-color     : color
@@ -110,7 +112,7 @@ module Code
 
 
   module DefaultSettings = struct
-    val font-family      = `lmmono`
+    val font-family      = FontLatinModern.mono
     val text-color       = Gray(0.)
     val fill-color       = Gray(0.875)
     val stroke-color     = Gray(0.625)
@@ -122,7 +124,7 @@ module Code
 
 
   module ConsoleSettings = struct
-    val font-family      = `lmmono`
+    val font-family      = FontLatinModern.mono
     val text-color       = Gray(1.)
     val fill-color       = Gray(0.25)
     val stroke-color     = Gray(0.25)

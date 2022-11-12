@@ -571,6 +571,12 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTCodeSymbol(_symb) ->
       report_bug_ir "transform_1: ASTCodeSymbol at stage 1"
 
+  | LoadSingleFont(_) ->
+      failwith "TODO: LoadSingleFont"
+
+  | LoadCollectionFont(_) ->
+      failwith "TODO: LoadCollectionFont"
+
 #include "__ir_1.gen.ml"
 
 
@@ -755,5 +761,11 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
 
   | ASTCodeSymbol(symb) ->
       return (IRConstant(CodeSymbol(symb)))
+
+  | LoadSingleFont(_) ->
+      failwith "TODO: LoadSingleFont"
+
+  | LoadCollectionFont(_) ->
+      failwith "TODO: LoadCollectionFont"
 
 #include "__ir_0.gen.ml"

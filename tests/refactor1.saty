@@ -1,9 +1,19 @@
 #[dependencies [
   (`stdlib`, `0.0.1`),
   (`math`, `0.0.1`),
+  (`font-junicode`, `0.0.1`),
+  (`font-ipa-ex`, `0.0.1`),
+  (`font-latin-modern-math`, `0.0.1`),
 ]]
 use package open Stdlib
 use package open Math
+use package FontJunicode
+use package FontIpaEx
+use package FontLatinModernMath
+
+let font-latin-roman = (FontJunicode.normal, 1., 0.) in
+let font-cjk-mincho = (FontIpaEx.mincho, 0.88, 0.) in
+
 
 %let rec fold-left f i l =
 %  match l with
@@ -26,7 +36,14 @@ in
 let s = arabic sum ^ `,` ^ arabic (f 0 42) ^ `,` ^ arabic (f 1 42) ^ `,` ^ arabic (g 0 42) ^ `,` ^ arabic (g 1 42) in
 
 %let inline ctx \math m = embed-math ctx (read-math ctx m) in
-let ctx = get-initial-context 400pt (command \math) in
+let ctx =
+  get-initial-context 400pt (command \math)
+    |> set-font Kana           font-cjk-mincho
+    |> set-font HanIdeographic font-cjk-mincho
+    |> set-font Latin          font-latin-roman
+    |> set-font OtherScript    font-latin-roman
+    |> set-math-font FontLatinModernMath.main
+in
 let paper-size = (210mm, 297mm) in %A4
 let pagecontf _ = (| text-origin = (20pt, 20pt), text-height = 600pt, |) in
 let pagepartsf _ = (| header-origin = (0pt, 0pt), header-content = block-nil, footer-origin = (0pt, 0pt), footer-content = block-nil, |) in

@@ -84,18 +84,13 @@ let end_output file_name_out =
   print_endline ("  output written on '" ^ (show_path file_name_out) ^ "'.")
 
 
-let no_output () =
-  print_endline " ---- ---- ---- ----";
-  print_endline "  no output."
-
-
 let target_file file_name_out =
   print_endline (" ---- ---- ---- ----");
   print_endline ("  target file: '" ^ (show_path file_name_out) ^ "'")
 
 
-let  dump_file dump_file_exists dump_file =
-  if dump_file_exists then
+let dump_file ~(already_exists : bool) dump_file =
+  if already_exists then
     print_endline ("  dump file: '" ^ (show_path dump_file) ^ "' (already exists)")
   else
     print_endline ("  dump file: '" ^ (show_path dump_file) ^ "' (will be created)")
@@ -140,72 +135,29 @@ let end_lock_output file_name_out =
   print_endline ("  output written on '" ^ (show_path file_name_out) ^ "'.")
 
 
-
-let show_single_font abbrev relpath =
-  print_endline ("    * `" ^ abbrev ^ "`: '" ^ (get_lib_path_string relpath) ^ "'")
-
-
-let show_collection_font abbrev relpath i =
-  print_endline ("    * `" ^ abbrev ^ "`: '" ^ (get_lib_path_string relpath) ^ "' [" ^ (string_of_int i) ^ "]")
-
-
-let show_fonts_main font_hash =
-  font_hash |> List.iter (fun (abbrev, data) ->
-    match data with
-    | FontAccess.Single(relpath)        -> show_single_font abbrev relpath
-    | FontAccess.Collection(relpath, i) -> show_collection_font abbrev relpath i
-  )
-
-
-let show_fonts font_hash =
-  print_endline "  all the available fonts:";
-  show_fonts_main font_hash
-
-
-let show_math_fonts font_hash =
-  print_endline "  all the available math fonts:";
-  show_fonts_main font_hash
-
-
-let warn_deprecated msg =
-  print_endline ("  [Warning] " ^ msg)
-
-
 let warn_cmyk_image file_name =
   print_endline ("  [Warning] (" ^ (show_path file_name) ^ ") Jpeg images with CMYK color mode are not fully supported.");
   print_endline ("  Please convert the image to a jpeg image with YCbCr (RGB) color model.")
 
 
-let warn_math_script_without_brace rng =
-  Format.printf "  [Warning] at %s: math script without brace.\n" (Range.to_string rng)
+let warn_noninjective_cmap (uch1 : Uchar.t) (uch2 : Uchar.t) (gidorg : Otfed.Value.glyph_id) =
+  Format.printf "  [Warning] Multiple Unicode code points (U+%04X and U+%04X) are mapped to the same GID %d.\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gidorg
 
 
-let warn_noninjective_cmap uchpre uch gidorg =
-  Format.printf "  [Warning] Multiple Unicode code points (U+%04X and U+%04X) are mapped to the same GID %d.\n" (Uchar.to_int uchpre) (Uchar.to_int uch) gidorg
+let warn_noninjective_ligature (gidorg_lig : Otfed.Value.glyph_id) =
+  Format.printf "  [Warning] GID %d is used as more than one kind of ligatures.\n" gidorg_lig
 
 
-let warn_noninjective_ligature gidorglig =
-  Format.printf "  [Warning] GID %d is used as more than one kind of ligatures.\n" gidorglig
-
-
-let warn_nonattachable_mark gomark gobase =
+let warn_nonattachable_mark (gomark : Otfed.Value.glyph_id) (gobase : Otfed.Value.glyph_id) =
   Format.printf "  [Warning] The combining diacritical mark of GID %d cannot be attached to the base glyph of GID %d.\n" gomark gobase
 
 
-let warn_no_glyph abbrev uch =
-  Format.printf "  [Warning] No glyph is provided for U+%04X by font `%s`.\n" (Uchar.to_int uch) abbrev
+let warn_no_glyph (fontname : string) (uch : Uchar.t) =
+  Format.printf "  [Warning] No glyph is provided for U+%04X by font `%s`.\n" (Uchar.to_int uch) fontname
 
 
-let warn_no_math_glyph mfabbrev uch =
-  Format.printf "  [Warning] No glyph is provided for U+%04X by math font `%s`.\n" (Uchar.to_int uch) mfabbrev
-
-
-let warn_duplicate_font_hash abbrev relpath =
-  Format.printf "  [Warning] more than one font is named `%s`; '%s' will be associated with the font name.\n" abbrev (get_lib_path_string relpath)
-
-
-let warn_duplicate_math_font_hash mfabbrev relpath =
-  Format.printf "  [Warning] more than one font is named `%s`; '%s' will be associated with the font name.\n" mfabbrev (get_lib_path_string relpath)
+let warn_no_math_glyph (fontname : string) (uch : Uchar.t) =
+  Format.printf "  [Warning] No glyph is provided for U+%04X by math font `%s`.\n" (Uchar.to_int uch) fontname
 
 
 let warn_number_sign_end rng =

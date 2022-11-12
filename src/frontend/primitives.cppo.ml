@@ -43,6 +43,7 @@ let tPRP  = (~! "pre-path"      , BaseType(PrePathType))
 let tPATH = (~! "path"          , BaseType(PathType))
 let tGR   = (~! "graphics"      , BaseType(GraphicsType))
 let tIMG  = (~! "image"         , BaseType(ImageType))
+let tFONTKEY = (~! "font"       , BaseType(FontType))
 let tDOC  = (~! "document"      , BaseType(DocumentType))
 let tRE   = (~! "regexp"        , BaseType(RegExpType))
 let tTCTX = (~! "text-info"     , BaseType(TextInfoType))
@@ -69,7 +70,7 @@ let tMCCLS        = (~! "mccls"   , variant [] vid_mccls   )
 let tCELL         = (~! "cell"    , variant [] vid_cell    )
 
 (* -- predefined alias types -- *)
-let tFONT         = tPROD [tS; tFL; tFL]
+let tFONTWR       = tPROD [tFONTKEY; tFL; tFL]
 let tPT           = tPROD [tLN; tLN]
 let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
@@ -627,8 +628,6 @@ let default_math_class_map =
       ]
 
 
-let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
-
 let default_hyphen_dictionary = ref LoadHyph.empty
 
 
@@ -647,7 +646,7 @@ let get_pdf_mode_initial_context wid =
     {
       hyphen_dictionary      = !default_hyphen_dictionary;
       hyphen_badness         = 100;
-      font_scheme            = !default_font_scheme_ref;
+      font_scheme            = CharBasis.ScriptSchemeMap.empty;
       font_size              = pdfpt 12.;
       dominant_wide_script   = CharBasis.OtherScript;
       dominant_narrow_script = CharBasis.OtherScript;
@@ -680,7 +679,7 @@ let get_pdf_mode_initial_context wid =
       space_math_prefix      = (0.125, 0.04, 0.08);
       left_hyphen_min        = 3;
       right_hyphen_min       = 2;
-      math_font_abbrev       = "lmodern";  (* TEMPORARY *)
+      math_font_key          = None;
       math_script_level      = HorzBox.BaseLevel;
     }
 
@@ -763,9 +762,7 @@ let resolve_lib_file (libpath : lib_path) =
 
 let make_pdf_mode_environments () =
   let open ResultMonad in
-  let* abspath_default_font = resolve_lib_file (make_lib_path "dist/hash/default-font.satysfi-hash") in
   let* abspath_hyphen = resolve_lib_file (make_lib_path "dist/hyph/english.satysfi-hyph") in
-  default_font_scheme_ref := SetDefaultFont.main abspath_default_font;
   default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
     (* TODO: should depend on the current language *)
   return @@ make_environments pdf_mode_table
