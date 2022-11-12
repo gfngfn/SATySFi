@@ -19,13 +19,20 @@ val add_single : abs_path -> key
 
 val add_ttc : abs_path -> int -> key
 
-val add_math_single : abs_path -> key
+val add_math_single : abs_path -> math_key
 
-val add_math_ttc : abs_path -> int -> key
+val add_math_ttc : abs_path -> int -> math_key
 
 val get_metrics_of_word : horz_string_info -> uchar_segment list -> OutputText.t * length * length * length
 
-val get_math_char_info : math_key -> is_in_base_level:bool -> is_in_display:bool -> is_big:bool -> font_size:length -> Uchar.t list -> OutputText.t * length * length * length * length * FontFormat.math_kern_info option
+val get_math_char_info :
+  math_key ->
+  is_in_base_level:bool ->
+  is_in_display:bool ->
+  is_big:bool ->
+  font_size:length ->
+  Uchar.t list ->
+  OutputText.t * length * length * length * length * FontFormat.math_kern_info option
 
 val get_font_tag : key -> tag
 

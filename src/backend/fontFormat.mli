@@ -31,7 +31,7 @@ type 'a resource =
 type cmap =
   | PredefinedCMap of string
 (*
-  | CMapFile       of (string resource) ref  (* temporary;*)
+  | CMapFile       of (string resource) ref  (* TODO *)
 *)
 
 type font
@@ -52,13 +52,12 @@ val find_kerning : decoder -> glyph_id -> glyph_id -> per_mille option
 
 type math_kern
 
-type math_kern_info =
-  {
-    kernTR : math_kern;
-    kernTL : math_kern;
-    kernBR : math_kern;
-    kernBL : math_kern;
-  }
+type math_kern_info = {
+  kernTR : math_kern;
+  kernTL : math_kern;
+  kernBR : math_kern;
+  kernBL : math_kern;
+}
 
 type math_decoder
 
@@ -80,37 +79,36 @@ val get_math_vertical_variants : math_decoder -> glyph_id -> ((glyph_id * float)
 
 val get_math_horizontal_variants : math_decoder -> glyph_id -> ((glyph_id * float) list) ok
 
-type math_constants =
-  {
-  (* -- general -- *)
-    axis_height                   : float;
-  (* -- sub/superscripts -- *)
-    superscript_bottom_min        : float;
-    superscript_shift_up          : float;
-    superscript_baseline_drop_max : float;
-    subscript_top_max             : float;
-    subscript_shift_down          : float;
-    subscript_baseline_drop_min   : float;
-    script_scale_down             : float;
-    script_script_scale_down      : float;
-    space_after_script            : float;
-    sub_superscript_gap_min       : float;
-  (* -- fractions -- *)
-    fraction_rule_thickness       : float;
-    fraction_numer_d_shift_up     : float;
-    fraction_numer_d_gap_min      : float;
-    fraction_denom_d_shift_down   : float;
-    fraction_denom_d_gap_min      : float;
-  (* -- radicals -- *)
-    radical_extra_ascender        : float;
-    radical_rule_thickness        : float;
-    radical_d_vertical_gap        : float;
-  (* -- limits -- *)
-    upper_limit_gap_min           : float;
-    upper_limit_baseline_rise_min : float;
-    lower_limit_gap_min           : float;
-    lower_limit_baseline_drop_min : float;
-  }
+type math_constants = {
+(* General: *)
+  axis_height                   : float;
+(* Sub/superscripts: *)
+  superscript_bottom_min        : float;
+  superscript_shift_up          : float;
+  superscript_baseline_drop_max : float;
+  subscript_top_max             : float;
+  subscript_shift_down          : float;
+  subscript_baseline_drop_min   : float;
+  script_scale_down             : float;
+  script_script_scale_down      : float;
+  space_after_script            : float;
+  sub_superscript_gap_min       : float;
+(* Fractions: *)
+  fraction_rule_thickness       : float;
+  fraction_numer_d_shift_up     : float;
+  fraction_numer_d_gap_min      : float;
+  fraction_denom_d_shift_down   : float;
+  fraction_denom_d_gap_min      : float;
+(* Radicals: *)
+  radical_extra_ascender        : float;
+  radical_rule_thickness        : float;
+  radical_d_vertical_gap        : float;
+(* Limits: *)
+  upper_limit_gap_min           : float;
+  upper_limit_baseline_rise_min : float;
+  lower_limit_gap_min           : float;
+  lower_limit_baseline_drop_min : float;
+}
 
 val get_axis_height_ratio : math_decoder -> float
 
