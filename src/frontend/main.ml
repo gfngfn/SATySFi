@@ -1076,6 +1076,13 @@ let report_font_error : font_error -> unit = function
         NormalLine(Format.asprintf "%a" Otfed.Decode.Error.pp e);
       ]
 
+  | FailedToMakeSubset(abspath, e) ->
+      let fname = convert_abs_path_to_show abspath in
+      report_error Interface [
+        NormalLine(Printf.sprintf "cannot make a subset of font file '%s';" fname);
+        NormalLine(Format.asprintf "%a" Otfed.Subset.Error.pp e);
+      ]
+
   | NotASingleFont(abspath) ->
       let fname = convert_abs_path_to_show abspath in
       report_error Interface [
@@ -1156,13 +1163,6 @@ let error_log_environment (suspended : unit -> unit) : unit =
 
   | FontInfo.FontInfoError(e) ->
       report_font_error e
-
-  | FontFormat.BrokenFont(abspath, msg) ->
-      let fname = convert_abs_path_to_show abspath in
-      report_error Interface [
-        NormalLine(Printf.sprintf "font file '%s' is broken;" fname);
-        DisplayLine(msg);
-      ]
 
   | FontFormat.FontError(e) ->
       report_font_error e
