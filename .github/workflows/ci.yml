@@ -10,7 +10,6 @@ jobs:
       matrix:
         os: [ 'ubuntu-latest', 'macos-latest' ]
         ocaml-version:
-          - 4.13.1
           - 4.14.0
     runs-on: ${{ matrix.os }}
 
@@ -50,7 +49,7 @@ jobs:
           ocaml-compiler: ${{ matrix.ocaml-version }}
           dune-cache: ${{ matrix.os != 'macos-latest' }}
 
-          opam-depext: ${{ matrix.os != 'macos-latest' }}
+          opam-depext: true
           opam-pin: true
 
           opam-repositories: |
