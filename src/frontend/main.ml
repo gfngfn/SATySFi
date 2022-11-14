@@ -820,6 +820,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | MultiplePackageDefinition{ context = yctx; package_name } ->
       [ NormalLine(Printf.sprintf "More than one definition for package '%s'%s" package_name (show_yaml_context yctx)) ]
 
+  | NotACommand{ context = yctx; prefix = _; string = s } ->
+      [ NormalLine(Printf.sprintf "not a command: '%s'%s" s (show_yaml_context yctx)) ]
+
 
 let report_document_attribute_error : DocumentAttribute.error -> unit = function
   | MoreThanOneDependencyAttribute(rng1, rng2) ->

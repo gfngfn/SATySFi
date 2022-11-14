@@ -12,11 +12,15 @@ type font_file_description = {
   used_as_math_font  : bool;
 }
 
+type package_conversion_spec =
+  | MarkdownConversion of DecodeMD.command_record
+
 type package_contents =
   | Library of {
       main_module_name   : module_name;
       source_directories : relative_path list;
       dependencies       : package_dependency list;
+      conversion_specs   : package_conversion_spec list;
     }
   | Font of {
       main_module_name       : module_name;

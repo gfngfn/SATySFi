@@ -18,6 +18,11 @@ type yaml_error =
       context      : YamlDecoder.context;
       package_name : string;
     }
+  | NotACommand of {
+      context : YamlDecoder.context;
+      prefix  : char;
+      string  : string;
+    }
 
 module YamlError = struct
   type t = yaml_error
