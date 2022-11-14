@@ -9,13 +9,10 @@ type block_element =
   | Section of section_level * inline * block
   | Paragraph of inline
   | UlBlock of block list
-  | UlInline of inline list
   | OlBlock of block list
-  | OlInline of inline list
   | Blockquote of block
-  | CodeBlock of Omd.name * string
+  | CodeBlock of string * string
   | Hr
-  | BlockRaw of string
 
 and block =
   block_element list
@@ -24,157 +21,125 @@ and inline_element =
   | Text of string
   | Emph of inline
   | Bold of inline
-  | Code of Omd.name * string
+  | Code of string
   | Br
   | Url of string * inline * string
-  | Ref of string * string * (string * string) option
   | Img of string * string * string
-  | InlineRaw of string
-  | EmbeddedBlock of block
 
 and inline =
   inline_element list
 
-type middle_record = {
-  pre_contents        : Omd.t;
-  current_heading     : Omd.t;
-  current_accumulated : Omd.element Alist.t;
-  accumulated         : (inline * Omd.t) Alist.t;
-}
 
-type accumulator =
-  | Beginning of Omd.element Alist.t
-  | Middle    of middle_record
+let rec make_inline_of_element (oi : Omd.attributes Omd.inline) =
+  let single ilne = [ ilne ] in
+  match oi with
+  | Omd.Concat(_attr, ois) ->
+      make_inline ois
 
+  | Omd.Text(_attr, s) ->
+      single @@ Text(s)
 
-let rec make_inline_of_element (mde : Omd.element) =
-  let single ilne = [ilne] in
-  let empty = [] in
-  match mde with
-  | Omd.H1(_) | Omd.H2(_) | Omd.H3(_) | Omd.H4(_) | Omd.H5(_) | Omd.H6(_)
-      -> assert false  (* -- should be omitted by 'normalize_section' -- *)
+  | Omd.Emph(_attr, oi) ->
+      single @@ Emph(make_inline_of_element oi)
 
-  | Omd.Paragraph(_)
-  | Omd.Code_block(_)
-  | Omd.Html_block(_)
-  | Omd.Blockquote(_)
-  | Omd.Hr
-  | Omd.Ul(_)
-  | Omd.Ulp(_)
-  | Omd.Ol(_)
-  | Omd.Olp(_)
-  | Omd.Raw_block(_) ->
-      single @@ EmbeddedBlock(make_block_of_element mde)
+  | Omd.Strong(_attr, oi) ->
+      single @@ Bold(make_inline_of_element oi)
 
-  | Omd.Html_comment(_) ->
-      empty
+  | Omd.Code(_attr, s) ->
+      single @@ Code(s)
 
-  | Omd.Html(_) ->
-      failwith ("HTML; remains to be supported: " ^ Omd.to_text [mde])
+  | Omd.Hard_break(_attr) ->
+      single @@ Br
 
-  | Omd.X(_) ->
-      failwith ("extension; remains to be supported: " ^ Omd.to_text [mde])
+  | Omd.Soft_break(_attr) ->
+      single @@ Br
 
-  | Omd.Text(s)       -> single @@ Text(s)
-  | Omd.Emph(md)      -> single @@ Emph(make_inline md)
-  | Omd.Bold(md)      -> single @@ Bold(make_inline md)
-  | Omd.Code(name, s) -> single @@ Code(name, s)
-  | Omd.Br            -> single @@ Br
-  | Omd.NL            -> single @@ Br
+  | Omd.Link(_attr, { label; destination; title = title_opt }) ->
+      let title = title_opt |> Option.value ~default:"" in (* TODO *)
+      single @@ Url(destination, make_inline_of_element label, title)
 
-  | Omd.Url(href, md, title) ->
-      single @@ Url(href, make_inline md, title)
+  | Omd.Image(_attr, { label = _; destination; title = title_opt }) ->
+      let alt = "" in (* TODO *)
+      let title = title_opt |> Option.value ~default:"" in (* TODO *)
+      single @@ Img(alt, destination, title)
 
-  | Omd.Ref(container, tag, display, _) ->
-      let refopt = container#get_ref tag in
-      single @@ Ref(tag, display, refopt)
-(*
-      failwith (Printf.sprintf "Ref; remains to be supported: name='%s', s='%s'" name s)
-*)
-
-  | Omd.Img(alt, src, title) ->
-      single @@ Img(alt, src, title)
-
-  | Omd.Img_ref(_, name, alt, _) ->
-      failwith (Printf.sprintf "Img_ref; remains to be supported: name='%s', alt='%s'" name alt)
-
-  | Omd.Raw(s) ->
-      single @@ InlineRaw(s)
+  | Omd.Html(_attr, _s) ->
+      failwith "make_inline_of_element, Omd.Html"
 
 
-and make_inline (md : Omd.t) : inline =
+and make_inline (md : (Omd.attributes Omd.inline) list) : inline =
   md |> List.map make_inline_of_element |> List.concat
 
 
-and make_block_of_element (mde : Omd.element) =
-  let single blke = [blke] in
-  let empty = [] in
-  match mde with
-  | Omd.H1(_) | Omd.H2(_) | Omd.H3(_) | Omd.H4(_) | Omd.H5(_) | Omd.H6(_) ->
-      Format.printf "!!!! %s\n" (Omd.to_text [mde]);
+and make_block_of_element (ob : Omd.attributes Omd.block) : block =
+  let single blke = [ blke ] in
+  match ob with
+  | Omd.Paragraph(_attr, oi) ->
+      single @@ Paragraph(make_inline_of_element oi)
+
+  | Omd.List(_attr, list_type, _list_spacing, obss) ->
+      begin
+        match list_type with
+        | Omd.Ordered(_n, _ch) -> (* TODO *)
+            single @@ OlBlock(obss |> List.map make_block)
+
+        | Omd.Bullet(_ch) ->
+            single @@ UlBlock(obss |> List.map make_block)
+      end
+
+  | Omd.Blockquote(_attr, obs) ->
+      single @@ Blockquote(make_block obs)
+
+  | Omd.Thematic_break(_attr) ->
+      single @@ Hr
+
+  | Omd.Heading(_attr, _level, _oi) ->
       assert false
-        (* -- should be omitted by 'normalize_section' -- *)
+        (* Must be omitted by `normalize_section` *)
 
-  | Omd.Text(_)
-  | Omd.Emph(_)
-  | Omd.Bold(_)
-  | Omd.Code(_)
-  | Omd.Url(_)
-  | Omd.Ref(_)
-  | Omd.Img(_)
-  | Omd.Img_ref(_)
-  | Omd.Raw(_)
-  | Omd.Html(_) ->
-      Format.printf "! [Warning] not a block: %s@," (Omd.to_text [mde]);
-        (* temporary; should warn in a more sophisticated manner *)
-      single @@ Paragraph(make_inline [mde])
+  | Omd.Code_block(_attr, name, s) ->
+      single @@ CodeBlock(name, s)
 
-  | Omd.Br
-  | Omd.NL ->
-      empty
+  | Omd.Html_block(_attr, _s) ->
+      failwith "make_block_of_element, Omd.Html_block"
 
-  | Omd.Html_comment(s) ->
-      Format.printf "  [Comment] %s@," s;  (* TEMPORARY *)
-      empty
-
-  | Omd.Html_block(_) ->
-      failwith ("HTML block; remains to be supported: " ^ Omd.to_text [mde])
-
-  | Omd.X(_) ->
-      failwith ("extension; remains to be supported: " ^ Omd.to_text [mde])
-
-  | Omd.Paragraph(md)       -> single @@ Paragraph(make_inline md)
-  | Omd.Ul(mds)             -> single @@ UlInline(List.map make_inline mds)
-  | Omd.Ulp(mds)            -> single @@ UlBlock(List.map make_block mds)
-  | Omd.Ol(mds)             -> single @@ OlInline(List.map make_inline mds)
-  | Omd.Olp(mds)            -> single @@ OlBlock(List.map make_block mds)
-  | Omd.Code_block(name, s) -> single @@ CodeBlock(name, s)
-  | Omd.Hr                  -> single @@ Hr
-  | Omd.Blockquote(md)      -> single @@ Blockquote(make_block md)
-  | Omd.Raw_block(s)        -> single @@ BlockRaw(s)
+  | Omd.Definition_list(_attr, _defs) ->
+      failwith "make_block_of_element, Omd.Definition_list"
 
 
-and make_block (md : Omd.t) : block =
+and make_block (md : (Omd.attributes Omd.block) list) : block =
   md |> List.map make_block_of_element |> List.concat
 
 
-let finish_section (midrcd : middle_record) : (inline * Omd.t) Alist.t =
+type middle_record = {
+  pre_contents        : (Omd.attributes Omd.block) list;
+  current_heading     : inline;
+  current_accumulated : (Omd.attributes Omd.block) Alist.t;
+  accumulated         : (inline * (Omd.attributes Omd.block) list) Alist.t;
+}
+
+type accumulator =
+  | Beginning of (Omd.attributes Omd.block) Alist.t
+  | Middle    of middle_record
+
+
+let finish_section (midrcd : middle_record) : (inline * (Omd.attributes Omd.block) list) Alist.t =
   let inner = Alist.to_list midrcd.current_accumulated in
-  let pair = (make_inline midrcd.current_heading, inner) in
+  let pair = (midrcd.current_heading, inner) in
   Alist.extend midrcd.accumulated pair
 
 
-let normalize_section nomf (md : Omd.t) =
+let normalize_section (nomf : Omd.attributes Omd.block -> (Omd.attributes Omd.inline) option) (obs : (Omd.attributes Omd.block) list) =
   let acc =
-    md |> List.fold_left (fun acc mde ->
-      match nomf mde with
+    obs |> List.fold_left (fun acc ob ->
+      match nomf ob with
       | Some(heading) ->
           begin
             match acc with
             | Beginning(eacc) ->
                 Middle{
                   pre_contents        = Alist.to_list eacc;
-                  current_heading     = heading;
+                  current_heading     = make_inline_of_element heading;
                   current_accumulated = Alist.empty;
                   accumulated         = Alist.empty;
                 }
@@ -183,7 +148,7 @@ let normalize_section nomf (md : Omd.t) =
                 let mainacc = finish_section midrcd in
                 Middle{
                   pre_contents        = midrcd.pre_contents;
-                  current_heading     = heading;
+                  current_heading     = make_inline_of_element heading;
                   current_accumulated = Alist.empty;
                   accumulated         = mainacc;
                 }
@@ -193,11 +158,11 @@ let normalize_section nomf (md : Omd.t) =
           begin
             match acc with
             | Beginning(eacc) ->
-                Beginning(Alist.extend eacc mde)
+                Beginning(Alist.extend eacc ob)
 
             | Middle(midrcd) ->
                 Middle({ midrcd with
-                  current_accumulated = Alist.extend midrcd.current_accumulated mde;
+                  current_accumulated = Alist.extend midrcd.current_accumulated ob;
                 })
           end
 
@@ -212,17 +177,28 @@ let normalize_section nomf (md : Omd.t) =
       (midrcd.pre_contents, Alist.to_list mainacc)
 
 
-let normalize_h seclev nomf subf md =
+let normalize_h (seclev : section_level) (nomf : Omd.attributes Omd.block -> (Omd.attributes Omd.inline) option) (subf : (Omd.attributes Omd.block) list -> block) md =
   let (pre, inner) = normalize_section nomf md in
   List.append (subf pre) (inner |> List.map (fun (heading, mdsub) -> Section(seclev, heading, subf mdsub)))
 
 
-let normalize_h6 = normalize_h H6 (function Omd.H6(heading) -> Some(heading) | _ -> None) make_block
-let normalize_h5 = normalize_h H5 (function Omd.H5(heading) -> Some(heading) | _ -> None) normalize_h6
-let normalize_h4 = normalize_h H4 (function Omd.H4(heading) -> Some(heading) | _ -> None) normalize_h5
-let normalize_h3 = normalize_h H3 (function Omd.H3(heading) -> Some(heading) | _ -> None) normalize_h4
-let normalize_h2 = normalize_h H2 (function Omd.H2(heading) -> Some(heading) | _ -> None) normalize_h3
-let normalize_h1 = normalize_h H1 (function Omd.H1(heading) -> Some(heading) | _ -> None) normalize_h2
+let normalize_h6 =
+  normalize_h H6 (function Omd.Heading(_, 6, oi_heading) -> Some(oi_heading) | _ -> None) make_block
+
+let normalize_h5 =
+  normalize_h H5 (function Omd.Heading(_, 5, heading) -> Some(heading) | _ -> None) normalize_h6
+
+let normalize_h4 =
+  normalize_h H4 (function Omd.Heading(_, 4, heading) -> Some(heading) | _ -> None) normalize_h5
+
+let normalize_h3 =
+  normalize_h H3 (function Omd.Heading(_, 3, heading) -> Some(heading) | _ -> None) normalize_h4
+
+let normalize_h2 =
+  normalize_h H2 (function Omd.Heading(_, 2, heading) -> Some(heading) | _ -> None) normalize_h3
+
+let normalize_h1 =
+  normalize_h H1 (function Omd.Heading(_, 1, heading) -> Some(heading) | _ -> None) normalize_h2
 
 
 module CodeNameMap = Map.Make(String)
@@ -254,7 +230,6 @@ type command_record = {
   emph               : command;
   bold               : command;
   hard_break         : command option;
-  code_map           : command CodeNameMap.t;
   code_default       : command;
   url                : command;
   reference          : command;
@@ -299,20 +274,8 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       make_inline_application cmdrcd.bold [utastarg]
 
 
-  | Code(name, s) ->
-      let cmd =
-        if String.equal name "" then
-          cmdrcd.code_default
-        else
-          match cmdrcd.code_map |> CodeNameMap.find_opt name with
-          | None ->
-              Format.printf "! Warning: unknown name '%s' for inline code\n" name;
-                (* -- temporary; should warn in a more sophisticated manner -- *)
-              cmdrcd.code_default
-
-          | Some(cmd) ->
-              cmd
-      in
+  | Code(s) ->
+      let cmd = cmdrcd.code_default in
       let utastarg = (dummy_range, UTStringConstant(s)) in
       make_inline_application cmd [utastarg]
 
@@ -328,36 +291,11 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       let utastarg2 = convert_inline cmdrcd iln in
       make_inline_application cmdrcd.url [utastarg1; utastarg2]
 
-  | Ref(tag, display, refopt) ->
-      let utastarg1 = (dummy_range, UTStringConstant(tag)) in
-      let utastarg2 = (dummy_range, UTStringConstant(display)) in
-      let utastarg3 =
-        match refopt with
-        | None ->
-            (dummy_range, UTConstructor([], "None", (dummy_range, UTUnitConstant)))
-
-        | Some((title, url)) ->
-            let u1 = (dummy_range, UTStringConstant(title)) in
-            let u2 = (dummy_range, UTStringConstant(url)) in
-            let upair = (dummy_range, UTTuple(TupleList.make u1 u2 [])) in
-            (dummy_range, UTConstructor([], "Some", upair))
-
-      in
-      make_inline_application cmdrcd.reference [utastarg1; utastarg2; utastarg3]
-
   | Img(alt, src, title) ->
       let utastarg1 = (dummy_range, UTStringConstant(alt)) in
       let utastarg2 = (dummy_range, UTStringConstant(src)) in
       let utastarg3 = (dummy_range, UTStringConstant(title)) in
       make_inline_application cmdrcd.img [utastarg1; utastarg2; utastarg3]
-
-  | EmbeddedBlock(blk) ->
-      let utastarg = convert_block cmdrcd blk in
-      make_inline_application cmdrcd.embed_block [utastarg]
-
-  | InlineRaw(s) ->
-      let utastarg = (dummy_range, UTStringConstant(s)) in
-      make_inline_application cmdrcd.err_inline [utastarg]
 
 
 and convert_inline (cmdrcd : command_record) (iln : inline) : untyped_abstract_tree =
@@ -393,20 +331,10 @@ and convert_block_element (cmdrcd : command_record) (blke : block_element) : unt
   | Hr ->
       make_block_application cmdrcd.hr []
 
-  | OlInline(ilns) ->
-      let utastlst = List.map (convert_inline cmdrcd) ilns in
-      let utastarg = make_list_tree utastlst in
-      make_block_application cmdrcd.ol_inline [utastarg]
-
   | OlBlock(blks) ->
       let utastlst = List.map (convert_block cmdrcd) blks in
       let utastarg = make_list_tree utastlst in
       make_block_application cmdrcd.ol_block [utastarg]
-
-  | UlInline(ilns) ->
-      let utastlst = List.map (convert_inline cmdrcd) ilns in
-      let utastarg = make_list_tree utastlst in
-      make_block_application cmdrcd.ul_inline [utastarg]
 
   | UlBlock(blks) ->
       let utastlst = List.map (convert_block cmdrcd) blks in
@@ -434,10 +362,6 @@ and convert_block_element (cmdrcd : command_record) (blke : block_element) : unt
       let utastarg = convert_block cmdrcd blk in
       make_block_application cmdrcd.blockquote [utastarg]
 
-  | BlockRaw(s) ->
-      let cmd = cmdrcd.err_block in
-      make_block_application cmd [ (dummy_range, UTInlineText([ (dummy_range, UTInlineTextString(s)) ])) ]
-
 
 and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tree =
   let bbacc =
@@ -455,24 +379,24 @@ let decode (cmdrcd : command_record) (s : string) =
     let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
     (rng, UTContentOf(modidents, (rng, varnm)))
   in
-  let md = Omd.of_string s in
+  let obs = Omd.of_string s in
   let (strheader, md) =
-    match md with
-    | Omd.Html_comment(s) :: md ->
-        let len = String.length s in
-        let s =
-          if len < 8 then
-            assert false
-          else
-            String.sub s 4 (len - 8)
-        in
-(*
-        Format.printf "  [Header] %s@," s;  (* for debug *)
- *)
-        (s, md)
+    match obs with
+    | Omd.Paragraph(_attr1, Omd.Html(_attr2, s)) :: obs ->
+        if Core.String.is_prefix s ~prefix:"<!--" && Core.String.is_suffix s ~suffix:"-->" then
+          let len = String.length s in
+          let s =
+            if len < 8 then
+              failwith "TODO (error): not a comment"
+            else
+              String.sub s 4 (len - 8)
+          in
+          (s, obs)
+        else
+          failwith "TODO (error): not a comment"
 
     | _ ->
-        (cmdrcd.header_default, md)
+        (cmdrcd.header_default, obs)
   in
   let utasthead =
     match ParserInterface.process_text "(markdown)" strheader with

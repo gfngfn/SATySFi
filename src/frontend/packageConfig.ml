@@ -124,13 +124,6 @@ let code_block_entry_decoder : (string * DecodeMD.command) ConfigDecoder.t =
   succeed (name, command)
 
 
-let code_entry_decoder : (string * DecodeMD.command) ConfigDecoder.t =
-  let open ConfigDecoder in
-  get "name" string >>= fun name ->
-  get "command" inline_command_decoder >>= fun command ->
-  succeed (name, command)
-
-
 let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
   let open ConfigDecoder in
   branch "type" [
@@ -156,7 +149,6 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
       get "emph" inline_command_decoder >>= fun emph ->
       get "bold" inline_command_decoder >>= fun bold ->
       get "hard_break" hard_break_decoder >>= fun hard_break ->
-      get_or_else "code" (list code_entry_decoder) [] >>= fun code_entries ->
       get "default_code" inline_command_decoder >>= fun code_default ->
       get "url" inline_command_decoder >>= fun url ->
       get "reference" inline_command_decoder >>= fun reference ->
@@ -165,11 +157,6 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
       get "error_inline" inline_command_decoder >>= fun err_inline ->
       let code_block_map =
         code_block_entries |> List.fold_left (fun code_block_map (name, command) ->
-          code_block_map |> DecodeMD.CodeNameMap.add name command
-        ) DecodeMD.CodeNameMap.empty
-      in
-      let code_map =
-        code_entries  |> List.fold_left (fun code_block_map (name, command) ->
           code_block_map |> DecodeMD.CodeNameMap.add name command
         ) DecodeMD.CodeNameMap.empty
       in
@@ -189,7 +176,7 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
         emph;
         bold;
         hard_break;
-        code_map; code_default;
+        code_default;
         url;
         reference;
         img;

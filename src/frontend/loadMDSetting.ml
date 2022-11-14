@@ -102,11 +102,6 @@ let read_assoc (assoc : MYU.assoc) =
       |> MYU.find "code-block"
       |> make_code_name_map pair_block
   in
-  let code assoc =
-    assoc
-      |> MYU.find "code"
-      |> make_code_name_map pair_inline
-  in
   let string k assoc =
     assoc
       |> MYU.find k
@@ -137,7 +132,6 @@ let read_assoc (assoc : MYU.assoc) =
       emph               = assoc |> inline "emph";
       bold               = assoc |> inline "bold";
       hard_break         = assoc |> inline_option "hard-break";
-      code_map           = assoc |> code;
       code_default       = assoc |> inline "code-default";
       url                = assoc |> inline "url";
       reference          = assoc |> inline "reference";

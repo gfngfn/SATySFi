@@ -29,7 +29,6 @@ type command_record = {
   emph               : command;
   bold               : command;
   hard_break         : command option;
-  code_map           : command CodeNameMap.t;
   code_default       : command;
   url                : command;
   reference          : command;

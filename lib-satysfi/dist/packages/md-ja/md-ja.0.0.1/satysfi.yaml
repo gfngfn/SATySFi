@@ -52,7 +52,6 @@ contents:
     bold: "\\MDJa.bold"
     hard_break:
       type: "none"
-    code: []
     default_code: "\\MDJa.code"
     url: "\\MDJa.link"
     reference: "\\MDJa.reference"
