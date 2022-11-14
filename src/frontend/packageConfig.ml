@@ -78,7 +78,8 @@ let command_decoder ~(prefix : char) : DecodeMD.command ConfigDecoder.t =
     if Char.equal prefix (String.get s 0) then
       let s_tail = (String.sub s 1 (String.length s - 1)) in
       let (modnms, varnm) = cut_module_names s_tail in
-      succeed (Range.dummy "command_decoder", (modnms, varnm))
+      let csnm = Printf.sprintf "%c%s" prefix varnm in
+      succeed (Range.dummy "command_decoder", (modnms, csnm))
     else
       failure (fun context -> NotACommand{ context; prefix; string = s })
   with
