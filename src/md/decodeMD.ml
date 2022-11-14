@@ -395,18 +395,12 @@ let decode (s : string) : DocumentAttribute.t * module_name * t =
   let (s_dependencies, modnm, s_extra, obs) =
     match obs with
     | Omd.Html_block(_attr1, s1) :: Omd.Html_block(_attr2, s2) :: Omd.Html_block(_attr3, s3) :: obs ->
-        Format.printf "**** STR: %s, %s, %s\n" s1 s2 s3;
         begin
           match (extract_comment s1, extract_comment s2, extract_comment s3) with
           | (Some(s_dependencies), Some(modnm), Some(s_extra)) ->
-              Format.printf "**** EXTR: %s, %s, %s\n" s_dependencies modnm s_extra;
               (s_dependencies, modnm, s_extra, obs)
 
-          | (opt1, opt2, opt3) ->
-              Format.printf "**** EXTR: %a, %a, %a\n"
-                Format.(pp_print_option pp_print_string) opt1
-                Format.(pp_print_option pp_print_string) opt2
-                Format.(pp_print_option pp_print_string) opt3;
+          | _ ->
               failwith "TODO (error): not a comment 1"
         end
 
