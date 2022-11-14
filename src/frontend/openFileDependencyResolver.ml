@@ -35,7 +35,7 @@ let get_header (extensions : string list) (curdir : string) (headerelem : header
       return @@ Local(modident, abspath)
 
 
-let rec register_library_file (extensions : string list) (graph : graph) (package_names : PackageNameSet.t) ~prev:(vertex_prev_opt : vertex option) (abspath : abs_path) : (PackageNameSet.t * graph) ok =
+let rec register_library_file (extensions : string list) (graph : graph) ~prev:(vertex_prev_opt : vertex option) (abspath : abs_path) : graph ok =
   let open ResultMonad in
   match graph |> FileDependencyGraph.get_vertex abspath with
   | Some(vertex) ->
@@ -45,7 +45,7 @@ let rec register_library_file (extensions : string list) (graph : graph) (packag
         | None              -> graph
         | Some(vertex_prev) -> graph |> FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
       in
-      return (package_names, graph)
+      return graph
 
   | None ->
       let curdir = Filename.dirname (get_abs_path_string abspath) in
@@ -67,18 +67,18 @@ let rec register_library_file (extensions : string list) (graph : graph) (packag
         | None              -> graph
         | Some(vertex_prev) -> graph |> FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
       in
-      header |> foldM (fun (package_names, graph) headerelem ->
+      header |> foldM (fun graph headerelem ->
         let* local_or_package = get_header extensions curdir headerelem in
         match local_or_package with
-        | Package((_, main_module_name)) ->
-            return (package_names |> PackageNameSet.add main_module_name, graph)
+        | Package((_, _main_module_name)) ->
+            return graph
 
         | Local(_modident_sub, abspath_sub) ->
-            register_library_file extensions graph package_names ~prev:(Some(vertex)) abspath_sub
-      ) (package_names, graph)
+            register_library_file extensions graph ~prev:(Some(vertex)) abspath_sub
+      ) graph
 
 
-let register_document_file (extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t * graph * untyped_document_file) ok =
+let register_document_file (extensions : string list) (abspath_in : abs_path) : (graph * untyped_document_file) ok =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
@@ -92,18 +92,18 @@ let register_document_file (extensions : string list) (abspath_in : abs_path) : 
     | UTDocumentFile(utdoc) -> return utdoc
   in
   let (_attrs, header, _) = utdoc in
-  let* (package_names, graph) =
-    header |> foldM (fun (package_names, graph) headerelem ->
+  let* graph =
+    header |> foldM (fun (graph) headerelem ->
       let* local_or_package = get_header extensions curdir headerelem in
       match local_or_package with
-      | Package((_, main_module_name)) ->
-          return (package_names |> PackageNameSet.add main_module_name, graph)
+      | Package((_, _main_module_name)) ->
+          return graph
 
       | Local(_, abspath_sub) ->
-          register_library_file extensions graph package_names ~prev:None abspath_sub
-    ) (PackageNameSet.empty, FileDependencyGraph.empty)
+          register_library_file extensions graph ~prev:None abspath_sub
+    ) FileDependencyGraph.empty
   in
-  return (package_names, graph, utdoc)
+  return (graph, utdoc)
 
 
 let extract_markdown_command_record ~(module_name : module_name) (config : PackageConfig.t) : DecodeMD.command_record ok =
@@ -155,20 +155,19 @@ let register_markdown_file (configenv : PackageConfig.t GlobalTypeenv.t) (abspat
   return utdoc
 
 
-let main ~(extensions : string list) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file) ok =
+let main ~(extensions : string list) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
-  let* (package_names, graph, utdoc) =
+  let* (graph, utdoc) =
     match OptionState.get_input_kind () with
     | OptionState.SATySFi ->
-        let* (package_names, graph, utdoc) = register_document_file extensions abspath_in in
-        return (package_names, graph, utdoc)
+        register_document_file extensions abspath_in
 
     | OptionState.Markdown(_settings) ->
         let* utdoc = register_markdown_file configenv abspath_in in
-        return (PackageNameSet.empty, FileDependencyGraph.empty, utdoc)
+        return (FileDependencyGraph.empty, utdoc)
   in
   let* sorted_locals =
     FileDependencyGraph.topological_sort graph
       |> Result.map_error (fun cycle -> CyclicFileDependency(cycle))
   in
-  return (package_names, sorted_locals, utdoc)
+  return (sorted_locals, utdoc)

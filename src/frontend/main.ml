@@ -1524,10 +1524,10 @@ let build
         in
 
         (* Resolve dependency of the document and the local source files: *)
-        let (_dep_main_module_names, sorted_locals, utdoc) =
+        let (sorted_locals, utdoc) =
           match OpenFileDependencyResolver.main ~extensions configenv abspath_in with
-          | Ok(triple) -> triple
-          | Error(e)   -> raise (ConfigError(e))
+          | Ok(pair) -> pair
+          | Error(e) -> raise (ConfigError(e))
         in
 
         (* Typechecking and elaboration: *)
