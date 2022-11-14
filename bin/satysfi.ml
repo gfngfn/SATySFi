@@ -8,7 +8,7 @@ let build
   fpath_out_opt
   config_paths_str_opt
   text_mode_formats_str_opt
-  markdown_style_str_opt
+  is_markdown
   page_number_limit
   show_full_path
   debug_show_bbox
@@ -26,7 +26,7 @@ let build
     ~fpath_out_opt
     ~config_paths_str_opt
     ~text_mode_formats_str_opt
-    ~markdown_style_str_opt
+    ~is_markdown
     ~page_number_limit
     ~show_full_path
     ~debug_show_bbox
@@ -76,12 +76,6 @@ let flag_text_mode =
   Arg.(value (opt (some string) None (info [ "text-mode" ] ~docv:"FORMATS" ~doc)))
 
 
-let flag_markdown =
-  let open Cmdliner in
-  let doc = "Pass Markdown source as input" in
-  Arg.(value (opt (some string) None (info [ "markdown" ] ~docv:"STYLES" ~doc)))
-
-
 let flag_page_number_limit : int Cmdliner.Term.t =
   let open Cmdliner in
   let doc = "Set the page number limit (default: 10000)" in
@@ -91,6 +85,12 @@ let flag_page_number_limit : int Cmdliner.Term.t =
 let make_boolean_flag_spec ~(flags : string list) ~(doc : string) : bool Cmdliner.Term.t =
   let open Cmdliner in
   Arg.(value (flag (info flags ~doc)))
+
+
+let flag_markdown =
+  make_boolean_flag_spec
+    ~flags:[ "markdown" ]
+    ~doc:"Pass Markdown source as input"
 
 
 let flag_full_path =

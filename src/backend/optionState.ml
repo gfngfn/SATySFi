@@ -3,7 +3,7 @@ open MyUtil
 
 type input_kind =
   | SATySFi
-  | Markdown of string
+  | Markdown
 
 type output_mode =
   | PdfMode

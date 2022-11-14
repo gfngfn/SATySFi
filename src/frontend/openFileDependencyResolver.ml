@@ -162,7 +162,7 @@ let main ~(extensions : string list) (configenv : PackageConfig.t GlobalTypeenv.
     | OptionState.SATySFi ->
         register_document_file extensions abspath_in
 
-    | OptionState.Markdown(_settings) ->
+    | OptionState.Markdown ->
         let* utdoc = register_markdown_file configenv abspath_in in
         return (FileDependencyGraph.empty, utdoc)
   in

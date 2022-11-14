@@ -1373,7 +1373,7 @@ let build
     ~(fpath_out_opt : string option)
     ~(config_paths_str_opt : string option)
     ~(text_mode_formats_str_opt : string option)
-    ~(markdown_style_str_opt : string option)
+    ~(is_markdown : bool)
     ~(page_number_limit : int)
     ~(show_full_path : bool)
     ~(debug_show_bbox : bool)
@@ -1398,9 +1398,10 @@ let build
       | Some(s) -> OptionState.TextMode(String.split_on_char ',' s)
     in
     let input_kind =
-      match markdown_style_str_opt with
-      | None          -> OptionState.SATySFi
-      | Some(setting) -> OptionState.Markdown(setting)
+      if is_markdown then
+        OptionState.Markdown
+      else
+        OptionState.SATySFi
     in
     OptionState.set OptionState.{
       command_state =
