@@ -373,39 +373,74 @@ and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tre
   (dummy_range, UTBlockText(utiv))
 
 
-let decode (cmdrcd : command_record) (s : string) =
-  let utastdoccmd =
+let extract_comment (s : string) : string option =
+  if Core.String.is_prefix s ~prefix:"<!--" && Core.String.is_suffix s ~suffix:"-->" then
+    let len = String.length s in
+    if len < 8 then
+      None
+    else
+      Some(String.trim (String.sub s 4 (len - 8)))
+  else
+    None
+
+
+let parse_expression (s_expr : string) : untyped_abstract_tree =
+  match ParserInterface.process_text "(markdown)" s_expr with
+  | Ok(UTDocumentFile([], [], utast)) -> utast
+  | _                                 -> failwith "TODO (error): invalid header expression"
+
+
+type t = {
+  extra_expression : untyped_abstract_tree;
+  main_contents    : block;
+}
+
+
+let decode (s : string) : DocumentAttribute.t * module_name * t =
+  let obs = Omd.of_string s in
+  let (s_dependencies, modnm, s_extra, obs) =
+    match obs with
+    | Omd.Html_block(_attr1, s1) :: Omd.Html_block(_attr2, s2) :: Omd.Html_block(_attr3, s3) :: obs ->
+        begin
+          match (extract_comment s1, extract_comment s2, extract_comment s3) with
+          | (Some(s_dependencies), Some(modnm), Some(s_extra)) ->
+              (s_dependencies, modnm, s_extra, obs)
+
+          | _ ->
+              failwith "TODO (error): not a comment"
+        end
+
+    | _ ->
+        failwith "TODO (error): not a comment"
+  in
+  let utast_dependencies = parse_expression s_dependencies in
+  let utast_extra = parse_expression s_extra in
+  let main_contents = normalize_h1 obs in
+  let document_attributes_res =
+    DocumentAttribute.make [
+      (dummy_range, UTAttribute("dependencies", utast_dependencies))
+    ]
+  in
+  match document_attributes_res with
+  | Error(_) ->
+      failwith "TODO (error): failed to decode document attributes"
+
+  | Ok(document_attributes) ->
+      let md =
+        {
+          extra_expression = utast_extra;
+          main_contents;
+        }
+      in
+      (document_attributes, modnm, md)
+
+
+let convert (cmdrcd : command_record) (md : t) =
+  let utast_body = convert_block cmdrcd md.main_contents in
+  let utast_doccmd =
     let (rng, (modnms, varnm)) = cmdrcd.document in
     let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
     (rng, UTContentOf(modidents, (rng, varnm)))
   in
-  let obs = Omd.of_string s in
-  let (strheader, md) =
-    match obs with
-    | Omd.Paragraph(_attr1, Omd.Html(_attr2, s)) :: obs ->
-        if Core.String.is_prefix s ~prefix:"<!--" && Core.String.is_suffix s ~suffix:"-->" then
-          let len = String.length s in
-          let s =
-            if len < 8 then
-              failwith "TODO (error): not a comment"
-            else
-              String.sub s 4 (len - 8)
-          in
-          (s, obs)
-        else
-          failwith "TODO (error): not a comment"
-
-    | _ ->
-        (cmdrcd.header_default, obs)
-  in
-  let utasthead =
-    match ParserInterface.process_text "(markdown)" strheader with
-    | Ok(UTDocumentFile([], [], u)) -> u
-    | _                             -> failwith "TODO (error): invalid header expression"
-  in
-  let blk = normalize_h1 md in
-(*
-  Format.printf "BLOCK: %a\n" pp_block blk;  (* for debug *)
- *)
-  let utastbody = convert_block cmdrcd blk in
-  (dummy_range, UTApply([], (dummy_range, UTApply([], utastdoccmd, utasthead)), utastbody))
+  let utast_extra = md.extra_expression in
+  (dummy_range, UTApply([], (dummy_range, UTApply([], utast_doccmd, utast_extra)), utast_body))

@@ -37,4 +37,8 @@ type command_record = {
   err_inline         : command;
 }
 
-val decode : command_record -> string -> untyped_abstract_tree
+type t
+
+val decode : string -> DocumentAttribute.t * module_name * t
+
+val convert : command_record -> t -> untyped_abstract_tree

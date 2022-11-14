@@ -106,32 +106,21 @@ let register_document_file (extensions : string list) (abspath_in : abs_path) : 
   return (package_names, graph, utdoc)
 
 
-let register_markdown_file (setting : string) (abspath_in : abs_path) : (PackageNameSet.t * untyped_document_file) ok =
+let register_markdown_file (abspath_in : abs_path) : untyped_document_file ok =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
-  let* abspath =
-    let libpath = make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md")) in
-    Config.resolve_lib_file libpath
-      |> Result.map_error (fun candidates -> CannotFindLibraryFile(libpath, candidates))
-  in
-  let (cmdrcd, depends) = LoadMDSetting.main abspath in (* TODO: make this monadic *)
-  let* utast =
+  let* (_docattr, main_module_name, md) =
     match read_file abspath_in with
-    | Ok(data)   -> return (DecodeMD.decode cmdrcd data)
+    | Ok(data)   -> return (DecodeMD.decode data)
     | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in
-  let package_names =
-    depends |> List.fold_left (fun package_names main_module_name ->
-      package_names |> PackageNameSet.add main_module_name
-    ) PackageNameSet.empty
-  in
+  let cmdrcd = failwith "TODO: register_markdown_file, cmdrcd" in
+  let utast = DecodeMD.convert cmdrcd md in
   let header =
-    depends |> List.map (fun main_module_name ->
-      HeaderUsePackage{ opening = false; module_name = (Range.dummy "md-header", main_module_name) }
-    )
+    [ HeaderUsePackage{ opening = false; module_name = (Range.dummy "md-header", main_module_name) } ]
   in
   let utdoc = ([], header, utast) in
-  return (package_names, utdoc)
+  return utdoc
 
 
 let main ~(extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file) ok =
@@ -142,9 +131,9 @@ let main ~(extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t
         let* (package_names, graph, utdoc) = register_document_file extensions abspath_in in
         return (package_names, graph, utdoc)
 
-    | OptionState.Markdown(setting) ->
-        let* (package_names, utdoc) = register_markdown_file setting abspath_in in
-        return (package_names, FileDependencyGraph.empty, utdoc)
+    | OptionState.Markdown(_settings) ->
+        let* utdoc = register_markdown_file abspath_in in
+        return (PackageNameSet.empty, FileDependencyGraph.empty, utdoc)
   in
   let* sorted_locals =
     FileDependencyGraph.topological_sort graph
