@@ -8,8 +8,8 @@ type section_level =
 type block_element =
   | Section    of section_level * inline * block
   | Paragraph  of inline
-  | UlBlock    of block list
-  | OlBlock    of block list
+  | Ul         of block list
+  | Ol         of block list
   | Blockquote of block
   | CodeBlock  of string * string
   | Hr
@@ -18,13 +18,13 @@ and block =
   block_element list
 
 and inline_element =
-  | Text of string
-  | Emph of inline
-  | Bold of inline
-  | Code of string
+  | Text   of string
+  | Emph   of inline
+  | Strong of inline
+  | Code   of string
   | Br
-  | Url  of string * inline * string
-  | Img  of string * string * string
+  | Link   of string * inline * string
+  | Img    of string * string * string
 
 and inline =
   inline_element list
@@ -43,7 +43,7 @@ let rec make_inline_of_element (oi : Omd.attributes Omd.inline) =
       single @@ Emph(make_inline_of_element oi)
 
   | Omd.Strong(_attr, oi) ->
-      single @@ Bold(make_inline_of_element oi)
+      single @@ Strong(make_inline_of_element oi)
 
   | Omd.Code(_attr, s) ->
       single @@ Code(s)
@@ -56,7 +56,7 @@ let rec make_inline_of_element (oi : Omd.attributes Omd.inline) =
 
   | Omd.Link(_attr, { label; destination; title = title_opt }) ->
       let title = title_opt |> Option.value ~default:"" in (* TODO *)
-      single @@ Url(destination, make_inline_of_element label, title)
+      single @@ Link(destination, make_inline_of_element label, title)
 
   | Omd.Image(_attr, { label = _; destination; title = title_opt }) ->
       let alt = "" in (* TODO *)
@@ -81,10 +81,10 @@ and make_block_of_element (ob : Omd.attributes Omd.block) : block =
       begin
         match list_type with
         | Omd.Ordered(_n, _ch) -> (* TODO *)
-            single @@ OlBlock(obss |> List.map make_block)
+            single @@ Ol(obss |> List.map make_block)
 
         | Omd.Bullet(_ch) ->
-            single @@ UlBlock(obss |> List.map make_block)
+            single @@ Ul(obss |> List.map make_block)
       end
 
   | Omd.Blockquote(_attr, obs) ->
@@ -207,28 +207,28 @@ module CodeNameMap = Map.Make(String)
 type command = Range.t * (module_name list * var_name)
 
 type command_record = {
-  document           : command;
+  document       : command;
 
-  paragraph          : command;
-  hr                 : command;
-  h1                 : command;
-  h2                 : command;
-  h3                 : command;
-  h4                 : command;
-  h5                 : command;
-  h6                 : command;
-  ul_block           : command;
-  ol_block           : command;
-  code_block_map     : command CodeNameMap.t;
-  code_block_default : command;
-  blockquote         : command;
+  paragraph      : command;
+  hr             : command;
+  h1             : command;
+  h2             : command;
+  h3             : command;
+  h4             : command;
+  h5             : command;
+  h6             : command;
+  ul             : command;
+  ol             : command;
+  code_block_map : command CodeNameMap.t;
+  code_block     : command;
+  blockquote     : command;
 
-  emph               : command;
-  bold               : command;
-  hard_break         : command option;
-  code_default       : command;
-  url                : command;
-  img                : command;
+  emph           : command;
+  strong         : command;
+  hard_break     : command option;
+  code           : command;
+  link           : command;
+  img            : command;
 }
 
 
@@ -262,13 +262,13 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       let utastarg = convert_inline cmdrcd iln in
       make_inline_application cmdrcd.emph [utastarg]
 
-  | Bold(iln) ->
+  | Strong(iln) ->
       let utastarg = convert_inline cmdrcd iln in
-      make_inline_application cmdrcd.bold [utastarg]
+      make_inline_application cmdrcd.strong [utastarg]
 
 
   | Code(s) ->
-      let cmd = cmdrcd.code_default in
+      let cmd = cmdrcd.code in
       let utastarg = (dummy_range, UTStringConstant(s)) in
       make_inline_application cmd [utastarg]
 
@@ -279,10 +279,10 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
         | None      -> [(dummy_range, UTInlineTextString("\n"))]
       end
 
-  | Url(href, iln, _title) ->
+  | Link(href, iln, _title) ->
       let utastarg1 = (dummy_range, UTStringConstant(href)) in
       let utastarg2 = convert_inline cmdrcd iln in
-      make_inline_application cmdrcd.url [utastarg1; utastarg2]
+      make_inline_application cmdrcd.link [utastarg1; utastarg2]
 
   | Img(alt, src, title) ->
       let utastarg1 = (dummy_range, UTStringConstant(alt)) in
@@ -324,27 +324,27 @@ and convert_block_element (cmdrcd : command_record) (blke : block_element) : unt
   | Hr ->
       make_block_application cmdrcd.hr []
 
-  | OlBlock(blks) ->
+  | Ol(blks) ->
       let utastlst = List.map (convert_block cmdrcd) blks in
       let utastarg = make_list_tree utastlst in
-      make_block_application cmdrcd.ol_block [utastarg]
+      make_block_application cmdrcd.ol [utastarg]
 
-  | UlBlock(blks) ->
+  | Ul(blks) ->
       let utastlst = List.map (convert_block cmdrcd) blks in
       let utastarg = make_list_tree utastlst in
-      make_block_application cmdrcd.ul_block [utastarg]
+      make_block_application cmdrcd.ul [utastarg]
 
   | CodeBlock(name, s) ->
       let utastarg = (dummy_range, UTStringConstant(s)) in
       let cmd =
         if String.equal name "" then
-          cmdrcd.code_block_default
+          cmdrcd.code_block
         else
           match cmdrcd.code_block_map |> CodeNameMap.find_opt name with
           | None ->
               Format.printf "! Warning: unknown name '%s' for code block\n" name;
                 (* temporary; should warn in a more sophisticated manner *)
-              cmdrcd.code_block_default
+              cmdrcd.code_block
 
           | Some(cmd) ->
               cmd

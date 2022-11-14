@@ -138,16 +138,16 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
       get "h4" block_command_decoder >>= fun h4 ->
       get "h5" block_command_decoder >>= fun h5 ->
       get "h6" block_command_decoder >>= fun h6 ->
-      get "ul_block" block_command_decoder >>= fun ul_block ->
-      get "ol_block" block_command_decoder >>= fun ol_block ->
-      get_or_else "code_block" (list code_block_entry_decoder) [] >>= fun code_block_entries ->
-      get "default_code_block" block_command_decoder >>= fun code_block_default ->
+      get "ul" block_command_decoder >>= fun ul ->
+      get "ol" block_command_decoder >>= fun ol ->
+      get_or_else "code_block_map" (list code_block_entry_decoder) [] >>= fun code_block_entries ->
+      get "code_block" block_command_decoder >>= fun code_block ->
       get "blockquote" block_command_decoder >>= fun blockquote ->
       get "emph" inline_command_decoder >>= fun emph ->
-      get "bold" inline_command_decoder >>= fun bold ->
+      get "strong" inline_command_decoder >>= fun strong ->
       get "hard_break" hard_break_decoder >>= fun hard_break ->
-      get "default_code" inline_command_decoder >>= fun code_default ->
-      get "url" inline_command_decoder >>= fun url ->
+      get "code" inline_command_decoder >>= fun code ->
+      get "link" inline_command_decoder >>= fun link ->
       get "img" inline_command_decoder >>= fun img ->
       let code_block_map =
         code_block_entries |> List.fold_left (fun code_block_map (name, command) ->
@@ -160,16 +160,16 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
         paragraph;
         hr;
         h1; h2; h3; h4; h5; h6;
-        ul_block;
-        ol_block;
-        code_block_map; code_block_default;
+        ul;
+        ol;
+        code_block_map; code_block;
         blockquote;
 
         emph;
-        bold;
+        strong;
         hard_break;
-        code_default;
-        url;
+        code;
+        link;
         img;
       })
     end;
