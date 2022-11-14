@@ -130,7 +130,6 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
   branch "type" [
     "markdown" ==> begin
       get "document" identifier_decoder >>= fun document ->
-      get "default_header" string >>= fun header_default ->
       get "paragraph" block_command_decoder >>= fun paragraph ->
       get "hr" block_command_decoder >>= fun hr ->
       get "h1" block_command_decoder >>= fun h1 ->
@@ -139,23 +138,17 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
       get "h4" block_command_decoder >>= fun h4 ->
       get "h5" block_command_decoder >>= fun h5 ->
       get "h6" block_command_decoder >>= fun h6 ->
-      get "ul_inline" block_command_decoder >>= fun ul_inline ->
       get "ul_block" block_command_decoder >>= fun ul_block ->
-      get "ol_inline" block_command_decoder >>= fun ol_inline ->
       get "ol_block" block_command_decoder >>= fun ol_block ->
       get_or_else "code_block" (list code_block_entry_decoder) [] >>= fun code_block_entries ->
       get "default_code_block" block_command_decoder >>= fun code_block_default ->
       get "blockquote" block_command_decoder >>= fun blockquote ->
-      get "error_block" block_command_decoder >>= fun err_block ->
       get "emph" inline_command_decoder >>= fun emph ->
       get "bold" inline_command_decoder >>= fun bold ->
       get "hard_break" hard_break_decoder >>= fun hard_break ->
       get "default_code" inline_command_decoder >>= fun code_default ->
       get "url" inline_command_decoder >>= fun url ->
-      get "reference" inline_command_decoder >>= fun reference ->
       get "img" inline_command_decoder >>= fun img ->
-      get "embed_block" inline_command_decoder >>= fun embed_block ->
-      get "error_inline" inline_command_decoder >>= fun err_inline ->
       let code_block_map =
         code_block_entries |> List.fold_left (fun code_block_map (name, command) ->
           code_block_map |> DecodeMD.CodeNameMap.add name command
@@ -163,26 +156,21 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
       in
       succeed @@ MarkdownConversion(DecodeMD.{
         document;
-        header_default;
 
         paragraph;
         hr;
         h1; h2; h3; h4; h5; h6;
-        ul_inline; ul_block;
-        ol_inline; ol_block;
+        ul_block;
+        ol_block;
         code_block_map; code_block_default;
         blockquote;
-        err_block;
 
         emph;
         bold;
         hard_break;
         code_default;
         url;
-        reference;
         img;
-        embed_block;
-        err_inline;
       })
     end;
   ]

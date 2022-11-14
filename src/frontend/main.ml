@@ -1228,24 +1228,6 @@ let error_log_environment (suspended : unit -> unit) : unit =
         NormalLine(s);
       ]
 
-  | LoadMDSetting.MultipleCodeNameDesignation(rng, s) ->
-      report_error System [
-        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(Printf.sprintf "multiple designation for key '%s'." s);
-      ]
-
-  | LoadMDSetting.NotAnInlineCommand(rng, s) ->
-      report_error System [
-        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(Printf.sprintf "'%s' is not an inline command name." s);
-      ]
-
-  | LoadMDSetting.NotABlockCommand(rng, s) ->
-      report_error System [
-        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(Printf.sprintf "'%s' is not a block command name." s);
-      ]
-
   | MyYojsonUtil.SyntaxError(fname, msg) ->
       report_error System [
         NormalLine(Printf.sprintf "in '%s':" fname);
