@@ -27,7 +27,6 @@ type state = {
   command_state      : command_state;
   extra_config_paths : (string list) option;
   show_full_path     : bool;
-  show_fonts         : bool;
   no_default_config  : bool;
 }
 
@@ -48,7 +47,6 @@ val does_debug_show_block_space : unit -> bool
 val does_debug_show_overfull    : unit -> bool
 val is_type_check_only          : unit -> bool
 val is_bytecomp_mode            : unit -> bool
-val does_show_fonts             : unit -> bool
 val use_no_default_config       : unit -> bool
 
 val job_directory : unit -> string

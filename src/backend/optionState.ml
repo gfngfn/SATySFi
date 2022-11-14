@@ -27,7 +27,6 @@ type state = {
   command_state      : command_state;
   extra_config_paths : (string list) option;
   show_full_path     : bool;
-  show_fonts         : bool;
   no_default_config  : bool;
 }
 
@@ -64,7 +63,6 @@ let does_debug_show_block_space () = (get_build_state ()).debug_show_block_space
 let does_debug_show_overfull ()    = (get_build_state ()).debug_show_overfull
 let is_type_check_only ()          = (get_build_state ()).type_check_only
 let is_bytecomp_mode ()            = (get_build_state ()).bytecomp
-let does_show_fonts ()             = (get ()).show_fonts
 let use_no_default_config ()       = (get ()).no_default_config
 
 

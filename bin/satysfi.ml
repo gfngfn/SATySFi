@@ -17,7 +17,6 @@ let build
   debug_show_overfull
   type_check_only
   bytecomp
-  show_fonts
   no_default_config
 =
   Main.build
@@ -34,7 +33,6 @@ let build
     ~debug_show_overfull
     ~type_check_only
     ~bytecomp
-    ~show_fonts
     ~no_default_config
 
 
@@ -133,12 +131,6 @@ let flag_bytecomp =
     ~doc:"Use bytecode compiler"
 
 
-let flag_show_fonts =
-  make_boolean_flag_spec
-    ~flags:[ "show-fonts" ]
-    ~doc:"Displays all the available fonts"
-
-
 let flag_no_default_config =
   make_boolean_flag_spec
     ~flags:[ "no-default-config" ]
@@ -162,7 +154,6 @@ let command_build =
       $ flag_debug_show_overfull
       $ flag_type_check_only
       $ flag_bytecomp
-      $ flag_show_fonts
       $ flag_no_default_config
     )
   in

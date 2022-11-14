@@ -1389,7 +1389,6 @@ let build
     ~(debug_show_overfull : bool)
     ~(type_check_only : bool)
     ~(bytecomp : bool)
-    ~(show_fonts : bool)
     ~(no_default_config : bool)
 =
   error_log_environment (fun () ->
@@ -1420,7 +1419,6 @@ let build
         };
       extra_config_paths;
       show_full_path;
-      show_fonts;
       no_default_config;
     };
 
@@ -1606,7 +1604,6 @@ let solve
       command_state = SolveState;
       extra_config_paths;
       show_full_path;
-      show_fonts = false;
       no_default_config;
     };
 

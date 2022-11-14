@@ -13,7 +13,6 @@ val build :
   debug_show_overfull:bool ->
   type_check_only:bool ->
   bytecomp:bool ->
-  show_fonts:bool ->
   no_default_config:bool ->
   unit
 
