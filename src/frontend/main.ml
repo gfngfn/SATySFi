@@ -1613,7 +1613,7 @@ let extract_attributes_from_document_file (input_kind : input_kind) (abspath_in 
   | InputMarkdown ->
       let* (docattr, _main_module_name, _md) =
         match read_file abspath_in with
-        | Ok(data)   -> DecodeMD.decode data |> Result.map_error (fun e -> MarkdownError(e))
+        | Ok(data)   -> MarkdownParser.decode data |> Result.map_error (fun e -> MarkdownError(e))
         | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
       in
       return docattr

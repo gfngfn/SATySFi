@@ -13,7 +13,7 @@ type font_file_description = {
 }
 
 type package_conversion_spec =
-  | MarkdownConversion of DecodeMD.command_record
+  | MarkdownConversion of MarkdownParser.command_record
 
 type package_contents =
   | Library of {

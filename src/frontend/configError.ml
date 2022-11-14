@@ -80,4 +80,4 @@ type config_error =
   | MarkdownClassNotFound         of module_name
   | NoMarkdownConversion          of module_name
   | MoreThanOneMarkdownConversion of module_name
-  | MarkdownError                 of DecodeMD.error
+  | MarkdownError                 of MarkdownParser.error

@@ -17,7 +17,7 @@ type font_file_description = {
 }
 
 type package_conversion_spec =
-  | MarkdownConversion of DecodeMD.command_record
+  | MarkdownConversion of MarkdownParser.command_record
 
 type package_contents =
   | Library of {
@@ -71,7 +71,7 @@ let cut_module_names (s : string) : string list * string =
   | _                   -> assert false (* `String.split_on_char` always returns a non-empty list *)
 
 
-let command_decoder ~(prefix : char) : DecodeMD.command ConfigDecoder.t =
+let command_decoder ~(prefix : char) : MarkdownParser.command ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
   try
@@ -95,14 +95,14 @@ let block_command_decoder =
   command_decoder ~prefix:'+'
 
 
-let identifier_decoder : DecodeMD.command ConfigDecoder.t =
+let identifier_decoder : MarkdownParser.command ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
   let (modnms, varnm) = cut_module_names s in
   succeed (Range.dummy "identifier_decoder", (modnms, varnm))
 
 
-let hard_break_decoder : (DecodeMD.command option) ConfigDecoder.t =
+let hard_break_decoder : (MarkdownParser.command option) ConfigDecoder.t =
   let open ConfigDecoder in
   branch "type" [
     "none" ==> begin
@@ -118,7 +118,7 @@ let hard_break_decoder : (DecodeMD.command option) ConfigDecoder.t =
   )
 
 
-let code_block_entry_decoder : (string * DecodeMD.command) ConfigDecoder.t =
+let code_block_entry_decoder : (string * MarkdownParser.command) ConfigDecoder.t =
   let open ConfigDecoder in
   get "name" string >>= fun name ->
   get "command" block_command_decoder >>= fun command ->
@@ -151,10 +151,10 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
       get "img" inline_command_decoder >>= fun img ->
       let code_block_map =
         code_block_entries |> List.fold_left (fun code_block_map (name, command) ->
-          code_block_map |> DecodeMD.CodeNameMap.add name command
-        ) DecodeMD.CodeNameMap.empty
+          code_block_map |> MarkdownParser.CodeNameMap.add name command
+        ) MarkdownParser.CodeNameMap.empty
       in
-      succeed @@ MarkdownConversion(DecodeMD.{
+      succeed @@ MarkdownConversion(MarkdownParser.{
         document;
 
         paragraph;

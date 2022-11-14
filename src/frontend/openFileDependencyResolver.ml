@@ -107,7 +107,7 @@ let register_document_file (extensions : string list) (abspath_in : abs_path) : 
   return (graph, utdoc)
 
 
-let extract_markdown_command_record ~(module_name : module_name) (config : PackageConfig.t) : DecodeMD.command_record ok =
+let extract_markdown_command_record ~(module_name : module_name) (config : PackageConfig.t) : MarkdownParser.command_record ok =
   let open ResultMonad in
   match config.PackageConfig.package_contents with
   | PackageConfig.Library{ conversion_specs; _ } ->
@@ -137,7 +137,7 @@ let register_markdown_file (configenv : PackageConfig.t GlobalTypeenv.t) (abspat
   Logging.begin_to_parse_file abspath_in;
   let* (_docattr, main_module_name_class, md) =
     match read_file abspath_in with
-    | Ok(data)   -> DecodeMD.decode data |> Result.map_error (fun e -> MarkdownError(e))
+    | Ok(data)   -> MarkdownParser.decode data |> Result.map_error (fun e -> MarkdownError(e))
     | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in
   let* cmdrcd =
@@ -148,7 +148,7 @@ let register_markdown_file (configenv : PackageConfig.t GlobalTypeenv.t) (abspat
     | Some(config) ->
         extract_markdown_command_record ~module_name:main_module_name_class config
   in
-  let utast = DecodeMD.convert cmdrcd md in
+  let utast = MarkdownParser.convert cmdrcd md in
   let header =
     [ HeaderUsePackage{ opening = false; module_name = (Range.dummy "md-header", main_module_name_class) } ]
   in
