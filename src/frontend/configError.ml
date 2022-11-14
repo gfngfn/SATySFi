@@ -76,7 +76,8 @@ type config_error =
       candidates : abs_path list;
     }
   | CannotSolvePackageConstraints
-  | DocumentAttributeError    of DocumentAttribute.error
+  | DocumentAttributeError        of DocumentAttribute.error
   | MarkdownClassNotFound         of module_name
   | NoMarkdownConversion          of module_name
   | MoreThanOneMarkdownConversion of module_name
+  | MarkdownError                 of DecodeMD.error

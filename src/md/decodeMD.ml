@@ -1,6 +1,13 @@
 
 open Types
 
+type error =
+  | InvalidHeaderComment
+  | InvalidExtraExpression
+  | FailedToMakeDocumentAttribute of DocumentAttribute.error
+
+type 'a ok = ('a, error) result
+
 
 type section_level =
   | H1 | H2 | H3 | H4 | H5 | H6
@@ -378,10 +385,11 @@ let extract_comment (s : string) : string option =
     None
 
 
-let parse_expression (s_expr : string) : untyped_abstract_tree =
+let parse_expression (s_expr : string) : untyped_abstract_tree ok =
+  let open ResultMonad in
   match ParserInterface.process_text "(markdown)" s_expr with
-  | Ok(UTDocumentFile([], [], utast)) -> utast
-  | _                                 -> failwith "TODO (error): invalid header expression"
+  | Ok(UTDocumentFile([], [], utast)) -> return utast
+  | _                                 -> err InvalidExtraExpression
 
 
 type t = {
@@ -390,25 +398,26 @@ type t = {
 }
 
 
-let decode (s : string) : DocumentAttribute.t * module_name * t =
+let decode (s : string) : (DocumentAttribute.t * module_name * t) ok =
+  let open ResultMonad in
   let obs = Omd.of_string s in
-  let (s_dependencies, modnm, s_extra, obs) =
+  let* (s_dependencies, modnm, s_extra, obs) =
     match obs with
     | Omd.Html_block(_attr1, s1) :: Omd.Html_block(_attr2, s2) :: Omd.Html_block(_attr3, s3) :: obs ->
         begin
           match (extract_comment s1, extract_comment s2, extract_comment s3) with
           | (Some(s_dependencies), Some(modnm), Some(s_extra)) ->
-              (s_dependencies, modnm, s_extra, obs)
+              return (s_dependencies, modnm, s_extra, obs)
 
           | _ ->
-              failwith "TODO (error): not a comment 1"
+              err InvalidHeaderComment
         end
 
     | _ ->
-        failwith "TODO (error): not a comment 2"
+        err InvalidHeaderComment
   in
-  let utast_dependencies = parse_expression s_dependencies in
-  let utast_extra = parse_expression s_extra in
+  let* utast_dependencies = parse_expression s_dependencies in
+  let* utast_extra = parse_expression s_extra in
   let main_contents = normalize_h1 obs in
   let document_attributes_res =
     DocumentAttribute.make [
@@ -416,8 +425,8 @@ let decode (s : string) : DocumentAttribute.t * module_name * t =
     ]
   in
   match document_attributes_res with
-  | Error(_) ->
-      failwith "TODO (error): failed to decode document attributes"
+  | Error(e) ->
+      err @@ FailedToMakeDocumentAttribute(e)
 
   | Ok(document_attributes) ->
       let md =
@@ -426,7 +435,7 @@ let decode (s : string) : DocumentAttribute.t * module_name * t =
           main_contents;
         }
       in
-      (document_attributes, modnm, md)
+      return (document_attributes, modnm, md)
 
 
 let convert (cmdrcd : command_record) (md : t) =

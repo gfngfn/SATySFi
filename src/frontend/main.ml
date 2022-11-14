@@ -1079,6 +1079,23 @@ let report_config_error : config_error -> unit = function
         NormalLine(Printf.sprintf "package '%s' contains more than one Markdown conversion rule." modnm);
       ]
 
+  | MarkdownError(e) ->
+      begin
+        match e with
+        | InvalidHeaderComment ->
+            report_error Interface [
+              NormalLine("invalid or missing header comment of a Markdown document.");
+            ]
+
+        | InvalidExtraExpression ->
+            report_error Interface [
+              NormalLine("cannot parse an extra expression in a Markdown document.");
+            ]
+
+        | FailedToMakeDocumentAttribute(de) ->
+            report_document_attribute_error de
+      end
+
 
 let report_font_error : font_error -> unit = function
   | FailedToReadFont(abspath, msg) ->
@@ -1596,7 +1613,7 @@ let extract_attributes_from_document_file (input_kind : input_kind) (abspath_in 
   | InputMarkdown ->
       let* (docattr, _main_module_name, _md) =
         match read_file abspath_in with
-        | Ok(data)   -> return (DecodeMD.decode data)
+        | Ok(data)   -> DecodeMD.decode data |> Result.map_error (fun e -> MarkdownError(e))
         | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
       in
       return docattr

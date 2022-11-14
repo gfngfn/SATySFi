@@ -1,6 +1,11 @@
 
 open Types
 
+type error =
+  | InvalidHeaderComment
+  | InvalidExtraExpression
+  | FailedToMakeDocumentAttribute of DocumentAttribute.error
+
 module CodeNameMap : Map.S with type key = string
 
 type command = Range.t * (module_name list * var_name)
@@ -32,6 +37,6 @@ type command_record = {
 
 type t
 
-val decode : string -> DocumentAttribute.t * module_name * t
+val decode : string -> (DocumentAttribute.t * module_name * t, error) result
 
 val convert : command_record -> t -> untyped_abstract_tree

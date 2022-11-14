@@ -137,7 +137,7 @@ let register_markdown_file (configenv : PackageConfig.t GlobalTypeenv.t) (abspat
   Logging.begin_to_parse_file abspath_in;
   let* (_docattr, main_module_name_class, md) =
     match read_file abspath_in with
-    | Ok(data)   -> return (DecodeMD.decode data)
+    | Ok(data)   -> DecodeMD.decode data |> Result.map_error (fun e -> MarkdownError(e))
     | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in
   let* cmdrcd =

@@ -1,9 +1,7 @@
 <!-- [
   (`md-ja`, `0.0.1`),
 ] -->
-
 <!-- MDJa -->
-
 <!-- (|
   title = {A Type System of Labeled Optional Parameters},
   author = {gfn},
