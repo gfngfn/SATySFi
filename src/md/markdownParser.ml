@@ -38,7 +38,7 @@ and inline =
 
 
 let rec make_inline_of_element (oi : Omd.attributes Omd.inline) =
-  let single ilne = [ ilne ] in
+  let single ie = [ ie ] in
   match oi with
   | Omd.Concat(_attr, ois) ->
       make_inline ois
@@ -79,7 +79,7 @@ and make_inline (md : (Omd.attributes Omd.inline) list) : inline =
 
 
 and make_block_of_element (ob : Omd.attributes Omd.block) : block =
-  let single blke = [ blke ] in
+  let single be = [ be ] in
   match ob with
   | Omd.Paragraph(_attr, oi) ->
       single @@ Paragraph(make_inline_of_element oi)
@@ -239,13 +239,13 @@ type command_record = {
 }
 
 
-let dummy_range = Range.dummy "decodeMD"
+let dummy_range = Range.dummy "Markdown-parser"
 
 
-let make_list_tree utastlst =
-  List.fold_right (fun utast utasttail ->
-    (dummy_range, UTListCons(utast, utasttail))
-  ) utastlst (dummy_range, UTEndOfList)
+let make_list_tree utasts =
+  List.fold_right (fun utast utast_tail ->
+    (dummy_range, UTListCons(utast, utast_tail))
+  ) utasts (dummy_range, UTEndOfList)
 
 
 let make_inline_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
@@ -260,113 +260,113 @@ let make_block_application ((rng, (modnms, csnm)) : command) (utasts : untyped_a
   [(dummy_range, UTBlockTextApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
-let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element) : untyped_inline_text_element list =
-  match ilne with
+let rec convert_inline_element (cmdr : command_record) (ie : inline_element) : untyped_inline_text_element list =
+  match ie with
   | Text(s) ->
       [(dummy_range, UTInlineTextString(s))]
 
-  | Emph(iln) ->
-      let utastarg = convert_inline cmdrcd iln in
-      make_inline_application cmdrcd.emph [utastarg]
+  | Emph(inline) ->
+      let utast_arg = convert_inline cmdr inline in
+      make_inline_application cmdr.emph [ utast_arg ]
 
-  | Strong(iln) ->
-      let utastarg = convert_inline cmdrcd iln in
-      make_inline_application cmdrcd.strong [utastarg]
+  | Strong(inline) ->
+      let utast_arg = convert_inline cmdr inline in
+      make_inline_application cmdr.strong [ utast_arg ]
 
 
   | Code(s) ->
-      let cmd = cmdrcd.code in
-      let utastarg = (dummy_range, UTStringConstant(s)) in
-      make_inline_application cmd [utastarg]
+      let cmd = cmdr.code in
+      let utast_arg = (dummy_range, UTStringConstant(s)) in
+      make_inline_application cmd [ utast_arg ]
 
   | Br ->
       begin
-        match cmdrcd.hard_break with
+        match cmdr.hard_break with
         | Some(cmd) -> make_inline_application cmd []
-        | None      -> [(dummy_range, UTInlineTextString("\n"))]
+        | None      -> [ (dummy_range, UTInlineTextString("\n")) ]
       end
 
-  | Link(href, iln, _title) ->
-      let utastarg1 = (dummy_range, UTStringConstant(href)) in
-      let utastarg2 = convert_inline cmdrcd iln in
-      make_inline_application cmdrcd.link [utastarg1; utastarg2]
+  | Link(href, inline, _title) ->
+      let utast_arg1 = (dummy_range, UTStringConstant(href)) in
+      let utast_arg2 = convert_inline cmdr inline in
+      make_inline_application cmdr.link [ utast_arg1; utast_arg2 ]
 
   | Img(alt, src, title) ->
-      let utastarg1 = (dummy_range, UTStringConstant(alt)) in
-      let utastarg2 = (dummy_range, UTStringConstant(src)) in
-      let utastarg3 = (dummy_range, UTStringConstant(title)) in
-      make_inline_application cmdrcd.img [utastarg1; utastarg2; utastarg3]
+      let utast_arg1 = (dummy_range, UTStringConstant(alt)) in
+      let utast_arg2 = (dummy_range, UTStringConstant(src)) in
+      let utast_arg3 = (dummy_range, UTStringConstant(title)) in
+      make_inline_application cmdr.img [ utast_arg1; utast_arg2; utast_arg3 ]
 
 
-and convert_inline (cmdrcd : command_record) (iln : inline) : untyped_abstract_tree =
+and convert_inline (cmdr : command_record) (inline : inline) : untyped_abstract_tree =
   let ibacc =
-    iln |> List.fold_left (fun ibacc ilne ->
-      Alist.append ibacc (convert_inline_element cmdrcd ilne)
+    inline |> List.fold_left (fun ibacc ie ->
+      Alist.append ibacc (convert_inline_element cmdr ie)
     ) Alist.empty
   in
   let utih = Alist.to_list ibacc in
   (dummy_range, UTInlineText(utih))
 
 
-and convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_block_text_element list =
-  match blke with
-  | Paragraph(iln) ->
-      let utastarg = convert_inline cmdrcd iln in
-      make_block_application cmdrcd.paragraph [utastarg]
+and convert_block_element (cmdr : command_record) (be : block_element) : untyped_block_text_element list =
+  match be with
+  | Paragraph(inline) ->
+      let utast_arg = convert_inline cmdr inline in
+      make_block_application cmdr.paragraph [ utast_arg ]
 
-  | Section(seclev, iln, blk) ->
-      let utastarg1 = convert_inline cmdrcd iln in
-      let utastarg2 = convert_block cmdrcd blk in
+  | Section(level, inline, block) ->
+      let utast_arg1 = convert_inline cmdr inline in
+      let utast_arg2 = convert_block cmdr block in
       let cmd =
-        match seclev with
-        | H1 -> cmdrcd.h1
-        | H2 -> cmdrcd.h2
-        | H3 -> cmdrcd.h3
-        | H4 -> cmdrcd.h4
-        | H5 -> cmdrcd.h5
-        | H6 -> cmdrcd.h6
+        match level with
+        | H1 -> cmdr.h1
+        | H2 -> cmdr.h2
+        | H3 -> cmdr.h3
+        | H4 -> cmdr.h4
+        | H5 -> cmdr.h5
+        | H6 -> cmdr.h6
       in
-      make_block_application cmd [utastarg1; utastarg2]
+      make_block_application cmd [ utast_arg1; utast_arg2 ]
 
   | Hr ->
-      make_block_application cmdrcd.hr []
+      make_block_application cmdr.hr []
 
-  | Ol(blks) ->
-      let utastlst = List.map (convert_block cmdrcd) blks in
-      let utastarg = make_list_tree utastlst in
-      make_block_application cmdrcd.ol [utastarg]
+  | Ol(blocks) ->
+      let utasts = blocks |> List.map (convert_block cmdr) in
+      let utast_arg = make_list_tree utasts in
+      make_block_application cmdr.ol [ utast_arg ]
 
-  | Ul(blks) ->
-      let utastlst = List.map (convert_block cmdrcd) blks in
-      let utastarg = make_list_tree utastlst in
-      make_block_application cmdrcd.ul [utastarg]
+  | Ul(blocks) ->
+      let utasts = blocks |> List.map (convert_block cmdr) in
+      let utast_arg = make_list_tree utasts in
+      make_block_application cmdr.ul [ utast_arg ]
 
   | CodeBlock(name, s) ->
-      let utastarg = (dummy_range, UTStringConstant(s)) in
+      let utast_arg = (dummy_range, UTStringConstant(s)) in
       let cmd =
         if String.equal name "" then
-          cmdrcd.code_block
+          cmdr.code_block
         else
-          match cmdrcd.code_block_map |> CodeNameMap.find_opt name with
+          match cmdr.code_block_map |> CodeNameMap.find_opt name with
           | None ->
               Format.printf "! Warning: unknown name '%s' for code block\n" name;
                 (* temporary; should warn in a more sophisticated manner *)
-              cmdrcd.code_block
+              cmdr.code_block
 
           | Some(cmd) ->
               cmd
       in
-      make_block_application cmd [utastarg]
+      make_block_application cmd [ utast_arg ]
 
-  | Blockquote(blk) ->
-      let utastarg = convert_block cmdrcd blk in
-      make_block_application cmdrcd.blockquote [utastarg]
+  | Blockquote(block) ->
+      let utast_arg = convert_block cmdr block in
+      make_block_application cmdr.blockquote [ utast_arg ]
 
 
-and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tree =
+and convert_block (cmdr : command_record) (block : block) : untyped_abstract_tree =
   let bbacc =
-    blk |> List.fold_left (fun bbacc blke ->
-      Alist.append bbacc (convert_block_element cmdrcd blke)
+    block |> List.fold_left (fun bbacc be ->
+      Alist.append bbacc (convert_block_element cmdr be)
     ) Alist.empty
   in
   let utiv = Alist.to_list bbacc in
@@ -438,10 +438,10 @@ let decode (s : string) : (DocumentAttribute.t * module_name * t) ok =
       return (document_attributes, modnm, md)
 
 
-let convert (cmdrcd : command_record) (md : t) =
-  let utast_body = convert_block cmdrcd md.main_contents in
+let convert (cmdr : command_record) (md : t) =
+  let utast_body = convert_block cmdr md.main_contents in
   let utast_doccmd =
-    let (rng, (modnms, varnm)) = cmdrcd.document in
+    let (rng, (modnms, varnm)) = cmdr.document in
     let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
     (rng, UTContentOf(modidents, (rng, varnm)))
   in
