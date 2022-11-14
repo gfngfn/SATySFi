@@ -4,7 +4,6 @@ val build :
   fpath_out_opt:(string option) ->
   config_paths_str_opt:(string option) ->
   text_mode_formats_str_opt:(string option) ->
-  is_markdown:bool ->
   page_number_limit:int ->
   show_full_path:bool ->
   debug_show_bbox:bool ->

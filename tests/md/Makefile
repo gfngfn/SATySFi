@@ -8,7 +8,7 @@ SATYSFI ?= satysfi
 .SUFFIXES: .md .pdf
 
 .md.pdf:
-	$(SATYSFI) build --markdown $< -o $@
+	$(SATYSFI) build $< -o $@
 
 all:: $(TARGETS)
 

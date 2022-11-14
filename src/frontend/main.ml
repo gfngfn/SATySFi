@@ -10,6 +10,7 @@ open TypeError
 
 exception NoLibraryRootDesignation
 exception ShouldSpecifyOutputFile
+exception UnexpectedExtension of string
 exception ConfigError of config_error
 
 
@@ -1170,6 +1171,11 @@ let error_log_environment (suspended : unit -> unit) : unit =
         NormalLine("should specify output file for text mode.");
       ]
 
+  | UnexpectedExtension(ext) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "unexpected file extension '%s'." ext);
+      ]
+
   | LoadHyph.InvalidPatternElement(rng) ->
       report_error System [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
@@ -1324,6 +1330,7 @@ type build_input =
       lock : abs_path;
     }
   | DocumentBuildInput of {
+      kind : input_kind;
       lock : abs_path;
       out  : abs_path;
       dump : abs_path;
@@ -1373,7 +1380,6 @@ let build
     ~(fpath_out_opt : string option)
     ~(config_paths_str_opt : string option)
     ~(text_mode_formats_str_opt : string option)
-    ~(is_markdown : bool)
     ~(page_number_limit : int)
     ~(show_full_path : bool)
     ~(debug_show_bbox : bool)
@@ -1397,19 +1403,12 @@ let build
       | None    -> OptionState.PdfMode
       | Some(s) -> OptionState.TextMode(String.split_on_char ',' s)
     in
-    let input_kind =
-      if is_markdown then
-        OptionState.Markdown
-      else
-        OptionState.SATySFi
-    in
     OptionState.set OptionState.{
       command_state =
         BuildState{
           input_file;
           output_file;
           output_mode;
-          input_kind;
           page_number_limit;
           debug_show_bbox;
           debug_show_space;
@@ -1430,27 +1429,39 @@ let build
     let build_input =
       let abspathstr_in = get_abs_path_string abspath_in in
       if Sys.is_directory abspathstr_in then
-        (* If the input is a package directory: *)
-          let abspath_lock_config = make_package_lock_config_path abspathstr_in in
-          PackageBuildInput{
-            lock = abspath_lock_config;
-          }
-      else
-        (* If the input is a document file: *)
-        let basename_without_extension = Filename.remove_extension abspathstr_in in
-        let abspath_lock_config = make_document_lock_config_path basename_without_extension in
-        let abspath_out =
-          match (output_mode, output_file) with
-          | (_, Some(abspath_out)) -> abspath_out
-          | (TextMode(_), None)    -> raise ShouldSpecifyOutputFile
-          | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
-        in
-        let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
-        DocumentBuildInput{
+      (* If the input is a package directory: *)
+        let abspath_lock_config = make_package_lock_config_path abspathstr_in in
+        PackageBuildInput{
           lock = abspath_lock_config;
-          out  = abspath_out;
-          dump = abspath_dump;
         }
+      else
+      (* If the input is a document file: *)
+        let input_kind_res =
+          match Filename.extension abspathstr_in with
+          | ".saty" -> Ok(InputSatysfi)
+          | ".md"   -> Ok(InputMarkdown)
+          | ext     -> Error(ext)
+        in
+        match input_kind_res with
+        | Error(ext) ->
+            raise (UnexpectedExtension(ext))
+
+        | Ok(input_kind) ->
+            let basename_without_extension = Filename.remove_extension abspathstr_in in
+            let abspath_lock_config = make_document_lock_config_path basename_without_extension in
+            let abspath_out =
+              match (output_mode, output_file) with
+              | (_, Some(abspath_out)) -> abspath_out
+              | (TextMode(_), None)    -> raise ShouldSpecifyOutputFile
+              | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
+            in
+            let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
+            DocumentBuildInput{
+              kind = input_kind;
+              lock = abspath_lock_config;
+              out  = abspath_out;
+              dump = abspath_dump;
+            }
     in
 
     let extensions = get_candidate_file_extensions () in
@@ -1485,6 +1496,7 @@ let build
         end
 
     | DocumentBuildInput{
+        kind = input_kind;
         lock = abspath_lock_config;
         out  = abspath_out;
         dump = abspath_dump;
@@ -1508,7 +1520,7 @@ let build
 
         (* Resolve dependency of the document and the local source files: *)
         let (sorted_locals, utdoc) =
-          match OpenFileDependencyResolver.main ~extensions configenv abspath_in with
+          match OpenFileDependencyResolver.main ~extensions input_kind configenv abspath_in with
           | Ok(pair) -> pair
           | Error(e) -> raise (ConfigError(e))
         in

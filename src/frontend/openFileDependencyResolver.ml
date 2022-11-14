@@ -1,6 +1,7 @@
 
 open MyUtil
 open Types
+open PackageSystemBase
 open ConfigError
 
 
@@ -155,14 +156,14 @@ let register_markdown_file (configenv : PackageConfig.t GlobalTypeenv.t) (abspat
   return utdoc
 
 
-let main ~(extensions : string list) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
+let main ~(extensions : string list) (input_kind : input_kind) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
   let* (graph, utdoc) =
-    match OptionState.get_input_kind () with
-    | OptionState.SATySFi ->
+    match input_kind with
+    | InputSatysfi ->
         register_document_file extensions abspath_in
 
-    | OptionState.Markdown ->
+    | InputMarkdown ->
         let* utdoc = register_markdown_file configenv abspath_in in
         return (FileDependencyGraph.empty, utdoc)
   in

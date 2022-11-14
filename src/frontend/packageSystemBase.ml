@@ -30,3 +30,7 @@ type package_solution = {
   locked_dependencies : (package_name * SemanticVersion.t) list;
 }
 [@@deriving show { with_path = false }]
+
+type input_kind =
+  | InputSatysfi
+  | InputMarkdown
