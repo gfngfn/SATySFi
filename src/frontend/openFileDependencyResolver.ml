@@ -106,24 +106,56 @@ let register_document_file (extensions : string list) (abspath_in : abs_path) : 
   return (package_names, graph, utdoc)
 
 
-let register_markdown_file (abspath_in : abs_path) : untyped_document_file ok =
+let extract_markdown_command_record ~(module_name : module_name) (config : PackageConfig.t) : DecodeMD.command_record ok =
+  let open ResultMonad in
+  match config.PackageConfig.package_contents with
+  | PackageConfig.Library{ conversion_specs; _ } ->
+      begin
+        match
+          conversion_specs |> List.filter_map (function
+          | PackageConfig.MarkdownConversion(cmdrcd) ->
+              Some(cmdrcd)
+          )
+        with
+        | [] ->
+            err @@ NoMarkdownConversion(module_name)
+
+        | [ cmdrcd ] ->
+            return cmdrcd
+
+        | _ :: _ ->
+            err @@ MoreThanOneMarkdownConversion(module_name)
+      end
+
+  | _ ->
+      err @@ NoMarkdownConversion(module_name)
+
+
+let register_markdown_file (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : untyped_document_file ok =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
-  let* (_docattr, main_module_name, md) =
+  let* (_docattr, main_module_name_class, md) =
     match read_file abspath_in with
     | Ok(data)   -> return (DecodeMD.decode data)
     | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in
-  let cmdrcd = failwith "TODO: register_markdown_file, cmdrcd" in
+  let* cmdrcd =
+    match configenv |> GlobalTypeenv.find_opt main_module_name_class with
+    | None ->
+        err @@ MarkdownClassNotFound(main_module_name_class)
+
+    | Some(config) ->
+        extract_markdown_command_record ~module_name:main_module_name_class config
+  in
   let utast = DecodeMD.convert cmdrcd md in
   let header =
-    [ HeaderUsePackage{ opening = false; module_name = (Range.dummy "md-header", main_module_name) } ]
+    [ HeaderUsePackage{ opening = false; module_name = (Range.dummy "md-header", main_module_name_class) } ]
   in
   let utdoc = ([], header, utast) in
   return utdoc
 
 
-let main ~(extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file) ok =
+let main ~(extensions : string list) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
   let* (package_names, graph, utdoc) =
     match OptionState.get_input_kind () with
@@ -132,7 +164,7 @@ let main ~(extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t
         return (package_names, graph, utdoc)
 
     | OptionState.Markdown(_settings) ->
-        let* utdoc = register_markdown_file abspath_in in
+        let* utdoc = register_markdown_file configenv abspath_in in
         return (PackageNameSet.empty, FileDependencyGraph.empty, utdoc)
   in
   let* sorted_locals =

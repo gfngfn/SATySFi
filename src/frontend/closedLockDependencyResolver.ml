@@ -10,7 +10,7 @@ type 'a ok = ('a, config_error) result
 module LockDependencyGraph = DependencyGraph.Make(String)
 
 
-let main ~(lock_config_dir : abs_path) ~(extensions : string list) (lock_config : LockConfig.t) : ((lock_name * untyped_package) list) ok =
+let main ~(lock_config_dir : abs_path) ~(extensions : string list) (lock_config : LockConfig.t) : ((lock_name * (PackageConfig.t * untyped_package)) list) ok =
   let open ResultMonad in
 
   let locks = lock_config.LockConfig.locked_packages in
@@ -32,9 +32,9 @@ let main ~(lock_config_dir : abs_path) ~(extensions : string list) (lock_config 
         | LocalLocation{ path = s_relpath } ->
             return (make_abs_path (Filename.concat (get_abs_path_string lock_config_dir) s_relpath))
       in
-      let* package = PackageReader.main ~extensions absdir_package in
+      let* package_with_config = PackageReader.main ~extensions absdir_package in
       let* (graph, vertex) =
-        graph |> LockDependencyGraph.add_vertex lock_name package
+        graph |> LockDependencyGraph.add_vertex lock_name package_with_config
           |> Result.map_error (fun _ -> LockNameConflict(lock_name))
       in
       let lock_info =
@@ -68,4 +68,7 @@ let main ~(lock_config_dir : abs_path) ~(extensions : string list) (lock_config 
     ) graph
   in
 
-  LockDependencyGraph.topological_sort graph |> Result.map_error (fun cycle -> CyclicLockDependency(cycle))
+  LockDependencyGraph.topological_sort graph
+    |> Result.map_error (fun cycle ->
+      CyclicLockDependency(cycle |> map_cycle (fun (lock_name, (_config, package)) -> (lock_name, package)))
+    )

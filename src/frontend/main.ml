@@ -1063,6 +1063,21 @@ let report_config_error : config_error -> unit = function
   | DocumentAttributeError(e) ->
       report_document_attribute_error e
 
+  | MarkdownClassNotFound(modnm) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "package '%s' not found; required for converting Markdown documents." modnm);
+      ]
+
+  | NoMarkdownConversion(modnm) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "package '%s' contains no Markdown conversion rule." modnm);
+      ]
+
+  | MoreThanOneMarkdownConversion(modnm) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "package '%s' contains more than one Markdown conversion rule." modnm);
+      ]
+
 
 let report_font_error : font_error -> unit = function
   | FailedToReadFont(abspath, msg) ->
@@ -1342,8 +1357,8 @@ let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string 
   in
 
   (* Typecheck every locked package: *)
-  let (genv, libacc) =
-    sorted_packages |> List.fold_left (fun (genv, libacc) (_lock_name, package) ->
+  let (genv, configenv, libacc) =
+    sorted_packages |> List.fold_left (fun (genv, configenv, libacc) (_lock_name, (config, package)) ->
       let main_module_name =
         match package with
         | UTLibraryPackage{ main_module_name; _ } -> main_module_name
@@ -1355,11 +1370,12 @@ let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string 
         | Error(e) -> raise (ConfigError(e))
       in
       let genv = genv |> GlobalTypeenv.add main_module_name ssig in
+      let configenv = configenv |> GlobalTypeenv.add main_module_name config in
       let libacc = Alist.append libacc libs in
-      (genv, libacc)
-    ) (GlobalTypeenv.empty, Alist.empty)
+      (genv, configenv, libacc)
+    ) (GlobalTypeenv.empty, GlobalTypeenv.empty, Alist.empty)
   in
-  (genv, Alist.to_list libacc)
+  (genv, configenv, Alist.to_list libacc)
 
 
 let make_package_lock_config_path (abspathstr_in : string) =
@@ -1468,13 +1484,13 @@ let build
           | Error(e)        -> raise (ConfigError(e))
         in
 
-        let package =
+        let (_config, package) =
           match PackageReader.main ~extensions abspath_in with
           | Ok(package) -> package
           | Error(e)    -> raise (ConfigError(e))
         in
 
-        let (genv, _libs_dep) =
+        let (genv, _configenv, _libs_dep) =
           let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
           check_depended_packages ~lock_config_dir ~extensions tyenv_prim lock_config
         in
@@ -1502,16 +1518,16 @@ let build
         let dump_file_exists = CrossRef.initialize abspath_dump in
         Logging.dump_file ~already_exists:dump_file_exists abspath_dump;
 
-        (* Resolve dependency of the document and the local source files: *)
-        let (_dep_main_module_names, sorted_locals, utdoc) =
-          match OpenFileDependencyResolver.main ~extensions abspath_in with
-          | Ok(triple) -> triple
-          | Error(e)   -> raise (ConfigError(e))
-        in
-
-        let (genv, libs) =
+        let (genv, configenv, libs) =
           let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
           check_depended_packages ~lock_config_dir ~extensions tyenv_prim lock_config
+        in
+
+        (* Resolve dependency of the document and the local source files: *)
+        let (_dep_main_module_names, sorted_locals, utdoc) =
+          match OpenFileDependencyResolver.main ~extensions configenv abspath_in with
+          | Ok(triple) -> triple
+          | Error(e)   -> raise (ConfigError(e))
         in
 
         (* Typechecking and elaboration: *)
