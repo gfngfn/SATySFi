@@ -1337,6 +1337,13 @@ type build_input =
     }
 
 
+let get_input_kind_from_extension (abspathstr_in : string) =
+  match Filename.extension abspathstr_in with
+  | ".saty" -> Ok(InputSatysfi)
+  | ".md"   -> Ok(InputMarkdown)
+  | ext     -> Error(ext)
+
+
 let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
   (* Resolve dependency among locked packages: *)
   let sorted_packages =
@@ -1434,12 +1441,7 @@ let build
         }
       else
       (* If the input is a document file: *)
-        let input_kind_res =
-          match Filename.extension abspathstr_in with
-          | ".saty" -> Ok(InputSatysfi)
-          | ".md"   -> Ok(InputMarkdown)
-          | ext     -> Error(ext)
-        in
+        let input_kind_res = get_input_kind_from_extension abspathstr_in in
         match input_kind_res with
         | Error(ext) ->
             raise (UnexpectedExtension(ext))
@@ -1543,6 +1545,7 @@ type solve_input =
       lock : abs_path; (* A path for writing a resulting lock file *)
     }
   | DocumentSolveInput of {
+      kind : input_kind;
       path : abs_path; (* The absolute path to the document file *)
       lock : abs_path; (* A path for writing a resulting lock file *)
     }
@@ -1573,20 +1576,30 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
   LockConfig.{ locked_packages }
 
 
-let extract_attributes_from_document_file (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
+let extract_attributes_from_document_file (input_kind : input_kind) (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
-  let* utsrc =
-    ParserInterface.process_file abspath_in
-      |> Result.map_error (fun rng -> FailedToParse(rng))
-  in
-  let* (attrs, _header, _utast) =
-    match utsrc with
-    | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
-    | UTDocumentFile(utdoc) -> return utdoc
-  in
-  DocumentAttribute.make attrs
-    |> Result.map_error (fun e -> DocumentAttributeError(e))
+  match input_kind with
+  | InputSatysfi ->
+      let* utsrc =
+        ParserInterface.process_file abspath_in
+          |> Result.map_error (fun rng -> FailedToParse(rng))
+      in
+      let* (attrs, _header, _utast) =
+        match utsrc with
+        | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
+        | UTDocumentFile(utdoc) -> return utdoc
+      in
+      DocumentAttribute.make attrs
+        |> Result.map_error (fun e -> DocumentAttributeError(e))
+
+  | InputMarkdown ->
+      let* (docattr, _main_module_name, _md) =
+        match read_file abspath_in with
+        | Ok(data)   -> return (DecodeMD.decode data)
+        | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
+      in
+      return docattr
 
 
 let solve
@@ -1620,12 +1633,20 @@ let solve
           lock = abspath_lock_config;
         }
       else
-        let basename_without_extension = Filename.remove_extension (get_abs_path_string abspath_in) in
+        let abspathstr_in = get_abs_path_string abspath_in in
+        let basename_without_extension = Filename.remove_extension abspathstr_in in
         let abspath_lock_config = make_document_lock_config_path basename_without_extension in
-        DocumentSolveInput{
-          path = abspath_in;
-          lock = abspath_lock_config;
-        }
+        let input_kind_res = get_input_kind_from_extension abspathstr_in in
+        match input_kind_res with
+        | Error(ext) ->
+            raise (UnexpectedExtension(ext))
+
+        | Ok(input_kind) ->
+            DocumentSolveInput{
+              kind = input_kind;
+              path = abspath_in;
+              lock = abspath_lock_config;
+            }
     in
 
     let res =
@@ -1653,10 +1674,11 @@ let solve
             end
 
         | DocumentSolveInput{
+            kind = input_kind;
             path = abspath_in;
             lock = abspath_lock_config;
           } ->
-            let* docattr = extract_attributes_from_document_file abspath_in in
+            let* docattr = extract_attributes_from_document_file input_kind abspath_in in
             return (docattr.DocumentAttribute.dependencies, abspath_lock_config)
       in
 
