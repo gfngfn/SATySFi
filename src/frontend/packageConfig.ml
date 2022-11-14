@@ -118,13 +118,6 @@ let hard_break_decoder : (MarkdownParser.command option) ConfigDecoder.t =
   )
 
 
-let code_block_entry_decoder : (string * MarkdownParser.command) ConfigDecoder.t =
-  let open ConfigDecoder in
-  get "name" string >>= fun name ->
-  get "command" block_command_decoder >>= fun command ->
-  succeed (name, command)
-
-
 let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
   let open ConfigDecoder in
   branch "type" [
@@ -140,7 +133,6 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
       get "h6" block_command_decoder >>= fun h6 ->
       get "ul" block_command_decoder >>= fun ul ->
       get "ol" block_command_decoder >>= fun ol ->
-      get_or_else "code_block_map" (list code_block_entry_decoder) [] >>= fun code_block_entries ->
       get "code_block" block_command_decoder >>= fun code_block ->
       get "blockquote" block_command_decoder >>= fun blockquote ->
       get "emph" inline_command_decoder >>= fun emph ->
@@ -149,11 +141,6 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
       get "code" inline_command_decoder >>= fun code ->
       get "link" inline_command_decoder >>= fun link ->
       get "img" inline_command_decoder >>= fun img ->
-      let code_block_map =
-        code_block_entries |> List.fold_left (fun code_block_map (name, command) ->
-          code_block_map |> MarkdownParser.CodeNameMap.add name command
-        ) MarkdownParser.CodeNameMap.empty
-      in
       succeed @@ MarkdownConversion(MarkdownParser.{
         document;
 
@@ -162,7 +149,7 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
         h1; h2; h3; h4; h5; h6;
         ul;
         ol;
-        code_block_map; code_block;
+        code_block;
         blockquote;
 
         emph;

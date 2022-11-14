@@ -110,3 +110,10 @@ This article has introduced a mechanism of labeled optional parameters designed 
 # References
 
 1. Benedict R. Gaster and Mark P. Jones. [A polymorphic type system for extensible records and variants](https://web.cecs.pdx.edu/~mpj/pubs/96-3.pdf), 1996.
+
+
+# Console
+
+```console
+$ satysfi build test.md -o test.tex
+```

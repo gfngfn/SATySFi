@@ -208,34 +208,30 @@ let normalize_h1 =
   normalize_h H1 (function Omd.Heading(_, 1, heading) -> Some(heading) | _ -> None) normalize_h2
 
 
-module CodeNameMap = Map.Make(String)
-
-
 type command = Range.t * (module_name list * var_name)
 
 type command_record = {
-  document       : command;
+  document   : command;
 
-  paragraph      : command;
-  hr             : command;
-  h1             : command;
-  h2             : command;
-  h3             : command;
-  h4             : command;
-  h5             : command;
-  h6             : command;
-  ul             : command;
-  ol             : command;
-  code_block_map : command CodeNameMap.t;
-  code_block     : command;
-  blockquote     : command;
+  paragraph  : command;
+  hr         : command;
+  h1         : command;
+  h2         : command;
+  h3         : command;
+  h4         : command;
+  h5         : command;
+  h6         : command;
+  ul         : command;
+  ol         : command;
+  code_block : command;
+  blockquote : command;
 
-  emph           : command;
-  strong         : command;
-  hard_break     : command option;
-  code           : command;
-  link           : command;
-  img            : command;
+  emph       : command;
+  strong     : command;
+  hard_break : command option;
+  code       : command;
+  link       : command;
+  img        : command;
 }
 
 
@@ -342,21 +338,9 @@ and convert_block_element (cmdr : command_record) (be : block_element) : untyped
       make_block_application cmdr.ul [ utast_arg ]
 
   | CodeBlock(name, s) ->
-      let utast_arg = (dummy_range, UTStringConstant(s)) in
-      let cmd =
-        if String.equal name "" then
-          cmdr.code_block
-        else
-          match cmdr.code_block_map |> CodeNameMap.find_opt name with
-          | None ->
-              Format.printf "! Warning: unknown name '%s' for code block\n" name;
-                (* temporary; should warn in a more sophisticated manner *)
-              cmdr.code_block
-
-          | Some(cmd) ->
-              cmd
-      in
-      make_block_application cmd [ utast_arg ]
+      let utast_arg1 = (dummy_range, UTStringConstant(name)) in
+      let utast_arg2 = (dummy_range, UTStringConstant(s)) in
+      make_block_application cmdr.code_block [ utast_arg1; utast_arg2 ]
 
   | Blockquote(block) ->
       let utast_arg = convert_block cmdr block in

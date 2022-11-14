@@ -24,21 +24,17 @@ module MDJa :> sig
   val +ul-block : block [list block-text]
   val +ol : block [list inline-text]
   val +ol-block : block [list block-text]
-  val +code : block [string]
-  val +console : block [string]
+  val +code : block [string, string]
   val +quote : block [block-text]
   val +hr : block []
-  val +error : block [string]
 
   val \code : inline [string]
   val \emph : inline [inline-text]
-  val \bold : inline [inline-text]
+  val \strong : inline [inline-text]
   val \link : inline [string, inline-text]
   val \reference : inline [string, string, option (string * string)]
   val \img : inline [string, string, string]
   val \hard-break : inline []
-  val \embed-block : inline [block-text]
-  val \error : inline [string]
 end = struct
 
   val paper = PaperSize.a4
@@ -304,13 +300,15 @@ end = struct
       % dirty trick; should fix '+Code.code' and the parser of SATySFi
 
 
-  val block ctx +code s =
+  val block ctx +code name s =
     let ctx = set-font-size (get-font-size ctx *' 0.875) ctx in
-    read-block ctx '<+Code.code(fix-block-code s);>
-
-
-  val block +console s =
-    '<+Code.console(fix-block-code s);>
+    let bt =
+      if string-same name `console` then
+        '<+Code.console(fix-block-code s);>
+      else
+        '<+Code.code(fix-block-code s);>
+    in
+    read-block ctx bt
 
 
   val block ctx +quote it =
@@ -345,7 +343,7 @@ end = struct
     read-inline ctx it
 
 
-  val inline \bold it =
+  val inline \strong it =
     {\emph(it);}
 
 

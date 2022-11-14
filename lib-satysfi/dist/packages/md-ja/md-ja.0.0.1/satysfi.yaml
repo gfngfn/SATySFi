@@ -38,14 +38,11 @@ contents:
     h6: "+MDJa.h6"
     ul: "+MDJa.ul-block"
     ol: "+MDJa.ol-block"
-    code_block_map:
-    - name: "console"
-      command: "+MDJa.console"
     code_block: "+MDJa.code"
     blockquote: "+MDJa.quote"
 
     emph: "\\MDJa.emph"
-    strong: "\\MDJa.bold"
+    strong: "\\MDJa.string"
     hard_break:
       type: "none"
     code: "\\MDJa.code"
