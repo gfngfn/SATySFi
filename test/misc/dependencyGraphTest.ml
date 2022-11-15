@@ -68,7 +68,7 @@ let create_graph2 () =
   let graph = graph |> DG.add_edge ~from:vertex1 ~to_:vertex3 in
   let graph = graph |> DG.add_edge ~from:vertex2 ~to_:vertex4 in
   let graph = graph |> DG.add_edge ~from:vertex3 ~to_:vertex4 in
-  return graph
+  return (graph, (vertex1, vertex2, vertex3, vertex4))
 
 
 (** Creates a graph of structure [v1 --> v2 --> v3 --> v1] and [v3 --> v4], which has a cycle. *)
@@ -107,7 +107,7 @@ let topological_sort_test_1 () =
 
 
 let topological_sort_test_2 () =
-  create_graph2 () |> continue_if_ok "cannot construct graph2" (fun graph2 ->
+  create_graph2 () |> continue_if_ok "cannot construct graph2" (fun (graph2, _) ->
     DG.topological_sort graph2 |> continue_if_ok "cannot sort graph2" (fun got2 ->
       let pp = Format.pp_print_list pp_int_and_string in
       got2 |> expect_pattern "v4 must be first, and v1 must be the last" pp (function
@@ -152,9 +152,27 @@ let topological_sort_test_4 () =
 
 let reachability_closure_test_1 () =
   create_graph1 () |> continue_if_ok "cannot construct graph1" (fun (graph1, (_vertex1, vertex2, vertex3)) ->
-    let vertices_origin = DG.VertexSet.empty |> DG.VertexSet.add vertex2 in (* {2} *)
-    let got = DG.reachability_closure graph1 vertices_origin in
-    let expected = vertices_origin |> DG.VertexSet.add vertex3 in (* {2, 3} *)
+    let input = DG.VertexSet.of_list [ vertex2 ] in
+    let expected = DG.VertexSet.of_list [ vertex2; vertex3 ] in
+    let got = DG.reachability_closure graph1 input in
+    Alcotest.(check (of_pp pp_vertex_set)) "vertex set equality" expected got
+  )
+
+
+let reachability_closure_test_2 () =
+  create_graph2 () |> continue_if_ok "cannot construct graph2" (fun (graph2, (vertex1, vertex2, vertex3, vertex4)) ->
+    let input = DG.VertexSet.of_list [ vertex1 ] in
+    let expected = DG.VertexSet.of_list [ vertex1; vertex2; vertex3; vertex4 ] in
+    let got = DG.reachability_closure graph2 input in
+    Alcotest.(check (of_pp pp_vertex_set)) "vertex set equality" expected got
+  )
+
+
+let reachability_closure_test_3 () =
+  create_graph2 () |> continue_if_ok "cannot construct graph2" (fun (graph2, (_vertex1, vertex2, vertex3, vertex4)) ->
+    let input = DG.VertexSet.of_list [ vertex2; vertex3 ] in
+    let expected = DG.VertexSet.of_list [ vertex2; vertex3; vertex4 ] in
+    let got = DG.reachability_closure graph2 input in
     Alcotest.(check (of_pp pp_vertex_set)) "vertex set equality" expected got
   )
 
@@ -166,4 +184,6 @@ let test_cases =
     test_case "topological sort 3" `Quick topological_sort_test_3;
     test_case "topological sort 4" `Quick topological_sort_test_4;
     test_case "reachability closure 1" `Quick reachability_closure_test_1;
+    test_case "reachability closure 2" `Quick reachability_closure_test_2;
+    test_case "reachability closure 3" `Quick reachability_closure_test_3;
   ]
