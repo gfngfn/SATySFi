@@ -4,24 +4,29 @@ locks:
     type: global
     path: ./dist/packages/font-ipa-ex/font-ipa-ex.0.0.1/
   dependencies: []
+  test_only: false
 - name: font-junicode.0.0.1
   location:
     type: global
     path: ./dist/packages/font-junicode/font-junicode.0.0.1/
   dependencies: []
+  test_only: false
 - name: font-latin-modern-math.0.0.1
   location:
     type: global
     path: ./dist/packages/font-latin-modern-math/font-latin-modern-math.0.0.1/
   dependencies: []
+  test_only: false
 - name: math.0.0.1
   location:
     type: global
     path: ./dist/packages/math/math.0.0.1/
   dependencies:
   - stdlib.0.0.1
+  test_only: false
 - name: stdlib.0.0.1
   location:
     type: global
     path: ./dist/packages/stdlib/stdlib.0.0.1/
   dependencies: []
+  test_only: false

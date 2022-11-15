@@ -55,6 +55,7 @@ promote:: $(EXPECTED_LOCKS)
 promote::
 	(cd images; make promote)
 	(cd text_mode; make promote)
+	(cd md; make promote)
 
 clean::
 	rm -f *.pdf *.satysfi-aux
