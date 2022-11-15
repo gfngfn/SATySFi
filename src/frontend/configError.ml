@@ -18,6 +18,11 @@ type yaml_error =
       context      : YamlDecoder.context;
       package_name : string;
     }
+  | NotACommand of {
+      context : YamlDecoder.context;
+      prefix  : char;
+      string  : string;
+    }
 
 module YamlError = struct
   type t = yaml_error
@@ -71,4 +76,8 @@ type config_error =
       candidates : abs_path list;
     }
   | CannotSolvePackageConstraints
-  | DocumentAttributeError    of DocumentAttribute.error
+  | DocumentAttributeError        of DocumentAttribute.error
+  | MarkdownClassNotFound         of module_name
+  | NoMarkdownConversion          of module_name
+  | MoreThanOneMarkdownConversion of module_name
+  | MarkdownError                 of MarkdownParser.error

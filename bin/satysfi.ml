@@ -8,7 +8,6 @@ let build
   fpath_out_opt
   config_paths_str_opt
   text_mode_formats_str_opt
-  markdown_style_str_opt
   page_number_limit
   show_full_path
   debug_show_bbox
@@ -18,7 +17,6 @@ let build
   debug_show_overfull
   type_check_only
   bytecomp
-  show_fonts
   no_default_config
 =
   Main.build
@@ -26,7 +24,6 @@ let build
     ~fpath_out_opt
     ~config_paths_str_opt
     ~text_mode_formats_str_opt
-    ~markdown_style_str_opt
     ~page_number_limit
     ~show_full_path
     ~debug_show_bbox
@@ -36,7 +33,6 @@ let build
     ~debug_show_overfull
     ~type_check_only
     ~bytecomp
-    ~show_fonts
     ~no_default_config
 
 
@@ -74,12 +70,6 @@ let flag_text_mode =
   let open Cmdliner in
   let doc = "Set text mode" in
   Arg.(value (opt (some string) None (info [ "text-mode" ] ~docv:"FORMATS" ~doc)))
-
-
-let flag_markdown =
-  let open Cmdliner in
-  let doc = "Pass Markdown source as input" in
-  Arg.(value (opt (some string) None (info [ "markdown" ] ~docv:"STYLES" ~doc)))
 
 
 let flag_page_number_limit : int Cmdliner.Term.t =
@@ -141,12 +131,6 @@ let flag_bytecomp =
     ~doc:"Use bytecode compiler"
 
 
-let flag_show_fonts =
-  make_boolean_flag_spec
-    ~flags:[ "show-fonts" ]
-    ~doc:"Displays all the available fonts"
-
-
 let flag_no_default_config =
   make_boolean_flag_spec
     ~flags:[ "no-default-config" ]
@@ -161,7 +145,6 @@ let command_build =
       $ flag_output
       $ flag_config
       $ flag_text_mode
-      $ flag_markdown
       $ flag_page_number_limit
       $ flag_full_path
       $ flag_debug_show_bbox
@@ -171,7 +154,6 @@ let command_build =
       $ flag_debug_show_overfull
       $ flag_type_check_only
       $ flag_bytecomp
-      $ flag_show_fonts
       $ flag_no_default_config
     )
   in

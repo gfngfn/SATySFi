@@ -10,6 +10,7 @@ open TypeError
 
 exception NoLibraryRootDesignation
 exception ShouldSpecifyOutputFile
+exception UnexpectedExtension of string
 exception ConfigError of config_error
 
 
@@ -820,6 +821,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | MultiplePackageDefinition{ context = yctx; package_name } ->
       [ NormalLine(Printf.sprintf "More than one definition for package '%s'%s" package_name (show_yaml_context yctx)) ]
 
+  | NotACommand{ context = yctx; prefix = _; string = s } ->
+      [ NormalLine(Printf.sprintf "not a command: '%s'%s" s (show_yaml_context yctx)) ]
+
 
 let report_document_attribute_error : DocumentAttribute.error -> unit = function
   | MoreThanOneDependencyAttribute(rng1, rng2) ->
@@ -1060,6 +1064,38 @@ let report_config_error : config_error -> unit = function
   | DocumentAttributeError(e) ->
       report_document_attribute_error e
 
+  | MarkdownClassNotFound(modnm) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "package '%s' not found; required for converting Markdown documents." modnm);
+      ]
+
+  | NoMarkdownConversion(modnm) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "package '%s' contains no Markdown conversion rule." modnm);
+      ]
+
+  | MoreThanOneMarkdownConversion(modnm) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "package '%s' contains more than one Markdown conversion rule." modnm);
+      ]
+
+  | MarkdownError(e) ->
+      begin
+        match e with
+        | InvalidHeaderComment ->
+            report_error Interface [
+              NormalLine("invalid or missing header comment of a Markdown document.");
+            ]
+
+        | InvalidExtraExpression ->
+            report_error Interface [
+              NormalLine("cannot parse an extra expression in a Markdown document.");
+            ]
+
+        | FailedToMakeDocumentAttribute(de) ->
+            report_document_attribute_error de
+      end
+
 
 let report_font_error : font_error -> unit = function
   | FailedToReadFont(abspath, msg) ->
@@ -1152,6 +1188,11 @@ let error_log_environment (suspended : unit -> unit) : unit =
         NormalLine("should specify output file for text mode.");
       ]
 
+  | UnexpectedExtension(ext) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "unexpected file extension '%s'." ext);
+      ]
+
   | LoadHyph.InvalidPatternElement(rng) ->
       report_error System [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
@@ -1208,24 +1249,6 @@ let error_log_environment (suspended : unit -> unit) : unit =
       report_error Lexer [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(s);
-      ]
-
-  | LoadMDSetting.MultipleCodeNameDesignation(rng, s) ->
-      report_error System [
-        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(Printf.sprintf "multiple designation for key '%s'." s);
-      ]
-
-  | LoadMDSetting.NotAnInlineCommand(rng, s) ->
-      report_error System [
-        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(Printf.sprintf "'%s' is not an inline command name." s);
-      ]
-
-  | LoadMDSetting.NotABlockCommand(rng, s) ->
-      report_error System [
-        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(Printf.sprintf "'%s' is not a block command name." s);
       ]
 
   | MyYojsonUtil.SyntaxError(fname, msg) ->
@@ -1324,10 +1347,18 @@ type build_input =
       lock : abs_path;
     }
   | DocumentBuildInput of {
+      kind : input_kind;
       lock : abs_path;
       out  : abs_path;
       dump : abs_path;
     }
+
+
+let get_input_kind_from_extension (abspathstr_in : string) =
+  match Filename.extension abspathstr_in with
+  | ".saty" -> Ok(InputSatysfi)
+  | ".md"   -> Ok(InputMarkdown)
+  | ext     -> Error(ext)
 
 
 let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
@@ -1339,8 +1370,8 @@ let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string 
   in
 
   (* Typecheck every locked package: *)
-  let (genv, libacc) =
-    sorted_packages |> List.fold_left (fun (genv, libacc) (_lock_name, package) ->
+  let (genv, configenv, libacc) =
+    sorted_packages |> List.fold_left (fun (genv, configenv, libacc) (_lock_name, (config, package)) ->
       let main_module_name =
         match package with
         | UTLibraryPackage{ main_module_name; _ } -> main_module_name
@@ -1352,11 +1383,12 @@ let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string 
         | Error(e) -> raise (ConfigError(e))
       in
       let genv = genv |> GlobalTypeenv.add main_module_name ssig in
+      let configenv = configenv |> GlobalTypeenv.add main_module_name config in
       let libacc = Alist.append libacc libs in
-      (genv, libacc)
-    ) (GlobalTypeenv.empty, Alist.empty)
+      (genv, configenv, libacc)
+    ) (GlobalTypeenv.empty, GlobalTypeenv.empty, Alist.empty)
   in
-  (genv, Alist.to_list libacc)
+  (genv, configenv, Alist.to_list libacc)
 
 
 let make_package_lock_config_path (abspathstr_in : string) =
@@ -1372,7 +1404,6 @@ let build
     ~(fpath_out_opt : string option)
     ~(config_paths_str_opt : string option)
     ~(text_mode_formats_str_opt : string option)
-    ~(markdown_style_str_opt : string option)
     ~(page_number_limit : int)
     ~(show_full_path : bool)
     ~(debug_show_bbox : bool)
@@ -1382,7 +1413,6 @@ let build
     ~(debug_show_overfull : bool)
     ~(type_check_only : bool)
     ~(bytecomp : bool)
-    ~(show_fonts : bool)
     ~(no_default_config : bool)
 =
   error_log_environment (fun () ->
@@ -1396,18 +1426,12 @@ let build
       | None    -> OptionState.PdfMode
       | Some(s) -> OptionState.TextMode(String.split_on_char ',' s)
     in
-    let input_kind =
-      match markdown_style_str_opt with
-      | None          -> OptionState.SATySFi
-      | Some(setting) -> OptionState.Markdown(setting)
-    in
     OptionState.set OptionState.{
       command_state =
         BuildState{
           input_file;
           output_file;
           output_mode;
-          input_kind;
           page_number_limit;
           debug_show_bbox;
           debug_show_space;
@@ -1419,7 +1443,6 @@ let build
         };
       extra_config_paths;
       show_full_path;
-      show_fonts;
       no_default_config;
     };
 
@@ -1428,27 +1451,34 @@ let build
     let build_input =
       let abspathstr_in = get_abs_path_string abspath_in in
       if Sys.is_directory abspathstr_in then
-        (* If the input is a package directory: *)
-          let abspath_lock_config = make_package_lock_config_path abspathstr_in in
-          PackageBuildInput{
-            lock = abspath_lock_config;
-          }
-      else
-        (* If the input is a document file: *)
-        let basename_without_extension = Filename.remove_extension abspathstr_in in
-        let abspath_lock_config = make_document_lock_config_path basename_without_extension in
-        let abspath_out =
-          match (output_mode, output_file) with
-          | (_, Some(abspath_out)) -> abspath_out
-          | (TextMode(_), None)    -> raise ShouldSpecifyOutputFile
-          | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
-        in
-        let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
-        DocumentBuildInput{
+      (* If the input is a package directory: *)
+        let abspath_lock_config = make_package_lock_config_path abspathstr_in in
+        PackageBuildInput{
           lock = abspath_lock_config;
-          out  = abspath_out;
-          dump = abspath_dump;
         }
+      else
+      (* If the input is a document file: *)
+        let input_kind_res = get_input_kind_from_extension abspathstr_in in
+        match input_kind_res with
+        | Error(ext) ->
+            raise (UnexpectedExtension(ext))
+
+        | Ok(input_kind) ->
+            let basename_without_extension = Filename.remove_extension abspathstr_in in
+            let abspath_lock_config = make_document_lock_config_path basename_without_extension in
+            let abspath_out =
+              match (output_mode, output_file) with
+              | (_, Some(abspath_out)) -> abspath_out
+              | (TextMode(_), None)    -> raise ShouldSpecifyOutputFile
+              | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
+            in
+            let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
+            DocumentBuildInput{
+              kind = input_kind;
+              lock = abspath_lock_config;
+              out  = abspath_out;
+              dump = abspath_dump;
+            }
     in
 
     let extensions = get_candidate_file_extensions () in
@@ -1465,13 +1495,13 @@ let build
           | Error(e)        -> raise (ConfigError(e))
         in
 
-        let package =
+        let (_config, package) =
           match PackageReader.main ~extensions abspath_in with
           | Ok(package) -> package
           | Error(e)    -> raise (ConfigError(e))
         in
 
-        let (genv, _libs_dep) =
+        let (genv, _configenv, _libs_dep) =
           let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
           check_depended_packages ~lock_config_dir ~extensions tyenv_prim lock_config
         in
@@ -1483,6 +1513,7 @@ let build
         end
 
     | DocumentBuildInput{
+        kind = input_kind;
         lock = abspath_lock_config;
         out  = abspath_out;
         dump = abspath_dump;
@@ -1499,16 +1530,16 @@ let build
         let dump_file_exists = CrossRef.initialize abspath_dump in
         Logging.dump_file ~already_exists:dump_file_exists abspath_dump;
 
-        (* Resolve dependency of the document and the local source files: *)
-        let (_dep_main_module_names, sorted_locals, utdoc) =
-          match OpenFileDependencyResolver.main ~extensions abspath_in with
-          | Ok(triple) -> triple
-          | Error(e)   -> raise (ConfigError(e))
-        in
-
-        let (genv, libs) =
+        let (genv, configenv, libs) =
           let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
           check_depended_packages ~lock_config_dir ~extensions tyenv_prim lock_config
+        in
+
+        (* Resolve dependency of the document and the local source files: *)
+        let (sorted_locals, utdoc) =
+          match OpenFileDependencyResolver.main ~extensions input_kind configenv abspath_in with
+          | Ok(pair) -> pair
+          | Error(e) -> raise (ConfigError(e))
         in
 
         (* Typechecking and elaboration: *)
@@ -1531,6 +1562,7 @@ type solve_input =
       lock : abs_path; (* A path for writing a resulting lock file *)
     }
   | DocumentSolveInput of {
+      kind : input_kind;
       path : abs_path; (* The absolute path to the document file *)
       lock : abs_path; (* A path for writing a resulting lock file *)
     }
@@ -1561,20 +1593,30 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
   LockConfig.{ locked_packages }
 
 
-let extract_attributes_from_document_file (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
+let extract_attributes_from_document_file (input_kind : input_kind) (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
-  let* utsrc =
-    ParserInterface.process_file abspath_in
-      |> Result.map_error (fun rng -> FailedToParse(rng))
-  in
-  let* (attrs, _header, _utast) =
-    match utsrc with
-    | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
-    | UTDocumentFile(utdoc) -> return utdoc
-  in
-  DocumentAttribute.make attrs
-    |> Result.map_error (fun e -> DocumentAttributeError(e))
+  match input_kind with
+  | InputSatysfi ->
+      let* utsrc =
+        ParserInterface.process_file abspath_in
+          |> Result.map_error (fun rng -> FailedToParse(rng))
+      in
+      let* (attrs, _header, _utast) =
+        match utsrc with
+        | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
+        | UTDocumentFile(utdoc) -> return utdoc
+      in
+      DocumentAttribute.make attrs
+        |> Result.map_error (fun e -> DocumentAttributeError(e))
+
+  | InputMarkdown ->
+      let* (docattr, _main_module_name, _md) =
+        match read_file abspath_in with
+        | Ok(data)   -> MarkdownParser.decode data |> Result.map_error (fun e -> MarkdownError(e))
+        | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
+      in
+      return docattr
 
 
 let solve
@@ -1592,7 +1634,6 @@ let solve
       command_state = SolveState;
       extra_config_paths;
       show_full_path;
-      show_fonts = false;
       no_default_config;
     };
 
@@ -1609,12 +1650,20 @@ let solve
           lock = abspath_lock_config;
         }
       else
-        let basename_without_extension = Filename.remove_extension (get_abs_path_string abspath_in) in
+        let abspathstr_in = get_abs_path_string abspath_in in
+        let basename_without_extension = Filename.remove_extension abspathstr_in in
         let abspath_lock_config = make_document_lock_config_path basename_without_extension in
-        DocumentSolveInput{
-          path = abspath_in;
-          lock = abspath_lock_config;
-        }
+        let input_kind_res = get_input_kind_from_extension abspathstr_in in
+        match input_kind_res with
+        | Error(ext) ->
+            raise (UnexpectedExtension(ext))
+
+        | Ok(input_kind) ->
+            DocumentSolveInput{
+              kind = input_kind;
+              path = abspath_in;
+              lock = abspath_lock_config;
+            }
     in
 
     let res =
@@ -1642,10 +1691,11 @@ let solve
             end
 
         | DocumentSolveInput{
+            kind = input_kind;
             path = abspath_in;
             lock = abspath_lock_config;
           } ->
-            let* docattr = extract_attributes_from_document_file abspath_in in
+            let* docattr = extract_attributes_from_document_file input_kind abspath_in in
             return (docattr.DocumentAttribute.dependencies, abspath_lock_config)
       in
 

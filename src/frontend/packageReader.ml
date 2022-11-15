@@ -17,7 +17,7 @@ let listup_sources_in_directory (extensions : string list) (absdir_src : abs_pat
   )
 
 
-let main ~(extensions : string list) (absdir_package : abs_path) : untyped_package ok =
+let main ~(extensions : string list) (absdir_package : abs_path) : (PackageConfig.t * untyped_package) ok =
   let open ResultMonad in
   let* config = PackageConfig.load absdir_package in
   let* package =
@@ -67,4 +67,4 @@ let main ~(extensions : string list) (absdir_package : abs_path) : untyped_packa
           font_files;
         }
   in
-  return package
+  return (config, package)

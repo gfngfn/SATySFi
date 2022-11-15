@@ -1,10 +1,6 @@
 
 open MyUtil
 
-type input_kind =
-  | SATySFi
-  | Markdown of string
-
 type output_mode =
   | PdfMode
   | TextMode of string list
@@ -12,7 +8,6 @@ type output_mode =
 type build_state = {
   input_file             : abs_path;
   output_file            : abs_path option;
-  input_kind             : input_kind;
   output_mode            : output_mode;
   page_number_limit      : int;
   debug_show_bbox        : bool;
@@ -32,7 +27,6 @@ type state = {
   command_state      : command_state;
   extra_config_paths : (string list) option;
   show_full_path     : bool;
-  show_fonts         : bool;
   no_default_config  : bool;
 }
 
@@ -44,7 +38,6 @@ val get_input_file              : unit -> abs_path
 val get_output_file             : unit -> abs_path option
 val get_extra_config_paths      : unit -> string list option
 val get_output_mode             : unit -> output_mode
-val get_input_kind              : unit -> input_kind
 val get_page_number_limit       : unit -> int
 val does_show_full_path         : unit -> bool
 val does_debug_show_bbox        : unit -> bool
@@ -54,7 +47,6 @@ val does_debug_show_block_space : unit -> bool
 val does_debug_show_overfull    : unit -> bool
 val is_type_check_only          : unit -> bool
 val is_bytecomp_mode            : unit -> bool
-val does_show_fonts             : unit -> bool
 val use_no_default_config       : unit -> bool
 
 val job_directory : unit -> string

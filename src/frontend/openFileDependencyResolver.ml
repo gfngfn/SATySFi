@@ -1,6 +1,7 @@
 
 open MyUtil
 open Types
+open PackageSystemBase
 open ConfigError
 
 
@@ -35,7 +36,7 @@ let get_header (extensions : string list) (curdir : string) (headerelem : header
       return @@ Local(modident, abspath)
 
 
-let rec register_library_file (extensions : string list) (graph : graph) (package_names : PackageNameSet.t) ~prev:(vertex_prev_opt : vertex option) (abspath : abs_path) : (PackageNameSet.t * graph) ok =
+let rec register_library_file (extensions : string list) (graph : graph) ~prev:(vertex_prev_opt : vertex option) (abspath : abs_path) : graph ok =
   let open ResultMonad in
   match graph |> FileDependencyGraph.get_vertex abspath with
   | Some(vertex) ->
@@ -45,7 +46,7 @@ let rec register_library_file (extensions : string list) (graph : graph) (packag
         | None              -> graph
         | Some(vertex_prev) -> graph |> FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
       in
-      return (package_names, graph)
+      return graph
 
   | None ->
       let curdir = Filename.dirname (get_abs_path_string abspath) in
@@ -67,18 +68,18 @@ let rec register_library_file (extensions : string list) (graph : graph) (packag
         | None              -> graph
         | Some(vertex_prev) -> graph |> FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
       in
-      header |> foldM (fun (package_names, graph) headerelem ->
+      header |> foldM (fun graph headerelem ->
         let* local_or_package = get_header extensions curdir headerelem in
         match local_or_package with
-        | Package((_, main_module_name)) ->
-            return (package_names |> PackageNameSet.add main_module_name, graph)
+        | Package((_, _main_module_name)) ->
+            return graph
 
         | Local(_modident_sub, abspath_sub) ->
-            register_library_file extensions graph package_names ~prev:(Some(vertex)) abspath_sub
-      ) (package_names, graph)
+            register_library_file extensions graph ~prev:(Some(vertex)) abspath_sub
+      ) graph
 
 
-let register_document_file (extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t * graph * untyped_document_file) ok =
+let register_document_file (extensions : string list) (abspath_in : abs_path) : (graph * untyped_document_file) ok =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
@@ -92,62 +93,82 @@ let register_document_file (extensions : string list) (abspath_in : abs_path) : 
     | UTDocumentFile(utdoc) -> return utdoc
   in
   let (_attrs, header, _) = utdoc in
-  let* (package_names, graph) =
-    header |> foldM (fun (package_names, graph) headerelem ->
+  let* graph =
+    header |> foldM (fun (graph) headerelem ->
       let* local_or_package = get_header extensions curdir headerelem in
       match local_or_package with
-      | Package((_, main_module_name)) ->
-          return (package_names |> PackageNameSet.add main_module_name, graph)
+      | Package((_, _main_module_name)) ->
+          return graph
 
       | Local(_, abspath_sub) ->
-          register_library_file extensions graph package_names ~prev:None abspath_sub
-    ) (PackageNameSet.empty, FileDependencyGraph.empty)
+          register_library_file extensions graph ~prev:None abspath_sub
+    ) FileDependencyGraph.empty
   in
-  return (package_names, graph, utdoc)
+  return (graph, utdoc)
 
 
-let register_markdown_file (setting : string) (abspath_in : abs_path) : (PackageNameSet.t * untyped_document_file) ok =
+let extract_markdown_command_record ~(module_name : module_name) (config : PackageConfig.t) : MarkdownParser.command_record ok =
+  let open ResultMonad in
+  match config.PackageConfig.package_contents with
+  | PackageConfig.Library{ conversion_specs; _ } ->
+      begin
+        match
+          conversion_specs |> List.filter_map (function
+          | PackageConfig.MarkdownConversion(cmdrcd) ->
+              Some(cmdrcd)
+          )
+        with
+        | [] ->
+            err @@ NoMarkdownConversion(module_name)
+
+        | [ cmdrcd ] ->
+            return cmdrcd
+
+        | _ :: _ ->
+            err @@ MoreThanOneMarkdownConversion(module_name)
+      end
+
+  | _ ->
+      err @@ NoMarkdownConversion(module_name)
+
+
+let register_markdown_file (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : untyped_document_file ok =
   let open ResultMonad in
   Logging.begin_to_parse_file abspath_in;
-  let* abspath =
-    let libpath = make_lib_path (Filename.concat "dist/md" (setting ^ ".satysfi-md")) in
-    Config.resolve_lib_file libpath
-      |> Result.map_error (fun candidates -> CannotFindLibraryFile(libpath, candidates))
-  in
-  let (cmdrcd, depends) = LoadMDSetting.main abspath in (* TODO: make this monadic *)
-  let* utast =
+  let* (_docattr, main_module_name_class, md) =
     match read_file abspath_in with
-    | Ok(data)   -> return (DecodeMD.decode cmdrcd data)
+    | Ok(data)   -> MarkdownParser.decode data |> Result.map_error (fun e -> MarkdownError(e))
     | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in
-  let package_names =
-    depends |> List.fold_left (fun package_names main_module_name ->
-      package_names |> PackageNameSet.add main_module_name
-    ) PackageNameSet.empty
+  let* cmdrcd =
+    match configenv |> GlobalTypeenv.find_opt main_module_name_class with
+    | None ->
+        err @@ MarkdownClassNotFound(main_module_name_class)
+
+    | Some(config) ->
+        extract_markdown_command_record ~module_name:main_module_name_class config
   in
+  let utast = MarkdownParser.convert cmdrcd md in
   let header =
-    depends |> List.map (fun main_module_name ->
-      HeaderUsePackage{ opening = false; module_name = (Range.dummy "md-header", main_module_name) }
-    )
+    [ HeaderUsePackage{ opening = false; module_name = (Range.dummy "md-header", main_module_name_class) } ]
   in
   let utdoc = ([], header, utast) in
-  return (package_names, utdoc)
+  return utdoc
 
 
-let main ~(extensions : string list) (abspath_in : abs_path) : (PackageNameSet.t * (abs_path * untyped_library_file) list * untyped_document_file) ok =
+let main ~(extensions : string list) (input_kind : input_kind) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
-  let* (package_names, graph, utdoc) =
-    match OptionState.get_input_kind () with
-    | OptionState.SATySFi ->
-        let* (package_names, graph, utdoc) = register_document_file extensions abspath_in in
-        return (package_names, graph, utdoc)
+  let* (graph, utdoc) =
+    match input_kind with
+    | InputSatysfi ->
+        register_document_file extensions abspath_in
 
-    | OptionState.Markdown(setting) ->
-        let* (package_names, utdoc) = register_markdown_file setting abspath_in in
-        return (package_names, FileDependencyGraph.empty, utdoc)
+    | InputMarkdown ->
+        let* utdoc = register_markdown_file configenv abspath_in in
+        return (FileDependencyGraph.empty, utdoc)
   in
   let* sorted_locals =
     FileDependencyGraph.topological_sort graph
       |> Result.map_error (fun cycle -> CyclicFileDependency(cycle))
   in
-  return (package_names, sorted_locals, utdoc)
+  return (sorted_locals, utdoc)

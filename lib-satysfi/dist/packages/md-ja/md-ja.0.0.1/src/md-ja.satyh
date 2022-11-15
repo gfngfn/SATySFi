@@ -20,24 +20,19 @@ module MDJa :> sig
   val +h3 : block [inline-text, block-text]
   val +h4 : block [inline-text, block-text]
   val +p : block [inline-text]
-  val +ul : block [list inline-text]
   val +ul-block : block [list block-text]
-  val +ol : block [list inline-text]
-  val +code : block [string]
-  val +console : block [string]
+  val +ol-block : block [list block-text]
+  val +code : block [string, string]
   val +quote : block [block-text]
   val +hr : block []
-  val +error : block [string]
 
   val \code : inline [string]
   val \emph : inline [inline-text]
-  val \bold : inline [inline-text]
+  val \strong : inline [inline-text]
   val \link : inline [string, inline-text]
   val \reference : inline [string, string, option (string * string)]
   val \img : inline [string, string, string]
   val \hard-break : inline []
-  val \embed-block : inline [block-text]
-  val \error : inline [string]
 end = struct
 
   val paper = PaperSize.a4
@@ -266,41 +261,42 @@ end = struct
       (inline-skip indent-size ++ read-inline ctx it ++ inline-fil)
 
 
-  val block +ul its =
-    let items = its |> List.map (fun it -> Item(it, [])) in
-    '<+Itemize.listing?(break = true)(Item({}, items));>
-
-
-  val inline ctx \embed-ul-block bt =
+  val inline ctx \embed-list-block bt =
     embed-block-breakable ctx (read-block ctx bt) ++ inline-fil
 
 
   val block ctx +ul-block bts =
     let items =
       bts |> List.map (fun bt -> (
-        Item({\embed-ul-block(bt);}, [])
+        Item({\embed-list-block(bt);}, [])
       ))
     in
     read-block ctx '<+Itemize.listing?(break = true)(Item({}, items));>
 
 
-  val block +ol its =
-    let items = its |> List.map (fun it -> Item(it, [])) in
-    '<+Itemize.enumerate(Item({}, items));>
+  val block ctx +ol-block bts =
+    let items =
+      bts |> List.map (fun bt -> (
+        Item({\embed-list-block(bt);}, [])
+      ))
+    in
+    read-block ctx '<+Itemize.listing?(break = true)(Item({}, items));>
 
 
   val fix-block-code s =
     string-unexplode [0x0A] ^ s
-      % dirty trick; should fix '+Code.code' and the parser of SATySFi
+      % dirty trick; TODO: fix '+Code.code' and the parser of SATySFi
 
 
-  val block ctx +code s =
+  val block ctx +code name s =
     let ctx = set-font-size (get-font-size ctx *' 0.875) ctx in
-    read-block ctx '<+Code.code(fix-block-code s);>
-
-
-  val block +console s =
-    '<+Code.console(fix-block-code s);>
+    let bt =
+      if string-same name `console` then
+        '<+Code.console(fix-block-code s);>
+      else
+        '<+Code.code(fix-block-code s);>
+    in
+    read-block ctx bt
 
 
   val block ctx +quote it =
@@ -320,12 +316,6 @@ end = struct
         stroke hr-thickness color (Gr.line (x, y) (x +' w, y))
       ))
 
-  val block ctx +error s =
-    let ctx = ctx |> set-text-color Color.red in
-    let it = embed-string s in
-    line-break true true ctx
-      (read-inline ctx {ERROR (B): \"#it;\"} ++ inline-fil)
-
 
   val inline ctx \emph it =
     let ctx =
@@ -335,7 +325,7 @@ end = struct
     read-inline ctx it
 
 
-  val inline \bold it =
+  val inline \strong it =
     {\emph(it);}
 
 
@@ -359,14 +349,6 @@ end = struct
     script-guard Latin (inline-frame-breakable pads decoset ib)
 
 
-  val inline ctx \url s =
-    let ctx =
-      ctx |> set-latin-font font-latin-mono
-          |> set-cjk-font font-cjk-gothic
-    in
-    read-inline ctx (embed-string s)
-
-
   val inline ctx \reference tag display opt =
     let it = embed-string display in
     match opt with
@@ -385,18 +367,12 @@ end = struct
         read-inline ctx {\jump(key-pdf-loc){#it; [#it-tag;]}}
     end
 
+
   val inline ctx \img alt src title =
     use-image-by-width (load-image src) 5cm
 
+
   val inline ctx \hard-break =
     Pervasives.mandatory-break ctx
-
-  val inline ctx \embed-block bt =
-    inline-fil ++ embed-block-breakable ctx (read-block ctx bt) ++ omit-skip-after
-
-  val inline ctx \error s =
-    let ctx = ctx |> set-text-color Color.red in
-    let it = embed-string s in
-    read-inline ctx {ERROR (I): \"#it;\"}
 
 end
