@@ -362,13 +362,13 @@ type untyped_binding =
   untyped_binding_main ranged
 
 and untyped_binding_main =
-  | UTBindValue       of stage * untyped_rec_or_nonrec
+  | UTBindValue       of untyped_attribute list * stage * untyped_rec_or_nonrec
   | UTBindType        of untyped_type_binding list
   | UTBindModule      of module_name ranged * untyped_signature option * untyped_module
   | UTBindSignature   of signature_name ranged * untyped_signature
   | UTBindInclude     of untyped_module
-  | UTBindInlineMacro of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
-  | UTBindBlockMacro  of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindInlineMacro of untyped_attribute list * command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindBlockMacro  of untyped_attribute list * command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
 
 and untyped_module =
   untyped_module_main ranged
@@ -580,11 +580,11 @@ and untyped_parameter_unit =
   | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
 [@@deriving show { with_path = false; }]
 
-type untyped_attribute_main =
+and untyped_attribute_main =
   | UTAttribute of attribute_name * untyped_abstract_tree
 [@@deriving show { with_path = false; }]
 
-type untyped_attribute =
+and untyped_attribute =
   untyped_attribute_main ranged
 [@@deriving show { with_path = false; }]
 

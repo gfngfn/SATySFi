@@ -733,7 +733,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
   let open ResultMonad in
   let (_, utbindmain) = utbind in
   match utbindmain with
-  | UTBindValue(stage, valbind) ->
+  | UTBindValue(_attrs, stage, valbind) ->
       let pre =
         {
           stage           = stage;
@@ -869,7 +869,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
             err (NotAStructureSignature(rng_mod, fsig))
       end
 
-  | UTBindInlineMacro((rng_cs, csnm), macparams, utast1) ->
+  | UTBindInlineMacro(_attrs, (rng_cs, csnm), macparams, utast1) ->
       let pre =
         {
           stage           = Stage1;
@@ -896,7 +896,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
       return (binds, (OpaqueIDMap.empty, ssig))
 
-  | UTBindBlockMacro((rng_cs, csnm), macparams, utast1) ->
+  | UTBindBlockMacro(_attrs, (rng_cs, csnm), macparams, utast1) ->
       let pre =
         {
           stage           = Stage1;
