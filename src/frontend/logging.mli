@@ -30,7 +30,7 @@ val dump_file : already_exists:bool -> abs_path -> unit
 
 val lock_config_file : abs_path -> unit
 
-val show_package_dependency_before_solving : package_dependency list -> unit
+val show_package_dependency_before_solving : (dependency_flag * package_dependency) list -> unit
 
 val show_package_dependency_solutions : package_solution list -> unit
 

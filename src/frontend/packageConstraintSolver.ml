@@ -241,7 +241,21 @@ end
 module InternalSolver = Zeroinstall_solver.Make(SolverInput)
 
 
-let solve (context : package_context) (requires : package_dependency list) : (package_solution list) option =
+let get_flag (package_name : package_name) (flagmap : dependency_flag PackageNameMap.t) : dependency_flag =
+  match flagmap |> PackageNameMap.find_opt package_name with
+  | Some(flag) -> flag
+  | None       -> assert false
+
+
+let solve (context : package_context) (dependencies_with_flags : (dependency_flag * package_dependency) list) : (package_solution list) option =
+  let (flagmap, dependency_acc) =
+    dependencies_with_flags |> List.fold_left (fun (flagmap, dependency_acc) (flag, dep) ->
+      match dep with
+      | PackageDependency{ package_name; _ } ->
+          (flagmap |> PackageNameMap.add package_name flag, Alist.extend dependency_acc dep)
+    ) (PackageNameMap.empty, Alist.empty)
+  in
+  let requires = Alist.to_list dependency_acc in
   let output_opt =
     InternalSolver.do_solve ~closest_match:false {
       role    = LocalRole{ requires; context };
@@ -251,38 +265,62 @@ let solve (context : package_context) (requires : package_dependency list) : (pa
   output_opt |> Option.map (fun output ->
     let open InternalSolver in
     let rolemap = output |> Output.to_map in
-    let acc =
+    let (solmap, packages_depended_by_source) =
       Output.RoleMap.fold (fun _role impl acc ->
         let open SolverInput in
+        let (solmap, packages_depended_by_source) = acc in
         let impl = Output.unwrap impl in
         match impl with
         | DummyImpl | LocalImpl(_) ->
             acc
 
         | Impl{ package_name; version = locked_version; dependencies; _ } ->
-            let locked_dependency_acc =
-              dependencies |> List.fold_left (fun locked_dependency_acc dep ->
+            let flag = flagmap |> get_flag package_name in
+            let (locked_dependency_acc, packages_depended_by_source) =
+              dependencies |> List.fold_left (fun (locked_dependency_acc, packages_depended_by_source) dep ->
                 let Dependency{ role = role_dep; _ } = dep in
                 match role_dep with
                 | Role{ package_name = package_name_dep; _ } ->
-                    begin
+                    let locked_dependency_acc =
                       match rolemap |> Output.RoleMap.find_opt role_dep |> Option.map Output.unwrap with
                       | None | Some(DummyImpl) | Some(LocalImpl(_)) ->
                           locked_dependency_acc
 
                       | Some(Impl{ version = version_dep; _ }) ->
                           Alist.extend locked_dependency_acc (package_name_dep, version_dep)
-                    end
+                    in
+                    let packages_depended_by_source =
+                      match flag with
+                      | SourceDependency   -> packages_depended_by_source |> PackageNameSet.add package_name_dep
+                      | TestOnlyDependency -> packages_depended_by_source
+                    in
+                    (locked_dependency_acc, packages_depended_by_source)
 
                 | LocalRole(_) ->
-                    locked_dependency_acc
+                    (locked_dependency_acc, packages_depended_by_source)
 
-              ) Alist.empty
+              ) (Alist.empty, packages_depended_by_source)
             in
             let locked_dependencies = Alist.to_list locked_dependency_acc in
-            Alist.extend acc { package_name; locked_version; locked_dependencies }
+            let solmap = solmap |> PackageNameMap.add package_name (flag, locked_version, locked_dependencies) in
+            (solmap, packages_depended_by_source)
 
-      ) rolemap Alist.empty
+      ) rolemap (PackageNameMap.empty, PackageNameSet.empty)
     in
-    Alist.to_list acc
+    let solution_acc =
+      PackageNameMap.fold (fun package_name (flag, locked_version, locked_dependencies) solution_acc ->
+        let used_in_test_only =
+          match (flag, packages_depended_by_source |> PackageNameSet.mem package_name) with
+          | (SourceDependency, _) | (_, true) -> false
+          | (TestOnlyDependency, false)       -> true
+        in
+        Alist.extend solution_acc {
+          package_name;
+          locked_version;
+          locked_dependencies;
+          used_in_test_only;
+        }
+      ) solmap Alist.empty
+    in
+    Alist.to_list solution_acc
   )

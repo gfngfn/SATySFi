@@ -1587,7 +1587,8 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
           make_lock_name package_name_dep semver_dep
         )
       in
-      LockConfig.{ lock_name; lock_location; lock_dependencies }
+      let test_only_lock = solution.used_in_test_only in
+      LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock }
     )
   in
   LockConfig.{ locked_packages }
@@ -1673,7 +1674,7 @@ let solve
         Config.resolve_lib_file libpath
           |> Result.map_error (fun candidates -> RegistryConfigNotFoundIn(libpath, candidates))
       in
-      let* (dependencies, abspath_lock_config) =
+      let* (dependencies_with_flags, abspath_lock_config) =
         match solve_input with
         | PackageSolveInput{
             root = absdir_package;
@@ -1682,12 +1683,16 @@ let solve
             let* config = PackageConfig.load absdir_package in
             begin
               match config.package_contents with
-              | PackageConfig.Library{ dependencies; _ } ->
-                  return (dependencies, abspath_lock_config)
+              | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
+                  let dependencies_with_flags =
+                    List.append
+                      (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
+                      (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
+                  in
+                  return (dependencies_with_flags, abspath_lock_config)
 
               | PackageConfig.Font(_) ->
-                  let dependencies = [] in
-                  return (dependencies, abspath_lock_config)
+                  return ([], abspath_lock_config)
             end
 
         | DocumentSolveInput{
@@ -1696,13 +1701,16 @@ let solve
             lock = abspath_lock_config;
           } ->
             let* docattr = extract_attributes_from_document_file input_kind abspath_in in
-            return (docattr.DocumentAttribute.dependencies, abspath_lock_config)
+            let dependencies_with_flags =
+              docattr.DocumentAttribute.dependencies |> List.map (fun dep -> (SourceDependency, dep))
+            in
+            return (dependencies_with_flags, abspath_lock_config)
       in
 
-      Logging.show_package_dependency_before_solving dependencies;
+      Logging.show_package_dependency_before_solving dependencies_with_flags;
 
       let* package_context = PackageRegistry.load abspath_registry_config in
-      let solutions_opt = PackageConstraintSolver.solve package_context dependencies in
+      let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
       begin
         match solutions_opt with
         | None ->

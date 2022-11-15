@@ -1,6 +1,8 @@
 
 module PackageNameMap = Map.Make(String)
 
+module PackageNameSet = Set.Make(String)
+
 type package_name = string
 [@@deriving show { with_path = false }]
 
@@ -28,9 +30,14 @@ type package_solution = {
   package_name        : package_name;
   locked_version      : SemanticVersion.t;
   locked_dependencies : (package_name * SemanticVersion.t) list;
+  used_in_test_only   : bool;
 }
 [@@deriving show { with_path = false }]
 
 type input_kind =
   | InputSatysfi
   | InputMarkdown
+
+type dependency_flag =
+  | SourceDependency
+  | TestOnlyDependency

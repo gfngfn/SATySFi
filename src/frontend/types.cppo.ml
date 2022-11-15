@@ -1284,8 +1284,6 @@ let map_cycle f = function
 
 module GlobalTypeenv = Map.Make(String)
 
-module PackageNameSet = Set.Make(String)
-
 module BoundIDHashTable = Hashtbl.Make(BoundID)
 
 module BoundRowIDHashTable = Hashtbl.Make(BoundRowID)

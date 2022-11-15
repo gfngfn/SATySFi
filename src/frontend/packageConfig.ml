@@ -24,6 +24,7 @@ type package_contents =
       main_module_name   : module_name;
       source_directories : relative_path list;
       dependencies       : package_dependency list;
+      test_dependencies  : package_dependency list;
       conversion_specs   : package_conversion_spec list;
     }
   | Font of {
@@ -173,11 +174,13 @@ let contents_decoder : package_contents ConfigDecoder.t =
       get "main_module" string >>= fun main_module_name ->
       get "source_directories" (list string) >>= fun source_directories ->
       get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
+      get_or_else "test_dependencies" (list dependency_decoder) [] >>= fun test_dependencies ->
       get_or_else "conversion" (list conversion_spec_decoder) [] >>= fun conversion_specs ->
       succeed @@ Library {
         main_module_name;
         source_directories;
         dependencies;
+        test_dependencies;
         conversion_specs;
       }
     end;
