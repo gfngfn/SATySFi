@@ -110,16 +110,22 @@ let begin_to_write_page () =
   print_endline ("  writing pages ...")
 
 
-let show_package_dependency_before_solving (dependencies : package_dependency list) =
+let show_package_dependency_before_solving (dependencies_with_flags : (dependency_flag * package_dependency) list) =
   Printf.printf "  package dependencies to solve:\n";
-  dependencies |> List.iter (function
-  | PackageDependency{ package_name; restrictions } ->
-      let s_restr =
-        restrictions |> List.map (function
-        | CompatibleWith(semver) -> SemanticVersion.to_string semver
-        ) |> String.concat ", "
-      in
-      Printf.printf "  - %s (%s)\n" package_name s_restr;
+  dependencies_with_flags |> List.iter (fun (flag, dep) ->
+    match dep with
+    | PackageDependency{ package_name; restrictions } ->
+        let s_restr =
+          restrictions |> List.map (function
+          | CompatibleWith(semver) -> SemanticVersion.to_string semver
+          ) |> String.concat ", "
+        in
+        let s_test_only =
+          match flag with
+          | SourceDependency   -> ""
+          | TestOnlyDependency -> ", test_only"
+        in
+        Printf.printf "  - %s (%s%s)\n" package_name s_restr s_test_only;
   )
 
 

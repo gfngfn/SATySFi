@@ -19,6 +19,7 @@ type locked_package = {
   lock_name         : lock_name;
   lock_location     : lock_location;
   lock_dependencies : lock_name list;
+  test_only_lock    : bool;
 }
 
 type t = {
@@ -63,10 +64,12 @@ let lock_decoder : locked_package ConfigDecoder.t =
   get "name" string >>= fun lock_name ->
   get "location" lock_location_decoder >>= fun lock_location ->
   get_or_else "dependencies" (list string) [] >>= fun lock_dependencies ->
+  get_or_else "test_only" bool false >>= fun test_only_lock ->
   succeed {
     lock_name;
     lock_location;
     lock_dependencies;
+    test_only_lock;
   }
 
 
@@ -74,7 +77,8 @@ let lock_encoder (lock : locked_package) : Yaml.value =
   `O([
     ("name", `String(lock.lock_name));
     ("location", lock_location_encoder lock.lock_location);
-    ("dependencies", `A(lock.lock_dependencies |> List.map (fun lock_name -> `String(lock_name))))
+    ("dependencies", `A(lock.lock_dependencies |> List.map (fun lock_name -> `String(lock_name))));
+    ("test_only", `Bool(lock.test_only_lock));
   ])
 
 

@@ -19,9 +19,29 @@ module Make (Element : ElementType) = struct
 
   module TopologicalImpl = Graph.Topological.Make(GraphImpl)
 
+  module ReachabilityImpl = Graph.Fixpoint.Make(GraphImpl)(struct
+    type vertex = GraphImpl.E.vertex
+    type edge = GraphImpl.E.t
+    type g = GraphImpl.t
+
+    type data = bool
+      (* Stands for whether the vertex is reachable. *)
+
+    let direction = Graph.Fixpoint.Forward
+
+    let equal = Bool.equal
+
+    let join = ( || )
+
+    let analyze _edge is_reachable = is_reachable
+      (* Directed edges transmit the reachability from its origin to its end. *)
+  end)
+
   type element = Element.t
 
   module Vertex = GraphImpl.V
+
+  module VertexSet = Set.Make(Vertex)
 
   type 'a t = {
     labels : ('a * Vertex.t) ElementMap.t;
@@ -42,7 +62,7 @@ module Make (Element : ElementType) = struct
         Error(pair)
 
     | None ->
-      let vertex = GraphImpl.V.create elem in
+      let vertex = Vertex.create elem in
       let graph =
         {
           labels = graph.labels |> ElementMap.add elem (data, vertex);
@@ -60,7 +80,7 @@ module Make (Element : ElementType) = struct
     { graph with main = GraphImpl.add_edge graph.main vertex1 vertex2 }
 
 
-  let extract_vertex_info (graph : 'a t) (vertex : GraphImpl.V.t) : element * 'a =
+  let extract_vertex_info (graph : 'a t) (vertex : Vertex.t) : element * 'a =
     let elem = GraphImpl.V.label vertex in
     match graph.labels |> ElementMap.find_opt elem with
     | None            -> assert false
@@ -109,5 +129,16 @@ module Make (Element : ElementType) = struct
               in
               Ok(Alist.to_list_rev acc)
         end
+
+
+  let reachability_closure (graph : 'a t) (vertices_origin : VertexSet.t) : VertexSet.t =
+    let g = graph.main in
+    let is_reachable = ReachabilityImpl.analyze (fun v -> vertices_origin |> VertexSet.mem v) g in
+    GraphImpl.fold_vertex (fun v vertices ->
+      if is_reachable v then
+        vertices |> VertexSet.add v
+      else
+        vertices
+    ) g VertexSet.empty
 
 end
