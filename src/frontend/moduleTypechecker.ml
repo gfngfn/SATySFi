@@ -10,7 +10,7 @@ module SynonymNameMap = Map.Make(String)
 
 module SynonymVertexHashSet = Hashtbl.Make(SynonymDependencyGraph.Vertex)
 
-module SynonymVertexSet = Set.Make(SynonymDependencyGraph.Vertex)
+module SynonymVertexSet = SynonymDependencyGraph.VertexSet
 
 
 let unify_quantifier (quant1 : quantifier) (quant2 : quantifier) : quantifier =

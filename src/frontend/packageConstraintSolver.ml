@@ -244,7 +244,7 @@ module InternalSolver = Zeroinstall_solver.Make(SolverInput)
 let get_flag (package_name : package_name) (flagmap : dependency_flag PackageNameMap.t) : dependency_flag =
   match flagmap |> PackageNameMap.find_opt package_name with
   | Some(flag) -> flag
-  | None       -> assert false
+  | None       -> SourceDependency (* Indirect dependencies *)
 
 
 let solve (context : package_context) (dependencies_with_flags : (dependency_flag * package_dependency) list) : (package_solution list) option =

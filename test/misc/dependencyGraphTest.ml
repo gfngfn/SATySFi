@@ -36,6 +36,14 @@ let pp_int_and_string ppf (n, s) =
   Format.fprintf ppf "(%d, %s)" n s
 
 
+let pp_vertex ppf vertex =
+  Format.fprintf ppf "%d" (DG.Vertex.label vertex)
+
+
+let pp_vertex_set ppf vertices =
+  Format.fprintf ppf "%a" (Format.pp_print_list ~pp_sep pp_vertex) (DG.VertexSet.elements vertices)
+
+
 (** Creates a graph of structure [v1 --> v2 --> v3]. *)
 let create_graph1 () =
   let open ResultMonad in
@@ -45,7 +53,7 @@ let create_graph1 () =
   graph |> DG.add_vertex 3 "three" >>= fun (graph, vertex3) ->
   let graph = graph |> DG.add_edge ~from:vertex1 ~to_:vertex2 in
   let graph = graph |> DG.add_edge ~from:vertex2 ~to_:vertex3 in
-  return graph
+  return (graph, (vertex1, vertex2, vertex3))
 
 
 (** Creates a graph of structure [v1 --> v2 --> v4] and [v1 --> v3 --> v4]. *)
@@ -89,8 +97,8 @@ let create_graph4 () =
   return graph
 
 
-let test1 () =
-  create_graph1 () |> continue_if_ok "cannot construct graph1" (fun graph1 ->
+let topological_sort_test_1 () =
+  create_graph1 () |> continue_if_ok "cannot construct graph1" (fun (graph1, _) ->
     DG.topological_sort graph1 |> continue_if_ok "cannot sort graph1" (fun got1 ->
       let expected1 = [ (3, "three"); (2, "two"); (1, "one") ] in
       Alcotest.(check (list (pair int string))) "should be [v3, v2, v1]" expected1 got1
@@ -98,7 +106,7 @@ let test1 () =
   )
 
 
-let test2 () =
+let topological_sort_test_2 () =
   create_graph2 () |> continue_if_ok "cannot construct graph2" (fun graph2 ->
     DG.topological_sort graph2 |> continue_if_ok "cannot sort graph2" (fun got2 ->
       let pp = Format.pp_print_list pp_int_and_string in
@@ -110,7 +118,7 @@ let test2 () =
   )
 
 
-let test3 () =
+let topological_sort_test_3 () =
   create_graph3 () |> continue_if_ok "cannot construct graph3" (fun graph3 ->
     DG.topological_sort graph3 |> continue_if_error "cannot find cycle" (fun cycle ->
       let pp = pp_cycle pp_int_and_string in
@@ -130,7 +138,7 @@ let test3 () =
   )
 
 
-let test4 () =
+let topological_sort_test_4 () =
   create_graph4 () |> continue_if_ok "cannot construct graph4" (fun graph4 ->
     DG.topological_sort graph4 |> continue_if_error "cannot find cycle" (fun cycle ->
       let pp = pp_cycle pp_int_and_string in
@@ -142,10 +150,20 @@ let test4 () =
   )
 
 
+let reachability_closure_test_1 () =
+  create_graph1 () |> continue_if_ok "cannot construct graph1" (fun (graph1, (_vertex1, vertex2, vertex3)) ->
+    let vertices_origin = DG.VertexSet.empty |> DG.VertexSet.add vertex2 in (* {2} *)
+    let got = DG.reachability_closure graph1 vertices_origin in
+    let expected = vertices_origin |> DG.VertexSet.add vertex3 in (* {2, 3} *)
+    Alcotest.(check (of_pp pp_vertex_set)) "vertex set equality" expected got
+  )
+
+
 let test_cases =
   Alcotest.[
-    test_case "IntDependencyGraph 1" `Quick test1;
-    test_case "IntDependencyGraph 2" `Quick test2;
-    test_case "IntDependencyGraph 3" `Quick test3;
-    test_case "IntDependencyGraph 4" `Quick test4;
+    test_case "topological sort 1" `Quick topological_sort_test_1;
+    test_case "topological sort 2" `Quick topological_sort_test_2;
+    test_case "topological sort 3" `Quick topological_sort_test_3;
+    test_case "topological sort 4" `Quick topological_sort_test_4;
+    test_case "reachability closure 1" `Quick reachability_closure_test_1;
   ]
