@@ -20,9 +20,7 @@ module MDJa :> sig
   val +h3 : block [inline-text, block-text]
   val +h4 : block [inline-text, block-text]
   val +p : block [inline-text]
-  val +ul : block [list inline-text]
   val +ul-block : block [list block-text]
-  val +ol : block [list inline-text]
   val +ol-block : block [list block-text]
   val +code : block [string, string]
   val +quote : block [block-text]
@@ -267,11 +265,6 @@ end = struct
     embed-block-breakable ctx (read-block ctx bt) ++ inline-fil
 
 
-  val block +ul its =
-    let items = its |> List.map (fun it -> Item(it, [])) in
-    '<+Itemize.listing?(break = true)(Item({}, items));>
-
-
   val block ctx +ul-block bts =
     let items =
       bts |> List.map (fun bt -> (
@@ -279,11 +272,6 @@ end = struct
       ))
     in
     read-block ctx '<+Itemize.listing?(break = true)(Item({}, items));>
-
-
-  val block +ol its =
-    let items = its |> List.map (fun it -> Item(it, [])) in
-    '<+Itemize.enumerate(Item({}, items));>
 
 
   val block ctx +ol-block bts =
@@ -297,7 +285,7 @@ end = struct
 
   val fix-block-code s =
     string-unexplode [0x0A] ^ s
-      % dirty trick; should fix '+Code.code' and the parser of SATySFi
+      % dirty trick; TODO: fix '+Code.code' and the parser of SATySFi
 
 
   val block ctx +code name s =
@@ -327,12 +315,6 @@ end = struct
       (inline-graphics w h h (fun (x, y) ->
         stroke hr-thickness color (Gr.line (x, y) (x +' w, y))
       ))
-
-  val block ctx +error s =
-    let ctx = ctx |> set-text-color Color.red in
-    let it = embed-string s in
-    line-break true true ctx
-      (read-inline ctx {ERROR (B): \"#it;\"} ++ inline-fil)
 
 
   val inline ctx \emph it =
@@ -367,14 +349,6 @@ end = struct
     script-guard Latin (inline-frame-breakable pads decoset ib)
 
 
-  val inline ctx \url s =
-    let ctx =
-      ctx |> set-latin-font font-latin-mono
-          |> set-cjk-font font-cjk-gothic
-    in
-    read-inline ctx (embed-string s)
-
-
   val inline ctx \reference tag display opt =
     let it = embed-string display in
     match opt with
@@ -393,18 +367,12 @@ end = struct
         read-inline ctx {\jump(key-pdf-loc){#it; [#it-tag;]}}
     end
 
+
   val inline ctx \img alt src title =
     use-image-by-width (load-image src) 5cm
 
+
   val inline ctx \hard-break =
     Pervasives.mandatory-break ctx
-
-  val inline ctx \embed-block bt =
-    inline-fil ++ embed-block-breakable ctx (read-block ctx bt) ++ omit-skip-after
-
-  val inline ctx \error s =
-    let ctx = ctx |> set-text-color Color.red in
-    let it = embed-string s in
-    read-inline ctx {ERROR (I): \"#it;\"}
 
 end
