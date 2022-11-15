@@ -255,7 +255,6 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
             | SourceDependency   -> explicit_source_dependencies |> PackageNameSet.add package_name
             | TestOnlyDependency -> explicit_source_dependencies
           in
-          Format.printf "**** FLAG %s (%a)\n" package_name pp_dependency_flag flag; (* TODO: remove this *)
           (explicit_source_dependencies, Alist.extend dependency_acc dep)
     ) (PackageNameSet.empty, Alist.empty)
   in
@@ -279,7 +278,6 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
             acc
 
         | Impl{ package_name; version = locked_version; dependencies; _ } ->
-            Format.printf "**** VERTEX %s\n" package_name; (* TODO: remove this *)
             let (quad_acc, graph, explicit_vertices, name_to_vertex_map) = acc in
             let (graph, vertex) =
               match graph |> LockDependencyGraph.add_vertex package_name () with
@@ -323,7 +321,6 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
                   | None    -> assert false
                   | Some(v) -> v
                 in
-                Format.printf "**** DEP %s ---> %s\n" package_name package_name_dep; (* TODO: remove this *)
                 let graph = graph |> LockDependencyGraph.add_edge ~from:vertex ~to_:vertex_dep in
                 (locked_dependency_acc, graph)
 
@@ -352,7 +349,6 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
           | Some(v) -> v
         in
         let used_in_test_only = not (resulting_source_dependencies |> VertexSet.mem vertex) in
-        Format.printf "**** RESULT %B <- %s\n" used_in_test_only package_name; (* TODO: remove this *)
         Alist.extend solution_acc {
           package_name;
           locked_version;
