@@ -1361,10 +1361,10 @@ let get_input_kind_from_extension (abspathstr_in : string) =
   | ext     -> Error(ext)
 
 
-let check_depended_packages ~(lock_config_dir : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
+let check_depended_packages ~(use_test_only_lock : bool) ~(lock_config_dir : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
   (* Resolve dependency among locked packages: *)
   let sorted_packages =
-    match ClosedLockDependencyResolver.main ~lock_config_dir ~extensions lock_config with
+    match ClosedLockDependencyResolver.main ~use_test_only_lock ~lock_config_dir ~extensions lock_config with
     | Ok(sorted_packages) -> sorted_packages
     | Error(e)            -> raise (ConfigError(e))
   in
@@ -1503,7 +1503,7 @@ let build
 
         let (genv, _configenv, _libs_dep) =
           let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
-          check_depended_packages ~lock_config_dir ~extensions tyenv_prim lock_config
+          check_depended_packages ~use_test_only_lock:false ~lock_config_dir ~extensions tyenv_prim lock_config
         in
 
         begin
@@ -1532,7 +1532,7 @@ let build
 
         let (genv, configenv, libs) =
           let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
-          check_depended_packages ~lock_config_dir ~extensions tyenv_prim lock_config
+          check_depended_packages ~use_test_only_lock:false ~lock_config_dir ~extensions tyenv_prim lock_config
         in
 
         (* Resolve dependency of the document and the local source files: *)

@@ -10,7 +10,7 @@ type 'a ok = ('a, config_error) result
 module LockDependencyGraph = DependencyGraph.Make(String)
 
 
-let main ~(lock_config_dir : abs_path) ~(extensions : string list) (lock_config : LockConfig.t) : ((lock_name * (PackageConfig.t * untyped_package)) list) ok =
+let main ~(use_test_only_lock : bool) ~(lock_config_dir : abs_path) ~(extensions : string list) (lock_config : LockConfig.t) : ((lock_name * (PackageConfig.t * untyped_package)) list) ok =
   let open ResultMonad in
 
   let locks = lock_config.LockConfig.locked_packages in
@@ -18,33 +18,36 @@ let main ~(lock_config_dir : abs_path) ~(extensions : string list) (lock_config 
   (* Add vertices: *)
   let* (graph, entryacc) =
     locks |> foldM (fun (graph, entryacc) (lock : LockConfig.locked_package) ->
-      let lock_name = lock.lock_name in
-      let* absdir_package =
-        match lock.lock_location with
-        | GlobalLocation{ path = s_libpath } ->
-            let libpath = make_lib_path s_libpath in
-            begin
-              match Config.resolve_lib_file libpath with
-              | Ok(abspath)       -> return abspath
-              | Error(candidates) -> err @@ LockedPackageNotFound(libpath, candidates)
-            end
+      let LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock } = lock in
+      if test_only_lock && not use_test_only_lock then
+        return (graph, entryacc)
+      else
+        let* absdir_package =
+          match lock_location with
+          | GlobalLocation{ path = s_libpath } ->
+              let libpath = make_lib_path s_libpath in
+              begin
+                match Config.resolve_lib_file libpath with
+                | Ok(abspath)       -> return abspath
+                | Error(candidates) -> err @@ LockedPackageNotFound(libpath, candidates)
+              end
 
-        | LocalLocation{ path = s_relpath } ->
-            return (make_abs_path (Filename.concat (get_abs_path_string lock_config_dir) s_relpath))
-      in
-      let* package_with_config = PackageReader.main ~extensions absdir_package in
-      let* (graph, vertex) =
-        graph |> LockDependencyGraph.add_vertex lock_name package_with_config
-          |> Result.map_error (fun _ -> LockNameConflict(lock_name))
-      in
-      let lock_info =
-        {
-          lock_name;
-          lock_directory    = absdir_package;
-          lock_dependencies = lock.lock_dependencies;
-        }
-      in
-      return (graph, Alist.extend entryacc (lock_info, vertex))
+          | LocalLocation{ path = s_relpath } ->
+              return (make_abs_path (Filename.concat (get_abs_path_string lock_config_dir) s_relpath))
+        in
+        let* package_with_config = PackageReader.main ~extensions absdir_package in
+        let* (graph, vertex) =
+          graph |> LockDependencyGraph.add_vertex lock_name package_with_config
+            |> Result.map_error (fun _ -> LockNameConflict(lock_name))
+        in
+        let lock_info =
+          {
+            lock_name;
+            lock_directory = absdir_package;
+            lock_dependencies;
+          }
+        in
+        return (graph, Alist.extend entryacc (lock_info, vertex))
     ) (LockDependencyGraph.empty, Alist.empty)
   in
 
