@@ -65,3 +65,5 @@ type type_error =
   | KindContradiction                    of Range.t * type_name * kind * kind
   | CyclicSynonymTypeDefinition          of (type_name * SynonymDependencyGraph.data) cycle
   | MultipleSynonymTypeDefinition        of type_name * Range.t * Range.t
+  | ValueAttributeError                  of ValueAttribute.error
+  | TestMustBeStage1NonRec               of Range.t

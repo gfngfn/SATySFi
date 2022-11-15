@@ -390,10 +390,15 @@ optional_open:
   |      { false }
 ;
 attribute:
+  | attr_left=ATTRIBUTE_L_SQUARE; tokR=R_SQUARE
+      {
+        let (tokL, attrnm) = attr_left in
+        make_standard (Tok tokL) (Tok tokR) (UTAttribute(attrnm, None))
+      }
   | attr_left=ATTRIBUTE_L_SQUARE; utast=expr; tokR=R_SQUARE
       {
         let (tokL, attrnm) = attr_left in
-        make_standard (Tok tokL) (Tok tokR) (UTAttribute(attrnm, utast))
+        make_standard (Tok tokL) (Tok tokR) (UTAttribute(attrnm, Some(utast)))
       }
 ;
 modexpr:

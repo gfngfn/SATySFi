@@ -1166,44 +1166,57 @@ and interpret_letrec_bindings_1 (env : environment) (recbinds : letrec_binding l
   (env, cdrecbinds)
 
 
-let interpret_bindings_0 (env : environment) (binds : binding list) : environment * code_rec_or_nonrec list =
+let interpret_bindings_0 ~(run_tests : bool) (env : environment) (binds : binding list) : environment * code_rec_or_nonrec list =
   let (env, acc) =
-    binds |> List.fold_left (fun (env, acc) (Bind(stage, rec_or_nonrec)) ->
-      match stage with
-      | Persistent0 | Stage0 ->
-          let env =
-            match rec_or_nonrec with
-            | NonRec(evid, ast) ->
-                let value = interpret_0 env ast in
-                add_to_environment env evid (ref value)
-
-            | Rec(recbinds) ->
-                add_letrec_bindings_to_environment env recbinds
-
-            | Mutable(evid, ast_ini) ->
-                let value_ini = interpret_0 env ast_ini in
-                let stid = register_location env value_ini in
-                add_to_environment env evid (ref (Location(stid)))
-          in
-          (env, acc)
-
-      | Stage1 ->
+    binds |> List.fold_left (fun (env, acc) bind ->
+      match bind with
+      | Bind(stage, rec_or_nonrec) ->
           begin
-            match rec_or_nonrec with
-            | NonRec(evid, ast) ->
-                let code = interpret_1 env ast in
-                let (env, symb) = generate_symbol_for_eval_var_id evid env in
-                (env, Alist.extend acc (CdNonRec(symb, code)))
+            match stage with
+            | Persistent0 | Stage0 ->
+                let env =
+                  match rec_or_nonrec with
+                  | NonRec(evid, ast) ->
+                      let value = interpret_0 env ast in
+                      add_to_environment env evid (ref value)
 
-            | Rec(recbinds) ->
-                let (env, cdrecbinds) = interpret_letrec_bindings_1 env recbinds in
-                (env, Alist.extend acc (CdRec(cdrecbinds)))
+                  | Rec(recbinds) ->
+                      add_letrec_bindings_to_environment env recbinds
 
-            | Mutable(evid, ast) ->
-                let code = interpret_1 env ast in
-                let (env, symb) = generate_symbol_for_eval_var_id evid env in
-                (env, Alist.extend acc (CdMutable(symb, code)))
+                  | Mutable(evid, ast_ini) ->
+                      let value_ini = interpret_0 env ast_ini in
+                      let stid = register_location env value_ini in
+                      add_to_environment env evid (ref (Location(stid)))
+                in
+                (env, acc)
+
+            | Stage1 ->
+                let (env, cdbind) =
+                  match rec_or_nonrec with
+                  | NonRec(evid, ast) ->
+                      let code = interpret_1 env ast in
+                      let (env, symb) = generate_symbol_for_eval_var_id evid env in
+                      (env, CdNonRec(symb, code))
+
+                  | Rec(recbinds) ->
+                      let (env, cdrecbinds) = interpret_letrec_bindings_1 env recbinds in
+                      (env, CdRec(cdrecbinds))
+
+                  | Mutable(evid, ast) ->
+                      let code = interpret_1 env ast in
+                      let (env, symb) = generate_symbol_for_eval_var_id evid env in
+                      (env, CdMutable(symb, code))
+                in
+                (env, Alist.extend acc cdbind)
           end
+
+      | BindTest(evid, ast) ->
+          if run_tests then
+            let code = interpret_1 env ast in
+            let (env, symb) = generate_symbol_for_eval_var_id evid env in
+            (env, Alist.extend acc (CdNonRec(symb, code)))
+          else
+            (env, acc)
 
     ) (env, Alist.empty)
   in

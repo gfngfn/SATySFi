@@ -729,11 +729,47 @@ and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) 
   return ((quant, ssig), binds)
 
 
+and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utast1 : untyped_abstract_tree) =
+  let open ResultMonad in
+  let presub = { pre with level = Level.succ pre.level; } in
+  let (_, varnm) = ident in
+  let evid = EvalVarID.fresh ident in
+  let* (e1_raw, ty1) = Typechecker.typecheck presub tyenv utast1 in
+  let e1 = e1_raw in
+(*
+  tyannot |> Option.map (fun mnty ->
+    let tyA = decode_manual_type pre tyenv mnty in
+    unify ty1 tyA
+  ) |> ignore;
+*)
+(*
+  let should_be_polymorphic = is_nonexpansive_expression e1 in
+*)
+  let should_be_polymorphic = true in
+  let ssig =
+    let pty =
+      if should_be_polymorphic then
+        TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
+      else
+        TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
+    in
+    let ventry =
+      {
+        val_type  = pty;
+        val_name  = Some(evid);
+        val_stage = pre.stage;
+      }
+    in
+    StructSig.empty |> StructSig.add_value varnm ventry
+  in
+  return (evid, e1, ssig)
+
+
 and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding list * StructSig.t abstracted) ok =
   let open ResultMonad in
   let (_, utbindmain) = utbind in
   match utbindmain with
-  | UTBindValue(_attrs, stage, valbind) ->
+  | UTBindValue(attrs, stage, valbind) ->
       let pre =
         {
           stage           = stage;
@@ -743,81 +779,65 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
           level           = Level.bottom;
         }
       in
-      let* (rec_or_nonrecs, ssig) =
-        match valbind with
-        | UTNonRec(ident, utast1) ->
-            let presub = { pre with level = Level.succ pre.level; } in
-            let (_, varnm) = ident in
-            let evid = EvalVarID.fresh ident in
-            let* (e1_raw, ty1) = Typechecker.typecheck presub tyenv utast1 in
-            let e1 = e1_raw in
-(*
-            tyannot |> Option.map (fun mnty ->
-              let tyA = decode_manual_type pre tyenv mnty in
-              unify ty1 tyA
-            ) |> ignore;
-*)
-(*
-            let should_be_polymorphic = is_nonexpansive_expression e1 in
-*)
-            let should_be_polymorphic = true in
-            let ssig =
-              let pty =
-                if should_be_polymorphic then
-                  TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
-                else
-                  TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
-              in
-              let ventry =
-                {
-                  val_type  = pty;
-                  val_name  = Some(evid);
-                  val_stage = pre.stage;
-                }
-              in
-              StructSig.empty |> StructSig.add_value varnm ventry
-            in
-            return ([ NonRec(evid, e1) ], ssig)
-
-        | UTRec(utrecbinds) ->
-            let* quints = Typechecker.typecheck_letrec pre tyenv utrecbinds in
-            let (recbindacc, ssig) =
-              quints |> List.fold_left (fun (recbindacc, ssig) quint ->
-                let (x, pty, evid, recbind) = quint in
-                let ssig =
-                  let ventry =
-                    {
-                      val_type  = pty;
-                      val_name  = Some(evid);
-                      val_stage = stage;
-                    }
-                  in
-                  ssig |> StructSig.add_value x ventry
-                in
-                let recbindacc = Alist.extend recbindacc recbind in
-                (recbindacc, ssig)
-              ) (Alist.empty, StructSig.empty)
-            in
-            return ([ Rec(recbindacc |> Alist.to_list) ], ssig)
-
-        | UTMutable((rng, varnm) as var, utastI) ->
-            let* (eI, tyI) = Typechecker.typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
-            let evid = EvalVarID.fresh var in
-            let pty = TypeConv.lift_poly (rng, RefType(tyI)) in
-            let ssig =
-              let ventry =
-                {
-                  val_type  = pty;
-                  val_name  = Some(evid);
-                  val_stage = pre.stage;
-                }
-              in
-              StructSig.empty |> StructSig.add_value varnm ventry
-            in
-            return ([ Mutable(evid, eI) ], ssig)
+      let* valattr =
+        ValueAttribute.make attrs
+          |> Result.map_error (fun e -> ValueAttributeError(e))
       in
-      let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(stage, rec_or_nonrec)) in
-      return (binds, (OpaqueIDMap.empty, ssig))
+      if valattr.ValueAttribute.is_test then
+        match (stage, valbind) with
+        | (Stage1, UTNonRec(ident, utast1)) ->
+            let* (evid, e1, ssig) = typecheck_nonrec pre tyenv ident utast1 in
+            return ([ BindTest(evid, e1) ], (OpaqueIDMap.empty, ssig))
+
+        | _ ->
+            let rng = Range.dummy "TODO (error): typecheck_binding, test" in
+            err @@ TestMustBeStage1NonRec(rng)
+      else
+        let* (rec_or_nonrecs, ssig) =
+          match valbind with
+          | UTNonRec(ident, utast1) ->
+              let* (evid, e1, ssig) = typecheck_nonrec pre tyenv ident utast1 in
+              return ([ NonRec(evid, e1) ], ssig)
+
+          | UTRec(utrecbinds) ->
+              let* quints = Typechecker.typecheck_letrec pre tyenv utrecbinds in
+              let (recbindacc, ssig) =
+                quints |> List.fold_left (fun (recbindacc, ssig) quint ->
+                  let (x, pty, evid, recbind) = quint in
+                  let ssig =
+                    let ventry =
+                      {
+                        val_type  = pty;
+                        val_name  = Some(evid);
+                        val_stage = stage;
+                      }
+                    in
+                    ssig |> StructSig.add_value x ventry
+                  in
+                  let recbindacc = Alist.extend recbindacc recbind in
+                  (recbindacc, ssig)
+                ) (Alist.empty, StructSig.empty)
+              in
+              return ([ Rec(recbindacc |> Alist.to_list) ], ssig)
+
+          | UTMutable((rng, varnm) as var, utastI) ->
+              let* (eI, tyI) = Typechecker.typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
+              let evid = EvalVarID.fresh var in
+              let pty = TypeConv.lift_poly (rng, RefType(tyI)) in
+              let ssig =
+                let ventry =
+                  {
+                    val_type  = pty;
+                    val_name  = Some(evid);
+                    val_stage = pre.stage;
+                  }
+                in
+                StructSig.empty |> StructSig.add_value varnm ventry
+              in
+              return ([ Mutable(evid, eI) ], ssig)
+        in
+        let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(stage, rec_or_nonrec)) in
+        return (binds, (OpaqueIDMap.empty, ssig))
 
   | UTBindType([]) ->
       assert false

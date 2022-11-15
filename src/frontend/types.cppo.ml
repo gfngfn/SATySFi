@@ -581,7 +581,7 @@ and untyped_parameter_unit =
 [@@deriving show { with_path = false; }]
 
 and untyped_attribute_main =
-  | UTAttribute of attribute_name * untyped_abstract_tree
+  | UTAttribute of attribute_name * untyped_abstract_tree option
 [@@deriving show { with_path = false; }]
 
 and untyped_attribute =
@@ -717,7 +717,8 @@ and rec_or_nonrec =
   | Mutable of EvalVarID.t * abstract_tree
 
 and binding =
-  | Bind of stage * rec_or_nonrec
+  | Bind     of stage * rec_or_nonrec
+  | BindTest of EvalVarID.t * abstract_tree
 
 and environment =
   location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref

@@ -84,7 +84,7 @@ let output_text (abspath_out : abs_path) (data : string) : unit =
   Core.Out_channel.write_all (get_abs_path_string abspath_out) ~data
 
 
-let eval_library_file (env : environment) (abspath : abs_path) (binds : binding list) : environment =
+let eval_library_file ~(run_tests : bool) (env : environment) (abspath : abs_path) (binds : binding list) : environment =
   Logging.begin_to_eval_file abspath;
   if OptionState.is_bytecomp_mode () then
     failwith "TODO: eval_libary_file, Bytecomp"
@@ -93,7 +93,7 @@ let eval_library_file (env : environment) (abspath : abs_path) (binds : binding 
     add_to_environment env evid (ref value)
 *)
   else
-    let (env, _) = Evaluator.interpret_bindings_0 env binds in
+    let (env, _) = Evaluator.interpret_bindings_0 ~run_tests env binds in
     env
 
 
@@ -179,7 +179,7 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
     aux 1
 
 
-let preprocess_and_evaluate (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let preprocess_and_evaluate ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
 
   (* Performs preprecessing:
        each evaluation called in `preprocess` is run by the naive interpreter
@@ -187,7 +187,7 @@ let preprocess_and_evaluate (env : environment) (libs : (abs_path * binding list
   let (env, codebindacc) =
     libs |> List.fold_left (fun (env, codebindacc) (abspath, binds) ->
       Logging.begin_to_preprocess_file abspath;
-      let (env, cd_rec_or_nonrecs) = Evaluator.interpret_bindings_0 env binds in
+      let (env, cd_rec_or_nonrecs) = Evaluator.interpret_bindings_0 ~run_tests env binds in
       (env, Alist.extend codebindacc (abspath, cd_rec_or_nonrecs))
     ) (env, Alist.empty)
   in
@@ -202,7 +202,7 @@ let preprocess_and_evaluate (env : environment) (libs : (abs_path * binding list
           Bind(Stage0, unlift_rec_or_nonrec cd_rec_or_nonrec)
         )
       in
-      eval_library_file env abspath binds
+      eval_library_file ~run_tests env abspath binds
     ) env
   in
   let ast_doc = unlift_code code_doc in
@@ -770,6 +770,18 @@ let report_type_error = function
         NormalLine(Printf.sprintf "synonym type '%s' is defined more than once." tynm);
       ]
 
+  | ValueAttributeError(ValueAttribute.Unexpected(rng)) ->
+      report_error Typechecker [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine("unexpected value attributes.");
+      ]
+
+  | TestMustBeStage1NonRec(rng) ->
+      report_error Typechecker [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine("tests must be stage-1 non-recursive bindings.");
+      ]
+
 
 let show_yaml_context (context : YamlDecoder.context) =
   match context with
@@ -826,6 +838,12 @@ let make_yaml_error_lines : yaml_error -> line list = function
 
 
 let report_document_attribute_error : DocumentAttribute.error -> unit = function
+  | NoDependencyList(rng) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine("no dependency is given.");
+      ]
+
   | MoreThanOneDependencyAttribute(rng1, rng2) ->
       report_error Interface [
         NormalLine("More than one attribute defines dependencies:");
@@ -1552,7 +1570,7 @@ let build
         if type_check_only then
           ()
         else
-          preprocess_and_evaluate env libs ast_doc abspath_in abspath_out abspath_dump
+          preprocess_and_evaluate ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
   )
 
 
