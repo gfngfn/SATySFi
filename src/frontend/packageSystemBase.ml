@@ -41,3 +41,4 @@ type input_kind =
 type dependency_flag =
   | SourceDependency
   | TestOnlyDependency
+[@@deriving show { with_path = false }]
