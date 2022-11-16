@@ -16,6 +16,14 @@ val build :
   no_default_config:bool ->
   unit
 
+val test :
+  fpath_in:string ->
+  config_paths_str_opt:(string option) ->
+  text_mode_formats_str_opt:(string option) ->
+  show_full_path:bool ->
+  no_default_config:bool ->
+  unit
+
 val solve :
   fpath_in:string ->
   show_full_path:bool ->

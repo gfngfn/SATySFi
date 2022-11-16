@@ -36,6 +36,21 @@ let build
     ~no_default_config
 
 
+let test
+  fpath_in
+  config_paths_str_opt
+  text_mode_formats_str_opt
+  show_full_path
+  no_default_config
+=
+  Main.test
+    ~fpath_in
+    ~config_paths_str_opt
+    ~text_mode_formats_str_opt
+    ~show_full_path
+    ~no_default_config
+
+
 let solve
   fpath_in
   show_full_path
@@ -163,6 +178,23 @@ let command_build =
   Cmd.v info term
 
 
+let command_test =
+  let open Cmdliner in
+  let term : unit Term.t =
+    Term.(const test
+      $ arg_in
+      $ flag_config
+      $ flag_text_mode
+      $ flag_full_path
+      $ flag_no_default_config
+    )
+  in
+  let info : Cmd.info =
+    Cmd.info "test"
+  in
+  Cmd.v info term
+
+
 let command_solve =
   let open Cmdliner in
   let term : unit Term.t =
@@ -190,6 +222,7 @@ let () =
   let subcommands =
     [
       command_build;
+      command_test;
       command_solve;
     ]
   in

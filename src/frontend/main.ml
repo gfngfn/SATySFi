@@ -179,11 +179,9 @@ let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : 
     aux 1
 
 
-let preprocess_and_evaluate ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
-
-  (* Performs preprecessing:
-       each evaluation called in `preprocess` is run by the naive interpreter
-       regardless of whether `--bytecomp` was specified. *)
+(* Performs preprecessing. the evaluation is run by the naive interpreter
+   regardless of whether `--bytecomp` was specified. *)
+let preprocess_bindings ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) : environment * (abs_path * code_rec_or_nonrec list) list =
   let (env, codebindacc) =
     libs |> List.fold_left (fun (env, codebindacc) (abspath, binds) ->
       Logging.begin_to_preprocess_file abspath;
@@ -192,19 +190,28 @@ let preprocess_and_evaluate ~(run_tests : bool) (env : environment) (libs : (abs
     ) (env, Alist.empty)
   in
   let codebinds = Alist.to_list codebindacc in
+  (env, codebinds)
+
+
+(* Performs evaluation and returns the resulting environment. *)
+let evaluate_bindings ~(run_tests : bool) (env : environment) (codebinds : (abs_path * code_rec_or_nonrec list) list) : environment =
+  codebinds |> List.fold_left (fun env (abspath, cd_rec_or_nonrecs) ->
+    let binds =
+      cd_rec_or_nonrecs |> List.map (fun cd_rec_or_nonrec ->
+        Bind(Stage0, unlift_rec_or_nonrec cd_rec_or_nonrec)
+      )
+    in
+    eval_library_file ~run_tests env abspath binds
+  ) env
+
+
+let preprocess_and_evaluate ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+  (* Performs preprocessing: *)
+  let (env, codebinds) = preprocess_bindings ~run_tests env libs in
   let code_doc = Evaluator.interpret_1 env ast_doc in
 
   (* Performs evaluation: *)
-  let env =
-    codebinds |> List.fold_left (fun env (abspath, cd_rec_or_nonrecs) ->
-      let binds =
-        cd_rec_or_nonrecs |> List.map (fun cd_rec_or_nonrec ->
-          Bind(Stage0, unlift_rec_or_nonrec cd_rec_or_nonrec)
-        )
-      in
-      eval_library_file ~run_tests env abspath binds
-    ) env
-  in
+  let env = evaluate_bindings ~run_tests env codebinds in
   let ast_doc = unlift_code code_doc in
   eval_document_file env ast_doc abspath_out abspath_dump
 
@@ -1417,6 +1424,24 @@ let make_document_lock_config_path (basename_without_extension : string) =
   make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension)
 
 
+let get_output_mode text_mode_formats_str_opt =
+  match text_mode_formats_str_opt with
+  | None    -> OptionState.PdfMode
+  | Some(s) -> OptionState.TextMode(String.split_on_char ',' s)
+
+
+let load_lock_config (abspath_lock_config : abs_path) : LockConfig.t =
+  match LockConfig.load abspath_lock_config with
+  | Ok(lock_config) -> lock_config
+  | Error(e)        -> raise (ConfigError(e))
+
+
+let load_package ~(extensions : string list) (abspath_in : abs_path) =
+  match PackageReader.main ~extensions abspath_in with
+  | Ok(pair) -> pair
+  | Error(e) -> raise (ConfigError(e))
+
+
 let build
     ~(fpath_in : string)
     ~(fpath_out_opt : string option)
@@ -1439,11 +1464,7 @@ let build
     let input_file = make_absolute_if_relative ~origin:curdir fpath_in in
     let output_file = fpath_out_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
-    let output_mode =
-      match text_mode_formats_str_opt with
-      | None    -> OptionState.PdfMode
-      | Some(s) -> OptionState.TextMode(String.split_on_char ',' s)
-    in
+    let output_mode = get_output_mode text_mode_formats_str_opt in
     OptionState.set OptionState.{
       command_state =
         BuildState{
@@ -1507,17 +1528,9 @@ let build
         lock = abspath_lock_config;
       } ->
         Logging.lock_config_file abspath_lock_config;
-        let lock_config =
-          match LockConfig.load abspath_lock_config with
-          | Ok(lock_config) -> lock_config
-          | Error(e)        -> raise (ConfigError(e))
-        in
+        let lock_config = load_lock_config abspath_lock_config in
 
-        let (_config, package) =
-          match PackageReader.main ~extensions abspath_in with
-          | Ok(package) -> package
-          | Error(e)    -> raise (ConfigError(e))
-        in
+        let (_config, package) = load_package ~extensions abspath_in in
 
         let (genv, _configenv, _libs_dep) =
           let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
@@ -1537,11 +1550,7 @@ let build
         dump = abspath_dump;
       } ->
         Logging.lock_config_file abspath_lock_config;
-        let lock_config =
-          match LockConfig.load abspath_lock_config with
-          | Ok(lock_config) -> lock_config
-          | Error(e)        -> raise (ConfigError(e))
-        in
+        let lock_config = load_lock_config abspath_lock_config in
 
         Logging.target_file abspath_out;
 
@@ -1571,6 +1580,124 @@ let build
           ()
         else
           preprocess_and_evaluate ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
+  )
+
+
+type test_input =
+  | PackageTestInput of {
+      lock : abs_path;
+    }
+  | DocumentTestInput of {
+      kind : input_kind;
+      lock : abs_path;
+    }
+
+
+let test
+    ~(fpath_in : string)
+    ~(config_paths_str_opt : string option)
+    ~(text_mode_formats_str_opt : string option)
+    ~(show_full_path : bool)
+    ~(no_default_config : bool)
+=
+  error_log_environment (fun () ->
+    let curdir = Sys.getcwd () in
+
+    let input_file_to_test = make_absolute_if_relative ~origin:curdir fpath_in in
+    let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
+    let output_mode_to_test = get_output_mode text_mode_formats_str_opt in
+    OptionState.set OptionState.{
+      command_state =
+        TestState{
+          input_file_to_test;
+          output_mode_to_test;
+        };
+      extra_config_paths;
+      show_full_path;
+      no_default_config;
+    };
+
+    setup_root_dirs ~no_default_config ~extra_config_paths curdir;
+    let abspath_in = input_file_to_test in
+    let test_input =
+      let abspathstr_in = get_abs_path_string abspath_in in
+      if Sys.is_directory abspathstr_in then
+      (* If the input is a package directory: *)
+        let abspath_lock_config = make_package_lock_config_path abspathstr_in in
+        PackageTestInput{
+          lock = abspath_lock_config;
+        }
+      else
+      (* If the input is a document file: *)
+        let input_kind_res = get_input_kind_from_extension abspathstr_in in
+        match input_kind_res with
+        | Error(ext) ->
+            raise (UnexpectedExtension(ext))
+
+        | Ok(input_kind) ->
+            let basename_without_extension = Filename.remove_extension abspathstr_in in
+            let abspath_lock_config = make_document_lock_config_path basename_without_extension in
+            DocumentTestInput{
+              kind = input_kind;
+              lock = abspath_lock_config;
+            }
+    in
+
+    let extensions = get_candidate_file_extensions () in
+    let (tyenv_prim, env) = initialize () in
+
+    match test_input with
+    | PackageTestInput{
+        lock = abspath_lock_config;
+      } ->
+        Logging.lock_config_file abspath_lock_config;
+        let lock_config = load_lock_config abspath_lock_config in
+
+        let (_config, package) = load_package ~extensions abspath_in in
+
+        let (genv, _configenv, _libs_dep) =
+          let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
+          check_depended_packages ~use_test_only_lock:false ~lock_config_dir ~extensions tyenv_prim lock_config
+        in
+
+        let libs =
+          match PackageChecker.main tyenv_prim genv package with
+          | Ok((_ssig, libs)) -> libs
+          | Error(e)          -> raise (ConfigError(e))
+        in
+        let (env, codebinds) = preprocess_bindings ~run_tests:true env libs in
+        let _env = evaluate_bindings ~run_tests:true env codebinds in
+        ()
+
+    | DocumentTestInput{
+        kind = input_kind;
+        lock = abspath_lock_config;
+      } ->
+        Logging.lock_config_file abspath_lock_config;
+        let lock_config = load_lock_config abspath_lock_config in
+
+        let (genv, configenv, libs) =
+          let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
+          check_depended_packages ~use_test_only_lock:true ~lock_config_dir ~extensions tyenv_prim lock_config
+        in
+
+        (* Resolve dependency of the document and the local source files: *)
+        let (sorted_locals, utdoc) =
+          match OpenFileDependencyResolver.main ~extensions input_kind configenv abspath_in with
+          | Ok(pair) -> pair
+          | Error(e) -> raise (ConfigError(e))
+        in
+
+        (* Typechecking and elaboration: *)
+        let (libs_local, _ast_doc) =
+          match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+          | Ok(pair) -> pair
+          | Error(e) -> raise (ConfigError(e))
+        in
+        let libs = List.append libs libs_local in
+        let (env, codebinds) = preprocess_bindings ~run_tests:true env libs in
+        let _env = evaluate_bindings ~run_tests:true env codebinds in
+        ()
   )
 
 

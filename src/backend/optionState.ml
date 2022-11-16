@@ -19,8 +19,14 @@ type build_state = {
   bytecomp               : bool;
 }
 
+type test_state = {
+  input_file_to_test  : abs_path;
+  output_mode_to_test : output_mode;
+}
+
 type command_state =
   | BuildState of build_state
+  | TestState  of test_state
   | SolveState
 
 type state = {
