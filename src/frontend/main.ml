@@ -1436,8 +1436,8 @@ let load_lock_config (abspath_lock_config : abs_path) : LockConfig.t =
   | Error(e)        -> raise (ConfigError(e))
 
 
-let load_package ~(extensions : string list) (abspath_in : abs_path) =
-  match PackageReader.main ~extensions abspath_in with
+let load_package ~(use_test_files : bool) ~(extensions : string list) (abspath_in : abs_path) =
+  match PackageReader.main ~use_test_files ~extensions abspath_in with
   | Ok(pair) -> pair
   | Error(e) -> raise (ConfigError(e))
 
@@ -1530,7 +1530,7 @@ let build
         Logging.lock_config_file abspath_lock_config;
         let lock_config = load_lock_config abspath_lock_config in
 
-        let (_config, package) = load_package ~extensions abspath_in in
+        let (_config, package) = load_package ~use_test_files:false ~extensions abspath_in in
 
         let (genv, _configenv, _libs_dep) =
           let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
@@ -1653,7 +1653,7 @@ let test
         Logging.lock_config_file abspath_lock_config;
         let lock_config = load_lock_config abspath_lock_config in
 
-        let (_config, package) = load_package ~extensions abspath_in in
+        let (_config, package) = load_package ~use_test_files:true ~extensions abspath_in in
 
         let (genv, _configenv, _libs_dep) =
           let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
