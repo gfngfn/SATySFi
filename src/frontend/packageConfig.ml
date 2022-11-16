@@ -174,7 +174,7 @@ let contents_decoder : package_contents ConfigDecoder.t =
     "library" ==> begin
       get "main_module" string >>= fun main_module_name ->
       get "source_directories" (list string) >>= fun source_directories ->
-      get "test_directories" (list string) >>= fun test_directories ->
+      get_or_else "test_directories" (list string) [] >>= fun test_directories ->
       get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
       get_or_else "test_dependencies" (list dependency_decoder) [] >>= fun test_dependencies ->
       get_or_else "conversion" (list conversion_spec_decoder) [] >>= fun conversion_specs ->

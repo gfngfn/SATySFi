@@ -1361,8 +1361,8 @@ let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
   make_abs_path abspath_str
 
 
-let get_candidate_file_extensions () =
-  match OptionState.get_output_mode () with
+let get_candidate_file_extensions (output_mode : OptionState.output_mode) =
+  match output_mode with
   | PdfMode           -> [ ".satyh"; ".satyg" ]
   | TextMode(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
 
@@ -1424,7 +1424,7 @@ let make_document_lock_config_path (basename_without_extension : string) =
   make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension)
 
 
-let get_output_mode text_mode_formats_str_opt =
+let make_output_mode text_mode_formats_str_opt =
   match text_mode_formats_str_opt with
   | None    -> OptionState.PdfMode
   | Some(s) -> OptionState.TextMode(String.split_on_char ',' s)
@@ -1464,7 +1464,7 @@ let build
     let input_file = make_absolute_if_relative ~origin:curdir fpath_in in
     let output_file = fpath_out_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
-    let output_mode = get_output_mode text_mode_formats_str_opt in
+    let output_mode = make_output_mode text_mode_formats_str_opt in
     OptionState.set OptionState.{
       command_state =
         BuildState{
@@ -1520,7 +1520,7 @@ let build
             }
     in
 
-    let extensions = get_candidate_file_extensions () in
+    let extensions = get_candidate_file_extensions output_mode in
     let (tyenv_prim, env) = initialize () in
 
     match build_input with
@@ -1605,7 +1605,7 @@ let test
 
     let input_file_to_test = make_absolute_if_relative ~origin:curdir fpath_in in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
-    let output_mode_to_test = get_output_mode text_mode_formats_str_opt in
+    let output_mode_to_test = make_output_mode text_mode_formats_str_opt in
     OptionState.set OptionState.{
       command_state =
         TestState{
@@ -1643,7 +1643,7 @@ let test
             }
     in
 
-    let extensions = get_candidate_file_extensions () in
+    let extensions = get_candidate_file_extensions output_mode_to_test in
     let (tyenv_prim, env) = initialize () in
 
     match test_input with

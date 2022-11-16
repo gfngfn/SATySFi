@@ -56,10 +56,20 @@ let get_build_state () =
   | _             -> assert false
 
 
-let get_input_file ()              = (get_build_state ()).input_file
-let get_output_file ()             = (get_build_state ()).output_file
-let get_extra_config_paths ()      = (get ()).extra_config_paths
-let get_output_mode ()             = (get_build_state ()).output_mode
+let get_input_file () =
+  match (get ()).command_state with
+  | BuildState({ input_file; _ })       -> input_file
+  | TestState({ input_file_to_test; _}) -> input_file_to_test
+  | SolveState                          -> assert false
+
+
+let get_output_mode () =
+  match (get ()).command_state with
+  | BuildState({ output_mode; _ })       -> output_mode
+  | TestState({ output_mode_to_test; _}) -> output_mode_to_test
+  | SolveState                           -> assert false
+
+
 let get_page_number_limit ()       = (get_build_state ()).page_number_limit
 let does_show_full_path ()         = (get ()).show_full_path
 let does_debug_show_bbox ()        = (get_build_state ()).debug_show_bbox
@@ -67,9 +77,13 @@ let does_debug_show_space ()       = (get_build_state ()).debug_show_space
 let does_debug_show_block_bbox ()  = (get_build_state ()).debug_show_block_bbox
 let does_debug_show_block_space () = (get_build_state ()).debug_show_block_space
 let does_debug_show_overfull ()    = (get_build_state ()).debug_show_overfull
-let is_type_check_only ()          = (get_build_state ()).type_check_only
-let is_bytecomp_mode ()            = (get_build_state ()).bytecomp
-let use_no_default_config ()       = (get ()).no_default_config
+
+
+let is_bytecomp_mode () =
+  match (get ()).command_state with
+  | BuildState({ bytecomp; _ }) -> bytecomp
+  | TestState(_)                -> false
+  | SolveState                  -> assert false
 
 
 let job_directory () =
@@ -78,6 +92,6 @@ let job_directory () =
 
 
 let is_text_mode () =
-  match (get_build_state ()).output_mode with
+  match get_output_mode () with
   | TextMode(_) -> true
   | PdfMode     -> false
