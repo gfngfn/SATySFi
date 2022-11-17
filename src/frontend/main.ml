@@ -1658,7 +1658,7 @@ let test
 
           let (genv, _configenv, _libs_dep) =
             let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
-            check_depended_packages ~use_test_only_lock:false ~lock_config_dir ~extensions tyenv_prim lock_config
+            check_depended_packages ~use_test_only_lock:true ~lock_config_dir ~extensions tyenv_prim lock_config
           in
 
           let libs =
