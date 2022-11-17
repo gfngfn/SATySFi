@@ -1,1 +1,7 @@
-locks: []
+locks:
+- name: testing.0.0.1
+  location:
+    type: global
+    path: ./dist/packages/testing/testing.0.0.1/
+  dependencies: []
+  test_only: true

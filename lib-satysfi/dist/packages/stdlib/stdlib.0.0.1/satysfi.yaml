@@ -7,3 +7,6 @@ contents:
   test_directories:
   - "./test"
   dependencies: []
+  test_dependencies:
+  - name: "testing"
+    requirements: [ "0.0.1" ]
