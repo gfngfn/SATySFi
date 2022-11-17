@@ -1052,6 +1052,7 @@ and abstract_tree =
       index             : int;
       used_as_math_font : bool;
     }
+  | CatchTest of abstract_tree
 (* Primitive applications: *)
 #include "__attype.gen.ml"
 
@@ -1232,6 +1233,7 @@ and code_value =
       index             : int;
       used_as_math_font : bool;
     }
+  | CdCatchTest of code_value
 #include "__codetype.gen.ml"
 
 and code_inline_text_element =
@@ -1478,6 +1480,9 @@ let rec unlift_code (code : code_value) : abstract_tree =
 
     | CdLoadCollectionFont{ path; index; used_as_math_font } ->
         LoadCollectionFont{ path; index; used_as_math_font }
+
+    | CdCatchTest(code) ->
+        CatchTest(aux code)
 #include "__unliftcode.gen.ml"
   in
   aux code

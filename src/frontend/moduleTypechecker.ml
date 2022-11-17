@@ -729,40 +729,28 @@ and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) 
   return ((quant, ssig), binds)
 
 
-and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utast1 : untyped_abstract_tree) =
+and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utast1 : untyped_abstract_tree) (ty_expected_opt : mono_type option) =
   let open ResultMonad in
   let presub = { pre with level = Level.succ pre.level; } in
-  let (_, varnm) = ident in
   let evid = EvalVarID.fresh ident in
   let* (e1_raw, ty1) = Typechecker.typecheck presub tyenv utast1 in
   let e1 = e1_raw in
-(*
-  tyannot |> Option.map (fun mnty ->
-    let tyA = decode_manual_type pre tyenv mnty in
-    unify ty1 tyA
-  ) |> ignore;
-*)
+  let* () =
+    match ty_expected_opt with
+    | None              -> return ()
+    | Some(ty_expected) -> unify ty1 ty_expected
+  in
 (*
   let should_be_polymorphic = is_nonexpansive_expression e1 in
 *)
   let should_be_polymorphic = true in
-  let ssig =
     let pty =
       if should_be_polymorphic then
         TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
       else
         TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
     in
-    let ventry =
-      {
-        val_type  = pty;
-        val_name  = Some(evid);
-        val_stage = pre.stage;
-      }
-    in
-    StructSig.empty |> StructSig.add_value varnm ventry
-  in
-  return (evid, e1, ssig)
+  return (evid, e1, pty)
 
 
 and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding list * StructSig.t abstracted) ok =
@@ -786,8 +774,9 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
       if valattr.ValueAttribute.is_test then
         match (stage, valbind) with
         | (Stage1, UTNonRec(ident, utast1)) ->
-            let* (evid, e1, ssig) = typecheck_nonrec pre tyenv ident utast1 in
-            return ([ BindTest(evid, e1) ], (OpaqueIDMap.empty, ssig))
+            let ty_expected = Primitives.option_type (Range.dummy "test-error", BaseType(StringType)) in
+            let* (evid, e1, _pty) = typecheck_nonrec pre tyenv ident utast1 (Some(ty_expected)) in
+            return ([ BindTest(evid, e1) ], (OpaqueIDMap.empty, StructSig.empty))
 
         | _ ->
             let rng = Range.dummy "TODO (error): typecheck_binding, test" in
@@ -796,7 +785,18 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
         let* (rec_or_nonrecs, ssig) =
           match valbind with
           | UTNonRec(ident, utast1) ->
-              let* (evid, e1, ssig) = typecheck_nonrec pre tyenv ident utast1 in
+              let* (evid, e1, pty) = typecheck_nonrec pre tyenv ident utast1 None in
+              let ssig =
+                let (_, varnm) = ident in
+                let ventry =
+                  {
+                    val_type  = pty;
+                    val_name  = Some(evid);
+                    val_stage = pre.stage;
+                  }
+                in
+                StructSig.empty |> StructSig.add_value varnm ventry
+              in
               return ([ NonRec(evid, e1) ], ssig)
 
           | UTRec(utrecbinds) ->

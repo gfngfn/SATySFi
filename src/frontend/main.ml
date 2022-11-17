@@ -1646,58 +1646,75 @@ let test
     let extensions = get_candidate_file_extensions output_mode_to_test in
     let (tyenv_prim, env) = initialize () in
 
-    match test_input with
-    | PackageTestInput{
-        lock = abspath_lock_config;
-      } ->
-        Logging.lock_config_file abspath_lock_config;
-        let lock_config = load_lock_config abspath_lock_config in
+    begin
+      match test_input with
+      | PackageTestInput{
+          lock = abspath_lock_config;
+        } ->
+          Logging.lock_config_file abspath_lock_config;
+          let lock_config = load_lock_config abspath_lock_config in
 
-        let (_config, package) = load_package ~use_test_files:true ~extensions abspath_in in
+          let (_config, package) = load_package ~use_test_files:true ~extensions abspath_in in
 
-        let (genv, _configenv, _libs_dep) =
-          let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
-          check_depended_packages ~use_test_only_lock:false ~lock_config_dir ~extensions tyenv_prim lock_config
-        in
+          let (genv, _configenv, _libs_dep) =
+            let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
+            check_depended_packages ~use_test_only_lock:false ~lock_config_dir ~extensions tyenv_prim lock_config
+          in
 
-        let libs =
-          match PackageChecker.main tyenv_prim genv package with
-          | Ok((_ssig, libs)) -> libs
-          | Error(e)          -> raise (ConfigError(e))
-        in
-        let (env, codebinds) = preprocess_bindings ~run_tests:true env libs in
-        let _env = evaluate_bindings ~run_tests:true env codebinds in
-        ()
+          let libs =
+            match PackageChecker.main tyenv_prim genv package with
+            | Ok((_ssig, libs)) -> libs
+            | Error(e)          -> raise (ConfigError(e))
+          in
+          let (env, codebinds) = preprocess_bindings ~run_tests:true env libs in
+          let _env = evaluate_bindings ~run_tests:true env codebinds in
+          ()
 
-    | DocumentTestInput{
-        kind = input_kind;
-        lock = abspath_lock_config;
-      } ->
-        Logging.lock_config_file abspath_lock_config;
-        let lock_config = load_lock_config abspath_lock_config in
+      | DocumentTestInput{
+          kind = input_kind;
+          lock = abspath_lock_config;
+        } ->
+          Logging.lock_config_file abspath_lock_config;
+          let lock_config = load_lock_config abspath_lock_config in
 
-        let (genv, configenv, libs) =
-          let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
-          check_depended_packages ~use_test_only_lock:true ~lock_config_dir ~extensions tyenv_prim lock_config
-        in
+          let (genv, configenv, libs) =
+            let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
+            check_depended_packages ~use_test_only_lock:true ~lock_config_dir ~extensions tyenv_prim lock_config
+          in
 
-        (* Resolve dependency of the document and the local source files: *)
-        let (sorted_locals, utdoc) =
-          match OpenFileDependencyResolver.main ~extensions input_kind configenv abspath_in with
-          | Ok(pair) -> pair
-          | Error(e) -> raise (ConfigError(e))
-        in
+          (* Resolve dependency of the document and the local source files: *)
+          let (sorted_locals, utdoc) =
+            match OpenFileDependencyResolver.main ~extensions input_kind configenv abspath_in with
+            | Ok(pair) -> pair
+            | Error(e) -> raise (ConfigError(e))
+          in
 
-        (* Typechecking and elaboration: *)
-        let (libs_local, _ast_doc) =
-          match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
-          | Ok(pair) -> pair
-          | Error(e) -> raise (ConfigError(e))
-        in
-        let libs = List.append libs libs_local in
-        let (env, codebinds) = preprocess_bindings ~run_tests:true env libs in
-        let _env = evaluate_bindings ~run_tests:true env codebinds in
-        ()
+          (* Typechecking and elaboration: *)
+          let (libs_local, _ast_doc) =
+            match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+            | Ok(pair) -> pair
+            | Error(e) -> raise (ConfigError(e))
+          in
+          let libs = List.append libs libs_local in
+          let (env, codebinds) = preprocess_bindings ~run_tests:true env libs in
+          let _env = evaluate_bindings ~run_tests:true env codebinds in
+          ()
+    end;
+    let test_results = State.get_all_test_results () in
+    let failure_found =
+      test_results |> List.fold_left (fun failure_found test_result ->
+        match test_result with
+        | State.Pass      -> failure_found
+        | State.Fail(msg) -> Logging.report_failed_test msg; true
+      ) false
+    in
+    if failure_found then begin
+      Logging.some_test_failed ();
+      exit 1
+    end else begin
+      Logging.all_tests_passed ();
+      ()
+    end
   )
 
 

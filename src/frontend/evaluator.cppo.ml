@@ -431,6 +431,23 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       in
       BaseConstant(BCFontKey(fontkey))
 
+  | CatchTest(ast) ->
+      let value =
+        try
+          interpret_0 env ast
+        with
+        | EvalError(msg) -> (* Catches aborts during tests. *)
+            Constructor("Some", BaseConstant(BCString(msg)))
+      in
+      let test_result =
+        match value with
+        | Constructor("None", BaseConstant(BCUnit))        -> State.Pass
+        | Constructor("Some", BaseConstant(BCString(msg))) -> State.Fail(msg)
+        | _                                                -> report_bug_value "unexpected test result" value
+      in
+      State.add_test_result test_result;
+      BaseConstant(BCUnit)
+
 #include "__evaluator_0.gen.ml"
 
 
@@ -609,6 +626,10 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
 
   | LoadCollectionFont{ path; index; used_as_math_font } ->
       CdLoadCollectionFont{ path; index; used_as_math_font }
+
+  | CatchTest(ast1) ->
+      let code1 = interpret_1 env ast1 in
+      CdCatchTest(code1)
 
 #include "__evaluator_1.gen.ml"
 
@@ -1214,7 +1235,8 @@ let interpret_bindings_0 ~(run_tests : bool) (env : environment) (binds : bindin
           if run_tests then
             let code = interpret_1 env ast in
             let (env, symb) = generate_symbol_for_eval_var_id evid env in
-            (env, Alist.extend acc (CdNonRec(symb, code)))
+            let cdbind = CdNonRec(symb, CdCatchTest(code)) in
+            (env, Alist.extend acc cdbind)
           else
             (env, acc)
 

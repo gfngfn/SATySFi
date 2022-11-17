@@ -61,3 +61,9 @@ val warn_overfull_line : int -> unit
 val warn_underfull_line : int -> unit
 
 val warn_unreachable : int -> unit
+
+val report_failed_test : string -> unit
+
+val all_tests_passed : unit -> unit
+
+val some_test_failed : unit -> unit

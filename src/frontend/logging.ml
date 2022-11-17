@@ -184,3 +184,17 @@ let warn_underfull_line (pageno : int) =
 let warn_unreachable (pageno : int) =
   Format.printf "  [Warning] a line unable to be broken into a paragraph occurs on page %d\n"
     pageno
+
+
+let report_failed_test (msg : string) =
+  Printf.printf "! %s\n" msg
+
+
+let all_tests_passed () =
+  print_endline " ---- ---- ---- ----";
+  print_endline "  all tests have passed."
+
+
+let some_test_failed () =
+  print_endline " ---- ---- ---- ----";
+  print_endline "! some test has failed."

@@ -577,6 +577,9 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | LoadCollectionFont(_) ->
       failwith "TODO: LoadCollectionFont"
 
+  | CatchTest(_) ->
+      assert false (* Cannot occur in input expressions. *)
+
 #include "__ir_1.gen.ml"
 
 
@@ -767,5 +770,8 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
 
   | LoadCollectionFont(_) ->
       failwith "TODO: LoadCollectionFont"
+
+  | CatchTest(_) ->
+      assert false (* Cannot occur in input expressions. *)
 
 #include "__ir_0.gen.ml"
