@@ -186,8 +186,13 @@ let warn_unreachable (pageno : int) =
     pageno
 
 
-let report_failed_test (msg : string) =
-  Printf.printf "! %s\n" msg
+let report_passed_test ~(test_name : string) =
+  Printf.printf "  OK: %s\n" test_name
+
+
+let report_failed_test ~(test_name : string) ~(message : string) =
+  Printf.printf "! FAILED: %s\n" test_name;
+  Printf.printf "  %s\n" message
 
 
 let all_tests_passed () =

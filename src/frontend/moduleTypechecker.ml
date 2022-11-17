@@ -774,9 +774,10 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
       if valattr.ValueAttribute.is_test then
         match (stage, valbind) with
         | (Stage1, UTNonRec(ident, utast1)) ->
-            let ty_expected = Primitives.option_type (Range.dummy "test-error", BaseType(StringType)) in
+            let (_, test_name) = ident in
+            let ty_expected = (Range.dummy "test", BaseType(UnitType)) in
             let* (evid, e1, _pty) = typecheck_nonrec pre tyenv ident utast1 (Some(ty_expected)) in
-            return ([ BindTest(evid, e1) ], (OpaqueIDMap.empty, StructSig.empty))
+            return ([ BindTest(evid, test_name, e1) ], (OpaqueIDMap.empty, StructSig.empty))
 
         | _ ->
             let rng = Range.dummy "TODO (error): typecheck_binding, test" in

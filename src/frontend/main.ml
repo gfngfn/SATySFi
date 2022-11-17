@@ -1704,8 +1704,8 @@ let test
     let failure_found =
       test_results |> List.fold_left (fun failure_found test_result ->
         match test_result with
-        | State.Pass      -> failure_found
-        | State.Fail(msg) -> Logging.report_failed_test msg; true
+        | State.Pass{ test_name }          -> Logging.report_passed_test ~test_name; failure_found
+        | State.Fail{ test_name; message } -> Logging.report_failed_test ~test_name ~message; true
       ) false
     in
     if failure_found then begin

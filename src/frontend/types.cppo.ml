@@ -718,7 +718,7 @@ and rec_or_nonrec =
 
 and binding =
   | Bind     of stage * rec_or_nonrec
-  | BindTest of EvalVarID.t * abstract_tree
+  | BindTest of EvalVarID.t * string * abstract_tree
 
 and environment =
   location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
@@ -1052,7 +1052,11 @@ and abstract_tree =
       index             : int;
       used_as_math_font : bool;
     }
-  | CatchTest of abstract_tree
+(* Tests: *)
+  | CatchTest of {
+      test_name : string;
+      test_impl : abstract_tree;
+    }
 (* Primitive applications: *)
 #include "__attype.gen.ml"
 
@@ -1233,7 +1237,10 @@ and code_value =
       index             : int;
       used_as_math_font : bool;
     }
-  | CdCatchTest of code_value
+  | CdCatchTest of {
+      test_name : string;
+      test_impl : code_value;
+    }
 #include "__codetype.gen.ml"
 
 and code_inline_text_element =
@@ -1481,8 +1488,8 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdLoadCollectionFont{ path; index; used_as_math_font } ->
         LoadCollectionFont{ path; index; used_as_math_font }
 
-    | CdCatchTest(code) ->
-        CatchTest(aux code)
+    | CdCatchTest{ test_name; test_impl = code } ->
+        CatchTest{ test_name; test_impl = aux code }
 #include "__unliftcode.gen.ml"
   in
   aux code

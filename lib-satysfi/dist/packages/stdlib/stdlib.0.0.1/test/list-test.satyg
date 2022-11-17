@@ -8,12 +8,12 @@ module ListTest = struct
     let expected = 25 in
     let got = List.fold-left ( + ) 0 input in
     if got == expected then
-      None
+      ()
     else
-      Some(`FAILED: fold-left-test (expected: `# ^ (arabic expected) ^ `, got: `# ^ (arabic got) ^ `)`)
+      abort-with-message (`expected: `# ^ (arabic expected) ^ `, got: `# ^ (arabic got))
 
   #[test]
   val abort-test =
-    abort-with-message `FAILED: abort`
+    abort-with-message `aborted`
 
 end

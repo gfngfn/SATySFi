@@ -431,19 +431,20 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       in
       BaseConstant(BCFontKey(fontkey))
 
-  | CatchTest(ast) ->
-      let value =
+  | CatchTest{ test_name; test_impl = ast } ->
+      let res =
         try
-          interpret_0 env ast
+          let value = interpret_0 env ast in
+          Ok(value)
         with
         | EvalError(msg) -> (* Catches aborts during tests. *)
-            Constructor("Some", BaseConstant(BCString(msg)))
+            Error(msg)
       in
       let test_result =
-        match value with
-        | Constructor("None", BaseConstant(BCUnit))        -> State.Pass
-        | Constructor("Some", BaseConstant(BCString(msg))) -> State.Fail(msg)
-        | _                                                -> report_bug_value "unexpected test result" value
+        match res with
+        | Ok(BaseConstant(BCUnit)) -> State.Pass{ test_name }
+        | Error(message)           -> State.Fail{ test_name; message }
+        | Ok(value)                -> report_bug_value "unexpected test result" value
       in
       State.add_test_result test_result;
       BaseConstant(BCUnit)
@@ -627,9 +628,9 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | LoadCollectionFont{ path; index; used_as_math_font } ->
       CdLoadCollectionFont{ path; index; used_as_math_font }
 
-  | CatchTest(ast1) ->
+  | CatchTest{ test_name; test_impl = ast1 } ->
       let code1 = interpret_1 env ast1 in
-      CdCatchTest(code1)
+      CdCatchTest{ test_name; test_impl = code1 }
 
 #include "__evaluator_1.gen.ml"
 
@@ -1231,11 +1232,11 @@ let interpret_bindings_0 ~(run_tests : bool) (env : environment) (binds : bindin
                 (env, Alist.extend acc cdbind)
           end
 
-      | BindTest(evid, ast) ->
+      | BindTest(evid, test_name, ast) ->
           if run_tests then
             let code = interpret_1 env ast in
             let (env, symb) = generate_symbol_for_eval_var_id evid env in
-            let cdbind = CdNonRec(symb, CdCatchTest(code)) in
+            let cdbind = CdNonRec(symb, CdCatchTest{ test_name; test_impl = code }) in
             (env, Alist.extend acc cdbind)
           else
             (env, acc)

@@ -2,9 +2,13 @@
 exception NotDuringPageBreak
 
 type test_result =
-  | Pass
-  | Fail of string
-(* TODO: extend this *)
+  | Pass of {
+      test_name : string;
+    }
+  | Fail of {
+      test_name : string;
+      message   : string;
+    }
 
 val start_page_break : unit -> unit
 
