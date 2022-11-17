@@ -362,13 +362,13 @@ type untyped_binding =
   untyped_binding_main ranged
 
 and untyped_binding_main =
-  | UTBindValue       of stage * untyped_rec_or_nonrec
+  | UTBindValue       of untyped_attribute list * stage * untyped_rec_or_nonrec
   | UTBindType        of untyped_type_binding list
   | UTBindModule      of module_name ranged * untyped_signature option * untyped_module
   | UTBindSignature   of signature_name ranged * untyped_signature
   | UTBindInclude     of untyped_module
-  | UTBindInlineMacro of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
-  | UTBindBlockMacro  of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindInlineMacro of untyped_attribute list * command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindBlockMacro  of untyped_attribute list * command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
 
 and untyped_module =
   untyped_module_main ranged
@@ -580,11 +580,11 @@ and untyped_parameter_unit =
   | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
 [@@deriving show { with_path = false; }]
 
-type untyped_attribute_main =
-  | UTAttribute of attribute_name * untyped_abstract_tree
+and untyped_attribute_main =
+  | UTAttribute of attribute_name * untyped_abstract_tree option
 [@@deriving show { with_path = false; }]
 
-type untyped_attribute =
+and untyped_attribute =
   untyped_attribute_main ranged
 [@@deriving show { with_path = false; }]
 
@@ -717,7 +717,8 @@ and rec_or_nonrec =
   | Mutable of EvalVarID.t * abstract_tree
 
 and binding =
-  | Bind of stage * rec_or_nonrec
+  | Bind     of stage * rec_or_nonrec
+  | BindTest of EvalVarID.t * string * abstract_tree
 
 and environment =
   location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
@@ -1051,6 +1052,11 @@ and abstract_tree =
       index             : int;
       used_as_math_font : bool;
     }
+(* Tests: *)
+  | CatchTest of {
+      test_name : string;
+      test_impl : abstract_tree;
+    }
 (* Primitive applications: *)
 #include "__attype.gen.ml"
 
@@ -1230,6 +1236,10 @@ and code_value =
       path              : abs_path;
       index             : int;
       used_as_math_font : bool;
+    }
+  | CdCatchTest of {
+      test_name : string;
+      test_impl : code_value;
     }
 #include "__codetype.gen.ml"
 
@@ -1477,6 +1487,9 @@ let rec unlift_code (code : code_value) : abstract_tree =
 
     | CdLoadCollectionFont{ path; index; used_as_math_font } ->
         LoadCollectionFont{ path; index; used_as_math_font }
+
+    | CdCatchTest{ test_name; test_impl = code } ->
+        CatchTest{ test_name; test_impl = aux code }
 #include "__unliftcode.gen.ml"
   in
   aux code

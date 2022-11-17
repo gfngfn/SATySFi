@@ -20,6 +20,7 @@ let main ~(use_test_only_lock : bool) ~(lock_config_dir : abs_path) ~(extensions
     locks |> foldM (fun (graph, entryacc) (lock : LockConfig.locked_package) ->
       let LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock } = lock in
       if test_only_lock && not use_test_only_lock then
+      (* Skips test-only locks when using sources only: *)
         return (graph, entryacc)
       else
         let* absdir_package =
@@ -35,7 +36,9 @@ let main ~(use_test_only_lock : bool) ~(lock_config_dir : abs_path) ~(extensions
           | LocalLocation{ path = s_relpath } ->
               return (make_abs_path (Filename.concat (get_abs_path_string lock_config_dir) s_relpath))
         in
-        let* package_with_config = PackageReader.main ~extensions absdir_package in
+        let* package_with_config =
+          PackageReader.main ~use_test_files:use_test_only_lock ~extensions absdir_package
+        in
         let* (graph, vertex) =
           graph |> LockDependencyGraph.add_vertex lock_name package_with_config
             |> Result.map_error (fun _ -> LockNameConflict(lock_name))

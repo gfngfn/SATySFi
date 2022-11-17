@@ -3,5 +3,10 @@ contents:
   type: "library"
   main_module: "Stdlib"
   source_directories:
-    - "./src"
+  - "./src"
+  test_directories:
+  - "./test"
   dependencies: []
+  test_dependencies:
+  - name: "testing"
+    requirements: [ "0.0.1" ]

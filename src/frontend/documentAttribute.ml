@@ -4,6 +4,7 @@ open PackageSystemBase
 
 
 type error =
+  | NoDependencyList               of Range.t
   | MoreThanOneDependencyAttribute of Range.t * Range.t
   | NotASemanticVersion            of Range.t * string
   | NotAPackageDependency          of Range.t
@@ -75,9 +76,12 @@ let make (attrs : untyped_attribute list) : t ok =
   | [] ->
       return { dependencies = [] }
 
-  | [ (_, utast) ] ->
+  | [ (_, Some(utast)) ] ->
       let* dependencies = decode_dependencies utast in
       return { dependencies }
+
+  | [ (rng, None) ] ->
+      err @@ NoDependencyList(rng)
 
   | (rng1, _) :: (rng2, _) :: _ ->
       err @@ MoreThanOneDependencyAttribute(rng1, rng2)

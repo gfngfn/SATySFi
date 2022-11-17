@@ -405,7 +405,7 @@ let decode (s : string) : (DocumentAttribute.t * module_name * t) ok =
   let main_contents = normalize_h1 obs in
   let document_attributes_res =
     DocumentAttribute.make [
-      (dummy_range, UTAttribute("dependencies", utast_dependencies))
+      (dummy_range, UTAttribute("dependencies", Some(utast_dependencies)))
     ]
   in
   match document_attributes_res with

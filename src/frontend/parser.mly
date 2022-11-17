@@ -390,10 +390,15 @@ optional_open:
   |      { false }
 ;
 attribute:
+  | attr_left=ATTRIBUTE_L_SQUARE; tokR=R_SQUARE
+      {
+        let (tokL, attrnm) = attr_left in
+        make_standard (Tok tokL) (Tok tokR) (UTAttribute(attrnm, None))
+      }
   | attr_left=ATTRIBUTE_L_SQUARE; utast=expr; tokR=R_SQUARE
       {
         let (tokL, attrnm) = attr_left in
-        make_standard (Tok tokL) (Tok tokR) (UTAttribute(attrnm, utast))
+        make_standard (Tok tokL) (Tok tokR) (UTAttribute(attrnm, Some(utast)))
       }
 ;
 modexpr:
@@ -432,21 +437,21 @@ mod_chain:
       }
 ;
 bind:
-  | tokL=VAL; valbind=bind_value
-      { (tokL, UTBindValue(Stage1, valbind)) }
-  | tokL=VAL; EXACT_TILDE; valbind=bind_value
-      { (tokL, UTBindValue(Stage0, valbind)) }
-  | tokL=VAL; PERSISTENT; EXACT_TILDE; valbind=bind_value
-      { (tokL, UTBindValue(Persistent0, valbind)) }
-  | tokL=VAL; INLINE; imacrobind=bind_inline_macro
+  | attrs=list(attribute); tokL=VAL; valbind=bind_value
+      { (tokL, UTBindValue(attrs, Stage1, valbind)) }
+  | attrs=list(attribute); tokL=VAL; EXACT_TILDE; valbind=bind_value
+      { (tokL, UTBindValue(attrs, Stage0, valbind)) }
+  | attrs=list(attribute); tokL=VAL; PERSISTENT; EXACT_TILDE; valbind=bind_value
+      { (tokL, UTBindValue(attrs, Persistent0, valbind)) }
+  | attrs=list(attribute); tokL=VAL; INLINE; imacrobind=bind_inline_macro
       {
         let (rng_cs, csnm, macparams, utast1) = imacrobind in
-        (tokL, UTBindInlineMacro((rng_cs, csnm), macparams, utast1))
+        (tokL, UTBindInlineMacro(attrs, (rng_cs, csnm), macparams, utast1))
       }
-  | tokL=VAL; BLOCK; bmacrobind=bind_block_macro
+  | attrs=list(attribute); tokL=VAL; BLOCK; bmacrobind=bind_block_macro
       {
         let (rng_cs, csnm, macparams, utast1) = bmacrobind in
-        (tokL, UTBindBlockMacro((rng_cs, csnm), macparams, utast1))
+        (tokL, UTBindBlockMacro(attrs, (rng_cs, csnm), macparams, utast1))
       }
   | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
