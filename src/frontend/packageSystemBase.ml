@@ -17,8 +17,15 @@ type package_dependency =
     }
 [@@deriving show { with_path = false }]
 
+type implementation_source =
+  | NoSource
+  | TarGzip of {
+      url : string;
+    }
+
 type implementation_record = {
   version  : SemanticVersion.t;
+  source   : implementation_source;
   requires : package_dependency list;
 }
 

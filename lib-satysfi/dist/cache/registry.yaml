@@ -6,16 +6,25 @@ packages:
 - name: "stdlib"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/stdlib.0.0.1.tar.gz"
     dependencies: []
 - name: "math"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/math.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
       requirements: [ "0.0.1" ]
 - name: "code"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/code.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
       requirements: [ "0.0.1" ]
@@ -24,12 +33,18 @@ packages:
 - name: "annot"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/annot.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
       requirements: [ "0.0.1" ]
 - name: "itemize"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/itemize.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
       requirements: [ "0.0.1" ]
@@ -48,6 +63,9 @@ packages:
 - name: "footnote-scheme"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/footnote-scheme.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
       requirements: [ "0.0.1" ]
@@ -74,6 +92,9 @@ packages:
 - name: "std-ja-book"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/std-ja-book.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
       requirements: [ "0.0.1" ]
@@ -142,16 +163,28 @@ packages:
 - name: "font-latin-modern"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/font-latin-modern.0.0.1.tar.gz"
     dependencies: []
 - name: "font-junicode"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/font-junicode.0.0.1.tar.gz"
     dependencies: []
 - name: "font-ipa-ex"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/font-ipa-ex.0.0.1.tar.gz"
     dependencies: []
 - name: "font-latin-modern-math"
   implementations:
   - version: "0.0.1"
+    source:
+      type: "tar_gzip"
+      url: "https://gfngfn.github.io/temp/font-latin-modern-math.0.0.1.tar.gz"
     dependencies: []
