@@ -1,18 +1,10 @@
-use package Stdlib
+use package open Stdlib
 use package Math
 use package StdJaBook
 use package FontLatinModern
 use LocalParen of `paren`
 
 module Local = struct
-
-  %- TODO: remove this by using 'open'
-  module List = Stdlib.List
-  module Pervasives = Stdlib.Pervasives
-  module Color = Stdlib.Color
-  module VDecoSet = Stdlib.VDecoSet
-  module HDecoSet = Stdlib.HDecoSet
-
 
   type type-syntax =
     | TypeName        of inline-text

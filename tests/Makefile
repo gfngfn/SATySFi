@@ -49,7 +49,6 @@ all::
 	(cd md; make)
 
 # Entrypoint for promoting lock files:
-# TODO: add `(cd md; make promote)` here
 promote:: $(EXPECTED_LOCKS)
 
 promote::
