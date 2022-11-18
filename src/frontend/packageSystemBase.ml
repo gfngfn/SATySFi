@@ -22,8 +22,9 @@ type implementation_source =
   | TarGzip of {
       url : string;
     }
+[@@deriving show { with_path = false }]
 
-type implementation_record = {
+type implementation_record = ImplRecord of {
   version  : SemanticVersion.t;
   source   : implementation_source;
   requires : package_dependency list;
@@ -36,6 +37,7 @@ type package_context = {
 type package_solution = {
   package_name        : package_name;
   locked_version      : SemanticVersion.t;
+  locked_source       : implementation_source;
   locked_dependencies : (package_name * SemanticVersion.t) list;
   used_in_test_only   : bool;
 }

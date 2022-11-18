@@ -1882,6 +1882,8 @@ let solve
 
             Logging.show_package_dependency_solutions solutions;
 
+            (* TODO: fetch package sources here based on `solutions` *)
+
             let lock_config = convert_solutions_to_lock_config solutions in
             LockConfig.write abspath_lock_config lock_config;
             return ()

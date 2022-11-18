@@ -31,7 +31,7 @@ let implementation_decoder : implementation_record ConfigDecoder.t =
       failure @@ (fun yctx -> NotASemanticVersion(yctx, s_version))
 
   | Some(semver) ->
-      succeed {
+      succeed @@ ImplRecord{
         version  = semver;
         source   = source;
         requires = dependencies;
