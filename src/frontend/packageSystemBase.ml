@@ -1,4 +1,15 @@
 
+open MyUtil
+
+type lock_name = string  [@@deriving show]
+
+type lock_info = {
+  lock_name         : lock_name;
+  lock_dependencies : lock_name list;
+  lock_directory    : abs_path;
+}
+[@@deriving show { with_path = false }]
+
 module PackageNameMap = Map.Make(String)
 
 module PackageNameSet = Set.Make(String)
@@ -24,11 +35,12 @@ type implementation_source =
     }
 [@@deriving show { with_path = false }]
 
-type implementation_record = ImplRecord of {
-  version  : SemanticVersion.t;
-  source   : implementation_source;
-  requires : package_dependency list;
-}
+type implementation_record =
+  | ImplRecord of {
+      version  : SemanticVersion.t;
+      source   : implementation_source;
+      requires : package_dependency list;
+    }
 
 type package_context = {
   registry_contents : (implementation_record list) PackageNameMap.t;
@@ -51,3 +63,10 @@ type dependency_flag =
   | SourceDependency
   | TestOnlyDependency
 [@@deriving show { with_path = false }]
+
+type implementation_spec =
+  | ImplSpec of {
+      lock_name           : lock_name;
+      container_directory : lib_path;
+      source              : implementation_source;
+    }

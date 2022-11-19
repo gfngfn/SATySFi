@@ -41,8 +41,6 @@ type type_variable_name = string  [@@deriving show]
 type row_variable_name  = string  [@@deriving show]
 type label              = string  [@@deriving show]
 
-type lock_name = string  [@@deriving show]
-
 type attribute_name = string  [@@deriving show]
 
 type input_position = {
@@ -622,13 +620,6 @@ type untyped_package =
       main_module_name : module_name;
       font_files       : font_file_record list;
     }
-[@@deriving show { with_path = false }]
-
-type lock_info = {
-  lock_name         : lock_name;
-  lock_dependencies : lock_name list;
-  lock_directory    : abs_path;
-}
 [@@deriving show { with_path = false }]
 
 type untyped_letrec_pattern_branch =
