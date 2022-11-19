@@ -2,14 +2,14 @@ locks:
 - name: annot.0.0.1
   location:
     type: global
-    path: ./dist/packages/annot/annot.0.0.1/
+    path: ./dist/packages/annot/annot.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
 - name: code.0.0.1
   location:
     type: global
-    path: ./dist/packages/code/code.0.0.1/
+    path: ./dist/packages/code/code.0.0.1
   dependencies:
   - stdlib.0.0.1
   - font-latin-modern.0.0.1
@@ -17,45 +17,45 @@ locks:
 - name: font-ipa-ex.0.0.1
   location:
     type: global
-    path: ./dist/packages/font-ipa-ex/font-ipa-ex.0.0.1/
+    path: ./dist/packages/font-ipa-ex/font-ipa-ex.0.0.1
   dependencies: []
   test_only: false
 - name: font-junicode.0.0.1
   location:
     type: global
-    path: ./dist/packages/font-junicode/font-junicode.0.0.1/
+    path: ./dist/packages/font-junicode/font-junicode.0.0.1
   dependencies: []
   test_only: false
 - name: font-latin-modern.0.0.1
   location:
     type: global
-    path: ./dist/packages/font-latin-modern/font-latin-modern.0.0.1/
+    path: ./dist/packages/font-latin-modern/font-latin-modern.0.0.1
   dependencies: []
   test_only: false
 - name: font-latin-modern-math.0.0.1
   location:
     type: global
-    path: ./dist/packages/font-latin-modern-math/font-latin-modern-math.0.0.1/
+    path: ./dist/packages/font-latin-modern-math/font-latin-modern-math.0.0.1
   dependencies: []
   test_only: false
 - name: math.0.0.1
   location:
     type: global
-    path: ./dist/packages/math/math.0.0.1/
+    path: ./dist/packages/math/math.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
 - name: proof.0.0.1
   location:
     type: global
-    path: ./dist/packages/proof/proof.0.0.1/
+    path: ./dist/packages/proof/proof.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
 - name: std-ja.0.0.1
   location:
     type: global
-    path: ./dist/packages/std-ja/std-ja.0.0.1/
+    path: ./dist/packages/std-ja/std-ja.0.0.1
   dependencies:
   - stdlib.0.0.1
   - math.0.0.1
@@ -69,13 +69,13 @@ locks:
 - name: stdlib.0.0.1
   location:
     type: global
-    path: ./dist/packages/stdlib/stdlib.0.0.1/
+    path: ./dist/packages/stdlib/stdlib.0.0.1
   dependencies: []
   test_only: false
 - name: tabular.0.0.1
   location:
     type: global
-    path: ./dist/packages/tabular/tabular.0.0.1/
+    path: ./dist/packages/tabular/tabular.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
