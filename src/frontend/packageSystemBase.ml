@@ -67,6 +67,6 @@ type dependency_flag =
 type implementation_spec =
   | ImplSpec of {
       lock_name           : lock_name;
-      container_directory : lib_path;
+      container_directory : abs_path;
       source              : implementation_source;
     }

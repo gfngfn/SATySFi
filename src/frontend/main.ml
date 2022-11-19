@@ -12,6 +12,7 @@ exception NoLibraryRootDesignation
 exception ShouldSpecifyOutputFile
 exception UnexpectedExtension of string
 exception ConfigError of config_error
+exception CannotDeterminePrimaryRoot
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
@@ -1239,6 +1240,11 @@ let error_log_environment (suspended : unit -> unit) : unit =
   | ConfigError(e) ->
       report_config_error e
 
+  | CannotDeterminePrimaryRoot ->
+      report_error Interface [
+        NormalLine("cannot determine the primary library root.");
+      ]
+
   | FontInfo.FontInfoError(e) ->
       report_font_error e
 
@@ -1354,6 +1360,21 @@ let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string l
   match dirs with
   | []     -> raise NoLibraryRootDesignation
   | _ :: _ -> Config.initialize dirs
+
+
+(* TODO: refine this *)
+let primary_root_dir () : abs_path =
+  let abspathstr =
+    if Sys.os_type = "Win32" then
+      match Sys.getenv_opt "userprofile" with
+      | None    -> raise CannotDeterminePrimaryRoot
+      | Some(s) -> Filename.concat s ".satysfi"
+    else
+      match Sys.getenv_opt "HOME" with
+      | None    -> raise CannotDeterminePrimaryRoot
+      | Some(s) -> Filename.concat s ".satysfi"
+  in
+  make_abs_path abspathstr
 
 
 let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
@@ -1754,9 +1775,13 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
       let test_only_lock = solution.used_in_test_only in
       let locked_package = LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock } in
       let impl_spec =
+        let abspath_primary_root = primary_root_dir () in
+        let abspath_container =
+          make_abs_path (Filename.concat (get_abs_path_string abspath_primary_root) libpathstr_container)
+        in
         ImplSpec{
           lock_name           = lock_name;
-          container_directory = make_lib_path libpathstr_container;
+          container_directory = abspath_container;
           source              = solution.locked_source;
         }
       in
