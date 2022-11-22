@@ -4,10 +4,15 @@ open PackageSystemBase
 
 
 type error =
-  | FetchFailed of {
+  | FailedToFetchTarball of {
       lock_name     : lock_name;
       exit_status   : int;
       fetch_command : string;
+    }
+  | FailedToExtractTarball of {
+      lock_name          : lock_name;
+      exit_status        : int;
+      extraction_command : string;
     }
 
 
@@ -18,10 +23,25 @@ let fetch_tarball ~(wget_command : string) ~(lock_name : lock_name) ~(url : stri
   if exit_status = 0 then
     return ()
   else
-    err @@ FetchFailed{ lock_name; exit_status; fetch_command }
+    err @@ FailedToFetchTarball{ lock_name; exit_status; fetch_command }
 
 
-let main ~(wget_command : string) (impl_spec : implementation_spec) : (unit, error) result =
+let extract_tarball_with_components_stripped ~(tar_command : string) ~(lock_name : lock_name) ~tarball:(abspath_tarball : abs_path) ~lock_root:(absdir_lock_root : abs_path) =
+  let open ResultMonad in
+  let extraction_command =
+    Printf.sprintf "\"%s\" -xzf \"%s\" -C \"%s\" --strip-components 1"
+      (String.escaped tar_command)
+      (String.escaped (get_abs_path_string abspath_tarball))
+      (String.escaped (get_abs_path_string absdir_lock_root))
+  in
+  let exit_status = Sys.command extraction_command in
+  if exit_status = 0 then
+    return ()
+  else
+    err @@ FailedToExtractTarball{ lock_name; exit_status; extraction_command }
+
+
+let main ~(wget_command : string) ~(tar_command : string) (impl_spec : implementation_spec) : (unit, error) result =
   let open ResultMonad in
   let ImplSpec{ lock_name; container_directory; source } = impl_spec in
   let absdirstr_container = get_abs_path_string container_directory in
@@ -47,6 +67,12 @@ let main ~(wget_command : string) (impl_spec : implementation_spec) : (unit, err
         in
         let* () = fetch_tarball ~wget_command ~lock_name ~url ~output:abspath_tarball in
 
-        (* TODO: extract sources from the tarball here *)
+        (* Extract sources from the tarball: *)
+        let absdir_lock_root = make_abs_path absdirstr_lock_root in
+        let* () =
+          extract_tarball_with_components_stripped
+            ~tar_command ~lock_name ~tarball:abspath_tarball ~lock_root:absdir_lock_root
+        in
+
         return ()
   end

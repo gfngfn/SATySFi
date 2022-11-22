@@ -1125,10 +1125,16 @@ let report_config_error : config_error -> unit = function
   | LockFetcherError(e) ->
       begin
         match e with
-        | LockFetcher.FetchFailed{ lock_name; exit_status; fetch_command } ->
+        | LockFetcher.FailedToFetchTarball{ lock_name; exit_status; fetch_command } ->
             report_error Interface [
               NormalLine(Printf.sprintf "failed to fetch '%s' (exit status: %d). command:" lock_name exit_status);
               DisplayLine(fetch_command);
+            ]
+
+        | LockFetcher.FailedToExtractTarball{ lock_name; exit_status; extraction_command } ->
+            report_error Interface [
+              NormalLine(Printf.sprintf "failed to extract the tarball of '%s' (exit status: %d). command:" lock_name exit_status);
+              DisplayLine(extraction_command);
             ]
       end
 
@@ -1931,9 +1937,10 @@ let solve
             let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in
 
             let wget_command = "wget" in (* TODO: make this changeable *)
+            let tar_command = "tar" in (* TODO: make this changeable *)
             let* () =
               impl_specs |> foldM (fun () impl_spec ->
-                LockFetcher.main ~wget_command impl_spec
+                LockFetcher.main ~wget_command ~tar_command impl_spec
                   |> Result.map_error (fun e -> LockFetcherError(e))
               ) ()
             in
