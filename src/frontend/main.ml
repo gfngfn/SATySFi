@@ -1938,9 +1938,13 @@ let solve
 
             let wget_command = "wget" in (* TODO: make this changeable *)
             let tar_command = "tar" in (* TODO: make this changeable *)
+            let absdir_lock_cache =
+              let absdir_primary_root = get_primary_root_dir () in
+              make_abs_path (Filename.concat (get_abs_path_string absdir_primary_root) "dist/cache/locks")
+            in
             let* () =
               impl_specs |> foldM (fun () impl_spec ->
-                LockFetcher.main ~wget_command ~tar_command impl_spec
+                LockFetcher.main ~wget_command ~tar_command ~cache_directory:absdir_lock_cache impl_spec
                   |> Result.map_error (fun e -> LockFetcherError(e))
               ) ()
             in

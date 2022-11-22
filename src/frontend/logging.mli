@@ -72,4 +72,6 @@ val some_test_failed : unit -> unit
 
 val lock_already_installed : lock_name -> abs_path -> unit
 
-val installing_lock : lock_name -> abs_path -> unit
+val lock_cache_exists : lock_name -> abs_path -> unit
+
+val downloading_lock : lock_name -> abs_path -> unit

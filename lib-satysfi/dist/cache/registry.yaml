@@ -42,9 +42,6 @@ packages:
 - name: "itemize"
   implementations:
   - version: "0.0.1"
-    source:
-      type: "tar_gzip"
-      url: "https://gfngfn.github.io/temp/itemize.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
       requirements: [ "0.0.1" ]
