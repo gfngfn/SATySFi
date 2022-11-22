@@ -203,3 +203,11 @@ let all_tests_passed () =
 let some_test_failed () =
   print_endline " ---- ---- ---- ----";
   print_endline "! some test has failed."
+
+
+let lock_already_installed (lock_name : lock_name) (absdir : abs_path) =
+  Printf.printf "  '%s': already installed at '%s'" lock_name (get_abs_path_string absdir)
+
+
+let installing_lock (lock_name : lock_name) (absdir : abs_path) =
+  Printf.printf "  installing '%s' at '%s'..." lock_name (get_abs_path_string absdir)

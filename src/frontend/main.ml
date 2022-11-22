@@ -1122,6 +1122,16 @@ let report_config_error : config_error -> unit = function
             report_document_attribute_error de
       end
 
+  | LockFetcherError(e) ->
+      begin
+        match e with
+        | LockFetcher.FetchFailed{ lock_name; exit_status; fetch_command } ->
+            report_error Interface [
+              NormalLine(Printf.sprintf "failed to fetch '%s' (exit status: %d). command:" lock_name exit_status);
+              DisplayLine(fetch_command);
+            ]
+      end
+
 
 let report_font_error : font_error -> unit = function
   | FailedToReadFont(abspath, msg) ->
@@ -1363,7 +1373,7 @@ let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string l
 
 
 (* TODO: refine this *)
-let primary_root_dir () : abs_path =
+let get_primary_root_dir () : abs_path =
   let abspathstr =
     if Sys.os_type = "Win32" then
       match Sys.getenv_opt "userprofile" with
@@ -1775,7 +1785,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
       let test_only_lock = solution.used_in_test_only in
       let locked_package = LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock } in
       let impl_spec =
-        let abspath_primary_root = primary_root_dir () in
+        let abspath_primary_root = get_primary_root_dir () in
         let abspath_container =
           make_abs_path (Filename.concat (get_abs_path_string abspath_primary_root) libpathstr_container)
         in
@@ -1920,11 +1930,13 @@ let solve
 
             let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in
 
-            impl_specs |> List.iter (fun _impl_spec ->
-              (* TODO: fetch package sources here based on `impl_spec` *)
-              ()
-            );
-
+            let wget_command = "wget" in (* TODO: make this changeable *)
+            let* () =
+              impl_specs |> foldM (fun () impl_spec ->
+                LockFetcher.main ~wget_command impl_spec
+                  |> Result.map_error (fun e -> LockFetcherError(e))
+              ) ()
+            in
             LockConfig.write abspath_lock_config lock_config;
             return ()
       end
