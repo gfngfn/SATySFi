@@ -18,4 +18,4 @@ val main :
   wget_command:string ->
   tar_command:string ->
   cache_directory:abs_path ->
-  PackageSystemBase.implementation_spec -> (unit, error) result
+  implementation_spec -> (unit, error) result
