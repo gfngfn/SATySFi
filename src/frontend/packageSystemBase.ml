@@ -1,4 +1,15 @@
 
+open MyUtil
+
+type lock_name = string  [@@deriving show]
+
+type lock_info = {
+  lock_name         : lock_name;
+  lock_dependencies : lock_name list;
+  lock_directory    : abs_path;
+}
+[@@deriving show { with_path = false }]
+
 module PackageNameMap = Map.Make(String)
 
 module PackageNameSet = Set.Make(String)
@@ -17,10 +28,19 @@ type package_dependency =
     }
 [@@deriving show { with_path = false }]
 
-type implementation_record = {
-  version  : SemanticVersion.t;
-  requires : package_dependency list;
-}
+type implementation_source =
+  | NoSource
+  | TarGzip of {
+      url : string;
+    }
+[@@deriving show { with_path = false }]
+
+type implementation_record =
+  | ImplRecord of {
+      version  : SemanticVersion.t;
+      source   : implementation_source;
+      requires : package_dependency list;
+    }
 
 type package_context = {
   registry_contents : (implementation_record list) PackageNameMap.t;
@@ -29,6 +49,7 @@ type package_context = {
 type package_solution = {
   package_name        : package_name;
   locked_version      : SemanticVersion.t;
+  locked_source       : implementation_source;
   locked_dependencies : (package_name * SemanticVersion.t) list;
   used_in_test_only   : bool;
 }
@@ -42,3 +63,10 @@ type dependency_flag =
   | SourceDependency
   | TestOnlyDependency
 [@@deriving show { with_path = false }]
+
+type implementation_spec =
+  | ImplSpec of {
+      lock_name           : lock_name;
+      container_directory : abs_path;
+      source              : implementation_source;
+    }

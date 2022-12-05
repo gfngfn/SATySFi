@@ -41,6 +41,7 @@ jobs:
         run: |
           if [ "${{ matrix.os }}" == 'macos-latest' ]; then
             brew install coreutils
+            brew install diffutils
           fi
 
       - name: Setup OCaml ${{ matrix.ocaml-version }} and pin satysfi

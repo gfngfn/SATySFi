@@ -26,6 +26,7 @@ depends: [
   "camlpdf" {= "2.3.1+satysfi"}
   "cmdliner" {>= "1.1.1"}
   "core_kernel" {>= "v0.15"}
+  "core_unix" {>= "v0.15"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "dune" {build}
   "menhir"

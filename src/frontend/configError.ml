@@ -1,5 +1,6 @@
 
 open MyUtil
+open PackageSystemBase
 open Types
 
 
@@ -81,3 +82,4 @@ type config_error =
   | NoMarkdownConversion          of module_name
   | MoreThanOneMarkdownConversion of module_name
   | MarkdownError                 of MarkdownParser.error
+  | LockFetcherError              of LockFetcher.error

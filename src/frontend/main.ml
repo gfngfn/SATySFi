@@ -12,6 +12,7 @@ exception NoLibraryRootDesignation
 exception ShouldSpecifyOutputFile
 exception UnexpectedExtension of string
 exception ConfigError of config_error
+exception CannotDeterminePrimaryRoot
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
@@ -1121,6 +1122,22 @@ let report_config_error : config_error -> unit = function
             report_document_attribute_error de
       end
 
+  | LockFetcherError(e) ->
+      begin
+        match e with
+        | LockFetcher.FailedToFetchTarball{ lock_name; exit_status; fetch_command } ->
+            report_error Interface [
+              NormalLine(Printf.sprintf "failed to fetch '%s' (exit status: %d). command:" lock_name exit_status);
+              DisplayLine(fetch_command);
+            ]
+
+        | LockFetcher.FailedToExtractTarball{ lock_name; exit_status; extraction_command } ->
+            report_error Interface [
+              NormalLine(Printf.sprintf "failed to extract the tarball of '%s' (exit status: %d). command:" lock_name exit_status);
+              DisplayLine(extraction_command);
+            ]
+      end
+
 
 let report_font_error : font_error -> unit = function
   | FailedToReadFont(abspath, msg) ->
@@ -1239,6 +1256,11 @@ let error_log_environment (suspended : unit -> unit) : unit =
   | ConfigError(e) ->
       report_config_error e
 
+  | CannotDeterminePrimaryRoot ->
+      report_error Interface [
+        NormalLine("cannot determine the primary library root.");
+      ]
+
   | FontInfo.FontInfoError(e) ->
       report_font_error e
 
@@ -1354,6 +1376,21 @@ let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string l
   match dirs with
   | []     -> raise NoLibraryRootDesignation
   | _ :: _ -> Config.initialize dirs
+
+
+(* TODO: refine this *)
+let get_primary_root_dir () : abs_path =
+  let abspathstr =
+    if Sys.os_type = "Win32" then
+      match Sys.getenv_opt "userprofile" with
+      | None    -> raise CannotDeterminePrimaryRoot
+      | Some(s) -> Filename.concat s ".satysfi"
+    else
+      match Sys.getenv_opt "HOME" with
+      | None    -> raise CannotDeterminePrimaryRoot
+      | Some(s) -> Filename.concat s ".satysfi"
+  in
+  make_abs_path abspathstr
 
 
 let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
@@ -1734,14 +1771,16 @@ let make_lock_name (package_name : package_name) (semver : SemanticVersion.t) : 
   Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string semver)
 
 
-let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t =
-  let locked_packages =
-    solutions |> List.map (fun solution ->
+let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t * implementation_spec list =
+  let (locked_package_acc, impl_spec_acc) =
+    solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let package_name = solution.package_name in
       let lock_name = make_lock_name package_name solution.locked_version in
+      let libpathstr_container = Printf.sprintf "./dist/packages/%s/" package_name in
+      let libpathstr_lock = Filename.concat libpathstr_container lock_name in
       let lock_location =
         LockConfig.GlobalLocation{
-          path = Printf.sprintf "./dist/packages/%s/%s/" package_name lock_name;
+          path = libpathstr_lock;
         }
       in
       let lock_dependencies =
@@ -1750,10 +1789,23 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
         )
       in
       let test_only_lock = solution.used_in_test_only in
-      LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock }
-    )
+      let locked_package = LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock } in
+      let impl_spec =
+        let abspath_primary_root = get_primary_root_dir () in
+        let abspath_container =
+          make_abs_path (Filename.concat (get_abs_path_string abspath_primary_root) libpathstr_container)
+        in
+        ImplSpec{
+          lock_name           = lock_name;
+          container_directory = abspath_container;
+          source              = solution.locked_source;
+        }
+      in
+      (Alist.extend locked_package_acc locked_package, Alist.extend impl_spec_acc impl_spec)
+    ) (Alist.empty, Alist.empty)
   in
-  LockConfig.{ locked_packages }
+  let lock_config = LockConfig.{ locked_packages = Alist.to_list locked_package_acc } in
+  (lock_config, Alist.to_list impl_spec_acc)
 
 
 let extract_attributes_from_document_file (input_kind : input_kind) (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
@@ -1882,7 +1934,20 @@ let solve
 
             Logging.show_package_dependency_solutions solutions;
 
-            let lock_config = convert_solutions_to_lock_config solutions in
+            let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in
+
+            let wget_command = "wget" in (* TODO: make this changeable *)
+            let tar_command = "tar" in (* TODO: make this changeable *)
+            let absdir_lock_cache =
+              let absdir_primary_root = get_primary_root_dir () in
+              make_abs_path (Filename.concat (get_abs_path_string absdir_primary_root) "dist/cache/locks")
+            in
+            let* () =
+              impl_specs |> foldM (fun () impl_spec ->
+                LockFetcher.main ~wget_command ~tar_command ~cache_directory:absdir_lock_cache impl_spec
+                  |> Result.map_error (fun e -> LockFetcherError(e))
+              ) ()
+            in
             LockConfig.write abspath_lock_config lock_config;
             return ()
       end

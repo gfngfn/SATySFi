@@ -57,7 +57,7 @@ promote::
 	(cd md; make promote)
 
 clean::
-	rm -f *.pdf *.satysfi-aux
+	rm -f *.pdf *.satysfi-aux *.satysfi-lock
 
 clean::
 	(cd images; make clean)

@@ -10,6 +10,7 @@
             camlpdf
             core_kernel
             core_kernel.pairing_heap
+            core_unix
             menhirLib
             otfed
             uutf

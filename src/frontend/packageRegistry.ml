@@ -8,16 +8,34 @@ open PackageSystemBase
 type 'a ok = ('a, config_error) result
 
 
+let source_decoder : implementation_source ConfigDecoder.t =
+  let open ConfigDecoder in
+  branch "type" [
+    "tar_gzip" ==> begin
+      get "url" string >>= fun url ->
+      succeed @@ TarGzip{ url }
+    end;
+  ]
+  ~other:(fun tag ->
+    failure (fun context -> UnexpectedTag(context, tag))
+  )
+
+
 let implementation_decoder : implementation_record ConfigDecoder.t =
   let open ConfigDecoder in
   get "version" string >>= fun s_version ->
+  get_or_else "source" source_decoder NoSource >>= fun source ->
   get "dependencies" (list dependency_decoder) >>= fun dependencies ->
   match SemanticVersion.parse s_version with
   | None ->
       failure @@ (fun yctx -> NotASemanticVersion(yctx, s_version))
 
   | Some(semver) ->
-      succeed { version = semver; requires = dependencies }
+      succeed @@ ImplRecord{
+        version  = semver;
+        source   = source;
+        requires = dependencies;
+      }
 
 
 let package_decoder : (package_name * implementation_record list) ConfigDecoder.t =

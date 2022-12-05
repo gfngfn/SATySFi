@@ -69,3 +69,9 @@ val report_failed_test : test_name:string -> message:string -> unit
 val all_tests_passed : unit -> unit
 
 val some_test_failed : unit -> unit
+
+val lock_already_installed : lock_name -> abs_path -> unit
+
+val lock_cache_exists : lock_name -> abs_path -> unit
+
+val downloading_lock : lock_name -> abs_path -> unit

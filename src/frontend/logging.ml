@@ -203,3 +203,15 @@ let all_tests_passed () =
 let some_test_failed () =
   print_endline " ---- ---- ---- ----";
   print_endline "! some test has failed."
+
+
+let lock_already_installed (lock_name : lock_name) (absdir : abs_path) =
+  Printf.printf "  '%s': already installed at '%s'\n" lock_name (get_abs_path_string absdir)
+
+
+let lock_cache_exists (lock_name : lock_name) (abspath_tarball : abs_path) =
+  Printf.printf "  cache for '%s' exists at '%s'\n" lock_name (get_abs_path_string abspath_tarball)
+
+
+let downloading_lock (lock_name : lock_name) (absdir : abs_path) =
+  Printf.printf "  downloading '%s' to '%s'...\n" lock_name (get_abs_path_string absdir)
