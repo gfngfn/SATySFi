@@ -503,7 +503,7 @@ let print_trilist trilst =
 (*
 (* unit test *)
 let () =
-  set_from_file "./lib-satysfi/dist/unidata/LineBreak.txt";
+  set_from_file "./lib-satysfi/unidata/LineBreak.txt";
   let uchlst =
     InternalText.to_uchar_list (InternalText.of_utf8
       "The quick brown fox")

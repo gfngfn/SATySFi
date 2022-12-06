@@ -1776,7 +1776,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let package_name = solution.package_name in
       let lock_name = make_lock_name package_name solution.locked_version in
-      let libpathstr_container = Printf.sprintf "./dist/packages/%s/" package_name in
+      let libpathstr_container = Printf.sprintf "./packages/%s/" package_name in
       let libpathstr_lock = Filename.concat libpathstr_container lock_name in
       let lock_location =
         LockConfig.GlobalLocation{
@@ -1884,7 +1884,7 @@ let solve
     let res =
       let open ResultMonad in
       let* abspath_registry_config =
-        let libpath = make_lib_path "dist/cache/registry.yaml" in
+        let libpath = make_lib_path "registries/default/registry.yaml" in
         Config.resolve_lib_file libpath
           |> Result.map_error (fun candidates -> RegistryConfigNotFoundIn(libpath, candidates))
       in
@@ -1940,7 +1940,7 @@ let solve
             let tar_command = "tar" in (* TODO: make this changeable *)
             let absdir_lock_cache =
               let absdir_primary_root = get_primary_root_dir () in
-              make_abs_path (Filename.concat (get_abs_path_string absdir_primary_root) "dist/cache/locks")
+              make_abs_path (Filename.concat (get_abs_path_string absdir_primary_root) "cache/locks")
             in
             let* () =
               impl_specs |> foldM (fun () impl_spec ->

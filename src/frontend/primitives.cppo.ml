@@ -762,7 +762,7 @@ let resolve_lib_file (libpath : lib_path) =
 
 let make_pdf_mode_environments () =
   let open ResultMonad in
-  let* abspath_hyphen = resolve_lib_file (make_lib_path "dist/hyph/english.satysfi-hyph") in
+  let* abspath_hyphen = resolve_lib_file (make_lib_path "hyph/english.satysfi-hyph") in
   default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
     (* TODO: should depend on the current language *)
   return @@ make_environments pdf_mode_table
