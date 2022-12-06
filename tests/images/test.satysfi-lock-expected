@@ -2,14 +2,14 @@ locks:
 - name: annot.0.0.1
   location:
     type: global
-    path: ./dist/packages/annot/annot.0.0.1
+    path: ./packages/annot/annot.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
 - name: code.0.0.1
   location:
     type: global
-    path: ./dist/packages/code/code.0.0.1
+    path: ./packages/code/code.0.0.1
   dependencies:
   - stdlib.0.0.1
   - font-latin-modern.0.0.1
@@ -17,45 +17,45 @@ locks:
 - name: font-ipa-ex.0.0.1
   location:
     type: global
-    path: ./dist/packages/font-ipa-ex/font-ipa-ex.0.0.1
+    path: ./packages/font-ipa-ex/font-ipa-ex.0.0.1
   dependencies: []
   test_only: false
 - name: font-junicode.0.0.1
   location:
     type: global
-    path: ./dist/packages/font-junicode/font-junicode.0.0.1
+    path: ./packages/font-junicode/font-junicode.0.0.1
   dependencies: []
   test_only: false
 - name: font-latin-modern.0.0.1
   location:
     type: global
-    path: ./dist/packages/font-latin-modern/font-latin-modern.0.0.1
+    path: ./packages/font-latin-modern/font-latin-modern.0.0.1
   dependencies: []
   test_only: false
 - name: font-latin-modern-math.0.0.1
   location:
     type: global
-    path: ./dist/packages/font-latin-modern-math/font-latin-modern-math.0.0.1
+    path: ./packages/font-latin-modern-math/font-latin-modern-math.0.0.1
   dependencies: []
   test_only: false
 - name: itemize.0.0.1
   location:
     type: global
-    path: ./dist/packages/itemize/itemize.0.0.1
+    path: ./packages/itemize/itemize.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
 - name: math.0.0.1
   location:
     type: global
-    path: ./dist/packages/math/math.0.0.1
+    path: ./packages/math/math.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
 - name: std-ja.0.0.1
   location:
     type: global
-    path: ./dist/packages/std-ja/std-ja.0.0.1
+    path: ./packages/std-ja/std-ja.0.0.1
   dependencies:
   - stdlib.0.0.1
   - math.0.0.1
@@ -69,6 +69,6 @@ locks:
 - name: stdlib.0.0.1
   location:
     type: global
-    path: ./dist/packages/stdlib/stdlib.0.0.1
+    path: ./packages/stdlib/stdlib.0.0.1
   dependencies: []
   test_only: false
