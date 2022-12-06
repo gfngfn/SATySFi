@@ -419,10 +419,10 @@ let initialize () =
     let open ResultMonad in
     FontHashTable.initialize ();
     MathFontHashTable.initialize ();
-    let* abspath_S   = resolve_lib_file (make_lib_path "dist/unidata/Scripts.txt") in
-    let* abspath_EAW = resolve_lib_file (make_lib_path "dist/unidata/EastAsianWidth.txt") in
+    let* abspath_S   = resolve_lib_file (make_lib_path "unidata/Scripts.txt") in
+    let* abspath_EAW = resolve_lib_file (make_lib_path "unidata/EastAsianWidth.txt") in
     ScriptDataMap.set_from_file abspath_S abspath_EAW;
-    let* abspath_LB = resolve_lib_file (make_lib_path "dist/unidata/LineBreak.txt") in
+    let* abspath_LB = resolve_lib_file (make_lib_path "unidata/LineBreak.txt") in
     LineBreakDataMap.set_from_file abspath_LB;
     return ()
   in
