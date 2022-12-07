@@ -6,4 +6,4 @@ contents:
     - "./src"
   dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"

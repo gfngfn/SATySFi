@@ -18,7 +18,7 @@ packages:
       url: "https://gfngfn.github.io/temp/math.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "code"
   implementations:
   - version: "0.0.1"
@@ -27,9 +27,9 @@ packages:
       url: "https://gfngfn.github.io/temp/code.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-latin-modern"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "annot"
   implementations:
   - version: "0.0.1"
@@ -38,25 +38,25 @@ packages:
       url: "https://gfngfn.github.io/temp/annot.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "itemize"
   implementations:
   - version: "0.0.1"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "proof"
   implementations:
   - version: "0.0.1"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "tabular"
   implementations:
   - version: "0.0.1"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "footnote-scheme"
   implementations:
   - version: "0.0.1"
@@ -65,27 +65,27 @@ packages:
       url: "https://gfngfn.github.io/temp/footnote-scheme.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "std-ja"
   implementations:
   - version: "0.0.1"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "math"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "annot"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "code"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-junicode"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-latin-modern"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-ipa-ex"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-latin-modern-math"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "std-ja-book"
   implementations:
   - version: "0.0.1"
@@ -94,69 +94,69 @@ packages:
       url: "https://gfngfn.github.io/temp/std-ja-book.0.0.1.tar.gz"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "math"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "annot"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "code"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "footnote-scheme"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-junicode"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-latin-modern"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-ipa-ex"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-latin-modern-math"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "std-ja-report"
   implementations:
   - version: "0.0.1"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "math"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "annot"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "code"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "footnote-scheme"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-junicode"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-latin-modern"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-ipa-ex"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-latin-modern-math"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "md-ja"
   implementations:
   - version: "0.0.1"
     dependencies:
     - name: "stdlib"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "math"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "annot"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "code"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "footnote-scheme"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "itemize"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-junicode"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-latin-modern"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-ipa-ex"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
     - name: "font-latin-modern-math"
-      requirements: [ "0.0.1" ]
+      requirement: "^0.0.1"
 - name: "font-latin-modern"
   implementations:
   - version: "0.0.1"

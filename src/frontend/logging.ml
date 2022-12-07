@@ -114,11 +114,11 @@ let show_package_dependency_before_solving (dependencies_with_flags : (dependenc
   Printf.printf "  package dependencies to solve:\n";
   dependencies_with_flags |> List.iter (fun (flag, dep) ->
     match dep with
-    | PackageDependency{ package_name; restrictions } ->
+    | PackageDependency{ package_name; version_requirement } ->
         let s_restr =
-          restrictions |> List.map (function
-          | CompatibleWith(semver) -> SemanticVersion.to_string semver
-          ) |> String.concat ", "
+          match version_requirement with
+          | SemanticVersion.CompatibleWith(semver) ->
+              Printf.sprintf "^%s" (SemanticVersion.to_string semver)
         in
         let s_test_only =
           match flag with

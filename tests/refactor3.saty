@@ -1,7 +1,7 @@
 #[dependencies [
-  (`font-junicode`, `0.0.1`),
-  (`font-ipa-ex`, `0.0.1`),
-  (`font-latin-modern-math`, `0.0.1`),
+  (`font-junicode`, `^0.0.1`),
+  (`font-ipa-ex`, `^0.0.1`),
+  (`font-latin-modern-math`, `^0.0.1`),
 ]]
 use package FontJunicode
 use package FontIpaEx

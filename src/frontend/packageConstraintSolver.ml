@@ -41,12 +41,12 @@ module SolverInput = struct
   (* Unused *)
   type command_name = string
 
-  type restriction = package_restriction
+  type restriction = SemanticVersion.requirement
 
   type dependency =
     | Dependency of {
-        role         : Role.t;
-        restrictions : package_restriction list;
+        role                : Role.t;
+        version_requirement : SemanticVersion.requirement;
       }
 
   type dep_info = {
@@ -137,8 +137,8 @@ module SolverInput = struct
 
   let make_internal_dependency (context : package_context) (requires : package_dependency list) : dependency list =
     requires |> List.map (function
-    | PackageDependency{ package_name; restrictions } ->
-        Dependency{ role = Role{ package_name; context }; restrictions }
+    | PackageDependency{ package_name; version_requirement } ->
+        Dependency{ role = Role{ package_name; context }; version_requirement }
     )
 
 
@@ -164,8 +164,8 @@ module SolverInput = struct
 
 
   let restrictions (dep : dependency) : restriction list =
-    let Dependency{ restrictions; _ } = dep in
-    restrictions
+    let Dependency{ version_requirement; _ } = dep in
+    [ version_requirement ]
 
 
   let meets_restriction (impl : impl) (restr : restriction) : bool =

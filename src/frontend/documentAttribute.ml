@@ -6,7 +6,7 @@ open PackageSystemBase
 type error =
   | NoDependencyList               of Range.t
   | MoreThanOneDependencyAttribute of Range.t * Range.t
-  | NotASemanticVersion            of Range.t * string
+  | NotAVersionRequirement         of Range.t * string
   | NotAPackageDependency          of Range.t
   | NotAListLiteral                of Range.t
 
@@ -23,17 +23,17 @@ let decode_package_dependency (utast : untyped_abstract_tree) : package_dependen
   | (rng, UTTuple(utasts)) ->
       begin
         match TupleList.to_list utasts with
-        | [ (_, UTStringConstant(package_name)); (rng_version, UTStringConstant(s_version)) ] ->
+        | [ (_, UTStringConstant(package_name)); (rng_version, UTStringConstant(s_version_requirement)) ] ->
             begin
-              match SemanticVersion.parse s_version with
-              | Some(semver) ->
+              match SemanticVersion.parse_requirement s_version_requirement with
+              | Some(version_requirement) ->
                   return @@ PackageDependency{
                     package_name;
-                    restrictions = [ CompatibleWith(semver) ];
+                    version_requirement;
                   }
 
               | None ->
-                  err @@ NotASemanticVersion(rng_version, s_version)
+                  err @@ NotAVersionRequirement(rng_version, s_version_requirement)
             end
 
         | _ ->
