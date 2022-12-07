@@ -17,14 +17,10 @@ module PackageNameSet = Set.Make(String)
 type package_name = string
 [@@deriving show { with_path = false }]
 
-type package_restriction =
-  | CompatibleWith of SemanticVersion.t
-[@@deriving show { with_path = false }]
-
 type package_dependency =
   | PackageDependency of {
-      package_name : package_name;
-      restrictions : package_restriction list;
+      package_name        : package_name;
+      version_requirement : SemanticVersion.requirement;
     }
 [@@deriving show { with_path = false }]
 

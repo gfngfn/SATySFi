@@ -859,10 +859,10 @@ let report_document_attribute_error : DocumentAttribute.error -> unit = function
         DisplayLine(Printf.sprintf "- %s" (Range.to_string rng2));
       ]
 
-  | NotASemanticVersion(rng, s) ->
+  | NotAVersionRequirement(rng, s) ->
       report_error Interface [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(Printf.sprintf "not a semantic version: '%s'" s);
+        NormalLine(Printf.sprintf "not a version requirement: '%s'" s);
       ]
 
   | NotAPackageDependency(rng) ->

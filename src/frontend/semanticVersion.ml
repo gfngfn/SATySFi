@@ -1,7 +1,6 @@
 
 type t = Semver.t
 
-
 let parse (s : string) : t option =
   Semver.of_string s
 
@@ -32,3 +31,20 @@ let is_compatible ~(old : t) ~(new_ : t) =
       old.major = new_.major &&
         ((old.minor < new_.minor) ||
           (old.minor == new_.minor && old.patch <= new_.patch))
+
+
+type requirement =
+  | CompatibleWith of t
+[@@deriving show { with_path = false }]
+
+
+let parse_requirement (s : string) : requirement option =
+  match (String.get s 0, parse (String.sub s 1 (String.length s - 1))) with
+  | exception Invalid_argument(_) ->
+      None
+
+  | ('^', Some(semver)) ->
+      Some(CompatibleWith(semver))
+
+  | _ ->
+      None
