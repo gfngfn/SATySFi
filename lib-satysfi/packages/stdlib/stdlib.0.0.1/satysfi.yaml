@@ -9,4 +9,4 @@ contents:
   dependencies: []
   test_dependencies:
   - name: "testing"
-    requirements: [ "0.0.1" ]
+    requirement: "^0.0.1"

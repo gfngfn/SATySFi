@@ -1,5 +1,5 @@
 #[dependencies [
-  (`std-ja-report`, `0.0.1`),
+  (`std-ja-report`, `^0.0.1`),
 ]]
 use package StdJaReport
 use Macro1Local of `macro1-local`

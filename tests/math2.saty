@@ -1,10 +1,10 @@
 #[dependencies [
-  (`stdlib`, `0.0.1`),
-  (`math`, `0.0.1`),
-  (`font-junicode`, `0.0.1`),
-  (`font-ipa-ex`, `0.0.1`),
-  (`font-latin-modern`, `0.0.1`),
-  (`font-latin-modern-math`, `0.0.1`),
+  (`stdlib`, `^0.0.1`),
+  (`math`, `^0.0.1`),
+  (`font-junicode`, `^0.0.1`),
+  (`font-ipa-ex`, `^0.0.1`),
+  (`font-latin-modern`, `^0.0.1`),
+  (`font-latin-modern-math`, `^0.0.1`),
 ]]
 use package Math
 use Head of `head`
