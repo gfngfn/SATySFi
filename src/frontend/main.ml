@@ -1767,15 +1767,16 @@ type solve_input =
     }
 
 
-let make_lock_name (package_name : package_name) (semver : SemanticVersion.t) : lock_name =
-  Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string semver)
+let make_lock_name (lock : Lock.t) : lock_name =
+  let Lock.{ package_name; locked_version } = lock in
+  Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string locked_version)
 
 
 let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t * implementation_spec list =
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
-      let package_name = solution.package_name in
-      let lock_name = make_lock_name package_name solution.locked_version in
+      let lock_name = make_lock_name solution.lock in
+      let Lock.{ package_name; _ } = solution.lock in
       let libpathstr_container = Printf.sprintf "./packages/%s/" package_name in
       let libpathstr_lock = Filename.concat libpathstr_container lock_name in
       let lock_location =
@@ -1783,11 +1784,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
           path = libpathstr_lock;
         }
       in
-      let lock_dependencies =
-        solution.locked_dependencies |> List.map (fun (package_name_dep, semver_dep) ->
-          make_lock_name package_name_dep semver_dep
-        )
-      in
+      let lock_dependencies = solution.locked_dependencies |> List.map make_lock_name in
       let test_only_lock = solution.used_in_test_only in
       let locked_package = LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock } in
       let impl_spec =

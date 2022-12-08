@@ -242,23 +242,7 @@ end
 
 module InternalSolver = Zeroinstall_solver.Make(SolverInput)
 
-module Lock = struct
-  type t = {
-    package_name   : package_name;
-    locked_version : SemanticVersion.t;
-  }
-
-  let compare (lock1 : t) (lock2 : t) : int =
-    let { package_name = s1; locked_version = v1 } = lock1 in
-    let { package_name = s2; locked_version = v2 } = lock2 in
-    match String.compare s1 s2 with
-    | 0       -> SemanticVersion.compare v1 v2
-    | nonzero -> nonzero
-end
-
 module LockDependencyGraph = DependencyGraph.Make(Lock)
-
-module LockMap = Map.Make(Lock)
 
 module VertexSet = LockDependencyGraph.VertexSet
 
@@ -288,7 +272,7 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
 
     (* Adds vertices to the graph: *)
     let rolemap = output |> Output.to_map in
-    let (quad_acc, graph, explicit_vertices, name_to_vertex_map) =
+    let (quad_acc, graph, explicit_vertices, lock_to_vertex_map) =
       Output.RoleMap.fold (fun _role impl acc ->
         let impl = Output.unwrap impl in
         match impl with
@@ -297,7 +281,7 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
 
         | Impl{ package_name; version = locked_version; source; dependencies } ->
             let lock = Lock.{ package_name; locked_version } in
-            let (quad_acc, graph, explicit_vertices, name_to_vertex_map) = acc in
+            let (quad_acc, graph, explicit_vertices, lock_to_vertex_map) = acc in
             let (graph, vertex) =
               match graph |> LockDependencyGraph.add_vertex lock () with
               | Error(_) -> assert false
@@ -310,10 +294,10 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
               else
                 explicit_vertices
             in
-            let name_to_vertex_map = name_to_vertex_map |> PackageNameMap.add package_name vertex in
-            (quad_acc, graph, explicit_vertices, name_to_vertex_map)
+            let lock_to_vertex_map = lock_to_vertex_map |> LockMap.add lock vertex in
+            (quad_acc, graph, explicit_vertices, lock_to_vertex_map)
 
-      ) rolemap (Alist.empty, LockDependencyGraph.empty, VertexSet.empty, PackageNameMap.empty)
+      ) rolemap (Alist.empty, LockDependencyGraph.empty, VertexSet.empty, LockMap.empty)
     in
 
     (* Add edges to the graph: *)
@@ -327,16 +311,20 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
             let Dependency{ role = role_dep; _ } = dep in
             match role_dep with
             | Role{ package_name = package_name_dep; _ } ->
-                let locked_dependency_acc =
+                let lock_dep =
                   match rolemap |> Output.RoleMap.find_opt role_dep |> Option.map Output.unwrap with
                   | None | Some(DummyImpl) | Some(LocalImpl(_)) ->
-                      locked_dependency_acc
+                      assert false
 
                   | Some(Impl{ version = version_dep; _ }) ->
-                      Alist.extend locked_dependency_acc (package_name_dep, version_dep)
+                      Lock.{
+                        package_name   = package_name_dep;
+                        locked_version = version_dep;
+                      }
                 in
+                let locked_dependency_acc = Alist.extend locked_dependency_acc lock_dep in
                 let vertex_dep =
-                  match name_to_vertex_map |> PackageNameMap.find_opt package_name_dep with
+                  match lock_to_vertex_map |> LockMap.find_opt lock_dep with
                   | None    -> assert false
                   | Some(v) -> v
                 in
@@ -362,16 +350,14 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
 
     let solution_acc =
       LockMap.fold (fun lock (locked_source, locked_dependencies) solution_acc ->
-        let Lock.{ package_name; locked_version } = lock in
         let vertex =
-          match name_to_vertex_map |> PackageNameMap.find_opt package_name with
+          match lock_to_vertex_map |> LockMap.find_opt lock with
           | None    -> assert false
           | Some(v) -> v
         in
         let used_in_test_only = not (resulting_source_dependencies |> VertexSet.mem vertex) in
         Alist.extend solution_acc {
-          package_name;
-          locked_version;
+          lock;
           locked_source;
           locked_dependencies;
           used_in_test_only;

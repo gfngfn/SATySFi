@@ -10,12 +10,29 @@ type lock_info = {
 }
 [@@deriving show { with_path = false }]
 
+type package_name = string
+[@@deriving show { with_path = false }]
+
 module PackageNameMap = Map.Make(String)
 
 module PackageNameSet = Set.Make(String)
 
-type package_name = string
-[@@deriving show { with_path = false }]
+module Lock = struct
+  type t = {
+    package_name   : package_name;
+    locked_version : SemanticVersion.t;
+  }
+  [@@deriving show { with_path = false }]
+
+  let compare (lock1 : t) (lock2 : t) : int =
+    let { package_name = s1; locked_version = v1 } = lock1 in
+    let { package_name = s2; locked_version = v2 } = lock2 in
+    match String.compare s1 s2 with
+    | 0       -> SemanticVersion.compare v1 v2
+    | nonzero -> nonzero
+end
+
+module LockMap = Map.Make(Lock)
 
 type package_dependency =
   | PackageDependency of {
@@ -43,10 +60,9 @@ type package_context = {
 }
 
 type package_solution = {
-  package_name        : package_name;
-  locked_version      : SemanticVersion.t;
+  lock                : Lock.t;
   locked_source       : implementation_source;
-  locked_dependencies : (package_name * SemanticVersion.t) list;
+  locked_dependencies : Lock.t list;
   used_in_test_only   : bool;
 }
 [@@deriving show { with_path = false }]
