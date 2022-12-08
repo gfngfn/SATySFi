@@ -41,6 +41,11 @@ let make_solution ?(test_only : bool = false) (package_name : package_name) (s_v
   }
 
 
+let check package_context dependencies_with_flags expected =
+  let got = PackageConstraintSolver.solve package_context dependencies_with_flags in
+  Alcotest.(check (option (list (of_pp pp_package_solution)))) "solutions" expected got
+
+
 let solve_test_1 () =
   let package_context =
     let registry_contents =
@@ -50,14 +55,10 @@ let solve_test_1 () =
           make_impl "2.0.0" [];
         ]);
         ("bar", [
-          make_impl "1.0.0" [
-            make_dependency "foo" "2.0.0";
-          ];
+          make_impl "1.0.0" [ make_dependency "foo" "2.0.0" ];
         ]);
         ("qux", [
-          make_impl "1.0.0" [
-            make_dependency "foo" "1.0.0";
-          ];
+          make_impl "1.0.0" [ make_dependency "foo" "1.0.0" ];
         ]);
       ]
     in
@@ -81,11 +82,45 @@ let solve_test_1 () =
       ];
     ])
   in
-  let got = PackageConstraintSolver.solve package_context dependencies_with_flags in
-  Alcotest.(check (option (list (of_pp pp_package_solution)))) "solutions" expected got
+  check package_context dependencies_with_flags expected
+
+
+let solve_test_2 () =
+  let package_context =
+    let registry_contents =
+      PackageNameMap.of_seq @@ List.to_seq [
+        ("foo", [
+          make_impl "1.0.0" [];
+          make_impl "1.1.0" [];
+        ]);
+        ("bar", [
+          make_impl "1.0.0" [ make_dependency "foo" "1.1.0" ];
+        ]);
+        ("qux", [
+          make_impl "1.0.0" [ make_dependency "foo" "1.0.0" ];
+        ]);
+      ]
+    in
+    { registry_contents }
+  in
+  let dependencies_with_flags =
+    [
+      (SourceDependency, make_dependency "bar" "1.0.0");
+      (SourceDependency, make_dependency "qux" "1.0.0");
+    ]
+  in
+  let expected =
+    Some([
+      make_solution "bar" "1.0.0" [ make_lock "foo" "1.1.0" ];
+      make_solution "foo" "1.1.0" [];
+      make_solution "qux" "1.0.0" [ make_lock "foo" "1.1.0" ];
+    ])
+  in
+  check package_context dependencies_with_flags expected
 
 
 let test_cases =
   Alcotest.[
     test_case "solve 1" `Quick solve_test_1;
+    test_case "solve 2" `Quick solve_test_2;
   ]
