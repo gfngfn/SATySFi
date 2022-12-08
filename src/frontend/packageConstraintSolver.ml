@@ -194,8 +194,9 @@ module SolverInput = struct
     | DummyImpl | LocalImpl(_) ->
         [ "*" ]
 
-    | Impl{ package_name; _ } ->
-        [ package_name ] (* TODO: take major versions into account *)
+    | Impl{ package_name; version; _ } ->
+        let compat = SemanticVersion.get_compatibility_unit version in
+        [ Printf.sprintf "%s/%s" package_name compat ]
 
 
   let rejects (_role : Role.t) : (impl * rejection) list * string list =

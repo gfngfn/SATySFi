@@ -48,3 +48,11 @@ let parse_requirement (s : string) : requirement option =
 
   | _ ->
       None
+
+
+let get_compatibility_unit (semver : t) : string =
+  let Semver.{ major; minor; _ } = semver in
+  if major = 0 then
+    Printf.sprintf "%d.%d" major minor
+  else
+    Printf.sprintf "%d" major

@@ -15,3 +15,5 @@ type requirement =
 [@@deriving show]
 
 val parse_requirement : string -> requirement option
+
+val get_compatibility_unit : t -> string
