@@ -12,8 +12,9 @@ module SolverInput = struct
           context  : package_context;
         }
       | Role of {
-          package_name : package_name;
-          context      : package_context;
+          package_name  : package_name;
+          compatibility : string;
+          context       : package_context;
         }
 
 
@@ -29,8 +30,15 @@ module SolverInput = struct
       | (LocalRole(_), _)            -> 1
       | (_, LocalRole(_))            -> -1
 
-      | (Role{ package_name = name1; _ }, Role{ package_name = name2; _ }) ->
-          String.compare name1 name2
+      | (
+          Role{ package_name = name1; compatibility = c1; _ },
+          Role{ package_name = name2; compatibility = c2; _ }
+        ) ->
+          begin
+            match String.compare name1 name2 with
+            | 0       -> String.compare c1 c2
+            | nonzero -> nonzero
+          end
 
   end
 
@@ -138,21 +146,29 @@ module SolverInput = struct
   let make_internal_dependency (context : package_context) (requires : package_dependency list) : dependency list =
     requires |> List.map (function
     | PackageDependency{ package_name; version_requirement } ->
-        Dependency{ role = Role{ package_name; context }; version_requirement }
+        let compatibility =
+          match version_requirement with
+          | SemanticVersion.CompatibleWith(semver) ->
+              SemanticVersion.get_compatibility_unit semver
+        in
+        Dependency{ role = Role{ package_name; compatibility; context }; version_requirement }
     )
 
 
   let implementations (role : Role.t) : role_information =
     match role with
-    | Role{ package_name; context } ->
+    | Role{ package_name; compatibility; context } ->
         let impl_records =
           context.registry_contents |> PackageNameMap.find_opt package_name |> Option.value ~default:[]
         in
         let impls =
-          impl_records |> List.map (fun impl_record ->
+          impl_records |> List.filter_map (fun impl_record ->
             let ImplRecord{ version; source; requires } = impl_record in
-            let dependencies = make_internal_dependency context requires in
-            Impl{ package_name; version; source; dependencies }
+            if String.equal (SemanticVersion.get_compatibility_unit version) compatibility then
+              let dependencies = make_internal_dependency context requires in
+              Some(Impl{ package_name; version; source; dependencies })
+            else
+              None
           )
         in
         { replacement = None; impls }
