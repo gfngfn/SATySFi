@@ -1,4 +1,6 @@
 language: "0.1.0"
+name: "font-ipa-ex"
+authors: []
 contents:
   type: "font"
   main_module: "FontIpaEx"

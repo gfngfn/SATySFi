@@ -1,4 +1,6 @@
 language: "0.1.0"
+name: "font-latin-modern-math"
+authors: []
 contents:
   type: "font"
   main_module: "FontLatinModernMath"

@@ -1,4 +1,8 @@
 language: "0.1.0"
+name: "stdlib"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "yozu <@yasuo-ozu>"
 contents:
   type: "library"
   main_module: "Stdlib"

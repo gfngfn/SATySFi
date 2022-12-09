@@ -1,4 +1,7 @@
 language: "0.1.0"
+name: "footnote-scheme"
+authors:
+  - "Takashi Suwa <@gfngfn>"
 contents:
   type: "library"
   main_module: "FootnoteScheme"
