@@ -1923,7 +1923,7 @@ let solve
 
       Logging.show_package_dependency_before_solving dependencies_with_flags;
 
-      let* package_context = PackageRegistry.load abspath_registry_config in
+      let* package_context = PackageRegistryConfig.load abspath_registry_config in
       let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
       begin
         match solutions_opt with
