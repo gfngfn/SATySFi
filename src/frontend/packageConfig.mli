@@ -30,6 +30,8 @@ type package_contents =
     }
 
 type t = {
+  package_name     : package_name;
+  package_authors  : string list;
   package_contents : package_contents;
 }
 

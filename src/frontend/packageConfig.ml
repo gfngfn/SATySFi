@@ -34,6 +34,8 @@ type package_contents =
     }
 
 type t = {
+  package_name     : package_name;
+  package_authors  : string list;
   package_contents : package_contents;
 }
 
@@ -203,8 +205,12 @@ let contents_decoder : package_contents ConfigDecoder.t =
 
 let version_0_1_config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
+  get "name" package_name_decoder >>= fun package_name ->
+  get "authors" (list string) >>= fun package_authors ->
   get "contents" contents_decoder >>= fun package_contents ->
   succeed @@ {
+    package_name;
+    package_authors;
     package_contents;
   }
 
