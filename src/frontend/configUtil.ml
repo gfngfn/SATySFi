@@ -6,6 +6,31 @@ open PackageSystemBase
 module ConfigDecoder = YamlDecoder.Make(YamlError)
 
 
+let package_name_decoder : package_name ConfigDecoder.t =
+  let open ConfigDecoder in
+  string >>= fun package_name ->
+  let chars = Core.String.to_list_rev package_name in
+  if
+    chars |> List.for_all (fun char ->
+      Char.equal char '-' || Core.Char.is_digit char || Core.Char.is_lowercase char
+    )
+  then
+    succeed package_name
+  else
+    failure (fun yctx -> InvalidPackageName(yctx, package_name))
+
+
+let version_decoder : SemanticVersion.t ConfigDecoder.t =
+  let open ConfigDecoder in
+  string >>= fun s_version ->
+  match SemanticVersion.parse s_version with
+  | None ->
+      failure (fun yctx -> NotASemanticVersion(yctx, s_version))
+
+  | Some(semver) ->
+      succeed semver
+
+
 let requirement_decoder : SemanticVersion.requirement ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s_version_requirement ->

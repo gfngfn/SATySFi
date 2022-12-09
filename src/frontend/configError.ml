@@ -15,6 +15,7 @@ type yaml_error =
   | UnexpectedTag       of YamlDecoder.context * string
   | UnexpectedLanguage  of string
   | NotASemanticVersion of YamlDecoder.context * string
+  | InvalidPackageName  of YamlDecoder.context * string
   | MultiplePackageDefinition of {
       context      : YamlDecoder.context;
       package_name : string;

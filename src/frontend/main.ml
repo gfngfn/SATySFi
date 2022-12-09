@@ -838,6 +838,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | NotASemanticVersion(yctx, s) ->
       [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
 
+  | InvalidPackageName(yctx, s) ->
+      [ NormalLine(Printf.sprintf "not a package name: '%s'%s" s (show_yaml_context yctx)) ]
+
   | MultiplePackageDefinition{ context = yctx; package_name } ->
       [ NormalLine(Printf.sprintf "More than one definition for package '%s'%s" package_name (show_yaml_context yctx)) ]
 
