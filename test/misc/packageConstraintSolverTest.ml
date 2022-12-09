@@ -19,9 +19,9 @@ let make_dependency (package_name : package_name) (s_version : string) : package
 
 let make_impl (s_version : string) (deps : package_dependency list) : implementation_record =
   ImplRecord{
-    version  = make_version s_version;
-    source   = NoSource;
-    requires = deps;
+    version      = make_version s_version;
+    source       = NoSource;
+    dependencies = deps;
   }
 
 
