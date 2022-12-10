@@ -1928,11 +1928,6 @@ let solve
           |> Result.map_error (fun candidates -> LibraryRootConfigNotFoundIn(libpath, candidates))
       in
       let* _library_root_config = LibraryRootConfig.load abspath_library_root in
-      let* abspath_registry_config =
-        let libpath = make_lib_path "registries/default/registry.yaml" in
-        Config.resolve_lib_file libpath
-          |> Result.map_error (fun candidates -> RegistryConfigNotFoundIn(libpath, candidates))
-      in
       let* (dependencies_with_flags, abspath_lock_config) =
         match solve_input with
         | PackageSolveInput{
@@ -1968,7 +1963,14 @@ let solve
 
       Logging.show_package_dependency_before_solving dependencies_with_flags;
 
-      let* package_context = PackageRegistryConfig.load abspath_registry_config in
+      (* TODO: load registry configs for each registry specified in `library_root_config` and `config` *)
+      let* abspath_registry_config =
+        let libpath = make_lib_path "registries/default/registry.yaml" in
+        Config.resolve_lib_file libpath
+          |> Result.map_error (fun candidates -> RegistryConfigNotFoundIn(libpath, candidates))
+      in
+      let* PackageRegistryConfig.{ packages } = PackageRegistryConfig.load abspath_registry_config in
+      let package_context = { registry_contents = packages } in
       let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
       begin
         match solutions_opt with
