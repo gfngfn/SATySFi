@@ -1,4 +1,4 @@
-language: "0.1.0"
+language: "^0.1.0"
 name: "testing"
 authors:
   - "Takashi Suwa <@gfngfn>"
