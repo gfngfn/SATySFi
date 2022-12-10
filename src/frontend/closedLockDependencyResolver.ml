@@ -19,7 +19,7 @@ let main ~(use_test_only_lock : bool) ~(lock_config_dir : abs_path) ~(extensions
   (* Add vertices: *)
   let* (graph, entryacc) =
     locks |> foldM (fun (graph, entryacc) (lock : LockConfig.locked_package) ->
-      let LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock } = lock in
+      let LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock; _ } = lock in
       if test_only_lock && not use_test_only_lock then
       (* Skips test-only locks when using sources only: *)
         return (graph, entryacc)

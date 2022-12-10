@@ -203,8 +203,9 @@ let contents_decoder : package_contents ConfigDecoder.t =
   )
 
 
-let version_0_1_config_decoder : t ConfigDecoder.t =
+let config_decoder =
   let open ConfigDecoder in
+  get "language" language_version_checker >>= fun () ->
   get "name" package_name_decoder >>= fun package_name ->
   get "authors" (list string) >>= fun package_authors ->
   get "contents" contents_decoder >>= fun package_contents ->
@@ -213,14 +214,6 @@ let version_0_1_config_decoder : t ConfigDecoder.t =
     package_authors;
     package_contents;
   }
-
-
-let config_decoder =
-  let open ConfigDecoder in
-  get "language" string >>= fun language ->
-  match language with
-  | "0.1.0" -> version_0_1_config_decoder
-  | _       -> failure (fun _context -> UnexpectedLanguage(language))
 
 
 let load (absdir_package : abs_path) : t ok =

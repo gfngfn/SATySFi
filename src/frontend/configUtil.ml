@@ -6,6 +6,13 @@ open PackageSystemBase
 module ConfigDecoder = YamlDecoder.Make(YamlError)
 
 
+let language_version_checker : unit ConfigDecoder.t =
+  let open ConfigDecoder in
+  string >>= function
+  | "^0.1.0" -> succeed ()
+  | language -> failure (fun _yctx -> UnexpectedLanguage(language))
+
+
 let package_name_decoder : package_name ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun package_name ->
