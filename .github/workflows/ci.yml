@@ -81,6 +81,10 @@ jobs:
             ./install-libs.sh ~/.satysfi install
           fi
 
+      - name: Check library packages
+        run: |
+          opam exec -- ./check-packages.sh
+
       - name: Build demo docs
         run: |
           (cd demo; opam exec -- make)
