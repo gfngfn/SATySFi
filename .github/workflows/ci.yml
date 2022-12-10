@@ -84,7 +84,7 @@ jobs:
 
       - name: Check library packages
         run: |
-          opam exec -- ./check-packages.sh
+          opam exec -- make test-packages
 
       - name: Build demo docs
         run: |

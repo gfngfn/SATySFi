@@ -5,7 +5,7 @@ BINDIR=$(PREFIX)/bin
 RM=rm -f
 DUNE=dune
 
-.PHONY: all test install uninstall clean
+.PHONY: all test test-packages install uninstall clean
 
 all:
 	$(DUNE) build --root .
@@ -13,6 +13,9 @@ all:
 
 test:
 	$(DUNE) runtest
+
+test-packages:
+	./check-packages.sh
 
 install: $(TARGET)
 	mkdir -p $(BINDIR)
