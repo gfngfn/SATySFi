@@ -1,4 +1,6 @@
 
+val version : string
+
 val build :
   fpath_in:string ->
   fpath_out_opt:(string option) ->

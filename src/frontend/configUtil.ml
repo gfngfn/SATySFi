@@ -6,13 +6,6 @@ open PackageSystemBase
 module ConfigDecoder = YamlDecoder.Make(YamlError)
 
 
-let language_version_checker : unit ConfigDecoder.t =
-  let open ConfigDecoder in
-  string >>= function
-  | "^0.1.0" -> succeed ()
-  | language -> failure (fun _yctx -> UnexpectedLanguage(language))
-
-
 let package_name_decoder : package_name ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun package_name ->
@@ -42,8 +35,17 @@ let requirement_decoder : SemanticVersion.requirement ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s_version_requirement ->
   match SemanticVersion.parse_requirement s_version_requirement with
-  | None         -> failure (fun context -> NotASemanticVersion(context, s_version_requirement))
+  | None         -> failure (fun context -> NotAVersionRequirement(context, s_version_requirement))
   | Some(verreq) -> succeed verreq
+
+
+let language_version_checker : unit ConfigDecoder.t =
+  let open ConfigDecoder in
+  requirement_decoder >>= fun verreq ->
+  if Constant.current_language_version |> SemanticVersion.fulfill verreq then
+    succeed ()
+  else
+    failure (fun _yctx -> UnexpectedLanguage(verreq |> SemanticVersion.requirement_to_string))
 
 
 let dependency_decoder : package_dependency ConfigDecoder.t =

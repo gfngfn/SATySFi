@@ -15,6 +15,11 @@ exception ConfigError of config_error
 exception CannotDeterminePrimaryRoot
 
 
+let version =
+  Printf.sprintf "SATySFi version %s alpha"
+    (SemanticVersion.to_string Constant.current_language_version)
+
+
 (* Initialization that should be performed before every cross-reference-solving loop *)
 let reset () =
   let open ResultMonad in
@@ -837,6 +842,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
 
   | NotASemanticVersion(yctx, s) ->
       [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
+
+  | NotAVersionRequirement(yctx, s) ->
+      [ NormalLine(Printf.sprintf "not a version requirement: '%s'%s" s (show_yaml_context yctx)) ]
 
   | InvalidPackageName(yctx, s) ->
       [ NormalLine(Printf.sprintf "not a package name: '%s'%s" s (show_yaml_context yctx)) ]

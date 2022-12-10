@@ -50,6 +50,18 @@ let parse_requirement (s : string) : requirement option =
       None
 
 
+let requirement_to_string (verreq : requirement) : string =
+  match verreq with
+  | CompatibleWith(semver) ->
+      Printf.sprintf "^%s" (to_string semver)
+
+
+let fulfill (req : requirement) (semver : t) : bool =
+  match req with
+  | CompatibleWith(semver_criterion) ->
+      is_compatible ~old:semver_criterion ~new_:semver
+
+
 let get_compatibility_unit (semver : t) : string =
   let Semver.{ major; minor; _ } = semver in
   if major = 0 then

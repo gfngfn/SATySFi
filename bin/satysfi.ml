@@ -1,8 +1,4 @@
 
-let version =
-  "SATySFi version 0.1.0 alpha"
-
-
 let build
   fpath_in
   fpath_out_opt
@@ -217,7 +213,7 @@ let () =
     Term.(ret (const (`Error(true, "No subcommand specified."))))
   in
   let info : Cmd.info =
-    Cmd.info ~version:version "satysfi"
+    Cmd.info ~version:Main.version "satysfi"
   in
   let subcommands =
     [

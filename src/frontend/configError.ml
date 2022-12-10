@@ -5,17 +5,18 @@ open Types
 
 
 type yaml_error =
-  | ParseError          of string
-  | FieldNotFound       of YamlDecoder.context * string
-  | NotAFloat           of YamlDecoder.context
-  | NotAString          of YamlDecoder.context
-  | NotABool            of YamlDecoder.context
-  | NotAnArray          of YamlDecoder.context
-  | NotAnObject         of YamlDecoder.context
-  | UnexpectedTag       of YamlDecoder.context * string
-  | UnexpectedLanguage  of string
-  | NotASemanticVersion of YamlDecoder.context * string
-  | InvalidPackageName  of YamlDecoder.context * string
+  | ParseError             of string
+  | FieldNotFound          of YamlDecoder.context * string
+  | NotAFloat              of YamlDecoder.context
+  | NotAString             of YamlDecoder.context
+  | NotABool               of YamlDecoder.context
+  | NotAnArray             of YamlDecoder.context
+  | NotAnObject            of YamlDecoder.context
+  | UnexpectedTag          of YamlDecoder.context * string
+  | UnexpectedLanguage     of string
+  | NotASemanticVersion    of YamlDecoder.context * string
+  | NotAVersionRequirement of YamlDecoder.context * string
+  | InvalidPackageName     of YamlDecoder.context * string
   | MultiplePackageDefinition of {
       context      : YamlDecoder.context;
       package_name : string;
