@@ -58,6 +58,9 @@ type config_error =
   | RegistryConfigNotFound    of abs_path
   | RegistryConfigNotFoundIn  of lib_path * abs_path list
   | RegistryConfigError       of abs_path * yaml_error
+  | LibraryRootConfigNotFound of abs_path
+  | LibraryRootConfigNotFoundIn of lib_path * abs_path list
+  | LibraryRootConfigError    of abs_path * yaml_error
   | LockNameConflict          of lock_name
   | LockedPackageNotFound     of lib_path * abs_path list
   | DependencyOnUnknownLock of {

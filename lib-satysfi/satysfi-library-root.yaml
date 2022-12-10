@@ -1,0 +1,7 @@
+language: "^0.1.0"
+registries:
+- name: "default"
+  remote:
+    type: "git"
+    url: "https://github.com/SATySFi/default-registry"
+    branch: "format-1"

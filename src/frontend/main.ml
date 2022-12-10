@@ -1036,6 +1036,29 @@ let report_config_error : config_error -> unit = function
         make_yaml_error_lines e;
       ])
 
+  | LibraryRootConfigNotFound(abspath) ->
+      report_error Interface [
+        NormalLine("cannot find a library root config at:");
+        DisplayLine(get_abs_path_string abspath);
+      ]
+
+  | LibraryRootConfigNotFoundIn(libpath, candidates) ->
+      let lines =
+        candidates |> List.map (fun abspath ->
+          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+        )
+      in
+      report_error Interface (List.concat [
+        [ NormalLine(Printf.sprintf "cannot find a library root config '%s'. candidates:" (get_lib_path_string libpath)) ];
+        lines;
+      ])
+
+  | LibraryRootConfigError(abspath, e) ->
+      report_error Interface (List.concat [
+        [ NormalLine(Printf.sprintf "in %s: library root config error;" (get_abs_path_string abspath)) ];
+        make_yaml_error_lines e;
+      ])
+
   | LockNameConflict(lock_name) ->
       report_error Interface [
         NormalLine(Printf.sprintf "lock name conflict: '%s'" lock_name);
@@ -1899,6 +1922,12 @@ let solve
 
     let res =
       let open ResultMonad in
+      let* abspath_library_root =
+        let libpath = make_lib_path "satysfi-library-root.yaml" in
+        Config.resolve_lib_file libpath
+          |> Result.map_error (fun candidates -> LibraryRootConfigNotFoundIn(libpath, candidates))
+      in
+      let* _library_root_config = LibraryRootConfig.load abspath_library_root in
       let* abspath_registry_config =
         let libpath = make_lib_path "registries/default/registry.yaml" in
         Config.resolve_lib_file libpath

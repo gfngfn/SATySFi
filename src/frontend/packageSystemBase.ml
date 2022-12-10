@@ -83,3 +83,14 @@ type implementation_spec =
       container_directory : abs_path;
       source              : implementation_source;
     }
+
+type registry_remote =
+  | GitRegistry of {
+      url    : string;
+      branch : string;
+    }
+
+type registry_spec = {
+  registry_name   : string;
+  registry_remote : registry_remote;
+}
