@@ -1,6 +1,7 @@
 
 open Main__PackageSystemBase
 module SemanticVersion = Main__SemanticVersion
+module Constant = Main__Constant
 module PackageConstraintSolver = Main__PackageConstraintSolver
 
 
@@ -19,9 +20,10 @@ let make_dependency (package_name : package_name) (s_version : string) : package
 
 let make_impl (s_version : string) (deps : package_dependency list) : implementation_record =
   ImplRecord{
-    version      = make_version s_version;
-    source       = NoSource;
-    dependencies = deps;
+    version              = make_version s_version;
+    source               = NoSource;
+    language_requirement = SemanticVersion.CompatibleWith(Constant.current_language_version);
+    dependencies         = deps;
   }
 
 
