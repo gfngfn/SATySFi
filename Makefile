@@ -5,11 +5,14 @@ BINDIR=$(PREFIX)/bin
 RM=rm -f
 DUNE=dune
 
-.PHONY: all install lib uninstall clean
+.PHONY: all test install uninstall clean
 
 all:
 	$(DUNE) build --root .
 	cp _build/install/default/bin/$(TARGET) .
+
+test:
+	$(DUNE) runtest
 
 install: $(TARGET)
 	mkdir -p $(BINDIR)

@@ -63,11 +63,12 @@ jobs:
           opam install . --deps-only --with-doc --with-test --verbose
 
       - name: Build SATySFi
-        run: opam exec -- make all
-
-      - name: Run tests
         run: |
-          opam exec -- dune runtest
+          opam exec -- make all
+
+      - name: Run unit tests
+        run: |
+          opam exec -- make test
 
       - name: Install SATySFi
         run: |
@@ -89,4 +90,7 @@ jobs:
         run: |
           (cd demo; opam exec -- make)
           (cd doc; opam exec -- make)
+
+      - name: Run integration tests
+        run: |
           (cd tests; opam exec -- make)
