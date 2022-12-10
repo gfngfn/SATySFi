@@ -15,6 +15,11 @@ exception ConfigError of config_error
 exception CannotDeterminePrimaryRoot
 
 
+let version =
+  Printf.sprintf "SATySFi version %s alpha"
+    (SemanticVersion.to_string Constant.current_language_version)
+
+
 (* Initialization that should be performed before every cross-reference-solving loop *)
 let reset () =
   let open ResultMonad in
@@ -837,6 +842,12 @@ let make_yaml_error_lines : yaml_error -> line list = function
 
   | NotASemanticVersion(yctx, s) ->
       [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
+
+  | NotAVersionRequirement(yctx, s) ->
+      [ NormalLine(Printf.sprintf "not a version requirement: '%s'%s" s (show_yaml_context yctx)) ]
+
+  | InvalidPackageName(yctx, s) ->
+      [ NormalLine(Printf.sprintf "not a package name: '%s'%s" s (show_yaml_context yctx)) ]
 
   | MultiplePackageDefinition{ context = yctx; package_name } ->
       [ NormalLine(Printf.sprintf "More than one definition for package '%s'%s" package_name (show_yaml_context yctx)) ]
@@ -1786,7 +1797,15 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
       in
       let lock_dependencies = solution.locked_dependencies |> List.map make_lock_name in
       let test_only_lock = solution.used_in_test_only in
-      let locked_package = LockConfig.{ lock_name; lock_location; lock_dependencies; test_only_lock } in
+      let locked_package =
+        LockConfig.{
+          lock_name;
+          lock_location;
+          lock_dependencies;
+          test_only_lock;
+          lock_package_name = package_name;
+        }
+      in
       let impl_spec =
         let abspath_primary_root = get_primary_root_dir () in
         let abspath_container =
@@ -1920,7 +1939,7 @@ let solve
 
       Logging.show_package_dependency_before_solving dependencies_with_flags;
 
-      let* package_context = PackageRegistry.load abspath_registry_config in
+      let* package_context = PackageRegistryConfig.load abspath_registry_config in
       let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
       begin
         match solutions_opt with

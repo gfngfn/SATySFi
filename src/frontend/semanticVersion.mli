@@ -16,4 +16,8 @@ type requirement =
 
 val parse_requirement : string -> requirement option
 
+val requirement_to_string : requirement -> string
+
+val fulfill : requirement -> t -> bool
+
 val get_compatibility_unit : t -> string

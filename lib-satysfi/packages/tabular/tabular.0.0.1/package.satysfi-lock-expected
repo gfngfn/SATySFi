@@ -1,0 +1,9 @@
+language: ^0.1.0
+locks:
+- name: stdlib.0.0.1
+  location:
+    type: global
+    path: ./packages/stdlib/stdlib.0.0.1
+  dependencies: []
+  test_only: false
+  lock_package_name: stdlib

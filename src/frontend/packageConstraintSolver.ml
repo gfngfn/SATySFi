@@ -163,10 +163,13 @@ module SolverInput = struct
         in
         let impls =
           impl_records |> List.filter_map (fun impl_record ->
-            let ImplRecord{ version; source; requires } = impl_record in
-            if String.equal (SemanticVersion.get_compatibility_unit version) compatibility then
-              let dependencies = make_internal_dependency context requires in
-              Some(Impl{ package_name; version; source; dependencies })
+            let ImplRecord{ version; source; language_requirement; dependencies } = impl_record in
+            if Constant.current_language_version |> SemanticVersion.fulfill language_requirement then
+              if String.equal (SemanticVersion.get_compatibility_unit version) compatibility then
+                let dependencies = make_internal_dependency context dependencies in
+                Some(Impl{ package_name; version; source; dependencies })
+              else
+                None
             else
               None
           )

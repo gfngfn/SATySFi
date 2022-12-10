@@ -1,4 +1,10 @@
-language: "0.1.0"
+language: "^0.1.0"
+name: "std-ja-book"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "Daiki Matsunaga <@matsud224>"
+  - "Takuma Ishikawa <@nekketsuuu>"
+  - "Naoki Kaneko <@puripuri2100>"
 contents:
   type: "library"
   main_module: "StdJaBook"

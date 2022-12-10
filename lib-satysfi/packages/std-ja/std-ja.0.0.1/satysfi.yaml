@@ -1,4 +1,10 @@
-language: "0.1.0"
+language: "^0.1.0"
+name: "std-ja"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "pandaman <@pandaman64>"
+  - "Takuma Ishikawa <@nekketsuuu>"
+  - "Daiki Matsunaga <@matsud224>"
 contents:
   type: "library"
   main_module: "StdJa"

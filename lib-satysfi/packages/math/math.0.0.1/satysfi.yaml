@@ -1,4 +1,13 @@
-language: "0.1.0"
+language: "^0.1.0"
+name: "math"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "Toru Niina <@ToruNiina>"
+  - "forestaa <@forestaa>"
+  - "Takuma Ishikawa <@nekketsuuu>"
+  - "El Pin Al <@elpinal>"
+  - "coord_e <@coord-e>"
+  - "SnO₂WMaN <@SnO2WMaN>"
 contents:
   type: "library"
   main_module: "Math"

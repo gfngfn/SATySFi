@@ -50,9 +50,10 @@ type implementation_source =
 
 type implementation_record =
   | ImplRecord of {
-      version  : SemanticVersion.t;
-      source   : implementation_source;
-      requires : package_dependency list;
+      version              : SemanticVersion.t;
+      source               : implementation_source;
+      language_requirement : SemanticVersion.requirement;
+      dependencies         : package_dependency list;
     }
 
 type package_context = {

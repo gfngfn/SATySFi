@@ -1,3 +1,4 @@
+language: ^0.1.0
 locks:
 - name: font-ipa-ex.0.0.1
   location:
@@ -5,24 +6,28 @@ locks:
     path: ./packages/font-ipa-ex/font-ipa-ex.0.0.1
   dependencies: []
   test_only: false
+  lock_package_name: font-ipa-ex
 - name: font-junicode.0.0.1
   location:
     type: global
     path: ./packages/font-junicode/font-junicode.0.0.1
   dependencies: []
   test_only: false
+  lock_package_name: font-junicode
 - name: font-latin-modern.0.0.1
   location:
     type: global
     path: ./packages/font-latin-modern/font-latin-modern.0.0.1
   dependencies: []
   test_only: false
+  lock_package_name: font-latin-modern
 - name: font-latin-modern-math.0.0.1
   location:
     type: global
     path: ./packages/font-latin-modern-math/font-latin-modern-math.0.0.1
   dependencies: []
   test_only: false
+  lock_package_name: font-latin-modern-math
 - name: math.0.0.1
   location:
     type: global
@@ -30,9 +35,11 @@ locks:
   dependencies:
   - stdlib.0.0.1
   test_only: false
+  lock_package_name: math
 - name: stdlib.0.0.1
   location:
     type: global
     path: ./packages/stdlib/stdlib.0.0.1
   dependencies: []
   test_only: false
+  lock_package_name: stdlib

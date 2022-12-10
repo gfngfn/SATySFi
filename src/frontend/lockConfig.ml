@@ -20,6 +20,7 @@ type locked_package = {
   lock_location     : lock_location;
   lock_dependencies : lock_name list;
   test_only_lock    : bool;
+  lock_package_name : package_name;
 }
 
 type t = {
@@ -63,6 +64,7 @@ let lock_decoder : locked_package ConfigDecoder.t =
   let open ConfigDecoder in
   get "name" string >>= fun lock_name ->
   get "location" lock_location_decoder >>= fun lock_location ->
+  get "lock_package_name" package_name_decoder >>= fun lock_package_name ->
   get_or_else "dependencies" (list string) [] >>= fun lock_dependencies ->
   get_or_else "test_only" bool false >>= fun test_only_lock ->
   succeed {
@@ -70,6 +72,7 @@ let lock_decoder : locked_package ConfigDecoder.t =
     lock_location;
     lock_dependencies;
     test_only_lock;
+    lock_package_name;
   }
 
 
@@ -79,11 +82,13 @@ let lock_encoder (lock : locked_package) : Yaml.value =
     ("location", lock_location_encoder lock.lock_location);
     ("dependencies", `A(lock.lock_dependencies |> List.map (fun lock_name -> `String(lock_name))));
     ("test_only", `Bool(lock.test_only_lock));
+    ("lock_package_name", `String(lock.lock_package_name));
   ])
 
 
 let lock_config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
+  get "language" language_version_checker >>= fun () ->
   get_or_else "locks" (list lock_decoder) [] >>= fun locked_packages ->
   succeed {
     locked_packages;
@@ -92,7 +97,8 @@ let lock_config_decoder : t ConfigDecoder.t =
 
 let lock_config_encoder (lock_config : t) : Yaml.value =
   `O([
-    ("locks", `A(lock_config.locked_packages |> List.map lock_encoder))
+    ("language", `String("^0.1.0"));
+    ("locks", `A(lock_config.locked_packages |> List.map lock_encoder));
   ])
 
 

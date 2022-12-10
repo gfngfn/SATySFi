@@ -69,23 +69,6 @@ locks:
   - stdlib.0.0.1
   test_only: false
   lock_package_name: math
-- name: md-ja.0.0.1
-  location:
-    type: global
-    path: ./packages/md-ja/md-ja.0.0.1
-  dependencies:
-  - stdlib.0.0.1
-  - math.0.0.1
-  - annot.0.0.1
-  - code.0.0.1
-  - footnote-scheme.0.0.1
-  - itemize.0.0.1
-  - font-junicode.0.0.1
-  - font-latin-modern.0.0.1
-  - font-ipa-ex.0.0.1
-  - font-latin-modern-math.0.0.1
-  test_only: false
-  lock_package_name: md-ja
 - name: stdlib.0.0.1
   location:
     type: global

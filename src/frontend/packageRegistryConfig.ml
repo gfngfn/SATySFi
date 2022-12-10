@@ -23,24 +23,16 @@ let source_decoder : implementation_source ConfigDecoder.t =
 
 let implementation_decoder : implementation_record ConfigDecoder.t =
   let open ConfigDecoder in
-  get "version" string >>= fun s_version ->
+  get "version" version_decoder >>= fun version ->
   get_or_else "source" source_decoder NoSource >>= fun source ->
+  get "language" requirement_decoder >>= fun language_requirement ->
   get "dependencies" (list dependency_decoder) >>= fun dependencies ->
-  match SemanticVersion.parse s_version with
-  | None ->
-      failure @@ (fun yctx -> NotASemanticVersion(yctx, s_version))
-
-  | Some(semver) ->
-      succeed @@ ImplRecord{
-        version  = semver;
-        source   = source;
-        requires = dependencies;
-      }
+  succeed @@ ImplRecord{ version; source; language_requirement; dependencies }
 
 
 let package_decoder : (package_name * implementation_record list) ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun package_name ->
+  get "name" package_name_decoder >>= fun package_name ->
   get "implementations" (list implementation_decoder) >>= fun impls ->
   succeed (package_name, impls)
 

@@ -1,4 +1,8 @@
-language: "0.1.0"
+language: "^0.1.0"
+name: "code"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "Naoki Kaneko <@puripuri2100>"
 contents:
   type: "library"
   main_module: "Code"

@@ -2,6 +2,7 @@ packages:
 - name: "testing"
   implementations:
   - version: "0.0.1"
+    language: "^0.1.0"
     dependencies: []
 - name: "stdlib"
   implementations:
@@ -9,6 +10,7 @@ packages:
     source:
       type: "tar_gzip"
       url: "https://gfngfn.github.io/temp/stdlib.0.0.1.tar.gz"
+    language: "^0.1.0"
     dependencies: []
 - name: "math"
   implementations:
@@ -16,6 +18,7 @@ packages:
     source:
       type: "tar_gzip"
       url: "https://gfngfn.github.io/temp/math.0.0.1.tar.gz"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
@@ -25,6 +28,7 @@ packages:
     source:
       type: "tar_gzip"
       url: "https://gfngfn.github.io/temp/code.0.0.1.tar.gz"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
@@ -36,24 +40,28 @@ packages:
     source:
       type: "tar_gzip"
       url: "https://gfngfn.github.io/temp/annot.0.0.1.tar.gz"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
 - name: "itemize"
   implementations:
   - version: "0.0.1"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
 - name: "proof"
   implementations:
   - version: "0.0.1"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
 - name: "tabular"
   implementations:
   - version: "0.0.1"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
@@ -63,12 +71,14 @@ packages:
     source:
       type: "tar_gzip"
       url: "https://gfngfn.github.io/temp/footnote-scheme.0.0.1.tar.gz"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
 - name: "std-ja"
   implementations:
   - version: "0.0.1"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
@@ -92,6 +102,7 @@ packages:
     source:
       type: "tar_gzip"
       url: "https://gfngfn.github.io/temp/std-ja-book.0.0.1.tar.gz"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
@@ -114,6 +125,7 @@ packages:
 - name: "std-ja-report"
   implementations:
   - version: "0.0.1"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
@@ -136,6 +148,7 @@ packages:
 - name: "md-ja"
   implementations:
   - version: "0.0.1"
+    language: "^0.1.0"
     dependencies:
     - name: "stdlib"
       requirement: "^0.0.1"
@@ -163,6 +176,7 @@ packages:
     source:
       type: "tar_gzip"
       url: "https://gfngfn.github.io/temp/font-latin-modern.0.0.1.tar.gz"
+    language: "^0.1.0"
     dependencies: []
 - name: "font-junicode"
   implementations:
@@ -170,6 +184,7 @@ packages:
     source:
       type: "tar_gzip"
       url: "https://gfngfn.github.io/temp/font-junicode.0.0.1.tar.gz"
+    language: "^0.1.0"
     dependencies: []
 - name: "font-ipa-ex"
   implementations:
@@ -177,6 +192,7 @@ packages:
     source:
       type: "tar_gzip"
       url: "https://gfngfn.github.io/temp/font-ipa-ex.0.0.1.tar.gz"
+    language: "^0.1.0"
     dependencies: []
 - name: "font-latin-modern-math"
   implementations:
@@ -184,4 +200,5 @@ packages:
     source:
       type: "tar_gzip"
       url: "https://gfngfn.github.io/temp/font-latin-modern-math.0.0.1.tar.gz"
+    language: "^0.1.0"
     dependencies: []

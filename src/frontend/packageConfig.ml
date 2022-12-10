@@ -34,6 +34,8 @@ type package_contents =
     }
 
 type t = {
+  package_name     : package_name;
+  package_authors  : string list;
   package_contents : package_contents;
 }
 
@@ -201,20 +203,17 @@ let contents_decoder : package_contents ConfigDecoder.t =
   )
 
 
-let version_0_1_config_decoder : t ConfigDecoder.t =
-  let open ConfigDecoder in
-  get "contents" contents_decoder >>= fun package_contents ->
-  succeed @@ {
-    package_contents;
-  }
-
-
 let config_decoder =
   let open ConfigDecoder in
-  get "language" string >>= fun language ->
-  match language with
-  | "0.1.0" -> version_0_1_config_decoder
-  | _       -> failure (fun _context -> UnexpectedLanguage(language))
+  get "language" language_version_checker >>= fun () ->
+  get "name" package_name_decoder >>= fun package_name ->
+  get "authors" (list string) >>= fun package_authors ->
+  get "contents" contents_decoder >>= fun package_contents ->
+  succeed @@ {
+    package_name;
+    package_authors;
+    package_contents;
+  }
 
 
 let load (absdir_package : abs_path) : t ok =
