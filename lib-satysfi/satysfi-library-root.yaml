@@ -1,6 +1,6 @@
 language: "^0.1.0"
 registries:
-- name: "default"
+- hash_value: "6fdf914146bf3415f804ad9812bd9ec7"
   remote:
     type: "git"
     url: "https://github.com/SATySFi/default-registry"

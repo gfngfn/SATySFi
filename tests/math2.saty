@@ -1,11 +1,23 @@
-#[dependencies [
-  (`stdlib`, `^0.0.1`),
-  (`math`, `^0.0.1`),
-  (`font-junicode`, `^0.0.1`),
-  (`font-ipa-ex`, `^0.0.1`),
-  (`font-latin-modern`, `^0.0.1`),
-  (`font-latin-modern-math`, `^0.0.1`),
-]]
+#[config (|
+  registries = [
+    (|
+      name = `default`,
+      remote =
+        Git(|
+          url = `https://github.com/SATySFi/default-registry`,
+          branch = `format-1`,
+        |)
+    |)
+  ],
+  dependencies = [
+    (| name = `stdlib`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `math`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-junicode`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-ipa-ex`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-latin-modern`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-latin-modern-math`, registry = `default`, requirement = `^0.0.1` |),
+  ],
+|)]
 use package Math
 use Head of `head`
 

@@ -8,6 +8,12 @@ authors:
   - "El Pin Al <@elpinal>"
   - "coord_e <@coord-e>"
   - "SnO₂WMaN <@SnO2WMaN>"
+registries:
+  - name: "default"
+    remote:
+      type: "git"
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "format-1"
 contents:
   type: "library"
   main_module: "Math"
@@ -15,4 +21,5 @@ contents:
     - "./src"
   dependencies:
     - name: "stdlib"
+      registry: "default"
       requirement: "^0.0.1"
