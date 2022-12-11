@@ -1,0 +1,7 @@
+language: ^0.1.0
+registries:
+- hash_value: d9b4b850ab61a7b68961c6315048b351
+  remote:
+    type: git
+    url: https://github.com/SATySFi/default-registry
+    branch: format-1

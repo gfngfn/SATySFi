@@ -19,7 +19,8 @@
             ocamlgraph
             yaml
             0install-solver
-            semver2)
+            semver2
+            uri)
  (preprocess (pps
               ppx_deriving.show
               ))

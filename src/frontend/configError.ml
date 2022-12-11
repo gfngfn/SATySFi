@@ -21,6 +21,14 @@ type yaml_error =
       context      : YamlDecoder.context;
       package_name : string;
     }
+  | DuplicateRegistryLocalName of {
+      context             : YamlDecoder.context;
+      registry_local_name : registry_local_name;
+    }
+  | DuplicateRegistryHashValue of {
+      context             : YamlDecoder.context;
+      registry_hash_value : registry_hash_value;
+    }
   | NotACommand of {
       context : YamlDecoder.context;
       prefix  : char;
@@ -58,6 +66,9 @@ type config_error =
   | RegistryConfigNotFound    of abs_path
   | RegistryConfigNotFoundIn  of lib_path * abs_path list
   | RegistryConfigError       of abs_path * yaml_error
+  | LibraryRootConfigNotFound of abs_path
+  | LibraryRootConfigNotFoundIn of lib_path * abs_path list
+  | LibraryRootConfigError    of abs_path * yaml_error
   | LockNameConflict          of lock_name
   | LockedPackageNotFound     of lib_path * abs_path list
   | DependencyOnUnknownLock of {
@@ -85,3 +96,5 @@ type config_error =
   | MoreThanOneMarkdownConversion of module_name
   | MarkdownError                 of MarkdownParser.error
   | LockFetcherError              of LockFetcher.error
+  | PackageRegistryFetcherError   of PackageRegistryFetcher.error
+  | CanonicalRegistryUrlError     of CanonicalRegistryUrl.error

@@ -385,13 +385,13 @@ type t = {
 let decode (s : string) : (DocumentAttribute.t * module_name * t) ok =
   let open ResultMonad in
   let obs = Omd.of_string s in
-  let* (s_dependencies, modnm, s_extra, obs) =
+  let* (s_config, modnm, s_extra, obs) =
     match obs with
     | Omd.Html_block(_attr1, s1) :: Omd.Html_block(_attr2, s2) :: Omd.Html_block(_attr3, s3) :: obs ->
         begin
           match (extract_comment s1, extract_comment s2, extract_comment s3) with
-          | (Some(s_dependencies), Some(modnm), Some(s_extra)) ->
-              return (s_dependencies, modnm, s_extra, obs)
+          | (Some(s_config), Some(modnm), Some(s_extra)) ->
+              return (s_config, modnm, s_extra, obs)
 
           | _ ->
               err InvalidHeaderComment
@@ -400,12 +400,12 @@ let decode (s : string) : (DocumentAttribute.t * module_name * t) ok =
     | _ ->
         err InvalidHeaderComment
   in
-  let* utast_dependencies = parse_expression s_dependencies in
+  let* utast_config = parse_expression s_config in
   let* utast_extra = parse_expression s_extra in
   let main_contents = normalize_h1 obs in
   let document_attributes_res =
     DocumentAttribute.make [
-      (dummy_range, UTAttribute("dependencies", Some(utast_dependencies)))
+      (dummy_range, UTAttribute("config", Some(utast_config)))
     ]
   in
   match document_attributes_res with

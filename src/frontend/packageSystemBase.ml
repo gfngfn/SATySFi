@@ -34,8 +34,30 @@ end
 
 module LockMap = Map.Make(Lock)
 
+(* The type for names that stand for a package registry.
+   Names of this type are supposed to be valid
+   within the scope of one package config file. *)
+type registry_local_name = string
+[@@deriving show { with_path = false }]
+
+module RegistryLocalNameMap = Map.Make(String)
+
+(* The type for MD5 hash values made of a URL and a branch name. *)
+type registry_hash_value = string
+[@@deriving show { with_path = false }]
+
+module RegistryHashValueMap = Map.Make(String)
+
 type package_dependency =
   | PackageDependency of {
+      package_name        : package_name;
+      registry_local_name : registry_local_name;
+      version_requirement : SemanticVersion.requirement;
+    }
+[@@deriving show { with_path = false }]
+
+type package_dependency_in_registry =
+  | PackageDependencyInRegistry of {
       package_name        : package_name;
       version_requirement : SemanticVersion.requirement;
     }
@@ -53,11 +75,11 @@ type implementation_record =
       version              : SemanticVersion.t;
       source               : implementation_source;
       language_requirement : SemanticVersion.requirement;
-      dependencies         : package_dependency list;
+      dependencies         : package_dependency_in_registry list;
     }
 
 type package_context = {
-  registry_contents : (implementation_record list) PackageNameMap.t;
+  registries : ((implementation_record list) PackageNameMap.t) RegistryLocalNameMap.t;
 }
 
 type package_solution = {
@@ -82,4 +104,10 @@ type implementation_spec =
       lock_name           : lock_name;
       container_directory : abs_path;
       source              : implementation_source;
+    }
+
+type registry_remote =
+  | GitRegistry of {
+      url    : string;
+      branch : string;
     }

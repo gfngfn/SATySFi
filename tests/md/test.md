@@ -1,6 +1,18 @@
-<!-- [
-  (`md-ja`, `^0.0.1`),
-] -->
+<!-- (|
+  registries = [
+    (|
+      name = `default`,
+      remote =
+        Git(|
+          url = `https://github.com/SATySFi/default-registry`,
+          branch = `format-1`,
+        |)
+    |)
+  ],
+  dependencies = [
+    (| name = `md-ja`, registry = `default`, requirement = `^0.0.1` |),
+  ],
+|) -->
 <!-- MDJa -->
 <!-- (|
   title = {A Type System of Labeled Optional Parameters},

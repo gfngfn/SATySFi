@@ -2,6 +2,12 @@ language: "^0.1.0"
 name: "itemize"
 authors:
   - "Takashi Suwa <@gfngfn>"
+registries:
+  - name: "default"
+    remote:
+      type: "git"
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "format-1"
 contents:
   type: "library"
   main_module: "Itemize"
@@ -9,4 +15,5 @@ contents:
     - "./src"
   dependencies:
     - name: "stdlib"
+      registry: "default"
       requirement: "^0.0.1"

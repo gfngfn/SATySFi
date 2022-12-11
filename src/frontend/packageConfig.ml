@@ -37,6 +37,7 @@ type t = {
   package_name     : package_name;
   package_authors  : string list;
   package_contents : package_contents;
+  registry_specs   : registry_remote RegistryLocalNameMap.t;
 }
 
 
@@ -203,23 +204,39 @@ let contents_decoder : package_contents ConfigDecoder.t =
   )
 
 
-let config_decoder =
+let registry_spec_decoder =
+  let open ConfigDecoder in
+  get "name" string >>= fun registry_local_name ->
+  get "remote" registry_remote_decoder >>= fun registry_remote ->
+  succeed (registry_local_name, registry_remote)
+
+
+let config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
   get "language" language_version_checker >>= fun () ->
   get "name" package_name_decoder >>= fun package_name ->
   get "authors" (list string) >>= fun package_authors ->
+  get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
   get "contents" contents_decoder >>= fun package_contents ->
+  registry_specs |> List.fold_left (fun res (registry_local_name, registry_remote) ->
+    res >>= fun map ->
+    if map |> RegistryLocalNameMap.mem registry_local_name then
+      failure (fun context -> DuplicateRegistryLocalName{ context; registry_local_name })
+    else
+      succeed (map |> RegistryLocalNameMap.add registry_local_name registry_remote)
+  ) (succeed RegistryLocalNameMap.empty) >>= fun registry_specs ->
   succeed @@ {
     package_name;
     package_authors;
     package_contents;
+    registry_specs;
   }
 
 
 let load (absdir_package : abs_path) : t ok =
   let open ResultMonad in
   let abspath_config =
-    make_abs_path (Filename.concat (get_abs_path_string absdir_package) "satysfi.yaml")
+    make_abs_path (Filename.concat (get_abs_path_string absdir_package) Constant.package_config_file_name)
   in
   let* s =
     read_file abspath_config

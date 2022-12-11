@@ -3,6 +3,12 @@ name: "stdlib"
 authors:
   - "Takashi Suwa <@gfngfn>"
   - "yozu <@yasuo-ozu>"
+registries:
+  - name: "default"
+    remote:
+      type: "git"
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "format-1"
 contents:
   type: "library"
   main_module: "Stdlib"
@@ -13,4 +19,5 @@ contents:
   dependencies: []
   test_dependencies:
   - name: "testing"
+    registry: "default"
     requirement: "^0.0.1"
