@@ -924,6 +924,12 @@ let report_document_attribute_error : DocumentAttribute.error -> unit = function
         NormalLine(Printf.sprintf "not a list literal.");
       ]
 
+  | DuplicateRegistryLocalName{ list_range; registry_local_name } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string list_range));
+        NormalLine(Printf.sprintf "this list has more than one registy named '%s'." registry_local_name);
+      ]
+
 
 let report_config_error : config_error -> unit = function
   | NotADocumentFile(abspath_in, ty) ->
@@ -2023,14 +2029,8 @@ let solve
             path = abspath_in;
             lock = abspath_lock_config;
           } ->
-            let* DocumentAttribute.{ registries; dependencies } =
+            let* DocumentAttribute.{ registry_specs; dependencies } =
               extract_attributes_from_document_file input_kind abspath_in
-            in
-            let registry_specs =
-              registries |> List.fold_left (fun registry_specs (registry_local_name, registry_remote) ->
-                registry_specs |> RegistryLocalNameMap.add registry_local_name registry_remote
-                  (* TODO: check duplication *)
-              ) RegistryLocalNameMap.empty
             in
             let dependencies_with_flags = dependencies |> List.map (fun dep -> (SourceDependency, dep)) in
             return (dependencies_with_flags, abspath_lock_config, registry_specs)

@@ -20,12 +20,16 @@ type error =
   | NotARegistryRemote       of Range.t
   | NotAListLiteral          of Range.t
   | NotAStringLiteral        of Range.t
+  | DuplicateRegistryLocalName of {
+      list_range          : Range.t;
+      registry_local_name : registry_local_name;
+    }
 
 type 'a ok = ('a, error) result
 
 type t = {
-  registries   : (registry_local_name * registry_remote) list;
-  dependencies : package_dependency list;
+  registry_specs : registry_remote RegistryLocalNameMap.t;
+  dependencies   : package_dependency list;
 }
 
 
@@ -140,8 +144,9 @@ let decode_config (utast : untyped_abstract_tree) : t ok =
   let open ResultMonad in
   match utast with
   | (record_range, UTRecord(r)) ->
+      let* utast_registries = r |> get_unique ~record_range "registries" in
+      let (list_range, _) = utast_registries in
       let* registries =
-        let* utast_registries = r |> get_unique ~record_range "registries" in
         let* utasts_registries = expect_list utast_registries in
         utasts_registries |> mapM decode_registry
       in
@@ -150,7 +155,15 @@ let decode_config (utast : untyped_abstract_tree) : t ok =
         let* utasts_dependencies = expect_list utast_dependencies in
         utasts_dependencies |> mapM decode_dependency
       in
-      return { registries; dependencies }
+      let* registry_specs =
+        registries |> foldM (fun map (registry_local_name, registry_remote) ->
+          if map |> RegistryLocalNameMap.mem registry_local_name then
+            err @@ DuplicateRegistryLocalName{ list_range; registry_local_name }
+          else
+            return (map |> RegistryLocalNameMap.add registry_local_name registry_remote)
+        ) RegistryLocalNameMap.empty
+      in
+      return { registry_specs; dependencies }
 
   | (rng, _) ->
       err @@ NotAPackageDependency(rng)
@@ -169,7 +182,7 @@ let make (attrs : untyped_attribute list) : t ok =
   in
   match dependencies_attrs with
   | [] ->
-      return { registries = []; dependencies = [] }
+      return { registry_specs = RegistryLocalNameMap.empty; dependencies = [] }
 
   | [ (_, Some(utast)) ] ->
       decode_config utast
