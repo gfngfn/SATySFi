@@ -14,11 +14,19 @@ let make_version (s_version : string) : SemanticVersion.t =
 let make_dependency (package_name : package_name) (s_version : string) : package_dependency =
   PackageDependency{
     package_name;
+    registry_local_name = "default";
     version_requirement = SemanticVersion.CompatibleWith(make_version s_version);
   }
 
 
-let make_impl (s_version : string) (deps : package_dependency list) : implementation_record =
+let make_dependency_in_registry (package_name : package_name) (s_version : string) : package_dependency_in_registry =
+  PackageDependencyInRegistry{
+    package_name;
+    version_requirement = SemanticVersion.CompatibleWith(make_version s_version);
+  }
+
+
+let make_impl (s_version : string) (deps : package_dependency_in_registry list) : implementation_record =
   ImplRecord{
     version              = make_version s_version;
     source               = NoSource;
@@ -50,21 +58,21 @@ let check package_context dependencies_with_flags expected =
 
 let solve_test_1 () =
   let package_context =
-    let registry_contents =
+    let packages =
       PackageNameMap.of_seq @@ List.to_seq [
         ("foo", [
           make_impl "1.0.0" [];
           make_impl "2.0.0" [];
         ]);
         ("bar", [
-          make_impl "1.0.0" [ make_dependency "foo" "2.0.0" ];
+          make_impl "1.0.0" [ make_dependency_in_registry "foo" "2.0.0" ];
         ]);
         ("qux", [
-          make_impl "1.0.0" [ make_dependency "foo" "1.0.0" ];
+          make_impl "1.0.0" [ make_dependency_in_registry "foo" "1.0.0" ];
         ]);
       ]
     in
-    { registry_contents }
+    { registries = RegistryLocalNameMap.singleton "default" packages }
   in
   let dependencies_with_flags =
     [
@@ -89,21 +97,21 @@ let solve_test_1 () =
 
 let solve_test_2 () =
   let package_context =
-    let registry_contents =
+    let packages =
       PackageNameMap.of_seq @@ List.to_seq [
         ("foo", [
           make_impl "1.0.0" [];
           make_impl "1.1.0" [];
         ]);
         ("bar", [
-          make_impl "1.0.0" [ make_dependency "foo" "1.1.0" ];
+          make_impl "1.0.0" [ make_dependency_in_registry "foo" "1.1.0" ];
         ]);
         ("qux", [
-          make_impl "1.0.0" [ make_dependency "foo" "1.0.0" ];
+          make_impl "1.0.0" [ make_dependency_in_registry "foo" "1.0.0" ];
         ]);
       ]
     in
-    { registry_contents }
+    { registries = RegistryLocalNameMap.singleton "default" packages }
   in
   let dependencies_with_flags =
     [
