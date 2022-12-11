@@ -1909,6 +1909,22 @@ let make_registry_hash_value (registry_remote : registry_remote) : registry_hash
       Digest.to_hex (Digest.string (Printf.sprintf "git#%s#%s" url branch))
 
 
+let update_library_root_config_if_needed (registries : registry_remote RegistryHashValueMap.t) (registry_hash_value : registry_hash_value) (registry_remote : registry_remote) (abspath_library_root : abs_path) : unit =
+  match
+    registries |> RegistryHashValueMap.find_opt registry_hash_value
+  with
+  | None ->
+      let library_root_config =
+        LibraryRootConfig.{
+          registries = registries |> RegistryHashValueMap.add registry_hash_value registry_remote;
+        }
+      in
+      LibraryRootConfig.write abspath_library_root library_root_config
+
+  | Some(_registry_remote) ->
+      ()
+
+
 let solve
     ~(fpath_in : string)
     ~(show_full_path : bool)
@@ -2009,24 +2025,32 @@ let solve
         RegistryLocalNameMap.fold (fun registry_local_name registry_remote res ->
           let* registries = res in
           let registry_hash_value = make_registry_hash_value registry_remote in
-          match
-            library_root_config.LibraryRootConfig.registries
-              |> RegistryHashValueMap.find_opt registry_hash_value
-          with
-          | None ->
-              Printf.printf "**** HASH: %s\n" registry_hash_value; (* TODO: remove this *)
-              failwith "TODO: registry not found in library root config; should fetch from remote"
+          Printf.printf "**** HASH: %s\n" registry_hash_value; (* TODO: remove this *)
 
-          | Some(_registry_remote) ->
-              let* abspath_registry_config =
-                let libpath =
-                  make_lib_path (Printf.sprintf "registries/%s/satysfi-registry.yaml" registry_hash_value)
-                in
-                Config.resolve_lib_file libpath
-                  |> Result.map_error (fun candidates -> RegistryConfigNotFoundIn(libpath, candidates))
-              in
-              let* PackageRegistryConfig.{ packages } = PackageRegistryConfig.load abspath_registry_config in
-              return (registries |> RegistryLocalNameMap.add registry_local_name packages)
+          (* Manupulates the library root config: *)
+          update_library_root_config_if_needed
+            library_root_config.LibraryRootConfig.registries
+            registry_hash_value
+            registry_remote
+            abspath_library_root;
+
+          (* Fetches registry configs: *)
+          let absdir_registry_repo =
+            let absdir_library_root = get_primary_root_dir () in
+            make_abs_path
+              (Filename.concat (get_abs_path_string absdir_library_root)
+                (Printf.sprintf "registries/%s" registry_hash_value))
+          in
+          let git_command = "git" in (* TODO: make this changeable *)
+          PackageRegistryFetcher.main ~git_command absdir_registry_repo registry_remote;
+
+          let* PackageRegistryConfig.{ packages } =
+            let abspath_registry_config =
+              make_abs_path (Filename.concat (get_abs_path_string absdir_registry_repo) "satysfi-registry.yaml")
+            in
+            PackageRegistryConfig.load abspath_registry_config
+          in
+          return (registries |> RegistryLocalNameMap.add registry_local_name packages)
 
         ) registry_specs (return RegistryLocalNameMap.empty)
       in
