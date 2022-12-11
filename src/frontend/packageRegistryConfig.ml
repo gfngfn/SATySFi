@@ -25,12 +25,22 @@ let source_decoder : implementation_source ConfigDecoder.t =
   )
 
 
+let dependency_in_registry_config_decoder =
+  let open ConfigDecoder in
+  get "name" package_name_decoder >>= fun package_name ->
+  get "requirement" requirement_decoder >>= fun version_requirement ->
+  succeed @@ PackageDependencyInRegistry{
+    package_name;
+    version_requirement;
+  }
+
+
 let implementation_decoder : implementation_record ConfigDecoder.t =
   let open ConfigDecoder in
   get "version" version_decoder >>= fun version ->
   get_or_else "source" source_decoder NoSource >>= fun source ->
   get "language" requirement_decoder >>= fun language_requirement ->
-  get "dependencies" (list dependency_decoder) >>= fun dependencies ->
+  get "dependencies" (list dependency_in_registry_config_decoder) >>= fun dependencies ->
   succeed @@ ImplRecord{ version; source; language_requirement; dependencies }
 
 

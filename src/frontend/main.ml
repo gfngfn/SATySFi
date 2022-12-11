@@ -852,6 +852,12 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | MultiplePackageDefinition{ context = yctx; package_name } ->
       [ NormalLine(Printf.sprintf "More than one definition for package '%s'%s" package_name (show_yaml_context yctx)) ]
 
+  | DuplicateRegistryLocalName{ context = yctx; registry_local_name } ->
+      [ NormalLine(Printf.sprintf "More than one definition for registry local name '%s'%s" registry_local_name (show_yaml_context yctx)) ]
+
+  | DuplicateRegistryHashValue{ context = yctx; registry_hash_value } ->
+      [ NormalLine(Printf.sprintf "More than one definition for registry hash value '%s'%s" registry_hash_value (show_yaml_context yctx)) ]
+
   | NotACommand{ context = yctx; prefix = _; string = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s'%s" s (show_yaml_context yctx)) ]
 
@@ -880,6 +886,29 @@ let report_document_attribute_error : DocumentAttribute.error -> unit = function
       report_error Interface [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "not a package dependency description.");
+      ]
+
+  | NotARegistry(rng) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "not a registry description.");
+      ]
+
+  | NotARegistryRemote(rng) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "not a registry remote description.");
+      ]
+
+  | NotUnique ->
+      report_error Interface [
+        NormalLine("not unique. (TODO: refine this)");
+      ]
+
+  | NotAStringLiteral(rng) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine(Printf.sprintf "not a string literal.");
       ]
 
   | NotAListLiteral(rng) ->
@@ -1873,6 +1902,13 @@ let extract_attributes_from_document_file (input_kind : input_kind) (abspath_in 
       return docattr
 
 
+(* TODO: canonicalize URLs *)
+let make_registry_hash_value (registry_remote : registry_remote) : registry_hash_value =
+  match registry_remote with
+  | GitRegistry{ url; branch } ->
+      Digest.to_hex (Digest.string (Printf.sprintf "git#%s#%s" url branch))
+
+
 let solve
     ~(fpath_in : string)
     ~(show_full_path : bool)
@@ -1927,26 +1963,26 @@ let solve
         Config.resolve_lib_file libpath
           |> Result.map_error (fun candidates -> LibraryRootConfigNotFoundIn(libpath, candidates))
       in
-      let* _library_root_config = LibraryRootConfig.load abspath_library_root in
-      let* (dependencies_with_flags, abspath_lock_config) =
+      let* library_root_config = LibraryRootConfig.load abspath_library_root in
+      let* (dependencies_with_flags, abspath_lock_config, registry_specs) =
         match solve_input with
         | PackageSolveInput{
             root = absdir_package;
             lock = abspath_lock_config;
           } ->
-            let* config = PackageConfig.load absdir_package in
+            let* PackageConfig.{ package_contents; registry_specs; _ } = PackageConfig.load absdir_package in
             begin
-              match config.package_contents with
+              match package_contents with
               | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
                   let dependencies_with_flags =
                     List.append
                       (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
                       (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
                   in
-                  return (dependencies_with_flags, abspath_lock_config)
+                  return (dependencies_with_flags, abspath_lock_config, registry_specs)
 
               | PackageConfig.Font(_) ->
-                  return ([], abspath_lock_config)
+                  return ([], abspath_lock_config, registry_specs)
             end
 
         | DocumentSolveInput{
@@ -1954,23 +1990,48 @@ let solve
             path = abspath_in;
             lock = abspath_lock_config;
           } ->
-            let* docattr = extract_attributes_from_document_file input_kind abspath_in in
-            let dependencies_with_flags =
-              docattr.DocumentAttribute.dependencies |> List.map (fun dep -> (SourceDependency, dep))
+            let* DocumentAttribute.{ registries; dependencies } =
+              extract_attributes_from_document_file input_kind abspath_in
             in
-            return (dependencies_with_flags, abspath_lock_config)
+            let registry_specs =
+              registries |> List.fold_left (fun registry_specs (registry_local_name, registry_remote) ->
+                registry_specs |> RegistryLocalNameMap.add registry_local_name registry_remote
+                  (* TODO: check duplication *)
+              ) RegistryLocalNameMap.empty
+            in
+            let dependencies_with_flags = dependencies |> List.map (fun dep -> (SourceDependency, dep)) in
+            return (dependencies_with_flags, abspath_lock_config, registry_specs)
       in
 
       Logging.show_package_dependency_before_solving dependencies_with_flags;
 
-      (* TODO: load registry configs for each registry specified in `library_root_config` and `config` *)
-      let* abspath_registry_config =
-        let libpath = make_lib_path "registries/default/registry.yaml" in
-        Config.resolve_lib_file libpath
-          |> Result.map_error (fun candidates -> RegistryConfigNotFoundIn(libpath, candidates))
+      let* registries =
+        RegistryLocalNameMap.fold (fun registry_local_name registry_remote res ->
+          let* registries = res in
+          let registry_hash_value = make_registry_hash_value registry_remote in
+          match
+            library_root_config.LibraryRootConfig.registries
+              |> RegistryHashValueMap.find_opt registry_hash_value
+          with
+          | None ->
+              Printf.printf "**** HASH: %s\n" registry_hash_value; (* TODO: remove this *)
+              failwith "TODO: registry not found in library root config; should fetch from remote"
+
+          | Some(_registry_remote) ->
+              let* abspath_registry_config =
+                let libpath =
+                  make_lib_path (Printf.sprintf "registries/%s/satysfi-registry.yaml" registry_hash_value)
+                in
+                Config.resolve_lib_file libpath
+                  |> Result.map_error (fun candidates -> RegistryConfigNotFoundIn(libpath, candidates))
+              in
+              let* PackageRegistryConfig.{ packages } = PackageRegistryConfig.load abspath_registry_config in
+              return (registries |> RegistryLocalNameMap.add registry_local_name packages)
+
+        ) registry_specs (return RegistryLocalNameMap.empty)
       in
-      let* PackageRegistryConfig.{ packages } = PackageRegistryConfig.load abspath_registry_config in
-      let package_context = { registry_contents = packages } in
+
+      let package_context = { registries } in
       let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
       begin
         match solutions_opt with

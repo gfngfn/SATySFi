@@ -12,9 +12,10 @@ module SolverInput = struct
           context  : package_context;
         }
       | Role of {
-          package_name  : package_name;
-          compatibility : string;
-          context       : package_context;
+          package_name        : package_name;
+          registry_local_name : registry_local_name;
+          compatibility       : string;
+          context             : package_context;
         }
 
 
@@ -143,30 +144,45 @@ module SolverInput = struct
     ([], [])
 
 
-  let make_internal_dependency (context : package_context) (requires : package_dependency list) : dependency list =
+  let make_internal_dependency_from_registry (registry_local_name : registry_local_name) (context : package_context) (requires : package_dependency_in_registry list) : dependency list =
     requires |> List.map (function
-    | PackageDependency{ package_name; version_requirement } ->
+    | PackageDependencyInRegistry{ package_name; version_requirement } ->
         let compatibility =
           match version_requirement with
           | SemanticVersion.CompatibleWith(semver) ->
               SemanticVersion.get_compatibility_unit semver
         in
-        Dependency{ role = Role{ package_name; compatibility; context }; version_requirement }
+        Dependency{ role = Role{ package_name; registry_local_name; compatibility; context }; version_requirement }
+    )
+
+
+  let make_internal_dependency (context : package_context) (requires : package_dependency list) : dependency list =
+    requires |> List.map (function
+    | PackageDependency{ package_name; registry_local_name; version_requirement } ->
+        let compatibility =
+          match version_requirement with
+          | SemanticVersion.CompatibleWith(semver) ->
+              SemanticVersion.get_compatibility_unit semver
+        in
+        Dependency{ role = Role{ package_name; registry_local_name; compatibility; context }; version_requirement }
     )
 
 
   let implementations (role : Role.t) : role_information =
     match role with
-    | Role{ package_name; compatibility; context } ->
+    | Role{ package_name; registry_local_name; compatibility; context } ->
         let impl_records =
-          context.registry_contents |> PackageNameMap.find_opt package_name |> Option.value ~default:[]
+          context.registries
+            |> RegistryLocalNameMap.find_opt registry_local_name
+            |> Option.value ~default:PackageNameMap.empty
+            |> PackageNameMap.find_opt package_name |> Option.value ~default:[]
         in
         let impls =
           impl_records |> List.filter_map (fun impl_record ->
             let ImplRecord{ version; source; language_requirement; dependencies } = impl_record in
             if Constant.current_language_version |> SemanticVersion.fulfill language_requirement then
               if String.equal (SemanticVersion.get_compatibility_unit version) compatibility then
-                let dependencies = make_internal_dependency context dependencies in
+                let dependencies = make_internal_dependency_from_registry registry_local_name context dependencies in
                 Some(Impl{ package_name; version; source; dependencies })
               else
                 None

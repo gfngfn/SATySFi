@@ -50,9 +50,25 @@ let language_version_checker : unit ConfigDecoder.t =
 
 let dependency_decoder : package_dependency ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun package_name ->
+  get "name" package_name_decoder >>= fun package_name ->
+  get "registry" string >>= fun registry_local_name ->
   get "requirement" requirement_decoder >>= fun version_requirement ->
   succeed @@ PackageDependency{
     package_name;
+    registry_local_name;
     version_requirement;
   }
+
+
+let registry_remote_decoder : registry_remote ConfigDecoder.t =
+  let open ConfigDecoder in
+  branch "type" [
+    "git" ==> begin
+      get "url" string >>= fun url ->
+      get "branch" string >>= fun branch ->
+      succeed @@ GitRegistry{ url; branch }
+    end;
+  ]
+  ~other:(fun tag ->
+    failure (fun context -> UnexpectedTag(context, tag))
+  )

@@ -114,7 +114,7 @@ let show_package_dependency_before_solving (dependencies_with_flags : (dependenc
   Printf.printf "  package dependencies to solve:\n";
   dependencies_with_flags |> List.iter (fun (flag, dep) ->
     match dep with
-    | PackageDependency{ package_name; version_requirement } ->
+    | PackageDependency{ package_name; version_requirement; _ } ->
         let s_restr = SemanticVersion.requirement_to_string version_requirement in
         let s_test_only =
           match flag with

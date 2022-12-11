@@ -21,6 +21,14 @@ type yaml_error =
       context      : YamlDecoder.context;
       package_name : string;
     }
+  | DuplicateRegistryLocalName of {
+      context             : YamlDecoder.context;
+      registry_local_name : registry_local_name;
+    }
+  | DuplicateRegistryHashValue of {
+      context             : YamlDecoder.context;
+      registry_hash_value : registry_hash_value;
+    }
   | NotACommand of {
       context : YamlDecoder.context;
       prefix  : char;

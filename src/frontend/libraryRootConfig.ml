@@ -6,7 +6,7 @@ open PackageSystemBase
 
 
 type t = {
-  registries : registry_spec list;
+  registries : registry_remote RegistryHashValueMap.t;
 }
 
 
@@ -24,17 +24,24 @@ let registry_remote_decoder : registry_remote ConfigDecoder.t =
   )
 
 
-let registry_spec_decoder : registry_spec ConfigDecoder.t =
+let registry_spec_decoder : (registry_hash_value * registry_remote) ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun registry_name ->
+  get "hash_value" string >>= fun registry_hash_value ->
   get "remote" registry_remote_decoder >>= fun registry_remote ->
-  succeed { registry_name; registry_remote }
+  succeed (registry_hash_value, registry_remote)
 
 
 let config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
   get "language" language_version_checker >>= fun () ->
   get "registries" (list registry_spec_decoder) >>= fun registries ->
+  registries |> List.fold_left (fun res (registry_hash_value, registry_remote) ->
+    res >>= fun map ->
+    if map |> RegistryHashValueMap.mem registry_hash_value then
+      failure (fun context -> DuplicateRegistryHashValue{ context; registry_hash_value })
+    else
+      succeed (map |> RegistryHashValueMap.add registry_hash_value registry_remote)
+  ) (succeed RegistryHashValueMap.empty) >>= fun registries ->
   succeed { registries }
 
 
