@@ -236,7 +236,7 @@ let config_decoder : t ConfigDecoder.t =
 let load (absdir_package : abs_path) : t ok =
   let open ResultMonad in
   let abspath_config =
-    make_abs_path (Filename.concat (get_abs_path_string absdir_package) "satysfi.yaml")
+    make_abs_path (Filename.concat (get_abs_path_string absdir_package) Constant.package_config_file_name)
   in
   let* s =
     read_file abspath_config

@@ -4,14 +4,14 @@ open PackageSystemBase
 
 type error =
   | FailedToFetchTarball of {
-      lock_name     : lock_name;
-      exit_status   : int;
-      fetch_command : string;
+      lock_name   : lock_name;
+      exit_status : int;
+      command     : string;
     }
   | FailedToExtractTarball of {
-      lock_name          : lock_name;
-      exit_status        : int;
-      extraction_command : string;
+      lock_name   : lock_name;
+      exit_status : int;
+      command     : string;
     }
 
 val main :

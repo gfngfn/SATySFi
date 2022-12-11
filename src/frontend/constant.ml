@@ -21,6 +21,10 @@ let cache_locks_directory =
   "cache/locks"
 
 
+let package_config_file_name =
+  "satysfi.yaml"
+
+
 let library_root_config_file_name =
   "satysfi-library-root.yaml"
 

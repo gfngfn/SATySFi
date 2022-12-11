@@ -1188,16 +1188,16 @@ let report_config_error : config_error -> unit = function
   | LockFetcherError(e) ->
       begin
         match e with
-        | LockFetcher.FailedToFetchTarball{ lock_name; exit_status; fetch_command } ->
+        | LockFetcher.FailedToFetchTarball{ lock_name; exit_status; command } ->
             report_error Interface [
               NormalLine(Printf.sprintf "failed to fetch '%s' (exit status: %d). command:" lock_name exit_status);
-              DisplayLine(fetch_command);
+              DisplayLine(command);
             ]
 
-        | LockFetcher.FailedToExtractTarball{ lock_name; exit_status; extraction_command } ->
+        | LockFetcher.FailedToExtractTarball{ lock_name; exit_status; command } ->
             report_error Interface [
               NormalLine(Printf.sprintf "failed to extract the tarball of '%s' (exit status: %d). command:" lock_name exit_status);
-              DisplayLine(extraction_command);
+              DisplayLine(command);
             ]
       end
 
