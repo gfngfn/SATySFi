@@ -97,3 +97,4 @@ type config_error =
   | MarkdownError                 of MarkdownParser.error
   | LockFetcherError              of LockFetcher.error
   | PackageRegistryFetcherError   of PackageRegistryFetcher.error
+  | CanonicalRegistryUrlError     of CanonicalRegistryUrl.error

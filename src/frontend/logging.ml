@@ -212,3 +212,9 @@ let lock_cache_exists (lock_name : lock_name) (abspath_tarball : abs_path) =
 
 let downloading_lock (lock_name : lock_name) (absdir : abs_path) =
   Printf.printf "  downloading '%s' to '%s'...\n" lock_name (get_abs_path_string absdir)
+
+
+let report_canonicalized_url ~(url : string) ~(canonicalized_url : string) ~(hash_value : registry_hash_value) =
+  Printf.printf "  registry URL: '%s'\n" url;
+  Printf.printf "    canonicalized: '%s'\n" canonicalized_url;
+  Printf.printf "    hash value: '%s'\n" hash_value

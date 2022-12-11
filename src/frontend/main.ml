@@ -1224,6 +1224,28 @@ let report_config_error : config_error -> unit = function
             ]
       end
 
+  | CanonicalRegistryUrlError(e) ->
+      begin
+        match e with
+        | ContainsQueryParameter{ url } ->
+            report_error Interface [
+              NormalLine("registry URLs must not contain query parameters:");
+              DisplayLine(url);
+            ]
+
+        | NoUriScheme{ url } ->
+            report_error Interface [
+              NormalLine("the registry URL does not contain a scheme:");
+              DisplayLine(url);
+            ]
+
+        | UnexpectedUrlScheme{ url; scheme } ->
+            report_error Interface [
+              NormalLine(Printf.sprintf "unexpected scheme '%s' in a registry URL:" scheme);
+              DisplayLine(url);
+            ]
+      end
+
 
 let report_font_error : font_error -> unit = function
   | FailedToReadFont(abspath, msg) ->
@@ -1925,11 +1947,19 @@ let extract_attributes_from_document_file (input_kind : input_kind) (abspath_in 
       return docattr
 
 
-(* TODO: canonicalize URLs *)
-let make_registry_hash_value (registry_remote : registry_remote) : registry_hash_value =
+let make_registry_hash_value (registry_remote : registry_remote) : (registry_hash_value, config_error) result =
+  let open ResultMonad in
   match registry_remote with
   | GitRegistry{ url; branch } ->
-      Digest.to_hex (Digest.string (Printf.sprintf "git#%s#%s" url branch))
+      let* canonicalized_url =
+        CanonicalRegistryUrl.make url
+          |> Result.map_error (fun e -> CanonicalRegistryUrlError(e))
+      in
+      let hash_value =
+        Digest.to_hex (Digest.string (Printf.sprintf "git#%s#%s" canonicalized_url branch))
+      in
+      Logging.report_canonicalized_url ~url ~canonicalized_url ~hash_value;
+      return hash_value
 
 
 let update_library_root_config_if_needed (registries : registry_remote RegistryHashValueMap.t) (registry_hash_value : registry_hash_value) (registry_remote : registry_remote) (abspath_library_root : abs_path) : unit =
@@ -2041,8 +2071,7 @@ let solve
       let* registries =
         RegistryLocalNameMap.fold (fun registry_local_name registry_remote res ->
           let* registries = res in
-          let registry_hash_value = make_registry_hash_value registry_remote in
-          Printf.printf "**** HASH: %s\n" registry_hash_value; (* TODO: remove this *)
+          let* registry_hash_value = make_registry_hash_value registry_remote in
 
           (* Manupulates the library root config: *)
           update_library_root_config_if_needed
