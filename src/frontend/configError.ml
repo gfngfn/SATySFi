@@ -96,3 +96,4 @@ type config_error =
   | MoreThanOneMarkdownConversion of module_name
   | MarkdownError                 of MarkdownParser.error
   | LockFetcherError              of LockFetcher.error
+  | PackageRegistryFetcherError   of PackageRegistryFetcher.error

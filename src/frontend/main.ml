@@ -1201,6 +1201,16 @@ let report_config_error : config_error -> unit = function
             ]
       end
 
+  | PackageRegistryFetcherError(e) ->
+      begin
+        match e with
+        | FailedToUpdateGitRegistry{ exit_status; command } ->
+            report_error Interface [
+              NormalLine(Printf.sprintf "failed to update registry (exit status: %d). command:" exit_status);
+              DisplayLine(command);
+            ]
+      end
+
 
 let report_font_error : font_error -> unit = function
   | FailedToReadFont(abspath, msg) ->
@@ -2042,7 +2052,10 @@ let solve
                 (Printf.sprintf "registries/%s" registry_hash_value))
           in
           let git_command = "git" in (* TODO: make this changeable *)
-          PackageRegistryFetcher.main ~git_command absdir_registry_repo registry_remote;
+          let* () =
+            PackageRegistryFetcher.main ~git_command absdir_registry_repo registry_remote
+              |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
+          in
 
           let* PackageRegistryConfig.{ packages } =
             let abspath_registry_config =
