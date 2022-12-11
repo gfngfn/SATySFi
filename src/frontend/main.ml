@@ -863,15 +863,15 @@ let make_yaml_error_lines : yaml_error -> line list = function
 
 
 let report_document_attribute_error : DocumentAttribute.error -> unit = function
-  | NoDependencyList(rng) ->
+  | NoConfigArgument(rng) ->
       report_error Interface [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine("no dependency is given.");
+        NormalLine("no config argument is given.");
       ]
 
-  | MoreThanOneDependencyAttribute(rng1, rng2) ->
+  | DuplicateConfigAttribute(rng1, rng2) ->
       report_error Interface [
-        NormalLine("More than one attribute defines dependencies:");
+        NormalLine("More than one attribute defines the config:");
         DisplayLine(Printf.sprintf "- %s" (Range.to_string rng1));
         DisplayLine(Printf.sprintf "- %s" (Range.to_string rng2));
       ]
@@ -900,9 +900,16 @@ let report_document_attribute_error : DocumentAttribute.error -> unit = function
         NormalLine(Printf.sprintf "not a registry remote description.");
       ]
 
-  | NotUnique ->
+  | LabelNotFound{ record_range; label } ->
       report_error Interface [
-        NormalLine("not unique. (TODO: refine this)");
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string record_range));
+        NormalLine(Printf.sprintf "this record does not have label '%s'." label);
+      ]
+
+  | DuplicateLabel{ record_range; label } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string record_range));
+        NormalLine(Printf.sprintf "this record has more than one value for label '%s'." label);
       ]
 
   | NotAStringLiteral(rng) ->

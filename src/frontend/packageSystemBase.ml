@@ -42,7 +42,7 @@ type registry_local_name = string
 
 module RegistryLocalNameMap = Map.Make(String)
 
-(* an MD5 hash value make of a URL and a branch name *)
+(* The type for MD5 hash values made of a URL and a branch name. *)
 type registry_hash_value = string
 [@@deriving show { with_path = false }]
 
