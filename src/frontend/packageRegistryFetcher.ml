@@ -19,7 +19,7 @@ let main ~(git_command : string) (absdir_registry_repo : abs_path) (registry_rem
   let open ResultMonad in
   let absdirstr_registry_repo = get_abs_path_string absdir_registry_repo in
   let abspathstr_registry_config =
-    Filename.concat absdirstr_registry_repo "satysfi-registry.yaml"
+    Filename.concat absdirstr_registry_repo Constant.package_registry_config_file_name
   in
   let (exit_status, command) =
     if Sys.file_exists abspathstr_registry_config then

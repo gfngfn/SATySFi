@@ -1850,7 +1850,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let lock_name = make_lock_name solution.lock in
       let Lock.{ package_name; _ } = solution.lock in
-      let libpathstr_container = Printf.sprintf "./packages/%s/" package_name in
+      let libpathstr_container = Printf.sprintf "./%s/%s/" Constant.packages_directory package_name in
       let libpathstr_lock = Filename.concat libpathstr_container lock_name in
       let lock_location =
         LockConfig.GlobalLocation{
@@ -1985,7 +1985,7 @@ let solve
     let res =
       let open ResultMonad in
       let* abspath_library_root =
-        let libpath = make_lib_path "satysfi-library-root.yaml" in
+        let libpath = make_lib_path Constant.library_root_config_file_name in
         Config.resolve_lib_file libpath
           |> Result.map_error (fun candidates -> LibraryRootConfigNotFoundIn(libpath, candidates))
       in
@@ -2048,8 +2048,9 @@ let solve
           let absdir_registry_repo =
             let absdir_library_root = get_primary_root_dir () in
             make_abs_path
-              (Filename.concat (get_abs_path_string absdir_library_root)
-                (Printf.sprintf "registries/%s" registry_hash_value))
+              (Filename.concat
+                (Filename.concat (get_abs_path_string absdir_library_root) Constant.registries_directory)
+                registry_hash_value)
           in
           let git_command = "git" in (* TODO: make this changeable *)
           let* () =
@@ -2059,7 +2060,10 @@ let solve
 
           let* PackageRegistryConfig.{ packages } =
             let abspath_registry_config =
-              make_abs_path (Filename.concat (get_abs_path_string absdir_registry_repo) "satysfi-registry.yaml")
+              make_abs_path
+                (Filename.concat
+                  (get_abs_path_string absdir_registry_repo)
+                  Constant.package_registry_config_file_name)
             in
             PackageRegistryConfig.load abspath_registry_config
           in
@@ -2085,7 +2089,8 @@ let solve
             let tar_command = "tar" in (* TODO: make this changeable *)
             let absdir_lock_cache =
               let absdir_primary_root = get_primary_root_dir () in
-              make_abs_path (Filename.concat (get_abs_path_string absdir_primary_root) "cache/locks")
+              make_abs_path
+                 (Filename.concat (get_abs_path_string absdir_primary_root) Constant.cache_locks_directory)
             in
             let* () =
               impl_specs |> foldM (fun () impl_spec ->
