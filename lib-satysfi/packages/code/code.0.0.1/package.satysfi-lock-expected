@@ -3,14 +3,14 @@ locks:
 - name: font-latin-modern.0.0.1
   location:
     type: global
-    path: ./packages/font-latin-modern/font-latin-modern.0.0.1
+    path: ./packages/d9b4b850ab61a7b68961c6315048b351/font-latin-modern/font-latin-modern.0.0.1
   dependencies: []
   test_only: false
   lock_package_name: font-latin-modern
 - name: stdlib.0.0.1
   location:
     type: global
-    path: ./packages/stdlib/stdlib.0.0.1
+    path: ./packages/d9b4b850ab61a7b68961c6315048b351/stdlib/stdlib.0.0.1
   dependencies: []
   test_only: false
   lock_package_name: stdlib
