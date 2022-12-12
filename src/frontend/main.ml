@@ -1951,6 +1951,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
         in
         ImplSpec{
           lock_name           = lock_name;
+          registry_hash_value = registry_hash_value;
           container_directory = abspath_container;
           source              = solution.locked_source;
         }
