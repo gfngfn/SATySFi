@@ -141,7 +141,7 @@
         };
 
         apps.satysfi = flake-utils.lib.mkApp {
-          drv = self.packages.${system}.satysfi2;
+          drv = self.packages.${system}.satysfi;
         };
 
         apps.default = self.apps.${system}.satysfi;
