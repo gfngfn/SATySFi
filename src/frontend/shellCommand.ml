@@ -17,6 +17,16 @@ let mkdir_p (absdir : abs_path) : unit =
   Core_unix.mkdir_p (get_abs_path_string absdir)
 
 
+let cp ~(from : abs_path) ~(to_ : abs_path) : run_result =
+  let command =
+    Printf.sprintf "cp \"%s\" \"%s\""
+      (escape_string (get_abs_path_string from))
+      (escape_string (get_abs_path_string to_))
+  in
+  let exit_status = Sys.command command in
+  { exit_status; command }
+
+
 let run_wget
   ~(wget_command : string)
   ~(url : string)
@@ -42,6 +52,21 @@ let run_tar_xzf_strip_components_1
       (escape_string tar_command)
       (escape_string (get_abs_path_string tarball))
       (escape_string (get_abs_path_string output_dir))
+  in
+  let exit_status = Sys.command command in
+  { exit_status; command }
+
+
+let run_unzip
+  ~(unzip_command : string)
+  ~(zip : abs_path)
+  ~(output_container_dir : abs_path)
+=
+  let command =
+    Printf.sprintf "\"%s\" -o \"%s\" -d \"%s\""
+      (escape_string unzip_command)
+      (escape_string (get_abs_path_string zip))
+      (escape_string (get_abs_path_string output_container_dir))
   in
   let exit_status = Sys.command command in
   { exit_status; command }

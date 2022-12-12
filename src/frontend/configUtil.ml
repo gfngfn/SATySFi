@@ -72,3 +72,12 @@ let registry_remote_decoder : registry_remote ConfigDecoder.t =
   ~other:(fun tag ->
     failure (fun context -> UnexpectedTag(context, tag))
   )
+
+
+let name_decoder : string ConfigDecoder.t =
+  let open ConfigDecoder in
+  string >>= fun s ->
+  if s |> Core.String.to_list_rev |> List.exists (Char.equal '/') then
+    failure (fun context -> CannotBeUsedAsAName(context, s))
+  else
+    succeed s

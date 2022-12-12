@@ -29,6 +29,7 @@ type yaml_error =
       context             : YamlDecoder.context;
       registry_hash_value : registry_hash_value;
     }
+  | CannotBeUsedAsAName of YamlDecoder.context * string
   | NotACommand of {
       context : YamlDecoder.context;
       prefix  : char;
@@ -95,6 +96,34 @@ type config_error =
   | NoMarkdownConversion          of module_name
   | MoreThanOneMarkdownConversion of module_name
   | MarkdownError                 of MarkdownParser.error
-  | LockFetcherError              of LockFetcher.error
+  | FailedToFetchTarball of {
+      lock_name   : lock_name;
+      exit_status : int;
+      command     : string;
+    }
+  | FailedToExtractTarball of {
+      lock_name   : lock_name;
+      exit_status : int;
+      command     : string;
+    }
+  | FailedToFetchExternalZip of {
+      url         : string;
+      exit_status : int;
+      command     : string;
+    }
+  | ExternalZipChecksumMismatch of {
+      url      : string;
+      path     : abs_path;
+      expected : string;
+      got      : string;
+    }
+  | FailedToExtractExternalZip of {
+      exit_status : int;
+      command     : string;
+    }
+  | FailedToCopyFile of {
+      exit_status : int;
+      command     : string;
+    }
   | PackageRegistryFetcherError   of PackageRegistryFetcher.error
   | CanonicalRegistryUrlError     of CanonicalRegistryUrl.error

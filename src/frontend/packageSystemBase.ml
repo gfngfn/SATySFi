@@ -111,3 +111,15 @@ type registry_remote =
       url    : string;
       branch : string;
     }
+
+type extraction = {
+  extracted_from : string;
+  extracted_to   : string;
+}
+
+type external_source =
+  | ExternalZip of {
+      url         : string;
+      checksum    : string;
+      extractions : extraction list;
+    }

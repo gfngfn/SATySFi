@@ -858,6 +858,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | DuplicateRegistryHashValue{ context = yctx; registry_hash_value } ->
       [ NormalLine(Printf.sprintf "More than one definition for registry hash value '%s'%s" registry_hash_value (show_yaml_context yctx)) ]
 
+  | CannotBeUsedAsAName(yctx, s) ->
+      [ NormalLine(Printf.sprintf "'%s' cannot be used as a name%s" s (show_yaml_context yctx)) ]
+
   | NotACommand{ context = yctx; prefix = _; string = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s'%s" s (show_yaml_context yctx)) ]
 
@@ -1198,21 +1201,44 @@ let report_config_error : config_error -> unit = function
             report_document_attribute_error de
       end
 
-  | LockFetcherError(e) ->
-      begin
-        match e with
-        | LockFetcher.FailedToFetchTarball{ lock_name; exit_status; command } ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "failed to fetch '%s' (exit status: %d). command:" lock_name exit_status);
-              DisplayLine(command);
-            ]
+  | FailedToFetchTarball{ lock_name; exit_status; command } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "failed to fetch '%s' (exit status: %d). command:" lock_name exit_status);
+        DisplayLine(command);
+      ]
 
-        | LockFetcher.FailedToExtractTarball{ lock_name; exit_status; command } ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "failed to extract the tarball of '%s' (exit status: %d). command:" lock_name exit_status);
-              DisplayLine(command);
-            ]
-      end
+  | FailedToExtractTarball{ lock_name; exit_status; command } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "failed to extract the tarball of '%s' (exit status: %d). command:" lock_name exit_status);
+        DisplayLine(command);
+      ]
+
+  | FailedToFetchExternalZip{ url; exit_status; command } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "failed to fetch file from '%s' (exit status: %d). command:" url exit_status);
+        DisplayLine(command);
+      ]
+
+  | ExternalZipChecksumMismatch{ url; path; expected; got } ->
+      report_error Interface [
+        NormalLine("checksum mismatch of an external zip file.");
+        DisplayLine(Printf.sprintf "- fetched from: '%s'" url);
+        DisplayLine(Printf.sprintf "- path: '%s'" (get_abs_path_string path));
+        DisplayLine(Printf.sprintf "- expected: '%s'" expected);
+        DisplayLine(Printf.sprintf "- got: '%s'" got);
+      ]
+
+  | FailedToExtractExternalZip{ exit_status; command } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "failed to extract a zip file (exit status: %d). command:" exit_status);
+        DisplayLine(command);
+      ]
+
+  | FailedToCopyFile{ exit_status; command } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "failed to copy a file (exit status: %d). command:" exit_status);
+        DisplayLine(command);
+      ]
 
   | PackageRegistryFetcherError(e) ->
       begin
@@ -2123,6 +2149,7 @@ let solve
 
             let wget_command = "wget" in (* TODO: make this changeable *)
             let tar_command = "tar" in (* TODO: make this changeable *)
+            let unzip_command = "unzip" in (* TODO: make this changeable *)
             let absdir_lock_cache =
               let absdir_primary_root = get_primary_root_dir () in
               make_abs_path
@@ -2130,8 +2157,8 @@ let solve
             in
             let* () =
               impl_specs |> foldM (fun () impl_spec ->
-                LockFetcher.main ~wget_command ~tar_command ~cache_directory:absdir_lock_cache impl_spec
-                  |> Result.map_error (fun e -> LockFetcherError(e))
+                LockFetcher.main
+                  ~wget_command ~tar_command ~unzip_command ~cache_directory:absdir_lock_cache impl_spec
               ) ()
             in
             LockConfig.write abspath_lock_config lock_config;

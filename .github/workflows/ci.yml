@@ -17,13 +17,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Cache dist fonts
+      - name: Cache locks
         uses: actions/cache@v2
         env:
-          cache-name: cache-dist-fonts
+          cache-name: cache-locks
         with:
-          path: lib-satysfi/dist/fonts
-          key: ${{ env.cache-name }}-${{ hashFiles('download-fonts.sh') }}
+          path: ~/.satysfi/cache/
+          key: ${{ env.cache-name }}-${{ hashFiles('default-registry-commit-hash.txt') }}
 
       - name: Determine the default OPAM Repo
         id: determine-default-opam-repo
@@ -73,14 +73,17 @@ jobs:
       - name: Install SATySFi
         run: |
           opam install -y .
-          if [ -z "$(ls lib-satysfi/dist/fonts)" ]; then
-            ./download-fonts.sh
-          fi
           if [ "${{ matrix.os }}" == 'macos-latest' ]; then
             ./install-libs.sh ~/.satysfi ginstall
           else
             ./install-libs.sh ~/.satysfi install
           fi
+
+# It is no longer necessary to download font files beforehand
+# due to the package system:
+#          if [ -z "$(ls lib-satysfi/dist/fonts)" ]; then
+#            ./download-fonts.sh
+#          fi
 
       - name: Check library packages
         run: |

@@ -36,6 +36,7 @@ type package_contents =
 type t = {
   package_name     : package_name;
   package_authors  : string list;
+  external_sources : (string * external_source) list;
   package_contents : package_contents;
   registry_specs   : registry_remote RegistryLocalNameMap.t;
 }
@@ -211,12 +212,36 @@ let registry_spec_decoder =
   succeed (registry_local_name, registry_remote)
 
 
+let extraction_decoder : extraction ConfigDecoder.t =
+  let open ConfigDecoder in
+  get "from" string >>= fun extracted_from ->
+  get "to" string >>= fun extracted_to ->
+  succeed { extracted_from; extracted_to }
+
+
+let external_source_decoder : (string * external_source) ConfigDecoder.t =
+  let open ConfigDecoder in
+  branch "type" [
+    "zip" ==> begin
+      get "name" name_decoder >>= fun name ->
+      get "url" string >>= fun url ->
+      get "checksum" string >>= fun checksum ->
+      get "extractions" (list extraction_decoder) >>= fun extractions ->
+      succeed (name, ExternalZip{ url; checksum; extractions })
+    end;
+  ]
+  ~other:(fun tag ->
+    failure (fun context -> UnexpectedTag(context, tag))
+  )
+
+
 let config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
   get "language" language_version_checker >>= fun () ->
   get "name" package_name_decoder >>= fun package_name ->
   get "authors" (list string) >>= fun package_authors ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
+  get_or_else "external_sources" (list external_source_decoder) [] >>= fun external_sources ->
   get "contents" contents_decoder >>= fun package_contents ->
   registry_specs |> List.fold_left (fun res (registry_local_name, registry_remote) ->
     res >>= fun map ->
@@ -228,6 +253,7 @@ let config_decoder : t ConfigDecoder.t =
   succeed @@ {
     package_name;
     package_authors;
+    external_sources;
     package_contents;
     registry_specs;
   }
