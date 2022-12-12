@@ -20,6 +20,12 @@ val run_tar_xzf_strip_components_1 :
   output_dir:abs_path ->
   run_result
 
+val run_unzip :
+  unzip_command:string ->
+  zip:abs_path ->
+  output_dir:abs_path ->
+  run_result
+
 val run_git_pull :
   git_command:string ->
   repo_dir:abs_path ->

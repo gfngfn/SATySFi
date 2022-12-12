@@ -38,7 +38,18 @@ let fetch_external_zip ~(wget_command : string) ~(url : string) ~(output : abs_p
     err @@ FailedToFetchExternalZip{ url; exit_status; command }
 
 
-let main ~(wget_command : string) ~(tar_command : string) ~cache_directory:(absdir_lock_cache : abs_path) (impl_spec : implementation_spec) : unit ok =
+let extract_external_zip ~(unzip_command : string) ~(zip : abs_path) ~(output_dir : abs_path) =
+  let open ResultMonad in
+  let ShellCommand.{ exit_status; command } =
+    ShellCommand.run_unzip ~unzip_command ~zip ~output_dir
+  in
+  if exit_status = 0 then
+    return ()
+  else
+    err @@ FailedToExtractExternalZip{ exit_status; command }
+
+
+let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~cache_directory:(absdir_lock_cache : abs_path) (impl_spec : implementation_spec) : unit ok =
   let open ResultMonad in
   let ImplSpec{ lock_name; container_directory; source } = impl_spec in
   let absdirstr_container = get_abs_path_string container_directory in
@@ -118,7 +129,10 @@ let main ~(wget_command : string) ~(tar_command : string) ~cache_directory:(absd
                     }
                 in
 
-                (* TODO: extract ZIP and move files here *)
+                (* Extracts the zip file: *)
+                let* () = extract_external_zip ~unzip_command ~zip:abspath_zip ~output_dir:absdir_external in
+
+                (* TODO: move files here *)
                 return ()
           ) ()
         in

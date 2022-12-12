@@ -117,5 +117,9 @@ type config_error =
       expected : string;
       got      : string;
     }
+  | FailedToExtractExternalZip of {
+      exit_status : int;
+      command     : string;
+    }
   | PackageRegistryFetcherError   of PackageRegistryFetcher.error
   | CanonicalRegistryUrlError     of CanonicalRegistryUrl.error

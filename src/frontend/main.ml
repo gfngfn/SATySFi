@@ -1228,6 +1228,12 @@ let report_config_error : config_error -> unit = function
         DisplayLine(Printf.sprintf "- got: '%s'" got);
       ]
 
+  | FailedToExtractExternalZip{ exit_status; command } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "failed to extract a zip file (exit status: %d). command:" exit_status);
+        DisplayLine(command);
+      ]
+
   | PackageRegistryFetcherError(e) ->
       begin
         match e with
@@ -2137,6 +2143,7 @@ let solve
 
             let wget_command = "wget" in (* TODO: make this changeable *)
             let tar_command = "tar" in (* TODO: make this changeable *)
+            let unzip_command = "unzip" in (* TODO: make this changeable *)
             let absdir_lock_cache =
               let absdir_primary_root = get_primary_root_dir () in
               make_abs_path
@@ -2144,7 +2151,8 @@ let solve
             in
             let* () =
               impl_specs |> foldM (fun () impl_spec ->
-                LockFetcher.main ~wget_command ~tar_command ~cache_directory:absdir_lock_cache impl_spec
+                LockFetcher.main
+                  ~wget_command ~tar_command ~unzip_command ~cache_directory:absdir_lock_cache impl_spec
               ) ()
             in
             LockConfig.write abspath_lock_config lock_config;

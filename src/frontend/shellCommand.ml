@@ -47,6 +47,21 @@ let run_tar_xzf_strip_components_1
   { exit_status; command }
 
 
+let run_unzip
+  ~(unzip_command : string)
+  ~(zip : abs_path)
+  ~(output_dir : abs_path)
+=
+  let command =
+    Printf.sprintf "\"%s\" -o \"%s\" -d \"%s\""
+      (escape_string unzip_command)
+      (escape_string (get_abs_path_string zip))
+      (escape_string (get_abs_path_string output_dir))
+  in
+  let exit_status = Sys.command command in
+  { exit_status; command }
+
+
 let run_git_pull
   ~(git_command : string)
   ~(repo_dir : abs_path)
