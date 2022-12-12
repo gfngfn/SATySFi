@@ -117,7 +117,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
 
                 (* Checks the fetched file by using checksum: *)
                 let* () =
-                  let checksum_got = Digest.file (get_abs_path_string abspath_zip) in
+                  let checksum_got = Digest.to_hex (Digest.file (get_abs_path_string abspath_zip)) in
                   if checksum_got = checksum then
                     return ()
                   else
