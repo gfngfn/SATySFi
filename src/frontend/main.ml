@@ -1915,7 +1915,7 @@ type solve_input =
 
 
 let make_lock_name (lock : Lock.t) : lock_name =
-  let Lock.{ package_name; locked_version } = lock in
+  let Lock.{ package_name; locked_version; _ } = lock in
   Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string locked_version)
 
 
@@ -1923,8 +1923,10 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let lock_name = make_lock_name solution.lock in
-      let Lock.{ package_name; _ } = solution.lock in
-      let libpathstr_container = Printf.sprintf "./%s/%s/" Constant.packages_directory package_name in
+      let Lock.{ package_name; registry_hash_value; _ } = solution.lock in
+      let libpathstr_container =
+        Printf.sprintf "./%s/%s/%s/" Constant.packages_directory registry_hash_value package_name
+      in
       let libpathstr_lock = Filename.concat libpathstr_container lock_name in
       let lock_location =
         LockConfig.GlobalLocation{
@@ -2133,7 +2135,7 @@ let solve
               |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
           in
 
-          let* PackageRegistryConfig.{ packages } =
+          let* PackageRegistryConfig.{ packages = packages_in_registry } =
             let abspath_registry_config =
               make_abs_path
                 (Filename.concat
@@ -2142,7 +2144,8 @@ let solve
             in
             PackageRegistryConfig.load abspath_registry_config
           in
-          return (registries |> RegistryLocalNameMap.add registry_local_name packages)
+          let registry_spec = { packages_in_registry; registry_hash_value } in
+          return (registries |> RegistryLocalNameMap.add registry_local_name registry_spec)
 
         ) registry_specs (return RegistryLocalNameMap.empty)
       in
