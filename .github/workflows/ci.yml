@@ -73,6 +73,11 @@ jobs:
       - name: Install SATySFi
         run: |
           opam install -y .
+          if [ "${{ matrix.os }}" == 'macos-latest' ]; then
+            ginstall -m 644 lib-satysfi/satysfi-library-root.yaml ~/.satysfi/satysfi-library-root.yaml
+          else
+            install -m 644 lib-satysfi/satysfi-library-root.yaml ~/.satysfi/satysfi-library-root.yaml
+          fi
 
 # It is no longer necessary to install packages and font files beforehand
 # due to the package system:
