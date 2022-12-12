@@ -75,10 +75,11 @@ module SolverInput = struct
         dependencies : dependency list;
       }
     | Impl of {
-        package_name : package_name;
-        version      : SemanticVersion.t;
-        source       : implementation_source;
-        dependencies : dependency list;
+        package_name        : package_name;
+        version             : SemanticVersion.t;
+        registry_hash_value : registry_hash_value;
+        source              : implementation_source;
+        dependencies        : dependency list;
       }
 
   type role_information = {
@@ -171,26 +172,34 @@ module SolverInput = struct
   let implementations (role : Role.t) : role_information =
     match role with
     | Role{ package_name; registry_local_name; compatibility; context } ->
-        let impl_records =
-          context.registries
-            |> RegistryLocalNameMap.find_opt registry_local_name
-            |> Option.value ~default:PackageNameMap.empty
-            |> PackageNameMap.find_opt package_name |> Option.value ~default:[]
-        in
-        let impls =
-          impl_records |> List.filter_map (fun impl_record ->
-            let ImplRecord{ version; source; language_requirement; dependencies } = impl_record in
-            if Constant.current_language_version |> SemanticVersion.fulfill language_requirement then
-              if String.equal (SemanticVersion.get_compatibility_unit version) compatibility then
-                let dependencies = make_internal_dependency_from_registry registry_local_name context dependencies in
-                Some(Impl{ package_name; version; source; dependencies })
-              else
-                None
-            else
-              None
-          )
-        in
-        { replacement = None; impls }
+        begin
+          match context.registries |> RegistryLocalNameMap.find_opt registry_local_name with
+          | None ->
+              { replacement = None; impls = [] }
+
+          | Some(registry_spec) ->
+              let registry_hash_value = registry_spec.registry_hash_value in
+              let impl_records =
+                registry_spec.packages_in_registry
+                  |> PackageNameMap.find_opt package_name |> Option.value ~default:[]
+              in
+              let impls =
+                impl_records |> List.filter_map (fun impl_record ->
+                  let ImplRecord{ version; source; language_requirement; dependencies } = impl_record in
+                  if Constant.current_language_version |> SemanticVersion.fulfill language_requirement then
+                    if String.equal (SemanticVersion.get_compatibility_unit version) compatibility then
+                      let dependencies =
+                        make_internal_dependency_from_registry registry_local_name context dependencies
+                      in
+                      Some(Impl{ package_name; version; registry_hash_value; source; dependencies })
+                    else
+                      None
+                  else
+                    None
+                )
+              in
+              { replacement = None; impls }
+        end
 
     | LocalRole{ requires; context } ->
         let dependencies = make_internal_dependency context requires in
@@ -314,8 +323,8 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
         | DummyImpl | LocalImpl(_) ->
             acc
 
-        | Impl{ package_name; version = locked_version; source; dependencies } ->
-            let lock = Lock.{ package_name; locked_version } in
+        | Impl{ package_name; version = locked_version; registry_hash_value; source; dependencies } ->
+            let lock = Lock.{ package_name; locked_version; registry_hash_value } in
             let (quad_acc, graph, explicit_vertices, lock_to_vertex_map) = acc in
             let (graph, vertex) =
               match graph |> LockDependencyGraph.add_vertex lock () with
@@ -351,10 +360,15 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
                   | None | Some(DummyImpl) | Some(LocalImpl(_)) ->
                       assert false
 
-                  | Some(Impl{ version = version_dep; _ }) ->
+                  | Some(Impl{
+                      version = version_dep;
+                      registry_hash_value = registry_hash_value_dep;
+                      _
+                    }) ->
                       Lock.{
-                        package_name   = package_name_dep;
-                        locked_version = version_dep;
+                        package_name        = package_name_dep;
+                        locked_version      = version_dep;
+                        registry_hash_value = registry_hash_value_dep;
                       }
                 in
                 let locked_dependency_acc = Alist.extend locked_dependency_acc lock_dep in

@@ -51,12 +51,15 @@ let extract_external_zip ~(unzip_command : string) ~(zip : abs_path) ~(output_co
 
 let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~cache_directory:(absdir_lock_cache : abs_path) (impl_spec : implementation_spec) : unit ok =
   let open ResultMonad in
-  let ImplSpec{ lock_name; container_directory; source } = impl_spec in
+  let ImplSpec{ lock_name; registry_hash_value; container_directory; source } = impl_spec in
   let absdirstr_container = get_abs_path_string container_directory in
   let absdir_lock_root = make_abs_path (Filename.concat absdirstr_container lock_name) in
+  let absdir_lock_cache_of_registry =
+    make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache) registry_hash_value)
+  in
 
   (* Creates the lock cache directory if non-existent, or does nothing otherwise: *)
-  ShellCommand.mkdir_p absdir_lock_cache;
+  ShellCommand.mkdir_p absdir_lock_cache_of_registry;
 
   (* Creates the directory if non-existent, or does nothing otherwise: *)
   ShellCommand.mkdir_p absdir_lock_root;
@@ -73,11 +76,13 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
     | NoSource ->
         return ()
 
-    | TarGzip{ url } ->
+    | TarGzip{ url; checksum } ->
         (* Synchronously fetches a tarball: *)
         let abspath_tarball =
           make_abs_path
-            (Filename.concat (get_abs_path_string absdir_lock_cache) (Printf.sprintf "%s.tar.gz" lock_name))
+            (Filename.concat
+              (get_abs_path_string absdir_lock_cache_of_registry)
+              (Printf.sprintf "%s.tar.gz" lock_name))
         in
         let* () =
           if Sys.file_exists (get_abs_path_string abspath_tarball) then begin
@@ -87,6 +92,21 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
             Logging.downloading_lock lock_name abspath_tarball;
             fetch_tarball ~wget_command ~lock_name ~url ~output:abspath_tarball
           end
+        in
+
+        (* Checks the fetched tarball by using the checksum: *)
+        let* () =
+          let checksum_got = Digest.to_hex (Digest.file (get_abs_path_string abspath_tarball)) in
+          if String.equal checksum_got checksum then
+            return ()
+          else
+            err @@ TarGzipChecksumMismatch{
+              lock_name;
+              url;
+              path     = abspath_tarball;
+              expected = checksum;
+              got      = checksum_got;
+            }
         in
 
         (* Extracts sources from the tarball: *)
@@ -104,7 +124,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
 
                 (* Creates a directory for putting zips: *)
                 let absdir_external =
-                  make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache) lock_name)
+                  make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache_of_registry) lock_name)
                 in
                 ShellCommand.mkdir_p absdir_external;
 

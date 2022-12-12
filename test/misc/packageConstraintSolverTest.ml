@@ -5,6 +5,10 @@ module Constant = Main__Constant
 module PackageConstraintSolver = Main__PackageConstraintSolver
 
 
+let registry_hash_value =
+  "c0bebeef4423"
+
+
 let make_version (s_version : string) : SemanticVersion.t =
   match SemanticVersion.parse s_version with
   | Some(semver) -> semver
@@ -38,6 +42,7 @@ let make_impl (s_version : string) (deps : package_dependency_in_registry list) 
 let make_lock (package_name : package_name) (s_version : string) : Lock.t =
   Lock.{
     package_name;
+    registry_hash_value = registry_hash_value;
     locked_version = make_version s_version;
   }
 
@@ -58,7 +63,7 @@ let check package_context dependencies_with_flags expected =
 
 let solve_test_1 () =
   let package_context =
-    let packages =
+    let packages_in_registry =
       PackageNameMap.of_seq @@ List.to_seq [
         ("foo", [
           make_impl "1.0.0" [];
@@ -72,7 +77,8 @@ let solve_test_1 () =
         ]);
       ]
     in
-    { registries = RegistryLocalNameMap.singleton "default" packages }
+    let registry_spec = { packages_in_registry; registry_hash_value } in
+    { registries = RegistryLocalNameMap.singleton "default" registry_spec }
   in
   let dependencies_with_flags =
     [
@@ -97,7 +103,7 @@ let solve_test_1 () =
 
 let solve_test_2 () =
   let package_context =
-    let packages =
+    let packages_in_registry =
       PackageNameMap.of_seq @@ List.to_seq [
         ("foo", [
           make_impl "1.0.0" [];
@@ -111,7 +117,8 @@ let solve_test_2 () =
         ]);
       ]
     in
-    { registries = RegistryLocalNameMap.singleton "default" packages }
+    let registry_spec = { packages_in_registry; registry_hash_value } in
+    { registries = RegistryLocalNameMap.singleton "default" registry_spec }
   in
   let dependencies_with_flags =
     [

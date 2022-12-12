@@ -17,23 +17,6 @@ module PackageNameMap = Map.Make(String)
 
 module PackageNameSet = Set.Make(String)
 
-module Lock = struct
-  type t = {
-    package_name   : package_name;
-    locked_version : SemanticVersion.t;
-  }
-  [@@deriving show { with_path = false }]
-
-  let compare (lock1 : t) (lock2 : t) : int =
-    let { package_name = s1; locked_version = v1 } = lock1 in
-    let { package_name = s2; locked_version = v2 } = lock2 in
-    match String.compare s1 s2 with
-    | 0       -> SemanticVersion.compare v1 v2
-    | nonzero -> nonzero
-end
-
-module LockMap = Map.Make(Lock)
-
 (* The type for names that stand for a package registry.
    Names of this type are supposed to be valid
    within the scope of one package config file. *)
@@ -47,6 +30,23 @@ type registry_hash_value = string
 [@@deriving show { with_path = false }]
 
 module RegistryHashValueMap = Map.Make(String)
+
+module Lock = struct
+  type t = {
+    package_name        : package_name;
+    locked_version      : SemanticVersion.t;
+    registry_hash_value : registry_hash_value;
+  }
+  [@@deriving show { with_path = false }]
+
+  let compare (lock1 : t) (lock2 : t) : int =
+    let { registry_hash_value = h1; package_name = p1; locked_version = v1 } = lock1 in
+    let { registry_hash_value = h2; package_name = p2; locked_version = v2 } = lock2 in
+    List.compare String.compare
+      [ h1; p1; SemanticVersion.to_string v1 ] [ h2; p2; SemanticVersion.to_string v2 ]
+end
+
+module LockMap = Map.Make(Lock)
 
 type package_dependency =
   | PackageDependency of {
@@ -66,7 +66,8 @@ type package_dependency_in_registry =
 type implementation_source =
   | NoSource
   | TarGzip of {
-      url : string;
+      url      : string;
+      checksum : string;
     }
 [@@deriving show { with_path = false }]
 
@@ -78,8 +79,13 @@ type implementation_record =
       dependencies         : package_dependency_in_registry list;
     }
 
+type registry_spec = {
+  packages_in_registry : (implementation_record list) PackageNameMap.t;
+  registry_hash_value  : registry_hash_value;
+}
+
 type package_context = {
-  registries : ((implementation_record list) PackageNameMap.t) RegistryLocalNameMap.t;
+  registries : registry_spec RegistryLocalNameMap.t;
 }
 
 type package_solution = {
@@ -102,6 +108,7 @@ type dependency_flag =
 type implementation_spec =
   | ImplSpec of {
       lock_name           : lock_name;
+      registry_hash_value : registry_hash_value;
       container_directory : abs_path;
       source              : implementation_source;
     }

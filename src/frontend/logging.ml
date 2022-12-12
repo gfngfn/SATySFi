@@ -128,7 +128,7 @@ let show_package_dependency_before_solving (dependencies_with_flags : (dependenc
 let show_package_dependency_solutions (solutions : package_solution list) =
   Printf.printf "  package dependency solutions:\n";
     solutions |> List.iter (fun solution ->
-      let Lock.{ package_name; locked_version } = solution.lock in
+      let Lock.{ package_name; locked_version; _ } = solution.lock in
       Printf.printf "  - %s %s\n" package_name (SemanticVersion.to_string locked_version)
   )
 

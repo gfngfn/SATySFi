@@ -861,6 +861,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | CannotBeUsedAsAName(yctx, s) ->
       [ NormalLine(Printf.sprintf "'%s' cannot be used as a name%s" s (show_yaml_context yctx)) ]
 
+  | UnsupportedConfigFormat(format) ->
+      [ NormalLine(Printf.sprintf "unsupported config format '%s'" format) ]
+
   | NotACommand{ context = yctx; prefix = _; string = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s'%s" s (show_yaml_context yctx)) ]
 
@@ -1222,6 +1225,16 @@ let report_config_error : config_error -> unit = function
   | ExternalZipChecksumMismatch{ url; path; expected; got } ->
       report_error Interface [
         NormalLine("checksum mismatch of an external zip file.");
+        DisplayLine(Printf.sprintf "- fetched from: '%s'" url);
+        DisplayLine(Printf.sprintf "- path: '%s'" (get_abs_path_string path));
+        DisplayLine(Printf.sprintf "- expected: '%s'" expected);
+        DisplayLine(Printf.sprintf "- got: '%s'" got);
+      ]
+
+  | TarGzipChecksumMismatch{ lock_name; url; path; expected; got } ->
+      report_error Interface [
+        NormalLine("checksum mismatch of a tarball.");
+        DisplayLine(Printf.sprintf "- lock name: '%s'" lock_name);
         DisplayLine(Printf.sprintf "- fetched from: '%s'" url);
         DisplayLine(Printf.sprintf "- path: '%s'" (get_abs_path_string path));
         DisplayLine(Printf.sprintf "- expected: '%s'" expected);
@@ -1902,7 +1915,7 @@ type solve_input =
 
 
 let make_lock_name (lock : Lock.t) : lock_name =
-  let Lock.{ package_name; locked_version } = lock in
+  let Lock.{ package_name; locked_version; _ } = lock in
   Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string locked_version)
 
 
@@ -1910,8 +1923,10 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let lock_name = make_lock_name solution.lock in
-      let Lock.{ package_name; _ } = solution.lock in
-      let libpathstr_container = Printf.sprintf "./%s/%s/" Constant.packages_directory package_name in
+      let Lock.{ package_name; registry_hash_value; _ } = solution.lock in
+      let libpathstr_container =
+        Printf.sprintf "./%s/%s/%s/" Constant.packages_directory registry_hash_value package_name
+      in
       let libpathstr_lock = Filename.concat libpathstr_container lock_name in
       let lock_location =
         LockConfig.GlobalLocation{
@@ -1936,6 +1951,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
         in
         ImplSpec{
           lock_name           = lock_name;
+          registry_hash_value = registry_hash_value;
           container_directory = abspath_container;
           source              = solution.locked_source;
         }
@@ -2120,7 +2136,7 @@ let solve
               |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
           in
 
-          let* PackageRegistryConfig.{ packages } =
+          let* PackageRegistryConfig.{ packages = packages_in_registry } =
             let abspath_registry_config =
               make_abs_path
                 (Filename.concat
@@ -2129,7 +2145,8 @@ let solve
             in
             PackageRegistryConfig.load abspath_registry_config
           in
-          return (registries |> RegistryLocalNameMap.add registry_local_name packages)
+          let registry_spec = { packages_in_registry; registry_hash_value } in
+          return (registries |> RegistryLocalNameMap.add registry_local_name registry_spec)
 
         ) registry_specs (return RegistryLocalNameMap.empty)
       in

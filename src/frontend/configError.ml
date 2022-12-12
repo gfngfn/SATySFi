@@ -30,6 +30,7 @@ type yaml_error =
       registry_hash_value : registry_hash_value;
     }
   | CannotBeUsedAsAName of YamlDecoder.context * string
+  | UnsupportedConfigFormat of string
   | NotACommand of {
       context : YamlDecoder.context;
       prefix  : char;
@@ -116,6 +117,13 @@ type config_error =
       path     : abs_path;
       expected : string;
       got      : string;
+    }
+  | TarGzipChecksumMismatch of {
+      lock_name : lock_name;
+      url       : string;
+      path      : abs_path;
+      expected  : string;
+      got       : string;
     }
   | FailedToExtractExternalZip of {
       exit_status : int;
