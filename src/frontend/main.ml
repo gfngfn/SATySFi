@@ -1219,6 +1219,15 @@ let report_config_error : config_error -> unit = function
         DisplayLine(command);
       ]
 
+  | ExternalZipChecksumMismatch{ url; path; expected; got } ->
+      report_error Interface [
+        NormalLine("checksum mismatch of an external zip file.");
+        DisplayLine(Printf.sprintf "- fetched from: '%s'" url);
+        DisplayLine(Printf.sprintf "- path: '%s'" (get_abs_path_string path));
+        DisplayLine(Printf.sprintf "- expected: '%s'" expected);
+        DisplayLine(Printf.sprintf "- got: '%s'" got);
+      ]
+
   | PackageRegistryFetcherError(e) ->
       begin
         match e with

@@ -89,7 +89,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~cache_directory:(absd
         let* () =
           external_sources |> foldM (fun () (name, external_source) ->
             match external_source with
-            | ExternalZip{ url; checksum = _; extractions = _ } ->
+            | ExternalZip{ url; checksum; extractions = _ } ->
 
                 (* Creates a directory for putting zips: *)
                 let absdir_external =
@@ -97,11 +97,26 @@ let main ~(wget_command : string) ~(tar_command : string) ~cache_directory:(absd
                 in
                 ShellCommand.mkdir_p absdir_external;
 
+                (* Fetches the zip file: *)
                 let abspath_zip =
                   make_abs_path
                     (Filename.concat (get_abs_path_string absdir_external) (Printf.sprintf "%s.zip" name))
                 in
                 let* () = fetch_external_zip ~wget_command ~url ~output:abspath_zip in
+
+                (* Checks the fetched file by using checksum: *)
+                let* () =
+                  let checksum_got = Digest.file (get_abs_path_string abspath_zip) in
+                  if checksum_got = checksum then
+                    return ()
+                  else
+                    err @@ ExternalZipChecksumMismatch{
+                      url;
+                      path     = abspath_zip;
+                      expected = checksum;
+                      got      = checksum_got;
+                    }
+                in
 
                 (* TODO: extract ZIP and move files here *)
                 return ()

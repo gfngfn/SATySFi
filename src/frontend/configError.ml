@@ -111,5 +111,11 @@ type config_error =
       exit_status : int;
       command     : string;
     }
+  | ExternalZipChecksumMismatch of {
+      url      : string;
+      path     : abs_path;
+      expected : string;
+      got      : string;
+    }
   | PackageRegistryFetcherError   of PackageRegistryFetcher.error
   | CanonicalRegistryUrlError     of CanonicalRegistryUrl.error
