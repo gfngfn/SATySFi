@@ -74,22 +74,15 @@ jobs:
         run: |
           opam install -y .
           if [ "${{ matrix.os }}" == 'macos-latest' ]; then
-            ginstall -d ~/.satysfi
-            ginstall -m 644 lib-satysfi/satysfi-library-root.yaml ~/.satysfi/satysfi-library-root.yaml
+            ./install-libs.sh ~/.satysfi ginstall
           else
-            install -d ~/.satysfi
-            install -m 644 lib-satysfi/satysfi-library-root.yaml ~/.satysfi/satysfi-library-root.yaml
+            ./install-libs.sh ~/.satysfi install
           fi
 
-# It is no longer necessary to install packages and font files beforehand
+# It is no longer necessary to download font files beforehand
 # due to the package system:
 #          if [ -z "$(ls lib-satysfi/dist/fonts)" ]; then
 #            ./download-fonts.sh
-#          fi
-#          if [ "${{ matrix.os }}" == 'macos-latest' ]; then
-#            ./install-libs.sh ~/.satysfi ginstall
-#          else
-#            ./install-libs.sh ~/.satysfi install
 #          fi
 
       - name: Check library packages
