@@ -1,6 +1,20 @@
 language: "^0.1.0"
 name: "font-junicode"
 authors: []
+external_sources:
+  - name: "junicode-1.002"
+    type: "zip"
+    url: "http://downloads.sourceforge.net/project/junicode/junicode/junicode-1.002/junicode-1.002.zip"
+    checksum: "b1d6ed8796d8d1eacd733c0d568d939f"
+    extractions:
+      - from: "Junicode.ttf"
+        to: "./fonts/Junicode.ttf"
+      - from: "Junicode-Bold.ttf"
+        to: "./fonts/Junicode-Bold.ttf"
+      - from: "Junicode-Italic.ttf"
+        to: "./fonts/Junicode-Italic.ttf"
+      - from: "Junicode-BoldItalic.ttf"
+        to: "./fonts/Junicode-BoldItalic.ttf"
 contents:
   type: "font"
   main_module: "FontJunicode"

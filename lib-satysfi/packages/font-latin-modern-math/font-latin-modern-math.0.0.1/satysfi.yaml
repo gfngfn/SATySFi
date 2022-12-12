@@ -1,6 +1,14 @@
 language: "^0.1.0"
 name: "font-latin-modern-math"
 authors: []
+external_sources:
+  - name: "latinmodern-math-1959"
+    type: "zip"
+    url: "http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip"
+    checksum: "bc82f6d4184ec0ea3ba2c0798e6be719"
+    extractions:
+      - from: "latinmodern-math-1959/otf/latinmodern-math.otf"
+        to: "./fonts/latinmodern-math.otf"
 contents:
   type: "font"
   main_module: "FontLatinModernMath"
