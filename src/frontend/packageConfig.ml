@@ -36,7 +36,7 @@ type package_contents =
 type t = {
   package_name     : package_name;
   package_authors  : string list;
-  external_sources : external_source list;
+  external_sources : (string * external_source) list;
   package_contents : package_contents;
   registry_specs   : registry_remote RegistryLocalNameMap.t;
 }
@@ -219,14 +219,15 @@ let extraction_decoder : extraction ConfigDecoder.t =
   succeed { extracted_from; extracted_to }
 
 
-let external_source_decoder : external_source ConfigDecoder.t =
+let external_source_decoder : (string * external_source) ConfigDecoder.t =
   let open ConfigDecoder in
   branch "type" [
     "zip" ==> begin
+      get "name" name_decoder >>= fun name ->
       get "url" string >>= fun url ->
       get "checksum" string >>= fun checksum ->
       get "extractions" (list extraction_decoder) >>= fun extractions ->
-      succeed @@ ExternalZip{ url; checksum; extractions }
+      succeed (name, ExternalZip{ url; checksum; extractions })
     end;
   ]
   ~other:(fun tag ->

@@ -1,22 +1,13 @@
 
 open MyUtil
 open PackageSystemBase
+open ConfigError
 
 
-type error =
-  | FailedToFetchTarball of {
-      lock_name   : lock_name;
-      exit_status : int;
-      command     : string;
-    }
-  | FailedToExtractTarball of {
-      lock_name   : lock_name;
-      exit_status : int;
-      command     : string;
-    }
+type 'a ok = ('a, config_error) result
 
 
-let fetch_tarball ~(wget_command : string) ~(lock_name : lock_name) ~(url : string) ~(output : abs_path) : (unit, error) result =
+let fetch_tarball ~(wget_command : string) ~(lock_name : lock_name) ~(url : string) ~(output : abs_path) : unit ok =
   let open ResultMonad in
   let ShellCommand.{ exit_status; command } = ShellCommand.run_wget ~wget_command ~url ~output in
   if exit_status = 0 then
@@ -36,7 +27,18 @@ let extract_tarball_with_components_stripped ~(tar_command : string) ~(lock_name
     err @@ FailedToExtractTarball{ lock_name; exit_status; command }
 
 
-let main ~(wget_command : string) ~(tar_command : string) ~cache_directory:(absdir_lock_cache : abs_path) (impl_spec : implementation_spec) : (unit, error) result =
+let fetch_external_zip ~(wget_command : string) ~(url : string) ~(output : abs_path) : unit ok =
+  let open ResultMonad in
+  let ShellCommand.{ exit_status; command } =
+    ShellCommand.run_wget ~wget_command ~url ~output
+  in
+  if exit_status = 0 then
+    return ()
+  else
+    err @@ FailedToFetchExternalZip{ url; exit_status; command }
+
+
+let main ~(wget_command : string) ~(tar_command : string) ~cache_directory:(absdir_lock_cache : abs_path) (impl_spec : implementation_spec) : unit ok =
   let open ResultMonad in
   let ImplSpec{ lock_name; container_directory; source } = impl_spec in
   let absdirstr_container = get_abs_path_string container_directory in
@@ -76,10 +78,34 @@ let main ~(wget_command : string) ~(tar_command : string) ~cache_directory:(absd
           end
         in
 
-        (* Extract sources from the tarball: *)
+        (* Extracts sources from the tarball: *)
         let* () =
           extract_tarball_with_components_stripped
             ~tar_command ~lock_name ~tarball:abspath_tarball ~lock_root:absdir_lock_root
+        in
+
+        (* Fetches external sources according to the package config: *)
+        let* PackageConfig.{ external_sources; _ } = PackageConfig.load absdir_lock_root in
+        let* () =
+          external_sources |> foldM (fun () (name, external_source) ->
+            match external_source with
+            | ExternalZip{ url; checksum = _; extractions = _ } ->
+
+                (* Creates a directory for putting zips: *)
+                let absdir_external =
+                  make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache) lock_name)
+                in
+                ShellCommand.mkdir_p absdir_external;
+
+                let abspath_zip =
+                  make_abs_path
+                    (Filename.concat (get_abs_path_string absdir_external) (Printf.sprintf "%s.zip" name))
+                in
+                let* () = fetch_external_zip ~wget_command ~url ~output:abspath_zip in
+
+                (* TODO: extract ZIP and move files here *)
+                return ()
+          ) ()
         in
 
         return ()
