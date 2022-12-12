@@ -121,5 +121,9 @@ type config_error =
       exit_status : int;
       command     : string;
     }
+  | FailedToCopyFile of {
+      exit_status : int;
+      command     : string;
+    }
   | PackageRegistryFetcherError   of PackageRegistryFetcher.error
   | CanonicalRegistryUrlError     of CanonicalRegistryUrl.error

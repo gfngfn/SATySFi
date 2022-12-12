@@ -8,6 +8,8 @@ type run_result = {
 
 val mkdir_p : abs_path -> unit
 
+val cp : from:abs_path -> to_:abs_path -> run_result
+
 val run_wget :
   wget_command:string ->
   url:string ->
@@ -23,7 +25,7 @@ val run_tar_xzf_strip_components_1 :
 val run_unzip :
   unzip_command:string ->
   zip:abs_path ->
-  output_dir:abs_path ->
+  output_container_dir:abs_path ->
   run_result
 
 val run_git_pull :

@@ -1234,6 +1234,12 @@ let report_config_error : config_error -> unit = function
         DisplayLine(command);
       ]
 
+  | FailedToCopyFile{ exit_status; command } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "failed to copy a file (exit status: %d). command:" exit_status);
+        DisplayLine(command);
+      ]
+
   | PackageRegistryFetcherError(e) ->
       begin
         match e with

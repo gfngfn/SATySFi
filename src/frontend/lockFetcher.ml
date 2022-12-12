@@ -38,10 +38,10 @@ let fetch_external_zip ~(wget_command : string) ~(url : string) ~(output : abs_p
     err @@ FailedToFetchExternalZip{ url; exit_status; command }
 
 
-let extract_external_zip ~(unzip_command : string) ~(zip : abs_path) ~(output_dir : abs_path) =
+let extract_external_zip ~(unzip_command : string) ~(zip : abs_path) ~(output_container_dir : abs_path) =
   let open ResultMonad in
   let ShellCommand.{ exit_status; command } =
-    ShellCommand.run_unzip ~unzip_command ~zip ~output_dir
+    ShellCommand.run_unzip ~unzip_command ~zip ~output_container_dir
   in
   if exit_status = 0 then
     return ()
@@ -100,7 +100,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
         let* () =
           external_sources |> foldM (fun () (name, external_source) ->
             match external_source with
-            | ExternalZip{ url; checksum; extractions = _ } ->
+            | ExternalZip{ url; checksum; extractions } ->
 
                 (* Creates a directory for putting zips: *)
                 let absdir_external =
@@ -130,9 +130,33 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
                 in
 
                 (* Extracts the zip file: *)
-                let* () = extract_external_zip ~unzip_command ~zip:abspath_zip ~output_dir:absdir_external in
+                let* () =
+                  extract_external_zip
+                    ~unzip_command ~zip:abspath_zip ~output_container_dir:absdir_external
+                in
 
-                (* TODO: move files here *)
+                (* Copies files: *)
+                let* () =
+                  extractions |> foldM (fun () extraction ->
+                    let { extracted_from; extracted_to } = extraction in
+                    let abspath_from =
+                      make_abs_path
+                        (Filename.concat (get_abs_path_string absdir_external) extracted_from)
+                    in
+                    let abspath_to =
+                      make_abs_path
+                        (Filename.concat (get_abs_path_string absdir_lock_root) extracted_to)
+                    in
+                    let ShellCommand.{ exit_status; command } =
+                      ShellCommand.cp ~from:abspath_from ~to_:abspath_to
+                    in
+                    if exit_status = 0 then
+                      return ()
+                    else
+                      err @@ FailedToCopyFile{ exit_status; command }
+                  ) ()
+                in
+
                 return ()
           ) ()
         in
