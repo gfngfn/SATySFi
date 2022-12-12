@@ -124,7 +124,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
 
                 (* Creates a directory for putting zips: *)
                 let absdir_external =
-                  make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache) lock_name)
+                  make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache_of_registry) lock_name)
                 in
                 ShellCommand.mkdir_p absdir_external;
 

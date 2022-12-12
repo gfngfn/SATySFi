@@ -3,21 +3,21 @@ locks:
 - name: font-ipa-ex.0.0.1
   location:
     type: global
-    path: ./packages/font-ipa-ex/font-ipa-ex.0.0.1
+    path: ./packages/d9b4b850ab61a7b68961c6315048b351/font-ipa-ex/font-ipa-ex.0.0.1
   dependencies: []
   test_only: false
   lock_package_name: font-ipa-ex
 - name: font-junicode.0.0.1
   location:
     type: global
-    path: ./packages/font-junicode/font-junicode.0.0.1
+    path: ./packages/d9b4b850ab61a7b68961c6315048b351/font-junicode/font-junicode.0.0.1
   dependencies: []
   test_only: false
   lock_package_name: font-junicode
 - name: font-latin-modern-math.0.0.1
   location:
     type: global
-    path: ./packages/font-latin-modern-math/font-latin-modern-math.0.0.1
+    path: ./packages/d9b4b850ab61a7b68961c6315048b351/font-latin-modern-math/font-latin-modern-math.0.0.1
   dependencies: []
   test_only: false
   lock_package_name: font-latin-modern-math
