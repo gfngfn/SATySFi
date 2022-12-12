@@ -54,9 +54,12 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
   let ImplSpec{ lock_name; registry_hash_value; container_directory; source } = impl_spec in
   let absdirstr_container = get_abs_path_string container_directory in
   let absdir_lock_root = make_abs_path (Filename.concat absdirstr_container lock_name) in
+  let absdir_lock_cache_of_registry =
+    make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache) registry_hash_value)
+  in
 
   (* Creates the lock cache directory if non-existent, or does nothing otherwise: *)
-  ShellCommand.mkdir_p absdir_lock_cache;
+  ShellCommand.mkdir_p absdir_lock_cache_of_registry;
 
   (* Creates the directory if non-existent, or does nothing otherwise: *)
   ShellCommand.mkdir_p absdir_lock_root;
@@ -78,7 +81,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
         let abspath_tarball =
           make_abs_path
             (Filename.concat
-              (Filename.concat (get_abs_path_string absdir_lock_cache) registry_hash_value)
+              (get_abs_path_string absdir_lock_cache_of_registry)
               (Printf.sprintf "%s.tar.gz" lock_name))
         in
         let* () =
