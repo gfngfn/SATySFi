@@ -17,7 +17,8 @@ let source_decoder : implementation_source ConfigDecoder.t =
   branch "type" [
     "tar_gzip" ==> begin
       get "url" string >>= fun url ->
-      succeed @@ TarGzip{ url }
+      get "checksum" string >>= fun checksum ->
+      succeed @@ TarGzip{ url; checksum }
     end;
   ]
   ~other:(fun tag ->
@@ -53,15 +54,20 @@ let package_decoder : (package_name * implementation_record list) ConfigDecoder.
 
 let registry_config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
-  get "packages" (list package_decoder) >>= fun packages ->
-  packages |> List.fold_left (fun res (package_name, impls) ->
-    res >>= fun map ->
-    if map |> PackageNameMap.mem package_name then
-      failure (fun yctx -> MultiplePackageDefinition{ context = yctx; package_name })
-    else
-      succeed (map |> PackageNameMap.add package_name impls)
-  ) (succeed PackageNameMap.empty) >>= fun packages ->
-  succeed { packages }
+  get "format" string >>= function
+  | "1" ->
+      get "packages" (list package_decoder) >>= fun packages ->
+      packages |> List.fold_left (fun res (package_name, impls) ->
+        res >>= fun map ->
+        if map |> PackageNameMap.mem package_name then
+          failure (fun yctx -> MultiplePackageDefinition{ context = yctx; package_name })
+        else
+          succeed (map |> PackageNameMap.add package_name impls)
+      ) (succeed PackageNameMap.empty) >>= fun packages ->
+      succeed { packages }
+
+  | format ->
+      failure (fun _yctx -> UnsupportedConfigFormat(format))
 
 
 let load (abspath_registry_config : abs_path) : t ok =

@@ -73,7 +73,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
     | NoSource ->
         return ()
 
-    | TarGzip{ url } ->
+    | TarGzip{ url; checksum } ->
         (* Synchronously fetches a tarball: *)
         let abspath_tarball =
           make_abs_path
@@ -87,6 +87,21 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
             Logging.downloading_lock lock_name abspath_tarball;
             fetch_tarball ~wget_command ~lock_name ~url ~output:abspath_tarball
           end
+        in
+
+        (* Checks the fetched tarball by using the checksum: *)
+        let* () =
+          let checksum_got = Digest.to_hex (Digest.file (get_abs_path_string abspath_tarball)) in
+          if String.equal checksum_got checksum then
+            return ()
+          else
+            err @@ TarGzipChecksumMismatch{
+              lock_name;
+              url;
+              path     = abspath_tarball;
+              expected = checksum;
+              got      = checksum_got;
+            }
         in
 
         (* Extracts sources from the tarball: *)

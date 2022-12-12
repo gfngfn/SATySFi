@@ -861,6 +861,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | CannotBeUsedAsAName(yctx, s) ->
       [ NormalLine(Printf.sprintf "'%s' cannot be used as a name%s" s (show_yaml_context yctx)) ]
 
+  | UnsupportedConfigFormat(format) ->
+      [ NormalLine(Printf.sprintf "unsupported config format '%s'" format) ]
+
   | NotACommand{ context = yctx; prefix = _; string = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s'%s" s (show_yaml_context yctx)) ]
 
@@ -1222,6 +1225,16 @@ let report_config_error : config_error -> unit = function
   | ExternalZipChecksumMismatch{ url; path; expected; got } ->
       report_error Interface [
         NormalLine("checksum mismatch of an external zip file.");
+        DisplayLine(Printf.sprintf "- fetched from: '%s'" url);
+        DisplayLine(Printf.sprintf "- path: '%s'" (get_abs_path_string path));
+        DisplayLine(Printf.sprintf "- expected: '%s'" expected);
+        DisplayLine(Printf.sprintf "- got: '%s'" got);
+      ]
+
+  | TarGzipChecksumMismatch{ lock_name; url; path; expected; got } ->
+      report_error Interface [
+        NormalLine("checksum mismatch of a tarball.");
+        DisplayLine(Printf.sprintf "- lock name: '%s'" lock_name);
         DisplayLine(Printf.sprintf "- fetched from: '%s'" url);
         DisplayLine(Printf.sprintf "- path: '%s'" (get_abs_path_string path));
         DisplayLine(Printf.sprintf "- expected: '%s'" expected);

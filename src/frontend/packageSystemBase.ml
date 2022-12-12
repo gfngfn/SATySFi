@@ -66,7 +66,8 @@ type package_dependency_in_registry =
 type implementation_source =
   | NoSource
   | TarGzip of {
-      url : string;
+      url      : string;
+      checksum : string;
     }
 [@@deriving show { with_path = false }]
 
