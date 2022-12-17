@@ -1,24 +1,24 @@
 
+open MyUtil
+open PackageSystemBase
+
+
 let current_language_version =
   match SemanticVersion.parse "0.1.0" with
   | Some(semver) -> semver
   | None         -> assert false
 
 
-let packages_directory =
-  "packages"
+let package_root_directory (registry_hash_value : registry_hash_value) (package_name : package_name) : lib_path =
+  make_lib_path (Printf.sprintf "packages/%s/%s" registry_hash_value package_name)
 
 
-let registries_directory =
-  "registries"
-
-
-let cache_directory =
-  "cache"
+let registry_root_directory (registry_hash_value : registry_hash_value) : lib_path =
+  make_lib_path (Printf.sprintf "registries/%s" registry_hash_value)
 
 
 let cache_locks_directory =
-  "cache/locks"
+  make_lib_path "cache/locks"
 
 
 let package_config_file_name =

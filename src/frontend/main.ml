@@ -1924,10 +1924,10 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let lock_name = make_lock_name solution.lock in
       let Lock.{ package_name; registry_hash_value; _ } = solution.lock in
-      let libpathstr_container =
-        Printf.sprintf "./%s/%s/%s/" Constant.packages_directory registry_hash_value package_name
+      let libpath_container =
+        Constant.package_root_directory registry_hash_value package_name
       in
-      let libpathstr_lock = Filename.concat libpathstr_container lock_name in
+      let libpathstr_lock = Filename.concat (get_lib_path_string libpath_container) lock_name in
       let lock_location =
         LockConfig.GlobalLocation{
           path = libpathstr_lock;
@@ -1947,7 +1947,8 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
       let impl_spec =
         let abspath_primary_root = get_primary_root_dir () in
         let abspath_container =
-          make_abs_path (Filename.concat (get_abs_path_string abspath_primary_root) libpathstr_container)
+          make_abs_path
+            (Filename.concat (get_abs_path_string abspath_primary_root) (get_lib_path_string libpath_container))
         in
         ImplSpec{
           lock_name           = lock_name;
@@ -2125,10 +2126,11 @@ let solve
           (* Fetches registry configs: *)
           let absdir_registry_repo =
             let absdir_library_root = get_primary_root_dir () in
+            let libpath_registry_root = Constant.registry_root_directory registry_hash_value in
             make_abs_path
               (Filename.concat
-                (Filename.concat (get_abs_path_string absdir_library_root) Constant.registries_directory)
-                registry_hash_value)
+                (get_abs_path_string absdir_library_root)
+                (get_lib_path_string libpath_registry_root))
           in
           let git_command = "git" in (* TODO: make this changeable *)
           let* () =
@@ -2169,8 +2171,11 @@ let solve
             let unzip_command = "unzip" in (* TODO: make this changeable *)
             let absdir_lock_cache =
               let absdir_primary_root = get_primary_root_dir () in
+              let libpath_cache_locks = Constant.cache_locks_directory in
               make_abs_path
-                 (Filename.concat (get_abs_path_string absdir_primary_root) Constant.cache_locks_directory)
+                (Filename.concat
+                  (get_abs_path_string absdir_primary_root)
+                  (get_lib_path_string libpath_cache_locks))
             in
             let* () =
               impl_specs |> foldM (fun () impl_spec ->
