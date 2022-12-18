@@ -3,7 +3,7 @@ locks:
 - name: annot.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/annot/annot.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/annot/annot.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
@@ -11,7 +11,7 @@ locks:
 - name: code.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/code/code.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/code/code.0.0.1
   dependencies:
   - stdlib.0.0.1
   - font-latin-modern.0.0.1
@@ -20,35 +20,35 @@ locks:
 - name: font-ipa-ex.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/font-ipa-ex/font-ipa-ex.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/font-ipa-ex/font-ipa-ex.0.0.1
   dependencies: []
   test_only: false
   lock_package_name: font-ipa-ex
 - name: font-junicode.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/font-junicode/font-junicode.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/font-junicode/font-junicode.0.0.1
   dependencies: []
   test_only: false
   lock_package_name: font-junicode
 - name: font-latin-modern.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/font-latin-modern/font-latin-modern.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/font-latin-modern/font-latin-modern.0.0.1
   dependencies: []
   test_only: false
   lock_package_name: font-latin-modern
 - name: font-latin-modern-math.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/font-latin-modern-math/font-latin-modern-math.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/font-latin-modern-math/font-latin-modern-math.0.0.1
   dependencies: []
   test_only: false
   lock_package_name: font-latin-modern-math
 - name: footnote-scheme.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/footnote-scheme/footnote-scheme.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/footnote-scheme/footnote-scheme.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
@@ -56,7 +56,7 @@ locks:
 - name: itemize.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/itemize/itemize.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/itemize/itemize.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
@@ -64,7 +64,7 @@ locks:
 - name: math.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/math/math.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/math/math.0.0.1
   dependencies:
   - stdlib.0.0.1
   test_only: false
@@ -72,7 +72,7 @@ locks:
 - name: std-ja-book.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/std-ja-book/std-ja-book.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/std-ja-book/std-ja-book.0.0.1
   dependencies:
   - stdlib.0.0.1
   - math.0.0.1
@@ -88,7 +88,7 @@ locks:
 - name: stdlib.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/stdlib/stdlib.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/stdlib/stdlib.0.0.1
   dependencies: []
   test_only: false
   lock_package_name: stdlib

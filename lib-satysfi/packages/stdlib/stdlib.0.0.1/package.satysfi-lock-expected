@@ -3,7 +3,7 @@ locks:
 - name: testing.0.0.1
   location:
     type: global
-    path: ./packages/d9b4b850ab61a7b68961c6315048b351/testing/testing.0.0.1
+    path: packages/d9b4b850ab61a7b68961c6315048b351/testing/testing.0.0.1
   dependencies: []
   test_only: true
   lock_package_name: testing
