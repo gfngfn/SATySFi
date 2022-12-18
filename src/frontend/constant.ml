@@ -34,8 +34,8 @@ let package_config_file_name =
   "satysfi.yaml"
 
 
-let library_root_config_file_name =
-  "satysfi-library-root.yaml"
+let library_root_config_file =
+  make_lib_path "satysfi-library-root.yaml"
 
 
 let package_registry_config_file_name =
