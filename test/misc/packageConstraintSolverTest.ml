@@ -1,4 +1,5 @@
 
+open Main__MyUtil
 open Main__PackageSystemBase
 module SemanticVersion = Main__SemanticVersion
 module Constant = Main__Constant
@@ -60,8 +61,13 @@ let make_solution ?(test_only : bool = false) (package_name : package_name) (s_v
 
 
 let check package_context dependencies_with_flags expected =
-  let got = PackageConstraintSolver.solve package_context dependencies_with_flags in
-  Alcotest.(check (option (list (of_pp pp_package_solution)))) "solutions" expected got
+  let res = PackageConstraintSolver.solve package_context dependencies_with_flags in
+  match res with
+  | Ok(got) ->
+      Alcotest.(check (list (of_pp pp_package_solution))) "solutions" expected got
+
+  | Error(_e) ->
+      Alcotest.fail "error"
 
 
 let solve_test_1 () =
@@ -81,7 +87,10 @@ let solve_test_1 () =
       ]
     in
     let registry_spec = { packages_in_registry; registry_hash_value } in
-    { registries = RegistryLocalNameMap.singleton "default" registry_spec }
+    {
+      job_directory = make_abs_path "/"; (* Unused *)
+      registries    = RegistryLocalNameMap.singleton "default" registry_spec;
+    }
   in
   let dependencies_with_flags =
     [
@@ -90,7 +99,7 @@ let solve_test_1 () =
     ]
   in
   let expected =
-    Some([
+    [
       make_solution "bar" "1.0.0" [
         make_lock "foo" "2.0.0";
       ];
@@ -99,7 +108,7 @@ let solve_test_1 () =
       make_solution "qux" "1.0.0" [
         make_lock "foo" "1.0.0";
       ];
-    ])
+    ]
   in
   check package_context dependencies_with_flags expected
 
@@ -121,7 +130,10 @@ let solve_test_2 () =
       ]
     in
     let registry_spec = { packages_in_registry; registry_hash_value } in
-    { registries = RegistryLocalNameMap.singleton "default" registry_spec }
+    {
+      job_directory = make_abs_path "/"; (* Unused *)
+      registries    = RegistryLocalNameMap.singleton "default" registry_spec;
+    }
   in
   let dependencies_with_flags =
     [
@@ -130,11 +142,11 @@ let solve_test_2 () =
     ]
   in
   let expected =
-    Some([
+    [
       make_solution "bar" "1.0.0" [ make_lock "foo" "1.1.0" ];
       make_solution "foo" "1.1.0" [];
       make_solution "qux" "1.0.0" [ make_lock "foo" "1.1.0" ];
-    ])
+    ]
   in
   check package_context dependencies_with_flags expected
 
