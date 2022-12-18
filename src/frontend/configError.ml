@@ -91,7 +91,13 @@ type config_error =
       relative   : string;
       candidates : abs_path list;
     }
-  | PackageConstraintSolverError  of PackageConstraintSolver.error
+  | UndefinedRegistryLocalName    of registry_local_name
+  | PackageNotRegistered          of package_name
+  | Unsatisfiable
+  | PackageNameMismatch of {
+      expected : package_name;
+      got      : package_name;
+    }
   | DocumentAttributeError        of DocumentAttribute.error
   | MarkdownClassNotFound         of module_name
   | NoMarkdownConversion          of module_name

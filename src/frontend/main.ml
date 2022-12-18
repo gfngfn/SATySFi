@@ -1163,24 +1163,25 @@ let report_config_error : config_error -> unit = function
       report_error Interface
         (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
 
-  | PackageConstraintSolverError(e) ->
-      begin
-        match e with
-        | UndefinedRegistryLocalName(registry_local_name) ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "undefined registry local name '%s'." registry_local_name);
-            ]
+  | UndefinedRegistryLocalName(registry_local_name) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "undefined registry local name '%s'." registry_local_name);
+      ]
 
-        | PackageNotRegistered(package_name) ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "package '%s' not found in the registry." package_name);
-            ]
+  | PackageNotRegistered(package_name) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "package '%s' not found in the registry." package_name);
+      ]
 
-        | Unsatisfiable ->
-            report_error Interface [
-              NormalLine("cannot solve package constraints.");
-            ]
-      end
+  | Unsatisfiable ->
+      report_error Interface [
+        NormalLine("cannot solve package constraints.");
+      ]
+
+  | PackageNameMismatch{ expected; got } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "package name mismatch; expected '%s' but got '%s'." expected got);
+      ]
 
   | DocumentAttributeError(e) ->
       report_document_attribute_error e
@@ -2139,10 +2140,7 @@ let solve
       in
 
       let package_context = { job_directory; registries } in
-      let* solutions =
-        PackageConstraintSolver.solve package_context dependencies_with_flags
-          |> Result.map_error (fun e -> PackageConstraintSolverError(e))
-      in
+      let* solutions = PackageConstraintSolver.solve package_context dependencies_with_flags in
       Logging.show_package_dependency_solutions solutions;
 
       let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in

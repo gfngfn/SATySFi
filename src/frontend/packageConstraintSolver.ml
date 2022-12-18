@@ -1,14 +1,10 @@
 
 open MyUtil
 open PackageSystemBase
+open ConfigError
 
 
-type error =
-  | UndefinedRegistryLocalName of registry_local_name
-  | PackageNotRegistered       of package_name
-  | Unsatisfiable
-
-exception InternalException of error
+exception InternalException of config_error
 
 
 module SolverInput = struct
@@ -29,6 +25,7 @@ module SolverInput = struct
       | FixedRole of {
           package_name : package_name;
           path         : abs_path;
+          context      : package_context;
         }
 
 
@@ -86,6 +83,7 @@ module SolverInput = struct
     | FixedDependency of {
         package_name : package_name;
         path         : abs_path;
+        context      : package_context;
       }
 
   type dep_info = {
@@ -172,8 +170,8 @@ module SolverInput = struct
     | Dependency{ role; _ } ->
         { dep_role = role; dep_importance = `Essential; dep_required_commands = [] }
 
-    | FixedDependency{ package_name; path } ->
-        let role = Role.FixedRole{ package_name; path } in
+    | FixedDependency{ package_name; path; context } ->
+        let role = Role.FixedRole{ package_name; path; context } in
         { dep_role = role; dep_importance = `Essential; dep_required_commands = [] }
 
 
@@ -219,7 +217,7 @@ module SolverInput = struct
 
       | RelativeDependency{ path } ->
           let abspath = make_abs_path (Filename.concat (get_abs_path_string context.job_directory) path) in
-          FixedDependency{ package_name; path = abspath }
+          FixedDependency{ package_name; path = abspath; context }
     )
 
 
@@ -264,8 +262,23 @@ module SolverInput = struct
           in
           return { replacement = None; impls }
 
-      | FixedRole{ package_name; path } ->
-          let dependencies = failwith "TODO: FixedRole; load the package config here" in
+      | FixedRole{ package_name; path; context } ->
+          let* config =
+            let absdir_package = path in
+            PackageConfig.load absdir_package
+          in
+          let PackageConfig.{ package_name = package_name_got; package_contents; _ } = config in
+          let* () =
+            if String.equal package_name package_name_got then
+              return ()
+            else
+              err @@ PackageNameMismatch{ expected = package_name; got = package_name_got }
+          in
+          let dependencies =
+            match package_contents with
+            | PackageConfig.Library{ dependencies; _ } -> make_internal_dependency context dependencies
+            | PackageConfig.Font(_)                    -> []
+          in
           let impls = [ FixedImpl{ package_name; path; dependencies } ] in
           return { replacement = None; impls }
     in
@@ -374,7 +387,7 @@ module LockDependencyGraph = DependencyGraph.Make(Lock)
 module VertexSet = LockDependencyGraph.VertexSet
 
 
-let solve (context : package_context) (dependencies_with_flags : (dependency_flag * package_dependency) list) : (package_solution list, error) result =
+let solve (context : package_context) (dependencies_with_flags : (dependency_flag * package_dependency) list) : (package_solution list, config_error) result =
   let open ResultMonad in
   let (explicit_source_dependencies, dependency_acc) =
     dependencies_with_flags |> List.fold_left (fun (explicit_source_dependencies, dependency_acc) (flag, dep) ->
