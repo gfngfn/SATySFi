@@ -113,6 +113,9 @@ and make_block_of_element (ob : Omd.attributes Omd.block) : block =
   | Omd.Definition_list(_attr, _defs) ->
       failwith "make_block_of_element, Omd.Definition_list"
 
+  | Omd.Table(_attr, _alignments, _cellss) ->
+      failwith "make_block_of_element, Omd.Table"
+
 
 and make_block (md : (Omd.attributes Omd.block) list) : block =
   md |> List.map make_block_of_element |> List.concat
