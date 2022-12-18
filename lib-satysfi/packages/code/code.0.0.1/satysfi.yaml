@@ -16,8 +16,12 @@ contents:
     - "./src"
   dependencies:
     - name: "stdlib"
-      registry: "default"
-      requirement: "^0.0.1"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"
     - name: "font-latin-modern"
-      registry: "default"
-      requirement: "^0.0.1"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"

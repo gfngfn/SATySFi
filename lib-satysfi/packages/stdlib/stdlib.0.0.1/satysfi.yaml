@@ -19,5 +19,7 @@ contents:
   dependencies: []
   test_dependencies:
   - name: "testing"
-    registry: "default"
-    requirement: "^0.0.1"
+    spec:
+      type: "registered"
+      registry: "default"
+      requirement: "^0.0.1"
