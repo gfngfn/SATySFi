@@ -1923,38 +1923,21 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let lock_name = make_lock_name solution.lock in
-      let Lock.{ package_name; registry_hash_value; _ } = solution.lock in
-      let libpath_container =
-        Constant.package_root_directory registry_hash_value package_name
-      in
-      let libpathstr_lock = Filename.concat (get_lib_path_string libpath_container) lock_name in
-      let lock_location =
-        LockConfig.GlobalLocation{
-          path = libpathstr_lock;
-        }
-      in
-      let lock_dependencies = solution.locked_dependencies |> List.map make_lock_name in
-      let test_only_lock = solution.used_in_test_only in
+      let Lock.{ package_name; _ } = solution.lock in
+      let libpathstr_lock = get_lib_path_string (Constant.lock_directory solution.lock) in
       let locked_package =
         LockConfig.{
           lock_name;
-          lock_location;
-          lock_dependencies;
-          test_only_lock;
+          lock_location     = GlobalLocation{ path = libpathstr_lock };
+          lock_dependencies = solution.locked_dependencies |> List.map make_lock_name;
+          test_only_lock    = solution.used_in_test_only;
           lock_package_name = package_name;
         }
       in
       let impl_spec =
-        let abspath_primary_root = get_primary_root_dir () in
-        let abspath_container =
-          make_abs_path
-            (Filename.concat (get_abs_path_string abspath_primary_root) (get_lib_path_string libpath_container))
-        in
         ImplSpec{
-          lock_name           = lock_name;
-          registry_hash_value = registry_hash_value;
-          container_directory = abspath_container;
-          source              = solution.locked_source;
+          lock   = solution.lock;
+          source = solution.locked_source;
         }
       in
       (Alist.extend locked_package_acc locked_package, Alist.extend impl_spec_acc impl_spec)

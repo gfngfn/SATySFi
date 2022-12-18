@@ -107,10 +107,8 @@ type dependency_flag =
 
 type implementation_spec =
   | ImplSpec of {
-      lock_name           : lock_name;
-      registry_hash_value : registry_hash_value;
-      container_directory : abs_path;
-      source              : implementation_source;
+      lock   : Lock.t;
+      source : implementation_source;
     }
 
 type registry_remote =
