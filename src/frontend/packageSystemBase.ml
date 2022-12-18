@@ -97,7 +97,8 @@ type registry_spec = {
 }
 
 type package_context = {
-  registries : registry_spec RegistryLocalNameMap.t;
+  job_directory : abs_path;
+  registries    : registry_spec RegistryLocalNameMap.t;
 }
 
 type package_solution = {

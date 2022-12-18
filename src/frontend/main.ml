@@ -1163,10 +1163,24 @@ let report_config_error : config_error -> unit = function
       report_error Interface
         (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
 
-  | CannotSolvePackageConstraints ->
-      report_error Interface [
-        NormalLine("cannot solve package constraints.");
-      ]
+  | PackageConstraintSolverError(e) ->
+      begin
+        match e with
+        | UndefinedRegistryLocalName(registry_local_name) ->
+            report_error Interface [
+              NormalLine(Printf.sprintf "undefined registry local name '%s'." registry_local_name);
+            ]
+
+        | PackageNotRegistered(package_name) ->
+            report_error Interface [
+              NormalLine(Printf.sprintf "package '%s' not found in the registry." package_name);
+            ]
+
+        | Unsatisfiable ->
+            report_error Interface [
+              NormalLine("cannot solve package constraints.");
+            ]
+      end
 
   | DocumentAttributeError(e) ->
       report_document_attribute_error e
@@ -2044,12 +2058,13 @@ let solve
             (get_lib_path_string Constant.library_root_config_file))
       in
       let* library_root_config = LibraryRootConfig.load abspath_library_root_config in
-      let* (dependencies_with_flags, abspath_lock_config, registry_specs) =
+      let* (dependencies_with_flags, abspath_lock_config, registry_specs, job_directory) =
         match solve_input with
         | PackageSolveInput{
             root = absdir_package;
             lock = abspath_lock_config;
           } ->
+            let job_directory = absdir_package in
             let* PackageConfig.{ package_contents; registry_specs; _ } = PackageConfig.load absdir_package in
             begin
               match package_contents with
@@ -2059,10 +2074,10 @@ let solve
                       (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
                       (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
                   in
-                  return (dependencies_with_flags, abspath_lock_config, registry_specs)
+                  return (dependencies_with_flags, abspath_lock_config, registry_specs, job_directory)
 
               | PackageConfig.Font(_) ->
-                  return ([], abspath_lock_config, registry_specs)
+                  return ([], abspath_lock_config, registry_specs, job_directory)
             end
 
         | DocumentSolveInput{
@@ -2074,7 +2089,10 @@ let solve
               extract_attributes_from_document_file input_kind abspath_in
             in
             let dependencies_with_flags = dependencies |> List.map (fun dep -> (SourceDependency, dep)) in
-            return (dependencies_with_flags, abspath_lock_config, registry_specs)
+            let job_directory =
+              make_abs_path (Filename.dirname (get_abs_path_string abspath_in))
+            in
+            return (dependencies_with_flags, abspath_lock_config, registry_specs, job_directory)
       in
 
       Logging.show_package_dependency_before_solving dependencies_with_flags;
@@ -2120,31 +2138,26 @@ let solve
         ) registry_specs (return RegistryLocalNameMap.empty)
       in
 
-      let package_context = { registries } in
-      let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
-      begin
-        match solutions_opt with
-        | None ->
-            err CannotSolvePackageConstraints
+      let package_context = { job_directory; registries } in
+      let* solutions =
+        PackageConstraintSolver.solve package_context dependencies_with_flags
+          |> Result.map_error (fun e -> PackageConstraintSolverError(e))
+      in
+      Logging.show_package_dependency_solutions solutions;
 
-        | Some(solutions) ->
+      let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in
 
-            Logging.show_package_dependency_solutions solutions;
-
-            let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in
-
-            let wget_command = "wget" in (* TODO: make this changeable *)
-            let tar_command = "tar" in (* TODO: make this changeable *)
-            let unzip_command = "unzip" in (* TODO: make this changeable *)
-            let* () =
-              impl_specs |> foldM (fun () impl_spec ->
-                LockFetcher.main
-                  ~wget_command ~tar_command ~unzip_command ~library_root impl_spec
-              ) ()
-            in
-            LockConfig.write abspath_lock_config lock_config;
-            return ()
-      end
+      let wget_command = "wget" in (* TODO: make this changeable *)
+      let tar_command = "tar" in (* TODO: make this changeable *)
+      let unzip_command = "unzip" in (* TODO: make this changeable *)
+      let* () =
+        impl_specs |> foldM (fun () impl_spec ->
+          LockFetcher.main
+            ~wget_command ~tar_command ~unzip_command ~library_root impl_spec
+        ) ()
+      in
+      LockConfig.write abspath_lock_config lock_config;
+      return ()
     in
     begin
       match res with

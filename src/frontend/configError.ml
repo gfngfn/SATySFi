@@ -91,7 +91,7 @@ type config_error =
       relative   : string;
       candidates : abs_path list;
     }
-  | CannotSolvePackageConstraints
+  | PackageConstraintSolverError  of PackageConstraintSolver.error
   | DocumentAttributeError        of DocumentAttribute.error
   | MarkdownClassNotFound         of module_name
   | NoMarkdownConversion          of module_name
