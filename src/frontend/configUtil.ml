@@ -56,6 +56,10 @@ let dependency_spec_decoder : package_dependency_spec ConfigDecoder.t =
       get "requirement" requirement_decoder >>= fun version_requirement ->
       succeed @@ RegisteredDependency{ registry_local_name; version_requirement }
     end;
+    "relative" ==> begin
+      get "path" string >>= fun path ->
+      succeed @@ RelativeDependency{ path }
+    end;
   ]
   ~other:(fun tag ->
     failure (fun context -> UnexpectedTag(context, tag))

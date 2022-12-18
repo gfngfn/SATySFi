@@ -17,12 +17,17 @@ module SolverInput = struct
           compatibility       : string;
           context             : package_context;
         }
+      | FixedRole of {
+          package_name : package_name;
+          path         : string;
+        }
 
 
     let pp ppf (role : t) =
       match role with
-      | Role{ package_name; _ } -> Format.fprintf ppf "%s" package_name
-      | LocalRole(_)            -> Format.fprintf ppf "local"
+      | LocalRole(_)                -> Format.fprintf ppf "local"
+      | Role{ package_name; _ }     -> Format.fprintf ppf "%s" package_name
+      | FixedRole{ package_name; _} -> Format.fprintf ppf "%s" package_name
 
 
     let compare (role1 : t) (role2 : t) =
@@ -41,6 +46,18 @@ module SolverInput = struct
             | nonzero -> nonzero
           end
 
+      | (Role(_), _) -> 1
+      | (_, Role(_)) -> -1
+
+      | (
+          FixedRole{ package_name = name1; path = path1; _ },
+          FixedRole{ package_name = name2; path = path2; _ }
+        ) ->
+          begin
+            match String.compare name1 name2 with
+            | 0       -> String.compare path1 path2
+            | nonzero -> nonzero
+          end
   end
 
 
@@ -56,6 +73,10 @@ module SolverInput = struct
     | Dependency of {
         role                : Role.t;
         version_requirement : SemanticVersion.requirement;
+      }
+    | FixedDependency of {
+        package_name : package_name;
+        path         : string;
       }
 
   type dep_info = {
@@ -80,6 +101,12 @@ module SolverInput = struct
         registry_hash_value : registry_hash_value;
         source              : implementation_source;
         dependencies        : dependency list;
+      }
+    | FixedImpl of {
+        package_name : package_name;
+        path         : string;
+        source       : implementation_source;
+        dependencies : dependency list;
       }
 
   type role_information = {
@@ -106,6 +133,9 @@ module SolverInput = struct
     | Impl{ package_name; version; _ } ->
         Format.fprintf ppf "%s %s" package_name (SemanticVersion.to_string version)
 
+    | FixedImpl{ package_name; path; _ } ->
+        Format.fprintf ppf "%s (relative: %s)" package_name path
+
 
   let pp_impl_long (ppf : Format.formatter) (impl : impl) =
     pp_impl ppf impl (* TODO: show dependencies *)
@@ -121,6 +151,7 @@ module SolverInput = struct
     | DummyImpl          -> Format.fprintf ppf "dummy"
     | LocalImpl(_)       -> Format.fprintf ppf "local"
     | Impl{ version; _ } -> Format.fprintf ppf "%s" (SemanticVersion.to_string version)
+    | FixedImpl(_)       -> Format.fprintf ppf "fixed"
 
 
   (* Unused *)
@@ -129,8 +160,13 @@ module SolverInput = struct
 
 
   let dep_info (dep : dependency) : dep_info =
-    let Dependency{ role; _ } = dep in
-    { dep_role = role; dep_importance = `Essential; dep_required_commands = [] }
+    match dep with
+    | Dependency{ role; _ } ->
+        { dep_role = role; dep_importance = `Essential; dep_required_commands = [] }
+
+    | FixedDependency{ package_name; path } ->
+        let role = Role.FixedRole{ package_name; path } in
+        { dep_role = role; dep_importance = `Essential; dep_required_commands = [] }
 
 
   let requires (_role : Role.t) (impl : impl) : dependency list * command_name list =
@@ -138,6 +174,7 @@ module SolverInput = struct
     | DummyImpl                 -> ([], [])
     | LocalImpl{ dependencies } -> (dependencies, [])
     | Impl{ dependencies; _ }   -> (dependencies, [])
+    | FixedImpl(_)              -> ([], [])
 
 
   (* Unused *)
@@ -171,11 +208,19 @@ module SolverInput = struct
             role = Role{ package_name; registry_local_name; compatibility; context };
             version_requirement;
           }
+
+      | RelativeDependency{ path } ->
+          FixedDependency{ package_name; path }
     )
 
 
   let implementations (role : Role.t) : role_information =
     match role with
+    | LocalRole{ requires; context } ->
+        let dependencies = make_internal_dependency context requires in
+        let impls = [ LocalImpl{ dependencies } ] in
+        { replacement = None; impls }
+
     | Role{ package_name; registry_local_name; compatibility; context } ->
         begin
           match context.registries |> RegistryLocalNameMap.find_opt registry_local_name with
@@ -206,15 +251,19 @@ module SolverInput = struct
               { replacement = None; impls }
         end
 
-    | LocalRole{ requires; context } ->
-        let dependencies = make_internal_dependency context requires in
-        let impls = [ LocalImpl{ dependencies } ] in
+    | FixedRole{ package_name; path } ->
+        let (source, dependencies) = failwith "TODO: FixedRole" in
+        let impls = [ FixedImpl{ package_name; path; source; dependencies } ] in
         { replacement = None; impls }
 
 
   let restrictions (dep : dependency) : restriction list =
-    let Dependency{ version_requirement; _ } = dep in
-    [ version_requirement ]
+    match dep with
+    | Dependency{ version_requirement; _ } ->
+        [ version_requirement ]
+
+    | FixedDependency(_) ->
+        []
 
 
   let meets_restriction (impl : impl) (restr : restriction) : bool =
@@ -232,6 +281,9 @@ module SolverInput = struct
               SemanticVersion.is_compatible ~old:semver_required ~new_:semver_provided
         end
 
+    | FixedImpl(_) ->
+        true
+
 
   (* Unused *)
   let machine_group (_impl : impl) : machine_group option =
@@ -246,6 +298,9 @@ module SolverInput = struct
     | Impl{ package_name; version; _ } ->
         let compat = SemanticVersion.get_compatibility_unit version in
         [ Printf.sprintf "%s/%s" package_name compat ]
+
+    | FixedImpl{ package_name; _ } ->
+        [ package_name ]
 
 
   let rejects (_role : Role.t) : (impl * rejection) list * string list =
@@ -264,6 +319,12 @@ module SolverInput = struct
 
     | (Impl{ version = semver1; _ }, Impl{ version = semver2; _ }) ->
         SemanticVersion.compare semver1 semver2
+
+    | (Impl(_), _) -> 1
+    | (_, Impl(_)) -> -1
+
+    | (FixedImpl{ package_name = name1; _ }, FixedImpl{ package_name = name2; _ }) ->
+        String.compare name1 name2
 
 
   let user_restrictions (_role : Role.t) : restriction option =
@@ -346,6 +407,24 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
             let lock_to_vertex_map = lock_to_vertex_map |> LockMap.add lock vertex in
             (quad_acc, graph, explicit_vertices, lock_to_vertex_map)
 
+        | FixedImpl{ package_name; path = _; source; dependencies } ->
+            let lock = failwith "TODO: FixedImpl" in
+            let (quad_acc, graph, explicit_vertices, lock_to_vertex_map) = acc in
+            let (graph, vertex) =
+              match graph |> LockDependencyGraph.add_vertex lock () with
+              | Error(_) -> assert false
+              | Ok(pair) -> pair
+            in
+            let quad_acc = Alist.extend quad_acc (lock, source, dependencies, vertex) in
+            let explicit_vertices =
+              if explicit_source_dependencies |> PackageNameSet.mem package_name then
+                explicit_vertices |> VertexSet.add vertex
+              else
+                explicit_vertices
+            in
+            let lock_to_vertex_map = lock_to_vertex_map |> LockMap.add lock vertex in
+            (quad_acc, graph, explicit_vertices, lock_to_vertex_map)
+
       ) rolemap (Alist.empty, LockDependencyGraph.empty, VertexSet.empty, LockMap.empty)
     in
 
@@ -357,36 +436,48 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
         let (lock, source, dependencies, vertex) = quint in
         let (locked_dependency_acc, graph) =
           dependencies |> List.fold_left (fun (locked_dependency_acc, graph) dep ->
-            let Dependency{ role = role_dep; _ } = dep in
-            match role_dep with
-            | Role{ package_name = package_name_dep; _ } ->
-                let lock_dep =
-                  match rolemap |> Output.RoleMap.find_opt role_dep |> Option.map Output.unwrap with
-                  | None | Some(DummyImpl) | Some(LocalImpl(_)) ->
-                      assert false
+            match dep with
+            | Dependency{ role = role_dep; _ } ->
+                begin
+                  match role_dep with
+                  | LocalRole(_) ->
+                      (locked_dependency_acc, graph)
 
-                  | Some(Impl{
-                      version = version_dep;
-                      registry_hash_value = registry_hash_value_dep;
-                      _
-                    }) ->
-                      Lock.{
-                        package_name        = package_name_dep;
-                        locked_version      = version_dep;
-                        registry_hash_value = registry_hash_value_dep;
-                      }
-                in
-                let locked_dependency_acc = Alist.extend locked_dependency_acc lock_dep in
-                let vertex_dep =
-                  match lock_to_vertex_map |> LockMap.find_opt lock_dep with
-                  | None    -> assert false
-                  | Some(v) -> v
-                in
-                let graph = graph |> LockDependencyGraph.add_edge ~from:vertex ~to_:vertex_dep in
-                (locked_dependency_acc, graph)
+                  | Role{ package_name = package_name_dep; _ } ->
+                      let lock_dep =
+                        match rolemap |> Output.RoleMap.find_opt role_dep |> Option.map Output.unwrap with
+                        | None | Some(DummyImpl) | Some(LocalImpl(_)) ->
+                            assert false
 
-            | LocalRole(_) ->
-                (locked_dependency_acc, graph)
+                        | Some(Impl{
+                            version = version_dep;
+                            registry_hash_value = registry_hash_value_dep;
+                            _
+                          }) ->
+                            Lock.{
+                              package_name        = package_name_dep;
+                              locked_version      = version_dep;
+                              registry_hash_value = registry_hash_value_dep;
+                            }
+
+                        | Some(FixedImpl(_)) ->
+                            failwith "TODO: FixedImpl"
+                      in
+                      let locked_dependency_acc = Alist.extend locked_dependency_acc lock_dep in
+                      let vertex_dep =
+                        match lock_to_vertex_map |> LockMap.find_opt lock_dep with
+                        | None    -> assert false
+                        | Some(v) -> v
+                      in
+                      let graph = graph |> LockDependencyGraph.add_edge ~from:vertex ~to_:vertex_dep in
+                      (locked_dependency_acc, graph)
+
+                  | FixedRole(_) ->
+                      failwith "TODO: FixedRole"
+                end
+
+            | FixedDependency(_) ->
+                failwith "TODO: FixedDependency"
 
           ) (Alist.empty, graph)
         in

@@ -113,16 +113,19 @@ let begin_to_write_page () =
 let show_package_dependency_before_solving (dependencies_with_flags : (dependency_flag * package_dependency) list) =
   Printf.printf "  package dependencies to solve:\n";
   dependencies_with_flags |> List.iter (fun (flag, dep) ->
+    let s_test_only =
+      match flag with
+      | SourceDependency   -> ""
+      | TestOnlyDependency -> ", test_only"
+    in
     let PackageDependency{ package_name; spec } = dep in
     match spec with
     | RegisteredDependency{ version_requirement; _ } ->
         let s_restr = SemanticVersion.requirement_to_string version_requirement in
-        let s_test_only =
-          match flag with
-          | SourceDependency   -> ""
-          | TestOnlyDependency -> ", test_only"
-        in
         Printf.printf "  - %s (%s%s)\n" package_name s_restr s_test_only;
+
+    | RelativeDependency{ path } ->
+        Printf.printf "  - %s (relative: %s%s)\n" package_name path s_test_only
   )
 
 

@@ -85,6 +85,9 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
     | NoSource ->
         return ()
 
+    | FixedDirectory(_) ->
+        return ()
+
     | TarGzip{ url; checksum } ->
         (* Synchronously fetches a tarball: *)
         let abspath_tarball =

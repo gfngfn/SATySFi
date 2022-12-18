@@ -53,6 +53,9 @@ type package_dependency_spec =
       registry_local_name : registry_local_name;
       version_requirement : SemanticVersion.requirement;
     }
+  | RelativeDependency of {
+      path : string;
+    }
 [@@deriving show { with_path = false }]
 
 type package_dependency =
@@ -71,6 +74,9 @@ type package_dependency_in_registry =
 
 type implementation_source =
   | NoSource
+  | FixedDirectory of {
+      path : abs_path;
+    }
   | TarGzip of {
       url      : string;
       checksum : string;
