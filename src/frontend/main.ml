@@ -1521,8 +1521,11 @@ let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string l
   end;
   let libpath = Constant.library_root_config_file in
   match Config.resolve_lib_file libpath with
-  | Error(candidates) -> raise (ConfigError(LibraryRootConfigNotFoundIn(libpath, candidates)))
-  | Ok(abspath)       -> abspath
+  | Error(candidates) ->
+      raise (ConfigError(LibraryRootConfigNotFoundIn(libpath, candidates)))
+
+  | Ok(abspath) ->
+      make_abs_path (Filename.dirname (get_abs_path_string abspath))
 
 
 let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
@@ -2076,11 +2079,17 @@ let solve
           let* registry_hash_value = make_registry_hash_value registry_remote in
 
           (* Manupulates the library root config: *)
+          let abspath_library_root =
+            make_abs_path
+              (Filename.concat
+                (get_abs_path_string library_root)
+                (get_lib_path_string Constant.library_root_config_file))
+          in
           update_library_root_config_if_needed
             library_root_config.LibraryRootConfig.registries
             registry_hash_value
             registry_remote
-            library_root;
+            abspath_library_root;
 
           (* Fetches registry configs: *)
           let absdir_registry_repo =
