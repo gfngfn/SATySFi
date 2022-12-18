@@ -18,8 +18,11 @@ let make_version (s_version : string) : SemanticVersion.t =
 let make_dependency (package_name : package_name) (s_version : string) : package_dependency =
   PackageDependency{
     package_name;
-    registry_local_name = "default";
-    version_requirement = SemanticVersion.CompatibleWith(make_version s_version);
+    spec =
+      RegisteredDependency{
+        registry_local_name = "default";
+        version_requirement = SemanticVersion.CompatibleWith(make_version s_version);
+      };
   }
 
 

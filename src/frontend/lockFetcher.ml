@@ -49,27 +49,36 @@ let extract_external_zip ~(unzip_command : string) ~(zip : abs_path) ~(output_co
     err @@ FailedToExtractExternalZip{ exit_status; command }
 
 
-let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~cache_directory:(absdir_lock_cache : abs_path) (impl_spec : implementation_spec) : unit ok =
+let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~library_root:(absdir_lib_root : abs_path) (impl_spec : implementation_spec) : unit ok =
   let open ResultMonad in
-  let ImplSpec{ lock_name; registry_hash_value; container_directory; source } = impl_spec in
-  let absdirstr_container = get_abs_path_string container_directory in
-  let absdir_lock_root = make_abs_path (Filename.concat absdirstr_container lock_name) in
-  let absdir_lock_cache_of_registry =
-    make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache) registry_hash_value)
+  let ImplSpec{ lock; source } = impl_spec in
+  let Lock.{ registry_hash_value; package_name; locked_version } = lock in
+  let lock_tarball_name = Constant.lock_tarball_name package_name locked_version in
+  let absdir_lock =
+    let libdir_lock = Constant.lock_directory lock in
+    make_abs_path
+      (Filename.concat (get_abs_path_string absdir_lib_root) (get_lib_path_string libdir_lock))
+  in
+  let absdir_lock_tarball_cache =
+    let libpath_lock_tarball_cache = Constant.lock_tarball_cache_directory registry_hash_value in
+    make_abs_path
+      (Filename.concat
+        (get_abs_path_string absdir_lib_root)
+        (get_lib_path_string libpath_lock_tarball_cache))
   in
 
   (* Creates the lock cache directory if non-existent, or does nothing otherwise: *)
-  ShellCommand.mkdir_p absdir_lock_cache_of_registry;
+  ShellCommand.mkdir_p absdir_lock_tarball_cache;
 
   (* Creates the directory if non-existent, or does nothing otherwise: *)
-  ShellCommand.mkdir_p absdir_lock_root;
+  ShellCommand.mkdir_p absdir_lock;
 
   let abspathstr_config =
-    Filename.concat (get_abs_path_string absdir_lock_root) Constant.package_config_file_name
+    Filename.concat (get_abs_path_string absdir_lock) Constant.package_config_file_name
   in
   if Sys.file_exists abspathstr_config then begin
   (* If the lock has already been fetched: *)
-    Logging.lock_already_installed lock_name absdir_lock_root;
+    Logging.lock_already_installed lock_tarball_name absdir_lock;
     return ()
   end else begin
     match source with
@@ -81,16 +90,16 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
         let abspath_tarball =
           make_abs_path
             (Filename.concat
-              (get_abs_path_string absdir_lock_cache_of_registry)
-              (Printf.sprintf "%s.tar.gz" lock_name))
+              (get_abs_path_string absdir_lock_tarball_cache)
+              (Printf.sprintf "%s.tar.gz" lock_tarball_name))
         in
         let* () =
           if Sys.file_exists (get_abs_path_string abspath_tarball) then begin
-            Logging.lock_cache_exists lock_name abspath_tarball;
+            Logging.lock_cache_exists lock_tarball_name abspath_tarball;
             return ()
           end else begin
-            Logging.downloading_lock lock_name abspath_tarball;
-            fetch_tarball ~wget_command ~lock_name ~url ~output:abspath_tarball
+            Logging.downloading_lock lock_tarball_name abspath_tarball;
+            fetch_tarball ~wget_command ~lock_name:lock_tarball_name ~url ~output:abspath_tarball
           end
         in
 
@@ -101,7 +110,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
             return ()
           else
             err @@ TarGzipChecksumMismatch{
-              lock_name;
+              lock_name = lock_tarball_name;
               url;
               path     = abspath_tarball;
               expected = checksum;
@@ -112,11 +121,11 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
         (* Extracts sources from the tarball: *)
         let* () =
           extract_tarball_with_components_stripped
-            ~tar_command ~lock_name ~tarball:abspath_tarball ~lock_root:absdir_lock_root
+            ~tar_command ~lock_name:lock_tarball_name ~tarball:abspath_tarball ~lock_root:absdir_lock
         in
 
         (* Fetches external sources according to the package config: *)
-        let* PackageConfig.{ external_sources; _ } = PackageConfig.load absdir_lock_root in
+        let* PackageConfig.{ external_sources; _ } = PackageConfig.load absdir_lock in
         let* () =
           external_sources |> foldM (fun () (name, external_source) ->
             match external_source with
@@ -124,7 +133,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
 
                 (* Creates a directory for putting zips: *)
                 let absdir_external =
-                  make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache_of_registry) lock_name)
+                  make_abs_path (Filename.concat (get_abs_path_string absdir_lock_tarball_cache) lock_tarball_name)
                 in
                 ShellCommand.mkdir_p absdir_external;
 
@@ -165,7 +174,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
                     in
                     let abspath_to =
                       make_abs_path
-                        (Filename.concat (get_abs_path_string absdir_lock_root) extracted_to)
+                        (Filename.concat (get_abs_path_string absdir_lock) extracted_to)
                     in
                     let ShellCommand.{ exit_status; command } =
                       ShellCommand.cp ~from:abspath_from ~to_:abspath_to

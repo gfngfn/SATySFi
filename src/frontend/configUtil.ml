@@ -48,16 +48,25 @@ let language_version_checker : unit ConfigDecoder.t =
     failure (fun _yctx -> UnexpectedLanguage(verreq |> SemanticVersion.requirement_to_string))
 
 
+let dependency_spec_decoder : package_dependency_spec ConfigDecoder.t =
+  let open ConfigDecoder in
+  branch "type" [
+    "registered" ==> begin
+      get "registry" string >>= fun registry_local_name ->
+      get "requirement" requirement_decoder >>= fun version_requirement ->
+      succeed @@ RegisteredDependency{ registry_local_name; version_requirement }
+    end;
+  ]
+  ~other:(fun tag ->
+    failure (fun context -> UnexpectedTag(context, tag))
+  )
+
+
 let dependency_decoder : package_dependency ConfigDecoder.t =
   let open ConfigDecoder in
   get "name" package_name_decoder >>= fun package_name ->
-  get "registry" string >>= fun registry_local_name ->
-  get "requirement" requirement_decoder >>= fun version_requirement ->
-  succeed @@ PackageDependency{
-    package_name;
-    registry_local_name;
-    version_requirement;
-  }
+  get "spec" dependency_spec_decoder >>= fun spec ->
+  succeed @@ PackageDependency{ package_name; spec }
 
 
 let registry_remote_decoder : registry_remote ConfigDecoder.t =

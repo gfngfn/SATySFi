@@ -132,8 +132,7 @@ let decode_dependency (utast : untyped_abstract_tree) : package_dependency ok =
       in
       return @@ PackageDependency{
         package_name;
-        registry_local_name;
-        version_requirement;
+        spec = RegisteredDependency{ registry_local_name; version_requirement };
       }
 
   | (rng, _) ->

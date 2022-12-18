@@ -12,7 +12,6 @@ exception NoLibraryRootDesignation
 exception ShouldSpecifyOutputFile
 exception UnexpectedExtension of string
 exception ConfigError of config_error
-exception CannotDeterminePrimaryRoot
 
 
 let version =
@@ -1403,11 +1402,6 @@ let error_log_environment (suspended : unit -> unit) : unit =
   | ConfigError(e) ->
       report_config_error e
 
-  | CannotDeterminePrimaryRoot ->
-      report_error Interface [
-        NormalLine("cannot determine the primary library root.");
-      ]
-
   | FontInfo.FontInfoError(e) ->
       report_font_error e
 
@@ -1489,7 +1483,7 @@ let error_log_environment (suspended : unit -> unit) : unit =
       report_error System [ NormalLine(s); ]
 
 
-let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string list) option) (curdir : string) =
+let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string list) option) (curdir : string) : abs_path =
   let runtime_dirs =
     if Sys.os_type = "Win32" then
       match Sys.getenv_opt "SATYSFI_RUNTIME" with
@@ -1520,24 +1514,18 @@ let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string l
     | Some(extra_dirs) -> extra_dirs
   in
   let dirs = List.concat [ extra_dirs; default_dirs ] in
-  match dirs with
-  | []     -> raise NoLibraryRootDesignation
-  | _ :: _ -> Config.initialize dirs
+  begin
+    match dirs with
+    | []     -> raise NoLibraryRootDesignation
+    | _ :: _ -> Config.initialize dirs
+  end;
+  let libpath = Constant.library_root_config_file in
+  match Config.resolve_lib_file libpath with
+  | Error(candidates) ->
+      raise (ConfigError(LibraryRootConfigNotFoundIn(libpath, candidates)))
 
-
-(* TODO: refine this *)
-let get_primary_root_dir () : abs_path =
-  let abspathstr =
-    if Sys.os_type = "Win32" then
-      match Sys.getenv_opt "userprofile" with
-      | None    -> raise CannotDeterminePrimaryRoot
-      | Some(s) -> Filename.concat s ".satysfi"
-    else
-      match Sys.getenv_opt "HOME" with
-      | None    -> raise CannotDeterminePrimaryRoot
-      | Some(s) -> Filename.concat s ".satysfi"
-  in
-  make_abs_path abspathstr
+  | Ok(abspath) ->
+      make_abs_path (Filename.dirname (get_abs_path_string abspath))
 
 
 let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
@@ -1570,10 +1558,10 @@ let get_input_kind_from_extension (abspathstr_in : string) =
   | ext     -> Error(ext)
 
 
-let check_depended_packages ~(use_test_only_lock : bool) ~(lock_config_dir : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
+let check_depended_packages ~(use_test_only_lock : bool) ~(library_root : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
   (* Resolve dependency among locked packages: *)
   let sorted_packages =
-    match ClosedLockDependencyResolver.main ~use_test_only_lock ~lock_config_dir ~extensions lock_config with
+    match ClosedLockDependencyResolver.main ~use_test_only_lock ~library_root ~extensions lock_config with
     | Ok(sorted_packages) -> sorted_packages
     | Error(e)            -> raise (ConfigError(e))
   in
@@ -1669,7 +1657,7 @@ let build
       no_default_config;
     };
 
-    setup_root_dirs ~no_default_config ~extra_config_paths curdir;
+    let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
     let abspath_in = input_file in
     let build_input =
       let abspathstr_in = get_abs_path_string abspath_in in
@@ -1717,8 +1705,7 @@ let build
         let (_config, package) = load_package ~use_test_files:false ~extensions abspath_in in
 
         let (genv, _configenv, _libs_dep) =
-          let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
-          check_depended_packages ~use_test_only_lock:false ~lock_config_dir ~extensions tyenv_prim lock_config
+          check_depended_packages ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
         in
 
         begin
@@ -1742,8 +1729,7 @@ let build
         Logging.dump_file ~already_exists:dump_file_exists abspath_dump;
 
         let (genv, configenv, libs) =
-          let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
-          check_depended_packages ~use_test_only_lock:false ~lock_config_dir ~extensions tyenv_prim lock_config
+          check_depended_packages ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
         in
 
         (* Resolve dependency of the document and the local source files: *)
@@ -1801,7 +1787,7 @@ let test
       no_default_config;
     };
 
-    setup_root_dirs ~no_default_config ~extra_config_paths curdir;
+    let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
     let abspath_in = input_file_to_test in
     let test_input =
       let abspathstr_in = get_abs_path_string abspath_in in
@@ -1841,8 +1827,7 @@ let test
           let (_config, package) = load_package ~use_test_files:true ~extensions abspath_in in
 
           let (genv, _configenv, _libs_dep) =
-            let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
-            check_depended_packages ~use_test_only_lock:true ~lock_config_dir ~extensions tyenv_prim lock_config
+            check_depended_packages ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
           in
 
           let libs =
@@ -1862,8 +1847,7 @@ let test
           let lock_config = load_lock_config abspath_lock_config in
 
           let (genv, configenv, libs) =
-            let lock_config_dir = make_abs_path (Filename.dirname (get_abs_path_string abspath_lock_config)) in
-            check_depended_packages ~use_test_only_lock:true ~lock_config_dir ~extensions tyenv_prim lock_config
+            check_depended_packages ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
           in
 
           (* Resolve dependency of the document and the local source files: *)
@@ -1915,45 +1899,30 @@ type solve_input =
 
 
 let make_lock_name (lock : Lock.t) : lock_name =
-  let Lock.{ package_name; locked_version; _ } = lock in
-  Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string locked_version)
+  let Lock.{ registry_hash_value; package_name; locked_version } = lock in
+  Printf.sprintf "registered.%s.%s.%s"
+    registry_hash_value
+    package_name
+    (SemanticVersion.to_string locked_version)
 
 
 let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t * implementation_spec list =
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
-      let lock_name = make_lock_name solution.lock in
-      let Lock.{ package_name; registry_hash_value; _ } = solution.lock in
-      let libpathstr_container =
-        Printf.sprintf "./%s/%s/%s/" Constant.packages_directory registry_hash_value package_name
-      in
-      let libpathstr_lock = Filename.concat libpathstr_container lock_name in
-      let lock_location =
-        LockConfig.GlobalLocation{
-          path = libpathstr_lock;
-        }
-      in
-      let lock_dependencies = solution.locked_dependencies |> List.map make_lock_name in
-      let test_only_lock = solution.used_in_test_only in
+      let lock = solution.lock in
+      let Lock.{ registry_hash_value; package_name; locked_version = version } = lock in
       let locked_package =
         LockConfig.{
-          lock_name;
-          lock_location;
-          lock_dependencies;
-          test_only_lock;
-          lock_package_name = package_name;
+          lock_name         = make_lock_name lock;
+          lock_contents     = RegisteredLock{ registry_hash_value; package_name; version };
+          lock_dependencies = solution.locked_dependencies |> List.map make_lock_name;
+          test_only_lock    = solution.used_in_test_only;
         }
       in
       let impl_spec =
-        let abspath_primary_root = get_primary_root_dir () in
-        let abspath_container =
-          make_abs_path (Filename.concat (get_abs_path_string abspath_primary_root) libpathstr_container)
-        in
         ImplSpec{
-          lock_name           = lock_name;
-          registry_hash_value = registry_hash_value;
-          container_directory = abspath_container;
-          source              = solution.locked_source;
+          lock   = solution.lock;
+          source = solution.locked_source;
         }
       in
       (Alist.extend locked_package_acc locked_package, Alist.extend impl_spec_acc impl_spec)
@@ -2038,8 +2007,7 @@ let solve
       no_default_config;
     };
 
-    setup_root_dirs ~no_default_config ~extra_config_paths curdir;
-
+    let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
     let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
     let solve_input =
       let abspathstr_in = get_abs_path_string abspath_in in
@@ -2069,12 +2037,13 @@ let solve
 
     let res =
       let open ResultMonad in
-      let* abspath_library_root =
-        let libpath = make_lib_path Constant.library_root_config_file_name in
-        Config.resolve_lib_file libpath
-          |> Result.map_error (fun candidates -> LibraryRootConfigNotFoundIn(libpath, candidates))
+      let abspath_library_root_config =
+        make_abs_path
+          (Filename.concat
+            (get_abs_path_string library_root)
+            (get_lib_path_string Constant.library_root_config_file))
       in
-      let* library_root_config = LibraryRootConfig.load abspath_library_root in
+      let* library_root_config = LibraryRootConfig.load abspath_library_root_config in
       let* (dependencies_with_flags, abspath_lock_config, registry_specs) =
         match solve_input with
         | PackageSolveInput{
@@ -2120,15 +2089,15 @@ let solve
             library_root_config.LibraryRootConfig.registries
             registry_hash_value
             registry_remote
-            abspath_library_root;
+            abspath_library_root_config;
 
           (* Fetches registry configs: *)
           let absdir_registry_repo =
-            let absdir_library_root = get_primary_root_dir () in
+            let libpath_registry_root = Constant.registry_root_directory registry_hash_value in
             make_abs_path
               (Filename.concat
-                (Filename.concat (get_abs_path_string absdir_library_root) Constant.registries_directory)
-                registry_hash_value)
+                (get_abs_path_string library_root)
+                (get_lib_path_string libpath_registry_root))
           in
           let git_command = "git" in (* TODO: make this changeable *)
           let* () =
@@ -2167,15 +2136,10 @@ let solve
             let wget_command = "wget" in (* TODO: make this changeable *)
             let tar_command = "tar" in (* TODO: make this changeable *)
             let unzip_command = "unzip" in (* TODO: make this changeable *)
-            let absdir_lock_cache =
-              let absdir_primary_root = get_primary_root_dir () in
-              make_abs_path
-                 (Filename.concat (get_abs_path_string absdir_primary_root) Constant.cache_locks_directory)
-            in
             let* () =
               impl_specs |> foldM (fun () impl_spec ->
                 LockFetcher.main
-                  ~wget_command ~tar_command ~unzip_command ~cache_directory:absdir_lock_cache impl_spec
+                  ~wget_command ~tar_command ~unzip_command ~library_root impl_spec
               ) ()
             in
             LockConfig.write abspath_lock_config lock_config;

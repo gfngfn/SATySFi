@@ -36,7 +36,7 @@ depends: [
   "re" {build}
   "uutf"
   "yojson-with-position" {= "1.4.2+satysfi"}
-  "omd" {>= "2.0.0~alpha" & < "3.0.0"}
+  "omd" {= "2.0.0~alpha3"}
   "ocamlgraph"
   "alcotest" {with-test & >= "1.4.0"}
   "yaml" {>= "2.1.0"}

@@ -7,20 +7,18 @@ open ConfigUtil
 
 type 'a ok = ('a, config_error) result
 
-type lock_location =
-  | GlobalLocation of {
-      path : string;
-    }
-  | LocalLocation of {
-      path : string;
+type lock_contents =
+  | RegisteredLock of {
+      registry_hash_value : registry_hash_value;
+      package_name        : package_name;
+      version             : SemanticVersion.t;
     }
 
 type locked_package = {
   lock_name         : lock_name;
-  lock_location     : lock_location;
+  lock_contents     : lock_contents;
   lock_dependencies : lock_name list;
   test_only_lock    : bool;
-  lock_package_name : package_name;
 }
 
 type t = {
@@ -28,16 +26,14 @@ type t = {
 }
 
 
-let lock_location_decoder : lock_location ConfigDecoder.t =
+let lock_contents_decoder : lock_contents ConfigDecoder.t =
   let open ConfigDecoder in
   branch "type" [
-    "global" ==> begin
-      get "path" string >>= fun s_libpath ->
-      succeed @@ GlobalLocation{ path = s_libpath }
-    end;
-    "local" ==> begin
-      get "path" string >>= fun s_relpath ->
-      succeed @@ LocalLocation{ path = s_relpath }
+    "registered" ==> begin
+      get "registry_hash_value" string >>= fun registry_hash_value ->
+      get "package_name" package_name_decoder >>= fun package_name ->
+      get "version" version_decoder >>= fun version ->
+      succeed @@ RegisteredLock{ registry_hash_value; package_name; version }
     end;
   ]
   ~other:(fun tag ->
@@ -45,44 +41,32 @@ let lock_location_decoder : lock_location ConfigDecoder.t =
   )
 
 
-let lock_location_encoder (loc : lock_location) : Yaml.value =
-  match loc with
-  | GlobalLocation{ path = s_libpath } ->
+let lock_contents_encoder (contents : lock_contents) : Yaml.value =
+  match contents with
+  | RegisteredLock{ registry_hash_value; package_name; version } ->
       `O([
-        ("type", `String("global"));
-        ("path", `String(s_libpath));
-      ])
-
-  | LocalLocation{ path = s_relpath } ->
-      `O([
-        ("type", `String("local"));
-        ("path", `String(s_relpath));
+        ("type", `String("registered"));
+        ("registry_hash_value", `String(registry_hash_value));
+        ("package_name", `String(package_name));
+        ("version", `String(SemanticVersion.to_string version));
       ])
 
 
 let lock_decoder : locked_package ConfigDecoder.t =
   let open ConfigDecoder in
   get "name" string >>= fun lock_name ->
-  get "location" lock_location_decoder >>= fun lock_location ->
-  get "lock_package_name" package_name_decoder >>= fun lock_package_name ->
+  get "contents" lock_contents_decoder >>= fun lock_contents ->
   get_or_else "dependencies" (list string) [] >>= fun lock_dependencies ->
   get_or_else "test_only" bool false >>= fun test_only_lock ->
-  succeed {
-    lock_name;
-    lock_location;
-    lock_dependencies;
-    test_only_lock;
-    lock_package_name;
-  }
+  succeed { lock_name; lock_contents; lock_dependencies; test_only_lock }
 
 
 let lock_encoder (lock : locked_package) : Yaml.value =
   `O([
     ("name", `String(lock.lock_name));
-    ("location", lock_location_encoder lock.lock_location);
+    ("contents", lock_contents_encoder lock.lock_contents);
     ("dependencies", `A(lock.lock_dependencies |> List.map (fun lock_name -> `String(lock_name))));
     ("test_only", `Bool(lock.test_only_lock));
-    ("lock_package_name", `String(lock.lock_package_name));
   ])
 
 
