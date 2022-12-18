@@ -2037,7 +2037,13 @@ let solve
 
     let res =
       let open ResultMonad in
-      let* library_root_config = LibraryRootConfig.load library_root in
+      let abspath_library_root_config =
+        make_abs_path
+          (Filename.concat
+            (get_abs_path_string library_root)
+            (get_lib_path_string Constant.library_root_config_file))
+      in
+      let* library_root_config = LibraryRootConfig.load abspath_library_root_config in
       let* (dependencies_with_flags, abspath_lock_config, registry_specs) =
         match solve_input with
         | PackageSolveInput{
@@ -2079,17 +2085,11 @@ let solve
           let* registry_hash_value = make_registry_hash_value registry_remote in
 
           (* Manupulates the library root config: *)
-          let abspath_library_root =
-            make_abs_path
-              (Filename.concat
-                (get_abs_path_string library_root)
-                (get_lib_path_string Constant.library_root_config_file))
-          in
           update_library_root_config_if_needed
             library_root_config.LibraryRootConfig.registries
             registry_hash_value
             registry_remote
-            abspath_library_root;
+            abspath_library_root_config;
 
           (* Fetches registry configs: *)
           let absdir_registry_repo =
