@@ -48,11 +48,17 @@ end
 
 module LockMap = Map.Make(Lock)
 
-type package_dependency =
-  | PackageDependency of {
-      package_name        : package_name;
+type package_dependency_spec =
+  | RegisteredDependency of {
       registry_local_name : registry_local_name;
       version_requirement : SemanticVersion.requirement;
+    }
+[@@deriving show { with_path = false }]
+
+type package_dependency =
+  | PackageDependency of {
+      package_name : package_name;
+      spec         : package_dependency_spec;
     }
 [@@deriving show { with_path = false }]
 

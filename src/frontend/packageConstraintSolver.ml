@@ -158,14 +158,19 @@ module SolverInput = struct
 
 
   let make_internal_dependency (context : package_context) (requires : package_dependency list) : dependency list =
-    requires |> List.map (function
-    | PackageDependency{ package_name; registry_local_name; version_requirement } ->
-        let compatibility =
-          match version_requirement with
-          | SemanticVersion.CompatibleWith(semver) ->
-              SemanticVersion.get_compatibility_unit semver
-        in
-        Dependency{ role = Role{ package_name; registry_local_name; compatibility; context }; version_requirement }
+    requires |> List.map (fun dep ->
+      let PackageDependency{ package_name; spec } = dep in
+      match spec with
+      | RegisteredDependency{ registry_local_name; version_requirement } ->
+          let compatibility =
+            match version_requirement with
+            | SemanticVersion.CompatibleWith(semver) ->
+                SemanticVersion.get_compatibility_unit semver
+          in
+          Dependency{
+            role = Role{ package_name; registry_local_name; compatibility; context };
+            version_requirement;
+          }
     )
 
 
