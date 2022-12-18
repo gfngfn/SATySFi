@@ -49,17 +49,21 @@ let extract_external_zip ~(unzip_command : string) ~(zip : abs_path) ~(output_co
     err @@ FailedToExtractExternalZip{ exit_status; command }
 
 
-let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~cache_directory:(absdir_lock_cache : abs_path) (impl_spec : implementation_spec) : unit ok =
+let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~library_root:(absdir_lib_root : abs_path) (impl_spec : implementation_spec) : unit ok =
   let open ResultMonad in
   let ImplSpec{ lock_name; registry_hash_value; container_directory; source } = impl_spec in
+  let absdir_lock_tarball_cache =
+    let libpath_lock_tarball_cache = Constant.lock_tarball_cache_directory registry_hash_value in
+    make_abs_path
+      (Filename.concat
+        (get_abs_path_string absdir_lib_root)
+        (get_lib_path_string libpath_lock_tarball_cache))
+  in
   let absdirstr_container = get_abs_path_string container_directory in
   let absdir_lock_root = make_abs_path (Filename.concat absdirstr_container lock_name) in
-  let absdir_lock_cache_of_registry =
-    make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache) registry_hash_value)
-  in
 
   (* Creates the lock cache directory if non-existent, or does nothing otherwise: *)
-  ShellCommand.mkdir_p absdir_lock_cache_of_registry;
+  ShellCommand.mkdir_p absdir_lock_tarball_cache;
 
   (* Creates the directory if non-existent, or does nothing otherwise: *)
   ShellCommand.mkdir_p absdir_lock_root;
@@ -81,7 +85,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
         let abspath_tarball =
           make_abs_path
             (Filename.concat
-              (get_abs_path_string absdir_lock_cache_of_registry)
+              (get_abs_path_string absdir_lock_tarball_cache)
               (Printf.sprintf "%s.tar.gz" lock_name))
         in
         let* () =
@@ -124,7 +128,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
 
                 (* Creates a directory for putting zips: *)
                 let absdir_external =
-                  make_abs_path (Filename.concat (get_abs_path_string absdir_lock_cache_of_registry) lock_name)
+                  make_abs_path (Filename.concat (get_abs_path_string absdir_lock_tarball_cache) lock_name)
                 in
                 ShellCommand.mkdir_p absdir_external;
 

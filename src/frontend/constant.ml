@@ -17,8 +17,8 @@ let registry_root_directory (registry_hash_value : registry_hash_value) : lib_pa
   make_lib_path (Printf.sprintf "registries/%s" registry_hash_value)
 
 
-let cache_locks_directory =
-  make_lib_path "cache/locks"
+let lock_tarball_cache_directory (registry_hash_value : registry_hash_value) : lib_path =
+  make_lib_path (Printf.sprintf "cache/locks/%s" registry_hash_value)
 
 
 let package_config_file_name =

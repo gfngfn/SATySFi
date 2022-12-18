@@ -2169,18 +2169,11 @@ let solve
             let wget_command = "wget" in (* TODO: make this changeable *)
             let tar_command = "tar" in (* TODO: make this changeable *)
             let unzip_command = "unzip" in (* TODO: make this changeable *)
-            let absdir_lock_cache =
-              let absdir_primary_root = get_primary_root_dir () in
-              let libpath_cache_locks = Constant.cache_locks_directory in
-              make_abs_path
-                (Filename.concat
-                  (get_abs_path_string absdir_primary_root)
-                  (get_lib_path_string libpath_cache_locks))
-            in
+            let absdir_primary_root = get_primary_root_dir () in
             let* () =
               impl_specs |> foldM (fun () impl_spec ->
                 LockFetcher.main
-                  ~wget_command ~tar_command ~unzip_command ~cache_directory:absdir_lock_cache impl_spec
+                  ~wget_command ~tar_command ~unzip_command ~library_root:absdir_primary_root impl_spec
               ) ()
             in
             LockConfig.write abspath_lock_config lock_config;
