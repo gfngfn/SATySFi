@@ -741,3 +741,57 @@ end
                          (UTContentOf ([], ((Range.Normal <:3.66-67>), "x"))))))))
                )))
             ]))) |}]
+
+let%expect_test _ =
+  p {|
+module Nx = struct
+  val rec-pun =
+    let x = 0 in
+    let y = 42 in
+    let z = 3.14 in
+    let xy = (| x, y |) in
+    (| xy with z |)
+end
+|}; [%expect{|
+  (Ok (UTLibraryFile
+         (((Range.Normal <:2.8-10>), "Nx"), None,
+          [((Range.Normal <:3.3-6>),
+            (UTBindValue (Stage1,
+               (UTNonRec
+                  (((Range.Normal <:3.7-14>), "rec-pun"),
+                   (UTLetIn (
+                      (UTNonRec
+                         (((Range.Normal <:4.9-10>), "x"),
+                          (UTIntegerConstant 0))),
+                      (UTLetIn (
+                         (UTNonRec
+                            (((Range.Normal <:5.9-10>), "y"),
+                             (UTIntegerConstant 42))),
+                         (UTLetIn (
+                            (UTNonRec
+                               (((Range.Normal <:6.9-10>), "z"),
+                                (UTFloatConstant 3.14))),
+                            (UTLetIn (
+                               (UTNonRec
+                                  (((Range.Normal <:7.9-11>), "xy"),
+                                   (UTRecord
+                                      [(((Range.Normal <:7.17-18>), "x"),
+                                        (UTContentOf ([],
+                                           ((Range.Normal <:7.17-18>), "x"))));
+                                        (((Range.Normal <:7.20-21>), "y"),
+                                         (UTContentOf ([],
+                                            ((Range.Normal <:7.20-21>), "y"))))
+                                        ]))),
+                               (UTUpdateField (
+                                  (UTContentOf ([],
+                                     ((Range.Normal <:8.8-10>), "xy"))),
+                                  ((Range.Normal <:8.16-17>), "z"),
+                                  (UTContentOf ([],
+                                     ((Range.Normal <:8.16-17>), "z")))
+                                  ))
+                               ))
+                            ))
+                         ))
+                      ))))
+               )))
+            ]))) |}]

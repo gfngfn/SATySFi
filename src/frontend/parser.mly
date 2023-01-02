@@ -954,6 +954,12 @@ expr_bot_record:
 record_field:
   | rlabel=LOWER; EXACT_EQ; utast=expr
       { (rlabel, utast) }
+  | rlabel=LOWER;
+      {
+        let (rng, _) = rlabel in
+        let expr = (rng, UTContentOf([], rlabel)) in
+        (rlabel, expr)
+      }
 ;
 branch:
   | utpat=pattern; ARROW; utast=expr
