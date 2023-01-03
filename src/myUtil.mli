@@ -32,6 +32,7 @@ val pickup : 'a list -> ('a -> bool) -> 'b -> ('a, 'b) result
 module OptionMonad : sig
   val ( >>= ) : 'a option -> ('a -> 'b option) -> 'b option
   val return : 'a -> 'a option
+  val ( let* ) : 'a option -> ('a -> 'b option) -> 'b option
 end
 
 module ResultMonad : sig
