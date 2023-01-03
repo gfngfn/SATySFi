@@ -207,6 +207,33 @@ let rec typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : un
         in
         return (PTuple(epats), tyres, patvarmap)
 
+    | UTPRecord(is_open, field_pats) ->
+        let rlabels = List.map fst field_pats in
+        let labels = List.map snd rlabels in
+        let utpats = List.map snd field_pats in
+        let* tris = mapM iter utpats in
+        let epats = tris |> List.map (fun (epat, _, _) -> epat) in
+        let typats = tris |> List.map (fun (_, typat, _) -> typat) in
+        let row =
+          if is_open then
+            let frid = fresh_free_row_id pre.level (LabelSet.of_list labels) in
+            let rvuref = ref (MonoRowFree(frid)) in
+            RowVar(UpdatableRow(rvuref))
+          else
+            RowEmpty
+        in
+        let row =
+          List.fold_left2 (fun row label typat -> RowCons(label, typat, row))
+            row rlabels typats
+        in
+        let tyres = (rng, RecordType(row)) in
+        let* patvarmap =
+          tris
+          |> List.map (fun (_, _, patvarmap) -> patvarmap)
+          |> foldM unite_pattern_var_map PatternVarMap.empty
+        in
+        return (PRecord(List.combine labels epats), tyres, patvarmap)
+
     | UTPWildCard ->
         let beta = fresh_type_variable rng pre in
         return (PWildCard, beta, PatternVarMap.empty)

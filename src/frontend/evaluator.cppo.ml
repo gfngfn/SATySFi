@@ -628,6 +628,16 @@ and interpret_1_pattern_tree (env : environment) = function
       in
       (env, CdPTuple(cdpattrs))
 
+  | PRecord(field_pats) ->
+      let (env, cdfields) =
+        field_pats
+        |> List.fold_left (fun (env, lis) (label, pat) ->
+            let (env, cdpat) = interpret_1_pattern_tree env pat in
+            (env, Alist.extend lis (label, cdpat)))
+          (env, Alist.empty)
+      in
+      (env, CdPRecord(cdfields |> Alist.to_list))
+
   | PWildCard ->
       (env, CdPWildCard)
 
@@ -1110,6 +1120,17 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (value_obj :
       end
 
   | (PTuple _, _) -> None
+
+  | (PRecord(field_pats), RecordValue(fields)) ->
+       let open OptionMonad in
+       field_pats
+       |> List.fold_left (fun env (label, pat) ->
+           let* env = env in
+           let* v = LabelMap.find_opt label fields in
+           check_pattern_matching env pat v)
+         (Some env)
+
+  | (PRecord _, _) -> None
 
   | (PConstructor(cnm1, psub), Constructor(cnm2, sub)) ->
       if String.equal cnm1 cnm2 then

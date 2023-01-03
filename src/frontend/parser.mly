@@ -1061,6 +1061,31 @@ pattern_non_var_bot:
         | utpat2 :: utpat_rest ->
             make_standard (Tok tokL) (Tok tokR) (UTPTuple(TupleList.make utpat1 utpat2 utpat_rest))
       }
+  | tokL=L_RECORD; body=pat_record_body; tokR=R_RECORD
+      {
+        let (is_open, fields) = body in
+        make_standard (Tok tokL) (Tok tokR) (UTPRecord(is_open, fields))
+      }
+;
+pat_record_body:
+  | WILDCARD; COMMA?
+    { (true, []) }
+  | field=pat_record_field; COMMA?
+    { (false, [field]) }
+  | field=pat_record_field; COMMA; rest=pat_record_body
+    {
+     let (is_open, fields) = rest in
+     (is_open, field::fields)
+    }
+pat_record_field:
+  | rlabel=LOWER; EXACT_EQ; utpat=pattern
+      { (rlabel, utpat) }
+  | rlabel=LOWER;
+      {
+        let (rng, varnm) = rlabel in
+        let expr = (rng, UTPVariable(varnm)) in
+        (rlabel, expr)
+      }
 ;
 inline:
   | BAR; utasts=list(terminated(inline_single, BAR))

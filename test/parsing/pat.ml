@@ -142,3 +142,96 @@ end
                       ))))
                )))
             ]))) |}]
+
+let%expect_test _ =
+  p {|
+module PatRecord = struct
+  val patrecord-test (| x = x, y = y |) =
+    (x, y)
+end
+|}; [%expect{|
+  (Ok (UTLibraryFile
+         (((Range.Normal <:2.8-17>), "PatRecord"), None,
+          [((Range.Normal <:3.3-6>),
+            (UTBindValue (Stage1,
+               (UTNonRec
+                  (((Range.Normal <:3.7-21>), "patrecord-test"),
+                   (UTFunction (
+                      (UTParameterUnit ([],
+                         ((Range.Normal <:3.22-40>),
+                          (UTPRecord (false,
+                             [(((Range.Normal <:3.25-26>), "x"),
+                               ((Range.Normal <:3.29-30>), (UTPVariable "x")));
+                               (((Range.Normal <:3.32-33>), "y"),
+                                ((Range.Normal <:3.36-37>), (UTPVariable "y")))
+                               ]
+                             ))),
+                         None)),
+                      (UTTuple
+                         (UTContentOf ([], ((Range.Normal <:4.6-7>), "x")))
+                         (UTContentOf ([], ((Range.Normal <:4.9-10>), "y"))) )
+                      ))))
+               )))
+            ]))) |}]
+
+let%expect_test _ =
+  p {|
+module PatRecord = struct
+  val patrecord-test (| x, y |) =
+    (x, y)
+end
+|}; [%expect{|
+  (Ok (UTLibraryFile
+         (((Range.Normal <:2.8-17>), "PatRecord"), None,
+          [((Range.Normal <:3.3-6>),
+            (UTBindValue (Stage1,
+               (UTNonRec
+                  (((Range.Normal <:3.7-21>), "patrecord-test"),
+                   (UTFunction (
+                      (UTParameterUnit ([],
+                         ((Range.Normal <:3.22-32>),
+                          (UTPRecord (false,
+                             [(((Range.Normal <:3.25-26>), "x"),
+                               ((Range.Normal <:3.25-26>), (UTPVariable "x")));
+                               (((Range.Normal <:3.28-29>), "y"),
+                                ((Range.Normal <:3.28-29>), (UTPVariable "y")))
+                               ]
+                             ))),
+                         None)),
+                      (UTTuple
+                         (UTContentOf ([], ((Range.Normal <:4.6-7>), "x")))
+                         (UTContentOf ([], ((Range.Normal <:4.9-10>), "y"))) )
+                      ))))
+               )))
+            ]))) |}]
+
+let%expect_test _ =
+  p {|
+module PatRecord = struct
+  val patrecord-test (| x, y, _ |) =
+    (x, y)
+end
+|}; [%expect{|
+  (Ok (UTLibraryFile
+         (((Range.Normal <:2.8-17>), "PatRecord"), None,
+          [((Range.Normal <:3.3-6>),
+            (UTBindValue (Stage1,
+               (UTNonRec
+                  (((Range.Normal <:3.7-21>), "patrecord-test"),
+                   (UTFunction (
+                      (UTParameterUnit ([],
+                         ((Range.Normal <:3.22-35>),
+                          (UTPRecord (true,
+                             [(((Range.Normal <:3.25-26>), "x"),
+                               ((Range.Normal <:3.25-26>), (UTPVariable "x")));
+                               (((Range.Normal <:3.28-29>), "y"),
+                                ((Range.Normal <:3.28-29>), (UTPVariable "y")))
+                               ]
+                             ))),
+                         None)),
+                      (UTTuple
+                         (UTContentOf ([], ((Range.Normal <:4.6-7>), "x")))
+                         (UTContentOf ([], ((Range.Normal <:4.9-10>), "y"))) )
+                      ))))
+               )))
+            ]))) |}]
