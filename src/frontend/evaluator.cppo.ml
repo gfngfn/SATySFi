@@ -1055,14 +1055,22 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (value_obj :
   | (PIntegerConstant(pnc), BaseConstant(BCInt(nc))) ->
       if pnc = nc then Some(env) else None
 
+  | (PIntegerConstant _, _) -> None
+
   | (PBooleanConstant(pbc), BaseConstant(BCBool(bc))) ->
       if pbc = bc then Some(env) else None
+
+  | (PBooleanConstant _, _) -> None
 
   | (PStringConstant(psc), BaseConstant(BCString(str2))) ->
       if String.equal psc str2 then Some(env) else None
 
+  | (PStringConstant _, _) -> None
+
   | (PUnitConstant, BaseConstant(BCUnit)) ->
       Some(env)
+
+  | (PUnitConstant, _) -> None
 
   | (PWildCard, _) ->
       Some(env)
@@ -1080,10 +1088,14 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (value_obj :
   | (PEndOfList, List([])) ->
       Some(env)
 
+  | (PEndOfList, _) -> None
+
   | (PListCons(pat_head, pat_tail), List(v_head :: vs_tail)) ->
       let open OptionMonad in
       check_pattern_matching env pat_head v_head >>= fun env ->
       check_pattern_matching env pat_tail (List(vs_tail))
+
+  | (PListCons _, _) -> None
 
   | (PTuple(ps), Tuple(vs)) ->
       let open OptionMonad in
@@ -1097,14 +1109,15 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (value_obj :
         | Invalid_argument(_) -> None
       end
 
+  | (PTuple _, _) -> None
+
   | (PConstructor(cnm1, psub), Constructor(cnm2, sub)) ->
       if String.equal cnm1 cnm2 then
         check_pattern_matching env psub sub
       else
         None
 
-  | _ ->
-      None
+  | (PConstructor _, _) -> None
 
 
 and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_binding list) : environment =
