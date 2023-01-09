@@ -223,8 +223,8 @@ module Math : sig
   direct \Uparrow : [] math-cmd
   direct \Downarrow : [] math-cmd
   direct \Updownarrow : [] math-cmd
-  direct \nRightarrow : [] math-cmd
   direct \nLeftarrow : [] math-cmd
+  direct \nRightarrow : [] math-cmd
   direct \nLeftrightarrow : [] math-cmd
   direct \leftarrow : [] math-cmd
   direct \rightarrow : [] math-cmd
@@ -822,8 +822,8 @@ end = struct
   let-math \Uparrow = rel `⇑`
   let-math \Downarrow = rel `⇓`
   let-math \Updownarrow = rel `⇕`
-  let-math \nRightarrow = rel `⇍`
-  let-math \nLeftarrow = rel `⇏`
+  let-math \nLeftarrow = rel `⇍`
+  let-math \nRightarrow = rel `⇏`
   let-math \nLeftrightarrow = rel `⇎`
   let-math \leftarrow = rel `←`
   let-math \rightarrow = rel `→`
