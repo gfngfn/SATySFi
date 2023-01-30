@@ -642,7 +642,7 @@ type base_constant =
   | BCFloat    of float
   | BCLength   of length
   | BCString   of string
-  | BCRegExp   of Str.regexp
+  | BCRegExp   of Pcre.regexp
       [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]
   | BCPath     of path list
       [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]

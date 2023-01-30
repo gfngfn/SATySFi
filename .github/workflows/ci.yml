@@ -39,6 +39,18 @@ jobs:
           fi
           echo "::set-output name=opam-repo-default::$(echo "$DEFAULT_OPAM_REPO")"
 
+      - name: Install tools
+        run: |
+          case "${{ matrix.os }}" in
+            (ubuntu-*)
+              sudo apt-get update
+              sudo apt-get install libpcre3-dev
+              ;;
+            (macos-*)
+              brew update
+              brew install pcre
+              ;;
+          esac
       - name: Setup OCaml ${{ matrix.ocaml-version }} and pin satysfi
         uses: ocaml/setup-ocaml@v2
         with:

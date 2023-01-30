@@ -1965,12 +1965,13 @@ make_int (String.length str)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-if Str.string_match pat str 0 then
-  let matched = Str.matched_string str in
-  let start   = String.length matched in
+match Pcre.exec ~flags:[`ANCHORED] ~rex:pat str with
+| substrings ->
+  let _, start = Pcre.get_substring_ofs substrings 0 in
+  let matched = String.sub str 0 start in
   let rest    = String.sub str start (String.length str - start) in
   Constructor("Some", Tuple([make_string matched; make_string rest]))
-else
+| exception Not_found ->
   Constructor("None", const_unit)
 |}
     ; inst "PrimitiveStringUnexplode"
@@ -2019,8 +2020,12 @@ make_list make_int ilst
         ~is_text_mode_primitive:true
         ~code:{|
 let regexp =
-  try Str.regexp str with
-  | Failure(msg) -> report_dynamic_error ("regexp-of-string: " ^ msg)
+  match Pcre.regexp ~flags:[`UTF8] str with
+  | re -> re
+  | exception Pcre.Error(Pcre.BadPattern (msg, pos)) ->
+    report_dynamic_error ("regexp-of-string: " ^ msg)
+  | exception Pcre.Error(Pcre.InternalError msg) ->
+    report_dynamic_error ("regexp-of-string: " ^ msg)
 in
 make_regexp regexp
 |}
@@ -2030,13 +2035,13 @@ make_regexp regexp
         ~fields:[
         ]
         ~params:[
-          param "pat" ~type_:"regexp";
+          param "rex" ~type_:"regexp";
           param "s" ~type_:"string";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_bool (Str.string_match pat s 0)
+make_bool (Pcre.pmatch ~flags:[`ANCHORED] ~rex s)
 |}
     ; inst "PrimitiveSplitIntoLines"
         ~name:"split-into-lines"
@@ -2065,7 +2070,7 @@ pairlst |> make_list (fun (i, s) -> Tuple([make_int i; make_string s]))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-let slst = Str.split sep str in
+let slst = Pcre.split ~rex:sep str in
 let pairlst = slst |> List.map chop_space_indent in
 pairlst |> make_list (fun (i, s) -> Tuple([make_int i; make_string s]))
 |}

@@ -5,24 +5,13 @@ let default v = function
 
 
 let trim_re =
-  let open Re in
-  let sp = alt [ char ' '; char '\t' ] in
-  let nl = alt [ str "\r\n"; char '\r'; char '\n' ] in
-  (* -- /\A *\n(.*\n) *\z/ -- *)
-  seq [
-    bos;
-    rep sp;
-    nl;
-    group @@ seq [ rep any; nl ];
-    rep sp;
-    eos;
-  ] |> compile
+  Pcre.regexp ~flags:[`UTF8; `DOTALL] "\\A *\n(.*\n) *\\z"
 
 
 let trim s =
-  match Re.exec_opt trim_re s with
-  | Some(gr) -> Re.Group.get gr 1
-  | None     -> s
+  match Pcre.exec ~rex:trim_re s with
+  | exception Not_found -> s
+  | substrings -> Pcre.get_substring substrings 1
 
 
 let opt_map f = function

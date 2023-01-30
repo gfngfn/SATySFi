@@ -15,6 +15,7 @@
             uutf
             yojson-with-position
             omd
+            pcre
             )
  (preprocess (pps
               ppx_deriving.show
