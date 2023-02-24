@@ -32,11 +32,8 @@
 (copy_files# chardecoder/*.{ml,mli})
 (copy_files  chardecoder/*.{mly})
 (copy_files# frontend/*.{ml,mli})
-(copy_files  frontend/*.{mll,mly})
+(copy_files  frontend/*.{mly})
 (copy_files# frontend/bytecomp/*.{ml,mli})
-
-(ocamllex
- (modules lexer))
 
 (menhir
  (modules parser dataParser)
