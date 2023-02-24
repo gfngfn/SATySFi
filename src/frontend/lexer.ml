@@ -94,15 +94,7 @@ let split_length_unitnm tokstr =
   else
     assert false
 
-let remove_before_spaces tokstr =
-  let re = Str.regexp "(\\s|\\t)*" in
-  if Str.string_match re tokstr 0 then
-    let matched = Str.matched_string tokstr in
-    let start = String.length matched in
-    let rest = String.sub tokstr start (String.length tokstr - start) in
-    rest
-  else
-    assert false
+let remove_before_spaces tokstr = Base.String.lstrip tokstr
 
 
 
