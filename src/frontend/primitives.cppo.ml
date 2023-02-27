@@ -593,6 +593,7 @@ let pdf_mode_table =
       ("inline-nil", ~% tIB, (fun _ -> base (BCHorz([])))                               );
       ("omit-skip-after", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzOmitSkipAfter])))));
       ("block-nil" , ~% tBB, (fun _ -> base (BCVert([])))                               );
+      ("clear-column", ~% tBB, (fun _ -> base (BCVert(HorzBox.([VertClearColumn]))))        );
       ("clear-page", ~% tBB, (fun _ -> base (BCVert(HorzBox.([VertClearPage]))))        );
 
 #include "__primitives_pdf_mode.gen.ml"

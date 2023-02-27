@@ -343,6 +343,7 @@ and vert_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "Breakable")]
   | VertFrame          of margins * paddings * decoration * decoration * decoration * decoration * length * vert_box list
 (*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
+  | VertClearColumn
   | VertClearPage
   | VertHookPageBreak of (page_break_info -> point -> unit)
 
