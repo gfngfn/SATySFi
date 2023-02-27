@@ -277,7 +277,7 @@
 %token<Range.t * Types.input_position * string> POSITIONED_STRING
 
 %token<Range.t> SPACE BREAK
-%token<Range.t * string> MATHCHARS
+%token<Range.t * Uchar.t> MATHCHAR
 %token<Range.t * int> PRIMES
 %token<Range.t> SUBSCRIPT SUPERSCRIPT
 %token<Range.t * int> ITEM
@@ -1264,13 +1264,10 @@ math_group:
       }
 ;
 math_bot:
-  | tok=MATHCHARS
+  | tok=MATHCHAR
       {
-        let (rng, s) = tok in
-        let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
-        match uchs with
-        | [ uch ] -> (rng, UTMathTextChar(uch))
-        | _       -> failwith (Printf.sprintf "TODO: MATHCHARS (\"%s\", %s)" s (Range.to_string rng))
+        let (rng, uch) = tok in
+        rng, UTMathTextChar(uch)
       }
   | mcmd=backslash_cmd; args=list(math_cmd_arg)
       {

@@ -96,6 +96,12 @@ let split_length_unitnm tokstr =
 
 let remove_before_spaces tokstr = Base.String.lstrip tokstr
 
+let get_head_uchar str =
+  str
+  |> InternalText.of_utf8
+  |> InternalText.to_uchar_list
+  |> List.hd
+
 
 
 let space = [%sedlex.regexp? ' ' | '\t']
@@ -608,6 +614,11 @@ and lex_math stack lexbuf =
     Stack.push ProgramState stack;
     L_PAREN(pos);
   )
+  | "![" -> (
+    let pos = get_pos lexbuf in
+    Stack.push ProgramState stack;
+    L_SQUARE(pos);
+  )
   | "{" -> (
     Stack.push MathState stack;
     L_MATH_TEXT(get_pos lexbuf);
@@ -624,8 +635,8 @@ and lex_math stack lexbuf =
     let n = String.length (lexeme lexbuf) in
     PRIMES(get_pos lexbuf, n)
   )
-  | mathsymboltop, Star mathsymbol -> MATHCHARS(get_pos lexbuf, lexeme lexbuf)
-  | mathascii -> MATHCHARS(get_pos lexbuf, lexeme lexbuf)
+  | mathsymboltop, Star mathsymbol -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_head_uchar)
+  | mathascii -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_head_uchar)
   | "#", Star (upper, "."), (lower | upper) -> (
     let pos = get_pos lexbuf in
     let s = lexeme lexbuf in
@@ -643,37 +654,14 @@ and lex_math stack lexbuf =
     LONG_BACKSLASH_CMD(pos, modidents, (rng, "\\" ^ csnm))
   )
   | "\\", (lower | upper) -> BACKSLASH_CMD(get_pos lexbuf, lexeme lexbuf)
-  | "\\", symbol -> (
-    let tok = String.sub (lexeme lexbuf) 1 1 in
-    MATHCHARS(get_pos lexbuf, tok)
-  )
+  | "\\", symbol -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_head_uchar)
   | eof -> report_error lexbuf "unexpected end of file in a math area"
-  | any -> (
-    let pos_start = get_pos lexbuf in
-    let buffer = Buffer.create 256 in
-    Buffer.add_string buffer (lexeme lexbuf);
-    let s = lex_math_char buffer lexbuf in
-    let pos_last = get_pos lexbuf in
-    let pos = Range.unite pos_start pos_last in
-    MATHCHARS(pos, s)
-  )
-  | _ -> report_error lexbuf "illegal token in a math area"
-
-
-and lex_math_char buffer lexbuf =
-  match%sedlex lexbuf with
   | nonmathstr -> (
-    let _ = Sedlexing.backtrack lexbuf in
-    Buffer.contents buffer
+    let s = lexeme lexbuf in
+    report_error lexbuf (Printf.sprintf "unexpected character '%s' in a math area" s)
   )
-  | any -> (
-    Buffer.add_string buffer (lexeme lexbuf);
-    lex_inline_char buffer lexbuf
-  )
-  | _ -> (
-    let _ = Sedlexing.backtrack lexbuf in
-    Buffer.contents buffer
-  )
+  | any -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_head_uchar)
+  | _ -> report_error lexbuf "illegal token in a math area"
 
 
 and lex_active stack lexbuf =
