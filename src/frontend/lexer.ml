@@ -96,11 +96,13 @@ let split_length_unitnm tokstr =
 
 let remove_before_spaces tokstr = Base.String.lstrip tokstr
 
-let get_head_uchar str =
-  str
-  |> InternalText.of_utf8
-  |> InternalText.to_uchar_list
-  |> List.hd
+let get_uchar n str =
+  let lst =
+    str
+    |> InternalText.of_utf8
+    |> InternalText.to_uchar_list
+  in
+  List.nth lst n
 
 
 
@@ -635,8 +637,8 @@ and lex_math stack lexbuf =
     let n = String.length (lexeme lexbuf) in
     PRIMES(get_pos lexbuf, n)
   )
-  | mathsymboltop, Star mathsymbol -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_head_uchar)
-  | mathascii -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_head_uchar)
+  | mathsymboltop, Star mathsymbol -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_uchar 0)
+  | mathascii -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_uchar 0)
   | "#", Star (upper, "."), (lower | upper) -> (
     let pos = get_pos lexbuf in
     let s = lexeme lexbuf in
@@ -654,13 +656,13 @@ and lex_math stack lexbuf =
     LONG_BACKSLASH_CMD(pos, modidents, (rng, "\\" ^ csnm))
   )
   | "\\", (lower | upper) -> BACKSLASH_CMD(get_pos lexbuf, lexeme lexbuf)
-  | "\\", symbol -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_head_uchar)
+  | "\\", symbol -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_uchar 1)
   | eof -> report_error lexbuf "unexpected end of file in a math area"
   | nonmathstr -> (
     let s = lexeme lexbuf in
     report_error lexbuf (Printf.sprintf "unexpected character '%s' in a math area" s)
   )
-  | any -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_head_uchar)
+  | any -> MATHCHAR(get_pos lexbuf, lexbuf |> lexeme |> get_uchar 0)
   | _ -> report_error lexbuf "illegal token in a math area"
 
 
