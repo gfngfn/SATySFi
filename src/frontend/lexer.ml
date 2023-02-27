@@ -548,11 +548,11 @@ and lex_inline stack lexbuf =
       let pos = get_pos lexbuf in
       EOI(pos)
     else
-      report_error lexbuf "unexpected end of input while reading a inline text area"
+      report_error lexbuf "unexpected end of input while reading an inline text area"
   )
   | nonstr -> (
     let s = lexeme lexbuf in
-    report_error lexbuf (Printf.sprintf "unexpected character '%s' in a inline text area" s)
+    report_error lexbuf (Printf.sprintf "unexpected character '%s' in an inline text area" s)
   )
   | any -> (
     let pos_start = get_pos lexbuf in
@@ -563,7 +563,7 @@ and lex_inline stack lexbuf =
     let pos = Range.unite pos_start pos_last in
     CHAR(pos, s)
   )
-  | _ -> report_error lexbuf "unexpected character in a inline text area"
+  | _ -> report_error lexbuf "unexpected character in an inline text area"
 
 
 
