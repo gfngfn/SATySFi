@@ -218,7 +218,7 @@ let rec lex_program stack lexbuf =
     let len = String.length s in
     let s = String.sub s 1 (len - 2) in
     let (modidents, (rng, csnm)) = split_module_list pos s in
-    LONG_BACKSLASH_MACRO(pos, modidents, (rng, "\\" ^ csnm))
+    LONG_BACKSLASH_MACRO(pos, modidents, (rng, "\\" ^ csnm ^ "@"))
   )
   | '\\', Plus (upper, "."), (lower| upper) -> (
     let pos = get_pos lexbuf in
@@ -236,7 +236,7 @@ let rec lex_program stack lexbuf =
     let len = String.length s in
     let s = String.sub s 1 (len - 2) in
     let (modidents, (rng, csnm)) = split_module_list pos s in
-    LONG_PLUS_MACRO(pos, modidents, (rng, "+" ^ csnm))
+    LONG_PLUS_MACRO(pos, modidents, (rng, "+" ^ csnm ^ "@"))
   )
   | '+', Plus (upper, "."), (lower| upper) -> (
     let pos = get_pos lexbuf in
@@ -403,7 +403,7 @@ and lex_block stack lexbuf =
     let s = String.sub s 1 (len - 2) in
     let (modidents, (rng, csnm)) = split_module_list pos s in
     Stack.push ActiveState stack;
-    LONG_PLUS_MACRO(pos, modidents, (rng, "+" ^ csnm))
+    LONG_PLUS_MACRO(pos, modidents, (rng, "+" ^ csnm ^ "@"))
   )
   | '+', Plus (upper, "."), (lower| upper) -> (
     let pos = get_pos lexbuf in
@@ -412,7 +412,7 @@ and lex_block stack lexbuf =
     let s = String.sub s 1 (len - 1) in
     let (modidents, (rng, csnm)) = split_module_list pos s in
     Stack.push ActiveState stack;
-    LONG_PLUS_CMD(pos, modidents, (rng, "+" ^ csnm))
+    LONG_PLUS_CMD(pos, modidents, (rng, "+" ^ csnm ^ "@"))
   )
   | '+', (lower| upper), '@' -> (
     Stack.push ActiveState stack;
@@ -502,7 +502,7 @@ and lex_inline stack lexbuf =
     let s = String.sub s 1 (len - 2) in
     let (modidents, (rng, csnm)) = split_module_list pos s in
     Stack.push ActiveState stack;
-    LONG_BACKSLASH_MACRO(pos, modidents, (rng, "\\" ^ csnm))
+    LONG_BACKSLASH_MACRO(pos, modidents, (rng, "\\" ^ csnm ^ "@"))
   )
   | '\\', Plus (upper, "."), (lower| upper) -> (
     let pos = get_pos lexbuf in
@@ -511,7 +511,7 @@ and lex_inline stack lexbuf =
     let s = String.sub s 1 (len - 1) in
     let (modidents, (rng, csnm)) = split_module_list pos s in
     Stack.push ActiveState stack;
-    LONG_BACKSLASH_CMD(pos, modidents, (rng, "\\" ^ csnm))
+    LONG_BACKSLASH_CMD(pos, modidents, (rng, "\\" ^ csnm ^ "@"))
   )
   | '\\', (lower| upper), '@' -> (
     Stack.push ActiveState stack;
