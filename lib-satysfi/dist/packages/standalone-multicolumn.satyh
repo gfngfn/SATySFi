@@ -5,7 +5,7 @@ let-inline ctx \math m =
   embed-math ctx m
 
 let standalone n bt =
-  let multisep = 5pt in
+  let multisep = 20pt in
   let all-text-width = 440pt in
   let one-column-width =
     (all-text-width -' (multisep *' float (n - 1))) *' (1.0 /. float n)
