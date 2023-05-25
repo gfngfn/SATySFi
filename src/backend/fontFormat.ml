@@ -211,7 +211,10 @@ module SubsetMap
             | None ->
                 return []
 
-            | Some(loc) ->
+            | Some(I.Ttf.EmptyGlyph) ->
+                return []
+
+            | Some(I.Ttf.NonemptyGlyph(loc)) ->
                 D.Ttf.glyf ttf loc >>= fun ttf_glyph_info ->
                 begin
                   match ttf_glyph_info.description with
@@ -593,10 +596,10 @@ let get_mark_table srcpath units_per_em d =
                 | Some(feature_mark) ->
                     D.Gpos.fold_subtables
                       ~markbase1:(fun clscnt () markassoc baseassoc ->
-                        MarkTable.add_base units_per_em clscnt markassoc baseassoc mktbl
+                        MarkTable.add_base ~units_per_em clscnt markassoc baseassoc mktbl
                       )
                       ~marklig1:(fun clscnt () markassoc ligassoc ->
-                        MarkTable.add_ligature units_per_em clscnt markassoc ligassoc mktbl
+                        MarkTable.add_ligature ~units_per_em clscnt markassoc ligassoc mktbl
                       )
                       feature_mark ()
               end >>= fun () ->
@@ -611,7 +614,7 @@ let get_mark_table srcpath units_per_em d =
                 | Some(feature_mkmk) ->
                     D.Gpos.fold_subtables
                       ~markmark1:(fun clscnt () mark1assoc mark2assoc ->
-                        MarkTable.add_mark_to_mark units_per_em clscnt mark1assoc mark2assoc mktbl
+                        MarkTable.add_mark_to_mark ~units_per_em clscnt mark1assoc mark2assoc mktbl
                       )
                       feature_mkmk ()
               end
@@ -1113,9 +1116,12 @@ let get_ttf_raw_bbox (ttf : D.ttf_source) (gidorg : original_glyph_id) : ((desig
   | None ->
       return None
 
-  | Some(gloc) ->
+  | Some(I.Ttf.EmptyGlyph) ->
+      return None
+
+  | Some(I.Ttf.NonemptyGlyph(loc)) ->
       begin
-        D.Ttf.glyf ttf gloc >>= fun ttf_glyph_info ->
+        D.Ttf.glyf ttf loc >>= fun ttf_glyph_info ->
         let V.{ x_min; y_min; x_max; y_max } = ttf_glyph_info.bounding_box in
         return (Some((x_min, y_min, x_max, y_max)))
       end
