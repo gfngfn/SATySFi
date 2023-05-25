@@ -1,4 +1,3 @@
-<!-- -*- coding: utf-8 -*- -->
 ![logo1](https://raw.githubusercontent.com/wiki/gfngfn/SATySFi/img/satysfi-logo.png)
 
 [![Build Status](https://github.com/gfngfn/SATySFi/workflows/CI/badge.svg?branch=master)](https://github.com/gfngfn/SATySFi/actions?query=workflow%3ACI)
@@ -15,7 +14,7 @@
 * 株式会社ドワンゴ（2018年10月–2019年3月．アルバイトとして）
 * [The SATySFi​book](https://booth.pm/ja/items/1127224)を購入頂いた，多くの匿名の支援者の方々
 
-また，2021年2月現在も発展を続けています。
+また，2023年5月現在も発展を続けています。
 
 ## Satyrographos を使ったインストール方法 (初心者向け)
 

@@ -210,7 +210,10 @@ end = struct
           | None ->
               return []
 
-          | Some(loc) ->
+          | Some(I.Ttf.EmptyGlyph) ->
+              return []
+
+          | Some(I.Ttf.GlyphLocation(loc)) ->
               D.Ttf.glyf ttf loc >>= fun ttf_glyph_info ->
               begin
                 match ttf_glyph_info.description with
@@ -226,7 +229,6 @@ end = struct
               end
     end
       |> Result.map_error (fun e -> FailedToDecodeFont(file_path, e))
-
 
 
   let rec intern (gidorg : original_glyph_id) (submap : t) : subset_glyph_id ok =
@@ -1059,12 +1061,18 @@ let get_ttf_raw_bbox ~(file_path : abs_path) (ttf : D.ttf_source) (gidorg : orig
     | None ->
         return None
 
-    | Some(gloc) ->
-        D.Ttf.glyf ttf gloc >>= fun ttf_glyph_info ->
-        let V.{ x_min; y_min; x_max; y_max } = ttf_glyph_info.bounding_box in
-        return (Some((x_min, y_min, x_max, y_max)))
+    | Some(I.Ttf.EmptyGlyph) ->
+        return None
+
+    | Some(I.Ttf.GlyphLocation(loc)) ->
+        begin
+          D.Ttf.glyf ttf loc >>= fun ttf_glyph_info ->
+          let V.{ x_min; y_min; x_max; y_max } = ttf_glyph_info.bounding_box in
+          return (Some((x_min, y_min, x_max, y_max)))
+        end
   end
     |> Result.map_error (fun e -> FailedToDecodeFont(file_path, e))
+
 
 let bbox_zero =
   (PerMille(0), PerMille(0), PerMille(0), PerMille(0))
