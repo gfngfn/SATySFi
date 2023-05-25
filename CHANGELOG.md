@@ -5,8 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.0.9] - 2023-05-26
 ### Fixed
 - Emit a parsing error when a parameter sequence ends with an optional one ([PR\#365](https://github.com/gfngfn/SATySFi/pull/365) by `anko9801`).
+- Fix subsetting fonts that contain empty glyphs ([PR\#394](https://github.com/gfngfn/SATySFi/pull/394)).
 
 ## [0.0.8] - 2022-10-01
 ### Fixed
@@ -144,7 +147,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Initial version of SATySFi
 
 
-  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.8...HEAD
+  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.9...HEAD
+  [0.0.8]: https://github.com/gfngfn/SATySFi/compare/v0.0.8...v0.0.9
   [0.0.8]: https://github.com/gfngfn/SATySFi/compare/v0.0.7...v0.0.8
   [0.0.7]: https://github.com/gfngfn/SATySFi/compare/v0.0.6...v0.0.7
   [0.0.6]: https://github.com/gfngfn/SATySFi/compare/v0.0.5...v0.0.6
