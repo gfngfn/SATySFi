@@ -202,7 +202,10 @@ end = struct
             | None ->
                 return []
 
-            | Some(loc) ->
+            | Some(I.Ttf.EmptyGlyph) ->
+                return []
+
+            | Some(I.Ttf.GlyphLocation(loc)) ->
                 D.Ttf.glyf ttf loc >>= fun ttf_glyph_info ->
                 begin
                   match ttf_glyph_info.description with
@@ -1075,10 +1078,15 @@ let get_ttf_raw_bbox (ttf : D.ttf_source) (gidorg : original_glyph_id) : ((desig
   | None ->
       return None
 
-  | Some(gloc) ->
-      D.Ttf.glyf ttf gloc >>= fun ttf_glyph_info ->
-      let V.{ x_min; y_min; x_max; y_max } = ttf_glyph_info.bounding_box in
-      return (Some((x_min, y_min, x_max, y_max)))
+  | Some(I.Ttf.EmptyGlyph) ->
+      return None
+
+  | Some(I.Ttf.GlyphLocation(loc)) ->
+      begin
+        D.Ttf.glyf ttf loc >>= fun ttf_glyph_info ->
+        let V.{ x_min; y_min; x_max; y_max } = ttf_glyph_info.bounding_box in
+        return (Some((x_min, y_min, x_max, y_max)))
+      end
 
 
 let bbox_zero =
