@@ -1385,11 +1385,11 @@ let cmap_predicate f =
   List.find_opt (fun (subtbl, format) -> f (subtbl.V.Cmap.subtable_ids, format))
 
 
-let get_cmap_subtable srcpath (d : D.source) : V.Cmap.subtable =
+let get_cmap_subtable srcpath (d : D.source) : V.Cmap.subtable * D.Cmap.variation_subtable option =
   let res =
     let open ResultMonad in
     D.Cmap.get d >>= fun icmap ->
-    D.Cmap.get_subtables icmap >>= fun isubtbls ->
+    D.Cmap.get_subtables icmap >>= fun (isubtbls, varsubtables) ->
     isubtbls |> List.fold_left (fun res isubtbl -> (* TODO: refactor here by using `mapM` *)
       res >>= fun acc ->
       let format = D.Cmap.get_format_number isubtbl in
@@ -1397,27 +1397,32 @@ let get_cmap_subtable srcpath (d : D.source) : V.Cmap.subtable =
       return (Alist.extend acc (subtbl, format))
     ) (return Alist.empty) >>= fun acc ->
     let subtbls = Alist.to_list acc in
-      let opt =
-        List.fold_left (fun opt idspred ->
-          match opt with
-          | Some(_) -> opt
-          | None    -> subtbls |> (cmap_predicate idspred)
-        ) None [
-          (fun (V.Cmap.{ platform_id; _ }, format) -> platform_id = 0 && format = 12);
-          (fun (V.Cmap.{ platform_id; _ }, format) -> platform_id = 0 && format = 4);
-          (fun (V.Cmap.{ platform_id; _ }, format) -> platform_id = 0);
-          (fun (V.Cmap.{ platform_id; encoding_id }, _) -> platform_id = 3 && encoding_id = 10);
-          (fun (V.Cmap.{ platform_id; encoding_id }, _) -> platform_id = 3 && encoding_id = 1);
-          (fun (V.Cmap.{ platform_id; _ }, _) -> platform_id = 1);
-        ]
-      in
+    let opt =
+      List.fold_left (fun opt idspred ->
+        match opt with
+        | Some(_) -> opt
+        | None    -> subtbls |> (cmap_predicate idspred)
+      ) None [
+        (fun (V.Cmap.{ platform_id; _ }, format) -> platform_id = 0 && format = 12);
+        (fun (V.Cmap.{ platform_id; _ }, format) -> platform_id = 0 && format = 4);
+        (fun (V.Cmap.{ platform_id; _ }, format) -> platform_id = 0);
+        (fun (V.Cmap.{ platform_id; encoding_id }, _) -> platform_id = 3 && encoding_id = 10);
+        (fun (V.Cmap.{ platform_id; encoding_id }, _) -> platform_id = 3 && encoding_id = 1);
+        (fun (V.Cmap.{ platform_id; _ }, _) -> platform_id = 1);
+      ]
+    in
+    let varsubtable_opt =
+      match varsubtables with
+      | []               -> None
+      | varsubtable :: _ -> Some(varsubtable)
+    in
     match opt with
-    | None         -> raise (CannotFindUnicodeCmap(srcpath))
-    | Some(subtbl) -> return subtbl
+    | None              -> raise (CannotFindUnicodeCmap(srcpath))
+    | Some((subtbl, _)) -> return (subtbl, varsubtable_opt)
   in
   match res with
-  | Error(oerr)     -> broken srcpath oerr "get_cmap_subtable"
-  | Ok((subtbl, _)) -> subtbl
+  | Error(oerr) -> broken srcpath oerr "get_cmap_subtable"
+  | Ok(pair)    -> pair
 
 
 (* PUBLIC *)
@@ -1871,7 +1876,7 @@ let make_dictionary (pdf : Pdf.t) (font : font) (dcdr : decoder) : Pdf.pdfobject
 
 
 let make_decoder (abspath : abs_path) (d : D.source) : decoder =
-  let cmapsubtbl = get_cmap_subtable abspath d in
+  let (cmapsubtbl, _varsubtable_opt) = get_cmap_subtable abspath d in
   let submap = SubsetMap.create abspath d 32 in  (* temporary; initial size of hash tables *)
   let gidtbl = GlyphIDTable.create submap 256 in  (* temporary; initial size of hash tables *)
   let bboxtbl = GlyphBBoxTable.create 256 in  (* temporary; initial size of hash tables *)
