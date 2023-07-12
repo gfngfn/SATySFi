@@ -46,12 +46,12 @@ download_file () {
 
 # Latin Modern
 NAME=lm2.004otf
-download_file "$NAME.zip" "http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip"
+download_file "$NAME.zip" "https://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip"
 unzip -o "$CACHE/$NAME.zip" "*.otf" -d lib-satysfi/dist/fonts/
 
 # Latin Modern Math
 NAME=latinmodern-math-1959
-download_file "$NAME.zip" "http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip"
+download_file "$NAME.zip" "https://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip"
 unzip -o "$CACHE/$NAME.zip" "*.otf" -d "$CACHE/"
 cp "$CACHE"/latinmodern-math-1959/otf/latinmodern-math.otf lib-satysfi/dist/fonts/
 
