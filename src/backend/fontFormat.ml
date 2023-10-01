@@ -1261,18 +1261,6 @@ let font_stretch_of_width_class = function
   | V.Os2.WidthUltraExpanded  -> UltraExpandedStretch
 
 
-let font_weight_of_weight_class = function
-  | V.Os2.WeightThin       -> 100
-  | V.Os2.WeightExtraLight -> 200
-  | V.Os2.WeightLight      -> 300
-  | V.Os2.WeightNormal     -> 400
-  | V.Os2.WeightMedium     -> 500
-  | V.Os2.WeightSemiBold   -> 600
-  | V.Os2.WeightBold       -> 700
-  | V.Os2.WeightExtraBold  -> 800
-  | V.Os2.WeightBlack      -> 900
-
-
 type font_descriptor = {
     font_name    : string;
     font_family  : string;
@@ -1389,7 +1377,7 @@ let get_cmap_subtable srcpath (d : D.source) : V.Cmap.subtable =
   let res =
     let open ResultMonad in
     D.Cmap.get d >>= fun icmap ->
-    D.Cmap.get_subtables icmap >>= fun isubtbls ->
+    D.Cmap.get_subtables icmap >>= fun (isubtbls, _ivarsubtbls) ->
     isubtbls |> List.fold_left (fun res isubtbl -> (* TODO: refactor here by using `mapM` *)
       res >>= fun acc ->
       let format = D.Cmap.get_format_number isubtbl in
@@ -1477,7 +1465,7 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
         font_name    = font_name; (* -- same as Otfm.postscript_name dcdr -- *)
         font_family  = "";    (* temporary; should be gotten from decoder *)
         font_stretch = Some(font_stretch_of_width_class ios2.I.Os2.value.us_width_class);
-        font_weight  = Some(font_weight_of_weight_class ios2.I.Os2.value.us_weight_class);
+        font_weight  = Some(ios2.I.Os2.value.us_weight_class);
         flags        = None;  (* temporary; should be gotten from decoder *)
         font_bbox    = bbox;
         italic_angle = 0.;    (* temporary; should be gotten from decoder; 'post.italicAngle' *)
