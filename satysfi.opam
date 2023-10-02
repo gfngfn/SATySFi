@@ -34,6 +34,7 @@ depends: [
   "ppx_deriving"
   "re" {build}
   "uutf"
+  "uunf"
   "yojson-with-position" {= "1.4.2+satysfi"}
   "omd" {< "2.0.0~"}
   "ocamlgraph"

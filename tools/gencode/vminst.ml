@@ -1618,7 +1618,13 @@ CompiledInlineTextClosure([CompiledImInlineTextText(str)], env)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_string (HorzBox.extract_string ibs)
+let s =
+  ibs
+  |> HorzBox.extract_string
+  |> NormalizeString.of_utf8
+  |> NormalizeString.to_utf8
+in
+make_string s
 |}
     ; inst "PrimitiveInlineSkip"
         ~name:"inline-skip"
@@ -2019,7 +2025,13 @@ else
         ~is_text_mode_primitive:true
         ~code:{|
 let ilst = get_list get_int valueilst in
-let s = (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8 in
+let s =
+  (List.map Uchar.of_int ilst)
+  |> InternalText.of_uchar_list
+  |> InternalText.to_utf8
+  |> NormalizeString.of_utf8
+  |> NormalizeString.to_utf8
+in
 make_string s
 |}
     ; inst "PrimitiveStringExplode"

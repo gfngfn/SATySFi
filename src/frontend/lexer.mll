@@ -576,7 +576,14 @@ and lex_inline stack = parse
           report_error lexbuf "unexpected end of input while reading an inline text area"
       }
   | str+
-      { let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok) }
+      {
+        let s =
+          Lexing.lexeme lexbuf
+          |> NormalizeString.of_utf8
+          |> NormalizeString.to_utf8
+        in
+        CHAR(get_pos lexbuf, s)
+      }
 
   | _ as c
       { report_error lexbuf (Printf.sprintf "illegal token '%s' in an inline text area" (String.make 1 c)) }
@@ -644,7 +651,14 @@ and lex_math stack = parse
   | mathascii
       { MATHCHARS(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | mathstr+
-      { MATHCHARS(get_pos lexbuf, Lexing.lexeme lexbuf) }
+      {
+        let s =
+          Lexing.lexeme lexbuf
+          |> NormalizeString.of_utf8
+          |> NormalizeString.to_utf8
+        in
+        MATHCHARS(get_pos lexbuf, s)
+      }
   | ("#" (((upper ".")* (lower | upper)) as s))
       {
         let pos = get_pos lexbuf in
@@ -743,7 +757,11 @@ and literal quote_length buffer = parse
         end else if len > quote_length then
           report_error lexbuf "literal area was closed with too many '`'s"
         else
-          let s = Buffer.contents buffer in
+          let s =
+            Buffer.contents buffer
+            |> NormalizeString.of_utf8
+            |> NormalizeString.to_utf8
+          in
           let pos_last = get_pos lexbuf in
           (pos_last, s, true)
     }
@@ -757,7 +775,11 @@ and literal quote_length buffer = parse
         end else if len > quote_length then
           report_error lexbuf "literal area was closed with too many '`'s"
         else
-          let s = Buffer.contents buffer in
+          let s =
+            Buffer.contents buffer
+            |> NormalizeString.of_utf8
+            |> NormalizeString.to_utf8
+          in
           let pos_last = get_pos lexbuf in
           (pos_last, s, false)
     }
