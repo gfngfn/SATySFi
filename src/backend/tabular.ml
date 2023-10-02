@@ -49,21 +49,18 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
     | ((Some((numrow, len)) as rsome) :: rtail, cell :: ctail) ->
         begin
           match cell with
-          | NormalCell(_)
-          | MultiCell(_, _, _, _)
-            -> assert false  (* temporary; maybe should just warn users *)
-
-          | EmptyCell ->
-              let (hgtmaxnew, dptminnew) =
-                if numrow < 1 then
-                  assert false
-                else if numrow = 1 then
-                  (hgtmax, dptmin)  (* temporary; should consider 'len' *)
-                else
-                  (hgtmax, dptmin)
-              in
-              aux (Alist.extend restacc rsome) hgtmaxnew dptminnew rtail ctail
-        end
+          | NormalCell(_) | MultiCell(_, _, _, _) -> Logging.warn_wide_row_cell_overrides_nonempty_cell ()
+          | EmptyCell                             -> ()
+        end;
+        let (hgtmaxnew, dptminnew) =
+          if numrow < 1 then
+            assert false
+          else if numrow = 1 then
+            (hgtmax, dptmin)  (* temporary; should consider 'len' *)
+          else
+            (hgtmax, dptmin)
+        in
+        aux (Alist.extend restacc rsome) hgtmaxnew dptminnew rtail ctail
   in
   let (restacc, hgtmax, dptmin) = aux Alist.empty Length.zero Length.zero restprev row in
   let rest =
@@ -119,21 +116,18 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
     | ((Some((numcol, widrest)) as rsome) :: rtail, cell :: ctail) ->
         begin
           match cell with
-          | NormalCell(_)
-          | MultiCell(_)
-            -> assert false  (* temporary; maybe should just warn users *)
-
-          | EmptyCell ->
-              let widmaxnew =
-                if numcol < 1 then
-                  assert false
-                else if numcol = 1 then
-                  Length.max widrest widmax
-                else
-                  widmax
-              in
-              aux (Alist.extend restacc rsome) widmaxnew rtail ctail
-        end
+          | NormalCell(_) | MultiCell(_) -> Logging.warn_wide_column_cell_overrides_nonempty_cell ()
+          | EmptyCell                    -> ()
+        end; (* TODO: detailed warning *)
+        let widmaxnew =
+          if numcol < 1 then
+            assert false
+          else if numcol = 1 then
+            Length.max widrest widmax
+          else
+            widmax
+        in
+        aux (Alist.extend restacc rsome) widmaxnew rtail ctail
   in
   let (restacc, widmax) = aux Alist.empty Length.zero restprev col in
   let rest =
