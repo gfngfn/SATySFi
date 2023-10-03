@@ -2053,6 +2053,23 @@ let ilst =
 in
 make_list make_int ilst
 |}
+    ; inst "PrimitiveStringSeg"
+        ~name:"string-seg"
+        ~type_:Type.(tS @-> (tL tS))
+        ~fields:[
+        ]
+        ~params:[
+          param "str" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let slst =
+  str
+  |> SegmentationText.split_utf8
+in
+make_list make_string slst
+|}
     ; inst "PrimitiveRegexpOfString"
         ~name:"regexp-of-string"
         ~type_:Type.(tS @-> tRE)
