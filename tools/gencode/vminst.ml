@@ -2053,8 +2053,8 @@ let ilst =
 in
 make_list make_int ilst
 |}
-    ; inst "PrimitiveStringSeg"
-        ~name:"string-seg"
+    ; inst "PrimitiveSplitGraphemeCluster"
+        ~name:"split-grapheme-cluster"
         ~type_:Type.(tS @-> (tL tS))
         ~fields:[
         ]
@@ -2064,10 +2064,7 @@ make_list make_int ilst
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-let slst =
-  str
-  |> SegmentationText.split_utf8
-in
+let slst = GraphemeCluster.split_utf8 str in
 make_list make_string slst
 |}
     ; inst "PrimitiveRegexpOfString"
