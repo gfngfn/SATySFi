@@ -30,21 +30,38 @@ let () =
       [0x1F469, 0x1F3FE, 0x200D, 0x1F393]
     ]
   in
-  let slst = split-grapheme-cluster s1 in
-  let is-ok =
-    let rec loop l1 l2 =
-      match (l1, l2) with
-        | (s1::xs1, s2::xs2)-> string-same s1 (string-unexplode s2) && (loop xs1 xs2)
-        | ([], []) -> true
-        | _ -> false
-      end
-    in
-    loop slst s2
+  let s3 =
+    [
+      [0x1F1EF, 0x1F1F5],
+      [0x30AB, 0x3099],
+      [0x30AB, 0x3099],
+      [0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F466],
+      [0x1F469, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F467],
+      [0x1F3F4, 0xE0067, 0xE0062, 0xE0077, 0xE006C, 0xE0073, 0xE007F],
+      [0x1F469, 0x1F3FE, 0x200D, 0x1F393]
+    ]
   in
-  if is-ok then
+  let slst1 = s1 |> normalize-string-to-nfc |> split-grapheme-cluster in
+  let slst2 = s1 |> normalize-string-to-nfd |> split-grapheme-cluster in
+  let rec check-loop l1 l2 =
+    match (l1, l2) with
+      | (s1::xs1, s2::xs2)-> string-same s1 (string-unexplode s2) && (check-loop xs1 xs2)
+      | ([], []) -> true
+      | _ -> false
+    end
+  in
+  let is-ok1 = check-loop slst1 s2 in
+  let is-ok2 = check-loop slst2 s3 in
+  if is-ok1 && is-ok2 then
     display-message `ok`
   else
-    abort-with-message `err`
+    if not is-ok1 && not is-ok2 then
+      abort-with-message `err1, 2`
+    else
+      if not is-ok1 then
+        abort-with-message `err1`
+      else
+        abort-with-message `err2`
 in
 
 document (|
