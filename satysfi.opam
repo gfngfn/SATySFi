@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "satysfi"
-version: "0.0.9"
+version: "0.0.10"
 maintainer: "Takashi Suwa"
 authors: [
   "Takashi Suwa"
