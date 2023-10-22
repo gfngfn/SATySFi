@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 ## [Unreleased]
 
+## [0.0.10] - 2023-10-12
+### Fixed
+- Fix URLs of Latin Modern fonts for installation ([PR\#412](https://github.com/gfngfn/SATySFi/pull/412) by `caphosra`).
+- Several fixes about decoding/encoding OpenType fonts ([PR\#415](https://github.com/gfngfn/SATySFi/pull/415)).
+- Warn overriding of non-empty tabular cells instead of aborting ([PR\#416](https://github.com/gfngfn/SATySFi/pull/416)).
+
 ## [0.0.9] - 2023-05-26
 ### Fixed
 - Emit a parsing error when a parameter sequence ends with an optional one ([PR\#365](https://github.com/gfngfn/SATySFi/pull/365) by `anko9801`).
@@ -147,8 +153,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Initial version of SATySFi
 
 
-  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.9...HEAD
-  [0.0.8]: https://github.com/gfngfn/SATySFi/compare/v0.0.8...v0.0.9
+  [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.10...HEAD
+  [0.0.10]: https://github.com/gfngfn/SATySFi/compare/v0.0.9...v0.0.10
+  [0.0.9]: https://github.com/gfngfn/SATySFi/compare/v0.0.8...v0.0.9
   [0.0.8]: https://github.com/gfngfn/SATySFi/compare/v0.0.7...v0.0.8
   [0.0.7]: https://github.com/gfngfn/SATySFi/compare/v0.0.6...v0.0.7
   [0.0.6]: https://github.com/gfngfn/SATySFi/compare/v0.0.5...v0.0.6
