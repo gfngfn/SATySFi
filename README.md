@@ -14,7 +14,7 @@ This software was supported by:
 * Dwango Co., Ltd. (October 2018 – March 2019; as a part-time job), and
 * many anonymous supporters who bought [The SATySFi​book](https://booth.pm/ja/items/1127224),
 
-and its development continues to this day (May 2023).
+and its development continues to this day (Oct 2023).
 
 ## Install using Satyrographos (for non-devs)
 
