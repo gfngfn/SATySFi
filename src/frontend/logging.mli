@@ -77,3 +77,7 @@ val lock_cache_exists : lock_name -> abs_path -> unit
 val downloading_lock : lock_name -> abs_path -> unit
 
 val report_canonicalized_url : url:string -> canonicalized_url:string -> hash_value:registry_hash_value -> unit
+
+val warn_wide_column_cell_overrides_nonempty_cell : unit -> unit
+
+val warn_wide_row_cell_overrides_nonempty_cell : unit -> unit

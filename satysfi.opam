@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "satysfi"
-version: "0.0.9"
+version: "0.0.10"
 maintainer: "Takashi Suwa"
 authors: [
   "Takashi Suwa"
@@ -31,7 +31,7 @@ depends: [
   "dune" {build}
   "menhir"
   "ocamlfind" {build}
-  "otfed" {= "0.1.0"}
+  "otfed" {= "0.3.1"}
   "ppx_deriving"
   "re" {build}
   "uutf"

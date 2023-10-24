@@ -219,3 +219,10 @@ let report_canonicalized_url ~(url : string) ~(canonicalized_url : string) ~(has
   Printf.printf "  registry URL: '%s'\n" url;
   Printf.printf "    canonicalized: '%s'\n" canonicalized_url;
   Printf.printf "    hash value: '%s'\n" hash_value
+
+let warn_wide_column_cell_overrides_nonempty_cell () =
+  Format.printf "  [Warning] a non-empty cell was overridden by a cell that has more than one column span.\n"
+
+
+let warn_wide_row_cell_overrides_nonempty_cell () =
+  Format.printf "  [Warning] a non-empty cell was overridden by a cell that has more than one row span.\n"
