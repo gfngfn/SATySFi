@@ -4,7 +4,7 @@ authors: []
 external_sources:
   - name: "lm2.004otf"
     type: "zip"
-    url: "http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip"
+    url: "https://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip"
     checksum: "0bc81a83fe37416b67b69ab3a6593ef5"
     extractions:
       - from: "lmmono10-regular.otf"
