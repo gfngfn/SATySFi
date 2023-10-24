@@ -195,3 +195,11 @@ let warn_underfull_line (pageno : int) =
 let warn_unreachable (pageno : int) =
   Format.printf "  [Warning] a line unable to be broken into a paragraph occurs on page %d\n"
     pageno
+
+
+let warn_wide_column_cell_overrides_nonempty_cell () =
+  Format.printf "  [Warning] a non-empty cell was overridden by a cell that has more than one column span.\n"
+
+
+let warn_wide_row_cell_overrides_nonempty_cell () =
+  Format.printf "  [Warning] a non-empty cell was overridden by a cell that has more than one row span.\n"
