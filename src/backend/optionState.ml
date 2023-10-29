@@ -4,7 +4,6 @@ open MyUtil
 type build_state = {
   input_file             : abs_path;
   output_file            : abs_path option;
-  page_number_limit      : int;
   debug_show_bbox        : bool;
   debug_show_space       : bool;
   debug_show_block_bbox  : bool;
@@ -56,7 +55,6 @@ let get_input_file () =
   | SolveState                          -> assert false
 
 
-let get_page_number_limit ()       = (get_build_state ()).page_number_limit
 let does_show_full_path ()         = (get ()).show_full_path
 let does_debug_show_bbox ()        = (get_build_state ()).debug_show_bbox
 let does_debug_show_space ()       = (get_build_state ()).debug_show_space

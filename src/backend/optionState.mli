@@ -4,7 +4,6 @@ open MyUtil
 type build_state = {
   input_file             : abs_path;
   output_file            : abs_path option;
-  page_number_limit      : int;
   debug_show_bbox        : bool;
   debug_show_space       : bool;
   debug_show_block_bbox  : bool;
@@ -33,7 +32,6 @@ val set : state -> unit
 
 val get : unit -> state
 
-val get_page_number_limit       : unit -> int
 val does_show_full_path         : unit -> bool
 val does_debug_show_bbox        : unit -> bool
 val does_debug_show_space       : unit -> bool

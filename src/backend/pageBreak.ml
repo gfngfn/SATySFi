@@ -714,11 +714,9 @@ let main (absname_out : abs_path) ~(paper_size : length * length) (columnhookf :
   aux 1 pdfinit pbvblst
 
 
-let main_multicolumn (absname_out : abs_path) ~(paper_size : length * length) (origin_shifts : length list) (columnhookf : column_hook_func) (columnendhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
+let main_multicolumn ~(page_number_limit : int) (absname_out : abs_path) ~(paper_size : length * length) (origin_shifts : length list) (columnhookf : column_hook_func) (columnendhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
 
   let pdfinit = HandlePdf.create_empty_pdf absname_out in
-
-  let page_number_limit = OptionState.get_page_number_limit () in
 
   let rec iter_on_column
       (pbinfo : page_break_info) (content_height : length)
