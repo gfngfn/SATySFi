@@ -1657,7 +1657,7 @@ let build
       }
     in
     OptionState.set OptionState.{
-      command_state = BuildState{ input_file };
+      input_file = Some(input_file);
       show_full_path;
     };
 
@@ -1791,7 +1791,7 @@ let test
       }
     in
     OptionState.set OptionState.{
-      command_state = TestState{ input_file_to_test };
+      input_file = Some(input_file_to_test);
       show_full_path;
     };
 
@@ -2009,7 +2009,7 @@ let solve
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
 
     OptionState.set OptionState.{
-      command_state = SolveState;
+      input_file = None;
       show_full_path;
     };
 
