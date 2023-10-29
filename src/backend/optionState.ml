@@ -11,7 +11,6 @@ type build_state = {
   debug_show_block_space : bool;
   debug_show_overfull    : bool;
   type_check_only        : bool;
-  bytecomp               : bool;
 }
 
 type test_state = {
@@ -64,13 +63,6 @@ let does_debug_show_space ()       = (get_build_state ()).debug_show_space
 let does_debug_show_block_bbox ()  = (get_build_state ()).debug_show_block_bbox
 let does_debug_show_block_space () = (get_build_state ()).debug_show_block_space
 let does_debug_show_overfull ()    = (get_build_state ()).debug_show_overfull
-
-
-let is_bytecomp_mode () =
-  match (get ()).command_state with
-  | BuildState({ bytecomp; _ }) -> bytecomp
-  | TestState(_)                -> false
-  | SolveState                  -> assert false
 
 
 let job_directory () =

@@ -32,7 +32,7 @@ let reset (output_mode : output_mode) =
 
 
 (* Initialization that should be performed before typechecking *)
-let initialize (output_mode : output_mode) : Typeenv.t * environment =
+let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) : Typeenv.t * environment =
   FreeID.initialize ();
   BoundID.initialize ();
   EvalVarID.initialize ();
@@ -51,7 +51,7 @@ let initialize (output_mode : output_mode) : Typeenv.t * environment =
     | Error(e) -> raise (ConfigError(e))
   in
   begin
-    if OptionState.is_bytecomp_mode () then
+    if is_bytecomp_mode then
       Bytecomp.compile_environment env
     else
       ()
@@ -90,9 +90,9 @@ let output_text (abspath_out : abs_path) (data : string) : unit =
   Core.Out_channel.write_all (get_abs_path_string abspath_out) ~data
 
 
-let eval_library_file ~(run_tests : bool) (env : environment) (abspath : abs_path) (binds : binding list) : environment =
+let eval_library_file ~(is_bytecomp_mode : bool) ~(run_tests : bool) (env : environment) (abspath : abs_path) (binds : binding list) : environment =
   Logging.begin_to_eval_file abspath;
-  if OptionState.is_bytecomp_mode () then
+  if is_bytecomp_mode then
     failwith "TODO: eval_libary_file, Bytecomp"
 (*
     let (value, _) = Bytecomp.compile_and_exec_0 env ast in
@@ -103,7 +103,7 @@ let eval_library_file ~(run_tests : bool) (env : environment) (abspath : abs_pat
     env
 
 
-let eval_main (output_mode : output_mode) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : syntactic_value =
+let eval_main ~(is_bytecomp_mode : bool) (output_mode : output_mode) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : syntactic_value =
   Logging.start_evaluation i;
   let res = reset output_mode in
   begin
@@ -113,7 +113,7 @@ let eval_main (output_mode : output_mode) (i : int) (env_freezed : frozen_enviro
   end;
   let env = unfreeze_environment env_freezed in
   let value =
-    if OptionState.is_bytecomp_mode () then
+    if is_bytecomp_mode then
       let (value, _) = Bytecomp.compile_and_exec_0 env ast in
       value
     else
@@ -123,12 +123,12 @@ let eval_main (output_mode : output_mode) (i : int) (env_freezed : frozen_enviro
   value
 
 
-let eval_document_file (output_mode : output_mode) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let eval_document_file ~(is_bytecomp_mode : bool) (output_mode : output_mode) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
   let env_freezed = freeze_environment env in
   match output_mode with
   | TextMode(_) ->
       let rec aux (i : int) =
-        let value_str = eval_main output_mode i env_freezed ast in
+        let value_str = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
         let s = EvalUtil.get_string value_str in
         match CrossRef.needs_another_trial abspath_dump with
         | CrossRef.NeedsAnotherTrial ->
@@ -148,7 +148,7 @@ let eval_document_file (output_mode : output_mode) (env : environment) (ast : ab
       aux 1
   | PdfMode ->
       let rec aux (i : int) =
-        let value_doc = eval_main output_mode i env_freezed ast in
+        let value_doc = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
         match value_doc with
         | BaseConstant(BCDocument(paper_size, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
             Logging.start_page_break ();
@@ -201,26 +201,26 @@ let preprocess_bindings ~(run_tests : bool) (env : environment) (libs : (abs_pat
 
 
 (* Performs evaluation and returns the resulting environment. *)
-let evaluate_bindings ~(run_tests : bool) (env : environment) (codebinds : (abs_path * code_rec_or_nonrec list) list) : environment =
+let evaluate_bindings ~(is_bytecomp_mode : bool) ~(run_tests : bool) (env : environment) (codebinds : (abs_path * code_rec_or_nonrec list) list) : environment =
   codebinds |> List.fold_left (fun env (abspath, cd_rec_or_nonrecs) ->
     let binds =
       cd_rec_or_nonrecs |> List.map (fun cd_rec_or_nonrec ->
         Bind(Stage0, unlift_rec_or_nonrec cd_rec_or_nonrec)
       )
     in
-    eval_library_file ~run_tests env abspath binds
+    eval_library_file ~is_bytecomp_mode ~run_tests env abspath binds
   ) env
 
 
-let preprocess_and_evaluate (output_mode : output_mode) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let preprocess_and_evaluate ~(is_bytecomp_mode : bool) (output_mode : output_mode) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
   (* Performs preprocessing: *)
   let (env, codebinds) = preprocess_bindings ~run_tests env libs in
   let code_doc = Evaluator.interpret_1 env ast_doc in
 
   (* Performs evaluation: *)
-  let env = evaluate_bindings ~run_tests env codebinds in
+  let env = evaluate_bindings ~is_bytecomp_mode ~run_tests env codebinds in
   let ast_doc = unlift_code code_doc in
-  eval_document_file output_mode env ast_doc abspath_out abspath_dump
+  eval_document_file ~is_bytecomp_mode output_mode env ast_doc abspath_out abspath_dump
 
 
 let convert_abs_path_to_show (abspath : abs_path) : string =
@@ -1659,7 +1659,6 @@ let build
           debug_show_block_space;
           debug_show_overfull;
           type_check_only;
-          bytecomp;
         };
       extra_config_paths;
       show_full_path;
@@ -1668,6 +1667,7 @@ let build
 
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
     let abspath_in = input_file in
+    let is_bytecomp_mode = bytecomp in
     let build_input =
       let abspathstr_in = get_abs_path_string abspath_in in
       if Sys.is_directory abspathstr_in then
@@ -1702,7 +1702,7 @@ let build
     in
 
     let extensions = get_candidate_file_extensions output_mode in
-    let (tyenv_prim, env) = initialize output_mode in
+    let (tyenv_prim, env) = initialize ~is_bytecomp_mode output_mode in
 
     match build_input with
     | PackageBuildInput{
@@ -1758,7 +1758,7 @@ let build
         if type_check_only then
           ()
         else
-          preprocess_and_evaluate output_mode ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
+          preprocess_and_evaluate ~is_bytecomp_mode output_mode ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
   )
 
 
@@ -1785,6 +1785,7 @@ let test
     let input_file_to_test = make_absolute_if_relative ~origin:curdir fpath_in in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
     let output_mode_to_test = make_output_mode text_mode_formats_str_opt in
+    let bytecomp = false in
     let typecheck_config =
       {
         is_text_mode =
@@ -1830,7 +1831,7 @@ let test
     in
 
     let extensions = get_candidate_file_extensions output_mode_to_test in
-    let (tyenv_prim, env) = initialize output_mode_to_test in
+    let (tyenv_prim, env) = initialize ~is_bytecomp_mode:bytecomp output_mode_to_test in
 
     begin
       match test_input with

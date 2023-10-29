@@ -11,7 +11,6 @@ type build_state = {
   debug_show_block_space : bool;
   debug_show_overfull    : bool;
   type_check_only        : bool;
-  bytecomp               : bool;
 }
 
 type test_state = {
@@ -41,6 +40,5 @@ val does_debug_show_space       : unit -> bool
 val does_debug_show_block_bbox  : unit -> bool
 val does_debug_show_block_space : unit -> bool
 val does_debug_show_overfull    : unit -> bool
-val is_bytecomp_mode            : unit -> bool
 
 val job_directory : unit -> string
