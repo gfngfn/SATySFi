@@ -332,7 +332,16 @@ module RowParameterMap = Map.Make(String)
 
 type row_parameter_map = MustBeBoundRowID.t RowParameterMap.t
 
+type output_mode =
+  | PdfMode
+  | TextMode of string list
+
+type typecheck_config = {
+  is_text_mode : bool;
+}
+
 type pre = {
+  config          : typecheck_config;
   level           : level;
   type_parameters : type_parameter_map;
   row_parameters  : row_parameter_map;

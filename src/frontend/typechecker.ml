@@ -259,6 +259,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
   let typecheck_iter ?s:(s = pre.stage) ?l:(l = pre.level) ?p:(p = pre.type_parameters) ?r:(r = pre.row_parameters) ?q:(q = pre.quantifiability) t u =
     let presub =
       {
+        config          = pre.config;
         stage           = s;
         type_parameters = p;
         row_parameters  = r;
@@ -438,7 +439,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       let* (tyenv, params) = typecheck_abstraction pre tyenv param_units in
       let (rng_var, varnm_ctx) = ident_ctx in
       let (bsty_var, bsty_ret) =
-        if OptionState.is_text_mode () then
+        if pre.config.is_text_mode then
           (TextInfoType, StringType)
         else
           (ContextType, InlineBoxesType)
@@ -478,7 +479,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       let* (tyenv, params) = typecheck_abstraction pre tyenv param_units in
       let (rng_var, varnm_ctx) = ident_ctx in
       let (bsty_var, bsty_ret) =
-        if OptionState.is_text_mode () then
+        if pre.config.is_text_mode then
           (TextInfoType, StringType)
         else
           (ContextType, BlockBoxesType)
@@ -519,7 +520,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       let* (tyenv, params) = typecheck_abstraction pre tyenv param_units in
       let (rng_ctx_var, varnm_ctx) = ident_ctx in
       let (bsty_ctx_var, bsty_ret) =
-        if OptionState.is_text_mode () then
+        if pre.config.is_text_mode then
           (TextInfoType, StringType)
         else
           (ContextType, MathBoxesType)
@@ -776,7 +777,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       let* (e_ctx, ty_ctx) = typecheck_iter tyenv utast_ctx in
       let* (eI, tyI) = typecheck_iter tyenv utastI in
       let (e_ret, bsty_ctx, bsty_ret) =
-        if OptionState.is_text_mode () then
+        if pre.config.is_text_mode then
           (PrimitiveStringifyInline(e_ctx, eI), TextInfoType, StringType)
         else
           (PrimitiveReadInline(e_ctx, eI), ContextType, InlineBoxesType)
@@ -789,7 +790,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       let* (e_ctx, ty_ctx) = typecheck_iter tyenv utast_ctx in
       let* (eB, tyB) = typecheck_iter tyenv utastB in
       let (e_ret, bsty_ctx, bsty_ret) =
-        if OptionState.is_text_mode () then
+        if pre.config.is_text_mode then
           (PrimitiveStringifyBlock(e_ctx, eB), TextInfoType, StringType)
         else
           (PrimitiveReadBlock(e_ctx, eB), ContextType, BlockBoxesType)
@@ -1236,10 +1237,11 @@ and typecheck_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name rang
   return (tyenvI, evid, eI, tyI)
 
 
-let main (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : (mono_type * abstract_tree) ok =
+let main (config : typecheck_config) (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : (mono_type * abstract_tree) ok =
   let open ResultMonad in
   let pre =
     {
+      config          = config;
       stage           = stage;
       type_parameters = TypeParameterMap.empty;
       row_parameters  = RowParameterMap.empty;

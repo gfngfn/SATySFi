@@ -51,24 +51,24 @@ let add_dependency_to_type_environment ~(package_only : bool) (header : header_e
   ) tyenv
 
 
-let typecheck_library_file ~for_struct:(tyenv_for_struct : Typeenv.t) ~for_sig:(tyenv_for_sig : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
+let typecheck_library_file (config : typecheck_config) ~for_struct:(tyenv_for_struct : Typeenv.t) ~for_sig:(tyenv_for_sig : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
   let open ResultMonad in
   let res =
     Logging.begin_to_typecheck_file abspath_in;
-    let* absmodsig_opt = utsig_opt |> optionM (ModuleTypechecker.typecheck_signature tyenv_for_sig) in
-    let* ret = ModuleTypechecker.main tyenv_for_struct absmodsig_opt utbinds in
+    let* absmodsig_opt = utsig_opt |> optionM (ModuleTypechecker.typecheck_signature config tyenv_for_sig) in
+    let* ret = ModuleTypechecker.main config tyenv_for_struct absmodsig_opt utbinds in
     Logging.pass_type_check None;
     return ret
   in
   res |> Result.map_error (fun tyerr -> TypeError(tyerr))
 
 
-let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : abstract_tree ok =
+let typecheck_document_file (config : typecheck_config) (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : abstract_tree ok =
   let open ResultMonad in
   Logging.begin_to_typecheck_file abspath_in;
-  let* (ty, ast) = Typechecker.main Stage1 tyenv utast |> Result.map_error (fun tyerr -> TypeError(tyerr)) in
+  let* (ty, ast) = Typechecker.main config Stage1 tyenv utast |> Result.map_error (fun tyerr -> TypeError(tyerr)) in
   Logging.pass_type_check (Some(Display.show_mono_type ty));
-  if OptionState.is_text_mode () then
+  if config.is_text_mode then
     if Typechecker.are_unifiable ty (Range.dummy "text-mode", BaseType(StringType)) then
       return ast
     else
@@ -80,7 +80,7 @@ let typecheck_document_file (tyenv : Typeenv.t) (abspath_in : abs_path) (utast :
       err (NotADocumentFile(abspath_in, ty))
 
 
-let check_library_package (tyenv_prim : Typeenv.t) (genv : global_type_environment) (main_module_name : module_name) (utlibs : (abs_path * untyped_library_file) list) =
+let check_library_package (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (main_module_name : module_name) (utlibs : (abs_path * untyped_library_file) list) =
   let open ResultMonad in
 
   (* Resolve dependency among the source files in the package: *)
@@ -95,13 +95,13 @@ let check_library_package (tyenv_prim : Typeenv.t) (genv : global_type_environme
       if String.equal modnm main_module_name then
         let* ((_quant, ssig), binds) =
           let* tyenv_for_sig = tyenv_prim |> add_dependency_to_type_environment ~package_only:true header genv in
-          typecheck_library_file ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_sig abspath utsig_opt utbinds
+          typecheck_library_file config ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_sig abspath utsig_opt utbinds
         in
         let genv = genv |> GlobalTypeenv.add modnm ssig in
         return (genv, Alist.extend libacc (abspath, binds), Some(ssig))
       else
         let* ((_quant, ssig), binds) =
-          typecheck_library_file ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_struct abspath utsig_opt utbinds
+          typecheck_library_file config ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_struct abspath utsig_opt utbinds
         in
         let genv = genv |> GlobalTypeenv.add modnm ssig in
         return (genv, Alist.extend libacc (abspath, binds), ssig_opt)
@@ -161,16 +161,16 @@ let check_font_package (_main_module_name : module_name) (font_files : font_file
   return (ssig, Alist.to_list libacc)
 
 
-let main (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : untyped_package) : (StructSig.t * (abs_path * binding list) list) ok =
+let main (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : untyped_package) : (StructSig.t * (abs_path * binding list) list) ok =
   match package with
   | UTLibraryPackage{ main_module_name; modules = utlibs } ->
-      check_library_package tyenv_prim genv main_module_name utlibs
+      check_library_package config tyenv_prim genv main_module_name utlibs
 
   | UTFontPackage{ main_module_name; font_files } ->
       check_font_package main_module_name font_files
 
 
-let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sorted_locals : (abs_path * untyped_library_file) list) (abspath_and_utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
+let main_document (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sorted_locals : (abs_path * untyped_library_file) list) (abspath_and_utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
   let open ResultMonad in
   let* (genv, libacc) =
     sorted_locals |> foldM (fun (genv, libacc) (abspath, utlib) ->
@@ -178,7 +178,7 @@ let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sor
       let (_, modnm) = modident in
       let* ((_quant, ssig), binds) =
         let* tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
-        typecheck_library_file ~for_struct:tyenv ~for_sig:tyenv abspath utsig_opt utbinds
+        typecheck_library_file config ~for_struct:tyenv ~for_sig:tyenv abspath utsig_opt utbinds
       in
       let genv = genv |> GlobalTypeenv.add modnm ssig in
       return (genv, Alist.extend libacc (abspath, binds))
@@ -190,7 +190,7 @@ let main_document (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sor
   let* ast_doc =
     let (abspath, (_attrs, header, utast)) = abspath_and_utdoc in
     let* tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
-    typecheck_document_file tyenv abspath utast
+    typecheck_document_file config tyenv abspath utast
   in
 
   return (libs, ast_doc)

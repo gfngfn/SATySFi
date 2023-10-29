@@ -20,29 +20,30 @@ let version =
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
-let reset () =
+let reset (output_mode : output_mode) =
   let open ResultMonad in
-  if OptionState.is_text_mode () then
-    return ()
-  else begin
-    ImageInfo.initialize ();
-    NamedDest.initialize ();
-    return ()
-  end
+  match output_mode with
+  | TextMode(_) ->
+      return ()
+  | PdfMode ->
+      ImageInfo.initialize ();
+      NamedDest.initialize ();
+      return ()
 
 
 (* Initialization that should be performed before typechecking *)
-let initialize () : Typeenv.t * environment =
+let initialize (output_mode : output_mode) : Typeenv.t * environment =
   FreeID.initialize ();
   BoundID.initialize ();
   EvalVarID.initialize ();
   StoreID.initialize ();
   FontInfo.initialize ();
   let res =
-    if OptionState.is_text_mode () then
-      Primitives.make_text_mode_environments ()
-    else
-      Primitives.make_pdf_mode_environments ()
+    match output_mode with
+    | TextMode(_) ->
+        Primitives.make_text_mode_environments ()
+    | PdfMode ->
+        Primitives.make_pdf_mode_environments ()
   in
   let (tyenv, env) =
     match res with
@@ -102,9 +103,9 @@ let eval_library_file ~(run_tests : bool) (env : environment) (abspath : abs_pat
     env
 
 
-let eval_main (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : syntactic_value =
+let eval_main (output_mode : output_mode) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : syntactic_value =
   Logging.start_evaluation i;
-  let res = reset () in
+  let res = reset output_mode in
   begin
     match res with
     | Ok(())   -> ()
@@ -122,66 +123,67 @@ let eval_main (i : int) (env_freezed : frozen_environment) (ast : abstract_tree)
   value
 
 
-let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let eval_document_file (output_mode : output_mode) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
   let env_freezed = freeze_environment env in
-  if OptionState.is_text_mode () then
-    let rec aux (i : int) =
-      let value_str = eval_main i env_freezed ast in
-      let s = EvalUtil.get_string value_str in
-      match CrossRef.needs_another_trial abspath_dump with
-      | CrossRef.NeedsAnotherTrial ->
-          Logging.needs_another_trial ();
-          aux (i + 1);
+  match output_mode with
+  | TextMode(_) ->
+      let rec aux (i : int) =
+        let value_str = eval_main output_mode i env_freezed ast in
+        let s = EvalUtil.get_string value_str in
+        match CrossRef.needs_another_trial abspath_dump with
+        | CrossRef.NeedsAnotherTrial ->
+            Logging.needs_another_trial ();
+            aux (i + 1);
 
-      | CrossRef.CountMax ->
-          Logging.achieve_count_max ();
-          output_text abspath_out s;
-          Logging.end_output abspath_out;
+        | CrossRef.CountMax ->
+            Logging.achieve_count_max ();
+            output_text abspath_out s;
+            Logging.end_output abspath_out;
 
-      | CrossRef.CanTerminate unresolved_crossrefs ->
-          Logging.achieve_fixpoint unresolved_crossrefs;
-          output_text abspath_out s;
-          Logging.end_output abspath_out;
-    in
-    aux 1
-  else
-    let rec aux (i : int) =
-      let value_doc = eval_main i env_freezed ast in
-      match value_doc with
-      | BaseConstant(BCDocument(paper_size, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
-          Logging.start_page_break ();
-          State.start_page_break ();
-          let pdf =
-            match pbstyle with
-            | SingleColumn ->
-                PageBreak.main abspath_out ~paper_size
-                  columnhookf pagecontf pagepartsf imvblst
+        | CrossRef.CanTerminate unresolved_crossrefs ->
+            Logging.achieve_fixpoint unresolved_crossrefs;
+            output_text abspath_out s;
+            Logging.end_output abspath_out;
+      in
+      aux 1
+  | PdfMode ->
+      let rec aux (i : int) =
+        let value_doc = eval_main output_mode i env_freezed ast in
+        match value_doc with
+        | BaseConstant(BCDocument(paper_size, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
+            Logging.start_page_break ();
+            State.start_page_break ();
+            let pdf =
+              match pbstyle with
+              | SingleColumn ->
+                  PageBreak.main abspath_out ~paper_size
+                    columnhookf pagecontf pagepartsf imvblst
 
-            | MultiColumn(origin_shifts) ->
-                PageBreak.main_multicolumn abspath_out ~paper_size
-                  origin_shifts columnhookf columnendhookf pagecontf pagepartsf imvblst
-          in
-          begin
-            match CrossRef.needs_another_trial abspath_dump with
-            | CrossRef.NeedsAnotherTrial ->
-                Logging.needs_another_trial ();
-                aux (i + 1);
+              | MultiColumn(origin_shifts) ->
+                  PageBreak.main_multicolumn abspath_out ~paper_size
+                    origin_shifts columnhookf columnendhookf pagecontf pagepartsf imvblst
+            in
+            begin
+              match CrossRef.needs_another_trial abspath_dump with
+              | CrossRef.NeedsAnotherTrial ->
+                  Logging.needs_another_trial ();
+                  aux (i + 1);
 
-            | CrossRef.CountMax ->
-                Logging.achieve_count_max ();
-                output_pdf pdf;
-                Logging.end_output abspath_out;
+              | CrossRef.CountMax ->
+                  Logging.achieve_count_max ();
+                  output_pdf pdf;
+                  Logging.end_output abspath_out;
 
-            | CrossRef.CanTerminate unresolved_crossrefs ->
-                Logging.achieve_fixpoint unresolved_crossrefs;
-                output_pdf pdf;
-                Logging.end_output abspath_out;
-          end
+              | CrossRef.CanTerminate unresolved_crossrefs ->
+                  Logging.achieve_fixpoint unresolved_crossrefs;
+                  output_pdf pdf;
+                  Logging.end_output abspath_out;
+            end
 
-      | _ ->
-          EvalUtil.report_bug_value "main; not a DocumentValue(...)" value_doc
-    in
-    aux 1
+        | _ ->
+            EvalUtil.report_bug_value "main; not a DocumentValue(...)" value_doc
+      in
+      aux 1
 
 
 (* Performs preprecessing. the evaluation is run by the naive interpreter
@@ -210,7 +212,7 @@ let evaluate_bindings ~(run_tests : bool) (env : environment) (codebinds : (abs_
   ) env
 
 
-let preprocess_and_evaluate ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let preprocess_and_evaluate (output_mode : output_mode) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
   (* Performs preprocessing: *)
   let (env, codebinds) = preprocess_bindings ~run_tests env libs in
   let code_doc = Evaluator.interpret_1 env ast_doc in
@@ -218,7 +220,7 @@ let preprocess_and_evaluate ~(run_tests : bool) (env : environment) (libs : (abs
   (* Performs evaluation: *)
   let env = evaluate_bindings ~run_tests env codebinds in
   let ast_doc = unlift_code code_doc in
-  eval_document_file env ast_doc abspath_out abspath_dump
+  eval_document_file output_mode env ast_doc abspath_out abspath_dump
 
 
 let convert_abs_path_to_show (abspath : abs_path) : string =
@@ -1533,7 +1535,7 @@ let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
   make_abs_path abspath_str
 
 
-let get_candidate_file_extensions (output_mode : OptionState.output_mode) =
+let get_candidate_file_extensions (output_mode : output_mode) =
   match output_mode with
   | PdfMode           -> [ ".satyh"; ".satyg" ]
   | TextMode(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
@@ -1558,7 +1560,7 @@ let get_input_kind_from_extension (abspathstr_in : string) =
   | ext     -> Error(ext)
 
 
-let check_depended_packages ~(use_test_only_lock : bool) ~(library_root : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
+let check_depended_packages (typecheck_config : typecheck_config) ~(use_test_only_lock : bool) ~(library_root : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
   (* Resolve dependency among locked packages: *)
   let sorted_packages =
     match ClosedLockDependencyResolver.main ~use_test_only_lock ~library_root ~extensions lock_config with
@@ -1575,7 +1577,7 @@ let check_depended_packages ~(use_test_only_lock : bool) ~(library_root : abs_pa
         | UTFontPackage{ main_module_name; _ }    -> main_module_name
       in
       let (ssig, libs) =
-        match PackageChecker.main tyenv_prim genv package with
+        match PackageChecker.main typecheck_config tyenv_prim genv package with
         | Ok(pair) -> pair
         | Error(e) -> raise (ConfigError(e))
       in
@@ -1598,8 +1600,8 @@ let make_document_lock_config_path (basename_without_extension : string) =
 
 let make_output_mode text_mode_formats_str_opt =
   match text_mode_formats_str_opt with
-  | None    -> OptionState.PdfMode
-  | Some(s) -> OptionState.TextMode(String.split_on_char ',' s)
+  | None    -> PdfMode
+  | Some(s) -> TextMode(String.split_on_char ',' s)
 
 
 let load_lock_config (abspath_lock_config : abs_path) : LockConfig.t =
@@ -1637,12 +1639,19 @@ let build
     let output_file = fpath_out_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
     let output_mode = make_output_mode text_mode_formats_str_opt in
+    let typecheck_config =
+      {
+        is_text_mode =
+          match output_mode with
+          | PdfMode     -> false
+          | TextMode(_) -> true
+      }
+    in
     OptionState.set OptionState.{
       command_state =
         BuildState{
           input_file;
           output_file;
-          output_mode;
           page_number_limit;
           debug_show_bbox;
           debug_show_space;
@@ -1693,7 +1702,7 @@ let build
     in
 
     let extensions = get_candidate_file_extensions output_mode in
-    let (tyenv_prim, env) = initialize () in
+    let (tyenv_prim, env) = initialize output_mode in
 
     match build_input with
     | PackageBuildInput{
@@ -1705,11 +1714,11 @@ let build
         let (_config, package) = load_package ~use_test_files:false ~extensions abspath_in in
 
         let (genv, _configenv, _libs_dep) =
-          check_depended_packages ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
+          check_depended_packages typecheck_config ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
         in
 
         begin
-          match PackageChecker.main tyenv_prim genv package with
+          match PackageChecker.main typecheck_config tyenv_prim genv package with
           | Ok((_ssig, _libs)) -> ()
           | Error(e)           -> raise (ConfigError(e))
         end
@@ -1729,7 +1738,7 @@ let build
         Logging.dump_file ~already_exists:dump_file_exists abspath_dump;
 
         let (genv, configenv, libs) =
-          check_depended_packages ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
+          check_depended_packages typecheck_config ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
         in
 
         (* Resolve dependency of the document and the local source files: *)
@@ -1741,7 +1750,7 @@ let build
 
         (* Typechecking and elaboration: *)
         let (libs_local, ast_doc) =
-          match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+          match PackageChecker.main_document typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
           | Ok(pair) -> pair
           | Error(e) -> raise (ConfigError(e))
         in
@@ -1749,7 +1758,7 @@ let build
         if type_check_only then
           ()
         else
-          preprocess_and_evaluate ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
+          preprocess_and_evaluate output_mode ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
   )
 
 
@@ -1776,11 +1785,18 @@ let test
     let input_file_to_test = make_absolute_if_relative ~origin:curdir fpath_in in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
     let output_mode_to_test = make_output_mode text_mode_formats_str_opt in
+    let typecheck_config =
+      {
+        is_text_mode =
+          match output_mode_to_test with
+          | PdfMode     -> false
+          | TextMode(_) -> true
+      }
+    in
     OptionState.set OptionState.{
       command_state =
         TestState{
           input_file_to_test;
-          output_mode_to_test;
         };
       extra_config_paths;
       show_full_path;
@@ -1814,7 +1830,7 @@ let test
     in
 
     let extensions = get_candidate_file_extensions output_mode_to_test in
-    let (tyenv_prim, env) = initialize () in
+    let (tyenv_prim, env) = initialize output_mode_to_test in
 
     begin
       match test_input with
@@ -1827,11 +1843,11 @@ let test
           let (_config, package) = load_package ~use_test_files:true ~extensions abspath_in in
 
           let (genv, _configenv, _libs_dep) =
-            check_depended_packages ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
+            check_depended_packages typecheck_config ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
           in
 
           let libs =
-            match PackageChecker.main tyenv_prim genv package with
+            match PackageChecker.main typecheck_config tyenv_prim genv package with
             | Ok((_ssig, libs)) -> libs
             | Error(e)          -> raise (ConfigError(e))
           in
@@ -1847,7 +1863,7 @@ let test
           let lock_config = load_lock_config abspath_lock_config in
 
           let (genv, configenv, libs) =
-            check_depended_packages ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
+            check_depended_packages typecheck_config ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
           in
 
           (* Resolve dependency of the document and the local source files: *)
@@ -1859,7 +1875,7 @@ let test
 
           (* Typechecking and elaboration: *)
           let (libs_local, _ast_doc) =
-            match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+            match PackageChecker.main_document typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
             | Ok(pair) -> pair
             | Error(e) -> raise (ConfigError(e))
           in

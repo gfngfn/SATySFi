@@ -1,14 +1,9 @@
 
 open MyUtil
 
-type output_mode =
-  | PdfMode
-  | TextMode of string list
-
 type build_state = {
   input_file             : abs_path;
   output_file            : abs_path option;
-  output_mode            : output_mode;
   page_number_limit      : int;
   debug_show_bbox        : bool;
   debug_show_space       : bool;
@@ -21,7 +16,6 @@ type build_state = {
 
 type test_state = {
   input_file_to_test  : abs_path;
-  output_mode_to_test : output_mode;
 }
 
 type command_state =
@@ -63,13 +57,6 @@ let get_input_file () =
   | SolveState                          -> assert false
 
 
-let get_output_mode () =
-  match (get ()).command_state with
-  | BuildState({ output_mode; _ })       -> output_mode
-  | TestState({ output_mode_to_test; _}) -> output_mode_to_test
-  | SolveState                           -> assert false
-
-
 let get_page_number_limit ()       = (get_build_state ()).page_number_limit
 let does_show_full_path ()         = (get ()).show_full_path
 let does_debug_show_bbox ()        = (get_build_state ()).debug_show_bbox
@@ -89,9 +76,3 @@ let is_bytecomp_mode () =
 let job_directory () =
   let abspath = get_input_file () in
   Filename.dirname (get_abs_path_string abspath)
-
-
-let is_text_mode () =
-  match get_output_mode () with
-  | TextMode(_) -> true
-  | PdfMode     -> false

@@ -1,14 +1,9 @@
 
 open MyUtil
 
-type output_mode =
-  | PdfMode
-  | TextMode of string list
-
 type build_state = {
   input_file             : abs_path;
   output_file            : abs_path option;
-  output_mode            : output_mode;
   page_number_limit      : int;
   debug_show_bbox        : bool;
   debug_show_space       : bool;
@@ -21,7 +16,6 @@ type build_state = {
 
 type test_state = {
   input_file_to_test  : abs_path;
-  output_mode_to_test : output_mode;
 }
 
 type command_state =
@@ -50,5 +44,3 @@ val does_debug_show_overfull    : unit -> bool
 val is_bytecomp_mode            : unit -> bool
 
 val job_directory : unit -> string
-
-val is_text_mode : unit -> bool
