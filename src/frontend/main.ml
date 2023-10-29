@@ -1657,15 +1657,8 @@ let build
       }
     in
     OptionState.set OptionState.{
-      command_state =
-        BuildState{
-          input_file;
-          output_file;
-          type_check_only;
-        };
-      extra_config_paths;
+      command_state = BuildState{ input_file };
       show_full_path;
-      no_default_config;
     };
 
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
@@ -1798,13 +1791,8 @@ let test
       }
     in
     OptionState.set OptionState.{
-      command_state =
-        TestState{
-          input_file_to_test;
-        };
-      extra_config_paths;
+      command_state = TestState{ input_file_to_test };
       show_full_path;
-      no_default_config;
     };
 
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
@@ -2022,9 +2010,7 @@ let solve
 
     OptionState.set OptionState.{
       command_state = SolveState;
-      extra_config_paths;
       show_full_path;
-      no_default_config;
     };
 
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
