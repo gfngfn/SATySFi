@@ -8,8 +8,16 @@ open HorzBox
 type t =
   | PDF of Pdf.t * Pdfpage.t Alist.t * abs_path
 
+type config = {
+  debug_show_bbox        : bool;
+  debug_show_space       : bool;
+  debug_show_block_bbox  : bool;
+  debug_show_block_space : bool;
+  debug_show_overfull    : bool;
+}
 
 type 'o op_funcs = {
+  config     : config;
   graphics   : (intermediate_horz_box list) GraphicD.t -> (point -> intermediate_horz_box list -> 'o list) -> 'o list;
   text       : horz_string_info -> point -> OutputText.t -> 'o list;
   math       : math_string_info -> point -> OutputText.t -> 'o list;
@@ -39,7 +47,8 @@ let pdfops_of_image imgkey pt wid hgt =
   GraphicD.pdfops_of_image pt xratio yratio tag
 
 
-let fs_pdf = {
+let fs_pdf (config : config) = {
+  config     = config;
   graphics   = GraphicD.to_pdfops;
   text       = pdfops_of_text;
   math       = pdfops_of_math;
@@ -67,7 +76,7 @@ let warn_ratios (fs : 'o op_funcs) (pbinfo : page_break_info) pt hgt dpt (ratios
   match ratios with
   | TooLong{ required = wid_required; actual = wid_actual } ->
       Logging.warn_overfull_line pageno;
-      if OptionState.does_debug_show_overfull () then
+      if fs.config.debug_show_overfull then
         List.append
           (fs.test_frame color_show_overfull pt wid_actual hgt dpt)
           (fs.test_frame color_show_overfull pt wid_required hgt dpt)
@@ -76,7 +85,7 @@ let warn_ratios (fs : 'o op_funcs) (pbinfo : page_break_info) pt hgt dpt (ratios
 
   | TooShort{ required = wid_required; actual = wid_actual } ->
       Logging.warn_underfull_line pageno;
-      if OptionState.does_debug_show_overfull () then
+      if fs.config.debug_show_overfull then
         List.append
           (fs.test_frame color_show_overfull pt wid_actual hgt dpt)
           (fs.test_frame color_show_overfull pt wid_required hgt dpt)
@@ -91,7 +100,7 @@ let warn_reachability (fs : 'o op_funcs) (pbinfo : page_break_info) pt hgt dpt (
   match reach with
   | Unreachable ->
       Logging.warn_unreachable pbinfo.current_page_number;
-      if OptionState.does_debug_show_overfull () then
+      if fs.config.debug_show_overfull then
         let wid = Length.of_pdf_point 2. in  (* temporary *)
         fs.test_frame color_show_unreachable pt wid hgt dpt
       else
@@ -112,7 +121,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
     match evhbmain with
     | EvHorzEmpty ->
         let opaccnew =
-          if OptionState.does_debug_show_space () then
+          if fs.config.debug_show_space then
             let opsgr = fs.test_box color_show_space (xpos, yposbaseline) wid (Length.of_pdf_point 2.) in
             Alist.append opacc opsgr
           else
@@ -143,7 +152,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
           let opsmain =
             fs.text hsinfo (xpos, yposbaseline +% hsinfo.rising) otxt
           in
-          if OptionState.does_debug_show_bbox () then
+          if fs.config.debug_show_bbox then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
             List.append opsgr opsmain
           else
@@ -157,7 +166,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
           let opsmain =
             fs.math msinfo (xpos, yposbaseline) otxt
           in
-          if OptionState.does_debug_show_bbox () then
+          if fs.config.debug_show_bbox then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
             List.append opsgr opsmain
           else
@@ -172,7 +181,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         in
         let opaccnew =
 (*
-          if OptionState.does_debug_show_bbox () then
+          if fs.config.debug_show_bbox then
             Alist.append opaccsub (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
           else
 *)
@@ -193,7 +202,7 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         let opsgr = pdfops_of_graphics fs pbinfo gr in
         let opaccsub = Alist.append opacc opsgr in
         let opaccnew =
-          if OptionState.does_debug_show_bbox () then
+          if fs.config.debug_show_bbox then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
             Alist.append opaccsub opsgr
           else
@@ -297,7 +306,7 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
     match evvb with
     | EvVertFixedEmpty(debug_margins, vskip) ->
         let opacc =
-          if OptionState.does_debug_show_block_space () then
+          if fs.config.debug_show_block_space then
             let ops =
               match debug_margins with
               | Fixed              -> fs.test_skip_fixed color_show_skip pos vskip
@@ -321,7 +330,7 @@ and ops_of_evaled_vert_box_list (fs : 'o op_funcs) pbinfo (xinit, yinit) opaccin
           evhblst @|> (xpos, opacc) @|> List.fold_left (ops_of_evaled_horz_box fs pbinfo yposbaseline)
         in
         let opaccend =
-          if OptionState.does_debug_show_block_bbox () then
+          if fs.config.debug_show_block_bbox then
             let wid = xposlast -% xpos in
             Alist.append opaccend (fs.test_frame color_show_block_bbox (xpos, yposbaseline) wid hgt dpt)
           else
@@ -376,25 +385,26 @@ let get_paper_height (paper : Pdfpaper.t) : length =
 
 
 let opacc_of_body_and_footnote
+      (config : config)
       (txtlen : length)  (* -- for option `--debug-show-block-bbox` -- *)
       (pbinfo : page_break_info)
       ((ptbody, evvblstbody) : (length * length) * evaled_vert_box list)
       ((ptfootnote, evvblstfootnote) : (length * length) * evaled_vert_box list)
     : Pdfops.t Alist.t =
-
+  let fs = fs_pdf config in
   let opaccbody =
-    let (_, opaccbody) = ops_of_evaled_vert_box_list fs_pdf pbinfo ptbody Alist.empty evvblstbody in
-    if OptionState.does_debug_show_block_bbox () then
-      Alist.append opaccbody (fs_pdf.test_scale color_show_frame ptbody txtlen)
+    let (_, opaccbody) = ops_of_evaled_vert_box_list fs pbinfo ptbody Alist.empty evvblstbody in
+    if config.debug_show_block_bbox then
+      Alist.append opaccbody (fs.test_scale color_show_frame ptbody txtlen)
     else
       opaccbody
   in
   let opaccfootnote =
-    let (_, opaccfootnote) = ops_of_evaled_vert_box_list fs_pdf pbinfo ptfootnote Alist.empty evvblstfootnote in
-    if OptionState.does_debug_show_block_bbox () then
+    let (_, opaccfootnote) = ops_of_evaled_vert_box_list fs pbinfo ptfootnote Alist.empty evvblstfootnote in
+    if fs.config.debug_show_block_bbox then
       let wid = Length.of_pdf_point 5. in
       let len = Length.of_pdf_point 1. in
-      Alist.append opaccfootnote (fs_pdf.test_box color_show_frame ptfootnote wid len)
+      Alist.append opaccfootnote (fs.test_box color_show_frame ptfootnote wid len)
     else
       opaccfootnote
   in
@@ -425,6 +435,7 @@ let make_empty_page
 
 
 let add_column_to_page
+      (config : config)
       (Page(paper, pagecontsch, opacc, pbinfo))
       (origin_shift : length)
       (evvblstbody : evaled_vert_box list)
@@ -449,25 +460,26 @@ let add_column_to_page
         content_origin
         evvblstfootnote
     in
-    opacc_of_body_and_footnote content_height pbinfo
+    opacc_of_body_and_footnote config content_height pbinfo
       (posbody, evvblstbody)
       (posfootnote, evvblstfootnote)
   in
   Page(paper, pagecontsch, Alist.cat opacc opacccolumn, pbinfo)
 
 
-let write_page (Page(paper, _pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc, flnm)) : t) : t =
+let write_page (config : config) (Page(paper, _pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc, flnm)) : t) : t =
 
+  let fs = fs_pdf config in
   let paper_height = get_paper_height paper in
 
   let pagepartssch = pagepartsf pbinfo in  (* -- invokes the page-parts function -- *)
   let (evvblst_header, _) = pagepartssch.header_content |> PageInfo.embed_page_info_vert pbinfo in
   let pt_header = invert_coordinate paper_height pagepartssch.header_origin in
-  let (_, opacc_header) = ops_of_evaled_vert_box_list fs_pdf pbinfo pt_header opaccpage evvblst_header in
+  let (_, opacc_header) = ops_of_evaled_vert_box_list fs pbinfo pt_header opaccpage evvblst_header in
 
   let (evvblst_footer, _) = pagepartssch.footer_content |> PageInfo.embed_page_info_vert pbinfo in
   let pt_footer = invert_coordinate paper_height pagepartssch.footer_origin in
-  let (_, opacc_footer) = ops_of_evaled_vert_box_list fs_pdf pbinfo pt_footer opacc_header evvblst_footer in
+  let (_, opacc_footer) = ops_of_evaled_vert_box_list fs pbinfo pt_footer opacc_header evvblst_footer in
 
   let oplst = Alist.to_list opacc_footer in
 

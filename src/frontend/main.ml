@@ -123,7 +123,7 @@ let eval_main ~(is_bytecomp_mode : bool) (output_mode : output_mode) (i : int) (
   value
 
 
-let eval_document_file ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (output_mode : output_mode) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let eval_document_file (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (output_mode : output_mode) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
   let env_freezed = freeze_environment env in
   match output_mode with
   | TextMode(_) ->
@@ -156,11 +156,11 @@ let eval_document_file ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (ou
             let pdf =
               match pbstyle with
               | SingleColumn ->
-                  PageBreak.main abspath_out ~paper_size
+                  PageBreak.main pdf_config abspath_out ~paper_size
                     columnhookf pagecontf pagepartsf imvblst
 
               | MultiColumn(origin_shifts) ->
-                  PageBreak.main_multicolumn ~page_number_limit abspath_out ~paper_size
+                  PageBreak.main_multicolumn pdf_config ~page_number_limit abspath_out ~paper_size
                     origin_shifts columnhookf columnendhookf pagecontf pagepartsf imvblst
             in
             begin
@@ -212,7 +212,7 @@ let evaluate_bindings ~(is_bytecomp_mode : bool) ~(run_tests : bool) (env : envi
   ) env
 
 
-let preprocess_and_evaluate ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (output_mode : output_mode) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let preprocess_and_evaluate (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (output_mode : output_mode) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
   (* Performs preprocessing: *)
   let (env, codebinds) = preprocess_bindings ~run_tests env libs in
   let code_doc = Evaluator.interpret_1 env ast_doc in
@@ -220,7 +220,7 @@ let preprocess_and_evaluate ~(page_number_limit : int) ~(is_bytecomp_mode : bool
   (* Performs evaluation: *)
   let env = evaluate_bindings ~is_bytecomp_mode ~run_tests env codebinds in
   let ast_doc = unlift_code code_doc in
-  eval_document_file ~page_number_limit ~is_bytecomp_mode output_mode env ast_doc abspath_out abspath_dump
+  eval_document_file pdf_config ~page_number_limit ~is_bytecomp_mode output_mode env ast_doc abspath_out abspath_dump
 
 
 let convert_abs_path_to_show (abspath : abs_path) : string =
@@ -1647,16 +1647,20 @@ let build
           | TextMode(_) -> true
       }
     in
+    let pdf_config =
+      HandlePdf.{
+        debug_show_bbox;
+        debug_show_space;
+        debug_show_block_bbox;
+        debug_show_block_space;
+        debug_show_overfull;
+      }
+    in
     OptionState.set OptionState.{
       command_state =
         BuildState{
           input_file;
           output_file;
-          debug_show_bbox;
-          debug_show_space;
-          debug_show_block_bbox;
-          debug_show_block_space;
-          debug_show_overfull;
           type_check_only;
         };
       extra_config_paths;
@@ -1757,7 +1761,7 @@ let build
         if type_check_only then
           ()
         else
-          preprocess_and_evaluate ~page_number_limit ~is_bytecomp_mode output_mode ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
+          preprocess_and_evaluate pdf_config ~page_number_limit ~is_bytecomp_mode output_mode ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
   )
 
 

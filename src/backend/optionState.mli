@@ -4,11 +4,6 @@ open MyUtil
 type build_state = {
   input_file             : abs_path;
   output_file            : abs_path option;
-  debug_show_bbox        : bool;
-  debug_show_space       : bool;
-  debug_show_block_bbox  : bool;
-  debug_show_block_space : bool;
-  debug_show_overfull    : bool;
   type_check_only        : bool;
 }
 
@@ -33,10 +28,5 @@ val set : state -> unit
 val get : unit -> state
 
 val does_show_full_path         : unit -> bool
-val does_debug_show_bbox        : unit -> bool
-val does_debug_show_space       : unit -> bool
-val does_debug_show_block_bbox  : unit -> bool
-val does_debug_show_block_space : unit -> bool
-val does_debug_show_overfull    : unit -> bool
 
 val job_directory : unit -> string
