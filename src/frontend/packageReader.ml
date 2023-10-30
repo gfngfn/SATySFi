@@ -23,7 +23,7 @@ let make_path_list_absolute ~(origin : abs_path) (reldirs : string list) : abs_p
   )
 
 
-let main ~(use_test_files : bool) ~(extensions : string list) (absdir_package : abs_path) : (PackageConfig.t * untyped_package) ok =
+let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (absdir_package : abs_path) : (PackageConfig.t * untyped_package) ok =
   let open ResultMonad in
   let* config = PackageConfig.load absdir_package in
   let* package =
@@ -42,7 +42,7 @@ let main ~(use_test_files : bool) ~(extensions : string list) (absdir_package : 
         let* acc =
           abspaths |> foldM (fun acc abspath_src ->
             let* utsrc =
-              Logging.begin_to_parse_file abspath_src;
+              Logging.begin_to_parse_file display_config abspath_src;
               ParserInterface.process_file abspath_src |> Result.map_error (fun e -> FailedToParse(e))
             in
             match utsrc with

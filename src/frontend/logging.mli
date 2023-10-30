@@ -2,13 +2,19 @@
 open MyUtil
 open PackageSystemBase
 
-val begin_to_typecheck_file : abs_path -> unit
+type config = {
+  show_full_path : bool;
+}
 
-val begin_to_preprocess_file : abs_path -> unit
+val show_path : config -> abs_path -> string
 
-val begin_to_eval_file : abs_path -> unit
+val begin_to_typecheck_file : config -> abs_path -> unit
 
-val begin_to_parse_file : abs_path -> unit
+val begin_to_preprocess_file : config -> abs_path -> unit
+
+val begin_to_eval_file : config -> abs_path -> unit
+
+val begin_to_parse_file : config -> abs_path -> unit
 
 val pass_type_check : string option -> unit
 
@@ -22,13 +28,13 @@ val achieve_count_max : unit -> unit
 
 val achieve_fixpoint : string list -> unit
 
-val end_output : abs_path -> unit
+val end_output : config -> abs_path -> unit
 
-val target_file : abs_path -> unit
+val target_file : config -> abs_path -> unit
 
-val dump_file : already_exists:bool -> abs_path -> unit
+val dump_file : config -> already_exists:bool -> abs_path -> unit
 
-val lock_config_file : abs_path -> unit
+val lock_config_file : config -> abs_path -> unit
 
 val show_package_dependency_before_solving : (dependency_flag * package_dependency) list -> unit
 
@@ -40,7 +46,7 @@ val begin_to_write_page : unit -> unit
 
 val needs_another_trial : unit -> unit
 
-val end_lock_output : abs_path -> unit
+val end_lock_output : config -> abs_path -> unit
 
 val warn_noninjective_cmap : Uchar.t -> Uchar.t -> Otfed.Value.glyph_id -> unit
 

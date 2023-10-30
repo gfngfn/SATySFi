@@ -36,7 +36,7 @@ let get_header (extensions : string list) (curdir : string) (headerelem : header
       return @@ Local(modident, abspath)
 
 
-let rec register_library_file (extensions : string list) (graph : graph) ~prev:(vertex_prev_opt : vertex option) (abspath : abs_path) : graph ok =
+let rec register_library_file (display_config : Logging.config) (extensions : string list) (graph : graph) ~prev:(vertex_prev_opt : vertex option) (abspath : abs_path) : graph ok =
   let open ResultMonad in
   match graph |> FileDependencyGraph.get_vertex abspath with
   | Some(vertex) ->
@@ -51,7 +51,7 @@ let rec register_library_file (extensions : string list) (graph : graph) ~prev:(
   | None ->
       let curdir = Filename.dirname (get_abs_path_string abspath) in
       let* utlib =
-        Logging.begin_to_parse_file abspath;
+        Logging.begin_to_parse_file display_config abspath;
         let* utsrc = ParserInterface.process_file abspath |> Result.map_error (fun rng -> FailedToParse(rng)) in
         match utsrc with
         | UTLibraryFile(utlib)    -> return utlib
@@ -75,13 +75,13 @@ let rec register_library_file (extensions : string list) (graph : graph) ~prev:(
             return graph
 
         | Local(_modident_sub, abspath_sub) ->
-            register_library_file extensions graph ~prev:(Some(vertex)) abspath_sub
+            register_library_file display_config extensions graph ~prev:(Some(vertex)) abspath_sub
       ) graph
 
 
-let register_document_file (extensions : string list) (abspath_in : abs_path) : (graph * untyped_document_file) ok =
+let register_document_file (display_config : Logging.config) (extensions : string list) (abspath_in : abs_path) : (graph * untyped_document_file) ok =
   let open ResultMonad in
-  Logging.begin_to_parse_file abspath_in;
+  Logging.begin_to_parse_file display_config abspath_in;
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
   let* utsrc =
     ParserInterface.process_file abspath_in
@@ -101,7 +101,7 @@ let register_document_file (extensions : string list) (abspath_in : abs_path) : 
           return graph
 
       | Local(_, abspath_sub) ->
-          register_library_file extensions graph ~prev:None abspath_sub
+          register_library_file display_config extensions graph ~prev:None abspath_sub
     ) FileDependencyGraph.empty
   in
   return (graph, utdoc)
@@ -132,9 +132,9 @@ let extract_markdown_command_record ~(module_name : module_name) (config : Packa
       err @@ NoMarkdownConversion(module_name)
 
 
-let register_markdown_file (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : untyped_document_file ok =
+let register_markdown_file (display_config : Logging.config) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : untyped_document_file ok =
   let open ResultMonad in
-  Logging.begin_to_parse_file abspath_in;
+  Logging.begin_to_parse_file display_config abspath_in;
   let* (_docattr, main_module_name_class, md) =
     match read_file abspath_in with
     | Ok(data)   -> MarkdownParser.decode data |> Result.map_error (fun e -> MarkdownError(e))
@@ -156,15 +156,15 @@ let register_markdown_file (configenv : PackageConfig.t GlobalTypeenv.t) (abspat
   return utdoc
 
 
-let main ~(extensions : string list) (input_kind : input_kind) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
+let main (display_config : Logging.config) ~(extensions : string list) (input_kind : input_kind) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
   let* (graph, utdoc) =
     match input_kind with
     | InputSatysfi ->
-        register_document_file extensions abspath_in
+        register_document_file display_config extensions abspath_in
 
     | InputMarkdown ->
-        let* utdoc = register_markdown_file configenv abspath_in in
+        let* utdoc = register_markdown_file display_config configenv abspath_in in
         return (FileDependencyGraph.empty, utdoc)
   in
   let* sorted_locals =
