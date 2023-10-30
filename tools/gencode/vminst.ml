@@ -523,8 +523,9 @@ make_inline_boxes HorzBox.([ HorzPure(PHGFixedTabular{
           param "pageno" ~type_:"int";
         ]
         ~is_pdf_mode_primitive:true
+        ~needs_runtime_config:true
         ~code:{|
-let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpathstr) in
+let abspath = MyUtil.make_abs_path (Filename.concat runtime_config.job_directory relpathstr) in
 let imgkey = ImageInfo.add_pdf abspath pageno in
 make_image_key imgkey
 |}
@@ -537,8 +538,9 @@ make_image_key imgkey
           param "relpath" ~type_:"string";
         ]
         ~is_pdf_mode_primitive:true
+        ~needs_runtime_config:true
         ~code:{|
-let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpath) in
+let abspath = MyUtil.make_abs_path (Filename.concat runtime_config.job_directory relpath) in
 let imgkey = ImageInfo.add_image abspath in
 make_image_key imgkey
 |}
@@ -3016,6 +3018,7 @@ Tuple([v1; v2; v3])
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
+        ~needs_runtime_config:true
         ~code:{|
 let parts = Core.Filename.parts relpath in
 begin
@@ -3025,8 +3028,7 @@ begin
     ()
 end;
 let abspath =
-  let jobdir = OptionState.job_directory () in
-  Filename.concat jobdir relpath
+  Filename.concat runtime_config.job_directory relpath
 in
 let inc = open_in abspath in
 let rec aux lineacc =

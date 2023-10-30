@@ -681,6 +681,10 @@ type page_break_style =
   | MultiColumn of length list
 [@@deriving show { with_path = false; }]
 
+type runtime_config = {
+  job_directory : string; (* Tracks an absolute path to a directory *)
+}
+
 type base_constant =
   | BCUnit
   | BCBool     of bool
@@ -720,9 +724,14 @@ and binding =
   | Bind     of stage * rec_or_nonrec
   | BindTest of EvalVarID.t * string * abstract_tree
 
-and environment =
-  location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
-    [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
+and environment = {
+  env_main   : location EvalVarIDMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<env-main>")]
+  env_store  : (syntactic_value StoreIDHashTable.t) ref;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<env-store>")]
+  env_config : runtime_config;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<env-config>")]
+}
 
 and location =
   syntactic_value ref
@@ -1324,24 +1333,22 @@ let get_range (rng, _) = rng
 
 
 let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : location) : environment =
-  let (valenv, stenvref) = env in
-    (valenv |> EvalVarIDMap.add evid rfast, stenvref)
+  { env with env_main = env.env_main |> EvalVarIDMap.add evid rfast }
 
 
 let find_in_environment (env : environment) (evid : EvalVarID.t) : location option =
-  let (valenv, _) = env in
-    valenv |> EvalVarIDMap.find_opt evid
+  env.env_main |> EvalVarIDMap.find_opt evid
 
 
 let register_location (env : environment) (value : syntactic_value) : StoreID.t =
-  let (_, stenvref) = env in
+  let stenvref = env.env_store in
   let stid = StoreID.fresh () in
   StoreIDHashTable.add (!stenvref) stid value;
   stid
 
 
 let update_location (env : environment) (stid : StoreID.t) (value : syntactic_value) : unit =
-  let (_, stenvref) = env in
+  let stenvref = env.env_store in
   let stenv = !stenvref in
   if StoreIDHashTable.mem stenv stid then
     StoreIDHashTable.replace stenv stid value
@@ -1350,7 +1357,7 @@ let update_location (env : environment) (stid : StoreID.t) (value : syntactic_va
 
 
 let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value option =
-  let (_, stenvref) = env in
+  let stenvref = env.env_store in
   StoreIDHashTable.find_opt (!stenvref) stid
 
 

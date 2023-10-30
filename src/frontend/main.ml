@@ -32,7 +32,7 @@ let reset (output_mode : output_mode) =
 
 
 (* Initialization that should be performed before typechecking *)
-let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) : Typeenv.t * environment =
+let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) (runtime_config : runtime_config) : Typeenv.t * environment =
   FreeID.initialize ();
   BoundID.initialize ();
   EvalVarID.initialize ();
@@ -41,9 +41,9 @@ let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) : Typeenv.
   let res =
     match output_mode with
     | TextMode(_) ->
-        Primitives.make_text_mode_environments ()
+        Primitives.make_text_mode_environments runtime_config
     | PdfMode ->
-        Primitives.make_pdf_mode_environments ()
+        Primitives.make_pdf_mode_environments runtime_config
   in
   let (tyenv, env) =
     match res with
@@ -62,24 +62,52 @@ let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) : Typeenv.
 module StoreIDMap = Map.Make(StoreID)
 
 
-type frozen_environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref * syntactic_value StoreIDMap.t
+type frozen_environment = {
+  frozen_main      : location EvalVarIDMap.t;
+  frozen_store_ref : (syntactic_value StoreIDHashTable.t) ref;
+  frozen_store_map : syntactic_value StoreIDMap.t;
+  frozen_config    : runtime_config;
+}
 
 
 let freeze_environment (env : environment) : frozen_environment =
-  let (valenv, stenvref) = env in
+  let
+    {
+      env_main   = valenv;
+      env_store  = stenvref;
+      env_config = runtime_config;
+    } = env
+  in
   let stmap =
     StoreIDMap.empty |> StoreIDHashTable.fold (fun stid value stmap ->
       stmap |> StoreIDMap.add stid value
     ) (!stenvref)
   in
-  (valenv, stenvref, stmap)
+  {
+    frozen_main      = valenv;
+    frozen_store_ref = stenvref;
+    frozen_store_map = stmap;
+    frozen_config    = runtime_config;
+  }
 
 
-let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : environment =
+let unfreeze_environment (frenv : frozen_environment) : environment =
+  let
+    {
+      frozen_main = valenv;
+      frozen_store_ref = stenvref;
+      frozen_store_map = stmap;
+      frozen_config    = runtime_config;
+    } = frenv
+  in
   let stenv = StoreIDHashTable.create 128 in
   stmap |> StoreIDMap.iter (fun stid value -> StoreIDHashTable.add stenv stid value);
   stenvref := stenv;
-  (valenv, ref stenv)
+  {
+    env_main   = valenv;
+    env_store  = ref stenv;
+    env_config = runtime_config;
+  }
 
 
 let output_pdf (pdfret : HandlePdf.t) : unit =
@@ -1608,6 +1636,10 @@ let load_package (display_config : Logging.config) ~(use_test_files : bool) ~(ex
   | Error(e) -> raise (ConfigError(e))
 
 
+let get_job_directory (abspath : abs_path) : string =
+  Filename.dirname (get_abs_path_string abspath)
+
+
 let build
     ~(fpath_in : string)
     ~(fpath_out_opt : string option)
@@ -1629,6 +1661,7 @@ let build
     let curdir = Sys.getcwd () in
 
     let input_file = make_absolute_if_relative ~origin:curdir fpath_in in
+    let job_directory = get_job_directory input_file in
     let output_file = fpath_out_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
     let output_mode = make_output_mode text_mode_formats_str_opt in
@@ -1649,7 +1682,7 @@ let build
         debug_show_overfull;
       }
     in
-    OptionState.set OptionState.{ input_file = Some(input_file) };
+    let runtime_config = { job_directory } in
 
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
     let abspath_in = input_file in
@@ -1688,7 +1721,7 @@ let build
     in
 
     let extensions = get_candidate_file_extensions output_mode in
-    let (tyenv_prim, env) = initialize ~is_bytecomp_mode output_mode in
+    let (tyenv_prim, env) = initialize ~is_bytecomp_mode output_mode runtime_config in
 
     match build_input with
     | PackageBuildInput{
@@ -1770,6 +1803,7 @@ let test
     let curdir = Sys.getcwd () in
 
     let input_file_to_test = make_absolute_if_relative ~origin:curdir fpath_in in
+    let job_directory = get_job_directory input_file_to_test in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
     let output_mode_to_test = make_output_mode text_mode_formats_str_opt in
     let bytecomp = false in
@@ -1781,7 +1815,7 @@ let test
           | TextMode(_) -> true
       }
     in
-    OptionState.set OptionState.{ input_file = Some(input_file_to_test) };
+    let runtime_config = { job_directory } in
 
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
     let abspath_in = input_file_to_test in
@@ -1810,7 +1844,7 @@ let test
     in
 
     let extensions = get_candidate_file_extensions output_mode_to_test in
-    let (tyenv_prim, env) = initialize ~is_bytecomp_mode:bytecomp output_mode_to_test in
+    let (tyenv_prim, env) = initialize ~is_bytecomp_mode:bytecomp output_mode_to_test runtime_config in
 
     begin
       match test_input with
@@ -1996,8 +2030,6 @@ let solve
     let curdir = Sys.getcwd () in
 
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
-
-    OptionState.set OptionState.{ input_file = None };
 
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
     let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in

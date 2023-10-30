@@ -127,7 +127,7 @@ and transform_1_math_text_content (_env : frame) (_ims : math_text_element list)
 
 
 and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment =
-  let (genv, _) = env in
+  let genv = env.env_main in
   let initvars =
     EvalVarIDMap.fold (fun k v acc ->
       EvalVarIDMap.add k (GlobalVar(v, k, ref 0)) acc
@@ -139,7 +139,7 @@ and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment
 
 
 and transform_ast_1 (env : environment) (ast : abstract_tree) : ir * environment =
-  let (genv, _) = env in
+  let genv = env.env_main in
   let initvars =
     EvalVarIDMap.fold (fun k v acc ->
       EvalVarIDMap.add k (GlobalVar(v, k, ref 0)) acc
