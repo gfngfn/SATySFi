@@ -531,6 +531,7 @@ and untyped_pattern_tree_main =
   | UTPListCons            of untyped_pattern_tree * untyped_pattern_tree
   | UTPEndOfList
   | UTPTuple               of untyped_pattern_tree TupleList.t
+  | UTPRecord              of bool * (label ranged * untyped_pattern_tree) list
   | UTPWildCard
   | UTPVariable            of var_name
   | UTPAsVariable          of var_name * untyped_pattern_tree
@@ -769,6 +770,7 @@ and ir_pattern_tree =
   | IRPListCons             of ir_pattern_tree * ir_pattern_tree
   | IRPEndOfList
   | IRPTuple                of ir_pattern_tree TupleList.t
+  | IRPRecord               of (label * ir_pattern_tree) list
   | IRPWildCard
   | IRPVariable             of varloc
   | IRPAsVariable           of varloc * ir_pattern_tree
@@ -818,6 +820,8 @@ and instruction =
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopStr(...)")]
   | OpCheckStackTopTupleCons of instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopTupleCons(...)")]
+  | OpCheckStackTopRecord of label * instruction list
+      [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopRecord(...)")]
   | OpClosure of varloc LabelMap.t * int * int * instruction list
   | OpClosureInlineText of compiled_inline_text_element list
   | OpClosureBlockText of compiled_block_text_element list
@@ -996,6 +1000,7 @@ and pattern_tree =
   | PListCons             of pattern_tree * pattern_tree
   | PEndOfList
   | PTuple                of pattern_tree TupleList.t
+  | PRecord               of (label * pattern_tree) list
   | PWildCard
   | PVariable             of EvalVarID.t
   | PAsVariable           of EvalVarID.t * pattern_tree
@@ -1165,6 +1170,7 @@ and code_pattern_tree =
   | CdPListCons             of code_pattern_tree * code_pattern_tree
   | CdPEndOfList
   | CdPTuple                of code_pattern_tree TupleList.t
+  | CdPRecord               of (label * code_pattern_tree) list
   | CdPWildCard
   | CdPVariable             of CodeSymbol.t
   | CdPAsVariable           of CodeSymbol.t * code_pattern_tree
@@ -1386,6 +1392,7 @@ and unlift_pattern = function
   | CdPListCons(cdpat1, cdpat2) -> PListCons(unlift_pattern cdpat1, unlift_pattern cdpat2)
   | CdPEndOfList                -> PEndOfList
   | CdPTuple(cdpats)            -> PTuple(TupleList.map unlift_pattern cdpats)
+  | CdPRecord(cdpats)           -> PRecord(cdpats |> List.map (fun (label, cd) -> (label, unlift_pattern cd)))
   | CdPWildCard                 -> PWildCard
   | CdPVariable(symb)           -> PVariable(CodeSymbol.unlift symb)
   | CdPAsVariable(symb, cdpat)  -> PAsVariable(CodeSymbol.unlift symb, unlift_pattern cdpat)
