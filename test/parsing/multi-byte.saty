@@ -1,0 +1,5 @@
+module MultiByte = struct
+
+  val v1 = {あ} val v2 = {a}
+
+end

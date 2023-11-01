@@ -12,6 +12,7 @@
             core_kernel.pairing_heap
             menhirLib
             otfed
+            sedlex
             uutf
             yojson-with-position
             omd
@@ -19,6 +20,7 @@
             )
  (preprocess (pps
               ppx_deriving.show
+              sedlex.ppx
               ))
  )
 
@@ -28,13 +30,10 @@
 (copy_files# text-mode/*.{ml,mli})
 (copy_files# md/*.{ml,mli})
 (copy_files# chardecoder/*.{ml,mli})
-(copy_files  chardecoder/*.{mll,mly})
+(copy_files  chardecoder/*.{mly})
 (copy_files# frontend/*.{ml,mli})
-(copy_files  frontend/*.{mll,mly})
+(copy_files  frontend/*.{mly})
 (copy_files# frontend/bytecomp/*.{ml,mli})
-
-(ocamllex
- (modules lexer dataLexer))
 
 (menhir
  (modules parser dataParser)

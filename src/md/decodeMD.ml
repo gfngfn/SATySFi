@@ -474,7 +474,7 @@ let decode (cmdrcd : command_record) (s : string) =
     | _ ->
         (cmdrcd.header_default, md)
   in
-  let lexbuf = Lexing.from_string strheader in
+  let lexbuf = Sedlexing.Utf8.from_string strheader in
   let utasthead =
     match ParserInterface.process "(markdown)" lexbuf with
     | ([], UTDocumentFile(u)) -> u

@@ -11,6 +11,7 @@
    "patlist.saty"
    "sxlist.saty"
    "mathlist.saty"
+   "multi-byte.saty"
    "toplevel.saty"
  )
  (action

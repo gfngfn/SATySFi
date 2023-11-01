@@ -33,6 +33,7 @@ depends: [
   "otfed" {= "0.3.1"}
   "ppx_deriving"
   "re" {build}
+  "sedlex" {>= "3.0" & < "4.0"}
   "uutf"
   "yojson-with-position" {= "1.4.2+satysfi"}
   "omd" {< "2.0.0~"}

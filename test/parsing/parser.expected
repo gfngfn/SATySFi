@@ -1194,6 +1194,23 @@
           )))
       ]))
 
+;; multi-byte.saty
+(UTLibraryFile
+   (((Range.Normal <multi-byte.saty:1.8-17>), "MultiByte"), None,
+    [((Range.Normal <multi-byte.saty:3.3-6>),
+      (UTBindValue (Stage1,
+         (UTNonRec
+            (((Range.Normal <multi-byte.saty:3.7-9>), "v1"),
+             (UTInlineText [IT:あ])))
+         )));
+      ((Range.Normal <multi-byte.saty:3.16-19>),
+       (UTBindValue (Stage1,
+          (UTNonRec
+             (((Range.Normal <multi-byte.saty:3.20-22>), "v2"),
+              (UTInlineText [IT:a])))
+          )))
+      ]))
+
 ;; toplevel.saty
 (UTLibraryFile
    (((Range.Normal <toplevel.saty:1.8-16>), "Toplevel"), None,

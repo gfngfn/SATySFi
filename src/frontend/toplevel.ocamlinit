@@ -27,7 +27,18 @@ let parse s =
     Main.error_log_environment (fun () ->
       begin
         init () ;
-        p := Parser.main Lexer.cut_token (Lexing.from_string s)
+        let lexbuf = Sedlexing.Utf8.from_string s in
+        let lexer () =
+          let (ante_position, post_position) =
+            Sedlexing.lexing_positions lexbuf
+          in
+          let token = Lexer.lex lexbuf in
+          (token, ante_position, post_position)
+        in
+        let parser =
+          MenhirLib.Convert.Simplified.traditional2revised Parser.main
+        in
+        p := parser lexer
       end
     ) ;
     !p

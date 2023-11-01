@@ -15,7 +15,7 @@ let () =
       Out_channel.printf "\n;; %s\n" fn;
       In_channel.with_file fn
         ~f:(fun in_ch ->
-            Lexing.from_channel in_ch
+            Sedlexing.Utf8.from_channel in_ch
             |> ParserInterface.process fn
           )
       |> proj

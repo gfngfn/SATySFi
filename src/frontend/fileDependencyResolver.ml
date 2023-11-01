@@ -51,7 +51,7 @@ let rec register_library_file (graph : FileDependencyGraph.t) ~prev:(vertex_prev
     Logging.begin_to_parse_file abspath;
     let curdir = Filename.dirname (get_abs_path_string abspath) in
     let inc = open_in_abs abspath in
-    let (header, utsrc) = ParserInterface.process (basename_abs abspath) (Lexing.from_channel inc) in
+    let (header, utsrc) = ParserInterface.process (basename_abs abspath) (Sedlexing.Utf8.from_channel inc) in
     close_in inc;
     let lib =
       match utsrc with
@@ -83,7 +83,7 @@ let register_document_file (graph : FileDependencyGraph.t) (abspath_in : abs_pat
   let file_in = open_in_abs abspath_in in
   let curdir = Filename.dirname (get_abs_path_string abspath_in) in
   let (header, utsrc) =
-    ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Lexing.from_channel file_in)
+    ParserInterface.process (Filename.basename (get_abs_path_string abspath_in)) (Sedlexing.Utf8.from_channel file_in)
   in
   let utast =
     match utsrc with

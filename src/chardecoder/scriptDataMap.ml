@@ -49,13 +49,13 @@ let script_map_ref : (script BatIMap.t) ref = ref (BatIMap.empty ~eq:(=))
 let set_from_file (abspath_S : abs_path) (abspath_EAW : abs_path) =
   let eaw_map =
     let channel_EAW = open_in_abs abspath_EAW in
-    let eaw_list = DataParser.main DataLexer.expr (Lexing.from_channel channel_EAW) in
+    let eaw_list = DataLexer.parse (Sedlexing.Utf8.from_channel channel_EAW) in
     close_in channel_EAW;
     eaw_list |> CharBasis.map_of_list read_east_asian_width
   in
   let script_map =
     let channel_S = open_in_abs abspath_S in
-    let script_list = DataParser.main DataLexer.expr (Lexing.from_channel channel_S) in
+    let script_list = DataLexer.parse (Sedlexing.Utf8.from_channel channel_S) in
     close_in channel_S;
     script_list |> CharBasis.map_of_list (read_script eaw_map)
   in

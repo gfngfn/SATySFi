@@ -108,7 +108,7 @@ let line_break_map_ref : (line_break_class BatIMap.t) ref = ref (BatIMap.empty ~
 
 let set_from_file (abspath : abs_path) =
   let channel = open_in_abs abspath in
-  let line_break_list = DataParser.main DataLexer.expr (Lexing.from_channel channel) in
+  let line_break_list = DataLexer.parse (Sedlexing.Utf8.from_channel channel) in
   let line_break_map_raw = line_break_list |> CharBasis.map_of_list class_of_string in
   let line_break_map =
     List.fold_left (fun mapacc (cp, lbc) ->
