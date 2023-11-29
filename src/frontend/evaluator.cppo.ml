@@ -42,6 +42,10 @@ let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
       None
 
 
+let get_runtime_config (env : environment) : runtime_config =
+  env.env_config
+
+
 let generate_symbol_for_eval_var_id (evid : EvalVarID.t) (env : environment) : environment * CodeSymbol.t =
   let symb =
     let varnm = EvalVarID.get_varnm evid in

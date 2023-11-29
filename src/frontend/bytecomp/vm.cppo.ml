@@ -74,6 +74,11 @@ let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_
   HorzBox.([ HorzPure(PHCInnerString{ context = ctx; chars = uchlst }) ])
 
 
+let get_runtime_config (env : vmenv) : runtime_config =
+  let (global, _) = env in
+  global.env_config
+
+
 let popn (stack : stack) (n : int) : syntactic_value list * stack =
   let rec iter st n acc =
     if n = 0 then

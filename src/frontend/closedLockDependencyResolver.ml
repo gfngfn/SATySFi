@@ -11,7 +11,7 @@ type 'a ok = ('a, config_error) result
 module LockDependencyGraph = DependencyGraph.Make(String)
 
 
-let main ~(use_test_only_lock : bool) ~library_root:(absdir_lib_root : abs_path) ~(extensions : string list) (lock_config : LockConfig.t) : ((lock_name * (PackageConfig.t * untyped_package)) list) ok =
+let main (display_config : Logging.config) ~(use_test_only_lock : bool) ~library_root:(absdir_lib_root : abs_path) ~(extensions : string list) (lock_config : LockConfig.t) : ((lock_name * (PackageConfig.t * untyped_package)) list) ok =
   let open ResultMonad in
 
   let locks = lock_config.LockConfig.locked_packages in
@@ -31,7 +31,7 @@ let main ~(use_test_only_lock : bool) ~library_root:(absdir_lib_root : abs_path)
               make_abs_path (Filename.concat (get_abs_path_string absdir_lib_root) (get_lib_path_string libdir))
         in
         let* package_with_config =
-          PackageReader.main ~use_test_files:use_test_only_lock ~extensions absdir_package
+          PackageReader.main display_config ~use_test_files:use_test_only_lock ~extensions absdir_package
         in
         let* (graph, vertex) =
           graph |> LockDependencyGraph.add_vertex lock_name package_with_config

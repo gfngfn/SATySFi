@@ -727,13 +727,19 @@ let text_mode_table =
     ]
 
 
-let make_environments table =
+let make_environments (runtime_config : runtime_config) table =
   let tyenv =
     Typeenv.empty
       |> add_general_default_types
       |> add_pdf_mode_default_types
   in
-  let env : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
+  let env : environment =
+    {
+      env_main = EvalVarIDMap.empty;
+      env_store = ref (StoreIDHashTable.create 128);
+      env_config = runtime_config;
+    }
+  in
   let temporary_ast = Nil in
   let (tyenv, env, locacc) =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
@@ -760,14 +766,14 @@ let resolve_lib_file (libpath : lib_path) =
     |> Result.map_error (fun candidates -> CannotFindLibraryFile(libpath, candidates))
 
 
-let make_pdf_mode_environments () =
+let make_pdf_mode_environments (runtime_config : runtime_config) =
   let open ResultMonad in
   let* abspath_hyphen = resolve_lib_file (make_lib_path "hyph/english.satysfi-hyph") in
   default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
     (* TODO: should depend on the current language *)
-  return @@ make_environments pdf_mode_table
+  return @@ make_environments runtime_config pdf_mode_table
 
 
-let make_text_mode_environments () =
+let make_text_mode_environments (runtime_config : runtime_config) =
   let open ResultMonad in
-  return @@ make_environments text_mode_table
+  return @@ make_environments runtime_config text_mode_table

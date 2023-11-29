@@ -30,6 +30,7 @@ type t = {
   is_pdf_mode_primitive : bool; (** Primitive for generating PDFs or not (default: [false]) *)
   is_text_mode_primitive : bool; (** Primitive for generating texts or not (default: [false]) *)
   needs_reducef : bool; (** Use [reducef] for evaluating applications (default: [false]) *)
+  needs_runtime_config : bool; (** Use [runtime_config] for runtime config values (default: [false]) *)
   no_interp : bool; (** Suppress code generation for [evaluator_.ml] (default: [not is_primitive]) *)
   no_ircode : bool; (** Suppress code generation for [ir_.ml] (default: [false]) *)
   pp : pp;          (** pretty printer setting *)
@@ -54,6 +55,7 @@ val inst
   : ?is_pdf_mode_primitive:bool
   -> ?is_text_mode_primitive:bool
   -> ?needs_reducef:bool
+  -> ?needs_runtime_config:bool
   -> ?no_interp:bool
   -> ?no_ircode:bool
   -> ?pp:pp

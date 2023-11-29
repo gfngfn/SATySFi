@@ -20,29 +20,30 @@ let version =
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
-let reset () =
+let reset (output_mode : output_mode) =
   let open ResultMonad in
-  if OptionState.is_text_mode () then
-    return ()
-  else begin
-    ImageInfo.initialize ();
-    NamedDest.initialize ();
-    return ()
-  end
+  match output_mode with
+  | TextMode(_) ->
+      return ()
+  | PdfMode ->
+      ImageInfo.initialize ();
+      NamedDest.initialize ();
+      return ()
 
 
 (* Initialization that should be performed before typechecking *)
-let initialize () : Typeenv.t * environment =
+let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) (runtime_config : runtime_config) : Typeenv.t * environment =
   FreeID.initialize ();
   BoundID.initialize ();
   EvalVarID.initialize ();
   StoreID.initialize ();
   FontInfo.initialize ();
   let res =
-    if OptionState.is_text_mode () then
-      Primitives.make_text_mode_environments ()
-    else
-      Primitives.make_pdf_mode_environments ()
+    match output_mode with
+    | TextMode(_) ->
+        Primitives.make_text_mode_environments runtime_config
+    | PdfMode ->
+        Primitives.make_pdf_mode_environments runtime_config
   in
   let (tyenv, env) =
     match res with
@@ -50,7 +51,7 @@ let initialize () : Typeenv.t * environment =
     | Error(e) -> raise (ConfigError(e))
   in
   begin
-    if OptionState.is_bytecomp_mode () then
+    if is_bytecomp_mode then
       Bytecomp.compile_environment env
     else
       ()
@@ -61,24 +62,52 @@ let initialize () : Typeenv.t * environment =
 module StoreIDMap = Map.Make(StoreID)
 
 
-type frozen_environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref * syntactic_value StoreIDMap.t
+type frozen_environment = {
+  frozen_main      : location EvalVarIDMap.t;
+  frozen_store_ref : (syntactic_value StoreIDHashTable.t) ref;
+  frozen_store_map : syntactic_value StoreIDMap.t;
+  frozen_config    : runtime_config;
+}
 
 
 let freeze_environment (env : environment) : frozen_environment =
-  let (valenv, stenvref) = env in
+  let
+    {
+      env_main   = valenv;
+      env_store  = stenvref;
+      env_config = runtime_config;
+    } = env
+  in
   let stmap =
     StoreIDMap.empty |> StoreIDHashTable.fold (fun stid value stmap ->
       stmap |> StoreIDMap.add stid value
     ) (!stenvref)
   in
-  (valenv, stenvref, stmap)
+  {
+    frozen_main      = valenv;
+    frozen_store_ref = stenvref;
+    frozen_store_map = stmap;
+    frozen_config    = runtime_config;
+  }
 
 
-let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : environment =
+let unfreeze_environment (frenv : frozen_environment) : environment =
+  let
+    {
+      frozen_main = valenv;
+      frozen_store_ref = stenvref;
+      frozen_store_map = stmap;
+      frozen_config    = runtime_config;
+    } = frenv
+  in
   let stenv = StoreIDHashTable.create 128 in
   stmap |> StoreIDMap.iter (fun stid value -> StoreIDHashTable.add stenv stid value);
   stenvref := stenv;
-  (valenv, ref stenv)
+  {
+    env_main   = valenv;
+    env_store  = ref stenv;
+    env_config = runtime_config;
+  }
 
 
 let output_pdf (pdfret : HandlePdf.t) : unit =
@@ -89,9 +118,9 @@ let output_text (abspath_out : abs_path) (data : string) : unit =
   Core.Out_channel.write_all (get_abs_path_string abspath_out) ~data
 
 
-let eval_library_file ~(run_tests : bool) (env : environment) (abspath : abs_path) (binds : binding list) : environment =
-  Logging.begin_to_eval_file abspath;
-  if OptionState.is_bytecomp_mode () then
+let eval_library_file (display_config : Logging.config) ~(is_bytecomp_mode : bool) ~(run_tests : bool) (env : environment) (abspath : abs_path) (binds : binding list) : environment =
+  Logging.begin_to_eval_file display_config abspath;
+  if is_bytecomp_mode then
     failwith "TODO: eval_libary_file, Bytecomp"
 (*
     let (value, _) = Bytecomp.compile_and_exec_0 env ast in
@@ -102,9 +131,9 @@ let eval_library_file ~(run_tests : bool) (env : environment) (abspath : abs_pat
     env
 
 
-let eval_main (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : syntactic_value =
+let eval_main ~(is_bytecomp_mode : bool) (output_mode : output_mode) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : syntactic_value =
   Logging.start_evaluation i;
-  let res = reset () in
+  let res = reset output_mode in
   begin
     match res with
     | Ok(())   -> ()
@@ -112,7 +141,7 @@ let eval_main (i : int) (env_freezed : frozen_environment) (ast : abstract_tree)
   end;
   let env = unfreeze_environment env_freezed in
   let value =
-    if OptionState.is_bytecomp_mode () then
+    if is_bytecomp_mode then
       let (value, _) = Bytecomp.compile_and_exec_0 env ast in
       value
     else
@@ -122,74 +151,75 @@ let eval_main (i : int) (env_freezed : frozen_environment) (ast : abstract_tree)
   value
 
 
-let eval_document_file (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let eval_document_file (display_config : Logging.config) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (output_mode : output_mode) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
   let env_freezed = freeze_environment env in
-  if OptionState.is_text_mode () then
-    let rec aux (i : int) =
-      let value_str = eval_main i env_freezed ast in
-      let s = EvalUtil.get_string value_str in
-      match CrossRef.needs_another_trial abspath_dump with
-      | CrossRef.NeedsAnotherTrial ->
-          Logging.needs_another_trial ();
-          aux (i + 1);
+  match output_mode with
+  | TextMode(_) ->
+      let rec aux (i : int) =
+        let value_str = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
+        let s = EvalUtil.get_string value_str in
+        match CrossRef.needs_another_trial abspath_dump with
+        | CrossRef.NeedsAnotherTrial ->
+            Logging.needs_another_trial ();
+            aux (i + 1);
 
-      | CrossRef.CountMax ->
-          Logging.achieve_count_max ();
-          output_text abspath_out s;
-          Logging.end_output abspath_out;
+        | CrossRef.CountMax ->
+            Logging.achieve_count_max ();
+            output_text abspath_out s;
+            Logging.end_output display_config abspath_out;
 
-      | CrossRef.CanTerminate unresolved_crossrefs ->
-          Logging.achieve_fixpoint unresolved_crossrefs;
-          output_text abspath_out s;
-          Logging.end_output abspath_out;
-    in
-    aux 1
-  else
-    let rec aux (i : int) =
-      let value_doc = eval_main i env_freezed ast in
-      match value_doc with
-      | BaseConstant(BCDocument(paper_size, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
-          Logging.start_page_break ();
-          State.start_page_break ();
-          let pdf =
-            match pbstyle with
-            | SingleColumn ->
-                PageBreak.main abspath_out ~paper_size
-                  columnhookf pagecontf pagepartsf imvblst
+        | CrossRef.CanTerminate unresolved_crossrefs ->
+            Logging.achieve_fixpoint unresolved_crossrefs;
+            output_text abspath_out s;
+            Logging.end_output display_config abspath_out;
+      in
+      aux 1
+  | PdfMode ->
+      let rec aux (i : int) =
+        let value_doc = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
+        match value_doc with
+        | BaseConstant(BCDocument(paper_size, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
+            Logging.start_page_break ();
+            State.start_page_break ();
+            let pdf =
+              match pbstyle with
+              | SingleColumn ->
+                  PageBreak.main pdf_config abspath_out ~paper_size
+                    columnhookf pagecontf pagepartsf imvblst
 
-            | MultiColumn(origin_shifts) ->
-                PageBreak.main_multicolumn abspath_out ~paper_size
-                  origin_shifts columnhookf columnendhookf pagecontf pagepartsf imvblst
-          in
-          begin
-            match CrossRef.needs_another_trial abspath_dump with
-            | CrossRef.NeedsAnotherTrial ->
-                Logging.needs_another_trial ();
-                aux (i + 1);
+              | MultiColumn(origin_shifts) ->
+                  PageBreak.main_multicolumn pdf_config ~page_number_limit abspath_out ~paper_size
+                    origin_shifts columnhookf columnendhookf pagecontf pagepartsf imvblst
+            in
+            begin
+              match CrossRef.needs_another_trial abspath_dump with
+              | CrossRef.NeedsAnotherTrial ->
+                  Logging.needs_another_trial ();
+                  aux (i + 1);
 
-            | CrossRef.CountMax ->
-                Logging.achieve_count_max ();
-                output_pdf pdf;
-                Logging.end_output abspath_out;
+              | CrossRef.CountMax ->
+                  Logging.achieve_count_max ();
+                  output_pdf pdf;
+                  Logging.end_output display_config abspath_out;
 
-            | CrossRef.CanTerminate unresolved_crossrefs ->
-                Logging.achieve_fixpoint unresolved_crossrefs;
-                output_pdf pdf;
-                Logging.end_output abspath_out;
-          end
+              | CrossRef.CanTerminate unresolved_crossrefs ->
+                  Logging.achieve_fixpoint unresolved_crossrefs;
+                  output_pdf pdf;
+                  Logging.end_output display_config abspath_out;
+            end
 
-      | _ ->
-          EvalUtil.report_bug_value "main; not a DocumentValue(...)" value_doc
-    in
-    aux 1
+        | _ ->
+            EvalUtil.report_bug_value "main; not a DocumentValue(...)" value_doc
+      in
+      aux 1
 
 
 (* Performs preprecessing. the evaluation is run by the naive interpreter
    regardless of whether `--bytecomp` was specified. *)
-let preprocess_bindings ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) : environment * (abs_path * code_rec_or_nonrec list) list =
+let preprocess_bindings (display_config : Logging.config) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) : environment * (abs_path * code_rec_or_nonrec list) list =
   let (env, codebindacc) =
     libs |> List.fold_left (fun (env, codebindacc) (abspath, binds) ->
-      Logging.begin_to_preprocess_file abspath;
+      Logging.begin_to_preprocess_file display_config abspath;
       let (env, cd_rec_or_nonrecs) = Evaluator.interpret_bindings_0 ~run_tests env binds in
       (env, Alist.extend codebindacc (abspath, cd_rec_or_nonrecs))
     ) (env, Alist.empty)
@@ -199,34 +229,26 @@ let preprocess_bindings ~(run_tests : bool) (env : environment) (libs : (abs_pat
 
 
 (* Performs evaluation and returns the resulting environment. *)
-let evaluate_bindings ~(run_tests : bool) (env : environment) (codebinds : (abs_path * code_rec_or_nonrec list) list) : environment =
+let evaluate_bindings (display_config : Logging.config) ~(is_bytecomp_mode : bool) ~(run_tests : bool) (env : environment) (codebinds : (abs_path * code_rec_or_nonrec list) list) : environment =
   codebinds |> List.fold_left (fun env (abspath, cd_rec_or_nonrecs) ->
     let binds =
       cd_rec_or_nonrecs |> List.map (fun cd_rec_or_nonrec ->
         Bind(Stage0, unlift_rec_or_nonrec cd_rec_or_nonrec)
       )
     in
-    eval_library_file ~run_tests env abspath binds
+    eval_library_file display_config ~is_bytecomp_mode ~run_tests env abspath binds
   ) env
 
 
-let preprocess_and_evaluate ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let preprocess_and_evaluate (display_config : Logging.config) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (output_mode : output_mode) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
   (* Performs preprocessing: *)
-  let (env, codebinds) = preprocess_bindings ~run_tests env libs in
+  let (env, codebinds) = preprocess_bindings display_config ~run_tests env libs in
   let code_doc = Evaluator.interpret_1 env ast_doc in
 
   (* Performs evaluation: *)
-  let env = evaluate_bindings ~run_tests env codebinds in
+  let env = evaluate_bindings display_config ~is_bytecomp_mode ~run_tests env codebinds in
   let ast_doc = unlift_code code_doc in
-  eval_document_file env ast_doc abspath_out abspath_dump
-
-
-let convert_abs_path_to_show (abspath : abs_path) : string =
-  let abspathstr = get_abs_path_string abspath in
-  if OptionState.does_show_full_path () then
-    abspathstr
-  else
-    Filename.basename abspathstr
+  eval_document_file display_config pdf_config ~page_number_limit ~is_bytecomp_mode output_mode env ast_doc abspath_out abspath_dump
 
 
 type line =
@@ -936,16 +958,16 @@ let report_document_attribute_error : DocumentAttribute.error -> unit = function
       ]
 
 
-let report_config_error : config_error -> unit = function
+let report_config_error (display_config : Logging.config) : config_error -> unit = function
   | NotADocumentFile(abspath_in, ty) ->
-      let fname = convert_abs_path_to_show abspath_in in
+      let fname = Logging.show_path display_config abspath_in in
       report_error Typechecker [
         NormalLine(Printf.sprintf "file '%s' is not a document file; it is of type" fname);
         DisplayLine(Display.show_mono_type ty);
       ]
 
   | NotAStringFile(abspath_in, ty) ->
-      let fname = convert_abs_path_to_show abspath_in in
+      let fname = Logging.show_path display_config abspath_in in
       report_error Typechecker [
         NormalLine(Printf.sprintf "file '%s' is not a file for generating text; it is of type" fname);
         DisplayLine(Display.show_mono_type ty);
@@ -1285,36 +1307,36 @@ let report_config_error : config_error -> unit = function
       end
 
 
-let report_font_error : font_error -> unit = function
+let report_font_error (display_config : Logging.config) : font_error -> unit = function
   | FailedToReadFont(abspath, msg) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot load font file '%s';" fname);
         DisplayLine(msg);
       ]
 
   | FailedToDecodeFont(abspath, e) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot decode font file '%s';" fname);
         NormalLine(Format.asprintf "%a" Otfed.Decode.Error.pp e);
       ]
 
   | FailedToMakeSubset(abspath, e) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot make a subset of font file '%s';" fname);
         NormalLine(Format.asprintf "%a" Otfed.Subset.Error.pp e);
       ]
 
   | NotASingleFont(abspath) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "the font file '%s' is not a single font file." fname);
       ]
 
   | NotAFontCollectionElement(abspath, index) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection." fname index);
       ]
@@ -1329,32 +1351,32 @@ let report_font_error : font_error -> unit = function
         (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
 
   | NoMathTable(abspath) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "font file '%s' does not have a 'MATH' table." fname);
       ]
 
   | PostscriptNameNotFound(abspath) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "font file '%s' does not have a PostScript name." fname);
       ]
 
   | CannotFindUnicodeCmap(abspath) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "font file '%s' does not have a 'cmap' subtable for Unicode code points." fname);
       ]
 
   | CollectionIndexOutOfBounds{ path; index; num_elements } ->
-      let fname = convert_abs_path_to_show path in
+      let fname = Logging.show_path display_config path in
       report_error Interface [
         NormalLine(Printf.sprintf "%d: index out of bounds;" index);
         NormalLine(Printf.sprintf "font file '%s' has %d elements." fname num_elements);
       ]
 
 
-let error_log_environment (suspended : unit -> unit) : unit =
+let error_log_environment (display_config : Logging.config) (suspended : unit -> unit) : unit =
   try
     suspended ()
   with
@@ -1400,34 +1422,34 @@ let error_log_environment (suspended : unit -> unit) : unit =
       ]
 
   | ConfigError(e) ->
-      report_config_error e
+      report_config_error display_config e
 
   | FontInfo.FontInfoError(e) ->
-      report_font_error e
+      report_font_error display_config e
 
   | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot load PDF file '%s' page #%d;" fname pageno);
         DisplayLine(msg);
       ]
 
   | ImageHashTable.CannotLoadImage(msg, abspath) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot load image file '%s';" fname);
         DisplayLine(msg);
       ]
 
   | ImageHashTable.ImageOfWrongFileType(abspath) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot load image file '%s';" fname);
         DisplayLine("This file format is not supported.");
       ]
 
   | ImageHashTable.UnsupportedColorModel(_, abspath) ->
-      let fname = convert_abs_path_to_show abspath in
+      let fname = Logging.show_path display_config abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot load image file '%s';" fname);
         DisplayLine("This color model is not supported.");
@@ -1533,7 +1555,7 @@ let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
   make_abs_path abspath_str
 
 
-let get_candidate_file_extensions (output_mode : OptionState.output_mode) =
+let get_candidate_file_extensions (output_mode : output_mode) =
   match output_mode with
   | PdfMode           -> [ ".satyh"; ".satyg" ]
   | TextMode(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
@@ -1558,10 +1580,10 @@ let get_input_kind_from_extension (abspathstr_in : string) =
   | ext     -> Error(ext)
 
 
-let check_depended_packages ~(use_test_only_lock : bool) ~(library_root : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
+let check_depended_packages (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_lock : bool) ~(library_root : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
   (* Resolve dependency among locked packages: *)
   let sorted_packages =
-    match ClosedLockDependencyResolver.main ~use_test_only_lock ~library_root ~extensions lock_config with
+    match ClosedLockDependencyResolver.main display_config ~use_test_only_lock ~library_root ~extensions lock_config with
     | Ok(sorted_packages) -> sorted_packages
     | Error(e)            -> raise (ConfigError(e))
   in
@@ -1575,7 +1597,7 @@ let check_depended_packages ~(use_test_only_lock : bool) ~(library_root : abs_pa
         | UTFontPackage{ main_module_name; _ }    -> main_module_name
       in
       let (ssig, libs) =
-        match PackageChecker.main tyenv_prim genv package with
+        match PackageChecker.main display_config typecheck_config tyenv_prim genv package with
         | Ok(pair) -> pair
         | Error(e) -> raise (ConfigError(e))
       in
@@ -1598,8 +1620,8 @@ let make_document_lock_config_path (basename_without_extension : string) =
 
 let make_output_mode text_mode_formats_str_opt =
   match text_mode_formats_str_opt with
-  | None    -> OptionState.PdfMode
-  | Some(s) -> OptionState.TextMode(String.split_on_char ',' s)
+  | None    -> PdfMode
+  | Some(s) -> TextMode(String.split_on_char ',' s)
 
 
 let load_lock_config (abspath_lock_config : abs_path) : LockConfig.t =
@@ -1608,10 +1630,14 @@ let load_lock_config (abspath_lock_config : abs_path) : LockConfig.t =
   | Error(e)        -> raise (ConfigError(e))
 
 
-let load_package ~(use_test_files : bool) ~(extensions : string list) (abspath_in : abs_path) =
-  match PackageReader.main ~use_test_files ~extensions abspath_in with
+let load_package (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (abspath_in : abs_path) =
+  match PackageReader.main display_config ~use_test_files ~extensions abspath_in with
   | Ok(pair) -> pair
   | Error(e) -> raise (ConfigError(e))
+
+
+let get_job_directory (abspath : abs_path) : string =
+  Filename.dirname (get_abs_path_string abspath)
 
 
 let build
@@ -1630,35 +1656,37 @@ let build
     ~(bytecomp : bool)
     ~(no_default_config : bool)
 =
-  error_log_environment (fun () ->
+  let display_config = Logging.{ show_full_path } in
+  error_log_environment display_config (fun () ->
     let curdir = Sys.getcwd () in
 
     let input_file = make_absolute_if_relative ~origin:curdir fpath_in in
+    let job_directory = get_job_directory input_file in
     let output_file = fpath_out_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
     let output_mode = make_output_mode text_mode_formats_str_opt in
-    OptionState.set OptionState.{
-      command_state =
-        BuildState{
-          input_file;
-          output_file;
-          output_mode;
-          page_number_limit;
-          debug_show_bbox;
-          debug_show_space;
-          debug_show_block_bbox;
-          debug_show_block_space;
-          debug_show_overfull;
-          type_check_only;
-          bytecomp;
-        };
-      extra_config_paths;
-      show_full_path;
-      no_default_config;
-    };
+    let typecheck_config =
+      {
+        is_text_mode =
+          match output_mode with
+          | PdfMode     -> false
+          | TextMode(_) -> true
+      }
+    in
+    let pdf_config =
+      HandlePdf.{
+        debug_show_bbox;
+        debug_show_space;
+        debug_show_block_bbox;
+        debug_show_block_space;
+        debug_show_overfull;
+      }
+    in
+    let runtime_config = { job_directory } in
 
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
     let abspath_in = input_file in
+    let is_bytecomp_mode = bytecomp in
     let build_input =
       let abspathstr_in = get_abs_path_string abspath_in in
       if Sys.is_directory abspathstr_in then
@@ -1693,23 +1721,23 @@ let build
     in
 
     let extensions = get_candidate_file_extensions output_mode in
-    let (tyenv_prim, env) = initialize () in
+    let (tyenv_prim, env) = initialize ~is_bytecomp_mode output_mode runtime_config in
 
     match build_input with
     | PackageBuildInput{
         lock = abspath_lock_config;
       } ->
-        Logging.lock_config_file abspath_lock_config;
+        Logging.lock_config_file display_config abspath_lock_config;
         let lock_config = load_lock_config abspath_lock_config in
 
-        let (_config, package) = load_package ~use_test_files:false ~extensions abspath_in in
+        let (_config, package) = load_package display_config ~use_test_files:false ~extensions abspath_in in
 
         let (genv, _configenv, _libs_dep) =
-          check_depended_packages ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
+          check_depended_packages display_config typecheck_config ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
         in
 
         begin
-          match PackageChecker.main tyenv_prim genv package with
+          match PackageChecker.main display_config typecheck_config tyenv_prim genv package with
           | Ok((_ssig, _libs)) -> ()
           | Error(e)           -> raise (ConfigError(e))
         end
@@ -1720,28 +1748,28 @@ let build
         out  = abspath_out;
         dump = abspath_dump;
       } ->
-        Logging.lock_config_file abspath_lock_config;
+        Logging.lock_config_file display_config abspath_lock_config;
         let lock_config = load_lock_config abspath_lock_config in
 
-        Logging.target_file abspath_out;
+        Logging.target_file display_config abspath_out;
 
         let dump_file_exists = CrossRef.initialize abspath_dump in
-        Logging.dump_file ~already_exists:dump_file_exists abspath_dump;
+        Logging.dump_file display_config ~already_exists:dump_file_exists abspath_dump;
 
         let (genv, configenv, libs) =
-          check_depended_packages ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
+          check_depended_packages display_config typecheck_config ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
         in
 
         (* Resolve dependency of the document and the local source files: *)
         let (sorted_locals, utdoc) =
-          match OpenFileDependencyResolver.main ~extensions input_kind configenv abspath_in with
+          match OpenFileDependencyResolver.main display_config ~extensions input_kind configenv abspath_in with
           | Ok(pair) -> pair
           | Error(e) -> raise (ConfigError(e))
         in
 
         (* Typechecking and elaboration: *)
         let (libs_local, ast_doc) =
-          match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+          match PackageChecker.main_document display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
           | Ok(pair) -> pair
           | Error(e) -> raise (ConfigError(e))
         in
@@ -1749,7 +1777,7 @@ let build
         if type_check_only then
           ()
         else
-          preprocess_and_evaluate ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
+          preprocess_and_evaluate display_config pdf_config ~page_number_limit ~is_bytecomp_mode output_mode ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
   )
 
 
@@ -1770,22 +1798,24 @@ let test
     ~(show_full_path : bool)
     ~(no_default_config : bool)
 =
-  error_log_environment (fun () ->
+  let display_config = Logging.{ show_full_path } in
+  error_log_environment display_config (fun () ->
     let curdir = Sys.getcwd () in
 
     let input_file_to_test = make_absolute_if_relative ~origin:curdir fpath_in in
+    let job_directory = get_job_directory input_file_to_test in
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
     let output_mode_to_test = make_output_mode text_mode_formats_str_opt in
-    OptionState.set OptionState.{
-      command_state =
-        TestState{
-          input_file_to_test;
-          output_mode_to_test;
-        };
-      extra_config_paths;
-      show_full_path;
-      no_default_config;
-    };
+    let bytecomp = false in
+    let typecheck_config =
+      {
+        is_text_mode =
+          match output_mode_to_test with
+          | PdfMode     -> false
+          | TextMode(_) -> true
+      }
+    in
+    let runtime_config = { job_directory } in
 
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
     let abspath_in = input_file_to_test in
@@ -1814,58 +1844,58 @@ let test
     in
 
     let extensions = get_candidate_file_extensions output_mode_to_test in
-    let (tyenv_prim, env) = initialize () in
+    let (tyenv_prim, env) = initialize ~is_bytecomp_mode:bytecomp output_mode_to_test runtime_config in
 
     begin
       match test_input with
       | PackageTestInput{
           lock = abspath_lock_config;
         } ->
-          Logging.lock_config_file abspath_lock_config;
+          Logging.lock_config_file display_config abspath_lock_config;
           let lock_config = load_lock_config abspath_lock_config in
 
-          let (_config, package) = load_package ~use_test_files:true ~extensions abspath_in in
+          let (_config, package) = load_package display_config ~use_test_files:true ~extensions abspath_in in
 
           let (genv, _configenv, _libs_dep) =
-            check_depended_packages ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
+            check_depended_packages display_config typecheck_config ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
           in
 
           let libs =
-            match PackageChecker.main tyenv_prim genv package with
+            match PackageChecker.main display_config typecheck_config tyenv_prim genv package with
             | Ok((_ssig, libs)) -> libs
             | Error(e)          -> raise (ConfigError(e))
           in
-          let (env, codebinds) = preprocess_bindings ~run_tests:true env libs in
-          let _env = evaluate_bindings ~run_tests:true env codebinds in
+          let (env, codebinds) = preprocess_bindings display_config ~run_tests:true env libs in
+          let _env = evaluate_bindings display_config ~run_tests:true env codebinds in
           ()
 
       | DocumentTestInput{
           kind = input_kind;
           lock = abspath_lock_config;
         } ->
-          Logging.lock_config_file abspath_lock_config;
+          Logging.lock_config_file display_config abspath_lock_config;
           let lock_config = load_lock_config abspath_lock_config in
 
           let (genv, configenv, libs) =
-            check_depended_packages ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
+            check_depended_packages display_config typecheck_config ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
           in
 
           (* Resolve dependency of the document and the local source files: *)
           let (sorted_locals, utdoc) =
-            match OpenFileDependencyResolver.main ~extensions input_kind configenv abspath_in with
+            match OpenFileDependencyResolver.main display_config ~extensions input_kind configenv abspath_in with
             | Ok(pair) -> pair
             | Error(e) -> raise (ConfigError(e))
           in
 
           (* Typechecking and elaboration: *)
           let (libs_local, _ast_doc) =
-            match PackageChecker.main_document tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+            match PackageChecker.main_document display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
             | Ok(pair) -> pair
             | Error(e) -> raise (ConfigError(e))
           in
           let libs = List.append libs libs_local in
-          let (env, codebinds) = preprocess_bindings ~run_tests:true env libs in
-          let _env = evaluate_bindings ~run_tests:true env codebinds in
+          let (env, codebinds) = preprocess_bindings display_config ~run_tests:true env libs in
+          let _env = evaluate_bindings display_config ~run_tests:true env codebinds in
           ()
     end;
     let test_results = State.get_all_test_results () in
@@ -1932,9 +1962,9 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
   (lock_config, Alist.to_list impl_spec_acc)
 
 
-let extract_attributes_from_document_file (input_kind : input_kind) (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
+let extract_attributes_from_document_file (display_config : Logging.config) (input_kind : input_kind) (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
   let open ResultMonad in
-  Logging.begin_to_parse_file abspath_in;
+  Logging.begin_to_parse_file display_config abspath_in;
   match input_kind with
   | InputSatysfi ->
       let* utsrc =
@@ -1995,17 +2025,11 @@ let solve
     ~(config_paths_str_opt : string option)
     ~(no_default_config : bool)
 =
-  error_log_environment (fun () ->
+  let display_config = Logging.{ show_full_path } in
+  error_log_environment display_config (fun () ->
     let curdir = Sys.getcwd () in
 
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
-
-    OptionState.set OptionState.{
-      command_state = SolveState;
-      extra_config_paths;
-      show_full_path;
-      no_default_config;
-    };
 
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
     let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
@@ -2071,7 +2095,7 @@ let solve
             lock = abspath_lock_config;
           } ->
             let* DocumentAttribute.{ registry_specs; dependencies } =
-              extract_attributes_from_document_file input_kind abspath_in
+              extract_attributes_from_document_file display_config input_kind abspath_in
             in
             let dependencies_with_flags = dependencies |> List.map (fun dep -> (SourceDependency, dep)) in
             return (dependencies_with_flags, abspath_lock_config, registry_specs)
@@ -2142,7 +2166,7 @@ let solve
                   ~wget_command ~tar_command ~unzip_command ~library_root impl_spec
               ) ()
             in
-            LockConfig.write abspath_lock_config lock_config;
+            LockConfig.write display_config abspath_lock_config lock_config;
             return ()
       end
     in
