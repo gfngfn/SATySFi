@@ -15,25 +15,25 @@ type graph = untyped_library_file FileDependencyGraph.t
 type vertex = FileDependencyGraph.Vertex.t
 
 type local_or_package =
-  | Local   of module_name ranged * abs_path
-  | Package of module_name ranged
+  | Local   of module_name_chain ranged * abs_path
+  | Package of module_name_chain ranged
 
 
 let get_header (extensions : string list) (curdir : string) (headerelem : header_element) : local_or_package ok =
   let open ResultMonad in
   match headerelem with
-  | HeaderUsePackage{ module_name = modident; _ } ->
-      return @@ Package(modident)
+  | HeaderUsePackage{ mod_chain; _ } ->
+      return @@ Package(mod_chain)
 
-  | HeaderUse{ module_name = modident; _ } ->
-      err @@ CannotUseHeaderUse(modident)
+  | HeaderUse{ mod_chain; _ } ->
+      err @@ CannotUseHeaderUse(mod_chain)
 
-  | HeaderUseOf{ module_name = modident; path = s_relpath; _ } ->
+  | HeaderUseOf{ mod_chain; path = s_relpath; _ } ->
       let* abspath =
         Config.resolve_local ~extensions ~origin:curdir ~relative:s_relpath
           |> Result.map_error (fun candidates -> LocalFileNotFound{ relative = s_relpath; candidates })
       in
-      return @@ Local(modident, abspath)
+      return @@ Local(mod_chain, abspath)
 
 
 let rec register_library_file (display_config : Logging.config) (extensions : string list) (graph : graph) ~prev:(vertex_prev_opt : vertex option) (abspath : abs_path) : graph ok =
@@ -150,7 +150,7 @@ let register_markdown_file (display_config : Logging.config) (configenv : Packag
   in
   let utast = MarkdownParser.convert cmdrcd md in
   let header =
-    [ HeaderUsePackage{ opening = false; module_name = (Range.dummy "md-header", main_module_name_class) } ]
+    [ HeaderUsePackage{ opening = false; mod_chain = (Range.dummy "md-header", ((Range.dummy "md-header", main_module_name_class), [])) } ]
   in
   let utdoc = ([], header, utast) in
   return utdoc

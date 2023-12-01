@@ -18,12 +18,11 @@
   ],
 |)]
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Math
 use package open Proof
 use package open Tabular
 use package open StdJa
-
-let open Pervasives in
 
 let math ctx \overwrite mf ma mb =
   read-math ctx ${#mf\sqbracket{#ma \mapsto #mb}}

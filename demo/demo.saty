@@ -20,6 +20,7 @@
   ],
 |)]
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Math
 use package open Annot
 use package open Code
@@ -29,7 +30,6 @@ use package Tabular
 use package open StdJaBook
 use open Local of `./local`
 
-let open Pervasives in
 document ?(
   show-toc = true,
 ) (|

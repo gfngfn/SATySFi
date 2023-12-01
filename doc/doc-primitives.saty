@@ -16,14 +16,13 @@
     (| name = `std-ja-book`, registry = `default`, requirement = `^0.0.1` |),
   ],
 |)]
-use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Math
 use package open Itemize
 use package open StdJaBook
 use open Local of `local`
 use open LocalMath of `local-math`
 
-let open Pervasives in
 document ?(
   show-toc = true,
 ) (|

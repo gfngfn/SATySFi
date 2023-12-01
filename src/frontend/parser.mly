@@ -374,15 +374,15 @@ main_lib:
       { (modident, utsig_opt, utbinds) }
 ;
 headerelem:
-  | USE; PACKAGE; opening=optional_open; modident=UPPER
-     { HeaderUsePackage{ opening; module_name = modident } }
-  | USE; opening=optional_open; modident=UPPER
-     { HeaderUse{ opening; module_name = modident } }
-  | USE; opening=optional_open; modident=UPPER; OF; tok=STRING
+  | USE; PACKAGE; opening=optional_open; mod_chain=mod_chain
+     { HeaderUsePackage{ opening; mod_chain } }
+  | USE; opening=optional_open; mod_chain=mod_chain
+     { HeaderUse{ opening; mod_chain } }
+  | USE; opening=optional_open; mod_chain=mod_chain; OF; tok=STRING
      {
        let (_rng, str, pre, post) = tok in
        let s = omit_spaces pre post str in
-       HeaderUseOf{ opening; module_name = modident; path = s }
+       HeaderUseOf{ opening; mod_chain; path = s }
      }
 ;
 optional_open:

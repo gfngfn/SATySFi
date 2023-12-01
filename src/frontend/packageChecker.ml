@@ -3,6 +3,7 @@ open MyUtil
 open Types
 open StaticEnv
 open ConfigError
+open TypeError
 
 type 'a ok = ('a, config_error) result
 
@@ -14,37 +15,52 @@ let add_dependency_to_type_environment ~(package_only : bool) (header : header_e
   header |> foldM (fun tyenv headerelem ->
     let opt =
       match headerelem with
-      | HeaderUse{ opening; module_name = modident }
-      | HeaderUseOf{ opening; module_name = modident; _ } ->
+      | HeaderUse{ opening; mod_chain }
+      | HeaderUseOf{ opening; mod_chain; _ } ->
           if package_only then
             None
           else
-            Some((LocalDependency, opening, modident))
+            Some((LocalDependency, opening, mod_chain))
 
-      | HeaderUsePackage{ opening; module_name = modident } ->
-          Some((PackageDependency, opening, modident))
+      | HeaderUsePackage{ opening; mod_chain } ->
+          Some((PackageDependency, opening, mod_chain))
     in
     match opt with
     | None ->
         return tyenv
 
-    | Some((kind, opening, (rng, modnm))) ->
+    | Some((kind, opening, (rng, ((rng0, modnm0), modidents)))) ->
         begin
-          match (kind, genv |> GlobalTypeenv.find_opt modnm) with
+          match (kind, genv |> GlobalTypeenv.find_opt modnm0) with
           | (LocalDependency, None) ->
               assert false (* Local dependency must be resolved beforehand. *)
 
           | (PackageDependency, None) ->
-              err @@ UnknownPackageDependency(rng, modnm)
+              err @@ UnknownPackageDependency(rng0, modnm0)
 
           | (_, Some(ssig)) ->
-              let mentry = { mod_signature = ConcStructure(ssig) } in
+              let mentry0 = { mod_signature = ConcStructure(ssig) } in
+              let modnm =
+                match List.rev modidents with
+                | [] -> modnm0
+                | (_, modnm) :: _ -> modnm
+              in
+              let* mentry =
+                match TypecheckUtil.resolve_module_chain mentry0 modidents with
+                | Ok mentry -> return mentry
+                | Error(e) -> err @@ TypeError(e)
+              in
               let tyenv = tyenv |> Typeenv.add_module modnm mentry in
-              let tyenv =
+              let* tyenv =
                 if opening then
-                  tyenv |> TypecheckUtil.add_to_type_environment_by_signature ssig
+                  let* ssig =
+                    match mentry.mod_signature with
+                    | ConcStructure(ssig) -> return ssig
+                    | ConcFunctor(fsig) -> err @@ TypeError(NotAStructureSignature(rng, fsig))
+                  in
+                  return (tyenv |> TypecheckUtil.add_to_type_environment_by_signature ssig)
                 else
-                  tyenv
+                  return tyenv
               in
               return tyenv
         end

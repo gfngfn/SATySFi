@@ -16,11 +16,11 @@
   ],
 |)]
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open StdJa
 use package open Math
 use open LocalMath of `local-math`
 
-let open Pervasives in
 document (|
   title = {\SATySFi;言語仕様},
   author = {Takashi SUWA},

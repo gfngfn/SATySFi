@@ -48,9 +48,8 @@ let find_module (tyenv : Typeenv.t) ((rng, modnm) : module_name ranged) : module
       return mentry
 
 
-let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry ok =
+let resolve_module_chain (mentry0 : module_entry) (modidents : (module_name ranged) list) : module_entry ok =
   let open ResultMonad in
-  let* mentry0 = find_module tyenv modident0 in
   modidents |> foldM (fun mentry (rng, modnm) ->
     match mentry.mod_signature with
     | ConcFunctor(fsig) ->
@@ -66,6 +65,12 @@ let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_
               return mentry
         end
   ) mentry0
+
+
+let find_module_chain (tyenv : Typeenv.t) ((modident0, modidents) : module_name_chain) : module_entry ok =
+  let open ResultMonad in
+  let* mentry0 = find_module tyenv modident0 in
+  resolve_module_chain mentry0 modidents
 
 
 let add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t) : Typeenv.t =
