@@ -1,7 +1,7 @@
-use package open Stdlib.List
-use package open Stdlib.Color
-use package open Stdlib.HDecoSet
-use package open Stdlib.VDecoSet
+use package Stdlib.List
+use package Stdlib.Color
+use package Stdlib.HDecoSet
+use package Stdlib.VDecoSet
 use package Math
 use package Code
 use package StdJaBook
