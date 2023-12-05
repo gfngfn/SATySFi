@@ -53,8 +53,8 @@ type config_error =
   | CannotReadFileOwingToSystem     of string
   | LibraryContainsWholeReturnValue of abs_path
   | DocumentLacksWholeReturnValue   of abs_path
-  | CannotUseHeaderUse              of module_name ranged
-  | CannotUseHeaderUseOf            of module_name ranged
+  | CannotUseHeaderUse              of module_name_chain ranged
+  | CannotUseHeaderUseOf            of module_name_chain ranged
   | FailedToParse                   of parse_error
   | MainModuleNameMismatch of {
       expected : module_name;

@@ -1,15 +1,12 @@
-use package Stdlib
+use package Stdlib.List
+use package Stdlib.Color
+use package Stdlib.HDecoSet
+use package Stdlib.VDecoSet
 use package Math
 use package Code
 use package StdJaBook
 
 module Local = struct
-
-  %- TODO: remove this by using 'open'
-  module List = Stdlib.List
-  module Color = Stdlib.Color
-  module HDecoSet = Stdlib.HDecoSet
-  module VDecoSet = Stdlib.VDecoSet
 
 
   val inline ctx \gray inner =

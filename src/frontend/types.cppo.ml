@@ -50,22 +50,6 @@ type input_position = {
 }
 [@@deriving show { with_path = false }]
 
-type header_element =
-  | HeaderUsePackage of {
-      opening     : bool;
-      module_name : module_name ranged;
-    }
-  | HeaderUse of {
-      opening     : bool;
-      module_name : module_name ranged;
-    }
-  | HeaderUseOf of {
-      opening     : bool;
-      module_name : module_name ranged;
-      path        : string;
-    }
-[@@deriving show { with_path = false }]
-
 type quantifiability = Quantifiable | Unquantifiable
 [@@deriving show]
 
@@ -364,6 +348,22 @@ type untyped_macro_parameter =
 type module_name_chain =
   module_name ranged * (module_name ranged) list
 [@@deriving show { with_path = false; } ]
+
+type header_element =
+  | HeaderUsePackage of {
+      opening   : bool;
+      mod_chain : module_name_chain ranged;
+    }
+  | HeaderUse of {
+      opening   : bool;
+      mod_chain : module_name_chain ranged;
+    }
+  | HeaderUseOf of {
+      opening   : bool;
+      mod_chain : module_name_chain ranged;
+      path      : string;
+    }
+[@@deriving show { with_path = false }]
 
 type untyped_binding =
   untyped_binding_main ranged
