@@ -1,0 +1,109 @@
+use package open Stdlib
+
+module FootnoteScheme :> sig
+  val initialize : unit -> unit
+  val start-page : unit -> unit
+  val main : context -> (int -> inline-boxes) -> (int -> block-boxes) -> inline-boxes
+  val main-no-number : context -> (unit -> inline-boxes) -> (unit -> block-boxes) -> inline-boxes
+end = struct
+
+  val mutable footnote-ref <- 0
+  val mutable first-footnote <- true
+
+
+  val bar-ratio = 0.5
+
+
+  val start-page () =
+    first-footnote <- true
+
+
+  val generate-footnote-label n =
+    `footnote:` ^ (arabic n)
+
+
+  val initialize () =
+    register-cross-reference `changed` `F`
+
+
+  val promote-another-trial () =
+    register-cross-reference `changed` `T`
+
+
+  type info =
+    | Numbered    of (int -> inline-boxes) * (int -> block-boxes)
+    | NonNumbered of (unit -> inline-boxes) * (unit -> block-boxes)
+
+
+  val main-scheme ctx info =
+    let size = get-font-size ctx in
+    let (label, ib-num, bb) =
+      match info with
+      | Numbered(ibf, bbf) ->
+          let () = footnote-ref <- !footnote-ref + 1 in
+          let num = !footnote-ref in
+          let label = generate-footnote-label num in
+          let it-num = embed-string (arabic num) in
+          let ib-num = ibf num in
+          let bb = bbf num in
+          (label, ib-num, bb)
+
+      | NonNumbered(ibk, bbk) ->
+          let ib-num = ibk () in
+          let bb = bbk () in
+          (`(non-numbered)`, ib-num, bb)
+      end
+    in
+    let bb-before =
+      match get-cross-reference label with
+      | Some(`T`) ->
+          let () = display-message (`'` ^ label ^ `': T`) in  % for debug
+          let bar-top-margin = size in
+          let bar-bottom-margin = size *' 0.125 in
+          let wid = get-text-width ctx *' bar-ratio in
+          let ib =
+            inline-graphics wid bar-top-margin bar-bottom-margin (fun (x, y) ->
+              stroke 0.5pt Color.black (Gr.line (x, y) (x +' wid, y))
+            ) ++ inline-fil
+          in
+          line-break false false (ctx |> set-paragraph-margin 0pt 0pt) ib
+
+      | _ ->
+          let () = display-message (`'` ^ label ^ `': F`) in  % for debug
+          block-skip (size *' 0.5)
+      end
+    in
+      Pervasives.no-break
+        (add-footnote (bb-before +++ bb) ++ ib-num
+          ++ hook-page-break (fun _ _ -> (
+            let () =
+              if !first-footnote then
+                match get-cross-reference label with
+                | Some(`T`) ->
+                    ()
+
+                | _ ->
+                    let () = promote-another-trial () in
+                    register-cross-reference label `T`
+                end
+              else
+                match get-cross-reference label with
+                | Some(`F`) ->
+                    ()
+
+                | _ ->
+                    let () = promote-another-trial () in
+                    register-cross-reference label `F`
+                end
+            in
+            first-footnote <- false)))
+
+
+  val main ctx ibf bbf =
+    main-scheme ctx (Numbered(ibf, bbf))
+
+
+  val main-no-number ctx ibk bbk =
+    main-scheme ctx (NonNumbered(ibk, bbk))
+
+end

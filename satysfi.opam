@@ -26,6 +26,7 @@ depends: [
   "camlpdf" {= "2.3.1+satysfi"}
   "cmdliner" {>= "1.1.1"}
   "core_kernel" {>= "v0.15"}
+  "core_unix" {>= "v0.15"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "dune" {build}
   "menhir"
@@ -35,9 +36,13 @@ depends: [
   "re" {build}
   "uutf"
   "yojson-with-position" {= "1.4.2+satysfi"}
-  "omd" {< "2.0.0~"}
+  "omd" {= "2.0.0~alpha3"}
   "ocamlgraph"
   "alcotest" {with-test & >= "1.4.0"}
+  "yaml" {>= "2.1.0"}
+  "0install-solver" {>= "2.0" & < "3.0"}
+  "semver2" {>= "1.2.0"}
+  "uri" {>= "4.2.0"}
 ]
 synopsis: "A statically-typed, functional typesetting system"
 description: """

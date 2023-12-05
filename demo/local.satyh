@@ -1,10 +1,13 @@
-@require: stdjabook
-@require: hdecoset
-@require: vdecoset
-@require: code
-
+use package Stdlib.List
+use package Stdlib.Color
+use package Stdlib.HDecoSet
+use package Stdlib.VDecoSet
+use package Math
+use package Code
+use package StdJaBook
 
 module Local = struct
+
 
   val inline ctx \gray inner =
     let pads-code = (2pt, 2pt, 2pt, 2pt) in

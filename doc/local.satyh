@@ -1,10 +1,8 @@
-@require: pervasives
-@require: math
-@require: stdjabook
-@require: vdecoset
-@require: hdecoset
-
-@import: paren
+use package open Stdlib
+use package Math
+use package StdJaBook
+use package FontLatinModern
+use LocalParen of `paren`
 
 module Local = struct
 
@@ -172,7 +170,7 @@ module Local = struct
 
   val name-context ctx =
     ctx |> set-dominant-narrow-script Latin
-        |> set-font Latin (`lmmono`, 1., 0.)
+        |> set-font Latin (FontLatinModern.mono, 1., 0.)
         |> set-text-color Color.red
 
 

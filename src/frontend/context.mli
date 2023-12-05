@@ -19,7 +19,7 @@ val is_in_base_level : t -> bool
 
 val font_size : t -> length
 
-val math_font_abbrev : t -> HorzBox.math_font_abbrev
+val math_font_key_exn : t -> FontKey.t
 
 val get_math_constants : t -> FontFormat.math_constants
 

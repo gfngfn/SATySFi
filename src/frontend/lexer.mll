@@ -144,17 +144,6 @@ rule lex_program stack = parse
         comment lexbuf;
         lex_program stack lexbuf
       }
-  | ("@" (lower as headertype) ":" (" "*) (nonbreak* as content) (break | eof))
-      {
-        let pos = get_pos lexbuf in
-        increment_line lexbuf;
-        match headertype with
-        | "require" -> HEADER_REQUIRE(pos, content)
-        | "import"  -> HEADER_IMPORT(pos, content)
-
-        | _ ->
-            raise (LexError(pos, "undefined header type '" ^ headertype ^ "'"))
-      }
   | space
       { lex_program stack lexbuf }
   | break
@@ -202,6 +191,8 @@ rule lex_program stack = parse
         Stack.push MathState stack;
         L_MATH_TEXT(get_pos lexbuf)
       }
+  | ("#[" (lower as s))
+      { Stack.push ProgramState stack; ATTRIBUTE_L_SQUARE(get_pos lexbuf, s) }
   | "`"+
       {
         let pos_start = get_pos lexbuf in
@@ -342,6 +333,7 @@ rule lex_program stack = parse
         | "mutable"   -> MUTABLE(pos)
         | "of"        -> OF(pos)
         | "open"      -> OPEN(pos)
+        | "package"   -> PACKAGE(pos)
         | "persistent"-> PERSISTENT(pos)
         | "rec"       -> REC(pos)
         | "sig"       -> SIG(pos)
@@ -350,6 +342,7 @@ rule lex_program stack = parse
         | "then"      -> THEN(pos)
         | "true"      -> TRUE(pos)
         | "type"      -> TYPE(pos)
+        | "use"       -> USE(pos)
         | "val"       -> VAL(pos)
         | "with"      -> WITH(pos)
         | _           -> LOWER(pos, tokstr)
@@ -360,6 +353,11 @@ rule lex_program stack = parse
         let s = Lexing.lexeme lexbuf in
         let (modidents, upper_ident) = split_module_list pos s in
         LONG_UPPER(pos, modidents, upper_ident)
+      }
+  | (upper as s) "."
+      {
+        let pos = get_pos lexbuf in
+        UPPER_DOT(pos, s)
       }
   | upper
       { UPPER(get_pos lexbuf, Lexing.lexeme lexbuf) }

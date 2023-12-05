@@ -1,4 +1,4 @@
-@require: math
+use package Math
 
 module LocalMath = struct
 

@@ -1,7 +1,4 @@
 
-open MyUtil
-
-
 let pp_set fold pp_elem ppf set =
   Format.fprintf ppf "@[<hv1>{";
   fold (fun k is_first ->

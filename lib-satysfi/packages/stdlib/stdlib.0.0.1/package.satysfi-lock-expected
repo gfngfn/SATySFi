@@ -1,0 +1,10 @@
+language: ^0.1.0
+locks:
+- name: registered.d9b4b850ab61a7b68961c6315048b351.testing.0.0.1
+  contents:
+    type: registered
+    registry_hash_value: d9b4b850ab61a7b68961c6315048b351
+    package_name: testing
+    version: 0.0.1
+  dependencies: []
+  test_only: true

@@ -40,18 +40,20 @@ let font_size ((ctx, _) : t)  =
   ctx.font_size
 
 
-let math_font_abbrev ((ctx, _) : t) =
-  ctx.math_font_abbrev
+let math_font_key_exn ((ctx, _) : t) =
+  match ctx.math_font_key with
+  | None          -> raise HorzBox.MathFontIsNotSet
+  | Some(mathkey) -> mathkey
 
 
 let get_math_constants (ictx : input_context) =
-  let mfabbrev = math_font_abbrev ictx in
-  FontInfo.get_math_constants mfabbrev
+  let mathkey = math_font_key_exn ictx in
+  FontInfo.get_math_constants mathkey
 
 
 let enter_script (ictx : t) : t =
-  let mfabbrev = math_font_abbrev ictx in
-  let mc = FontInfo.get_math_constants mfabbrev in
+  let mathkey = math_font_key_exn ictx in
+  let mc = FontInfo.get_math_constants mathkey in
   let (ctx, ctxsub) = ictx in
   let size = ctx.font_size in
   let ctx =
@@ -82,7 +84,7 @@ let is_in_base_level ((ctx, _) : t) =
 
 let get_math_string_info (ictx : t) : HorzBox.math_string_info =
   {
-    info_math_font_abbrev = math_font_abbrev ictx;
-    info_math_font_size   = font_size ictx;
-    info_math_color       = color ictx;
+    info_math_font_key  = math_font_key_exn ictx;
+    info_math_font_size = font_size ictx;
+    info_math_color     = color ictx;
   }

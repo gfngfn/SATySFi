@@ -1,0 +1,54 @@
+use package open Stdlib
+
+module Annot :> sig
+  val \href : inline [?(border : length * color) string, inline-text]
+  val link-to-uri-frame : string -> option (length * color) -> deco-set
+  val link-to-location-frame : string -> option (length * color) -> deco-set
+  val register-location-frame : string -> deco-set
+end = struct
+
+  val link-to-uri-frame uri borderopt =
+    let deco (x, y) w h d =
+      let () = register-link-to-uri uri (x, y) w h d borderopt in
+      Gr.empty
+    in
+      (deco, deco, deco, deco)
+
+
+  val link-to-location-frame name borderopt =
+    let deco (x, y) w h d =
+      let () = register-link-to-location name (x, y) w h d borderopt in
+      Gr.empty
+    in
+    (deco, deco, deco, deco)
+
+
+  val inline ctx \href ?(border = borderopt) uri inner =
+    let ib = read-inline ctx inner in
+    let ibL =
+      match get-leftmost-script ib with
+      | Some(scriptL) -> script-guard scriptL inline-nil
+      | None          -> inline-nil
+      end
+    in
+    let ibR =
+      match get-rightmost-script ib with
+      | Some(scriptR) -> script-guard scriptR inline-nil
+      | None          -> inline-nil
+      end
+    in
+    let ib-frame =
+      inline-frame-breakable (0pt, 0pt, 0pt, 0pt) (link-to-uri-frame uri borderopt) ib
+    in
+    ibL ++ ib-frame ++ ibR
+
+
+  val register-location-frame key =
+    let decoR (x, y) w h d =
+      let () = register-destination key (x, y +' h) in
+      Gr.empty
+    in
+    let decoI _ _ _ _ = Gr.empty in
+    (decoR, decoR, decoI, decoI)
+
+end

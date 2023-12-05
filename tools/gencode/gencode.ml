@@ -112,6 +112,7 @@ let gen_interps_0 () =
       inst;
       params;
       needs_reducef;
+      needs_runtime_config;
       code_interp;
       code;
       _
@@ -137,6 +138,9 @@ let gen_interps_0 () =
       if needs_reducef then begin
         puts "      let reducef = reduce_beta_list in"
       end;
+      if needs_runtime_config then begin
+        puts "      let runtime_config = get_runtime_config env in"
+      end;
       puts "        begin";
       default code code_interp |> split_lines |> List.iter
         (puts "          %s");
@@ -160,6 +164,7 @@ let gen_vminstrs () =
       params;
       fields;
       needs_reducef;
+      needs_runtime_config;
       code;
       _
     } as def ->
@@ -219,6 +224,10 @@ let gen_vminstrs () =
       );
       if needs_reducef then begin
         puts "            let reducef = exec_application %s in"
+          Const.environment
+      end;
+      if needs_runtime_config then begin
+        puts "            let runtime_config = get_runtime_config %s in"
           Const.environment
       end;
       let print_code () =
