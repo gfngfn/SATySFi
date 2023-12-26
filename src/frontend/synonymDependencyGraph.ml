@@ -1,5 +1,6 @@
 
 open Types
+open DependencyGraph.Cycle
 
 module Impl = DependencyGraph.Make(String)
 

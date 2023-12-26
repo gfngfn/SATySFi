@@ -1,14 +1,16 @@
 
 open MyUtil
+open EnvelopeSystemBase
 open Types
 open StaticEnv
-open PackageSystemBase
 open ConfigError
 open FontError
 open TypeError
 
 
+(*
 exception NoLibraryRootDesignation
+*)
 exception ShouldSpecifyOutputFile
 exception UnexpectedExtension of string
 exception ConfigError of config_error
@@ -38,17 +40,12 @@ let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) (runtime_c
   EvalVarID.initialize ();
   StoreID.initialize ();
   FontInfo.initialize ();
-  let res =
+  let (tyenv, env) =
     match output_mode with
     | TextMode(_) ->
         Primitives.make_text_mode_environments runtime_config
     | PdfMode ->
         Primitives.make_pdf_mode_environments runtime_config
-  in
-  let (tyenv, env) =
-    match res with
-    | Ok(pair) -> pair
-    | Error(e) -> raise (ConfigError(e))
   in
   begin
     if is_bytecomp_mode then
@@ -817,78 +814,7 @@ let report_type_error = function
       ]
 
 
-let show_yaml_context (context : YamlDecoder.context) =
-  match context with
-  | [] ->
-      ""
-
-  | _ :: _ ->
-      let s_context =
-        let open YamlDecoder in
-        context |> List.map (function
-        | Field(field) -> Printf.sprintf ".%s" field
-        | Index(index) -> Printf.sprintf ".[%d]" index
-        ) |> String.concat ""
-      in
-      Printf.sprintf " (context: %s)" s_context
-
-
-let make_yaml_error_lines : yaml_error -> line list = function
-  | ParseError(s) ->
-      [ NormalLine(Printf.sprintf "parse error: %s" s) ]
-
-  | FieldNotFound(yctx, field) ->
-      [ NormalLine(Printf.sprintf "field '%s' not found%s" field (show_yaml_context yctx)) ]
-
-  | NotAFloat(yctx) ->
-      [ NormalLine(Printf.sprintf "not a float value%s" (show_yaml_context yctx)) ]
-
-  | NotAString(yctx) ->
-      [ NormalLine(Printf.sprintf "not a string value%s" (show_yaml_context yctx)) ]
-
-  | NotABool(yctx) ->
-      [ NormalLine(Printf.sprintf "not a Boolean value%s" (show_yaml_context yctx)) ]
-
-  | NotAnArray(yctx) ->
-      [ NormalLine(Printf.sprintf "not an array%s" (show_yaml_context yctx)) ]
-
-  | NotAnObject(yctx) ->
-      [ NormalLine(Printf.sprintf "not an object%s" (show_yaml_context yctx)) ]
-
-  | UnexpectedTag(yctx, tag) ->
-      [ NormalLine(Printf.sprintf "unexpected type tag '%s'%s" tag (show_yaml_context yctx)) ]
-
-  | UnexpectedLanguage(s_language_version) ->
-      [ NormalLine(Printf.sprintf "unexpected language version '%s'" s_language_version) ]
-
-  | NotASemanticVersion(yctx, s) ->
-      [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
-
-  | NotAVersionRequirement(yctx, s) ->
-      [ NormalLine(Printf.sprintf "not a version requirement: '%s'%s" s (show_yaml_context yctx)) ]
-
-  | InvalidPackageName(yctx, s) ->
-      [ NormalLine(Printf.sprintf "not a package name: '%s'%s" s (show_yaml_context yctx)) ]
-
-  | MultiplePackageDefinition{ context = yctx; package_name } ->
-      [ NormalLine(Printf.sprintf "More than one definition for package '%s'%s" package_name (show_yaml_context yctx)) ]
-
-  | DuplicateRegistryLocalName{ context = yctx; registry_local_name } ->
-      [ NormalLine(Printf.sprintf "More than one definition for registry local name '%s'%s" registry_local_name (show_yaml_context yctx)) ]
-
-  | DuplicateRegistryHashValue{ context = yctx; registry_hash_value } ->
-      [ NormalLine(Printf.sprintf "More than one definition for registry hash value '%s'%s" registry_hash_value (show_yaml_context yctx)) ]
-
-  | CannotBeUsedAsAName(yctx, s) ->
-      [ NormalLine(Printf.sprintf "'%s' cannot be used as a name%s" s (show_yaml_context yctx)) ]
-
-  | UnsupportedConfigFormat(format) ->
-      [ NormalLine(Printf.sprintf "unsupported config format '%s'" format) ]
-
-  | NotACommand{ context = yctx; prefix = _; string = s } ->
-      [ NormalLine(Printf.sprintf "not a command: '%s'%s" s (show_yaml_context yctx)) ]
-
-
+(*
 let report_document_attribute_error : DocumentAttribute.error -> unit = function
   | NoConfigArgument(rng) ->
       report_error Interface [
@@ -956,6 +882,7 @@ let report_document_attribute_error : DocumentAttribute.error -> unit = function
         NormalLine(Printf.sprintf "at %s:" (Range.to_string list_range));
         NormalLine(Printf.sprintf "this list has more than one registy named '%s'." registry_local_name);
       ]
+*)
 
 
 let module_name_chain_to_string (((_, modnm0), modidents) : module_name_chain) =
@@ -965,6 +892,12 @@ let module_name_chain_to_string (((_, modnm0), modidents) : module_name_chain) =
 
 
 let report_config_error (display_config : Logging.config) : config_error -> unit = function
+  | NotALibraryFile(abspath) ->
+      report_error Typechecker [
+        NormalLine("the following file is expected to be a library file, but is not:");
+        DisplayLine(get_abs_path_string abspath);
+      ]
+
   | NotADocumentFile(abspath_in, ty) ->
       let fname = Logging.show_path display_config abspath_in in
       report_error Typechecker [
@@ -1057,67 +990,29 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
         NormalLine(Printf.sprintf "main module name mismatch; expected '%s' but got '%s'." expected got);
       ]
 
-  | PackageDirectoryNotFound(candidate_paths) ->
+  | EnvelopeNameConflict(envelope_name) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "envelope name conflict: '%s'" envelope_name);
+      ]
+
+  | DependencyOnUnknownEnvelope{ depending; depended } ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "unknown depended envelope '%s' of '%s'." depended depending);
+      ]
+
+  | CyclicEnvelopeDependency(cycle) ->
+      let pairs =
+        match cycle with
+        | Loop(pair)   -> [ pair ]
+        | Cycle(pairs) -> pairs |> TupleList.to_list
+      in
       let lines =
-        candidate_paths |> List.map (fun path ->
-          DisplayLine(Printf.sprintf "- %s" path)
+        pairs |> List.map (fun (modnm, _lock) ->
+          DisplayLine(Printf.sprintf "- '%s'" modnm)
         )
       in
       report_error Interface
-        (NormalLine("cannot find package directory. candidates:") :: lines)
-
-  | PackageConfigNotFound(abspath) ->
-      report_error Interface [
-        NormalLine("cannot find a package config at:");
-        DisplayLine(get_abs_path_string abspath);
-      ]
-
-  | PackageConfigError(abspath, e) ->
-      report_error Interface (List.concat [
-        [ NormalLine(Printf.sprintf "in %s: package config error;" (get_abs_path_string abspath)) ];
-        make_yaml_error_lines e;
-      ])
-
-  | LockConfigNotFound(abspath) ->
-      report_error Interface [
-        NormalLine("cannot find a lock config at:");
-        DisplayLine(get_abs_path_string abspath);
-      ]
-
-  | LockConfigError(abspath, e) ->
-      report_error Interface (List.concat [
-        [ NormalLine(Printf.sprintf "in %s: lock config error;" (get_abs_path_string abspath)) ];
-        make_yaml_error_lines e;
-      ])
-
-  | RegistryConfigNotFound(abspath) ->
-      report_error Interface [
-        NormalLine("cannot find a registry config at:");
-        DisplayLine(get_abs_path_string abspath);
-      ]
-
-  | RegistryConfigNotFoundIn(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      report_error Interface (List.concat [
-        [ NormalLine(Printf.sprintf "cannot find a registry config '%s'. candidates:" (get_lib_path_string libpath)) ];
-        lines;
-      ])
-
-  | RegistryConfigError(abspath, e) ->
-      report_error Interface (List.concat [
-        [ NormalLine(Printf.sprintf "in %s: registry config error;" (get_abs_path_string abspath)) ];
-        make_yaml_error_lines e;
-      ])
-
-  | LibraryRootConfigNotFound(abspath) ->
-      report_error Interface [
-        NormalLine("cannot find a library root config at:");
-        DisplayLine(get_abs_path_string abspath);
-      ]
+        (NormalLine("the following envelopes are cyclic:") :: lines)
 
   | LibraryRootConfigNotFoundIn(libpath, candidates) ->
       let lines =
@@ -1130,60 +1025,6 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
         lines;
       ])
 
-  | LibraryRootConfigError(abspath, e) ->
-      report_error Interface (List.concat [
-        [ NormalLine(Printf.sprintf "in %s: library root config error;" (get_abs_path_string abspath)) ];
-        make_yaml_error_lines e;
-      ])
-
-  | LockNameConflict(lock_name) ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "lock name conflict: '%s'" lock_name);
-      ]
-
-  | LockedPackageNotFound(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      report_error Interface
-        (NormalLine(Printf.sprintf "package '%s' not found. candidates:" (get_lib_path_string libpath)) :: lines)
-
-  | DependencyOnUnknownLock{ depending; depended } ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "unknown depended lock '%s' of '%s'." depended depending);
-      ]
-
-  | CyclicLockDependency(cycle) ->
-      let pairs =
-        match cycle with
-        | Loop(pair)   -> [ pair ]
-        | Cycle(pairs) -> pairs |> TupleList.to_list
-      in
-      let lines =
-        pairs |> List.map (fun (modnm, _lock) ->
-          DisplayLine(Printf.sprintf "- '%s'" modnm)
-        )
-      in
-      report_error Interface
-        (NormalLine("the following packages are cyclic:") :: lines)
-
-  | NotALibraryFile(abspath) ->
-      report_error Interface [
-        NormalLine("the following file is expected to be a library file, but is not:");
-        DisplayLine(get_abs_path_string abspath);
-      ]
-
-  | CannotFindLibraryFile(libpath, candidate_paths) ->
-      let lines =
-        candidate_paths |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      report_error Interface
-        (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
-
   | LocalFileNotFound{ relative; candidates } ->
       let lines =
         candidates |> List.map (fun abspath ->
@@ -1192,127 +1033,6 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
       in
       report_error Interface
         (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
-
-  | CannotSolvePackageConstraints ->
-      report_error Interface [
-        NormalLine("cannot solve package constraints.");
-      ]
-
-  | DocumentAttributeError(e) ->
-      report_document_attribute_error e
-
-  | MarkdownClassNotFound(modnm) ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "package '%s' not found; required for converting Markdown documents." modnm);
-      ]
-
-  | NoMarkdownConversion(modnm) ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "package '%s' contains no Markdown conversion rule." modnm);
-      ]
-
-  | MoreThanOneMarkdownConversion(modnm) ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "package '%s' contains more than one Markdown conversion rule." modnm);
-      ]
-
-  | MarkdownError(e) ->
-      begin
-        match e with
-        | InvalidHeaderComment ->
-            report_error Interface [
-              NormalLine("invalid or missing header comment of a Markdown document.");
-            ]
-
-        | InvalidExtraExpression ->
-            report_error Interface [
-              NormalLine("cannot parse an extra expression in a Markdown document.");
-            ]
-
-        | FailedToMakeDocumentAttribute(de) ->
-            report_document_attribute_error de
-      end
-
-  | FailedToFetchTarball{ lock_name; exit_status; command } ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "failed to fetch '%s' (exit status: %d). command:" lock_name exit_status);
-        DisplayLine(command);
-      ]
-
-  | FailedToExtractTarball{ lock_name; exit_status; command } ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "failed to extract the tarball of '%s' (exit status: %d). command:" lock_name exit_status);
-        DisplayLine(command);
-      ]
-
-  | FailedToFetchExternalZip{ url; exit_status; command } ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "failed to fetch file from '%s' (exit status: %d). command:" url exit_status);
-        DisplayLine(command);
-      ]
-
-  | ExternalZipChecksumMismatch{ url; path; expected; got } ->
-      report_error Interface [
-        NormalLine("checksum mismatch of an external zip file.");
-        DisplayLine(Printf.sprintf "- fetched from: '%s'" url);
-        DisplayLine(Printf.sprintf "- path: '%s'" (get_abs_path_string path));
-        DisplayLine(Printf.sprintf "- expected: '%s'" expected);
-        DisplayLine(Printf.sprintf "- got: '%s'" got);
-      ]
-
-  | TarGzipChecksumMismatch{ lock_name; url; path; expected; got } ->
-      report_error Interface [
-        NormalLine("checksum mismatch of a tarball.");
-        DisplayLine(Printf.sprintf "- lock name: '%s'" lock_name);
-        DisplayLine(Printf.sprintf "- fetched from: '%s'" url);
-        DisplayLine(Printf.sprintf "- path: '%s'" (get_abs_path_string path));
-        DisplayLine(Printf.sprintf "- expected: '%s'" expected);
-        DisplayLine(Printf.sprintf "- got: '%s'" got);
-      ]
-
-  | FailedToExtractExternalZip{ exit_status; command } ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "failed to extract a zip file (exit status: %d). command:" exit_status);
-        DisplayLine(command);
-      ]
-
-  | FailedToCopyFile{ exit_status; command } ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "failed to copy a file (exit status: %d). command:" exit_status);
-        DisplayLine(command);
-      ]
-
-  | PackageRegistryFetcherError(e) ->
-      begin
-        match e with
-        | FailedToUpdateGitRegistry{ exit_status; command } ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "failed to update registry (exit status: %d). command:" exit_status);
-              DisplayLine(command);
-            ]
-      end
-
-  | CanonicalRegistryUrlError(e) ->
-      begin
-        match e with
-        | ContainsQueryParameter{ url } ->
-            report_error Interface [
-              NormalLine("registry URLs must not contain query parameters:");
-              DisplayLine(url);
-            ]
-
-        | NoUriScheme{ url } ->
-            report_error Interface [
-              NormalLine("the registry URL does not contain a scheme:");
-              DisplayLine(url);
-            ]
-
-        | UnexpectedUrlScheme{ url; scheme } ->
-            report_error Interface [
-              NormalLine(Printf.sprintf "unexpected scheme '%s' in a registry URL:" scheme);
-              DisplayLine(url);
-            ]
-      end
 
 
 let report_font_error (display_config : Logging.config) : font_error -> unit = function
@@ -1394,12 +1114,14 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
         DisplayLine(msg);
       ]
 
+(*
   | NoLibraryRootDesignation ->
       report_error Interface [
         NormalLine("cannot determine where the SATySFi library root is;");
         NormalLine("set appropriate environment variables");
         NormalLine("or specify configuration search paths with -C option.");
       ]
+*)
 
   | ShouldSpecifyOutputFile ->
       report_error Interface [
@@ -1513,6 +1235,7 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
       report_error System [ NormalLine(s); ]
 
 
+(*
 let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string list) option) (curdir : string) : abs_path =
   let runtime_dirs =
     if Sys.os_type = "Win32" then
@@ -1556,11 +1279,7 @@ let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string l
 
   | Ok(abspath) ->
       make_abs_path (Filename.dirname (get_abs_path_string abspath))
-
-
-let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
-  let abspath_str = if Filename.is_relative s then Filename.concat origin s else s in
-  make_abs_path abspath_str
+*)
 
 
 let get_candidate_file_extensions (output_mode : output_mode) =
@@ -1588,10 +1307,10 @@ let get_input_kind_from_extension (abspathstr_in : string) =
   | ext     -> Error(ext)
 
 
-let check_depended_packages (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_lock : bool) ~(library_root : abs_path) ~(extensions : string list) (tyenv_prim : Typeenv.t) (lock_config : LockConfig.t) =
+let check_depended_packages (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_envelope : bool) (* ~(library_root : abs_path) *) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
   (* Resolve dependency among locked packages: *)
   let sorted_packages =
-    match ClosedLockDependencyResolver.main display_config ~use_test_only_lock ~library_root ~extensions lock_config with
+    match ClosedLockDependencyResolver.main display_config ~use_test_only_envelope (* ~library_root *) ~extensions deps_config with
     | Ok(sorted_packages) -> sorted_packages
     | Error(e)            -> raise (ConfigError(e))
   in
@@ -1601,8 +1320,8 @@ let check_depended_packages (display_config : Logging.config) (typecheck_config 
     sorted_packages |> List.fold_left (fun (genv, configenv, libacc) (_lock_name, (config, package)) ->
       let main_module_name =
         match package with
-        | UTLibraryPackage{ main_module_name; _ } -> main_module_name
-        | UTFontPackage{ main_module_name; _ }    -> main_module_name
+        | UTLibraryEnvelope{ main_module_name; _ } -> main_module_name
+        | UTFontEnvelope{ main_module_name; _ }    -> main_module_name
       in
       let (ssig, libs) =
         match PackageChecker.main display_config typecheck_config tyenv_prim genv package with
@@ -1632,14 +1351,14 @@ let make_output_mode text_mode_formats_str_opt =
   | Some(s) -> TextMode(String.split_on_char ',' s)
 
 
-let load_lock_config (abspath_lock_config : abs_path) : LockConfig.t =
-  match LockConfig.load abspath_lock_config with
-  | Ok(lock_config) -> lock_config
+let load_deps_config (abspath_deps_config : abs_path) : DepsConfig.t =
+  match DepsConfig.load abspath_deps_config with
+  | Ok(deps_config) -> deps_config
   | Error(e)        -> raise (ConfigError(e))
 
 
-let load_package (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (abspath_in : abs_path) =
-  match PackageReader.main display_config ~use_test_files ~extensions abspath_in with
+let load_envelope (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (abspath_in : abs_path) =
+  match EnvelopeReader.main display_config ~use_test_files ~extensions abspath_in with
   | Ok(pair) -> pair
   | Error(e) -> raise (ConfigError(e))
 
@@ -1651,7 +1370,7 @@ let get_job_directory (abspath : abs_path) : string =
 let build
     ~(fpath_in : string)
     ~(fpath_out_opt : string option)
-    ~(config_paths_str_opt : string option)
+    ~config_paths_str_opt:(_ : string option) (* TODO: remove this *)
     ~(text_mode_formats_str_opt : string option)
     ~(page_number_limit : int)
     ~(show_full_path : bool)
@@ -1662,7 +1381,7 @@ let build
     ~(debug_show_overfull : bool)
     ~(type_check_only : bool)
     ~(bytecomp : bool)
-    ~(no_default_config : bool)
+    ~no_default_config:(_ : bool) (* TODO: remove this *)
 =
   let display_config = Logging.{ show_full_path } in
   error_log_environment display_config (fun () ->
@@ -1671,7 +1390,9 @@ let build
     let input_file = make_absolute_if_relative ~origin:curdir fpath_in in
     let job_directory = get_job_directory input_file in
     let output_file = fpath_out_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
+(*
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
+*)
     let output_mode = make_output_mode text_mode_formats_str_opt in
     let typecheck_config =
       {
@@ -1692,7 +1413,9 @@ let build
     in
     let runtime_config = { job_directory } in
 
+(*
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
+*)
     let abspath_in = input_file in
     let is_bytecomp_mode = bytecomp in
     let build_input =
@@ -1733,19 +1456,19 @@ let build
 
     match build_input with
     | PackageBuildInput{
-        lock = abspath_lock_config;
+        lock = abspath_deps_config;
       } ->
-        Logging.lock_config_file display_config abspath_lock_config;
-        let lock_config = load_lock_config abspath_lock_config in
+        Logging.lock_config_file display_config abspath_deps_config;
+        let deps_config = load_deps_config abspath_deps_config in
 
-        let (_config, package) = load_package display_config ~use_test_files:false ~extensions abspath_in in
+        let (_config, envelope) = load_envelope display_config ~use_test_files:false ~extensions abspath_in in
 
         let (genv, _configenv, _libs_dep) =
-          check_depended_packages display_config typecheck_config ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
+          check_depended_packages display_config typecheck_config ~use_test_only_envelope:false (* ~library_root *) ~extensions tyenv_prim deps_config
         in
 
         begin
-          match PackageChecker.main display_config typecheck_config tyenv_prim genv package with
+          match PackageChecker.main display_config typecheck_config tyenv_prim genv envelope with
           | Ok((_ssig, _libs)) -> ()
           | Error(e)           -> raise (ConfigError(e))
         end
@@ -1757,7 +1480,7 @@ let build
         dump = abspath_dump;
       } ->
         Logging.lock_config_file display_config abspath_lock_config;
-        let lock_config = load_lock_config abspath_lock_config in
+        let deps_config = load_deps_config abspath_lock_config in
 
         Logging.target_file display_config abspath_out;
 
@@ -1765,7 +1488,7 @@ let build
         Logging.dump_file display_config ~already_exists:dump_file_exists abspath_dump;
 
         let (genv, configenv, libs) =
-          check_depended_packages display_config typecheck_config ~use_test_only_lock:false ~library_root ~extensions tyenv_prim lock_config
+          check_depended_packages display_config typecheck_config ~use_test_only_envelope:false (* ~library_root *) ~extensions tyenv_prim deps_config
         in
 
         (* Resolve dependency of the document and the local source files: *)
@@ -1801,10 +1524,10 @@ type test_input =
 
 let test
     ~(fpath_in : string)
-    ~(config_paths_str_opt : string option)
+    ~config_paths_str_opt:(_ : string option) (* TODO: remove this *)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
-    ~(no_default_config : bool)
+    ~no_default_config:(_ : bool) (* TODO: remove this *)
 =
   let display_config = Logging.{ show_full_path } in
   error_log_environment display_config (fun () ->
@@ -1812,7 +1535,9 @@ let test
 
     let input_file_to_test = make_absolute_if_relative ~origin:curdir fpath_in in
     let job_directory = get_job_directory input_file_to_test in
+(*
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
+*)
     let output_mode_to_test = make_output_mode text_mode_formats_str_opt in
     let bytecomp = false in
     let typecheck_config =
@@ -1825,7 +1550,9 @@ let test
     in
     let runtime_config = { job_directory } in
 
+(*
     let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
+*)
     let abspath_in = input_file_to_test in
     let test_input =
       let abspathstr_in = get_abs_path_string abspath_in in
@@ -1857,15 +1584,15 @@ let test
     begin
       match test_input with
       | PackageTestInput{
-          lock = abspath_lock_config;
+          lock = abspath_deps_config;
         } ->
-          Logging.lock_config_file display_config abspath_lock_config;
-          let lock_config = load_lock_config abspath_lock_config in
+          Logging.lock_config_file display_config abspath_deps_config;
+          let deps_config = load_deps_config abspath_deps_config in
 
-          let (_config, package) = load_package display_config ~use_test_files:true ~extensions abspath_in in
+          let (_config, package) = load_envelope display_config ~use_test_files:true ~extensions abspath_in in
 
           let (genv, _configenv, _libs_dep) =
-            check_depended_packages display_config typecheck_config ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
+            check_depended_packages display_config typecheck_config ~use_test_only_envelope:true (* ~library_root *) ~extensions tyenv_prim deps_config
           in
 
           let libs =
@@ -1882,10 +1609,10 @@ let test
           lock = abspath_lock_config;
         } ->
           Logging.lock_config_file display_config abspath_lock_config;
-          let lock_config = load_lock_config abspath_lock_config in
+          let deps_config = load_deps_config abspath_lock_config in
 
           let (genv, configenv, libs) =
-            check_depended_packages display_config typecheck_config ~use_test_only_lock:true ~library_root ~extensions tyenv_prim lock_config
+            check_depended_packages display_config typecheck_config ~use_test_only_envelope:true (* ~library_root *) ~extensions tyenv_prim deps_config
           in
 
           (* Resolve dependency of the document and the local source files: *)
@@ -1920,267 +1647,5 @@ let test
     end else begin
       Logging.all_tests_passed ();
       ()
-    end
-  )
-
-
-type solve_input =
-  | PackageSolveInput of {
-      root : abs_path; (* The absolute path of a directory used as the package root *)
-      lock : abs_path; (* A path for writing a resulting lock file *)
-    }
-  | DocumentSolveInput of {
-      kind : input_kind;
-      path : abs_path; (* The absolute path to the document file *)
-      lock : abs_path; (* A path for writing a resulting lock file *)
-    }
-
-
-let make_lock_name (lock : Lock.t) : lock_name =
-  let Lock.{ registry_hash_value; package_name; locked_version } = lock in
-  Printf.sprintf "registered.%s.%s.%s"
-    registry_hash_value
-    package_name
-    (SemanticVersion.to_string locked_version)
-
-
-let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t * implementation_spec list =
-  let (locked_package_acc, impl_spec_acc) =
-    solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
-      let lock = solution.lock in
-      let Lock.{ registry_hash_value; package_name; locked_version = version } = lock in
-      let locked_package =
-        LockConfig.{
-          lock_name         = make_lock_name lock;
-          lock_contents     = RegisteredLock{ registry_hash_value; package_name; version };
-          lock_dependencies = solution.locked_dependencies |> List.map make_lock_name;
-          test_only_lock    = solution.used_in_test_only;
-        }
-      in
-      let impl_spec =
-        ImplSpec{
-          lock   = solution.lock;
-          source = solution.locked_source;
-        }
-      in
-      (Alist.extend locked_package_acc locked_package, Alist.extend impl_spec_acc impl_spec)
-    ) (Alist.empty, Alist.empty)
-  in
-  let lock_config = LockConfig.{ locked_packages = Alist.to_list locked_package_acc } in
-  (lock_config, Alist.to_list impl_spec_acc)
-
-
-let extract_attributes_from_document_file (display_config : Logging.config) (input_kind : input_kind) (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
-  let open ResultMonad in
-  Logging.begin_to_parse_file display_config abspath_in;
-  match input_kind with
-  | InputSatysfi ->
-      let* utsrc =
-        ParserInterface.process_file abspath_in
-          |> Result.map_error (fun rng -> FailedToParse(rng))
-      in
-      let* (attrs, _header, _utast) =
-        match utsrc with
-        | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
-        | UTDocumentFile(utdoc) -> return utdoc
-      in
-      DocumentAttribute.make attrs
-        |> Result.map_error (fun e -> DocumentAttributeError(e))
-
-  | InputMarkdown ->
-      let* (docattr, _main_module_name, _md) =
-        match read_file abspath_in with
-        | Ok(data)   -> MarkdownParser.decode data |> Result.map_error (fun e -> MarkdownError(e))
-        | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
-      in
-      return docattr
-
-
-let make_registry_hash_value (registry_remote : registry_remote) : (registry_hash_value, config_error) result =
-  let open ResultMonad in
-  match registry_remote with
-  | GitRegistry{ url; branch } ->
-      let* canonicalized_url =
-        CanonicalRegistryUrl.make url
-          |> Result.map_error (fun e -> CanonicalRegistryUrlError(e))
-      in
-      let hash_value =
-        Digest.to_hex (Digest.string (Printf.sprintf "git#%s#%s" canonicalized_url branch))
-      in
-      Logging.report_canonicalized_url ~url ~canonicalized_url ~hash_value;
-      return hash_value
-
-
-let update_library_root_config_if_needed (registries : registry_remote RegistryHashValueMap.t) (registry_hash_value : registry_hash_value) (registry_remote : registry_remote) (abspath_library_root : abs_path) : unit =
-  match
-    registries |> RegistryHashValueMap.find_opt registry_hash_value
-  with
-  | None ->
-      let library_root_config =
-        LibraryRootConfig.{
-          registries = registries |> RegistryHashValueMap.add registry_hash_value registry_remote;
-        }
-      in
-      LibraryRootConfig.write abspath_library_root library_root_config
-
-  | Some(_registry_remote) ->
-      ()
-
-
-let solve
-    ~(fpath_in : string)
-    ~(show_full_path : bool)
-    ~(config_paths_str_opt : string option)
-    ~(no_default_config : bool)
-=
-  let display_config = Logging.{ show_full_path } in
-  error_log_environment display_config (fun () ->
-    let curdir = Sys.getcwd () in
-
-    let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
-
-    let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
-    let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
-    let solve_input =
-      let abspathstr_in = get_abs_path_string abspath_in in
-      if Sys.is_directory abspathstr_in then
-      (* If the input is a package directory: *)
-        let abspath_lock_config = make_package_lock_config_path abspathstr_in in
-        PackageSolveInput{
-          root = abspath_in;
-          lock = abspath_lock_config;
-        }
-      else
-        let abspathstr_in = get_abs_path_string abspath_in in
-        let basename_without_extension = Filename.remove_extension abspathstr_in in
-        let abspath_lock_config = make_document_lock_config_path basename_without_extension in
-        let input_kind_res = get_input_kind_from_extension abspathstr_in in
-        match input_kind_res with
-        | Error(ext) ->
-            raise (UnexpectedExtension(ext))
-
-        | Ok(input_kind) ->
-            DocumentSolveInput{
-              kind = input_kind;
-              path = abspath_in;
-              lock = abspath_lock_config;
-            }
-    in
-
-    let res =
-      let open ResultMonad in
-      let abspath_library_root_config =
-        make_abs_path
-          (Filename.concat
-            (get_abs_path_string library_root)
-            (get_lib_path_string Constant.library_root_config_file))
-      in
-      let* library_root_config = LibraryRootConfig.load abspath_library_root_config in
-      let* (dependencies_with_flags, abspath_lock_config, registry_specs) =
-        match solve_input with
-        | PackageSolveInput{
-            root = absdir_package;
-            lock = abspath_lock_config;
-          } ->
-            let* PackageConfig.{ package_contents; registry_specs; _ } = PackageConfig.load absdir_package in
-            begin
-              match package_contents with
-              | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
-                  let dependencies_with_flags =
-                    List.append
-                      (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
-                      (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
-                  in
-                  return (dependencies_with_flags, abspath_lock_config, registry_specs)
-
-              | PackageConfig.Font(_) ->
-                  return ([], abspath_lock_config, registry_specs)
-            end
-
-        | DocumentSolveInput{
-            kind = input_kind;
-            path = abspath_in;
-            lock = abspath_lock_config;
-          } ->
-            let* DocumentAttribute.{ registry_specs; dependencies } =
-              extract_attributes_from_document_file display_config input_kind abspath_in
-            in
-            let dependencies_with_flags = dependencies |> List.map (fun dep -> (SourceDependency, dep)) in
-            return (dependencies_with_flags, abspath_lock_config, registry_specs)
-      in
-
-      Logging.show_package_dependency_before_solving dependencies_with_flags;
-
-      let* registries =
-        RegistryLocalNameMap.fold (fun registry_local_name registry_remote res ->
-          let* registries = res in
-          let* registry_hash_value = make_registry_hash_value registry_remote in
-
-          (* Manupulates the library root config: *)
-          update_library_root_config_if_needed
-            library_root_config.LibraryRootConfig.registries
-            registry_hash_value
-            registry_remote
-            abspath_library_root_config;
-
-          (* Fetches registry configs: *)
-          let absdir_registry_repo =
-            let libpath_registry_root = Constant.registry_root_directory registry_hash_value in
-            make_abs_path
-              (Filename.concat
-                (get_abs_path_string library_root)
-                (get_lib_path_string libpath_registry_root))
-          in
-          let git_command = "git" in (* TODO: make this changeable *)
-          let* () =
-            PackageRegistryFetcher.main ~git_command absdir_registry_repo registry_remote
-              |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
-          in
-
-          let* PackageRegistryConfig.{ packages = packages_in_registry } =
-            let abspath_registry_config =
-              make_abs_path
-                (Filename.concat
-                  (get_abs_path_string absdir_registry_repo)
-                  Constant.package_registry_config_file_name)
-            in
-            PackageRegistryConfig.load abspath_registry_config
-          in
-          let registry_spec = { packages_in_registry; registry_hash_value } in
-          return (registries |> RegistryLocalNameMap.add registry_local_name registry_spec)
-
-        ) registry_specs (return RegistryLocalNameMap.empty)
-      in
-
-      let package_context = { registries } in
-      let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
-      begin
-        match solutions_opt with
-        | None ->
-            err CannotSolvePackageConstraints
-
-        | Some(solutions) ->
-
-            Logging.show_package_dependency_solutions solutions;
-
-            let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in
-
-            let wget_command = "wget" in (* TODO: make this changeable *)
-            let tar_command = "tar" in (* TODO: make this changeable *)
-            let unzip_command = "unzip" in (* TODO: make this changeable *)
-            let* () =
-              impl_specs |> foldM (fun () impl_spec ->
-                LockFetcher.main
-                  ~wget_command ~tar_command ~unzip_command ~library_root impl_spec
-              ) ()
-            in
-            LockConfig.write display_config abspath_lock_config lock_config;
-            return ()
-      end
-    in
-    begin
-      match res with
-      | Ok(())   -> ()
-      | Error(e) -> raise (ConfigError(e))
     end
   )

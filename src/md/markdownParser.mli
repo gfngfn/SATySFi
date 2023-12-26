@@ -1,4 +1,4 @@
-
+(*
 open Types
 
 type error =
@@ -37,3 +37,4 @@ type t
 val decode : string -> (DocumentAttribute.t * module_name * t, error) result
 
 val convert : command_record -> t -> untyped_abstract_tree
+*)

@@ -23,17 +23,22 @@ let make_path_list_absolute ~(origin : abs_path) (reldirs : string list) : abs_p
   )
 
 
-let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (absdir_package : abs_path) : (PackageConfig.t * untyped_package) ok =
+let convert_font_file_contents = function
+  | EnvelopeConfig.OpentypeSingle(x)      -> OpentypeSingle(x)
+  | EnvelopeConfig.OpentypeCollection(xs) -> OpentypeCollection(xs)
+
+
+let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (absdir_envelope : abs_path) : (EnvelopeConfig.t * untyped_envelope) ok =
   let open ResultMonad in
-  let* config = PackageConfig.load absdir_package in
-  let* package =
-    match config.package_contents with
-    | PackageConfig.Library{ main_module_name; source_directories; test_directories; _ } ->
-        let absdirs_src = source_directories |> make_path_list_absolute ~origin:absdir_package in
+  let* config = EnvelopeConfig.load absdir_envelope in
+  let* envelope =
+    match config.envelope_contents with
+    | EnvelopeConfig.Library{ main_module_name; source_directories; test_directories; _ } ->
+        let absdirs_src = source_directories |> make_path_list_absolute ~origin:absdir_envelope in
         let abspaths_src = absdirs_src |> List.map (listup_sources_in_directory extensions) |> List.concat in
         let abspaths =
           if use_test_files then
-            let absdirs_test = test_directories |> make_path_list_absolute ~origin:absdir_package in
+            let absdirs_test = test_directories |> make_path_list_absolute ~origin:absdir_envelope in
             let abspaths_test = absdirs_test |> List.map (listup_sources_in_directory extensions) |> List.concat in
             List.append abspaths_src abspaths_test
           else
@@ -55,26 +60,26 @@ let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions
           ) Alist.empty
         in
         let modules = Alist.to_list acc in
-        return @@ UTLibraryPackage{
+        return @@ UTLibraryEnvelope{
           main_module_name;
           modules;
         }
 
-    | PackageConfig.Font{ main_module_name; font_file_descriptions } ->
+    | EnvelopeConfig.Font{ main_module_name; font_file_descriptions } ->
         let font_files =
           font_file_descriptions |> List.map (fun font_file_description ->
-            let PackageConfig.{ font_file_path; font_file_contents; used_as_math_font } = font_file_description in
-            let abspath = make_abs_path (Filename.concat (get_abs_path_string absdir_package) font_file_path) in
+            let EnvelopeConfig.{ font_file_path; font_file_contents; used_as_math_font } = font_file_description in
+            let abspath = make_abs_path (Filename.concat (get_abs_path_string absdir_envelope) font_file_path) in
             {
               r_font_file_path     = abspath;
-              r_font_file_contents = font_file_contents;
+              r_font_file_contents = convert_font_file_contents font_file_contents;
               r_used_as_math_font  = used_as_math_font;
             }
           )
         in
-        return @@ UTFontPackage{
+        return @@ UTFontEnvelope{
           main_module_name;
           font_files;
         }
   in
-  return (config, package)
+  return (config, envelope)

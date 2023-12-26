@@ -71,6 +71,11 @@ module AbsPath = struct
 end
 
 
+let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
+  let abspath_str = if Filename.is_relative s then Filename.concat origin s else s in
+  make_abs_path abspath_str
+
+
 let read_file (abspath : abs_path) : (string, string) result =
   let open ResultMonad in
   try

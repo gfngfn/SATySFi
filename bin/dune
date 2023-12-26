@@ -1,6 +1,7 @@
 (executable
  (name satysfi)
  (public_name satysfi)
+ (package satysfi)
  (libraries
    main
    cmdliner)

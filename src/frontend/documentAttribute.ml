@@ -1,6 +1,5 @@
-
+(*
 open Types
-open PackageSystemBase
 
 
 type error =
@@ -191,3 +190,4 @@ let make (attrs : untyped_attribute list) : t ok =
 
   | (rng1, _) :: (rng2, _) :: _ ->
       err @@ DuplicateConfigAttribute(rng1, rng2)
+*)

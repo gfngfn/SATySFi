@@ -1,6 +1,5 @@
 
 open MyUtil
-open Types
 open ConfigError
 open ConfigUtil
 open PackageSystemBase
@@ -10,18 +9,25 @@ type 'a ok = ('a, config_error) result
 
 type relative_path = string
 
+type font_file_contents =
+  | OpentypeSingle     of string
+  | OpentypeCollection of string list
+[@@deriving show]
+
 type font_file_description = {
   font_file_path     : relative_path;
   font_file_contents : font_file_contents;
   used_as_math_font  : bool;
 }
 
-type package_conversion_spec =
+type package_conversion_spec = unit (* TODO *)
+(*
   | MarkdownConversion of MarkdownParser.command_record
+*)
 
 type package_contents =
   | Library of {
-      main_module_name   : module_name;
+      main_module_name   : string;
       source_directories : relative_path list;
       test_directories   : relative_path list;
       dependencies       : package_dependency list;
@@ -29,7 +35,7 @@ type package_contents =
       conversion_specs   : package_conversion_spec list;
     }
   | Font of {
-      main_module_name       : module_name;
+      main_module_name       : string;
       font_file_descriptions : font_file_description list;
     }
 
@@ -71,6 +77,7 @@ let font_file_description_decoder : font_file_description ConfigDecoder.t =
   }
 
 
+(*
 let cut_module_names (s : string) : string list * string =
   match List.rev (String.split_on_char '.' s) with
   | varnm :: modnms_rev -> (List.rev modnms_rev, varnm)
@@ -170,6 +177,12 @@ let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
   ~other:(fun tag ->
     failure (fun context -> UnexpectedTag(context, tag))
   )
+*)
+
+(* TODO: fix this *)
+let conversion_spec_decoder =
+  let open ConfigDecoder in
+  succeed ()
 
 
 let contents_decoder : package_contents ConfigDecoder.t =

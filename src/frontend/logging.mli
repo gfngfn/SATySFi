@@ -1,6 +1,5 @@
 
 open MyUtil
-open PackageSystemBase
 
 type config = {
   show_full_path : bool;
@@ -36,17 +35,11 @@ val dump_file : config -> already_exists:bool -> abs_path -> unit
 
 val lock_config_file : config -> abs_path -> unit
 
-val show_package_dependency_before_solving : (dependency_flag * package_dependency) list -> unit
-
-val show_package_dependency_solutions : package_solution list -> unit
-
 val begin_to_embed_fonts : unit -> unit
 
 val begin_to_write_page : unit -> unit
 
 val needs_another_trial : unit -> unit
-
-val end_lock_output : config -> abs_path -> unit
 
 val warn_noninjective_cmap : Uchar.t -> Uchar.t -> Otfed.Value.glyph_id -> unit
 
@@ -75,14 +68,6 @@ val report_failed_test : test_name:string -> message:string -> unit
 val all_tests_passed : unit -> unit
 
 val some_test_failed : unit -> unit
-
-val lock_already_installed : lock_name -> abs_path -> unit
-
-val lock_cache_exists : lock_name -> abs_path -> unit
-
-val downloading_lock : lock_name -> abs_path -> unit
-
-val report_canonicalized_url : url:string -> canonicalized_url:string -> hash_value:registry_hash_value -> unit
 
 val warn_wide_column_cell_overrides_nonempty_cell : unit -> unit
 

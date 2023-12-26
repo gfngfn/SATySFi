@@ -1,5 +1,6 @@
 
 open MyUtil
+open DependencyGraph.Cycle
 open Types
 open ConfigError
 

@@ -1,4 +1,4 @@
-
+(*
 open Types
 
 type error =
@@ -434,3 +434,4 @@ let convert (cmdr : command_record) (md : t) =
   in
   let utast_extra = md.extra_expression in
   (dummy_range, UTApply([], (dummy_range, UTApply([], utast_doccmd, utast_extra)), utast_body))
+*)

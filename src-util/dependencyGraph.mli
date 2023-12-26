@@ -1,6 +1,14 @@
 
-open Types
+module Cycle : sig
+  type 'a cycle =
+    | Loop  of 'a
+    | Cycle of 'a TupleList.t
+  [@@deriving show]
 
+  val map_cycle : ('a -> 'b) -> 'a cycle -> 'b cycle
+end
+
+open Cycle
 
 module type ElementType = sig
   type t

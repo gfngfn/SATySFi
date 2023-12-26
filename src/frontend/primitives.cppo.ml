@@ -7,7 +7,6 @@ open GraphicBase
 open SyntaxBase
 open Types
 open StaticEnv
-open ConfigError
 
 
 (* -- type IDs for predefined data types -- *)
@@ -763,17 +762,18 @@ let make_environments (runtime_config : runtime_config) table =
 
 let resolve_lib_file (libpath : lib_path) =
   Config.resolve_lib_file libpath
-    |> Result.map_error (fun candidates -> CannotFindLibraryFile(libpath, candidates))
 
 
+(* TODO: should depend on the current language *)
 let make_pdf_mode_environments (runtime_config : runtime_config) =
-  let open ResultMonad in
-  let* abspath_hyphen = resolve_lib_file (make_lib_path "hyph/english.satysfi-hyph") in
-  default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
-    (* TODO: should depend on the current language *)
-  return @@ make_environments runtime_config pdf_mode_table
+  match resolve_lib_file (make_lib_path "hyph/english.satysfi-hyph") with
+  | Error(_) ->
+      failwith "TODO: failed to load hyphenation dictionary"
+
+  | Ok(abspath_hyphen) ->
+      default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
+      make_environments runtime_config pdf_mode_table
 
 
 let make_text_mode_environments (runtime_config : runtime_config) =
-  let open ResultMonad in
-  return @@ make_environments runtime_config text_mode_table
+  make_environments runtime_config text_mode_table

@@ -1,7 +1,11 @@
 (executable
  (name saphe)
  (public_name saphe)
+ (package saphe)
  (libraries
-   cmdliner)
+   0install-solver
+   cmdliner
+   satysfi-util
+   uri)
  (preprocess no_preprocessing)
 )

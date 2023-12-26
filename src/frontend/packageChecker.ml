@@ -177,12 +177,12 @@ let check_font_package (_main_module_name : module_name) (font_files : font_file
   return (ssig, Alist.to_list libacc)
 
 
-let main (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (package : untyped_package) : (StructSig.t * (abs_path * binding list) list) ok =
-  match package with
-  | UTLibraryPackage{ main_module_name; modules = utlibs } ->
+let main (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (envelope : untyped_envelope) : (StructSig.t * (abs_path * binding list) list) ok =
+  match envelope with
+  | UTLibraryEnvelope{ main_module_name; modules = utlibs } ->
       check_library_package display_config config tyenv_prim genv main_module_name utlibs
 
-  | UTFontPackage{ main_module_name; font_files } ->
+  | UTFontEnvelope{ main_module_name; font_files } ->
       check_font_package main_module_name font_files
 
 

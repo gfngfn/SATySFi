@@ -20,7 +20,8 @@
             yaml
             0install-solver
             semver2
-            uri)
+            uri
+            satysfi-util)
  (preprocess (pps
               ppx_deriving.show
               ))

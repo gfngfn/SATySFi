@@ -1,6 +1,5 @@
-
+(*
 open Types
-open PackageSystemBase
 
 
 type error =
@@ -31,3 +30,4 @@ type t = {
 }
 
 val make : untyped_attribute list -> (t, error) result
+*)

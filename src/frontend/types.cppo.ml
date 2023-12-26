@@ -620,12 +620,12 @@ type font_file_record = {
 }
 [@@deriving show { with_path = false }]
 
-type untyped_package =
-  | UTLibraryPackage of {
+type untyped_envelope =
+  | UTLibraryEnvelope of {
       main_module_name : module_name;
       modules          : (abs_path * untyped_library_file) list;
     }
-  | UTFontPackage of {
+  | UTFontEnvelope of {
       main_module_name : module_name;
       font_files       : font_file_record list;
     }
@@ -1289,16 +1289,6 @@ type code_rec_or_nonrec =
   | CdRec     of code_letrec_binding list
   | CdNonRec  of CodeSymbol.t * code_value
   | CdMutable of CodeSymbol.t * code_value
-
-type 'a cycle =
-  | Loop  of 'a
-  | Cycle of 'a TupleList.t
-[@@deriving show { with_path = false; }]
-
-
-let map_cycle f = function
-  | Loop(v)   -> Loop(f v)
-  | Cycle(vs) -> Cycle(TupleList.map f vs)
 
 
 module GlobalTypeenv = Map.Make(String)

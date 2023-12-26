@@ -1,10 +1,14 @@
 
 open MyUtil
-open Types
 open ConfigError
 open PackageSystemBase
 
 type relative_path = string
+
+type font_file_contents =
+  | OpentypeSingle     of string
+  | OpentypeCollection of string list
+[@@deriving show { with_path = false }]
 
 type font_file_description = {
   font_file_path     : relative_path;
@@ -12,12 +16,14 @@ type font_file_description = {
   used_as_math_font  : bool;
 }
 
-type package_conversion_spec =
+type package_conversion_spec = unit (* TODO *)
+(*
   | MarkdownConversion of MarkdownParser.command_record
+*)
 
 type package_contents =
   | Library of {
-      main_module_name   : module_name;
+      main_module_name   : string;
       source_directories : relative_path list;
       test_directories   : relative_path list;
       dependencies       : package_dependency list;
@@ -25,7 +31,7 @@ type package_contents =
       conversion_specs   : package_conversion_spec list;
     }
   | Font of {
-      main_module_name       : module_name;
+      main_module_name       : string;
       font_file_descriptions : font_file_description list;
     }
 

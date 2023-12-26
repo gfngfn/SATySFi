@@ -1,7 +1,7 @@
 
 open MyUtil
 open Types
-open PackageSystemBase
+open EnvelopeSystemBase
 open ConfigError
 
 
@@ -107,6 +107,7 @@ let register_document_file (display_config : Logging.config) (extensions : strin
   return (graph, utdoc)
 
 
+(*
 let extract_markdown_command_record ~(module_name : module_name) (config : PackageConfig.t) : MarkdownParser.command_record ok =
   let open ResultMonad in
   match config.PackageConfig.package_contents with
@@ -154,9 +155,10 @@ let register_markdown_file (display_config : Logging.config) (configenv : Packag
   in
   let utdoc = ([], header, utast) in
   return utdoc
+*)
 
 
-let main (display_config : Logging.config) ~(extensions : string list) (input_kind : input_kind) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
+let main (display_config : Logging.config) ~(extensions : string list) (input_kind : input_kind) (_configenv : EnvelopeConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
   let* (graph, utdoc) =
     match input_kind with
@@ -164,8 +166,11 @@ let main (display_config : Logging.config) ~(extensions : string list) (input_ki
         register_document_file display_config extensions abspath_in
 
     | InputMarkdown ->
+        failwith "TODO: InputMarkdown"
+(*
         let* utdoc = register_markdown_file display_config configenv abspath_in in
         return (FileDependencyGraph.empty, utdoc)
+*)
   in
   let* sorted_locals =
     FileDependencyGraph.topological_sort graph

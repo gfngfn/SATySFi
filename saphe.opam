@@ -1,0 +1,44 @@
+opam-version: "2.0"
+name: "saphe"
+version: "0.0.1"
+maintainer: "Takashi Suwa"
+authors: [
+  "Takashi Suwa"
+]
+homepage: "https://github.com/gfngfn/SATySFi"
+dev-repo: "git+https://github.com/gfngfn/SATySFi.git"
+bug-reports: "https://github.com/gfngfn/SATySFi/issues"
+build: [
+  ["mkdir" "-p" "temp"]
+  [make "-f" "Makefile" "PREFIX=%{prefix}%"]
+]
+install: [
+  [make "-f" "Makefile" "install" "PREFIX=%{prefix}%"]
+]
+remove: [
+  [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%"]
+]
+# Packages whose version suffix is "+satysfi" are distributed on satysfi-external-repo.
+depends: [
+  "ocaml" {>= "4.12.0"}
+  "batteries"
+  "cmdliner" {>= "1.1.1"}
+  "core_kernel" {>= "v0.15"}
+  "core_unix" {>= "v0.15"}
+  "dune" {build}
+  "ocamlfind" {build}
+  "otfed" {= "0.3.1"}
+  "ppx_deriving"
+  "uutf"
+  "yojson-with-position" {= "1.4.2+satysfi"}
+  "omd" {= "2.0.0~alpha3"}
+  "ocamlgraph"
+  "alcotest" {with-test & >= "1.4.0"}
+  "yaml" {>= "2.1.0"}
+  "0install-solver" {>= "2.0" & < "3.0"}
+  "semver2" {>= "1.2.0"}
+  "uri" {>= "4.2.0"}
+]
+synopsis: ""
+description: """
+"""
