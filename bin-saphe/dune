@@ -1,0 +1,7 @@
+(executable
+ (name saphe)
+ (public_name saphe)
+ (libraries
+   cmdliner)
+ (preprocess no_preprocessing)
+)

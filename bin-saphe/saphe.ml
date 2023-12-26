@@ -1,49 +1,14 @@
 
-let build
+let solve
   fpath_in
-  fpath_out_opt
-  config_paths_str_opt
-  text_mode_formats_str_opt
-  page_number_limit
   show_full_path
-  debug_show_bbox
-  debug_show_space
-  debug_show_block_bbox
-  debug_show_block_space
-  debug_show_overfull
-  type_check_only
-  bytecomp
+  config_paths_str_opt
   no_default_config
 =
-  Main.build
+  Main.solve
     ~fpath_in
-    ~fpath_out_opt
-    ~config_paths_str_opt
-    ~text_mode_formats_str_opt
-    ~page_number_limit
     ~show_full_path
-    ~debug_show_bbox
-    ~debug_show_space
-    ~debug_show_block_bbox
-    ~debug_show_block_space
-    ~debug_show_overfull
-    ~type_check_only
-    ~bytecomp
-    ~no_default_config
-
-
-let test
-  fpath_in
-  config_paths_str_opt
-  text_mode_formats_str_opt
-  show_full_path
-  no_default_config
-=
-  Main.test
-    ~fpath_in
     ~config_paths_str_opt
-    ~text_mode_formats_str_opt
-    ~show_full_path
     ~no_default_config
 
 
@@ -135,45 +100,18 @@ let flag_no_default_config =
     ~doc:"Does not use default configuration search path"
 
 
-let command_build =
+let command_solve =
   let open Cmdliner in
   let term : unit Term.t =
-    Term.(const build
+    Term.(const solve
       $ arg_in
-      $ flag_output
-      $ flag_config
-      $ flag_text_mode
-      $ flag_page_number_limit
       $ flag_full_path
-      $ flag_debug_show_bbox
-      $ flag_debug_show_space
-      $ flag_debug_show_block_bbox
-      $ flag_debug_show_block_space
-      $ flag_debug_show_overfull
-      $ flag_type_check_only
-      $ flag_bytecomp
+      $ flag_config
       $ flag_no_default_config
     )
   in
   let info : Cmd.info =
-    Cmd.info "build"
-  in
-  Cmd.v info term
-
-
-let command_test =
-  let open Cmdliner in
-  let term : unit Term.t =
-    Term.(const test
-      $ arg_in
-      $ flag_config
-      $ flag_text_mode
-      $ flag_full_path
-      $ flag_no_default_config
-    )
-  in
-  let info : Cmd.info =
-    Cmd.info "test"
+    Cmd.info "solve"
   in
   Cmd.v info term
 
@@ -184,12 +122,11 @@ let () =
     Term.(ret (const (`Error(true, "No subcommand specified."))))
   in
   let info : Cmd.info =
-    Cmd.info ~version:Main.version "satysfi"
+    Cmd.info ~version:Main.version "saphe"
   in
   let subcommands =
     [
-      command_build;
-      command_test;
+      command_solve;
     ]
   in
   Stdlib.exit (Cmd.eval (Cmd.group ~default:term info subcommands))
