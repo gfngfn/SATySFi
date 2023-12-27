@@ -1114,15 +1114,6 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
         DisplayLine(msg);
       ]
 
-(*
-  | NoLibraryRootDesignation ->
-      report_error Interface [
-        NormalLine("cannot determine where the SATySFi library root is;");
-        NormalLine("set appropriate environment variables");
-        NormalLine("or specify configuration search paths with -C option.");
-      ]
-*)
-
   | ShouldSpecifyOutputFile ->
       report_error Interface [
         NormalLine("should specify output file for text mode.");

@@ -4,6 +4,7 @@ open PackageSystemBase
 open ConfigError
 
 
+exception NoLibraryRootDesignation
 exception ConfigError of config_error
 
 
@@ -346,6 +347,12 @@ let error_log_environment (suspended : unit -> unit) : unit =
   try
     suspended ()
   with
+  | NoLibraryRootDesignation ->
+      report_error [
+        NormalLine("cannot determine where the SATySFi library root is;");
+        NormalLine("set appropriate environment variables.");
+      ]
+
   | ConfigError(e) ->
       report_config_error e
 
@@ -461,23 +468,18 @@ let extract_attributes_from_document_file (display_config : Logging.config) (inp
       return docattr
 *)
 
-let solve
-    ~(fpath_in : string)
-    ~show_full_path:(_ : bool)
-    ~config_paths_str_opt:(_ : string option)
-    ~no_default_config:(_ : bool)
-=
+let solve ~(fpath_in : string) =
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
 
     let library_root =
       if String.equal Sys.os_type "Win32" then
         match Sys.getenv_opt "userprofile" with
-        | None    -> failwith "TODO: userprofile is not set"
+        | None    -> raise NoLibraryRootDesignation
         | Some(s) -> make_abs_path (Filename.concat s ".saphe")
       else
         match Sys.getenv_opt "HOME" with
-        | None    -> failwith "TODO: HOME is not set"
+        | None    -> raise NoLibraryRootDesignation
         | Some(s) -> make_abs_path (Filename.concat s ".saphe")
     in
     let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
