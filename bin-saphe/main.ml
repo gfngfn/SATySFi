@@ -121,10 +121,10 @@ let report_config_error = function
       report_error
         (NormalLine("cannot find package directory. candidates:") :: lines)
 
-  | PackageConfigNotFound(abspath) ->
+  | PackageConfigNotFound(abspath_package_config) ->
       report_error [
-        NormalLine("cannot find a package config at:");
-        DisplayLine(get_abs_path_string abspath);
+        NormalLine("cannot find a package config:");
+        DisplayLine(get_abs_path_string abspath_package_config);
       ]
 
   | PackageConfigError(abspath, e) ->
@@ -145,22 +145,11 @@ let report_config_error = function
         make_yaml_error_lines e;
       ])
 
-  | RegistryConfigNotFound(abspath) ->
+  | RegistryConfigNotFound(abspath_registry_config) ->
       report_error [
-        NormalLine("cannot find a registry config at:");
-        DisplayLine(get_abs_path_string abspath);
+        NormalLine("cannot find a registry config:");
+        DisplayLine(get_abs_path_string abspath_registry_config);
       ]
-
-  | RegistryConfigNotFoundIn(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      report_error (List.concat [
-        [ NormalLine(Printf.sprintf "cannot find a registry config '%s'. candidates:" (get_lib_path_string libpath)) ];
-        lines;
-      ])
 
   | RegistryConfigError(abspath, e) ->
       report_error (List.concat [
@@ -359,11 +348,11 @@ let error_log_environment (suspended : unit -> unit) : unit =
 
 
 let make_package_lock_config_path (abspathstr_in : string) =
-  make_abs_path (Printf.sprintf "%s/package.satysfi-lock" abspathstr_in)
+  make_abs_path (Printf.sprintf "%s/%s" abspathstr_in Constant.library_lock_config_file_name)
 
 
-let make_document_lock_config_path (basename_without_extension : string) =
-  make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension)
+let make_document_lock_config_path (path_without_extension : string) =
+  make_abs_path (Printf.sprintf "%s.satysfi-lock" path_without_extension)
 
 
 type solve_input =
@@ -495,8 +484,8 @@ let solve ~(fpath_in : string) =
         }
       else
         let abspathstr_in = get_abs_path_string abspath_in in
-        let basename_without_extension = Filename.remove_extension abspathstr_in in
-        let abspath_lock_config = make_document_lock_config_path basename_without_extension in
+        let path_without_extension = Filename.remove_extension abspathstr_in in
+        let abspath_lock_config = make_document_lock_config_path path_without_extension in
         DocumentSolveInput{
           path = abspath_in;
           lock = abspath_lock_config;
@@ -518,13 +507,14 @@ let solve ~(fpath_in : string) =
             root = absdir_package;
             lock = abspath_lock_config;
           } ->
+            let abspath_config = Constant.library_package_config_path absdir_package in
             let*
               PackageConfig.{
                 language_requirement;
                 package_contents;
                 registry_specs;
                 _
-              } = PackageConfig.load absdir_package
+              } = PackageConfig.load abspath_config
             in
             let language_version =
               match language_requirement with

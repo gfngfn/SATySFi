@@ -72,6 +72,7 @@ let config_encoder (library_root_config : t) : Yaml.value =
   ]
 
 
+(* TODO: automatically initialize a registry config if non-existent *)
 let load (abspath_config : abs_path) : (t, config_error) result =
   let open ResultMonad in
   let* s =

@@ -251,6 +251,7 @@ let external_source_decoder : (string * external_source) ConfigDecoder.t =
 
 let config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
+  get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
   get "language" requirement_decoder >>= fun language_requirement ->
   get "name" package_name_decoder >>= fun package_name ->
   get "authors" (list string) >>= fun package_authors ->
@@ -274,11 +275,9 @@ let config_decoder : t ConfigDecoder.t =
   }
 
 
-let load (absdir_package : abs_path) : t ok =
+let load (abspath_config : abs_path) : t ok =
+  print_endline @@ "!!!! LOAD: " ^ get_abs_path_string abspath_config;
   let open ResultMonad in
-  let abspath_config =
-    make_abs_path (Filename.concat (get_abs_path_string absdir_package) Constant.package_config_file_name)
-  in
   let* s =
     read_file abspath_config
       |> Result.map_error (fun _ -> PackageConfigNotFound(abspath_config))

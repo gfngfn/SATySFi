@@ -30,13 +30,17 @@ let lock_tarball_cache_directory (registry_hash_value : registry_hash_value) : l
   make_lib_path (Printf.sprintf "cache/locks/%s" registry_hash_value)
 
 
-let package_config_file_name =
-  "satysfi.yaml"
+let library_package_config_path (absdir_library : abs_path) : abs_path =
+  make_abs_path (Filename.concat (get_abs_path_string absdir_library) "saphe.yaml")
 
 
 let library_root_config_file =
-  make_lib_path "satysfi-library-root.yaml"
+  make_lib_path "saphe-library-root.yaml"
 
 
 let package_registry_config_file_name =
-  "satysfi-registry.yaml"
+  "saphe-registry.yaml"
+
+
+let library_lock_config_file_name =
+  "saphe.lock.yaml"
