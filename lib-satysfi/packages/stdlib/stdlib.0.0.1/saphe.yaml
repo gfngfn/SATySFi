@@ -1,3 +1,4 @@
+ecosystem: "^0.0.1"
 language: "^0.1.0"
 name: "stdlib"
 authors:
