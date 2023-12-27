@@ -11,7 +11,7 @@ type 'a ok = ('a, config_error) result
 module EnvelopeDependencyGraph = DependencyGraph.Make(String)
 
 
-let main (display_config : Logging.config) ~(use_test_only_envelope : bool) (* ~library_root:(absdir_lib_root : abs_path) *) ~(extensions : string list) (deps_config : DepsConfig.t) : ((envelope_name * (EnvelopeConfig.t * untyped_envelope)) list) ok =
+let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(extensions : string list) (deps_config : DepsConfig.t) : ((envelope_name * (EnvelopeConfig.t * untyped_envelope)) list) ok =
   let open ResultMonad in
 
   let DepsConfig.{ envelopes } = deps_config in
@@ -21,7 +21,7 @@ let main (display_config : Logging.config) ~(use_test_only_envelope : bool) (* ~
     envelopes |> foldM (fun (graph, entryacc) (envelope : DepsConfig.envelope) ->
       let DepsConfig.{ envelope_name; envelope_path; envelope_dependencies; test_only_envelope; _ } = envelope in
       if test_only_envelope && not use_test_only_envelope then
-      (* Skips test-only locks when using sources only: *)
+      (* Skips test-only envelopes when using sources only: *)
         return (graph, entryacc)
       else
         let absdir_envelope = make_abs_path envelope_path in

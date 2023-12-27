@@ -1007,7 +1007,7 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
         | Cycle(pairs) -> pairs |> TupleList.to_list
       in
       let lines =
-        pairs |> List.map (fun (modnm, _lock) ->
+        pairs |> List.map (fun (modnm, _envelope) ->
           DisplayLine(Printf.sprintf "- '%s'" modnm)
         )
       in
@@ -1280,12 +1280,12 @@ let get_candidate_file_extensions (output_mode : output_mode) =
 
 
 type build_input =
-  | PackageBuildInput of {
-      lock : abs_path;
+  | EnvelopeBuildInput of {
+      deps : abs_path;
     }
   | DocumentBuildInput of {
       kind : input_kind;
-      lock : abs_path;
+      deps : abs_path;
       out  : abs_path;
       dump : abs_path;
     }
@@ -1298,24 +1298,24 @@ let get_input_kind_from_extension (abspathstr_in : string) =
   | ext     -> Error(ext)
 
 
-let check_depended_packages (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_envelope : bool) (* ~(library_root : abs_path) *) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
-  (* Resolve dependency among locked packages: *)
-  let sorted_packages =
-    match ClosedLockDependencyResolver.main display_config ~use_test_only_envelope (* ~library_root *) ~extensions deps_config with
-    | Ok(sorted_packages) -> sorted_packages
+let check_depended_envelopes (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_envelope : bool) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
+  (* Resolve dependency among envelopes: *)
+  let sorted_envelopes =
+    match ClosedEnvelopeDependencyResolver.main display_config ~use_test_only_envelope ~extensions deps_config with
+    | Ok(sorted_envelopes) -> sorted_envelopes
     | Error(e)            -> raise (ConfigError(e))
   in
 
-  (* Typecheck every locked package: *)
+  (* Typecheck every depended envelope: *)
   let (genv, configenv, libacc) =
-    sorted_packages |> List.fold_left (fun (genv, configenv, libacc) (_lock_name, (config, package)) ->
+    sorted_envelopes |> List.fold_left (fun (genv, configenv, libacc) (_envelope_name, (config, envelope)) ->
       let main_module_name =
-        match package with
+        match envelope with
         | UTLibraryEnvelope{ main_module_name; _ } -> main_module_name
         | UTFontEnvelope{ main_module_name; _ }    -> main_module_name
       in
       let (ssig, libs) =
-        match PackageChecker.main display_config typecheck_config tyenv_prim genv package with
+        match EnvelopeChecker.main display_config typecheck_config tyenv_prim genv envelope with
         | Ok(pair) -> pair
         | Error(e) -> raise (ConfigError(e))
       in
@@ -1328,12 +1328,12 @@ let check_depended_packages (display_config : Logging.config) (typecheck_config 
   (genv, configenv, Alist.to_list libacc)
 
 
-let make_package_lock_config_path (abspathstr_in : string) =
-  make_abs_path (Printf.sprintf "%s/package.satysfi-lock" abspathstr_in)
+let make_package_deps_config_path (abspathstr_in : string) =
+  make_abs_path (Printf.sprintf "%s/package.satysfi-deps.yaml" abspathstr_in)
 
 
-let make_document_lock_config_path (basename_without_extension : string) =
-  make_abs_path (Printf.sprintf "%s.satysfi-lock" basename_without_extension)
+let make_document_deps_config_path (basename_without_extension : string) =
+  make_abs_path (Printf.sprintf "%s.satysfi-deps.yaml" basename_without_extension)
 
 
 let make_output_mode text_mode_formats_str_opt =
@@ -1413,9 +1413,9 @@ let build
       let abspathstr_in = get_abs_path_string abspath_in in
       if Sys.is_directory abspathstr_in then
       (* If the input is a package directory: *)
-        let abspath_lock_config = make_package_lock_config_path abspathstr_in in
-        PackageBuildInput{
-          lock = abspath_lock_config;
+        let abspath_deps_config = make_package_deps_config_path abspathstr_in in
+        EnvelopeBuildInput{
+          deps = abspath_deps_config;
         }
       else
       (* If the input is a document file: *)
@@ -1426,7 +1426,7 @@ let build
 
         | Ok(input_kind) ->
             let basename_without_extension = Filename.remove_extension abspathstr_in in
-            let abspath_lock_config = make_document_lock_config_path basename_without_extension in
+            let abspath_deps_config = make_document_deps_config_path basename_without_extension in
             let abspath_out =
               match (output_mode, output_file) with
               | (_, Some(abspath_out)) -> abspath_out
@@ -1436,7 +1436,7 @@ let build
             let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
             DocumentBuildInput{
               kind = input_kind;
-              lock = abspath_lock_config;
+              deps = abspath_deps_config;
               out  = abspath_out;
               dump = abspath_dump;
             }
@@ -1446,32 +1446,32 @@ let build
     let (tyenv_prim, env) = initialize ~is_bytecomp_mode output_mode runtime_config in
 
     match build_input with
-    | PackageBuildInput{
-        lock = abspath_deps_config;
+    | EnvelopeBuildInput{
+        deps = abspath_deps_config;
       } ->
-        Logging.lock_config_file display_config abspath_deps_config;
+        Logging.deps_config_file display_config abspath_deps_config;
         let deps_config = load_deps_config abspath_deps_config in
 
         let (_config, envelope) = load_envelope display_config ~use_test_files:false ~extensions abspath_in in
 
         let (genv, _configenv, _libs_dep) =
-          check_depended_packages display_config typecheck_config ~use_test_only_envelope:false (* ~library_root *) ~extensions tyenv_prim deps_config
+          check_depended_envelopes display_config typecheck_config ~use_test_only_envelope:false (* ~library_root *) ~extensions tyenv_prim deps_config
         in
 
         begin
-          match PackageChecker.main display_config typecheck_config tyenv_prim genv envelope with
+          match EnvelopeChecker.main display_config typecheck_config tyenv_prim genv envelope with
           | Ok((_ssig, _libs)) -> ()
           | Error(e)           -> raise (ConfigError(e))
         end
 
     | DocumentBuildInput{
         kind = input_kind;
-        lock = abspath_lock_config;
+        deps = abspath_deps_config;
         out  = abspath_out;
         dump = abspath_dump;
       } ->
-        Logging.lock_config_file display_config abspath_lock_config;
-        let deps_config = load_deps_config abspath_lock_config in
+        Logging.deps_config_file display_config abspath_deps_config;
+        let deps_config = load_deps_config abspath_deps_config in
 
         Logging.target_file display_config abspath_out;
 
@@ -1479,7 +1479,7 @@ let build
         Logging.dump_file display_config ~already_exists:dump_file_exists abspath_dump;
 
         let (genv, configenv, libs) =
-          check_depended_packages display_config typecheck_config ~use_test_only_envelope:false (* ~library_root *) ~extensions tyenv_prim deps_config
+          check_depended_envelopes display_config typecheck_config ~use_test_only_envelope:false (* ~library_root *) ~extensions tyenv_prim deps_config
         in
 
         (* Resolve dependency of the document and the local source files: *)
@@ -1491,7 +1491,7 @@ let build
 
         (* Typechecking and elaboration: *)
         let (libs_local, ast_doc) =
-          match PackageChecker.main_document display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+          match EnvelopeChecker.main_document display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
           | Ok(pair) -> pair
           | Error(e) -> raise (ConfigError(e))
         in
@@ -1504,12 +1504,12 @@ let build
 
 
 type test_input =
-  | PackageTestInput of {
-      lock : abs_path;
+  | EnvelopeTestInput of {
+      deps : abs_path;
     }
   | DocumentTestInput of {
       kind : input_kind;
-      lock : abs_path;
+      deps : abs_path;
     }
 
 
@@ -1549,9 +1549,9 @@ let test
       let abspathstr_in = get_abs_path_string abspath_in in
       if Sys.is_directory abspathstr_in then
       (* If the input is a package directory: *)
-        let abspath_lock_config = make_package_lock_config_path abspathstr_in in
-        PackageTestInput{
-          lock = abspath_lock_config;
+        let abspath_deps_config = make_package_deps_config_path abspathstr_in in
+        EnvelopeTestInput{
+          deps = abspath_deps_config;
         }
       else
       (* If the input is a document file: *)
@@ -1562,10 +1562,10 @@ let test
 
         | Ok(input_kind) ->
             let basename_without_extension = Filename.remove_extension abspathstr_in in
-            let abspath_lock_config = make_document_lock_config_path basename_without_extension in
+            let abspath_deps_config = make_document_deps_config_path basename_without_extension in
             DocumentTestInput{
               kind = input_kind;
-              lock = abspath_lock_config;
+              deps = abspath_deps_config;
             }
     in
 
@@ -1574,20 +1574,20 @@ let test
 
     begin
       match test_input with
-      | PackageTestInput{
-          lock = abspath_deps_config;
+      | EnvelopeTestInput{
+          deps = abspath_deps_config;
         } ->
-          Logging.lock_config_file display_config abspath_deps_config;
+          Logging.deps_config_file display_config abspath_deps_config;
           let deps_config = load_deps_config abspath_deps_config in
 
           let (_config, package) = load_envelope display_config ~use_test_files:true ~extensions abspath_in in
 
           let (genv, _configenv, _libs_dep) =
-            check_depended_packages display_config typecheck_config ~use_test_only_envelope:true (* ~library_root *) ~extensions tyenv_prim deps_config
+            check_depended_envelopes display_config typecheck_config ~use_test_only_envelope:true (* ~library_root *) ~extensions tyenv_prim deps_config
           in
 
           let libs =
-            match PackageChecker.main display_config typecheck_config tyenv_prim genv package with
+            match EnvelopeChecker.main display_config typecheck_config tyenv_prim genv package with
             | Ok((_ssig, libs)) -> libs
             | Error(e)          -> raise (ConfigError(e))
           in
@@ -1597,13 +1597,13 @@ let test
 
       | DocumentTestInput{
           kind = input_kind;
-          lock = abspath_lock_config;
+          deps = abspath_deps_config;
         } ->
-          Logging.lock_config_file display_config abspath_lock_config;
-          let deps_config = load_deps_config abspath_lock_config in
+          Logging.deps_config_file display_config abspath_deps_config;
+          let deps_config = load_deps_config abspath_deps_config in
 
           let (genv, configenv, libs) =
-            check_depended_packages display_config typecheck_config ~use_test_only_envelope:true (* ~library_root *) ~extensions tyenv_prim deps_config
+            check_depended_envelopes display_config typecheck_config ~use_test_only_envelope:true (* ~library_root *) ~extensions tyenv_prim deps_config
           in
 
           (* Resolve dependency of the document and the local source files: *)
@@ -1615,7 +1615,7 @@ let test
 
           (* Typechecking and elaboration: *)
           let (libs_local, _ast_doc) =
-            match PackageChecker.main_document display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+            match EnvelopeChecker.main_document display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
             | Ok(pair) -> pair
             | Error(e) -> raise (ConfigError(e))
           in

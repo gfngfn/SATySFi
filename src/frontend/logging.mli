@@ -33,7 +33,7 @@ val target_file : config -> abs_path -> unit
 
 val dump_file : config -> already_exists:bool -> abs_path -> unit
 
-val lock_config_file : config -> abs_path -> unit
+val deps_config_file : config -> abs_path -> unit
 
 val begin_to_embed_fonts : unit -> unit
 

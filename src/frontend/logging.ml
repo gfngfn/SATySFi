@@ -100,8 +100,8 @@ let dump_file (config : config) ~(already_exists : bool) (dump_file : abs_path) 
     print_endline ("  dump file: '" ^ (show_path config dump_file) ^ "' (will be created)")
 
 
-let lock_config_file (config : config) (abspath_lock_config : abs_path) =
-  Printf.printf "  lock file: '%s'\n" (show_path config abspath_lock_config)
+let deps_config_file (config : config) (abspath_deps_config : abs_path) =
+  Printf.printf "  deps file: '%s'\n" (show_path config abspath_deps_config)
 
 
 let begin_to_embed_fonts () =
