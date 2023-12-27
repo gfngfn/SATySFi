@@ -37,3 +37,10 @@ end
 val make_absolute_if_relative : origin:string -> string -> abs_path
 
 val read_file : abs_path -> (string, string) result
+
+type 'a cycle =
+  | Loop  of 'a
+  | Cycle of 'a TupleList.t
+[@@deriving show]
+
+val map_cycle : ('a -> 'b) -> 'a cycle -> 'b cycle

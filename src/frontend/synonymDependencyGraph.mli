@@ -1,6 +1,6 @@
 
+open MyUtil
 open Types
-open DependencyGraph.Cycle
 
 type data = {
   position        : Range.t;

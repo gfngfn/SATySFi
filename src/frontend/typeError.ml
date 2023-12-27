@@ -1,6 +1,6 @@
 
+open MyUtil
 open Types
-open DependencyGraph.Cycle
 open StaticEnv
 open SyntaxBase
 

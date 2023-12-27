@@ -83,3 +83,14 @@ let read_file (abspath : abs_path) : (string, string) result =
   with
   | Sys_error(s) ->
       err s
+
+
+type 'a cycle =
+  | Loop  of 'a
+  | Cycle of 'a TupleList.t
+[@@deriving show { with_path = false; }]
+
+
+let map_cycle f = function
+  | Loop(v)   -> Loop(f v)
+  | Cycle(vs) -> Cycle(TupleList.map f vs)

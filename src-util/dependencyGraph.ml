@@ -1,16 +1,6 @@
 
-module Cycle = struct
-  type 'a cycle =
-    | Loop  of 'a
-    | Cycle of 'a TupleList.t
-  [@@deriving show { with_path = false; }]
+open MyUtil
 
-  let map_cycle f = function
-    | Loop(v)   -> Loop(f v)
-    | Cycle(vs) -> Cycle(TupleList.map f vs)
-end
-
-open Cycle
 
 module type ElementType = sig
   type t
