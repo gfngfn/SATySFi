@@ -7,23 +7,23 @@ open TypeError
 
 type 'a ok = ('a, config_error) result
 
-type dependency_kind = PackageDependency | LocalDependency
+type dependency_kind = EnvelopeDependency | LocalDependency
 
 
-let add_dependency_to_type_environment ~(package_only : bool) (header : header_element list) (genv : global_type_environment) (tyenv : Typeenv.t) : Typeenv.t ok =
+let add_dependency_to_type_environment ~(import_envelope_only : bool) (header : header_element list) (genv : global_type_environment) (tyenv : Typeenv.t) : Typeenv.t ok =
   let open ResultMonad in
   header |> foldM (fun tyenv headerelem ->
     let opt =
       match headerelem with
       | HeaderUse{ opening; mod_chain }
       | HeaderUseOf{ opening; mod_chain; _ } ->
-          if package_only then
+          if import_envelope_only then
             None
           else
             Some((LocalDependency, opening, mod_chain))
 
       | HeaderUsePackage{ opening; mod_chain } ->
-          Some((PackageDependency, opening, mod_chain))
+          Some((EnvelopeDependency, opening, mod_chain))
     in
     match opt with
     | None ->
@@ -35,7 +35,7 @@ let add_dependency_to_type_environment ~(package_only : bool) (header : header_e
           | (LocalDependency, None) ->
               assert false (* Local dependency must be resolved beforehand. *)
 
-          | (PackageDependency, None) ->
+          | (EnvelopeDependency, None) ->
               err @@ UnknownPackageDependency(rng0, modnm0)
 
           | (_, Some(ssig)) ->
@@ -96,28 +96,34 @@ let typecheck_document_file (display_config : Logging.config) (config : typechec
       err (NotADocumentFile(abspath_in, ty))
 
 
-let check_library_package (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (main_module_name : module_name) (utlibs : (abs_path * untyped_library_file) list) =
+let check_library_envelope (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (main_module_name : module_name) (utlibs : (abs_path * untyped_library_file) list) =
   let open ResultMonad in
 
-  (* Resolve dependency among the source files in the package: *)
+  (* Resolve dependency among the source files in the envelope: *)
   let* sorted_utlibs = ClosedFileDependencyResolver.main utlibs in
 
   (* Typecheck each source file: *)
   let* (_genv, libacc, ssig_opt) =
     sorted_utlibs |> foldM (fun (genv, libacc, ssig_opt) (abspath, utlib) ->
       let (_attrs, header, (modident, utsig_opt, utbinds)) = utlib in
-      let* tyenv_for_struct = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
+      let* tyenv_for_struct =
+        tyenv_prim |> add_dependency_to_type_environment ~import_envelope_only:false header genv
+      in
       let (_, modnm) = modident in
       if String.equal modnm main_module_name then
         let* ((_quant, ssig), binds) =
-          let* tyenv_for_sig = tyenv_prim |> add_dependency_to_type_environment ~package_only:true header genv in
-          typecheck_library_file display_config config ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_sig abspath utsig_opt utbinds
+          let* tyenv_for_sig =
+            tyenv_prim |> add_dependency_to_type_environment ~import_envelope_only:true header genv
+          in
+          typecheck_library_file display_config config
+            ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_sig abspath utsig_opt utbinds
         in
         let genv = genv |> GlobalTypeenv.add modnm ssig in
         return (genv, Alist.extend libacc (abspath, binds), Some(ssig))
       else
         let* ((_quant, ssig), binds) =
-          typecheck_library_file display_config config ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_struct abspath utsig_opt utbinds
+          typecheck_library_file display_config config
+            ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_struct abspath utsig_opt utbinds
         in
         let genv = genv |> GlobalTypeenv.add modnm ssig in
         return (genv, Alist.extend libacc (abspath, binds), ssig_opt)
@@ -130,7 +136,7 @@ let check_library_package (display_config : Logging.config) (config : typecheck_
   | None       -> err @@ NoMainModule(main_module_name)
 
 
-let check_font_package (_main_module_name : module_name) (font_files : font_file_record list) =
+let check_font_envelope (_main_module_name : module_name) (font_files : font_file_record list) =
   let open ResultMonad in
   let stage = Persistent0 in
   let (ssig, libacc) =
@@ -144,12 +150,12 @@ let check_font_package (_main_module_name : module_name) (font_files : font_file
       in
       match font_file_contents with
       | OpentypeSingle(varnm) ->
-          let evid = EvalVarID.fresh (Range.dummy "font-package 1", varnm) in
+          let evid = EvalVarID.fresh (Range.dummy "font-envelope 1", varnm) in
           let bind = Bind(stage, NonRec(evid, LoadSingleFont{ path; used_as_math_font })) in
           let ventry =
             {
               val_name  = Some(evid);
-              val_type  = Poly(Range.dummy "font-package 2", BaseType(FontType));
+              val_type  = Poly(Range.dummy "font-envelope 2", BaseType(FontType));
               val_stage = stage;
             }
           in
@@ -158,12 +164,12 @@ let check_font_package (_main_module_name : module_name) (font_files : font_file
       | OpentypeCollection(varnms) ->
           let (ssig, bindacc, _) =
             varnms |> List.fold_left (fun (ssig, bindacc, index) varnm ->
-              let evid = EvalVarID.fresh (Range.dummy "font-package 3", varnm) in
+              let evid = EvalVarID.fresh (Range.dummy "font-envelope 3", varnm) in
               let bind = Bind(stage, NonRec(evid, LoadCollectionFont{ path; index; used_as_math_font })) in
               let ventry =
                 {
                   val_name  = Some(evid);
-                  val_type  = Poly(Range.dummy "font-package 4", BaseType(FontType));
+                  val_type  = Poly(Range.dummy "font-envelope 4", BaseType(FontType));
                   val_stage = stage;
                 }
               in
@@ -180,10 +186,10 @@ let check_font_package (_main_module_name : module_name) (font_files : font_file
 let main (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (envelope : untyped_envelope) : (StructSig.t * (abs_path * binding list) list) ok =
   match envelope with
   | UTLibraryEnvelope{ main_module_name; modules = utlibs } ->
-      check_library_package display_config config tyenv_prim genv main_module_name utlibs
+      check_library_envelope display_config config tyenv_prim genv main_module_name utlibs
 
   | UTFontEnvelope{ main_module_name; font_files } ->
-      check_font_package main_module_name font_files
+      check_font_envelope main_module_name font_files
 
 
 let main_document (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (sorted_locals : (abs_path * untyped_library_file) list) (abspath_and_utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
@@ -193,8 +199,11 @@ let main_document (display_config : Logging.config) (config : typecheck_config) 
       let (_attrs, header, (modident, utsig_opt, utbinds)) = utlib in
       let (_, modnm) = modident in
       let* ((_quant, ssig), binds) =
-        let* tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
-        typecheck_library_file display_config config ~for_struct:tyenv ~for_sig:tyenv abspath utsig_opt utbinds
+        let* tyenv =
+          tyenv_prim |> add_dependency_to_type_environment ~import_envelope_only:false header genv
+        in
+        typecheck_library_file display_config config
+          ~for_struct:tyenv ~for_sig:tyenv abspath utsig_opt utbinds
       in
       let genv = genv |> GlobalTypeenv.add modnm ssig in
       return (genv, Alist.extend libacc (abspath, binds))
@@ -205,7 +214,9 @@ let main_document (display_config : Logging.config) (config : typecheck_config) 
   (* Typecheck the document: *)
   let* ast_doc =
     let (abspath, (_attrs, header, utast)) = abspath_and_utdoc in
-    let* tyenv = tyenv_prim |> add_dependency_to_type_environment ~package_only:false header genv in
+    let* tyenv =
+      tyenv_prim |> add_dependency_to_type_environment ~import_envelope_only:false header genv
+    in
     typecheck_document_file display_config config tyenv abspath utast
   in
 

@@ -14,16 +14,16 @@ type graph = untyped_library_file FileDependencyGraph.t
 
 type vertex = FileDependencyGraph.Vertex.t
 
-type local_or_package =
-  | Local   of module_name_chain ranged * abs_path
-  | Package of module_name_chain ranged
+type local_or_envelope =
+  | Local    of module_name_chain ranged * abs_path
+  | Envelope of module_name_chain ranged
 
 
-let get_header (extensions : string list) (curdir : string) (headerelem : header_element) : local_or_package ok =
+let get_header (extensions : string list) (curdir : string) (headerelem : header_element) : local_or_envelope ok =
   let open ResultMonad in
   match headerelem with
   | HeaderUsePackage{ mod_chain; _ } ->
-      return @@ Package(mod_chain)
+      return @@ Envelope(mod_chain)
 
   | HeaderUse{ mod_chain; _ } ->
       err @@ CannotUseHeaderUse(mod_chain)
@@ -69,9 +69,9 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
         | Some(vertex_prev) -> graph |> FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
       in
       header |> foldM (fun graph headerelem ->
-        let* local_or_package = get_header extensions curdir headerelem in
-        match local_or_package with
-        | Package((_, _main_module_name)) ->
+        let* local_or_envelope = get_header extensions curdir headerelem in
+        match local_or_envelope with
+        | Envelope((_, _main_module_name)) ->
             return graph
 
         | Local(_modident_sub, abspath_sub) ->
@@ -95,9 +95,9 @@ let register_document_file (display_config : Logging.config) (extensions : strin
   let (_attrs, header, _) = utdoc in
   let* graph =
     header |> foldM (fun (graph) headerelem ->
-      let* local_or_package = get_header extensions curdir headerelem in
-      match local_or_package with
-      | Package((_, _main_module_name)) ->
+      let* local_or_envelope = get_header extensions curdir headerelem in
+      match local_or_envelope with
+      | Envelope((_, _main_module_name)) ->
           return graph
 
       | Local(_, abspath_sub) ->
