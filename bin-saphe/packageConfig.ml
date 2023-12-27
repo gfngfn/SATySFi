@@ -276,7 +276,6 @@ let config_decoder : t ConfigDecoder.t =
 
 
 let load (abspath_config : abs_path) : t ok =
-  print_endline @@ "!!!! LOAD: " ^ get_abs_path_string abspath_config;
   let open ResultMonad in
   let* s =
     read_file abspath_config
