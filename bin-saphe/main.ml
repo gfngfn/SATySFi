@@ -9,7 +9,8 @@ exception ConfigError of config_error
 
 
 let version =
-  "Saphe version 0.0.1 alpha"
+  Printf.sprintf "Saphe version %s alpha"
+    (SemanticVersion.to_string Constant.current_ecosystem_version)
 
 
 type line =
@@ -486,7 +487,7 @@ let solve ~(fpath_in : string) =
     let solve_input =
       let abspathstr_in = get_abs_path_string abspath_in in
       if Sys.is_directory abspathstr_in then
-      (* If the input is a package directory: *)
+      (* If the input is a directory that forms a package: *)
         let abspath_lock_config = make_package_lock_config_path abspathstr_in in
         PackageSolveInput{
           root = abspath_in;
