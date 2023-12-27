@@ -72,7 +72,7 @@ let lock_encoder (lock : locked_package) : Yaml.value =
 
 let lock_config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
-  get "language" language_version_checker >>= fun () ->
+  get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
   get_or_else "locks" (list lock_decoder) [] >>= fun locked_packages ->
   succeed {
     locked_packages;
@@ -81,7 +81,7 @@ let lock_config_decoder : t ConfigDecoder.t =
 
 let lock_config_encoder (lock_config : t) : Yaml.value =
   `O([
-    ("language", `String("^0.1.0"));
+    ("ecosystem", `String(SemanticVersion.(requirement_to_string (CompatibleWith(Constant.current_ecosystem_version)))));
     ("locks", `A(lock_config.locked_packages |> List.map lock_encoder));
   ])
 

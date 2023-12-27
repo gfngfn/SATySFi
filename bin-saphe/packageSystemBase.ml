@@ -91,7 +91,8 @@ type registry_spec = {
 }
 
 type package_context = {
-  registries : registry_spec RegistryLocalNameMap.t;
+  language_version : SemanticVersion.t;
+  registries       : registry_spec RegistryLocalNameMap.t;
 }
 
 type package_solution = {

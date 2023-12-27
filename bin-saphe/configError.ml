@@ -12,7 +12,7 @@ type yaml_error =
   | NotAnArray             of YamlDecoder.context
   | NotAnObject            of YamlDecoder.context
   | UnexpectedTag          of YamlDecoder.context * string
-  | UnexpectedLanguage     of string
+  | BreaksVersionRequirement of YamlDecoder.context * SemanticVersion.requirement
   | NotASemanticVersion    of YamlDecoder.context * string
   | NotAVersionRequirement of YamlDecoder.context * string
   | InvalidPackageName     of YamlDecoder.context * string
@@ -64,9 +64,6 @@ type config_error =
       depending : lock_name;
       depended  : lock_name;
     }
-(*
-  | CyclicLockDependency      of (lock_name * untyped_package) cycle
-*)
   | CannotFindLibraryFile     of lib_path * abs_path list
   | CannotSolvePackageConstraints
 (*

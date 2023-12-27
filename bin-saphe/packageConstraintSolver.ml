@@ -191,8 +191,7 @@ module SolverInput = struct
               let impls =
                 impl_records |> List.filter_map (fun impl_record ->
                   let ImplRecord{ version; source; language_requirement; dependencies } = impl_record in
-                  if Constant.current_language_version |> SemanticVersion.fulfill language_requirement then
-                  (* TODO: change the condition above *)
+                  if context.language_version |> SemanticVersion.fulfill language_requirement then
                     if String.equal (SemanticVersion.get_compatibility_unit version) compatibility then
                       let dependencies =
                         make_internal_dependency_from_registry registry_local_name context dependencies

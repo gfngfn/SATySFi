@@ -49,7 +49,7 @@ let registry_spec_encoder (registry_hash_value, registry_remote) =
 
 let config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
-  get "language" language_version_checker >>= fun () ->
+  get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
   get "registries" (list registry_spec_decoder) >>= fun registries ->
   registries |> List.fold_left (fun res (registry_hash_value, registry_remote) ->
     res >>= fun map ->
@@ -62,12 +62,12 @@ let config_decoder : t ConfigDecoder.t =
 
 
 let config_encoder (library_root_config : t) : Yaml.value =
-  let language = SemanticVersion.(requirement_to_string (CompatibleWith(Constant.current_language_version))) in
+  let language = SemanticVersion.(requirement_to_string (CompatibleWith(Constant.current_ecosystem_version))) in
   let registry_specs =
     library_root_config.registries |> RegistryHashValueMap.bindings |> List.map registry_spec_encoder
   in
   `O[
-    ("language", `String(language));
+    ("ecosystem", `String(language));
     ("registries", `A(registry_specs));
   ]
 

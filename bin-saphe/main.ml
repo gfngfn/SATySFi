@@ -79,8 +79,8 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | UnexpectedTag(yctx, tag) ->
       [ NormalLine(Printf.sprintf "unexpected type tag '%s'%s" tag (show_yaml_context yctx)) ]
 
-  | UnexpectedLanguage(s_language_version) ->
-      [ NormalLine(Printf.sprintf "unexpected language version '%s'" s_language_version) ]
+  | BreaksVersionRequirement(yctx, requirement) ->
+      [ NormalLine(Printf.sprintf "breaks the requrement '%s'%s" (SemanticVersion.requirement_to_string requirement)(show_yaml_context yctx)) ]
 
   | NotASemanticVersion(yctx, s) ->
       [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
@@ -511,13 +511,26 @@ let solve ~(fpath_in : string) =
             (get_lib_path_string Constant.library_root_config_file))
       in
       let* library_root_config = LibraryRootConfig.load abspath_library_root_config in
-      let* (dependencies_with_flags, abspath_lock_config, registry_specs) =
+      let* (language_version, dependencies_with_flags, abspath_lock_config, registry_specs) =
         match solve_input with
         | PackageSolveInput{
             root = absdir_package;
             lock = abspath_lock_config;
           } ->
-            let* PackageConfig.{ package_contents; registry_specs; _ } = PackageConfig.load absdir_package in
+            let*
+              PackageConfig.{
+                language_requirement;
+                package_contents;
+                registry_specs;
+                _
+              } = PackageConfig.load absdir_package
+            in
+            let language_version =
+              match language_requirement with
+              | SemanticVersion.CompatibleWith(semver) -> semver
+                  (* Selects the minimum version according to the user's designation for the moment.
+                     TODO: take dependencies into account when selecting a language version *)
+            in
             begin
               match package_contents with
               | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
@@ -526,10 +539,10 @@ let solve ~(fpath_in : string) =
                       (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
                       (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
                   in
-                  return (dependencies_with_flags, abspath_lock_config, registry_specs)
+                  return (language_version, dependencies_with_flags, abspath_lock_config, registry_specs)
 
               | PackageConfig.Font(_) ->
-                  return ([], abspath_lock_config, registry_specs)
+                  return (language_version, [], abspath_lock_config, registry_specs)
             end
 
         | DocumentSolveInput{
@@ -589,7 +602,7 @@ let solve ~(fpath_in : string) =
         ) registry_specs (return RegistryLocalNameMap.empty)
       in
 
-      let package_context = { registries } in
+      let package_context = { registries; language_version } in
       let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
       begin
         match solutions_opt with

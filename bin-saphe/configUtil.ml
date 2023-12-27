@@ -39,13 +39,13 @@ let requirement_decoder : SemanticVersion.requirement ConfigDecoder.t =
   | Some(verreq) -> succeed verreq
 
 
-let language_version_checker : unit ConfigDecoder.t =
+let version_checker (version : SemanticVersion.t) : unit ConfigDecoder.t =
   let open ConfigDecoder in
-  requirement_decoder >>= fun verreq ->
-  if Constant.current_language_version |> SemanticVersion.fulfill verreq then
+  requirement_decoder >>= fun requirement ->
+  if version |> SemanticVersion.fulfill requirement then
     succeed ()
   else
-    failure (fun _yctx -> UnexpectedLanguage(verreq |> SemanticVersion.requirement_to_string))
+    failure (fun yctx -> BreaksVersionRequirement(yctx, requirement))
 
 
 let dependency_spec_decoder : package_dependency_spec ConfigDecoder.t =

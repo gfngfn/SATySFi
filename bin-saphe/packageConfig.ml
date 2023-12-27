@@ -40,11 +40,12 @@ type package_contents =
     }
 
 type t = {
-  package_name     : package_name;
-  package_authors  : string list;
-  external_sources : (string * external_source) list;
-  package_contents : package_contents;
-  registry_specs   : registry_remote RegistryLocalNameMap.t;
+  language_requirement : SemanticVersion.requirement;
+  package_name         : package_name;
+  package_authors      : string list;
+  external_sources     : (string * external_source) list;
+  package_contents     : package_contents;
+  registry_specs       : registry_remote RegistryLocalNameMap.t;
 }
 
 
@@ -250,7 +251,7 @@ let external_source_decoder : (string * external_source) ConfigDecoder.t =
 
 let config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
-  get "language" language_version_checker >>= fun () ->
+  get "language" requirement_decoder >>= fun language_requirement ->
   get "name" package_name_decoder >>= fun package_name ->
   get "authors" (list string) >>= fun package_authors ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
@@ -264,6 +265,7 @@ let config_decoder : t ConfigDecoder.t =
       succeed (map |> RegistryLocalNameMap.add registry_local_name registry_remote)
   ) (succeed RegistryLocalNameMap.empty) >>= fun registry_specs ->
   succeed @@ {
+    language_requirement;
     package_name;
     package_authors;
     external_sources;
