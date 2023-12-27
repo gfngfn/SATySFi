@@ -347,22 +347,16 @@ let error_log_environment (suspended : unit -> unit) : unit =
       report_config_error e
 
 
-let make_package_lock_config_path (abspathstr_in : string) =
-  make_abs_path (Printf.sprintf "%s/%s" abspathstr_in Constant.library_lock_config_file_name)
-
-
-let make_document_lock_config_path (path_without_extension : string) =
-  make_abs_path (Printf.sprintf "%s.satysfi-lock" path_without_extension)
-
-
 type solve_input =
   | PackageSolveInput of {
-      root : abs_path; (* The absolute path of a directory used as the package root *)
-      lock : abs_path; (* A path for writing a resulting lock file *)
+      root     : abs_path; (* The absolute path of a directory used as the package root *)
+      lock     : abs_path; (* A path for writing a resulting lock config file *)
+      envelope : abs_path; (* A path for writing a resulting envelope config file *)
     }
   | DocumentSolveInput of {
-      path : abs_path; (* The absolute path to the document file *)
-      lock : abs_path; (* A path for writing a resulting lock file *)
+      doc    : abs_path; (* The absolute path to the document file *)
+      config : abs_path; (* The absolute path to the config file *)
+      lock   : abs_path; (* A path for writing a resulting lock file *)
     }
 
 
@@ -462,7 +456,7 @@ let solve ~(fpath_in : string) =
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
 
-    let library_root =
+    let absdir_library_root =
       if String.equal Sys.os_type "Win32" then
         match Sys.getenv_opt "userprofile" with
         | None    -> raise NoLibraryRootDesignation
@@ -474,47 +468,44 @@ let solve ~(fpath_in : string) =
     in
     let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
     let solve_input =
-      let abspathstr_in = get_abs_path_string abspath_in in
-      if Sys.is_directory abspathstr_in then
+      if Sys.is_directory (get_abs_path_string abspath_in) then
       (* If the input is a directory that forms a package: *)
-        let abspath_lock_config = make_package_lock_config_path abspathstr_in in
+        let abspath_lock_config = Constant.library_lock_config_path abspath_in in
+        let abspath_envelope_config = Constant.envelope_config_path abspath_in in
         PackageSolveInput{
-          root = abspath_in;
-          lock = abspath_lock_config;
+          root     = abspath_in;
+          lock     = abspath_lock_config;
+          envelope = abspath_envelope_config;
         }
       else
-        let abspathstr_in = get_abs_path_string abspath_in in
-        let path_without_extension = Filename.remove_extension abspathstr_in in
-        let abspath_lock_config = make_document_lock_config_path path_without_extension in
+        let abspath_package_config = Constant.document_package_config_path abspath_in in
+        let abspath_lock_config = Constant.document_lock_config_path abspath_in in
         DocumentSolveInput{
-          path = abspath_in;
-          lock = abspath_lock_config;
+          doc    = abspath_in;
+          config = abspath_package_config;
+          lock   = abspath_lock_config;
         }
     in
 
     let res =
       let open ResultMonad in
-      let abspath_library_root_config =
-        make_abs_path
-          (Filename.concat
-            (get_abs_path_string library_root)
-            (get_lib_path_string Constant.library_root_config_file))
-      in
+      let abspath_library_root_config = Constant.library_root_config_path absdir_library_root in
       let* library_root_config = LibraryRootConfig.load abspath_library_root_config in
       let* (language_version, dependencies_with_flags, abspath_lock_config, registry_specs) =
         match solve_input with
         | PackageSolveInput{
-            root = absdir_package;
-            lock = abspath_lock_config;
+            root     = absdir_package;
+            lock     = abspath_lock_config;
+            envelope = _abspath_envelope_config; (* TODO: use this *)
           } ->
-            let abspath_config = Constant.library_package_config_path absdir_package in
+            let abspath_package_config = Constant.library_package_config_path absdir_package in
             let*
               PackageConfig.{
                 language_requirement;
                 package_contents;
                 registry_specs;
                 _
-              } = PackageConfig.load abspath_config
+              } = PackageConfig.load abspath_package_config
             in
             let language_version =
               match language_requirement with
@@ -537,8 +528,9 @@ let solve ~(fpath_in : string) =
             end
 
         | DocumentSolveInput{
-            path = _abspath_in;
-            lock = _abspath_lock_config;
+            doc    = _abspath_doc;
+            config = _abspath_package_config;
+            lock   = _abspath_lock_config;
           } ->
             failwith "TODO: DocumentSolveInput"
 (*
@@ -569,7 +561,7 @@ let solve ~(fpath_in : string) =
             let libpath_registry_root = Constant.registry_root_directory registry_hash_value in
             make_abs_path
               (Filename.concat
-                (get_abs_path_string library_root)
+                (get_abs_path_string absdir_library_root)
                 (get_lib_path_string libpath_registry_root))
           in
           let git_command = "git" in (* TODO: make this changeable *)
@@ -612,7 +604,7 @@ let solve ~(fpath_in : string) =
             let* () =
               impl_specs |> foldM (fun () impl_spec ->
                 LockFetcher.main
-                  ~wget_command ~tar_command ~unzip_command ~library_root impl_spec
+                  ~wget_command ~tar_command ~unzip_command ~library_root:absdir_library_root impl_spec
               ) ()
             in
             LockConfig.write abspath_lock_config lock_config;

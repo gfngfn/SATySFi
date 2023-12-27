@@ -30,17 +30,32 @@ let lock_tarball_cache_directory (registry_hash_value : registry_hash_value) : l
   make_lib_path (Printf.sprintf "cache/locks/%s" registry_hash_value)
 
 
-let library_package_config_path (absdir_library : abs_path) : abs_path =
-  make_abs_path (Filename.concat (get_abs_path_string absdir_library) "saphe.yaml")
-
-
-let library_root_config_file =
-  make_lib_path "saphe-library-root.yaml"
+let library_root_config_path (absdir_library_root : abs_path) : abs_path =
+  make_abs_path (Filename.concat (get_abs_path_string absdir_library_root) "saphe-library-root.yaml")
 
 
 let package_registry_config_file_name =
   "saphe-registry.yaml"
 
 
-let library_lock_config_file_name =
-  "saphe.lock.yaml"
+let library_package_config_path (absdir_library : abs_path) : abs_path =
+  make_abs_path (Filename.concat (get_abs_path_string absdir_library) "saphe.yaml")
+
+
+let document_package_config_path (abspath_doc : abs_path) : abs_path =
+  let path_without_extension = Filename.remove_extension (get_abs_path_string abspath_doc) in
+  make_abs_path (Printf.sprintf "%s.saphe.yaml" path_without_extension)
+
+
+let library_lock_config_path (absdir_library : abs_path) : abs_path =
+  make_abs_path (Filename.concat (get_abs_path_string absdir_library) "saphe.lock.yaml")
+
+
+let document_lock_config_path (abspath_doc : abs_path) : abs_path =
+  let path_without_extension = Filename.remove_extension (get_abs_path_string abspath_doc) in
+  make_abs_path (Printf.sprintf "%s.saphe.lock.yaml" path_without_extension)
+
+
+(* Should be in sync with SATySFi *)
+let envelope_config_path (absdir_library : abs_path) : abs_path =
+  make_abs_path (Filename.concat (get_abs_path_string absdir_library) "satysfi-envelope.yaml")
