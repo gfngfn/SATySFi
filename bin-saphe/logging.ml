@@ -28,8 +28,11 @@ let show_package_dependency_solutions (solutions : package_solution list) =
 
 
 let end_lock_output (file_name_out : abs_path) =
-  print_endline (" ---- ---- ---- ----");
-  print_endline ("  output written on '" ^ (get_abs_path_string file_name_out) ^ "'.")
+  print_endline ("  lock config written on '" ^ (get_abs_path_string file_name_out) ^ "'.")
+
+
+let end_envelope_output (file_name_out : abs_path) =
+  print_endline ("  envelope config written on '" ^ (get_abs_path_string file_name_out) ^ "'.")
 
 
 let lock_already_installed (lock_name : lock_name) (absdir : abs_path) =

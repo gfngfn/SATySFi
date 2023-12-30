@@ -8,6 +8,8 @@ val show_package_dependency_solutions : package_solution list -> unit
 
 val end_lock_output : abs_path -> unit
 
+val end_envelope_output : abs_path -> unit
+
 val lock_already_installed : lock_name -> abs_path -> unit
 
 val lock_cache_exists : lock_name -> abs_path -> unit

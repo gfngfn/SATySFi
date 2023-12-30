@@ -452,6 +452,62 @@ let extract_attributes_from_document_file (display_config : Logging.config) (inp
       return docattr
 *)
 
+
+let make_envelope_config (package_contents : PackageConfig.package_contents) : EnvelopeConfig.t =
+  match package_contents with
+  | PackageConfig.Library{
+      main_module_name;
+      source_directories;
+      test_directories;
+      _
+    } ->
+      EnvelopeConfig.{
+        envelope_contents =
+          Library{
+            main_module_name;
+            source_directories;
+            test_directories;
+            conversion_specs = []; (* TODO *)
+          };
+      }
+
+  | PackageConfig.Font{
+      main_module_name;
+      font_file_descriptions = descrs;
+    } ->
+      let font_file_descriptions =
+        descrs |> List.map (fun descr ->
+          let
+            PackageConfig.{
+              font_file_path;
+              font_file_contents;
+              used_as_math_font;
+            } = descr
+          in
+          let font_file_contents =
+            match font_file_contents with
+            | PackageConfig.OpentypeSingle(name) ->
+                EnvelopeConfig.OpentypeSingle(name)
+
+            | PackageConfig.OpentypeCollection(names) ->
+                EnvelopeConfig.OpentypeCollection(names)
+          in
+          EnvelopeConfig.{
+            font_file_path;
+            font_file_contents;
+            used_as_math_font;
+          }
+        )
+      in
+      EnvelopeConfig.{
+        envelope_contents =
+          Font{
+            main_module_name;
+            font_file_descriptions;
+          };
+      }
+
+
 let solve ~(fpath_in : string) =
   error_log_environment (fun () ->
     let curdir = Sys.getcwd () in
@@ -496,7 +552,7 @@ let solve ~(fpath_in : string) =
         | PackageSolveInput{
             root     = absdir_package;
             lock     = abspath_lock_config;
-            envelope = _abspath_envelope_config; (* TODO: use this *)
+            envelope = abspath_envelope_config;
           } ->
             let abspath_package_config = Constant.library_package_config_path absdir_package in
             let*
@@ -513,6 +569,8 @@ let solve ~(fpath_in : string) =
                   (* Selects the minimum version according to the user's designation for the moment.
                      TODO: take dependencies into account when selecting a language version *)
             in
+            let envelope_config = make_envelope_config package_contents in
+            EnvelopeConfig.write abspath_envelope_config envelope_config;
             begin
               match package_contents with
               | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
