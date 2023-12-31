@@ -4,10 +4,6 @@ open PackageSystemBase
 open ConfigError
 
 
-exception NoLibraryRootDesignation
-exception ConfigError of config_error
-
-
 let version =
   Printf.sprintf "Saphe version %s alpha"
     (SemanticVersion.to_string Constant.current_ecosystem_version)
@@ -17,7 +13,8 @@ type line =
   | NormalLine  of string
   | DisplayLine of string
 
-let report_error (lines : line list) =
+
+let report_error (lines : line list) : unit =
   print_string "! ";
   lines |> List.fold_left (fun (is_first : bool) (line : line) ->
     begin
@@ -35,11 +32,10 @@ let report_error (lines : line list) =
             print_endline ("      " ^ s)
     end;
     false
-  ) true |> ignore;
-  exit 1
+  ) true |> ignore
 
 
-let show_yaml_context (context : YamlDecoder.context) =
+let show_yaml_context (context : YamlDecoder.context) : string =
   match context with
   | [] ->
       ""
@@ -112,6 +108,12 @@ let make_yaml_error_lines : yaml_error -> line list = function
 
 
 let report_config_error = function
+  | CannotDetermineStoreRoot{ envvar } ->
+      report_error [
+        NormalLine("cannot determine where the SATySFi library root is;");
+        NormalLine(Printf.sprintf "set environment variable '%s'." envvar);
+      ]
+
   | PackageDirectoryNotFound(candidate_paths) ->
       let lines =
         candidate_paths |> List.map (fun path ->
@@ -333,20 +335,6 @@ let report_config_error = function
       end
 
 
-let error_log_environment (suspended : unit -> unit) : unit =
-  try
-    suspended ()
-  with
-  | NoLibraryRootDesignation ->
-      report_error [
-        NormalLine("cannot determine where the SATySFi library root is;");
-        NormalLine("set appropriate environment variables.");
-      ]
-
-  | ConfigError(e) ->
-      report_config_error e
-
-
 type solve_input =
   | PackageSolveInput of {
       root     : abs_path; (* The absolute path of a directory used as the package root *)
@@ -508,21 +496,26 @@ let make_envelope_config (package_contents : PackageConfig.package_contents) : E
       }
 
 
-let solve ~(fpath_in : string) =
-  error_log_environment (fun () ->
-    let curdir = Sys.getcwd () in
+let get_library_root () : (abs_path, config_error) result =
+  let open ResultMonad in
+  let envvar_home =
+    if String.equal Sys.os_type "Win32" then
+      "userprofile"
+    else
+      "HOME"
+  in
+  match Sys.getenv_opt envvar_home with
+  | None       -> err @@ CannotDetermineStoreRoot { envvar = envvar_home }
+  | Some(home) -> return @@ make_abs_path (Filename.concat home ".saphe")
 
-    let absdir_library_root =
-      if String.equal Sys.os_type "Win32" then
-        match Sys.getenv_opt "userprofile" with
-        | None    -> raise NoLibraryRootDesignation
-        | Some(s) -> make_abs_path (Filename.concat s ".saphe")
-      else
-        match Sys.getenv_opt "HOME" with
-        | None    -> raise NoLibraryRootDesignation
-        | Some(s) -> make_abs_path (Filename.concat s ".saphe")
-    in
-    let abspath_in = make_absolute_if_relative ~origin:curdir fpath_in in
+
+let solve ~(fpath_in : string) =
+  let absdir_current = Sys.getcwd () in
+  let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+
+  let res =
+    let open ResultMonad in
+    let* absdir_library_root = get_library_root () in
     let solve_input =
       if Sys.is_directory (get_abs_path_string abspath_in) then
       (* If the input is a directory that forms a package: *)
@@ -543,135 +536,130 @@ let solve ~(fpath_in : string) =
         }
     in
 
-    let res =
-      let open ResultMonad in
-      let abspath_library_root_config = Constant.library_root_config_path absdir_library_root in
-      let* library_root_config = LibraryRootConfig.load abspath_library_root_config in
-      let* (language_version, dependencies_with_flags, abspath_lock_config, registry_specs) =
-        match solve_input with
-        | PackageSolveInput{
-            root     = absdir_package;
-            lock     = abspath_lock_config;
-            envelope = abspath_envelope_config;
-          } ->
-            let abspath_package_config = Constant.library_package_config_path absdir_package in
-            let*
-              PackageConfig.{
-                language_requirement;
-                package_contents;
-                registry_specs;
-                _
-              } = PackageConfig.load abspath_package_config
-            in
-            let language_version =
-              match language_requirement with
-              | SemanticVersion.CompatibleWith(semver) -> semver
-                  (* Selects the minimum version according to the user's designation for the moment.
-                     TODO: take dependencies into account when selecting a language version *)
-            in
-            let envelope_config = make_envelope_config package_contents in
-            EnvelopeConfig.write abspath_envelope_config envelope_config;
-            begin
-              match package_contents with
-              | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
-                  let dependencies_with_flags =
-                    List.append
-                      (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
-                      (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
-                  in
-                  return (language_version, dependencies_with_flags, abspath_lock_config, registry_specs)
+    let abspath_library_root_config = Constant.library_root_config_path absdir_library_root in
+    let* library_root_config = LibraryRootConfig.load abspath_library_root_config in
+    let* (language_version, dependencies_with_flags, abspath_lock_config, registry_specs) =
+      match solve_input with
+      | PackageSolveInput{
+          root     = absdir_package;
+          lock     = abspath_lock_config;
+          envelope = abspath_envelope_config;
+        } ->
+          let abspath_package_config = Constant.library_package_config_path absdir_package in
+          let*
+            PackageConfig.{
+              language_requirement;
+              package_contents;
+              registry_specs;
+              _
+            } = PackageConfig.load abspath_package_config
+          in
+          let language_version =
+            match language_requirement with
+            | SemanticVersion.CompatibleWith(semver) -> semver
+                (* Selects the minimum version according to the user's designation for the moment.
+                   TODO: take dependencies into account when selecting a language version *)
+          in
+          let envelope_config = make_envelope_config package_contents in
+          EnvelopeConfig.write abspath_envelope_config envelope_config;
+          begin
+            match package_contents with
+            | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
+                let dependencies_with_flags =
+                  List.append
+                    (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
+                    (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
+                in
+                return (language_version, dependencies_with_flags, abspath_lock_config, registry_specs)
 
-              | PackageConfig.Font(_) ->
-                  return (language_version, [], abspath_lock_config, registry_specs)
-            end
+            | PackageConfig.Font(_) ->
+                return (language_version, [], abspath_lock_config, registry_specs)
+          end
 
-        | DocumentSolveInput{
-            doc    = _abspath_doc;
-            config = _abspath_package_config;
-            lock   = _abspath_lock_config;
-          } ->
-            failwith "TODO: DocumentSolveInput"
+      | DocumentSolveInput{
+          doc    = _abspath_doc;
+          config = _abspath_package_config;
+          lock   = _abspath_lock_config;
+        } ->
+          failwith "TODO: DocumentSolveInput"
 (*
-            let* DocumentAttribute.{ registry_specs; dependencies } =
-              extract_attributes_from_document_file display_config input_kind abspath_in
-            in
-            let dependencies_with_flags = dependencies |> List.map (fun dep -> (SourceDependency, dep)) in
-            return (dependencies_with_flags, abspath_lock_config, registry_specs)
+          let* DocumentAttribute.{ registry_specs; dependencies } =
+            extract_attributes_from_document_file display_config input_kind abspath_in
+          in
+          let dependencies_with_flags = dependencies |> List.map (fun dep -> (SourceDependency, dep)) in
+          return (dependencies_with_flags, abspath_lock_config, registry_specs)
 *)
-      in
+    in
 
-      Logging.show_package_dependency_before_solving dependencies_with_flags;
+    Logging.show_package_dependency_before_solving dependencies_with_flags;
 
-      let* registries =
-        RegistryLocalNameMap.fold (fun registry_local_name registry_remote res ->
-          let* registries = res in
-          let* registry_hash_value = make_registry_hash_value registry_remote in
+    let* registries =
+      RegistryLocalNameMap.fold (fun registry_local_name registry_remote res ->
+        let* registries = res in
+        let* registry_hash_value = make_registry_hash_value registry_remote in
 
-          (* Manupulates the library root config: *)
-          update_library_root_config_if_needed
-            library_root_config.LibraryRootConfig.registries
-            registry_hash_value
-            registry_remote
-            abspath_library_root_config;
+        (* Manupulates the library root config: *)
+        update_library_root_config_if_needed
+          library_root_config.LibraryRootConfig.registries
+          registry_hash_value
+          registry_remote
+          abspath_library_root_config;
 
-          (* Fetches registry configs: *)
-          let absdir_registry_repo =
-            let libpath_registry_root = Constant.registry_root_directory registry_hash_value in
+        (* Fetches registry configs: *)
+        let absdir_registry_repo =
+          let libpath_registry_root = Constant.registry_root_directory registry_hash_value in
+          make_abs_path
+            (Filename.concat
+              (get_abs_path_string absdir_library_root)
+              (get_lib_path_string libpath_registry_root))
+        in
+        let git_command = "git" in (* TODO: make this changeable *)
+        let* () =
+          PackageRegistryFetcher.main ~git_command absdir_registry_repo registry_remote
+            |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
+        in
+
+        let* PackageRegistryConfig.{ packages = packages_in_registry } =
+          let abspath_registry_config =
             make_abs_path
               (Filename.concat
-                (get_abs_path_string absdir_library_root)
-                (get_lib_path_string libpath_registry_root))
+                (get_abs_path_string absdir_registry_repo)
+                Constant.package_registry_config_file_name)
           in
-          let git_command = "git" in (* TODO: make this changeable *)
-          let* () =
-            PackageRegistryFetcher.main ~git_command absdir_registry_repo registry_remote
-              |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
-          in
+          PackageRegistryConfig.load abspath_registry_config
+        in
+        let registry_spec = { packages_in_registry; registry_hash_value } in
+        return (registries |> RegistryLocalNameMap.add registry_local_name registry_spec)
 
-          let* PackageRegistryConfig.{ packages = packages_in_registry } =
-            let abspath_registry_config =
-              make_abs_path
-                (Filename.concat
-                  (get_abs_path_string absdir_registry_repo)
-                  Constant.package_registry_config_file_name)
-            in
-            PackageRegistryConfig.load abspath_registry_config
-          in
-          let registry_spec = { packages_in_registry; registry_hash_value } in
-          return (registries |> RegistryLocalNameMap.add registry_local_name registry_spec)
-
-        ) registry_specs (return RegistryLocalNameMap.empty)
-      in
-
-      let package_context = { registries; language_version } in
-      let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
-      begin
-        match solutions_opt with
-        | None ->
-            err CannotSolvePackageConstraints
-
-        | Some(solutions) ->
-
-            Logging.show_package_dependency_solutions solutions;
-
-            let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in
-
-            let wget_command = "wget" in (* TODO: make this changeable *)
-            let tar_command = "tar" in (* TODO: make this changeable *)
-            let unzip_command = "unzip" in (* TODO: make this changeable *)
-            let* () =
-              impl_specs |> foldM (fun () impl_spec ->
-                LockFetcher.main
-                  ~wget_command ~tar_command ~unzip_command ~library_root:absdir_library_root impl_spec
-              ) ()
-            in
-            LockConfig.write abspath_lock_config lock_config;
-            return ()
-      end
+      ) registry_specs (return RegistryLocalNameMap.empty)
     in
+
+    let package_context = { registries; language_version } in
+    let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
     begin
-      match res with
-      | Ok(())   -> ()
-      | Error(e) -> raise (ConfigError(e))
+      match solutions_opt with
+      | None ->
+          err CannotSolvePackageConstraints
+
+      | Some(solutions) ->
+
+          Logging.show_package_dependency_solutions solutions;
+
+          let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in
+
+          let wget_command = "wget" in (* TODO: make this changeable *)
+          let tar_command = "tar" in (* TODO: make this changeable *)
+          let unzip_command = "unzip" in (* TODO: make this changeable *)
+          let* () =
+            impl_specs |> foldM (fun () impl_spec ->
+              LockFetcher.main
+                ~wget_command ~tar_command ~unzip_command ~library_root:absdir_library_root impl_spec
+            ) ()
+          in
+          LockConfig.write abspath_lock_config lock_config;
+          return ()
     end
-  )
+  in
+  match res with
+  | Ok(())   -> ()
+  | Error(e) -> report_config_error e; exit 1

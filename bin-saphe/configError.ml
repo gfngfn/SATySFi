@@ -48,6 +48,7 @@ module YamlError = struct
 end
 
 type config_error =
+  | CannotDetermineStoreRoot  of { envvar : string }
   | PackageDirectoryNotFound  of string list
   | PackageConfigNotFound     of abs_path
   | PackageConfigError        of abs_path * yaml_error
