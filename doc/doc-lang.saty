@@ -2,36 +2,37 @@
 @require: stdja
 @import: local-math
 
-StdJa.document (|
-  title = {\SATySFi;言語仕様};
-  author = {Takashi SUWA};
-  show-title = true;
-  show-toc = false;
+let open Pervasives in
+let open StdJa in
+let open LocalMath in
+document (|
+  title = {\SATySFi;言語仕様},
+  author = {Takashi SUWA},
 |) '<
   +section {構文} <
-    +p {
+    +p{
       \SATySFi;の構文は以下のように定義されている：
     }
-    +p {
+    +p{
       ${
         \BNF{\patp}![
-          ${\varx};
-          ${\wildcard};
-          ${\cstc};
-          ${\patas{\patp}{\varx}};
-          ${\constrapp{\constrC}{\patp}};
-          ${\tuple![${\patp}; ${\ldots}; ${\patp}]}
+          ${\varx},
+          ${\wildcard},
+          ${\cstc},
+          ${\patas{\patp}{\varx}},
+          ${\constrapp{\constrC}{\patp}},
+          ${\tuple![${\patp}, ${\Math.ldots}, ${\patp}]},
         ]
       }
     }
-    +p {
+    +p{
       ${
         \BNF{\valv}![
-          ${\cstc};
-          ${\exprfunc{\patsP}};
-          ${\exprabsI{\varx}{\expre}};
-          ${\exprabsB{\varx}{\expre}};
-          ${\valB{\bt}};
+          ${\cstc},
+          ${\exprfunc{\patsP}},
+          ${\exprabsI{\varx}{\expre}},
+          ${\exprabsB{\varx}{\expre}},
+          ${\valB{\bt}},
         ]
       }
     }

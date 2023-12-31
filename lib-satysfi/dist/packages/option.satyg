@@ -1,29 +1,33 @@
-@stage: persistent
 
-module Option
-: sig
-    val map : ('a -> 'b) -> 'a option -> 'b option
-    val from : 'a -> 'a option -> 'a
-    val bind : 'a option -> ('a -> 'b option) -> 'b option
-    val is-none : 'a option -> bool
-  end
-= struct
+module Option :> sig
+  val persistent ~map 'a 'b : ('a -> 'b) -> option 'a -> option 'b
+  val persistent ~from 'a : 'a -> option 'a -> 'a
+  val persistent ~bind 'a 'b : option 'a -> ('a -> option 'b) -> option 'b
+  val persistent ~is-none 'a : option 'a -> bool
+end = struct
 
-    let-rec map
-      | f (None)    = None
-      | f (Some(v)) = Some(f v)
+  val persistent ~map f opt =
+    match opt with
+    | None    -> None
+    | Some(v) -> Some(f v)
+    end
 
-    let-rec from
-      | a (None)    = a
-      | _ (Some(a)) = a
+  val persistent ~from a opt =
+    match opt with
+    | None    -> a
+    | Some(a) -> a
+    end
 
-    let-rec bind
-      | (None)    f = None
-      | (Some(v)) f = f v
+  val persistent ~bind opt f =
+    match opt with
+    | None    -> None
+    | Some(v) -> f v
+    end
 
-    let is-none opt =
-      match opt with
-      | None    -> true
-      | Some(_) -> false
+  val persistent ~is-none opt =
+    match opt with
+    | None    -> true
+    | Some(_) -> false
+    end
 
-  end
+end

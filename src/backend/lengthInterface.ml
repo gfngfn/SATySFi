@@ -1,18 +1,19 @@
 
-type length = Length.t  [@@deriving show]
+type length = Length.t
+[@@deriving show]
 
 type point = length * length
+[@@deriving show]
 
 type stretchable =
   | FiniteStretch of length
   | Fils          of int
 
-type length_info =
-  {
-    natural     : length;
-    shrinkable  : length;
-    stretchable : stretchable;
-  }
+type length_info = {
+  natural     : length;
+  shrinkable  : length;
+  stretchable : stretchable;
+}
 
 
 let ( +% ) = Length.add
@@ -22,6 +23,10 @@ let ( *%! ) l n = l *% (float_of_int n)
 let ( /% ) = Length.div
 let ( <% ) = Length.less_than
 let ( <=% ) = Length.leq
+
+
+let ( !=> ) = Length.to_pdf_point
+let ( !<= ) = Length.of_pdf_point
 
 
 let add_stretchable strc1 strc2 =

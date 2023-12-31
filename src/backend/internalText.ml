@@ -29,7 +29,7 @@ let of_utf8 (str_utf8 : string) : t =
 
 let of_utf16be (str_utf16be : string) : t =
   let buffer = Buffer.create (String.length str_utf16be) in
-  let aux () i = function
+  let aux () _i = function
     | `Malformed(_) -> Uutf.Buffer.add_utf_8 buffer Uutf.u_rep
     | `Uchar(uch)   -> Uutf.Buffer.add_utf_8 buffer uch
   in

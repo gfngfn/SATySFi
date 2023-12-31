@@ -6,14 +6,10 @@ module YS = Yojson.SafePos
 module MYU = MyYojsonUtil
 
 
-type dir_path    = string
-type file_path   = string
-type key         = string
 type font_abbrev = string
-type script      = string
 
 
-let read_single_assoc key_script script assoc =
+let read_single_assoc assoc =
     let abbrev = assoc |> MYU.find "font-name" |> YS.Util.to_string in
     let ratio = assoc |> MYU.find "ratio" |> YS.Util.to_float in
     let rising = assoc |> MYU.find "rising" |> YS.Util.to_float in
@@ -23,7 +19,7 @@ let read_single_assoc key_script script assoc =
 let read_assoc (assoc : MYU.assoc) =
   List.fold_left (fun mapacc (key_script, script) ->
     let singleassoc = assoc |> MYU.find key_script |> MYU.make_assoc in
-    let triple = read_single_assoc key_script script singleassoc in
+    let triple = read_single_assoc singleassoc in
     mapacc |> ScriptSchemeMap.add script triple
   ) ScriptSchemeMap.empty [
     ("han-ideographic", HanIdeographic);

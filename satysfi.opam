@@ -24,6 +24,7 @@ depends: [
   "batteries"
   "camlimages" {>= "5.0.1" & < "5.0.5"}
   "camlpdf" {= "2.3.1+satysfi"}
+  "cmdliner" {>= "1.1.1"}
   "core_kernel" {>= "v0.15"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "dune" {build}
@@ -35,6 +36,8 @@ depends: [
   "uutf"
   "yojson-with-position" {= "1.4.2+satysfi"}
   "omd" {< "2.0.0~"}
+  "ocamlgraph"
+  "alcotest" {with-test & >= "1.4.0"}
 ]
 synopsis: "A statically-typed, functional typesetting system"
 description: """

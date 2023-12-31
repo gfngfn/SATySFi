@@ -1,8 +1,5 @@
 
-open MyUtil
-open LengthInterface
 open Types
-open EvalUtil
 
 
 let report_bug_compiler msg =
@@ -47,75 +44,86 @@ and emit_appop arity cont inc_ctx =
     appop :: cont
 
 
-and compile_input_horz_content (ihlst : ir_input_horz_element list) =
+and compile_inline_text_content (_ihlst : ir_inline_text_element list) =
+  failwith "TODO: compile_inline_text_content"
+(*
   let compiled_ihlist =
     ihlst |> List.map (function
-    | IRInputHorzText(s) ->
-        CompiledInputHorzText(s)
+    | IRInlineTextText(s) ->
+        CompiledInlineTextText(s)
 
-    | IRInputHorzEmbedded(irabs) ->
+    | IRInlineTextEmbedded(irabs) ->
         let compiled = compile irabs [] in
-        CompiledInputHorzEmbedded(compiled)
+        CompiledInlineTextEmbedded(compiled)
 
-    | IRInputHorzEmbeddedMath(irmath) ->
-        CompiledInputHorzEmbeddedMath(compile irmath [])
+    | IRInlineTextEmbeddedMath(irmath) ->
+        CompiledInlineTextEmbeddedMath(compile irmath [])
 
-    | IRInputHorzEmbeddedCodeText(s) ->
-        CompiledInputHorzEmbeddedCodeText(s)
+    | IRInlineTextEmbeddedCodeText(s) ->
+        CompiledInlineTextEmbeddedCodeText(s)
 
-    | IRInputHorzContent(ir) ->
-        CompiledInputHorzContent(compile ir [])
+    | IRInlineTextContent(ir) ->
+        CompiledInlineTextContent(compile ir [])
     )
   in
   compiled_ihlist
+*)
 
-
-and compile_code_input_horz (irihlst : (ir input_horz_element_scheme) list) =
+and compile_code_inline_text (_irits : (ir inline_text_element_scheme) list) =
+  failwith "TODO: compile_code_inline_text"
+(*
   irihlst |> List.map (function
-  | InputHorzText(s) ->
-      InputHorzText(s)
+  | InlineTextText(s) ->
+      InlineTextText(s)
 
-  | InputHorzEmbedded(irabs) ->
+  | InlineTextEmbedded(irabs) ->
       let compiled = compile irabs [] in
-      InputHorzEmbedded(compiled)
+      InlineTextEmbedded(compiled)
 
-  | InputHorzEmbeddedMath(irmath) ->
+  | InlineTextEmbeddedMath(irmath) ->
       let compiled = compile irmath [] in
-      InputHorzEmbeddedMath(compiled)
+      InlineTextEmbeddedMath(compiled)
 
-  | InputHorzEmbeddedCodeText(s) ->
-      InputHorzEmbeddedCodeText(s)
+  | InlineTextEmbeddedCodeText(s) ->
+      InlineTextEmbeddedCodeText(s)
 
-  | InputHorzContent(ir) ->
+  | InlineTextContent(ir) ->
       let compiled = compile ir [] in
-      InputHorzContent(compiled)
+      InlineTextContent(compiled)
   )
+*)
 
 
-and compile_input_vert_content (ivlst : ir_input_vert_element list) =
+and compile_block_text_content (_ivlst : ir_block_text_element list) =
+  failwith "TODO: compile_block_text_content"
+(*
   let compiled_ivlist =
     ivlst |> List.map (function
-    | IRInputVertEmbedded(irabs) ->
+    | IRBlockTextEmbedded(irabs) ->
         let compiled = compile irabs [] in
-        CompiledInputVertEmbedded(compiled)
+        CompiledBlockTextEmbedded(compiled)
 
-    | IRInputVertContent(ir) ->
-        CompiledInputVertContent(compile ir [])
+    | IRBlockTextContent(ir) ->
+        CompiledBlockTextContent(compile ir [])
     )
   in
   compiled_ivlist
+*)
 
 
-and compile_code_input_vert (irivlst : (ir input_vert_element_scheme) list) =
+and compile_code_block_text (_irbts : (ir block_text_element_scheme) list) =
+  failwith "TODO: compile_code_block_text"
+(*
   irivlst |> List.map (function
-  | InputVertEmbedded(irabs) ->
+  | BlockTextEmbedded(irabs) ->
       let compiled = compile irabs [] in
-      InputVertEmbedded(compiled)
+      BlockTextEmbedded(compiled)
 
-  | InputVertContent(ir) ->
+  | BlockTextContent(ir) ->
       let compiled = compile ir [] in
-      InputVertContent(compiled)
+      BlockTextContent(compiled)
   )
+*)
 
 
 and compile_code_pattern_branch (irpatbr : ir_pattern_branch) : (instruction list) ir_pattern_branch_scheme =
@@ -135,33 +143,6 @@ and compile_code_letrec_binding (IRLetRecBinding(var, irpatbr) : ir_letrec_bindi
   IRLetRecBinding(var, comppatbr)
 
 
-and compile_path pathcomplst (cycleopt : unit ir_path_component option) =
-  let c_pathcomplst =
-    pathcomplst |> List.map (function
-    | IRPathLineTo(irpt) ->
-        CompiledPathLineTo(compile irpt [])
-
-    | IRPathCubicBezierTo(irpt1, irpt2, irpt) ->
-        let pt1 = compile irpt1 [] in
-        let pt2 = compile irpt2 [] in
-        let pt = compile irpt [] in
-        CompiledPathCubicBezierTo(pt1, pt2, pt)
-    )
-  in
-  let c_cycleopt =
-    cycleopt |> option_map (function
-    | IRPathLineTo(()) ->
-        CompiledPathLineTo(())
-
-    | IRPathCubicBezierTo(irpt1, irpt2, ()) ->
-        let pt1 = compile irpt1 [] in
-        let pt2 = compile irpt2 [] in
-        CompiledPathCubicBezierTo(pt1, pt2, ())
-    )
-  in
-  (c_pathcomplst, c_cycleopt)
-
-
 and compile (ir : ir) (cont : instruction list) =
   match ir with
   (* ---- basic value ---- *)
@@ -172,28 +153,22 @@ and compile (ir : ir) (cont : instruction list) =
   | IRTerminal ->
       OpPushEnv :: cont
 
-  | IRInputHorz(ihlst) ->
-      OpClosureInputHorz(compile_input_horz_content ihlst) :: cont
+  | IRInlineText(ihlst) ->
+      OpClosureInlineText(compile_inline_text_content ihlst) :: cont
     (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | IRInputVert(ivlst) ->
-      OpClosureInputVert(compile_input_vert_content ivlst) :: cont
+  | IRBlockText(ivlst) ->
+      OpClosureBlockText(compile_block_text_content ivlst) :: cont
     (* -- lazy evaluation; evaluates embedded variables only -- *)
+
+  | IRMathText(_ims) ->
+      failwith "TODO: IRMathText"
 
   (* -- fundamentals -- *)
 
   | IRContentOf(var) ->
       let loadop = make_loading_op var in
       loadop :: cont
-
-  | IRPersistent(var) ->
-      let evid =
-        match var with
-        | GlobalVar(_, evid, _)   -> evid
-        | LocalVar(_, _, evid, _) -> evid
-      in
-      let rng = Range.dummy "IRPersistent" in
-      OpPush(CodeValue(CdPersistent(rng, evid))) :: cont
 
   | IRSymbolOf(var) ->
       let loadop = make_loading_op var in
@@ -208,20 +183,20 @@ and compile (ir : ir) (cont : instruction list) =
   | IRLetNonRecIn(ir1, irpat, ir2) ->
       compile ir1 @@ compile_patsel (Range.dummy "LetNonRecIn") [IRPatternBranch(irpat, ir2)] cont
 
-  | IRFunction(framesize, optvars, irpatlst, irbody) ->
+  | IRFunction(framesize, varloc_labmap, irpatlst, irbody) ->
       let body = compile irbody [] in
       let patlst = compile_patlist irpatlst body in
       let (optcode, n) = optimize_func_prologue patlst in
       if framesize - n = 0 then
-        OpClosure(optvars, List.length irpatlst, 0, optcode) :: cont
+        OpClosure(varloc_labmap, List.length irpatlst, 0, optcode) :: cont
       else
-        OpClosure(optvars, List.length irpatlst, framesize, optcode) :: cont
+        OpClosure(varloc_labmap, List.length irpatlst, framesize, optcode) :: cont
 
-  | IRApply(arity, ircallee, irargs) ->
+  | IRApply(_arity, ircallee, irargs) ->
       let n = List.length irargs in
       compile ircallee @@ (compile_list irargs @@ OpForward(n) :: emit_appop n cont false)
 
-  | IRApplyPrimitive(op, arity, irargs) ->
+  | IRApplyPrimitive(op, _arity, irargs) ->
       compile_list irargs (op :: cont)
 
   | IRApplyOptional(ircallee, iroptarg) ->
@@ -259,9 +234,6 @@ and compile (ir : ir) (cont : instruction list) =
       in
       compile irini (bindop :: (compile iraft cont))
 
-  | IRSequential(ir1, ir2) ->
-      compile ir1 (OpPop :: compile ir2 cont)
-
   | IROverwrite(var, irnew) ->
       begin
         match var with
@@ -272,11 +244,6 @@ and compile (ir : ir) (cont : instruction list) =
   | IRDereference(ir1) ->
       compile ir1 @@ OpDereference :: cont
 
-  | IRWhileDo(irb, irc) ->
-      let cond = compile irb [OpBranchIfNot(OpPush(const_unit) :: cont)] in
-      let body = compile irc cond in
-      cond @ body
-
   (* ---- others ---- *)
 
   | IRPatternMatch(rng, irobj, patbrs) ->
@@ -284,13 +251,6 @@ and compile (ir : ir) (cont : instruction list) =
 
   | IRNonValueConstructor(constrnm, ircont) ->
       compile ircont (OpMakeConstructor(constrnm) :: cont)
-
-  | IRModule(irmdl, iraft) ->
-      compile irmdl @@ compile iraft cont
-
-  | IRPath(irpt0, pathcomplst, cycleopt) ->
-      let (pathelemlst, closingopt) = compile_path pathcomplst cycleopt in
-      compile irpt0 (OpPath(pathelemlst, closingopt) :: cont)
 
 (* -- multi-stage -- *)
 
@@ -300,11 +260,14 @@ and compile (ir : ir) (cont : instruction list) =
   | IRCodeRecord(keylst, irargs) ->
       compile_list irargs (OpCodeMakeRecord(keylst) :: cont)
 
-  | IRCodeInputHorz(ihlst) ->
-      OpCodeMakeInputHorz(compile_code_input_horz ihlst) :: cont
+  | IRCodeInlineText(ihlst) ->
+      OpCodeMakeInlineText(compile_code_inline_text ihlst) :: cont
 
-  | IRCodeInputVert(ivlst) ->
-      OpCodeMakeInputVert(compile_code_input_vert ivlst) :: cont
+  | IRCodeBlockText(ivlst) ->
+      OpCodeMakeBlockText(compile_code_block_text ivlst) :: cont
+
+  | IRCodeMathText(_ims) ->
+      failwith "TODO: IRCodeMathText"
 
   | IRCodePatternMatch(rng, ir, irpatbrs) ->
       compile ir @@ OpCodePatternMatch(rng, List.map compile_code_pattern_branch irpatbrs) :: cont
@@ -318,9 +281,9 @@ and compile (ir : ir) (cont : instruction list) =
       let instrs2 = compile ir2 [] in
       OpCodeLetNonRec(irpat, instrs1, instrs2) :: cont
 
-  | IRCodeFunction(optvars, irpat, ir1) ->
+  | IRCodeFunction(varloc_labmap, irpat, ir1) ->
       let instrs1 = compile ir1 [] in
-      OpCodeFunction(optvars, irpat, instrs1) :: cont
+      OpCodeFunction(varloc_labmap, irpat, instrs1) :: cont
 
   | IRCodeLetMutableIn(var, ir1, ir2) ->
       let instrs1 = compile ir1 [] in
@@ -332,16 +295,8 @@ and compile (ir : ir) (cont : instruction list) =
       let instrs1 = compile ir1 [] in
       loadop :: OpCodeOverwrite(instrs1) :: cont
 
-  | IRCodeModule(ir1, ir2) ->
-      let instrs1 = compile ir1 [] in
-      let instrs2 = compile ir2 [] in
-      OpCodeModule(instrs1, instrs2) :: cont
-
-  | IRCodeFinishHeaderFile ->
-      OpCodeFinishHeaderFile :: cont
-
-  | IRCodeFinishStruct ->
-      OpCodeFinishStruct :: cont
+  | IRLift(_ir1) ->
+      failwith "TODO: IRLift"
 
 
 and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =
@@ -413,12 +368,18 @@ and compile_patcheck (pat : ir_pattern_tree) (next : instruction list) (cont : i
         let chd = compile_patcheck phd (OpPop :: next) ctl in
         OpCheckStackTopListCons(next) :: chd
 
-    | IRPEndOfTuple -> return OpPop
+    | IRPTuple(ps) ->
+        let rec aux ps next cont =
+          match ps with
+          | [] ->
+              return OpPop
 
-    | IRPTupleCons(phd, ptl) ->
-        let ctl = compile_patcheck ptl next cont in
-        let chd = compile_patcheck phd (OpPop :: next) ctl in
-        OpCheckStackTopTupleCons(next) :: chd
+          | phd :: ptl ->
+              let ctl = aux ptl next cont in
+              let chd = compile_patcheck phd (OpPop :: next) ctl in
+              OpCheckStackTopTupleCons(next) :: chd
+        in
+        aux (ps |> TupleList.to_list) next cont
 
     | IRPConstructor(cnm1, psub) ->
         let code = compile_patcheck psub next cont in

@@ -1,30 +1,15 @@
 
-open MyUtil
 open LengthInterface
 open HorzBox
 open CharBasis
 open LineBreakBox
 
 
-type chunk_info = context_main * script * line_break_class
-
-
-let to_chunk_main_list ctx uchlst alwlast : break_opportunity * line_break_chunk_main list =
-  let (alwfirst, trilst) = LineBreakDataMap.append_break_opportunity uchlst alwlast in
-  let scrlst = ScriptDataMap.divide_by_script ctx trilst in
-  (alwfirst, scrlst)
-
-
-let to_chunks ctx uchlst alwlast : break_opportunity * line_break_chunk list =
-  let (alwfirst, scrlstsp) = to_chunk_main_list ctx uchlst alwlast in
-  let chunklst =
-    scrlstsp |> List.map (fun chunkmain -> (ctx, chunkmain))
-  in
-    (alwfirst, chunklst)
-
-
-let half_kern (hsinfo : horz_string_info) : lb_pure_box =
-  LBAtom((natural (hsinfo.text_font_size *% -0.5), Length.zero, Length.zero), EvHorzEmpty)
+let to_chunks (ctx : context_main) (uchs : Uchar.t list) (alw_last : break_opportunity) : break_opportunity * line_break_chunk list =
+  let (alw_first, tris) = LineBreakDataMap.append_break_opportunity uchs alw_last in
+  let scrs = ScriptDataMap.divide_by_script ctx tris in
+  let chunks = scrs |> List.map (fun chunkmain -> (ctx, chunkmain)) in
+  (alw_first, chunks)
 
 
 let pure_space_between_scripts ctx1 ctx2 size (script1 : script) (lbc1 : line_break_class) (script2 : script) (lbc2 : line_break_class) =
@@ -41,156 +26,155 @@ let pure_space_between_scripts ctx1 ctx2 size (script1 : script) (lbc1 : line_br
     | (Some(tuple), None)
     | (None, Some(tuple)) ->
         let (r0, r1, r2) = tuple in
-          Some(LBAtom((natural (size *% r0), size *% r1, size *% r2), EvHorzEmpty))
+        let metrics = (natural (size *% r0), size *% r1, size *% r2) in
+        Some(LBAtom{ metrics; main = EvHorzEmpty })
 
     | (Some(tuple1), Some(tuple2)) ->
         let (r10, r11, r12) = tuple1 in
         let (r20, r21, r22) = tuple2 in
         let (r0, r1, r2) = (max r10 r20, max r11 r21, max r12 r22) in
-          Some(LBAtom((natural (size *% r0), size *% r1, size *% r2), EvHorzEmpty))
-(*
-    match (script1, script2) with
-    | (HanIdeographic    , Latin             )
-    | (Latin             , HanIdeographic    )
-    | (HiraganaOrKatakana, Latin             )
-    | (Latin             , HiraganaOrKatakana)
-      ->
-        Some(LBAtom((natural (size *% 0.24), size *% 0.08, size *% 0.16), EvHorzEmpty))
-          (* temporary; shold refer to the context for spacing information between two scripts *)
-    | _ -> None
-*)
+        let metrics = (natural (size *% r0), size *% r1, size *% r2) in
+        Some(LBAtom{ metrics; main = EvHorzEmpty })
 
-let space_width_info ctx : length_info =
+
+let space_width_info (ctx : context_main) : length_info =
   let size = ctx.font_size in
-    (* -- uses font size directly, not multiplied by the ratio of the dominant script -- *)
+    (* Uses font size directly, not multiplied by the ratio of the dominant script. *)
   let widnatural = size *% ctx.space_natural in
   let widshrink  = size *% ctx.space_shrink in
   let widstretch = size *% ctx.space_stretch in
-    make_width_info widnatural widshrink widstretch
+  make_width_info widnatural widshrink widstretch
+
+
+let line_break_space (metrics : metrics) : lb_pure_box =
+  LBAtom{ metrics; main = EvHorzEmpty }
 
 
 let pure_space ctx : lb_pure_box =
   let widinfo = space_width_info ctx in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+  line_break_space (widinfo, Length.zero, Length.zero)
 
 
 let get_corrected_font_size ctx script =
   let (_, font_ratio, _) = get_font_with_ratio ctx script in
-    ctx.font_size *% font_ratio
+  ctx.font_size *% font_ratio
 
 
-(* -- 'pure_halfwidth_space_soft': inserts a shrinkable CJK halfwidth space -- *)
-let pure_halfwidth_space_soft fontsize : lb_pure_box =
+(* Inserts a shrinkable CJK halfwidth space. *)
+let pure_halfwidth_space_soft (fontsize : length) : lb_pure_box =
   let widinfo = make_width_info (fontsize *% 0.5) (fontsize *% 0.25) (fontsize *% 0.25) in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+  line_break_space (widinfo, Length.zero, Length.zero)
 
 
-(* -- 'pure_halfwidth_space_hard': inserts a non-shrinkable CJK halfwidth space -- *)
-let pure_halfwidth_space_hard fontsize : lb_pure_box =
+(* Inserts a non-shrinkable CJK halfwidth space. *)
+let pure_halfwidth_space_hard (fontsize : length) : lb_pure_box =
   let widinfo = make_width_info (fontsize *% 0.5) Length.zero (fontsize *% 0.25) in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+  line_break_space (widinfo, Length.zero, Length.zero)
 
 
-(* -- 'pure_fullwidth_space': inserts a shrinkable CJK fullwidth space -- *)
-let pure_fullwidth_space fontsize : lb_pure_box =
-  let widinfo = make_width_info fontsize (fontsize *% 0.5) (fontsize *% 0.5) in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
-
-
-(*  -- 'adjacent_space': inserts glue between directly adjacent CJK characters -- *)
-let adjacent_space ctx1 ctx2 =
+(* Inserts glue between directly adjacent CJK characters. *)
+let adjacent_space (ctx1 : context_main) (ctx2 : context_main) =
   let fontsize = Length.max ctx1.font_size ctx2.font_size in
   let ratio = max ctx1.adjacent_stretch ctx2.adjacent_stretch in
   let widstretch = fontsize *% ratio in
   let widinfo = make_width_info Length.zero Length.zero widstretch in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+  line_break_space (widinfo, Length.zero, Length.zero)
 
 
-(*  -- 'halfwidth_kern': inserts a solid backward halfwidth kern for CJK characters -- *)
-let halfwidth_kern ctx script : lb_box =
+(* Inserts a solid backward halfwidth kern for CJK characters. *)
+let halfwidth_kern (ctx : context_main) (script : script) : lb_box =
   let size = get_corrected_font_size ctx script in
-    LBPure(LBAtom((natural (Length.negate (size *% 0.5)), Length.zero, Length.zero), EvHorzEmpty))
+  LBPure(line_break_space (natural (Length.negate (size *% 0.5)), Length.zero, Length.zero))
 
 
-(*  -- 'quarterwidth_kern': inserts a solid backward quaterwidth kern for CJK characters -- *)
-let quarterwidth_kern ctx script : lb_box =
+(* Inserts a solid backward quaterwidth kern for CJK characters. *)
+let quarterwidth_kern (ctx : context_main) (script : script) : lb_box =
   let size = get_corrected_font_size ctx script in
-    LBPure(LBAtom((natural (Length.negate (size *% 0.25)), Length.zero, Length.zero), EvHorzEmpty))
+  LBPure(line_break_space (natural (Length.negate (size *% 0.25)), Length.zero, Length.zero))
 
 
-let breakable_space lphbf ctx () : lb_box =
+let breakable_space (lphbf : horz_box list -> lb_pure_box list) (ctx : context_main) : lb_box =
   let dscrid = DiscretionaryID.fresh () in
-  let lphb1 = lphbf ctx.before_word_break in
-  let lphb2 = lphbf ctx.after_word_break in
-    LBDiscretionary(ctx.space_badness, dscrid, [pure_space ctx], lphb1, lphb2)
+  let lphbs1 = lphbf ctx.before_word_break in
+  let lphbs2 = lphbf ctx.after_word_break in
+  LBDiscretionary{
+    penalty  = ctx.space_badness;
+    id       = dscrid;
+    no_break = [ pure_space ctx ];
+    pre      = lphbs1;
+    post     = lphbs2;
+  }
 
 
-let unbreakable_space ctx : lb_box =
-    LBPure(pure_space ctx)
+let unbreakable_space (ctx : context_main) : lb_box =
+  LBPure(pure_space ctx)
 
 
-let inner_string_pure (ctx : context_main) (script : script) (uchseglst : uchar_segment list) : lb_pure_box =
-  let hsinfo = get_string_info ctx script in
-  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
-    LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
-
-
-let generate_separation_list (uchseglstlst : (uchar_segment list) list) : (uchar_segment list * uchar_segment list) list =
+(* Perform conversion from `[A; B; C; D]` to [(A, BCD); (AB, CD); (ABC, D)]. *)
+let generate_separation_list (uchsegss : (uchar_segment list) list) : (uchar_segment list * uchar_segment list) list =
   let rec aux acc revprefix suffix =
     match suffix with
     | [] ->
         Alist.to_list acc
 
-    | uchseglst :: [] ->
+    | _uchsegs :: [] ->
         Alist.to_list acc
 
-    | uchseglst :: suffixnew ->
-        let revprefixnew = Alist.append revprefix uchseglst in
-        let accnew = Alist.extend acc (Alist.to_list revprefixnew, List.concat suffixnew) in
-          aux accnew revprefixnew suffixnew
+    | uchsegs :: suffix_new ->
+        let revprefix_new = Alist.append revprefix uchsegs in
+        let acc = Alist.extend acc (Alist.to_list revprefix_new, List.concat suffix_new) in
+        aux acc revprefix_new suffix_new
   in
-    aux Alist.empty Alist.empty uchseglstlst
+  aux Alist.empty Alist.empty uchsegss
 
 
-let make_string_atom (hsinfo : horz_string_info) (uchseglst : uchar_segment list) : lb_pure_box =
-  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
-    LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
+let make_string_atom (hsinfo : horz_string_info) (uchsegs : uchar_segment list) : lb_pure_box =
+  let (otxt, width, height, depth) = FontInfo.get_metrics_of_word hsinfo uchsegs in
+  let metrics = (natural width, height, depth) in
+  LBAtom{ metrics; main = EvHorzString{ info = hsinfo; height; depth; output = otxt } }
 
 
-(* -- 'inner_string': makes an alphabetic word or a CJK character -- *)
-let inner_string (ctx : context_main) (script : script) (uchseglst : uchar_segment list) : lb_box list =
+(* Makes an alphabetic word or a CJK character. *)
+let inner_string (ctx : context_main) (script : script) (uchsegs : uchar_segment list) : lb_box list =
   let hsinfo = get_string_info ctx script in
-    match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchseglst with
-    | LoadHyph.Single(uchseglst) ->
-        [LBPure(make_string_atom hsinfo uchseglst)]
+    match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchsegs with
+    | LoadHyph.Single(uchsegs) ->
+        [ LBPure(make_string_atom hsinfo uchsegs) ]
 
-    | LoadHyph.Fractions(uchseglstlst) ->
-        let uchseglst0 = List.concat uchseglstlst in
-        let lphb0 = make_string_atom hsinfo uchseglst0 in
-        let lphb_hyphen = inner_string_pure ctx script [(Uchar.of_char '-', [])] in  (* temporary; should be variable *)
-        let seplst = generate_separation_list uchseglstlst in
-        let dscrlst =
-          seplst |> List.fold_left (fun dscracc (uchseglstP, uchseglstS) ->
-            let lphbP = make_string_atom hsinfo uchseglstP in
-            let lphbS = make_string_atom hsinfo uchseglstS in
+    | LoadHyph.Fractions(uchsegss) ->
+        let uchsegs0 = List.concat uchsegss in
+        let lphb0 = make_string_atom hsinfo uchsegs0 in
+        let lphb_hyphen = make_string_atom hsinfo [(Uchar.of_char '-', [])] in
+          (* TODO: make hyphens changeable *)
+        let seps = generate_separation_list uchsegss in
+        let candidates =
+          seps |> List.fold_left (fun dscracc (uchsegsP, uchsegsS) ->
+            let lphbP = make_string_atom hsinfo uchsegsP in
+            let lphbS = make_string_atom hsinfo uchsegsS in
             let dscrid = DiscretionaryID.fresh () in
-              Alist.extend dscracc (dscrid, [lphbP; lphb_hyphen], [lphbS])
+              Alist.extend dscracc (dscrid, [ lphbP; lphb_hyphen ], [ lphbS ])
           ) Alist.empty |> Alist.to_list
         in
-        [LBDiscretionaryList(ctx.hyphen_badness, [lphb0], dscrlst)]
+        [ LBDiscretionaryList{ penalty = ctx.hyphen_badness; no_break = [ lphb0 ]; candidates } ]
 
 
-let discretionary_if_breakable alw badns lphb () =
+let discretionary_if_breakable alw (penalty : pure_badness) lphb =
   match alw with
   | AllowBreak ->
       let dscrid = DiscretionaryID.fresh () in
-        LBDiscretionary(badns, dscrid, [lphb], [], [])
+      LBDiscretionary{
+        penalty;
+        id       = dscrid;
+        no_break = [ lphb ];
+        pre      = [];
+        post     = [];
+      }
 
   | PreventBreak ->
       LBPure(lphb)
 
 
-(* temporary; should refer to the context for spacing between two scripts *)
+(* TODO: should refer to the context for spacing between two scripts *)
 let pure_space_between_classes (ctx1, script1, lbc1) (ctx2, script2, lbc2) =
   let size1 = get_corrected_font_size ctx1 script1 in
   let size2 = get_corrected_font_size ctx2 script2 in
@@ -225,20 +209,20 @@ let space_between_chunks info1 alw info2 : lb_box list =
     let size = Length.max ctx1.font_size ctx2.font_size in
       match pure_space_between_scripts ctx1 ctx2 size script1 lbc1 script2 lbc2 with
       | Some(lphb) ->
-          [discretionary_if_breakable alw badns lphb ()]
+          [ discretionary_if_breakable alw badns lphb ]
 
       | None ->
-        (* -- if there is no space between scripts -- *)
+        (* If there is no space between scripts: *)
           begin
             match pure_space_between_classes info1 info2 with
-            | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ()]
-            | Some(lphb) -> [discretionary_if_breakable alw badns lphb ()]
+            | None       -> [ discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ]
+            | Some(lphb) -> [ discretionary_if_breakable alw badns lphb ]
           end
   else
-  (* -- if scripts are the same -- *)
+  (* If scripts are the same: *)
     match pure_space_between_classes info1 info2 with
-    | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ()]
-    | Some(lphb) -> [discretionary_if_breakable alw badns lphb ()]
+    | None       -> [ discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ]
+    | Some(lphb) -> [ discretionary_if_breakable alw badns lphb ]
 
 
 let space_between_chunks_pure info1 info2 : lb_pure_box list =
@@ -257,30 +241,34 @@ let space_between_chunks_pure info1 info2 : lb_pure_box list =
             | Some(lphb) -> [lphb]
           end
   else
-  (* -- if scripts are the same -- *)
+  (* If scripts are the same: *)
     match pure_space_between_classes info1 info2 with
     | None       -> [adjacent_space ctx1 ctx2]
     | Some(lphb) -> [lphb]
 
 
-(* -- 'ideographic_single': converts single CJK character, not depending on adjacent characters -- *)
-let ideographic_single ctx script lbc uchlst =
-  let lphbraw = LBPure(inner_string_pure ctx script uchlst) in
+(* Converts single CJK character, not depending on adjacent characters. *)
+let ideographic_single ctx script lbc (uchseg : uchar_segment) : lb_box list =
+  let lphb_raw =
+    let hsinfo = get_string_info ctx script in
+    LBPure(make_string_atom hsinfo [ uchseg ])
+  in
   let hwkern = halfwidth_kern ctx script in
   let qwkern = quarterwidth_kern ctx script in
     match lbc with
-    | JLCP  (* -- JLreq cl-02; fullwidth close punctuation -- *)
-    | JLFS  (* -- JLreq cl-06; kuten (fullwidth full stops) -- *)
-    | JLCM  (* -- JLreq cl-07; touten (fullwidth commas) -- *)
-      -> [lphbraw; hwkern]
+    | JLCP    (* JLreq cl-02; fullwidth close punctuation *)
+    | JLFS    (* JLreq cl-06; kuten (fullwidth full stops) *)
+    | JLCM -> (* JLreq cl-07; touten (fullwidth commas) *)
+        [ lphb_raw; hwkern ]
 
-    | JLOP  (* -- JLreq cl-01; fullwidth open punctuation -- *)
-      -> [hwkern; lphbraw]
+    | JLOP -> (* JLreq cl-01; fullwidth open punctuation *)
+        [ hwkern; lphb_raw ]
 
-    | JLMD  (* -- JLreq cl-05; nakaten (fullwidth middle dot, fullwidth semicolon, etc.) -- *)
-      -> [qwkern; lphbraw; qwkern]
+    | JLMD -> (* JLreq cl-05; nakaten (fullwidth middle dot, fullwidth semicolon, etc.) *)
+        [ qwkern; lphb_raw; qwkern ]
 
-    | _ -> [lphbraw]
+    | _ ->
+        [ lphb_raw ]
 
 
 type chunk_accumulator =
@@ -316,7 +304,7 @@ let chunks_to_boxes (lphbf : horz_box list -> lb_pure_box list) (script_before :
         let (opt, lhblstmain) =
           match chunkmain with
           | Space ->
-              (AccNone, [breakable_space lphbf ctx ()])
+              (AccNone, [breakable_space lphbf ctx])
 
           | UnbreakableSpace ->
               (AccNone, [unbreakable_space ctx])
@@ -341,7 +329,7 @@ let chunks_to_boxes (lphbf : horz_box list -> lb_pure_box list) (script_before :
 
           | IdeographicChunk(script, lbc, uchseg, alwnext) ->
               let opt = AccSome((ctx, script, lbc), alwnext) in
-              let lhblststr = ideographic_single ctx script lbc [uchseg] in
+              let lhblststr = ideographic_single ctx script lbc uchseg in
               begin
                 match optprev with
                 | AccNone ->
@@ -374,7 +362,7 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
           | AccNone ->
               Alist.to_list lphbacc
 
-          | AccSome(infoprev, alw) ->
+          | AccSome(infoprev, _alw) ->
               let (ctx, _, _) = infoprev in
               let info_after = (ctx, script_after, XX) in
               let autospace = space_between_chunks_pure infoprev info_after in
@@ -391,9 +379,12 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
           | UnbreakableSpace ->
               (AccNone, [pure_space ctx])
 
-          | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
+          | AlphabeticChunk(script, lbcfirst, lbclast, uchsegs, alw) ->
               let opt = AccSome(((ctx, script, lbclast), alw)) in
-              let lphblstmain = [inner_string_pure ctx script uchlst] in
+              let lphblstmain =
+                let hsinfo = get_string_info ctx script in
+                [ make_string_atom hsinfo uchsegs ]
+              in
               begin
                 match optprev with
                 | AccInitial ->
@@ -404,14 +395,17 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
                 | AccNone ->
                     (opt, lphblstmain)
 
-                | AccSome((infoprev, alw)) ->
+                | AccSome((infoprev, _alw)) ->
                     let autospace = space_between_chunks_pure infoprev (ctx, script, lbcfirst) in
                     (opt, List.append autospace lphblstmain)
               end
 
-          | IdeographicChunk(script, lbc, uch, alw) ->
+          | IdeographicChunk(script, lbc, uchseg, alw) ->
               let opt = AccSome(((ctx, script, lbc), alw)) in
-              let lphblstmain = [inner_string_pure ctx script [uch]] in
+              let lphblstmain =
+                let hsinfo = get_string_info ctx script in
+                [ make_string_atom hsinfo [ uchseg ] ]
+              in
               begin
                 match optprev with
                 | AccInitial ->
@@ -422,7 +416,7 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
                 | AccNone ->
                     (opt, lphblstmain)
 
-                | AccSome((infoprev, alw)) ->
+                | AccSome((infoprev, _alw)) ->
                     let autospace = space_between_chunks_pure infoprev (ctx, script, lbc) in
                     (opt, List.append autospace lphblstmain)
               end

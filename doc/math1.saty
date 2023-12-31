@@ -2,16 +2,23 @@
 @require: stdja
 @require: proof
 @require: tabular
+@require: gr
 
-let-math \overwrite mf ma mb =
-  ${#mf\sqbracket{#ma \mapsto #mb}}
+let open Pervasives in
+let open Math in
+let open Proof in
+let open Tabular in
+let open StdJa in
+
+let math ctx \overwrite mf ma mb =
+  read-math ctx ${#mf\sqbracket{#ma \mapsto #mb}}
 in
 
-document (|
-  title  = {Math Test};
-  author = {Takashi SUWA};
-  show-title = false;
-  show-toc = false;
+document ?(
+  show-title = false,
+) (|
+  title  = {Math Test},
+  author = {Takashi SUWA},
 |) '<
   +p {
     This document was typeset by using \SATySFi;.
@@ -70,7 +77,7 @@ document (|
     \derive{|\paren{\app{\Gamma}{x} \synteq \tau}|}{
       \tyjd{\Gamma}{x}{\tau}
     }
-
+    \math-skip!(2cm)
     \derive{|
       \tyjd{\overwrite{\Gamma}{x}{\tau_1}}{M}{\tau_2}
     |}{
@@ -81,17 +88,17 @@ document (|
     \derive{|
       \tyjd{\Gamma}{M}{\tau_1 \to \tau_2} | \tyjd{\Gamma}{N}{\tau_1}
     |}{
-      \tyjd{\Gamma}{M N}{\tau_2}
+      \tyjd{\Gamma}{M\ N}{\tau_2}
     }
   });
-  +math (${
+  +math(${
     \derive{| A | \derive{| B | C |}{D} |}{E}
   });
   +p {
     A table
     \tabular(fun cellf multif empty -> [
-      [multif 2 1 {The}; cellf {quick}; cellf {brown}; multif 1 2 {fox jumps over}; empty;];
-      [empty; multif 1 2 {the}; empty; cellf {lazy}; cellf {dog};];
-    ])(fun xs ys -> []);
+      [multif 2 1 {The}, cellf {quick}, cellf {brown}, multif 1 2 {fox jumps over}, empty,],
+      [empty, multif 1 2 {the}, empty, cellf {lazy}, cellf {dog},],
+    ])(fun xs ys -> Gr.empty);
   }
 >

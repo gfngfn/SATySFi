@@ -1,3 +1,8 @@
-let pattuple-test =
-  match a with
-  | (b, c) -> d
+module Pattuple = struct
+
+  val pattuple-test =
+    match a with
+    | (b, c) -> d
+    end
+
+end

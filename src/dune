@@ -1,7 +1,7 @@
 (library
  (name main)
  (public_name satysfi)
- (flags (-w -3 -bin-annot -thread -safe-string))
+ (flags (:standard -bin-annot -thread -safe-string))
  (libraries str
             batteries
             camlimages
@@ -15,6 +15,7 @@
             uutf
             yojson-with-position
             omd
+            ocamlgraph
             )
  (preprocess (pps
               ppx_deriving.show

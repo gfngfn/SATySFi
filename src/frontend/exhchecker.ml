@@ -1,5 +1,6 @@
 
 open Types
+open StaticEnv
 
 
 type type_element =
@@ -29,19 +30,15 @@ and expand_type =
   | ExpandConstructor of string * mono_type
   | ExpandTuple       of int
   | NoExpand
-[@@deriving show]
 
 
 module ElementSet = Set.Make(struct
   type t = type_element
-  let compare = Pervasives.compare
+  let compare = Stdlib.compare
 end)
 
 
-module IntSet = Set.Make(struct
-  type t = int
-  let compare i j = i - j
-end)
+module IntSet = Set.Make(Int)
 
 
 let repeat n x =
@@ -111,10 +108,10 @@ let rec string_of_instance ins =
   | IListCons(car, cdr) ->
       (string_of_instance car) ^ "::" ^ (string_of_instance cdr)
 
-  | IConstructor(nm, iins, (_, BaseType(UnitType))) -> nm
+  | IConstructor(nm, _iins, (_, BaseType(UnitType))) -> nm
 
-  | IConstructor(nm, IWildCard, (_, ProductType(tylst))) ->
-      nm ^ "(" ^ (String.concat ", " (repeat (List.length tylst) "_")) ^ ")"
+  | IConstructor(nm, IWildCard, (_, ProductType(tys))) ->
+      nm ^ "(" ^ (String.concat ", " (repeat (tys |> TupleList.to_list |> List.length) "_")) ^ ")"
 
   | IConstructor(nm, iins, (_, ProductType(_))) ->
       nm ^ string_of_instance iins
@@ -140,14 +137,14 @@ let rec string_of_instance ins =
 let rec normalize_pat pat =
   match pat with
   | PListCons(car, cdr)  -> PListCons(normalize_pat car, normalize_pat cdr)
-  | PTuple(patlst)       -> PTuple(List.map normalize_pat patlst)
+  | PTuple(pats)         -> PTuple(pats |> TupleList.map normalize_pat)
   | PConstructor(nm, p)  -> PConstructor(nm, normalize_pat p)
   | PVariable(_)         -> PWildCard
   | PAsVariable(_, p)    -> normalize_pat p
   | _                    -> pat
 
 
-let expand_mat mat i epat ty =
+let expand_mat mat i epat _ty =
   let rec inner_append a b acc =
     match (a, b) with
     | (x :: xs, y :: ys) -> inner_append xs ys (List.append x y :: acc)
@@ -155,7 +152,7 @@ let expand_mat mat i epat ty =
     | ([], y::ys)        -> inner_append [] ys (y :: acc)
     | ([], [])           -> List.rev acc
   in
-  let rec sub epat pat =
+  let sub epat pat =
     match (epat, pat) with
     | (ExpandListCons, PListCons(h, t))->
         [[h]; [t]]
@@ -170,7 +167,7 @@ let expand_mat mat i epat ty =
         [[PWildCard]]
 
     | (ExpandTuple(_), PTuple(ftup)) ->
-        List.map (fun pat -> [pat]) ftup
+        ftup |> TupleList.to_list |> List.map (fun pat -> [pat])
 
     | (ExpandTuple(arity), PWildCard) ->
         repeat arity [PWildCard]
@@ -188,10 +185,10 @@ let rec fold_left3 f a b c d =
   | _                           -> a
 
 
-let rec get_specialized_mat mat patinfo ele tylst =
-  let rec iter fst mat =
+let get_specialized_mat mat patinfo ele tylst =
+  let iter fst mat =
     let (nmat, ninfo, nomatch) =
-      List.fold_left (fun (cols, info, no_match) col ->
+      List.fold_left (fun (cols, _info, no_match) col ->
         let (newcol, newinfo, no_m) =
           fold_left3 (fun (col, info, no_m) p q i ->
             let needs_append =
@@ -199,7 +196,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
               | (EListCons, PListCons(_, _))
               | (EEndOfList, PEndOfList)
               | (EUnitConstant, PUnitConstant)
-              | (ETuple, PTuple(_ :: _))
+              | (ETuple, PTuple(_))
               | (_, PWildCard)
                 -> true
 
@@ -219,8 +216,8 @@ let rec get_specialized_mat mat patinfo ele tylst =
                 -> false
             in
               match (needs_append, i) with
-              | (true, (n, PatternBranch(_, _)))        -> (q :: col, i :: info, false)
-              | (true, (n, PatternBranchWhen(_, _, _))) -> (q :: col, i :: info, no_m)
+              | (true, (_, PatternBranch(_, _)))        -> (q :: col, i :: info, false)
+              | (true, (_, PatternBranchWhen(_, _, _))) -> (q :: col, i :: info, no_m)
               | (false, _)                              -> (col, info, no_m)
 
           ) ([], [], true) fst col patinfo
@@ -229,25 +226,26 @@ let rec get_specialized_mat mat patinfo ele tylst =
     in
       (List.rev nmat, List.rev ninfo, nomatch)
   in
-    match (ele, tylst |> List.map unlink) with
+    match (ele, tylst |> List.map TypeConv.unlink) with
     | (EListCons, (_, ListType(lty)) :: _) ->
         let expnd = ExpandListCons in
         let (nmat, ninfo, nomatch) = iter (List.hd mat) mat in
           (expand_mat nmat 0 expnd tylst, ninfo, lty :: tylst, expnd, nomatch)
 
-    | (EConstructor(nm, ity), (_, VariantType(_, _)) :: rest) ->
+    | (EConstructor(nm, ity), (_, DataType(_, _tyid)) :: rest) ->
         let expnd = ExpandConstructor(nm, ity) in
         let (nmat, ninfo, nomatch) = iter (List.hd mat) mat in
           (expand_mat nmat 0 expnd tylst, ninfo, ity :: rest, expnd, nomatch)
 
-    | (ETuple, (_, ProductType(ptylst)) :: rest) ->
-        let expnd = ExpandTuple(List.length ptylst) in
-          (expand_mat mat 0 expnd tylst, patinfo, List.append ptylst rest, expnd, false)
+    | (ETuple, (_, ProductType(ptys)) :: rest) ->
+        let ptys = ptys |> TupleList.to_list in
+        let expnd = ExpandTuple(List.length ptys) in
+          (expand_mat mat 0 expnd tylst, patinfo, List.append ptys rest, expnd, false)
 
     | _ ->
         begin
           match mat with
-          | x :: xs ->
+          | x :: _ ->
               let (nmat, ninfo, nomatch) = iter x mat in
                 (List.tl nmat, ninfo, List.tl tylst, NoExpand, nomatch)
 
@@ -279,24 +277,42 @@ let make_string_sig col =
   ) [EWildCard] col)
 
 
-let make_variant_sig (pre : pre) (tyenv : Typeenv.t) (tyarglst : mono_type list) tyid =
-  let constrs = Typeenv.enumerate_constructors pre tyenv tyid in
-  ElementSet.of_list (constrs |> List.map (fun (nm, tyf) ->
-    EConstructor(nm, tyf tyarglst)))
+let make_variant_sig (_pre : pre) (tyenv : Typeenv.t) (tyargs : mono_type list) (tyid : TypeID.t) =
+  let ctors = tyenv |> Typeenv.enumerate_constructors tyid in
+  ctors |> List.map (fun (ctornm, tyscheme) ->
+    let (bids, pty_body) = tyscheme in
+    match List.combine bids tyargs with
+    | exception Invalid_argument(_) ->
+        assert false
+
+    | zipped ->
+        let bidmap =
+          zipped |> List.fold_left (fun bidmap (bid, tyarg) ->
+            bidmap |> BoundIDMap.add bid tyarg
+          ) BoundIDMap.empty
+        in
+        let ty = TypeConv.instantiate_by_map_mono bidmap pty_body in
+        EConstructor(ctornm, ty)
+  ) |> ElementSet.of_list
 
 
 let rec complete_sig col (pre : pre) (tyenv : Typeenv.t) ((_, tymain) : mono_type) =
   match tymain with
-  | TypeVariable({contents= MonoLink(tylink)}) -> complete_sig col pre tyenv tylink
+  | TypeVariable(Updatable{contents= MonoLink(tylink)}) ->
+      complete_sig col pre tyenv tylink
+
   | BaseType(UnitType)          -> unit_sig
   | BaseType(BoolType)          -> bool_sig
   | BaseType(IntType)           -> make_int_sig col
   | BaseType(StringType)        -> make_string_sig col
   | ListType(_)                 -> list_sig
   | ProductType(_)              -> product_sig
-  | SynonymType(_, _, aty)      -> complete_sig col pre tyenv aty
-  | VariantType(tyarglst, tyid) -> make_variant_sig pre tyenv tyarglst tyid
-  | _                           -> generic_sig
+
+  | DataType(tyargs, tyid) ->
+      make_variant_sig pre tyenv tyargs tyid
+
+  | _ ->
+      generic_sig
 
 
 let tuplize_instance n ilst =

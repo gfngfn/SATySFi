@@ -1,0 +1,11 @@
+@import: head
+
+let open Head in
+document '<
+  +p{
+    Hello world. ${E = m c^2} Foo bar baz qux.
+  }
+  +p{
+    Hey ${\judge{\Gamma}{e}{\tau}}
+  }
+>

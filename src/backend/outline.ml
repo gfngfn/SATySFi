@@ -1,8 +1,4 @@
 
-open MyUtil
-open LengthInterface
-open Length
-
 
 let registered_outline : (int * string * string * bool) list ref = ref []
 

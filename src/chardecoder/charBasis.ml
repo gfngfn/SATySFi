@@ -21,14 +21,14 @@ type script =
 module ScriptSchemeMap = Map.Make
   (struct
     type t = script
-    let compare = Pervasives.compare
+    let compare = Stdlib.compare
   end)
 
 
 module ScriptSpaceMap = Map.Make
   (struct
     type t = script * script
-    let compare = Pervasives.compare
+    let compare = Stdlib.compare
   end)
 
 

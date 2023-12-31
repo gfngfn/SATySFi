@@ -2,18 +2,18 @@
 @require: itemize
 @require: annot
 
-let-inline ctx \insert-image w path =
+let inline ctx \insert-image w path =
   let img = load-image path in
     use-image-by-width img w
-
-let-block ctx +newpage = clear-page
-
 in
+let block ctx +newpage = clear-page in
+
+let open StdJa in
+let open Itemize in
+let open Annot in
 document (|
-  title = {Tests for Images};
-  author = {};
-  show-title = true;
-  show-toc = false;
+  title = {Tests for Images},
+  author = {},
 |) '<
   +section{JPEG images}<
      +p{This is a jpeg image in gray scale.
@@ -42,7 +42,7 @@ document (|
     +p{
       Images from \href(`http://www.schaik.com/pngsuite/`){PngSuite}.
     }
-    +listing {
+    +listing{
       * \insert-image(0.5cm)(`PngSuite-2017jul19/basi0g01.png`);
       PngSuite-2017jul19/basi0g01.png: PNG image data, 32 x 32, 1-bit grayscale, interlaced
       * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g01.png`);

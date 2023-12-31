@@ -94,7 +94,7 @@ let divide_by_script (ctx : context_main) (trilst : line_break_element list) : L
               Alist.to_list (Alist.extend resacc chunk)
         end
 
-    | (uch, SP, alw) :: tritail ->
+    | (_uch, SP, alw) :: tritail ->
         let chunkspace =
           match alw with
           | AllowBreak   -> Space

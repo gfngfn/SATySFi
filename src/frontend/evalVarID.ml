@@ -25,7 +25,7 @@ let equal evid1 evid2 =
 
 
 let compare evid1 evid2 =
-  Pervasives.compare evid1.number evid2.number
+  Stdlib.compare evid1.number evid2.number
 
 
 let show_direct evid =

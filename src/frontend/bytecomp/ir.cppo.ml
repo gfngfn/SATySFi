@@ -1,6 +1,6 @@
 
 open MyUtil
-open LengthInterface
+open SyntaxBase
 open Types
 
 
@@ -35,107 +35,95 @@ let map_with_env (type a) (type b) (f : frame -> a -> b * frame) (env : frame) (
   iter env lst Alist.empty
 
 
-let rec transform_0_input_horz_content (env : frame) (ihlst : input_horz_element list) : ir_input_horz_element list * frame =
+let rec transform_0_inline_text_content (_env : frame) (_its : inline_text_element list) : ir_inline_text_element list * frame =
+  failwith "TODO: transform_0_inline_text_content"
+(*
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
-    | InputHorzText(s) ->
-        (IRInputHorzText(s), env)
+    | InlineTextText(s) ->
+        (IRInlineTextText(s), env)
 
-    | InputHorzEmbedded(astabs) ->
+    | InlineTextEmbedded(astabs) ->
         let (irabs, env) = transform_0 env astabs in
-        (IRInputHorzEmbedded(irabs), env)
+        (IRInlineTextEmbedded(irabs), env)
 
-    | InputHorzEmbeddedMath(astmath) ->
+    | InlineTextEmbeddedMath(astmath) ->
         let (irmath, env) = transform_0 env astmath in
-        (IRInputHorzEmbeddedMath(irmath), env)
+        (IRInlineTextEmbeddedMath(irmath), env)
 
-    | InputHorzEmbeddedCodeText(s) ->
-        (IRInputHorzEmbeddedCodeText(s), env)
+    | InlineTextEmbeddedCodeText(s) ->
+        (IRInlineTextEmbeddedCodeText(s), env)
 
-    | InputHorzContent(ast) ->
+    | InlineTextContent(ast) ->
         let (ir, env) = transform_0 env ast in
-        (IRInputHorzContent(ir), env)
+        (IRInlineTextContent(ir), env)
   )
+*)
 
-
-and transform_1_input_horz_content (env : frame) (ihlst : input_horz_element list) : (ir input_horz_element_scheme) list * frame =
+and transform_1_inline_text_content (_env : frame) (_its : inline_text_element list) : (ir inline_text_element_scheme) list * frame =
+  failwith "TODO: transform_1_inline_text_content"
+(*
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
-    | InputHorzText(s) ->
-        (InputHorzText(s), env)
+    | InlineTextText(s) ->
+        (InlineTextText(s), env)
 
-    | InputHorzEmbedded(astabs) ->
+    | InlineTextEmbedded(astabs) ->
         let (irabs, env) = transform_1 env astabs in
-        (InputHorzEmbedded(irabs), env)
+        (InlineTextEmbedded(irabs), env)
 
-    | InputHorzEmbeddedMath(astmath) ->
+    | InlineTextEmbeddedMath(astmath) ->
         let (irmath, env) = transform_1 env astmath in
-        (InputHorzEmbeddedMath(irmath), env)
+        (InlineTextEmbeddedMath(irmath), env)
 
-    | InputHorzEmbeddedCodeText(s) ->
-        (InputHorzEmbeddedCodeText(s), env)
+    | InlineTextEmbeddedCodeText(s) ->
+        (InlineTextEmbeddedCodeText(s), env)
 
-    | InputHorzContent(ast) ->
+    | InlineTextContent(ast) ->
         let (ir, env) = transform_1 env ast in
-        (InputHorzContent(ir), env)
+        (InlineTextContent(ir), env)
   )
+*)
 
 
-and transform_0_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
+and transform_0_block_text_content (_env : frame) (_bts : block_text_element list) : ir_block_text_element list * frame =
+  failwith "TODO: transform_0_block_text_content"
+(*
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
-    | InputVertEmbedded(astabs) ->
+    | BlockTextEmbedded(astabs) ->
         let (irabs, env) = transform_0 env astabs in
-        (IRInputVertEmbedded(irabs), env)
+        (IRBlockTextEmbedded(irabs), env)
 
-    | InputVertContent(ast) ->
+    | BlockTextContent(ast) ->
         let (ir, env) = transform_0 env ast in
-        (IRInputVertContent(ir), env)
+        (IRBlockTextContent(ir), env)
     )
+*)
 
 
-and transform_1_input_vert_content (env : frame) (ivlst : input_vert_element list) : (ir input_vert_element_scheme) list * frame =
+and transform_1_block_text_content (_env : frame) (_bts : block_text_element list) : (ir block_text_element_scheme) list * frame =
+  failwith "TODO: transform_1_block_text_content"
+(*
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
-    | InputVertEmbedded(astabs) ->
+    | BlockTextEmbedded(astabs) ->
         let (irabs, env) = transform_1 env astabs in
-        (InputVertEmbedded(irabs), env)
+        (BlockTextEmbedded(irabs), env)
 
-    | InputVertContent(ast) ->
+    | BlockTextContent(ast) ->
         let (ir, env) = transform_1 env ast in
-        (InputVertContent(ir), env)
+        (BlockTextContent(ir), env)
   )
+*)
 
 
-and transform_0_path env pathcomplst cycleopt =
-  let (irpathcomplst, env) =
-    pathcomplst @|> env @|> map_with_env (fun env path ->
-      match path with
-      | PathLineTo(astpt) ->
-          let (pt, env) = transform_0 env astpt in
-          (IRPathLineTo(pt), env)
+and transform_0_math_text_content (_env : frame) (_ims : math_text_element list) : ir_math_text_element list * frame =
+  failwith "TODO: transform_0_math_text_content"
 
-      | PathCubicBezierTo(astpt1, astpt2, astpt) ->
-          let (pt1, env) = transform_0 env astpt1 in
-          let (pt2, env) = transform_0 env astpt2 in
-          let (pt, env) = transform_0 env astpt in
-          (IRPathCubicBezierTo(pt1, pt2, pt), env)
-    )
-  in
-  let (ircycleopt, env) =
-    match cycleopt with
-    | None ->
-        (None, env)
 
-    | Some(PathLineTo(())) ->
-        (Some(IRPathLineTo(())), env)
-
-    | Some(PathCubicBezierTo(astpt1, astpt2, ())) ->
-        let (pt1, env) = transform_0 env astpt1 in
-        let (pt2, env) = transform_0 env astpt2 in
-        (Some(IRPathCubicBezierTo(pt1, pt2, ())), env)
-  in
-  (irpathcomplst, ircycleopt, env)
+and transform_1_math_text_content (_env : frame) (_ims : math_text_element list) : (ir math_text_element_scheme) list * frame =
+  failwith "TODO: transform_1_math_text_content"
 
 
 and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment =
@@ -241,15 +229,17 @@ and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * fra
 
   | PTuple(pats) ->
       let (bacc, env) =
-        List.fold_left (fun (bacc, env) pat ->
+        pats |> TupleList.to_list |> List.fold_left (fun (bacc, env) pat ->
           let (b, env) = transform_pattern env pat in
           (Alist.extend bacc b, env)
-        ) (Alist.empty, env) pats
+        ) (Alist.empty, env)
       in
-      let irp =
-        List.fold_right (fun b irp -> IRPTupleCons(b, irp)) (Alist.to_list bacc) IRPEndOfTuple
+      let bs =
+        match Alist.to_list bacc with
+        | b1 :: b2 :: brest -> TupleList.make b1 b2 brest
+        | _                 -> assert false
       in
-      (irp, env)
+      (IRPTuple(bs), env)
 
   | PConstructor(cnm1, psub) ->
       let (bsub, env) = transform_pattern env psub in
@@ -295,8 +285,14 @@ and add_letrec_bindings_to_environment (env : frame) (recbinds : letrec_binding 
 and flatten_function (astfun : abstract_tree) : abstract_tree * pattern_tree list =
   let rec iter ast acc =
     match ast with
-    | Function([], PatternBranch(pat, body)) -> iter body (Alist.extend acc pat)
-    | _                                      -> (ast, Alist.to_list acc)
+    | Function(evid_labmap, PatternBranch(pat, body)) ->
+        if LabelMap.cardinal evid_labmap = 0 then
+          iter body (Alist.extend acc pat)
+        else
+          (ast, Alist.to_list acc)
+
+    | _ ->
+        (ast, Alist.to_list acc)
   in
   iter astfun Alist.empty
 
@@ -304,15 +300,22 @@ and flatten_function (astfun : abstract_tree) : abstract_tree * pattern_tree lis
 and flatten_application apast =
   let rec iter ast acc =
     match ast with
-    | Apply(ast1, ast2) -> iter ast1 (ast2 :: acc)
-    | _                 -> (ast, acc)
+    | Apply(ast_labmap, ast1, ast2) ->
+        if LabelMap.cardinal ast_labmap = 0 then
+          iter ast1 (ast2 :: acc)
+        else
+          (ast, acc)
+
+    | _ ->
+        (ast, acc)
   in
   iter apast []
 
 
-and transform_0_tuple env astlst =
-  let (iritems, envnew) = map_with_env transform_0 env astlst in
-  let len = List.length astlst in
+and transform_0_tuple env (asts : abstract_tree TupleList.t) =
+  let asts = asts |> TupleList.to_list in
+  let (iritems, envnew) = map_with_env transform_0 env asts in
+  let len = List.length asts in
   (IRTuple(len, iritems), envnew)
 
 
@@ -341,8 +344,8 @@ and transform_1_horz_input ih : frame =
     ih |> List.fold_left (fun (acc, env) ihelem ->
       let (ir, env) =
         match ihelem with
-        | InputHorzText(s)       -> (InputHorzText(s), env)
-        | InputHorzEmbedded(ast) -> let (code, env) = transform_1 env ast in (InputHorzEmbedded(code))
+        | InlineTextText(s)       -> (InlineTextText(s), env)
+        | InlineTextEmbedded(ast) -> let (code, env) = transform_1 env ast in (InlineTextEmbedded(code))
       in
       (Alist.extend acc code, env)
     ) (Alist.empty, env)
@@ -429,32 +432,36 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   match ast with
   | ASTBaseConstant(bc) -> code0 env (CdBaseConstant(bc))
   | ASTEndOfList        -> code0 env CdEndOfList
-  | ASTMath(mlst)       -> code0 env (CdMath(mlst))
 
-  | FinishHeaderFile ->
-      (IRCodeFinishHeaderFile, env)
+  | InlineText(ihlst) ->
+      let (imihlst, env) = transform_1_inline_text_content env ihlst in
+      (IRCodeInlineText(imihlst), env)
 
-  | FinishStruct ->
-      (IRCodeFinishStruct, env)
+  | BlockText(ivlst) ->
+      let (imivlst, env) = transform_1_block_text_content env ivlst in
+      (IRCodeBlockText(imivlst), env)
 
-  | InputHorz(ihlst) ->
-      let (imihlst, env) = transform_1_input_horz_content env ihlst in
-      (IRCodeInputHorz(imihlst), env)
+  | MathText(ims) ->
+      let (imims, env) = transform_1_math_text_content env ims in
+      (IRCodeMathText(imims), env)
 
-  | InputVert(ivlst) ->
-      let (imivlst, env) = transform_1_input_vert_content env ivlst in
-      (IRCodeInputVert(imivlst), env)
+  | LambdaInline(_, _) ->
+      failwith "TODO: transform_1, LambdaInline"
 
-  | Path(_) ->
-      remains_to_be_implemented "transform_1: Path(_)"
+  | LambdaBlock(_, _) ->
+      failwith "TODO: transform_1, LambdaBlock"
+
+  | LambdaMath(_, _, _) ->
+      failwith "TODO: transform_1, LambdaMath"
 
   | Record(asc) ->
-      let iter acc key ast =
-        let (keyacc, iracc, env) = acc in
-        let (ir, env) = transform_1 env ast in
-        (Alist.extend keyacc key, Alist.extend iracc ir, env)
+      let (keyacc, iracc, env) =
+        LabelMap.fold (fun key ast acc ->
+          let (keyacc, iracc, env) = acc in
+          let (ir, env) = transform_1 env ast in
+          (Alist.extend keyacc key, Alist.extend iracc ir, env)
+        ) asc (Alist.empty, Alist.empty, env)
       in
-      let (keyacc, iracc, env) = Assoc.fold iter (Alist.empty, Alist.empty, env) asc in
       (IRCodeRecord(Alist.to_list keyacc, Alist.to_list iracc), env)
 
   | AccessField(ast1, fldnm) ->
@@ -487,45 +494,35 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
       let (ir2, env) = transform_1 env ast2 in
       (IRCodeLetNonRecIn(irpat, ir1, ir2), env)
 
-  | ContentOf(rng, evid) ->
+  | ContentOf(_rng, evid) ->
       begin
         match find_in_environment env evid with
         | Some(var) -> (IRSymbolOf(var), env)
         | None      -> failwith (Format.asprintf "%a not found" EvalVarID.pp evid)
       end
 
-  | Persistent(rng, evid) ->
-      begin
-        match find_in_environment env evid with
-        | Some(var) -> (IRPersistent(var), env)
-        | None      -> assert false
-      end
-
   | IfThenElse(ast0, ast1, ast2) ->
       code3 env (fun cv0 cv1 cv2 -> CdIfThenElse(cv0, cv1, cv2)) ast0 ast1 ast2
 
-  | Function(evids, PatternBranch(pat, ast1)) ->
-      let (optvaracc, env) =
-        evids |> List.fold_left (fun (optvaracc, env) evid ->
+  | Function(evid_labmap, PatternBranch(pat, ast1)) ->
+      let (varloc_labmap, env) =
+        LabelMap.fold (fun label evid (varloc_labmap, env) ->
           let (var, env) = add_to_environment env evid in
-          (Alist.extend optvaracc var, env)
-        ) (Alist.empty, env)
+          (varloc_labmap |> LabelMap.add label var, env)
+        ) evid_labmap (LabelMap.empty, env)
       in
       let (irpat, env) = transform_pattern env pat in
       let (ir1, env) = transform_1 env ast1 in
-      (IRCodeFunction(Alist.to_list optvaracc, irpat, ir1), env)
+      (IRCodeFunction(varloc_labmap, irpat, ir1), env)
 
   | Function(_, PatternBranchWhen(_, _, _)) ->
       assert false
 
-  | Apply(ast1, ast2) ->
+  | Apply(_ast_labmap, _ast1, _ast2) ->
+      failwith "TODO (enhance): Ir, Apply"
+(*
       code2 env (fun cv1 cv2 -> CdApply(cv1, cv2)) ast1 ast2
-
-  | ApplyOptional(ast1, ast2) ->
-      code2 env (fun cv1 cv2 -> CdApplyOptional(cv1, cv2)) ast1 ast2
-
-  | ApplyOmission(ast1) ->
-      code1 env (fun cv -> CdApplyOmission(cv)) ast1
+*)
 
   | PatternMatch(rng, ast1, patbrs) ->
       let (ir1, env) = transform_1 env ast1 in
@@ -544,12 +541,6 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | Dereference(ast1) ->
       code1 env (fun cv -> CdDereference(cv)) ast1
 
-  | Sequential(ast1, ast2) ->
-      code2 env (fun cv1 cv2 -> CdSequential(cv1, cv2)) ast1 ast2
-
-  | WhileDo(ast1, ast2) ->
-      code2 env (fun cv1 cv2 -> CdWhileDo(cv1, cv2)) ast1 ast2
-
   | Overwrite(evid, ast1) ->
       begin
         match find_in_environment env evid with
@@ -561,22 +552,24 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
             assert false
       end
 
-  | Module(ast1, ast2) ->
-      let (ir1, env) = transform_1 env ast1 in
-      let (ir2, env) = transform_1 env ast2 in
-      (IRCodeModule(ir1, ir2), env)
-
-  | BackendMathList(astmlst) ->
-      transform_1_primitive env astmlst (OpCodeMathList(List.length astmlst))
-
-  | PrimitiveTuple(astlst) ->
-      transform_1_primitive env astlst (OpCodeMakeTuple(List.length astlst))
+  | PrimitiveTuple(asts) ->
+      let asts = asts |> TupleList.to_list in
+      transform_1_primitive env asts (OpCodeMakeTuple(List.length asts))
 
   | Prev(ast1) ->
       transform_0 env ast1
 
   | Next(_) ->
       report_bug_ir "transform_1: Next at stage 1"
+
+  | Persistent(_, _) ->
+      failwith "TODO: Persistent"
+
+  | Lift(_) ->
+      report_bug_ir "transform_1: Lift at stage 1"
+
+  | ASTCodeSymbol(_symb) ->
+      report_bug_ir "transform_1: ASTCodeSymbol at stage 1"
 
 #include "__ir_1.gen.ml"
 
@@ -587,43 +580,35 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTBaseConstant(bc) ->
       return (IRConstant(BaseConstant(bc)))
 
-  | ASTMath(mlst) ->
-      return (IRConstant(MathValue(mlst)))
-
   | ASTEndOfList ->
       return (IRConstant(List([])))
 
-  | FinishHeaderFile ->
-      return IRTerminal
+  | InlineText(ihlst) ->
+      let (imihlst, env) = transform_0_inline_text_content env ihlst in
+      (IRInlineText(imihlst), env)
 
-  | FinishStruct ->
-      return IRTerminal
+  | BlockText(ivlst) ->
+      let (imivlst, env) = transform_0_block_text_content env ivlst in
+      (IRBlockText(imivlst), env)
 
-  | InputHorz(ihlst) ->
-      let (imihlst, env) = transform_0_input_horz_content env ihlst in
-      (IRInputHorz(imihlst), env)
-        (* -- lazy evaluation; evaluates embedded variables only -- *)
+  | MathText(ims) ->
+      let (imims, env) = transform_0_math_text_content env ims in
+      (IRMathText(imims), env)
 
-  | InputVert(ivlst) ->
-      let (imivlst, env) = transform_0_input_vert_content env ivlst in
-      (IRInputVert(imivlst), env)
-        (* -- lazy evaluation; evaluates embedded variables only -- *)
+  | LambdaInline(_, _) ->
+      failwith "TODO: transform_0, LambdaInline"
 
-  | BackendMathList(astmlst) ->
-      transform_0_primitive env astmlst (OpBackendMathList(List.length astmlst))
+  | LambdaBlock(_, _) ->
+      failwith "TODO: transform_0, LambdaBlock"
 
-  | Path(astpt0, pathcomplst, cycleopt) ->
-      let (irpt0, env) = transform_0 env astpt0 in
-      let (pathelemlst, closingopt, env) = transform_0_path env pathcomplst cycleopt in
-        (IRPath(irpt0, pathelemlst, closingopt), env)
+  | LambdaMath(_, _, _) ->
+      failwith "TODO: transform_0, LambdaMath"
 
-  | PrimitiveTuple(astlst) ->
-      transform_0_tuple env astlst
-
+  | PrimitiveTuple(asts) ->
+      transform_0_tuple env asts
 (* -- fundamentals -- *)
 
-  | ContentOf(rng, evid)
-  | Persistent(rng, evid) ->
+  | ContentOf(rng, evid) ->
       begin
         match find_in_environment env evid with
         | Some(var) ->
@@ -638,7 +623,7 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       let varir_lst =
         pairs |> List.map (fun pair ->
           let (var, patbr) = pair in
-          let (ir, _) = transform_0 env (Function([], patbr)) in
+          let (ir, _) = transform_0 env (Function(LabelMap.empty, patbr)) in
           (var, ir)
         )
       in
@@ -651,25 +636,31 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       let (ir2, env) = transform_0 env ast2 in
       (IRLetNonRecIn(ir1, irpat, ir2), env)
 
-  | Function([], _) ->
-      let (body, args) = flatten_function ast in
-      let funenv = new_level env in
-      let (irargs, funenv) = transform_pattern_list funenv args in
-      let (irbody, funenv) = transform_0 funenv body in
-      (IRFunction(funenv.size, [], irargs, irbody), env)
-
-  | Function((_ :: _) as evids, PatternBranch(arg, body)) ->
-      let funenv = new_level env in
-      let (optvars, funenv) = map_with_env add_to_environment funenv evids in
-      let (irarg, funenv) = transform_pattern funenv arg in
-      let (irbody, funenv) = transform_0 funenv body in
-      (IRFunction(funenv.size, optvars, [irarg], irbody), env)
+  | Function(evid_labmap, PatternBranch(arg, body)) ->
+      if LabelMap.cardinal evid_labmap = 0 then
+        let (body, args) = flatten_function ast in
+        let funenv = new_level env in
+        let (irargs, funenv) = transform_pattern_list funenv args in
+        let (irbody, funenv) = transform_0 funenv body in
+        (IRFunction(funenv.size, LabelMap.empty, irargs, irbody), env)
+      else
+        let funenv = new_level env in
+        let (varloc_labmap, funenv) =
+          LabelMap.fold (fun label evid (varloc_labmap, funenv) ->
+            let (varloc, funenv) = add_to_environment funenv evid in
+            (varloc_labmap |> LabelMap.add label varloc, funenv)
+          ) evid_labmap (LabelMap.empty, funenv)
+        in
+        let (irarg, funenv) = transform_pattern funenv arg in
+        let (irbody, funenv) = transform_0 funenv body in
+        (IRFunction(funenv.size, varloc_labmap, [irarg], irbody), env)
 
   | Function(_, PatternBranchWhen(_, _, _)) ->
       assert false
 
-  | Apply(_, _) ->
-      let (astcallee, astargs) = flatten_application ast in
+  | Apply(ast_labmap, _, _) ->
+      if LabelMap.cardinal ast_labmap = 0 then
+        let (astcallee, astargs) = flatten_application ast in
         begin
           match check_primitive env astcallee with
           | Some((arity, astf))  when arity = List.length astargs ->
@@ -680,15 +671,8 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
               let (irargs, env) = transform_0_list env astargs in
               (IRApply(List.length irargs, ircallee, irargs), env)
         end
-
-  | ApplyOptional(ast1, ast2) ->
-      let (ir1, env) = transform_0 env ast1 in
-      let (ir2, env) = transform_0 env ast2 in
-      (IRApplyOptional(ir1, ir2), env)
-
-  | ApplyOmission(ast1) ->
-      let (ir1, env) = transform_0 env ast1 in
-      (IRApplyOmission(ir1), env)
+      else
+        failwith "TODO (enhance): Ir, Apply"
 
   | IfThenElse(astb, ast1, ast2) ->
       let (irb, env) = transform_0 env astb in
@@ -702,12 +686,13 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
 (* ---- record ---- *)
 
   | Record(asc) ->
-      let iter acc key ast =
-        let (keyacc, iracc, env) = acc in
-        let (ir, env) = transform_0 env ast in
-        (Alist.extend keyacc key, Alist.extend iracc ir, env)
+      let (keyacc, iracc, env) =
+        LabelMap.fold (fun key ast acc ->
+          let (keyacc, iracc, env) = acc in
+          let (ir, env) = transform_0 env ast in
+          (Alist.extend keyacc key, Alist.extend iracc ir, env)
+        ) asc (Alist.empty, Alist.empty, env)
       in
-      let (keyacc, iracc, env) = Assoc.fold iter (Alist.empty, Alist.empty, env) asc in
       (IRRecord(Alist.to_list keyacc, Alist.to_list iracc), env)
 
   | AccessField(ast1, fldnm) ->
@@ -727,11 +712,6 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       let (iraft, env) = transform_0 env astaft in
       (IRLetMutableIn(var, irini, iraft), env)
 
-  | Sequential(ast1, ast2) ->
-      let (ir1, env) = transform_0 env ast1 in
-      let (ir2, env) = transform_0 env ast2 in
-      (IRSequential(ir1, ir2), env)
-
   | Overwrite(evid, astnew) ->
       begin
         match find_in_environment env evid with
@@ -747,11 +727,6 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       let (ir1, env) = transform_0 env ast1 in
       (IRDereference(ir1), env)
 
-  | WhileDo(astb, astc) ->
-      let (irb, env) = transform_0 env astb in
-      let (irc, env) = transform_0 env astc in
-      (IRWhileDo(irb, irc), env)
-
 (* ---- others ---- *)
 
   | PatternMatch(rng, astobj, patbrs) ->
@@ -763,17 +738,22 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       let (ircont, env) = transform_0 env astcont in
       (IRNonValueConstructor(constrnm, ircont), env)
 
-  | Module(astmdl, astaft) ->
-      let (irmdl, env) = transform_0 env astmdl in
-      let (iraft, env) = transform_0 env astaft in
-      (IRModule(irmdl, iraft), env)
-
 (* -- staging construct -- *)
 
   | Prev(_) ->
-      report_bug_ir "Prev(...) cannot occur at transform_ir"
+      report_bug_ir "Prev(...) cannot occur at transform_1"
 
   | Next(ast1) ->
       transform_1 env ast1
+
+  | Persistent(_) ->
+      report_bug_ir "Persistent(...) cannot occur at transform_1"
+
+  | Lift(ast1) ->
+      let (ir1, env) = transform_0 env ast1 in
+      (IRLift(ir1), env)
+
+  | ASTCodeSymbol(symb) ->
+      return (IRConstant(CodeSymbol(symb)))
 
 #include "__ir_0.gen.ml"

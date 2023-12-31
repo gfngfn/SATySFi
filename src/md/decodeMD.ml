@@ -4,7 +4,6 @@ open Types
 
 type section_level =
   | H1 | H2 | H3 | H4 | H5 | H6
-[@@deriving show { with_path = false; }]
 
 type block_element =
   | Section of section_level * inline * block
@@ -15,18 +14,17 @@ type block_element =
   | OlInline of inline list
   | Blockquote of block
   | CodeBlock of Omd.name * string
-      [@printer (fun fmt (name, s) -> Format.fprintf fmt "CodeBlock(\"%s\",@ \"%s\")" name s)]
   | Hr
   | BlockRaw of string
 
-and block = block_element list
+and block =
+  block_element list
 
 and inline_element =
   | Text of string
   | Emph of inline
   | Bold of inline
   | Code of Omd.name * string
-      [@printer (fun fmt (name, s) -> Format.fprintf fmt "Code(\"%s\",@ \"%s\")" name s)]
   | Br
   | Url of string * inline * string
   | Ref of string * string * (string * string) option
@@ -34,16 +32,15 @@ and inline_element =
   | InlineRaw of string
   | EmbeddedBlock of block
 
-and inline = inline_element list
-[@@deriving show { with_path = false; }]
+and inline =
+  inline_element list
 
-type middle_record =
-  {
-    pre_contents        : Omd.t;
-    current_heading     : Omd.t;
-    current_accumulated : Omd.element Alist.t;
-    accumulated         : (inline * Omd.t) Alist.t;
-  }
+type middle_record = {
+  pre_contents        : Omd.t;
+  current_heading     : Omd.t;
+  current_accumulated : Omd.element Alist.t;
+  accumulated         : (inline * Omd.t) Alist.t;
+}
 
 type accumulator =
   | Beginning of Omd.element Alist.t
@@ -276,20 +273,22 @@ let make_list_tree utastlst =
   ) utastlst (dummy_range, UTEndOfList)
 
 
-let make_inline_application ((rng, (mdlnmlst, cmdnm)) : command) (utasts : untyped_abstract_tree list) =
-  let utastcmd = (rng, UTContentOf(mdlnmlst, cmdnm)) in
-  [(dummy_range, UTInputHorzEmbedded(utastcmd, utasts |> List.map (fun x -> UTMandatoryArgument(x))))]
+let make_inline_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
+  let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
+  let utast_cmd = (rng, UTContentOf(modidents, (rng, csnm))) in
+  [(dummy_range, UTInlineTextApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
-let make_block_application ((rng, (mdlnmlst, cmdnm)) : command) (utasts : untyped_abstract_tree list) =
-  let utastcmd = (rng, UTContentOf(mdlnmlst, cmdnm)) in
-  [(dummy_range, UTInputVertEmbedded(utastcmd, utasts |> List.map (fun x -> UTMandatoryArgument(x))))]
+let make_block_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
+  let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
+  let utast_cmd = (rng, UTContentOf(modidents, (rng, csnm))) in
+  [(dummy_range, UTBlockTextApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
-let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element) : untyped_input_horz_element list =
+let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element) : untyped_inline_text_element list =
   match ilne with
   | Text(s) ->
-      [(dummy_range, UTInputHorzText(s))]
+      [(dummy_range, UTInlineTextString(s))]
 
   | Emph(iln) ->
       let utastarg = convert_inline cmdrcd iln in
@@ -321,10 +320,10 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       begin
         match cmdrcd.hard_break with
         | Some(cmd) -> make_inline_application cmd []
-        | None      -> [(dummy_range, UTInputHorzText("\n"))]
+        | None      -> [(dummy_range, UTInlineTextString("\n"))]
       end
 
-  | Url(href, iln, title) ->
+  | Url(href, iln, _title) ->
       let utastarg1 = (dummy_range, UTStringConstant(href)) in
       let utastarg2 = convert_inline cmdrcd iln in
       make_inline_application cmdrcd.url [utastarg1; utastarg2]
@@ -340,7 +339,7 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
         | Some((title, url)) ->
             let u1 = (dummy_range, UTStringConstant(title)) in
             let u2 = (dummy_range, UTStringConstant(url)) in
-            let upair = (dummy_range, UTTuple([u1; u2])) in
+            let upair = (dummy_range, UTTuple(TupleList.make u1 u2 [])) in
             (dummy_range, UTConstructor("Some", upair))
 
       in
@@ -368,10 +367,10 @@ and convert_inline (cmdrcd : command_record) (iln : inline) : untyped_abstract_t
     ) Alist.empty
   in
   let utih = Alist.to_list ibacc in
-  (dummy_range, UTInputHorz(utih))
+  (dummy_range, UTInlineText(utih))
 
 
-and convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_input_vert_element list =
+and convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_block_text_element list =
   match blke with
   | Paragraph(iln) ->
       let utastarg = convert_inline cmdrcd iln in
@@ -437,7 +436,7 @@ and convert_block_element (cmdrcd : command_record) (blke : block_element) : unt
 
   | BlockRaw(s) ->
       let cmd = cmdrcd.err_block in
-      make_block_application cmd [(dummy_range, UTInputHorz[(dummy_range, UTInputHorzText(s))])]
+      make_block_application cmd [ (dummy_range, UTInlineText([ (dummy_range, UTInlineTextString(s)) ])) ]
 
 
 and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tree =
@@ -447,13 +446,14 @@ and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tre
     ) Alist.empty
   in
   let utiv = Alist.to_list bbacc in
-  (dummy_range, UTInputVert(utiv))
+  (dummy_range, UTBlockText(utiv))
 
 
 let decode (cmdrcd : command_record) (s : string) =
   let utastdoccmd =
-    let (rng, (mdlnms, varnm)) = cmdrcd.document in
-    (rng, UTContentOf(mdlnms, varnm))
+    let (rng, (modnms, varnm)) = cmdrcd.document in
+    let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
+    (rng, UTContentOf(modidents, (rng, varnm)))
   in
   let md = Omd.of_string s in
   let (strheader, md) =
@@ -475,10 +475,14 @@ let decode (cmdrcd : command_record) (s : string) =
         (cmdrcd.header_default, md)
   in
   let lexbuf = Lexing.from_string strheader in
-  let (_, _, utasthead) = ParserInterface.process "(markdown)" lexbuf in
+  let utasthead =
+    match ParserInterface.process "(markdown)" lexbuf with
+    | ([], UTDocumentFile(u)) -> u
+    | _                       -> failwith "TODO (error): invalid header expression"
+  in
   let blk = normalize_h1 md in
 (*
   Format.printf "BLOCK: %a\n" pp_block blk;  (* for debug *)
  *)
   let utastbody = convert_block cmdrcd blk in
-  (dummy_range, UTApply((dummy_range, UTApply(utastdoccmd, utasthead)), utastbody))
+  (dummy_range, UTApply([], (dummy_range, UTApply([], utastdoccmd, utasthead)), utastbody))
