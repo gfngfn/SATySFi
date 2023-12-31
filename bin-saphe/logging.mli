@@ -6,9 +6,9 @@ val show_package_dependency_before_solving : (dependency_flag * package_dependen
 
 val show_package_dependency_solutions : package_solution list -> unit
 
-val end_lock_output : abs_path -> unit
+val end_lock_config_output : abs_path -> unit
 
-val end_envelope_output : abs_path -> unit
+val end_envelope_config_output : abs_path -> unit
 
 val lock_already_installed : lock_name -> abs_path -> unit
 

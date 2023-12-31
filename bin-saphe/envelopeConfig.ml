@@ -79,7 +79,7 @@ let write (abspath_envelope_config : abs_path) (envelope_config : t) : unit =
   match Yaml.to_string ~encoding:`Utf8 ~layout_style:`Block ~scalar_style:`Plain yaml with
   | Ok(data) ->
       Core.Out_channel.write_all (get_abs_path_string abspath_envelope_config) ~data;
-      Logging.end_envelope_output abspath_envelope_config
+      Logging.end_envelope_config_output abspath_envelope_config
 
   | Error(_) ->
       assert false
