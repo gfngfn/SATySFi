@@ -336,7 +336,12 @@ let report_config_error = function
 
   | CannotWriteEnvelopeConfig{ message; path } ->
       report_error [
-        NormalLine(Printf.sprintf "cannot output the envelope config to '%s' (message: '%s')" (get_abs_path_string path) message);
+        NormalLine(Printf.sprintf "cannot write an envelope config to '%s' (message: '%s')" (get_abs_path_string path) message);
+      ]
+
+  | CannotWriteLockConfig{ message; path } ->
+      report_error [
+        NormalLine(Printf.sprintf "cannot write a lock config to '%s' (message: '%s')" (get_abs_path_string path) message);
       ]
 
 
@@ -667,7 +672,8 @@ let solve ~(fpath_in : string) =
                 ~wget_command ~tar_command ~unzip_command ~store_root:absdir_store_root impl_spec
             ) ()
           in
-          LockConfig.write abspath_lock_config lock_config;
+          let* () = LockConfig.write abspath_lock_config lock_config in
+          Logging.end_lock_config_output abspath_lock_config;
           return ()
     end
   in

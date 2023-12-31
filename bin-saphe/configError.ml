@@ -115,3 +115,7 @@ type config_error =
       message : string;
       path    : abs_path;
     }
+  | CannotWriteLockConfig of {
+      message : string;
+      path    : abs_path;
+    }

@@ -85,6 +85,16 @@ let read_file (abspath : abs_path) : (string, string) result =
       err s
 
 
+let write_file (abspath : abs_path) (data : string) : (unit, string) result =
+  let open ResultMonad in
+  try
+    Core.Out_channel.write_all (get_abs_path_string abspath) ~data;
+    return ()
+  with
+  | Sys_error(s) ->
+      err s
+
+
 let is_directory (abspath : abs_path) : bool =
   Sys.is_directory (get_abs_path_string abspath)
 

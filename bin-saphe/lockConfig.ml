@@ -96,8 +96,10 @@ let load (abspath_lock_config : abs_path) : t ok =
     |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))
 
 
-let write (abspath_lock_config : abs_path) (lock_config : t) : unit =
+let write (abspath_lock_config : abs_path) (lock_config : t) : (unit, config_error) result =
   let yaml = lock_config_encoder lock_config in
   let data = encode_yaml yaml in
-  Core.Out_channel.write_all (get_abs_path_string abspath_lock_config) ~data;
-  Logging.end_lock_config_output abspath_lock_config
+  write_file abspath_lock_config data
+    |> Result.map_error (fun message ->
+      CannotWriteLockConfig{ message; path = abspath_lock_config }
+    )

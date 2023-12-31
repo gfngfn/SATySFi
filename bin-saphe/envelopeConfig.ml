@@ -76,12 +76,9 @@ let envelope_config_encoder (envelope_config : t) : Yaml.value =
 
 
 let write (abspath_envelope_config : abs_path) (envelope_config : t) : (unit, config_error) result =
-  let open ResultMonad in
   let yaml = envelope_config_encoder envelope_config in
   let data = encode_yaml yaml in
-  try
-    Core.Out_channel.write_all (get_abs_path_string abspath_envelope_config) ~data;
-    return ()
-  with
-  | Sys_error(message) ->
-      err @@ CannotWriteEnvelopeConfig{ message; path = abspath_envelope_config }
+  write_file abspath_envelope_config data
+    |> Result.map_error (fun message ->
+      CannotWriteEnvelopeConfig{ message; path = abspath_envelope_config }
+    )

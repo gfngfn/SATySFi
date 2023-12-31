@@ -42,6 +42,8 @@ val encode_yaml : Yaml.value -> string
 
 val read_file : abs_path -> (string, string) result
 
+val write_file : abs_path -> string -> (unit, string) result
+
 type 'a cycle =
   | Loop  of 'a
   | Cycle of 'a TupleList.t
