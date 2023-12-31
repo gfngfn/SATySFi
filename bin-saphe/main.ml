@@ -623,11 +623,7 @@ let solve ~(fpath_in : string) =
 
         (* Fetches registry configs: *)
         let absdir_registry_repo =
-          let libpath_registry_root = Constant.registry_root_directory registry_hash_value in
-          make_abs_path
-            (Filename.concat
-              (get_abs_path_string absdir_store_root)
-              (get_lib_path_string libpath_registry_root))
+          Constant.registry_root_directory_path absdir_store_root registry_hash_value
         in
         let git_command = "git" in (* TODO: make this changeable *)
         let* () =

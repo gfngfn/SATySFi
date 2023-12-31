@@ -22,8 +22,10 @@ let lock_directory (lock : Lock.t) : lib_path =
       (lock_tarball_name package_name locked_version))
 
 
-let registry_root_directory (registry_hash_value : registry_hash_value) : lib_path =
-  make_lib_path (Printf.sprintf "registries/%s" registry_hash_value)
+let registry_root_directory_path (absdir_store_root : abs_path) (registry_hash_value : registry_hash_value) : abs_path =
+  make_abs_path (Filename.concat
+    (get_abs_path_string absdir_store_root)
+    (Printf.sprintf "registries/%s" registry_hash_value))
 
 
 let lock_tarball_cache_directory (registry_hash_value : registry_hash_value) : lib_path =
