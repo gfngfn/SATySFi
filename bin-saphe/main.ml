@@ -397,6 +397,13 @@ let make_lock_name (lock : Lock.t) : lock_name =
     (SemanticVersion.to_string locked_version)
 
 
+let make_lock_dependency (dep : locked_dependency) : LockConfig.lock_dependency =
+  {
+    depended_lock_name = make_lock_name dep.depended_lock;
+    used_as            = dep.dependency_used_as;
+  }
+
+
 let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t * implementation_spec list =
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
@@ -406,7 +413,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
         LockConfig.{
           lock_name         = make_lock_name lock;
           lock_contents     = RegisteredLock{ registry_hash_value; package_name; version };
-          lock_dependencies = solution.locked_dependencies |> List.map make_lock_name;
+          lock_dependencies = solution.locked_dependencies |> List.map make_lock_dependency;
           test_only_lock    = solution.used_in_test_only;
         }
       in
@@ -419,7 +426,12 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
       (Alist.extend locked_package_acc locked_package, Alist.extend impl_spec_acc impl_spec)
     ) (Alist.empty, Alist.empty)
   in
-  let lock_config = LockConfig.{ locked_packages = Alist.to_list locked_package_acc } in
+  let lock_config =
+    LockConfig.{
+      locked_packages     = Alist.to_list locked_package_acc;
+      direct_dependencies = failwith "TODO: lock_config, direct_dependencies"
+    }
+  in
   (lock_config, Alist.to_list impl_spec_acc)
 
 
@@ -709,6 +721,13 @@ type build_input =
     }
 
 
+let make_deps_config (_lock_config : LockConfig.t) : DepsConfig.t =
+  DepsConfig.{
+    envelopes = failwith "TODO: DepsConfig";
+    direct_dependencies = [];
+  }
+
+
 let build
     ~(fpath_in : string)
     ~(fpath_out_opt : string option)
@@ -784,7 +803,8 @@ let build
         envelope = _abspath_envelope_config;
         options  = _build_option;
       } ->
-        let* _lock_config = LockConfig.load abspath_lock_config in
+        let* lock_config = LockConfig.load abspath_lock_config in
+        let _deps_config = make_deps_config lock_config in
         failwith "TODO: PackageBuildInput"
 
     | DocumentBuildInput{

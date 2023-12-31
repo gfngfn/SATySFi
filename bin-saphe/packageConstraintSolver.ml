@@ -55,6 +55,7 @@ module SolverInput = struct
   type dependency =
     | Dependency of {
         role                : Role.t;
+        used_as             : string;
         version_requirement : SemanticVersion.requirement;
       }
 
@@ -147,19 +148,27 @@ module SolverInput = struct
 
   let make_internal_dependency_from_registry (registry_local_name : registry_local_name) (context : package_context) (requires : package_dependency_in_registry list) : dependency list =
     requires |> List.map (function
-    | PackageDependencyInRegistry{ package_name; version_requirement } ->
+    | PackageDependencyInRegistry{ package_name; used_as; version_requirement } ->
         let compatibility =
           match version_requirement with
           | SemanticVersion.CompatibleWith(semver) ->
               SemanticVersion.get_compatibility_unit semver
         in
-        Dependency{ role = Role{ package_name; registry_local_name; compatibility; context }; version_requirement }
+        let role =
+          Role.Role{
+            package_name;
+            registry_local_name;
+            compatibility;
+            context;
+          }
+        in
+        Dependency{ role; used_as; version_requirement }
     )
 
 
   let make_internal_dependency (context : package_context) (requires : package_dependency list) : dependency list =
     requires |> List.map (fun dep ->
-      let PackageDependency{ package_name; spec } = dep in
+      let PackageDependency{ used_as; package_name; spec } = dep in
       match spec with
       | RegisteredDependency{ registry_local_name; version_requirement } ->
           let compatibility =
@@ -167,10 +176,15 @@ module SolverInput = struct
             | SemanticVersion.CompatibleWith(semver) ->
                 SemanticVersion.get_compatibility_unit semver
           in
-          Dependency{
-            role = Role{ package_name; registry_local_name; compatibility; context };
-            version_requirement;
-          }
+          let role =
+            Role.Role{
+              package_name;
+              registry_local_name;
+              compatibility;
+              context;
+            }
+          in
+          Dependency{ role; used_as; version_requirement }
     )
 
 
@@ -357,7 +371,7 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
         let (lock, source, dependencies, vertex) = quint in
         let (locked_dependency_acc, graph) =
           dependencies |> List.fold_left (fun (locked_dependency_acc, graph) dep ->
-            let Dependency{ role = role_dep; _ } = dep in
+            let Dependency{ role = role_dep; used_as; _ } = dep in
             match role_dep with
             | Role{ package_name = package_name_dep; _ } ->
                 let lock_dep =
@@ -376,7 +390,13 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
                         registry_hash_value = registry_hash_value_dep;
                       }
                 in
-                let locked_dependency_acc = Alist.extend locked_dependency_acc lock_dep in
+                let lock_dependency =
+                  {
+                    depended_lock      = lock_dep;
+                    dependency_used_as = used_as;
+                  }
+                in
+                let locked_dependency_acc = Alist.extend locked_dependency_acc lock_dependency in
                 let vertex_dep =
                   match lock_to_vertex_map |> LockMap.find_opt lock_dep with
                   | None    -> assert false

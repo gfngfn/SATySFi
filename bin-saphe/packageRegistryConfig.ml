@@ -28,9 +28,11 @@ let source_decoder : implementation_source ConfigDecoder.t =
 
 let dependency_in_registry_config_decoder =
   let open ConfigDecoder in
+  get "used_as" string >>= fun used_as ->
   get "name" package_name_decoder >>= fun package_name ->
   get "requirement" requirement_decoder >>= fun version_requirement ->
   succeed @@ PackageDependencyInRegistry{
+    used_as;
     package_name;
     version_requirement;
   }

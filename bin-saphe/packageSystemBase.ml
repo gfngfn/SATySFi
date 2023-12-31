@@ -58,6 +58,7 @@ type package_dependency_spec =
 type package_dependency =
   | PackageDependency of {
       package_name : package_name;
+      used_as      : string;
       spec         : package_dependency_spec;
     }
 [@@deriving show { with_path = false }]
@@ -65,6 +66,7 @@ type package_dependency =
 type package_dependency_in_registry =
   | PackageDependencyInRegistry of {
       package_name        : package_name;
+      used_as             : string;
       version_requirement : SemanticVersion.requirement;
     }
 [@@deriving show { with_path = false }]
@@ -95,10 +97,15 @@ type package_context = {
   registries       : registry_spec RegistryLocalNameMap.t;
 }
 
+type locked_dependency = {
+  depended_lock      : Lock.t;
+  dependency_used_as : string;
+}
+
 type package_solution = {
   lock                : Lock.t;
   locked_source       : implementation_source;
-  locked_dependencies : Lock.t list;
+  locked_dependencies : locked_dependency list;
   used_in_test_only   : bool;
 }
 [@@deriving show { with_path = false }]

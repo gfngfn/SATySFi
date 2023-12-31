@@ -6,7 +6,7 @@ open PackageSystemBase
 let show_package_dependency_before_solving (dependencies_with_flags : (dependency_flag * package_dependency) list) =
   Printf.printf "  package dependencies to solve:\n";
   dependencies_with_flags |> List.iter (fun (flag, dep) ->
-    let PackageDependency{ package_name; spec } = dep in
+    let PackageDependency{ used_as; package_name; spec } = dep in
     match spec with
     | RegisteredDependency{ version_requirement; _ } ->
         let s_restr = SemanticVersion.requirement_to_string version_requirement in
@@ -15,7 +15,7 @@ let show_package_dependency_before_solving (dependencies_with_flags : (dependenc
           | SourceDependency   -> ""
           | TestOnlyDependency -> ", test_only"
         in
-        Printf.printf "  - %s (%s%s)\n" package_name s_restr s_test_only;
+        Printf.printf "  - %s (%s%s) used as %s\n" package_name s_restr s_test_only used_as;
   )
 
 

@@ -14,15 +14,21 @@ type lock_contents =
       version             : SemanticVersion.t;
     }
 
+type lock_dependency = {
+  depended_lock_name : lock_name;
+  used_as            : string;
+}
+
 type locked_package = {
   lock_name         : lock_name;
   lock_contents     : lock_contents;
-  lock_dependencies : lock_name list;
+  lock_dependencies : lock_dependency list;
   test_only_lock    : bool;
 }
 
 type t = {
-  locked_packages : locked_package list;
+  locked_packages     : locked_package list;
+  direct_dependencies : lock_dependency list;
 }
 
 
@@ -52,20 +58,34 @@ let lock_contents_encoder (contents : lock_contents) : Yaml.value =
       ])
 
 
+let lock_dependency_decoder : lock_dependency ConfigDecoder.t =
+  let open ConfigDecoder in
+  get "name" string >>= fun depended_lock_name ->
+  get "used_as" string >>= fun used_as ->
+  succeed { depended_lock_name; used_as }
+
+
 let lock_decoder : locked_package ConfigDecoder.t =
   let open ConfigDecoder in
   get "name" string >>= fun lock_name ->
   get "contents" lock_contents_decoder >>= fun lock_contents ->
-  get_or_else "dependencies" (list string) [] >>= fun lock_dependencies ->
+  get_or_else "dependencies" (list lock_dependency_decoder) [] >>= fun lock_dependencies ->
   get_or_else "test_only" bool false >>= fun test_only_lock ->
   succeed { lock_name; lock_contents; lock_dependencies; test_only_lock }
+
+
+let lock_dependency_encoder (dep : lock_dependency) : Yaml.value =
+  `O([
+    ("name", `String(dep.depended_lock_name));
+    ("used_as", `String(dep.used_as));
+  ])
 
 
 let lock_encoder (lock : locked_package) : Yaml.value =
   `O([
     ("name", `String(lock.lock_name));
     ("contents", lock_contents_encoder lock.lock_contents);
-    ("dependencies", `A(lock.lock_dependencies |> List.map (fun lock_name -> `String(lock_name))));
+    ("dependencies", `A(lock.lock_dependencies |> List.map lock_dependency_encoder));
     ("test_only", `Bool(lock.test_only_lock));
   ])
 
@@ -74,8 +94,10 @@ let lock_config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
   get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
   get_or_else "locks" (list lock_decoder) [] >>= fun locked_packages ->
+  get_or_else "dependencies" (list lock_dependency_decoder) [] >>= fun direct_dependencies ->
   succeed {
     locked_packages;
+    direct_dependencies;
   }
 
 
@@ -83,6 +105,7 @@ let lock_config_encoder (lock_config : t) : Yaml.value =
   `O([
     ("ecosystem", `String(SemanticVersion.(requirement_to_string (CompatibleWith(Constant.current_ecosystem_version)))));
     ("locks", `A(lock_config.locked_packages |> List.map lock_encoder));
+    ("dependencies", `A(lock_config.direct_dependencies |> List.map lock_dependency_encoder));
   ])
 
 

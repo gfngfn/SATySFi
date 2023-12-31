@@ -64,9 +64,10 @@ let dependency_spec_decoder : package_dependency_spec ConfigDecoder.t =
 
 let dependency_decoder : package_dependency ConfigDecoder.t =
   let open ConfigDecoder in
+  get "used_as" string >>= fun used_as ->
   get "name" package_name_decoder >>= fun package_name ->
   get "spec" dependency_spec_decoder >>= fun spec ->
-  succeed @@ PackageDependency{ package_name; spec }
+  succeed @@ PackageDependency{ package_name; used_as; spec }
 
 
 let registry_remote_decoder : registry_remote ConfigDecoder.t =
