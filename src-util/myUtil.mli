@@ -36,6 +36,8 @@ end
 
 val make_absolute_if_relative : origin:string -> string -> abs_path
 
+val is_directory : abs_path -> bool
+
 val read_file : abs_path -> (string, string) result
 
 type 'a cycle =

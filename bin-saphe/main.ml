@@ -510,14 +510,14 @@ let get_store_root () : (abs_path, config_error) result =
 
 
 let solve ~(fpath_in : string) =
-  let absdir_current = Sys.getcwd () in
-  let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
-
   let res =
     let open ResultMonad in
-    let* absdir_store_root = get_store_root () in
+
+    (* Constructs the input: *)
     let solve_input =
-      if Sys.is_directory (get_abs_path_string abspath_in) then
+      let absdir_current = Sys.getcwd () in
+      let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+      if is_directory abspath_in then
       (* If the input is a directory that forms a package: *)
         let abspath_lock_config = Constant.library_lock_config_path abspath_in in
         let abspath_envelope_config = Constant.envelope_config_path abspath_in in
@@ -536,8 +536,6 @@ let solve ~(fpath_in : string) =
         }
     in
 
-    let abspath_store_root_config = Constant.store_root_config_path absdir_store_root in
-    let* store_root_config = StoreRootConfig.load abspath_store_root_config in
     let* (language_version, dependencies_with_flags, abspath_lock_config, registry_specs) =
       match solve_input with
       | PackageSolveInput{
@@ -592,6 +590,10 @@ let solve ~(fpath_in : string) =
     in
 
     Logging.show_package_dependency_before_solving dependencies_with_flags;
+
+    let* absdir_store_root = get_store_root () in
+    let abspath_store_root_config = Constant.store_root_config_path absdir_store_root in
+    let* store_root_config = StoreRootConfig.load abspath_store_root_config in
 
     let* registries =
       RegistryLocalNameMap.fold (fun registry_local_name registry_remote res ->
@@ -659,6 +661,130 @@ let solve ~(fpath_in : string) =
           LockConfig.write abspath_lock_config lock_config;
           return ()
     end
+  in
+  match res with
+  | Ok(())   -> ()
+  | Error(e) -> report_config_error e; exit 1
+
+
+type build_option = {
+    text_mode              : string option;
+    page_number_limit      : int;
+    show_full_path         : bool;
+    debug_show_bbox        : bool;
+    debug_show_space       : bool;
+    debug_show_block_bbox  : bool;
+    debug_show_block_space : bool;
+    debug_show_overfull    : bool;
+    type_check_only        : bool;
+    bytecomp               : bool;
+}
+
+
+type build_input =
+  | PackageBuildInput of {
+      root     : abs_path;
+      lock     : abs_path;
+      deps     : abs_path;
+      envelope : abs_path;
+      options  : build_option;
+    }
+  | DocumentBuildInput of {
+      lock    : abs_path;
+      deps    : abs_path;
+      out     : abs_path;
+      dump    : abs_path;
+      options : build_option;
+    }
+
+
+let build
+    ~(fpath_in : string)
+    ~(fpath_out_opt : string option)
+    ~(text_mode_formats_str_opt : string option)
+    ~(page_number_limit : int)
+    ~(show_full_path : bool)
+    ~(debug_show_bbox : bool)
+    ~(debug_show_space : bool)
+    ~(debug_show_block_bbox : bool)
+    ~(debug_show_block_space : bool)
+    ~(debug_show_overfull : bool)
+    ~(type_check_only : bool)
+    ~(bytecomp : bool)
+=
+  let res =
+    let open ResultMonad in
+
+    (* Constructs the input: *)
+    let build_input =
+      let build_option =
+        {
+          text_mode   = text_mode_formats_str_opt;
+          page_number_limit;
+          show_full_path;
+          debug_show_bbox;
+          debug_show_space;
+          debug_show_block_bbox;
+          debug_show_block_space;
+          debug_show_overfull;
+          type_check_only;
+          bytecomp;
+        }
+      in
+      let absdir_current = Sys.getcwd () in
+      let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+      if is_directory abspath_in then
+        let abspath_lock_config = Constant.library_lock_config_path abspath_in in
+        let abspath_deps_config = Constant.library_deps_config_path abspath_in in
+        let abspath_envelope_config = Constant.envelope_config_path abspath_in in
+        PackageBuildInput{
+          root     = abspath_in;
+          lock     = abspath_lock_config;
+          deps     = abspath_deps_config;
+          envelope = abspath_envelope_config;
+          options  = build_option;
+        }
+      else
+        let abspath_lock_config = Constant.document_lock_config_path abspath_in in
+        let abspath_deps_config = Constant.document_deps_config_path abspath_in in
+        let abspath_out =
+          match fpath_out_opt with
+          | None ->
+              Constant.default_output_path abspath_in
+
+          | Some(fpath_out) ->
+              make_absolute_if_relative ~origin:absdir_current fpath_out
+        in
+        let abspath_dump = Constant.dump_path abspath_in in
+        DocumentBuildInput{
+          lock    = abspath_lock_config;
+          deps    = abspath_deps_config;
+          out     = abspath_out;
+          dump    = abspath_dump;
+          options = build_option;
+        }
+    in
+
+    match build_input with
+    | PackageBuildInput{
+        root     = _absdir_package;
+        lock     = abspath_lock_config;
+        deps     = _abspath_deps_config;
+        envelope = _abspath_envelope_config;
+        options  = _build_option;
+      } ->
+        let* _lock_config = LockConfig.load abspath_lock_config in
+        failwith "TODO: PackageBuildInput"
+
+    | DocumentBuildInput{
+        lock    = abspath_lock_config;
+        deps    = _abspath_deps_config;
+        out     = _abspath_out;
+        dump    = _abspath_dump;
+        options = _build_option;
+      } ->
+        let* _lock_config = LockConfig.load abspath_lock_config in
+        failwith "TODO: DocumentBuildInput"
   in
   match res with
   | Ok(())   -> ()

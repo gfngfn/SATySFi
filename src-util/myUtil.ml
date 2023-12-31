@@ -85,6 +85,10 @@ let read_file (abspath : abs_path) : (string, string) result =
       err s
 
 
+let is_directory (abspath : abs_path) : bool =
+  Sys.is_directory (get_abs_path_string abspath)
+
+
 type 'a cycle =
   | Loop  of 'a
   | Cycle of 'a TupleList.t
