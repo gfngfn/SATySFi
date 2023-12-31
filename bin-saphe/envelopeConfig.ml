@@ -1,5 +1,6 @@
 
 open MyUtil
+open ConfigError
 
 
 type relative_path = string
@@ -74,12 +75,13 @@ let envelope_config_encoder (envelope_config : t) : Yaml.value =
        ])
 
 
-let write (abspath_envelope_config : abs_path) (envelope_config : t) : unit =
+let write (abspath_envelope_config : abs_path) (envelope_config : t) : (unit, config_error) result =
+  let open ResultMonad in
   let yaml = envelope_config_encoder envelope_config in
-  match Yaml.to_string ~encoding:`Utf8 ~layout_style:`Block ~scalar_style:`Plain yaml with
-  | Ok(data) ->
-      Core.Out_channel.write_all (get_abs_path_string abspath_envelope_config) ~data;
-      Logging.end_envelope_config_output abspath_envelope_config
-
-  | Error(_) ->
-      assert false
+  let data = encode_yaml yaml in
+  try
+    Core.Out_channel.write_all (get_abs_path_string abspath_envelope_config) ~data;
+    return ()
+  with
+  | Sys_error(message) ->
+      err @@ CannotWriteEnvelopeConfig{ message; path = abspath_envelope_config }

@@ -111,3 +111,7 @@ type config_error =
     }
   | PackageRegistryFetcherError   of PackageRegistryFetcher.error
   | CanonicalRegistryUrlError     of CanonicalRegistryUrl.error
+  | CannotWriteEnvelopeConfig of {
+      message : string;
+      path    : abs_path;
+    }

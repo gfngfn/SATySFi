@@ -334,6 +334,11 @@ let report_config_error = function
             ]
       end
 
+  | CannotWriteEnvelopeConfig{ message; path } ->
+      report_error [
+        NormalLine(Printf.sprintf "cannot output the envelope config to '%s' (message: '%s')" (get_abs_path_string path) message);
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
@@ -558,8 +563,12 @@ let solve ~(fpath_in : string) =
                 (* Selects the minimum version according to the user's designation for the moment.
                    TODO: take dependencies into account when selecting a language version *)
           in
+
+          (* Writes the envelope config: *)
           let envelope_config = make_envelope_config package_contents in
-          EnvelopeConfig.write abspath_envelope_config envelope_config;
+          let* () = EnvelopeConfig.write abspath_envelope_config envelope_config in
+          Logging.end_envelope_config_output abspath_envelope_config;
+
           begin
             match package_contents with
             | PackageConfig.Library{ dependencies; test_dependencies; _ } ->

@@ -89,6 +89,12 @@ let is_directory (abspath : abs_path) : bool =
   Sys.is_directory (get_abs_path_string abspath)
 
 
+let encode_yaml (yaml : Yaml.value) : string =
+  match Yaml.to_string ~encoding:`Utf8 ~layout_style:`Block ~scalar_style:`Plain yaml with
+  | Ok(data) -> data
+  | Error(_) -> assert false
+
+
 type 'a cycle =
   | Loop  of 'a
   | Cycle of 'a TupleList.t
