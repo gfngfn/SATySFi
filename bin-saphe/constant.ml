@@ -30,8 +30,8 @@ let lock_tarball_cache_directory (registry_hash_value : registry_hash_value) : l
   make_lib_path (Printf.sprintf "cache/locks/%s" registry_hash_value)
 
 
-let library_root_config_path (absdir_library_root : abs_path) : abs_path =
-  make_abs_path (Filename.concat (get_abs_path_string absdir_library_root) "saphe-library-root.yaml")
+let store_root_config_path (absdir_store_root : abs_path) : abs_path =
+  make_abs_path (Filename.concat (get_abs_path_string absdir_store_root) "saphe-store-root.yaml")
 
 
 let package_registry_config_file_name =

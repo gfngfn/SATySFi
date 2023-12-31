@@ -110,7 +110,7 @@ let make_yaml_error_lines : yaml_error -> line list = function
 let report_config_error = function
   | CannotDetermineStoreRoot{ envvar } ->
       report_error [
-        NormalLine("cannot determine where the SATySFi library root is;");
+        NormalLine("cannot determine where the store root is;");
         NormalLine(Printf.sprintf "set environment variable '%s'." envvar);
       ]
 
@@ -159,15 +159,15 @@ let report_config_error = function
         make_yaml_error_lines e;
       ])
 
-  | LibraryRootConfigNotFound(abspath) ->
+  | StoreRootConfigNotFound(abspath) ->
       report_error [
-        NormalLine("cannot find a library root config at:");
+        NormalLine("cannot find a store root config at:");
         DisplayLine(get_abs_path_string abspath);
       ]
 
-  | LibraryRootConfigError(abspath, e) ->
+  | StoreRootConfigError(abspath, e) ->
       report_error (List.concat [
-        [ NormalLine(Printf.sprintf "in %s: library root config error;" (get_abs_path_string abspath)) ];
+        [ NormalLine(Printf.sprintf "in %s: store root config error;" (get_abs_path_string abspath)) ];
         make_yaml_error_lines e;
       ])
 
@@ -363,17 +363,17 @@ let make_registry_hash_value (registry_remote : registry_remote) : (registry_has
       return hash_value
 
 
-let update_library_root_config_if_needed (registries : registry_remote RegistryHashValueMap.t) (registry_hash_value : registry_hash_value) (registry_remote : registry_remote) (abspath_library_root : abs_path) : unit =
+let update_store_root_config_if_needed (registries : registry_remote RegistryHashValueMap.t) (registry_hash_value : registry_hash_value) (registry_remote : registry_remote) (abspath_store_root : abs_path) : unit =
   match
     registries |> RegistryHashValueMap.find_opt registry_hash_value
   with
   | None ->
-      let library_root_config =
-        LibraryRootConfig.{
+      let store_root_config =
+        StoreRootConfig.{
           registries = registries |> RegistryHashValueMap.add registry_hash_value registry_remote;
         }
       in
-      LibraryRootConfig.write abspath_library_root library_root_config
+      StoreRootConfig.write abspath_store_root store_root_config
 
   | Some(_registry_remote) ->
       ()
@@ -496,7 +496,7 @@ let make_envelope_config (package_contents : PackageConfig.package_contents) : E
       }
 
 
-let get_library_root () : (abs_path, config_error) result =
+let get_store_root () : (abs_path, config_error) result =
   let open ResultMonad in
   let envvar_home =
     if String.equal Sys.os_type "Win32" then
@@ -515,7 +515,7 @@ let solve ~(fpath_in : string) =
 
   let res =
     let open ResultMonad in
-    let* absdir_library_root = get_library_root () in
+    let* absdir_store_root = get_store_root () in
     let solve_input =
       if Sys.is_directory (get_abs_path_string abspath_in) then
       (* If the input is a directory that forms a package: *)
@@ -536,8 +536,8 @@ let solve ~(fpath_in : string) =
         }
     in
 
-    let abspath_library_root_config = Constant.library_root_config_path absdir_library_root in
-    let* library_root_config = LibraryRootConfig.load abspath_library_root_config in
+    let abspath_store_root_config = Constant.store_root_config_path absdir_store_root in
+    let* store_root_config = StoreRootConfig.load abspath_store_root_config in
     let* (language_version, dependencies_with_flags, abspath_lock_config, registry_specs) =
       match solve_input with
       | PackageSolveInput{
@@ -598,19 +598,19 @@ let solve ~(fpath_in : string) =
         let* registries = res in
         let* registry_hash_value = make_registry_hash_value registry_remote in
 
-        (* Manupulates the library root config: *)
-        update_library_root_config_if_needed
-          library_root_config.LibraryRootConfig.registries
+        (* Manupulates the store root config: *)
+        update_store_root_config_if_needed
+          store_root_config.StoreRootConfig.registries
           registry_hash_value
           registry_remote
-          abspath_library_root_config;
+          abspath_store_root_config;
 
         (* Fetches registry configs: *)
         let absdir_registry_repo =
           let libpath_registry_root = Constant.registry_root_directory registry_hash_value in
           make_abs_path
             (Filename.concat
-              (get_abs_path_string absdir_library_root)
+              (get_abs_path_string absdir_store_root)
               (get_lib_path_string libpath_registry_root))
         in
         let git_command = "git" in (* TODO: make this changeable *)
@@ -653,7 +653,7 @@ let solve ~(fpath_in : string) =
           let* () =
             impl_specs |> foldM (fun () impl_spec ->
               LockFetcher.main
-                ~wget_command ~tar_command ~unzip_command ~library_root:absdir_library_root impl_spec
+                ~wget_command ~tar_command ~unzip_command ~store_root:absdir_store_root impl_spec
             ) ()
           in
           LockConfig.write abspath_lock_config lock_config;

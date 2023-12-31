@@ -77,10 +77,10 @@ let load (abspath_config : abs_path) : (t, config_error) result =
   let open ResultMonad in
   let* s =
     read_file abspath_config
-      |> Result.map_error (fun _ -> LibraryRootConfigNotFound(abspath_config))
+      |> Result.map_error (fun _ -> StoreRootConfigNotFound(abspath_config))
   in
   ConfigDecoder.run config_decoder s
-    |> Result.map_error (fun e -> LibraryRootConfigError(abspath_config, e))
+    |> Result.map_error (fun e -> StoreRootConfigError(abspath_config, e))
 
 
 let write (abspath_config : abs_path) (library_root_config : t) : unit =

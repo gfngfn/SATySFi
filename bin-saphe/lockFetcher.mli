@@ -7,5 +7,5 @@ val main :
   wget_command:string ->
   tar_command:string ->
   unzip_command:string ->
-  library_root:abs_path ->
+  store_root:abs_path ->
   implementation_spec -> (unit, config_error) result

@@ -49,7 +49,7 @@ let extract_external_zip ~(unzip_command : string) ~(zip : abs_path) ~(output_co
     err @@ FailedToExtractExternalZip{ exit_status; command }
 
 
-let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~library_root:(absdir_lib_root : abs_path) (impl_spec : implementation_spec) : unit ok =
+let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~store_root:(absdir_store_root : abs_path) (impl_spec : implementation_spec) : unit ok =
   let open ResultMonad in
   let ImplSpec{ lock; source } = impl_spec in
   let Lock.{ registry_hash_value; package_name; locked_version } = lock in
@@ -57,13 +57,13 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
   let absdir_lock =
     let libdir_lock = Constant.lock_directory lock in
     make_abs_path
-      (Filename.concat (get_abs_path_string absdir_lib_root) (get_lib_path_string libdir_lock))
+      (Filename.concat (get_abs_path_string absdir_store_root) (get_lib_path_string libdir_lock))
   in
   let absdir_lock_tarball_cache =
     let libpath_lock_tarball_cache = Constant.lock_tarball_cache_directory registry_hash_value in
     make_abs_path
       (Filename.concat
-        (get_abs_path_string absdir_lib_root)
+        (get_abs_path_string absdir_store_root)
         (get_lib_path_string libpath_lock_tarball_cache))
   in
 
