@@ -33,6 +33,9 @@ module Make (Element : ElementType) : sig
   (** Equals [Set.Make(Vertex)]. *)
   module VertexSet : Set.S with type elt = Vertex.t
 
+  (** Equals [Map.Make(Vertex)]. *)
+  module VertexMap : Map.S with type key = Vertex.t
+
   (** The type for graphs. *)
   type 'a t
 
@@ -59,6 +62,8 @@ module Make (Element : ElementType) : sig
         {- [Error cycle] if [g] has a cycle or a loop, or}
         {- [Ok sorted_vertices] if the sorting succeeds.}} *)
   val topological_sort : 'a t -> ((element * 'a) list, (element * 'a) cycle) result
+
+  val map_domain : 'a VertexMap.t -> VertexSet.t
 
   (** [reachability_closure g vertices] computes the set of vertices reachable
       from at least one vertex contained in [vertices]. *)

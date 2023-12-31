@@ -8,7 +8,7 @@ open PackageSystemBase
 type 'a ok = ('a, config_error) result
 
 type t = {
-  packages : (implementation_record list) PackageNameMap.t;
+  packages : (package_name * (implementation_record list)) list;
 }
 
 
@@ -59,13 +59,6 @@ let registry_config_decoder : t ConfigDecoder.t =
   get "format" string >>= function
   | "1" ->
       get "packages" (list package_decoder) >>= fun packages ->
-      packages |> List.fold_left (fun res (package_name, impls) ->
-        res >>= fun map ->
-        if map |> PackageNameMap.mem package_name then
-          failure (fun yctx -> MultiplePackageDefinition{ context = yctx; package_name })
-        else
-          succeed (map |> PackageNameMap.add package_name impls)
-      ) (succeed PackageNameMap.empty) >>= fun packages ->
       succeed { packages }
 
   | format ->

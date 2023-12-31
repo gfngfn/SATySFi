@@ -52,7 +52,8 @@ let extract_external_zip ~(unzip_command : string) ~(zip : abs_path) ~(output_co
 let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~store_root:(absdir_store_root : abs_path) (impl_spec : implementation_spec) : unit ok =
   let open ResultMonad in
   let ImplSpec{ lock; source } = impl_spec in
-  let Lock.{ registry_hash_value; package_name; locked_version } = lock in
+  let Lock.{ package_id; locked_version } = lock in
+  let PackageId.{ registry_hash_value; package_name } = package_id in
   let lock_tarball_name = Constant.lock_tarball_name package_name locked_version in
   let absdir_lock =
     let libdir_lock = Constant.lock_directory lock in

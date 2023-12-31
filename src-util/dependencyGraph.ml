@@ -43,6 +43,8 @@ module Make (Element : ElementType) = struct
 
   module VertexSet = Set.Make(Vertex)
 
+  module VertexMap = Map.Make(Vertex)
+
   type 'a t = {
     labels : ('a * Vertex.t) ElementMap.t;
     main   : GraphImpl.t;
@@ -129,6 +131,12 @@ module Make (Element : ElementType) = struct
               in
               Ok(Alist.to_list_rev acc)
         end
+
+
+  let map_domain (map : 'a VertexMap.t) : VertexSet.t =
+    VertexMap.fold (fun vertex _ set ->
+      set |> VertexSet.add vertex
+    ) map VertexSet.empty
 
 
   let reachability_closure (graph : 'a t) (vertices_origin : VertexSet.t) : VertexSet.t =

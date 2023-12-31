@@ -88,9 +88,6 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | InvalidPackageName(yctx, s) ->
       [ NormalLine(Printf.sprintf "not a package name: '%s'%s" s (show_yaml_context yctx)) ]
 
-  | MultiplePackageDefinition{ context = yctx; package_name } ->
-      [ NormalLine(Printf.sprintf "More than one definition for package '%s'%s" package_name (show_yaml_context yctx)) ]
-
   | DuplicateRegistryLocalName{ context = yctx; registry_local_name } ->
       [ NormalLine(Printf.sprintf "More than one definition for registry local name '%s'%s" registry_local_name (show_yaml_context yctx)) ]
 
@@ -344,6 +341,11 @@ let report_config_error = function
         NormalLine(Printf.sprintf "cannot write a lock config to '%s' (message: '%s')" (get_abs_path_string path) message);
       ]
 
+  | MultiplePackageDefinition{ package_name } ->
+      report_error [
+        NormalLine(Printf.sprintf "More than one definition for package '%s'." package_name)
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
@@ -390,7 +392,8 @@ let update_store_root_config_if_needed (registries : registry_remote RegistryHas
 
 
 let make_lock_name (lock : Lock.t) : lock_name =
-  let Lock.{ registry_hash_value; package_name; locked_version } = lock in
+  let Lock.{ package_id; locked_version } = lock in
+  let PackageId.{ registry_hash_value; package_name } = package_id in
   Printf.sprintf "registered.%s.%s.%s"
     registry_hash_value
     package_name
@@ -408,7 +411,8 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let lock = solution.lock in
-      let Lock.{ registry_hash_value; package_name; locked_version = version } = lock in
+      let Lock.{ package_id; locked_version = version } = lock in
+      let PackageId.{ registry_hash_value; package_name } = package_id in
       let locked_package =
         LockConfig.{
           lock_name         = make_lock_name lock;
@@ -426,10 +430,20 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
       (Alist.extend locked_package_acc locked_package, Alist.extend impl_spec_acc impl_spec)
     ) (Alist.empty, Alist.empty)
   in
+  let explicit_dependencies =
+    solutions |> List.filter_map (fun solution ->
+      solution.explicitly_depended |> Option.map (fun used_as ->
+        LockConfig.{
+          depended_lock_name = make_lock_name solution.lock;
+          used_as;
+        }
+      )
+    )
+  in
   let lock_config =
     LockConfig.{
-      locked_packages     = Alist.to_list locked_package_acc;
-      direct_dependencies = failwith "TODO: lock_config, direct_dependencies"
+      locked_packages = Alist.to_list locked_package_acc;
+      explicit_dependencies;
     }
   in
   (lock_config, Alist.to_list impl_spec_acc)
@@ -643,7 +657,7 @@ let solve ~(fpath_in : string) =
             |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
         in
 
-        let* PackageRegistryConfig.{ packages = packages_in_registry } =
+        let* PackageRegistryConfig.{ packages = packages } =
           let abspath_registry_config =
             make_abs_path
               (Filename.concat
@@ -651,6 +665,16 @@ let solve ~(fpath_in : string) =
                 Constant.package_registry_config_file_name)
           in
           PackageRegistryConfig.load abspath_registry_config
+        in
+        let* packages_in_registry =
+          packages |> List.fold_left (fun res (package_name, impls) ->
+            let* map = res in
+            let package_id = PackageId.{ registry_hash_value; package_name } in
+            if map |> PackageIdMap.mem package_id then
+              err @@ MultiplePackageDefinition{ package_name }
+            else
+              return (map |> PackageIdMap.add package_id impls)
+          ) (return PackageIdMap.empty)
         in
         let registry_spec = { packages_in_registry; registry_hash_value } in
         return (registries |> RegistryLocalNameMap.add registry_local_name registry_spec)

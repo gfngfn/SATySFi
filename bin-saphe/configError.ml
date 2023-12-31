@@ -16,10 +16,6 @@ type yaml_error =
   | NotASemanticVersion    of YamlDecoder.context * string
   | NotAVersionRequirement of YamlDecoder.context * string
   | InvalidPackageName     of YamlDecoder.context * string
-  | MultiplePackageDefinition of {
-      context      : YamlDecoder.context;
-      package_name : string;
-    }
   | DuplicateRegistryLocalName of {
       context             : YamlDecoder.context;
       registry_local_name : registry_local_name;
@@ -118,4 +114,7 @@ type config_error =
   | CannotWriteLockConfig of {
       message : string;
       path    : abs_path;
+    }
+  | MultiplePackageDefinition of {
+      package_name : string;
     }

@@ -14,7 +14,8 @@ let lock_tarball_name (package_name : package_name) (locked_version : SemanticVe
 
 
 let lock_directory (lock : Lock.t) : lib_path =
-  let Lock.{ registry_hash_value; package_name; locked_version } = lock in
+  let Lock.{ package_id; locked_version } = lock in
+  let PackageId.{ registry_hash_value; package_name } = package_id in
   make_lib_path
     (Printf.sprintf "packages/%s/%s/%s"
       registry_hash_value

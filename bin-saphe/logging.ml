@@ -6,9 +6,9 @@ open PackageSystemBase
 let show_package_dependency_before_solving (dependencies_with_flags : (dependency_flag * package_dependency) list) =
   Printf.printf "  package dependencies to solve:\n";
   dependencies_with_flags |> List.iter (fun (flag, dep) ->
-    let PackageDependency{ used_as; package_name; spec } = dep in
+    let PackageDependency{ used_as; spec } = dep in
     match spec with
-    | RegisteredDependency{ version_requirement; _ } ->
+    | RegisteredDependency{ package_name; version_requirement; _ } ->
         let s_restr = SemanticVersion.requirement_to_string version_requirement in
         let s_test_only =
           match flag with
@@ -22,7 +22,8 @@ let show_package_dependency_before_solving (dependencies_with_flags : (dependenc
 let show_package_dependency_solutions (solutions : package_solution list) =
   Printf.printf "  package dependency solutions:\n";
     solutions |> List.iter (fun solution ->
-      let Lock.{ package_name; locked_version; _ } = solution.lock in
+      let Lock.{ package_id; locked_version; _ } = solution.lock in
+      let PackageId.{ package_name; _ } = package_id in
       Printf.printf "  - %s %s\n" package_name (SemanticVersion.to_string locked_version)
   )
 

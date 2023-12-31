@@ -12,8 +12,8 @@ module SolverInput = struct
           context  : package_context;
         }
       | Role of {
-          package_name        : package_name;
           registry_local_name : registry_local_name;
+          package_name        : package_name;
           compatibility       : string;
           context             : package_context;
         }
@@ -168,9 +168,9 @@ module SolverInput = struct
 
   let make_internal_dependency (context : package_context) (requires : package_dependency list) : dependency list =
     requires |> List.map (fun dep ->
-      let PackageDependency{ used_as; package_name; spec } = dep in
+      let PackageDependency{ used_as; spec } = dep in
       match spec with
-      | RegisteredDependency{ registry_local_name; version_requirement } ->
+      | RegisteredDependency{ registry_local_name; package_name; version_requirement } ->
           let compatibility =
             match version_requirement with
             | SemanticVersion.CompatibleWith(semver) ->
@@ -194,13 +194,15 @@ module SolverInput = struct
         begin
           match context.registries |> RegistryLocalNameMap.find_opt registry_local_name with
           | None ->
+            (* TODO: emit warning *)
               { replacement = None; impls = [] }
 
           | Some(registry_spec) ->
               let registry_hash_value = registry_spec.registry_hash_value in
+              let package_id = PackageId.{ registry_hash_value; package_name } in
               let impl_records =
                 registry_spec.packages_in_registry
-                  |> PackageNameMap.find_opt package_name |> Option.value ~default:[]
+                  |> PackageIdMap.find_opt package_id |> Option.value ~default:[]
               in
               let impls =
                 impl_records |> List.filter_map (fun impl_record ->
@@ -309,19 +311,32 @@ module LockDependencyGraph = DependencyGraph.Make(Lock)
 
 module VertexSet = LockDependencyGraph.VertexSet
 
+module VertexMap = LockDependencyGraph.VertexMap
+
 
 let solve (context : package_context) (dependencies_with_flags : (dependency_flag * package_dependency) list) : (package_solution list) option =
   let (explicit_source_dependencies, dependency_acc) =
     dependencies_with_flags |> List.fold_left (fun (explicit_source_dependencies, dependency_acc) (flag, dep) ->
       match dep with
-      | PackageDependency{ package_name; _ } ->
-          let explicit_source_dependencies =
-            match flag with
-            | SourceDependency   -> explicit_source_dependencies |> PackageNameSet.add package_name
-            | TestOnlyDependency -> explicit_source_dependencies
-          in
-          (explicit_source_dependencies, Alist.extend dependency_acc dep)
-    ) (PackageNameSet.empty, Alist.empty)
+      | PackageDependency{ spec; used_as } ->
+          let RegisteredDependency{ registry_local_name; package_name; _ } = spec in
+          begin
+            match context.registries |> RegistryLocalNameMap.find_opt registry_local_name with
+            | None ->
+              (* TODO: emit warning *)
+                (explicit_source_dependencies, dependency_acc)
+
+            | Some(registry_spec) ->
+                let registry_hash_value = registry_spec.registry_hash_value in
+                let package_id = PackageId.{ registry_hash_value; package_name } in
+                let explicit_source_dependencies =
+                  match flag with
+                  | SourceDependency   -> explicit_source_dependencies |> PackageIdMap.add package_id used_as
+                  | TestOnlyDependency -> explicit_source_dependencies
+                in
+                (explicit_source_dependencies, Alist.extend dependency_acc dep)
+          end
+    ) (PackageIdMap.empty, Alist.empty)
   in
   let requires = Alist.to_list dependency_acc in
   let output_opt =
@@ -335,7 +350,7 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
 
     (* Adds vertices to the graph: *)
     let rolemap = output |> Output.to_map in
-    let (quad_acc, graph, explicit_vertices, lock_to_vertex_map) =
+    let (quad_acc, graph, explicit_vertex_to_used_as, lock_to_vertex_map) =
       Output.RoleMap.fold (fun _role impl acc ->
         let impl = Output.unwrap impl in
         match impl with
@@ -343,24 +358,27 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
             acc
 
         | Impl{ package_name; version = locked_version; registry_hash_value; source; dependencies } ->
-            let lock = Lock.{ package_name; locked_version; registry_hash_value } in
-            let (quad_acc, graph, explicit_vertices, lock_to_vertex_map) = acc in
+            let package_id = PackageId.{ registry_hash_value; package_name } in
+            let lock = Lock.{ package_id; locked_version } in
+            let (quad_acc, graph, explicit_vertex_to_used_as, lock_to_vertex_map) = acc in
             let (graph, vertex) =
               match graph |> LockDependencyGraph.add_vertex lock () with
               | Error(_) -> assert false
               | Ok(pair) -> pair
             in
             let quad_acc = Alist.extend quad_acc (lock, source, dependencies, vertex) in
-            let explicit_vertices =
-              if explicit_source_dependencies |> PackageNameSet.mem package_name then
-                explicit_vertices |> VertexSet.add vertex
-              else
-                explicit_vertices
+            let explicit_vertex_to_used_as =
+              match explicit_source_dependencies |> PackageIdMap.find_opt package_id with
+              | Some(used_as) ->
+                  explicit_vertex_to_used_as |> VertexMap.add vertex used_as
+
+              | None ->
+                  explicit_vertex_to_used_as
             in
             let lock_to_vertex_map = lock_to_vertex_map |> LockMap.add lock vertex in
-            (quad_acc, graph, explicit_vertices, lock_to_vertex_map)
+            (quad_acc, graph, explicit_vertex_to_used_as, lock_to_vertex_map)
 
-      ) rolemap (Alist.empty, LockDependencyGraph.empty, VertexSet.empty, LockMap.empty)
+      ) rolemap (Alist.empty, LockDependencyGraph.empty, VertexMap.empty, LockMap.empty)
     in
 
     (* Add edges to the graph: *)
@@ -384,19 +402,24 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
                       registry_hash_value = registry_hash_value_dep;
                       _
                     }) ->
+                      let package_id_dep =
+                        PackageId.{
+                          registry_hash_value = registry_hash_value_dep;
+                          package_name        = package_name_dep;
+                        }
+                      in
                       Lock.{
-                        package_name        = package_name_dep;
-                        locked_version      = version_dep;
-                        registry_hash_value = registry_hash_value_dep;
+                        package_id     = package_id_dep;
+                        locked_version = version_dep;
                       }
                 in
-                let lock_dependency =
+                let locked_dependency =
                   {
                     depended_lock      = lock_dep;
                     dependency_used_as = used_as;
                   }
                 in
-                let locked_dependency_acc = Alist.extend locked_dependency_acc lock_dependency in
+                let locked_dependency_acc = Alist.extend locked_dependency_acc locked_dependency in
                 let vertex_dep =
                   match lock_to_vertex_map |> LockMap.find_opt lock_dep with
                   | None    -> assert false
@@ -419,6 +442,9 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
 
     (* Computes the set of source dependencies: *)
     let resulting_source_dependencies =
+      let explicit_vertices =
+        LockDependencyGraph.map_domain explicit_vertex_to_used_as
+      in
       LockDependencyGraph.reachability_closure graph explicit_vertices
     in
 
@@ -430,11 +456,15 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
           | Some(v) -> v
         in
         let used_in_test_only = not (resulting_source_dependencies |> VertexSet.mem vertex) in
+        let explicitly_depended =
+          explicit_vertex_to_used_as |> VertexMap.find_opt vertex
+        in
         Alist.extend solution_acc {
           lock;
           locked_source;
           locked_dependencies;
           used_in_test_only;
+          explicitly_depended;
         }
       ) solmap Alist.empty
     in
