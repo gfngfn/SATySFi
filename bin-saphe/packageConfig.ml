@@ -9,15 +9,9 @@ type 'a ok = ('a, config_error) result
 
 type relative_path = string
 
-type font_file_contents =
-  | OpentypeSingle     of string
-  | OpentypeCollection of string list
-[@@deriving show]
-
 type font_file_description = {
   font_file_path     : relative_path;
   font_file_contents : font_file_contents;
-  used_as_math_font  : bool;
 }
 
 type package_conversion_spec = unit (* TODO *)
@@ -49,16 +43,23 @@ type t = {
 }
 
 
+let font_spec_decoder : font_spec ConfigDecoder.t =
+  let open ConfigDecoder in
+  get "name" string >>= fun font_item_name ->
+  get_or_else "math" bool false >>= fun used_as_math_font ->
+  succeed { font_item_name; used_as_math_font }
+
+
 let font_file_contents_decoder : font_file_contents ConfigDecoder.t =
   let open ConfigDecoder in
   branch "type" [
     "opentype_single" ==> begin
-      get "name" string >>= fun name ->
-      succeed @@ OpentypeSingle(name)
+      get "contents" font_spec_decoder >>= fun font_spec ->
+      succeed @@ OpentypeSingle(font_spec)
     end;
     "opentype_collection" ==> begin
-      get "names" (list string) >>= fun names ->
-      succeed @@ OpentypeCollection(names)
+      get "contents" (list font_spec_decoder) >>= fun font_specs ->
+      succeed @@ OpentypeCollection(font_specs)
     end;
   ]
   ~other:(fun tag ->
@@ -69,12 +70,10 @@ let font_file_contents_decoder : font_file_contents ConfigDecoder.t =
 let font_file_description_decoder : font_file_description ConfigDecoder.t =
   let open ConfigDecoder in
   get "path" string >>= fun font_file_path ->
-  get_or_else "math" bool false >>= fun used_as_math_font ->
   get "contents" font_file_contents_decoder >>= fun font_file_contents ->
   succeed @@ {
     font_file_path;
     font_file_contents;
-    used_as_math_font;
   }
 
 

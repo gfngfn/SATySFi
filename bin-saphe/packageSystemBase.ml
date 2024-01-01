@@ -158,3 +158,14 @@ type external_source =
       checksum    : string;
       extractions : extraction list;
     }
+
+type font_spec = {
+  font_item_name    : string;
+  used_as_math_font : bool;
+}
+[@@deriving show]
+
+type font_file_contents =
+  | OpentypeSingle     of font_spec
+  | OpentypeCollection of font_spec list
+[@@deriving show]

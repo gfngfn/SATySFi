@@ -505,21 +505,11 @@ let make_envelope_config (package_contents : PackageConfig.package_contents) : E
             PackageConfig.{
               font_file_path;
               font_file_contents;
-              used_as_math_font;
             } = descr
-          in
-          let font_file_contents =
-            match font_file_contents with
-            | PackageConfig.OpentypeSingle(name) ->
-                EnvelopeConfig.OpentypeSingle(name)
-
-            | PackageConfig.OpentypeCollection(names) ->
-                EnvelopeConfig.OpentypeCollection(names)
           in
           EnvelopeConfig.{
             font_file_path;
             font_file_contents;
-            used_as_math_font;
           }
         )
       in

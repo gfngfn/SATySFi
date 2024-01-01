@@ -1,19 +1,14 @@
 
 open MyUtil
 open ConfigError
+open PackageSystemBase
 
 
 type relative_path = string
 
-type font_file_contents =
-  | OpentypeSingle     of string
-  | OpentypeCollection of string list
-[@@deriving show]
-
 type font_file_description = {
   font_file_path     : relative_path;
   font_file_contents : font_file_contents;
-  used_as_math_font  : bool;
 }
 
 type package_conversion_spec = unit (* TODO *)
@@ -35,25 +30,31 @@ type t = {
 }
 
 
+let font_spec_encoder (font_spec : font_spec) : Yaml.value =
+  `O([
+    ("name", `String(font_spec.font_item_name));
+    ("math", `Bool(font_spec.used_as_math_font));
+  ])
+
+
 let font_file_contents_encoder (contents : font_file_contents) : Yaml.value =
   match contents with
-  | OpentypeSingle(name) ->
+  | OpentypeSingle(font_spec) ->
       `O([
         ("type", `String("opentype_single"));
-        ("name", `String(name));
+        ("contents", font_spec_encoder font_spec)
       ])
 
-  | OpentypeCollection(names) ->
+  | OpentypeCollection(font_specs) ->
       `O([
         ("type", `String("opentype_collection"));
-        ("names", `A(names |> List.map (fun name -> `String(name))));
+        ("contents", `A(font_specs |> List.map font_spec_encoder));
       ])
 
 
 let font_file_description_encoder (descr : font_file_description) : Yaml.value =
   `O([
     ("path", `String(descr.font_file_path));
-    ("math", `Bool(descr.used_as_math_font));
     ("contents", font_file_contents_encoder descr.font_file_contents);
   ])
 
