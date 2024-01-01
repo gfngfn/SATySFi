@@ -19,6 +19,7 @@ type lock_dependency = {
   used_as            : string;
 }
 
+(* TODO: make `locked_package` keep registry, package name, and version *)
 type locked_package = {
   lock_name         : lock_name;
   lock_contents     : lock_contents;

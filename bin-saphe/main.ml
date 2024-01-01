@@ -735,11 +735,33 @@ type build_input =
     }
 
 
-let make_deps_config (_lock_config : LockConfig.t) : DepsConfig.t =
+let make_envelope_dependency (lock_dep : LockConfig.lock_dependency) : DepsConfig.envelope_dependency =
   DepsConfig.{
-    envelopes = failwith "TODO: DepsConfig";
-    direct_dependencies = [];
+    dependency_name    = lock_dep.depended_lock_name;
+    dependency_used_as = lock_dep.used_as;
   }
+
+
+let make_envelope_spec (locked_package : LockConfig.locked_package) : DepsConfig.envelope_spec =
+  let envelope_dependencies =
+    locked_package.lock_dependencies |> List.map make_envelope_dependency
+  in
+  DepsConfig.{
+    envelope_name = locked_package.lock_name;
+    envelope_path = failwith "TODO: make_envelope_spec, envelope_path";
+    envelope_dependencies;
+  }
+
+
+let make_deps_config (lock_config : LockConfig.t) : DepsConfig.t =
+  let envelopes =
+    lock_config.LockConfig.locked_packages |> List.map make_envelope_spec
+  in
+  let explicit_dependencies =
+    lock_config.LockConfig.explicit_dependencies
+      |> List.map make_envelope_dependency
+  in
+  DepsConfig.{ envelopes; explicit_dependencies }
 
 
 let build
@@ -813,22 +835,27 @@ let build
     | PackageBuildInput{
         root     = _absdir_package;
         lock     = abspath_lock_config;
-        deps     = _abspath_deps_config;
+        deps     = abspath_deps_config;
         envelope = _abspath_envelope_config;
         options  = _build_option;
       } ->
         let* lock_config = LockConfig.load abspath_lock_config in
-        let _deps_config = make_deps_config lock_config in
+        let deps_config = make_deps_config lock_config in
+
+        let* () = DepsConfig.write abspath_deps_config deps_config in
         failwith "TODO: PackageBuildInput"
 
     | DocumentBuildInput{
         lock    = abspath_lock_config;
-        deps    = _abspath_deps_config;
+        deps    = abspath_deps_config;
         out     = _abspath_out;
         dump    = _abspath_dump;
         options = _build_option;
       } ->
-        let* _lock_config = LockConfig.load abspath_lock_config in
+        let* lock_config = LockConfig.load abspath_lock_config in
+        let deps_config = make_deps_config lock_config in
+
+        let* () = DepsConfig.write abspath_deps_config deps_config in
         failwith "TODO: DocumentBuildInput"
   in
   match res with

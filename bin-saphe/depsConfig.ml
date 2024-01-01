@@ -1,4 +1,8 @@
 
+open MyUtil
+open ConfigError
+
+
 type envelope_name = string
 
 type envelope_dependency = {
@@ -13,6 +17,10 @@ type envelope_spec = {
 }
 
 type t = {
-  envelopes           : envelope_spec list;
-  direct_dependencies : envelope_dependency list;
+  envelopes             : envelope_spec list;
+  explicit_dependencies : envelope_dependency list;
 }
+
+
+let write (_abspath_deps_config : abs_path) (_deps_config : t) : (unit, config_error) result =
+  failwith "TODO: DepsConfig.write"
