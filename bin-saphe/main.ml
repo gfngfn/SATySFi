@@ -341,6 +341,11 @@ let report_config_error = function
         NormalLine(Printf.sprintf "cannot write a lock config to '%s' (message: '%s')" (get_abs_path_string path) message);
       ]
 
+  | CannotWriteDepsConfig{ message; path } ->
+      report_error [
+        NormalLine(Printf.sprintf "cannot write a deps config to '%s' (message: '%s')" (get_abs_path_string path) message);
+      ]
+
   | MultiplePackageDefinition{ package_name } ->
       report_error [
         NormalLine(Printf.sprintf "More than one definition for package '%s'." package_name)

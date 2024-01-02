@@ -115,6 +115,10 @@ type config_error =
       message : string;
       path    : abs_path;
     }
+  | CannotWriteDepsConfig of {
+      message : string;
+      path    : abs_path;
+    }
   | MultiplePackageDefinition of {
       package_name : string;
     }
