@@ -48,14 +48,14 @@ let version_checker (version : SemanticVersion.t) : unit ConfigDecoder.t =
     failure (fun yctx -> BreaksVersionRequirement(yctx, requirement))
 
 
-let dependency_spec_decoder : package_dependency_spec ConfigDecoder.t =
+let dependency_spec_decoder : parsed_package_dependency_spec ConfigDecoder.t =
   let open ConfigDecoder in
   branch "type" [
     "registered" ==> begin
       get "registry" string >>= fun registry_local_name ->
       get "name" package_name_decoder >>= fun package_name ->
       get "requirement" requirement_decoder >>= fun version_requirement ->
-      succeed @@ RegisteredDependency{
+      succeed @@ ParsedRegisteredDependency{
         registry_local_name;
         package_name;
         version_requirement;
@@ -67,11 +67,11 @@ let dependency_spec_decoder : package_dependency_spec ConfigDecoder.t =
   )
 
 
-let dependency_decoder : package_dependency ConfigDecoder.t =
+let dependency_decoder : parsed_package_dependency ConfigDecoder.t =
   let open ConfigDecoder in
   get "used_as" string >>= fun used_as ->
   get "spec" dependency_spec_decoder >>= fun spec ->
-  succeed @@ PackageDependency{ used_as; spec }
+  succeed @@ ParsedPackageDependency{ used_as; spec }
 
 
 let registry_remote_decoder : registry_remote ConfigDecoder.t =
@@ -95,3 +95,20 @@ let name_decoder : string ConfigDecoder.t =
     failure (fun context -> CannotBeUsedAsAName(context, s))
   else
     succeed s
+
+
+let make_registry_hash_value (registry_remote : registry_remote) : (registry_hash_value, config_error) result =
+  let open ResultMonad in
+  match registry_remote with
+  | GitRegistry{ url; branch } ->
+      let* canonicalized_url =
+        CanonicalRegistryUrl.make url
+          |> Result.map_error (fun e -> CanonicalRegistryUrlError(e))
+      in
+      let hash_value =
+        Digest.to_hex (Digest.string (Printf.sprintf "git#%s#%s" canonicalized_url branch))
+      in
+(*
+      Logging.report_canonicalized_url ~url ~canonicalized_url ~hash_value;
+*)
+      return hash_value

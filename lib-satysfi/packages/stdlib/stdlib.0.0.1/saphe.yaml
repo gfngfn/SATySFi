@@ -19,8 +19,9 @@ contents:
   - "./test"
   dependencies: []
   test_dependencies:
-  - name: "testing"
+  - used_as: "Testing"
     spec:
       type: "registered"
       registry: "default"
+      name: "testing"
       requirement: "^0.0.1"

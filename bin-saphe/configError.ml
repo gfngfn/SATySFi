@@ -16,10 +16,6 @@ type yaml_error =
   | NotASemanticVersion    of YamlDecoder.context * string
   | NotAVersionRequirement of YamlDecoder.context * string
   | InvalidPackageName     of YamlDecoder.context * string
-  | DuplicateRegistryLocalName of {
-      context             : YamlDecoder.context;
-      registry_local_name : registry_local_name;
-    }
   | DuplicateRegistryHashValue of {
       context             : YamlDecoder.context;
       registry_hash_value : registry_hash_value;
@@ -121,4 +117,10 @@ type config_error =
     }
   | MultiplePackageDefinition of {
       package_name : string;
+    }
+  | DuplicateRegistryLocalName of {
+      registry_local_name : registry_local_name;
+    }
+  | UndefinedRegistryLocalName of {
+      registry_local_name : registry_local_name;
     }

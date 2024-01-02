@@ -8,7 +8,8 @@ let show_package_dependency_before_solving (dependencies_with_flags : (dependenc
   dependencies_with_flags |> List.iter (fun (flag, dep) ->
     let PackageDependency{ used_as; spec } = dep in
     match spec with
-    | RegisteredDependency{ package_name; version_requirement; _ } ->
+    | RegisteredDependency{ package_id; version_requirement; _ } ->
+        let PackageId.{ package_name; _ } = package_id in
         let s_restr = SemanticVersion.requirement_to_string version_requirement in
         let s_test_only =
           match flag with

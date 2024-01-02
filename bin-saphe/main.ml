@@ -88,9 +88,6 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | InvalidPackageName(yctx, s) ->
       [ NormalLine(Printf.sprintf "not a package name: '%s'%s" s (show_yaml_context yctx)) ]
 
-  | DuplicateRegistryLocalName{ context = yctx; registry_local_name } ->
-      [ NormalLine(Printf.sprintf "More than one definition for registry local name '%s'%s" registry_local_name (show_yaml_context yctx)) ]
-
   | DuplicateRegistryHashValue{ context = yctx; registry_hash_value } ->
       [ NormalLine(Printf.sprintf "More than one definition for registry hash value '%s'%s" registry_hash_value (show_yaml_context yctx)) ]
 
@@ -351,6 +348,16 @@ let report_config_error = function
         NormalLine(Printf.sprintf "More than one definition for package '%s'." package_name)
       ]
 
+  | DuplicateRegistryLocalName{ registry_local_name } ->
+      report_error [
+        NormalLine(Printf.sprintf "more than one definition for registry local name '%s'" registry_local_name)
+      ]
+
+  | UndefinedRegistryLocalName{ registry_local_name } ->
+      report_error [
+        NormalLine(Printf.sprintf "undefined registry local name '%s'" registry_local_name)
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
@@ -363,21 +370,6 @@ type solve_input =
       config : abs_path; (* The absolute path to the config file *)
       lock   : abs_path; (* A path for writing a resulting lock file *)
     }
-
-
-let make_registry_hash_value (registry_remote : registry_remote) : (registry_hash_value, config_error) result =
-  let open ResultMonad in
-  match registry_remote with
-  | GitRegistry{ url; branch } ->
-      let* canonicalized_url =
-        CanonicalRegistryUrl.make url
-          |> Result.map_error (fun e -> CanonicalRegistryUrlError(e))
-      in
-      let hash_value =
-        Digest.to_hex (Digest.string (Printf.sprintf "git#%s#%s" canonicalized_url branch))
-      in
-      Logging.report_canonicalized_url ~url ~canonicalized_url ~hash_value;
-      return hash_value
 
 
 let update_store_root_config_if_needed (registries : registry_remote RegistryHashValueMap.t) (registry_hash_value : registry_hash_value) (registry_remote : registry_remote) (abspath_store_root : abs_path) : unit =
@@ -567,7 +559,7 @@ let solve ~(fpath_in : string) =
         }
     in
 
-    let* (language_version, dependencies_with_flags, abspath_lock_config, registry_specs) =
+    let* (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes) =
       match solve_input with
       | PackageSolveInput{
           root     = absdir_package;
@@ -579,7 +571,7 @@ let solve ~(fpath_in : string) =
             PackageConfig.{
               language_requirement;
               package_contents;
-              registry_specs;
+              registry_remotes;
               _
             } = PackageConfig.load abspath_package_config
           in
@@ -595,19 +587,17 @@ let solve ~(fpath_in : string) =
           let* () = EnvelopeConfig.write abspath_envelope_config envelope_config in
           Logging.end_envelope_config_output abspath_envelope_config;
 
-          begin
+          let dependencies_with_flags =
             match package_contents with
             | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
-                let dependencies_with_flags =
-                  List.append
-                    (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
-                    (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
-                in
-                return (language_version, dependencies_with_flags, abspath_lock_config, registry_specs)
+                List.append
+                  (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
+                  (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
 
             | PackageConfig.Font(_) ->
-                return (language_version, [], abspath_lock_config, registry_specs)
-          end
+                []
+          in
+          return (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes)
 
       | DocumentSolveInput{
           doc    = _abspath_doc;
@@ -630,10 +620,10 @@ let solve ~(fpath_in : string) =
     let abspath_store_root_config = Constant.store_root_config_path absdir_store_root in
     let* store_root_config = StoreRootConfig.load abspath_store_root_config in
 
-    let* registries =
-      RegistryLocalNameMap.fold (fun registry_local_name registry_remote res ->
-        let* registries = res in
-        let* registry_hash_value = make_registry_hash_value registry_remote in
+    let* package_id_to_impl_list =
+      registry_remotes |> List.fold_left (fun res registry_remote ->
+        let* package_id_to_impl_list = res in
+        let* registry_hash_value = ConfigUtil.make_registry_hash_value registry_remote in
 
         (* Manupulates the store root config: *)
         update_store_root_config_if_needed
@@ -661,23 +651,22 @@ let solve ~(fpath_in : string) =
           in
           PackageRegistryConfig.load abspath_registry_config
         in
-        let* packages_in_registry =
+        let* package_id_to_impl_list =
           packages |> List.fold_left (fun res (package_name, impls) ->
-            let* map = res in
+            let* package_id_to_impl_list = res in
             let package_id = PackageId.{ registry_hash_value; package_name } in
-            if map |> PackageIdMap.mem package_id then
+            if package_id_to_impl_list |> PackageIdMap.mem package_id then
               err @@ MultiplePackageDefinition{ package_name }
             else
-              return (map |> PackageIdMap.add package_id impls)
-          ) (return PackageIdMap.empty)
+              return (package_id_to_impl_list |> PackageIdMap.add package_id impls)
+          ) (return package_id_to_impl_list)
         in
-        let registry_spec = { packages_in_registry; registry_hash_value } in
-        return (registries |> RegistryLocalNameMap.add registry_local_name registry_spec)
+        return package_id_to_impl_list
 
-      ) registry_specs (return RegistryLocalNameMap.empty)
+      ) (return PackageIdMap.empty)
     in
 
-    let package_context = { registries; language_version } in
+    let package_context = { language_version; package_id_to_impl_list } in
     let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
     begin
       match solutions_opt with

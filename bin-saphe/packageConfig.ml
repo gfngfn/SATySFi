@@ -19,6 +19,31 @@ type package_conversion_spec = unit (* TODO *)
   | MarkdownConversion of MarkdownParser.command_record
 *)
 
+type parsed_package_contents =
+  | ParsedLibrary of {
+      main_module_name   : string;
+      source_directories : relative_path list;
+      test_directories   : relative_path list;
+      dependencies       : parsed_package_dependency list;
+      test_dependencies  : parsed_package_dependency list;
+      conversion_specs   : package_conversion_spec list;
+    }
+  | ParsedFont of {
+      main_module_name       : string;
+      font_file_descriptions : font_file_description list;
+    }
+
+module Internal = struct
+  type t = {
+    language_requirement : SemanticVersion.requirement;
+    package_name         : package_name;
+    package_authors      : string list;
+    external_sources     : (string * external_source) list;
+    package_contents     : parsed_package_contents;
+    registry_specs       : (registry_local_name * registry_remote) list;
+  }
+end
+
 type package_contents =
   | Library of {
       main_module_name   : string;
@@ -39,7 +64,7 @@ type t = {
   package_authors      : string list;
   external_sources     : (string * external_source) list;
   package_contents     : package_contents;
-  registry_specs       : registry_remote RegistryLocalNameMap.t;
+  registry_remotes     : registry_remote list;
 }
 
 
@@ -185,7 +210,7 @@ let conversion_spec_decoder =
   succeed ()
 
 
-let contents_decoder : package_contents ConfigDecoder.t =
+let contents_decoder : parsed_package_contents ConfigDecoder.t =
   let open ConfigDecoder in
   branch "type" [
     "library" ==> begin
@@ -195,7 +220,7 @@ let contents_decoder : package_contents ConfigDecoder.t =
       get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
       get_or_else "test_dependencies" (list dependency_decoder) [] >>= fun test_dependencies ->
       get_or_else "conversion" (list conversion_spec_decoder) [] >>= fun conversion_specs ->
-      succeed @@ Library {
+      succeed @@ ParsedLibrary {
         main_module_name;
         source_directories;
         test_directories;
@@ -207,7 +232,7 @@ let contents_decoder : package_contents ConfigDecoder.t =
     "font" ==> begin
       get "main_module" string >>= fun main_module_name ->
       get "elements" (list font_file_description_decoder) >>= fun font_file_descriptions ->
-      succeed @@ Font {
+      succeed @@ ParsedFont {
         main_module_name;
         font_file_descriptions;
       }
@@ -248,7 +273,7 @@ let external_source_decoder : (string * external_source) ConfigDecoder.t =
   )
 
 
-let config_decoder : t ConfigDecoder.t =
+let config_decoder : Internal.t ConfigDecoder.t =
   let open ConfigDecoder in
   get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
   get "language" requirement_decoder >>= fun language_requirement ->
@@ -257,14 +282,7 @@ let config_decoder : t ConfigDecoder.t =
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
   get_or_else "external_sources" (list external_source_decoder) [] >>= fun external_sources ->
   get "contents" contents_decoder >>= fun package_contents ->
-  registry_specs |> List.fold_left (fun res (registry_local_name, registry_remote) ->
-    res >>= fun map ->
-    if map |> RegistryLocalNameMap.mem registry_local_name then
-      failure (fun context -> DuplicateRegistryLocalName{ context; registry_local_name })
-    else
-      succeed (map |> RegistryLocalNameMap.add registry_local_name registry_remote)
-  ) (succeed RegistryLocalNameMap.empty) >>= fun registry_specs ->
-  succeed @@ {
+  succeed @@ Internal.{
     language_requirement;
     package_name;
     package_authors;
@@ -274,11 +292,109 @@ let config_decoder : t ConfigDecoder.t =
   }
 
 
+let validate_dependency (localmap : registry_remote RegistryLocalNameMap.t) (dep : parsed_package_dependency) : package_dependency ok =
+  let open ResultMonad in
+  let ParsedPackageDependency{ used_as; spec } = dep in
+  let* spec =
+    match spec with
+    | ParsedRegisteredDependency{
+        package_name;
+        registry_local_name;
+        version_requirement;
+      } ->
+        let* registry_hash_value =
+          match localmap |> RegistryLocalNameMap.find_opt registry_local_name with
+          | None ->
+              err @@ UndefinedRegistryLocalName{ registry_local_name }
+
+          | Some(registry_remote) ->
+              ConfigUtil.make_registry_hash_value registry_remote
+        in
+        let package_id = PackageId.{ package_name; registry_hash_value } in
+        return @@ RegisteredDependency{
+          package_id;
+          version_requirement;
+        }
+  in
+  return @@ PackageDependency{ used_as; spec }
+
+
+let validate_contents_spec (localmap : registry_remote RegistryLocalNameMap.t) (contents : parsed_package_contents) : package_contents ok =
+  let open ResultMonad in
+  match contents with
+  | ParsedLibrary{
+      main_module_name;
+      source_directories;
+      test_directories;
+      dependencies;
+      test_dependencies;
+      conversion_specs;
+    } ->
+      let* dependencies = mapM (validate_dependency localmap) dependencies in
+      let* test_dependencies = mapM (validate_dependency localmap) test_dependencies in
+      return @@ Library{
+        main_module_name;
+        source_directories;
+        test_directories;
+        dependencies;
+        test_dependencies;
+        conversion_specs;
+      }
+
+  | ParsedFont{
+      main_module_name;
+      font_file_descriptions;
+    } ->
+      return @@ Font{
+        main_module_name;
+        font_file_descriptions;
+      }
+
+
+let validate (package_config : Internal.t) : t ok =
+  let open ResultMonad in
+  let
+    Internal.{
+      language_requirement;
+      package_name;
+      package_authors;
+      external_sources;
+      package_contents;
+      registry_specs;
+    } = package_config
+  in
+  let* (localmap, registry_remote_acc) =
+    registry_specs |> List.fold_left (fun res (registry_local_name, registry_remote) ->
+      let* (localmap, registry_remote_acc) = res in
+      if localmap |> RegistryLocalNameMap.mem registry_local_name then
+        err @@ DuplicateRegistryLocalName{ registry_local_name }
+      else
+        let localmap = localmap |> RegistryLocalNameMap.add registry_local_name registry_remote in
+        let registry_remote_acc = Alist.extend registry_remote_acc registry_remote in
+        return (localmap, registry_remote_acc)
+    ) (return (RegistryLocalNameMap.empty, Alist.empty))
+  in
+  let* package_contents =
+    validate_contents_spec localmap package_contents
+  in
+  return {
+    language_requirement;
+    package_name;
+    package_authors;
+    external_sources;
+    package_contents;
+    registry_remotes = Alist.to_list registry_remote_acc;
+  }
+
+
 let load (abspath_config : abs_path) : t ok =
   let open ResultMonad in
   let* s =
     read_file abspath_config
       |> Result.map_error (fun _ -> PackageConfigNotFound(abspath_config))
   in
-  ConfigDecoder.run config_decoder s
-    |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))
+  let* internal =
+    ConfigDecoder.run config_decoder s
+      |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))
+  in
+  validate internal

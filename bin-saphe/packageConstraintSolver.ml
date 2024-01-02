@@ -12,17 +12,20 @@ module SolverInput = struct
           context  : package_context;
         }
       | Role of {
-          registry_local_name : registry_local_name;
-          package_name        : package_name;
-          compatibility       : string;
-          context             : package_context;
+          package_id    : PackageId.t;
+          compatibility : string;
+          context       : package_context;
         }
 
 
     let pp ppf (role : t) =
       match role with
-      | Role{ package_name; _ } -> Format.fprintf ppf "%s" package_name
-      | LocalRole(_)            -> Format.fprintf ppf "local"
+      | Role{ package_id; _ } ->
+          let PackageId.{ package_name; _ } = package_id in
+          Format.fprintf ppf "%s" package_name
+
+      | LocalRole(_) ->
+          Format.fprintf ppf "local"
 
 
     let compare (role1 : t) (role2 : t) =
@@ -32,11 +35,11 @@ module SolverInput = struct
       | (_, LocalRole(_))            -> -1
 
       | (
-          Role{ package_name = name1; compatibility = c1; _ },
-          Role{ package_name = name2; compatibility = c2; _ }
+          Role{ package_id = pkgid1; compatibility = c1; _ },
+          Role{ package_id = pkgid2; compatibility = c2; _ }
         ) ->
           begin
-            match String.compare name1 name2 with
+            match PackageId.compare pkgid1 pkgid2 with
             | 0       -> String.compare c1 c2
             | nonzero -> nonzero
           end
@@ -146,7 +149,7 @@ module SolverInput = struct
     ([], [])
 
 
-  let make_internal_dependency_from_registry (registry_local_name : registry_local_name) (context : package_context) (requires : package_dependency_in_registry list) : dependency list =
+  let make_internal_dependency_from_registry (registry_hash_value : string) (context : package_context) (requires : package_dependency_in_registry list) : dependency list =
     requires |> List.map (function
     | PackageDependencyInRegistry{ package_name; used_as; version_requirement } ->
         let compatibility =
@@ -154,10 +157,10 @@ module SolverInput = struct
           | SemanticVersion.CompatibleWith(semver) ->
               SemanticVersion.get_compatibility_unit semver
         in
+        let package_id = PackageId.{ package_name; registry_hash_value } in
         let role =
           Role.Role{
-            package_name;
-            registry_local_name;
+            package_id;
             compatibility;
             context;
           }
@@ -170,57 +173,42 @@ module SolverInput = struct
     requires |> List.map (fun dep ->
       let PackageDependency{ used_as; spec } = dep in
       match spec with
-      | RegisteredDependency{ registry_local_name; package_name; version_requirement } ->
+      | RegisteredDependency{ package_id; version_requirement } ->
           let compatibility =
             match version_requirement with
             | SemanticVersion.CompatibleWith(semver) ->
                 SemanticVersion.get_compatibility_unit semver
           in
-          let role =
-            Role.Role{
-              package_name;
-              registry_local_name;
-              compatibility;
-              context;
-            }
-          in
+          let role = Role.Role{ package_id; compatibility; context } in
           Dependency{ role; used_as; version_requirement }
     )
 
 
   let implementations (role : Role.t) : role_information =
     match role with
-    | Role{ package_name; registry_local_name; compatibility; context } ->
-        begin
-          match context.registries |> RegistryLocalNameMap.find_opt registry_local_name with
-          | None ->
-            (* TODO: emit warning *)
-              { replacement = None; impls = [] }
-
-          | Some(registry_spec) ->
-              let registry_hash_value = registry_spec.registry_hash_value in
-              let package_id = PackageId.{ registry_hash_value; package_name } in
-              let impl_records =
-                registry_spec.packages_in_registry
-                  |> PackageIdMap.find_opt package_id |> Option.value ~default:[]
-              in
-              let impls =
-                impl_records |> List.filter_map (fun impl_record ->
-                  let ImplRecord{ version; source; language_requirement; dependencies } = impl_record in
-                  if context.language_version |> SemanticVersion.fulfill language_requirement then
-                    if String.equal (SemanticVersion.get_compatibility_unit version) compatibility then
-                      let dependencies =
-                        make_internal_dependency_from_registry registry_local_name context dependencies
-                      in
-                      Some(Impl{ package_name; version; registry_hash_value; source; dependencies })
-                    else
-                      None
-                  else
-                    None
-                )
-              in
-              { replacement = None; impls }
-        end
+    | Role{ package_id; compatibility; context } ->
+        let PackageId.{ package_name; registry_hash_value } = package_id in
+        let impl_records =
+          context.package_id_to_impl_list
+            |> PackageIdMap.find_opt package_id
+            |> Option.value ~default:[]
+        in
+        let impls =
+          impl_records |> List.filter_map (fun impl_record ->
+            let ImplRecord{ version; source; language_requirement; dependencies } = impl_record in
+            if context.language_version |> SemanticVersion.fulfill language_requirement then
+              if String.equal (SemanticVersion.get_compatibility_unit version) compatibility then
+                let dependencies =
+                  make_internal_dependency_from_registry registry_hash_value context dependencies
+                in
+                Some(Impl{ package_name; version; registry_hash_value; source; dependencies })
+              else
+                None
+            else
+              None
+          )
+        in
+        { replacement = None; impls }
 
     | LocalRole{ requires; context } ->
         let dependencies = make_internal_dependency context requires in
@@ -319,23 +307,13 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
     dependencies_with_flags |> List.fold_left (fun (explicit_source_dependencies, dependency_acc) (flag, dep) ->
       match dep with
       | PackageDependency{ spec; used_as } ->
-          let RegisteredDependency{ registry_local_name; package_name; _ } = spec in
-          begin
-            match context.registries |> RegistryLocalNameMap.find_opt registry_local_name with
-            | None ->
-              (* TODO: emit warning *)
-                (explicit_source_dependencies, dependency_acc)
-
-            | Some(registry_spec) ->
-                let registry_hash_value = registry_spec.registry_hash_value in
-                let package_id = PackageId.{ registry_hash_value; package_name } in
-                let explicit_source_dependencies =
-                  match flag with
-                  | SourceDependency   -> explicit_source_dependencies |> PackageIdMap.add package_id used_as
-                  | TestOnlyDependency -> explicit_source_dependencies
-                in
-                (explicit_source_dependencies, Alist.extend dependency_acc dep)
-          end
+          let RegisteredDependency{ package_id; _ } = spec in
+          let explicit_source_dependencies =
+            match flag with
+            | SourceDependency   -> explicit_source_dependencies |> PackageIdMap.add package_id used_as
+            | TestOnlyDependency -> explicit_source_dependencies
+          in
+          (explicit_source_dependencies, Alist.extend dependency_acc dep)
     ) (PackageIdMap.empty, Alist.empty)
   in
   let requires = Alist.to_list dependency_acc in
@@ -391,23 +369,13 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
           dependencies |> List.fold_left (fun (locked_dependency_acc, graph) dep ->
             let Dependency{ role = role_dep; used_as; _ } = dep in
             match role_dep with
-            | Role{ package_name = package_name_dep; _ } ->
+            | Role{ package_id = package_id_dep; _ } ->
                 let lock_dep =
                   match rolemap |> Output.RoleMap.find_opt role_dep |> Option.map Output.unwrap with
                   | None | Some(DummyImpl) | Some(LocalImpl(_)) ->
                       assert false
 
-                  | Some(Impl{
-                      version = version_dep;
-                      registry_hash_value = registry_hash_value_dep;
-                      _
-                    }) ->
-                      let package_id_dep =
-                        PackageId.{
-                          registry_hash_value = registry_hash_value_dep;
-                          package_name        = package_name_dep;
-                        }
-                      in
+                  | Some(Impl{ version = version_dep; _ }) ->
                       Lock.{
                         package_id     = package_id_dep;
                         locked_version = version_dep;

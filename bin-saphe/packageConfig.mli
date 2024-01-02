@@ -35,7 +35,7 @@ type t = {
   package_authors      : string list;
   external_sources     : (string * external_source) list;
   package_contents     : package_contents;
-  registry_specs       : registry_remote RegistryLocalNameMap.t;
+  registry_remotes     : registry_remote list;
 }
 
 val load : abs_path -> (t, config_error) result

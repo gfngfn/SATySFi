@@ -13,6 +13,29 @@ type lock_info = {
 type package_name = string
 [@@deriving show { with_path = false }]
 
+(* The type for names that stand for a package registry.
+   Names of this type are supposed to be valid
+   within the scope of one package config file. *)
+type registry_local_name = string
+[@@deriving show { with_path = false }]
+
+module RegistryLocalNameMap = Map.Make(String)
+
+type parsed_package_dependency_spec =
+  | ParsedRegisteredDependency of {
+      package_name        : package_name;
+      registry_local_name : registry_local_name;
+      version_requirement : SemanticVersion.requirement;
+    }
+[@@deriving show { with_path = false }]
+
+type parsed_package_dependency =
+  | ParsedPackageDependency of {
+      used_as : string;
+      spec    : parsed_package_dependency_spec;
+    }
+[@@deriving show { with_path = false }]
+
 module PackageId = struct
   type t = {
     registry_hash_value : string;
@@ -29,14 +52,6 @@ end
 module PackageIdMap = Map.Make(PackageId)
 
 module PackageIdSet = Set.Make(PackageId)
-
-(* The type for names that stand for a package registry.
-   Names of this type are supposed to be valid
-   within the scope of one package config file. *)
-type registry_local_name = string
-[@@deriving show { with_path = false }]
-
-module RegistryLocalNameMap = Map.Make(String)
 
 (* The type for MD5 hash values made of a URL and a branch name. *)
 type registry_hash_value = string
@@ -65,8 +80,7 @@ module LockMap = Map.Make(Lock)
 
 type package_dependency_spec =
   | RegisteredDependency of {
-      package_name : package_name;
-      registry_local_name : registry_local_name;
+      package_id          : PackageId.t;
       version_requirement : SemanticVersion.requirement;
     }
 [@@deriving show { with_path = false }]
@@ -102,14 +116,9 @@ type implementation_record =
       dependencies         : package_dependency_in_registry list;
     }
 
-type registry_spec = {
-  packages_in_registry : (implementation_record list) PackageIdMap.t;
-  registry_hash_value  : registry_hash_value;
-}
-
 type package_context = {
-  language_version : SemanticVersion.t;
-  registries       : registry_spec RegistryLocalNameMap.t;
+  language_version        : SemanticVersion.t;
+  package_id_to_impl_list : (implementation_record list) PackageIdMap.t;
 }
 
 type locked_dependency = {
