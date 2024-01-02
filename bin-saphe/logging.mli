@@ -10,6 +10,8 @@ val end_lock_config_output : abs_path -> unit
 
 val end_envelope_config_output : abs_path -> unit
 
+val end_deps_config_output : abs_path -> unit
+
 val lock_already_installed : lock_name -> abs_path -> unit
 
 val lock_cache_exists : lock_name -> abs_path -> unit

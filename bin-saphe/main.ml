@@ -704,34 +704,21 @@ let solve ~(fpath_in : string) =
   | Error(e) -> report_config_error e; exit 1
 
 
-type build_option = {
-    text_mode              : string option;
-    page_number_limit      : int;
-    show_full_path         : bool;
-    debug_show_bbox        : bool;
-    debug_show_space       : bool;
-    debug_show_block_bbox  : bool;
-    debug_show_block_space : bool;
-    debug_show_overfull    : bool;
-    type_check_only        : bool;
-    bytecomp               : bool;
-}
-
-
 type build_input =
   | PackageBuildInput of {
       root     : abs_path;
       lock     : abs_path;
       deps     : abs_path;
       envelope : abs_path;
-      options  : build_option;
+      options  : SatysfiCommand.build_option;
     }
   | DocumentBuildInput of {
+      doc     : abs_path;
       lock    : abs_path;
       deps    : abs_path;
       out     : abs_path;
       dump    : abs_path;
-      options : build_option;
+      options : SatysfiCommand.build_option;
     }
 
 
@@ -783,8 +770,8 @@ let build
 
     (* Constructs the input: *)
     let build_input =
-      let build_option =
-        {
+      let options =
+        SatysfiCommand.{
           text_mode   = text_mode_formats_str_opt;
           page_number_limit;
           show_full_path;
@@ -808,7 +795,7 @@ let build
           lock     = abspath_lock_config;
           deps     = abspath_deps_config;
           envelope = abspath_envelope_config;
-          options  = build_option;
+          options;
         }
       else
         let abspath_lock_config = Constant.document_lock_config_path abspath_in in
@@ -823,40 +810,59 @@ let build
         in
         let abspath_dump = Constant.dump_path abspath_in in
         DocumentBuildInput{
+          doc     = abspath_in;
           lock    = abspath_lock_config;
           deps    = abspath_deps_config;
           out     = abspath_out;
           dump    = abspath_dump;
-          options = build_option;
+          options;
         }
     in
 
     match build_input with
     | PackageBuildInput{
-        root     = _absdir_package;
+        root     = absdir_package;
         lock     = abspath_lock_config;
         deps     = abspath_deps_config;
-        envelope = _abspath_envelope_config;
-        options  = _build_option;
+        envelope = abspath_envelope_config;
+        options;
       } ->
         let* lock_config = LockConfig.load abspath_lock_config in
         let deps_config = make_deps_config lock_config in
-
         let* () = DepsConfig.write abspath_deps_config deps_config in
-        failwith "TODO: PackageBuildInput"
+        Logging.end_deps_config_output abspath_deps_config;
+
+        SatysfiCommand.(build
+          ~input:(PackageInput{
+            root     = absdir_package;
+            envelope = abspath_envelope_config;
+          })
+          ~deps:abspath_deps_config
+          ~options);
+        return ()
 
     | DocumentBuildInput{
-        lock    = abspath_lock_config;
-        deps    = abspath_deps_config;
-        out     = _abspath_out;
-        dump    = _abspath_dump;
-        options = _build_option;
+        doc  = abspath_doc;
+        lock = abspath_lock_config;
+        deps = abspath_deps_config;
+        out  = abspath_out;
+        dump = abspath_dump;
+        options;
       } ->
         let* lock_config = LockConfig.load abspath_lock_config in
         let deps_config = make_deps_config lock_config in
-
         let* () = DepsConfig.write abspath_deps_config deps_config in
-        failwith "TODO: DocumentBuildInput"
+        Logging.end_deps_config_output abspath_deps_config;
+
+        SatysfiCommand.(build
+          ~input:(DocumentInput{
+            doc  = abspath_doc;
+            out  = abspath_out;
+            dump = abspath_dump;
+          })
+          ~deps:abspath_deps_config
+          ~options);
+        return ()
   in
   match res with
   | Ok(())   -> ()
