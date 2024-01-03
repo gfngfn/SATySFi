@@ -19,7 +19,7 @@ test:
 test-packages:
 	./check-packages.sh
 
-install: $(SATYSFI)
+install: $(SATYSFI) $(SAPHE)
 	mkdir -p $(BINDIR)
 	install $(SATYSFI) $(BINDIR)
 	install $(SAPHE) $(BINDIR)
