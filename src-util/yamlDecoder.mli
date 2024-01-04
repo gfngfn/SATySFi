@@ -2,9 +2,11 @@
 type context_element =
   | Field of string
   | Index of int
+[@@deriving show]
 
 type context =
   context_element list
+[@@deriving show]
 
 module type ErrorType = sig
   type t
@@ -22,6 +24,10 @@ module type ErrorType = sig
   val not_an_array : context -> t
 
   val not_an_object : context -> t
+
+  val branch_not_found : context -> string list -> string list -> t
+
+  val more_than_one_branch_found : context -> string list -> string list -> t
 end
 
 module Make (Err : ErrorType) : sig
@@ -53,7 +59,7 @@ module Make (Err : ErrorType) : sig
 
   type 'a branch
 
-  val branch : string -> ('a branch) list -> other:(string -> 'a t) -> 'a t
+  val branch : ('a branch) list -> 'a t
 
   val ( ==> ) : string -> 'a t -> 'a branch
 

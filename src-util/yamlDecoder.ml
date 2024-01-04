@@ -2,9 +2,11 @@
 type context_element =
   | Field of string
   | Index of int
+[@@deriving show { with_path = false }]
 
 type context =
   context_element list
+[@@deriving show { with_path = false }]
 
 
 module type ErrorType = sig
@@ -23,6 +25,10 @@ module type ErrorType = sig
   val not_an_array : context -> t
 
   val not_an_object : context -> t
+
+  val branch_not_found : context -> string list -> string list -> t
+
+  val more_than_one_branch_found : context -> string list -> string list -> t
 end
 
 
@@ -135,15 +141,39 @@ module Make (Err : ErrorType) = struct
   type 'a branch = string * 'a t
 
 
-  let branch (field : string) (branches : ('a branch) list) ~(other : string -> 'a t) : 'a t =
-    get field string >>= fun tag_gotten ->
-    match
-      branches |> List.find_map (fun (tag_candidate, d) ->
-        if String.equal tag_gotten tag_candidate then Some(d) else None
-      )
-    with
-    | None    -> other tag_gotten
-    | Some(d) -> d
+  let branch (branches : ('a branch) list) : 'a t =
+    fun (context, yval) ->
+      let open ResultMonad in
+      match yval with
+      | `O(fields) ->
+          let hits =
+            fields |> List.concat_map (fun (tag_got, yval_got) ->
+              branches |> List.filter_map (fun (tag_expected, d) ->
+                if String.equal tag_got tag_expected then
+                  Some((tag_got, yval_got, d))
+                else
+                  None
+              )
+            )
+          in
+          begin
+            match hits with
+            | [] ->
+                let expected_tags = branches |> List.map Stdlib.fst in
+                let got_tags = fields |> List.map Stdlib.fst in
+                err @@ Err.branch_not_found (Alist.to_list context) expected_tags got_tags
+
+            | [ (tag, yval_sub, d) ] ->
+                d (Alist.extend context (Field(tag)), yval_sub)
+
+            | _ ->
+                let expected_tags = fields |> List.map Stdlib.fst in
+                let got_tags = hits |> List.map (fun (tag, _, _) -> tag) in
+                err @@ Err.more_than_one_branch_found (Alist.to_list context) expected_tags got_tags
+          end
+
+      | _ ->
+          err @@ Err.not_an_object (Alist.to_list context)
 
 
   let ( ==> ) (label : string) (d : 'a t) : 'a branch = (label, d)

@@ -124,11 +124,11 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
         in
 
         (* Fetches external sources according to the package config: *)
-        let* PackageConfig.{ external_sources; _ } =
+        let* PackageConfig.{ external_resources; _ } =
           PackageConfig.load (Constant.library_package_config_path absdir_lock)
         in
         let* () =
-          external_sources |> foldM (fun () (name, external_source) ->
+          external_resources |> foldM (fun () (name, external_source) ->
             match external_source with
             | ExternalZip{ url; checksum; extractions } ->
 

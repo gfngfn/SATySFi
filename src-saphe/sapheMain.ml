@@ -73,9 +73,6 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | NotAnObject(yctx) ->
       [ NormalLine(Printf.sprintf "not an object%s" (show_yaml_context yctx)) ]
 
-  | UnexpectedTag(yctx, tag) ->
-      [ NormalLine(Printf.sprintf "unexpected type tag '%s'%s" tag (show_yaml_context yctx)) ]
-
   | BreaksVersionRequirement(yctx, requirement) ->
       [ NormalLine(Printf.sprintf "breaks the requrement '%s'%s" (SemanticVersion.requirement_to_string requirement)(show_yaml_context yctx)) ]
 
@@ -99,6 +96,25 @@ let make_yaml_error_lines : yaml_error -> line list = function
 
   | NotACommand{ context = yctx; prefix = _; string = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s'%s" s (show_yaml_context yctx)) ]
+
+  | BranchNotFound{ context = yctx; expected_tags; got_tags } ->
+      [
+        NormalLine(Printf.sprintf "expected tags not found; should contain exactly one of:");
+        DisplayLine(expected_tags |> String.concat ", ");
+        NormalLine("but only contains:");
+        DisplayLine(got_tags |> String.concat ", ");
+        NormalLine(Printf.sprintf "%s" (show_yaml_context yctx));
+      ]
+
+  | MoreThanOneBranchFound{ context = yctx; expected_tags; got_tags } ->
+      [
+        NormalLine(Printf.sprintf "more than one expected tag found:");
+        DisplayLine(got_tags |> String.concat ", ");
+        NormalLine("should be exactly one of:");
+        DisplayLine(expected_tags |> String.concat ", ");
+        NormalLine(Printf.sprintf "%s" (show_yaml_context yctx));
+      ]
+
 
 
 let report_config_error = function
@@ -498,24 +514,12 @@ let make_envelope_config (package_contents : PackageConfig.package_contents) : E
     } ->
       let font_file_descriptions =
         descrs |> List.map (fun descr ->
-          let
-            PackageConfig.{
-              font_file_path;
-              font_file_contents;
-            } = descr
-          in
-          EnvelopeConfig.{
-            font_file_path;
-            font_file_contents;
-          }
+          let { font_file_path; font_file_contents } = descr in
+          EnvelopeConfig.{ font_file_path; font_file_contents }
         )
       in
       EnvelopeConfig.{
-        envelope_contents =
-          Font{
-            main_module_name;
-            font_file_descriptions;
-          };
+        envelope_contents = Font{ main_module_name; font_file_descriptions };
       }
 
 

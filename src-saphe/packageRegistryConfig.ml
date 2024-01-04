@@ -14,16 +14,13 @@ type t = {
 
 let source_decoder : implementation_source ConfigDecoder.t =
   let open ConfigDecoder in
-  branch "type" [
+  branch [
     "tar_gzip" ==> begin
       get "url" string >>= fun url ->
       get "checksum" string >>= fun checksum ->
       succeed @@ TarGzip{ url; checksum }
     end;
   ]
-  ~other:(fun tag ->
-    failure (fun context -> UnexpectedTag(context, tag))
-  )
 
 
 let dependency_in_registry_config_decoder =

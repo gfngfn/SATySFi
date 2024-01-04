@@ -50,7 +50,7 @@ let version_checker (version : SemanticVersion.t) : unit ConfigDecoder.t =
 
 let dependency_spec_decoder : parsed_package_dependency_spec ConfigDecoder.t =
   let open ConfigDecoder in
-  branch "type" [
+  branch [
     "registered" ==> begin
       get "registry" string >>= fun registry_local_name ->
       get "name" package_name_decoder >>= fun package_name ->
@@ -62,30 +62,24 @@ let dependency_spec_decoder : parsed_package_dependency_spec ConfigDecoder.t =
       }
     end;
   ]
-  ~other:(fun tag ->
-    failure (fun context -> UnexpectedTag(context, tag))
-  )
 
 
 let dependency_decoder : parsed_package_dependency ConfigDecoder.t =
   let open ConfigDecoder in
   get "used_as" string >>= fun used_as ->
-  get "spec" dependency_spec_decoder >>= fun spec ->
+  dependency_spec_decoder >>= fun spec ->
   succeed @@ ParsedPackageDependency{ used_as; spec }
 
 
 let registry_remote_decoder : registry_remote ConfigDecoder.t =
   let open ConfigDecoder in
-  branch "type" [
+  branch [
     "git" ==> begin
       get "url" string >>= fun url ->
       get "branch" string >>= fun branch ->
       succeed @@ GitRegistry{ url; branch }
     end;
   ]
-  ~other:(fun tag ->
-    failure (fun context -> UnexpectedTag(context, tag))
-  )
 
 
 let name_decoder : string ConfigDecoder.t =

@@ -11,7 +11,19 @@ type yaml_error =
   | NotABool               of YamlDecoder.context
   | NotAnArray             of YamlDecoder.context
   | NotAnObject            of YamlDecoder.context
+  | BranchNotFound         of {
+      context       : YamlDecoder.context;
+      expected_tags : string list;
+      got_tags      : string list;
+    }
+  | MoreThanOneBranchFound of {
+      context       : YamlDecoder.context;
+      expected_tags : string list;
+      got_tags      : string list;
+    }
+(*
   | UnexpectedTag          of YamlDecoder.context * string
+*)
   | BreaksVersionRequirement of YamlDecoder.context * SemanticVersion.requirement
   | NotASemanticVersion    of YamlDecoder.context * string
   | NotAVersionRequirement of YamlDecoder.context * string
@@ -27,6 +39,7 @@ type yaml_error =
       prefix  : char;
       string  : string;
     }
+[@@deriving show { with_path = false }]
 
 module YamlError = struct
   type t = yaml_error
@@ -37,6 +50,10 @@ module YamlError = struct
   let not_a_bool context = NotABool(context)
   let not_an_array context = NotAnArray(context)
   let not_an_object context = NotAnObject(context)
+  let branch_not_found context expected_tags got_tags =
+    BranchNotFound{ context; expected_tags; got_tags }
+  let more_than_one_branch_found context expected_tags got_tags =
+    MoreThanOneBranchFound{ context; expected_tags; got_tags }
 end
 
 type config_error =

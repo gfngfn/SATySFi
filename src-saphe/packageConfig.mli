@@ -3,18 +3,6 @@ open MyUtil
 open ConfigError
 open PackageSystemBase
 
-type relative_path = string
-
-type font_file_description = {
-  font_file_path     : relative_path;
-  font_file_contents : font_file_contents;
-}
-
-type package_conversion_spec = unit (* TODO *)
-(*
-  | MarkdownConversion of MarkdownParser.command_record
-*)
-
 type package_contents =
   | Library of {
       main_module_name   : string;
@@ -33,9 +21,11 @@ type t = {
   language_requirement : SemanticVersion.requirement;
   package_name         : package_name;
   package_authors      : string list;
-  external_sources     : (string * external_source) list;
+  external_resources   : (string * external_resource) list;
   package_contents     : package_contents;
   registry_remotes     : registry_remote list;
 }
+
+val parse : string -> (parsed_package_config, yaml_error) result
 
 val load : abs_path -> (t, config_error) result

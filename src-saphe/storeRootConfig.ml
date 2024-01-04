@@ -12,22 +12,18 @@ type t = {
 
 let registry_remote_decoder : registry_remote ConfigDecoder.t =
   let open ConfigDecoder in
-  branch "type" [
+  branch [
     "git" ==> begin
       get "url" string >>= fun url ->
       get "branch" string >>= fun branch ->
       succeed @@ GitRegistry{ url; branch }
     end;
   ]
-  ~other:(fun tag ->
-    failure (fun context -> UnexpectedTag(context, tag))
-  )
 
 
 let registry_remote_encoder = function
   | GitRegistry{ url; branch } ->
-      `O[
-        ("type", `String("git"));
+      [
         ("url", `String(url));
         ("branch", `String(branch));
       ]
@@ -36,15 +32,14 @@ let registry_remote_encoder = function
 let registry_spec_decoder : (registry_hash_value * registry_remote) ConfigDecoder.t =
   let open ConfigDecoder in
   get "hash_value" string >>= fun registry_hash_value ->
-  get "remote" registry_remote_decoder >>= fun registry_remote ->
+  registry_remote_decoder >>= fun registry_remote ->
   succeed (registry_hash_value, registry_remote)
 
 
 let registry_spec_encoder (registry_hash_value, registry_remote) =
-  `O[
-    ("hash_value", `String(registry_hash_value));
-    ("remote", registry_remote_encoder registry_remote);
-  ]
+  let fields_common = [ ("hash_value", `String(registry_hash_value)) ] in
+  let fields_remote = registry_remote_encoder registry_remote in
+  `O(List.append fields_common fields_remote)
 
 
 let config_decoder : t ConfigDecoder.t =

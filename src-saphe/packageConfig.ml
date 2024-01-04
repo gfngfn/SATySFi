@@ -7,43 +7,6 @@ open PackageSystemBase
 
 type 'a ok = ('a, config_error) result
 
-type relative_path = string
-
-type font_file_description = {
-  font_file_path     : relative_path;
-  font_file_contents : font_file_contents;
-}
-
-type package_conversion_spec = unit (* TODO *)
-(*
-  | MarkdownConversion of MarkdownParser.command_record
-*)
-
-type parsed_package_contents =
-  | ParsedLibrary of {
-      main_module_name   : string;
-      source_directories : relative_path list;
-      test_directories   : relative_path list;
-      dependencies       : parsed_package_dependency list;
-      test_dependencies  : parsed_package_dependency list;
-      conversion_specs   : package_conversion_spec list;
-    }
-  | ParsedFont of {
-      main_module_name       : string;
-      font_file_descriptions : font_file_description list;
-    }
-
-module Internal = struct
-  type t = {
-    language_requirement : SemanticVersion.requirement;
-    package_name         : package_name;
-    package_authors      : string list;
-    external_sources     : (string * external_source) list;
-    package_contents     : parsed_package_contents;
-    registry_specs       : (registry_local_name * registry_remote) list;
-  }
-end
-
 type package_contents =
   | Library of {
       main_module_name   : string;
@@ -62,7 +25,7 @@ type t = {
   language_requirement : SemanticVersion.requirement;
   package_name         : package_name;
   package_authors      : string list;
-  external_sources     : (string * external_source) list;
+  external_resources   : (string * external_resource) list;
   package_contents     : package_contents;
   registry_remotes     : registry_remote list;
 }
@@ -77,7 +40,7 @@ let font_spec_decoder : font_spec ConfigDecoder.t =
 
 let font_file_contents_decoder : font_file_contents ConfigDecoder.t =
   let open ConfigDecoder in
-  branch "type" [
+  branch [
     "opentype_single" ==> begin
       get "contents" font_spec_decoder >>= fun font_spec ->
       succeed @@ OpentypeSingle(font_spec)
@@ -87,9 +50,6 @@ let font_file_contents_decoder : font_file_contents ConfigDecoder.t =
       succeed @@ OpentypeCollection(font_specs)
     end;
   ]
-  ~other:(fun tag ->
-    failure (fun context -> UnexpectedTag(context, tag))
-  )
 
 
 let font_file_description_decoder : font_file_description ConfigDecoder.t =
@@ -212,7 +172,7 @@ let conversion_spec_decoder =
 
 let contents_decoder : parsed_package_contents ConfigDecoder.t =
   let open ConfigDecoder in
-  branch "type" [
+  branch [
     "library" ==> begin
       get "main_module" string >>= fun main_module_name ->
       get "source_directories" (list string) >>= fun source_directories ->
@@ -231,22 +191,19 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
     end;
     "font" ==> begin
       get "main_module" string >>= fun main_module_name ->
-      get "elements" (list font_file_description_decoder) >>= fun font_file_descriptions ->
+      get "files" (list font_file_description_decoder) >>= fun font_file_descriptions ->
       succeed @@ ParsedFont {
         main_module_name;
         font_file_descriptions;
       }
     end;
   ]
-  ~other:(fun tag ->
-    failure (fun context -> UnexpectedTag(context, tag))
-  )
 
 
 let registry_spec_decoder =
   let open ConfigDecoder in
   get "name" string >>= fun registry_local_name ->
-  get "remote" registry_remote_decoder >>= fun registry_remote ->
+  registry_remote_decoder >>= fun registry_remote ->
   succeed (registry_local_name, registry_remote)
 
 
@@ -257,9 +214,9 @@ let extraction_decoder : extraction ConfigDecoder.t =
   succeed { extracted_from; extracted_to }
 
 
-let external_source_decoder : (string * external_source) ConfigDecoder.t =
+let external_resource_decoder : (string * external_resource) ConfigDecoder.t =
   let open ConfigDecoder in
-  branch "type" [
+  branch [
     "zip" ==> begin
       get "name" name_decoder >>= fun name ->
       get "url" string >>= fun url ->
@@ -268,25 +225,22 @@ let external_source_decoder : (string * external_source) ConfigDecoder.t =
       succeed (name, ExternalZip{ url; checksum; extractions })
     end;
   ]
-  ~other:(fun tag ->
-    failure (fun context -> UnexpectedTag(context, tag))
-  )
 
 
-let config_decoder : Internal.t ConfigDecoder.t =
+let config_decoder : parsed_package_config ConfigDecoder.t =
   let open ConfigDecoder in
   get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
   get "language" requirement_decoder >>= fun language_requirement ->
   get "name" package_name_decoder >>= fun package_name ->
   get "authors" (list string) >>= fun package_authors ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
-  get_or_else "external_sources" (list external_source_decoder) [] >>= fun external_sources ->
+  get_or_else "external_resources" (list external_resource_decoder) [] >>= fun external_resources ->
   get "contents" contents_decoder >>= fun package_contents ->
-  succeed @@ Internal.{
+  succeed @@ ParsedPackageConfig{
     language_requirement;
     package_name;
     package_authors;
-    external_sources;
+    external_resources;
     package_contents;
     registry_specs;
   }
@@ -351,17 +305,17 @@ let validate_contents_spec (localmap : registry_remote RegistryLocalNameMap.t) (
       }
 
 
-let validate (package_config : Internal.t) : t ok =
+let validate (p_package_config : parsed_package_config) : t ok =
   let open ResultMonad in
   let
-    Internal.{
+    ParsedPackageConfig{
       language_requirement;
       package_name;
       package_authors;
-      external_sources;
+      external_resources;
       package_contents;
       registry_specs;
-    } = package_config
+    } = p_package_config
   in
   let* (localmap, registry_remote_acc) =
     registry_specs |> List.fold_left (fun res (registry_local_name, registry_remote) ->
@@ -381,10 +335,14 @@ let validate (package_config : Internal.t) : t ok =
     language_requirement;
     package_name;
     package_authors;
-    external_sources;
+    external_resources;
     package_contents;
     registry_remotes = Alist.to_list registry_remote_acc;
   }
+
+
+let parse (s : string) : (parsed_package_config, yaml_error) result =
+  ConfigDecoder.run config_decoder s
 
 
 let load (abspath_config : abs_path) : t ok =
@@ -394,7 +352,7 @@ let load (abspath_config : abs_path) : t ok =
       |> Result.map_error (fun _ -> PackageConfigNotFound(abspath_config))
   in
   let* internal =
-    ConfigDecoder.run config_decoder s
+    parse s
       |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))
   in
   validate internal

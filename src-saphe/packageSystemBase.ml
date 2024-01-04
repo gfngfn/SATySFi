@@ -1,7 +1,11 @@
 
 open MyUtil
 
-type lock_name = string  [@@deriving show]
+type relative_path = string
+[@@deriving show]
+
+type lock_name = string
+[@@deriving show]
 
 type lock_info = {
   lock_name         : lock_name;
@@ -34,6 +38,12 @@ type parsed_package_dependency =
       used_as : string;
       spec    : parsed_package_dependency_spec;
     }
+[@@deriving show { with_path = false }]
+
+type package_conversion_spec = unit (* TODO *)
+(*
+  | MarkdownConversion of MarkdownParser.command_record
+*)
 [@@deriving show { with_path = false }]
 
 module PackageId = struct
@@ -156,18 +166,21 @@ type registry_remote =
       url    : string;
       branch : string;
     }
+[@@deriving show { with_path = false }]
 
 type extraction = {
   extracted_from : string;
   extracted_to   : string;
 }
+[@@deriving show { with_path = false }]
 
-type external_source =
+type external_resource =
   | ExternalZip of {
       url         : string;
       checksum    : string;
       extractions : extraction list;
     }
+[@@deriving show { with_path = false }]
 
 type font_spec = {
   font_item_name    : string;
@@ -179,3 +192,34 @@ type font_file_contents =
   | OpentypeSingle     of font_spec
   | OpentypeCollection of font_spec list
 [@@deriving show]
+
+type font_file_description = {
+  font_file_path     : relative_path;
+  font_file_contents : font_file_contents;
+}
+[@@deriving show { with_path = false }]
+
+type parsed_package_contents =
+  | ParsedLibrary of {
+      main_module_name   : string;
+      source_directories : relative_path list;
+      test_directories   : relative_path list;
+      dependencies       : parsed_package_dependency list;
+      test_dependencies  : parsed_package_dependency list;
+      conversion_specs   : package_conversion_spec list;
+    }
+  | ParsedFont of {
+      main_module_name       : string;
+      font_file_descriptions : font_file_description list;
+    }
+[@@deriving show { with_path = false }]
+
+type parsed_package_config = ParsedPackageConfig of {
+  language_requirement : SemanticVersion.requirement;
+  package_name         : package_name;
+  package_authors      : string list;
+  external_resources   : (string * external_resource) list;
+  package_contents     : parsed_package_contents;
+  registry_specs       : (registry_local_name * registry_remote) list;
+}
+[@@deriving show { with_path = false }]
