@@ -4,8 +4,8 @@ name: "testing"
 authors:
   - "Takashi Suwa <@gfngfn>"
 contents:
-  type: "library"
-  main_module: "Testing"
-  source_directories:
-  - "./src"
-  dependencies: []
+  library:
+    main_module: "Testing"
+    source_directories:
+    - "./src"
+    dependencies: []

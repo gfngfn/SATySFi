@@ -6,22 +6,20 @@ authors:
   - "yozu <@yasuo-ozu>"
 registries:
   - name: "default"
-    remote:
-      type: "git"
+    git:
       url: "https://github.com/SATySFi/default-registry"
       branch: "temp-dev-saphe"
 contents:
-  type: "library"
-  main_module: "Stdlib"
-  source_directories:
-  - "./src"
-  test_directories:
-  - "./test"
-  dependencies: []
-  test_dependencies:
-  - used_as: "Testing"
-    spec:
-      type: "registered"
-      registry: "default"
-      name: "testing"
-      requirement: "^0.0.1"
+  library:
+    main_module: "Stdlib"
+    source_directories:
+    - "./src"
+    test_directories:
+    - "./test"
+    dependencies: []
+    test_dependencies:
+    - used_as: "Testing"
+      registered:
+        registry: "default"
+        name: "testing"
+        requirement: "^0.0.1"

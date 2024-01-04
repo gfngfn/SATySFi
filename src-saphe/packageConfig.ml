@@ -42,11 +42,11 @@ let font_file_contents_decoder : font_file_contents ConfigDecoder.t =
   let open ConfigDecoder in
   branch [
     "opentype_single" ==> begin
-      get "contents" font_spec_decoder >>= fun font_spec ->
+      font_spec_decoder >>= fun font_spec ->
       succeed @@ OpentypeSingle(font_spec)
     end;
     "opentype_collection" ==> begin
-      get "contents" (list font_spec_decoder) >>= fun font_specs ->
+      list font_spec_decoder >>= fun font_specs ->
       succeed @@ OpentypeCollection(font_specs)
     end;
   ]
@@ -55,7 +55,7 @@ let font_file_contents_decoder : font_file_contents ConfigDecoder.t =
 let font_file_description_decoder : font_file_description ConfigDecoder.t =
   let open ConfigDecoder in
   get "path" string >>= fun font_file_path ->
-  get "contents" font_file_contents_decoder >>= fun font_file_contents ->
+  font_file_contents_decoder >>= fun font_file_contents ->
   succeed @@ {
     font_file_path;
     font_file_contents;
@@ -216,9 +216,9 @@ let extraction_decoder : extraction ConfigDecoder.t =
 
 let external_resource_decoder : (string * external_resource) ConfigDecoder.t =
   let open ConfigDecoder in
+  get "name" name_decoder >>= fun name ->
   branch [
     "zip" ==> begin
-      get "name" name_decoder >>= fun name ->
       get "url" string >>= fun url ->
       get "checksum" string >>= fun checksum ->
       get "extractions" (list extraction_decoder) >>= fun extractions ->

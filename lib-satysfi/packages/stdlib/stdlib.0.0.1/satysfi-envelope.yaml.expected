@@ -1,0 +1,6 @@
+library:
+  main_module: Stdlib
+  source_directories:
+  - ./src
+  test_directories:
+  - ./test

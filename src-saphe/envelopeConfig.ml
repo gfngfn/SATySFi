@@ -37,26 +37,19 @@ let font_spec_encoder (font_spec : font_spec) : Yaml.value =
   ])
 
 
-let font_file_contents_encoder (contents : font_file_contents) : Yaml.value =
+let font_file_contents_encoder (contents : font_file_contents) : (string * Yaml.value) list =
   match contents with
   | OpentypeSingle(font_spec) ->
-      `O([
-        ("type", `String("opentype_single"));
-        ("contents", font_spec_encoder font_spec)
-      ])
+      [ ("opentype_single", font_spec_encoder font_spec) ]
 
   | OpentypeCollection(font_specs) ->
-      `O([
-        ("type", `String("opentype_collection"));
-        ("contents", `A(font_specs |> List.map font_spec_encoder));
-      ])
+      [ ("opentype_collection", `A(font_specs |> List.map font_spec_encoder)) ]
 
 
 let font_file_description_encoder (descr : font_file_description) : Yaml.value =
-  `O([
-    ("path", `String(descr.font_file_path));
-    ("contents", font_file_contents_encoder descr.font_file_contents);
-  ])
+  let fields_common = [ ("path", `String(descr.font_file_path)) ] in
+  let fields_contents = font_file_contents_encoder descr.font_file_contents in
+  `O(List.append fields_common fields_contents)
 
 
 let envelope_config_encoder (envelope_config : t) : Yaml.value =
@@ -64,15 +57,19 @@ let envelope_config_encoder (envelope_config : t) : Yaml.value =
   | Library{ main_module_name; source_directories; test_directories; _ } ->
       (* TODO: encode conversion specs *)
       `O([
-        ("main_module", `String(main_module_name));
-        ("source_directories", `A(source_directories |> List.map (fun s -> `String(s))));
-        ("test_directories", `A(test_directories |> List.map (fun s -> `String(s))));
+        ("library", `O([
+          ("main_module", `String(main_module_name));
+          ("source_directories", `A(source_directories |> List.map (fun s -> `String(s))));
+          ("test_directories", `A(test_directories |> List.map (fun s -> `String(s))));
+        ]));
       ])
 
   | Font{ main_module_name; font_file_descriptions } ->
       `O([
-        ("main_module", `String(main_module_name));
-        ("fonts", `A(font_file_descriptions |> List.map font_file_description_encoder));
+        ("font", `O([
+          ("main_module", `String(main_module_name));
+          ("files", `A(font_file_descriptions |> List.map font_file_description_encoder));
+        ]));
        ])
 
 
