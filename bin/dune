@@ -3,7 +3,6 @@
  (public_name satysfi)
  (package satysfi)
  (libraries
-   main
-   cmdliner)
- (preprocess no_preprocessing)
-)
+   cmdliner
+   main)
+ (preprocess no_preprocessing))

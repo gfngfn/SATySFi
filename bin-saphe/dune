@@ -3,9 +3,6 @@
  (public_name saphe)
  (package saphe)
  (libraries
-   0install-solver
-   cmdliner
-   satysfi-util
-   uri)
- (preprocess no_preprocessing)
-)
+   sapheMain
+   cmdliner)
+ (preprocess no_preprocessing))

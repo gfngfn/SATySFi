@@ -125,6 +125,7 @@ type locked_dependency = {
   depended_lock      : Lock.t;
   dependency_used_as : string;
 }
+[@@deriving show { with_path = false }]
 
 type package_solution = {
   lock                : Lock.t;

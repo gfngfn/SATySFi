@@ -1,6 +1,6 @@
 
 let solve fpath_in =
-  Main.solve ~fpath_in
+  SapheMain.solve ~fpath_in
 
 
 let build
@@ -17,7 +17,7 @@ let build
   type_check_only
   bytecomp
 =
-  Main.build
+  SapheMain.build
     ~fpath_in
     ~fpath_out_opt
     ~text_mode_formats_str_opt
@@ -149,7 +149,7 @@ let () =
     Term.(ret (const (`Error(true, "No subcommand specified."))))
   in
   let info : Cmd.info =
-    Cmd.info ~version:Main.version "saphe"
+    Cmd.info ~version:SapheMain.version "saphe"
   in
   let subcommands =
     [

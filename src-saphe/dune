@@ -1,0 +1,11 @@
+(library
+ (name sapheMain)
+ (public_name saphe)
+ (flags (:standard -bin-annot -thread -safe-string))
+ (libraries
+   0install-solver
+   cmdliner
+   satysfi-util
+   uri)
+ (preprocess
+   (pps ppx_deriving.show)))
