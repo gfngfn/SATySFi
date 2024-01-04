@@ -627,6 +627,7 @@ let solve ~(fpath_in : string) =
     Logging.show_package_dependency_before_solving dependencies_with_flags;
 
     let* absdir_store_root = get_store_root () in
+    ShellCommand.mkdir_p absdir_store_root;
     let abspath_store_root_config = Constant.store_root_config_path absdir_store_root in
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
 
