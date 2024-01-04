@@ -1,0 +1,5 @@
+(test
+  (name commonTest)
+  (libraries
+    satysfi-util
+    alcotest))

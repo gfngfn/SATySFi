@@ -1,12 +1,5 @@
 
-open Main__Types
-module ResultMonad = Main__ResultMonad
-module TupleList = Main__TupleList
-
-
-module DependencyGraph = Main__DependencyGraph
-
-
+open MyUtil
 module DG = DependencyGraph.Make(Int)
 
 
@@ -41,6 +34,7 @@ let pp_vertex ppf vertex =
 
 
 let pp_vertex_set ppf vertices =
+  let pp_sep ppf () = Format.fprintf ppf ",@ " in
   Format.fprintf ppf "%a" (Format.pp_print_list ~pp_sep pp_vertex) (DG.VertexSet.elements vertices)
 
 
