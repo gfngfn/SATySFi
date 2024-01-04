@@ -49,6 +49,10 @@ let lock_cache_exists (lock_name : lock_name) (abspath_tarball : abs_path) =
   Printf.printf "  cache for '%s' exists at '%s'\n" lock_name (get_abs_path_string abspath_tarball)
 
 
+let store_root_config_created (abspath_store_root_config : abs_path) =
+  Printf.printf "  store root config created at '%s'\n" (get_abs_path_string abspath_store_root_config)
+
+
 let downloading_lock (lock_name : lock_name) (absdir : abs_path) =
   Printf.printf "  downloading '%s' to '%s'...\n" lock_name (get_abs_path_string absdir)
 

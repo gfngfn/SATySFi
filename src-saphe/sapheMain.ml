@@ -359,6 +359,11 @@ let report_config_error = function
         NormalLine(Printf.sprintf "cannot write a deps config to '%s' (message: '%s')" (get_abs_path_string path) message);
       ]
 
+  | CannotWriteStoreRootConfig{ message; path } ->
+      report_error [
+        NormalLine(Printf.sprintf "cannot write a store root config to '%s' (message: '%s')" (get_abs_path_string path) message);
+      ]
+
   | MultiplePackageDefinition{ package_name } ->
       report_error [
         NormalLine(Printf.sprintf "More than one definition for package '%s'." package_name)
@@ -388,7 +393,8 @@ type solve_input =
     }
 
 
-let update_store_root_config_if_needed (registries : registry_remote RegistryHashValueMap.t) (registry_hash_value : registry_hash_value) (registry_remote : registry_remote) (abspath_store_root : abs_path) : unit =
+let update_store_root_config_if_needed (registries : registry_remote RegistryHashValueMap.t) (registry_hash_value : registry_hash_value) (registry_remote : registry_remote) (abspath_store_root : abs_path) : (unit, config_error) result =
+  let open ResultMonad in
   match
     registries |> RegistryHashValueMap.find_opt registry_hash_value
   with
@@ -401,7 +407,7 @@ let update_store_root_config_if_needed (registries : registry_remote RegistryHas
       StoreRootConfig.write abspath_store_root store_root_config
 
   | Some(_registry_remote) ->
-      ()
+      return ()
 
 
 let make_lock_name (lock : Lock.t) : lock_name =
@@ -622,7 +628,14 @@ let solve ~(fpath_in : string) =
 
     let* absdir_store_root = get_store_root () in
     let abspath_store_root_config = Constant.store_root_config_path absdir_store_root in
-    let* store_root_config = StoreRootConfig.load abspath_store_root_config in
+    let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
+
+    begin
+      if created then
+        Logging.store_root_config_created abspath_store_root_config
+      else
+        ()
+    end;
 
     let* package_id_to_impl_list =
       registry_remotes |> List.fold_left (fun res registry_remote ->
@@ -630,11 +643,13 @@ let solve ~(fpath_in : string) =
         let* registry_hash_value = ConfigUtil.make_registry_hash_value registry_remote in
 
         (* Manupulates the store root config: *)
-        update_store_root_config_if_needed
-          store_root_config.StoreRootConfig.registries
-          registry_hash_value
-          registry_remote
-          abspath_store_root_config;
+        let* () =
+          update_store_root_config_if_needed
+            store_root_config.StoreRootConfig.registries
+            registry_hash_value
+            registry_remote
+            abspath_store_root_config
+        in
 
         (* Fetches registry configs: *)
         let absdir_registry_repo =

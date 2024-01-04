@@ -56,10 +56,10 @@ let config_decoder : t ConfigDecoder.t =
   succeed { registries }
 
 
-let config_encoder (library_root_config : t) : Yaml.value =
+let config_encoder (store_root_config : t) : Yaml.value =
   let language = SemanticVersion.(requirement_to_string (CompatibleWith(Constant.current_ecosystem_version))) in
   let registry_specs =
-    library_root_config.registries |> RegistryHashValueMap.bindings |> List.map registry_spec_encoder
+    store_root_config.registries |> RegistryHashValueMap.bindings |> List.map registry_spec_encoder
   in
   `O[
     ("ecosystem", `String(language));
@@ -67,22 +67,26 @@ let config_encoder (library_root_config : t) : Yaml.value =
   ]
 
 
-(* TODO: automatically initialize a registry config if non-existent *)
-let load (abspath_config : abs_path) : (t, config_error) result =
+let write (abspath_config : abs_path) (store_root_config : t) : (unit, config_error) result =
+  let yaml = config_encoder store_root_config in
+  let data = encode_yaml yaml in
+  write_file abspath_config data
+    |> Result.map_error (fun message ->
+      CannotWriteStoreRootConfig{ message; path = abspath_config }
+    )
+
+
+let load_or_initialize (abspath_config : abs_path) : (t * bool, config_error) result =
   let open ResultMonad in
-  let* s =
-    read_file abspath_config
-      |> Result.map_error (fun _ -> StoreRootConfigNotFound(abspath_config))
-  in
-  ConfigDecoder.run config_decoder s
-    |> Result.map_error (fun e -> StoreRootConfigError(abspath_config, e))
-
-
-let write (abspath_config : abs_path) (library_root_config : t) : unit =
-  let yaml = config_encoder library_root_config in
-  match Yaml.to_string ~encoding:`Utf8 ~layout_style:`Block ~scalar_style:`Plain yaml with
-  | Ok(data) ->
-      Core.Out_channel.write_all (get_abs_path_string abspath_config) ~data
+  match read_file abspath_config with
+  | Ok(s) ->
+      let* store_root_config =
+        ConfigDecoder.run config_decoder s
+          |> Result.map_error (fun e -> StoreRootConfigError(abspath_config, e))
+      in
+      return (store_root_config, false)
 
   | Error(_) ->
-      assert false
+      let store_root_config = { registries = RegistryHashValueMap.empty } in
+      let* () = write abspath_config store_root_config in
+      return (store_root_config, true)

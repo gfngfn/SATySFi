@@ -3,6 +3,7 @@
 FAILED=0
 for FILE in $(find lib-satysfi -name saphe.yaml); do
     DIR="$(dirname "$FILE")"
+    echo " ==== $DIR ===="
     ./saphe solve "$DIR"
     if diff "$DIR/saphe.lock.yaml" "$DIR/saphe.lock.yaml.expected"; then
         if diff "$DIR/satysfi-envelope.yaml" "$DIR/satysfi-envelope.yaml.expected"; then

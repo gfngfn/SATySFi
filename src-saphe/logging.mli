@@ -16,6 +16,8 @@ val lock_already_installed : lock_name -> abs_path -> unit
 
 val lock_cache_exists : lock_name -> abs_path -> unit
 
+val store_root_config_created : abs_path -> unit
+
 val downloading_lock : lock_name -> abs_path -> unit
 
 val report_canonicalized_url : url:string -> canonicalized_url:string -> hash_value:registry_hash_value -> unit
