@@ -1,14 +1,8 @@
-
+(*
 open MyUtil
-
+*)
 
 type envelope_name = string
-
-type envelope_info = {
-  envelope_name         : envelope_name;
-  envelope_directory    : abs_path;
-  envelope_dependencies : envelope_name list;
-}
 
 type relative_path = string
 [@@deriving show]
@@ -48,4 +42,9 @@ type envelope_contents =
 
 type envelope_config = {
   envelope_contents : envelope_contents;
+}
+
+type envelope_dependency = {
+  dependency_name    : envelope_name;
+  dependency_used_as : string;
 }

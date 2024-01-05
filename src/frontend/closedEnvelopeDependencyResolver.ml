@@ -11,6 +11,13 @@ type 'a ok = ('a, config_error) result
 module EnvelopeDependencyGraph = DependencyGraph.Make(String)
 
 
+type envelope_info = {
+  envelope_name         : envelope_name;
+  envelope_directory    : abs_path;
+  envelope_dependencies : envelope_dependency list;
+}
+
+
 let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(extensions : string list) (deps_config : DepsConfig.t) : ((envelope_name * (EnvelopeConfig.t * untyped_envelope)) list) ok =
   let open ResultMonad in
 
@@ -52,7 +59,9 @@ let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(ex
   (* Add edges: *)
   let* graph =
     entryacc |> Alist.to_list |> foldM (fun graph (envelope_info, vertex) ->
-      envelope_info.envelope_dependencies |> foldM (fun graph envelope_name_dep ->
+      envelope_info.envelope_dependencies |> foldM (fun graph envelope_dependency ->
+        let { dependency_name = envelope_name_dep; _ } = envelope_dependency in
+          (* TODO: use `dependency_used_as` *)
         begin
           match graph |> EnvelopeDependencyGraph.get_vertex envelope_name_dep with
           | None ->

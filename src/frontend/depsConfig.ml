@@ -6,8 +6,8 @@ open ConfigError
 
 type envelope = {
   envelope_name         : envelope_name;
-  envelope_path         : string;
-  envelope_dependencies : envelope_name list;
+  envelope_path         : relative_path;
+  envelope_dependencies : envelope_dependency list;
   test_only_envelope    : bool;
 }
 
