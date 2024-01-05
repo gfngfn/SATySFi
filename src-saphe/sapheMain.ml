@@ -842,6 +842,7 @@ let build
           SatysfiCommand.(build_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
+            ~base_dir:absdir_store_root
             ~options)
         in
         return ()
@@ -867,6 +868,7 @@ let build
             ~out:abspath_out
             ~dump:abspath_dump
             ~deps:abspath_deps_config
+            ~base_dir:absdir_store_root
             ~options)
         in
         return ()
