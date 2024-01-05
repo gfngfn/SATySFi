@@ -831,24 +831,25 @@ let build
 
     match build_input with
     | PackageBuildInput{
-        root     = absdir_package;
+        root     = _absdir_package;
         lock     = abspath_lock_config;
         deps     = abspath_deps_config;
         envelope = abspath_envelope_config;
         options;
       } ->
+        (* Updates the deps config: *)
         let* lock_config = LockConfig.load abspath_lock_config in
         let deps_config = make_deps_config lock_config in
         let* () = DepsConfig.write abspath_deps_config deps_config in
         Logging.end_deps_config_output abspath_deps_config;
 
-        SatysfiCommand.(build
-          ~input:(PackageInput{
-            root     = absdir_package;
-            envelope = abspath_envelope_config;
-          })
-          ~deps:abspath_deps_config
-          ~options);
+        (* Builds the package by invoking `satysfi`: *)
+        let SatysfiCommand.{ exit_status = _; command = _ } = (* TODO: use `exit_status` *)
+          SatysfiCommand.(build_package
+            ~envelope:abspath_envelope_config
+            ~deps:abspath_deps_config
+            ~options)
+        in
         return ()
 
     | DocumentBuildInput{
@@ -859,19 +860,21 @@ let build
         dump = abspath_dump;
         options;
       } ->
+        (* Updates the deps config: *)
         let* lock_config = LockConfig.load abspath_lock_config in
         let deps_config = make_deps_config lock_config in
         let* () = DepsConfig.write abspath_deps_config deps_config in
         Logging.end_deps_config_output abspath_deps_config;
 
-        SatysfiCommand.(build
-          ~input:(DocumentInput{
-            doc  = abspath_doc;
-            out  = abspath_out;
-            dump = abspath_dump;
-          })
-          ~deps:abspath_deps_config
-          ~options);
+        (* Builds the document by invoking `satysfi`: *)
+        let SatysfiCommand.{ exit_status = _; command = _ } = (* TODO: use `exit_status` *)
+          SatysfiCommand.(build_document
+            ~doc:abspath_doc
+            ~out:abspath_out
+            ~dump:abspath_dump
+            ~deps:abspath_deps_config
+            ~options)
+        in
         return ()
   in
   match res with
