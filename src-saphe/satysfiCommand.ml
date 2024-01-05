@@ -43,6 +43,7 @@ let build_package
       get_abs_path_string abspath_envelope_config;
       "--deps"; get_abs_path_string abspath_deps_config;
       "--base"; get_abs_path_string absdir_base;
+      "--full-path"; (* TODO: refine this *)
     ]
   in
   let args = args_mandatory in
@@ -67,6 +68,7 @@ let build_document
       "--dump"; get_abs_path_string abspath_dump;
       "--deps"; get_abs_path_string abspath_deps_config;
       "--base"; get_abs_path_string absdir_base;
+      "--full-path"; (* TODO: refine this *)
     ]
   in
   let args = args_mandatory in
