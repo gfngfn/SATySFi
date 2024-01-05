@@ -1343,8 +1343,8 @@ let load_deps_config (abspath_deps_config : abs_path) : DepsConfig.t =
   | Error(e)        -> raise (ConfigError(e))
 
 
-let load_envelope (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (abspath_in : abs_path) =
-  match EnvelopeReader.main display_config ~use_test_files ~extensions abspath_in with
+let load_envelope (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (abspath_envelope_config : abs_path) =
+  match EnvelopeReader.main display_config ~use_test_files ~extensions abspath_envelope_config with
   | Ok(pair) -> pair
   | Error(e) -> raise (ConfigError(e))
 
@@ -1364,7 +1364,7 @@ let build_package
   error_log_environment display_config (fun () ->
     let absdir_current = Sys.getcwd () in
 
-    let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+    let abspath_envelope_config = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in
 
@@ -1379,7 +1379,7 @@ let build_package
     in
 
     let extensions = get_candidate_file_extensions output_mode in
-    let job_directory = get_job_directory abspath_in in
+    let job_directory = get_job_directory abspath_envelope_config in
     let runtime_config = { job_directory } in
     let (tyenv_prim, _env) = initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config in
 
@@ -1387,7 +1387,7 @@ let build_package
     let deps_config = load_deps_config abspath_deps_config in
 
     let (_config, envelope) =
-      load_envelope display_config ~use_test_files:false ~extensions abspath_in
+      load_envelope display_config ~use_test_files:false ~extensions abspath_envelope_config
     in
 
     let (genv, _configenv, _libs_dep) =

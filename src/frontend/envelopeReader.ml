@@ -24,9 +24,12 @@ let make_path_list_absolute ~(origin : abs_path) (reldirs : string list) : abs_p
   )
 
 
-let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (absdir_envelope : abs_path) : (EnvelopeConfig.t * untyped_envelope) ok =
+let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (abspath_envelope_config : abs_path) : (EnvelopeConfig.t * untyped_envelope) ok =
   let open ResultMonad in
-  let* config = EnvelopeConfig.load absdir_envelope in
+  let* config = EnvelopeConfig.load abspath_envelope_config in
+  let absdir_envelope =
+    make_abs_path (Filename.dirname (get_abs_path_string abspath_envelope_config))
+  in
   let* envelope =
     match config.envelope_contents with
     | Library{ main_module_name; source_directories; test_directories; _ } ->
