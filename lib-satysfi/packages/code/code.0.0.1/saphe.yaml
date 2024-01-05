@@ -1,0 +1,27 @@
+ecosystem: "^0.0.1"
+language: "^0.1.0"
+name: "code"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "Naoki Kaneko <@puripuri2100>"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  library:
+    main_module: "Code"
+    source_directories:
+      - "./src"
+    dependencies:
+      - used_as: "Stdlib"
+        registered:
+          registry: "default"
+          name: "stdlib"
+          requirement: "^0.0.1"
+      - used_as: "FontLatinModern"
+        registered:
+          registry: "default"
+          name: "font-latin-modern"
+          requirement: "^0.0.1"

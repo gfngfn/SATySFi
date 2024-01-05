@@ -8,7 +8,7 @@ registries:
     remote:
       type: "git"
       url: "https://github.com/SATySFi/default-registry"
-      branch: "temp-dev-saphe"
+      branch: "format-1"
 contents:
   type: "library"
   main_module: "Stdlib"
