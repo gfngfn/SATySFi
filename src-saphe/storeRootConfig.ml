@@ -24,8 +24,10 @@ let registry_remote_decoder : registry_remote ConfigDecoder.t =
 let registry_remote_encoder = function
   | GitRegistry{ url; branch } ->
       [
-        ("url", `String(url));
-        ("branch", `String(branch));
+        ("git", `O([
+          ("url", `String(url));
+          ("branch", `String(branch));
+        ]));
       ]
 
 
