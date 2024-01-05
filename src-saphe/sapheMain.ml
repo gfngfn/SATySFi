@@ -429,7 +429,7 @@ let make_lock_dependency (dep : locked_dependency) : LockConfig.lock_dependency 
 let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t * implementation_spec list =
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
-      let lock = solution.lock in
+      let { lock; locked_source; _ } = solution in
       let locked_package =
         LockConfig.{
           lock_name         = make_lock_name lock;
@@ -438,12 +438,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
           test_only_lock    = solution.used_in_test_only;
         }
       in
-      let impl_spec =
-        ImplSpec{
-          lock   = solution.lock;
-          source = solution.locked_source;
-        }
-      in
+      let impl_spec = ImplSpec{ lock; source = locked_source } in
       (Alist.extend locked_package_acc locked_package, Alist.extend impl_spec_acc impl_spec)
     ) (Alist.empty, Alist.empty)
   in
