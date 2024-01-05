@@ -188,20 +188,18 @@ let command_build =
 
 let command_test_package =
   let open Cmdliner in
-  let term : unit Term.t =
+  Cmd.v (Cmd.info "package")
     Term.(const test_package
       $ arg_in
       $ flag_deps
       $ flag_text_mode
       $ flag_full_path
     )
-  in
-  Cmd.v (Cmd.info "test") term
 
 
 let command_test =
   let open Cmdliner in
-  Cmd.group (Cmd.info "build") [
+  Cmd.group (Cmd.info "test") [
     command_test_package;
   ]
 
