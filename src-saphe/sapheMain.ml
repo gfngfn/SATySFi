@@ -526,16 +526,16 @@ let solve ~(fpath_in : string) =
       let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
       if is_directory abspath_in then
       (* If the input is a directory that forms a package: *)
-        let abspath_lock_config = Constant.library_lock_config_path abspath_in in
-        let abspath_envelope_config = Constant.envelope_config_path abspath_in in
+        let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
+        let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
         PackageSolveInput{
           root     = abspath_in;
           lock     = abspath_lock_config;
           envelope = abspath_envelope_config;
         }
       else
-        let abspath_package_config = Constant.document_package_config_path abspath_in in
-        let abspath_lock_config = Constant.document_lock_config_path abspath_in in
+        let abspath_package_config = Constant.document_package_config_path ~doc:abspath_in in
+        let abspath_lock_config = Constant.document_lock_config_path ~doc:abspath_in in
         DocumentSolveInput{
           doc    = abspath_in;
           config = abspath_package_config;
@@ -550,7 +550,7 @@ let solve ~(fpath_in : string) =
           lock     = abspath_lock_config;
           envelope = abspath_envelope_config;
         } ->
-          let abspath_package_config = Constant.library_package_config_path absdir_package in
+          let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
           let*
             PackageConfig.{
               language_requirement;
@@ -730,7 +730,7 @@ let make_envelope_spec ~(store_root : abs_path) (locked_package : LockConfig.loc
   let envelope_dependencies = lock_dependencies |> List.map make_envelope_dependency in
   {
     envelope_name = lock_name;
-    envelope_path = get_abs_path_string (Constant.lock_directory ~store_root lock);
+    envelope_path = get_abs_path_string (Constant.lock_envelope_config ~store_root lock);
     envelope_dependencies;
     test_only_envelope = test_only_lock;
   }
@@ -783,9 +783,9 @@ let build
       let absdir_current = Sys.getcwd () in
       let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
       if is_directory abspath_in then
-        let abspath_lock_config = Constant.library_lock_config_path abspath_in in
-        let abspath_deps_config = Constant.library_deps_config_path abspath_in in
-        let abspath_envelope_config = Constant.envelope_config_path abspath_in in
+        let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
+        let abspath_deps_config = Constant.library_deps_config_path ~dir:abspath_in in
+        let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
         PackageBuildInput{
           root     = abspath_in;
           lock     = abspath_lock_config;
@@ -794,17 +794,17 @@ let build
           options;
         }
       else
-        let abspath_lock_config = Constant.document_lock_config_path abspath_in in
-        let abspath_deps_config = Constant.document_deps_config_path abspath_in in
+        let abspath_lock_config = Constant.document_lock_config_path ~doc:abspath_in in
+        let abspath_deps_config = Constant.document_deps_config_path ~doc:abspath_in in
         let abspath_out =
           match fpath_out_opt with
           | None ->
-              Constant.default_output_path abspath_in
+              Constant.default_output_path ~doc:abspath_in
 
           | Some(fpath_out) ->
               make_absolute_if_relative ~origin:absdir_current fpath_out
         in
-        let abspath_dump = Constant.dump_path abspath_in in
+        let abspath_dump = Constant.dump_path ~doc:abspath_in in
         DocumentBuildInput{
           doc     = abspath_in;
           lock    = abspath_lock_config;

@@ -13,7 +13,7 @@ module EnvelopeDependencyGraph = DependencyGraph.Make(String)
 
 type envelope_info = {
   envelope_name         : envelope_name;
-  envelope_directory    : abs_path;
+  envelope_config       : abs_path;
   envelope_dependencies : envelope_dependency list;
 }
 
@@ -31,7 +31,7 @@ let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(ex
       (* Skips test-only envelopes when using sources only: *)
         return (graph, entryacc)
       else
-        let absdir_envelope = make_abs_path envelope_path in
+        let abspath_envelope_config = make_abs_path envelope_path in
 (*
           match envelope_contents with
           | RegisteredLock{ registry_hash_value; package_name; version = locked_version } ->
@@ -39,7 +39,11 @@ let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(ex
               make_abs_path (Filename.concat (get_abs_path_string absdir_lib_root) (get_lib_path_string libdir))
 *)
         let* envelope_with_config =
-          EnvelopeReader.main display_config ~use_test_files:use_test_only_envelope ~extensions absdir_envelope
+          EnvelopeReader.main
+            display_config
+            ~use_test_files:use_test_only_envelope
+            ~extensions
+            ~envelope_config:abspath_envelope_config
         in
         let* (graph, vertex) =
           graph |> EnvelopeDependencyGraph.add_vertex envelope_name envelope_with_config
@@ -48,7 +52,7 @@ let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(ex
         let envelope_info =
           {
             envelope_name;
-            envelope_directory = absdir_envelope;
+            envelope_config = abspath_envelope_config;
             envelope_dependencies;
           }
         in

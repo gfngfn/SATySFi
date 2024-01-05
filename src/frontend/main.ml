@@ -1344,7 +1344,7 @@ let load_deps_config (abspath_deps_config : abs_path) : DepsConfig.t =
 
 
 let load_envelope (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (abspath_envelope_config : abs_path) =
-  match EnvelopeReader.main display_config ~use_test_files ~extensions abspath_envelope_config with
+  match EnvelopeReader.main display_config ~use_test_files ~extensions ~envelope_config:abspath_envelope_config with
   | Ok(pair) -> pair
   | Error(e) -> raise (ConfigError(e))
 

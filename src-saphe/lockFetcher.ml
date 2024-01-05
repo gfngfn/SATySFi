@@ -66,7 +66,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
   (* Creates the directory if non-existent, or does nothing otherwise: *)
   ShellCommand.mkdir_p absdir_lock;
 
-  let abspath_config = Constant.library_package_config_path absdir_lock in
+  let abspath_config = Constant.library_package_config_path ~dir:absdir_lock in
   if Sys.file_exists (get_abs_path_string abspath_config) then begin
   (* If the lock has already been fetched: *)
     Logging.lock_already_installed lock_tarball_name absdir_lock;
@@ -117,7 +117,7 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
 
         (* Fetches external sources according to the package config: *)
         let* PackageConfig.{ external_resources; _ } =
-          PackageConfig.load (Constant.library_package_config_path absdir_lock)
+          PackageConfig.load (Constant.library_package_config_path ~dir:absdir_lock)
         in
         let* () =
           external_resources |> foldM (fun () (name, external_resource) ->
