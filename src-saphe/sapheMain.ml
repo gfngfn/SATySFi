@@ -430,12 +430,10 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let lock = solution.lock in
-      let Lock.{ package_id; locked_version = version } = lock in
-      let PackageId.{ registry_hash_value; package_name } = package_id in
       let locked_package =
         LockConfig.{
           lock_name         = make_lock_name lock;
-          lock_contents     = RegisteredLock{ registry_hash_value; package_name; version };
+          lock_contents     = RegisteredLock(lock);
           lock_dependencies = solution.locked_dependencies |> List.map make_lock_dependency;
           test_only_lock    = solution.used_in_test_only;
         }
@@ -740,18 +738,8 @@ let make_envelope_dependency (lock_dep : LockConfig.lock_dependency) : DepsConfi
 
 
 let make_envelope_spec ~(store_root : abs_path) (locked_package : LockConfig.locked_package) : DepsConfig.envelope_spec =
-  let LockConfig.{ lock_name; lock_dependencies; lock_contents; _ } = locked_package in
+  let LockConfig.{ lock_name; lock_dependencies; lock_contents = RegisteredLock(lock); _ } = locked_package in
   let envelope_dependencies = lock_dependencies |> List.map make_envelope_dependency in
-  let lock =
-    match lock_contents with
-    | LockConfig.RegisteredLock{
-        registry_hash_value;
-        package_name;
-        version;
-      } ->
-        let package_id = PackageId.{ package_name; registry_hash_value } in
-        Lock.{ package_id; locked_version = version }
-  in
   DepsConfig.{
     envelope_name = lock_name;
     envelope_path = get_abs_path_string (Constant.lock_directory ~store_root lock);

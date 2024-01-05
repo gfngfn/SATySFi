@@ -8,11 +8,7 @@ open ConfigUtil
 type 'a ok = ('a, config_error) result
 
 type lock_contents =
-  | RegisteredLock of {
-      registry_hash_value : registry_hash_value;
-      package_name        : package_name;
-      version             : SemanticVersion.t;
-    }
+  | RegisteredLock of Lock.t
 
 type lock_dependency = {
   depended_lock_name : lock_name;
@@ -39,20 +35,24 @@ let lock_contents_decoder : lock_contents ConfigDecoder.t =
     "registered" ==> begin
       get "registry_hash_value" string >>= fun registry_hash_value ->
       get "package_name" package_name_decoder >>= fun package_name ->
-      get "version" version_decoder >>= fun version ->
-      succeed @@ RegisteredLock{ registry_hash_value; package_name; version }
+      get "version" version_decoder >>= fun locked_version ->
+      let package_id = PackageId.{ registry_hash_value; package_name } in
+      let lock = Lock.{ package_id; locked_version } in
+      succeed @@ RegisteredLock(lock)
     end;
   ]
 
 
 let lock_contents_encoder (contents : lock_contents) : (string * Yaml.value) list =
   match contents with
-  | RegisteredLock{ registry_hash_value; package_name; version } ->
+  | RegisteredLock(lock) ->
+      let Lock.{ package_id; locked_version } = lock in
+      let PackageId.{ registry_hash_value; package_name } = package_id in
       [
         ("registered", `O([
           ("registry_hash_value", `String(registry_hash_value));
           ("package_name", `String(package_name));
-          ("version", `String(SemanticVersion.to_string version));
+          ("version", `String(SemanticVersion.to_string locked_version));
         ]));
       ]
 
