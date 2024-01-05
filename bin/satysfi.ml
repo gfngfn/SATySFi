@@ -2,12 +2,14 @@
 let build_package
   fpath_in
   fpath_deps
+  fpath_base
   text_mode_formats_str_opt
   show_full_path
 =
   Main.build_package
     ~fpath_in
     ~fpath_deps
+    ~fpath_base
     ~text_mode_formats_str_opt
     ~show_full_path
 
@@ -17,6 +19,7 @@ let build_document
   fpath_out
   fpath_dump
   fpath_deps
+  fpath_base
   text_mode_formats_str_opt
   page_number_limit
   show_full_path
@@ -33,6 +36,7 @@ let build_document
     ~fpath_out
     ~fpath_dump
     ~fpath_deps
+    ~fpath_base
     ~text_mode_formats_str_opt
     ~page_number_limit
     ~show_full_path
@@ -48,12 +52,14 @@ let build_document
 let test_package
   fpath_in
   fpath_deps
+  fpath_base
   text_mode_formats_str_opt
   show_full_path
 =
   Main.test_package
     ~fpath_in
     ~fpath_deps
+    ~fpath_base
     ~text_mode_formats_str_opt
     ~show_full_path
 
@@ -79,6 +85,12 @@ let flag_deps : string Cmdliner.Term.t =
   let open Cmdliner in
   let doc = "Specify a deps config path" in
   Arg.(required (opt (some string) None (info [ "deps" ] ~docv:"DEPS" ~doc)))
+
+
+let flag_base_directory : string Cmdliner.Term.t =
+  let open Cmdliner in
+  let doc = "Specify the base directory" in
+  Arg.(required (opt (some string) None (info [ "base" ] ~docv:"BASEDIR" ~doc)))
 
 
 let flag_text_mode =
@@ -154,6 +166,7 @@ let command_build_document =
       $ flag_output
       $ flag_dump
       $ flag_deps
+      $ flag_base_directory
       $ flag_text_mode
       $ flag_page_number_limit
       $ flag_full_path
@@ -173,6 +186,7 @@ let command_build_package =
     Term.(const build_package
       $ arg_in
       $ flag_deps
+      $ flag_base_directory
       $ flag_text_mode
       $ flag_full_path
     )
@@ -192,6 +206,7 @@ let command_test_package =
     Term.(const test_package
       $ arg_in
       $ flag_deps
+      $ flag_base_directory
       $ flag_text_mode
       $ flag_full_path
     )

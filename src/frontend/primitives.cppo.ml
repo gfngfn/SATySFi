@@ -760,19 +760,11 @@ let make_environments (runtime_config : runtime_config) table =
   (tyenv, env)
 
 
-let resolve_lib_file (libpath : lib_path) =
-  Config.resolve_lib_file libpath
-
-
 (* TODO: should depend on the current language *)
-let make_pdf_mode_environments (runtime_config : runtime_config) =
-  match resolve_lib_file (make_lib_path "hyph/english.satysfi-hyph") with
-  | Error(_) ->
-      failwith "TODO: failed to load hyphenation dictionary"
-
-  | Ok(abspath_hyphen) ->
-      default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
-      make_environments runtime_config pdf_mode_table
+let make_pdf_mode_environments ~base_dir:(absdir_base : abs_path) (runtime_config : runtime_config) =
+  let abspath_hyphen = append_to_abs_directory absdir_base "hyph/english.satysfi-hyph" in
+  default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
+  make_environments runtime_config pdf_mode_table
 
 
 let make_text_mode_environments (runtime_config : runtime_config) =

@@ -31,19 +31,19 @@ let reset (output_mode : output_mode) =
 
 
 (* Initialization that should be performed before typechecking *)
-let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) (runtime_config : runtime_config) : Typeenv.t * environment =
+let initialize ~(base_dir : abs_path) ~(is_bytecomp_mode : bool) (output_mode : output_mode) (runtime_config : runtime_config) : Typeenv.t * environment =
   FreeID.initialize ();
   BoundID.initialize ();
   EvalVarID.initialize ();
   StoreID.initialize ();
-  FontInfo.initialize ();
+  FontInfo.initialize ~base_dir;
   let (tyenv, env) =
     match output_mode with
     | TextMode(_) ->
         Primitives.make_text_mode_environments runtime_config
 
     | PdfMode ->
-        Primitives.make_pdf_mode_environments runtime_config
+        Primitives.make_pdf_mode_environments ~base_dir runtime_config
   in
   begin
     if is_bytecomp_mode then
@@ -1220,53 +1220,6 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
       report_error System [ NormalLine(s); ]
 
 
-(*
-let setup_root_dirs ~(no_default_config : bool) ~(extra_config_paths : (string list) option) (curdir : string) : abs_path =
-  let runtime_dirs =
-    if Sys.os_type = "Win32" then
-      match Sys.getenv_opt "SATYSFI_RUNTIME" with
-      | None    -> []
-      | Some(s) -> [ s ]
-    else
-      [ "/usr/local/share/satysfi"; "/usr/share/satysfi" ]
-  in
-  let home_dirs =
-    if Sys.os_type = "Win32" then
-      match Sys.getenv_opt "userprofile" with
-      | None    -> []
-      | Some(s) -> [ Filename.concat s ".satysfi" ]
-    else
-      match Sys.getenv_opt "HOME" with
-      | None    -> []
-      | Some(s) -> [ Filename.concat s ".satysfi" ]
-  in
-  let default_dirs =
-    if no_default_config then
-      []
-    else
-      List.concat [ home_dirs; runtime_dirs ]
-  in
-  let extra_dirs =
-    match extra_config_paths with
-    | None             -> [ Filename.concat curdir ".satysfi" ]
-    | Some(extra_dirs) -> extra_dirs
-  in
-  let dirs = List.concat [ extra_dirs; default_dirs ] in
-  begin
-    match dirs with
-    | []     -> raise NoLibraryRootDesignation
-    | _ :: _ -> Config.initialize dirs
-  end;
-  let libpath = Constant.library_root_config_file in
-  match Config.resolve_lib_file libpath with
-  | Error(candidates) ->
-      raise (ConfigError(LibraryRootConfigNotFoundIn(libpath, candidates)))
-
-  | Ok(abspath) ->
-      make_abs_path (Filename.dirname (get_abs_path_string abspath))
-*)
-
-
 let get_candidate_file_extensions (output_mode : output_mode) =
   match output_mode with
   | PdfMode           -> [ ".satyh"; ".satyg" ]
@@ -1335,6 +1288,7 @@ let get_job_directory (abspath : abs_path) : string =
 let build_package
     ~(fpath_in : string)
     ~(fpath_deps : string)
+    ~(fpath_base : string)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
 =
@@ -1344,6 +1298,7 @@ let build_package
 
     let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
+    let absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in
 
     let output_mode = make_output_mode text_mode_formats_str_opt in
     let typecheck_config =
@@ -1358,7 +1313,7 @@ let build_package
     let extensions = get_candidate_file_extensions output_mode in
     let job_directory = get_job_directory abspath_in in
     let runtime_config = { job_directory } in
-    let (tyenv_prim, _env) = initialize ~is_bytecomp_mode:false output_mode runtime_config in
+    let (tyenv_prim, _env) = initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config in
 
     Logging.deps_config_file display_config abspath_deps_config;
     let deps_config = load_deps_config abspath_deps_config in
@@ -1390,6 +1345,7 @@ let build_document
     ~(fpath_out : string)
     ~(fpath_dump : string)
     ~(fpath_deps : string)
+    ~(fpath_base : string)
     ~(text_mode_formats_str_opt : string option)
     ~(page_number_limit : int)
     ~(show_full_path : bool)
@@ -1409,6 +1365,7 @@ let build_document
     let abspath_out = make_absolute_if_relative ~origin:absdir_current fpath_out in
     let abspath_dump = make_absolute_if_relative ~origin:absdir_current fpath_dump in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
+    let absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in
 
     let output_mode = make_output_mode text_mode_formats_str_opt in
     let typecheck_config =
@@ -1438,44 +1395,45 @@ let build_document
     in
 
     let extensions = get_candidate_file_extensions output_mode in
-    let (tyenv_prim, env) = initialize ~is_bytecomp_mode output_mode runtime_config in
+    let (tyenv_prim, env) = initialize ~base_dir:absdir_base ~is_bytecomp_mode output_mode runtime_config in
 
-        Logging.deps_config_file display_config abspath_deps_config;
-        let deps_config = load_deps_config abspath_deps_config in
+    Logging.deps_config_file display_config abspath_deps_config;
+    let deps_config = load_deps_config abspath_deps_config in
 
-        Logging.target_file display_config abspath_out;
+    Logging.target_file display_config abspath_out;
 
-        let dump_file_exists = CrossRef.initialize abspath_dump in
-        Logging.dump_file display_config ~already_exists:dump_file_exists abspath_dump;
+    let dump_file_exists = CrossRef.initialize abspath_dump in
+    Logging.dump_file display_config ~already_exists:dump_file_exists abspath_dump;
 
-        let (genv, configenv, libs) =
-          check_depended_envelopes display_config typecheck_config ~use_test_only_envelope:false (* ~library_root *) ~extensions tyenv_prim deps_config
-        in
+    let (genv, configenv, libs) =
+      check_depended_envelopes display_config typecheck_config ~use_test_only_envelope:false (* ~library_root *) ~extensions tyenv_prim deps_config
+    in
 
-        (* Resolve dependency of the document and the local source files: *)
-        let (sorted_locals, utdoc) =
-          match OpenFileDependencyResolver.main display_config ~extensions input_kind configenv abspath_in with
-          | Ok(pair) -> pair
-          | Error(e) -> raise (ConfigError(e))
-        in
+    (* Resolve dependency of the document and the local source files: *)
+    let (sorted_locals, utdoc) =
+      match OpenFileDependencyResolver.main display_config ~extensions input_kind configenv abspath_in with
+      | Ok(pair) -> pair
+      | Error(e) -> raise (ConfigError(e))
+    in
 
-        (* Typechecking and elaboration: *)
-        let (libs_local, ast_doc) =
-          match EnvelopeChecker.main_document display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
-          | Ok(pair) -> pair
-          | Error(e) -> raise (ConfigError(e))
-        in
-        let libs = List.append libs libs_local in
-        if type_check_only then
-          ()
-        else
-          preprocess_and_evaluate display_config pdf_config ~page_number_limit ~is_bytecomp_mode output_mode ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
+    (* Typechecking and elaboration: *)
+    let (libs_local, ast_doc) =
+      match EnvelopeChecker.main_document display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
+      | Ok(pair) -> pair
+      | Error(e) -> raise (ConfigError(e))
+    in
+    let libs = List.append libs libs_local in
+    if type_check_only then
+      ()
+    else
+      preprocess_and_evaluate display_config pdf_config ~page_number_limit ~is_bytecomp_mode output_mode ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
   )
 
 
 let test_package
     ~(fpath_in : string)
     ~(fpath_deps : string)
+    ~(fpath_base : string)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
 =
@@ -1485,6 +1443,7 @@ let test_package
 
     let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
+    let absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in
     let job_directory = get_job_directory abspath_in in
     let output_mode = make_output_mode text_mode_formats_str_opt in
     let typecheck_config =
@@ -1498,7 +1457,7 @@ let test_package
     let runtime_config = { job_directory } in
 
     let extensions = get_candidate_file_extensions output_mode in
-    let (tyenv_prim, env) = initialize ~is_bytecomp_mode:false output_mode runtime_config in
+    let (tyenv_prim, env) = initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config in
 
     Logging.deps_config_file display_config abspath_deps_config;
     let deps_config = load_deps_config abspath_deps_config in

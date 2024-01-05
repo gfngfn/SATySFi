@@ -28,9 +28,11 @@ let raise_if_err = function
   | Error(e) -> raise (FontInfoError(e))
 
 
+(*
 let resolve_lib_file (relpath : lib_path) =
   Config.resolve_lib_file relpath
     |> Result.map_error (fun candidates -> CannotFindLibraryFileAsToFont(relpath, candidates))
+*)
 
 
 module FontHashTable : sig
@@ -414,15 +416,15 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
   Pdf.Dictionary(keyval)
 
 
-let initialize () =
+let initialize ~base_dir:(absdir_base : abs_path) =
   let res =
     let open ResultMonad in
     FontHashTable.initialize ();
     MathFontHashTable.initialize ();
-    let* abspath_S   = resolve_lib_file (make_lib_path "unidata/Scripts.txt") in
-    let* abspath_EAW = resolve_lib_file (make_lib_path "unidata/EastAsianWidth.txt") in
+    let abspath_S = append_to_abs_directory absdir_base "unidata/Scripts.txt" in
+    let abspath_EAW = append_to_abs_directory absdir_base "unidata/EastAsianWidth.txt" in
     ScriptDataMap.set_from_file abspath_S abspath_EAW;
-    let* abspath_LB = resolve_lib_file (make_lib_path "unidata/LineBreak.txt") in
+    let abspath_LB = append_to_abs_directory absdir_base "unidata/LineBreak.txt" in
     LineBreakDataMap.set_from_file abspath_LB;
     return ()
   in

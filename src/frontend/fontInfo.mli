@@ -13,7 +13,7 @@ type math_key = FontKey.t
 
 type tag = string
 
-val initialize : unit -> unit
+val initialize : base_dir:abs_path -> unit
 
 val add_single : abs_path -> key
 
