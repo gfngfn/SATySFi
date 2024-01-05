@@ -110,7 +110,7 @@ let flag_bytecomp =
 
 let command_build =
   let open Cmdliner in
-  let term : unit Term.t =
+  Cmd.v (Cmd.info "build")
     Term.(const build
       $ arg_in
       $ flag_output
@@ -125,35 +125,23 @@ let command_build =
       $ flag_type_check_only
       $ flag_bytecomp
     )
-  in
-  let info : Cmd.info =
-    Cmd.info "build"
-  in
-  Cmd.v info term
 
 
 let command_solve =
   let open Cmdliner in
-  let term : unit Term.t =
+  Cmd.v (Cmd.info "solve")
     Term.(const solve $ arg_in)
-  in
-  let info : Cmd.info =
-    Cmd.info "solve"
-  in
-  Cmd.v info term
 
 
 let () =
   let open Cmdliner in
-  let term : unit Term.t =
-    Term.(ret (const (`Error(true, "No subcommand specified."))))
-  in
   let info : Cmd.info =
     Cmd.info ~version:SapheMain.version "saphe"
   in
   let subcommands =
     [
       command_solve;
+      command_build;
     ]
   in
-  Stdlib.exit (Cmd.eval (Cmd.group ~default:term info subcommands))
+  Stdlib.exit (Cmd.eval (Cmd.group info subcommands))

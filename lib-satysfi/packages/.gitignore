@@ -1,3 +1,4 @@
 *.satysfi-lock
 saphe.lock.yaml
 satysfi-envelope.yaml
+satysfi-deps.yaml
