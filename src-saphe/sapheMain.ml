@@ -739,20 +739,29 @@ let make_envelope_dependency (lock_dep : LockConfig.lock_dependency) : DepsConfi
   }
 
 
-let make_envelope_spec (locked_package : LockConfig.locked_package) : DepsConfig.envelope_spec =
-  let envelope_dependencies =
-    locked_package.lock_dependencies |> List.map make_envelope_dependency
+let make_envelope_spec ~(store_root : abs_path) (locked_package : LockConfig.locked_package) : DepsConfig.envelope_spec =
+  let LockConfig.{ lock_name; lock_dependencies; lock_contents; _ } = locked_package in
+  let envelope_dependencies = lock_dependencies |> List.map make_envelope_dependency in
+  let lock =
+    match lock_contents with
+    | LockConfig.RegisteredLock{
+        registry_hash_value;
+        package_name;
+        version;
+      } ->
+        let package_id = PackageId.{ package_name; registry_hash_value } in
+        Lock.{ package_id; locked_version = version }
   in
   DepsConfig.{
-    envelope_name = locked_package.lock_name;
-    envelope_path = failwith "TODO: make_envelope_spec, envelope_path";
+    envelope_name = lock_name;
+    envelope_path = get_abs_path_string (Constant.lock_directory ~store_root lock);
     envelope_dependencies;
   }
 
 
-let make_deps_config (lock_config : LockConfig.t) : DepsConfig.t =
+let make_deps_config ~(store_root : abs_path) (lock_config : LockConfig.t) : DepsConfig.t =
   let envelopes =
-    lock_config.LockConfig.locked_packages |> List.map make_envelope_spec
+    lock_config.LockConfig.locked_packages |> List.map (make_envelope_spec ~store_root)
   in
   let explicit_dependencies =
     lock_config.LockConfig.explicit_dependencies
@@ -829,6 +838,8 @@ let build
         }
     in
 
+    let* absdir_store_root = get_store_root () in
+
     match build_input with
     | PackageBuildInput{
         root     = _absdir_package;
@@ -839,7 +850,7 @@ let build
       } ->
         (* Updates the deps config: *)
         let* lock_config = LockConfig.load abspath_lock_config in
-        let deps_config = make_deps_config lock_config in
+        let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
         let* () = DepsConfig.write abspath_deps_config deps_config in
         Logging.end_deps_config_output abspath_deps_config;
 
@@ -862,7 +873,7 @@ let build
       } ->
         (* Updates the deps config: *)
         let* lock_config = LockConfig.load abspath_lock_config in
-        let deps_config = make_deps_config lock_config in
+        let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
         let* () = DepsConfig.write abspath_deps_config deps_config in
         Logging.end_deps_config_output abspath_deps_config;
 
