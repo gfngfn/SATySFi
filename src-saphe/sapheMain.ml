@@ -723,20 +723,28 @@ type build_input =
     }
 
 
-let make_envelope_dependency (lock_dep : LockConfig.lock_dependency) : DepsConfig.envelope_dependency =
-  DepsConfig.{
+let make_envelope_dependency (lock_dep : LockConfig.lock_dependency) : envelope_dependency =
+  {
     dependency_name    = lock_dep.depended_lock_name;
     dependency_used_as = lock_dep.used_as;
   }
 
 
-let make_envelope_spec ~(store_root : abs_path) (locked_package : LockConfig.locked_package) : DepsConfig.envelope_spec =
-  let LockConfig.{ lock_name; lock_dependencies; lock_contents = RegisteredLock(lock); _ } = locked_package in
+let make_envelope_spec ~(store_root : abs_path) (locked_package : LockConfig.locked_package) : envelope_spec =
+  let
+    LockConfig.{
+      lock_name;
+      lock_dependencies;
+      lock_contents = RegisteredLock(lock);
+      test_only_lock;
+    } = locked_package
+  in
   let envelope_dependencies = lock_dependencies |> List.map make_envelope_dependency in
-  DepsConfig.{
+  {
     envelope_name = lock_name;
     envelope_path = get_abs_path_string (Constant.lock_directory ~store_root lock);
     envelope_dependencies;
+    test_only_envelope = test_only_lock;
   }
 
 
@@ -748,7 +756,7 @@ let make_deps_config ~(store_root : abs_path) (lock_config : LockConfig.t) : Dep
     lock_config.LockConfig.explicit_dependencies
       |> List.map make_envelope_dependency
   in
-  DepsConfig.{ envelopes; explicit_dependencies }
+  { envelopes; explicit_dependencies }
 
 
 let build

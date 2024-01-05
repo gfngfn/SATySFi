@@ -21,12 +21,12 @@ type envelope_info = {
 let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(extensions : string list) (deps_config : DepsConfig.t) : ((envelope_name * (EnvelopeConfig.t * untyped_envelope)) list) ok =
   let open ResultMonad in
 
-  let DepsConfig.{ envelopes } = deps_config in
+  let { envelopes; _ } = deps_config in
 
   (* Add vertices: *)
   let* (graph, entryacc) =
-    envelopes |> foldM (fun (graph, entryacc) (envelope : DepsConfig.envelope) ->
-      let DepsConfig.{ envelope_name; envelope_path; envelope_dependencies; test_only_envelope; _ } = envelope in
+    envelopes |> foldM (fun (graph, entryacc) (envelope_spec : envelope_spec) ->
+      let { envelope_name; envelope_path; envelope_dependencies; test_only_envelope } = envelope_spec in
       if test_only_envelope && not use_test_only_envelope then
       (* Skips test-only envelopes when using sources only: *)
         return (graph, entryacc)

@@ -1,25 +1,10 @@
 
 open MyUtil
+open EnvelopeSystemBase
 open ConfigError
 
 
-type envelope_name = string
-
-type envelope_dependency = {
-  dependency_name    : envelope_name;
-  dependency_used_as : string;
-}
-
-type envelope_spec = {
-  envelope_name          : envelope_name;
-  envelope_path          : string;
-  envelope_dependencies  : envelope_dependency list;
-}
-
-type t = {
-  envelopes             : envelope_spec list;
-  explicit_dependencies : envelope_dependency list;
-}
+type t = deps_config
 
 
 let envelope_dependency_encoder (dep : envelope_dependency) : Yaml.value =
@@ -31,11 +16,12 @@ let envelope_dependency_encoder (dep : envelope_dependency) : Yaml.value =
 
 
 let envelope_spec_encoder (spec : envelope_spec) : Yaml.value =
-  let { envelope_name; envelope_path; envelope_dependencies } = spec in
+  let { envelope_name; envelope_path; envelope_dependencies; test_only_envelope } = spec in
   `O([
     ("name", `String(envelope_name));
     ("path", `String(envelope_path));
     ("dependencies", `A(envelope_dependencies |> List.map envelope_dependency_encoder));
+    ("test_only", `Bool(test_only_envelope));
   ])
 
 let deps_config_encoder (deps_config : t) : Yaml.value =

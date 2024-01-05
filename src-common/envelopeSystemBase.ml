@@ -48,3 +48,15 @@ type envelope_dependency = {
   dependency_name    : envelope_name;
   dependency_used_as : string;
 }
+
+type envelope_spec = {
+  envelope_name          : envelope_name;
+  envelope_path          : string;
+  envelope_dependencies  : envelope_dependency list;
+  test_only_envelope     : bool;
+}
+
+type deps_config = {
+  envelopes             : envelope_spec list;
+  explicit_dependencies : envelope_dependency list;
+}
