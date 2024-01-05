@@ -16,6 +16,7 @@
    ocamlgraph
    omd
    otfed
+   satysfi-common
    satysfi-util
    semver2
    str

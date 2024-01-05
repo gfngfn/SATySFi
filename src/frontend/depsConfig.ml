@@ -16,5 +16,5 @@ type t = {
 }
 
 
-let load (_abspath : abs_path) : (t, config_error) result =
+let load (_abspath_deps_config : abs_path) : (t, config_error) result =
   failwith "TODO: DepsConfig.load"

@@ -1,6 +1,7 @@
 
 open MyUtil
 open ConfigError
+open EnvelopeSystemBase
 open PackageSystemBase
 
 type package_contents =

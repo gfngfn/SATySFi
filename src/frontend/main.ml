@@ -1,6 +1,5 @@
 
 open MyUtil
-open EnvelopeSystemBase
 open Types
 open StaticEnv
 open ConfigError

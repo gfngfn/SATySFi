@@ -1,33 +1,9 @@
 
 open MyUtil
-open ConfigError
-open PackageSystemBase
+open EnvelopeSystemBase
 
 
-type relative_path = string
-
-type font_file_description = {
-  font_file_path     : relative_path;
-  font_file_contents : font_file_contents;
-}
-
-type package_conversion_spec = unit (* TODO *)
-
-type envelope_contents =
-  | Library of {
-      main_module_name   : string;
-      source_directories : relative_path list;
-      test_directories   : relative_path list;
-      conversion_specs   : package_conversion_spec list;
-    }
-  | Font of {
-      main_module_name       : string;
-      font_file_descriptions : font_file_description list;
-    }
-
-type t = {
-  envelope_contents : envelope_contents;
-}
+type t = envelope_config
 
 
 let font_spec_encoder (font_spec : font_spec) : Yaml.value =
@@ -73,10 +49,7 @@ let envelope_config_encoder (envelope_config : t) : Yaml.value =
        ])
 
 
-let write (abspath_envelope_config : abs_path) (envelope_config : t) : (unit, config_error) result =
+let write (abspath_envelope_config : abs_path) (envelope_config : t) : (unit, string) result =
   let yaml = envelope_config_encoder envelope_config in
   let data = encode_yaml yaml in
   write_file abspath_envelope_config data
-    |> Result.map_error (fun message ->
-      CannotWriteEnvelopeConfig{ message; path = abspath_envelope_config }
-    )

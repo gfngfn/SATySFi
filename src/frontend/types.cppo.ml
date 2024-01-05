@@ -5,6 +5,10 @@ open SyntaxBase
 open MyUtil
 
 
+type input_kind =
+  | InputSatysfi
+  | InputMarkdown
+
 type parse_error =
   | CannotProgressParsing of Range.t
   | IllegalItemDepth of {

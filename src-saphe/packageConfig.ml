@@ -2,6 +2,7 @@
 open MyUtil
 open ConfigError
 open ConfigUtil
+open EnvelopeSystemBase
 open PackageSystemBase
 
 

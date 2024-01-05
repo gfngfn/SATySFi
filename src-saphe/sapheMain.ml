@@ -1,5 +1,6 @@
 
 open MyUtil
+open EnvelopeSystemBase
 open PackageSystemBase
 open ConfigError
 
@@ -497,7 +498,7 @@ let make_envelope_config (package_contents : PackageConfig.package_contents) : E
       test_directories;
       _
     } ->
-      EnvelopeConfig.{
+      {
         envelope_contents =
           Library{
             main_module_name;
@@ -509,17 +510,9 @@ let make_envelope_config (package_contents : PackageConfig.package_contents) : E
 
   | PackageConfig.Font{
       main_module_name;
-      font_file_descriptions = descrs;
+      font_file_descriptions;
     } ->
-      let font_file_descriptions =
-        descrs |> List.map (fun descr ->
-          let { font_file_path; font_file_contents } = descr in
-          EnvelopeConfig.{ font_file_path; font_file_contents }
-        )
-      in
-      EnvelopeConfig.{
-        envelope_contents = Font{ main_module_name; font_file_descriptions };
-      }
+      { envelope_contents = Font{ main_module_name; font_file_descriptions } }
 
 
 let get_store_root () : (abs_path, config_error) result =
@@ -587,7 +580,12 @@ let solve ~(fpath_in : string) =
 
           (* Writes the envelope config: *)
           let envelope_config = make_envelope_config package_contents in
-          let* () = EnvelopeConfig.write abspath_envelope_config envelope_config in
+          let* () =
+            EnvelopeConfig.write abspath_envelope_config envelope_config
+              |> Result.map_error (fun message ->
+                CannotWriteEnvelopeConfig{ message; path = abspath_envelope_config }
+              )
+          in
           Logging.end_envelope_config_output abspath_envelope_config;
 
           let dependencies_with_flags =

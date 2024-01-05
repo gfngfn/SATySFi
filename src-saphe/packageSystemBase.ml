@@ -1,8 +1,6 @@
 
 open MyUtil
-
-type relative_path = string
-[@@deriving show]
+open EnvelopeSystemBase
 
 type lock_name = string
 [@@deriving show]
@@ -180,23 +178,6 @@ type external_resource =
       checksum    : string;
       extractions : extraction list;
     }
-[@@deriving show { with_path = false }]
-
-type font_spec = {
-  font_item_name    : string;
-  used_as_math_font : bool;
-}
-[@@deriving show]
-
-type font_file_contents =
-  | OpentypeSingle     of font_spec
-  | OpentypeCollection of font_spec list
-[@@deriving show]
-
-type font_file_description = {
-  font_file_path     : relative_path;
-  font_file_contents : font_file_contents;
-}
 [@@deriving show { with_path = false }]
 
 type parsed_package_contents =

@@ -1,12 +1,9 @@
 (library
- (name sapheMain)
- (public_name saphe)
+ (name common)
+ (public_name satysfi-common)
  (flags (:standard -bin-annot -thread -safe-string))
+ (wrapped false)
  (libraries
-   0install-solver
-   cmdliner
-   satysfi-common
-   satysfi-util
-   uri)
+   satysfi-util)
  (preprocess
    (pps ppx_deriving.show)))
