@@ -169,6 +169,7 @@ let eval_document_file (display_config : Logging.config) (pdf_config : HandlePdf
             Logging.end_output display_config abspath_out;
       in
       aux 1
+
   | PdfMode ->
       let rec aux (i : int) =
         let value_doc = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
@@ -1102,7 +1103,7 @@ let report_font_error (display_config : Logging.config) : font_error -> unit = f
       ]
 
 
-let error_log_environment (display_config : Logging.config) (suspended : unit -> unit) : unit =
+let error_log_environment (display_config : Logging.config) (suspended : unit -> 'a) : 'a =
   try
     suspended ()
   with
@@ -1272,20 +1273,8 @@ let get_candidate_file_extensions (output_mode : output_mode) =
   | TextMode(formats) -> List.append (formats |> List.map (fun s -> ".satyh-" ^ s)) [ ".satyg" ]
 
 
-type build_input =
-  | EnvelopeBuildInput of {
-      deps : abs_path;
-    }
-  | DocumentBuildInput of {
-      kind : input_kind;
-      deps : abs_path;
-      out  : abs_path;
-      dump : abs_path;
-    }
-
-
-let get_input_kind_from_extension (abspathstr_in : string) =
-  match Filename.extension abspathstr_in with
+let get_input_kind_from_extension (abspath_doc : abs_path) =
+  match Filename.extension (get_abs_path_string abspath_doc) with
   | ".saty" -> Ok(InputSatysfi)
   | ".md"   -> Ok(InputMarkdown)
   | ext     -> Error(ext)
@@ -1321,14 +1310,6 @@ let check_depended_envelopes (display_config : Logging.config) (typecheck_config
   (genv, configenv, Alist.to_list libacc)
 
 
-let make_package_deps_config_path (abspathstr_in : string) =
-  make_abs_path (Printf.sprintf "%s/package.satysfi-deps.yaml" abspathstr_in)
-
-
-let make_document_deps_config_path (basename_without_extension : string) =
-  make_abs_path (Printf.sprintf "%s.satysfi-deps.yaml" basename_without_extension)
-
-
 let make_output_mode text_mode_formats_str_opt =
   match text_mode_formats_str_opt with
   | None    -> PdfMode
@@ -1351,9 +1332,64 @@ let get_job_directory (abspath : abs_path) : string =
   Filename.dirname (get_abs_path_string abspath)
 
 
-let build
+let build_package
+    ~(fpath_in : string)
+    ~(fpath_deps : string)
+    ~(text_mode_formats_str_opt : string option)
+    ~(show_full_path : bool)
+=
+  let display_config = Logging.{ show_full_path } in
+  error_log_environment display_config (fun () ->
+    let absdir_current = Sys.getcwd () in
+
+    let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+    let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
+
+    let output_mode = make_output_mode text_mode_formats_str_opt in
+    let typecheck_config =
+      {
+        is_text_mode =
+          match output_mode with
+          | PdfMode     -> false
+          | TextMode(_) -> true
+      }
+    in
+
+    let extensions = get_candidate_file_extensions output_mode in
+    let job_directory = get_job_directory abspath_in in
+    let runtime_config = { job_directory } in
+    let (tyenv_prim, _env) = initialize ~is_bytecomp_mode:false output_mode runtime_config in
+
+    Logging.deps_config_file display_config abspath_deps_config;
+    let deps_config = load_deps_config abspath_deps_config in
+
+    let (_config, envelope) =
+      load_envelope display_config ~use_test_files:false ~extensions abspath_in
+    in
+
+    let (genv, _configenv, _libs_dep) =
+      check_depended_envelopes
+        display_config
+        typecheck_config
+        ~use_test_only_envelope:false
+        ~extensions
+        tyenv_prim
+        deps_config
+    in
+
+    begin
+      match EnvelopeChecker.main display_config typecheck_config tyenv_prim genv envelope with
+      | Ok((_ssig, _libs)) -> ()
+      | Error(e)           -> raise (ConfigError(e))
+    end
+  )
+
+
+let build_document
     ~(fpath_in : string)
     ~(fpath_out : string)
+    ~(fpath_dump : string)
+    ~(fpath_deps : string)
     ~(text_mode_formats_str_opt : string option)
     ~(page_number_limit : int)
     ~(show_full_path : bool)
@@ -1363,18 +1399,17 @@ let build
     ~(debug_show_block_space : bool)
     ~(debug_show_overfull : bool)
     ~(type_check_only : bool)
-    ~(bytecomp : bool)
+    ~bytecomp:(is_bytecomp_mode : bool)
 =
   let display_config = Logging.{ show_full_path } in
   error_log_environment display_config (fun () ->
-    let curdir = Sys.getcwd () in
+    let absdir_current = Sys.getcwd () in
 
-    let input_file = make_absolute_if_relative ~origin:curdir fpath_in in
-    let job_directory = get_job_directory input_file in
-    let output_file = make_absolute_if_relative ~origin:curdir fpath_out in
-(*
-    let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
-*)
+    let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+    let abspath_out = make_absolute_if_relative ~origin:absdir_current fpath_out in
+    let abspath_dump = make_absolute_if_relative ~origin:absdir_current fpath_dump in
+    let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
+
     let output_mode = make_output_mode text_mode_formats_str_opt in
     let typecheck_config =
       {
@@ -1393,69 +1428,18 @@ let build
         debug_show_overfull;
       }
     in
+    let job_directory = get_job_directory abspath_in in
     let runtime_config = { job_directory } in
 
-(*
-    let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
-*)
-    let abspath_in = input_file in
-    let is_bytecomp_mode = bytecomp in
-    let build_input =
-      let abspathstr_in = get_abs_path_string abspath_in in
-      if Sys.is_directory abspathstr_in then
-      (* If the input is a package directory: *)
-        let abspath_deps_config = make_package_deps_config_path abspathstr_in in
-        EnvelopeBuildInput{
-          deps = abspath_deps_config;
-        }
-      else
-      (* If the input is a document file: *)
-        let input_kind_res = get_input_kind_from_extension abspathstr_in in
-        match input_kind_res with
-        | Error(ext) ->
-            raise (UnexpectedExtension(ext))
-
-        | Ok(input_kind) ->
-            let basename_without_extension = Filename.remove_extension abspathstr_in in
-            let abspath_deps_config = make_document_deps_config_path basename_without_extension in
-            let abspath_out = output_file in
-            let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
-            DocumentBuildInput{
-              kind = input_kind;
-              deps = abspath_deps_config;
-              out  = abspath_out;
-              dump = abspath_dump;
-            }
+    let input_kind =
+      match get_input_kind_from_extension abspath_in with
+      | Error(ext)     -> raise (UnexpectedExtension(ext))
+      | Ok(input_kind) -> input_kind
     in
 
     let extensions = get_candidate_file_extensions output_mode in
     let (tyenv_prim, env) = initialize ~is_bytecomp_mode output_mode runtime_config in
 
-    match build_input with
-    | EnvelopeBuildInput{
-        deps = abspath_deps_config;
-      } ->
-        Logging.deps_config_file display_config abspath_deps_config;
-        let deps_config = load_deps_config abspath_deps_config in
-
-        let (_config, envelope) = load_envelope display_config ~use_test_files:false ~extensions abspath_in in
-
-        let (genv, _configenv, _libs_dep) =
-          check_depended_envelopes display_config typecheck_config ~use_test_only_envelope:false (* ~library_root *) ~extensions tyenv_prim deps_config
-        in
-
-        begin
-          match EnvelopeChecker.main display_config typecheck_config tyenv_prim genv envelope with
-          | Ok((_ssig, _libs)) -> ()
-          | Error(e)           -> raise (ConfigError(e))
-        end
-
-    | DocumentBuildInput{
-        kind = input_kind;
-        deps = abspath_deps_config;
-        out  = abspath_out;
-        dump = abspath_dump;
-      } ->
         Logging.deps_config_file display_config abspath_deps_config;
         let deps_config = load_deps_config abspath_deps_config in
 
@@ -1489,96 +1473,58 @@ let build
   )
 
 
-type test_input =
-  | EnvelopeTestInput of {
-      deps : abs_path;
-    }
-  | DocumentTestInput of {
-      kind : input_kind;
-      deps : abs_path;
-    }
-
-
-let test
+let test_package
     ~(fpath_in : string)
+    ~(fpath_deps : string)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
 =
   let display_config = Logging.{ show_full_path } in
   error_log_environment display_config (fun () ->
-    let curdir = Sys.getcwd () in
+    let absdir_current = Sys.getcwd () in
 
-    let input_file_to_test = make_absolute_if_relative ~origin:curdir fpath_in in
-    let job_directory = get_job_directory input_file_to_test in
-(*
-    let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
-*)
-    let output_mode_to_test = make_output_mode text_mode_formats_str_opt in
-    let bytecomp = false in
+    let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+    let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
+    let job_directory = get_job_directory abspath_in in
+    let output_mode = make_output_mode text_mode_formats_str_opt in
     let typecheck_config =
       {
         is_text_mode =
-          match output_mode_to_test with
+          match output_mode with
           | PdfMode     -> false
           | TextMode(_) -> true
       }
     in
     let runtime_config = { job_directory } in
 
-(*
-    let library_root = setup_root_dirs ~no_default_config ~extra_config_paths curdir in
-*)
-    let abspath_in = input_file_to_test in
-    let test_input =
-      let abspathstr_in = get_abs_path_string abspath_in in
-      if Sys.is_directory abspathstr_in then
-      (* If the input is a package directory: *)
-        let abspath_deps_config = make_package_deps_config_path abspathstr_in in
-        EnvelopeTestInput{
-          deps = abspath_deps_config;
-        }
-      else
-      (* If the input is a document file: *)
-        let input_kind_res = get_input_kind_from_extension abspathstr_in in
-        match input_kind_res with
-        | Error(ext) ->
-            raise (UnexpectedExtension(ext))
+    let extensions = get_candidate_file_extensions output_mode in
+    let (tyenv_prim, env) = initialize ~is_bytecomp_mode:false output_mode runtime_config in
 
-        | Ok(input_kind) ->
-            let basename_without_extension = Filename.remove_extension abspathstr_in in
-            let abspath_deps_config = make_document_deps_config_path basename_without_extension in
-            DocumentTestInput{
-              kind = input_kind;
-              deps = abspath_deps_config;
-            }
+    Logging.deps_config_file display_config abspath_deps_config;
+    let deps_config = load_deps_config abspath_deps_config in
+
+    let (_config, package) =
+      load_envelope display_config ~use_test_files:true ~extensions abspath_in
     in
 
-    let extensions = get_candidate_file_extensions output_mode_to_test in
-    let (tyenv_prim, env) = initialize ~is_bytecomp_mode:bytecomp output_mode_to_test runtime_config in
+    let (genv, _configenv, _libs_dep) =
+      check_depended_envelopes
+        display_config
+        typecheck_config
+        ~use_test_only_envelope:true
+        ~extensions
+        tyenv_prim
+        deps_config
+    in
 
-    begin
-      match test_input with
-      | EnvelopeTestInput{
-          deps = abspath_deps_config;
-        } ->
-          Logging.deps_config_file display_config abspath_deps_config;
-          let deps_config = load_deps_config abspath_deps_config in
-
-          let (_config, package) = load_envelope display_config ~use_test_files:true ~extensions abspath_in in
-
-          let (genv, _configenv, _libs_dep) =
-            check_depended_envelopes display_config typecheck_config ~use_test_only_envelope:true (* ~library_root *) ~extensions tyenv_prim deps_config
-          in
-
-          let libs =
-            match EnvelopeChecker.main display_config typecheck_config tyenv_prim genv package with
-            | Ok((_ssig, libs)) -> libs
-            | Error(e)          -> raise (ConfigError(e))
-          in
-          let (env, codebinds) = preprocess_bindings display_config ~run_tests:true env libs in
-          let _env = evaluate_bindings display_config ~run_tests:true env codebinds in
-          ()
-
+    let libs =
+      match EnvelopeChecker.main display_config typecheck_config tyenv_prim genv package with
+      | Ok((_ssig, libs)) -> libs
+      | Error(e)          -> raise (ConfigError(e))
+    in
+    let (env, codebinds) = preprocess_bindings display_config ~run_tests:true env libs in
+    let _env = evaluate_bindings display_config ~run_tests:true env codebinds in
+(*
       | DocumentTestInput{
           kind = input_kind;
           deps = abspath_deps_config;
@@ -1607,7 +1553,7 @@ let test
           let (env, codebinds) = preprocess_bindings display_config ~run_tests:true env libs in
           let _env = evaluate_bindings display_config ~run_tests:true env codebinds in
           ()
-    end;
+*)
     let test_results = State.get_all_test_results () in
     let failure_found =
       test_results |> List.fold_left (fun failure_found test_result ->

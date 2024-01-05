@@ -1,7 +1,22 @@
 
-let build
+let build_package
+  fpath_in
+  fpath_deps
+  text_mode_formats_str_opt
+  show_full_path
+=
+  Main.build_package
+    ~fpath_in
+    ~fpath_deps
+    ~text_mode_formats_str_opt
+    ~show_full_path
+
+
+let build_document
   fpath_in
   fpath_out
+  fpath_dump
+  fpath_deps
   text_mode_formats_str_opt
   page_number_limit
   show_full_path
@@ -13,9 +28,11 @@ let build
   type_check_only
   bytecomp
 =
-  Main.build
+  Main.build_document
     ~fpath_in
     ~fpath_out
+    ~fpath_dump
+    ~fpath_deps
     ~text_mode_formats_str_opt
     ~page_number_limit
     ~show_full_path
@@ -28,13 +45,15 @@ let build
     ~bytecomp
 
 
-let test
+let test_package
   fpath_in
+  fpath_deps
   text_mode_formats_str_opt
   show_full_path
 =
-  Main.test
+  Main.test_package
     ~fpath_in
+    ~fpath_deps
     ~text_mode_formats_str_opt
     ~show_full_path
 
@@ -46,13 +65,25 @@ let arg_in : string Cmdliner.Term.t =
 
 let flag_output : string Cmdliner.Term.t =
   let open Cmdliner in
-  let doc = "Specify output path." in
+  let doc = "Specify an output path" in
   Arg.(required (opt (some string) None (info [ "o"; "output" ] ~docv:"OUTPUT" ~doc)))
+
+
+let flag_dump : string Cmdliner.Term.t =
+  let open Cmdliner in
+  let doc = "Specify a dump file path" in
+  Arg.(required (opt (some string) None (info [ "dump" ] ~docv:"DUMP" ~doc)))
+
+
+let flag_deps : string Cmdliner.Term.t =
+  let open Cmdliner in
+  let doc = "Specify a deps config path" in
+  Arg.(required (opt (some string) None (info [ "deps" ] ~docv:"DEPS" ~doc)))
 
 
 let flag_text_mode =
   let open Cmdliner in
-  let doc = "Set text mode" in
+  let doc = "Set the text-generating mode" in
   Arg.(value (opt (some string) None (info [ "text-mode" ] ~docv:"FORMATS" ~doc)))
 
 
@@ -115,12 +146,14 @@ let flag_bytecomp =
     ~doc:"Use bytecode compiler"
 
 
-let command_build =
+let command_build_document =
   let open Cmdliner in
-  let term : unit Term.t =
-    Term.(const build
+  Cmd.v (Cmd.info "document")
+    Term.(const build_document
       $ arg_in
       $ flag_output
+      $ flag_dump
+      $ flag_deps
       $ flag_text_mode
       $ flag_page_number_limit
       $ flag_full_path
@@ -132,33 +165,49 @@ let command_build =
       $ flag_type_check_only
       $ flag_bytecomp
     )
-  in
-  let info : Cmd.info =
-    Cmd.info "build"
-  in
-  Cmd.v info term
 
 
-let command_test =
+let command_build_package =
+  let open Cmdliner in
+  Cmd.v (Cmd.info "package")
+    Term.(const build_package
+      $ arg_in
+      $ flag_deps
+      $ flag_text_mode
+      $ flag_full_path
+    )
+
+
+let command_build =
+  let open Cmdliner in
+  Cmd.group (Cmd.info "build") [
+    command_build_package;
+    command_build_document;
+  ]
+
+
+let command_test_package =
   let open Cmdliner in
   let term : unit Term.t =
-    Term.(const test
+    Term.(const test_package
       $ arg_in
+      $ flag_deps
       $ flag_text_mode
       $ flag_full_path
     )
   in
-  let info : Cmd.info =
-    Cmd.info "test"
-  in
-  Cmd.v info term
+  Cmd.v (Cmd.info "test") term
+
+
+let command_test =
+  let open Cmdliner in
+  Cmd.group (Cmd.info "build") [
+    command_test_package;
+  ]
 
 
 let () =
   let open Cmdliner in
-  let term : unit Term.t =
-    Term.(ret (const (`Error(true, "No subcommand specified."))))
-  in
   let info : Cmd.info =
     Cmd.info ~version:Main.version "satysfi"
   in
@@ -168,4 +217,4 @@ let () =
       command_test;
     ]
   in
-  Stdlib.exit (Cmd.eval (Cmd.group ~default:term info subcommands))
+  Stdlib.exit (Cmd.eval (Cmd.group info subcommands))
