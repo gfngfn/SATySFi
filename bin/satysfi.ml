@@ -2,7 +2,6 @@
 let build
   fpath_in
   fpath_out
-  config_paths_str_opt
   text_mode_formats_str_opt
   page_number_limit
   show_full_path
@@ -13,12 +12,10 @@ let build
   debug_show_overfull
   type_check_only
   bytecomp
-  no_default_config
 =
   Main.build
     ~fpath_in
     ~fpath_out
-    ~config_paths_str_opt
     ~text_mode_formats_str_opt
     ~page_number_limit
     ~show_full_path
@@ -29,22 +26,17 @@ let build
     ~debug_show_overfull
     ~type_check_only
     ~bytecomp
-    ~no_default_config
 
 
 let test
   fpath_in
-  config_paths_str_opt
   text_mode_formats_str_opt
   show_full_path
-  no_default_config
 =
   Main.test
     ~fpath_in
-    ~config_paths_str_opt
     ~text_mode_formats_str_opt
     ~show_full_path
-    ~no_default_config
 
 
 let arg_in : string Cmdliner.Term.t =
@@ -56,12 +48,6 @@ let flag_output : string Cmdliner.Term.t =
   let open Cmdliner in
   let doc = "Specify output path." in
   Arg.(required (opt (some string) None (info [ "o"; "output" ] ~docv:"OUTPUT" ~doc)))
-
-
-let flag_config =
-  let open Cmdliner in
-  let doc = "Add colon-separated paths to configuration search path" in
-  Arg.(value (opt (some string) None (info [ "C"; "config" ] ~docv:"PATHS" ~doc)))
 
 
 let flag_text_mode =
@@ -129,19 +115,12 @@ let flag_bytecomp =
     ~doc:"Use bytecode compiler"
 
 
-let flag_no_default_config =
-  make_boolean_flag_spec
-    ~flags:[ "no-default-config" ]
-    ~doc:"Does not use default configuration search path"
-
-
 let command_build =
   let open Cmdliner in
   let term : unit Term.t =
     Term.(const build
       $ arg_in
       $ flag_output
-      $ flag_config
       $ flag_text_mode
       $ flag_page_number_limit
       $ flag_full_path
@@ -152,7 +131,6 @@ let command_build =
       $ flag_debug_show_overfull
       $ flag_type_check_only
       $ flag_bytecomp
-      $ flag_no_default_config
     )
   in
   let info : Cmd.info =
@@ -166,10 +144,8 @@ let command_test =
   let term : unit Term.t =
     Term.(const test
       $ arg_in
-      $ flag_config
       $ flag_text_mode
       $ flag_full_path
-      $ flag_no_default_config
     )
   in
   let info : Cmd.info =
