@@ -1,5 +1,6 @@
 
 open MyUtil
+open EnvelopeSystemBase
 open Types
 open StaticEnv
 open ConfigError
@@ -145,11 +146,11 @@ let check_font_envelope (_main_module_name : module_name) (font_files : font_fil
         {
           r_font_file_path     = path;
           r_font_file_contents = font_file_contents;
-          r_used_as_math_font  = used_as_math_font;
         } = r
       in
       match font_file_contents with
-      | OpentypeSingle(varnm) ->
+      | OpentypeSingle(font_spec) ->
+          let { font_item_name = varnm; used_as_math_font } = font_spec in
           let evid = EvalVarID.fresh (Range.dummy "font-envelope 1", varnm) in
           let bind = Bind(stage, NonRec(evid, LoadSingleFont{ path; used_as_math_font })) in
           let ventry =
@@ -161,9 +162,10 @@ let check_font_envelope (_main_module_name : module_name) (font_files : font_fil
           in
           (ssig |> StructSig.add_value varnm ventry, Alist.extend libacc (path, [ bind ]))
 
-      | OpentypeCollection(varnms) ->
+      | OpentypeCollection(font_specs) ->
           let (ssig, bindacc, _) =
-            varnms |> List.fold_left (fun (ssig, bindacc, index) varnm ->
+            font_specs |> List.fold_left (fun (ssig, bindacc, index) font_spec ->
+              let { font_item_name = varnm; used_as_math_font } = font_spec in
               let evid = EvalVarID.fresh (Range.dummy "font-envelope 3", varnm) in
               let bind = Bind(stage, NonRec(evid, LoadCollectionFont{ path; index; used_as_math_font })) in
               let ventry =

@@ -7,9 +7,10 @@ type t = envelope_config
 
 
 let font_spec_encoder (font_spec : font_spec) : Yaml.value =
+  let { font_item_name; used_as_math_font } = font_spec in
   `O([
-    ("name", `String(font_spec.font_item_name));
-    ("math", `Bool(font_spec.used_as_math_font));
+    ("name", `String(font_item_name));
+    ("math", `Bool(used_as_math_font));
   ])
 
 
@@ -29,7 +30,8 @@ let font_file_description_encoder (descr : font_file_description) : Yaml.value =
 
 
 let envelope_config_encoder (envelope_config : t) : Yaml.value =
-  match envelope_config.envelope_contents with
+  let { envelope_contents } = envelope_config in
+  match envelope_contents with
   | Library{ main_module_name; source_directories; test_directories; _ } ->
       (* TODO: encode conversion specs *)
       `O([

@@ -3,6 +3,7 @@ open LengthInterface
 open GraphicBase
 open SyntaxBase
 open MyUtil
+open EnvelopeSystemBase
 
 
 type input_kind =
@@ -612,15 +613,9 @@ type untyped_source_file =
   | UTDocumentFile of untyped_document_file
 [@@deriving show { with_path = false; }]
 
-type font_file_contents =
-  | OpentypeSingle     of var_name
-  | OpentypeCollection of var_name list
-[@@deriving show { with_path = false }]
-
 type font_file_record = {
   r_font_file_path     : abs_path;
   r_font_file_contents : font_file_contents;
-  r_used_as_math_font  : bool;
 }
 [@@deriving show { with_path = false }]
 

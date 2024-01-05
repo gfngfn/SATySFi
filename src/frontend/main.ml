@@ -1089,6 +1089,17 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
         DisplayLine(get_abs_path_string abspath_deps_config);
       ] (make_yaml_error_lines e))
 
+  | EnvelopeConfigNotFound(abspath_envelope_config) ->
+      report_error Interface [
+        NormalLine("cannot find an envelope config at:");
+        DisplayLine(get_abs_path_string abspath_envelope_config);
+      ]
+
+  | EnvelopeConfigError(abspath_envelope_config, e) ->
+      report_error Interface (List.append [
+        NormalLine("failed to load an envelope config:");
+        DisplayLine(get_abs_path_string abspath_envelope_config);
+      ] (make_yaml_error_lines e))
 
 
 let report_font_error (display_config : Logging.config) : font_error -> unit = function

@@ -1,5 +1,6 @@
 
 open MyUtil
+open EnvelopeSystemBase
 open Types
 open ConfigError
 
@@ -23,17 +24,12 @@ let make_path_list_absolute ~(origin : abs_path) (reldirs : string list) : abs_p
   )
 
 
-let convert_font_file_contents = function
-  | EnvelopeConfig.OpentypeSingle(x)      -> OpentypeSingle(x)
-  | EnvelopeConfig.OpentypeCollection(xs) -> OpentypeCollection(xs)
-
-
 let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (absdir_envelope : abs_path) : (EnvelopeConfig.t * untyped_envelope) ok =
   let open ResultMonad in
   let* config = EnvelopeConfig.load absdir_envelope in
   let* envelope =
     match config.envelope_contents with
-    | EnvelopeConfig.Library{ main_module_name; source_directories; test_directories; _ } ->
+    | Library{ main_module_name; source_directories; test_directories; _ } ->
         let absdirs_src = source_directories |> make_path_list_absolute ~origin:absdir_envelope in
         let abspaths_src = absdirs_src |> List.map (listup_sources_in_directory extensions) |> List.concat in
         let abspaths =
@@ -65,15 +61,14 @@ let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions
           modules;
         }
 
-    | EnvelopeConfig.Font{ main_module_name; font_file_descriptions } ->
+    | Font{ main_module_name; font_file_descriptions } ->
         let font_files =
           font_file_descriptions |> List.map (fun font_file_description ->
-            let EnvelopeConfig.{ font_file_path; font_file_contents; used_as_math_font } = font_file_description in
-            let abspath = make_abs_path (Filename.concat (get_abs_path_string absdir_envelope) font_file_path) in
+            let { font_file_path; font_file_contents } = font_file_description in
+            let abspath = append_to_abs_directory absdir_envelope font_file_path in
             {
               r_font_file_path     = abspath;
-              r_font_file_contents = convert_font_file_contents font_file_contents;
-              r_used_as_math_font  = used_as_math_font;
+              r_font_file_contents = font_file_contents;
             }
           )
         in

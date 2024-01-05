@@ -72,3 +72,5 @@ type config_error =
     }
   | DepsConfigNotFound        of abs_path
   | DepsConfigError           of abs_path * yaml_error
+  | EnvelopeConfigNotFound    of abs_path
+  | EnvelopeConfigError       of abs_path * yaml_error
