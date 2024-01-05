@@ -6,7 +6,7 @@ BINDIR=$(PREFIX)/bin
 RM=rm -f
 DUNE=dune
 
-.PHONY: all test test-packages install uninstall clean
+.PHONY: all test test-packages promote-package-locs update-ci-cache install uninstall clean
 
 all:
 	$(DUNE) build --root .
@@ -18,6 +18,12 @@ test:
 
 test-packages:
 	./check-packages.sh
+
+promote-package-locks:
+	./promote-lock-of-packages.sh
+
+update-ci-cache:
+	./update-default-registry-commit-hash-file.sh
 
 install: $(SATYSFI) $(SAPHE)
 	mkdir -p $(BINDIR)

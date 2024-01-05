@@ -22,7 +22,7 @@ jobs:
         env:
           cache-name: cache-locks
         with:
-          path: ~/.satysfi/cache/
+          path: ~/.saphe/cache/
           key: ${{ env.cache-name }}-${{ hashFiles('default-registry-commit-hash.txt') }}
 
       - name: Determine the default OPAM Repo

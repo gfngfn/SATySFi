@@ -5,14 +5,18 @@ for FILE in $(find lib-satysfi -name saphe.yaml); do
     DIR="$(dirname "$FILE")"
     echo " ==== $DIR ===="
     ./saphe solve "$DIR"
+    if [ $? -ne 0 ]; then
+        echo "! FAILED (not solved)"
+        FAILED=1
+    fi
     if diff "$DIR/saphe.lock.yaml" "$DIR/saphe.lock.yaml.expected"; then
         if diff "$DIR/satysfi-envelope.yaml" "$DIR/satysfi-envelope.yaml.expected"; then
-          echo "(TODO: build)"
-          #saphe build "$DIR"
-          echo "* OK: $DIR"
+            echo "(TODO: build)"
+            #saphe build "$DIR"
+            echo "* OK: $DIR"
         else
-          echo "! FAILED (envelope config mismatch): $DIR"
-          FAILED=1
+            echo "! FAILED (envelope config mismatch): $DIR"
+            FAILED=1
         fi
     else
         echo "! FAILED (lock config mismatch): $DIR"
