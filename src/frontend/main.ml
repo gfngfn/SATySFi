@@ -8,10 +8,6 @@ open FontError
 open TypeError
 
 
-(*
-exception NoLibraryRootDesignation
-*)
-exception ShouldSpecifyOutputFile
 exception UnexpectedExtension of string
 exception ConfigError of config_error
 
@@ -27,6 +23,7 @@ let reset (output_mode : output_mode) =
   match output_mode with
   | TextMode(_) ->
       return ()
+
   | PdfMode ->
       ImageInfo.initialize ();
       NamedDest.initialize ();
@@ -44,6 +41,7 @@ let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) (runtime_c
     match output_mode with
     | TextMode(_) ->
         Primitives.make_text_mode_environments runtime_config
+
     | PdfMode ->
         Primitives.make_pdf_mode_environments runtime_config
   in
@@ -1114,11 +1112,6 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
         DisplayLine(msg);
       ]
 
-  | ShouldSpecifyOutputFile ->
-      report_error Interface [
-        NormalLine("should specify output file for text mode.");
-      ]
-
   | UnexpectedExtension(ext) ->
       report_error Interface [
         NormalLine(Printf.sprintf "unexpected file extension '%s'." ext);
@@ -1360,7 +1353,7 @@ let get_job_directory (abspath : abs_path) : string =
 
 let build
     ~(fpath_in : string)
-    ~(fpath_out_opt : string option)
+    ~(fpath_out : string)
     ~config_paths_str_opt:(_ : string option) (* TODO: remove this *)
     ~(text_mode_formats_str_opt : string option)
     ~(page_number_limit : int)
@@ -1380,7 +1373,7 @@ let build
 
     let input_file = make_absolute_if_relative ~origin:curdir fpath_in in
     let job_directory = get_job_directory input_file in
-    let output_file = fpath_out_opt |> Option.map (make_absolute_if_relative ~origin:curdir) in
+    let output_file = make_absolute_if_relative ~origin:curdir fpath_out in
 (*
     let extra_config_paths = config_paths_str_opt |> Option.map (String.split_on_char ':') in
 *)
@@ -1427,12 +1420,7 @@ let build
         | Ok(input_kind) ->
             let basename_without_extension = Filename.remove_extension abspathstr_in in
             let abspath_deps_config = make_document_deps_config_path basename_without_extension in
-            let abspath_out =
-              match (output_mode, output_file) with
-              | (_, Some(abspath_out)) -> abspath_out
-              | (TextMode(_), None)    -> raise ShouldSpecifyOutputFile
-              | (PdfMode, None)        -> make_abs_path (Printf.sprintf "%s.pdf" basename_without_extension)
-            in
+            let abspath_out = output_file in
             let abspath_dump = make_abs_path (Printf.sprintf "%s.satysfi-aux" basename_without_extension) in
             DocumentBuildInput{
               kind = input_kind;

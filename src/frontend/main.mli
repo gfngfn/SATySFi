@@ -3,7 +3,7 @@ val version : string
 
 val build :
   fpath_in:string ->
-  fpath_out_opt:(string option) ->
+  fpath_out:string ->
   config_paths_str_opt:(string option) ->
   text_mode_formats_str_opt:(string option) ->
   page_number_limit:int ->

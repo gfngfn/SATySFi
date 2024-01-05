@@ -1,7 +1,7 @@
 
 let build
   fpath_in
-  fpath_out_opt
+  fpath_out
   config_paths_str_opt
   text_mode_formats_str_opt
   page_number_limit
@@ -17,7 +17,7 @@ let build
 =
   Main.build
     ~fpath_in
-    ~fpath_out_opt
+    ~fpath_out
     ~config_paths_str_opt
     ~text_mode_formats_str_opt
     ~page_number_limit
@@ -52,10 +52,10 @@ let arg_in : string Cmdliner.Term.t =
   Arg.(required (pos 0 (some file) None (info [])))
 
 
-let flag_output : (string option) Cmdliner.Term.t =
+let flag_output : string Cmdliner.Term.t =
   let open Cmdliner in
   let doc = "Specify output path." in
-  Arg.(value (opt (some string) None (info [ "o"; "output" ] ~docv:"OUTPUT" ~doc)))
+  Arg.(required (opt (some string) None (info [ "o"; "output" ] ~docv:"OUTPUT" ~doc)))
 
 
 let flag_config =
