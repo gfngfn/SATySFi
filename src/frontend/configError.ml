@@ -40,6 +40,7 @@ module YamlError = struct
 end
 
 type config_error =
+  | UnexpectedExtension             of string
   | CyclicFileDependency            of (abs_path * untyped_library_file) cycle
   | CannotReadFileOwingToSystem     of string
   | LibraryContainsWholeReturnValue of abs_path

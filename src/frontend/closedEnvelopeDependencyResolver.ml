@@ -84,5 +84,7 @@ let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(ex
 
   EnvelopeDependencyGraph.topological_sort graph
     |> Result.map_error (fun cycle ->
-      CyclicEnvelopeDependency(cycle |> map_cycle (fun (envelope_name, (_config, envelope_info)) -> (envelope_name, envelope_info)))
+      CyclicEnvelopeDependency(
+        cycle |> map_cycle (fun (envelope_name, (_config, envelope_info)) -> (envelope_name, envelope_info))
+      )
     )

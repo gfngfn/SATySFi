@@ -7,10 +7,6 @@ open FontError
 open TypeError
 
 
-exception UnexpectedExtension of string
-exception ConfigError of config_error
-
-
 let version =
   Printf.sprintf "SATySFi version %s alpha"
     (SemanticVersion.to_string Constant.current_language_version)
@@ -125,14 +121,10 @@ let eval_library_file (display_config : Logging.config) ~(is_bytecomp_mode : boo
     env
 
 
-let eval_main ~(is_bytecomp_mode : bool) (output_mode : output_mode) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : syntactic_value =
+let eval_main ~(is_bytecomp_mode : bool) (output_mode : output_mode) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : (syntactic_value, config_error) result =
+  let open ResultMonad in
   Logging.start_evaluation i;
-  let res = reset output_mode in
-  begin
-    match res with
-    | Ok(())   -> ()
-    | Error(e) -> raise (ConfigError(e))
-  end;
+  let* () = reset output_mode in
   let env = unfreeze_environment env_freezed in
   let value =
     if is_bytecomp_mode then
@@ -142,36 +134,39 @@ let eval_main ~(is_bytecomp_mode : bool) (output_mode : output_mode) (i : int) (
       Evaluator.interpret_0 env ast
   in
   Logging.end_evaluation ();
-  value
+  return value
 
 
 let eval_document_file (display_config : Logging.config) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (output_mode : output_mode) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+  let open ResultMonad in
   let env_freezed = freeze_environment env in
   match output_mode with
   | TextMode(_) ->
       let rec aux (i : int) =
-        let value_str = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
+        let* value_str = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
         let s = EvalUtil.get_string value_str in
         match CrossRef.needs_another_trial abspath_dump with
         | CrossRef.NeedsAnotherTrial ->
             Logging.needs_another_trial ();
-            aux (i + 1);
+            aux (i + 1)
 
         | CrossRef.CountMax ->
             Logging.achieve_count_max ();
             output_text abspath_out s;
             Logging.end_output display_config abspath_out;
+            return ()
 
         | CrossRef.CanTerminate unresolved_crossrefs ->
             Logging.achieve_fixpoint unresolved_crossrefs;
             output_text abspath_out s;
             Logging.end_output display_config abspath_out;
+            return ()
       in
       aux 1
 
   | PdfMode ->
       let rec aux (i : int) =
-        let value_doc = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
+        let* value_doc = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
         match value_doc with
         | BaseConstant(BCDocument(paper_size, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
             Logging.start_page_break ();
@@ -190,17 +185,19 @@ let eval_document_file (display_config : Logging.config) (pdf_config : HandlePdf
               match CrossRef.needs_another_trial abspath_dump with
               | CrossRef.NeedsAnotherTrial ->
                   Logging.needs_another_trial ();
-                  aux (i + 1);
+                  aux (i + 1)
 
               | CrossRef.CountMax ->
                   Logging.achieve_count_max ();
                   output_pdf pdf;
                   Logging.end_output display_config abspath_out;
+                  return ()
 
               | CrossRef.CanTerminate unresolved_crossrefs ->
                   Logging.achieve_fixpoint unresolved_crossrefs;
                   output_pdf pdf;
                   Logging.end_output display_config abspath_out;
+                  return ()
             end
 
         | _ ->
@@ -935,6 +932,11 @@ let make_yaml_error_lines : yaml_error -> line list = function
 
 
 let report_config_error (display_config : Logging.config) : config_error -> unit = function
+  | UnexpectedExtension(ext) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "unexpected file extension '%s'." ext);
+      ]
+
   | NotALibraryFile(abspath) ->
       report_error Typechecker [
         NormalLine("the following file is expected to be a library file, but is not:");
@@ -1102,7 +1104,7 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
       ] (make_yaml_error_lines e))
 
 
-let report_font_error (display_config : Logging.config) : font_error -> unit = function
+let report_font_error (display_config : Logging.config) = function
   | FailedToReadFont(abspath, msg) ->
       let fname = Logging.show_path display_config abspath in
       report_error Interface [
@@ -1171,7 +1173,7 @@ let report_font_error (display_config : Logging.config) : font_error -> unit = f
       ]
 
 
-let error_log_environment (display_config : Logging.config) (suspended : unit -> 'a) : 'a =
+let error_log_environment (display_config : Logging.config) (suspended : unit -> ('a, config_error) result) : ('a, config_error) result =
   try
     suspended ()
   with
@@ -1179,11 +1181,6 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
       report_error Interface [
         NormalLine("remains to be supported:");
         DisplayLine(msg);
-      ]
-
-  | UnexpectedExtension(ext) ->
-      report_error Interface [
-        NormalLine(Printf.sprintf "unexpected file extension '%s'." ext);
       ]
 
   | LoadHyph.InvalidPatternElement(rng) ->
@@ -1203,9 +1200,6 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
       report_error Interface [
         NormalLine("math font is not set.");
       ]
-
-  | ConfigError(e) ->
-      report_config_error display_config e
 
   | FontInfo.FontInfoError(e) ->
       report_font_error display_config e
@@ -1298,55 +1292,41 @@ let get_input_kind_from_extension (abspath_doc : abs_path) =
   match Filename.extension (get_abs_path_string abspath_doc) with
   | ".saty" -> Ok(InputSatysfi)
   | ".md"   -> Ok(InputMarkdown)
-  | ext     -> Error(ext)
+  | ext     -> Error(UnexpectedExtension(ext))
 
 
 let check_depended_envelopes (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_envelope : bool) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
+  let open ResultMonad in
   (* Resolve dependency among envelopes: *)
-  let sorted_envelopes =
-    match ClosedEnvelopeDependencyResolver.main display_config ~use_test_only_envelope ~extensions deps_config with
-    | Ok(sorted_envelopes) -> sorted_envelopes
-    | Error(e)            -> raise (ConfigError(e))
+  let* sorted_envelopes =
+    ClosedEnvelopeDependencyResolver.main display_config ~use_test_only_envelope ~extensions deps_config
   in
 
   (* Typecheck every depended envelope: *)
-  let (genv, configenv, libacc) =
-    sorted_envelopes |> List.fold_left (fun (genv, configenv, libacc) (_envelope_name, (config, envelope)) ->
+  let* (genv, configenv, libacc) =
+    sorted_envelopes |> List.fold_left (fun res (_envelope_name, (config, envelope)) ->
+      let* (genv, configenv, libacc) = res in
       let main_module_name =
         match envelope with
         | UTLibraryEnvelope{ main_module_name; _ } -> main_module_name
         | UTFontEnvelope{ main_module_name; _ }    -> main_module_name
       in
-      let (ssig, libs) =
-        match EnvelopeChecker.main display_config typecheck_config tyenv_prim genv envelope with
-        | Ok(pair) -> pair
-        | Error(e) -> raise (ConfigError(e))
+      let* (ssig, libs) =
+        EnvelopeChecker.main display_config typecheck_config tyenv_prim genv envelope
       in
       let genv = genv |> GlobalTypeenv.add main_module_name ssig in
       let configenv = configenv |> GlobalTypeenv.add main_module_name config in
       let libacc = Alist.append libacc libs in
-      (genv, configenv, libacc)
-    ) (GlobalTypeenv.empty, GlobalTypeenv.empty, Alist.empty)
+      return (genv, configenv, libacc)
+    ) (return (GlobalTypeenv.empty, GlobalTypeenv.empty, Alist.empty))
   in
-  (genv, configenv, Alist.to_list libacc)
+  return (genv, configenv, Alist.to_list libacc)
 
 
 let make_output_mode text_mode_formats_str_opt =
   match text_mode_formats_str_opt with
   | None    -> PdfMode
   | Some(s) -> TextMode(String.split_on_char ',' s)
-
-
-let load_deps_config (abspath_deps_config : abs_path) : DepsConfig.t =
-  match DepsConfig.load abspath_deps_config with
-  | Ok(deps_config) -> deps_config
-  | Error(e)        -> raise (ConfigError(e))
-
-
-let load_envelope (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) (abspath_envelope_config : abs_path) =
-  match EnvelopeReader.main display_config ~use_test_files ~extensions ~envelope_config:abspath_envelope_config with
-  | Ok(pair) -> pair
-  | Error(e) -> raise (ConfigError(e))
 
 
 let get_job_directory (abspath : abs_path) : string =
@@ -1360,6 +1340,7 @@ let build_package
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
 =
+  let open ResultMonad in
   let display_config = Logging.{ show_full_path } in
   error_log_environment display_config (fun () ->
     let absdir_current = Sys.getcwd () in
@@ -1384,13 +1365,13 @@ let build_package
     let (tyenv_prim, _env) = initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config in
 
     Logging.deps_config_file display_config abspath_deps_config;
-    let deps_config = load_deps_config abspath_deps_config in
+    let* deps_config = DepsConfig.load abspath_deps_config in
 
-    let (_config, envelope) =
-      load_envelope display_config ~use_test_files:false ~extensions abspath_envelope_config
+    let* (_config, envelope) =
+      EnvelopeReader.main display_config ~use_test_files:false ~extensions ~envelope_config:abspath_envelope_config
     in
 
-    let (genv, _configenv, _libs_dep) =
+    let* (genv, _configenv, _libs_dep) =
       check_depended_envelopes
         display_config
         typecheck_config
@@ -1400,12 +1381,14 @@ let build_package
         deps_config
     in
 
-    begin
-      match EnvelopeChecker.main display_config typecheck_config tyenv_prim genv envelope with
-      | Ok((_ssig, _libs)) -> ()
-      | Error(e)           -> raise (ConfigError(e))
-    end
-  )
+    let* (_ssig, _libs) =
+      EnvelopeChecker.main display_config typecheck_config tyenv_prim genv envelope
+    in
+    return ()
+
+  ) |> function
+  | Ok(())   -> ()
+  | Error(e) -> report_config_error display_config e; exit 1
 
 
 let build_document
@@ -1425,6 +1408,7 @@ let build_document
     ~(type_check_only : bool)
     ~bytecomp:(is_bytecomp_mode : bool)
 =
+let open ResultMonad in
   let display_config = Logging.{ show_full_path } in
   error_log_environment display_config (fun () ->
     let absdir_current = Sys.getcwd () in
@@ -1456,46 +1440,56 @@ let build_document
     let job_directory = get_job_directory abspath_in in
     let runtime_config = { job_directory } in
 
-    let input_kind =
-      match get_input_kind_from_extension abspath_in with
-      | Error(ext)     -> raise (UnexpectedExtension(ext))
-      | Ok(input_kind) -> input_kind
-    in
+    let* input_kind = get_input_kind_from_extension abspath_in in
 
     let extensions = get_candidate_file_extensions output_mode in
     let (tyenv_prim, env) = initialize ~base_dir:absdir_base ~is_bytecomp_mode output_mode runtime_config in
 
     Logging.deps_config_file display_config abspath_deps_config;
-    let deps_config = load_deps_config abspath_deps_config in
+    let* deps_config = DepsConfig.load abspath_deps_config in
 
     Logging.target_file display_config abspath_out;
 
     let dump_file_exists = CrossRef.initialize abspath_dump in
     Logging.dump_file display_config ~already_exists:dump_file_exists abspath_dump;
 
-    let (genv, configenv, libs) =
-      check_depended_envelopes display_config typecheck_config ~use_test_only_envelope:false (* ~library_root *) ~extensions tyenv_prim deps_config
+    let* (genv, configenv, libs) =
+      check_depended_envelopes
+        display_config
+        typecheck_config
+        ~use_test_only_envelope:false
+        ~extensions
+        tyenv_prim
+        deps_config
     in
 
     (* Resolve dependency of the document and the local source files: *)
-    let (sorted_locals, utdoc) =
-      match OpenFileDependencyResolver.main display_config ~extensions input_kind configenv abspath_in with
-      | Ok(pair) -> pair
-      | Error(e) -> raise (ConfigError(e))
+    let* (sorted_locals, utdoc) =
+      OpenFileDependencyResolver.main display_config ~extensions input_kind configenv abspath_in
     in
 
     (* Typechecking and elaboration: *)
-    let (libs_local, ast_doc) =
-      match EnvelopeChecker.main_document display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
-      | Ok(pair) -> pair
-      | Error(e) -> raise (ConfigError(e))
+    let* (libs_local, ast_doc) =
+      EnvelopeChecker.main_document
+        display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc)
     in
     let libs = List.append libs libs_local in
     if type_check_only then
-      ()
+      return ()
     else
-      preprocess_and_evaluate display_config pdf_config ~page_number_limit ~is_bytecomp_mode output_mode ~run_tests:false env libs ast_doc abspath_in abspath_out abspath_dump
-  )
+      preprocess_and_evaluate
+        display_config
+        pdf_config
+        ~page_number_limit
+        ~is_bytecomp_mode
+        output_mode
+        ~run_tests:false
+        env libs ast_doc abspath_in abspath_out abspath_dump
+
+  ) |> function
+  | Ok(())   -> ()
+  | Error(e) -> report_config_error display_config e
+
 
 
 let test_package
@@ -1505,6 +1499,7 @@ let test_package
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
 =
+  let open ResultMonad in
   let display_config = Logging.{ show_full_path } in
   error_log_environment display_config (fun () ->
     let absdir_current = Sys.getcwd () in
@@ -1528,13 +1523,13 @@ let test_package
     let (tyenv_prim, env) = initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config in
 
     Logging.deps_config_file display_config abspath_deps_config;
-    let deps_config = load_deps_config abspath_deps_config in
+    let* deps_config = DepsConfig.load abspath_deps_config in
 
-    let (_config, package) =
-      load_envelope display_config ~use_test_files:true ~extensions abspath_in
+    let* (_config, package) =
+      EnvelopeReader.main display_config ~use_test_files:true ~extensions ~envelope_config:abspath_in
     in
 
-    let (genv, _configenv, _libs_dep) =
+    let* (genv, _configenv, _libs_dep) =
       check_depended_envelopes
         display_config
         typecheck_config
@@ -1544,10 +1539,8 @@ let test_package
         deps_config
     in
 
-    let libs =
-      match EnvelopeChecker.main display_config typecheck_config tyenv_prim genv package with
-      | Ok((_ssig, libs)) -> libs
-      | Error(e)          -> raise (ConfigError(e))
+    let* (_ssig, libs) =
+      EnvelopeChecker.main display_config typecheck_config tyenv_prim genv package
     in
     let (env, codebinds) = preprocess_bindings display_config ~run_tests:true env libs in
     let _env = evaluate_bindings display_config ~run_tests:true env codebinds in
@@ -1589,11 +1582,17 @@ let test_package
         | State.Fail{ test_name; message } -> Logging.report_failed_test ~test_name ~message; true
       ) false
     in
-    if failure_found then begin
-      Logging.some_test_failed ();
-      exit 1
-    end else begin
-      Logging.all_tests_passed ();
-      ()
-    end
-  )
+    return failure_found
+
+  ) |> function
+  | Ok(failure_found) ->
+      if failure_found then begin
+        Logging.some_test_failed ();
+        exit 1
+      end else begin
+        Logging.all_tests_passed ();
+        ()
+      end
+
+  | Error(e) ->
+      report_config_error display_config e
