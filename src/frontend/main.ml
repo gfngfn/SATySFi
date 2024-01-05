@@ -889,6 +889,51 @@ let module_name_chain_to_string (((_, modnm0), modidents) : module_name_chain) =
   modidents |> String.concat "."
 
 
+let show_yaml_context (yctx : YamlDecoder.context) =
+  Printf.sprintf "(context: %s)" (YamlDecoder.show_yaml_context yctx)
+
+
+let make_yaml_error_lines : yaml_error -> line list = function
+  | ParseError(s) ->
+      [ NormalLine(Printf.sprintf "parse error: %s" s) ]
+
+  | FieldNotFound(yctx, field) ->
+      [ NormalLine(Printf.sprintf "field '%s' not found %s" field (show_yaml_context yctx)) ]
+
+  | NotAFloat(yctx) ->
+      [ NormalLine(Printf.sprintf "not a float value %s" (show_yaml_context yctx)) ]
+
+  | NotAString(yctx) ->
+      [ NormalLine(Printf.sprintf "not a string value %s" (show_yaml_context yctx)) ]
+
+  | NotABool(yctx) ->
+      [ NormalLine(Printf.sprintf "not a Boolean value %s" (show_yaml_context yctx)) ]
+
+  | NotAnArray(yctx) ->
+      [ NormalLine(Printf.sprintf "not an array %s" (show_yaml_context yctx)) ]
+
+  | NotAnObject(yctx) ->
+      [ NormalLine(Printf.sprintf "not an object %s" (show_yaml_context yctx)) ]
+
+  | BranchNotFound{ context = yctx; expected_tags; got_tags } ->
+      [
+        NormalLine(Printf.sprintf "expected tags not found; should contain exactly one of:");
+        DisplayLine(expected_tags |> String.concat ", ");
+        NormalLine("but only contains:");
+        DisplayLine(got_tags |> String.concat ", ");
+        NormalLine(Printf.sprintf "%s" (show_yaml_context yctx));
+      ]
+
+  | MoreThanOneBranchFound{ context = yctx; expected_tags; got_tags } ->
+      [
+        NormalLine(Printf.sprintf "more than one expected tag found:");
+        DisplayLine(got_tags |> String.concat ", ");
+        NormalLine("should be exactly one of:");
+        DisplayLine(expected_tags |> String.concat ", ");
+        NormalLine(Printf.sprintf "%s" (show_yaml_context yctx));
+      ]
+
+
 let report_config_error (display_config : Logging.config) : config_error -> unit = function
   | NotALibraryFile(abspath) ->
       report_error Typechecker [
@@ -1031,6 +1076,19 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
       in
       report_error Interface
         (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
+
+  | DepsConfigNotFound(abspath_deps_config) ->
+      report_error Interface [
+        NormalLine("cannot find a deps config at:");
+        DisplayLine(get_abs_path_string abspath_deps_config);
+      ]
+
+  | DepsConfigError(abspath_deps_config, e) ->
+      report_error Interface (List.append [
+        NormalLine("failed to load a deps config:");
+        DisplayLine(get_abs_path_string abspath_deps_config);
+      ] (make_yaml_error_lines e))
+
 
 
 let report_font_error (display_config : Logging.config) : font_error -> unit = function

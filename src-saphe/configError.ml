@@ -21,9 +21,6 @@ type yaml_error =
       expected_tags : string list;
       got_tags      : string list;
     }
-(*
-  | UnexpectedTag          of YamlDecoder.context * string
-*)
   | BreaksVersionRequirement of YamlDecoder.context * SemanticVersion.requirement
   | NotASemanticVersion    of YamlDecoder.context * string
   | NotAVersionRequirement of YamlDecoder.context * string

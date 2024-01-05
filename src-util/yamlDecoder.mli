@@ -8,6 +8,8 @@ type context =
   context_element list
 [@@deriving show]
 
+val show_yaml_context : context -> string
+
 module type ErrorType = sig
   type t
 

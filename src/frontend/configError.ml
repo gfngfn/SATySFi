@@ -4,6 +4,41 @@ open EnvelopeSystemBase
 open Types
 
 
+type yaml_error =
+  | ParseError             of string
+  | FieldNotFound          of YamlDecoder.context * string
+  | NotAFloat              of YamlDecoder.context
+  | NotAString             of YamlDecoder.context
+  | NotABool               of YamlDecoder.context
+  | NotAnArray             of YamlDecoder.context
+  | NotAnObject            of YamlDecoder.context
+  | BranchNotFound         of {
+      context       : YamlDecoder.context;
+      expected_tags : string list;
+      got_tags      : string list;
+    }
+  | MoreThanOneBranchFound of {
+      context       : YamlDecoder.context;
+      expected_tags : string list;
+      got_tags      : string list;
+    }
+[@@deriving show { with_path = false }]
+
+module YamlError = struct
+  type t = yaml_error
+  let parse_error s = ParseError(s)
+  let field_not_found context s = FieldNotFound(context, s)
+  let not_a_float context = NotAFloat(context)
+  let not_a_string context = NotAString(context)
+  let not_a_bool context = NotABool(context)
+  let not_an_array context = NotAnArray(context)
+  let not_an_object context = NotAnObject(context)
+  let branch_not_found context expected_tags got_tags =
+    BranchNotFound{ context; expected_tags; got_tags }
+  let more_than_one_branch_found context expected_tags got_tags =
+    MoreThanOneBranchFound{ context; expected_tags; got_tags }
+end
+
 type config_error =
   | CyclicFileDependency            of (abs_path * untyped_library_file) cycle
   | CannotReadFileOwingToSystem     of string
@@ -35,3 +70,5 @@ type config_error =
       relative   : string;
       candidates : abs_path list;
     }
+  | DepsConfigNotFound        of abs_path
+  | DepsConfigError           of abs_path * yaml_error

@@ -36,20 +36,8 @@ let report_error (lines : line list) : unit =
   ) true |> ignore
 
 
-let show_yaml_context (context : YamlDecoder.context) : string =
-  match context with
-  | [] ->
-      ""
-
-  | _ :: _ ->
-      let s_context =
-        let open YamlDecoder in
-        context |> List.map (function
-        | Field(field) -> Printf.sprintf ".%s" field
-        | Index(index) -> Printf.sprintf ".[%d]" index
-        ) |> String.concat ""
-      in
-      Printf.sprintf " (context: %s)" s_context
+let show_yaml_context (yctx : YamlDecoder.context) =
+  Printf.sprintf "(context: %s)" (YamlDecoder.show_yaml_context yctx)
 
 
 let make_yaml_error_lines : yaml_error -> line list = function
@@ -57,46 +45,46 @@ let make_yaml_error_lines : yaml_error -> line list = function
       [ NormalLine(Printf.sprintf "parse error: %s" s) ]
 
   | FieldNotFound(yctx, field) ->
-      [ NormalLine(Printf.sprintf "field '%s' not found%s" field (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "field '%s' not found %s" field (show_yaml_context yctx)) ]
 
   | NotAFloat(yctx) ->
-      [ NormalLine(Printf.sprintf "not a float value%s" (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "not a float value %s" (show_yaml_context yctx)) ]
 
   | NotAString(yctx) ->
-      [ NormalLine(Printf.sprintf "not a string value%s" (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "not a string value %s" (show_yaml_context yctx)) ]
 
   | NotABool(yctx) ->
-      [ NormalLine(Printf.sprintf "not a Boolean value%s" (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "not a Boolean value %s" (show_yaml_context yctx)) ]
 
   | NotAnArray(yctx) ->
-      [ NormalLine(Printf.sprintf "not an array%s" (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "not an array %s" (show_yaml_context yctx)) ]
 
   | NotAnObject(yctx) ->
-      [ NormalLine(Printf.sprintf "not an object%s" (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "not an object %s" (show_yaml_context yctx)) ]
 
   | BreaksVersionRequirement(yctx, requirement) ->
-      [ NormalLine(Printf.sprintf "breaks the requrement '%s'%s" (SemanticVersion.requirement_to_string requirement)(show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "breaks the requrement '%s' %s" (SemanticVersion.requirement_to_string requirement)(show_yaml_context yctx)) ]
 
   | NotASemanticVersion(yctx, s) ->
-      [ NormalLine(Printf.sprintf "not a semantic version: '%s'%s" s (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "not a semantic version: '%s' %s" s (show_yaml_context yctx)) ]
 
   | NotAVersionRequirement(yctx, s) ->
-      [ NormalLine(Printf.sprintf "not a version requirement: '%s'%s" s (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "not a version requirement: '%s' %s" s (show_yaml_context yctx)) ]
 
   | InvalidPackageName(yctx, s) ->
-      [ NormalLine(Printf.sprintf "not a package name: '%s'%s" s (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "not a package name: '%s' %s" s (show_yaml_context yctx)) ]
 
   | DuplicateRegistryHashValue{ context = yctx; registry_hash_value } ->
-      [ NormalLine(Printf.sprintf "More than one definition for registry hash value '%s'%s" registry_hash_value (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "More than one definition for registry hash value '%s' %s" registry_hash_value (show_yaml_context yctx)) ]
 
   | CannotBeUsedAsAName(yctx, s) ->
-      [ NormalLine(Printf.sprintf "'%s' cannot be used as a name%s" s (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "'%s' cannot be used as a name %s" s (show_yaml_context yctx)) ]
 
   | UnsupportedConfigFormat(format) ->
       [ NormalLine(Printf.sprintf "unsupported config format '%s'" format) ]
 
   | NotACommand{ context = yctx; prefix = _; string = s } ->
-      [ NormalLine(Printf.sprintf "not a command: '%s'%s" s (show_yaml_context yctx)) ]
+      [ NormalLine(Printf.sprintf "not a command: '%s' %s" s (show_yaml_context yctx)) ]
 
   | BranchNotFound{ context = yctx; expected_tags; got_tags } ->
       [

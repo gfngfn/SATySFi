@@ -9,6 +9,18 @@ type context =
 [@@deriving show { with_path = false }]
 
 
+let show_yaml_context (context : context) : string =
+  match context with
+  | [] ->
+      "top"
+
+  | _ :: _ ->
+      context |> List.map (function
+      | Field(field) -> Printf.sprintf ".%s" field
+      | Index(index) -> Printf.sprintf ".[%d]" index
+      ) |> String.concat ""
+
+
 module type ErrorType = sig
   type t
 
