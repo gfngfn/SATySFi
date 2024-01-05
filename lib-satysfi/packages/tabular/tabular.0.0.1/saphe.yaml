@@ -1,0 +1,21 @@
+ecosystem: "^0.0.1"
+language: "^0.1.0"
+name: "tabular"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  library:
+    main_module: "Tabular"
+    source_directories:
+      - "./src"
+    dependencies:
+      - used_as: "Stdlib"
+        registered:
+          name: "stdlib"
+          registry: "default"
+          requirement: "^0.0.1"
