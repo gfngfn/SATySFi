@@ -48,7 +48,7 @@ type lib_path = LibPath of string
 
 
 let open_in_abs (AbsPath(pathstr)) =
-  open_in pathstr
+  Stdlib.open_in pathstr
 
 
 let basename_abs (AbsPath(pathstr)) =
@@ -74,6 +74,10 @@ end
 let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
   let abspath_str = if Filename.is_relative s then Filename.concat origin s else s in
   make_abs_path abspath_str
+
+
+let append_to_abs_directory (absdir : abs_path) (filename : string) : abs_path =
+  make_abs_path (Filename.concat (get_abs_path_string absdir) filename)
 
 
 let read_file (abspath : abs_path) : (string, string) result =

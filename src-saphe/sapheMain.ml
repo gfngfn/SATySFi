@@ -626,11 +626,11 @@ let solve ~(fpath_in : string) =
 
     Logging.show_package_dependency_before_solving dependencies_with_flags;
 
+    (* Arranges the store root config: *)
     let* absdir_store_root = get_store_root () in
     ShellCommand.mkdir_p absdir_store_root;
     let abspath_store_root_config = Constant.store_root_config_path absdir_store_root in
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
-
     begin
       if created then
         Logging.store_root_config_created abspath_store_root_config
@@ -638,6 +638,7 @@ let solve ~(fpath_in : string) =
         ()
     end;
 
+    (* Constructs a map that associates a package with its implementations: *)
     let* package_id_to_impl_list =
       registry_remotes |> List.fold_left (fun res registry_remote ->
         let* package_id_to_impl_list = res in
@@ -652,7 +653,7 @@ let solve ~(fpath_in : string) =
             abspath_store_root_config
         in
 
-        (* Fetches registry configs: *)
+        (* Fetches the registry config: *)
         let absdir_registry_repo =
           Constant.registry_root_directory_path absdir_store_root registry_hash_value
         in
@@ -662,26 +663,21 @@ let solve ~(fpath_in : string) =
             |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
         in
 
+        (* Loads the registry config and grows `package_id_to_impl_list`: *)
         let* PackageRegistryConfig.{ packages = packages } =
           let abspath_registry_config =
-            make_abs_path
-              (Filename.concat
-                (get_abs_path_string absdir_registry_repo)
-                Constant.package_registry_config_file_name)
+            append_to_abs_directory absdir_registry_repo Constant.package_registry_config_file_name
           in
           PackageRegistryConfig.load abspath_registry_config
         in
-        let* package_id_to_impl_list =
-          packages |> List.fold_left (fun res (package_name, impls) ->
-            let* package_id_to_impl_list = res in
-            let package_id = PackageId.{ registry_hash_value; package_name } in
-            if package_id_to_impl_list |> PackageIdMap.mem package_id then
-              err @@ MultiplePackageDefinition{ package_name }
-            else
-              return (package_id_to_impl_list |> PackageIdMap.add package_id impls)
-          ) (return package_id_to_impl_list)
-        in
-        return package_id_to_impl_list
+        packages |> List.fold_left (fun res (package_name, impls) ->
+          let* package_id_to_impl_list = res in
+          let package_id = PackageId.{ registry_hash_value; package_name } in
+          if package_id_to_impl_list |> PackageIdMap.mem package_id then
+            err @@ MultiplePackageDefinition{ package_name }
+          else
+            return (package_id_to_impl_list |> PackageIdMap.add package_id impls)
+        ) (return package_id_to_impl_list)
 
       ) (return PackageIdMap.empty)
     in
