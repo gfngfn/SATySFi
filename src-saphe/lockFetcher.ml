@@ -55,17 +55,9 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
   let Lock.{ package_id; locked_version } = lock in
   let PackageId.{ registry_hash_value; package_name } = package_id in
   let lock_tarball_name = Constant.lock_tarball_name package_name locked_version in
-  let absdir_lock =
-    let libdir_lock = Constant.lock_directory lock in
-    make_abs_path
-      (Filename.concat (get_abs_path_string absdir_store_root) (get_lib_path_string libdir_lock))
-  in
+  let absdir_lock = Constant.lock_directory ~store_root:absdir_store_root lock in
   let absdir_lock_tarball_cache =
-    let libpath_lock_tarball_cache = Constant.lock_tarball_cache_directory registry_hash_value in
-    make_abs_path
-      (Filename.concat
-        (get_abs_path_string absdir_store_root)
-        (get_lib_path_string libpath_lock_tarball_cache))
+    Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
   in
 
   (* Creates the lock cache directory if non-existent, or does nothing otherwise: *)
@@ -128,8 +120,8 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
           PackageConfig.load (Constant.library_package_config_path absdir_lock)
         in
         let* () =
-          external_resources |> foldM (fun () (name, external_source) ->
-            match external_source with
+          external_resources |> foldM (fun () (name, external_resource) ->
+            match external_resource with
             | ExternalZip{ url; checksum; extractions } ->
 
                 (* Creates a directory for putting zips: *)

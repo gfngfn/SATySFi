@@ -32,11 +32,21 @@ type build_option = {
 
 
 let build_package
-  ~envelope:(_abspath_envelope_config : abs_path)
-  ~deps:(_abspath_deps_config : abs_path)
+  ~envelope:(abspath_envelope_config : abs_path)
+  ~deps:(abspath_deps_config : abs_path)
   ~options:(_ : build_option) : run_result
 =
-  failwith "TODO: SatysfiCommand.build_package"
+  let args_mandatory =
+    [
+      "satysfi"; "build"; "package";
+      get_abs_path_string abspath_envelope_config;
+      "--deps"; get_abs_path_string abspath_deps_config;
+    ]
+  in
+  let args = args_mandatory in
+  let command = escape_command_line args in
+  let exit_status = Sys.command command in
+  { exit_status; command }
 
 
 let build_document

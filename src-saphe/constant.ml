@@ -13,27 +13,27 @@ let lock_tarball_name (package_name : package_name) (locked_version : SemanticVe
   Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string locked_version)
 
 
-let lock_directory (lock : Lock.t) : lib_path =
+let lock_directory ~store_root:(absdir_store_root : abs_path) (lock : Lock.t) : abs_path =
   let Lock.{ package_id; locked_version } = lock in
   let PackageId.{ registry_hash_value; package_name } = package_id in
-  make_lib_path
+  append_to_abs_directory absdir_store_root
     (Printf.sprintf "packages/%s/%s/%s"
       registry_hash_value
       package_name
       (lock_tarball_name package_name locked_version))
 
 
-let registry_root_directory_path (absdir_store_root : abs_path) (registry_hash_value : registry_hash_value) : abs_path =
+let registry_root_directory_path ~store_root:(absdir_store_root : abs_path) (registry_hash_value : registry_hash_value) : abs_path =
   make_abs_path (Filename.concat
     (get_abs_path_string absdir_store_root)
     (Printf.sprintf "registries/%s" registry_hash_value))
 
 
-let lock_tarball_cache_directory (registry_hash_value : registry_hash_value) : lib_path =
-  make_lib_path (Printf.sprintf "cache/locks/%s" registry_hash_value)
+let lock_tarball_cache_directory ~store_root:(absdir_store_root : abs_path) (registry_hash_value : registry_hash_value) : abs_path =
+  append_to_abs_directory absdir_store_root (Printf.sprintf "cache/locks/%s" registry_hash_value)
 
 
-let store_root_config_path (absdir_store_root : abs_path) : abs_path =
+let store_root_config_path ~store_root:(absdir_store_root : abs_path) : abs_path =
   make_abs_path (Filename.concat (get_abs_path_string absdir_store_root) "saphe-store-root.yaml")
 
 

@@ -629,7 +629,7 @@ let solve ~(fpath_in : string) =
     (* Arranges the store root config: *)
     let* absdir_store_root = get_store_root () in
     ShellCommand.mkdir_p absdir_store_root;
-    let abspath_store_root_config = Constant.store_root_config_path absdir_store_root in
+    let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
     begin
       if created then
@@ -655,7 +655,7 @@ let solve ~(fpath_in : string) =
 
         (* Fetches the registry config: *)
         let absdir_registry_repo =
-          Constant.registry_root_directory_path absdir_store_root registry_hash_value
+          Constant.registry_root_directory_path ~store_root:absdir_store_root registry_hash_value
         in
         let git_command = "git" in (* TODO: make this changeable *)
         let* () =
