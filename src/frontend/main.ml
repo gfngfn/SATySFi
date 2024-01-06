@@ -1104,6 +1104,11 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
         DisplayLine(get_abs_path_string abspath_envelope_config);
       ] (make_yaml_error_lines e))
 
+  | DependedEnvelopeNotFound(envelope_name) ->
+      report_error Interface [
+        NormalLine(Printf.sprintf "unknown depended envelope '%s'" envelope_name);
+      ]
+
 
 let report_font_error (display_config : Logging.config) = function
   | FailedToReadFont(abspath, msg) ->
@@ -1296,15 +1301,31 @@ let get_input_kind_from_extension (abspath_doc : abs_path) =
   | ext     -> Error(UnexpectedExtension(ext))
 
 
-let make_used_as_map_for_checking_dependency (_deps_config : DepsConfig.t) (_envelope_name : envelope_name) : envelope_name ModuleNameMap.t =
-  failwith "TODO: make_used_as_map"
-
-
-let make_used_as_map_for_checking_main (deps_config : DepsConfig.t) =
-  deps_config.explicit_dependencies |> List.fold_left (fun used_as_map envelope_dependency ->
+let make_used_as_map (envelope_dependencies : envelope_dependency list) : envelope_name ModuleNameMap.t =
+  envelope_dependencies |> List.fold_left (fun used_as_map envelope_dependency ->
     let { dependency_name; dependency_used_as } = envelope_dependency in
     used_as_map |> ModuleNameMap.add dependency_used_as dependency_name
   ) ModuleNameMap.empty
+
+
+let make_used_as_map_for_checking_dependency (deps_config : DepsConfig.t) (envelope_name_dep : envelope_name) =
+  let open ResultMonad in
+  let opt =
+    deps_config.envelopes |> List.find_map (fun envelope_spec ->
+      let { envelope_name; envelope_dependencies; _ } = envelope_spec in
+      if String.equal envelope_name envelope_name_dep then
+        Some(make_used_as_map envelope_dependencies)
+      else
+        None
+    )
+  in
+  match opt with
+  | None              -> err @@ DependedEnvelopeNotFound(envelope_name_dep)
+  | Some(used_as_map) -> return used_as_map
+
+
+let make_used_as_map_for_checking_main (deps_config : DepsConfig.t) =
+  make_used_as_map deps_config.explicit_dependencies
 
 
 let check_depended_envelopes (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_envelope : bool) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
@@ -1318,7 +1339,7 @@ let check_depended_envelopes (display_config : Logging.config) (typecheck_config
   let* (genv, configenv, libacc) =
     sorted_envelopes |> List.fold_left (fun res (envelope_name, (config, envelope)) ->
       let* (genv, configenv, libacc) = res in
-      let used_as_map = make_used_as_map_for_checking_dependency deps_config envelope_name in
+      let* used_as_map = make_used_as_map_for_checking_dependency deps_config envelope_name in
       let* (ssig, libs) =
         EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
       in
