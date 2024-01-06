@@ -1,0 +1,28 @@
+ecosystem: "^0.0.1"
+language: "^0.1.0"
+name: "refactor2" #TODO: remove this
+authors:
+  - "Takashi Suwa"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  document:
+    dependencies:
+      - used_as: "FontJunicode"
+        registered:
+          registry: "default"
+          name: "font-junicode"
+          requirement: "^0.0.1"
+      - used_as: "FontIpaEx"
+        registered:
+          registry: "default"
+          name: "font-ipa-ex"
+          requirement: "^0.0.1"
+      - used_as: "FontLatinModernMath"
+        registered:
+          registry: "default"
+          name: "font-latin-modern-math"
+          requirement: "^0.0.1"
