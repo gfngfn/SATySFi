@@ -1,5 +1,6 @@
 
 open MyUtil
+open EnvelopeSystemBase
 open Types
 open StaticEnv
 open ConfigError
@@ -1295,27 +1296,34 @@ let get_input_kind_from_extension (abspath_doc : abs_path) =
   | ext     -> Error(UnexpectedExtension(ext))
 
 
+let make_used_as_map_for_checking_dependency (_deps_config : DepsConfig.t) (_envelope_name : envelope_name) : envelope_name ModuleNameMap.t =
+  failwith "TODO: make_used_as_map"
+
+
+let make_used_as_map_for_checking_main (deps_config : DepsConfig.t) =
+  deps_config.explicit_dependencies |> List.fold_left (fun used_as_map envelope_dependency ->
+    let { dependency_name; dependency_used_as } = envelope_dependency in
+    used_as_map |> ModuleNameMap.add dependency_used_as dependency_name
+  ) ModuleNameMap.empty
+
+
 let check_depended_envelopes (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_envelope : bool) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
   let open ResultMonad in
-  (* Resolve dependency among envelopes: *)
+  (* Resolves dependency among envelopes: *)
   let* sorted_envelopes =
     ClosedEnvelopeDependencyResolver.main display_config ~use_test_only_envelope ~extensions deps_config
   in
 
-  (* Typecheck every depended envelope: *)
+  (* Typechecks every depended envelope: *)
   let* (genv, configenv, libacc) =
-    sorted_envelopes |> List.fold_left (fun res (_envelope_name, (config, envelope)) ->
+    sorted_envelopes |> List.fold_left (fun res (envelope_name, (config, envelope)) ->
       let* (genv, configenv, libacc) = res in
-      let main_module_name =
-        match envelope with
-        | UTLibraryEnvelope{ main_module_name; _ } -> main_module_name
-        | UTFontEnvelope{ main_module_name; _ }    -> main_module_name
-      in
+      let used_as_map = make_used_as_map_for_checking_dependency deps_config envelope_name in
       let* (ssig, libs) =
-        EnvelopeChecker.main display_config typecheck_config tyenv_prim genv envelope
+        EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
       in
-      let genv = genv |> GlobalTypeenv.add main_module_name ssig in
-      let configenv = configenv |> GlobalTypeenv.add main_module_name config in
+      let genv = genv |> GlobalTypeenv.add (EnvelopeName.EN(envelope_name)) ssig in
+      let configenv = configenv |> GlobalTypeenv.add (EnvelopeName.EN(envelope_name)) config in
       let libacc = Alist.append libacc libs in
       return (genv, configenv, libacc)
     ) (return (GlobalTypeenv.empty, GlobalTypeenv.empty, Alist.empty))
@@ -1348,8 +1356,8 @@ let build_package
     let abspath_envelope_config = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in
-
     let output_mode = make_output_mode text_mode_formats_str_opt in
+
     let typecheck_config =
       {
         is_text_mode =
@@ -1358,31 +1366,37 @@ let build_package
           | TextMode(_) -> true
       }
     in
-
     let extensions = get_candidate_file_extensions output_mode in
     let job_directory = get_job_directory abspath_envelope_config in
     let runtime_config = { job_directory } in
-    let (tyenv_prim, _env) = initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config in
 
+    (* Gets the initial type environment, which consists only of primitives: *)
+    let (tyenv_prim, _env) =
+      initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config
+    in
+
+    (* Loads the deps config: *)
     Logging.deps_config_file display_config abspath_deps_config;
     let* deps_config = DepsConfig.load abspath_deps_config in
 
+    (* Parses the main envelope: *)
     let* (_config, envelope) =
-      EnvelopeReader.main display_config ~use_test_files:false ~extensions ~envelope_config:abspath_envelope_config
+      EnvelopeReader.main display_config ~use_test_files:false ~extensions
+        ~envelope_config:abspath_envelope_config
     in
 
+    (* Typechecks each depended envelope in the topological order: *)
     let* (genv, _configenv, _libs_dep) =
       check_depended_envelopes
-        display_config
-        typecheck_config
-        ~use_test_only_envelope:false
-        ~extensions
-        tyenv_prim
-        deps_config
+        display_config typecheck_config
+        ~use_test_only_envelope:false ~extensions
+        tyenv_prim deps_config
     in
 
+    (* Typechecks the main envelope: *)
+    let used_as_map = make_used_as_map_for_checking_main deps_config in
     let* (_ssig, _libs) =
-      EnvelopeChecker.main display_config typecheck_config tyenv_prim genv envelope
+      EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
     in
     return ()
 
@@ -1418,8 +1432,8 @@ let open ResultMonad in
     let abspath_dump = make_absolute_if_relative ~origin:absdir_current fpath_dump in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in
-
     let output_mode = make_output_mode text_mode_formats_str_opt in
+
     let typecheck_config =
       {
         is_text_mode =
@@ -1439,20 +1453,25 @@ let open ResultMonad in
     in
     let job_directory = get_job_directory abspath_in in
     let runtime_config = { job_directory } in
-
     let* input_kind = get_input_kind_from_extension abspath_in in
-
     let extensions = get_candidate_file_extensions output_mode in
-    let (tyenv_prim, env) = initialize ~base_dir:absdir_base ~is_bytecomp_mode output_mode runtime_config in
 
+    (* Gets the initial type environment, which consists only of primitives: *)
+    let (tyenv_prim, env) =
+      initialize ~base_dir:absdir_base ~is_bytecomp_mode output_mode runtime_config
+    in
+
+    (* Loads the deps config: *)
     Logging.deps_config_file display_config abspath_deps_config;
     let* deps_config = DepsConfig.load abspath_deps_config in
 
     Logging.target_file display_config abspath_out;
 
+    (* Initializes the dump file: *)
     let dump_file_exists = CrossRef.initialize abspath_dump in
     Logging.dump_file display_config ~already_exists:dump_file_exists abspath_dump;
 
+    (* Typechecks each depended envelope in the topological order: *)
     let* (genv, configenv, libs) =
       check_depended_envelopes
         display_config
@@ -1469,11 +1488,14 @@ let open ResultMonad in
     in
 
     (* Typechecking and elaboration: *)
+    let used_as_map = make_used_as_map_for_checking_main deps_config in
     let* (libs_local, ast_doc) =
       EnvelopeChecker.main_document
-        display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc)
+        display_config typecheck_config tyenv_prim genv ~used_as_map sorted_locals (abspath_in, utdoc)
     in
     let libs = List.append libs libs_local in
+
+    (* Evaluation: *)
     if type_check_only then
       return ()
     else
@@ -1507,8 +1529,8 @@ let test_package
     let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in
-    let job_directory = get_job_directory abspath_in in
     let output_mode = make_output_mode text_mode_formats_str_opt in
+
     let typecheck_config =
       {
         is_text_mode =
@@ -1517,18 +1539,26 @@ let test_package
           | TextMode(_) -> true
       }
     in
+    let extensions = get_candidate_file_extensions output_mode in
+    let job_directory = get_job_directory abspath_in in
     let runtime_config = { job_directory } in
 
-    let extensions = get_candidate_file_extensions output_mode in
-    let (tyenv_prim, env) = initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config in
+    (* Gets the initial type environment, which consists only of pritmives: *)
+    let (tyenv_prim, env) =
+      initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config
+    in
 
+    (* Loads the deps config: *)
     Logging.deps_config_file display_config abspath_deps_config;
     let* deps_config = DepsConfig.load abspath_deps_config in
 
+    (* Parses the main envelope: *)
     let* (_config, package) =
-      EnvelopeReader.main display_config ~use_test_files:true ~extensions ~envelope_config:abspath_in
+      EnvelopeReader.main display_config ~use_test_files:true ~extensions
+        ~envelope_config:abspath_in
     in
 
+    (* Typechecks each depended envelope in the topological order: *)
     let* (genv, _configenv, _libs_dep) =
       check_depended_envelopes
         display_config
@@ -1539,8 +1569,10 @@ let test_package
         deps_config
     in
 
+    (* Typechecks the main envelope: *)
+    let used_as_map = failwith "TODO: used_as_map in test_package" in
     let* (_ssig, libs) =
-      EnvelopeChecker.main display_config typecheck_config tyenv_prim genv package
+      EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map package
     in
     let (env, codebinds) = preprocess_bindings display_config ~run_tests:true env libs in
     let _env = evaluate_bindings display_config ~run_tests:true env codebinds in

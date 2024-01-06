@@ -3,6 +3,7 @@ open MyUtil
 *)
 
 type envelope_name = string
+[@@deriving show]
 
 type relative_path = string
 [@@deriving show]
@@ -48,6 +49,7 @@ type envelope_dependency = {
   dependency_name    : envelope_name;
   dependency_used_as : string;
 }
+[@@deriving show]
 
 type envelope_spec = {
   envelope_name          : envelope_name;
@@ -55,8 +57,10 @@ type envelope_spec = {
   envelope_dependencies  : envelope_dependency list;
   test_only_envelope     : bool;
 }
+[@@deriving show]
 
 type deps_config = {
   envelopes             : envelope_spec list;
   explicit_dependencies : envelope_dependency list;
 }
+[@@deriving show]

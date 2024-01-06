@@ -1290,7 +1290,12 @@ type code_rec_or_nonrec =
   | CdMutable of CodeSymbol.t * code_value
 
 
-module GlobalTypeenv = Map.Make(String)
+module EnvelopeName = struct
+  type t = EN of string
+  let compare (EN(en1)) (EN(en2)) = String.compare en1 en2
+end
+
+module GlobalTypeenv = Map.Make(EnvelopeName)
 
 module BoundIDHashTable = Hashtbl.Make(BoundID)
 
