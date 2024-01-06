@@ -1411,7 +1411,7 @@ let build_package
 
     (* Typechecks the main envelope: *)
     let used_as_map = make_used_as_map deps_config.explicit_dependencies in
-    let* (_ssig, _libs) =
+    let* (_ssig, _libs_target) =
       EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
     in
     return ()
@@ -1488,7 +1488,7 @@ let open ResultMonad in
     Logging.dump_file display_config ~already_exists:dump_file_exists abspath_dump;
 
     (* Typechecks each depended envelope in the topological order: *)
-    let* (genv, configenv, libs) =
+    let* (genv, configenv, libs_dep) =
       check_depended_envelopes
         display_config
         typecheck_config
@@ -1509,12 +1509,12 @@ let open ResultMonad in
       EnvelopeChecker.main_document
         display_config typecheck_config tyenv_prim genv ~used_as_map sorted_locals (abspath_in, utdoc)
     in
-    let libs = List.append libs libs_local in
 
     (* Evaluation: *)
     if type_check_only then
       return ()
     else
+      let libs = List.append libs_dep libs_local in
       preprocess_and_evaluate
         display_config
         pdf_config
@@ -1575,7 +1575,7 @@ let test_package
     in
 
     (* Typechecks each depended envelope in the topological order: *)
-    let* (genv, _configenv, _libs_dep) =
+    let* (genv, _configenv, libs_dep) =
       check_depended_envelopes
         display_config
         typecheck_config
@@ -1591,13 +1591,15 @@ let test_package
       make_used_as_map
         (List.append explicit_dependencies explicit_test_dependencies)
     in
-    let* (_ssig, libs) =
+    let* (_ssig, libs_target) =
       EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map package
     in
 
     (* Runs tests: *)
-    let (env, codebinds) = preprocess_bindings display_config ~run_tests:true env libs in
-    let _env = evaluate_bindings display_config ~run_tests:true env codebinds in
+    let (env, codebinds_dep) = preprocess_bindings display_config ~run_tests:false env libs_dep in
+    let (env, codebinds_target) = preprocess_bindings display_config ~run_tests:true env libs_target in
+    let env = evaluate_bindings display_config ~run_tests:false ~is_bytecomp_mode:false env codebinds_dep in
+    let _env = evaluate_bindings display_config ~run_tests:true ~is_bytecomp_mode:false env codebinds_target in
 (*
       | DocumentTestInput{
           kind = input_kind;
