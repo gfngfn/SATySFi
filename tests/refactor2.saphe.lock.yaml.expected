@@ -28,3 +28,4 @@ dependencies:
   used_as: FontJunicode
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.font-latin-modern-math.0.0.1
   used_as: FontLatinModernMath
+test_dependencies: []

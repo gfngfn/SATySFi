@@ -90,3 +90,4 @@ locks:
 dependencies:
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.std-ja.0.0.1
   used_as: StdJa
+test_dependencies: []

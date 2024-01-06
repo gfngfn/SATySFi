@@ -126,6 +126,8 @@ locks:
     package_name: tabular
     version: 0.0.1
 dependencies:
+- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.annot.0.0.1
+  used_as: Annot
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.code.0.0.1
   used_as: Code
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.itemize.0.0.1
@@ -140,3 +142,4 @@ dependencies:
   used_as: Stdlib
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.tabular.0.0.1
   used_as: Tabular
+test_dependencies: []

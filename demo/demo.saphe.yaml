@@ -21,6 +21,11 @@ contents:
           registry: "default"
           name: "math"
           requirement: "^0.0.1"
+      - used_as: "Annot"
+        registered:
+          registry: "default"
+          name: "annot"
+          requirement: "^0.0.1"
       - used_as: "Code"
         registered:
           registry: "default"
