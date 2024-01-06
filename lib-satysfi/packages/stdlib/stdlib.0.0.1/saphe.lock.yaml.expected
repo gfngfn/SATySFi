@@ -8,3 +8,6 @@ locks:
     package_name: testing
     version: 0.0.1
 dependencies: []
+test_dependencies:
+- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.testing.0.0.1
+  used_as: Testing
