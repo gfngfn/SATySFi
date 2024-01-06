@@ -1,6 +1,6 @@
 ecosystem: "^0.0.1"
 language: "^0.1.0"
-name: "math1" #TODO: remove this
+name: "doc-lang" #TODO: remove this
 authors:
   - "Takashi Suwa"
 registries:

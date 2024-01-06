@@ -34,7 +34,7 @@ all:: $(TARGETS)
 promote:: $(EXPECTED_LOCKS)
 
 clean:
-	rm -f *.pdf *.satysfi-aux *.satysfi-deps.yaml
+	rm -f *.pdf *.satysfi-aux *.saphe.lock.yaml *.satysfi-deps.yaml
 
 doc-primitives.pdf: local-math.satyh local.satyh paren.satyh
 doc-lang.pdf: local-math.satyh

@@ -1,2 +1,3 @@
 *.saphe.lock.yaml.expected
+*.saphe.lock.yaml
 *.satysfi-deps.yaml
