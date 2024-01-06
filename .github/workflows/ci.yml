@@ -92,7 +92,7 @@ jobs:
       - name: Build demo docs
         run: |
           (cd demo; opam exec -- make)
-          (cd doc; pwd; ls -a; opam exec -- make)
+          (cd doc; opam exec -- make)
 
       - name: Run integration tests
         run: |
