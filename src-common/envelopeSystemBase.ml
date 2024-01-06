@@ -60,7 +60,8 @@ type envelope_spec = {
 [@@deriving show]
 
 type deps_config = {
-  envelopes             : envelope_spec list;
-  explicit_dependencies : envelope_dependency list;
+  envelopes                  : envelope_spec list;
+  explicit_dependencies      : envelope_dependency list;
+  explicit_test_dependencies : envelope_dependency list;
 }
 [@@deriving show]

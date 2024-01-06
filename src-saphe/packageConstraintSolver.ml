@@ -303,18 +303,22 @@ module VertexMap = LockDependencyGraph.VertexMap
 
 
 let solve (context : package_context) (dependencies_with_flags : (dependency_flag * package_dependency) list) : (package_solution list) option =
-  let (explicit_source_dependencies, dependency_acc) =
-    dependencies_with_flags |> List.fold_left (fun (explicit_source_dependencies, dependency_acc) (flag, dep) ->
+  let (explicit_source_dependencies, explicit_test_dependencies, dependency_acc) =
+    dependencies_with_flags |> List.fold_left (fun acc (flag, dep) ->
+      let (explicit_source_dependencies, explicit_test_dependencies, dependency_acc) = acc in
       match dep with
       | PackageDependency{ spec; used_as } ->
           let RegisteredDependency{ package_id; _ } = spec in
-          let explicit_source_dependencies =
+          let (explicit_source_dependencies, explicit_test_dependencies) =
             match flag with
-            | SourceDependency   -> explicit_source_dependencies |> PackageIdMap.add package_id used_as
-            | TestOnlyDependency -> explicit_source_dependencies
+            | SourceDependency ->
+                (explicit_source_dependencies |> PackageIdMap.add package_id used_as, explicit_test_dependencies)
+
+            | TestOnlyDependency ->
+                (explicit_source_dependencies, explicit_test_dependencies |> PackageIdMap.add package_id used_as)
           in
-          (explicit_source_dependencies, Alist.extend dependency_acc dep)
-    ) (PackageIdMap.empty, Alist.empty)
+          (explicit_source_dependencies, explicit_test_dependencies, Alist.extend dependency_acc dep)
+    ) (PackageIdMap.empty, PackageIdMap.empty, Alist.empty)
   in
   let requires = Alist.to_list dependency_acc in
   let output_opt =
@@ -328,7 +332,7 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
 
     (* Adds vertices to the graph: *)
     let rolemap = output |> Output.to_map in
-    let (quad_acc, graph, explicit_vertex_to_used_as, lock_to_vertex_map) =
+    let (quad_acc, graph, explicit_vertex_to_used_as, explicit_test_vertex_to_used_as, lock_to_vertex_map) =
       Output.RoleMap.fold (fun _role impl acc ->
         let impl = Output.unwrap impl in
         match impl with
@@ -338,7 +342,7 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
         | Impl{ package_name; version = locked_version; registry_hash_value; source; dependencies } ->
             let package_id = PackageId.{ registry_hash_value; package_name } in
             let lock = Lock.{ package_id; locked_version } in
-            let (quad_acc, graph, explicit_vertex_to_used_as, lock_to_vertex_map) = acc in
+            let (quad_acc, graph, explicit_vertex_to_used_as, explicit_test_vertex_to_used_as, lock_to_vertex_map) = acc in
             let (graph, vertex) =
               match graph |> LockDependencyGraph.add_vertex lock () with
               | Error(_) -> assert false
@@ -347,16 +351,18 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
             let quad_acc = Alist.extend quad_acc (lock, source, dependencies, vertex) in
             let explicit_vertex_to_used_as =
               match explicit_source_dependencies |> PackageIdMap.find_opt package_id with
-              | Some(used_as) ->
-                  explicit_vertex_to_used_as |> VertexMap.add vertex used_as
-
-              | None ->
-                  explicit_vertex_to_used_as
+              | Some(used_as) -> explicit_vertex_to_used_as |> VertexMap.add vertex used_as
+              | None          -> explicit_vertex_to_used_as
+            in
+            let explicit_test_vertex_to_used_as =
+              match explicit_test_dependencies |> PackageIdMap.find_opt package_id with
+              | Some(used_as) -> explicit_test_vertex_to_used_as |> VertexMap.add vertex used_as
+              | None          -> explicit_test_vertex_to_used_as
             in
             let lock_to_vertex_map = lock_to_vertex_map |> LockMap.add lock vertex in
-            (quad_acc, graph, explicit_vertex_to_used_as, lock_to_vertex_map)
+            (quad_acc, graph, explicit_vertex_to_used_as, explicit_test_vertex_to_used_as, lock_to_vertex_map)
 
-      ) rolemap (Alist.empty, LockDependencyGraph.empty, VertexMap.empty, LockMap.empty)
+      ) rolemap (Alist.empty, LockDependencyGraph.empty, VertexMap.empty, VertexMap.empty, LockMap.empty)
     in
 
     (* Add edges to the graph: *)
@@ -427,12 +433,16 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
         let explicitly_depended =
           explicit_vertex_to_used_as |> VertexMap.find_opt vertex
         in
+        let explicitly_test_depended =
+          explicit_test_vertex_to_used_as |> VertexMap.find_opt vertex
+        in
         Alist.extend solution_acc {
           lock;
           locked_source;
           locked_dependencies;
           used_in_test_only;
           explicitly_depended;
+          explicitly_test_depended;
         }
       ) solmap Alist.empty
     in

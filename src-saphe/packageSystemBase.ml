@@ -136,11 +136,12 @@ type locked_dependency = {
 [@@deriving show { with_path = false }]
 
 type package_solution = {
-  lock                : Lock.t;
-  locked_source       : implementation_source;
-  locked_dependencies : locked_dependency list;
-  used_in_test_only   : bool;
-  explicitly_depended : string option;
+  lock                     : Lock.t;
+  locked_source            : implementation_source;
+  locked_dependencies      : locked_dependency list;
+  used_in_test_only        : bool;
+  explicitly_depended      : string option;
+  explicitly_test_depended : string option;
 }
 [@@deriving show { with_path = false }]
 

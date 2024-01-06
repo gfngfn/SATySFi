@@ -448,10 +448,21 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
       )
     )
   in
+  let explicit_test_dependencies =
+    solutions |> List.filter_map (fun solution ->
+      solution.explicitly_test_depended |> Option.map (fun used_as ->
+        LockConfig.{
+          depended_lock_name = make_lock_name solution.lock;
+          used_as;
+        }
+      )
+    )
+  in
   let lock_config =
     LockConfig.{
       locked_packages = Alist.to_list locked_package_acc;
       explicit_dependencies;
+      explicit_test_dependencies;
     }
   in
   (lock_config, Alist.to_list impl_spec_acc)
@@ -768,14 +779,11 @@ let make_envelope_spec ~(store_root : abs_path) (locked_package : LockConfig.loc
 
 
 let make_deps_config ~(store_root : abs_path) (lock_config : LockConfig.t) : DepsConfig.t =
-  let envelopes =
-    lock_config.LockConfig.locked_packages |> List.map (make_envelope_spec ~store_root)
-  in
-  let explicit_dependencies =
-    lock_config.LockConfig.explicit_dependencies
-      |> List.map make_envelope_dependency
-  in
-  { envelopes; explicit_dependencies }
+  let LockConfig.{ locked_packages; explicit_dependencies; explicit_test_dependencies } = lock_config in
+  let envelopes = locked_packages |> List.map (make_envelope_spec ~store_root) in
+  let explicit_dependencies = explicit_dependencies |> List.map make_envelope_dependency in
+  let explicit_test_dependencies = explicit_test_dependencies |> List.map make_envelope_dependency in
+  { envelopes; explicit_dependencies; explicit_test_dependencies }
 
 
 let build

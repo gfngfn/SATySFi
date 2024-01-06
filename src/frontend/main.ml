@@ -1324,10 +1324,6 @@ let make_used_as_map_for_checking_dependency (deps_config : DepsConfig.t) (envel
   | Some(used_as_map) -> return used_as_map
 
 
-let make_used_as_map_for_checking_main (deps_config : DepsConfig.t) =
-  make_used_as_map deps_config.explicit_dependencies
-
-
 let check_depended_envelopes (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_envelope : bool) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
   let open ResultMonad in
   (* Resolves dependency among envelopes: *)
@@ -1414,7 +1410,7 @@ let build_package
     in
 
     (* Typechecks the main envelope: *)
-    let used_as_map = make_used_as_map_for_checking_main deps_config in
+    let used_as_map = make_used_as_map deps_config.explicit_dependencies in
     let* (_ssig, _libs) =
       EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
     in
@@ -1508,7 +1504,7 @@ let open ResultMonad in
     in
 
     (* Typechecking and elaboration: *)
-    let used_as_map = make_used_as_map_for_checking_main deps_config in
+    let used_as_map = make_used_as_map deps_config.explicit_dependencies in
     let* (libs_local, ast_doc) =
       EnvelopeChecker.main_document
         display_config typecheck_config tyenv_prim genv ~used_as_map sorted_locals (abspath_in, utdoc)
@@ -1590,10 +1586,16 @@ let test_package
     in
 
     (* Typechecks the main envelope: *)
-    let used_as_map = failwith "TODO: used_as_map in test_package" in
+    let used_as_map =
+      let { explicit_dependencies; explicit_test_dependencies; _ } = deps_config in
+      make_used_as_map
+        (List.append explicit_dependencies explicit_test_dependencies)
+    in
     let* (_ssig, libs) =
       EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map package
     in
+
+    (* Runs tests: *)
     let (env, codebinds) = preprocess_bindings display_config ~run_tests:true env libs in
     let _env = evaluate_bindings display_config ~run_tests:true env codebinds in
 (*

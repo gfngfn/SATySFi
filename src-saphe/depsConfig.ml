@@ -25,10 +25,11 @@ let envelope_spec_encoder (spec : envelope_spec) : Yaml.value =
   ])
 
 let deps_config_encoder (deps_config : t) : Yaml.value =
-  let { envelopes; explicit_dependencies } = deps_config in
+  let { envelopes; explicit_dependencies; explicit_test_dependencies } = deps_config in
   `O([
     ("envelopes", `A(envelopes |> List.map envelope_spec_encoder));
     ("dependencies", `A(explicit_dependencies |> List.map envelope_dependency_encoder));
+    ("test_dependencies", `A(explicit_test_dependencies |> List.map envelope_dependency_encoder));
   ])
 
 

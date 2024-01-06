@@ -28,7 +28,8 @@ let deps_config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
   get "envelopes" (list envelope_spec_decoder) >>= fun envelopes ->
   get "dependencies" (list envelope_dependency_decoder) >>= fun explicit_dependencies ->
-  succeed { envelopes; explicit_dependencies }
+  get "test_dependencies" (list envelope_dependency_decoder) >>= fun explicit_test_dependencies ->
+  succeed { envelopes; explicit_dependencies; explicit_test_dependencies }
 
 
 let load (abspath_deps_config : abs_path) : (t, config_error) result =
