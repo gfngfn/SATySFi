@@ -6,7 +6,7 @@ BINDIR=$(PREFIX)/bin
 RM=rm -f
 DUNE=dune
 
-.PHONY: all test test-packages promote-package-locs update-ci-cache install uninstall clean
+.PHONY: all test test-packages promote-package-locks update-ci-cache install uninstall clean
 
 all:
 	$(DUNE) build --root .
