@@ -58,6 +58,7 @@ type config_error =
   | PackageDirectoryNotFound  of string list
   | PackageConfigNotFound     of abs_path
   | PackageConfigError        of abs_path * yaml_error
+  | NotAPackageButADocument   of abs_path
   | LockConfigNotFound        of abs_path
   | LockConfigError           of abs_path * yaml_error
   | RegistryConfigNotFound    of abs_path

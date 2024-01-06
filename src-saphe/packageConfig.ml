@@ -21,6 +21,9 @@ type package_contents =
       main_module_name       : string;
       font_file_descriptions : font_file_description list;
     }
+  | Document of {
+      dependencies : package_dependency list;
+    }
 
 type t = {
   language_requirement : SemanticVersion.requirement;
@@ -193,10 +196,11 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
     "font" ==> begin
       get "main_module" string >>= fun main_module_name ->
       get "files" (list font_file_description_decoder) >>= fun font_file_descriptions ->
-      succeed @@ ParsedFont {
-        main_module_name;
-        font_file_descriptions;
-      }
+      succeed @@ ParsedFont { main_module_name; font_file_descriptions }
+    end;
+    "document" ==> begin
+      get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
+      succeed @@ ParsedDocument{ dependencies }
     end;
   ]
 
@@ -296,14 +300,12 @@ let validate_contents_spec (localmap : registry_remote RegistryLocalNameMap.t) (
         conversion_specs;
       }
 
-  | ParsedFont{
-      main_module_name;
-      font_file_descriptions;
-    } ->
-      return @@ Font{
-        main_module_name;
-        font_file_descriptions;
-      }
+  | ParsedFont{ main_module_name; font_file_descriptions } ->
+      return @@ Font{ main_module_name; font_file_descriptions }
+
+  | ParsedDocument{ dependencies } ->
+      let* dependencies = mapM (validate_dependency localmap) dependencies in
+      return @@ Document{ dependencies }
 
 
 let validate (p_package_config : parsed_package_config) : t ok =

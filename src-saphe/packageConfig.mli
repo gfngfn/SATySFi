@@ -17,6 +17,9 @@ type package_contents =
       main_module_name       : string;
       font_file_descriptions : font_file_description list;
     }
+  | Document of {
+      dependencies : package_dependency list;
+    }
 
 type t = {
   language_requirement : SemanticVersion.requirement;

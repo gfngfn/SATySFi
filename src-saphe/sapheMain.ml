@@ -134,6 +134,13 @@ let report_config_error = function
         make_yaml_error_lines e;
       ])
 
+  | NotAPackageButADocument(abspath_package_config) ->
+      report_error [
+        NormalLine(Printf.sprintf "in %s:" (get_abs_path_string abspath_package_config));
+        NormalLine("this file is expected to be a config for a package,");
+        NormalLine("but is for a document.");
+      ]
+
   | LockConfigNotFound(abspath) ->
       report_error [
         NormalLine("cannot find a lock config at:");
@@ -478,7 +485,8 @@ let extract_attributes_from_document_file (display_config : Logging.config) (inp
 *)
 
 
-let make_envelope_config (package_contents : PackageConfig.package_contents) : EnvelopeConfig.t =
+let make_envelope_config (abspath_package_config : abs_path) (package_contents : PackageConfig.package_contents) : (EnvelopeConfig.t, config_error) result =
+  let open ResultMonad in
   match package_contents with
   | PackageConfig.Library{
       main_module_name;
@@ -486,7 +494,7 @@ let make_envelope_config (package_contents : PackageConfig.package_contents) : E
       test_directories;
       _
     } ->
-      {
+      return {
         envelope_contents =
           Library{
             main_module_name;
@@ -500,7 +508,29 @@ let make_envelope_config (package_contents : PackageConfig.package_contents) : E
       main_module_name;
       font_file_descriptions;
     } ->
-      { envelope_contents = Font{ main_module_name; font_file_descriptions } }
+      return { envelope_contents = Font{ main_module_name; font_file_descriptions } }
+
+  | PackageConfig.Document(_) ->
+      err @@ NotAPackageButADocument(abspath_package_config)
+
+
+let make_dependencies_with_flags (package_contents : PackageConfig.package_contents) =
+  match package_contents with
+  | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
+      List.append
+        (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
+        (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
+
+  | PackageConfig.Font(_) ->
+      []
+
+  | PackageConfig.Document{ dependencies } ->
+      dependencies |> List.map (fun dep -> (SourceDependency, dep))
+
+
+let get_minimum_language_version (language_requirement : SemanticVersion.requirement) : SemanticVersion.t =
+  match language_requirement with
+  | SemanticVersion.CompatibleWith(semver) -> semver
 
 
 let get_store_root () : (abs_path, config_error) result =
@@ -559,15 +589,13 @@ let solve ~(fpath_in : string) =
               _
             } = PackageConfig.load abspath_package_config
           in
-          let language_version =
-            match language_requirement with
-            | SemanticVersion.CompatibleWith(semver) -> semver
-                (* Selects the minimum version according to the user's designation for the moment.
-                   TODO: take dependencies into account when selecting a language version *)
-          in
+
+          (* Selects the minimum version according to the user's designation: *)
+          (* TODO: consider taking dependencies into account when selecting a language version *)
+          let language_version = get_minimum_language_version language_requirement in
 
           (* Writes the envelope config: *)
-          let envelope_config = make_envelope_config package_contents in
+          let* envelope_config = make_envelope_config abspath_package_config package_contents in
           let* () =
             EnvelopeConfig.write abspath_envelope_config envelope_config
               |> Result.map_error (fun message ->
@@ -576,24 +604,29 @@ let solve ~(fpath_in : string) =
           in
           Logging.end_envelope_config_output abspath_envelope_config;
 
-          let dependencies_with_flags =
-            match package_contents with
-            | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
-                List.append
-                  (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
-                  (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
-
-            | PackageConfig.Font(_) ->
-                []
-          in
+          let dependencies_with_flags = make_dependencies_with_flags package_contents in
           return (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes)
 
       | DocumentSolveInput{
           doc    = _abspath_doc;
-          config = _abspath_package_config;
-          lock   = _abspath_lock_config;
+          config = abspath_package_config;
+          lock   = abspath_lock_config;
         } ->
-          failwith "TODO: DocumentSolveInput"
+          let*
+            PackageConfig.{
+              language_requirement;
+              package_contents;
+              registry_remotes;
+              _
+            } = PackageConfig.load abspath_package_config
+          in
+
+          (* Selects the minimum version according to the user's designation: *)
+          (* TODO: consider taking dependencies into account when selecting a language version *)
+          let language_version = get_minimum_language_version language_requirement in
+
+          let dependencies_with_flags = make_dependencies_with_flags package_contents in
+          return (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes)
 (*
           let* DocumentAttribute.{ registry_specs; dependencies } =
             extract_attributes_from_document_file display_config input_kind abspath_in
