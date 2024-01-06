@@ -1,29 +1,29 @@
 TARGETS = \
 	demo.pdf \
 
-EXPECTED_LOCKS=$(TARGETS:.pdf=.satysfi-lock-expected)
+EXPECTED_LOCKS=$(TARGETS:.pdf=.saphe.lock.yaml.expected)
 
-SATYSFI ?= satysfi
+SAPHE ?= saphe
 
 .PHONY: all promote clean
 
-.SUFFIXES: .saty .pdf .satysfi-lock .satysfi-lock-expected
+.SUFFIXES: .saty .pdf .saphe.lock.yaml .saphe.lock.yaml.expected
 
 # Keeps intermediate results:
-.PRECIOUS: %.satysfi-lock
+.PRECIOUS: %.saphe.lock.yaml
 
 # Generates a lock file from a document and checks that it is as expected:
-.saty.satysfi-lock:
-	$(SATYSFI) solve $<
-	diff $(<:.saty=.satysfi-lock) $(<:.saty=.satysfi-lock-expected)
+%.saphe.lock.yaml: %.saty %.saphe.yaml
+	$(SAPHE) solve $<
+	diff $(<:.saty=.saphe.lock.yaml) $(<:.saty=.saphe.lock.yaml.expected)
 
 # Typesets a document:
-%.pdf: %.saty %.satysfi-lock
-	$(SATYSFI) build $< -o $@
+%.pdf: %.saty %.saphe.lock.yaml
+	$(SAPHE) build $< -o $@
 
 # Promote a lock file to the corresponding expected lock file:
-%.satysfi-lock-expected: %.satysfi-lock
-	cp $*.satysfi-lock $*.satysfi-lock-expected
+%.saphe.lock.yaml.expected: %.saphe.lock.yaml
+	cp $*.saphe.lock.yaml $*.saphe.lock.yaml.expected
 
 # Entrypoint for typesetting documents:
 all:: $(TARGETS)
@@ -32,4 +32,4 @@ all:: $(TARGETS)
 promote:: $(EXPECTED_LOCKS)
 
 clean:
-	rm -f *.pdf *.satysfi-aux *.satysfi-lock
+	rm -f *.pdf *.satysfi-aux *.saphe.lock.yaml
