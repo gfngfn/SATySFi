@@ -70,4 +70,6 @@ module Make (Err : ErrorType) : sig
   val map2 : ('a1 -> 'a2 -> 'b) -> 'a1 t -> 'a2 t -> 'b t
 
   val map3 : ('a1 -> 'a2 -> 'a3 -> 'b) -> 'a1 t -> 'a2 t -> 'a3 t -> 'b t
+
+  val foldM : ('a -> 'b -> 'a t) -> 'a -> 'b list -> 'a t
 end

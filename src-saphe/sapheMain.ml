@@ -652,8 +652,7 @@ let solve ~(fpath_in : string) =
 
     (* Constructs a map that associates a package with its implementations: *)
     let* package_id_to_impl_list =
-      registry_remotes |> List.fold_left (fun res registry_remote ->
-        let* package_id_to_impl_list = res in
+      registry_remotes |> foldM (fun package_id_to_impl_list registry_remote ->
         let* registry_hash_value = ConfigUtil.make_registry_hash_value registry_remote in
 
         (* Manupulates the store root config: *)
@@ -682,16 +681,15 @@ let solve ~(fpath_in : string) =
           in
           PackageRegistryConfig.load abspath_registry_config
         in
-        packages |> List.fold_left (fun res (package_name, impls) ->
-          let* package_id_to_impl_list = res in
+        packages |> foldM (fun package_id_to_impl_list (package_name, impls) ->
           let package_id = PackageId.{ registry_hash_value; package_name } in
           if package_id_to_impl_list |> PackageIdMap.mem package_id then
             err @@ MultiplePackageDefinition{ package_name }
           else
             return (package_id_to_impl_list |> PackageIdMap.add package_id impls)
-        ) (return package_id_to_impl_list)
+        ) package_id_to_impl_list
 
-      ) (return PackageIdMap.empty)
+      ) PackageIdMap.empty
     in
 
     let package_context = { language_version; package_id_to_impl_list } in

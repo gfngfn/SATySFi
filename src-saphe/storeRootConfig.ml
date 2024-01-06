@@ -48,13 +48,12 @@ let config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
   get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
   get "registries" (list registry_spec_decoder) >>= fun registries ->
-  registries |> List.fold_left (fun res (registry_hash_value, registry_remote) ->
-    res >>= fun map ->
+  registries |> foldM (fun map (registry_hash_value, registry_remote) ->
     if map |> RegistryHashValueMap.mem registry_hash_value then
       failure (fun context -> DuplicateRegistryHashValue{ context; registry_hash_value })
     else
       succeed (map |> RegistryHashValueMap.add registry_hash_value registry_remote)
-  ) (succeed RegistryHashValueMap.empty) >>= fun registries ->
+  ) RegistryHashValueMap.empty >>= fun registries ->
   succeed { registries }
 
 

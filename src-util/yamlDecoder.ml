@@ -214,4 +214,11 @@ module Make (Err : ErrorType) = struct
       d3 yval >>= fun a3 ->
       return (f a1 a2 a3)
 
+
+  let foldM (f : 'a -> 'b -> 'a t) (init : 'a) (xs : 'b list) : 'a t =
+    xs |> List.fold_left (fun res x ->
+      res >>= fun acc ->
+      f acc x
+    ) (succeed init)
+
 end

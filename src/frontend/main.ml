@@ -1337,8 +1337,7 @@ let check_depended_envelopes (display_config : Logging.config) (typecheck_config
 
   (* Typechecks every depended envelope: *)
   let* (genv, configenv, libacc) =
-    sorted_envelopes |> List.fold_left (fun res (envelope_name, (config, envelope)) ->
-      let* (genv, configenv, libacc) = res in
+    sorted_envelopes |> foldM (fun (genv, configenv, libacc) (envelope_name, (config, envelope)) ->
       let* used_as_map = make_used_as_map_for_checking_dependency deps_config envelope_name in
       let* (ssig, libs) =
         EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
@@ -1347,7 +1346,7 @@ let check_depended_envelopes (display_config : Logging.config) (typecheck_config
       let configenv = configenv |> GlobalTypeenv.add (EnvelopeName.EN(envelope_name)) config in
       let libacc = Alist.append libacc libs in
       return (genv, configenv, libacc)
-    ) (return (GlobalTypeenv.empty, GlobalTypeenv.empty, Alist.empty))
+    ) (GlobalTypeenv.empty, GlobalTypeenv.empty, Alist.empty)
   in
   return (genv, configenv, Alist.to_list libacc)
 

@@ -321,15 +321,14 @@ let validate (p_package_config : parsed_package_config) : t ok =
     } = p_package_config
   in
   let* (localmap, registry_remote_acc) =
-    registry_specs |> List.fold_left (fun res (registry_local_name, registry_remote) ->
-      let* (localmap, registry_remote_acc) = res in
+    registry_specs |> foldM (fun (localmap, registry_remote_acc) (registry_local_name, registry_remote) ->
       if localmap |> RegistryLocalNameMap.mem registry_local_name then
         err @@ DuplicateRegistryLocalName{ registry_local_name }
       else
         let localmap = localmap |> RegistryLocalNameMap.add registry_local_name registry_remote in
         let registry_remote_acc = Alist.extend registry_remote_acc registry_remote in
         return (localmap, registry_remote_acc)
-    ) (return (RegistryLocalNameMap.empty, Alist.empty))
+    ) (RegistryLocalNameMap.empty, Alist.empty)
   in
   let* package_contents =
     validate_contents_spec localmap package_contents
