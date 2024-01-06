@@ -375,6 +375,11 @@ let report_config_error = function
         NormalLine(Printf.sprintf "undefined registry local name '%s'" registry_local_name)
       ]
 
+  | CannotTestDocument ->
+      report_error [
+        NormalLine("cannot run tests for documents (at least so far)");
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
@@ -791,7 +796,6 @@ let build
     ~(fpath_out_opt : string option)
     ~(text_mode_formats_str_opt : string option)
     ~(page_number_limit : int)
-    ~(show_full_path : bool)
     ~(debug_show_bbox : bool)
     ~(debug_show_space : bool)
     ~(debug_show_block_bbox : bool)
@@ -807,9 +811,7 @@ let build
     let build_input =
       let options =
         SatysfiCommand.{
-          text_mode   = text_mode_formats_str_opt;
           page_number_limit;
-          show_full_path;
           debug_show_bbox;
           debug_show_space;
           debug_show_block_bbox;
@@ -876,6 +878,7 @@ let build
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
             ~base_dir:absdir_store_root
+            ~mode:text_mode_formats_str_opt
             ~options)
         in
         return ()
@@ -902,9 +905,74 @@ let build
             ~dump:abspath_dump
             ~deps:abspath_deps_config
             ~base_dir:absdir_store_root
+            ~mode:text_mode_formats_str_opt
             ~options)
         in
         return ()
+  in
+  match res with
+  | Ok(())   -> ()
+  | Error(e) -> report_config_error e; exit 1
+
+
+type test_input =
+  | PackageTestInput of {
+      root     : abs_path;
+      lock     : abs_path;
+      deps     : abs_path;
+      envelope : abs_path;
+    }
+
+
+let test
+    ~(fpath_in : string)
+    ~(text_mode_formats_str_opt : string option)
+=
+  let res =
+    let open ResultMonad in
+
+    let* test_input =
+      let absdir_current = Sys.getcwd () in
+      let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+      if is_directory abspath_in then
+        let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
+        let abspath_deps_config = Constant.library_deps_config_path ~dir:abspath_in in
+        let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
+        return @@ PackageTestInput{
+          root     = abspath_in;
+          lock     = abspath_lock_config;
+          deps     = abspath_deps_config;
+          envelope = abspath_envelope_config;
+        }
+      else
+        err @@ CannotTestDocument
+    in
+
+    let* absdir_store_root = get_store_root () in
+
+    match test_input with
+    | PackageTestInput{
+        root     = _absdir_package;
+        lock     = abspath_lock_config;
+        deps     = abspath_deps_config;
+        envelope = abspath_envelope_config;
+      } ->
+        (* Updates the deps config: *)
+        let* lock_config = LockConfig.load abspath_lock_config in
+        let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
+        let* () = DepsConfig.write abspath_deps_config deps_config in
+        Logging.end_deps_config_output abspath_deps_config;
+
+        (* Builds the package by invoking `satysfi`: *)
+        let SatysfiCommand.{ exit_status = _; command = _ } = (* TODO: use `exit_status` *)
+          SatysfiCommand.(test_package
+            ~envelope:abspath_envelope_config
+            ~deps:abspath_deps_config
+            ~base_dir:absdir_store_root
+            ~mode:text_mode_formats_str_opt)
+        in
+        return ()
+
   in
   match res with
   | Ok(())   -> ()

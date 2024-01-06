@@ -8,7 +8,6 @@ let build
   fpath_out_opt
   text_mode_formats_str_opt
   page_number_limit
-  show_full_path
   debug_show_bbox
   debug_show_space
   debug_show_block_bbox
@@ -22,7 +21,6 @@ let build
     ~fpath_out_opt
     ~text_mode_formats_str_opt
     ~page_number_limit
-    ~show_full_path
     ~debug_show_bbox
     ~debug_show_space
     ~debug_show_block_bbox
@@ -30,6 +28,15 @@ let build
     ~debug_show_overfull
     ~type_check_only
     ~bytecomp
+
+
+let test
+  fpath_in
+  text_mode_formats_str_opt
+=
+  SapheMain.test
+    ~fpath_in
+    ~text_mode_formats_str_opt
 
 
 let arg_in : string Cmdliner.Term.t =
@@ -58,12 +65,6 @@ let flag_page_number_limit : int Cmdliner.Term.t =
 let make_boolean_flag_spec ~(flags : string list) ~(doc : string) : bool Cmdliner.Term.t =
   let open Cmdliner in
   Arg.(value (flag (info flags ~doc)))
-
-
-let flag_full_path =
-  make_boolean_flag_spec
-    ~flags:[ "full-path" ]
-    ~doc:"Displays paths in full-path style"
 
 
 let flag_debug_show_bbox =
@@ -108,7 +109,13 @@ let flag_bytecomp =
     ~doc:"Use bytecode compiler"
 
 
-let command_build =
+let command_solve : unit Cmdliner.Cmd.t =
+  let open Cmdliner in
+  Cmd.v (Cmd.info "solve")
+    Term.(const solve $ arg_in)
+
+
+let command_build : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "build")
     Term.(const build
@@ -116,7 +123,6 @@ let command_build =
       $ flag_output
       $ flag_text_mode
       $ flag_page_number_limit
-      $ flag_full_path
       $ flag_debug_show_bbox
       $ flag_debug_show_space
       $ flag_debug_show_block_bbox
@@ -127,10 +133,13 @@ let command_build =
     )
 
 
-let command_solve =
+let command_test : unit Cmdliner.Cmd.t =
   let open Cmdliner in
-  Cmd.v (Cmd.info "solve")
-    Term.(const solve $ arg_in)
+  Cmd.v (Cmd.info "test")
+    Term.(const test
+      $ arg_in
+      $ flag_text_mode
+    )
 
 
 let () =
@@ -142,6 +151,7 @@ let () =
     [
       command_solve;
       command_build;
+      command_test;
     ]
   in
   Stdlib.exit (Cmd.eval (Cmd.group info subcommands))

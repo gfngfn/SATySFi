@@ -18,9 +18,7 @@ let escape_command_line (args : string list) : string =
 
 
 type build_option = {
-    text_mode              : string option;
     page_number_limit      : int;
-    show_full_path         : bool;
     debug_show_bbox        : bool;
     debug_show_space       : bool;
     debug_show_block_bbox  : bool;
@@ -31,10 +29,20 @@ type build_option = {
 }
 
 
+let make_mode_args (text_mode_formats_str_opt : string option) =
+  match text_mode_formats_str_opt with
+  | None ->
+      []
+
+  | Some(text_mode_formats_str) ->
+      [ "--text_mode"; text_mode_formats_str ]
+
+
 let build_package
   ~envelope:(abspath_envelope_config : abs_path)
   ~deps:(abspath_deps_config : abs_path)
   ~base_dir:(absdir_base : abs_path)
+  ~mode:(text_mode_formats_str_opt : string option)
   ~options:(_ : build_option) : run_result
 =
   let args_mandatory =
@@ -46,7 +54,8 @@ let build_package
       "--full-path"; (* TODO: refine this *)
     ]
   in
-  let args = args_mandatory in
+  let args_mode = make_mode_args text_mode_formats_str_opt in
+  let args = List.concat [ args_mandatory; args_mode ] in
   let command = escape_command_line args in
   let exit_status = Sys.command command in
   { exit_status; command }
@@ -58,6 +67,7 @@ let build_document
   ~dump:(abspath_dump : abs_path)
   ~deps:(abspath_deps_config : abs_path)
   ~base_dir:(absdir_base : abs_path)
+  ~mode:(text_mode_formats_str_opt : string option)
   ~options:(_ : build_option) : run_result
 =
   let args_mandatory =
@@ -71,7 +81,30 @@ let build_document
       "--full-path"; (* TODO: refine this *)
     ]
   in
-  let args = args_mandatory in
+  let args_mode = make_mode_args text_mode_formats_str_opt in
+  let args = List.concat [ args_mandatory; args_mode ] in
+  let command = escape_command_line args in
+  let exit_status = Sys.command command in
+  { exit_status; command }
+
+
+let test_package
+  ~envelope:(abspath_envelope_config : abs_path)
+  ~deps:(abspath_deps_config : abs_path)
+  ~base_dir:(absdir_base : abs_path)
+  ~mode:(text_mode_formats_str_opt : string option) : run_result
+=
+  let args_mandatory =
+    [
+      "satysfi"; "test"; "package";
+      get_abs_path_string abspath_envelope_config;
+      "--deps"; get_abs_path_string abspath_deps_config;
+      "--base"; get_abs_path_string absdir_base;
+      "--full-path"; (* TODO: refine this *)
+    ]
+  in
+  let args_mode = make_mode_args text_mode_formats_str_opt in
+  let args = List.concat [ args_mandatory; args_mode ] in
   let command = escape_command_line args in
   let exit_status = Sys.command command in
   { exit_status; command }

@@ -143,3 +143,4 @@ type config_error =
   | UndefinedRegistryLocalName of {
       registry_local_name : registry_local_name;
     }
+  | CannotTestDocument
