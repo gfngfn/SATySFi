@@ -41,7 +41,7 @@ let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(ex
         let* envelope_with_config =
           EnvelopeReader.main
             display_config
-            ~use_test_files:use_test_only_envelope
+            ~use_test_files:false (* Does not use tests of depended packages. *)
             ~extensions
             ~envelope_config:abspath_envelope_config
         in
