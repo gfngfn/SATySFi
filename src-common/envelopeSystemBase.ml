@@ -28,12 +28,55 @@ type font_file_description = {
 type package_conversion_spec = unit (* TODO *)
 [@@deriving show]
 
+type long_inline_command = LongInlineCommand of {
+  modules             : string list;
+  main_without_prefix : string;
+}
+[@@deriving show { with_path = false }]
+
+type long_block_command = LongBlockCommand of {
+  modules             : string list;
+  main_without_prefix : string;
+}
+[@@deriving show { with_path = false }]
+
+type long_identifier = LongIdentifier of {
+  modules : string list;
+  main    : string;
+}
+[@@deriving show { with_path = false }]
+
+type markdown_conversion = MarkdownConversion of {
+  document   : long_identifier;
+
+  paragraph  : long_block_command;
+  hr         : long_block_command;
+  h1         : long_block_command;
+  h2         : long_block_command;
+  h3         : long_block_command;
+  h4         : long_block_command;
+  h5         : long_block_command;
+  h6         : long_block_command;
+  ul         : long_block_command;
+  ol         : long_block_command;
+  code_block : long_block_command;
+  blockquote : long_block_command;
+
+  emph       : long_inline_command;
+  strong     : long_inline_command;
+  hard_break : long_inline_command option;
+  code       : long_inline_command;
+  link       : long_inline_command;
+  img        : long_inline_command;
+}
+[@@deriving show { with_path = false }]
+
 type envelope_contents =
   | Library of {
-      main_module_name   : string;
-      source_directories : relative_path list;
-      test_directories   : relative_path list;
-      conversion_specs   : package_conversion_spec list;
+      main_module_name    : string;
+      source_directories  : relative_path list;
+      test_directories    : relative_path list;
+      markdown_conversion : markdown_conversion option;
     }
   | Font of {
       main_module_name       : string;
@@ -44,6 +87,7 @@ type envelope_contents =
 type envelope_config = {
   envelope_contents : envelope_contents;
 }
+[@@deriving show]
 
 type envelope_dependency = {
   dependency_name    : envelope_name;

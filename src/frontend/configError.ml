@@ -12,7 +12,7 @@ type yaml_error =
   | NotABool               of YamlDecoder.context
   | NotAnArray             of YamlDecoder.context
   | NotAnObject            of YamlDecoder.context
-  | BranchNotFound         of {
+  | BranchNotFound of {
       context       : YamlDecoder.context;
       expected_tags : string list;
       got_tags      : string list;
@@ -21,6 +21,11 @@ type yaml_error =
       context       : YamlDecoder.context;
       expected_tags : string list;
       got_tags      : string list;
+    }
+  | NotACommand of {
+      context : YamlDecoder.context;
+      prefix  : char;
+      string  : string;
     }
 [@@deriving show { with_path = false }]
 

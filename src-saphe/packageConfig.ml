@@ -10,12 +10,12 @@ type 'a ok = ('a, config_error) result
 
 type package_contents =
   | Library of {
-      main_module_name   : string;
-      source_directories : relative_path list;
-      test_directories   : relative_path list;
-      dependencies       : package_dependency list;
-      test_dependencies  : package_dependency list;
-      conversion_specs   : package_conversion_spec list;
+      main_module_name    : string;
+      source_directories  : relative_path list;
+      test_directories    : relative_path list;
+      dependencies        : package_dependency list;
+      test_dependencies   : package_dependency list;
+      markdown_conversion : markdown_conversion option;
     }
   | Font of {
       main_module_name       : string;
@@ -66,22 +66,20 @@ let font_file_description_decoder : font_file_description ConfigDecoder.t =
   }
 
 
-(*
 let cut_module_names (s : string) : string list * string =
   match List.rev (String.split_on_char '.' s) with
   | varnm :: modnms_rev -> (List.rev modnms_rev, varnm)
   | _                   -> assert false (* `String.split_on_char` always returns a non-empty list *)
 
 
-let command_decoder ~(prefix : char) : MarkdownParser.command ConfigDecoder.t =
+let command_decoder ~(prefix : char) (k : string list -> string -> 'a) : 'a ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
   try
     if Char.equal prefix (String.get s 0) then
       let s_tail = (String.sub s 1 (String.length s - 1)) in
       let (modnms, varnm) = cut_module_names s_tail in
-      let csnm = Printf.sprintf "%c%s" prefix varnm in
-      succeed (Range.dummy "command_decoder", (modnms, csnm))
+      succeed @@ k modnms varnm
     else
       failure (fun context -> NotACommand{ context; prefix; string = s })
   with
@@ -90,88 +88,63 @@ let command_decoder ~(prefix : char) : MarkdownParser.command ConfigDecoder.t =
 
 
 let inline_command_decoder =
-  command_decoder ~prefix:'\\'
+  command_decoder ~prefix:'\\' (fun modules main_without_prefix ->
+    LongInlineCommand{ modules; main_without_prefix }
+  )
 
 
 let block_command_decoder =
-  command_decoder ~prefix:'+'
+  command_decoder ~prefix:'+' (fun modules main_without_prefix ->
+    LongBlockCommand{ modules; main_without_prefix }
+  )
 
 
-let identifier_decoder : MarkdownParser.command ConfigDecoder.t =
+let identifier_decoder : long_identifier ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
   let (modnms, varnm) = cut_module_names s in
-  succeed (Range.dummy "identifier_decoder", (modnms, varnm))
+  succeed @@ LongIdentifier{ modules = modnms; main = varnm }
 
 
-let hard_break_decoder : (MarkdownParser.command option) ConfigDecoder.t =
+let markdown_conversion_decoder : markdown_conversion ConfigDecoder.t =
   let open ConfigDecoder in
-  branch "type" [
-    "none" ==> begin
-      succeed None
-    end;
-    "some" ==> begin
-      get "command" inline_command_decoder >>= fun command ->
-      succeed @@ Some(command)
-    end;
-  ]
-  ~other:(fun tag ->
-    failure (fun context -> UnexpectedTag(context, tag))
-  )
+  get "document" identifier_decoder >>= fun document ->
+  get "paragraph" block_command_decoder >>= fun paragraph ->
+  get "hr" block_command_decoder >>= fun hr ->
+  get "h1" block_command_decoder >>= fun h1 ->
+  get "h2" block_command_decoder >>= fun h2 ->
+  get "h3" block_command_decoder >>= fun h3 ->
+  get "h4" block_command_decoder >>= fun h4 ->
+  get "h5" block_command_decoder >>= fun h5 ->
+  get "h6" block_command_decoder >>= fun h6 ->
+  get "ul" block_command_decoder >>= fun ul ->
+  get "ol" block_command_decoder >>= fun ol ->
+  get "code_block" block_command_decoder >>= fun code_block ->
+  get "blockquote" block_command_decoder >>= fun blockquote ->
+  get "emph" inline_command_decoder >>= fun emph ->
+  get "strong" inline_command_decoder >>= fun strong ->
+  get_opt "hard_break" inline_command_decoder >>= fun hard_break ->
+  get "code" inline_command_decoder >>= fun code ->
+  get "link" inline_command_decoder >>= fun link ->
+  get "img" inline_command_decoder >>= fun img ->
+  succeed @@ MarkdownConversion{
+    document;
 
+    paragraph;
+    hr;
+    h1; h2; h3; h4; h5; h6;
+    ul;
+    ol;
+    code_block;
+    blockquote;
 
-let conversion_spec_decoder : package_conversion_spec ConfigDecoder.t =
-  let open ConfigDecoder in
-  branch "type" [
-    "markdown" ==> begin
-      get "document" identifier_decoder >>= fun document ->
-      get "paragraph" block_command_decoder >>= fun paragraph ->
-      get "hr" block_command_decoder >>= fun hr ->
-      get "h1" block_command_decoder >>= fun h1 ->
-      get "h2" block_command_decoder >>= fun h2 ->
-      get "h3" block_command_decoder >>= fun h3 ->
-      get "h4" block_command_decoder >>= fun h4 ->
-      get "h5" block_command_decoder >>= fun h5 ->
-      get "h6" block_command_decoder >>= fun h6 ->
-      get "ul" block_command_decoder >>= fun ul ->
-      get "ol" block_command_decoder >>= fun ol ->
-      get "code_block" block_command_decoder >>= fun code_block ->
-      get "blockquote" block_command_decoder >>= fun blockquote ->
-      get "emph" inline_command_decoder >>= fun emph ->
-      get "strong" inline_command_decoder >>= fun strong ->
-      get "hard_break" hard_break_decoder >>= fun hard_break ->
-      get "code" inline_command_decoder >>= fun code ->
-      get "link" inline_command_decoder >>= fun link ->
-      get "img" inline_command_decoder >>= fun img ->
-      succeed @@ MarkdownConversion(MarkdownParser.{
-        document;
-
-        paragraph;
-        hr;
-        h1; h2; h3; h4; h5; h6;
-        ul;
-        ol;
-        code_block;
-        blockquote;
-
-        emph;
-        strong;
-        hard_break;
-        code;
-        link;
-        img;
-      })
-    end;
-  ]
-  ~other:(fun tag ->
-    failure (fun context -> UnexpectedTag(context, tag))
-  )
-*)
-
-(* TODO: fix this *)
-let conversion_spec_decoder =
-  let open ConfigDecoder in
-  succeed ()
+    emph;
+    strong;
+    hard_break;
+    code;
+    link;
+    img;
+  }
 
 
 let contents_decoder : parsed_package_contents ConfigDecoder.t =
@@ -183,14 +156,14 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
       get_or_else "test_directories" (list string) [] >>= fun test_directories ->
       get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
       get_or_else "test_dependencies" (list dependency_decoder) [] >>= fun test_dependencies ->
-      get_or_else "conversion" (list conversion_spec_decoder) [] >>= fun conversion_specs ->
+      get_opt "markdown_conversion" markdown_conversion_decoder >>= fun markdown_conversion ->
       succeed @@ ParsedLibrary {
         main_module_name;
         source_directories;
         test_directories;
         dependencies;
         test_dependencies;
-        conversion_specs;
+        markdown_conversion;
       }
     end;
     "font" ==> begin
@@ -245,9 +218,9 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
     language_requirement;
     package_name;
     package_authors;
+    registry_specs;
     external_resources;
     package_contents;
-    registry_specs;
   }
 
 
@@ -287,7 +260,7 @@ let validate_contents_spec (localmap : registry_remote RegistryLocalNameMap.t) (
       test_directories;
       dependencies;
       test_dependencies;
-      conversion_specs;
+      markdown_conversion;
     } ->
       let* dependencies = mapM (validate_dependency localmap) dependencies in
       let* test_dependencies = mapM (validate_dependency localmap) test_dependencies in
@@ -297,7 +270,7 @@ let validate_contents_spec (localmap : registry_remote RegistryLocalNameMap.t) (
         test_directories;
         dependencies;
         test_dependencies;
-        conversion_specs;
+        markdown_conversion;
       }
 
   | ParsedFont{ main_module_name; font_file_descriptions } ->

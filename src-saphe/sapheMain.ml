@@ -508,6 +508,7 @@ let make_envelope_config (abspath_package_config : abs_path) (package_contents :
       main_module_name;
       source_directories;
       test_directories;
+      markdown_conversion;
       _
     } ->
       return {
@@ -516,7 +517,7 @@ let make_envelope_config (abspath_package_config : abs_path) (package_contents :
             main_module_name;
             source_directories;
             test_directories;
-            conversion_specs = []; (* TODO *)
+            markdown_conversion;
           };
       }
 

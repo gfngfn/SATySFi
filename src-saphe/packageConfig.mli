@@ -6,12 +6,12 @@ open PackageSystemBase
 
 type package_contents =
   | Library of {
-      main_module_name   : string;
-      source_directories : relative_path list;
-      test_directories   : relative_path list;
-      dependencies       : package_dependency list;
-      test_dependencies  : package_dependency list;
-      conversion_specs   : package_conversion_spec list;
+      main_module_name    : string;
+      source_directories  : relative_path list;
+      test_directories    : relative_path list;
+      dependencies        : package_dependency list;
+      test_dependencies   : package_dependency list;
+      markdown_conversion : markdown_conversion option;
     }
   | Font of {
       main_module_name       : string;

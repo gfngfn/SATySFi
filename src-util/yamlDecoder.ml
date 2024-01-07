@@ -98,12 +98,17 @@ module Make (Err : ErrorType) = struct
     get_scheme field d (fun context -> err @@ Err.field_not_found (Alist.to_list context) field)
 
 
+  let option (d : 'a t) : ('a option) t =
+    fun (context, yval) ->
+      let open ResultMonad in
+      match yval with
+      | `Null -> return None
+      | _     -> d (context, yval) >>= fun v -> return @@ Some(v)
+
+
   let get_opt (field : string) (d : 'a t) : ('a option) t =
-    let d_some =
-      d >>= fun v -> succeed (Some(v))
-    in
     let open ResultMonad in
-    get_scheme field d_some (fun _ -> return None)
+    get_scheme field (option d) (fun _context -> return None)
 
 
   let get_or_else (field : string) (d : 'a t) (default : 'a) : 'a t =

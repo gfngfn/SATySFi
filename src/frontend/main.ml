@@ -931,6 +931,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
         NormalLine(Printf.sprintf "%s" (show_yaml_context yctx));
       ]
 
+  | NotACommand{ context = yctx; prefix = _; string = s } ->
+      [ NormalLine(Printf.sprintf "not a command: '%s' %s" s (show_yaml_context yctx)) ]
+
 
 let report_config_error (display_config : Logging.config) : config_error -> unit = function
   | UnexpectedExtension(ext) ->

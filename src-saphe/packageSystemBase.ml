@@ -38,12 +38,6 @@ type parsed_package_dependency =
     }
 [@@deriving show { with_path = false }]
 
-type package_conversion_spec = unit (* TODO *)
-(*
-  | MarkdownConversion of MarkdownParser.command_record
-*)
-[@@deriving show { with_path = false }]
-
 module PackageId = struct
   type t = {
     registry_hash_value : string;
@@ -183,12 +177,12 @@ type external_resource =
 
 type parsed_package_contents =
   | ParsedLibrary of {
-      main_module_name   : string;
-      source_directories : relative_path list;
-      test_directories   : relative_path list;
-      dependencies       : parsed_package_dependency list;
-      test_dependencies  : parsed_package_dependency list;
-      conversion_specs   : package_conversion_spec list;
+      main_module_name    : string;
+      source_directories  : relative_path list;
+      test_directories    : relative_path list;
+      dependencies        : parsed_package_dependency list;
+      test_dependencies   : parsed_package_dependency list;
+      markdown_conversion : markdown_conversion option;
     }
   | ParsedFont of {
       main_module_name       : string;
@@ -203,8 +197,8 @@ type parsed_package_config = ParsedPackageConfig of {
   language_requirement : SemanticVersion.requirement;
   package_name         : package_name;
   package_authors      : string list;
+  registry_specs       : (registry_local_name * registry_remote) list;
   external_resources   : (string * external_resource) list;
   package_contents     : parsed_package_contents;
-  registry_specs       : (registry_local_name * registry_remote) list;
 }
 [@@deriving show { with_path = false }]
