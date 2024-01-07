@@ -1,10 +1,11 @@
-(*
+
+open EnvelopeSystemBase
 open Types
+
 
 type error =
   | InvalidHeaderComment
   | InvalidExtraExpression
-  | FailedToMakeDocumentAttribute of DocumentAttribute.error
 
 type 'a ok = ('a, error) result
 
@@ -211,33 +212,6 @@ let normalize_h1 =
   normalize_h H1 (function Omd.Heading(_, 1, heading) -> Some(heading) | _ -> None) normalize_h2
 
 
-type command = Range.t * (module_name list * var_name)
-
-type command_record = {
-  document   : command;
-
-  paragraph  : command;
-  hr         : command;
-  h1         : command;
-  h2         : command;
-  h3         : command;
-  h4         : command;
-  h5         : command;
-  h6         : command;
-  ul         : command;
-  ol         : command;
-  code_block : command;
-  blockquote : command;
-
-  emph       : command;
-  strong     : command;
-  hard_break : command option;
-  code       : command;
-  link       : command;
-  img        : command;
-}
-
-
 let dummy_range = Range.dummy "Markdown-parser"
 
 
@@ -247,113 +221,142 @@ let make_list_tree utasts =
   ) utasts (dummy_range, UTEndOfList)
 
 
-let make_inline_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
+let make_inline_application (icmd : long_inline_command) (utasts : untyped_abstract_tree list) =
+  let LongInlineCommand{ modules = modnms; main_without_prefix } = icmd in
+  let csnm = Printf.sprintf "\\%s" main_without_prefix in
+  let rng = Range.dummy "MarkdownParser.make_inline_application" in
   let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
   let utast_cmd = (rng, UTContentOf(modidents, (rng, csnm))) in
   [(dummy_range, UTInlineTextApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
-let make_block_application ((rng, (modnms, csnm)) : command) (utasts : untyped_abstract_tree list) =
+let make_block_application (bcmd : long_block_command) (utasts : untyped_abstract_tree list) =
+  let LongBlockCommand{ modules = modnms; main_without_prefix } = bcmd in
+  let csnm = Printf.sprintf "+%s" main_without_prefix in
+  let rng = Range.dummy "MarkdownParser.make_block_application" in
   let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
   let utast_cmd = (rng, UTContentOf(modidents, (rng, csnm))) in
   [(dummy_range, UTBlockTextApplyCommand(utast_cmd, utasts |> List.map (fun x -> UTCommandArg([], x))))]
 
 
-let rec convert_inline_element (cmdr : command_record) (ie : inline_element) : untyped_inline_text_element list =
+let rec convert_inline_element (conv : markdown_conversion) (ie : inline_element) : untyped_inline_text_element list =
+  let
+    MarkdownConversion{
+      emph;
+      strong;
+      hard_break;
+      code;
+      link;
+      img;
+      _
+    } = conv
+  in
   match ie with
   | Text(s) ->
       [(dummy_range, UTInlineTextString(s))]
 
   | Emph(inline) ->
-      let utast_arg = convert_inline cmdr inline in
-      make_inline_application cmdr.emph [ utast_arg ]
+      let utast_arg = convert_inline conv inline in
+      make_inline_application emph [ utast_arg ]
 
   | Strong(inline) ->
-      let utast_arg = convert_inline cmdr inline in
-      make_inline_application cmdr.strong [ utast_arg ]
+      let utast_arg = convert_inline conv inline in
+      make_inline_application strong [ utast_arg ]
 
 
   | Code(s) ->
-      let cmd = cmdr.code in
+      let cmd = code in
       let utast_arg = (dummy_range, UTStringConstant(s)) in
       make_inline_application cmd [ utast_arg ]
 
   | Br ->
       begin
-        match cmdr.hard_break with
+        match hard_break with
         | Some(cmd) -> make_inline_application cmd []
         | None      -> [ (dummy_range, UTInlineTextString("\n")) ]
       end
 
   | Link(href, inline, _title) ->
       let utast_arg1 = (dummy_range, UTStringConstant(href)) in
-      let utast_arg2 = convert_inline cmdr inline in
-      make_inline_application cmdr.link [ utast_arg1; utast_arg2 ]
+      let utast_arg2 = convert_inline conv inline in
+      make_inline_application link [ utast_arg1; utast_arg2 ]
 
   | Img(alt, src, title) ->
       let utast_arg1 = (dummy_range, UTStringConstant(alt)) in
       let utast_arg2 = (dummy_range, UTStringConstant(src)) in
       let utast_arg3 = (dummy_range, UTStringConstant(title)) in
-      make_inline_application cmdr.img [ utast_arg1; utast_arg2; utast_arg3 ]
+      make_inline_application img [ utast_arg1; utast_arg2; utast_arg3 ]
 
 
-and convert_inline (cmdr : command_record) (inline : inline) : untyped_abstract_tree =
+and convert_inline (conv : markdown_conversion) (inline : inline) : untyped_abstract_tree =
   let ibacc =
     inline |> List.fold_left (fun ibacc ie ->
-      Alist.append ibacc (convert_inline_element cmdr ie)
+      Alist.append ibacc (convert_inline_element conv ie)
     ) Alist.empty
   in
   let utih = Alist.to_list ibacc in
   (dummy_range, UTInlineText(utih))
 
 
-and convert_block_element (cmdr : command_record) (be : block_element) : untyped_block_text_element list =
+and convert_block_element (conv : markdown_conversion) (be : block_element) : untyped_block_text_element list =
+  let
+    MarkdownConversion{
+      paragraph;
+      hr;
+      h1; h2; h3; h4; h5; h6;
+      ul;
+      ol;
+      code_block;
+      blockquote;
+      _
+    } = conv
+  in
   match be with
   | Paragraph(inline) ->
-      let utast_arg = convert_inline cmdr inline in
-      make_block_application cmdr.paragraph [ utast_arg ]
+      let utast_arg = convert_inline conv inline in
+      make_block_application paragraph [ utast_arg ]
 
   | Section(level, inline, block) ->
-      let utast_arg1 = convert_inline cmdr inline in
-      let utast_arg2 = convert_block cmdr block in
+      let utast_arg1 = convert_inline conv inline in
+      let utast_arg2 = convert_block conv block in
       let cmd =
         match level with
-        | H1 -> cmdr.h1
-        | H2 -> cmdr.h2
-        | H3 -> cmdr.h3
-        | H4 -> cmdr.h4
-        | H5 -> cmdr.h5
-        | H6 -> cmdr.h6
+        | H1 -> h1
+        | H2 -> h2
+        | H3 -> h3
+        | H4 -> h4
+        | H5 -> h5
+        | H6 -> h6
       in
       make_block_application cmd [ utast_arg1; utast_arg2 ]
 
   | Hr ->
-      make_block_application cmdr.hr []
+      make_block_application hr []
 
   | Ol(blocks) ->
-      let utasts = blocks |> List.map (convert_block cmdr) in
+      let utasts = blocks |> List.map (convert_block conv) in
       let utast_arg = make_list_tree utasts in
-      make_block_application cmdr.ol [ utast_arg ]
+      make_block_application ol [ utast_arg ]
 
   | Ul(blocks) ->
-      let utasts = blocks |> List.map (convert_block cmdr) in
+      let utasts = blocks |> List.map (convert_block conv) in
       let utast_arg = make_list_tree utasts in
-      make_block_application cmdr.ul [ utast_arg ]
+      make_block_application ul [ utast_arg ]
 
   | CodeBlock(name, s) ->
       let utast_arg1 = (dummy_range, UTStringConstant(name)) in
       let utast_arg2 = (dummy_range, UTStringConstant(s)) in
-      make_block_application cmdr.code_block [ utast_arg1; utast_arg2 ]
+      make_block_application code_block [ utast_arg1; utast_arg2 ]
 
   | Blockquote(block) ->
-      let utast_arg = convert_block cmdr block in
-      make_block_application cmdr.blockquote [ utast_arg ]
+      let utast_arg = convert_block conv block in
+      make_block_application blockquote [ utast_arg ]
 
 
-and convert_block (cmdr : command_record) (block : block) : untyped_abstract_tree =
+and convert_block (conv : markdown_conversion) (block : block) : untyped_abstract_tree =
   let bbacc =
     block |> List.fold_left (fun bbacc be ->
-      Alist.append bbacc (convert_block_element cmdr be)
+      Alist.append bbacc (convert_block_element conv be)
     ) Alist.empty
   in
   let utiv = Alist.to_list bbacc in
@@ -385,53 +388,36 @@ type t = {
 }
 
 
-let decode (s : string) : (DocumentAttribute.t * module_name * t) ok =
+let decode (s : string) : t ok =
   let open ResultMonad in
   let obs = Omd.of_string s in
-  let* (s_config, modnm, s_extra, obs) =
+  let* (s_extra, obs) =
     match obs with
-    | Omd.Html_block(_attr1, s1) :: Omd.Html_block(_attr2, s2) :: Omd.Html_block(_attr3, s3) :: obs ->
+    | Omd.Html_block(_attr3, s) :: obs ->
         begin
-          match (extract_comment s1, extract_comment s2, extract_comment s3) with
-          | (Some(s_config), Some(modnm), Some(s_extra)) ->
-              return (s_config, modnm, s_extra, obs)
-
-          | _ ->
-              err InvalidHeaderComment
+          match (extract_comment s) with
+          | Some(s_extra) -> return (s_extra, obs)
+          | None          -> err InvalidHeaderComment
         end
 
     | _ ->
         err InvalidHeaderComment
   in
-  let* utast_config = parse_expression s_config in
   let* utast_extra = parse_expression s_extra in
-  let main_contents = normalize_h1 obs in
-  let document_attributes_res =
-    DocumentAttribute.make [
-      (dummy_range, UTAttribute("config", Some(utast_config)))
-    ]
-  in
-  match document_attributes_res with
-  | Error(e) ->
-      err @@ FailedToMakeDocumentAttribute(e)
-
-  | Ok(document_attributes) ->
-      let md =
-        {
-          extra_expression = utast_extra;
-          main_contents;
-        }
-      in
-      return (document_attributes, modnm, md)
+  return {
+    extra_expression = utast_extra;
+    main_contents    = normalize_h1 obs;
+  }
 
 
-let convert (cmdr : command_record) (md : t) =
-  let utast_body = convert_block cmdr md.main_contents in
+let convert (conv : markdown_conversion) (md : t) =
+  let utast_body = convert_block conv md.main_contents in
   let utast_doccmd =
-    let (rng, (modnms, varnm)) = cmdr.document in
+    let MarkdownConversion{ document; _ } = conv in
+    let LongIdentifier{ modules = modnms; main = varnm } = document in
+    let rng = Range.dummy "MarkdownParser.convert" in
     let modidents = modnms |> List.map (fun modnm -> (rng, modnm)) in
     (rng, UTContentOf(modidents, (rng, varnm)))
   in
   let utast_extra = md.extra_expression in
   (dummy_range, UTApply([], (dummy_range, UTApply([], utast_doccmd, utast_extra)), utast_body))
-*)

@@ -73,13 +73,6 @@ type config_error =
     }
   | CannotFindLibraryFile     of lib_path * abs_path list
   | CannotSolvePackageConstraints
-(*
-  | DocumentAttributeError        of DocumentAttribute.error
-  | MarkdownClassNotFound         of module_name
-  | NoMarkdownConversion          of module_name
-  | MoreThanOneMarkdownConversion of module_name
-  | MarkdownError                 of MarkdownParser.error
-*)
   | FailedToFetchTarball of {
       lock_name   : lock_name;
       exit_status : int;

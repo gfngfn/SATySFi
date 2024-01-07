@@ -81,3 +81,6 @@ type config_error =
   | EnvelopeConfigNotFound    of abs_path
   | EnvelopeConfigError       of abs_path * yaml_error
   | DependedEnvelopeNotFound  of envelope_name
+  | MarkdownClassNotFound
+  | NoMarkdownConversion
+  | MarkdownError             of MarkdownParser.error

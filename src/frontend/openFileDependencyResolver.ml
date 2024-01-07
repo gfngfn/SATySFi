@@ -1,5 +1,6 @@
 
 open MyUtil
+open EnvelopeSystemBase
 open Types
 open ConfigError
 
@@ -106,58 +107,46 @@ let register_document_file (display_config : Logging.config) (extensions : strin
   return (graph, utdoc)
 
 
-(*
-let extract_markdown_command_record ~(module_name : module_name) (config : PackageConfig.t) : MarkdownParser.command_record ok =
+let extract_markdown_conversion (envelope_config : EnvelopeConfig.t) : markdown_conversion ok =
   let open ResultMonad in
-  match config.PackageConfig.package_contents with
-  | PackageConfig.Library{ conversion_specs; _ } ->
-      begin
-        match
-          conversion_specs |> List.filter_map (function
-          | PackageConfig.MarkdownConversion(cmdrcd) ->
-              Some(cmdrcd)
-          )
-        with
-        | [] ->
-            err @@ NoMarkdownConversion(module_name)
-
-        | [ cmdrcd ] ->
-            return cmdrcd
-
-        | _ :: _ ->
-            err @@ MoreThanOneMarkdownConversion(module_name)
-      end
-
-  | _ ->
-      err @@ NoMarkdownConversion(module_name)
+  let { envelope_contents } = envelope_config in
+  match envelope_contents with
+  | Library{ markdown_conversion = Some(conv); _ } -> return conv
+  | _                                              -> err NoMarkdownConversion
 
 
-let register_markdown_file (display_config : Logging.config) (configenv : PackageConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : untyped_document_file ok =
+let register_markdown_file (display_config : Logging.config) (configenv : EnvelopeConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : untyped_document_file ok =
   let open ResultMonad in
+  let envelope_name_class = failwith "TODO: register_markdown_file, envelope_name_class" in
+  let main_module_name_class = failwith "TODO: register_markdown_file, main_module_name_class" in
   Logging.begin_to_parse_file display_config abspath_in;
-  let* (_docattr, main_module_name_class, md) =
+  let* md =
     match read_file abspath_in with
     | Ok(data)   -> MarkdownParser.decode data |> Result.map_error (fun e -> MarkdownError(e))
     | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in
-  let* cmdrcd =
-    match configenv |> GlobalTypeenv.find_opt main_module_name_class with
+  let* conv =
+    match configenv |> GlobalTypeenv.find_opt envelope_name_class with
     | None ->
-        err @@ MarkdownClassNotFound(main_module_name_class)
+        err @@ MarkdownClassNotFound
 
-    | Some(config) ->
-        extract_markdown_command_record ~module_name:main_module_name_class config
+    | Some(envelope_config) ->
+        extract_markdown_conversion envelope_config
   in
-  let utast = MarkdownParser.convert cmdrcd md in
+  let utast = MarkdownParser.convert conv md in
   let header =
-    [ HeaderUsePackage{ opening = false; mod_chain = (Range.dummy "md-header", ((Range.dummy "md-header", main_module_name_class), [])) } ]
+    [
+      HeaderUsePackage{
+        opening   = false;
+        mod_chain = (Range.dummy "md-header", ((Range.dummy "md-header", main_module_name_class), []));
+      };
+    ]
   in
   let utdoc = ([], header, utast) in
   return utdoc
-*)
 
 
-let main (display_config : Logging.config) ~(extensions : string list) (input_kind : input_kind) (_configenv : EnvelopeConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
+let main (display_config : Logging.config) ~(extensions : string list) (input_kind : input_kind) (configenv : EnvelopeConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
   let* (graph, utdoc) =
     match input_kind with
@@ -165,11 +154,8 @@ let main (display_config : Logging.config) ~(extensions : string list) (input_ki
         register_document_file display_config extensions abspath_in
 
     | InputMarkdown ->
-        failwith "TODO: InputMarkdown"
-(*
         let* utdoc = register_markdown_file display_config configenv abspath_in in
         return (FileDependencyGraph.empty, utdoc)
-*)
   in
   let* sorted_locals =
     FileDependencyGraph.topological_sort graph

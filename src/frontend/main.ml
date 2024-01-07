@@ -1112,6 +1112,30 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
         NormalLine(Printf.sprintf "unknown depended envelope '%s'" envelope_name);
       ]
 
+  | MarkdownClassNotFound ->
+      report_error Interface [
+        NormalLine("Markdown class not found");
+      ]
+
+  | NoMarkdownConversion ->
+      report_error Interface [
+        NormalLine("no Markdown conversion");
+      ]
+
+  | MarkdownError(e) ->
+      begin
+        match e with
+        | InvalidHeaderComment ->
+            report_error Interface [
+              NormalLine("invalid or missing header comment of a Markdown document.");
+            ]
+
+        | InvalidExtraExpression ->
+            report_error Interface [
+              NormalLine("cannot parse an extra expression in a Markdown document.");
+            ]
+      end
+
 
 let report_font_error (display_config : Logging.config) = function
   | FailedToReadFont(abspath, msg) ->

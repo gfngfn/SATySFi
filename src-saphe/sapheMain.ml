@@ -223,42 +223,7 @@ let report_config_error = function
       report_error [
         NormalLine("cannot solve package constraints.");
       ]
-(*
-  | DocumentAttributeError(e) ->
-      report_document_attribute_error e
 
-  | MarkdownClassNotFound(modnm) ->
-      report_error [
-        NormalLine(Printf.sprintf "package '%s' not found; required for converting Markdown documents." modnm);
-      ]
-
-  | NoMarkdownConversion(modnm) ->
-      report_error [
-        NormalLine(Printf.sprintf "package '%s' contains no Markdown conversion rule." modnm);
-      ]
-
-  | MoreThanOneMarkdownConversion(modnm) ->
-      report_error [
-        NormalLine(Printf.sprintf "package '%s' contains more than one Markdown conversion rule." modnm);
-      ]
-
-  | MarkdownError(e) ->
-      begin
-        match e with
-        | InvalidHeaderComment ->
-            report_error [
-              NormalLine("invalid or missing header comment of a Markdown document.");
-            ]
-
-        | InvalidExtraExpression ->
-            report_error [
-              NormalLine("cannot parse an extra expression in a Markdown document.");
-            ]
-
-        | FailedToMakeDocumentAttribute(de) ->
-            report_document_attribute_error de
-      end
-*)
   | FailedToFetchTarball{ lock_name; exit_status; command } ->
       report_error [
         NormalLine(Printf.sprintf "failed to fetch '%s' (exit status: %d). command:" lock_name exit_status);
