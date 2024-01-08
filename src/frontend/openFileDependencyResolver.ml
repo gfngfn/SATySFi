@@ -60,7 +60,7 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
       let (_attrs, header, _) = utlib in
       let (graph, vertex) =
         match graph |> FileDependencyGraph.add_vertex abspath utlib with
-        | Error(_vertex) -> assert false
+        | Error(_vertex) -> assert false (* Freshness has been asserted by `get_vertex`. *)
         | Ok(pair)       -> pair
       in
       let graph =
@@ -115,30 +115,31 @@ let extract_markdown_conversion (envelope_config : EnvelopeConfig.t) : markdown_
   | _                                              -> err NoMarkdownConversion
 
 
-let register_markdown_file (display_config : Logging.config) (configenv : EnvelopeConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : untyped_document_file ok =
+let register_markdown_file (display_config : Logging.config) (configenv : EnvelopeConfig.t GlobalTypeenv.t) (used_as_map : envelope_name ModuleNameMap.t) (abspath_in : abs_path) : untyped_document_file ok =
   let open ResultMonad in
-  let envelope_name_class = failwith "TODO: register_markdown_file, envelope_name_class" in
-  let main_module_name_class = failwith "TODO: register_markdown_file, main_module_name_class" in
   Logging.begin_to_parse_file display_config abspath_in;
   let* md =
     match read_file abspath_in with
     | Ok(data)   -> MarkdownParser.decode data |> Result.map_error (fun e -> MarkdownError(e))
     | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in
+  let class_module_name = MarkdownParser.get_class_module_name md in
+  let* class_envelope_name =
+    match used_as_map |> ModuleNameMap.find_opt class_module_name with
+    | Some(class_envelope_name) -> return class_envelope_name
+    | None                      -> err @@ UnknownPackageDependency(Range.dummy "register_markdown_file", class_module_name)
+  in
   let* conv =
-    match configenv |> GlobalTypeenv.find_opt envelope_name_class with
-    | None ->
-        err @@ MarkdownClassNotFound
-
-    | Some(envelope_config) ->
-        extract_markdown_conversion envelope_config
+    match configenv |> GlobalTypeenv.find_opt (EnvelopeName.EN(class_envelope_name)) with
+    | None                  -> err @@ MarkdownClassNotFound
+    | Some(envelope_config) -> extract_markdown_conversion envelope_config
   in
   let utast = MarkdownParser.convert conv md in
   let header =
     [
       HeaderUsePackage{
         opening   = false;
-        mod_chain = (Range.dummy "md-header", ((Range.dummy "md-header", main_module_name_class), []));
+        mod_chain = (Range.dummy "md-header", ((Range.dummy "md-header", class_module_name), []));
       };
     ]
   in
@@ -146,7 +147,7 @@ let register_markdown_file (display_config : Logging.config) (configenv : Envelo
   return utdoc
 
 
-let main (display_config : Logging.config) ~(extensions : string list) (input_kind : input_kind) (configenv : EnvelopeConfig.t GlobalTypeenv.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
+let main (display_config : Logging.config) ~(extensions : string list) (input_kind : input_kind) (configenv : EnvelopeConfig.t GlobalTypeenv.t) ~(used_as_map : envelope_name ModuleNameMap.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
   let* (graph, utdoc) =
     match input_kind with
@@ -154,7 +155,7 @@ let main (display_config : Logging.config) ~(extensions : string list) (input_ki
         register_document_file display_config extensions abspath_in
 
     | InputMarkdown ->
-        let* utdoc = register_markdown_file display_config configenv abspath_in in
+        let* utdoc = register_markdown_file display_config configenv used_as_map abspath_in in
         return (FileDependencyGraph.empty, utdoc)
   in
   let* sorted_locals =

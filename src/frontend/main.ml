@@ -1421,6 +1421,7 @@ let build_package
     (* Loads the deps config: *)
     Logging.deps_config_file display_config abspath_deps_config;
     let* deps_config = DepsConfig.load abspath_deps_config in
+    let used_as_map = make_used_as_map deps_config.explicit_dependencies in
 
     (* Parses the main envelope: *)
     let* (_config, envelope) =
@@ -1437,7 +1438,6 @@ let build_package
     in
 
     (* Typechecks the main envelope: *)
-    let used_as_map = make_used_as_map deps_config.explicit_dependencies in
     let* (_ssig, _libs_target) =
       EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
     in
@@ -1507,6 +1507,7 @@ let open ResultMonad in
     (* Loads the deps config: *)
     Logging.deps_config_file display_config abspath_deps_config;
     let* deps_config = DepsConfig.load abspath_deps_config in
+    let used_as_map = make_used_as_map deps_config.explicit_dependencies in
 
     Logging.target_file display_config abspath_out;
 
@@ -1527,11 +1528,10 @@ let open ResultMonad in
 
     (* Resolve dependency of the document and the local source files: *)
     let* (sorted_locals, utdoc) =
-      OpenFileDependencyResolver.main display_config ~extensions input_kind configenv abspath_in
+      OpenFileDependencyResolver.main display_config ~extensions input_kind configenv ~used_as_map abspath_in
     in
 
     (* Typechecking and elaboration: *)
-    let used_as_map = make_used_as_map deps_config.explicit_dependencies in
     let* (libs_local, ast_doc) =
       EnvelopeChecker.main_document
         display_config typecheck_config tyenv_prim genv ~used_as_map sorted_locals (abspath_in, utdoc)

@@ -383,21 +383,23 @@ let parse_expression (s_expr : string) : untyped_abstract_tree ok =
 
 
 type t = {
-  extra_expression : untyped_abstract_tree;
-  main_contents    : block;
+  class_module_name : module_name;
+  extra_expression  : untyped_abstract_tree;
+  main_contents     : block;
 }
 
 
 let decode (s : string) : t ok =
   let open ResultMonad in
   let obs = Omd.of_string s in
-  let* (s_extra, obs) =
+  let* (class_module_name, s_extra, obs) =
     match obs with
-    | Omd.Html_block(_attr3, s) :: obs ->
+    | Omd.Html_block(_attr1, s1) :: Omd.Html_block(_attr2, s2) :: obs ->
         begin
-          match (extract_comment s) with
-          | Some(s_extra) -> return (s_extra, obs)
-          | None          -> err InvalidHeaderComment
+          match (extract_comment s1, extract_comment s2) with
+          | (Some(modnm), Some(s_extra)) -> return (modnm, s_extra, obs)
+          | _                            -> err InvalidHeaderComment
+              (* TODO: assert that `modnm` be a capitalized identifier *)
         end
 
     | _ ->
@@ -405,9 +407,14 @@ let decode (s : string) : t ok =
   in
   let* utast_extra = parse_expression s_extra in
   return {
-    extra_expression = utast_extra;
-    main_contents    = normalize_h1 obs;
+    class_module_name = class_module_name;
+    extra_expression  = utast_extra;
+    main_contents     = normalize_h1 obs;
   }
+
+
+let get_class_module_name (md : t) : module_name =
+  md.class_module_name
 
 
 let convert (conv : markdown_conversion) (md : t) =
