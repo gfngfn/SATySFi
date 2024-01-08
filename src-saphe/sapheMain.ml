@@ -611,6 +611,12 @@ contents:
           registry: "default"
           name: "stdlib"
           requirement: "^0.0.1"
+    test_dependencies:
+      - used_as: "Testing"
+        registered:
+          registry: "default"
+          name: "testing"
+          requirement: "^0.0.1"
 |string} (SemanticVersion.to_string Constant.current_ecosystem_version))
 
 
