@@ -137,3 +137,14 @@ type config_error =
       registry_local_name : registry_local_name;
     }
   | CannotTestDocument
+  | FileAlreadyExists of {
+      path : abs_path
+    }
+  | InvalidExtensionForDocument of {
+      path      : abs_path;
+      extension : string;
+    }
+  | FailedToWriteFile of {
+      path    : abs_path;
+      message : string;
+    }

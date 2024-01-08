@@ -337,6 +337,22 @@ let report_config_error = function
         NormalLine("cannot run tests for documents (at least so far)");
       ]
 
+  | FileAlreadyExists{ path } ->
+      report_error [
+        NormalLine(Printf.sprintf "file already exists: '%s'" (get_abs_path_string path));
+      ]
+
+  | InvalidExtensionForDocument{ path; extension } ->
+      report_error [
+        NormalLine(Printf.sprintf "invalid extension '%s' for a document: '%s'" extension (get_abs_path_string path));
+      ]
+
+  | FailedToWriteFile{ path; message } ->
+      report_error [
+        NormalLine(Printf.sprintf "failed to write file '%s':" (get_abs_path_string path));
+        DisplayLine(message);
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
@@ -490,6 +506,211 @@ let get_store_root () : (abs_path, config_error) result =
   match Sys.getenv_opt envvar_home with
   | None       -> err @@ CannotDetermineStoreRoot { envvar = envvar_home }
   | Some(home) -> return @@ make_abs_path (Filename.concat home ".saphe")
+
+
+type package_init_input =
+  | PackageInitInput of {
+      doc    : abs_path;
+      config : abs_path;
+    }
+
+
+let initial_document_contents = Core.String.lstrip {string|
+use package open StdJaReport
+
+document (|
+  title = {The Title of Your Document},
+  author = {Your Name},
+  show-title = true,
+  show-toc = false,
+|) '<
+  +section{First Section}<
+    +p{
+      Hello, world!
+    }
+  >
+>
+|string}
+
+
+let initial_markdown_contents = Core.String.lstrip {string|
+<!-- MDJa -->
+<!-- (|
+  title = {The Title of Your Document},
+  author = {Your Name},
+|) -->
+# First Section
+
+Hello, world!
+|string}
+
+
+let initial_document_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
+ecosystem: "^%s"
+language: "^0.1.0"
+name: "your-document"
+authors:
+  - "Your Name"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  document:
+    dependencies:
+      - used_as: "StdJaReport"
+        registered:
+          registry: "default"
+          name: "std-ja-report"
+          requirement: "^0.0.1"
+|string} (SemanticVersion.to_string Constant.current_ecosystem_version))
+
+
+let initial_library_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
+ecosystem: "^%s"
+language: "^0.1.0"
+name: "your-library"
+authors:
+  - "Your Name"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  library:
+    main_module: "Calc"
+    source_directories:
+    - "./src"
+    test_directories:
+    - "./test"
+    dependencies:
+      - used_as: "Stdlib"
+        registered:
+          registry: "default"
+          name: "stdlib"
+          requirement: "^0.0.1"
+|string} (SemanticVersion.to_string Constant.current_ecosystem_version))
+
+
+let initial_library_source_contents = Core.String.lstrip {string|
+module Calc :> sig
+  val succ : int -> int
+end = struct
+  val succ n = n + 1
+end
+|string}
+
+
+let initial_library_test_contents = Core.String.lstrip {string|
+use Calc
+use package Testing
+
+module CalcTest = struct
+  module IntTarget = struct
+    type t = int
+    val equal m n = (m == n)
+    val show = arabic
+  end
+  module IntEquality = Testing.Equality.Make IntTarget
+
+  #[test]
+  val succ-test =
+    IntEquality.assert-equal 43 (Calc.succ 42)
+end
+|string}
+
+
+let write_document_package_config (abspath_package_config : abs_path) =
+  let open ResultMonad in
+  let* () =
+    write_file abspath_package_config initial_document_package_config_contents
+      |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath_package_config; message })
+  in
+  Logging.initialize_package_config abspath_package_config;
+  return ()
+
+
+let write_initial_file (abspath : abs_path) ~(data : string) =
+  let open ResultMonad in
+  let* () =
+    write_file abspath data
+      |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath; message })
+  in
+  Logging.initialize_file abspath;
+  return ()
+
+
+let assert_nonexistence (abspath : abs_path) =
+  let open ResultMonad in
+  if Sys.file_exists (get_abs_path_string abspath) then
+    err @@ FileAlreadyExists{ path = abspath }
+  else
+    return ()
+
+
+let init_document ~(fpath_in : string) =
+  let res =
+    let open ResultMonad in
+
+    (* Constructs the input: *)
+    let dir_current = Sys.getcwd () in
+    let abspath_doc = make_absolute_if_relative ~origin:dir_current fpath_in in
+    let abspath_package_config = Constant.document_package_config_path ~doc:abspath_doc in
+    let absdir = make_abs_path (Filename.dirname (get_abs_path_string abspath_doc)) in
+
+    let* () = assert_nonexistence abspath_doc in
+    let* () = assert_nonexistence abspath_package_config in
+
+    match Filename.extension (get_abs_path_string abspath_doc) with
+    | ".saty" ->
+        ShellCommand.mkdir_p absdir;
+        let* () = write_document_package_config abspath_package_config in
+        let* () = write_initial_file abspath_doc ~data:initial_document_contents in
+        return ()
+
+    | ".md" ->
+        ShellCommand.mkdir_p absdir;
+        let* () = write_document_package_config abspath_package_config in
+        let* () = write_initial_file abspath_doc ~data:initial_markdown_contents in
+        return ()
+
+    | extension ->
+        err @@ InvalidExtensionForDocument{ path = abspath_doc; extension }
+  in
+  match res with
+  | Ok(())   -> ()
+  | Error(e) -> report_config_error e; exit 1
+
+
+let init_library ~(fpath_in : string) =
+  let res =
+    let open ResultMonad in
+
+    (* Constructs the input: *)
+    let dir_current = Sys.getcwd () in
+    let absdir_package = make_absolute_if_relative ~origin:dir_current fpath_in in
+    let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
+    let abspath_source = append_to_abs_directory absdir_package "src/Calc.satyh" in
+    let abspath_test = append_to_abs_directory absdir_package "test/CalcTest.satyh" in
+
+    let* () = assert_nonexistence abspath_package_config in
+    let* () = assert_nonexistence abspath_source in
+    let* () = assert_nonexistence abspath_test in
+
+    ShellCommand.mkdir_p absdir_package;
+    ShellCommand.mkdir_p (append_to_abs_directory absdir_package "src");
+    ShellCommand.mkdir_p (append_to_abs_directory absdir_package "test");
+    let* () = write_document_package_config abspath_package_config in
+    let* () = write_initial_file abspath_source ~data:initial_library_source_contents in
+    let* () = write_initial_file abspath_test ~data:initial_library_test_contents in
+
+    return ()
+  in
+  match res with
+  | Ok(())   -> ()
+  | Error(e) -> report_config_error e; exit 1
 
 
 let make_solve_input ~(dir_current : string) ~(fpath_in : string) : solve_input =

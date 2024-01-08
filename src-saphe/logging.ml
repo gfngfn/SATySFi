@@ -59,6 +59,14 @@ let package_registry_updated ~(created : bool) (absdir_registry_repo : abs_path)
   Printf.printf "  %s the package registry '%s'\n" verb (get_abs_path_string absdir_registry_repo)
 
 
+let initialize_file (abspath_doc : abs_path) =
+  Printf.printf "  created '%s'\n" (get_abs_path_string abspath_doc)
+
+
+let initialize_package_config (abspath_package_config : abs_path) =
+  Printf.printf "  created a package config '%s'\n" (get_abs_path_string abspath_package_config)
+
+
 let downloading_lock (lock_name : lock_name) (absdir : abs_path) =
   Printf.printf "  downloading '%s' to '%s'...\n" lock_name (get_abs_path_string absdir)
 

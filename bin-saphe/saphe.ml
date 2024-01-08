@@ -1,4 +1,12 @@
 
+let init_document fpath_in =
+  SapheMain.init_document ~fpath_in
+
+
+let init_library fpath_in =
+  SapheMain.init_library ~fpath_in
+
+
 let update fpath_in =
   SapheMain.update ~fpath_in
 
@@ -46,6 +54,11 @@ let test
 let arg_in : string Cmdliner.Term.t =
   let open Cmdliner in
   Arg.(required (pos 0 (some file) None (info [])))
+
+
+let arg_in_to_create : string Cmdliner.Term.t =
+  let open Cmdliner in
+  Arg.(required (pos 0 (some string) None (info [])))
 
 
 let flag_output : (string option) Cmdliner.Term.t =
@@ -113,6 +126,26 @@ let flag_bytecomp =
     ~doc:"Use bytecode compiler"
 
 
+let command_init_document : unit Cmdliner.Cmd.t =
+  let open Cmdliner in
+  Cmd.v (Cmd.info "document")
+    Term.(const init_document $ arg_in_to_create)
+
+
+let command_init_library : unit Cmdliner.Cmd.t =
+  let open Cmdliner in
+  Cmd.v (Cmd.info "library")
+    Term.(const init_library $ arg_in_to_create)
+
+
+let command_init : unit Cmdliner.Cmd.t =
+  let open Cmdliner in
+  Cmd.group (Cmd.info "init") [
+    command_init_document;
+    command_init_library;
+  ]
+
+
 let command_update : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "update")
@@ -159,6 +192,7 @@ let () =
   in
   let subcommands =
     [
+      command_init;
       command_update;
       command_solve;
       command_build;
