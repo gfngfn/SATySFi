@@ -19,7 +19,20 @@ type local_or_envelope =
   | Envelope of module_name_chain ranged
 
 
-let get_header (extensions : string list) (curdir : string) (headerelem : header_element) : local_or_envelope ok =
+let resolve_local ~(origin_dir : abs_path) ~(relpath_without_ext : string) ~(extensions : string list) =
+  let open ResultMonad in
+  let path_without_ext = Filename.concat (get_abs_path_string origin_dir) relpath_without_ext in
+  let pathcands = extensions |> List.map (fun ext -> path_without_ext ^ ext) in
+  match
+    pathcands |> List.find_map (fun pathcand ->
+      if Sys.file_exists pathcand then Some(pathcand) else None
+    )
+  with
+  | None          -> err (pathcands |> List.map make_abs_path)
+  | Some(pathstr) -> return @@ make_abs_path pathstr
+
+
+let get_header (extensions : string list) (absdir_current : abs_path) (headerelem : header_element) : local_or_envelope ok =
   let open ResultMonad in
   match headerelem with
   | HeaderUsePackage{ mod_chain; _ } ->
@@ -28,10 +41,10 @@ let get_header (extensions : string list) (curdir : string) (headerelem : header
   | HeaderUse{ mod_chain; _ } ->
       err @@ CannotUseHeaderUse(mod_chain)
 
-  | HeaderUseOf{ mod_chain; path = s_relpath; _ } ->
+  | HeaderUseOf{ mod_chain; relpath_without_ext; _ } ->
       let* abspath =
-        Config.resolve_local ~extensions ~origin:curdir ~relative:s_relpath
-          |> Result.map_error (fun candidates -> LocalFileNotFound{ relative = s_relpath; candidates })
+        resolve_local ~origin_dir:absdir_current ~relpath_without_ext ~extensions
+          |> Result.map_error (fun candidates -> LocalFileNotFound{ relative = relpath_without_ext; candidates })
       in
       return @@ Local(mod_chain, abspath)
 
@@ -49,7 +62,7 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
       return graph
 
   | None ->
-      let curdir = Filename.dirname (get_abs_path_string abspath) in
+      let absdir_current = make_abs_path (Filename.dirname (get_abs_path_string abspath)) in
       let* utlib =
         Logging.begin_to_parse_file display_config abspath;
         let* utsrc = ParserInterface.process_file abspath |> Result.map_error (fun rng -> FailedToParse(rng)) in
@@ -69,7 +82,7 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
         | Some(vertex_prev) -> graph |> FileDependencyGraph.add_edge ~from:vertex_prev ~to_:vertex
       in
       header |> foldM (fun graph headerelem ->
-        let* local_or_envelope = get_header extensions curdir headerelem in
+        let* local_or_envelope = get_header extensions absdir_current headerelem in
         match local_or_envelope with
         | Envelope((_, _main_module_name)) ->
             return graph
@@ -82,7 +95,7 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
 let register_document_file (display_config : Logging.config) (extensions : string list) (abspath_in : abs_path) : (graph * untyped_document_file) ok =
   let open ResultMonad in
   Logging.begin_to_parse_file display_config abspath_in;
-  let curdir = Filename.dirname (get_abs_path_string abspath_in) in
+  let absdir_doc = make_abs_path (Filename.dirname (get_abs_path_string abspath_in)) in
   let* utsrc =
     ParserInterface.process_file abspath_in
       |> Result.map_error (fun rng -> FailedToParse(rng))
@@ -95,7 +108,7 @@ let register_document_file (display_config : Logging.config) (extensions : strin
   let (_attrs, header, _) = utdoc in
   let* graph =
     header |> foldM (fun (graph) headerelem ->
-      let* local_or_envelope = get_header extensions curdir headerelem in
+      let* local_or_envelope = get_header extensions absdir_doc headerelem in
       match local_or_envelope with
       | Envelope((_, _main_module_name)) ->
           return graph

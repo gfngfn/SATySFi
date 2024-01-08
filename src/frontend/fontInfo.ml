@@ -28,13 +28,6 @@ let raise_if_err = function
   | Error(e) -> raise (FontInfoError(e))
 
 
-(*
-let resolve_lib_file (relpath : lib_path) =
-  Config.resolve_lib_file relpath
-    |> Result.map_error (fun candidates -> CannotFindLibraryFileAsToFont(relpath, candidates))
-*)
-
-
 module FontHashTable : sig
   val initialize : unit -> unit
   val add_single : abs_path -> key

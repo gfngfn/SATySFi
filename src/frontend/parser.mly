@@ -381,8 +381,8 @@ headerelem:
   | USE; opening=optional_open; mod_chain=mod_chain; OF; tok=STRING
      {
        let (_rng, str, pre, post) = tok in
-       let s = omit_spaces pre post str in
-       HeaderUseOf{ opening; mod_chain; path = s }
+       let relpath_without_ext = omit_spaces pre post str in
+       HeaderUseOf{ opening; mod_chain; relpath_without_ext }
      }
 ;
 optional_open:

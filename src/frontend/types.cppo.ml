@@ -364,9 +364,9 @@ type header_element =
       mod_chain : module_name_chain ranged;
     }
   | HeaderUseOf of {
-      opening   : bool;
-      mod_chain : module_name_chain ranged;
-      path      : string;
+      opening             : bool;
+      mod_chain           : module_name_chain ranged;
+      relpath_without_ext : string;
     }
 [@@deriving show { with_path = false }]
 
