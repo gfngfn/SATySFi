@@ -44,8 +44,7 @@ all:: $(TARGETS)
 
 all::
 	(cd images; make)
-#TODO: run the following
-#	(cd text_mode; make)
+	(cd text_mode; make)
 	(cd md; make)
 
 # Entrypoint for promoting lock files:
@@ -53,8 +52,7 @@ promote:: $(EXPECTED_LOCKS)
 
 promote::
 	(cd images; make promote)
-#TODO: run the following
-#	(cd text_mode; make promote)
+	(cd text_mode; make promote)
 	(cd md; make promote)
 
 clean::
@@ -62,8 +60,7 @@ clean::
 
 clean::
 	(cd images; make clean)
-#TODO: run the following
-#	(cd text_mode; make clean)
+	(cd text_mode; make clean)
 	(cd md; make clean)
 
 clip.pdf: head.satyh
