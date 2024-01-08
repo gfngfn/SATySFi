@@ -80,8 +80,22 @@ math2.pdf: head.satyh
 init-doc/foo.saty init-doc/foo.saphe.yaml:
 	$(SAPHE) init document init-doc/foo.saty
 
+init-doc/foo.saphe.lock.yaml: init-doc/foo.saty init-doc/foo.saphe.yaml
+	$(SAPHE) solve $<
+	diff $(<:.saty=.saphe.lock.yaml) $(<:.saty=.saphe.lock.yaml.expected)
+
+init-doc/foo.pdf: init-doc/foo.saty init-doc/foo.saphe.lock.yaml
+	$(SAPHE) build $< -o $@
+
 init-md/foo.md init-md/foo.saphe.yaml:
 	$(SAPHE) init document init-md/foo.md
+
+init-md/foo.saphe.lock.yaml: init-md/foo.md init-md/foo.saphe.yaml
+	$(SAPHE) solve $<
+	diff $(<:.saty=.saphe.lock.yaml) $(<:.saty=.saphe.lock.yaml.expected)
+
+init-md/foo.pdf: init-md/foo.md init-md/foo.saphe.lock.yaml
+	$(SAPHE) build $< -o $@
 
 init-lib/saphe.yaml:
 	$(SAPHE) init library init-lib
