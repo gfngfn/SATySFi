@@ -46,7 +46,7 @@ all::
 	(cd images; make)
 #TODO: run the following
 #	(cd text_mode; make)
-#	(cd md; make)
+	(cd md; make)
 
 # Entrypoint for promoting lock files:
 promote:: $(EXPECTED_LOCKS)
@@ -55,7 +55,7 @@ promote::
 	(cd images; make promote)
 #TODO: run the following
 #	(cd text_mode; make promote)
-#	(cd md; make promote)
+	(cd md; make promote)
 
 clean::
 	rm -f *.pdf *.satysfi-aux *.saphe.lock.yaml *.satysfi-deps.yaml
@@ -64,7 +64,7 @@ clean::
 	(cd images; make clean)
 #TODO: run the following
 #	(cd text_mode; make clean)
-#	(cd md; make clean)
+	(cd md; make clean)
 
 clip.pdf: head.satyh
 first.pdf: head.satyh
