@@ -10,6 +10,8 @@ TARGETS = \
 	staged1.pdf \
 	macro1.pdf \
 	rename-dep1.pdf \
+	init-doc/foo.pdf \
+	init-md/foo.pdf \
 #	first.pdf \
 #	math1.pdf \
 #	refactor4.pdf \
@@ -55,7 +57,7 @@ promote::
 	(cd text_mode; make promote)
 	(cd md; make promote)
 
-clean::
+clean:: clean-init
 	rm -f *.pdf *.satysfi-aux *.saphe.lock.yaml *.satysfi-deps.yaml
 
 clean::
@@ -63,8 +65,18 @@ clean::
 	(cd text_mode; make clean)
 	(cd md; make clean)
 
+clean-init::
+	rm -f init-doc/*.saty init-doc/*.saphe.yaml
+	rm -f init-md/*.md init-md/*.saphe.yaml
+
 clip.pdf: head.satyh
 first.pdf: head.satyh
 glue1.pdf: head.satyh
 math1.pdf: head.satyh
 math2.pdf: head.satyh
+
+init-doc/foo.saty init-doc/foo.saphe.yaml:
+	saphe init document init-doc/foo.saty
+
+init-md/foo.md init-md/foo.saphe.yaml:
+	saphe init document init-md/foo.md
