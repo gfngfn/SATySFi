@@ -521,8 +521,6 @@ use package open StdJaReport
 document (|
   title = {The Title of Your Document},
   author = {Your Name},
-  show-title = true,
-  show-toc = false,
 |) '<
   +section{First Section}<
     +p{
