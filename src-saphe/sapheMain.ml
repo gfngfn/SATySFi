@@ -522,7 +522,7 @@ document (|
   title = {The Title of Your Document},
   author = {Your Name},
 |) '<
-  +section{First Section}<
+  +chapter{First Chapter}<
     +p{
       Hello, world!
     }
@@ -561,6 +561,28 @@ contents:
         registered:
           registry: "default"
           name: "std-ja-report"
+          requirement: "^0.0.1"
+|string} (SemanticVersion.to_string Constant.current_ecosystem_version))
+
+
+let initial_markdown_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
+ecosystem: "^%s"
+language: "^0.1.0"
+name: "your-document"
+authors:
+  - "Your Name"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  document:
+    dependencies:
+      - used_as: "MDJa"
+        registered:
+          registry: "default"
+          name: "md-ja"
           requirement: "^0.0.1"
 |string} (SemanticVersion.to_string Constant.current_ecosystem_version))
 
@@ -620,10 +642,10 @@ end
 |string}
 
 
-let write_document_package_config (abspath_package_config : abs_path) =
+let write_package_config (abspath_package_config : abs_path) ~(data : string) =
   let open ResultMonad in
   let* () =
-    write_file abspath_package_config initial_document_package_config_contents
+    write_file abspath_package_config data
       |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath_package_config; message })
   in
   Logging.initialize_package_config abspath_package_config;
@@ -664,13 +686,13 @@ let init_document ~(fpath_in : string) =
     match Filename.extension (get_abs_path_string abspath_doc) with
     | ".saty" ->
         ShellCommand.mkdir_p absdir;
-        let* () = write_document_package_config abspath_package_config in
+        let* () = write_package_config abspath_package_config ~data:initial_document_package_config_contents in
         let* () = write_initial_file abspath_doc ~data:initial_document_contents in
         return ()
 
     | ".md" ->
         ShellCommand.mkdir_p absdir;
-        let* () = write_document_package_config abspath_package_config in
+        let* () = write_package_config abspath_package_config ~data:initial_markdown_package_config_contents in
         let* () = write_initial_file abspath_doc ~data:initial_markdown_contents in
         return ()
 
@@ -700,7 +722,7 @@ let init_library ~(fpath_in : string) =
     ShellCommand.mkdir_p absdir_package;
     ShellCommand.mkdir_p (append_to_abs_directory absdir_package "src");
     ShellCommand.mkdir_p (append_to_abs_directory absdir_package "test");
-    let* () = write_document_package_config abspath_package_config in
+    let* () = write_package_config abspath_package_config ~data:initial_library_package_config_contents in
     let* () = write_initial_file abspath_source ~data:initial_library_source_contents in
     let* () = write_initial_file abspath_test ~data:initial_library_test_contents in
 
