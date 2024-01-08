@@ -4,6 +4,10 @@ open PackageSystemBase
 
 
 type error =
+  | FailedToFetchGitRegistry of {
+      exit_status : int;
+      command     : string;
+    }
   | FailedToUpdateGitRegistry of {
       exit_status : int;
       command     : string;
@@ -15,21 +19,27 @@ let escape_string =
   String.escaped
 
 
-let main ~(git_command : string) (absdir_registry_repo : abs_path) (registry_remote : registry_remote) : (unit, error) result =
+let main ~(do_update : bool) ~(git_command : string) (absdir_registry_repo : abs_path) (registry_remote : registry_remote) : (bool, error) result =
   let open ResultMonad in
-  let abspath_registry_config =
-    let absdirstr_registry_repo = get_abs_path_string absdir_registry_repo in
-    make_abs_path (Filename.concat absdirstr_registry_repo Constant.package_registry_config_file_name)
-  in
+  let abspath_registry_config = Constant.package_registry_config_path ~registry_dir:absdir_registry_repo in
   match registry_remote with
   | GitRegistry{ url; branch } ->
-      let ShellCommand.{ exit_status; command } =
-        if Sys.file_exists (get_abs_path_string abspath_registry_config) then
-          ShellCommand.run_git_pull ~git_command ~repo_dir:absdir_registry_repo ~url ~branch
+      if Sys.file_exists (get_abs_path_string abspath_registry_config) then
+        if do_update then
+          let ShellCommand.{ exit_status; command } =
+            ShellCommand.run_git_pull ~git_command ~repo_dir:absdir_registry_repo ~url ~branch
+          in
+          if exit_status = 0 then
+            return false
+          else
+            err @@ FailedToUpdateGitRegistry{ exit_status; command }
         else
-          ShellCommand.run_git_clone ~git_command ~repo_dir:absdir_registry_repo ~url ~branch
-      in
-      if exit_status = 0 then
-        return ()
+          return false
       else
-        err @@ FailedToUpdateGitRegistry{ exit_status; command }
+        let ShellCommand.{ exit_status; command } =
+          ShellCommand.run_git_clone ~git_command ~repo_dir:absdir_registry_repo ~url ~branch
+        in
+        if exit_status = 0 then
+          return true
+        else
+          err @@ FailedToFetchGitRegistry{ exit_status; command }

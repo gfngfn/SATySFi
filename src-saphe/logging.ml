@@ -49,8 +49,14 @@ let lock_cache_exists (lock_name : lock_name) (abspath_tarball : abs_path) =
   Printf.printf "  cache for '%s' exists at '%s'\n" lock_name (get_abs_path_string abspath_tarball)
 
 
-let store_root_config_created (abspath_store_root_config : abs_path) =
-  Printf.printf "  store root config created at '%s'\n" (get_abs_path_string abspath_store_root_config)
+let store_root_config_updated ~(created : bool) (abspath_store_root_config : abs_path) =
+  let verb = if created then "created" else "updated" in
+  Printf.printf "  %s the store root config '%s'\n" verb (get_abs_path_string abspath_store_root_config)
+
+
+let package_registry_updated ~(created : bool) (absdir_registry_repo : abs_path) =
+  let verb = if created then "fetched" else "updated" in
+  Printf.printf "  %s the package registry '%s'\n" verb (get_abs_path_string absdir_registry_repo)
 
 
 let downloading_lock (lock_name : lock_name) (absdir : abs_path) =

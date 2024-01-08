@@ -262,6 +262,12 @@ let report_config_error = function
   | PackageRegistryFetcherError(e) ->
       begin
         match e with
+        | FailedToFetchGitRegistry{ exit_status; command } ->
+            report_error [
+              NormalLine(Printf.sprintf "failed to fetch registry (exit status: %d). command:" exit_status);
+              DisplayLine(command);
+            ]
+
         | FailedToUpdateGitRegistry{ exit_status; command } ->
             report_error [
               NormalLine(Printf.sprintf "failed to update registry (exit status: %d). command:" exit_status);
@@ -486,31 +492,35 @@ let get_store_root () : (abs_path, config_error) result =
   | Some(home) -> return @@ make_abs_path (Filename.concat home ".saphe")
 
 
+let make_solve_input ~(dir_current : string) ~(fpath_in : string) : solve_input =
+  let abspath_in = make_absolute_if_relative ~origin:dir_current fpath_in in
+  if is_directory abspath_in then
+  (* If the input is a directory that forms a package: *)
+    let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
+    let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
+    PackageSolveInput{
+      root     = abspath_in;
+      lock     = abspath_lock_config;
+      envelope = abspath_envelope_config;
+    }
+  else
+    let abspath_package_config = Constant.document_package_config_path ~doc:abspath_in in
+    let abspath_lock_config = Constant.document_lock_config_path ~doc:abspath_in in
+    DocumentSolveInput{
+      doc    = abspath_in;
+      config = abspath_package_config;
+      lock   = abspath_lock_config;
+    }
+
+
 let solve ~(fpath_in : string) =
   let res =
     let open ResultMonad in
 
     (* Constructs the input: *)
     let solve_input =
-      let absdir_current = Sys.getcwd () in
-      let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
-      if is_directory abspath_in then
-      (* If the input is a directory that forms a package: *)
-        let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
-        let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
-        PackageSolveInput{
-          root     = abspath_in;
-          lock     = abspath_lock_config;
-          envelope = abspath_envelope_config;
-        }
-      else
-        let abspath_package_config = Constant.document_package_config_path ~doc:abspath_in in
-        let abspath_lock_config = Constant.document_lock_config_path ~doc:abspath_in in
-        DocumentSolveInput{
-          doc    = abspath_in;
-          config = abspath_package_config;
-          lock   = abspath_lock_config;
-        }
+      let dir_current = Sys.getcwd () in
+      make_solve_input ~dir_current:dir_current ~fpath_in
     in
 
     let* (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes) =
@@ -520,6 +530,7 @@ let solve ~(fpath_in : string) =
           lock     = abspath_lock_config;
           envelope = abspath_envelope_config;
         } ->
+          (* Loads the package config: *)
           let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
           let*
             PackageConfig.{
@@ -552,6 +563,7 @@ let solve ~(fpath_in : string) =
           config = abspath_package_config;
           lock   = abspath_lock_config;
         } ->
+          (* Loads the package config: *)
           let*
             PackageConfig.{
               language_requirement;
@@ -573,14 +585,11 @@ let solve ~(fpath_in : string) =
 
     (* Arranges the store root config: *)
     let* absdir_store_root = get_store_root () in
-    ShellCommand.mkdir_p absdir_store_root;
     let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
+    ShellCommand.mkdir_p absdir_store_root;
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
     begin
-      if created then
-        Logging.store_root_config_created abspath_store_root_config
-      else
-        ()
+      if created then Logging.store_root_config_updated ~created:true abspath_store_root_config
     end;
 
     (* Constructs a map that associates a package with its implementations: *)
@@ -597,20 +606,23 @@ let solve ~(fpath_in : string) =
             abspath_store_root_config
         in
 
-        (* Fetches the registry config: *)
+        (* Loads the registry config: *)
         let absdir_registry_repo =
           Constant.registry_root_directory_path ~store_root:absdir_store_root registry_hash_value
         in
         let git_command = "git" in (* TODO: make this changeable *)
-        let* () =
-          PackageRegistryFetcher.main ~git_command absdir_registry_repo registry_remote
+        let* created =
+          PackageRegistryFetcher.main ~do_update:false ~git_command absdir_registry_repo registry_remote
             |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
         in
+        begin
+          if created then Logging.package_registry_updated ~created:true absdir_registry_repo
+        end;
 
         (* Loads the registry config and grows `package_id_to_impl_list`: *)
-        let* PackageRegistryConfig.{ packages = packages } =
+        let* PackageRegistryConfig.{ packages } =
           let abspath_registry_config =
-            append_to_abs_directory absdir_registry_repo Constant.package_registry_config_file_name
+            Constant.package_registry_config_path ~registry_dir:absdir_registry_repo
           in
           PackageRegistryConfig.load abspath_registry_config
         in
@@ -651,6 +663,67 @@ let solve ~(fpath_in : string) =
           Logging.end_lock_config_output abspath_lock_config;
           return ()
     end
+  in
+  match res with
+  | Ok(())   -> ()
+  | Error(e) -> report_config_error e; exit 1
+
+
+let update ~(fpath_in : string) =
+  let res =
+    let open ResultMonad in
+
+    (* Constructs the input: *)
+    let solve_input =
+      let dir_current = Sys.getcwd () in
+      make_solve_input ~dir_current:dir_current ~fpath_in
+    in
+
+    let* registry_remotes =
+      match solve_input with
+      | PackageSolveInput{ root = absdir_package; _ } ->
+          (* Loads the package config: *)
+          let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
+          let* PackageConfig.{ registry_remotes; _ } = PackageConfig.load abspath_package_config in
+          return registry_remotes
+
+    | DocumentSolveInput{ config = abspath_package_config; _ } ->
+        (* Loads the package config: *)
+        let* PackageConfig.{ registry_remotes; _ } = PackageConfig.load abspath_package_config in
+        return registry_remotes
+    in
+    (* Arranges the store root config: *)
+    let* absdir_store_root = get_store_root () in
+    let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
+    ShellCommand.mkdir_p absdir_store_root;
+    let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
+    Logging.store_root_config_updated ~created abspath_store_root_config;
+
+    registry_remotes |> foldM (fun () registry_remote ->
+      let* registry_hash_value = ConfigUtil.make_registry_hash_value registry_remote in
+
+      (* Manupulates the store root config: *)
+      let* () =
+        update_store_root_config_if_needed
+          store_root_config.StoreRootConfig.registries
+          registry_hash_value
+          registry_remote
+          abspath_store_root_config
+      in
+
+      (* Loads the registry config: *)
+      let absdir_registry_repo =
+        Constant.registry_root_directory_path ~store_root:absdir_store_root registry_hash_value
+      in
+      let git_command = "git" in (* TODO: make this changeable *)
+      let* created =
+        PackageRegistryFetcher.main ~do_update:true ~git_command absdir_registry_repo registry_remote
+          |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
+      in
+      Logging.package_registry_updated ~created absdir_registry_repo;
+
+      return ()
+    ) ()
   in
   match res with
   | Ok(())   -> ()

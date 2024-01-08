@@ -1,4 +1,8 @@
 
+let update fpath_in =
+  SapheMain.update ~fpath_in
+
+
 let solve fpath_in =
   SapheMain.solve ~fpath_in
 
@@ -109,6 +113,12 @@ let flag_bytecomp =
     ~doc:"Use bytecode compiler"
 
 
+let command_update : unit Cmdliner.Cmd.t =
+  let open Cmdliner in
+  Cmd.v (Cmd.info "update")
+    Term.(const update $ arg_in)
+
+
 let command_solve : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "solve")
@@ -149,6 +159,7 @@ let () =
   in
   let subcommands =
     [
+      command_update;
       command_solve;
       command_build;
       command_test;
