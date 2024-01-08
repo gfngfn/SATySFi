@@ -12,6 +12,7 @@ TARGETS = \
 	rename-dep1.pdf \
 	init-doc/foo.pdf \
 	init-md/foo.pdf \
+	init-lib/satysfi-deps.yaml \
 #	first.pdf \
 #	math1.pdf \
 #	refactor4.pdf \
@@ -68,6 +69,7 @@ clean::
 clean-init::
 	rm -f init-doc/*.saty init-doc/*.saphe.yaml
 	rm -f init-md/*.md init-md/*.saphe.yaml
+	rm -rf init-lib
 
 clip.pdf: head.satyh
 first.pdf: head.satyh
@@ -76,7 +78,17 @@ math1.pdf: head.satyh
 math2.pdf: head.satyh
 
 init-doc/foo.saty init-doc/foo.saphe.yaml:
-	saphe init document init-doc/foo.saty
+	$(SAPHE) init document init-doc/foo.saty
 
 init-md/foo.md init-md/foo.saphe.yaml:
-	saphe init document init-md/foo.md
+	$(SAPHE) init document init-md/foo.md
+
+init-lib/saphe.yaml:
+	$(SAPHE) init library init-lib
+
+init-lib/saphe.lock.yaml: init-lib/saphe.yaml
+	$(SAPHE) solve init-lib
+
+init-lib/satysfi-deps.yaml: init-lib/saphe.lock.yaml
+	$(SAPHE) build init-lib
+	$(SAPHE) test init-lib
