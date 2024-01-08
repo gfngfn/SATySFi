@@ -35,7 +35,7 @@ let make_mode_args (text_mode_formats_str_opt : string option) =
       []
 
   | Some(text_mode_formats_str) ->
-      [ "--text_mode"; text_mode_formats_str ]
+      [ "--text-mode"; text_mode_formats_str ]
 
 
 let build_package
