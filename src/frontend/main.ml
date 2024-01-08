@@ -1556,36 +1556,7 @@ let test_package
     let (env, codebinds_target) = preprocess_bindings display_config ~run_tests:true env libs_target in
     let env = evaluate_bindings display_config ~run_tests:false ~is_bytecomp_mode:false env codebinds_dep in
     let _env = evaluate_bindings display_config ~run_tests:true ~is_bytecomp_mode:false env codebinds_target in
-(*
-      | DocumentTestInput{
-          kind = input_kind;
-          deps = abspath_deps_config;
-        } ->
-          Logging.deps_config_file display_config abspath_deps_config;
-          let deps_config = load_deps_config abspath_deps_config in
 
-          let (genv, configenv, libs) =
-            check_depended_envelopes display_config typecheck_config ~use_test_only_envelope:true (* ~library_root *) ~extensions tyenv_prim deps_config
-          in
-
-          (* Resolve dependency of the document and the local source files: *)
-          let (sorted_locals, utdoc) =
-            match OpenFileDependencyResolver.main display_config ~extensions input_kind configenv abspath_in with
-            | Ok(pair) -> pair
-            | Error(e) -> raise (ConfigError(e))
-          in
-
-          (* Typechecking and elaboration: *)
-          let (libs_local, _ast_doc) =
-            match EnvelopeChecker.main_document display_config typecheck_config tyenv_prim genv sorted_locals (abspath_in, utdoc) with
-            | Ok(pair) -> pair
-            | Error(e) -> raise (ConfigError(e))
-          in
-          let libs = List.append libs libs_local in
-          let (env, codebinds) = preprocess_bindings display_config ~run_tests:true env libs in
-          let _env = evaluate_bindings display_config ~run_tests:true env codebinds in
-          ()
-*)
     let test_results = State.get_all_test_results () in
     let failure_found =
       test_results |> List.fold_left (fun failure_found test_result ->

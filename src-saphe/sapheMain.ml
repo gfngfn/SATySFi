@@ -195,21 +195,7 @@ let report_config_error = function
       report_error [
         NormalLine(Printf.sprintf "unknown depended lock '%s' of '%s'." depended depending);
       ]
-(*
-  | CyclicLockDependency(cycle) ->
-      let pairs =
-        match cycle with
-        | Loop(pair)   -> [ pair ]
-        | Cycle(pairs) -> pairs |> TupleList.to_list
-      in
-      let lines =
-        pairs |> List.map (fun (modnm, _lock) ->
-          DisplayLine(Printf.sprintf "- '%s'" modnm)
-        )
-      in
-      report_error
-        (NormalLine("the following packages are cyclic:") :: lines)
-*)
+
   | CannotFindLibraryFile(libpath, candidate_paths) ->
       let lines =
         candidate_paths |> List.map (fun abspath ->
@@ -438,34 +424,6 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
   (lock_config, Alist.to_list impl_spec_acc)
 
 
-(*
-let extract_attributes_from_document_file (display_config : Logging.config) (input_kind : input_kind) (abspath_in : abs_path) : (DocumentAttribute.t, config_error) result =
-  let open ResultMonad in
-  Logging.begin_to_parse_file display_config abspath_in;
-  match input_kind with
-  | InputSatysfi ->
-      let* utsrc =
-        ParserInterface.process_file abspath_in
-          |> Result.map_error (fun rng -> FailedToParse(rng))
-      in
-      let* (attrs, _header, _utast) =
-        match utsrc with
-        | UTLibraryFile(_)      -> err @@ DocumentLacksWholeReturnValue(abspath_in)
-        | UTDocumentFile(utdoc) -> return utdoc
-      in
-      DocumentAttribute.make attrs
-        |> Result.map_error (fun e -> DocumentAttributeError(e))
-
-  | InputMarkdown ->
-      let* (docattr, _main_module_name, _md) =
-        match read_file abspath_in with
-        | Ok(data)   -> MarkdownParser.decode data |> Result.map_error (fun e -> MarkdownError(e))
-        | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
-      in
-      return docattr
-*)
-
-
 let make_envelope_config (abspath_package_config : abs_path) (package_contents : PackageConfig.package_contents) : (EnvelopeConfig.t, config_error) result =
   let open ResultMonad in
   match package_contents with
@@ -609,13 +567,6 @@ let solve ~(fpath_in : string) =
 
           let dependencies_with_flags = make_dependencies_with_flags package_contents in
           return (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes)
-(*
-          let* DocumentAttribute.{ registry_specs; dependencies } =
-            extract_attributes_from_document_file display_config input_kind abspath_in
-          in
-          let dependencies_with_flags = dependencies |> List.map (fun dep -> (SourceDependency, dep)) in
-          return (dependencies_with_flags, abspath_lock_config, registry_specs)
-*)
     in
 
     Logging.show_package_dependency_before_solving dependencies_with_flags;
