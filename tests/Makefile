@@ -1,4 +1,8 @@
-TARGETS = \
+INIT_DOC = init-doc/foo
+INIT_MD = init-md/foo
+INIT_LIB = init-lib
+
+DOC_TARGETS = \
 	clip.pdf \
 	glue1.pdf \
 	math2.pdf \
@@ -10,15 +14,17 @@ TARGETS = \
 	staged1.pdf \
 	macro1.pdf \
 	rename-dep1.pdf \
-	init-doc/foo.pdf \
-	init-md/foo.pdf \
-	init-lib/satysfi-deps.yaml \
+	$(INIT_DOC).pdf \
+	$(INIT_MD).pdf \
 #	first.pdf \
 #	math1.pdf \
 #	refactor4.pdf \
 #	refactor6.pdf \
 
-EXPECTED_LOCKS=$(TARGETS:.pdf=.saphe.lock.yaml.expected)
+LIB_TARGETS = \
+	$(INIT_LIB)/satysfi-deps.yaml \
+
+EXPECTED_LOCKS = $(DOC_TARGETS:.pdf=.saphe.lock.yaml.expected)
 
 SAPHE ?= saphe
 
@@ -43,7 +49,7 @@ SAPHE ?= saphe
 	cp $*.saphe.lock.yaml $*.saphe.lock.yaml.expected
 
 # Entrypoint for typesetting documents:
-all:: $(TARGETS)
+all:: $(DOC_TARGETS) $(LIB_TARGETS)
 
 all::
 	(cd images; make)
@@ -59,7 +65,7 @@ promote::
 	(cd md; make promote)
 
 clean:: clean-init
-	rm -f *.pdf *.satysfi-aux *.saphe.lock.yaml *.satysfi-deps.yaml
+	rm -f *.saphe.lock.yaml *.satysfi-deps.yaml *.satysfi-aux *.pdf
 
 clean::
 	(cd images; make clean)
@@ -67,42 +73,46 @@ clean::
 	(cd md; make clean)
 
 clean-init::
-	rm -f init-doc/*.saty init-doc/*.saphe.yaml
-	rm -f init-md/*.md init-md/*.saphe.yaml
-	rm -rf init-lib
+	rm -f $(INIT_DOC).saty $(INIT_DOC).saphe.yaml
+	rm -f $(INIT_DOC).saphe.lock.yaml $(INIT_DOC).satysfi-deps.yaml $(INIT_DOC).satysfi-aux $(INIT_DOC).pdf
+	rm -f $(INIT_MD).md $(INIT_MD).saphe.yaml
+	rm -f $(INIT_MD).saphe.lock.yaml $(INIT_MD).satysfi-deps.yaml $(INIT_MD).satysfi-aux $(INIT_MD).pdf
+	rm -rf $(INIT_LIB)
 
+# Dependencies on program files:
 clip.pdf: head.satyh
 first.pdf: head.satyh
 glue1.pdf: head.satyh
 math1.pdf: head.satyh
 math2.pdf: head.satyh
 
-init-doc/foo.saty init-doc/foo.saphe.yaml:
-	$(SAPHE) init document init-doc/foo.saty
+# Tests for `saphe init`:
+$(INIT_DOC).saty $(INIT_DOC).saphe.yaml:
+	$(SAPHE) init document $(INIT_DOC).saty
 
-init-doc/foo.saphe.lock.yaml: init-doc/foo.saty init-doc/foo.saphe.yaml
+$(INIT_DOC).saphe.lock.yaml: $(INIT_DOC).saty $(INIT_DOC).saphe.yaml
 	$(SAPHE) solve $<
-	diff $(<:.saty=.saphe.lock.yaml) $(<:.saty=.saphe.lock.yaml.expected)
+	diff $@ $(INIT_DOC).saphe.lock.yaml.expected
 
-init-doc/foo.pdf: init-doc/foo.saty init-doc/foo.saphe.lock.yaml
+$(INIT_DOC).pdf: $(INIT_DOC).saty $(INIT_DOC).saphe.lock.yaml
 	$(SAPHE) build $< -o $@
 
-init-md/foo.md init-md/foo.saphe.yaml:
-	$(SAPHE) init document init-md/foo.md
+$(INIT_MD).md $(INIT_MD).saphe.yaml:
+	$(SAPHE) init document $(INIT_MD).md
 
-init-md/foo.saphe.lock.yaml: init-md/foo.md init-md/foo.saphe.yaml
+$(INIT_MD).saphe.lock.yaml: $(INIT_MD).md $(INIT_MD).saphe.yaml
 	$(SAPHE) solve $<
-	diff $(<:.saty=.saphe.lock.yaml) $(<:.saty=.saphe.lock.yaml.expected)
+	diff $@ $(INIT_MD).saphe.lock.yaml.expected
 
-init-md/foo.pdf: init-md/foo.md init-md/foo.saphe.lock.yaml
+$(INIT_MD).pdf: $(INIT_MD).md $(INIT_MD).saphe.lock.yaml
 	$(SAPHE) build $< -o $@
 
-init-lib/saphe.yaml:
-	$(SAPHE) init library init-lib
+$(INIT_LIB)/saphe.yaml:
+	$(SAPHE) init library $(INIT_LIB)
 
-init-lib/saphe.lock.yaml: init-lib/saphe.yaml
-	$(SAPHE) solve init-lib
+$(INIT_LIB)/saphe.lock.yaml: $(INIT_LIB)/saphe.yaml
+	$(SAPHE) solve $(INIT_LIB)
 
-init-lib/satysfi-deps.yaml: init-lib/saphe.lock.yaml
-	$(SAPHE) build init-lib
-	$(SAPHE) test init-lib
+$(INIT_LIB)/satysfi-deps.yaml: $(INIT_LIB)/saphe.lock.yaml
+	$(SAPHE) build $(INIT_LIB)
+	$(SAPHE) test $(INIT_LIB)
