@@ -33,7 +33,7 @@ let lock_contents_decoder : lock_contents ConfigDecoder.t =
   let open ConfigDecoder in
   branch [
     "registered" ==> begin
-      get "registry_hash_value" string >>= fun registry_hash_value ->
+      get "registry_hash_value" string >>= fun registry_hash_value -> (* TODO: validation *)
       get "package_name" package_name_decoder >>= fun package_name ->
       get "version" version_decoder >>= fun locked_version ->
       let package_id = PackageId.{ registry_hash_value; package_name } in
