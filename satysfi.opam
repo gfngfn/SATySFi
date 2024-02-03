@@ -22,7 +22,7 @@ remove: [
 depends: [
   "ocaml" {>= "4.12.0" & < "5.0.0"}
   "batteries" {>= "3.6.0" & < "4.0.0"}
-  "camlimages" {>= "5.0.1" & < "6.0.0"}
+  "camlimages" {>= "5.0.1" & < "5.0.5"}
   "camlpdf" {= "2.3.1+satysfi"}
   "core_kernel" {>= "v0.15" & < "v0.16"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
