@@ -40,6 +40,11 @@
  (flags (--table --explain)))
 
 (rule
+ (targets version.ml)
+ (deps  ../tools/genversion/genversion.exe (:src ../satysfi.opam))
+ (action (with-stdout-to %{targets} (run %{deps}))))
+
+(rule
  (targets types.ml)
  (deps    (:src types.cppo.ml) __insttype.gen.ml __attype.gen.ml __codetype.gen.ml __unliftcode.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
