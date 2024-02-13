@@ -1,5 +1,6 @@
 
 open PackageSystemBase
+open MyUtil
 
 
 module SolverInput = struct
@@ -10,6 +11,10 @@ module SolverInput = struct
       | TargetRole of {
           requires : package_dependency list;
           context  : package_context;
+        }
+      | LocalFixedRole of {
+          absolute_path : abs_path;
+          context       : package_context;
         }
       | RegisteredRole of {
           registered_package_id : RegisteredPackageId.t;
@@ -22,6 +27,9 @@ module SolverInput = struct
       match role with
       | TargetRole(_) ->
           Format.fprintf ppf "target"
+
+      | LocalFixedRole{ absolute_path; _ } ->
+          Format.fprintf ppf "local '%s'" (get_abs_path_string absolute_path)
 
       | RegisteredRole{ registered_package_id; _ } ->
           let RegisteredPackageId.{ package_name; _ } = registered_package_id in
@@ -37,6 +45,16 @@ module SolverInput = struct
           1
 
       | (_, TargetRole(_)) ->
+          -1
+
+      | ( LocalFixedRole{ absolute_path = abspath1; _ },
+          LocalFixedRole{ absolute_path = abspath2; _ }) ->
+          AbsPath.compare abspath1 abspath2
+
+      | (LocalFixedRole(_), _) ->
+          1
+
+      | (_, LocalFixedRole(_)) ->
           -1
 
       | ( RegisteredRole{ registered_package_id = regpkgid1; compatibility = c1; _ },
@@ -56,13 +74,15 @@ module SolverInput = struct
   (* Unused *)
   type command_name = string
 
-  type restriction = SemanticVersion.requirement
+  type restriction =
+    | VersionRequirement of SemanticVersion.requirement
+    | AsIs
 
   type dependency =
     | Dependency of {
-        role                : Role.t;
-        used_as             : string;
-        version_requirement : SemanticVersion.requirement;
+        role        : Role.t;
+        used_as     : string;
+        restriction : restriction;
       }
 
   type dep_info = {
@@ -80,6 +100,10 @@ module SolverInput = struct
     | DummyImpl
     | TargetImpl of {
         dependencies : dependency list;
+      }
+    | LocalFixedImpl of {
+        absolute_path : abs_path;
+        dependencies  : dependency list;
       }
     | Impl of {
         package_name        : package_name;
@@ -110,6 +134,9 @@ module SolverInput = struct
     | TargetImpl(_) ->
         Format.fprintf ppf "target"
 
+    | LocalFixedImpl{ absolute_path; _ } ->
+        Format.fprintf ppf "local '%s'" (get_abs_path_string absolute_path)
+
     | Impl{ package_name; version; _ } ->
         Format.fprintf ppf "%s %s" package_name (SemanticVersion.to_string version)
 
@@ -127,6 +154,7 @@ module SolverInput = struct
     match impl with
     | DummyImpl          -> Format.fprintf ppf "dummy"
     | TargetImpl(_)      -> Format.fprintf ppf "target"
+    | LocalFixedImpl(_)  -> Format.fprintf ppf "as-is"
     | Impl{ version; _ } -> Format.fprintf ppf "%s" (SemanticVersion.to_string version)
 
 
@@ -142,9 +170,10 @@ module SolverInput = struct
 
   let requires (_role : Role.t) (impl : impl) : dependency list * command_name list =
     match impl with
-    | DummyImpl                  -> ([], [])
-    | TargetImpl{ dependencies } -> (dependencies, [])
-    | Impl{ dependencies; _ }    -> (dependencies, [])
+    | DummyImpl                        -> ([], [])
+    | TargetImpl{ dependencies }       -> (dependencies, [])
+    | LocalFixedImpl{ dependencies; _} -> (dependencies, [])
+    | Impl{ dependencies; _ }          -> (dependencies, [])
 
 
   (* Unused *)
@@ -168,7 +197,7 @@ module SolverInput = struct
             context;
           }
         in
-        Dependency{ role; used_as; version_requirement }
+        Dependency{ role; used_as; restriction = VersionRequirement(version_requirement) }
     )
 
 
@@ -183,10 +212,11 @@ module SolverInput = struct
                 SemanticVersion.get_compatibility_unit semver
           in
           let role = Role.RegisteredRole{ registered_package_id; compatibility; context } in
-          Dependency{ role; used_as; version_requirement }
+          Dependency{ role; used_as; restriction = VersionRequirement(version_requirement) }
 
-      | LocalFixedDependency{ absolute_path = _ } ->
-          failwith "TODO: make_internal_dependency, LocalFixedDependency"
+      | LocalFixedDependency{ absolute_path } ->
+          let role = Role.LocalFixedRole{ absolute_path; context } in
+          Dependency{ role; used_as; restriction = AsIs }
     )
 
 
@@ -216,6 +246,11 @@ module SolverInput = struct
         in
         { replacement = None; impls }
 
+    | LocalFixedRole{ absolute_path; context = _ } ->
+        let dependencies = failwith "TODO: implementations, LocalFixedRole, dependencies" in
+        let impls = [ LocalFixedImpl{ absolute_path; dependencies } ] in
+        { replacement = None; impls }
+
     | TargetRole{ requires; context } ->
         let dependencies = make_internal_dependency context requires in
         let impls = [ TargetImpl{ dependencies } ] in
@@ -223,8 +258,8 @@ module SolverInput = struct
 
 
   let restrictions (dep : dependency) : restriction list =
-    let Dependency{ version_requirement; _ } = dep in
-    [ version_requirement ]
+    let Dependency{ restriction; _ } = dep in
+    [ restriction ]
 
 
   let meets_restriction (impl : impl) (restr : restriction) : bool =
@@ -235,11 +270,21 @@ module SolverInput = struct
     | TargetImpl(_) ->
         true
 
+    | LocalFixedImpl(_) ->
+        begin
+          match restr with
+          | AsIs -> true
+          | _    -> false
+        end
+
     | Impl{ version = semver_provided; _} ->
         begin
           match restr with
-          | CompatibleWith(semver_required) ->
+          | VersionRequirement(SemanticVersion.CompatibleWith(semver_required)) ->
               SemanticVersion.is_compatible ~old:semver_required ~new_:semver_provided
+
+          | AsIs ->
+              false
         end
 
 
@@ -250,7 +295,7 @@ module SolverInput = struct
 
   let conflict_class (impl : impl) : conflict_class list =
     match impl with
-    | DummyImpl | TargetImpl(_) ->
+    | DummyImpl | TargetImpl(_) | LocalFixedImpl(_) ->
         [ "*" ]
 
     | Impl{ package_name; version; _ } ->
@@ -272,6 +317,10 @@ module SolverInput = struct
     | (TargetImpl(_), _)             -> 1
     | (_, TargetImpl(_))             -> -1
 
+    | (LocalFixedImpl(_), LocalFixedImpl(_)) -> 0
+    | (LocalFixedImpl(_), _)                 -> 1
+    | (_, LocalFixedImpl(_))                 -> -1
+
     | (Impl{ version = semver1; _ }, Impl{ version = semver2; _ }) ->
         SemanticVersion.compare semver1 semver2
 
@@ -286,7 +335,11 @@ module SolverInput = struct
 
   let string_of_restriction (restr : restriction) : string =
     match restr with
-    | CompatibleWith(semver) -> SemanticVersion.to_string semver
+    | VersionRequirement(SemanticVersion.CompatibleWith(semver)) ->
+        Printf.sprintf "^%s" (SemanticVersion.to_string semver)
+
+    | AsIs ->
+        "as-is"
 
 
   let describe_problem (_impl : impl) (_rej : rejection) : string =
@@ -352,6 +405,9 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
         | DummyImpl | TargetImpl(_) ->
             acc
 
+        | LocalFixedImpl(_) ->
+            acc (* TODO: reconsider this *)
+
         | Impl{ package_name; version = locked_version; registry_hash_value; source; dependencies } ->
             let registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name } in
             let package_id = PackageId.Registered(registered_package_id) in
@@ -390,10 +446,17 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
           dependencies |> List.fold_left (fun (locked_dependency_acc, graph) dep ->
             let Dependency{ role = role_dep; used_as; _ } = dep in
             match role_dep with
+            | TargetRole(_) ->
+                (locked_dependency_acc, graph)
+
+            | LocalFixedRole(_) ->
+                (locked_dependency_acc, graph)
+                  (* TODO: reconsider this *)
+
             | RegisteredRole{ registered_package_id = registered_package_id_dep; _ } ->
                 let lock_dep =
                   match rolemap |> Output.RoleMap.find_opt role_dep |> Option.map Output.unwrap with
-                  | None | Some(DummyImpl) | Some(TargetImpl(_)) ->
+                  | None | Some(DummyImpl) | Some(TargetImpl(_)) | Some(LocalFixedImpl(_)) ->
                       assert false
 
                   | Some(Impl{ version = version_dep; _ }) ->
@@ -415,9 +478,6 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
                   | Some(v) -> v
                 in
                 let graph = graph |> LockDependencyGraph.add_edge ~from:vertex ~to_:vertex_dep in
-                (locked_dependency_acc, graph)
-
-            | TargetRole(_) ->
                 (locked_dependency_acc, graph)
 
           ) (Alist.empty, graph)
