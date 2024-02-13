@@ -29,6 +29,9 @@ type parsed_package_dependency_spec =
       registry_local_name : registry_local_name;
       version_requirement : SemanticVersion.requirement;
     }
+  | ParsedLocalFixedDependency of {
+      relative_path : string;
+    }
 [@@deriving show { with_path = false }]
 
 type parsed_package_dependency =
@@ -38,7 +41,7 @@ type parsed_package_dependency =
     }
 [@@deriving show { with_path = false }]
 
-module PackageId = struct
+module RegisteredPackageId = struct
   type t = {
     registry_hash_value : string;
     package_name        : package_name;
@@ -51,6 +54,29 @@ module PackageId = struct
     List.compare String.compare [ h1; p1 ] [ h2; p2 ]
 end
 
+module PackageId = struct
+  type t =
+    | Registered of RegisteredPackageId.t
+    | LocalFixed of {
+        absolute_path : abs_path;
+      }
+  [@@deriving show { with_path = false }]
+
+  let compare (pkgid1 : t) (pkgid2 : t) =
+    match (pkgid1, pkgid2) with
+    | ( Registered(regpkgid1), Registered(regpkgid2)) ->
+        RegisteredPackageId.compare regpkgid1 regpkgid2
+
+    | (Registered(_), LocalFixed(_)) ->
+        1
+
+    | (LocalFixed{ absolute_path = abspath1 }, LocalFixed{ absolute_path = abspath2 }) ->
+        AbsPath.compare abspath1 abspath2
+
+    | (LocalFixed(_), Registered(_)) ->
+        -1
+end
+
 module PackageIdMap = Map.Make(PackageId)
 
 module PackageIdSet = Set.Make(PackageId)
@@ -61,29 +87,53 @@ type registry_hash_value = string
 
 module RegistryHashValueMap = Map.Make(String)
 
-module Lock = struct
+module RegisteredLock = struct
   type t = {
-    package_id     : PackageId.t;
-    locked_version : SemanticVersion.t;
+    registered_package_id : RegisteredPackageId.t;
+    locked_version        : SemanticVersion.t;
   }
   [@@deriving show { with_path = false }]
 
-  let compare (lock1 : t) (lock2 : t) : int =
-    let { package_id = pkgid1; locked_version = v1 } = lock1 in
-    let { package_id = pkgid2; locked_version = v2 } = lock2 in
-    let comp_pkgid = PackageId.compare pkgid1 pkgid2 in
+  let compare (reglock1 : t) (reglock2 : t) : int =
+    let { registered_package_id = regpkgid1; locked_version = v1 } = reglock1 in
+    let { registered_package_id = regpkgid2; locked_version = v2 } = reglock2 in
+    let comp_pkgid = RegisteredPackageId.compare regpkgid1 regpkgid2 in
     if comp_pkgid <> 0 then
       comp_pkgid
     else
       SemanticVersion.compare v1 v2
 end
 
+module Lock = struct
+  type t =
+    | Registered of RegisteredLock.t
+    | LocalFixed of { absolute_path : abs_path }
+  [@@deriving show { with_path = false }]
+
+  let compare (lock1 : t) (lock2 : t) : int =
+    match (lock1, lock2) with
+    | (Registered(reglock1), Registered(reglock2)) ->
+        RegisteredLock.compare reglock1 reglock2
+
+    | (Registered(_), LocalFixed(_)) ->
+        -1
+
+    | (LocalFixed{ absolute_path = abspath1 }, LocalFixed{ absolute_path = abspath2 }) ->
+        AbsPath.compare abspath1 abspath2
+
+    | (LocalFixed(_), Registered(_)) ->
+        1
+end
+
 module LockMap = Map.Make(Lock)
 
 type package_dependency_spec =
   | RegisteredDependency of {
-      package_id          : PackageId.t;
-      version_requirement : SemanticVersion.requirement;
+      registered_package_id : RegisteredPackageId.t;
+      version_requirement   : SemanticVersion.requirement;
+    }
+  | LocalFixedDependency of {
+      absolute_path : abs_path;
     }
 [@@deriving show { with_path = false }]
 

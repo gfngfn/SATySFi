@@ -385,12 +385,18 @@ let update_store_root_config_if_needed (registries : registry_remote RegistryHas
 
 
 let make_lock_name (lock : Lock.t) : lock_name =
-  let Lock.{ package_id; locked_version } = lock in
-  let PackageId.{ registry_hash_value; package_name } = package_id in
-  Printf.sprintf "registered.%s.%s.%s"
-    registry_hash_value
-    package_name
-    (SemanticVersion.to_string locked_version)
+  match lock with
+  | Lock.Registered({ registered_package_id; locked_version }) ->
+      let RegisteredPackageId.{ registry_hash_value; package_name } = registered_package_id in
+      Printf.sprintf "registered.%s.%s.%s"
+        registry_hash_value
+        package_name
+        (SemanticVersion.to_string locked_version)
+
+  | Lock.LocalFixed{ absolute_path } ->
+      Printf.sprintf "local.%s"
+        (get_abs_path_string absolute_path)
+          (* TODO: fix this *)
 
 
 let make_lock_dependency (dep : locked_dependency) : LockConfig.lock_dependency =
@@ -407,7 +413,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
       let locked_package =
         LockConfig.{
           lock_name         = make_lock_name lock;
-          lock_contents     = RegisteredLock(lock);
+          lock_contents     = lock;
           lock_dependencies = solution.locked_dependencies |> List.map make_lock_dependency;
           test_only_lock    = solution.used_in_test_only;
         }
@@ -684,7 +690,7 @@ let init_document ~(fpath_in : string) =
     let dir_current = Sys.getcwd () in
     let abspath_doc = make_absolute_if_relative ~origin:dir_current fpath_in in
     let abspath_package_config = Constant.document_package_config_path ~doc:abspath_doc in
-    let absdir = make_abs_path (Filename.dirname (get_abs_path_string abspath_doc)) in
+    let absdir = dirname abspath_doc in
 
     let* () = assert_nonexistence abspath_doc in
     let* () = assert_nonexistence abspath_package_config in
@@ -874,7 +880,9 @@ let solve ~(fpath_in : string) =
           PackageRegistryConfig.load abspath_registry_config
         in
         packages |> foldM (fun package_id_to_impl_list (package_name, impls) ->
-          let package_id = PackageId.{ registry_hash_value; package_name } in
+          let package_id =
+            PackageId.Registered(RegisteredPackageId.{ registry_hash_value; package_name })
+          in
           if package_id_to_impl_list |> PackageIdMap.mem package_id then
             err @@ MultiplePackageDefinition{ package_name }
           else
@@ -1007,14 +1015,22 @@ let make_envelope_spec ~(store_root : abs_path) (locked_package : LockConfig.loc
     LockConfig.{
       lock_name;
       lock_dependencies;
-      lock_contents = RegisteredLock(lock);
+      lock_contents;
       test_only_lock;
     } = locked_package
+  in
+  let envelope_path =
+    match lock_contents with
+    | Lock.Registered(reglock) ->
+        get_abs_path_string (Constant.registered_lock_envelope_config ~store_root reglock)
+
+    | LocalFixed{ absolute_path } ->
+        get_abs_path_string absolute_path
   in
   let envelope_dependencies = lock_dependencies |> List.map make_envelope_dependency in
   {
     envelope_name = lock_name;
-    envelope_path = get_abs_path_string (Constant.lock_envelope_config ~store_root lock);
+    envelope_path;
     envelope_dependencies;
     test_only_envelope = test_only_lock;
   }

@@ -224,7 +224,7 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
   }
 
 
-let validate_dependency (localmap : registry_remote RegistryLocalNameMap.t) (dep : parsed_package_dependency) : package_dependency ok =
+let validate_dependency ~dir:(absdir_config : abs_path) (localmap : registry_remote RegistryLocalNameMap.t) (dep : parsed_package_dependency) : package_dependency ok =
   let open ResultMonad in
   let ParsedPackageDependency{ used_as; spec } = dep in
   let* spec =
@@ -242,16 +242,20 @@ let validate_dependency (localmap : registry_remote RegistryLocalNameMap.t) (dep
           | Some(registry_remote) ->
               ConfigUtil.make_registry_hash_value registry_remote
         in
-        let package_id = PackageId.{ package_name; registry_hash_value } in
         return @@ RegisteredDependency{
-          package_id;
+          registered_package_id = RegisteredPackageId.{ package_name; registry_hash_value };
           version_requirement;
+        }
+
+    | ParsedLocalFixedDependency{ relative_path } ->
+        return @@ LocalFixedDependency{
+          absolute_path = append_to_abs_directory absdir_config relative_path;
         }
   in
   return @@ PackageDependency{ used_as; spec }
 
 
-let validate_contents_spec (localmap : registry_remote RegistryLocalNameMap.t) (contents : parsed_package_contents) : package_contents ok =
+let validate_contents_spec  ~(dir : abs_path) (localmap : registry_remote RegistryLocalNameMap.t) (contents : parsed_package_contents) : package_contents ok =
   let open ResultMonad in
   match contents with
   | ParsedLibrary{
@@ -262,8 +266,8 @@ let validate_contents_spec (localmap : registry_remote RegistryLocalNameMap.t) (
       test_dependencies;
       markdown_conversion;
     } ->
-      let* dependencies = mapM (validate_dependency localmap) dependencies in
-      let* test_dependencies = mapM (validate_dependency localmap) test_dependencies in
+      let* dependencies = mapM (validate_dependency ~dir localmap) dependencies in
+      let* test_dependencies = mapM (validate_dependency ~dir localmap) test_dependencies in
       return @@ Library{
         main_module_name;
         source_directories;
@@ -277,11 +281,11 @@ let validate_contents_spec (localmap : registry_remote RegistryLocalNameMap.t) (
       return @@ Font{ main_module_name; font_file_descriptions }
 
   | ParsedDocument{ dependencies } ->
-      let* dependencies = mapM (validate_dependency localmap) dependencies in
+      let* dependencies = mapM (validate_dependency ~dir localmap) dependencies in
       return @@ Document{ dependencies }
 
 
-let validate (p_package_config : parsed_package_config) : t ok =
+let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok =
   let open ResultMonad in
   let
     ParsedPackageConfig{
@@ -303,9 +307,7 @@ let validate (p_package_config : parsed_package_config) : t ok =
         return (localmap, registry_remote_acc)
     ) (RegistryLocalNameMap.empty, Alist.empty)
   in
-  let* package_contents =
-    validate_contents_spec localmap package_contents
-  in
+  let* package_contents = validate_contents_spec ~dir localmap package_contents in
   return {
     language_requirement;
     package_name;
@@ -330,4 +332,4 @@ let load (abspath_config : abs_path) : t ok =
     parse s
       |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))
   in
-  validate internal
+  validate ~dir:(dirname abspath_config) internal

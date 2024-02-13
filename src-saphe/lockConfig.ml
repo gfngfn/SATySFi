@@ -7,9 +7,6 @@ open ConfigUtil
 
 type 'a ok = ('a, config_error) result
 
-type lock_contents =
-  | RegisteredLock of Lock.t
-
 type lock_dependency = {
   depended_lock_name : lock_name;
   used_as            : string;
@@ -17,7 +14,7 @@ type lock_dependency = {
 
 type locked_package = {
   lock_name         : lock_name;
-  lock_contents     : lock_contents;
+  lock_contents     : Lock.t;
   lock_dependencies : lock_dependency list;
   test_only_lock    : bool;
 }
@@ -29,30 +26,43 @@ type t = {
 }
 
 
-let lock_contents_decoder : lock_contents ConfigDecoder.t =
+let lock_contents_decoder : Lock.t ConfigDecoder.t =
   let open ConfigDecoder in
   branch [
     "registered" ==> begin
       get "registry_hash_value" string >>= fun registry_hash_value -> (* TODO: validation *)
       get "package_name" package_name_decoder >>= fun package_name ->
       get "version" version_decoder >>= fun locked_version ->
-      let package_id = PackageId.{ registry_hash_value; package_name } in
-      let lock = Lock.{ package_id; locked_version } in
-      succeed @@ RegisteredLock(lock)
+      let registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name } in
+      let reglock = RegisteredLock.{ registered_package_id; locked_version } in
+      succeed @@ Lock.Registered(reglock)
+    end;
+    "local" ==> begin
+      get "absolute_path" string >>= fun abspathstr -> (* TODO: fix this *)
+      succeed @@ Lock.LocalFixed{
+        absolute_path = make_abs_path abspathstr;
+      }
     end;
   ]
 
 
-let lock_contents_encoder (contents : lock_contents) : (string * Yaml.value) list =
+let lock_contents_encoder (contents : Lock.t) : (string * Yaml.value) list =
   match contents with
-  | RegisteredLock(lock) ->
-      let Lock.{ package_id; locked_version } = lock in
-      let PackageId.{ registry_hash_value; package_name } = package_id in
+  | Lock.Registered(reglock) ->
+      let RegisteredLock.{ registered_package_id; locked_version } = reglock in
+      let RegisteredPackageId.{ registry_hash_value; package_name } = registered_package_id in
       [
         ("registered", `O([
           ("registry_hash_value", `String(registry_hash_value));
           ("package_name", `String(package_name));
           ("version", `String(SemanticVersion.to_string locked_version));
+        ]));
+      ]
+
+  | Lock.LocalFixed{ absolute_path } ->
+      [
+        ("local", `O([
+          ("absolute_path", `String(get_abs_path_string absolute_path)); (* TODO: fix this *)
         ]));
       ]
 

@@ -13,9 +13,9 @@ let lock_tarball_name (package_name : package_name) (locked_version : SemanticVe
   Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string locked_version)
 
 
-let lock_directory ~store_root:(absdir_store_root : abs_path) (lock : Lock.t) : abs_path =
-  let Lock.{ package_id; locked_version } = lock in
-  let PackageId.{ registry_hash_value; package_name } = package_id in
+let registered_lock_directory ~store_root:(absdir_store_root : abs_path) (reglock : RegisteredLock.t) : abs_path =
+  let RegisteredLock.{ registered_package_id; locked_version } = reglock in
+  let RegisteredPackageId.{ registry_hash_value; package_name } = registered_package_id in
   append_to_abs_directory absdir_store_root
     (Printf.sprintf "packages/%s/%s/%s"
       registry_hash_value
@@ -23,13 +23,18 @@ let lock_directory ~store_root:(absdir_store_root : abs_path) (lock : Lock.t) : 
       (lock_tarball_name package_name locked_version))
 
 
+let lock_directory ~(store_root : abs_path) (lock : Lock.t) : abs_path =
+  match lock with
+  | Lock.Registered(reglock)         -> registered_lock_directory ~store_root reglock
+  | Lock.LocalFixed{ absolute_path } -> absolute_path
+
 (* Should be in sync with SATySFi *)
 let envelope_config_path ~dir:(absdir_library : abs_path) : abs_path =
   append_to_abs_directory absdir_library "satysfi-envelope.yaml"
 
 
-let lock_envelope_config ~(store_root : abs_path) (lock : Lock.t) : abs_path =
-  envelope_config_path ~dir:(lock_directory ~store_root lock)
+let registered_lock_envelope_config ~(store_root : abs_path) (reglock : RegisteredLock.t) : abs_path =
+  envelope_config_path ~dir:(registered_lock_directory ~store_root reglock)
 
 
 let registry_root_directory_path ~store_root:(absdir_store_root : abs_path) (registry_hash_value : registry_hash_value) : abs_path =

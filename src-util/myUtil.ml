@@ -80,6 +80,10 @@ let append_to_abs_directory (absdir : abs_path) (filename : string) : abs_path =
   make_abs_path (Filename.concat (get_abs_path_string absdir) filename)
 
 
+let dirname (abspath : abs_path) : abs_path =
+  make_abs_path (Filename.dirname (get_abs_path_string abspath))
+
+
 let read_file (abspath : abs_path) : (string, string) result =
   let open ResultMonad in
   try
