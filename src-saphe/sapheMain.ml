@@ -877,6 +877,7 @@ let solve ~(fpath_in : string) =
           EnvelopeConfig.write abspath_envelope_config { envelope_contents }
             |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath_envelope_config; message })
         in
+        Logging.end_envelope_config_output abspath_envelope_config;
         return (local_fixed_dependencies |> LocalFixedPackageIdMap.add absdir_package deps)
       ) local_fixed_package_map (return LocalFixedPackageIdMap.empty)
     in
@@ -1081,8 +1082,8 @@ let make_envelope_spec ~(store_root : abs_path) (locked_package : LockConfig.loc
     | Lock.Registered(reglock) ->
         get_abs_path_string (Constant.registered_lock_envelope_config ~store_root reglock)
 
-    | LocalFixed{ absolute_path } ->
-        get_abs_path_string absolute_path
+    | Lock.LocalFixed{ absolute_path } ->
+        get_abs_path_string (Constant.envelope_config_path ~dir:absolute_path)
   in
   let envelope_dependencies = lock_dependencies |> List.map make_envelope_dependency in
   {

@@ -123,6 +123,7 @@ $(INIT_LIB)/satysfi-deps.yaml: $(INIT_LIB)/saphe.lock.yaml
 # Tests for local fixed packages:
 $(LOCAL_FIXED).saphe.lock.yaml: $(LOCAL_FIXED).saty $(LOCAL_FIXED).saphe.yaml
 	$(SAPHE) solve $<
+	diff $@ $(LOCAL_FIXED).saphe.lock.yaml.expected
 
 $(LOCAL_FIXED).pdf: $(LOCAL_FIXED).saty $(LOCAL_FIXED).saphe.lock.yaml
 	$(SAPHE) build $< -o $@
