@@ -41,34 +41,27 @@ let ( @|> ) = ( |> )
      ---- *)
 
 
-type abs_path = AbsPath of string
+type abs_path = AbsPath.t
 [@@deriving show { with_path = false }]
 
 type lib_path = LibPath of string
 
 
-let open_in_abs (AbsPath(pathstr)) =
-  Stdlib.open_in pathstr
+let open_in_abs (abspath : abs_path) =
+  Stdlib.open_in (AbsPath.to_string abspath)
 
 
-let basename_abs (AbsPath(pathstr)) =
-  Filename.basename pathstr
+let basename_abs (abspath : abs_path) =
+  Filename.basename (AbsPath.to_string abspath)
 
 
-let make_abs_path pathstr = AbsPath(pathstr)
+let make_abs_path pathstr = AbsPath.of_string_exn pathstr
 
 let make_lib_path pathstr = LibPath(pathstr)
 
-let get_abs_path_string (AbsPath(pathstr)) = pathstr
+let get_abs_path_string = AbsPath.to_string
 
 let get_lib_path_string (LibPath(pathstr)) = pathstr
-
-
-module AbsPath = struct
-  type t = abs_path
-
-  let compare ap1 ap2 = String.compare (get_abs_path_string ap1) (get_abs_path_string ap2)
-end
 
 
 let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
