@@ -83,7 +83,6 @@ let of_string_exn (s : string) : t =
   | uch_first :: uchs_rest ->
       if Uchar.equal uch_first (Uchar.of_char '/') then
         let ncompos = separate_to_non_normal_components Alist.empty Alist.empty uchs_rest in
-        Format.printf "%a\n" (Format.pp_print_list ~pp_sep:(fun ppf () -> Format.fprintf ppf "|") pp_non_normal_component) ncompos; (* TODO: remove this *)
         match normalize ncompos with
         | None         -> assert false
         | Some(compos) -> AbsPath(compos)
