@@ -863,8 +863,22 @@ let solve ~(fpath_in : string) =
     Logging.show_package_dependency_before_solving dependencies_with_flags;
 
     (* Collects the local fixed packages used by the target: *)
-    let* (local_fixed_dependencies, registry_remotes_sub) =
+    let* (local_fixed_package_map, registry_remotes_sub) =
       LocalFixedPackageCollector.main ~language_version (List.map Stdlib.snd dependencies_with_flags)
+    in
+
+    (* Creates the envelope config for each local fixed packages,
+       while extracting `local_fixed_dependencies` from `local_fixed_package_map`: *)
+    let* local_fixed_dependencies =
+      LocalFixedPackageIdMap.fold (fun absdir_package (deps, envelope_contents) res ->
+        let* local_fixed_dependencies = res in
+        let abspath_envelope_config = Constant.envelope_config_path ~dir:absdir_package in
+        let* () =
+          EnvelopeConfig.write abspath_envelope_config { envelope_contents }
+            |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath_envelope_config; message })
+        in
+        return (local_fixed_dependencies |> LocalFixedPackageIdMap.add absdir_package deps)
+      ) local_fixed_package_map (return LocalFixedPackageIdMap.empty)
     in
 
     (* Arranges the store root config: *)
