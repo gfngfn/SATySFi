@@ -438,8 +438,29 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
         | DummyImpl | TargetImpl(_) ->
             acc
 
-        | LocalFixedImpl(_) ->
-            acc (* TODO: reconsider this *)
+        | LocalFixedImpl{ absolute_path; dependencies } ->
+            let package_id = PackageId.LocalFixed{ absolute_path } in
+            let source = NoSource in (* TODO: reconsider this *)
+            let lock = Lock.LocalFixed{ absolute_path } in
+            let (quad_acc, graph, explicit_vertex_to_used_as, explicit_test_vertex_to_used_as, lock_to_vertex_map) = acc in
+            let (graph, vertex) =
+              match graph |> LockDependencyGraph.add_vertex lock () with
+              | Error(_) -> assert false
+              | Ok(pair) -> pair
+            in
+            let quad_acc = Alist.extend quad_acc (lock, source, dependencies, vertex) in
+            let explicit_vertex_to_used_as =
+              match explicit_source_dependencies |> PackageIdMap.find_opt package_id with
+              | Some(used_as) -> explicit_vertex_to_used_as |> VertexMap.add vertex used_as
+              | None          -> explicit_vertex_to_used_as
+            in
+            let explicit_test_vertex_to_used_as =
+              match explicit_test_dependencies |> PackageIdMap.find_opt package_id with
+              | Some(used_as) -> explicit_test_vertex_to_used_as |> VertexMap.add vertex used_as
+              | None          -> explicit_test_vertex_to_used_as
+            in
+            let lock_to_vertex_map = lock_to_vertex_map |> LockMap.add lock vertex in
+            (quad_acc, graph, explicit_vertex_to_used_as, explicit_test_vertex_to_used_as, lock_to_vertex_map)
 
         | Impl{ package_name; version = locked_version; registry_hash_value; source; dependencies } ->
             let registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name } in
@@ -483,6 +504,21 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
                 (locked_dependency_acc, graph)
 
             | LocalFixedRole(_) ->
+                let lock_dep =
+                  match rolemap |> Output.RoleMap.find_opt role_dep |> Option.map Output.unwrap with
+                  | None | Some(DummyImpl) | Some(TargetImpl(_)) | Some(Impl(_)) ->
+                      assert false
+
+                  | Some(LocalFixedImpl{ absolute_path; _ }) ->
+                      Lock.LocalFixed{ absolute_path }
+                in
+                let locked_dependency =
+                  {
+                    depended_lock      = lock_dep;
+                    dependency_used_as = used_as;
+                  }
+                in
+                let locked_dependency_acc = Alist.extend locked_dependency_acc locked_dependency in
                 (locked_dependency_acc, graph)
                   (* TODO: reconsider this *)
 
