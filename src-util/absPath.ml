@@ -31,7 +31,6 @@ type non_normal_component =
   | Component of component
   | Current
   | Parent
-[@@deriving show { with_path = false }]
 
 
 let make_non_normal_components (uchs : Uchar.t list) : non_normal_component =

@@ -837,8 +837,7 @@ let solve ~(fpath_in : string) =
     Logging.show_package_dependency_before_solving dependencies_with_flags;
 
     let local_fixed_dependencies =
-      LocalFixedPackageIdMap.empty
-        (* TODO: construct local_fixed_dependencies by traversing local fixed dependencies *)
+      LocalFixedPackageCollector.main dependencies_with_flags
     in
 
     (* Arranges the store root config: *)
