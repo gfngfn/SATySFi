@@ -108,6 +108,8 @@ locks:
     package_name: stdlib
     version: 0.0.1
 dependencies:
+- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.font-latin-modern.0.0.1
+  used_as: FontLatinModern
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.itemize.0.0.1
   used_as: Itemize
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.math.0.0.1

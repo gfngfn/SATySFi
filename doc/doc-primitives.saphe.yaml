@@ -31,3 +31,8 @@ contents:
           registry: "default"
           name: "std-ja-book"
           requirement: "^0.0.1"
+      - used_as: "FontLatinModern"
+        registered:
+          registry: "default"
+          name: "font-latin-modern"
+          requirement: "^0.0.1"
