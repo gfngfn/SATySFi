@@ -836,6 +836,10 @@ let solve ~(fpath_in : string) =
 
     Logging.show_package_dependency_before_solving dependencies_with_flags;
 
+    let local_fixed_dependencies =
+      failwith "TODO: construct local_fixed_dependencies by traversing local fixed dependencies"
+    in
+
     (* Arranges the store root config: *)
     let* absdir_store_root = get_store_root () in
     let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
@@ -846,8 +850,8 @@ let solve ~(fpath_in : string) =
     end;
 
     (* Constructs a map that associates a package with its implementations: *)
-    let* package_id_to_impl_list =
-      registry_remotes |> foldM (fun package_id_to_impl_list registry_remote ->
+    let* registered_package_impls =
+      registry_remotes |> foldM (fun registered_package_impls registry_remote ->
         let* registry_hash_value = ConfigUtil.make_registry_hash_value registry_remote in
 
         (* Manupulates the store root config: *)
@@ -872,27 +876,25 @@ let solve ~(fpath_in : string) =
           if created then Logging.package_registry_updated ~created:true absdir_registry_repo
         end;
 
-        (* Loads the registry config and grows `package_id_to_impl_list`: *)
+        (* Loads the registry config and grows `registered_package_impls`: *)
         let* PackageRegistryConfig.{ packages } =
           let abspath_registry_config =
             Constant.package_registry_config_path ~registry_dir:absdir_registry_repo
           in
           PackageRegistryConfig.load abspath_registry_config
         in
-        packages |> foldM (fun package_id_to_impl_list (package_name, impls) ->
-          let package_id =
-            PackageId.Registered(RegisteredPackageId.{ registry_hash_value; package_name })
-          in
-          if package_id_to_impl_list |> PackageIdMap.mem package_id then
+        packages |> foldM (fun registered_package_impls (package_name, impls) ->
+          let registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name } in
+          if registered_package_impls |> RegisteredPackageIdMap.mem registered_package_id then
             err @@ MultiplePackageDefinition{ package_name }
           else
-            return (package_id_to_impl_list |> PackageIdMap.add package_id impls)
-        ) package_id_to_impl_list
+            return (registered_package_impls |> RegisteredPackageIdMap.add registered_package_id impls)
+        ) registered_package_impls
 
-      ) PackageIdMap.empty
+      ) RegisteredPackageIdMap.empty
     in
 
-    let package_context = { language_version; package_id_to_impl_list } in
+    let package_context = { language_version; registered_package_impls; local_fixed_dependencies } in
     let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
     begin
       match solutions_opt with

@@ -225,8 +225,8 @@ module SolverInput = struct
     | RegisteredRole{ registered_package_id; compatibility; context } ->
         let RegisteredPackageId.{ package_name; registry_hash_value } = registered_package_id in
         let impl_records =
-          context.package_id_to_impl_list
-            |> PackageIdMap.find_opt (PackageId.Registered(registered_package_id))
+          context.registered_package_impls
+            |> RegisteredPackageIdMap.find_opt registered_package_id
             |> Option.value ~default:[]
         in
         let impls =
@@ -246,8 +246,13 @@ module SolverInput = struct
         in
         { replacement = None; impls }
 
-    | LocalFixedRole{ absolute_path; context = _ } ->
-        let dependencies = failwith "TODO: implementations, LocalFixedRole, dependencies" in
+    | LocalFixedRole{ absolute_path; context } ->
+        let requires =
+          match context.local_fixed_dependencies |> LocalFixedPackageIdMap.find_opt absolute_path with
+          | None           -> assert false
+          | Some(requires) -> requires
+        in
+        let dependencies = make_internal_dependency context requires in
         let impls = [ LocalFixedImpl{ absolute_path; dependencies } ] in
         { replacement = None; impls }
 

@@ -77,6 +77,10 @@ module PackageId = struct
         -1
 end
 
+module RegisteredPackageIdMap = Map.Make(RegisteredPackageId)
+
+module LocalFixedPackageIdMap = Map.Make(AbsPath)
+
 module PackageIdMap = Map.Make(PackageId)
 
 module PackageIdSet = Set.Make(PackageId)
@@ -169,8 +173,9 @@ type implementation_record =
     }
 
 type package_context = {
-  language_version        : SemanticVersion.t;
-  package_id_to_impl_list : (implementation_record list) PackageIdMap.t;
+  language_version         : SemanticVersion.t;
+  registered_package_impls : (implementation_record list) RegisteredPackageIdMap.t;
+  local_fixed_dependencies : (package_dependency list) LocalFixedPackageIdMap.t;
 }
 
 type locked_dependency = {
