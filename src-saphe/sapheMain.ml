@@ -782,6 +782,16 @@ let make_solve_input ~(dir_current : string) ~(fpath_in : string) : solve_input 
     }
 
 
+module CanonicalRegistryRemoteSet = Set.Make(struct
+  type t = registry_remote
+
+  let compare (r1 : t) (r2 : t) =
+    let GitRegistry{ url = canonical_url1; branch = branch1 } = r1 in
+    let GitRegistry{ url = canonical_url2; branch = branch2 } = r2 in
+    List.compare String.compare [ canonical_url1; branch1 ] [ canonical_url2; branch2 ]
+end)
+
+
 let solve ~(fpath_in : string) =
   let res =
     let open ResultMonad in
@@ -852,7 +862,8 @@ let solve ~(fpath_in : string) =
 
     Logging.show_package_dependency_before_solving dependencies_with_flags;
 
-    let* local_fixed_dependencies =
+    (* Collects the local fixed packages used by the target: *)
+    let* (local_fixed_dependencies, registry_remotes_sub) =
       LocalFixedPackageCollector.main ~language_version (List.map Stdlib.snd dependencies_with_flags)
     in
 
@@ -864,6 +875,20 @@ let solve ~(fpath_in : string) =
     begin
       if created then Logging.store_root_config_updated ~created:true abspath_store_root_config
     end;
+
+    (* Removes duplicate remote registries: *)
+    let* registry_remote_set =
+      (List.append registry_remotes registry_remotes_sub) |> foldM (fun set registry_remote ->
+        let GitRegistry{ url; branch } = registry_remote in
+        let* canonical_url =
+          CanonicalRegistryUrl.make url
+           |> Result.map_error (fun e -> CanonicalRegistryUrlError(e))
+        in
+        let canonical_registry_remote = GitRegistry{ url = canonical_url; branch } in
+        return (set |> CanonicalRegistryRemoteSet.add canonical_registry_remote)
+      ) CanonicalRegistryRemoteSet.empty
+    in
+    let registry_remotes = CanonicalRegistryRemoteSet.elements registry_remote_set in
 
     (* Constructs a map that associates a package with its implementations: *)
     let* registered_package_impls =
