@@ -359,6 +359,16 @@ let report_config_error = function
         DisplayLine(get_abs_path_string absdir_package);
       ]
 
+  | LocalFixedDoesNotSupportLanguageVersion{ dir = absdir_package; language_version; language_requirement } ->
+      let s_version = SemanticVersion.to_string language_version in
+      let s_req = SemanticVersion.requirement_to_string language_requirement in
+      report_error [
+        NormalLine(Printf.sprintf "the local package");
+        DisplayLine(get_abs_path_string absdir_package);
+        NormalLine(Printf.sprintf "requires the language version to be %s," s_req);
+        NormalLine(Printf.sprintf "but we are using %s." s_version);
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
@@ -843,7 +853,7 @@ let solve ~(fpath_in : string) =
     Logging.show_package_dependency_before_solving dependencies_with_flags;
 
     let* local_fixed_dependencies =
-      LocalFixedPackageCollector.main (List.map Stdlib.snd dependencies_with_flags)
+      LocalFixedPackageCollector.main ~language_version (List.map Stdlib.snd dependencies_with_flags)
     in
 
     (* Arranges the store root config: *)

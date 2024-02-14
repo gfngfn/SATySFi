@@ -151,3 +151,8 @@ type config_error =
   | NotALibraryLocalFixed of {
       dir : abs_path;
     }
+  | LocalFixedDoesNotSupportLanguageVersion of {
+      dir                  : abs_path;
+      language_version     : SemanticVersion.t;
+      language_requirement : SemanticVersion.requirement;
+    }
