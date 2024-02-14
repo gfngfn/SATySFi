@@ -317,12 +317,18 @@ module SolverInput = struct
 
   let conflict_class (impl : impl) : conflict_class list =
     match impl with
-    | DummyImpl | TargetImpl(_) | LocalFixedImpl(_) ->
-        [ "*" ]
+    | DummyImpl ->
+        [ "dummy" ]
+
+    | TargetImpl(_) ->
+        [ "target" ]
+
+    | LocalFixedImpl{ absolute_path; _ } ->
+        [ Printf.sprintf "local/%s" (get_abs_path_string absolute_path) ]
 
     | Impl{ package_name; version; _ } ->
         let compat = SemanticVersion.get_compatibility_unit version in
-        [ Printf.sprintf "%s/%s" package_name compat ]
+        [ Printf.sprintf "registered/%s/%s" package_name compat ]
 
 
   let rejects (_role : Role.t) : (impl * rejection) list * string list =
