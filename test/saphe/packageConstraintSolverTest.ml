@@ -13,7 +13,7 @@ let language_version =
   make_version "0.1.0"
 
 
-let make_dependency ~(used_as : string) (package_name : package_name) (s_version : string) : package_dependency =
+let make_registered_dependency ~(used_as : string) (package_name : package_name) (s_version : string) : package_dependency =
   PackageDependency{
     used_as;
     spec =
@@ -21,6 +21,13 @@ let make_dependency ~(used_as : string) (package_name : package_name) (s_version
         registered_package_id = RegisteredPackageId.{ package_name; registry_hash_value };
         version_requirement   = SemanticVersion.CompatibleWith(make_version s_version);
       };
+  }
+
+
+let make_local_fixed_dependency ~(used_as : string) (abspathstr : string) : package_dependency =
+  PackageDependency{
+    used_as;
+    spec = LocalFixedDependency{ absolute_path = AbsPath.of_string_exn abspathstr };
   }
 
 
@@ -55,9 +62,20 @@ let make_locked_dependency ~(used_as : string) (package_name : package_name) (s_
   }
 
 
-let make_solution ?(explicitly_depended : string option) ?(test_only : bool = false) (package_name : package_name) (s_version : string) (deps : locked_dependency list) : package_solution =
+let make_registered_solution ?(explicitly_depended : string option) ?(test_only : bool = false) (package_name : package_name) (s_version : string) (deps : locked_dependency list) : package_solution =
   {
     lock                = Lock.Registered(make_registered_lock package_name s_version);
+    locked_source       = NoSource;
+    locked_dependencies = deps;
+    used_in_test_only   = test_only;
+    explicitly_depended;
+    explicitly_test_depended = None;
+  }
+
+
+let make_local_fixed_solution ?(explicitly_depended : string option) ?(test_only : bool = false) (abspathstr : string) (deps : locked_dependency list) : package_solution =
+  {
+    lock                = Lock.LocalFixed{ absolute_path = AbsPath.of_string_exn abspathstr };
     locked_source       = NoSource;
     locked_dependencies = deps;
     used_in_test_only   = test_only;
@@ -78,9 +96,15 @@ let make_registered_package_impls =
   ) RegisteredPackageIdMap.empty
 
 
+let make_local_fixed_dependencies =
+  List.fold_left (fun lfpkgmap (abspathstr, deps) ->
+    LocalFixedPackageIdMap.add (AbsPath.of_string_exn abspathstr) deps lfpkgmap
+  ) LocalFixedPackageIdMap.empty
+
+
 let solve_test_1 () =
   let package_context =
-    let local_fixed_dependencies = LocalFixedPackageIdMap.empty in
+    let local_fixed_dependencies = make_local_fixed_dependencies [] in
     let registered_package_impls =
       make_registered_package_impls [
         ("foo", [
@@ -99,19 +123,19 @@ let solve_test_1 () =
   in
   let dependencies_with_flags =
     [
-      (SourceDependency, make_dependency ~used_as:"Bar" "bar" "1.0.0");
-      (SourceDependency, make_dependency ~used_as:"Qux" "qux" "1.0.0");
+      (SourceDependency, make_registered_dependency ~used_as:"Bar" "bar" "1.0.0");
+      (SourceDependency, make_registered_dependency ~used_as:"Qux" "qux" "1.0.0");
     ]
   in
   let expected =
     Some([
-      make_solution ~explicitly_depended:"Bar"
+      make_registered_solution ~explicitly_depended:"Bar"
         "bar" "1.0.0" [ make_locked_dependency ~used_as:"Foo" "foo" "2.0.0" ];
-      make_solution
+      make_registered_solution
         "foo" "1.0.0" [];
-      make_solution
+      make_registered_solution
         "foo" "2.0.0" [];
-      make_solution ~explicitly_depended:"Qux"
+      make_registered_solution ~explicitly_depended:"Qux"
         "qux" "1.0.0" [ make_locked_dependency ~used_as:"Foo" "foo" "1.0.0" ];
     ])
   in
@@ -120,7 +144,7 @@ let solve_test_1 () =
 
 let solve_test_2 () =
   let package_context =
-    let local_fixed_dependencies = LocalFixedPackageIdMap.empty in
+    let local_fixed_dependencies = make_local_fixed_dependencies [] in
     let registered_package_impls =
       make_registered_package_impls [
         ("foo", [
@@ -139,18 +163,58 @@ let solve_test_2 () =
   in
   let dependencies_with_flags =
     [
-      (SourceDependency, make_dependency ~used_as:"Bar" "bar" "1.0.0");
-      (SourceDependency, make_dependency ~used_as:"Qux" "qux" "1.0.0");
+      (SourceDependency, make_registered_dependency ~used_as:"Bar" "bar" "1.0.0");
+      (SourceDependency, make_registered_dependency ~used_as:"Qux" "qux" "1.0.0");
     ]
   in
   let expected =
     Some([
-      make_solution ~explicitly_depended:"Bar"
+      make_registered_solution ~explicitly_depended:"Bar"
         "bar" "1.0.0" [ make_locked_dependency ~used_as:"FooA" "foo" "1.1.0" ];
-      make_solution
+      make_registered_solution
         "foo" "1.1.0" [];
-      make_solution ~explicitly_depended:"Qux"
+      make_registered_solution ~explicitly_depended:"Qux"
         "qux" "1.0.0" [ make_locked_dependency ~used_as:"FooB" "foo" "1.1.0" ];
+    ])
+  in
+  check package_context dependencies_with_flags expected
+
+
+let solve_test_3 () =
+  let package_context =
+    let local_fixed_dependencies =
+      make_local_fixed_dependencies [
+        ("/home/john/path/to/sub/", [
+          make_registered_dependency ~used_as:"FooB" "foo" "1.0.0";
+        ]);
+      ]
+    in
+    let registered_package_impls =
+      make_registered_package_impls [
+        ("foo", [
+          make_impl "1.0.0" [];
+        ]);
+        ("bar", [
+          make_impl "1.0.0" [ make_dependency_in_registry ~used_as:"FooA" "foo" "1.0.0" ];
+        ]);
+      ]
+    in
+    { language_version; local_fixed_dependencies; registered_package_impls }
+  in
+  let dependencies_with_flags =
+    [
+      (SourceDependency, make_registered_dependency ~used_as:"Bar" "bar" "1.0.0");
+      (SourceDependency, make_local_fixed_dependency ~used_as:"Sub" "/home/john/path/to/sub/");
+    ]
+  in
+  let expected =
+    Some([
+      make_registered_solution ~explicitly_depended:"Bar"
+        "bar" "1.0.0" [ make_locked_dependency ~used_as:"FooA" "foo" "1.0.0" ];
+      make_registered_solution
+        "foo" "1.0.0" [];
+      make_local_fixed_solution ~explicitly_depended:"Sub"
+        "/home/john/path/to/sub/" [ make_locked_dependency ~used_as:"FooB" "foo" "1.0.0" ];
     ])
   in
   check package_context dependencies_with_flags expected
@@ -160,4 +224,5 @@ let test_cases =
   Alcotest.[
     test_case "solve 1" `Quick solve_test_1;
     test_case "solve 2" `Quick solve_test_2;
+    test_case "solve 3" `Quick solve_test_3;
   ]

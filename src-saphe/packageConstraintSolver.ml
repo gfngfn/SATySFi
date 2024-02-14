@@ -283,6 +283,7 @@ module SolverInput = struct
 
 
   let meets_restriction (impl : impl) (restr : restriction) : bool =
+    let b = (* TODO: remove this *)
     match impl with
     | DummyImpl ->
         false
@@ -306,6 +307,7 @@ module SolverInput = struct
           | AsIs ->
               false
         end
+    in Format.printf "MEETS: %a |= %a --> %B@," pp_impl impl pp_restriction restr b; b (* TODO: remove this *)
 
 
   (* Unused *)
