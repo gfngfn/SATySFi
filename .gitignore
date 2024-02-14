@@ -16,8 +16,8 @@
 obsolete/*.txt
 old/
 *.png
-satysfi
-saphe
+/satysfi
+/saphe
 *.ttf
 *.otf
 *.ttc
