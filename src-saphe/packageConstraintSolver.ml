@@ -78,12 +78,22 @@ module SolverInput = struct
     | VersionRequirement of SemanticVersion.requirement
     | AsIs
 
+  let pp_restriction ppf = function
+    | VersionRequirement(SemanticVersion.CompatibleWith(semver)) ->
+        Format.fprintf ppf "~%s" (SemanticVersion.to_string semver)
+
+    | AsIs ->
+        Format.fprintf ppf "AS-IS"
+
   type dependency =
     | Dependency of {
         role        : Role.t;
         used_as     : string;
         restriction : restriction;
       }
+
+  let pp_dependency ppf (Dependency{ role; used_as; restriction }) =
+    Format.fprintf ppf "%a (used as %s, %a)" Role.pp role used_as pp_restriction restriction
 
   type dep_info = {
     dep_role              : Role.t;
@@ -135,7 +145,7 @@ module SolverInput = struct
         Format.fprintf ppf "target"
 
     | LocalFixedImpl{ absolute_path; _ } ->
-        Format.fprintf ppf "local '%s'" (get_abs_path_string absolute_path)
+        Format.fprintf ppf "local impl '%s'" (get_abs_path_string absolute_path)
 
     | Impl{ package_name; version; _ } ->
         Format.fprintf ppf "%s %s" package_name (SemanticVersion.to_string version)
@@ -168,12 +178,14 @@ module SolverInput = struct
     { dep_role = role; dep_importance = `Essential; dep_required_commands = [] }
 
 
-  let requires (_role : Role.t) (impl : impl) : dependency list * command_name list =
+  let requires (role : Role.t) (impl : impl) : dependency list * command_name list =
+    let (dependencies, cmds) = (* TODO: remove this *)
     match impl with
     | DummyImpl                        -> ([], [])
     | TargetImpl{ dependencies }       -> (dependencies, [])
     | LocalFixedImpl{ dependencies; _} -> (dependencies, [])
     | Impl{ dependencies; _ }          -> (dependencies, [])
+    in Format.printf "DEPS: (role: %a) %a ->@,@[<v2>  %a@]@," Role.pp role pp_impl impl (Format.pp_print_list pp_dependency) dependencies; (dependencies, cmds) (* TODO: remove this *)
 
 
   (* Unused *)
@@ -244,6 +256,7 @@ module SolverInput = struct
               None
           )
         in
+        Format.printf "IMPLS: %a =@,@[<v2>  %a@]@," Role.pp role (Format.pp_print_list pp_impl) impls; (* TODO: remove this *)
         { replacement = None; impls }
 
     | LocalFixedRole{ absolute_path; context } ->
@@ -253,13 +266,15 @@ module SolverInput = struct
           | Some(requires) -> requires
         in
         let dependencies = make_internal_dependency context requires in
-        let impls = [ LocalFixedImpl{ absolute_path; dependencies } ] in
-        { replacement = None; impls }
+        let impl = LocalFixedImpl{ absolute_path; dependencies } in
+        Format.printf "IMPLS: %a = %a@," Role.pp role pp_impl impl; (* TODO: remove this *)
+        { replacement = None; impls = [ impl ] }
 
     | TargetRole{ requires; context } ->
         let dependencies = make_internal_dependency context requires in
-        let impls = [ TargetImpl{ dependencies } ] in
-        { replacement = None; impls }
+        let impl = TargetImpl{ dependencies } in
+        Format.printf "IMPLS: %a = %a@," Role.pp role pp_impl impl; (* TODO: remove this *)
+        { replacement = None; impls = [ impl ] }
 
 
   let restrictions (dep : dependency) : restriction list =
@@ -392,14 +407,19 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
     ) (PackageIdMap.empty, PackageIdMap.empty, Alist.empty)
   in
   let requires = Alist.to_list dependency_acc in
+  let target_role = SolverInput.Role.TargetRole{ requires; context } in
+  Format.printf "@[<v>"; (* TODO: remove this *)
   let output_opt =
     InternalSolver.do_solve ~closest_match:false {
-      role    = TargetRole{ requires; context };
+      role    = target_role;
       command = None;
     }
   in
+  Format.printf "@]"; (* TODO: remove this *)
   output_opt |> Option.map (fun output ->
     let open InternalSolver in
+
+    Format.printf "EXPLAIN: %s@," (Output.explain output target_role);
 
     (* Adds vertices to the graph: *)
     let rolemap = output |> Output.to_map in
