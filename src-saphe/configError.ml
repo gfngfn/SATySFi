@@ -148,3 +148,6 @@ type config_error =
       path    : abs_path;
       message : string;
     }
+  | NotALibraryLocalFixed of {
+      dir : abs_path;
+    }

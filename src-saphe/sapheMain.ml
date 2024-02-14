@@ -353,6 +353,12 @@ let report_config_error = function
         DisplayLine(message);
       ]
 
+  | NotALibraryLocalFixed{ dir = absdir_package } ->
+      report_error [
+        NormalLine(Printf.sprintf "the following local package is not a library:");
+        DisplayLine(get_abs_path_string absdir_package);
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
@@ -836,8 +842,8 @@ let solve ~(fpath_in : string) =
 
     Logging.show_package_dependency_before_solving dependencies_with_flags;
 
-    let local_fixed_dependencies =
-      LocalFixedPackageCollector.main dependencies_with_flags
+    let* local_fixed_dependencies =
+      LocalFixedPackageCollector.main (List.map Stdlib.snd dependencies_with_flags)
     in
 
     (* Arranges the store root config: *)
