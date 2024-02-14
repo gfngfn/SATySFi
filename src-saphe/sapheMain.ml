@@ -1134,7 +1134,7 @@ let build
         Logging.end_deps_config_output abspath_deps_config;
 
         (* Builds the package by invoking `satysfi`: *)
-        let SatysfiCommand.{ exit_status = _; command = _ } = (* TODO: use `exit_status` *)
+        let SatysfiCommand.{ exit_status; command = _ } =
           SatysfiCommand.(build_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
@@ -1142,7 +1142,7 @@ let build
             ~mode:text_mode_formats_str_opt
             ~options)
         in
-        return ()
+        return exit_status
 
     | DocumentBuildInput{
         doc  = abspath_doc;
@@ -1159,7 +1159,7 @@ let build
         Logging.end_deps_config_output abspath_deps_config;
 
         (* Builds the document by invoking `satysfi`: *)
-        let SatysfiCommand.{ exit_status = _; command = _ } = (* TODO: use `exit_status` *)
+        let SatysfiCommand.{ exit_status; command = _ } =
           SatysfiCommand.(build_document
             ~doc:abspath_doc
             ~out:abspath_out
@@ -1169,11 +1169,11 @@ let build
             ~mode:text_mode_formats_str_opt
             ~options)
         in
-        return ()
+        return exit_status
   in
   match res with
-  | Ok(())   -> ()
-  | Error(e) -> report_config_error e; exit 1
+  | Ok(exit_status) -> exit exit_status
+  | Error(e)        -> report_config_error e; exit 1
 
 
 type test_input =
@@ -1225,16 +1225,16 @@ let test
         Logging.end_deps_config_output abspath_deps_config;
 
         (* Builds the package by invoking `satysfi`: *)
-        let SatysfiCommand.{ exit_status = _; command = _ } = (* TODO: use `exit_status` *)
+        let SatysfiCommand.{ exit_status; command = _ } =
           SatysfiCommand.(test_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
             ~base_dir:absdir_store_root
             ~mode:text_mode_formats_str_opt)
         in
-        return ()
+        return exit_status
 
   in
   match res with
-  | Ok(())   -> ()
-  | Error(e) -> report_config_error e; exit 1
+  | Ok(exit_status) -> exit exit_status
+  | Error(e)        -> report_config_error e; exit 1
