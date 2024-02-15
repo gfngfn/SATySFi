@@ -98,16 +98,16 @@ locks:
     registry_hash_value: 6f2b80e9bb7c4e8af2104999fc25dbb3
     package_name: stdlib
     version: 0.0.1
-- name: local./Users/tsuwa/codes/SATySFi/tests/local-fixed/show-value
+- name: local.show-value
   dependencies:
   - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.stdlib.0.0.1
     used_as: Stdlib
   test_only: false
   local:
-    absolute_path: /Users/tsuwa/codes/SATySFi/tests/local-fixed/show-value
+    relative_path: show-value
 dependencies:
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.std-ja-report.0.0.1
   used_as: StdJaReport
-- name: local./Users/tsuwa/codes/SATySFi/tests/local-fixed/show-value
+- name: local.show-value
   used_as: ShowValue
 test_dependencies: []
