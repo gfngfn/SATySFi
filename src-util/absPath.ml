@@ -98,3 +98,36 @@ let to_components (AbsPath(compos) : t) = compos
 
 let compare (AbsPath(compos1)) (AbsPath(compos2)) =
   List.compare String.compare compos1 compos2
+
+
+type relative_component =
+  | RelParent
+  | RelComponent of string
+
+
+let stringify_relative_component = function
+  | RelParent           -> ".."
+  | RelComponent(compo) -> compo
+
+
+let make_relative ~from:(AbsPath(compos_seen_from) : t) (AbsPath(compos_target) : t) =
+  let rec aux compos_seen_from compos_target =
+    match (compos_seen_from, compos_target) with
+    | (compo_seen_from :: compos_seen_from_rest, compo_target :: compos_target_rest) ->
+        if String.equal compo_seen_from compo_target then
+          aux compos_seen_from_rest compos_target_rest
+        else
+          let ncompos0 = List.map (fun _ -> RelParent) compos_seen_from in
+          let ncompos1 = List.map (fun compo -> RelComponent(compo)) compos_target in
+          List.append ncompos0 ncompos1
+
+    | (_ :: _, []) ->
+        List.map (fun _ -> RelParent) compos_seen_from
+
+    | ([], _) ->
+        List.map (fun compo -> RelComponent(compo)) compos_target
+  in
+  let relcompos = aux compos_seen_from compos_target in
+  match relcompos with
+  | []     -> "."
+  | _ :: _ -> String.concat "/" (List.map stringify_relative_component relcompos)
