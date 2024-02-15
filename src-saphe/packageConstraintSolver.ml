@@ -408,8 +408,6 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
   output_opt |> Option.map (fun output ->
     let open InternalSolver in
 
-    Format.printf "EXPLAIN: %s@," (Output.explain output target_role);
-
     (* Adds vertices to the graph: *)
     let rolemap = output |> Output.to_map in
     let (quad_acc, graph, explicit_vertex_to_used_as, explicit_test_vertex_to_used_as, lock_to_vertex_map) =
