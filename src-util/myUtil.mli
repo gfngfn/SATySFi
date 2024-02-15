@@ -1,7 +1,7 @@
 
 exception RemainsToBeImplemented of string
 
-type abs_path
+type abs_path = AbsPath.t
 [@@deriving show]
 
 type lib_path
@@ -28,15 +28,11 @@ val get_abs_path_string : abs_path -> string
 
 val get_lib_path_string : lib_path -> string
 
-module AbsPath : sig
-  type t = abs_path
-
-  val compare : t -> t -> int
-end
-
 val make_absolute_if_relative : origin:string -> string -> abs_path
 
 val append_to_abs_directory : abs_path -> string -> abs_path
+
+val dirname : abs_path -> abs_path
 
 val is_directory : abs_path -> bool
 

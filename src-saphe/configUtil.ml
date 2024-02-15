@@ -61,6 +61,10 @@ let dependency_spec_decoder : parsed_package_dependency_spec ConfigDecoder.t =
         version_requirement;
       }
     end;
+    "local" ==> begin
+      get "path" string >>= fun relative_path ->
+      succeed @@ ParsedLocalFixedDependency{ relative_path }
+    end;
   ]
 
 

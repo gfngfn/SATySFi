@@ -353,6 +353,22 @@ let report_config_error = function
         DisplayLine(message);
       ]
 
+  | NotALibraryLocalFixed{ dir = absdir_package } ->
+      report_error [
+        NormalLine(Printf.sprintf "the following local package is not a library:");
+        DisplayLine(get_abs_path_string absdir_package);
+      ]
+
+  | LocalFixedDoesNotSupportLanguageVersion{ dir = absdir_package; language_version; language_requirement } ->
+      let s_version = SemanticVersion.to_string language_version in
+      let s_req = SemanticVersion.requirement_to_string language_requirement in
+      report_error [
+        NormalLine(Printf.sprintf "the local package");
+        DisplayLine(get_abs_path_string absdir_package);
+        NormalLine(Printf.sprintf "requires the language version to be %s," s_req);
+        NormalLine(Printf.sprintf "but we are using %s." s_version);
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
@@ -384,31 +400,36 @@ let update_store_root_config_if_needed (registries : registry_remote RegistryHas
       return ()
 
 
-let make_lock_name (lock : Lock.t) : lock_name =
-  let Lock.{ package_id; locked_version } = lock in
-  let PackageId.{ registry_hash_value; package_name } = package_id in
-  Printf.sprintf "registered.%s.%s.%s"
-    registry_hash_value
-    package_name
-    (SemanticVersion.to_string locked_version)
+let make_lock_name ~seen_from:(absdir_seen_from : abs_path) (lock : Lock.t) : lock_name =
+  match lock with
+  | Lock.Registered({ registered_package_id; locked_version }) ->
+      let RegisteredPackageId.{ registry_hash_value; package_name } = registered_package_id in
+      Printf.sprintf "registered.%s.%s.%s"
+        registry_hash_value
+        package_name
+        (SemanticVersion.to_string locked_version)
+
+  | Lock.LocalFixed{ absolute_path } ->
+      Printf.sprintf "local.%s"
+        (AbsPath.make_relative ~from:absdir_seen_from absolute_path)
 
 
-let make_lock_dependency (dep : locked_dependency) : LockConfig.lock_dependency =
+let make_lock_dependency ~(seen_from : abs_path) (dep : locked_dependency) : LockConfig.lock_dependency =
   {
-    depended_lock_name = make_lock_name dep.depended_lock;
+    depended_lock_name = make_lock_name ~seen_from dep.depended_lock;
     used_as            = dep.dependency_used_as;
   }
 
 
-let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t * implementation_spec list =
+let convert_solutions_to_lock_config ~(seen_from : abs_path) (solutions : package_solution list) : LockConfig.t * implementation_spec list =
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let { lock; locked_source; _ } = solution in
       let locked_package =
         LockConfig.{
-          lock_name         = make_lock_name lock;
-          lock_contents     = RegisteredLock(lock);
-          lock_dependencies = solution.locked_dependencies |> List.map make_lock_dependency;
+          lock_name         = make_lock_name ~seen_from lock;
+          lock_contents     = lock;
+          lock_dependencies = solution.locked_dependencies |> List.map (make_lock_dependency ~seen_from);
           test_only_lock    = solution.used_in_test_only;
         }
       in
@@ -420,7 +441,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
     solutions |> List.filter_map (fun solution ->
       solution.explicitly_depended |> Option.map (fun used_as ->
         LockConfig.{
-          depended_lock_name = make_lock_name solution.lock;
+          depended_lock_name = make_lock_name ~seen_from solution.lock;
           used_as;
         }
       )
@@ -430,7 +451,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
     solutions |> List.filter_map (fun solution ->
       solution.explicitly_test_depended |> Option.map (fun used_as ->
         LockConfig.{
-          depended_lock_name = make_lock_name solution.lock;
+          depended_lock_name = make_lock_name ~seen_from solution.lock;
           used_as;
         }
       )
@@ -684,7 +705,7 @@ let init_document ~(fpath_in : string) =
     let dir_current = Sys.getcwd () in
     let abspath_doc = make_absolute_if_relative ~origin:dir_current fpath_in in
     let abspath_package_config = Constant.document_package_config_path ~doc:abspath_doc in
-    let absdir = make_abs_path (Filename.dirname (get_abs_path_string abspath_doc)) in
+    let absdir = dirname abspath_doc in
 
     let* () = assert_nonexistence abspath_doc in
     let* () = assert_nonexistence abspath_package_config in
@@ -760,6 +781,16 @@ let make_solve_input ~(dir_current : string) ~(fpath_in : string) : solve_input 
     }
 
 
+module CanonicalRegistryRemoteSet = Set.Make(struct
+  type t = registry_remote
+
+  let compare (r1 : t) (r2 : t) =
+    let GitRegistry{ url = canonical_url1; branch = branch1 } = r1 in
+    let GitRegistry{ url = canonical_url2; branch = branch2 } = r2 in
+    List.compare String.compare [ canonical_url1; branch1 ] [ canonical_url2; branch2 ]
+end)
+
+
 let solve ~(fpath_in : string) =
   let res =
     let open ResultMonad in
@@ -830,6 +861,26 @@ let solve ~(fpath_in : string) =
 
     Logging.show_package_dependency_before_solving dependencies_with_flags;
 
+    (* Collects the local fixed packages used by the target: *)
+    let* (local_fixed_package_map, registry_remotes_sub) =
+      LocalFixedPackageCollector.main ~language_version (List.map Stdlib.snd dependencies_with_flags)
+    in
+
+    (* Creates the envelope config for each local fixed packages,
+       while extracting `local_fixed_dependencies` from `local_fixed_package_map`: *)
+    let* local_fixed_dependencies =
+      LocalFixedPackageIdMap.fold (fun absdir_package (deps, envelope_contents) res ->
+        let* local_fixed_dependencies = res in
+        let abspath_envelope_config = Constant.envelope_config_path ~dir:absdir_package in
+        let* () =
+          EnvelopeConfig.write abspath_envelope_config { envelope_contents }
+            |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath_envelope_config; message })
+        in
+        Logging.end_envelope_config_output abspath_envelope_config;
+        return (local_fixed_dependencies |> LocalFixedPackageIdMap.add absdir_package deps)
+      ) local_fixed_package_map (return LocalFixedPackageIdMap.empty)
+    in
+
     (* Arranges the store root config: *)
     let* absdir_store_root = get_store_root () in
     let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
@@ -839,9 +890,23 @@ let solve ~(fpath_in : string) =
       if created then Logging.store_root_config_updated ~created:true abspath_store_root_config
     end;
 
+    (* Removes duplicate remote registries: *)
+    let* registry_remote_set =
+      (List.append registry_remotes registry_remotes_sub) |> foldM (fun set registry_remote ->
+        let GitRegistry{ url; branch } = registry_remote in
+        let* canonical_url =
+          CanonicalRegistryUrl.make url
+           |> Result.map_error (fun e -> CanonicalRegistryUrlError(e))
+        in
+        let canonical_registry_remote = GitRegistry{ url = canonical_url; branch } in
+        return (set |> CanonicalRegistryRemoteSet.add canonical_registry_remote)
+      ) CanonicalRegistryRemoteSet.empty
+    in
+    let registry_remotes = CanonicalRegistryRemoteSet.elements registry_remote_set in
+
     (* Constructs a map that associates a package with its implementations: *)
-    let* package_id_to_impl_list =
-      registry_remotes |> foldM (fun package_id_to_impl_list registry_remote ->
+    let* registered_package_impls =
+      registry_remotes |> foldM (fun registered_package_impls registry_remote ->
         let* registry_hash_value = ConfigUtil.make_registry_hash_value registry_remote in
 
         (* Manupulates the store root config: *)
@@ -866,25 +931,25 @@ let solve ~(fpath_in : string) =
           if created then Logging.package_registry_updated ~created:true absdir_registry_repo
         end;
 
-        (* Loads the registry config and grows `package_id_to_impl_list`: *)
+        (* Loads the registry config and grows `registered_package_impls`: *)
         let* PackageRegistryConfig.{ packages } =
           let abspath_registry_config =
             Constant.package_registry_config_path ~registry_dir:absdir_registry_repo
           in
           PackageRegistryConfig.load abspath_registry_config
         in
-        packages |> foldM (fun package_id_to_impl_list (package_name, impls) ->
-          let package_id = PackageId.{ registry_hash_value; package_name } in
-          if package_id_to_impl_list |> PackageIdMap.mem package_id then
+        packages |> foldM (fun registered_package_impls (package_name, impls) ->
+          let registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name } in
+          if registered_package_impls |> RegisteredPackageIdMap.mem registered_package_id then
             err @@ MultiplePackageDefinition{ package_name }
           else
-            return (package_id_to_impl_list |> PackageIdMap.add package_id impls)
-        ) package_id_to_impl_list
+            return (registered_package_impls |> RegisteredPackageIdMap.add registered_package_id impls)
+        ) registered_package_impls
 
-      ) PackageIdMap.empty
+      ) RegisteredPackageIdMap.empty
     in
 
-    let package_context = { language_version; package_id_to_impl_list } in
+    let package_context = { language_version; registered_package_impls; local_fixed_dependencies } in
     let solutions_opt = PackageConstraintSolver.solve package_context dependencies_with_flags in
     begin
       match solutions_opt with
@@ -895,7 +960,11 @@ let solve ~(fpath_in : string) =
 
           Logging.show_package_dependency_solutions solutions;
 
-          let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in
+          let (lock_config, impl_specs) =
+            convert_solutions_to_lock_config
+              ~seen_from:(dirname abspath_lock_config)
+              solutions
+          in
 
           let wget_command = "wget" in (* TODO: make this changeable *)
           let tar_command = "tar" in (* TODO: make this changeable *)
@@ -1007,14 +1076,22 @@ let make_envelope_spec ~(store_root : abs_path) (locked_package : LockConfig.loc
     LockConfig.{
       lock_name;
       lock_dependencies;
-      lock_contents = RegisteredLock(lock);
+      lock_contents;
       test_only_lock;
     } = locked_package
+  in
+  let envelope_path =
+    match lock_contents with
+    | Lock.Registered(reglock) ->
+        get_abs_path_string (Constant.registered_lock_envelope_config ~store_root reglock)
+
+    | Lock.LocalFixed{ absolute_path } ->
+        get_abs_path_string (Constant.envelope_config_path ~dir:absolute_path)
   in
   let envelope_dependencies = lock_dependencies |> List.map make_envelope_dependency in
   {
     envelope_name = lock_name;
-    envelope_path = get_abs_path_string (Constant.lock_envelope_config ~store_root lock);
+    envelope_path;
     envelope_dependencies;
     test_only_envelope = test_only_lock;
   }
@@ -1110,7 +1187,7 @@ let build
         Logging.end_deps_config_output abspath_deps_config;
 
         (* Builds the package by invoking `satysfi`: *)
-        let SatysfiCommand.{ exit_status = _; command = _ } = (* TODO: use `exit_status` *)
+        let SatysfiCommand.{ exit_status; command = _ } =
           SatysfiCommand.(build_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
@@ -1118,7 +1195,7 @@ let build
             ~mode:text_mode_formats_str_opt
             ~options)
         in
-        return ()
+        return exit_status
 
     | DocumentBuildInput{
         doc  = abspath_doc;
@@ -1135,7 +1212,7 @@ let build
         Logging.end_deps_config_output abspath_deps_config;
 
         (* Builds the document by invoking `satysfi`: *)
-        let SatysfiCommand.{ exit_status = _; command = _ } = (* TODO: use `exit_status` *)
+        let SatysfiCommand.{ exit_status; command = _ } =
           SatysfiCommand.(build_document
             ~doc:abspath_doc
             ~out:abspath_out
@@ -1145,11 +1222,11 @@ let build
             ~mode:text_mode_formats_str_opt
             ~options)
         in
-        return ()
+        return exit_status
   in
   match res with
-  | Ok(())   -> ()
-  | Error(e) -> report_config_error e; exit 1
+  | Ok(exit_status) -> exit exit_status
+  | Error(e)        -> report_config_error e; exit 1
 
 
 type test_input =
@@ -1201,16 +1278,16 @@ let test
         Logging.end_deps_config_output abspath_deps_config;
 
         (* Builds the package by invoking `satysfi`: *)
-        let SatysfiCommand.{ exit_status = _; command = _ } = (* TODO: use `exit_status` *)
+        let SatysfiCommand.{ exit_status; command = _ } =
           SatysfiCommand.(test_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
             ~base_dir:absdir_store_root
             ~mode:text_mode_formats_str_opt)
         in
-        return ()
+        return exit_status
 
   in
   match res with
-  | Ok(())   -> ()
-  | Error(e) -> report_config_error e; exit 1
+  | Ok(exit_status) -> exit exit_status
+  | Error(e)        -> report_config_error e; exit 1

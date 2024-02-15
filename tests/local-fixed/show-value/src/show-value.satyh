@@ -1,0 +1,4 @@
+module ShowValue = struct
+  val inline \int n =
+    embed-string (arabic n)
+end

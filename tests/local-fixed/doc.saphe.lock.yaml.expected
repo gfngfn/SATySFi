@@ -57,15 +57,6 @@ locks:
     registry_hash_value: 6f2b80e9bb7c4e8af2104999fc25dbb3
     package_name: footnote-scheme
     version: 0.0.1
-- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.itemize.0.0.1
-  dependencies:
-  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.stdlib.0.0.1
-    used_as: Stdlib
-  test_only: false
-  registered:
-    registry_hash_value: 6f2b80e9bb7c4e8af2104999fc25dbb3
-    package_name: itemize
-    version: 0.0.1
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.math.0.0.1
   dependencies:
   - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.stdlib.0.0.1
@@ -75,7 +66,7 @@ locks:
     registry_hash_value: 6f2b80e9bb7c4e8af2104999fc25dbb3
     package_name: math
     version: 0.0.1
-- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.std-ja-book.0.0.1
+- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.std-ja-report.0.0.1
   dependencies:
   - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.stdlib.0.0.1
     used_as: Stdlib
@@ -98,7 +89,7 @@ locks:
   test_only: false
   registered:
     registry_hash_value: 6f2b80e9bb7c4e8af2104999fc25dbb3
-    package_name: std-ja-book
+    package_name: std-ja-report
     version: 0.0.1
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.stdlib.0.0.1
   dependencies: []
@@ -107,15 +98,16 @@ locks:
     registry_hash_value: 6f2b80e9bb7c4e8af2104999fc25dbb3
     package_name: stdlib
     version: 0.0.1
+- name: local.show-value
+  dependencies:
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.stdlib.0.0.1
+    used_as: Stdlib
+  test_only: false
+  local:
+    relative_path: show-value
 dependencies:
-- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.font-latin-modern.0.0.1
-  used_as: FontLatinModern
-- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.itemize.0.0.1
-  used_as: Itemize
-- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.math.0.0.1
-  used_as: Math
-- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.std-ja-book.0.0.1
-  used_as: StdJaBook
-- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.stdlib.0.0.1
-  used_as: Stdlib
+- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.std-ja-report.0.0.1
+  used_as: StdJaReport
+- name: local.show-value
+  used_as: ShowValue
 test_dependencies: []

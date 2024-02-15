@@ -49,13 +49,12 @@ let extract_external_zip ~(unzip_command : string) ~(zip : abs_path) ~(output_co
     err @@ FailedToExtractExternalZip{ exit_status; command }
 
 
-let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~store_root:(absdir_store_root : abs_path) (impl_spec : implementation_spec) : unit ok =
+let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~store_root:(absdir_store_root : abs_path) (reglock : RegisteredLock.t) (source : implementation_source) : unit ok =
   let open ResultMonad in
-  let ImplSpec{ lock; source } = impl_spec in
-  let Lock.{ package_id; locked_version } = lock in
-  let PackageId.{ registry_hash_value; package_name } = package_id in
+  let RegisteredLock.{ registered_package_id; locked_version } = reglock in
+  let RegisteredPackageId.{ registry_hash_value; package_name } = registered_package_id in
   let lock_tarball_name = Constant.lock_tarball_name package_name locked_version in
-  let absdir_lock = Constant.lock_directory ~store_root:absdir_store_root lock in
+  let absdir_lock = Constant.registered_lock_directory ~store_root:absdir_store_root reglock in
   let absdir_lock_tarball_cache =
     Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
   in
@@ -185,3 +184,20 @@ let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : stri
 
         return ()
   end
+
+
+let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~(store_root : abs_path) (impl_spec : implementation_spec) : unit ok =
+  let open ResultMonad in
+  let ImplSpec{ lock; source } = impl_spec in
+  match lock with
+  | Lock.Registered(reglock) ->
+      fetch_registered_lock
+        ~wget_command
+        ~tar_command
+        ~unzip_command
+        ~store_root
+        reglock
+        source
+
+  | Lock.LocalFixed(_) ->
+      return ()

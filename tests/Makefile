@@ -1,6 +1,7 @@
 INIT_DOC = init-doc/foo
 INIT_MD = init-md/foo
 INIT_LIB = init-lib
+LOCAL_FIXED = local-fixed/doc
 
 DOC_TARGETS = \
 	clip.pdf \
@@ -16,6 +17,7 @@ DOC_TARGETS = \
 	rename-dep1.pdf \
 	$(INIT_DOC).pdf \
 	$(INIT_MD).pdf \
+	$(LOCAL_FIXED).pdf \
 #	first.pdf \
 #	math1.pdf \
 #	refactor4.pdf \
@@ -78,6 +80,7 @@ clean-init::
 	rm -f $(INIT_MD).md $(INIT_MD).saphe.yaml
 	rm -f $(INIT_MD).saphe.lock.yaml $(INIT_MD).satysfi-deps.yaml $(INIT_MD).satysfi-aux $(INIT_MD).pdf
 	rm -rf $(INIT_LIB)
+	rm -f $(LOCAL_FIXED).saphe.lock.yaml
 
 # Dependencies on program files:
 clip.pdf: head.satyh
@@ -116,3 +119,11 @@ $(INIT_LIB)/saphe.lock.yaml: $(INIT_LIB)/saphe.yaml
 $(INIT_LIB)/satysfi-deps.yaml: $(INIT_LIB)/saphe.lock.yaml
 	$(SAPHE) build $(INIT_LIB)
 	$(SAPHE) test $(INIT_LIB)
+
+# Tests for local fixed packages:
+$(LOCAL_FIXED).saphe.lock.yaml: $(LOCAL_FIXED).saty $(LOCAL_FIXED).saphe.yaml
+	$(SAPHE) solve $<
+	diff $@ $(LOCAL_FIXED).saphe.lock.yaml.expected
+
+$(LOCAL_FIXED).pdf: $(LOCAL_FIXED).saty $(LOCAL_FIXED).saphe.lock.yaml
+	$(SAPHE) build $< -o $@

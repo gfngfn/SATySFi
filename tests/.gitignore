@@ -1,4 +1,4 @@
 *.saphe.lock.yaml
 !*.saphe.lock.yaml.expected
 *.satysfi-deps.yaml
-init-lib/
+/init-lib/
