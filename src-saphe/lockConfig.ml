@@ -26,7 +26,7 @@ type t = {
 }
 
 
-let lock_contents_decoder : Lock.t ConfigDecoder.t =
+let lock_contents_decoder ~dir:(absdir_lock_config : abs_path) : Lock.t ConfigDecoder.t =
   let open ConfigDecoder in
   branch [
     "registered" ==> begin
@@ -38,15 +38,15 @@ let lock_contents_decoder : Lock.t ConfigDecoder.t =
       succeed @@ Lock.Registered(reglock)
     end;
     "local" ==> begin
-      get "absolute_path" string >>= fun abspathstr -> (* TODO: fix this *)
+      get "relative_path" string >>= fun relpathstr ->
       succeed @@ Lock.LocalFixed{
-        absolute_path = make_abs_path abspathstr;
+        absolute_path = append_to_abs_directory absdir_lock_config relpathstr;
       }
     end;
   ]
 
 
-let lock_contents_encoder (contents : Lock.t) : (string * Yaml.value) list =
+let lock_contents_encoder ~dir:(absdir_lock_config : abs_path) (contents : Lock.t) : (string * Yaml.value) list =
   match contents with
   | Lock.Registered(reglock) ->
       let RegisteredLock.{ registered_package_id; locked_version } = reglock in
@@ -62,7 +62,7 @@ let lock_contents_encoder (contents : Lock.t) : (string * Yaml.value) list =
   | Lock.LocalFixed{ absolute_path } ->
       [
         ("local", `O([
-          ("absolute_path", `String(get_abs_path_string absolute_path)); (* TODO: fix this *)
+          ("relative_path", `String(AbsPath.make_relative ~from:absdir_lock_config absolute_path));
         ]));
       ]
 
@@ -81,16 +81,16 @@ let lock_dependency_encoder (dep : lock_dependency) : Yaml.value =
   ])
 
 
-let lock_decoder : locked_package ConfigDecoder.t =
+let lock_decoder ~(dir : abs_path) : locked_package ConfigDecoder.t =
   let open ConfigDecoder in
   get "name" string >>= fun lock_name ->
   get_or_else "dependencies" (list lock_dependency_decoder) [] >>= fun lock_dependencies ->
   get_or_else "test_only" bool false >>= fun test_only_lock ->
-  lock_contents_decoder >>= fun lock_contents ->
+  lock_contents_decoder ~dir >>= fun lock_contents ->
   succeed { lock_name; lock_contents; lock_dependencies; test_only_lock }
 
 
-let lock_encoder (lock : locked_package) : Yaml.value =
+let lock_encoder ~(dir : abs_path) (lock : locked_package) : Yaml.value =
   let fields_common =
     [
       ("name", `String(lock.lock_name));
@@ -98,25 +98,25 @@ let lock_encoder (lock : locked_package) : Yaml.value =
       ("test_only", `Bool(lock.test_only_lock));
     ]
   in
-  let fields_contents = lock_contents_encoder lock.lock_contents in
+  let fields_contents = lock_contents_encoder ~dir lock.lock_contents in
   `O(List.append fields_common fields_contents)
 
 
-let lock_config_decoder : t ConfigDecoder.t =
+let lock_config_decoder ~(dir : abs_path) : t ConfigDecoder.t =
   let open ConfigDecoder in
   get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
-  get_or_else "locks" (list lock_decoder) [] >>= fun locked_packages ->
+  get_or_else "locks" (list (lock_decoder ~dir)) [] >>= fun locked_packages ->
   get_or_else "dependencies" (list lock_dependency_decoder) [] >>= fun explicit_dependencies ->
   get_or_else "test_dependencies" (list lock_dependency_decoder) [] >>= fun explicit_test_dependencies ->
   succeed { locked_packages; explicit_dependencies; explicit_test_dependencies }
 
 
-let lock_config_encoder (lock_config : t) : Yaml.value =
+let lock_config_encoder ~(dir : abs_path) (lock_config : t) : Yaml.value =
   let { locked_packages; explicit_dependencies; explicit_test_dependencies } = lock_config in
   let requirement = SemanticVersion.CompatibleWith(Constant.current_ecosystem_version) in
   `O([
     ("ecosystem", `String(SemanticVersion.requirement_to_string requirement));
-    ("locks", `A(locked_packages |> List.map lock_encoder));
+    ("locks", `A(locked_packages |> List.map (lock_encoder ~dir)));
     ("dependencies", `A(explicit_dependencies |> List.map lock_dependency_encoder));
     ("test_dependencies", `A(explicit_test_dependencies |> List.map lock_dependency_encoder));
   ])
@@ -128,12 +128,12 @@ let load (abspath_lock_config : abs_path) : t ok =
     read_file abspath_lock_config
       |> Result.map_error (fun _ -> LockConfigNotFound(abspath_lock_config))
   in
-  ConfigDecoder.run lock_config_decoder s
+  ConfigDecoder.run (lock_config_decoder  ~dir:(dirname abspath_lock_config)) s
     |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))
 
 
 let write (abspath_lock_config : abs_path) (lock_config : t) : (unit, config_error) result =
-  let yaml = lock_config_encoder lock_config in
+  let yaml = lock_config_encoder ~dir:(dirname abspath_lock_config) lock_config in
   let data = encode_yaml yaml in
   write_file abspath_lock_config data
     |> Result.map_error (fun message ->

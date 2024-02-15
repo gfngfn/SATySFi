@@ -400,7 +400,7 @@ let update_store_root_config_if_needed (registries : registry_remote RegistryHas
       return ()
 
 
-let make_lock_name (lock : Lock.t) : lock_name =
+let make_lock_name ~seen_from:(absdir_seen_from : abs_path) (lock : Lock.t) : lock_name =
   match lock with
   | Lock.Registered({ registered_package_id; locked_version }) ->
       let RegisteredPackageId.{ registry_hash_value; package_name } = registered_package_id in
@@ -411,26 +411,25 @@ let make_lock_name (lock : Lock.t) : lock_name =
 
   | Lock.LocalFixed{ absolute_path } ->
       Printf.sprintf "local.%s"
-        (get_abs_path_string absolute_path)
-          (* TODO: fix this *)
+        (AbsPath.make_relative ~from:absdir_seen_from absolute_path)
 
 
-let make_lock_dependency (dep : locked_dependency) : LockConfig.lock_dependency =
+let make_lock_dependency ~(seen_from : abs_path) (dep : locked_dependency) : LockConfig.lock_dependency =
   {
-    depended_lock_name = make_lock_name dep.depended_lock;
+    depended_lock_name = make_lock_name ~seen_from dep.depended_lock;
     used_as            = dep.dependency_used_as;
   }
 
 
-let convert_solutions_to_lock_config (solutions : package_solution list) : LockConfig.t * implementation_spec list =
+let convert_solutions_to_lock_config ~(seen_from : abs_path) (solutions : package_solution list) : LockConfig.t * implementation_spec list =
   let (locked_package_acc, impl_spec_acc) =
     solutions |> List.fold_left (fun (locked_package_acc, impl_spec_acc) solution ->
       let { lock; locked_source; _ } = solution in
       let locked_package =
         LockConfig.{
-          lock_name         = make_lock_name lock;
+          lock_name         = make_lock_name ~seen_from lock;
           lock_contents     = lock;
-          lock_dependencies = solution.locked_dependencies |> List.map make_lock_dependency;
+          lock_dependencies = solution.locked_dependencies |> List.map (make_lock_dependency ~seen_from);
           test_only_lock    = solution.used_in_test_only;
         }
       in
@@ -442,7 +441,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
     solutions |> List.filter_map (fun solution ->
       solution.explicitly_depended |> Option.map (fun used_as ->
         LockConfig.{
-          depended_lock_name = make_lock_name solution.lock;
+          depended_lock_name = make_lock_name ~seen_from solution.lock;
           used_as;
         }
       )
@@ -452,7 +451,7 @@ let convert_solutions_to_lock_config (solutions : package_solution list) : LockC
     solutions |> List.filter_map (fun solution ->
       solution.explicitly_test_depended |> Option.map (fun used_as ->
         LockConfig.{
-          depended_lock_name = make_lock_name solution.lock;
+          depended_lock_name = make_lock_name ~seen_from solution.lock;
           used_as;
         }
       )
@@ -961,7 +960,11 @@ let solve ~(fpath_in : string) =
 
           Logging.show_package_dependency_solutions solutions;
 
-          let (lock_config, impl_specs) = convert_solutions_to_lock_config solutions in
+          let (lock_config, impl_specs) =
+            convert_solutions_to_lock_config
+              ~seen_from:(dirname abspath_lock_config)
+              solutions
+          in
 
           let wget_command = "wget" in (* TODO: make this changeable *)
           let tar_command = "tar" in (* TODO: make this changeable *)
