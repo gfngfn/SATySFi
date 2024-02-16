@@ -551,8 +551,8 @@ Hello, world!
 
 
 let initial_document_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
-ecosystem: "^%s"
-language: "^0.1.0"
+saphe: "^%s"
+satysfi: "^0.1.0"
 name: "your-document"
 authors:
   - "Your Name"
@@ -563,18 +563,18 @@ registries:
       branch: "temp-dev-saphe"
 contents:
   document:
-    dependencies:
-      - used_as: "StdJaReport"
-        registered:
-          registry: "default"
-          name: "std-ja-report"
-          requirement: "^0.0.1"
+dependencies:
+  - used_as: "StdJaReport"
+    registered:
+      registry: "default"
+      name: "std-ja-report"
+      requirement: "^0.0.1"
 |string} (SemanticVersion.to_string Constant.current_ecosystem_version))
 
 
 let initial_markdown_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
-ecosystem: "^%s"
-language: "^0.1.0"
+saphe: "^%s"
+satysfi: "^0.1.0"
 name: "your-document"
 authors:
   - "Your Name"
@@ -585,18 +585,18 @@ registries:
       branch: "temp-dev-saphe"
 contents:
   document:
-    dependencies:
-      - used_as: "MDJa"
-        registered:
-          registry: "default"
-          name: "md-ja"
-          requirement: "^0.0.1"
+dependencies:
+  - used_as: "MDJa"
+    registered:
+      registry: "default"
+      name: "md-ja"
+      requirement: "^0.0.1"
 |string} (SemanticVersion.to_string Constant.current_ecosystem_version))
 
 
 let initial_library_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
-ecosystem: "^%s"
-language: "^0.1.0"
+saphe: "^%s"
+satysfi: "^0.1.0"
 name: "your-library"
 authors:
   - "Your Name"
@@ -612,18 +612,18 @@ contents:
     - "./src"
     test_directories:
     - "./test"
-    dependencies:
-      - used_as: "Stdlib"
-        registered:
-          registry: "default"
-          name: "stdlib"
-          requirement: "^0.0.1"
-    test_dependencies:
-      - used_as: "Testing"
-        registered:
-          registry: "default"
-          name: "testing"
-          requirement: "^0.0.1"
+dependencies:
+  - used_as: "Stdlib"
+    registered:
+      registry: "default"
+      name: "stdlib"
+      requirement: "^0.0.1"
+test_dependencies:
+  - used_as: "Testing"
+    registered:
+      registry: "default"
+      name: "testing"
+      requirement: "^0.0.1"
 |string} (SemanticVersion.to_string Constant.current_ecosystem_version))
 
 
