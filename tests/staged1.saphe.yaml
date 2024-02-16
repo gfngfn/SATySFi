@@ -1,6 +1,5 @@
-ecosystem: "^0.0.1"
-language: "^0.1.0"
-name: "staged1" #TODO: remove this
+saphe: "^0.0.1"
+satysfi: "^0.1.0"
 authors:
   - "Takashi Suwa"
 registries:
@@ -9,10 +8,10 @@ registries:
       url: "https://github.com/SATySFi/default-registry"
       branch: "temp-dev-saphe"
 contents:
-  document:
-    dependencies:
-      - used_as: "StdJa"
-        registered:
-          registry: "default"
-          name: "std-ja"
-          requirement: "^0.0.1"
+  document: {}
+dependencies:
+  - used_as: "StdJa"
+    registered:
+      registry: "default"
+      name: "std-ja"
+      requirement: "^0.0.1"
