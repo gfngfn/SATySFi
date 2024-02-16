@@ -1,5 +1,5 @@
-ecosystem: "^0.0.1"
-language: "^0.1.0"
+saphe: "^0.0.1"
+satysfi: "^0.1.0"
 name: "stdlib"
 authors:
   - "Takashi Suwa <@gfngfn>"
@@ -16,10 +16,10 @@ contents:
     - "./src"
     test_directories:
     - "./test"
-    dependencies: []
-    test_dependencies:
-    - used_as: "Testing"
-      registered:
-        registry: "default"
-        name: "testing"
-        requirement: "^0.0.1"
+dependencies: []
+test_dependencies:
+- used_as: "Testing"
+  registered:
+    registry: "default"
+    name: "testing"
+    requirement: "^0.0.1"

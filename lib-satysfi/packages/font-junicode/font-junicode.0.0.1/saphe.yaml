@@ -1,11 +1,11 @@
-ecosystem: "^0.0.1"
-language: "^0.1.0"
+saphe: "^0.0.1"
+satysfi: "^0.1.0"
 name: "font-junicode"
 authors: []
 external_resources:
   - name: "junicode-1.002"
     zip:
-      url: "http://downloads.sourceforge.net/project/junicode/junicode/junicode-1.002/junicode-1.002.zip"
+      url: "https://downloads.sourceforge.net/project/junicode/junicode/junicode-1.002/junicode-1.002.zip"
       checksum: "b1d6ed8796d8d1eacd733c0d568d939f"
       extractions:
         - from: "Junicode.ttf"
