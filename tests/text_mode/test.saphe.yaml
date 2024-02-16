@@ -1,9 +1,8 @@
-ecosystem: "^0.0.1"
-language: "^0.1.0"
-name: "test" #TODO: remove this
+saphe: "^0.0.1"
+satysfi: "^0.1.0"
 authors:
   - "Takashi Suwa"
 registries: []
 contents:
-  document:
-    dependencies: []
+  document: {}
+dependencies: []

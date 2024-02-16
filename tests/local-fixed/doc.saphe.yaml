@@ -1,6 +1,5 @@
-ecosystem: "^0.0.1"
-language: "^0.1.0"
-name: "local-fixed"
+saphe: "^0.0.1"
+satysfi: "^0.1.0"
 authors:
   - "Takashi Suwa"
 registries:
@@ -9,13 +8,13 @@ registries:
       url: "https://github.com/SATySFi/default-registry"
       branch: "temp-dev-saphe"
 contents:
-  document:
-    dependencies:
-      - used_as: "StdJaReport"
-        registered:
-          registry: "default"
-          name: "std-ja-report"
-          requirement: "^0.0.1"
-      - used_as: "ShowValue"
-        local:
-          path: "./show-value/"
+  document: {}
+dependencies:
+  - used_as: "StdJaReport"
+    registered:
+      registry: "default"
+      name: "std-ja-report"
+      requirement: "^0.0.1"
+  - used_as: "ShowValue"
+    local:
+      path: "./show-value/"

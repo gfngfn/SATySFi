@@ -4,17 +4,18 @@ open ConfigError
 open ConfigUtil
 open EnvelopeSystemBase
 open PackageSystemBase
+open PackageConfigImpl
 
 
 type 'a ok = ('a, config_error) result
+
+module RegistryLocalNameMap = Map.Make(String)
 
 type package_contents =
   | Library of {
       main_module_name    : string;
       source_directories  : relative_path list;
       test_directories    : relative_path list;
-      dependencies        : package_dependency list;
-      test_dependencies   : package_dependency list;
       markdown_conversion : markdown_conversion option;
     }
   | Font of {
@@ -27,11 +28,13 @@ type package_contents =
 
 type t = {
   language_requirement : SemanticVersion.requirement;
-  package_name         : package_name;
+  package_name         : package_name option;
   package_authors      : string list;
   external_resources   : (string * external_resource) list;
   package_contents     : package_contents;
   registry_remotes     : registry_remote list;
+  source_dependencies  : package_dependency list;
+  test_dependencies    : package_dependency list;
 }
 
 
@@ -154,15 +157,11 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
       get "main_module" string >>= fun main_module_name ->
       get "source_directories" (list string) >>= fun source_directories ->
       get_or_else "test_directories" (list string) [] >>= fun test_directories ->
-      get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
-      get_or_else "test_dependencies" (list dependency_decoder) [] >>= fun test_dependencies ->
       get_opt "markdown_conversion" markdown_conversion_decoder >>= fun markdown_conversion ->
       succeed @@ ParsedLibrary {
         main_module_name;
         source_directories;
         test_directories;
-        dependencies;
-        test_dependencies;
         markdown_conversion;
       }
     end;
@@ -207,13 +206,15 @@ let external_resource_decoder : (string * external_resource) ConfigDecoder.t =
 
 let config_decoder : parsed_package_config ConfigDecoder.t =
   let open ConfigDecoder in
-  get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
-  get "language" requirement_decoder >>= fun language_requirement ->
-  get "name" package_name_decoder >>= fun package_name ->
+  get "saphe" (version_checker Constant.current_ecosystem_version) >>= fun () ->
+  get "satysfi" requirement_decoder >>= fun language_requirement ->
+  get_opt "name" package_name_decoder >>= fun package_name ->
   get "authors" (list string) >>= fun package_authors ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
   get_or_else "external_resources" (list external_resource_decoder) [] >>= fun external_resources ->
   get "contents" contents_decoder >>= fun package_contents ->
+  get_or_else "dependencies" (list dependency_decoder) [] >>= fun source_dependencies ->
+  get_or_else "test_dependencies" (list dependency_decoder) [] >>= fun test_dependencies ->
   succeed @@ ParsedPackageConfig{
     language_requirement;
     package_name;
@@ -221,6 +222,8 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
     registry_specs;
     external_resources;
     package_contents;
+    source_dependencies;
+    test_dependencies;
   }
 
 
@@ -262,18 +265,12 @@ let validate_contents_spec  ~(dir : abs_path) (localmap : registry_remote Regist
       main_module_name;
       source_directories;
       test_directories;
-      dependencies;
-      test_dependencies;
       markdown_conversion;
     } ->
-      let* dependencies = mapM (validate_dependency ~dir localmap) dependencies in
-      let* test_dependencies = mapM (validate_dependency ~dir localmap) test_dependencies in
       return @@ Library{
         main_module_name;
         source_directories;
         test_directories;
-        dependencies;
-        test_dependencies;
         markdown_conversion;
       }
 
@@ -295,6 +292,8 @@ let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok
       external_resources;
       package_contents;
       registry_specs;
+      source_dependencies;
+      test_dependencies;
     } = p_package_config
   in
   let* (localmap, registry_remote_acc) =
@@ -307,14 +306,19 @@ let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok
         return (localmap, registry_remote_acc)
     ) (RegistryLocalNameMap.empty, Alist.empty)
   in
+  let registry_remotes = Alist.to_list registry_remote_acc in
   let* package_contents = validate_contents_spec ~dir localmap package_contents in
+  let* source_dependencies = mapM (validate_dependency ~dir localmap) source_dependencies in
+  let* test_dependencies = mapM (validate_dependency ~dir localmap) test_dependencies in
   return {
     language_requirement;
     package_name;
     package_authors;
     external_resources;
     package_contents;
-    registry_remotes = Alist.to_list registry_remote_acc;
+    registry_remotes;
+    source_dependencies;
+    test_dependencies;
   }
 
 

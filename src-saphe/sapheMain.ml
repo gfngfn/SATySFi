@@ -497,20 +497,6 @@ let make_envelope_config (abspath_package_config : abs_path) (package_contents :
       err @@ NotAPackageButADocument(abspath_package_config)
 
 
-let make_dependencies_with_flags (package_contents : PackageConfig.package_contents) =
-  match package_contents with
-  | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
-      List.append
-        (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
-        (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
-
-  | PackageConfig.Font(_) ->
-      []
-
-  | PackageConfig.Document{ dependencies } ->
-      dependencies |> List.map (fun dep -> (SourceDependency, dep))
-
-
 let get_minimum_language_version (language_requirement : SemanticVersion.requirement) : SemanticVersion.t =
   match language_requirement with
   | SemanticVersion.CompatibleWith(semver) -> semver
@@ -565,9 +551,8 @@ Hello, world!
 
 
 let initial_document_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
-ecosystem: "^%s"
-language: "^0.1.0"
-name: "your-document"
+saphe: "^%s"
+satysfi: "^0.1.0"
 authors:
   - "Your Name"
 registries:
@@ -576,20 +561,19 @@ registries:
       url: "https://github.com/SATySFi/default-registry"
       branch: "temp-dev-saphe"
 contents:
-  document:
-    dependencies:
-      - used_as: "StdJaReport"
-        registered:
-          registry: "default"
-          name: "std-ja-report"
-          requirement: "^0.0.1"
+  document: {}
+dependencies:
+  - used_as: "StdJaReport"
+    registered:
+      registry: "default"
+      name: "std-ja-report"
+      requirement: "^0.0.1"
 |string} (SemanticVersion.to_string Constant.current_ecosystem_version))
 
 
 let initial_markdown_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
-ecosystem: "^%s"
-language: "^0.1.0"
-name: "your-document"
+saphe: "^%s"
+satysfi: "^0.1.0"
 authors:
   - "Your Name"
 registries:
@@ -598,19 +582,19 @@ registries:
       url: "https://github.com/SATySFi/default-registry"
       branch: "temp-dev-saphe"
 contents:
-  document:
-    dependencies:
-      - used_as: "MDJa"
-        registered:
-          registry: "default"
-          name: "md-ja"
-          requirement: "^0.0.1"
+  document: {}
+dependencies:
+  - used_as: "MDJa"
+    registered:
+      registry: "default"
+      name: "md-ja"
+      requirement: "^0.0.1"
 |string} (SemanticVersion.to_string Constant.current_ecosystem_version))
 
 
 let initial_library_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
-ecosystem: "^%s"
-language: "^0.1.0"
+saphe: "^%s"
+satysfi: "^0.1.0"
 name: "your-library"
 authors:
   - "Your Name"
@@ -626,18 +610,18 @@ contents:
     - "./src"
     test_directories:
     - "./test"
-    dependencies:
-      - used_as: "Stdlib"
-        registered:
-          registry: "default"
-          name: "stdlib"
-          requirement: "^0.0.1"
-    test_dependencies:
-      - used_as: "Testing"
-        registered:
-          registry: "default"
-          name: "testing"
-          requirement: "^0.0.1"
+dependencies:
+  - used_as: "Stdlib"
+    registered:
+      registry: "default"
+      name: "stdlib"
+      requirement: "^0.0.1"
+test_dependencies:
+  - used_as: "Testing"
+    registered:
+      registry: "default"
+      name: "testing"
+      requirement: "^0.0.1"
 |string} (SemanticVersion.to_string Constant.current_ecosystem_version))
 
 
@@ -815,6 +799,8 @@ let solve ~(fpath_in : string) =
               language_requirement;
               package_contents;
               registry_remotes;
+              source_dependencies;
+              test_dependencies;
               _
             } = PackageConfig.load abspath_package_config
           in
@@ -833,7 +819,11 @@ let solve ~(fpath_in : string) =
           in
           Logging.end_envelope_config_output abspath_envelope_config;
 
-          let dependencies_with_flags = make_dependencies_with_flags package_contents in
+          let dependencies_with_flags =
+            List.append
+              (source_dependencies |> List.map (fun dep -> (SourceDependency, dep)))
+              (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
+          in
           return (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes)
 
       | DocumentSolveInput{
@@ -845,8 +835,9 @@ let solve ~(fpath_in : string) =
           let*
             PackageConfig.{
               language_requirement;
-              package_contents;
               registry_remotes;
+              source_dependencies;
+              test_dependencies;
               _
             } = PackageConfig.load abspath_package_config
           in
@@ -855,7 +846,11 @@ let solve ~(fpath_in : string) =
           (* TODO: consider taking dependencies into account when selecting a language version *)
           let language_version = get_minimum_language_version language_requirement in
 
-          let dependencies_with_flags = make_dependencies_with_flags package_contents in
+          let dependencies_with_flags =
+            List.append
+              (source_dependencies |> List.map (fun dep -> (SourceDependency, dep)))
+              (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
+          in
           return (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes)
     in
 

@@ -1,5 +1,5 @@
-ecosystem: "^0.0.1"
-language: "^0.1.0"
+saphe: "^0.0.1"
+satysfi: "^0.1.0"
 name: "std-ja"
 authors:
   - "Takashi Suwa <@gfngfn>"
@@ -16,44 +16,44 @@ contents:
     main_module: "StdJa"
     source_directories:
       - "./src"
-    dependencies:
-      - used_as: "Stdlib"
-        registered:
-          registry: "default"
-          name: "stdlib"
-          requirement: "^0.0.1"
-      - used_as: "Math"
-        registered:
-          registry: "default"
-          name: "math"
-          requirement: "^0.0.1"
-      - used_as: "Annot"
-        registered:
-          registry: "default"
-          name: "annot"
-          requirement: "^0.0.1"
-      - used_as: "Code"
-        registered:
-          registry: "default"
-          name: "code"
-          requirement: "^0.0.1"
-      - used_as: "FontJunicode"
-        registered:
-          registry: "default"
-          name: "font-junicode"
-          requirement: "^0.0.1"
-      - used_as: "FontLatinModern"
-        registered:
-          registry: "default"
-          name: "font-latin-modern"
-          requirement: "^0.0.1"
-      - used_as: "FontIpaEx"
-        registered:
-          registry: "default"
-          name: "font-ipa-ex"
-          requirement: "^0.0.1"
-      - used_as: "FontLatinModernMath"
-        registered:
-          registry: "default"
-          name: "font-latin-modern-math"
-          requirement: "^0.0.1"
+dependencies:
+  - used_as: "Stdlib"
+    registered:
+      registry: "default"
+      name: "stdlib"
+      requirement: "^0.0.1"
+  - used_as: "Math"
+    registered:
+      registry: "default"
+      name: "math"
+      requirement: "^0.0.1"
+  - used_as: "Annot"
+    registered:
+      registry: "default"
+      name: "annot"
+      requirement: "^0.0.1"
+  - used_as: "Code"
+    registered:
+      registry: "default"
+      name: "code"
+      requirement: "^0.0.1"
+  - used_as: "FontJunicode"
+    registered:
+      registry: "default"
+      name: "font-junicode"
+      requirement: "^0.0.1"
+  - used_as: "FontLatinModern"
+    registered:
+      registry: "default"
+      name: "font-latin-modern"
+      requirement: "^0.0.1"
+  - used_as: "FontIpaEx"
+    registered:
+      registry: "default"
+      name: "font-ipa-ex"
+      requirement: "^0.0.1"
+  - used_as: "FontLatinModernMath"
+    registered:
+      registry: "default"
+      name: "font-latin-modern-math"
+      requirement: "^0.0.1"

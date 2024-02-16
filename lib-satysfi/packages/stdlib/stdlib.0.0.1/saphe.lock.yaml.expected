@@ -1,4 +1,4 @@
-ecosystem: ^0.0.1
+saphe: ^0.0.1
 locks:
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.testing.0.0.1
   dependencies: []

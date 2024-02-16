@@ -104,7 +104,7 @@ let lock_encoder ~(dir : abs_path) (lock : locked_package) : Yaml.value =
 
 let lock_config_decoder ~(dir : abs_path) : t ConfigDecoder.t =
   let open ConfigDecoder in
-  get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
+  get "saphe" (version_checker Constant.current_ecosystem_version) >>= fun () ->
   get_or_else "locks" (list (lock_decoder ~dir)) [] >>= fun locked_packages ->
   get_or_else "dependencies" (list lock_dependency_decoder) [] >>= fun explicit_dependencies ->
   get_or_else "test_dependencies" (list lock_dependency_decoder) [] >>= fun explicit_test_dependencies ->
@@ -115,7 +115,7 @@ let lock_config_encoder ~(dir : abs_path) (lock_config : t) : Yaml.value =
   let { locked_packages; explicit_dependencies; explicit_test_dependencies } = lock_config in
   let requirement = SemanticVersion.CompatibleWith(Constant.current_ecosystem_version) in
   `O([
-    ("ecosystem", `String(SemanticVersion.requirement_to_string requirement));
+    ("saphe", `String(SemanticVersion.requirement_to_string requirement));
     ("locks", `A(locked_packages |> List.map (lock_encoder ~dir)));
     ("dependencies", `A(explicit_dependencies |> List.map lock_dependency_encoder));
     ("test_dependencies", `A(explicit_test_dependencies |> List.map lock_dependency_encoder));

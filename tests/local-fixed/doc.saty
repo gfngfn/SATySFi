@@ -7,7 +7,7 @@ document (|
 |) '<
   +chapter{First Chapter}<
     +p{
-      Hello, world! \ShowValue.int(42 + 57);
+      Hello, world! \ShowValue.int-sum([42, 57]);
     }
   >
 >

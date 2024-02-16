@@ -1,6 +1,5 @@
-ecosystem: "^0.0.1"
-language: "^0.1.0"
-name: "demo" #TODO: remove this
+saphe: "^0.0.1"
+satysfi: "^0.1.0"
 authors:
   - "Takashi Suwa"
 registries:
@@ -9,45 +8,45 @@ registries:
       url: "https://github.com/SATySFi/default-registry"
       branch: "temp-dev-saphe"
 contents:
-  document:
-    dependencies:
-      - used_as: "Stdlib"
-        registered:
-          registry: "default"
-          name: "stdlib"
-          requirement: "^0.0.1"
-      - used_as: "Math"
-        registered:
-          registry: "default"
-          name: "math"
-          requirement: "^0.0.1"
-      - used_as: "Annot"
-        registered:
-          registry: "default"
-          name: "annot"
-          requirement: "^0.0.1"
-      - used_as: "Code"
-        registered:
-          registry: "default"
-          name: "code"
-          requirement: "^0.0.1"
-      - used_as: "Itemize"
-        registered:
-          registry: "default"
-          name: "itemize"
-          requirement: "^0.0.1"
-      - used_as: "Proof"
-        registered:
-          registry: "default"
-          name: "proof"
-          requirement: "^0.0.1"
-      - used_as: "Tabular"
-        registered:
-          registry: "default"
-          name: "tabular"
-          requirement: "^0.0.1"
-      - used_as: "StdJaBook"
-        registered:
-          registry: "default"
-          name: "std-ja-book"
-          requirement: "^0.0.1"
+  document: {}
+dependencies:
+  - used_as: "Stdlib"
+    registered:
+      registry: "default"
+      name: "stdlib"
+      requirement: "^0.0.1"
+  - used_as: "Math"
+    registered:
+      registry: "default"
+      name: "math"
+      requirement: "^0.0.1"
+  - used_as: "Annot"
+    registered:
+      registry: "default"
+      name: "annot"
+      requirement: "^0.0.1"
+  - used_as: "Code"
+    registered:
+      registry: "default"
+      name: "code"
+      requirement: "^0.0.1"
+  - used_as: "Itemize"
+    registered:
+      registry: "default"
+      name: "itemize"
+      requirement: "^0.0.1"
+  - used_as: "Proof"
+    registered:
+      registry: "default"
+      name: "proof"
+      requirement: "^0.0.1"
+  - used_as: "Tabular"
+    registered:
+      registry: "default"
+      name: "tabular"
+      requirement: "^0.0.1"
+  - used_as: "StdJaBook"
+    registered:
+      registry: "default"
+      name: "std-ja-book"
+      requirement: "^0.0.1"
