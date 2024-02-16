@@ -37,7 +37,7 @@ test_dependencies:
 let expected1 =
   ParsedPackageConfig{
     language_requirement = SemanticVersion.CompatibleWith(make_version "0.1.0");
-    package_name = "stdlib";
+    package_name = Some("stdlib");
     package_authors = ["Takashi Suwa"];
     external_resources = [];
     package_contents =
