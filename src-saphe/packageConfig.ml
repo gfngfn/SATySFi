@@ -28,7 +28,7 @@ type package_contents =
 
 type t = {
   language_requirement : SemanticVersion.requirement;
-  package_name         : package_name;
+  package_name         : package_name option;
   package_authors      : string list;
   external_resources   : (string * external_resource) list;
   package_contents     : package_contents;
@@ -208,7 +208,7 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
   let open ConfigDecoder in
   get "saphe" (version_checker Constant.current_ecosystem_version) >>= fun () ->
   get "satysfi" requirement_decoder >>= fun language_requirement ->
-  get "name" package_name_decoder >>= fun package_name ->
+  get_opt "name" package_name_decoder >>= fun package_name ->
   get "authors" (list string) >>= fun package_authors ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
   get_or_else "external_resources" (list external_resource_decoder) [] >>= fun external_resources ->

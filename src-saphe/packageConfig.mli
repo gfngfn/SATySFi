@@ -22,7 +22,7 @@ type package_contents =
 
 type t = {
   language_requirement : SemanticVersion.requirement;
-  package_name         : package_name;
+  package_name         : package_name option;
   package_authors      : string list;
   external_resources   : (string * external_resource) list;
   package_contents     : package_contents;

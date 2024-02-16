@@ -39,7 +39,7 @@ type parsed_package_contents =
 
 type parsed_package_config = ParsedPackageConfig of {
   language_requirement : SemanticVersion.requirement;
-  package_name         : package_name;
+  package_name         : package_name option;
   package_authors      : string list;
   registry_specs       : (registry_local_name * registry_remote) list;
   external_resources   : (string * external_resource) list;
