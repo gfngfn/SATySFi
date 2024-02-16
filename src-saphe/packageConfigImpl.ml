@@ -26,8 +26,6 @@ type parsed_package_contents =
       main_module_name    : string;
       source_directories  : relative_path list;
       test_directories    : relative_path list;
-      dependencies        : parsed_package_dependency list;
-      test_dependencies   : parsed_package_dependency list;
       markdown_conversion : markdown_conversion option;
     }
   | ParsedFont of {
@@ -46,5 +44,7 @@ type parsed_package_config = ParsedPackageConfig of {
   registry_specs       : (registry_local_name * registry_remote) list;
   external_resources   : (string * external_resource) list;
   package_contents     : parsed_package_contents;
+  source_dependencies  : parsed_package_dependency list;
+  test_dependencies    : parsed_package_dependency list;
 }
 [@@deriving show { with_path = false }]

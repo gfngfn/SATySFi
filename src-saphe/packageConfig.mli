@@ -10,8 +10,6 @@ type package_contents =
       main_module_name    : string;
       source_directories  : relative_path list;
       test_directories    : relative_path list;
-      dependencies        : package_dependency list;
-      test_dependencies   : package_dependency list;
       markdown_conversion : markdown_conversion option;
     }
   | Font of {
@@ -29,6 +27,8 @@ type t = {
   external_resources   : (string * external_resource) list;
   package_contents     : package_contents;
   registry_remotes     : registry_remote list;
+  source_dependencies  : package_dependency list;
+  test_dependencies    : package_dependency list;
 }
 
 val parse : string -> (parsed_package_config, yaml_error) result

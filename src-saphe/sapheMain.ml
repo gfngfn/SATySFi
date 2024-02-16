@@ -497,20 +497,6 @@ let make_envelope_config (abspath_package_config : abs_path) (package_contents :
       err @@ NotAPackageButADocument(abspath_package_config)
 
 
-let make_dependencies_with_flags (package_contents : PackageConfig.package_contents) =
-  match package_contents with
-  | PackageConfig.Library{ dependencies; test_dependencies; _ } ->
-      List.append
-        (dependencies |> List.map (fun dep -> (SourceDependency, dep)))
-        (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
-
-  | PackageConfig.Font(_) ->
-      []
-
-  | PackageConfig.Document{ dependencies } ->
-      dependencies |> List.map (fun dep -> (SourceDependency, dep))
-
-
 let get_minimum_language_version (language_requirement : SemanticVersion.requirement) : SemanticVersion.t =
   match language_requirement with
   | SemanticVersion.CompatibleWith(semver) -> semver
@@ -815,6 +801,8 @@ let solve ~(fpath_in : string) =
               language_requirement;
               package_contents;
               registry_remotes;
+              source_dependencies;
+              test_dependencies;
               _
             } = PackageConfig.load abspath_package_config
           in
@@ -833,7 +821,11 @@ let solve ~(fpath_in : string) =
           in
           Logging.end_envelope_config_output abspath_envelope_config;
 
-          let dependencies_with_flags = make_dependencies_with_flags package_contents in
+          let dependencies_with_flags =
+            List.append
+              (source_dependencies |> List.map (fun dep -> (SourceDependency, dep)))
+              (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
+          in
           return (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes)
 
       | DocumentSolveInput{
@@ -845,8 +837,9 @@ let solve ~(fpath_in : string) =
           let*
             PackageConfig.{
               language_requirement;
-              package_contents;
               registry_remotes;
+              source_dependencies;
+              test_dependencies;
               _
             } = PackageConfig.load abspath_package_config
           in
@@ -855,7 +848,11 @@ let solve ~(fpath_in : string) =
           (* TODO: consider taking dependencies into account when selecting a language version *)
           let language_version = get_minimum_language_version language_requirement in
 
-          let dependencies_with_flags = make_dependencies_with_flags package_contents in
+          let dependencies_with_flags =
+            List.append
+              (source_dependencies |> List.map (fun dep -> (SourceDependency, dep)))
+              (test_dependencies |> List.map (fun dep -> (TestOnlyDependency, dep)))
+          in
           return (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes)
     in
 

@@ -2,12 +2,13 @@
 open SapheTestUtil
 open SapheMain__ConfigError
 open SapheMain__PackageSystemBase
+open SapheMain__PackageConfigImpl
 module PackageConfig = SapheMain__PackageConfig
 
 
 let input1 = {yaml|
-ecosystem: "^0.0.1"
-language: "^0.1.0"
+saphe: "^0.0.1"
+satysfi: "^0.1.0"
 name: "stdlib"
 authors:
   - "Takashi Suwa"
@@ -20,16 +21,16 @@ contents:
   library:
     main_module: "Stdlib"
     source_directories:
-    - "./src"
+      - "./src"
     test_directories:
-    - "./test"
-    dependencies: []
-    test_dependencies:
-    - used_as: "Testing"
-      registered:
-        registry: "default"
-        name: "testing"
-        requirement: "^0.0.1"
+      - "./test"
+dependencies: []
+test_dependencies:
+  - used_as: "Testing"
+    registered:
+      registry: "default"
+      name: "testing"
+      requirement: "^0.0.1"
 |yaml}
 
 
@@ -44,18 +45,6 @@ let expected1 =
         main_module_name = "Stdlib";
         source_directories = [ "./src" ];
         test_directories = [ "./test" ];
-        dependencies = [];
-        test_dependencies = [
-          ParsedPackageDependency{
-            used_as = "Testing";
-            spec =
-              ParsedRegisteredDependency{
-                package_name = "testing";
-                registry_local_name = "default";
-                version_requirement = SemanticVersion.CompatibleWith(make_version "0.0.1");
-              };
-            };
-        ];
         markdown_conversion = None;
       };
     registry_specs = [
@@ -63,6 +52,18 @@ let expected1 =
         url = "https://github.com/SATySFi/default-registry";
         branch = "temp-dev-saphe";
       });
+    ];
+    source_dependencies = [];
+    test_dependencies = [
+      ParsedPackageDependency{
+        used_as = "Testing";
+        spec =
+          ParsedRegisteredDependency{
+            package_name = "testing";
+            registry_local_name = "default";
+            version_requirement = SemanticVersion.CompatibleWith(make_version "0.0.1");
+          };
+        };
     ];
   }
 

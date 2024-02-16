@@ -16,8 +16,10 @@ let get_dependencies ~(language_version : SemanticVersion.t) (absdir_package : a
       language_requirement;
       package_contents;
       registry_remotes;
+      source_dependencies;
       _
     } = PackageConfig.load abspath_package_config
+      (* Ignores `test_dependencies` here, because we do not run the tests of depended packages. *)
   in
   let* () =
     if language_version |> SemanticVersion.fulfill language_requirement then
@@ -29,40 +31,35 @@ let get_dependencies ~(language_version : SemanticVersion.t) (absdir_package : a
         language_requirement;
       }
   in
-  match package_contents with
-  | PackageConfig.Library{
-      main_module_name;
-      source_directories;
-      test_directories;
-      markdown_conversion;
-      dependencies;
-      _
-    } ->
-    (* Ignores `test_dependencies` here, because we do not run the tests of depended packages. *)
-      let envelope_contents =
-        EnvelopeSystemBase.Library{
+  let* envelope_contents =
+    match package_contents with
+    | PackageConfig.Library{
+        main_module_name;
+        source_directories;
+        test_directories;
+        markdown_conversion;
+        _
+      } ->
+        return @@ EnvelopeSystemBase.Library{
           main_module_name;
           source_directories;
           test_directories;
           markdown_conversion;
         }
-      in
-      return (dependencies, envelope_contents, registry_remotes)
 
-  | PackageConfig.Font{
-      main_module_name;
-      font_file_descriptions;
-    } ->
-      let envelope_contents =
-        EnvelopeSystemBase.Font{
+    | PackageConfig.Font{
+        main_module_name;
+        font_file_descriptions;
+      } ->
+        return @@ EnvelopeSystemBase.Font{
           main_module_name;
           font_file_descriptions;
         }
-      in
-      return ([], envelope_contents, registry_remotes)
 
-  | PackageConfig.Document(_) ->
-      err @@ NotALibraryLocalFixed{ dir = absdir_package }
+    | PackageConfig.Document(_) ->
+        err @@ NotALibraryLocalFixed{ dir = absdir_package }
+  in
+  return (source_dependencies, envelope_contents, registry_remotes)
 
 
 let rec aux ~(language_version : SemanticVersion.t) (gained : collection) (deps : package_dependency list) (registry_remote_acc : registry_remote Alist.t) : (collection * registry_remote Alist.t, config_error) result =
