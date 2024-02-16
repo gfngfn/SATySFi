@@ -561,7 +561,7 @@ registries:
       url: "https://github.com/SATySFi/default-registry"
       branch: "temp-dev-saphe"
 contents:
-  document:
+  document: {}
 dependencies:
   - used_as: "StdJaReport"
     registered:
@@ -582,7 +582,7 @@ registries:
       url: "https://github.com/SATySFi/default-registry"
       branch: "temp-dev-saphe"
 contents:
-  document:
+  document: {}
 dependencies:
   - used_as: "MDJa"
     registered:
