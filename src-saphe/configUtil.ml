@@ -1,5 +1,6 @@
 
 open ConfigError
+open PackageConfigImpl
 open PackageSystemBase
 
 

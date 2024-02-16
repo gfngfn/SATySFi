@@ -4,9 +4,12 @@ open ConfigError
 open ConfigUtil
 open EnvelopeSystemBase
 open PackageSystemBase
+open PackageConfigImpl
 
 
 type 'a ok = ('a, config_error) result
+
+module RegistryLocalNameMap = Map.Make(String)
 
 type package_contents =
   | Library of {

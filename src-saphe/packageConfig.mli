@@ -1,6 +1,7 @@
 
 open MyUtil
 open ConfigError
+open PackageConfigImpl
 open EnvelopeSystemBase
 open PackageSystemBase
 

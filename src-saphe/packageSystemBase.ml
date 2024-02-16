@@ -1,6 +1,5 @@
 
 open MyUtil
-open EnvelopeSystemBase
 
 type lock_name = string
 [@@deriving show]
@@ -19,26 +18,6 @@ type package_name = string
    Names of this type are supposed to be valid
    within the scope of one package config file. *)
 type registry_local_name = string
-[@@deriving show { with_path = false }]
-
-module RegistryLocalNameMap = Map.Make(String)
-
-type parsed_package_dependency_spec =
-  | ParsedRegisteredDependency of {
-      package_name        : package_name;
-      registry_local_name : registry_local_name;
-      version_requirement : SemanticVersion.requirement;
-    }
-  | ParsedLocalFixedDependency of {
-      relative_path : string;
-    }
-[@@deriving show { with_path = false }]
-
-type parsed_package_dependency =
-  | ParsedPackageDependency of {
-      used_as : string;
-      spec    : parsed_package_dependency_spec;
-    }
 [@@deriving show { with_path = false }]
 
 module RegisteredPackageId = struct
@@ -228,32 +207,4 @@ type external_resource =
       checksum    : string;
       extractions : extraction list;
     }
-[@@deriving show { with_path = false }]
-
-type parsed_package_contents =
-  | ParsedLibrary of {
-      main_module_name    : string;
-      source_directories  : relative_path list;
-      test_directories    : relative_path list;
-      dependencies        : parsed_package_dependency list;
-      test_dependencies   : parsed_package_dependency list;
-      markdown_conversion : markdown_conversion option;
-    }
-  | ParsedFont of {
-      main_module_name       : string;
-      font_file_descriptions : font_file_description list;
-    }
-  | ParsedDocument of {
-      dependencies : parsed_package_dependency list;
-    }
-[@@deriving show { with_path = false }]
-
-type parsed_package_config = ParsedPackageConfig of {
-  language_requirement : SemanticVersion.requirement;
-  package_name         : package_name;
-  package_authors      : string list;
-  registry_specs       : (registry_local_name * registry_remote) list;
-  external_resources   : (string * external_resource) list;
-  package_contents     : parsed_package_contents;
-}
 [@@deriving show { with_path = false }]
