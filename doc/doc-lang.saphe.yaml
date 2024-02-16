@@ -1,6 +1,5 @@
-ecosystem: "^0.0.1"
-language: "^0.1.0"
-name: "doc-lang" #TODO: remove this
+saphe: "^0.0.1"
+satysfi: "^0.1.0"
 authors:
   - "Takashi Suwa"
 registries:
@@ -9,25 +8,25 @@ registries:
       url: "https://github.com/SATySFi/default-registry"
       branch: "temp-dev-saphe"
 contents:
-  document:
-    dependencies:
-      - used_as: "Stdlib"
-        registered:
-          registry: "default"
-          name: "stdlib"
-          requirement: "^0.0.1"
-      - used_as: "Math"
-        registered:
-          registry: "default"
-          name: "math"
-          requirement: "^0.0.1"
-      - used_as: "Itemize"
-        registered:
-          registry: "default"
-          name: "itemize"
-          requirement: "^0.0.1"
-      - used_as: "StdJa"
-        registered:
-          registry: "default"
-          name: "std-ja"
-          requirement: "^0.0.1"
+  document: {}
+dependencies:
+  - used_as: "Stdlib"
+    registered:
+      registry: "default"
+      name: "stdlib"
+      requirement: "^0.0.1"
+  - used_as: "Math"
+    registered:
+      registry: "default"
+      name: "math"
+      requirement: "^0.0.1"
+  - used_as: "Itemize"
+    registered:
+      registry: "default"
+      name: "itemize"
+      requirement: "^0.0.1"
+  - used_as: "StdJa"
+    registered:
+      registry: "default"
+      name: "std-ja"
+      requirement: "^0.0.1"
