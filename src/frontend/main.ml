@@ -819,7 +819,7 @@ let show_yaml_context (yctx : YamlDecoder.context) =
   Printf.sprintf "(context: %s)" (YamlDecoder.show_yaml_context yctx)
 
 
-let make_yaml_error_lines : yaml_error -> line list = function
+let make_yaml_error_message : yaml_error -> line list = function
   | ParseError(s) ->
       [ NormalLine(Printf.sprintf "parse error: %s" s) ]
 
@@ -1021,7 +1021,7 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
       report_error Interface (List.append [
         NormalLine("failed to load a deps config:");
         DisplayLine(get_abs_path_string abspath_deps_config);
-      ] (make_yaml_error_lines e))
+      ] (make_yaml_error_message e))
 
   | EnvelopeConfigNotFound(abspath_envelope_config) ->
       report_error Interface [
@@ -1033,7 +1033,7 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
       report_error Interface (List.append [
         NormalLine("failed to load an envelope config:");
         DisplayLine(get_abs_path_string abspath_envelope_config);
-      ] (make_yaml_error_lines e))
+      ] (make_yaml_error_message e))
 
   | DependedEnvelopeNotFound(envelope_name) ->
       report_error Interface [
