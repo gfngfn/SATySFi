@@ -1065,37 +1065,37 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
       end
 
 
-let report_font_error (display_config : Logging.config) = function
+let make_font_error_message (display_config : Logging.config) = function
   | FailedToReadFont(abspath, msg) ->
       let fname = Logging.show_path display_config abspath in
-      report_error Interface [
+      [
         NormalLine(Printf.sprintf "cannot load font file '%s';" fname);
         DisplayLine(msg);
       ]
 
   | FailedToDecodeFont(abspath, e) ->
       let fname = Logging.show_path display_config abspath in
-      report_error Interface [
+      [
         NormalLine(Printf.sprintf "cannot decode font file '%s';" fname);
         NormalLine(Format.asprintf "%a" Otfed.Decode.Error.pp e);
       ]
 
   | FailedToMakeSubset(abspath, e) ->
       let fname = Logging.show_path display_config abspath in
-      report_error Interface [
+      [
         NormalLine(Printf.sprintf "cannot make a subset of font file '%s';" fname);
         NormalLine(Format.asprintf "%a" Otfed.Subset.Error.pp e);
       ]
 
   | NotASingleFont(abspath) ->
       let fname = Logging.show_path display_config abspath in
-      report_error Interface [
+      [
         NormalLine(Printf.sprintf "the font file '%s' is not a single font file." fname);
       ]
 
   | NotAFontCollectionElement(abspath, index) ->
       let fname = Logging.show_path display_config abspath in
-      report_error Interface [
+      [
         NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection." fname index);
       ]
 
@@ -1105,30 +1105,29 @@ let report_font_error (display_config : Logging.config) = function
           DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
         )
       in
-      report_error Interface
-        (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
+      (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
 
   | NoMathTable(abspath) ->
       let fname = Logging.show_path display_config abspath in
-      report_error Interface [
+      [
         NormalLine(Printf.sprintf "font file '%s' does not have a 'MATH' table." fname);
       ]
 
   | PostscriptNameNotFound(abspath) ->
       let fname = Logging.show_path display_config abspath in
-      report_error Interface [
+      [
         NormalLine(Printf.sprintf "font file '%s' does not have a PostScript name." fname);
       ]
 
   | CannotFindUnicodeCmap(abspath) ->
       let fname = Logging.show_path display_config abspath in
-      report_error Interface [
+      [
         NormalLine(Printf.sprintf "font file '%s' does not have a 'cmap' subtable for Unicode code points." fname);
       ]
 
   | CollectionIndexOutOfBounds{ path; index; num_elements } ->
       let fname = Logging.show_path display_config path in
-      report_error Interface [
+      [
         NormalLine(Printf.sprintf "%d: index out of bounds;" index);
         NormalLine(Printf.sprintf "font file '%s' has %d elements." fname num_elements);
       ]
@@ -1163,7 +1162,7 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
       ]
 
   | FontInfo.FontInfoError(e) ->
-      report_font_error display_config e
+      report_error Interface (make_font_error_message display_config e)
 
   | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
       let fname = Logging.show_path display_config abspath in
