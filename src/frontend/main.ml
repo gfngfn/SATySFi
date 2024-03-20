@@ -404,20 +404,20 @@ let make_parse_error_message = function
       ]
 
 
-let report_type_error = function
+let make_type_error_message = function
   | UndefinedVariable(rng, varnm, candidates) ->
       let candidates_message_lines =
         match make_candidates_message candidates with
         | None    -> []
         | Some(s) -> [ NormalLine(s) ]
       in
-      report_error Typechecker (List.concat [
+      List.concat [
         [
           NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
           NormalLine(Printf.sprintf "undefined variable '%s'." varnm);
         ];
         candidates_message_lines;
-      ])
+      ]
 
   | UndefinedConstructor(rng, constrnm, candidates) ->
       let candidates_message_lines =
@@ -425,66 +425,67 @@ let report_type_error = function
         | None    -> []
         | Some(s) -> [ NormalLine(s) ]
       in
-      report_error Typechecker (List.concat [
+      List.concat [
         [
           NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
           NormalLine(Printf.sprintf "undefined constructor '%s'." constrnm);
         ];
         candidates_message_lines;
-      ])
+      ]
 
   | UndefinedTypeName(rng, tynm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "undefined type '%s'." tynm);
       ]
 
   | UndefinedTypeVariable(rng, tyvarnm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "undefined type variable '%s'." tyvarnm);
       ]
 
   | UndefinedRowVariable(rng, rowvarnm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "undefined row variable '%s'." rowvarnm);
       ]
 
   | UndefinedKindName(rng, kdnm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "undefined kind '%s'." kdnm);
       ]
 
   | UndefinedModuleName(rng, modnm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "undefined module '%s'." modnm);
       ]
 
   | UndefinedSignatureName(rng, signm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "undefined signature '%s'." signm);
       ]
+
   | UndefinedMacro(rng, csnm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "undefined macro '%s'." csnm);
       ]
 
   | InvalidNumberOfMacroArguments(rng, macparamtys) ->
-      report_error Typechecker (List.append [
+      List.append [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("invalid number of macro arguments; types expected on arguments are:");
       ] (macparamtys |> List.map (function
         | LateMacroParameter(ty)  -> DisplayLine(Printf.sprintf "* %s" (Display.show_mono_type ty))
         | EarlyMacroParameter(ty) -> DisplayLine(Printf.sprintf "* ~%s" (Display.show_mono_type ty))
-      )))
+      ))
 
   | LateMacroArgumentExpected(rng, ty) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("an early macro argument is given, but a late argument of type");
         DisplayLine(Display.show_mono_type ty);
@@ -492,7 +493,7 @@ let report_type_error = function
       ]
 
   | EarlyMacroArgumentExpected(rng, ty) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("a late macro argument is given, but an early argument of type");
         DisplayLine(Display.show_mono_type ty);
@@ -500,75 +501,74 @@ let report_type_error = function
       ]
 
   | UnknownUnitOfLength(rng, unitnm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "undefined unit of length '%s'." unitnm);
       ]
 
   | InlineCommandInMath(rng) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("an inline command is used as a math command.");
       ]
 
   | MathCommandInInline(rng) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("a math command is used as an inline command.");
       ]
 
   | BreaksValueRestriction(rng) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("this expression breaks the value restriction;");
         NormalLine("it should be a syntactic function.");
       ]
 
   | MultiplePatternVariable(rng1, rng2, varnm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s" (Range.to_string rng1));
         NormalLine(Printf.sprintf "and at %s:" (Range.to_string rng2));
         NormalLine(Printf.sprintf "pattern variable '%s' is bound more than once." varnm);
       ]
 
   | LabelUsedMoreThanOnce(rng, label) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "'%s' is used more than once." label);
       ]
 
   | InvalidExpressionAsToStaging(rng, stage) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("invalid expression as to stage;");
         NormalLine(Printf.sprintf "should be used at %s." (string_of_stage stage));
       ]
 
   | InvalidOccurrenceAsToStaging(rng, varnm, stage) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "invalid occurrence of variable '%s' as to stage;" varnm);
         NormalLine(Printf.sprintf "should be used at %s." (string_of_stage stage));
       ]
 
   | ApplicationOfNonFunction(rng, ty) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("this expression has type");
         DisplayLine(Display.show_mono_type ty);
         NormalLine("and thus it cannot be applied to arguments.");
       ]
 
-
   | MultiCharacterMathScriptWithoutBrace(rng) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("more than one character is used as a math sub/superscript without braces;");
         NormalLine("use braces for making association explicit.");
       ]
 
   | IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "'%s' is expected to have %d type argument(s)," tynm lenexp);
         NormalLine(Printf.sprintf "but it has %d type argument(s) here." lenerr);
@@ -604,7 +604,7 @@ let report_type_error = function
                 ])
       in
       let detail = make_unification_error_message dispmap ue in
-      report_error Typechecker (List.concat [
+      List.concat [
         [
           NormalLine(posmsg);
           NormalLine("this expression has type");
@@ -614,7 +614,7 @@ let report_type_error = function
         ];
         detail;
         additional;
-      ])
+      ]
 
   | RowUnificationError(rng, row1, row2, ue) ->
       let dispmap =
@@ -625,7 +625,7 @@ let report_type_error = function
       let str_row1 = Display.show_mono_row_by_map dispmap row1 |> Option.value ~default:"" in
       let str_row2 = Display.show_mono_row_by_map dispmap row2 |> Option.value ~default:"" in
       let detail = make_unification_error_message dispmap ue in
-      report_error Typechecker (List.concat [
+      List.concat [
         [
           NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
           NormalLine("the option row is");
@@ -635,72 +635,72 @@ let report_type_error = function
           NormalLine("at the same time, but these are incompatible.");
         ];
         detail;
-      ])
+      ]
 
   | TypeParameterBoundMoreThanOnce(rng, tyvarnm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "type variable %s is bound more than once." tyvarnm);
       ]
 
   | ConflictInSignature(rng, member) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "'%s' is declared more than once in a signature." member);
       ]
 
   | NotAStructureSignature(rng, _fsig) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("not a structure signature (TODO (enhance): detailed report)");
       ]
 
   | NotAFunctorSignature(rng, _ssig) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("not a functor signature (TODO (enhance): detailed report)");
       ]
 
   | MissingRequiredValueName(rng, x, pty) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "missing required value '%s' of type" x);
         DisplayLine(Display.show_poly_type pty);
       ]
 
   | MissingRequiredMacroName(rng, csnm, pmacty) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "missing required macro '%s' of type" csnm);
         DisplayLine(Display.show_poly_macro_type pmacty);
       ]
 
   | MissingRequiredConstructorName(rng, ctornm, _centry) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "missing required constructor '%s' (TODO (enhance): detailed report)" ctornm);
       ]
 
   | MissingRequiredTypeName(rng, tynm, arity) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "missing required type '%s' of arity %d" tynm arity);
       ]
 
   | MissingRequiredModuleName(rng, modnm, _modsig) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "missing required module '%s' (TODO (enhance): detailed report)" modnm);
       ]
 
   | MissingRequiredSignatureName(rng, signm, _absmodsig) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "missing required signature '%s' (TODO (enhance): detailed report)" signm);
       ]
 
   | NotASubtypeAboutValue(rng, x, pty1, pty2) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "not a subtype about value '%s'; type" x);
         DisplayLine(Display.show_poly_type pty1);
@@ -709,7 +709,7 @@ let report_type_error = function
       ]
 
   | NotASubtypeAboutValueStage(rng, x, stage1, stage2) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "not a subtype about the stage of value '%s';" x);
         DisplayLine(string_of_stage stage1);
@@ -718,7 +718,7 @@ let report_type_error = function
       ]
 
   | NotASubtypeAboutMacro(rng, csnm, pmacty1, pmacty2) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "not a subtype about macro '%s'; type" csnm);
         DisplayLine(Display.show_poly_macro_type pmacty1);
@@ -727,26 +727,26 @@ let report_type_error = function
       ]
 
   | NotASubtypeAboutConstructor(rng, ctornm, _tyscheme1, _tyscheme2) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "not a subtype about constructor '%s' (TODO (enhance): detailed report)" ctornm);
       ]
 
   | NotASubtypeAboutType(rng, tynm, tentry1, tentry2) ->
       Format.printf "1: %a,@ 2: %a@," pp_type_entry tentry1 pp_type_entry tentry2; (* TODO: remove this *)
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "not a subtype about type '%s' (TODO (enhance): detailed report)" tynm);
       ]
 
   | NotASubtypeSignature(rng, _modsig1, _modsig2) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("not a subtype signature (TODO (enhance): detailed report)");
       ]
 
   | UnexpectedOptionalLabel(rng, label, ty_cmd) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "unexpected application of label '%s';" label);
         NormalLine(Printf.sprintf "the command used here has type");
@@ -754,14 +754,14 @@ let report_type_error = function
       ]
 
   | InvalidArityOfCommandApplication(rng, arity_expected, arity_actual) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "this command expects %d argument(s)," arity_expected);
         NormalLine(Printf.sprintf "but is applied to %d argument(s) here." arity_actual);
       ]
 
   | CannotRestrictTransparentType(rng, tynm) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "cannot restrict transparent type '%s'." tynm);
       ]
@@ -769,7 +769,7 @@ let report_type_error = function
   | KindContradiction(rng, tynm, kd_expected, kd_actual) ->
       let Kind(bkds_expected) = kd_expected in
       let Kind(bkds_actual) = kd_actual in
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "type '%s' expects %d type argument(s)," tynm (List.length bkds_expected));
         NormalLine(Printf.sprintf "but is applied to %d type argument(s)." (List.length bkds_actual));
@@ -787,24 +787,23 @@ let report_type_error = function
           DisplayLine(Printf.sprintf "- '%s' (%s)" tynm (Range.to_string rng))
         )
       in
-      report_error Typechecker
-        (NormalLine("the following synonym types are cyclic:") :: lines)
+      (NormalLine("the following synonym types are cyclic:") :: lines)
 
   | MultipleSynonymTypeDefinition(tynm, rng1, rng2) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s" (Range.to_string rng1));
         NormalLine(Printf.sprintf "and %s:" (Range.to_string rng2));
         NormalLine(Printf.sprintf "synonym type '%s' is defined more than once." tynm);
       ]
 
   | ValueAttributeError(ValueAttribute.Unexpected(rng)) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("unexpected value attributes.");
       ]
 
   | TestMustBeStage1NonRec(rng) ->
-      report_error Typechecker [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("tests must be stage-1 non-recursive bindings.");
       ]
@@ -915,7 +914,7 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
       ]
 
   | TypeError(tyerr) ->
-      report_type_error tyerr
+      report_error Typechecker (make_type_error_message tyerr)
 
   | CyclicFileDependency(cycle) ->
       let pairs =
