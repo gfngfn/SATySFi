@@ -385,20 +385,20 @@ let make_unification_error_message (dispmap : DisplayMap.t) (ue : unification_er
       [] (* TODO (error): detailed report *)
 
 
-let report_parse_error = function
+let make_parse_error_message = function
   | CannotProgressParsing(rng) ->
-      report_error Parser [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
       ]
 
   | IllegalItemDepth{ range = rng; before; current } ->
-      report_error Parser [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "illegal item depth %d after %d" before current);
       ]
 
   | EmptyInputFile(rng) ->
-      report_error Parser [
+      [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine("empty input.");
       ]
@@ -961,7 +961,7 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
       ]
 
   | FailedToParse(e) ->
-      report_parse_error e
+      report_error Parser (make_parse_error_message e)
 
   | MainModuleNameMismatch{ expected; got } ->
       report_error Interface [
