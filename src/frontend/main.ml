@@ -1,4 +1,5 @@
 
+open Format
 open MyUtil
 open EnvelopeSystemBase
 open Types
@@ -266,26 +267,38 @@ let show_error_category = function
   | System      -> "Error"
 
 
-let report_error (cat : error_category) (lines : line list) =
-  print_string (Printf.sprintf "! [%s] " (show_error_category cat));
+let report_and_exit msg =
+  print_string msg;
+  exit 1
+
+
+let make_error_message (cat : error_category) (lines : line list) =
+  let buf = Buffer.create 512 in
+  let formatter = formatter_of_buffer buf in
+  let f_print_endline s =
+    pp_print_string formatter s;
+    pp_print_newline formatter ()
+  in
+  pp_print_string formatter (Printf.sprintf "! [%s] " (show_error_category cat));
   lines |> List.fold_left (fun (is_first : bool) (line : line) ->
     begin
       match line with
       | NormalLine(s) ->
           if is_first then
-            print_endline s
+            f_print_endline s
           else
-            print_endline ("    " ^ s)
+            f_print_endline ("    " ^ s)
 
       | DisplayLine(s) ->
           if is_first then
-            print_endline ("\n      " ^ s)
+            f_print_endline ("\n      " ^ s)
           else
-            print_endline ("      " ^ s)
+            f_print_endline ("      " ^ s)
     end;
     false
   ) true |> ignore;
-  exit 1
+  pp_print_flush formatter ();
+  Buffer.contents buf
 
 
 let make_candidates_message (candidates : string list) =
@@ -863,58 +876,58 @@ let make_yaml_error_message : yaml_error -> line list = function
       [ NormalLine(Printf.sprintf "not a command: '%s' %s" s (show_yaml_context yctx)) ]
 
 
-let report_config_error (display_config : Logging.config) : config_error -> unit = function
+let make_config_error_message (display_config : Logging.config) : config_error -> string = function
   | UnexpectedExtension(ext) ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "unexpected file extension '%s'." ext);
       ]
 
   | NotALibraryFile(abspath) ->
-      report_error Typechecker [
+      make_error_message Typechecker [
         NormalLine("the following file is expected to be a library file, but is not:");
         DisplayLine(get_abs_path_string abspath);
       ]
 
   | NotADocumentFile(abspath_in, ty) ->
       let fname = Logging.show_path display_config abspath_in in
-      report_error Typechecker [
+      make_error_message Typechecker [
         NormalLine(Printf.sprintf "file '%s' is not a document file; it is of type" fname);
         DisplayLine(Display.show_mono_type ty);
       ]
 
   | NotAStringFile(abspath_in, ty) ->
       let fname = Logging.show_path display_config abspath_in in
-      report_error Typechecker [
+      make_error_message Typechecker [
         NormalLine(Printf.sprintf "file '%s' is not a file for generating text; it is of type" fname);
         DisplayLine(Display.show_mono_type ty);
       ]
 
   | FileModuleNotFound(rng, modnm) ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "cannot find a source file that defines module '%s'." modnm);
       ]
 
   | FileModuleNameConflict(modnm, abspath1, abspath2) ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "more than one file defines module '%s':" modnm);
         DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath1));
         DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath2));
       ]
 
   | NoMainModule(modnm) ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "no main module '%s'." modnm);
       ]
 
   | UnknownPackageDependency(rng, modnm) ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "dependency on unknown package '%s'" modnm);
       ]
 
   | TypeError(tyerr) ->
-      report_error Typechecker (make_type_error_message tyerr)
+      make_error_message Typechecker (make_type_error_message tyerr)
 
   | CyclicFileDependency(cycle) ->
       let pairs =
@@ -922,58 +935,58 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
         | Loop(pair)   -> [ pair ]
         | Cycle(pairs) -> pairs |> TupleList.to_list
       in
-      report_error Interface (
+      make_error_message Interface (
         (NormalLine("cyclic dependency detected:")) ::
           (pairs |> List.map (fun (abspath, _) -> DisplayLine(get_abs_path_string abspath)))
       )
 
   | CannotReadFileOwingToSystem(msg) ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine("cannot read file:");
         DisplayLine(msg);
       ]
 
   | LibraryContainsWholeReturnValue(abspath) ->
       let fname = get_abs_path_string abspath in
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "file '%s' is not a library; it has a return value." fname);
       ]
 
   | DocumentLacksWholeReturnValue(abspath) ->
       let fname = get_abs_path_string abspath in
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
       ]
 
   | CannotUseHeaderUse((rng, mod_chain)) ->
       let modnm = module_name_chain_to_string mod_chain in
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "cannot specify 'use %s' here; use 'use %s of ...' instead." modnm modnm);
       ]
 
   | CannotUseHeaderUseOf((rng, mod_chain)) ->
       let modnm = module_name_chain_to_string mod_chain in
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
         NormalLine(Printf.sprintf "cannot specify 'use %s of ...' here; use 'use %s' instead." modnm modnm);
       ]
 
   | FailedToParse(e) ->
-      report_error Parser (make_parse_error_message e)
+      make_error_message Parser (make_parse_error_message e)
 
   | MainModuleNameMismatch{ expected; got } ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "main module name mismatch; expected '%s' but got '%s'." expected got);
       ]
 
   | EnvelopeNameConflict(envelope_name) ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "envelope name conflict: '%s'" envelope_name);
       ]
 
   | DependencyOnUnknownEnvelope{ depending; depended } ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "unknown depended envelope '%s' of '%s'." depended depending);
       ]
 
@@ -988,7 +1001,7 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
           DisplayLine(Printf.sprintf "- '%s'" modnm)
         )
       in
-      report_error Interface
+      make_error_message Interface
         (NormalLine("the following envelopes are cyclic:") :: lines)
 
   | LibraryRootConfigNotFoundIn(libpath, candidates) ->
@@ -997,7 +1010,7 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
           DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
         )
       in
-      report_error Interface (List.concat [
+      make_error_message Interface (List.concat [
         [ NormalLine(Printf.sprintf "cannot find a library root config '%s'. candidates:" (get_lib_path_string libpath)) ];
         lines;
       ])
@@ -1008,45 +1021,45 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
           DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
         )
       in
-      report_error Interface
+      make_error_message Interface
         (NormalLine(Printf.sprintf "cannot find local file '%s'. candidates:" relative) :: lines)
 
   | DepsConfigNotFound(abspath_deps_config) ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine("cannot find a deps config at:");
         DisplayLine(get_abs_path_string abspath_deps_config);
       ]
 
   | DepsConfigError(abspath_deps_config, e) ->
-      report_error Interface (List.append [
+      make_error_message Interface (List.append [
         NormalLine("failed to load a deps config:");
         DisplayLine(get_abs_path_string abspath_deps_config);
       ] (make_yaml_error_message e))
 
   | EnvelopeConfigNotFound(abspath_envelope_config) ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine("cannot find an envelope config at:");
         DisplayLine(get_abs_path_string abspath_envelope_config);
       ]
 
   | EnvelopeConfigError(abspath_envelope_config, e) ->
-      report_error Interface (List.append [
+      make_error_message Interface (List.append [
         NormalLine("failed to load an envelope config:");
         DisplayLine(get_abs_path_string abspath_envelope_config);
       ] (make_yaml_error_message e))
 
   | DependedEnvelopeNotFound(envelope_name) ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine(Printf.sprintf "unknown depended envelope '%s'" envelope_name);
       ]
 
   | MarkdownClassNotFound ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine("Markdown class not found");
       ]
 
   | NoMarkdownConversion ->
-      report_error Interface [
+      make_error_message Interface [
         NormalLine("no Markdown conversion");
       ]
 
@@ -1054,12 +1067,12 @@ let report_config_error (display_config : Logging.config) : config_error -> unit
       begin
         match e with
         | InvalidHeaderComment ->
-            report_error Interface [
+            make_error_message Interface [
               NormalLine("invalid or missing header comment of a Markdown document.");
             ]
 
         | InvalidExtraExpression ->
-            report_error Interface [
+            make_error_message Interface [
               NormalLine("cannot parse an extra expression in a Markdown document.");
             ]
       end
@@ -1134,6 +1147,9 @@ let make_font_error_message (display_config : Logging.config) = function
 
 
 let error_log_environment (display_config : Logging.config) (suspended : unit -> ('a, config_error) result) : ('a, config_error) result =
+  let report_error kind lines =
+    report_and_exit (make_error_message kind lines)
+  in
   try
     suspended ()
   with
@@ -1372,7 +1388,7 @@ let build_package
 
   ) |> function
   | Ok(())   -> ()
-  | Error(e) -> report_config_error display_config e; exit 1
+  | Error(e) -> report_and_exit (make_config_error_message display_config e)
 
 
 let build_document
@@ -1480,7 +1496,7 @@ let open ResultMonad in
 
   ) |> function
   | Ok(())   -> ()
-  | Error(e) -> report_config_error display_config e
+  | Error(e) -> report_and_exit (make_config_error_message display_config e)
 
 
 
@@ -1576,4 +1592,4 @@ let test_package
       end
 
   | Error(e) ->
-      report_config_error display_config e
+      report_and_exit (make_config_error_message display_config e)
