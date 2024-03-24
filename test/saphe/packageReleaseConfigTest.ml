@@ -12,22 +12,11 @@ name: "stdlib"
 version: "0.0.1"
 source:
   tar_gzip:
-    url: "B"
-    checksum: "A"
+    url: "https://example.com/packages/stdlib.tar.gz"
+    checksum: "c0bebeef4423abad1dea"
 authors:
   - "Takashi Suwa"
-registries:
-  - name: "default"
-    git:
-      url: "https://github.com/SATySFi/default-registry"
-      branch: "temp-dev-saphe"
 dependencies: []
-test_dependencies:
-  - used_as: "Testing"
-    registered:
-      registry: "default"
-      name: "testing"
-      requirement: "^0.0.1"
 |yaml}
 
 
@@ -38,7 +27,10 @@ let expected1 =
     implementation = ImplRecord{
       language_requirement = CompatibleWith(make_version "0.1.0");
       package_version      = make_version "0.0.1";
-      source               = TarGzip{ url = "B"; checksum = "A" };
+      source = TarGzip{
+        url      = "https://example.com/packages/stdlib.tar.gz";
+        checksum = "c0bebeef4423abad1dea";
+      };
       dependencies         = [];
     };
   }
