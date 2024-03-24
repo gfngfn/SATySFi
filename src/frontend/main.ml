@@ -100,8 +100,8 @@ let unfreeze_environment (frenv : frozen_environment) : environment =
   }
 
 
-let output_pdf (pdfret : HandlePdf.t) : unit =
-  HandlePdf.write_to_file pdfret
+let output_pdf (abspath_out : abs_path) (pdfret : HandlePdf.t) : unit =
+  HandlePdf.write_to_file abspath_out pdfret
 
 
 let output_text (abspath_out : abs_path) (data : string) : unit =
@@ -174,11 +174,11 @@ let eval_document_file (display_config : Logging.config) (pdf_config : HandlePdf
             let pdf =
               match pbstyle with
               | SingleColumn ->
-                  PageBreak.main pdf_config abspath_out ~paper_size
+                  PageBreak.main pdf_config ~paper_size
                     columnhookf pagecontf pagepartsf imvblst
 
               | MultiColumn(origin_shifts) ->
-                  PageBreak.main_multicolumn pdf_config ~page_number_limit abspath_out ~paper_size
+                  PageBreak.main_multicolumn pdf_config ~page_number_limit ~paper_size
                     origin_shifts columnhookf columnendhookf pagecontf pagepartsf imvblst
             in
             begin
@@ -189,13 +189,13 @@ let eval_document_file (display_config : Logging.config) (pdf_config : HandlePdf
 
               | CrossRef.CountMax ->
                   Logging.achieve_count_max ();
-                  output_pdf pdf;
+                  output_pdf abspath_out pdf;
                   Logging.end_output display_config abspath_out;
                   return ()
 
               | CrossRef.CanTerminate unresolved_crossrefs ->
                   Logging.achieve_fixpoint unresolved_crossrefs;
-                  output_pdf pdf;
+                  output_pdf abspath_out pdf;
                   Logging.end_output display_config abspath_out;
                   return ()
             end
