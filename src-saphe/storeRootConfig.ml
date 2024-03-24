@@ -46,7 +46,7 @@ let registry_spec_encoder (registry_hash_value, registry_remote) =
 
 let config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
-  get "ecosystem" (version_checker Constant.current_ecosystem_version) >>= fun () ->
+  get "saphe" (version_checker Constant.current_ecosystem_version) >>= fun () ->
   get "registries" (list registry_spec_decoder) >>= fun registries ->
   registries |> foldM (fun map (registry_hash_value, registry_remote) ->
     if map |> RegistryHashValueMap.mem registry_hash_value then
@@ -63,7 +63,7 @@ let config_encoder (store_root_config : t) : Yaml.value =
     store_root_config.registries |> RegistryHashValueMap.bindings |> List.map registry_spec_encoder
   in
   `O[
-    ("ecosystem", `String(language));
+    ("saphe", `String(language));
     ("registries", `A(registry_specs));
   ]
 
