@@ -32,13 +32,15 @@ test_dependencies:
 
 
 let expected1 =
-  ImplRecord{
+  PackageReleaseConfig.{
     ecosystem_requirement = CompatibleWith(make_version "0.0.1");
-    language_requirement  = CompatibleWith(make_version "0.1.0");
     package_name          = "stdlib";
-    package_version       = make_version "0.0.1";
-    source                = TarGzip{ url = "B"; checksum = "A" };
-    dependencies          = [];
+    implementation = ImplRecord{
+      language_requirement = CompatibleWith(make_version "0.1.0");
+      package_version      = make_version "0.0.1";
+      source               = TarGzip{ url = "B"; checksum = "A" };
+      dependencies         = [];
+    };
   }
 
 

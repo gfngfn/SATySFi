@@ -45,9 +45,7 @@ let make_dependency_in_registry ~(used_as : string) (package_name : package_name
 
 let make_impl (s_version : string) (deps : package_dependency_in_registry list) : implementation_record =
   ImplRecord{
-    ecosystem_requirement = SemanticVersion.CompatibleWith(ecosystem_version); (* TODO: remove this *)
     language_requirement  = SemanticVersion.CompatibleWith(language_version);
-    package_name          = ""; (* TODO: remove this *)
     package_version       = make_version s_version;
     source                = NoSource;
     dependencies          = deps;

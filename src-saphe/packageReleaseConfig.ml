@@ -7,7 +7,11 @@ open PackageSystemBase
 
 type 'a ok = ('a, config_error) result
 
-type t = implementation_record
+type t = {
+  ecosystem_requirement : SemanticVersion.requirement;
+  package_name          : package_name;
+  implementation        : implementation_record;
+}
 [@@deriving show { with_path = false }]
 
 
@@ -34,7 +38,7 @@ let dependency_in_registry_config_decoder =
   }
 
 
-let release_config_decoder : implementation_record ConfigDecoder.t =
+let release_config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
   get "saphe" requirement_decoder >>= fun ecosystem_requirement ->
   get "satysfi" requirement_decoder >>= fun language_requirement ->
@@ -42,13 +46,15 @@ let release_config_decoder : implementation_record ConfigDecoder.t =
   get "version" version_decoder >>= fun package_version ->
   get_or_else "source" source_decoder NoSource >>= fun source ->
   get "dependencies" (list dependency_in_registry_config_decoder) >>= fun dependencies ->
-  succeed @@ ImplRecord{
+  succeed @@ {
     ecosystem_requirement;
-    language_requirement;
     package_name;
-    package_version;
-    source;
-    dependencies;
+    implementation = ImplRecord{
+      language_requirement;
+      package_version;
+      source;
+      dependencies;
+    };
   }
 
 
