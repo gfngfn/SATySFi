@@ -2,64 +2,18 @@
 open MyUtil
 open ConfigError
 open ConfigUtil
-open PackageSystemBase
 
 
 type 'a ok = ('a, config_error) result
 
-type t = {
-  packages : (package_name * (implementation_record list)) list;
-}
-
-
-let source_decoder : implementation_source ConfigDecoder.t =
-  let open ConfigDecoder in
-  branch [
-    "tar_gzip" ==> begin
-      get "url" string >>= fun url ->
-      get "checksum" string >>= fun checksum ->
-      succeed @@ TarGzip{ url; checksum }
-    end;
-  ]
-
-
-let dependency_in_registry_config_decoder =
-  let open ConfigDecoder in
-  get "used_as" string >>= fun used_as ->
-  get "name" package_name_decoder >>= fun package_name ->
-  get "requirement" requirement_decoder >>= fun version_requirement ->
-  succeed @@ PackageDependencyInRegistry{
-    used_as;
-    package_name;
-    version_requirement;
-  }
-
-
-let implementation_decoder : implementation_record ConfigDecoder.t =
-  let open ConfigDecoder in
-  get "version" version_decoder >>= fun version ->
-  get_or_else "source" source_decoder NoSource >>= fun source ->
-  get "language" requirement_decoder >>= fun language_requirement ->
-  get "dependencies" (list dependency_in_registry_config_decoder) >>= fun dependencies ->
-  succeed @@ ImplRecord{ version; source; language_requirement; dependencies }
-
-
-let package_decoder : (package_name * implementation_record list) ConfigDecoder.t =
-  let open ConfigDecoder in
-  get "name" package_name_decoder >>= fun package_name ->
-  get "implementations" (list implementation_decoder) >>= fun implementations ->
-  succeed (package_name, implementations)
+type t = unit
 
 
 let registry_config_decoder : t ConfigDecoder.t =
   let open ConfigDecoder in
-  get "format" string >>= function
-  | "1" ->
-      get "packages" (list package_decoder) >>= fun packages ->
-      succeed { packages }
-
-  | format ->
-      failure (fun _yctx -> UnsupportedConfigFormat(format))
+  get "registry_format" string >>= function
+  | "1"    -> succeed ()
+  | format -> failure (fun _yctx -> UnsupportedRegistryFormat(format))
 
 
 let load (abspath_registry_config : abs_path) : t ok =

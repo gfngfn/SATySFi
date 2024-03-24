@@ -30,7 +30,7 @@ type yaml_error =
       registry_hash_value : registry_hash_value;
     }
   | CannotBeUsedAsAName of YamlDecoder.context * string
-  | UnsupportedConfigFormat of string
+  | UnsupportedRegistryFormat of string
   | NotACommand of {
       context : YamlDecoder.context;
       prefix  : char;
@@ -63,6 +63,8 @@ type config_error =
   | LockConfigError           of abs_path * yaml_error
   | RegistryConfigNotFound    of abs_path
   | RegistryConfigError       of abs_path * yaml_error
+  | ReleaseConfigNotFound     of abs_path
+  | ReleaseConfigError        of abs_path * yaml_error
   | StoreRootConfigNotFound   of abs_path
   | StoreRootConfigError      of abs_path * yaml_error
   | LockNameConflict          of lock_name
