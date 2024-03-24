@@ -158,3 +158,13 @@ type config_error =
       language_version     : SemanticVersion.t;
       language_requirement : SemanticVersion.requirement;
     }
+  | PackageNameMismatchOfRelease of {
+      path          : abs_path;
+      from_filename : package_name;
+      from_content  : package_name;
+    }
+  | PackageVersionMismatchOfRelease of {
+      path          : abs_path;
+      from_filename : SemanticVersion.t;
+      from_content  : SemanticVersion.t;
+    }

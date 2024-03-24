@@ -381,6 +381,26 @@ let report_config_error = function
         NormalLine(Printf.sprintf "but we are using %s." s_version);
       ]
 
+  | PackageNameMismatchOfRelease{ path; from_filename; from_content } ->
+      report_error [
+        NormalLine(Printf.sprintf "the release config");
+        DisplayLine(get_abs_path_string path);
+        NormalLine("is inconsistent as package name;");
+        NormalLine(Printf.sprintf "its filename says the package name is '%s'," from_filename);
+        NormalLine(Printf.sprintf "but the content says '%s'." from_content);
+      ]
+
+  | PackageVersionMismatchOfRelease{ path; from_filename; from_content } ->
+      let s_version1 = SemanticVersion.to_string from_filename in
+      let s_version2 = SemanticVersion.to_string from_content in
+      report_error [
+        NormalLine(Printf.sprintf "the release config");
+        DisplayLine(get_abs_path_string path);
+        NormalLine("is inconsistent as package version;");
+        NormalLine(Printf.sprintf "its filename says the package version is '%s'," s_version1);
+        NormalLine(Printf.sprintf "but the content says '%s'." s_version2);
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
