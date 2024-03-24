@@ -51,8 +51,16 @@ let store_root_config_path ~store_root:(absdir_store_root : abs_path) : abs_path
   make_abs_path (Filename.concat (get_abs_path_string absdir_store_root) "saphe-store-root.yaml")
 
 
-let package_registry_config_path ~registry_dir:(absdir_registry_repo : abs_path) =
+let package_registry_config_path ~registry_dir:(absdir_registry_repo : abs_path) : abs_path =
   append_to_abs_directory absdir_registry_repo "saphe-registry.yaml"
+
+
+let registry_repo_package_store ~registry_repo_root:(absdir_registry_repo : abs_path) : abs_path =
+  append_to_abs_directory absdir_registry_repo "packages"
+
+
+let release_config_extension =
+  ".saphe-release.yaml"
 
 
 let library_package_config_path ~dir:(absdir_library : abs_path) : abs_path =

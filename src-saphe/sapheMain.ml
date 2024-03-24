@@ -80,8 +80,8 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | CannotBeUsedAsAName(yctx, s) ->
       [ NormalLine(Printf.sprintf "'%s' cannot be used as a name %s" s (show_yaml_context yctx)) ]
 
-  | UnsupportedConfigFormat(format) ->
-      [ NormalLine(Printf.sprintf "unsupported config format '%s'" format) ]
+  | UnsupportedRegistryFormat(format) ->
+      [ NormalLine(Printf.sprintf "unsupported registry format '%s'" format) ]
 
   | NotACommand{ context = yctx; prefix = _; string = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s' %s" s (show_yaml_context yctx)) ]
@@ -162,6 +162,18 @@ let report_config_error = function
   | RegistryConfigError(abspath, e) ->
       report_error (List.concat [
         [ NormalLine(Printf.sprintf "in %s: registry config error;" (get_abs_path_string abspath)) ];
+        make_yaml_error_lines e;
+      ])
+
+  | ReleaseConfigNotFound(abspath_release_config) ->
+      report_error [
+        NormalLine("cannot find a release config:");
+        DisplayLine(get_abs_path_string abspath_release_config);
+      ]
+
+  | ReleaseConfigError(abspath, e) ->
+      report_error (List.concat [
+        [ NormalLine(Printf.sprintf "in %s: release config error;" (get_abs_path_string abspath)) ];
         make_yaml_error_lines e;
       ])
 
@@ -367,6 +379,26 @@ let report_config_error = function
         DisplayLine(get_abs_path_string absdir_package);
         NormalLine(Printf.sprintf "requires the language version to be %s," s_req);
         NormalLine(Printf.sprintf "but we are using %s." s_version);
+      ]
+
+  | PackageNameMismatchOfRelease{ path; from_filename; from_content } ->
+      report_error [
+        NormalLine(Printf.sprintf "the release config");
+        DisplayLine(get_abs_path_string path);
+        NormalLine("is inconsistent as package name;");
+        NormalLine(Printf.sprintf "its filename says the package name is '%s'," from_filename);
+        NormalLine(Printf.sprintf "but the content says '%s'." from_content);
+      ]
+
+  | PackageVersionMismatchOfRelease{ path; from_filename; from_content } ->
+      let s_version1 = SemanticVersion.to_string from_filename in
+      let s_version2 = SemanticVersion.to_string from_content in
+      report_error [
+        NormalLine(Printf.sprintf "the release config");
+        DisplayLine(get_abs_path_string path);
+        NormalLine("is inconsistent as package version;");
+        NormalLine(Printf.sprintf "its filename says the package version is '%s'," s_version1);
+        NormalLine(Printf.sprintf "but the content says '%s'." s_version2);
       ]
 
 
@@ -926,13 +958,16 @@ let solve ~(fpath_in : string) =
           if created then Logging.package_registry_updated ~created:true absdir_registry_repo
         end;
 
-        (* Loads the registry config and grows `registered_package_impls`: *)
-        let* PackageRegistryConfig.{ packages } =
+        (* Loads the registry config: *)
+        let* () =
           let abspath_registry_config =
             Constant.package_registry_config_path ~registry_dir:absdir_registry_repo
           in
           PackageRegistryConfig.load abspath_registry_config
         in
+
+        (* Reads the registry and grows `registered_package_impls`: *)
+        let* packages = PackageRegistryReader.main absdir_registry_repo in
         packages |> foldM (fun registered_package_impls (package_name, impls) ->
           let registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name } in
           if registered_package_impls |> RegisteredPackageIdMap.mem registered_package_id then

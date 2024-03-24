@@ -107,7 +107,7 @@ module SolverInput = struct
       }
     | Impl of {
         package_name        : package_name;
-        version             : SemanticVersion.t;
+        package_version     : SemanticVersion.t;
         registry_hash_value : registry_hash_value;
         source              : implementation_source;
         dependencies        : dependency list;
@@ -137,8 +137,8 @@ module SolverInput = struct
     | LocalFixedImpl{ absolute_path; _ } ->
         Format.fprintf ppf "local impl '%s'" (get_abs_path_string absolute_path)
 
-    | Impl{ package_name; version; _ } ->
-        Format.fprintf ppf "%s %s" package_name (SemanticVersion.to_string version)
+    | Impl{ package_name; package_version; _ } ->
+        Format.fprintf ppf "%s %s" package_name (SemanticVersion.to_string package_version)
 
 
   let pp_impl_long (ppf : Format.formatter) (impl : impl) =
@@ -152,10 +152,10 @@ module SolverInput = struct
 
   let pp_version (ppf : Format.formatter) (impl : impl) =
     match impl with
-    | DummyImpl          -> Format.fprintf ppf "dummy"
-    | TargetImpl(_)      -> Format.fprintf ppf "target"
-    | LocalFixedImpl(_)  -> Format.fprintf ppf "as-is"
-    | Impl{ version; _ } -> Format.fprintf ppf "%s" (SemanticVersion.to_string version)
+    | DummyImpl                  -> Format.fprintf ppf "dummy"
+    | TargetImpl(_)              -> Format.fprintf ppf "target"
+    | LocalFixedImpl(_)          -> Format.fprintf ppf "as-is"
+    | Impl{ package_version; _ } -> Format.fprintf ppf "%s" (SemanticVersion.to_string package_version)
 
 
   (* Unused *)
@@ -231,13 +231,13 @@ module SolverInput = struct
         in
         let impls =
           impl_records |> List.filter_map (fun impl_record ->
-            let ImplRecord{ version; source; language_requirement; dependencies } = impl_record in
+            let ImplRecord{ package_version; source; language_requirement; dependencies; _ } = impl_record in
             if context.language_version |> SemanticVersion.fulfill language_requirement then
-              if String.equal (SemanticVersion.get_compatibility_unit version) compatibility then
+              if String.equal (SemanticVersion.get_compatibility_unit package_version) compatibility then
                 let dependencies =
                   make_internal_dependency_from_registry registry_hash_value context dependencies
                 in
-                Some(Impl{ package_name; version; registry_hash_value; source; dependencies })
+                Some(Impl{ package_name; package_version; registry_hash_value; source; dependencies })
               else
                 None
             else
@@ -282,7 +282,7 @@ module SolverInput = struct
           | _    -> false
         end
 
-    | Impl{ version = semver_provided; _} ->
+    | Impl{ package_version = semver_provided; _} ->
         begin
           match restr with
           | VersionRequirement(SemanticVersion.CompatibleWith(semver_required)) ->
@@ -309,8 +309,8 @@ module SolverInput = struct
     | LocalFixedImpl{ absolute_path; _ } ->
         [ Printf.sprintf "local/%s" (get_abs_path_string absolute_path) ]
 
-    | Impl{ package_name; version; _ } ->
-        let compat = SemanticVersion.get_compatibility_unit version in
+    | Impl{ package_name; package_version; _ } ->
+        let compat = SemanticVersion.get_compatibility_unit package_version in
         [ Printf.sprintf "registered/%s/%s" package_name compat ]
 
 
@@ -332,7 +332,7 @@ module SolverInput = struct
     | (LocalFixedImpl(_), _)                 -> 1
     | (_, LocalFixedImpl(_))                 -> -1
 
-    | (Impl{ version = semver1; _ }, Impl{ version = semver2; _ }) ->
+    | (Impl{ package_version = semver1; _ }, Impl{ package_version = semver2; _ }) ->
         SemanticVersion.compare semver1 semver2
 
 
@@ -441,7 +441,7 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
             let lock_to_vertex_map = lock_to_vertex_map |> LockMap.add lock vertex in
             (quad_acc, graph, explicit_vertex_to_used_as, explicit_test_vertex_to_used_as, lock_to_vertex_map)
 
-        | Impl{ package_name; version = locked_version; registry_hash_value; source; dependencies } ->
+        | Impl{ package_name; package_version = locked_version; registry_hash_value; source; dependencies } ->
             let registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name } in
             let package_id = PackageId.Registered(registered_package_id) in
             let reglock = RegisteredLock.{ registered_package_id; locked_version } in
@@ -507,7 +507,7 @@ let solve (context : package_context) (dependencies_with_flags : (dependency_fla
                   | None | Some(DummyImpl) | Some(TargetImpl(_)) | Some(LocalFixedImpl(_)) ->
                       assert false
 
-                  | Some(Impl{ version = version_dep; _ }) ->
+                  | Some(Impl{ package_version = version_dep; _ }) ->
                       Lock.Registered{
                         registered_package_id = registered_package_id_dep;
                         locked_version        = version_dep;

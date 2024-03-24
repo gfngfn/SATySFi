@@ -145,11 +145,12 @@ type implementation_source =
 
 type implementation_record =
   | ImplRecord of {
-      version              : SemanticVersion.t;
-      source               : implementation_source;
       language_requirement : SemanticVersion.requirement;
+      package_version      : SemanticVersion.t;
+      source               : implementation_source;
       dependencies         : package_dependency_in_registry list;
     }
+[@@deriving show { with_path = false }]
 
 type package_context = {
   language_version         : SemanticVersion.t;

@@ -1,12 +1,17 @@
 
 type t = Semver.t
 
-let parse (s : string) : t option =
-  Semver.of_string s
+
+let equal =
+  Semver.equal
 
 
-let to_string (semver : t) : string =
-  Semver.to_string semver
+let parse =
+  Semver.of_string
+
+
+let to_string =
+  Semver.to_string
 
 
 let pp ppf semver =

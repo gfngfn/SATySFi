@@ -2,6 +2,8 @@
 type t
 [@@deriving show]
 
+val equal : t -> t -> bool
+
 val parse : string -> t option
 
 val to_string : t -> string
