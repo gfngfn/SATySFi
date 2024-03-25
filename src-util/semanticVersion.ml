@@ -93,3 +93,9 @@ let get_compatibility_unit (semver : t) : string =
 
   | _ :: _ ->
       to_string semver
+
+
+module ForTest = struct
+  let get_content (semver : t) : Semver.t =
+    semver
+end
