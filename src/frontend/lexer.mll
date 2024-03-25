@@ -31,11 +31,11 @@
   let get_pos (lexbuf : Lexing.lexbuf) : Range.t =
     let posS = Lexing.lexeme_start_p lexbuf in
     let posE = Lexing.lexeme_end_p lexbuf in
-    let fname = posS.Lexing.pos_fname in
+    let abspathstr = posS.Lexing.pos_fname in
     let lnum = posS.Lexing.pos_lnum in
     let cnumS = posS.Lexing.pos_cnum - posS.Lexing.pos_bol in
     let cnumE = posE.Lexing.pos_cnum - posE.Lexing.pos_bol in
-    Range.make fname lnum cnumS cnumE
+    Range.make abspathstr lnum cnumS cnumE
 
 
   let report_error lexbuf errmsg =
@@ -321,6 +321,7 @@ rule lex_program stack = parse
         | "end"       -> END(pos)
         | "false"     -> FALSE(pos)
         | "fun"       -> FUN(pos)
+        | "here"      -> HERE(pos, (Lexing.lexeme_start_p lexbuf).Lexing.pos_fname)
         | "if"        -> IF(pos)
         | "in"        -> IN(pos)
         | "include"   -> INCLUDE(pos)

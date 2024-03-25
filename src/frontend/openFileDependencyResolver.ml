@@ -133,7 +133,7 @@ let register_markdown_file (display_config : Logging.config) (configenv : Envelo
   Logging.begin_to_parse_file display_config abspath_in;
   let* md =
     match read_file abspath_in with
-    | Ok(data)   -> MarkdownParser.decode data |> Result.map_error (fun e -> MarkdownError(e))
+    | Ok(data)   -> MarkdownParser.decode abspath_in data |> Result.map_error (fun e -> MarkdownError(e))
     | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in
   let class_module_name = MarkdownParser.get_class_module_name md in

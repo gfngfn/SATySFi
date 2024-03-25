@@ -1,4 +1,5 @@
 
+open MyUtil
 open EnvelopeSystemBase
 open Types
 
@@ -375,9 +376,9 @@ let extract_comment (s : string) : string option =
     None
 
 
-let parse_expression (s_expr : string) : untyped_abstract_tree ok =
+let parse_expression (abspath : abs_path) (s_expr : string) : untyped_abstract_tree ok =
   let open ResultMonad in
-  match ParserInterface.process_text "(markdown)" s_expr with
+  match ParserInterface.process_text abspath s_expr with
   | Ok(UTDocumentFile([], [], utast)) -> return utast
   | _                                 -> err InvalidExtraExpression
 
@@ -389,7 +390,7 @@ type t = {
 }
 
 
-let decode (s : string) : t ok =
+let decode (abspath : abs_path) (s : string) : t ok =
   let open ResultMonad in
   let obs = Omd.of_string s in
   let* (class_module_name, s_extra, obs) =
@@ -405,7 +406,7 @@ let decode (s : string) : t ok =
     | _ ->
         err InvalidHeaderComment
   in
-  let* utast_extra = parse_expression s_extra in
+  let* utast_extra = parse_expression abspath s_extra in
   return {
     class_module_name = class_module_name;
     extra_expression  = utast_extra;

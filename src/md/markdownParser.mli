@@ -1,4 +1,5 @@
 
+open MyUtil
 open EnvelopeSystemBase
 open Types
 
@@ -8,7 +9,7 @@ type error =
 
 type t
 
-val decode : string -> (t, error) result
+val decode : abs_path -> string -> (t, error) result
 
 val get_class_module_name : t -> module_name
 
