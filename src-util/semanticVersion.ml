@@ -1,4 +1,5 @@
 
+(* Same as `Semver.t`, but build metada should be empty. *)
 type t = Semver.t
 
 
@@ -6,8 +7,13 @@ let equal =
   Semver.equal
 
 
-let parse =
-  Semver.of_string
+let parse (s : string) : t option =
+  let open OptionMonad in
+  let* semver = Semver.of_string s in
+  let Semver.{ build; _ } = semver in
+  match build with
+  | []     -> return semver
+  | _ :: _ -> None
 
 
 let to_string =
@@ -28,14 +34,23 @@ let compare =
 
 let is_compatible ~(old : t) ~(new_ : t) =
   let open Semver in
-  match (old.major, new_.major) with
-  | (0, 0) ->
-      old.minor = new_.minor && old.patch <= new_.patch
+  let { prerelease = prerelease_old; _ } = old in
+  let { prerelease = prerelease_new; _ } = new_ in
+  match (prerelease_old, prerelease_new) with
+  | ([], []) ->
+      begin
+        match (old.major, new_.major) with
+        | (0, 0) ->
+            old.minor = new_.minor && old.patch <= new_.patch
 
-  | _ ->
-      old.major = new_.major &&
-        ((old.minor < new_.minor) ||
-          (old.minor == new_.minor && old.patch <= new_.patch))
+        | _ ->
+            old.major = new_.major &&
+              ((old.minor < new_.minor) ||
+                (old.minor == new_.minor && old.patch <= new_.patch))
+      end
+
+  | (_ :: _, _) | (_, _ :: _) ->
+      Semver.equal old new_
 
 
 type requirement =
@@ -68,8 +83,13 @@ let fulfill (req : requirement) (semver : t) : bool =
 
 
 let get_compatibility_unit (semver : t) : string =
-  let Semver.{ major; minor; _ } = semver in
-  if major = 0 then
-    Printf.sprintf "0.%d" minor
-  else
-    Printf.sprintf "%d" major
+  let Semver.{ major; minor; prerelease; _ } = semver in
+  match prerelease with
+  | [] ->
+      if major = 0 then
+        Printf.sprintf "0.%d" minor
+      else
+        Printf.sprintf "%d" major
+
+  | _ :: _ ->
+      to_string semver
