@@ -47,6 +47,7 @@ let tDOC  = (~! "document"      , BaseType(DocumentType))
 let tRE   = (~! "regexp"        , BaseType(RegExpType))
 let tTCTX = (~! "text-info"     , BaseType(TextInfoType))
 let tIPOS = (~! "input-position", BaseType(InputPosType))
+let tHYPH = (~! "hyphenation"   , BaseType(HyphenationType))
 
 let tL ty = (~! "list", ListType(ty))
 let tR ty = (~! "ref", RefType(ty))

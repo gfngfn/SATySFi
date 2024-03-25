@@ -120,6 +120,7 @@ type base_type =
   | RegExpType
   | TextInfoType
   | InputPosType
+  | HyphenationType
 [@@deriving show]
 
 
@@ -175,6 +176,7 @@ let base_type_map : base_type TypeNameMap.t =
     ("regexp"        , RegExpType);
     ("text-info"     , TextInfoType);
     ("input-position", InputPosType);
+    ("hyphenation"   , HyphenationType);
   ]
 
 
