@@ -125,6 +125,19 @@ Context(ctx, { ctxsub with math_command = mcmd; })
         ~code:{|
 Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
+    ; inst "PrimitiveSetHyphenationDictionary"
+        ~name:"set-hyphenation-dictionary"
+        ~type_:Type.(tHYPH @-> tCTX @-> tCTX)
+        ~fields:[
+        ]
+        ~params:[
+          param "hyph" ~type_:"hyphenation";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+Context({ ctx with hyphen_dictionary = hyph; }, ctxsub)
+|}
     ; inst "PrimitiveGetLeftMathClass"
         ~name:"get-left-math-class"
         ~type_:Type.(tMB @-> tOPT tMATHCLS)
