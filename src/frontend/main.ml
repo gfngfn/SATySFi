@@ -12,19 +12,6 @@ let version =
     (SemanticVersion.to_string Constant.current_language_version)
 
 
-(* Initialization that should be performed before every cross-reference-solving loop *)
-let reset (output_mode : output_mode) =
-  let open ResultMonad in
-  match output_mode with
-  | TextMode(_) ->
-      return ()
-
-  | PdfMode ->
-      ImageInfo.initialize ();
-      NamedDest.initialize ();
-      return ()
-
-
 (* Initialization that should be performed before typechecking *)
 let initialize ~(base_dir : abs_path) ~(is_bytecomp_mode : bool) (output_mode : output_mode) (runtime_config : runtime_config) : Typeenv.t * environment =
   FreeID.initialize ();
@@ -49,65 +36,6 @@ let initialize ~(base_dir : abs_path) ~(is_bytecomp_mode : bool) (output_mode : 
   (tyenv, env)
 
 
-module StoreIDMap = Map.Make(StoreID)
-
-
-type frozen_environment = {
-  frozen_main      : location EvalVarIDMap.t;
-  frozen_store_ref : (syntactic_value StoreIDHashTable.t) ref;
-  frozen_store_map : syntactic_value StoreIDMap.t;
-  frozen_config    : runtime_config;
-}
-
-
-let freeze_environment (env : environment) : frozen_environment =
-  let
-    {
-      env_main   = valenv;
-      env_store  = stenvref;
-      env_config = runtime_config;
-    } = env
-  in
-  let stmap =
-    StoreIDMap.empty |> StoreIDHashTable.fold (fun stid value stmap ->
-      stmap |> StoreIDMap.add stid value
-    ) (!stenvref)
-  in
-  {
-    frozen_main      = valenv;
-    frozen_store_ref = stenvref;
-    frozen_store_map = stmap;
-    frozen_config    = runtime_config;
-  }
-
-
-let unfreeze_environment (frenv : frozen_environment) : environment =
-  let
-    {
-      frozen_main = valenv;
-      frozen_store_ref = stenvref;
-      frozen_store_map = stmap;
-      frozen_config    = runtime_config;
-    } = frenv
-  in
-  let stenv = StoreIDHashTable.create 128 in
-  stmap |> StoreIDMap.iter (fun stid value -> StoreIDHashTable.add stenv stid value);
-  stenvref := stenv;
-  {
-    env_main   = valenv;
-    env_store  = ref stenv;
-    env_config = runtime_config;
-  }
-
-
-let output_pdf (pdfret : HandlePdf.t) : unit =
-  HandlePdf.write_to_file pdfret
-
-
-let output_text (abspath_out : abs_path) (data : string) : unit =
-  Core.Out_channel.write_all (get_abs_path_string abspath_out) ~data
-
-
 let eval_library_file (display_config : Logging.config) ~(is_bytecomp_mode : bool) ~(run_tests : bool) (env : environment) (abspath : abs_path) (binds : binding list) : environment =
   Logging.begin_to_eval_file display_config abspath;
   if is_bytecomp_mode then
@@ -119,91 +47,6 @@ let eval_library_file (display_config : Logging.config) ~(is_bytecomp_mode : boo
   else
     let (env, _) = Evaluator.interpret_bindings_0 ~run_tests env binds in
     env
-
-
-let eval_main ~(is_bytecomp_mode : bool) (output_mode : output_mode) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : (syntactic_value, config_error) result =
-  let open ResultMonad in
-  Logging.start_evaluation i;
-  let* () = reset output_mode in
-  let env = unfreeze_environment env_freezed in
-  let value =
-    if is_bytecomp_mode then
-      let (value, _) = Bytecomp.compile_and_exec_0 env ast in
-      value
-    else
-      Evaluator.interpret_0 env ast
-  in
-  Logging.end_evaluation ();
-  return value
-
-
-let eval_document_file (display_config : Logging.config) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (output_mode : output_mode) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
-  let open ResultMonad in
-  let env_freezed = freeze_environment env in
-  match output_mode with
-  | TextMode(_) ->
-      let rec aux (i : int) =
-        let* value_str = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
-        let s = EvalUtil.get_string value_str in
-        match CrossRef.needs_another_trial abspath_dump with
-        | CrossRef.NeedsAnotherTrial ->
-            Logging.needs_another_trial ();
-            aux (i + 1)
-
-        | CrossRef.CountMax ->
-            Logging.achieve_count_max ();
-            output_text abspath_out s;
-            Logging.end_output display_config abspath_out;
-            return ()
-
-        | CrossRef.CanTerminate unresolved_crossrefs ->
-            Logging.achieve_fixpoint unresolved_crossrefs;
-            output_text abspath_out s;
-            Logging.end_output display_config abspath_out;
-            return ()
-      in
-      aux 1
-
-  | PdfMode ->
-      let rec aux (i : int) =
-        let* value_doc = eval_main ~is_bytecomp_mode output_mode i env_freezed ast in
-        match value_doc with
-        | BaseConstant(BCDocument(paper_size, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
-            Logging.start_page_break ();
-            State.start_page_break ();
-            let pdf =
-              match pbstyle with
-              | SingleColumn ->
-                  PageBreak.main pdf_config abspath_out ~paper_size
-                    columnhookf pagecontf pagepartsf imvblst
-
-              | MultiColumn(origin_shifts) ->
-                  PageBreak.main_multicolumn pdf_config ~page_number_limit abspath_out ~paper_size
-                    origin_shifts columnhookf columnendhookf pagecontf pagepartsf imvblst
-            in
-            begin
-              match CrossRef.needs_another_trial abspath_dump with
-              | CrossRef.NeedsAnotherTrial ->
-                  Logging.needs_another_trial ();
-                  aux (i + 1)
-
-              | CrossRef.CountMax ->
-                  Logging.achieve_count_max ();
-                  output_pdf pdf;
-                  Logging.end_output display_config abspath_out;
-                  return ()
-
-              | CrossRef.CanTerminate unresolved_crossrefs ->
-                  Logging.achieve_fixpoint unresolved_crossrefs;
-                  output_pdf pdf;
-                  Logging.end_output display_config abspath_out;
-                  return ()
-            end
-
-        | _ ->
-            EvalUtil.report_bug_value "main; not a DocumentValue(...)" value_doc
-      in
-      aux 1
 
 
 (* Performs preprecessing. the evaluation is run by the naive interpreter
@@ -240,7 +83,7 @@ let preprocess_and_evaluate (display_config : Logging.config) (pdf_config : Hand
   (* Performs evaluation: *)
   let env = evaluate_bindings display_config ~is_bytecomp_mode ~run_tests env codebinds in
   let ast_doc = unlift_code code_doc in
-  eval_document_file display_config pdf_config ~page_number_limit ~is_bytecomp_mode output_mode env ast_doc abspath_out abspath_dump
+  BuildDocument.main output_mode pdf_config ~page_number_limit display_config ~is_bytecomp_mode env ast_doc abspath_out abspath_dump
 
 
 let get_candidate_file_extensions (output_mode : output_mode) =
