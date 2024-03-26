@@ -1,22 +1,3 @@
-#[config (|
-  registries = [
-    (|
-      name = `default`,
-      remote =
-        Git(|
-          url = `https://github.com/SATySFi/default-registry`,
-          branch = `format-1`,
-        |)
-    |)
-  ],
-  dependencies = [
-    (| name = `stdlib`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `math`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `proof`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `tabular`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `std-ja`, registry = `default`, requirement = `^0.0.1` |),
-  ],
-|)]
 use package open Stdlib
 use package open Stdlib.Pervasives
 use package open Math

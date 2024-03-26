@@ -9,7 +9,7 @@ for FILE in $(find lib-satysfi -name \*.ttf -or -name \*.otf | grep '^lib-satysf
 done
 
 mkdir -p "${TARGET_DIR}"
-for FILE in $(find lib-satysfi -name satysfi.yaml); do
+for FILE in $(find lib-satysfi -name saphe.yaml); do
     VERSIONED_DIR="$(dirname "${FILE}")"
     PACKAGE_DIR="$(dirname "${VERSIONED_DIR}")"
     VERSIONED_NAME="$(basename "${VERSIONED_DIR}")"

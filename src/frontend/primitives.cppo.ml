@@ -7,7 +7,6 @@ open GraphicBase
 open SyntaxBase
 open Types
 open StaticEnv
-open ConfigError
 
 
 (* -- type IDs for predefined data types -- *)
@@ -48,6 +47,7 @@ let tDOC  = (~! "document"      , BaseType(DocumentType))
 let tRE   = (~! "regexp"        , BaseType(RegExpType))
 let tTCTX = (~! "text-info"     , BaseType(TextInfoType))
 let tIPOS = (~! "input-position", BaseType(InputPosType))
+let tHYPH = (~! "hyphenation"   , BaseType(HyphenationType))
 
 let tL ty = (~! "list", ListType(ty))
 let tR ty = (~! "ref", RefType(ty))
@@ -628,9 +628,6 @@ let default_math_class_map =
       ]
 
 
-let default_hyphen_dictionary = ref LoadHyph.empty
-
-
 let default_script_space_map =
   let space_latin_cjk = (0.24, 0.08, 0.16) in
   let open CharBasis in
@@ -644,7 +641,7 @@ let default_script_space_map =
 let get_pdf_mode_initial_context wid =
   let open HorzBox in
     {
-      hyphen_dictionary      = !default_hyphen_dictionary;
+      hyphen_dictionary      = LoadHyph.empty;
       hyphen_badness         = 100;
       font_scheme            = CharBasis.ScriptSchemeMap.empty;
       font_size              = pdfpt 12.;
@@ -761,19 +758,9 @@ let make_environments (runtime_config : runtime_config) table =
   (tyenv, env)
 
 
-let resolve_lib_file (libpath : lib_path) =
-  Config.resolve_lib_file libpath
-    |> Result.map_error (fun candidates -> CannotFindLibraryFile(libpath, candidates))
-
-
 let make_pdf_mode_environments (runtime_config : runtime_config) =
-  let open ResultMonad in
-  let* abspath_hyphen = resolve_lib_file (make_lib_path "hyph/english.satysfi-hyph") in
-  default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
-    (* TODO: should depend on the current language *)
-  return @@ make_environments runtime_config pdf_mode_table
+  make_environments runtime_config pdf_mode_table
 
 
 let make_text_mode_environments (runtime_config : runtime_config) =
-  let open ResultMonad in
-  return @@ make_environments runtime_config text_mode_table
+  make_environments runtime_config text_mode_table

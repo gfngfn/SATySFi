@@ -1,0 +1,11 @@
+font:
+  main_module: FontLatinModern
+  files:
+  - path: ./fonts/lmmono10-regular.otf
+    opentype_single:
+      name: mono
+      math: false
+  - path: ./fonts/lmsans10-regular.otf
+    opentype_single:
+      name: sans
+      math: false

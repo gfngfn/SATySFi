@@ -3,7 +3,12 @@ open LengthInterface
 open GraphicBase
 open SyntaxBase
 open MyUtil
+open EnvelopeSystemBase
 
+
+type input_kind =
+  | InputSatysfi
+  | InputMarkdown
 
 type parse_error =
   | CannotProgressParsing of Range.t
@@ -115,6 +120,7 @@ type base_type =
   | RegExpType
   | TextInfoType
   | InputPosType
+  | HyphenationType
 [@@deriving show]
 
 
@@ -170,6 +176,7 @@ let base_type_map : base_type TypeNameMap.t =
     ("regexp"        , RegExpType);
     ("text-info"     , TextInfoType);
     ("input-position", InputPosType);
+    ("hyphenation"   , HyphenationType);
   ]
 
 
@@ -359,9 +366,9 @@ type header_element =
       mod_chain : module_name_chain ranged;
     }
   | HeaderUseOf of {
-      opening   : bool;
-      mod_chain : module_name_chain ranged;
-      path      : string;
+      opening             : bool;
+      mod_chain           : module_name_chain ranged;
+      relpath_without_ext : string;
     }
 [@@deriving show { with_path = false }]
 
@@ -608,24 +615,18 @@ type untyped_source_file =
   | UTDocumentFile of untyped_document_file
 [@@deriving show { with_path = false; }]
 
-type font_file_contents =
-  | OpentypeSingle     of var_name
-  | OpentypeCollection of var_name list
-[@@deriving show { with_path = false }]
-
 type font_file_record = {
   r_font_file_path     : abs_path;
   r_font_file_contents : font_file_contents;
-  r_used_as_math_font  : bool;
 }
 [@@deriving show { with_path = false }]
 
-type untyped_package =
-  | UTLibraryPackage of {
+type untyped_envelope =
+  | UTLibraryEnvelope of {
       main_module_name : module_name;
       modules          : (abs_path * untyped_library_file) list;
     }
-  | UTFontPackage of {
+  | UTFontEnvelope of {
       main_module_name : module_name;
       font_files       : font_file_record list;
     }
@@ -707,6 +708,8 @@ type base_constant =
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCDocument        of (length * length) * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
   | BCInputPos        of input_position
+  | BCHyphenation     of LoadHyph.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<hyphenation>")]
 [@@deriving show { with_path = false; }]
 
 type 'a letrec_binding_scheme =
@@ -1290,18 +1293,13 @@ type code_rec_or_nonrec =
   | CdNonRec  of CodeSymbol.t * code_value
   | CdMutable of CodeSymbol.t * code_value
 
-type 'a cycle =
-  | Loop  of 'a
-  | Cycle of 'a TupleList.t
-[@@deriving show { with_path = false; }]
 
+module EnvelopeName = struct
+  type t = EN of string
+  let compare (EN(en1)) (EN(en2)) = String.compare en1 en2
+end
 
-let map_cycle f = function
-  | Loop(v)   -> Loop(f v)
-  | Cycle(vs) -> Cycle(TupleList.map f vs)
-
-
-module GlobalTypeenv = Map.Make(String)
+module GlobalTypeenv = Map.Make(EnvelopeName)
 
 module BoundIDHashTable = Hashtbl.Make(BoundID)
 

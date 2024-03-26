@@ -1,0 +1,25 @@
+library:
+  main_module: MDJa
+  source_directories:
+  - ./src
+  test_directories: []
+  markdown_conversion:
+    document: MDJa.document
+    paragraph: +MDJa.p
+    hr: +MDJa.hr
+    h1: +MDJa.h1
+    h2: +MDJa.h2
+    h3: +MDJa.h3
+    h4: +MDJa.h4
+    h5: +MDJa.h5
+    h6: +MDJa.h6
+    ul: +MDJa.ul-block
+    ol: +MDJa.ol-block
+    code_block: +MDJa.code
+    blockquote: +MDJa.quote
+    emph: \MDJa.emph
+    strong: \MDJa.string
+    hard_break:
+    code: \MDJa.code
+    link: \MDJa.link
+    img: \MDJa.img

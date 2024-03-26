@@ -1,0 +1,31 @@
+opam-version: "2.0"
+name: "satysfi-common"
+version: "0.0.1"
+maintainer: "Takashi Suwa"
+authors: [
+  "Takashi Suwa"
+]
+homepage: "https://github.com/gfngfn/SATySFi"
+dev-repo: "git+https://github.com/gfngfn/SATySFi.git"
+bug-reports: "https://github.com/gfngfn/SATySFi/issues"
+build: [
+  ["mkdir" "-p" "temp"]
+  [make "-f" "Makefile" "PREFIX=%{prefix}%"]
+]
+install: [
+  [make "-f" "Makefile" "install" "PREFIX=%{prefix}%"]
+]
+remove: [
+  [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%"]
+]
+depends: [
+  "ocaml" {>= "4.12.0"}
+  "dune" {build}
+  "ocamlfind" {build}
+  "ppx_deriving"
+  "alcotest" {with-test & >= "1.4.0"}
+  "satysfi-util"
+]
+synopsis: ""
+description: """
+"""

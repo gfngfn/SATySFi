@@ -1,0 +1,11 @@
+font:
+  main_module: FontIpaEx
+  files:
+  - path: ./fonts/ipaexm.ttf
+    opentype_single:
+      name: mincho
+      math: false
+  - path: ./fonts/ipaexg.ttf
+    opentype_single:
+      name: gothic
+      math: false

@@ -6,7 +6,7 @@ open HorzBox
 
 
 type t =
-  | PDF of Pdf.t * Pdfpage.t Alist.t * abs_path
+  | PDF of Pdf.t * Pdfpage.t Alist.t
 
 type config = {
   debug_show_bbox        : bool;
@@ -467,7 +467,7 @@ let add_column_to_page
   Page(paper, pagecontsch, Alist.cat opacc opacccolumn, pbinfo)
 
 
-let write_page (config : config) (Page(paper, _pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc, flnm)) : t) : t =
+let write_page (config : config) (Page(paper, _pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc)) : t) : t =
 
   let fs = fs_pdf config in
   let paper_height = get_paper_height paper in
@@ -495,15 +495,15 @@ let write_page (config : config) (Page(paper, _pagecontsch, opaccpage, pbinfo) :
   in
   let pagenew = Annotation.add_to_pdf pdf pagenew in
   let () = NamedDest.notify_pagebreak pbinfo.current_page_number in
-  PDF(pdf, Alist.extend pageacc pagenew, flnm)
+  PDF(pdf, Alist.extend pageacc pagenew)
 
 
-let create_empty_pdf (abspath : abs_path) : t =
+let create_empty_pdf () : t =
   let pdf = Pdf.empty () in
-  PDF(pdf, Alist.empty, abspath)
+  PDF(pdf, Alist.empty)
 
 
-let write_to_file ((PDF(pdf, pageacc, abspath)) : t) : unit =
+let write_to_file (abspath : abs_path) ((PDF(pdf, pageacc)) : t) : unit =
   Logging.begin_to_embed_fonts ();
   let pdfdict_font = FontInfo.get_font_dictionary pdf in
   let pdfarr_procset =

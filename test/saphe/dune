@@ -1,0 +1,5 @@
+(test
+  (name sapheTest)
+  (libraries
+    sapheMain
+    alcotest))

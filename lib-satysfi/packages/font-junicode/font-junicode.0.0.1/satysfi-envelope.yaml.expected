@@ -1,0 +1,19 @@
+font:
+  main_module: FontJunicode
+  files:
+  - path: ./fonts/Junicode.ttf
+    opentype_single:
+      name: normal
+      math: false
+  - path: ./fonts/Junicode-Bold.ttf
+    opentype_single:
+      name: bold
+      math: false
+  - path: ./fonts/Junicode-Italic.ttf
+    opentype_single:
+      name: italic
+      math: false
+  - path: ./fonts/Junicode-BoldItalic.ttf
+    opentype_single:
+      name: bold-italic
+      math: false
