@@ -70,3 +70,6 @@ setup.log
 _opam
 
 # End of https://www.toptal.com/developers/gitignore/api/ocaml
+
+# nix-build artifacts
+/result*
