@@ -1,0 +1,7 @@
+module HyphEnglish :> sig
+  val hyphenation : hyphenation
+end = struct
+  val hyphenation =
+    load-hyphenation-dictionary
+      (here ^ `/../hyph/english.satysfi-hyph`)
+end

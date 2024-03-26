@@ -30,5 +30,6 @@ for FILE in $(find lib-satysfi -name saphe.yaml); do
     fi
 done
 if [ $FAILED -ne 0 ]; then
+    echo "! some test has failed."
     exit 1
 fi
