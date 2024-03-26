@@ -3,8 +3,15 @@
 SAPHE="${1:-saphe}"
 
 FAILED=0
+FIRST=1
 for FILE in $(find lib-satysfi -name saphe.yaml); do
     DIR="$(dirname "$FILE")"
+    if [ $FIRST -eq 1 ]; then
+        echo "UPDATING..."
+        "$SAPHE" update "$DIR"
+        FIRST=0
+        echo "UPDATED."
+    fi
     echo " ==== $DIR ===="
     "$SAPHE" solve "$DIR"
     if [ $? -ne 0 ]; then
