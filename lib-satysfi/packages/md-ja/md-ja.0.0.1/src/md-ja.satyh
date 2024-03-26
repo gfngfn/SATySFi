@@ -4,6 +4,8 @@ use package Code
 use package Itemize
 use package Annot
 
+use package HyphEnglish
+
 use package FontJunicode
 use package FontIpaEx
 use package FontLatinModern
@@ -88,6 +90,7 @@ end = struct
 
   val initial-context =
     get-initial-context text-width (command \Math.math)
+      |> set-hyphenation-dictionary HyphEnglish.hyphenation
       |> set-dominant-narrow-script Latin
       |> set-dominant-wide-script Kana
       |> set-latin-font font-latin-roman

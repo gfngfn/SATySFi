@@ -3,6 +3,8 @@ use package Math
 use package Code
 use package Annot
 
+use package HyphEnglish
+
 use package FontJunicode
 use package FontIpaEx
 use package FontLatinModern
@@ -113,6 +115,7 @@ end = struct
   val get-standard-context wid =
     get-initial-context wid (command \Math.math)
       |> set-code-text-command (command \Code.code)
+      |> set-hyphenation-dictionary HyphEnglish.hyphenation
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese

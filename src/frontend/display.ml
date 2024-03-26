@@ -225,6 +225,7 @@ let show_base_type = function
   | RegExpType      -> "regexp"
   | TextInfoType    -> "text-info"
   | InputPosType    -> "input-position"
+  | HyphenationType -> "hyphenation"
 
 
 type paren_level =
