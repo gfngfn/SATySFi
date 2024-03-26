@@ -13,12 +13,12 @@ let version =
 
 
 (* Initialization that should be performed before typechecking *)
-let initialize ~(base_dir : abs_path) ~(is_bytecomp_mode : bool) (output_mode : output_mode) (runtime_config : runtime_config) : Typeenv.t * environment =
+let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) (runtime_config : runtime_config) : Typeenv.t * environment =
   FreeID.initialize ();
   BoundID.initialize ();
   EvalVarID.initialize ();
   StoreID.initialize ();
-  FontInfo.initialize ~base_dir;
+  FontInfo.initialize ();
   let (tyenv, env) =
     match output_mode with
     | TextMode(_) ->
@@ -169,7 +169,7 @@ let build_package
 
     let abspath_envelope_config = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
-    let absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in
+    let _absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in (* TODO: remove this *)
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
     let typecheck_config =
@@ -186,7 +186,7 @@ let build_package
 
     (* Gets the initial type environment, which consists only of primitives: *)
     let (tyenv_prim, _env) =
-      initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config
+      initialize ~is_bytecomp_mode:false output_mode runtime_config
     in
 
     (* Loads the deps config: *)
@@ -245,7 +245,7 @@ let open ResultMonad in
     let abspath_out = make_absolute_if_relative ~origin:absdir_current fpath_out in
     let abspath_dump = make_absolute_if_relative ~origin:absdir_current fpath_dump in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
-    let absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in
+    let _absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in (* TODO: remove this *)
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
     let typecheck_config =
@@ -272,7 +272,7 @@ let open ResultMonad in
 
     (* Gets the initial type environment, which consists only of primitives: *)
     let (tyenv_prim, env) =
-      initialize ~base_dir:absdir_base ~is_bytecomp_mode output_mode runtime_config
+      initialize ~is_bytecomp_mode output_mode runtime_config
     in
 
     (* Loads the deps config: *)
@@ -342,7 +342,7 @@ let test_package
 
     let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
-    let absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in
+    let _absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in (* TODO: remove this *)
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
     let typecheck_config =
@@ -359,7 +359,7 @@ let test_package
 
     (* Gets the initial type environment, which consists only of pritmives: *)
     let (tyenv_prim, env) =
-      initialize ~base_dir:absdir_base ~is_bytecomp_mode:false output_mode runtime_config
+      initialize ~is_bytecomp_mode:false output_mode runtime_config
     in
 
     (* Loads the deps config: *)

@@ -48,6 +48,7 @@ let tRE   = (~! "regexp"        , BaseType(RegExpType))
 let tTCTX = (~! "text-info"     , BaseType(TextInfoType))
 let tIPOS = (~! "input-position", BaseType(InputPosType))
 let tHYPH = (~! "hyphenation"   , BaseType(HyphenationType))
+let tUCD  = (~! "unicode-char-database", BaseType(UnidataType))
 
 let tL ty = (~! "list", ListType(ty))
 let tR ty = (~! "ref", RefType(ty))
