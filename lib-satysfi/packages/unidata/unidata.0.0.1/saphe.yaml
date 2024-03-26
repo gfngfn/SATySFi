@@ -1,0 +1,11 @@
+saphe: "^0.0.1"
+satysfi: "^0.1.0"
+name: "unidata"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+contents:
+  library:
+    main_module: "Unidata"
+    source_directories:
+      - "./src"
+dependencies: []
