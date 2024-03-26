@@ -152,6 +152,42 @@ let abspath_hyph = MyUtil.make_abs_path abspathstr_hyph in
 let hyph = LoadHyph.main abspath_hyph in
 BaseConstant(BCHyphenation(hyph))
 |}
+    ; inst "PrimitiveSetUnicodeCharDatabase"
+        ~name:"set-unicode-char-database"
+        ~type_:Type.(tUCD @-> tCTX @-> tCTX)
+        ~fields:[
+        ]
+        ~params:[
+          param "(script_map, line_break_map)" ~type_:"unicode_char_database";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+Context({ ctx with script_map; line_break_map; }, ctxsub)
+|}
+    ; inst "PrimitiveLoadUnicodeCharDatabase"
+        ~name:"load-unicode-char-database"
+        ~type_:Type.(tS @-> tS @-> tS @-> tUCD)
+        ~fields:[
+        ]
+        ~params:[
+          param "abspathstr_script" ~type_:"string";
+          param "abspathstr_east_asian_width" ~type_:"string";
+          param "abspathstr_line_break" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let script_map =
+  ScriptDataMap.make_from_file
+    ~script:(MyUtil.make_abs_path abspathstr_script)
+    ~east_asian_width:(MyUtil.make_abs_path abspathstr_east_asian_width)
+in
+let line_break_map =
+  LineBreakDataMap.make_from_file
+    (MyUtil.make_abs_path abspathstr_line_break)
+in
+BaseConstant(BCUnidata((script_map, line_break_map)))
+|}
     ; inst "PrimitiveGetLeftMathClass"
         ~name:"get-left-math-class"
         ~type_:Type.(tMB @-> tOPT tMATHCLS)
@@ -1418,7 +1454,7 @@ Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let fontwr = HorzBox.get_font_with_ratio ctx script in
+let fontwr = ScriptHandler.get_font_with_ratio ctx script in
 make_font_with_ratio_value fontwr
 |}
     ; inst "PrimitiveSetMathFont"
@@ -1511,7 +1547,7 @@ Context(HorzBox.({ ctx with
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let langsys = HorzBox.get_language_system ctx script in
+let langsys = ScriptHandler.get_language_system ctx script in
 make_language_system_value langsys
 |}
     ; inst "PrimitiveSetTextColor"

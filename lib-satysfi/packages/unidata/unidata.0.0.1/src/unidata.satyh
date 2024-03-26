@@ -1,0 +1,9 @@
+module Unidata :> sig
+  val unidata : unicode-char-database
+end = struct
+  val unidata =
+    load-unicode-char-database
+      (here ^ `/../unidata/Scripts.txt`)
+      (here ^ `/../unidata/EastAsianWidth.txt`)
+      (here ^ `/../unidata/LineBreak.txt`)
+end

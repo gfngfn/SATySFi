@@ -121,6 +121,7 @@ type base_type =
   | TextInfoType
   | InputPosType
   | HyphenationType
+  | UnidataType
 [@@deriving show]
 
 
@@ -177,6 +178,7 @@ let base_type_map : base_type TypeNameMap.t =
     ("text-info"     , TextInfoType);
     ("input-position", InputPosType);
     ("hyphenation"   , HyphenationType);
+    ("unicode-char-database", UnidataType);
   ]
 
 
@@ -710,6 +712,8 @@ type base_constant =
   | BCInputPos        of input_position
   | BCHyphenation     of LoadHyph.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<hyphenation>")]
+  | BCUnidata         of (ScriptDataMap.t * LineBreakDataMap.t)
+      [@printer (fun fmt _ -> Format.fprintf fmt "<unidata>")]
 [@@deriving show { with_path = false; }]
 
 type 'a letrec_binding_scheme =

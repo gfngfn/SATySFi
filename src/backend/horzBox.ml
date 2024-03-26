@@ -158,7 +158,11 @@ type context_main = {
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   dominant_wide_script    : CharBasis.script;
   dominant_narrow_script  : CharBasis.script;
+  script_map              : ScriptDataMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   script_space_map        : (float * float * float) CharBasis.ScriptSpaceMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
+  line_break_map          : LineBreakDataMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   space_natural           : float;
   space_shrink            : float;
@@ -506,42 +510,6 @@ and evaled_row =
 [@@deriving show { with_path = false }]
 
 type column = cell list
-
-
-let normalize_script ctx script_raw =
-  match script_raw with
-  | CharBasis.CommonNarrow
-  | CharBasis.Inherited ->
-      ctx.dominant_narrow_script
-
-  | CharBasis.CommonWide ->
-      ctx.dominant_wide_script
-
-  | _ -> script_raw
-
-
-let get_font_with_ratio ctx script_raw =
-  let script = normalize_script ctx script_raw in
-    match ctx.font_scheme |> CharBasis.ScriptSchemeMap.find_opt script with
-    | None          -> raise (FontIsNotSet{ raw = script_raw; normalized = script })
-    | Some(fontsch) -> fontsch
-
-
-let get_language_system ctx script_raw =
-  let script = normalize_script ctx script_raw in
-    match ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.find_opt script with
-    | None          -> CharBasis.NoLanguageSystem
-    | Some(langsys) -> langsys
-
-
-let get_string_info ctx script_raw =
-  let (fontkey, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
-    {
-      font_key       = fontkey;
-      text_font_size = ctx.font_size *% ratio;
-      text_color     = ctx.text_color;
-      rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;
-    }
 
 
 let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length * length * length =

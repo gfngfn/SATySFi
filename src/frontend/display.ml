@@ -226,6 +226,7 @@ let show_base_type = function
   | TextInfoType    -> "text-info"
   | InputPosType    -> "input-position"
   | HyphenationType -> "hyphenation"
+  | UnidataType     -> "unicode-char-database"
 
 
 type paren_level =
