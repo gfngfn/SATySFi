@@ -25,7 +25,7 @@ let initialize ~(base_dir : abs_path) ~(is_bytecomp_mode : bool) (output_mode : 
         Primitives.make_text_mode_environments runtime_config
 
     | PdfMode ->
-        Primitives.make_pdf_mode_environments ~base_dir runtime_config
+        Primitives.make_pdf_mode_environments runtime_config
   in
   begin
     if is_bytecomp_mode then
