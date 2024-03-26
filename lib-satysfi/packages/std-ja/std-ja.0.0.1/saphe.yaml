@@ -57,3 +57,8 @@ dependencies:
       registry: "default"
       name: "font-latin-modern-math"
       requirement: "^0.0.1"
+  - used_as: "HyphEnglish"
+    registered:
+      registry: "default"
+      name: "hyph-english"
+      requirement: "^0.0.1"

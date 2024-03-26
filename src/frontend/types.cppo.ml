@@ -120,6 +120,7 @@ type base_type =
   | RegExpType
   | TextInfoType
   | InputPosType
+  | HyphenationType
 [@@deriving show]
 
 
@@ -175,6 +176,7 @@ let base_type_map : base_type TypeNameMap.t =
     ("regexp"        , RegExpType);
     ("text-info"     , TextInfoType);
     ("input-position", InputPosType);
+    ("hyphenation"   , HyphenationType);
   ]
 
 
@@ -706,6 +708,8 @@ type base_constant =
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | BCDocument        of (length * length) * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
   | BCInputPos        of input_position
+  | BCHyphenation     of LoadHyph.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<hyphenation>")]
 [@@deriving show { with_path = false; }]
 
 type 'a letrec_binding_scheme =

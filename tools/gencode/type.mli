@@ -63,6 +63,7 @@ val tIGR        : t
 val tIGRO       : t
 val tDASH       : t
 val tDOCINFODIC : t
+val tHYPH       : t
 
 val tPROD : t list -> t
 

@@ -22,10 +22,11 @@ let k_fail chkpt =
       assert false
 
 
-let process_common (fname : string) (lexbuf : Lexing.lexbuf) =
+let process_common (abspath : abs_path) (lexbuf : Lexing.lexbuf) =
   let open ResultMonad in
+  let abspathstr = get_abs_path_string abspath in
   let stack = Lexer.reset_to_program () in
-  lexbuf.Lexing.lex_curr_p <- { lexbuf.Lexing.lex_curr_p with pos_fname = fname };
+  lexbuf.Lexing.lex_curr_p <- { lexbuf.Lexing.lex_curr_p with pos_fname = abspathstr };
   let supplier = I.lexer_lexbuf_to_supplier (Lexer.cut_token stack) lexbuf in
   try
     return @@ I.loop_handle k_success k_fail supplier (Parser.Incremental.main lexbuf.Lexing.lex_curr_p)
@@ -35,14 +36,13 @@ let process_common (fname : string) (lexbuf : Lexing.lexbuf) =
 
 
 let process_file (abspath : abs_path) =
-  let fname = basename_abs abspath in
   let inc = open_in_abs abspath in
   let lexbuf = Lexing.from_channel inc in
-  let res = process_common fname lexbuf in
+  let res = process_common abspath lexbuf in
   close_in inc;
   res
 
 
-let process_text (fname : string) (s : string) =
+let process_text (abspath : abs_path) (s : string) =
   let lexbuf = Lexing.from_string s in
-  process_common fname lexbuf
+  process_common abspath lexbuf
