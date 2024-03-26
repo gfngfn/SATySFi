@@ -103,10 +103,13 @@ let line_break_class_overriding_list =
   ]
 
 
-let line_break_map_ref : (line_break_class BatIMap.t) ref = ref (BatIMap.empty ~eq:(=))
+type t = line_break_class BatIMap.t
 
 
-let set_from_file (abspath : abs_path) =
+let empty : t = BatIMap.empty ~eq:(=)
+
+
+let make_from_file (abspath : abs_path) : t =
   let channel = open_in_abs abspath in
   let line_break_list = DataParser.main DataLexer.expr (Lexing.from_channel channel) in
   let line_break_map_raw = line_break_list |> CharBasis.map_of_list class_of_string in
@@ -115,14 +118,14 @@ let set_from_file (abspath : abs_path) =
       mapacc |> BatIMap.add cp lbc
     ) line_break_map_raw line_break_class_overriding_list
   in
-  begin
-    line_break_map_ref := line_break_map;
-  end
+  line_break_map
 
 
-let find uch =
-  try (!line_break_map_ref) |> BatIMap.find (Uchar.to_int uch)
-  with Not_found -> XX  (* temporary *)
+let find (uch : Uchar.t) (line_break_map : t) =
+  try
+    line_break_map |> BatIMap.find (Uchar.to_int uch)
+  with
+  | Not_found -> XX  (* TODO: reconsider this *)
 
 
 let set lbclst = LBRESet(lbclst)
@@ -312,8 +315,7 @@ let proj_bi (_, lbc) = lbc
 let proj_tri (_, lbc, _) = lbc
 
 
-let append_property (uchlst : Uchar.t list) : (Uchar.t * line_break_class) list =
-
+let append_property (line_break_map : t) (uchlst : Uchar.t list) : (Uchar.t * line_break_class) list =
   let rec normalize biacc bilst =
     match bilst with
     | [] ->
@@ -327,9 +329,8 @@ let append_property (uchlst : Uchar.t list) : (Uchar.t * line_break_class) list 
           | Some(repl) -> normalize (Alist.append biacc repl) bitail
         end
   in
-
-  let bilst = uchlst |> List.map (fun uch -> (uch, find uch)) in
-    normalize Alist.empty bilst
+  let bilst = uchlst |> List.map (fun uch -> (uch, line_break_map |> find uch)) in
+  normalize Alist.empty bilst
 
 
 type segment_record = {
@@ -429,7 +430,7 @@ let cut_into_segment_record (bilst : (Uchar.t * line_break_class) list) : segmen
 let proj_segrcd segrcd = segrcd.line_break_class
 
 
-let append_break_opportunity (uchlst : Uchar.t list) (alwlast : break_opportunity) : break_opportunity * line_break_element list =
+let append_break_opportunity (line_break_map : t) (uchlst : Uchar.t list) (alwlast : break_opportunity) : break_opportunity * line_break_element list =
 
   let should_prevent_break (trirev : line_break_element list) segrcdlst =
     let alwopt = find_first_match line_break_rule proj_tri proj_segrcd trirev segrcdlst in
@@ -479,7 +480,7 @@ let append_break_opportunity (uchlst : Uchar.t list) (alwlast : break_opportunit
                 aux (Alist.extend triacc (uchseg, lbc, alw)) bitail
         end
   in
-  let bilst = append_property uchlst in
+  let bilst = append_property line_break_map uchlst in
   let segrcdlst = cut_into_segment_record bilst in
 
   let alw_first =
@@ -487,7 +488,7 @@ let append_break_opportunity (uchlst : Uchar.t list) (alwlast : break_opportunit
       if b_first then PreventBreak else AllowBreak
   in
   let lst = aux Alist.empty segrcdlst in
-    (alw_first, lst)
+  (alw_first, lst)
 
 
 (*

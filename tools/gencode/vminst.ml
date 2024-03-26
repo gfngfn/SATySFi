@@ -1391,7 +1391,7 @@ Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let fontwr = HorzBox.get_font_with_ratio ctx script in
+let fontwr = ScriptHandler.get_font_with_ratio ctx script in
 make_font_with_ratio_value fontwr
 |}
     ; inst "PrimitiveSetMathFont"
@@ -1484,7 +1484,7 @@ Context(HorzBox.({ ctx with
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let langsys = HorzBox.get_language_system ctx script in
+let langsys = ScriptHandler.get_language_system ctx script in
 make_language_system_value langsys
 |}
     ; inst "PrimitiveSetTextColor"
