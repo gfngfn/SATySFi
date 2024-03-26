@@ -321,7 +321,7 @@ rule lex_program stack = parse
         | "end"       -> END(pos)
         | "false"     -> FALSE(pos)
         | "fun"       -> FUN(pos)
-        | "here"      -> HERE(pos, (Lexing.lexeme_start_p lexbuf).Lexing.pos_fname)
+        | "here"      -> HERE(pos, Filename.dirname (Lexing.lexeme_start_p lexbuf).Lexing.pos_fname)
         | "if"        -> IF(pos)
         | "in"        -> IN(pos)
         | "include"   -> INCLUDE(pos)
