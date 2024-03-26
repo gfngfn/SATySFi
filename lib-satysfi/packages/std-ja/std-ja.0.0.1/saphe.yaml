@@ -62,3 +62,8 @@ dependencies:
       registry: "default"
       name: "hyph-english"
       requirement: "^0.0.1"
+  - used_as: "Unidata"
+    registered:
+      registry: "default"
+      name: "unidata"
+      requirement: "^0.0.1"
