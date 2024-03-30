@@ -5,6 +5,7 @@ use package Itemize
 use package Annot
 
 use package HyphEnglish
+use package Unidata
 
 use package FontJunicode
 use package FontIpaEx
@@ -91,6 +92,7 @@ end = struct
   val initial-context =
     get-initial-context text-width (command \Math.math)
       |> set-hyphenation-dictionary HyphEnglish.hyphenation
+      |> set-unicode-char-database Unidata.unidata
       |> set-dominant-narrow-script Latin
       |> set-dominant-wide-script Kana
       |> set-latin-font font-latin-roman

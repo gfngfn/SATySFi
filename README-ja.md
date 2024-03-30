@@ -2,6 +2,8 @@
 
 [![Build Status](https://github.com/gfngfn/SATySFi/workflows/CI/badge.svg?branch=master)](https://github.com/gfngfn/SATySFi/actions?query=workflow%3ACI)
 
+**注意： 2024年3月現在，SATySFi は 0.0.x から 0.1.x へと移行する過程にあります．このREADMEをはじめとして多くの文書では古くなっている情報が残っているかもしれません．**
+
 [English README is here](https://github.com/gfngfn/SATySFi/blob/master/README.md)
 
 ## 概要
@@ -14,38 +16,8 @@
 * 株式会社ドワンゴ（2018年10月–2019年3月．アルバイトとして）
 * [The SATySFi​book](https://booth.pm/ja/items/1127224)を購入頂いた，多くの匿名の支援者の方々
 
-また，2023年10月現在も発展を続けています。
+また，2024年3月現在も発展を続けています。
 
-## Satyrographos を使ったインストール方法 (初心者向け)
-
-パッケージマネージャー [Satyrographos](https://github.com/na4zagin3/satyrographos/blob/master/README-ja.md) を用いたインストール方法が用意されています。
-詳しくは [SATySFi インストール手引き](https://qiita.com/na4zagin3/items/a6e025c17ef991a4c923) をご覧下さい。
-
-```sh
-# Ubuntu 20.04 の場合
-sudo apt-get update
-sudo apt-get install build-essential git m4 unzip curl pkg-config
-sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
-
-# Mac の場合
-# 要 homebrew (https://brew.sh/index_ja に従いインストールして下さい)
-brew update
-brew install opam
-
-# 共通 OPAM の設定
-opam init
-eval $(opam env)
-opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
-opam repository add satyrographos https://github.com/na4zagin3/satyrographos-repo.git
-opam update
-
-# 共通 SATySFi のインストール
-opam depext satysfi satysfi-dist satyrographos
-opam install satysfi satysfi-dist satyrographos
-
-# 共通 SATySFi 標準ライブラリのセットアップ
-satyrographos install
-```
 
 ## OPAM を使ったインストール方法
 
@@ -90,6 +62,7 @@ opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-
 opam update
 ```
 
+
 #### 準備例（OS X Mavericks 以降）
 
 ```sh
@@ -109,6 +82,7 @@ opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-
 opam update
 ```
 
+
 ### ビルド
 
 まず，このリポジトリを clone し，OPAM を使って SATySFi をビルドします：
@@ -119,23 +93,45 @@ git clone https://github.com/gfngfn/SATySFi.git
 cd SATySFi
 
 # build
-opam pin add satysfi .
-opam install satysfi
+opam pin add .
+opam install satysfi saphe
 ```
 
 * 再インストール： `opam reinstall satysfi` を実行
 * アンインストール： `opam uninstall satysfi` を実行
 
-### セットアップ
 
-使用する前に，フォントをダウンロードし，ライブラリ等を所定の場所に移す必要があります。以下のように2つのシェルスクリプトを順に実行します：
+## SATySFi **0.0.x** についての説明
+
+### Satyrographos を使ったインストール方法 (初心者向け)
+
+パッケージマネージャー [Satyrographos](https://github.com/na4zagin3/satyrographos/blob/master/README-ja.md) を用いたインストール方法が用意されています。詳しくは [SATySFi インストール手引き](https://qiita.com/na4zagin3/items/a6e025c17ef991a4c923) をご覧下さい。
 
 ```sh
-./download-fonts.sh
-./install-libs.sh
-```
+# Ubuntu 20.04 の場合
+sudo apt-get update
+sudo apt-get install build-essential git m4 unzip curl pkg-config
+sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
 
-前者はデフォルトで必要なフォントファイルを Web 上からダウンロードして `lib-satysfi/dist/fonts/` 直下に格納し，後者は `lib-satysfi/` 以下を `/usr/local/share/satysfi/` 以下にそのままコピーします。
+# Mac の場合
+# 要 homebrew (https://brew.sh/index_ja に従いインストールして下さい)
+brew update
+brew install opam
+
+# 共通 OPAM の設定
+opam init
+eval $(opam env)
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
+opam repository add satyrographos https://github.com/na4zagin3/satyrographos-repo.git
+opam update
+
+# 共通 SATySFi のインストール
+opam depext satysfi satysfi-dist satyrographos
+opam install satysfi satysfi-dist satyrographos
+
+# 共通 SATySFi 標準ライブラリのセットアップ
+satyrographos install
+```
 
 ここでインストールされるフォントは以下の通りです。ライセンスを確認した上で使用してください：
 
@@ -144,7 +140,8 @@ opam install satysfi
 * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern/)
 * [Latin Modern Math](http://www.gust.org.pl/projects/e-foundry/lm-math)
 
-## 用法
+
+### 用法
 
 ```sh
 satysfi <input file> -o <output file>
@@ -155,6 +152,7 @@ satysfi <input file> -o <output file>
 ```sh
 satysfi doc.saty -o output.pdf
 ```
+
 
 ### コンパイルしてみよう
 
@@ -168,6 +166,7 @@ make
 
 うまく準備できていれば，`demo.pdf` が作成されます。
 
+
 ### リファレンス
 
 詳細な解説である [The SATySFi​book](https://booth.pm/ja/items/1127224) が BOOTH にて公開されており，無償でダウンロードできます。このほか，SATySFi で文書を作成するためのごく簡単なリファレンスが `doc` フォルダに SATySFi を用いて書かれており，以下の処理で PDF が生成されます：
@@ -177,7 +176,8 @@ cd doc
 make
 ```
 
-## コマンドラインオプション
+
+### コマンドラインオプション
 
 * `-v`, `--version`: ヴァージョンを表示します。
 * `-o`, `--output`: 出力ファイル名を指定します。省略された場合，入力ファイル名の拡張子を `.pdf` に変えた名前を出力ファイル名とします。
@@ -187,6 +187,7 @@ make
 * `--debug-show-bbox`: （デバッグ目的で）各グリフにバウンディングボックスをつけて出力します。
 * `--debug-show-space`: （デバッグ目的で）スペース部分に目印をつけて出力します。
 
-## SATySFiを学ぶ
+
+### SATySFiを学ぶ
 
 [Wiki](https://github.com/gfngfn/SATySFi/wiki/SATySFi-Wiki#%E5%AD%A6%E7%BF%92%E7%94%A8%E8%B3%87%E6%96%99) に学習用の資料があります。

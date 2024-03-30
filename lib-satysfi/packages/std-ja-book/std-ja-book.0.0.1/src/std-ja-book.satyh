@@ -5,6 +5,7 @@ use package Code
 use package FootnoteScheme
 
 use package HyphEnglish
+use package Unidata
 
 use package FontJunicode
 use package FontIpaEx
@@ -135,6 +136,7 @@ end = struct
     get-initial-context wid (command \Math.math)
       |> set-code-text-command (command \Code.code)
       |> set-hyphenation-dictionary HyphEnglish.hyphenation
+      |> set-unicode-char-database Unidata.unidata
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese

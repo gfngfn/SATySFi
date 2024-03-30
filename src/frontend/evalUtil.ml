@@ -467,6 +467,11 @@ let get_hyphenation : syntactic_value -> LoadHyph.t = function
   | value                             -> report_bug_value "get_hyphenation" value
 
 
+let get_unicode_char_database : syntactic_value -> ScriptDataMap.t * LineBreakDataMap.t = function
+  | BaseConstant(BCUnidata(unidata)) -> unidata
+  | value                            -> report_bug_value "get_unicode_char_database" value
+
+
 let get_outline (value : syntactic_value) =
   match value with
   | Tuple([

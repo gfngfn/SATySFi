@@ -48,6 +48,7 @@ let tRE   = (~! "regexp"        , BaseType(RegExpType))
 let tTCTX = (~! "text-info"     , BaseType(TextInfoType))
 let tIPOS = (~! "input-position", BaseType(InputPosType))
 let tHYPH = (~! "hyphenation"   , BaseType(HyphenationType))
+let tUCD  = (~! "unicode-char-database", BaseType(UnidataType))
 
 let tL ty = (~! "list", ListType(ty))
 let tR ty = (~! "ref", RefType(ty))
@@ -648,7 +649,9 @@ let get_pdf_mode_initial_context wid =
       dominant_wide_script   = CharBasis.OtherScript;
       dominant_narrow_script = CharBasis.OtherScript;
       langsys_scheme         = CharBasis.ScriptSchemeMap.empty;
+      script_map             = ScriptDataMap.empty;
       script_space_map       = default_script_space_map;
+      line_break_map         = LineBreakDataMap.empty;
       space_natural          = 0.33;
       space_shrink           = 0.08;
       space_stretch          = 0.16;

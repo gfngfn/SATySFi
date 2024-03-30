@@ -1221,7 +1221,6 @@ let build
           SatysfiCommand.(build_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
-            ~base_dir:absdir_store_root
             ~mode:text_mode_formats_str_opt
             ~options)
         in
@@ -1248,7 +1247,6 @@ let build
             ~out:abspath_out
             ~dump:abspath_dump
             ~deps:abspath_deps_config
-            ~base_dir:absdir_store_root
             ~mode:text_mode_formats_str_opt
             ~options)
         in
@@ -1312,7 +1310,6 @@ let test
           SatysfiCommand.(test_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
-            ~base_dir:absdir_store_root
             ~mode:text_mode_formats_str_opt)
         in
         return exit_status
