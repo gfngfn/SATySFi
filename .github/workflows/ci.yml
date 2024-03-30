@@ -73,17 +73,6 @@ jobs:
       - name: Install SATySFi
         run: |
           opam install -y .
-          if [ "${{ matrix.os }}" == 'macos-latest' ]; then
-            ./install-libs.sh ~/.saphe ginstall
-          else
-            ./install-libs.sh ~/.saphe install
-          fi
-
-# It is no longer necessary to download font files beforehand
-# due to the package system:
-#          if [ -z "$(ls lib-satysfi/dist/fonts)" ]; then
-#            ./download-fonts.sh
-#          fi
 
       - name: Check library packages
         run: |
