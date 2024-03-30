@@ -41,7 +41,6 @@ let make_mode_args (text_mode_formats_str_opt : string option) =
 let build_package
   ~envelope:(abspath_envelope_config : abs_path)
   ~deps:(abspath_deps_config : abs_path)
-  ~base_dir:(absdir_base : abs_path)
   ~mode:(text_mode_formats_str_opt : string option)
   ~options:(_ : build_option) : run_result
 =
@@ -50,7 +49,6 @@ let build_package
       "satysfi"; "build"; "package";
       get_abs_path_string abspath_envelope_config;
       "--deps"; get_abs_path_string abspath_deps_config;
-      "--base"; get_abs_path_string absdir_base;
       "--full-path"; (* TODO: refine this *)
     ]
   in
@@ -66,7 +64,6 @@ let build_document
   ~out:(abspath_out : abs_path)
   ~dump:(abspath_dump : abs_path)
   ~deps:(abspath_deps_config : abs_path)
-  ~base_dir:(absdir_base : abs_path)
   ~mode:(text_mode_formats_str_opt : string option)
   ~options:(_ : build_option) : run_result
 =
@@ -77,7 +74,6 @@ let build_document
       "--output"; get_abs_path_string abspath_out;
       "--dump"; get_abs_path_string abspath_dump;
       "--deps"; get_abs_path_string abspath_deps_config;
-      "--base"; get_abs_path_string absdir_base;
       "--full-path"; (* TODO: refine this *)
     ]
   in
@@ -91,7 +87,6 @@ let build_document
 let test_package
   ~envelope:(abspath_envelope_config : abs_path)
   ~deps:(abspath_deps_config : abs_path)
-  ~base_dir:(absdir_base : abs_path)
   ~mode:(text_mode_formats_str_opt : string option) : run_result
 =
   let args_mandatory =
@@ -99,7 +94,6 @@ let test_package
       "satysfi"; "test"; "package";
       get_abs_path_string abspath_envelope_config;
       "--deps"; get_abs_path_string abspath_deps_config;
-      "--base"; get_abs_path_string absdir_base;
       "--full-path"; (* TODO: refine this *)
     ]
   in

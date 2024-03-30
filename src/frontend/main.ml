@@ -158,7 +158,6 @@ let get_job_directory (abspath : abs_path) : string =
 let build_package
     ~(fpath_in : string)
     ~(fpath_deps : string)
-    ~(fpath_base : string)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
 =
@@ -169,7 +168,6 @@ let build_package
 
     let abspath_envelope_config = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
-    let _absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in (* TODO: remove this *)
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
     let typecheck_config =
@@ -224,7 +222,6 @@ let build_document
     ~(fpath_out : string)
     ~(fpath_dump : string)
     ~(fpath_deps : string)
-    ~(fpath_base : string)
     ~(text_mode_formats_str_opt : string option)
     ~(page_number_limit : int)
     ~(show_full_path : bool)
@@ -245,7 +242,6 @@ let open ResultMonad in
     let abspath_out = make_absolute_if_relative ~origin:absdir_current fpath_out in
     let abspath_dump = make_absolute_if_relative ~origin:absdir_current fpath_dump in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
-    let _absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in (* TODO: remove this *)
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
     let typecheck_config =
@@ -331,7 +327,6 @@ let open ResultMonad in
 let test_package
     ~(fpath_in : string)
     ~(fpath_deps : string)
-    ~(fpath_base : string)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
 =
@@ -342,7 +337,6 @@ let test_package
 
     let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
-    let _absdir_base = make_absolute_if_relative ~origin:absdir_current fpath_base in (* TODO: remove this *)
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
     let typecheck_config =
