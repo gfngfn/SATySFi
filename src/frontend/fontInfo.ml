@@ -410,20 +410,6 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
 
 
 let initialize () =
-  let res =
-    let open ResultMonad in
-    FontHashTable.initialize ();
-    MathFontHashTable.initialize ();
-(* TODO: remove the following: *)
-(*
-    let abspath_S = append_to_abs_directory absdir_base "unidata/Scripts.txt" in
-    let abspath_EAW = append_to_abs_directory absdir_base "unidata/EastAsianWidth.txt" in
-    ScriptDataMap.set_from_file abspath_S abspath_EAW;
-    let abspath_LB = append_to_abs_directory absdir_base "unidata/LineBreak.txt" in
-    LineBreakDataMap.set_from_file abspath_LB;
-*)
-    return ()
-  in
-  match res with
-  | Ok(())   -> ()
-  | Error(e) -> raise (FontInfoError(e))
+  FontHashTable.initialize ();
+  MathFontHashTable.initialize ();
+  ()
