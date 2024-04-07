@@ -4,7 +4,7 @@
  (flags (:standard -bin-annot -thread -safe-string))
  (libraries str
             batteries
-            camlimages
+            camlimages.core
             camlimages.jpeg
             camlimages.png
             camlpdf
@@ -14,6 +14,10 @@
             menhirLib
             otfed
             uutf
+            uunf
+            uunf.string
+            uuseg
+            uuseg.string
             yojson-with-position
             omd
             ocamlgraph
@@ -43,6 +47,11 @@
 (menhir
  (modules parser dataParser)
  (flags (--table --explain)))
+
+(rule
+ (targets version.ml)
+ (deps  ../tools/genversion/genversion.exe (:src ../satysfi.opam))
+ (action (with-stdout-to %{targets} (run %{deps}))))
 
 (rule
  (targets types.ml)

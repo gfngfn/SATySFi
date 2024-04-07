@@ -397,7 +397,7 @@ end = struct
   let page-number-string pbinfo =
     match !no-page-number-max-ref with
     | None              -> ` `
-    | Some(nopagenomax) -> arabic (pbinfo#page-number + nopagenomax)
+    | Some(nopagenomax) -> arabic (pbinfo#page-number - nopagenomax)
 
 
   let section-scheme ctx label title inner =
