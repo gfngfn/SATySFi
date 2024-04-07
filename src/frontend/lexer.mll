@@ -575,7 +575,7 @@ and lex_inline stack = parse
           report_error lexbuf "unexpected end of input while reading an inline text area"
       }
   | str+
-      { let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok) }
+      { CHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
 
   | _ as c
       { report_error lexbuf (Printf.sprintf "illegal token '%s' in an inline text area" (String.make 1 c)) }
