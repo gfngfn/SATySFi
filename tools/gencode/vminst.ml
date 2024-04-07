@@ -1618,7 +1618,9 @@ CompiledInlineTextClosure([CompiledImInlineTextText(str)], env)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_string (HorzBox.extract_string ibs)
+ibs
+|> HorzBox.extract_string
+|> make_string
 |}
     ; inst "PrimitiveInlineSkip"
         ~name:"inline-skip"
@@ -2019,7 +2021,11 @@ else
         ~is_text_mode_primitive:true
         ~code:{|
 let ilst = get_list get_int valueilst in
-let s = (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8 in
+let s =
+  (List.map Uchar.of_int ilst)
+  |> InternalText.of_uchar_list
+  |> InternalText.to_utf8
+in
 make_string s
 |}
     ; inst "PrimitiveStringExplode"
@@ -2040,6 +2046,52 @@ let ilst =
   |> List.map Uchar.to_int
 in
 make_list make_int ilst
+|}
+    ; inst "PrimitiveNormlizeStringToNfc"
+        ~name:"normalize-string-to-nfc"
+        ~type_:Type.(tS @-> tS)
+        ~fields:[
+        ]
+        ~params:[
+          param "str" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+str
+|> NormalizeString.of_utf8_nfc
+|> NormalizeString.to_utf8
+|> make_string
+|}
+    ; inst "PrimitiveNormlizeStringToNfd"
+        ~name:"normalize-string-to-nfd"
+        ~type_:Type.(tS @-> tS)
+        ~fields:[
+        ]
+        ~params:[
+          param "str" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+str
+|> NormalizeString.of_utf8_nfd
+|> NormalizeString.to_utf8
+|> make_string
+|}
+    ; inst "PrimitiveSplitGraphemeCluster"
+        ~name:"split-grapheme-cluster"
+        ~type_:Type.(tS @-> (tL tS))
+        ~fields:[
+        ]
+        ~params:[
+          param "str" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let slst = GraphemeCluster.split_utf8 str in
+make_list make_string slst
 |}
     ; inst "PrimitiveRegexpOfString"
         ~name:"regexp-of-string"

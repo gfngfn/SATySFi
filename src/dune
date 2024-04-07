@@ -13,6 +13,10 @@
             menhirLib
             otfed
             uutf
+            uunf
+            uunf.string
+            uuseg
+            uuseg.string
             yojson-with-position
             omd
             ocamlgraph
