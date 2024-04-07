@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "satysfi"
-version: "0.0.10"
+version: "0.0.11"
 maintainer: "Takashi Suwa"
 authors: [
   "Takashi Suwa"
@@ -20,24 +20,24 @@ remove: [
 ]
 # Packages whose version suffix is "+satysfi" are distributed on satysfi-external-repo.
 depends: [
-  "ocaml" {>= "4.12.0"}
-  "batteries"
-  "camlimages" {>= "5.0.1"}
+  "ocaml" {>= "4.12.0" & < "5.0.0"}
+  "batteries" {>= "3.6.0" & < "4.0.0"}
+  "camlimages" {>= "5.0.1" & < "5.0.5"}
   "camlpdf" {= "2.3.1+satysfi"}
   "cmdliner" {>= "1.1.1"}
-  "core_kernel" {>= "v0.15"}
+  "core_kernel" {>= "v0.15" & < "v0.16"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "dune" {build}
   "menhir"
   "ocamlfind" {build}
-  "otfed" {= "0.3.1"}
-  "ppx_deriving"
-  "re" {build}
+  "otfed" {>= "0.3.1" & < "0.4"}
+  "ppx_deriving" {>= "5.2.1" & < "6.0.0"}
+  "re" {build & >= "1.10.4" & < "2.0.0"}
   "uutf" {>= "1.0.3" & < "2.0.0"}
   "uunf" {>= "15.0.0" & < "16.0.0"}
   "uuseg" {>= "15.0.0" & < "16.0.0"}
   "yojson-with-position" {= "1.4.2+satysfi"}
-  "omd" {< "2.0.0~"}
+  "omd" {>= "1.3.2" & < "2.0.0~"}
   "ocamlgraph"
   "alcotest" {with-test & >= "1.4.0"}
 ]
