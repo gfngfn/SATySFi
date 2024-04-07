@@ -2023,8 +2023,8 @@ else
 let ilst = get_list get_int valueilst in
 let s =
   (List.map Uchar.of_int ilst)
-  |> InternalText.of_uchar_list
-  |> InternalText.to_utf8
+    |> InternalText.of_uchar_list
+    |> InternalText.to_utf8
 in
 make_string s
 |}
@@ -2041,9 +2041,9 @@ make_string s
         ~code:{|
 let ilst =
   str
-  |> InternalText.of_utf8
-  |> InternalText.to_uchar_list
-  |> List.map Uchar.to_int
+    |> InternalText.of_utf8
+    |> InternalText.to_uchar_list
+    |> List.map Uchar.to_int
 in
 make_list make_int ilst
 |}
@@ -2059,9 +2059,9 @@ make_list make_int ilst
         ~is_text_mode_primitive:true
         ~code:{|
 str
-|> NormalizeString.of_utf8_nfc
-|> NormalizeString.to_utf8
-|> make_string
+  |> NormalizeString.of_utf8_nfc
+  |> NormalizeString.to_utf8
+  |> make_string
 |}
     ; inst "PrimitiveNormlizeStringToNfd"
         ~name:"normalize-string-to-nfd"
@@ -2075,9 +2075,9 @@ str
         ~is_text_mode_primitive:true
         ~code:{|
 str
-|> NormalizeString.of_utf8_nfd
-|> NormalizeString.to_utf8
-|> make_string
+  |> NormalizeString.of_utf8_nfd
+  |> NormalizeString.to_utf8
+  |> make_string
 |}
     ; inst "PrimitiveSplitGraphemeCluster"
         ~name:"split-grapheme-cluster"

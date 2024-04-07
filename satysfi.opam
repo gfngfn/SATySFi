@@ -33,9 +33,9 @@ depends: [
   "otfed" {= "0.3.1"}
   "ppx_deriving"
   "re" {build}
-  "uutf"
-  "uunf"
-  "uuseg"
+  "uutf" {>= "1.0.3" & < "2.0.0"}
+  "uunf" {>= "15.0.0" & < "16.0.0"}
+  "uuseg" {>= "15.0.0" & < "16.0.0"}
   "yojson-with-position" {= "1.4.2+satysfi"}
   "omd" {< "2.0.0~"}
   "ocamlgraph"
