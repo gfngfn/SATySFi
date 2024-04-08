@@ -439,6 +439,15 @@ and exec_code_pattern_tree (env : vmenv) (irpat : ir_pattern_tree) : vmenv * cod
       in
       (env, CdPTuple(cdpats))
 
+  | IRPRecord(irpats) ->
+      let (env, cdpats) =
+        irpats |> List.fold_left (fun (env, acc) (label, irpat) ->
+          let (env, cdpat) = exec_code_pattern_tree env irpat in
+          (env, Alist.extend acc (label, cdpat))
+        ) (env, Alist.empty)
+      in
+      (env, CdPRecord(cdpats |> Alist.to_list))
+
   | IRPWildCard ->
       (env, CdPWildCard)
 
@@ -983,6 +992,22 @@ and exec_op (op : instruction) (stack : stack) (env : vmenv) (code : instruction
             end
 
         | _ -> report_bug_vm "invalid argument for OpCheckStackTopTupleCons"
+      end
+
+  | OpCheckStackTopRecord(label, next) ->
+      begin
+        match stack with
+        | (v, _) :: stack ->
+            begin
+              match v with
+              | RecordValue(fields) ->
+                let value = LabelMap.find label fields in
+                exec (make_entry value :: make_entry (v) :: stack) env code dump
+              | _                 ->
+                exec stack env next dump
+            end
+
+        | _ -> report_bug_vm "invalid argument for OpCheckStackTopRecord"
       end
 
   | OpClosure(varloc_labmap, arity, framesize, body) ->

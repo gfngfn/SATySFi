@@ -40,6 +40,7 @@ depends: [
   "omd" {>= "1.3.2" & < "2.0.0~"}
   "ocamlgraph"
   "alcotest" {with-test & >= "1.4.0"}
+  "ppx_expect" {with-test}
 ]
 synopsis: "A statically-typed, functional typesetting system"
 description: """
