@@ -1,75 +1,62 @@
 name: CI
 
 on:
-  [pull_request, push]
+  - push
+  - pull_request
 
 jobs:
   build:
     name: Build
     strategy:
+      fail-fast: false
       matrix:
-        os: [ 'ubuntu-latest', 'macos-latest' ]
-        ocaml-version:
-          - 4.12.1
-          - 4.13.1
-          - 4.14.0
+        os:
+          - ubuntu-latest
+          - macos-latest
+        ocaml-compiler:
+          - "4.12"
+          - "4.13"
+          - "4.14"
+
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout tree
+        uses: actions/checkout@v4
 
       - name: Cache dist fonts
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-dist-fonts
+        uses: actions/cache@v4
+        id: fonts-cache
         with:
           path: lib-satysfi/dist/fonts
-          key: ${{ env.cache-name }}-${{ hashFiles('download-fonts.sh') }}
+          key: cache-dist-fonts-${{ hashFiles('download-fonts.sh') }}
 
-      - name: Determine the default OPAM Repo
-        id: determine-default-opam-repo
-        # See https://docs.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#runner-context
-        # and https://github.com/ocaml/setup-ocaml/blob/4ac56b0fd440c3eef30fd1e34c96e0c740a807da/src/constants.ts#L45
-        run: |
-          if [ "${{ runner.os }}" = "Windows" ] ; then
-            DEFAULT_OPAM_REPO="https://github.com/fdopen/opam-repository-mingw.git#opam2"
-          else
-            DEFAULT_OPAM_REPO="https://github.com/ocaml/opam-repository.git"
-          fi
-          echo "::set-output name=opam-repo-default::$(echo "$DEFAULT_OPAM_REPO")"
-
-      - name: Setup OCaml ${{ matrix.ocaml-version }} and pin satysfi
+      - name: Set-up OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-compiler: ${{ matrix.ocaml-version }}
-          dune-cache: ${{ matrix.os != 'macos-latest' }}
-
-          opam-depext: true
-          opam-pin: true
-
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          dune-cache: true
+          allow-prerelease-opam: true
           opam-repositories: |
             satysfi-external: https://github.com/gfngfn/satysfi-external-repo.git
-
-            default: ${{ steps.determine-default-opam-repo.outputs.opam-repo-default }}
+            default: https://github.com/ocaml/opam-repository.git
 
       - name: Install SATySFi dependencies
-        run: |
-          opam install . --deps-only --with-doc --verbose
+        run: opam install . --deps-only --with-doc
 
       - name: Build SATySFi
         run: opam exec -- make all
 
       - name: Run tests
-        run: |
-          opam exec -- dune runtest
+        run: opam exec -- dune runtest
+
+      - name: Download fonts
+        if: steps.fonts-cache.outputs.cache-hit != 'true'
+        run: ./download-fonts.sh
 
       - name: Install SATySFi
         run: |
           opam install -y .
-          if [ -z "$(ls lib-satysfi/dist/fonts)" ]; then
-            ./download-fonts.sh
-          fi
           ./install-libs.sh ~/.satysfi
 
       - name: Build demo docs
