@@ -47,6 +47,14 @@ opam install satysfi satysfi-dist satyrographos
 satyrographos install
 ```
 
+## Nix を使ったインストール方法 (Linuxユーザ向け) (非公式)
+
+Nixパッケージマネージャを[ここ](https://nixos.org/nix/download.html)の指示に従ってインストールします。
+
+```sh
+$ nix-env -iA nixpkgs.satysfi
+```
+
 ## OPAM を使ったインストール方法
 
 ### 事前に必要なもの
