@@ -224,10 +224,13 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
         (xpos +% wid, opaccnew)
 
     | EvHorzInlineImage(hgt, imgkey) ->
-        let ops_image =
-          fs.image imgkey (xpos, yposbaseline) wid hgt
-        in
-        let opaccnew = Alist.append opacc ops_image in
+        let opaccnew = if ImageInfo.is_stub imgkey then
+            opacc
+        else
+            let ops_image =
+              fs.image imgkey (xpos, yposbaseline) wid hgt
+            in
+            Alist.append opacc ops_image in
         (xpos +% wid, opaccnew)
 
     | EvHorzHookPageBreak(pbinfo, hookf) ->
