@@ -1,0 +1,27 @@
+language: "^0.1.0"
+name: "math"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "Toru Niina <@ToruNiina>"
+  - "forestaa <@forestaa>"
+  - "Takuma Ishikawa <@nekketsuuu>"
+  - "El Pin Al <@elpinal>"
+  - "coord_e <@coord-e>"
+  - "SnO₂WMaN <@SnO2WMaN>"
+registries:
+  - name: "default"
+    remote:
+      type: "git"
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "format-1"
+contents:
+  type: "library"
+  main_module: "Math"
+  source_directories:
+    - "./src"
+  dependencies:
+    - name: "stdlib"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"

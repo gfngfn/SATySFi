@@ -7,6 +7,8 @@ open GraphicBase
 open SyntaxBase
 open Types
 open StaticEnv
+open ConfigError
+
 
 (* -- type IDs for predefined data types -- *)
 let vid_option   = TypeID.fresh "option"
@@ -41,6 +43,7 @@ let tPRP  = (~! "pre-path"      , BaseType(PrePathType))
 let tPATH = (~! "path"          , BaseType(PathType))
 let tGR   = (~! "graphics"      , BaseType(GraphicsType))
 let tIMG  = (~! "image"         , BaseType(ImageType))
+let tFONTKEY = (~! "font"       , BaseType(FontType))
 let tDOC  = (~! "document"      , BaseType(DocumentType))
 let tRE   = (~! "regexp"        , BaseType(RegExpType))
 let tTCTX = (~! "text-info"     , BaseType(TextInfoType))
@@ -67,7 +70,7 @@ let tMCCLS        = (~! "mccls"   , variant [] vid_mccls   )
 let tCELL         = (~! "cell"    , variant [] vid_cell    )
 
 (* -- predefined alias types -- *)
-let tFONT         = tPROD [tS; tFL; tFL]
+let tFONTWR       = tPROD [tFONTKEY; tFL; tFL]
 let tPT           = tPROD [tLN; tLN]
 let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
@@ -400,7 +403,24 @@ let default_radical hgt_bar t_bar dpt fontsize color =
   [ HorzPure(PHGFixedGraphics{ width = wid; height = hgt_bar +% t_bar; depth = nonnegdpt; graphics }) ]
 
 
-let code_point cp = Uchar.of_int cp
+let code_point =
+  Uchar.of_int
+
+
+let uchar_of_char =
+  Core.Uchar.of_char
+
+
+let ascii_capital_of_index (i : int) : Uchar.t =
+  Uchar.of_int ((Char.code 'A') + i)
+
+
+let ascii_small_of_index (i : int) : Uchar.t =
+  Uchar.of_int ((Char.code 'a') + i)
+
+
+let ascii_digit_of_index (i : int) : Uchar.t =
+  Uchar.of_int ((Char.code '0') + i)
 
 
 let default_math_variant_char_map : HorzBox.math_variant_char_map =
@@ -608,8 +628,6 @@ let default_math_class_map =
       ]
 
 
-let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
-
 let default_hyphen_dictionary = ref LoadHyph.empty
 
 
@@ -628,7 +646,7 @@ let get_pdf_mode_initial_context wid =
     {
       hyphen_dictionary      = !default_hyphen_dictionary;
       hyphen_badness         = 100;
-      font_scheme            = !default_font_scheme_ref;
+      font_scheme            = CharBasis.ScriptSchemeMap.empty;
       font_size              = pdfpt 12.;
       dominant_wide_script   = CharBasis.OtherScript;
       dominant_narrow_script = CharBasis.OtherScript;
@@ -661,7 +679,7 @@ let get_pdf_mode_initial_context wid =
       space_math_prefix      = (0.125, 0.04, 0.08);
       left_hyphen_min        = 3;
       right_hyphen_min       = 2;
-      math_font_abbrev       = "lmodern";  (* TEMPORARY *)
+      math_font_key          = None;
       math_script_level      = HorzBox.BaseLevel;
     }
 
@@ -709,13 +727,19 @@ let text_mode_table =
     ]
 
 
-let make_environments table =
+let make_environments (runtime_config : runtime_config) table =
   let tyenv =
     Typeenv.empty
       |> add_general_default_types
       |> add_pdf_mode_default_types
   in
-  let env : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
+  let env : environment =
+    {
+      env_main = EvalVarIDMap.empty;
+      env_store = ref (StoreIDHashTable.create 128);
+      env_config = runtime_config;
+    }
+  in
   let temporary_ast = Nil in
   let (tyenv, env, locacc) =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
@@ -737,12 +761,19 @@ let make_environments table =
   (tyenv, env)
 
 
-let make_pdf_mode_environments () =
-  default_font_scheme_ref := SetDefaultFont.main (Config.resolve_lib_file_exn (make_lib_path "dist/hash/default-font.satysfi-hash"));
-  default_hyphen_dictionary := LoadHyph.main (Config.resolve_lib_file_exn (make_lib_path "dist/hyph/english.satysfi-hyph"));
-    (* temporary; should depend on the current language -- *)
-  make_environments pdf_mode_table
+let resolve_lib_file (libpath : lib_path) =
+  Config.resolve_lib_file libpath
+    |> Result.map_error (fun candidates -> CannotFindLibraryFile(libpath, candidates))
 
 
-let make_text_mode_environments () =
-  make_environments text_mode_table
+let make_pdf_mode_environments (runtime_config : runtime_config) =
+  let open ResultMonad in
+  let* abspath_hyphen = resolve_lib_file (make_lib_path "hyph/english.satysfi-hyph") in
+  default_hyphen_dictionary := LoadHyph.main abspath_hyphen;
+    (* TODO: should depend on the current language *)
+  return @@ make_environments runtime_config pdf_mode_table
+
+
+let make_text_mode_environments (runtime_config : runtime_config) =
+  let open ResultMonad in
+  return @@ make_environments runtime_config text_mode_table

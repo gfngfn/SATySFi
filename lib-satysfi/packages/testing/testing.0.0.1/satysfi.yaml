@@ -1,0 +1,10 @@
+language: "^0.1.0"
+name: "testing"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+contents:
+  type: "library"
+  main_module: "Testing"
+  source_directories:
+  - "./src"
+  dependencies: []

@@ -11,6 +11,8 @@ type data = {
 
 module Vertex = Impl.Vertex
 
+module VertexSet = Impl.VertexSet
+
 type t = data Impl.t
 
 

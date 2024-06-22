@@ -1,0 +1,21 @@
+use List
+use package Testing
+
+module ListTest = struct
+
+  module IntTarget = struct
+    type t = int
+    val equal m n = (m == n)
+    val show = arabic
+  end
+  module TEM = Testing.Equality.Make
+  module IntEquality = TEM IntTarget
+
+  #[test]
+  val fold-left-test =
+    let input = [3, 1, 4, 1, 5, 9, 2] in
+    let expected = 24 in
+    let got = List.fold-left ( + ) 0 input in
+    IntEquality.assert-equal expected got
+
+end

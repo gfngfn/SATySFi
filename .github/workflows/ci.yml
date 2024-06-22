@@ -22,12 +22,12 @@ jobs:
       - name: Checkout tree
         uses: actions/checkout@v4
 
-      - name: Cache dist fonts
+      - name: Cache locks
         uses: actions/cache@v4
-        id: fonts-cache
+        id: locks-cache
         with:
-          path: lib-satysfi/dist/fonts
-          key: cache-dist-fonts-${{ hashFiles('download-fonts.sh') }}
+          path: ~/.satysfi/cache
+          key: cache-locks-${{ hashFiles('default-registry-commit-hash.txt') }}
 
       - name: Set-up OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v2
@@ -48,17 +48,24 @@ jobs:
       - name: Run tests
         run: opam exec -- dune runtest
 
-      - name: Download fonts
-        if: steps.fonts-cache.outputs.cache-hit != 'true'
-        run: ./download-fonts.sh
-
       - name: Install SATySFi
         run: |
           opam install -y .
-          ./install-libs.sh ~/.satysfi
+          if [ "${{ matrix.os }}" == 'macos-latest' ]; then
+            ./install-libs.sh ~/.satysfi ginstall
+          else
+            ./install-libs.sh ~/.satysfi install
+          fi
+
+      - name: Check library packages
+        run: |
+          opam exec -- make test-packages
 
       - name: Build demo docs
         run: |
           (cd demo; opam exec -- make)
           (cd doc; opam exec -- make)
+
+      - name: Run integration tests
+        run: |
           (cd tests; opam exec -- make)

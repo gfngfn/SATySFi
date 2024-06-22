@@ -17,6 +17,8 @@ module Vertex : sig
   val hash : t -> int
 end
 
+module VertexSet : Set.S with type elt = Vertex.t
+
 type t
 
 val empty : t

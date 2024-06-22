@@ -1,0 +1,634 @@
+use package open Stdlib
+use package Math
+use package Code
+use package Annot
+use package FootnoteScheme
+
+use package FontJunicode
+use package FontIpaEx
+use package FontLatinModern
+use package FontLatinModernMath
+
+module StdJaReport :> sig
+
+  val document : ?(
+      paper-size       : length * length,
+      show-page-number : bool,
+      text-width       : length,
+      text-height      : length,
+      text-origin      : Pervasives.point, %- TODO: remove this by using 'open'
+      header-origin    : Pervasives.point,
+      footer-origin    : Pervasives.point,
+      header-width     : length,
+      footer-width     : length,
+    ) (|
+      title  : inline-text,
+      author : inline-text,
+    |) -> block-text -> document
+
+  val font-latin-roman  : font * float * float
+  val font-latin-bold   : font * float * float
+  val font-latin-italic : font * float * float
+  val font-latin-sans   : font * float * float
+  val font-latin-mono   : font * float * float
+  val font-cjk-mincho   : font * float * float
+  val font-cjk-gothic   : font * float * float
+  val set-latin-font : (font * float * float) -> context -> context
+  val set-cjk-font   : (font * float * float) -> context -> context
+  val \ref : inline [string]
+  val \ref-page : inline [string]
+  val \figure : inline [?(label : string) inline-text, block-text]
+  val +p : block [inline-text]
+  val +chapter : block [?(label : string, outline-title : string) inline-text, block-text]
+  val +section : block [?(label : string, outline-title : string) inline-text, block-text]
+  val +subsection : block [?(label : string, outline-title : string) inline-text, block-text]
+  val +definition : block [?(word : inline-text, label : string) inline-text]
+  val +theorem : block [?(word : inline-text, label : string) inline-text]
+  val +example : block [?(word : inline-text, label : string) inline-text]
+  val +lemma : block [?(word : inline-text, label : string) inline-text]
+  val +corollary : block [?(word : inline-text, label : string) inline-text]
+  val +proof : block [?(word : inline-text) inline-text]
+  val \emph : inline [inline-text]
+  val \dfn : inline [inline-text]
+  val \footnote : inline [inline-text]
+
+end = struct
+
+%  type toc-element =
+%    | TOCElementChapter    of string * inline-text
+%    | TOCElementSection    of string * inline-text
+%    | TOCElementSubsection of string * inline-text
+
+
+  val generate-fresh-label =
+    let mutable count <- 0 in
+      (fun () -> (
+        let () = count <- !count + 1 in
+          `generated:` ^ (arabic (!count))
+      ))
+
+
+  val no-pads = (0pt, 0pt, 0pt, 0pt)
+
+
+  val inline ctx \ref key =
+    let opt = get-cross-reference (key ^ `:num`) in
+    let it =
+      match opt with
+      | None    -> {?}
+      | Some(s) -> embed-string s
+      end
+    in
+    inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
+
+
+  val inline ctx \ref-page key =
+    let opt = get-cross-reference (key ^ `:page`) in
+    let it =
+      match opt with
+      | None    -> {?}
+      | Some(s) -> embed-string s
+      end
+    in
+    inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
+
+
+  val font-size-normal  = 12pt
+  val font-size-title   = 18pt
+  val font-size-author  = 16pt
+  val font-size-chapter = 22pt
+  val font-size-section = 18pt
+  val font-size-subsection = 16pt
+
+  val section-top-margin = 20pt
+  val section-bottom-margin = 12pt
+
+  val chapter-top-margin = 30pt
+  val chapter-bottom-margin = 18pt
+
+  val font-ratio-latin = 1.
+  val font-ratio-cjk = 0.88
+
+  val font-latin-roman  = (FontJunicode.normal , font-ratio-latin, 0.)
+  val font-latin-bold   = (FontJunicode.bold   , font-ratio-latin, 0.)
+  val font-latin-italic = (FontJunicode.italic , font-ratio-latin, 0.)
+  val font-latin-sans   = (FontLatinModern.sans, font-ratio-latin, 0.)
+  val font-latin-mono   = (FontLatinModern.mono, font-ratio-latin, 0.)
+  val font-cjk-mincho   = (FontIpaEx.mincho    , font-ratio-cjk  , 0.)
+  val font-cjk-gothic   = (FontIpaEx.gothic    , font-ratio-cjk  , 0.)
+
+
+  val set-latin-font font ctx =
+    ctx |> set-font Latin font
+
+
+  val set-cjk-font font ctx =
+    ctx |> set-font HanIdeographic font
+        |> set-font Kana           font
+
+
+  val get-standard-context wid =
+    get-initial-context wid (command \Math.math)
+      |> set-code-text-command (command \Code.code)
+      |> set-dominant-wide-script Kana
+      |> set-language Kana Japanese
+      |> set-language HanIdeographic Japanese
+      |> set-dominant-narrow-script Latin
+      |> set-language Latin English
+      |> set-font Kana           font-cjk-mincho
+      |> set-font HanIdeographic font-cjk-mincho
+      |> set-font Latin          font-latin-roman
+      |> set-font OtherScript    font-latin-roman
+      |> set-math-font FontLatinModernMath.main
+      |> set-hyphen-penalty 100
+
+
+  val mutable ref-float-boxes <- []
+
+
+  val height-of-float-boxes pageno =
+%    let () = display-message `get height` in
+    (!ref-float-boxes) |> List.fold-left (fun h (pn, bb) -> (
+      if pn < pageno then h +' (get-natural-length bb) else h
+    )) 0pt
+
+
+  val mutable ref-figure <- 0
+
+
+  val inline ctx \figure ?(label = label-opt) caption inner =
+    let () = ref-figure <- !ref-figure + 1 in
+    let s-num = arabic (!ref-figure) in
+    let () =
+      match label-opt with
+      | Some(label) -> register-cross-reference (label ^ `:num`) s-num
+      | None        -> ()
+      end
+    in
+    let it-num = embed-string s-num in
+    let ds =
+      match label-opt with
+      | Some(label) ->
+          Annot.register-location-frame label
+
+      | None ->
+          let d (_, _) _ _ _ = Gr.empty in (d, d, d, d)
+      end
+    in
+    let bb-inner =
+      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) ds (fun ctx -> (
+        read-block ctx inner
+          +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#it-num; #caption;} ++ inline-fil)
+      ))
+    in
+    hook-page-break (fun pbinfo _ -> (
+      let () = display-message (`register `# ^ (arabic pbinfo#page-number)) in
+      ref-float-boxes <- (pbinfo#page-number, bb-inner) :: !ref-float-boxes
+    ))
+
+
+  val make-chapter-title ctx =
+    ctx |> set-font-size font-size-chapter
+        |> set-font Latin font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+
+
+  val make-section-title ctx =
+    ctx |> set-font-size font-size-section
+        |> set-font Latin font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+
+
+  val make-subsection-title ctx =
+    ctx |> set-font-size font-size-subsection
+        |> set-font Latin font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+
+
+%  val mutable toc-acc-ref <- []
+  val mutable outline-ref <- []
+  val mutable does-page-breaking-reach-last <- false
+  val mutable ref-current-page <- 0
+
+
+  val get-cross-reference-number label =
+    match get-cross-reference (label ^ `:num`) with
+    | None    -> `?`
+    | Some(s) -> s
+    end
+
+
+  val get-cross-reference-page label =
+    match get-cross-reference (label ^ `:page`) with
+    | None    -> `?`
+    | Some(s) -> s
+    end
+
+
+  val chapter-heading ctx ib-heading =
+    line-break true false
+      (ctx |> set-paragraph-margin chapter-top-margin chapter-bottom-margin)
+        ib-heading
+
+
+  val section-heading ctx ib-heading =
+    line-break true false
+      (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
+        ib-heading
+
+
+  val inline ctx \dummy it =
+    let open Pervasives in
+    let ib = read-inline (ctx |> set-text-color Color.white) it in
+    let w = get-natural-width ib in
+    ib ++ inline-skip (0pt -' w)
+
+
+  val document
+    ?(
+      show-page-number = show-page-number-opt,
+      paper-size       = paper-size-opt,
+      text-width       = text-width-opt,
+      text-height      = text-height-opt,
+      text-origin      = text-origin-opt,
+      header-origin    = header-origin-opt,
+      footer-origin    = footer-origin-opt,
+      header-width     = header-width-opt,
+      footer-width     = footer-width-opt,
+    ) record inner =
+    % -- mandatory designations --
+    let title = record#title in
+    let author = record#author in
+
+    % -- optional designations --
+    let page = paper-size-opt |> Option.from PaperSize.a4 in
+    let show-pages = show-page-number-opt |> Option.from true in
+    let txtwid = text-width-opt |> Option.from 440pt in
+    let txthgt = text-height-opt |> Option.from 630pt in
+    let txtorg = text-origin-opt |> Option.from (80pt, 100pt) in
+    let hdrorg = header-origin-opt |> Option.from (40pt, 30pt) in
+    let ftrorg = footer-origin-opt |> Option.from (40pt, 780pt) in
+    let hdrwid = header-width-opt |> Option.from 520pt in
+    let ftrwid = footer-width-opt |> Option.from 520pt in
+
+    let () =
+      FootnoteScheme.initialize ()
+    in
+
+    let ctx-doc = get-standard-context txtwid in
+
+    % -- title --
+    let bb-title =
+      let bb-title-main =
+        let ctx =
+          ctx-doc |> set-font-size font-size-title
+        in
+          line-break false false ctx
+            (inline-fil ++ read-inline ctx title ++ inline-fil)
+      in
+      let bb-author =
+        let ctx =
+          ctx-doc |> set-font-size font-size-author
+        in
+          line-break false false ctx
+            (inline-fil ++ read-inline ctx author ++ inline-fil)
+      in
+        bb-title-main +++ bb-author
+    in
+
+    % -- main --
+    let bb-main = read-block ctx-doc inner in
+
+    let () = display-message `modified version of stdjareport.` in
+
+    % -- page settings --
+    let pagecontf pbinfo =
+      let pageno = pbinfo#page-number in
+      let () = ref-current-page <- pageno in
+      let () = display-message (`page content `# ^ arabic pageno) in
+      let hgtfb = height-of-float-boxes pageno in
+      let (txtorgx, txtorgy) = txtorg in
+      (|
+        text-origin = (txtorgx, txtorgy +' hgtfb),
+        text-height = txthgt -' hgtfb,
+      |)
+    in
+    let pagepartsf pbinfo =
+      let pageno = pbinfo#page-number in
+      let () = display-message (`page parts `# ^ arabic pageno) in
+      let header =
+        let ctx =
+          get-standard-context hdrwid
+            |> set-paragraph-margin 0pt 0pt
+        in
+        let ib-text =
+         if pageno mod 2 == 0 then
+           (inline-fil ++ read-inline ctx title)
+         else
+           (read-inline ctx title ++ inline-fil)
+        in
+%        let () = display-message `insert` in
+        let (bb-float-boxes, acc) =
+          (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
+            let (pn, bb) = elem in
+              if pn < pageno then
+                let () = display-message (`use `# ^ arabic pn) in
+                let bbs =
+                  line-break true true (ctx |> set-paragraph-margin 0pt 12pt)
+                    (inline-fil ++ embed-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
+                      % 'ctx' is a dummy context
+                in
+                  (bbacc +++ bbs, acc)
+              else
+                (bbacc, elem :: acc)
+          )) (block-nil, [])
+        in
+        let () = ref-float-boxes <- acc in
+          bb-float-boxes
+      in
+      let footer =
+        if show-pages then
+          let ctx = get-standard-context ftrwid in
+          let it-pageno = embed-string (arabic pbinfo#page-number) in
+            line-break true true ctx
+              (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
+        else
+          block-nil
+      in
+        (|
+          header-origin  = hdrorg,
+          header-content = header,
+          footer-origin  = ftrorg,
+          footer-content = footer,
+        |)
+    in
+
+    % -- column settings --
+    let columnhookf () =
+      let () = FootnoteScheme.start-page () in
+      let () = display-message `column start.` in
+      block-nil
+    in
+    let columnendhookf () =
+      let pageno = !ref-current-page in
+      let last = !does-page-breaking-reach-last in
+      let remains =
+        (!ref-float-boxes) |> List.fold-left (fun b (pn, _) -> (
+          if pn < pageno then b else true
+        )) false
+      in
+      let () =
+        let s1 = if last then `T` else `F` in
+        let s2 = if remains then `T` else `F` in
+        display-message (`column end `# ^ arabic pageno ^ #` (last: `# ^ s1 ^ `, remains: `# ^ s2 ^ `)`)
+      in
+      if last then
+        if remains then
+          block-skip 0pt  % adds a new page for remaining figures
+        else
+          block-nil
+      else
+        block-nil
+    in
+
+    let bb-last =
+      hook-page-break-block (fun _ _ -> (
+        let () = display-message `reach last.` in
+        does-page-breaking-reach-last <- true
+      ))
+    in
+    let doc =
+      page-break-multicolumn page [] columnhookf columnendhookf pagecontf pagepartsf
+        (bb-title +++ bb-main +++ bb-last)
+    in
+    let () = register-outline (List.reverse !outline-ref) in
+      doc
+
+
+  val mutable num-chapter <- 0
+  val mutable num-section <- 0
+  val mutable num-subsection <- 0
+  val mutable num-theorems <- 0
+
+
+  val quad-indent ctx =
+    inline-skip (get-font-size ctx *' font-ratio-cjk)
+
+
+  val block ctx +p inner =
+    let open Pervasives in
+    let ib-inner = read-inline ctx inner in
+    let ib-parag = (quad-indent ctx) ++ ib-inner ++ inline-fil in
+    form-paragraph ctx ib-parag
+
+
+  val chapter-scheme ctx label title outline-title-opt inner =
+    let open Pervasives in
+    let ctx-title = make-chapter-title ctx in
+    let () = increment num-chapter in
+    let () = num-section <- 0 in
+    let () = num-subsection <- 0 in
+    let s-num = arabic (!num-chapter) in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+%    let () = toc-acc-ref <- (TOCElementChapter(label, title)) :: !toc-acc-ref in
+    let ib-num =
+      read-inline ctx-title (embed-string (s-num ^ `.`))
+        ++ hook-page-break (fun pbinfo _ -> (
+             let pageno = pbinfo#page-number in
+               register-cross-reference (label ^ `:page`) (arabic pageno)))
+    in
+    let ib-title = read-inline ctx-title title in
+    let outline-title = Option.from (extract-string ib-title) outline-title-opt in
+    let () = outline-ref <- (0, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
+    let bb-title =
+      let ib =
+        inline-frame-breakable no-pads (Annot.register-location-frame label)
+          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+      in
+      chapter-heading ctx ib
+    in
+    let bb-inner = read-block ctx inner in
+      bb-title +++ bb-inner
+
+
+  val section-scheme ctx label title outline-title-opt inner =
+    let open Pervasives in
+    let ctx-title = make-section-title ctx in
+    let () = increment num-section in
+    let () = num-subsection <- 0 in
+    let s-num = arabic (!num-chapter) ^ `.` ^ arabic (!num-section) in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+%    let () = toc-acc-ref <- (TOCElementSection(label, title)) :: !toc-acc-ref in
+    let ib-num =
+      read-inline ctx-title (embed-string (s-num ^ `.`))
+        ++ hook-page-break (fun pbinfo _ -> (
+             let pageno = pbinfo#page-number in
+               register-cross-reference (label ^ `:page`) (arabic pageno)))
+    in
+    let ib-title = read-inline ctx-title title in
+    let outline-title = Option.from (extract-string ib-title) outline-title-opt in
+    let () = outline-ref <- (1, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
+    let bb-title =
+      let ib =
+        inline-frame-breakable no-pads (Annot.register-location-frame label)
+          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+      in
+      section-heading ctx ib
+    in
+    let bb-inner = read-block ctx inner in
+      bb-title +++ bb-inner
+
+
+  val subsection-scheme ctx label title outline-title-opt inner =
+    let () = num-subsection <- !num-subsection + 1 in
+    let s-num = arabic (!num-chapter) ^ `.` ^ arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+%    let () = toc-acc-ref <- (TOCElementSubsection(label, title)) :: !toc-acc-ref in
+    let ctx-title = make-subsection-title ctx in
+    let ib-num =
+      read-inline ctx-title (embed-string (s-num ^ `.`))
+        ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
+    in
+    let ib-title = read-inline ctx-title title in
+    let outline-title = Option.from (extract-string ib-title) outline-title-opt in
+    let () = outline-ref <- (2, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
+    let bb-title =
+      line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
+        (inline-frame-breakable no-pads (Annot.register-location-frame label)
+          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))
+    in
+    let bb-inner = read-block ctx inner in
+    bb-title +++ bb-inner
+
+
+  val block ctx +chapter ?(label = label-opt, outline-title = outline-title-opt) title inner =
+    let label =
+      match label-opt with
+      | None        -> generate-fresh-label ()
+      | Some(label) -> label
+      end
+    in
+    chapter-scheme ctx label title outline-title-opt inner
+
+
+  val block ctx +section ?(label = label-opt, outline-title = outline-title-opt) title inner =
+    let label =
+      match label-opt with
+      | None        -> generate-fresh-label ()
+      | Some(label) -> label
+      end
+    in
+    section-scheme ctx label title outline-title-opt inner
+
+
+  val block ctx +subsection ?(label = label-opt, outline-title = outline-title-opt) title inner =
+    let label =
+      match label-opt with
+      | None        -> generate-fresh-label ()
+      | Some(label) -> label
+      end
+    in
+    subsection-scheme ctx label title outline-title-opt inner
+
+
+  val theorem-scheme ctx ctxf category wordopt label inner =
+    let open Pervasives in
+    let () = increment num-theorems in
+    let s-num =
+      (arabic (!num-chapter)) ^ `.` ^ (arabic (!num-section)) ^ `.` ^ (arabic (!num-theorems))
+    in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+    let it-num = embed-string s-num in
+    let ib-dfn =
+      read-inline (ctx |> set-latin-font font-latin-bold) {#category; #it-num;}
+    in
+    let ib-word =
+      match wordopt with
+      | None       -> inline-nil
+      | Some(word) -> read-inline ctx {\ (#word;).}
+      end
+    in
+    let ib-inner = read-inline (ctxf ctx) inner in
+    line-break true true ctx
+      (ib-dfn ++ ib-word ++ inline-skip (get-font-size ctx) ++ ib-inner ++ inline-fil)
+
+
+  val make-label prefix labelopt =
+    match labelopt with
+    | None    -> generate-fresh-label ()
+    | Some(s) -> prefix ^ s
+    end
+
+
+  val block ctx +definition ?(word = word-opt, label = label-opt) inner =
+    let label = make-label `definition:` label-opt in
+    theorem-scheme ctx (fun x -> x) {Definition} word-opt label inner
+
+
+  val block ctx +theorem ?(word = word-opt, label = label-opt) inner =
+    let label = make-label `theorem:` label-opt in
+    theorem-scheme ctx (set-latin-font font-latin-italic) {Theorem} word-opt label inner
+
+
+  val block ctx +lemma ?(word = word-opt, label = label-opt) inner =
+    let label = make-label `lemma:` label-opt in
+    theorem-scheme ctx (set-latin-font font-latin-italic) {Lemma} word-opt label inner
+
+
+  val block ctx +corollary ?(word = word-opt, label = label-opt) inner =
+    let label = make-label `corollary:` label-opt in
+    theorem-scheme ctx (set-latin-font font-latin-italic) {Corollary} word-opt label inner
+
+
+  val block ctx +example ?(word = word-opt, label = label-opt) inner =
+    let label = make-label `example:` label-opt in
+    theorem-scheme ctx (fun x -> x) {Example} word-opt label inner
+
+
+  val block ctx +proof ?(word = word-opt) inner =
+    let ib-heading =
+      let ctx = ctx |> set-latin-font font-latin-italic in
+      match word-opt with
+      | None    -> read-inline ctx {Proof.}
+      | Some(w) -> read-inline ctx {Proof of #w;.}
+      end
+    in
+    let ib-box = read-inline ctx {▪} in
+    line-break true true ctx
+      (ib-heading ++ inline-skip (get-font-size ctx) ++ read-inline ctx inner ++ inline-fil ++ ib-box)
+
+
+  val inline ctx \emph inner =
+    let ctx =
+      ctx |> set-font Latin font-latin-sans
+          |> set-cjk-font font-cjk-gothic
+    in
+    read-inline ctx inner
+
+
+  val inline \dfn inner = {\emph{#inner;}}
+
+
+  val inline ctx \footnote it =
+    let size = get-font-size ctx in
+    let ibf num =
+      let it-num = embed-string (arabic num) in
+      let ctx =
+        ctx |> set-font-size (size *' 0.75)
+            |> set-manual-rising (size *' 0.25)
+      in
+      read-inline ctx {\*#it-num;}
+    in
+    let bbf num =
+      let it-num = embed-string (arabic num) in
+      let ctx =
+        ctx |> set-font-size (size *' 0.9)
+            |> set-leading (size *' 1.2)
+            |> set-paragraph-margin (size *' 0.5) (size *' 0.5)
+          %temporary
+      in
+      line-break false false ctx (read-inline ctx {#it-num; #it;} ++ inline-fil)
+    in
+    FootnoteScheme.main ctx ibf bbf
+
+end

@@ -27,7 +27,12 @@ module Make (Element : ElementType) : sig
     val compare : t -> t -> int
 
     val hash : t -> int
+
+    val label : t -> element
   end
+
+  (** Equals [Set.Make(Vertex)]. *)
+  module VertexSet : Set.S with type elt = Vertex.t
 
   (** The type for graphs. *)
   type 'a t
@@ -55,4 +60,8 @@ module Make (Element : ElementType) : sig
         {- [Error cycle] if [g] has a cycle or a loop, or}
         {- [Ok sorted_vertices] if the sorting succeeds.}} *)
   val topological_sort : 'a t -> ((element * 'a) list, (element * 'a) cycle) result
+
+  (** [reachability_closure g vertices] computes the set of vertices reachable
+      from at least one vertex contained in [vertices]. *)
+  val reachability_closure : 'a t -> VertexSet.t -> VertexSet.t
 end

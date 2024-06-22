@@ -2,7 +2,13 @@ open Core
 open Main__
 
 let () =
-  let proj (_, utsrc) = utsrc in
+  let proj s = function
+    | Error(e) ->
+        Out_channel.fprintf stderr "%s: parse error: %s\n" s @@ Types.show_parse_error e;
+        exit 1
+    | Ok(utsrc) ->
+        utsrc
+  in
   Out_channel.print_endline ";;; generated automatically. DO NOT EDIT";
   Out_channel.print_endline ";;; To update this file, you should run `dune runtest; dune promote`.";
   let argv = Sys.get_argv () in
@@ -11,18 +17,13 @@ let () =
   |> List.tl
   |> Option.value ~default:[]
   |> List.iter ~f:begin fun fn ->
-    try
-      Out_channel.printf "\n;; %s\n" fn;
-      In_channel.with_file fn
-        ~f:(fun in_ch ->
-            Lexing.from_channel in_ch
-            |> ParserInterface.process fn
-          )
-      |> proj
-      |> [%derive.show: Types.untyped_source_file]
-      |> print_endline
-    with
-    | ParserInterface.Error(rng) ->
-        Out_channel.fprintf stderr "%s: parse error: %s\n" argv.(0) @@ Range.to_string rng;
-        exit 1
+    Out_channel.printf "\n;; %s\n" fn;
+    In_channel.with_file fn
+      ~f:(fun in_ch ->
+          Lexing.from_channel in_ch
+          |> ParserInterface.process_common fn
+        )
+    |> proj (argv.(0))
+    |> [%derive.show: Types.untyped_source_file]
+    |> print_endline
   end

@@ -1,18 +1,18 @@
 #!/bin/sh
 
 LIBDIR=${1:-/usr/local/share/satysfi}
+INSTALL=${2:-install}
 
-install -d ${LIBDIR}
-install -d ${LIBDIR}/dist
-install -d ${LIBDIR}/dist/unidata
-install -m 644 lib-satysfi/dist/unidata/*.txt ${LIBDIR}/dist/unidata
-install -d ${LIBDIR}/dist/fonts
-install -m 644 lib-satysfi/dist/fonts/* ${LIBDIR}/dist/fonts
-install -d ${LIBDIR}/dist/hash
-install -m 644 lib-satysfi/dist/hash/* ${LIBDIR}/dist/hash
-install -d ${LIBDIR}/dist/hyph
-install -m 644 lib-satysfi/dist/hyph/* ${LIBDIR}/dist/hyph
-install -d ${LIBDIR}/dist/packages
-install -m 644 lib-satysfi/dist/packages/* ${LIBDIR}/dist/packages
-install -d ${LIBDIR}/dist/md
-install -m 644 lib-satysfi/dist/md/* ${LIBDIR}/dist/md
+"${INSTALL}" -d "${LIBDIR}"
+"${INSTALL}" -m 644 lib-satysfi/satysfi-library-root.yaml "${LIBDIR}/satysfi-library-root.yaml"
+"${INSTALL}" -d "${LIBDIR}/unidata"
+"${INSTALL}" -m 644 lib-satysfi/unidata/*.txt "${LIBDIR}/unidata"
+"${INSTALL}" -d "${LIBDIR}/hyph"
+"${INSTALL}" -m 644 lib-satysfi/hyph/* "${LIBDIR}/hyph"
+
+# It is no longer necessary to install packages beforehand due to the package system:
+#
+# "${INSTALL}" -d "${LIBDIR}/packages"
+# (cd lib-satysfi && find packages -type f -exec "${INSTALL}" -Dm 644 "{}" "${LIBDIR}/{}" \;)
+# "${INSTALL}" -d "${LIBDIR}/registries"
+# (cd lib-satysfi && find registries -type f -exec "${INSTALL}" -Dm 644 "{}" "${LIBDIR}/{}" \;)

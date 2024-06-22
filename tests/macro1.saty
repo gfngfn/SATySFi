@@ -1,5 +1,20 @@
-@require: stdjareport
-@import: macro1-local
+#[config (|
+  registries = [
+    (|
+      name = `default`,
+      remote =
+        Git(|
+          url = `https://github.com/SATySFi/default-registry`,
+          branch = `format-1`,
+        |)
+    |)
+  ],
+  dependencies = [
+    (| name = `std-ja-report`, registry = `default`, requirement = `^0.0.1` |),
+  ],
+|)]
+use package StdJaReport
+use Macro1Local of `macro1-local`
 
 let open StdJaReport in
 document (|

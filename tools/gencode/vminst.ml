@@ -273,7 +273,7 @@ make_math_boxes [ MathBoxFraction{ context = ictx; numerator = ms1; denominator 
         ~is_text_mode_primitive:true
         ~code:{|
 let degree = get_option get_math_boxes value1mopt in
-let radical = Primitives.default_radical in  (* temporary; should be changeable *)
+let radical = Primitives.default_radical in  (* TODO: make this changeable *)
 make_math_boxes [ MathBoxRadical{ context; radical; degree; inner } ]
 |}
     ; inst "PrimitiveMathParen"
@@ -523,8 +523,9 @@ make_inline_boxes HorzBox.([ HorzPure(PHGFixedTabular{
           param "pageno" ~type_:"int";
         ]
         ~is_pdf_mode_primitive:true
+        ~needs_runtime_config:true
         ~code:{|
-let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpathstr) in
+let abspath = MyUtil.make_abs_path (Filename.concat runtime_config.job_directory relpathstr) in
 let imgkey = ImageInfo.add_pdf abspath pageno in
 make_image_key imgkey
 |}
@@ -537,8 +538,9 @@ make_image_key imgkey
           param "relpath" ~type_:"string";
         ]
         ~is_pdf_mode_primitive:true
+        ~needs_runtime_config:true
         ~code:{|
-let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory ()) relpath) in
+let abspath = MyUtil.make_abs_path (Filename.concat runtime_config.job_directory relpath) in
 let imgkey = ImageInfo.add_image abspath in
 make_image_key imgkey
 |}
@@ -937,18 +939,6 @@ make_text_mode_context (tctx, tctxsub)
 let width = ctx.HorzBox.paragraph_width in
 make_inline_boxes [ HorzEmbeddedVertBreakable{ width; contents } ]
 |}
-    ; inst "PrimitiveFont"
-        ~fields:[
-        ]
-        ~params:[
-          param "abbrev" ~type_:"string";
-          param "size_ratio" ~type_:"float";
-          param "rising_ratio" ~type_:"float";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~code:{|
-make_font_value (abbrev, size_ratio, rising_ratio)
-|}
     ; inst "PrimitiveLineBreak"
         ~name:"line-break"
         ~type_:Type.(tB @-> tB @-> tCTX @-> tIB @-> tBB)
@@ -1312,8 +1302,8 @@ match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let mfabbrev = Context.math_font_abbrev ictx in
-let mc = FontInfo.get_math_constants mfabbrev in
+let mathkey = Context.math_font_key_exn ictx in
+let mc = FontInfo.get_math_constants mathkey in
 make_float (mc.FontFormat.axis_height)
 |}
     ; inst "PrimitiveSetParagraphMargin"
@@ -1377,12 +1367,12 @@ make_length (ctx.HorzBox.font_size)
 |}
     ; inst "PrimitiveSetFont"
         ~name:"set-font"
-        ~type_:Type.(tSCR @-> tFONT @-> tCTX @-> tCTX)
+        ~type_:Type.(tSCR @-> tFONTWR @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
           param "script" ~type_:"script";
-          param "font_info" ~type_:"font";
+          param "font_info" ~type_:"font_with_ratio";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
@@ -1392,7 +1382,7 @@ Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
 |}
     ; inst "PrimitiveGetFont"
         ~name:"get-font"
-        ~type_:Type.(tSCR @-> tCTX @-> tFONT)
+        ~type_:Type.(tSCR @-> tCTX @-> tFONTWR)
         ~fields:[
         ]
         ~params:[
@@ -1402,20 +1392,20 @@ Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
         ~is_pdf_mode_primitive:true
         ~code:{|
 let fontwr = HorzBox.get_font_with_ratio ctx script in
-make_font_value fontwr
+make_font_with_ratio_value fontwr
 |}
     ; inst "PrimitiveSetMathFont"
         ~name:"set-math-font"
-        ~type_:Type.(tS @-> tCTX @-> tCTX)
+        ~type_:Type.(tFONTKEY @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
-          param "mfabbrev" ~type_:"string";
+          param "mathkey" ~type_:"font_key";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with math_font_abbrev = mfabbrev; }), ctxsub)
+Context(HorzBox.({ ctx with math_font_key = Some(mathkey); }), ctxsub)
 |}
     ; inst "PrimitiveSetDominantWideScript"
         ~name:"set-dominant-wide-script"
@@ -3080,6 +3070,7 @@ Tuple([v1; v2; v3])
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
+        ~needs_runtime_config:true
         ~code:{|
 let parts = Core.Filename.parts relpath in
 begin
@@ -3089,8 +3080,7 @@ begin
     ()
 end;
 let abspath =
-  let jobdir = OptionState.job_directory () in
-  Filename.concat jobdir relpath
+  Filename.concat runtime_config.job_directory relpath
 in
 let inc = open_in abspath in
 let rec aux lineacc =

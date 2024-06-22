@@ -1,0 +1,127 @@
+use package open Stdlib
+
+module Itemize :> sig
+  val +listing : block [?(break : bool) itemize]
+  val \listing : inline [?(break : bool) itemize]
+  val +enumerate : block [itemize]
+  val \enumerate : inline [itemize]
+end = struct
+
+  val (+++>) = List.fold-left (+++)
+  val concat-blocks = (+++>) block-nil
+
+
+  val item-indent = 16pt
+  val item-gap = 10pt
+  val item-gap-outer = 6pt
+
+
+  val bullet-graphics color (x, y) =
+    let cx = x +' 4pt in
+    let cy = y +' 4pt in
+    let r = 2pt in
+    fill color (Gr.circle (cx, cy) r)
+
+
+  val make-bullet ctx =
+    let color = get-text-color ctx in
+    inline-graphics 8pt 8pt 0pt (bullet-graphics color) ++ inline-skip 8pt
+
+
+  val rec listing-item ctx depth is-first is-last (Item(parent, children)) =
+        let ib-bullet = make-bullet ctx in
+        let bullet-width = Pervasives.get-natural-width ib-bullet in
+        let parent-indent = item-indent *' (float depth) in
+        let ib-parent =
+          embed-block-top ctx ((get-text-width ctx) -' parent-indent -' bullet-width) (fun ctx ->
+            Pervasives.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
+              (read-inline ctx parent ++ inline-fil)
+          )
+        in
+        let bb-parent =
+          Pervasives.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
+            ((inline-skip parent-indent) ++ ib-bullet ++ ib-parent)
+        in
+        let bbs-children = List.map-with-ends (listing-item ctx (depth + 1)) children in
+        bb-parent +++> bbs-children
+
+
+  val rec listing-item-breakable ctx depth is-first is-last (Item(parent, children)) =
+        let ib-bullet = make-bullet ctx in
+        let bullet-width = Pervasives.get-natural-width ib-bullet in
+        let parent-indent = item-indent *' (float depth) in
+        let pads = (parent-indent +' bullet-width, 0pt, 0pt, 0pt) in
+        let decos =
+          let deco _ _ _ _ = Gr.empty in
+          (deco, deco, deco, deco)
+        in
+        let bb-parent =
+          let ctx-frame =
+            let len-top = if is-first then item-gap-outer +' item-gap else item-gap in
+            let len-bottom = if is-last || List.is-empty children then item-gap-outer +' item-gap else item-gap in
+            ctx |> set-paragraph-margin len-top len-bottom
+          in
+          block-frame-breakable ctx-frame pads decos (fun ctx ->
+            Pervasives.form-paragraph ctx
+              (inline-skip (0pt -' bullet-width) ++ ib-bullet ++ read-inline ctx parent ++ inline-fil)
+          )
+        in
+        let bbs-children = List.map-with-ends (listing-item-breakable ctx (depth + 1)) children in
+        bb-parent +++> bbs-children
+
+
+  val listing break ctx (Item(_, items)) =
+    if break then
+      let bbs = List.map-with-ends (listing-item-breakable ctx 0) items in
+      concat-blocks bbs
+    else
+      let bbs = List.map-with-ends (listing-item ctx 0) items in
+      concat-blocks bbs
+
+
+  val block ctx +listing ?(break = breakopt) item =
+    let break = Option.from false breakopt in
+    listing break ctx item
+
+
+  val inline ctx \listing ?(break = breakopt) item =
+    let break = Option.from false breakopt in
+      inline-fil ++ embed-block-breakable ctx (listing break ctx item)
+        ++ omit-skip-after
+
+
+  val rec enumerate-item index ctx depth (Item(parent, _)) =
+        let color = get-text-color ctx in
+        let parent-indent = item-indent *' (float depth) in
+        let ib-index =
+          let it-num = (embed-string (arabic index)) in
+            read-inline ctx {(#it-num;)\ }
+        in
+        let index-width = Pervasives.get-natural-width ib-index in
+        let ib-parent =
+          embed-block-top ctx ((get-text-width ctx) -' parent-indent -' index-width) (fun ctx ->
+            Pervasives.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
+              (read-inline ctx parent ++ inline-fil)
+          )
+        in
+          Pervasives.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
+            ((inline-skip parent-indent) ++ ib-index ++ ib-parent)
+
+
+  val enumerate ctx (Item(_, itmzlst)) =
+    let bblst = List.mapi (fun i -> enumerate-item (i + 1) ctx 0) itmzlst in
+    concat-blocks bblst
+
+
+  val block ctx +enumerate item =
+    enumerate ctx item
+
+
+  val inline ctx \enumerate item =
+    let bb = enumerate ctx item in
+    inline-fil ++
+      embed-block-breakable ctx
+        (block-skip item-gap-outer +++ bb +++ block-skip item-gap-outer)
+      ++ omit-skip-after
+
+end

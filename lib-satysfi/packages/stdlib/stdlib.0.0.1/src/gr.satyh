@@ -1,0 +1,218 @@
+use Pervasives
+use Geom
+use List
+
+module Gr :> sig
+  type point = Pervasives.point  %TODO (enhance): erase this
+  val rectangle : point -> point -> path
+  val rectangle-round : length -> point -> point -> path
+  val rectangle-round-left : length -> point -> point -> path
+  val rectangle-round-left-lower : length -> point -> point -> path
+  val rectangle-round-left-upper : length -> point -> point -> path
+  val rectangle-round-right : length -> point -> point -> path
+  val poly-line : point -> list point -> path
+  val polygon : point -> list point -> path
+  val line : point -> point -> path
+  val circle : point -> length -> path
+  val empty : graphics
+  val text-centering : point -> inline-boxes -> graphics
+  val text-leftward : point -> inline-boxes -> graphics
+  val text-rightward : point -> inline-boxes -> graphics
+  val arrow : length -> color -> length -> length -> length -> point -> point -> graphics
+  val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics
+  val rotate-path : point -> float -> path -> path
+  val scale-path : point -> float -> float -> path -> path
+  val rotate-graphics : point -> float -> graphics -> graphics
+  val scale-graphics : point -> float -> float -> graphics -> graphics
+end = struct
+
+  type point = Pervasives.point  %TODO (enhance): erase this
+
+  val rectangle (x1, y1) (x2, y2) =
+    start-path (x1, y1)
+      |> line-to (x1, y2)
+      |> line-to (x2, y2)
+      |> line-to (x2, y1)
+      |> close-with-line
+
+
+  val rectangle-round r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = Pervasives.length-min xA xB in
+    let x2 = Pervasives.length-max xA xB in
+    let y1 = Pervasives.length-min yA yB in
+    let y2 = Pervasives.length-max yA yB in
+      start-path                                 (x1, y1 +' r)
+        |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+        |> line-to                               (x2 -' r, y1)
+        |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)
+        |> line-to                               (x2, y2 -' r)
+        |> bezier-to (x2, y2 -' t) (x2 -' t, y2) (x2 -' r, y2)
+        |> line-to                               (x1 +' r, y2)
+        |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
+        |> close-with-line
+
+
+  val rectangle-round-left r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = Pervasives.length-min xA xB in
+    let x2 = Pervasives.length-max xA xB in
+    let y1 = Pervasives.length-min yA yB in
+    let y2 = Pervasives.length-max yA yB in
+      start-path                                 (x1, y1 +' r)
+        |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+        |> line-to                               (x2, y1)
+        |> line-to                               (x2, y2)
+        |> line-to                               (x1 +' r, y2)
+        |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
+        |> close-with-line
+
+
+  val rectangle-round-left-lower r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = Pervasives.length-min xA xB in
+    let x2 = Pervasives.length-max xA xB in
+    let y1 = Pervasives.length-min yA yB in
+    let y2 = Pervasives.length-max yA yB in
+      start-path                                 (x1, y1 +' r)
+        |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+        |> line-to                               (x2, y1)
+        |> line-to                               (x2, y2)
+        |> line-to                               (x1, y2)
+        |> close-with-line
+
+
+  val rectangle-round-left-upper r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = Pervasives.length-min xA xB in
+    let x2 = Pervasives.length-max xA xB in
+    let y1 = Pervasives.length-min yA yB in
+    let y2 = Pervasives.length-max yA yB in
+      start-path                                 (x1, y1)
+        |> line-to                               (x2, y1)
+        |> line-to                               (x2, y2)
+        |> line-to                               (x1 +' r, y2)
+        |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y1 -' t)
+        |> close-with-line
+
+
+  val rectangle-round-right r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = Pervasives.length-min xA xB in
+    let x2 = Pervasives.length-max xA xB in
+    let y1 = Pervasives.length-min yA yB in
+    let y2 = Pervasives.length-max yA yB in
+      start-path                                 (x1, y1)
+        |> line-to                               (x2 -' r, y1)
+        |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)
+        |> line-to                               (x2, y2 -' r)
+        |> bezier-to (x2, y2 -' t) (x2 -' t, y2) (x2 -' r, y2)
+        |> line-to                               (x1, y2)
+        |> close-with-line
+
+
+  val poly-line ptinit ptlst =
+    ptlst |> List.fold-left (fun acc pt -> (
+      acc |> line-to pt
+    )) (start-path ptinit) |> terminate-path
+
+
+  val polygon ptinit ptlst =
+    ptlst |> List.fold-left (fun acc pt -> (
+      acc |> line-to pt
+    )) (start-path ptinit) |> close-with-line
+
+
+  val line pt1 pt2 =
+    start-path pt1 |> line-to pt2 |> terminate-path
+
+
+  val circle (cx, cy) r =
+    let t = r *' 0.55228 in
+      start-path (cx -' r, cy)
+        |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
+        |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
+        |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
+        |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
+
+
+  val empty =
+    unite-graphics []
+
+
+  val get-nonempty-graphics-bbox gr =
+    match get-graphics-bbox gr with
+    | None       -> abort-with-message `get-nonempty-graphics-bbox`
+    | Some(bbox) -> bbox
+    end
+
+
+  val text-centering pt ib =
+    let gr = draw-text pt ib in
+    let ((xmin, _), (xmax, _)) = get-nonempty-graphics-bbox gr in
+    let wid = xmax -' xmin in
+    shift-graphics (0pt -' wid *' 0.5, 0pt) gr
+
+
+  val text-rightward =
+    draw-text
+
+
+  val text-leftward pt ib =
+    let gr = draw-text pt ib in
+    let ((xmin, _), (xmax, _)) = get-nonempty-graphics-bbox gr in
+    let wid = xmax -' xmin in
+    shift-graphics (0pt -' wid, 0pt) gr
+
+
+  val arrow-scheme strokef color lenL lenM lenP ((x1, y1) as pt1) ((x2, y2) as pt2) =
+    let theta = Geom.atan2-point pt2 pt1 in
+    let (cx, cy) = (x2 +' lenL *' (cos theta), y2 +' lenL *' (sin theta)) in
+    let (mx, my) = (x2 +' lenM *' (cos theta), y2 +' lenM *' (sin theta)) in
+    let phi = theta +. Pervasives.math-pi /. 2. in
+    let (p1, q1) = (cx +' lenP *' (cos phi), cy +' lenP *' (sin phi)) in
+    let (p2, q2) = (cx -' lenP *' (cos phi), cy -' lenP *' (sin phi)) in
+    unite-graphics [
+      strokef color (line pt1 (mx, my)),
+      fill color (polygon pt2 [(p1, q1), (mx, my), (p2, q2)]),
+    ]
+
+
+  val arrow thkns =
+    arrow-scheme (stroke thkns)
+
+
+  val dashed-arrow thkns dash =
+    arrow-scheme (dashed-stroke thkns dash)
+
+
+  val rotate-path centpt angle path =
+    let (centx, centy) = centpt in
+    let rad = angle *. Pervasives.math-pi /. 180. in
+    path |> shift-path (0pt -' centx, 0pt -' centy)
+         |> linear-transform-path (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
+         |> shift-path centpt
+
+
+  val scale-path centpt scalex scaley path =
+    let (centx, centy) = centpt in
+    path |> shift-path (0pt -' centx, 0pt -' centy)
+         |> linear-transform-path scalex 0. 0. scaley
+         |> shift-path centpt
+
+
+  val rotate-graphics centpt angle gr =
+    let (centx, centy) = centpt in
+    let rad = angle *. Pervasives.math-pi /. 180. in
+    gr |> shift-graphics (0pt -' centx, 0pt -' centy)
+       |> linear-transform-graphics (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
+       |> shift-graphics centpt
+
+
+  val scale-graphics centpt scalex scaley gr =
+    let (centx, centy) = centpt in
+    gr |> shift-graphics (0pt -' centx, 0pt -' centy)
+       |> linear-transform-graphics scalex 0. 0. scaley
+       |> shift-graphics centpt
+
+end

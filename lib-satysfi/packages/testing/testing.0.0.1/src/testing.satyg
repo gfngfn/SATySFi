@@ -1,0 +1,25 @@
+module Testing = struct
+
+  module Equality = struct
+
+    signature TargetType = sig
+      type t :: o
+      val equal : t -> t -> bool
+      val show : t -> string
+    end
+
+    module Make = fun(Target : TargetType) -> struct
+
+      val assert-equal (x1 : Target.t) (x2 : Target.t) =
+        if Target.equal x1 x2 then
+          ()
+        else
+          let s1 = Target.show x1 in
+          let s2 = Target.show x2 in
+          abort-with-message (`expected: `# ^ s1 ^ `, got: `# ^ s2)
+
+    end
+
+  end
+
+end

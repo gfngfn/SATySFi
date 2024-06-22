@@ -15,8 +15,7 @@ let compile_and_exec_0 (env : environment) (ast : abstract_tree) : syntactic_val
 
 
 let compile_environment (env : environment) : unit =
-  let (binds, _) = env in
-  binds |> EvalVarIDMap.iter (fun _evid loc ->
+  env.env_main |> EvalVarIDMap.iter (fun _evid loc ->
     match !loc with
     | PrimitiveClosure(parbr, _env1, arity, astf) ->
         begin
