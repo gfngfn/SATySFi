@@ -42,7 +42,7 @@ jobs:
             default: https://github.com/ocaml/opam-repository.git
 
       - name: Install SATySFi dependencies
-        run: opam install . --deps-only --with-doc
+        run: opam install . --deps-only --with-doc --with-test
 
       - name: Build SATySFi
         run: opam exec -- make all
