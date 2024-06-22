@@ -14,8 +14,6 @@ jobs:
           - ubuntu-latest
           - macos-latest
         ocaml-compiler:
-          - "4.12"
-          - "4.13"
           - "4.14"
 
     runs-on: ${{ matrix.os }}
@@ -42,7 +40,7 @@ jobs:
             default: https://github.com/ocaml/opam-repository.git
 
       - name: Install SATySFi dependencies
-        run: opam install . --deps-only --with-doc
+        run: opam install . --deps-only --with-doc --with-test
 
       - name: Build SATySFi
         run: opam exec -- make all

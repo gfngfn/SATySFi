@@ -11,7 +11,7 @@ let min_id_in_document = ref 0
 let equal = (=)
 
 
-let compare = Pervasives.compare
+let compare = Stdlib.compare
 
 
 let hash = Hashtbl.hash

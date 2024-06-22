@@ -1,0 +1,16 @@
+module Staged1Local :> sig
+
+  val ~gen-power : int -> code (int -> int)
+
+end = struct
+
+  val ~gen-power n =
+    let rec aux n s =
+      if n <= 0 then
+        &1
+      else
+        &(~s * ~(aux (n - 1) s))
+    in
+    &(fun x -> ~(aux n &x))
+
+end

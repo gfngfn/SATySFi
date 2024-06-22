@@ -5,15 +5,24 @@
 @require: proof
 @import: local
 
-document (|
-  title = {\SATySFi;概説};
-  author = {Takashi SUWA};
-  show-title = true;
-  show-toc = true;
+let open Pervasives in
+let open Math in
+let open Proof in
+let open Code in
+let open Itemize in
+let open Annot in
+let open StdJaBook in
+let open Local in
+document ?(
+  show-toc = true,
+) (|
+  title = {\SATySFi;概説},
+  author = {Takashi SUWA},
 |) '<
   +section{はじめに}<
     +p{
-      \href(`https://github.com/gfngfn/SATySFi`){\dfn{\SATySFi;}}は，2017年度IPA未踏事業のひとつとして開発された，新しい組版処理システムである。
+      \href(`https://github.com/gfngfn/SATySFi`){\dfn{\SATySFi;}}は，
+      2017年度IPA未踏事業のひとつとして開発された，新しい組版処理システムである。
       一口に組版処理システムといっても，大きく分けて
 
       \listing{
@@ -94,7 +103,7 @@ document (|
       組版処理システムとしてどのような機能が実現されているかについて触れていく。
     }
   >
-  +section ?:(`sec:typesetting`) {代表的な機能}<
+  +section?(label = `sec:typesetting`)({代表的な機能})<
     +subsection{欧文組版}<
       +p{
         文字のグリフは正の幅を持ち，紙面には有限の幅がある。
@@ -183,14 +192,14 @@ document (|
       +display-boxes('<
         +p{
           画像が挿入できる証拠として，ロゴを図\ref(`fig:logo`);に掲げておこう。
-          \figure ?:(`fig:logo`){\SATySFi;のロゴ}<
+          \figure?(label = `fig:logo`)({\SATySFi;のロゴ})<
             +image-frame{\insert-image(7cm)(`satysfi-logo.jpg`);}
           >
         }
       >)(```
         +p{
           画像が挿入できる証拠として，ロゴを図\ref(`fig:logo`);に掲げておこう。
-          \figure ?:(`fig:logo`){\SATySFi;のロゴ}<
+          \figure?(label = `fig:logo`)({\SATySFi;のロゴ})<
             +image-frame{\insert-image(7cm)(`satysfi-logo.jpg`);}
           >
         }
@@ -202,36 +211,41 @@ document (|
       }
       +frame<
         +centering{
-          \tabular(fun cellf multif empty -> [
-            [cellf {Program}  ; multif 1 2 {Answer}; empty; multif 1 2 {Time [s]}; empty;];
-            [empty            ; cellf {A}; cellf {B}; cellf {A}; cellf {B}];
-            [cellf {Program 1}; cellf {Yes}; cellf {Yes}; cellf {${0.004}}; cellf {${0.016}}];
-            [cellf {Program 2}; cellf {No} ; cellf {–}  ; cellf {${0.004}}; cellf {–}       ];
-            [cellf {Program 3}; cellf {Yes}; cellf {Yes}; cellf {${0.004}}; cellf {${0.078}}];
-            [cellf {Program 4}; cellf {Yes}; cellf {Yes}; cellf {${0.008}}; cellf {${0.069}}];
+          \Tabular.tabular(fun cellf multif empty -> [
+            [cellf {Program}  , multif 1 2 {Answer}, empty, multif 1 2 {Time [s]}, empty,],
+            [empty            , cellf {A}, cellf {B}, cellf {A}, cellf {B}],
+            [cellf {Program 1}, cellf {Yes}, cellf {Yes}, cellf {${0.004}}, cellf {${0.016}}],
+            [cellf {Program 2}, cellf {No} , cellf {–}  , cellf {${0.004}}, cellf {–}       ],
+            [cellf {Program 3}, cellf {Yes}, cellf {Yes}, cellf {${0.004}}, cellf {${0.078}}],
+            [cellf {Program 4}, cellf {Yes}, cellf {Yes}, cellf {${0.008}}, cellf {${0.069}}],
           ])(fun xs ys -> (
+            let grs =
               match (ys, List.reverse ys) with
               | (y0 :: y1 :: y2 :: _, ylast :: _) ->
-                  ( match (xs, List.reverse xs) with
+                    match (xs, List.reverse xs) with
                     | (x0 :: x1 :: _ :: x3 :: _, xlast :: _) ->
                         let grlstY1 =
-                          [y1; y2] |> List.map (fun y ->
+                          [y1, y2] |> List.map (fun y ->
                             stroke 0.5pt Color.black (Gr.line (x0, y) (xlast, y)))
                         in
                         let grlstY2 =
-                          [y0; ylast] |> List.map (fun y ->
+                          [y0, ylast] |> List.map (fun y ->
                             stroke 1pt Color.black (Gr.line (x0, y) (xlast, y)))
                         in
                         let grlstX =
-                          [x1; x3] |> List.map (fun x ->
+                          [x1, x3] |> List.map (fun x ->
                             stroke 0.5pt Color.black (Gr.line (x, y0) (x, ylast)))
                         in
                         (stroke 0.5pt Color.black (Gr.line (x0, y1) (x1, y2)))
                           :: (List.append grlstX (List.append grlstY1 grlstY2))
 
                     | _ -> []
-                  )
+                    end
+
               | _ -> []
+              end
+            in
+            unite-graphics grs
           ));
         }
       >
@@ -244,18 +258,16 @@ document (|
       }
       +display-boxes('<
         +math-list[
-          ${F = G \frac{M m}{R^2}};
-          ${\limto{N}{\infty} \sums{n = 1}{N} \frac{1}{n^2}
-                                                       = \frac{\pi^2}{6}};
-          ${\paren{\paren{\paren{A} + B} + C}};
+          ${F = G \frac{M m}{R^2}},
+          ${\limto{N}{\infty} \sums{n = 1}{N} \frac{1}{n^2} = \frac{\pi^2}{6}},
+          ${\paren{\paren{\paren{A} + B} + C}},
           ${\brace{\brace{\brace{A} + B} + C}}
         ];
       >)(```
         +math-list[
-          ${F = G \frac{M m}{R^2}};
-          ${\limto{N}{\infty} \sums{n = 1}{N} \frac{1}{n^2}
-                                                       = \frac{\pi^2}{6}};
-          ${\paren{\paren{\paren{A} + B} + C}};
+          ${F = G \frac{M m}{R^2}},
+          ${\limto{N}{\infty} \sums{n = 1}{N} \frac{1}{n^2} = \frac{\pi^2}{6}},
+          ${\paren{\paren{\paren{A} + B} + C}},
           ${\brace{\brace{\brace{A} + B} + C}}
         ];
       ```);
@@ -271,18 +283,18 @@ document (|
           let int1 = ${\int_0^a} in
           let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
           let sqrt2 = ${\sqrt{x^2 + r^2}} in
-            ${
-              \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
-                #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
+          ${
+            \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
+              #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
         );
       >)(```
         +math(
           let int1 = ${\int_0^a} in
           let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
           let sqrt2 = ${\sqrt{x^2 + r^2}} in
-            ${
-              \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
-                #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
+          ${
+            \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
+              #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
         );
       ```);
       +display-boxes('<

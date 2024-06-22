@@ -1,0 +1,12 @@
+@require: stdjareport
+@import: macro1-local
+
+let open StdJaReport in
+document (|
+  title = {Macro 1},
+  author = {Takashi Suwa},
+|) '<
+  +p{
+    \Macro1Local.message-with-pos@~(@`Hello, macro!`);
+  }
+>

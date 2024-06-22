@@ -5,8 +5,6 @@ module MYU = MyYojsonUtil
 module YS = Yojson.SafePos
 type json = YS.json
 
-type file_path = string
-
 exception MultipleCodeNameDesignation of Range.t * string
 exception NotAnInlineCommand          of Range.t * string
 exception NotABlockCommand            of Range.t * string
@@ -53,7 +51,7 @@ let get_command pair (k : string) (assoc : MYU.assoc) =
   get_command_main pair rng s
 
 
-let make_code_name_map pair ((pos, _) as json : json) : DecodeMD.command DecodeMD.CodeNameMap.t =
+let make_code_name_map pair (json : json) : DecodeMD.command DecodeMD.CodeNameMap.t =
   let open DecodeMD in
   let pairs = json |> YS.Util.to_list in
   pairs |> List.fold_left (fun accmap json ->

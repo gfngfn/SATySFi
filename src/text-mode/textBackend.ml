@@ -1,5 +1,5 @@
 
-type text_mode_context = {
+type context_main = {
   indent      : int;
   escape_list : (Uchar.t list * Uchar.t list) list;
     [@printer (fun ppf _ -> Format.fprintf ppf "<escape-list>")]

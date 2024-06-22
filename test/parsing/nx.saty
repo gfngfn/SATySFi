@@ -1,39 +1,43 @@
-let xs = [1; 2; 3]
-let ys = [1; 2; 3;]
+module Nx = struct
 
-let r0 = (| |)
-let r1 = (| x = 1 |)
-let r2     = (| x = 1; y = 2 |)
-let r2semi = (| x = 1; y = 2; |)
+  val xs = [1, 2, 3]
+  val ys = [1, 2, 3,]
 
-let tp2 = (1, 2)
-let tp3 = (1, 2, 3)
+  val r0 = (| |)
+  val r1 = (| x = 1 |)
+  val r2     = (| x = 1, y = 2 |)
+  val r2semi = (| x = 1, y = 2, |)
 
-let op-test =
-  ( a || b || c,
-    a && b && c,
-    a == b > c < d,
-    a ^ b :: c,
-    a + b + c,
-    a - b -' c,
-    a + b - c + d,
-    a * b *' c / d mod e,
-    - a * b,
-    a || a && b ^ c == d > e < f ^ g :: h + i - j -' k * l *' m / n mod o,
-    - a * b,
-    not a * b,
-    F a * b,
-    A * b,
-    a + f b,
-    f -b,
-    not a && b,
-    a || not b,
-    a * not b,
-    a * F b,
-    a * B,
-    not a * b,
-    F a * b,
-    A * b
-  )
+  val tp2 = (1, 2)
+  val tp3 = (1, 2, 3)
 
-let uminus = (-1, - 42, -1.0, - 3.14, -1mm, - 2.71828cm, -x, - x)
+  val op-test =
+    ( a || b || c,
+      a && b && c,
+      a == b > c < d,
+      a ^ b :: c,
+      a + b + c,
+      a - b -' c,
+      a + b - c + d,
+      a * b *' c / d mod e,
+      - a * b,
+      a || a && b ^ c == d > e < f ^ g :: h + i - j -' k * l *' m / n mod o,
+      - a * b,
+      not a * b,
+      F a * b,
+      A * b,
+      a + f b,
+      f -b,
+      not a && b,
+      a || not b,
+      a * not b,
+      a * F b,
+      a * B,
+      not a * b,
+      F a * b,
+      A * b
+    )
+
+  val uminus = (-1, - 42, -1.0, - 3.14, -1mm, - 2.71828cm, -x, - x)
+
+end

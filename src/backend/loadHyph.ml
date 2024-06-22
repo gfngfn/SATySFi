@@ -168,7 +168,7 @@ let match_prefix (opt : (number ref * number) option) (pairlst : (Uchar.t * numb
     aux accinit pairlst clst
 
 
-let rec match_every (numbeginning : number) pairlst clst =
+let match_every (numbeginning : number) pairlst clst =
   let rec aux (refoptprev : (number ref) option) pairlst clst =
   match clst with
   | [] ->
@@ -198,7 +198,7 @@ let lookup_patterns (lmin : int) (rmin : int) (patlst : pattern list) (uchseglst
   let len = List.length uchseglst in
   let clst = uchseglst |> List.map (fun uchseg -> (uchseg, ref 0)) in
   let () =
-    patlst |> List.iter (fun (beginning, pairlst, final) ->
+    patlst |> List.iter (fun (beginning, pairlst, _final) ->
       match beginning with
       | TopOfWord               -> match_prefix None pairlst clst
       | ArbitraryBeginning(num) -> match_every num pairlst clst

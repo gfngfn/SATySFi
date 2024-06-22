@@ -1,5 +1,8 @@
-type t = [s; u?] inline-cmd
-and t = [s?; u] inline-cmd
-and t = [] inline-cmd
-and t = [s] inline-cmd
-and t = [s;] inline-cmd % cannot write this
+module Txlist = struct
+
+  type t = inline [?(foo : u,) s,]
+  and t = inline []
+  and t = inline [s]
+  and t = inline [s,] % cannot write this
+
+end
