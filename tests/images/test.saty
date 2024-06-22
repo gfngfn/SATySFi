@@ -89,13 +89,13 @@ document (|
       PngSuite-2017jul19/basn3p04.png: PNG image data, 32 x 32, 4-bit colormap, non-interlaced
       * \insert-image(0.5cm)(`PngSuite-2017jul19/basn3p08.png`);
       PngSuite-2017jul19/basn3p08.png: PNG image data, 32 x 32, 8-bit colormap, non-interlaced
-      * (Unsupported, alpha) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn4a08.png`);
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn4a08.png`);
       PngSuite-2017jul19/basn4a08.png: PNG image data, 32 x 32, 8-bit gray+alpha, non-interlaced
-      * (Unsupported, alpha) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn4a16.png`);
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn4a16.png`);
       PngSuite-2017jul19/basn4a16.png: PNG image data, 32 x 32, 16-bit gray+alpha, non-interlaced
-      * (Unsupported, alpha) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn6a08.png`);
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn6a08.png`);
       PngSuite-2017jul19/basn6a08.png: PNG image data, 32 x 32, 8-bit/color RGBA, non-interlaced
-      * (Unsupported, alpha) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn6a16.png`);
+      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn6a16.png`);
       PngSuite-2017jul19/basn6a16.png: PNG image data, 32 x 32, 16-bit/color RGBA, non-interlaced
     }
   >
