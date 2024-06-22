@@ -35,19 +35,21 @@ let make_local_fixed_dependency ~(used_as : string) (abspathstr : string) : pack
   }
 
 
-let make_dependency_in_registry ~(used_as : string) (package_name : package_name) (s_version : string) : package_dependency_in_registry =
+let make_dependency_in_registry ~(used_as : string) ?(external_registry_hash_value : registry_hash_value option) (package_name : package_name) (s_version : string) : package_dependency_in_registry =
   PackageDependencyInRegistry{
     used_as;
+    external_registry_hash_value;
     package_name;
     version_requirement = SemanticVersion.CompatibleWith(make_version s_version);
   }
 
 
-let make_impl (s_version : string) (deps : package_dependency_in_registry list) : implementation_record =
+let make_impl (s_version : string) ?(registry_remotes : registry_remote list = []) (deps : package_dependency_in_registry list) : implementation_record =
   ImplRecord{
     language_requirement  = SemanticVersion.CompatibleWith(language_version);
     package_version       = make_version s_version;
     source                = NoSource;
+    registry_remotes      = registry_remotes;
     dependencies          = deps;
   }
 
