@@ -9,8 +9,6 @@ open PackageConfigImpl
 
 type 'a ok = ('a, config_error) result
 
-module RegistryLocalNameMap = Map.Make(String)
-
 type package_contents =
   | Library of {
       main_module_name    : string;
@@ -177,13 +175,6 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
   ]
 
 
-let registry_spec_decoder =
-  let open ConfigDecoder in
-  get "name" string >>= fun registry_local_name ->
-  registry_remote_decoder >>= fun registry_remote ->
-  succeed (registry_local_name, registry_remote)
-
-
 let extraction_decoder : extraction ConfigDecoder.t =
   let open ConfigDecoder in
   get "from" string >>= fun extracted_from ->
@@ -237,14 +228,7 @@ let validate_dependency ~dir:(absdir_config : abs_path) (localmap : registry_rem
         registry_local_name;
         version_requirement;
       } ->
-        let* registry_hash_value =
-          match localmap |> RegistryLocalNameMap.find_opt registry_local_name with
-          | None ->
-              err @@ UndefinedRegistryLocalName{ registry_local_name }
-
-          | Some(registry_remote) ->
-              ConfigUtil.make_registry_hash_value registry_remote
-        in
+        let* registry_hash_value = ConfigUtil.lookup_registry_hash_value registry_local_name localmap in
         return @@ RegisteredDependency{
           registered_package_id = RegisteredPackageId.{ package_name; registry_hash_value };
           version_requirement;
@@ -258,7 +242,7 @@ let validate_dependency ~dir:(absdir_config : abs_path) (localmap : registry_rem
   return @@ PackageDependency{ used_as; spec }
 
 
-let validate_contents_spec  ~(dir : abs_path) (localmap : registry_remote RegistryLocalNameMap.t) (contents : parsed_package_contents) : package_contents ok =
+let validate_contents_spec ~(dir : abs_path) (localmap : registry_remote RegistryLocalNameMap.t) (contents : parsed_package_contents) : package_contents ok =
   let open ResultMonad in
   match contents with
   | ParsedLibrary{
@@ -296,17 +280,7 @@ let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok
       test_dependencies;
     } = p_package_config
   in
-  let* (localmap, registry_remote_acc) =
-    registry_specs |> foldM (fun (localmap, registry_remote_acc) (registry_local_name, registry_remote) ->
-      if localmap |> RegistryLocalNameMap.mem registry_local_name then
-        err @@ DuplicateRegistryLocalName{ registry_local_name }
-      else
-        let localmap = localmap |> RegistryLocalNameMap.add registry_local_name registry_remote in
-        let registry_remote_acc = Alist.extend registry_remote_acc registry_remote in
-        return (localmap, registry_remote_acc)
-    ) (RegistryLocalNameMap.empty, Alist.empty)
-  in
-  let registry_remotes = Alist.to_list registry_remote_acc in
+  let* (localmap, registry_remotes) = ConfigUtil.construct_registry_local_map registry_specs in
   let* package_contents = validate_contents_spec ~dir localmap package_contents in
   let* source_dependencies = mapM (validate_dependency ~dir localmap) source_dependencies in
   let* test_dependencies = mapM (validate_dependency ~dir localmap) test_dependencies in

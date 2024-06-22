@@ -181,18 +181,27 @@ module SolverInput = struct
     ([], [])
 
 
-  let make_internal_dependency_from_registry (registry_hash_value : string) (context : package_context) (requires : package_dependency_in_registry list) : dependency list =
+  let make_internal_dependency_from_registry (self_registry_hash_value : string) (context : package_context) (requires : package_dependency_in_registry list) : dependency list =
     requires |> List.map (function
-    | PackageDependencyInRegistry{ package_name; used_as; version_requirement } ->
+    | PackageDependencyInRegistry{
+        used_as;
+        external_registry_hash_value;
+        package_name;
+        version_requirement;
+      } ->
         let compatibility =
           match version_requirement with
           | SemanticVersion.CompatibleWith(semver) ->
               SemanticVersion.get_compatibility_unit semver
         in
-        let registered_package_id = RegisteredPackageId.{ package_name; registry_hash_value } in
+        let registry_hash_value =
+          match external_registry_hash_value with
+          | Some(r) -> r
+          | None    -> self_registry_hash_value
+        in
         let role =
           Role.RegisteredRole{
-            registered_package_id;
+            registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name };
             compatibility;
             context;
           }

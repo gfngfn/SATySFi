@@ -6,6 +6,8 @@ open PackageSystemBase
 
 module ConfigDecoder = YamlDecoder.Make(YamlError)
 
+module RegistryLocalNameMap = Map.Make(String)
+
 
 let package_name_decoder : package_name ConfigDecoder.t =
   let open ConfigDecoder in
@@ -87,6 +89,13 @@ let registry_remote_decoder : registry_remote ConfigDecoder.t =
   ]
 
 
+let registry_spec_decoder : (registry_local_name * registry_remote) ConfigDecoder.t =
+  let open ConfigDecoder in
+  get "name" string >>= fun registry_local_name ->
+  registry_remote_decoder >>= fun registry_remote ->
+  succeed (registry_local_name, registry_remote)
+
+
 let name_decoder : string ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
@@ -111,3 +120,29 @@ let make_registry_hash_value (registry_remote : registry_remote) : (registry_has
       Logging.report_canonicalized_url ~url ~canonicalized_url ~hash_value;
 *)
       return hash_value
+
+
+let lookup_registry_hash_value (registry_local_name : registry_local_name) (localmap : registry_remote RegistryLocalNameMap.t) =
+  let open ResultMonad in
+  match localmap |> RegistryLocalNameMap.find_opt registry_local_name with
+  | None ->
+      err @@ UndefinedRegistryLocalName{ registry_local_name }
+
+  | Some(registry_remote) ->
+      make_registry_hash_value registry_remote
+
+
+let construct_registry_local_map (registry_specs : (registry_local_name * registry_remote) list) =
+  let open ResultMonad in
+  let* (localmap, registry_remote_acc) =
+    registry_specs |> foldM (fun (localmap, registry_remote_acc) (registry_local_name, registry_remote) ->
+      if localmap |> RegistryLocalNameMap.mem registry_local_name then
+        err @@ DuplicateRegistryLocalName{ registry_local_name }
+      else
+        let localmap = localmap |> RegistryLocalNameMap.add registry_local_name registry_remote in
+        let registry_remote_acc = Alist.extend registry_remote_acc registry_remote in
+        return (localmap, registry_remote_acc)
+    ) (RegistryLocalNameMap.empty, Alist.empty)
+  in
+  let registry_remotes = Alist.to_list registry_remote_acc in
+  return (localmap, registry_remotes)
