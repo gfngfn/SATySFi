@@ -70,3 +70,10 @@ setup.log
 _opam
 
 # End of https://www.toptal.com/developers/gitignore/api/ocaml
+
+# Nix
+.direnv
+result
+
+# VSCode
+.vscode/settings.json
