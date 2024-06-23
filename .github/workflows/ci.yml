@@ -26,7 +26,7 @@ jobs:
         uses: actions/cache@v4
         id: locks-cache
         with:
-          path: ~/.satysfi/cache
+          path: ~/.saphe/cache
           key: cache-locks-${{ hashFiles('default-registry-commit-hash.txt') }}
 
       - name: Set-up OCaml ${{ matrix.ocaml-compiler }}
@@ -51,11 +51,6 @@ jobs:
       - name: Install SATySFi
         run: |
           opam install -y .
-          if [ "${{ matrix.os }}" == 'macos-latest' ]; then
-            ./install-libs.sh ~/.satysfi ginstall
-          else
-            ./install-libs.sh ~/.satysfi install
-          fi
 
       - name: Check library packages
         run: |

@@ -276,6 +276,7 @@
 %token<Range.t * string> CHAR
 %token<Range.t * string * bool * bool> STRING
 %token<Range.t * Types.input_position * string> POSITIONED_STRING
+%token<Range.t * string> HERE
 
 %token<Range.t> SPACE BREAK
 %token<Range.t * string> MATHCHARS
@@ -381,8 +382,8 @@ headerelem:
   | USE; opening=optional_open; mod_chain=mod_chain; OF; tok=STRING
      {
        let (_rng, str, pre, post) = tok in
-       let s = omit_spaces pre post str in
-       HeaderUseOf{ opening; mod_chain; path = s }
+       let relpath_without_ext = omit_spaces pre post str in
+       HeaderUseOf{ opening; mod_chain; relpath_without_ext }
      }
 ;
 optional_open:
@@ -942,6 +943,11 @@ expr_bot:
       {
         let (rng, ipos, s) = tok in
         make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s))
+      }
+  | tok=HERE
+      {
+        let (rng, abspathstr) = tok in
+        make_standard (Tok rng) (Tok rng) (UTStringConstant(abspathstr))
       }
   | tokL=L_PAREN; ident=binop; tokR=R_PAREN
       { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], ident)) }

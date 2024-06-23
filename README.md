@@ -2,9 +2,11 @@
 
 [![Build Status](https://github.com/gfngfn/SATySFi/workflows/CI/badge.svg?branch=master)](https://github.com/gfngfn/SATySFi/actions?query=workflow%3ACI)
 
+**Note: As of Mar 2024, we are in the process of migrating SATySFi 0.0.x to SATySFi 0.1.x. In many documents as well as this README file. there might be information about features that has already been obsoleted.**
+
 [日本語版 README はこちら](https://github.com/gfngfn/SATySFi/blob/master/README-ja.md)
 
-## Summary of SATySFi
+## What’s SATySFi?
 
 *SATySFi* (pronounced in the same way as the verb “satisfy” in English) is a new typesetting system equipped with a statically-typed, functional programming language. It consists mainly of two “layers” ― the text layer and the program layer. The former is for writing documents in LaTeX-like syntax. The latter, which has OCaml-like syntax, is for defining functions and commands. SATySFi enables you to write documents markuped with flexible commands of your own making. In addition, its informative type error reporting will be a good help to your writing.
 
@@ -14,37 +16,8 @@ This software was supported by:
 * Dwango Co., Ltd. (October 2018 – March 2019; as a part-time job), and
 * many anonymous supporters who bought [The SATySFi​book](https://booth.pm/ja/items/1127224),
 
-and its development continues to this day (Feb 2024).
+and its development continues to this day (Mar 2024).
 
-## Install using Satyrographos (for non-devs)
-
-You can install SATySFi with package manager [Satyrographos](https://github.com/na4zagin3/satyrographos/blob/master/README.md).
-
-```sh
-# For Ubuntu 20.04
-sudo apt-get update
-sudo apt-get install build-essential git m4 unzip curl pkg-config
-sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
-
-# For Mac
-# Please make sure homebrew is installed. Otherwise, follow https://brew.sh/
-brew update
-brew install opam
-
-# Common: Set up OPAM
-opam init
-eval $(opam env)
-opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
-opam repository add satyrographos https://github.com/na4zagin3/satyrographos-repo.git
-opam update
-
-# Common: Install SATySFi
-opam depext satysfi satysfi-dist satyrographos
-opam install satysfi satysfi-dist satyrographos
-
-# Common: Set up the SATySFi standard library
-satyrographos install
-```
 
 ## Install using OPAM
 
@@ -110,7 +83,7 @@ opam update
 
 ### Build
 
-First, clone this repository and submodules. Then build SATySFi using OPAM.
+First, clone this repository. Then build SATySFi and Saphe using OPAM.
 
 ```sh
 # clone
@@ -118,41 +91,45 @@ git clone https://github.com/gfngfn/SATySFi.git
 cd SATySFi
 
 # build
-opam pin add satysfi .
-opam install satysfi
+opam pin add .
+opam install satysfi saphe
 ```
 
-* To reinstall, run `opam reinstall satysfi`.
-* To uninstall, run `opam uninstall satysfi`.
+* To reinstall, run `opam reinstall satysfi saphe`.
+* To uninstall, run `opam uninstall satysfi saphe`.
 
-<!--
-### Manual build of SATySFi
 
-1. Install ocamlbuild, ocamlfind, and Menhir.
-2. In repository, run `make`.
-3. `macrodown` should then be available under the diretory.
-4. Run `make install` to install `satysfi` as `/usr/local/bin/satysfi`.
-5. Run `make install-lib` to create a symbolic link for the library.
+## About SATySFi **0.0.x**
 
-You can modify the directory for the installation by specifying `PREFIX` like `sudo make install PREFIX=/usr/bin`. the symbolic link for the SATySFi library will be created as `/usr/local/lib-satysfi -> DIR/lib-satysfi` where `DIR` is the top directory of the repository.
--->
+### Install SATySFi **0.0.x** using Satyrographos (for non-devs)
 
-<!--
-### Download release from GitHub
-
-See [release page](https://github.com/gfngfn/Macrodown/releases)
--->
-
-### Setup for SATySFi
-
-Before using SATySFi, one should put libraries and fonts onto the appropriate directory. This can be done by invoking the following commands in order:
+You can install SATySFi **0.0.x** with package manager [Satyrographos](https://github.com/na4zagin3/satyrographos/blob/master/README.md).
 
 ```sh
-./download-fonts.sh
-./install-libs.sh
-```
+# For Ubuntu 20.04
+sudo apt-get update
+sudo apt-get install build-essential git m4 unzip curl pkg-config
+sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
 
-The former downloads the fonts required by the default settings into `lib-satysfi/dist/fonts/`, and the latter copies `lib-satysfi/` to  `/usr/local/share/satysfi/`.
+# For Mac
+# Please make sure homebrew is installed. Otherwise, follow https://brew.sh/
+brew update
+brew install opam
+
+# Common: Set up OPAM
+opam init
+eval $(opam env)
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
+opam repository add satyrographos https://github.com/na4zagin3/satyrographos-repo.git
+opam update
+
+# Common: Install SATySFi
+opam depext satysfi satysfi-dist satyrographos
+opam install satysfi satysfi-dist satyrographos
+
+# Common: Set up the SATySFi standard library
+satyrographos install
+```
 
 During this setup, the following fonts are downloaded. Consult their license before using them.
 
@@ -161,7 +138,8 @@ During this setup, the following fonts are downloaded. Consult their license bef
 * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern/)
 * [Latin Modern Math](http://www.gust.org.pl/projects/e-foundry/lm-math)
 
-## Usage of SATySFi
+
+### Usage
 
 Type
 
@@ -186,6 +164,7 @@ make
 
 If `demo.pdf` is created, then the setup has been finished correctly.
 
+
 ### Reference
 
 In addition, a concice reference of SATySFi is written by SATySFi itself in `doc` folder. You need to compile it to read.
@@ -195,7 +174,7 @@ cd doc
 make
 ```
 
-## Command-line options
+### Command-line options
 
 * `-v`, `--version`: Prints the version.
 * `-o`, `--output`: Specify the name of the output PDF file. if this option is not given explicitly, the name of the output file is the concatenation of the base name of the input file and the extension `.pdf`.
@@ -205,6 +184,7 @@ make
 * `--debug-show-bbox`: Outputs bounding boxes for each glyph (for the purpose of debugging).
 * `--debug-show-space`: Outputs boxes for spaces (for the purpose of debugging).
 
-## Learning SATySFi
+
+### Learning SATySFi **0.0.x**
 
 [Wiki](https://github.com/gfngfn/SATySFi/wiki/SATySFi-Wiki#%E5%AD%A6%E7%BF%92%E7%94%A8%E8%B3%87%E6%96%99) (currently written only in Japanese) has some information about learning SATySFi.

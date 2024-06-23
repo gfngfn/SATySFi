@@ -1,0 +1,13 @@
+(library
+ (name util)
+ (public_name satysfi-util)
+ (flags (:standard -bin-annot -thread -safe-string))
+ (wrapped false)
+ (libraries
+   core_unix
+   ocamlgraph
+   semver2
+   uutf
+   yaml)
+ (preprocess
+   (pps ppx_deriving.show)))

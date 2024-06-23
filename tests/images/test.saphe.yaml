@@ -1,0 +1,28 @@
+saphe: "^0.1.0-alpha.1"
+satysfi: "^0.1.0-alpha.1"
+authors:
+  - "Daichi OOHASHI <@leque>"
+  - "Takashi Suwa"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  document: {}
+dependencies:
+  - used_as: "StdJa"
+    registered:
+      registry: "default"
+      name: "std-ja"
+      requirement: "^0.0.1"
+  - used_as: "Itemize"
+    registered:
+      registry: "default"
+      name: "itemize"
+      requirement: "^0.0.1"
+  - used_as: "Annot"
+    registered:
+      registry: "default"
+      name: "annot"
+      requirement: "^0.0.1"

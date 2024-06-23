@@ -2,33 +2,34 @@
  (name main)
  (public_name satysfi)
  (flags (:standard -bin-annot -thread -safe-string))
- (libraries str
-            batteries
-            camlimages.core
-            camlimages.jpeg
-            camlimages.png
-            camlpdf
-            core_kernel
-            core_kernel.pairing_heap
-            core_unix
-            menhirLib
-            otfed
-            uutf
-            uunf
-            uunf.string
-            uuseg
-            uuseg.string
-            yojson-with-position
-            omd
-            ocamlgraph
-            yaml
-            0install-solver
-            semver2
-            uri)
- (preprocess (pps
-              ppx_deriving.show
-              ))
- )
+ (libraries
+   0install-solver
+   batteries
+   camlimages.core
+   camlimages.jpeg
+   camlimages.png
+   camlpdf
+   core_kernel
+   core_kernel.pairing_heap
+   core_unix
+   menhirLib
+   ocamlgraph
+   omd
+   otfed
+   satysfi-common
+   satysfi-util
+   semver2
+   str
+   uutf
+   uunf
+   uunf.string
+   uuseg
+   uuseg.string
+   yaml
+   yojson-with-position
+   uri)
+ (preprocess
+   (pps ppx_deriving.show)))
 
 ;; dune requires all the .ml/.mli files to be in the same directory as the jbuild.
 ;; https://github.com/ocaml/dune/issues/109
@@ -48,10 +49,10 @@
  (modules parser dataParser)
  (flags (--table --explain)))
 
-(rule
- (targets version.ml)
- (deps  ../tools/genversion/genversion.exe (:src ../satysfi.opam))
- (action (with-stdout-to %{targets} (run %{deps}))))
+;(rule
+; (targets version.ml)
+; (deps  ../tools/genversion/genversion.exe (:src ../satysfi.opam))
+; (action (with-stdout-to %{targets} (run %{deps}))))
 
 (rule
  (targets types.ml)
