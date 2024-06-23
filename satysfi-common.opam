@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "satysfi-common"
-version: "0.0.1"
+version: "0.1.0~alpha.1"
 maintainer: "Takashi Suwa"
 authors: [
   "Takashi Suwa"
@@ -26,6 +26,6 @@ depends: [
   "alcotest" {with-test & >= "1.4.0"}
   "satysfi-util"
 ]
-synopsis: ""
+synopsis: "A library of modules used by SATySFi and Saphe in common"
 description: """
 """

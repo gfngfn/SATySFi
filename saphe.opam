@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "saphe"
-version: "0.0.1"
+version: "0.1.0~alpha.1"
 maintainer: "Takashi Suwa"
 authors: [
   "Takashi Suwa"
@@ -41,6 +41,6 @@ depends: [
   "semver2" {>= "1.2.0"}
   "uri" {>= "4.2.0"}
 ]
-synopsis: ""
+synopsis: "A prototype ecosystem for SATySFi >= 0.1.0"
 description: """
 """

@@ -1,5 +1,5 @@
-saphe: "^0.0.1"
-satysfi: "^0.1.0"
+saphe: "^0.1.0-alpha.1"
+satysfi: "^0.1.0-alpha.1"
 name: "std-ja-book"
 authors:
   - "Takashi Suwa <@gfngfn>"
