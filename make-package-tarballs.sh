@@ -17,7 +17,7 @@ for FILE in $(find lib-satysfi -name saphe.yaml); do
     ABS_TARGET="${REPO_ROOT}/${TARGET_DIR}/${VERSIONED_NAME}.tar.gz"
 
     echo "Compressing ${VERSIONED_NAME} at ${PACKAGE_DIR} to ${ABS_TARGET} ..."
-    (cd "${PACKAGE_DIR}" && tar -czf "${ABS_TARGET}" "${VERSIONED_NAME}")
+    (cd "${PACKAGE_DIR}" && tar -czf "${ABS_TARGET}" --exclude "*expected" "${VERSIONED_NAME}")
     echo "Checksum:"
     md5sum "${ABS_TARGET}"
 done
