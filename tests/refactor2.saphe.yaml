@@ -1,6 +1,5 @@
-saphe: "^0.0.1"
-satysfi: "^0.1.0"
-name: "refactor2" #TODO: remove this
+saphe: "^0.1.0-alpha.1"
+satysfi: "^0.1.0-alpha.1"
 authors:
   - "Takashi Suwa"
 registries:
