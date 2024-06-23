@@ -3,6 +3,7 @@ type error =
   | ContainsQueryParameter of { url : string }
   | NoUriScheme            of { url : string }
   | UnexpectedUrlScheme    of { url : string; scheme : string }
+[@@deriving show { with_path = false }]
 
 
 let make (s_registry_url : string) : (string, error) result =

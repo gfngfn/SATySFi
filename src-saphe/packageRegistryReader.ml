@@ -55,7 +55,7 @@ let listup_release_configs (package_name : package_name) (absdir_single_package 
   Alist.to_list acc
 
 
-let main (absdir_registry_repo : abs_path) : ((package_name * implementation_record list) list, config_error) result =
+let main (absdir_registry_repo : abs_path) : ((package_name * (registry_remote list * implementation_record) list) list, config_error) result =
   let open ResultMonad in
 
   (* Lists up package directories: *)
@@ -75,6 +75,7 @@ let main (absdir_registry_repo : abs_path) : ((package_name * implementation_rec
           let*
             PackageReleaseConfig.{
               ecosystem_requirement;
+              registry_remotes;
               package_name = package_name_for_checking;
               implementation;
             } = PackageReleaseConfig.load abspath_release_config
@@ -98,7 +99,7 @@ let main (absdir_registry_repo : abs_path) : ((package_name * implementation_rec
               from_content  = package_version_for_checking;
             }
           else
-            return @@ Alist.extend implacc implementation
+            return @@ Alist.extend implacc (registry_remotes, implementation)
         ) Alist.empty
       in
       return @@ Alist.extend acc (package_name, Alist.to_list implacc)

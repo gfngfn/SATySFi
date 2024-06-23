@@ -129,9 +129,10 @@ type package_dependency =
 
 type package_dependency_in_registry =
   | PackageDependencyInRegistry of {
-      package_name        : package_name;
-      used_as             : string;
-      version_requirement : SemanticVersion.requirement;
+      used_as                      : string;
+      external_registry_hash_value : registry_hash_value option;
+      package_name                 : package_name;
+      version_requirement          : SemanticVersion.requirement;
     }
 [@@deriving show { with_path = false }]
 
@@ -140,6 +141,13 @@ type implementation_source =
   | TarGzip of {
       url      : string;
       checksum : string;
+    }
+[@@deriving show { with_path = false }]
+
+type registry_remote =
+  | GitRegistry of {
+      url    : string;
+      branch : string;
     }
 [@@deriving show { with_path = false }]
 
@@ -188,13 +196,6 @@ type implementation_spec =
       lock   : Lock.t;
       source : implementation_source;
     }
-
-type registry_remote =
-  | GitRegistry of {
-      url    : string;
-      branch : string;
-    }
-[@@deriving show { with_path = false }]
 
 type extraction = {
   extracted_from : string;

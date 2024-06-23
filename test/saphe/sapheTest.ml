@@ -5,4 +5,5 @@ let () =
     ("PackageConfig", PackageConfigTest.test_cases);
     ("PackageReleaseConfig", PackageReleaseConfigTest.test_cases);
     ("PackageConstraintSolver", PackageConstraintSolverTest.test_cases);
+    ("PackageRegistryArranger", PackageRegistryArrangerTest.test_cases);
   ]
