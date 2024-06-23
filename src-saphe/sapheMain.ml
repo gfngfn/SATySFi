@@ -910,63 +910,66 @@ let solve ~(fpath_in : string) =
 
     (* Constructs a map that associates a package with its implementations: *)
     let* registered_package_impls =
-      PackageRegistryArranger.main (fun registered_package_impls canonical_registry_remote ->
-        let* registry_hash_value = ConfigUtil.make_registry_hash_value canonical_registry_remote in
+      PackageRegistryArranger.main
+        ~err:(fun e -> CanonicalRegistryUrlError(e))
+        (fun registered_package_impls canonical_registry_remote ->
+          let* registry_hash_value = ConfigUtil.make_registry_hash_value canonical_registry_remote in
 
-        (* Manupulates the store root config: *)
-        let* () =
-          update_store_root_config_if_needed
-            store_root_config.StoreRootConfig.registries
-            registry_hash_value
-            canonical_registry_remote
-            abspath_store_root_config
-        in
-
-        (* Loads the registry config: *)
-        let absdir_registry_repo =
-          Constant.registry_root_directory_path ~store_root:absdir_store_root registry_hash_value
-        in
-        let git_command = "git" in (* TODO: make this changeable *)
-        let* created =
-          PackageRegistryFetcher.main ~do_update:false ~git_command absdir_registry_repo canonical_registry_remote
-            |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
-        in
-        begin
-          if created then Logging.package_registry_updated ~created:true absdir_registry_repo
-        end;
-
-        (* Loads the registry config: *)
-        let* () =
-          let abspath_registry_config =
-            Constant.package_registry_config_path ~registry_dir:absdir_registry_repo
+          (* Manupulates the store root config: *)
+          let* () =
+            update_store_root_config_if_needed
+              store_root_config.StoreRootConfig.registries
+              registry_hash_value
+              canonical_registry_remote
+              abspath_store_root_config
           in
-          PackageRegistryConfig.load abspath_registry_config
-        in
 
-        (* Reads the registry and grows `registered_package_impls`,
-           and through this traversal, collects `new_registry_remotes`,
-           which are other registies on which the packages in the current registry depend: *)
-        let* packages = PackageRegistryReader.main absdir_registry_repo in
-        let* (registry_remote_acc, registered_package_impls) =
-          packages |> foldM (fun (registry_remote_acc, registered_package_impls) (package_name, impls_with_remotes) ->
-            let registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name } in
-            if registered_package_impls |> RegisteredPackageIdMap.mem registered_package_id then
-              err @@ MultiplePackageDefinition{ package_name }
-            else
-              let registry_remotess = List.map fst impls_with_remotes in
-              let impls = List.map snd impls_with_remotes in
-              let registry_remote_acc = Alist.append registry_remote_acc (List.concat registry_remotess) in
-              let registered_package_impls =
-                registered_package_impls |> RegisteredPackageIdMap.add registered_package_id impls
-              in
-              return (registry_remote_acc, registered_package_impls)
-          ) (Alist.empty, registered_package_impls)
-        in
-        let new_registry_remotes = Alist.to_list registry_remote_acc in
+          (* Loads the registry config: *)
+          let absdir_registry_repo =
+            Constant.registry_root_directory_path ~store_root:absdir_store_root registry_hash_value
+          in
+          let git_command = "git" in (* TODO: make this changeable *)
+          let* created =
+            PackageRegistryFetcher.main ~do_update:false ~git_command absdir_registry_repo canonical_registry_remote
+              |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
+          in
+          begin
+            if created then Logging.package_registry_updated ~created:true absdir_registry_repo
+          end;
 
-        return (new_registry_remotes, registered_package_impls)
+          (* Loads the registry config: *)
+          let* () =
+            let abspath_registry_config =
+              Constant.package_registry_config_path ~registry_dir:absdir_registry_repo
+            in
+            PackageRegistryConfig.load abspath_registry_config
+          in
 
-      ) registry_remotes RegisteredPackageIdMap.empty
+          (* Reads the registry and grows `registered_package_impls`,
+             and through this traversal, collects `new_registry_remotes`,
+             which are other registies on which the packages in the current registry depend: *)
+          let* packages = PackageRegistryReader.main absdir_registry_repo in
+          let* (registry_remote_acc, registered_package_impls) =
+            packages |> foldM (fun (registry_remote_acc, registered_package_impls) (package_name, impls_with_remotes) ->
+              let registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name } in
+              if registered_package_impls |> RegisteredPackageIdMap.mem registered_package_id then
+                err @@ MultiplePackageDefinition{ package_name }
+              else
+                let registry_remotess = List.map fst impls_with_remotes in
+                let impls = List.map snd impls_with_remotes in
+                let registry_remote_acc = Alist.append registry_remote_acc (List.concat registry_remotess) in
+                let registered_package_impls =
+                  registered_package_impls |> RegisteredPackageIdMap.add registered_package_id impls
+                in
+                return (registry_remote_acc, registered_package_impls)
+            ) (Alist.empty, registered_package_impls)
+          in
+          let new_registry_remotes = Alist.to_list registry_remote_acc in
+
+          return (new_registry_remotes, registered_package_impls)
+        )
+        registry_remotes
+        RegisteredPackageIdMap.empty
     in
 
     let package_context = { language_version; registered_package_impls; local_fixed_dependencies } in
@@ -1035,32 +1038,35 @@ let update ~(fpath_in : string) =
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
     Logging.store_root_config_updated ~created abspath_store_root_config;
 
-    PackageRegistryArranger.main (fun () registry_remote ->
-      let* registry_hash_value = ConfigUtil.make_registry_hash_value registry_remote in
+    PackageRegistryArranger.main
+      ~err:(fun e -> CanonicalRegistryUrlError(e))
+      (fun () registry_remote ->
+        let* registry_hash_value = ConfigUtil.make_registry_hash_value registry_remote in
 
-      (* Manupulates the store root config: *)
-      let* () =
-        update_store_root_config_if_needed
-          store_root_config.StoreRootConfig.registries
-          registry_hash_value
-          registry_remote
-          abspath_store_root_config
-      in
+        (* Manupulates the store root config: *)
+        let* () =
+          update_store_root_config_if_needed
+            store_root_config.StoreRootConfig.registries
+            registry_hash_value
+            registry_remote
+            abspath_store_root_config
+        in
 
-      (* Loads the registry config: *)
-      let absdir_registry_repo =
-        Constant.registry_root_directory_path ~store_root:absdir_store_root registry_hash_value
-      in
-      let git_command = "git" in (* TODO: make this changeable *)
-      let* created =
-        PackageRegistryFetcher.main ~do_update:true ~git_command absdir_registry_repo registry_remote
-          |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
-      in
-      Logging.package_registry_updated ~created absdir_registry_repo;
+        (* Loads the registry config: *)
+        let absdir_registry_repo =
+          Constant.registry_root_directory_path ~store_root:absdir_store_root registry_hash_value
+        in
+        let git_command = "git" in (* TODO: make this changeable *)
+        let* created =
+          PackageRegistryFetcher.main ~do_update:true ~git_command absdir_registry_repo registry_remote
+            |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
+        in
+        Logging.package_registry_updated ~created absdir_registry_repo;
 
-      return ([], ())
-
-    ) registry_remotes ()
+        return ([], ())
+      )
+      registry_remotes
+      ()
   in
   match res with
   | Ok(())   -> ()

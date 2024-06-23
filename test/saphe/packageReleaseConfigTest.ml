@@ -24,7 +24,7 @@ dependencies: []
 let expected1 =
   ParsedPackageReleaseConfig{
     ecosystem_requirement = CompatibleWith(make_version "0.0.1");
-    language_requirement = CompatibleWith(make_version "0.1.0");
+    language_requirement  = CompatibleWith(make_version "0.1.0");
     package_name          = "stdlib";
     package_version       = make_version "0.0.1";
     source = TarGzip{
@@ -66,7 +66,7 @@ dependencies:
 let expected2 =
   ParsedPackageReleaseConfig{
     ecosystem_requirement = CompatibleWith(make_version "0.0.1");
-    language_requirement = CompatibleWith(make_version "0.1.0");
+    language_requirement  = CompatibleWith(make_version "0.1.0");
     package_name          = "foo";
     package_version       = make_version "0.0.1";
     source = TarGzip{
