@@ -7,7 +7,7 @@ module PackageConfig = SapheMain__PackageConfig
 
 
 let input1 = {yaml|
-saphe: "^0.0.1"
+saphe: "^0.1.0-alpha.1"
 satysfi: "^0.1.0"
 name: "stdlib"
 authors:
