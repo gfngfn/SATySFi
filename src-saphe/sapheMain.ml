@@ -584,7 +584,7 @@ Hello, world!
 
 let initial_document_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
 saphe: "^%s"
-satysfi: "^0.1.0"
+satysfi: "^0.1.0-alpha.1"
 authors:
   - "Your Name"
 registries:
@@ -605,7 +605,7 @@ dependencies:
 
 let initial_markdown_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
 saphe: "^%s"
-satysfi: "^0.1.0"
+satysfi: "^0.1.0-alpha.1"
 authors:
   - "Your Name"
 registries:
@@ -626,7 +626,7 @@ dependencies:
 
 let initial_library_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
 saphe: "^%s"
-satysfi: "^0.1.0"
+satysfi: "^0.1.0-alpha.1"
 name: "your-library"
 authors:
   - "Your Name"
