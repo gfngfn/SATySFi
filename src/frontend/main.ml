@@ -8,7 +8,7 @@ open ConfigError
 
 
 let version =
-  Printf.sprintf "SATySFi version %s alpha"
+  Printf.sprintf "SATySFi version %s"
     (SemanticVersion.to_string Constant.current_language_version)
 
 
