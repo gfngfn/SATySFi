@@ -156,7 +156,6 @@ type implementation_record =
       language_requirement : SemanticVersion.requirement;
       package_version      : SemanticVersion.t;
       source               : implementation_source;
-      registry_remotes     : registry_remote list;
       dependencies         : package_dependency_in_registry list;
     }
 [@@deriving show { with_path = false }]

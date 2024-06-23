@@ -44,12 +44,11 @@ let make_dependency_in_registry ~(used_as : string) ?(external_registry_hash_val
   }
 
 
-let make_impl (s_version : string) ?(registry_remotes : registry_remote list = []) (deps : package_dependency_in_registry list) : implementation_record =
+let make_impl (s_version : string) (deps : package_dependency_in_registry list) : implementation_record =
   ImplRecord{
     language_requirement  = SemanticVersion.CompatibleWith(language_version);
     package_version       = make_version s_version;
     source                = NoSource;
-    registry_remotes      = registry_remotes;
     dependencies          = deps;
   }
 
@@ -245,7 +244,6 @@ let solve_test_4 () =
         ];
         make_entry "bar" [
           make_impl "1.0.0"
-            ~registry_remotes:[ GitRegistry{ url = "example.com"; branch = "master" } ] (* Dummy *)
             [
                make_dependency_in_registry
                  ~used_as:"Foo" ~external_registry_hash_value "foo" "2.0.0"

@@ -10,6 +10,7 @@ type 'a ok = ('a, config_error) result
 
 type t = {
   ecosystem_requirement : SemanticVersion.requirement;
+  registry_remotes      : registry_remote list;
   package_name          : package_name;
   implementation        : implementation_record;
 }
@@ -105,11 +106,11 @@ let validate (p_package_release_config : parsed_package_release_config) : t ok =
   return @@ {
     ecosystem_requirement;
     package_name;
+    registry_remotes;
     implementation = ImplRecord{
       language_requirement;
       package_version;
       source;
-      registry_remotes;
       dependencies;
     };
   }
