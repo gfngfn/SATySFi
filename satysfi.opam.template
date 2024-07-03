@@ -1,0 +1,10 @@
+build: [
+  ["mkdir" "-p" "temp"]
+  [make "-f" "Makefile" "PREFIX=%{prefix}%"]
+]
+install: [
+  [make "-f" "Makefile" "install" "PREFIX=%{prefix}%"]
+]
+remove: [
+  [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%"]
+]

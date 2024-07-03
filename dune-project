@@ -1,10 +1,10 @@
 (lang dune 3.16)
 
+(using menhir 2.1)
+
 (name satysfi)
 
-(version "0.0.11")
-
-(using menhir 2.1)
+(version 0.0.11)
 
 (license LGPL-3.0-only)
 
@@ -25,49 +25,54 @@
  (depends
   (ocaml
    (and
-    (>= "4.12.0")
-    (< "5.0.0")))
+    (>= 4.12.0)
+    (< 5.0.0)))
   (batteries
    (and
-    (>= "3.6.0")
-    (< "4.0.0")))
+    (>= 3.6.0)
+    (< 4.0)))
   (camlimages
    (and
-    (>= "5.0.1")
-    (< "5.0.5")))
+    (>= 5.0.1)
+    (< 5.0.5)))
   (camlpdf
-   (= "2.3.1+satysfi"))
+   (= 2.3.1+satysfi))
   (core_kernel
    (and
-    (>= "v0.15")
-    (< "v0.17")))
+    (>= v0.15)
+    (< v0.17)))
   (cppo
    (and
     :build
-    (>= "1.6.4")
-    (< "1.7.0")))
-  menhir
+    (>= 1.6.4)
+    (< 1.7.0)))
+  (menhir
+   (and
+    :build
+    (>= 20231231)))
+  (menhirLib
+   (>= 20231231))
   (ocamlfind :build)
   (omd
    (and
-    (>= "1.3.2")
-    (< "2.0.0")))
+    (>= 1.3.2)
+    (< 2.0)))
   (otfed
    (and
-    (>= "0.3.1")
-    (< "0.4")))
+    (>= 0.3.1)
+    (< 0.4)))
   (ppx_deriving
    (and
-    (>= "5.2.1")
-    (< "6.0.0")))
+    (>= 5.2.1)
+    (< 6.0)))
   (re
    (and
     :build
-    (>= "1.10.4")
-    (< "2.0.0")))
+    (>= 1.10.4)
+    (< 2.0)))
   (uutf
    (and
-    (>= "1.0.3")
-    (< "2.0.0")))
+    (>= 1.0.3)
+    (< 2.0)))
   (yojson-with-position
-   (= "1.4.2+satysfi"))))
+   (= 1.4.2+satysfi))))

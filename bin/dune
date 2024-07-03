@@ -2,5 +2,4 @@
  (name satysfi)
  (public_name satysfi)
  (libraries main)
- (preprocess no_preprocessing)
-)
+ (preprocess no_preprocessing))
