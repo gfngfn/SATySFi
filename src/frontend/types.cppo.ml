@@ -1559,7 +1559,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
     List.map (map_path_component aux aux) cdpath
 
   and aux_cycle cdcycleopt =
-    cdcycleopt |> BatOption.map (map_path_component aux (fun () -> ()))
+    cdcycleopt |> Option.map (map_path_component aux (fun () -> ()))
 
   in
   aux code

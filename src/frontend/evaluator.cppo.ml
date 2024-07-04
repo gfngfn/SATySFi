@@ -569,7 +569,7 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value * environ
       let (codept0, _) = interpret_1 env astpt0 in
       let cdpathcomplst = pathcomplst |> List.map (map_path_component (interpret_1_value env) (interpret_1_value env)) in
       let cdcycleopt =
-        cycleopt |> BatOption.map (map_path_component (interpret_1_value env) (fun () -> ())
+        cycleopt |> Option.map (map_path_component (interpret_1_value env) (fun () -> ())
         )
       in
       return @@ CdPath(codept0, cdpathcomplst, cdcycleopt)
