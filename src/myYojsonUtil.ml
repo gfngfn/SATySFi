@@ -18,7 +18,7 @@ let syntax_error srcpath msg =
 
 let make_range (pos : Yojson.position) =
   let open Yojson in
-  let fname = BatOption.default "(none)" pos.file_name in
+  let fname = Option.value ~default:"(none)" pos.file_name in
   Range.make_large fname pos.start_line pos.start_column pos.end_line pos.end_column
 
 

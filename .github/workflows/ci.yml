@@ -1,21 +1,24 @@
 name: CI
 
 on:
-  - push
-  - pull_request
+  push:
+  pull_request:
+  schedule:
+    # Prime the caches every Monday
+    - cron: 0 1 * * MON
 
 jobs:
   build:
     name: Build
+
     strategy:
       fail-fast: false
       matrix:
         os:
           - ubuntu-latest
           - macos-latest
+          # - windows-latest
         ocaml-compiler:
-          - "4.12"
-          - "4.13"
           - "4.14"
 
     runs-on: ${{ matrix.os }}
@@ -24,25 +27,28 @@ jobs:
       - name: Checkout tree
         uses: actions/checkout@v4
 
-      - name: Cache dist fonts
+      # - name: Set SHELLOPTS=igncr on Windows
+      #   if: runner.os == 'Windows'
+      #   run: echo "SHELLOPTS=igncr" >>"$GITHUB_ENV"
+
+      - name: Restore fonts cache
         uses: actions/cache@v4
         id: fonts-cache
         with:
           path: lib-satysfi/dist/fonts
           key: cache-dist-fonts-${{ hashFiles('download-fonts.sh') }}
 
-      - name: Set-up OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v2
+      - name: Set-up OCaml
+        uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
           dune-cache: true
-          allow-prerelease-opam: true
           opam-repositories: |
-            satysfi-external: https://github.com/gfngfn/satysfi-external-repo.git
-            default: https://github.com/ocaml/opam-repository.git
+            satysfi-external: git+https://github.com/gfngfn/satysfi-external-repo.git
+            default: git+https://github.com/ocaml/opam-repository.git
 
       - name: Install SATySFi dependencies
-        run: opam install . --deps-only --with-doc
+        run: opam install . --deps-only
 
       - name: Build SATySFi
         run: opam exec -- make all
@@ -56,7 +62,7 @@ jobs:
 
       - name: Install SATySFi
         run: |
-          opam install -y .
+          opam install .
           ./install-libs.sh ~/.satysfi
 
       - name: Build demo docs
@@ -64,3 +70,21 @@ jobs:
           (cd demo; opam exec -- make)
           (cd doc; opam exec -- make)
           (cd tests; opam exec -- make)
+
+  lint-opam:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tree
+        uses: actions/checkout@v4
+
+      - name: Set-up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "4.14"
+          dune-cache: true
+          opam-repositories: |
+            satysfi-external: git+https://github.com/gfngfn/satysfi-external-repo.git
+            default: git+https://github.com/ocaml/opam-repository.git
+
+      - name: Lint opam
+        uses: ocaml/setup-ocaml/lint-opam@v3
