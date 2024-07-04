@@ -2,9 +2,10 @@
 
 (using menhir 2.1)
 
-(name satysfi)
+(formatting
+ (enabled_for dune))
 
-(version 0.0.11)
+(name satysfi)
 
 (license LGPL-3.0-only)
 
@@ -40,19 +41,16 @@
   (core_kernel
    (and
     (>= v0.15)
-    (< v0.17)))
+    (< v0.18)))
   (cppo
    (and
-    :build
     (>= 1.6.4)
-    (< 1.7.0)))
+    (< 1.7)))
+  dune-build-info
   (menhir
-   (and
-    :build
-    (>= 20231231)))
+   (>= 20231231))
   (menhirLib
    (>= 20231231))
-  (ocamlfind :build)
   (omd
    (and
     (>= 1.3.2)
@@ -67,7 +65,6 @@
     (< 6.0)))
   (re
    (and
-    :build
     (>= 1.10.4)
     (< 2.0)))
   (uutf

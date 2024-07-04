@@ -1,16 +1,13 @@
-name: CI
+name: Builds, tests & co
 
 on:
   push:
   pull_request:
   schedule:
-    # Prime the caches every Monday
     - cron: 0 1 * * MON
 
 jobs:
-  build:
-    name: Build
-
+  build-and-test:
     strategy:
       fail-fast: false
       matrix:
@@ -19,7 +16,7 @@ jobs:
           - macos-latest
           # - windows-latest
         ocaml-compiler:
-          - "4.14"
+          - 4
 
     runs-on: ${{ matrix.os }}
 
@@ -71,20 +68,30 @@ jobs:
           (cd doc; opam exec -- make)
           (cd tests; opam exec -- make)
 
+  lint-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tree
+        uses: actions/checkout@v4
+      - name: Set-up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 4
+          opam-repositories: |
+            satysfi-external: git+https://github.com/gfngfn/satysfi-external-repo.git
+            default: git+https://github.com/ocaml/opam-repository.git
+      - uses: ocaml/setup-ocaml/lint-fmt@v3
+
   lint-opam:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout tree
         uses: actions/checkout@v4
-
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: "4.14"
-          dune-cache: true
+          ocaml-compiler: 4
           opam-repositories: |
             satysfi-external: git+https://github.com/gfngfn/satysfi-external-repo.git
             default: git+https://github.com/ocaml/opam-repository.git
-
-      - name: Lint opam
-        uses: ocaml/setup-ocaml/lint-opam@v3
+      - uses: ocaml/setup-ocaml/lint-opam@v3

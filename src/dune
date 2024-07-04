@@ -12,6 +12,7 @@
   camlpdf
   core_kernel
   core_kernel.pairing_heap
+  dune-build-info
   menhirLib
   otfed
   uutf
@@ -46,16 +47,6 @@
  (modules parser dataParser)
  (flags
   (--table --explain)))
-
-(rule
- (targets version.ml)
- (deps
-  ../tools/genversion/genversion.exe
-  (:src ../satysfi.opam))
- (action
-  (with-stdout-to
-   %{targets}
-   (run %{deps}))))
 
 (rule
  (targets types.ml)
