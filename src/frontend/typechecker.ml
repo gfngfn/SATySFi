@@ -111,7 +111,7 @@ let rec is_nonexpansive_expression e =
 module PatternVarMap = Map.Make
   (struct
     type t = var_name
-    let compare = Pervasives.compare
+    let compare = Stdlib.compare
   end)
 
 
