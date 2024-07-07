@@ -241,6 +241,15 @@ and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * fra
       in
       (IRPTuple(bs), env)
 
+  | PRecord(field_pats) ->
+      let (bs, env) =
+        field_pats |> List.fold_left (fun (acc, env) (label, pat) ->
+          let (b, env) = transform_pattern env pat in
+          (Alist.extend acc (label, b), env)
+        ) (Alist.empty, env)
+      in
+      (IRPRecord(Alist.to_list bs), env)
+
   | PConstructor(cnm1, psub) ->
       let (bsub, env) = transform_pattern env psub in
       (IRPConstructor(cnm1, bsub), env)

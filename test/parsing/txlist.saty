@@ -1,8 +1,0 @@
-module Txlist = struct
-
-  type t = inline [?(foo : u,) s,]
-  and t = inline []
-  and t = inline [s]
-  and t = inline [s,] % cannot write this
-
-end

@@ -1,6 +1,0 @@
-module Sxlist = struct
-
-  val x = {|}
-  val y = {|aa|bb|}
-
-end

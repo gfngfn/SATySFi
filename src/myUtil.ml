@@ -93,6 +93,8 @@ module OptionMonad = struct
     | Some(v)   -> f v
 
   let return v = Some(v)
+
+  let ( let* ) = ( >>= )
 end
 
 module ResultMonad = struct

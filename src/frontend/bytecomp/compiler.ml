@@ -381,6 +381,19 @@ and compile_patcheck (pat : ir_pattern_tree) (next : instruction list) (cont : i
         in
         aux (ps |> TupleList.to_list) next cont
 
+    | IRPRecord(ps) ->
+        let rec aux ps next cont =
+          match ps with
+          | [] ->
+              return OpPop
+
+          | (label, pat) :: ptl ->
+              let ctl = aux ptl next cont in
+              let chd = compile_patcheck pat (OpPop :: next) ctl in
+              OpCheckStackTopRecord(label, next) :: chd
+        in
+        aux ps next cont
+
     | IRPConstructor(cnm1, psub) ->
         let code = compile_patcheck psub next cont in
         OpCheckStackTopCtor(cnm1, next) :: code
