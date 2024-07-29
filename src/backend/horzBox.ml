@@ -177,7 +177,7 @@ let pp_math_variant_style =
 module MathVariantCharMap = Map.Make
   (struct
     type t = Uchar.t * math_char_class
-    let compare = Pervasives.compare
+    let compare = Stdlib.compare
   end)
 
 

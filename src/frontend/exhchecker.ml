@@ -34,7 +34,7 @@ and expand_type =
 
 module ElementSet = Set.Make(struct
   type t = type_element
-  let compare = Pervasives.compare
+  let compare = Stdlib.compare
 end)
 
 
