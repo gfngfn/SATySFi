@@ -23,4 +23,7 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 4
+          opam-repositories: |
+            satysfi-external: git+https://github.com/gfngfn/satysfi-external-repo.git
+            default: git+https://github.com/ocaml/opam-repository.git
       - uses: ocaml/setup-ocaml/analysis@v3
