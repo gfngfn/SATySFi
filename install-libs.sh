@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 LIBDIR=${1:-/usr/local/share/satysfi}
 
