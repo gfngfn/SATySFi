@@ -2,7 +2,6 @@
  (name satysfi)
  (public_name satysfi)
  (libraries
-   main
-   cmdliner)
- (preprocess no_preprocessing)
-)
+  main
+  cmdliner)
+ (preprocess no_preprocessing))

@@ -566,6 +566,37 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
   | PrimitiveTuple(asts) ->
       let codes = asts |> TupleList.map (interpret_1 env) in
       CdTuple(codes)
+(*
+  | Module(ast1, ast2) ->
+      let (code1, envopt1) = interpret_1 env ast1 in
+      begin
+        match envopt1 with
+        | Some(env) ->
+            let (code2, envopt2) = interpret_1 env ast2 in
+            (CdModule(code1, code2), envopt2)
+
+        | None ->
+            report_bug_ast "not a module contents" ast
+      end
+
+  | BackendMathList(astlst) ->
+      let codelst = astlst |> List.map (interpret_1_value env) in
+      return @@ CdMathList(codelst)
+
+  | PrimitiveTuple(astlst) ->
+      let codelst = List.map (interpret_1_value env) astlst in
+        (* -- should be left-to-right -- *)
+      return @@ CdTuple(codelst)
+
+  | Path(astpt0, pathcomplst, cycleopt) ->
+      let (codept0, _) = interpret_1 env astpt0 in
+      let cdpathcomplst = pathcomplst |> List.map (map_path_component (interpret_1_value env) (interpret_1_value env)) in
+      let cdcycleopt =
+        cycleopt |> Option.map (map_path_component (interpret_1_value env) (fun () -> ())
+        )
+      in
+      return @@ CdPath(codept0, cdpathcomplst, cdcycleopt)
+*)
 
   | Prev(ast1) ->
       let value1 = interpret_0 env ast1 in

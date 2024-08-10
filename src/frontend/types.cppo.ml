@@ -1374,6 +1374,35 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
     | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
 #include "__unliftcode.gen.ml"
+
+(*
+  and aux_letrec_binding (CdLetRecBinding(symb, cdpatbr)) =
+    LetRecBinding(CodeSymbol.unlift symb, aux_pattern_branch cdpatbr)
+
+  and aux_pattern_branch = function
+    | CdPatternBranch(cdpat, code)            -> PatternBranch(aux_pattern cdpat, aux code)
+    | CdPatternBranchWhen(cdpat, code, codeB) -> PatternBranchWhen(aux_pattern cdpat, aux code, aux codeB)
+
+  and aux_pattern = function
+    | CdPUnitConstant             -> PUnitConstant
+    | CdPBooleanConstant(b)       -> PBooleanConstant(b)
+    | CdPIntegerConstant(n)       -> PIntegerConstant(n)
+    | CdPStringConstant(s)        -> PStringConstant(s)
+    | CdPListCons(cdpat1, cdpat2) -> PListCons(aux_pattern cdpat1, aux_pattern cdpat2)
+    | CdPEndOfList                -> PEndOfList
+    | CdPTuple(cdpats)            -> PTuple(List.map aux_pattern cdpats)
+    | CdPWildCard                 -> PWildCard
+    | CdPVariable(symb)           -> PVariable(CodeSymbol.unlift symb)
+    | CdPAsVariable(symb, cdpat)  -> PAsVariable(CodeSymbol.unlift symb, aux_pattern cdpat)
+    | CdPConstructor(ctor, cdpat) -> PConstructor(ctor, aux_pattern cdpat)
+
+  and aux_path cdpath =
+    List.map (map_path_component aux aux) cdpath
+
+  and aux_cycle cdcycleopt =
+    cdcycleopt |> Option.map (map_path_component aux (fun () -> ()))
+
+*)
   in
   aux code
 
