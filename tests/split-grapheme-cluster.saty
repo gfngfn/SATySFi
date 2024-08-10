@@ -1,0 +1,70 @@
+% -*- coding: utf-8 -*-
+@import: head
+@import: ../lib-satysfi/dist/packages/color
+@import: ../lib-satysfi/dist/packages/list
+
+let open Pervasives in
+let open Head in
+
+let () =
+  let s1 =
+    string-unexplode [
+      0x1F1EF, 0x1F1F5, %%% 🇯🇵
+      0x30AB, 0x3099, %%% ガ
+      0x30AC, %%% ガ
+      0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F466, %%% 👨‍👩‍👦(family: man, woman, boy)
+      0x1F469, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F467, %%% 👩‍👩‍👧‍👧(family: woman, woman, girl, girl)
+      0x1F3F4, 0xE0067, 0xE0062, 0xE0077, 0xE006C, 0xE0073, 0xE007F, %%% 🏴󠁧󠁢󠁷󠁬󠁳󠁿(Wales)
+      0x1F469, 0x1F3FE, 0x200D, 0x1F393, %%% 👩‍🎓(woman student: medium-dark skin tone)
+
+    ]
+  in
+  let s2 =
+    [
+      [0x1F1EF, 0x1F1F5],
+      [0x30AC],
+      [0x30AC],
+      [0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F466],
+      [0x1F469, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F467],
+      [0x1F3F4, 0xE0067, 0xE0062, 0xE0077, 0xE006C, 0xE0073, 0xE007F],
+      [0x1F469, 0x1F3FE, 0x200D, 0x1F393]
+    ]
+  in
+  let s3 =
+    [
+      [0x1F1EF, 0x1F1F5],
+      [0x30AB, 0x3099],
+      [0x30AB, 0x3099],
+      [0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F466],
+      [0x1F469, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F467],
+      [0x1F3F4, 0xE0067, 0xE0062, 0xE0077, 0xE006C, 0xE0073, 0xE007F],
+      [0x1F469, 0x1F3FE, 0x200D, 0x1F393]
+    ]
+  in
+  let slst1 = s1 |> normalize-string-to-nfc |> split-grapheme-cluster in
+  let slst2 = s1 |> normalize-string-to-nfd |> split-grapheme-cluster in
+  let rec check-loop l1 l2 =
+    match (l1, l2) with
+      | (s1::xs1, s2::xs2)-> string-same s1 (string-unexplode s2) && (check-loop xs1 xs2)
+      | ([], []) -> true
+      | _ -> false
+    end
+  in
+  let is-ok1 = check-loop slst1 s2 in
+  let is-ok2 = check-loop slst2 s3 in
+  if is-ok1 && is-ok2 then
+    display-message `ok`
+  else
+    if not is-ok1 && not is-ok2 then
+      abort-with-message `err1, 2`
+    else
+      if not is-ok1 then
+        abort-with-message `err1`
+      else
+        abort-with-message `err2`
+in
+
+document (|
+  title  = {Normalize string and grapheme cluster},
+  author = {\SATySFi; Contributors},
+|) '<>

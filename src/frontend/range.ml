@@ -45,6 +45,11 @@ let to_string rng =
           "\"" ^ fname ^ "\", line " ^ (s ln1) ^ ", character " ^ (s pos1) ^ " to line " ^ (s ln2) ^ ", character " ^ (s pos2)
 
 
+let get_first = function
+  | Dummy(_)                       -> None
+  | Normal(fname, ln1, pos1, _, _) -> Some((fname, ln1, pos1))
+
+
 let get_last = function
   | Dummy(_)                       -> None
   | Normal(fname, _, _, ln2, pos2) -> Some((fname, ln2, pos2))

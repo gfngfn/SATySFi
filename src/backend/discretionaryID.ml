@@ -44,4 +44,4 @@ let show did =
 let hash = Hashtbl.hash
 
 
-let compare = compare
+let compare = Stdlib.compare

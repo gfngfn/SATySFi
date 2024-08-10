@@ -2,9 +2,11 @@
 @import: head
 @require: math
 
+let open Math in
+let open Head in
 document (|
-  title  = {Math Test 2};
-  author = {Takashi SUWA};
+  title  = {Math Test 2},
+  author = {Takashi SUWA},
 |) '<
   +make-title;
   +p-jp{

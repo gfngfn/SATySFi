@@ -2,7 +2,7 @@ open Core
 open Main__
 
 let () =
-  let trd3 (_, _, z) = z in
+  let proj (_, utsrc) = utsrc in
   Out_channel.print_endline ";;; generated automatically. DO NOT EDIT";
   Out_channel.print_endline ";;; To update this file, you should run `dune runtest; dune promote`.";
   let argv = Sys.get_argv () in
@@ -18,8 +18,8 @@ let () =
             Lexing.from_channel in_ch
             |> ParserInterface.process fn
           )
-      |> trd3
-      |> [%derive.show: Types.untyped_abstract_tree]
+      |> proj
+      |> [%derive.show: Types.untyped_source_file]
       |> print_endline
     with
     | ParserInterface.Error(rng) ->

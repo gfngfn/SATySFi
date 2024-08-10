@@ -1,23 +1,33 @@
 
 open LengthInterface
 open GraphicBase
+open SyntaxBase
 
 exception ParseErrorDetail of Range.t * string
-exception IllegalArgumentLength of Range.t * int * int
-exception TrailingOptionalArgument of Range.t
 
 
-type ctrlseq_name       = string  [@@deriving show]
+let string_of_uchar (uch : Uchar.t) : string =
+  let buf = Buffer.create 10 in
+  Buffer.add_utf_8_uchar buf uch;
+  Buffer.contents buf
+
+
+type 'a ranged =
+  Range.t * 'a
+[@@deriving show]
+
+type command_name       = string  [@@deriving show]
 type var_name           = string  [@@deriving show]
-type id_name            = string  [@@deriving show]
-type class_name         = string  [@@deriving show]
 type type_name          = string  [@@deriving show]
+type kind_name          = string  [@@deriving show]
 type constructor_name   = string  [@@deriving show]
+type macro_name         = string  [@@deriving show]
 type module_name        = string  [@@deriving show]
-type sig_var_name       = string  [@@deriving show]
-type field_name         = string  [@@deriving show]
-type type_argument_name = string  [@@deriving show]
+type signature_name     = string  [@@deriving show]
 type length_unit_name   = string  [@@deriving show]
+type type_variable_name = string  [@@deriving show]
+type row_variable_name  = string  [@@deriving show]
+type label              = string  [@@deriving show]
 
 
 type input_position = {
@@ -32,367 +42,251 @@ type header_element =
   | HeaderImport  of string
 
 
-module TypeID : sig
-  type t
-    [@@deriving show]
-  val initialize : unit -> unit
-  val fresh : type_name -> t
-  val extract_name : t -> type_name
-  val equal : t -> t -> bool
-  val show_direct : t -> string
-end = struct
-  type t = int * type_name
-    [@@deriving show]
-  let current_id = ref 0
-  let initialize () = begin current_id := 0; end
-  let fresh tynm = begin incr current_id; (!current_id, tynm) end
-  let extract_name (_, tynm) = tynm
-  let equal (n1, _) (n2, _) = (n1 = n2)
-  let show_direct (n, tynm) = tynm ^ "(" ^ (string_of_int n) ^ ")"
-end
-
-
 type quantifiability = Quantifiable | Unquantifiable
 [@@deriving show]
-
-
-module Level
-: sig
-   type t  [@@deriving show]
-   val bottom : t
-   val succ : t -> t
-   val less_than : t -> t -> bool
-  end
-= struct
-    type t = int
-    [@@deriving show]
-
-    let bottom = 0
-
-    let succ lev = lev + 1
-
-    let less_than lev1 lev2 = (lev1 < lev2)
-  end
-
 
 type level = Level.t
 [@@deriving show]
 
 
-module OptionRowVarID
-: sig
-    type t  [@@deriving show]
-    val initialize : unit -> unit
-    val fresh : level -> t
-    val equal : t -> t -> bool
-    val get_level : t -> level
-    val set_level : t -> level -> t
-    val show_direct : t -> string
-  end
-= struct
-    type t = {
-      level : level;
-      number : int;
-    }
-    [@@deriving show]
-
-    let current_number = ref 0
-
-    let initialize () =
-      current_number := 0
-
-    let equal orv1 orv2 =
-      (orv1.number = orv2.number)
-
-    let fresh lev =
-      incr current_number;
-      { level = lev; number = !current_number; }
-
-    let get_level orv =
-      orv.level
-
-    let set_level orv lev =
-      { level = lev; number = orv.number; }
-
-    let show_direct orv =
-      "$" ^ (string_of_int orv.number) ^ "[" ^ (Level.show orv.level) ^ "]"
-  end
-
-
-module FreeID_
-: sig
-    type 'a t_  [@@deriving show]
-    val get_level : 'a t_ -> level
-    val set_level : 'a t_ -> level -> unit
-    val initialize : unit -> unit
-    val fresh : 'a -> quantifiability -> level -> unit -> 'a t_
-    val equal : 'a t_ -> 'a t_ -> bool
-    val is_quantifiable : 'a t_ -> bool
-    val set_quantifiability : quantifiability -> 'a t_ -> unit
-    val get_kind : 'a t_ -> 'a
-    val set_kind : 'a -> 'a t_ -> unit
-    val update_kind : ('a -> 'a) -> 'a t_ -> unit
-    val show_direct : ('a -> string) -> 'a t_ -> string
-  end
-= struct
-    type 'k t_ = {
-      id                      : int;
-      mutable kind            : 'k;
-      mutable quantifiability : quantifiability;
-      mutable level           : level;
-    }
-    [@@deriving show]
-
-    let get_level tvid = tvid.level
-
-    let set_level tvid lev =
-      tvid.level <- lev
-
-    let current_id = ref 0
-
-    let initialize () =
-      current_id := 0
-
-    let fresh kd qtfbl lev () =
-      incr current_id;
-      {
-        id              = !current_id;
-        kind            = kd;
-        quantifiability = qtfbl;
-        level           = lev;
-      }
-
-    let equal tvid1 tvid2 =
-      tvid1.id = tvid2.id
-
-    let is_quantifiable tvid =
-      match tvid.quantifiability with
-      | Quantifiable   -> true
-      | Unquantifiable -> false
-
-    let set_quantifiability qtfbl tvid =
-      tvid.quantifiability <- qtfbl
-
-    let get_kind tvid = tvid.kind
-
-    let set_kind kd tvid =
-      tvid.kind <- kd
-
-    let update_kind f tvid =
-      tvid.kind <- f tvid.kind
-
-    let show_direct f tvid =
-      let idmain = tvid.id in
-      let lev = tvid.level in
-      let kd = tvid.kind in
-      match tvid.quantifiability with
-      | Quantifiable   -> (string_of_int idmain) ^ "[Q" ^ (Level.show lev) ^ "::" ^ (f kd) ^ "]"
-      | Unquantifiable -> (string_of_int idmain) ^ "[U" ^ (Level.show lev) ^ "::" ^ (f kd) ^ "]"
-
-  end
-
-
-module BoundID_
-: sig
-    type 'a t_  [@@deriving show]
-    val initialize : unit -> unit
-    val fresh : 'a -> unit -> 'a t_
-    val eq : 'a t_ -> 'a t_ -> bool
-    val get_kind : 'a t_ -> 'a
-    val show_direct : ('a -> string) -> 'a t_ -> string
-  end
-= struct
-    type 'a t_ = int * 'a
-    [@@deriving show]
-
-    let current_id = ref 0
-
-    let initialize () = begin current_id := 0; end
-
-    let fresh kd () =
-      begin
-        incr current_id;
-        (!current_id, kd)
-      end
-
-    let eq (i1, _) (i2, _) = (i1 = i2)
-
-    let get_kind (_, kd) = kd
-
-    let show_direct f (i, kd) = "[" ^ (string_of_int i) ^ "::" ^ (f kd) ^ "]"
-
-  end
-
-
 module StoreIDHashTable = Hashtbl.Make(StoreID)
-
 
 module EvalVarIDMap = Map.Make(EvalVarID)
 
+module OpaqueIDSet = Set.Make(TypeID)
 
-type manual_type = Range.t * manual_type_main
+type manual_type =
+  Range.t * manual_type_main
+
 and manual_type_main =
-  | MTypeName        of (manual_type list) * module_name list * type_name
-  | MTypeParam       of var_name
-  | MFuncType        of manual_type list * manual_type * manual_type
-  | MProductType     of manual_type list
-  | MRecordType      of manual_type Assoc.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "MRecordType(...)")]
-  | MHorzCommandType of manual_command_argument_type list
-  | MVertCommandType of manual_command_argument_type list
-  | MMathCommandType of manual_command_argument_type list
+  | MTypeName          of (module_name ranged) list * type_name ranged * manual_type list
+  | MTypeParam         of var_name
+  | MFuncType          of (label ranged * manual_type) list * (row_variable_name ranged) option * manual_type * manual_type
+  | MProductType       of manual_type TupleList.t
+  | MRecordType        of (label ranged * manual_type) list * (row_variable_name ranged) option
+  | MInlineCommandType of manual_command_argument_type list
+  | MBlockCommandType  of manual_command_argument_type list
+  | MMathCommandType   of manual_command_argument_type list
 [@@deriving show]
 
 and manual_command_argument_type =
-  | MMandatoryArgumentType of manual_type
-  | MOptionalArgumentType  of manual_type
+  | MArgType of (label ranged * manual_type) list * manual_type
+
+type manual_row_base_kind =
+  (label ranged) list
+[@@deriving show]
+
+type manual_base_kind =
+  | MKindName of kind_name ranged
+[@@deriving show]
 
 type manual_kind =
-  | MUniversalKind
-  | MRecordKind    of manual_type Assoc.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "MRecordKind(...)")]
+  | MKind of manual_base_kind list * manual_base_kind
 [@@deriving show]
 
 type base_type =
-  | EnvType
   | UnitType
   | BoolType
   | IntType
   | FloatType
   | LengthType
   | StringType
-  | TextRowType
-  | TextColType
-  | BoxRowType
-  | BoxColType
+  | InlineTextType
+  | BlockTextType
+  | MathTextType
+  | InlineBoxesType
+  | BlockBoxesType
+  | MathBoxesType
   | ContextType
   | PrePathType
   | PathType
   | GraphicsType
   | ImageType
   | DocumentType
-  | MathType
   | RegExpType
   | TextInfoType
   | InputPosType
 [@@deriving show]
 
 
-let base_type_hash_table =
-  let ht = Hashtbl.create 32 in
-  begin
-    List.iter (fun (s, bt) -> Hashtbl.add ht s bt) [
-      ("unit"        , UnitType    );
-      ("bool"        , BoolType    );
-      ("int"         , IntType     );
-      ("float"       , FloatType   );
-      ("length"      , LengthType  );
-      ("string"      , StringType  );
-      ("inline-text" , TextRowType );
-      ("block-text"  , TextColType );
-      ("inline-boxes", BoxRowType  );
-      ("block-boxes" , BoxColType  );
-      ("context"     , ContextType );
-      ("pre-path"    , PrePathType );
-      ("path"        , PathType    );
-      ("graphics"    , GraphicsType);
-      ("image"       , ImageType   );
-      ("document"    , DocumentType);
-      ("math"        , MathType    );
-      ("regexp"      , RegExpType  );
-      ("text-info"   , TextInfoType);
-      ("input-position", InputPosType);
-    ];
-    ht
-  end
+module StringMap = struct
+  include Map.Make(String)
 
 
-type ('a, 'b) typ = Range.t * ('a, 'b) type_main
+  let pp_k ppf s =
+    Format.fprintf ppf "\"%s\"" s
+
+
+  let pp pp_v ppf oidmap =
+    pp_map fold pp_k pp_v ppf oidmap
+end
+
+module ValueNameMap = StringMap
+
+module TypeNameMap = StringMap
+
+module ModuleNameMap = StringMap
+
+module SignatureNameMap = StringMap
+
+module MacroNameMap = StringMap
+
+module ConstructorMap = StringMap
+
+
+let base_type_map : base_type TypeNameMap.t =
+  List.fold_left (fun map (tynm, bt) ->
+    map |> TypeNameMap.add tynm bt
+  ) TypeNameMap.empty
+  [
+    ("unit"          , UnitType);
+    ("bool"          , BoolType);
+    ("int"           , IntType);
+    ("float"         , FloatType);
+    ("length"        , LengthType);
+    ("string"        , StringType);
+    ("inline-text"   , InlineTextType);
+    ("block-text"    , BlockTextType);
+    ("math-text"     , MathTextType);
+    ("inline-boxes"  , InlineBoxesType);
+    ("block-boxes"   , BlockBoxesType);
+    ("math-boxes"    , MathBoxesType);
+    ("context"       , ContextType);
+    ("pre-path"      , PrePathType);
+    ("path"          , PathType);
+    ("graphics"      , GraphicsType);
+    ("image"         , ImageType);
+    ("document"      , DocumentType);
+    ("regexp"        , RegExpType);
+    ("text-info"     , TextInfoType);
+    ("input-position", InputPosType);
+  ]
+
+
+type row_base_kind =
+  LabelSet.t
+[@@deriving show { with_path = false }]
+
+type base_kind =
+  | TypeKind
+[@@deriving show { with_path = false }]
+
+type kind =
+  | Kind of base_kind list
+[@@deriving show { with_path = false }]
+
+type ('a, 'b) typ =
+  Range.t * ('a, 'b) type_main
+
 and ('a, 'b) type_main =
-  | BaseType        of base_type
-  | FuncType        of ('a, 'b) option_row * ('a, 'b) typ * ('a, 'b) typ
-  | ListType        of ('a, 'b) typ
-  | RefType         of ('a, 'b) typ
-  | ProductType     of (('a, 'b) typ) list
-  | TypeVariable    of 'a
-  | SynonymType     of (('a, 'b) typ) list * TypeID.t * ('a, 'b) typ
-  | VariantType     of (('a, 'b) typ) list * TypeID.t
-  | RecordType      of (('a, 'b) typ) Assoc.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
-  | HorzCommandType of (('a, 'b) command_argument_type) list
-  | VertCommandType of (('a, 'b) command_argument_type) list
-  | MathCommandType of (('a, 'b) command_argument_type) list
-  | CodeType        of ('a, 'b) typ
+  | BaseType          of base_type
+  | FuncType          of ('a, 'b) row * ('a, 'b) typ * ('a, 'b) typ
+  | ListType          of ('a, 'b) typ
+  | RefType           of ('a, 'b) typ
+  | ProductType       of (('a, 'b) typ) TupleList.t
+  | TypeVariable      of 'a
+  | DataType          of (('a, 'b) typ) list * TypeID.t
+  | RecordType        of ('a, 'b) row
+  | InlineCommandType of (('a, 'b) command_argument_type) list
+  | BlockCommandType  of (('a, 'b) command_argument_type) list
+  | MathCommandType   of (('a, 'b) command_argument_type) list
+  | CodeType          of ('a, 'b) typ
 
 and ('a, 'b) command_argument_type =
-  | MandatoryArgumentType of ('a, 'b) typ
-  | OptionalArgumentType  of ('a, 'b) typ
+  | CommandArgType of (('a, 'b) typ) LabelMap.t * ('a, 'b) typ
 
-and ('a, 'b) kind =
-  | UniversalKind
-  | RecordKind of (('a, 'b) typ) Assoc.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "RecordKind(...)")]
+and ('a, 'b) row =
+  | RowCons  of label ranged * ('a, 'b) typ * ('a, 'b) row
+  | RowVar   of 'b
+  | RowEmpty
 
-and ('a, 'b) option_row =
-  | OptionRowCons     of ('a, 'b) typ * ('a, 'b) option_row
-  | OptionRowEmpty
-  | OptionRowVariable of 'b
+and mono_row_variable_updatable =
+  | MonoRowFree of FreeRowID.t
+  | MonoRowLink of mono_row
 
-and mono_option_row_variable_info =
-  | MonoORFree of OptionRowVarID.t
-  | MonoORLink of mono_option_row
+and mono_row_variable =
+  | UpdatableRow   of mono_row_variable_updatable ref
+  | MustBeBoundRow of MustBeBoundRowID.t
 
-and poly_option_row_variable_info =
-  | PolyORFree of mono_option_row_variable_info ref
+and poly_row_variable =
+  | PolyRowFree  of mono_row_variable
+  | PolyRowBound of BoundRowID.t
 
-and mono_type_variable_info =
-  | MonoFree of mono_kind FreeID_.t_
+and mono_type_variable_updatable =
+  | MonoFree of FreeID.t
   | MonoLink of mono_type
 
-and poly_type_variable_info =
-  | PolyFree  of mono_type_variable_info ref
-  | PolyBound of ((poly_type_variable_info, poly_option_row_variable_info) kind) BoundID_.t_
+and mono_type_variable =
+  | Updatable   of mono_type_variable_updatable ref
+  | MustBeBound of MustBeBoundID.t
 
-and mono_type = (mono_type_variable_info ref, mono_option_row_variable_info ref) typ
+and poly_type_variable =
+  | PolyFree  of mono_type_variable_updatable ref
+  | PolyBound of BoundID.t
 
-and poly_type_body = (poly_type_variable_info, poly_option_row_variable_info) typ
+and mono_type =
+  (mono_type_variable, mono_row_variable) typ
+
+and poly_type_body =
+  (poly_type_variable, poly_row_variable) typ
 
 and poly_type =
   | Poly of poly_type_body
 
-and mono_kind = (mono_type_variable_info ref, mono_option_row_variable_info ref) kind
+and mono_row =
+  (mono_type_variable, mono_row_variable) row
+[@@deriving show { with_path = false }]
 
-and poly_kind = (poly_type_variable_info, poly_option_row_variable_info) kind
+type poly_row =
+  (poly_type_variable, poly_row_variable) row
 
-and mono_option_row = (mono_type_variable_info ref, mono_option_row_variable_info ref) option_row
-[@@deriving show]
+type ('a, 'b, 'c) normalized_row =
+  | NormalizedRow of (('a, 'b) typ) LabelMap.t * 'c option
 
-type mono_command_argument_type = (mono_type_variable_info ref, mono_option_row_variable_info ref) command_argument_type
+type normalized_mono_row_variable =
+  | NormFreeRow        of FreeRowID.t
+  | NormMustBeBoundRow of MustBeBoundRowID.t
 
+type normalized_mono_row =
+  (mono_type_variable, mono_row_variable, normalized_mono_row_variable) normalized_row
 
-module FreeID =
-  struct
-    include FreeID_
-    type t = mono_kind FreeID_.t_
-  end
+type normalized_poly_row =
+  (poly_type_variable, poly_row_variable, poly_row_variable) normalized_row
 
+type mono_command_argument_type =
+  (mono_type_variable, mono_row_variable) command_argument_type
 
-module BoundID =
-  struct
-    include BoundID_
-    type t = poly_kind BoundID_.t_
-  end
+type poly_command_argument_type =
+  (poly_type_variable, poly_row_variable) command_argument_type
 
+type ('a, 'b) macro_parameter_type =
+  | LateMacroParameter  of ('a, 'b) typ
+  | EarlyMacroParameter of ('a, 'b) typ
+[@@deriving show { with_path = false }]
 
-type macro_parameter_type =
-  | LateMacroParameter  of mono_type
-  | EarlyMacroParameter of mono_type
+type ('a, 'b) macro_type =
+  | InlineMacroType of (('a, 'b) macro_parameter_type) list
+  | BlockMacroType  of (('a, 'b) macro_parameter_type) list
+[@@deriving show { with_path = false }]
 
-type macro_type =
-  | HorzMacroType of macro_parameter_type list
-  | VertMacroType of macro_parameter_type list
+type mono_macro_parameter_type =
+  (mono_type_variable, mono_row_variable) macro_parameter_type
+[@@deriving show { with_path = false }]
 
-(* ---- untyped ---- *)
+type poly_macro_parameter_type =
+  (poly_type_variable, poly_row_variable) macro_parameter_type
+[@@deriving show { with_path = false }]
+
+type mono_macro_type =
+  (mono_type_variable, mono_row_variable) macro_type
+[@@deriving show { with_path = false }]
+
+type poly_macro_type =
+  (poly_type_variable, poly_row_variable) macro_type
+[@@deriving show { with_path = false }]
+
+type constructor_branch_map = poly_type ConstructorMap.t
+
 
 let pp_sep fmt () =
   Format.fprintf fmt ";@ "
@@ -402,10 +296,21 @@ type stage =
   | Persistent0
   | Stage0
   | Stage1
+[@@deriving show { with_path = false }]
+
+module TypeParameterMap = Map.Make(String)
+
+type type_parameter_map = MustBeBoundID.t TypeParameterMap.t
+
+module RowParameterMap = Map.Make(String)
+
+type row_parameter_map = MustBeBoundRowID.t RowParameterMap.t
 
 type pre = {
   level           : level;
-  quantifiability : quantifiability;  (* maybe omitted in the future *)
+  type_parameters : type_parameter_map;
+  row_parameters  : row_parameter_map;
+  quantifiability : quantifiability;  (* TODO: maybe omitted in the future *)
   stage           : stage;
 }
 
@@ -417,147 +322,207 @@ let string_of_stage = function
 
 
 type untyped_macro_parameter =
-  | UTLateMacroParam  of (Range.t * var_name)
-  | UTEarlyMacroParam of (Range.t * var_name)
+  | UTLateMacroParam  of var_name ranged
+  | UTEarlyMacroParam of var_name ranged
 [@@deriving show { with_path = false; } ]
 
-type untyped_letrec_binding =
-  UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
+type module_name_chain =
+  module_name ranged * (module_name ranged) list
+[@@deriving show { with_path = false; } ]
 
-and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
-  [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_input_horz_element_main utihmain)]
+type untyped_binding =
+  untyped_binding_main ranged
 
-and untyped_input_horz_element_main =
-  | UTInputHorzText         of string
+and untyped_binding_main =
+  | UTBindValue       of stage * untyped_rec_or_nonrec
+  | UTBindType        of untyped_type_binding list
+  | UTBindModule      of module_name ranged * untyped_signature option * untyped_module
+  | UTBindSignature   of signature_name ranged * untyped_signature
+  | UTBindInclude     of untyped_module
+  | UTBindInlineMacro of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindBlockMacro  of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+
+and untyped_module =
+  untyped_module_main ranged
+
+and untyped_module_main =
+  | UTModVar     of module_name_chain
+  | UTModBinds   of untyped_binding list
+  | UTModFunctor of module_name ranged * untyped_signature * untyped_module
+  | UTModApply   of module_name_chain * module_name_chain
+  | UTModCoerce  of module_name ranged * untyped_signature
+
+and untyped_signature =
+  untyped_signature_main ranged
+
+and untyped_signature_main =
+  | UTSigVar     of signature_name
+  | UTSigPath    of module_name_chain * signature_name ranged
+  | UTSigDecls   of untyped_declaration list
+  | UTSigFunctor of module_name ranged * untyped_signature * untyped_signature
+  | UTSigWith    of untyped_signature * (module_name ranged) list * untyped_type_binding list
+
+and untyped_declaration =
+  untyped_declaration_main
+    (* TODO; should be `untyped_declaration_main ranged`  *)
+
+and untyped_declaration_main =
+  | UTDeclValue      of stage * var_name ranged * manual_quantifier * manual_type
+  | UTDeclTypeOpaque of type_name ranged * manual_kind
+  | UTDeclModule     of module_name ranged * untyped_signature
+  | UTDeclSignature  of signature_name ranged * untyped_signature
+  | UTDeclInclude    of untyped_signature
+  | UTDeclMacro      of macro_name ranged * manual_macro_type ranged
+
+and manual_quantifier =
+  (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
+
+and manual_macro_type =
+  | MInlineMacroType of manual_macro_parameter_type list
+  | MBlockMacroType  of manual_macro_parameter_type list
+
+and manual_macro_parameter_type =
+  | MLateMacroParameter  of manual_type
+  | MEarlyMacroParameter of manual_type
+
+and constructor_branch =
+  | UTConstructorBranch of constructor_name ranged * manual_type option
+
+and untyped_rec_or_nonrec =
+  | UTNonRec  of untyped_let_binding
+  | UTRec     of untyped_let_binding list
+  | UTMutable of untyped_let_mutable_binding
+
+and untyped_let_binding =
+  var_name ranged * untyped_abstract_tree
+
+and untyped_let_mutable_binding =
+  var_name ranged * untyped_abstract_tree
+
+and untyped_type_binding =
+  type_name ranged * (type_variable_name ranged) list * untyped_synonym_or_variant
+
+and untyped_synonym_or_variant =
+  | UTBindSynonym of manual_type
+  | UTBindVariant of constructor_branch list
+
+and untyped_inline_text_element =
+  Range.t * untyped_inline_text_element_main
+    [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_inline_text_element_main utihmain)]
+
+and untyped_inline_text_element_main =
+  | UTInlineTextString           of string
       [@printer (fun fmt s -> Format.fprintf fmt "IT:%s" s)]
-  | UTInputHorzEmbedded     of untyped_abstract_tree * untyped_command_argument list
+  | UTInlineTextApplyCommand     of untyped_abstract_tree * untyped_command_argument list
       [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "IC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
-  | UTInputHorzContent      of untyped_abstract_tree
-  | UTInputHorzEmbeddedMath of untyped_abstract_tree
-  | UTInputHorzEmbeddedCodeText of string
-  | UTInputHorzMacro        of (Range.t * ctrlseq_name) * untyped_macro_argument list
+  | UTInlineTextContent          of untyped_abstract_tree
+  | UTInlineTextEmbeddedMath     of untyped_abstract_tree
+  | UTInlineTextEmbeddedCodeArea of string
+  | UTInlineTextMacro            of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
 and untyped_macro_argument =
   | UTLateMacroArg  of untyped_abstract_tree
   | UTEarlyMacroArg of untyped_abstract_tree
 
-and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
-  [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_input_vert_element_main utivmain)]
+and untyped_block_text_element = Range.t * untyped_block_text_element_main
+  [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_block_text_element_main utivmain)]
 
-and untyped_input_vert_element_main =
-  | UTInputVertEmbedded of untyped_abstract_tree * untyped_command_argument list
-      [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "BC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
-  | UTInputVertContent  of untyped_abstract_tree
-  | UTInputVertMacro    of (Range.t * ctrlseq_name) * untyped_macro_argument list
+and untyped_block_text_element_main =
+  | UTBlockTextApplyCommand of untyped_abstract_tree * untyped_command_argument list
+      [@printer (fun fmt (utast, lst) ->
+        Format.fprintf fmt "BC:%a %a"
+          pp_untyped_abstract_tree utast
+          (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst
+      )]
+  | UTBlockTextContent  of untyped_abstract_tree
+  | UTBlockTextMacro    of (Range.t * (module_name ranged) list * macro_name ranged) * untyped_macro_argument list
 
-and 'a untyped_path_component =
-  | UTPathLineTo        of 'a
-  | UTPathCubicBezierTo of untyped_abstract_tree * untyped_abstract_tree * 'a
+and untyped_math_text_element =
+  Range.t * untyped_math_text_element_main
+
+and untyped_math_text_element_main =
+  | UTMathTextElement of {
+      base : untyped_math_text_base;
+      sup  : (bool * untyped_math_text_element list) option;
+      sub  : (bool * untyped_math_text_element list) option;
+    }
+
+and untyped_math_text_base =
+  | UTMathTextChar of Uchar.t
+      [@printer (fun ppf uch ->
+        Format.fprintf ppf "(UTMathTextChar \"%s\")" (string_of_uchar uch)
+      )]
+  | UTMathTextApplyCommand of untyped_abstract_tree * untyped_command_argument list
+  | UTMathTextContent      of untyped_abstract_tree
 
 and untyped_abstract_tree =
   Range.t * untyped_abstract_tree_main
     [@printer (fun fmt (_, utastmain) -> Format.fprintf fmt "%a" pp_untyped_abstract_tree_main utastmain)]
 
 and untyped_abstract_tree_main =
-(* -- basic value -- *)
+(* Literals: *)
   | UTUnitConstant
-      [@printer (fun fmt () -> Format.fprintf fmt "U:()")]
   | UTBooleanConstant      of bool
   | UTIntegerConstant      of int
   | UTFloatConstant        of float
   | UTLengthDescription    of float * length_unit_name
-      [@printer (fun fmt (fl, lun) -> Format.fprintf fmt "L:%f%s" fl lun)]
-  | UTStringEmpty
   | UTStringConstant       of string
-      [@printer (fun fmt s -> Format.fprintf fmt "S:\"%s\"" s)]
   | UTPositionedString     of input_position * string
-(* -- inputs -- *)
-  | UTInputHorz            of untyped_input_horz_element list
-  | UTInputVert            of untyped_input_vert_element list
-  | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
-  | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
-  | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
-  | UTLambdaMath           of untyped_abstract_tree
-(* -- graphics -- *)
-  | UTPath                 of untyped_abstract_tree * (untyped_abstract_tree untyped_path_component) list * (unit untyped_path_component) option
-(* -- horizontal box list -- *)
-  | UTHorz                 of HorzBox.horz_box list
-  | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
-(* -- vertical box list -- *)
-  | UTVert                 of HorzBox.vert_box list
-  | UTVertConcat           of untyped_abstract_tree * untyped_abstract_tree
-(* -- list value -- *)
+(* Input texts: *)
+  | UTInlineText          of untyped_inline_text_element list
+  | UTBlockText           of untyped_block_text_element list
+  | UTMathText            of untyped_math_text_element list
+(* Command abstractions: *)
+  | UTLambdaInlineCommand of {
+      parameters       : untyped_parameter_unit list;
+      context_variable : var_name ranged;
+      body             : untyped_abstract_tree;
+    }
+  | UTLambdaBlockCommand of {
+      parameters       : untyped_parameter_unit list;
+      context_variable : var_name ranged;
+      body             : untyped_abstract_tree;
+    }
+  | UTLambdaMathCommand of {
+      parameters       : untyped_parameter_unit list;
+      context_variable : var_name ranged;
+      script_variables : (var_name ranged * var_name ranged) option;
+      body             : untyped_abstract_tree;
+    }
+(* For lightweight command definitions: *)
+  | UTReadInline           of untyped_abstract_tree * untyped_abstract_tree
+  | UTReadBlock            of untyped_abstract_tree * untyped_abstract_tree
+(* Lists: *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
-(* -- tuple value -- *)
-  | UTTuple               of untyped_abstract_tree list
-(* -- record value -- *)
-  | UTRecord               of (field_name * untyped_abstract_tree) list
-  | UTAccessField          of untyped_abstract_tree * field_name
-  | UTUpdateField          of untyped_abstract_tree * field_name * untyped_abstract_tree
-(* -- fundamental -- *)
-  | UTContentOf            of (module_name list) * var_name
-      [@printer (fun fmt (_, vn) -> Format.fprintf fmt "%s" vn)]
-  | UTApply                of untyped_abstract_tree * untyped_abstract_tree
-      [@printer (fun fmt (u1, u2) -> Format.fprintf fmt "(%a %a)" pp_untyped_abstract_tree u1 pp_untyped_abstract_tree u2)]
-  | UTApplyOmission        of untyped_abstract_tree
-  | UTApplyOptional        of untyped_abstract_tree * untyped_abstract_tree
-  | UTLetRecIn             of untyped_letrec_binding list * untyped_abstract_tree
-  | UTLetNonRecIn          of manual_type option * untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
+(* Tuples: *)
+  | UTTuple               of untyped_abstract_tree TupleList.t
+(* Records: *)
+  | UTRecord               of (label ranged * untyped_abstract_tree) list
+  | UTAccessField          of untyped_abstract_tree * label ranged
+  | UTUpdateField          of untyped_abstract_tree * label ranged * untyped_abstract_tree
+(* Fundamentals: *)
+  | UTContentOf            of ((module_name ranged) list) * var_name ranged
+  | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
+  | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTFunction             of (Range.t * var_name) list * untyped_pattern_tree * untyped_abstract_tree
-  | UTOpenIn               of Range.t * module_name * untyped_abstract_tree
-  | UTFinishHeaderFile
-  | UTFinishStruct
-(* -- pattern match -- *)
+  | UTFunction             of untyped_parameter_unit * untyped_abstract_tree
+  | UTOpenIn               of module_name ranged * untyped_abstract_tree
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
   | UTConstructor          of constructor_name * untyped_abstract_tree
-      [@printer (fun fmt (cn, u) -> Format.fprintf fmt "%s(%a)" cn pp_untyped_abstract_tree u)]
-(* -- declaration of type and module -- *)
-  | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
-  | UTModule               of Range.t * module_name * manual_signature option * untyped_abstract_tree * untyped_abstract_tree
-(* -- imperative -- *)
-  | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
-  | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
-  | UTWhileDo              of untyped_abstract_tree * untyped_abstract_tree
-  | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
-(* -- lightweight itemize -- *)
+  | UTOverwrite            of var_name ranged * untyped_abstract_tree
+(* Lightweight itemizes: *)
   | UTItemize              of untyped_itemize
-(* -- math -- *)
-  | UTMath                 of untyped_math
-(* -- for lightweight command definition -- *)
-  | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
-  | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
-(* -- multi-stage constructs -- *)
+(* Multi-stage constructs: *)
   | UTNext                 of untyped_abstract_tree
   | UTPrev                 of untyped_abstract_tree
-(* -- macros -- *)
-  | UTLetHorzMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
-  | UTLetVertMacroIn       of Range.t * ctrlseq_name * untyped_macro_parameter list * untyped_abstract_tree * untyped_abstract_tree
-
-and constraints = (var_name * manual_kind) list
-
-and manual_signature_content =
-  | SigType   of untyped_type_argument list * type_name
-  | SigValue  of var_name * manual_type * constraints
-  | SigDirect of var_name * manual_type * constraints
-(*
-  | SigModule of module_name * manual_signature
-*)
-
-and manual_signature = manual_signature_content list
 
 and untyped_itemize =
   | UTItem of untyped_abstract_tree * (untyped_itemize list)
 
-and untyped_constructor_dec = Range.t * constructor_name * manual_type
+and untyped_pattern_tree =
+  Range.t * untyped_pattern_tree_main
 
-and untyped_mutual_variant_cons =
-  | UTMutualVariantCons    of untyped_type_argument list * Range.t * type_name * untyped_constructor_dec list * untyped_mutual_variant_cons
-  | UTMutualSynonymCons    of untyped_type_argument list * Range.t * type_name * manual_type * untyped_mutual_variant_cons
-  | UTEndOfMutualVariant
-
-and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
   | UTPIntegerConstant     of int
   | UTPBooleanConstant     of bool
@@ -565,64 +530,71 @@ and untyped_pattern_tree_main =
   | UTPUnitConstant
   | UTPListCons            of untyped_pattern_tree * untyped_pattern_tree
   | UTPEndOfList
-  | UTPTuple               of untyped_pattern_tree list
+  | UTPTuple               of untyped_pattern_tree TupleList.t
   | UTPWildCard
   | UTPVariable            of var_name
   | UTPAsVariable          of var_name * untyped_pattern_tree
   | UTPConstructor         of constructor_name * untyped_pattern_tree
 
 and untyped_pattern_branch =
-  | UTPatternBranch     of untyped_pattern_tree * untyped_abstract_tree
-  | UTPatternBranchWhen of untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
+  | UTPatternBranch of untyped_pattern_tree * untyped_abstract_tree
 
-and untyped_unkinded_type_argument = Range.t * var_name
+and untyped_unkinded_type_argument =
+  Range.t * var_name
 
-and untyped_type_argument = Range.t * var_name * manual_kind
-
-and untyped_math = Range.t * untyped_math_main
-
-and untyped_math_main =
-  | UTMChars       of Uchar.t list
-      [@printer (fun ppf uchs ->
-        let buf = Buffer.create (4 * List.length uchs) in
-        uchs |> List.iter (Buffer.add_utf_8_uchar buf);
-        let s = Buffer.contents buf in
-        Format.fprintf ppf "(UTMChars \"%s\")" s
-      )]
-  | UTMSuperScript of untyped_math * bool * untyped_math
-  | UTMSubScript   of untyped_math * bool * untyped_math
-  | UTMCommand     of untyped_abstract_tree * untyped_command_argument list
-  | UTMList        of untyped_math list
-  | UTMEmbed       of untyped_abstract_tree
+and untyped_type_argument =
+  Range.t * var_name * manual_kind
 
 and untyped_command_argument =
-  | UTMandatoryArgument of untyped_abstract_tree
-  | UTOptionalArgument  of untyped_abstract_tree
-  | UTOmission          of Range.t
+  | UTCommandArg of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree
+
+and untyped_parameter_unit =
+  | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
+[@@deriving show { with_path = false; }]
+
+type untyped_source_file =
+  | UTLibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
+  | UTDocumentFile of untyped_abstract_tree
 [@@deriving show { with_path = false; }]
 
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
-type untyped_argument =
-  | UTPatternArgument  of untyped_pattern_tree
-  | UTOptionalArgument of Range.t * var_name
-
-type untyped_let_binding = manual_type option * untyped_pattern_tree * untyped_argument list * untyped_abstract_tree
-
-(* ---- typed ---- *)
-
-type 'a input_horz_element_scheme =
-  | InputHorzText         of string
-  | InputHorzEmbedded     of 'a
-  | InputHorzContent      of 'a
-  | InputHorzEmbeddedMath of 'a
-  | InputHorzEmbeddedCodeText of string
+type 'a inline_text_element_scheme =
+  | InlineTextString           of string
+  | InlineTextContent          of 'a
+  | InlineTextEmbeddedMath     of 'a
+  | InlineTextEmbeddedCodeArea of string
+  | InlineTextApplyCommand of {
+      command   : 'a;
+      arguments : ('a LabelMap.t * 'a) list;
+    }
 [@@deriving show { with_path = false; }]
 
-type 'a input_vert_element_scheme =
-  | InputVertEmbedded of 'a
-  | InputVertContent  of 'a
+type 'a block_text_element_scheme =
+  | BlockTextContent of 'a
+  | BlockTextApplyCommand of {
+      command   : 'a;
+      arguments : ('a LabelMap.t * 'a) list;
+    }
+[@@deriving show { with_path = false; }]
+
+type 'a math_text_base_scheme =
+  | MathTextChar         of Uchar.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-text-chars>")]
+  | MathTextContent      of 'a
+  | MathTextApplyCommand of {
+      command   : 'a;
+      arguments : ('a LabelMap.t * 'a) list;
+    }
+[@@deriving show { with_path = false; }]
+
+type 'a math_text_element_scheme =
+  | MathTextElement of {
+      base : 'a math_text_base_scheme;
+      sub  : (('a math_text_element_scheme) list) option;
+      sup  : (('a math_text_element_scheme) list) option;
+    }
 [@@deriving show { with_path = false; }]
 
 type ('a, 'b) path_component_scheme =
@@ -650,67 +622,88 @@ type base_constant =
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
   | BCImageKey of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
-  | BCHorz     of HorzBox.horz_box list
-  | BCVert     of HorzBox.vert_box list
-  | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.element
+  | BCInlineBoxes of HorzBox.horz_box list
+  | BCBlockBoxes  of HorzBox.vert_box list
+  | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
-  | BCTextModeContext of TextBackend.text_mode_context
-  | BCDocument        of HorzBox.page_size * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
+  | BCDocument        of (length * length) * page_break_style * HorzBox.column_hook_func * HorzBox.column_hook_func * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
   | BCInputPos        of input_position
 [@@deriving show { with_path = false; }]
 
 type 'a letrec_binding_scheme =
   | LetRecBinding of EvalVarID.t * 'a pattern_branch_scheme
 
-and letrec_binding = abstract_tree letrec_binding_scheme
+and letrec_binding =
+  abstract_tree letrec_binding_scheme
 
-and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
-  [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
+and rec_or_nonrec =
+  | Rec     of letrec_binding list
+  | NonRec  of EvalVarID.t * abstract_tree
+  | Mutable of EvalVarID.t * abstract_tree
 
-and location = syntactic_value ref
+and binding =
+  | Bind of stage * rec_or_nonrec
 
-and vmenv = environment * (syntactic_value array) list
+and environment =
+  location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
+    [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
-and compiled_input_horz_element =
-  | CompiledInputHorzText         of string
-  | CompiledInputHorzEmbedded     of instruction list
-  | CompiledInputHorzContent      of instruction list
-  | CompiledInputHorzEmbeddedMath of instruction list
-  | CompiledInputHorzEmbeddedCodeText of string
+and location =
+  syntactic_value ref
 
-and compiled_intermediate_input_horz_element =
-  | CompiledImInputHorzText         of string
-  | CompiledImInputHorzEmbedded     of instruction list
-  | CompiledImInputHorzContent of compiled_intermediate_input_horz_element list * vmenv
-  | CompiledImInputHorzEmbeddedMath of instruction list
-  | CompiledImInputHorzEmbeddedCodeText of string
+and vmenv =
+  environment * (syntactic_value array) list
 
-and compiled_input_vert_element =
-  | CompiledInputVertEmbedded of instruction list
-  | CompiledInputVertContent  of instruction list
+and compiled_inline_text_element =
+  unit (* TODO: define this *)
+(*
+  | CompiledInlineTextText         of string
+  | CompiledInlineTextEmbedded     of instruction list
+  | CompiledInlineTextContent      of instruction list
+  | CompiledInlineTextEmbeddedMath of instruction list
+  | CompiledInlineTextEmbeddedCodeText of string
+*)
 
-and compiled_intermediate_input_vert_element =
-  | CompiledImInputVertEmbedded of instruction list
-  | CompiledImInputVertContent  of compiled_intermediate_input_vert_element list * vmenv
+and compiled_intermediate_inline_text_element =
+  unit (* TODO: define this *)
+(*
+  | CompiledImInlineTextText         of string
+  | CompiledImInlineTextEmbedded     of instruction list
+  | CompiledImInlineTextContent of compiled_intermediate_inline_text_element list * vmenv
+  | CompiledImInlineTextEmbeddedMath of instruction list
+  | CompiledImInlineTextEmbeddedCodeText of string
+*)
 
-and ir_input_horz_element =
-  | IRInputHorzText         of string
-  | IRInputHorzEmbedded     of ir
-  | IRInputHorzContent      of ir
-  | IRInputHorzEmbeddedMath of ir
-  | IRInputHorzEmbeddedCodeText of string
+and compiled_block_text_element =
+  unit (* TODO: define this *)
+(*
+  | CompiledBlockTextEmbedded of instruction list
+  | CompiledBlockTextContent  of instruction list
+*)
 
-and ir_input_vert_element =
-  | IRInputVertEmbedded of ir
-  | IRInputVertContent  of ir
+and compiled_intermediate_block_text_element =
+  unit (* TODO: define this *)
+(*
+  | CompiledImBlockTextEmbedded of instruction list
+  | CompiledImBlockTextContent  of compiled_intermediate_block_text_element list * vmenv
+*)
 
-and 'a ir_path_component =
-  | IRPathLineTo        of 'a
-  | IRPathCubicBezierTo of ir * ir * 'a
+and compiled_intermediate_math_text_element =
+  unit (* TODO: define this *)
 
-and 'a compiled_path_component =
-  | CompiledPathLineTo of 'a
-  | CompiledPathCubicBezierTo of instruction list * instruction list * 'a
+and ir_inline_text_element =
+  | IRInlineTextText         of string
+  | IRInlineTextEmbedded     of ir
+  | IRInlineTextContent      of ir
+  | IRInlineTextEmbeddedMath of ir
+  | IRInlineTextEmbeddedCodeText of string
+
+and ir_block_text_element =
+  | IRBlockTextEmbedded of ir
+  | IRBlockTextContent  of ir
+
+and ir_math_text_element =
+  unit (* TODO: define this *)
 
 and varloc =
   | GlobalVar of location * EvalVarID.t * int ref
@@ -719,19 +712,18 @@ and varloc =
 and ir =
   | IRConstant              of syntactic_value
   | IRTerminal
-  | IRInputHorz             of ir_input_horz_element list
-  | IRInputVert             of ir_input_vert_element list
-  | IRRecord                of Assoc.key list * ir list
-      [@printer (fun fmt _ -> Format.fprintf fmt "IRRecord(...)")]
-  | IRAccessField           of ir * field_name
-  | IRUpdateField           of ir * field_name * ir
+  | IRInlineText            of ir_inline_text_element list
+  | IRBlockText             of ir_block_text_element list
+  | IRMathText              of ir_math_text_element list
+  | IRRecord                of label list * ir list
+  | IRAccessField           of ir * label
+  | IRUpdateField           of ir * label * ir
   | IRLetRecIn              of (varloc * ir) list * ir
   | IRLetNonRecIn           of ir * ir_pattern_tree * ir
   | IRContentOf             of varloc
-  | IRPersistent            of varloc
   | IRSymbolOf              of varloc
   | IRIfThenElse            of ir * ir * ir
-  | IRFunction              of int * varloc list * ir_pattern_tree list * ir
+  | IRFunction              of int * varloc LabelMap.t * ir_pattern_tree list * ir
   | IRApply                 of int * ir * ir list
   | IRApplyPrimitive        of instruction * int * ir list
   | IRApplyOptional         of ir * ir
@@ -740,38 +732,34 @@ and ir =
   | IRPatternMatch          of Range.t * ir * ir_pattern_branch list
   | IRNonValueConstructor   of constructor_name * ir
   | IRLetMutableIn          of varloc * ir * ir
-  | IRSequential            of ir * ir
-  | IRWhileDo               of ir * ir
   | IROverwrite             of varloc * ir
   | IRDereference           of ir
-  | IRModule                of ir * ir
-  | IRPath                  of ir * ir ir_path_component list * (unit ir_path_component) option
 
   | IRCodeCombinator        of (code_value list -> code_value) * int * ir list
-  | IRCodeRecord            of Assoc.key list * ir list
-      [@printer (fun fmt _ -> Format.fprintf fmt "IRCodeRecord(...)")]
-  | IRCodeInputHorz         of (ir input_horz_element_scheme) list
-  | IRCodeInputVert         of (ir input_vert_element_scheme) list
+  | IRCodeRecord            of label list * ir list
+  | IRCodeInlineText        of (ir inline_text_element_scheme) list
+  | IRCodeBlockText         of (ir block_text_element_scheme) list
+  | IRCodeMathText          of (ir math_text_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
   | IRCodeLetRecIn          of ir_letrec_binding list * ir
   | IRCodeLetNonRecIn       of ir_pattern_tree * ir * ir
-  | IRCodeFunction          of varloc list * ir_pattern_tree * ir
+  | IRCodeFunction          of varloc LabelMap.t * ir_pattern_tree * ir
   | IRCodeLetMutableIn      of varloc * ir * ir
   | IRCodeOverwrite         of varloc * ir
-  | IRCodeModule            of ir * ir
-  | IRCodeFinishHeaderFile
-  | IRCodeFinishStruct
+  | IRLift                  of ir
 
 and 'a ir_letrec_binding_scheme =
   | IRLetRecBinding of varloc * 'a ir_pattern_branch_scheme
 
-and ir_letrec_binding = ir ir_letrec_binding_scheme
+and ir_letrec_binding =
+  ir ir_letrec_binding_scheme
 
 and 'a ir_pattern_branch_scheme =
   | IRPatternBranch      of ir_pattern_tree * 'a
   | IRPatternBranchWhen  of ir_pattern_tree * 'a * 'a
 
-and ir_pattern_branch = ir ir_pattern_branch_scheme
+and ir_pattern_branch =
+  ir ir_pattern_branch_scheme
 
 and ir_pattern_tree =
   | IRPUnitConstant
@@ -780,17 +768,15 @@ and ir_pattern_tree =
   | IRPStringConstant       of string
   | IRPListCons             of ir_pattern_tree * ir_pattern_tree
   | IRPEndOfList
-  | IRPTupleCons             of ir_pattern_tree * ir_pattern_tree
-  (*| IRPTupleCons            of int * ir_pattern_tree list*)
-  | IRPEndOfTuple
+  | IRPTuple                of ir_pattern_tree TupleList.t
   | IRPWildCard
   | IRPVariable             of varloc
   | IRPAsVariable           of varloc * ir_pattern_tree
   | IRPConstructor          of constructor_name * ir_pattern_tree
 
 and instruction =
-  | OpAccessField of field_name
-  | OpUpdateField of field_name
+  | OpAccessField of label
+  | OpUpdateField of label
   | OpForward of int
   | OpApply of int
   | OpApplyT of int
@@ -806,15 +792,14 @@ and instruction =
   | OpBranchIfNot of instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpBranchIfNot(...)")]
   | OpLoadGlobal of syntactic_value ref * EvalVarID.t * int
-      [@printer ((fun fmt (r, evid, refs) -> Format.fprintf fmt "OpLoadGlobal(%s)" (EvalVarID.show_direct evid)))]
+      [@printer ((fun fmt (_r, evid, _refs) -> Format.fprintf fmt "OpLoadGlobal(%s)" (EvalVarID.show_direct evid)))]
   | OpLoadLocal of int * int * EvalVarID.t * int
   | OpDereference
       (* !! pdf, no-interp *)
   | OpDup
   | OpError of string
   | OpMakeConstructor of constructor_name
-  | OpMakeRecord of Assoc.key list
-      [@printer (fun fmt _ -> Format.fprintf fmt "OpMakeRecord(...)")]
+  | OpMakeRecord of label list
   | OpMakeTuple of int
   | OpPop
   | OpPush of syntactic_value
@@ -833,9 +818,9 @@ and instruction =
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopStr(...)")]
   | OpCheckStackTopTupleCons of instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpCheckStackTopTupleCons(...)")]
-  | OpClosure of varloc list * int * int * instruction list
-  | OpClosureInputHorz of compiled_input_horz_element list
-  | OpClosureInputVert of compiled_input_vert_element list
+  | OpClosure of varloc LabelMap.t * int * int * instruction list
+  | OpClosureInlineText of compiled_inline_text_element list
+  | OpClosureBlockText of compiled_block_text_element list
   | OpBindLocationGlobal of syntactic_value ref * EvalVarID.t
   | OpBindLocationLocal of int * int * EvalVarID.t
   | OpUpdateGlobal of syntactic_value ref * EvalVarID.t
@@ -845,127 +830,163 @@ and instruction =
   | OpSel of instruction list * instruction list
       [@printer (fun fmt _ -> Format.fprintf fmt "OpSel(...)")]
 
-  | OpBackendMathList of int
-      (* !! no-ircode *)
-
-  | OpPath of ((instruction list) compiled_path_component) list * (unit compiled_path_component) option
-      [@printer (fun fmt _ -> Format.fprintf fmt "OpPath(...)")]
-      (* !! no-interp, no-ircode *)
-
   | OpInsertArgs of syntactic_value list
   | OpApplyCodeCombinator of (code_value list -> code_value) * int
-  | OpCodeMakeRecord of Assoc.key list
-      [@printer (fun fmt _ -> Format.fprintf fmt "OpCodeMakeRecord(...)")]
-  | OpCodeMathList of int
+  | OpCodeMakeRecord of label list
   | OpCodeMakeTuple of int
-  | OpCodeMakeInputHorz of ((instruction list) input_horz_element_scheme) list
-  | OpCodeMakeInputVert of ((instruction list) input_vert_element_scheme) list
+  | OpCodeMakeInlineText of ((instruction list) inline_text_element_scheme) list
+  | OpCodeMakeBlockText of ((instruction list) block_text_element_scheme) list
   | OpCodePatternMatch  of Range.t * ((instruction list) ir_pattern_branch_scheme) list
   | OpCodeLetRec        of ((instruction list) ir_letrec_binding_scheme) list * instruction list
   | OpCodeLetNonRec     of ir_pattern_tree * instruction list * instruction list
-  | OpCodeFunction      of varloc list * ir_pattern_tree * instruction list
+  | OpCodeFunction      of varloc LabelMap.t * ir_pattern_tree * instruction list
   | OpCodeLetMutable    of varloc * instruction list * instruction list
   | OpCodeOverwrite     of instruction list
-  | OpCodeModule        of instruction list * instruction list
-  | OpCodeFinishHeaderFile
-  | OpCodeFinishStruct
   | OpConvertSymbolToCode
 #include "__insttype.gen.ml"
 
-and intermediate_input_horz_element =
-  | ImInputHorzText         of string
-  | ImInputHorzEmbedded     of abstract_tree
-  | ImInputHorzContent      of intermediate_input_horz_element list * environment
-  | ImInputHorzEmbeddedMath of abstract_tree
-  | ImInputHorzEmbeddedCodeText of string
+and inline_text_value_element =
+  | InlineTextValueString           of string
+  | InlineTextValueCommandClosure   of inline_command_closure
+  | InlineTextValueEmbeddedMath     of math_text_value_element list
+  | InlineTextValueEmbeddedCodeArea of string
 
-and intermediate_input_vert_element =
-  | ImInputVertEmbedded of abstract_tree
-  | ImInputVertContent  of intermediate_input_vert_element list * environment
+and block_text_value_element =
+  | BlockTextValueCommandClosure of block_command_closure
+
+and math_text_value_element =
+  | MathTextValueElement of {
+      base : math_text_value_base;
+      sub  : (math_text_value_element list) option;
+      sup  : (math_text_value_element list) option;
+    }
+
+and math_text_value_base =
+  | MathTextValueChar     of Uchar.t
+      [@printer (fun fmt uch -> Format.fprintf fmt "ImMathTextChar \"%s\"" (string_of_uchar uch))]
+  | MathTextValueEmbedded of math_command_closure
+  | MathTextValueGroup    of math_text_value_element list
+
+and inline_command_closure =
+  | InlineCommandClosureSimple of {
+      context_binder : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
+
+and block_command_closure =
+  | BlockCommandClosureSimple of {
+      context_binder : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
+
+and math_command_closure =
+  | MathCommandClosureSimple of {
+      context_binder : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
+  | MathCommandClosureWithScripts of {
+      context_binder : EvalVarID.t;
+      sub_binders    : EvalVarID.t;
+      sup_binders    : EvalVarID.t;
+      body           : abstract_tree;
+      environment    : environment;
+    }
 
 and syntactic_value =
-  | Nil  (* -- just for brief use -- *)
+  | Nil  (* Just for brief use. *)
   | BaseConstant of base_constant
   | Constructor  of constructor_name * syntactic_value
   | List         of syntactic_value list
   | Tuple        of syntactic_value list
-  | RecordValue  of syntactic_value Assoc.t
+  | RecordValue  of syntactic_value LabelMap.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
   | Location     of StoreID.t
-  | MathValue    of math list
+
   | Context      of input_context
+  | TextModeContext of text_mode_input_context
+
   | CodeValue    of code_value
   | CodeSymbol   of CodeSymbol.t
+  | MathBoxes    of math_box list
 
-  | EvaluatedEnvironment
-
-(* -- for the naive interpreter, i.e. 'evaluator.cppo.ml' -- *)
-  | Closure          of EvalVarID.t list * pattern_branch * environment
+(* Values for the naive interpreter, i.e. `evaluator.cppo.ml`: *)
+  | Closure          of EvalVarID.t LabelMap.t * pattern_branch * environment
   | PrimitiveClosure of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | InputHorzClosure of intermediate_input_horz_element list * environment
-  | InputVertClosure of intermediate_input_vert_element list * environment
+  | InlineTextValue  of inline_text_value_element list
+  | BlockTextValue   of block_text_value_element list
+  | MathTextValue    of math_text_value_element list
 
-(* -- for the SECD machine, i.e. 'vm.cppo.ml' -- *)
-  | CompiledClosure          of varloc list * int * syntactic_value list * int * instruction list * vmenv
+  | InlineCommandClosure of inline_command_closure
+  | BlockCommandClosure  of block_command_closure
+  | MathCommandClosure   of math_command_closure
+
+(* Values for the SECD machine, i.e. `vm.cppo.ml`: *)
+  | CompiledClosure          of varloc LabelMap.t * int * syntactic_value list * int * instruction list * vmenv
   | CompiledPrimitiveClosure of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
-  | CompiledInputHorzClosure of compiled_intermediate_input_horz_element list * vmenv
-  | CompiledInputVertClosure of compiled_intermediate_input_vert_element list * vmenv
+  | CompiledInlineTextClosure of compiled_intermediate_inline_text_element list * vmenv
+  | CompiledBlockTextClosure  of compiled_intermediate_block_text_element list * vmenv
+  | CompiledMathTextClosure   of compiled_intermediate_math_text_element list * vmenv
 
 and abstract_tree =
+(* Texts: *)
+  | InlineText            of inline_text_element list
+  | BlockText             of block_text_element list
+  | MathText              of math_text_element list
+(* Command abstractions: *)
+  | LambdaInline          of EvalVarID.t * abstract_tree
+  | LambdaBlock           of EvalVarID.t * abstract_tree
+  | LambdaMath            of EvalVarID.t * (EvalVarID.t * EvalVarID.t) option * abstract_tree
+(* Record manipulation: *)
+  | Record                of abstract_tree LabelMap.t
+  | AccessField           of abstract_tree * label
+  | UpdateField           of abstract_tree * label * abstract_tree
+(* Fundamentals: *)
   | ASTBaseConstant       of base_constant
-  | ASTEndOfList
-  | ASTMath               of math list
-  | FinishHeaderFile
-  | FinishStruct
-(* -- input texts -- *)
-  | InputHorz             of input_horz_element list
-  | InputVert             of input_vert_element list
-(* -- graphics -- *)
-  | Path                  of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
-(* -- record value -- *)
-  | Record                of abstract_tree Assoc.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
-  | AccessField           of abstract_tree * field_name
-  | UpdateField           of abstract_tree * field_name * abstract_tree
-(* -- fundamental -- *)
   | LetRecIn              of letrec_binding list * abstract_tree
   | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
   | ContentOf             of Range.t * EvalVarID.t
-  | Persistent            of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
-  | Function              of EvalVarID.t list * pattern_branch
-  | Apply                 of abstract_tree * abstract_tree
-  | ApplyOptional         of abstract_tree * abstract_tree
-  | ApplyOmission         of abstract_tree
-(* -- pattern match -- *)
+  | Function              of EvalVarID.t LabelMap.t * pattern_branch
+  | Apply                 of abstract_tree LabelMap.t * abstract_tree * abstract_tree
+(* Patterns and datatypes: *)
+  | PrimitiveTuple        of abstract_tree TupleList.t
   | PatternMatch          of Range.t * abstract_tree * pattern_branch list
   | NonValueConstructor   of constructor_name * abstract_tree
-(* -- imperative -- *)
+  | ASTEndOfList
+(* Imperative operations: *)
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Dereference           of abstract_tree
-  | Sequential            of abstract_tree * abstract_tree
-  | WhileDo               of abstract_tree * abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
-(* -- module system -- *)
-  | Module                of abstract_tree * abstract_tree
-  | BackendMathList             of abstract_tree list
-  | PrimitiveTuple        of abstract_tree list
-(* -- staging constructs -- *)
+(* Staging constructs: *)
   | Next                  of abstract_tree
   | Prev                  of abstract_tree
+  | Persistent            of Range.t * EvalVarID.t
+  | Lift                  of abstract_tree
+  | ASTCodeSymbol         of CodeSymbol.t
+(* Primitive applications: *)
 #include "__attype.gen.ml"
 
-and input_horz_element = abstract_tree input_horz_element_scheme
+and inline_text_element =
+  abstract_tree inline_text_element_scheme
 
-and input_vert_element = abstract_tree input_vert_element_scheme
+and block_text_element =
+  abstract_tree block_text_element_scheme
 
-and 'a path_component = ('a, abstract_tree) path_component_scheme
+and math_text_element =
+  abstract_tree math_text_element_scheme
+
+and 'a path_component =
+  ('a, abstract_tree) path_component_scheme
 
 and 'a pattern_branch_scheme =
   | PatternBranch      of pattern_tree * 'a
-  | PatternBranchWhen  of pattern_tree * 'a * 'a
+  | PatternBranchWhen  of pattern_tree * 'a * 'a (* TODO (enhance): remove this constructor *)
 
-and pattern_branch = abstract_tree pattern_branch_scheme
+and pattern_branch =
+  abstract_tree pattern_branch_scheme
 
 and pattern_tree =
   | PUnitConstant
@@ -974,115 +995,160 @@ and pattern_tree =
   | PStringConstant       of string
   | PListCons             of pattern_tree * pattern_tree
   | PEndOfList
-  | PTuple                of pattern_tree list
+  | PTuple                of pattern_tree TupleList.t
   | PWildCard
   | PVariable             of EvalVarID.t
   | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
 
-and input_context = HorzBox.context_main * context_sub
+and input_context =
+  HorzBox.context_main * context_sub
 
 and context_sub = {
-  math_command : math_command_func;
+  math_command      : math_command_func;
   code_text_command : code_text_command_func;
-  dummy : unit;
+}
+and text_mode_input_context =
+  TextBackend.context_main * text_mode_context_sub
+
+and text_mode_context_sub = {
+  text_mode_math_command      : math_command_func;
+  text_mode_code_text_command : code_text_command_func;
+  text_mode_math_scripts_func : math_scripts_func;
 }
 
 and math_command_func =
   | MathCommand of syntactic_value
-      (* (input_context -> math list -> HorzBox.horz_box list) *)
+      (* Function values of the form `λ(m : math). λinline(ctx : context). e` *)
 
 and code_text_command_func =
   | DefaultCodeTextCommand
   | CodeTextCommand of syntactic_value
+      (* Function values of the form `λ(s : string). λinline(ctx : context). e` *)
 
-and math_element_main =
-  | MathChar         of bool * Uchar.t list
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
-      (* --
-         (1) whether it is a big operator
-         (2) Unicode code point (currently singular)
-         -- *)
-  | MathCharWithKern of bool * Uchar.t list * HorzBox.math_char_kern_func * HorzBox.math_char_kern_func
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char'>")]
-      (* --
-         (1) whether it is a big operator
-         (2) Unicode code point (currently singular)
-         (3) left-hand-side kerning function
-         (4) right-hand-side kerning function
-         --*)
-  | MathEmbeddedText of (input_context -> HorzBox.horz_box list)
+and math_scripts_func =
+  | MathScriptsFunc of syntactic_value
+      (* Function values of the form `λ(base : string). λ(sub : option string). λ(sup : option string). e` *)
 
-and math_element =
-  | MathElement           of HorzBox.math_kind * math_element_main
-  | MathVariantChar       of Uchar.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char>")]
-  | MathVariantCharDirect of HorzBox.math_kind * bool * HorzBox.math_variant_style
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
-      (* --
-         (1) math class
-         (2) whether it is a big operator
-         (3) Unicode code point for all math_char_class
-         -- *)
+and math_box_atom =
+  | MathChar of {
+      context : input_context;
+      is_big  : bool;
+      chars   : Uchar.t list;
+    } [@printer (fun ppf _ _ _ -> Format.fprintf ppf "<math-char>")]
 
-and math_context_change =
-  | MathChangeColor         of color
-  | MathChangeMathCharClass of HorzBox.math_char_class
+  | MathCharWithKern of {
+      context    : input_context;
+      is_big     : bool;
+      chars      : Uchar.t list;
+      left_kern  : HorzBox.math_char_kern_func;
+      right_kern : HorzBox.math_char_kern_func;
+    } [@printer (fun ppf _ _ _ _ _ -> Format.fprintf ppf "<math-char'>")]
 
-and math =
-  | MathPure              of math_element
-  | MathPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math list) option -> (math list) option -> math list)
-  | MathChangeContext     of math_context_change * math list
-  | MathGroup             of HorzBox.math_kind * HorzBox.math_kind * math list
-  | MathSubscript         of math list * math list
-  | MathSuperscript       of math list * math list
-  | MathFraction          of math list * math list
-  | MathRadicalWithDegree of math list * math list
-  | MathRadical           of HorzBox.radical * math list
-  | MathParen             of HorzBox.paren * HorzBox.paren * math list
-  | MathParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math list) list
-  | MathUpperLimit        of math list * math list
-  | MathLowerLimit        of math list * math list
+  | MathEmbeddedInline of HorzBox.horz_box list
+
+and math_box =
+  | MathBoxAtom of {
+      kind : HorzBox.math_kind;
+      main : math_box_atom;
+    }
+  | MathBoxSubscript of {
+      context : input_context;
+      base    : math_box list;
+      sub     : math_box list;
+    }
+  | MathBoxSuperscript of {
+      context : input_context;
+      base    : math_box list;
+      sup     : math_box list;
+    }
+  | MathBoxGroup of {
+      left  : HorzBox.math_kind;
+      right : HorzBox.math_kind;
+      inner : math_box list;
+    }
+  | MathBoxFraction of {
+      context     : input_context;
+      numerator   : math_box list;
+      denominator : math_box list;
+    }
+  | MathBoxRadical of {
+      context : input_context;
+      radical : HorzBox.radical;
+      degree  : (math_box list) option;
+      inner   : math_box list;
+    }
+  | MathBoxParen of {
+      context : input_context;
+      left    : paren;
+      right   : paren;
+      inner   : math_box list;
+    }
+  | MathBoxParenWithMiddle of {
+      context : input_context;
+      left    : paren;
+      right   : paren;
+      middle  : paren;
+      inner   : (math_box list) list;
+    }
+  | MathBoxUpperLimit of {
+      context : input_context;
+      base    : math_box list;
+      upper   : math_box list;
+    }
+  | MathBoxLowerLimit of {
+      context : input_context;
+      base    : math_box list;
+      lower   : math_box list;
+    }
+
+and paren =
+  length -> length -> input_context -> HorzBox.horz_box list * HorzBox.math_kern_func
+    (* The type for adjustable parentheses.
+       An adjustable parenthesis takes as arguments
+       (1) the height of the inner contents,
+       (2) the depth of the inner contents, and
+       (3) the context,
+       and then returns its inline box representation and the function for kerning. *)
 
 and code_value =
+  | CdPersistent    of Range.t * EvalVarID.t
   | CdBaseConstant  of base_constant
   | CdEndOfList
-  | CdMath          of math list
-  | CdFinishHeaderFile
-  | CdFinishStruct
-  | CdInputHorz     of code_input_horz_element list
-  | CdInputVert     of code_input_vert_element list
+  | CdInlineText    of code_inline_text_element list
+  | CdBlockText     of code_block_text_element list
+  | CdMathText      of code_math_text_element list
+  | CdLambdaInline  of CodeSymbol.t * code_value
+  | CdLambdaBlock   of CodeSymbol.t * code_value
+  | CdLambdaMath    of CodeSymbol.t * (CodeSymbol.t * CodeSymbol.t) option * code_value
   | CdContentOf     of Range.t * CodeSymbol.t
-  | CdPersistent    of Range.t * EvalVarID.t
   | CdLetRecIn      of code_letrec_binding list * code_value
   | CdLetNonRecIn   of code_pattern_tree * code_value * code_value
-  | CdFunction      of CodeSymbol.t list * code_pattern_branch
-  | CdApply         of code_value * code_value
-  | CdApplyOptional of code_value * code_value
-  | CdApplyOmission of code_value
+  | CdFunction      of CodeSymbol.t LabelMap.t * code_pattern_branch
+  | CdApply         of code_value LabelMap.t * code_value * code_value
   | CdIfThenElse    of code_value * code_value * code_value
-  | CdRecord        of code_value Assoc.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "CdRecord(...)")]
-  | CdAccessField   of code_value * field_name
-  | CdUpdateField   of code_value * field_name * code_value
+  | CdRecord        of code_value LabelMap.t
+  | CdAccessField   of code_value * label
+  | CdUpdateField   of code_value * label * code_value
   | CdLetMutableIn  of CodeSymbol.t * code_value * code_value
-  | CdSequential    of code_value * code_value
   | CdOverwrite     of CodeSymbol.t * code_value
-  | CdWhileDo       of code_value * code_value
   | CdDereference   of code_value
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
-  | CdTuple         of code_value list
-  | CdPath          of code_value * (code_value code_path_component) list * (unit code_path_component) option
-  | CdMathList      of code_value list
-  | CdModule        of code_value * code_value
+  | CdTuple         of code_value TupleList.t
 #include "__codetype.gen.ml"
 
-and code_input_horz_element = code_value input_horz_element_scheme
+and code_inline_text_element =
+  code_value inline_text_element_scheme
 
-and code_input_vert_element = code_value input_vert_element_scheme
+and code_block_text_element =
+  code_value block_text_element_scheme
 
-and 'a code_path_component = ('a, code_value) path_component_scheme
+and code_math_text_element =
+  code_value math_text_element_scheme
+
+and 'a code_path_component =
+  ('a, code_value) path_component_scheme
 
 and code_letrec_binding =
   | CdLetRecBinding of CodeSymbol.t * code_pattern_branch
@@ -1098,347 +1164,55 @@ and code_pattern_tree =
   | CdPStringConstant       of string
   | CdPListCons             of code_pattern_tree * code_pattern_tree
   | CdPEndOfList
-  | CdPTuple                of code_pattern_tree list
+  | CdPTuple                of code_pattern_tree TupleList.t
   | CdPWildCard
   | CdPVariable             of CodeSymbol.t
   | CdPAsVariable           of CodeSymbol.t * code_pattern_tree
   | CdPConstructor          of constructor_name * code_pattern_tree
 [@@deriving show { with_path = false; }]
 
+type code_rec_or_nonrec =
+  | CdRec     of code_letrec_binding list
+  | CdNonRec  of CodeSymbol.t * code_value
+  | CdMutable of CodeSymbol.t * code_value
+
+type 'a cycle =
+  | Loop  of 'a
+  | Cycle of 'a TupleList.t
+[@@deriving show { with_path = false; }]
+
+type file_info =
+  | DocumentFile of untyped_abstract_tree
+  | LibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
+
+
+module BoundIDHashTable = Hashtbl.Make(BoundID)
+
+module BoundRowIDHashTable = Hashtbl.Make(BoundRowID)
+
+module FreeIDHashTable = Hashtbl.Make(FreeID)
+
+module FreeRowIDHashTable = Hashtbl.Make(FreeRowID)
+
+module BoundIDMap = Map.Make(BoundID)
+
+module BoundRowIDMap = Map.Make(BoundRowID)
+
+module FreeIDMap = Map.Make(FreeID)
+
+module FreeRowIDMap = Map.Make(FreeRowID)
+
+module OpaqueIDMap = struct
+  include Map.Make(TypeID)
+
+
+  let pp pp_v ppf oidmap =
+    pp_map fold TypeID.pp pp_v ppf oidmap
+
+end
+
 
 let get_range (rng, _) = rng
-
-
-let overwrite_range_of_type ((_, tymain) : mono_type) (rng : Range.t) = (rng, tymain)
-
-
-let lift_argument_type f = function
-  | MandatoryArgumentType(ty) -> MandatoryArgumentType(f ty)
-  | OptionalArgumentType(ty)  -> OptionalArgumentType(f ty)
-
-
-let lift_manual_common f = function
-  | MMandatoryArgumentType(mnty) -> f mnty
-  | MOptionalArgumentType(mnty)  -> f mnty
-
-
-let rec unlink ((_, tymain) as ty) =
-  match tymain with
-  | TypeVariable({contents = MonoLink(ty)}) -> unlink ty
-  | _                                       -> ty
-
-
-let rec erase_range_of_type (ty : mono_type) : mono_type =
-  let iter = erase_range_of_type in
-  let rng = Range.dummy "erased" in
-  let (_, tymain) = ty in
-    match tymain with
-    | TypeVariable(tvref) ->
-        begin
-          match !tvref with
-          | MonoFree(tvid) -> FreeID.update_kind erase_range_of_kind tvid; (rng, tymain)
-          | MonoLink(ty)   -> erase_range_of_type ty
-        end
-
-    | BaseType(_)                       -> (rng, tymain)
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(erase_range_of_option_row optrow, iter tydom, iter tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
-    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
-    | ListType(tycont)                  -> (rng, ListType(iter tycont))
-    | RefType(tycont)                   -> (rng, RefType(iter tycont))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
-    | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
-
-
-and erase_range_of_kind (kd : mono_kind) =
-  match kd with
-  | UniversalKind   -> UniversalKind
-  | RecordKind(asc) -> RecordKind(Assoc.map_value erase_range_of_type asc)
-
-
-and erase_range_of_option_row (optrow : mono_option_row) =
-  match optrow with
-  | OptionRowEmpty          -> optrow
-  | OptionRowCons(ty, tail) -> OptionRowCons(erase_range_of_type ty, erase_range_of_option_row tail)
-  | OptionRowVariable({contents = MonoORLink(optrow)}) -> erase_range_of_option_row optrow
-  | OptionRowVariable({contents = MonoORFree(_)})      -> optrow
-
-
-module BoundIDHashTable = Hashtbl.Make(
-  struct
-    type t = BoundID.t
-    let equal = BoundID.eq
-    let hash = Hashtbl.hash
-  end)
-
-module FreeIDHashTable = Hashtbl.Make(
-  struct
-    type t = FreeID.t
-    let equal = FreeID.equal
-    let hash = Hashtbl.hash
-  end)
-
-
-let rec instantiate_aux bid_ht lev qtfbl (rng, ptymain) =
-  let aux = instantiate_aux bid_ht lev qtfbl in
-  let aux_or = instantiate_option_row_aux bid_ht lev qtfbl in
-    match ptymain with
-    | TypeVariable(ptvi) ->
-        begin
-          match ptvi with
-          | PolyFree(tvref) ->
-              (rng, TypeVariable(tvref))
-
-          | PolyBound(bid) ->
-              begin
-                match BoundIDHashTable.find_opt bid_ht bid with
-                | Some(tvrefnew) ->
-                    (rng, TypeVariable(tvrefnew))
-
-                | None ->
-                    let kd = BoundID.get_kind bid in
-                    let kdfree = instantiate_kind_aux bid_ht lev qtfbl kd in
-                    let tvid = FreeID.fresh kdfree qtfbl lev () in
-                    let tvref = ref (MonoFree(tvid)) in
-                    begin
-                      BoundIDHashTable.add bid_ht bid tvref;
-                      (rng, TypeVariable(tvref))
-                    end
-              end
-        end
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
-    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
-    | ListType(tysub)                   -> (rng, ListType(aux tysub))
-    | RefType(tysub)                    -> (rng, RefType(aux tysub))
-    | BaseType(bty)                     -> (rng, BaseType(bty))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
-    | CodeType(tysub)                   -> (rng, CodeType(aux tysub))
-
-
-and instantiate_kind_aux bid_ht lev qtfbl (kd : poly_kind) : mono_kind =
-  let aux = instantiate_aux bid_ht lev qtfbl in
-    match kd with
-    | UniversalKind     -> UniversalKind
-    | RecordKind(tyasc) -> RecordKind(Assoc.map_value aux tyasc)
-
-
-and instantiate_option_row_aux bid_ht lev qtfbl optrow : mono_option_row =
-  let aux = instantiate_aux bid_ht lev qtfbl in
-  let aux_or = instantiate_option_row_aux bid_ht lev qtfbl in
-    match optrow with
-    | OptionRowEmpty                         -> OptionRowEmpty
-    | OptionRowCons(pty, tail)               -> OptionRowCons(aux pty, aux_or tail)
-    | OptionRowVariable(PolyORFree(orviref)) -> OptionRowVariable(orviref)
-
-
-let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type) : mono_type =
-  let bid_ht : (mono_type_variable_info ref) BoundIDHashTable.t = BoundIDHashTable.create 32 in
-  instantiate_aux bid_ht lev qtfbl pty
-
-
-let instantiate_kind (lev : level) (qtfbl : quantifiability) (pkd : poly_kind) : mono_kind =
-  let bid_ht : (mono_type_variable_info ref) BoundIDHashTable.t = BoundIDHashTable.create 32 in
-  instantiate_kind_aux bid_ht lev qtfbl pkd
-
-
-let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool) (ty : mono_type) : poly_type_body =
-  let tvidht = FreeIDHashTable.create 32 in
-  let rec iter (rng, tymain) =
-    match tymain with
-    | TypeVariable(tvref) ->
-        begin
-          match !tvref with
-          | MonoLink(tyl) ->
-              iter tyl
-
-          | MonoFree(tvid) ->
-              let ptvi =
-                if not (ptv tvid) then
-                  PolyFree(tvref)
-                else
-                  begin
-                    match FreeIDHashTable.find_opt tvidht tvid with
-                    | Some(bid) ->
-                        PolyBound(bid)
-
-                    | None ->
-                        let kd = FreeID.get_kind tvid in
-                        let kdgen = generalize_kind kd in
-                        let bid = BoundID.fresh kdgen () in
-                        FreeIDHashTable.add tvidht tvid bid;
-                        PolyBound(bid)
-                  end
-              in
-                (rng, TypeVariable(ptvi))
-        end
-
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(generalize_option_row optrow, iter tydom, iter tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
-    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
-    | ListType(tysub)                   -> (rng, ListType(iter tysub))
-    | RefType(tysub)                    -> (rng, RefType(iter tysub))
-    | BaseType(bty)                     -> (rng, BaseType(bty))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
-    | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
-
-  and generalize_kind kd =
-    match kd with
-    | UniversalKind     -> UniversalKind
-    | RecordKind(tyasc) -> RecordKind(Assoc.map_value iter tyasc)
-
-  and generalize_option_row optrow =
-    match optrow with
-    | OptionRowEmpty             -> OptionRowEmpty
-    | OptionRowCons(ty, tail)    -> OptionRowCons(iter ty, generalize_option_row tail)
-
-    | OptionRowVariable(orviref) ->
-        begin
-          match !orviref with
-          | MonoORFree(orv) ->
-              if porv orv then
-                OptionRowEmpty
-              else
-                OptionRowVariable(PolyORFree(orviref))
-
-          | MonoORLink(optraw) ->
-              generalize_option_row optrow
-        end
-  in
-  iter ty
-
-
-let check_level lev (ty : mono_type) =
-  let rec iter (_, tymain) =
-    match tymain with
-    | TypeVariable(tvref) ->
-        begin
-          match !tvref with
-          | MonoLink(ty) -> iter ty
-          | MonoFree(tvid) -> Level.less_than lev (FreeID.get_level tvid)
-        end
-
-    | ProductType(tylst)             -> List.for_all iter tylst
-    | RecordType(tyasc)              -> Assoc.fold_value (fun b ty -> b && iter ty) true tyasc
-    | FuncType(optrow, tydom, tycod) -> iter_or optrow && iter tydom && iter tycod
-    | RefType(tycont)                -> iter tycont
-    | BaseType(_)                    -> true
-    | ListType(tycont)               -> iter tycont
-    | VariantType(tylst, _)          -> List.for_all iter tylst
-    | SynonymType(tylst, _, tyact)   -> List.for_all iter tylst && iter tyact
-
-    | HorzCommandType(cmdargtylst)
-    | VertCommandType(cmdargtylst)
-    | MathCommandType(cmdargtylst)
-      ->
-        List.for_all iter_cmd cmdargtylst
-
-    | CodeType(tysub)                -> iter tysub
-
-  and iter_cmd = function
-    | MandatoryArgumentType(ty) -> iter ty
-    | OptionalArgumentType(ty)  -> iter ty
-
-  and iter_or = function
-    | OptionRowEmpty -> true
-
-    | OptionRowCons(ty, tail) -> iter ty && iter_or tail
-
-    | OptionRowVariable(orviref) ->
-        begin
-          match !orviref with
-          | MonoORFree(orv)    -> Level.less_than lev (OptionRowVarID.get_level orv)
-          | MonoORLink(optrow) -> iter_or optrow
-        end
-
-  in
-  iter ty
-
-
-let generalize (lev : level) (ty : mono_type) =
-  let ptv tvid =
-    let bkd =
-      let kd = FreeID.get_kind tvid in
-      match kd with
-      | UniversalKind   -> true
-      | RecordKind(asc) -> Assoc.fold_value (fun b ty -> b && (check_level lev ty)) true asc
-    in
-    FreeID.is_quantifiable tvid && Level.less_than lev (FreeID.get_level tvid) && bkd
-  in
-  let porv orv =
-    not (Level.less_than lev (OptionRowVarID.get_level orv))
-  in
-  Poly(lift_poly_general ptv porv ty)
-
-
-let lift_poly_body =
-  lift_poly_general (fun _ -> false) (fun _ -> false)
-
-
-let lift_poly (ty : mono_type) : poly_type =
-  Poly(lift_poly_body ty)
-
-
-let rec unlift_aux pty =
-  let aux = unlift_aux in
-  let (rng, ptymain) = pty in
-  let ptymainnew =
-    match ptymain with
-    | BaseType(bt) -> BaseType(bt)
-
-    | TypeVariable(ptvi) ->
-        begin
-          match ptvi with
-          | PolyFree(tvref) -> TypeVariable(tvref)
-          | PolyBound(_)    -> raise Exit
-        end
-
-    | FuncType(optrow, pty1, pty2)    -> FuncType(unlift_aux_or optrow, aux pty1, aux pty2)
-    | ProductType(ptylst)             -> ProductType(List.map aux ptylst)
-    | RecordType(ptyasc)              -> RecordType(Assoc.map_value aux ptyasc)
-    | ListType(ptysub)                -> ListType(aux ptysub)
-    | RefType(ptysub)                 -> RefType(aux ptysub)
-    | VariantType(ptylst, tyid)       -> VariantType(List.map aux ptylst, tyid)
-    | SynonymType(ptylst, tyid, ptya) -> SynonymType(List.map aux ptylst, tyid, aux ptya)
-    | HorzCommandType(catyl)          -> HorzCommandType(List.map unlift_aux_cmd catyl)
-    | VertCommandType(catyl)          -> VertCommandType(List.map unlift_aux_cmd catyl)
-    | MathCommandType(catyl)          -> MathCommandType(List.map unlift_aux_cmd catyl)
-    | CodeType(ptysub)                -> CodeType(aux ptysub)
-  in
-  (rng, ptymainnew)
-
-
-and unlift_aux_cmd = function
-  | MandatoryArgumentType(pty) -> MandatoryArgumentType(unlift_aux pty)
-  | OptionalArgumentType(pty)  -> OptionalArgumentType(unlift_aux pty)
-
-
-and unlift_aux_or = function
-  | OptionRowEmpty                         -> OptionRowEmpty
-  | OptionRowCons(pty, tail)               -> OptionRowCons(unlift_aux pty, unlift_aux_or tail)
-  | OptionRowVariable(PolyORFree(orviref)) -> OptionRowVariable(orviref)
-
-
-let unlift_poly (pty : poly_type_body) : mono_type option =
-  try Some(unlift_aux pty) with
-  | Exit -> None
-
-
-let unlift_option_row poptrow =
-  try Some(unlift_aux_or poptrow) with
-  | Exit -> None
 
 
 let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : location) : environment =
@@ -1472,20 +1246,80 @@ let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value
   StoreIDHashTable.find_opt (!stenvref) stid
 
 
-let map_input_horz f ihlst =
+let map_inline_text f ihlst =
   ihlst |> List.map (function
-  | InputHorzText(s)           -> InputHorzText(s)
-  | InputHorzEmbedded(ast)     -> InputHorzEmbedded(f ast)
-  | InputHorzContent(ast)      -> InputHorzContent(f ast)
-  | InputHorzEmbeddedMath(ast) -> InputHorzEmbeddedMath(f ast)
-  | InputHorzEmbeddedCodeText(s) -> InputHorzEmbeddedCodeText(s)
+  | InlineTextString(s) ->
+      InlineTextString(s)
+
+  | InlineTextApplyCommand{
+      command = ast_cmd;
+      arguments;
+    } ->
+      InlineTextApplyCommand{
+        command =
+          f ast_cmd;
+
+        arguments =
+          arguments |> List.map (fun (ast_labmap, ast) ->
+            (ast_labmap |> LabelMap.map f, f ast)
+          );
+      }
+
+  | InlineTextContent(ast)        -> InlineTextContent(f ast)
+  | InlineTextEmbeddedMath(ast)   -> InlineTextEmbeddedMath(f ast)
+  | InlineTextEmbeddedCodeArea(s) -> InlineTextEmbeddedCodeArea(s)
   )
 
 
-let map_input_vert f ivlst =
+let map_block_text f ivlst =
   ivlst |> List.map (function
-  | InputVertContent(ast)  -> InputVertContent(f ast)
-  | InputVertEmbedded(ast) -> InputVertEmbedded(f ast)
+  | BlockTextContent(ast) ->
+      BlockTextContent(f ast)
+
+  | BlockTextApplyCommand{
+      command = ast_cmd;
+      arguments;
+    } ->
+      BlockTextApplyCommand{
+        command =
+          f ast_cmd;
+
+        arguments =
+          arguments |> List.map (fun (ast_labmap, ast) ->
+            (ast_labmap |> LabelMap.map f, f ast)
+          );
+      }
+  )
+
+
+let rec map_math_text f ms =
+  ms |> List.map (fun m ->
+    let MathTextElement{ base; sub; sup } = m in
+    let base =
+      match base with
+      | MathTextChar(uch) ->
+          MathTextChar(uch)
+
+      | MathTextContent(ast) ->
+          MathTextContent(f ast)
+
+      | MathTextApplyCommand{
+          command = ast_cmd;
+          arguments;
+        } ->
+          MathTextApplyCommand{
+            command =
+              f ast_cmd;
+
+            arguments =
+              arguments |> List.map (fun (ast_labmap, ast) ->
+                (ast_labmap |> LabelMap.map f, f ast)
+              )
+          }
+    in
+    let sub = sub |> Option.map (map_math_text f) in
+    let sup = sup |> Option.map (map_math_text f) in
+    MathTextElement{ base; sub; sup }
   )
 
 
@@ -1503,38 +1337,45 @@ let map_path_component f g = function
 let rec unlift_code (code : code_value) : abstract_tree =
   let rec aux code =
     match code with
+    | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
     | CdBaseConstant(bc)                   -> ASTBaseConstant(bc)
     | CdEndOfList                          -> ASTEndOfList
-    | CdMath(mlst)                         -> ASTMath(mlst)
-    | CdFinishHeaderFile                   -> FinishHeaderFile
-    | CdFinishStruct                       -> FinishStruct
-    | CdInputHorz(cdihlst)                 -> InputHorz(cdihlst |> map_input_horz aux)
-    | CdInputVert(cdivlst)                 -> InputVert(cdivlst |> map_input_vert aux)
+    | CdInlineText(cdits)                  -> InlineText(cdits |> map_inline_text aux)
+    | CdBlockText(cdbts)                   -> BlockText(cdbts |> map_block_text aux)
+    | CdMathText(cdmts)                    -> MathText(cdmts |> map_math_text aux)
+
+    | CdLambdaInline(symb_ctx, code0) ->
+        LambdaInline(CodeSymbol.unlift symb_ctx, aux code0)
+
+    | CdLambdaBlock(symb_ctx, code0) ->
+        LambdaBlock(CodeSymbol.unlift symb_ctx, aux code0)
+
+    | CdLambdaMath(symb_ctx, symb_pair_opt, code0) ->
+        let evid_pair_opt =
+          symb_pair_opt |> Option.map (fun (symb_sub, symb_sup) ->
+            (CodeSymbol.unlift symb_sub, CodeSymbol.unlift symb_sup)
+          )
+        in
+        LambdaMath(CodeSymbol.unlift symb_ctx, evid_pair_opt, aux code0)
+
     | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
-    | CdPersistent(rng, evid)              -> ContentOf(rng, evid)
-    | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map aux_letrec_binding cdrecbinds, aux code1)
-    | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(aux_pattern cdpat, aux code1, aux code2)
-    | CdFunction(symbs, cdpatbr)           -> Function(List.map CodeSymbol.unlift symbs, aux_pattern_branch cdpatbr)
-    | CdApply(code1, code2)                -> Apply(aux code1, aux code2)
-    | CdApplyOptional(code1, code2)        -> ApplyOptional(aux code1, aux code2)
-    | CdApplyOmission(code1)               -> ApplyOmission(aux code1)
+    | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map unlift_letrec_binding cdrecbinds, aux code1)
+    | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(unlift_pattern cdpat, aux code1, aux code2)
+    | CdFunction(symb_labmap, cdpatbr)     -> Function(symb_labmap |> LabelMap.map CodeSymbol.unlift, unlift_pattern_branch cdpatbr)
+    | CdApply(code_labmap, code1, code2)   -> Apply(code_labmap |> LabelMap.map aux, aux code1, aux code2)
     | CdIfThenElse(code1, code2, code3)    -> IfThenElse(aux code1, aux code2, aux code3)
-    | CdRecord(cdasc)                      -> Record(Assoc.map_value aux cdasc)
+    | CdRecord(cdasc)                      -> Record(cdasc |> LabelMap.map aux)
     | CdAccessField(code1, fldnm)          -> AccessField(aux code1, fldnm)
     | CdUpdateField(code1, fldnm, code2)   -> UpdateField(aux code1, fldnm, aux code2)
     | CdLetMutableIn(symb, code1, code2)   -> LetMutableIn(CodeSymbol.unlift symb, aux code1, aux code2)
-    | CdSequential(code1, code2)           -> Sequential(aux code1, aux code2)
     | CdOverwrite(symb, code1)             -> Overwrite(CodeSymbol.unlift symb, aux code1)
     | CdDereference(code1)                 -> Dereference(aux code1)
-    | CdWhileDo(code1, code2)              -> WhileDo(aux code1, aux code2)
-    | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map aux_pattern_branch cdpatbrs)
+    | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map unlift_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
-    | CdTuple(codelst)                     -> PrimitiveTuple(List.map aux codelst)
-    | CdPath(code1, cdpath, cdcycleopt)    -> Path(aux code1, aux_path cdpath, aux_cycle cdcycleopt)
-    | CdMathList(codes)                    -> BackendMathList(List.map aux codes)
-    | CdModule(code1, code2)               -> Module(aux code1, aux code2)
+    | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
 #include "__unliftcode.gen.ml"
 
+(*
   and aux_letrec_binding (CdLetRecBinding(symb, cdpatbr)) =
     LetRecBinding(CodeSymbol.unlift symb, aux_pattern_branch cdpatbr)
 
@@ -1561,379 +1402,36 @@ let rec unlift_code (code : code_value) : abstract_tree =
   and aux_cycle cdcycleopt =
     cdcycleopt |> Option.map (map_path_component aux (fun () -> ()))
 
+*)
   in
   aux code
 
 
-module MathContext
-: sig
-    type t
-    val make : input_context -> t
-    val context_for_text : t -> input_context
-    val context_main : t -> HorzBox.context_main
-    val convert_math_variant_char : input_context -> Uchar.t -> HorzBox.math_kind * Uchar.t
-    val color : t -> color
-    val set_color : color -> t -> t
-    val enter_script : t -> t
-    val math_char_class : t -> HorzBox.math_char_class
-    val set_math_char_class : HorzBox.math_char_class -> t -> t
-    val is_in_base_level : t -> bool
-    val actual_font_size : t -> (HorzBox.math_font_abbrev -> FontFormat.math_decoder) -> length
-    val base_font_size : t -> length
-    val math_font_abbrev : t -> HorzBox.math_font_abbrev
-  end
-= struct
-    type level =
-      | BaseLevel
-      | ScriptLevel
-      | ScriptScriptLevel
-
-    type t =
-      {
-        mc_font_abbrev    : HorzBox.math_font_abbrev;
-        mc_base_font_size : length;
-        mc_level_int      : int;
-        mc_level          : level;
-        context_for_text  : input_context;
-      }
-
-    let make (ictx : input_context) : t =
-      let (ctx, _) = ictx in
-        {
-          mc_font_abbrev    = ctx.HorzBox.math_font;
-          mc_base_font_size = ctx.HorzBox.font_size;
-          mc_level_int      = 0;
-          mc_level          = BaseLevel;
-          context_for_text  = ictx;
-        }
-
-    let convert_math_variant_char ((ctx, _) : input_context) (uch : Uchar.t) =
-      let open HorzBox in
-      let mcclsmap = ctx.math_variant_char_map in
-      let mccls = ctx.math_char_class in
-      let mkmap = ctx.math_class_map in
-      match mkmap |> HorzBox.MathClassMap.find_opt uch with
-      | Some(uchaft, mk) ->
-          (mk, uchaft)
-
-      | None ->
-          begin
-            match mcclsmap |> HorzBox.MathVariantCharMap.find_opt (uch, mccls) with
-            | Some((uchaft, mk)) -> (mk, uchaft)
-            | None               -> (MathOrdinary, uch)
-          end
-
-    let context_for_text (mctx : t) =
-      mctx.context_for_text
-        (* temporary; maybe should update font size *)
-
-    let context_main (mctx : t) =
-      let (ctx, _) = mctx.context_for_text in
-        ctx
-
-    let color (mctx : t) =
-      let (ctx, _) = mctx.context_for_text in
-        ctx.HorzBox.text_color
-
-    let set_color (color : color) (mctx : t) =
-      let (ctx, v) = mctx.context_for_text in
-      let ctxnew = { ctx with HorzBox.text_color = color; } in
-        { mctx with context_for_text = (ctxnew, v); }
-
-    let math_char_class (mctx : t) =
-      let (ctx, _) = mctx.context_for_text in
-        ctx.HorzBox.math_char_class
-
-    let set_math_char_class mccls (mctx : t) =
-      let (ctx, v) = mctx.context_for_text in
-      let ctxnew = { ctx with HorzBox.math_char_class = mccls } in
-        { mctx with context_for_text = (ctxnew, v) }
-
-    let enter_script mctx =
-      let levnew = mctx.mc_level_int + 1 in
-      match mctx.mc_level with
-      | BaseLevel         -> { mctx with mc_level = ScriptLevel;       mc_level_int = levnew; }
-      | ScriptLevel       -> { mctx with mc_level = ScriptScriptLevel; mc_level_int = levnew; }
-      | ScriptScriptLevel -> { mctx with                               mc_level_int = levnew; }
-
-    let is_in_base_level mctx =
-      match mctx.mc_level with
-      | BaseLevel -> true
-      | _         -> false
-
-    let actual_font_size mctx (mdf : HorzBox.math_font_abbrev -> FontFormat.math_decoder) =
-      let bfsize = mctx.mc_base_font_size in
-      let md = mdf mctx.mc_font_abbrev in
-      let mc = FontFormat.get_math_constants md in
-      match mctx.mc_level with
-      | BaseLevel         -> bfsize
-      | ScriptLevel       -> bfsize *% mc.FontFormat.script_scale_down
-      | ScriptScriptLevel -> bfsize *% mc.FontFormat.script_script_scale_down
-
-    let base_font_size mctx =
-      mctx.mc_base_font_size
-
-    let math_font_abbrev mctx =
-      mctx.mc_font_abbrev
-
-  end
-
-
-type math_context = MathContext.t
-
-
-(* -- following are all for debugging -- *)
-
-let string_of_record_type (type a) (type b) (f : (a, b) typ -> string) (asc : ((a, b) typ) Assoc.t) =
-  let rec aux lst =
-    match lst with
-    | []                     -> " -- "
-    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
-    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
-  in
-    "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
-
-
-let string_of_kind (type a) (type b) (f : (a, b) typ -> string) (kdstr : (a, b) kind) =
-  let rec aux lst =
-    match lst with
-    | []                     -> " -- "
-    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
-    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
-  in
-    match kdstr with
-    | UniversalKind   -> "U"
-    | RecordKind(asc) -> "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
-
-
-let rec string_of_type_basic tvf orvf tystr : string =
-  let iter = string_of_type_basic tvf orvf in
-  let (rng, tymain) = tystr in
-  let qstn = if Range.is_dummy rng then "%" else "" in
-    match tymain with
-    | BaseType(EnvType)     -> "env" ^ qstn
-    | BaseType(UnitType)    -> "unit" ^ qstn
-    | BaseType(BoolType)    -> "bool" ^ qstn
-    | BaseType(IntType)     -> "int" ^ qstn
-    | BaseType(FloatType)   -> "float" ^ qstn
-    | BaseType(StringType)  -> "string" ^ qstn
-    | BaseType(TextRowType) -> "inline-text" ^ qstn
-    | BaseType(TextColType) -> "block-text" ^ qstn
-    | BaseType(BoxRowType)  -> "inline-boxes" ^ qstn
-    | BaseType(BoxColType)  -> "block-boxes" ^ qstn
-    | BaseType(ContextType) -> "context" ^ qstn
-    | BaseType(PrePathType) -> "pre-path" ^ qstn
-    | BaseType(PathType)    -> "path" ^ qstn
-    | BaseType(LengthType)  -> "length" ^ qstn
-    | BaseType(GraphicsType) -> "graphics" ^ qstn
-    | BaseType(ImageType)    -> "image" ^ qstn
-    | BaseType(DocumentType) -> "document" ^ qstn
-    | BaseType(MathType)     -> "math" ^ qstn
-    | BaseType(RegExpType)   -> "regexp" ^ qstn
-    | BaseType(TextInfoType) -> "text-info" ^ qstn
-    | BaseType(InputPosType) -> "input-position" ^ qstn
-
-    | VariantType(tyarglist, tyid) ->
-        (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
-
-    | SynonymType(tyarglist, tyid, tyreal) ->
-        (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.show_direct tyid) ^ "@ (= " ^ (iter tyreal) ^ ")"
-
-    | FuncType(optrow, tydom, tycod) ->
-        let stropts = string_of_option_row_basic tvf orvf optrow in
-        let strdom = iter tydom in
-        let strcod = iter tycod in
-          stropts ^
-          begin match tydom with
-          | (_, FuncType(_, _, _)) -> "(" ^ strdom ^ ")"
-          | _                      -> strdom
-          end ^ " ->" ^ qstn ^ " " ^ strcod
-
-    | ListType(tycont) ->
-        let strcont = iter tycont in
-        let (_, tycontmain) = tycont in
-          begin match tycontmain with
-          | FuncType(_, _, _)
-          | ProductType(_)
-          | ListType(_)
-          | RefType(_)
-          | VariantType(_ :: _, _)
-(*          | TypeSynonym(_ :: _, _, _) *)
-              -> "(" ^ strcont ^ ")"
-          | _ -> strcont
-          end ^ " list" ^ qstn
-
-    | RefType(tycont) ->
-        let strcont = iter tycont in
-        let (_, tycontmain) = tycont in
-          begin match tycontmain with
-          | FuncType(_, _, _)
-          | ProductType(_)
-          | ListType(_)
-          | RefType(_)
-          | VariantType(_ :: _, _)
-(*          | TypeSynonym(_ :: _, _, _) *)
-              -> "(" ^ strcont ^ ")"
-
-          | _ -> strcont
-          end ^ " ref" ^ qstn
-
-    | CodeType(tysub) ->
-        let strsub = iter tysub in
-        let (_, tysubmain) = tysub in
-        "&" ^ begin
-          match tysubmain with
-          | BaseType(_)
-          | VariantType([], _) -> strsub
-
-          | _ -> "(" ^ strsub ^ ")"
-        end
-
-    | ProductType(tylist) ->
-        string_of_type_list_basic tvf orvf tylist
-
-    | TypeVariable(tvi) ->
-        tvf qstn tvi
-
-    | RecordType(asc) ->
-        string_of_record_type iter asc
-
-    | HorzCommandType(tylist) ->
-        let slist = List.map (string_of_command_argument_type tvf orvf) tylist in
-        "[" ^ (String.concat "; " slist) ^ "] horz-command"
-
-    | VertCommandType(tylist)   ->
-        let slist = List.map (string_of_command_argument_type tvf orvf) tylist in
-        "[" ^ (String.concat "; " slist) ^ "] vert-command"
-
-    | MathCommandType(tylist)   ->
-        let slist = List.map (string_of_command_argument_type tvf orvf) tylist in
-        "[" ^ (String.concat "; " slist) ^ "] math-command"
-
-
-and string_of_option_row_basic tvf orvf = function
-  | OptionRowEmpty -> ""
-
-  | OptionRowVariable(orvi) -> orvf orvi
-
-  | OptionRowCons(ty, tail) ->
-      let strtysub = string_of_type_basic tvf orvf ty in
-      let strty =
-        let (_, tymain) = ty in
-        match tymain with
-        | FuncType(_, _, _)
-        | ProductType(_)
-        | ListType(_)
-        | RefType(_)
-        | VariantType(_ :: _, _)
-          -> "(" ^ strtysub ^ ")"
-
-        | _ -> strtysub
-      in
-      strty ^ "?-> " ^ (string_of_option_row_basic tvf orvf tail)
-
-
-and string_of_command_argument_type tvf orvf = function
-  | MandatoryArgumentType(ty) -> string_of_type_basic tvf orvf ty
-  | OptionalArgumentType(ty)  -> "(" ^ (string_of_type_basic tvf orvf ty) ^ ")?"
-
-
-and string_of_type_argument_list_basic tvf orvf tyarglist =
-  match tyarglist with
-  | []           -> ""
-  | head :: tail ->
-      let strhd = string_of_type_basic tvf orvf head in
-      let strtl = string_of_type_argument_list_basic tvf orvf tail in
-      let (_, headmain) = head in
-        begin
-          match headmain with
-          | FuncType(_, _, _)
-          | ProductType(_)
-            (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
-          | ListType(_)
-          | RefType(_)
-          | VariantType(_ :: _, _)
-              -> "(" ^ strhd ^ ")"
-          | _ -> strhd
-        end ^ " " ^ strtl
-
-
-and string_of_type_list_basic tvf orvf tylist =
-  match tylist with
-  | []           -> ""
-  | head :: []   ->
-      let strhd = string_of_type_basic tvf orvf head in
-      let (_, headmain) = head in
-        begin
-          match headmain with
-          | ProductType(_)
-          | FuncType(_, _, _)
-              -> "(" ^ strhd ^ ")"
-          | _ -> strhd
-        end
-  | head :: tail ->
-      let strhd = string_of_type_basic tvf orvf head in
-      let strtl = string_of_type_list_basic tvf orvf tail in
-      let (_, headmain) = head in
-        begin
-          match headmain with
-          | ProductType(_)
-          | FuncType(_, _, _)
-              -> "(" ^ strhd ^ ")"
-          | _ -> strhd
-        end ^ " * " ^ strtl
-
-
-let rec tvf_mono qstn tvref =
-  match !tvref with
-  | MonoLink(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
-  | MonoFree(tvid) -> "'" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
-
-
-and orvf_mono orvref =
-  match !orvref with
-  | MonoORFree(orv)    -> (OptionRowVarID.show_direct orv) ^ "?-> "
-  | MonoORLink(optrow) -> string_of_option_row_basic tvf_mono orvf_mono optrow
-
-
-and string_of_mono_type_basic ty =
-    string_of_type_basic tvf_mono orvf_mono ty
-
-
-let rec string_of_poly_type_basic (Poly(pty)) =
-  let tvf_poly qstn ptvi =
-    match ptvi with
-    | PolyBound(bid) ->
-        "'#" ^ (BoundID.show_direct (string_of_kind (fun ty -> string_of_poly_type_basic (Poly(ty)))) bid) ^ qstn
-
-    | PolyFree(tvref) -> tvf_mono qstn tvref
-  in
-  let ortvf orvi =
-    match orvi with
-    | PolyORFree(orvref) -> orvf_mono orvref
-  in
-    string_of_type_basic tvf_poly ortvf pty
-
-
-and string_of_kind_basic kd = string_of_kind string_of_mono_type_basic kd
-
-(*
-let rec string_of_manual_type (_, mtymain) =
-  let iter = string_of_manual_type in
-  let iter_cmd = string_of_manual_command_argument_type in
-  match mtymain with
-  | MTypeName(mtylst, mdlnmlst, tynm) -> (String.concat " " (List.map iter mtylst)) ^ " " ^ (String.concat "." (List.append mdlnmlst [tynm]))
-  | MTypeParam(tpnm)          -> "'" ^ tpnm
-  | MFuncType(mtyopts, mtydom, mtycod) -> (String.concat "" (List.map iter mtyopts)) (iter mtydom) ^ " -> " ^ (iter mtycod)
-  | MOptFuncType(mtydom, mtycod) -> "(" ^ (iter mtydom) ^ ")? -> " ^ (iter mtycod)
-  | MProductType(mtylst)      -> (String.concat " * " (List.map iter mtylst))
-  | MRecordType(mtyasc)       -> "(|" ^ (String.concat "; " (List.map (fun (fldnm, mty) -> fldnm ^ " : " ^ (iter mty)) (Assoc.to_list mtyasc))) ^ "|)"
-  | MHorzCommandType(mncatylst) -> "[" ^ (String.concat "; " (List.map iter_cmd mncatylst)) ^ "] inline-cmd"
-  | MVertCommandType(mncatylst) -> "[" ^ (String.concat "; " (List.map iter_cmd mncatylst)) ^ "] block-cmd"
-  | MMathCommandType(mncatylst) -> "[" ^ (String.concat "; " (List.map iter_cmd mncatylst)) ^ "] math-cmd"
-
-
-and string_of_manual_command_argument_type = function
-  | MMandatoryArgumentType(mnty) -> string_of_manual_type mnty
-  | MOptionalArgumentType(mnty)  -> "(" ^ (string_of_manual_type mnty) ^ ")?"
-*)
+and unlift_pattern = function
+  | CdPUnitConstant             -> PUnitConstant
+  | CdPBooleanConstant(b)       -> PBooleanConstant(b)
+  | CdPIntegerConstant(n)       -> PIntegerConstant(n)
+  | CdPStringConstant(s)        -> PStringConstant(s)
+  | CdPListCons(cdpat1, cdpat2) -> PListCons(unlift_pattern cdpat1, unlift_pattern cdpat2)
+  | CdPEndOfList                -> PEndOfList
+  | CdPTuple(cdpats)            -> PTuple(TupleList.map unlift_pattern cdpats)
+  | CdPWildCard                 -> PWildCard
+  | CdPVariable(symb)           -> PVariable(CodeSymbol.unlift symb)
+  | CdPAsVariable(symb, cdpat)  -> PAsVariable(CodeSymbol.unlift symb, unlift_pattern cdpat)
+  | CdPConstructor(ctor, cdpat) -> PConstructor(ctor, unlift_pattern cdpat)
+
+
+and unlift_letrec_binding (CdLetRecBinding(symb, cdpatbr)) =
+  LetRecBinding(CodeSymbol.unlift symb, unlift_pattern_branch cdpatbr)
+
+
+and unlift_pattern_branch = function
+  | CdPatternBranch(cdpat, code)            -> PatternBranch(unlift_pattern cdpat, unlift_code code)
+  | CdPatternBranchWhen(cdpat, code, codeB) -> PatternBranchWhen(unlift_pattern cdpat, unlift_code code, unlift_code codeB)
+
+
+let unlift_rec_or_nonrec (cd_rec_or_nonrec : code_rec_or_nonrec) : rec_or_nonrec =
+  match cd_rec_or_nonrec with
+  | CdNonRec(symb, code)  -> NonRec(CodeSymbol.unlift symb, unlift_code code)
+  | CdRec(cdrecbinds)     -> Rec(List.map unlift_letrec_binding cdrecbinds)
+  | CdMutable(symb, code) -> Mutable(CodeSymbol.unlift symb, unlift_code code)

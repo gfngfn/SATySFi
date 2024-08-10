@@ -1,69 +1,70 @@
+(* -unused-value-declaration *)
+[@@@ocaml.warning "-32"]
 
 open MyUtil
 open LengthInterface
 open GraphicBase
+open SyntaxBase
 open Types
+open StaticEnv
 
 (* -- type IDs for predefined data types -- *)
-let tyid_option   = Typeenv.Raw.fresh_type_id "option"
-let tyid_itemize  = Typeenv.Raw.fresh_type_id "itemize"
-let tyid_color    = Typeenv.Raw.fresh_type_id "color"
-let tyid_script   = Typeenv.Raw.fresh_type_id "script"
-let tyid_language = Typeenv.Raw.fresh_type_id "language"
-let tyid_page     = Typeenv.Raw.fresh_type_id "page"
-let tyid_mathcls  = Typeenv.Raw.fresh_type_id "math-class"
-let tyid_mccls    = Typeenv.Raw.fresh_type_id "math-char-class"
-let tyid_cell     = Typeenv.Raw.fresh_type_id "cell"
-let tyid_image    = Typeenv.Raw.fresh_type_id "image"
-
-(* -- type IDs for alias types -- *)
-let tyid_deco     = Typeenv.Raw.fresh_type_id "deco"
-let tyid_decoset  = Typeenv.Raw.fresh_type_id "deco-set"
-let tyid_igraf    = Typeenv.Raw.fresh_type_id "inline-graphics"
-let tyid_igrafo   = Typeenv.Raw.fresh_type_id "inline-graphics-outer"
+let vid_option   = TypeID.fresh "option"
+let vid_itemize  = TypeID.fresh "itemize"
+let vid_color    = TypeID.fresh "color"
+let vid_script   = TypeID.fresh "script"
+let vid_language = TypeID.fresh "language"
+let vid_mathcls  = TypeID.fresh "math-class"
+let vid_mccls    = TypeID.fresh "math-char-class"
+let vid_cell     = TypeID.fresh "cell"
 
 let ( ~! ) = Range.dummy
 
-(* -- base types and base type constructors -- *)
-let tU            = (~! "unit"    , BaseType(UnitType)    )
-let tI            = (~! "int"     , BaseType(IntType)     )
-let tFL           = (~! "float"   , BaseType(FloatType)   )
-let tB            = (~! "bool"    , BaseType(BoolType)    )
-let tLN           = (~! "length"  , BaseType(LengthType)  )
-let tS            = (~! "string"  , BaseType(StringType)  )
-let tIT           = (~! "itext"   , BaseType(TextRowType) )
-let tBT           = (~! "btext"   , BaseType(TextColType) )
-let tIB           = (~! "iboxes"  , BaseType(BoxRowType)  )
-let tBB           = (~! "bboxes"  , BaseType(BoxColType)  )
+let variant tyargs tyid = DataType(tyargs, tyid)
 
-let tCTX          = (~! "context" , BaseType(ContextType) )
-let tTCTX         = (~! "text-info", BaseType(TextInfoType))
-let tPATH         = (~! "path"    , BaseType(PathType)    )
-let tPRP          = (~! "pre-path", BaseType(PrePathType) )
-let tDOC          = (~! "document", BaseType(DocumentType))
-let tMATH         = (~! "math"    , BaseType(MathType)    )
-let tGR           = (~! "graphics", BaseType(GraphicsType))
-let tIMG          = (~! "image"   , BaseType(ImageType)   )
-let tRE           = (~! "regexp"  , BaseType(RegExpType)  )
 
-let tIPOS         = (~! "input-position", BaseType(InputPosType))
+(* Base types and base type constructors: *)
+let tU    = (~! "unit"          , BaseType(UnitType))
+let tB    = (~! "bool"          , BaseType(BoolType))
+let tI    = (~! "int"           , BaseType(IntType))
+let tFL   = (~! "float"         , BaseType(FloatType))
+let tLN   = (~! "length"        , BaseType(LengthType))
+let tS    = (~! "string"        , BaseType(StringType))
+let tIT   = (~! "inline-text"   , BaseType(InlineTextType))
+let tBT   = (~! "block-text"    , BaseType(BlockTextType))
+let tMT   = (~! "math-text"     , BaseType(MathTextType))
+let tIB   = (~! "inline-boxes"  , BaseType(InlineBoxesType))
+let tBB   = (~! "block-boxes"   , BaseType(BlockBoxesType))
+let tMB   = (~! "math-boxes"    , BaseType(MathBoxesType))
+let tCTX  = (~! "context"       , BaseType(ContextType))
+let tPRP  = (~! "pre-path"      , BaseType(PrePathType))
+let tPATH = (~! "path"          , BaseType(PathType))
+let tGR   = (~! "graphics"      , BaseType(GraphicsType))
+let tIMG  = (~! "image"         , BaseType(ImageType))
+let tDOC  = (~! "document"      , BaseType(DocumentType))
+let tRE   = (~! "regexp"        , BaseType(RegExpType))
+let tTCTX = (~! "text-info"     , BaseType(TextInfoType))
+let tIPOS = (~! "input-position", BaseType(InputPosType))
 
-let tL ty         = (~! "list"    , ListType(ty)          )
-let tR ty         = (~! "ref"     , RefType(ty)           )
-let tPROD tylst   = (~! "product" , ProductType(tylst)    )
-let (@->) dom cod = (~! "func"    , FuncType(OptionRowEmpty, dom, cod))
-let tCODE ty      = (~! "code"    , CodeType(ty)          )
+let tL ty = (~! "list", ListType(ty))
+let tR ty = (~! "ref", RefType(ty))
+let tCODE ty = (~! "code", CodeType(ty))
+
+let tPROD = function
+  | ty1 :: ty2 :: tyrest -> (~! "product", ProductType(TupleList.make ty1 ty2 tyrest))
+  | _                    -> assert false
+
+let ( @-> ) dom cod = (~! "func", FuncType(RowEmpty, dom, cod))
 
 (* -- predefined data types -- *)
-let tOPT ty       = (~! "option"  , VariantType([ty], tyid_option))
-let tITMZ ()      = (~! "itemize" , VariantType([], tyid_itemize) )
-let tSCR          = (~! "script"  , VariantType([], tyid_script)  )
-let tLANG         = (~! "language", VariantType([], tyid_language))
-let tCLR          = (~! "color"   , VariantType([], tyid_color)   )
-let tPG           = (~! "page"    , VariantType([], tyid_page)    )
-let tMATHCLS      = (~! "mathcls" , VariantType([], tyid_mathcls) )
-let tMCCLS        = (~! "mccls"   , VariantType([], tyid_mccls)   )
-let tCELL         = (~! "cell"    , VariantType([], tyid_cell)    )
+let tOPT ty       = (~! "option"  , variant [ty] vid_option)
+let tITMZ ()      = (~! "itemize" , variant [] vid_itemize )
+let tSCR          = (~! "script"  , variant [] vid_script  )
+let tLANG         = (~! "language", variant [] vid_language)
+let tCLR          = (~! "color"   , variant [] vid_color   )
+let tMATHCLS      = (~! "mathcls" , variant [] vid_mathcls )
+let tMCCLS        = (~! "mccls"   , variant [] vid_mccls   )
+let tCELL         = (~! "cell"    , variant [] vid_cell    )
 
 (* -- predefined alias types -- *)
 let tFONT         = tPROD [tS; tFL; tFL]
@@ -71,172 +72,210 @@ let tPT           = tPROD [tLN; tLN]
 let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
 
-let tDECO_raw = tPT @-> tLN @-> tLN @-> tLN @-> (tL tGR)
-let tDECO = (~! "deco", SynonymType([], tyid_deco, tDECO_raw))
+let tDECO_raw = tPT @-> tLN @-> tLN @-> tLN @-> tGR
+let tDECO = tDECO_raw
 
 let tDECOSET_raw = tPROD [tDECO; tDECO; tDECO; tDECO]
-let tDECOSET = (~! "deco-set", SynonymType([], tyid_decoset, tDECOSET_raw))
+let tDECOSET = tDECOSET_raw
 
-let tIGR_raw = tPT @-> (tL tGR)
-let tIGR = (~! "igraf", SynonymType([], tyid_igraf, tIGR_raw))
+let tIGR_raw = tPT @-> tGR
+let tIGR = tIGR_raw
 
-let tIGRO_raw = tLN @-> tPT @-> (tL tGR)
-let tIGRO = (~! "igrafo", SynonymType([], tyid_igrafo, tIGRO_raw))
+let tIGRO_raw = tLN @-> tPT @-> tGR
+let tIGRO = tIGRO_raw
 
-let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
+let tPAREN = tLN @-> tLN @-> tCTX @-> tPROD [tIB; tLN @-> tLN]
 
-let tICMD ty = (~! "cmd", HorzCommandType([MandatoryArgumentType(ty)]))
+let tICMD ty = (~! "cmd", InlineCommandType([CommandArgType(LabelMap.empty, ty)]))
 
-let tMCSTY =
-  let asc =
-    Assoc.of_list (List.map (fun k -> (k, tS)) [
-      "italic";
-      "bold-italic";
-      "roman";
-      "bold-roman";
-      "script";
-      "bold-script";
-      "fraktur";
-      "bold-fraktur";
-      "double-struck";
-    ])  (* temporary *)
-  in
-    (~! "math-char-style", RecordType(asc))
+
+let make_row kts =
+  kts |> List.fold_left (fun row (k, ty) ->
+    RowCons((Range.dummy "math-char-style", k), ty, row)
+  ) RowEmpty
+
 
 let tDOCINFODIC =
-  let asc =
-    Assoc.of_list [
-      ("title", tOPT tS);
-      ("subject", tOPT tS);
-      ("author", tOPT tS);
+  let row =
+    make_row [
+      ("title"   , tOPT tS);
+      ("subject" , tOPT tS);
+      ("author"  , tOPT tS);
       ("keywords", tL tS);
     ]
   in
-    (~! "document-information-dictionary", RecordType(asc))
+  (~! "document-information-dictionary", RecordType(row))
 
 
 let tPBINFO =
-  let asc =
-    Assoc.of_list [
+  let row =
+    make_row [
       ("page-number", tI);
     ]
   in
-    (~! "page-break-info", RecordType(asc))
+    (~! "page-break-info", RecordType(row))
+
 
 let tPAGECONT =
-  let asc =
-    Assoc.of_list [
+  let row =
+    make_row [
       ("text-origin", tPT);
       ("text-height", tLN);
     ]
   in
-    (~! "page-content-scheme", RecordType(asc))
+  (~! "page-content-scheme", RecordType(row))
+
 
 let tPAGECONTF = tPBINFO @-> tPAGECONT
+
 
 let tPCINFO =
   tPBINFO  (* temporary; may have more fields in the future *)
 
+
 let tPAGEPARTS =
-  let asc =
-    Assoc.of_list [
+  let row =
+    make_row [
       ("header-origin" , tPT);
       ("header-content", tBB);
       ("footer-origin" , tPT);
       ("footer-content", tBB);
     ]
   in
-    (~! "page-parts", RecordType(asc))
+  (~! "page-parts", RecordType(row))
 
-let tPAGEPARTSF = tPCINFO @-> tPAGEPARTS
 
-let tRULESF = (tL tLN) @-> (tL tLN) @-> (tL tGR)
+let tPAGEPARTSF =
+  tPCINFO @-> tPAGEPARTS
 
-let option_type = tOPT
 
-let itemize_type () = tITMZ ()
+let option_type =
+  tOPT
+
+let itemize_type () =
+  tITMZ ()
+
+
+let fresh_bound_id () =
+  BoundID.fresh ()
+
+
+let add_variant_types vntdefs (tyenv : Typeenv.t) : Typeenv.t =
+  List.fold_left (fun tyenv (tynm, tyid, arity, ctors) ->
+    let tentry =
+      {
+        type_scheme = TypeConv.make_opaque_type_scheme arity tyid;
+        type_kind   = Kind(List.init arity (fun _ -> TypeKind));
+      }
+    in
+    let tyenv = tyenv |> Typeenv.add_type tynm tentry in
+    ctors |> List.fold_left (fun tyenv (ctornm, tyscheme) ->
+      let centry =
+        {
+          ctor_belongs_to = tyid;
+          ctor_parameter  = tyscheme;
+        }
+      in
+      tyenv |> Typeenv.add_constructor ctornm centry
+    ) tyenv
+  ) tyenv vntdefs
+
+
+let add_synonym_types (syndefs : (type_name * type_scheme) list) (tyenv : Typeenv.t) : Typeenv.t =
+  List.fold_left (fun tyenv (tynm, tyscheme) ->
+    let (bids, _) = tyscheme in
+    let tentry =
+      {
+        type_scheme = tyscheme;
+        type_kind   = Kind(bids |> List.map (fun _ -> TypeKind));
+      }
+    in
+    tyenv |> Typeenv.add_type tynm tentry
+  ) tyenv syndefs
+
+
+let no_parameter = ([], Poly(tU))
 
 
 let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
-  let bid = BoundID.fresh UniversalKind () in
+  let bid = fresh_bound_id () in
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
 
   tyenvmid
-  |> Typeenv.Raw.register_type "option" tyid_option (Typeenv.Data(1))
-  |> Typeenv.Raw.add_constructor "None" ([bid], Poly(tU)) tyid_option
-  |> Typeenv.Raw.add_constructor "Some" ([bid], Poly(typaram)) tyid_option
-
-  |> Typeenv.Raw.register_type "itemize" tyid_itemize (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "Item" ([], Poly(tPROD [tIT; tL (tITMZ ())])) tyid_itemize
-
-  |> Typeenv.Raw.register_type "math-class" tyid_mathcls (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "MathOrd"    ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathBin"    ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathRel"    ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathOp"     ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathPunct"  ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathOpen"   ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathClose"  ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathInner"  ([], Poly(tU)) tyid_mathcls
-
-  |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "MathItalic"       ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldItalic"   ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathRoman"        ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldRoman"    ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathScript"       ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldScript"   ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathFraktur"      ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldFraktur"  ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathDoubleStruck" ([], Poly(tU)) tyid_mccls
+    |> add_variant_types [
+      ("option", vid_option, 1, [
+        ("None", ([bid], Poly(tU)));
+        ("Some", ([bid], Poly(typaram)))
+      ]);
+      ("itemize", vid_itemize, 0, [
+        ("Item", ([], Poly(tPROD [tIT; tL (tITMZ ())])))
+      ]);
+      ("math-class", vid_mathcls, 0, [
+        ("MathOrd"   , no_parameter);
+        ("MathBin"   , no_parameter);
+        ("MathRel"   , no_parameter);
+        ("MathOp"    , no_parameter);
+        ("MathPunct" , no_parameter);
+        ("MathOpen"  , no_parameter);
+        ("MathClose" , no_parameter);
+        ("MathPrefix", no_parameter);
+        ("MathInner" , no_parameter);
+      ]);
+      ("math-char-class", vid_mccls, 0, [
+        ("MathItalic"             , no_parameter);
+        ("MathBoldItalic"         , no_parameter);
+        ("MathRoman"              , no_parameter);
+        ("MathBoldRoman"          , no_parameter);
+        ("MathScript"             , no_parameter);
+        ("MathBoldScript"         , no_parameter);
+        ("MathFraktur"            , no_parameter);
+        ("MathBoldFraktur"        , no_parameter);
+        ("MathDoubleStruck"       , no_parameter);
+        ("MathSansSerif"          , no_parameter);
+        ("MathBoldSansSerif"      , no_parameter);
+        ("MathItalicSansSerif"    , no_parameter);
+        ("MathBoldItalicSansSerif", no_parameter);
+        ("MathTypewriter"         , no_parameter);
+      ]);
+    ]
 
 
 let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
-
   tyenvmid
-  |> Typeenv.Raw.register_type "color" tyid_color (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "Gray" ([], Poly(tFL)) tyid_color
-  |> Typeenv.Raw.add_constructor "RGB"  ([], Poly(tPROD [tFL; tFL; tFL])) tyid_color
-  |> Typeenv.Raw.add_constructor "CMYK" ([], Poly(tPROD [tFL; tFL; tFL; tFL])) tyid_color
+    |> add_variant_types [
+      ("color", vid_color, 0, [
+        ("Gray", ([], Poly(tFL)));
+        ("RGB" , ([], Poly(tPROD [tFL; tFL; tFL])));
+        ("CMYK", ([], Poly(tPROD [tFL; tFL; tFL; tFL])));
+      ]);
+      ("script", vid_script, 0, [
+        ("HanIdeographic", no_parameter);
+        ("Kana"          , no_parameter);
+        ("Latin"         , no_parameter);
+        ("OtherScript"   , no_parameter);
+      ]);
+      ("language", vid_language, 0, [
+        ("English"         , no_parameter);
+        ("Japanese"        , no_parameter);
+        ("NoLanguageSystem", no_parameter);
+      ]);
 
-  |> Typeenv.Raw.register_type "script" tyid_script (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "HanIdeographic" ([], Poly(tU)) tyid_script
-  |> Typeenv.Raw.add_constructor "Kana"           ([], Poly(tU)) tyid_script
-  |> Typeenv.Raw.add_constructor "Latin"          ([], Poly(tU)) tyid_script
-  |> Typeenv.Raw.add_constructor "OtherScript"    ([], Poly(tU)) tyid_script
-
-  |> Typeenv.Raw.register_type "language" tyid_language (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "English"          ([], Poly(tU)) tyid_language
-  |> Typeenv.Raw.add_constructor "Japanese"         ([], Poly(tU)) tyid_language
-  |> Typeenv.Raw.add_constructor "NoLanguageSystem" ([], Poly(tU)) tyid_language
-
-  |> Typeenv.Raw.register_type "page" tyid_page (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "A0Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "A1Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "A2Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "A3Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "A4Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "A5Paper"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "USLetter"         ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "USLegal"          ([], Poly(tU)) tyid_page
-  |> Typeenv.Raw.add_constructor "UserDefinedPaper" ([], Poly(tPROD [tLN; tLN])) tyid_page
-
-  |> Typeenv.Raw.register_type "cell" tyid_cell (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tPROD [tPADS; tIB]))         tyid_cell
-  |> Typeenv.Raw.add_constructor "EmptyCell"  ([], Poly(tU))                         tyid_cell
-  |> Typeenv.Raw.add_constructor "MultiCell"  ([], Poly(tPROD [tI; tI; tPADS; tIB])) tyid_cell
-
-  |> Typeenv.Raw.register_type "deco" tyid_deco (Typeenv.Alias(([], Poly(tDECO_raw))))
-
-  |> Typeenv.Raw.register_type "deco-set" tyid_decoset (Typeenv.Alias(([], Poly(tDECOSET_raw))))
-
-  |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (Typeenv.Alias(([], Poly(tIGR_raw))))
+      ("cell", vid_cell, 0, [
+        ("NormalCell", ([], Poly(tPROD [tPADS; tIB])));
+        ("EmptyCell" , no_parameter);
+        ("MultiCell" , ([], Poly(tPROD [tI; tI; tPADS; tIB])));
+      ]);
+    ]
+    |> add_synonym_types [
+      ("deco",            ([], Poly(tDECO)));
+      ("deco-set",        ([], Poly(tDECOSET)));
+      ("inline-graphics", ([], Poly(tIGR)));
+    ]
 
 
-let lam evid ast =
-  Function([], PatternBranch(PVariable(evid), ast))
+let lam (evid : EvalVarID.t) (ast : abstract_tree) : abstract_tree =
+  Function(LabelMap.empty, PatternBranch(PVariable(evid), ast))
 
 let lamenv env evid arity ast astf =
   PrimitiveClosure(PatternBranch(PVariable(evid), ast), env, arity, astf)
@@ -245,14 +284,14 @@ let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 
 let dr = Range.dummy "dummy:lambda"
 
-let rec lambda1 astf env =
+let lambda1 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda1-1)") in
     lamenv env evid1 1 (astf (!- evid1))
       (fun lst -> match lst with
                   | [a1] -> astf a1
                   | _ -> failwith "internal error")
 
-let rec lambda2 astf env =
+let lambda2 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda2-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda2-2)") in
     lamenv env evid1 2 (lam evid2 (astf (!- evid1) (!- evid2)))
@@ -260,7 +299,7 @@ let rec lambda2 astf env =
                   | [a1;a2] -> astf a1 a2
                   | _ -> failwith "internal error")
 
-let rec lambda3 astf env =
+let lambda3 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda3-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda3-2)") in
   let evid3 = EvalVarID.fresh (dr, "(dummy:lambda3-3)") in
@@ -269,7 +308,7 @@ let rec lambda3 astf env =
                   | [a1;a2;a3] -> astf a1 a2 a3
                   | _ -> failwith "internal error")
 
-let rec lambda4 astf env =
+let lambda4 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda4-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda4-2)") in
   let evid3 = EvalVarID.fresh (dr, "(dummy:lambda4-3)") in
@@ -279,7 +318,7 @@ let rec lambda4 astf env =
                   | [a1;a2;a3;a4] -> astf a1 a2 a3 a4
                   | _ -> failwith "internal error")
 
-let rec lambda5 astf env =
+let lambda5 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda5-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda5-2)") in
   let evid3 = EvalVarID.fresh (dr, "(dummy:lambda5-3)") in
@@ -290,7 +329,7 @@ let rec lambda5 astf env =
                   | [a1;a2;a3;a4;a5] -> astf a1 a2 a3 a4 a5
                   | _ -> failwith "internal error")
 
-let rec lambda6 astf env =
+let lambda6 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda6-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda6-2)") in
   let evid3 = EvalVarID.fresh (dr, "(dummy:lambda6-3)") in
@@ -302,7 +341,7 @@ let rec lambda6 astf env =
                   | [a1;a2;a3;a4;a5;a6] -> astf a1 a2 a3 a4 a5 a6
                   | _ -> failwith "internal error")
 
-let rec lambda7 astf env =
+let lambda7 astf env =
   let evid1 = EvalVarID.fresh (dr, "(dummy:lambda7-1)") in
   let evid2 = EvalVarID.fresh (dr, "(dummy:lambda7-2)") in
   let evid3 = EvalVarID.fresh (dr, "(dummy:lambda7-3)") in
@@ -345,144 +384,207 @@ let default_radical hgt_bar t_bar dpt fontsize color =
   let hB = hA -% wB *% a2 in
 
   let graphics (xpos, ypos) =
-    let grelem =
-      GraphicD.make_fill color [
-        GeneralPath((xpos +% wid, ypos +% hgt_bar), [
-          LineTo(xpos +% wM +% w1 +% w2, ypos -% nonnegdpt);
-          LineTo(xpos +% wM +% w1      , ypos -% nonnegdpt +% h2);
-          LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1);
-          LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1 +% t1);
-          LineTo(xpos +% wM +% wA      , ypos -% nonnegdpt +% hA);
-          LineTo(xpos +% wM +% wA +% wB, ypos -% nonnegdpt +% hB);
-          LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
-          LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
-        ], Some(LineTo(())))
-      ]
-    in
-      GraphicD.singleton grelem
+    GraphicD.make_fill color [
+      GeneralPath((xpos +% wid, ypos +% hgt_bar), [
+        LineTo(xpos +% wM +% w1 +% w2, ypos -% nonnegdpt);
+        LineTo(xpos +% wM +% w1      , ypos -% nonnegdpt +% h2);
+        LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1);
+        LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1 +% t1);
+        LineTo(xpos +% wM +% wA      , ypos -% nonnegdpt +% hA);
+        LineTo(xpos +% wM +% wA +% wB, ypos -% nonnegdpt +% hB);
+        LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
+        LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
+      ], Some(LineTo(())))
+    ]
   in
-    [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, nonnegdpt, graphics))]
+  [ HorzPure(PHGFixedGraphics{ width = wid; height = hgt_bar +% t_bar; depth = nonnegdpt; graphics }) ]
 
 
 let code_point cp = Uchar.of_int cp
 
 
-let default_math_variant_char_map : (Uchar.t * HorzBox.math_kind) HorzBox.MathVariantCharMap.t =
+let default_math_variant_char_map : HorzBox.math_variant_char_map =
   let open HorzBox in
-  List.fold_left (fun map (uchfrom, mccls, uchto) ->
-    map |> MathVariantCharMap.add (uchfrom, mccls) (uchto, HorzBox.MathOrdinary)
-  ) MathVariantCharMap.empty
-    (List.concat [
+  let map = MathVariantCharMap.empty in
 
-    (* -- Latin capital letter to its normal italic -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathItalic, code_point (0x1D434 + i)));
-    (* -- Latin small letter to its normal italic -- *)
-      (List.append (range 0 6) (range 8 25)) |> List.map (fun i ->
-        (ascii_small_of_index i, MathItalic, code_point (0x1D44E + i)));
-      [(uchar_of_char 'h', MathItalic, code_point 0x210E)];
+  (* Adds Latin capital letters: *)
+  let map =
+    (range 0 25) |> List.fold_left (fun map i ->
+      let uch_from = ascii_capital_of_index i in
+      let uch_italic = code_point (0x1D434 + i) in
+      let uch_bold_italic = code_point (0x1D468 + i) in
+      let uch_roman = code_point (Char.code 'A' + i) in
+      let uch_bold_roman = code_point (0x1D400 + i) in
+      let uch_script =
+        if Uchar.equal uch_from (uchar_of_char 'B') then
+          code_point 0x212C
+        else if Uchar.equal uch_from (uchar_of_char 'E') then
+          code_point 0x2130
+        else if Uchar.equal uch_from (uchar_of_char 'F') then
+          code_point 0x2131
+        else if Uchar.equal uch_from (uchar_of_char 'H') then
+          code_point 0x210B
+        else if Uchar.equal uch_from (uchar_of_char 'I') then
+          code_point 0x2110
+        else if Uchar.equal uch_from (uchar_of_char 'L') then
+          code_point 0x2112
+        else if Uchar.equal uch_from (uchar_of_char 'M') then
+          code_point 0x2133
+        else if Uchar.equal uch_from (uchar_of_char 'R') then
+          code_point 0x211B
+        else
+          code_point (0x1D49C + i)
+      in
+      let uch_bold_script = code_point (0x1D4D0 + i) in
+      let uch_fraktur =
+        if Uchar.equal uch_from (uchar_of_char 'C') then
+          code_point 0x212D
+        else if Uchar.equal uch_from (uchar_of_char 'H') then
+          code_point 0x210C
+        else if Uchar.equal uch_from (uchar_of_char 'I') then
+          code_point 0x2111
+        else if Uchar.equal uch_from (uchar_of_char 'R') then
+          code_point 0x211C
+        else if Uchar.equal uch_from (uchar_of_char 'Z') then
+          code_point 0x2128
+        else
+          code_point (0x1D504 + i)
+      in
+      let uch_bold_fraktur = code_point (0x1D56C + i) in
+      let uch_double_struck =
+        if Uchar.equal uch_from (uchar_of_char 'C') then
+          code_point 0x2102
+        else if Uchar.equal uch_from (uchar_of_char 'H') then
+          code_point 0x210D
+        else if Uchar.equal uch_from (uchar_of_char 'N') then
+          code_point 0x2115
+        else if Uchar.equal uch_from (uchar_of_char 'P') then
+          code_point 0x2119
+        else if Uchar.equal uch_from (uchar_of_char 'Q') then
+          code_point 0x211A
+        else if Uchar.equal uch_from (uchar_of_char 'R') then
+          code_point 0x211D
+        else if Uchar.equal uch_from (uchar_of_char 'Z') then
+          code_point 0x2124
+        else
+          code_point (0x1D538 + i)
+      in
+      let uch_sans_serif = code_point (0x1D5A0 + i) in
+      let uch_bold_sans_serif = code_point (0x1D5D4 + i) in
+      let uch_italic_sans_serif = code_point (0x1D608 + i) in
+      let uch_bold_italic_sans_serif = code_point (0x1D63C + i) in
+      let uch_typewriter = code_point (0x1D670 + i) in
+      map |> MathVariantCharMap.add uch_from (function
+        | MathItalic              -> (uch_italic, MathOrdinary)
+        | MathBoldItalic          -> (uch_bold_italic, MathOrdinary)
+        | MathRoman               -> (uch_roman, MathOrdinary)
+        | MathBoldRoman           -> (uch_bold_roman, MathOrdinary)
+        | MathScript              -> (uch_script, MathOrdinary)
+        | MathBoldScript          -> (uch_bold_script, MathOrdinary)
+        | MathFraktur             -> (uch_fraktur, MathOrdinary)
+        | MathBoldFraktur         -> (uch_bold_fraktur, MathOrdinary)
+        | MathDoubleStruck        -> (uch_double_struck, MathOrdinary)
+        | MathSansSerif           -> (uch_sans_serif, MathOrdinary)
+        | MathBoldSansSerif       -> (uch_bold_sans_serif, MathOrdinary)
+        | MathItalicSansSerif     -> (uch_italic_sans_serif, MathOrdinary)
+        | MathBoldItalicSansSerif -> (uch_bold_italic_sans_serif, MathOrdinary)
+        | MathTypewriter          -> (uch_typewriter, MathOrdinary)
+      )
+    ) map
+  in
 
-    (* -- Latin capital letter to its bold italic -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathBoldItalic, code_point (0x1D468 + i)));
-    (* -- Latin small letter to its bold italic -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathBoldItalic, code_point (0x1D482 + i)));
+  (* Adds Latin small letters: *)
+  let map =
+    (range 0 25) |> List.fold_left (fun map i ->
+      let uch_from = ascii_small_of_index i in
+      let uch_italic =
+        if Uchar.equal uch_from (uchar_of_char 'h') then
+          code_point 0x210E
+        else
+          code_point (0x1D44E + i)
+      in
+      let uch_bold_italic = code_point (0x1D482 + i) in
+      let uch_roman = code_point (Char.code 'a' + i) in
+      let uch_bold_roman = code_point (0x1D41A + i) in
+      let uch_script =
+        if Uchar.equal uch_from (uchar_of_char 'e') then
+          code_point 0x212F
+        else if Uchar.equal uch_from (uchar_of_char 'g') then
+          code_point 0x210A
+        else if Uchar.equal uch_from (uchar_of_char 'o') then
+          code_point 0x2134
+        else
+          code_point (0x1D4B6 + i)
+      in
+      let uch_bold_script = code_point (0x1D4EA + i) in
+      let uch_fraktur = code_point (0x1D51E + i) in
+      let uch_bold_fraktur = code_point (0x1D586 + i) in
+      let uch_double_struck = code_point (0x1D552 + i) in
+      let uch_sans_serif = code_point (0x1D5BA + i) in
+      let uch_bold_sans_serif = code_point (0x1D5EE + i) in
+      let uch_italic_sans_serif = code_point (0x1D622 + i) in
+      let uch_bold_italic_sans_serif = code_point (0x1D656 + i) in
+      let uch_typewriter = code_point (0x1D68A + i) in
+      map |> MathVariantCharMap.add uch_from (function
+        | MathItalic              -> (uch_italic, MathOrdinary)
+        | MathBoldItalic          -> (uch_bold_italic, MathOrdinary)
+        | MathRoman               -> (uch_roman, MathOrdinary)
+        | MathBoldRoman           -> (uch_bold_roman, MathOrdinary)
+        | MathScript              -> (uch_script, MathOrdinary)
+        | MathBoldScript          -> (uch_bold_script, MathOrdinary)
+        | MathFraktur             -> (uch_fraktur, MathOrdinary)
+        | MathBoldFraktur         -> (uch_bold_fraktur, MathOrdinary)
+        | MathDoubleStruck        -> (uch_double_struck, MathOrdinary)
+        | MathSansSerif           -> (uch_sans_serif, MathOrdinary)
+        | MathBoldSansSerif       -> (uch_bold_sans_serif, MathOrdinary)
+        | MathItalicSansSerif     -> (uch_italic_sans_serif, MathOrdinary)
+        | MathBoldItalicSansSerif -> (uch_bold_italic_sans_serif, MathOrdinary)
+        | MathTypewriter          -> (uch_typewriter, MathOrdinary)
+      )
+    ) map
+  in
 
-    (* -- Latin capital letter to its roman -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathRoman, code_point (Char.code 'A' + i)));
-    (* -- Latin small letter to its roman -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathRoman, code_point (Char.code 'a' + i)));
+  (* Adds digits: *)
+  let map =
+    (range 0 9) |> List.fold_left (fun map i ->
+      let uch_from = ascii_digit_of_index i in
 
-    (* -- Latin capital letter to its bold romain -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathBoldRoman, code_point (0x1D400 + i)));
-    (* -- Latin small letter to its bold roman -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathBoldRoman, code_point (0x1D41A + i)));
+      let uch_roman = uch_from in
+      let uch_bold_roman = code_point (0x1D7CE + i) in
+      let uch_double_struck = code_point (0x1D7D8 + i) in
+      let uch_sans_serif = code_point (0x1D7E2 + i) in
+      let uch_bold_sans_serif = code_point (0x1D7EC + i) in
+      let uch_typewriter = code_point (0x1D7F6 + i) in
 
-    (* -- Latin capital letter to its script -- *)
-      [[0]; [2; 3]; [6]; [9; 10]; range 13 16; range 18 25] |> List.concat |> List.map (fun i ->
-        (ascii_capital_of_index i, MathScript, code_point (0x1D49C + i)));
-      [
-        (uchar_of_char 'B', MathScript, code_point 0x212C);
-        (uchar_of_char 'E', MathScript, code_point 0x2130);
-        (uchar_of_char 'F', MathScript, code_point 0x2131);
-        (uchar_of_char 'H', MathScript, code_point 0x210B);
-        (uchar_of_char 'I', MathScript, code_point 0x2110);
-        (uchar_of_char 'L', MathScript, code_point 0x2112);
-        (uchar_of_char 'M', MathScript, code_point 0x2133);
-        (uchar_of_char 'R', MathScript, code_point 0x211B);
-      ];
-    (* -- Latin small letter to its script -- *)
-      [range 0 3; [5]; range 7 13; range 15 25] |> List.concat |> List.map (fun i ->
-        (ascii_small_of_index i, MathScript, code_point (0x1D4B6 + i)));
-      [
-        (uchar_of_char 'e', MathScript, code_point 0x212F);
-        (uchar_of_char 'g', MathScript, code_point 0x210A);
-        (uchar_of_char 'o', MathScript, code_point 0x2134);
-      ];
+      let uch_italic = uch_from in
+      let uch_bold_italic = uch_bold_roman in
+      let uch_bold_script = uch_bold_roman in
+      let uch_script = uch_from in
+      let uch_fraktur = uch_from in
+      let uch_bold_fraktur = uch_bold_roman in
+      let uch_italic_sans_serif = uch_sans_serif in
+      let uch_bold_italic_sans_serif = uch_bold_sans_serif in
 
-    (* -- Latin capital letter to its bold script -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathBoldScript, code_point (0x1D4D0 + i)));
-    (* -- Latin small letter to its bold script -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathBoldScript, code_point (0x1D4EA + i)));
+      map |> MathVariantCharMap.add uch_from (function
+        | MathItalic              -> (uch_italic, MathOrdinary)
+        | MathBoldItalic          -> (uch_bold_italic, MathOrdinary)
+        | MathRoman               -> (uch_roman, MathOrdinary)
+        | MathBoldRoman           -> (uch_bold_roman, MathOrdinary)
+        | MathScript              -> (uch_script, MathOrdinary)
+        | MathBoldScript          -> (uch_bold_script, MathOrdinary)
+        | MathFraktur             -> (uch_fraktur, MathOrdinary)
+        | MathBoldFraktur         -> (uch_bold_fraktur, MathOrdinary)
+        | MathDoubleStruck        -> (uch_double_struck, MathOrdinary)
+        | MathSansSerif           -> (uch_sans_serif, MathOrdinary)
+        | MathBoldSansSerif       -> (uch_bold_sans_serif, MathOrdinary)
+        | MathItalicSansSerif     -> (uch_italic_sans_serif, MathOrdinary)
+        | MathBoldItalicSansSerif -> (uch_bold_italic_sans_serif, MathOrdinary)
+        | MathTypewriter          -> (uch_typewriter, MathOrdinary)
+      )
+    ) map
+  in
 
-    (* -- Latin capital letter to its Fraktur -- *)
-      [[0; 1]; range 3 6; range 9 16; range 18 24] |> List.concat |> List.map (fun i ->
-        (ascii_capital_of_index i, MathFraktur, code_point (0x1D504 + i)));
-      [
-        (uchar_of_char 'C', MathFraktur, code_point 0x212D);
-        (uchar_of_char 'H', MathFraktur, code_point 0x210C);
-        (uchar_of_char 'I', MathFraktur, code_point 0x2111);
-        (uchar_of_char 'R', MathFraktur, code_point 0x211C);
-        (uchar_of_char 'Z', MathFraktur, code_point 0x2128);
-      ];
-    (* -- Latin small letter to its Fraktur -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathFraktur, code_point (0x1D51E + i)));
-
-    (* -- Latin capital letter to its bold Fraktur -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathBoldFraktur, code_point (0x1D56C + i)));
-    (* -- Latin small letter to its bold Fraktur -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathBoldFraktur, code_point (0x1D586 + i)));
-
-    (* -- Latin capital letter to its double struck -- *)
-      [[0; 1]; range 3 6; range 8 12; [14]; range 18 24] |> List.concat |> List.map (fun i ->
-        (ascii_capital_of_index i, MathDoubleStruck, code_point (0x1D538 + i)));
-      [
-        (uchar_of_char 'C', MathDoubleStruck, code_point 0x2102);
-        (uchar_of_char 'H', MathDoubleStruck, code_point 0x210D);
-        (uchar_of_char 'N', MathDoubleStruck, code_point 0x2115);
-        (uchar_of_char 'P', MathDoubleStruck, code_point 0x2119);
-        (uchar_of_char 'Q', MathDoubleStruck, code_point 0x211A);
-        (uchar_of_char 'R', MathDoubleStruck, code_point 0x211D);
-        (uchar_of_char 'Z', MathDoubleStruck, code_point 0x2124);
-      ];
-    (* -- Latin small letter to its double struck -- *)
-      (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathDoubleStruck, code_point (0x1D552 + i)));
-
-
-    (* -- Digit to its boldface -- *)
-      (range 0 9) |> List.concat_map (fun i ->
-        [
-          (ascii_digit_of_index i, MathBoldItalic, code_point (0x1D7CE + i));
-          (ascii_digit_of_index i, MathBoldRoman, code_point (0x1D7CE + i));
-          (ascii_digit_of_index i, MathBoldScript, code_point (0x1D7CE + i));
-          (ascii_digit_of_index i, MathBoldFraktur, code_point (0x1D7CE + i));
-        ]);
-
-    (* -- Digit to its double struck -- *)
-      (range 0 9) |> List.map (fun i ->
-        (ascii_digit_of_index i, MathDoubleStruck, code_point (0x1D7D8 + i)));
-    ])
+  map
 
 
 let default_math_class_map =
@@ -528,7 +630,6 @@ let get_pdf_mode_initial_context wid =
       hyphen_badness         = 100;
       font_scheme            = !default_font_scheme_ref;
       font_size              = pdfpt 12.;
-      math_font              = "lmodern";  (* TEMPORARY *)
       dominant_wide_script   = CharBasis.OtherScript;
       dominant_narrow_script = CharBasis.OtherScript;
       langsys_scheme         = CharBasis.ScriptSchemeMap.empty;
@@ -560,6 +661,8 @@ let get_pdf_mode_initial_context wid =
       space_math_prefix      = (0.125, 0.04, 0.08);
       left_hyphen_min        = 3;
       right_hyphen_min       = 2;
+      math_font_abbrev       = "lmodern";  (* TEMPORARY *)
+      math_script_level      = HorzBox.BaseLevel;
     }
 
 
@@ -568,18 +671,18 @@ let (~@) n = (~! "tv", TypeVariable(n))
 
 
 let general_table : (var_name * poly_type * (environment -> syntactic_value)) list =
-  let tv1 = (let bid1 = BoundID.fresh UniversalKind () in PolyBound(bid1)) in
-  let tv2 = (let bid2 = BoundID.fresh UniversalKind () in PolyBound(bid2)) in
+  let tv1 = (let bid1 = fresh_bound_id () in PolyBound(bid1)) in
+  let tv2 = (let bid2 = fresh_bound_id () in PolyBound(bid2)) in
   let ptyderef  = ~% ((tR (~@ tv1)) @-> (~@ tv1)) in
   let ptycons   = ~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2))) in
   let ptyappinv = ~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)) in
     [
       ( "!"  , ptyderef             , lambda1 (fun v1 -> Dereference(v1))                   );
       ( "::" , ptycons              , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))      );
-      ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(vf, vx))                  );
-      ( "<>" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(EqualTo(v1, v2)))    );
-      ( ">=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(LessThan(v1, v2)))   );
-      ( "<=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))));
+      ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(LabelMap.empty, vf, vx))  );
+      ( "<>" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveEqualTo(v1, v2)))    );
+      ( ">=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveLessThan(v1, v2)))   );
+      ( "<=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveGreaterThan(v1, v2))));
     ]
 
 
@@ -589,11 +692,11 @@ let base bc = BaseConstant(bc)
 let pdf_mode_table =
   List.append general_table
     [
-      ("inline-fil", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzPure(PHSOuterFil)])))));
-      ("inline-nil", ~% tIB, (fun _ -> base (BCHorz([])))                               );
-      ("omit-skip-after", ~% tIB, (fun _ -> base (BCHorz(HorzBox.([HorzOmitSkipAfter])))));
-      ("block-nil" , ~% tBB, (fun _ -> base (BCVert([])))                               );
-      ("clear-page", ~% tBB, (fun _ -> base (BCVert(HorzBox.([VertClearPage]))))        );
+      ("inline-fil"     , ~% tIB, (fun _ -> base (BCInlineBoxes(HorzBox.([HorzPure(PHSOuterFil)])))));
+      ("inline-nil"     , ~% tIB, (fun _ -> base (BCInlineBoxes([]))));
+      ("omit-skip-after", ~% tIB, (fun _ -> base (BCInlineBoxes(HorzBox.([HorzOmitSkipAfter])))));
+      ("block-nil"      , ~% tBB, (fun _ -> base (BCBlockBoxes([]))));
+      ("clear-page"     , ~% tBB, (fun _ -> base (BCBlockBoxes(HorzBox.([VertClearPage])))));
 
 #include "__primitives_pdf_mode.gen.ml"
     ]
@@ -607,26 +710,31 @@ let text_mode_table =
 
 
 let make_environments table =
-  let tyenvinit =
+  let tyenv =
     Typeenv.empty
-    |> add_general_default_types
-    |> add_pdf_mode_default_types
+      |> add_general_default_types
+      |> add_pdf_mode_default_types
   in
-  let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
-
-
+  let env : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
   let temporary_ast = Nil in
-  let (tyenvfinal, envfinal, locacc) =
+  let (tyenv, env, locacc) =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
       let evid = EvalVarID.fresh (dr, varnm) in
       let loc = ref temporary_ast in
-      let tyenvnew = Typeenv.add tyenv varnm (pty, evid, Persistent0) in  (* temporary *)
-      let envnew = add_to_environment env evid loc in
-        (tyenvnew, envnew, Alist.extend acc (loc, deff))
-    ) (tyenvinit, envinit, Alist.empty)
+      let ventry =
+        {
+          val_name  = Some(evid);
+          val_type  = pty;
+          val_stage = Persistent0;
+        }
+      in
+      let tyenv = tyenv |> Typeenv.add_value varnm ventry in  (* temporary *)
+      let env = add_to_environment env evid loc in
+        (tyenv, env, Alist.extend acc (loc, deff))
+    ) (tyenv, env, Alist.empty)
   in
-  locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
-    (tyenvfinal, envfinal)
+  locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff env);
+  (tyenv, env)
 
 
 let make_pdf_mode_environments () =

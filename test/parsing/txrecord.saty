@@ -1,4 +1,8 @@
-type t = (| x: a; y: b |)
-and t = (| x: a; y: b; |)
-and t = (| x: a |)
-% and t = (| |) % cannot write this
+module Txrecord = struct
+
+  type t = (| x : a, y : b |)
+  and t = (| x : a, y : b, |)
+  and t = (| x : a |)
+  % and t = (| |) % cannot write this
+
+end

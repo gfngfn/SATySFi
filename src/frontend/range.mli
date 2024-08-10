@@ -10,6 +10,8 @@ val message : t -> string
 
 val to_string : t -> string
 
+val get_first : t -> (string * int * int) option
+
 val get_last : t -> (string * int * int) option
 
 val unite : t -> t -> t
