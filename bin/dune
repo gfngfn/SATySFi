@@ -1,7 +1,5 @@
 (executable
  (name satysfi)
  (public_name satysfi)
- (libraries
-  main
-  cmdliner)
+ (libraries main cmdliner)
  (preprocess no_preprocessing))
