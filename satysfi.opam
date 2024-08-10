@@ -15,11 +15,13 @@ depends: [
   "batteries" {>= "3.6.0" & < "4.0"}
   "camlimages" {>= "5.0.1" & < "5.0.5"}
   "camlpdf" {= "2.3.1+satysfi"}
+  "cmdliner" {>= "1.1.1" & < "2.0"}
   "core_kernel" {>= "v0.15" & < "v0.18"}
   "cppo" {>= "1.6.4" & < "1.7"}
   "dune-build-info"
   "menhir" {>= "20231231"}
   "menhirLib" {>= "20231231"}
+  "ocamlgraph" {>= "2.0.0" & < "3.0"}
   "omd" {>= "1.3.2" & < "2.0"}
   "otfed" {>= "0.3.1" & < "0.4"}
   "ppx_deriving" {>= "5.2.1" & < "6.0"}

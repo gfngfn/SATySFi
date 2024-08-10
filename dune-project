@@ -42,6 +42,10 @@
     (< 5.0.5)))
   (camlpdf
    (= 2.3.1+satysfi))
+  (cmdliner
+   (and
+    (>= 1.1.1)
+    (< 2.0)))
   (core_kernel
    (and
     (>= v0.15)
@@ -55,6 +59,10 @@
    (>= 20231231))
   (menhirLib
    (>= 20231231))
+  (ocamlgraph
+   (and
+    (>= 2.0.0)
+    (< 3.0)))
   (omd
    (and
     (>= 1.3.2)
