@@ -26,7 +26,8 @@
   yaml
   0install-solver
   semver2
-  uri)
+  uri
+  core_unix)
  (preprocess
   (pps ppx_deriving.show)))
 
