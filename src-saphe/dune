@@ -3,11 +3,6 @@
  (public_name saphe)
  (flags
   (-w -3 -bin-annot -thread -safe-string))
- (libraries
-  0install-solver
-  cmdliner
-  satysfi-common
-  satysfi-util
-  uri)
+ (libraries 0install-solver cmdliner satysfi-common satysfi-util uri)
  (preprocess
   (pps ppx_deriving.show)))

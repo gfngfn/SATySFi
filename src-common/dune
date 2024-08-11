@@ -1,9 +1,9 @@
 (library
  (name common)
  (public_name satysfi-common)
- (flags (:standard -bin-annot -thread -safe-string))
+ (flags
+  (-w -3 -bin-annot -thread -safe-string))
  (wrapped false)
- (libraries
-   satysfi-util)
+ (libraries satysfi-util)
  (preprocess
-   (pps ppx_deriving.show)))
+  (pps ppx_deriving.show)))
