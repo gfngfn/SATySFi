@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/bin/bash
 
 SAPHE="${1:-saphe}"
 
-FAILED=0
+FAILS=()
 FIRST=1
 for FILE in $(find lib-satysfi -name saphe.yaml); do
     DIR="$(dirname "$FILE")"
@@ -16,27 +16,37 @@ for FILE in $(find lib-satysfi -name saphe.yaml); do
     "$SAPHE" solve "$DIR"
     if [ $? -ne 0 ]; then
         echo "! FAILED (not solved)"
-        FAILED=1
+        FAILS+=("$DIR (not solved)")
     fi
     if diff "$DIR/saphe.lock.yaml" "$DIR/saphe.lock.yaml.expected"; then
         if diff "$DIR/satysfi-envelope.yaml" "$DIR/satysfi-envelope.yaml.expected"; then
             "$SAPHE" build "$DIR"
             if [ $? -ne 0 ]; then
                 echo "! FAILED (cannot build)"
-                FAILED=1
+                FAILS+=("$DIR (cannot build)")
             else
                 echo "* OK: $DIR"
             fi
         else
             echo "! FAILED (envelope config mismatch): $DIR"
-            FAILED=1
+            FAILS+=("$DIR (envelope config mismatch)")
         fi
     else
         echo "! FAILED (lock config mismatch): $DIR"
-        FAILED=1
+        FAILS+=("$DIR (lock config mismatch)")
     fi
 done
-if [ $FAILED -ne 0 ]; then
-    echo "! some test has failed."
-    exit 1
+
+RET=0
+for FAIL in "${FAILS[@]}"; do
+    RET=1
+    echo "$FAIL"
+done
+
+if [ $RET -ne 0 ]; then
+    echo "! some test(s) have failed."
+else
+    echo "All tests have passed."
 fi
+
+exit $RET
