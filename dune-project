@@ -178,6 +178,7 @@
 (package
  (name satysfi-common)
  (version 0.1.0~alpha.1)
+ (synopsis "A library of modules used by SATySFi and Saphe in common")
  (depends
   (ocaml
    (and
