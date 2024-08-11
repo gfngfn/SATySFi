@@ -117,6 +117,8 @@
  (version 0.1.0~alpha.1)
  (synopsis "A prototype ecosystem for SATySFi >= 0.1.0")
  (depends
+  (0install-solver
+   (>= 2.18))
   (ocaml
    (and
     (>= 4.12.0)
