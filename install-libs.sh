@@ -1,18 +1,17 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 LIBDIR=${1:-/usr/local/share/satysfi}
-INSTALL=${2:-install}
 
-"${INSTALL}" -d "${LIBDIR}"
-"${INSTALL}" -m 644 lib-satysfi/satysfi-library-root.yaml "${LIBDIR}/satysfi-library-root.yaml"
-"${INSTALL}" -d "${LIBDIR}/unidata"
-"${INSTALL}" -m 644 lib-satysfi/unidata/*.txt "${LIBDIR}/unidata"
-"${INSTALL}" -d "${LIBDIR}/hyph"
-"${INSTALL}" -m 644 lib-satysfi/hyph/* "${LIBDIR}/hyph"
+install -d "${LIBDIR}"
+install -m 644 lib-satysfi/satysfi-library-root.yaml "${LIBDIR}/satysfi-library-root.yaml"
+install -d "${LIBDIR}/unidata"
+install -m 644 lib-satysfi/unidata/*.txt "${LIBDIR}/unidata"
+install -d "${LIBDIR}/hyph"
+install -m 644 lib-satysfi/hyph/* "${LIBDIR}/hyph"
 
 # It is no longer necessary to install packages beforehand due to the package system:
 #
-# "${INSTALL}" -d "${LIBDIR}/packages"
-# (cd lib-satysfi && find packages -type f -exec "${INSTALL}" -Dm 644 "{}" "${LIBDIR}/{}" \;)
-# "${INSTALL}" -d "${LIBDIR}/registries"
-# (cd lib-satysfi && find registries -type f -exec "${INSTALL}" -Dm 644 "{}" "${LIBDIR}/{}" \;)
+# install -d "${LIBDIR}/packages"
+# (cd lib-satysfi && find packages -type f -exec install -Dm 644 "{}" "${LIBDIR}/{}" \;)
+# install -d "${LIBDIR}/registries"
+# (cd lib-satysfi && find registries -type f -exec install -Dm 644 "{}" "${LIBDIR}/{}" \;)

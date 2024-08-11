@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 set -ue
 
@@ -8,14 +8,14 @@ MESSAGE_PREFIX="[download-fonts.sh]"
 cd "$(dirname "$0")"
 mkdir -p "$CACHE"
 
-show_message () {
+show_message() {
   echo "$MESSAGE_PREFIX $1."
 }
 
-if command shasum --version >/dev/null 2>&1 ; then
+if command shasum --version >/dev/null 2>&1; then
   show_message "Using shasum"
   SHA1SUM=shasum
-elif command sha1sum --version >/dev/null 2>&1 ; then
+elif command sha1sum --version >/dev/null 2>&1; then
   show_message "Using sha1sum"
   SHA1SUM=sha1sum
 else
@@ -23,25 +23,25 @@ else
   exit 1
 fi
 
-validate_file () {
+validate_file() {
   (
-	NAME="$1"
-	cd "$CACHE"
-	$SHA1SUM --check "$NAME.sha1"
+    NAME="$1"
+    cd "$CACHE"
+    $SHA1SUM --check "$NAME.sha1"
   )
 }
 
-download_file () {
+download_file() {
   (
-	NAME="$1"
-	URL="$2"
-	if [ -f "$CACHE/$NAME" ] && validate_file "$NAME" ; then
-	  show_message "'$NAME' found in '$CACHE/'."
-	else
-	  show_message "downloading '$NAME' ..."
-	  wget -O "$CACHE/$NAME" "$URL"
-	  show_message "finished downloading '$NAME'."
-	fi
+    NAME="$1"
+    URL="$2"
+    if [ -f "$CACHE/$NAME" ] && validate_file "$NAME"; then
+      show_message "'$NAME' found in '$CACHE/'."
+    else
+      show_message "downloading '$NAME' ..."
+      wget -O "$CACHE/$NAME" "$URL"
+      show_message "finished downloading '$NAME'."
+    fi
   )
 }
 

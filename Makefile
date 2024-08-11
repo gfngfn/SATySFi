@@ -1,15 +1,11 @@
 PREFIX=/usr/local
 LIBDIR=$(PREFIX)/share/satysfi
-TARGET=satysfi
 BINDIR=$(PREFIX)/bin
-RM=rm -f
-DUNE=dune
 
-.PHONY: all test test-packages install uninstall clean
+.PHONY: all test test-packages clean install uninstall
 
 all:
-	$(DUNE) build --root .
-	cp _build/install/default/bin/$(TARGET) .
+	dune build
 
 test:
 	$(DUNE) runtest
@@ -17,17 +13,11 @@ test:
 test-packages:
 	./check-packages.sh
 
-install: $(TARGET)
-	mkdir -p $(BINDIR)
-	install $(TARGET) $(BINDIR)
+clean:
+	dune clean
 
-#preliminary:
-#	[ -d .git ] && git submodule update -i || echo "Skip git submodule update -i"
+install:
+	dune install --bindir=$(BINDIR)
 
 uninstall:
-	rm -rf $(BINDIR)/$(TARGET)
-	rm -rf $(LIBDIR)
-
-clean:
-	$(DUNE) clean
-	$(RM) satysfi
+	dune uninstall --bindir=$(BINDIR)

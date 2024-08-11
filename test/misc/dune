@@ -1,5 +1,3 @@
 (test
-  (name miscTest)
-  (libraries
-    main
-    alcotest))
+ (name miscTest)
+ (libraries main alcotest))
