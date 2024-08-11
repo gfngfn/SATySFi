@@ -79,10 +79,8 @@
    (and
     (>= 1.10.4)
     (< 2.0)))
-  (satysfi-common
-   (= 0.1.0~alpha.1))
-  (satysfi-util
-   (= 0.1.0~alpha.1))
+  satysfi-common
+  satysfi-util
   (semver2
    (and
     (>= 1.2.0)
