@@ -109,7 +109,7 @@
    (= 1.4.2+satysfi))
   (0install-solver
    (and
-    (>= 2.0)
+    (>= 2.18)
     (< 3.0)))))
 
 (package
@@ -184,6 +184,10 @@
    (and
     (>= 4.12.0)
     (< 5.0.0)))
+  (alcotest
+   (and
+    :with-test
+    (>= 1.4.0)))
   (ppx_deriving
    (and
     (>= 5.2.1)

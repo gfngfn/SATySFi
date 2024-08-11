@@ -37,7 +37,7 @@ depends: [
   "uuseg" {>= "15.0.0" & < "16.0"}
   "yaml" {>= "2.1.0" & < "3.0"}
   "yojson-with-position" {= "1.4.2+satysfi"}
-  "0install-solver" {>= "2.0" & < "3.0"}
+  "0install-solver" {>= "2.18" & < "3.0"}
   "odoc" {with-doc}
 ]
 build: [

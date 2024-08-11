@@ -10,6 +10,7 @@ bug-reports: "https://github.com/gfngfn/SATySFi/issues"
 depends: [
   "dune" {>= "3.16"}
   "ocaml" {>= "4.12.0" & < "5.0.0"}
+  "alcotest" {with-test & >= "1.4.0"}
   "ppx_deriving" {>= "5.2.1" & < "6.0"}
   "satysfi-util"
   "odoc" {with-doc}
