@@ -28,12 +28,12 @@ jobs:
       #   if: runner.os == 'Windows'
       #   run: echo "SHELLOPTS=igncr" >>"$GITHUB_ENV"
 
-      - name: Restore fonts cache
+      - name: Restore locks cache
         uses: actions/cache@v4
-        id: fonts-cache
+        id: locks-cache
         with:
-          path: lib-satysfi/dist/fonts
-          key: cache-dist-fonts-${{ hashFiles('download-fonts.sh') }}
+          path: ~/.satysfi/cache
+          key: cache-locks-${{ hashFiles('default-registry-commit-hash.txt') }}
 
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
@@ -53,19 +53,22 @@ jobs:
       - name: Run tests
         run: opam exec -- dune runtest
 
-      - name: Download fonts
-        if: steps.fonts-cache.outputs.cache-hit != 'true'
-        run: ./download-fonts.sh
-
       - name: Install SATySFi
         run: |
           opam install .
           ./install-libs.sh ~/.satysfi
 
+      - name: Check library packages
+        run: |
+          opam exec -- make test-packages
+
       - name: Build demo docs
         run: |
           (cd demo; opam exec -- make)
           (cd doc; opam exec -- make)
+
+      - name: Run integration tests
+        run: |
           (cd tests; opam exec -- make)
 
   lint-fmt:

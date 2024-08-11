@@ -127,7 +127,7 @@ and transform_1_math_text_content (_env : frame) (_ims : math_text_element list)
 
 
 and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment =
-  let (genv, _) = env in
+  let genv = env.env_main in
   let initvars =
     EvalVarIDMap.fold (fun k v acc ->
       EvalVarIDMap.add k (GlobalVar(v, k, ref 0)) acc
@@ -139,7 +139,7 @@ and transform_ast_0 (env : environment) (ast : abstract_tree) : ir * environment
 
 
 and transform_ast_1 (env : environment) (ast : abstract_tree) : ir * environment =
-  let (genv, _) = env in
+  let genv = env.env_main in
   let initvars =
     EvalVarIDMap.fold (fun k v acc ->
       EvalVarIDMap.add k (GlobalVar(v, k, ref 0)) acc
@@ -571,6 +571,15 @@ and transform_1 (env : frame) (ast : abstract_tree) : ir * frame =
   | ASTCodeSymbol(_symb) ->
       report_bug_ir "transform_1: ASTCodeSymbol at stage 1"
 
+  | LoadSingleFont(_) ->
+      failwith "TODO: LoadSingleFont"
+
+  | LoadCollectionFont(_) ->
+      failwith "TODO: LoadCollectionFont"
+
+  | CatchTest(_) ->
+      assert false (* Cannot occur in input expressions. *)
+
 #include "__ir_1.gen.ml"
 
 
@@ -755,5 +764,14 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
 
   | ASTCodeSymbol(symb) ->
       return (IRConstant(CodeSymbol(symb)))
+
+  | LoadSingleFont(_) ->
+      failwith "TODO: LoadSingleFont"
+
+  | LoadCollectionFont(_) ->
+      failwith "TODO: LoadCollectionFont"
+
+  | CatchTest(_) ->
+      assert false (* Cannot occur in input expressions. *)
 
 #include "__ir_0.gen.ml"

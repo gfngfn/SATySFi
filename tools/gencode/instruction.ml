@@ -36,6 +36,7 @@ type t = {
   is_pdf_mode_primitive  : bool;
   is_text_mode_primitive : bool;
   needs_reducef          : bool;
+  needs_runtime_config   : bool;
   no_interp              : bool;
   no_ircode              : bool;
   pp                     : pp;
@@ -56,6 +57,7 @@ let inst
     ?(is_pdf_mode_primitive = false)
     ?(is_text_mode_primitive = false)
     ?(needs_reducef = false)
+    ?(needs_runtime_config = false)
     ?no_interp
     ?(no_ircode = false)
     ?(pp = Default)
@@ -71,6 +73,7 @@ let inst
     is_pdf_mode_primitive;
     is_text_mode_primitive;
     needs_reducef;
+    needs_runtime_config;
     no_interp = default (not (is_pdf_mode_primitive || is_text_mode_primitive)) no_interp;
     no_ircode;
     pp;

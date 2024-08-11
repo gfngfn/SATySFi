@@ -3,6 +3,7 @@
 set -ue
 
 CACHE=temp
+PACKAGES=lib-satysfi/packages
 MESSAGE_PREFIX="[download-fonts.sh]"
 cd "$(dirname "$0")"
 mkdir -p "$CACHE"
@@ -47,23 +48,23 @@ download_file() {
 # Latin Modern
 NAME=lm2.004otf
 download_file "$NAME.zip" "https://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip"
-unzip -o "$CACHE/$NAME.zip" "*.otf" -d lib-satysfi/dist/fonts/
+unzip -o "$CACHE/$NAME.zip" "*.otf" -d "$PACKAGES"/font-latin-modern/font-latin-modern.0.0.1/fonts/
 
 # Latin Modern Math
 NAME=latinmodern-math-1959
 download_file "$NAME.zip" "https://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip"
 unzip -o "$CACHE/$NAME.zip" "*.otf" -d "$CACHE/"
-cp "$CACHE"/latinmodern-math-1959/otf/latinmodern-math.otf lib-satysfi/dist/fonts/
+cp "$CACHE"/latinmodern-math-1959/otf/latinmodern-math.otf "$PACKAGES"/font-latin-modern-math/font-latin-modern-math.0.0.1/fonts/
 
 # Junicode
 NAME=junicode-1.002
 download_file "$NAME.zip" "http://downloads.sourceforge.net/project/junicode/junicode/junicode-1.002/junicode-1.002.zip"
-unzip -o "$CACHE/$NAME.zip" "*.ttf" -d lib-satysfi/dist/fonts/
+unzip -o "$CACHE/$NAME.zip" "*.ttf" -d "$PACKAGES"/font-junicode/font-junicode.0.0.1/fonts/
 
 # IPAexfont
 NAME=IPAexfont00401
 download_file "$NAME.zip" "https://moji.or.jp/wp-content/ipafont/IPAexfont/IPAexfont00401.zip"
 unzip -o "$CACHE/$NAME.zip" "*.ttf" -d "$CACHE/"
-cp "$CACHE"/IPAexfont00401/ipaexg.ttf lib-satysfi/dist/fonts/
-cp "$CACHE"/IPAexfont00401/ipaexm.ttf lib-satysfi/dist/fonts/
+cp "$CACHE"/IPAexfont00401/ipaexg.ttf "$PACKAGES"/font-ipa-ex/font-ipa-ex.0.0.1/fonts/
+cp "$CACHE"/IPAexfont00401/ipaexm.ttf "$PACKAGES"/font-ipa-ex/font-ipa-ex.0.0.1/fonts/
 show_message "end."

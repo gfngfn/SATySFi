@@ -1,0 +1,31 @@
+module Tabular :> sig
+
+  val \tabular : inline [
+    ((inline-text -> cell) -> (int -> int -> inline-text -> cell) -> cell -> list (list cell)),
+    (list length -> list length -> graphics),
+  ]
+
+end = struct
+
+  val inline ctx \tabular lstf rulef =
+    let pads = (5pt, 5pt, 2pt, 2pt) in
+    let cellf it = NormalCell(pads, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+    let multif nr nc it = MultiCell(nr, nc, pads, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+    let empty = EmptyCell in
+      tabular (lstf cellf multif empty) rulef
+%        (fun xs ys -> (
+%          match (xs, List.reverse xs) with
+%          | (xF :: _, xL :: _) ->
+%                match (ys, List.reverse ys) with
+%                | (yF :: _, yL :: _) ->
+%                    xs |> List.map (fun x -> start-path (x, yF) |> line-to (x, yL) |> terminate-path)
+%                      |> List.map (stroke 1pt (RGB(0., 0., 0.)))
+%
+%                | _ -> []
+%                end
+%
+%          | _ -> []
+%          end
+%        ))
+
+end

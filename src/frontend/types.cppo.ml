@@ -2,8 +2,20 @@
 open LengthInterface
 open GraphicBase
 open SyntaxBase
+open MyUtil
 
-exception ParseErrorDetail of Range.t * string
+
+type parse_error =
+  | CannotProgressParsing of Range.t
+  | IllegalItemDepth of {
+      range   : Range.t;
+      before  : int;
+      current : int;
+    }
+  | EmptyInputFile of Range.t
+[@@deriving show { with_path = false }]
+
+exception ParseError of parse_error
 
 
 let string_of_uchar (uch : Uchar.t) : string =
@@ -29,6 +41,7 @@ type type_variable_name = string  [@@deriving show]
 type row_variable_name  = string  [@@deriving show]
 type label              = string  [@@deriving show]
 
+type attribute_name = string  [@@deriving show]
 
 type input_position = {
   input_file_name : string;
@@ -36,11 +49,6 @@ type input_position = {
   input_column    : int;
 }
 [@@deriving show { with_path = false }]
-
-type header_element =
-  | HeaderRequire of string
-  | HeaderImport  of string
-
 
 type quantifiability = Quantifiable | Unquantifiable
 [@@deriving show]
@@ -102,6 +110,7 @@ type base_type =
   | PathType
   | GraphicsType
   | ImageType
+  | FontType
   | DocumentType
   | RegExpType
   | TextInfoType
@@ -156,6 +165,7 @@ let base_type_map : base_type TypeNameMap.t =
     ("path"          , PathType);
     ("graphics"      , GraphicsType);
     ("image"         , ImageType);
+    ("font"          , FontType);
     ("document"      , DocumentType);
     ("regexp"        , RegExpType);
     ("text-info"     , TextInfoType);
@@ -306,7 +316,16 @@ module RowParameterMap = Map.Make(String)
 
 type row_parameter_map = MustBeBoundRowID.t RowParameterMap.t
 
+type output_mode =
+  | PdfMode
+  | TextMode of string list
+
+type typecheck_config = {
+  is_text_mode : bool;
+}
+
 type pre = {
+  config          : typecheck_config;
   level           : level;
   type_parameters : type_parameter_map;
   row_parameters  : row_parameter_map;
@@ -330,17 +349,33 @@ type module_name_chain =
   module_name ranged * (module_name ranged) list
 [@@deriving show { with_path = false; } ]
 
+type header_element =
+  | HeaderUsePackage of {
+      opening   : bool;
+      mod_chain : module_name_chain ranged;
+    }
+  | HeaderUse of {
+      opening   : bool;
+      mod_chain : module_name_chain ranged;
+    }
+  | HeaderUseOf of {
+      opening   : bool;
+      mod_chain : module_name_chain ranged;
+      path      : string;
+    }
+[@@deriving show { with_path = false }]
+
 type untyped_binding =
   untyped_binding_main ranged
 
 and untyped_binding_main =
-  | UTBindValue       of stage * untyped_rec_or_nonrec
+  | UTBindValue       of untyped_attribute list * stage * untyped_rec_or_nonrec
   | UTBindType        of untyped_type_binding list
   | UTBindModule      of module_name ranged * untyped_signature option * untyped_module
   | UTBindSignature   of signature_name ranged * untyped_signature
   | UTBindInclude     of untyped_module
-  | UTBindInlineMacro of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
-  | UTBindBlockMacro  of command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindInlineMacro of untyped_attribute list * command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
+  | UTBindBlockMacro  of untyped_attribute list * command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
 
 and untyped_module =
   untyped_module_main ranged
@@ -502,14 +537,14 @@ and untyped_abstract_tree_main =
   | UTAccessField          of untyped_abstract_tree * label ranged
   | UTUpdateField          of untyped_abstract_tree * label ranged * untyped_abstract_tree
 (* Fundamentals: *)
-  | UTContentOf            of ((module_name ranged) list) * var_name ranged
+  | UTContentOf            of (module_name ranged) list * var_name ranged
   | UTApply                of (label ranged * untyped_abstract_tree) list * untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_rec_or_nonrec * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTFunction             of untyped_parameter_unit * untyped_abstract_tree
   | UTOpenIn               of module_name ranged * untyped_abstract_tree
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
-  | UTConstructor          of constructor_name * untyped_abstract_tree
+  | UTConstructor          of (module_name ranged) list * constructor_name * untyped_abstract_tree
   | UTOverwrite            of var_name ranged * untyped_abstract_tree
 (* Lightweight itemizes: *)
   | UTItemize              of untyped_itemize
@@ -534,7 +569,7 @@ and untyped_pattern_tree_main =
   | UTPWildCard
   | UTPVariable            of var_name
   | UTPAsVariable          of var_name * untyped_pattern_tree
-  | UTPConstructor         of constructor_name * untyped_pattern_tree
+  | UTPConstructor         of (module_name ranged) list * constructor_name * untyped_pattern_tree
 
 and untyped_pattern_branch =
   | UTPatternBranch of untyped_pattern_tree * untyped_abstract_tree
@@ -552,10 +587,49 @@ and untyped_parameter_unit =
   | UTParameterUnit of (label ranged * var_name ranged) list * untyped_pattern_tree * manual_type option
 [@@deriving show { with_path = false; }]
 
-type untyped_source_file =
-  | UTLibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
-  | UTDocumentFile of untyped_abstract_tree
+and untyped_attribute_main =
+  | UTAttribute of attribute_name * untyped_abstract_tree option
 [@@deriving show { with_path = false; }]
+
+and untyped_attribute =
+  untyped_attribute_main ranged
+[@@deriving show { with_path = false; }]
+
+type untyped_library_file =
+  untyped_attribute list * header_element list * (module_name ranged * untyped_signature option * untyped_binding list)
+[@@deriving show { with_path = false; }]
+
+type untyped_document_file =
+  untyped_attribute list * header_element list * untyped_abstract_tree
+[@@deriving show { with_path = false; }]
+
+type untyped_source_file =
+  | UTLibraryFile  of untyped_library_file
+  | UTDocumentFile of untyped_document_file
+[@@deriving show { with_path = false; }]
+
+type font_file_contents =
+  | OpentypeSingle     of var_name
+  | OpentypeCollection of var_name list
+[@@deriving show { with_path = false }]
+
+type font_file_record = {
+  r_font_file_path     : abs_path;
+  r_font_file_contents : font_file_contents;
+  r_used_as_math_font  : bool;
+}
+[@@deriving show { with_path = false }]
+
+type untyped_package =
+  | UTLibraryPackage of {
+      main_module_name : module_name;
+      modules          : (abs_path * untyped_library_file) list;
+    }
+  | UTFontPackage of {
+      main_module_name : module_name;
+      font_files       : font_file_record list;
+    }
+[@@deriving show { with_path = false }]
 
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
@@ -607,6 +681,10 @@ type page_break_style =
   | MultiColumn of length list
 [@@deriving show { with_path = false; }]
 
+type runtime_config = {
+  job_directory : string; (* Tracks an absolute path to a directory *)
+}
+
 type base_constant =
   | BCUnit
   | BCBool     of bool
@@ -622,6 +700,7 @@ type base_constant =
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
   | BCImageKey of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
+  | BCFontKey  of FontKey.t
   | BCInlineBoxes of HorzBox.horz_box list
   | BCBlockBoxes  of HorzBox.vert_box list
   | BCGraphics of (HorzBox.intermediate_horz_box list) GraphicD.t
@@ -642,11 +721,17 @@ and rec_or_nonrec =
   | Mutable of EvalVarID.t * abstract_tree
 
 and binding =
-  | Bind of stage * rec_or_nonrec
+  | Bind     of stage * rec_or_nonrec
+  | BindTest of EvalVarID.t * string * abstract_tree
 
-and environment =
-  location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
-    [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
+and environment = {
+  env_main   : location EvalVarIDMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<env-main>")]
+  env_store  : (syntactic_value StoreIDHashTable.t) ref;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<env-store>")]
+  env_config : runtime_config;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<env-config>")]
+}
 
 and location =
   syntactic_value ref
@@ -966,6 +1051,21 @@ and abstract_tree =
   | Persistent            of Range.t * EvalVarID.t
   | Lift                  of abstract_tree
   | ASTCodeSymbol         of CodeSymbol.t
+(* Fonts: *)
+  | LoadSingleFont of {
+      path              : abs_path;
+      used_as_math_font : bool;
+    }
+  | LoadCollectionFont of {
+      path              : abs_path;
+      index             : int;
+      used_as_math_font : bool;
+    }
+(* Tests: *)
+  | CatchTest of {
+      test_name : string;
+      test_impl : abstract_tree;
+    }
 (* Primitive applications: *)
 #include "__attype.gen.ml"
 
@@ -1136,6 +1236,20 @@ and code_value =
   | CdPatternMatch  of Range.t * code_value * code_pattern_branch list
   | CdConstructor   of constructor_name * code_value
   | CdTuple         of code_value TupleList.t
+
+  | CdLoadSingleFont of {
+      path              : abs_path;
+      used_as_math_font : bool;
+    }
+  | CdLoadCollectionFont of {
+      path              : abs_path;
+      index             : int;
+      used_as_math_font : bool;
+    }
+  | CdCatchTest of {
+      test_name : string;
+      test_impl : code_value;
+    }
 #include "__codetype.gen.ml"
 
 and code_inline_text_element =
@@ -1181,10 +1295,13 @@ type 'a cycle =
   | Cycle of 'a TupleList.t
 [@@deriving show { with_path = false; }]
 
-type file_info =
-  | DocumentFile of untyped_abstract_tree
-  | LibraryFile  of (module_name ranged * untyped_signature option * untyped_binding list)
 
+let map_cycle f = function
+  | Loop(v)   -> Loop(f v)
+  | Cycle(vs) -> Cycle(TupleList.map f vs)
+
+
+module GlobalTypeenv = Map.Make(String)
 
 module BoundIDHashTable = Hashtbl.Make(BoundID)
 
@@ -1216,24 +1333,22 @@ let get_range (rng, _) = rng
 
 
 let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : location) : environment =
-  let (valenv, stenvref) = env in
-    (valenv |> EvalVarIDMap.add evid rfast, stenvref)
+  { env with env_main = env.env_main |> EvalVarIDMap.add evid rfast }
 
 
 let find_in_environment (env : environment) (evid : EvalVarID.t) : location option =
-  let (valenv, _) = env in
-    valenv |> EvalVarIDMap.find_opt evid
+  env.env_main |> EvalVarIDMap.find_opt evid
 
 
 let register_location (env : environment) (value : syntactic_value) : StoreID.t =
-  let (_, stenvref) = env in
+  let stenvref = env.env_store in
   let stid = StoreID.fresh () in
   StoreIDHashTable.add (!stenvref) stid value;
   stid
 
 
 let update_location (env : environment) (stid : StoreID.t) (value : syntactic_value) : unit =
-  let (_, stenvref) = env in
+  let stenvref = env.env_store in
   let stenv = !stenvref in
   if StoreIDHashTable.mem stenv stid then
     StoreIDHashTable.replace stenv stid value
@@ -1242,7 +1357,7 @@ let update_location (env : environment) (stid : StoreID.t) (value : syntactic_va
 
 
 let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value option =
-  let (_, stenvref) = env in
+  let stenvref = env.env_store in
   StoreIDHashTable.find_opt (!stenvref) stid
 
 
@@ -1373,6 +1488,15 @@ let rec unlift_code (code : code_value) : abstract_tree =
     | CdPatternMatch(rng, code1, cdpatbrs) -> PatternMatch(rng, aux code1, List.map unlift_pattern_branch cdpatbrs)
     | CdConstructor(constrnm, code1)       -> NonValueConstructor(constrnm, aux code1)
     | CdTuple(codes)                       -> PrimitiveTuple(TupleList.map aux codes)
+
+    | CdLoadSingleFont{ path; used_as_math_font } ->
+        LoadSingleFont{ path; used_as_math_font }
+
+    | CdLoadCollectionFont{ path; index; used_as_math_font } ->
+        LoadCollectionFont{ path; index; used_as_math_font }
+
+    | CdCatchTest{ test_name; test_impl = code } ->
+        CatchTest{ test_name; test_impl = aux code }
 #include "__unliftcode.gen.ml"
 
 (*

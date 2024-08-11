@@ -1,5 +1,4 @@
 
-open MyUtil
 open LengthInterface
 open GraphicBase
 open SyntaxBase
@@ -41,6 +40,10 @@ let find_symbol (env : environment) (evid : EvalVarID.t) : CodeSymbol.t option =
 
   | None ->
       None
+
+
+let get_runtime_config (env : environment) : runtime_config =
+  env.env_config
 
 
 let generate_symbol_for_eval_var_id (evid : EvalVarID.t) (env : environment) : environment * CodeSymbol.t =
@@ -414,6 +417,42 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | ASTCodeSymbol(_symb) ->
       report_bug_ast "ASTCodeSymbol(_) at stage 0" ast
 
+  | LoadSingleFont{ path; used_as_math_font } ->
+      let fontkey =
+        if used_as_math_font then
+          FontInfo.add_math_single path
+        else
+          FontInfo.add_single path
+      in
+      BaseConstant(BCFontKey(fontkey))
+
+  | LoadCollectionFont{ path; index; used_as_math_font } ->
+      let fontkey =
+        if used_as_math_font then
+          FontInfo.add_math_ttc path index
+        else
+          FontInfo.add_ttc path index
+      in
+      BaseConstant(BCFontKey(fontkey))
+
+  | CatchTest{ test_name; test_impl = ast } ->
+      let res =
+        try
+          let value = interpret_0 env ast in
+          Ok(value)
+        with
+        | EvalError(msg) -> (* Catches aborts during tests. *)
+            Error(msg)
+      in
+      let test_result =
+        match res with
+        | Ok(BaseConstant(BCUnit)) -> State.Pass{ test_name }
+        | Error(message)           -> State.Fail{ test_name; message }
+        | Ok(value)                -> report_bug_value "unexpected test result" value
+      in
+      State.add_test_result test_result;
+      BaseConstant(BCUnit)
+
 #include "__evaluator_0.gen.ml"
 
 
@@ -617,6 +656,16 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
 
   | ASTCodeSymbol(symb) ->
       CdContentOf(Range.dummy "ASTCodeSymbol", symb)
+
+  | LoadSingleFont{ path; used_as_math_font } ->
+      CdLoadSingleFont{ path; used_as_math_font }
+
+  | LoadCollectionFont{ path; index; used_as_math_font } ->
+      CdLoadCollectionFont{ path; index; used_as_math_font }
+
+  | CatchTest{ test_name; test_impl = ast1 } ->
+      let code1 = interpret_1 env ast1 in
+      CdCatchTest{ test_name; test_impl = code1 }
 
 #include "__evaluator_1.gen.ml"
 
@@ -1174,44 +1223,58 @@ and interpret_letrec_bindings_1 (env : environment) (recbinds : letrec_binding l
   (env, cdrecbinds)
 
 
-let interpret_bindings_0 (env : environment) (binds : binding list) : environment * code_rec_or_nonrec list =
+let interpret_bindings_0 ~(run_tests : bool) (env : environment) (binds : binding list) : environment * code_rec_or_nonrec list =
   let (env, acc) =
-    binds |> List.fold_left (fun (env, acc) (Bind(stage, rec_or_nonrec)) ->
-      match stage with
-      | Persistent0 | Stage0 ->
-          let env =
-            match rec_or_nonrec with
-            | NonRec(evid, ast) ->
-                let value = interpret_0 env ast in
-                add_to_environment env evid (ref value)
-
-            | Rec(recbinds) ->
-                add_letrec_bindings_to_environment env recbinds
-
-            | Mutable(evid, ast_ini) ->
-                let value_ini = interpret_0 env ast_ini in
-                let stid = register_location env value_ini in
-                add_to_environment env evid (ref (Location(stid)))
-          in
-          (env, acc)
-
-      | Stage1 ->
+    binds |> List.fold_left (fun (env, acc) bind ->
+      match bind with
+      | Bind(stage, rec_or_nonrec) ->
           begin
-            match rec_or_nonrec with
-            | NonRec(evid, ast) ->
-                let code = interpret_1 env ast in
-                let (env, symb) = generate_symbol_for_eval_var_id evid env in
-                (env, Alist.extend acc (CdNonRec(symb, code)))
+            match stage with
+            | Persistent0 | Stage0 ->
+                let env =
+                  match rec_or_nonrec with
+                  | NonRec(evid, ast) ->
+                      let value = interpret_0 env ast in
+                      add_to_environment env evid (ref value)
 
-            | Rec(recbinds) ->
-                let (env, cdrecbinds) = interpret_letrec_bindings_1 env recbinds in
-                (env, Alist.extend acc (CdRec(cdrecbinds)))
+                  | Rec(recbinds) ->
+                      add_letrec_bindings_to_environment env recbinds
 
-            | Mutable(evid, ast) ->
-                let code = interpret_1 env ast in
-                let (env, symb) = generate_symbol_for_eval_var_id evid env in
-                (env, Alist.extend acc (CdMutable(symb, code)))
+                  | Mutable(evid, ast_ini) ->
+                      let value_ini = interpret_0 env ast_ini in
+                      let stid = register_location env value_ini in
+                      add_to_environment env evid (ref (Location(stid)))
+                in
+                (env, acc)
+
+            | Stage1 ->
+                let (env, cdbind) =
+                  match rec_or_nonrec with
+                  | NonRec(evid, ast) ->
+                      let code = interpret_1 env ast in
+                      let (env, symb) = generate_symbol_for_eval_var_id evid env in
+                      (env, CdNonRec(symb, code))
+
+                  | Rec(recbinds) ->
+                      let (env, cdrecbinds) = interpret_letrec_bindings_1 env recbinds in
+                      (env, CdRec(cdrecbinds))
+
+                  | Mutable(evid, ast) ->
+                      let code = interpret_1 env ast in
+                      let (env, symb) = generate_symbol_for_eval_var_id evid env in
+                      (env, CdMutable(symb, code))
+                in
+                (env, Alist.extend acc cdbind)
           end
+
+      | BindTest(evid, test_name, ast) ->
+          if run_tests then
+            let code = interpret_1 env ast in
+            let (env, symb) = generate_symbol_for_eval_var_id evid env in
+            let cdbind = CdNonRec(symb, CdCatchTest{ test_name; test_impl = code }) in
+            (env, Alist.extend acc cdbind)
+          else
+            (env, acc)
 
     ) (env, Alist.empty)
   in

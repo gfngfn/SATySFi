@@ -1,0 +1,64 @@
+language: "^0.1.0"
+name: "std-ja-book"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "Daiki Matsunaga <@matsud224>"
+  - "Takuma Ishikawa <@nekketsuuu>"
+  - "Naoki Kaneko <@puripuri2100>"
+registries:
+  - name: "default"
+    remote:
+      type: "git"
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "format-1"
+contents:
+  type: "library"
+  main_module: "StdJaBook"
+  source_directories:
+    - "./src"
+  dependencies:
+    - name: "stdlib"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"
+    - name: "math"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"
+    - name: "annot"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"
+    - name: "code"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"
+    - name: "footnote-scheme"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"
+    - name: "font-junicode"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"
+    - name: "font-latin-modern"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"
+    - name: "font-ipa-ex"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"
+    - name: "font-latin-modern-math"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"

@@ -1,7 +1,6 @@
 
 open SyntaxBase
 open Types
-open MyUtil
 open StaticEnv
 open TypeError
 open TypecheckUtil
@@ -565,9 +564,9 @@ and subtype_type_scheme (tyscheme1 : type_scheme) (tyscheme2 : type_scheme) : bo
         match pty2 with
         | (_, TypeVariable(PolyBound(bid2))) ->
             begin
-              match map |> BoundIDMap.find_opt bid1 with
+              match map |> BoundIDMap.find_opt bid2 with
               | None      -> false
-              | Some(bid) -> BoundID.equal bid bid2
+              | Some(bid) -> BoundID.equal bid bid1
             end
 
         | _ ->

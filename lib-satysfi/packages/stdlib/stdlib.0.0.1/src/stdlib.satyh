@@ -1,0 +1,151 @@
+use Option
+use List
+use Pervasives
+use Geom
+use Color
+use Gr
+use PaperSize
+use Deco
+use HDecoSet
+use VDecoSet
+
+module Stdlib :> sig
+  module Option : sig
+    val persistent ~map 'a 'b : ('a -> 'b) -> option 'a -> option 'b
+    val persistent ~from 'a : 'a -> option 'a -> 'a
+    val persistent ~bind 'a 'b : option 'a -> ('a -> option 'b) -> option 'b
+    val persistent ~is-none 'a : option 'a -> bool
+  end
+  module List : sig
+    val persistent ~map 'a 'b : ('a -> 'b) -> list 'a -> list 'b
+    val persistent ~mapi 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~iter 'a : ('a -> unit) -> list 'a -> unit
+    val persistent ~iteri 'a : (int -> 'a -> unit) -> list 'a -> unit
+    val persistent ~fold-left 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~fold-lefti 'a 'b : (int -> 'a -> 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~fold-right 'a 'b : ('a -> 'b -> 'b) -> 'b -> list 'a -> 'b
+    val persistent ~filter 'a : ('a -> bool) -> list 'a -> list 'a
+    val persistent ~assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
+    val persistent ~reverse 'a : list 'a -> list 'a
+    val persistent ~append 'a : list 'a -> list 'a -> list 'a
+    val persistent ~concat 'a : list (list 'a) -> list 'a
+    val persistent ~fold-left-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~map-adjacent 'a 'b : ('a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~mapi-adjacent 'a 'b : (int -> 'a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~length 'a : list 'a -> int
+    val persistent ~nth 'a : int -> list 'a -> option 'a
+    val persistent ~is-empty 'a : list 'a -> bool
+    val persistent ~map-with-ends 'a 'b : (bool -> bool -> 'a -> 'b) -> list 'a -> list 'b
+  end
+  module Pervasives : sig
+    type point = length * length
+    type paren = length -> length -> context -> inline-boxes * (length -> length)
+    val get-natural-width : inline-boxes -> length
+    val form-paragraph : context -> inline-boxes -> block-boxes
+    val kern : length -> inline-boxes
+    val \hskip : inline [length]
+    val no-break : inline-boxes -> inline-boxes
+    val \no-break : inline [inline-text]
+    val \SATySFi : inline []
+    val \LaTeX : inline []
+    val \TeX : inline []
+    val length-max : length -> length -> length
+    val length-min : length -> length -> length
+    val length-abs : length -> length
+    val \fil : inline []
+    val \fil-both : inline []
+    val mandatory-break : context -> inline-boxes
+    val destruct-option 'a : 'a -> option 'a -> 'a
+    val math-pi : float
+    val increment : ref int -> unit
+  end
+  module Geom : sig
+    type point = Pervasives.point %TODO (enhance): remove this
+    val atan2-point : point -> point -> float
+    val div-perp : point -> point -> float -> length -> point
+  end
+  module Color : sig
+    val gray   : float -> color
+    val rgb    : float -> float -> float -> color
+    val black  : color
+    val white  : color
+    val red    : color
+    val yellow : color
+    val orange : color
+    val blue   : color
+
+    % web color names
+    val brown   : color
+    val cyan    : color
+    val green   : color
+    val magenta : color
+    val pink    : color
+    val purple  : color
+  end
+  module Gr : sig
+    type point = Pervasives.point  %TODO (enhance): erase this
+    val rectangle : point -> point -> path
+    val rectangle-round : length -> point -> point -> path
+    val rectangle-round-left : length -> point -> point -> path
+    val rectangle-round-left-lower : length -> point -> point -> path
+    val rectangle-round-left-upper : length -> point -> point -> path
+    val rectangle-round-right : length -> point -> point -> path
+    val poly-line : point -> list point -> path
+    val polygon : point -> list point -> path
+    val line : point -> point -> path
+    val circle : point -> length -> path
+    val empty : graphics
+    val text-centering : point -> inline-boxes -> graphics
+    val text-leftward : point -> inline-boxes -> graphics
+    val text-rightward : point -> inline-boxes -> graphics
+    val arrow : length -> color -> length -> length -> length -> point -> point -> graphics
+    val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics
+    val rotate-path : point -> float -> path -> path
+    val scale-path : point -> float -> float -> path -> path
+    val rotate-graphics : point -> float -> graphics -> graphics
+    val scale-graphics : point -> float -> float -> graphics -> graphics
+  end
+  module PaperSize : sig
+    val persistent ~a0 : length * length
+    val persistent ~a1 : length * length
+    val persistent ~a2 : length * length
+    val persistent ~a3 : length * length
+    val persistent ~a4 : length * length
+    val persistent ~a5 : length * length
+    val persistent ~a6 : length * length
+    val persistent ~a7 : length * length
+    val persistent ~a8 : length * length
+    val persistent ~a9 : length * length
+    val persistent ~a10 : length * length
+
+    val persistent ~us-letter : length * length
+    val persistent ~us-legal : length * length
+  end
+  module Deco : sig
+    val empty : deco
+    val simple-frame : length -> color -> color -> deco
+  end
+  module HDecoSet : sig
+    val empty : deco-set
+    val simple-frame-stroke : length -> color -> deco-set
+    val rectangle-round-fill : length -> length -> color -> deco-set
+  end
+  module VDecoSet : sig
+    val empty : deco-set
+    val simple-frame-stroke : length -> color -> deco-set
+    val simple-frame : length -> color -> color -> deco-set
+    val paper : deco-set
+    val quote-round : length -> length -> color -> deco-set
+  end
+end = struct
+  module Option = Option
+  module List = List
+  module Pervasives = Pervasives
+  module Geom = Geom
+  module Color = Color
+  module Gr = Gr
+  module PaperSize = PaperSize
+  module Deco = Deco
+  module HDecoSet = HDecoSet
+  module VDecoSet = VDecoSet
+end

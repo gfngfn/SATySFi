@@ -1,0 +1,22 @@
+use Pervasives
+
+module Geom :> sig
+  type point = Pervasives.point %TODO (enhance): remove this
+  val atan2-point : point -> point -> float
+  val div-perp : point -> point -> float -> length -> point
+end = struct
+
+  type point = Pervasives.point %TODO (enhance): remove this
+
+
+  val atan2-point (x1, y1) (x2, y2) =
+    atan2 ((y2 -' y1) /' 1pt) ((x2 -' x1) /' 1pt)
+
+
+  val div-perp (x1, y1) (x2, y2) t len =
+    let cx = x1 *' (1. -. t) +' x2 *' t in
+    let cy = y1 *' (1. -. t) +' y2 *' t in
+    let theta = atan2 ((y2 -' y1) /' 1pt) ((x2 -' x1) /' 1pt) +. Pervasives.math-pi /. 2. in
+    (cx +' len *' (cos theta), cy +' len *' (sin theta))
+
+end

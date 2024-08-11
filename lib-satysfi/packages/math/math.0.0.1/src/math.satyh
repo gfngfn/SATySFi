@@ -1,0 +1,1634 @@
+use package open Stdlib
+
+module Math :> sig
+
+  val \math : inline [math-text]
+  val +math : block [?(tag : inline-text) math-text]
+  val \eqn : inline [?(tag : inline-text) math-text]
+  val +math-list : block [list math-text]
+  val \math-list : inline [list math-text]
+  val +align : block [list (list math-text)]
+  val \align : inline [list (list math-text)]
+  val \text : math [inline-text]
+  val \frac : math [math-text, math-text]
+  val \sqrt : math [math-text]
+  val \lower : math [math-text, math-text]
+  val \upper : math [math-text, math-text]
+  val \math-skip : math [length]
+  val \math-color : math [color, math-text]
+  val join : math-text -> list math-text -> math-text
+  val join-boxes : context -> math-boxes -> list math-boxes -> math-boxes %TODO: rename this
+  val half-length : length -> length -> length -> length -> length
+
+  val \mathord : math [math-text]
+  val \mathbin : math [math-text]
+  val \mathrel : math [math-text]
+  val \mathop : math [math-text]
+  val \mathprefix : math [math-text]
+  val \mathpunct : math [math-text]
+
+  val \math-style : math [math-char-class, math-text]
+  val \mathrm : math [math-text]
+  val \mathbf : math [math-text]
+  val \mathcal : math [math-text]
+  val \mathfrak : math [math-text]
+  val \mathbb : math [math-text]
+  val \bm : math [math-text]
+  val \mathit : math [math-text]
+  val \mathsf : math [math-text]
+  val \mathtt : math [math-text]
+
+  val \math-style-token : math [math-char-class, string]
+  val \mathit-token : math [string]
+  val \mathrm-token : math [string]
+  val \mathbf-token : math [string]
+
+  val \alpha   : math []
+  val \beta    : math []
+  val \gamma   : math []
+  val \delta   : math []
+  val \epsilon : math []
+  val \zeta    : math []
+  val \eta     : math []
+  val \theta   : math []
+  val \iota    : math []
+  val \kappa   : math []
+  val \lambda  : math []
+  val \mu      : math []
+  val \nu      : math []
+  val \xi      : math []
+  val \omicron : math []
+  val \pi      : math []
+  val \rho     : math []
+  val \sigma   : math []
+  val \tau     : math []
+  val \upsilon : math []
+  val \phi     : math []
+  val \chi     : math []
+  val \psi     : math []
+  val \omega   : math []
+
+  val \Alpha   : math []
+  val \Beta    : math []
+  val \Gamma   : math []
+  val \Delta   : math []
+  val \Epsilon : math []
+  val \Zeta    : math []
+  val \Eta     : math []
+  val \Theta   : math []
+  val \Iota    : math []
+  val \Kappa   : math []
+  val \Lambda  : math []
+  val \Mu      : math []
+  val \Nu      : math []
+  val \Xi      : math []
+  val \Omicron : math []
+  val \Pi      : math []
+  val \Rho     : math []
+  val \Sigma   : math []
+  val \Tau     : math []
+  val \Upsilon : math []
+  val \Phi     : math []
+  val \Chi     : math []
+  val \Psi     : math []
+  val \Omega   : math []
+
+  val \to : math []
+  val \pm : math []
+  val \mp : math []
+  val \times : math []
+  val \setminus : math []
+  val \ast : math []
+  val \circ : math []
+  val \bullet : math []
+  val \cap : math []
+  val \cup : math []
+  val \uplus : math []
+  val \sqcap : math []
+  val \sqcup : math []
+  val \wedge : math []
+  val \vee : math []
+  val \oplus : math []
+  val \ominus : math []
+  val \otimes : math []
+  val \oslash : math []
+
+  val \vdash : math []
+  val \nvdash : math []
+  val \dashv : math []
+  val \vDash : math []
+  val \nvDash : math []
+  val \Vdash : math []
+  val \nVdash : math []
+
+  val \colon-rel : math []
+
+  val \leq : math []
+  val \geq : math []
+  val \equiv : math []
+  val \nequiv : math []
+  val \neq : math []
+  val \sim : math []
+  val \nsim : math []
+  val \simeq : math []
+  val \nsimeq : math []
+  val \propto : math []
+  val \coloneq : math []
+  val \eqcolon : math []
+
+  val \in : math []
+  val \nin : math []
+  val \ni : math []
+  val \nni : math []
+  val \subset : math []
+  val \supset : math []
+  val \nsubset : math []
+  val \nsupset : math []
+  val \subseteq : math []
+  val \supseteq : math []
+  val \nsubseteq : math []
+  val \nsupseteq : math []
+  val \subsetneq : math []
+  val \supsetneq : math []
+  val \sqsubset : math []
+  val \sqsupset : math []
+  val \sqsubseteq : math []
+  val \sqsupseteq : math []
+  val \nsqsubseteq : math []
+  val \nsqsupseteq : math []
+  val \sqsubsetneq : math []
+  val \sqsupsetneq : math []
+  val \prec : math []
+  val \succ : math []
+  val \nprec : math []
+  val \nsucc : math []
+  val \preccurlyeq : math []
+  val \succcurlyeq : math []
+  val \precsim : math []
+  val \succsim : math []
+  val \npreccurlyeq : math []
+  val \nsucccurlyeq : math []
+
+  val \emptyset : math []
+  val \infty : math []
+  val \top : math []
+  val \bot : math []
+  val \therefore : math []
+  val \because : math []
+  val \forall : math []
+  val \exists : math []
+  val \nexists : math []
+  val \bigcirc : math []
+
+  val \cdot  : math []
+  val \ldots : math []
+  val \cdots : math []
+  val \vdots : math []
+  val \ddots : math []
+  val \backddots : math []
+
+  val \lim : math []
+  val \colim : math []
+  val \max : math []
+  val \min : math []
+  val \inf : math []
+  val \sup : math []
+  val \sin : math []
+  val \cos : math []
+  val \tan : math []
+  val \cot : math []
+  val \sec : math []
+  val \csc : math []
+  val \log : math []
+  val \tr : math []
+  val \det : math []
+  val \dom : math []
+  val \cod : math []
+  val \Ker : math []
+  val \Im : math []
+
+  val \sum : math []
+  val \prod : math []
+  val \coprod : math []
+  val \bigwedge : math []
+  val \bigvee : math []
+  val \bigcap : math []
+  val \bigcup : math []
+
+  val \lnot : math []
+  val \land : math []
+  val \lor : math []
+
+  val \Leftarrow : math []
+  val \Rightarrow : math []
+  val \Leftrightarrow : math []
+  val \Uparrow : math []
+  val \Downarrow : math []
+  val \Updownarrow : math []
+  val \nRightarrow : math []
+  val \nLeftarrow : math []
+  val \nLeftrightarrow : math []
+  val \leftarrow : math []
+  val \rightarrow : math []
+  val \uparrow : math []
+  val \downarrow : math []
+  val \updownarrow : math []
+  val \nwarrow : math []
+  val \nearrow : math []
+  val \searrow : math []
+  val \swarrow : math []
+  val \nleftarrow : math []
+  val \nrightarrow : math []
+  val \nleftrightarrow : math []
+  val \mapsto : math []
+  val \hookleftarrow : math []
+  val \hookrightarrow : math []
+  val \rightarrowtail : math []
+  val \leftarrowtail : math []
+  val \twoheadleftarrow : math []
+  val \twoheadrightarrow : math []
+  val \twoheaduparrow : math []
+  val \twoheaddownarrow : math []
+  val \leftharpoonup : math []
+  val \leftharpoondown : math []
+  val \rightharpoonup : math []
+  val \rightharpoondown : math []
+  val \rightleftharpoons : math []
+  val \upharpoonright : math []
+  val \upharpoonleft : math []
+  val \downharpoonright : math []
+  val \downharpoonleft : math []
+  val \longleftarrow : math []
+  val \longrightarrow : math []
+  val \longleftrightarrow : math []
+  val \Longleftarrow : math []
+  val \Longrightarrow : math []
+  val \Longleftrightarrow : math []
+  val \circlearrowleft : math []
+  val \circlearrowright : math []
+
+  val \between : math []
+  val \pitchfork : math []
+  val \intercal : math []
+  val \ll : math []
+  val \gg : math []
+  val \lll : math []
+  val \ggg : math []
+  val \leqq : math []
+  val \geqq : math []
+  val \lneqq : math []
+  val \gneqq : math []
+  val \lnsim : math []
+  val \gnsim : math []
+  val \precnsim : math []
+  val \succnsim : math []
+  val \Subset : math []
+  val \Supset : math []
+  val \Cap : math []
+  val \Cup : math []
+  val \lhd : math []
+  val \rhd : math []
+  val \unlhd : math []
+  val \unrhd : math []
+  val \triangleleft : math []
+  val \triangleright : math []
+  val \trianglelefteq : math []
+  val \trianglerighteq : math []
+  val \backsim : math []
+  val \backsimeq : math []
+  val \eqcirc : math []
+  val \cong : math []
+  val \simneq : math []
+  val \ncong : math []
+  val \approx : math []
+  val \napprox : math []
+  val \approxeq : math []
+  val \curlyeqprec : math []
+  val \curlyeqsucc : math []
+  val \lessdot : math []
+  val \gtrdot : math []
+  val \lesssim : math []
+  val \gtrsim : math []
+  val \nlesssim : math []
+  val \ngtrsim : math []
+  val \lessgtr : math []
+  val \gtrless : math []
+  val \nlessgtr : math []
+  val \ngtrless : math []
+  val \ntriangleleft : math []
+  val \ntriangleright : math []
+  val \ntrianglelefteq : math []
+  val \ntrianglerighteq : math []
+  val \lesseqgtr : math []
+  val \gtreqless : math []
+  val \nless : math []
+  val \ngtr : math []
+  val \nleq : math []
+  val \ngeq : math []
+  val \asymp : math []
+  val \nasymp : math []
+  val \circeq : math []
+  val \Bumpeq : math []
+  val \bumpeq : math []
+  val \doteq : math []
+  val \doteqdot : math []
+  val \fallingdotseq : math []
+  val \risingdotseq : math []
+  val \mid : math []
+  val \nmid : math []
+  val \parallel : math []
+  val \nparallel : math []
+  val \Vvdash : math []
+  val \VDash : math []
+  val \coloncoloneq : math []
+  val \leqslant : math []
+  val \geqslant : math []
+  val \dashV : math []
+  val \Dashv : math []
+  val \DashV : math []
+  val \preceq : math []
+  val \succeq : math []
+
+  val \amalg : math []
+  val \dotplus : math []
+  val \divideontimes : math []
+  val \odot : math []
+  val \circledcirc : math []
+  val \circledast : math []
+%  val \circledeq : math []
+  val \circleddash : math []
+  val \boxplus : math []
+  val \boxminus : math []
+  val \boxtimes : math []
+  val \boxdot : math []
+  val \curlyvee : math []
+  val \curlywedge : math []
+  val \Join : math []
+  val \ltimes : math []
+  val \rtimes : math []
+  val \leftthreetimes : math []
+  val \rightthreetimes : math []
+  val \wr : math []
+
+  val \diamond : math []
+  val \star : math []
+  val \complement : math []
+  val \angle : math []
+  val \measuredangle : math []
+  val \sphericalangle : math []
+
+  val \int : math []
+
+  val \ordd : math []
+  val \partial : math []
+  val \nabla : math []
+
+  val \paren : math [math-text]
+  val \app : math [math-text, math-text]
+  val \angle-bracket : math [math-text]
+  val \brace : math [math-text]
+  val \sqbracket : math [math-text]
+  val \abs : math [math-text]
+  val \norm : math [math-text]
+  val \floor : math [math-text]
+  val \ceil : math [math-text]
+  val \set : math [math-text]
+  val \setsep : math [math-text, math-text]
+  val \cases : math [list (math-text * inline-text)]
+
+  type paren = Pervasives.paren %TODO (enhance): remove this
+  val paren-left : paren
+  val paren-right : paren
+  val paren : context -> math-boxes -> math-boxes
+  val angle-left : length -> paren
+  val angle-right : length -> paren
+  val brace-left : paren
+  val brace-right : paren
+  val sqbracket-left : paren
+  val sqbracket-right : paren
+  val floor-left : paren
+  val floor-right : paren
+  val ceil-left : paren
+  val ceil-right : paren
+  val abs-left : paren
+  val abs-right : paren
+  val norm-left : paren
+  val norm-right : paren
+  val empty-paren : paren
+  val bar-middle : paren
+  val slash-middle : paren
+
+%   % -- temporary -- %TODO: remove this
+   val \synteq : math []
+   val \tyjd : math [math-text, math-text, math-text]
+   val \and-also : math []
+   val \tmabstyped : math [math-text, math-text, math-text]
+%
+end = struct
+
+  val join (msep : math-text) (ms : list math-text) =
+    match
+      ms |> List.fold-left (fun maccopt m -> (
+        match maccopt with
+        | None       -> Some(m)
+        | Some(macc) -> Some(${#macc #msep #m})
+        end
+      )) None
+    with
+    | None       -> ${}
+    | Some(macc) -> macc
+    end
+
+
+  val join-boxes ctx (mbsep : math-boxes) (mbs : list math-boxes) =
+    match
+      mbs |> List.fold-left (fun mbaccopt mb -> (
+        match mbaccopt with
+        | None        -> Some(mb)
+        | Some(mbacc) -> Some(math-concat (math-concat mbacc mbsep) mb)
+        end
+      )) None
+    with
+    | None       -> read-math ctx ${}
+    | Some(macc) -> macc
+    end
+
+
+  val margin-ratio = 1.
+
+
+  val inline ctx \math m =
+    script-guard Latin (embed-math ctx (read-math ctx m))
+
+  val math ctx \frac numer denom =
+    math-frac ctx (read-math ctx numer) (read-math ctx denom)
+
+  val math ctx \sqrt inner =
+    math-radical ctx None (read-math ctx inner)
+
+  val math ctx \lower base lower =
+    math-lower ctx (read-math ctx base) (fun ctx -> read-math ctx lower)
+
+  val math ctx \upper base upper =
+    math-upper ctx (read-math ctx base) (fun ctx -> read-math ctx upper)
+
+  val math ctx \text it =
+    embed-inline-to-math MathOrd (read-inline ctx it)
+
+  val math ctx \math-skip len =
+    embed-inline-to-math MathOrd (inline-skip len)
+
+  val math ctx \math-color color m =
+    read-math (ctx |> set-text-color color) m
+
+
+  val math ctx \mathord m = math-group MathOrd MathOrd (read-math ctx m)
+  val math ctx \mathbin m = math-group MathBin MathBin (read-math ctx m)
+  val math ctx \mathrel m = math-group MathRel MathRel (read-math ctx m)
+  val math ctx \mathop m = math-group MathOp MathOp (read-math ctx m)
+  val math ctx \mathprefix m = math-group MathPrefix MathPrefix (read-math ctx m)
+  val math ctx \mathpunct m = math-group MathPunct MathPunct (read-math ctx m)
+
+  val math ctx \math-style sty m =
+    read-math (ctx |> set-math-char-class sty) m
+
+  val math ctx \mathrm m = read-math ctx ${\math-style!(MathRoman){#m}}
+  val math ctx \mathbf m = read-math ctx ${\math-style!(MathBoldRoman){#m}}
+  val math ctx \mathcal m = read-math ctx ${\math-style!(MathScript){#m}}
+  val math ctx \mathfrak m = read-math ctx ${\math-style!(MathFraktur){#m}}
+  val math ctx \mathbb m = read-math ctx ${\math-style!(MathDoubleStruck){#m}}
+  val math ctx \bm m = read-math ctx ${\math-style!(MathBoldItalic){#m}}
+  val math ctx \mathit m = read-math ctx ${\math-style!(MathItalic){#m}}
+  val math ctx \mathsf m = read-math ctx ${\math-style!(MathSansSerif){#m}}
+  val math ctx \mathtt m = read-math ctx ${\math-style!(MathTypewriter){#m}}
+
+  val math ctx \math-style-token sty s =
+    embed-inline-to-math MathOrd (
+      let sm = convert-string-for-math ctx sty s in
+      embed-math ctx (math-char ctx MathOrd sm)
+    )
+
+  val math ctx \mathit-token s = read-math ctx ${\math-style-token!(MathItalic)!(s)}
+  val math ctx \mathrm-token s = read-math ctx ${\math-style-token!(MathRoman)!(s)}
+  val math ctx \mathbf-token s = read-math ctx ${\math-style-token!(MathBoldRoman)!(s)}
+
+
+  val math-scheme ctx tagopt m =
+    let ib = embed-math ctx m in
+      match tagopt with
+      | None      -> line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+      | Some(tag) -> line-break true true ctx (inline-fil ++ ib ++ inline-fil ++ read-inline ctx tag)
+      end
+
+
+  val block ctx +math ?(tag = tagopt) m =
+    math-scheme ctx tagopt (read-math ctx m)
+
+
+  val inline ctx \eqn ?(tag = tagopt) m =
+    inline-fil ++
+      embed-block-breakable ctx (math-scheme ctx tagopt (read-math ctx m))
+        ++ omit-skip-after
+
+
+  val block ctx +math-list mlst =
+    let mingap = get-font-size ctx *' 2. in
+    let ib-fil =
+      discretionary 100 (inline-skip mingap ++ inline-fil) inline-fil inline-fil
+    in
+    let ib =
+      mlst |> List.fold-left-adjacent (fun ibacc m _ optnext -> (
+        let ib-after =
+          match optnext with
+          | None    -> inline-fil
+          | Some(_) -> ib-fil
+          end
+        in
+          ibacc ++ embed-math ctx (read-math ctx m) ++ ib-after
+      )) inline-fil
+    in
+    let margin = get-font-size ctx *' margin-ratio in
+    let ctx =
+      ctx |> set-min-gap-of-lines 12pt
+          |> set-paragraph-margin margin margin
+    in
+      line-break true true ctx ib
+
+
+  val inline ctx \math-list mlst =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+math-list(mlst);>)
+        ++ omit-skip-after
+
+
+  val block ctx +align mlstlst =
+    let vlen = 4pt in
+    let lengap = get-font-size ctx *' 2. in
+    let celllstlst =
+      mlstlst |> List.map (fun mlst -> (
+        let mbs = mlst |> List.map (read-math ctx) in
+        mbs |> List.mapi-adjacent (fun index mb _ mb-next-opt -> (
+          let ibm = embed-math ctx mb in
+          let ib =
+            match mb-next-opt with
+            | None ->
+                ibm
+
+            | Some(mb-next) ->
+                let ibspaceopt = space-between-maths ctx mb mb-next in
+                match ibspaceopt with
+                | None          -> ibm
+                | Some(ibspace) -> ibm ++ ibspace
+                end
+            end
+          in
+          let ib =
+            if index mod 2 == 0 then
+              inline-fil ++ ib
+            else
+              match mb-next-opt with
+              | None    -> ib ++ inline-fil
+              | Some(_) -> ib ++ inline-fil ++ inline-skip lengap
+              end
+          in
+            NormalCell((0pt, 0pt, vlen, vlen), ib)
+        ))
+      ))
+    in
+    let margin = get-font-size ctx *' margin-ratio in
+      line-break true true (ctx |> set-paragraph-margin margin margin)
+        (inline-fil ++ (tabular celllstlst (fun _ _ -> Gr.empty)) ++ inline-fil)
+        % temporary
+
+
+  val inline ctx \align mlstlst =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+align(mlstlst);>)
+        ++ omit-skip-after
+
+
+  val single cp = string-unexplode [cp]
+
+
+  val greek ctx cp cpi cpb cpbi cpbss cpbiss =
+    let s = single cp in
+    let si = single cpi in
+    let sb = single cpb in
+    let sbi = single cpbi in
+    let sbss = single cpbss in
+    let sbiss = single cpbiss in
+    % typefaces marked with (*) are not defined in Unicode
+    let t =
+      match get-math-char-class ctx with
+      | MathItalic              -> si
+      | MathBoldItalic          -> sbi
+      | MathRoman               -> s
+      | MathBoldRoman           -> sb
+      | MathScript              -> si    % (*)
+      | MathBoldScript          -> sbi   % (*)
+      | MathFraktur             -> si    % (*)
+      | MathBoldFraktur         -> sbi   % (*)
+      | MathDoubleStruck        -> si    % (*)
+      | MathSansSerif           -> si    % (*)
+      | MathBoldSansSerif       -> sbss
+      | MathItalicSansSerif     -> si    % (*)
+      | MathBoldItalicSansSerif -> sbiss
+      | MathTypewriter          -> s     % (*)
+      end
+    in
+    math-char ctx MathOrd t
+
+
+  val greek-lowercase ctx i =
+    greek ctx (0x003B1 + i) (0x1D6FC + i) (0x1D6C2 + i) (0x1D736 + i) (0x1D770 + i) (0x1D7AA + i)
+
+
+  val greek-uppercase ctx i =
+    greek ctx (0x00391 + i) (0x1D6E2 + i) (0x1D6A8 + i) (0x1D71C + i) (0x1D756 + i) (0x1D790 + i)
+
+
+  val math ctx \alpha    = greek-lowercase ctx 0
+  val math ctx \beta     = greek-lowercase ctx 1
+  val math ctx \gamma    = greek-lowercase ctx 2
+  val math ctx \delta    = greek-lowercase ctx 3
+  val math ctx \epsilon  = greek-lowercase ctx 4
+  val math ctx \zeta     = greek-lowercase ctx 5
+  val math ctx \eta      = greek-lowercase ctx 6
+  val math ctx \theta    = greek-lowercase ctx 7
+  val math ctx \iota     = greek-lowercase ctx 8
+  val math ctx \kappa    = greek-lowercase ctx 9
+  val math ctx \lambda   = greek-lowercase ctx 10
+  val math ctx \mu       = greek-lowercase ctx 11
+  val math ctx \nu       = greek-lowercase ctx 12
+  val math ctx \xi       = greek-lowercase ctx 13
+  val math ctx \omicron  = greek-lowercase ctx 14
+  val math ctx \pi       = greek-lowercase ctx 15
+  val math ctx \rho      = greek-lowercase ctx 16
+  val math ctx \sigma    = greek-lowercase ctx 18
+  val math ctx \tau      = greek-lowercase ctx 19
+  val math ctx \upsilon  = greek-lowercase ctx 20
+  val math ctx \phi      = greek-lowercase ctx 21
+  val math ctx \chi      = greek-lowercase ctx 22
+  val math ctx \psi      = greek-lowercase ctx 23
+  val math ctx \omega    = greek-lowercase ctx 24
+
+  val math ctx \Alpha    = greek-uppercase ctx 0
+  val math ctx \Beta     = greek-uppercase ctx 1
+  val math ctx \Gamma    = greek-uppercase ctx 2
+  val math ctx \Delta    = greek-uppercase ctx 3
+  val math ctx \Epsilon  = greek-uppercase ctx 4
+  val math ctx \Zeta     = greek-uppercase ctx 5
+  val math ctx \Eta      = greek-uppercase ctx 6
+  val math ctx \Theta    = greek-uppercase ctx 7
+  val math ctx \Iota     = greek-uppercase ctx 8
+  val math ctx \Kappa    = greek-uppercase ctx 9
+  val math ctx \Lambda   = greek-uppercase ctx 10
+  val math ctx \Mu       = greek-uppercase ctx 11
+  val math ctx \Nu       = greek-uppercase ctx 12
+  val math ctx \Xi       = greek-uppercase ctx 13
+  val math ctx \Omicron  = greek-uppercase ctx 14
+  val math ctx \Pi       = greek-uppercase ctx 15
+  val math ctx \Rho      = greek-uppercase ctx 16
+  val math ctx \Sigma    = greek-uppercase ctx 18
+  val math ctx \Tau      = greek-uppercase ctx 19
+  val math ctx \Upsilon  = greek-uppercase ctx 20
+  val math ctx \Phi      = greek-uppercase ctx 21
+  val math ctx \Chi      = greek-uppercase ctx 22
+  val math ctx \Psi      = greek-uppercase ctx 23
+  val math ctx \Omega    = greek-uppercase ctx 24
+
+
+  val ord ctx = math-char ctx MathOrd
+  val bin ctx = math-char ctx MathBin
+  val rel ctx = math-char ctx MathRel
+  val op ctx = math-char ctx MathOp
+  val punct ctx = math-char ctx MathPunct
+  val prefix ctx = math-char ctx MathPrefix
+
+  val vop-scheme ctx charf s moptS moptT =
+    let mop = charf ctx MathOp s in
+    let m =
+      match moptS with
+      | None     -> mop
+      | Some(mS) -> math-lower ctx mop (fun ctx -> read-math ctx mS)
+      end
+    in
+    match moptT with
+    | None     -> m
+    | Some(mT) -> math-upper ctx m (fun ctx -> read-math ctx mT)
+    end
+
+  val bigop ctx = vop-scheme ctx math-big-char
+  val vop ctx = vop-scheme ctx math-char
+
+  val math ctx \to    = rel ctx `→`
+  val math ctx \pm    = bin ctx `±`
+  val math ctx \mp    = bin ctx `∓`
+  val math ctx \times = bin ctx `×`
+  val math ctx \setminus = bin ctx `∖`
+  val math ctx \ast = bin ctx `∗`
+  val math ctx \circ = bin ctx `∘`
+  val math ctx \bullet = bin ctx `∙`
+  val math ctx \cap = bin ctx `∩`
+  val math ctx \cup = bin ctx `∪`
+  val math ctx \uplus = bin ctx `⊎`
+  val math ctx \sqcap = bin ctx `⊓`
+  val math ctx \sqcup = bin ctx `⊔`
+  val math ctx \wedge = bin ctx `∧`
+  val math ctx \vee   = bin ctx `∨`
+  val math ctx \oplus = bin ctx `⊕`
+  val math ctx \ominus = bin ctx `⊖`
+  val math ctx \otimes = bin ctx `⊗`
+  val math ctx \oslash = bin ctx `⊘`
+
+  val math ctx \vdash = rel ctx `⊢`
+  val math ctx \nvdash = rel ctx `⊬`
+  val math ctx \dashv = rel ctx `⊣`
+  val math ctx \vDash = rel ctx `⊨`
+  val math ctx \nvDash = rel ctx `⊭`
+  val math ctx \Vdash = rel ctx `⊩`
+  val math ctx \nVdash = rel ctx `⊮`
+
+  val math ctx \colon-rel = rel ctx `:`
+
+  val math ctx \leq = rel ctx `≤`
+  val math ctx \geq = rel ctx `≥`
+  val math ctx \equiv = rel ctx `≡`
+  val math ctx \nequiv = rel ctx `≢`
+  val math ctx \neq = rel ctx `≠`
+  val math ctx \sim = rel ctx `∼`
+  val math ctx \nsim = rel ctx `≁`
+  val math ctx \simeq = rel ctx `≃`
+  val math ctx \nsimeq = rel ctx `≄`
+  val math ctx \propto = rel ctx `∝`
+  val math ctx \coloneq = rel ctx `≔`
+  val math ctx \eqcolon = rel ctx `≕`
+
+  val math ctx \in = rel ctx `∈`
+  val math ctx \nin = rel ctx `∉`
+  val math ctx \ni = rel ctx `∋`
+  val math ctx \nni = rel ctx `∌`
+  val math ctx \subset = rel ctx `⊂`
+  val math ctx \supset = rel ctx `⊃`
+  val math ctx \nsubset = rel ctx `⊄`
+  val math ctx \nsupset = rel ctx `⊅`
+  val math ctx \subseteq = rel ctx `⊆`
+  val math ctx \supseteq = rel ctx `⊇`
+  val math ctx \nsubseteq = rel ctx `⊈`
+  val math ctx \nsupseteq = rel ctx `⊉`
+  val math ctx \subsetneq = rel ctx `⊊`
+  val math ctx \supsetneq = rel ctx `⊋`
+  val math ctx \sqsubset = rel ctx `⊏`
+  val math ctx \sqsupset = rel ctx `⊐`
+  val math ctx \sqsubseteq = rel ctx `⊑`
+  val math ctx \sqsupseteq = rel ctx `⊒`
+  val math ctx \nsqsubseteq = rel ctx `⋢`
+  val math ctx \nsqsupseteq = rel ctx `⋣`
+  val math ctx \sqsubsetneq = rel ctx `⋤`
+  val math ctx \sqsupsetneq = rel ctx `⋥`
+  val math ctx \prec = rel ctx `≺`
+  val math ctx \succ = rel ctx `≻`
+  val math ctx \nprec = rel ctx `⊀`
+  val math ctx \nsucc = rel ctx `⊁`
+  val math ctx \preccurlyeq = rel ctx `≼`
+  val math ctx \succcurlyeq = rel ctx `≽`
+  val math ctx \precsim = rel ctx `≾`
+  val math ctx \succsim = rel ctx `≿`
+  val math ctx \npreccurlyeq = rel ctx `⋠`
+  val math ctx \nsucccurlyeq = rel ctx `⋡`
+
+  val math ctx \emptyset = ord ctx `∅`
+  val math ctx \infty = ord ctx `∞`
+  val math ctx \top = ord ctx `⊤`
+  val math ctx \bot = ord ctx `⊥`
+  val math ctx \therefore = ord ctx `∴`
+  val math ctx \because = ord ctx `∵`
+  val math ctx \forall = ord ctx `∀`
+  val math ctx \exists = ord ctx `∃`
+  val math ctx \nexists = ord ctx `∄`
+  val math ctx \bigcirc = ord ctx `◯`
+
+  val math ctx \cdot  = bin ctx `⋅`
+  val math ctx \ldots = ord ctx `…`
+  val math ctx \cdots = math-char ctx MathInner `⋯`
+  val math ctx \vdots = ord ctx `⋮`
+  val math ctx \ddots = ord ctx `⋱`
+  val math ctx \backddots = ord ctx `⋰`
+
+  val math ctx \lim with sub sup = vop ctx `lim` sub sup
+  val math ctx \colim with sub sup = vop ctx `colim` sub sup
+  val math ctx \max with sub sup = vop ctx `max` sub sup
+  val math ctx \min with sub sup = vop ctx `min` sub sup
+  val math ctx \inf with sub sup = vop ctx `inf` sub sup
+  val math ctx \sup with sub sup = vop ctx `sup` sub sup
+  val math ctx \sin = op ctx `sin`
+  val math ctx \cos = op ctx `cos`
+  val math ctx \tan = op ctx `tan`
+  val math ctx \cot = op ctx `cot`
+  val math ctx \sec = op ctx `sec`
+  val math ctx \csc = op ctx `csc`
+  val math ctx \log = op ctx `log`
+  val math ctx \tr  = op ctx `tr`
+  val math ctx \det = op ctx `det`
+  val math ctx \dom = op ctx `dom`
+  val math ctx \cod = op ctx `cod`
+  val math ctx \Ker = op ctx `Ker`
+  val math ctx \Im = op ctx `Im`
+
+  val math ctx \sum with sub sup = bigop ctx `∑` sub sup
+  val math ctx \prod with sub sup = bigop ctx `∏` sub sup
+  val math ctx \coprod with sub sup = bigop ctx `∐` sub sup
+  val math ctx \bigwedge with sub sup = bigop ctx `⋀` sub sup
+  val math ctx \bigvee with sub sup = bigop ctx `⋁` sub sup
+  val math ctx \bigcap with sub sup = bigop ctx `⋂` sub sup
+  val math ctx \bigcup with sub sup = bigop ctx `⋃` sub sup
+
+  val math ctx \lnot = ord ctx `¬`
+  val math ctx \land = rel ctx `∧`
+  val math ctx \lor  = rel ctx `∨`
+
+  val math ctx \Leftarrow = rel ctx `⇐`
+  val math ctx \Rightarrow = rel ctx `⇒`
+  val math ctx \Leftrightarrow = rel ctx `⇔`
+  val math ctx \Uparrow = rel ctx `⇑`
+  val math ctx \Downarrow = rel ctx `⇓`
+  val math ctx \Updownarrow = rel ctx `⇕`
+  val math ctx \nRightarrow = rel ctx `⇍`
+  val math ctx \nLeftarrow = rel ctx `⇏`
+  val math ctx \nLeftrightarrow = rel ctx `⇎`
+  val math ctx \leftarrow = rel ctx `←`
+  val math ctx \rightarrow = rel ctx `→`
+  val math ctx \uparrow = rel ctx `↑`
+  val math ctx \downarrow = rel ctx `↓`
+  val math ctx \updownarrow = rel ctx `↕`
+  val math ctx \nwarrow = rel ctx `↖`
+  val math ctx \nearrow = rel ctx `↗`
+  val math ctx \searrow = rel ctx `↘`
+  val math ctx \swarrow = rel ctx `↙`
+  val math ctx \nleftarrow = rel ctx `↚`
+  val math ctx \nrightarrow = rel ctx `↛`
+  val math ctx \nleftrightarrow = rel ctx `↮`
+  val math ctx \mapsto = rel ctx `↦`
+  val math ctx \hookleftarrow = rel ctx `↩`
+  val math ctx \hookrightarrow = rel ctx `↪`
+  val math ctx \rightarrowtail = rel ctx `↣`
+  val math ctx \leftarrowtail = rel ctx `↢`
+  val math ctx \twoheadleftarrow = rel ctx `↞`
+  val math ctx \twoheadrightarrow = rel ctx `↠`
+  val math ctx \twoheaduparrow = rel ctx `↟`
+  val math ctx \twoheaddownarrow = rel ctx `↡`
+  val math ctx \leftharpoonup = rel ctx `↼`
+  val math ctx \leftharpoondown = rel ctx `↽`
+  val math ctx \rightharpoonup = rel ctx `⇀`
+  val math ctx \rightharpoondown = rel ctx `⇁`
+  val math ctx \rightleftharpoons = rel ctx `⇌`
+  val math ctx \upharpoonright = rel ctx `↾`
+  val math ctx \upharpoonleft = rel ctx `↿`
+  val math ctx \downharpoonright = rel ctx `⇂`
+  val math ctx \downharpoonleft = rel ctx `⇃`
+  val math ctx \longleftarrow = rel ctx `⟵`
+  val math ctx \longrightarrow = rel ctx `⟶`
+  val math ctx \longleftrightarrow = rel ctx `⟷`
+  val math ctx \Longleftarrow = rel ctx `⟸`
+  val math ctx \Longrightarrow = rel ctx `⟹`
+  val math ctx \Longleftrightarrow = rel ctx `⟺`
+  val math ctx \circlearrowleft = rel ctx `↺`
+  val math ctx \circlearrowright = rel ctx `↻`
+
+  val math ctx \between = rel ctx `≬`
+  val math ctx \pitchfork = rel ctx `⋔`
+  val math ctx \intercal = rel ctx `⊺`
+  val math ctx \ll = rel ctx `≪`
+  val math ctx \gg = rel ctx `≫`
+  val math ctx \lll = rel ctx `⋘`
+  val math ctx \ggg = rel ctx `⋙`
+  val math ctx \leqq = rel ctx `≦`
+  val math ctx \geqq = rel ctx `≧`
+  val math ctx \lneqq = rel ctx `≨`
+  val math ctx \gneqq = rel ctx `≩`
+  val math ctx \lnsim = rel ctx `⋦`
+  val math ctx \gnsim = rel ctx `⋧`
+  val math ctx \precnsim = rel ctx `⋨`
+  val math ctx \succnsim = rel ctx `⋩`
+  val math ctx \Subset = rel ctx `⋐`
+  val math ctx \Supset = rel ctx `⋑`
+  val math ctx \Cap = bin ctx `⋒`
+  val math ctx \Cup = bin ctx `⋓`
+  val math ctx \lhd = rel ctx `⊲`
+  val math ctx \rhd = rel ctx `⊳`
+  val math ctx \unlhd = rel ctx `⊴`
+  val math ctx \unrhd = rel ctx `⊵`
+  val math ctx \triangleleft = rel ctx `⊲`
+  val math ctx \triangleright = rel ctx `⊳`
+  val math ctx \trianglelefteq = rel ctx `⊴`
+  val math ctx \trianglerighteq = rel ctx `⊵`
+  val math ctx \backsim = rel ctx `∽`
+  val math ctx \backsimeq = rel ctx `⋍`
+  val math ctx \eqcirc = rel ctx `≖`
+  val math ctx \cong = rel ctx `≅`
+  val math ctx \simneq = rel ctx `≆`
+  val math ctx \ncong = rel ctx `≇`
+  val math ctx \approx = rel ctx `≈`
+  val math ctx \napprox = rel ctx `≉`
+  val math ctx \approxeq = rel ctx `≊`
+  val math ctx \curlyeqprec = rel ctx `⋞`
+  val math ctx \curlyeqsucc = rel ctx `⋟`
+  val math ctx \lessdot = rel ctx `⋖`
+  val math ctx \gtrdot = rel ctx `⋗`
+  val math ctx \lesssim = rel ctx `≲`
+  val math ctx \gtrsim = rel ctx `≳`
+  val math ctx \nlesssim = rel ctx `≴`
+  val math ctx \ngtrsim = rel ctx `≵`
+  val math ctx \lessgtr = rel ctx `≶`
+  val math ctx \gtrless = rel ctx `≷`
+  val math ctx \nlessgtr = rel ctx `≸`
+  val math ctx \ngtrless = rel ctx `≹`
+  val math ctx \ntriangleleft = rel ctx `⋪`
+  val math ctx \ntriangleright = rel ctx `⋫`
+  val math ctx \ntrianglelefteq = rel ctx `⋬`
+  val math ctx \ntrianglerighteq = rel ctx `⋭`
+  val math ctx \lesseqgtr = rel ctx `⋚`
+  val math ctx \gtreqless = rel ctx `⋛`
+  val math ctx \nless = rel ctx `≮`
+  val math ctx \ngtr = rel ctx `≯`
+  val math ctx \nleq = rel ctx `≰`
+  val math ctx \ngeq = rel ctx `≱`
+  val math ctx \asymp = rel ctx `≍`
+  val math ctx \nasymp = rel ctx `≭`
+  val math ctx \circeq = rel ctx `≗`
+  val math ctx \Bumpeq = rel ctx `≎`
+  val math ctx \bumpeq = rel ctx `≏`
+  val math ctx \doteq = rel ctx `≐`
+  val math ctx \doteqdot = rel ctx `≑`
+  val math ctx \fallingdotseq = rel ctx `≒`
+  val math ctx \risingdotseq = rel ctx `≓`
+  val math ctx \mid = rel ctx `∣`
+  val math ctx \nmid = rel ctx `∤`
+  val math ctx \parallel = rel ctx `∥`
+  val math ctx \nparallel = rel ctx `∦`
+  val math ctx \Vvdash = rel ctx `⊪`
+  val math ctx \VDash = rel ctx `⊫`
+  val math ctx \coloncoloneq = rel ctx `⩴`
+  val math ctx \leqslant = rel ctx `⩽`
+  val math ctx \geqslant = rel ctx `⩾`
+  val math ctx \dashV = rel ctx `⫣`
+  val math ctx \Dashv = rel ctx `⫤`
+  val math ctx \DashV = rel ctx `⫥`
+  val math ctx \preceq = rel ctx `⪯`
+  val math ctx \succeq = rel ctx `⪰`
+
+  val math ctx \amalg = bin ctx `⨿`
+  val math ctx \dotplus = bin ctx `∔`
+  val math ctx \divideontimes = bin ctx `⋇`
+  val math ctx \odot = bin ctx `⊙`
+  val math ctx \circledcirc = bin ctx `⊚`
+  val math ctx \circledast = bin ctx `⊛`
+%  val math ctx \circledeq = bin ctx `⊜`
+  val math ctx \circleddash = bin ctx `⊝`
+  val math ctx \boxplus = bin ctx `⊞`
+  val math ctx \boxminus = bin ctx `⊟`
+  val math ctx \boxtimes = bin ctx `⊠`
+  val math ctx \boxdot = bin ctx `⊡`
+  val math ctx \curlyvee = bin ctx `⋎`
+  val math ctx \curlywedge = bin ctx `⋏`
+  val math ctx \Join = bin ctx `⋈`
+  val math ctx \ltimes = bin ctx `⋉`
+  val math ctx \rtimes = bin ctx `⋊`
+  val math ctx \leftthreetimes = bin ctx `⋋`
+  val math ctx \rightthreetimes = bin ctx `⋌`
+  val math ctx \wr = bin ctx `≀`
+
+  val math ctx \diamond = ord ctx `⋄`
+  val math ctx \star = ord ctx `⋆`
+  val math ctx \complement = ord ctx `∁`
+  val math ctx \angle = ord ctx `∠`
+  val math ctx \measuredangle = ord ctx `∡`
+  val math ctx \sphericalangle = rel ctx `∢`
+
+  val math ctx \ordd = prefix ctx `d`
+  val math ctx \partial = prefix ctx `∂`
+  val math ctx \nabla  = prefix ctx `∇`
+
+%% -- for Latin Modern Math --
+  val math ctx \int =
+    let kernfL _ _ = 0pt in
+    let kernfR fontsize ypos = fontsize *' 0.45 in
+    math-big-char-with-kern ctx MathOp `∫` kernfL kernfR
+
+%% -- for Cambria Math --
+%  val math ctx \int =
+%    let kernfL _ _ = 0pt in
+%    let kernfR fontsize ypos = fontsize *' 0.2 in
+%      math-big-char-with-kern MathOp `∫` kernfL kernfR
+
+  val math-space =
+    embed-inline-to-math MathOrd (inline-skip 30pt)
+
+  val math ctx \and-also = math-space
+
+  val math ctx \tyjd tyenv tm ty =
+    read-math ctx ${#tyenv \vdash #tm \colon-rel #ty}
+
+  val math ctx \synteq =
+    read-math ctx ${\equiv}
+
+  val math ctx \dot-punct =
+    math-char ctx MathPunct `.`
+
+  val math ctx \tmabstyped var ty body =
+    read-math ctx ${\lambda #var \colon-rel #ty \dot-punct #body}
+
+  val math ctx \npe =
+    read-math (ctx |> set-text-color (RGB(1., 0., 0.)) |> set-math-char-class MathRoman) ${e}
+
+  val math ctx \bi m =
+    read-math (ctx |> set-math-char-class MathBoldItalic) m
+
+  type paren = Pervasives.paren %TODO (enhance): remove this
+
+  val half-length hgt dpt hgtaxis fontsize =
+    let minhalflen = fontsize *' 0.5 in
+    let lenappend = fontsize *' 0.1 in
+      Pervasives.length-max minhalflen ((Pervasives.length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend)
+
+  val extract-spec-from-context ctx =
+    let fontsize = get-font-size ctx in
+    let hgtaxis = fontsize *' get-math-axis-height-ratio ctx in
+    let color = get-text-color ctx in
+    (fontsize, hgtaxis, color)
+
+  val angle-left thk hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let widparen = halflen *' 0.375 in
+    let wid = widparen +' fontsize *' 0.1 in
+    let path (xpos, ypos) =
+      start-path (xpos +' wid, ypos +' hgtaxis +' halflen)
+        |> line-to (xpos +' wid -' widparen, ypos +' hgtaxis)
+        |> line-to (xpos +' wid, ypos +' hgtaxis -' halflen)
+        |> terminate-path
+    in
+    let graphics point = stroke thk color (path point) in
+    let kerninfo y =
+      let widkern = widparen in
+      let r = 0. in
+      let gap = Pervasives.length-abs (y -' hgtaxis) in
+        if halflen *' r <' gap then
+          widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+        else
+          0pt
+    in
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+  val angle-right thk hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let widparen = halflen *' 0.375 in
+    let wid = widparen +' fontsize *' 0.1 in
+    let path (xpos, ypos) =
+      start-path (xpos, ypos +' hgtaxis +' halflen)
+        |> line-to (xpos +' widparen, ypos +' hgtaxis)
+        |> line-to (xpos, ypos +' hgtaxis -' halflen)
+        |> terminate-path
+    in
+    let graphics point = stroke thk color (path point) in
+    let kerninfo y =
+      let widkern = widparen in
+      let r = 0. in
+      let gap = Pervasives.length-abs (y -' hgtaxis) in
+        if halflen *' r <' gap then
+          widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+        else
+          0pt
+    in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+  val math ctx \angle-bracket m =
+    math-paren ctx (angle-left 0.5pt) (angle-right 0.5pt) (read-math ctx m)
+
+  val paren-left hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.25 in %temporary
+    let w-extra = fontsize *' 0.1 in
+    let t1 = fontsize *' 0.025 in
+    let t2 = fontsize *' 0.025 in
+
+    let qA = halflen *' 0.35 in
+    let p1 = (w1 +' w2) *' 0.75 in
+    let q1 = halflen *' 0.3 in
+
+    let qB = halflen *' 0.45 in
+    let p2 = w2 *' 0.5 in
+    let q2 = halflen *' 0.2 in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let x0 = xpos +' w0 in
+      let x1 = x0 +' w1 in
+      let x2 = x1 +' w2 in
+      start-path (x2, ycenter +' halflen)
+        |> bezier-to (x2 -' p1, ycenter +' halflen -' q1) (x0, ycenter +' qA) (x0, ycenter)
+        |> bezier-to (x0, ycenter -' qA) (x2 -' p1, ycenter -' halflen +' q1) (x2, ycenter -' halflen)
+        |> line-to (x2 +' t1, ycenter -' halflen +' t2)
+        |> bezier-to (x2 -' p2, ycenter -' halflen +' q2) (x1, ycenter -' qB) (x1, ycenter)
+        |> bezier-to (x1, ycenter +' qB) (x2 -' p2, ycenter +' halflen -' q2) (x2 +' t1, ycenter +' halflen -' t2)
+        |> close-with-line
+    in
+    let graphics point = fill color (path point) in
+    let kerninfo _ = 0pt in
+      (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+  val paren-right hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.25 in %temporary
+    let w-extra = fontsize *' 0.1 in
+    let t1 = 0pt -' fontsize *' 0.025 in
+    let t2 = fontsize *' 0.025 in
+
+    let qA = halflen *' 0.35 in
+    let p1 = 0pt -' (w1 +' w2) *' 0.75 in
+    let q1 = halflen *' 0.3 in
+
+    let qB = halflen *' 0.45 in
+    let p2 = 0pt -' w2 *' 0.5 in
+    let q2 = halflen *' 0.2 in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let x0 = xpos +' w-extra +' w2 +' w1 in
+      let x1 = xpos +' w-extra +' w2 in
+      let x2 = xpos +' w-extra in
+      start-path (x2, ycenter +' halflen)
+        |> bezier-to (x2 -' p1, ycenter +' halflen -' q1) (x0, ycenter +' qA) (x0, ycenter)
+        |> bezier-to (x0, ycenter -' qA) (x2 -' p1, ycenter -' halflen +' q1) (x2, ycenter -' halflen)
+        |> line-to (x2 +' t1, ycenter -' halflen +' t2)
+        |> bezier-to (x2 -' p2, ycenter -' halflen +' q2) (x1, ycenter -' qB) (x1, ycenter)
+        |> bezier-to (x1, ycenter +' qB) (x2 -' p2, ycenter +' halflen -' q2) (x2 +' t1, ycenter +' halflen -' t2)
+        |> close-with-line
+    in
+    let graphics point = fill color (path point) in
+    let widparen = w0 +' w1 +' w2 +' w-extra in
+    let kerninfo y =
+      let widkern = widparen *' 0.5 in
+      let r = 0.25 in
+      let gap = Pervasives.length-abs (y -' hgtaxis) in
+        let diff = Pervasives.length-min (gap -' halflen *' r) (halflen *' (1. -. r)) in
+        if 0pt <' diff then
+          widkern *' (diff /' (halflen *' (1. -. r)))
+        else
+          0pt
+    in
+    (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val paren ctx mb =
+    math-paren ctx paren-left paren-right mb
+
+
+  val math ctx \paren m =
+    paren ctx (read-math ctx m)
+
+
+  val math ctx \app m1 m2 =
+    read-math ctx ${#m1 \paren{#m2}}
+
+
+  val brace-left hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+
+    let t0 = fontsize *' 0.0125 in
+    let t4 = fontsize *' 0.025 in
+
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
+    let w-straight = h-straight *' 0.15 in
+    let w1 = fontsize *' 0.0125 in
+    let w2 = fontsize *' 0.02 in
+    let w5 = fontsize *' 0.01 in
+    let w6 = fontsize *' 0.015 in
+    let w-extra = fontsize *' 0.1 in
+
+    let x0 = fontsize *' 0.125 in
+    let x1 = fontsize *' 0.25 in
+    let x2 = x1 -' w-straight in
+    let x3 = x2 +' fontsize *' 0.2 in
+    let x4 = x3 +' fontsize *' 0.01 in
+    let x5 = x2 +' fontsize *' 0.0625 in
+    let x6 = x5 +' w-straight in
+    let x7 = fontsize *' 0.225 in
+
+    let p0 = fontsize *' 0.2 in
+    let p1 = x1 +' w1 in
+    let p2 = x2 -' w2 in
+    let p3 = x3 -' fontsize *' 0.1 in
+    let p4 = x4 -' fontsize *' 0.09 in
+    let p5 = x5 -' w5 in
+    let p6 = x6 +' w6 in
+    let p7 = fontsize *' 0.3 in
+
+    let y0 = t0 in
+    let y1 = fontsize *' 0.125 in
+    let y2 = y1 +' h-straight in
+    let y3 = halflen in
+    let y4 = halflen -' t4 in
+    let y5 = halflen -' fontsize *' 0.175 in
+    let y6 = y5 -' h-straight in
+    let y7 = 0pt in
+
+    let q0 = y0 in
+    let q1 = y1 -' (y2 -' y1) *' ((x1 -' p1) /' (x2 -' x1)) in
+    let q2 = y2 +' (y2 -' y1) *' ((p2 -' x2) /' (x2 -' x1)) in
+    let q3 = halflen -' fontsize *' 0.00875 in
+    let q4 = halflen -' t4 -' fontsize *' 0.01 in
+    let q5 = y5 +' (y5 -' y6) *' ((p5 -' x5) /' (x5 -' x6)) in
+    let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
+    let q7 = fontsize *' 0.025 in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let fP (x, y) = (xpos +' x, ycenter +' y) in
+      let fN (x, y) = (xpos +' x, ycenter -' y) in
+        start-path   (fP (x0, y0))
+          |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
+          |> line-to (fP (x2, y2))
+          |> bezier-to (fP (p2, q2)) (fP (p3, q3)) (fP (x3, y3))
+          |> line-to (fP (x4, y4))
+          |> bezier-to (fP (p4, q4)) (fP (p5, q5)) (fP (x5, y5))
+          |> line-to (fP (x6, y6))
+          |> bezier-to (fP (p6, q6)) (fP (p7, q7)) (fP (x7, y7))
+          |> bezier-to (fN (p7, q7)) (fN (p6, q6)) (fN (x6, y6))
+          |> line-to (fN (x5, y5))
+          |> bezier-to (fN (p5, q5)) (fN (p4, q4)) (fN (x4, y4))
+          |> line-to (fN (x3, y3))
+          |> bezier-to (fN (p3, q3)) (fN (p2, q2)) (fN (x2, y2))
+          |> line-to (fN (x1, y1))
+          |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
+          |> close-with-line
+    in
+    let graphics point = fill color (path point) in
+    let kerninfo _ = 0pt in
+    (inline-graphics (x4 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val brace-right hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+
+    let t0 = fontsize *' 0.0125 in
+    let t4 = fontsize *' 0.025 in
+
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
+    let w-straight = h-straight *' 0.15 in
+    let w1 = fontsize *' 0.0125 in
+    let w2 = fontsize *' 0.02 in
+    let w5 = fontsize *' 0.01 in
+    let w6 = fontsize *' 0.015 in
+    let w-extra = fontsize *' 0.1 in
+
+    let x0 = w-extra +' fontsize *' 0.125 in
+    let x1 = w-extra +' fontsize *' 0.25 in
+    let x2 = x1 -' w-straight in
+    let x3 = x2 +' fontsize *' 0.2 in
+    let x4 = x3 +' fontsize *' 0.01 in
+    let x5 = x2 +' fontsize *' 0.0625 in
+    let x6 = x5 +' w-straight in
+    let x7 = w-extra +' fontsize *' 0.225 in
+
+    let p0 = w-extra +' fontsize *' 0.2 in
+    let p1 = x1 +' w1 in
+    let p2 = x2 -' w2 in
+    let p3 = x3 -' fontsize *' 0.1 in
+    let p4 = x4 -' fontsize *' 0.09 in
+    let p5 = x5 -' w5 in
+    let p6 = x6 +' w6 in
+    let p7 = w-extra +' fontsize *' 0.3 in
+
+    let y0 = t0 in
+    let y1 = fontsize *' 0.125 in
+    let y2 = y1 +' h-straight in
+    let y3 = halflen in
+    let y4 = halflen -' t4 in
+    let y5 = halflen -' fontsize *' 0.175 in
+    let y6 = y5 -' h-straight in
+    let y7 = 0pt in
+
+    let q0 = y0 in
+    let q1 = y1 -' (y2 -' y1) *' ((x1 -' p1) /' (x2 -' x1)) in
+    let q2 = y2 +' (y2 -' y1) *' ((p2 -' x2) /' (x2 -' x1)) in
+    let q3 = halflen -' fontsize *' 0.00875 in
+    let q4 = halflen -' t4 -' fontsize *' 0.01 in
+    let q5 = y5 +' (y5 -' y6) *' ((p5 -' x5) /' (x5 -' x6)) in
+    let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
+    let q7 = fontsize *' 0.025 in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let fP (x, y) = (xpos +' x4 -' x +' w-extra, ycenter +' y) in
+      let fN (x, y) = (xpos +' x4 -' x +' w-extra, ycenter -' y) in
+        start-path   (fP (x0, y0))
+          |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
+          |> line-to (fP (x2, y2))
+          |> bezier-to (fP (p2, q2)) (fP (p3, q3)) (fP (x3, y3))
+          |> line-to (fP (x4, y4))
+          |> bezier-to (fP (p4, q4)) (fP (p5, q5)) (fP (x5, y5))
+          |> line-to (fP (x6, y6))
+          |> bezier-to (fP (p6, q6)) (fP (p7, q7)) (fP (x7, y7))
+          |> bezier-to (fN (p7, q7)) (fN (p6, q6)) (fN (x6, y6))
+          |> line-to (fN (x5, y5))
+          |> bezier-to (fN (p5, q5)) (fN (p4, q4)) (fN (x4, y4))
+          |> line-to (fN (x3, y3))
+          |> bezier-to (fN (p3, q3)) (fN (p2, q2)) (fN (x2, y2))
+          |> line-to (fN (x1, y1))
+          |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
+          |> close-with-line
+    in
+    let graphics point = fill color (path point) in
+    let kerninfo _ = 0pt in
+    (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val brace-left-long hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+
+    let t0B = fontsize *' 0.05 in
+    let t1A = fontsize *' 0.05 in
+    let t1B = fontsize *' 0.025 in
+    let t2A = halflen *' 0.1 in
+    let t2B = halflen *' 0.15 in
+    let t3A = fontsize *' 0.05 in
+
+    let (x0, y0) = (fontsize *' 0.005, fontsize *' 0.005) in
+    let (p0B, q0B) = (x0 +' t0B, y0) in
+
+    let (x1, y1) = (fontsize *' 0.2, fontsize *' 0.2) in
+    let (p1A, q1A) = (x1, y1 -' t1A) in
+    let (p1B, q1B) = (x1, y1 +' t1B) in
+
+    let theta = atan2 (x1 /' 1pt) (halflen /' 1pt) in
+
+    let (x2, y2) = (fontsize *' 0.175, halflen *' 0.5) in
+
+    let (p2A, q2A) = (x2 +' t2A *' (sin theta), y2 -' t2A *' (cos theta)) in
+    let (p2B, q2B) = (x2 -' t2B *' (sin theta), y2 +' t2B *' (cos theta)) in
+
+    let (x3, y3) = (fontsize *' 0.15, halflen -' fontsize *' 0.2) in
+
+    let (p3A, q3A) = (x3, y3 -' t3A) in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let fP (x, y) = (xpos +' x, ycenter +' y) in
+      let fN (x, y) = (xpos +' x, ycenter -' y) in
+%        start-path (fP (x0, y0))
+%          |> bezier-to (fP (p0B, q0B)) (fP (p1A, q1A)) (fP (x1, y1))
+%          |> bezier-to (fP (p1B, q1B)) (fP (p2A, q2A)) (fP (x2, y2))
+%          |> close-with-line
+        Gr.poly-line (fP (x0, y0)) [
+          fP (p0B, q0B), fP (p1A, q1A), fP (x1, y1),
+          fP (p1B, q1B), fP (p2A, q2A), fP (x2, y2),
+          fP (p2B, q2B), fP (p3A, q3A), fP (x3, y3),
+        ]
+    in
+    let graphics point = fill color (path point) in
+    let kerninfo _ = 0pt in
+    (inline-graphics (x2) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val math ctx \brace m =
+    math-paren ctx brace-left brace-right (read-math ctx m)
+
+
+  val bar-middle hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let halfwid = fontsize *' 0.5 in
+    let graphics (x, y) =
+      stroke 0.5pt color
+        (Gr.line (x +' halfwid, y +' hgtaxis -' halflen) (x +' halfwid, y +' hgtaxis +' halflen))
+    in
+    let kerninfo _ = 0pt in
+    (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val math ctx \setsep m1 m2 =
+    math-paren-with-middle ctx brace-left brace-right bar-middle [read-math ctx m1, read-math ctx m2]
+
+
+  val slash-middle hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let halfwid = halflen *' 0.5 in
+    let graphics (x, y) =
+      stroke 0.5pt color
+        (Gr.line (x, y +' hgtaxis -' halflen) (x +' halfwid *' 2., y +' hgtaxis +' halflen))
+    in
+    let kerninfo _ = 0pt in
+    (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val bracket-metrics fontsize halflen =
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.05 +' halflen *' 0.005 in
+    let w2 = halflen *' 0.3 in
+    let t = fontsize *' 0.03 in
+      (w0, w1, w2, t)
+
+
+  val bracket-path x0 x1 x2 t ypos hgtaxis halflen =
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x2, ytop)
+        |> line-to (x0, ytop)
+        |> line-to (x0, ybot)
+        |> line-to (x2, ybot)
+        |> line-to (x2, ybot +' t)
+        |> line-to (x1, ybot +' t)
+        |> line-to (x1, ytop -' t)
+        |> line-to (x2, ytop -' t)
+        |> close-with-line
+
+
+  val floor-path x0 x1 x2 t ypos hgtaxis halflen =
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x0, ytop)
+        |> line-to (x0, ybot)
+        |> line-to (x2, ybot)
+        |> line-to (x2, ybot +' t)
+        |> line-to (x1, ybot +' t)
+        |> line-to (x1, ytop)
+        |> close-with-line
+
+
+  val ceil-path x0 x1 x2 t ypos hgtaxis halflen =
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x2, ytop)
+        |> line-to (x0, ytop)
+        |> line-to (x0, ybot)
+        |> line-to (x1, ybot)
+        |> line-to (x1, ytop -' t)
+        |> line-to (x2, ytop -' t)
+        |> close-with-line
+
+
+  val bracket-left pathf (hgt : length) (dpt : length) (ctx : context) =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let (w0, w1, w2, t) = bracket-metrics fontsize halflen in
+    let path (xpos, ypos) =
+      let x0 = xpos +' w0 in
+      let x1 = x0 +' w1 in
+      let x2 = x1 +' w2 in
+        pathf x0 x1 x2 t ypos hgtaxis halflen
+    in
+    let graphics point = fill color (path point) in
+    let widparen = w0 +' w1 +' w2 in
+    (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+
+
+  val bracket-right pathf (hgt : length) (dpt : length) (ctx : context) =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let (w0, w1, w2, t) = bracket-metrics fontsize halflen in
+    let widparen = w0 +' w1 +' w2 in
+    let path (xpos, ypos) =
+      let x0 = xpos +' widparen -' w0 in
+      let x1 = x0 -' w1 in
+      let x2 = x1 -' w2 in
+        pathf x0 x1 x2 t ypos hgtaxis halflen
+    in
+    let graphics point = fill color (path point) in
+    (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+
+
+  val sqbracket-left = bracket-left bracket-path
+  val sqbracket-right = bracket-right bracket-path
+  val math ctx \sqbracket m =
+    math-paren ctx sqbracket-left sqbracket-right (read-math ctx m)
+
+
+  val floor-left hgt = bracket-left floor-path hgt
+  val floor-right hgt = bracket-right floor-path hgt
+  val math ctx \floor m =
+    math-paren ctx floor-left floor-right (read-math ctx m)
+
+
+  val ceil-left = bracket-left ceil-path
+  val ceil-right = bracket-right ceil-path
+  val math ctx \ceil m =
+    math-paren ctx ceil-left ceil-right (read-math ctx m)
+
+
+  val empty-paren _ _ _ = (inline-nil, (fun _ -> 0pt))
+
+
+  val abs-left hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 5.0pt in
+    let path (xpos, ypos) =
+      start-path (xpos +' wid *' 0.5, ypos +' hgtaxis +' halflen)
+        |> line-to (xpos +' wid *' 0.5, ypos +' hgtaxis -' halflen)
+        |> close-with-line
+    in
+    let graphics point = stroke 0.5pt color (path point) in
+    let kerninfo _ = 0pt in
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val abs-right hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 5.0pt in
+    let path (xpos, ypos) =
+      start-path (xpos +' wid *' 0.5, ypos +' hgtaxis +' halflen)
+        |> line-to (xpos +' wid *' 0.5, ypos +' hgtaxis -' halflen)
+        |> close-with-line
+    in
+    let graphics point = stroke 0.5pt color (path point) in
+    let kerninfo _ = 0pt in
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val math ctx \abs m =
+    math-paren ctx abs-left abs-right (read-math ctx m)
+
+
+  val norm-left hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 7.0pt in
+    let path (xpos, ypos) =
+      unite-path (
+        start-path (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      ) (
+        start-path (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      )
+    in
+    let graphics point = stroke 0.5pt color (path point) in
+    let kerninfo _ = 0pt in
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val norm-right hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 7.0pt in
+    let path (xpos, ypos) =
+      unite-path (
+        start-path (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      ) (
+        start-path (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      )
+    in
+    let graphics point = stroke 0.5pt color (path point) in
+    let kerninfo _ = 0pt in
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val math ctx \norm m =
+    math-paren ctx norm-left norm-right (read-math ctx m)
+
+
+  val math ctx \set m =
+    read-math ctx ${\brace{#m}}
+
+
+  val math ctx \cases lst =
+    let m-inner =
+      embed-inline-to-math MathInner (
+        let size = get-font-size ctx in
+        let pads = (0pt, 0pt, size *' 0.25, size *' 0.25) in
+        let celllstlst =
+          lst |> List.map (fun (m, it) -> (
+            let ib1 = embed-math ctx (read-math ctx m) ++ inline-fil in
+            let ib2 = inline-skip size ++ read-inline ctx it ++ inline-fil in
+            [NormalCell(pads, ib1), NormalCell(pads, ib2)]
+          ))
+        in
+        let ib = tabular celllstlst (fun _ _ -> Gr.empty) in
+        let (_, hgt, dpt) = get-natural-metrics ib in
+        let hgtaxis = size *' get-math-axis-height-ratio ctx in
+        raise-inline (hgtaxis -' (hgt +' dpt) *' 0.5) ib
+      )
+    in
+    math-paren ctx brace-left empty-paren m-inner
+
+
+end

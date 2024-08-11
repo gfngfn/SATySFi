@@ -3,16 +3,15 @@
 LIBDIR=${1:-/usr/local/share/satysfi}
 
 install -d "${LIBDIR}"
-install -d "${LIBDIR}/dist"
-install -d "${LIBDIR}/dist/unidata"
-install -m 644 lib-satysfi/dist/unidata/*.txt "${LIBDIR}/dist/unidata"
-install -d "${LIBDIR}/dist/fonts"
-install -m 644 lib-satysfi/dist/fonts/* "${LIBDIR}/dist/fonts"
-install -d "${LIBDIR}"/dist/hash
-install -m 644 lib-satysfi/dist/hash/* "${LIBDIR}/dist/hash"
-install -d "${LIBDIR}/dist/hyph"
-install -m 644 lib-satysfi/dist/hyph/* "${LIBDIR}/dist/hyph"
-install -d "${LIBDIR}"/dist/packages
-install -m 644 lib-satysfi/dist/packages/* "${LIBDIR}/dist/packages"
-install -d "${LIBDIR}"/dist/md
-install -m 644 lib-satysfi/dist/md/* "${LIBDIR}/dist/md"
+install -m 644 lib-satysfi/satysfi-library-root.yaml "${LIBDIR}/satysfi-library-root.yaml"
+install -d "${LIBDIR}/unidata"
+install -m 644 lib-satysfi/unidata/*.txt "${LIBDIR}/unidata"
+install -d "${LIBDIR}/hyph"
+install -m 644 lib-satysfi/hyph/* "${LIBDIR}/hyph"
+
+# It is no longer necessary to install packages beforehand due to the package system:
+#
+# install -d "${LIBDIR}/packages"
+# (cd lib-satysfi && find packages -type f -exec install -Dm 644 "{}" "${LIBDIR}/{}" \;)
+# install -d "${LIBDIR}/registries"
+# (cd lib-satysfi && find registries -type f -exec install -Dm 644 "{}" "${LIBDIR}/{}" \;)

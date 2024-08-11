@@ -1,18 +1,35 @@
-@require: stdjabook
-@require: code
-@require: itemize
-@require: tabular
-@require: proof
-@import: local
+#[config (|
+  registries = [
+    (|
+      name = `default`,
+      remote =
+        Git(|
+          url = `https://github.com/SATySFi/default-registry`,
+          branch = `format-1`,
+        |)
+    |)
+  ],
+  dependencies = [
+    (| name = `stdlib`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `math`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `code`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `itemize`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `proof`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `tabular`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `std-ja-book`, registry = `default`, requirement = `^0.0.1` |),
+  ],
+|)]
+use package open Stdlib
+use package open Stdlib.Pervasives
+use package open Math
+use package open Annot
+use package open Code
+use package open Itemize
+use package open Proof
+use package Tabular
+use package open StdJaBook
+use open Local of `./local`
 
-let open Pervasives in
-let open Math in
-let open Proof in
-let open Code in
-let open Itemize in
-let open Annot in
-let open StdJaBook in
-let open Local in
 document ?(
   show-toc = true,
 ) (|

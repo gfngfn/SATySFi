@@ -1,0 +1,25 @@
+language: "^0.1.0"
+name: "font-latin-modern"
+authors: []
+external_sources:
+  - name: "lm2.004otf"
+    type: "zip"
+    url: "https://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip"
+    checksum: "0bc81a83fe37416b67b69ab3a6593ef5"
+    extractions:
+      - from: "lmmono10-regular.otf"
+        to: "./fonts/lmmono10-regular.otf"
+      - from: "lmsans10-regular.otf"
+        to: "./fonts/lmsans10-regular.otf"
+contents:
+  type: "font"
+  main_module: "FontLatinModern"
+  elements:
+  - path: "./fonts/lmmono10-regular.otf"
+    contents:
+      type: "opentype_single"
+      name: "mono"
+  - path: "./fonts/lmsans10-regular.otf"
+    contents:
+      type: "opentype_single"
+      name: "sans"

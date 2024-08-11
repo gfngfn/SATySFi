@@ -1,0 +1,40 @@
+module Color :> sig
+
+  val gray   : float -> color
+  val rgb    : float -> float -> float -> color
+  val black  : color
+  val white  : color
+  val red    : color
+  val yellow : color
+  val orange : color
+  val blue   : color
+
+  % web color names
+  val brown   : color
+  val cyan    : color
+  val green   : color
+  val magenta : color
+  val pink    : color
+  val purple  : color
+
+end = struct
+
+  val gray x = Gray(x)
+  val rgb r g b = RGB(r, g, b)
+
+  % basic colors
+  val black  = gray 0.
+  val white  = gray 1.
+  val red    = rgb 1. 0. 0.
+  val yellow = rgb 1. 1. 0.
+  val orange = rgb 1. 0.5 0.
+  val blue   = rgb 0. 0. 1.
+
+  % web color names
+  val brown                = rgb 0.64705 0.16470 0.16470
+  val cyan                 = rgb 0. 1. 1.
+  val green                = rgb 0. 0.50196 0.
+  val magenta              = rgb 1. 0. 1.
+  val pink                 = rgb 1. 0.75294 0.79607
+  val purple               = rgb 0.50196 0. 0.50196
+end

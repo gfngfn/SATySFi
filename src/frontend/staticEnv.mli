@@ -35,6 +35,7 @@ type type_entry = {
   type_scheme : type_scheme;
   type_kind   : kind;
 }
+[@@deriving show]
 
 type constructor_entry = {
   ctor_belongs_to : TypeID.t;
@@ -158,3 +159,5 @@ end
 val find_candidates_in_type_environment : Typeenv.t -> var_name -> var_name list
 
 val find_candidates_in_struct_sig : StructSig.t -> var_name -> var_name list
+
+type global_type_environment = StructSig.t GlobalTypeenv.t

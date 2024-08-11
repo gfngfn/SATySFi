@@ -1,0 +1,90 @@
+use package open Stdlib
+
+module Proof :> sig
+
+  val \derive : math [?(name : math-text, b : bool) list math-text, math-text]
+  val \derive-multi : math [?(name : math-text, b : bool) length, list math-text, math-text]
+
+end = struct
+
+  val math ctx \math-space len =
+    embed-inline-to-math MathOrd (inline-skip len)
+
+
+  val length-max len1 len2 =
+    if len1 <' len2 then len2 else len1
+
+
+  val derive ctx nameopt bopt widopt (mlst1 : list math-text) (m2 : math-text) =
+    let ib-space =
+      match widopt with
+      | None    -> inline-skip 30pt
+      | Some(_) -> discretionary 100 (inline-skip 30pt) inline-fil inline-fil
+      end
+    in
+    embed-inline-to-math MathInner (
+      let ibacc1 =
+        (mlst1 |> List.fold-left-adjacent (fun ibacc1 m prevopt _ -> (
+          let ibm = embed-math ctx (read-math ctx m) in
+          match prevopt with
+          | None    -> inline-fil ++ ibm
+          | Some(_) -> ibacc1 ++ ib-space ++ ibm
+          end
+        )) inline-nil) ++ inline-fil
+      in
+      let ib1 =
+        match widopt with
+        | None      -> ibacc1
+        | Some(wid) -> embed-block-bottom ctx wid (fun ctx -> line-break true true ctx ibacc1)
+        end
+      in
+      let ib2 = inline-fil ++ (embed-math ctx (read-math ctx m2)) ++ inline-fil in
+      let w =
+        match widopt with
+        | None      -> length-max (Pervasives.get-natural-width ib1) (Pervasives.get-natural-width ib2)
+        | Some(wid) -> length-max wid (Pervasives.get-natural-width ib2)
+        end
+      in
+      let color = get-text-color ctx in
+      let thickness = 0.5pt in
+      let gap = 2pt in
+      let (glnamef, wname) =
+        match nameopt with
+        | None ->
+            ((fun _ -> []), 0pt)
+
+        | Some(name) ->
+            let ib = embed-math ctx (read-math ctx name) in
+            let (wname, _, _) = get-natural-metrics ib in
+            let wname =
+              match bopt with
+              | None        -> wname
+              | Some(false) -> wname
+              | Some(true)  -> 0pt
+              end
+            in
+            ((fun pt -> [Gr.text-rightward pt ib]), wname)
+        end
+      in
+      let axis-height = get-font-size ctx *' get-math-axis-height-ratio ctx in
+      let bar =
+          inline-graphics w (thickness +' gap) gap (fun (x, y) -> (
+            let grs =
+              fill color (Gr.rectangle (x, y) (x +' w, y +' thickness))
+                :: (glnamef (x +' w, y -' axis-height))
+            in
+            unite-graphics grs
+          ))
+      in
+        line-stack-bottom [ib1, bar, ib2]
+          ++ inline-skip wname
+    )
+
+
+  val math ctx \derive ?(name = nameopt, b = bopt) ms m =
+    derive ctx nameopt bopt None ms m
+
+  val math ctx \derive-multi ?(name = nameopt, b = bopt) w ms m =
+    derive ctx nameopt bopt (Some(w)) ms m
+
+end

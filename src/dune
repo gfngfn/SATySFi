@@ -22,7 +22,12 @@
   uuseg.string
   yojson-with-position
   omd
-  ocamlgraph)
+  ocamlgraph
+  yaml
+  0install-solver
+  semver2
+  uri
+  core_unix)
  (preprocess
   (pps ppx_deriving.show)))
 

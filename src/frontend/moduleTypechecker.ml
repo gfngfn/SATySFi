@@ -2,7 +2,6 @@
 open SyntaxBase
 open Types
 open StaticEnv
-open MyUtil
 open TypeError
 open TypecheckUtil
 
@@ -11,7 +10,7 @@ module SynonymNameMap = Map.Make(String)
 
 module SynonymVertexHashSet = Hashtbl.Make(SynonymDependencyGraph.Vertex)
 
-module SynonymVertexSet = Set.Make(SynonymDependencyGraph.Vertex)
+module SynonymVertexSet = SynonymDependencyGraph.VertexSet
 
 
 let unify_quantifier (quant1 : quantifier) (quant2 : quantifier) : quantifier =
@@ -116,6 +115,38 @@ let add_constructor_definitions (ctordefs : variant_definition list) (ssig : Str
   ) ssig
 
 
+let rec update_subsignature (modnms : module_name list) (updater : signature -> signature) (modsig : signature) : signature =
+  match modnms with
+  | [] ->
+      updater modsig
+
+  | modnm0 :: proj ->
+      begin
+        match modsig with
+        | ConcFunctor(_) ->
+            assert false
+
+        | ConcStructure(ssig) ->
+            let ssig =
+              ssig |> StructSig.map
+                ~v:(fun _x ventry -> ventry)
+                ~a:(fun _csnm macentry -> macentry)
+                ~c:(fun _ctornm centry -> centry)
+                ~f:(fun _tynm pty -> pty)
+                ~t:(fun _tynm tentry -> tentry)
+                ~m:(fun modnm mentry ->
+                  if String.equal modnm modnm0 then
+                    let modsig = mentry.mod_signature |> update_subsignature proj updater in
+                    { mod_signature = modsig }
+                  else
+                    mentry
+                )
+                ~s:(fun _signm sentry -> sentry)
+            in
+            ConcStructure(ssig)
+      end
+
+
 let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (macparams : untyped_macro_parameter list) : Typeenv.t * EvalVarID.t list * mono_macro_parameter_type list =
   let (tyenv, evidacc, macparamtyacc) =
     macparams |> List.fold_left (fun (tyenv, evidacc, macptyacc) macparam ->
@@ -203,10 +234,11 @@ let get_dependency_on_synonym_types (known_syns : SynonymDependencyGraph.Vertex.
   ) hashset SynonymVertexSet.empty
 
 
-let bind_types (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) : ((type_name * type_entry) list * (constructor_name * TypeID.t * BoundID.t list * constructor_branch_map) list) ok =
+let bind_types (config : typecheck_config) (tyenv : Typeenv.t) (tybinds : untyped_type_binding list) : ((type_name * type_entry) list * (constructor_name * TypeID.t * BoundID.t list * constructor_branch_map) list) ok =
   let open ResultMonad in
   let pre =
     {
+      config          = config;
       stage           = Stage0;
       type_parameters = TypeParameterMap.empty;
       row_parameters  = RowParameterMap.empty;
@@ -379,7 +411,7 @@ let coerce_signature (rng : Range.t) (modsig1 : signature) (absmodsig2 : signatu
   return (quant2, copy_contents modsig1 modsig2)
 
 
-let rec typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : (signature abstracted) ok =
+let rec typecheck_signature (config : typecheck_config) (tyenv : Typeenv.t) (utsig : untyped_signature) : (signature abstracted) ok =
   let open ResultMonad in
   let (rng, utsigmain) = utsig in
   match utsigmain with
@@ -407,15 +439,15 @@ let rec typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : (s
       end
 
   | UTSigDecls(utdecls) ->
-      let* (quant, ssig) = typecheck_declaration_list tyenv utdecls in
+      let* (quant, ssig) = typecheck_declaration_list config tyenv utdecls in
       return (quant, ConcStructure(ssig))
 
   | UTSigFunctor((_, modnm), utsig1, utsig2) ->
-      let* (quant1, modsig1) = typecheck_signature tyenv utsig1 in
+      let* (quant1, modsig1) = typecheck_signature config tyenv utsig1 in
       let* absmodsig2 =
         let mentry = { mod_signature = modsig1; } in
         let tyenv = tyenv |> Typeenv.add_module modnm mentry in
-        typecheck_signature tyenv utsig2
+        typecheck_signature config tyenv utsig2
       in
       let fsig =
         {
@@ -428,7 +460,7 @@ let rec typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : (s
       return (OpaqueIDMap.empty, ConcFunctor(fsig))
 
   | UTSigWith(utsig0, modidents, tybinds) ->
-      let* (quant0, modsig0) = typecheck_signature tyenv utsig0 in
+      let* (quant0, modsig0) = typecheck_signature config tyenv utsig0 in
       let* ssig =
         match modsig0 with
         | ConcFunctor(fsig) ->
@@ -448,7 +480,7 @@ let rec typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : (s
                   end
             ) ssig0
       in
-      let* (tydefs, _ctordefs) = bind_types tyenv tybinds in
+      let* (tydefs, ctordefs) = bind_types config tyenv tybinds in
       let* (subst, quant) =
         tydefs |> foldM (fun (subst, quant) (tynm, tentry) ->
           let* (tyid, kd_expected) =
@@ -477,15 +509,23 @@ let rec typecheck_signature (tyenv : Typeenv.t) (utsig : untyped_signature) : (s
         ) (SubstMap.empty, quant0)
       in
       let modsig = modsig0 |> SignatureSubtyping.substitute_concrete subst in
-        (* TODO: use `ctordefs` to update `modsig` *)
+      let modsig =
+        modsig |> update_subsignature (modidents |> List.map (fun (_, modnm) -> modnm)) (function
+        | ConcFunctor(_) ->
+            assert false
+
+        | ConcStructure(ssig) ->
+            ConcStructure(ssig |> add_constructor_definitions ctordefs)
+        )
+      in
       return (quant, modsig)
 
 
-and typecheck_declaration_list (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : (StructSig.t abstracted) ok =
+and typecheck_declaration_list (config : typecheck_config) (tyenv : Typeenv.t) (utdecls : untyped_declaration list) : (StructSig.t abstracted) ok =
   let open ResultMonad in
   let* (quantacc, ssigacc, _) =
     utdecls |> foldM (fun (quantacc, ssigacc, tyenv) utdecl ->
-      let* (quant, ssig) = typecheck_declaration tyenv utdecl in
+      let* (quant, ssig) = typecheck_declaration config tyenv utdecl in
       let quantacc = unify_quantifier quantacc quant in
       let* ssigacc =
         match StructSig.union ssigacc ssig with
@@ -499,7 +539,7 @@ and typecheck_declaration_list (tyenv : Typeenv.t) (utdecls : untyped_declaratio
   return (quantacc, ssigacc)
 
 
-and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : (StructSig.t abstracted) ok =
+and typecheck_declaration (config : typecheck_config) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : (StructSig.t abstracted) ok =
   let open ResultMonad in
   match utdecl with
   | UTDeclValue(stage, (_, x), (typarams, rowparams), mty) ->
@@ -507,6 +547,7 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : (
       let* (rowparammap, _) = RowParameterMap.empty |> add_row_parameters (Level.succ Level.bottom) rowparams in
       let pre =
         {
+          config          = config;
           stage           = stage;
           level           = Level.succ Level.bottom;
           type_parameters = typarammap;
@@ -529,6 +570,7 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : (
   | UTDeclTypeOpaque((_, tynm), mnkd) ->
       let pre_init =
         {
+          config          = config;
           stage           = Stage0;
           level           = Level.bottom;
           type_parameters = TypeParameterMap.empty;
@@ -552,19 +594,19 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : (
       return (OpaqueIDMap.singleton tyid kd, ssig)
 
   | UTDeclModule((_, modnm), utsig) ->
-      let* absmodsig = typecheck_signature tyenv utsig in
+      let* absmodsig = typecheck_signature config tyenv utsig in
       let (quant, modsig) = absmodsig in
       let mentry = { mod_signature = modsig; } in
       let ssig = StructSig.empty |> StructSig.add_module modnm mentry in
       return (quant, ssig)
 
   | UTDeclSignature((_, signm), utsig) ->
-      let* absmodsig = typecheck_signature tyenv utsig in
+      let* absmodsig = typecheck_signature config tyenv utsig in
       let ssig = StructSig.empty |> StructSig.add_signature signm absmodsig in
       return (OpaqueIDMap.empty, ssig)
 
   | UTDeclInclude(utsig) ->
-      let* absmodsig = typecheck_signature tyenv utsig in
+      let* absmodsig = typecheck_signature config tyenv utsig in
       let (quant, modsig) = absmodsig in
       begin
         match modsig with
@@ -579,6 +621,7 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : (
   | UTDeclMacro((_rng_cs, csnm), (_, mmacty)) ->
       let pre_init =
         {
+          config          = config;
           stage           = Stage0;
           level           = Level.bottom;
           type_parameters = TypeParameterMap.empty;
@@ -593,7 +636,7 @@ and typecheck_declaration (tyenv : Typeenv.t) (utdecl : untyped_declaration) : (
       return (OpaqueIDMap.empty, ssig)
 
 
-let rec typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : (signature abstracted * binding list) ok =
+let rec typecheck_module (config : typecheck_config) (tyenv : Typeenv.t) (utmod : untyped_module) : (signature abstracted * binding list) ok =
   let open ResultMonad in
   let (rng, utmodmain) = utmod in
   match utmodmain with
@@ -603,17 +646,17 @@ let rec typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : (signatu
       return ((OpaqueIDMap.empty, modsig), [])
 
   | UTModBinds(utbinds) ->
-      let* ((quant, ssig), binds) = typecheck_binding_list tyenv utbinds in
+      let* ((quant, ssig), binds) = typecheck_binding_list config tyenv utbinds in
       return ((quant, ConcStructure(ssig)), binds)
 
   | UTModFunctor(modident1, utsig1, utmod2) ->
       let (_, modnm1) = modident1 in
-      let* absmodsig1 = typecheck_signature tyenv utsig1 in
+      let* absmodsig1 = typecheck_signature config tyenv utsig1 in
       let (quant1, modsig1) = absmodsig1 in
       let* (absmodsig2, _binds2) =
         let mentry1 = { mod_signature = modsig1; } in
         let tyenv = tyenv |> Typeenv.add_module modnm1 mentry1 in
-        typecheck_module tyenv utmod2
+        typecheck_module config tyenv utmod2
       in
       let fsig =
         {
@@ -650,7 +693,7 @@ let rec typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : (signatu
                   in
                   let* ((_, modsig0), binds) =
                     let mentry0 = { mod_signature = modsig2; } in
-                    typecheck_module (tyenv0 |> Typeenv.add_module modnm0 mentry0) utmod0
+                    typecheck_module config (tyenv0 |> Typeenv.add_module modnm0 mentry0) utmod0
                   in
                   let (quant1_subst, modsig_cod1_subst) =
                     absmodsig_cod1 |> SignatureSubtyping.substitute_abstract subst
@@ -666,17 +709,17 @@ let rec typecheck_module (tyenv : Typeenv.t) (utmod : untyped_module) : (signatu
   | UTModCoerce(modident1, utsig2) ->
       let* mentry1 = find_module tyenv modident1 in
       let modsig1 = mentry1.mod_signature in
-      let* absmodsig2 = typecheck_signature tyenv utsig2 in
+      let* absmodsig2 = typecheck_signature config tyenv utsig2 in
       let* absmodsig = coerce_signature rng modsig1 absmodsig2 in
       return (absmodsig, [])
 
 
-and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
+and typecheck_binding_list (config : typecheck_config) (tyenv : Typeenv.t) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
   let open ResultMonad in
   let* (binds, (quant, ssig)) =
     let* (bindacc, _tyenv, quantacc, ssigacc) =
       utbinds |> foldM (fun (bindacc, tyenv, quantacc, ssigacc) utbind ->
-        let* (binds, (quant, ssig)) = typecheck_binding tyenv utbind in
+        let* (binds, (quant, ssig)) = typecheck_binding config tyenv utbind in
         let tyenv = tyenv |> add_to_type_environment_by_signature ssig in
         let bindacc = Alist.append bindacc binds in
         let quantacc = unify_quantifier quantacc quant in
@@ -690,13 +733,38 @@ and typecheck_binding_list (tyenv : Typeenv.t) (utbinds : untyped_binding list) 
   return ((quant, ssig), binds)
 
 
-and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding list * StructSig.t abstracted) ok =
+and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utast1 : untyped_abstract_tree) (ty_expected_opt : mono_type option) =
+  let open ResultMonad in
+  let presub = { pre with level = Level.succ pre.level; } in
+  let evid = EvalVarID.fresh ident in
+  let* (e1_raw, ty1) = Typechecker.typecheck presub tyenv utast1 in
+  let e1 = e1_raw in
+  let* () =
+    match ty_expected_opt with
+    | None              -> return ()
+    | Some(ty_expected) -> unify ty1 ty_expected
+  in
+(*
+  let should_be_polymorphic = is_nonexpansive_expression e1 in
+*)
+  let should_be_polymorphic = true in
+    let pty =
+      if should_be_polymorphic then
+        TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
+      else
+        TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
+    in
+  return (evid, e1, pty)
+
+
+and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding list * StructSig.t abstracted) ok =
   let open ResultMonad in
   let (_, utbindmain) = utbind in
   match utbindmain with
-  | UTBindValue(stage, valbind) ->
+  | UTBindValue(attrs, stage, valbind) ->
       let pre =
         {
+          config          = config;
           stage           = stage;
           type_parameters = TypeParameterMap.empty;
           row_parameters  = RowParameterMap.empty;
@@ -704,87 +772,84 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
           level           = Level.bottom;
         }
       in
-      let* (rec_or_nonrecs, ssig) =
-        match valbind with
-        | UTNonRec(ident, utast1) ->
-            let presub = { pre with level = Level.succ pre.level; } in
-            let (_, varnm) = ident in
-            let evid = EvalVarID.fresh ident in
-            let* (e1_raw, ty1) = Typechecker.typecheck presub tyenv utast1 in
-            let e1 = e1_raw in
-(*
-            tyannot |> Option.map (fun mnty ->
-              let tyA = decode_manual_type pre tyenv mnty in
-              unify ty1 tyA
-            ) |> ignore;
-*)
-(*
-            let should_be_polymorphic = is_nonexpansive_expression e1 in
-*)
-            let should_be_polymorphic = true in
-            let ssig =
-              let pty =
-                if should_be_polymorphic then
-                  TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
-                else
-                  TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
-              in
-              let ventry =
-                {
-                  val_type  = pty;
-                  val_name  = Some(evid);
-                  val_stage = pre.stage;
-                }
-              in
-              StructSig.empty |> StructSig.add_value varnm ventry
-            in
-            return ([ NonRec(evid, e1) ], ssig)
-
-        | UTRec(utrecbinds) ->
-            let* quints = Typechecker.typecheck_letrec pre tyenv utrecbinds in
-            let (recbindacc, ssig) =
-              quints |> List.fold_left (fun (recbindacc, ssig) quint ->
-                let (x, pty, evid, recbind) = quint in
-                let ssig =
-                  let ventry =
-                    {
-                      val_type  = pty;
-                      val_name  = Some(evid);
-                      val_stage = stage;
-                    }
-                  in
-                  ssig |> StructSig.add_value x ventry
-                in
-                let recbindacc = Alist.extend recbindacc recbind in
-                (recbindacc, ssig)
-              ) (Alist.empty, StructSig.empty)
-            in
-            return ([ Rec(recbindacc |> Alist.to_list) ], ssig)
-
-        | UTMutable((rng, varnm) as var, utastI) ->
-            let* (eI, tyI) = Typechecker.typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
-            let evid = EvalVarID.fresh var in
-            let pty = TypeConv.lift_poly (rng, RefType(tyI)) in
-            let ssig =
-              let ventry =
-                {
-                  val_type  = pty;
-                  val_name  = Some(evid);
-                  val_stage = pre.stage;
-                }
-              in
-              StructSig.empty |> StructSig.add_value varnm ventry
-            in
-            return ([ Mutable(evid, eI) ], ssig)
+      let* valattr =
+        ValueAttribute.make attrs
+          |> Result.map_error (fun e -> ValueAttributeError(e))
       in
-      let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(stage, rec_or_nonrec)) in
-      return (binds, (OpaqueIDMap.empty, ssig))
+      if valattr.ValueAttribute.is_test then
+        match (stage, valbind) with
+        | (Stage1, UTNonRec(ident, utast1)) ->
+            let (_, test_name) = ident in
+            let ty_expected = (Range.dummy "test", BaseType(UnitType)) in
+            let* (evid, e1, _pty) = typecheck_nonrec pre tyenv ident utast1 (Some(ty_expected)) in
+            return ([ BindTest(evid, test_name, e1) ], (OpaqueIDMap.empty, StructSig.empty))
+
+        | _ ->
+            let rng = Range.dummy "TODO (error): typecheck_binding, test" in
+            err @@ TestMustBeStage1NonRec(rng)
+      else
+        let* (rec_or_nonrecs, ssig) =
+          match valbind with
+          | UTNonRec(ident, utast1) ->
+              let* (evid, e1, pty) = typecheck_nonrec pre tyenv ident utast1 None in
+              let ssig =
+                let (_, varnm) = ident in
+                let ventry =
+                  {
+                    val_type  = pty;
+                    val_name  = Some(evid);
+                    val_stage = pre.stage;
+                  }
+                in
+                StructSig.empty |> StructSig.add_value varnm ventry
+              in
+              return ([ NonRec(evid, e1) ], ssig)
+
+          | UTRec(utrecbinds) ->
+              let* quints = Typechecker.typecheck_letrec pre tyenv utrecbinds in
+              let (recbindacc, ssig) =
+                quints |> List.fold_left (fun (recbindacc, ssig) quint ->
+                  let (x, pty, evid, recbind) = quint in
+                  let ssig =
+                    let ventry =
+                      {
+                        val_type  = pty;
+                        val_name  = Some(evid);
+                        val_stage = stage;
+                      }
+                    in
+                    ssig |> StructSig.add_value x ventry
+                  in
+                  let recbindacc = Alist.extend recbindacc recbind in
+                  (recbindacc, ssig)
+                ) (Alist.empty, StructSig.empty)
+              in
+              return ([ Rec(recbindacc |> Alist.to_list) ], ssig)
+
+          | UTMutable((rng, varnm) as var, utastI) ->
+              let* (eI, tyI) = Typechecker.typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
+              let evid = EvalVarID.fresh var in
+              let pty = TypeConv.lift_poly (rng, RefType(tyI)) in
+              let ssig =
+                let ventry =
+                  {
+                    val_type  = pty;
+                    val_name  = Some(evid);
+                    val_stage = pre.stage;
+                  }
+                in
+                StructSig.empty |> StructSig.add_value varnm ventry
+              in
+              return ([ Mutable(evid, eI) ], ssig)
+        in
+        let binds = rec_or_nonrecs |> List.map (fun rec_or_nonrec -> Bind(stage, rec_or_nonrec)) in
+        return (binds, (OpaqueIDMap.empty, ssig))
 
   | UTBindType([]) ->
       assert false
 
   | UTBindType(tybinds) ->
-      let* (tydefs, ctordefs) = bind_types tyenv tybinds in
+      let* (tydefs, ctordefs) = bind_types config tyenv tybinds in
       let ssig =
         tydefs |> List.fold_left (fun ssig (tynm, tentry) ->
           ssig |> StructSig.add_type tynm tentry
@@ -795,7 +860,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
 
   | UTBindModule(modident, utsigopt2, utmod1) ->
       let (rng_mod, modnm) = modident in
-      let* (absmodsig1, binds1) = typecheck_module tyenv utmod1 in
+      let* (absmodsig1, binds1) = typecheck_module config tyenv utmod1 in
       let* (quant, modsig) =
         match utsigopt2 with
         | None ->
@@ -803,7 +868,7 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
 
         | Some(utsig2) ->
             let (_, modsig1) = absmodsig1 in
-            let* absmodsig2 = typecheck_signature tyenv utsig2 in
+            let* absmodsig2 = typecheck_signature config tyenv utsig2 in
             coerce_signature rng_mod modsig1 absmodsig2
       in
       let ssig =
@@ -813,12 +878,12 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
       return (binds1, (quant, ssig))
 
   | UTBindSignature((_, signm), utsig) ->
-      let* absmodsig = typecheck_signature tyenv utsig in
+      let* absmodsig = typecheck_signature config tyenv utsig in
       let ssig = StructSig.empty |> StructSig.add_signature signm absmodsig in
       return ([], (OpaqueIDMap.empty, ssig))
 
   | UTBindInclude(utmod) ->
-      let* (absmodsig, binds) = typecheck_module tyenv utmod in
+      let* (absmodsig, binds) = typecheck_module config tyenv utmod in
       let (quant, modsig) = absmodsig in
       begin
         match modsig with
@@ -830,9 +895,10 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
             err (NotAStructureSignature(rng_mod, fsig))
       end
 
-  | UTBindInlineMacro((rng_cs, csnm), macparams, utast1) ->
+  | UTBindInlineMacro(_attrs, (rng_cs, csnm), macparams, utast1) ->
       let pre =
         {
+          config          = config;
           stage           = Stage1;
           type_parameters = TypeParameterMap.empty;
           row_parameters  = RowParameterMap.empty;
@@ -857,9 +923,10 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
       let binds = [ Bind(Stage0, NonRec(evid, abstraction_list evids (Next(e1)))) ] in
       return (binds, (OpaqueIDMap.empty, ssig))
 
-  | UTBindBlockMacro((rng_cs, csnm), macparams, utast1) ->
+  | UTBindBlockMacro(_attrs, (rng_cs, csnm), macparams, utast1) ->
       let pre =
         {
+          config          = config;
           stage           = Stage1;
           type_parameters = TypeParameterMap.empty;
           row_parameters  = RowParameterMap.empty;
@@ -885,15 +952,14 @@ and typecheck_binding (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding 
       return (binds, (OpaqueIDMap.empty, ssig))
 
 
-let main (tyenv : Typeenv.t) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
+let main (config : typecheck_config) (tyenv : Typeenv.t) (absmodsig_opt : (signature abstracted) option) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
   let open ResultMonad in
-  match utsig_opt with
+  match absmodsig_opt with
   | None ->
-      typecheck_binding_list tyenv utbinds
+      typecheck_binding_list config tyenv utbinds
 
-  | Some(utsig) ->
-      let* absmodsig = typecheck_signature tyenv utsig in
-      let* ((_, ssig), binds) = typecheck_binding_list tyenv utbinds in
+  | Some(absmodsig) ->
+      let* ((_, ssig), binds) = typecheck_binding_list config tyenv utbinds in
       let rng = Range.dummy "main_bindings" in (* TODO (error): give appropriate ranges *)
       let* (quant, modsig) = coerce_signature rng (ConcStructure(ssig)) absmodsig in
       let ssig =

@@ -1,0 +1,27 @@
+language: "^0.1.0"
+name: "code"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "Naoki Kaneko <@puripuri2100>"
+registries:
+  - name: "default"
+    remote:
+      type: "git"
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "format-1"
+contents:
+  type: "library"
+  main_module: "Code"
+  source_directories:
+    - "./src"
+  dependencies:
+    - name: "stdlib"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"
+    - name: "font-latin-modern"
+      spec:
+        type: "registered"
+        registry: "default"
+        requirement: "^0.0.1"

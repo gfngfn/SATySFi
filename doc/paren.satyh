@@ -1,5 +1,5 @@
-@require: math
-@require: gr
+use package open Stdlib
+use package Math
 
 module LocalParen = struct
 

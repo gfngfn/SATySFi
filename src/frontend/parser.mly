@@ -209,8 +209,7 @@
           let newresitmz = insert_last [] resitmz 1 depth utast in
           make_list_to_itemize_sub newresitmz tail depth
         else
-          raise (ParseErrorDetail(rng, "syntax error: illegal item depth "
-            ^ (string_of_int depth) ^ " after " ^ (string_of_int crrntdp)))
+          raise (ParseError(IllegalItemDepth{ range = rng; before = depth; current = crrntdp }))
 
 
   let make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
@@ -238,13 +237,15 @@
 %token<Range.t>
   AND AS BLOCK COMMAND ELSE END FALSE FUN
   IF IN INCLUDE INLINE LET MOD MATCH MATH MODULE MUTABLE OF OPEN
-  REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH PERSISTENT
+  REC SIG SIGNATURE STRUCT THEN TRUE TYPE VAL WITH PERSISTENT PACKAGE USE
 
 %token<Range.t> BAR WILDCARD COLON ARROW REVERSED_ARROW SEMICOLON COMMA CONS ACCESS QUESTION COERCE
 
 %token<Range.t>
   L_PAREN R_PAREN L_SQUARE R_SQUARE L_RECORD R_RECORD
   L_BLOCK_TEXT R_BLOCK_TEXT L_INLINE_TEXT R_INLINE_TEXT L_MATH_TEXT R_MATH_TEXT
+
+%token<Range.t * Types.attribute_name> ATTRIBUTE_L_SQUARE
 
 %token<Range.t> EXACT_MINUS EXACT_TIMES EXACT_AMP EXACT_TILDE EXACT_EQ
 
@@ -254,7 +255,7 @@
 %token<Range.t * Types.var_name> UNOP_EXCLAM
 
 %token<Range.t * Types.var_name> LOWER
-%token<Range.t * Types.constructor_name> UPPER
+%token<Range.t * Types.constructor_name> UPPER UPPER_DOT
 %token<Range.t * (Types.module_name Types.ranged) list * Types.var_name Types.ranged> LONG_LOWER
 %token<Range.t * (Types.module_name Types.ranged) list * Types.constructor_name Types.ranged> LONG_UPPER
 
@@ -282,8 +283,6 @@
 %token<Range.t> SUBSCRIPT SUPERSCRIPT
 %token<Range.t * int> ITEM
 
-%token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
-
 %token <Range.t * Types.macro_name> BACKSLASH_MACRO PLUS_MACRO
 %token<Range.t * (Types.module_name Types.ranged) list * Types.macro_name Types.ranged>
   LONG_BACKSLASH_MACRO LONG_PLUS_MACRO
@@ -299,7 +298,8 @@
 %right BINOP_TIMES EXACT_TIMES BINOP_DIVIDES MOD
 
 %start main
-%type<Types.header_element list * Types.untyped_source_file> main
+%type<Types.untyped_source_file> main
+%type<Types.untyped_attribute> attribute
 %type<Types.untyped_module> modexpr
 %type<Types.module_name_chain Types.ranged> mod_chain
 %type<Types.untyped_binding> bind
@@ -362,20 +362,44 @@ optterm_nonempty_list(sep, X):
       { ident }
 ;
 main:
-  | header=list(headerelem); lib=main_lib; EOI
-      { (header, UTLibraryFile(lib)) }
-  | header=list(headerelem); utast=expr; EOI
-      { (header, UTDocumentFile(utast)) }
+  | attrs=list(attribute); header=list(headerelem); lib=main_lib; EOI
+      { UTLibraryFile(attrs, header, lib) }
+  | attrs=list(attribute); header=list(headerelem); utast=expr; EOI
+      { UTDocumentFile(attrs, header, utast) }
   | rng=EOI
-      { raise (ParseErrorDetail(rng, "empty input")) }
+      { raise (ParseError(EmptyInputFile(rng))) }
 ;
 main_lib:
   | MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; STRUCT; utbinds=list(bind); END
       { (modident, utsig_opt, utbinds) }
 ;
 headerelem:
-  | content=HEADER_REQUIRE { let (_, s) = content in HeaderRequire(s) }
-  | content=HEADER_IMPORT  { let (_, s) = content in HeaderImport(s) }
+  | USE; PACKAGE; opening=optional_open; mod_chain=mod_chain
+     { HeaderUsePackage{ opening; mod_chain } }
+  | USE; opening=optional_open; mod_chain=mod_chain
+     { HeaderUse{ opening; mod_chain } }
+  | USE; opening=optional_open; mod_chain=mod_chain; OF; tok=STRING
+     {
+       let (_rng, str, pre, post) = tok in
+       let s = omit_spaces pre post str in
+       HeaderUseOf{ opening; mod_chain; path = s }
+     }
+;
+optional_open:
+  | OPEN { true }
+  |      { false }
+;
+attribute:
+  | attr_left=ATTRIBUTE_L_SQUARE; tokR=R_SQUARE
+      {
+        let (tokL, attrnm) = attr_left in
+        make_standard (Tok tokL) (Tok tokR) (UTAttribute(attrnm, None))
+      }
+  | attr_left=ATTRIBUTE_L_SQUARE; utast=expr; tokR=R_SQUARE
+      {
+        let (tokL, attrnm) = attr_left in
+        make_standard (Tok tokL) (Tok tokR) (UTAttribute(attrnm, Some(utast)))
+      }
 ;
 modexpr:
   | tokL=FUN; L_PAREN; modident=UPPER; COLON; utsig=sigexpr; R_PAREN; ARROW; utmod=modexpr
@@ -413,21 +437,21 @@ mod_chain:
       }
 ;
 bind:
-  | tokL=VAL; valbind=bind_value
-      { (tokL, UTBindValue(Stage1, valbind)) }
-  | tokL=VAL; EXACT_TILDE; valbind=bind_value
-      { (tokL, UTBindValue(Stage0, valbind)) }
-  | tokL=VAL; PERSISTENT; EXACT_TILDE; valbind=bind_value
-      { (tokL, UTBindValue(Persistent0, valbind)) }
-  | tokL=VAL; INLINE; imacrobind=bind_inline_macro
+  | attrs=list(attribute); tokL=VAL; valbind=bind_value
+      { (tokL, UTBindValue(attrs, Stage1, valbind)) }
+  | attrs=list(attribute); tokL=VAL; EXACT_TILDE; valbind=bind_value
+      { (tokL, UTBindValue(attrs, Stage0, valbind)) }
+  | attrs=list(attribute); tokL=VAL; PERSISTENT; EXACT_TILDE; valbind=bind_value
+      { (tokL, UTBindValue(attrs, Persistent0, valbind)) }
+  | attrs=list(attribute); tokL=VAL; INLINE; imacrobind=bind_inline_macro
       {
         let (rng_cs, csnm, macparams, utast1) = imacrobind in
-        (tokL, UTBindInlineMacro((rng_cs, csnm), macparams, utast1))
+        (tokL, UTBindInlineMacro(attrs, (rng_cs, csnm), macparams, utast1))
       }
-  | tokL=VAL; BLOCK; bmacrobind=bind_block_macro
+  | attrs=list(attribute); tokL=VAL; BLOCK; bmacrobind=bind_block_macro
       {
         let (rng_cs, csnm, macparams, utast1) = bmacrobind in
-        (tokL, UTBindBlockMacro((rng_cs, csnm), macparams, utast1))
+        (tokL, UTBindBlockMacro(attrs, (rng_cs, csnm), macparams, utast1))
       }
   | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
@@ -836,12 +860,23 @@ expr_op:
   | tok=EXACT_MINUS; utast2=expr_app
       { make_uminus tok utast2 }
   | ctor=UPPER; utast2=expr_un
-      { make_standard (Ranged ctor) (Ranged utast2) (UTConstructor(extract_main ctor, utast2)) }
+      { make_standard (Ranged ctor) (Ranged utast2) (UTConstructor([], extract_main ctor, utast2)) }
+  | long_ctor=LONG_UPPER; utast2=expr_un
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        make_standard (Tok rng) (Ranged utast2) (UTConstructor(modidents, extract_main ctor, utast2))
+      }
   | ctor=UPPER
       {
         let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
         let (rng, ctornm) = ctor in
-        (rng, UTConstructor(ctornm, utast_unit))
+        (rng, UTConstructor([], ctornm, utast_unit))
+      }
+  | long_ctor=LONG_UPPER
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
+        (rng, UTConstructor(modidents, extract_main ctor, utast_unit))
       }
   | utast=expr_app
       { utast }
@@ -855,7 +890,14 @@ expr_app:
       {
         let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
         let (rng, ctornm) = ctor in
-        let utast2 = (rng, UTConstructor(ctornm, utast_unit)) in
+        let utast2 = (rng, UTConstructor([], ctornm, utast_unit)) in
+        make_standard (Ranged utast1) (Tok rng) (UTApply(mnopts, utast1, utast2))
+      }
+  | utast1=expr_app; mnopts=expr_opts; long_ctor=LONG_UPPER
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        let utast_unit = (Range.dummy "constructor-unitvalue", UTUnitConstant) in
+        let utast2 = (rng, UTConstructor(modidents, extract_main ctor, utast_unit)) in
         make_standard (Ranged utast1) (Tok rng) (UTApply(mnopts, utast1, utast2))
       }
   | utast=expr_un
@@ -919,6 +961,11 @@ expr_bot:
 
         | utast2 :: utast_rest ->
             make_standard (Tok tokL) (Tok tokR) (UTTuple(TupleList.make utast1 utast2 utast_rest))
+      }
+  | upper_dot=UPPER_DOT; L_PAREN; utast=expr; tokR=R_PAREN
+      {
+        let (tokL, _) = upper_dot in
+        make_standard (Tok tokL) (Tok tokR) (UTOpenIn(upper_dot, utast))
       }
   | utast=expr_bot_list
       { utast }
@@ -991,11 +1038,23 @@ pattern_cons:
   | utpat1=pattern_bot; CONS; utpat2=pattern_cons
       { make_standard (Ranged utpat1) (Ranged utpat2) (UTPListCons(utpat1, utpat2)) }
   | ctor=UPPER; utpat=pattern_bot
-      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor(extract_main ctor, utpat)) }
+      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor([], extract_main ctor, utpat)) }
+  | long_ctor=LONG_UPPER; utpat=pattern_bot
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        make_standard (Tok rng) (Ranged utpat) (UTPConstructor(modidents, extract_main ctor, utpat))
+      }
   | ctor=UPPER
       {
         let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
-        let (rng, ctornm) = ctor in (rng, UTPConstructor(ctornm, utast_unit))
+        let (rng, ctornm) = ctor in
+        (rng, UTPConstructor([], ctornm, utast_unit))
+      }
+  | long_ctor=LONG_UPPER
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
+        (rng, UTPConstructor(modidents, extract_main ctor, utast_unit))
       }
   | utpat=pattern_bot
       { utpat }
@@ -1004,11 +1063,22 @@ pattern_non_var_cons:
   | utpat1=pattern_bot; CONS; utpat2=pattern_cons
       { make_standard (Ranged utpat1) (Ranged utpat2) (UTPListCons(utpat1, utpat2)) }
   | ctor=UPPER; utpat=pattern_bot
-      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor(extract_main ctor, utpat)) }
+      { make_standard (Ranged ctor) (Ranged utpat) (UTPConstructor([], extract_main ctor, utpat)) }
+  | long_ctor=LONG_UPPER; utpat=pattern_bot
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        make_standard (Tok rng) (Ranged utpat) (UTPConstructor(modidents, extract_main ctor, utpat))
+      }
   | ctor=UPPER
       {
         let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
-        let (rng, ctornm) = ctor in (rng, UTPConstructor(ctornm, utast_unit))
+        let (rng, ctornm) = ctor in (rng, UTPConstructor([], ctornm, utast_unit))
+      }
+  | long_ctor=LONG_UPPER
+      {
+        let (rng, modidents, ctor) = long_ctor in
+        let utast_unit = (Range.dummy "constructor-unit-value", UTPUnitConstant) in
+        (rng, UTPConstructor(modidents, extract_main ctor, utast_unit))
       }
   | utpat=pattern_non_var_bot
       { utpat }

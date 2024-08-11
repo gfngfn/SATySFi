@@ -1,0 +1,147 @@
+use Color
+use Gr
+
+module VDecoSet :> sig
+  val empty : deco-set
+  val simple-frame-stroke : length -> color -> deco-set
+  val simple-frame : length -> color -> color -> deco-set
+  val paper : deco-set
+  val quote-round : length -> length -> color -> deco-set
+end = struct
+
+  val empty =
+    let deco _ _ _ _ = Gr.empty in
+    (deco, deco, deco, deco)
+
+
+  val simple-frame-stroke t scolor =
+    let strokef = stroke t scolor in
+    let decoS (x, y) w h d =
+      strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h))
+    in
+    let decoH (x, y) w h d =
+      strokef (Gr.poly-line (x, y -' d) [ (x, y +' h), (x +' w, y +' h), (x +' w, y -' d) ])
+    in
+    let decoM (x, y) w h d =
+      unite-graphics [
+        strokef (Gr.line (x, y -' d) (x, y +' h)),
+        strokef (Gr.line (x +' w, y -' d) (x +' w, y +' h)),
+      ]
+    in
+    let decoT (x, y) w h d =
+      strokef (Gr.poly-line (x, y +' h) [ (x, y -' d), (x +' w, y -' d), (x +' w, y +' h) ])
+    in
+    (decoS, decoH, decoM, decoT)
+
+
+  val simple-frame t scolor fcolor =
+    let strokef = stroke t scolor in
+    let gr-back x y w d h =
+      fill fcolor (Gr.rectangle (x, y -' d) (x +' w, y +' h))
+    in
+    let decoS (x, y) w h d =
+      unite-graphics [
+        gr-back x y w d h,
+        strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h)),
+      ]
+    in
+    let decoH (x, y) w h d =
+      unite-graphics [
+        gr-back x y w d h,
+        strokef (Gr.poly-line (x, y -' d) [(x, y +' h), (x +' w, y +' h), (x +' w, y -' d),])
+      ]
+    in
+    let decoM (x, y) w h d =
+      unite-graphics [
+        gr-back x y w d h,
+        strokef (Gr.line (x, y -' d) (x, y +' h)),
+        strokef (Gr.line (x +' w, y -' d) (x +' w, y +' h)),
+      ]
+    in
+    let decoT (x, y) w h d =
+      unite-graphics [
+        gr-back x y w d h,
+        strokef (Gr.poly-line (x, y +' h) [(x, y -' d), (x +' w, y -' d), (x +' w, y +' h)])
+      ]
+    in
+    (decoS, decoH, decoM, decoT)
+
+
+  val paper =
+    let xshift = 2pt in
+    let yshift = 1pt in
+    let shadow-color = Gray(0.5) in
+    let edge-color = Color.black in
+    let thk = 0.5pt in
+    let shadowL (x, y) w h d =
+      fill shadow-color
+        (Gr.polygon (x +' w, y +' h) [
+            (x +' w +' xshift, y +' h -' yshift),
+            (x +' w +' xshift, y -' d -' yshift),
+            (x +' xshift, y -' d -' yshift),
+            (x, y -' d),
+            (x +' w, y -' d),
+        ])
+    in
+    let shadowI (x, y) w h d =
+      fill shadow-color
+        (Gr.polygon (x +' w, y -' d) [
+          (x +' w +' xshift, y -' d),
+          (x +' w +' xshift, y +' h -' yshift),
+          (x +' w, y +' h),
+        ])
+    in
+    let decoS (x, y) w h d =
+      unite-graphics [
+        shadowL (x, y) w h d,
+        stroke thk edge-color (Gr.rectangle (x, y -' d) (x +' w, y +' h)),
+      ]
+    in
+    let decoH (x, y) w h d =
+      unite-graphics [
+        shadowI (x, y) w h d,
+        stroke thk edge-color
+          (Gr.poly-line (x, y -' d) [
+            (x, y +' h),
+            (x +' w, y +' h),
+            (x +' w, y -' d),
+          ]),
+        ]
+    in
+    let decoM (x, y) w h d =
+      unite-graphics [
+        shadowI (x, y) w h d,
+        stroke thk edge-color (Gr.line (x, y -' d) (x, y +' h)),
+        stroke thk edge-color (Gr.line (x +' w, y -' d) (x +' w, y +' h)),
+      ]
+    in
+    let decoT (x, y) w h d =
+      unite-graphics [
+        shadowL (x, y) w h d,
+        stroke thk edge-color
+          (Gr.poly-line (x, y +' h) [
+            (x, y -' d),
+            (x +' w, y -' d),
+            (x +' w, y +' h),
+          ]),
+      ]
+    in
+    (decoS, decoH, decoM, decoT)
+
+
+  val quote-round qw r color =
+    let decoS (x, y) _ h d =
+      fill color (Gr.rectangle-round-left r (x, y -' d) (x +' qw, y +' h))
+    in
+    let decoH (x, y) _ h d =
+      fill color (Gr.rectangle-round-left-upper r (x, y -' d) (x +' qw, y +' h))
+    in
+    let decoM (x, y) _ h d =
+      fill color (Gr.rectangle (x, y -' d) (x +' qw, y +' h))
+    in
+    let decoT (x, y) _ h d =
+      fill color (Gr.rectangle-round-left-lower r (x, y -' d) (x +' qw, y +' h))
+    in
+    (decoS, decoH, decoM, decoT)
+
+end
