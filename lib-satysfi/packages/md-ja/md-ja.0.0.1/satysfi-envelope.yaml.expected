@@ -19,7 +19,7 @@ library:
     blockquote: +MDJa.quote
     emph: \MDJa.emph
     strong: \MDJa.string
-    hard_break:
+    hard_break: 
     code: \MDJa.code
     link: \MDJa.link
     img: \MDJa.img
