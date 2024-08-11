@@ -1,45 +1,55 @@
 (library
  (name main)
  (public_name satysfi)
- (flags (:standard -bin-annot -thread -safe-string))
+ (flags
+  (-w -3 -bin-annot -thread -safe-string))
  (libraries
-   0install-solver
-   batteries
-   camlimages.core
-   camlimages.jpeg
-   camlimages.png
-   camlpdf
-   core_kernel
-   core_kernel.pairing_heap
-   core_unix
-   menhirLib
-   ocamlgraph
-   omd
-   otfed
-   satysfi-common
-   satysfi-util
-   semver2
-   str
-   uutf
-   uunf
-   uunf.string
-   uuseg
-   uuseg.string
-   yaml
-   yojson-with-position
-   uri)
+  0install-solver
+  batteries
+  camlimages.core
+  camlimages.jpeg
+  camlimages.png
+  camlpdf
+  core_kernel
+  core_kernel.pairing_heap
+  core_unix
+  dune-build-info
+  menhirLib
+  ocamlgraph
+  omd
+  otfed
+  satysfi-common
+  satysfi-util
+  semver2
+  str
+  uutf
+  uunf
+  uunf.string
+  uuseg
+  uuseg.string
+  yaml
+  yojson-with-position
+  uri)
  (preprocess
-   (pps ppx_deriving.show)))
+  (pps ppx_deriving.show)))
 
 ;; dune requires all the .ml/.mli files to be in the same directory as the jbuild.
 ;; https://github.com/ocaml/dune/issues/109
+
 (copy_files# backend/*.{ml,mli})
+
 (copy_files# text-mode/*.{ml,mli})
+
 (copy_files# md/*.{ml,mli})
+
 (copy_files# chardecoder/*.{ml,mli})
-(copy_files  chardecoder/*.{mll,mly})
+
+(copy_files chardecoder/*.{mll,mly})
+
 (copy_files# frontend/*.{ml,mli})
-(copy_files  frontend/*.{mll,mly})
+
+(copy_files frontend/*.{mll,mly})
+
 (copy_files# frontend/bytecomp/*.{ml,mli})
 
 (ocamllex
@@ -47,89 +57,139 @@
 
 (menhir
  (modules parser dataParser)
- (flags (--table --explain)))
-
-;(rule
-; (targets version.ml)
-; (deps  ../tools/genversion/genversion.exe (:src ../satysfi.opam))
-; (action (with-stdout-to %{targets} (run %{deps}))))
+ (flags
+  (--table --explain)))
 
 (rule
  (targets types.ml)
- (deps    (:src types.cppo.ml) __insttype.gen.ml __attype.gen.ml __codetype.gen.ml __unliftcode.gen.ml)
- (action  (run %{bin:cppo} %{src} -o %{targets})))
+ (deps
+  (:src types.cppo.ml)
+  __insttype.gen.ml
+  __attype.gen.ml
+  __codetype.gen.ml
+  __unliftcode.gen.ml)
+ (action
+  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule
  (targets vm.ml)
- (deps    (:src vm.cppo.ml) __vm.gen.ml)
- (action  (run %{bin:cppo} %{src} -o %{targets})))
+ (deps
+  (:src vm.cppo.ml)
+  __vm.gen.ml)
+ (action
+  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule
  (targets ir.ml)
- (deps    (:src ir.cppo.ml) __ir_0.gen.ml __ir_1.gen.ml)
- (action  (run %{bin:cppo} %{src} -o %{targets})))
+ (deps
+  (:src ir.cppo.ml)
+  __ir_0.gen.ml
+  __ir_1.gen.ml)
+ (action
+  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule
  (targets evaluator.ml)
- (deps    (:src evaluator.cppo.ml) __evaluator_0.gen.ml __evaluator_1.gen.ml)
- (action  (run %{bin:cppo} %{src} -o %{targets})))
+ (deps
+  (:src evaluator.cppo.ml)
+  __evaluator_0.gen.ml
+  __evaluator_1.gen.ml)
+ (action
+  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule
  (targets primitives.ml)
- (deps    (:src primitives.cppo.ml) __primitives_pdf_mode.gen.ml __primitives_text_mode.gen.ml)
- (action  (run %{bin:cppo} %{src} -o %{targets})))
+ (deps
+  (:src primitives.cppo.ml)
+  __primitives_pdf_mode.gen.ml
+  __primitives_text_mode.gen.ml)
+ (action
+  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule
  (targets __attype.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-attype))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-attype))))
 
 (rule
  (targets __insttype.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-insttype))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-insttype))))
 
 (rule
  (targets __codetype.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-codetype))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-codetype))))
 
 (rule
  (targets __unliftcode.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-unliftcode))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-unliftcode))))
 
 (rule
  (targets __vm.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-vm))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-vm))))
 
 (rule
  (targets __ir_0.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-ir-0))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-ir-0))))
 
 (rule
  (targets __ir_1.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-ir-1))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-ir-1))))
 
 (rule
  (targets __evaluator_0.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-interps-0))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-interps-0))))
 
 (rule
  (targets __evaluator_1.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-interps-1))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-interps-1))))
 
 (rule
  (targets __primitives_pdf_mode.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-pdf-mode-prims))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-pdf-mode-prims))))
 
 (rule
  (targets __primitives_text_mode.gen.ml)
  (deps ../tools/gencode/gencode.exe)
- (action (with-stdout-to %{targets} (run %{deps} --gen-text-mode-prims))))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps} --gen-text-mode-prims))))

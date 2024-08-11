@@ -3,18 +3,14 @@ LIBDIR=$(PREFIX)/share/satysfi
 SATYSFI=satysfi
 SAPHE=saphe
 BINDIR=$(PREFIX)/bin
-RM=rm -f
-DUNE=dune
 
-.PHONY: all test test-packages promote-package-locks update-ci-cache install uninstall clean
+.PHONY: all test test-packages promote-package-locks update-ci-cache clean install uninstall
 
 all:
-	$(DUNE) build --root .
-	cp _build/install/default/bin/$(SATYSFI) .
-	cp _build/install/default/bin/$(SAPHE) .
+	dune build
 
 test:
-	$(DUNE) runtest
+	dune runtest
 
 test-packages:
 	./check-packages.sh
@@ -25,20 +21,11 @@ promote-package-locks:
 update-ci-cache:
 	./update-default-registry-commit-hash-file.sh
 
-install: $(SATYSFI) $(SAPHE)
-	mkdir -p $(BINDIR)
-	install $(SATYSFI) $(BINDIR)
-	install $(SAPHE) $(BINDIR)
+clean:
+	dune clean
 
-#preliminary:
-#	[ -d .git ] && git submodule update -i || echo "Skip git submodule update -i"
+install:
+	dune install --bindir=$(BINDIR)
 
 uninstall:
-	rm -rf $(BINDIR)/$(SATYSFI)
-	rm -rf $(BINDIR)/$(SAPHE)
-	rm -rf $(LIBDIR)
-
-clean:
-	$(DUNE) clean
-	$(RM) $(SATYSFI)
-	$(RM) $(SAPHE)
+	dune uninstall --bindir=$(BINDIR)
