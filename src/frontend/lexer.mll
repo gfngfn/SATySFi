@@ -327,6 +327,7 @@ rule progexpr stack = parse
           | "math-cmd"          -> MATHCMDTYPE(pos)
           | "command"           -> COMMAND(pos)
           | "open"              -> OPEN(pos)
+          | "include"           -> INCLUDE(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
