@@ -1,0 +1,15 @@
+@require: standalone-multicolumn
+
+let-block ctx +clear-page = clear-page
+let-block ctx +clear-column = clear-column
+
+in
+
+standalone 3 '<
+  +p{test}
+  +clear-column;
+  +p{test}
+  +p{test}
+  +clear-page;
+  +p{test}
+>
