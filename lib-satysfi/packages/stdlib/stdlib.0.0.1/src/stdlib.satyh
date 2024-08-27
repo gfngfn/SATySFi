@@ -9,6 +9,7 @@ use Arith
 use Ref
 use Geom
 use Color
+use Path
 use Gr
 use PaperSize
 use Deco
@@ -117,7 +118,7 @@ module Stdlib :> sig
     val pink    : color
     val purple  : color
   end
-  module Gr : sig
+  module Path : sig
     val rectangle : point -> point -> path
     val rectangle-round : length -> point -> point -> path
     val rectangle-round-left : length -> point -> point -> path
@@ -128,14 +129,18 @@ module Stdlib :> sig
     val polygon : point -> list point -> path
     val line : point -> point -> path
     val circle : point -> length -> path
+    val linear-transform : float -> float -> float -> float -> path -> path
+    val shift : length * length -> path -> path
+    val rotate : point -> float -> path -> path
+    val scale : point -> float -> float -> path -> path
+  end
+  module Gr : sig
     val empty : graphics
     val text-centering : point -> inline-boxes -> graphics
     val text-leftward : point -> inline-boxes -> graphics
     val text-rightward : point -> inline-boxes -> graphics
     val arrow : length -> color -> length -> length -> length -> point -> point -> graphics
     val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics
-    val rotate-path : point -> float -> path -> path
-    val scale-path : point -> float -> float -> path -> path
     val rotate-graphics : point -> float -> graphics -> graphics
     val scale-graphics : point -> float -> float -> graphics -> graphics
   end
@@ -183,6 +188,7 @@ end = struct
   module Ref = Ref
   module Geom = Geom
   module Color = Color
+  module Path = Path
   module Gr = Gr
   module PaperSize = PaperSize
   module Deco = Deco

@@ -1,4 +1,5 @@
 use Gr
+use Path
 
 module Deco :> sig
   val empty : deco
@@ -9,7 +10,7 @@ end = struct
     unite-graphics []
 
   val simple-frame t scolor fcolor (x, y) w h d =
-    let path = Gr.rectangle (x, y -' d) (x +' w, y +' h) in
+    let path = Path.rectangle (x, y -' d) (x +' w, y +' h) in
     unite-graphics [
       fill fcolor path,
       stroke t scolor path,

@@ -1,7 +1,10 @@
 module Block :> sig
   val form-paragraph : context -> inline-boxes -> block-boxes
   val +skip : block [length]
+  val \skip : inline [length]
   val +clear-page : block []
+  val +ragged-right : block [inline-text]
+  val +centering : block [inline-text]
 end = struct
 
   val form-paragraph =
@@ -10,7 +13,16 @@ end = struct
   val block ctx +skip len =
     block-skip len
 
+  val inline ctx \skip len =
+    inline-fil ++ embed-block-breakable ctx (block-skip len) ++ omit-skip-after
+
   val block ctx +clear-page =
     clear-page
+
+  val block ctx +ragged-right it =
+    form-paragraph ctx (inline-fil ++ read-inline ctx it)
+
+  val block ctx +centering it =
+    form-paragraph ctx (inline-fil ++ read-inline ctx it ++ inline-fil)
 
 end
