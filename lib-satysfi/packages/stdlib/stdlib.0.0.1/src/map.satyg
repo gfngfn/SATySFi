@@ -1,0 +1,93 @@
+use open Basic
+use Int
+
+module Map = struct
+
+  module Make = fun(Key : Ord) -> struct
+
+    type t 'a =
+      | Empty
+      | Node of (|
+          key    : Key.t,
+          data   : 'a,
+          left   : t 'a,
+          right  : t 'a,
+          height : int,
+        |)
+
+    val get-height map =
+      match map with
+      | Empty   -> 0
+      | Node(r) -> r#height
+      end
+
+    val empty =
+      Empty
+
+    val singleton k v =
+      Node(|
+        key    = k,
+        data   = v,
+        left   = Empty,
+        right  = Empty,
+        height = 1,
+      |)
+
+    val rebalance left k v right =
+      let left-height = get-height left in
+      let right-height = get-height right in
+      if left-height >= right-height + 2 then
+        match left with
+        | Node(left-node) ->
+            () % TODO: rebalance
+        | Empty ->
+            abort-with-message `Map, rebalance, empty left`
+        end
+      else if left-height + 2 <= right-height then
+        match right with
+        | Node(right-node) ->
+            () % TODO: rebalance
+        | Empty ->
+            abort-with-message `Map, rebalance, empty right`
+        end
+      else
+        Node(|
+          key    = k,
+          data   = v,
+          left   = left,
+          right  = right,
+          height = (Int.max left-height right-height) + 1,
+        |)
+
+    val add k v =
+      let rec aux map =
+        match map with
+        | Empty ->
+            (true, singleton k v)
+        | Node(r) ->
+            match Key.compare k r#key with
+            | Equal ->
+                (false, Node(| r with data = v |))
+            | Less ->
+                let (enlarged, left-new) = aux r#left in
+                if enlarged then
+                  (true, rebalance left-new r#key r#data r#right)
+                else
+                  (false, Node(| r with left = left-new |))
+            | Greater ->
+                let (enlarged, right-new) = aux r#right in
+                if enlarged then
+                  (true, rebalance r#left r#key r#data right-new)
+                else
+                  (false, Node(| r with right = right-new |))
+            end
+        end
+      in
+      (fun map -> (
+        let (_, map-new) = aux map in
+        map-new
+      ))
+
+  end
+
+end
