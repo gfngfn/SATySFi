@@ -5,8 +5,9 @@ module Option :> sig
   val persistent ~compare 'a : ('a -> 'a -> ordering) -> option 'a -> option 'a -> ordering
   val persistent ~equal 'a : ('a -> 'a -> bool) -> option 'a -> option 'a -> bool
   val persistent ~map 'a 'b : ('a -> 'b) -> option 'a -> option 'b
-  val persistent ~from 'a : 'a -> option 'a -> 'a
+  val persistent ~pure 'a : 'a -> option 'a
   val persistent ~bind 'a 'b : option 'a -> ('a -> option 'b) -> option 'b
+  val persistent ~from 'a : 'a -> option 'a -> 'a
   val persistent ~is-none 'a : option 'a -> bool
 end = struct
 
@@ -33,16 +34,19 @@ end = struct
     | Some(v) -> Some(f v)
     end
 
-  val persistent ~from a opt =
-    match opt with
-    | None    -> a
-    | Some(v) -> v
-    end
+  val persistent ~pure v =
+    Some(v)
 
   val persistent ~bind opt f =
     match opt with
     | None    -> None
     | Some(v) -> f v
+    end
+
+  val persistent ~from a opt =
+    match opt with
+    | None    -> a
+    | Some(v) -> v
     end
 
   val persistent ~is-none opt =

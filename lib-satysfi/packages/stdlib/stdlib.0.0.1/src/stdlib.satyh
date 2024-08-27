@@ -22,34 +22,38 @@ module Stdlib :> sig
     val persistent ~compare 'a : ('a -> 'a -> ordering) -> option 'a -> option 'a -> ordering
     val persistent ~equal 'a : ('a -> 'a -> bool) -> option 'a -> option 'a -> bool
     val persistent ~map 'a 'b : ('a -> 'b) -> option 'a -> option 'b
-    val persistent ~from 'a : 'a -> option 'a -> 'a
+    val persistent ~pure 'a : 'a -> option 'a
     val persistent ~bind 'a 'b : option 'a -> ('a -> option 'b) -> option 'b
+    val persistent ~from 'a : 'a -> option 'a -> 'a
     val persistent ~is-none 'a : option 'a -> bool
   end
   module List : sig
     type t 'a = list 'a
     val persistent ~compare 'a : ('a -> 'a -> ordering) -> list 'a -> list 'a -> ordering
     val persistent ~equal 'a : ('a -> 'a -> bool) -> list 'a -> list 'a -> bool
-    val persistent ~map 'a 'b : ('a -> 'b) -> list 'a -> list 'b
-    val persistent ~map-indexed 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
-    val persistent ~iter 'a : ('a -> unit) -> list 'a -> unit
-    val persistent ~iter-indexed 'a : (int -> 'a -> unit) -> list 'a -> unit
     val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
     val persistent ~fold-indexed 'a 'b : ('a -> int -> 'b -> 'a) -> 'a -> list 'b -> 'a
     val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> 'b -> list 'a -> 'b
-    val persistent ~filter 'a : ('a -> bool) -> list 'a -> list 'a
-    val persistent ~assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
-    val persistent ~reverse 'a : list 'a -> list 'a
-    val persistent ~append 'a : list 'a -> list 'a -> list 'a
-    val persistent ~concat 'a : list (list 'a) -> list 'a
     val persistent ~fold-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
     val persistent ~fold-indexed-adjacent 'a 'b : ('a -> int -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~reverse 'a : list 'a -> list 'a
+    val persistent ~map 'a 'b : ('a -> 'b) -> list 'a -> list 'b
+    val persistent ~map-indexed 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~map-with-ends 'a 'b : (bool -> bool -> 'a -> 'b) -> list 'a -> list 'b
     val persistent ~map-adjacent 'a 'b : ('a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
     val persistent ~map-indexed-adjacent 'a 'b : (int -> 'a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~append 'a : list 'a -> list 'a -> list 'a
+    val persistent ~concat 'a : list (list 'a) -> list 'a
+    val persistent ~pure 'a : 'a -> list 'a
+    val persistent ~bind 'a 'b : list 'a -> ('a -> list 'b) -> list 'b
+    val persistent ~iter 'a : ('a -> unit) -> list 'a -> unit
+    val persistent ~iter-indexed 'a : (int -> 'a -> unit) -> list 'a -> unit
+    val persistent ~filter 'a : ('a -> bool) -> list 'a -> list 'a
+    val persistent ~filter-map 'a 'b : ('a -> option 'b) -> list 'a -> list 'b
+    val persistent ~assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
     val persistent ~length 'a : list 'a -> int
     val persistent ~nth 'a : int -> list 'a -> option 'a
     val persistent ~is-empty 'a : list 'a -> bool
-    val persistent ~map-with-ends 'a 'b : (bool -> bool -> 'a -> 'b) -> list 'a -> list 'b
   end
   module Length : sig
     type t = length
