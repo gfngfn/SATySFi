@@ -1,3 +1,4 @@
+use Basic
 use Option
 use List
 use Pervasives
@@ -12,13 +13,23 @@ use HDecoSet
 use VDecoSet
 
 module Stdlib :> sig
+  % Basic
+  type ordering = Less | Equal | Greater
+  type point = length * length
+  type paren = length -> length -> context -> inline-boxes * (length -> length)
   module Option : sig
+    type t 'a = option 'a
+    val persistent ~compare 'a : ('a -> 'a -> ordering) -> option 'a -> option 'a -> ordering
+    val persistent ~equal 'a : ('a -> 'a -> bool) -> option 'a -> option 'a -> bool
     val persistent ~map 'a 'b : ('a -> 'b) -> option 'a -> option 'b
     val persistent ~from 'a : 'a -> option 'a -> 'a
     val persistent ~bind 'a 'b : option 'a -> ('a -> option 'b) -> option 'b
     val persistent ~is-none 'a : option 'a -> bool
   end
   module List : sig
+    type t 'a = list 'a
+    val persistent ~compare 'a : ('a -> 'a -> ordering) -> list 'a -> list 'a -> ordering
+    val persistent ~equal 'a : ('a -> 'a -> bool) -> list 'a -> list 'a -> bool
     val persistent ~map 'a 'b : ('a -> 'b) -> list 'a -> list 'b
     val persistent ~map-indexed 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
     val persistent ~iter 'a : ('a -> unit) -> list 'a -> unit
@@ -52,8 +63,6 @@ module Stdlib :> sig
     val \TeX : inline []
   end
   module Pervasives : sig
-    type point = length * length
-    type paren = length -> length -> context -> inline-boxes * (length -> length)
     val get-natural-width : inline-boxes -> length
     val form-paragraph : context -> inline-boxes -> block-boxes
     val kern : length -> inline-boxes
@@ -67,7 +76,6 @@ module Stdlib :> sig
     val increment : ref int -> unit
   end
   module Geom : sig
-    type point = Pervasives.point %TODO (enhance): remove this
     val atan2-point : point -> point -> float
     val div-perp : point -> point -> float -> length -> point
   end
@@ -90,7 +98,6 @@ module Stdlib :> sig
     val purple  : color
   end
   module Gr : sig
-    type point = Pervasives.point  %TODO (enhance): erase this
     val rectangle : point -> point -> path
     val rectangle-round : length -> point -> point -> path
     val rectangle-round-left : length -> point -> point -> path
@@ -145,6 +152,7 @@ module Stdlib :> sig
     val quote-round : length -> length -> color -> deco-set
   end
 end = struct
+  include Basic
   module Option = Option
   module List = List
   module Length = Length

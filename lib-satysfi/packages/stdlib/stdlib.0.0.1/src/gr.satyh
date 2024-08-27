@@ -1,10 +1,10 @@
+use open Basic
 use Pervasives
 use Geom
 use List
 use Length
 
 module Gr :> sig
-  type point = Pervasives.point  %TODO (enhance): erase this
   val rectangle : point -> point -> path
   val rectangle-round : length -> point -> point -> path
   val rectangle-round-left : length -> point -> point -> path
@@ -26,8 +26,6 @@ module Gr :> sig
   val rotate-graphics : point -> float -> graphics -> graphics
   val scale-graphics : point -> float -> float -> graphics -> graphics
 end = struct
-
-  type point = Pervasives.point  %TODO (enhance): erase this
 
   val rectangle (x1, y1) (x2, y2) =
     start-path (x1, y1)

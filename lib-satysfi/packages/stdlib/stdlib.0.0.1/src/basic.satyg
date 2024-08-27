@@ -1,0 +1,9 @@
+module Basic = struct
+
+  type ordering = Less | Equal | Greater
+
+  type point = length * length
+
+  type paren = length -> length -> context -> inline-boxes * (length -> length)
+
+end

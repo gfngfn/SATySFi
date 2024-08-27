@@ -1,10 +1,5 @@
 module Pervasives = struct
 
-  type point = length * length
-
-  type paren = length -> length -> context -> inline-boxes * (length -> length)
-
-
   val get-natural-width ib =
     let (wid, _, _) = get-natural-metrics ib in
     wid
