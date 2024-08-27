@@ -36,23 +36,21 @@ end = struct
       |> line-to (x2, y1)
       |> close-with-line
 
-
   val rectangle-round r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
     let x1 = Length.min xA xB in
     let x2 = Length.max xA xB in
     let y1 = Length.min yA yB in
     let y2 = Length.max yA yB in
-      start-path                                 (x1, y1 +' r)
-        |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
-        |> line-to                               (x2 -' r, y1)
-        |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)
-        |> line-to                               (x2, y2 -' r)
-        |> bezier-to (x2, y2 -' t) (x2 -' t, y2) (x2 -' r, y2)
-        |> line-to                               (x1 +' r, y2)
-        |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
-        |> close-with-line
-
+    start-path                                 (x1, y1 +' r)
+      |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+      |> line-to                               (x2 -' r, y1)
+      |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)
+      |> line-to                               (x2, y2 -' r)
+      |> bezier-to (x2, y2 -' t) (x2 -' t, y2) (x2 -' r, y2)
+      |> line-to                               (x1 +' r, y2)
+      |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
+      |> close-with-line
 
   val rectangle-round-left r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
@@ -60,14 +58,13 @@ end = struct
     let x2 = Length.max xA xB in
     let y1 = Length.min yA yB in
     let y2 = Length.max yA yB in
-      start-path                                 (x1, y1 +' r)
-        |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
-        |> line-to                               (x2, y1)
-        |> line-to                               (x2, y2)
-        |> line-to                               (x1 +' r, y2)
-        |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
-        |> close-with-line
-
+    start-path                                 (x1, y1 +' r)
+      |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+      |> line-to                               (x2, y1)
+      |> line-to                               (x2, y2)
+      |> line-to                               (x1 +' r, y2)
+      |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
+      |> close-with-line
 
   val rectangle-round-left-lower r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
@@ -75,13 +72,12 @@ end = struct
     let x2 = Length.max xA xB in
     let y1 = Length.min yA yB in
     let y2 = Length.max yA yB in
-      start-path                                 (x1, y1 +' r)
-        |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
-        |> line-to                               (x2, y1)
-        |> line-to                               (x2, y2)
-        |> line-to                               (x1, y2)
-        |> close-with-line
-
+    start-path                                 (x1, y1 +' r)
+      |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+      |> line-to                               (x2, y1)
+      |> line-to                               (x2, y2)
+      |> line-to                               (x1, y2)
+      |> close-with-line
 
   val rectangle-round-left-upper r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
@@ -89,13 +85,12 @@ end = struct
     let x2 = Length.max xA xB in
     let y1 = Length.min yA yB in
     let y2 = Length.max yA yB in
-      start-path                                 (x1, y1)
-        |> line-to                               (x2, y1)
-        |> line-to                               (x2, y2)
-        |> line-to                               (x1 +' r, y2)
-        |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y1 -' t)
-        |> close-with-line
-
+    start-path                                 (x1, y1)
+      |> line-to                               (x2, y1)
+      |> line-to                               (x2, y2)
+      |> line-to                               (x1 +' r, y2)
+      |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y1 -' t)
+      |> close-with-line
 
   val rectangle-round-right r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
@@ -103,43 +98,37 @@ end = struct
     let x2 = Length.max xA xB in
     let y1 = Length.min yA yB in
     let y2 = Length.max yA yB in
-      start-path                                 (x1, y1)
-        |> line-to                               (x2 -' r, y1)
-        |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)
-        |> line-to                               (x2, y2 -' r)
-        |> bezier-to (x2, y2 -' t) (x2 -' t, y2) (x2 -' r, y2)
-        |> line-to                               (x1, y2)
-        |> close-with-line
+    start-path                                 (x1, y1)
+      |> line-to                               (x2 -' r, y1)
+      |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)
+      |> line-to                               (x2, y2 -' r)
+      |> bezier-to (x2, y2 -' t) (x2 -' t, y2) (x2 -' r, y2)
+      |> line-to                               (x1, y2)
+      |> close-with-line
 
-
-  val poly-line ptinit ptlst =
-    ptlst |> List.fold-left (fun acc pt -> (
+  val poly-line pt-init pts =
+    pts |> List.fold (fun acc pt -> (
       acc |> line-to pt
-    )) (start-path ptinit) |> terminate-path
+    )) (start-path pt-init) |> terminate-path
 
-
-  val polygon ptinit ptlst =
-    ptlst |> List.fold-left (fun acc pt -> (
+  val polygon pt-init pts =
+    pts |> List.fold (fun acc pt -> (
       acc |> line-to pt
-    )) (start-path ptinit) |> close-with-line
-
+    )) (start-path pt-init) |> close-with-line
 
   val line pt1 pt2 =
     start-path pt1 |> line-to pt2 |> terminate-path
 
-
   val circle (cx, cy) r =
     let t = r *' 0.55228 in
-      start-path (cx -' r, cy)
-        |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
-        |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
-        |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
-        |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
-
+    start-path (cx -' r, cy)
+      |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
+      |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
+      |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
+      |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
 
   val empty =
     unite-graphics []
-
 
   val get-nonempty-graphics-bbox gr =
     match get-graphics-bbox gr with
@@ -147,24 +136,20 @@ end = struct
     | Some(bbox) -> bbox
     end
 
-
   val text-centering pt ib =
     let gr = draw-text pt ib in
     let ((xmin, _), (xmax, _)) = get-nonempty-graphics-bbox gr in
     let wid = xmax -' xmin in
     shift-graphics (0pt -' wid *' 0.5, 0pt) gr
 
-
   val text-rightward =
     draw-text
-
 
   val text-leftward pt ib =
     let gr = draw-text pt ib in
     let ((xmin, _), (xmax, _)) = get-nonempty-graphics-bbox gr in
     let wid = xmax -' xmin in
     shift-graphics (0pt -' wid, 0pt) gr
-
 
   val arrow-scheme strokef color lenL lenM lenP ((x1, y1) as pt1) ((x2, y2) as pt2) =
     let theta = Geom.atan2-point pt2 pt1 in
@@ -178,14 +163,11 @@ end = struct
       fill color (polygon pt2 [(p1, q1), (mx, my), (p2, q2)]),
     ]
 
-
   val arrow thkns =
     arrow-scheme (stroke thkns)
 
-
   val dashed-arrow thkns dash =
     arrow-scheme (dashed-stroke thkns dash)
-
 
   val rotate-path centpt angle path =
     let (centx, centy) = centpt in
@@ -194,13 +176,11 @@ end = struct
          |> linear-transform-path (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
          |> shift-path centpt
 
-
   val scale-path centpt scalex scaley path =
     let (centx, centy) = centpt in
     path |> shift-path (0pt -' centx, 0pt -' centy)
          |> linear-transform-path scalex 0. 0. scaley
          |> shift-path centpt
-
 
   val rotate-graphics centpt angle gr =
     let (centx, centy) = centpt in
@@ -209,11 +189,9 @@ end = struct
        |> linear-transform-graphics (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
        |> shift-graphics centpt
 
-
   val scale-graphics centpt scalex scaley gr =
     let (centx, centy) = centpt in
     gr |> shift-graphics (0pt -' centx, 0pt -' centy)
        |> linear-transform-graphics scalex 0. 0. scaley
        |> shift-graphics centpt
-
 end

@@ -2,20 +2,21 @@ use Option
 
 module List :> sig
   val persistent ~map 'a 'b : ('a -> 'b) -> list 'a -> list 'b
-  val persistent ~mapi 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
+  val persistent ~map-indexed 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
   val persistent ~iter 'a : ('a -> unit) -> list 'a -> unit
-  val persistent ~iteri 'a : (int -> 'a -> unit) -> list 'a -> unit
-  val persistent ~fold-left 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
-  val persistent ~fold-lefti 'a 'b : (int -> 'a -> 'b -> 'a) -> 'a -> list 'b -> 'a
-  val persistent ~fold-right 'a 'b : ('a -> 'b -> 'b) -> 'b -> list 'a -> 'b
+  val persistent ~iter-indexed 'a : (int -> 'a -> unit) -> list 'a -> unit
+  val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
+  val persistent ~fold-indexed 'a 'b : ('a -> int -> 'b -> 'a) -> 'a -> list 'b -> 'a
+  val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> 'b -> list 'a -> 'b
   val persistent ~filter 'a : ('a -> bool) -> list 'a -> list 'a
   val persistent ~assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
   val persistent ~reverse 'a : list 'a -> list 'a
   val persistent ~append 'a : list 'a -> list 'a -> list 'a
   val persistent ~concat 'a : list (list 'a) -> list 'a
-  val persistent ~fold-left-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
+  val persistent ~fold-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
+  val persistent ~fold-indexed-adjacent 'a 'b : ('a -> int -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
   val persistent ~map-adjacent 'a 'b : ('a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
-  val persistent ~mapi-adjacent 'a 'b : (int -> 'a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
+  val persistent ~map-indexed-adjacent 'a 'b : (int -> 'a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
   val persistent ~length 'a : list 'a -> int
   val persistent ~nth 'a : int -> list 'a -> option 'a
   val persistent ~is-empty 'a : list 'a -> bool
@@ -28,8 +29,7 @@ end = struct
       | x :: xs -> (f x) :: map f xs
       end
 
-
-    val persistent ~mapi f =
+    val persistent ~map-indexed f =
       let rec aux i f ys =
         match ys with
         | []      -> []
@@ -38,15 +38,13 @@ end = struct
       in
       aux 0 f
 
-
     val persistent ~rec iter f ys =
       match ys with
       | []      -> ()
       | x :: xs -> let () = f x in iter f xs
       end
 
-
-    val persistent ~iteri f =
+    val persistent ~iter-indexed f =
       let rec aux i f ys =
         match ys with
         | []      -> ()
@@ -55,30 +53,26 @@ end = struct
       in
       aux 0 f
 
-
-    val persistent ~rec fold-left f init ys =
+    val persistent ~rec fold f init ys =
       match ys with
       | []      -> init
-      | x :: xs -> fold-left f (f init x) xs
+      | x :: xs -> fold f (f init x) xs
       end
 
-
-    val persistent ~fold-lefti f =
-      let rec aux i f init ys =
+    val persistent ~fold-indexed f =
+      let rec aux i f acc ys =
         match ys with
-        | []      -> init
-        | x :: xs -> aux (i + 1) f (f i init x) xs
+        | []      -> acc
+        | x :: xs -> aux (i + 1) f (f acc i x) xs
         end
       in
       aux 0 f
 
-
-    val persistent ~rec fold-right f init ys =
+    val persistent ~rec fold-back f init ys =
       match ys with
       | []      -> init
-      | x :: xs -> f x (fold-right f init xs)
+      | x :: xs -> f x (fold-back f init xs)
       end
-
 
     val persistent ~rec filter p ys =
       match ys with
@@ -86,64 +80,58 @@ end = struct
       | x :: xs -> if p x then x :: filter p xs else filter p xs
       end
 
-
     val persistent ~rec assoc eq a ys =
       match ys with
       | []           -> None
       | (x, y) :: xs -> if eq a x then Some(y) else assoc eq a xs
       end
 
+    val persistent ~reverse xs =
+      fold (fun acc x -> x :: acc) [] xs
 
-    val persistent ~reverse lst =
-      fold-left (fun acc x -> x :: acc) [] lst
-
-
-    val persistent ~rec append lst1 lst2 =
-      match lst1 with
-      | []      -> lst2
-      | x :: xs -> x :: append xs lst2
+    val persistent ~rec append xs1 xs2 =
+      match xs1 with
+      | []      -> xs2
+      | x :: xs -> x :: append xs xs2
       end
 
+    val persistent ~concat xs =
+      fold-back append [] xs
 
-    val persistent ~concat lst = fold-right append [] lst
-
-
-    val persistent ~fold-left-adjacent f =
-      let rec aux leftopt init lst =
-        match lst with
+    val persistent ~fold-adjacent f =
+      let rec aux left-opt acc xs =
+        match xs with
         | [] ->
-            init
-
+            acc
         | head :: [] ->
-            let initnew = f init head leftopt None in
-            initnew
-
+            f acc head left-opt None
         | head :: ((right :: _) as tail) ->
-            let initnew = f init head leftopt (Some(right)) in
-            aux (Some(head)) initnew tail
+            let acc-new = f acc head left-opt (Some(right)) in
+            aux (Some(head)) acc-new tail
         end
       in
       aux None
 
-
-    val persistent ~map-adjacent f lst =
-        lst |> fold-left-adjacent (fun acc x leftopt rightopt -> (
-          f x leftopt rightopt :: acc
-        )) [] |> reverse
-
-
-    val persistent ~mapi-adjacent f lst =
+    val persistent ~fold-indexed-adjacent f init xs =
       let (_, acc) =
-        lst |> fold-left-adjacent (fun (i, acc) x leftopt rightopt -> (
-          (i + 1, f i x leftopt rightopt :: acc)
-        )) (0, [])
+        xs |> fold-adjacent (fun (i, acc) x left-opt right-opt -> (
+          (i + 1, f acc i x left-opt right-opt)
+        )) (0, init)
       in
-        reverse acc
+      acc
 
+    val persistent ~map-adjacent f xs =
+      xs |> fold-adjacent (fun acc x left-opt right-opt -> (
+        f x left-opt right-opt :: acc
+      )) [] |> reverse
 
-    val persistent ~length lst =
-      fold-right (fun _ i -> i + 1) 0 lst
+    val persistent ~map-indexed-adjacent f xs =
+      xs |> fold-indexed-adjacent (fun acc i x left-opt right-opt -> (
+        f i x left-opt right-opt :: acc
+      )) [] |> reverse
 
+    val persistent ~length xs =
+      fold-back (fun _ i -> i + 1) 0 xs
 
     val persistent ~nth lst =
       let rec aux i n xs =
@@ -163,7 +151,7 @@ end = struct
 
 
     val persistent ~map-with-ends f xs =
-      fold-left-adjacent (fun acc x prev next -> (
+      fold-adjacent (fun acc x prev next -> (
         let is-first = Option.is-none prev in
         let is-last = Option.is-none next in
         let y = f is-first is-last x in

@@ -20,20 +20,21 @@ module Stdlib :> sig
   end
   module List : sig
     val persistent ~map 'a 'b : ('a -> 'b) -> list 'a -> list 'b
-    val persistent ~mapi 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~map-indexed 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
     val persistent ~iter 'a : ('a -> unit) -> list 'a -> unit
-    val persistent ~iteri 'a : (int -> 'a -> unit) -> list 'a -> unit
-    val persistent ~fold-left 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
-    val persistent ~fold-lefti 'a 'b : (int -> 'a -> 'b -> 'a) -> 'a -> list 'b -> 'a
-    val persistent ~fold-right 'a 'b : ('a -> 'b -> 'b) -> 'b -> list 'a -> 'b
+    val persistent ~iter-indexed 'a : (int -> 'a -> unit) -> list 'a -> unit
+    val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~fold-indexed 'a 'b : ('a -> int -> 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> 'b -> list 'a -> 'b
     val persistent ~filter 'a : ('a -> bool) -> list 'a -> list 'a
     val persistent ~assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
     val persistent ~reverse 'a : list 'a -> list 'a
     val persistent ~append 'a : list 'a -> list 'a -> list 'a
     val persistent ~concat 'a : list (list 'a) -> list 'a
-    val persistent ~fold-left-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~fold-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~fold-indexed-adjacent 'a 'b : ('a -> int -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
     val persistent ~map-adjacent 'a 'b : ('a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
-    val persistent ~mapi-adjacent 'a 'b : (int -> 'a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~map-indexed-adjacent 'a 'b : (int -> 'a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
     val persistent ~length 'a : list 'a -> int
     val persistent ~nth 'a : int -> list 'a -> option 'a
     val persistent ~is-empty 'a : list 'a -> bool
