@@ -1,4 +1,4 @@
-use open Pervasives
+use open Inline
 
 module Logo :> sig
   val \SATySFi : inline []

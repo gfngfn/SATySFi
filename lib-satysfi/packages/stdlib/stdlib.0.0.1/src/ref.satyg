@@ -1,0 +1,8 @@
+module Ref :> sig
+  val increment : ref int -> unit
+end = struct
+
+  val increment r =
+    r <- !r + 1
+
+end

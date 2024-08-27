@@ -1,5 +1,5 @@
 use open Basic
-use Pervasives
+use Arith
 use Geom
 use List
 use Length
@@ -153,7 +153,7 @@ end = struct
     let theta = Geom.atan2-point pt2 pt1 in
     let (cx, cy) = (x2 +' lenL *' (cos theta), y2 +' lenL *' (sin theta)) in
     let (mx, my) = (x2 +' lenM *' (cos theta), y2 +' lenM *' (sin theta)) in
-    let phi = theta +. Pervasives.math-pi /. 2. in
+    let phi = theta +. Arith.pi /. 2. in
     let (p1, q1) = (cx +' lenP *' (cos phi), cy +' lenP *' (sin phi)) in
     let (p2, q2) = (cx -' lenP *' (cos phi), cy -' lenP *' (sin phi)) in
     unite-graphics [
@@ -169,7 +169,7 @@ end = struct
 
   val rotate-path centpt angle path =
     let (centx, centy) = centpt in
-    let rad = angle *. Pervasives.math-pi /. 180. in
+    let rad = angle *. Arith.pi /. 180. in
     path |> shift-path (0pt -' centx, 0pt -' centy)
          |> linear-transform-path (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
          |> shift-path centpt
@@ -182,7 +182,7 @@ end = struct
 
   val rotate-graphics centpt angle gr =
     let (centx, centy) = centpt in
-    let rad = angle *. Pervasives.math-pi /. 180. in
+    let rad = angle *. Arith.pi /. 180. in
     gr |> shift-graphics (0pt -' centx, 0pt -' centy)
        |> linear-transform-graphics (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
        |> shift-graphics centpt

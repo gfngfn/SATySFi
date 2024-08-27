@@ -1,9 +1,12 @@
 use Basic
 use Option
 use List
-use Pervasives
 use Length
 use Logo
+use Inline
+use Block
+use Arith
+use Ref
 use Geom
 use Color
 use Gr
@@ -66,9 +69,8 @@ module Stdlib :> sig
     val \LaTeX : inline []
     val \TeX : inline []
   end
-  module Pervasives : sig
-    val get-natural-width : inline-boxes -> length
-    val form-paragraph : context -> inline-boxes -> block-boxes
+  module Inline : sig
+    val get-natural-advance : inline-boxes -> length
     val kern : length -> inline-boxes
     val \hskip : inline [length]
     val no-break : inline-boxes -> inline-boxes
@@ -76,7 +78,14 @@ module Stdlib :> sig
     val \fil : inline []
     val \fil-both : inline []
     val mandatory-break : context -> inline-boxes
-    val math-pi : float
+  end
+  module Block : sig
+    val form-paragraph : context -> inline-boxes -> block-boxes
+  end
+  module Arith : sig
+    val pi : float
+  end
+  module Ref : sig
     val increment : ref int -> unit
   end
   module Geom : sig
@@ -161,7 +170,10 @@ end = struct
   module List = List
   module Length = Length
   module Logo = Logo
-  module Pervasives = Pervasives
+  module Inline = Inline
+  module Block = Block
+  module Arith = Arith
+  module Ref = Ref
   module Geom = Geom
   module Color = Color
   module Gr = Gr

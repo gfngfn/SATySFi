@@ -1,0 +1,7 @@
+module Block :> sig
+  val form-paragraph : context -> inline-boxes -> block-boxes
+end = struct
+
+  val form-paragraph = line-break true true
+
+end
