@@ -1,4 +1,5 @@
 use Basic
+use Int
 use Option
 use List
 use Length
@@ -21,6 +22,18 @@ module Stdlib :> sig
   type ordering = Less | Equal | Greater
   type point = length * length
   type paren = length -> length -> context -> inline-boxes * (length -> length)
+  signature Ord = sig
+    type t :: o
+    val compare : t -> t -> ordering
+  end
+  module Int : sig
+    type t = int
+    val ~lift : int -> code int
+    val persistent ~compare : int -> int -> ordering
+    val persistent ~equal : int -> int -> bool
+    val persistent ~max : int -> int -> int
+    val persistent ~min : int -> int -> int
+  end
   module Option : sig
     type t 'a = option 'a
     val ~lift 'a : ('a -> code 'a) -> option 'a -> code (option 'a)
@@ -181,6 +194,7 @@ module Stdlib :> sig
   end
 end = struct
   include Basic
+  module Int = Int
   module Option = Option
   module List = List
   module Length = Length

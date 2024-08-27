@@ -6,4 +6,9 @@ module Basic = struct
 
   type paren = length -> length -> context -> inline-boxes * (length -> length)
 
+  signature Ord = sig
+    type t :: o
+    val compare : t -> t -> ordering
+  end
+
 end
