@@ -3,6 +3,7 @@ use Option
 
 module List :> sig
   type t 'a = list 'a
+  val ~lift 'a : ('a -> code 'a) -> list 'a -> code (list 'a)
   val persistent ~compare 'a : ('a -> 'a -> ordering) -> list 'a -> list 'a -> ordering
   val persistent ~equal 'a : ('a -> 'a -> bool) -> list 'a -> list 'a -> bool
   val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
@@ -31,6 +32,12 @@ module List :> sig
 end = struct
 
   type t 'a = list 'a
+
+  val ~rec lift lf xs =
+    match xs with
+    | []      -> &[]
+    | x :: xs -> &(~(lf x) :: ~(lift lf xs))
+    end
 
   val persistent ~rec compare comp xs1 xs2 =
     match (xs1, xs2) with

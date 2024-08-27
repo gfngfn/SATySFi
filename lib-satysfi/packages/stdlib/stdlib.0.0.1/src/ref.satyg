@@ -1,8 +1,12 @@
 module Ref :> sig
-  val increment : ref int -> unit
+  val persistent ~increment : ref int -> unit
+  val persistent ~decrement : ref int -> unit
 end = struct
 
-  val increment r =
+  val persistent ~increment r =
     r <- !r + 1
+
+  val persistent ~decrement r =
+    r <- !r - 1
 
 end

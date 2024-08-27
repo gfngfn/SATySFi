@@ -1,7 +1,16 @@
 module Block :> sig
   val form-paragraph : context -> inline-boxes -> block-boxes
+  val +skip : block [length]
+  val +clear-page : block []
 end = struct
 
-  val form-paragraph = line-break true true
+  val form-paragraph =
+    line-break true true
+
+  val block ctx +skip len =
+    block-skip len
+
+  val block ctx +clear-page =
+    clear-page
 
 end

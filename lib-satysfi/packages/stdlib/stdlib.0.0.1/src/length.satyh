@@ -1,11 +1,15 @@
 module Length :> sig
   type t = length
+  val ~lift : length -> code length
   val persistent ~max : length -> length -> length
   val persistent ~min : length -> length -> length
   val persistent ~abs : length -> length
 end = struct
 
   type t = length
+
+  val ~lift =
+    lift-length
 
   val persistent ~max len1 len2 =
     if len1 <' len2 then len2 else len1

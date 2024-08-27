@@ -22,6 +22,7 @@ module Stdlib :> sig
   type paren = length -> length -> context -> inline-boxes * (length -> length)
   module Option : sig
     type t 'a = option 'a
+    val ~lift 'a : ('a -> code 'a) -> option 'a -> code (option 'a)
     val persistent ~compare 'a : ('a -> 'a -> ordering) -> option 'a -> option 'a -> ordering
     val persistent ~equal 'a : ('a -> 'a -> bool) -> option 'a -> option 'a -> bool
     val persistent ~map 'a 'b : ('a -> 'b) -> option 'a -> option 'b
@@ -32,6 +33,7 @@ module Stdlib :> sig
   end
   module List : sig
     type t 'a = list 'a
+    val ~lift 'a : ('a -> code 'a) -> list 'a -> code (list 'a)
     val persistent ~compare 'a : ('a -> 'a -> ordering) -> list 'a -> list 'a -> ordering
     val persistent ~equal 'a : ('a -> 'a -> bool) -> list 'a -> list 'a -> bool
     val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
@@ -60,6 +62,7 @@ module Stdlib :> sig
   end
   module Length : sig
     type t = length
+    val ~lift : length -> code length
     val persistent ~max : length -> length -> length
     val persistent ~min : length -> length -> length
     val persistent ~abs : length -> length
@@ -72,21 +75,25 @@ module Stdlib :> sig
   module Inline : sig
     val get-natural-advance : inline-boxes -> length
     val kern : length -> inline-boxes
-    val \hskip : inline [length]
+    val \skip : inline [length]
     val no-break : inline-boxes -> inline-boxes
     val \no-break : inline [inline-text]
     val \fil : inline []
     val \fil-both : inline []
     val mandatory-break : context -> inline-boxes
+    val \mandatory-break : inline []
   end
   module Block : sig
     val form-paragraph : context -> inline-boxes -> block-boxes
+    val +skip : block [length]
+    val +clear-page : block []
   end
   module Arith : sig
-    val pi : float
+    val persistent ~pi : float
   end
   module Ref : sig
-    val increment : ref int -> unit
+    val persistent ~increment : ref int -> unit
+    val persistent ~decrement : ref int -> unit
   end
   module Geom : sig
     val atan2-point : point -> point -> float

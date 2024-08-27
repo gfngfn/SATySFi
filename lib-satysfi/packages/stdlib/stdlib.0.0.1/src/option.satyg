@@ -2,6 +2,7 @@ use open Basic
 
 module Option :> sig
   type t 'a = option 'a
+  val ~lift 'a : ('a -> code 'a) -> option 'a -> code (option 'a)
   val persistent ~compare 'a : ('a -> 'a -> ordering) -> option 'a -> option 'a -> ordering
   val persistent ~equal 'a : ('a -> 'a -> bool) -> option 'a -> option 'a -> bool
   val persistent ~map 'a 'b : ('a -> 'b) -> option 'a -> option 'b
@@ -12,6 +13,12 @@ module Option :> sig
 end = struct
 
   type t 'a = option 'a
+
+  val ~lift lf opt =
+    match opt with
+    | None    -> &(None)
+    | Some(v) -> &(Some(~(lf v)))
+    end
 
   val persistent ~compare comp opt1 opt2 =
     match (opt1, opt2) with
