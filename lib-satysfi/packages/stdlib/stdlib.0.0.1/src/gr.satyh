@@ -1,6 +1,7 @@
 use Pervasives
 use Geom
 use List
+use Length
 
 module Gr :> sig
   type point = Pervasives.point  %TODO (enhance): erase this
@@ -38,10 +39,10 @@ end = struct
 
   val rectangle-round r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
-    let x1 = Pervasives.length-min xA xB in
-    let x2 = Pervasives.length-max xA xB in
-    let y1 = Pervasives.length-min yA yB in
-    let y2 = Pervasives.length-max yA yB in
+    let x1 = Length.min xA xB in
+    let x2 = Length.max xA xB in
+    let y1 = Length.min yA yB in
+    let y2 = Length.max yA yB in
       start-path                                 (x1, y1 +' r)
         |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
         |> line-to                               (x2 -' r, y1)
@@ -55,10 +56,10 @@ end = struct
 
   val rectangle-round-left r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
-    let x1 = Pervasives.length-min xA xB in
-    let x2 = Pervasives.length-max xA xB in
-    let y1 = Pervasives.length-min yA yB in
-    let y2 = Pervasives.length-max yA yB in
+    let x1 = Length.min xA xB in
+    let x2 = Length.max xA xB in
+    let y1 = Length.min yA yB in
+    let y2 = Length.max yA yB in
       start-path                                 (x1, y1 +' r)
         |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
         |> line-to                               (x2, y1)
@@ -70,10 +71,10 @@ end = struct
 
   val rectangle-round-left-lower r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
-    let x1 = Pervasives.length-min xA xB in
-    let x2 = Pervasives.length-max xA xB in
-    let y1 = Pervasives.length-min yA yB in
-    let y2 = Pervasives.length-max yA yB in
+    let x1 = Length.min xA xB in
+    let x2 = Length.max xA xB in
+    let y1 = Length.min yA yB in
+    let y2 = Length.max yA yB in
       start-path                                 (x1, y1 +' r)
         |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
         |> line-to                               (x2, y1)
@@ -84,10 +85,10 @@ end = struct
 
   val rectangle-round-left-upper r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
-    let x1 = Pervasives.length-min xA xB in
-    let x2 = Pervasives.length-max xA xB in
-    let y1 = Pervasives.length-min yA yB in
-    let y2 = Pervasives.length-max yA yB in
+    let x1 = Length.min xA xB in
+    let x2 = Length.max xA xB in
+    let y1 = Length.min yA yB in
+    let y2 = Length.max yA yB in
       start-path                                 (x1, y1)
         |> line-to                               (x2, y1)
         |> line-to                               (x2, y2)
@@ -98,10 +99,10 @@ end = struct
 
   val rectangle-round-right r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
-    let x1 = Pervasives.length-min xA xB in
-    let x2 = Pervasives.length-max xA xB in
-    let y1 = Pervasives.length-min yA yB in
-    let y2 = Pervasives.length-max yA yB in
+    let x1 = Length.min xA xB in
+    let x2 = Length.max xA xB in
+    let y1 = Length.min yA yB in
+    let y2 = Length.max yA yB in
       start-path                                 (x1, y1)
         |> line-to                               (x2 -' r, y1)
         |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)

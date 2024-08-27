@@ -1,6 +1,8 @@
 use Option
 use List
 use Pervasives
+use Length
+use Logo
 use Geom
 use Color
 use Gr
@@ -37,6 +39,17 @@ module Stdlib :> sig
     val persistent ~is-empty 'a : list 'a -> bool
     val persistent ~map-with-ends 'a 'b : (bool -> bool -> 'a -> 'b) -> list 'a -> list 'b
   end
+  module Length : sig
+    type t = length
+    val persistent ~max : length -> length -> length
+    val persistent ~min : length -> length -> length
+    val persistent ~abs : length -> length
+  end
+  module Logo : sig
+    val \SATySFi : inline []
+    val \LaTeX : inline []
+    val \TeX : inline []
+  end
   module Pervasives : sig
     type point = length * length
     type paren = length -> length -> context -> inline-boxes * (length -> length)
@@ -46,16 +59,9 @@ module Stdlib :> sig
     val \hskip : inline [length]
     val no-break : inline-boxes -> inline-boxes
     val \no-break : inline [inline-text]
-    val \SATySFi : inline []
-    val \LaTeX : inline []
-    val \TeX : inline []
-    val length-max : length -> length -> length
-    val length-min : length -> length -> length
-    val length-abs : length -> length
     val \fil : inline []
     val \fil-both : inline []
     val mandatory-break : context -> inline-boxes
-    val destruct-option 'a : 'a -> option 'a -> 'a
     val math-pi : float
     val increment : ref int -> unit
   end
@@ -140,6 +146,8 @@ module Stdlib :> sig
 end = struct
   module Option = Option
   module List = List
+  module Length = Length
+  module Logo = Logo
   module Pervasives = Pervasives
   module Geom = Geom
   module Color = Color
