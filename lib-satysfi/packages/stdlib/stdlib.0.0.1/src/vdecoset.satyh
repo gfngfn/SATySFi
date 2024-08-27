@@ -1,5 +1,5 @@
 use Color
-use Gr
+use Graphics
 use Path
 
 module VDecoSet :> sig
@@ -11,7 +11,7 @@ module VDecoSet :> sig
 end = struct
 
   val empty =
-    let deco _ _ _ _ = Gr.empty in
+    let deco _ _ _ _ = Graphics.empty in
     (deco, deco, deco, deco)
 
   val simple-frame-stroke t scolor =
