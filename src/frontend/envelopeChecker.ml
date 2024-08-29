@@ -85,12 +85,12 @@ let add_dependency_to_type_environment ~(import_envelope_only : bool) (header : 
   ) tyenv
 
 
-let typecheck_library_file (display_config : Logging.config) (config : typecheck_config) ~for_struct:(tyenv_for_struct : Typeenv.t) ~for_sig:(tyenv_for_sig : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
+let typecheck_library_file (display_config : Logging.config) (config : typecheck_config) ~for_struct:(tyenv_for_struct : Typeenv.t) ~for_sig:(tyenv_for_sig : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (rng_struct : Range.t) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
   let open ResultMonad in
   let res =
     Logging.begin_to_typecheck_file display_config abspath_in;
     let* absmodsig_opt = utsig_opt |> optionM (ModuleTypechecker.typecheck_signature config tyenv_for_sig) in
-    let* ret = ModuleTypechecker.main config tyenv_for_struct absmodsig_opt utbinds in
+    let* ret = ModuleTypechecker.main config tyenv_for_struct absmodsig_opt rng_struct utbinds in
     Logging.pass_type_check None;
     return ret
   in
@@ -123,7 +123,7 @@ let check_library_envelope (display_config : Logging.config) (config : typecheck
   (* Typechecks each source file: *)
   let* (_lenv, libacc, ssig_opt) =
     sorted_utlibs |> foldM (fun (lenv, libacc, ssig_opt) (abspath, utlib) ->
-      let (_attrs, header, (modident, utsig_opt, utbinds)) = utlib in
+      let (_attrs, header, (modident, utsig_opt, rng_struct, utbinds)) = utlib in
       let* tyenv_for_struct =
         tyenv_prim |> add_dependency_to_type_environment
           ~import_envelope_only:false
@@ -139,14 +139,14 @@ let check_library_envelope (display_config : Logging.config) (config : typecheck
               header genv used_as_map lenv
           in
           typecheck_library_file display_config config
-            ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_sig abspath utsig_opt utbinds
+            ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_sig abspath utsig_opt rng_struct utbinds
         in
         let lenv = lenv |> ModuleNameMap.add modnm ssig in
         return (lenv, Alist.extend libacc (abspath, binds), Some(ssig))
       else
         let* ((_quant, ssig), binds) =
           typecheck_library_file display_config config
-            ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_struct abspath utsig_opt utbinds
+            ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_struct abspath utsig_opt rng_struct utbinds
         in
         let lenv = lenv |> ModuleNameMap.add modnm ssig in
         return (lenv, Alist.extend libacc (abspath, binds), ssig_opt)
@@ -219,7 +219,7 @@ let main_document (display_config : Logging.config) (config : typecheck_config) 
   let open ResultMonad in
   let* (lenv, libacc) =
     sorted_locals |> foldM (fun (lenv, libacc) (abspath, utlib) ->
-      let (_attrs, header, (modident, utsig_opt, utbinds)) = utlib in
+      let (_attrs, header, (modident, utsig_opt, rng_struct, utbinds)) = utlib in
       let (_, modnm) = modident in
       let* ((_quant, ssig), binds) =
         let* tyenv =
@@ -228,7 +228,7 @@ let main_document (display_config : Logging.config) (config : typecheck_config) 
             header genv used_as_map lenv
         in
         typecheck_library_file display_config config
-          ~for_struct:tyenv ~for_sig:tyenv abspath utsig_opt utbinds
+          ~for_struct:tyenv ~for_sig:tyenv abspath utsig_opt rng_struct utbinds
       in
       let lenv = lenv |> ModuleNameMap.add modnm ssig in
       return (lenv, Alist.extend libacc (abspath, binds))

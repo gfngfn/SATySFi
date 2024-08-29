@@ -952,7 +952,7 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
       return (binds, (OpaqueIDMap.empty, ssig))
 
 
-let main (config : typecheck_config) (tyenv : Typeenv.t) (absmodsig_opt : (signature abstracted) option) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
+let main (config : typecheck_config) (tyenv : Typeenv.t) (absmodsig_opt : (signature abstracted) option) (rng_struct : Range.t) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
   let open ResultMonad in
   match absmodsig_opt with
   | None ->
@@ -960,8 +960,7 @@ let main (config : typecheck_config) (tyenv : Typeenv.t) (absmodsig_opt : (signa
 
   | Some(absmodsig) ->
       let* ((_, ssig), binds) = typecheck_binding_list config tyenv utbinds in
-      let rng = Range.dummy "main_bindings" in (* TODO (error): give appropriate ranges *)
-      let* (quant, modsig) = coerce_signature rng (ConcStructure(ssig)) absmodsig in
+      let* (quant, modsig) = coerce_signature rng_struct (ConcStructure(ssig)) absmodsig in
       let ssig =
         match modsig with
         | ConcFunctor(_)      -> assert false
