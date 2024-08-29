@@ -33,31 +33,81 @@ module Map = struct
         height = 1,
       |)
 
-    val rebalance left k v right =
-      let left-height = get-height left in
-      let right-height = get-height right in
-      if left-height >= right-height + 2 then
-        match left with
-        | Node(left-node) ->
-            () % TODO: rebalance
+    val build-node tL k v tR =
+      Node(|
+        key = k,
+        data = v,
+        left = tL,
+        right = tR,
+        height = Int.max (get-height tL) (get-height tR) + 1,
+      |)
+
+    %% Rebalances a tree after inserting or removing one element.
+    val rebalance tL k v tR =
+      let hL = get-height tL in
+      let hR = get-height tR in
+      if hL == hR + 2 then
+        match tL with
+        | Node(nL) ->
+            let tLL = nL#left in
+            let tLR = nL#right in
+            let hLL = get-height tLL in
+            let hLR = get-height tLR in
+            if hLL > hLR then
+              %     N             L
+              %    / \           / \
+              %   L   R  ====>  LL  N
+              %  / \  |         |  / \
+              % LL LR |         | LR  R
+              % |   | |         | |   |
+              % |   | #         | |   |
+              % |   |           | |   |
+              % |   o           x o   #
+              % |
+              % x
+              build-node tLL nL#key nL#data (build-node tLR k v tR)
+            else
+              % Actually, we can assume `hLL < hLR` here, although we do not utilize it.
+              % This is because, if `hLL == hLR`,
+              % it means at least two elements were modified in a balanced tree before rebalancing
+              % and thereby contradicts the invariant (i.e., that any use-space maps are balanced).
+              match tLR with
+              | Node(nLR) ->
+                  let tLRL = nLR#left in
+                  let tLRR = nLR#right in
+                  let hLRL = get-height tLRL in
+                  let hLRR = get-height tLRR in
+                  %        N                 LR
+                  %      /   \             /    \
+                  %    L       R  ====>  L        N
+                  %   / \      |        / \      / \
+                  % LL   LR    |      LL  LRL  LRR  R
+                  % |   /  \   |      |    |    |   |
+                  % | LRL  LRR #      |    |    |   |
+                  % |  |    |         |    |    |   |
+                  % |  |    |         |    x    x   #
+                  % |  |    |         |
+                  % y  x    x         y
+                  build-node
+                    (build-node tLL nL#key nL#data tLRL)
+                    nLR#key
+                    nLR#data
+                    (build-node tLRR k v tR)
+              | Empty ->
+                  abort-with-message `Map, rebalance, empty left`
+              end
         | Empty ->
             abort-with-message `Map, rebalance, empty left`
         end
-      else if left-height + 2 <= right-height then
-        match right with
-        | Node(right-node) ->
+      else if hL + 2 == hR then
+        match tR with
+        | Node(nR) ->
             () % TODO: rebalance
         | Empty ->
             abort-with-message `Map, rebalance, empty right`
         end
       else
-        Node(|
-          key    = k,
-          data   = v,
-          left   = left,
-          right  = right,
-          height = (Int.max left-height right-height) + 1,
-        |)
+        build-node tL k v tR
 
     val add k v =
       let rec aux map =
