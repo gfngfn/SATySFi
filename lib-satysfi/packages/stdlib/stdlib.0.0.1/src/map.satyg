@@ -169,28 +169,89 @@ module Map
         match map with
         | Empty ->
             (true, singleton k v)
-        | Node(r) ->
-            match Key.compare k r#key with
+        | Node(n) ->
+            match Key.compare k n#key with
             | Equal ->
-                (false, Node(| r with data = v |))
+                (false, Node(| n with data = v |))
             | Less ->
-                let (enlarged, left-new) = aux r#left in
+                let (enlarged, left-new) = aux n#left in
                 if enlarged then
-                  (true, rebalance left-new r#key r#data r#right)
+                  (true, rebalance left-new n#key n#data n#right)
                 else
-                  (false, Node(| r with left = left-new |))
+                  (false, Node(| n with left = left-new |))
             | Greater ->
-                let (enlarged, right-new) = aux r#right in
+                let (enlarged, right-new) = aux n#right in
                 if enlarged then
-                  (true, rebalance r#left r#key r#data right-new)
+                  (true, rebalance n#left n#key n#data right-new)
                 else
-                  (false, Node(| r with right = right-new |))
+                  (false, Node(| n with right = right-new |))
             end
         end
       in
       (fun map -> (
         let (_, map-new) = aux map in
         map-new
+      ))
+
+    val trim-minimum =
+      let rec aux n =
+        match n#left with
+        | Empty ->
+            ((n#key, n#data), n#right)
+            % Since `n` is balanced,
+            % `n#right` has 0 or 1 node.
+        | Node(nL) ->
+            let (kv-min, tL) = aux nL in
+            (kv-min, rebalance tL n#key n#data n#right)
+        end
+      in
+      (fun t -> (
+        match t with
+        | Empty   -> None
+        | Node(n) -> Some(aux n)
+        end
+      ))
+
+    % Merges two trees `t1` and `t2`,
+    % where the maximum key in `t1` is less than the minimum key in `t2`
+    % and the difference of height between `t1` and `t2` is less than 2.
+    val merge-separated t1 t2 =
+      match trim-minimum t2 with
+      | None                       -> t1
+      | Some(((k, v), t2-removed)) -> rebalance t1 k v t2-removed
+      end
+
+    val remove k =
+      let rec aux map =
+        match map with
+        | Empty ->
+            None
+        | Node(n) ->
+            match Key.compare k n#key with
+            | Equal ->
+                Some(merge-separated n#left n#right)
+            | Less ->
+                match aux n#left with
+                | None ->
+                    None
+                | Some(left-new) ->
+                    Some(rebalance left-new n#key n#data n#right)
+                end
+            | Greater ->
+                match aux n#right with
+                | None ->
+                    None
+                | Some(right-new) ->
+                    Some(rebalance n#left n#key n#data right-new)
+                end
+            end
+        end
+      in
+      (fun map -> (
+        match aux map with
+        | None          -> map
+        | Some(map-new) -> map-new
+        end
       ))
 
   end
