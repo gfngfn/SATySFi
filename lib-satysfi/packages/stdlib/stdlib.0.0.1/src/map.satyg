@@ -1,7 +1,16 @@
 use open Basic
 use Int
 
-module Map = struct
+module Map
+%:> sig
+%  module Make : (Key : Ord) -> sig
+%    type t :: o -> o
+%    val empty 'a : t 'a
+%    val singleton 'a : Key.t -> 'a -> t 'a
+%    val add 'a : Key.t -> 'a -> t 'a -> t 'a
+%  end
+%end
+= struct
 
   module Make = fun(Key : Ord) -> struct
 
@@ -48,6 +57,8 @@ module Map = struct
       let hR = get-height tR in
       if hL == hR + 2 then
         match tL with
+        | Empty ->
+            abort-with-message `Map, rebalance, empty left`
         | Node(nL) ->
             let tLL = nL#left in
             let tLR = nL#right in
@@ -72,6 +83,8 @@ module Map = struct
               % it means at least two elements were modified in a balanced tree before rebalancing
               % and thereby contradicts the invariant (i.e., that any use-space maps are balanced).
               match tLR with
+              | Empty ->
+                  abort-with-message `Map, rebalance, empty left-right`
               | Node(nLR) ->
                   let tLRL = nLR#left in
                   let tLRR = nLR#right in
@@ -93,18 +106,60 @@ module Map = struct
                     nLR#key
                     nLR#data
                     (build-node tLRR k v tR)
-              | Empty ->
-                  abort-with-message `Map, rebalance, empty left`
               end
-        | Empty ->
-            abort-with-message `Map, rebalance, empty left`
         end
       else if hL + 2 == hR then
         match tR with
-        | Node(nR) ->
-            () % TODO: rebalance
         | Empty ->
             abort-with-message `Map, rebalance, empty right`
+        | Node(nR) ->
+            let tRL = nR#left in
+            let tRR = nR#right in
+            let hRL = get-height tRL in
+            let hRR = get-height tRR in
+            if hRL < hRR then
+              %   N             R
+              %  / \           / \
+              % L   R  ====>  N  RR
+              % |  / \       / \  |
+              % | RL RR     L  RL |
+              % | |   |     |   | |
+              % # |   |     |   | |
+              %   |   |     |   | |
+              %   o   |     #   o x
+              %       |
+              %       x
+              build-node (build-node tL k v tRL) nR#key nR#data tRR
+            else
+              % Actually, we can assume `hRL > hRR` here, although we do not utilize it.
+              % This is because, if `hRL == hRR`,
+              % it means at least two elements were modified in a balanced tree before rebalancing
+              % and thereby contradicts the invariant (i.e., that any use-space maps are balanced).
+              match tRL with
+              | Empty ->
+                  abort-with-message `Map, rebalance, empty left-right`
+              | Node(nRL) ->
+                  let tRLL = nRL#left in
+                  let tRLR = nRL#right in
+                  let hRLL = get-height tRLL in
+                  let hRLR = get-height tRLR in
+                  %     N                 RL
+                  %   /   \             /    \
+                  % L       R  ====>  N        R
+                  % |      / \       / \      / \
+                  % |    RL   RR    L  RLL  RLR  RR
+                  % |   /  \   |    |    |    |   |
+                  % # RLL  RLR |    |    |    |   |
+                  %    |    |  |    |    |    |   |
+                  %    |    |  |    #    x    x   |
+                  %    |    |  |                  |
+                  %    x    x  y                  y
+                  build-node
+                    (build-node tL k v tRLL)
+                    nRL#key
+                    nRL#data
+                    (build-node tRLR nR#key nR#data tRR)
+              end
         end
       else
         build-node tL k v tR
