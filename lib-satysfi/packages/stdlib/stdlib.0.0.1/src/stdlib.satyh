@@ -53,7 +53,7 @@ module Stdlib :> sig
     val persistent ~equal 'a : ('a -> 'a -> bool) -> list 'a -> list 'a -> bool
     val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
     val persistent ~fold-indexed 'a 'b : ('a -> int -> 'b -> 'a) -> 'a -> list 'b -> 'a
-    val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> 'b -> list 'a -> 'b
+    val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> list 'a -> 'b -> 'b
     val persistent ~fold-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
     val persistent ~fold-indexed-adjacent 'a 'b : ('a -> int -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
     val persistent ~reverse 'a : list 'a -> list 'a

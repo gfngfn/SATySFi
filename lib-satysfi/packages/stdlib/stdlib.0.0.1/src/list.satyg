@@ -8,7 +8,7 @@ module List :> sig
   val persistent ~equal 'a : ('a -> 'a -> bool) -> list 'a -> list 'a -> bool
   val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
   val persistent ~fold-indexed 'a 'b : ('a -> int -> 'b -> 'a) -> 'a -> list 'b -> 'a
-  val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> 'b -> list 'a -> 'b
+  val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> list 'a -> 'b -> 'b
   val persistent ~fold-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
   val persistent ~fold-indexed-adjacent 'a 'b : ('a -> int -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
   val persistent ~reverse 'a : list 'a -> list 'a
@@ -61,10 +61,10 @@ end = struct
     | _                      -> false
     end
 
-  val persistent ~rec fold f init ys =
+  val persistent ~rec fold f acc ys =
     match ys with
-    | []      -> init
-    | x :: xs -> fold f (f init x) xs
+    | []      -> acc
+    | x :: xs -> fold f (f acc x) xs
     end
 
   val persistent ~fold-indexed f =
@@ -76,21 +76,21 @@ end = struct
     in
     aux 0 f
 
-  val persistent ~rec fold-back f init ys =
+  val persistent ~rec fold-back f ys acc =
     match ys with
-    | []      -> init
-    | x :: xs -> f x (fold-back f init xs)
+    | []      -> acc
+    | x :: xs -> f x (fold-back f xs acc)
     end
 
   val persistent ~fold-adjacent f =
-    let rec aux left-opt acc xs =
+    let rec aux prev-opt acc xs =
       match xs with
       | [] ->
           acc
       | head :: [] ->
-          f acc head left-opt None
+          f acc head prev-opt None
       | head :: ((right :: _) as tail) ->
-          let acc-new = f acc head left-opt (Some(right)) in
+          let acc-new = f acc head prev-opt (Some(right)) in
           aux (Some(head)) acc-new tail
       end
     in
@@ -98,8 +98,8 @@ end = struct
 
   val persistent ~fold-indexed-adjacent f init xs =
     let (_, acc) =
-      xs |> fold-adjacent (fun (i, acc) x left-opt right-opt -> (
-        (i + 1, f acc i x left-opt right-opt)
+      xs |> fold-adjacent (fun (i, acc) x prev-opt next-opt -> (
+        (i + 1, f acc i x prev-opt next-opt)
       )) (0, init)
     in
     acc
@@ -123,19 +123,19 @@ end = struct
     aux 0 f
 
   val persistent ~map-adjacent f xs =
-    xs |> fold-adjacent (fun acc x left-opt right-opt -> (
-      f x left-opt right-opt :: acc
+    xs |> fold-adjacent (fun acc x prev-opt next-opt -> (
+      f x prev-opt next-opt :: acc
     )) [] |> reverse
 
   val persistent ~map-indexed-adjacent f xs =
-    xs |> fold-indexed-adjacent (fun acc i x left-opt right-opt -> (
-      f i x left-opt right-opt :: acc
+    xs |> fold-indexed-adjacent (fun acc i x prev-opt next-opt -> (
+      f i x prev-opt next-opt :: acc
     )) [] |> reverse
 
   val persistent ~map-with-ends f xs =
-    fold-adjacent (fun acc x prev next -> (
-      let is-first = Option.is-none prev in
-      let is-last = Option.is-none next in
+    fold-adjacent (fun acc x prev-opt next-opt -> (
+      let is-first = Option.is-none prev-opt in
+      let is-last = Option.is-none next-opt in
       let y = f is-first is-last x in
       y :: acc
     )) [] xs |> reverse
@@ -147,7 +147,7 @@ end = struct
     end
 
   val persistent ~concat xs =
-    fold-back append [] xs
+    fold-back append xs []
 
   val persistent ~pure x =
     [x]
@@ -194,7 +194,7 @@ end = struct
     end
 
   val persistent ~length xs =
-    fold-back (fun _ i -> i + 1) 0 xs
+    fold (fun i _ -> i + 1) 0 xs
 
   val persistent ~nth lst =
     let rec aux i n xs =
