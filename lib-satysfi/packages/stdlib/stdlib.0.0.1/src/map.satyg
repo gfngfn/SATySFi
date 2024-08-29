@@ -9,9 +9,13 @@ module Map :> sig
     val singleton 'v : Key.t -> 'v -> t 'v
     val add 'v : Key.t -> 'v -> t 'v -> t 'v
     val remove 'v : Key.t -> t 'v -> t 'v
+    val find 'v : Key.t -> t 'v -> option 'v
+    val map-with-key 'u 'v : (Key.t -> 'u -> 'v) -> t 'u -> t 'v
+    val map 'u 'v : ('u -> 'v) -> t 'u -> t 'v
     val fold 'a 'v : ('a -> Key.t -> 'v -> 'a) -> 'a -> t 'v -> 'a
-    val to-descending-list 'v : t 'v -> list (Key.t * 'v)
-    val to-ascending-list 'v : t 'v -> list (Key.t * 'v)
+    val fold-back 'a 'v : ('a -> Key.t -> 'v -> 'a) -> 'a -> t 'v -> 'a
+    val to-list 'v : t 'v -> list (Key.t * 'v)
+    val to-list-reversed 'v : t 'v -> list (Key.t * 'v)
     val from-list 'v : list (Key.t * 'v) -> t 'v
   end
 end = struct
@@ -28,8 +32,8 @@ end = struct
           height : int,
         |)
 
-    val get-height map =
-      match map with
+    val get-height mp =
+      match mp with
       | Empty   -> 0
       | Node(r) -> r#height
       end
@@ -141,7 +145,7 @@ end = struct
               % and thereby contradicts the invariant (i.e., that any use-space maps are balanced).
               match tRL with
               | Empty ->
-                  abort-with-message `Map, rebalance, empty left-right`
+                  abort-with-message `Map, rebalance, empty right-left`
               | Node(nRL) ->
                   let tRLL = nRL#left in
                   let tRLR = nRL#right in
@@ -169,8 +173,8 @@ end = struct
         build-node tL k v tR
 
     val add k v =
-      let rec aux map =
-        match map with
+      let rec aux mp =
+        match mp with
         | Empty ->
             (true, singleton k v)
         | Node(n) ->
@@ -192,9 +196,9 @@ end = struct
             end
         end
       in
-      (fun map -> (
-        let (_, map-new) = aux map in
-        map-new
+      (fun mp -> (
+        let (_, mp-new) = aux mp in
+        mp-new
       ))
 
     val trim-minimum =
@@ -226,8 +230,8 @@ end = struct
       end
 
     val remove k =
-      let rec aux map =
-        match map with
+      let rec aux mp =
+        match mp with
         | Empty ->
             None
         | Node(n) ->
@@ -251,16 +255,51 @@ end = struct
             end
         end
       in
-      (fun map -> (
-        match aux map with
-        | None          -> map
-        | Some(map-new) -> map-new
+      (fun mp -> (
+        match aux mp with
+        | None          -> mp
+        | Some(mp-new) -> mp-new
         end
       ))
 
+    val find k =
+      let rec aux mp =
+        match mp with
+        | Empty ->
+            None
+        | Node(n) ->
+            match Key.compare k n#key with
+            | Equal   -> Some(n#data)
+            | Less    -> aux n#left
+            | Greater -> aux n#right
+            end
+        end
+      in
+      aux
+
+    val map-with-key f =
+      let rec aux mp =
+        match mp with
+        | Empty ->
+            Empty
+        | Node(n) ->
+            Node(|
+              key    = n#key,
+              data   = f n#key n#data,
+              left   = aux n#left,
+              right  = aux n#right,
+              height = n#height,
+            |)
+        end
+      in
+      aux
+
+    val map f mp =
+      map-with-key (fun _ -> f) mp
+
     val fold f =
-      let rec aux acc map =
-        match map with
+      let rec aux acc mp =
+        match mp with
         | Empty ->
             acc
         | Node(n) ->
@@ -272,15 +311,29 @@ end = struct
       in
       aux
 
-    val to-descending-list map =
-      fold (fun acc k v -> (k, v) :: acc) [] map
+    val fold-back f =
+      let rec aux acc mp =
+        match mp with
+        | Empty ->
+            acc
+        | Node(n) ->
+            let acc = aux acc n#right in
+            let acc = f acc n#key n#data in
+            let acc = aux acc n#left in
+            acc
+        end
+      in
+      aux
 
-    val to-ascending-list map =
-      List.reverse (to-descending-list map)
+    val to-list mp =
+      fold-back (fun acc k v -> (k, v) :: acc) [] mp
+
+    val to-list-reversed mp =
+      fold (fun acc k v -> (k, v) :: acc) [] mp
 
     % TODO: make this more efficient
     val from-list kvs =
-      List.fold (fun map (k, v) -> add k v map) empty kvs
+      List.fold (fun mp (k, v) -> add k v mp) empty kvs
 
   end
 

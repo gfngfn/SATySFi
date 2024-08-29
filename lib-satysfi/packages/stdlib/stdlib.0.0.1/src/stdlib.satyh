@@ -82,9 +82,13 @@ module Stdlib :> sig
       val singleton 'v : Key.t -> 'v -> t 'v
       val add 'v : Key.t -> 'v -> t 'v -> t 'v
       val remove 'v : Key.t -> t 'v -> t 'v
+      val find 'v : Key.t -> t 'v -> option 'v
+      val map 'u 'v : ('u -> 'v) -> t 'u -> t 'v
+      val map-with-key 'u 'v : (Key.t -> 'u -> 'v) -> t 'u -> t 'v
       val fold 'a 'v : ('a -> Key.t -> 'v -> 'a) -> 'a -> t 'v -> 'a
-      val to-descending-list 'v : t 'v -> list (Key.t * 'v)
-      val to-ascending-list 'v : t 'v -> list (Key.t * 'v)
+      val fold-back 'a 'v : ('a -> Key.t -> 'v -> 'a) -> 'a -> t 'v -> 'a
+      val to-list 'v : t 'v -> list (Key.t * 'v)
+      val to-list-reversed 'v : t 'v -> list (Key.t * 'v)
       val from-list 'v : list (Key.t * 'v) -> t 'v
     end
   end
