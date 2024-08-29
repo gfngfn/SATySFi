@@ -1,13 +1,18 @@
 use open Basic
 use Int
+use List
 
 module Map :> sig
   module Make : (Key : Ord) -> sig
     type t :: o -> o
-    val empty 'a : t 'a
-    val singleton 'a : Key.t -> 'a -> t 'a
-    val add 'a : Key.t -> 'a -> t 'a -> t 'a
-    val remove 'a : Key.t -> t 'a -> t 'a
+    val empty 'v : t 'v
+    val singleton 'v : Key.t -> 'v -> t 'v
+    val add 'v : Key.t -> 'v -> t 'v -> t 'v
+    val remove 'v : Key.t -> t 'v -> t 'v
+    val fold 'a 'v : ('a -> Key.t -> 'v -> 'a) -> 'a -> t 'v -> 'a
+    val to-descending-list 'v : t 'v -> list (Key.t * 'v)
+    val to-ascending-list 'v : t 'v -> list (Key.t * 'v)
+    val from-list 'v : list (Key.t * 'v) -> t 'v
   end
 end = struct
 
@@ -252,6 +257,30 @@ end = struct
         | Some(map-new) -> map-new
         end
       ))
+
+    val fold f =
+      let rec aux acc map =
+        match map with
+        | Empty ->
+            acc
+        | Node(n) ->
+            let acc = aux acc n#left in
+            let acc = f acc n#key n#data in
+            let acc = aux acc n#right in
+            acc
+        end
+      in
+      aux
+
+    val to-descending-list map =
+      fold (fun acc k v -> (k, v) :: acc) [] map
+
+    val to-ascending-list map =
+      List.reverse (to-descending-list map)
+
+    % TODO: make this more efficient
+    val from-list kvs =
+      List.fold (fun map (k, v) -> add k v map) empty kvs
 
   end
 

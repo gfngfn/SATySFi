@@ -78,10 +78,14 @@ module Stdlib :> sig
   module Map : sig
     module Make : (Key : Ord) -> sig
       type t :: o -> o
-      val empty 'a : t 'a
-      val singleton 'a : Key.t -> 'a -> t 'a
-      val add 'a : Key.t -> 'a -> t 'a -> t 'a
-      val remove 'a : Key.t -> t 'a -> t 'a
+      val empty 'v : t 'v
+      val singleton 'v : Key.t -> 'v -> t 'v
+      val add 'v : Key.t -> 'v -> t 'v -> t 'v
+      val remove 'v : Key.t -> t 'v -> t 'v
+      val fold 'a 'v : ('a -> Key.t -> 'v -> 'a) -> 'a -> t 'v -> 'a
+      val to-descending-list 'v : t 'v -> list (Key.t * 'v)
+      val to-ascending-list 'v : t 'v -> list (Key.t * 'v)
+      val from-list 'v : list (Key.t * 'v) -> t 'v
     end
   end
   module Length : sig
