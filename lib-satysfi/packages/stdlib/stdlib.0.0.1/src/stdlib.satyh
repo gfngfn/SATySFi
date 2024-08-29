@@ -3,6 +3,7 @@ use Int
 use Option
 use List
 use Map
+use Set
 use Length
 use Logo
 use Inline
@@ -90,6 +91,20 @@ module Stdlib :> sig
       val to-list 'v : t 'v -> list (Key.t * 'v)
       val to-list-reversed 'v : t 'v -> list (Key.t * 'v)
       val from-list 'v : list (Key.t * 'v) -> t 'v
+    end
+  end
+  module Set : sig
+    module Make : (Elem : Ord) -> sig
+      type t :: o
+      val empty : t
+      val add : Elem.t -> t -> t
+      val remove : Elem.t -> t -> t
+      val is-member : Elem.t -> t -> bool
+      val fold 'a : ('a -> Elem.t -> 'a) -> 'a -> t -> 'a
+      val fold-back 'a : ('a -> Elem.t -> 'a) -> 'a -> t -> 'a
+      val to-list : t -> list Elem.t
+      val to-list-reversed : t -> list Elem.t
+      val from-list : list Elem.t -> t
     end
   end
   module Length : sig
@@ -216,6 +231,7 @@ end = struct
   module Option = Option
   module List = List
   module Map = Map
+  module Set = Set
   module Length = Length
   module Logo = Logo
   module Inline = Inline
