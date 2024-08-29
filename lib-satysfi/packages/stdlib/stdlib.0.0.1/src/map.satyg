@@ -1,16 +1,15 @@
 use open Basic
 use Int
 
-module Map
-%:> sig
-%  module Make : (Key : Ord) -> sig
-%    type t :: o -> o
-%    val empty 'a : t 'a
-%    val singleton 'a : Key.t -> 'a -> t 'a
-%    val add 'a : Key.t -> 'a -> t 'a -> t 'a
-%  end
-%end
-= struct
+module Map :> sig
+  module Make : (Key : Ord) -> sig
+    type t :: o -> o
+    val empty 'a : t 'a
+    val singleton 'a : Key.t -> 'a -> t 'a
+    val add 'a : Key.t -> 'a -> t 'a -> t 'a
+    val remove 'a : Key.t -> t 'a -> t 'a
+  end
+end = struct
 
   module Make = fun(Key : Ord) -> struct
 

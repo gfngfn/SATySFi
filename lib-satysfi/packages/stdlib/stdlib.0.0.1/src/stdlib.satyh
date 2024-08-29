@@ -2,6 +2,7 @@ use Basic
 use Int
 use Option
 use List
+use Map
 use Length
 use Logo
 use Inline
@@ -73,6 +74,15 @@ module Stdlib :> sig
     val persistent ~length 'a : list 'a -> int
     val persistent ~nth 'a : int -> list 'a -> option 'a
     val persistent ~is-empty 'a : list 'a -> bool
+  end
+  module Map : sig
+    module Make : (Key : Ord) -> sig
+      type t :: o -> o
+      val empty 'a : t 'a
+      val singleton 'a : Key.t -> 'a -> t 'a
+      val add 'a : Key.t -> 'a -> t 'a -> t 'a
+      val remove 'a : Key.t -> t 'a -> t 'a
+    end
   end
   module Length : sig
     type t = length
@@ -197,6 +207,7 @@ end = struct
   module Int = Int
   module Option = Option
   module List = List
+  module Map = Map
   module Length = Length
   module Logo = Logo
   module Inline = Inline
