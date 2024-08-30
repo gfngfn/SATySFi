@@ -1,13 +1,11 @@
 saphe: ^0.1.0-alpha.1
 locks:
-- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.testing.0.0.1
+- name: local.../../testing/testing.0.0.1
   dependencies: []
   test_only: true
-  registered:
-    registry_hash_value: 6f2b80e9bb7c4e8af2104999fc25dbb3
-    package_name: testing
-    version: 0.0.1
+  local:
+    relative_path: ../../testing/testing.0.0.1
 dependencies: []
 test_dependencies:
-- name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.testing.0.0.1
+- name: local.../../testing/testing.0.0.1
   used_as: Testing
