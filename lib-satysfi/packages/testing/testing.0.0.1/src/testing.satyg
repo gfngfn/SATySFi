@@ -12,7 +12,7 @@ module Testing :> sig
     val option 'a : t 'a -> t (option 'a)
     val list 'a : t 'a -> t (list 'a)
   end
-  val assert-equal 'a : Equality.t 'a -> 'a -> 'a -> unit
+  val assert-equal 'a : ?(title : string) Equality.t 'a -> 'a -> 'a -> unit
 end = struct
 
   module Equality = struct
@@ -89,12 +89,18 @@ end = struct
 
   end
 
-  val assert-equal eq x1 x2 =
+  val assert-equal ?(title = title-opt) eq x1 x2 =
     if eq#equal x1 x2 then
       ()
     else
       let s1 = eq#show x1 in
       let s2 = eq#show x2 in
-      abort-with-message (`expected: `# ^ s1 ^ `, got: `# ^ s2)
+      let s-title =
+        match title-opt with
+        | None        -> ` `
+        | Some(title) -> `[` ^ title ^ `] `#
+        end
+      in
+      abort-with-message (s-title ^ `expected: `# ^ s1 ^ `, got: `# ^ s2)
 
 end

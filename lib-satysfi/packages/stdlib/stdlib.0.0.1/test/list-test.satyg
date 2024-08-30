@@ -9,16 +9,41 @@ module ListTest = struct
   val eq-ordering =
     Equality.make (|
       equal = Ordering.equal,
-      show  = Ordering.show,
+      show = Ordering.show,
     |)
 
   #[test]
   val compare-test () =
-    let input1 = [] in
-    let input2 = [1] in
-    let got = List.compare Int.compare input1 input2 in
-    let expected = Less in
-    assert-equal eq-ordering expected got
+    List.iter (fun r -> (
+      let got = List.compare Int.compare r#input1 r#input2 in
+      assert-equal ?(title = r#title) eq-ordering r#expected got
+    ))
+    [
+      (|
+        title = `prefix is smaller 1`,
+        input1 = [],
+        input2 = [1],
+        expected = Less,
+      |),
+      (|
+        title = `prefix is smaller 2`,
+        input1 = [1],
+        input2 = [1, 2],
+        expected = Less,
+      |),
+      (|
+        title = `prefix is smaller 3`,
+        input1 = [2],
+        input2 = [2, 1],
+        expected = Less,
+      |),
+      (|
+        title = `lexicographic`,
+        input1 = [4, 2],
+        input2 = [4, 1, 3],
+        expected = Greater,
+      |),
+    ]
 
   #[test]
   val fold-test () =
