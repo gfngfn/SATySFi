@@ -6,6 +6,7 @@ module List :> sig
   val ~lift 'a : ('a -> code 'a) -> list 'a -> code (list 'a)
   val persistent ~compare 'a : ('a -> 'a -> ordering) -> list 'a -> list 'a -> ordering
   val persistent ~equal 'a : ('a -> 'a -> bool) -> list 'a -> list 'a -> bool
+  val persistent ~show 'a : ('a -> string) -> list 'a -> string
   val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
   val persistent ~fold-indexed 'a 'b : ('a -> int -> 'b -> 'a) -> 'a -> list 'b -> 'a
   val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> list 'a -> 'b -> 'b
@@ -60,6 +61,16 @@ end = struct
     | (x1 :: ys1, x2 :: ys2) -> if eq x1 x2 then equal eq ys1 ys2 else false
     | _                      -> false
     end
+
+  val persistent ~show sh =
+    let rec aux xs =
+      match xs with
+      | []      -> ` `
+      | [x]     -> sh x
+      | x :: ys -> sh x ^ `, `# ^ aux ys
+      end
+    in
+    (fun xs -> `[` ^ aux xs ^ `]`)
 
   val persistent ~rec fold f acc ys =
     match ys with

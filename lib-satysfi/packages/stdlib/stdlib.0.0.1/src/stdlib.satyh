@@ -52,6 +52,7 @@ module Stdlib :> sig
     val ~lift 'a : ('a -> code 'a) -> list 'a -> code (list 'a)
     val persistent ~compare 'a : ('a -> 'a -> ordering) -> list 'a -> list 'a -> ordering
     val persistent ~equal 'a : ('a -> 'a -> bool) -> list 'a -> list 'a -> bool
+    val persistent ~show 'a : ('a -> string) -> list 'a -> string
     val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
     val persistent ~fold-indexed 'a 'b : ('a -> int -> 'b -> 'a) -> 'a -> list 'b -> 'a
     val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> list 'a -> 'b -> 'b
