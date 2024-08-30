@@ -667,20 +667,15 @@ end
 
 
 let initial_library_test_contents = Core.String.lstrip {string|
+use package open Testing
 use Calc
-use package Testing
 
 module CalcTest = struct
-  module IntTarget = struct
-    type t = int
-    val equal m n = (m == n)
-    val show = arabic
-  end
-  module IntEquality = Testing.Equality.Make IntTarget
 
   #[test]
-  val succ-test =
-    IntEquality.assert-equal 43 (Calc.succ 42)
+  val succ-test () =
+    assert-equal Equality.int 43 (Calc.succ 42)
+
 end
 |string}
 
@@ -755,8 +750,8 @@ let init_library ~(fpath_in : string) =
     let dir_current = Sys.getcwd () in
     let absdir_package = make_absolute_if_relative ~origin:dir_current fpath_in in
     let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
-    let abspath_source = append_to_abs_directory absdir_package "src/Calc.satyh" in
-    let abspath_test = append_to_abs_directory absdir_package "test/CalcTest.satyh" in
+    let abspath_source = append_to_abs_directory absdir_package "src/calc.satyh" in
+    let abspath_test = append_to_abs_directory absdir_package "test/calc-test.satyh" in
 
     let* () = assert_nonexistence abspath_package_config in
     let* () = assert_nonexistence abspath_source in
