@@ -167,7 +167,7 @@ end = struct
               let decoset = Annot.register-location-frame key-pdf-loc in
               let ib = inline-frame-breakable pads-zero decoset (read-inline ctx it) in
               line-break true true ctx (ib ++ inline-fil)
-            )) |> List.fold-left (+++) block-nil
+            )) |> List.fold (+++) block-nil
           in
           let bb-heading =
             let ctx = ctx |> h1-heading in
@@ -191,7 +191,7 @@ end = struct
       |)
     in
     page-break paper pagecontf pagepartsf
-      (List.fold-left (+++) block-nil [
+      (List.fold (+++) block-nil [
         bb-title, bb-author,
         block-skip skip-before-content,
         bb-main,
@@ -299,7 +299,7 @@ end = struct
       if string-same name `console` then
         '<+Code.console(fix-block-code s);>
       else
-        '<+Code.code(fix-block-code s);>
+        '<+Code.Default.code(fix-block-code s);>
     in
     read-block ctx bt
 
@@ -318,7 +318,7 @@ end = struct
     let color = (Gray(0.75)) in
     line-break true true ctx
       (inline-graphics w h h (fun (x, y) ->
-        stroke hr-thickness color (Gr.line (x, y) (x +' w, y))
+        stroke hr-thickness color (Path.line (x, y) (x +' w, y))
       ))
 
 
@@ -378,6 +378,6 @@ end = struct
 
 
   val inline ctx \hard-break =
-    Pervasives.mandatory-break ctx
+    Inline.mandatory-break ctx
 
 end

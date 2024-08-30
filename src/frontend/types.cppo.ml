@@ -605,7 +605,7 @@ and untyped_attribute =
 [@@deriving show { with_path = false; }]
 
 type untyped_library_file =
-  untyped_attribute list * header_element list * (module_name ranged * untyped_signature option * untyped_binding list)
+  untyped_attribute list * header_element list * (module_name ranged * untyped_signature option * Range.t * untyped_binding list)
 [@@deriving show { with_path = false; }]
 
 type untyped_document_file =

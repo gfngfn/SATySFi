@@ -5,6 +5,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/nx.saty:1.8-10>), "Nx"), None,
+     (Range.Normal </path/to/nx.saty:1.13-43.4>),
      [((Range.Normal </path/to/nx.saty:3.3-6>),
        (UTBindValue ([], Stage1,
           (UTNonRec
@@ -791,6 +792,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/variants.saty:1.8-16>), "Variants"), None,
+     (Range.Normal </path/to/variants.saty:1.19-6.4>),
      [((Range.Normal </path/to/variants.saty:3.3-7>),
        (UTBindType
           [(((Range.Normal </path/to/variants.saty:3.8-9>), "t"), [],
@@ -828,6 +830,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/txprod.saty:1.8-14>), "Txprod"), None,
+     (Range.Normal </path/to/txprod.saty:1.17-6.4>),
      [((Range.Normal </path/to/txprod.saty:3.3-7>),
        (UTBindType
           [(((Range.Normal </path/to/txprod.saty:3.8-9>), "t"), [],
@@ -866,6 +869,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/txlist.saty:1.8-14>), "Txlist"), None,
+     (Range.Normal </path/to/txlist.saty:1.17-8.4>),
      [((Range.Normal </path/to/txlist.saty:3.3-7>),
        (UTBindType
           [(((Range.Normal </path/to/txlist.saty:3.8-9>), "t"), [],
@@ -923,6 +927,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/txrecord.saty:1.8-16>), "Txrecord"), None,
+     (Range.Normal </path/to/txrecord.saty:1.19-8.4>),
      [((Range.Normal </path/to/txrecord.saty:3.3-7>),
        (UTBindType
           [(((Range.Normal </path/to/txrecord.saty:3.8-9>), "t"), [],
@@ -980,6 +985,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/pats.saty:1.8-12>), "Pats"), None,
+     (Range.Normal </path/to/pats.saty:1.15-13.4>),
      [((Range.Normal </path/to/pats.saty:3.3-6>),
        (UTBindValue ([], Stage1,
           (UTNonRec
@@ -1019,6 +1025,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/pattuple.saty:1.8-16>), "Pattuple"), None,
+     (Range.Normal </path/to/pattuple.saty:1.19-8.4>),
      [((Range.Normal </path/to/pattuple.saty:3.3-6>),
        (UTBindValue ([], Stage1,
           (UTNonRec
@@ -1048,6 +1055,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/patlist.saty:1.8-15>), "Patlist"), None,
+     (Range.Normal </path/to/patlist.saty:1.18-10.4>),
      [((Range.Normal </path/to/patlist.saty:3.3-6>),
        (UTBindValue ([], Stage1,
           (UTNonRec
@@ -1106,6 +1114,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/sxlist.saty:1.8-14>), "Sxlist"), None,
+     (Range.Normal </path/to/sxlist.saty:1.17-6.4>),
      [((Range.Normal </path/to/sxlist.saty:3.3-6>),
        (UTBindValue ([], Stage1,
           (UTNonRec
@@ -1124,6 +1133,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/mathlist.saty:1.8-16>), "Mathlist"), None,
+     (Range.Normal </path/to/mathlist.saty:1.19-21.4>),
      [((Range.Normal </path/to/mathlist.saty:3.3-6>),
        (UTBindValue ([], Stage1,
           (UTNonRec
@@ -1398,6 +1408,7 @@
 (UTLibraryFile
    ([], [],
     (((Range.Normal </path/to/toplevel.saty:1.8-16>), "Toplevel"), None,
+     (Range.Normal </path/to/toplevel.saty:1.19-9.4>),
      [((Range.Normal </path/to/toplevel.saty:3.3-7>),
        (UTBindType
           [(((Range.Normal </path/to/toplevel.saty:3.8-9>), "t"), [],

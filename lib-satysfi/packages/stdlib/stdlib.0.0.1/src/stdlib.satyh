@@ -1,66 +1,148 @@
+use Basic
+use Int
 use Option
 use List
-use Pervasives
+use Map
+use Set
+use Length
+use Logo
+use Inline
+use Block
+use Arith
+use Ref
 use Geom
 use Color
-use Gr
+use Path
+use Graphics
 use PaperSize
 use Deco
 use HDecoSet
 use VDecoSet
 
 module Stdlib :> sig
+  % Basic
+  type ordering = Less | Equal | Greater
+  type point = length * length
+  type paren = length -> length -> context -> inline-boxes * (length -> length)
+  signature Ord = sig
+    type t :: o
+    val compare : t -> t -> ordering
+  end
+  module Int : sig
+    type t = int
+    val ~lift : int -> code int
+    val persistent ~compare : int -> int -> ordering
+    val persistent ~equal : int -> int -> bool
+    val persistent ~max : int -> int -> int
+    val persistent ~min : int -> int -> int
+  end
   module Option : sig
+    type t 'a = option 'a
+    val ~lift 'a : ('a -> code 'a) -> option 'a -> code (option 'a)
+    val persistent ~compare 'a : ('a -> 'a -> ordering) -> option 'a -> option 'a -> ordering
+    val persistent ~equal 'a : ('a -> 'a -> bool) -> option 'a -> option 'a -> bool
     val persistent ~map 'a 'b : ('a -> 'b) -> option 'a -> option 'b
-    val persistent ~from 'a : 'a -> option 'a -> 'a
+    val persistent ~pure 'a : 'a -> option 'a
     val persistent ~bind 'a 'b : option 'a -> ('a -> option 'b) -> option 'b
+    val persistent ~from 'a : 'a -> option 'a -> 'a
     val persistent ~is-none 'a : option 'a -> bool
   end
   module List : sig
-    val persistent ~map 'a 'b : ('a -> 'b) -> list 'a -> list 'b
-    val persistent ~mapi 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
-    val persistent ~iter 'a : ('a -> unit) -> list 'a -> unit
-    val persistent ~iteri 'a : (int -> 'a -> unit) -> list 'a -> unit
-    val persistent ~fold-left 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
-    val persistent ~fold-lefti 'a 'b : (int -> 'a -> 'b -> 'a) -> 'a -> list 'b -> 'a
-    val persistent ~fold-right 'a 'b : ('a -> 'b -> 'b) -> 'b -> list 'a -> 'b
-    val persistent ~filter 'a : ('a -> bool) -> list 'a -> list 'a
-    val persistent ~assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
+    type t 'a = list 'a
+    val ~lift 'a : ('a -> code 'a) -> list 'a -> code (list 'a)
+    val persistent ~compare 'a : ('a -> 'a -> ordering) -> list 'a -> list 'a -> ordering
+    val persistent ~equal 'a : ('a -> 'a -> bool) -> list 'a -> list 'a -> bool
+    val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~fold-indexed 'a 'b : ('a -> int -> 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> list 'a -> 'b -> 'b
+    val persistent ~fold-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
+    val persistent ~fold-indexed-adjacent 'a 'b : ('a -> int -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
     val persistent ~reverse 'a : list 'a -> list 'a
+    val persistent ~map 'a 'b : ('a -> 'b) -> list 'a -> list 'b
+    val persistent ~map-indexed 'a 'b : (int -> 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~map-with-ends 'a 'b : (bool -> bool -> 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~map-adjacent 'a 'b : ('a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~map-indexed-adjacent 'a 'b : (int -> 'a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
     val persistent ~append 'a : list 'a -> list 'a -> list 'a
     val persistent ~concat 'a : list (list 'a) -> list 'a
-    val persistent ~fold-left-adjacent 'a 'b : ('a -> 'b -> option 'b -> option 'b -> 'a) -> 'a -> list 'b -> 'a
-    val persistent ~map-adjacent 'a 'b : ('a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
-    val persistent ~mapi-adjacent 'a 'b : (int -> 'a -> option 'a -> option 'a -> 'b) -> list 'a -> list 'b
+    val persistent ~pure 'a : 'a -> list 'a
+    val persistent ~bind 'a 'b : list 'a -> ('a -> list 'b) -> list 'b
+    val persistent ~iter 'a : ('a -> unit) -> list 'a -> unit
+    val persistent ~iter-indexed 'a : (int -> 'a -> unit) -> list 'a -> unit
+    val persistent ~filter 'a : ('a -> bool) -> list 'a -> list 'a
+    val persistent ~filter-map 'a 'b : ('a -> option 'b) -> list 'a -> list 'b
+    val persistent ~assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
     val persistent ~length 'a : list 'a -> int
     val persistent ~nth 'a : int -> list 'a -> option 'a
     val persistent ~is-empty 'a : list 'a -> bool
-    val persistent ~map-with-ends 'a 'b : (bool -> bool -> 'a -> 'b) -> list 'a -> list 'b
   end
-  module Pervasives : sig
-    type point = length * length
-    type paren = length -> length -> context -> inline-boxes * (length -> length)
-    val get-natural-width : inline-boxes -> length
-    val form-paragraph : context -> inline-boxes -> block-boxes
-    val kern : length -> inline-boxes
-    val \hskip : inline [length]
-    val no-break : inline-boxes -> inline-boxes
-    val \no-break : inline [inline-text]
+  module Map : sig
+    module Make : (Key : Ord) -> sig
+      type t :: o -> o
+      val empty 'v : t 'v
+      val singleton 'v : Key.t -> 'v -> t 'v
+      val add 'v : Key.t -> 'v -> t 'v -> t 'v
+      val remove 'v : Key.t -> t 'v -> t 'v
+      val find 'v : Key.t -> t 'v -> option 'v
+      val map 'u 'v : ('u -> 'v) -> t 'u -> t 'v
+      val map-with-key 'u 'v : (Key.t -> 'u -> 'v) -> t 'u -> t 'v
+      val fold 'a 'v : ('a -> Key.t -> 'v -> 'a) -> 'a -> t 'v -> 'a
+      val fold-back 'a 'v : ('a -> Key.t -> 'v -> 'a) -> 'a -> t 'v -> 'a
+      val to-list 'v : t 'v -> list (Key.t * 'v)
+      val to-list-reversed 'v : t 'v -> list (Key.t * 'v)
+      val from-list 'v : list (Key.t * 'v) -> t 'v
+    end
+  end
+  module Set : sig
+    module Make : (Elem : Ord) -> sig
+      type t :: o
+      val empty : t
+      val add : Elem.t -> t -> t
+      val remove : Elem.t -> t -> t
+      val is-member : Elem.t -> t -> bool
+      val fold 'a : ('a -> Elem.t -> 'a) -> 'a -> t -> 'a
+      val fold-back 'a : ('a -> Elem.t -> 'a) -> 'a -> t -> 'a
+      val to-list : t -> list Elem.t
+      val to-list-reversed : t -> list Elem.t
+      val from-list : list Elem.t -> t
+    end
+  end
+  module Length : sig
+    type t = length
+    val ~lift : length -> code length
+    val persistent ~max : length -> length -> length
+    val persistent ~min : length -> length -> length
+    val persistent ~abs : length -> length
+  end
+  module Logo : sig
     val \SATySFi : inline []
     val \LaTeX : inline []
     val \TeX : inline []
-    val length-max : length -> length -> length
-    val length-min : length -> length -> length
-    val length-abs : length -> length
+  end
+  module Inline : sig
+    val get-natural-advance : inline-boxes -> length
+    val kern : length -> inline-boxes
+    val \skip : inline [length]
+    val no-break : inline-boxes -> inline-boxes
+    val \no-break : inline [inline-text]
     val \fil : inline []
     val \fil-both : inline []
     val mandatory-break : context -> inline-boxes
-    val destruct-option 'a : 'a -> option 'a -> 'a
-    val math-pi : float
-    val increment : ref int -> unit
+    val \mandatory-break : inline []
+  end
+  module Block : sig
+    val form-paragraph : context -> inline-boxes -> block-boxes
+    val +skip : block [length]
+    val +clear-page : block []
+  end
+  module Arith : sig
+    val persistent ~pi : float
+  end
+  module Ref : sig
+    val persistent ~increment : ref int -> unit
+    val persistent ~decrement : ref int -> unit
   end
   module Geom : sig
-    type point = Pervasives.point %TODO (enhance): remove this
     val atan2-point : point -> point -> float
     val div-perp : point -> point -> float -> length -> point
   end
@@ -82,8 +164,7 @@ module Stdlib :> sig
     val pink    : color
     val purple  : color
   end
-  module Gr : sig
-    type point = Pervasives.point  %TODO (enhance): erase this
+  module Path : sig
     val rectangle : point -> point -> path
     val rectangle-round : length -> point -> point -> path
     val rectangle-round-left : length -> point -> point -> path
@@ -94,16 +175,23 @@ module Stdlib :> sig
     val polygon : point -> list point -> path
     val line : point -> point -> path
     val circle : point -> length -> path
+    val linear-transform : float -> float -> float -> float -> path -> path
+    val shift : length * length -> path -> path
+    val rotate : point -> float -> path -> path
+    val scale : point -> float -> float -> path -> path
+  end
+  module Graphics : sig
+    val overlay : list graphics -> graphics
+    val shift : length * length -> graphics -> graphics
+    val linear-transform : float -> float -> float -> float -> graphics -> graphics
+    val rotate : point -> float -> graphics -> graphics
+    val scale : point -> float -> float -> graphics -> graphics
     val empty : graphics
     val text-centering : point -> inline-boxes -> graphics
     val text-leftward : point -> inline-boxes -> graphics
     val text-rightward : point -> inline-boxes -> graphics
     val arrow : length -> color -> length -> length -> length -> point -> point -> graphics
     val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics
-    val rotate-path : point -> float -> path -> path
-    val scale-path : point -> float -> float -> path -> path
-    val rotate-graphics : point -> float -> graphics -> graphics
-    val scale-graphics : point -> float -> float -> graphics -> graphics
   end
   module PaperSize : sig
     val persistent ~a0 : length * length
@@ -138,12 +226,22 @@ module Stdlib :> sig
     val quote-round : length -> length -> color -> deco-set
   end
 end = struct
+  include Basic
+  module Int = Int
   module Option = Option
   module List = List
-  module Pervasives = Pervasives
+  module Map = Map
+  module Set = Set
+  module Length = Length
+  module Logo = Logo
+  module Inline = Inline
+  module Block = Block
+  module Arith = Arith
+  module Ref = Ref
   module Geom = Geom
   module Color = Color
-  module Gr = Gr
+  module Path = Path
+  module Graphics = Graphics
   module PaperSize = PaperSize
   module Deco = Deco
   module HDecoSet = HDecoSet

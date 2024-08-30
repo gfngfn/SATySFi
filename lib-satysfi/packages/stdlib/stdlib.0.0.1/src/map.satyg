@@ -1,0 +1,340 @@
+use open Basic
+use Int
+use List
+
+module Map :> sig
+  module Make : (Key : Ord) -> sig
+    type t :: o -> o
+    val empty 'v : t 'v
+    val singleton 'v : Key.t -> 'v -> t 'v
+    val add 'v : Key.t -> 'v -> t 'v -> t 'v
+    val remove 'v : Key.t -> t 'v -> t 'v
+    val find 'v : Key.t -> t 'v -> option 'v
+    val map-with-key 'u 'v : (Key.t -> 'u -> 'v) -> t 'u -> t 'v
+    val map 'u 'v : ('u -> 'v) -> t 'u -> t 'v
+    val fold 'a 'v : ('a -> Key.t -> 'v -> 'a) -> 'a -> t 'v -> 'a
+    val fold-back 'a 'v : ('a -> Key.t -> 'v -> 'a) -> 'a -> t 'v -> 'a
+    val to-list 'v : t 'v -> list (Key.t * 'v)
+    val to-list-reversed 'v : t 'v -> list (Key.t * 'v)
+    val from-list 'v : list (Key.t * 'v) -> t 'v
+  end
+end = struct
+
+  module Make = fun(Key : Ord) -> struct
+
+    type t 'a =
+      | Empty
+      | Node of (|
+          key    : Key.t,
+          data   : 'a,
+          left   : t 'a,
+          right  : t 'a,
+          height : int,
+        |)
+
+    val get-height mp =
+      match mp with
+      | Empty   -> 0
+      | Node(r) -> r#height
+      end
+
+    val empty =
+      Empty
+
+    val singleton k v =
+      Node(|
+        key    = k,
+        data   = v,
+        left   = Empty,
+        right  = Empty,
+        height = 1,
+      |)
+
+    val build-node tL k v tR =
+      Node(|
+        key = k,
+        data = v,
+        left = tL,
+        right = tR,
+        height = Int.max (get-height tL) (get-height tR) + 1,
+      |)
+
+    %% Rebalances a tree after inserting or removing one element.
+    val rebalance tL k v tR =
+      let hL = get-height tL in
+      let hR = get-height tR in
+      if hL == hR + 2 then
+        match tL with
+        | Empty ->
+            abort-with-message `Map, rebalance, empty left`
+        | Node(nL) ->
+            let tLL = nL#left in
+            let tLR = nL#right in
+            let hLL = get-height tLL in
+            let hLR = get-height tLR in
+            if hLL > hLR then
+              %     N             L
+              %    / \           / \
+              %   L   R  ====>  LL  N
+              %  / \  |         |  / \
+              % LL LR |         | LR  R
+              % |   | |         | |   |
+              % |   | #         | |   |
+              % |   |           | |   |
+              % |   o           x o   #
+              % |
+              % x
+              build-node tLL nL#key nL#data (build-node tLR k v tR)
+            else
+              % Actually, we can assume `hLL < hLR` here, although we do not utilize it.
+              % This is because, if `hLL == hLR`,
+              % it means at least two elements were modified in a balanced tree before rebalancing
+              % and thereby contradicts the invariant (i.e., that any use-space maps are balanced).
+              match tLR with
+              | Empty ->
+                  abort-with-message `Map, rebalance, empty left-right`
+              | Node(nLR) ->
+                  let tLRL = nLR#left in
+                  let tLRR = nLR#right in
+                  let hLRL = get-height tLRL in
+                  let hLRR = get-height tLRR in
+                  %        N                 LR
+                  %      /   \             /    \
+                  %    L       R  ====>  L        N
+                  %   / \      |        / \      / \
+                  % LL   LR    |      LL  LRL  LRR  R
+                  % |   /  \   |      |    |    |   |
+                  % | LRL  LRR #      |    |    |   |
+                  % |  |    |         |    |    |   |
+                  % |  |    |         |    x    x   #
+                  % |  |    |         |
+                  % y  x    x         y
+                  build-node
+                    (build-node tLL nL#key nL#data tLRL)
+                    nLR#key
+                    nLR#data
+                    (build-node tLRR k v tR)
+              end
+        end
+      else if hL + 2 == hR then
+        match tR with
+        | Empty ->
+            abort-with-message `Map, rebalance, empty right`
+        | Node(nR) ->
+            let tRL = nR#left in
+            let tRR = nR#right in
+            let hRL = get-height tRL in
+            let hRR = get-height tRR in
+            if hRL < hRR then
+              %   N             R
+              %  / \           / \
+              % L   R  ====>  N  RR
+              % |  / \       / \  |
+              % | RL RR     L  RL |
+              % | |   |     |   | |
+              % # |   |     |   | |
+              %   |   |     |   | |
+              %   o   |     #   o x
+              %       |
+              %       x
+              build-node (build-node tL k v tRL) nR#key nR#data tRR
+            else
+              % Actually, we can assume `hRL > hRR` here, although we do not utilize it.
+              % This is because, if `hRL == hRR`,
+              % it means at least two elements were modified in a balanced tree before rebalancing
+              % and thereby contradicts the invariant (i.e., that any use-space maps are balanced).
+              match tRL with
+              | Empty ->
+                  abort-with-message `Map, rebalance, empty right-left`
+              | Node(nRL) ->
+                  let tRLL = nRL#left in
+                  let tRLR = nRL#right in
+                  let hRLL = get-height tRLL in
+                  let hRLR = get-height tRLR in
+                  %     N                 RL
+                  %   /   \             /    \
+                  % L       R  ====>  N        R
+                  % |      / \       / \      / \
+                  % |    RL   RR    L  RLL  RLR  RR
+                  % |   /  \   |    |    |    |   |
+                  % # RLL  RLR |    |    |    |   |
+                  %    |    |  |    |    |    |   |
+                  %    |    |  |    #    x    x   |
+                  %    |    |  |                  |
+                  %    x    x  y                  y
+                  build-node
+                    (build-node tL k v tRLL)
+                    nRL#key
+                    nRL#data
+                    (build-node tRLR nR#key nR#data tRR)
+              end
+        end
+      else
+        build-node tL k v tR
+
+    val add k v =
+      let rec aux mp =
+        match mp with
+        | Empty ->
+            (true, singleton k v)
+        | Node(n) ->
+            match Key.compare k n#key with
+            | Equal ->
+                (false, Node(| n with data = v |))
+            | Less ->
+                let (enlarged, left-new) = aux n#left in
+                if enlarged then
+                  (true, rebalance left-new n#key n#data n#right)
+                else
+                  (false, Node(| n with left = left-new |))
+            | Greater ->
+                let (enlarged, right-new) = aux n#right in
+                if enlarged then
+                  (true, rebalance n#left n#key n#data right-new)
+                else
+                  (false, Node(| n with right = right-new |))
+            end
+        end
+      in
+      (fun mp -> (
+        let (_, mp-new) = aux mp in
+        mp-new
+      ))
+
+    val trim-minimum =
+      let rec aux n =
+        match n#left with
+        | Empty ->
+            ((n#key, n#data), n#right)
+            % Since `n` is balanced,
+            % `n#right` has 0 or 1 node.
+        | Node(nL) ->
+            let (kv-min, tL) = aux nL in
+            (kv-min, rebalance tL n#key n#data n#right)
+        end
+      in
+      (fun t -> (
+        match t with
+        | Empty   -> None
+        | Node(n) -> Some(aux n)
+        end
+      ))
+
+    % Merges two trees `t1` and `t2`,
+    % where the maximum key in `t1` is less than the minimum key in `t2`
+    % and the difference of height between `t1` and `t2` is less than 2.
+    val merge-separated t1 t2 =
+      match trim-minimum t2 with
+      | None                       -> t1
+      | Some(((k, v), t2-removed)) -> rebalance t1 k v t2-removed
+      end
+
+    val remove k =
+      let rec aux mp =
+        match mp with
+        | Empty ->
+            None
+        | Node(n) ->
+            match Key.compare k n#key with
+            | Equal ->
+                Some(merge-separated n#left n#right)
+            | Less ->
+                match aux n#left with
+                | None ->
+                    None
+                | Some(left-new) ->
+                    Some(rebalance left-new n#key n#data n#right)
+                end
+            | Greater ->
+                match aux n#right with
+                | None ->
+                    None
+                | Some(right-new) ->
+                    Some(rebalance n#left n#key n#data right-new)
+                end
+            end
+        end
+      in
+      (fun mp -> (
+        match aux mp with
+        | None          -> mp
+        | Some(mp-new) -> mp-new
+        end
+      ))
+
+    val find k =
+      let rec aux mp =
+        match mp with
+        | Empty ->
+            None
+        | Node(n) ->
+            match Key.compare k n#key with
+            | Equal   -> Some(n#data)
+            | Less    -> aux n#left
+            | Greater -> aux n#right
+            end
+        end
+      in
+      aux
+
+    val map-with-key f =
+      let rec aux mp =
+        match mp with
+        | Empty ->
+            Empty
+        | Node(n) ->
+            Node(|
+              key    = n#key,
+              data   = f n#key n#data,
+              left   = aux n#left,
+              right  = aux n#right,
+              height = n#height,
+            |)
+        end
+      in
+      aux
+
+    val map f mp =
+      map-with-key (fun _ -> f) mp
+
+    val fold f =
+      let rec aux acc mp =
+        match mp with
+        | Empty ->
+            acc
+        | Node(n) ->
+            let acc = aux acc n#left in
+            let acc = f acc n#key n#data in
+            let acc = aux acc n#right in
+            acc
+        end
+      in
+      aux
+
+    val fold-back f =
+      let rec aux acc mp =
+        match mp with
+        | Empty ->
+            acc
+        | Node(n) ->
+            let acc = aux acc n#right in
+            let acc = f acc n#key n#data in
+            let acc = aux acc n#left in
+            acc
+        end
+      in
+      aux
+
+    val to-list mp =
+      fold-back (fun acc k v -> (k, v) :: acc) [] mp
+
+    val to-list-reversed mp =
+      fold (fun acc k v -> (k, v) :: acc) [] mp
+
+    % TODO: make this more efficient
+    val from-list kvs =
+      List.fold (fun mp (k, v) -> add k v mp) empty kvs
+
+  end
+
+end

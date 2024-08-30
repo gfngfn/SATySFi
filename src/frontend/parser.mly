@@ -371,8 +371,8 @@ main:
       { raise (ParseError(EmptyInputFile(rng))) }
 ;
 main_lib:
-  | MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; STRUCT; utbinds=list(bind); END
-      { (modident, utsig_opt, utbinds) }
+  | MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; tok1=STRUCT; utbinds=list(bind); tok2=END
+      { (modident, utsig_opt, Range.unite tok1 tok2, utbinds) }
 ;
 headerelem:
   | USE; PACKAGE; opening=optional_open; mod_chain=mod_chain

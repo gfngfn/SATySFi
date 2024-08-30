@@ -7,7 +7,7 @@ module Itemize :> sig
   val \enumerate : inline [itemize]
 end = struct
 
-  val (+++>) = List.fold-left (+++)
+  val (+++>) = List.fold (+++)
   val concat-blocks = (+++>) block-nil
 
 
@@ -20,7 +20,7 @@ end = struct
     let cx = x +' 4pt in
     let cy = y +' 4pt in
     let r = 2pt in
-    fill color (Gr.circle (cx, cy) r)
+    fill color (Path.circle (cx, cy) r)
 
 
   val make-bullet ctx =
@@ -30,16 +30,16 @@ end = struct
 
   val rec listing-item ctx depth is-first is-last (Item(parent, children)) =
         let ib-bullet = make-bullet ctx in
-        let bullet-width = Pervasives.get-natural-width ib-bullet in
+        let bullet-width = Inline.get-natural-advance ib-bullet in
         let parent-indent = item-indent *' (float depth) in
         let ib-parent =
           embed-block-top ctx ((get-text-width ctx) -' parent-indent -' bullet-width) (fun ctx ->
-            Pervasives.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
+            Block.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
               (read-inline ctx parent ++ inline-fil)
           )
         in
         let bb-parent =
-          Pervasives.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
+          Block.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
             ((inline-skip parent-indent) ++ ib-bullet ++ ib-parent)
         in
         let bbs-children = List.map-with-ends (listing-item ctx (depth + 1)) children in
@@ -48,13 +48,10 @@ end = struct
 
   val rec listing-item-breakable ctx depth is-first is-last (Item(parent, children)) =
         let ib-bullet = make-bullet ctx in
-        let bullet-width = Pervasives.get-natural-width ib-bullet in
+        let bullet-width = Inline.get-natural-advance ib-bullet in
         let parent-indent = item-indent *' (float depth) in
         let pads = (parent-indent +' bullet-width, 0pt, 0pt, 0pt) in
-        let decos =
-          let deco _ _ _ _ = Gr.empty in
-          (deco, deco, deco, deco)
-        in
+        let decos = HDecoSet.empty in
         let bb-parent =
           let ctx-frame =
             let len-top = if is-first then item-gap-outer +' item-gap else item-gap in
@@ -62,7 +59,7 @@ end = struct
             ctx |> set-paragraph-margin len-top len-bottom
           in
           block-frame-breakable ctx-frame pads decos (fun ctx ->
-            Pervasives.form-paragraph ctx
+            Block.form-paragraph ctx
               (inline-skip (0pt -' bullet-width) ++ ib-bullet ++ read-inline ctx parent ++ inline-fil)
           )
         in
@@ -97,19 +94,19 @@ end = struct
           let it-num = (embed-string (arabic index)) in
             read-inline ctx {(#it-num;)\ }
         in
-        let index-width = Pervasives.get-natural-width ib-index in
+        let index-width = Inline.get-natural-advance ib-index in
         let ib-parent =
           embed-block-top ctx ((get-text-width ctx) -' parent-indent -' index-width) (fun ctx ->
-            Pervasives.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
+            Block.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
               (read-inline ctx parent ++ inline-fil)
           )
         in
-          Pervasives.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
+          Block.form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
             ((inline-skip parent-indent) ++ ib-index ++ ib-parent)
 
 
   val enumerate ctx (Item(_, itmzlst)) =
-    let bblst = List.mapi (fun i -> enumerate-item (i + 1) ctx 0) itmzlst in
+    let bblst = List.map-indexed (fun i -> enumerate-item (i + 1) ctx 0) itmzlst in
     concat-blocks bblst
 
 

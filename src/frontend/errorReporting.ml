@@ -455,7 +455,8 @@ let make_type_error_message = function
   | MissingRequiredConstructorName(rng, ctornm, _centry) ->
       [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(Printf.sprintf "missing required constructor '%s' (TODO (enhance): detailed report)" ctornm);
+        NormalLine(Printf.sprintf "missing required constructor '%s'" ctornm);
+        (* TODO (enhance): consider displaying `centry` *)
       ]
 
   | MissingRequiredTypeName(rng, tynm, arity) ->
@@ -467,13 +468,15 @@ let make_type_error_message = function
   | MissingRequiredModuleName(rng, modnm, _modsig) ->
       [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(Printf.sprintf "missing required module '%s' (TODO (enhance): detailed report)" modnm);
+        NormalLine(Printf.sprintf "missing required module '%s'" modnm);
+        (* TODO (enhance): consider displaying `modsig` *)
       ]
 
   | MissingRequiredSignatureName(rng, signm, _absmodsig) ->
       [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine(Printf.sprintf "missing required signature '%s' (TODO (enhance): detailed report)" signm);
+        NormalLine(Printf.sprintf "missing required signature '%s'" signm);
+        (* TODO (enhance): consider displaying absmodsig *)
       ]
 
   | NotASubtypeAboutValue(rng, x, pty1, pty2) ->

@@ -1,4 +1,5 @@
-use Gr
+use Graphics
+use Path
 
 module HDecoSet :> sig
   val empty : deco-set
@@ -7,42 +8,40 @@ module HDecoSet :> sig
 end = struct
 
   val empty =
-    let deco _ _ _ _ = Gr.empty in
+    let deco _ _ _ _ = Graphics.empty in
     (deco, deco, deco, deco)
-
 
   val simple-frame-stroke t scolor =
     let strokef = stroke t scolor in
     let decoS (x, y) w h d =
-      strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h))
+      strokef (Path.rectangle (x, y -' d) (x +' w, y +' h))
     in
     let decoH (x, y) w h d =
-      strokef (Gr.poly-line (x +' w, y -' d) [ (x, y -' d), (x, y +' h), (x +' w, y +' h) ])
+      strokef (Path.poly-line (x +' w, y -' d) [ (x, y -' d), (x, y +' h), (x +' w, y +' h) ])
     in
     let decoM (x, y) w h d =
-      unite-graphics [
-        strokef (Gr.line (x, y -' d) (x +' w, y -' d)),
-        strokef (Gr.line (x, y +' h) (x +' w, y +' h)),
+      Graphics.overlay [
+        strokef (Path.line (x, y -' d) (x +' w, y -' d)),
+        strokef (Path.line (x, y +' h) (x +' w, y +' h)),
       ]
     in
     let decoT (x, y) w h d =
-      strokef (Gr.poly-line (x, y -' d) [ (x +' w, y -' d), (x +' w, y +' h), (x, y +' h) ])
+      strokef (Path.poly-line (x, y -' d) [ (x +' w, y -' d), (x +' w, y +' h), (x, y +' h) ])
     in
     (decoS, decoH, decoM, decoT)
 
-
   val rectangle-round-fill r extra color =
     let decoS (x, y) wid hgt dpt =
-      fill color (Gr.rectangle-round r (x, y -' dpt) (x +' wid, y +' hgt))
+      fill color (Path.rectangle-round r (x, y -' dpt) (x +' wid, y +' hgt))
     in
     let decoH (x, y) wid hgt dpt =
-      fill color (Gr.rectangle-round-left r (x, y -' dpt) (x +' wid +' extra, y +' hgt))
+      fill color (Path.rectangle-round-left r (x, y -' dpt) (x +' wid +' extra, y +' hgt))
     in
     let decoM (x, y) wid hgt dpt =
-      fill color (Gr.rectangle (x, y -' dpt) (x +' wid +' extra, y +' hgt))
+      fill color (Path.rectangle (x, y -' dpt) (x +' wid +' extra, y +' hgt))
     in
     let decoT (x, y) wid hgt dpt =
-      fill color (Gr.rectangle-round-right r (x -' extra, y -' dpt) (x +' wid, y +' hgt))
+      fill color (Path.rectangle-round-right r (x -' extra, y -' dpt) (x +' wid, y +' hgt))
     in
     (decoS, decoH, decoM, decoT)
 
