@@ -396,7 +396,6 @@ module Math :> sig
   val \setsep : math [math-text, math-text]
   val \cases : math [list (math-text * inline-text)]
 
-  type paren = Pervasives.paren %TODO (enhance): remove this
   val paren-left : paren
   val paren-right : paren
   val paren : context -> math-boxes -> math-boxes
@@ -428,7 +427,7 @@ end = struct
 
   val join (msep : math-text) (ms : list math-text) =
     match
-      ms |> List.fold-left (fun maccopt m -> (
+      ms |> List.fold (fun maccopt m -> (
         match maccopt with
         | None       -> Some(m)
         | Some(macc) -> Some(${#macc #msep #m})
@@ -442,7 +441,7 @@ end = struct
 
   val join-boxes ctx (mbsep : math-boxes) (mbs : list math-boxes) =
     match
-      mbs |> List.fold-left (fun mbaccopt mb -> (
+      mbs |> List.fold (fun mbaccopt mb -> (
         match mbaccopt with
         | None        -> Some(mb)
         | Some(mbacc) -> Some(math-concat (math-concat mbacc mbsep) mb)
@@ -537,7 +536,7 @@ end = struct
       discretionary 100 (inline-skip mingap ++ inline-fil) inline-fil inline-fil
     in
     let ib =
-      mlst |> List.fold-left-adjacent (fun ibacc m _ optnext -> (
+      mlst |> List.fold-adjacent (fun ibacc m _ optnext -> (
         let ib-after =
           match optnext with
           | None    -> inline-fil
@@ -567,7 +566,7 @@ end = struct
     let celllstlst =
       mlstlst |> List.map (fun mlst -> (
         let mbs = mlst |> List.map (read-math ctx) in
-        mbs |> List.mapi-adjacent (fun index mb _ mb-next-opt -> (
+        mbs |> List.map-indexed-adjacent (fun index mb _ mb-next-opt -> (
           let ibm = embed-math ctx mb in
           let ib =
             match mb-next-opt with
@@ -597,7 +596,7 @@ end = struct
     in
     let margin = get-font-size ctx *' margin-ratio in
       line-break true true (ctx |> set-paragraph-margin margin margin)
-        (inline-fil ++ (tabular celllstlst (fun _ _ -> Gr.empty)) ++ inline-fil)
+        (inline-fil ++ (tabular celllstlst (fun _ _ -> Graphics.empty)) ++ inline-fil)
         % temporary
 
 
@@ -1044,12 +1043,10 @@ end = struct
   val math ctx \bi m =
     read-math (ctx |> set-math-char-class MathBoldItalic) m
 
-  type paren = Pervasives.paren %TODO (enhance): remove this
-
   val half-length hgt dpt hgtaxis fontsize =
     let minhalflen = fontsize *' 0.5 in
     let lenappend = fontsize *' 0.1 in
-      Pervasives.length-max minhalflen ((Pervasives.length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend)
+    Length.max minhalflen ((Length.max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend)
 
   val extract-spec-from-context ctx =
     let fontsize = get-font-size ctx in
@@ -1072,7 +1069,7 @@ end = struct
     let kerninfo y =
       let widkern = widparen in
       let r = 0. in
-      let gap = Pervasives.length-abs (y -' hgtaxis) in
+      let gap = Length.abs (y -' hgtaxis) in
         if halflen *' r <' gap then
           widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
         else
@@ -1095,7 +1092,7 @@ end = struct
     let kerninfo y =
       let widkern = widparen in
       let r = 0. in
-      let gap = Pervasives.length-abs (y -' hgtaxis) in
+      let gap = Length.abs (y -' hgtaxis) in
         if halflen *' r <' gap then
           widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
         else
@@ -1177,8 +1174,8 @@ end = struct
     let kerninfo y =
       let widkern = widparen *' 0.5 in
       let r = 0.25 in
-      let gap = Pervasives.length-abs (y -' hgtaxis) in
-        let diff = Pervasives.length-min (gap -' halflen *' r) (halflen *' (1. -. r)) in
+      let gap = Length.abs (y -' hgtaxis) in
+        let diff = Length.min (gap -' halflen *' r) (halflen *' (1. -. r)) in
         if 0pt <' diff then
           widkern *' (diff /' (halflen *' (1. -. r)))
         else
@@ -1390,7 +1387,7 @@ end = struct
 %          |> bezier-to (fP (p0B, q0B)) (fP (p1A, q1A)) (fP (x1, y1))
 %          |> bezier-to (fP (p1B, q1B)) (fP (p2A, q2A)) (fP (x2, y2))
 %          |> close-with-line
-        Gr.poly-line (fP (x0, y0)) [
+        Path.poly-line (fP (x0, y0)) [
           fP (p0B, q0B), fP (p1A, q1A), fP (x1, y1),
           fP (p1B, q1B), fP (p2A, q2A), fP (x2, y2),
           fP (p2B, q2B), fP (p3A, q3A), fP (x3, y3),
@@ -1411,7 +1408,7 @@ end = struct
     let halfwid = fontsize *' 0.5 in
     let graphics (x, y) =
       stroke 0.5pt color
-        (Gr.line (x +' halfwid, y +' hgtaxis -' halflen) (x +' halfwid, y +' hgtaxis +' halflen))
+        (Path.line (x +' halfwid, y +' hgtaxis -' halflen) (x +' halfwid, y +' hgtaxis +' halflen))
     in
     let kerninfo _ = 0pt in
     (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
@@ -1427,7 +1424,7 @@ end = struct
     let halfwid = halflen *' 0.5 in
     let graphics (x, y) =
       stroke 0.5pt color
-        (Gr.line (x, y +' hgtaxis -' halflen) (x +' halfwid *' 2., y +' hgtaxis +' halflen))
+        (Path.line (x, y +' hgtaxis -' halflen) (x +' halfwid *' 2., y +' hgtaxis +' halflen))
     in
     let kerninfo _ = 0pt in
     (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
@@ -1622,7 +1619,7 @@ end = struct
             [NormalCell(pads, ib1), NormalCell(pads, ib2)]
           ))
         in
-        let ib = tabular celllstlst (fun _ _ -> Gr.empty) in
+        let ib = tabular celllstlst (fun _ _ -> Graphics.empty) in
         let (_, hgt, dpt) = get-natural-metrics ib in
         let hgtaxis = size *' get-math-axis-height-ratio ctx in
         raise-inline (hgtaxis -' (hgt +' dpt) *' 0.5) ib
