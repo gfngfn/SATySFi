@@ -1,5 +1,6 @@
 use Basic
 use Int
+use Ordering
 use Option
 use List
 use Map
@@ -35,6 +36,11 @@ module Stdlib :> sig
     val persistent ~equal : int -> int -> bool
     val persistent ~max : int -> int -> int
     val persistent ~min : int -> int -> int
+  end
+  module Ordering : sig
+    type t = ordering
+    val equal : ordering -> ordering -> bool
+    val show : ordering -> string
   end
   module Option : sig
     type t 'a = option 'a
@@ -229,6 +235,7 @@ module Stdlib :> sig
 end = struct
   include Basic
   module Int = Int
+  module Ordering = Ordering
   module Option = Option
   module List = List
   module Map = Map

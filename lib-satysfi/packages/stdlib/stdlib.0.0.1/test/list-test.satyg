@@ -1,7 +1,24 @@
 use package open Testing
+use open Basic
+use Int
+use Ordering
 use List
 
 module ListTest = struct
+
+  val eq-ordering =
+    Equality.make (|
+      equal = Ordering.equal,
+      show  = Ordering.show,
+    |)
+
+  #[test]
+  val compare-test () =
+    let input1 = [] in
+    let input2 = [1] in
+    let got = List.compare Int.compare input1 input2 in
+    let expected = Less in
+    assert-equal eq-ordering expected got
 
   #[test]
   val fold-test () =
