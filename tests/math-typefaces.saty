@@ -1,9 +1,8 @@
 use package open Stdlib
+use package open Stdlib.Logo
 use package open Math
 use package open Itemize
 use package open StdJaReport
-
-let open Pervasives in
 
 let block ctx +test-math-style name style =
   let it = embed-string name in

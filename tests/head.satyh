@@ -304,16 +304,14 @@ module Head = struct
     in
     (decoS, decoH, decoM, decoT)
 
-
   val simple-deco =
     let (simple-deco, _, _, _) = simple-decoset in
     simple-deco
 
-
   val screen-decoset size ib-heading-raw =
     let lskip = size *' 0.125 in
     let ib-heading = inline-skip lskip ++ ib-heading-raw ++ inline-skip lskip in
-    let hwid = Pervasives.get-natural-width ib-heading in
+    let hwid = Inline.get-natural-advance ib-heading in
     let lshift = 10pt in
     let frame-stroke = stroke 1pt black in
     let decoS (x, y) wid hgt dpt =
@@ -345,7 +343,6 @@ module Head = struct
     let br = read-inline ctx inner in
     (inline-frame-breakable pads simple-decoset br)
 
-
   val paddings = (5pt, 5pt, 5pt, 5pt)
 
   val inline ctx \frame-inner it =
@@ -357,8 +354,7 @@ module Head = struct
   val inline ctx \frame-fixed wid it =
     inline-frame-fixed wid paddings simple-deco (read-inline ctx it)
 
-
-  val (+++>) = List.fold-left (+++)
+  val (+++>) = List.fold (+++)
 
   val item-indent = 16pt
 
@@ -378,7 +374,7 @@ module Head = struct
 
   val rec item (ctx : context) (depth : int) (Item(parent, children) : itemize) =
     let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (inline-skip 8pt) in
-    let bullet-width = Pervasives.get-natural-width br-bullet in
+    let bullet-width = Inline.get-natural-advance br-bullet in
     let parent-indent = item-indent *' (float depth) in
     let br-parent =
       embed-block-top ctx ((get-text-width ctx) -' parent-indent -' bullet-width) (fun ctx ->
@@ -430,7 +426,7 @@ module Head = struct
         form-paragraph ctx ((inline-skip indent) ++ br-pbox)
       ))
     in
-      block-nil +++> bclst
+    block-nil +++> bclst
 
   val block ctx +description pairlst =
     description ctx pairlst
@@ -456,11 +452,11 @@ module Head = struct
     let chgt = 4pt in
     let r1 = 6pt in
     let r2 = 3pt in
-      inline-graphics wid 12pt 0pt (fun (x, y) -> (
-        let cx = x +' wid *' 0.5 in
-        let cy = y +' chgt in
-        fill (RGB(0.8, 0.5, 0.)) (donut-path (cx, cy) r1 r2)
-      ))
+    inline-graphics wid 12pt 0pt (fun (x, y) -> (
+      let cx = x +' wid *' 0.5 in
+      let cy = y +' chgt in
+      fill (RGB(0.8, 0.5, 0.)) (donut-path (cx, cy) r1 r2)
+    ))
 
   val inline ctx \donuts =
     let r1 = 6pt in
@@ -474,27 +470,7 @@ module Head = struct
       ]
     ))
 
-
   val kern len = inline-skip (0pt -' len)
-
-  val inline ctx \latex =
-    let size = get-font-size ctx in
-    let f = read-inline ctx in
-    let fA = ctx |> set-font-size (size *' 0.7)
-                 |> set-manual-rising (size *' 0.2)
-                 |> read-inline
-    in
-    let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
-                 |> read-inline
-    in
-      f {L} ++ kern (size *' 0.2) ++ fA {A}
-        ++ f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
-
-  val inline ctx \satysfi =
-    let size = get-font-size ctx in
-    let f = read-inline ctx in
-    let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> read-inline in
-     f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
 
   val inline ctx \raw-font-size font-size inner =
     read-inline (ctx |> set-font-size font-size) inner
@@ -512,7 +488,7 @@ module Head = struct
           |> close-with-line
       in
       let br = read-inline ctx {Sample Text} in
-      let wid-text = Pervasives.get-natural-width br in
+      let wid-text = Inline.get-natural-advance br in
       unite-graphics [
         draw-text (x, y) br,
         draw-text (x +' wid *' 0.5 -' wid-text *' 0.5, y +' 50pt) br,
@@ -571,16 +547,14 @@ module Head = struct
       use-image-by-width img wid
   end
 
-
   val inline ctx \fil =
     inline-fil
-
 
   val block ctx +code code =
     let pads = (5pt, 5pt, 5pt, 5pt) in
     block-frame-breakable ctx pads simple-decoset (fun ctx -> (
       let fontsize = get-font-size ctx in
-      let charwid = Pervasives.get-natural-width (read-inline ctx {0}) in
+      let charwid = Inline.get-natural-advance (read-inline ctx {0}) in
       let ctx-code =
         ctx |> set-latin-font font-latin-mono
             |> set-space-ratio (charwid /' fontsize) 0.08 0.16
@@ -588,7 +562,7 @@ module Head = struct
 
       let lst = split-into-lines code in
       let ib-code =
-        lst |> List.fold-left-adjacent (fun ibacc (i, s) _ optnext -> (
+        lst |> List.fold-adjacent (fun ibacc (i, s) _ optnext -> (
   %        let () = display-message (`+code: (` ^ (arabic i) ^ `)` ^ s) in
           let ib-last =
             match optnext with
@@ -607,14 +581,12 @@ module Head = struct
       line-break true true ctx ib-code
     ))
 
-
   val inline ctx \ruby itmain itruby =
     let fontsize = get-font-size ctx in
     let ctx-ruby = ctx |> set-font-size (fontsize *' 0.5) in
     let ibmain = inline-fil ++ (read-inline ctx itmain) ++ inline-fil in
     let ibruby = inline-fil ++ (read-inline ctx-ruby itruby) ++ inline-fil in
     line-stack-bottom [ibruby, ibmain]
-
 
   val inline ctx \ruby-both itmain itrubyT itrubyB =
     let fontsize = get-font-size ctx in

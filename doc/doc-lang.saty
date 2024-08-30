@@ -1,5 +1,5 @@
 use package open Stdlib
-use package open Stdlib.Pervasives
+use package open Stdlib.Logo
 use package open StdJa
 use package open Math
 use open LocalMath of `local-math`
@@ -8,7 +8,7 @@ document (|
   title = {\SATySFi;言語仕様},
   author = {Takashi SUWA},
 |) '<
-  +section {構文} <
+  +section{構文}<
     +p{
       \SATySFi;の構文は以下のように定義されている：
     }

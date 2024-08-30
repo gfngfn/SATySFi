@@ -1,4 +1,5 @@
-use package open Stdlib.Pervasives
+use package open Stdlib
+use package open Stdlib.Logo
 use package open Math
 use package open Itemize
 use package open StdJaBook
@@ -9,8 +10,8 @@ document ?(
   show-toc = true,
 ) (|
   title = {
-    \SATySFi;の\fil-both;\no-break{基本型}と
-    \fil-both;\no-break{プリミティヴ}
+    \SATySFi;の\Inline.fil-both;\Inline.no-break{基本型}と
+    \Inline.fil-both;\Inline.no-break{プリミティヴ}
   },
   author = {Takashi SUWA},
 |) '<
