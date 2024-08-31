@@ -89,18 +89,19 @@ end = struct
 
   end
 
+  val make-title-prefix title-opt =
+    match title-opt with
+    | None        -> ` `
+    | Some(title) -> `[` ^ title ^ `] `#
+    end
+
   val assert-equal ?(title = title-opt) eq x1 x2 =
     if eq#equal x1 x2 then
       ()
     else
       let s1 = eq#show x1 in
       let s2 = eq#show x2 in
-      let s-title =
-        match title-opt with
-        | None        -> ` `
-        | Some(title) -> `[` ^ title ^ `] `#
-        end
-      in
+      let s-title = make-title-prefix title-opt in
       abort-with-message (s-title ^ `expected: `# ^ s1 ^ `, got: `# ^ s2)
 
 end

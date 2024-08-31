@@ -2,6 +2,7 @@ use package open Testing
 use open Basic
 use Int
 use Ordering
+use Option
 use List
 
 module ListTest = struct
@@ -13,12 +14,24 @@ module ListTest = struct
     |)
 
   #[test]
+  val iter-test () =
+    let mutable r <- [3] in
+    let inputs = [1, 4, 1, 5, 9, 2] in
+    let () =
+      List.iter (fun n -> (
+        r <- n :: !r
+      )) inputs
+    in
+    let got = !r in
+    let expected = [2, 9, 5, 1, 4, 1, 3] in
+    assert-equal Equality.(list int) expected got
+
+  #[test]
   val compare-test () =
     List.iter (fun r -> (
       let got = List.compare Int.compare r#input1 r#input2 in
       assert-equal ?(title = r#title) eq-ordering r#expected got
-    ))
-    [
+    )) [
       (|
         title = `prefix is smaller 1`,
         input1 = [],
@@ -46,10 +59,117 @@ module ListTest = struct
     ]
 
   #[test]
+  val show-test () =
+    List.iter (fun r -> (
+      let got = List.show arabic r#input in
+      assert-equal ?(title = r#title) Equality.string r#expected got
+    )) [
+      (|
+        title = `empty`,
+        input = [],
+        expected = `[]`,
+      |),
+      (|
+        title = `singleton`,
+        input = [42],
+        expected = `[42]`,
+      |),
+      (|
+        title = `normal`,
+        input = [3, 1, 4, 1, 5, 9, 2],
+        expected = `[3, 1, 4, 1, 5, 9, 2]`,
+      |),
+    ]
+
+  #[test]
   val fold-test () =
+    let () =
+      let input = [3, 1, 4, 1, 5, 9, 2] in
+      let expected = 25 in
+      let got = List.fold ( + ) 0 input in
+      assert-equal ?(title = `sum`) Equality.int expected got
+    in
+    let () =
+      let input = [`foo`, `bar`, `baz`] in
+      let expected = `quxfoobarbaz` in
+      let got = List.fold ( ^ ) `qux` input in
+      assert-equal ?(title = `cat`) Equality.string expected got
+    in
+    ()
+
+  #[test]
+  val fold-indexed-test () =
+    let input = [`foo`, `bar`, `baz`] in
+    let expected = `0foo1bar2baz` in
+    let got = List.fold-indexed (fun acc i s -> acc ^ arabic i ^ s) ` ` input in
+    assert-equal Equality.string expected got
+
+  #[test]
+  val fold-adjacent-test () =
+    let input = [`a`, `b`, `c`, `d`] in
+    let expected = [`cdY`, `bcd`, `abc`, `Xab`] in
+    let got =
+      List.fold-adjacent (fun acc s prev next -> (
+        let s-prev = Option.from `X` prev in
+        let s-next = Option.from `Y` next in
+        (s-prev ^ s ^ s-next) :: acc
+      )) [] input
+    in
+    assert-equal Equality.(list string) expected got
+
+  #[test]
+  val fold-indexed-adjacent-test () =
+    let input = [`a`, `b`, `c`, `d`] in
+    let expected = [`3cdY`, `2bcd`, `1abc`, `0Xab`] in
+    let got =
+      List.fold-indexed-adjacent (fun acc i s prev next -> (
+        let s-prev = Option.from `X` prev in
+        let s-next = Option.from `Y` next in
+        (arabic i ^ s-prev ^ s ^ s-next) :: acc
+      )) [] input
+    in
+    assert-equal Equality.(list string) expected got
+
+  #[test]
+  val reverse-test () =
     let input = [3, 1, 4, 1, 5, 9, 2] in
-    let expected = 25 in
-    let got = List.fold ( + ) 0 input in
+    let expected = [2, 9, 5, 1, 4, 1, 3] in
+    let got = List.reverse input in
+    assert-equal Equality.(list int) expected got
+
+  #[test]
+  val map-test () =
+    let input = [3, 1, 4, 1, 5, 9, 2] in
+    let expected = [`3`, `1`, `4`, `1`, `5`, `9`, `2`] in
+    let got = List.map arabic input in
+    assert-equal Equality.(list string) expected got
+
+  #[test]
+  val map-adjacent-test () =
+    let input = [3, 1, 4, 1, 5, 9, 2] in
+    let expected = [`X31`, `314`, `141`, `415`, `159`, `592`, `92Y`] in
+    let got =
+      List.map-adjacent (fun n prev next -> (
+        let s-prev = Option.from `X` (Option.map arabic prev) in
+        let s-next = Option.from `Y` (Option.map arabic next) in
+        s-prev ^ arabic n ^ s-next
+      )) input
+    in
+    assert-equal Equality.(list string) expected got
+
+  #[test]
+  val append-test () =
+    let input1 = [3, 1, 4, 1, 5] in
+    let input2 = [9, 2, 6] in
+    let expected = [3, 1, 4, 1, 5, 9, 2, 6] in
+    let got = List.append input1 input2 in
+    assert-equal Equality.(list int) expected got
+
+  #[test]
+  val length-test () =
+    let input = [3, 1, 4, 1, 5, 9, 2] in
+    let expected = 7 in
+    let got = List.length input in
     assert-equal Equality.int expected got
 
   % TODO: add more tests

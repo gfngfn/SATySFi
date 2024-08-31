@@ -207,14 +207,14 @@ end = struct
   val persistent ~length xs =
     fold (fun i _ -> i + 1) 0 xs
 
-  val persistent ~nth lst =
-    let rec aux i n xs =
-      match xs with
-      | []           -> None
-      | head :: tail -> if n == i then Some(head) else aux (i + 1) n tail
+  val persistent ~nth n =
+    let rec aux i ys =
+      match ys with
+      | []      -> None
+      | x :: xs -> if i == n then Some(x) else aux (i + 1) xs
       end
     in
-    aux 0 lst
+    aux 0
 
   val persistent ~is-empty xs =
     match xs with
