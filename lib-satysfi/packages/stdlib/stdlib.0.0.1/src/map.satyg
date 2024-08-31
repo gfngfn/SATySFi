@@ -354,7 +354,8 @@ end = struct
         | (Empty, Empty) ->
             true
         | (Node(n1), Node(n2)) ->
-            equal n1#left n2#left
+            n1#height == n2#height
+              && equal n1#left n2#left
               && key-equal n1#key n2#key
               && data-equal n1#data n2#data
               && equal n1#right n2#right
@@ -390,74 +391,100 @@ end = struct
       in
       assert-equal (eq-internal Equality.string) expected got
 
+    val node k v left right =
+      Node(|
+        height = 1 + Int.max (get-height left) (get-height right),
+        key = k,
+        data = v,
+        left = left,
+        right = right,
+      |)
+
+    val leaf =
+      singleton
+      % Since `singleton` has already been tested, we can use it here.
+
     #[test]
     val add-test () =
       List.iter (fun r -> (
         assert-equal ?(title = r#title)
-          (eq-internal Equality.string) r#expected r#operation
+          (eq-internal Equality.string) r#expected (r#operation r#input)
       )) [
         (|
           title = `added to the left`,
+          input =
+            leaf 42 `foo`,
           operation =
-            add 29 `bar` (singleton 42 `foo`),
+            add 29 `bar`,
           expected =
-            Node(|
-              height = 2,
-              left = Node(|
-                height = 1,
-                left = Empty,
-                key = 29,
-                data = `bar`,
-                right = Empty,
-              |),
-              key = 42,
-              data = `foo`,
-              right = Empty,
-            |),
+            node 42 `foo`
+              (leaf 29 `bar`)
+              empty,
         |),
         (|
           title = `added to the right`,
+          input =
+            leaf 42 `foo`,
           operation =
-            add 57 `bar` (singleton 42 `foo`),
+            add 57 `bar`,
           expected =
-            Node(|
-              height = 2,
-              left = Empty,
-              key = 42,
-              data = `foo`,
-              right = Node(|
-                height = 1,
-                left = Empty,
-                key = 57,
-                data = `bar`,
-                right = Empty,
-              |),
-            |),
+            node 42 `foo`
+              empty
+              (leaf 57 `bar`),
         |),
         (|
           title = `rebalance left-left`,
+          %    42                     29
+          %   /   ==== add 20 ===>   /  \
+          % 29                     20    42
+          input =
+            node 42 `foo`
+              (leaf 29 `bar`)
+              empty,
           operation =
-            add 20 `baz` (add 29 `bar` (singleton 42 `foo`)),
+            add 20 `baz`,
           expected =
-            Node(|
-              height = 2,
-              left = Node(|
-                height = 1,
-                left = Empty,
-                key = 20,
-                data = `baz`,
-                right = Empty,
-              |),
-              key = 29,
-              data = `bar`,
-              right = Node(|
-                height = 1,
-                left = Empty,
-                key = 42,
-                data = `foo`,
-                right = Empty,
-              |),
-            |)
+            node 29 `bar`
+              (leaf 20 `baz`)
+              (leaf 42 `foo`),
+        |),
+        (|
+          title = `rebalance left-right`,
+          %    42                     35
+          %   /   ==== add 35 ===>   /  \
+          % 29                     29    42
+          input =
+            node 42 `foo`
+              (leaf 29 `bar`)
+              empty,
+          operation =
+            add 35 `baz`,
+          expected =
+            node 35 `baz`
+              (leaf 29 `bar`)
+              (leaf 42 `foo`),
+        |),
+        (|
+          title = `rebalance left-right 2`,
+          %    42                        42
+          %   /  \   ==== add 30 ===>   /  \
+          % 29    57                  30    57
+          %   \                      /  \
+          %    35                  29    35
+          input =
+            node 42 `foo`
+              (node 29 `bar`
+                empty
+                (leaf 35 `baz`))
+              (leaf 57 `qux`),
+          operation =
+            add 30 `quux`,
+          expected =
+            node 42 `foo`
+              (node 30 `quux`
+                (leaf 29 `bar`)
+                (leaf 35 `baz`))
+              (leaf 57 `qux`),
         |),
       ]
 
