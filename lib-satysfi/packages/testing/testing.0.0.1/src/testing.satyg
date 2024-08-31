@@ -16,6 +16,7 @@ module Testing :> sig
     val option 'a : t 'a -> t (option 'a)
     val list 'a : t 'a -> t (list 'a)
   end
+  val assert 'a : ?(title : string) bool -> unit
   val assert-equal 'a : ?(title : string) Equality.t 'a -> 'a -> 'a -> unit
 end = struct
 
@@ -100,6 +101,13 @@ end = struct
     | None        -> ` `
     | Some(title) -> `[` ^ title ^ `] `#
     end
+
+  val assert ?(title = title-opt) b =
+    if b then
+      ()
+    else
+      let s-title = make-title-prefix title-opt in
+      abort-with-message (s-title ^ `assertion failed`)
 
   val assert-equal ?(title = title-opt) eq x1 x2 =
     if eq#equal x1 x2 then

@@ -404,11 +404,32 @@ end = struct
       singleton
       % Since `singleton` has already been tested, we can use it here.
 
+    val rec is-well-formed t =
+      match t with
+      | Empty ->
+          true
+      | Node(n) ->
+          let tL = n#left in
+          let tR = n#right in
+          if is-well-formed tL && is-well-formed tR then
+            let hL = get-height tL in
+            let hR = get-height tR in
+            Int.abs (hL - hR) <= 1 && n#height == 1 + Int.max hL hR
+          else
+            false
+      end
+
     #[test]
     val add-test () =
       List.iter (fun r -> (
-        assert-equal ?(title = r#title)
-          (eq-internal Equality.string) r#expected (r#operation r#input)
+        let title = r#title in
+        let input = r#input in
+        let expected = r#expected in
+        let () = assert ?(title = title ^ `: input well-formedness`) (is-well-formed input) in
+        let () = assert ?(title = title ^ `: expected well-formedness`) (is-well-formed expected) in
+        let got = r#operation r#input in
+        let () = assert ?(title = title ^ `: output well-formedness`) (is-well-formed got) in
+        assert-equal ?(title = title) (eq-internal Equality.string) expected got
       )) [
         (|
           title = `added to the left`,

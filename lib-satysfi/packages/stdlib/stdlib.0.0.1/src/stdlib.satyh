@@ -34,6 +34,7 @@ module Stdlib :> sig
     val ~lift : int -> code int
     val persistent ~compare : int -> int -> ordering
     val persistent ~equal : int -> int -> bool
+    val persistent ~abs : int -> int
     val persistent ~max : int -> int -> int
     val persistent ~min : int -> int -> int
   end
