@@ -331,6 +331,7 @@ type output_mode =
 
 type typecheck_config = {
   is_text_mode : bool;
+  testing      : bool;
 }
 
 type pre = {
@@ -364,7 +365,7 @@ type untyped_binding =
 and untyped_binding_main =
   | UTBindValue       of untyped_attribute list * stage * untyped_rec_or_nonrec
   | UTBindType        of untyped_type_binding list
-  | UTBindModule      of module_name ranged * untyped_signature option * untyped_module
+  | UTBindModule      of untyped_attribute list * module_name ranged * untyped_signature option * untyped_module
   | UTBindSignature   of signature_name ranged * untyped_signature
   | UTBindInclude     of untyped_module
   | UTBindInlineMacro of untyped_attribute list * command_name ranged * untyped_macro_parameter list * untyped_abstract_tree

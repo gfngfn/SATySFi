@@ -170,14 +170,12 @@ let build_package
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
-    let typecheck_config =
-      {
-        is_text_mode =
-          match output_mode with
-          | PdfMode     -> false
-          | TextMode(_) -> true
-      }
+    let is_text_mode =
+      match output_mode with
+      | PdfMode     -> false
+      | TextMode(_) -> true
     in
+    let typecheck_config = { testing = false; is_text_mode } in
     let extensions = get_candidate_file_extensions output_mode in
     let job_directory = get_job_directory abspath_envelope_config in
     let runtime_config = { job_directory } in
@@ -246,14 +244,12 @@ let open ResultMonad in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
-    let typecheck_config =
-      {
-        is_text_mode =
-          match output_mode with
-          | PdfMode     -> false
-          | TextMode(_) -> true
-      }
+    let is_text_mode =
+      match output_mode with
+      | PdfMode     -> false
+      | TextMode(_) -> true
     in
+    let typecheck_config = { testing = false; is_text_mode } in
     let pdf_config =
       HandlePdf.{
         debug_show_bbox;
@@ -342,14 +338,12 @@ let test_package
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
-    let typecheck_config =
-      {
-        is_text_mode =
-          match output_mode with
-          | PdfMode     -> false
-          | TextMode(_) -> true
-      }
+    let is_text_mode =
+      match output_mode with
+      | PdfMode     -> false
+      | TextMode(_) -> true
     in
+    let typecheck_config = { testing = true; is_text_mode } in
     let extensions = get_candidate_file_extensions output_mode in
     let job_directory = get_job_directory abspath_in in
     let runtime_config = { job_directory } in

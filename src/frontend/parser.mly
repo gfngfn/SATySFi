@@ -456,8 +456,8 @@ bind:
       }
   | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
-  | tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr
-      { (tokL, UTBindModule(modident, utsig_opt, utmod)) }
+  | attrs=list(attribute); tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr
+      { (tokL, UTBindModule(attrs, modident, utsig_opt, utmod)) }
   | tokL=SIGNATURE; sigident=UPPER; EXACT_EQ; utsig=sigexpr
       { (tokL, UTBindSignature(sigident, utsig)) }
   | tokL=INCLUDE; utmod=modexpr
