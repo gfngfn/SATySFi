@@ -1,7 +1,0 @@
-module Arith :> sig
-  val persistent ~pi : float
-end = struct
-
-  val persistent ~pi = 3.1415926536
-
-end

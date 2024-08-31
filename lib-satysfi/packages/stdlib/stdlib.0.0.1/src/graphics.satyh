@@ -1,5 +1,5 @@
 use open Basic
-use Arith
+use Float
 use Geom
 use Path
 use List
@@ -30,7 +30,7 @@ end = struct
 
   val rotate centpt angle gr =
     let (centx, centy) = centpt in
-    let rad = angle *. Arith.pi /. 180. in
+    let rad = angle *. Float.pi /. 180. in
     gr |> shift (0pt -' centx, 0pt -' centy)
        |> linear-transform (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
        |> shift centpt
@@ -69,7 +69,7 @@ end = struct
     let theta = Geom.atan2-point pt2 pt1 in
     let (cx, cy) = (x2 +' lenL *' (cos theta), y2 +' lenL *' (sin theta)) in
     let (mx, my) = (x2 +' lenM *' (cos theta), y2 +' lenM *' (sin theta)) in
-    let phi = theta +. Arith.pi /. 2. in
+    let phi = theta +. Float.pi /. 2. in
     let (p1, q1) = (cx +' lenP *' (cos phi), cy +' lenP *' (sin phi)) in
     let (p2, q2) = (cx -' lenP *' (cos phi), cy -' lenP *' (sin phi)) in
     overlay [

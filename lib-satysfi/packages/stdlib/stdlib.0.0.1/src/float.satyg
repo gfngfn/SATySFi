@@ -1,0 +1,29 @@
+use open Basic
+
+module Float :> sig
+  type t = float
+  val ~lift : float -> code float
+  val persistent ~abs : float -> float
+  val persistent ~max : float -> float -> float
+  val persistent ~min : float -> float -> float
+  val persistent ~pi : float
+end = struct
+
+  type t = float
+
+  val ~lift x =
+    lift-float x
+
+  val persistent ~abs x =
+    if x >=. 0. then x else 0. -. x
+
+  val persistent ~max x1 x2 =
+    if x1 >=. x2 then x1 else x2
+
+  val persistent ~min x1 x2 =
+    if x1 <=. x2 then x1 else x2
+
+  val persistent ~pi =
+    3.1415926536
+
+end

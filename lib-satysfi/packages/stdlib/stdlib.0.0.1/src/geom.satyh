@@ -1,5 +1,5 @@
 use open Basic
-use Arith
+use Float
 
 module Geom :> sig
   val atan2-point : point -> point -> float
@@ -12,7 +12,7 @@ end = struct
   val div-perp (x1, y1) (x2, y2) t len =
     let cx = x1 *' (1. -. t) +' x2 *' t in
     let cy = y1 *' (1. -. t) +' y2 *' t in
-    let theta = atan2 ((y2 -' y1) /' 1pt) ((x2 -' x1) /' 1pt) +. Arith.pi /. 2. in
+    let theta = atan2 ((y2 -' y1) /' 1pt) ((x2 -' x1) /' 1pt) +. Float.pi /. 2. in
     (cx +' len *' (cos theta), cy +' len *' (sin theta))
 
 end

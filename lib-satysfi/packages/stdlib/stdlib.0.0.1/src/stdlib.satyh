@@ -1,5 +1,6 @@
 use Basic
 use Int
+use Float
 use Ordering
 use Option
 use List
@@ -9,7 +10,6 @@ use Length
 use Logo
 use Inline
 use Block
-use Arith
 use Ref
 use Geom
 use Color
@@ -37,6 +37,14 @@ module Stdlib :> sig
     val persistent ~abs : int -> int
     val persistent ~max : int -> int -> int
     val persistent ~min : int -> int -> int
+  end
+  module Float : sig
+    type t = float
+    val ~lift : float -> code float
+    val persistent ~abs : float -> float
+    val persistent ~max : float -> float -> float
+    val persistent ~min : float -> float -> float
+    val persistent ~pi : float
   end
   module Ordering : sig
     type t = ordering
@@ -144,9 +152,6 @@ module Stdlib :> sig
     val +skip : block [length]
     val +clear-page : block []
   end
-  module Arith : sig
-    val persistent ~pi : float
-  end
   module Ref : sig
     val persistent ~increment : ref int -> unit
     val persistent ~decrement : ref int -> unit
@@ -237,6 +242,7 @@ module Stdlib :> sig
 end = struct
   include Basic
   module Int = Int
+  module Float = Float
   module Ordering = Ordering
   module Option = Option
   module List = List
@@ -246,7 +252,6 @@ end = struct
   module Logo = Logo
   module Inline = Inline
   module Block = Block
-  module Arith = Arith
   module Ref = Ref
   module Geom = Geom
   module Color = Color
