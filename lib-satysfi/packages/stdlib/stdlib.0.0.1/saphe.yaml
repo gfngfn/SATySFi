@@ -19,9 +19,7 @@ contents:
 dependencies: []
 test_dependencies:
 - used_as: "Testing"
-  local:
-    path: "../../testing/testing.0.0.1"
-#  registered:
-#    registry: "default"
-#    name: "testing"
-#    requirement: "^0.0.1"
+  registered:
+    registry: "default"
+    name: "testing"
+    requirement: "^0.0.1"
