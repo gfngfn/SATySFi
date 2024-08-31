@@ -5,6 +5,10 @@ module Testing :> sig
       equal : 'a -> 'a -> bool,
       show : 'a -> string,
     |) -> t 'a
+    val get 'a : t 'a -> (|
+      equal : 'a -> 'a -> bool,
+      show : 'a -> string,
+    |)
     val from-show 'a : ('a -> string) -> t 'a
     val bool : t bool
     val int : t int
@@ -23,6 +27,8 @@ end = struct
     |)
 
     val make r = r
+
+    val get r = r
 
     val from-show show =
       let equal x1 x2 = string-same (show x1) (show x2) in
@@ -59,7 +65,7 @@ end = struct
       in
       let show opt =
         match opt with
-        | None -> `None`
+        | None    -> `None`
         | Some(x) -> `Some(` ^ elem-show x ^ `)`
         end
       in

@@ -1,6 +1,7 @@
 use open Basic
 use Int
 use List
+use package open #[test-only] Testing
 
 module Map :> sig
   module Make : (Key : Ord) -> sig
@@ -334,6 +335,58 @@ end = struct
     % TODO: make this more efficient
     val from-list kvs =
       List.fold (fun mp (k, v) -> add k v mp) empty kvs
+
+  end
+
+  module Test = struct
+
+    include Make Int
+
+    val eq-key = Equality.int
+
+    val eq-internal eq-data =
+      let key-equal = (Equality.get eq-key)#equal in
+      let key-show = (Equality.get eq-key)#show in
+      let data-equal = (Equality.get eq-data)#equal in
+      let data-show = (Equality.get eq-data)#show in
+      let rec equal t1 t2 =
+        match (t1, t2) with
+        | (Empty, Empty) ->
+            true
+        | (Node(n1), Node(n2)) ->
+            equal n1#left n2#left
+              && key-equal n1#key n2#key
+              && data-equal n1#data n2#data
+              && equal n1#right n2#right
+        end
+      in
+      let rec show t =
+        match t with
+        | Empty ->
+            `Empty`
+        | Node(n) ->
+            `Node(| left = `# ^ show n#left
+              ^ `, key = `# ^ key-show n#key
+              ^ `, data = `# ^ data-show n#data
+              ^ `, right = `# ^ show n#right
+              ^ `, height = `# ^ arabic n#height ^ #` |)`
+        end
+      in
+      Equality.make (| equal = equal, show = show |)
+
+    #[test]
+    val singleton-test () =
+      let got = singleton 42 `foo` in
+      let expected =
+        Node(|
+          left = Empty,
+          key = 42,
+          data = `foo`,
+          right = Empty,
+          height = 1,
+        |)
+      in
+      assert-equal (eq-internal Equality.string) expected got
 
   end
 
