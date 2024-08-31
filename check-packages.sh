@@ -25,7 +25,13 @@ for FILE in $(find lib-satysfi -name saphe.yaml); do
                 echo "! FAILED (cannot build)"
                 FAILS+=("$DIR (cannot build)")
             else
-                echo "* OK: $DIR"
+                "$SAPHE" test "$DIR"
+                if [ $? -ne  0 ]; then
+                    echo "! FAILED (test failed)"
+                    FAILS+=("$DIR (test failed)")
+                else
+                    echo "* OK: $DIR"
+                fi
             fi
         else
             echo "! FAILED (envelope config mismatch): $DIR"
