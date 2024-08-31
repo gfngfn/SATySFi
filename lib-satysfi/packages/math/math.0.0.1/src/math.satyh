@@ -417,12 +417,6 @@ module Math :> sig
   val bar-middle : paren
   val slash-middle : paren
 
-%   % -- temporary -- %TODO: remove this
-   val \synteq : math []
-   val \tyjd : math [math-text, math-text, math-text]
-   val \and-also : math []
-   val \tmabstyped : math [math-text, math-text, math-text]
-%
 end = struct
 
   val join (msep : math-text) (ms : list math-text) =
@@ -1020,28 +1014,8 @@ end = struct
 %    let kernfR fontsize ypos = fontsize *' 0.2 in
 %      math-big-char-with-kern MathOp `∫` kernfL kernfR
 
-  val math-space =
-    embed-inline-to-math MathOrd (inline-skip 30pt)
-
-  val math ctx \and-also = math-space
-
-  val math ctx \tyjd tyenv tm ty =
-    read-math ctx ${#tyenv \vdash #tm \colon-rel #ty}
-
-  val math ctx \synteq =
-    read-math ctx ${\equiv}
-
   val math ctx \dot-punct =
     math-char ctx MathPunct `.`
-
-  val math ctx \tmabstyped var ty body =
-    read-math ctx ${\lambda #var \colon-rel #ty \dot-punct #body}
-
-  val math ctx \npe =
-    read-math (ctx |> set-text-color (RGB(1., 0., 0.)) |> set-math-char-class MathRoman) ${e}
-
-  val math ctx \bi m =
-    read-math (ctx |> set-math-char-class MathBoldItalic) m
 
   val half-length hgt dpt hgtaxis fontsize =
     let minhalflen = fontsize *' 0.5 in

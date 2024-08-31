@@ -8,6 +8,21 @@ use package open StdJa
 let math ctx \overwrite mf ma mb =
   read-math ctx ${#mf\sqbracket{#ma \mapsto #mb}}
 in
+let math-space =
+  embed-inline-to-math MathOrd (inline-skip 30pt)
+in
+let math ctx \and-also =
+  math-space
+in
+let math ctx \tyjd tyenv tm ty =
+  read-math ctx ${#tyenv \vdash #tm \colon-rel #ty}
+in
+let math ctx \synteq =
+  read-math ctx ${\equiv}
+in
+let math ctx \tmabstyped var ty body =
+  read-math ctx ${\lambda #var \colon-rel #ty \dot-punct #body}
+in
 
 document ?(
   show-title = false,
