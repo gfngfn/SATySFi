@@ -371,8 +371,8 @@ end = struct
             `Node(| height = `# ^ arabic n#height
               ^ `, key = `# ^ key-show n#key
               ^ `, data = `# ^ data-show n#data
-              ^ `, right = `# ^ show n#right
-              ^ `, left = `# ^ show n#left ^ #` |)`
+              ^ `, left = `# ^ show n#left
+              ^ `, right = `# ^ show n#right ^ #` |)`
         end
       in
       Equality.make (| equal = equal, show = show |)
@@ -449,7 +449,7 @@ end = struct
               (leaf 42 `foo`),
         |),
         (|
-          title = `rebalance left-right`,
+          title = `rebalance left-right 1`,
           %    42                     35
           %   /   ==== add 35 ===>   /  \
           % 29                     29    42
@@ -485,6 +485,132 @@ end = struct
                 (leaf 29 `bar`)
                 (leaf 35 `baz`))
               (leaf 57 `qux`),
+        |),
+        (|
+          title = `rebalance left-right-right 1`,
+          %    42                        42
+          %   /  \   ==== add 38 ===>   /  \
+          % 29    57                  35    57
+          %   \                      /  \
+          %    35                  29    38
+          input =
+            node 42 `foo`
+              (node 29 `bar`
+                empty
+                (leaf 35 `baz`))
+              (leaf 57 `qux`),
+          operation =
+            add 38 `quux`,
+          expected =
+            node 42 `foo`
+              (node 35 `baz`
+                (leaf 29 `bar`)
+                (leaf 38 `quux`))
+              (leaf 57 `qux`),
+        |),
+        (|
+          title = `rebalance left-right-right 2`,
+          %       42                        42
+          %      /  \   ==== add 38 ===>   /  \
+          %    29    57                  29    57
+          %   /  \     \                /  \     \
+          % 23    35    61            23    38    61
+          %         \                      /  \
+          %          40                  35    40
+          input =
+            node 42 `T`
+              (node 29 `L`
+                (leaf 23 `LL`)
+                (node 35 `LR`
+                  empty
+                  (leaf 40 `LRR`)))
+              (node 57 `R`
+                empty
+                (leaf 61 `RR`)),
+          operation =
+            add 38 `X`,
+          expected =
+            node 42 `T`
+              (node 29 `L`
+                (leaf 23 `LL`)
+                (node 38 `X`
+                  (leaf 35 `LR`)
+                  (leaf 40 `LRR`)))
+              (node 57 `R`
+                empty
+                (leaf 61 `RR`)),
+        |),
+        (|
+          title = `rebalance left-right-right 3`,
+          %       42                         42
+          %      /  \   ==== add 38 ===>    /  \
+          %    29    57                  *35*   57
+          %   /  \     \                 /  \     \
+          % 23    35    61           *29*    *40*  61
+          %      /  \                /  \     /
+          %    32    40             23 *32* (38)
+          input =
+            node 42 `T`
+              (node 29 `L`
+                (leaf 23 `LL`)
+                (node 35 `LR`
+                  (leaf 32 `LRL`)
+                  (leaf 40 `LRR`)))
+              (node 57 `R`
+                empty
+                (leaf 61 `RR`)),
+          operation =
+            add 38 `X`,
+          expected =
+            node 42 `T`
+              (node 35 `LR`
+                (node 29 `L`
+                  (leaf 23 `LL`)
+                  (leaf 32 `LRL`))
+                (node 40 `LRR`
+                  (leaf 38 `X`)
+                  empty))
+              (node 57 `R`
+                empty
+                (leaf 61 `RR`)),
+        |),
+        (|
+          title = `rebalance left-right-right 4`,
+          %          42                          *35*
+          %         /  \   ==== add 38 ===>     /    \
+          %       29    57                   29       *42*
+          %      /  \     \                 /  \      /  \
+          %    23    35    61              23 *32*  *40*  57
+          %   /     /  \                  /           \     \
+          % 16    32    40               16           (38)   61
+          input =
+            node 42 `T`
+              (node 29 `L`
+                (node 23 `LL`
+                  (leaf 16 `LLL`)
+                  empty)
+                (node 35 `LR`
+                  (leaf 32 `LRL`)
+                  (leaf 40 `LRR`)))
+              (node 57 `R`
+                empty
+                (leaf 61 `RR`)),
+          operation =
+            add 38 `X`,
+          expected =
+            node 35 `LR`
+              (node 29 `L`
+                (node 23 `LL`
+                  (leaf 16 `LLL`)
+                  empty)
+                (leaf 32 `LRL`))
+              (node 42 `T`
+                (node 40 `LRR`
+                  (leaf 38 `X`)
+                  empty)
+                (node 57 `R`
+                  empty
+                  (leaf 61 `RR`))),
         |),
       ]
 
