@@ -2674,6 +2674,34 @@ make_float (flt1 *. flt2)
         ~code:{|
 make_float (flt1 /. flt2)
 |}
+    ; inst "PrimitiveFloatGreaterThan"
+        ~name:">."
+        ~type_:Type.(tFL @-> tFL @-> tB)
+        ~fields:[
+        ]
+        ~params:[
+          param "flt1" ~type_:"float";
+          param "flt2" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_bool (flt1 > flt2)
+|}
+    ; inst "PrimitiveFloatLessThan"
+        ~name:"<."
+        ~type_:Type.(tFL @-> tFL @-> tB)
+        ~fields:[
+        ]
+        ~params:[
+          param "flt1" ~type_:"float";
+          param "flt2" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_bool (flt1 < flt2)
+|}
     ; inst "PrimitiveSin"
         ~name:"sin"
         ~type_:Type.(tFL @-> tFL)
