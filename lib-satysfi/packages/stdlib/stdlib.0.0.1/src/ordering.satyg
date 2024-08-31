@@ -1,0 +1,26 @@
+use open Basic
+
+module Ordering :> sig
+  type t = ordering
+  val equal : ordering -> ordering -> bool
+  val show : ordering -> string
+end = struct
+
+  type t = ordering
+
+  val equal o1 o2 =
+    match (o1, o2) with
+    | (Less, Less)       -> true
+    | (Equal, Equal)     -> true
+    | (Greater, Greater) -> true
+    | _                  -> false
+    end
+
+  val show o =
+    match o with
+    | Less    -> `Less`
+    | Equal   -> `Equal`
+    | Greater -> `Greater`
+    end
+
+end

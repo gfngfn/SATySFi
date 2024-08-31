@@ -1,5 +1,9 @@
+use List
+
 module Inline :> sig
   val get-natural-advance : inline-boxes -> length
+  val nil : inline-boxes
+  val concat : list inline-boxes -> inline-boxes
   val kern : length -> inline-boxes
   val \skip : inline [length]
   val no-break : inline-boxes -> inline-boxes
@@ -13,6 +17,12 @@ end = struct
   val get-natural-advance ib =
     let (wid, _, _) = get-natural-metrics ib in
     wid
+
+  val nil =
+    inline-nil
+
+  val concat ibs =
+    List.fold ( ++ ) nil ibs
 
   val kern len = inline-skip (0pt -' len)
 

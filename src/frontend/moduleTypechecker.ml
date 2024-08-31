@@ -780,7 +780,11 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
         match (stage, valbind) with
         | (Stage1, UTNonRec(ident, utast1)) ->
             let (_, test_name) = ident in
-            let ty_expected = (Range.dummy "test", BaseType(UnitType)) in
+            let ty_expected =
+              let ty_dom = (Range.dummy "test-dom", BaseType(UnitType)) in
+              let ty_cod = (Range.dummy "test-cod", BaseType(UnitType)) in
+              (Range.dummy "test-func", FuncType(RowEmpty, ty_dom, ty_cod))
+            in
             let* (evid, e1, _pty) = typecheck_nonrec pre tyenv ident utast1 (Some(ty_expected)) in
             return ([ BindTest(evid, test_name, e1) ], (OpaqueIDMap.empty, StructSig.empty))
 
@@ -858,24 +862,32 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
       let ssig = ssig |> add_constructor_definitions ctordefs in
       return ([], (OpaqueIDMap.empty, ssig))
 
-  | UTBindModule(modident, utsigopt2, utmod1) ->
-      let (rng_mod, modnm) = modident in
-      let* (absmodsig1, binds1) = typecheck_module config tyenv utmod1 in
-      let* (quant, modsig) =
-        match utsigopt2 with
-        | None ->
-            return absmodsig1
+  | UTBindModule(attrs, modident, utsigopt2, utmod1) ->
+      let* modattr =
+        ModuleAttribute.make attrs
+          |> Result.map_error (fun e -> ModuleAttributeError(e))
+      in
+      if modattr.ModuleAttribute.for_test_only && not config.testing then
+        (* Ignores the whole binding when not running tests. *)
+        return ([], (OpaqueIDMap.empty, StructSig.empty))
+      else
+        let (rng_mod, modnm) = modident in
+        let* (absmodsig1, binds1) = typecheck_module config tyenv utmod1 in
+        let* (quant, modsig) =
+          match utsigopt2 with
+          | None ->
+              return absmodsig1
 
-        | Some(utsig2) ->
-            let (_, modsig1) = absmodsig1 in
-            let* absmodsig2 = typecheck_signature config tyenv utsig2 in
-            coerce_signature rng_mod modsig1 absmodsig2
-      in
-      let ssig =
-        let mentry = { mod_signature = modsig; } in
-        StructSig.empty |> StructSig.add_module modnm mentry
-      in
-      return (binds1, (quant, ssig))
+          | Some(utsig2) ->
+              let (_, modsig1) = absmodsig1 in
+              let* absmodsig2 = typecheck_signature config tyenv utsig2 in
+              coerce_signature rng_mod modsig1 absmodsig2
+        in
+        let ssig =
+          let mentry = { mod_signature = modsig; } in
+          StructSig.empty |> StructSig.add_module modnm mentry
+        in
+        return (binds1, (quant, ssig))
 
   | UTBindSignature((_, signm), utsig) ->
       let* absmodsig = typecheck_signature config tyenv utsig in

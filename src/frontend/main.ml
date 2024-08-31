@@ -129,12 +129,12 @@ let check_depended_envelopes (display_config : Logging.config) (typecheck_config
     ClosedEnvelopeDependencyResolver.main display_config ~use_test_only_envelope ~extensions deps_config
   in
 
-  (* Typechecks every depended envelope: *)
+  (* Typechecks every depended envelope (Note: We must ignore `#[test-only]` in dependencies): *)
   let* (genv, configenv, libacc) =
     sorted_envelopes |> foldM (fun (genv, configenv, libacc) (envelope_name, (config, envelope)) ->
       let* used_as_map = make_used_as_map_for_checking_dependency deps_config envelope_name in
       let* (ssig, libs) =
-        EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
+        EnvelopeChecker.main ~testing:false display_config typecheck_config tyenv_prim genv ~used_as_map envelope
       in
       let genv = genv |> GlobalTypeenv.add (EnvelopeName.EN(envelope_name)) ssig in
       let configenv = configenv |> GlobalTypeenv.add (EnvelopeName.EN(envelope_name)) config in
@@ -170,14 +170,12 @@ let build_package
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
-    let typecheck_config =
-      {
-        is_text_mode =
-          match output_mode with
-          | PdfMode     -> false
-          | TextMode(_) -> true
-      }
+    let is_text_mode =
+      match output_mode with
+      | PdfMode     -> false
+      | TextMode(_) -> true
     in
+    let typecheck_config = { testing = false; is_text_mode } in
     let extensions = get_candidate_file_extensions output_mode in
     let job_directory = get_job_directory abspath_envelope_config in
     let runtime_config = { job_directory } in
@@ -208,7 +206,9 @@ let build_package
 
     (* Typechecks the main envelope: *)
     let* (_ssig, _libs_target) =
-      EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
+      EnvelopeChecker.main
+        ~testing:false
+        display_config typecheck_config tyenv_prim genv ~used_as_map envelope
     in
     return ()
 
@@ -244,14 +244,12 @@ let open ResultMonad in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
-    let typecheck_config =
-      {
-        is_text_mode =
-          match output_mode with
-          | PdfMode     -> false
-          | TextMode(_) -> true
-      }
+    let is_text_mode =
+      match output_mode with
+      | PdfMode     -> false
+      | TextMode(_) -> true
     in
+    let typecheck_config = { testing = false; is_text_mode } in
     let pdf_config =
       HandlePdf.{
         debug_show_bbox;
@@ -301,6 +299,7 @@ let open ResultMonad in
     (* Typechecking and elaboration: *)
     let* (libs_local, ast_doc) =
       EnvelopeChecker.main_document
+        ~testing:false
         display_config typecheck_config tyenv_prim genv ~used_as_map sorted_locals (abspath_in, utdoc)
     in
 
@@ -339,14 +338,13 @@ let test_package
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let output_mode = make_output_mode text_mode_formats_str_opt in
 
-    let typecheck_config =
-      {
-        is_text_mode =
-          match output_mode with
-          | PdfMode     -> false
-          | TextMode(_) -> true
-      }
+    let is_text_mode =
+      match output_mode with
+      | PdfMode     -> false
+      | TextMode(_) -> true
     in
+    let typecheck_config_deps = { testing = false; is_text_mode } in (* Ignores `#[test-only]`. *)
+    let typecheck_config_main = { testing = true; is_text_mode } in (* Uses `#[test-only]`. *)
     let extensions = get_candidate_file_extensions output_mode in
     let job_directory = get_job_directory abspath_in in
     let runtime_config = { job_directory } in
@@ -370,7 +368,7 @@ let test_package
     let* (genv, _configenv, libs_dep) =
       check_depended_envelopes
         display_config
-        typecheck_config
+        typecheck_config_deps
         ~use_test_only_envelope:true
         ~extensions
         tyenv_prim
@@ -384,10 +382,12 @@ let test_package
         (List.append explicit_dependencies explicit_test_dependencies)
     in
     let* (_ssig, libs_target) =
-      EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map package
+      EnvelopeChecker.main
+        ~testing:true
+        display_config typecheck_config_main tyenv_prim genv ~used_as_map package
     in
 
-    (* Runs tests: *)
+    (* Runs tests (Note: we do not run the tests in dependencies): *)
     let (env, codebinds_dep) = preprocess_bindings display_config ~run_tests:false env libs_dep in
     let (env, codebinds_target) = preprocess_bindings display_config ~run_tests:true env libs_target in
     let env = evaluate_bindings display_config ~run_tests:false ~is_bytecomp_mode:false env codebinds_dep in

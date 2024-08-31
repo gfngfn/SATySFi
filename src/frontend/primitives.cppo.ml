@@ -694,14 +694,14 @@ let general_table : (var_name * poly_type * (environment -> syntactic_value)) li
   let ptyderef  = ~% ((tR (~@ tv1)) @-> (~@ tv1)) in
   let ptycons   = ~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2))) in
   let ptyappinv = ~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)) in
-    [
-      ( "!"  , ptyderef             , lambda1 (fun v1 -> Dereference(v1))                   );
-      ( "::" , ptycons              , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))      );
-      ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(LabelMap.empty, vf, vx))  );
-      ( "<>" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveEqualTo(v1, v2)))    );
-      ( ">=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveLessThan(v1, v2)))   );
-      ( "<=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveGreaterThan(v1, v2))));
-    ]
+  [
+    ("!" , ptyderef             , lambda1 (fun v1 -> Dereference(v1))                                     );
+    ("::", ptycons              , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))                        );
+    ("|>", ptyappinv            , lambda2 (fun vx vf -> Apply(LabelMap.empty, vf, vx))                    );
+    ("<>", ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveEqualTo(v1, v2)))    );
+    (">=", ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveLessThan(v1, v2)))   );
+    ("<=", ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> PrimitiveLogicalNot(PrimitiveGreaterThan(v1, v2))));
+  ]
 
 
 let base bc = BaseConstant(bc)

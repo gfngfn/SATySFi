@@ -582,6 +582,12 @@ let make_type_error_message = function
         NormalLine("unexpected value attributes.");
       ]
 
+  | ModuleAttributeError(ModuleAttribute.Unexpected(rng)) ->
+      [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine("unexpected module attributes.");
+      ]
+
   | TestMustBeStage1NonRec(rng) ->
       [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));

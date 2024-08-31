@@ -151,8 +151,9 @@ let register_markdown_file (display_config : Logging.config) (configenv : Envelo
   let header =
     [
       HeaderUsePackage{
-        opening   = false;
-        mod_chain = (Range.dummy "md-header", ((Range.dummy "md-header", class_module_name), []));
+        attributes = [];
+        opening    = false;
+        mod_chain  = (Range.dummy "md-header", ((Range.dummy "md-header", class_module_name), []));
       };
     ]
   in

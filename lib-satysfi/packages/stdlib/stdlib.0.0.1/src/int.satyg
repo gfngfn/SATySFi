@@ -5,6 +5,7 @@ module Int :> sig
   val ~lift : int -> code int
   val persistent ~compare : int -> int -> ordering
   val persistent ~equal : int -> int -> bool
+  val persistent ~abs : int -> int
   val persistent ~max : int -> int -> int
   val persistent ~min : int -> int -> int
 end = struct
@@ -22,6 +23,9 @@ end = struct
       Less
 
   val persistent ~equal = ( == )
+
+  val persistent ~abs n =
+    if n >= 0 then n else - n
 
   val persistent ~max n1 n2 =
     if n1 >= n2 then n1 else n2

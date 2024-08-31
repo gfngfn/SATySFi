@@ -6,6 +6,7 @@ module List :> sig
   val ~lift 'a : ('a -> code 'a) -> list 'a -> code (list 'a)
   val persistent ~compare 'a : ('a -> 'a -> ordering) -> list 'a -> list 'a -> ordering
   val persistent ~equal 'a : ('a -> 'a -> bool) -> list 'a -> list 'a -> bool
+  val persistent ~show 'a : ('a -> string) -> list 'a -> string
   val persistent ~fold 'a 'b : ('a -> 'b -> 'a) -> 'a -> list 'b -> 'a
   val persistent ~fold-indexed 'a 'b : ('a -> int -> 'b -> 'a) -> 'a -> list 'b -> 'a
   val persistent ~fold-back 'a 'b : ('a -> 'b -> 'b) -> list 'a -> 'b -> 'b
@@ -25,7 +26,8 @@ module List :> sig
   val persistent ~iter-indexed 'a : (int -> 'a -> unit) -> list 'a -> unit
   val persistent ~filter 'a : ('a -> bool) -> list 'a -> list 'a
   val persistent ~filter-map 'a 'b : ('a -> option 'b) -> list 'a -> list 'b
-  val persistent ~assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
+  val persistent ~find 'a : ('a -> bool) -> list 'a -> option 'a
+  val persistent ~find-map 'a 'b : ('a -> option 'b) -> list 'a -> option 'b
   val persistent ~length 'a : list 'a -> int
   val persistent ~nth 'a : int -> list 'a -> option 'a
   val persistent ~is-empty 'a : list 'a -> bool
@@ -60,6 +62,16 @@ end = struct
     | (x1 :: ys1, x2 :: ys2) -> if eq x1 x2 then equal eq ys1 ys2 else false
     | _                      -> false
     end
+
+  val persistent ~show sh =
+    let rec aux xs =
+      match xs with
+      | []      -> ` `
+      | [x]     -> sh x
+      | x :: ys -> sh x ^ `, `# ^ aux ys
+      end
+    in
+    (fun xs -> `[` ^ aux xs ^ `]`)
 
   val persistent ~rec fold f acc ys =
     match ys with
@@ -187,23 +199,37 @@ end = struct
         end
     end
 
-  val persistent ~rec assoc eq a ys =
+  val persistent ~rec find p ys =
     match ys with
-    | []           -> None
-    | (x, y) :: xs -> if eq a x then Some(y) else assoc eq a xs
+    | []      -> None
+    | x :: xs -> if p x then Some(x) else find p ys
     end
+
+  val persistent ~find-map f =
+    let rec aux ys =
+      match ys with
+      | [] ->
+          None
+      | x :: xs ->
+          match f x with
+          | Some(v) -> Some(v)
+          | None    -> aux xs
+          end
+      end
+    in
+    aux
 
   val persistent ~length xs =
     fold (fun i _ -> i + 1) 0 xs
 
-  val persistent ~nth lst =
-    let rec aux i n xs =
-      match xs with
-      | []           -> None
-      | head :: tail -> if n == i then Some(head) else aux (i + 1) n tail
+  val persistent ~nth n =
+    let rec aux i ys =
+      match ys with
+      | []      -> None
+      | x :: xs -> if i == n then Some(x) else aux (i + 1) xs
       end
     in
-    aux 0 lst
+    aux 0
 
   val persistent ~is-empty xs =
     match xs with

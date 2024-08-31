@@ -1,0 +1,41 @@
+use open Basic
+
+module Pair :> sig
+  val ~lift 'a 'b : ('a -> code 'a) -> ('b -> code 'b) -> 'a * 'b -> code ('a * 'b)
+  val persistent ~compare 'a 'b : ('a -> 'a -> ordering) -> ('b -> 'b -> ordering) -> 'a * 'b -> 'a * 'b -> ordering
+  val persistent ~equal 'a 'b : ('a -> 'a -> bool) -> ('b -> 'b -> bool) -> 'a * 'b -> 'a * 'b -> bool
+  val persistent ~show 'a 'b : ('a -> string) -> ('b -> string) -> 'a * 'b -> string
+  val persistent ~first 'a 'b : 'a * 'b -> 'a
+  val persistent ~second 'a 'b : 'a * 'b -> 'b
+  val persistent ~map-first 'a1 'a2 'b : ('a1 -> 'a2) -> 'a1 * 'b -> 'a2 * 'b
+  val persistent ~map-second 'a 'b1 'b2 : ('b1 -> 'b2) -> 'a * 'b1 -> 'a * 'b2
+end = struct
+
+  val ~lift lf-x lf-y (x, y) =
+    &(~(lf-x x), ~(lf-y y))
+
+  val persistent ~compare comp-x comp-y (x1, y1) (x2, y2) =
+    match comp-x x1 x2 with
+    | Equal -> comp-y y1 y2
+    | other -> other
+    end
+
+  val persistent ~equal eq-x eq-y (x1, y1) (x2, y2) =
+    eq-x x1 x2 && eq-y y1 y2
+
+  val persistent ~show sh-x sh-y (x, y) =
+    `(` ^ sh-x x ^ `, `# ^ sh-y y ^ `)`
+
+  val persistent ~first (x, _) =
+    x
+
+  val persistent ~second (_, y) =
+    y
+
+  val persistent ~map-first f (x, y) =
+    (f x, y)
+
+  val persistent ~map-second f (x, y) =
+    (x, f y)
+
+end

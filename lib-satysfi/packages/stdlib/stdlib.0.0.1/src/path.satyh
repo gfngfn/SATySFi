@@ -1,7 +1,7 @@
 use open Basic
 use Length
 use List
-use Arith
+use Float
 
 module Path :> sig
   val rectangle : point -> point -> path
@@ -126,7 +126,7 @@ end = struct
 
   val rotate centpt angle path =
     let (centx, centy) = centpt in
-    let rad = angle *. Arith.pi /. 180. in
+    let rad = angle *. Float.pi /. 180. in
     path |> shift (0pt -' centx, 0pt -' centy)
          |> linear-transform (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
          |> shift centpt

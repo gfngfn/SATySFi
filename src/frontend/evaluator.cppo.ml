@@ -438,7 +438,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | CatchTest{ test_name; test_impl = ast } ->
       let res =
         try
-          let value = interpret_0 env ast in
+          let value = interpret_0 env (Apply(LabelMap.empty, ast, ASTBaseConstant(BCUnit))) in
           Ok(value)
         with
         | EvalError(msg) -> (* Catches aborts during tests. *)

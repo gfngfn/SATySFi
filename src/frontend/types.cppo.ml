@@ -331,6 +331,7 @@ type output_mode =
 
 type typecheck_config = {
   is_text_mode : bool;
+  testing      : bool;
 }
 
 type pre = {
@@ -358,29 +359,13 @@ type module_name_chain =
   module_name ranged * (module_name ranged) list
 [@@deriving show { with_path = false; } ]
 
-type header_element =
-  | HeaderUsePackage of {
-      opening   : bool;
-      mod_chain : module_name_chain ranged;
-    }
-  | HeaderUse of {
-      opening   : bool;
-      mod_chain : module_name_chain ranged;
-    }
-  | HeaderUseOf of {
-      opening             : bool;
-      mod_chain           : module_name_chain ranged;
-      relpath_without_ext : string;
-    }
-[@@deriving show { with_path = false }]
-
 type untyped_binding =
   untyped_binding_main ranged
 
 and untyped_binding_main =
   | UTBindValue       of untyped_attribute list * stage * untyped_rec_or_nonrec
   | UTBindType        of untyped_type_binding list
-  | UTBindModule      of module_name ranged * untyped_signature option * untyped_module
+  | UTBindModule      of untyped_attribute list * module_name ranged * untyped_signature option * untyped_module
   | UTBindSignature   of signature_name ranged * untyped_signature
   | UTBindInclude     of untyped_module
   | UTBindInlineMacro of untyped_attribute list * command_name ranged * untyped_macro_parameter list * untyped_abstract_tree
@@ -603,6 +588,25 @@ and untyped_attribute_main =
 and untyped_attribute =
   untyped_attribute_main ranged
 [@@deriving show { with_path = false; }]
+
+type header_element =
+  | HeaderUsePackage of {
+      attributes : untyped_attribute list;
+      opening    : bool;
+      mod_chain  : module_name_chain ranged;
+    }
+  | HeaderUse of {
+      attributes : untyped_attribute list;
+      opening    : bool;
+      mod_chain  : module_name_chain ranged;
+    }
+  | HeaderUseOf of {
+      attributes          : untyped_attribute list;
+      opening             : bool;
+      mod_chain           : module_name_chain ranged;
+      relpath_without_ext : string;
+    }
+[@@deriving show { with_path = false }]
 
 type untyped_library_file =
   untyped_attribute list * header_element list * (module_name ranged * untyped_signature option * Range.t * untyped_binding list)

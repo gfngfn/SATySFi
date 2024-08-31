@@ -1,6 +1,7 @@
 use open Basic
 use Int
 use List
+use package open #[test-only] Testing
 
 module Map :> sig
   module Make : (Key : Ord) -> sig
@@ -334,6 +335,306 @@ end = struct
     % TODO: make this more efficient
     val from-list kvs =
       List.fold (fun mp (k, v) -> add k v mp) empty kvs
+
+  end
+
+  #[test-only]
+  module Test = struct
+
+    include Make Int
+
+    val eq-key = Equality.int
+
+    val eq-internal eq-data =
+      let key-equal = (Equality.get eq-key)#equal in
+      let key-show = (Equality.get eq-key)#show in
+      let data-equal = (Equality.get eq-data)#equal in
+      let data-show = (Equality.get eq-data)#show in
+      let rec equal t1 t2 =
+        match (t1, t2) with
+        | (Empty, Empty) ->
+            true
+        | (Node(n1), Node(n2)) ->
+            n1#height == n2#height
+              && equal n1#left n2#left
+              && key-equal n1#key n2#key
+              && data-equal n1#data n2#data
+              && equal n1#right n2#right
+        | _ ->
+            false
+        end
+      in
+      let rec show t =
+        match t with
+        | Empty ->
+            `Empty`
+        | Node(n) ->
+            `Node(| height = `# ^ arabic n#height
+              ^ `, key = `# ^ key-show n#key
+              ^ `, data = `# ^ data-show n#data
+              ^ `, left = `# ^ show n#left
+              ^ `, right = `# ^ show n#right ^ #` |)`
+        end
+      in
+      Equality.make (| equal = equal, show = show |)
+
+    #[test]
+    val singleton-test () =
+      let got = singleton 42 `foo` in
+      let expected =
+        Node(|
+          height = 1,
+          left = Empty,
+          key = 42,
+          data = `foo`,
+          right = Empty,
+        |)
+      in
+      assert-equal (eq-internal Equality.string) expected got
+
+    val node k v left right =
+      Node(|
+        height = 1 + Int.max (get-height left) (get-height right),
+        key = k,
+        data = v,
+        left = left,
+        right = right,
+      |)
+
+    val leaf =
+      singleton
+      % Since `singleton` has already been tested, we can use it here.
+
+    val rec is-well-formed t =
+      match t with
+      | Empty ->
+          true
+      | Node(n) ->
+          let tL = n#left in
+          let tR = n#right in
+          if is-well-formed tL && is-well-formed tR then
+            let hL = get-height tL in
+            let hR = get-height tR in
+            Int.abs (hL - hR) <= 1 && n#height == 1 + Int.max hL hR
+          else
+            false
+      end
+
+    #[test]
+    val add-test () =
+      List.iter (fun r -> (
+        let title = r#title in
+        let input = r#input in
+        let expected = r#expected in
+        let () = assert ?(title = title ^ `: input well-formedness`) (is-well-formed input) in
+        let () = assert ?(title = title ^ `: expected well-formedness`) (is-well-formed expected) in
+        let got = r#operation r#input in
+        let () = assert ?(title = title ^ `: output well-formedness`) (is-well-formed got) in
+        assert-equal ?(title = title) (eq-internal Equality.string) expected got
+      )) [
+        (|
+          title = `added to the left`,
+          input =
+            leaf 42 `foo`,
+          operation =
+            add 29 `bar`,
+          expected =
+            node 42 `foo`
+              (leaf 29 `bar`)
+              empty,
+        |),
+        (|
+          title = `added to the right`,
+          input =
+            leaf 42 `foo`,
+          operation =
+            add 57 `bar`,
+          expected =
+            node 42 `foo`
+              empty
+              (leaf 57 `bar`),
+        |),
+        (|
+          title = `rebalance left-left`,
+          %    42                     29
+          %   /   ==== add 20 ===>   /  \
+          % 29                     20    42
+          input =
+            node 42 `foo`
+              (leaf 29 `bar`)
+              empty,
+          operation =
+            add 20 `baz`,
+          expected =
+            node 29 `bar`
+              (leaf 20 `baz`)
+              (leaf 42 `foo`),
+        |),
+        (|
+          title = `rebalance left-right 1`,
+          %    42                     35
+          %   /   ==== add 35 ===>   /  \
+          % 29                     29    42
+          input =
+            node 42 `foo`
+              (leaf 29 `bar`)
+              empty,
+          operation =
+            add 35 `baz`,
+          expected =
+            node 35 `baz`
+              (leaf 29 `bar`)
+              (leaf 42 `foo`),
+        |),
+        (|
+          title = `rebalance left-right 2`,
+          %    42                        42
+          %   /  \   ==== add 30 ===>   /  \
+          % 29    57                  30    57
+          %   \                      /  \
+          %    35                  29    35
+          input =
+            node 42 `foo`
+              (node 29 `bar`
+                empty
+                (leaf 35 `baz`))
+              (leaf 57 `qux`),
+          operation =
+            add 30 `quux`,
+          expected =
+            node 42 `foo`
+              (node 30 `quux`
+                (leaf 29 `bar`)
+                (leaf 35 `baz`))
+              (leaf 57 `qux`),
+        |),
+        (|
+          title = `rebalance left-right-right 1`,
+          %    42                        42
+          %   /  \   ==== add 38 ===>   /  \
+          % 29    57                  35    57
+          %   \                      /  \
+          %    35                  29    38
+          input =
+            node 42 `foo`
+              (node 29 `bar`
+                empty
+                (leaf 35 `baz`))
+              (leaf 57 `qux`),
+          operation =
+            add 38 `quux`,
+          expected =
+            node 42 `foo`
+              (node 35 `baz`
+                (leaf 29 `bar`)
+                (leaf 38 `quux`))
+              (leaf 57 `qux`),
+        |),
+        (|
+          title = `rebalance left-right-right 2`,
+          %       42                        42
+          %      /  \   ==== add 38 ===>   /  \
+          %    29    57                  29    57
+          %   /  \     \                /  \     \
+          % 23    35    61            23    38    61
+          %         \                      /  \
+          %          40                  35    40
+          input =
+            node 42 `T`
+              (node 29 `L`
+                (leaf 23 `LL`)
+                (node 35 `LR`
+                  empty
+                  (leaf 40 `LRR`)))
+              (node 57 `R`
+                empty
+                (leaf 61 `RR`)),
+          operation =
+            add 38 `X`,
+          expected =
+            node 42 `T`
+              (node 29 `L`
+                (leaf 23 `LL`)
+                (node 38 `X`
+                  (leaf 35 `LR`)
+                  (leaf 40 `LRR`)))
+              (node 57 `R`
+                empty
+                (leaf 61 `RR`)),
+        |),
+        (|
+          title = `rebalance left-right-right 3`,
+          %       42                         42
+          %      /  \   ==== add 38 ===>    /  \
+          %    29    57                  *35*   57
+          %   /  \     \                 /  \     \
+          % 23    35    61           *29*    *40*  61
+          %      /  \                /  \     /
+          %    32    40             23 *32* (38)
+          input =
+            node 42 `T`
+              (node 29 `L`
+                (leaf 23 `LL`)
+                (node 35 `LR`
+                  (leaf 32 `LRL`)
+                  (leaf 40 `LRR`)))
+              (node 57 `R`
+                empty
+                (leaf 61 `RR`)),
+          operation =
+            add 38 `X`,
+          expected =
+            node 42 `T`
+              (node 35 `LR`
+                (node 29 `L`
+                  (leaf 23 `LL`)
+                  (leaf 32 `LRL`))
+                (node 40 `LRR`
+                  (leaf 38 `X`)
+                  empty))
+              (node 57 `R`
+                empty
+                (leaf 61 `RR`)),
+        |),
+        (|
+          title = `rebalance left-right-right 4`,
+          %          42                          *35*
+          %         /  \   ==== add 38 ===>     /    \
+          %       29    57                   29       *42*
+          %      /  \     \                 /  \      /  \
+          %    23    35    61              23 *32*  *40*  57
+          %   /     /  \                  /           \     \
+          % 16    32    40               16           (38)   61
+          input =
+            node 42 `T`
+              (node 29 `L`
+                (node 23 `LL`
+                  (leaf 16 `LLL`)
+                  empty)
+                (node 35 `LR`
+                  (leaf 32 `LRL`)
+                  (leaf 40 `LRR`)))
+              (node 57 `R`
+                empty
+                (leaf 61 `RR`)),
+          operation =
+            add 38 `X`,
+          expected =
+            node 35 `LR`
+              (node 29 `L`
+                (node 23 `LL`
+                  (leaf 16 `LLL`)
+                  empty)
+                (leaf 32 `LRL`))
+              (node 42 `T`
+                (node 40 `LRR`
+                  (leaf 38 `X`)
+                  empty)
+                (node 57 `R`
+                  empty
+                  (leaf 61 `RR`))),
+        |),
+      ]
 
   end
 
