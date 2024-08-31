@@ -15,6 +15,7 @@ module Testing :> sig
     val string : t string
     val option 'a : t 'a -> t (option 'a)
     val list 'a : t 'a -> t (list 'a)
+    val pair 'a 'b : t 'a -> t 'b -> t ('a * 'b)
   end
   val assert 'a : ?(title : string) bool -> unit
   val assert-equal 'a : ?(title : string) Equality.t 'a -> 'a -> 'a -> unit
@@ -92,7 +93,12 @@ end = struct
         end
       in
       let show xs = `[` ^ show-aux xs ^ `]` in
-      make (| equal = equal, show = show |)
+      (| equal = equal, show = show |)
+
+    val pair elem-x elem-y =
+      let equal (x1, y1) (x2, y2) = elem-x#equal x1 x2 && elem-y#equal y1 y2 in
+      let show (x, y) = `(` ^ elem-x#show x ^ `, `# ^ elem-y#show y ^ `)` in
+      (| equal = equal, show = show |)
 
   end
 
