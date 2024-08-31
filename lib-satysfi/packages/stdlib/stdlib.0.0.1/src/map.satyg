@@ -338,6 +338,7 @@ end = struct
 
   end
 
+  #[test-only]
   module Test = struct
 
     include Make Int
