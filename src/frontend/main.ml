@@ -122,11 +122,11 @@ let make_used_as_map_for_checking_dependency (deps_config : DepsConfig.t) (envel
   | Some(used_as_map) -> return used_as_map
 
 
-let check_depended_envelopes (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_envelope : bool) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
+let check_depended_envelopes (display_config : Logging.config) (typecheck_config : typecheck_config) ~(testing : bool) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
   let open ResultMonad in
   (* Resolves dependency among envelopes: *)
   let* sorted_envelopes =
-    ClosedEnvelopeDependencyResolver.main display_config ~use_test_only_envelope ~extensions deps_config
+    ClosedEnvelopeDependencyResolver.main display_config ~use_test_only_envelope:testing ~extensions deps_config
   in
 
   (* Typechecks every depended envelope: *)
@@ -134,7 +134,7 @@ let check_depended_envelopes (display_config : Logging.config) (typecheck_config
     sorted_envelopes |> foldM (fun (genv, configenv, libacc) (envelope_name, (config, envelope)) ->
       let* used_as_map = make_used_as_map_for_checking_dependency deps_config envelope_name in
       let* (ssig, libs) =
-        EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
+        EnvelopeChecker.main ~testing display_config typecheck_config tyenv_prim genv ~used_as_map envelope
       in
       let genv = genv |> GlobalTypeenv.add (EnvelopeName.EN(envelope_name)) ssig in
       let configenv = configenv |> GlobalTypeenv.add (EnvelopeName.EN(envelope_name)) config in
@@ -202,13 +202,15 @@ let build_package
     let* (genv, _configenv, _libs_dep) =
       check_depended_envelopes
         display_config typecheck_config
-        ~use_test_only_envelope:false ~extensions
+        ~testing:false ~extensions
         tyenv_prim deps_config
     in
 
     (* Typechecks the main envelope: *)
     let* (_ssig, _libs_target) =
-      EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map envelope
+      EnvelopeChecker.main
+        ~testing:false
+        display_config typecheck_config tyenv_prim genv ~used_as_map envelope
     in
     return ()
 
@@ -287,7 +289,7 @@ let open ResultMonad in
       check_depended_envelopes
         display_config
         typecheck_config
-        ~use_test_only_envelope:false
+        ~testing:false
         ~extensions
         tyenv_prim
         deps_config
@@ -301,6 +303,7 @@ let open ResultMonad in
     (* Typechecking and elaboration: *)
     let* (libs_local, ast_doc) =
       EnvelopeChecker.main_document
+        ~testing:false
         display_config typecheck_config tyenv_prim genv ~used_as_map sorted_locals (abspath_in, utdoc)
     in
 
@@ -371,7 +374,7 @@ let test_package
       check_depended_envelopes
         display_config
         typecheck_config
-        ~use_test_only_envelope:true
+        ~testing:true
         ~extensions
         tyenv_prim
         deps_config
@@ -384,10 +387,12 @@ let test_package
         (List.append explicit_dependencies explicit_test_dependencies)
     in
     let* (_ssig, libs_target) =
-      EnvelopeChecker.main display_config typecheck_config tyenv_prim genv ~used_as_map package
+      EnvelopeChecker.main
+        ~testing:true
+        display_config typecheck_config tyenv_prim genv ~used_as_map package
     in
 
-    (* Runs tests: *)
+    (* Runs tests (Note: we do not run the tests in dependencies): *)
     let (env, codebinds_dep) = preprocess_bindings display_config ~run_tests:false env libs_dep in
     let (env, codebinds_target) = preprocess_bindings display_config ~run_tests:true env libs_target in
     let env = evaluate_bindings display_config ~run_tests:false ~is_bytecomp_mode:false env codebinds_dep in

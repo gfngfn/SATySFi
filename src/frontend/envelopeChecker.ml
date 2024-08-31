@@ -13,20 +13,39 @@ type dependency_kind = EnvelopeDependency | LocalDependency
 type local_type_environment = StructSig.t ModuleNameMap.t
 
 
-let add_dependency_to_type_environment ~(import_envelope_only : bool) (header : header_element list) (genv : global_type_environment) (used_as_map : envelope_name ModuleNameMap.t) (lenv : local_type_environment) (tyenv : Typeenv.t) : Typeenv.t ok =
+let is_test_only_dependency (attrs : untyped_attribute list) : bool =
+  attrs |> List.exists (fun (rng, attr) ->
+    match attr with
+    | UTAttribute("test_only", None) -> true
+    | _                              -> false
+  )
+
+
+let add_dependency_to_type_environment ~(import_envelope_only : bool) ~(testing : bool) (header : header_element list) (genv : global_type_environment) (used_as_map : envelope_name ModuleNameMap.t) (lenv : local_type_environment) (tyenv : Typeenv.t) : Typeenv.t ok =
   let open ResultMonad in
   header |> foldM (fun tyenv headerelem ->
     let opt =
       match headerelem with
-      | HeaderUse{ opening; mod_chain }
-      | HeaderUseOf{ opening; mod_chain; _ } ->
+      | HeaderUse{ attributes; opening; mod_chain }
+      | HeaderUseOf{ attributes; opening; mod_chain; _ } ->
           if import_envelope_only then
             None
+          else if is_test_only_dependency attributes then
+            if testing then
+              Some((LocalDependency, opening, mod_chain))
+            else
+              None
           else
             Some((LocalDependency, opening, mod_chain))
 
-      | HeaderUsePackage{ opening; mod_chain } ->
-          Some((EnvelopeDependency, opening, mod_chain))
+      | HeaderUsePackage{ attributes; opening; mod_chain } ->
+          if is_test_only_dependency attributes then
+            if testing then
+              Some((EnvelopeDependency, opening, mod_chain))
+            else
+              None
+          else
+            Some((EnvelopeDependency, opening, mod_chain))
     in
     match opt with
     | None ->
@@ -114,7 +133,7 @@ let typecheck_document_file (display_config : Logging.config) (config : typechec
       err (NotADocumentFile(abspath_in, ty))
 
 
-let check_library_envelope (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (used_as_map : envelope_name ModuleNameMap.t) (main_module_name : module_name) (utlibs : (abs_path * untyped_library_file) list) =
+let check_library_envelope ~(testing : bool) (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (used_as_map : envelope_name ModuleNameMap.t) (main_module_name : module_name) (utlibs : (abs_path * untyped_library_file) list) =
   let open ResultMonad in
 
   (* Resolves dependency among the source files in the envelope: *)
@@ -127,6 +146,7 @@ let check_library_envelope (display_config : Logging.config) (config : typecheck
       let* tyenv_for_struct =
         tyenv_prim |> add_dependency_to_type_environment
           ~import_envelope_only:false
+          ~testing
           header genv used_as_map lenv
       in
       let (_, modnm) = modident in
@@ -136,6 +156,7 @@ let check_library_envelope (display_config : Logging.config) (config : typecheck
           let* tyenv_for_sig =
             tyenv_prim |> add_dependency_to_type_environment
               ~import_envelope_only:true
+              ~testing
               header genv used_as_map lenv
           in
           typecheck_library_file display_config config
@@ -206,16 +227,16 @@ let check_font_envelope (_main_module_name : module_name) (font_files : font_fil
   return (ssig, Alist.to_list libacc)
 
 
-let main (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) ~(used_as_map : envelope_name ModuleNameMap.t) (envelope : untyped_envelope) : (StructSig.t * (abs_path * binding list) list) ok =
+let main ~(testing : bool) (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) ~(used_as_map : envelope_name ModuleNameMap.t) (envelope : untyped_envelope) : (StructSig.t * (abs_path * binding list) list) ok =
   match envelope with
   | UTLibraryEnvelope{ main_module_name; modules = utlibs } ->
-      check_library_envelope display_config config tyenv_prim genv used_as_map main_module_name utlibs
+      check_library_envelope ~testing display_config config tyenv_prim genv used_as_map main_module_name utlibs
 
   | UTFontEnvelope{ main_module_name; font_files } ->
       check_font_envelope main_module_name font_files
 
 
-let main_document (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) ~(used_as_map : envelope_name ModuleNameMap.t) (sorted_locals : (abs_path * untyped_library_file) list) (abspath_and_utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
+let main_document ~(testing : bool) (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) ~(used_as_map : envelope_name ModuleNameMap.t) (sorted_locals : (abs_path * untyped_library_file) list) (abspath_and_utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
   let open ResultMonad in
   let* (lenv, libacc) =
     sorted_locals |> foldM (fun (lenv, libacc) (abspath, utlib) ->
@@ -225,6 +246,7 @@ let main_document (display_config : Logging.config) (config : typecheck_config) 
         let* tyenv =
           tyenv_prim |> add_dependency_to_type_environment
             ~import_envelope_only:false
+            ~testing
             header genv used_as_map lenv
         in
         typecheck_library_file display_config config
@@ -242,6 +264,7 @@ let main_document (display_config : Logging.config) (config : typecheck_config) 
     let* tyenv =
       tyenv_prim |> add_dependency_to_type_environment
         ~import_envelope_only:false
+        ~testing
         header genv used_as_map lenv
     in
     typecheck_document_file display_config config tyenv abspath utast

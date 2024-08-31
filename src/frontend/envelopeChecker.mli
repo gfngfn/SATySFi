@@ -6,6 +6,7 @@ open StaticEnv
 open ConfigError
 
 val main :
+  testing:bool ->
   Logging.config ->
   typecheck_config ->
   type_environment ->
@@ -15,6 +16,7 @@ val main :
   (struct_signature * (abs_path * binding list) list, config_error) result
 
 val main_document :
+  testing:bool ->
   Logging.config ->
   typecheck_config ->
   type_environment ->

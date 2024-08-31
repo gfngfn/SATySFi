@@ -375,15 +375,15 @@ main_lib:
       { (modident, utsig_opt, Range.unite tok1 tok2, utbinds) }
 ;
 headerelem:
-  | USE; PACKAGE; opening=optional_open; mod_chain=mod_chain
-     { HeaderUsePackage{ opening; mod_chain } }
-  | USE; opening=optional_open; mod_chain=mod_chain
-     { HeaderUse{ opening; mod_chain } }
-  | USE; opening=optional_open; mod_chain=mod_chain; OF; tok=STRING
+  | USE; PACKAGE; opening=optional_open; attributes=list(attribute); mod_chain=mod_chain
+     { HeaderUsePackage{ attributes; opening; mod_chain } }
+  | USE; opening=optional_open; attributes=list(attribute); mod_chain=mod_chain
+     { HeaderUse{ attributes; opening; mod_chain } }
+  | USE; opening=optional_open; attributes=list(attribute); mod_chain=mod_chain; OF; tok=STRING
      {
        let (_rng, str, pre, post) = tok in
        let relpath_without_ext = omit_spaces pre post str in
-       HeaderUseOf{ opening; mod_chain; relpath_without_ext }
+       HeaderUseOf{ attributes; opening; mod_chain; relpath_without_ext }
      }
 ;
 optional_open:
