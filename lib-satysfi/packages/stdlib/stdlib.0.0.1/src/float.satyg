@@ -7,6 +7,8 @@ module Float :> sig
   val persistent ~max : float -> float -> float
   val persistent ~min : float -> float -> float
   val persistent ~pi : float
+  val persistent ~power : float -> float -> float
+  val persistent ~sqrt : float -> float
 end = struct
 
   type t = float
@@ -25,5 +27,11 @@ end = struct
 
   val persistent ~pi =
     3.1415926536
+
+  val persistent ~power y x =
+    exp (y *. log x)
+
+  val persistent ~sqrt =
+    power 0.5
 
 end

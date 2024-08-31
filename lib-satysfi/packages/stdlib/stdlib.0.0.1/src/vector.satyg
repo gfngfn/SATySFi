@@ -1,0 +1,42 @@
+use open Basic
+use Float
+use Length
+use Pair
+
+module Vector :> sig
+  type t = vector
+  val ~lift : vector -> code vector
+  val persistent ~get-x : vector -> length
+  val persistent ~get-y : vector -> length
+  val persistent ~scale : float -> vector -> vector
+  val persistent ~add : vector -> vector -> vector
+  val persistent ~subtract : vector -> vector -> vector
+  val persistent ~length : vector -> length
+end = struct
+
+  type t = vector
+
+  val ~lift =
+    Pair.lift Length.lift Length.lift
+
+  val persistent ~get-x =
+    Pair.first
+
+  val persistent ~get-y =
+    Pair.second
+
+  val persistent ~scale t (x, y) =
+    (x *' t, y *' t)
+
+  val persistent ~add (x1, y1) (x2, y2) =
+    (x1 +' x2, y1 +' y2)
+
+  val persistent ~subtract (x1, y1) (x2, y2) =
+    (x1 -' x2, y1 -' y2)
+
+  val persistent ~length (x, y) =
+    let sx = x /' 1pt in
+    let sy = y /' 1pt in
+    1pt *' Float.sqrt (sx *. sx +. sy *. sy)
+
+end

@@ -4,14 +4,16 @@ use Float
 use Ordering
 use Option
 use List
+use Pair
 use Map
 use Set
 use Length
+use Vector
+use Point
 use Logo
 use Inline
 use Block
 use Ref
-use Geom
 use Color
 use Path
 use Graphics
@@ -23,6 +25,7 @@ use VDecoSet
 module Stdlib :> sig
   % Basic
   type ordering = Less | Equal | Greater
+  type vector = length * length
   type point = length * length
   type paren = length -> length -> context -> inline-boxes * (length -> length)
   signature Ord = sig
@@ -93,6 +96,16 @@ module Stdlib :> sig
     val persistent ~nth 'a : int -> list 'a -> option 'a
     val persistent ~is-empty 'a : list 'a -> bool
   end
+  module Pair : sig
+    val ~lift 'a 'b : ('a -> code 'a) -> ('b -> code 'b) -> 'a * 'b -> code ('a * 'b)
+    val persistent ~compare 'a 'b : ('a -> 'a -> ordering) -> ('b -> 'b -> ordering) -> 'a * 'b -> 'a * 'b -> ordering
+    val persistent ~equal 'a 'b : ('a -> 'a -> bool) -> ('b -> 'b -> bool) -> 'a * 'b -> 'a * 'b -> bool
+    val persistent ~show 'a 'b : ('a -> string) -> ('b -> string) -> 'a * 'b -> string
+    val persistent ~first 'a 'b : 'a * 'b -> 'a
+    val persistent ~second 'a 'b : 'a * 'b -> 'b
+    val persistent ~map-first 'a1 'a2 'b : ('a1 -> 'a2) -> 'a1 * 'b -> 'a2 * 'b
+    val persistent ~map-second 'a 'b1 'b2 : ('b1 -> 'b2) -> 'a * 'b1 -> 'a * 'b2
+  end
   module Map : sig
     module Make : (Key : Ord) -> sig
       type t :: o -> o
@@ -130,6 +143,27 @@ module Stdlib :> sig
     val persistent ~max : length -> length -> length
     val persistent ~min : length -> length -> length
     val persistent ~abs : length -> length
+    val persistent ~atan2 : length -> length -> float
+  end
+  module Vector : sig
+    type t = vector
+    val ~lift : vector -> code vector
+    val persistent ~get-x : vector -> length
+    val persistent ~get-y : vector -> length
+    val persistent ~scale : float -> vector -> vector
+    val persistent ~add : vector -> vector -> vector
+    val persistent ~subtract : vector -> vector -> vector
+    val persistent ~length : vector -> length
+  end
+  module Point : sig
+    type t = point
+    val ~lift : point -> code point
+    val persistent ~get-x : point -> length
+    val persistent ~get-y : point -> length
+    val persistent ~add : point -> vector -> point
+    val persistent ~subtract : point -> point -> vector
+    val persistent ~atan2 : point -> point -> float
+    val persistent ~dividing-point : float -> point -> point -> point
   end
   module Logo : sig
     val \SATySFi : inline []
@@ -155,10 +189,6 @@ module Stdlib :> sig
   module Ref : sig
     val persistent ~increment : ref int -> unit
     val persistent ~decrement : ref int -> unit
-  end
-  module Geom : sig
-    val atan2-point : point -> point -> float
-    val div-perp : point -> point -> float -> length -> point
   end
   module Color : sig
     val gray   : float -> color
@@ -246,14 +276,16 @@ end = struct
   module Ordering = Ordering
   module Option = Option
   module List = List
+  module Pair = Pair
   module Map = Map
   module Set = Set
   module Length = Length
+  module Vector = Vector
+  module Point = Point
   module Logo = Logo
   module Inline = Inline
   module Block = Block
   module Ref = Ref
-  module Geom = Geom
   module Color = Color
   module Path = Path
   module Graphics = Graphics

@@ -1,6 +1,6 @@
 use open Basic
 use Float
-use Geom
+use Point
 use Path
 use List
 use Length
@@ -66,7 +66,7 @@ end = struct
     shift (0pt -' wid, 0pt) gr
 
   val arrow-scheme strokef color lenL lenM lenP ((x1, y1) as pt1) ((x2, y2) as pt2) =
-    let theta = Geom.atan2-point pt2 pt1 in
+    let theta = Point.atan2 pt2 pt1 in
     let (cx, cy) = (x2 +' lenL *' (cos theta), y2 +' lenL *' (sin theta)) in
     let (mx, my) = (x2 +' lenM *' (cos theta), y2 +' lenM *' (sin theta)) in
     let phi = theta +. Float.pi /. 2. in
