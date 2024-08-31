@@ -79,7 +79,8 @@ module Stdlib :> sig
     val persistent ~iter-indexed 'a : (int -> 'a -> unit) -> list 'a -> unit
     val persistent ~filter 'a : ('a -> bool) -> list 'a -> list 'a
     val persistent ~filter-map 'a 'b : ('a -> option 'b) -> list 'a -> list 'b
-    val persistent ~assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
+    val persistent ~find 'a : ('a -> bool) -> list 'a -> option 'a
+    val persistent ~find-map 'a 'b : ('a -> option 'b) -> list 'a -> option 'b
     val persistent ~length 'a : list 'a -> int
     val persistent ~nth 'a : int -> list 'a -> option 'a
     val persistent ~is-empty 'a : list 'a -> bool

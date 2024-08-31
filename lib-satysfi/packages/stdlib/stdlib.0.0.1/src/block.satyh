@@ -1,4 +1,8 @@
+use List
+
 module Block :> sig
+  val nil : block-boxes
+  val concat : list block-boxes -> block-boxes
   val form-paragraph : context -> inline-boxes -> block-boxes
   val +skip : block [length]
   val \skip : inline [length]
@@ -6,6 +10,12 @@ module Block :> sig
   val +ragged-right : block [inline-text]
   val +centering : block [inline-text]
 end = struct
+
+  val nil =
+    block-nil
+
+  val concat bbs =
+    List.fold ( +++ ) nil bbs
 
   val form-paragraph =
     line-break true true

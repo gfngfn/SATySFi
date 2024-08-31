@@ -26,7 +26,8 @@ module List :> sig
   val persistent ~iter-indexed 'a : (int -> 'a -> unit) -> list 'a -> unit
   val persistent ~filter 'a : ('a -> bool) -> list 'a -> list 'a
   val persistent ~filter-map 'a 'b : ('a -> option 'b) -> list 'a -> list 'b
-  val persistent ~assoc 'a 'b : ('a -> 'a -> bool) -> 'a -> list ('a * 'b) -> option 'b
+  val persistent ~find 'a : ('a -> bool) -> list 'a -> option 'a
+  val persistent ~find-map 'a 'b : ('a -> option 'b) -> list 'a -> option 'b
   val persistent ~length 'a : list 'a -> int
   val persistent ~nth 'a : int -> list 'a -> option 'a
   val persistent ~is-empty 'a : list 'a -> bool
@@ -198,11 +199,25 @@ end = struct
         end
     end
 
-  val persistent ~rec assoc eq a ys =
+  val persistent ~rec find p ys =
     match ys with
-    | []           -> None
-    | (x, y) :: xs -> if eq a x then Some(y) else assoc eq a xs
+    | []      -> None
+    | x :: xs -> if p x then Some(x) else find p ys
     end
+
+  val persistent ~find-map f =
+    let rec aux ys =
+      match ys with
+      | [] ->
+          None
+      | x :: xs ->
+          match f x with
+          | Some(v) -> Some(v)
+          | None    -> aux xs
+          end
+      end
+    in
+    aux
 
   val persistent ~length xs =
     fold (fun i _ -> i + 1) 0 xs
