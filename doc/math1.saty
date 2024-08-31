@@ -20,6 +20,9 @@ in
 let math ctx \synteq =
   read-math ctx ${\equiv}
 in
+let math ctx \dot-punct =
+  math-char ctx MathPunct `.`
+in
 let math ctx \tmabstyped var ty body =
   read-math ctx ${\lambda #var \colon-rel #ty \dot-punct #body}
 in
