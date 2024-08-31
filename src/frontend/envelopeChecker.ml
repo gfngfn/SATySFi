@@ -16,7 +16,7 @@ type local_type_environment = StructSig.t ModuleNameMap.t
 let is_test_only_dependency (attrs : untyped_attribute list) : bool =
   attrs |> List.exists (fun (rng, attr) ->
     match attr with
-    | UTAttribute("test_only", None) -> true
+    | UTAttribute("test-only", None) -> true
     | _                              -> false
   )
 
