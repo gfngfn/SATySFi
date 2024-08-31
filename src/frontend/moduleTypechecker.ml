@@ -867,7 +867,8 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
         ModuleAttribute.make attrs
           |> Result.map_error (fun e -> ModuleAttributeError(e))
       in
-      if modattr.ModuleAttribute.for_test_only && config.testing then
+      if modattr.ModuleAttribute.for_test_only && not config.testing then
+        (* Ignores the whole binding when not running tests. *)
         return ([], (OpaqueIDMap.empty, StructSig.empty))
       else
         let (rng_mod, modnm) = modident in
