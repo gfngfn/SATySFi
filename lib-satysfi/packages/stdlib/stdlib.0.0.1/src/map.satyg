@@ -358,6 +358,8 @@ end = struct
               && key-equal n1#key n2#key
               && data-equal n1#data n2#data
               && equal n1#right n2#right
+        | _ ->
+            false
         end
       in
       let rec show t =
@@ -365,11 +367,11 @@ end = struct
         | Empty ->
             `Empty`
         | Node(n) ->
-            `Node(| left = `# ^ show n#left
+            `Node(| height = `# ^ arabic n#height
               ^ `, key = `# ^ key-show n#key
               ^ `, data = `# ^ data-show n#data
               ^ `, right = `# ^ show n#right
-              ^ `, height = `# ^ arabic n#height ^ #` |)`
+              ^ `, left = `# ^ show n#left ^ #` |)`
         end
       in
       Equality.make (| equal = equal, show = show |)
@@ -379,14 +381,85 @@ end = struct
       let got = singleton 42 `foo` in
       let expected =
         Node(|
+          height = 1,
           left = Empty,
           key = 42,
           data = `foo`,
           right = Empty,
-          height = 1,
         |)
       in
       assert-equal (eq-internal Equality.string) expected got
+
+    #[test]
+    val add-test () =
+      List.iter (fun r -> (
+        assert-equal ?(title = r#title)
+          (eq-internal Equality.string) r#expected r#operation
+      )) [
+        (|
+          title = `added to the left`,
+          operation =
+            add 29 `bar` (singleton 42 `foo`),
+          expected =
+            Node(|
+              height = 2,
+              left = Node(|
+                height = 1,
+                left = Empty,
+                key = 29,
+                data = `bar`,
+                right = Empty,
+              |),
+              key = 42,
+              data = `foo`,
+              right = Empty,
+            |),
+        |),
+        (|
+          title = `added to the right`,
+          operation =
+            add 57 `bar` (singleton 42 `foo`),
+          expected =
+            Node(|
+              height = 2,
+              left = Empty,
+              key = 42,
+              data = `foo`,
+              right = Node(|
+                height = 1,
+                left = Empty,
+                key = 57,
+                data = `bar`,
+                right = Empty,
+              |),
+            |),
+        |),
+        (|
+          title = `rebalance left-left`,
+          operation =
+            add 20 `baz` (add 29 `bar` (singleton 42 `foo`)),
+          expected =
+            Node(|
+              height = 2,
+              left = Node(|
+                height = 1,
+                left = Empty,
+                key = 20,
+                data = `baz`,
+                right = Empty,
+              |),
+              key = 29,
+              data = `bar`,
+              right = Node(|
+                height = 1,
+                left = Empty,
+                key = 42,
+                data = `foo`,
+                right = Empty,
+              |),
+            |)
+        |),
+      ]
 
   end
 
