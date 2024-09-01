@@ -1,8 +1,7 @@
 
 open MyUtil
-
-module YS = Yojson.Safe
-module MYU = MyYojsonUtil
+open ConfigError
+open ConfigUtil
 
 
 module CrossRefHashTable = Hashtbl.Make
@@ -19,45 +18,58 @@ let changed = ref false
 let main_hash_table = CrossRefHashTable.create 32
 
 
-let read_assoc (assoc : (string * YS.json) list) : unit =
-  assoc |> List.iter (fun (key, vjson) ->
-    let value = vjson |> YS.Util.to_string in
-    CrossRefHashTable.replace main_hash_table key value
-  )
+let entry_decoder : (string * string) ConfigDecoder.t =
+  let open ConfigDecoder in
+  get "key" string >>= fun key ->
+  get "value" string >>= fun data ->
+  succeed (key, data)
 
 
-let load_dump_file (abspath : abs_path) : unit =
-  try
-    let json = YS.from_file (get_abs_path_string abspath) in
-      (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
-    let assoc = json |> YS.Util.to_assoc in
-    read_assoc assoc
-  with
-  | Yojson.Json_error(msg) -> MYU.syntax_error (get_abs_path_string abspath) msg
+let entry_encoder ((key, data) : string * string) : Yaml.value =
+  `O([
+    ("key", `String(key));
+    ("value", `String(data));
+  ])
 
 
-let write_dump_file (abspath : abs_path) : unit =
-  let assoc =
-    Alist.empty @|> main_hash_table @|> CrossRefHashTable.fold (fun key value acc ->
-      Alist.extend acc (key, `String(value))
-    ) |> Alist.to_list
+let dump_file_decoder : ((string * string) list) ConfigDecoder.t =
+  let open ConfigDecoder in
+  get "cross_references" (list entry_decoder)
+
+
+let dump_file_encoder (keyvals : (string * string) list) : Yaml.value =
+  `O([ ("cross_references", `A(keyvals |> List.map entry_encoder)) ])
+
+
+let write_dump_file (abspath_dump : abs_path) : (unit, config_error) result =
+  let keyvals =
+    CrossRefHashTable.fold (fun key data acc ->
+      Alist.extend acc (key, data)
+    ) main_hash_table Alist.empty |> Alist.to_list
   in
-  let json = `Assoc(assoc) in
-  YS.to_file (get_abs_path_string abspath) json
+  let yaml = dump_file_encoder keyvals in
+  let data = encode_yaml yaml in
+  write_file abspath_dump data
+    |> Result.map_error (fun _ -> CannotWriteDumpFile(abspath_dump))
 
 
-let initialize (abspath_dump : abs_path) : bool =
-  begin
-    CrossRefHashTable.clear main_hash_table;
-    let dump_file_exists = Sys.file_exists (get_abs_path_string abspath_dump) in
-    begin
-      if dump_file_exists then
-        load_dump_file abspath_dump
-      else
-        ()
-    end;
-    dump_file_exists
-  end
+let initialize (abspath_dump : abs_path) : (bool, config_error) result =
+  let open ResultMonad in
+  CrossRefHashTable.clear main_hash_table;
+  let res = read_file abspath_dump in
+  match res with
+  | Error(_) ->
+      return false
+
+  | Ok(s) ->
+      let* keyvals =
+        ConfigDecoder.run dump_file_decoder s
+          |> Result.map_error (fun e -> DumpFileError(abspath_dump, e))
+      in
+      keyvals |> List.iter (fun (key, data) ->
+        CrossRefHashTable.replace main_hash_table key data
+      );
+      return true
 
 
 let reset () =

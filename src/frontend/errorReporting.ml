@@ -821,6 +821,18 @@ let make_config_error_message (display_config : Logging.config) : config_error -
         DisplayLine(get_abs_path_string abspath_envelope_config);
       ] (make_yaml_error_message e))
 
+  | DumpFileError(abspath_dump, e) ->
+      make_error_message Interface (List.append [
+        NormalLine("failed to load a dump file (just removing it will remedy this):");
+        DisplayLine(get_abs_path_string abspath_dump);
+      ] (make_yaml_error_message e))
+
+  | CannotWriteDumpFile(abspath_dump) ->
+      make_error_message Interface [
+        NormalLine("cannot write a dump file:");
+        DisplayLine(get_abs_path_string abspath_dump);
+      ]
+
   | DependedEnvelopeNotFound(envelope_name) ->
       make_error_message Interface [
         NormalLine(Printf.sprintf "unknown depended envelope '%s'" envelope_name);

@@ -134,8 +134,8 @@ let build_document ~(max_repeats : int) (transform : syntactic_value -> 'a) (res
         return document
   in
   let* document = aux 1 in
-  CrossRef.write_dump_file abspath_dump;
   output abspath_out document;
+  let* () = CrossRef.write_dump_file abspath_dump in
   Logging.end_output display_config abspath_out;
   return ()
 

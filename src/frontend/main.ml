@@ -278,7 +278,7 @@ let open ResultMonad in
     Logging.target_file display_config abspath_out;
 
     (* Initializes the dump file: *)
-    let dump_file_exists = CrossRef.initialize abspath_dump in
+    let* dump_file_exists = CrossRef.initialize abspath_dump in
     Logging.dump_file display_config ~already_exists:dump_file_exists abspath_dump;
 
     (* Typechecks each depended envelope in the topological order: *)
