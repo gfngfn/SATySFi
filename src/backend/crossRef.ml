@@ -16,8 +16,6 @@ module CrossRefKeySet = Set.Make(String)
 
 let unresolved_crossrefs = ref CrossRefKeySet.empty
 let changed = ref false
-let count = ref 0
-let count_max = ref 4
 let main_hash_table = CrossRefHashTable.create 32
 
 
@@ -28,7 +26,7 @@ let read_assoc (assoc : (string * YS.json) list) : unit =
   )
 
 
-let read_dump_file (abspath : abs_path) : unit =
+let load_dump_file (abspath : abs_path) : unit =
   try
     let json = YS.from_file (get_abs_path_string abspath) in
       (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
@@ -50,12 +48,11 @@ let write_dump_file (abspath : abs_path) : unit =
 
 let initialize (abspath_dump : abs_path) : bool =
   begin
-    count := 1;
     CrossRefHashTable.clear main_hash_table;
     let dump_file_exists = Sys.file_exists (get_abs_path_string abspath_dump) in
     begin
       if dump_file_exists then
-        read_dump_file abspath_dump
+        load_dump_file abspath_dump
       else
         ()
     end;
@@ -63,31 +60,21 @@ let initialize (abspath_dump : abs_path) : bool =
   end
 
 
+let reset () =
+  unresolved_crossrefs := CrossRefKeySet.empty;
+  changed := false
+
+
 type answer =
   | NeedsAnotherTrial
   | CanTerminate of string list
-  | CountMax
 
 
-let needs_another_trial (abspath : abs_path) : answer =
+let judge_termination () : answer =
   if !changed then
-    if !count >= !count_max then
-      begin
-        write_dump_file abspath;
-        CountMax
-      end
-    else
-      begin
-        unresolved_crossrefs := CrossRefKeySet.empty;
-        changed := false;
-        incr count;
-        NeedsAnotherTrial
-      end
+    NeedsAnotherTrial
   else
-    begin
-      write_dump_file abspath;
-      CanTerminate (CrossRefKeySet.elements !unresolved_crossrefs)
-    end
+    CanTerminate (CrossRefKeySet.elements !unresolved_crossrefs)
 
 
 let register (key : string) (value : string) =

@@ -3,12 +3,15 @@ open MyUtil
 
 val initialize : abs_path -> bool
 
+val reset : unit -> unit
+
 type answer =
   | NeedsAnotherTrial
   | CanTerminate of string list
-  | CountMax
 
-val needs_another_trial : abs_path -> answer
+val judge_termination : unit -> answer
+
+val write_dump_file : abs_path -> unit
 
 val register : string -> string -> unit
 

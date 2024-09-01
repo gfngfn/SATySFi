@@ -109,36 +109,40 @@ let evaluate (reset : unit -> unit) ~(is_bytecomp_mode : bool) (i : int) (env_fr
   return value
 
 
-let build_document (transform : syntactic_value -> 'a) (reset : unit -> unit) (output : abs_path -> 'a -> unit) (display_config : Logging.config) ~(is_bytecomp_mode : bool) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let build_document ~(max_repeats : int) (transform : syntactic_value -> 'a) (reset : unit -> unit) (output : abs_path -> 'a -> unit) (display_config : Logging.config) ~(is_bytecomp_mode : bool) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
   let open ResultMonad in
   let env_freezed = freeze_environment env in
   let rec aux (i : int) =
+    CrossRef.reset ();
     let* value = evaluate reset ~is_bytecomp_mode i env_freezed ast in
     let document = transform value in
-    match CrossRef.needs_another_trial abspath_dump with
+    match CrossRef.judge_termination () with
     | CrossRef.NeedsAnotherTrial ->
-        Logging.needs_another_trial ();
-        aux (i + 1)
-
-    | CrossRef.CountMax ->
-        Logging.achieve_count_max ();
-        output abspath_out document;
-        Logging.end_output display_config abspath_out;
-        return ()
+        if i >= max_repeats then
+          begin
+            Logging.achieve_count_max ();
+            return document
+          end
+        else
+          begin
+            Logging.needs_another_trial ();
+            aux (i + 1)
+          end
 
     | CrossRef.CanTerminate unresolved_crossrefs ->
         Logging.achieve_fixpoint unresolved_crossrefs;
-        output abspath_out document;
-        Logging.end_output display_config abspath_out;
-        return ()
+        return document
   in
-  aux 1
+  let* document = aux 1 in
+  CrossRef.write_dump_file abspath_dump;
+  output abspath_out document;
+  Logging.end_output display_config abspath_out;
+  return ()
 
-
-let main (output_mode : output_mode) (pdf_config : HandlePdf.config) ~(page_number_limit : int) =
+let main (output_mode : output_mode) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(max_repeats : int) =
   match output_mode with
   | PdfMode ->
-      build_document (transform_pdf pdf_config ~page_number_limit) reset_pdf output_pdf
+      build_document ~max_repeats (transform_pdf pdf_config ~page_number_limit) reset_pdf output_pdf
 
   | TextMode(_) ->
-      build_document transform_text Fun.id output_text
+      build_document ~max_repeats transform_text Fun.id output_text

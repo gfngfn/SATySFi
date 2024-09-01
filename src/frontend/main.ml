@@ -224,6 +224,7 @@ let build_document
     ~(fpath_deps : string)
     ~(text_mode_formats_str_opt : string option)
     ~(page_number_limit : int)
+    ~(max_repeats : int)
     ~(show_full_path : bool)
     ~(debug_show_bbox : bool)
     ~(debug_show_space : bool)
@@ -312,6 +313,7 @@ let open ResultMonad in
         display_config
         pdf_config
         ~page_number_limit
+        ~max_repeats
         ~is_bytecomp_mode
         output_mode
         ~run_tests:false
