@@ -7,22 +7,18 @@ module MYU = MyYojsonUtil
 
 module CrossRefHashTable = Hashtbl.Make
   (struct
-    type t = string
-    let equal = String.equal
+    include String
     let hash = Hashtbl.hash
   end)
 
+module CrossRefKeySet = Set.Make(String)
 
-let unresolved_crossrefs = ref []
+
+let unresolved_crossrefs = ref CrossRefKeySet.empty
 let changed = ref false
-
 let count = ref 0
-
 let count_max = ref 4
-  (* temporary *)
-
 let main_hash_table = CrossRefHashTable.create 32
-  (* temporary; initial size *)
 
 
 let read_assoc (assoc : (string * YS.json) list) : unit =
@@ -82,7 +78,7 @@ let needs_another_trial (abspath : abs_path) : answer =
       end
     else
       begin
-        unresolved_crossrefs := [];
+        unresolved_crossrefs := CrossRefKeySet.empty;
         changed := false;
         incr count;
         NeedsAnotherTrial
@@ -90,7 +86,7 @@ let needs_another_trial (abspath : abs_path) : answer =
   else
     begin
       write_dump_file abspath;
-      CanTerminate (List.sort_uniq String.compare !unresolved_crossrefs)
+      CanTerminate (CrossRefKeySet.elements !unresolved_crossrefs)
     end
 
 
@@ -101,10 +97,13 @@ let register (key : string) (value : string) =
       CrossRefHashTable.add main_hash_table key value
 
   | Some(value_old) ->
-      if String.equal value value_old then () else begin
-        changed := true;
-        CrossRefHashTable.add main_hash_table key value
-      end
+      if String.equal value value_old then
+        ()
+      else
+        begin
+          changed := true;
+          CrossRefHashTable.add main_hash_table key value
+        end
 
 
 let probe (key : string) =
@@ -112,10 +111,10 @@ let probe (key : string) =
 
 
 let get (key : string) =
-  let valueopt = CrossRefHashTable.find_opt main_hash_table key in
+  let value_opt = CrossRefHashTable.find_opt main_hash_table key in
   begin
-    match valueopt with
+    match value_opt with
     | Some(_) -> ()
-    | None    -> unresolved_crossrefs := key :: !unresolved_crossrefs
+    | None    -> unresolved_crossrefs := CrossRefKeySet.add key !unresolved_crossrefs
   end;
-  valueopt
+  value_opt
