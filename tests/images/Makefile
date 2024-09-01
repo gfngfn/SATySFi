@@ -32,4 +32,4 @@ all:: $(TARGETS)
 promote:: $(EXPECTED_LOCKS)
 
 clean:
-	rm -f *.pdf *.satysfi-aux *.saphe.lock.yaml *.satysfi-deps.yaml
+	rm -f *.pdf *.satysfi-aux.yaml *.saphe.lock.yaml *.satysfi-deps.yaml

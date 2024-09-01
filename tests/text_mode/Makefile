@@ -32,6 +32,6 @@ all:: $(TARGETS)
 promote:: $(EXPECTED_LOCKS)
 
 clean:
-	rm -f *.pdf *.dvi *.log *.fls *.fdb_latexmk *.synctex.gz *.tex *.satysfi-aux *.saphe.lock.yaml *.satysfi-deps.yaml
+	rm -f *.pdf *.dvi *.log *.fls *.fdb_latexmk *.synctex.gz *.tex *.satysfi-aux.yaml *.saphe.lock.yaml *.satysfi-deps.yaml
 
 test.saty: head.satyh-latex
