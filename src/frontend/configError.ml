@@ -80,6 +80,8 @@ type config_error =
   | DepsConfigError           of abs_path * yaml_error
   | EnvelopeConfigNotFound    of abs_path
   | EnvelopeConfigError       of abs_path * yaml_error
+  | DumpFileError             of abs_path * yaml_error
+  | CannotWriteDumpFile       of abs_path
   | DependedEnvelopeNotFound  of envelope_name
   | MarkdownClassNotFound
   | NoMarkdownConversion

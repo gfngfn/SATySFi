@@ -15,6 +15,7 @@ val build_document :
   fpath_deps:string ->
   text_mode_formats_str_opt:(string option) ->
   page_number_limit:int ->
+  max_repeats:int ->
   show_full_path:bool ->
   debug_show_bbox:bool ->
   debug_show_space:bool ->

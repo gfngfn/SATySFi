@@ -1,110 +1,108 @@
 
 open MyUtil
-
-module YS = Yojson.Safe
-module MYU = MyYojsonUtil
+open ConfigError
+open ConfigUtil
 
 
 module CrossRefHashTable = Hashtbl.Make
   (struct
-    type t = string
-    let equal = String.equal
+    include String
     let hash = Hashtbl.hash
   end)
 
+module CrossRefKeySet = Set.Make(String)
 
-let unresolved_crossrefs = ref []
+
+let unresolved_crossrefs = ref CrossRefKeySet.empty
 let changed = ref false
-
-let count = ref 0
-
-let count_max = ref 4
-  (* temporary *)
-
 let main_hash_table = CrossRefHashTable.create 32
-  (* temporary; initial size *)
 
 
-let read_assoc (assoc : (string * YS.json) list) : unit =
-  assoc |> List.iter (fun (key, vjson) ->
-    let value = vjson |> YS.Util.to_string in
-    CrossRefHashTable.add main_hash_table key value
-  )
+let entry_decoder : (string * string) ConfigDecoder.t =
+  let open ConfigDecoder in
+  get "key" string >>= fun key ->
+  get "value" string >>= fun data ->
+  succeed (key, data)
 
 
-let read_dump_file (abspath : abs_path) : unit =
-  try
-    let json = YS.from_file (get_abs_path_string abspath) in
-      (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
-    let assoc = json |> YS.Util.to_assoc in
-    read_assoc assoc
-  with
-  | Yojson.Json_error(msg) -> MYU.syntax_error (get_abs_path_string abspath) msg
+let entry_encoder ((key, data) : string * string) : Yaml.value =
+  `O([
+    ("key", `String(key));
+    ("value", `String(data));
+  ])
 
 
-let write_dump_file (abspath : abs_path) : unit =
-  let assoc =
-    Alist.empty @|> main_hash_table @|> CrossRefHashTable.fold (fun key value acc ->
-      Alist.extend acc (key, `String(value))
-    ) |> Alist.to_list
+let dump_file_decoder : ((string * string) list) ConfigDecoder.t =
+  let open ConfigDecoder in
+  get "cross_references" (list entry_decoder)
+
+
+let dump_file_encoder (keyvals : (string * string) list) : Yaml.value =
+  `O([ ("cross_references", `A(keyvals |> List.map entry_encoder)) ])
+
+
+let write_dump_file (abspath_dump : abs_path) : (unit, config_error) result =
+  let keyvals =
+    CrossRefHashTable.fold (fun key data acc ->
+      Alist.extend acc (key, data)
+    ) main_hash_table Alist.empty |> Alist.to_list
   in
-  let json = `Assoc(assoc) in
-  YS.to_file (get_abs_path_string abspath) json
+  let yaml = dump_file_encoder keyvals in
+  let data = encode_yaml yaml in
+  write_file abspath_dump data
+    |> Result.map_error (fun _ -> CannotWriteDumpFile(abspath_dump))
 
 
-let initialize (abspath_dump : abs_path) : bool =
-  begin
-    count := 1;
-    CrossRefHashTable.clear main_hash_table;
-    let dump_file_exists = Sys.file_exists (get_abs_path_string abspath_dump) in
-    begin
-      if dump_file_exists then
-        read_dump_file abspath_dump
-      else
-        ()
-    end;
-    dump_file_exists
-  end
+let initialize (abspath_dump : abs_path) : (bool, config_error) result =
+  let open ResultMonad in
+  CrossRefHashTable.clear main_hash_table;
+  let res = read_file abspath_dump in
+  match res with
+  | Error(_) ->
+      return false
+
+  | Ok(s) ->
+      let* keyvals =
+        ConfigDecoder.run dump_file_decoder s
+          |> Result.map_error (fun e -> DumpFileError(abspath_dump, e))
+      in
+      keyvals |> List.iter (fun (key, data) ->
+        CrossRefHashTable.replace main_hash_table key data
+      );
+      return true
+
+
+let reset () =
+  unresolved_crossrefs := CrossRefKeySet.empty;
+  changed := false
 
 
 type answer =
   | NeedsAnotherTrial
   | CanTerminate of string list
-  | CountMax
 
 
-let needs_another_trial (abspath : abs_path) : answer =
+let judge_termination () : answer =
   if !changed then
-    if !count >= !count_max then
-      begin
-        write_dump_file abspath;
-        CountMax
-      end
-    else
-      begin
-        unresolved_crossrefs := [];
-        changed := false;
-        incr count;
-        NeedsAnotherTrial
-      end
+    NeedsAnotherTrial
   else
-    begin
-      write_dump_file abspath;
-      CanTerminate (List.sort_uniq String.compare !unresolved_crossrefs)
-    end
+    CanTerminate (CrossRefKeySet.elements !unresolved_crossrefs)
 
 
 let register (key : string) (value : string) =
   match CrossRefHashTable.find_opt main_hash_table key with
   | None ->
       changed := true;
-      CrossRefHashTable.add main_hash_table key value
+      CrossRefHashTable.replace main_hash_table key value
 
   | Some(value_old) ->
-      if String.equal value value_old then () else begin
-        changed := true;
-        CrossRefHashTable.add main_hash_table key value
-      end
+      if String.equal value value_old then
+        ()
+      else
+        begin
+          changed := true;
+          CrossRefHashTable.replace main_hash_table key value
+        end
 
 
 let probe (key : string) =
@@ -112,10 +110,10 @@ let probe (key : string) =
 
 
 let get (key : string) =
-  let valueopt = CrossRefHashTable.find_opt main_hash_table key in
+  let value_opt = CrossRefHashTable.find_opt main_hash_table key in
   begin
-    match valueopt with
+    match value_opt with
     | Some(_) -> ()
-    | None    -> unresolved_crossrefs := key :: !unresolved_crossrefs
+    | None    -> unresolved_crossrefs := CrossRefKeySet.add key !unresolved_crossrefs
   end;
-  valueopt
+  value_opt

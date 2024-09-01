@@ -1,14 +1,18 @@
 
 open MyUtil
+open ConfigError
 
-val initialize : abs_path -> bool
+val initialize : abs_path -> (bool, config_error) result
+
+val reset : unit -> unit
 
 type answer =
   | NeedsAnotherTrial
   | CanTerminate of string list
-  | CountMax
 
-val needs_another_trial : abs_path -> answer
+val judge_termination : unit -> answer
+
+val write_dump_file : abs_path -> (unit, config_error) result
 
 val register : string -> string -> unit
 

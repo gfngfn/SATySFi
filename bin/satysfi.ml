@@ -19,6 +19,7 @@ let build_document
   fpath_deps
   text_mode_formats_str_opt
   page_number_limit
+  max_repeats
   show_full_path
   debug_show_bbox
   debug_show_space
@@ -35,6 +36,7 @@ let build_document
     ~fpath_deps
     ~text_mode_formats_str_opt
     ~page_number_limit
+    ~max_repeats
     ~show_full_path
     ~debug_show_bbox
     ~debug_show_space
@@ -91,6 +93,12 @@ let flag_page_number_limit : int Cmdliner.Term.t =
   let open Cmdliner in
   let doc = "Set the page number limit (default: 10000)" in
   Arg.(value (opt int 10000 (info [ "page-number-limit" ] ~docv:"INT" ~doc)))
+
+
+let flag_max_repeats : int Cmdliner.Term.t =
+  let open Cmdliner in
+  let doc = "Set the limit of iteration for resolving cross-references (default: 4)" in
+  Arg.(value (opt int 4 (info [ "max-repeats" ] ~docv:"INT" ~doc)))
 
 
 let make_boolean_flag_spec ~(flags : string list) ~(doc : string) : bool Cmdliner.Term.t =
@@ -156,6 +164,7 @@ let command_build_document =
       $ flag_deps
       $ flag_text_mode
       $ flag_page_number_limit
+      $ flag_max_repeats
       $ flag_full_path
       $ flag_debug_show_bbox
       $ flag_debug_show_space

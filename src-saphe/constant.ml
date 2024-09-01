@@ -97,4 +97,4 @@ let default_output_path ~doc:(abspath_doc : abs_path) : abs_path =
 
 let dump_path ~doc:(abspath_doc : abs_path) : abs_path =
   let path_without_extension = Filename.remove_extension (get_abs_path_string abspath_doc) in
-  make_abs_path (Printf.sprintf "%s.satysfi-aux" path_without_extension)
+  make_abs_path (Printf.sprintf "%s.satysfi-aux.yaml" path_without_extension)

@@ -67,7 +67,7 @@ promote::
 	(cd md; make promote)
 
 clean:: clean-init
-	rm -f *.saphe.lock.yaml *.satysfi-deps.yaml *.satysfi-aux *.pdf
+	rm -f *.saphe.lock.yaml *.satysfi-deps.yaml *.satysfi-aux.yaml *.pdf
 
 clean::
 	(cd images; make clean)
@@ -76,9 +76,9 @@ clean::
 
 clean-init::
 	rm -f $(INIT_DOC).saty $(INIT_DOC).saphe.yaml
-	rm -f $(INIT_DOC).saphe.lock.yaml $(INIT_DOC).satysfi-deps.yaml $(INIT_DOC).satysfi-aux $(INIT_DOC).pdf
+	rm -f $(INIT_DOC).saphe.lock.yaml $(INIT_DOC).satysfi-deps.yaml $(INIT_DOC).satysfi-aux.yaml $(INIT_DOC).pdf
 	rm -f $(INIT_MD).md $(INIT_MD).saphe.yaml
-	rm -f $(INIT_MD).saphe.lock.yaml $(INIT_MD).satysfi-deps.yaml $(INIT_MD).satysfi-aux $(INIT_MD).pdf
+	rm -f $(INIT_MD).saphe.lock.yaml $(INIT_MD).satysfi-deps.yaml $(INIT_MD).satysfi-aux.yaml $(INIT_MD).pdf
 	rm -rf $(INIT_LIB)
 	rm -f $(LOCAL_FIXED).saphe.lock.yaml
 
