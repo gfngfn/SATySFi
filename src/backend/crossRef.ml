@@ -22,7 +22,7 @@ let main_hash_table = CrossRefHashTable.create 32
 let read_assoc (assoc : (string * YS.json) list) : unit =
   assoc |> List.iter (fun (key, vjson) ->
     let value = vjson |> YS.Util.to_string in
-    CrossRefHashTable.add main_hash_table key value
+    CrossRefHashTable.replace main_hash_table key value
   )
 
 
@@ -81,7 +81,7 @@ let register (key : string) (value : string) =
   match CrossRefHashTable.find_opt main_hash_table key with
   | None ->
       changed := true;
-      CrossRefHashTable.add main_hash_table key value
+      CrossRefHashTable.replace main_hash_table key value
 
   | Some(value_old) ->
       if String.equal value value_old then
@@ -89,7 +89,7 @@ let register (key : string) (value : string) =
       else
         begin
           changed := true;
-          CrossRefHashTable.add main_hash_table key value
+          CrossRefHashTable.replace main_hash_table key value
         end
 
 
