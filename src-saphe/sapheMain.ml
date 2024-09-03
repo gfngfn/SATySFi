@@ -526,7 +526,7 @@ let make_envelope_config (abspath_package_config : abs_path) (package_contents :
     } ->
       return { envelope_contents = Font{ main_module_name; font_file_descriptions } }
 
-  | PackageConfig.Document(_) ->
+  | PackageConfig.Document ->
       err @@ NotAPackageButADocument(abspath_package_config)
 
 

@@ -16,9 +16,7 @@ type package_contents =
       main_module_name       : string;
       font_file_descriptions : font_file_description list;
     }
-  | Document of {
-      output_directory : relative_path option;
-    }
+  | Document
 
 type t = {
   language_requirement   : SemanticVersion.requirement;

@@ -56,7 +56,7 @@ let get_dependencies ~(language_version : SemanticVersion.t) (absdir_package : a
           font_file_descriptions;
         }
 
-    | PackageConfig.Document(_) ->
+    | PackageConfig.Document ->
         err @@ NotALibraryLocalFixed{ dir = absdir_package }
   in
   return (source_dependencies, envelope_contents, registry_remotes)

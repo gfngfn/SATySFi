@@ -20,9 +20,7 @@ type package_contents =
       main_module_name       : string;
       font_file_descriptions : font_file_description list;
     }
-  | Document of {
-      output_directory : relative_path option;
-    }
+  | Document
 
 type t = {
   language_requirement   : SemanticVersion.requirement;
@@ -171,8 +169,7 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
       succeed @@ ParsedFont { main_module_name; font_file_descriptions }
     end;
     "document" ==> begin
-      get_opt "output_directory" string >>= fun output_directory ->
-      succeed @@ ParsedDocument{ output_directory }
+      succeed @@ ParsedDocument
     end;
   ]
 
@@ -267,8 +264,8 @@ let validate_contents_spec ~(dir : abs_path) (localmap : registry_remote Registr
   | ParsedFont{ main_module_name; font_file_descriptions } ->
       return @@ Font{ main_module_name; font_file_descriptions }
 
-  | ParsedDocument{ output_directory } ->
-      return @@ Document{ output_directory }
+  | ParsedDocument ->
+      return @@ Document
 
 
 let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok =
