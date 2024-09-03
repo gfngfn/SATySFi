@@ -12,6 +12,9 @@ satysfi: "^0.1.0"
 name: "stdlib"
 authors:
   - "Takashi Suwa"
+contributors:
+  - "John Smith"
+  - "Taro Tanaka"
 registries:
   - name: "default"
     git:
@@ -50,6 +53,7 @@ let expected1 =
     language_requirement = SemanticVersion.CompatibleWith(make_version "0.1.0");
     package_name = Some("stdlib");
     package_authors = ["Takashi Suwa"];
+    package_contributors = ["John Smith"; "Taro Tanaka"];
     external_resources = [
       ("dummy", ExternalZip{
         url = "https://example.com/foo.zip";

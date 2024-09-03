@@ -24,6 +24,7 @@ type t = {
   language_requirement   : SemanticVersion.requirement;
   package_name           : package_name option;
   package_authors        : string list;
+  package_contributors   : string list;
   external_resources     : (string * external_resource) list;
   intermediate_directory : relative_path option;
   package_contents       : package_contents;

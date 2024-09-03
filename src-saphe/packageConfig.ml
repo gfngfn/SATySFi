@@ -28,6 +28,7 @@ type t = {
   language_requirement   : SemanticVersion.requirement;
   package_name           : package_name option;
   package_authors        : string list;
+  package_contributors   : string list;
   external_resources     : (string * external_resource) list;
   intermediate_directory : relative_path option;
   package_contents       : package_contents;
@@ -202,6 +203,7 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
   get "satysfi" requirement_decoder >>= fun language_requirement ->
   get_opt "name" package_name_decoder >>= fun package_name ->
   get "authors" (list string) >>= fun package_authors ->
+  get_or_else "contributors" (list string) [] >>= fun package_contributors ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
   get_or_else "external_resources" (list external_resource_decoder) [] >>= fun external_resources ->
   get_opt "intermediate_directory" string >>= fun intermediate_directory ->
@@ -212,6 +214,7 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
     language_requirement;
     package_name;
     package_authors;
+    package_contributors;
     registry_specs;
     external_resources;
     intermediate_directory;
@@ -275,6 +278,7 @@ let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok
       language_requirement;
       package_name;
       package_authors;
+      package_contributors;
       external_resources;
       intermediate_directory;
       package_contents;
@@ -291,6 +295,7 @@ let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok
     language_requirement;
     package_name;
     package_authors;
+    package_contributors;
     external_resources;
     intermediate_directory;
     package_contents;
