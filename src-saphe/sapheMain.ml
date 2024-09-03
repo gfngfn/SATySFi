@@ -6,7 +6,7 @@ open ConfigError
 
 
 let version =
-  Printf.sprintf "Saphe version %s alpha"
+  Printf.sprintf "Saphe version %s"
     (SemanticVersion.to_string Constant.current_ecosystem_version)
 
 
@@ -405,12 +405,13 @@ let report_config_error = function
 type solve_input =
   | PackageSolveInput of {
       root     : abs_path; (* The absolute path of a directory used as the package root *)
+      config   : abs_path; (* The absolute path to the package config file *)
       lock     : abs_path; (* A path for writing a resulting lock config file *)
       envelope : abs_path; (* A path for writing a resulting envelope config file *)
     }
   | DocumentSolveInput of {
       doc    : abs_path; (* The absolute path to the document file *)
-      config : abs_path; (* The absolute path to the config file *)
+      config : abs_path; (* The absolute path to the package config file *)
       lock   : abs_path; (* A path for writing a resulting lock file *)
     }
 
@@ -775,10 +776,12 @@ let make_solve_input ~(dir_current : string) ~(fpath_in : string) : solve_input 
   let abspath_in = make_absolute_if_relative ~origin:dir_current fpath_in in
   if is_directory abspath_in then
   (* If the input is a directory that forms a package: *)
+    let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
     let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
     let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
     PackageSolveInput{
       root     = abspath_in;
+      config   = abspath_package_config;
       lock     = abspath_lock_config;
       envelope = abspath_envelope_config;
     }
@@ -805,12 +808,12 @@ let solve ~(fpath_in : string) =
     let* (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes) =
       match solve_input with
       | PackageSolveInput{
-          root     = absdir_package;
+          root     = _absdir_package;
+          config   = abspath_package_config;
           lock     = abspath_lock_config;
           envelope = abspath_envelope_config;
         } ->
           (* Loads the package config: *)
-          let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
           let*
             PackageConfig.{
               language_requirement;

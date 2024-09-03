@@ -33,18 +33,19 @@ type parsed_package_contents =
       font_file_descriptions : font_file_description list;
     }
   | ParsedDocument of {
-      dependencies : parsed_package_dependency list;
+      output_directory : relative_path option;
     }
 [@@deriving show { with_path = false }]
 
 type parsed_package_config = ParsedPackageConfig of {
-  language_requirement : SemanticVersion.requirement;
-  package_name         : package_name option;
-  package_authors      : string list;
-  registry_specs       : (registry_local_name * registry_remote) list;
-  external_resources   : (string * external_resource) list;
-  package_contents     : parsed_package_contents;
-  source_dependencies  : parsed_package_dependency list;
-  test_dependencies    : parsed_package_dependency list;
+  language_requirement   : SemanticVersion.requirement;
+  package_name           : package_name option;
+  package_authors        : string list;
+  registry_specs         : (registry_local_name * registry_remote) list;
+  external_resources     : (string * external_resource) list;
+  intermediate_directory : relative_path option;
+  package_contents       : parsed_package_contents;
+  source_dependencies    : parsed_package_dependency list;
+  test_dependencies      : parsed_package_dependency list;
 }
 [@@deriving show { with_path = false }]

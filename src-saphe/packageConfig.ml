@@ -21,18 +21,19 @@ type package_contents =
       font_file_descriptions : font_file_description list;
     }
   | Document of {
-      dependencies : package_dependency list;
+      output_directory : relative_path option;
     }
 
 type t = {
-  language_requirement : SemanticVersion.requirement;
-  package_name         : package_name option;
-  package_authors      : string list;
-  external_resources   : (string * external_resource) list;
-  package_contents     : package_contents;
-  registry_remotes     : registry_remote list;
-  source_dependencies  : package_dependency list;
-  test_dependencies    : package_dependency list;
+  language_requirement   : SemanticVersion.requirement;
+  package_name           : package_name option;
+  package_authors        : string list;
+  external_resources     : (string * external_resource) list;
+  intermediate_directory : relative_path option;
+  package_contents       : package_contents;
+  registry_remotes       : registry_remote list;
+  source_dependencies    : package_dependency list;
+  test_dependencies      : package_dependency list;
 }
 
 
@@ -169,8 +170,8 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
       succeed @@ ParsedFont { main_module_name; font_file_descriptions }
     end;
     "document" ==> begin
-      get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
-      succeed @@ ParsedDocument{ dependencies }
+      get_opt "output_directory" string >>= fun output_directory ->
+      succeed @@ ParsedDocument{ output_directory }
     end;
   ]
 
@@ -203,6 +204,7 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
   get "authors" (list string) >>= fun package_authors ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
   get_or_else "external_resources" (list external_resource_decoder) [] >>= fun external_resources ->
+  get_opt "intermediate_directory" string >>= fun intermediate_directory ->
   get "contents" contents_decoder >>= fun package_contents ->
   get_or_else "dependencies" (list dependency_decoder) [] >>= fun source_dependencies ->
   get_or_else "test_dependencies" (list dependency_decoder) [] >>= fun test_dependencies ->
@@ -212,6 +214,7 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
     package_authors;
     registry_specs;
     external_resources;
+    intermediate_directory;
     package_contents;
     source_dependencies;
     test_dependencies;
@@ -261,9 +264,8 @@ let validate_contents_spec ~(dir : abs_path) (localmap : registry_remote Registr
   | ParsedFont{ main_module_name; font_file_descriptions } ->
       return @@ Font{ main_module_name; font_file_descriptions }
 
-  | ParsedDocument{ dependencies } ->
-      let* dependencies = mapM (validate_dependency ~dir localmap) dependencies in
-      return @@ Document{ dependencies }
+  | ParsedDocument{ output_directory } ->
+      return @@ Document{ output_directory }
 
 
 let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok =
@@ -274,6 +276,7 @@ let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok
       package_name;
       package_authors;
       external_resources;
+      intermediate_directory;
       package_contents;
       registry_specs;
       source_dependencies;
@@ -289,6 +292,7 @@ let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok
     package_name;
     package_authors;
     external_resources;
+    intermediate_directory;
     package_contents;
     registry_remotes;
     source_dependencies;
