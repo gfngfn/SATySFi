@@ -7,6 +7,10 @@ let init_library fpath_in =
   SapheMain.init_library ~fpath_in
 
 
+let cache_list () =
+  SapheMain.cache_list ()
+
+
 let update fpath_in =
   SapheMain.update ~fpath_in
 
@@ -185,6 +189,19 @@ let command_test : unit Cmdliner.Cmd.t =
     )
 
 
+let command_cache_list : unit Cmdliner.Cmd.t =
+  let open Cmdliner in
+  Cmd.v (Cmd.info "list")
+    Term.(const cache_list $ const ())
+
+
+let command_cache : unit Cmdliner.Cmd.t =
+  let open Cmdliner in
+  Cmd.group (Cmd.info "cache") [
+    command_cache_list;
+  ]
+
+
 let () =
   let open Cmdliner in
   let info : Cmd.info =
@@ -197,6 +214,7 @@ let () =
       command_solve;
       command_build;
       command_test;
+      command_cache;
     ]
   in
   Stdlib.exit (Cmd.eval (Cmd.group info subcommands))

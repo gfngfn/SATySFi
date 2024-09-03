@@ -76,7 +76,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~(unz
         return ()
 
     | TarGzip{ url; checksum } ->
-        (* Synchronously fetches a tarball: *)
+        (* Synchronously fetches a tarball (if non-existent): *)
         let abspath_tarball =
           make_abs_path
             (Filename.concat
@@ -114,7 +114,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~(unz
             ~tar_command ~lock_name:lock_tarball_name ~tarball:abspath_tarball ~lock_root:absdir_lock
         in
 
-        (* Fetches external sources according to the package config: *)
+        (* Fetches external resources according to the package config: *)
         let* PackageConfig.{ external_resources; _ } =
           PackageConfig.load (Constant.library_package_config_path ~dir:absdir_lock)
         in

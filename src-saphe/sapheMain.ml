@@ -1378,3 +1378,27 @@ let test
   match res with
   | Ok(exit_status) -> exit exit_status
   | Error(e)        -> report_config_error e; exit 1
+
+
+let cache_list () =
+  let res =
+    let open ResultMonad in
+
+    (* Loads the store root config: *)
+    let* absdir_store_root = get_store_root () in
+    let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
+    let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
+    begin
+      if created then Logging.store_root_config_updated ~created:true abspath_store_root_config
+    end;
+
+    let StoreRootConfig.{ registries } = store_root_config in
+    RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) () ->
+      Printf.printf "- %s (Git repository URL: %s, branch: %s)\n" registry_hash_value url branch
+    ) registries ();
+
+    return ()
+  in
+  match res with
+  | Ok(())   -> ()
+  | Error(e) -> report_config_error e; exit 1
