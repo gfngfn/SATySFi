@@ -1,3 +1,5 @@
+INTERMED_DIR = _build
+
 TARGETS = \
 	test.tex \
 
