@@ -36,6 +36,8 @@ val dirname : abs_path -> abs_path
 
 val basename : abs_path -> string
 
+val readdir : abs_path -> string list
+
 val is_directory : abs_path -> bool
 
 val encode_yaml : Yaml.value -> string

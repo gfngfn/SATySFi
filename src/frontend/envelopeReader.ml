@@ -9,7 +9,7 @@ type 'a ok = ('a, config_error) result
 
 
 let listup_sources_in_directory (extensions : string list) (absdir_src : abs_path) : abs_path list =
-  let filenames = Sys.readdir (get_abs_path_string absdir_src) |> Array.to_list in
+  let filenames = readdir absdir_src in
   filenames |> List.filter_map (fun filename ->
     if extensions |> List.exists (fun suffix -> Core.String.is_suffix filename ~suffix) then
       Some(make_abs_path (Filename.concat (get_abs_path_string absdir_src) filename))

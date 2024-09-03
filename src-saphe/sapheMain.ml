@@ -1394,7 +1394,14 @@ let cache_list () =
 
     let StoreRootConfig.{ registries } = store_root_config in
     RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) () ->
-      Printf.printf "- %s (Git repository URL: %s, branch: %s)\n" registry_hash_value url branch
+      Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
+      let absdir_lock_tarball_cache =
+        Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
+      in
+      let filenames = readdir absdir_lock_tarball_cache in
+      filenames |> List.sort String.compare |> List.iter (fun filename ->
+        Printf.printf "  - %s\n" filename
+      )
     ) registries ();
 
     return ()

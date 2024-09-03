@@ -81,6 +81,10 @@ let basename (abspath : abs_path) : string =
   Filename.basename (get_abs_path_string abspath)
 
 
+let readdir (absdir : abs_path) : string list =
+  Sys.readdir (get_abs_path_string absdir) |> Array.to_list
+
+
 let read_file (abspath : abs_path) : (string, string) result =
   let open ResultMonad in
   try
