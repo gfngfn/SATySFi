@@ -3,6 +3,8 @@ INIT_MD = init-md/foo
 INIT_LIB = init-lib
 LOCAL_FIXED = local-fixed/doc
 
+INTERMED_DIR = _build
+
 DOC_TARGETS = \
 	clip.pdf \
 	glue1.pdf \
@@ -24,7 +26,7 @@ DOC_TARGETS = \
 #	refactor6.pdf \
 
 LIB_TARGETS = \
-	$(INIT_LIB)/satysfi-deps.yaml \
+	$(INIT_LIB)/$(INTERMED_DIR)/satysfi-deps.yaml \
 
 EXPECTED_LOCKS = $(DOC_TARGETS:.pdf=.saphe.lock.yaml.expected)
 
@@ -67,7 +69,7 @@ promote::
 	(cd md; make promote)
 
 clean:: clean-init
-	rm -f *.saphe.lock.yaml *.satysfi-deps.yaml *.satysfi-aux.yaml *.pdf
+	rm -f *.saphe.lock.yaml $(INTERMED_DIR)/*.satysfi-deps.yaml $(INTERMED_DIR)/*.satysfi-aux.yaml *.pdf
 
 clean::
 	(cd images; make clean)
@@ -76,9 +78,9 @@ clean::
 
 clean-init::
 	rm -f $(INIT_DOC).saty $(INIT_DOC).saphe.yaml
-	rm -f $(INIT_DOC).saphe.lock.yaml $(INIT_DOC).satysfi-deps.yaml $(INIT_DOC).satysfi-aux.yaml $(INIT_DOC).pdf
+	rm -f $(INIT_DOC).saphe.lock.yaml $(INIT_DOC)/$(INTERMED_DIR)/.satysfi-deps.yaml $(INIT_DOC)$(INTERMED_DIR)/.satysfi-aux.yaml $(INIT_DOC).pdf
 	rm -f $(INIT_MD).md $(INIT_MD).saphe.yaml
-	rm -f $(INIT_MD).saphe.lock.yaml $(INIT_MD).satysfi-deps.yaml $(INIT_MD).satysfi-aux.yaml $(INIT_MD).pdf
+	rm -f $(INIT_MD).saphe.lock.yaml $(INIT_MD)/$(INTERMED_DIR)/.satysfi-deps.yaml $(INIT_MD)/$(INTERMED_DIR).satysfi-aux.yaml $(INIT_MD).pdf
 	rm -rf $(INIT_LIB)
 	rm -f $(LOCAL_FIXED).saphe.lock.yaml
 
@@ -116,7 +118,7 @@ $(INIT_LIB)/saphe.yaml:
 $(INIT_LIB)/saphe.lock.yaml: $(INIT_LIB)/saphe.yaml
 	$(SAPHE) solve $(INIT_LIB)
 
-$(INIT_LIB)/satysfi-deps.yaml: $(INIT_LIB)/saphe.lock.yaml
+$(INIT_LIB)/$(INTERMED_DIR)/satysfi-deps.yaml: $(INIT_LIB)/saphe.lock.yaml
 	$(SAPHE) build $(INIT_LIB)
 	$(SAPHE) test $(INIT_LIB)
 
