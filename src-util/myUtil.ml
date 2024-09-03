@@ -77,6 +77,10 @@ let dirname (abspath : abs_path) : abs_path =
   make_abs_path (Filename.dirname (get_abs_path_string abspath))
 
 
+let basename (abspath : abs_path) : string =
+  Filename.basename (get_abs_path_string abspath)
+
+
 let read_file (abspath : abs_path) : (string, string) result =
   let open ResultMonad in
   try

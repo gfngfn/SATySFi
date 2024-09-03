@@ -1074,17 +1074,17 @@ let update ~(fpath_in : string) =
 type build_input =
   | PackageBuildInput of {
       root     : abs_path;
+      config   : abs_path;
       lock     : abs_path;
-      deps     : abs_path;
       envelope : abs_path;
       options  : SatysfiCommand.build_option;
     }
   | DocumentBuildInput of {
+      root    : abs_path;
       doc     : abs_path;
+      config  : abs_path;
       lock    : abs_path;
-      deps    : abs_path;
       out     : abs_path;
-      dump    : abs_path;
       options : SatysfiCommand.build_option;
     }
 
@@ -1163,19 +1163,20 @@ let build
       let absdir_current = Sys.getcwd () in
       let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
       if is_directory abspath_in then
+        let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
         let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
-        let abspath_deps_config = Constant.library_deps_config_path ~dir:abspath_in in
         let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
         PackageBuildInput{
           root     = abspath_in;
+          config   = abspath_package_config;
           lock     = abspath_lock_config;
-          deps     = abspath_deps_config;
           envelope = abspath_envelope_config;
           options;
         }
       else
+        let absdir_doc_root = MyUtil.dirname abspath_in in
+        let abspath_package_config = Constant.document_package_config_path ~doc:abspath_in in
         let abspath_lock_config = Constant.document_lock_config_path ~doc:abspath_in in
-        let abspath_deps_config = Constant.document_deps_config_path ~doc:abspath_in in
         let abspath_out =
           match fpath_out_opt with
           | None ->
@@ -1184,13 +1185,12 @@ let build
           | Some(fpath_out) ->
               make_absolute_if_relative ~origin:absdir_current fpath_out
         in
-        let abspath_dump = Constant.dump_path ~doc:abspath_in in
         DocumentBuildInput{
+          root    = absdir_doc_root;
           doc     = abspath_in;
+          config  = abspath_package_config;
           lock    = abspath_lock_config;
-          deps    = abspath_deps_config;
           out     = abspath_out;
-          dump    = abspath_dump;
           options;
         }
     in
@@ -1199,15 +1199,35 @@ let build
 
     match build_input with
     | PackageBuildInput{
-        root     = _absdir_package;
+        root     = absdir_package;
+        config   = abspath_package_config;
         lock     = abspath_lock_config;
-        deps     = abspath_deps_config;
         envelope = abspath_envelope_config;
         options;
       } ->
+        (* Loads the package config: *)
+        let*
+          PackageConfig.{
+            intermediate_directory;
+            _
+          } = PackageConfig.load abspath_package_config
+        in
+
+        (* Sets the path for the deps config: *)
+        let absdir_intermediate =
+          let intermediate_directory =
+            Option.value
+              ~default:Constant.default_intermediate_directory_name
+              intermediate_directory
+          in
+          append_to_abs_directory absdir_package intermediate_directory
+        in
+        let abspath_deps_config = Constant.library_deps_config_path ~dir:absdir_intermediate in
+
         (* Updates the deps config: *)
         let* lock_config = LockConfig.load abspath_lock_config in
         let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
+        ShellCommand.mkdir_p absdir_intermediate;
         let* () = DepsConfig.write abspath_deps_config deps_config in
         Logging.end_deps_config_output abspath_deps_config;
 
@@ -1222,13 +1242,37 @@ let build
         return exit_status
 
     | DocumentBuildInput{
-        doc  = abspath_doc;
-        lock = abspath_lock_config;
-        deps = abspath_deps_config;
-        out  = abspath_out;
-        dump = abspath_dump;
+        root   = absdir_doc_root;
+        doc    = abspath_doc;
+        config = abspath_package_config;
+        lock   = abspath_lock_config;
+        out    = abspath_out;
         options;
       } ->
+        (* Loads the package config: *)
+        let*
+          PackageConfig.{
+            intermediate_directory;
+            _
+          } = PackageConfig.load abspath_package_config
+        in
+
+        (* Sets the paths for the deps config and the dump file: *)
+        let absdir_intermediate =
+          let intermediate_directory =
+            Option.value ~default:Constant.default_intermediate_directory_name
+              intermediate_directory
+          in
+          append_to_abs_directory absdir_doc_root intermediate_directory
+        in
+        let doc_basename = MyUtil.basename abspath_doc in
+        let abspath_deps_config =
+          Constant.document_deps_config_path ~dir:absdir_intermediate ~doc_basename
+        in
+        let abspath_dump =
+          Constant.dump_path ~dir:absdir_intermediate ~doc_basename
+        in
+
         (* Updates the deps config: *)
         let* lock_config = LockConfig.load abspath_lock_config in
         let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
