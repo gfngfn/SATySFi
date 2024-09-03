@@ -1,3 +1,5 @@
+INTERMED_DIR = _build
+
 TARGETS = \
 	demo.pdf \
 
@@ -32,4 +34,4 @@ all:: $(TARGETS)
 promote:: $(EXPECTED_LOCKS)
 
 clean:
-	rm -f *.pdf *.satysfi-aux.yaml *.saphe.lock.yaml *.satysfi-deps.yaml
+	rm -f *.saphe.lock.yaml $(INTERMED_DIR)/*.satysfi-aux.yaml $(INTERMED_DIR)/*.satysfi-deps.yaml *.pdf

@@ -1,3 +1,5 @@
+INTERMED_DIR = _build
+
 TARGETS = \
 	doc-primitives.pdf \
 	doc-lang.pdf \
@@ -34,7 +36,7 @@ all:: $(TARGETS)
 promote:: $(EXPECTED_LOCKS)
 
 clean:
-	rm -f *.pdf *.satysfi-aux.yaml *.saphe.lock.yaml *.satysfi-deps.yaml
+	rm -f *.saphe.lock.yaml $(INTERMED_DIR)/*.satysfi-aux.yaml $(INTERMED_DIR)/*.satysfi-deps.yaml *.pdf
 
 doc-primitives.pdf: local-math.satyh local.satyh paren.satyh
 doc-lang.pdf: local-math.satyh
