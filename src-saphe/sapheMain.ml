@@ -401,6 +401,12 @@ let report_config_error = function
         NormalLine(Printf.sprintf "but the content says '%s'." s_version2);
       ]
 
+  | CannotReadDirectory{ path; message } ->
+      report_error [
+        NormalLine(Printf.sprintf "cannot read directory '%s':" (get_abs_path_string path));
+        DisplayLine(message);
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
@@ -1393,18 +1399,21 @@ let cache_list () =
     end;
 
     let StoreRootConfig.{ registries } = store_root_config in
-    RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) () ->
+    RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) res ->
+      let* () = res in
       Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
       let absdir_lock_tarball_cache =
         Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
       in
-      let filenames = readdir absdir_lock_tarball_cache in
+      let* filenames =
+        readdir absdir_lock_tarball_cache
+          |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_lock_tarball_cache; message })
+      in
       filenames |> List.sort String.compare |> List.iter (fun filename ->
         Printf.printf "  - %s\n" filename
-      )
-    ) registries ();
-
-    return ()
+      );
+      return ()
+    ) registries (return ())
   in
   match res with
   | Ok(())   -> ()

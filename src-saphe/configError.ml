@@ -168,3 +168,7 @@ type config_error =
       from_filename : SemanticVersion.t;
       from_content  : SemanticVersion.t;
     }
+  | CannotReadDirectory of {
+      path    : abs_path;
+      message : string;
+    }
