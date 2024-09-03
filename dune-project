@@ -103,8 +103,8 @@
     (< 16.0)))
   (yaml
    (and
-    (>= 2.1.0)
-    (< 3.0)))
+    (>= 3.2.0)
+    (< 4.0)))
   (yojson-with-position
    (= 1.4.2+satysfi))
   (0install-solver
@@ -174,8 +174,8 @@
     (< 2.0)))
   (yaml
    (and
-    (>= 2.1.0)
-    (< 3.0)))))
+    (>= 3.2.0)
+    (< 4.0)))))
 
 (package
  (name satysfi-common)

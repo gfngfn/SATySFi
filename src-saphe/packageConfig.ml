@@ -9,30 +9,17 @@ open PackageConfigImpl
 
 type 'a ok = ('a, config_error) result
 
-type package_contents =
-  | Library of {
-      main_module_name    : string;
-      source_directories  : relative_path list;
-      test_directories    : relative_path list;
-      markdown_conversion : markdown_conversion option;
-    }
-  | Font of {
-      main_module_name       : string;
-      font_file_descriptions : font_file_description list;
-    }
-  | Document of {
-      dependencies : package_dependency list;
-    }
-
 type t = {
-  language_requirement : SemanticVersion.requirement;
-  package_name         : package_name option;
-  package_authors      : string list;
-  external_resources   : (string * external_resource) list;
-  package_contents     : package_contents;
-  registry_remotes     : registry_remote list;
-  source_dependencies  : package_dependency list;
-  test_dependencies    : package_dependency list;
+  language_requirement   : SemanticVersion.requirement;
+  package_name           : package_name option;
+  package_authors        : string list;
+  package_contributors   : string list;
+  external_resources     : (string * external_resource) list;
+  intermediate_directory : relative_path option;
+  package_contents       : package_contents;
+  registry_remotes       : registry_remote list;
+  source_dependencies    : package_dependency list;
+  test_dependencies      : package_dependency list;
 }
 
 
@@ -148,7 +135,7 @@ let markdown_conversion_decoder : markdown_conversion ConfigDecoder.t =
   }
 
 
-let contents_decoder : parsed_package_contents ConfigDecoder.t =
+let contents_decoder : package_contents ConfigDecoder.t =
   let open ConfigDecoder in
   branch [
     "library" ==> begin
@@ -156,7 +143,7 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
       get "source_directories" (list string) >>= fun source_directories ->
       get_or_else "test_directories" (list string) [] >>= fun test_directories ->
       get_opt "markdown_conversion" markdown_conversion_decoder >>= fun markdown_conversion ->
-      succeed @@ ParsedLibrary {
+      succeed @@ Library {
         main_module_name;
         source_directories;
         test_directories;
@@ -166,11 +153,10 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
     "font" ==> begin
       get "main_module" string >>= fun main_module_name ->
       get "files" (list font_file_description_decoder) >>= fun font_file_descriptions ->
-      succeed @@ ParsedFont { main_module_name; font_file_descriptions }
+      succeed @@ Font { main_module_name; font_file_descriptions }
     end;
     "document" ==> begin
-      get_or_else "dependencies" (list dependency_decoder) [] >>= fun dependencies ->
-      succeed @@ ParsedDocument{ dependencies }
+      succeed @@ Document
     end;
   ]
 
@@ -201,8 +187,10 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
   get "satysfi" requirement_decoder >>= fun language_requirement ->
   get_opt "name" package_name_decoder >>= fun package_name ->
   get "authors" (list string) >>= fun package_authors ->
+  get_or_else "contributors" (list string) [] >>= fun package_contributors ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
   get_or_else "external_resources" (list external_resource_decoder) [] >>= fun external_resources ->
+  get_opt "intermediate_directory" string >>= fun intermediate_directory ->
   get "contents" contents_decoder >>= fun package_contents ->
   get_or_else "dependencies" (list dependency_decoder) [] >>= fun source_dependencies ->
   get_or_else "test_dependencies" (list dependency_decoder) [] >>= fun test_dependencies ->
@@ -210,8 +198,10 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
     language_requirement;
     package_name;
     package_authors;
+    package_contributors;
     registry_specs;
     external_resources;
+    intermediate_directory;
     package_contents;
     source_dependencies;
     test_dependencies;
@@ -242,30 +232,6 @@ let validate_dependency ~dir:(absdir_config : abs_path) (localmap : registry_rem
   return @@ PackageDependency{ used_as; spec }
 
 
-let validate_contents_spec ~(dir : abs_path) (localmap : registry_remote RegistryLocalNameMap.t) (contents : parsed_package_contents) : package_contents ok =
-  let open ResultMonad in
-  match contents with
-  | ParsedLibrary{
-      main_module_name;
-      source_directories;
-      test_directories;
-      markdown_conversion;
-    } ->
-      return @@ Library{
-        main_module_name;
-        source_directories;
-        test_directories;
-        markdown_conversion;
-      }
-
-  | ParsedFont{ main_module_name; font_file_descriptions } ->
-      return @@ Font{ main_module_name; font_file_descriptions }
-
-  | ParsedDocument{ dependencies } ->
-      let* dependencies = mapM (validate_dependency ~dir localmap) dependencies in
-      return @@ Document{ dependencies }
-
-
 let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok =
   let open ResultMonad in
   let
@@ -273,7 +239,9 @@ let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok
       language_requirement;
       package_name;
       package_authors;
+      package_contributors;
       external_resources;
+      intermediate_directory;
       package_contents;
       registry_specs;
       source_dependencies;
@@ -281,14 +249,15 @@ let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok
     } = p_package_config
   in
   let* (localmap, registry_remotes) = ConfigUtil.construct_registry_local_map registry_specs in
-  let* package_contents = validate_contents_spec ~dir localmap package_contents in
   let* source_dependencies = mapM (validate_dependency ~dir localmap) source_dependencies in
   let* test_dependencies = mapM (validate_dependency ~dir localmap) test_dependencies in
   return {
     language_requirement;
     package_name;
     package_authors;
+    package_contributors;
     external_resources;
+    intermediate_directory;
     package_contents;
     registry_remotes;
     source_dependencies;

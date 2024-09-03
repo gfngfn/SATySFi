@@ -34,6 +34,8 @@ val append_to_abs_directory : abs_path -> string -> abs_path
 
 val dirname : abs_path -> abs_path
 
+val basename : abs_path -> string
+
 val is_directory : abs_path -> bool
 
 val encode_yaml : Yaml.value -> string

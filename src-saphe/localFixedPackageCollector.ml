@@ -33,7 +33,7 @@ let get_dependencies ~(language_version : SemanticVersion.t) (absdir_package : a
   in
   let* envelope_contents =
     match package_contents with
-    | PackageConfig.Library{
+    | Library{
         main_module_name;
         source_directories;
         test_directories;
@@ -47,7 +47,7 @@ let get_dependencies ~(language_version : SemanticVersion.t) (absdir_package : a
           markdown_conversion;
         }
 
-    | PackageConfig.Font{
+    | Font{
         main_module_name;
         font_file_descriptions;
       } ->
@@ -56,7 +56,7 @@ let get_dependencies ~(language_version : SemanticVersion.t) (absdir_package : a
           font_file_descriptions;
         }
 
-    | PackageConfig.Document(_) ->
+    | Document ->
         err @@ NotALibraryLocalFixed{ dir = absdir_package }
   in
   return (source_dependencies, envelope_contents, registry_remotes)

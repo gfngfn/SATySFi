@@ -1,3 +1,5 @@
+INTERMED_DIR = _build
+
 TARGETS = \
 	test.tex \
 
@@ -32,6 +34,6 @@ all:: $(TARGETS)
 promote:: $(EXPECTED_LOCKS)
 
 clean:
-	rm -f *.pdf *.dvi *.log *.fls *.fdb_latexmk *.synctex.gz *.tex *.satysfi-aux.yaml *.saphe.lock.yaml *.satysfi-deps.yaml
+	rm -f $(INTERMED_DIR)/*.satysfi-deps.yaml $(INTERMED_DIR)/*.satysfi-aux.yaml *.saphe.lock.yaml *.dvi *.log *.fls *.fdb_latexmk *.synctex.gz *.tex *.pdf
 
 test.saty: head.satyh-latex

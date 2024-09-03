@@ -1,7 +1,12 @@
-INIT_DOC = init-doc/foo
-INIT_MD = init-md/foo
+INIT_DOC_DIR = init-doc
+INIT_DOC_BASE = foo
+INIT_MD_DIR = init-md
+INIT_MD_BASE = foo
 INIT_LIB = init-lib
-LOCAL_FIXED = local-fixed/doc
+LOCAL_FIXED_DIR = local-fixed
+LOCAL_FIXED_BASE = doc
+
+INTERMED_DIR = _build
 
 DOC_TARGETS = \
 	clip.pdf \
@@ -15,16 +20,16 @@ DOC_TARGETS = \
 	staged1.pdf \
 	macro1.pdf \
 	rename-dep1.pdf \
-	$(INIT_DOC).pdf \
-	$(INIT_MD).pdf \
-	$(LOCAL_FIXED).pdf \
+	$(INIT_DOC_DIR)/$(INIT_DOC_BASE).pdf \
+	$(INIT_MD_DIR)/$(INIT_MD_BASE).pdf \
+	$(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).pdf \
 #	first.pdf \
 #	math1.pdf \
 #	refactor4.pdf \
 #	refactor6.pdf \
 
 LIB_TARGETS = \
-	$(INIT_LIB)/satysfi-deps.yaml \
+	$(INIT_LIB)/$(INTERMED_DIR)/satysfi-deps.yaml \
 
 EXPECTED_LOCKS = $(DOC_TARGETS:.pdf=.saphe.lock.yaml.expected)
 
@@ -67,7 +72,7 @@ promote::
 	(cd md; make promote)
 
 clean:: clean-init
-	rm -f *.saphe.lock.yaml *.satysfi-deps.yaml *.satysfi-aux.yaml *.pdf
+	rm -f *.saphe.lock.yaml $(INTERMED_DIR)/*.satysfi-deps.yaml $(INTERMED_DIR)/*.satysfi-aux.yaml *.pdf
 
 clean::
 	(cd images; make clean)
@@ -75,12 +80,23 @@ clean::
 	(cd md; make clean)
 
 clean-init::
-	rm -f $(INIT_DOC).saty $(INIT_DOC).saphe.yaml
-	rm -f $(INIT_DOC).saphe.lock.yaml $(INIT_DOC).satysfi-deps.yaml $(INIT_DOC).satysfi-aux.yaml $(INIT_DOC).pdf
-	rm -f $(INIT_MD).md $(INIT_MD).saphe.yaml
-	rm -f $(INIT_MD).saphe.lock.yaml $(INIT_MD).satysfi-deps.yaml $(INIT_MD).satysfi-aux.yaml $(INIT_MD).pdf
+	rm -f $(INIT_DOC_DIR)/$(INIT_DOC_BASE).saty
+	rm -f $(INIT_DOC_DIR)/$(INIT_DOC_BASE).saphe.yaml
+	rm -f $(INIT_DOC_DIR)/$(INIT_DOC_BASE).saphe.lock.yaml
+	rm -f $(INIT_DOC_DIR)/$(INTERMED_DIR)/$(INIT_DOC_BASE).satysfi-deps.yaml
+	rm -f $(INIT_DOC_DIR)/$(INTERMED_DIR)/$(INIT_DOC_BASE).satysfi-aux.yaml
+	rm -f $(INIT_DOC_DIR)/$(INIT_DOC_BASE).pdf
+	rm -f $(INIT_MD_DIR)/$(INIT_MD_BASE).md
+	rm -f $(INIT_MD_DIR)/$(INIT_MD_BASE).saphe.yaml
+	rm -f $(INIT_MD_DIR)/$(INIT_MD_BASE).saphe.lock.yaml
+	rm -f $(INIT_MD_DIR)/$(INTERMED_DIR)/$(INIT_MD_BASE).satysfi-deps.yaml
+	rm -f $(INIT_MD_DIR)/$(INTERMED_DIR)/$(INIT_MD_BASE).satysfi-aux.yaml
+	rm -f $(INIT_MD_DIR)/$(INIT_MD_BASE).pdf
 	rm -rf $(INIT_LIB)
-	rm -f $(LOCAL_FIXED).saphe.lock.yaml
+	rm -f $(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).saphe.lock.yaml
+	rm -f $(LOCAL_FIXED_DIR)/$(INTERMED_DIR)/$(LOCAL_FIXED_BASE).satysfi-deps.yaml
+	rm -f $(LOCAL_FIXED_DIR)/$(INTERMED_DIR)/$(LOCAL_FIXED_BASE).satysfi-aux.yaml
+	rm -f $(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).pdf
 
 # Dependencies on program files:
 clip.pdf: head.satyh
@@ -90,24 +106,24 @@ math1.pdf: head.satyh
 math2.pdf: head.satyh
 
 # Tests for `saphe init`:
-$(INIT_DOC).saty $(INIT_DOC).saphe.yaml:
-	$(SAPHE) init document $(INIT_DOC).saty
+$(INIT_DOC_DIR)/$(INIT_DOC_BASE).saty $(INIT_DOC_DIR)/$(INIT_DOC_BASE).saphe.yaml:
+	$(SAPHE) init document $(INIT_DOC_DIR)/$(INIT_DOC_BASE).saty
 
-$(INIT_DOC).saphe.lock.yaml: $(INIT_DOC).saty $(INIT_DOC).saphe.yaml
+$(INIT_DOC_DIR)/$(INIT_DOC_BASE).saphe.lock.yaml: $(INIT_DOC_DIR)/$(INIT_DOC_BASE).saty $(INIT_DOC_DIR)/$(INIT_DOC_BASE).saphe.yaml
 	$(SAPHE) solve $<
-	diff $@ $(INIT_DOC).saphe.lock.yaml.expected
+	diff $@ $(INIT_DOC_DIR)/$(INIT_DOC_BASE).saphe.lock.yaml.expected
 
-$(INIT_DOC).pdf: $(INIT_DOC).saty $(INIT_DOC).saphe.lock.yaml
+$(INIT_DOC_DIR)/$(INIT_DOC_BASE).pdf: $(INIT_DOC_DIR)/$(INIT_DOC_BASE).saty $(INIT_DOC_DIR)/$(INIT_DOC_BASE).saphe.lock.yaml
 	$(SAPHE) build $< -o $@
 
-$(INIT_MD).md $(INIT_MD).saphe.yaml:
-	$(SAPHE) init document $(INIT_MD).md
+$(INIT_MD_DIR)/$(INIT_MD_BASE).md $(INIT_MD_DIR)/$(INIT_MD_BASE).saphe.yaml:
+	$(SAPHE) init document $(INIT_MD_DIR)/$(INIT_MD_BASE).md
 
-$(INIT_MD).saphe.lock.yaml: $(INIT_MD).md $(INIT_MD).saphe.yaml
+$(INIT_MD_DIR)/$(INIT_MD_BASE).saphe.lock.yaml: $(INIT_MD_DIR)/$(INIT_MD_BASE).md $(INIT_MD_DIR)/$(INIT_MD_BASE).saphe.yaml
 	$(SAPHE) solve $<
-	diff $@ $(INIT_MD).saphe.lock.yaml.expected
+	diff $@ $(INIT_MD_DIR)/$(INIT_MD_BASE).saphe.lock.yaml.expected
 
-$(INIT_MD).pdf: $(INIT_MD).md $(INIT_MD).saphe.lock.yaml
+$(INIT_MD_DIR)/$(INIT_MD_BASE).pdf: $(INIT_MD_DIR)/$(INIT_MD_BASE).md $(INIT_MD_DIR)/$(INIT_MD_BASE).saphe.lock.yaml
 	$(SAPHE) build $< -o $@
 
 $(INIT_LIB)/saphe.yaml:
@@ -116,14 +132,14 @@ $(INIT_LIB)/saphe.yaml:
 $(INIT_LIB)/saphe.lock.yaml: $(INIT_LIB)/saphe.yaml
 	$(SAPHE) solve $(INIT_LIB)
 
-$(INIT_LIB)/satysfi-deps.yaml: $(INIT_LIB)/saphe.lock.yaml
+$(INIT_LIB)/$(INTERMED_DIR)/satysfi-deps.yaml: $(INIT_LIB)/saphe.lock.yaml
 	$(SAPHE) build $(INIT_LIB)
 	$(SAPHE) test $(INIT_LIB)
 
 # Tests for local fixed packages:
-$(LOCAL_FIXED).saphe.lock.yaml: $(LOCAL_FIXED).saty $(LOCAL_FIXED).saphe.yaml
+$(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).saphe.lock.yaml: $(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).saty $(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).saphe.yaml
 	$(SAPHE) solve $<
-	diff $@ $(LOCAL_FIXED).saphe.lock.yaml.expected
+	diff $@ $(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).saphe.lock.yaml.expected
 
-$(LOCAL_FIXED).pdf: $(LOCAL_FIXED).saty $(LOCAL_FIXED).saphe.lock.yaml
+$(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).pdf: $(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).saty $(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).saphe.lock.yaml
 	$(SAPHE) build $< -o $@

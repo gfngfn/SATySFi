@@ -85,16 +85,22 @@ let document_lock_config_path ~doc:(abspath_doc : abs_path) : abs_path =
   make_abs_path (Printf.sprintf "%s.saphe.lock.yaml" path_without_extension)
 
 
-let document_deps_config_path ~doc:(abspath_doc : abs_path) : abs_path =
-  let path_without_extension = Filename.remove_extension (get_abs_path_string abspath_doc) in
-  make_abs_path (Printf.sprintf "%s.satysfi-deps.yaml" path_without_extension)
-
-
 let default_output_path ~doc:(abspath_doc : abs_path) : abs_path =
   let path_without_extension = Filename.remove_extension (get_abs_path_string abspath_doc) in
   make_abs_path (Printf.sprintf "%s.pdf" path_without_extension)
 
 
-let dump_path ~doc:(abspath_doc : abs_path) : abs_path =
-  let path_without_extension = Filename.remove_extension (get_abs_path_string abspath_doc) in
-  make_abs_path (Printf.sprintf "%s.satysfi-aux.yaml" path_without_extension)
+let document_deps_config_path ~dir:(absdir_doc_root : abs_path) ~(doc_basename : string) : abs_path =
+  let doc_basename_without_extension = Filename.remove_extension doc_basename in
+  append_to_abs_directory absdir_doc_root
+    (Printf.sprintf "%s.satysfi-deps.yaml" doc_basename_without_extension)
+
+
+let dump_path ~dir:(absdir_doc_root : abs_path) ~(doc_basename : string) : abs_path =
+  let doc_basename_without_extension = Filename.remove_extension doc_basename in
+  append_to_abs_directory absdir_doc_root
+    (Printf.sprintf "%s.satysfi-aux.yaml" doc_basename_without_extension)
+
+
+let default_intermediate_directory_name : string =
+  "./_build"

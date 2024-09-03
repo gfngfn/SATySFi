@@ -12,11 +12,25 @@ satysfi: "^0.1.0"
 name: "stdlib"
 authors:
   - "Takashi Suwa"
+contributors:
+  - "John Smith"
+  - "Taro Tanaka"
 registries:
   - name: "default"
     git:
       url: "https://github.com/SATySFi/default-registry"
       branch: "temp-dev-saphe"
+external_resources:
+  - name: "dummy"
+    zip:
+      url: "https://example.com/foo.zip"
+      checksum: "c0bebeefc0bebeefc0bebeefc0bebeef"
+      extractions:
+        - from: "bar.txt"
+          to: "./resources/bar.txt"
+        - from: "qux.dat"
+          to: "./resources/qux.dat"
+intermediate_directory: "./_build"
 contents:
   library:
     main_module: "Stdlib"
@@ -39,9 +53,26 @@ let expected1 =
     language_requirement = SemanticVersion.CompatibleWith(make_version "0.1.0");
     package_name = Some("stdlib");
     package_authors = ["Takashi Suwa"];
-    external_resources = [];
+    package_contributors = ["John Smith"; "Taro Tanaka"];
+    external_resources = [
+      ("dummy", ExternalZip{
+        url = "https://example.com/foo.zip";
+        checksum = "c0bebeefc0bebeefc0bebeefc0bebeef";
+        extractions = [
+          {
+            extracted_from = "bar.txt";
+            extracted_to = "./resources/bar.txt";
+          };
+          {
+            extracted_from = "qux.dat";
+            extracted_to = "./resources/qux.dat";
+          };
+        ];
+      });
+    ];
+    intermediate_directory = Some("./_build");
     package_contents =
-      ParsedLibrary{
+      Library{
         main_module_name = "Stdlib";
         source_directories = [ "./src" ];
         test_directories = [ "./test" ];
