@@ -1276,6 +1276,7 @@ let build
         (* Updates the deps config: *)
         let* lock_config = LockConfig.load abspath_lock_config in
         let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
+        ShellCommand.mkdir_p absdir_intermediate;
         let* () = DepsConfig.write abspath_deps_config deps_config in
         Logging.end_deps_config_output abspath_deps_config;
 
