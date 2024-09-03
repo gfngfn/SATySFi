@@ -1300,8 +1300,8 @@ let build
 type test_input =
   | PackageTestInput of {
       root     : abs_path;
+      config   : abs_path;
       lock     : abs_path;
-      deps     : abs_path;
       envelope : abs_path;
     }
 
@@ -1317,13 +1317,13 @@ let test
       let absdir_current = Sys.getcwd () in
       let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
       if is_directory abspath_in then
+        let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
         let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
-        let abspath_deps_config = Constant.library_deps_config_path ~dir:abspath_in in
         let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
         return @@ PackageTestInput{
           root     = abspath_in;
+          config   = abspath_package_config;
           lock     = abspath_lock_config;
-          deps     = abspath_deps_config;
           envelope = abspath_envelope_config;
         }
       else
@@ -1334,14 +1334,34 @@ let test
 
     match test_input with
     | PackageTestInput{
-        root     = _absdir_package;
+        root     = absdir_package;
+        config   = abspath_package_config;
         lock     = abspath_lock_config;
-        deps     = abspath_deps_config;
         envelope = abspath_envelope_config;
       } ->
+        (* Loads the package config: *)
+        let*
+          PackageConfig.{
+            intermediate_directory;
+            _
+          } = PackageConfig.load abspath_package_config
+        in
+
+        (* Sets the path for the deps config: *)
+        let absdir_intermediate =
+          let intermediate_directory =
+            Option.value
+              ~default:Constant.default_intermediate_directory_name
+              intermediate_directory
+          in
+          append_to_abs_directory absdir_package intermediate_directory
+        in
+        let abspath_deps_config = Constant.library_deps_config_path ~dir:absdir_intermediate in
+
         (* Updates the deps config: *)
         let* lock_config = LockConfig.load abspath_lock_config in
         let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
+        ShellCommand.mkdir_p absdir_intermediate;
         let* () = DepsConfig.write abspath_deps_config deps_config in
         Logging.end_deps_config_output abspath_deps_config;
 
