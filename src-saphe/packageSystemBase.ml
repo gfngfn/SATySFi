@@ -1,5 +1,6 @@
 
 open MyUtil
+open EnvelopeSystemBase
 
 type lock_name = string
 [@@deriving show]
@@ -209,4 +210,18 @@ type external_resource =
       checksum    : string;
       extractions : extraction list;
     }
+[@@deriving show { with_path = false }]
+
+type package_contents =
+  | Library of {
+      main_module_name    : string;
+      source_directories  : relative_path list;
+      test_directories    : relative_path list;
+      markdown_conversion : markdown_conversion option;
+    }
+  | Font of {
+      main_module_name       : string;
+      font_file_descriptions : font_file_description list;
+    }
+  | Document
 [@@deriving show { with_path = false }]

@@ -500,10 +500,10 @@ let convert_solutions_to_lock_config ~(seen_from : abs_path) (solutions : packag
   (lock_config, Alist.to_list impl_spec_acc)
 
 
-let make_envelope_config (abspath_package_config : abs_path) (package_contents : PackageConfig.package_contents) : (EnvelopeConfig.t, config_error) result =
+let make_envelope_config (abspath_package_config : abs_path) (package_contents : package_contents) : (EnvelopeConfig.t, config_error) result =
   let open ResultMonad in
   match package_contents with
-  | PackageConfig.Library{
+  | Library{
       main_module_name;
       source_directories;
       test_directories;
@@ -520,13 +520,13 @@ let make_envelope_config (abspath_package_config : abs_path) (package_contents :
           };
       }
 
-  | PackageConfig.Font{
+  | Font{
       main_module_name;
       font_file_descriptions;
     } ->
       return { envelope_contents = Font{ main_module_name; font_file_descriptions } }
 
-  | PackageConfig.Document ->
+  | Document ->
       err @@ NotAPackageButADocument(abspath_package_config)
 
 

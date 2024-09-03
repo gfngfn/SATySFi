@@ -5,19 +5,6 @@ open PackageConfigImpl
 open EnvelopeSystemBase
 open PackageSystemBase
 
-type package_contents =
-  | Library of {
-      main_module_name    : string;
-      source_directories  : relative_path list;
-      test_directories    : relative_path list;
-      markdown_conversion : markdown_conversion option;
-    }
-  | Font of {
-      main_module_name       : string;
-      font_file_descriptions : font_file_description list;
-    }
-  | Document
-
 type t = {
   language_requirement   : SemanticVersion.requirement;
   package_name           : package_name option;

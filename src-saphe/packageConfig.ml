@@ -9,19 +9,6 @@ open PackageConfigImpl
 
 type 'a ok = ('a, config_error) result
 
-type package_contents =
-  | Library of {
-      main_module_name    : string;
-      source_directories  : relative_path list;
-      test_directories    : relative_path list;
-      markdown_conversion : markdown_conversion option;
-    }
-  | Font of {
-      main_module_name       : string;
-      font_file_descriptions : font_file_description list;
-    }
-  | Document
-
 type t = {
   language_requirement   : SemanticVersion.requirement;
   package_name           : package_name option;
@@ -148,7 +135,7 @@ let markdown_conversion_decoder : markdown_conversion ConfigDecoder.t =
   }
 
 
-let contents_decoder : parsed_package_contents ConfigDecoder.t =
+let contents_decoder : package_contents ConfigDecoder.t =
   let open ConfigDecoder in
   branch [
     "library" ==> begin
@@ -156,7 +143,7 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
       get "source_directories" (list string) >>= fun source_directories ->
       get_or_else "test_directories" (list string) [] >>= fun test_directories ->
       get_opt "markdown_conversion" markdown_conversion_decoder >>= fun markdown_conversion ->
-      succeed @@ ParsedLibrary {
+      succeed @@ Library {
         main_module_name;
         source_directories;
         test_directories;
@@ -166,10 +153,10 @@ let contents_decoder : parsed_package_contents ConfigDecoder.t =
     "font" ==> begin
       get "main_module" string >>= fun main_module_name ->
       get "files" (list font_file_description_decoder) >>= fun font_file_descriptions ->
-      succeed @@ ParsedFont { main_module_name; font_file_descriptions }
+      succeed @@ Font { main_module_name; font_file_descriptions }
     end;
     "document" ==> begin
-      succeed @@ ParsedDocument
+      succeed @@ Document
     end;
   ]
 
@@ -245,29 +232,6 @@ let validate_dependency ~dir:(absdir_config : abs_path) (localmap : registry_rem
   return @@ PackageDependency{ used_as; spec }
 
 
-let validate_contents_spec ~(dir : abs_path) (localmap : registry_remote RegistryLocalNameMap.t) (contents : parsed_package_contents) : package_contents ok =
-  let open ResultMonad in
-  match contents with
-  | ParsedLibrary{
-      main_module_name;
-      source_directories;
-      test_directories;
-      markdown_conversion;
-    } ->
-      return @@ Library{
-        main_module_name;
-        source_directories;
-        test_directories;
-        markdown_conversion;
-      }
-
-  | ParsedFont{ main_module_name; font_file_descriptions } ->
-      return @@ Font{ main_module_name; font_file_descriptions }
-
-  | ParsedDocument ->
-      return @@ Document
-
-
 let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok =
   let open ResultMonad in
   let
@@ -285,7 +249,6 @@ let validate ~(dir : abs_path) (p_package_config : parsed_package_config) : t ok
     } = p_package_config
   in
   let* (localmap, registry_remotes) = ConfigUtil.construct_registry_local_map registry_specs in
-  let* package_contents = validate_contents_spec ~dir localmap package_contents in
   let* source_dependencies = mapM (validate_dependency ~dir localmap) source_dependencies in
   let* test_dependencies = mapM (validate_dependency ~dir localmap) test_dependencies in
   return {

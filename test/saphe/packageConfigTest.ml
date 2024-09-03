@@ -72,7 +72,7 @@ let expected1 =
     ];
     intermediate_directory = Some("./_build");
     package_contents =
-      ParsedLibrary{
+      Library{
         main_module_name = "Stdlib";
         source_directories = [ "./src" ];
         test_directories = [ "./test" ];
