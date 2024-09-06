@@ -40,6 +40,8 @@ val readdir : abs_path -> (string list, string) result
 
 val is_directory : abs_path -> bool
 
+val file_exists : abs_path -> bool
+
 val encode_yaml : Yaml.value -> string
 
 val read_file : abs_path -> (string, string) result

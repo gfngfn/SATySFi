@@ -709,7 +709,7 @@ let write_initial_file (abspath : abs_path) ~(data : string) =
 
 let assert_nonexistence (abspath : abs_path) =
   let open ResultMonad in
-  if Sys.file_exists (get_abs_path_string abspath) then
+  if file_exists abspath then
     err @@ FileAlreadyExists{ path = abspath }
   else
     return ()

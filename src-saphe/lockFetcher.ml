@@ -66,7 +66,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~(unz
   ShellCommand.mkdir_p absdir_lock;
 
   let abspath_config = Constant.library_package_config_path ~dir:absdir_lock in
-  if Sys.file_exists (get_abs_path_string abspath_config) then begin
+  if file_exists abspath_config then begin
   (* If the lock has already been fetched: *)
     Logging.lock_already_installed lock_tarball_name absdir_lock;
     return ()
@@ -78,13 +78,11 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~(unz
     | TarGzip{ url; checksum } ->
         (* Synchronously fetches a tarball (if non-existent): *)
         let abspath_tarball =
-          make_abs_path
-            (Filename.concat
-              (get_abs_path_string absdir_lock_tarball_cache)
-              (Printf.sprintf "%s.tar.gz" lock_tarball_name))
+          append_to_abs_directory absdir_lock_tarball_cache
+            (Printf.sprintf "%s.tar.gz" lock_tarball_name)
         in
         let* () =
-          if Sys.file_exists (get_abs_path_string abspath_tarball) then begin
+          if file_exists abspath_tarball then begin
             Logging.lock_cache_exists lock_tarball_name abspath_tarball;
             return ()
           end else begin
