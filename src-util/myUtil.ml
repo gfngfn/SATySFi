@@ -110,7 +110,12 @@ let write_file (abspath : abs_path) (data : string) : (unit, string) result =
 
 
 let is_directory (abspath : abs_path) : bool =
-  Sys.is_directory (get_abs_path_string abspath)
+  try
+    Sys.is_directory (get_abs_path_string abspath)
+  with
+  | Sys_error(_) ->
+      false
+        (* Exceptions are raised when `dirname abspath` is not a directory. *)
 
 
 let file_exists (abspath : abs_path) : bool =
