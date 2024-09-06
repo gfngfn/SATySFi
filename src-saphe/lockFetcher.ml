@@ -119,38 +119,46 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~(unz
         let* () =
           external_resources |> foldM (fun () (name, external_resource) ->
             match external_resource with
-            | ExternalZip{ url; checksum; extractions } ->
+            | ExternalZip{ url; checksum = checksum_expected; extractions } ->
+                let absdir_external =
+                  append_to_abs_directory
+                    (Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value)
+                    lock_tarball_name
+                in
 
                 (* Creates a directory for putting zips: *)
-                let absdir_external =
-                  append_to_abs_directory absdir_lock_tarball_cache lock_tarball_name
-                in
-                ShellCommand.mkdir_p absdir_external;
+                ShellCommand.mkdir_p (append_to_abs_directory absdir_external "archives");
 
                 (* Fetches the zip file: *)
                 let abspath_zip =
-                  append_to_abs_directory absdir_external (Printf.sprintf "%s.zip" name)
+                  append_to_abs_directory absdir_external (Printf.sprintf "archives/%s.zip" name)
                 in
                 let* () = fetch_external_zip ~wget_command ~url ~output:abspath_zip in
 
                 (* Checks the fetched file by using checksum: *)
                 let* () =
                   let checksum_got = Digest.to_hex (Digest.file (get_abs_path_string abspath_zip)) in
-                  if checksum_got = checksum then
+                  if String.equal checksum_got checksum_expected then
                     return ()
                   else
                     err @@ ExternalZipChecksumMismatch{
                       url;
                       path     = abspath_zip;
-                      expected = checksum;
+                      expected = checksum_expected;
                       got      = checksum_got;
                     }
                 in
 
+                (* Creates a directory for putting extracted files: *)
+                let absdir_extraction =
+                  append_to_abs_directory absdir_external (Printf.sprintf "extractions/%s" name)
+                in
+                ShellCommand.mkdir_p absdir_extraction;
+
                 (* Extracts the zip file: *)
                 let* () =
                   extract_external_zip
-                    ~unzip_command ~zip:abspath_zip ~output_container_dir:absdir_external
+                    ~unzip_command ~zip:abspath_zip ~output_container_dir:absdir_extraction
                 in
 
                 (* Copies files: *)
@@ -158,7 +166,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~(unz
                   extractions |> foldM (fun () extraction ->
                     let { extracted_from; extracted_to } = extraction in
                     let abspath_from =
-                      append_to_abs_directory absdir_external extracted_from
+                      append_to_abs_directory absdir_extraction extracted_from
                     in
                     let abspath_to =
                       append_to_abs_directory absdir_lock extracted_to

@@ -45,6 +45,10 @@ let lock_tarball_cache_directory ~store_root:(absdir_store_root : abs_path) (reg
   append_to_abs_directory absdir_store_root (Printf.sprintf "cache/locks/%s" registry_hash_value)
 
 
+let external_resource_cache_directory ~store_root:(absdir_store_root : abs_path) (registry_hash_value : registry_hash_value) : abs_path =
+  append_to_abs_directory absdir_store_root (Printf.sprintf "cache/external_resources/%s" registry_hash_value)
+
+
 let store_root_config_path ~store_root:(absdir_store_root : abs_path) : abs_path =
   append_to_abs_directory absdir_store_root "saphe-store-root.yaml"
 
