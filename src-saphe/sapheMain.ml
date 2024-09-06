@@ -1430,20 +1430,23 @@ let cache_list () =
 
       | Ok(dirs) ->
           dirs |> List.sort String.compare |> List.iter (fun dir ->
-            let res =
-              readdir
-                (append_to_abs_directory
-                  (append_to_abs_directory absdir_external_resource_cache dir)
-                  "archives")
+            let abspath =
+              append_to_abs_directory
+                (append_to_abs_directory absdir_external_resource_cache dir)
+                "archives"
             in
-            match res with
-            | Error(_) ->
-                ()
+            if is_directory abspath then
+              let res = readdir abspath in
+              match res with
+              | Error(_) ->
+                  ()
 
-            | Ok(archive_filenames) ->
-                archive_filenames |> List.sort String.compare |> List.iter (fun filename ->
-                  Printf.printf "  - %s\n" filename
-                )
+              | Ok(archive_filenames) ->
+                  archive_filenames |> List.sort String.compare |> List.iter (fun archive_filename ->
+                    Printf.printf "  - %s\n" archive_filename
+                  )
+            else
+              () (* TODO (warning): warn the existence of (non-directory) files *)
           )
     ) registries ();
 
