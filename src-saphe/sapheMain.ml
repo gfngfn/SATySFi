@@ -1401,42 +1401,51 @@ let cache_list () =
     let StoreRootConfig.{ registries } = store_root_config in
 
     print_endline "Fetched package locks:";
-    let* () =
-      RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) res ->
-        let* () = res in
-        Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
-        let absdir_lock_tarball_cache =
-          Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
-        in
-        let* filenames =
-          readdir absdir_lock_tarball_cache
-            |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_lock_tarball_cache; message })
-        in
-        filenames |> List.sort String.compare |> List.iter (fun filename ->
-          Printf.printf "  - %s\n" filename
-        );
-        return ()
-      ) registries (return ())
-    in
+    RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) () ->
+      Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
+      let absdir_lock_tarball_cache =
+        Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
+      in
+      let res = readdir absdir_lock_tarball_cache in
+      match res with
+      | Error(_) ->
+          ()
+
+      | Ok(tarball_filenames) ->
+          tarball_filenames |> List.sort String.compare |> List.iter (fun tarball_filename ->
+            Printf.printf "  - %s\n" tarball_filename
+          )
+    ) registries ();
 
     print_endline "External resource archives:";
-    let* () =
-      RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) res ->
-        let* () = res in
-        Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
-        let absdir_external_resource_cache =
-          Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value
-        in
-        let* archive_filenames =
-          readdir (append_to_abs_directory absdir_external_resource_cache "archives")
-            |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_external_resource_cache; message })
-        in
-        archive_filenames |> List.sort String.compare |> List.iter (fun filename ->
-          Printf.printf "  - %s\n" filename
-        );
-        return ()
-      ) registries (return ())
-    in
+    RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) () ->
+      Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
+      let absdir_external_resource_cache =
+        Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value
+      in
+      let res = readdir absdir_external_resource_cache in
+      match res with
+      | Error(_) ->
+          ()
+
+      | Ok(dirs) ->
+          dirs |> List.sort String.compare |> List.iter (fun dir ->
+            let res =
+              readdir
+                (append_to_abs_directory
+                  (append_to_abs_directory absdir_external_resource_cache dir)
+                  "archives")
+            in
+            match res with
+            | Error(_) ->
+                ()
+
+            | Ok(archive_filenames) ->
+                archive_filenames |> List.sort String.compare |> List.iter (fun filename ->
+                  Printf.printf "  - %s\n" filename
+                )
+          )
+    ) registries ();
 
     return ()
   in
