@@ -1399,21 +1399,46 @@ let cache_list () =
     end;
 
     let StoreRootConfig.{ registries } = store_root_config in
-    RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) res ->
-      let* () = res in
-      Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
-      let absdir_lock_tarball_cache =
-        Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
-      in
-      let* filenames =
-        readdir absdir_lock_tarball_cache
-          |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_lock_tarball_cache; message })
-      in
-      filenames |> List.sort String.compare |> List.iter (fun filename ->
-        Printf.printf "  - %s\n" filename
-      );
-      return ()
-    ) registries (return ())
+
+    print_endline "Fetched package locks:";
+    let* () =
+      RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) res ->
+        let* () = res in
+        Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
+        let absdir_lock_tarball_cache =
+          Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
+        in
+        let* filenames =
+          readdir absdir_lock_tarball_cache
+            |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_lock_tarball_cache; message })
+        in
+        filenames |> List.sort String.compare |> List.iter (fun filename ->
+          Printf.printf "  - %s\n" filename
+        );
+        return ()
+      ) registries (return ())
+    in
+
+    print_endline "External resource archives:";
+    let* () =
+      RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) res ->
+        let* () = res in
+        Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
+        let absdir_external_resource_cache =
+          Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value
+        in
+        let* archive_filenames =
+          readdir (append_to_abs_directory absdir_external_resource_cache "archives")
+            |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_external_resource_cache; message })
+        in
+        archive_filenames |> List.sort String.compare |> List.iter (fun filename ->
+          Printf.printf "  - %s\n" filename
+        );
+        return ()
+      ) registries (return ())
+    in
+
+    return ()
   in
   match res with
   | Ok(())   -> ()
