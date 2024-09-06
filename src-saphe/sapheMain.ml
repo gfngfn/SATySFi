@@ -1386,6 +1386,12 @@ let test
   | Error(e)        -> report_config_error e; exit 1
 
 
+let continue_if_ok res f =
+  match res with
+  | Ok(v)    -> f v
+  | Error(_) -> ()
+
+
 let cache_list () =
   let res =
     let open ResultMonad in
@@ -1407,14 +1413,11 @@ let cache_list () =
         Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
       in
       let res = readdir absdir_lock_tarball_cache in
-      match res with
-      | Error(_) ->
-          ()
-
-      | Ok(tarball_filenames) ->
-          tarball_filenames |> List.sort String.compare |> List.iter (fun tarball_filename ->
-            Printf.printf "  - %s\n" tarball_filename
-          )
+      continue_if_ok res (fun tarball_filenames ->
+        tarball_filenames |> List.sort String.compare |> List.iter (fun tarball_filename ->
+          Printf.printf "  - %s\n" tarball_filename
+        )
+      )
     ) registries ();
 
     print_endline "External resource archives:";
@@ -1424,30 +1427,51 @@ let cache_list () =
         Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value
       in
       let res = readdir absdir_external_resource_cache in
-      match res with
-      | Error(_) ->
-          ()
+      continue_if_ok res (fun dirs ->
+        dirs |> List.sort String.compare |> List.iter (fun dir ->
+          let abspath =
+            append_to_abs_directory
+              (append_to_abs_directory absdir_external_resource_cache dir)
+              "archives"
+          in
+          if is_directory abspath then
+            let res = readdir abspath in
+            continue_if_ok res (fun archive_filenames ->
+              archive_filenames |> List.sort String.compare |> List.iter (fun archive_filename ->
+                Printf.printf "  - %s\n" archive_filename
+              )
+            )
+          else
+            () (* TODO (warning): warn the existence of (non-directory) files *)
+        )
+      )
+    ) registries ();
 
-      | Ok(dirs) ->
-          dirs |> List.sort String.compare |> List.iter (fun dir ->
-            let abspath =
-              append_to_abs_directory
-                (append_to_abs_directory absdir_external_resource_cache dir)
-                "archives"
-            in
-            if is_directory abspath then
-              let res = readdir abspath in
-              match res with
-              | Error(_) ->
-                  ()
-
-              | Ok(archive_filenames) ->
-                  archive_filenames |> List.sort String.compare |> List.iter (fun archive_filename ->
-                    Printf.printf "  - %s\n" archive_filename
-                  )
-            else
-              () (* TODO (warning): warn the existence of (non-directory) files *)
-          )
+    print_endline "External resource extractions:";
+    RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) () ->
+      Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
+      let absdir_external_resource_cache =
+        Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value
+      in
+      let res = readdir absdir_external_resource_cache in
+      continue_if_ok res (fun dirs ->
+        dirs |> List.sort String.compare |> List.iter (fun dir ->
+          let abspath =
+            append_to_abs_directory
+              (append_to_abs_directory absdir_external_resource_cache dir)
+              "extractions"
+          in
+          if is_directory abspath then
+            let res = readdir abspath in
+            continue_if_ok res (fun extraction_dirs ->
+              extraction_dirs |> List.sort String.compare |> List.iter (fun extraction_dir ->
+                Printf.printf "  - %s\n" extraction_dir
+              )
+            )
+          else
+            () (* TODO (warning): warn the existence of (non-directory) files *)
+        )
+      )
     ) registries ();
 
     return ()
