@@ -1429,18 +1429,18 @@ let cache_list () =
       let res = readdir absdir_external_resource_cache in
       continue_if_ok res (fun dirs ->
         dirs |> List.sort String.compare |> List.iter (fun dir ->
-          let abspath =
-            append_to_abs_directory
-              (append_to_abs_directory absdir_external_resource_cache dir)
-              "archives"
-          in
+          let abspath = append_to_abs_directory absdir_external_resource_cache dir in
+          let abspath_archives = append_to_abs_directory abspath "archives" in
           if is_directory abspath then
-            let res = readdir abspath in
-            continue_if_ok res (fun archive_filenames ->
-              archive_filenames |> List.sort String.compare |> List.iter (fun archive_filename ->
-                Printf.printf "  - %s\n" archive_filename
+            if is_directory abspath_archives then
+              let res = readdir abspath_archives in
+              continue_if_ok res (fun archive_filenames ->
+                archive_filenames |> List.sort String.compare |> List.iter (fun archive_filename ->
+                  Printf.printf "  - %s\n" archive_filename
+                )
               )
-            )
+            else
+              () (* TODO (error): report that `archives` is not a directory *)
           else
             () (* TODO (warning): warn the existence of (non-directory) files *)
         )
@@ -1456,18 +1456,18 @@ let cache_list () =
       let res = readdir absdir_external_resource_cache in
       continue_if_ok res (fun dirs ->
         dirs |> List.sort String.compare |> List.iter (fun dir ->
-          let abspath =
-            append_to_abs_directory
-              (append_to_abs_directory absdir_external_resource_cache dir)
-              "extractions"
-          in
+          let abspath = append_to_abs_directory absdir_external_resource_cache dir in
+          let abspath_extractions = append_to_abs_directory abspath "extractions" in
           if is_directory abspath then
-            let res = readdir abspath in
-            continue_if_ok res (fun extraction_dirs ->
-              extraction_dirs |> List.sort String.compare |> List.iter (fun extraction_dir ->
-                Printf.printf "  - %s\n" extraction_dir
+            if is_directory abspath_extractions then
+              let res = readdir abspath_extractions in
+              continue_if_ok res (fun extraction_dirs ->
+                extraction_dirs |> List.sort String.compare |> List.iter (fun extraction_dir ->
+                  Printf.printf "  - %s\n" extraction_dir
+                )
               )
-            )
+            else
+              () (* TODO (error): report that `extractions` is not a directory *)
           else
             () (* TODO (warning): warn the existence of (non-directory) files *)
         )
