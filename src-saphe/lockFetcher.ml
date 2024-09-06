@@ -123,14 +123,13 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~(unz
 
                 (* Creates a directory for putting zips: *)
                 let absdir_external =
-                  make_abs_path (Filename.concat (get_abs_path_string absdir_lock_tarball_cache) lock_tarball_name)
+                  append_to_abs_directory absdir_lock_tarball_cache lock_tarball_name
                 in
                 ShellCommand.mkdir_p absdir_external;
 
                 (* Fetches the zip file: *)
                 let abspath_zip =
-                  make_abs_path
-                    (Filename.concat (get_abs_path_string absdir_external) (Printf.sprintf "%s.zip" name))
+                  append_to_abs_directory absdir_external (Printf.sprintf "%s.zip" name)
                 in
                 let* () = fetch_external_zip ~wget_command ~url ~output:abspath_zip in
 
@@ -159,12 +158,10 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~(unz
                   extractions |> foldM (fun () extraction ->
                     let { extracted_from; extracted_to } = extraction in
                     let abspath_from =
-                      make_abs_path
-                        (Filename.concat (get_abs_path_string absdir_external) extracted_from)
+                      append_to_abs_directory absdir_external extracted_from
                     in
                     let abspath_to =
-                      make_abs_path
-                        (Filename.concat (get_abs_path_string absdir_lock) extracted_to)
+                      append_to_abs_directory absdir_lock extracted_to
                     in
                     let ShellCommand.{ exit_status; command } =
                       ShellCommand.cp ~from:abspath_from ~to_:abspath_to
