@@ -1435,14 +1435,20 @@ let cache_list () =
             if is_directory abspath_archives then
               let res = readdir abspath_archives in
               continue_if_ok res (fun archive_filenames ->
-                archive_filenames |> List.sort String.compare |> List.iter (fun archive_filename ->
-                  Printf.printf "  - %s\n" archive_filename
-                )
+                match archive_filenames with
+                | [] ->
+                    ()
+
+                | _ :: _ ->
+                    Printf.printf "  - %s\n" dir;
+                    archive_filenames |> List.sort String.compare |> List.iter (fun archive_filename ->
+                      Printf.printf "    - %s\n" archive_filename
+                    )
               )
             else
               () (* TODO (error): report that `archives` is not a directory *)
           else
-            () (* TODO (warning): warn the existence of (non-directory) files *)
+            () (* TODO (warning): warn the existence of (non-directory) files, if any *)
         )
       )
     ) registries ();
@@ -1462,14 +1468,20 @@ let cache_list () =
             if is_directory abspath_extractions then
               let res = readdir abspath_extractions in
               continue_if_ok res (fun extraction_dirs ->
-                extraction_dirs |> List.sort String.compare |> List.iter (fun extraction_dir ->
-                  Printf.printf "  - %s\n" extraction_dir
-                )
+                match extraction_dirs with
+                | [] ->
+                    ()
+
+                | _ :: _ ->
+                    Printf.printf "  - %s\n" dir;
+                    extraction_dirs |> List.sort String.compare |> List.iter (fun extraction_dir ->
+                      Printf.printf "    - %s\n" extraction_dir
+                    )
               )
             else
               () (* TODO (error): report that `extractions` is not a directory *)
           else
-            () (* TODO (warning): warn the existence of (non-directory) files *)
+            () (* TODO (warning): warn the existence of (non-directory) files, if any *)
         )
       )
     ) registries ();
