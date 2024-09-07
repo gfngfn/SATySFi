@@ -164,8 +164,7 @@ let build_package
   let open ResultMonad in
   let display_config = Logging.{ show_full_path } in
   error_log_environment display_config (fun () ->
-    let absdir_current = Sys.getcwd () in
-
+    let absdir_current = AbsPathIo.getcwd () in
     let abspath_envelope_config = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let output_mode = make_output_mode text_mode_formats_str_opt in
@@ -237,8 +236,7 @@ let build_document
 let open ResultMonad in
   let display_config = Logging.{ show_full_path } in
   error_log_environment display_config (fun () ->
-    let absdir_current = Sys.getcwd () in
-
+    let absdir_current = AbsPathIo.getcwd () in
     let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_out = make_absolute_if_relative ~origin:absdir_current fpath_out in
     let abspath_dump = make_absolute_if_relative ~origin:absdir_current fpath_dump in
@@ -334,8 +332,7 @@ let test_package
   let open ResultMonad in
   let display_config = Logging.{ show_full_path } in
   error_log_environment display_config (fun () ->
-    let absdir_current = Sys.getcwd () in
-
+    let absdir_current = AbsPathIo.getcwd () in
     let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let output_mode = make_output_mode text_mode_formats_str_opt in

@@ -1,4 +1,8 @@
 
+let getcwd () =
+  AbsPath.of_string_exn (Sys.getcwd ())
+
+
 let open_in (abspath : AbsPath.t) (k : in_channel -> 'a) : 'a =
   let inc = Stdlib.open_in (AbsPath.to_string abspath) in
   let ret = k inc in

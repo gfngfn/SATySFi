@@ -37,29 +37,13 @@ type abs_path = AbsPath.t
 [@@deriving show { with_path = false }]
 
 
-let make_abs_path pathstr =
-  AbsPath.of_string_exn pathstr
-
-
-let get_abs_path_string =
-  AbsPath.to_string
-
-
-let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
-  let abspath_str = if Filename.is_relative s then Filename.concat origin s else s in
-  make_abs_path abspath_str
-
-
-let append_to_abs_directory (absdir : abs_path) (filename : string) : abs_path =
-  make_abs_path (Filename.concat (get_abs_path_string absdir) filename)
-
-
-let dirname (abspath : abs_path) : abs_path =
-  make_abs_path (Filename.dirname (get_abs_path_string abspath))
-
-
-let basename (abspath : abs_path) : string =
-  Filename.basename (get_abs_path_string abspath)
+(* TODO: remove the following *)
+let make_abs_path pathstr = AbsPath.of_string_exn pathstr
+let get_abs_path_string = AbsPath.to_string
+let append_to_abs_directory = AbsPath.append_to_directory
+let dirname = AbsPath.dirname
+let basename = AbsPath.basename
+let make_absolute_if_relative = AbsPath.make_absolute_if_relative
 
 
 let encode_yaml (yaml : Yaml.value) : string =

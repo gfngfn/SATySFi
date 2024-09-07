@@ -196,8 +196,8 @@ let init_document ~(fpath_in : string) =
     let open ResultMonad in
 
     (* Constructs the input: *)
-    let dir_current = Sys.getcwd () in
-    let abspath_doc = make_absolute_if_relative ~origin:dir_current fpath_in in
+    let absdir_current = AbsPathIo.getcwd () in
+    let abspath_doc = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_package_config = Constant.document_package_config_path ~doc:abspath_doc in
     let absdir = dirname abspath_doc in
 
@@ -230,8 +230,8 @@ let init_library ~(fpath_in : string) =
     let open ResultMonad in
 
     (* Constructs the input: *)
-    let dir_current = Sys.getcwd () in
-    let absdir_package = make_absolute_if_relative ~origin:dir_current fpath_in in
+    let absdir_current = AbsPathIo.getcwd () in
+    let absdir_package = make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
     let abspath_source = append_to_abs_directory absdir_package "src/calc.satyh" in
     let abspath_test = append_to_abs_directory absdir_package "test/calc-test.satyh" in
@@ -254,8 +254,8 @@ let init_library ~(fpath_in : string) =
   | Error(e) -> ErrorReporting.report_config_error e; exit 1
 
 
-let make_solve_input ~(dir_current : string) ~(fpath_in : string) : solve_input =
-  let abspath_in = make_absolute_if_relative ~origin:dir_current fpath_in in
+let make_solve_input ~current_dir:(absdir_current : abs_path) ~(fpath_in : string) : solve_input =
+  let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
   if AbsPathIo.is_directory abspath_in then
   (* If the input is a directory that forms a package: *)
     let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
@@ -283,8 +283,8 @@ let solve ~(fpath_in : string) =
 
     (* Constructs the input: *)
     let solve_input =
-      let dir_current = Sys.getcwd () in
-      make_solve_input ~dir_current:dir_current ~fpath_in
+      let absdir_current = AbsPathIo.getcwd () in
+      make_solve_input ~current_dir:absdir_current ~fpath_in
     in
 
     let* (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes) =
@@ -494,8 +494,8 @@ let update ~(fpath_in : string) =
 
     (* Constructs the input: *)
     let solve_input =
-      let dir_current = Sys.getcwd () in
-      make_solve_input ~dir_current:dir_current ~fpath_in
+      let absdir_current = AbsPathIo.getcwd () in
+      make_solve_input ~current_dir:absdir_current ~fpath_in
     in
 
     let* registry_remotes =
@@ -642,7 +642,7 @@ let build
           bytecomp;
         }
       in
-      let absdir_current = Sys.getcwd () in
+      let absdir_current = AbsPathIo.getcwd () in
       let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
@@ -796,7 +796,7 @@ let test
     let open ResultMonad in
 
     let* test_input =
-      let absdir_current = Sys.getcwd () in
+      let absdir_current = AbsPathIo.getcwd () in
       let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in

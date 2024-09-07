@@ -1,4 +1,6 @@
 
+val getcwd : unit -> AbsPath.t
+
 val open_in : AbsPath.t -> (in_channel -> 'a) -> 'a
 
 val readdir : AbsPath.t -> (string list, string) result
