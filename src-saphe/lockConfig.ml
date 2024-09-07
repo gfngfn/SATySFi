@@ -30,7 +30,7 @@ let lock_contents_decoder ~dir:(absdir_lock_config : abs_path) : Lock.t ConfigDe
   let open ConfigDecoder in
   branch [
     "registered" ==> begin
-      get "registry_hash_value" string >>= fun registry_hash_value -> (* TODO: validation *)
+      get "registry_hash_value" registry_hash_value_decoder >>= fun registry_hash_value ->
       get "package_name" package_name_decoder >>= fun package_name ->
       get "version" version_decoder >>= fun locked_version ->
       let registered_package_id = RegisteredPackageId.{ registry_hash_value; package_name } in
@@ -83,7 +83,7 @@ let lock_dependency_encoder (dep : lock_dependency) : Yaml.value =
 
 let lock_decoder ~(dir : abs_path) : locked_package ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun lock_name ->
+  get "name" string >>= fun lock_name -> (* Allow arbitrary strings, even ones containing slashes. *)
   get_or_else "dependencies" (list lock_dependency_decoder) [] >>= fun lock_dependencies ->
   get_or_else "test_only" bool false >>= fun test_only_lock ->
   lock_contents_decoder ~dir >>= fun lock_contents ->

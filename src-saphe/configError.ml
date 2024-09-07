@@ -25,6 +25,10 @@ type yaml_error =
   | NotASemanticVersion    of YamlDecoder.context * string
   | NotAVersionRequirement of YamlDecoder.context * string
   | InvalidPackageName     of YamlDecoder.context * string
+  | InvalidRegistryHashValue of {
+      context : YamlDecoder.context;
+      got     : registry_hash_value;
+    }
   | DuplicateRegistryHashValue of {
       context             : YamlDecoder.context;
       registry_hash_value : registry_hash_value;

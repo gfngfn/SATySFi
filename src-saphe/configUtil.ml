@@ -23,6 +23,15 @@ let package_name_decoder : package_name ConfigDecoder.t =
     failure (fun yctx -> InvalidPackageName(yctx, package_name))
 
 
+let registry_hash_value_decoder : registry_hash_value ConfigDecoder.t =
+  let open ConfigDecoder in
+  string >>= fun registry_hash_value ->
+  if Core.String.for_all registry_hash_value ~f:Core.Char.is_hex_digit then
+    succeed registry_hash_value
+  else
+    failure (fun context -> InvalidRegistryHashValue{ got = registry_hash_value; context })
+
+
 let version_decoder : SemanticVersion.t ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s_version ->
@@ -98,11 +107,11 @@ let registry_spec_decoder : (registry_local_name * registry_remote) ConfigDecode
 
 let name_decoder : string ConfigDecoder.t =
   let open ConfigDecoder in
-  string >>= fun s ->
-  if s |> Core.String.to_list_rev |> List.exists (Char.equal '/') then
-    failure (fun context -> CannotBeUsedAsAName(context, s))
+  string >>= fun name ->
+  if Core.String.exists name ~f:(Char.equal '/') then
+    failure (fun context -> CannotBeUsedAsAName(context, name))
   else
-    succeed s
+    succeed name
 
 
 let make_registry_hash_value (registry_remote : registry_remote) : (registry_hash_value, config_error) result =
