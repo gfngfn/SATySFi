@@ -163,132 +163,6 @@ type package_init_input =
     }
 
 
-let initial_document_contents = Core.String.lstrip {string|
-use package open StdJaReport
-
-document (|
-  title = {The Title of Your Document},
-  author = {Your Name},
-|) '<
-  +chapter{First Chapter}<
-    +p{
-      Hello, world!
-    }
-  >
->
-|string}
-
-
-let initial_markdown_contents = Core.String.lstrip {string|
-<!-- MDJa -->
-<!-- (|
-  title = {The Title of Your Document},
-  author = {Your Name},
-|) -->
-# First Section
-
-Hello, world!
-|string}
-
-
-let initial_document_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
-saphe: "^%s"
-satysfi: "^0.1.0-alpha.1"
-authors:
-  - "Your Name"
-registries:
-  - name: "default"
-    git:
-      url: "https://github.com/SATySFi/default-registry"
-      branch: "temp-dev-saphe"
-contents:
-  document: {}
-dependencies:
-  - used_as: "StdJaReport"
-    registered:
-      registry: "default"
-      name: "std-ja-report"
-      requirement: "^0.0.1"
-|string} (SemanticVersion.to_string Constant.current_ecosystem_version))
-
-
-let initial_markdown_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
-saphe: "^%s"
-satysfi: "^0.1.0-alpha.1"
-authors:
-  - "Your Name"
-registries:
-  - name: "default"
-    git:
-      url: "https://github.com/SATySFi/default-registry"
-      branch: "temp-dev-saphe"
-contents:
-  document: {}
-dependencies:
-  - used_as: "MDJa"
-    registered:
-      registry: "default"
-      name: "md-ja"
-      requirement: "^0.0.1"
-|string} (SemanticVersion.to_string Constant.current_ecosystem_version))
-
-
-let initial_library_package_config_contents = Core.String.lstrip (Printf.sprintf {string|
-saphe: "^%s"
-satysfi: "^0.1.0-alpha.1"
-name: "your-library"
-authors:
-  - "Your Name"
-registries:
-  - name: "default"
-    git:
-      url: "https://github.com/SATySFi/default-registry"
-      branch: "temp-dev-saphe"
-contents:
-  library:
-    main_module: "Calc"
-    source_directories:
-    - "./src"
-    test_directories:
-    - "./test"
-dependencies:
-  - used_as: "Stdlib"
-    registered:
-      registry: "default"
-      name: "stdlib"
-      requirement: "^0.0.1"
-test_dependencies:
-  - used_as: "Testing"
-    registered:
-      registry: "default"
-      name: "testing"
-      requirement: "^0.0.1"
-|string} (SemanticVersion.to_string Constant.current_ecosystem_version))
-
-
-let initial_library_source_contents = Core.String.lstrip {string|
-module Calc :> sig
-  val succ : int -> int
-end = struct
-  val succ n = n + 1
-end
-|string}
-
-
-let initial_library_test_contents = Core.String.lstrip {string|
-use package open Testing
-use Calc
-
-module CalcTest = struct
-
-  #[test]
-  val succ-test () =
-    assert-equal Equality.int 43 (Calc.succ 42)
-
-end
-|string}
-
-
 let write_package_config (abspath_package_config : abs_path) ~(data : string) =
   let open ResultMonad in
   let* () =
@@ -333,14 +207,14 @@ let init_document ~(fpath_in : string) =
     match Filename.extension (get_abs_path_string abspath_doc) with
     | ".saty" ->
         ShellCommand.mkdir_p absdir;
-        let* () = write_package_config abspath_package_config ~data:initial_document_package_config_contents in
-        let* () = write_initial_file abspath_doc ~data:initial_document_contents in
+        let* () = write_package_config abspath_package_config ~data:InitData.document_package_config_contents in
+        let* () = write_initial_file abspath_doc ~data:InitData.document_contents in
         return ()
 
     | ".md" ->
         ShellCommand.mkdir_p absdir;
-        let* () = write_package_config abspath_package_config ~data:initial_markdown_package_config_contents in
-        let* () = write_initial_file abspath_doc ~data:initial_markdown_contents in
+        let* () = write_package_config abspath_package_config ~data:InitData.markdown_package_config_contents in
+        let* () = write_initial_file abspath_doc ~data:InitData.markdown_contents in
         return ()
 
     | extension ->
@@ -369,9 +243,9 @@ let init_library ~(fpath_in : string) =
     ShellCommand.mkdir_p absdir_package;
     ShellCommand.mkdir_p (append_to_abs_directory absdir_package "src");
     ShellCommand.mkdir_p (append_to_abs_directory absdir_package "test");
-    let* () = write_package_config abspath_package_config ~data:initial_library_package_config_contents in
-    let* () = write_initial_file abspath_source ~data:initial_library_source_contents in
-    let* () = write_initial_file abspath_test ~data:initial_library_test_contents in
+    let* () = write_package_config abspath_package_config ~data:InitData.library_package_config_contents in
+    let* () = write_initial_file abspath_source ~data:InitData.library_source_contents in
+    let* () = write_initial_file abspath_test ~data:InitData.library_test_contents in
 
     return ()
   in

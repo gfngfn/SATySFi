@@ -9,6 +9,12 @@ let current_ecosystem_version =
   | None         -> assert false
 
 
+let satysfi_version_for_init =
+  match SemanticVersion.parse "0.1.0-alpha.1" with
+  | Some(semver) -> semver
+  | None         -> assert false
+
+
 let lock_tarball_name (package_name : package_name) (locked_version : SemanticVersion.t) : lock_name =
   Printf.sprintf "%s.%s" package_name (SemanticVersion.to_string locked_version)
 
@@ -28,7 +34,8 @@ let lock_directory ~(store_root : abs_path) (lock : Lock.t) : abs_path =
   | Lock.Registered(reglock)         -> registered_lock_directory ~store_root reglock
   | Lock.LocalFixed{ absolute_path } -> absolute_path
 
-(* Should be in sync with SATySFi *)
+
+(* Must be in sync with SATySFi *)
 let envelope_config_path ~dir:(absdir_library : abs_path) : abs_path =
   append_to_abs_directory absdir_library "satysfi-envelope.yaml"
 
