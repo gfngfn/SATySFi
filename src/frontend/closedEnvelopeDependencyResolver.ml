@@ -32,12 +32,6 @@ let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(ex
         return (graph, entryacc)
       else
         let abspath_envelope_config = make_abs_path envelope_path in
-(*
-          match envelope_contents with
-          | RegisteredLock{ registry_hash_value; package_name; version = locked_version } ->
-              let libdir = Constant.lock_directory Lock.{ registry_hash_value; package_name; locked_version } in
-              make_abs_path (Filename.concat (get_abs_path_string absdir_lib_root) (get_lib_path_string libdir))
-*)
         let* envelope_with_config =
           EnvelopeReader.main
             display_config

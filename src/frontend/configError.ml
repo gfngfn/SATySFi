@@ -71,7 +71,6 @@ type config_error =
       depended  : envelope_name;
     }
   | CyclicEnvelopeDependency of (envelope_name * untyped_envelope) cycle
-  | LibraryRootConfigNotFoundIn of lib_path * abs_path list
   | LocalFileNotFound of {
       relative   : string;
       candidates : abs_path list;

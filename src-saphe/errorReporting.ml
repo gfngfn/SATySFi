@@ -202,28 +202,10 @@ let report_config_error = function
         NormalLine(Printf.sprintf "lock name conflict: '%s'" lock_name);
       ]
 
-  | LockedPackageNotFound(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      report_error
-        (NormalLine(Printf.sprintf "package '%s' not found. candidates:" (get_lib_path_string libpath)) :: lines)
-
   | DependencyOnUnknownLock{ depending; depended } ->
       report_error [
         NormalLine(Printf.sprintf "unknown depended lock '%s' of '%s'." depended depending);
       ]
-
-  | CannotFindLibraryFile(libpath, candidate_paths) ->
-      let lines =
-        candidate_paths |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      report_error
-        (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
 
   | CannotSolvePackageConstraints ->
       report_error [

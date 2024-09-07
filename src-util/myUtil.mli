@@ -4,8 +4,6 @@ exception RemainsToBeImplemented of string
 type abs_path = AbsPath.t
 [@@deriving show]
 
-type lib_path
-
 val remains_to_be_implemented : string -> 'a
 
 val string_of_uchar_list : Uchar.t list -> string
@@ -22,11 +20,7 @@ val basename_abs : abs_path -> string
 
 val make_abs_path : string -> abs_path
 
-val make_lib_path : string -> lib_path
-
 val get_abs_path_string : abs_path -> string
-
-val get_lib_path_string : lib_path -> string
 
 val make_absolute_if_relative : origin:string -> string -> abs_path
 

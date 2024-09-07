@@ -106,12 +106,10 @@ type config_error =
   | StoreRootConfigNotFound   of abs_path
   | StoreRootConfigError      of abs_path * yaml_error
   | LockNameConflict          of lock_name
-  | LockedPackageNotFound     of lib_path * abs_path list
   | DependencyOnUnknownLock of {
       depending : lock_name;
       depended  : lock_name;
     }
-  | CannotFindLibraryFile     of lib_path * abs_path list
   | CannotSolvePackageConstraints
   | FailedToFetchTarball of {
       lock_name   : lock_name;

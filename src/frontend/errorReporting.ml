@@ -777,17 +777,6 @@ let make_config_error_message (display_config : Logging.config) : config_error -
       make_error_message Interface
         (NormalLine("the following envelopes are cyclic:") :: lines)
 
-  | LibraryRootConfigNotFoundIn(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      make_error_message Interface (List.concat [
-        [ NormalLine(Printf.sprintf "cannot find a library root config '%s'. candidates:" (get_lib_path_string libpath)) ];
-        lines;
-      ])
-
   | LocalFileNotFound{ relative; candidates } ->
       let lines =
         candidates |> List.map (fun abspath ->
@@ -902,14 +891,6 @@ let make_font_error_message (display_config : Logging.config) = function
       [
         NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection." fname index);
       ]
-
-  | CannotFindLibraryFileAsToFont(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
 
   | NoMathTable(abspath) ->
       let fname = Logging.show_path display_config abspath in
