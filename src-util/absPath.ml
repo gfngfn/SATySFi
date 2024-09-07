@@ -1,25 +1,4 @@
 
-(* TODO: separate UTF-8-related functions to one module *)
-let decode_utf8 (str_utf8 : string) : Uchar.t list =
-  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String(str_utf8)) in
-  let rec loop (uchacc : Uchar.t Alist.t) =
-    match Uutf.decode decoder with
-    | `Await        -> assert false
-    | `End          -> Alist.to_list uchacc
-    | `Malformed(_) -> assert false
-    | `Uchar(uch)   -> loop (Alist.extend uchacc uch)
-  in
-  loop Alist.empty
-
-
-let encode_utf8 (uchs : Uchar.t list) : string =
-  let buffer = Buffer.create (List.length uchs * 4) in
-  let encoder = Uutf.encoder `UTF_8 (`Buffer(buffer)) in
-  uchs |> List.iter (fun uch -> Uutf.encode encoder (`Uchar(uch)) |> ignore);
-  Uutf.encode encoder `End |> ignore;
-  Buffer.contents buffer
-
-
 (** the type for components each of which stand for a single directory. *)
 type component = string
 [@@deriving show { with_path = false }]
@@ -34,7 +13,7 @@ type non_normal_component =
 
 
 let make_non_normal_components (uchs : Uchar.t list) : non_normal_component =
-  match encode_utf8 uchs with
+  match UtfUtil.encode_utf8 uchs with
   | "" | "." -> Current
   | ".."     -> Parent
   | s        -> Component(s)
@@ -74,7 +53,7 @@ let normalize (ncompos : non_normal_component list) : (component list) option =
 
 
 let of_string_exn (s : string) : t =
-  let uchs = decode_utf8 s in
+  let uchs = UtfUtil.decode_utf8 s in
   match uchs with
   | [] ->
       assert false

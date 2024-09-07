@@ -14,8 +14,6 @@ val list_fold_adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b 
 
 val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
-val basename_abs : abs_path -> string
-
 val make_abs_path : string -> abs_path
 
 val get_abs_path_string : abs_path -> string

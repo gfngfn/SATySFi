@@ -6,10 +6,9 @@ let remains_to_be_implemented msg =
   raise (RemainsToBeImplemented(msg))
 
 
-let string_of_uchar_list (uchs : Uchar.t list) : string =
-  let buffer = Buffer.create ((List.length uchs) * 4) in
-  List.iter (fun u -> Uutf.Buffer.add_utf_8 buffer u) uchs;
-  Buffer.contents buffer
+(* TODO: remove this *)
+let string_of_uchar_list =
+  UtfUtil.encode_utf8
 
 
 let rec range i j =
@@ -43,10 +42,6 @@ let ( @|> ) = ( |> )
 
 type abs_path = AbsPath.t
 [@@deriving show { with_path = false }]
-
-
-let basename_abs (abspath : abs_path) =
-  Filename.basename (AbsPath.to_string abspath)
 
 
 let make_abs_path pathstr =
