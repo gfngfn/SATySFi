@@ -45,10 +45,6 @@ type abs_path = AbsPath.t
 [@@deriving show { with_path = false }]
 
 
-let open_in_abs (abspath : abs_path) =
-  Stdlib.open_in (AbsPath.to_string abspath)
-
-
 let basename_abs (abspath : abs_path) =
   Filename.basename (AbsPath.to_string abspath)
 
@@ -78,45 +74,13 @@ let basename (abspath : abs_path) : string =
   Filename.basename (get_abs_path_string abspath)
 
 
-let readdir (absdir : abs_path) : (string list, string) result =
-  let open ResultMonad in
-  try
-    return (Sys.readdir (get_abs_path_string absdir) |> Array.to_list)
-  with
-  | Sys_error(s) ->
-      err s
-
-
-let read_file (abspath : abs_path) : (string, string) result =
-  let open ResultMonad in
-  try
-    return @@ Core.In_channel.read_all (get_abs_path_string abspath)
-  with
-  | Sys_error(s) ->
-      err s
-
-
-let write_file (abspath : abs_path) (data : string) : (unit, string) result =
-  let open ResultMonad in
-  try
-    Core.Out_channel.write_all (get_abs_path_string abspath) ~data;
-    return ()
-  with
-  | Sys_error(s) ->
-      err s
-
-
-let is_directory (abspath : abs_path) : bool =
-  try
-    Sys.is_directory (get_abs_path_string abspath)
-  with
-  | Sys_error(_) ->
-      false
-        (* Exceptions are raised when `dirname abspath` is not a directory. *)
-
-
-let file_exists (abspath : abs_path) : bool =
-  Sys.file_exists (get_abs_path_string abspath)
+(* temporary. TODO: remove this *)
+let open_in_abs = AbsPathIo.open_in_abs
+let readdir = AbsPathIo.readdir
+let read_file = AbsPathIo.read_file
+let write_file = AbsPathIo.write_file
+let is_directory = AbsPathIo.is_directory
+let file_exists = AbsPathIo.file_exists
 
 
 let encode_yaml (yaml : Yaml.value) : string =
