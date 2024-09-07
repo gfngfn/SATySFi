@@ -401,6 +401,12 @@ let report_config_error = function
         NormalLine(Printf.sprintf "but the content says '%s'." s_version2);
       ]
 
+  | CannotReadDirectory{ path; message } ->
+      report_error [
+        NormalLine(Printf.sprintf "cannot read directory '%s':" (get_abs_path_string path));
+        DisplayLine(message);
+      ]
+
 
 type solve_input =
   | PackageSolveInput of {
@@ -703,7 +709,7 @@ let write_initial_file (abspath : abs_path) ~(data : string) =
 
 let assert_nonexistence (abspath : abs_path) =
   let open ResultMonad in
-  if Sys.file_exists (get_abs_path_string abspath) then
+  if file_exists abspath then
     err @@ FileAlreadyExists{ path = abspath }
   else
     return ()
@@ -1378,3 +1384,110 @@ let test
   match res with
   | Ok(exit_status) -> exit exit_status
   | Error(e)        -> report_config_error e; exit 1
+
+
+let continue_if_ok res f =
+  match res with
+  | Ok(v)    -> f v
+  | Error(_) -> ()
+
+
+let cache_list () =
+  let res =
+    let open ResultMonad in
+
+    (* Loads the store root config: *)
+    let* absdir_store_root = get_store_root () in
+    let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
+    let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
+    begin
+      if created then Logging.store_root_config_updated ~created:true abspath_store_root_config
+    end;
+
+    let StoreRootConfig.{ registries } = store_root_config in
+
+    print_endline "Fetched package locks:";
+    RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) () ->
+      Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
+      let absdir_lock_tarball_cache =
+        Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
+      in
+      let res = readdir absdir_lock_tarball_cache in
+      continue_if_ok res (fun tarball_filenames ->
+        tarball_filenames |> List.sort String.compare |> List.iter (fun tarball_filename ->
+          Printf.printf "  - %s\n" tarball_filename
+        )
+      )
+    ) registries ();
+
+    print_endline "External resource archives:";
+    RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) () ->
+      Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
+      let absdir_external_resource_cache =
+        Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value
+      in
+      let res = readdir absdir_external_resource_cache in
+      continue_if_ok res (fun dirs ->
+        dirs |> List.sort String.compare |> List.iter (fun dir ->
+          let abspath = append_to_abs_directory absdir_external_resource_cache dir in
+          let abspath_archives = append_to_abs_directory abspath "archives" in
+          if is_directory abspath then
+            if is_directory abspath_archives then
+              let res = readdir abspath_archives in
+              continue_if_ok res (fun archive_filenames ->
+                match archive_filenames with
+                | [] ->
+                    ()
+
+                | _ :: _ ->
+                    Printf.printf "  - %s\n" dir;
+                    archive_filenames |> List.sort String.compare |> List.iter (fun archive_filename ->
+                      Printf.printf "    - %s\n" archive_filename
+                    )
+              )
+            else
+              () (* TODO (error): report that `archives` is not a directory *)
+          else
+            () (* TODO (warning): warn the existence of (non-directory) files, if any *)
+        )
+      )
+    ) registries ();
+
+    print_endline "External resource extractions:";
+    RegistryHashValueMap.fold (fun registry_hash_value (GitRegistry { url; branch }) () ->
+      Printf.printf "- %s (Git URL: %s, branch: %s)\n" registry_hash_value url branch;
+      let absdir_external_resource_cache =
+        Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value
+      in
+      let res = readdir absdir_external_resource_cache in
+      continue_if_ok res (fun dirs ->
+        dirs |> List.sort String.compare |> List.iter (fun dir ->
+          let abspath = append_to_abs_directory absdir_external_resource_cache dir in
+          let abspath_extractions = append_to_abs_directory abspath "extractions" in
+          if is_directory abspath then
+            if is_directory abspath_extractions then
+              let res = readdir abspath_extractions in
+              continue_if_ok res (fun extraction_dirs ->
+                match extraction_dirs with
+                | [] ->
+                    ()
+
+                | _ :: _ ->
+                    Printf.printf "  - %s\n" dir;
+                    extraction_dirs |> List.sort String.compare |> List.iter (fun extraction_dir ->
+                      Printf.printf "    - %s\n" extraction_dir
+                    )
+              )
+            else
+              () (* TODO (error): report that `extractions` is not a directory *)
+          else
+            () (* TODO (warning): warn the existence of (non-directory) files, if any *)
+        )
+      )
+    ) registries ();
+
+    return ()
+  in
+  match res with
+  | Ok(())   -> ()
+  | Error(e) -> report_config_error e; exit 1

@@ -862,6 +862,12 @@ let make_config_error_message (display_config : Logging.config) : config_error -
             ]
       end
 
+  | CannotReadDirectory{ path; message } ->
+      make_error_message Interface [
+        NormalLine(Printf.sprintf "cannot read directory '%s':" (get_abs_path_string path));
+        DisplayLine(message);
+      ]
+
 
 let make_font_error_message (display_config : Logging.config) = function
   | FailedToReadFont(abspath, msg) ->

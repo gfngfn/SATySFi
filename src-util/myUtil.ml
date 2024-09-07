@@ -81,6 +81,15 @@ let basename (abspath : abs_path) : string =
   Filename.basename (get_abs_path_string abspath)
 
 
+let readdir (absdir : abs_path) : (string list, string) result =
+  let open ResultMonad in
+  try
+    return (Sys.readdir (get_abs_path_string absdir) |> Array.to_list)
+  with
+  | Sys_error(s) ->
+      err s
+
+
 let read_file (abspath : abs_path) : (string, string) result =
   let open ResultMonad in
   try
@@ -101,7 +110,16 @@ let write_file (abspath : abs_path) (data : string) : (unit, string) result =
 
 
 let is_directory (abspath : abs_path) : bool =
-  Sys.is_directory (get_abs_path_string abspath)
+  try
+    Sys.is_directory (get_abs_path_string abspath)
+  with
+  | Sys_error(_) ->
+      false
+        (* Exceptions are raised when `dirname abspath` is not a directory. *)
+
+
+let file_exists (abspath : abs_path) : bool =
+  Sys.file_exists (get_abs_path_string abspath)
 
 
 let encode_yaml (yaml : Yaml.value) : string =

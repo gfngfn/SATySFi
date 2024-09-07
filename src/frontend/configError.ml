@@ -86,3 +86,7 @@ type config_error =
   | MarkdownClassNotFound
   | NoMarkdownConversion
   | MarkdownError             of MarkdownParser.error
+  | CannotReadDirectory of {
+      path    : abs_path;
+      message : string;
+    }

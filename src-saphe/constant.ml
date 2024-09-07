@@ -38,17 +38,19 @@ let registered_lock_envelope_config ~(store_root : abs_path) (reglock : Register
 
 
 let registry_root_directory_path ~store_root:(absdir_store_root : abs_path) (registry_hash_value : registry_hash_value) : abs_path =
-  make_abs_path (Filename.concat
-    (get_abs_path_string absdir_store_root)
-    (Printf.sprintf "registries/%s" registry_hash_value))
+  append_to_abs_directory absdir_store_root (Printf.sprintf "registries/%s" registry_hash_value)
 
 
 let lock_tarball_cache_directory ~store_root:(absdir_store_root : abs_path) (registry_hash_value : registry_hash_value) : abs_path =
   append_to_abs_directory absdir_store_root (Printf.sprintf "cache/locks/%s" registry_hash_value)
 
 
+let external_resource_cache_directory ~store_root:(absdir_store_root : abs_path) (registry_hash_value : registry_hash_value) : abs_path =
+  append_to_abs_directory absdir_store_root (Printf.sprintf "cache/external_resources/%s" registry_hash_value)
+
+
 let store_root_config_path ~store_root:(absdir_store_root : abs_path) : abs_path =
-  make_abs_path (Filename.concat (get_abs_path_string absdir_store_root) "saphe-store-root.yaml")
+  append_to_abs_directory absdir_store_root "saphe-store-root.yaml"
 
 
 let package_registry_config_path ~registry_dir:(absdir_registry_repo : abs_path) : abs_path =
@@ -64,7 +66,7 @@ let release_config_extension =
 
 
 let library_package_config_path ~dir:(absdir_library : abs_path) : abs_path =
-  make_abs_path (Filename.concat (get_abs_path_string absdir_library) "saphe.yaml")
+  append_to_abs_directory absdir_library "saphe.yaml"
 
 
 let document_package_config_path ~doc:(abspath_doc : abs_path) : abs_path =
@@ -73,11 +75,11 @@ let document_package_config_path ~doc:(abspath_doc : abs_path) : abs_path =
 
 
 let library_lock_config_path ~dir:(absdir_library : abs_path) : abs_path =
-  make_abs_path (Filename.concat (get_abs_path_string absdir_library) "saphe.lock.yaml")
+  append_to_abs_directory absdir_library "saphe.lock.yaml"
 
 
 let library_deps_config_path ~dir:(absdir_library : abs_path) : abs_path =
-  make_abs_path (Filename.concat (get_abs_path_string absdir_library) "satysfi-deps.yaml")
+  append_to_abs_directory absdir_library "satysfi-deps.yaml"
 
 
 let document_lock_config_path ~doc:(abspath_doc : abs_path) : abs_path =
