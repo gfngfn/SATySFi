@@ -17,7 +17,7 @@ let listup_sources_in_directory (extensions : string list) (absdir_src : abs_pat
   let abspaths =
     filenames |> List.filter_map (fun filename ->
       if extensions |> List.exists (fun suffix -> Core.String.is_suffix filename ~suffix) then
-        Some(make_abs_path (Filename.concat (get_abs_path_string absdir_src) filename))
+        Some(append_to_abs_directory absdir_src filename)
       else
         None
     )
@@ -28,9 +28,7 @@ let listup_sources_in_directory (extensions : string list) (absdir_src : abs_pat
 let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) ~envelope_config:(abspath_envelope_config : abs_path) : (EnvelopeConfig.t * untyped_envelope) ok =
   let open ResultMonad in
   let* config = EnvelopeConfig.load abspath_envelope_config in
-  let absdir_envelope =
-    make_abs_path (Filename.dirname (get_abs_path_string abspath_envelope_config))
-  in
+  let absdir_envelope = dirname abspath_envelope_config in
   let* envelope =
     match config.envelope_contents with
     | Library{ main_module_name; source_directories; test_directories; _ } ->
