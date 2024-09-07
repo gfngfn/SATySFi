@@ -6,11 +6,14 @@ open PackageSystemBase
 
 let listup_package_directories (absdir_package_store : abs_path) : ((package_name * abs_path) list, config_error) result =
   let open ResultMonad in
-  let filenames = Sys.readdir (get_abs_path_string absdir_package_store) |> Array.to_list in
+  let* filenames =
+    readdir absdir_package_store
+      |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_package_store; message })
+  in
   let* acc =
     filenames |> foldM (fun acc filename ->
       let abspath = append_to_abs_directory absdir_package_store filename in
-      if (try Sys.is_directory (get_abs_path_string abspath) with _ -> false) then
+      if is_directory abspath then
         let absdir = abspath in
         let package_name = filename in (* TODO: check that `filename` is a lowercased identifier *)
         return @@ Alist.extend acc (package_name, absdir)
@@ -22,8 +25,12 @@ let listup_package_directories (absdir_package_store : abs_path) : ((package_nam
   return @@ Alist.to_list acc
 
 
-let listup_release_configs (package_name : package_name) (absdir_single_package : abs_path) : (SemanticVersion.t * abs_path) list =
-  let filenames = Sys.readdir (get_abs_path_string absdir_single_package) |> Array.to_list in
+let listup_release_configs (package_name : package_name) (absdir_single_package : abs_path) : ((SemanticVersion.t * abs_path) list, config_error) result =
+  let open ResultMonad in
+  let* filenames =
+    readdir absdir_single_package
+      |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_single_package; message })
+  in
   let acc =
     filenames |> List.fold_left (fun acc filename ->
       match Core.String.chop_suffix filename ~suffix:Constant.release_config_extension with
@@ -52,7 +59,7 @@ let listup_release_configs (package_name : package_name) (absdir_single_package 
           end
     ) Alist.empty
   in
-  Alist.to_list acc
+  return @@ Alist.to_list acc
 
 
 let main (absdir_registry_repo : abs_path) : ((package_name * (registry_remote list * implementation_record) list) list, config_error) result =
@@ -67,7 +74,7 @@ let main (absdir_registry_repo : abs_path) : ((package_name * (registry_remote l
   let* acc =
     package_dirs |> foldM (fun acc (package_name, absdir_single_package) ->
       (* Lists up all paths to the release configs: *)
-      let config_paths = listup_release_configs package_name absdir_single_package in
+      let* config_paths = listup_release_configs package_name absdir_single_package in
 
       (* Reads all the release configs: *)
       let* implacc =
