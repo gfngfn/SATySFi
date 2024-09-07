@@ -192,9 +192,9 @@ let init_document ~(fpath_in : string) =
 
     (* Constructs the input: *)
     let absdir_current = AbsPathIo.getcwd () in
-    let abspath_doc = make_absolute_if_relative ~origin:absdir_current fpath_in in
+    let abspath_doc = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_package_config = Constant.document_package_config_path ~doc:abspath_doc in
-    let absdir = dirname abspath_doc in
+    let absdir = AbsPath.dirname abspath_doc in
 
     let* () = assert_nonexistence abspath_doc in
     let* () = assert_nonexistence abspath_package_config in
@@ -226,7 +226,7 @@ let init_library ~(fpath_in : string) =
 
     (* Constructs the input: *)
     let absdir_current = AbsPathIo.getcwd () in
-    let absdir_package = make_absolute_if_relative ~origin:absdir_current fpath_in in
+    let absdir_package = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
     let abspath_source = AbsPath.append_to_directory absdir_package "src/calc.satyh" in
     let abspath_test = AbsPath.append_to_directory absdir_package "test/calc-test.satyh" in
@@ -250,7 +250,7 @@ let init_library ~(fpath_in : string) =
 
 
 let make_solve_input ~current_dir:(absdir_current : abs_path) ~(fpath_in : string) : solve_input =
-  let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+  let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
   if AbsPathIo.is_directory abspath_in then
   (* If the input is a directory that forms a package: *)
     let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
@@ -460,7 +460,7 @@ let solve ~(fpath_in : string) =
 
           let (lock_config, impl_specs) =
             convert_solutions_to_lock_config
-              ~seen_from:(dirname abspath_lock_config)
+              ~seen_from:(AbsPath.dirname abspath_lock_config)
               solutions
           in
 
@@ -638,7 +638,7 @@ let build
         }
       in
       let absdir_current = AbsPathIo.getcwd () in
-      let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+      let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
         let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
@@ -651,7 +651,7 @@ let build
           options;
         }
       else
-        let absdir_doc_root = MyUtil.dirname abspath_in in
+        let absdir_doc_root = AbsPath.dirname abspath_in in
         let abspath_package_config = Constant.document_package_config_path ~doc:abspath_in in
         let abspath_lock_config = Constant.document_lock_config_path ~doc:abspath_in in
         let abspath_out =
@@ -660,7 +660,7 @@ let build
               Constant.default_output_path ~doc:abspath_in
 
           | Some(fpath_out) ->
-              make_absolute_if_relative ~origin:absdir_current fpath_out
+              AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_out
         in
         DocumentBuildInput{
           root    = absdir_doc_root;
@@ -742,7 +742,7 @@ let build
           in
           AbsPath.append_to_directory absdir_doc_root intermediate_directory
         in
-        let doc_basename = MyUtil.basename abspath_doc in
+        let doc_basename = AbsPath.basename abspath_doc in
         let abspath_deps_config =
           Constant.document_deps_config_path ~dir:absdir_intermediate ~doc_basename
         in
@@ -792,7 +792,7 @@ let test
 
     let* test_input =
       let absdir_current = AbsPathIo.getcwd () in
-      let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
+      let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
         let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in

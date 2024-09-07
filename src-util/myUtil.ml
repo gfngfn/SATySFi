@@ -39,9 +39,6 @@ type abs_path = AbsPath.t
 
 (* TODO: remove the following *)
 let get_abs_path_string = AbsPath.to_string
-let dirname = AbsPath.dirname
-let basename = AbsPath.basename
-let make_absolute_if_relative = AbsPath.make_absolute_if_relative
 
 
 let encode_yaml (yaml : Yaml.value) : string =

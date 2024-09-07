@@ -64,7 +64,7 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
       return graph
 
   | None ->
-      let absdir_current = dirname abspath in
+      let absdir_current = AbsPath.dirname abspath in
       let* utlib =
         Logging.begin_to_parse_file display_config abspath;
         let* utsrc = ParserInterface.process_file abspath |> Result.map_error (fun rng -> FailedToParse(rng)) in
@@ -97,7 +97,7 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
 let register_document_file (display_config : Logging.config) (extensions : string list) (abspath_in : abs_path) : (graph * untyped_document_file) ok =
   let open ResultMonad in
   Logging.begin_to_parse_file display_config abspath_in;
-  let absdir_doc = dirname abspath_in in
+  let absdir_doc = AbsPath.dirname abspath_in in
   let* utsrc =
     ParserInterface.process_file abspath_in
       |> Result.map_error (fun rng -> FailedToParse(rng))

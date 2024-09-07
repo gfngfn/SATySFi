@@ -133,12 +133,12 @@ let load (abspath_lock_config : abs_path) : t ok =
     AbsPathIo.read_file abspath_lock_config
       |> Result.map_error (fun _ -> LockConfigNotFound(abspath_lock_config))
   in
-  ConfigDecoder.run (lock_config_decoder  ~dir:(dirname abspath_lock_config)) s
+  ConfigDecoder.run (lock_config_decoder  ~dir:(AbsPath.dirname abspath_lock_config)) s
     |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))
 
 
 let write (abspath_lock_config : abs_path) (lock_config : t) : (unit, config_error) result =
-  let yaml = lock_config_encoder ~dir:(dirname abspath_lock_config) lock_config in
+  let yaml = lock_config_encoder ~dir:(AbsPath.dirname abspath_lock_config) lock_config in
   let data = encode_yaml yaml in
   AbsPathIo.write_file abspath_lock_config data
     |> Result.map_error (fun message ->

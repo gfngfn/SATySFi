@@ -122,7 +122,7 @@ let fetch_external_zip_if_nonexistent ~(wget_command : string) (abspath_zip : ab
     return ()
   else begin
     (* Creates a directory for putting zips: *)
-    ShellCommand.mkdir_p (dirname abspath_zip);
+    ShellCommand.mkdir_p (AbsPath.dirname abspath_zip);
 
     (* Fetches the zip file: *)
     let* () = fetch_external_zip ~wget_command ~url ~output:abspath_zip in

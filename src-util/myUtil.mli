@@ -12,9 +12,6 @@ val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
 (* TODO: remove the following (due to migration to `AbsPath`): *)
 val get_abs_path_string : abs_path -> string
-val make_absolute_if_relative : origin:abs_path -> string -> abs_path
-val dirname : abs_path -> abs_path
-val basename : abs_path -> string
 
 val encode_yaml : Yaml.value -> string
 

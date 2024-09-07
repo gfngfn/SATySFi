@@ -28,7 +28,7 @@ let listup_sources_in_directory (extensions : string list) (absdir_src : abs_pat
 let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) ~envelope_config:(abspath_envelope_config : abs_path) : (EnvelopeConfig.t * untyped_envelope) ok =
   let open ResultMonad in
   let* config = EnvelopeConfig.load abspath_envelope_config in
-  let absdir_envelope = dirname abspath_envelope_config in
+  let absdir_envelope = AbsPath.dirname abspath_envelope_config in
   let* envelope =
     match config.envelope_contents with
     | Library{ main_module_name; source_directories; test_directories; _ } ->

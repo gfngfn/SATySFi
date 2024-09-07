@@ -274,4 +274,4 @@ let load (abspath_config : abs_path) : t ok =
     parse s
       |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))
   in
-  validate ~dir:(dirname abspath_config) internal
+  validate ~dir:(AbsPath.dirname abspath_config) internal
