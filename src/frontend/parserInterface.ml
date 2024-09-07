@@ -36,7 +36,7 @@ let process_common (abspath : abs_path) (lexbuf : Lexing.lexbuf) =
 
 
 let process_file (abspath : abs_path) =
-  let inc = open_in_abs abspath in
+  let inc = AbsPathIo.open_in abspath in
   let lexbuf = Lexing.from_channel inc in
   let res = process_common abspath lexbuf in
   close_in inc;

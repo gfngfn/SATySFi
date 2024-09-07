@@ -35,7 +35,7 @@ let deps_config_decoder : t ConfigDecoder.t =
 let load (abspath_deps_config : abs_path) : (t, config_error) result =
   let open ResultMonad in
   let* s =
-    read_file abspath_deps_config
+    AbsPathIo.read_file abspath_deps_config
       |> Result.map_error (fun _ -> DepsConfigNotFound(abspath_deps_config))
   in
   ConfigDecoder.run deps_config_decoder s

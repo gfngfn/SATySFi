@@ -74,15 +74,6 @@ let basename (abspath : abs_path) : string =
   Filename.basename (get_abs_path_string abspath)
 
 
-(* temporary. TODO: remove this *)
-let open_in_abs = AbsPathIo.open_in_abs
-let readdir = AbsPathIo.readdir
-let read_file = AbsPathIo.read_file
-let write_file = AbsPathIo.write_file
-let is_directory = AbsPathIo.is_directory
-let file_exists = AbsPathIo.file_exists
-
-
 let encode_yaml (yaml : Yaml.value) : string =
   match Yaml.to_string ~encoding:`Utf8 ~layout_style:`Block ~scalar_style:`Plain yaml with
   | Ok(data) -> data

@@ -1,5 +1,5 @@
 
-let open_in_abs (abspath : AbsPath.t) =
+let open_in (abspath : AbsPath.t) =
   Stdlib.open_in (AbsPath.to_string abspath)
 
 

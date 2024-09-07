@@ -130,7 +130,7 @@ let lock_config_encoder ~(dir : abs_path) (lock_config : t) : Yaml.value =
 let load (abspath_lock_config : abs_path) : t ok =
   let open ResultMonad in
   let* s =
-    read_file abspath_lock_config
+    AbsPathIo.read_file abspath_lock_config
       |> Result.map_error (fun _ -> LockConfigNotFound(abspath_lock_config))
   in
   ConfigDecoder.run (lock_config_decoder  ~dir:(dirname abspath_lock_config)) s
@@ -140,7 +140,7 @@ let load (abspath_lock_config : abs_path) : t ok =
 let write (abspath_lock_config : abs_path) (lock_config : t) : (unit, config_error) result =
   let yaml = lock_config_encoder ~dir:(dirname abspath_lock_config) lock_config in
   let data = encode_yaml yaml in
-  write_file abspath_lock_config data
+  AbsPathIo.write_file abspath_lock_config data
     |> Result.map_error (fun message ->
       CannotWriteLockConfig{ message; path = abspath_lock_config }
     )

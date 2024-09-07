@@ -123,7 +123,7 @@ let parse (s : string) : (parsed_package_release_config, yaml_error) result =
 let load (abspath_release_config : abs_path) : t ok =
   let open ResultMonad in
   let* s =
-    read_file abspath_release_config
+    AbsPathIo.read_file abspath_release_config
       |> Result.map_error (fun _ -> ReleaseConfigNotFound(abspath_release_config))
   in
   let* internal =

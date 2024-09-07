@@ -11,7 +11,7 @@ type 'a ok = ('a, config_error) result
 let listup_sources_in_directory (extensions : string list) (absdir_src : abs_path) : (abs_path list) ok =
   let open ResultMonad in
   let* filenames =
-    readdir absdir_src
+    AbsPathIo.readdir absdir_src
       |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_src; message })
   in
   let abspaths =

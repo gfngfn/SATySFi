@@ -71,7 +71,7 @@ let config_encoder (store_root_config : t) : Yaml.value =
 let write (abspath_config : abs_path) (store_root_config : t) : (unit, config_error) result =
   let yaml = config_encoder store_root_config in
   let data = encode_yaml yaml in
-  write_file abspath_config data
+  AbsPathIo.write_file abspath_config data
     |> Result.map_error (fun message ->
       CannotWriteStoreRootConfig{ message; path = abspath_config }
     )
@@ -79,7 +79,7 @@ let write (abspath_config : abs_path) (store_root_config : t) : (unit, config_er
 
 let load_or_initialize (abspath_config : abs_path) : (t * bool, config_error) result =
   let open ResultMonad in
-  match read_file abspath_config with
+  match AbsPathIo.read_file abspath_config with
   | Ok(s) ->
       let* store_root_config =
         ConfigDecoder.run config_decoder s

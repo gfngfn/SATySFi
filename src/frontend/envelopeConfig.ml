@@ -154,7 +154,7 @@ let envelope_config_decoder : t ConfigDecoder.t =
 let load (abspath_envelope_config : abs_path) : (t, config_error) result =
   let open ResultMonad in
   let* s =
-    read_file abspath_envelope_config
+    AbsPathIo.read_file abspath_envelope_config
       |> Result.map_error (fun _ -> EnvelopeConfigNotFound(abspath_envelope_config))
   in
   ConfigDecoder.run envelope_config_decoder s

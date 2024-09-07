@@ -78,7 +78,7 @@ let extract_registration ~(file_path : abs_path) (d : D.source) : font_registrat
 let get_main_decoder_single (abspath : abs_path) : (D.source * font_registration) ok =
   let open ResultMonad in
   let* data =
-    read_file abspath
+    AbsPathIo.read_file abspath
       |> Result.map_error (fun msg -> FailedToReadFont(abspath, msg))
   in
   let* source =
@@ -97,7 +97,7 @@ let get_main_decoder_single (abspath : abs_path) : (D.source * font_registration
 let get_main_decoder_ttc (abspath : abs_path) (index : int) : (D.source * font_registration) ok =
   let open ResultMonad in
   let* data =
-    read_file abspath
+    AbsPathIo.read_file abspath
       |> Result.map_error (fun msg -> FailedToReadFont(abspath, msg))
   in
   let* source =

@@ -123,4 +123,4 @@ let envelope_config_encoder (envelope_config : t) : Yaml.value =
 let write (abspath_envelope_config : abs_path) (envelope_config : t) : (unit, string) result =
   let yaml = envelope_config_encoder envelope_config in
   let data = encode_yaml yaml in
-  write_file abspath_envelope_config data
+  AbsPathIo.write_file abspath_envelope_config data

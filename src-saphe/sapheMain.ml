@@ -166,7 +166,7 @@ type package_init_input =
 let write_package_config (abspath_package_config : abs_path) ~(data : string) =
   let open ResultMonad in
   let* () =
-    write_file abspath_package_config data
+    AbsPathIo.write_file abspath_package_config data
       |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath_package_config; message })
   in
   Logging.initialize_package_config abspath_package_config;
@@ -176,7 +176,7 @@ let write_package_config (abspath_package_config : abs_path) ~(data : string) =
 let write_initial_file (abspath : abs_path) ~(data : string) =
   let open ResultMonad in
   let* () =
-    write_file abspath data
+    AbsPathIo.write_file abspath data
       |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath; message })
   in
   Logging.initialize_file abspath;
@@ -185,7 +185,7 @@ let write_initial_file (abspath : abs_path) ~(data : string) =
 
 let assert_nonexistence (abspath : abs_path) =
   let open ResultMonad in
-  if file_exists abspath then
+  if AbsPathIo.file_exists abspath then
     err @@ FileAlreadyExists{ path = abspath }
   else
     return ()
@@ -256,7 +256,7 @@ let init_library ~(fpath_in : string) =
 
 let make_solve_input ~(dir_current : string) ~(fpath_in : string) : solve_input =
   let abspath_in = make_absolute_if_relative ~origin:dir_current fpath_in in
-  if is_directory abspath_in then
+  if AbsPathIo.is_directory abspath_in then
   (* If the input is a directory that forms a package: *)
     let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
     let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
@@ -644,7 +644,7 @@ let build
       in
       let absdir_current = Sys.getcwd () in
       let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
-      if is_directory abspath_in then
+      if AbsPathIo.is_directory abspath_in then
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
         let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
         let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
@@ -798,7 +798,7 @@ let test
     let* test_input =
       let absdir_current = Sys.getcwd () in
       let abspath_in = make_absolute_if_relative ~origin:absdir_current fpath_in in
-      if is_directory abspath_in then
+      if AbsPathIo.is_directory abspath_in then
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
         let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
         let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
@@ -888,7 +888,7 @@ let cache_list () =
       let absdir_lock_tarball_cache =
         Constant.lock_tarball_cache_directory ~store_root:absdir_store_root registry_hash_value
       in
-      let res = readdir absdir_lock_tarball_cache in
+      let res = AbsPathIo.readdir absdir_lock_tarball_cache in
       continue_if_ok res (fun tarball_filenames ->
         tarball_filenames |> List.sort String.compare |> List.iter (fun tarball_filename ->
           Printf.printf "  - %s\n" tarball_filename
@@ -902,14 +902,14 @@ let cache_list () =
       let absdir_external_resource_cache =
         Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value
       in
-      let res = readdir absdir_external_resource_cache in
+      let res = AbsPathIo.readdir absdir_external_resource_cache in
       continue_if_ok res (fun dirs ->
         dirs |> List.sort String.compare |> List.iter (fun dir ->
           let abspath = append_to_abs_directory absdir_external_resource_cache dir in
           let abspath_archives = append_to_abs_directory abspath "archives" in
-          if is_directory abspath then
-            if is_directory abspath_archives then
-              let res = readdir abspath_archives in
+          if AbsPathIo.is_directory abspath then
+            if AbsPathIo.is_directory abspath_archives then
+              let res = AbsPathIo.readdir abspath_archives in
               continue_if_ok res (fun archive_filenames ->
                 match archive_filenames with
                 | [] ->
@@ -935,14 +935,14 @@ let cache_list () =
       let absdir_external_resource_cache =
         Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value
       in
-      let res = readdir absdir_external_resource_cache in
+      let res = AbsPathIo.readdir absdir_external_resource_cache in
       continue_if_ok res (fun dirs ->
         dirs |> List.sort String.compare |> List.iter (fun dir ->
           let abspath = append_to_abs_directory absdir_external_resource_cache dir in
           let abspath_extractions = append_to_abs_directory abspath "extractions" in
-          if is_directory abspath then
-            if is_directory abspath_extractions then
-              let res = readdir abspath_extractions in
+          if AbsPathIo.is_directory abspath then
+            if AbsPathIo.is_directory abspath_extractions then
+              let res = AbsPathIo.readdir abspath_extractions in
               continue_if_ok res (fun extraction_dirs ->
                 match extraction_dirs with
                 | [] ->

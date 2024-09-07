@@ -36,7 +36,7 @@ let deps_config_encoder (deps_config : t) : Yaml.value =
 let write (abspath_deps_config : abs_path) (deps_config : t) : (unit, config_error) result =
   let yaml = deps_config_encoder deps_config in
   let data = encode_yaml yaml in
-  write_file abspath_deps_config data
+  AbsPathIo.write_file abspath_deps_config data
     |> Result.map_error (fun message ->
       CannotWriteDepsConfig{ message; path = abspath_deps_config }
     )

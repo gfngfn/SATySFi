@@ -66,7 +66,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
   ShellCommand.mkdir_p absdir_lock;
 
   let abspath_config = Constant.library_package_config_path ~dir:absdir_lock in
-  if file_exists abspath_config then begin
+  if AbsPathIo.file_exists abspath_config then begin
   (* If the lock has already been fetched: *)
     Logging.lock_already_installed lock_tarball_name absdir_lock;
     return ()
@@ -82,7 +82,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
             (Printf.sprintf "%s.tar.gz" lock_tarball_name)
         in
         let* () =
-          if file_exists abspath_tarball then begin
+          if AbsPathIo.file_exists abspath_tarball then begin
             Logging.lock_cache_exists lock_tarball_name abspath_tarball;
             return ()
           end else begin
@@ -117,7 +117,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
 
 let fetch_external_zip_if_nonexistent ~(wget_command : string) (abspath_zip : abs_path) ~(url : string) ~checksum:(checksum_expected : string) =
   let open ResultMonad in
-  if file_exists abspath_zip then
+  if AbsPathIo.file_exists abspath_zip then
     (* Does nothing if the required zip file has already been fetched: *)
     return ()
   else begin
@@ -159,7 +159,7 @@ let extract_external_zip_and_arrange_files_if_necessary ~(unzip_command : string
     )
   in
 
-  if pairs |> List.for_all (fun { abspath_to; _ } -> file_exists abspath_to) then
+  if pairs |> List.for_all (fun { abspath_to; _ } -> AbsPathIo.file_exists abspath_to) then
     return ()
   else begin
 

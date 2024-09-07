@@ -28,14 +28,6 @@ val dirname : abs_path -> abs_path
 
 val basename : abs_path -> string
 
-(* TODO: remove the following (due to migration to `AbsPathIo`): *)
-val open_in_abs : abs_path -> in_channel
-val readdir : abs_path -> (string list, string) result
-val read_file : abs_path -> (string, string) result
-val write_file : abs_path -> string -> (unit, string) result
-val is_directory : abs_path -> bool
-val file_exists : abs_path -> bool
-
 val encode_yaml : Yaml.value -> string
 
 type 'a cycle =

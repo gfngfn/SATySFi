@@ -275,7 +275,7 @@ let parse (s : string) : (parsed_package_config, yaml_error) result =
 let load (abspath_config : abs_path) : t ok =
   let open ResultMonad in
   let* s =
-    read_file abspath_config
+    AbsPathIo.read_file abspath_config
       |> Result.map_error (fun _ -> PackageConfigNotFound(abspath_config))
   in
   let* internal =
