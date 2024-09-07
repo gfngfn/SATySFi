@@ -19,7 +19,7 @@ let package_name_decoder : package_name ConfigDecoder.t =
   then
     succeed package_name
   else
-    failure (fun yctx -> InvalidPackageName(yctx, package_name))
+    failure (fun context -> InvalidPackageName{ context; got = package_name })
 
 
 let registry_hash_value_decoder : registry_hash_value ConfigDecoder.t =
@@ -36,7 +36,7 @@ let version_decoder : SemanticVersion.t ConfigDecoder.t =
   string >>= fun s_version ->
   match SemanticVersion.parse s_version with
   | None ->
-      failure (fun yctx -> NotASemanticVersion(yctx, s_version))
+      failure (fun context -> NotASemanticVersion{ context; got = s_version })
 
   | Some(semver) ->
       succeed semver
@@ -46,7 +46,7 @@ let requirement_decoder : SemanticVersion.requirement ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s_version_requirement ->
   match SemanticVersion.parse_requirement s_version_requirement with
-  | None         -> failure (fun context -> NotAVersionRequirement(context, s_version_requirement))
+  | None         -> failure (fun context -> NotAVersionRequirement{ context; got = s_version_requirement })
   | Some(verreq) -> succeed verreq
 
 
@@ -56,7 +56,7 @@ let version_checker (version : SemanticVersion.t) : unit ConfigDecoder.t =
   if version |> SemanticVersion.fulfill requirement then
     succeed ()
   else
-    failure (fun yctx -> BreaksVersionRequirement(yctx, requirement))
+    failure (fun context -> BreaksVersionRequirement{ context; requirement })
 
 
 let dependency_spec_decoder : parsed_package_dependency_spec ConfigDecoder.t =
@@ -108,7 +108,7 @@ let name_decoder : string ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun name ->
   if Core.String.exists name ~f:(Char.equal '/') then
-    failure (fun context -> CannotBeUsedAsAName(context, name))
+    failure (fun context -> CannotBeUsedAsAName{ context; got = name })
   else
     succeed name
 

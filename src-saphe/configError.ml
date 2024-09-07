@@ -4,14 +4,17 @@ open PackageSystemBase
 
 
 type yaml_error =
-  | ParseError             of string
-  | FieldNotFound          of YamlDecoder.context * string
-  | NotAFloat              of YamlDecoder.context
-  | NotAString             of YamlDecoder.context
-  | NotABool               of YamlDecoder.context
-  | NotAnArray             of YamlDecoder.context
-  | NotAnObject            of YamlDecoder.context
-  | BranchNotFound         of {
+  | ParseError of string
+  | FieldNotFound of {
+      context    : YamlDecoder.context;
+      field_name : string;
+    }
+  | NotAFloat   of YamlDecoder.context
+  | NotAString  of YamlDecoder.context
+  | NotABool    of YamlDecoder.context
+  | NotAnArray  of YamlDecoder.context
+  | NotAnObject of YamlDecoder.context
+  | BranchNotFound of {
       context       : YamlDecoder.context;
       expected_tags : string list;
       got_tags      : string list;
@@ -21,10 +24,22 @@ type yaml_error =
       expected_tags : string list;
       got_tags      : string list;
     }
-  | BreaksVersionRequirement of YamlDecoder.context * SemanticVersion.requirement
-  | NotASemanticVersion    of YamlDecoder.context * string
-  | NotAVersionRequirement of YamlDecoder.context * string
-  | InvalidPackageName     of YamlDecoder.context * string
+  | BreaksVersionRequirement of {
+      context     : YamlDecoder.context;
+      requirement : SemanticVersion.requirement;
+    }
+  | NotASemanticVersion of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | NotAVersionRequirement of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | InvalidPackageName of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
   | InvalidRegistryHashValue of {
       context : YamlDecoder.context;
       got     : registry_hash_value;
@@ -33,7 +48,10 @@ type yaml_error =
       context             : YamlDecoder.context;
       registry_hash_value : registry_hash_value;
     }
-  | CannotBeUsedAsAName of YamlDecoder.context * string
+  | CannotBeUsedAsAName of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
   | UnsupportedRegistryFormat of string
   | NotACommand of {
       context : YamlDecoder.context;
@@ -45,7 +63,7 @@ type yaml_error =
 module YamlError = struct
   type t = yaml_error
   let parse_error s = ParseError(s)
-  let field_not_found context s = FieldNotFound(context, s)
+  let field_not_found context field_name = FieldNotFound{ context; field_name }
   let not_a_float context = NotAFloat(context)
   let not_a_string context = NotAString(context)
   let not_a_bool context = NotABool(context)

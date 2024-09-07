@@ -37,8 +37,8 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | ParseError(s) ->
       [ NormalLine(Printf.sprintf "parse error: %s" s) ]
 
-  | FieldNotFound(yctx, field) ->
-      [ NormalLine(Printf.sprintf "field '%s' not found %s" field (show_yaml_context yctx)) ]
+  | FieldNotFound{ context = yctx; field_name } ->
+      [ NormalLine(Printf.sprintf "field '%s' not found %s" field_name (show_yaml_context yctx)) ]
 
   | NotAFloat(yctx) ->
       [ NormalLine(Printf.sprintf "not a float value %s" (show_yaml_context yctx)) ]
@@ -55,16 +55,16 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | NotAnObject(yctx) ->
       [ NormalLine(Printf.sprintf "not an object %s" (show_yaml_context yctx)) ]
 
-  | BreaksVersionRequirement(yctx, requirement) ->
+  | BreaksVersionRequirement{ context = yctx; requirement } ->
       [ NormalLine(Printf.sprintf "breaks the requrement '%s' %s" (SemanticVersion.requirement_to_string requirement)(show_yaml_context yctx)) ]
 
-  | NotASemanticVersion(yctx, s) ->
+  | NotASemanticVersion{ context = yctx; got = s } ->
       [ NormalLine(Printf.sprintf "not a semantic version: '%s' %s" s (show_yaml_context yctx)) ]
 
-  | NotAVersionRequirement(yctx, s) ->
+  | NotAVersionRequirement{ context = yctx; got = s } ->
       [ NormalLine(Printf.sprintf "not a version requirement: '%s' %s" s (show_yaml_context yctx)) ]
 
-  | InvalidPackageName(yctx, s) ->
+  | InvalidPackageName{ context = yctx; got = s } ->
       [ NormalLine(Printf.sprintf "not a package name: '%s' %s" s (show_yaml_context yctx)) ]
 
   | InvalidRegistryHashValue{ context = yctx; got } ->
@@ -73,7 +73,7 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | DuplicateRegistryHashValue{ context = yctx; registry_hash_value } ->
       [ NormalLine(Printf.sprintf "More than one definition for registry hash value '%s' %s" registry_hash_value (show_yaml_context yctx)) ]
 
-  | CannotBeUsedAsAName(yctx, s) ->
+  | CannotBeUsedAsAName{ context = yctx; got = s } ->
       [ NormalLine(Printf.sprintf "'%s' cannot be used as a name %s" s (show_yaml_context yctx)) ]
 
   | UnsupportedRegistryFormat(format) ->
