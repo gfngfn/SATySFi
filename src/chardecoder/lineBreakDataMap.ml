@@ -110,9 +110,11 @@ let empty : t = BatIMap.empty ~eq:(=)
 
 
 let make_from_file (abspath : abs_path) : t =
-  let inc = AbsPathIo.open_in abspath in
-  let line_break_list = DataParser.main DataLexer.expr (Lexing.from_channel inc) in
-  Stdlib.close_in inc;
+  let line_break_list =
+    AbsPathIo.open_in abspath (fun inc ->
+      DataParser.main DataLexer.expr (Lexing.from_channel inc)
+    )
+  in
   let line_break_map_raw = line_break_list |> CharBasis.map_of_list class_of_string in
   let line_break_map =
     List.fold_left (fun mapacc (cp, lbc) ->

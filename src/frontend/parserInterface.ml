@@ -36,13 +36,10 @@ let process_common (abspath : abs_path) (lexbuf : Lexing.lexbuf) =
 
 
 let process_file (abspath : abs_path) =
-  let inc = AbsPathIo.open_in abspath in
-  let lexbuf = Lexing.from_channel inc in
-  let res = process_common abspath lexbuf in
-  close_in inc;
-  res
+  AbsPathIo.open_in abspath (fun inc ->
+    process_common abspath (Lexing.from_channel inc)
+  )
 
 
 let process_text (abspath : abs_path) (s : string) =
-  let lexbuf = Lexing.from_string s in
-  process_common abspath lexbuf
+  process_common abspath (Lexing.from_string s)

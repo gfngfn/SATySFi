@@ -1,6 +1,9 @@
 
-let open_in (abspath : AbsPath.t) =
-  Stdlib.open_in (AbsPath.to_string abspath)
+let open_in (abspath : AbsPath.t) (k : in_channel -> 'a) : 'a =
+  let inc = Stdlib.open_in (AbsPath.to_string abspath) in
+  let ret = k inc in
+  Stdlib.close_in inc;
+  ret
 
 
 let readdir (absdir : AbsPath.t) : (string list, string) result =
