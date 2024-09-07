@@ -67,6 +67,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | InvalidPackageName(yctx, s) ->
       [ NormalLine(Printf.sprintf "not a package name: '%s' %s" s (show_yaml_context yctx)) ]
 
+  | InvalidRegistryHashValue{ context = yctx; got } ->
+      [ NormalLine(Printf.sprintf "invalid string '%s' for registry hash value %s" got (show_yaml_context yctx))]
+
   | DuplicateRegistryHashValue{ context = yctx; registry_hash_value } ->
       [ NormalLine(Printf.sprintf "More than one definition for registry hash value '%s' %s" registry_hash_value (show_yaml_context yctx)) ]
 

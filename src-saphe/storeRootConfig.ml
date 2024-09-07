@@ -33,7 +33,7 @@ let registry_remote_encoder = function
 
 let registry_spec_decoder : (registry_hash_value * registry_remote) ConfigDecoder.t =
   let open ConfigDecoder in
-  get "hash_value" string >>= fun registry_hash_value ->
+  get "hash_value" registry_hash_value_decoder >>= fun registry_hash_value ->
   registry_remote_decoder >>= fun registry_remote ->
   succeed (registry_hash_value, registry_remote)
 
