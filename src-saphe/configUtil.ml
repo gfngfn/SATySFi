@@ -170,17 +170,17 @@ let writable_name_decoder : string ConfigDecoder.t =
     | [] ->
         false
 
-    | chs ->
-        chs |> List.for_all (fun ch ->
-          not (Char.equal ch '/') &&
-            List.fold_left ( || ) false [
-              Core.Char.is_lowercase ch;
-              Core.Char.is_uppercase ch;
-              Core.Char.is_digit ch;
-              Char.equal ch '-';
-              Char.equal ch '_';
-              Char.equal ch '.';
-            ]
+    | ch0 :: chs ->
+        let pairs = (ch0, false) :: List.map (fun ch -> (ch, true)) chs in
+        pairs |> List.for_all (fun (ch, is_middle) ->
+          List.fold_left ( || ) false [
+            Core.Char.is_lowercase ch;
+            Core.Char.is_uppercase ch;
+            Core.Char.is_digit ch;
+            Char.equal ch '-';
+            Char.equal ch '_';
+            is_middle && Char.equal ch '.'; (* The first letter must not be a dot. *)
+          ]
         )
   in
   if flag then
