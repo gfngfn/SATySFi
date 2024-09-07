@@ -38,7 +38,7 @@ let lock_contents_decoder ~dir:(absdir_lock_config : abs_path) : Lock.t ConfigDe
       succeed @@ Lock.Registered(reglock)
     end;
     "local" ==> begin
-      get "relative_path" string >>= fun relpathstr ->
+      get "relative_path" relative_path_decoder >>= fun relpathstr ->
       succeed @@ Lock.LocalFixed{
         absolute_path = append_to_abs_directory absdir_lock_config relpathstr;
       }
@@ -67,9 +67,14 @@ let lock_contents_encoder ~dir:(absdir_lock_config : abs_path) (contents : Lock.
       ]
 
 
+let lock_name_decoder : lock_name ConfigDecoder.t =
+  ConfigDecoder.string
+    (* Allows arbitrary strings, even ones containing slashes. *)
+
+
 let lock_dependency_decoder : lock_dependency ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun depended_lock_name -> (* Allows arbitrary strings, even ones containing slashes. *)
+  get "name" lock_name_decoder >>= fun depended_lock_name ->
   get "used_as" uppercased_identifier_decoder >>= fun used_as ->
   succeed { depended_lock_name; used_as }
 
@@ -83,7 +88,7 @@ let lock_dependency_encoder (dep : lock_dependency) : Yaml.value =
 
 let lock_decoder ~(dir : abs_path) : locked_package ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun lock_name -> (* Allow arbitrary strings, even ones containing slashes. *)
+  get "name" lock_name_decoder >>= fun lock_name ->
   get_or_else "dependencies" (list lock_dependency_decoder) [] >>= fun lock_dependencies ->
   get_or_else "test_only" bool false >>= fun test_only_lock ->
   lock_contents_decoder ~dir >>= fun lock_contents ->

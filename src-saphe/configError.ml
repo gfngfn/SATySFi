@@ -70,6 +70,10 @@ type yaml_error =
       context : YamlDecoder.context;
       got     : string;
     }
+  | NotARelativePath of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
 [@@deriving show { with_path = false }]
 
 module YamlError = struct

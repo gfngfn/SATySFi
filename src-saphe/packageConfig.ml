@@ -14,7 +14,7 @@ type t = {
   package_name           : package_name option;
   package_authors        : string list;
   package_contributors   : string list;
-  external_resources     : (string * external_resource) list;
+  external_resources     : (string * external_resource) list; (* Names must not contain '/'. *)
   intermediate_directory : relative_path option;
   package_contents       : package_contents;
   registry_remotes       : registry_remote list;
@@ -46,7 +46,7 @@ let font_file_contents_decoder : font_file_contents ConfigDecoder.t =
 
 let font_file_description_decoder : font_file_description ConfigDecoder.t =
   let open ConfigDecoder in
-  get "path" string >>= fun font_file_path ->
+  get "path" relative_path_decoder >>= fun font_file_path ->
   font_file_contents_decoder >>= fun font_file_contents ->
   succeed @@ {
     font_file_path;
@@ -87,7 +87,7 @@ let block_command_decoder =
   )
 
 
-let identifier_decoder : long_identifier ConfigDecoder.t =
+let long_identifier_decoder : long_identifier ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
   let (modnms, varnm) = cut_module_names s in
@@ -99,7 +99,7 @@ let identifier_decoder : long_identifier ConfigDecoder.t =
 
 let markdown_conversion_decoder : markdown_conversion ConfigDecoder.t =
   let open ConfigDecoder in
-  get "document" identifier_decoder >>= fun document ->
+  get "document" long_identifier_decoder >>= fun document ->
   get "paragraph" block_command_decoder >>= fun paragraph ->
   get "hr" block_command_decoder >>= fun hr ->
   get "h1" block_command_decoder >>= fun h1 ->
@@ -143,8 +143,8 @@ let contents_decoder : package_contents ConfigDecoder.t =
   branch [
     "library" ==> begin
       get "main_module" uppercased_identifier_decoder >>= fun main_module_name ->
-      get "source_directories" (list string) >>= fun source_directories ->
-      get_or_else "test_directories" (list string) [] >>= fun test_directories ->
+      get "source_directories" (list relative_path_decoder) >>= fun source_directories ->
+      get_or_else "test_directories" (list relative_path_decoder) [] >>= fun test_directories ->
       get_opt "markdown_conversion" markdown_conversion_decoder >>= fun markdown_conversion ->
       succeed @@ Library {
         main_module_name;
@@ -166,14 +166,14 @@ let contents_decoder : package_contents ConfigDecoder.t =
 
 let extraction_decoder : extraction ConfigDecoder.t =
   let open ConfigDecoder in
-  get "from" string >>= fun extracted_from ->
-  get "to" string >>= fun extracted_to ->
+  get "from" relative_path_decoder >>= fun extracted_from ->
+  get "to" relative_path_decoder >>= fun extracted_to ->
   succeed { extracted_from; extracted_to }
 
 
 let external_resource_decoder : (string * external_resource) ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" name_decoder >>= fun name ->
+  get "name" writable_name_decoder >>= fun name ->
   branch [
     "zip" ==> begin
       get "url" string >>= fun url ->
@@ -193,7 +193,7 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
   get_or_else "contributors" (list string) [] >>= fun package_contributors ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
   get_or_else "external_resources" (list external_resource_decoder) [] >>= fun external_resources ->
-  get_opt "intermediate_directory" string >>= fun intermediate_directory ->
+  get_opt "intermediate_directory" relative_path_decoder >>= fun intermediate_directory ->
   get "contents" contents_decoder >>= fun package_contents ->
   get_or_else "dependencies" (list dependency_decoder) [] >>= fun source_dependencies ->
   get_or_else "test_dependencies" (list dependency_decoder) [] >>= fun test_dependencies ->

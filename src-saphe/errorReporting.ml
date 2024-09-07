@@ -91,6 +91,9 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | NotAChainedIdentifier{ context = yctx; got = s } ->
       [ NormalLine(Printf.sprintf "not a chained identifier: '%s' %s" s (show_yaml_context yctx)) ]
 
+  | NotARelativePath{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not a relative path: '%s' %s" s (show_yaml_context yctx)) ]
+
   | BranchNotFound{ context = yctx; expected_tags; got_tags } ->
       [
         NormalLine(Printf.sprintf "expected tags not found; should contain exactly one of:");

@@ -30,8 +30,8 @@ let source_decoder : implementation_source ConfigDecoder.t =
 
 let dependency_in_registry_config_decoder : parsed_package_dependency_in_registry ConfigDecoder.t =
   let open ConfigDecoder in
-  get "used_as" string >>= fun used_as ->
-  get_opt "registry" string >>= fun registry_local_name_option ->
+  get "used_as" uppercased_identifier_decoder >>= fun used_as ->
+  get_opt "registry" registry_local_name_decoder >>= fun registry_local_name_option ->
   get "name" package_name_decoder >>= fun package_name ->
   get "requirement" requirement_decoder >>= fun version_requirement ->
   succeed @@ ParsedPackageDependencyInRegistry{
@@ -46,7 +46,7 @@ let release_config_decoder : parsed_package_release_config ConfigDecoder.t =
   let open ConfigDecoder in
   get "saphe" requirement_decoder >>= fun ecosystem_requirement ->
   get "satysfi" requirement_decoder >>= fun language_requirement ->
-  get "name" string >>= fun package_name ->
+  get "name" package_name_decoder >>= fun package_name ->
   get "version" version_decoder >>= fun package_version ->
   get_or_else "source" source_decoder NoSource >>= fun source ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
