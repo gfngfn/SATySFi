@@ -30,7 +30,3 @@ type 'a cycle =
 [@@deriving show]
 
 val map_cycle : ('a -> 'b) -> 'a cycle -> 'b cycle
-
-val is_uppercased_identifier : string -> bool (* TODO: move this to `satysfi-common` *)
-
-val is_lowercased_identifier : string -> bool (* TODO: move this to `satysfi-common` *)

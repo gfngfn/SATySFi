@@ -1,5 +1,6 @@
 
 open MyUtil
+open CommonUtil
 open ConfigError
 open ConfigUtil
 open EnvelopeSystemBase
@@ -54,25 +55,15 @@ let font_file_description_decoder : font_file_description ConfigDecoder.t =
   }
 
 
-let cut_module_names (s : string) : string list * string =
-  match List.rev (String.split_on_char '.' s) with
-  | varnm :: modnms_rev -> (List.rev modnms_rev, varnm)
-  | _                   -> assert false (* `String.split_on_char` always returns a non-empty list *)
-
-
 let command_decoder ~(prefix : string) (k : string list -> string -> 'a) : 'a ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
-  match Core.String.chop_prefix ~prefix s with
+  match parse_long_command ~prefix s with
   | None ->
       failure (fun context -> NotACommand{ context; prefix; got = s })
 
-  | Some(s_tail) ->
-      let (modnms, varnm) = cut_module_names s_tail in
-      if List.for_all is_uppercased_identifier modnms && is_lowercased_identifier varnm then
-        succeed @@ k modnms varnm
-      else
-        failure (fun context -> NotACommand{ context; prefix; got = s })
+  | Some((modnms, varnm)) ->
+      succeed @@ k modnms varnm
 
 
 let inline_command_decoder =
@@ -90,11 +81,12 @@ let block_command_decoder =
 let long_identifier_decoder : long_identifier ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
-  let (modnms, varnm) = cut_module_names s in
-  if List.for_all is_uppercased_identifier modnms && is_lowercased_identifier varnm then
-    succeed @@ LongIdentifier{ modules = modnms; main = varnm }
-  else
-    failure (fun context -> NotAChainedIdentifier{ context; got = s })
+  match parse_long_identifier s with
+  | None ->
+      failure (fun context -> NotAChainedIdentifier{ context; got = s })
+
+  | Some((modnms, varnm)) ->
+      succeed @@ LongIdentifier{ modules = modnms; main = varnm }
 
 
 let markdown_conversion_decoder : markdown_conversion ConfigDecoder.t =

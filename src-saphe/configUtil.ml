@@ -1,5 +1,6 @@
 
 open MyUtil
+open CommonUtil
 open ConfigError
 open PackageConfigImpl
 open PackageSystemBase
@@ -31,7 +32,7 @@ let uppercased_identifier_decoder : string ConfigDecoder.t =
   if is_uppercased_identifier s then
     succeed s
   else
-    failure (fun context -> NotAnUppercasedIdentifier{ context; got = s})
+    failure (fun context -> NotAnUppercasedIdentifier{ context; got = s })
 
 
 let lowercased_identifier_decoder : string ConfigDecoder.t =
@@ -40,22 +41,17 @@ let lowercased_identifier_decoder : string ConfigDecoder.t =
   if is_lowercased_identifier s then
     succeed s
   else
-    failure (fun context -> NotALowercasedIdentifier{ context; got = s})
+    failure (fun context -> NotALowercasedIdentifier{ context; got = s })
 
 
+(* Note: the empty string is allowed *)
 let relative_path_decoder : relative_path ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
-  match Core.String.to_list s with
-  | [] ->
-      failure (fun context -> NotARelativePath{ context; got = s })
-        (* The empty string is not allowed *)
-
-  | ch0 :: _ ->
-      if Core.Char.equal ch0 '/' then
-        failure (fun context -> NotARelativePath{ context; got = s })
-      else
-        succeed s
+  if Filename.is_relative s then
+    succeed s
+  else
+    failure (fun context -> NotARelativePath{ context; got = s })
 
 
 (* Registry hash values must consist only of lowercased hex digits (i.e., 0-9 and a-f). *)

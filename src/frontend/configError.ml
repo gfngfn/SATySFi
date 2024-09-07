@@ -22,16 +22,28 @@ type yaml_error =
       expected_tags : string list;
       got_tags      : string list;
     }
-  | NotACommand of {
-      context : YamlDecoder.context;
-      prefix  : char;
-      string  : string;
-    }
   | NotAnUppercasedIdentifier of {
       context : YamlDecoder.context;
       got     : string;
     }
+  | NotALowercasedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | NotACommand of {
+      context : YamlDecoder.context;
+      prefix  : string;
+      got     : string;
+    }
+  | NotAChainedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
   | NotAnAbsolutePath of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | NotARelativePath of {
       context : YamlDecoder.context;
       got     : string;
     }

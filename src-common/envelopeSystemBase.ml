@@ -25,9 +25,6 @@ type font_file_description = {
 }
 [@@deriving show]
 
-type package_conversion_spec = unit (* TODO *)
-[@@deriving show]
-
 type long_inline_command = LongInlineCommand of {
   modules             : string list;
   main_without_prefix : string;
