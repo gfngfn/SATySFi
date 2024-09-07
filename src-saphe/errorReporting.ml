@@ -79,8 +79,17 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | UnsupportedRegistryFormat(format) ->
       [ NormalLine(Printf.sprintf "unsupported registry format '%s'" format) ]
 
+  | NotAnUppercasedIdentifier{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not an uppercased identifier: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotALowercasedIdentifier{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not a lowercased identifier: '%s' %s" s (show_yaml_context yctx)) ]
+
   | NotACommand{ context = yctx; prefix = _; got = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotAChainedIdentifier{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not a chained identifier: '%s' %s" s (show_yaml_context yctx)) ]
 
   | BranchNotFound{ context = yctx; expected_tags; got_tags } ->
       [

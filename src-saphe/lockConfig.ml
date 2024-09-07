@@ -69,8 +69,8 @@ let lock_contents_encoder ~dir:(absdir_lock_config : abs_path) (contents : Lock.
 
 let lock_dependency_decoder : lock_dependency ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun depended_lock_name ->
-  get "used_as" string >>= fun used_as ->
+  get "name" string >>= fun depended_lock_name -> (* Allows arbitrary strings, even ones containing slashes. *)
+  get "used_as" uppercased_identifier_decoder >>= fun used_as ->
   succeed { depended_lock_name; used_as }
 
 

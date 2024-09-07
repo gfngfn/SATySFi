@@ -53,9 +53,21 @@ type yaml_error =
       got     : string;
     }
   | UnsupportedRegistryFormat of string
+  | NotAnUppercasedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | NotALowercasedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
   | NotACommand of {
       context : YamlDecoder.context;
       prefix  : string;
+      got     : string;
+    }
+  | NotAChainedIdentifier of {
+      context : YamlDecoder.context;
       got     : string;
     }
 [@@deriving show { with_path = false }]

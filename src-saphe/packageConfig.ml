@@ -25,7 +25,7 @@ type t = {
 
 let font_spec_decoder : font_spec ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun font_item_name ->
+  get "name" lowercased_identifier_decoder >>= fun font_item_name ->
   get_or_else "math" bool false >>= fun used_as_math_font ->
   succeed { font_item_name; used_as_math_font }
 
@@ -68,9 +68,11 @@ let command_decoder ~(prefix : string) (k : string list -> string -> 'a) : 'a Co
       failure (fun context -> NotACommand{ context; prefix; got = s })
 
   | Some(s_tail) ->
-      let s_tail = (String.sub s 1 (String.length s - 1)) in
       let (modnms, varnm) = cut_module_names s_tail in
-      succeed @@ k modnms varnm
+      if List.for_all is_uppercased_identifier modnms && is_lowercased_identifier varnm then
+        succeed @@ k modnms varnm
+      else
+        failure (fun context -> NotACommand{ context; prefix; got = s })
 
 
 let inline_command_decoder =
@@ -89,7 +91,10 @@ let identifier_decoder : long_identifier ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
   let (modnms, varnm) = cut_module_names s in
-  succeed @@ LongIdentifier{ modules = modnms; main = varnm }
+  if List.for_all is_uppercased_identifier modnms && is_lowercased_identifier varnm then
+    succeed @@ LongIdentifier{ modules = modnms; main = varnm }
+  else
+    failure (fun context -> NotAChainedIdentifier{ context; got = s })
 
 
 let markdown_conversion_decoder : markdown_conversion ConfigDecoder.t =
@@ -137,7 +142,7 @@ let contents_decoder : package_contents ConfigDecoder.t =
   let open ConfigDecoder in
   branch [
     "library" ==> begin
-      get "main_module" string >>= fun main_module_name ->
+      get "main_module" uppercased_identifier_decoder >>= fun main_module_name ->
       get "source_directories" (list string) >>= fun source_directories ->
       get_or_else "test_directories" (list string) [] >>= fun test_directories ->
       get_opt "markdown_conversion" markdown_conversion_decoder >>= fun markdown_conversion ->
@@ -149,7 +154,7 @@ let contents_decoder : package_contents ConfigDecoder.t =
       }
     end;
     "font" ==> begin
-      get "main_module" string >>= fun main_module_name ->
+      get "main_module" uppercased_identifier_decoder >>= fun main_module_name ->
       get "files" (list font_file_description_decoder) >>= fun font_file_descriptions ->
       succeed @@ Font { main_module_name; font_file_descriptions }
     end;

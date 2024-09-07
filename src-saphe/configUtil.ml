@@ -9,6 +9,7 @@ module ConfigDecoder = YamlDecoder.Make(YamlError)
 module RegistryLocalNameMap = Map.Make(String)
 
 
+(* Package names must consist only of lowercased Latin letters, digits, and the hyphen in ASCII. *)
 let package_name_decoder : package_name ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun package_name ->
@@ -22,6 +23,41 @@ let package_name_decoder : package_name ConfigDecoder.t =
     failure (fun context -> InvalidPackageName{ context; got = package_name })
 
 
+let is_middle_char (char : char) : bool =
+  Char.equal char '-' || Core.Char.is_alpha char || Core.Char.is_digit char
+
+
+let is_uppercased_identifier (s : string) : bool =
+  match Core.String.to_list s with
+  | []         -> false
+  | ch0 :: chs -> Core.Char.is_uppercase ch0 && List.for_all is_middle_char chs
+
+
+let is_lowercased_identifier (s : string) : bool =
+  match Core.String.to_list s with
+  | []         -> false
+  | ch0 :: chs -> Core.Char.is_lowercase ch0 && List.for_all is_middle_char chs
+
+
+let uppercased_identifier_decoder : string ConfigDecoder.t =
+  let open ConfigDecoder in
+  string >>= fun s ->
+  if is_uppercased_identifier s then
+    succeed s
+  else
+    failure (fun context -> NotAnUppercasedIdentifier{ context; got = s})
+
+
+let lowercased_identifier_decoder : string ConfigDecoder.t =
+  let open ConfigDecoder in
+  string >>= fun s ->
+  if is_lowercased_identifier s then
+    succeed s
+  else
+    failure (fun context -> NotALowercasedIdentifier{ context; got = s})
+
+
+(* Registry hash values must consist only of lowercased hex digits (i.e., 0-9 and a-f). *)
 let registry_hash_value_decoder : registry_hash_value ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun registry_hash_value ->
