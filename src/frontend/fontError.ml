@@ -15,3 +15,5 @@ type font_error =
       index        : int;
       num_elements : int;
     }
+  | UnsupportedNoLangSys
+  | UnsupportedCidToGidMapOtherThanIdentity

@@ -1,11 +1,4 @@
 
-exception RemainsToBeImplemented of string
-
-
-let remains_to_be_implemented msg =
-  raise (RemainsToBeImplemented(msg))
-
-
 (* TODO: remove this *)
 let string_of_uchar_list =
   UtfUtil.encode_utf8

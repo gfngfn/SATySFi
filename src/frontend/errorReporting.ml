@@ -917,6 +917,12 @@ let make_font_error_message (display_config : Logging.config) = function
         NormalLine(Printf.sprintf "font file '%s' has %d elements." fname num_elements);
       ]
 
+  | UnsupportedNoLangSys ->
+      [ NormalLine("unsupported: no LangSys") ]
+
+  | UnsupportedCidToGidMapOtherThanIdentity ->
+      [ NormalLine("unsupported: /CIDToGIDMap other than /Identity") ]
+
 
 let error_log_environment (display_config : Logging.config) (suspended : unit -> ('a, config_error) result) : ('a, config_error) result =
   let report_error kind lines =
@@ -925,12 +931,6 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
   try
     suspended ()
   with
-  | RemainsToBeImplemented(msg) ->
-      report_error Interface [
-        NormalLine("remains to be supported:");
-        DisplayLine(msg);
-      ]
-
   | LoadHyph.InvalidPatternElement(rng) ->
       report_error System [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));

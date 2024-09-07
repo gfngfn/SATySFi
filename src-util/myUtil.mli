@@ -1,10 +1,6 @@
 
-exception RemainsToBeImplemented of string
-
 type abs_path = AbsPath.t
 [@@deriving show]
-
-val remains_to_be_implemented : string -> 'a
 
 val string_of_uchar_list : Uchar.t list -> string
 
