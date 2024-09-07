@@ -79,7 +79,7 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | UnsupportedRegistryFormat(format) ->
       [ NormalLine(Printf.sprintf "unsupported registry format '%s'" format) ]
 
-  | NotACommand{ context = yctx; prefix = _; string = s } ->
+  | NotACommand{ context = yctx; prefix = _; got = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s' %s" s (show_yaml_context yctx)) ]
 
   | BranchNotFound{ context = yctx; expected_tags; got_tags } ->

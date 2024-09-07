@@ -60,29 +60,27 @@ let cut_module_names (s : string) : string list * string =
   | _                   -> assert false (* `String.split_on_char` always returns a non-empty list *)
 
 
-let command_decoder ~(prefix : char) (k : string list -> string -> 'a) : 'a ConfigDecoder.t =
+let command_decoder ~(prefix : string) (k : string list -> string -> 'a) : 'a ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
-  try
-    if Char.equal prefix (String.get s 0) then
+  match Core.String.chop_prefix ~prefix s with
+  | None ->
+      failure (fun context -> NotACommand{ context; prefix; got = s })
+
+  | Some(s_tail) ->
       let s_tail = (String.sub s 1 (String.length s - 1)) in
       let (modnms, varnm) = cut_module_names s_tail in
       succeed @@ k modnms varnm
-    else
-      failure (fun context -> NotACommand{ context; prefix; string = s })
-  with
-  | Invalid_argument(_) ->
-      failure (fun context -> NotACommand{ context; prefix; string = s })
 
 
 let inline_command_decoder =
-  command_decoder ~prefix:'\\' (fun modules main_without_prefix ->
+  command_decoder ~prefix:"\\" (fun modules main_without_prefix ->
     LongInlineCommand{ modules; main_without_prefix }
   )
 
 
 let block_command_decoder =
-  command_decoder ~prefix:'+' (fun modules main_without_prefix ->
+  command_decoder ~prefix:"+" (fun modules main_without_prefix ->
     LongBlockCommand{ modules; main_without_prefix }
   )
 

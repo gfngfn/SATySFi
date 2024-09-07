@@ -37,8 +37,8 @@ type yaml_error =
   | UnsupportedRegistryFormat of string
   | NotACommand of {
       context : YamlDecoder.context;
-      prefix  : char;
-      string  : string;
+      prefix  : string;
+      got     : string;
     }
 [@@deriving show { with_path = false }]
 

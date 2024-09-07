@@ -12,9 +12,8 @@ module RegistryLocalNameMap = Map.Make(String)
 let package_name_decoder : package_name ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun package_name ->
-  let chars = Core.String.to_list_rev package_name in
   if
-    chars |> List.for_all (fun char ->
+    package_name |> Core.String.for_all ~f:(fun char ->
       Char.equal char '-' || Core.Char.is_digit char || Core.Char.is_lowercase char
     )
   then
@@ -26,7 +25,7 @@ let package_name_decoder : package_name ConfigDecoder.t =
 let registry_hash_value_decoder : registry_hash_value ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun registry_hash_value ->
-  if Core.String.for_all registry_hash_value ~f:Core.Char.is_hex_digit then
+  if registry_hash_value |> Core.String.for_all ~f:Core.Char.is_hex_digit then
     succeed registry_hash_value
   else
     failure (fun context -> InvalidRegistryHashValue{ got = registry_hash_value; context })
