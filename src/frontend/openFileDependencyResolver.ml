@@ -22,8 +22,8 @@ type local_or_envelope =
 let resolve_local ~(origin_dir : abs_path) ~(relpath_without_ext : string) ~(extensions : string list) =
   let open ResultMonad in
   let abspaths_candidates =
-    let path_without_ext = Filename.concat (get_abs_path_string origin_dir) relpath_without_ext in
-    extensions |> List.map (fun ext -> make_abs_path (path_without_ext ^ ext))
+    let path_without_ext = Filename.concat (AbsPath.to_string origin_dir) relpath_without_ext in
+    extensions |> List.map (fun ext -> AbsPath.of_string_exn (path_without_ext ^ ext))
   in
   match
     abspaths_candidates |> List.find_map (fun abspath_candidate ->

@@ -21,3 +21,5 @@ val append_to_directory : t -> string -> t
 val dirname : t -> t
 
 val basename : t -> string
+
+val replace_extension : extension_without_dot:string -> t -> t

@@ -148,7 +148,7 @@ Context({ ctx with hyphen_dictionary = hyph; }, ctxsub)
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let abspath_hyph = MyUtil.make_abs_path abspathstr_hyph in
+let abspath_hyph = validate_as_abs_path abspathstr_hyph in
 let hyph = LoadHyph.main abspath_hyph in
 BaseConstant(BCHyphenation(hyph))
 |}
@@ -179,12 +179,12 @@ Context({ ctx with script_map; line_break_map; }, ctxsub)
         ~code:{|
 let script_map =
   ScriptDataMap.make_from_file
-    ~script:(MyUtil.make_abs_path abspathstr_script)
-    ~east_asian_width:(MyUtil.make_abs_path abspathstr_east_asian_width)
+    ~script:(validate_as_abs_path abspathstr_script)
+    ~east_asian_width:(validate_as_abs_path abspathstr_east_asian_width)
 in
 let line_break_map =
   LineBreakDataMap.make_from_file
-    (MyUtil.make_abs_path abspathstr_line_break)
+    (validate_as_abs_path abspathstr_line_break)
 in
 BaseConstant(BCUnidata((script_map, line_break_map)))
 |}
@@ -588,7 +588,8 @@ make_inline_boxes HorzBox.([ HorzPure(PHGFixedTabular{
         ~is_pdf_mode_primitive:true
         ~needs_runtime_config:true
         ~code:{|
-let abspath = MyUtil.make_abs_path (Filename.concat runtime_config.job_directory relpathstr) in
+(* TODO: fix the origin directory *)
+let abspath = validate_as_abs_path (Filename.concat runtime_config.job_directory relpathstr) in
 let imgkey = ImageInfo.add_pdf abspath pageno in
 make_image_key imgkey
 |}
@@ -603,7 +604,8 @@ make_image_key imgkey
         ~is_pdf_mode_primitive:true
         ~needs_runtime_config:true
         ~code:{|
-let abspath = MyUtil.make_abs_path (Filename.concat runtime_config.job_directory relpath) in
+(* TODO: fix the origin directory *)
+let abspath = validate_as_abs_path (Filename.concat runtime_config.job_directory relpath) in
 let imgkey = ImageInfo.add_image abspath in
 make_image_key imgkey
 |}

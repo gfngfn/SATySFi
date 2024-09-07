@@ -3,6 +3,17 @@ let getcwd () =
   AbsPath.of_string_exn (Sys.getcwd ())
 
 
+let get_home_directory () =
+  let env_var_home =
+    if String.equal Sys.os_type "Win32" then
+      "userprofile"
+    else
+      "HOME"
+  in
+  let opt = Sys.getenv_opt env_var_home in
+  (Option.map AbsPath.of_string_exn opt, env_var_home)
+
+
 let open_in (abspath : AbsPath.t) (k : in_channel -> 'a) : 'a =
   let inc = Stdlib.open_in (AbsPath.to_string abspath) in
   let ret = k inc in

@@ -11,10 +11,8 @@ val list_fold_adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b 
 val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
 (* TODO: remove the following (due to migration to `AbsPath`): *)
-val make_abs_path : string -> abs_path
 val get_abs_path_string : abs_path -> string
 val make_absolute_if_relative : origin:abs_path -> string -> abs_path
-val append_to_abs_directory : abs_path -> string -> abs_path
 val dirname : abs_path -> abs_path
 val basename : abs_path -> string
 

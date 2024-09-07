@@ -40,7 +40,7 @@ let lock_contents_decoder ~dir:(absdir_lock_config : abs_path) : Lock.t ConfigDe
     "local" ==> begin
       get "relative_path" relative_path_decoder >>= fun relpathstr ->
       succeed @@ Lock.LocalFixed{
-        absolute_path = append_to_abs_directory absdir_lock_config relpathstr;
+        absolute_path = AbsPath.append_to_directory absdir_lock_config relpathstr;
       }
     end;
   ]

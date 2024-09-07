@@ -12,7 +12,7 @@ let listup_package_directories (absdir_package_store : abs_path) : ((package_nam
   in
   let* acc =
     filenames |> foldM (fun acc filename ->
-      let abspath = append_to_abs_directory absdir_package_store filename in
+      let abspath = AbsPath.append_to_directory absdir_package_store filename in
       if AbsPathIo.is_directory abspath then
         let absdir = abspath in
         let package_name = filename in (* TODO: check that `filename` is a lowercased identifier *)
@@ -53,7 +53,7 @@ let listup_release_configs (package_name : package_name) (absdir_single_package 
                       acc
 
                   | Some(semver) ->
-                      let abspath = append_to_abs_directory absdir_single_package filename in
+                      let abspath = AbsPath.append_to_directory absdir_single_package filename in
                       Alist.extend acc (semver, abspath)
                 end
           end

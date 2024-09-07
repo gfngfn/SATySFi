@@ -38,9 +38,7 @@ type abs_path = AbsPath.t
 
 
 (* TODO: remove the following *)
-let make_abs_path pathstr = AbsPath.of_string_exn pathstr
 let get_abs_path_string = AbsPath.to_string
-let append_to_abs_directory = AbsPath.append_to_directory
 let dirname = AbsPath.dirname
 let basename = AbsPath.basename
 let make_absolute_if_relative = AbsPath.make_absolute_if_relative

@@ -78,7 +78,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
     | TarGzip{ url; checksum } ->
         (* Synchronously fetches a tarball (if non-existent): *)
         let abspath_tarball =
-          append_to_abs_directory absdir_lock_tarball_cache
+          AbsPath.append_to_directory absdir_lock_tarball_cache
             (Printf.sprintf "%s.tar.gz" lock_tarball_name)
         in
         let* () =
@@ -153,8 +153,8 @@ let extract_external_zip_and_arrange_files_if_necessary ~(unzip_command : string
   let pairs =
     extractions |> List.map (fun extraction ->
       let { extracted_from; extracted_to } = extraction in
-      let abspath_from = append_to_abs_directory absdir_extraction extracted_from in
-      let abspath_to = append_to_abs_directory absdir_lock extracted_to in
+      let abspath_from = AbsPath.append_to_directory absdir_extraction extracted_from in
+      let abspath_to = AbsPath.append_to_directory absdir_lock extracted_to in
       { abspath_from; abspath_to }
     )
   in
@@ -201,14 +201,14 @@ let fetch_external_resources ~(wget_command : string) ~(unzip_command : string) 
       match external_resource with
       | ExternalZip{ url; checksum; extractions } ->
           let absdir_external =
-            append_to_abs_directory
+            AbsPath.append_to_directory
               (Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value)
               lock_tarball_name
           in
 
           (* Fetches the external zip file if nonexistent: *)
           let abspath_zip =
-            append_to_abs_directory absdir_external (Printf.sprintf "archives/%s.zip" name)
+            AbsPath.append_to_directory absdir_external (Printf.sprintf "archives/%s.zip" name)
           in
           let* () =
             fetch_external_zip_if_nonexistent
@@ -220,7 +220,7 @@ let fetch_external_resources ~(wget_command : string) ~(unzip_command : string) 
 
           (* Extracts the external zip file if some of the resulting files are nonexistent: *)
           let absdir_extraction =
-            append_to_abs_directory absdir_external (Printf.sprintf "extractions/%s" name)
+            AbsPath.append_to_directory absdir_external (Printf.sprintf "extractions/%s" name)
           in
           let* () =
             extract_external_zip_and_arrange_files_if_necessary

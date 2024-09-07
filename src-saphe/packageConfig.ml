@@ -221,7 +221,7 @@ let validate_dependency ~dir:(absdir_config : abs_path) (localmap : registry_rem
 
     | ParsedLocalFixedDependency{ relative_path } ->
         return @@ LocalFixedDependency{
-          absolute_path = append_to_abs_directory absdir_config relative_path;
+          absolute_path = AbsPath.append_to_directory absdir_config relative_path;
         }
   in
   return @@ PackageDependency{ used_as; spec }

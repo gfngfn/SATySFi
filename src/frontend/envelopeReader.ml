@@ -17,7 +17,7 @@ let listup_sources_in_directory (extensions : string list) (absdir_src : abs_pat
   let abspaths =
     filenames |> List.filter_map (fun filename ->
       if extensions |> List.exists (fun suffix -> Core.String.is_suffix filename ~suffix) then
-        Some(append_to_abs_directory absdir_src filename)
+        Some(AbsPath.append_to_directory absdir_src filename)
       else
         None
     )
@@ -32,13 +32,13 @@ let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions
   let* envelope =
     match config.envelope_contents with
     | Library{ main_module_name; source_directories; test_directories; _ } ->
-        let absdirs_src = source_directories |> List.map (append_to_abs_directory absdir_envelope) in
+        let absdirs_src = source_directories |> List.map (AbsPath.append_to_directory absdir_envelope) in
         let* abspaths_src =
           absdirs_src |> mapM (listup_sources_in_directory extensions) |> Result.map List.concat
         in
         let* abspaths =
           if use_test_files then
-            let absdirs_test = test_directories |> List.map (append_to_abs_directory absdir_envelope) in
+            let absdirs_test = test_directories |> List.map (AbsPath.append_to_directory absdir_envelope) in
             let* abspaths_test =
               absdirs_test |> mapM (listup_sources_in_directory extensions) |> Result.map List.concat
             in
@@ -71,7 +71,7 @@ let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions
         let font_files =
           font_file_descriptions |> List.map (fun font_file_description ->
             let { font_file_path; font_file_contents } = font_file_description in
-            let abspath = append_to_abs_directory absdir_envelope font_file_path in
+            let abspath = AbsPath.append_to_directory absdir_envelope font_file_path in
             {
               r_font_file_path     = abspath;
               r_font_file_contents = font_file_contents;

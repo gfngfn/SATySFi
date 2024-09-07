@@ -157,3 +157,8 @@ let dirname (abspath : t) : t =
 
 let basename (abspath : t) : string =
   Filename.basename (to_string abspath)
+
+
+let replace_extension ~(extension_without_dot : string) (abspath : t) : t =
+  let abspathstr_without_dot_and_extension = Filename.remove_extension (to_string abspath) in
+  of_string_exn (Printf.sprintf "%s.%s" abspathstr_without_dot_and_extension extension_without_dot)
