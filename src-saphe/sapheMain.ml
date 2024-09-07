@@ -590,10 +590,10 @@ let make_envelope_spec ~(store_root : abs_path) (locked_package : LockConfig.loc
   let envelope_path =
     match lock_contents with
     | Lock.Registered(reglock) ->
-        get_abs_path_string (Constant.registered_lock_envelope_config ~store_root reglock)
+        Constant.registered_lock_envelope_config ~store_root reglock
 
     | Lock.LocalFixed{ absolute_path } ->
-        get_abs_path_string (Constant.envelope_config_path ~dir:absolute_path)
+        Constant.envelope_config_path ~dir:absolute_path
   in
   let envelope_dependencies = lock_dependencies |> List.map make_envelope_dependency in
   {

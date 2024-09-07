@@ -27,6 +27,14 @@ type yaml_error =
       prefix  : char;
       string  : string;
     }
+  | NotAnUppercasedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | NotAnAbsolutePath of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
 [@@deriving show { with_path = false }]
 
 module YamlError = struct

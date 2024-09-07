@@ -31,7 +31,7 @@ let resolve_local ~(origin_dir : abs_path) ~(relpath_without_ext : string) ~(ext
     )
   with
   | None          -> err abspaths_candidates
-  | Some(abspath) -> return @@ abspath
+  | Some(abspath) -> return abspath
 
 
 let get_header (extensions : string list) (absdir_current : abs_path) (headerelem : header_element) : local_or_envelope ok =

@@ -648,6 +648,12 @@ let make_yaml_error_message : yaml_error -> line list = function
   | NotACommand{ context = yctx; prefix = _; string = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s' %s" s (show_yaml_context yctx)) ]
 
+  | NotAnUppercasedIdentifier{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not an uppercased identifier: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotAnAbsolutePath{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not an absolute path: '%s' %s" s (show_yaml_context yctx)) ]
+
 
 let make_config_error_message (display_config : Logging.config) : config_error -> string = function
   | UnexpectedExtension(ext) ->

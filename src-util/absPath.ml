@@ -52,20 +52,26 @@ let normalize (ncompos : non_normal_component list) : (component list) option =
   return (Alist.to_list compoacc)
 
 
-let of_string_exn (s : string) : t =
+let of_string (s : string) : t option =
   let uchs = UtfUtil.decode_utf8 s in
   match uchs with
   | [] ->
-      assert false
+      None
 
   | uch_first :: uchs_rest ->
       if Uchar.equal uch_first (Uchar.of_char '/') then
         let ncompos = separate_to_non_normal_components Alist.empty Alist.empty uchs_rest in
         match normalize ncompos with
-        | None         -> assert false
-        | Some(compos) -> AbsPath(compos)
+        | None         -> None
+        | Some(compos) -> Some(AbsPath(compos))
       else
-        assert false
+        None
+
+
+let of_string_exn (s : string) : t =
+  match of_string s with
+  | None          -> assert false
+  | Some(abspath) -> abspath
 
 
 let to_string (AbsPath(compos) : t) : string =

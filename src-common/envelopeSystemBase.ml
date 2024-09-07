@@ -1,6 +1,6 @@
-(*
+
 open MyUtil
-*)
+
 
 type envelope_name = string
 [@@deriving show]
@@ -97,7 +97,7 @@ type envelope_dependency = {
 
 type envelope_spec = {
   envelope_name          : envelope_name;
-  envelope_path          : string;
+  envelope_path          : abs_path;
   envelope_dependencies  : envelope_dependency list;
   test_only_envelope     : bool;
 }

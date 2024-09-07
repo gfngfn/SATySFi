@@ -1,4 +1,5 @@
 
+open MyUtil
 open ConfigError
 open PackageConfigImpl
 open PackageSystemBase
@@ -22,22 +23,6 @@ let package_name_decoder : package_name ConfigDecoder.t =
     succeed package_name
   else
     failure (fun context -> InvalidPackageName{ context; got = package_name })
-
-
-let is_middle_char (char : char) : bool =
-  Char.equal char '-' || Core.Char.is_alpha char || Core.Char.is_digit char
-
-
-let is_uppercased_identifier (s : string) : bool =
-  match Core.String.to_list s with
-  | []         -> false
-  | ch0 :: chs -> Core.Char.is_uppercase ch0 && List.for_all is_middle_char chs
-
-
-let is_lowercased_identifier (s : string) : bool =
-  match Core.String.to_list s with
-  | []         -> false
-  | ch0 :: chs -> Core.Char.is_lowercase ch0 && List.for_all is_middle_char chs
 
 
 let uppercased_identifier_decoder : string ConfigDecoder.t =
