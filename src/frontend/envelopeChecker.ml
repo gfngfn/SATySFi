@@ -110,7 +110,7 @@ let typecheck_library_file (display_config : Logging.config) (config : typecheck
     Logging.begin_to_typecheck_file display_config abspath_in;
     let* absmodsig_opt = utsig_opt |> optionM (ModuleTypechecker.typecheck_signature config tyenv_for_sig) in
     let* ret = ModuleTypechecker.main config tyenv_for_struct absmodsig_opt rng_struct utbinds in
-    Logging.pass_type_check None;
+    Logging.pass_type_check display_config None;
     return ret
   in
   res |> Result.map_error (fun tyerr -> TypeError(tyerr))
@@ -120,7 +120,7 @@ let typecheck_document_file (display_config : Logging.config) (config : typechec
   let open ResultMonad in
   Logging.begin_to_typecheck_file display_config abspath_in;
   let* (ty, ast) = Typechecker.main config Stage1 tyenv utast |> Result.map_error (fun tyerr -> TypeError(tyerr)) in
-  Logging.pass_type_check (Some(Display.show_mono_type ty));
+  Logging.pass_type_check display_config (Some(Display.show_mono_type ty));
   if config.is_text_mode then
     if Typechecker.are_unifiable ty (Range.dummy "text-mode", BaseType(StringType)) then
       return ast

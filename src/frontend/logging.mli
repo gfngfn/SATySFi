@@ -20,17 +20,19 @@ val begin_to_eval_file : config -> abs_path -> unit
 
 val begin_to_parse_file : config -> abs_path -> unit
 
-val pass_type_check : string option -> unit
+val pass_type_check : config -> string option -> unit
 
-val start_evaluation : int -> unit
+val start_evaluation : config -> int -> unit
 
-val end_evaluation : unit -> unit
+val end_evaluation : config -> unit
 
-val start_page_break : unit -> unit
+val start_page_break : config -> unit
 
-val achieve_count_max : unit -> unit
+val needs_another_trial : config -> unit
 
-val achieve_fixpoint : string list -> unit
+val achieve_count_max : config -> unit
+
+val achieve_fixpoint : config -> string list -> unit
 
 val end_output : config -> abs_path -> unit
 
@@ -43,8 +45,6 @@ val deps_config_file : config -> abs_path -> unit
 val begin_to_embed_fonts : unit -> unit
 
 val begin_to_write_page : unit -> unit
-
-val needs_another_trial : unit -> unit
 
 val warn_noninjective_cmap : Uchar.t -> Uchar.t -> Otfed.Value.glyph_id -> unit
 

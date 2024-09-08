@@ -55,10 +55,10 @@ let unfreeze_environment (frenv : frozen_environment) : environment =
   }
 
 
-let transform_pdf (pdf_config : HandlePdf.config) ~(page_number_limit : int) = function
+let transform_pdf (display_config : Logging.config) (pdf_config : HandlePdf.config) ~(page_number_limit : int) = function
   | BaseConstant(BCDocument(paper_size, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
       begin
-        Logging.start_page_break ();
+        Logging.start_page_break display_config;
         State.start_page_break ();
         match pbstyle with
         | SingleColumn ->
@@ -99,9 +99,9 @@ let reset_pdf () =
   ()
 
 
-let evaluate (reset : unit -> unit) ~(is_bytecomp_mode : bool) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : (syntactic_value, config_error) result =
+let evaluate (display_config : Logging.config) (reset : unit -> unit) ~(is_bytecomp_mode : bool) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : (syntactic_value, config_error) result =
   let open ResultMonad in
-  Logging.start_evaluation i;
+  Logging.start_evaluation display_config i;
   reset ();
   let env = unfreeze_environment env_freezed in
   let value =
@@ -111,7 +111,7 @@ let evaluate (reset : unit -> unit) ~(is_bytecomp_mode : bool) (i : int) (env_fr
     else
       Evaluator.interpret_0 env ast
   in
-  Logging.end_evaluation ();
+  Logging.end_evaluation display_config;
   return value
 
 
@@ -120,23 +120,23 @@ let build_document ~(max_repeats : int) (transform : syntactic_value -> 'a) (res
   let env_freezed = freeze_environment env in
   let rec aux (i : int) =
     CrossRef.reset ();
-    let* value = evaluate reset ~is_bytecomp_mode i env_freezed ast in
+    let* value = evaluate display_config reset ~is_bytecomp_mode i env_freezed ast in
     let document = transform value in
     match CrossRef.judge_termination () with
     | CrossRef.NeedsAnotherTrial ->
         if i >= max_repeats then
           begin
-            Logging.achieve_count_max ();
+            Logging.achieve_count_max display_config;
             return document
           end
         else
           begin
-            Logging.needs_another_trial ();
+            Logging.needs_another_trial display_config;
             aux (i + 1)
           end
 
     | CrossRef.CanTerminate unresolved_crossrefs ->
-        Logging.achieve_fixpoint unresolved_crossrefs;
+        Logging.achieve_fixpoint display_config unresolved_crossrefs;
         return document
   in
   let* document = aux 1 in
@@ -145,10 +145,11 @@ let build_document ~(max_repeats : int) (transform : syntactic_value -> 'a) (res
   Logging.end_output display_config abspath_out;
   return ()
 
-let main (output_mode : output_mode) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(max_repeats : int) =
+
+let main (output_mode : output_mode) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(max_repeats : int) (display_config : Logging.config) =
   match output_mode with
   | PdfMode ->
-      build_document ~max_repeats (transform_pdf pdf_config ~page_number_limit) reset_pdf output_pdf
+      build_document ~max_repeats (transform_pdf display_config pdf_config ~page_number_limit) reset_pdf output_pdf display_config
 
   | TextMode(_) ->
-      build_document ~max_repeats transform_text Fun.id output_text
+      build_document ~max_repeats transform_text Fun.id output_text display_config
