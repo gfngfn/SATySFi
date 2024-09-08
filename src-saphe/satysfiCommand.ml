@@ -30,13 +30,13 @@ let make_verbosity_args (verbosity : Verbosity.t) =
   | Verbosity.Quiet   -> [ "--quiet" ]
 
 
-type package_build_option = {
+type package_build_option = PackageBuildOption of {
   show_full_path         : bool;
   verbosity              : Verbosity.t;
 }
 
 
-let make_package_build_option_args (options : package_build_option) =
+let make_package_build_option_args (PackageBuildOption(options) : package_build_option) =
   List.concat [
     if options.show_full_path then [ "--full-path" ] else [];
     make_verbosity_args options.verbosity;
@@ -64,7 +64,7 @@ let build_package
   { exit_status; command }
 
 
-type document_build_option = {
+type document_build_option = DocumentBuildOption of {
   show_full_path         : bool;
   verbosity              : Verbosity.t;
   page_number_limit      : int;
@@ -78,7 +78,7 @@ type document_build_option = {
 }
 
 
-let make_document_build_option_args (options : document_build_option) =
+let make_document_build_option_args (DocumentBuildOption(options) : document_build_option) =
   let flag b s = if b then [ s ] else [] in
   List.concat [
     flag options.show_full_path         "--full-path";

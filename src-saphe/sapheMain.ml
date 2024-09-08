@@ -632,7 +632,7 @@ let build
       let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
         let options =
-          SatysfiCommand.{
+          SatysfiCommand.PackageBuildOption{
             show_full_path;
             verbosity;
           }
@@ -649,7 +649,7 @@ let build
         }
       else
         let options =
-          SatysfiCommand.{
+          SatysfiCommand.DocumentBuildOption{
             show_full_path;
             verbosity;
             page_number_limit;
@@ -721,11 +721,11 @@ let build
 
         (* Builds the package by invoking `satysfi`: *)
         let SatysfiCommand.{ exit_status; command = _ } =
-          SatysfiCommand.(build_package
+          SatysfiCommand.build_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
             ~mode:text_mode_formats_str_opt
-            ~options)
+            ~options
         in
         return exit_status
 
@@ -770,13 +770,13 @@ let build
 
         (* Builds the document by invoking `satysfi`: *)
         let SatysfiCommand.{ exit_status; command = _ } =
-          SatysfiCommand.(build_document
+          SatysfiCommand.build_document
             ~doc:abspath_doc
             ~out:abspath_out
             ~dump:abspath_dump
             ~deps:abspath_deps_config
             ~mode:text_mode_formats_str_opt
-            ~options)
+            ~options
         in
         return exit_status
   in
@@ -809,7 +809,7 @@ let test
       let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
         let options =
-          SatysfiCommand.{
+          SatysfiCommand.PackageBuildOption{
             show_full_path;
             verbosity;
           }
@@ -866,11 +866,11 @@ let test
 
         (* Builds the package by invoking `satysfi`: *)
         let SatysfiCommand.{ exit_status; command = _ } =
-          SatysfiCommand.(test_package
+          SatysfiCommand.test_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
             ~mode:text_mode_formats_str_opt
-            ~options)
+            ~options
         in
         return exit_status
 
