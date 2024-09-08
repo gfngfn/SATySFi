@@ -2,8 +2,6 @@
 type abs_path = AbsPath.t
 [@@deriving show]
 
-val string_of_uchar_list : Uchar.t list -> string
-
 val range : int -> int -> int list
 
 val list_fold_adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
