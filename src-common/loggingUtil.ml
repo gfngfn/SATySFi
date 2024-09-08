@@ -20,7 +20,7 @@ type logging_spec = {
 let show_path (spec : logging_spec) (abspath : abs_path) : string =
   match spec.path_display_setting with
   | FullPath                   -> AbsPath.to_string abspath
-  | RelativeToCwd(abspath_cwd) -> AbsPath.make_relative ~from:abspath_cwd abspath
+  | RelativeToCwd(abspath_cwd) -> AbsPath.to_relative_string_if_descendant ~from:abspath_cwd abspath
 
 
 let is_verbose (spec : logging_spec) =

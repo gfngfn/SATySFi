@@ -63,7 +63,7 @@ let make_lock_name ~seen_from:(absdir_seen_from : abs_path) (lock : Lock.t) : lo
 
   | Lock.LocalFixed{ absolute_path } ->
       Printf.sprintf "local.%s"
-        (AbsPath.make_relative ~from:absdir_seen_from absolute_path)
+        (AbsPath.to_relative_string ~from:absdir_seen_from absolute_path)
 
 
 let make_lock_dependency ~(seen_from : abs_path) (dep : locked_dependency) : LockConfig.lock_dependency =

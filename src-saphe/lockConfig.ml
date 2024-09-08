@@ -62,7 +62,7 @@ let lock_contents_encoder ~dir:(absdir_lock_config : abs_path) (contents : Lock.
   | Lock.LocalFixed{ absolute_path } ->
       [
         ("local", `O([
-          ("relative_path", `String(AbsPath.make_relative ~from:absdir_lock_config absolute_path));
+          ("relative_path", `String(AbsPath.to_relative_string ~from:absdir_lock_config absolute_path));
         ]));
       ]
 
