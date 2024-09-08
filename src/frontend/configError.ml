@@ -109,3 +109,7 @@ type config_error =
       path    : abs_path;
       message : string;
     }
+  | CannotOutputResult of {
+      path    : abs_path;
+      message : string;
+    }

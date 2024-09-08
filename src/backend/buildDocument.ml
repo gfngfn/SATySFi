@@ -78,12 +78,18 @@ let transform_text =
   EvalUtil.get_string
 
 
-let output_pdf (abspath_out : abs_path) (pdfret : HandlePdf.t) : unit =
-  HandlePdf.write_to_file abspath_out pdfret
+let output_pdf (abspath_out : abs_path) (pdfret : HandlePdf.t) : (unit, config_error) result =
+  let open ResultMonad in
+  try
+    HandlePdf.write_to_file abspath_out pdfret;
+    return ()
+  with
+  | _ -> err @@ CannotOutputResult{ path = abspath_out; message = "HandlePdf.write_to_file failed" }
 
 
-let output_text (abspath_out : abs_path) (data : string) : unit =
-  Core.Out_channel.write_all (AbsPath.to_string abspath_out) ~data
+let output_text (abspath_out : abs_path) (data : string) : (unit, config_error) result =
+  AbsPathIo.write_file abspath_out data
+    |> Result.map_error (fun message -> CannotOutputResult{ path = abspath_out; message })
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)
@@ -109,7 +115,7 @@ let evaluate (reset : unit -> unit) ~(is_bytecomp_mode : bool) (i : int) (env_fr
   return value
 
 
-let build_document ~(max_repeats : int) (transform : syntactic_value -> 'a) (reset : unit -> unit) (output : abs_path -> 'a -> unit) (display_config : Logging.config) ~(is_bytecomp_mode : bool) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let build_document ~(max_repeats : int) (transform : syntactic_value -> 'a) (reset : unit -> unit) (output : abs_path -> 'a -> (unit, config_error) result) (display_config : Logging.config) ~(is_bytecomp_mode : bool) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
   let open ResultMonad in
   let env_freezed = freeze_environment env in
   let rec aux (i : int) =
@@ -134,7 +140,7 @@ let build_document ~(max_repeats : int) (transform : syntactic_value -> 'a) (res
         return document
   in
   let* document = aux 1 in
-  output abspath_out document;
+  let* () = output abspath_out document in
   let* () = CrossRef.write_dump_file abspath_dump in
   Logging.end_output display_config abspath_out;
   return ()

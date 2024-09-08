@@ -872,6 +872,12 @@ let make_config_error_message (display_config : Logging.config) : config_error -
         DisplayLine(message);
       ]
 
+  | CannotOutputResult{ path; message } ->
+      make_error_message Interface [
+        NormalLine(Printf.sprintf "cannot output the final result '%s':" (Logging.show_path display_config path));
+        DisplayLine(message);
+      ]
+
 
 let make_font_error_message (display_config : Logging.config) = function
   | FailedToReadFont(abspath, msg) ->
