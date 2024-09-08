@@ -17,18 +17,6 @@ let escape_command_line (args : string list) : string =
   String.concat " " (args |> List.map (fun s -> Printf.sprintf "\"%s\"" (escape_string s)))
 
 
-type build_option = {
-    page_number_limit      : int;
-    debug_show_bbox        : bool;
-    debug_show_space       : bool;
-    debug_show_block_bbox  : bool;
-    debug_show_block_space : bool;
-    debug_show_overfull    : bool;
-    type_check_only        : bool;
-    bytecomp               : bool;
-}
-
-
 let make_mode_args (text_mode_formats_str_opt : string option) =
   match text_mode_formats_str_opt with
   | None ->
@@ -38,25 +26,68 @@ let make_mode_args (text_mode_formats_str_opt : string option) =
       [ "--text-mode"; text_mode_formats_str ]
 
 
+type package_build_option = {
+  show_full_path         : bool;
+  verbose                : bool;
+}
+
+
+let make_package_build_option_args (options : package_build_option) =
+  let flag b s = if b then [ s ] else [] in
+  List.concat [
+    flag options.show_full_path "--full-path";
+    flag options.verbose        "--verbose";
+  ]
+
+
 let build_package
   ~envelope:(abspath_envelope_config : abs_path)
   ~deps:(abspath_deps_config : abs_path)
   ~mode:(text_mode_formats_str_opt : string option)
-  ~options:(_ : build_option) : run_result
+  ~(options : package_build_option) : run_result
 =
   let args_mandatory =
     [
       "satysfi"; "build"; "package";
       AbsPath.to_string abspath_envelope_config;
       "--deps"; AbsPath.to_string abspath_deps_config;
-      "--full-path"; (* TODO: refine this *)
     ]
   in
   let args_mode = make_mode_args text_mode_formats_str_opt in
-  let args = List.concat [ args_mandatory; args_mode ] in
+  let args_option = make_package_build_option_args options in
+  let args = List.concat [ args_mandatory; args_mode; args_option ] in
   let command = escape_command_line args in
   let exit_status = Sys.command command in
   { exit_status; command }
+
+
+type document_build_option = {
+  show_full_path         : bool;
+  verbose                : bool;
+  page_number_limit      : int;
+  debug_show_bbox        : bool;
+  debug_show_space       : bool;
+  debug_show_block_bbox  : bool;
+  debug_show_block_space : bool;
+  debug_show_overfull    : bool;
+  type_check_only        : bool;
+  bytecomp               : bool;
+}
+
+
+let make_document_build_option_args (options : document_build_option) =
+  let flag b s = if b then [ s ] else [] in
+  List.concat [
+    flag options.show_full_path         "--full-path";
+    flag options.verbose                "--verbose";
+    flag options.debug_show_bbox        "--debug-show-bbox";
+    flag options.debug_show_space       "--debug-show-space";
+    flag options.debug_show_block_bbox  "--debug-show-block-bbox";
+    flag options.debug_show_block_space "--debug-show-block-space";
+    flag options.debug_show_overfull    "--debug-show-overfull";
+    flag options.type_check_only        "--type-check-only";
+    flag options.bytecomp               "--bytecomp"; (* TODO: consider moving this to config *)
+  ]
 
 
 let build_document
@@ -65,7 +96,7 @@ let build_document
   ~dump:(abspath_dump : abs_path)
   ~deps:(abspath_deps_config : abs_path)
   ~mode:(text_mode_formats_str_opt : string option)
-  ~options:(_ : build_option) : run_result
+  ~(options : document_build_option) : run_result
 =
   let args_mandatory =
     [
@@ -74,11 +105,11 @@ let build_document
       "--output"; AbsPath.to_string abspath_out;
       "--dump"; AbsPath.to_string abspath_dump;
       "--deps"; AbsPath.to_string abspath_deps_config;
-      "--full-path"; (* TODO: refine this *)
     ]
   in
   let args_mode = make_mode_args text_mode_formats_str_opt in
-  let args = List.concat [ args_mandatory; args_mode ] in
+  let args_option = make_document_build_option_args options in
+  let args = List.concat [ args_mandatory; args_mode; args_option ] in
   let command = escape_command_line args in
   let exit_status = Sys.command command in
   { exit_status; command }
@@ -87,7 +118,8 @@ let build_document
 let test_package
   ~envelope:(abspath_envelope_config : abs_path)
   ~deps:(abspath_deps_config : abs_path)
-  ~mode:(text_mode_formats_str_opt : string option) : run_result
+  ~mode:(text_mode_formats_str_opt : string option)
+  ~(options : package_build_option) : run_result
 =
   let args_mandatory =
     [
@@ -98,7 +130,8 @@ let test_package
     ]
   in
   let args_mode = make_mode_args text_mode_formats_str_opt in
-  let args = List.concat [ args_mandatory; args_mode ] in
+  let args_option = make_package_build_option_args options in
+  let args = List.concat [ args_mandatory; args_mode; args_option ] in
   let command = escape_command_line args in
   let exit_status = Sys.command command in
   { exit_status; command }

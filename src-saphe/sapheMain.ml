@@ -554,7 +554,7 @@ type build_input =
       config   : abs_path;
       lock     : abs_path;
       envelope : abs_path;
-      options  : SatysfiCommand.build_option;
+      options  : SatysfiCommand.package_build_option;
     }
   | DocumentBuildInput of {
       root    : abs_path;
@@ -562,7 +562,7 @@ type build_input =
       config  : abs_path;
       lock    : abs_path;
       out     : abs_path;
-      options : SatysfiCommand.build_option;
+      options : SatysfiCommand.document_build_option;
     }
 
 
@@ -612,6 +612,9 @@ let build
     ~(fpath_out_opt : string option)
     ~(text_mode_formats_str_opt : string option)
     ~(page_number_limit : int)
+    ~(max_repeats : int)
+    ~(show_full_path : bool)
+    ~(verbose : bool)
     ~(debug_show_bbox : bool)
     ~(debug_show_space : bool)
     ~(debug_show_block_bbox : bool)
@@ -625,21 +628,15 @@ let build
 
     (* Constructs the input: *)
     let build_input =
-      let options =
-        SatysfiCommand.{
-          page_number_limit;
-          debug_show_bbox;
-          debug_show_space;
-          debug_show_block_bbox;
-          debug_show_block_space;
-          debug_show_overfull;
-          type_check_only;
-          bytecomp;
-        }
-      in
       let absdir_current = AbsPathIo.getcwd () in
       let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
+        let options =
+          SatysfiCommand.{
+            show_full_path;
+            verbose;
+          }
+        in
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
         let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
         let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
@@ -651,6 +648,20 @@ let build
           options;
         }
       else
+        let options =
+          SatysfiCommand.{
+            show_full_path;
+            verbose;
+            page_number_limit;
+            debug_show_bbox;
+            debug_show_space;
+            debug_show_block_bbox;
+            debug_show_block_space;
+            debug_show_overfull;
+            type_check_only;
+            bytecomp;
+          }
+        in
         let absdir_doc_root = AbsPath.dirname abspath_in in
         let abspath_package_config = Constant.document_package_config_path ~doc:abspath_in in
         let abspath_lock_config = Constant.document_lock_config_path ~doc:abspath_in in
@@ -780,12 +791,15 @@ type test_input =
       config   : abs_path;
       lock     : abs_path;
       envelope : abs_path;
+      options  : SatysfiCommand.package_build_option;
     }
 
 
 let test
     ~(fpath_in : string)
     ~(text_mode_formats_str_opt : string option)
+    ~(show_full_path : bool)
+    ~(verbose : bool)
 =
   let res =
     let open ResultMonad in
@@ -794,6 +808,12 @@ let test
       let absdir_current = AbsPathIo.getcwd () in
       let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
+        let options =
+          SatysfiCommand.{
+            show_full_path;
+            verbose;
+          }
+        in
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
         let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
         let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
@@ -802,6 +822,7 @@ let test
           config   = abspath_package_config;
           lock     = abspath_lock_config;
           envelope = abspath_envelope_config;
+          options;
         }
       else
         err @@ CannotTestDocument
@@ -815,6 +836,7 @@ let test
         config   = abspath_package_config;
         lock     = abspath_lock_config;
         envelope = abspath_envelope_config;
+        options;
       } ->
         (* Loads the package config: *)
         let*
@@ -847,7 +869,8 @@ let test
           SatysfiCommand.(test_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
-            ~mode:text_mode_formats_str_opt)
+            ~mode:text_mode_formats_str_opt
+            ~options)
         in
         return exit_status
 
