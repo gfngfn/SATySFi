@@ -1,9 +1,6 @@
 
 open MyUtil
-
-type path_display_setting =
-  | FullPath
-  | RelativeToCwd of abs_path
+open CommonUtil
 
 type config = {
   path_display_setting : path_display_setting;

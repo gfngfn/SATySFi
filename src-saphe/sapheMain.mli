@@ -5,7 +5,11 @@ val init_document : fpath_in:string -> unit
 
 val init_library : fpath_in:string -> unit
 
-val solve : fpath_in:string -> unit
+val solve :
+  fpath_in:string ->
+  show_full_path:bool ->
+  verbosity:Verbosity.t ->
+  unit
 
 val update : fpath_in:string -> unit
 

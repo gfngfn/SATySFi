@@ -1,9 +1,20 @@
 
 open MyUtil
+open CommonUtil
 open PackageSystemBase
 
 
-let show_package_dependency_before_solving (dependencies_with_flags : (dependency_flag * package_dependency) list) =
+type config = {
+  path_display_setting : path_display_setting;
+  verbosity            : Verbosity.t;
+}
+
+
+let show_path (config : config) =
+  display_path config.path_display_setting
+
+
+let show_package_dependency_before_solving (config : config) (dependencies_with_flags : (dependency_flag * package_dependency) list) =
   Printf.printf "  package dependencies to solve:\n";
   dependencies_with_flags |> List.iter (fun (flag, dep) ->
     let PackageDependency{ used_as; spec } = dep in
@@ -16,62 +27,84 @@ let show_package_dependency_before_solving (dependencies_with_flags : (dependenc
           | SourceDependency   -> ""
           | TestOnlyDependency -> ", test_only"
         in
-        Printf.printf "  - %s (%s%s) used as %s\n" package_name s_restr s_test_only used_as
+        Printf.printf "  - %s (%s%s) used as %s\n"
+          package_name
+          s_restr
+          s_test_only
+          used_as
 
     | LocalFixedDependency{ absolute_path } ->
-        Printf.printf "  - '%s' used as %s\n" (AbsPath.to_string absolute_path) used_as
+        Printf.printf "  - '%s' used as %s\n"
+          (show_path config absolute_path)
+          used_as
   )
 
 
-let show_package_dependency_solutions (solutions : package_solution list) =
+let show_package_dependency_solutions (config : config) (solutions : package_solution list) =
   Printf.printf "  package dependency solutions:\n";
   solutions |> List.iter (fun solution ->
     match solution.lock with
     | Lock.Registered(RegisteredLock.{ registered_package_id; locked_version; _ }) ->
         let RegisteredPackageId.{ package_name; _ } = registered_package_id in
-        Printf.printf "  - %s %s\n" package_name (SemanticVersion.to_string locked_version)
+        Printf.printf "  - %s %s\n"
+          package_name
+          (SemanticVersion.to_string locked_version)
 
     | Lock.LocalFixed{ absolute_path } ->
-        Printf.printf "  - %s\n" (AbsPath.to_string absolute_path)
+        Printf.printf "  - %s\n"
+          (show_path config absolute_path)
   )
 
 
-let end_lock_config_output (abspath_lock_config : abs_path) =
-  Printf.printf "  lock config written on '%s'.\n" (AbsPath.to_string abspath_lock_config)
+let end_lock_config_output (config : config) (abspath_lock_config : abs_path) =
+  Printf.printf "  lock config written on '%s'.\n"
+    (show_path config abspath_lock_config)
 
 
-let end_envelope_config_output (abspath_envelope_config : abs_path) =
-  Printf.printf "  envelope config written on '%s'.\n" (AbsPath.to_string abspath_envelope_config)
+let end_envelope_config_output (config : config) (abspath_envelope_config : abs_path) =
+  Printf.printf "  envelope config written on '%s'.\n"
+    (show_path config abspath_envelope_config)
 
 
-let end_deps_config_output (abspath_deps_config : abs_path) =
-  Printf.printf "  deps config written on '%s'.\n" (AbsPath.to_string abspath_deps_config)
+let end_deps_config_output (config : config) (abspath_deps_config : abs_path) =
+  if is_verbose config.verbosity then begin
+    Printf.printf "  deps config written on '%s'.\n"
+      (show_path config abspath_deps_config)
+  end
 
 
 let lock_already_installed (lock_name : lock_name) (absdir : abs_path) =
-  Printf.printf "  '%s': already installed at '%s'\n" lock_name (AbsPath.to_string absdir)
+  Printf.printf "  '%s': already installed at '%s'\n"
+    lock_name
+    (AbsPath.to_string absdir)
 
 
 let lock_cache_exists (lock_name : lock_name) (abspath_tarball : abs_path) =
-  Printf.printf "  cache for '%s' exists at '%s'\n" lock_name (AbsPath.to_string abspath_tarball)
+  Printf.printf "  cache for '%s' exists at '%s'\n"
+    lock_name
+    (AbsPath.to_string abspath_tarball)
 
 
 let store_root_config_updated ~(created : bool) (abspath_store_root_config : abs_path) =
   let verb = if created then "created" else "updated" in
-  Printf.printf "  %s the store root config '%s'\n" verb (AbsPath.to_string abspath_store_root_config)
+  Printf.printf "  %s the store root config '%s'\n"
+    verb
+    (AbsPath.to_string abspath_store_root_config)
 
 
 let package_registry_updated ~(created : bool) (absdir_registry_repo : abs_path) =
   let verb = if created then "fetched" else "updated" in
-  Printf.printf "  %s the package registry '%s'\n" verb (AbsPath.to_string absdir_registry_repo)
+  Printf.printf "  %s the package registry '%s'\n"
+    verb
+    (AbsPath.to_string absdir_registry_repo)
 
 
-let initialize_file (abspath_doc : abs_path) =
-  Printf.printf "  created '%s'\n" (AbsPath.to_string abspath_doc)
+let initialize_file (config : config) (abspath_doc : abs_path) =
+  Printf.printf "  created '%s'\n" (show_path config abspath_doc)
 
 
-let initialize_package_config (abspath_package_config : abs_path) =
-  Printf.printf "  created a package config '%s'\n" (AbsPath.to_string abspath_package_config)
+let initialize_package_config (config : config) (abspath_package_config : abs_path) =
+  Printf.printf "  created a package config '%s'\n" (show_path config abspath_package_config)
 
 
 let downloading_lock (lock_name : lock_name) (absdir : abs_path) =

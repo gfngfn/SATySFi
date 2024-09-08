@@ -1,4 +1,7 @@
 
+open MyUtil
+
+
 let is_middle_char (char : char) : bool =
   Char.equal char '-' || Core.Char.is_alpha char || Core.Char.is_digit char
 
@@ -38,3 +41,24 @@ let parse_long_identifier (s : string) : (string list * string) option =
     return (modnms, varnm)
   else
     None
+
+
+type path_display_setting =
+  | FullPath
+  | RelativeToCwd of abs_path
+
+
+let display_path (setting : path_display_setting) (abspath : abs_path) =
+  match setting with
+  | FullPath                   -> AbsPath.to_string abspath
+  | RelativeToCwd(abspath_cwd) -> AbsPath.make_relative ~from:abspath_cwd abspath
+
+
+let is_verbose = function
+  | Verbosity.Verbose -> true
+  | _                 -> false
+
+
+let is_not_quiet = function
+  | Verbosity.Quiet -> false
+  | _               -> true

@@ -1,5 +1,6 @@
 
 open MyUtil
+open CommonUtil
 open EnvelopeSystemBase
 open ErrorReporting
 open Types
@@ -154,9 +155,9 @@ let make_output_mode text_mode_formats_str_opt =
 let make_display_config ~(show_full_path : bool) ~(verbosity : Verbosity.t) ~current_dir:(absdir_current : abs_path) =
   let path_display_setting =
     if show_full_path then
-      Logging.FullPath
+      FullPath
     else
-      Logging.RelativeToCwd(absdir_current)
+      RelativeToCwd(absdir_current)
   in
   Logging.{ path_display_setting; verbosity }
 

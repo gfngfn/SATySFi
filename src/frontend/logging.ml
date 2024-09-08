@@ -1,10 +1,7 @@
 
 open MyUtil
+open CommonUtil
 
-
-type path_display_setting =
-  | FullPath
-  | RelativeToCwd of abs_path
 
 type config = {
   path_display_setting : path_display_setting;
@@ -12,20 +9,8 @@ type config = {
 }
 
 
-let show_path (config : config) (abspath : abs_path) =
-  match config.path_display_setting with
-  | FullPath                   -> AbsPath.to_string abspath
-  | RelativeToCwd(abspath_cwd) -> AbsPath.make_relative ~from:abspath_cwd abspath
-
-
-let is_verbose = function
-  | Verbosity.Verbose -> true
-  | _                 -> false
-
-
-let is_not_quiet = function
-  | Verbosity.Quiet -> false
-  | _               -> true
+let show_path (config : config) =
+  display_path config.path_display_setting
 
 
 let begin_to_typecheck_file (config : config) (abspath_in : abs_path) =

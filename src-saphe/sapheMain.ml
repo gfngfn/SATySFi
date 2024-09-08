@@ -1,5 +1,6 @@
 
 open MyUtil
+open CommonUtil
 open EnvelopeSystemBase
 open PackageSystemBase
 open ConfigError
@@ -8,6 +9,16 @@ open ConfigError
 let version =
   Printf.sprintf "Saphe version %s"
     (SemanticVersion.to_string Constant.current_ecosystem_version)
+
+
+let make_display_config ~(show_full_path : bool) ~(verbosity : Verbosity.t) ~current_dir:(absdir_current : abs_path) =
+  let path_display_setting =
+    if show_full_path then
+      FullPath
+    else
+      RelativeToCwd(absdir_current)
+  in
+  Logging.{ path_display_setting; verbosity }
 
 
 type solve_input =
@@ -158,23 +169,23 @@ type package_init_input =
     }
 
 
-let write_package_config (abspath_package_config : abs_path) ~(data : string) =
+let write_package_config (display_config : Logging.config) (abspath_package_config : abs_path) ~(data : string) =
   let open ResultMonad in
   let* () =
     AbsPathIo.write_file abspath_package_config data
       |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath_package_config; message })
   in
-  Logging.initialize_package_config abspath_package_config;
+  Logging.initialize_package_config display_config abspath_package_config;
   return ()
 
 
-let write_initial_file (abspath : abs_path) ~(data : string) =
+let write_initial_file (display_config : Logging.config) (abspath : abs_path) ~(data : string) =
   let open ResultMonad in
   let* () =
     AbsPathIo.write_file abspath data
       |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath; message })
   in
-  Logging.initialize_file abspath;
+  Logging.initialize_file display_config abspath;
   return ()
 
 
@@ -190,8 +201,15 @@ let init_document ~(fpath_in : string) =
   let res =
     let open ResultMonad in
 
-    (* Constructs the input: *)
     let absdir_current = AbsPathIo.getcwd () in
+    let display_config =
+      make_display_config
+        ~show_full_path:true (* TODO: make this changeable *)
+        ~verbosity:Verbosity.Verbose
+        ~current_dir:absdir_current
+    in
+
+    (* Constructs the input: *)
     let abspath_doc = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_package_config = Constant.document_package_config_path ~doc:abspath_doc in
     let absdir = AbsPath.dirname abspath_doc in
@@ -202,14 +220,14 @@ let init_document ~(fpath_in : string) =
     match Filename.extension (AbsPath.to_string abspath_doc) with
     | ".saty" ->
         ShellCommand.mkdir_p absdir;
-        let* () = write_package_config abspath_package_config ~data:InitData.document_package_config_contents in
-        let* () = write_initial_file abspath_doc ~data:InitData.document_contents in
+        let* () = write_package_config display_config abspath_package_config ~data:InitData.document_package_config_contents in
+        let* () = write_initial_file display_config abspath_doc ~data:InitData.document_contents in
         return ()
 
     | ".md" ->
         ShellCommand.mkdir_p absdir;
-        let* () = write_package_config abspath_package_config ~data:InitData.markdown_package_config_contents in
-        let* () = write_initial_file abspath_doc ~data:InitData.markdown_contents in
+        let* () = write_package_config display_config abspath_package_config ~data:InitData.markdown_package_config_contents in
+        let* () = write_initial_file display_config abspath_doc ~data:InitData.markdown_contents in
         return ()
 
     | extension ->
@@ -224,8 +242,15 @@ let init_library ~(fpath_in : string) =
   let res =
     let open ResultMonad in
 
-    (* Constructs the input: *)
     let absdir_current = AbsPathIo.getcwd () in
+    let display_config =
+      make_display_config
+        ~show_full_path:true (* TODO: make this changeable *)
+        ~verbosity:Verbosity.Verbose
+        ~current_dir:absdir_current
+    in
+
+    (* Constructs the input: *)
     let absdir_package = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
     let abspath_source = AbsPath.append_to_directory absdir_package "src/calc.satyh" in
@@ -238,9 +263,9 @@ let init_library ~(fpath_in : string) =
     ShellCommand.mkdir_p absdir_package;
     ShellCommand.mkdir_p (AbsPath.append_to_directory absdir_package "src");
     ShellCommand.mkdir_p (AbsPath.append_to_directory absdir_package "test");
-    let* () = write_package_config abspath_package_config ~data:InitData.library_package_config_contents in
-    let* () = write_initial_file abspath_source ~data:InitData.library_source_contents in
-    let* () = write_initial_file abspath_test ~data:InitData.library_test_contents in
+    let* () = write_package_config display_config abspath_package_config ~data:InitData.library_package_config_contents in
+    let* () = write_initial_file display_config abspath_source ~data:InitData.library_source_contents in
+    let* () = write_initial_file display_config abspath_test ~data:InitData.library_test_contents in
 
     return ()
   in
@@ -272,13 +297,19 @@ let make_solve_input ~current_dir:(absdir_current : abs_path) ~(fpath_in : strin
     }
 
 
-let solve ~(fpath_in : string) =
+let solve
+    ~(fpath_in : string)
+    ~(show_full_path : bool)
+    ~(verbosity : Verbosity.t)
+=
   let res =
     let open ResultMonad in
 
+    let absdir_current = AbsPathIo.getcwd () in
+    let display_config = make_display_config ~show_full_path ~verbosity ~current_dir:absdir_current in
+
     (* Constructs the input: *)
     let solve_input =
-      let absdir_current = AbsPathIo.getcwd () in
       make_solve_input ~current_dir:absdir_current ~fpath_in
     in
 
@@ -314,7 +345,7 @@ let solve ~(fpath_in : string) =
                 CannotWriteEnvelopeConfig{ message; path = abspath_envelope_config }
               )
           in
-          Logging.end_envelope_config_output abspath_envelope_config;
+          Logging.end_envelope_config_output display_config abspath_envelope_config;
 
           let dependencies_with_flags =
             List.append
@@ -351,7 +382,7 @@ let solve ~(fpath_in : string) =
           return (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes)
     in
 
-    Logging.show_package_dependency_before_solving dependencies_with_flags;
+    Logging.show_package_dependency_before_solving display_config dependencies_with_flags;
 
     (* Collects the local fixed packages used by the target: *)
     let* (local_fixed_package_map, registry_remotes_sub) =
@@ -369,7 +400,7 @@ let solve ~(fpath_in : string) =
           EnvelopeConfig.write abspath_envelope_config { envelope_contents }
             |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath_envelope_config; message })
         in
-        Logging.end_envelope_config_output abspath_envelope_config;
+        Logging.end_envelope_config_output display_config abspath_envelope_config;
         return (local_fixed_dependencies |> LocalFixedPackageIdMap.add absdir_package deps)
       ) local_fixed_package_map (return LocalFixedPackageIdMap.empty)
     in
@@ -456,7 +487,7 @@ let solve ~(fpath_in : string) =
 
       | Some(solutions) ->
 
-          Logging.show_package_dependency_solutions solutions;
+          Logging.show_package_dependency_solutions display_config solutions;
 
           let (lock_config, impl_specs) =
             convert_solutions_to_lock_config
@@ -474,7 +505,7 @@ let solve ~(fpath_in : string) =
             ) ()
           in
           let* () = LockConfig.write abspath_lock_config lock_config in
-          Logging.end_lock_config_output abspath_lock_config;
+          Logging.end_lock_config_output display_config abspath_lock_config;
           return ()
     end
   in
@@ -626,9 +657,11 @@ let build
   let res =
     let open ResultMonad in
 
+    let absdir_current = AbsPathIo.getcwd () in
+    let display_config = make_display_config ~show_full_path ~verbosity ~current_dir:absdir_current in
+
     (* Constructs the input: *)
     let build_input =
-      let absdir_current = AbsPathIo.getcwd () in
       let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
         let options =
@@ -717,7 +750,7 @@ let build
         let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
         ShellCommand.mkdir_p absdir_intermediate;
         let* () = DepsConfig.write abspath_deps_config deps_config in
-        Logging.end_deps_config_output abspath_deps_config;
+        Logging.end_deps_config_output display_config abspath_deps_config;
 
         (* Builds the package by invoking `satysfi`: *)
         let SatysfiCommand.{ exit_status; command = _ } =
@@ -766,7 +799,7 @@ let build
         let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
         ShellCommand.mkdir_p absdir_intermediate;
         let* () = DepsConfig.write abspath_deps_config deps_config in
-        Logging.end_deps_config_output abspath_deps_config;
+        Logging.end_deps_config_output display_config abspath_deps_config;
 
         (* Builds the document by invoking `satysfi`: *)
         let SatysfiCommand.{ exit_status; command = _ } =
@@ -804,8 +837,10 @@ let test
   let res =
     let open ResultMonad in
 
+    let absdir_current = AbsPathIo.getcwd () in
+    let display_config = make_display_config ~show_full_path ~verbosity ~current_dir:absdir_current in
+
     let* test_input =
-      let absdir_current = AbsPathIo.getcwd () in
       let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
         let options =
@@ -862,7 +897,7 @@ let test
         let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
         ShellCommand.mkdir_p absdir_intermediate;
         let* () = DepsConfig.write abspath_deps_config deps_config in
-        Logging.end_deps_config_output abspath_deps_config;
+        Logging.end_deps_config_output display_config abspath_deps_config;
 
         (* Builds the package by invoking `satysfi`: *)
         let SatysfiCommand.{ exit_status; command = _ } =

@@ -15,8 +15,15 @@ let update fpath_in =
   SapheMain.update ~fpath_in
 
 
-let solve fpath_in =
-  SapheMain.solve ~fpath_in
+let solve
+  fpath_in
+  show_full_path
+  verbosity
+=
+  SapheMain.solve
+    ~fpath_in
+    ~show_full_path
+    ~verbosity
 
 
 let build
@@ -188,7 +195,11 @@ let command_update : unit Cmdliner.Cmd.t =
 let command_solve : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "solve")
-    Term.(const solve $ arg_in)
+    Term.(const solve
+      $ arg_in
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_build : unit Cmdliner.Cmd.t =
