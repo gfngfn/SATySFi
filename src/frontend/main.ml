@@ -93,7 +93,7 @@ let get_candidate_file_extensions (output_mode : output_mode) =
 
 
 let get_input_kind_from_extension (abspath_doc : abs_path) =
-  match Filename.extension (get_abs_path_string abspath_doc) with
+  match Filename.extension (AbsPath.to_string abspath_doc) with
   | ".saty" -> Ok(InputSatysfi)
   | ".md"   -> Ok(InputMarkdown)
   | ext     -> Error(UnexpectedExtension(ext))
@@ -163,7 +163,7 @@ let make_display_config ~(show_full_path : bool) ~current_dir:(absdir_current : 
 
 (* TODO: discard `job_directory` *)
 let get_job_directory (abspath : abs_path) : string =
-  get_abs_path_string (AbsPath.dirname abspath)
+  AbsPath.to_string (AbsPath.dirname abspath)
 
 
 let build_package

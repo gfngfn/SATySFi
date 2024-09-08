@@ -37,10 +37,6 @@ type abs_path = AbsPath.t
 [@@deriving show { with_path = false }]
 
 
-(* TODO: remove the following *)
-let get_abs_path_string = AbsPath.to_string
-
-
 let encode_yaml (yaml : Yaml.value) : string =
   match Yaml.to_string ~encoding:`Utf8 ~layout_style:`Block ~scalar_style:`Plain yaml with
   | Ok(data) -> data

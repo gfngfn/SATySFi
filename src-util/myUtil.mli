@@ -10,9 +10,6 @@ val list_fold_adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b 
 
 val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
-(* TODO: remove the following (due to migration to `AbsPath`): *)
-val get_abs_path_string : abs_path -> string
-
 val encode_yaml : Yaml.value -> string
 
 type 'a cycle =

@@ -83,7 +83,7 @@ let output_pdf (abspath_out : abs_path) (pdfret : HandlePdf.t) : unit =
 
 
 let output_text (abspath_out : abs_path) (data : string) : unit =
-  Core.Out_channel.write_all (get_abs_path_string abspath_out) ~data
+  Core.Out_channel.write_all (AbsPath.to_string abspath_out) ~data
 
 
 (* Initialization that should be performed before every cross-reference-solving loop *)

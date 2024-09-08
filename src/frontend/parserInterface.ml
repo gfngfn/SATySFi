@@ -24,7 +24,7 @@ let k_fail chkpt =
 
 let process_common (abspath : abs_path) (lexbuf : Lexing.lexbuf) =
   let open ResultMonad in
-  let abspathstr = get_abs_path_string abspath in
+  let abspathstr = AbsPath.to_string abspath in
   let stack = Lexer.reset_to_program () in
   lexbuf.Lexing.lex_curr_p <- { lexbuf.Lexing.lex_curr_p with pos_fname = abspathstr };
   let supplier = I.lexer_lexbuf_to_supplier (Lexer.cut_token stack) lexbuf in

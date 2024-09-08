@@ -673,7 +673,7 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | NotALibraryFile(abspath) ->
       make_error_message Typechecker [
         NormalLine("the following file is expected to be a library file, but is not:");
-        DisplayLine(get_abs_path_string abspath);
+        DisplayLine(Logging.show_path display_config abspath);
       ]
 
   | NotADocumentFile(abspath_in, ty) ->
@@ -699,8 +699,8 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | FileModuleNameConflict(modnm, abspath1, abspath2) ->
       make_error_message Interface [
         NormalLine(Printf.sprintf "more than one file defines module '%s':" modnm);
-        DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath1));
-        DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath2));
+        DisplayLine(Printf.sprintf "- %s" (Logging.show_path display_config abspath1));
+        DisplayLine(Printf.sprintf "- %s" (Logging.show_path display_config abspath2));
       ]
 
   | NoMainModule(modnm) ->
@@ -725,7 +725,7 @@ let make_config_error_message (display_config : Logging.config) : config_error -
       in
       make_error_message Interface (
         (NormalLine("cyclic dependency detected:")) ::
-          (pairs |> List.map (fun (abspath, _) -> DisplayLine(get_abs_path_string abspath)))
+          (pairs |> List.map (fun (abspath, _) -> DisplayLine(Logging.show_path display_config abspath)))
       )
 
   | CannotReadFileOwingToSystem(msg) ->
@@ -735,13 +735,13 @@ let make_config_error_message (display_config : Logging.config) : config_error -
       ]
 
   | LibraryContainsWholeReturnValue(abspath) ->
-      let fname = get_abs_path_string abspath in
+      let fname = Logging.show_path display_config abspath in
       make_error_message Interface [
         NormalLine(Printf.sprintf "file '%s' is not a library; it has a return value." fname);
       ]
 
   | DocumentLacksWholeReturnValue(abspath) ->
-      let fname = get_abs_path_string abspath in
+      let fname = Logging.show_path display_config abspath in
       make_error_message Interface [
         NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
       ]
@@ -795,7 +795,7 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | LocalFileNotFound{ relative; candidates } ->
       let lines =
         candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+          DisplayLine(Printf.sprintf "- %s" (Logging.show_path display_config abspath))
         )
       in
       make_error_message Interface
@@ -804,37 +804,37 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | DepsConfigNotFound(abspath_deps_config) ->
       make_error_message Interface [
         NormalLine("cannot find a deps config at:");
-        DisplayLine(get_abs_path_string abspath_deps_config);
+        DisplayLine(Logging.show_path display_config abspath_deps_config);
       ]
 
   | DepsConfigError(abspath_deps_config, e) ->
       make_error_message Interface (List.append [
         NormalLine("failed to load a deps config:");
-        DisplayLine(get_abs_path_string abspath_deps_config);
+        DisplayLine(Logging.show_path display_config abspath_deps_config);
       ] (make_yaml_error_message e))
 
   | EnvelopeConfigNotFound(abspath_envelope_config) ->
       make_error_message Interface [
         NormalLine("cannot find an envelope config at:");
-        DisplayLine(get_abs_path_string abspath_envelope_config);
+        DisplayLine(Logging.show_path display_config abspath_envelope_config);
       ]
 
   | EnvelopeConfigError(abspath_envelope_config, e) ->
       make_error_message Interface (List.append [
         NormalLine("failed to load an envelope config:");
-        DisplayLine(get_abs_path_string abspath_envelope_config);
+        DisplayLine(Logging.show_path display_config abspath_envelope_config);
       ] (make_yaml_error_message e))
 
   | DumpFileError(abspath_dump, e) ->
       make_error_message Interface (List.append [
         NormalLine("failed to load a dump file (just removing it will remedy this):");
-        DisplayLine(get_abs_path_string abspath_dump);
+        DisplayLine(Logging.show_path display_config abspath_dump);
       ] (make_yaml_error_message e))
 
   | CannotWriteDumpFile(abspath_dump) ->
       make_error_message Interface [
         NormalLine("cannot write a dump file:");
-        DisplayLine(get_abs_path_string abspath_dump);
+        DisplayLine(Logging.show_path display_config abspath_dump);
       ]
 
   | DependedEnvelopeNotFound(envelope_name) ->
@@ -868,7 +868,7 @@ let make_config_error_message (display_config : Logging.config) : config_error -
 
   | CannotReadDirectory{ path; message } ->
       make_error_message Interface [
-        NormalLine(Printf.sprintf "cannot read directory '%s':" (get_abs_path_string path));
+        NormalLine(Printf.sprintf "cannot read directory '%s':" (Logging.show_path display_config path));
         DisplayLine(message);
       ]
 

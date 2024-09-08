@@ -530,4 +530,4 @@ let write_to_file (abspath : abs_path) ((PDF(pdf, pageacc)) : t) : unit =
                       |> NamedDest.add_to_pdf
                       |> DocumentInformationDictionary.add_to_pdf
   in
-  Pdfwrite.pdf_to_file pdfout (get_abs_path_string abspath)
+  Pdfwrite.pdf_to_file pdfout (AbsPath.to_string abspath)
