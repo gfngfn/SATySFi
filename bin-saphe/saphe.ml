@@ -1,22 +1,58 @@
 
-let init_document fpath_in =
-  SapheMain.init_document ~fpath_in
+open LoggingUtil
 
 
-let init_library fpath_in =
-  SapheMain.init_library ~fpath_in
+let init_document
+  fpath_in
+  show_full_path
+  verbosity
+=
+  SapheMain.init_document
+    ~fpath_in
+    ~show_full_path
+    ~verbosity
 
 
-let cache_list () =
-  SapheMain.cache_list ()
+let init_library
+  fpath_in
+  show_full_path
+  verbosity
+=
+  SapheMain.init_library
+    ~fpath_in
+    ~show_full_path
+    ~verbosity
 
 
-let update fpath_in =
-  SapheMain.update ~fpath_in
+let cache_list
+  show_full_path
+  verbosity
+=
+  SapheMain.cache_list
+    ~show_full_path
+    ~verbosity
 
 
-let solve fpath_in =
-  SapheMain.solve ~fpath_in
+let update
+  fpath_in
+  show_full_path
+  verbosity
+=
+  SapheMain.update
+    ~fpath_in
+    ~show_full_path
+    ~verbosity
+
+
+let solve
+  fpath_in
+  show_full_path
+  verbosity
+=
+  SapheMain.solve
+    ~fpath_in
+    ~show_full_path
+    ~verbosity
 
 
 let build
@@ -24,6 +60,9 @@ let build
   fpath_out_opt
   text_mode_formats_str_opt
   page_number_limit
+  max_repeats
+  show_full_path
+  verbosity
   debug_show_bbox
   debug_show_space
   debug_show_block_bbox
@@ -37,6 +76,9 @@ let build
     ~fpath_out_opt
     ~text_mode_formats_str_opt
     ~page_number_limit
+    ~max_repeats
+    ~show_full_path
+    ~verbosity
     ~debug_show_bbox
     ~debug_show_space
     ~debug_show_block_bbox
@@ -49,10 +91,14 @@ let build
 let test
   fpath_in
   text_mode_formats_str_opt
+  show_full_path
+  verbosity
 =
   SapheMain.test
     ~fpath_in
     ~text_mode_formats_str_opt
+    ~show_full_path
+    ~verbosity
 
 
 let arg_in : string Cmdliner.Term.t =
@@ -83,9 +129,28 @@ let flag_page_number_limit : int Cmdliner.Term.t =
   Arg.(value (opt int 10000 (info [ "page-number-limit" ] ~docv:"INT" ~doc)))
 
 
+let flag_max_repeats : int Cmdliner.Term.t =
+  let open Cmdliner in
+  let doc = "Set the maximum number of iterations (default: 4)" in
+  Arg.(value (opt int 4 (info [ "max-repeats" ] ~docv:"INT" ~doc)))
+
+
 let make_boolean_flag_spec ~(flags : string list) ~(doc : string) : bool Cmdliner.Term.t =
   let open Cmdliner in
   Arg.(value (flag (info flags ~doc)))
+
+
+let flag_full_path =
+  make_boolean_flag_spec
+    ~flags:[ "full-path" ]
+    ~doc:"Displays paths in full-path style"
+
+
+let flag_verbosity : verbosity Cmdliner.Term.t =
+  let open Cmdliner in
+  let verbose = (Verbose, Arg.info [ "verbose" ] ~doc:"Make logs verbose") in
+  let quiet = (Quiet, Arg.info [ "quiet" ] ~doc:"Disable logs other than errors and warnings") in
+  Arg.(value (vflag NormalVerbosity [ verbose; quiet ]))
 
 
 let flag_debug_show_bbox =
@@ -133,13 +198,21 @@ let flag_bytecomp =
 let command_init_document : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "document")
-    Term.(const init_document $ arg_in_to_create)
+    Term.(const init_document
+      $ arg_in_to_create
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_init_library : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "library")
-    Term.(const init_library $ arg_in_to_create)
+    Term.(const init_library
+      $ arg_in_to_create
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_init : unit Cmdliner.Cmd.t =
@@ -153,13 +226,21 @@ let command_init : unit Cmdliner.Cmd.t =
 let command_update : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "update")
-    Term.(const update $ arg_in)
+    Term.(const update
+      $ arg_in
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_solve : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "solve")
-    Term.(const solve $ arg_in)
+    Term.(const solve
+      $ arg_in
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_build : unit Cmdliner.Cmd.t =
@@ -170,6 +251,9 @@ let command_build : unit Cmdliner.Cmd.t =
       $ flag_output
       $ flag_text_mode
       $ flag_page_number_limit
+      $ flag_max_repeats
+      $ flag_full_path
+      $ flag_verbosity
       $ flag_debug_show_bbox
       $ flag_debug_show_space
       $ flag_debug_show_block_bbox
@@ -186,13 +270,18 @@ let command_test : unit Cmdliner.Cmd.t =
     Term.(const test
       $ arg_in
       $ flag_text_mode
+      $ flag_full_path
+      $ flag_verbosity
     )
 
 
 let command_cache_list : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "list")
-    Term.(const cache_list $ const ())
+    Term.(const cache_list
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_cache : unit Cmdliner.Cmd.t =

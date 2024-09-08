@@ -1,5 +1,6 @@
 
 open MyUtil
+open LoggingUtil
 open PackageSystemBase
 open ConfigError
 
@@ -49,7 +50,7 @@ let extract_external_zip ~(unzip_command : string) ~(zip : abs_path) ~(output_co
     err @@ FailedToExtractExternalZip{ exit_status; command }
 
 
-let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~store_root:(absdir_store_root : abs_path) (reglock : RegisteredLock.t) (source : implementation_source) : unit ok =
+let fetch_registered_lock (logging_spec : logging_spec) ~(wget_command : string) ~(tar_command : string) ~store_root:(absdir_store_root : abs_path) (reglock : RegisteredLock.t) (source : implementation_source) : unit ok =
   let open ResultMonad in
   let RegisteredLock.{ registered_package_id; locked_version } = reglock in
   let RegisteredPackageId.{ registry_hash_value; package_name } = registered_package_id in
@@ -68,7 +69,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
   let abspath_config = Constant.library_package_config_path ~dir:absdir_lock in
   if AbsPathIo.file_exists abspath_config then begin
   (* If the lock has already been fetched: *)
-    Logging.lock_already_installed lock_tarball_name absdir_lock;
+    Logging.lock_already_installed logging_spec lock_tarball_name absdir_lock;
     return ()
   end else
     match source with
@@ -83,10 +84,10 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
         in
         let* () =
           if AbsPathIo.file_exists abspath_tarball then begin
-            Logging.lock_cache_exists lock_tarball_name abspath_tarball;
+            Logging.lock_cache_exists logging_spec lock_tarball_name abspath_tarball;
             return ()
           end else begin
-            Logging.downloading_lock lock_tarball_name abspath_tarball;
+            Logging.downloading_lock logging_spec lock_tarball_name abspath_tarball;
             fetch_tarball ~wget_command ~lock_name:lock_tarball_name ~url ~output:abspath_tarball
           end
         in
@@ -238,13 +239,14 @@ let fetch_external_resources ~(wget_command : string) ~(unzip_command : string) 
   return ()
 
 
-let main ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~(store_root : abs_path) (impl_spec : implementation_spec) : unit ok =
+let main (logging_spec : logging_spec) ~(wget_command : string) ~(tar_command : string) ~(unzip_command : string) ~(store_root : abs_path) (impl_spec : implementation_spec) : unit ok =
   let open ResultMonad in
   let ImplSpec{ lock; source } = impl_spec in
   match lock with
   | Lock.Registered(reglock) ->
       let* () =
         fetch_registered_lock
+          logging_spec
           ~wget_command
           ~tar_command
           ~store_root

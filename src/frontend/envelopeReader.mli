@@ -1,10 +1,11 @@
 
 open MyUtil
-open Types
+open LoggingUtil
 open ConfigError
+open Types
 
 val main :
-  Logging.config ->
+  logging_spec ->
   use_test_files:bool ->
   extensions:(string list) ->
   envelope_config:abs_path ->

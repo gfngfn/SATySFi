@@ -3,6 +3,7 @@ open ConfigError
 open FontError
 open Format
 open MyUtil
+open LoggingUtil
 open StaticEnv
 open Types
 open TypeError
@@ -664,7 +665,7 @@ let make_yaml_error_message : yaml_error -> line list = function
       [ NormalLine(Printf.sprintf "not a relative path: '%s' %s" s (show_yaml_context yctx)) ]
 
 
-let make_config_error_message (display_config : Logging.config) : config_error -> string = function
+let make_config_error_message (logging_spec : logging_spec) : config_error -> string = function
   | UnexpectedExtension(ext) ->
       make_error_message Interface [
         NormalLine(Printf.sprintf "unexpected file extension '%s'." ext);
@@ -673,18 +674,18 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | NotALibraryFile(abspath) ->
       make_error_message Typechecker [
         NormalLine("the following file is expected to be a library file, but is not:");
-        DisplayLine(Logging.show_path display_config abspath);
+        DisplayLine(show_path logging_spec abspath);
       ]
 
   | NotADocumentFile(abspath_in, ty) ->
-      let fname = Logging.show_path display_config abspath_in in
+      let fname = show_path logging_spec abspath_in in
       make_error_message Typechecker [
         NormalLine(Printf.sprintf "file '%s' is not a document file; it is of type" fname);
         DisplayLine(Display.show_mono_type ty);
       ]
 
   | NotAStringFile(abspath_in, ty) ->
-      let fname = Logging.show_path display_config abspath_in in
+      let fname = show_path logging_spec abspath_in in
       make_error_message Typechecker [
         NormalLine(Printf.sprintf "file '%s' is not a file for generating text; it is of type" fname);
         DisplayLine(Display.show_mono_type ty);
@@ -699,8 +700,8 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | FileModuleNameConflict(modnm, abspath1, abspath2) ->
       make_error_message Interface [
         NormalLine(Printf.sprintf "more than one file defines module '%s':" modnm);
-        DisplayLine(Printf.sprintf "- %s" (Logging.show_path display_config abspath1));
-        DisplayLine(Printf.sprintf "- %s" (Logging.show_path display_config abspath2));
+        DisplayLine(Printf.sprintf "- %s" (show_path logging_spec abspath1));
+        DisplayLine(Printf.sprintf "- %s" (show_path logging_spec abspath2));
       ]
 
   | NoMainModule(modnm) ->
@@ -725,7 +726,7 @@ let make_config_error_message (display_config : Logging.config) : config_error -
       in
       make_error_message Interface (
         (NormalLine("cyclic dependency detected:")) ::
-          (pairs |> List.map (fun (abspath, _) -> DisplayLine(Logging.show_path display_config abspath)))
+          (pairs |> List.map (fun (abspath, _) -> DisplayLine(show_path logging_spec abspath)))
       )
 
   | CannotReadFileOwingToSystem(msg) ->
@@ -735,13 +736,13 @@ let make_config_error_message (display_config : Logging.config) : config_error -
       ]
 
   | LibraryContainsWholeReturnValue(abspath) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       make_error_message Interface [
         NormalLine(Printf.sprintf "file '%s' is not a library; it has a return value." fname);
       ]
 
   | DocumentLacksWholeReturnValue(abspath) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       make_error_message Interface [
         NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
       ]
@@ -795,7 +796,7 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | LocalFileNotFound{ relative; candidates } ->
       let lines =
         candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (Logging.show_path display_config abspath))
+          DisplayLine(Printf.sprintf "- %s" (show_path logging_spec abspath))
         )
       in
       make_error_message Interface
@@ -804,37 +805,37 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | DepsConfigNotFound(abspath_deps_config) ->
       make_error_message Interface [
         NormalLine("cannot find a deps config at:");
-        DisplayLine(Logging.show_path display_config abspath_deps_config);
+        DisplayLine(show_path logging_spec abspath_deps_config);
       ]
 
   | DepsConfigError(abspath_deps_config, e) ->
       make_error_message Interface (List.append [
         NormalLine("failed to load a deps config:");
-        DisplayLine(Logging.show_path display_config abspath_deps_config);
+        DisplayLine(show_path logging_spec abspath_deps_config);
       ] (make_yaml_error_message e))
 
   | EnvelopeConfigNotFound(abspath_envelope_config) ->
       make_error_message Interface [
         NormalLine("cannot find an envelope config at:");
-        DisplayLine(Logging.show_path display_config abspath_envelope_config);
+        DisplayLine(show_path logging_spec abspath_envelope_config);
       ]
 
   | EnvelopeConfigError(abspath_envelope_config, e) ->
       make_error_message Interface (List.append [
         NormalLine("failed to load an envelope config:");
-        DisplayLine(Logging.show_path display_config abspath_envelope_config);
+        DisplayLine(show_path logging_spec abspath_envelope_config);
       ] (make_yaml_error_message e))
 
   | DumpFileError(abspath_dump, e) ->
       make_error_message Interface (List.append [
         NormalLine("failed to load a dump file (just removing it will remedy this):");
-        DisplayLine(Logging.show_path display_config abspath_dump);
+        DisplayLine(show_path logging_spec abspath_dump);
       ] (make_yaml_error_message e))
 
   | CannotWriteDumpFile(abspath_dump) ->
       make_error_message Interface [
         NormalLine("cannot write a dump file:");
-        DisplayLine(Logging.show_path display_config abspath_dump);
+        DisplayLine(show_path logging_spec abspath_dump);
       ]
 
   | DependedEnvelopeNotFound(envelope_name) ->
@@ -868,71 +869,71 @@ let make_config_error_message (display_config : Logging.config) : config_error -
 
   | CannotReadDirectory{ path; message } ->
       make_error_message Interface [
-        NormalLine(Printf.sprintf "cannot read directory '%s':" (Logging.show_path display_config path));
+        NormalLine(Printf.sprintf "cannot read directory '%s':" (show_path logging_spec path));
         DisplayLine(message);
       ]
 
   | CannotOutputResult{ path; message } ->
       make_error_message Interface [
-        NormalLine(Printf.sprintf "cannot output the final result '%s':" (Logging.show_path display_config path));
+        NormalLine(Printf.sprintf "cannot output the final result '%s':" (show_path logging_spec path));
         DisplayLine(message);
       ]
 
 
-let make_font_error_message (display_config : Logging.config) = function
+let make_font_error_message (logging_spec : logging_spec) = function
   | FailedToReadFont(abspath, msg) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       [
         NormalLine(Printf.sprintf "cannot load font file '%s';" fname);
         DisplayLine(msg);
       ]
 
   | FailedToDecodeFont(abspath, e) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       [
         NormalLine(Printf.sprintf "cannot decode font file '%s';" fname);
         NormalLine(Format.asprintf "%a" Otfed.Decode.Error.pp e);
       ]
 
   | FailedToMakeSubset(abspath, e) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       [
         NormalLine(Printf.sprintf "cannot make a subset of font file '%s';" fname);
         NormalLine(Format.asprintf "%a" Otfed.Subset.Error.pp e);
       ]
 
   | NotASingleFont(abspath) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       [
         NormalLine(Printf.sprintf "the font file '%s' is not a single font file." fname);
       ]
 
   | NotAFontCollectionElement(abspath, index) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       [
         NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection." fname index);
       ]
 
   | NoMathTable(abspath) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       [
         NormalLine(Printf.sprintf "font file '%s' does not have a 'MATH' table." fname);
       ]
 
   | PostscriptNameNotFound(abspath) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       [
         NormalLine(Printf.sprintf "font file '%s' does not have a PostScript name." fname);
       ]
 
   | CannotFindUnicodeCmap(abspath) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       [
         NormalLine(Printf.sprintf "font file '%s' does not have a 'cmap' subtable for Unicode code points." fname);
       ]
 
   | CollectionIndexOutOfBounds{ path; index; num_elements } ->
-      let fname = Logging.show_path display_config path in
+      let fname = show_path logging_spec path in
       [
         NormalLine(Printf.sprintf "%d: index out of bounds;" index);
         NormalLine(Printf.sprintf "font file '%s' has %d elements." fname num_elements);
@@ -945,7 +946,7 @@ let make_font_error_message (display_config : Logging.config) = function
       [ NormalLine("unsupported: /CIDToGIDMap other than /Identity") ]
 
 
-let error_log_environment (display_config : Logging.config) (suspended : unit -> ('a, config_error) result) : ('a, config_error) result =
+let error_log_environment (logging_spec : logging_spec) (suspended : unit -> ('a, config_error) result) : ('a, config_error) result =
   let report_error kind lines =
     report_and_exit (make_error_message kind lines)
   in
@@ -971,31 +972,31 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
       ]
 
   | FontInfo.FontInfoError(e) ->
-      report_error Interface (make_font_error_message display_config e)
+      report_error Interface (make_font_error_message logging_spec e)
 
   | ImageHashTable.CannotLoadPdf(msg, abspath, pageno) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot load PDF file '%s' page #%d;" fname pageno);
         DisplayLine(msg);
       ]
 
   | ImageHashTable.CannotLoadImage(msg, abspath) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot load image file '%s';" fname);
         DisplayLine(msg);
       ]
 
   | ImageHashTable.ImageOfWrongFileType(abspath) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot load image file '%s';" fname);
         DisplayLine("This file format is not supported.");
       ]
 
   | ImageHashTable.UnsupportedColorModel(_, abspath) ->
-      let fname = Logging.show_path display_config abspath in
+      let fname = show_path logging_spec abspath in
       report_error Interface [
         NormalLine(Printf.sprintf "cannot load image file '%s';" fname);
         DisplayLine("This color model is not supported.");

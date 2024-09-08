@@ -1,5 +1,6 @@
 
 open MyUtil
+open LoggingUtil
 open EnvelopeSystemBase
 open ErrorReporting
 open Types
@@ -36,8 +37,8 @@ let initialize ~(is_bytecomp_mode : bool) (output_mode : output_mode) (runtime_c
   (tyenv, env)
 
 
-let eval_library_file (display_config : Logging.config) ~(is_bytecomp_mode : bool) ~(run_tests : bool) (env : environment) (abspath : abs_path) (binds : binding list) : environment =
-  Logging.begin_to_eval_file display_config abspath;
+let eval_library_file (logging_spec : logging_spec) ~(is_bytecomp_mode : bool) ~(run_tests : bool) (env : environment) (abspath : abs_path) (binds : binding list) : environment =
+  Logging.begin_to_eval_file logging_spec abspath;
   if is_bytecomp_mode then
     failwith "TODO: eval_libary_file, Bytecomp"
 (*
@@ -51,10 +52,10 @@ let eval_library_file (display_config : Logging.config) ~(is_bytecomp_mode : boo
 
 (* Performs preprecessing. the evaluation is run by the naive interpreter
    regardless of whether `--bytecomp` was specified. *)
-let preprocess_bindings (display_config : Logging.config) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) : environment * (abs_path * code_rec_or_nonrec list) list =
+let preprocess_bindings (logging_spec : logging_spec) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) : environment * (abs_path * code_rec_or_nonrec list) list =
   let (env, codebindacc) =
     libs |> List.fold_left (fun (env, codebindacc) (abspath, binds) ->
-      Logging.begin_to_preprocess_file display_config abspath;
+      Logging.begin_to_preprocess_file logging_spec abspath;
       let (env, cd_rec_or_nonrecs) = Evaluator.interpret_bindings_0 ~run_tests env binds in
       (env, Alist.extend codebindacc (abspath, cd_rec_or_nonrecs))
     ) (env, Alist.empty)
@@ -64,26 +65,26 @@ let preprocess_bindings (display_config : Logging.config) ~(run_tests : bool) (e
 
 
 (* Performs evaluation and returns the resulting environment. *)
-let evaluate_bindings (display_config : Logging.config) ~(is_bytecomp_mode : bool) ~(run_tests : bool) (env : environment) (codebinds : (abs_path * code_rec_or_nonrec list) list) : environment =
+let evaluate_bindings (logging_spec : logging_spec) ~(is_bytecomp_mode : bool) ~(run_tests : bool) (env : environment) (codebinds : (abs_path * code_rec_or_nonrec list) list) : environment =
   codebinds |> List.fold_left (fun env (abspath, cd_rec_or_nonrecs) ->
     let binds =
       cd_rec_or_nonrecs |> List.map (fun cd_rec_or_nonrec ->
         Bind(Stage0, unlift_rec_or_nonrec cd_rec_or_nonrec)
       )
     in
-    eval_library_file display_config ~is_bytecomp_mode ~run_tests env abspath binds
+    eval_library_file logging_spec ~is_bytecomp_mode ~run_tests env abspath binds
   ) env
 
 
-let preprocess_and_evaluate (display_config : Logging.config) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (output_mode : output_mode) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let preprocess_and_evaluate (logging_spec : logging_spec) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(is_bytecomp_mode : bool) (output_mode : output_mode) ~(run_tests : bool) (env : environment) (libs : (abs_path * binding list) list) (ast_doc : abstract_tree) (_abspath_in : abs_path) (abspath_out : abs_path) (abspath_dump : abs_path) =
   (* Performs preprocessing: *)
-  let (env, codebinds) = preprocess_bindings display_config ~run_tests env libs in
+  let (env, codebinds) = preprocess_bindings logging_spec ~run_tests env libs in
   let code_doc = Evaluator.interpret_1 env ast_doc in
 
   (* Performs evaluation: *)
-  let env = evaluate_bindings display_config ~is_bytecomp_mode ~run_tests env codebinds in
+  let env = evaluate_bindings logging_spec ~is_bytecomp_mode ~run_tests env codebinds in
   let ast_doc = unlift_code code_doc in
-  BuildDocument.main output_mode pdf_config ~page_number_limit display_config ~is_bytecomp_mode env ast_doc abspath_out abspath_dump
+  BuildDocument.main output_mode pdf_config ~page_number_limit logging_spec ~is_bytecomp_mode env ast_doc abspath_out abspath_dump
 
 
 let get_candidate_file_extensions (output_mode : output_mode) =
@@ -122,11 +123,11 @@ let make_used_as_map_for_checking_dependency (deps_config : DepsConfig.t) (envel
   | Some(used_as_map) -> return used_as_map
 
 
-let check_depended_envelopes (display_config : Logging.config) (typecheck_config : typecheck_config) ~(use_test_only_envelope : bool) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
+let check_depended_envelopes (logging_spec : logging_spec) (typecheck_config : typecheck_config) ~(use_test_only_envelope : bool) ~(extensions : string list) (tyenv_prim : Typeenv.t) (deps_config : DepsConfig.t) =
   let open ResultMonad in
   (* Resolves dependency among envelopes: *)
   let* sorted_envelopes =
-    ClosedEnvelopeDependencyResolver.main display_config ~use_test_only_envelope ~extensions deps_config
+    ClosedEnvelopeDependencyResolver.main logging_spec ~use_test_only_envelope ~extensions deps_config
   in
 
   (* Typechecks every depended envelope (Note: We must ignore `#[test-only]` in dependencies): *)
@@ -134,7 +135,7 @@ let check_depended_envelopes (display_config : Logging.config) (typecheck_config
     sorted_envelopes |> foldM (fun (genv, configenv, libacc) (envelope_name, (config, envelope)) ->
       let* used_as_map = make_used_as_map_for_checking_dependency deps_config envelope_name in
       let* (ssig, libs) =
-        EnvelopeChecker.main ~testing:false display_config typecheck_config tyenv_prim genv ~used_as_map envelope
+        EnvelopeChecker.main ~testing:false logging_spec typecheck_config tyenv_prim genv ~used_as_map envelope
       in
       let genv = genv |> GlobalTypeenv.add (EnvelopeName.EN(envelope_name)) ssig in
       let configenv = configenv |> GlobalTypeenv.add (EnvelopeName.EN(envelope_name)) config in
@@ -151,14 +152,14 @@ let make_output_mode text_mode_formats_str_opt =
   | Some(s) -> TextMode(String.split_on_char ',' s)
 
 
-let make_display_config ~(show_full_path : bool) ~current_dir:(absdir_current : abs_path) =
+let make_logging_spec ~(show_full_path : bool) ~(verbosity : verbosity) ~current_dir:(absdir_current : abs_path) =
   let path_display_setting =
     if show_full_path then
-      Logging.FullPath
+      FullPath
     else
-      Logging.RelativeToCwd(absdir_current)
+      RelativeToCwd(absdir_current)
   in
-  Logging.{ path_display_setting }
+  Logging.{ path_display_setting; verbosity }
 
 
 (* TODO: discard `job_directory` *)
@@ -171,11 +172,12 @@ let build_package
     ~(fpath_deps : string)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
+    ~(verbosity : verbosity)
 =
   let open ResultMonad in
   let absdir_current = AbsPathIo.getcwd () in
-  let display_config = make_display_config ~show_full_path ~current_dir:absdir_current in
-  error_log_environment display_config (fun () ->
+  let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
+  error_log_environment logging_spec (fun () ->
     let abspath_envelope_config = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let output_mode = make_output_mode text_mode_formats_str_opt in
@@ -196,20 +198,20 @@ let build_package
     in
 
     (* Loads the deps config: *)
-    Logging.deps_config_file display_config abspath_deps_config;
+    Logging.deps_config_file logging_spec abspath_deps_config;
     let* deps_config = DepsConfig.load abspath_deps_config in
     let used_as_map = make_used_as_map deps_config.explicit_dependencies in
 
     (* Parses the main envelope: *)
     let* (_config, envelope) =
-      EnvelopeReader.main display_config ~use_test_files:false ~extensions
+      EnvelopeReader.main logging_spec ~use_test_files:false ~extensions
         ~envelope_config:abspath_envelope_config
     in
 
     (* Typechecks each depended envelope in the topological order: *)
     let* (genv, _configenv, _libs_dep) =
       check_depended_envelopes
-        display_config typecheck_config
+        logging_spec typecheck_config
         ~use_test_only_envelope:false ~extensions
         tyenv_prim deps_config
     in
@@ -218,13 +220,13 @@ let build_package
     let* (_ssig, _libs_target) =
       EnvelopeChecker.main
         ~testing:false
-        display_config typecheck_config tyenv_prim genv ~used_as_map envelope
+        logging_spec typecheck_config tyenv_prim genv ~used_as_map envelope
     in
     return ()
 
   ) |> function
   | Ok(())   -> ()
-  | Error(e) -> report_and_exit (make_config_error_message display_config e)
+  | Error(e) -> report_and_exit (make_config_error_message logging_spec e)
 
 
 let build_document
@@ -236,6 +238,7 @@ let build_document
     ~(page_number_limit : int)
     ~(max_repeats : int)
     ~(show_full_path : bool)
+    ~(verbosity : verbosity)
     ~(debug_show_bbox : bool)
     ~(debug_show_space : bool)
     ~(debug_show_block_bbox : bool)
@@ -246,8 +249,8 @@ let build_document
 =
 let open ResultMonad in
   let absdir_current = AbsPathIo.getcwd () in
-  let display_config = make_display_config ~show_full_path ~current_dir:absdir_current in
-  error_log_environment display_config (fun () ->
+  let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
+  error_log_environment logging_spec (fun () ->
     let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_out = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_out in
     let abspath_dump = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_dump in
@@ -280,20 +283,20 @@ let open ResultMonad in
     in
 
     (* Loads the deps config: *)
-    Logging.deps_config_file display_config abspath_deps_config;
+    Logging.deps_config_file logging_spec abspath_deps_config;
     let* deps_config = DepsConfig.load abspath_deps_config in
     let used_as_map = make_used_as_map deps_config.explicit_dependencies in
 
-    Logging.target_file display_config abspath_out;
+    Logging.target_file logging_spec abspath_out;
 
     (* Initializes the dump file: *)
     let* dump_file_exists = CrossRef.initialize abspath_dump in
-    Logging.dump_file display_config ~already_exists:dump_file_exists abspath_dump;
+    Logging.dump_file logging_spec ~already_exists:dump_file_exists abspath_dump;
 
     (* Typechecks each depended envelope in the topological order: *)
     let* (genv, configenv, libs_dep) =
       check_depended_envelopes
-        display_config
+        logging_spec
         typecheck_config
         ~use_test_only_envelope:false
         ~extensions
@@ -303,14 +306,14 @@ let open ResultMonad in
 
     (* Resolve dependency of the document and the local source files: *)
     let* (sorted_locals, utdoc) =
-      OpenFileDependencyResolver.main display_config ~extensions input_kind configenv ~used_as_map abspath_in
+      OpenFileDependencyResolver.main logging_spec ~extensions input_kind configenv ~used_as_map abspath_in
     in
 
     (* Typechecking and elaboration: *)
     let* (libs_local, ast_doc) =
       EnvelopeChecker.main_document
         ~testing:false
-        display_config typecheck_config tyenv_prim genv ~used_as_map sorted_locals (abspath_in, utdoc)
+        logging_spec typecheck_config tyenv_prim genv ~used_as_map sorted_locals (abspath_in, utdoc)
     in
 
     (* Evaluation: *)
@@ -319,7 +322,7 @@ let open ResultMonad in
     else
       let libs = List.append libs_dep libs_local in
       preprocess_and_evaluate
-        display_config
+        logging_spec
         pdf_config
         ~page_number_limit
         ~max_repeats
@@ -330,7 +333,7 @@ let open ResultMonad in
 
   ) |> function
   | Ok(())   -> ()
-  | Error(e) -> report_and_exit (make_config_error_message display_config e)
+  | Error(e) -> report_and_exit (make_config_error_message logging_spec e)
 
 
 let test_package
@@ -338,11 +341,12 @@ let test_package
     ~(fpath_deps : string)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
+    ~(verbosity : verbosity)
 =
   let open ResultMonad in
   let absdir_current = AbsPathIo.getcwd () in
-  let display_config = make_display_config ~show_full_path ~current_dir:absdir_current in
-  error_log_environment display_config (fun () ->
+  let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
+  error_log_environment logging_spec (fun () ->
     let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_deps in
     let output_mode = make_output_mode text_mode_formats_str_opt in
@@ -364,19 +368,19 @@ let test_package
     in
 
     (* Loads the deps config: *)
-    Logging.deps_config_file display_config abspath_deps_config;
+    Logging.deps_config_file logging_spec abspath_deps_config;
     let* deps_config = DepsConfig.load abspath_deps_config in
 
     (* Parses the main envelope: *)
     let* (_config, package) =
-      EnvelopeReader.main display_config ~use_test_files:true ~extensions
+      EnvelopeReader.main logging_spec ~use_test_files:true ~extensions
         ~envelope_config:abspath_in
     in
 
     (* Typechecks each depended envelope in the topological order: *)
     let* (genv, _configenv, libs_dep) =
       check_depended_envelopes
-        display_config
+        logging_spec
         typecheck_config_deps
         ~use_test_only_envelope:true
         ~extensions
@@ -393,14 +397,14 @@ let test_package
     let* (_ssig, libs_target) =
       EnvelopeChecker.main
         ~testing:true
-        display_config typecheck_config_main tyenv_prim genv ~used_as_map package
+        logging_spec typecheck_config_main tyenv_prim genv ~used_as_map package
     in
 
     (* Runs tests (Note: we do not run the tests in dependencies): *)
-    let (env, codebinds_dep) = preprocess_bindings display_config ~run_tests:false env libs_dep in
-    let (env, codebinds_target) = preprocess_bindings display_config ~run_tests:true env libs_target in
-    let env = evaluate_bindings display_config ~run_tests:false ~is_bytecomp_mode:false env codebinds_dep in
-    let _env = evaluate_bindings display_config ~run_tests:true ~is_bytecomp_mode:false env codebinds_target in
+    let (env, codebinds_dep) = preprocess_bindings logging_spec ~run_tests:false env libs_dep in
+    let (env, codebinds_target) = preprocess_bindings logging_spec ~run_tests:true env libs_target in
+    let env = evaluate_bindings logging_spec ~run_tests:false ~is_bytecomp_mode:false env codebinds_dep in
+    let _env = evaluate_bindings logging_spec ~run_tests:true ~is_bytecomp_mode:false env codebinds_target in
 
     let test_results = State.get_all_test_results () in
     let failure_found =
@@ -423,4 +427,4 @@ let test_package
       end
 
   | Error(e) ->
-      report_and_exit (make_config_error_message display_config e)
+      report_and_exit (make_config_error_message logging_spec e)

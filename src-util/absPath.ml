@@ -7,15 +7,17 @@ module Impl : sig
   type t
   [@@deriving show]
 
+  val compare : t -> t -> int
+
   val of_string : string -> t option
 
   val to_string : t -> string
 
+  val to_relative_string : from:t -> t -> string
+
+  val to_relative_string_if_descendant : from:t -> t -> string
+
   val to_components : t -> component list
-
-  val compare : t -> t -> int
-
-  val make_relative : from:t -> t -> string
 
 end = struct
 
@@ -30,6 +32,10 @@ end = struct
     | Component of component
     | Current
     | Parent
+
+
+  let compare (AbsPath(compos1)) (AbsPath(compos2)) =
+    List.compare String.compare compos1 compos2
 
 
   let make_non_normal_components (uchs : Uchar.t list) : non_normal_component =
@@ -92,13 +98,6 @@ end = struct
     Printf.sprintf "/%s" (String.concat "/" compos)
 
 
-  let to_components (AbsPath(compos) : t) = compos
-
-
-  let compare (AbsPath(compos1)) (AbsPath(compos2)) =
-    List.compare String.compare compos1 compos2
-
-
   type relative_component =
     | RelParent
     | RelComponent of string
@@ -109,27 +108,39 @@ end = struct
     | RelComponent(compo) -> compo
 
 
-  let make_relative ~from:(AbsPath(compos_seen_from) : t) (AbsPath(compos_target) : t) =
-    let rec aux compos_seen_from compos_target =
-      match (compos_seen_from, compos_target) with
-      | (compo_seen_from :: compos_seen_from_rest, compo_target :: compos_target_rest) ->
-          if String.equal compo_seen_from compo_target then
-            aux compos_seen_from_rest compos_target_rest
-          else
-            let ncompos0 = List.map (fun _ -> RelParent) compos_seen_from in
-            let ncompos1 = List.map (fun compo -> RelComponent(compo)) compos_target in
-            List.append ncompos0 ncompos1
+  let rec get_relative_components compos_seen_from compos_target =
+    match (compos_seen_from, compos_target) with
+    | (compo_seen_from :: compos_seen_from_rest, compo_target :: compos_target_rest) ->
+        if String.equal compo_seen_from compo_target then
+          get_relative_components compos_seen_from_rest compos_target_rest
+        else
+          let ncompos0 = List.map (fun _ -> RelParent) compos_seen_from in
+          let ncompos1 = List.map (fun compo -> RelComponent(compo)) compos_target in
+          List.append ncompos0 ncompos1
 
-      | (_ :: _, []) ->
-          List.map (fun _ -> RelParent) compos_seen_from
+    | (_ :: _, []) ->
+        List.map (fun _ -> RelParent) compos_seen_from
 
-      | ([], _) ->
-          List.map (fun compo -> RelComponent(compo)) compos_target
-    in
-    let relcompos = aux compos_seen_from compos_target in
+    | ([], _) ->
+        List.map (fun compo -> RelComponent(compo)) compos_target
+
+
+  let to_relative_string ~from:(AbsPath(compos_seen_from) : t) (AbsPath(compos_target) : t) =
+    let relcompos = get_relative_components compos_seen_from compos_target in
     match relcompos with
     | []     -> "."
     | _ :: _ -> String.concat "/" (List.map stringify_relative_component relcompos)
+
+
+  let to_relative_string_if_descendant ~from:(AbsPath(compos_seen_from) : t) (AbsPath(compos_target) as abspath_target : t) =
+    let relcompos = get_relative_components compos_seen_from compos_target in
+    match relcompos with
+    | []                   -> "."
+    | RelComponent(_) :: _ -> String.concat "/" (List.map stringify_relative_component relcompos)
+    | RelParent :: _       -> to_string abspath_target
+
+
+  let to_components (AbsPath(compos) : t) = compos
 
 end
 

@@ -1,46 +1,42 @@
 
 open MyUtil
+open LoggingUtil
 
 
-type path_display_setting =
-  | FullPath
-  | RelativeToCwd of abs_path
-
-type config = {
-  path_display_setting : path_display_setting;
-}
-
-
-let show_path (config : config) (abspath : abs_path) =
-  match config.path_display_setting with
-  | FullPath                   -> AbsPath.to_string abspath
-  | RelativeToCwd(abspath_cwd) -> AbsPath.make_relative ~from:abspath_cwd abspath
+let begin_to_typecheck_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec then begin
+    print_endline " ---- ---- ---- ----";
+    Printf.printf "  type checking '%s' ...\n"
+      (show_path spec abspath_in)
+  end
 
 
-let begin_to_typecheck_file (config : config) (abspath_in : abs_path) =
-  print_endline " ---- ---- ---- ----";
-  Printf.printf "  type checking '%s' ...\n"
-    (show_path config abspath_in)
+let begin_to_preprocess_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec then begin
+    Printf.printf "  preprocessing '%s' ...\n"
+      (show_path spec abspath_in)
+  end
 
 
-let begin_to_preprocess_file (config : config) (abspath_in : abs_path) =
-  Printf.printf "  preprocessing '%s' ...\n"
-    (show_path config abspath_in)
+let begin_to_eval_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec then begin
+    Printf.printf "  evaluating '%s' ...\n"
+      (show_path spec abspath_in)
+  end
 
 
-let begin_to_eval_file (config : config) (abspath_in : abs_path) =
-  Printf.printf "  evaluating '%s' ...\n"
-    (show_path config abspath_in)
+let begin_to_parse_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec then begin
+    Printf.printf "  parsing '%s' ...\n"
+      (show_path spec abspath_in)
+  end
 
 
-let begin_to_parse_file (config : config) (abspath_in : abs_path) =
-  Printf.printf "  parsing '%s' ...\n"
-    (show_path config abspath_in)
-
-
-let pass_type_check = function
-  | None      -> print_endline "  type check passed."
-  | Some(str) -> Printf.printf "  type check passed. (%s)\n" str
+let pass_type_check (spec : logging_spec) (opt : string option) =
+  if is_verbose spec then
+    match opt with
+    | None      -> print_endline "  type check passed."
+    | Some(str) -> Printf.printf "  type check passed. (%s)\n" str
 
 
 let ordinal i =
@@ -54,84 +50,108 @@ let ordinal i =
   Printf.sprintf "%d%s" i suffix
 
 
-let start_evaluation i =
-  print_endline " ---- ---- ---- ----";
-  if i <= 1 then
-    print_endline "  evaluating texts ..."
-  else
-    Printf.printf "  evaluating texts (%s trial) ...\n"
-      (ordinal i)
+let start_evaluation (spec : logging_spec) (i : int) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    if i <= 1 then
+      print_endline "  evaluating texts ..."
+    else
+      Printf.printf "  evaluating texts (%s trial) ...\n"
+        (ordinal i)
+  end
 
 
-let end_evaluation () =
-  print_endline "  evaluation done."
+let end_evaluation (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline "  evaluation done."
+  end
 
 
-let start_page_break () =
-  print_endline " ---- ---- ---- ----";
-  print_endline "  breaking contents into pages ..."
+let start_page_break (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    print_endline "  breaking contents into pages ..."
+  end
 
 
-let needs_another_trial () =
-  print_endline "  needs another trial for solving cross references..."
+let needs_another_trial (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline "  needs another trial for solving cross references..."
+  end
 
 
-let achieve_count_max () =
-  print_endline "  could not reach to fixpoint when resolving cross references."
+let achieve_count_max (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline "  could not reach a fixpoint when resolving cross references."
+  end
 
 
-let achieve_fixpoint unresolved_crossrefs =
+let achieve_fixpoint (spec : logging_spec) (unresolved_crossrefs : string list) =
   match unresolved_crossrefs with
   | [] ->
-      print_endline "  all cross references were solved."
+      if is_not_quiet spec then begin
+        print_endline "  all cross references were solved."
+      end
 
   | _ :: _ ->
-      print_endline "  some cross references were not solved:";
+      print_endline "  [Warning] some cross references were not solved:";
       unresolved_crossrefs |> List.iter (fun crossref ->
         Printf.printf "  - %s\n" crossref
       )
 
 
-let end_output (config : config) (file_name_out : abs_path) =
-  print_endline " ---- ---- ---- ----";
-  Printf.printf "  output written on '%s'.\n"
-    (show_path config file_name_out)
+let end_output (spec : logging_spec) (file_name_out : abs_path) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    Printf.printf "  output written on '%s'.\n"
+      (show_path spec file_name_out)
+  end
 
 
-let target_file (config : config) (file_name_out : abs_path) =
-  print_endline " ---- ---- ---- ----";
-  Printf.printf "  target file: '%s'\n"
-    (show_path config file_name_out)
+let target_file (spec : logging_spec) (file_name_out : abs_path) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    Printf.printf "  target file: '%s'\n"
+      (show_path spec file_name_out)
+  end
 
 
-let dump_file (config : config) ~(already_exists : bool) (dump_file : abs_path) =
-  if already_exists then
-    Printf.printf "  dump file: '%s' (already exists)\n"
-      (show_path config dump_file)
-  else
-    Printf.printf "  dump file: '%s' (will be created)\n"
-      (show_path config dump_file)
+let dump_file (spec : logging_spec) ~(already_exists : bool) (dump_file : abs_path) =
+  if is_not_quiet spec then begin
+    if already_exists then
+      Printf.printf "  dump file: '%s' (already exists)\n"
+        (show_path spec dump_file)
+    else
+      Printf.printf "  dump file: '%s' (will be created)\n"
+        (show_path spec dump_file)
+  end
 
 
-let deps_config_file (config : config) (abspath_deps_config : abs_path) =
-  Printf.printf "  deps file: '%s'\n"
-    (show_path config abspath_deps_config)
+let deps_config_file (spec : logging_spec) (abspath_deps_config : abs_path) =
+  if is_not_quiet spec then begin
+    Printf.printf "  deps file: '%s'\n"
+      (show_path spec abspath_deps_config)
+  end
 
 
-let begin_to_embed_fonts () =
-  print_endline " ---- ---- ---- ----";
-  print_endline "  embedding fonts ..."
+let begin_to_embed_fonts (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    print_endline "  embedding fonts ..."
+  end
 
 
-let begin_to_write_page () =
-  print_endline " ---- ---- ---- ----";
-  print_endline "  writing pages ..."
+let begin_to_write_page (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    print_endline "  writing pages ..."
+  end
 
 
 let warn_cmyk_image (file_name : abs_path) =
-  let config = { path_display_setting = FullPath } in (* TODO: make this changeable *)
+  let spec = { path_display_setting = FullPath; verbosity = NormalVerbosity } in (* TODO: make this changeable *)
   Printf.printf "  [Warning] Jpeg images with CMYK color mode are not fully supported: '%s'\n"
-    (show_path config file_name);
+    (show_path spec file_name);
   print_endline "  Please convert the image to a jpeg image with YCbCr (RGB) color model."
 
 

@@ -1,5 +1,6 @@
 
 open MyUtil
+open LoggingUtil
 open EnvelopeSystemBase
 open PackageSystemBase
 open ConfigError
@@ -8,6 +9,16 @@ open ConfigError
 let version =
   Printf.sprintf "Saphe version %s"
     (SemanticVersion.to_string Constant.current_ecosystem_version)
+
+
+let make_logging_spec ~(show_full_path : bool) ~(verbosity : verbosity) ~current_dir:(absdir_current : abs_path) =
+  let path_display_setting =
+    if show_full_path then
+      FullPath
+    else
+      RelativeToCwd(absdir_current)
+  in
+  Logging.{ path_display_setting; verbosity }
 
 
 type solve_input =
@@ -52,7 +63,7 @@ let make_lock_name ~seen_from:(absdir_seen_from : abs_path) (lock : Lock.t) : lo
 
   | Lock.LocalFixed{ absolute_path } ->
       Printf.sprintf "local.%s"
-        (AbsPath.make_relative ~from:absdir_seen_from absolute_path)
+        (AbsPath.to_relative_string ~from:absdir_seen_from absolute_path)
 
 
 let make_lock_dependency ~(seen_from : abs_path) (dep : locked_dependency) : LockConfig.lock_dependency =
@@ -158,23 +169,23 @@ type package_init_input =
     }
 
 
-let write_package_config (abspath_package_config : abs_path) ~(data : string) =
+let write_package_config (logging_spec : logging_spec) (abspath_package_config : abs_path) ~(data : string) =
   let open ResultMonad in
   let* () =
     AbsPathIo.write_file abspath_package_config data
       |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath_package_config; message })
   in
-  Logging.initialize_package_config abspath_package_config;
+  Logging.initialize_package_config logging_spec abspath_package_config;
   return ()
 
 
-let write_initial_file (abspath : abs_path) ~(data : string) =
+let write_initial_file (logging_spec : logging_spec) (abspath : abs_path) ~(data : string) =
   let open ResultMonad in
   let* () =
     AbsPathIo.write_file abspath data
       |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath; message })
   in
-  Logging.initialize_file abspath;
+  Logging.initialize_file logging_spec abspath;
   return ()
 
 
@@ -186,12 +197,18 @@ let assert_nonexistence (abspath : abs_path) =
     return ()
 
 
-let init_document ~(fpath_in : string) =
+let init_document
+  ~(fpath_in : string)
+  ~(show_full_path : bool)
+  ~(verbosity : verbosity)
+=
   let res =
     let open ResultMonad in
 
-    (* Constructs the input: *)
     let absdir_current = AbsPathIo.getcwd () in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
+
+    (* Constructs the input: *)
     let abspath_doc = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_package_config = Constant.document_package_config_path ~doc:abspath_doc in
     let absdir = AbsPath.dirname abspath_doc in
@@ -202,14 +219,14 @@ let init_document ~(fpath_in : string) =
     match Filename.extension (AbsPath.to_string abspath_doc) with
     | ".saty" ->
         ShellCommand.mkdir_p absdir;
-        let* () = write_package_config abspath_package_config ~data:InitData.document_package_config_contents in
-        let* () = write_initial_file abspath_doc ~data:InitData.document_contents in
+        let* () = write_package_config logging_spec abspath_package_config ~data:InitData.document_package_config_contents in
+        let* () = write_initial_file logging_spec abspath_doc ~data:InitData.document_contents in
         return ()
 
     | ".md" ->
         ShellCommand.mkdir_p absdir;
-        let* () = write_package_config abspath_package_config ~data:InitData.markdown_package_config_contents in
-        let* () = write_initial_file abspath_doc ~data:InitData.markdown_contents in
+        let* () = write_package_config logging_spec abspath_package_config ~data:InitData.markdown_package_config_contents in
+        let* () = write_initial_file logging_spec abspath_doc ~data:InitData.markdown_contents in
         return ()
 
     | extension ->
@@ -220,12 +237,18 @@ let init_document ~(fpath_in : string) =
   | Error(e) -> ErrorReporting.report_config_error e; exit 1
 
 
-let init_library ~(fpath_in : string) =
+let init_library
+  ~(fpath_in : string)
+  ~(show_full_path : bool)
+  ~(verbosity : verbosity)
+=
   let res =
     let open ResultMonad in
 
-    (* Constructs the input: *)
     let absdir_current = AbsPathIo.getcwd () in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
+
+    (* Constructs the input: *)
     let absdir_package = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
     let abspath_source = AbsPath.append_to_directory absdir_package "src/calc.satyh" in
@@ -238,9 +261,9 @@ let init_library ~(fpath_in : string) =
     ShellCommand.mkdir_p absdir_package;
     ShellCommand.mkdir_p (AbsPath.append_to_directory absdir_package "src");
     ShellCommand.mkdir_p (AbsPath.append_to_directory absdir_package "test");
-    let* () = write_package_config abspath_package_config ~data:InitData.library_package_config_contents in
-    let* () = write_initial_file abspath_source ~data:InitData.library_source_contents in
-    let* () = write_initial_file abspath_test ~data:InitData.library_test_contents in
+    let* () = write_package_config logging_spec abspath_package_config ~data:InitData.library_package_config_contents in
+    let* () = write_initial_file logging_spec abspath_source ~data:InitData.library_source_contents in
+    let* () = write_initial_file logging_spec abspath_test ~data:InitData.library_test_contents in
 
     return ()
   in
@@ -272,13 +295,19 @@ let make_solve_input ~current_dir:(absdir_current : abs_path) ~(fpath_in : strin
     }
 
 
-let solve ~(fpath_in : string) =
+let solve
+    ~(fpath_in : string)
+    ~(show_full_path : bool)
+    ~(verbosity : verbosity)
+=
   let res =
     let open ResultMonad in
 
+    let absdir_current = AbsPathIo.getcwd () in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
+
     (* Constructs the input: *)
     let solve_input =
-      let absdir_current = AbsPathIo.getcwd () in
       make_solve_input ~current_dir:absdir_current ~fpath_in
     in
 
@@ -314,7 +343,7 @@ let solve ~(fpath_in : string) =
                 CannotWriteEnvelopeConfig{ message; path = abspath_envelope_config }
               )
           in
-          Logging.end_envelope_config_output abspath_envelope_config;
+          Logging.end_envelope_config_output logging_spec abspath_envelope_config;
 
           let dependencies_with_flags =
             List.append
@@ -351,7 +380,7 @@ let solve ~(fpath_in : string) =
           return (language_version, dependencies_with_flags, abspath_lock_config, registry_remotes)
     in
 
-    Logging.show_package_dependency_before_solving dependencies_with_flags;
+    Logging.show_package_dependency_before_solving logging_spec dependencies_with_flags;
 
     (* Collects the local fixed packages used by the target: *)
     let* (local_fixed_package_map, registry_remotes_sub) =
@@ -369,7 +398,7 @@ let solve ~(fpath_in : string) =
           EnvelopeConfig.write abspath_envelope_config { envelope_contents }
             |> Result.map_error (fun message -> FailedToWriteFile{ path = abspath_envelope_config; message })
         in
-        Logging.end_envelope_config_output abspath_envelope_config;
+        Logging.end_envelope_config_output logging_spec abspath_envelope_config;
         return (local_fixed_dependencies |> LocalFixedPackageIdMap.add absdir_package deps)
       ) local_fixed_package_map (return LocalFixedPackageIdMap.empty)
     in
@@ -380,7 +409,7 @@ let solve ~(fpath_in : string) =
     ShellCommand.mkdir_p absdir_store_root;
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
     begin
-      if created then Logging.store_root_config_updated ~created:true abspath_store_root_config
+      if created then Logging.store_root_config_updated logging_spec ~created:true abspath_store_root_config
     end;
 
     (* Constructs a map that associates a package with its implementations: *)
@@ -409,7 +438,7 @@ let solve ~(fpath_in : string) =
               |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
           in
           begin
-            if created then Logging.package_registry_updated ~created:true absdir_registry_repo
+            if created then Logging.package_registry_updated logging_spec ~created:true absdir_registry_repo
           end;
 
           (* Loads the registry config: *)
@@ -456,7 +485,7 @@ let solve ~(fpath_in : string) =
 
       | Some(solutions) ->
 
-          Logging.show_package_dependency_solutions solutions;
+          Logging.show_package_dependency_solutions logging_spec solutions;
 
           let (lock_config, impl_specs) =
             convert_solutions_to_lock_config
@@ -469,12 +498,12 @@ let solve ~(fpath_in : string) =
           let unzip_command = "unzip" in (* TODO: make this changeable *)
           let* () =
             impl_specs |> foldM (fun () impl_spec ->
-              LockFetcher.main
+              LockFetcher.main logging_spec
                 ~wget_command ~tar_command ~unzip_command ~store_root:absdir_store_root impl_spec
             ) ()
           in
           let* () = LockConfig.write abspath_lock_config lock_config in
-          Logging.end_lock_config_output abspath_lock_config;
+          Logging.end_lock_config_output logging_spec abspath_lock_config;
           return ()
     end
   in
@@ -483,47 +512,51 @@ let solve ~(fpath_in : string) =
   | Error(e) -> ErrorReporting.report_config_error e; exit 1
 
 
-let update ~(fpath_in : string) =
+let update
+  ~(fpath_in : string)
+  ~(show_full_path : bool)
+  ~(verbosity : verbosity)
+=
   let res =
     let open ResultMonad in
 
-    (* Constructs the input: *)
-    let solve_input =
-      let absdir_current = AbsPathIo.getcwd () in
-      make_solve_input ~current_dir:absdir_current ~fpath_in
-    in
+    let absdir_current = AbsPathIo.getcwd () in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
 
+    (* Constructs the input: *)
+    let solve_input = make_solve_input ~current_dir:absdir_current ~fpath_in in
+
+    (* Loads the package config: *)
     let* registry_remotes =
       match solve_input with
       | PackageSolveInput{ root = absdir_package; _ } ->
-          (* Loads the package config: *)
           let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
           let* PackageConfig.{ registry_remotes; _ } = PackageConfig.load abspath_package_config in
           return registry_remotes
 
-    | DocumentSolveInput{ config = abspath_package_config; _ } ->
-        (* Loads the package config: *)
-        let* PackageConfig.{ registry_remotes; _ } = PackageConfig.load abspath_package_config in
-        return registry_remotes
+      | DocumentSolveInput{ config = abspath_package_config; _ } ->
+          let* PackageConfig.{ registry_remotes; _ } = PackageConfig.load abspath_package_config in
+          return registry_remotes
     in
+
     (* Arranges the store root config: *)
     let* absdir_store_root = get_store_root () in
     let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
     ShellCommand.mkdir_p absdir_store_root;
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
-    Logging.store_root_config_updated ~created abspath_store_root_config;
+    Logging.store_root_config_updated logging_spec ~created abspath_store_root_config;
 
     PackageRegistryArranger.main
       ~err:(fun e -> CanonicalRegistryUrlError(e))
-      (fun () registry_remote ->
-        let* registry_hash_value = ConfigUtil.make_registry_hash_value registry_remote in
+      (fun () canonical_registry_remote ->
+        let* registry_hash_value = ConfigUtil.make_registry_hash_value canonical_registry_remote in
 
         (* Manupulates the store root config: *)
         let* () =
           update_store_root_config_if_needed
             store_root_config.StoreRootConfig.registries
             registry_hash_value
-            registry_remote
+            canonical_registry_remote
             abspath_store_root_config
         in
 
@@ -533,10 +566,10 @@ let update ~(fpath_in : string) =
         in
         let git_command = "git" in (* TODO: make this changeable *)
         let* created =
-          PackageRegistryFetcher.main ~do_update:true ~git_command absdir_registry_repo registry_remote
+          PackageRegistryFetcher.main ~do_update:true ~git_command absdir_registry_repo canonical_registry_remote
             |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
         in
-        Logging.package_registry_updated ~created absdir_registry_repo;
+        Logging.package_registry_updated logging_spec ~created absdir_registry_repo;
 
         return ([], ())
       )
@@ -554,7 +587,7 @@ type build_input =
       config   : abs_path;
       lock     : abs_path;
       envelope : abs_path;
-      options  : SatysfiCommand.build_option;
+      options  : SatysfiCommand.package_build_option;
     }
   | DocumentBuildInput of {
       root    : abs_path;
@@ -562,7 +595,7 @@ type build_input =
       config  : abs_path;
       lock    : abs_path;
       out     : abs_path;
-      options : SatysfiCommand.build_option;
+      options : SatysfiCommand.document_build_option;
     }
 
 
@@ -612,6 +645,9 @@ let build
     ~(fpath_out_opt : string option)
     ~(text_mode_formats_str_opt : string option)
     ~(page_number_limit : int)
+    ~(max_repeats : int)
+    ~(show_full_path : bool)
+    ~(verbosity : verbosity)
     ~(debug_show_bbox : bool)
     ~(debug_show_space : bool)
     ~(debug_show_block_bbox : bool)
@@ -623,23 +659,19 @@ let build
   let res =
     let open ResultMonad in
 
+    let absdir_current = AbsPathIo.getcwd () in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
+
     (* Constructs the input: *)
     let build_input =
-      let options =
-        SatysfiCommand.{
-          page_number_limit;
-          debug_show_bbox;
-          debug_show_space;
-          debug_show_block_bbox;
-          debug_show_block_space;
-          debug_show_overfull;
-          type_check_only;
-          bytecomp;
-        }
-      in
-      let absdir_current = AbsPathIo.getcwd () in
       let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
+        let options =
+          SatysfiCommand.PackageBuildOption{
+            show_full_path;
+            verbosity;
+          }
+        in
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
         let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
         let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
@@ -651,6 +683,20 @@ let build
           options;
         }
       else
+        let options =
+          SatysfiCommand.DocumentBuildOption{
+            show_full_path;
+            verbosity;
+            page_number_limit;
+            debug_show_bbox;
+            debug_show_space;
+            debug_show_block_bbox;
+            debug_show_block_space;
+            debug_show_overfull;
+            type_check_only;
+            bytecomp;
+          }
+        in
         let absdir_doc_root = AbsPath.dirname abspath_in in
         let abspath_package_config = Constant.document_package_config_path ~doc:abspath_in in
         let abspath_lock_config = Constant.document_lock_config_path ~doc:abspath_in in
@@ -706,15 +752,15 @@ let build
         let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
         ShellCommand.mkdir_p absdir_intermediate;
         let* () = DepsConfig.write abspath_deps_config deps_config in
-        Logging.end_deps_config_output abspath_deps_config;
+        Logging.end_deps_config_output logging_spec abspath_deps_config;
 
         (* Builds the package by invoking `satysfi`: *)
         let SatysfiCommand.{ exit_status; command = _ } =
-          SatysfiCommand.(build_package
+          SatysfiCommand.build_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
             ~mode:text_mode_formats_str_opt
-            ~options)
+            ~options
         in
         return exit_status
 
@@ -755,17 +801,17 @@ let build
         let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
         ShellCommand.mkdir_p absdir_intermediate;
         let* () = DepsConfig.write abspath_deps_config deps_config in
-        Logging.end_deps_config_output abspath_deps_config;
+        Logging.end_deps_config_output logging_spec abspath_deps_config;
 
         (* Builds the document by invoking `satysfi`: *)
         let SatysfiCommand.{ exit_status; command = _ } =
-          SatysfiCommand.(build_document
+          SatysfiCommand.build_document
             ~doc:abspath_doc
             ~out:abspath_out
             ~dump:abspath_dump
             ~deps:abspath_deps_config
             ~mode:text_mode_formats_str_opt
-            ~options)
+            ~options
         in
         return exit_status
   in
@@ -780,20 +826,31 @@ type test_input =
       config   : abs_path;
       lock     : abs_path;
       envelope : abs_path;
+      options  : SatysfiCommand.package_build_option;
     }
 
 
 let test
     ~(fpath_in : string)
     ~(text_mode_formats_str_opt : string option)
+    ~(show_full_path : bool)
+    ~(verbosity : verbosity)
 =
   let res =
     let open ResultMonad in
 
+    let absdir_current = AbsPathIo.getcwd () in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
+
     let* test_input =
-      let absdir_current = AbsPathIo.getcwd () in
       let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
       if AbsPathIo.is_directory abspath_in then
+        let options =
+          SatysfiCommand.PackageBuildOption{
+            show_full_path;
+            verbosity;
+          }
+        in
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
         let abspath_lock_config = Constant.library_lock_config_path ~dir:abspath_in in
         let abspath_envelope_config = Constant.envelope_config_path ~dir:abspath_in in
@@ -802,6 +859,7 @@ let test
           config   = abspath_package_config;
           lock     = abspath_lock_config;
           envelope = abspath_envelope_config;
+          options;
         }
       else
         err @@ CannotTestDocument
@@ -815,6 +873,7 @@ let test
         config   = abspath_package_config;
         lock     = abspath_lock_config;
         envelope = abspath_envelope_config;
+        options;
       } ->
         (* Loads the package config: *)
         let*
@@ -840,14 +899,15 @@ let test
         let deps_config = make_deps_config ~store_root:absdir_store_root lock_config in
         ShellCommand.mkdir_p absdir_intermediate;
         let* () = DepsConfig.write abspath_deps_config deps_config in
-        Logging.end_deps_config_output abspath_deps_config;
+        Logging.end_deps_config_output logging_spec abspath_deps_config;
 
         (* Builds the package by invoking `satysfi`: *)
         let SatysfiCommand.{ exit_status; command = _ } =
-          SatysfiCommand.(test_package
+          SatysfiCommand.test_package
             ~envelope:abspath_envelope_config
             ~deps:abspath_deps_config
-            ~mode:text_mode_formats_str_opt)
+            ~mode:text_mode_formats_str_opt
+            ~options
         in
         return exit_status
 
@@ -863,16 +923,22 @@ let continue_if_ok res f =
   | Error(_) -> ()
 
 
-let cache_list () =
+let cache_list
+  ~(show_full_path : bool)
+  ~(verbosity : verbosity)
+=
   let res =
     let open ResultMonad in
+
+    let absdir_current = AbsPathIo.getcwd () in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
 
     (* Loads the store root config: *)
     let* absdir_store_root = get_store_root () in
     let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
     begin
-      if created then Logging.store_root_config_updated ~created:true abspath_store_root_config
+      if created then Logging.store_root_config_updated logging_spec ~created:true abspath_store_root_config
     end;
 
     let StoreRootConfig.{ registries } = store_root_config in
