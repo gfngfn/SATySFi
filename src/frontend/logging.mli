@@ -1,8 +1,12 @@
 
 open MyUtil
 
+type path_display_setting =
+  | FullPath
+  | RelativeToCwd of abs_path
+
 type config = {
-  show_full_path : bool;
+  path_display_setting : path_display_setting;
 }
 
 val show_path : config -> abs_path -> string
