@@ -8,6 +8,7 @@ type path_display_setting =
 
 type config = {
   path_display_setting : path_display_setting;
+  verbose              : bool;
 }
 
 
@@ -129,7 +130,7 @@ let begin_to_write_page () =
 
 
 let warn_cmyk_image (file_name : abs_path) =
-  let config = { path_display_setting = FullPath } in (* TODO: make this changeable *)
+  let config = { path_display_setting = FullPath; verbose = false } in (* TODO: make this changeable *)
   Printf.printf "  [Warning] Jpeg images with CMYK color mode are not fully supported: '%s'\n"
     (show_path config file_name);
   print_endline "  Please convert the image to a jpeg image with YCbCr (RGB) color model."

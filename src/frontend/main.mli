@@ -6,6 +6,7 @@ val build_package :
   fpath_deps:string ->
   text_mode_formats_str_opt:(string option) ->
   show_full_path:bool ->
+  verbose:bool ->
   unit
 
 val build_document :
@@ -17,6 +18,7 @@ val build_document :
   page_number_limit:int ->
   max_repeats:int ->
   show_full_path:bool ->
+  verbose:bool ->
   debug_show_bbox:bool ->
   debug_show_space:bool ->
   debug_show_block_bbox:bool ->
@@ -31,4 +33,5 @@ val test_package :
   fpath_deps:string ->
   text_mode_formats_str_opt:(string option) ->
   show_full_path:bool ->
+  verbose:bool ->
   unit

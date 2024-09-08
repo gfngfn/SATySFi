@@ -151,14 +151,14 @@ let make_output_mode text_mode_formats_str_opt =
   | Some(s) -> TextMode(String.split_on_char ',' s)
 
 
-let make_display_config ~(show_full_path : bool) ~current_dir:(absdir_current : abs_path) =
+let make_display_config ~(show_full_path : bool) ~(verbose : bool) ~current_dir:(absdir_current : abs_path) =
   let path_display_setting =
     if show_full_path then
       Logging.FullPath
     else
       Logging.RelativeToCwd(absdir_current)
   in
-  Logging.{ path_display_setting }
+  Logging.{ path_display_setting; verbose }
 
 
 (* TODO: discard `job_directory` *)
@@ -171,10 +171,11 @@ let build_package
     ~(fpath_deps : string)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
+    ~(verbose : bool)
 =
   let open ResultMonad in
   let absdir_current = AbsPathIo.getcwd () in
-  let display_config = make_display_config ~show_full_path ~current_dir:absdir_current in
+  let display_config = make_display_config ~show_full_path ~verbose ~current_dir:absdir_current in
   error_log_environment display_config (fun () ->
     let abspath_envelope_config = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_deps in
@@ -236,6 +237,7 @@ let build_document
     ~(page_number_limit : int)
     ~(max_repeats : int)
     ~(show_full_path : bool)
+    ~(verbose : bool)
     ~(debug_show_bbox : bool)
     ~(debug_show_space : bool)
     ~(debug_show_block_bbox : bool)
@@ -246,7 +248,7 @@ let build_document
 =
 let open ResultMonad in
   let absdir_current = AbsPathIo.getcwd () in
-  let display_config = make_display_config ~show_full_path ~current_dir:absdir_current in
+  let display_config = make_display_config ~show_full_path ~verbose ~current_dir:absdir_current in
   error_log_environment display_config (fun () ->
     let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_out = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_out in
@@ -338,10 +340,11 @@ let test_package
     ~(fpath_deps : string)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
+    ~(verbose : bool)
 =
   let open ResultMonad in
   let absdir_current = AbsPathIo.getcwd () in
-  let display_config = make_display_config ~show_full_path ~current_dir:absdir_current in
+  let display_config = make_display_config ~show_full_path ~verbose ~current_dir:absdir_current in
   error_log_environment display_config (fun () ->
     let abspath_in = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
     let abspath_deps_config = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_deps in

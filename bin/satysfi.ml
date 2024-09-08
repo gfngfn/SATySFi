@@ -4,12 +4,14 @@ let build_package
   fpath_deps
   text_mode_formats_str_opt
   show_full_path
+  verbose
 =
   Main.build_package
     ~fpath_in
     ~fpath_deps
     ~text_mode_formats_str_opt
     ~show_full_path
+    ~verbose
 
 
 let build_document
@@ -21,6 +23,7 @@ let build_document
   page_number_limit
   max_repeats
   show_full_path
+  verbose
   debug_show_bbox
   debug_show_space
   debug_show_block_bbox
@@ -38,6 +41,7 @@ let build_document
     ~page_number_limit
     ~max_repeats
     ~show_full_path
+    ~verbose
     ~debug_show_bbox
     ~debug_show_space
     ~debug_show_block_bbox
@@ -52,12 +56,14 @@ let test_package
   fpath_deps
   text_mode_formats_str_opt
   show_full_path
+  verbose
 =
   Main.test_package
     ~fpath_in
     ~fpath_deps
     ~text_mode_formats_str_opt
     ~show_full_path
+    ~verbose
 
 
 let arg_in : string Cmdliner.Term.t =
@@ -110,6 +116,12 @@ let flag_full_path =
   make_boolean_flag_spec
     ~flags:[ "full-path" ]
     ~doc:"Displays paths in full-path style"
+
+
+let flag_verbose =
+  make_boolean_flag_spec
+    ~flags:[ "verbose" ]
+    ~doc:"Verbosity of logs"
 
 
 let flag_debug_show_bbox =
@@ -166,6 +178,7 @@ let command_build_document =
       $ flag_page_number_limit
       $ flag_max_repeats
       $ flag_full_path
+      $ flag_verbose
       $ flag_debug_show_bbox
       $ flag_debug_show_space
       $ flag_debug_show_block_bbox
@@ -184,6 +197,7 @@ let command_build_package =
       $ flag_deps
       $ flag_text_mode
       $ flag_full_path
+      $ flag_verbose
     )
 
 
@@ -203,6 +217,7 @@ let command_test_package =
       $ flag_deps
       $ flag_text_mode
       $ flag_full_path
+      $ flag_verbose
     )
 
 
