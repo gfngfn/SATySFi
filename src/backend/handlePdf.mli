@@ -19,7 +19,7 @@ type page
 
 val write_page : config -> page -> page_parts_scheme_func -> t -> t
 
-val write_to_file : abs_path -> t -> unit
+val write_to_file : Logging.config -> abs_path -> t -> unit
 
 val make_empty_page : paper_size:(length * length) -> page_break_info -> page_content_scheme -> page
 

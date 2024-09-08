@@ -503,8 +503,8 @@ let create_empty_pdf () : t =
   PDF(pdf, Alist.empty)
 
 
-let write_to_file (abspath : abs_path) ((PDF(pdf, pageacc)) : t) : unit =
-  Logging.begin_to_embed_fonts ();
+let write_to_file (display_config : Logging.config) (abspath : abs_path) ((PDF(pdf, pageacc)) : t) : unit =
+  Logging.begin_to_embed_fonts display_config;
   let pdfdict_font = FontInfo.get_font_dictionary pdf in
   let pdfarr_procset =
     Pdf.Array(List.map (fun s -> Pdf.Name(s))
@@ -518,7 +518,7 @@ let write_to_file (abspath : abs_path) ((PDF(pdf, pageacc)) : t) : unit =
       ("/ProcSet", pdfarr_procset);
     ])
   in
-  Logging.begin_to_write_page ();
+  Logging.begin_to_write_page display_config;
   let pagelst =
     pageacc |> Alist.to_list |> List.map (fun page ->
       { page with Pdfpage.resources = Pdf.Indirect(ir_resources); }

@@ -159,14 +159,18 @@ let deps_config_file (config : config) (abspath_deps_config : abs_path) =
   end
 
 
-let begin_to_embed_fonts () =
-  print_endline " ---- ---- ---- ----";
-  print_endline "  embedding fonts ..."
+let begin_to_embed_fonts (config : config) =
+  if is_not_quiet config.verbosity then begin
+    print_endline " ---- ---- ---- ----";
+    print_endline "  embedding fonts ..."
+  end
 
 
-let begin_to_write_page () =
-  print_endline " ---- ---- ---- ----";
-  print_endline "  writing pages ..."
+let begin_to_write_page (config : config) =
+  if is_not_quiet config.verbosity then begin
+    print_endline " ---- ---- ---- ----";
+    print_endline "  writing pages ..."
+  end
 
 
 let warn_cmyk_image (file_name : abs_path) =

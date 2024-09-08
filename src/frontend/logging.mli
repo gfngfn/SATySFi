@@ -42,9 +42,9 @@ val dump_file : config -> already_exists:bool -> abs_path -> unit
 
 val deps_config_file : config -> abs_path -> unit
 
-val begin_to_embed_fonts : unit -> unit
+val begin_to_embed_fonts : config -> unit
 
-val begin_to_write_page : unit -> unit
+val begin_to_write_page : config -> unit
 
 val warn_noninjective_cmap : Uchar.t -> Uchar.t -> Otfed.Value.glyph_id -> unit
 

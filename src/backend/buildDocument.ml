@@ -78,10 +78,10 @@ let transform_text =
   EvalUtil.get_string
 
 
-let output_pdf (abspath_out : abs_path) (pdfret : HandlePdf.t) : (unit, config_error) result =
+let output_pdf (display_config : Logging.config) (abspath_out : abs_path) (pdfret : HandlePdf.t) : (unit, config_error) result =
   let open ResultMonad in
   try
-    HandlePdf.write_to_file abspath_out pdfret;
+    HandlePdf.write_to_file display_config abspath_out pdfret;
     return ()
   with
   | _ -> err @@ CannotOutputResult{ path = abspath_out; message = "HandlePdf.write_to_file failed" }
@@ -149,7 +149,17 @@ let build_document ~(max_repeats : int) (transform : syntactic_value -> 'a) (res
 let main (output_mode : output_mode) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(max_repeats : int) (display_config : Logging.config) =
   match output_mode with
   | PdfMode ->
-      build_document ~max_repeats (transform_pdf display_config pdf_config ~page_number_limit) reset_pdf output_pdf display_config
+      build_document
+        ~max_repeats
+        (transform_pdf display_config pdf_config ~page_number_limit)
+        reset_pdf
+        (output_pdf display_config)
+        display_config
 
   | TextMode(_) ->
-      build_document ~max_repeats transform_text Fun.id output_text display_config
+      build_document
+        ~max_repeats
+        transform_text
+        Fun.id
+        output_text
+        display_config
