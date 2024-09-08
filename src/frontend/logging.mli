@@ -2,8 +2,6 @@
 open MyUtil
 open LoggingUtil
 
-val show_path : logging_spec -> abs_path -> string
-
 val begin_to_typecheck_file : logging_spec -> abs_path -> unit
 
 val begin_to_preprocess_file : logging_spec -> abs_path -> unit

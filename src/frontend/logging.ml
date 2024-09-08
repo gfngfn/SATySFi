@@ -3,12 +3,8 @@ open MyUtil
 open LoggingUtil
 
 
-let show_path (spec : logging_spec) =
-  display_path spec.path_display_setting
-
-
 let begin_to_typecheck_file (spec : logging_spec) (abspath_in : abs_path) =
-  if is_verbose spec.verbosity then begin
+  if is_verbose spec then begin
     print_endline " ---- ---- ---- ----";
     Printf.printf "  type checking '%s' ...\n"
       (show_path spec abspath_in)
@@ -16,28 +12,28 @@ let begin_to_typecheck_file (spec : logging_spec) (abspath_in : abs_path) =
 
 
 let begin_to_preprocess_file (spec : logging_spec) (abspath_in : abs_path) =
-  if is_verbose spec.verbosity then begin
+  if is_verbose spec then begin
     Printf.printf "  preprocessing '%s' ...\n"
       (show_path spec abspath_in)
   end
 
 
 let begin_to_eval_file (spec : logging_spec) (abspath_in : abs_path) =
-  if is_verbose spec.verbosity then begin
+  if is_verbose spec then begin
     Printf.printf "  evaluating '%s' ...\n"
       (show_path spec abspath_in)
   end
 
 
 let begin_to_parse_file (spec : logging_spec) (abspath_in : abs_path) =
-  if is_verbose spec.verbosity then begin
+  if is_verbose spec then begin
     Printf.printf "  parsing '%s' ...\n"
       (show_path spec abspath_in)
   end
 
 
 let pass_type_check (spec : logging_spec) (opt : string option) =
-  if is_verbose spec.verbosity then
+  if is_verbose spec then
     match opt with
     | None      -> print_endline "  type check passed."
     | Some(str) -> Printf.printf "  type check passed. (%s)\n" str
@@ -55,7 +51,7 @@ let ordinal i =
 
 
 let start_evaluation (spec : logging_spec) (i : int) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     print_endline " ---- ---- ---- ----";
     if i <= 1 then
       print_endline "  evaluating texts ..."
@@ -66,26 +62,26 @@ let start_evaluation (spec : logging_spec) (i : int) =
 
 
 let end_evaluation (spec : logging_spec) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     print_endline "  evaluation done."
   end
 
 
 let start_page_break (spec : logging_spec) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     print_endline " ---- ---- ---- ----";
     print_endline "  breaking contents into pages ..."
   end
 
 
 let needs_another_trial (spec : logging_spec) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     print_endline "  needs another trial for solving cross references..."
   end
 
 
 let achieve_count_max (spec : logging_spec) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     print_endline "  could not reach a fixpoint when resolving cross references."
   end
 
@@ -93,7 +89,7 @@ let achieve_count_max (spec : logging_spec) =
 let achieve_fixpoint (spec : logging_spec) (unresolved_crossrefs : string list) =
   match unresolved_crossrefs with
   | [] ->
-      if is_not_quiet spec.verbosity then begin
+      if is_not_quiet spec then begin
         print_endline "  all cross references were solved."
       end
 
@@ -105,7 +101,7 @@ let achieve_fixpoint (spec : logging_spec) (unresolved_crossrefs : string list) 
 
 
 let end_output (spec : logging_spec) (file_name_out : abs_path) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     print_endline " ---- ---- ---- ----";
     Printf.printf "  output written on '%s'.\n"
       (show_path spec file_name_out)
@@ -113,7 +109,7 @@ let end_output (spec : logging_spec) (file_name_out : abs_path) =
 
 
 let target_file (spec : logging_spec) (file_name_out : abs_path) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     print_endline " ---- ---- ---- ----";
     Printf.printf "  target file: '%s'\n"
       (show_path spec file_name_out)
@@ -121,7 +117,7 @@ let target_file (spec : logging_spec) (file_name_out : abs_path) =
 
 
 let dump_file (spec : logging_spec) ~(already_exists : bool) (dump_file : abs_path) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     if already_exists then
       Printf.printf "  dump file: '%s' (already exists)\n"
         (show_path spec dump_file)
@@ -132,21 +128,21 @@ let dump_file (spec : logging_spec) ~(already_exists : bool) (dump_file : abs_pa
 
 
 let deps_config_file (spec : logging_spec) (abspath_deps_config : abs_path) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     Printf.printf "  deps file: '%s'\n"
       (show_path spec abspath_deps_config)
   end
 
 
 let begin_to_embed_fonts (spec : logging_spec) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     print_endline " ---- ---- ---- ----";
     print_endline "  embedding fonts ..."
   end
 
 
 let begin_to_write_page (spec : logging_spec) =
-  if is_not_quiet spec.verbosity then begin
+  if is_not_quiet spec then begin
     print_endline " ---- ---- ---- ----";
     print_endline "  writing pages ..."
   end
