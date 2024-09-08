@@ -197,17 +197,16 @@ let assert_nonexistence (abspath : abs_path) =
     return ()
 
 
-let init_document ~(fpath_in : string) =
+let init_document
+  ~(fpath_in : string)
+  ~(show_full_path : bool)
+  ~(verbosity : verbosity)
+=
   let res =
     let open ResultMonad in
 
     let absdir_current = AbsPathIo.getcwd () in
-    let logging_spec =
-      make_logging_spec
-        ~show_full_path:true (* TODO: make this changeable *)
-        ~verbosity:Verbose
-        ~current_dir:absdir_current
-    in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
 
     (* Constructs the input: *)
     let abspath_doc = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
@@ -238,17 +237,16 @@ let init_document ~(fpath_in : string) =
   | Error(e) -> ErrorReporting.report_config_error e; exit 1
 
 
-let init_library ~(fpath_in : string) =
+let init_library
+  ~(fpath_in : string)
+  ~(show_full_path : bool)
+  ~(verbosity : verbosity)
+=
   let res =
     let open ResultMonad in
 
     let absdir_current = AbsPathIo.getcwd () in
-    let logging_spec =
-      make_logging_spec
-        ~show_full_path:true (* TODO: make this changeable *)
-        ~verbosity:Verbose
-        ~current_dir:absdir_current
-    in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
 
     (* Constructs the input: *)
     let absdir_package = AbsPath.make_absolute_if_relative ~origin:absdir_current fpath_in in
@@ -411,7 +409,7 @@ let solve
     ShellCommand.mkdir_p absdir_store_root;
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
     begin
-      if created then Logging.store_root_config_updated ~created:true abspath_store_root_config
+      if created then Logging.store_root_config_updated logging_spec ~created:true abspath_store_root_config
     end;
 
     (* Constructs a map that associates a package with its implementations: *)
@@ -440,7 +438,7 @@ let solve
               |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
           in
           begin
-            if created then Logging.package_registry_updated ~created:true absdir_registry_repo
+            if created then Logging.package_registry_updated logging_spec ~created:true absdir_registry_repo
           end;
 
           (* Loads the registry config: *)
@@ -500,7 +498,7 @@ let solve
           let unzip_command = "unzip" in (* TODO: make this changeable *)
           let* () =
             impl_specs |> foldM (fun () impl_spec ->
-              LockFetcher.main
+              LockFetcher.main logging_spec
                 ~wget_command ~tar_command ~unzip_command ~store_root:absdir_store_root impl_spec
             ) ()
           in
@@ -514,15 +512,19 @@ let solve
   | Error(e) -> ErrorReporting.report_config_error e; exit 1
 
 
-let update ~(fpath_in : string) =
+let update
+  ~(fpath_in : string)
+  ~(show_full_path : bool)
+  ~(verbosity : verbosity)
+=
   let res =
     let open ResultMonad in
 
+    let absdir_current = AbsPathIo.getcwd () in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
+
     (* Constructs the input: *)
-    let solve_input =
-      let absdir_current = AbsPathIo.getcwd () in
-      make_solve_input ~current_dir:absdir_current ~fpath_in
-    in
+    let solve_input = make_solve_input ~current_dir:absdir_current ~fpath_in in
 
     let* registry_remotes =
       match solve_input with
@@ -542,7 +544,7 @@ let update ~(fpath_in : string) =
     let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
     ShellCommand.mkdir_p absdir_store_root;
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
-    Logging.store_root_config_updated ~created abspath_store_root_config;
+    Logging.store_root_config_updated logging_spec ~created abspath_store_root_config;
 
     PackageRegistryArranger.main
       ~err:(fun e -> CanonicalRegistryUrlError(e))
@@ -567,7 +569,7 @@ let update ~(fpath_in : string) =
           PackageRegistryFetcher.main ~do_update:true ~git_command absdir_registry_repo registry_remote
             |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
         in
-        Logging.package_registry_updated ~created absdir_registry_repo;
+        Logging.package_registry_updated logging_spec ~created absdir_registry_repo;
 
         return ([], ())
       )
@@ -921,16 +923,22 @@ let continue_if_ok res f =
   | Error(_) -> ()
 
 
-let cache_list () =
+let cache_list
+  ~(show_full_path : bool)
+  ~(verbosity : verbosity)
+=
   let res =
     let open ResultMonad in
+
+    let absdir_current = AbsPathIo.getcwd () in
+    let logging_spec = make_logging_spec ~show_full_path ~verbosity ~current_dir:absdir_current in
 
     (* Loads the store root config: *)
     let* absdir_store_root = get_store_root () in
     let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
     let* (store_root_config, created) = StoreRootConfig.load_or_initialize abspath_store_root_config in
     begin
-      if created then Logging.store_root_config_updated ~created:true abspath_store_root_config
+      if created then Logging.store_root_config_updated logging_spec ~created:true abspath_store_root_config
     end;
 
     let StoreRootConfig.{ registries } = store_root_config in

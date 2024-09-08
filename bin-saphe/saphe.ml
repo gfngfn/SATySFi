@@ -2,20 +2,46 @@
 open LoggingUtil
 
 
-let init_document fpath_in =
-  SapheMain.init_document ~fpath_in
+let init_document
+  fpath_in
+  show_full_path
+  verbosity
+=
+  SapheMain.init_document
+    ~fpath_in
+    ~show_full_path
+    ~verbosity
 
 
-let init_library fpath_in =
-  SapheMain.init_library ~fpath_in
+let init_library
+  fpath_in
+  show_full_path
+  verbosity
+=
+  SapheMain.init_library
+    ~fpath_in
+    ~show_full_path
+    ~verbosity
 
 
-let cache_list () =
-  SapheMain.cache_list ()
+let cache_list
+  show_full_path
+  verbosity
+=
+  SapheMain.cache_list
+    ~show_full_path
+    ~verbosity
 
 
-let update fpath_in =
-  SapheMain.update ~fpath_in
+let update
+  fpath_in
+  show_full_path
+  verbosity
+=
+  SapheMain.update
+    ~fpath_in
+    ~show_full_path
+    ~verbosity
 
 
 let solve
@@ -172,13 +198,21 @@ let flag_bytecomp =
 let command_init_document : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "document")
-    Term.(const init_document $ arg_in_to_create)
+    Term.(const init_document
+      $ arg_in_to_create
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_init_library : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "library")
-    Term.(const init_library $ arg_in_to_create)
+    Term.(const init_library
+      $ arg_in_to_create
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_init : unit Cmdliner.Cmd.t =
@@ -192,7 +226,11 @@ let command_init : unit Cmdliner.Cmd.t =
 let command_update : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "update")
-    Term.(const update $ arg_in)
+    Term.(const update
+      $ arg_in
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_solve : unit Cmdliner.Cmd.t =
@@ -240,7 +278,10 @@ let command_test : unit Cmdliner.Cmd.t =
 let command_cache_list : unit Cmdliner.Cmd.t =
   let open Cmdliner in
   Cmd.v (Cmd.info "list")
-    Term.(const cache_list $ const ())
+    Term.(const cache_list
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_cache : unit Cmdliner.Cmd.t =

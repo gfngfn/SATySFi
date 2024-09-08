@@ -3,9 +3,17 @@ open LoggingUtil
 
 val version : string
 
-val init_document : fpath_in:string -> unit
+val init_document :
+  fpath_in:string ->
+  show_full_path:bool ->
+  verbosity:verbosity ->
+  unit
 
-val init_library : fpath_in:string -> unit
+val init_library :
+  fpath_in:string ->
+  show_full_path:bool ->
+  verbosity:verbosity ->
+  unit
 
 val solve :
   fpath_in:string ->
@@ -13,7 +21,11 @@ val solve :
   verbosity:verbosity ->
   unit
 
-val update : fpath_in:string -> unit
+val update :
+  fpath_in:string ->
+  show_full_path:bool ->
+  verbosity:verbosity ->
+  unit
 
 val build :
   fpath_in:string ->
@@ -39,4 +51,7 @@ val test :
   verbosity:verbosity ->
   unit
 
-val cache_list : unit -> unit
+val cache_list :
+  show_full_path:bool ->
+  verbosity:verbosity ->
+  unit

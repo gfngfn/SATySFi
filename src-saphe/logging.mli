@@ -13,13 +13,13 @@ val end_envelope_config_output : logging_spec -> abs_path -> unit
 
 val end_deps_config_output : logging_spec -> abs_path -> unit
 
-val lock_already_installed : lock_name -> abs_path -> unit
+val lock_already_installed : logging_spec -> lock_name -> abs_path -> unit
 
-val lock_cache_exists : lock_name -> abs_path -> unit
+val lock_cache_exists : logging_spec -> lock_name -> abs_path -> unit
 
-val store_root_config_updated : created:bool -> abs_path -> unit
+val store_root_config_updated : logging_spec -> created:bool -> abs_path -> unit
 
-val package_registry_updated : created:bool -> abs_path -> unit
+val package_registry_updated : logging_spec -> created:bool -> abs_path -> unit
 
 val initialize_file : logging_spec -> abs_path -> unit
 

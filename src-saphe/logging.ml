@@ -71,30 +71,38 @@ let end_deps_config_output (spec : logging_spec) (abspath_deps_config : abs_path
   end
 
 
-let lock_already_installed (lock_name : lock_name) (absdir : abs_path) =
-  Printf.printf "  '%s': already installed at '%s'\n"
-    lock_name
-    (AbsPath.to_string absdir)
+let lock_already_installed (spec : logging_spec) (lock_name : lock_name) (absdir : abs_path) =
+  if is_not_quiet spec then begin
+    Printf.printf "  '%s': already installed at '%s'\n"
+      lock_name
+      (AbsPath.to_string absdir)
+  end
 
 
-let lock_cache_exists (lock_name : lock_name) (abspath_tarball : abs_path) =
-  Printf.printf "  cache for '%s' exists at '%s'\n"
-    lock_name
-    (AbsPath.to_string abspath_tarball)
+let lock_cache_exists (spec : logging_spec) (lock_name : lock_name) (abspath_tarball : abs_path) =
+  if is_not_quiet spec then begin
+    Printf.printf "  cache for '%s' exists at '%s'\n"
+      lock_name
+      (AbsPath.to_string abspath_tarball)
+  end
 
 
-let store_root_config_updated ~(created : bool) (abspath_store_root_config : abs_path) =
-  let verb = if created then "created" else "updated" in
-  Printf.printf "  %s the store root config '%s'\n"
-    verb
-    (AbsPath.to_string abspath_store_root_config)
+let store_root_config_updated (spec : logging_spec) ~(created : bool) (abspath_store_root_config : abs_path) =
+  if is_not_quiet spec then begin
+    let verb = if created then "created" else "updated" in
+    Printf.printf "  %s the store root config '%s'\n"
+      verb
+      (AbsPath.to_string abspath_store_root_config)
+  end
 
 
-let package_registry_updated ~(created : bool) (absdir_registry_repo : abs_path) =
-  let verb = if created then "fetched" else "updated" in
-  Printf.printf "  %s the package registry '%s'\n"
-    verb
-    (AbsPath.to_string absdir_registry_repo)
+let package_registry_updated (spec : logging_spec) ~(created : bool) (absdir_registry_repo : abs_path) =
+  if is_not_quiet spec then begin
+    let verb = if created then "fetched" else "updated" in
+    Printf.printf "  %s the package registry '%s'\n"
+      verb
+      (AbsPath.to_string absdir_registry_repo)
+  end
 
 
 let initialize_file (spec : logging_spec) (abspath_doc : abs_path) =
