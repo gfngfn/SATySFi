@@ -25,6 +25,4 @@ val initialize_file : logging_spec -> abs_path -> unit
 
 val initialize_package_config : logging_spec -> abs_path -> unit
 
-val downloading_lock : lock_name -> abs_path -> unit
-
-val report_canonicalized_url : url:string -> canonicalized_url:string -> hash_value:registry_hash_value -> unit
+val downloading_lock : logging_spec -> lock_name -> abs_path -> unit

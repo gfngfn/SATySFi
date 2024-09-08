@@ -87,7 +87,7 @@ let fetch_registered_lock (logging_spec : logging_spec) ~(wget_command : string)
             Logging.lock_cache_exists logging_spec lock_tarball_name abspath_tarball;
             return ()
           end else begin
-            Logging.downloading_lock lock_tarball_name abspath_tarball;
+            Logging.downloading_lock logging_spec lock_tarball_name abspath_tarball;
             fetch_tarball ~wget_command ~lock_name:lock_tarball_name ~url ~output:abspath_tarball
           end
         in

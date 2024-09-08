@@ -170,10 +170,12 @@ let writable_name_decoder : string ConfigDecoder.t =
     failure (fun context -> CannotBeUsedAsAName{ context; got = s })
 
 
+(* TODO: make a type-level distinction between ordinary registry URLs and canonicalized ones *)
 let make_registry_hash_value (registry_remote : registry_remote) : (registry_hash_value, config_error) result =
   let open ResultMonad in
   match registry_remote with
   | GitRegistry{ url; branch } ->
+      (* TODO: perhaps the canonicalization performed here is unnecessary *)
       let* canonicalized_url =
         CanonicalRegistryUrl.make url
           |> Result.map_error (fun e -> CanonicalRegistryUrlError(e))
@@ -181,9 +183,6 @@ let make_registry_hash_value (registry_remote : registry_remote) : (registry_has
       let hash_value =
         Digest.to_hex (Digest.string (Printf.sprintf "git#%s#%s" canonicalized_url branch))
       in
-(*
-      Logging.report_canonicalized_url ~url ~canonicalized_url ~hash_value;
-*)
       return hash_value
 
 

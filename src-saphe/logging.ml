@@ -72,10 +72,13 @@ let end_deps_config_output (spec : logging_spec) (abspath_deps_config : abs_path
 
 
 let lock_already_installed (spec : logging_spec) (lock_name : lock_name) (absdir : abs_path) =
-  if is_not_quiet spec then begin
+  if is_verbose spec then begin
     Printf.printf "  '%s': already installed at '%s'\n"
       lock_name
       (AbsPath.to_string absdir)
+  end else if is_not_quiet spec then begin
+    Printf.printf "  '%s': already installed\n"
+      lock_name
   end
 
 
@@ -88,13 +91,15 @@ let lock_cache_exists (spec : logging_spec) (lock_name : lock_name) (abspath_tar
 
 
 let store_root_config_updated (spec : logging_spec) ~(created : bool) (abspath_store_root_config : abs_path) =
-  if is_not_quiet spec then begin
-    let verb = if created then "created" else "updated" in
+  let verb = if created then "created" else "updated" in
+  if is_verbose spec then begin
     Printf.printf "  %s the store root config '%s'\n"
       verb
       (AbsPath.to_string abspath_store_root_config)
+  end else if is_not_quiet spec then begin
+    Printf.printf "  %s the store root config\n"
+      verb
   end
-
 
 let package_registry_updated (spec : logging_spec) ~(created : bool) (absdir_registry_repo : abs_path) =
   if is_not_quiet spec then begin
@@ -113,11 +118,7 @@ let initialize_package_config (spec : logging_spec) (abspath_package_config : ab
   Printf.printf "  created a package config '%s'\n" (show_path spec abspath_package_config)
 
 
-let downloading_lock (lock_name : lock_name) (absdir : abs_path) =
-  Printf.printf "  downloading '%s' to '%s'...\n" lock_name (AbsPath.to_string absdir)
-
-
-let report_canonicalized_url ~(url : string) ~(canonicalized_url : string) ~(hash_value : registry_hash_value) =
-  Printf.printf "  registry URL: '%s'\n" url;
-  Printf.printf "    canonicalized: '%s'\n" canonicalized_url;
-  Printf.printf "    hash value: '%s'\n" hash_value
+let downloading_lock (spec : logging_spec) (lock_name : lock_name) (absdir : abs_path) =
+  if is_not_quiet spec then begin
+    Printf.printf "  downloading '%s' to '%s'...\n" lock_name (AbsPath.to_string absdir)
+  end

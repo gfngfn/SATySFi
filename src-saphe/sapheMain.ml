@@ -548,15 +548,15 @@ let update
 
     PackageRegistryArranger.main
       ~err:(fun e -> CanonicalRegistryUrlError(e))
-      (fun () registry_remote ->
-        let* registry_hash_value = ConfigUtil.make_registry_hash_value registry_remote in
+      (fun () canonical_registry_remote ->
+        let* registry_hash_value = ConfigUtil.make_registry_hash_value canonical_registry_remote in
 
         (* Manupulates the store root config: *)
         let* () =
           update_store_root_config_if_needed
             store_root_config.StoreRootConfig.registries
             registry_hash_value
-            registry_remote
+            canonical_registry_remote
             abspath_store_root_config
         in
 
@@ -566,7 +566,7 @@ let update
         in
         let git_command = "git" in (* TODO: make this changeable *)
         let* created =
-          PackageRegistryFetcher.main ~do_update:true ~git_command absdir_registry_repo registry_remote
+          PackageRegistryFetcher.main ~do_update:true ~git_command absdir_registry_repo canonical_registry_remote
             |> Result.map_error (fun e -> PackageRegistryFetcherError(e))
         in
         Logging.package_registry_updated logging_spec ~created absdir_registry_repo;
