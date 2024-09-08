@@ -526,19 +526,19 @@ let update
     (* Constructs the input: *)
     let solve_input = make_solve_input ~current_dir:absdir_current ~fpath_in in
 
+    (* Loads the package config: *)
     let* registry_remotes =
       match solve_input with
       | PackageSolveInput{ root = absdir_package; _ } ->
-          (* Loads the package config: *)
           let abspath_package_config = Constant.library_package_config_path ~dir:absdir_package in
           let* PackageConfig.{ registry_remotes; _ } = PackageConfig.load abspath_package_config in
           return registry_remotes
 
-    | DocumentSolveInput{ config = abspath_package_config; _ } ->
-        (* Loads the package config: *)
-        let* PackageConfig.{ registry_remotes; _ } = PackageConfig.load abspath_package_config in
-        return registry_remotes
+      | DocumentSolveInput{ config = abspath_package_config; _ } ->
+          let* PackageConfig.{ registry_remotes; _ } = PackageConfig.load abspath_package_config in
+          return registry_remotes
     in
+
     (* Arranges the store root config: *)
     let* absdir_store_root = get_store_root () in
     let abspath_store_root_config = Constant.store_root_config_path ~store_root:absdir_store_root in
