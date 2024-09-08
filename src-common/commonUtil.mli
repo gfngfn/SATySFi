@@ -1,6 +1,4 @@
 
-open MyUtil
-
 val is_uppercased_identifier : string -> bool
 
 val is_lowercased_identifier : string -> bool

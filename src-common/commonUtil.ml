@@ -1,7 +1,4 @@
 
-open MyUtil
-
-
 let is_middle_char (char : char) : bool =
   Char.equal char '-' || Core.Char.is_alpha char || Core.Char.is_digit char
 
