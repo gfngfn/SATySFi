@@ -318,9 +318,9 @@ module SolverInput = struct
     | LocalFixedImpl{ absolute_path; _ } ->
         [ Printf.sprintf "local/%s" (AbsPath.to_string absolute_path) ]
 
-    | Impl{ package_name; package_version; _ } ->
+    | Impl{ registry_hash_value; package_name; package_version; _ } ->
         let compat = SemanticVersion.get_compatibility_unit package_version in
-        [ Printf.sprintf "registered/%s/%s" package_name compat ]
+        [ Printf.sprintf "registered/%s/%s/%s" registry_hash_value package_name compat ]
 
 
   let rejects (_role : Role.t) : (impl * rejection) list * string list =
