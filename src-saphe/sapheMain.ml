@@ -614,7 +614,7 @@ let build
     ~(page_number_limit : int)
     ~(max_repeats : int)
     ~(show_full_path : bool)
-    ~(verbose : bool)
+    ~(verbosity : Verbosity.t)
     ~(debug_show_bbox : bool)
     ~(debug_show_space : bool)
     ~(debug_show_block_bbox : bool)
@@ -634,7 +634,7 @@ let build
         let options =
           SatysfiCommand.{
             show_full_path;
-            verbose;
+            verbosity;
           }
         in
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in
@@ -651,7 +651,7 @@ let build
         let options =
           SatysfiCommand.{
             show_full_path;
-            verbose;
+            verbosity;
             page_number_limit;
             debug_show_bbox;
             debug_show_space;
@@ -799,7 +799,7 @@ let test
     ~(fpath_in : string)
     ~(text_mode_formats_str_opt : string option)
     ~(show_full_path : bool)
-    ~(verbose : bool)
+    ~(verbosity : Verbosity.t)
 =
   let res =
     let open ResultMonad in
@@ -811,7 +811,7 @@ let test
         let options =
           SatysfiCommand.{
             show_full_path;
-            verbose;
+            verbosity;
           }
         in
         let abspath_package_config = Constant.library_package_config_path ~dir:abspath_in in

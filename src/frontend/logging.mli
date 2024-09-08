@@ -7,7 +7,7 @@ type path_display_setting =
 
 type config = {
   path_display_setting : path_display_setting;
-  verbose              : bool;
+  verbosity            : Verbosity.t;
 }
 
 val show_path : config -> abs_path -> string

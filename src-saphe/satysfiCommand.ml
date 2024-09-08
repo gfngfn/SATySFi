@@ -19,24 +19,27 @@ let escape_command_line (args : string list) : string =
 
 let make_mode_args (text_mode_formats_str_opt : string option) =
   match text_mode_formats_str_opt with
-  | None ->
-      []
+  | None                        -> []
+  | Some(text_mode_formats_str) -> [ "--text-mode"; text_mode_formats_str ]
 
-  | Some(text_mode_formats_str) ->
-      [ "--text-mode"; text_mode_formats_str ]
+
+let make_verbosity_args (verbosity : Verbosity.t) =
+  match verbosity with
+  | Verbosity.Verbose -> [ "--verbose" ]
+  | Verbosity.Normal  -> []
+  | Verbosity.Quiet   -> [ "--quiet" ]
 
 
 type package_build_option = {
   show_full_path         : bool;
-  verbose                : bool;
+  verbosity              : Verbosity.t;
 }
 
 
 let make_package_build_option_args (options : package_build_option) =
-  let flag b s = if b then [ s ] else [] in
   List.concat [
-    flag options.show_full_path "--full-path";
-    flag options.verbose        "--verbose";
+    if options.show_full_path then [ "--full-path" ] else [];
+    make_verbosity_args options.verbosity;
   ]
 
 
@@ -63,7 +66,7 @@ let build_package
 
 type document_build_option = {
   show_full_path         : bool;
-  verbose                : bool;
+  verbosity              : Verbosity.t;
   page_number_limit      : int;
   debug_show_bbox        : bool;
   debug_show_space       : bool;
@@ -79,7 +82,7 @@ let make_document_build_option_args (options : document_build_option) =
   let flag b s = if b then [ s ] else [] in
   List.concat [
     flag options.show_full_path         "--full-path";
-    flag options.verbose                "--verbose";
+    make_verbosity_args options.verbosity;
     flag options.debug_show_bbox        "--debug-show-bbox";
     flag options.debug_show_space       "--debug-show-space";
     flag options.debug_show_block_bbox  "--debug-show-block-bbox";

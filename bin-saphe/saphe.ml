@@ -26,7 +26,7 @@ let build
   page_number_limit
   max_repeats
   show_full_path
-  verbose
+  verbosity
   debug_show_bbox
   debug_show_space
   debug_show_block_bbox
@@ -42,7 +42,7 @@ let build
     ~page_number_limit
     ~max_repeats
     ~show_full_path
-    ~verbose
+    ~verbosity
     ~debug_show_bbox
     ~debug_show_space
     ~debug_show_block_bbox
@@ -56,13 +56,13 @@ let test
   fpath_in
   text_mode_formats_str_opt
   show_full_path
-  verbose
+  verbosity
 =
   SapheMain.test
     ~fpath_in
     ~text_mode_formats_str_opt
     ~show_full_path
-    ~verbose
+    ~verbosity
 
 
 let arg_in : string Cmdliner.Term.t =
@@ -110,10 +110,11 @@ let flag_full_path =
     ~doc:"Displays paths in full-path style"
 
 
-let flag_verbose =
-  make_boolean_flag_spec
-    ~flags:[ "verbose" ]
-    ~doc:"Verbosity of logs"
+let flag_verbosity : Verbosity.t Cmdliner.Term.t =
+  let open Cmdliner in
+  let verbose = (Verbosity.Verbose, Arg.info [ "verbose" ] ~doc:"Make logs verbose") in
+  let quiet = (Verbosity.Quiet, Arg.info [ "quiet" ] ~doc:"Disable logs other than errors and warnings") in
+  Arg.(value (vflag Verbosity.Normal [ verbose; quiet ]))
 
 
 let flag_debug_show_bbox =
@@ -200,7 +201,7 @@ let command_build : unit Cmdliner.Cmd.t =
       $ flag_page_number_limit
       $ flag_max_repeats
       $ flag_full_path
-      $ flag_verbose
+      $ flag_verbosity
       $ flag_debug_show_bbox
       $ flag_debug_show_space
       $ flag_debug_show_block_bbox
@@ -218,7 +219,7 @@ let command_test : unit Cmdliner.Cmd.t =
       $ arg_in
       $ flag_text_mode
       $ flag_full_path
-      $ flag_verbose
+      $ flag_verbosity
     )
 
 
