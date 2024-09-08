@@ -93,7 +93,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
 
         (* Checks the fetched tarball by using the checksum: *)
         let* () =
-          let checksum_got = Digest.to_hex (Digest.file (get_abs_path_string abspath_tarball)) in
+          let checksum_got = Digest.to_hex (Digest.file (AbsPath.to_string abspath_tarball)) in
           if String.equal checksum_got checksum then
             return ()
           else
@@ -128,7 +128,7 @@ let fetch_external_zip_if_nonexistent ~(wget_command : string) (abspath_zip : ab
     let* () = fetch_external_zip ~wget_command ~url ~output:abspath_zip in
 
     (* Checks the fetched file by using checksum: *)
-    let checksum_got = Digest.to_hex (Digest.file (get_abs_path_string abspath_zip)) in
+    let checksum_got = Digest.to_hex (Digest.file (AbsPath.to_string abspath_zip)) in
     if String.equal checksum_got checksum_expected then
       return ()
     else

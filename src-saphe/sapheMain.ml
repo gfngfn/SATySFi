@@ -199,7 +199,7 @@ let init_document ~(fpath_in : string) =
     let* () = assert_nonexistence abspath_doc in
     let* () = assert_nonexistence abspath_package_config in
 
-    match Filename.extension (get_abs_path_string abspath_doc) with
+    match Filename.extension (AbsPath.to_string abspath_doc) with
     | ".saty" ->
         ShellCommand.mkdir_p absdir;
         let* () = write_package_config abspath_package_config ~data:InitData.document_package_config_contents in

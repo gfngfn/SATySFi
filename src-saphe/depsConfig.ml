@@ -19,7 +19,7 @@ let envelope_spec_encoder (spec : envelope_spec) : Yaml.value =
   let { envelope_name; envelope_path; envelope_dependencies; test_only_envelope } = spec in
   `O([
     ("name", `String(envelope_name));
-    ("path", `String(get_abs_path_string envelope_path));
+    ("path", `String(AbsPath.to_string envelope_path));
     ("dependencies", `A(envelope_dependencies |> List.map envelope_dependency_encoder));
     ("test_only", `Bool(test_only_envelope));
   ])
