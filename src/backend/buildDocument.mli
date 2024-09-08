@@ -1,6 +1,7 @@
 
-open ConfigError
 open MyUtil
+open LoggingUtil
+open ConfigError
 open Types
 
 
@@ -9,7 +10,7 @@ val main :
   HandlePdf.config ->
   page_number_limit:int ->
   max_repeats:int ->
-  Logging.config ->
+  logging_spec ->
   is_bytecomp_mode:bool ->
   environment ->
   abstract_tree ->

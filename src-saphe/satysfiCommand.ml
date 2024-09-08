@@ -1,5 +1,6 @@
 
 open MyUtil
+open LoggingUtil
 
 
 type run_result = {
@@ -23,16 +24,16 @@ let make_mode_args (text_mode_formats_str_opt : string option) =
   | Some(text_mode_formats_str) -> [ "--text-mode"; text_mode_formats_str ]
 
 
-let make_verbosity_args (verbosity : Verbosity.t) =
+let make_verbosity_args (verbosity : verbosity) =
   match verbosity with
-  | Verbosity.Verbose -> [ "--verbose" ]
-  | Verbosity.Normal  -> []
-  | Verbosity.Quiet   -> [ "--quiet" ]
+  | Verbose         -> [ "--verbose" ]
+  | NormalVerbosity -> []
+  | Quiet           -> [ "--quiet" ]
 
 
 type package_build_option = PackageBuildOption of {
-  show_full_path         : bool;
-  verbosity              : Verbosity.t;
+  show_full_path : bool;
+  verbosity      : verbosity;
 }
 
 
@@ -66,7 +67,7 @@ let build_package
 
 type document_build_option = DocumentBuildOption of {
   show_full_path         : bool;
-  verbosity              : Verbosity.t;
+  verbosity              : verbosity;
   page_number_limit      : int;
   debug_show_bbox        : bool;
   debug_show_space       : bool;

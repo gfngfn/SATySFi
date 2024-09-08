@@ -1,4 +1,7 @@
 
+open LoggingUtil
+
+
 let init_document fpath_in =
   SapheMain.init_document ~fpath_in
 
@@ -117,11 +120,11 @@ let flag_full_path =
     ~doc:"Displays paths in full-path style"
 
 
-let flag_verbosity : Verbosity.t Cmdliner.Term.t =
+let flag_verbosity : verbosity Cmdliner.Term.t =
   let open Cmdliner in
-  let verbose = (Verbosity.Verbose, Arg.info [ "verbose" ] ~doc:"Make logs verbose") in
-  let quiet = (Verbosity.Quiet, Arg.info [ "quiet" ] ~doc:"Disable logs other than errors and warnings") in
-  Arg.(value (vflag Verbosity.Normal [ verbose; quiet ]))
+  let verbose = (Verbose, Arg.info [ "verbose" ] ~doc:"Make logs verbose") in
+  let quiet = (Quiet, Arg.info [ "quiet" ] ~doc:"Disable logs other than errors and warnings") in
+  Arg.(value (vflag NormalVerbosity [ verbose; quiet ]))
 
 
 let flag_debug_show_bbox =

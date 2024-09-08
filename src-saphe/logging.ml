@@ -1,24 +1,18 @@
 
 open MyUtil
-open CommonUtil
+open LoggingUtil
 open PackageSystemBase
 
 
-type config = {
-  path_display_setting : path_display_setting;
-  verbosity            : Verbosity.t;
-}
+let show_path (spec : logging_spec) =
+  display_path spec.path_display_setting
 
 
-let show_path (config : config) =
-  display_path config.path_display_setting
-
-
-let show_package_dependency_before_solving (config : config) (dependencies_with_flags : (dependency_flag * package_dependency) list) =
+let show_package_dependency_before_solving (spec : logging_spec) (dependencies_with_flags : (dependency_flag * package_dependency) list) =
   Printf.printf "  package dependencies to solve:\n";
   dependencies_with_flags |> List.iter (fun (flag, dep) ->
-    let PackageDependency{ used_as; spec } = dep in
-    match spec with
+    let PackageDependency{ used_as; spec = dep_spec } = dep in
+    match dep_spec with
     | RegisteredDependency{ registered_package_id; version_requirement; _ } ->
         let RegisteredPackageId.{ package_name; _ } = registered_package_id in
         let s_restr = SemanticVersion.requirement_to_string version_requirement in
@@ -35,12 +29,12 @@ let show_package_dependency_before_solving (config : config) (dependencies_with_
 
     | LocalFixedDependency{ absolute_path } ->
         Printf.printf "  - '%s' used as %s\n"
-          (show_path config absolute_path)
+          (show_path spec absolute_path)
           used_as
   )
 
 
-let show_package_dependency_solutions (config : config) (solutions : package_solution list) =
+let show_package_dependency_solutions (spec : logging_spec) (solutions : package_solution list) =
   Printf.printf "  package dependency solutions:\n";
   solutions |> List.iter (fun solution ->
     match solution.lock with
@@ -52,24 +46,24 @@ let show_package_dependency_solutions (config : config) (solutions : package_sol
 
     | Lock.LocalFixed{ absolute_path } ->
         Printf.printf "  - %s\n"
-          (show_path config absolute_path)
+          (show_path spec absolute_path)
   )
 
 
-let end_lock_config_output (config : config) (abspath_lock_config : abs_path) =
+let end_lock_config_output (spec : logging_spec) (abspath_lock_config : abs_path) =
   Printf.printf "  lock config written on '%s'.\n"
-    (show_path config abspath_lock_config)
+    (show_path spec abspath_lock_config)
 
 
-let end_envelope_config_output (config : config) (abspath_envelope_config : abs_path) =
+let end_envelope_config_output (spec : logging_spec) (abspath_envelope_config : abs_path) =
   Printf.printf "  envelope config written on '%s'.\n"
-    (show_path config abspath_envelope_config)
+    (show_path spec abspath_envelope_config)
 
 
-let end_deps_config_output (config : config) (abspath_deps_config : abs_path) =
-  if is_verbose config.verbosity then begin
+let end_deps_config_output (spec : logging_spec) (abspath_deps_config : abs_path) =
+  if is_verbose spec.verbosity then begin
     Printf.printf "  deps config written on '%s'.\n"
-      (show_path config abspath_deps_config)
+      (show_path spec abspath_deps_config)
   end
 
 
@@ -99,12 +93,12 @@ let package_registry_updated ~(created : bool) (absdir_registry_repo : abs_path)
     (AbsPath.to_string absdir_registry_repo)
 
 
-let initialize_file (config : config) (abspath_doc : abs_path) =
-  Printf.printf "  created '%s'\n" (show_path config abspath_doc)
+let initialize_file (spec : logging_spec) (abspath_doc : abs_path) =
+  Printf.printf "  created '%s'\n" (show_path spec abspath_doc)
 
 
-let initialize_package_config (config : config) (abspath_package_config : abs_path) =
-  Printf.printf "  created a package config '%s'\n" (show_path config abspath_package_config)
+let initialize_package_config (spec : logging_spec) (abspath_package_config : abs_path) =
+  Printf.printf "  created a package config '%s'\n" (show_path spec abspath_package_config)
 
 
 let downloading_lock (lock_name : lock_name) (absdir : abs_path) =

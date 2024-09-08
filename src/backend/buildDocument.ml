@@ -1,6 +1,7 @@
 
-open ConfigError
 open MyUtil
+open LoggingUtil
+open ConfigError
 open Types
 
 
@@ -55,10 +56,10 @@ let unfreeze_environment (frenv : frozen_environment) : environment =
   }
 
 
-let transform_pdf (display_config : Logging.config) (pdf_config : HandlePdf.config) ~(page_number_limit : int) = function
+let transform_pdf (logging_spec : logging_spec) (pdf_config : HandlePdf.config) ~(page_number_limit : int) = function
   | BaseConstant(BCDocument(paper_size, pbstyle, columnhookf, columnendhookf, pagecontf, pagepartsf, imvblst)) ->
       begin
-        Logging.start_page_break display_config;
+        Logging.start_page_break logging_spec;
         State.start_page_break ();
         match pbstyle with
         | SingleColumn ->
@@ -78,10 +79,10 @@ let transform_text =
   EvalUtil.get_string
 
 
-let output_pdf (display_config : Logging.config) (abspath_out : abs_path) (pdfret : HandlePdf.t) : (unit, config_error) result =
+let output_pdf (logging_spec : logging_spec) (abspath_out : abs_path) (pdfret : HandlePdf.t) : (unit, config_error) result =
   let open ResultMonad in
   try
-    HandlePdf.write_to_file display_config abspath_out pdfret;
+    HandlePdf.write_to_file logging_spec abspath_out pdfret;
     return ()
   with
   | _ -> err @@ CannotOutputResult{ path = abspath_out; message = "HandlePdf.write_to_file failed" }
@@ -99,9 +100,9 @@ let reset_pdf () =
   ()
 
 
-let evaluate (display_config : Logging.config) (reset : unit -> unit) ~(is_bytecomp_mode : bool) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : (syntactic_value, config_error) result =
+let evaluate (logging_spec : logging_spec) (reset : unit -> unit) ~(is_bytecomp_mode : bool) (i : int) (env_freezed : frozen_environment) (ast : abstract_tree) : (syntactic_value, config_error) result =
   let open ResultMonad in
-  Logging.start_evaluation display_config i;
+  Logging.start_evaluation logging_spec i;
   reset ();
   let env = unfreeze_environment env_freezed in
   let value =
@@ -111,50 +112,50 @@ let evaluate (display_config : Logging.config) (reset : unit -> unit) ~(is_bytec
     else
       Evaluator.interpret_0 env ast
   in
-  Logging.end_evaluation display_config;
+  Logging.end_evaluation logging_spec;
   return value
 
 
-let build_document ~(max_repeats : int) (transform : syntactic_value -> 'a) (reset : unit -> unit) (output : abs_path -> 'a -> (unit, config_error) result) (display_config : Logging.config) ~(is_bytecomp_mode : bool) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
+let build_document ~(max_repeats : int) (transform : syntactic_value -> 'a) (reset : unit -> unit) (output : abs_path -> 'a -> (unit, config_error) result) (logging_spec : logging_spec) ~(is_bytecomp_mode : bool) (env : environment) (ast : abstract_tree) (abspath_out : abs_path) (abspath_dump : abs_path) =
   let open ResultMonad in
   let env_freezed = freeze_environment env in
   let rec aux (i : int) =
     CrossRef.reset ();
-    let* value = evaluate display_config reset ~is_bytecomp_mode i env_freezed ast in
+    let* value = evaluate logging_spec reset ~is_bytecomp_mode i env_freezed ast in
     let document = transform value in
     match CrossRef.judge_termination () with
     | CrossRef.NeedsAnotherTrial ->
         if i >= max_repeats then
           begin
-            Logging.achieve_count_max display_config;
+            Logging.achieve_count_max logging_spec;
             return document
           end
         else
           begin
-            Logging.needs_another_trial display_config;
+            Logging.needs_another_trial logging_spec;
             aux (i + 1)
           end
 
     | CrossRef.CanTerminate unresolved_crossrefs ->
-        Logging.achieve_fixpoint display_config unresolved_crossrefs;
+        Logging.achieve_fixpoint logging_spec unresolved_crossrefs;
         return document
   in
   let* document = aux 1 in
   let* () = output abspath_out document in
   let* () = CrossRef.write_dump_file abspath_dump in
-  Logging.end_output display_config abspath_out;
+  Logging.end_output logging_spec abspath_out;
   return ()
 
 
-let main (output_mode : output_mode) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(max_repeats : int) (display_config : Logging.config) =
+let main (output_mode : output_mode) (pdf_config : HandlePdf.config) ~(page_number_limit : int) ~(max_repeats : int) (logging_spec : logging_spec) =
   match output_mode with
   | PdfMode ->
       build_document
         ~max_repeats
-        (transform_pdf display_config pdf_config ~page_number_limit)
+        (transform_pdf logging_spec pdf_config ~page_number_limit)
         reset_pdf
-        (output_pdf display_config)
-        display_config
+        (output_pdf logging_spec)
+        logging_spec
 
   | TextMode(_) ->
       build_document
@@ -162,4 +163,4 @@ let main (output_mode : output_mode) (pdf_config : HandlePdf.config) ~(page_numb
         transform_text
         Fun.id
         output_text
-        display_config
+        logging_spec

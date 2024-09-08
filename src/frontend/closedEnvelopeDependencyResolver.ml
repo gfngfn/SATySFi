@@ -1,8 +1,9 @@
 
 open MyUtil
-open Types
+open LoggingUtil
 open EnvelopeSystemBase
 open ConfigError
+open Types
 
 
 type 'a ok = ('a, config_error) result
@@ -18,7 +19,7 @@ type envelope_info = {
 }
 
 
-let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(extensions : string list) (deps_config : DepsConfig.t) : ((envelope_name * (EnvelopeConfig.t * untyped_envelope)) list) ok =
+let main (logging_spec : logging_spec) ~(use_test_only_envelope : bool) ~(extensions : string list) (deps_config : DepsConfig.t) : ((envelope_name * (EnvelopeConfig.t * untyped_envelope)) list) ok =
   let open ResultMonad in
 
   let { envelopes; _ } = deps_config in
@@ -40,7 +41,7 @@ let main (display_config : Logging.config) ~(use_test_only_envelope : bool) ~(ex
       else
         let* envelope_with_config =
           EnvelopeReader.main
-            display_config
+            logging_spec
             ~use_test_files:false (* Does not use tests of depended packages. *)
             ~extensions
             ~envelope_config:abspath_envelope_config

@@ -1,9 +1,10 @@
 
 open MyUtil
+open LoggingUtil
 open EnvelopeSystemBase
+open ConfigError
 open Types
 open StaticEnv
-open ConfigError
 open TypeError
 
 type 'a ok = ('a, config_error) result
@@ -104,23 +105,23 @@ let add_dependency_to_type_environment ~(import_envelope_only : bool) ~(testing 
   ) tyenv
 
 
-let typecheck_library_file (display_config : Logging.config) (config : typecheck_config) ~for_struct:(tyenv_for_struct : Typeenv.t) ~for_sig:(tyenv_for_sig : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (rng_struct : Range.t) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
+let typecheck_library_file (logging_spec : logging_spec) (config : typecheck_config) ~for_struct:(tyenv_for_struct : Typeenv.t) ~for_sig:(tyenv_for_sig : Typeenv.t) (abspath_in : abs_path) (utsig_opt : untyped_signature option) (rng_struct : Range.t) (utbinds : untyped_binding list) : (StructSig.t abstracted * binding list) ok =
   let open ResultMonad in
   let res =
-    Logging.begin_to_typecheck_file display_config abspath_in;
+    Logging.begin_to_typecheck_file logging_spec abspath_in;
     let* absmodsig_opt = utsig_opt |> optionM (ModuleTypechecker.typecheck_signature config tyenv_for_sig) in
     let* ret = ModuleTypechecker.main config tyenv_for_struct absmodsig_opt rng_struct utbinds in
-    Logging.pass_type_check display_config None;
+    Logging.pass_type_check logging_spec None;
     return ret
   in
   res |> Result.map_error (fun tyerr -> TypeError(tyerr))
 
 
-let typecheck_document_file (display_config : Logging.config) (config : typecheck_config) (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : abstract_tree ok =
+let typecheck_document_file (logging_spec : logging_spec) (config : typecheck_config) (tyenv : Typeenv.t) (abspath_in : abs_path) (utast : untyped_abstract_tree) : abstract_tree ok =
   let open ResultMonad in
-  Logging.begin_to_typecheck_file display_config abspath_in;
+  Logging.begin_to_typecheck_file logging_spec abspath_in;
   let* (ty, ast) = Typechecker.main config Stage1 tyenv utast |> Result.map_error (fun tyerr -> TypeError(tyerr)) in
-  Logging.pass_type_check display_config (Some(Display.show_mono_type ty));
+  Logging.pass_type_check logging_spec (Some(Display.show_mono_type ty));
   if config.is_text_mode then
     if Typechecker.are_unifiable ty (Range.dummy "text-mode", BaseType(StringType)) then
       return ast
@@ -133,7 +134,7 @@ let typecheck_document_file (display_config : Logging.config) (config : typechec
       err (NotADocumentFile(abspath_in, ty))
 
 
-let check_library_envelope ~(testing : bool) (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (used_as_map : envelope_name ModuleNameMap.t) (main_module_name : module_name) (utlibs : (abs_path * untyped_library_file) list) =
+let check_library_envelope ~(testing : bool) (logging_spec : logging_spec) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) (used_as_map : envelope_name ModuleNameMap.t) (main_module_name : module_name) (utlibs : (abs_path * untyped_library_file) list) =
   let open ResultMonad in
 
   (* Resolves dependency among the source files in the envelope: *)
@@ -159,14 +160,14 @@ let check_library_envelope ~(testing : bool) (display_config : Logging.config) (
               ~testing
               header genv used_as_map lenv
           in
-          typecheck_library_file display_config config
+          typecheck_library_file logging_spec config
             ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_sig abspath utsig_opt rng_struct utbinds
         in
         let lenv = lenv |> ModuleNameMap.add modnm ssig in
         return (lenv, Alist.extend libacc (abspath, binds), Some(ssig))
       else
         let* ((_quant, ssig), binds) =
-          typecheck_library_file display_config config
+          typecheck_library_file logging_spec config
             ~for_struct:tyenv_for_struct ~for_sig:tyenv_for_struct abspath utsig_opt rng_struct utbinds
         in
         let lenv = lenv |> ModuleNameMap.add modnm ssig in
@@ -227,16 +228,16 @@ let check_font_envelope (_main_module_name : module_name) (font_files : font_fil
   return (ssig, Alist.to_list libacc)
 
 
-let main ~(testing : bool) (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) ~(used_as_map : envelope_name ModuleNameMap.t) (envelope : untyped_envelope) : (StructSig.t * (abs_path * binding list) list) ok =
+let main ~(testing : bool) (logging_spec : logging_spec) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) ~(used_as_map : envelope_name ModuleNameMap.t) (envelope : untyped_envelope) : (StructSig.t * (abs_path * binding list) list) ok =
   match envelope with
   | UTLibraryEnvelope{ main_module_name; modules = utlibs } ->
-      check_library_envelope ~testing display_config config tyenv_prim genv used_as_map main_module_name utlibs
+      check_library_envelope ~testing logging_spec config tyenv_prim genv used_as_map main_module_name utlibs
 
   | UTFontEnvelope{ main_module_name; font_files } ->
       check_font_envelope main_module_name font_files
 
 
-let main_document ~(testing : bool) (display_config : Logging.config) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) ~(used_as_map : envelope_name ModuleNameMap.t) (sorted_locals : (abs_path * untyped_library_file) list) (abspath_and_utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
+let main_document ~(testing : bool) (logging_spec : logging_spec) (config : typecheck_config) (tyenv_prim : Typeenv.t) (genv : global_type_environment) ~(used_as_map : envelope_name ModuleNameMap.t) (sorted_locals : (abs_path * untyped_library_file) list) (abspath_and_utdoc : abs_path * untyped_document_file) : ((abs_path * binding list) list * abstract_tree) ok =
   let open ResultMonad in
   let* (lenv, libacc) =
     sorted_locals |> foldM (fun (lenv, libacc) (abspath, utlib) ->
@@ -249,7 +250,7 @@ let main_document ~(testing : bool) (display_config : Logging.config) (config : 
             ~testing
             header genv used_as_map lenv
         in
-        typecheck_library_file display_config config
+        typecheck_library_file logging_spec config
           ~for_struct:tyenv ~for_sig:tyenv abspath utsig_opt rng_struct utbinds
       in
       let lenv = lenv |> ModuleNameMap.add modnm ssig in
@@ -267,7 +268,7 @@ let main_document ~(testing : bool) (display_config : Logging.config) (config : 
         ~testing
         header genv used_as_map lenv
     in
-    typecheck_document_file display_config config tyenv abspath utast
+    typecheck_document_file logging_spec config tyenv abspath utast
   in
 
   return (libs, ast_doc)

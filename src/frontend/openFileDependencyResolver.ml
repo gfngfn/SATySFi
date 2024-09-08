@@ -1,5 +1,6 @@
 
 open MyUtil
+open LoggingUtil
 open EnvelopeSystemBase
 open Types
 open ConfigError
@@ -51,7 +52,7 @@ let get_header (extensions : string list) (absdir_current : abs_path) (headerele
       return @@ Local(mod_chain, abspath)
 
 
-let rec register_library_file (display_config : Logging.config) (extensions : string list) (graph : graph) ~prev:(vertex_prev_opt : vertex option) (abspath : abs_path) : graph ok =
+let rec register_library_file (logging_spec : logging_spec) (extensions : string list) (graph : graph) ~prev:(vertex_prev_opt : vertex option) (abspath : abs_path) : graph ok =
   let open ResultMonad in
   match graph |> FileDependencyGraph.get_vertex abspath with
   | Some(vertex) ->
@@ -66,7 +67,7 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
   | None ->
       let absdir_current = AbsPath.dirname abspath in
       let* utlib =
-        Logging.begin_to_parse_file display_config abspath;
+        Logging.begin_to_parse_file logging_spec abspath;
         let* utsrc = ParserInterface.process_file abspath |> Result.map_error (fun rng -> FailedToParse(rng)) in
         match utsrc with
         | UTLibraryFile(utlib)    -> return utlib
@@ -90,13 +91,13 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
             return graph
 
         | Local(_modident_sub, abspath_sub) ->
-            register_library_file display_config extensions graph ~prev:(Some(vertex)) abspath_sub
+            register_library_file logging_spec extensions graph ~prev:(Some(vertex)) abspath_sub
       ) graph
 
 
-let register_document_file (display_config : Logging.config) (extensions : string list) (abspath_in : abs_path) : (graph * untyped_document_file) ok =
+let register_document_file (logging_spec : logging_spec) (extensions : string list) (abspath_in : abs_path) : (graph * untyped_document_file) ok =
   let open ResultMonad in
-  Logging.begin_to_parse_file display_config abspath_in;
+  Logging.begin_to_parse_file logging_spec abspath_in;
   let absdir_doc = AbsPath.dirname abspath_in in
   let* utsrc =
     ParserInterface.process_file abspath_in
@@ -116,7 +117,7 @@ let register_document_file (display_config : Logging.config) (extensions : strin
           return graph
 
       | Local(_, abspath_sub) ->
-          register_library_file display_config extensions graph ~prev:None abspath_sub
+          register_library_file logging_spec extensions graph ~prev:None abspath_sub
     ) FileDependencyGraph.empty
   in
   return (graph, utdoc)
@@ -130,9 +131,9 @@ let extract_markdown_conversion (envelope_config : EnvelopeConfig.t) : markdown_
   | _                                              -> err NoMarkdownConversion
 
 
-let register_markdown_file (display_config : Logging.config) (configenv : EnvelopeConfig.t GlobalTypeenv.t) (used_as_map : envelope_name ModuleNameMap.t) (abspath_in : abs_path) : untyped_document_file ok =
+let register_markdown_file (logging_spec : logging_spec) (configenv : EnvelopeConfig.t GlobalTypeenv.t) (used_as_map : envelope_name ModuleNameMap.t) (abspath_in : abs_path) : untyped_document_file ok =
   let open ResultMonad in
-  Logging.begin_to_parse_file display_config abspath_in;
+  Logging.begin_to_parse_file logging_spec abspath_in;
   let* md =
     match AbsPathIo.read_file abspath_in with
     | Ok(data)   -> MarkdownParser.decode abspath_in data |> Result.map_error (fun e -> MarkdownError(e))
@@ -163,15 +164,15 @@ let register_markdown_file (display_config : Logging.config) (configenv : Envelo
   return utdoc
 
 
-let main (display_config : Logging.config) ~(extensions : string list) (input_kind : input_kind) (configenv : EnvelopeConfig.t GlobalTypeenv.t) ~(used_as_map : envelope_name ModuleNameMap.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
+let main (logging_spec : logging_spec) ~(extensions : string list) (input_kind : input_kind) (configenv : EnvelopeConfig.t GlobalTypeenv.t) ~(used_as_map : envelope_name ModuleNameMap.t) (abspath_in : abs_path) : ((abs_path * untyped_library_file) list * untyped_document_file) ok =
   let open ResultMonad in
   let* (graph, utdoc) =
     match input_kind with
     | InputSatysfi ->
-        register_document_file display_config extensions abspath_in
+        register_document_file logging_spec extensions abspath_in
 
     | InputMarkdown ->
-        let* utdoc = register_markdown_file display_config configenv used_as_map abspath_in in
+        let* utdoc = register_markdown_file logging_spec configenv used_as_map abspath_in in
         return (FileDependencyGraph.empty, utdoc)
   in
   let* sorted_locals =

@@ -1,47 +1,42 @@
 
 open MyUtil
-open CommonUtil
+open LoggingUtil
 
-type config = {
-  path_display_setting : path_display_setting;
-  verbosity            : Verbosity.t;
-}
+val show_path : logging_spec -> abs_path -> string
 
-val show_path : config -> abs_path -> string
+val begin_to_typecheck_file : logging_spec -> abs_path -> unit
 
-val begin_to_typecheck_file : config -> abs_path -> unit
+val begin_to_preprocess_file : logging_spec -> abs_path -> unit
 
-val begin_to_preprocess_file : config -> abs_path -> unit
+val begin_to_eval_file : logging_spec -> abs_path -> unit
 
-val begin_to_eval_file : config -> abs_path -> unit
+val begin_to_parse_file : logging_spec -> abs_path -> unit
 
-val begin_to_parse_file : config -> abs_path -> unit
+val pass_type_check : logging_spec -> string option -> unit
 
-val pass_type_check : config -> string option -> unit
+val start_evaluation : logging_spec -> int -> unit
 
-val start_evaluation : config -> int -> unit
+val end_evaluation : logging_spec -> unit
 
-val end_evaluation : config -> unit
+val start_page_break : logging_spec -> unit
 
-val start_page_break : config -> unit
+val needs_another_trial : logging_spec -> unit
 
-val needs_another_trial : config -> unit
+val achieve_count_max : logging_spec -> unit
 
-val achieve_count_max : config -> unit
+val achieve_fixpoint : logging_spec -> string list -> unit
 
-val achieve_fixpoint : config -> string list -> unit
+val end_output : logging_spec -> abs_path -> unit
 
-val end_output : config -> abs_path -> unit
+val target_file : logging_spec -> abs_path -> unit
 
-val target_file : config -> abs_path -> unit
+val dump_file : logging_spec -> already_exists:bool -> abs_path -> unit
 
-val dump_file : config -> already_exists:bool -> abs_path -> unit
+val deps_config_file : logging_spec -> abs_path -> unit
 
-val deps_config_file : config -> abs_path -> unit
+val begin_to_embed_fonts : logging_spec -> unit
 
-val begin_to_embed_fonts : config -> unit
-
-val begin_to_write_page : config -> unit
+val begin_to_write_page : logging_spec -> unit
 
 val warn_noninjective_cmap : Uchar.t -> Uchar.t -> Otfed.Value.glyph_id -> unit
 

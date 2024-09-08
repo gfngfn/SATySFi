@@ -1,49 +1,43 @@
 
 open MyUtil
-open CommonUtil
+open LoggingUtil
 
 
-type config = {
-  path_display_setting : path_display_setting;
-  verbosity            : Verbosity.t;
-}
+let show_path (spec : logging_spec) =
+  display_path spec.path_display_setting
 
 
-let show_path (config : config) =
-  display_path config.path_display_setting
-
-
-let begin_to_typecheck_file (config : config) (abspath_in : abs_path) =
-  if is_verbose config.verbosity then begin
+let begin_to_typecheck_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec.verbosity then begin
     print_endline " ---- ---- ---- ----";
     Printf.printf "  type checking '%s' ...\n"
-      (show_path config abspath_in)
+      (show_path spec abspath_in)
   end
 
 
-let begin_to_preprocess_file (config : config) (abspath_in : abs_path) =
-  if is_verbose config.verbosity then begin
+let begin_to_preprocess_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec.verbosity then begin
     Printf.printf "  preprocessing '%s' ...\n"
-      (show_path config abspath_in)
+      (show_path spec abspath_in)
   end
 
 
-let begin_to_eval_file (config : config) (abspath_in : abs_path) =
-  if is_verbose config.verbosity then begin
+let begin_to_eval_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec.verbosity then begin
     Printf.printf "  evaluating '%s' ...\n"
-      (show_path config abspath_in)
+      (show_path spec abspath_in)
   end
 
 
-let begin_to_parse_file (config : config) (abspath_in : abs_path) =
-  if is_verbose config.verbosity then begin
+let begin_to_parse_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec.verbosity then begin
     Printf.printf "  parsing '%s' ...\n"
-      (show_path config abspath_in)
+      (show_path spec abspath_in)
   end
 
 
-let pass_type_check (config : config) (opt : string option) =
-  if is_verbose config.verbosity then
+let pass_type_check (spec : logging_spec) (opt : string option) =
+  if is_verbose spec.verbosity then
     match opt with
     | None      -> print_endline "  type check passed."
     | Some(str) -> Printf.printf "  type check passed. (%s)\n" str
@@ -60,8 +54,8 @@ let ordinal i =
   Printf.sprintf "%d%s" i suffix
 
 
-let start_evaluation (config : config) (i : int) =
-  if is_not_quiet config.verbosity then begin
+let start_evaluation (spec : logging_spec) (i : int) =
+  if is_not_quiet spec.verbosity then begin
     print_endline " ---- ---- ---- ----";
     if i <= 1 then
       print_endline "  evaluating texts ..."
@@ -71,35 +65,35 @@ let start_evaluation (config : config) (i : int) =
   end
 
 
-let end_evaluation (config : config) =
-  if is_not_quiet config.verbosity then begin
+let end_evaluation (spec : logging_spec) =
+  if is_not_quiet spec.verbosity then begin
     print_endline "  evaluation done."
   end
 
 
-let start_page_break (config : config) =
-  if is_not_quiet config.verbosity then begin
+let start_page_break (spec : logging_spec) =
+  if is_not_quiet spec.verbosity then begin
     print_endline " ---- ---- ---- ----";
     print_endline "  breaking contents into pages ..."
   end
 
 
-let needs_another_trial (config : config) =
-  if is_not_quiet config.verbosity then begin
+let needs_another_trial (spec : logging_spec) =
+  if is_not_quiet spec.verbosity then begin
     print_endline "  needs another trial for solving cross references..."
   end
 
 
-let achieve_count_max (config : config) =
-  if is_not_quiet config.verbosity then begin
+let achieve_count_max (spec : logging_spec) =
+  if is_not_quiet spec.verbosity then begin
     print_endline "  could not reach a fixpoint when resolving cross references."
   end
 
 
-let achieve_fixpoint (config : config) (unresolved_crossrefs : string list) =
+let achieve_fixpoint (spec : logging_spec) (unresolved_crossrefs : string list) =
   match unresolved_crossrefs with
   | [] ->
-      if is_not_quiet config.verbosity then begin
+      if is_not_quiet spec.verbosity then begin
         print_endline "  all cross references were solved."
       end
 
@@ -110,58 +104,58 @@ let achieve_fixpoint (config : config) (unresolved_crossrefs : string list) =
       )
 
 
-let end_output (config : config) (file_name_out : abs_path) =
-  if is_not_quiet config.verbosity then begin
+let end_output (spec : logging_spec) (file_name_out : abs_path) =
+  if is_not_quiet spec.verbosity then begin
     print_endline " ---- ---- ---- ----";
     Printf.printf "  output written on '%s'.\n"
-      (show_path config file_name_out)
+      (show_path spec file_name_out)
   end
 
 
-let target_file (config : config) (file_name_out : abs_path) =
-  if is_not_quiet config.verbosity then begin
+let target_file (spec : logging_spec) (file_name_out : abs_path) =
+  if is_not_quiet spec.verbosity then begin
     print_endline " ---- ---- ---- ----";
     Printf.printf "  target file: '%s'\n"
-      (show_path config file_name_out)
+      (show_path spec file_name_out)
   end
 
 
-let dump_file (config : config) ~(already_exists : bool) (dump_file : abs_path) =
-  if is_not_quiet config.verbosity then begin
+let dump_file (spec : logging_spec) ~(already_exists : bool) (dump_file : abs_path) =
+  if is_not_quiet spec.verbosity then begin
     if already_exists then
       Printf.printf "  dump file: '%s' (already exists)\n"
-        (show_path config dump_file)
+        (show_path spec dump_file)
     else
       Printf.printf "  dump file: '%s' (will be created)\n"
-        (show_path config dump_file)
+        (show_path spec dump_file)
   end
 
 
-let deps_config_file (config : config) (abspath_deps_config : abs_path) =
-  if is_not_quiet config.verbosity then begin
+let deps_config_file (spec : logging_spec) (abspath_deps_config : abs_path) =
+  if is_not_quiet spec.verbosity then begin
     Printf.printf "  deps file: '%s'\n"
-      (show_path config abspath_deps_config)
+      (show_path spec abspath_deps_config)
   end
 
 
-let begin_to_embed_fonts (config : config) =
-  if is_not_quiet config.verbosity then begin
+let begin_to_embed_fonts (spec : logging_spec) =
+  if is_not_quiet spec.verbosity then begin
     print_endline " ---- ---- ---- ----";
     print_endline "  embedding fonts ..."
   end
 
 
-let begin_to_write_page (config : config) =
-  if is_not_quiet config.verbosity then begin
+let begin_to_write_page (spec : logging_spec) =
+  if is_not_quiet spec.verbosity then begin
     print_endline " ---- ---- ---- ----";
     print_endline "  writing pages ..."
   end
 
 
 let warn_cmyk_image (file_name : abs_path) =
-  let config = { path_display_setting = FullPath; verbosity = Verbosity.Normal } in (* TODO: make this changeable *)
+  let spec = { path_display_setting = FullPath; verbosity = NormalVerbosity } in (* TODO: make this changeable *)
   Printf.printf "  [Warning] Jpeg images with CMYK color mode are not fully supported: '%s'\n"
-    (show_path config file_name);
+    (show_path spec file_name);
   print_endline "  Please convert the image to a jpeg image with YCbCr (RGB) color model."
 
 

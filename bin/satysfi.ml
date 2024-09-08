@@ -1,4 +1,7 @@
 
+open LoggingUtil
+
+
 let build_package
   fpath_in
   fpath_deps
@@ -120,9 +123,9 @@ let flag_full_path =
 
 let flag_verbosity =
   let open Cmdliner in
-  let verbose = (Verbosity.Verbose, Arg.info [ "verbose" ] ~doc:"Make logs verbose") in
-  let quiet = (Verbosity.Quiet, Arg.info [ "quiet" ] ~doc:"Disable logs other than errors and warnings") in
-  Arg.(value (vflag Verbosity.Normal [ verbose; quiet ]))
+  let verbose = (Verbose, Arg.info [ "verbose" ] ~doc:"Make logs verbose") in
+  let quiet = (Quiet, Arg.info [ "quiet" ] ~doc:"Disable logs other than errors and warnings") in
+  Arg.(value (vflag NormalVerbosity [ verbose; quiet ]))
 
 
 let flag_debug_show_bbox =

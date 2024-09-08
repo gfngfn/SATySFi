@@ -1,5 +1,6 @@
 
 open MyUtil
+open LoggingUtil
 open EnvelopeSystemBase
 open Types
 open StaticEnv
@@ -7,7 +8,7 @@ open ConfigError
 
 val main :
   testing:bool ->
-  Logging.config ->
+  logging_spec ->
   typecheck_config ->
   type_environment ->
   global_type_environment ->
@@ -17,7 +18,7 @@ val main :
 
 val main_document :
   testing:bool ->
-  Logging.config ->
+  logging_spec ->
   typecheck_config ->
   type_environment ->
   global_type_environment ->

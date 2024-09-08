@@ -1,11 +1,12 @@
 
 open MyUtil
+open LoggingUtil
 open EnvelopeSystemBase
-open Types
 open ConfigError
+open Types
 
 val main :
-  Logging.config ->
+  logging_spec ->
   extensions:(string list) ->
   input_kind ->
   EnvelopeConfig.t GlobalTypeenv.t ->

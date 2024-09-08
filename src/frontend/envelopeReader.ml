@@ -1,8 +1,9 @@
 
 open MyUtil
+open LoggingUtil
 open EnvelopeSystemBase
-open Types
 open ConfigError
+open Types
 
 
 type 'a ok = ('a, config_error) result
@@ -25,7 +26,7 @@ let listup_sources_in_directory (extensions : string list) (absdir_src : abs_pat
   return abspaths
 
 
-let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions : string list) ~envelope_config:(abspath_envelope_config : abs_path) : (EnvelopeConfig.t * untyped_envelope) ok =
+let main (logging_spec : logging_spec) ~(use_test_files : bool) ~(extensions : string list) ~envelope_config:(abspath_envelope_config : abs_path) : (EnvelopeConfig.t * untyped_envelope) ok =
   let open ResultMonad in
   let* config = EnvelopeConfig.load abspath_envelope_config in
   let absdir_envelope = AbsPath.dirname abspath_envelope_config in
@@ -49,7 +50,7 @@ let main (display_config : Logging.config) ~(use_test_files : bool) ~(extensions
         let* acc =
           abspaths |> foldM (fun acc abspath_src ->
             let* utsrc =
-              Logging.begin_to_parse_file display_config abspath_src;
+              Logging.begin_to_parse_file logging_spec abspath_src;
               ParserInterface.process_file abspath_src |> Result.map_error (fun e -> FailedToParse(e))
             in
             match utsrc with
