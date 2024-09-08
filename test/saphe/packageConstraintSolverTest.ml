@@ -282,10 +282,63 @@ let solve_test_4 () =
   check package_context dependencies_with_flags expected
 
 
+let solve_test_5 () =
+  let registry_hash_value1 = default_registry_hash_value in
+  let registry_hash_value2 = "effec4f01023" in
+  let package_context =
+    let local_fixed_dependencies = make_local_fixed_dependencies [] in
+    let registered_package_impls =
+      make_registered_package_impls [
+        make_entry ~registry_hash_value:registry_hash_value1 "foo" [
+          make_impl "1.0.0"
+            [
+               make_dependency_in_registry
+                 ~used_as:"Bar1" "bar" "1.0.0";
+               make_dependency_in_registry
+                 ~used_as:"Bar2" ~external_registry_hash_value:registry_hash_value2 "bar" "1.0.0";
+            ];
+        ];
+        make_entry ~registry_hash_value:registry_hash_value1 "bar" [
+          make_impl "1.0.0" []
+        ];
+        make_entry ~registry_hash_value:registry_hash_value2 "bar" [
+          make_impl "1.0.0" [];
+        ];
+      ]
+    in
+    { language_version; local_fixed_dependencies; registered_package_impls }
+  in
+  let dependencies_with_flags =
+    [
+      (SourceDependency, make_registered_dependency ~used_as:"Foo" "foo" "1.0.0");
+    ]
+  in
+  let expected =
+    Some([
+      make_registered_solution
+        ~registry_hash_value:registry_hash_value1
+        "bar" "1.0.0" [];
+      make_registered_solution ~explicitly_depended:"Foo"
+        ~registry_hash_value:registry_hash_value1
+        "foo" "1.0.0" [
+          make_locked_dependency
+            ~used_as:"Bar1" ~registry_hash_value:registry_hash_value1 "bar" "1.0.0";
+          make_locked_dependency
+            ~used_as:"Bar2" ~registry_hash_value:registry_hash_value2 "bar" "1.0.0";
+        ];
+      make_registered_solution
+        ~registry_hash_value:registry_hash_value2
+        "bar" "1.0.0" [];
+    ])
+  in
+  check package_context dependencies_with_flags expected
+
+
 let test_cases =
   Alcotest.[
     test_case "solve 1 (basic)" `Quick solve_test_1;
     test_case "solve 2 (different versions of a common package)" `Quick solve_test_2;
     test_case "solve 3 (local fixed dependencies)" `Quick solve_test_3;
     test_case "solve 4 (external registries)" `Quick solve_test_4;
+    test_case "solve 5 (packages of the same name from different registries)" `Quick solve_test_5;
   ]
