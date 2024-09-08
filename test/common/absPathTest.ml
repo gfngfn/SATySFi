@@ -1,8 +1,8 @@
 
 let of_string_exn_test () =
-  List.iter (fun (input, expected) ->
+  List.iteri (fun i (input, expected) ->
     let got = AbsPath.to_components (AbsPath.of_string_exn input) in
-    Alcotest.(check (list string)) "of_string_exn" expected got
+    Alcotest.(check (list string)) (Printf.sprintf "of_string_exn (%d)" i) expected got
   ) [
     ("/foo/bar/baz.txt", ["foo"; "bar"; "baz.txt"]);
     ("/foo//bar/baz.txt", ["foo"; "bar"; "baz.txt"]);
@@ -12,11 +12,11 @@ let of_string_exn_test () =
 
 
 let to_relative_string_test () =
-  List.iter (fun (s_from, s_target, expected) ->
+  List.iteri (fun i (s_from, s_target, expected) ->
     let from = AbsPath.of_string_exn s_from in
     let target = AbsPath.of_string_exn s_target in
     let got = AbsPath.to_relative_string ~from target in
-    Alcotest.(check string) "make_relative" expected got
+    Alcotest.(check string) (Printf.sprintf "to_relative_string (%d)" i) expected got
   ) [
     ("/foo/bar",          "/foo/bar/baz.txt", "baz.txt");
     ("/foo/bar/qux",      "/foo/bar/baz.txt", "../baz.txt");
@@ -27,11 +27,11 @@ let to_relative_string_test () =
 
 
 let to_relative_string_if_descendant_test () =
-  List.iter (fun (s_from, s_target, expected) ->
+  List.iteri (fun i (s_from, s_target, expected) ->
     let from = AbsPath.of_string_exn s_from in
     let target = AbsPath.of_string_exn s_target in
-    let got = AbsPath.to_relative_string ~from target in
-    Alcotest.(check string) "make_relative" expected got
+    let got = AbsPath.to_relative_string_if_descendant ~from target in
+    Alcotest.(check string) (Printf.sprintf "to_relative_string_if_descendant (%d)" i) expected got
   ) [
     ("/foo/bar",          "/foo/bar/baz.txt", "baz.txt");
     ("/foo/bar/qux",      "/foo/bar/baz.txt", "/foo/bar/baz.txt");
