@@ -49,14 +49,14 @@ let write_dump_file (abspath_dump : abs_path) : (unit, config_error) result =
   in
   let yaml = dump_file_encoder keyvals in
   let data = encode_yaml yaml in
-  write_file abspath_dump data
+  AbsPathIo.write_file abspath_dump data
     |> Result.map_error (fun _ -> CannotWriteDumpFile(abspath_dump))
 
 
 let initialize (abspath_dump : abs_path) : (bool, config_error) result =
   let open ResultMonad in
   CrossRefHashTable.clear main_hash_table;
-  let res = read_file abspath_dump in
+  let res = AbsPathIo.read_file abspath_dump in
   match res with
   | Error(_) ->
       return false

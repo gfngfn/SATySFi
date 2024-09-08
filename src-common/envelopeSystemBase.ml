@@ -1,6 +1,6 @@
-(*
+
 open MyUtil
-*)
+
 
 type envelope_name = string
 [@@deriving show]
@@ -23,9 +23,6 @@ type font_file_description = {
   font_file_path     : relative_path;
   font_file_contents : font_file_contents;
 }
-[@@deriving show]
-
-type package_conversion_spec = unit (* TODO *)
 [@@deriving show]
 
 type long_inline_command = LongInlineCommand of {
@@ -97,7 +94,7 @@ type envelope_dependency = {
 
 type envelope_spec = {
   envelope_name          : envelope_name;
-  envelope_path          : string;
+  envelope_path          : abs_path;
   envelope_dependencies  : envelope_dependency list;
   test_only_envelope     : bool;
 }

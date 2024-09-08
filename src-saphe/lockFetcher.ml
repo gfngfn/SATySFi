@@ -66,7 +66,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
   ShellCommand.mkdir_p absdir_lock;
 
   let abspath_config = Constant.library_package_config_path ~dir:absdir_lock in
-  if file_exists abspath_config then begin
+  if AbsPathIo.file_exists abspath_config then begin
   (* If the lock has already been fetched: *)
     Logging.lock_already_installed lock_tarball_name absdir_lock;
     return ()
@@ -78,11 +78,11 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
     | TarGzip{ url; checksum } ->
         (* Synchronously fetches a tarball (if non-existent): *)
         let abspath_tarball =
-          append_to_abs_directory absdir_lock_tarball_cache
+          AbsPath.append_to_directory absdir_lock_tarball_cache
             (Printf.sprintf "%s.tar.gz" lock_tarball_name)
         in
         let* () =
-          if file_exists abspath_tarball then begin
+          if AbsPathIo.file_exists abspath_tarball then begin
             Logging.lock_cache_exists lock_tarball_name abspath_tarball;
             return ()
           end else begin
@@ -93,7 +93,7 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
 
         (* Checks the fetched tarball by using the checksum: *)
         let* () =
-          let checksum_got = Digest.to_hex (Digest.file (get_abs_path_string abspath_tarball)) in
+          let checksum_got = Digest.to_hex (Digest.file (AbsPath.to_string abspath_tarball)) in
           if String.equal checksum_got checksum then
             return ()
           else
@@ -117,18 +117,18 @@ let fetch_registered_lock ~(wget_command : string) ~(tar_command : string) ~stor
 
 let fetch_external_zip_if_nonexistent ~(wget_command : string) (abspath_zip : abs_path) ~(url : string) ~checksum:(checksum_expected : string) =
   let open ResultMonad in
-  if file_exists abspath_zip then
+  if AbsPathIo.file_exists abspath_zip then
     (* Does nothing if the required zip file has already been fetched: *)
     return ()
   else begin
     (* Creates a directory for putting zips: *)
-    ShellCommand.mkdir_p (dirname abspath_zip);
+    ShellCommand.mkdir_p (AbsPath.dirname abspath_zip);
 
     (* Fetches the zip file: *)
     let* () = fetch_external_zip ~wget_command ~url ~output:abspath_zip in
 
     (* Checks the fetched file by using checksum: *)
-    let checksum_got = Digest.to_hex (Digest.file (get_abs_path_string abspath_zip)) in
+    let checksum_got = Digest.to_hex (Digest.file (AbsPath.to_string abspath_zip)) in
     if String.equal checksum_got checksum_expected then
       return ()
     else
@@ -153,13 +153,13 @@ let extract_external_zip_and_arrange_files_if_necessary ~(unzip_command : string
   let pairs =
     extractions |> List.map (fun extraction ->
       let { extracted_from; extracted_to } = extraction in
-      let abspath_from = append_to_abs_directory absdir_extraction extracted_from in
-      let abspath_to = append_to_abs_directory absdir_lock extracted_to in
+      let abspath_from = AbsPath.append_to_directory absdir_extraction extracted_from in
+      let abspath_to = AbsPath.append_to_directory absdir_lock extracted_to in
       { abspath_from; abspath_to }
     )
   in
 
-  if pairs |> List.for_all (fun { abspath_to; _ } -> file_exists abspath_to) then
+  if pairs |> List.for_all (fun { abspath_to; _ } -> AbsPathIo.file_exists abspath_to) then
     return ()
   else begin
 
@@ -201,14 +201,14 @@ let fetch_external_resources ~(wget_command : string) ~(unzip_command : string) 
       match external_resource with
       | ExternalZip{ url; checksum; extractions } ->
           let absdir_external =
-            append_to_abs_directory
+            AbsPath.append_to_directory
               (Constant.external_resource_cache_directory ~store_root:absdir_store_root registry_hash_value)
               lock_tarball_name
           in
 
           (* Fetches the external zip file if nonexistent: *)
           let abspath_zip =
-            append_to_abs_directory absdir_external (Printf.sprintf "archives/%s.zip" name)
+            AbsPath.append_to_directory absdir_external (Printf.sprintf "archives/%s.zip" name)
           in
           let* () =
             fetch_external_zip_if_nonexistent
@@ -220,7 +220,7 @@ let fetch_external_resources ~(wget_command : string) ~(unzip_command : string) 
 
           (* Extracts the external zip file if some of the resulting files are nonexistent: *)
           let absdir_extraction =
-            append_to_abs_directory absdir_external (Printf.sprintf "extractions/%s" name)
+            AbsPath.append_to_directory absdir_external (Printf.sprintf "extractions/%s" name)
           in
           let* () =
             extract_external_zip_and_arrange_files_if_necessary

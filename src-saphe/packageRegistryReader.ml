@@ -7,13 +7,13 @@ open PackageSystemBase
 let listup_package_directories (absdir_package_store : abs_path) : ((package_name * abs_path) list, config_error) result =
   let open ResultMonad in
   let* filenames =
-    readdir absdir_package_store
+    AbsPathIo.readdir absdir_package_store
       |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_package_store; message })
   in
   let* acc =
     filenames |> foldM (fun acc filename ->
-      let abspath = append_to_abs_directory absdir_package_store filename in
-      if is_directory abspath then
+      let abspath = AbsPath.append_to_directory absdir_package_store filename in
+      if AbsPathIo.is_directory abspath then
         let absdir = abspath in
         let package_name = filename in (* TODO: check that `filename` is a lowercased identifier *)
         return @@ Alist.extend acc (package_name, absdir)
@@ -28,7 +28,7 @@ let listup_package_directories (absdir_package_store : abs_path) : ((package_nam
 let listup_release_configs (package_name : package_name) (absdir_single_package : abs_path) : ((SemanticVersion.t * abs_path) list, config_error) result =
   let open ResultMonad in
   let* filenames =
-    readdir absdir_single_package
+    AbsPathIo.readdir absdir_single_package
       |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_single_package; message })
   in
   let acc =
@@ -53,7 +53,7 @@ let listup_release_configs (package_name : package_name) (absdir_single_package 
                       acc
 
                   | Some(semver) ->
-                      let abspath = append_to_abs_directory absdir_single_package filename in
+                      let abspath = AbsPath.append_to_directory absdir_single_package filename in
                       Alist.extend acc (semver, abspath)
                 end
           end

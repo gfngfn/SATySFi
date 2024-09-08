@@ -38,9 +38,9 @@ let lock_contents_decoder ~dir:(absdir_lock_config : abs_path) : Lock.t ConfigDe
       succeed @@ Lock.Registered(reglock)
     end;
     "local" ==> begin
-      get "relative_path" string >>= fun relpathstr ->
+      get "relative_path" relative_path_decoder >>= fun relpathstr ->
       succeed @@ Lock.LocalFixed{
-        absolute_path = append_to_abs_directory absdir_lock_config relpathstr;
+        absolute_path = AbsPath.append_to_directory absdir_lock_config relpathstr;
       }
     end;
   ]
@@ -67,10 +67,15 @@ let lock_contents_encoder ~dir:(absdir_lock_config : abs_path) (contents : Lock.
       ]
 
 
+let lock_name_decoder : lock_name ConfigDecoder.t =
+  ConfigDecoder.string
+    (* Allows arbitrary strings, even ones containing slashes. *)
+
+
 let lock_dependency_decoder : lock_dependency ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun depended_lock_name ->
-  get "used_as" string >>= fun used_as ->
+  get "name" lock_name_decoder >>= fun depended_lock_name ->
+  get "used_as" uppercased_identifier_decoder >>= fun used_as ->
   succeed { depended_lock_name; used_as }
 
 
@@ -83,7 +88,7 @@ let lock_dependency_encoder (dep : lock_dependency) : Yaml.value =
 
 let lock_decoder ~(dir : abs_path) : locked_package ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun lock_name -> (* Allow arbitrary strings, even ones containing slashes. *)
+  get "name" lock_name_decoder >>= fun lock_name ->
   get_or_else "dependencies" (list lock_dependency_decoder) [] >>= fun lock_dependencies ->
   get_or_else "test_only" bool false >>= fun test_only_lock ->
   lock_contents_decoder ~dir >>= fun lock_contents ->
@@ -125,17 +130,17 @@ let lock_config_encoder ~(dir : abs_path) (lock_config : t) : Yaml.value =
 let load (abspath_lock_config : abs_path) : t ok =
   let open ResultMonad in
   let* s =
-    read_file abspath_lock_config
+    AbsPathIo.read_file abspath_lock_config
       |> Result.map_error (fun _ -> LockConfigNotFound(abspath_lock_config))
   in
-  ConfigDecoder.run (lock_config_decoder  ~dir:(dirname abspath_lock_config)) s
+  ConfigDecoder.run (lock_config_decoder  ~dir:(AbsPath.dirname abspath_lock_config)) s
     |> Result.map_error (fun e -> LockConfigError(abspath_lock_config, e))
 
 
 let write (abspath_lock_config : abs_path) (lock_config : t) : (unit, config_error) result =
-  let yaml = lock_config_encoder ~dir:(dirname abspath_lock_config) lock_config in
+  let yaml = lock_config_encoder ~dir:(AbsPath.dirname abspath_lock_config) lock_config in
   let data = encode_yaml yaml in
-  write_file abspath_lock_config data
+  AbsPathIo.write_file abspath_lock_config data
     |> Result.map_error (fun message ->
       CannotWriteLockConfig{ message; path = abspath_lock_config }
     )

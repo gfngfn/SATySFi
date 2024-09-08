@@ -37,8 +37,8 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | ParseError(s) ->
       [ NormalLine(Printf.sprintf "parse error: %s" s) ]
 
-  | FieldNotFound(yctx, field) ->
-      [ NormalLine(Printf.sprintf "field '%s' not found %s" field (show_yaml_context yctx)) ]
+  | FieldNotFound{ context = yctx; field_name } ->
+      [ NormalLine(Printf.sprintf "field '%s' not found %s" field_name (show_yaml_context yctx)) ]
 
   | NotAFloat(yctx) ->
       [ NormalLine(Printf.sprintf "not a float value %s" (show_yaml_context yctx)) ]
@@ -55,16 +55,16 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | NotAnObject(yctx) ->
       [ NormalLine(Printf.sprintf "not an object %s" (show_yaml_context yctx)) ]
 
-  | BreaksVersionRequirement(yctx, requirement) ->
+  | BreaksVersionRequirement{ context = yctx; requirement } ->
       [ NormalLine(Printf.sprintf "breaks the requrement '%s' %s" (SemanticVersion.requirement_to_string requirement)(show_yaml_context yctx)) ]
 
-  | NotASemanticVersion(yctx, s) ->
+  | NotASemanticVersion{ context = yctx; got = s } ->
       [ NormalLine(Printf.sprintf "not a semantic version: '%s' %s" s (show_yaml_context yctx)) ]
 
-  | NotAVersionRequirement(yctx, s) ->
+  | NotAVersionRequirement{ context = yctx; got = s } ->
       [ NormalLine(Printf.sprintf "not a version requirement: '%s' %s" s (show_yaml_context yctx)) ]
 
-  | InvalidPackageName(yctx, s) ->
+  | InvalidPackageName{ context = yctx; got = s } ->
       [ NormalLine(Printf.sprintf "not a package name: '%s' %s" s (show_yaml_context yctx)) ]
 
   | InvalidRegistryHashValue{ context = yctx; got } ->
@@ -73,14 +73,26 @@ let make_yaml_error_lines : yaml_error -> line list = function
   | DuplicateRegistryHashValue{ context = yctx; registry_hash_value } ->
       [ NormalLine(Printf.sprintf "More than one definition for registry hash value '%s' %s" registry_hash_value (show_yaml_context yctx)) ]
 
-  | CannotBeUsedAsAName(yctx, s) ->
+  | CannotBeUsedAsAName{ context = yctx; got = s } ->
       [ NormalLine(Printf.sprintf "'%s' cannot be used as a name %s" s (show_yaml_context yctx)) ]
 
   | UnsupportedRegistryFormat(format) ->
       [ NormalLine(Printf.sprintf "unsupported registry format '%s'" format) ]
 
-  | NotACommand{ context = yctx; prefix = _; string = s } ->
+  | NotAnUppercasedIdentifier{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not an uppercased identifier: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotALowercasedIdentifier{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not a lowercased identifier: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotACommand{ context = yctx; prefix = _; got = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotAChainedIdentifier{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not a chained identifier: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotARelativePath{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not a relative path: '%s' %s" s (show_yaml_context yctx)) ]
 
   | BranchNotFound{ context = yctx; expected_tags; got_tags } ->
       [
@@ -121,18 +133,18 @@ let report_config_error = function
   | PackageConfigNotFound(abspath_package_config) ->
       report_error [
         NormalLine("cannot find a package config:");
-        DisplayLine(get_abs_path_string abspath_package_config);
+        DisplayLine(AbsPath.to_string abspath_package_config);
       ]
 
   | PackageConfigError(abspath, e) ->
       report_error (List.concat [
-        [ NormalLine(Printf.sprintf "in %s: package config error;" (get_abs_path_string abspath)) ];
+        [ NormalLine(Printf.sprintf "in %s: package config error;" (AbsPath.to_string abspath)) ];
         make_yaml_error_lines e;
       ])
 
   | NotAPackageButADocument(abspath_package_config) ->
       report_error [
-        NormalLine(Printf.sprintf "in %s:" (get_abs_path_string abspath_package_config));
+        NormalLine(Printf.sprintf "in %s:" (AbsPath.to_string abspath_package_config));
         NormalLine("this file is expected to be a config for a package,");
         NormalLine("but is for a document.");
       ]
@@ -140,48 +152,48 @@ let report_config_error = function
   | LockConfigNotFound(abspath) ->
       report_error [
         NormalLine("cannot find a lock config at:");
-        DisplayLine(get_abs_path_string abspath);
+        DisplayLine(AbsPath.to_string abspath);
       ]
 
   | LockConfigError(abspath, e) ->
       report_error (List.concat [
-        [ NormalLine(Printf.sprintf "in %s: lock config error;" (get_abs_path_string abspath)) ];
+        [ NormalLine(Printf.sprintf "in %s: lock config error;" (AbsPath.to_string abspath)) ];
         make_yaml_error_lines e;
       ])
 
   | RegistryConfigNotFound(abspath_registry_config) ->
       report_error [
         NormalLine("cannot find a registry config:");
-        DisplayLine(get_abs_path_string abspath_registry_config);
+        DisplayLine(AbsPath.to_string abspath_registry_config);
       ]
 
   | RegistryConfigError(abspath, e) ->
       report_error (List.concat [
-        [ NormalLine(Printf.sprintf "in %s: registry config error;" (get_abs_path_string abspath)) ];
+        [ NormalLine(Printf.sprintf "in %s: registry config error;" (AbsPath.to_string abspath)) ];
         make_yaml_error_lines e;
       ])
 
   | ReleaseConfigNotFound(abspath_release_config) ->
       report_error [
         NormalLine("cannot find a release config:");
-        DisplayLine(get_abs_path_string abspath_release_config);
+        DisplayLine(AbsPath.to_string abspath_release_config);
       ]
 
   | ReleaseConfigError(abspath, e) ->
       report_error (List.concat [
-        [ NormalLine(Printf.sprintf "in %s: release config error;" (get_abs_path_string abspath)) ];
+        [ NormalLine(Printf.sprintf "in %s: release config error;" (AbsPath.to_string abspath)) ];
         make_yaml_error_lines e;
       ])
 
   | StoreRootConfigNotFound(abspath) ->
       report_error [
         NormalLine("cannot find a store root config at:");
-        DisplayLine(get_abs_path_string abspath);
+        DisplayLine(AbsPath.to_string abspath);
       ]
 
   | StoreRootConfigError(abspath, e) ->
       report_error (List.concat [
-        [ NormalLine(Printf.sprintf "in %s: store root config error;" (get_abs_path_string abspath)) ];
+        [ NormalLine(Printf.sprintf "in %s: store root config error;" (AbsPath.to_string abspath)) ];
         make_yaml_error_lines e;
       ])
 
@@ -190,28 +202,10 @@ let report_config_error = function
         NormalLine(Printf.sprintf "lock name conflict: '%s'" lock_name);
       ]
 
-  | LockedPackageNotFound(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      report_error
-        (NormalLine(Printf.sprintf "package '%s' not found. candidates:" (get_lib_path_string libpath)) :: lines)
-
   | DependencyOnUnknownLock{ depending; depended } ->
       report_error [
         NormalLine(Printf.sprintf "unknown depended lock '%s' of '%s'." depended depending);
       ]
-
-  | CannotFindLibraryFile(libpath, candidate_paths) ->
-      let lines =
-        candidate_paths |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      report_error
-        (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
 
   | CannotSolvePackageConstraints ->
       report_error [
@@ -240,7 +234,7 @@ let report_config_error = function
       report_error [
         NormalLine("checksum mismatch of an external zip file.");
         DisplayLine(Printf.sprintf "- fetched from: '%s'" url);
-        DisplayLine(Printf.sprintf "- path: '%s'" (get_abs_path_string path));
+        DisplayLine(Printf.sprintf "- path: '%s'" (AbsPath.to_string path));
         DisplayLine(Printf.sprintf "- expected: '%s'" expected);
         DisplayLine(Printf.sprintf "- got: '%s'" got);
       ]
@@ -250,7 +244,7 @@ let report_config_error = function
         NormalLine("checksum mismatch of a tarball.");
         DisplayLine(Printf.sprintf "- lock name: '%s'" lock_name);
         DisplayLine(Printf.sprintf "- fetched from: '%s'" url);
-        DisplayLine(Printf.sprintf "- path: '%s'" (get_abs_path_string path));
+        DisplayLine(Printf.sprintf "- path: '%s'" (AbsPath.to_string path));
         DisplayLine(Printf.sprintf "- expected: '%s'" expected);
         DisplayLine(Printf.sprintf "- got: '%s'" got);
       ]
@@ -307,22 +301,22 @@ let report_config_error = function
 
   | CannotWriteEnvelopeConfig{ message; path } ->
       report_error [
-        NormalLine(Printf.sprintf "cannot write an envelope config to '%s' (message: '%s')" (get_abs_path_string path) message);
+        NormalLine(Printf.sprintf "cannot write an envelope config to '%s' (message: '%s')" (AbsPath.to_string path) message);
       ]
 
   | CannotWriteLockConfig{ message; path } ->
       report_error [
-        NormalLine(Printf.sprintf "cannot write a lock config to '%s' (message: '%s')" (get_abs_path_string path) message);
+        NormalLine(Printf.sprintf "cannot write a lock config to '%s' (message: '%s')" (AbsPath.to_string path) message);
       ]
 
   | CannotWriteDepsConfig{ message; path } ->
       report_error [
-        NormalLine(Printf.sprintf "cannot write a deps config to '%s' (message: '%s')" (get_abs_path_string path) message);
+        NormalLine(Printf.sprintf "cannot write a deps config to '%s' (message: '%s')" (AbsPath.to_string path) message);
       ]
 
   | CannotWriteStoreRootConfig{ message; path } ->
       report_error [
-        NormalLine(Printf.sprintf "cannot write a store root config to '%s' (message: '%s')" (get_abs_path_string path) message);
+        NormalLine(Printf.sprintf "cannot write a store root config to '%s' (message: '%s')" (AbsPath.to_string path) message);
       ]
 
   | MultiplePackageDefinition{ package_name } ->
@@ -347,24 +341,24 @@ let report_config_error = function
 
   | FileAlreadyExists{ path } ->
       report_error [
-        NormalLine(Printf.sprintf "file already exists: '%s'" (get_abs_path_string path));
+        NormalLine(Printf.sprintf "file already exists: '%s'" (AbsPath.to_string path));
       ]
 
   | InvalidExtensionForDocument{ path; extension } ->
       report_error [
-        NormalLine(Printf.sprintf "invalid extension '%s' for a document: '%s'" extension (get_abs_path_string path));
+        NormalLine(Printf.sprintf "invalid extension '%s' for a document: '%s'" extension (AbsPath.to_string path));
       ]
 
   | FailedToWriteFile{ path; message } ->
       report_error [
-        NormalLine(Printf.sprintf "failed to write file '%s':" (get_abs_path_string path));
+        NormalLine(Printf.sprintf "failed to write file '%s':" (AbsPath.to_string path));
         DisplayLine(message);
       ]
 
   | NotALibraryLocalFixed{ dir = absdir_package } ->
       report_error [
         NormalLine(Printf.sprintf "the following local package is not a library:");
-        DisplayLine(get_abs_path_string absdir_package);
+        DisplayLine(AbsPath.to_string absdir_package);
       ]
 
   | LocalFixedDoesNotSupportLanguageVersion{ dir = absdir_package; language_version; language_requirement } ->
@@ -372,7 +366,7 @@ let report_config_error = function
       let s_req = SemanticVersion.requirement_to_string language_requirement in
       report_error [
         NormalLine(Printf.sprintf "the local package");
-        DisplayLine(get_abs_path_string absdir_package);
+        DisplayLine(AbsPath.to_string absdir_package);
         NormalLine(Printf.sprintf "requires the language version to be %s," s_req);
         NormalLine(Printf.sprintf "but we are using %s." s_version);
       ]
@@ -380,7 +374,7 @@ let report_config_error = function
   | PackageNameMismatchOfRelease{ path; from_filename; from_content } ->
       report_error [
         NormalLine(Printf.sprintf "the release config");
-        DisplayLine(get_abs_path_string path);
+        DisplayLine(AbsPath.to_string path);
         NormalLine("is inconsistent as package name;");
         NormalLine(Printf.sprintf "its filename says the package name is '%s'," from_filename);
         NormalLine(Printf.sprintf "but the content says '%s'." from_content);
@@ -391,7 +385,7 @@ let report_config_error = function
       let s_version2 = SemanticVersion.to_string from_content in
       report_error [
         NormalLine(Printf.sprintf "the release config");
-        DisplayLine(get_abs_path_string path);
+        DisplayLine(AbsPath.to_string path);
         NormalLine("is inconsistent as package version;");
         NormalLine(Printf.sprintf "its filename says the package version is '%s'," s_version1);
         NormalLine(Printf.sprintf "but the content says '%s'." s_version2);
@@ -399,6 +393,6 @@ let report_config_error = function
 
   | CannotReadDirectory{ path; message } ->
       report_error [
-        NormalLine(Printf.sprintf "cannot read directory '%s':" (get_abs_path_string path));
+        NormalLine(Printf.sprintf "cannot read directory '%s':" (AbsPath.to_string path));
         DisplayLine(message);
       ]

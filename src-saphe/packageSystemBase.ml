@@ -21,9 +21,15 @@ type package_name = string
 type registry_local_name = string
 [@@deriving show { with_path = false }]
 
+(* The type for MD5 hash values made of a URL and a branch name. *)
+type registry_hash_value = string
+[@@deriving show { with_path = false }]
+
+module RegistryHashValueMap = Map.Make(String)
+
 module RegisteredPackageId = struct
   type t = {
-    registry_hash_value : string;
+    registry_hash_value : registry_hash_value;
     package_name        : package_name;
   }
   [@@deriving show { with_path = false }]
@@ -64,12 +70,6 @@ module LocalFixedPackageIdMap = Map.Make(AbsPath)
 module PackageIdMap = Map.Make(PackageId)
 
 module PackageIdSet = Set.Make(PackageId)
-
-(* The type for MD5 hash values made of a URL and a branch name. *)
-type registry_hash_value = string
-[@@deriving show { with_path = false }]
-
-module RegistryHashValueMap = Map.Make(String)
 
 module RegisteredLock = struct
   type t = {

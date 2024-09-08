@@ -1,7 +1,10 @@
 
+open MyUtil
+open CommonUtil
 open ConfigError
 open PackageConfigImpl
 open PackageSystemBase
+open EnvelopeSystemBase
 
 
 module ConfigDecoder = YamlDecoder.Make(YamlError)
@@ -9,24 +12,53 @@ module ConfigDecoder = YamlDecoder.Make(YamlError)
 module RegistryLocalNameMap = Map.Make(String)
 
 
+(* Package names must consist only of lowercased Latin letters, digits, and the hyphen in ASCII. *)
 let package_name_decoder : package_name ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun package_name ->
-  let chars = Core.String.to_list_rev package_name in
   if
-    chars |> List.for_all (fun char ->
+    package_name |> Core.String.for_all ~f:(fun char ->
       Char.equal char '-' || Core.Char.is_digit char || Core.Char.is_lowercase char
     )
   then
     succeed package_name
   else
-    failure (fun yctx -> InvalidPackageName(yctx, package_name))
+    failure (fun context -> InvalidPackageName{ context; got = package_name })
 
 
+let uppercased_identifier_decoder : string ConfigDecoder.t =
+  let open ConfigDecoder in
+  string >>= fun s ->
+  if is_uppercased_identifier s then
+    succeed s
+  else
+    failure (fun context -> NotAnUppercasedIdentifier{ context; got = s })
+
+
+let lowercased_identifier_decoder : string ConfigDecoder.t =
+  let open ConfigDecoder in
+  string >>= fun s ->
+  if is_lowercased_identifier s then
+    succeed s
+  else
+    failure (fun context -> NotALowercasedIdentifier{ context; got = s })
+
+
+(* Note: the empty string is allowed *)
+let relative_path_decoder : relative_path ConfigDecoder.t =
+  let open ConfigDecoder in
+  string >>= fun s ->
+  if Filename.is_relative s then
+    succeed s
+  else
+    failure (fun context -> NotARelativePath{ context; got = s })
+
+
+(* Registry hash values must consist only of lowercased hex digits (i.e., 0-9 and a-f). *)
 let registry_hash_value_decoder : registry_hash_value ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun registry_hash_value ->
-  if Core.String.for_all registry_hash_value ~f:Core.Char.is_hex_digit then
+  if registry_hash_value |> Core.String.for_all ~f:Core.Char.is_hex_digit then
     succeed registry_hash_value
   else
     failure (fun context -> InvalidRegistryHashValue{ got = registry_hash_value; context })
@@ -37,7 +69,7 @@ let version_decoder : SemanticVersion.t ConfigDecoder.t =
   string >>= fun s_version ->
   match SemanticVersion.parse s_version with
   | None ->
-      failure (fun yctx -> NotASemanticVersion(yctx, s_version))
+      failure (fun context -> NotASemanticVersion{ context; got = s_version })
 
   | Some(semver) ->
       succeed semver
@@ -47,7 +79,7 @@ let requirement_decoder : SemanticVersion.requirement ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s_version_requirement ->
   match SemanticVersion.parse_requirement s_version_requirement with
-  | None         -> failure (fun context -> NotAVersionRequirement(context, s_version_requirement))
+  | None         -> failure (fun context -> NotAVersionRequirement{ context; got = s_version_requirement })
   | Some(verreq) -> succeed verreq
 
 
@@ -57,14 +89,19 @@ let version_checker (version : SemanticVersion.t) : unit ConfigDecoder.t =
   if version |> SemanticVersion.fulfill requirement then
     succeed ()
   else
-    failure (fun yctx -> BreaksVersionRequirement(yctx, requirement))
+    failure (fun context -> BreaksVersionRequirement{ context; requirement })
+
+
+let registry_local_name_decoder =
+  ConfigDecoder.string
+    (* Registry local names can be arbitrary strings. *)
 
 
 let dependency_spec_decoder : parsed_package_dependency_spec ConfigDecoder.t =
   let open ConfigDecoder in
   branch [
     "registered" ==> begin
-      get "registry" string >>= fun registry_local_name ->
+      get "registry" registry_local_name_decoder >>= fun registry_local_name ->
       get "name" package_name_decoder >>= fun package_name ->
       get "requirement" requirement_decoder >>= fun version_requirement ->
       succeed @@ ParsedRegisteredDependency{
@@ -74,7 +111,7 @@ let dependency_spec_decoder : parsed_package_dependency_spec ConfigDecoder.t =
       }
     end;
     "local" ==> begin
-      get "path" string >>= fun relative_path ->
+      get "path" relative_path_decoder >>= fun relative_path ->
       succeed @@ ParsedLocalFixedDependency{ relative_path }
     end;
   ]
@@ -82,7 +119,7 @@ let dependency_spec_decoder : parsed_package_dependency_spec ConfigDecoder.t =
 
 let dependency_decoder : parsed_package_dependency ConfigDecoder.t =
   let open ConfigDecoder in
-  get "used_as" string >>= fun used_as ->
+  get "used_as" uppercased_identifier_decoder >>= fun used_as ->
   dependency_spec_decoder >>= fun spec ->
   succeed @@ ParsedPackageDependency{ used_as; spec }
 
@@ -100,18 +137,37 @@ let registry_remote_decoder : registry_remote ConfigDecoder.t =
 
 let registry_spec_decoder : (registry_local_name * registry_remote) ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun registry_local_name ->
+  get "name" registry_local_name_decoder >>= fun registry_local_name ->
   registry_remote_decoder >>= fun registry_remote ->
   succeed (registry_local_name, registry_remote)
 
 
-let name_decoder : string ConfigDecoder.t =
+(* Decodes a string that can be used as a substring of a filename in file systems. *)
+let writable_name_decoder : string ConfigDecoder.t =
   let open ConfigDecoder in
-  string >>= fun name ->
-  if Core.String.exists name ~f:(Char.equal '/') then
-    failure (fun context -> CannotBeUsedAsAName(context, name))
+  string >>= fun s ->
+  let flag =
+    match Core.String.to_list s with
+    | [] ->
+        false
+
+    | ch0 :: chs ->
+        let pairs = (ch0, false) :: List.map (fun ch -> (ch, true)) chs in
+        pairs |> List.for_all (fun (ch, is_middle) ->
+          List.fold_left ( || ) false [
+            Core.Char.is_lowercase ch;
+            Core.Char.is_uppercase ch;
+            Core.Char.is_digit ch;
+            Char.equal ch '-';
+            Char.equal ch '_';
+            is_middle && Char.equal ch '.'; (* The first letter must not be a dot. *)
+          ]
+        )
+  in
+  if flag then
+    succeed s
   else
-    succeed name
+    failure (fun context -> CannotBeUsedAsAName{ context; got = s })
 
 
 let make_registry_hash_value (registry_remote : registry_remote) : (registry_hash_value, config_error) result =

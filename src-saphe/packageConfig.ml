@@ -1,5 +1,6 @@
 
 open MyUtil
+open CommonUtil
 open ConfigError
 open ConfigUtil
 open EnvelopeSystemBase
@@ -14,7 +15,7 @@ type t = {
   package_name           : package_name option;
   package_authors        : string list;
   package_contributors   : string list;
-  external_resources     : (string * external_resource) list;
+  external_resources     : (string * external_resource) list; (* Names must not contain '/'. *)
   intermediate_directory : relative_path option;
   package_contents       : package_contents;
   registry_remotes       : registry_remote list;
@@ -25,7 +26,7 @@ type t = {
 
 let font_spec_decoder : font_spec ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun font_item_name ->
+  get "name" lowercased_identifier_decoder >>= fun font_item_name ->
   get_or_else "math" bool false >>= fun used_as_math_font ->
   succeed { font_item_name; used_as_math_font }
 
@@ -46,7 +47,7 @@ let font_file_contents_decoder : font_file_contents ConfigDecoder.t =
 
 let font_file_description_decoder : font_file_description ConfigDecoder.t =
   let open ConfigDecoder in
-  get "path" string >>= fun font_file_path ->
+  get "path" relative_path_decoder >>= fun font_file_path ->
   font_file_contents_decoder >>= fun font_file_contents ->
   succeed @@ {
     font_file_path;
@@ -54,49 +55,43 @@ let font_file_description_decoder : font_file_description ConfigDecoder.t =
   }
 
 
-let cut_module_names (s : string) : string list * string =
-  match List.rev (String.split_on_char '.' s) with
-  | varnm :: modnms_rev -> (List.rev modnms_rev, varnm)
-  | _                   -> assert false (* `String.split_on_char` always returns a non-empty list *)
-
-
-let command_decoder ~(prefix : char) (k : string list -> string -> 'a) : 'a ConfigDecoder.t =
+let command_decoder ~(prefix : string) (k : string list -> string -> 'a) : 'a ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
-  try
-    if Char.equal prefix (String.get s 0) then
-      let s_tail = (String.sub s 1 (String.length s - 1)) in
-      let (modnms, varnm) = cut_module_names s_tail in
+  match parse_long_command ~prefix s with
+  | None ->
+      failure (fun context -> NotACommand{ context; prefix; got = s })
+
+  | Some((modnms, varnm)) ->
       succeed @@ k modnms varnm
-    else
-      failure (fun context -> NotACommand{ context; prefix; string = s })
-  with
-  | Invalid_argument(_) ->
-      failure (fun context -> NotACommand{ context; prefix; string = s })
 
 
 let inline_command_decoder =
-  command_decoder ~prefix:'\\' (fun modules main_without_prefix ->
+  command_decoder ~prefix:"\\" (fun modules main_without_prefix ->
     LongInlineCommand{ modules; main_without_prefix }
   )
 
 
 let block_command_decoder =
-  command_decoder ~prefix:'+' (fun modules main_without_prefix ->
+  command_decoder ~prefix:"+" (fun modules main_without_prefix ->
     LongBlockCommand{ modules; main_without_prefix }
   )
 
 
-let identifier_decoder : long_identifier ConfigDecoder.t =
+let long_identifier_decoder : long_identifier ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
-  let (modnms, varnm) = cut_module_names s in
-  succeed @@ LongIdentifier{ modules = modnms; main = varnm }
+  match parse_long_identifier s with
+  | None ->
+      failure (fun context -> NotAChainedIdentifier{ context; got = s })
+
+  | Some((modnms, varnm)) ->
+      succeed @@ LongIdentifier{ modules = modnms; main = varnm }
 
 
 let markdown_conversion_decoder : markdown_conversion ConfigDecoder.t =
   let open ConfigDecoder in
-  get "document" identifier_decoder >>= fun document ->
+  get "document" long_identifier_decoder >>= fun document ->
   get "paragraph" block_command_decoder >>= fun paragraph ->
   get "hr" block_command_decoder >>= fun hr ->
   get "h1" block_command_decoder >>= fun h1 ->
@@ -139,9 +134,9 @@ let contents_decoder : package_contents ConfigDecoder.t =
   let open ConfigDecoder in
   branch [
     "library" ==> begin
-      get "main_module" string >>= fun main_module_name ->
-      get "source_directories" (list string) >>= fun source_directories ->
-      get_or_else "test_directories" (list string) [] >>= fun test_directories ->
+      get "main_module" uppercased_identifier_decoder >>= fun main_module_name ->
+      get "source_directories" (list relative_path_decoder) >>= fun source_directories ->
+      get_or_else "test_directories" (list relative_path_decoder) [] >>= fun test_directories ->
       get_opt "markdown_conversion" markdown_conversion_decoder >>= fun markdown_conversion ->
       succeed @@ Library {
         main_module_name;
@@ -151,7 +146,7 @@ let contents_decoder : package_contents ConfigDecoder.t =
       }
     end;
     "font" ==> begin
-      get "main_module" string >>= fun main_module_name ->
+      get "main_module" uppercased_identifier_decoder >>= fun main_module_name ->
       get "files" (list font_file_description_decoder) >>= fun font_file_descriptions ->
       succeed @@ Font { main_module_name; font_file_descriptions }
     end;
@@ -163,14 +158,14 @@ let contents_decoder : package_contents ConfigDecoder.t =
 
 let extraction_decoder : extraction ConfigDecoder.t =
   let open ConfigDecoder in
-  get "from" string >>= fun extracted_from ->
-  get "to" string >>= fun extracted_to ->
+  get "from" relative_path_decoder >>= fun extracted_from ->
+  get "to" relative_path_decoder >>= fun extracted_to ->
   succeed { extracted_from; extracted_to }
 
 
 let external_resource_decoder : (string * external_resource) ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" name_decoder >>= fun name ->
+  get "name" writable_name_decoder >>= fun name ->
   branch [
     "zip" ==> begin
       get "url" string >>= fun url ->
@@ -190,7 +185,7 @@ let config_decoder : parsed_package_config ConfigDecoder.t =
   get_or_else "contributors" (list string) [] >>= fun package_contributors ->
   get_or_else "registries" (list registry_spec_decoder) [] >>= fun registry_specs ->
   get_or_else "external_resources" (list external_resource_decoder) [] >>= fun external_resources ->
-  get_opt "intermediate_directory" string >>= fun intermediate_directory ->
+  get_opt "intermediate_directory" relative_path_decoder >>= fun intermediate_directory ->
   get "contents" contents_decoder >>= fun package_contents ->
   get_or_else "dependencies" (list dependency_decoder) [] >>= fun source_dependencies ->
   get_or_else "test_dependencies" (list dependency_decoder) [] >>= fun test_dependencies ->
@@ -226,7 +221,7 @@ let validate_dependency ~dir:(absdir_config : abs_path) (localmap : registry_rem
 
     | ParsedLocalFixedDependency{ relative_path } ->
         return @@ LocalFixedDependency{
-          absolute_path = append_to_abs_directory absdir_config relative_path;
+          absolute_path = AbsPath.append_to_directory absdir_config relative_path;
         }
   in
   return @@ PackageDependency{ used_as; spec }
@@ -272,11 +267,11 @@ let parse (s : string) : (parsed_package_config, yaml_error) result =
 let load (abspath_config : abs_path) : t ok =
   let open ResultMonad in
   let* s =
-    read_file abspath_config
+    AbsPathIo.read_file abspath_config
       |> Result.map_error (fun _ -> PackageConfigNotFound(abspath_config))
   in
   let* internal =
     parse s
       |> Result.map_error (fun e -> PackageConfigError(abspath_config, e))
   in
-  validate ~dir:(dirname abspath_config) internal
+  validate ~dir:(AbsPath.dirname abspath_config) internal

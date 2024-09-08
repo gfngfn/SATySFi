@@ -1,17 +1,4 @@
 
-exception RemainsToBeImplemented of string
-
-
-let remains_to_be_implemented msg =
-  raise (RemainsToBeImplemented(msg))
-
-
-let string_of_uchar_list (uchs : Uchar.t list) : string =
-  let buffer = Buffer.create ((List.length uchs) * 4) in
-  List.iter (fun u -> Uutf.Buffer.add_utf_8 buffer u) uchs;
-  Buffer.contents buffer
-
-
 let rec range i j =
   if i > j then [] else
     i :: (range (i + 1) j)
@@ -43,83 +30,6 @@ let ( @|> ) = ( |> )
 
 type abs_path = AbsPath.t
 [@@deriving show { with_path = false }]
-
-type lib_path = LibPath of string
-
-
-let open_in_abs (abspath : abs_path) =
-  Stdlib.open_in (AbsPath.to_string abspath)
-
-
-let basename_abs (abspath : abs_path) =
-  Filename.basename (AbsPath.to_string abspath)
-
-
-let make_abs_path pathstr = AbsPath.of_string_exn pathstr
-
-let make_lib_path pathstr = LibPath(pathstr)
-
-let get_abs_path_string = AbsPath.to_string
-
-let get_lib_path_string (LibPath(pathstr)) = pathstr
-
-
-let make_absolute_if_relative ~(origin : string) (s : string) : abs_path =
-  let abspath_str = if Filename.is_relative s then Filename.concat origin s else s in
-  make_abs_path abspath_str
-
-
-let append_to_abs_directory (absdir : abs_path) (filename : string) : abs_path =
-  make_abs_path (Filename.concat (get_abs_path_string absdir) filename)
-
-
-let dirname (abspath : abs_path) : abs_path =
-  make_abs_path (Filename.dirname (get_abs_path_string abspath))
-
-
-let basename (abspath : abs_path) : string =
-  Filename.basename (get_abs_path_string abspath)
-
-
-let readdir (absdir : abs_path) : (string list, string) result =
-  let open ResultMonad in
-  try
-    return (Sys.readdir (get_abs_path_string absdir) |> Array.to_list)
-  with
-  | Sys_error(s) ->
-      err s
-
-
-let read_file (abspath : abs_path) : (string, string) result =
-  let open ResultMonad in
-  try
-    return @@ Core.In_channel.read_all (get_abs_path_string abspath)
-  with
-  | Sys_error(s) ->
-      err s
-
-
-let write_file (abspath : abs_path) (data : string) : (unit, string) result =
-  let open ResultMonad in
-  try
-    Core.Out_channel.write_all (get_abs_path_string abspath) ~data;
-    return ()
-  with
-  | Sys_error(s) ->
-      err s
-
-
-let is_directory (abspath : abs_path) : bool =
-  try
-    Sys.is_directory (get_abs_path_string abspath)
-  with
-  | Sys_error(_) ->
-      false
-        (* Exceptions are raised when `dirname abspath` is not a directory. *)
-
-
-let file_exists (abspath : abs_path) : bool =
-  Sys.file_exists (get_abs_path_string abspath)
 
 
 let encode_yaml (yaml : Yaml.value) : string =

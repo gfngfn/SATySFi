@@ -19,10 +19,11 @@ let envelope_spec_encoder (spec : envelope_spec) : Yaml.value =
   let { envelope_name; envelope_path; envelope_dependencies; test_only_envelope } = spec in
   `O([
     ("name", `String(envelope_name));
-    ("path", `String(envelope_path));
+    ("path", `String(AbsPath.to_string envelope_path));
     ("dependencies", `A(envelope_dependencies |> List.map envelope_dependency_encoder));
     ("test_only", `Bool(test_only_envelope));
   ])
+
 
 let deps_config_encoder (deps_config : t) : Yaml.value =
   let { envelopes; explicit_dependencies; explicit_test_dependencies } = deps_config in
@@ -36,7 +37,7 @@ let deps_config_encoder (deps_config : t) : Yaml.value =
 let write (abspath_deps_config : abs_path) (deps_config : t) : (unit, config_error) result =
   let yaml = deps_config_encoder deps_config in
   let data = encode_yaml yaml in
-  write_file abspath_deps_config data
+  AbsPathIo.write_file abspath_deps_config data
     |> Result.map_error (fun message ->
       CannotWriteDepsConfig{ message; path = abspath_deps_config }
     )

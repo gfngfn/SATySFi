@@ -1,4 +1,5 @@
 
+open MyUtil
 open LengthInterface
 open GraphicBase
 open SyntaxBase
@@ -10,6 +11,12 @@ exception EvalError of string
 
 let report_dynamic_error msg =
   raise (EvalError(msg))
+
+
+let validate_as_abs_path (s : string) : abs_path =
+  match AbsPath.of_string s with
+  | None          -> report_dynamic_error (Printf.sprintf "not an absolute path: \"%s\"" s)
+  | Some(abspath) -> abspath
 
 
 type normalized_inline_text_element =

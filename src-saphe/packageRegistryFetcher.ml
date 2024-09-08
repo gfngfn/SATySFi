@@ -24,7 +24,7 @@ let main ~(do_update : bool) ~(git_command : string) (absdir_registry_repo : abs
   let abspath_registry_config = Constant.package_registry_config_path ~registry_dir:absdir_registry_repo in
   match registry_remote with
   | GitRegistry{ url; branch } ->
-      if file_exists abspath_registry_config then
+      if AbsPathIo.file_exists abspath_registry_config then
         if do_update then
           let ShellCommand.{ exit_status; command } =
             ShellCommand.run_git_pull ~git_command ~repo_dir:absdir_registry_repo ~url ~branch

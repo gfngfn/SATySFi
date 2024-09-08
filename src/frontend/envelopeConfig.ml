@@ -1,5 +1,6 @@
 
 open MyUtil
+open CommonUtil
 open EnvelopeSystemBase
 open ConfigError
 open ConfigUtil
@@ -10,7 +11,7 @@ type t = envelope_config
 
 let font_spec_decoder : font_spec ConfigDecoder.t =
   let open ConfigDecoder in
-  get "name" string >>= fun font_item_name ->
+  get "name" lowercased_identifier_decoder >>= fun font_item_name ->
   get "math" bool >>= fun used_as_math_font ->
   succeed { font_item_name; used_as_math_font }
 
@@ -29,16 +30,9 @@ let font_file_contents_decoder : font_file_contents ConfigDecoder.t =
   ]
 
 
-let font_spec_decoder : font_spec ConfigDecoder.t =
-  let open ConfigDecoder in
-  get "name" string >>= fun font_item_name ->
-  get_or_else "math" bool false >>= fun used_as_math_font ->
-  succeed { font_item_name; used_as_math_font }
-
-
 let font_file_description_decoder : font_file_description ConfigDecoder.t =
   let open ConfigDecoder in
-  get "path" string >>= fun font_file_path ->
+  get "path" relative_path_decoder >>= fun font_file_path ->
   font_file_contents_decoder >>= fun font_file_contents ->
   succeed @@ {
     font_file_path;
@@ -46,49 +40,43 @@ let font_file_description_decoder : font_file_description ConfigDecoder.t =
   }
 
 
-let cut_module_names (s : string) : string list * string =
-  match List.rev (String.split_on_char '.' s) with
-  | varnm :: modnms_rev -> (List.rev modnms_rev, varnm)
-  | _                   -> assert false (* `String.split_on_char` always returns a non-empty list *)
-
-
-let command_decoder ~(prefix : char) (k : string list -> string -> 'a) : 'a ConfigDecoder.t =
+let command_decoder ~(prefix : string) (k : string list -> string -> 'a) : 'a ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
-  try
-    if Char.equal prefix (String.get s 0) then
-      let s_tail = (String.sub s 1 (String.length s - 1)) in
-      let (modnms, varnm) = cut_module_names s_tail in
+  match parse_long_command ~prefix s with
+  | None ->
+      failure (fun context -> NotACommand{ context; prefix; got = s })
+
+  | Some((modnms, varnm)) ->
       succeed @@ k modnms varnm
-    else
-      failure (fun context -> NotACommand{ context; prefix; string = s })
-  with
-  | Invalid_argument(_) ->
-      failure (fun context -> NotACommand{ context; prefix; string = s })
 
 
 let inline_command_decoder =
-  command_decoder ~prefix:'\\' (fun modules main_without_prefix ->
+  command_decoder ~prefix:"\\" (fun modules main_without_prefix ->
     LongInlineCommand{ modules; main_without_prefix }
   )
 
 
 let block_command_decoder =
-  command_decoder ~prefix:'+' (fun modules main_without_prefix ->
+  command_decoder ~prefix:"+" (fun modules main_without_prefix ->
     LongBlockCommand{ modules; main_without_prefix }
   )
 
 
-let identifier_decoder : long_identifier ConfigDecoder.t =
+let long_identifier_decoder : long_identifier ConfigDecoder.t =
   let open ConfigDecoder in
   string >>= fun s ->
-  let (modnms, varnm) = cut_module_names s in
-  succeed @@ LongIdentifier{ modules = modnms; main = varnm }
+  match parse_long_identifier s with
+  | None ->
+      failure (fun context -> NotAChainedIdentifier{ context; got = s })
+
+  | Some((modnms, varnm)) ->
+      succeed @@ LongIdentifier{ modules = modnms; main = varnm }
 
 
 let markdown_conversion_decoder : markdown_conversion ConfigDecoder.t =
   let open ConfigDecoder in
-  get "document" identifier_decoder >>= fun document ->
+  get "document" long_identifier_decoder >>= fun document ->
   get "paragraph" block_command_decoder >>= fun paragraph ->
   get "hr" block_command_decoder >>= fun hr ->
   get "h1" block_command_decoder >>= fun h1 ->
@@ -154,7 +142,7 @@ let envelope_config_decoder : t ConfigDecoder.t =
 let load (abspath_envelope_config : abs_path) : (t, config_error) result =
   let open ResultMonad in
   let* s =
-    read_file abspath_envelope_config
+    AbsPathIo.read_file abspath_envelope_config
       |> Result.map_error (fun _ -> EnvelopeConfigNotFound(abspath_envelope_config))
   in
   ConfigDecoder.run envelope_config_decoder s

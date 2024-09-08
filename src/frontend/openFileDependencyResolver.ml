@@ -21,15 +21,17 @@ type local_or_envelope =
 
 let resolve_local ~(origin_dir : abs_path) ~(relpath_without_ext : string) ~(extensions : string list) =
   let open ResultMonad in
-  let path_without_ext = Filename.concat (get_abs_path_string origin_dir) relpath_without_ext in
-  let pathcands = extensions |> List.map (fun ext -> path_without_ext ^ ext) in
+  let abspaths_candidates =
+    let path_without_ext = Filename.concat (AbsPath.to_string origin_dir) relpath_without_ext in
+    extensions |> List.map (fun ext -> AbsPath.of_string_exn (path_without_ext ^ ext))
+  in
   match
-    pathcands |> List.find_map (fun pathcand ->
-      if Sys.file_exists pathcand then Some(pathcand) else None
+    abspaths_candidates |> List.find_map (fun abspath_candidate ->
+      if AbsPathIo.file_exists abspath_candidate then Some(abspath_candidate) else None
     )
   with
-  | None          -> err (pathcands |> List.map make_abs_path)
-  | Some(pathstr) -> return @@ make_abs_path pathstr
+  | None          -> err abspaths_candidates
+  | Some(abspath) -> return abspath
 
 
 let get_header (extensions : string list) (absdir_current : abs_path) (headerelem : header_element) : local_or_envelope ok =
@@ -62,7 +64,7 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
       return graph
 
   | None ->
-      let absdir_current = make_abs_path (Filename.dirname (get_abs_path_string abspath)) in
+      let absdir_current = AbsPath.dirname abspath in
       let* utlib =
         Logging.begin_to_parse_file display_config abspath;
         let* utsrc = ParserInterface.process_file abspath |> Result.map_error (fun rng -> FailedToParse(rng)) in
@@ -95,7 +97,7 @@ let rec register_library_file (display_config : Logging.config) (extensions : st
 let register_document_file (display_config : Logging.config) (extensions : string list) (abspath_in : abs_path) : (graph * untyped_document_file) ok =
   let open ResultMonad in
   Logging.begin_to_parse_file display_config abspath_in;
-  let absdir_doc = make_abs_path (Filename.dirname (get_abs_path_string abspath_in)) in
+  let absdir_doc = AbsPath.dirname abspath_in in
   let* utsrc =
     ParserInterface.process_file abspath_in
       |> Result.map_error (fun rng -> FailedToParse(rng))
@@ -132,7 +134,7 @@ let register_markdown_file (display_config : Logging.config) (configenv : Envelo
   let open ResultMonad in
   Logging.begin_to_parse_file display_config abspath_in;
   let* md =
-    match read_file abspath_in with
+    match AbsPathIo.read_file abspath_in with
     | Ok(data)   -> MarkdownParser.decode abspath_in data |> Result.map_error (fun e -> MarkdownError(e))
     | Error(msg) -> err (CannotReadFileOwingToSystem(msg))
   in

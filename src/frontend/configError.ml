@@ -22,10 +22,30 @@ type yaml_error =
       expected_tags : string list;
       got_tags      : string list;
     }
+  | NotAnUppercasedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | NotALowercasedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
   | NotACommand of {
       context : YamlDecoder.context;
-      prefix  : char;
-      string  : string;
+      prefix  : string;
+      got     : string;
+    }
+  | NotAChainedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | NotAnAbsolutePath of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | NotARelativePath of {
+      context : YamlDecoder.context;
+      got     : string;
     }
 [@@deriving show { with_path = false }]
 
@@ -71,7 +91,6 @@ type config_error =
       depended  : envelope_name;
     }
   | CyclicEnvelopeDependency of (envelope_name * untyped_envelope) cycle
-  | LibraryRootConfigNotFoundIn of lib_path * abs_path list
   | LocalFileNotFound of {
       relative   : string;
       candidates : abs_path list;
@@ -87,6 +106,10 @@ type config_error =
   | NoMarkdownConversion
   | MarkdownError             of MarkdownParser.error
   | CannotReadDirectory of {
+      path    : abs_path;
+      message : string;
+    }
+  | CannotOutputResult of {
       path    : abs_path;
       message : string;
     }

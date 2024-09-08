@@ -645,8 +645,23 @@ let make_yaml_error_message : yaml_error -> line list = function
         NormalLine(Printf.sprintf "%s" (show_yaml_context yctx));
       ]
 
-  | NotACommand{ context = yctx; prefix = _; string = s } ->
+  | NotAnUppercasedIdentifier{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not an uppercased identifier: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotALowercasedIdentifier{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not a lowercased identifier: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotACommand{ context = yctx; prefix = _; got = s } ->
       [ NormalLine(Printf.sprintf "not a command: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotAChainedIdentifier{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not a long identifier: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotAnAbsolutePath{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not an absolute path: '%s' %s" s (show_yaml_context yctx)) ]
+
+  | NotARelativePath{ context = yctx; got = s } ->
+      [ NormalLine(Printf.sprintf "not a relative path: '%s' %s" s (show_yaml_context yctx)) ]
 
 
 let make_config_error_message (display_config : Logging.config) : config_error -> string = function
@@ -658,7 +673,7 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | NotALibraryFile(abspath) ->
       make_error_message Typechecker [
         NormalLine("the following file is expected to be a library file, but is not:");
-        DisplayLine(get_abs_path_string abspath);
+        DisplayLine(Logging.show_path display_config abspath);
       ]
 
   | NotADocumentFile(abspath_in, ty) ->
@@ -684,8 +699,8 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | FileModuleNameConflict(modnm, abspath1, abspath2) ->
       make_error_message Interface [
         NormalLine(Printf.sprintf "more than one file defines module '%s':" modnm);
-        DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath1));
-        DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath2));
+        DisplayLine(Printf.sprintf "- %s" (Logging.show_path display_config abspath1));
+        DisplayLine(Printf.sprintf "- %s" (Logging.show_path display_config abspath2));
       ]
 
   | NoMainModule(modnm) ->
@@ -710,7 +725,7 @@ let make_config_error_message (display_config : Logging.config) : config_error -
       in
       make_error_message Interface (
         (NormalLine("cyclic dependency detected:")) ::
-          (pairs |> List.map (fun (abspath, _) -> DisplayLine(get_abs_path_string abspath)))
+          (pairs |> List.map (fun (abspath, _) -> DisplayLine(Logging.show_path display_config abspath)))
       )
 
   | CannotReadFileOwingToSystem(msg) ->
@@ -720,13 +735,13 @@ let make_config_error_message (display_config : Logging.config) : config_error -
       ]
 
   | LibraryContainsWholeReturnValue(abspath) ->
-      let fname = get_abs_path_string abspath in
+      let fname = Logging.show_path display_config abspath in
       make_error_message Interface [
         NormalLine(Printf.sprintf "file '%s' is not a library; it has a return value." fname);
       ]
 
   | DocumentLacksWholeReturnValue(abspath) ->
-      let fname = get_abs_path_string abspath in
+      let fname = Logging.show_path display_config abspath in
       make_error_message Interface [
         NormalLine(Printf.sprintf "file '%s' is not a document; it lacks a return value." fname);
       ]
@@ -777,21 +792,10 @@ let make_config_error_message (display_config : Logging.config) : config_error -
       make_error_message Interface
         (NormalLine("the following envelopes are cyclic:") :: lines)
 
-  | LibraryRootConfigNotFoundIn(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      make_error_message Interface (List.concat [
-        [ NormalLine(Printf.sprintf "cannot find a library root config '%s'. candidates:" (get_lib_path_string libpath)) ];
-        lines;
-      ])
-
   | LocalFileNotFound{ relative; candidates } ->
       let lines =
         candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
+          DisplayLine(Printf.sprintf "- %s" (Logging.show_path display_config abspath))
         )
       in
       make_error_message Interface
@@ -800,37 +804,37 @@ let make_config_error_message (display_config : Logging.config) : config_error -
   | DepsConfigNotFound(abspath_deps_config) ->
       make_error_message Interface [
         NormalLine("cannot find a deps config at:");
-        DisplayLine(get_abs_path_string abspath_deps_config);
+        DisplayLine(Logging.show_path display_config abspath_deps_config);
       ]
 
   | DepsConfigError(abspath_deps_config, e) ->
       make_error_message Interface (List.append [
         NormalLine("failed to load a deps config:");
-        DisplayLine(get_abs_path_string abspath_deps_config);
+        DisplayLine(Logging.show_path display_config abspath_deps_config);
       ] (make_yaml_error_message e))
 
   | EnvelopeConfigNotFound(abspath_envelope_config) ->
       make_error_message Interface [
         NormalLine("cannot find an envelope config at:");
-        DisplayLine(get_abs_path_string abspath_envelope_config);
+        DisplayLine(Logging.show_path display_config abspath_envelope_config);
       ]
 
   | EnvelopeConfigError(abspath_envelope_config, e) ->
       make_error_message Interface (List.append [
         NormalLine("failed to load an envelope config:");
-        DisplayLine(get_abs_path_string abspath_envelope_config);
+        DisplayLine(Logging.show_path display_config abspath_envelope_config);
       ] (make_yaml_error_message e))
 
   | DumpFileError(abspath_dump, e) ->
       make_error_message Interface (List.append [
         NormalLine("failed to load a dump file (just removing it will remedy this):");
-        DisplayLine(get_abs_path_string abspath_dump);
+        DisplayLine(Logging.show_path display_config abspath_dump);
       ] (make_yaml_error_message e))
 
   | CannotWriteDumpFile(abspath_dump) ->
       make_error_message Interface [
         NormalLine("cannot write a dump file:");
-        DisplayLine(get_abs_path_string abspath_dump);
+        DisplayLine(Logging.show_path display_config abspath_dump);
       ]
 
   | DependedEnvelopeNotFound(envelope_name) ->
@@ -864,7 +868,13 @@ let make_config_error_message (display_config : Logging.config) : config_error -
 
   | CannotReadDirectory{ path; message } ->
       make_error_message Interface [
-        NormalLine(Printf.sprintf "cannot read directory '%s':" (get_abs_path_string path));
+        NormalLine(Printf.sprintf "cannot read directory '%s':" (Logging.show_path display_config path));
+        DisplayLine(message);
+      ]
+
+  | CannotOutputResult{ path; message } ->
+      make_error_message Interface [
+        NormalLine(Printf.sprintf "cannot output the final result '%s':" (Logging.show_path display_config path));
         DisplayLine(message);
       ]
 
@@ -903,14 +913,6 @@ let make_font_error_message (display_config : Logging.config) = function
         NormalLine(Printf.sprintf "the font file '%s' (used with index %d) is not a collection." fname index);
       ]
 
-  | CannotFindLibraryFileAsToFont(libpath, candidates) ->
-      let lines =
-        candidates |> List.map (fun abspath ->
-          DisplayLine(Printf.sprintf "- %s" (get_abs_path_string abspath))
-        )
-      in
-      (NormalLine(Printf.sprintf "cannot find '%s'. candidates:" (get_lib_path_string libpath)) :: lines)
-
   | NoMathTable(abspath) ->
       let fname = Logging.show_path display_config abspath in
       [
@@ -936,6 +938,12 @@ let make_font_error_message (display_config : Logging.config) = function
         NormalLine(Printf.sprintf "font file '%s' has %d elements." fname num_elements);
       ]
 
+  | UnsupportedNoLangSys ->
+      [ NormalLine("unsupported: no LangSys") ]
+
+  | UnsupportedCidToGidMapOtherThanIdentity ->
+      [ NormalLine("unsupported: /CIDToGIDMap other than /Identity") ]
+
 
 let error_log_environment (display_config : Logging.config) (suspended : unit -> ('a, config_error) result) : ('a, config_error) result =
   let report_error kind lines =
@@ -944,12 +952,6 @@ let error_log_environment (display_config : Logging.config) (suspended : unit ->
   try
     suspended ()
   with
-  | RemainsToBeImplemented(msg) ->
-      report_error Interface [
-        NormalLine("remains to be supported:");
-        DisplayLine(msg);
-      ]
-
   | LoadHyph.InvalidPatternElement(rng) ->
       report_error System [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));

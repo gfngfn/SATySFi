@@ -29,7 +29,7 @@ module SolverInput = struct
           Format.fprintf ppf "target"
 
       | LocalFixedRole{ absolute_path; _ } ->
-          Format.fprintf ppf "local '%s'" (get_abs_path_string absolute_path)
+          Format.fprintf ppf "local '%s'" (AbsPath.to_string absolute_path)
 
       | RegisteredRole{ registered_package_id; _ } ->
           let RegisteredPackageId.{ package_name; _ } = registered_package_id in
@@ -135,7 +135,7 @@ module SolverInput = struct
         Format.fprintf ppf "target"
 
     | LocalFixedImpl{ absolute_path; _ } ->
-        Format.fprintf ppf "local impl '%s'" (get_abs_path_string absolute_path)
+        Format.fprintf ppf "local impl '%s'" (AbsPath.to_string absolute_path)
 
     | Impl{ package_name; package_version; _ } ->
         Format.fprintf ppf "%s %s" package_name (SemanticVersion.to_string package_version)
@@ -316,7 +316,7 @@ module SolverInput = struct
         [ "target" ]
 
     | LocalFixedImpl{ absolute_path; _ } ->
-        [ Printf.sprintf "local/%s" (get_abs_path_string absolute_path) ]
+        [ Printf.sprintf "local/%s" (AbsPath.to_string absolute_path) ]
 
     | Impl{ package_name; package_version; _ } ->
         let compat = SemanticVersion.get_compatibility_unit package_version in

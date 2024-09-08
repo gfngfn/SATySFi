@@ -19,7 +19,7 @@ let registry_config_decoder : t ConfigDecoder.t =
 let load (abspath_registry_config : abs_path) : t ok =
   let open ResultMonad in
   let* s =
-    read_file abspath_registry_config
+    AbsPathIo.read_file abspath_registry_config
       |> Result.map_error (fun _ -> RegistryConfigNotFound(abspath_registry_config))
   in
   ConfigDecoder.run registry_config_decoder s

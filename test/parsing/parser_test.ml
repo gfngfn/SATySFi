@@ -1,5 +1,4 @@
 open Core
-open MyUtil
 open Main__
 
 let () =
@@ -22,7 +21,7 @@ let () =
     In_channel.with_file fname
       ~f:(fun in_ch ->
           Lexing.from_channel in_ch
-          |> ParserInterface.process_common (make_abs_path (Filename.concat "/path/to" fname))
+          |> ParserInterface.process_common (AbsPath.of_string_exn (Filename.concat "/path/to" fname))
         )
     |> proj (argv.(0))
     |> [%derive.show: Types.untyped_source_file]

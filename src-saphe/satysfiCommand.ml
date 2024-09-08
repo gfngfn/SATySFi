@@ -47,8 +47,8 @@ let build_package
   let args_mandatory =
     [
       "satysfi"; "build"; "package";
-      get_abs_path_string abspath_envelope_config;
-      "--deps"; get_abs_path_string abspath_deps_config;
+      AbsPath.to_string abspath_envelope_config;
+      "--deps"; AbsPath.to_string abspath_deps_config;
       "--full-path"; (* TODO: refine this *)
     ]
   in
@@ -70,10 +70,10 @@ let build_document
   let args_mandatory =
     [
       "satysfi"; "build"; "document";
-      get_abs_path_string abspath_doc;
-      "--output"; get_abs_path_string abspath_out;
-      "--dump"; get_abs_path_string abspath_dump;
-      "--deps"; get_abs_path_string abspath_deps_config;
+      AbsPath.to_string abspath_doc;
+      "--output"; AbsPath.to_string abspath_out;
+      "--dump"; AbsPath.to_string abspath_dump;
+      "--deps"; AbsPath.to_string abspath_deps_config;
       "--full-path"; (* TODO: refine this *)
     ]
   in
@@ -92,8 +92,8 @@ let test_package
   let args_mandatory =
     [
       "satysfi"; "test"; "package";
-      get_abs_path_string abspath_envelope_config;
-      "--deps"; get_abs_path_string abspath_deps_config;
+      AbsPath.to_string abspath_envelope_config;
+      "--deps"; AbsPath.to_string abspath_deps_config;
       "--full-path"; (* TODO: refine this *)
     ]
   in
