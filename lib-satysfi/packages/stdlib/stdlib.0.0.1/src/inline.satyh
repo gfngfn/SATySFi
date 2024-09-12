@@ -18,6 +18,12 @@ module Inline :> sig
   val embed-block-breakable : context -> block-boxes -> inline-boxes
   val graphics-fixed : length -> length -> length -> (point -> graphics) -> inline-boxes
   val graphics-outer : length -> length -> (length -> point -> graphics) -> inline-boxes
+  val embed-block-top : context -> length -> (context -> block-boxes) -> inline-boxes
+  val embed-block-bottom : context -> length -> (context -> block-boxes) -> inline-boxes
+  val line-stack-top : list inline-boxes -> inline-boxes
+  val line-stack-bottom : list inline-boxes -> inline-boxes
+  val embed-string : string -> inline-text
+  val embed-math : context -> math-boxes -> inline-boxes
   val no-break : inline-boxes -> inline-boxes
   val mandatory-break : context -> inline-boxes
   val omit-skip-after : inline-boxes
@@ -66,6 +72,18 @@ end = struct
   val graphics-fixed = inline-graphics %PRIMITIVE
 
   val graphics-outer = inline-graphics-outer %PRIMITIVE
+
+  val embed-block-top = embed-block-top %PRIMITIVE
+
+  val embed-block-bottom = embed-block-bottom %PRIMITIVE
+
+  val line-stack-top = line-stack-top %PRIMITIVE
+
+  val line-stack-bottom = line-stack-bottom %PRIMITIVE
+
+  val embed-string = embed-string %PRIMITIVE
+
+  val embed-math = embed-math %PRIMITIVE
 
   val no-break ib =
     inline-frame-outer (0pt, 0pt, 0pt, 0pt) Deco.empty ib

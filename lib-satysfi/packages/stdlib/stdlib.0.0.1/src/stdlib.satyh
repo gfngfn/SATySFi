@@ -14,6 +14,7 @@ use Point
 use Logo
 use Inline
 use Block
+use Context
 use Ref
 use Color
 use Path
@@ -209,6 +210,12 @@ module Stdlib :> sig
     val embed-block-breakable : context -> block-boxes -> inline-boxes
     val graphics-fixed : length -> length -> length -> (point -> graphics) -> inline-boxes
     val graphics-outer : length -> length -> (length -> point -> graphics) -> inline-boxes
+    val embed-block-top : context -> length -> (context -> block-boxes) -> inline-boxes
+    val embed-block-bottom : context -> length -> (context -> block-boxes) -> inline-boxes
+    val line-stack-top : list inline-boxes -> inline-boxes
+    val line-stack-bottom : list inline-boxes -> inline-boxes
+    val embed-string : string -> inline-text
+    val embed-math : context -> math-boxes -> inline-boxes
     val no-break : inline-boxes -> inline-boxes
     val mandatory-break : context -> inline-boxes
     val omit-skip-after : inline-boxes
@@ -221,12 +228,44 @@ module Stdlib :> sig
   module Block : sig
     val nil : block-boxes
     val concat : list block-boxes -> block-boxes
+    val clear-page : block-boxes
+    val skip : length -> block-boxes
+    val line-break : bool -> bool -> context -> inline-boxes -> block-boxes
     val form-paragraph : context -> inline-boxes -> block-boxes
     val +skip : block [length]
-    val \skip : inline [length]
     val +clear-page : block []
     val +ragged-right : block [inline-text]
     val +centering : block [inline-text]
+    val \skip : inline [length]
+  end
+  module Context : sig
+    val initial : length -> inline [math-text] -> context
+    val set-math-command : inline [math-text] -> context -> context
+    val set-code-text-command : inline [string] -> context -> context
+    val set-hyphenation-dictionary : hyphenation -> context -> context
+    val set-unicode-char-database : unicode-char-database -> context -> context
+    val set-hyphen-min : int -> int -> context -> context
+    val set-min-gap-of-lines : length -> context -> context
+    val set-space-ratio : float -> float -> float -> context -> context
+    val set-adjacent-stretch-ratio : float -> context -> context
+    val get-math-axis-height-ratio : context -> float
+    val set-paragraph-margin : length -> length -> context -> context
+    val set-min-paragraph-ascender-and-descender : length -> length -> context -> context
+    val set-font-size : length -> context -> context
+    val get-font-size : context -> length
+    val set-text-color : color -> context -> context
+    val get-text-color : context -> color
+    val set-leading : length -> context -> context
+    val get-text-width : context -> length
+    val set-manual-rising : length -> context -> context
+    val set-hyphen-penalty : int -> context -> context
+    val set-math-variant-char : int -> (math-char-class -> int) -> context -> context
+    val set-math-char : int -> int -> math-class -> context -> context
+    val set-math-char-class : math-char-class -> context -> context
+    val get-math-char-class : context -> math-char-class
+    val set-word-break-penalty : int -> context -> context
+    val set-every-word-break : inline-boxes -> inline-boxes -> context -> context
+    val get-every-word-break : context -> inline-boxes * inline-boxes
   end
   module Ref : sig
     val persistent ~increment : ref int -> unit
@@ -265,6 +304,7 @@ module Stdlib :> sig
     val shift : length * length -> path -> path
     val rotate : point -> float -> path -> path
     val scale : point -> float -> float -> path -> path
+    val get-bounding-box : path -> point * point
   end
   module Graphics : sig
     val overlay : list graphics -> graphics
@@ -335,6 +375,7 @@ end = struct
   module Logo = Logo
   module Inline = Inline
   module Block = Block
+  module Context = Context
   module Ref = Ref
   module Color = Color
   module Path = Path
