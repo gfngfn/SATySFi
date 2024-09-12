@@ -22,6 +22,7 @@ use PaperSize
 use Deco
 use HDecoSet
 use VDecoSet
+use CrossRef
 
 module Stdlib :> sig
   % Basic
@@ -310,6 +311,13 @@ module Stdlib :> sig
     val paper : deco-set
     val quote-round : length -> length -> color -> deco-set
   end
+  module CrossRef : sig
+    type key = string
+    type data = string
+    val register : key -> data -> unit
+    val get : key -> option data
+    val probe : key -> option data
+  end
 end = struct
   include Basic
   module Int = Int
@@ -335,4 +343,5 @@ end = struct
   module Deco = Deco
   module HDecoSet = HDecoSet
   module VDecoSet = VDecoSet
+  module CrossRef = CrossRef
 end

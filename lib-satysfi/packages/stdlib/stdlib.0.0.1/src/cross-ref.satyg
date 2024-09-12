@@ -1,0 +1,19 @@
+module CrossRef :> sig
+  type key = string
+  type data = string
+  val register : key -> data -> unit
+  val get : key -> option data
+  val probe : key -> option data
+end = struct
+
+  type key = string
+
+  type data = string
+
+  val register = register-cross-reference %PRIMITIVE
+
+  val get = get-cross-reference %PRIMITIVE
+
+  val probe = probe-cross-reference %PRIMITIVE
+
+end
