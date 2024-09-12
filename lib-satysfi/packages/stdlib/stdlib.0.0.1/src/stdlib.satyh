@@ -1,6 +1,7 @@
 use Basic
 use Int
 use Float
+use String
 use Ordering
 use Option
 use List
@@ -28,6 +29,7 @@ module Stdlib :> sig
   type vector = length * length
   type point = length * length
   type paren = length -> length -> context -> inline-boxes * (length -> length)
+  type paddings = length * length * length * length
   signature Ord = sig
     type t :: o
     val compare : t -> t -> ordering
@@ -49,10 +51,30 @@ module Stdlib :> sig
     val persistent ~min : float -> float -> float
     val persistent ~pi : float
   end
+  module String : sig
+    type t = string
+    val ~lift : string -> code string
+    val persistent ~compare : string -> string -> ordering
+    val persistent ~equal : string -> string -> bool
+    val persistent ~append : string -> string -> string
+    val persistent ~length : string -> int
+    val persistent ~byte-length : string -> int
+    val persistent ~sub : string -> int -> int -> string
+    val persistent ~sub-bytes : string -> int -> int -> string
+    val persistent ~to-scalar-values : string -> list int
+    val persistent ~from-scalar-values : list int -> string
+    val persistent ~normalize-to-nfc : string -> string
+    val persistent ~normalize-to-nfd : string -> string
+    val persistent ~split-into-grapheme-clusters : string -> list string
+    val persistent ~empty : string
+    val persistent ~split-into-lines : string -> list (int * string)
+  end
   module Ordering : sig
     type t = ordering
-    val equal : ordering -> ordering -> bool
-    val show : ordering -> string
+    val ~lift : ordering -> code ordering
+    val persistent ~compare : ordering -> ordering -> ordering
+    val persistent ~equal : ordering -> ordering -> bool
+    val persistent ~show : ordering -> string
   end
   module Option : sig
     type t 'a = option 'a
@@ -171,20 +193,39 @@ module Stdlib :> sig
     val \TeX : inline []
   end
   module Inline : sig
+    val nil : inline-boxes
+    val concat : list inline-boxes -> inline-boxes
+    val fil : inline-boxes
+    val get-natural-metrics : inline-boxes -> length * length * length
     val get-natural-advance : inline-boxes -> length
+    val skip : length -> inline-boxes
     val kern : length -> inline-boxes
-    val \skip : inline [length]
+    val glue : length -> length -> length -> inline-boxes
+    val frame-inner : paddings -> deco -> inline-boxes -> inline-boxes
+    val frame-outer : paddings -> deco -> inline-boxes -> inline-boxes
+    val frame-fixed : length -> paddings -> deco -> inline-boxes -> inline-boxes
+    val frame-breakable : paddings -> deco-set -> inline-boxes -> inline-boxes
+    val embed-block-breakable : context -> block-boxes -> inline-boxes
+    val graphics-fixed : length -> length -> length -> (point -> graphics) -> inline-boxes
+    val graphics-outer : length -> length -> (length -> point -> graphics) -> inline-boxes
     val no-break : inline-boxes -> inline-boxes
+    val mandatory-break : context -> inline-boxes
+    val omit-skip-after : inline-boxes
+    val \skip : inline [length]
     val \no-break : inline [inline-text]
     val \fil : inline []
     val \fil-both : inline []
-    val mandatory-break : context -> inline-boxes
     val \mandatory-break : inline []
   end
   module Block : sig
+    val nil : block-boxes
+    val concat : list block-boxes -> block-boxes
     val form-paragraph : context -> inline-boxes -> block-boxes
     val +skip : block [length]
+    val \skip : inline [length]
     val +clear-page : block []
+    val +ragged-right : block [inline-text]
+    val +centering : block [inline-text]
   end
   module Ref : sig
     val persistent ~increment : ref int -> unit
@@ -273,6 +314,7 @@ end = struct
   include Basic
   module Int = Int
   module Float = Float
+  module String = String
   module Ordering = Ordering
   module Option = Option
   module List = List
