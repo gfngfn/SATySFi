@@ -18,6 +18,7 @@ module Path :> sig
   val shift : length * length -> path -> path
   val rotate : point -> float -> path -> path
   val scale : point -> float -> float -> path -> path
+  val get-bounding-box : path -> point * point
 end = struct
 
   val rectangle (x1, y1) (x2, y2) =
@@ -118,11 +119,9 @@ end = struct
       |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
       |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
 
-  val linear-transform =
-    linear-transform-path
+  val linear-transform = linear-transform-path %PRIMITIVE
 
-  val shift =
-    shift-path
+  val shift = shift-path %PRIMITIVE
 
   val rotate centpt angle path =
     let (centx, centy) = centpt in
@@ -136,5 +135,7 @@ end = struct
     path |> shift (0pt -' centx, 0pt -' centy)
          |> linear-transform scalex 0. 0. scaley
          |> shift centpt
+
+  val get-bounding-box = get-path-bbox %PRIMITIVE
 
 end

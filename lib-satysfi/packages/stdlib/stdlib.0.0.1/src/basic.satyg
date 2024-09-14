@@ -8,6 +8,8 @@ module Basic = struct
 
   type paren = length -> length -> context -> inline-boxes * (length -> length)
 
+  type paddings = length * length * length * length
+
   signature Ord = sig
     type t :: o
     val compare : t -> t -> ordering

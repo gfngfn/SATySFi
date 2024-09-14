@@ -19,14 +19,11 @@ module Graphics :> sig
   val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics
 end = struct
 
-  val overlay =
-    unite-graphics
+  val overlay = unite-graphics %PRIMITIVE
 
-  val shift =
-    shift-graphics
+  val shift = shift-graphics %PRIMITIVE
 
-  val linear-transform =
-    linear-transform-graphics
+  val linear-transform = linear-transform-graphics %PRIMITIVE
 
   val rotate centpt angle gr =
     let (centx, centy) = centpt in

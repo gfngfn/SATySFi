@@ -1,50 +1,111 @@
+use open Basic
 use List
+use Deco
 
 module Inline :> sig
-  val get-natural-advance : inline-boxes -> length
   val nil : inline-boxes
   val concat : list inline-boxes -> inline-boxes
+  val fil : inline-boxes
+  val get-natural-metrics : inline-boxes -> length * length * length
+  val get-natural-advance : inline-boxes -> length
+  val skip : length -> inline-boxes
   val kern : length -> inline-boxes
-  val \skip : inline [length]
+  val glue : length -> length -> length -> inline-boxes
+  val frame-inner : paddings -> deco -> inline-boxes -> inline-boxes
+  val frame-outer : paddings -> deco -> inline-boxes -> inline-boxes
+  val frame-fixed : length -> paddings -> deco -> inline-boxes -> inline-boxes
+  val frame-breakable : paddings -> deco-set -> inline-boxes -> inline-boxes
+  val embed-block-breakable : context -> block-boxes -> inline-boxes
+  val graphics-fixed : length -> length -> length -> (point -> graphics) -> inline-boxes
+  val graphics-outer : length -> length -> (length -> point -> graphics) -> inline-boxes
+  val embed-block-top : context -> length -> (context -> block-boxes) -> inline-boxes
+  val embed-block-bottom : context -> length -> (context -> block-boxes) -> inline-boxes
+  val line-stack-top : list inline-boxes -> inline-boxes
+  val line-stack-bottom : list inline-boxes -> inline-boxes
+  val embed-string : string -> inline-text
+  val embed-math : context -> math-boxes -> inline-boxes
   val no-break : inline-boxes -> inline-boxes
+  val mandatory-break : context -> inline-boxes
+  val omit-skip-after : inline-boxes
+  val \skip : inline [length]
   val \no-break : inline [inline-text]
   val \fil : inline []
   val \fil-both : inline []
-  val mandatory-break : context -> inline-boxes
   val \mandatory-break : inline []
 end = struct
+
+  val nil = inline-nil %PRIMITIVE
+
+  val concat ibs =
+    List.fold ( ++ ) nil ibs
+
+  val fil = inline-fil %PRIMITIVE
+
+  val get-natural-metrics = get-natural-metrics %PRIMITIVE
 
   val get-natural-advance ib =
     let (wid, _, _) = get-natural-metrics ib in
     wid
 
-  val nil =
-    inline-nil
+  val skip = inline-skip %PRIMITIVE
 
-  val concat ibs =
-    List.fold ( ++ ) nil ibs
+  val kern len =
+    skip (0pt -' len)
 
-  val kern len = inline-skip (0pt -' len)
+  val glue = inline-glue %PRIMITIVE
 
-  val inline ctx \skip len =
-    inline-skip len
-
-  val no-break ib =
-    inline-frame-outer (0pt, 0pt, 0pt, 0pt) (fun _ _ _ _ -> unite-graphics []) ib
-
-  val inline ctx \no-break inner =
-    no-break (read-inline ctx inner)
-
-  val inline ctx \fil =
-    discretionary 0 inline-nil inline-fil inline-nil
-
-  val inline ctx \fil-both =
-    discretionary 0 inline-nil inline-fil inline-fil
+  val discretionary = discretionary %PRIMITIVE
 
   val mandatory-break ctx =
-    discretionary 0 (inline-skip (get-text-width ctx *' 2.)) inline-fil inline-nil
+    discretionary 0 (skip (get-text-width ctx *' 2.)) fil nil
+
+  val frame-inner = inline-frame-inner %PRIMITIVE
+
+  val frame-outer = inline-frame-outer %PRIMITIVE
+
+  val frame-fixed = inline-frame-fixed %PRIMITIVE
+
+  val frame-breakable = inline-frame-breakable %PRIMITIVE
+
+  val embed-block-breakable = embed-block-breakable %PRIMITIVE
+
+  val graphics-fixed = inline-graphics %PRIMITIVE
+
+  val graphics-outer = inline-graphics-outer %PRIMITIVE
+
+  val embed-block-top = embed-block-top %PRIMITIVE
+
+  val embed-block-bottom = embed-block-bottom %PRIMITIVE
+
+  val line-stack-top = line-stack-top %PRIMITIVE
+
+  val line-stack-bottom = line-stack-bottom %PRIMITIVE
+
+  val embed-string = embed-string %PRIMITIVE
+
+  val embed-math = embed-math %PRIMITIVE
+
+  val no-break ib =
+    inline-frame-outer (0pt, 0pt, 0pt, 0pt) Deco.empty ib
+
+  val omit-skip-after = omit-skip-after %PRIMITIVE
+
+  val inline ctx \skip len =
+    skip len
+
+  val inline ctx \kern len =
+    kern len
+
+  val inline ctx \fil =
+    discretionary 0 nil fil nil
+
+  val inline ctx \fil-both =
+    discretionary 0 nil fil fil
 
   val inline ctx \mandatory-break =
     mandatory-break ctx
+
+  val inline ctx \no-break inner =
+    no-break (read-inline ctx inner)
 
 end
