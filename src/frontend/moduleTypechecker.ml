@@ -25,47 +25,6 @@ let abstraction_list (evids : EvalVarID.t list) (ast : abstract_tree) : abstract
   List.fold_right abstraction evids ast
 
 
-let decode_manual_row_base_kind (mnrbkd : manual_row_base_kind) : row_base_kind ok =
-  let open ResultMonad in
-  mnrbkd |> foldM (fun labset (rng, label) ->
-    if labset |> LabelSet.mem label then
-      err (LabelUsedMoreThanOnce(rng, label))
-    else
-      return (labset |> LabelSet.add label)
-  ) LabelSet.empty
-
-
-let add_type_parameters (lev : Level.t) (tyvars : (type_variable_name ranged) list) (typarammap : type_parameter_map) : (type_parameter_map * BoundID.t list) ok =
-  let open ResultMonad in
-  let* (typarammap, bidacc) =
-    tyvars |> foldM (fun (typarammap, bidacc) (rng, tyvarnm) ->
-      if typarammap |> TypeParameterMap.mem tyvarnm then
-        err (TypeParameterBoundMoreThanOnce(rng, tyvarnm))
-      else
-        let mbbid = MustBeBoundID.fresh lev in
-        let bid = MustBeBoundID.to_bound_id mbbid in
-        return (typarammap |> TypeParameterMap.add tyvarnm mbbid, Alist.extend bidacc bid)
-    ) (typarammap, Alist.empty)
-  in
-  return (typarammap, Alist.to_list bidacc)
-
-
-let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * manual_row_base_kind) list) (rowparammap : row_parameter_map) : (row_parameter_map * BoundRowID.t list) ok =
-  let open ResultMonad in
-  let* (rowparammap, bridacc) =
-    rowvars |> foldM (fun (rowparammap, bridacc) ((rng, rowvarnm), mnbrkd) ->
-      if rowparammap |> RowParameterMap.mem rowvarnm then
-        err (LabelUsedMoreThanOnce(rng, rowvarnm))
-      else
-        decode_manual_row_base_kind mnbrkd >>= fun labset ->
-        let mbbrid = MustBeBoundRowID.fresh lev labset in
-        let brid = MustBeBoundRowID.to_bound_id mbbrid in
-        return (rowparammap |> RowParameterMap.add rowvarnm mbbrid, Alist.extend bridacc brid)
-    ) (rowparammap, Alist.empty)
-  in
-  return (rowparammap, Alist.to_list bridacc)
-
-
 let make_constructor_branch_map (pre : pre) (tyenv : Typeenv.t) (utctorbrs : constructor_branch list) : constructor_branch_map ok =
   let open ResultMonad in
   utctorbrs |> foldM (fun ctormap utctorbr ->
@@ -542,7 +501,7 @@ and typecheck_declaration_list (config : typecheck_config) (tyenv : Typeenv.t) (
 and typecheck_declaration (config : typecheck_config) (tyenv : Typeenv.t) (utdecl : untyped_declaration) : (StructSig.t abstracted) ok =
   let open ResultMonad in
   match utdecl with
-  | UTDeclValue(stage, (_, x), (typarams, rowparams), mty) ->
+  | UTDeclValue(stage, (_, x), ManualQuantifier(typarams, rowparams), mty) ->
       let* (typarammap, _) = TypeParameterMap.empty |> add_type_parameters (Level.succ Level.bottom) typarams in
       let* (rowparammap, _) = RowParameterMap.empty |> add_row_parameters (Level.succ Level.bottom) rowparams in
       let pre =
@@ -759,7 +718,7 @@ and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (
 
 and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding list * StructSig.t abstracted) ok =
   let open ResultMonad in
-  let (_, utbindmain) = utbind in
+  let (rng, utbindmain) = utbind in
   match utbindmain with
   | UTBindValue(attrs, stage, valbind) ->
       let pre =
@@ -778,7 +737,8 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
       in
       if valattr.ValueAttribute.is_test then
         match (stage, valbind) with
-        | (Stage1, UTNonRec(ident, utast1)) ->
+        | (Stage1, UTNonRec(ident, mnquant, utast1)) ->
+            let* () = check_empty_manual_quantifier rng mnquant in
             let (_, test_name) = ident in
             let ty_expected =
               let ty_dom = (Range.dummy "test-dom", BaseType(UnitType)) in
@@ -789,12 +749,19 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
             return ([ BindTest(evid, test_name, e1) ], (OpaqueIDMap.empty, StructSig.empty))
 
         | _ ->
-            let rng = Range.dummy "TODO (error): typecheck_binding, test" in
             err @@ TestMustBeStage1NonRec(rng)
       else
         let* (rec_or_nonrecs, ssig) =
           match valbind with
-          | UTNonRec(ident, utast1) ->
+          | UTNonRec(ident, ManualQuantifier(typarams, rowparams), utast1) ->
+              let* (typarammap, _) = TypeParameterMap.empty |> add_type_parameters (Level.succ Level.bottom) typarams in
+              let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ Level.bottom) rowparams in
+              let pre =
+                { pre with
+                  type_parameters = typarammap;
+                  row_parameters  = rowparammap;
+                }
+              in
               let* (evid, e1, pty) = typecheck_nonrec pre tyenv ident utast1 None in
               let ssig =
                 let (_, varnm) = ident in

@@ -404,7 +404,7 @@ and untyped_declaration_main =
   | UTDeclMacro      of macro_name ranged * manual_macro_type ranged
 
 and manual_quantifier =
-  (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
+  ManualQuantifier of (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
 
 and manual_macro_type =
   | MInlineMacroType of manual_macro_parameter_type list
@@ -423,7 +423,7 @@ and untyped_rec_or_nonrec =
   | UTMutable of untyped_let_mutable_binding
 
 and untyped_let_binding =
-  var_name ranged * untyped_abstract_tree
+  var_name ranged * manual_quantifier * untyped_abstract_tree
 
 and untyped_let_mutable_binding =
   var_name ranged * untyped_abstract_tree

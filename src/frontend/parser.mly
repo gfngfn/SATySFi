@@ -315,6 +315,7 @@
 %type<Types.manual_row_base_kind> kind_row
 %type<Types.type_variable_name Types.ranged> tyquant
 %type<Types.row_variable_name ranged * Types.manual_row_base_kind> rowquant
+%type<Types.manual_quantifier> quant
 %type<Types.manual_type> typ_app
 %type<Types.manual_type> typ_bot
 %type<Types.untyped_abstract_tree> expr
@@ -482,23 +483,23 @@ bind_value_rec:
       { valbinds }
 ;
 bind_value_nonrec:
-  | ident=bound_identifier; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident=bound_identifier; mnquant=quant; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let curried = curry_lambda_abstraction param_units utast in
-        (ident, curried)
+        (ident, mnquant, curried)
       }
 ;
 bind_inline:
-  | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=BACKSLASH_CMD; mnquant=quant; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
-        (cs,
+        (cs, mnquant,
           make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaInlineCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
             body             = utast;
           }))
       }
-  | cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | cs=BACKSLASH_CMD; mnquant=quant; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
         let varnm_ctx = "%context" in
@@ -507,7 +508,7 @@ bind_inline:
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
           (Range.dummy "read-inline-of-lightweight-let-inline", UTReadInline(utast_ctx, utast))
         in
-        (cs,
+        (cs, mnquant,
           make_standard (Ranged cs) (Ranged utast) (UTLambdaInlineCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
@@ -516,16 +517,16 @@ bind_inline:
       }
 ;
 bind_block:
-  | ident_ctx=LOWER; cs=PLUS_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=PLUS_CMD; mnquant=quant; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
-        (cs,
+        (cs, mnquant,
           make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaBlockCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
             body             = utast;
           }))
       }
-  | cs=PLUS_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | cs=PLUS_CMD; mnquant=quant; param_units=list(param_unit); EXACT_EQ; utast=expr
       {
         let rng_ctx = Range.dummy "context-of-lightweight-let-block" in
         let varnm_ctx = "%context" in
@@ -534,7 +535,7 @@ bind_block:
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
           (Range.dummy "read-block-of-lightweight-let-block", UTReadBlock(utast_ctx, utast))
         in
-        (cs,
+        (cs, mnquant,
           make_standard (Ranged cs) (Ranged utast) (UTLambdaBlockCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
@@ -543,9 +544,9 @@ bind_block:
       }
 ;
 bind_math:
-  | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); scripts_param_opt=option(scripts_param); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=BACKSLASH_CMD; mnquant=quant; param_units=list(param_unit); scripts_param_opt=option(scripts_param); EXACT_EQ; utast=expr
       {
-        (cs,
+        (cs, mnquant,
           make_standard (Ranged cs) (Ranged utast) (UTLambdaMathCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
@@ -647,7 +648,7 @@ decl:
 ;
 quant:
   | tyquants=list(tyquant); rowquants=list(rowquant)
-      { (tyquants, rowquants) }
+      { ManualQuantifier(tyquants, rowquants) }
 ;
 tyquant:
   | tyvar=TYPEVAR
