@@ -69,4 +69,4 @@ type type_error =
   | ValueAttributeError                  of ValueAttribute.error
   | ModuleAttributeError                 of ModuleAttribute.error
   | TestMustBeStage1NonRec               of Range.t
-  | NonemptyManualQuantifier             of Range.t
+  | TestMustBeUnitToUnit                 of Range.t * poly_type

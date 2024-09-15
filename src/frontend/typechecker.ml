@@ -648,7 +648,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       return (PatternMatch(rng, eO, patbrs), beta)
 
   | UTLetIn(UTNonRec(utletbind), utast2) ->
-      let* (varnm, evid, e1, pty1) = typecheck_nonrec pre tyenv utletbind in
+      let* (varnm, pty1, evid, e1) = typecheck_nonrec pre tyenv utletbind in
       let tyenv =
         let ventry =
           {
@@ -1226,7 +1226,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
   return tuples
 
 
-and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : (var_name * EvalVarID.t * abstract_tree * poly_type) ok =
+and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : (var_name * poly_type * EvalVarID.t * abstract_tree) ok =
   let open ResultMonad in
   let
     UTLetBinding{
@@ -1258,7 +1258,7 @@ and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_bi
     (* If `e1` should be typed monomorphically: *)
       TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
   in
-  return (varnm, evid, e1, pty1)
+  return (varnm, pty1, evid, e1)
 
 
 and typecheck_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) : (Typeenv.t * EvalVarID.t * abstract_tree * mono_type) ok =

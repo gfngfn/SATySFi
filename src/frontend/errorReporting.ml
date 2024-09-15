@@ -595,10 +595,11 @@ let make_type_error_message = function
         NormalLine("tests must be stage-1 non-recursive bindings.");
       ]
 
-  | NonemptyManualQuantifier(rng) ->
+  | TestMustBeUnitToUnit(rng, pty) ->
       [
         NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
-        NormalLine("no type/row variable should be bound here.");
+        NormalLine("tests must be of type unit -> unit, but this one has type");
+        DisplayLine(Display.show_poly_type pty);
       ]
 
 

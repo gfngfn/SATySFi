@@ -692,30 +692,6 @@ and typecheck_binding_list (config : typecheck_config) (tyenv : Typeenv.t) (utbi
   return ((quant, ssig), binds)
 
 
-and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utast1 : untyped_abstract_tree) (ty_expected_opt : mono_type option) =
-  let open ResultMonad in
-  let presub = { pre with level = Level.succ pre.level; } in
-  let evid = EvalVarID.fresh ident in
-  let* (e1_raw, ty1) = Typechecker.typecheck presub tyenv utast1 in
-  let e1 = e1_raw in
-  let* () =
-    match ty_expected_opt with
-    | None              -> return ()
-    | Some(ty_expected) -> unify ty1 ty_expected
-  in
-(*
-  let should_be_polymorphic = is_nonexpansive_expression e1 in
-*)
-  let should_be_polymorphic = true in
-    let pty =
-      if should_be_polymorphic then
-        TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
-      else
-        TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
-    in
-  return (evid, e1, pty)
-
-
 and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : untyped_binding) : (binding list * StructSig.t abstracted) ok =
   let open ResultMonad in
   let (rng, utbindmain) = utbind in
@@ -738,25 +714,16 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
       if valattr.ValueAttribute.is_test then
         match (stage, valbind) with
         | (Stage1, UTNonRec(utletbind)) ->
-            let
-              UTLetBinding{
-                identifier  = ident;
-                quantifier  = mnquant;
-                parameters  = param_units;
-                return_type = mntyopt_ret;
-                body        = utast_body;
-              } = utletbind
-            in
-            let utast1 = curry_lambda_abstraction param_units utast_body in (* TODO: use `mntyopt_ret` *)
-            let* () = check_empty_manual_quantifier rng mnquant in
-            let (_, test_name) = ident in
-            let ty_expected =
+            let pty_expected =
               let ty_dom = (Range.dummy "test-dom", BaseType(UnitType)) in
               let ty_cod = (Range.dummy "test-cod", BaseType(UnitType)) in
-              (Range.dummy "test-func", FuncType(RowEmpty, ty_dom, ty_cod))
+              Poly(Range.dummy "test-func", FuncType(RowEmpty, ty_dom, ty_cod))
             in
-            let* (evid, e1, _pty) = typecheck_nonrec pre tyenv ident utast1 (Some(ty_expected)) in
-            return ([ BindTest(evid, test_name, e1) ], (OpaqueIDMap.empty, StructSig.empty))
+            let* (test_name, pty1, evid, e1) = Typechecker.typecheck_nonrec pre tyenv utletbind in
+            if TypeConv.poly_type_equal pty_expected pty1 then
+              return ([ BindTest(evid, test_name, e1) ], (OpaqueIDMap.empty, StructSig.empty))
+            else
+              err @@ TestMustBeUnitToUnit(rng, pty1)
 
         | _ ->
             err @@ TestMustBeStage1NonRec(rng)
@@ -764,30 +731,11 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
         let* (rec_or_nonrecs, ssig) =
           match valbind with
           | UTNonRec(utletbind) ->
-              let
-                UTLetBinding{
-                  identifier  = ident;
-                  quantifier  = ManualQuantifier(typarams, rowparams);
-                  parameters  = param_units;
-                  return_type = _mntyopt_ret;
-                  body        = utast_body;
-                } = utletbind
-              in
-              let utast1 = curry_lambda_abstraction param_units utast_body in (* TODO: use `mntyopt_ret` *)
-              let* (typarammap, _) = pre.type_parameters |> add_type_parameters (Level.succ Level.bottom) typarams in
-              let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ Level.bottom) rowparams in
-              let pre =
-                { pre with
-                  type_parameters = typarammap;
-                  row_parameters  = rowparammap;
-                }
-              in
-              let* (evid, e1, pty) = typecheck_nonrec pre tyenv ident utast1 None in
+              let* (varnm, pty1, evid, e1) = Typechecker.typecheck_nonrec pre tyenv utletbind in
               let ssig =
-                let (_, varnm) = ident in
                 let ventry =
                   {
-                    val_type  = pty;
+                    val_type  = pty1;
                     val_name  = Some(evid);
                     val_stage = pre.stage;
                   }

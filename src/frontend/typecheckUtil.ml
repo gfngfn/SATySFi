@@ -124,13 +124,3 @@ let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * ma
     ) (rowparammap, Alist.empty)
   in
   return (rowparammap, Alist.to_list bridacc)
-
-
-let check_empty_manual_quantifier (rng : Range.t) (mnquant : manual_quantifier) : unit ok =
-  let open ResultMonad in
-  match mnquant with
-  | ManualQuantifier([], []) ->
-      return ()
-
-  | _ ->
-      err @@ NonemptyManualQuantifier(rng)
