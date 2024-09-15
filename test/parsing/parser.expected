@@ -10,6 +10,7 @@
        (UTBindValue ([], Stage1,
           (UTNonRec
              (((Range.Normal </path/to/nx.saty:3.7-9>), "xs"),
+              (ManualQuantifier ([], [])), None,
               (UTListCons ((UTIntegerConstant 1),
                  (UTListCons ((UTIntegerConstant 2),
                     (UTListCons ((UTIntegerConstant 3), UTEndOfList))))
@@ -19,6 +20,7 @@
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/nx.saty:4.7-9>), "ys"),
+               (ManualQuantifier ([], [])), None,
                (UTListCons ((UTIntegerConstant 1),
                   (UTListCons ((UTIntegerConstant 2),
                      (UTListCons ((UTIntegerConstant 3), UTEndOfList))))
@@ -27,12 +29,14 @@
        ((Range.Normal </path/to/nx.saty:6.3-6>),
         (UTBindValue ([], Stage1,
            (UTNonRec
-              (((Range.Normal </path/to/nx.saty:6.7-9>), "r0"), (UTRecord [])))
+              (((Range.Normal </path/to/nx.saty:6.7-9>), "r0"),
+               (ManualQuantifier ([], [])), None, (UTRecord [])))
            )));
        ((Range.Normal </path/to/nx.saty:7.3-6>),
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/nx.saty:7.7-9>), "r1"),
+               (ManualQuantifier ([], [])), None,
                (UTRecord
                   [(((Range.Normal </path/to/nx.saty:7.15-16>), "x"),
                     (UTIntegerConstant 1))])))
@@ -41,6 +45,7 @@
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/nx.saty:8.7-9>), "r2"),
+               (ManualQuantifier ([], [])), None,
                (UTRecord
                   [(((Range.Normal </path/to/nx.saty:8.19-20>), "x"),
                     (UTIntegerConstant 1));
@@ -52,6 +57,7 @@
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/nx.saty:9.7-13>), "r2semi"),
+               (ManualQuantifier ([], [])), None,
                (UTRecord
                   [(((Range.Normal </path/to/nx.saty:9.19-20>), "x"),
                     (UTIntegerConstant 1));
@@ -63,12 +69,14 @@
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/nx.saty:11.7-10>), "tp2"),
+               (ManualQuantifier ([], [])), None,
                (UTTuple (UTIntegerConstant 1) (UTIntegerConstant 2) )))
            )));
        ((Range.Normal </path/to/nx.saty:12.3-6>),
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/nx.saty:12.7-10>), "tp3"),
+               (ManualQuantifier ([], [])), None,
                (UTTuple (UTIntegerConstant 1) (UTIntegerConstant 2)
                   (UTIntegerConstant 3))))
            )));
@@ -76,6 +84,7 @@
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/nx.saty:14.7-14>), "op-test"),
+               (ManualQuantifier ([], [])), None,
                (UTTuple
                   (UTApply ([],
                      (UTApply ([],
@@ -730,6 +739,7 @@
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/nx.saty:41.7-13>), "uminus"),
+               (ManualQuantifier ([], [])), None,
                (UTTuple
                   (UTApply ([],
                      (UTApply ([],
@@ -990,6 +1000,7 @@
        (UTBindValue ([], Stage1,
           (UTNonRec
              (((Range.Normal </path/to/pats.saty:3.7-17>), "pats-test1"),
+              (ManualQuantifier ([], [])), None,
               (UTPatternMatch (
                  (UTContentOf ([],
                     ((Range.Normal </path/to/pats.saty:4.11-12>), "a"))),
@@ -1006,6 +1017,7 @@
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/pats.saty:8.7-17>), "pats-test2"),
+               (ManualQuantifier ([], [])), None,
                (UTPatternMatch (
                   (UTContentOf ([],
                      ((Range.Normal </path/to/pats.saty:9.11-12>), "a"))),
@@ -1031,6 +1043,7 @@
           (UTNonRec
              (((Range.Normal </path/to/pattuple.saty:3.7-20>),
                "pattuple-test"),
+              (ManualQuantifier ([], [])), None,
               (UTPatternMatch (
                  (UTContentOf ([],
                     ((Range.Normal </path/to/pattuple.saty:4.11-12>), "a"))),
@@ -1060,6 +1073,7 @@
        (UTBindValue ([], Stage1,
           (UTNonRec
              (((Range.Normal </path/to/patlist.saty:3.7-15>), "pat-test"),
+              (ManualQuantifier ([], [])), None,
               (UTPatternMatch (
                  (UTContentOf ([],
                     ((Range.Normal </path/to/patlist.saty:4.11-12>), "a"))),
@@ -1118,12 +1132,14 @@
      [((Range.Normal </path/to/sxlist.saty:3.3-6>),
        (UTBindValue ([], Stage1,
           (UTNonRec
-             (((Range.Normal </path/to/sxlist.saty:3.7-8>), "x"), UTEndOfList))
+             (((Range.Normal </path/to/sxlist.saty:3.7-8>), "x"),
+              (ManualQuantifier ([], [])), None, UTEndOfList))
           )));
        ((Range.Normal </path/to/sxlist.saty:4.3-6>),
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/sxlist.saty:4.7-8>), "y"),
+               (ManualQuantifier ([], [])), None,
                (UTListCons ((UTInlineText [IT:aa]),
                   (UTListCons ((UTInlineText [IT:bb]), UTEndOfList))))))
            )))
@@ -1138,12 +1154,13 @@
        (UTBindValue ([], Stage1,
           (UTNonRec
              (((Range.Normal </path/to/mathlist.saty:3.7-8>), "x"),
-              UTEndOfList))
+              (ManualQuantifier ([], [])), None, UTEndOfList))
           )));
        ((Range.Normal </path/to/mathlist.saty:4.3-6>),
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/mathlist.saty:4.7-8>), "y"),
+               (ManualQuantifier ([], [])), None,
                (UTListCons (
                   (UTMathText
                      [((Range.Normal </path/to/mathlist.saty:4.14-15>),
@@ -1166,6 +1183,7 @@
         (UTBindValue ([], Stage1,
            (UTNonRec
               (((Range.Normal </path/to/mathlist.saty:6.7-8>), "z"),
+               (ManualQuantifier ([], [])), None,
                (UTBlockText
                   [BC:(UTContentOf ([],
                          ((Range.Normal </path/to/mathlist.saty:7.5-7>), "+p")
