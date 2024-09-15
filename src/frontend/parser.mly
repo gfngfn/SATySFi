@@ -483,18 +483,22 @@ bind_value_rec:
       { valbinds }
 ;
 bind_value_nonrec:
-  | ident=bound_identifier; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
+  | ident=bound_identifier; quant_and_param_units=quant_and_param_units; retty=return_type; EXACT_EQ; utast=expr
       {
         let (mnquant, param_units) = quant_and_param_units in
         let curried = curry_lambda_abstraction param_units utast in
-        (ident, mnquant, curried)
+        (ident, mnquant, retty, curried)
       }
+;
+return_type:
+  | COLON; mnty=typ { Some(mnty) }
+  |                 { None }
 ;
 bind_inline:
   | ident_ctx=LOWER; cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
         let (mnquant, param_units) = quant_and_param_units in
-        (cs, mnquant,
+        (cs, mnquant, None,
           make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaInlineCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
@@ -511,7 +515,7 @@ bind_inline:
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
           (Range.dummy "read-inline-of-lightweight-let-inline", UTReadInline(utast_ctx, utast))
         in
-        (cs, mnquant,
+        (cs, mnquant, None,
           make_standard (Ranged cs) (Ranged utast) (UTLambdaInlineCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
@@ -523,7 +527,7 @@ bind_block:
   | ident_ctx=LOWER; cs=PLUS_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
         let (mnquant, param_units) = quant_and_param_units in
-        (cs, mnquant,
+        (cs, mnquant, None,
           make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaBlockCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
@@ -540,7 +544,7 @@ bind_block:
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
           (Range.dummy "read-block-of-lightweight-let-block", UTReadBlock(utast_ctx, utast))
         in
-        (cs, mnquant,
+        (cs, mnquant, None,
           make_standard (Ranged cs) (Ranged utast) (UTLambdaBlockCommand{
             parameters       = param_units;
             context_variable = ident_ctx;
@@ -552,7 +556,7 @@ bind_math:
   | ident_ctx=LOWER; cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; scripts_param_opt=option(scripts_param); EXACT_EQ; utast=expr
       {
         let (mnquant, param_units) = quant_and_param_units in
-        (cs, mnquant,
+        (cs, mnquant, None,
           make_standard (Ranged cs) (Ranged utast) (UTLambdaMathCommand{
             parameters       = param_units;
             context_variable = ident_ctx;

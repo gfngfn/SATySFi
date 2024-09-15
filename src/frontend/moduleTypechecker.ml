@@ -737,7 +737,7 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
       in
       if valattr.ValueAttribute.is_test then
         match (stage, valbind) with
-        | (Stage1, UTNonRec(ident, mnquant, utast1)) ->
+        | (Stage1, UTNonRec(ident, mnquant, _retty, utast1)) -> (* TODO: `retty` *)
             let* () = check_empty_manual_quantifier rng mnquant in
             let (_, test_name) = ident in
             let ty_expected =
@@ -753,7 +753,7 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
       else
         let* (rec_or_nonrecs, ssig) =
           match valbind with
-          | UTNonRec(ident, ManualQuantifier(typarams, rowparams), utast1) ->
+          | UTNonRec(ident, ManualQuantifier(typarams, rowparams), _retty, utast1) -> (* TODO: use `retty` *)
               let* (typarammap, _) = TypeParameterMap.empty |> add_type_parameters (Level.succ Level.bottom) typarams in
               let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ Level.bottom) rowparams in
               let pre =

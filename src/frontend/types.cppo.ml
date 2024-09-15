@@ -423,7 +423,7 @@ and untyped_rec_or_nonrec =
   | UTMutable of untyped_let_mutable_binding
 
 and untyped_let_binding =
-  var_name ranged * manual_quantifier * untyped_abstract_tree
+  var_name ranged * manual_quantifier * manual_type option * untyped_abstract_tree
 
 and untyped_let_mutable_binding =
   var_name ranged * untyped_abstract_tree
