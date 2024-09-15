@@ -647,42 +647,61 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       Exhchecker.main rng patbrs tyO pre tyenv;
       return (PatternMatch(rng, eO, patbrs), beta)
 
-  | UTLetIn(UTNonRec(utletbind), utast2) ->
-      let* (varnm, pty1, evid, e1) = typecheck_nonrec pre tyenv utletbind in
-      let tyenv =
-        let ventry =
-          {
-            val_type  = pty1;
-            val_name  = Some(evid);
-            val_stage = pre.stage;
-          }
-        in
-        tyenv |> Typeenv.add_value varnm ventry
-      in
-      let* (e2, ty2) = typecheck_iter tyenv utast2 in
-      return (LetNonRecIn(PVariable(evid), e1, e2), ty2)
-
-  | UTLetIn(UTRec(utrecbinds), utast2) ->
-      let* quints = typecheck_letrec pre tyenv utrecbinds in
-      let (tyenv, recbindacc) =
-        quints |> List.fold_left (fun (tyenv, recbindacc) quint ->
-          let (x, pty, evid, recbind) = quint in
-          let tyenv =
-            let ventry =
-              {
-                val_type  = pty;
-                val_name  = Some(evid);
-                val_stage = pre.stage;
-              }
+  | UTLetIn(valbind, utast2) ->
+      begin
+        match valbind with
+        | UTNonRec(utletbind) ->
+            let* (varnm, pty1, evid, e1) = typecheck_nonrec ~always_polymorphic:false pre tyenv utletbind in
+            let tyenv =
+              let ventry =
+                {
+                  val_type  = pty1;
+                  val_name  = Some(evid);
+                  val_stage = pre.stage;
+                }
+              in
+              tyenv |> Typeenv.add_value varnm ventry
             in
-            tyenv |> Typeenv.add_value x ventry
-          in
-          let recbindacc = Alist.extend recbindacc recbind in
-          (tyenv, recbindacc)
-        ) (tyenv, Alist.empty)
-      in
-      let* (e2, ty2) = typecheck_iter tyenv utast2 in
-      return (LetRecIn(recbindacc |> Alist.to_list, e2), ty2)
+            let* (e2, ty2) = typecheck_iter tyenv utast2 in
+            return (LetNonRecIn(PVariable(evid), e1, e2), ty2)
+
+        | UTRec(utrecbinds) ->
+            let* quints = typecheck_letrec pre tyenv utrecbinds in
+            let (tyenv, recbindacc) =
+              quints |> List.fold_left (fun (tyenv, recbindacc) quint ->
+                let (x, pty, evid, recbind) = quint in
+                let tyenv =
+                  let ventry =
+                    {
+                      val_type  = pty;
+                      val_name  = Some(evid);
+                      val_stage = pre.stage;
+                    }
+                  in
+                  tyenv |> Typeenv.add_value x ventry
+                in
+                let recbindacc = Alist.extend recbindacc recbind in
+                (tyenv, recbindacc)
+              ) (tyenv, Alist.empty)
+            in
+            let* (e2, ty2) = typecheck_iter tyenv utast2 in
+            return (LetRecIn(recbindacc |> Alist.to_list, e2), ty2)
+
+        | UTMutable(ident, utastI) ->
+            let* (varnm, pty_ref, evid, eI) = typecheck_let_mutable pre tyenv ident utastI in
+            let tyenv =
+              let ventry =
+                {
+                  val_type  = pty_ref;
+                  val_name  = Some(evid);
+                  val_stage = pre.stage;
+                }
+              in
+              tyenv |> Typeenv.add_value varnm ventry
+            in
+            let* (e2, ty2) = typecheck_iter tyenv utast2 in
+            return (LetMutableIn(evid, eI, e2), ty2)
+      end
 
   | UTIfThenElse(utastB, utast1, utast2) ->
       let* (eB, tyB) = typecheck_iter tyenv utastB in
@@ -691,11 +710,6 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       let* (e2, ty2) = typecheck_iter tyenv utast2 in
       let* () = unify ty2 ty1 in
       return (IfThenElse(eB, e1, e2), ty1)
-
-  | UTLetIn(UTMutable(ident, utastI), utastA) ->
-      let* (tyenvI, evid, eI, _tyI) = typecheck_let_mutable pre tyenv ident utastI in
-      let* (eA, tyA) = typecheck_iter tyenvI utastA in
-      return (LetMutableIn(evid, eI, eA), tyA)
 
   | UTOverwrite(ident, utastN) ->
       let (rng_var, _) = ident in
@@ -1226,7 +1240,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
   return tuples
 
 
-and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : (var_name * poly_type * EvalVarID.t * abstract_tree) ok =
+and typecheck_nonrec ~(always_polymorphic : bool) (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : (var_name * poly_type * EvalVarID.t * abstract_tree) ok =
   let open ResultMonad in
   let
     UTLetBinding{
@@ -1251,7 +1265,7 @@ and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_bi
   let evid = EvalVarID.fresh ident in
   let* (e1, ty1) = typecheck presub tyenv utast1 in
   let pty1 =
-    if is_nonexpansive_expression e1 then
+    if always_polymorphic || is_nonexpansive_expression e1 then
     (* If `e1` is polymorphically typeable: *)
       TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
     else
@@ -1261,22 +1275,13 @@ and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_bi
   return (varnm, pty1, evid, e1)
 
 
-and typecheck_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) : (Typeenv.t * EvalVarID.t * abstract_tree * mono_type) ok =
+and typecheck_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) : (var_name * poly_type * EvalVarID.t * abstract_tree) ok =
   let open ResultMonad in
   let* (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
   let (rng_var, varnm) = ident in
+  let pty_ref = TypeConv.lift_poly (rng_var, RefType(tyI)) in
   let evid = EvalVarID.fresh ident in
-  let tyenvI =
-    let ventry =
-      {
-        val_type  = TypeConv.lift_poly (rng_var, RefType(tyI));
-        val_name  = Some(evid);
-        val_stage = pre.stage;
-      }
-    in
-    tyenv |> Typeenv.add_value varnm ventry
-  in
-  return (tyenvI, evid, eI, tyI)
+  return (varnm, pty_ref, evid, eI)
 
 
 let main (config : typecheck_config) (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : (mono_type * abstract_tree) ok =
