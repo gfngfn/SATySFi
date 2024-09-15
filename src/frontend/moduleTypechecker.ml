@@ -765,14 +765,12 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
               in
               return ([ Rec(recbindacc |> Alist.to_list) ], ssig)
 
-          | UTMutable((rng, varnm) as var, utastI) ->
-              let* (eI, tyI) = Typechecker.typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
-              let evid = EvalVarID.fresh var in
-              let pty = TypeConv.lift_poly (rng, RefType(tyI)) in
+          | UTMutable(ident, utastI) ->
+              let* (varnm, pty_ref, evid, eI) = Typechecker.typecheck_let_mutable pre tyenv ident utastI in
               let ssig =
                 let ventry =
                   {
-                    val_type  = pty;
+                    val_type  = pty_ref;
                     val_name  = Some(evid);
                     val_stage = pre.stage;
                   }
