@@ -1199,47 +1199,35 @@ and typecheck_let_rec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_
   (* Typechecks each body of the definitions: *)
   let* tupleacc =
     utrecacc |> Alist.to_list |> foldM (fun tupleacc (utrecbind, beta, evid) ->
-      let
-        UTLetBinding{
-          identifier  = (_, varnm);
-          quantifier  = ManualQuantifier(typarams, rowparams);
-          parameters  = param_units;
-          return_type = _mntyopt_ret;
-          body        = utast_body;
-        } = utrecbind
+
+      let UTLetBinding{ identifier = (rng_var, varnm); _ } = utrecbind in
+      let* (params, e_body, ty_body) = typecheck_single_let_binding pre tyenv utrecbind in
+
+      (* Constructs the target term and the type of the right-hand side expression of `let`: *)
+      let e1 =
+        List.fold_right (fun (evid_labmap, pat, _, _) e ->
+          Function(evid_labmap, PatternBranch(pat, e))
+        ) params e_body
       in
-      let utast1 = curry_lambda_abstraction param_units utast_body in (* TODO: use `mntyopt_ret` *)
-      let* (typarammap, _) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) typarams in
-      let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ pre.level) rowparams in
-      let presub =
-        { pre with
-          level           = Level.succ pre.level;
-          type_parameters = typarammap;
-          row_parameters  = rowparammap;
-        }
+      let ty1 =
+        List.fold_right (fun (_, _, optrow, ty_pat) ty ->
+          (Range.dummy "typecheck_let_nonrec", FuncType(optrow, ty_pat, ty))
+        ) params ty_body
       in
-      let* (e1, ty1) = typecheck presub tyenv utast1 in
+
       begin
         match e1 with
         | Function(evid_labmap, patbr1) ->
             if LabelMap.cardinal evid_labmap = 0 then begin
               let* () = unify ty1 beta in
-(*
-              mntyopt |> Option.map (fun mnty ->
-                let tyin = decode_manual_type pre tyenv mnty in
-                unify tyin beta
-              ) |> Option.value ~default:();
-*)
               let recbind = LetRecBinding(evid, patbr1) in
               let tupleacc = Alist.extend tupleacc (varnm, beta, evid, recbind) in
               return tupleacc
             end else
-              let (rng1, _) = utast1 in
-              err (BreaksValueRestriction(rng1))
+              err (BreaksValueRestriction(rng_var))
 
         | _ ->
-            let (rng1, _) = utast1 in
-            err (BreaksValueRestriction(rng1))
+            err (BreaksValueRestriction(rng_var))
       end
     ) Alist.empty
   in
@@ -1255,46 +1243,9 @@ and typecheck_let_rec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_
 
 and typecheck_let_nonrec ~(always_polymorphic : bool) (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : (var_name * poly_type * EvalVarID.t * abstract_tree) ok =
   let open ResultMonad in
-  let
-    UTLetBinding{
-      identifier  = (_, varnm) as ident;
-      quantifier  = ManualQuantifier(typarams, rowparams);
-      parameters  = param_units;
-      return_type = mntyopt_ret_annot;
-      body        = utast_body;
-    } = utletbind
-  in
 
-  let* (params, e_body, ty_body) =
-
-    (* Adds type/row parameters: *)
-    let* (typarammap, _) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) typarams in
-    let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ pre.level) rowparams in
-    let presub =
-      { pre with
-        level           = Level.succ pre.level;
-        type_parameters = typarammap;
-        row_parameters  = rowparammap;
-      }
-    in
-
-    (* Adds parameters and type-checks the body: *)
-    let* (tyenv, params) = typecheck_abstraction_with_row presub tyenv param_units in
-    let* (e_body, ty_body) = typecheck presub tyenv utast_body in
-
-    (* Checks that the return type annotation equals the inferred return type (if it exists): *)
-    let* () =
-      match mntyopt_ret_annot with
-      | Some(mnty_ret_annot) ->
-          let* ty_ret_annot = ManualTypeDecoder.decode_manual_type presub tyenv mnty_ret_annot in
-          unify ty_body ty_ret_annot
-
-      | None ->
-          return ()
-    in
-
-    return (params, e_body, ty_body)
-  in
+  let UTLetBinding{ identifier = (_, varnm) as ident } = utletbind in
+  let* (params, e_body, ty_body) = typecheck_single_let_binding pre tyenv utletbind in
 
   (* Constructs the target term and the type of the right-hand side expression of `let`: *)
   let e1 =
@@ -1318,6 +1269,48 @@ and typecheck_let_nonrec ~(always_polymorphic : bool) (pre : pre) (tyenv : Typee
       TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
   in
   return (varnm, pty1, evid, e1)
+
+
+and typecheck_single_let_binding (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : ((EvalVarID.t LabelMap.t * pattern_tree * mono_row * mono_type) list * abstract_tree * mono_type, type_error) result =
+  let open ResultMonad in
+
+  let
+    UTLetBinding{
+      quantifier  = ManualQuantifier(typarams, rowparams);
+      parameters  = param_units;
+      return_type = mntyopt_ret_annot;
+      body        = utast_body;
+      _
+    } = utletbind
+  in
+
+  (* Adds type/row parameters: *)
+  let* (typarammap, _) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) typarams in
+  let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ pre.level) rowparams in
+  let presub =
+    { pre with
+      level           = Level.succ pre.level;
+      type_parameters = typarammap;
+      row_parameters  = rowparammap;
+    }
+  in
+
+  (* Adds parameters and type-checks the body: *)
+  let* (tyenv, params) = typecheck_abstraction_with_row presub tyenv param_units in
+  let* (e_body, ty_body) = typecheck presub tyenv utast_body in
+
+  (* Checks that the return type annotation equals the inferred return type (if it exists): *)
+  let* () =
+    match mntyopt_ret_annot with
+    | Some(mnty_ret_annot) ->
+        let* ty_ret_annot = ManualTypeDecoder.decode_manual_type presub tyenv mnty_ret_annot in
+        unify ty_body ty_ret_annot
+
+    | None ->
+        return ()
+  in
+
+  return (params, e_body, ty_body)
 
 
 and typecheck_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) : (var_name * poly_type * EvalVarID.t * abstract_tree) ok =
