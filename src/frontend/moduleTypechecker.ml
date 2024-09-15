@@ -719,7 +719,9 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
               let ty_cod = (Range.dummy "test-cod", BaseType(UnitType)) in
               Poly(Range.dummy "test-func", FuncType(RowEmpty, ty_dom, ty_cod))
             in
-            let* (test_name, pty1, evid, e1) = Typechecker.typecheck_nonrec ~always_polymorphic:true pre tyenv utletbind in
+            let* (test_name, pty1, evid, e1) =
+              Typechecker.typecheck_let_nonrec ~always_polymorphic:true pre tyenv utletbind
+            in
             if TypeConv.poly_type_equal pty_expected pty1 then
               return ([ BindTest(evid, test_name, e1) ], (OpaqueIDMap.empty, StructSig.empty))
             else
@@ -731,7 +733,9 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
         let* (rec_or_nonrecs, ssig) =
           match valbind with
           | UTNonRec(utletbind) ->
-              let* (varnm, pty1, evid, e1) = Typechecker.typecheck_nonrec ~always_polymorphic:true pre tyenv utletbind in
+              let* (varnm, pty1, evid, e1) =
+                Typechecker.typecheck_let_nonrec ~always_polymorphic:true pre tyenv utletbind
+              in
               let ssig =
                 let ventry =
                   {
@@ -745,7 +749,7 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
               return ([ NonRec(evid, e1) ], ssig)
 
           | UTRec(utrecbinds) ->
-              let* quints = Typechecker.typecheck_letrec pre tyenv utrecbinds in
+              let* quints = Typechecker.typecheck_let_rec pre tyenv utrecbinds in
               let (recbindacc, ssig) =
                 quints |> List.fold_left (fun (recbindacc, ssig) quint ->
                   let (x, pty, evid, recbind) = quint in

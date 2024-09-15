@@ -651,7 +651,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       begin
         match valbind with
         | UTNonRec(utletbind) ->
-            let* (varnm, pty1, evid, e1) = typecheck_nonrec ~always_polymorphic:false pre tyenv utletbind in
+            let* (varnm, pty1, evid, e1) = typecheck_let_nonrec ~always_polymorphic:false pre tyenv utletbind in
             let tyenv =
               let ventry =
                 {
@@ -666,7 +666,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
             return (LetNonRecIn(PVariable(evid), e1, e2), ty2)
 
         | UTRec(utrecbinds) ->
-            let* quints = typecheck_letrec pre tyenv utrecbinds in
+            let* quints = typecheck_let_rec pre tyenv utrecbinds in
             let (tyenv, recbindacc) =
               quints |> List.fold_left (fun (tyenv, recbindacc) quint ->
                 let (x, pty, evid, recbind) = quint in
@@ -1152,7 +1152,7 @@ and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : un
   )
 
 
-and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : ((var_name * poly_type * EvalVarID.t * letrec_binding) list) ok =
+and typecheck_let_rec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : ((var_name * poly_type * EvalVarID.t * let_rec_binding) list) ok =
   let open ResultMonad in
 
   (* First, adds a type variable for each bound identifier. *)
@@ -1240,7 +1240,7 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
   return tuples
 
 
-and typecheck_nonrec ~(always_polymorphic : bool) (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : (var_name * poly_type * EvalVarID.t * abstract_tree) ok =
+and typecheck_let_nonrec ~(always_polymorphic : bool) (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : (var_name * poly_type * EvalVarID.t * abstract_tree) ok =
   let open ResultMonad in
   let
     UTLetBinding{
