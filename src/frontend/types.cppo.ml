@@ -404,7 +404,7 @@ and untyped_declaration_main =
   | UTDeclMacro      of macro_name ranged * manual_macro_type ranged
 
 and manual_quantifier =
-  ManualQuantifier of (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
+  | ManualQuantifier of (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
 
 and manual_macro_type =
   | MInlineMacroType of manual_macro_parameter_type list
@@ -423,7 +423,13 @@ and untyped_rec_or_nonrec =
   | UTMutable of untyped_let_mutable_binding
 
 and untyped_let_binding =
-  var_name ranged * manual_quantifier * manual_type option * untyped_abstract_tree
+  | UTLetBinding of {
+      identifier  : var_name ranged;
+      quantifier  : manual_quantifier;
+      parameters  : untyped_parameter_unit list;
+      return_type : manual_type option;
+      body        : untyped_abstract_tree;
+    }
 
 and untyped_let_mutable_binding =
   var_name ranged * untyped_abstract_tree
@@ -1565,3 +1571,10 @@ let unlift_rec_or_nonrec (cd_rec_or_nonrec : code_rec_or_nonrec) : rec_or_nonrec
   | CdNonRec(symb, code)  -> NonRec(CodeSymbol.unlift symb, unlift_code code)
   | CdRec(cdrecbinds)     -> Rec(List.map unlift_letrec_binding cdrecbinds)
   | CdMutable(symb, code) -> Mutable(CodeSymbol.unlift symb, unlift_code code)
+
+
+let curry_lambda_abstraction (param_units : untyped_parameter_unit list) (utast : untyped_abstract_tree) : untyped_abstract_tree =
+  let rng = Range.dummy "curry_lambda_abstraction" in
+  utast |> List.fold_right (fun param_unit utast ->
+    (rng, UTFunction(param_unit, utast))
+  ) param_units

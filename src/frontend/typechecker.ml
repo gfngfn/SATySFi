@@ -647,7 +647,17 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       Exhchecker.main rng patbrs tyO pre tyenv;
       return (PatternMatch(rng, eO, patbrs), beta)
 
-  | UTLetIn(UTNonRec((ident, ManualQuantifier(typarams, rowparams), _retty, utast1)), utast2) -> (* TODO: use `retty` *)
+  | UTLetIn(UTNonRec(utletbind), utast2) ->
+      let
+        UTLetBinding{
+          identifier  = ident;
+          quantifier  = ManualQuantifier(typarams, rowparams);
+          parameters  = param_units;
+          return_type = _mntyopt_ret;
+          body        = utast_body;
+        } = utletbind
+      in
+      let utast1 = curry_lambda_abstraction param_units utast_body in (* TODO: use `mntyopt_ret` *)
       let* (typarammap, _) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) typarams in
       let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ pre.level) rowparams in
       let presub =
@@ -1163,14 +1173,14 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
   (* First, adds a type variable for each bound identifier. *)
   let (tyenv, utrecacc) =
     utrecbinds |> List.fold_left (fun (tyenv, utrecacc) utrecbind ->
-      let ((varrng, varnm), _mnquant, _retty, astdef) = utrecbind in
+
+      let UTLetBinding{ identifier = (varrng, varnm); _ } = utrecbind in
       let tvuref =
         let tvid = fresh_free_id pre.quantifiability (Level.succ pre.level) in
         ref (MonoFree(tvid))
       in
       let tv = Updatable(tvuref) in
-      let rng = get_range astdef in
-      let beta = (rng, TypeVariable(tv)) in
+      let beta = (varrng, TypeVariable(tv)) in
       let pbeta = TypeConv.lift_poly beta in
       let evid = EvalVarID.fresh (varrng, varnm) in
       let tyenv =
@@ -1190,8 +1200,17 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
 
   (* Typechecks each body of the definitions: *)
   let* tupleacc =
-    utrecacc |> Alist.to_list |> foldM (fun tupleacc utrec ->
-      let (((_, varnm), ManualQuantifier(typarams, rowparams), _retty, utast1), beta, evid) = utrec in (* TODO: use `retty` *)
+    utrecacc |> Alist.to_list |> foldM (fun tupleacc (utrecbind, beta, evid) ->
+      let
+        UTLetBinding{
+          identifier  = (_, varnm);
+          quantifier  = ManualQuantifier(typarams, rowparams);
+          parameters  = param_units;
+          return_type = _mntyopt_ret;
+          body        = utast_body;
+        } = utrecbind
+      in
+      let utast1 = curry_lambda_abstraction param_units utast_body in (* TODO: use `mntyopt_ret` *)
       let* (typarammap, _) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) typarams in
       let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ pre.level) rowparams in
       let presub =

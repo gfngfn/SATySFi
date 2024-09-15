@@ -31,13 +31,6 @@
     ) utasts (Range.dummy "expr-list-nil", UTEndOfList)
 
 
-  let curry_lambda_abstraction (param_units : untyped_parameter_unit list) (utast : untyped_abstract_tree) : untyped_abstract_tree =
-    let rng = Range.dummy "curry_lambda_abstraction" in
-    utast |> List.fold_right (fun param_unit utast ->
-      (rng, UTFunction(param_unit, utast))
-    ) param_units
-
-
   (* TODO (enhance): more efficient implementation *)
   let rec omit_pre_spaces str =
     let len = String.length str in
@@ -483,11 +476,16 @@ bind_value_rec:
       { valbinds }
 ;
 bind_value_nonrec:
-  | ident=bound_identifier; quant_and_param_units=quant_and_param_units; retty=return_type; EXACT_EQ; utast=expr
+  | ident=bound_identifier; quant_and_param_units=quant_and_param_units; mntyopt_ret=return_type; EXACT_EQ; utast=expr
       {
         let (mnquant, param_units) = quant_and_param_units in
-        let curried = curry_lambda_abstraction param_units utast in
-        (ident, mnquant, retty, curried)
+        UTLetBinding{
+          identifier  = ident;
+          quantifier  = mnquant;
+          parameters  = param_units;
+          return_type = mntyopt_ret;
+          body        = utast;
+        }
       }
 ;
 return_type:
@@ -498,12 +496,21 @@ bind_inline:
   | ident_ctx=LOWER; cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
         let (mnquant, param_units) = quant_and_param_units in
-        (cs, mnquant, None,
-          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaInlineCommand{
-            parameters       = param_units;
-            context_variable = ident_ctx;
-            body             = utast;
-          }))
+        let utast_cmd_abs =
+          make_standard (Ranged ident_ctx) (Ranged utast)
+            (UTLambdaInlineCommand{
+              parameters       = param_units;
+              context_variable = ident_ctx;
+              body             = utast;
+            })
+        in
+        UTLetBinding{
+          identifier  = cs;
+          quantifier  = mnquant;
+          parameters  = [];
+          return_type = None;
+          body        = utast_cmd_abs;
+        }
       }
   | cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
@@ -515,24 +522,42 @@ bind_inline:
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
           (Range.dummy "read-inline-of-lightweight-let-inline", UTReadInline(utast_ctx, utast))
         in
-        (cs, mnquant, None,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaInlineCommand{
-            parameters       = param_units;
-            context_variable = ident_ctx;
-            body             = utast_body;
-          }))
+        let utast_cmd_abs =
+          make_standard (Ranged cs) (Ranged utast)
+            (UTLambdaInlineCommand{
+              parameters       = param_units;
+              context_variable = ident_ctx;
+              body             = utast_body;
+            })
+        in
+        UTLetBinding{
+          identifier  = cs;
+          quantifier  = mnquant;
+          parameters  = [];
+          return_type = None;
+          body        = utast_cmd_abs;
+        }
       }
 ;
 bind_block:
   | ident_ctx=LOWER; cs=PLUS_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
         let (mnquant, param_units) = quant_and_param_units in
-        (cs, mnquant, None,
-          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaBlockCommand{
-            parameters       = param_units;
-            context_variable = ident_ctx;
-            body             = utast;
-          }))
+        let utast_cmd_abs =
+          make_standard (Ranged ident_ctx) (Ranged utast)
+            (UTLambdaBlockCommand{
+              parameters       = param_units;
+              context_variable = ident_ctx;
+              body             = utast;
+            })
+        in
+        UTLetBinding{
+          identifier  = cs;
+          quantifier  = mnquant;
+          parameters  = [];
+          return_type = None;
+          body        = utast_cmd_abs;
+        }
       }
   | cs=PLUS_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
@@ -544,25 +569,43 @@ bind_block:
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
           (Range.dummy "read-block-of-lightweight-let-block", UTReadBlock(utast_ctx, utast))
         in
-        (cs, mnquant, None,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaBlockCommand{
-            parameters       = param_units;
-            context_variable = ident_ctx;
-            body             = utast_body;
-          }))
+        let utast_cmd_abs =
+          make_standard (Ranged cs) (Ranged utast)
+            (UTLambdaBlockCommand{
+              parameters       = param_units;
+              context_variable = ident_ctx;
+              body             = utast_body;
+            })
+        in
+        UTLetBinding{
+          identifier  = cs;
+          quantifier  = mnquant;
+          parameters  = [];
+          return_type = None;
+          body        = utast_cmd_abs;
+        }
       }
 ;
 bind_math:
   | ident_ctx=LOWER; cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; scripts_param_opt=option(scripts_param); EXACT_EQ; utast=expr
       {
         let (mnquant, param_units) = quant_and_param_units in
-        (cs, mnquant, None,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaMathCommand{
-            parameters       = param_units;
-            context_variable = ident_ctx;
-            script_variables = scripts_param_opt;
-            body             = utast;
-          }))
+        let utast_cmd_abs =
+          make_standard (Ranged cs) (Ranged utast)
+            (UTLambdaMathCommand{
+              parameters       = param_units;
+              context_variable = ident_ctx;
+              script_variables = scripts_param_opt;
+              body             = utast;
+            })
+        in
+        UTLetBinding{
+          identifier  = cs;
+          quantifier  = mnquant;
+          parameters  = [];
+          return_type = None;
+          body        = utast_cmd_abs;
+        }
       }
 ;
 scripts_param:
