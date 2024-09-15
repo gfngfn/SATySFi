@@ -278,7 +278,7 @@ let typecheck_abstraction (pre : pre) (tyenv : Typeenv.t) (param_units : untyped
   let open ResultMonad in
   let* (tyenv, acc) =
     param_units |> foldM (fun (tyenv, acc) param_unit ->
-      let* (patvarmap, ty_labmap, ty_pat, evid_labmap, epat) =
+      let* (tyenv, ty_labmap, ty_pat, evid_labmap, epat) =
         let cons (_, label) ty ty_labmap = ty_labmap |> LabelMap.add label ty in
         let nil = LabelMap.empty in
         typecheck_function_parameter_unit ~cons ~nil pre tyenv param_unit
