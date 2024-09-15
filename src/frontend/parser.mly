@@ -483,15 +483,17 @@ bind_value_rec:
       { valbinds }
 ;
 bind_value_nonrec:
-  | ident=bound_identifier; mnquant=quant; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident=bound_identifier; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
+        let (mnquant, param_units) = quant_and_param_units in
         let curried = curry_lambda_abstraction param_units utast in
         (ident, mnquant, curried)
       }
 ;
 bind_inline:
-  | ident_ctx=LOWER; cs=BACKSLASH_CMD; mnquant=quant; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
+        let (mnquant, param_units) = quant_and_param_units in
         (cs, mnquant,
           make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaInlineCommand{
             parameters       = param_units;
@@ -499,8 +501,9 @@ bind_inline:
             body             = utast;
           }))
       }
-  | cs=BACKSLASH_CMD; mnquant=quant; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
+        let (mnquant, param_units) = quant_and_param_units in
         let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
         let varnm_ctx = "%context" in
         let ident_ctx = (rng_ctx, varnm_ctx) in
@@ -517,8 +520,9 @@ bind_inline:
       }
 ;
 bind_block:
-  | ident_ctx=LOWER; cs=PLUS_CMD; mnquant=quant; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=PLUS_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
+        let (mnquant, param_units) = quant_and_param_units in
         (cs, mnquant,
           make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaBlockCommand{
             parameters       = param_units;
@@ -526,8 +530,9 @@ bind_block:
             body             = utast;
           }))
       }
-  | cs=PLUS_CMD; mnquant=quant; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | cs=PLUS_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
+        let (mnquant, param_units) = quant_and_param_units in
         let rng_ctx = Range.dummy "context-of-lightweight-let-block" in
         let varnm_ctx = "%context" in
         let ident_ctx = (rng_ctx, varnm_ctx) in
@@ -544,8 +549,9 @@ bind_block:
       }
 ;
 bind_math:
-  | ident_ctx=LOWER; cs=BACKSLASH_CMD; mnquant=quant; param_units=list(param_unit); scripts_param_opt=option(scripts_param); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; scripts_param_opt=option(scripts_param); EXACT_EQ; utast=expr
       {
+        let (mnquant, param_units) = quant_and_param_units in
         (cs, mnquant,
           make_standard (Ranged cs) (Ranged utast) (UTLambdaMathCommand{
             parameters       = param_units;
@@ -646,6 +652,24 @@ decl:
   | INCLUDE; utsig=sigexpr
       { UTDeclInclude(utsig) }
 ;
+quant_and_param_units:
+  | tyquants=list(tyquant); subseq=rowquant_and_param_units
+      {
+        let (rowquants, param_units) = subseq in
+        (ManualQuantifier(tyquants, rowquants), param_units)
+      }
+;
+rowquant_and_param_units:
+  | rowquant=rowquant; subseq=rowquant_and_param_units
+      {
+        let (rowquants, param_units) = subseq in
+        (rowquant :: rowquants, param_units)
+      }
+  | param_unit=param_unit; param_units=list(param_unit)
+      { ([], param_unit :: param_units) }
+  |
+      { ([], []) }
+;
 quant:
   | tyquants=list(tyquant); rowquants=list(rowquant)
       { ManualQuantifier(tyquants, rowquants) }
@@ -658,17 +682,16 @@ rowquant:
   | L_PAREN; rowvar=ROWVAR; CONS; mnrbkd=kind_row; R_PAREN
       { (rowvar, mnrbkd) }
 ;
+/* Cannot use `option(opt_params)` because of shift/reduce conflicts: */
 param_unit:
-  | opts_opt=option(opt_params); utpat=pattern_bot
-      {
-        let opts = opts_opt |> Option.value ~default:[] in
-        UTParameterUnit(opts, utpat, None)
-      }
-  | opts_opt=option(opt_params); L_PAREN; utpat=pattern; COLON; mnty=typ; R_PAREN
-      {
-        let opts = opts_opt |> Option.value ~default:[] in
-        UTParameterUnit(opts, utpat, Some(mnty))
-      }
+  | utpat=pattern_bot
+      { UTParameterUnit([], utpat, None) }
+  | opts=opt_params; utpat=pattern_bot
+      { UTParameterUnit(opts, utpat, None) }
+  | L_PAREN; utpat=pattern; COLON; mnty=typ; R_PAREN
+      { UTParameterUnit([], utpat, Some(mnty)) }
+  | opts=opt_params; L_PAREN; utpat=pattern; COLON; mnty=typ; R_PAREN
+      { UTParameterUnit(opts, utpat, Some(mnty)) }
 ;
 opt_params:
   | QUESTION; L_PAREN; opts=optterm_nonempty_list(COMMA, opt_param); R_PAREN
