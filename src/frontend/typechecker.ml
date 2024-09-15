@@ -254,6 +254,54 @@ let rec typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : un
         return (PConstructor(ctornm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
 
 
+let typecheck_function_parameter_unit (pre : pre) (tyenv : Typeenv.t) (param_unit : untyped_parameter_unit) : (pattern_var_map * mono_row * mono_type * EvalVarID.t LabelMap.t * pattern_tree) ok =
+  let open ResultMonad in
+  let UTParameterUnit(opt_params, utpat, mnty_opt) = param_unit in
+  let (optrow, evid_labmap, tyenv) =
+    let cons rlabel ty row = (RowCons(rlabel, ty, row)) in
+    let nil = RowEmpty in
+    add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
+  in
+  let* (epat, ty_pat, patvarmap) = typecheck_pattern pre tyenv utpat in
+  let* () =
+    match mnty_opt with
+    | Some(mnty_annot) ->
+        let* ty_annot = ManualTypeDecoder.decode_manual_type pre tyenv mnty_annot in
+        unify ty_pat ty_annot
+
+    | None ->
+        return ()
+  in
+  return (patvarmap, optrow, ty_pat, evid_labmap, epat)
+
+
+let typecheck_abstraction (pre : pre) (tyenv : Typeenv.t) (param_units : untyped_parameter_unit list) : (Typeenv.t * (EvalVarID.t LabelMap.t * pattern_tree * mono_type LabelMap.t * mono_type) list) ok =
+  let open ResultMonad in
+  let* (tyenv, acc) =
+    param_units |> foldM (fun (tyenv, acc) param_unit ->
+      let UTParameterUnit(opt_params, utpat, mnty_opt) = param_unit in
+      let (ty_labmap, evid_labmap, tyenv) =
+        let cons (_, label) ty ty_labmap = ty_labmap |> LabelMap.add label ty in
+        let nil = LabelMap.empty in
+        add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
+      in
+      let* (pat, ty_pat, patvarmap) = typecheck_pattern pre tyenv utpat in
+      let* () =
+        match mnty_opt with
+        | Some(mnty) ->
+            let* typat_annot = ManualTypeDecoder.decode_manual_type pre tyenv mnty in
+            unify ty_pat typat_annot
+
+        | None ->
+            return ()
+      in
+      let tyenv = add_pattern_var_mono pre tyenv patvarmap in
+      return (tyenv, Alist.extend acc (evid_labmap, pat, ty_labmap, ty_pat))
+    ) (tyenv, Alist.empty)
+  in
+  return (tyenv, acc |> Alist.to_list)
+
+
 let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) : (abstract_tree * mono_type) ok =
   let open ResultMonad in
   let typecheck_iter ?s:(s = pre.stage) ?l:(l = pre.level) ?p:(p = pre.type_parameters) ?r:(r = pre.row_parameters) ?q:(q = pre.quantifiability) t u =
@@ -817,54 +865,6 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
             let* () = unify ty1 (Range.dummy "prev", CodeType(beta)) in
             return (Prev(e1), beta)
       end
-
-
-and typecheck_abstraction (pre : pre) (tyenv : Typeenv.t) (param_units : untyped_parameter_unit list) : (Typeenv.t * (EvalVarID.t LabelMap.t * pattern_tree * mono_type LabelMap.t * mono_type) list) ok =
-  let open ResultMonad in
-  let* (tyenv, acc) =
-    param_units |> foldM (fun (tyenv, acc) param_unit ->
-      let UTParameterUnit(opt_params, utpat, mnty_opt) = param_unit in
-      let (ty_labmap, evid_labmap, tyenv) =
-        let cons (_, label) ty ty_labmap = ty_labmap |> LabelMap.add label ty in
-        let nil = LabelMap.empty in
-        add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
-      in
-      let* (pat, ty_pat, patvarmap) = typecheck_pattern pre tyenv utpat in
-      let* () =
-        match mnty_opt with
-        | Some(mnty) ->
-            let* typat_annot = ManualTypeDecoder.decode_manual_type pre tyenv mnty in
-            unify ty_pat typat_annot
-
-        | None ->
-            return ()
-      in
-      let tyenv = add_pattern_var_mono pre tyenv patvarmap in
-      return (tyenv, Alist.extend acc (evid_labmap, pat, ty_labmap, ty_pat))
-    ) (tyenv, Alist.empty)
-  in
-  return (tyenv, acc |> Alist.to_list)
-
-
-and typecheck_function_parameter_unit (pre : pre) (tyenv : Typeenv.t) (param_unit : untyped_parameter_unit) : (pattern_var_map * mono_row * mono_type * EvalVarID.t LabelMap.t * pattern_tree) ok =
-  let open ResultMonad in
-  let UTParameterUnit(opt_params, utpat, mnty_opt) = param_unit in
-  let (optrow, evid_labmap, tyenv) =
-    let cons rlabel ty row = (RowCons(rlabel, ty, row)) in
-    let nil = RowEmpty in
-    add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
-  in
-  let* (epat, ty_pat, patvarmap) = typecheck_pattern pre tyenv utpat in
-  let* () =
-    match mnty_opt with
-    | Some(mnty_annot) ->
-        let* ty_annot = ManualTypeDecoder.decode_manual_type pre tyenv mnty_annot in
-        unify ty_pat ty_annot
-
-    | None ->
-        return ()
-  in
-  return (patvarmap, optrow, ty_pat, evid_labmap, epat)
 
 
 and typecheck_command_arguments (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) (tyenv : Typeenv.t) (utcmdargs : untyped_command_argument list) (cmdargtys : mono_command_argument_type list) : ((abstract_tree LabelMap.t * abstract_tree) list) ok =
