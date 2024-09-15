@@ -774,7 +774,7 @@ and typecheck_binding (config : typecheck_config) (tyenv : Typeenv.t) (utbind : 
                 } = utletbind
               in
               let utast1 = curry_lambda_abstraction param_units utast_body in (* TODO: use `mntyopt_ret` *)
-              let* (typarammap, _) = TypeParameterMap.empty |> add_type_parameters (Level.succ Level.bottom) typarams in
+              let* (typarammap, _) = pre.type_parameters |> add_type_parameters (Level.succ Level.bottom) typarams in
               let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ Level.bottom) rowparams in
               let pre =
                 { pre with

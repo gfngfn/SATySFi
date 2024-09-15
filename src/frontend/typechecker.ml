@@ -648,40 +648,11 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       return (PatternMatch(rng, eO, patbrs), beta)
 
   | UTLetIn(UTNonRec(utletbind), utast2) ->
-      let
-        UTLetBinding{
-          identifier  = ident;
-          quantifier  = ManualQuantifier(typarams, rowparams);
-          parameters  = param_units;
-          return_type = _mntyopt_ret;
-          body        = utast_body;
-        } = utletbind
-      in
-      let utast1 = curry_lambda_abstraction param_units utast_body in (* TODO: use `mntyopt_ret` *)
-      let* (typarammap, _) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) typarams in
-      let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ pre.level) rowparams in
-      let presub =
-        { pre with
-          level           = Level.succ pre.level;
-          type_parameters = typarammap;
-          row_parameters  = rowparammap;
-        }
-      in
-      let (_, varnm) = ident in
-      let evid = EvalVarID.fresh ident in
-      let* (e1, ty1) = typecheck presub tyenv utast1 in
+      let* (varnm, evid, e1, pty1) = typecheck_nonrec pre tyenv utletbind in
       let tyenv =
-        let pty =
-          if is_nonexpansive_expression e1 then
-          (* If `e1` is polymorphically typeable: *)
-            TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
-          else
-          (* If `e1` should be typed monomorphically: *)
-            TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
-        in
         let ventry =
           {
-            val_type  = pty;
+            val_type  = pty1;
             val_name  = Some(evid);
             val_stage = pre.stage;
           }
@@ -1253,6 +1224,41 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
     )
   in
   return tuples
+
+
+and typecheck_nonrec (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : (var_name * EvalVarID.t * abstract_tree * poly_type) ok =
+  let open ResultMonad in
+  let
+    UTLetBinding{
+      identifier  = ident;
+      quantifier  = ManualQuantifier(typarams, rowparams);
+      parameters  = param_units;
+      return_type = _mntyopt_ret;
+      body        = utast_body;
+    } = utletbind
+  in
+  let utast1 = curry_lambda_abstraction param_units utast_body in (* TODO: use `mntyopt_ret` *)
+  let* (typarammap, _) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) typarams in
+  let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ pre.level) rowparams in
+  let presub =
+    { pre with
+      level           = Level.succ pre.level;
+      type_parameters = typarammap;
+      row_parameters  = rowparammap;
+    }
+  in
+  let (_, varnm) = ident in
+  let evid = EvalVarID.fresh ident in
+  let* (e1, ty1) = typecheck presub tyenv utast1 in
+  let pty1 =
+    if is_nonexpansive_expression e1 then
+    (* If `e1` is polymorphically typeable: *)
+      TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
+    else
+    (* If `e1` should be typed monomorphically: *)
+      TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
+  in
+  return (varnm, evid, e1, pty1)
 
 
 and typecheck_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) : (Typeenv.t * EvalVarID.t * abstract_tree * mono_type) ok =
