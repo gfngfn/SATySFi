@@ -1,0 +1,17 @@
+saphe: "^0.1.0-alpha.1"
+satysfi: "^0.1.0-alpha.1"
+authors:
+  - "Takashi Suwa"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  document: {}
+dependencies:
+  - used_as: "StdJaReport"
+    registered:
+      registry: "default"
+      name: "std-ja-report"
+      requirement: "^0.0.1"

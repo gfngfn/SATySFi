@@ -240,7 +240,7 @@ and mono_type_variable =
   | MustBeBound of MustBeBoundID.t
 
 and poly_type_variable =
-  | PolyFree  of mono_type_variable_updatable ref
+  | PolyFree  of mono_type_variable
   | PolyBound of BoundID.t
 
 and mono_type =
@@ -404,7 +404,7 @@ and untyped_declaration_main =
   | UTDeclMacro      of macro_name ranged * manual_macro_type ranged
 
 and manual_quantifier =
-  (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
+  | ManualQuantifier of (type_variable_name ranged) list * (row_variable_name ranged * manual_row_base_kind) list
 
 and manual_macro_type =
   | MInlineMacroType of manual_macro_parameter_type list
@@ -423,7 +423,13 @@ and untyped_rec_or_nonrec =
   | UTMutable of untyped_let_mutable_binding
 
 and untyped_let_binding =
-  var_name ranged * untyped_abstract_tree
+  | UTLetBinding of {
+      identifier  : var_name ranged;
+      quantifier  : manual_quantifier;
+      parameters  : untyped_parameter_unit list;
+      return_type : manual_type option;
+      body        : untyped_abstract_tree;
+    }
 
 and untyped_let_mutable_binding =
   var_name ranged * untyped_abstract_tree
@@ -638,7 +644,7 @@ type untyped_envelope =
     }
 [@@deriving show { with_path = false }]
 
-type untyped_letrec_pattern_branch =
+type untyped_let_rec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
 type 'a inline_text_element_scheme =
@@ -720,14 +726,14 @@ type base_constant =
       [@printer (fun fmt _ -> Format.fprintf fmt "<unidata>")]
 [@@deriving show { with_path = false; }]
 
-type 'a letrec_binding_scheme =
+type 'a let_rec_binding_scheme =
   | LetRecBinding of EvalVarID.t * 'a pattern_branch_scheme
 
-and letrec_binding =
-  abstract_tree letrec_binding_scheme
+and let_rec_binding =
+  abstract_tree let_rec_binding_scheme
 
 and rec_or_nonrec =
-  | Rec     of letrec_binding list
+  | Rec     of let_rec_binding list
   | NonRec  of EvalVarID.t * abstract_tree
   | Mutable of EvalVarID.t * abstract_tree
 
@@ -837,18 +843,18 @@ and ir =
   | IRCodeBlockText         of (ir block_text_element_scheme) list
   | IRCodeMathText          of (ir math_text_element_scheme) list
   | IRCodePatternMatch      of Range.t * ir * ir_pattern_branch list
-  | IRCodeLetRecIn          of ir_letrec_binding list * ir
+  | IRCodeLetRecIn          of ir_let_rec_binding list * ir
   | IRCodeLetNonRecIn       of ir_pattern_tree * ir * ir
   | IRCodeFunction          of varloc LabelMap.t * ir_pattern_tree * ir
   | IRCodeLetMutableIn      of varloc * ir * ir
   | IRCodeOverwrite         of varloc * ir
   | IRLift                  of ir
 
-and 'a ir_letrec_binding_scheme =
+and 'a ir_let_rec_binding_scheme =
   | IRLetRecBinding of varloc * 'a ir_pattern_branch_scheme
 
-and ir_letrec_binding =
-  ir ir_letrec_binding_scheme
+and ir_let_rec_binding =
+  ir ir_let_rec_binding_scheme
 
 and 'a ir_pattern_branch_scheme =
   | IRPatternBranch      of ir_pattern_tree * 'a
@@ -933,7 +939,7 @@ and instruction =
   | OpCodeMakeInlineText of ((instruction list) inline_text_element_scheme) list
   | OpCodeMakeBlockText of ((instruction list) block_text_element_scheme) list
   | OpCodePatternMatch  of Range.t * ((instruction list) ir_pattern_branch_scheme) list
-  | OpCodeLetRec        of ((instruction list) ir_letrec_binding_scheme) list * instruction list
+  | OpCodeLetRec        of ((instruction list) ir_let_rec_binding_scheme) list * instruction list
   | OpCodeLetNonRec     of ir_pattern_tree * instruction list * instruction list
   | OpCodeFunction      of varloc LabelMap.t * ir_pattern_tree * instruction list
   | OpCodeLetMutable    of varloc * instruction list * instruction list
@@ -1041,7 +1047,7 @@ and abstract_tree =
   | UpdateField           of abstract_tree * label * abstract_tree
 (* Fundamentals: *)
   | ASTBaseConstant       of base_constant
-  | LetRecIn              of letrec_binding list * abstract_tree
+  | LetRecIn              of let_rec_binding list * abstract_tree
   | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
   | ContentOf             of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
@@ -1233,7 +1239,7 @@ and code_value =
   | CdLambdaBlock   of CodeSymbol.t * code_value
   | CdLambdaMath    of CodeSymbol.t * (CodeSymbol.t * CodeSymbol.t) option * code_value
   | CdContentOf     of Range.t * CodeSymbol.t
-  | CdLetRecIn      of code_letrec_binding list * code_value
+  | CdLetRecIn      of code_let_rec_binding list * code_value
   | CdLetNonRecIn   of code_pattern_tree * code_value * code_value
   | CdFunction      of CodeSymbol.t LabelMap.t * code_pattern_branch
   | CdApply         of code_value LabelMap.t * code_value * code_value
@@ -1275,7 +1281,7 @@ and code_math_text_element =
 and 'a code_path_component =
   ('a, code_value) path_component_scheme
 
-and code_letrec_binding =
+and code_let_rec_binding =
   | CdLetRecBinding of CodeSymbol.t * code_pattern_branch
 
 and code_pattern_branch =
@@ -1297,7 +1303,7 @@ and code_pattern_tree =
 [@@deriving show { with_path = false; }]
 
 type code_rec_or_nonrec =
-  | CdRec     of code_letrec_binding list
+  | CdRec     of code_let_rec_binding list
   | CdNonRec  of CodeSymbol.t * code_value
   | CdMutable of CodeSymbol.t * code_value
 
@@ -1480,7 +1486,7 @@ let rec unlift_code (code : code_value) : abstract_tree =
         LambdaMath(CodeSymbol.unlift symb_ctx, evid_pair_opt, aux code0)
 
     | CdContentOf(rng, symb)               -> ContentOf(rng, CodeSymbol.unlift symb)
-    | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map unlift_letrec_binding cdrecbinds, aux code1)
+    | CdLetRecIn(cdrecbinds, code1)        -> LetRecIn(List.map unlift_let_rec_binding cdrecbinds, aux code1)
     | CdLetNonRecIn(cdpat, code1, code2)   -> LetNonRecIn(unlift_pattern cdpat, aux code1, aux code2)
     | CdFunction(symb_labmap, cdpatbr)     -> Function(symb_labmap |> LabelMap.map CodeSymbol.unlift, unlift_pattern_branch cdpatbr)
     | CdApply(code_labmap, code1, code2)   -> Apply(code_labmap |> LabelMap.map aux, aux code1, aux code2)
@@ -1551,7 +1557,7 @@ and unlift_pattern = function
   | CdPConstructor(ctor, cdpat) -> PConstructor(ctor, unlift_pattern cdpat)
 
 
-and unlift_letrec_binding (CdLetRecBinding(symb, cdpatbr)) =
+and unlift_let_rec_binding (CdLetRecBinding(symb, cdpatbr)) =
   LetRecBinding(CodeSymbol.unlift symb, unlift_pattern_branch cdpatbr)
 
 
@@ -1563,5 +1569,12 @@ and unlift_pattern_branch = function
 let unlift_rec_or_nonrec (cd_rec_or_nonrec : code_rec_or_nonrec) : rec_or_nonrec =
   match cd_rec_or_nonrec with
   | CdNonRec(symb, code)  -> NonRec(CodeSymbol.unlift symb, unlift_code code)
-  | CdRec(cdrecbinds)     -> Rec(List.map unlift_letrec_binding cdrecbinds)
+  | CdRec(cdrecbinds)     -> Rec(List.map unlift_let_rec_binding cdrecbinds)
   | CdMutable(symb, code) -> Mutable(CodeSymbol.unlift symb, unlift_code code)
+
+
+let curry_lambda_abstraction (param_units : untyped_parameter_unit list) (utast : untyped_abstract_tree) : untyped_abstract_tree =
+  let rng = Range.dummy "curry_lambda_abstraction" in
+  utast |> List.fold_right (fun param_unit utast ->
+    (rng, UTFunction(param_unit, utast))
+  ) param_units

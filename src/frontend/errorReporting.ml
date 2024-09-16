@@ -595,6 +595,13 @@ let make_type_error_message = function
         NormalLine("tests must be stage-1 non-recursive bindings.");
       ]
 
+  | TestMustBeUnitToUnit(rng, pty) ->
+      [
+        NormalLine(Printf.sprintf "at %s:" (Range.to_string rng));
+        NormalLine("tests must be of type unit -> unit, but this one has type");
+        DisplayLine(Display.show_poly_type pty);
+      ]
+
 
 let module_name_chain_to_string (((_, modnm0), modidents) : module_name_chain) =
   let modidents = modidents |> List.map (fun (_, modnm) -> modnm) in

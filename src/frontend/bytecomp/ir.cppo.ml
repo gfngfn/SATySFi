@@ -274,7 +274,7 @@ and find_in_environment (env : frame) (evid : EvalVarID.t) : varloc option =
   | None                              -> None
 
 
-and add_letrec_bindings_to_environment (env : frame) (recbinds : letrec_binding list) : (varloc * pattern_branch) list * frame =
+and add_let_rec_bindings_to_environment (env : frame) (recbinds : let_rec_binding list) : (varloc * pattern_branch) list * frame =
   recbinds @|> env @|> map_with_env (fun env recbind ->
     let LetRecBinding(evid, patbr) = recbind in
     let (var, env) = add_to_environment env evid in
@@ -628,7 +628,7 @@ and transform_0 (env : frame) (ast : abstract_tree) : ir * frame =
       end
 
   | LetRecIn(recbinds, ast2) ->
-      let (pairs, env) = add_letrec_bindings_to_environment env recbinds in
+      let (pairs, env) = add_let_rec_bindings_to_environment env recbinds in
       let varir_lst =
         pairs |> List.map (fun pair ->
           let (var, patbr) = pair in

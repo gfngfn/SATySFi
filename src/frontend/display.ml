@@ -47,7 +47,7 @@ let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t F
           match tv with
           | Updatable({contents = MonoLink(ty)})  -> aux_mono ty
           | Updatable({contents = MonoFree(fid)}) -> aux_free_id fid
-          | MustBeBound(_mbbid)                   -> ()
+          | MustBeBound(mbbid)                    -> aux_bound_id (MustBeBoundID.to_bound_id mbbid)
         end
 
     | DataType(tys, _tyid) ->
@@ -72,9 +72,10 @@ let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t F
     | TypeVariable(ptv) ->
         begin
           match ptv with
-          | PolyFree({contents = MonoLink(ty)})  -> aux_mono ty
-          | PolyFree({contents = MonoFree(fid)}) -> aux_free_id fid
-          | PolyBound(bid)                       -> aux_bound_id bid
+          | PolyFree(Updatable({contents = MonoLink(ty)}))  -> aux_mono ty
+          | PolyFree(Updatable({contents = MonoFree(fid)})) -> aux_free_id fid
+          | PolyFree(MustBeBound(mbbid))                    -> aux_bound_id (MustBeBoundID.to_bound_id mbbid)
+          | PolyBound(bid)                                  -> aux_bound_id bid
         end
 
     | FuncType(poptrow, ptydom, ptycod) ->
@@ -106,7 +107,7 @@ let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t F
     | RowCons(_rlabel, ty, row)                          -> aux_mono ty; aux_mono_row row
     | RowVar(UpdatableRow{contents = MonoRowLink(row)})  -> aux_mono_row row
     | RowVar(UpdatableRow{contents = MonoRowFree(frid)}) -> aux_free_row_id frid
-    | RowVar(MustBeBoundRow(_mbbrid))                    -> ()
+    | RowVar(MustBeBoundRow(mbbrid))                     -> aux_bound_row_id (MustBeBoundRowID.to_bound_id mbbrid)
     | RowEmpty                                           -> ()
 
   and aux_poly_row : poly_row -> unit = function
@@ -395,8 +396,9 @@ and show_mono_row_by_map (dispmap : DisplayMap.t) (row : mono_row) : string opti
 
 let tvf_poly (dispmap : DisplayMap.t) (plev : paren_level) (ptv : poly_type_variable) : string =
   match ptv with
-  | PolyFree(tvuref) -> tvf_mono_updatable dispmap plev !tvuref
-  | PolyBound(bid)   -> dispmap |> DisplayMap.find_bound_id bid
+  | PolyFree(Updatable(tvuref))  -> tvf_mono_updatable dispmap plev !tvuref
+  | PolyFree(MustBeBound(mbbid)) -> dispmap |> DisplayMap.find_bound_id (MustBeBoundID.to_bound_id mbbid)
+  | PolyBound(bid)               -> dispmap |> DisplayMap.find_bound_id bid
 
 
 let rvf_poly (dispmap : DisplayMap.t) (prv : poly_row_variable) : string =
