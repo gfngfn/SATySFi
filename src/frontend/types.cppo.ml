@@ -240,9 +240,8 @@ and mono_type_variable =
   | MustBeBound of MustBeBoundID.t
 
 and poly_type_variable =
-  | PolyFreeUpdatable   of mono_type_variable_updatable ref
-  | PolyFreeMustBeBound of MustBeBoundID.t
-  | PolyBound           of BoundID.t
+  | PolyFree  of mono_type_variable
+  | PolyBound of BoundID.t
 
 and mono_type =
   (mono_type_variable, mono_row_variable) typ

@@ -119,7 +119,8 @@ let add_macro_parameters_to_type_environment (tyenv : Typeenv.t) (pre : pre) (ma
       let (ptybody, beta) =
         let tvid = fresh_free_id pre.quantifiability (Level.succ pre.level) in
         let tvuref = ref (MonoFree(tvid)) in
-        ((rng, TypeVariable(PolyFreeUpdatable(tvuref))), (rng, TypeVariable(Updatable(tvuref))))
+        let tv = Updatable(tvuref) in
+        ((rng, TypeVariable(PolyFree(tv))), (rng, TypeVariable(tv)))
       in
       let (pty, macparamty) =
       match macparam with

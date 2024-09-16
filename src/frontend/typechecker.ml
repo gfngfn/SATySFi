@@ -100,7 +100,7 @@ let add_optionals_to_type_environment ~(cons : label ranged -> mono_type -> 'a -
       let evid = EvalVarID.fresh ident in
       let fid = fresh_free_id qtfbl lev in
       let tvuref = ref (MonoFree(fid)) in
-      let pbeta = (rng, TypeVariable(PolyFreeUpdatable(tvuref))) in
+      let pbeta = (rng, TypeVariable(PolyFree(Updatable(tvuref)))) in
       let tyenv =
         let ventry =
           {
