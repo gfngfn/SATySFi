@@ -104,6 +104,9 @@ let make_type_instantiation_intern (lev : level) (qtfbl : quantifiability) (bid_
     | PolyFree(tvuref) ->
         (rng, TypeVariable(Updatable(tvuref)))
 
+    | PolyFreeMustBeBound(mbbid) ->
+        (rng, TypeVariable(MustBeBound(mbbid)))
+
     | PolyBound(bid) ->
         begin
           match BoundIDHashTable.find_opt bid_ht bid with
@@ -162,6 +165,9 @@ let instantiate_by_map_mono (bidmap : mono_type BoundIDMap.t) (Poly(pty) : poly_
     | PolyFree(tvuref) ->
         (rng, TypeVariable(Updatable(tvuref)))
 
+    | PolyFreeMustBeBound(mbbid) ->
+        (rng, TypeVariable(MustBeBound(mbbid)))
+
     | PolyBound(bid) ->
         begin
           match bidmap |> BoundIDMap.find_opt bid with
@@ -180,7 +186,7 @@ let instantiate_by_map_mono (bidmap : mono_type BoundIDMap.t) (Poly(pty) : poly_
 let instantiate_by_map_poly (bidmap : poly_type_body BoundIDMap.t) (Poly(pty) : poly_type) : poly_type =
   let intern_ty (rng : Range.t) (ptv : poly_type_variable) : poly_type_body =
     match ptv with
-    | PolyFree(_) ->
+    | PolyFree(_) | PolyFreeMustBeBound(_) ->
         (rng, TypeVariable(ptv))
 
     | PolyBound(bid) ->
@@ -210,7 +216,7 @@ let instantiate_macro_type (lev : level) (qtfbl : quantifiability) (pmacty : pol
   | BlockMacroType(pmacparamtys)  -> BlockMacroType(pmacparamtys |> List.map aux)
 
 
-let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : FreeRowID.t -> LabelSet.t -> BoundRowID.t option) (ty : mono_type) : poly_type_body =
+let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : FreeRowID.t -> LabelSet.t -> BoundRowID.t option) (must_be_bound : MustBeBoundID.t -> bool) (ty : mono_type) : poly_type_body =
   let rec iter ((rng, tymain) : mono_type) =
     match tymain with
     | TypeVariable(tv) ->
@@ -232,8 +238,14 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
               end
 
           | MustBeBound(mbbid) ->
-              let bid = MustBeBoundID.to_bound_id mbbid in
-              (rng, TypeVariable(PolyBound(bid)))
+              let ptvi =
+                if must_be_bound mbbid then
+                  let bid = MustBeBoundID.to_bound_id mbbid in
+                  PolyBound(bid)
+                else
+                  PolyFreeMustBeBound(mbbid)
+              in
+              (rng, TypeVariable(ptvi))
         end
 
     | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(generalize_row LabelSet.empty optrow, iter tydom, iter tycod))
@@ -319,11 +331,15 @@ let generalize (lev : level) (ty : mono_type) : poly_type =
   let rvid_ht = FreeRowIDHashTable.create 32 in
   let intern_ty = make_type_generalization_intern lev tvid_ht in
   let intern_row = make_row_generalization_intern lev rvid_ht in
-  Poly(lift_poly_general intern_ty intern_row ty)
+  let must_be_bound (mbbid : MustBeBoundID.t) = Level.less_than lev (MustBeBoundID.get_level mbbid) in
+  Poly(lift_poly_general intern_ty intern_row must_be_bound ty)
 
 
 let lift_poly_body =
-  lift_poly_general (fun _ -> None) (fun _ _ -> None)
+  lift_poly_general
+    (fun _ -> None)
+    (fun _ _ -> None)
+    (fun _ -> false)
 
 
 let lift_poly (ty : mono_type) : poly_type =
@@ -335,9 +351,10 @@ let generalize_macro_type (macty : mono_macro_type) : poly_macro_type =
   let rvid_ht = FreeRowIDHashTable.create 32 in
   let intern_ty = make_type_generalization_intern Level.bottom tvid_ht in
   let intern_row = make_row_generalization_intern Level.bottom rvid_ht in
+  let must_be_bound (mbbid : MustBeBoundID.t) = Level.less_than Level.bottom (MustBeBoundID.get_level mbbid) in
   let aux = function
-    | LateMacroParameter(ty)  -> LateMacroParameter(lift_poly_general intern_ty intern_row ty)
-    | EarlyMacroParameter(ty) -> EarlyMacroParameter(lift_poly_general intern_ty intern_row ty)
+    | LateMacroParameter(ty)  -> LateMacroParameter(lift_poly_general intern_ty intern_row must_be_bound ty)
+    | EarlyMacroParameter(ty) -> EarlyMacroParameter(lift_poly_general intern_ty intern_row must_be_bound ty)
   in
   match macty with
   | InlineMacroType(macparamtys) -> InlineMacroType(macparamtys |> List.map aux)

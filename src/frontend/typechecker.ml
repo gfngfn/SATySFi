@@ -1211,7 +1211,7 @@ and typecheck_let_rec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_
       in
       let ty1 =
         List.fold_right (fun (_, _, optrow, ty_pat) ty ->
-          (Range.dummy "typecheck_let_nonrec", FuncType(optrow, ty_pat, ty))
+          (Range.dummy "typecheck_let_rec", FuncType(optrow, ty_pat, ty))
         ) params ty_body
       in
 
